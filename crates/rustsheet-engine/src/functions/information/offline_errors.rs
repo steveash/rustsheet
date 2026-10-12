@@ -15,7 +15,9 @@ use crate::{
 };
 
 use super::{map_elements, Lifted};
+use crate::arithmetic::bcast_idx;
 use crate::functions::math_and_trigonometry::array_size::check_array_size;
+use crate::functions::util::array_node_to_calc_result;
 
 /// Whether IMAGE `source` text is URL-shaped and so reaches the (never performed) fetch (narrower
 /// than `links.rs`, which also accepts ftp and mailto): after leading spaces, tabs and
@@ -53,21 +55,16 @@ fn image_number(value: &CalcResult) -> Option<f64> {
 /// image-sizing, excel-graph, 2026-10-11, T-1345): `sizing` is 0 to 3 (a fraction truncates;
 /// -1, 4, 9, text, "" and an omitted `IMAGE(url,"alt",)` are `#VALUE!`); sizing 3 needs a
 /// `height`, `height` and `width` are not negative, and not both 0; sizing 0 and 1 refuse
-/// a `height`. An array-valued `sizing` is not validated, and an array `height` or `width` counts as
-/// present for those two rules (UNVERIFIED lifting, T-1370).
+/// a `height`. An array-valued option is validated element by element by [`image_grid`].
 fn image_options_valid(options: &[CalcResult]) -> bool {
     let Some(sizing) = options.first() else {
         return true;
     };
-    if matches!(sizing, CalcResult::Array(_)) {
-        return true;
-    }
     let Some(sizing) = image_number(sizing).filter(|s| (0.0..4.0).contains(s)) else {
         return false;
     };
     let size = |value: Option<&CalcResult>| match value {
         None | Some(CalcResult::EmptyArg) => Ok(None),
-        Some(CalcResult::Array(_)) => Ok(Some(f64::NAN)),
         Some(other) => image_number(other)
             .filter(|n| *n >= 0.0)
             .map(Some)
@@ -148,6 +145,63 @@ impl Model {
         Ok((first, rest_values))
     }
 
+    /// IMAGE with an array `sizing`, `height` or `width`: the source and those options broadcast
+    /// against each other like any arrays (a length-1 axis repeats, a shorter array is `#N/A`
+    /// beyond its end) and each element is checked on its own (probes/rich-errors-image-array-options,
+    /// T-1370). `options` is `sizing`, `height`, `width` as given.
+    fn image_grid(
+        &mut self,
+        source: &Lifted,
+        options: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let (mut rows, mut cols) = source.dims();
+        for option in options {
+            if let CalcResult::Array(values) = option {
+                rows = rows.max(values.len());
+                cols = cols.max(values.iter().map(Vec::len).max().unwrap_or(0));
+            }
+        }
+        if let Some((error, message)) = check_array_size(rows, cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
+        let element = |grid: &[Vec<ArrayNode>], row: usize, col: usize| {
+            let line = grid.get(bcast_idx(grid.len(), row)?)?;
+            line.get(bcast_idx(line.len(), col)?).cloned()
+        };
+        CalcResult::Array(
+            (0..rows)
+                .map(|row| {
+                    (0..cols)
+                        .map(|col| {
+                            let source = match source {
+                                Lifted::Array(values) => element(values, row, col),
+                                Lifted::Scalar(value) => {
+                                    Some(calc_result_to_array_node(value.clone()))
+                                }
+                            };
+                            let mut picked = Vec::with_capacity(options.len());
+                            for option in options {
+                                picked.push(match option {
+                                    CalcResult::Array(values) => element(values, row, col)
+                                        .map(|node| array_node_to_calc_result(&node, cell)),
+                                    other => Some(other.clone()),
+                                });
+                            }
+                            // Past the end of a shorter array an element is `#N/A`.
+                            let (Some(source), Some(picked)) =
+                                (source, picked.into_iter().collect::<Option<Vec<_>>>())
+                            else {
+                                return ArrayNode::Error(Error::NA);
+                            };
+                            ArrayNode::Error(image_error(&source, image_options_valid(&picked)))
+                        })
+                        .collect()
+                })
+                .collect(),
+        )
+    }
+
     /// IMAGE(source, [alt_text], [sizing], [height], [width]) is `#BLOCKED!` for a URL: no fetch
     /// happens. Any other `source` is `#VALUE!` (probes/rich-errors-arg-kinds), and an array or
     /// range `source` gives an array of the same shape.
@@ -157,6 +211,15 @@ impl Model {
         }
         match self.offline_args(args, cell) {
             Err(error) => error,
+            Ok((source, options))
+                if options
+                    .get(1..)
+                    .unwrap_or_default()
+                    .iter()
+                    .any(|option| matches!(option, CalcResult::Array(_))) =>
+            {
+                self.image_grid(&source, options.get(1..).unwrap_or_default(), cell)
+            }
             Ok((Lifted::Array(values), options)) => {
                 let valid = image_options_valid(options.get(1..).unwrap_or_default());
                 CalcResult::Array(map_elements(&values, |v| {

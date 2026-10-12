@@ -1,0 +1,42 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "IMAGE with array sizing/height/width against scalar and array sources: how shapes broadcast (T-1370)",
+ "tags": [
+  "M1",
+  "probe",
+  "image",
+  "T-1370"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",{9;0}))",
+    "A5": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\";\"https://a.invalid/x.png\"},\"alt\",{0,9}))",
+    "A9": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{0,9}))",
+    "A13": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{0;9;1}))",
+    "A17": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",{0,9}))",
+    "A21": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",{0,9,1}))",
+    "A25": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",3,{5,-1}))",
+    "A29": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",3,5,{5,-1}))",
+    "A33": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",{0,3},{5,5}))",
+    "A37": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",{3,3},{5,-1}))",
+    "A41": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",{3,0},{5,5}))",
+    "A45": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",3,{0,5},{0,5}))",
+    "A49": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",{\"a\",1}))",
+    "A53": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"x\"},\"alt\",{0,0}))",
+    "A57": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{0,9;1,4}))",
+    "A61": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",3,{1;1;-1}))",
+    "A65": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{3,3},{5}))",
+    "A69": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{1,TRUE,\"\"}))",
+    "A73": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{0}))",
+    "A77": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{9}))",
+    "A81": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{3,3},{5,5},{0,0}))",
+    "A85": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",3,{5,5},{1;1}))",
+    "A89": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",{0,9},{5,5}))",
+    "A93": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\";\"https://a.invalid/x.png\"},\"alt\",3,{5,-1}))"
+   }
+  }
+ ],
+ "expected": {}
+}
