@@ -184,11 +184,7 @@ fn text_value_result(value: &ArrayNode, format: &str, cell: CellReferenceIndex) 
 
 /// TEXT's `#VALUE!` for a format code over Excel's complexity limit (T-1393).
 fn too_complex(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::Error {
-        error: Error::VALUE,
-        origin: cell,
-        message: "Format code too complex".to_string(),
-    }
+    CalcResult::new_error(Error::VALUE, cell, "Format code too complex".to_string())
 }
 
 impl Model {

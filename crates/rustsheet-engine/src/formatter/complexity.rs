@@ -87,6 +87,7 @@ mod tests {
             "\"a\" ".repeat(17),
             format!("d\"{}\"", "a".repeat(90)),
             "0;;;".to_string(),
+            format!("[Red]0{}", " ".repeat(80)),
         ];
         for code in ok {
             assert!(!exceeds_complexity_limit(&code), "{code}");
