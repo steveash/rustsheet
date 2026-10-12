@@ -3,7 +3,7 @@ id: T-1423
 title: "Report probe known failures per assigned milestone (decision 0051)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
