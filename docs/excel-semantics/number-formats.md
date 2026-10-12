@@ -187,6 +187,7 @@ and the number's "-" goes in front of everything (also before a quoted prefix). 
   `|??.??|` → "| 1.1 |" (A110); on -1.1 → "-|1.1|" … "-| 1.1 |" (A113:A116).
 Evidence: poi/NumberFormatTests.xlsx Tests!A5, A18, A19, A21, A22, A107:A110, A113:A116 (desktop
 Excel cached values, Microsoft Macintosh Excel 16.0).
+Implemented in: crates/rustsheet-engine/src/formatter/lexer.rs (`next_token` literal list)
 Status: VERIFIED
 Tasks: T-0953
 

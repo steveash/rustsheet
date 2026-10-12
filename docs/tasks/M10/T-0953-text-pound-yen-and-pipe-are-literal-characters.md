@@ -3,7 +3,7 @@ id: T-0953
 title: "TEXT: £, ¥ and | are literal characters in number formats (13 poi known failures)"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -49,16 +49,20 @@ start to render, or they may change their wrong value. Either way, no new F line
 case's checked-cell count or a failure's verdict changes, say so in the PR.
 
 ## Acceptance criteria
-- [ ] The 13 lines `F	poi/NumberFormatTests.xlsx	Tests!A5`, A18, A19, A21, A22, A107, A108,
+- [x] The 13 lines `F	poi/NumberFormatTests.xlsx	Tests!A5`, A18, A19, A21, A22, A107, A108,
       A109, A110, A113, A114, A115 and A116 disappear from eval/baseline/poi.txt, with no new F
       lines in any suite.
-- [ ] Formatter unit tests for one `£`, one `¥` with a quoted literal and a negative value, and one
+- [x] Formatter unit tests for one `£`, one `¥` with a quoted literal and a negative value, and one
       `|` case from the table.
-- [ ] The number-formats.md entry gets an `Implemented in:` line.
-- [ ] `make check` green; reviewers approve.
+- [x] The number-formats.md entry gets an `Implemented in:` line.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Grouping commas (T-0952), scientific formats with literals after `E` (T-0937), fraction
   formats.
 - Any other currency symbol or punctuation without Excel evidence. Use the `excel-probe` skill and
   file a follow-up if needed.
+
+## Outcome
+Added `£`, `¥` and `|` to the unquoted literal list in the formatter lexer (`next_token`). poi known failures 570 -> 557 (13 fixed, no regressions, no new F lines); unit test added; number-formats.md has the `Implemented in:` line.
+Side effect: fraction formats containing `|` (e.g. poi/NumberFormatTests.xlsx Tests!A120:A124) changed verdict from TypeMismatch (#VALUE!) to TextMismatch (wrong text, e.g. A120 actual "|:2/4|"); they remain known failures, no new F lines.
