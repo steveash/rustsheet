@@ -3,7 +3,7 @@ id: T-1370
 title: "IMAGE array-valued sizing/height/width lift with an array source"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
