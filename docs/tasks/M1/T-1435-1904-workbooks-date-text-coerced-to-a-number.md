@@ -3,7 +3,7 @@ id: T-1435
 title: "1904 workbooks: date text coerced to a number, typed into a cell, and in criteria counts from 1904-01-01"
 milestone: M1
 lane: functions-date
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -34,3 +34,6 @@ Shift the 1900 serial these return with `DateSystem::serial_from_1900_serial` (f
 
 ## Out of scope
 - Financial date arguments (T-1436).
+
+## Outcome
+`parse_formatted_number` and the date criteria now shift the 1900 serial of date text into the workbook's date system (`DateSystem::serial_from_1900_serial`), so number coercion, VALUE, typed input and COUNTIF/SUMIF/*IFS/D-function criteria read 1904 serials. probes/date-system-1904-readers: 9 known failures fixed (A20-A25, A38, A39, A51). New probe probes/date-system-1904-pre-epoch-text (15 cells, all pass): pre-epoch date text is #VALUE!, typed stays text; recorded in dates.md. Date-clock text in a 1904 workbook is still 1900-based (unprobed).

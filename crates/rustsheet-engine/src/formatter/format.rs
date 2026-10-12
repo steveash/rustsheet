@@ -724,6 +724,7 @@ pub(crate) fn parse_formatted_number(
     currencies: &[&str],
     locale: &Locale,
     current_year: CurrentYear,
+    date_system: DateSystem,
 ) -> Result<(f64, Option<String>), String> {
     let value = original.trim();
 
@@ -739,8 +740,12 @@ pub(crate) fn parse_formatted_number(
 
     // Date text, untrimmed: number coercion rejects date text with surrounding spaces (see
     // `parse_date`); VALUE trims before calling.
+    // The parser counts from the 1900 epoch; a 1904 workbook counts from 1904-01-01
+    // (`="1904-01-02"+0` is 1, probes/date-system-1904-readers A20).
     if let Ok((serial_number, format)) = parse_date(original, locale, current_year) {
-        return Ok((serial_number as f64, Some(format)));
+        if let Some(serial) = date_system.serial_from_1900_serial(i64::from(serial_number)) {
+            return Ok((serial as f64, Some(format)));
+        }
     }
 
     // Excel reads accounting text in parentheses as negative: `0+"(1)"` = -1, `0+"(1,000)"` =
