@@ -32,3 +32,18 @@ fn fn_round_to_more_digits_than_a_double_holds() {
     assert_eq!(model._get_text("A5"), *"0");
     assert_eq!(model._get_text("A6"), *"0");
 }
+
+#[test]
+fn round_family_lifts_over_array_arguments() {
+    // gen-m2/893302d6c5b99e2e Calc!A313: the num_digits error (#DIV/0!) beats the array.
+    let mut model = new_empty_model();
+    model._set("B1", "=SUM(ROUNDDOWN({1.26,2.58},1))");
+    model._set("B2", "=SUM(ROUND({1.26,2.58},{0;1}))");
+    model._set("B3", "=SUM(TRUNC({1.26,2.58}))");
+    model._set("B4", "=ROUNDDOWN({1.26,2.58},1/0)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), *"3.7");
+    assert_eq!(model._get_text("B2"), *"7.9");
+    assert_eq!(model._get_text("B3"), *"3");
+    assert_eq!(model._get_text("B4"), *"#DIV/0!");
+}

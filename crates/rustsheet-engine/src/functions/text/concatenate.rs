@@ -1,5 +1,6 @@
 use super::text_arg::{broadcast_text, TextArg};
 use crate::calc_result::Range;
+use crate::functions::util::array_node_to_calc_result;
 use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
@@ -214,7 +215,19 @@ impl Model {
                         return error;
                     }
                 }
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                // An array argument is joined element by element, row by row
+                // (gen-m2/d0c29dd5c530e28c Calc!A246: CONCAT of an all-empty MID array is "").
+                CalcResult::Array(rows) => {
+                    for node in rows.iter().flatten() {
+                        let element = array_node_to_calc_result(node, cell);
+                        match result.push_value(element) {
+                            Err(_) if result.units > MAX_TEXT_UNITS => break,
+                            Err(error) => return error,
+                            Ok(()) => {}
+                        }
+                    }
+                }
+                CalcResult::Lambda(_) => {
                     return CalcResult::new_error(
                         Error::NIMPL,
                         cell,

@@ -216,20 +216,16 @@ impl Model {
         if !(min_args..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let number_of_digits = match args.get(1) {
-            Some(arg) => match self.get_number(arg, cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            },
-            None => 0.0,
-        };
-        match round_decimal(value, number_of_digits, mode) {
-            Some(result) => CalcResult::Number(result),
-            None => CalcResult::new_error(Error::NUM, cell, "Result is too large".to_string()),
+        // Lifts element-wise over arrays and ranges (gen-m2/893302d6c5b99e2e Calc!A313).
+        let round = |value: f64, digits: f64| round_decimal(value, digits, mode).ok_or(Error::NUM);
+        if args.len() == 1 {
+            self.lift_numbers(args, cell, "Result is too large", |[value]| {
+                round(value, 0.0)
+            })
+        } else {
+            self.lift_numbers(args, cell, "Result is too large", |[value, digits]| {
+                round(value, digits)
+            })
         }
     }
 
