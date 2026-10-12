@@ -3,7 +3,7 @@ id: T-1294
 title: "COUNTA of an empty value counts it: COUNTA(IFERROR(<blank>,1)) is 1; probe COUNTA with omitted arguments"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
