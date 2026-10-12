@@ -739,7 +739,7 @@ fn regroup(node: Node, nested: bool) -> Node {
 /// Whether the parenthesized `node` keeps its parentheses as its own [`Node::Group`] even at
 /// the formula root or as an `@` operand: a union, or a chain of cuts whose leftmost operand is
 /// a parenthesized union (`((A1,B1) B1)`, T-1176).
-fn keeps_own_group(node: &Node) -> bool {
+pub(super) fn keeps_own_group(node: &Node) -> bool {
     let node = node.ungrouped();
     if matches!(node, Node::OpUnionKind { .. }) {
         return true;
@@ -750,5 +750,8 @@ fn keeps_own_group(node: &Node) -> bool {
         cut = true;
         leftmost = left;
     }
-    cut && matches!(leftmost, Node::Group { child, .. } if matches!(child.ungrouped(), Node::OpUnionKind { .. }))
+    let Node::Group { child, .. } = leftmost else {
+        return false;
+    };
+    cut && matches!(child.ungrouped(), Node::OpUnionKind { .. })
 }

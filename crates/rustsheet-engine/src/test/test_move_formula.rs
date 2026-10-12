@@ -298,3 +298,18 @@ fn test_move_formula_keeps_the_parentheses_of_a_cut_union() {
         assert_eq!(t.unwrap(), moved, "{value}");
     }
 }
+
+#[test]
+fn test_legacy_text_of_a_cut_union_keeps_the_at_outside_its_parentheses() {
+    // The `@` a legacy formula gains goes around a cut of a union's own parentheses, as it did
+    // before they became a `Group` (T-1342).
+    let mut model = new_empty_model();
+    for (formula, legacy) in [
+        ("=((A1,B1) B1)", "=@((A1,B1) B1)"),
+        ("=(A1,B1)", "=(A1,B1)"),
+        ("=SUM(((A1,B1) B1))", "=SUM(((A1,B1) B1))"),
+    ] {
+        let text = model.legacy_formula_text(0, 5, 5, formula).unwrap();
+        assert_eq!(text, legacy, "{formula}");
+    }
+}

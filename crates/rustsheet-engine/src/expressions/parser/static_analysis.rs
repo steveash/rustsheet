@@ -1,3 +1,4 @@
+use super::reference_operators::keeps_own_group;
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
 mod aggregate;
@@ -125,6 +126,15 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             }
         }
 
+        // A cut of a parenthesized union owns its group (`keeps_own_group`), so the `@` goes
+        // around the group, `=@((A1,B1) B1)`, as it did when the cut held its own parentheses.
+        Node::Group { child, .. }
+            if add
+                && !matches!(child.ungrouped(), Node::OpUnionKind { .. })
+                && keeps_own_group(child) =>
+        {
+            *node = Node::automatic_at(node.clone());
+        }
         // operations
         Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
             add_implicit_intersection(child, add)

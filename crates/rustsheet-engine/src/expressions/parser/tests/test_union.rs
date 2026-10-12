@@ -366,3 +366,23 @@ fn union_and_cut_parentheses_are_groups() {
         "{node:?}"
     );
 }
+
+/// SUBTOTAL and AREAS read a parenthesized union (or a cut of one) as a reference, so the call
+/// is a scalar, not a dynamic formula, through the union's `Group` (T-1342).
+#[test]
+fn subtotal_and_areas_of_a_grouped_union_are_scalar() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    let mut parser = parser();
+    for formula in [
+        "AREAS((A1,B1))",
+        "SUBTOTAL(9,(A1,B1))",
+        "SUBTOTAL(9,((A1,B1) B1))",
+        "AREAS(((A1,B1)))",
+    ] {
+        let node = parser.parse_cell_formula(formula, &context());
+        assert!(
+            matches!(run_static_analysis_on_node(&node), StaticResult::Scalar),
+            "{formula}"
+        );
+    }
+}
