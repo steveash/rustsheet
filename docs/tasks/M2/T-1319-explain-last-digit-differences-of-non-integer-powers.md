@@ -32,7 +32,9 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
 
 ## Outcome
 - **Rule:** for a non-integer `y`, Excel computes `exp(y·ln x)`, a negative `y` as one over the positive power, and `y` = ±0.5 through `sqrt`. Recorded in numbers.md as "Non-integer exponents: exp(y·ln x)".
-- **Evidence:** the new probes-numeric/power-non-integer-sweep (182 cells over 14 bases and 13 exponents, excel-graph) matches 180 of 180 numeric cells. libm `pow` matches 93. The three task cells pass, as does gen-m7/9ff3afcacd3bd0fc A13 (6^2.5).
+- **Evidence:** the new probes-numeric/power-non-integer-sweep (194 cells, excel-graph) has 193 of 194 cells passing. libm `pow` matches 93 of the 180 numeric cells in the main sweep.
+- **Quirk found:** a negative exponent whose positive power underflows is #DIV/0!, integer exponents included; this is implemented.
+- **Open:** `(-8)^(-1/3)` is -0.5 in Excel and -0.5000000000000001 in ours, and goes to T-0221. The three task cells pass, as does gen-m7/9ff3afcacd3bd0fc A13 (6^2.5).
 - **Code:** `arithmetic::non_integer_power` replaces `powf`, including for odd roots of negatives. With it, POWER.xlsx `(-8)^(1/3)` = -1.9999999999999998, which is Excel's cached value.
 - **Eval, 0 regressions in every suite:**
   - gen-m1 2 → 0 (T-1421's two cells, so gen-m1 is at 100%);

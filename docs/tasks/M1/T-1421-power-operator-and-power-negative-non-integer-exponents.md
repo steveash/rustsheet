@@ -70,3 +70,4 @@ root of a negative base is real.
 - **Probe location:** the sweep is in the ungated probes-numeric suite rather than a new `probes` case. It is outside the frozen M1 list either way (decision 0043).
 - **Cells:** gen-m1/6462bf910ef9f28f A41 and A207 and gen-m2/1b6ceed7489e0800 A62 pass, so eval/baseline/gen-m1.txt has no F lines.
 - **Tests:** unit tests `non_integer_exponents_use_exp_of_y_ln_x` and `special_cases_keep_the_general_path` pin `3^-0.5`, `0.5^-0.5`, `2^-0.5`, `0^-1` (#DIV/0!) and `(-8)^(1/3)` (-1.9999999999999998, POWER.xlsx).
+- **Not met:** `(-8)^(-1/3)` was probed and is -0.5 in Excel, but we give -0.5000000000000001. It is not pinned and is handed to T-0221 (numbers.md "Non-integer exponents").

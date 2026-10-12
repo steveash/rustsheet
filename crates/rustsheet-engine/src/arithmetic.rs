@@ -121,17 +121,23 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
         return Ok(result);
     }
     let result = if x < 0.0 && is_one_over_an_odd_integer(y) {
-        // An odd root of a negative number is a real number: the cube root of
-        // -8 is -2 (POWER.xlsx Sheet1!D3, F9; tolerance UNVERIFIED, see
-        // docs/excel-semantics/numbers.md). `powf` cannot tell, a third is just another fraction to it.
+        // An odd root of a negative number is a real number, minus the root of the magnitude:
+        // `(-8)^(1/3)` is -1.9999999999999998 (POWER.xlsx Sheet1!D3, F9; tolerance UNVERIFIED, see
+        // docs/excel-semantics/numbers.md).
         -non_integer_power(-x, y)
     } else {
         non_integer_power(x, y)
     };
     if result.is_infinite() {
-        // POWER(0,-1) is #DIV/0! (POWER.xlsx Sheet1!D2); overflow of any other
-        // base is #NUM! (UNVERIFIED, see docs/excel-semantics/numbers.md).
-        return Err(if x == 0.0 { Error::DIV } else { Error::NUM });
+        // POWER(0,-1) is #DIV/0! (POWER.xlsx Sheet1!D2), and so is any negative exponent whose
+        // positive power underflows: Excel divides 1 by it (`1E-10^-33.5`, `0.1^-400`,
+        // probes-numeric/power-non-integer-sweep A141, A186-A191). Overflow of a positive exponent
+        // is #NUM!.
+        return Err(if x == 0.0 || y < 0.0 {
+            Error::DIV
+        } else {
+            Error::NUM
+        });
     }
     if result.is_nan() {
         // A negative number to a power that is not an integer nor an odd root
@@ -141,8 +147,8 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
 }
 
 /// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)`, a negative exponent as one over
-/// the positive power, and `y` = ±0.5 through `sqrt`. This matches 180 of 180 oracle cells over 14
-/// bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep;
+/// the positive power, and `y` = ±0.5 through `sqrt`. This matches all 180 numeric oracle cells over
+/// 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep;
 /// docs/excel-semantics/numbers.md "Non-integer exponents: exp(y·ln x)"). A negative `x` gives NaN.
 fn non_integer_power(x: f64, y: f64) -> f64 {
     // -0 has the logarithm of 0: `-0^0.5` is 0, not `sqrt`'s -0 (gen-m1/6462bf910ef9f28f Calc!A19).
@@ -716,6 +722,10 @@ mod power_tests {
         assert_eq!(power(10.0, 400.0), Err(Error::NUM));
         assert_eq!(power(-0.0, 0.5), Ok(0.0));
         assert_eq!(power(0.0, -0.5), Err(Error::DIV));
+        // The positive power underflows, so Excel's 1/x^|y| is #DIV/0! (sweep A141, A186).
+        assert_eq!(power(1e-10, -33.5), Err(Error::DIV));
+        assert_eq!(power(0.1, -400.0), Err(Error::DIV));
+        assert_eq!(power(10.0, 400.0), Err(Error::NUM));
     }
 
     // Excel's doubles, where libm `pow` differs (probes-numeric/power-non-integer-sweep A17, A42,

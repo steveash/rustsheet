@@ -62,6 +62,10 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/b5352ebdb9c5f1a1 Calc!A1 `=DROP(((Data!$C$10/Data!D3)+(Data!B3^Data!B3)),..)` (3.14159^3.14159): Excel 36.46195209318106, engine 36.461952093181075.
 - gen-m9/b5352ebdb9c5f1a1 Calc!A16 `=(AVERAGE(WEEKNUM(46206,1))^Data!C4)` (27^-2.5): Excel 0.0002639918926335737, engine 0.00026399189263357376.
 
+Update (T-1319, 2026-10-12): non-integer exponents are now `exp(y·ln x)`, see numbers.md "Non-integer exponents". Two items remain here:
+- gen-m2/fa437879253827be A23;
+- `(-8)^(-1/3)`, which is -0.5 in Excel and -0.5000000000000001 in ours (probes-numeric/power-non-integer-sweep A183).
+
 ## Acceptance criteria
 - [ ] A probe sweep pins the formulation. docs/excel-semantics/numbers.md entry updated with evidence.
 - [ ] The gen-m2 cells above that T-1302 did not clear disappear from eval/baseline/gen-m2.txt, with no new F lines in any suite (gen-m1 A41 and A207 are T-1421's).

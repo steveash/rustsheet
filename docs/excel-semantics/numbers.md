@@ -541,12 +541,21 @@ Rule: for an exponent that is not an integer, Excel computes `x^y` as follows:
 
 An odd root of a negative base is minus the same formula on the magnitude. `(-8)^(1/3)` = -exp(ln 8/3) = -1.9999999999999998, which is the value Excel's own workbook caches.
 
-Libm `pow` (correctly rounded) matches only 93 of the 180 sweep cells. `exp(y·ln x)` without the ±0.5 cases matches 148. The model matches all 180 cells. A result past the double range is 0 or `#NUM!` as before (`1E10^-33.5` = 0).
+Libm `pow` (correctly rounded) matches only 93 of the 180 numeric sweep cells. `exp(y·ln x)` without the ±0.5 cases matches 148. The model matches all 180.
+
+Out-of-range results:
+- A positive exponent that overflows is `#NUM!`.
+- Quirk: a negative exponent is one over the positive power even when that power underflows, so the result is `#DIV/0!`. This holds for integer exponents too: `1E-10^-33.5`, `POWER(1E-10,-33.5)`, `0.1^-400`, `1E-10^-40`, `1E-10^-31` and `1E-300^-1.1` (where the positive power is subnormal).
+- A negative exponent whose result underflows is 0: `1E10^-33.5` = 0, `1E+200^-1.6` = 0, `2^-1074.5` = 0.
+
+Unresolved (T-0221): `(-8)^(-1/3)` is -0.5 in Excel, while the model gives -0.5000000000000001. `(-27)^(-1/3)` = -0.33333333333333337 and `(-8)^(1/3)` = -1.9999999999999998 do match.
 Evidence:
-- probes-numeric/power-non-integer-sweep: bases 2, 3, 5, 6, 7, 10, 0.5, 1.5, 100, 1E10, 1E-10, 123.456, 0.9 and 1.1, each with exponents ±0.5, ±1.5, ±2.5, ±0.3, 1/3, ±33.5, 0.25 and 2.7. Oracle excel-graph, 2026-10-12, T-1319.
+- probes-numeric/power-non-integer-sweep A1-A182: bases 2, 3, 5, 6, 7, 10, 0.5, 1.5, 100, 1E10, 1E-10, 123.456, 0.9 and 1.1, each with exponents ±0.5, ±1.5, ±2.5, ±0.3, 1/3, ±33.5, 0.25 and 2.7.
+- probes-numeric/power-non-integer-sweep A183-A194: odd roots of negatives and out-of-range results.
+- Both are oracle excel-graph, 2026-10-12, T-1319.
 - gen-m1/6462bf910ef9f28f Calc!A41 and A207; gen-m2/1b6ceed7489e0800 Calc!A62; gen-m7/9ff3afcacd3bd0fc Calc!A13.
 - ironcalc-calc POWER.xlsx Sheet1!D3 and F9.
-Not probed: negative bases beyond `(-8)^(1/3)`; exponents within 1E-15 of ±0.5.
+Not probed: other negative bases; exponents within 1E-15 of ±0.5.
 Implemented in: `non_integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
 Status: VERIFIED (excel-graph)
 Tasks: T-1319, T-1421, T-0221
