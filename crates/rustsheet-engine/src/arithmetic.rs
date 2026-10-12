@@ -121,23 +121,47 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
         return Ok(result);
     }
     let result = if x < 0.0 && is_one_over_an_odd_integer(y) {
-        // An odd root of a negative number is a real number: the cube root of
-        // -8 is -2 (POWER.xlsx Sheet1!D3, F9; tolerance UNVERIFIED, see
-        // docs/excel-semantics/numbers.md). `powf` cannot tell, a third is just another fraction to it.
-        -(-x).powf(y)
+        // An odd root of a negative number is a real number, minus the root of the magnitude:
+        // `(-8)^(1/3)` is -1.9999999999999998 (POWER.xlsx Sheet1!D3, F9; tolerance UNVERIFIED, see
+        // docs/excel-semantics/numbers.md).
+        -non_integer_power(-x, y)
     } else {
-        x.powf(y)
+        non_integer_power(x, y)
     };
     if result.is_infinite() {
-        // POWER(0,-1) is #DIV/0! (POWER.xlsx Sheet1!D2); overflow of any other
-        // base is #NUM! (UNVERIFIED, see docs/excel-semantics/numbers.md).
-        return Err(if x == 0.0 { Error::DIV } else { Error::NUM });
+        // POWER(0,-1) is #DIV/0! (POWER.xlsx Sheet1!D2), and so is any negative exponent whose
+        // positive power underflows: Excel divides 1 by it (`1E-10^-33.5`, `0.1^-400`,
+        // probes-numeric/power-non-integer-sweep A141, A186-A191). Overflow of a positive exponent
+        // is #NUM!.
+        return Err(if x == 0.0 || y < 0.0 {
+            Error::DIV
+        } else {
+            Error::NUM
+        });
     }
     if result.is_nan() {
         // A negative number to a power that is not an integer nor an odd root
         return Err(Error::NUM);
     }
     finite_or_num(result)
+}
+
+/// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)`, a negative exponent as one over
+/// the positive power, and `y` = ±0.5 through `sqrt`. This matches all 180 numeric oracle cells over
+/// 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep;
+/// docs/excel-semantics/numbers.md "Non-integer exponents: exp(y·ln x)"). A negative `x` gives NaN.
+fn non_integer_power(x: f64, y: f64) -> f64 {
+    // -0 has the logarithm of 0: `-0^0.5` is 0, not `sqrt`'s -0 (gen-m1/6462bf910ef9f28f Calc!A19).
+    let x = if x == 0.0 { 0.0 } else { x };
+    if y == 0.5 {
+        x.sqrt()
+    } else if y == -0.5 {
+        1.0 / x.sqrt()
+    } else if y > 0.0 {
+        (y * x.ln()).exp()
+    } else {
+        1.0 / (-y * x.ln()).exp()
+    }
 }
 
 /// `x^y` for an integer `y`, by binary exponentiation scanning the bits of `|y|` from the low end,
@@ -693,7 +717,28 @@ mod power_tests {
     fn special_cases_keep_the_general_path() {
         assert_eq!(power(0.0, -1.0), Err(Error::DIV));
         assert_eq!(power(0.0, 0.0), Err(Error::NUM));
-        assert_eq!(power(-8.0, 1.0 / 3.0), Ok(-2.0));
+        // Excel's cached -1.9999999999999998 (ironcalc-calc POWER.xlsx Sheet1!D3, F9), exp(ln 8/3).
+        assert_eq!(power(-8.0, 1.0 / 3.0), Ok(-1.999_999_999_999_999_8));
         assert_eq!(power(10.0, 400.0), Err(Error::NUM));
+        assert_eq!(power(-0.0, 0.5), Ok(0.0));
+        assert_eq!(power(0.0, -0.5), Err(Error::DIV));
+        // The positive power underflows, so Excel's 1/x^|y| is #DIV/0! (sweep A141, A186).
+        assert_eq!(power(1e-10, -33.5), Err(Error::DIV));
+        assert_eq!(power(0.1, -400.0), Err(Error::DIV));
+    }
+
+    // Excel's doubles, where libm `pow` differs (probes-numeric/power-non-integer-sweep A17, A42,
+    // A75; gen-m1/6462bf910ef9f28f Calc!A41, A207; gen-m2/1b6ceed7489e0800 Calc!A62).
+    #[test]
+    fn non_integer_exponents_use_exp_of_y_ln_x() {
+        assert_eq!(power(3.0, -0.5), Ok(0.577_350_269_189_625_8));
+        // One ulp below the double nearest √2.
+        let below_sqrt_2 = f64::from_bits(std::f64::consts::SQRT_2.to_bits() - 1);
+        assert_eq!(power(0.5, -0.5), Ok(below_sqrt_2));
+        assert_eq!(power(2.0, -0.5), Ok(0.707_106_781_186_547_5));
+        assert_eq!(power(2.0, 0.5), Ok(std::f64::consts::SQRT_2));
+        assert_eq!(power(6.0, 2.5), Ok(88.181_630_740_194_38));
+        assert_eq!(power(10.0, 33.5), Ok(3.162_277_660_168_401e33));
+        assert_eq!(power(10.0, -33.5), Ok(3.162_277_660_168_357_6e-34));
     }
 }
