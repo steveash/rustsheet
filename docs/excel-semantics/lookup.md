@@ -450,13 +450,28 @@ Status: VERIFIED (excel-graph)
 Implemented in: `Model::index_impl` / `index_lifted` (functions/lookup_and_reference/index.rs).
 Tasks: T-1260, T-1376, T-1437
 
-## INDEX truncates a tiny negative index to 0
-Rule: `INDEX(A1:C3,3,-1E-15)` is the whole row 3, as `INDEX(A1:C3,3,0)`: the column index is truncated toward zero.
-`EXPONDIST(INDEX(A1:C3,3,-1e-15),12.14649,FALSE)` is 0.027981694209681673, which is the density at A3 = 0.5, the first cell of
-A3:C3 (EXPONDIST lifts over the row; the cell holds the spill's anchor). Indexes from -0.5 to -1 are unprobed.
-Evidence: gen-m9/1466c66c61189a83 Calc!A1 (excel-graph, 2026-10-12, T-1289).
-Ours: `#VALUE!` for any negative index (`INDEX(A1:C3,3,-0.5)` too).
-Status: VERIFIED (web) for -1E-15; other negative fractions UNVERIFIED
+## INDEX rounds an index up near an integer; a tiny negative index is 0
+Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
+counts up near an integer"): truncated, except that a value within 2^-22 + 2^-33 (about 2.38535E-7) below an integer
+counts as that integer, an absolute bound. A negative index no further below 0 than half that bound,
+2^-23 + 2^-34 (about 1.192675E-7), counts as 0 (the whole row or column); anything further below is `#VALUE!`.
+`INDEX(A1:C3,3,-1E-15)` is the whole row 3, as `INDEX(A1:C3,3,0)`, and
+`EXPONDIST(INDEX(A1:C3,3,-1e-15),12.14649,FALSE)` is 0.027981694209681673, the density at A3 = 0.5, the first cell of
+A3:C3 (EXPONDIST lifts over the row; the cell holds the spill's anchor).
+Probed (excel-graph, 2026-10-12, T-1407), row and column index alike:
+- Negatives: -1E-15, -1E-7, -1.19E-7, -2^-23, -1.19267E-7 and -1.1926749E-7 are index 0; -1.1926751E-7, -1.19268E-7,
+  -1.193E-7, -1.2E-7,
+  -1.5E-7, -1E-6, -0.5, -0.999, -0.9999999, -1 and -2147483648.5 are `#VALUE!`.
+- Positives: `COLUMNS(INDEX(A1:C3,3,1-2.3853E-7))` is 1 (column 1) and `1-2.3854E-7` is 3 (index 0, the whole row);
+  `ROW(INDEX(A1:A100000,500-2.3853E-7,1))` is 500 and `500-2.3855E-7` is 499; at 100000, 2.38E-7 below snaps and
+  2.39E-7 does not. Both cuts bracket the text functions' bound, which is known to 2^-36.
+- area_num -0.5 is `#VALUE!`; `INDEX((A1:C3,E1:G3),3,-1E-15,2)` is the third row of the second area (16, 17, 18).
+  Whether area_num, or a near-integer element of an array index, shares the rounding is unprobed (T-1424).
+Evidence: probes/index-tiny-negative and probes/index-snap-tolerance.
+Implemented in: `index_number` (functions/lookup_and_reference/index.rs) with `near_integer_count` and
+`NEAR_INTEGER_TOLERANCE` (functions/util.rs). The negative cut is half the positive bound to within 1E-14
+(-1.1926749E-7 vs -1.1926751E-7); the engine takes it as exactly half, inclusive.
+Status: VERIFIED (web)
 Tasks: T-1407
 
 ## XLOOKUP with an array lookup_value looks up each element
