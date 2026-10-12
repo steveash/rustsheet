@@ -6,6 +6,8 @@ mod map_reduce;
 mod scan;
 mod switch;
 
+pub(crate) use r#let::same_variable;
+
 use crate::{
     arithmetic::bcast_idx,
     calc_result::CalcResult,
