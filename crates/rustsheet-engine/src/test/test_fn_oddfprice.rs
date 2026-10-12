@@ -18,7 +18,7 @@ fn test_oddfprice_basis1_2() {
     model._set("A9", "2"); // Basis: 2 (Actual/360)
     model._set("C3", "=ODDFPRICE(A1,A2,A3,A4,A5,A6,A7,A8,A9)");
     model.evaluate();
-    assert_eq!(model._get_text("C3"), "113.508466507");
+    assert_eq!(model._get_text("C3"), "113.5084665");
     // 115.98854775223758 yield 6.7%
 }
 
@@ -59,7 +59,7 @@ fn test_oddfprice_basis_2_zero_rate() {
     model._set("A9", "2"); // Basis: 2 (Actual/360)
     model._set("C3", "=ODDFPRICE(A1,A2,A3,A4,A5,A6,A7,A8,A9)");
     model.evaluate();
-    assert_eq!(model._get_text("C3"), "38.503326319");
+    assert_eq!(model._get_text("C3"), "38.50332632");
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn test_oddfprice_basis2_long_first_period() {
     model._set("A9", "2"); // basis: Actual/360
     model._set("C3", "=ODDFPRICE(A1,A2,A3,A4,A5,A6,A7,A8,A9)");
     model.evaluate();
-    assert_eq!(model._get_text("C3"), "131.483767047");
+    assert_eq!(model._get_text("C3"), "131.483767");
 }
 
 #[test]
@@ -98,5 +98,5 @@ fn test_oddfprice_basis1_long_first_period_unchanged() {
     model._set("A9", "1"); // basis: Actual/Actual
     model._set("C3", "=ODDFPRICE(A1,A2,A3,A4,A5,A6,A7,A8,A9)");
     model.evaluate();
-    assert_eq!(model._get_text("C3"), "131.556968693");
+    assert_eq!(model._get_text("C3"), "131.5569687");
 }

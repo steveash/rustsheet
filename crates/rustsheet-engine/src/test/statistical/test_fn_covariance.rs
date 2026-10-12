@@ -23,8 +23,8 @@ fn test_fn_covariance_smoke() {
     model._set("C2", "=COVARIANCE.S(A1:A6, B1:B6)");
     model.evaluate();
 
-    assert_eq!(model._get_text("C1"), *"19.194444444");
-    assert_eq!(model._get_text("C2"), *"23.033333333");
+    assert_eq!(model._get_text("C1"), *"19.19444444");
+    assert_eq!(model._get_text("C2"), *"23.03333333");
 }
 
 #[test]

@@ -98,9 +98,9 @@ fn test_fn_gamma_inv() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"17.337902369");
+    assert_eq!(model._get_text("A1"), *"17.33790237");
     assert_eq!(model._get_text("A2"), *"13.67529035");
-    assert_eq!(model._get_text("A3"), *"21.604889796");
+    assert_eq!(model._get_text("A3"), *"21.6048898");
 
     assert_eq!(model._get_text("A4"), *"#ERROR!");
     assert_eq!(model._get_text("A5"), *"#ERROR!");

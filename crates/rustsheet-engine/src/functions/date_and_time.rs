@@ -1,5 +1,6 @@
 use crate::tz::Tz;
 use chrono::Datelike;
+use std::collections::HashMap;
 
 pub(crate) mod time_text;
 mod weekend;
@@ -145,24 +146,18 @@ macro_rules! time_part_fn {
             if args.len() != 1 {
                 return CalcResult::new_args_number_error(cell);
             }
-            let value = match self.get_number(&args[0], cell) {
-                Ok(v) => v,
-                Err(e) => return e,
-            };
-            if value < 0.0 {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid time".to_string(),
-                };
-            }
-            CalcResult::Number(($extract)(value))
+            // Lifts over a range or array (probes/date-argument-modes F27:F32).
+            self.lift_numbers(args, cell, "Invalid time", |[value]| {
+                if value < 0.0 {
+                    return Err(Error::NUM);
+                }
+                Ok(($extract)(value))
+            })
         }
     };
 }
 
-use crate::arithmetic::{array_of_errors, own_error};
-use crate::cast::NumberOrArray;
+use crate::cast::{array_node_to_string, number_text_too_long, NumberOrArray};
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
@@ -171,6 +166,9 @@ use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::shift_months;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
+use crate::functions::text::text_arg::broadcast_text;
+use crate::functions::util::array_node_to_calc_result;
+use crate::number_format::parse_excel_number;
 use crate::{
     calc_result::{CalcResult, Range},
     constants::EXCEL_DATE_BASE,
@@ -181,6 +179,64 @@ use crate::{
     },
     model::Model,
 };
+
+/// The error kind of a failed argument evaluation. A non-error result is #VALUE! on purpose: the
+/// callers only pass the `Err` of a coercion, which is always an error.
+fn error_kind(result: &CalcResult) -> Error {
+    match result {
+        CalcResult::Error { error, .. } => error.clone(),
+        _ => Error::VALUE,
+    }
+}
+
+/// Saturday-Sunday weekend (pattern 1), Monday first.
+const DEFAULT_WEEKEND: [bool; 7] = WeekendPattern::SatSun.to_mask();
+
+/// A weekend argument: one mask, or one (possibly invalid) mask per element of a lifted
+/// range or array.
+enum Weekend {
+    One([bool; 7]),
+    Many(Vec<Vec<Result<[bool; 7], CalcResult>>>),
+}
+
+impl Weekend {
+    /// Runs `compute` on each mask: the value (or the error) for [`Weekend::One`], an array
+    /// of them for [`Weekend::Many`].
+    fn lift(&self, mut compute: impl FnMut([bool; 7]) -> Result<f64, CalcResult>) -> CalcResult {
+        let into_node = |r: Result<f64, CalcResult>| match r {
+            Ok(n) => ArrayNode::Number(n),
+            Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
+            // Every `Err` of the weekend argument is a `CalcResult::Error`.
+            Err(_) => ArrayNode::Error(Error::VALUE),
+        };
+        match self {
+            Weekend::One(mask) => match compute(*mask) {
+                Ok(n) => CalcResult::Number(n),
+                Err(e) => e,
+            },
+            Weekend::Many(rows) => {
+                // At most 128 distinct masks exist, however many cells the argument has, so each
+                // is computed once: the day loop of the caller is millions of steps long.
+                let mut computed: HashMap<[bool; 7], ArrayNode> = HashMap::new();
+                CalcResult::Array(
+                    rows.iter()
+                        .map(|row| {
+                            row.iter()
+                                .map(|mask| match mask {
+                                    Ok(mask) => computed
+                                        .entry(*mask)
+                                        .or_insert_with(|| into_node(compute(*mask)))
+                                        .clone(),
+                                    Err(e) => into_node(Err(e.clone())),
+                                })
+                                .collect()
+                        })
+                        .collect(),
+                )
+            }
+        }
+    }
+}
 
 impl Model {
     /// DATEVALUE's reading of date text (also date arguments read as text, e.g. DATEDIF): the
@@ -208,44 +264,6 @@ impl Model {
             .date_system
             .serial_from_1900_serial(i64::from(serial))?;
         i32::try_from(serial).ok()
-    }
-
-    fn get_date_serial(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<i64, CalcResult> {
-        let result = self.evaluate_node_in_context(node, cell);
-        match result {
-            CalcResult::Number(f) => Ok(f.floor() as i64),
-            CalcResult::String(s) => match self.parse_datevalue_text(&s) {
-                Some(n) => Ok(i64::from(n)),
-                None => Err(CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid date".to_string(),
-                }),
-            },
-            CalcResult::Boolean(b) => {
-                if b {
-                    Ok(1)
-                } else {
-                    Ok(0)
-                }
-            }
-            error @ CalcResult::Error { .. } => Err(error),
-            CalcResult::Range { .. } => Err(CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            }),
-            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(0),
-            CalcResult::Array(_) | CalcResult::Lambda(_) => Err(CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            }),
-        }
     }
 
     // -----------------------------------------------------------------------
@@ -478,28 +496,41 @@ impl Model {
         Ok(values)
     }
 
+    /// The start and end serials of NETWORKDAYS / NETWORKDAYS.INTL (booleans are rejected).
+    fn networkdays_bounds(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(i64, i64), CalcResult> {
+        let start = self.get_number_no_bools(&args[0], cell)?.floor() as i64;
+        let end = self.get_number_no_bools(&args[1], cell)?.floor() as i64;
+        Ok((start, end))
+    }
+
+    /// The holiday serials of NETWORKDAYS / NETWORKDAYS.INTL (none without the argument).
+    fn networkdays_holidays(
+        &mut self,
+        arg: Option<&Node>,
+        cell: CellReferenceIndex,
+    ) -> Result<std::collections::HashSet<i64>, CalcResult> {
+        match arg {
+            Some(arg) => Ok(self.get_array_of_dates(arg, cell)?.into_iter().collect()),
+            None => Ok(std::collections::HashSet::new()),
+        }
+    }
+
     pub(crate) fn fn_networkdays(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let start_serial = match self.get_number_no_bools(&args[0], cell) {
-            Ok(n) => n.floor() as i64,
+        let (start_serial, end_serial) = match self.networkdays_bounds(args, cell) {
+            Ok(bounds) => bounds,
             Err(e) => return e,
         };
-        let end_serial = match self.get_number_no_bools(&args[1], cell) {
-            Ok(n) => n.floor() as i64,
+        let holidays = match self.networkdays_holidays(args.get(2), cell) {
+            Ok(h) => h,
             Err(e) => return e,
         };
-        let mut holidays: std::collections::HashSet<i64> = std::collections::HashSet::new();
-        if args.len() == 3 {
-            let values = match self.get_array_of_dates(&args[2], cell) {
-                Ok(v) => v,
-                Err(e) => return e,
-            };
-            for v in values {
-                holidays.insert(v);
-            }
-        }
 
         let (from, to, sign) = if start_serial <= end_serial {
             (start_serial, end_serial, 1.0)
@@ -536,22 +567,41 @@ impl Model {
         }
     }
 
-    fn weekend_mask(
+    /// The weekend argument of WORKDAY.INTL / NETWORKDAYS.INTL. A multi-cell range or an array
+    /// lifts, one mask per element (probes/date-argument-modes F41:F42, F63:F64).
+    fn weekend_arg(
         &mut self,
         node: Option<&Node>,
         cell: CellReferenceIndex,
-    ) -> Result<[bool; 7], CalcResult> {
-        // Default: Saturday-Sunday weekend (pattern 1)
-        let mut weekend = [false, false, false, false, false, true, true];
-        if node.is_none() {
-            return Ok(weekend);
-        }
-        let node_ref = match node {
-            Some(n) => n,
-            None => return Ok(weekend),
+    ) -> Result<Weekend, CalcResult> {
+        let Some(node) = node else {
+            return Ok(Weekend::One(DEFAULT_WEEKEND));
         };
+        let elements = match self.evaluate_node_in_context(node, cell) {
+            // A 3D range (two sheets) is unprobed (T-1428): never lift it over its first sheet.
+            CalcResult::Range { left, right } if left != right && left.sheet == right.sheet => {
+                self.evaluate_range(left, right, cell)?
+            }
+            CalcResult::Array(rows) => rows,
+            value => return Self::weekend_mask(value, cell).map(Weekend::One),
+        };
+        Ok(Weekend::Many(
+            elements
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|n| Self::weekend_mask(array_node_to_calc_result(n, cell), cell))
+                        .collect()
+                })
+                .collect(),
+        ))
+    }
 
-        match self.evaluate_node_in_context(node_ref, cell) {
+    /// The weekend mask (Monday first) a scalar weekend argument stands for.
+    fn weekend_mask(value: CalcResult, cell: CellReferenceIndex) -> Result<[bool; 7], CalcResult> {
+        // Default: Saturday-Sunday weekend (pattern 1)
+        let mut weekend = DEFAULT_WEEKEND;
+        match value {
             CalcResult::Number(n) => {
                 let code = n.trunc() as i32;
                 if (n - n.trunc()).abs() > f64::EPSILON {
@@ -600,17 +650,14 @@ impl Model {
                 "Invalid weekend".to_string(),
             )),
             e @ CalcResult::Error { .. } => Err(e),
-            CalcResult::Range { .. } => Err(CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid weekend".to_string(),
-            }),
             CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(weekend),
-            CalcResult::Array(_) | CalcResult::Lambda(_) => Err(CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid weekend".to_string(),
-            }),
+            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                Err(CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: "Invalid weekend".to_string(),
+                })
+            }
         }
     }
 
@@ -622,48 +669,72 @@ impl Model {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let start_serial = match self.get_number_no_bools(&args[0], cell) {
-            Ok(n) => n.floor() as i64,
-            Err(e) => return e,
-        };
-        let end_serial = match self.get_number_no_bools(&args[1], cell) {
-            Ok(n) => n.floor() as i64,
+        let (start_serial, end_serial) = match self.networkdays_bounds(args, cell) {
+            Ok(bounds) => bounds,
             Err(e) => return e,
         };
 
-        let weekend_pattern = match self.weekend_mask(args.get(2), cell) {
-            Ok(p) => p,
+        let weekend = match self.weekend_arg(args.get(2), cell) {
+            Ok(w) => w,
             Err(e) => return e,
         };
 
-        let mut holidays: std::collections::HashSet<i64> = std::collections::HashSet::new();
-        if args.len() == 4 {
-            let values = match self.get_array_of_dates(&args[3], cell) {
-                Ok(v) => v,
-                Err(e) => return e,
-            };
-            for v in values {
-                holidays.insert(v);
-            }
-        }
+        let holidays = match self.networkdays_holidays(args.get(3), cell) {
+            Ok(h) => h,
+            Err(e) => return e,
+        };
 
         let (from, to, sign) = if start_serial <= end_serial {
             (start_serial, end_serial, 1.0)
         } else {
             (end_serial, start_serial, -1.0)
         };
-        let mut count = 0i64;
-        for serial in from..=to {
-            let date = match self.excel_date(serial, cell) {
-                Ok(d) => d,
-                Err(e) => return e,
-            };
-            let weekday = date.weekday().number_from_monday() as usize - 1;
-            if !weekend_pattern[weekday] && !holidays.contains(&serial) {
-                count += 1;
+        // The days between are counted per weekday once, so each mask of a lifted weekend
+        // costs seven additions, not another scan of up to 2.9M days. Serials between two valid
+        // ones are valid.
+        let mut per_weekday = [0i64; 7];
+        for serial in [from, to] {
+            if let Err(e) = self.excel_date(serial, cell) {
+                return e;
             }
         }
-        CalcResult::Number(count as f64 * sign)
+        for serial in from..=to {
+            if holidays.contains(&serial) {
+                continue;
+            }
+            let Ok(date) = from_excel_date(serial) else {
+                continue;
+            };
+            per_weekday[date.weekday().number_from_monday() as usize - 1] += 1;
+        }
+        weekend.lift(|weekend_pattern| {
+            let count: i64 = (0..7)
+                .filter(|&d| !weekend_pattern[d])
+                .map(|d| per_weekday[d])
+                .sum();
+            Ok(count as f64 * sign)
+        })
+    }
+
+    /// The serial of now in the optional timezone argument of TODAY / NOW (the model's own
+    /// timezone without one); `None` when the clock cannot be read.
+    fn now_in_timezone_arg(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<Option<f64>, CalcResult> {
+        let Some(arg0) = args.first() else {
+            return Ok(crate::tz::excel_serial_for_now(&self.tz));
+        };
+        let tz_str = self.get_string(arg0, cell)?;
+        match Tz::parse(&tz_str) {
+            Ok(tz) => Ok(crate::tz::excel_serial_for_now(&tz)),
+            Err(_) => Err(CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: format!("Invalid timezone: {}", tz_str),
+            }),
+        }
     }
 
     // Extends the standard by adding an optional timezone parameter
@@ -675,28 +746,11 @@ impl Model {
                 message: "Wrong number of arguments".to_string(),
             };
         }
-        let tz_owned;
-        let tz: &Tz = match args.first() {
-            Some(arg0) => {
-                let tz_str = match self.get_string(arg0, cell) {
-                    Ok(s) => s,
-                    Err(e) => return e,
-                };
-                tz_owned = match Tz::parse(&tz_str) {
-                    Ok(tz) => tz,
-                    Err(_) => {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: format!("Invalid timezone: {}", tz_str),
-                        }
-                    }
-                };
-                &tz_owned
-            }
-            None => &self.tz,
+        let serial = match self.now_in_timezone_arg(args, cell) {
+            Ok(serial) => serial,
+            Err(e) => return e,
         };
-        match crate::tz::excel_serial_for_now(tz) {
+        match serial {
             Some(serial) => CalcResult::Number(serial.floor()),
             None => CalcResult::Error {
                 error: Error::ERROR,
@@ -715,28 +769,11 @@ impl Model {
                 message: "Wrong number of arguments".to_string(),
             };
         }
-        let tz_owned;
-        let tz: &Tz = match args.first() {
-            Some(arg0) => {
-                let tz_str = match self.get_string(arg0, cell) {
-                    Ok(s) => s,
-                    Err(e) => return e,
-                };
-                tz_owned = match Tz::parse(&tz_str) {
-                    Ok(tz) => tz,
-                    Err(_) => {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: format!("Invalid timezone: {}", tz_str),
-                        }
-                    }
-                };
-                &tz_owned
-            }
-            None => &self.tz,
+        let serial = match self.now_in_timezone_arg(args, cell) {
+            Ok(serial) => serial,
+            Err(e) => return e,
         };
-        match crate::tz::excel_serial_for_now(tz) {
+        match serial {
             Some(serial) => CalcResult::Number(serial),
             None => CalcResult::Error {
                 error: Error::ERROR,
@@ -750,28 +787,15 @@ impl Model {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let hour = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let minute = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let second = match self.get_number(&args[2], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let total_seconds = hour.floor() * 3600.0 + minute.floor() * 60.0 + second.floor();
-        if total_seconds < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid time".to_string(),
-            };
-        }
-        // Excel divides, then drops whole days (TIME_HOUR_MINUTE_SECOND.xlsx D3/D14).
-        CalcResult::Number((total_seconds / SECONDS_PER_DAY_F64) % 1.0)
+        // Lifts over a range or array in every argument (probes/date-argument-modes F43:F46).
+        self.lift_numbers(args, cell, "Invalid time", |[hour, minute, second]| {
+            let total_seconds = hour.floor() * 3600.0 + minute.floor() * 60.0 + second.floor();
+            if total_seconds < 0.0 {
+                return Err(Error::NUM);
+            }
+            // Excel divides, then drops whole days (TIME_HOUR_MINUTE_SECOND.xlsx D3/D14).
+            Ok((total_seconds / SECONDS_PER_DAY_F64) % 1.0)
+        })
     }
 
     // -----------------------------------------------------------------------
@@ -789,57 +813,36 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
+        // Lifts over a range or array like the text functions (probes/date-argument-modes F47:F48).
+        let text = match self.text_arg(&args[0], cell) {
+            Ok(t) => t,
             Err(e) => return e,
         };
-        match time_text::parse_time_string(&text, self.locale, &|| self.current_year()) {
-            Some(value) => CalcResult::Number(value),
-            None => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid time".to_string(),
-            },
-        }
+        broadcast_text(cell, &[&text], |i, j| {
+            let text = array_node_to_string(text.elem(i, j))?;
+            time_text::parse_time_string(&text, self.locale, &|| self.current_year())
+                .map(ArrayNode::Number)
+                .ok_or(Error::VALUE)
+        })
     }
 
     pub(crate) fn fn_datevalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::String(s) => match self.parse_datevalue_text(&s) {
-                Some(n) => CalcResult::Number(f64::from(n)),
-                None => CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid date".to_string(),
-                },
-            },
-            CalcResult::Number(_) => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid date".to_string(),
-            },
-            CalcResult::Boolean(_) => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid date".to_string(),
-            },
-            err @ CalcResult::Error { .. } => err,
-            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Arrays not supported yet".to_string(),
-                }
-            }
-            CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid date".to_string(),
-            },
-        }
+        // Lifts over a range or array like the text functions (probes/date-argument-modes F9:F10).
+        let text = match self.text_arg(&args[0], cell) {
+            Ok(t) => t,
+            Err(e) => return e,
+        };
+        broadcast_text(cell, &[&text], |i, j| match text.elem(i, j) {
+            ArrayNode::String(s) => self
+                .parse_datevalue_text(s)
+                .map(|serial| ArrayNode::Number(f64::from(serial)))
+                .ok_or(Error::VALUE),
+            ArrayNode::Error(e) => Err(e.clone()),
+            _ => Err(Error::VALUE),
+        })
     }
 
     pub(crate) fn fn_datedif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -847,41 +850,71 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let start_serial = match self.get_date_serial(&args[0], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        let end_serial = match self.get_date_serial(&args[1], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        if end_serial < start_serial {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Start date greater than end date".to_string(),
-            };
-        }
-        let start = match self.excel_date(start_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let end = match self.excel_date(end_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let unit = match self.get_string(&args[2], cell) {
-            Ok(s) => s.to_uppercase(),
-            Err(e) => return e,
-        };
+        // Errors come in the order DATEDIF had before it lifted: the dates' own errors, then
+        // #NUM! of the dates, then the unit's error (UNVERIFIED, dates.md "DATEDIF and DAYS360 error
+        // order", T-1430).
+        let unit = self.get_string(&args[2], cell).map(|s| s.to_uppercase());
+        // Both dates lift over a range or array (probes/date-argument-modes F5:F8).
+        let operands = args[..2]
+            .iter()
+            .map(|arg| {
+                let value = match self.evaluate_node_in_context(arg, cell) {
+                    CalcResult::String(s) => array_node_to_calc_result(
+                        &self.datedif_date_text(ArrayNode::String(s)),
+                        cell,
+                    ),
+                    value => value,
+                };
+                self.number_or_array(value, cell).map(|na| match na {
+                    NumberOrArray::Array(rows) => NumberOrArray::Array(
+                        rows.into_iter()
+                            .map(|row| row.into_iter().map(|n| self.datedif_date_text(n)).collect())
+                            .collect(),
+                    ),
+                    number @ NumberOrArray::Number(_) => number,
+                })
+            })
+            .collect();
+        self.lift_number_operands(operands, cell, "Invalid arguments", |[start, end]| {
+            Self::datedif_value(start, end, unit.as_deref().map_err(error_kind))
+        })
+    }
 
-        let result = match unit.as_str() {
+    /// A DATEDIF date given as text (other elements are kept): date text reads as DATEVALUE reads
+    /// it, so a 1904 workbook counts it from 1904-01-01 (T-1330); plain number text is that number
+    /// (probes/date-argument-modes F89); any other text is #VALUE! (the behaviour before lifting).
+    fn datedif_date_text(&self, node: ArrayNode) -> ArrayNode {
+        let ArrayNode::String(s) = node else {
+            return node;
+        };
+        if let Some(serial) = self.parse_datevalue_text(&s) {
+            return ArrayNode::Number(f64::from(serial));
+        }
+        match parse_excel_number(s.trim()) {
+            Some(n) if !number_text_too_long(&s) => ArrayNode::Number(n),
+            _ => ArrayNode::Error(Error::VALUE),
+        }
+    }
+
+    /// DATEDIF of two date serials for the (upper-cased) `unit`.
+    fn datedif_value(
+        start_serial: f64,
+        end_serial: f64,
+        unit: Result<&str, Error>,
+    ) -> Result<f64, Error> {
+        let (start_serial, end_serial) = (start_serial.floor() as i64, end_serial.floor() as i64);
+        if end_serial < start_serial {
+            return Err(Error::NUM);
+        }
+        let start = from_excel_date(start_serial).map_err(|_| Error::NUM)?;
+        let end = from_excel_date(end_serial).map_err(|_| Error::NUM)?;
+        match unit? {
             "Y" => {
                 let mut years = end.year() - start.year();
                 if (end.month(), end.day()) < (start.month(), start.day()) {
                     years -= 1;
                 }
-                years as f64
+                Ok(f64::from(years))
             }
             "M" => {
                 let mut months =
@@ -889,47 +922,36 @@ impl Model {
                 if end.day() < start.day() {
                     months -= 1;
                 }
-                months as f64
+                Ok(f64::from(months))
             }
-            "D" => (end_serial - start_serial) as f64,
+            "D" => Ok((end_serial - start_serial) as f64),
             "YM" => {
                 let mut months =
                     (end.year() - start.year()) * 12 + (end.month() as i32 - start.month() as i32);
                 if end.day() < start.day() {
                     months -= 1;
                 }
-                (months % 12).abs() as f64
+                Ok(f64::from((months % 12).abs()))
             }
             "YD" => {
                 // Helper to create a date or early-return with #NUM! if impossible
-                let make_date = |y: i32, m: u32, d: u32| -> Result<chrono::NaiveDate, CalcResult> {
-                    match chrono::NaiveDate::from_ymd_opt(y, m, d) {
-                        Some(dt) => Ok(dt),
-                        None => Err(CalcResult::Error {
-                            error: Error::NUM,
-                            origin: cell,
-                            message: "Invalid date".to_string(),
-                        }),
-                    }
+                let make_date = |y: i32, m: u32, d: u32| -> Result<chrono::NaiveDate, Error> {
+                    chrono::NaiveDate::from_ymd_opt(y, m, d).ok_or(Error::NUM)
                 };
 
                 // Compute the last valid day of a given month/year.
-                let make_last_day_of_month =
-                    |y: i32, m: u32| -> Result<chrono::NaiveDate, CalcResult> {
-                        let (next_y, next_m) = if m == 12 { (y + 1, 1) } else { (y, m + 1) };
-                        let first_next = make_date(next_y, next_m, 1)?;
-                        let last_day = first_next - chrono::Duration::days(1);
-                        make_date(y, m, last_day.day())
-                    };
+                let make_last_day_of_month = |y: i32, m: u32| -> Result<chrono::NaiveDate, Error> {
+                    let (next_y, next_m) = if m == 12 { (y + 1, 1) } else { (y, m + 1) };
+                    let first_next = make_date(next_y, next_m, 1)?;
+                    let last_day = first_next - chrono::Duration::days(1);
+                    make_date(y, m, last_day.day())
+                };
 
                 // Attempt to build the anniversary date in the end year.
                 let mut start_adj =
                     match chrono::NaiveDate::from_ymd_opt(end.year(), start.month(), start.day()) {
                         Some(d) => d,
-                        None => match make_last_day_of_month(end.year(), start.month()) {
-                            Ok(d) => d,
-                            Err(e) => return e,
-                        },
+                        None => make_last_day_of_month(end.year(), start.month())?,
                     };
 
                 // If the adjusted date is after the end date, shift one year back.
@@ -941,14 +963,11 @@ impl Model {
                         start.day(),
                     ) {
                         Some(d) => d,
-                        None => match make_last_day_of_month(shift_year, start.month()) {
-                            Ok(d) => d,
-                            Err(e) => return e,
-                        },
+                        None => make_last_day_of_month(shift_year, start.month())?,
                     };
                 }
 
-                (end - start_adj).num_days() as f64
+                Ok((end - start_adj).num_days() as f64)
             }
             "MD" => {
                 let mut months =
@@ -959,126 +978,83 @@ impl Model {
                 // Both dates are in Excel's calendar, so the shift cannot leave chrono's range;
                 // the checked form keeps a panic off this path all the same (T-1419).
                 let Some(start_shifted) = shift_months(start, months) else {
-                    return CalcResult::new_error(
-                        Error::NUM,
-                        cell,
-                        DATE_OUT_OF_RANGE_MESSAGE.to_string(),
-                    );
+                    return Err(Error::NUM);
                 };
-                (end - start_shifted).num_days() as f64
+                Ok((end - start_shifted).num_days() as f64)
             }
-            _ => {
-                return CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid unit".to_string(),
-                };
-            }
-        };
-        CalcResult::Number(result)
+            _ => Err(Error::VALUE),
+        }
     }
 
     pub(crate) fn fn_days(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let end_serial = match self.get_number(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let start_serial = match self.get_number(&args[1], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        // Excel accepts any serial in 0..=MAXIMUM (a 0 serial is 1900-01-00) and
-        // reports #NUM! otherwise. DAYS works directly on serials, so the dates
-        // themselves are never materialised.
-        let range = 0..=MAXIMUM_DATE_SERIAL_NUMBER as i64;
-        if !range.contains(&start_serial) || !range.contains(&end_serial) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Out of range parameters for date".to_string(),
-            );
-        }
-        CalcResult::Number((end_serial - start_serial) as f64)
+        // Lifts over a range or array in both arguments (probes/date-argument-modes F11:F14).
+        self.lift_numbers(
+            args,
+            cell,
+            "Out of range parameters for date",
+            |[end, start]| {
+                let (end_serial, start_serial) = (end.floor() as i64, start.floor() as i64);
+                // Excel accepts any serial in 0..=MAXIMUM (a 0 serial is 1900-01-00) and
+                // reports #NUM! otherwise. DAYS works directly on serials, so the dates
+                // themselves are never materialised.
+                let range = 0..=MAXIMUM_DATE_SERIAL_NUMBER as i64;
+                if !range.contains(&start_serial) || !range.contains(&end_serial) {
+                    return Err(Error::NUM);
+                }
+                Ok((end_serial - start_serial) as f64)
+            },
+        )
     }
 
     pub(crate) fn fn_days360(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let start_serial = match self.get_number(&args[0], cell) {
-            Ok(c) => days360_serial(c),
-            Err(s) => return s,
-        };
-        let end_serial = match self.get_number(&args[1], cell) {
-            Ok(c) => days360_serial(c),
-            Err(s) => return s,
-        };
         // The European-method flag follows Excel's logical coercion: numbers are
         // truthy when non-zero, and only the text "TRUE"/"FALSE" is accepted.
+        // The dates' own errors come first, then the method's, then the dates' #NUM!, as before the
+        // lift (UNVERIFIED, dates.md "DATEDIF and DAYS360 error order", T-1430).
         let method = if args.len() == 3 {
-            match self.get_boolean(&args[2], cell) {
-                Ok(b) => b,
-                Err(s) => return s,
-            }
+            self.get_boolean(&args[2], cell)
         } else {
-            false
+            Ok(false)
         };
-        let out_of_range = || {
-            CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Out of range parameters for date".to_string(),
-            )
-        };
-        let start = match excel_serial_to_ymd(start_serial) {
-            Some(ymd) => ymd,
-            None => return out_of_range(),
-        };
-        let end = match excel_serial_to_ymd(end_serial) {
-            Some(ymd) => ymd,
-            None => return out_of_range(),
-        };
-        let result = if !method {
-            days360_us(start, end)
-        } else {
-            days360_eu(start, end)
-        };
-        CalcResult::Number(result)
+        // Both dates lift over a range or array (probes/date-argument-modes F15:F18).
+        self.lift_numbers(
+            args,
+            cell,
+            "Out of range parameters for date",
+            |[start, end]| {
+                let method = method.as_ref().map_err(error_kind)?;
+                let start = excel_serial_to_ymd(days360_serial(start)).ok_or(Error::NUM)?;
+                let end = excel_serial_to_ymd(days360_serial(end)).ok_or(Error::NUM)?;
+                Ok(if *method {
+                    days360_eu(start, end)
+                } else {
+                    days360_us(start, end)
+                })
+            },
+        )
     }
 
     pub(crate) fn fn_weekday(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let return_type = if args.len() == 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f as i32,
-                Err(error) => {
-                    // Next to an array of dates it fills every element (error elements keep theirs).
-                    return match self.get_number_or_array(&args[0], cell) {
-                        Ok(NumberOrArray::Array(array)) => {
-                            array_of_errors(&array, error, |node| match node {
-                                ArrayNode::String(s) if self.cast_number(s).is_none() => {
-                                    Some(Error::VALUE)
-                                }
-                                node => own_error(node),
-                            })
-                        }
-                        Ok(NumberOrArray::Number(_)) => error,
-                        Err(first) => first,
-                    };
-                }
-            }
-        } else {
-            1
-        };
-        // Broadcasts element-wise over a range/array date argument.
-        self.apply_number_unary(&args[0], cell, move |serial| {
+        if args.len() == 1 {
+            // Broadcasts element-wise over a range/array date argument.
+            return self.apply_number_unary(&args[0], cell, |serial| {
+                let date = from_excel_date(serial.floor() as i64).map_err(|_| Error::NUM)?;
+                weekday_number(date, 1)
+            });
+        }
+        // The return type lifts too (probes/date-argument-modes F51:F52).
+        self.lift_numbers(args, cell, "Invalid arguments", |[serial, return_type]| {
             let date = from_excel_date(serial.floor() as i64).map_err(|_| Error::NUM)?;
-            weekday_number(date, return_type)
+            weekday_number(date, return_type as i32)
         })
     }
 
@@ -1120,7 +1096,7 @@ impl Model {
             Ok(f) => f.floor() as i32,
             Err(s) => return s,
         };
-        let weekend = [false, false, false, false, false, true, true];
+        let weekend = DEFAULT_WEEKEND;
         let holiday_set = match self.get_holiday_set(args.get(2), cell) {
             Ok(h) => h,
             Err(e) => return e,
@@ -1192,16 +1168,16 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let mut date = match self.excel_date(start_serial, cell) {
+        let date = match self.excel_date(start_serial, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
-        let mut days = match self.get_number_no_bools(&args[1], cell) {
+        let days = match self.get_number_no_bools(&args[1], cell) {
             Ok(f) => f.floor() as i32,
             Err(s) => return s,
         };
-        let weekend_mask = match self.weekend_mask(args.get(2), cell) {
-            Ok(m) => m,
+        let weekend = match self.weekend_arg(args.get(2), cell) {
+            Ok(w) => w,
             Err(e) => return e,
         };
         let holiday_set = match self.get_holiday_set(args.get(3), cell) {
@@ -1209,46 +1185,43 @@ impl Model {
             Err(e) => return e,
         };
 
-        // Checks if all days are weekends
-        if weekend_mask == [true; 7] {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid weekend mask".to_string(),
-            };
-        }
-
-        while days != 0 {
-            if days > 0 {
-                if date.num_days_from_ce() - EXCEL_DATE_BASE >= MAXIMUM_DATE_SERIAL_NUMBER {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
-                    };
-                }
-                date += chrono::Duration::days(1);
-                if !Self::is_weekend(date.weekday(), &weekend_mask) && !holiday_set.contains(&date)
-                {
-                    days -= 1;
-                }
-            } else {
-                if date.num_days_from_ce() - EXCEL_DATE_BASE <= MINIMUM_DATE_SERIAL_NUMBER {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
-                    };
-                }
-                date -= chrono::Duration::days(1);
-                if !Self::is_weekend(date.weekday(), &weekend_mask) && !holiday_set.contains(&date)
-                {
-                    days += 1;
+        weekend.lift(|weekend_mask| {
+            // Checks if all days are weekends
+            if weekend_mask == [true; 7] {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Invalid weekend mask".to_string(),
+                ));
+            }
+            let out_of_range =
+                || CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
+            let (mut date, mut days) = (date, days);
+            while days != 0 {
+                if days > 0 {
+                    if date.num_days_from_ce() - EXCEL_DATE_BASE >= MAXIMUM_DATE_SERIAL_NUMBER {
+                        return Err(out_of_range());
+                    }
+                    date += chrono::Duration::days(1);
+                    if !Self::is_weekend(date.weekday(), &weekend_mask)
+                        && !holiday_set.contains(&date)
+                    {
+                        days -= 1;
+                    }
+                } else {
+                    if date.num_days_from_ce() - EXCEL_DATE_BASE <= MINIMUM_DATE_SERIAL_NUMBER {
+                        return Err(out_of_range());
+                    }
+                    date -= chrono::Duration::days(1);
+                    if !Self::is_weekend(date.weekday(), &weekend_mask)
+                        && !holiday_set.contains(&date)
+                    {
+                        days += 1;
+                    }
                 }
             }
-        }
-        let serial = date.num_days_from_ce() - EXCEL_DATE_BASE;
-        CalcResult::Number(serial as f64)
+            Ok(f64::from(date.num_days_from_ce() - EXCEL_DATE_BASE))
+        })
     }
 
     pub(crate) fn fn_yearfrac(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
