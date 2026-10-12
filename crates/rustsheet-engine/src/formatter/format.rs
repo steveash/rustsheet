@@ -290,15 +290,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let hours = (time_fract * 24.0).floor();
             let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
             let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
-            // Day/month/year tokens show Excel's exact components (including the fictitious
-            // 1900-02-29) and "1900-01-00" (serial 0). The fallback is never read: `ymd` is
-            // `None` exactly when `date_valid` is false.
-            // In a 1904 workbook the day/month/year tokens read the 1904 epoch (`TEXT(0,"yyyy-mm-dd")`
-            // is "1904-01-01"; dates.md "The 1904 date system").
-            let ymd = ctx
-                .date_system
-                .to_1900_serial(value as i64)
-                .and_then(excel_serial_to_ymd);
+            // Day/month/year and weekday tokens show Excel's exact components (including the
+            // fictitious 1900-02-29) and "1900-01-00" (serial 0). In a 1904 workbook they read the
+            // 1904 epoch (`TEXT(0,"yyyy-mm-dd")` is "1904-01-01"; dates.md "The 1904 date system");
+            // -1 stands for no date. The fallback is never read: `ymd` is `None` exactly when
+            // `date_valid` is false.
+            let serial_1900 = ctx.date_system.to_1900_serial(value as i64).unwrap_or(-1);
+            let ymd = excel_serial_to_ymd(serial_1900);
             let date_valid = ymd.is_some();
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
             for token in tokens {
@@ -341,14 +339,14 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         if !date_valid {
                             return invalid_date(value);
                         }
-                        let day = excel_weekday_index(value as i64);
+                        let day = excel_weekday_index(serial_1900);
                         text = format!("{}{}", text, locale.dates.day_names_short[day]);
                     }
                     TextToken::DayName => {
                         if !date_valid {
                             return invalid_date(value);
                         }
-                        let day = excel_weekday_index(value as i64);
+                        let day = excel_weekday_index(serial_1900);
                         text = format!("{}{}", text, locale.dates.day_names[day]);
                     }
                     TextToken::Month => {

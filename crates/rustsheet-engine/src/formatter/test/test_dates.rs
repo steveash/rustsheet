@@ -76,6 +76,9 @@ fn negative_serials_1904() {
         (0.0, "yyyy-mm-dd", "1904-01-01"),
         (1.0, "yyyy-mm-dd", "1904-01-02"),
         (59.0, "yyyy-mm-dd", "1904-02-29"),
+        // 1904-01-01 was a Friday (poi DateFormatTests.xlsx, a 1904 workbook, caches
+        // "Saturday-October-1952" through the same weekday rule).
+        (0.0, "dddd ddd", "Friday Fri"),
     ];
     for (value, format, expected) in cases {
         assert_eq!(

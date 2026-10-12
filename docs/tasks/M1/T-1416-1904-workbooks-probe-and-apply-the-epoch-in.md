@@ -22,7 +22,11 @@ probes/date-system-1904-negatives A8-A12. Still 1900-only, and unprobed in 1904:
 the financial date arguments (`financial_bonds.rs`), date text coerced to a number (`"1904-01-02"+0`,
 `parse_formatted_number` in formatter/format.rs), criteria date text (functions/criteria.rs), TODAY/NOW
 (utils.rs, tz/), and DATE with a year in 0..=1903 (1900 is added today) or a negative 1904 serial in YEAR.
-Probe first in a `date_system: 1904` case (excel-probe skill), then implement on the evidence.
+DATEDIF's text arguments already read 1904 serials through `parse_datevalue_text` (T-1330) while its
+calendar is still 1900. Also confirm with the oracle the hand-derived 1904 bounds in
+formatter/test/test_dates.rs (serial 2957003 is 9999-12-31, 2957004 is no date) and DATE/YEAR before the
+epoch (#NUM! today). Probe first in a `date_system: 1904` case (excel-probe skill), then implement on the
+evidence.
 
 ## Acceptance criteria
 - [ ] A 1904 probe case covers each reader above; dates.md "The 1904 date system" records the results.

@@ -25,10 +25,11 @@ SPEC-0005 rollout step 4 (docs/specs/SPEC-0005-workbook-date-system.md); evidenc
 -
 
 ## Outcome
-`DateSystem::to_1900_serial`/`serial_from_1900_serial` (types.rs) shift a 1904 serial by 1462 days, checked, with no
-1904 serial below 0. The formatter's day/month/year tokens, DATE, YEAR/MONTH/DAY and `parse_datevalue_text`
-(DATEVALUE and the date-text readers built on it) use them. probes/date-system-1904-negatives passes 18 of 18,
-and probes/date-system-1900-negatives stays at 18 of 18.
-Eval delta: probes 2881 -> 2868 known failures (13 fixed: 8 in date-system-1904-negatives, 5 in
-negative-date-sections-1904); poi 566 -> 548 (18 fixed in DateFormatTests.xlsx and DateFormatNumberTests.xlsx,
-both 1904 workbooks); 0 regressions. Follow-up T-1416 (probe, then apply the epoch to the remaining date readers).
+`DateSystem::to_1900_serial`/`serial_from_1900_serial` (formatter/dates.rs) shift a 1904 serial by 1462 days,
+checked, with no 1904 serial below 0. The formatter's day, month, year and weekday-name tokens, DATE,
+YEAR/MONTH/DAY and `parse_datevalue_text` (DATEVALUE and the date-text readers built on it) use them.
+probes/date-system-1904-negatives passes 18 of 18; probes/date-system-1900-negatives stays at 18 of 18.
+`WeekendPattern` moved to functions/date_and_time/weekend.rs to keep date_and_time.rs under its size ratchet.
+Eval delta: probes 13 known failures fixed (8 in date-system-1904-negatives, 5 in negative-date-sections-1904);
+poi 566 -> 538 (28 fixed in DateFormatTests.xlsx and DateFormatNumberTests.xlsx, both 1904 workbooks);
+0 regressions. Follow-up T-1416 (probe, then apply the epoch to the remaining date readers).

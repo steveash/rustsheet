@@ -376,9 +376,10 @@ reads cached values, not displayed text.
 Evidence: probes/date-system-1900-negatives and probes/date-system-1904-negatives (same 18 questions, excel-graph,
 2026-10-11, T-1268).
 Ours: both cases pass 18 of 18. The formatter reads the date system since T-1105. Since T-1330 (SPEC-0005 step 4),
-TEXT and cell-format date tokens, DATE, DATEVALUE (and every reader of date text through
-`Model::parse_datevalue_text`) and YEAR/MONTH/DAY shift by the 1462 days of `DateSystem::to_1900_serial` /
-`serial_from_1900_serial` (types.rs), checked, with no 1904 serial below 0. This also passes 18 cells of poi
+TEXT and cell-format date tokens (day, month, year and weekday names), DATE, DATEVALUE (and every reader of
+date text through `Model::parse_datevalue_text`) and YEAR/MONTH/DAY shift by the 1462 days of
+`DateSystem::to_1900_serial` / `serial_from_1900_serial` (formatter/dates.rs), checked, with no 1904 serial
+below 0 (a day before the epoch is #NUM! in DATE and YEAR/MONTH/DAY, unprobed). This also passes 18 cells of poi
 DateFormatTests.xlsx and DateFormatNumberTests.xlsx (1904 workbooks). The other date readers (WEEKDAY,
 EDATE/EOMONTH, DATEDIF, date-text coercion, criteria, TODAY, DATE with a year below 1904) are unprobed in 1904
 and still count from 1900 (T-1416).

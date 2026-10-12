@@ -350,8 +350,8 @@ impl Model {
                 if year < 1900 {
                     year += 1900;
                 }
-                // In a 1904 workbook the serial counts from 1904-01-01 (`DATE(1904,1,1)` is 0),
-                // and an earlier day has none.
+                // In a 1904 workbook the serial counts from 1904-01-01 (`DATE(1904,1,1)` is 0).
+                // An earlier day is #NUM! here; Excel is unprobed for it (T-1416).
                 permissive_date_to_serial_number(day.floor() as i32, month.floor() as i32, year)
                     .ok()
                     .and_then(|serial| date_system.serial_from_1900_serial(i64::from(serial)))
