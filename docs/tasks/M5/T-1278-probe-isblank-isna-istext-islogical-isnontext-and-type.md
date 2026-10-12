@@ -3,7 +3,7 @@ id: T-1278
 title: "Probe ISBLANK, ISNA, ISTEXT, ISLOGICAL, ISNONTEXT and TYPE on scalar value kinds (evidence gap: 15-23 Excel cells each)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
