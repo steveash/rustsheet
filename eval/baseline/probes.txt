@@ -367,6 +367,7 @@ C	probes/rich-errors-image-sizing.case.json	58
 C	probes/rich-errors-image.case.json	15
 C	probes/rich-errors-shapes-urls.case.json	51
 C	probes/rich-errors-stockhistory.case.json	5
+C	probes/round-concat-array-lift.case.json	14
 C	probes/round-family.case.json	53
 C	probes/round-huge-digits-carry.case.json	6
 C	probes/round-huge-digits-negative.case.json	91

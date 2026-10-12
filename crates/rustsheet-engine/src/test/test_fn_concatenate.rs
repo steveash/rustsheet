@@ -162,3 +162,16 @@ fn concat_and_textjoin_error_after_the_limit() {
     assert_eq!(model._get_text("A3"), *"#CALC!");
     assert_eq!(model._get_text("A4"), *"#N/A");
 }
+
+#[test]
+fn concat_joins_array_arguments_row_by_row() {
+    // gen-m2/d0c29dd5c530e28c Calc!A246: CONCAT(MID(array,7,0)) is "".
+    let mut model = new_empty_model();
+    model._set("A1", "=CONCAT({\"a\",\"b\";\"c\",\"d\"})");
+    model._set("A2", "=CONCAT(MID({\"abc\",\"defghijk\"},7,0))");
+    model._set("A3", "=CONCAT({\"a\",1},\"z\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"abcd");
+    assert_eq!(model._get_text("A2"), *"");
+    assert_eq!(model._get_text("A3"), *"a1z");
+}
