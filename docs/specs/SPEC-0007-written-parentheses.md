@@ -194,13 +194,13 @@ one frame per group run is within the depth accounting below.
 ### Folding the special cases
 | Today | Becomes |
 |---|---|
-| `GroupedRootKind` | `Group` at the root. `parse_cell_formula`'s wrapping disappears because the parser already produced the group. The defined-name body and `evaluate_formula_root` paths keep their behaviour. |
+| `GroupedRootKind` | `Group` at the root. `parse_cell_formula`'s wrapping disappears because the parser already produced the group. `evaluate_formula_root` keeps its behaviour. Done (T-1341, T-1392): the parser bookkeeping is gone, and defined-name bodies now keep the root `Group` too, since `parse` is the only entry point. |
 | `OpUnionKind.written` | `Group` around the union. `bare` stays: it records a union with no parentheses at all, which is a parse fact, not a group. |
 | `OpIntersectKind.written` | `Group` around the cut's left union. This is the tree as written: `((A1,B1) B1)` is `Group{1, Intersect(Group{1, Union}, B1)}`. |
 | `ImplicitIntersection.written` | `@` + `Group` child. |
 | `ImplicitIntersection.lead` / `LeadGroup` | A `Group` on the leftmost operand or range corner, where it was written. Shapes with more than one group (E34, E35) come for free. |
 | `ImplicitIntersection.grouped` | `Group` around the `@` node. |
-| Parser `at_paren`, `at_group`, `leading_paren`, `grouped_root`, `root_group` | Removed. `parse_parenthesized` returns `Group { levels, child }`, merging into the child's `Group` when the inner span is exact. |
+| Parser `at_paren`, `at_group`, `leading_paren`, `grouped_root`, `root_group` | Removed (T-1392). `parse_parenthesized` returns `Group { levels, child }`, merging into the child's `Group` when its content is itself a `Group` (whitespace between nested parentheses still nests; T-1392). |
 
 `union_text`'s stripping of a left union's inner parentheses and `at_operand`'s `written.max(1)`
 become plain `Group` printing. Their special cases are deleted.

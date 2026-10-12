@@ -9,35 +9,12 @@
 use crate::expressions::parser::depth::{MAX_FORMULA_DEPTH, PRIMARY_DEPTH};
 use crate::expressions::parser::{ExpectedTokens, Node, Parser};
 use crate::expressions::token::{Error, OpUnary, TokenType};
-use crate::expressions::types::CellReferenceRC;
 use crate::functions::Function;
 use crate::locale::Locale;
 
 use super::stringify::argument_separator;
 
 impl Parser {
-    /// Parses a cell formula like [`Parser::parse`], but a formula written wholly in parentheses
-    /// (`=(A1-1)`, `=((A1-1))`) gets one root [`Node::Group`] holding its written levels, so it
-    /// prints back with them and evaluation can tell it from `=A1-1` (Excel skips near-zero
-    /// snapping for it,
-    /// probes-numeric/30bc5f8fab02d0a2 `parenthesized-sub`; docs/excel-semantics/numbers.md).
-    /// A union, and a cut of a parenthesized union, keep their own root [`Node::Group`]
-    /// ([`Parser::parse_parenthesized`]), so they are not wrapped again.
-    pub fn parse_cell_formula(&mut self, formula: &str, context: &CellReferenceRC) -> Node {
-        let node = self.parse(formula, context);
-        let levels = self.grouped_root;
-        if levels == 0 || matches!(node, Node::ParseErrorKind { .. }) {
-            return node;
-        }
-        // Excel keeps every written level of parentheses around the whole formula
-        // (probes/near-zero-snap-groups B6, `=((0.1+0.2-0.3))`). `evaluate_formula_root` skips the
-        // near-zero snap for it because the root is not an `OpSumKind`.
-        Node::Group {
-            levels,
-            child: Box::new(node),
-        }
-    }
-
     /// `'(' expr (',' expr)* ')'`, after the `(`. Directly inside it, and nowhere else, the
     /// argument separator is the union operator: `(A1,B2)` is one union, `SUM(A1,B2)` two
     /// arguments. The union is the loosest operator inside its parenthesis, so `(A1,B1 C1)` is
@@ -45,9 +22,6 @@ impl Parser {
     /// but refuses `(1,A1)` and `(A1+B1,C1)` (docs/excel-semantics/references.md, "Union:
     /// parsing and evaluation", T-0187).
     pub(super) fn parse_parenthesized(&mut self) -> Node {
-        let open = self.lexer.get_position_index();
-        // The first group parsed is the one the formula's first `(` opens.
-        let leading = std::mem::take(&mut self.leading_paren);
         let t = self.parse_enclosed_expr();
         if let Node::ParseErrorKind { .. } = t {
             return t;
@@ -57,7 +31,6 @@ impl Parser {
             Err(error) => return error,
         };
         self.inner_depth = self.inner_depth.max(union_depth);
-        let close = self.lexer.get_position_index();
         if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
             return Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
@@ -66,22 +39,13 @@ impl Parser {
                 message: err.message,
             };
         }
-        // A level nests only if the inner group opens right after this `(` and closes right
-        // before this `)`: `((A1))` is two levels, `((A1)+(B1))` one.
-        let inner =
-            (self.root_group.take()).filter(|&(_, start, end)| start == open + 1 && end == close);
-        let levels = inner.map_or(0, |(levels, ..)| levels).saturating_add(1);
-        self.root_group = Some((levels, open, self.lexer.get_position_index()));
-        // Excel keeps every written parenthesis (SPEC-0007), around an `@` operand, part of one
-        // or a whole `@` too (`@(A1)`, `@(A1) B1`, `(@1)#`; T-1343). Those around the whole
-        // formula are `grouped_root`'s (`parse_cell_formula`), so an inner run of them is not also
-        // a `Group`; but a union (`((A1,B2))`, T-1024) and a cut of a parenthesized union
-        // (`((A1,B1) B1)`, T-1176) keep their own `Group` there too.
-        if leading && self.lexer.peek_token() == TokenType::EOF && !keeps_own_group(&t) {
-            self.grouped_root = levels;
-            return t.into_ungrouped();
-        }
-        regroup(t, inner.is_some())
+        // A level nests only if the inner group is the whole of this one's content: `((A1))` is
+        // two levels, `((A1)+(B1))` one (its content is a sum, not a group).
+        // Excel keeps every written parenthesis (SPEC-0007), around the whole formula (`=((A1-1))`,
+        // probes/near-zero-snap-groups B6), around an `@` operand, part of one or a whole `@` too
+        // (`@(A1)`, `@(A1) B1`, `(@1)#`; T-1343).
+        let nested = matches!(t, Node::Group { .. });
+        regroup(t, nested)
     }
 
     /// `union => intersect (',' intersect)*`, left associative, outside every parenthesis and

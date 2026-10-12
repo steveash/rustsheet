@@ -107,7 +107,7 @@ fn whitespace_elsewhere_is_not_an_intersection() {
         (" 1 + 2 ", "1+2"),
         ("SUM( A1 , B1 )", "SUM(A1,B1)"),
         ("SUM( A1:B2 )", "SUM(A1:B2)"),
-        ("( A1 )", "A1"),
+        ("( A1 )", "(A1)"),
         ("{ 1 , 2 ; 3 , 4 }", "{1,2;3,4}"),
         ("A1 + B1", "A1+B1"),
         ("A1 -B1", "A1-B1"),

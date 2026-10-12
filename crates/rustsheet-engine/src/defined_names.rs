@@ -311,7 +311,10 @@ impl Model {
             if let Node::ParseErrorKind { .. } = node {
                 node = self.parse_internal_formula(formula_body, &dummy_ref);
             }
-            if !matches!(node, Node::LambdaDefKind { .. } | Node::ErrorKind(_)) {
+            if !matches!(
+                node.ungrouped(),
+                Node::LambdaDefKind { .. } | Node::ErrorKind(_)
+            ) {
                 return Err("Formula: Invalid defined name formula".to_string());
             }
         }
@@ -411,7 +414,7 @@ impl Model {
                         };
                         let mut formulas = Vec::new();
                         for formula in &worksheet.shared_formulas {
-                            let mut t = self.parser.parse_cell_formula(formula, &cell_reference);
+                            let mut t = self.parser.parse(formula, &cell_reference);
                             rename_defined_name_in_node(&mut t, name, scope, new_name);
                             formulas.push(to_rc_format(&t));
                         }
