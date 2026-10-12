@@ -278,7 +278,13 @@ def test_a_utf16_rels_part_with_a_dtd_is_refused() -> None:
 
 @pytest.mark.parametrize(
     "formula",
-    ["SHEETS&#40;)", "SHE<!-- -->ETS()", "<![CDATA[SHE]]>ETS()", "_xlfn.SHEETS&#x28;)", "INFO&#40;&quot;x&quot;)"],
+    [
+        "SHEETS&#40;)",
+        "SHE<!-- -->ETS()",
+        "<![CDATA[SHE]]>ETS()",
+        "_xlfn.SHEETS&#x28;)",
+        "INFO&#40;&quot;x&quot;)",
+    ],
 )
 def test_refusal_scan_reads_unescaped_text(formula: str) -> None:
     parts = _parts(build_xlsx(SPEC))
