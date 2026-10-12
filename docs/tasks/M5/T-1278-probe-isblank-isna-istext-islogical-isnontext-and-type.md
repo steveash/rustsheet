@@ -3,7 +3,7 @@ id: T-1278
 title: "Probe ISBLANK, ISNA, ISTEXT, ISLOGICAL, ISNONTEXT and TYPE on scalar value kinds (evidence gap: 15-23 Excel cells each)"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -21,11 +21,16 @@ Write one probe case `eval/suites/probes/cases/is-functions-scalar-kinds.case.js
 Code: `crates/rustsheet-engine/src/functions/information/mod.rs` (`fn_isblank` and the IS* helpers, `fn_type`).
 
 ## Acceptance criteria
-- [ ] `probes/is-functions-scalar-kinds` is committed with its excel-graph oracle sidecar, and report.md's evidence table shows each of the six functions with 25 or more Excel cells (or no longer lists it as below 25).
-- [ ] docs/excel-semantics/information.md has an entry for the scalar-kind results (VERIFIED, citing the probe cells); anything surprising (for example how `""` from a formula, `TYPE(LAMBDA(..))` or a blank via IF are classed) is called out.
-- [ ] Every failing probe cell is either fixed in this PR (only if the fix is local to the function) or filed as a new task naming the cells; `make eval-baseline` shows no known failures outside the new case.
-- [ ] `make check` green; reviewers approve.
+- [x] `probes/is-functions-scalar-kinds` is committed with its excel-graph oracle sidecar, and report.md's evidence table shows each of the six functions with 25 or more Excel cells (or no longer lists it as below 25).
+- [x] docs/excel-semantics/information.md has an entry for the scalar-kind results (VERIFIED, citing the probe cells); anything surprising (for example how `""` from a formula, `TYPE(LAMBDA(..))` or a blank via IF are classed) is called out.
+- [x] Every failing probe cell is either fixed in this PR (only if the fix is local to the function) or filed as a new task naming the cells; `make eval-baseline` shows no known failures outside the new case.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Range and array lifting (probes/is-functions-array-lift) and the newer rich errors (information.md), already evidenced.
 - ISERR/ISERROR/ISNUMBER/ISREF/ISEVEN/ISODD, which already have 25+ Excel cells.
+
+## Outcome
+Added probes/is-functions-scalar-kinds (89 excel-graph cells). 88 passed at once; `TYPE(LAMBDA(x,x))`
+was `#N/IMPL!` where Excel gives 128, fixed in `fn_type`. All six functions now exceed 25 Excel
+cells. Semantics entry added to information.md.
