@@ -40,7 +40,7 @@ of WORKDAY.INTL and NETWORKDAYS.INTL lifts. DATEDIF with numeric text now works 
 failures 2867 -> 2802. The port was resolved against T-1330's 1904 epoch: DATEDIF's date text (scalar or lifted) is
 read by DATEVALUE's `parse_datevalue_text`, so a 1904 workbook counts it from 1904-01-01, and only plain number text
 falls back to a number (pre-epoch date text stays `#VALUE!`). DATEDIF keeps its pre-lift error order (the dates' #NUM!
-before the unit's error); the inferred order is UNVERIFIED (T-1427). Remaining probe cells are the date arguments of
+before the unit's error); the inferred order is UNVERIFIED (T-1430). Remaining probe cells are the date arguments of
 EDATE, EOMONTH, WEEKNUM, WORKDAY(.INTL), NETWORKDAYS(.INTL), YEARFRAC over an array (T-1236) and G3/G4 (T-1237).
 Review notes: a single-cell range `weekend` (`NETWORKDAYS.INTL(1,30,C1:C1)`) and a 3D range in the lifted text/weekend
 arguments are unprobed and keep the old behavior (`#VALUE!`; a 3D-range weekend is guarded so it never lifts over its first sheet); probe them before changing. Follow-ups:

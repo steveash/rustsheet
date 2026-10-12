@@ -370,7 +370,7 @@ order: DATEDIF reports the dates' `#NUM!` (end before start, out of range) befor
 (`DAYS360(-5,5,NA())` is `#N/A`). Also unprobed: `TIMEVALUE(B3:B3)` of a single cell is that cell's value, and a
 single-cell-range or 3D-range `weekend` is `#VALUE!`/first-sheet in ours.
 Status: UNVERIFIED (probe pending)
-Tasks: T-1427 (error order), T-1428 (3D ranges, unit/method over an array)
+Tasks: T-1430 (error order), T-1428 (3D ranges, unit/method over an array)
 
 ## The 1904 date system: negative serials keep a minus; epoch at 1904-01-01
 Rule: in a 1904 workbook (`<workbookPr date1904="1"/>`), serial 0 is 1904-01-01 (`TEXT(0,"yyyy-mm-dd")` =

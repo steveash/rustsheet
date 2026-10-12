@@ -1,5 +1,5 @@
 ---
-id: T-1427
+id: T-1430
 title: "Probe DATEDIF and DAYS360 error order when a date and the unit or method are both bad"
 milestone: M6
 lane: functions-date

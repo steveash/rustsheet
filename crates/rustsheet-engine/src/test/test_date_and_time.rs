@@ -992,7 +992,7 @@ fn datedif_pre_epoch_date_text_is_a_value_error_in_1904() {
 }
 
 // DATEDIF's errors keep their pre-lift order: the dates' own errors, then the dates' #NUM!, then
-// the unit's error (UNVERIFIED against Excel, dates.md "DATEDIF and DAYS360 error order", T-1427).
+// the unit's error (UNVERIFIED against Excel, dates.md "DATEDIF and DAYS360 error order", T-1430).
 #[test]
 fn datedif_date_errors_come_before_the_unit_error() {
     let mut model = new_empty_model();

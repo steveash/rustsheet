@@ -859,7 +859,7 @@ impl Model {
 
         // Errors come in the order DATEDIF had before it lifted: the dates' own errors, then
         // #NUM! of the dates, then the unit's error (UNVERIFIED, dates.md "DATEDIF and DAYS360 error
-        // order", T-1427).
+        // order", T-1430).
         let unit = self.get_string(&args[2], cell).map(|s| s.to_uppercase());
         // Both dates lift over a range or array (probes/date-argument-modes F5:F8).
         let operands = args[..2]
@@ -1023,7 +1023,7 @@ impl Model {
         // The European-method flag follows Excel's logical coercion: numbers are
         // truthy when non-zero, and only the text "TRUE"/"FALSE" is accepted.
         // The dates' own errors come first, then the method's, then the dates' #NUM!, as before the
-        // lift (UNVERIFIED, dates.md "DATEDIF and DAYS360 error order", T-1427).
+        // lift (UNVERIFIED, dates.md "DATEDIF and DAYS360 error order", T-1430).
         let method = if args.len() == 3 {
             self.get_boolean(&args[2], cell)
         } else {
