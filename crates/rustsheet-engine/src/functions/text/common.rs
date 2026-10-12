@@ -15,11 +15,10 @@ use crate::{
         text::{
             position::find_element,
             util::{
-                near_integer_count, substitute, substitute_exceeds_limit, text_after, text_before,
-                utf16_slice, Case,
+                substitute, substitute_exceeds_limit, text_after, text_before, utf16_slice, Case,
             },
         },
-        util::array_node_to_calc_result,
+        util::{array_node_to_calc_result, near_integer_count},
     },
     model::Model,
     number_format::to_precision,
