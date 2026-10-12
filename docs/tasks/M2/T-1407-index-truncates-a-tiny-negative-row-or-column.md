@@ -3,7 +3,7 @@ id: T-1407
 title: "INDEX truncates a tiny negative row or column index (-1E-15) to 0 instead of #VALUE!"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -34,7 +34,7 @@ Code: `Model::index_impl` (crates/rustsheet-engine/src/functions/lookup_and_refe
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Tier sonnet; no engine change made. Probe `probes/index-tiny-negative` (excel-graph, about 170 cells) is filled and recorded in lookup.md.
 What it shows: Excel does not simply truncate. An index within about 2.39E-7 below an integer is rounded up to it
 (`COLUMNS(INDEX(A1:C3,3,0.9999998))` is 1, `0.99999976` is 3, `0.99999977` is 1; the same for the row index at 3, so the
