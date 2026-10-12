@@ -597,22 +597,14 @@ impl Model {
                     message: "info_type not implemented".to_string(),
                 }
             }
-            // A multi-cell range on the formula's own sheet reads its top-left cell
-            // (ironcalc-calc CELL.xlsx B14, excel-cached); on another sheet it is #VALUE!
-            // (probes/info-logic-argument-modes A18, excel-graph). Which of the two facts decides
-            // is not separated by the evidence (docs/excel-semantics/information.md, T-1218).
-            "CONTENTS"
-                if ranges
-                    .and_then(<[_]>::first)
-                    .is_some_and(|r| r.left != r.right && r.left.sheet != cell.sheet) =>
-            {
-                CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "contents needs a single cell".to_string(),
-                }
-            }
-            "CONTENTS" => self.evaluate_cell(reference),
+            // The top-left cell of the reference taken on the formula's own sheet, whatever sheet
+            // the reference names, with no implicit intersection: `CELL("contents",Data!A2)` on
+            // Calc reads Calc!A2 (probes/info-cell-contents-range, excel-graph, T-1230). Desktop
+            // Excel is unverified (T-1075 item 9); excel-graph is the oracle of record (decision 0039).
+            "CONTENTS" => self.evaluate_cell(CellReferenceIndex {
+                sheet: cell.sheet,
+                ..reference
+            }),
             "FILENAME" => {
                 let workbook_name = &self.workbook.name;
                 let worksheet_name = match self.workbook.worksheet(reference.sheet) {

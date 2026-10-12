@@ -182,10 +182,18 @@ Rule: how the other M5 information functions take a range, an array and a direct
 Evidence: probes/info-logic-argument-modes A6:A29, info-logic-argument-modes-2 A7:A8, info-modes-sheet-text,
 info-modes-isref-value-op (oracle: excel-graph, 2026-10-09, T-1088). The refusals come from scratch fills that failed and were not kept.
 Status: VERIFIED (excel-graph)
-Ours: matches since T-1218 (SHEET/N of a range, CELL's array info_type, ISFORMULA's lift, `CELL("contents")` of a multi-cell range on another sheet = `#VALUE!`).
-UNVERIFIED: ironcalc-calc CELL.xlsx B14 (excel-cached, a legacy CSE array formula) shows `CELL("contents",A10:A14)` on the formula's own sheet giving the top-left cell (3.4, not the intersection with row 14), while probes/info-logic-argument-modes A18 (a dynamic-array formula) is `#VALUE!` for an other-sheet row range. We key on the sheet, but the evidence does not separate that from "the formula cell is not inside the range" or "CSE reads the top-left, dynamic arrays give `#VALUE!`". Also unprobed: a non-string element in an array `info_type` (we give `#VALUE!`) and `N(range)` whose top-left cell is an error (we pass the error through).
+Ours: matches since T-1218 (SHEET/N of a range, CELL's array info_type, ISFORMULA's lift, `CELL("contents")` superseded by T-1230 below).
+Settled by T-1230 (next entry): ironcalc-calc CELL.xlsx B14 (top-left of a same-sheet range) and probes/info-logic-argument-modes A18 (`#VALUE!`, which is the formula's own-sheet cell Calc!A2) both fit "the top-left cell, read on the formula's own sheet".
 `CELL("address")` across sheets depends on the file name, which the engine does not know (T-1218 leaves it unimplemented).
 Tasks: T-1088, T-1218
+
+## CELL("contents", ref) reads the formula's own sheet (excel-graph)
+Rule (excel-graph): `CELL("contents", ref)` reads the top-left cell of `ref` taken **on the formula's own sheet**, whatever sheet `ref` names; a multi-cell range is never implicitly intersected, and a legacy (non-array) formula gives the same value as a dynamic one. `=CELL("contents",Data!A2)` on Calc is Calc!A2 (12.5), not Data!A2 (2.5); `Data!A7:C7` is Calc!A7 (21.5); `Data!E1:F1` is Calc!E1 (blank, 0). The earlier "other sheet = `#VALUE!`" reading (probes/info-logic-argument-modes A18) was this: Calc!A2 there is `=XOR(Data!B1)` = `#VALUE!`. Same-sheet ranges give the top-left cell (`A1:A5` in C1, C3, C8 all 11.5), legacy twins included. Only `"contents"` has legacy-twin evidence; the vector signature for CELL's `reference` covers every info_type (other info_types: T-1433).
+Evidence: probes/info-cell-contents-range Calc!C1:F8, S2:S7, T1:T6, V1:V5 (oracle: excel-graph, 2026-10-12, T-1230).
+Status: VERIFIED (excel-graph); desktop UNVERIFIED. A desktop Excel that honours the sheet is likely (this looks like a web bug); the desktop check is T-1075 item 9 (decision 0039: excel-graph is the oracle of record until then).
+Ours: matches since T-1230 (`cell_info` reads the top-left cell on `cell.sheet`; CELL's `reference` argument has a vector signature, so a legacy formula does not intersect it).
+Also: `CELL({1,"row"},B2)` is `#VALUE!` (a non-string element) and `CELL({"row",1},B2)` spills 2, `#VALUE!`; `N(range)` with an error top-left cell is that error (Calc!J1, K1); the info_type array lifts per element.
+Tasks: T-1230
 
 ## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
 The oracle appends a canary sheet to every workbook it recalculates, which changes `SHEETS()`, `INFO()`
