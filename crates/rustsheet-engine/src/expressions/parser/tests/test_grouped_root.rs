@@ -91,7 +91,7 @@ fn inner_groups_that_are_only_part_of_the_content_add_no_level() {
 }
 
 #[test]
-fn parentheses_that_do_not_span_the_formula_are_not_a_grouped_root() {
+fn parentheses_that_do_not_span_the_formula_are_not_a_root_group() {
     let mut parser = parser();
     for (formula, printed) in [
         // Every other group is printed back as written (SPEC-0007).
