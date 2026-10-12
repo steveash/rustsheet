@@ -115,8 +115,11 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
   An error element inside an option array is that error itself, per element, not `#VALUE!`: `IMAGE(url,"alt",{0,#DIV/0!})` is
   `#BLOCKED!`, `#DIV/0!`; `{#DIV/0!,0}` is `#DIV/0!`, `#BLOCKED!`; `{9,#DIV/0!}` is `#VALUE!`, `#DIV/0!`. With several options the first
   error in argument order (`sizing`, `height`, `width`) wins for that element (`{#DIV/0!,0}` with `{5,#N/A}` is `#DIV/0!`, `#N/A`;
-  `{0,#N/A}` with `{5,5}` is `#VALUE!` for the invalid 0-with-height, then `#N/A`), and it holds for a scalar or array source
-  (probes/rich-errors-image-array-error-elements, 25 cells, excel-graph, 2026-10-12, T-1417; VERIFIED).
+  `{0,#N/A}` with `{5,5}` is `#VALUE!` for the invalid 0-with-height, then `#N/A`), and it holds for a scalar or array source. Two errors in one element: the earlier option wins (`{#DIV/0!,0}` with `{#N/A,5}`
+  is `#DIV/0!` first; `sizing` `{#N/A,..}`, `height` `{#DIV/0!,..}`, `width` `{#NUM!,..}` is `#N/A`). An error element beats an invalid option
+  (`{9,0}` with height `{#DIV/0!,5}` is `#DIV/0!`, `#VALUE!`), and a `source` error element beats an option error element
+  (`IMAGE({#N/A,url},"alt",{#DIV/0!,0})` is `#N/A`, `#BLOCKED!`; `IMAGE({url,#N/A},"alt",{0,#DIV/0!})` is `#BLOCKED!`, `#N/A`)
+  (probes/rich-errors-image-array-error-elements, 41 cells, excel-graph, 2026-10-12, T-1417; VERIFIED).
 - IMAGE with an invalid `sizing` (`IMAGE({url,url},"alt",9)`) is `#VALUE!` per element (A16).
 - A `field_name` array shorter than the `FIELDVALUE` result along an axis wider than 1 is `#N/A` past its end:
   `FIELDVALUE({1,2,3},{"a","b"})` is `#FIELD!`, `#FIELD!`, `#N/A`; `{1,2,3}` with `{"a";"b"}` is 2x3 of `#FIELD!`, and `{1;2;3}` with `{"a","b"}` is 3x2 of `#FIELD!`; the row-axis form (`{1;2;3}` with `{"a";"b"}`) is UNVERIFIED (probes/rich-errors-image-sizing). A

@@ -26,6 +26,6 @@ T-1370 lifts array options element by element (`Model::image_grid`, functions/in
 -
 
 ## Outcome
-Probe `rich-errors-image-array-error-elements` (14 formulas, 25 cells, excel-graph) shows an error element inside a
+Probe `rich-errors-image-array-error-elements` (22 formulas, 41 cells, excel-graph) shows an error element inside a
 `sizing`/`height`/`width` array propagates as itself per element (first option error wins), not `#VALUE!`.
-`Model::image_grid` now does this; `information.md` is VERIFIED. Eval delta: probes +14 cells passing.
+`Model::image_grid` now does this; `information.md` is VERIFIED. Eval delta: probes +41 cells passing (a new case; 14 of the first 25 failed before the fix).
