@@ -443,7 +443,7 @@ The upper bound matches the 1900 system's 9999-12-31:
 - This confirms the hand-derived bounds in formatter/test/test_dates.rs.
 
 Evidence: probes/date-system-1904-readers A1-A52 (excel-graph, 2026-10-12, T-1416).
-Ours: every cell matches except COUPDAYS A18, which still counts from 1900 (T-1436). The text coercion, typed input and criteria cells A20-A25, A38, A39 and A51 read the 1904 serial since T-1435. Date-clock text such as `"1904-01-02 10:00"+0` still counts from 1900 (unprobed; the `parse_date_clock_serial` path in `parse_time_serial`).
+Ours: every cell matches except COUPDAYS A18, which still counts from 1900 (T-1436). The text coercion, typed input and criteria cells A20-A25, A38, A39 and A51 read the 1904 serial since T-1435. Date-clock text such as `"1904-01-02 10:00"+0` still counts from 1900 (unprobed; the `parse_date_clock_serial` path in `parse_time_serial`, T-1441).
 
 Status: VERIFIED (web)
 Tasks: T-1416, T-1435, T-1436
