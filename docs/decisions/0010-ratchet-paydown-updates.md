@@ -44,5 +44,8 @@
   T-1230: expressions/parser/static_analysis.rs 2156 → 2147 lines (`args_signature_sheet` and
   `args_signature_no_args` folded into `args_signature_scalars`); date_and_time.rs and
   financial_bonds.rs already shrunk on main (`check_file_size.py --update`).
+  T-1416: functions/date_and_time.rs 1371 → 1243 lines (WORKDAY, WORKDAY.INTL and their holiday/weekend
+  helpers moved to `date_and_time/workday.rs`); functions/mod.rs 2183 → 2182 (T-1301) and model.rs 3509 → 3499, already
+  shrunk on main (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
