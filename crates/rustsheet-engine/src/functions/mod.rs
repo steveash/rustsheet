@@ -13,7 +13,7 @@ pub(crate) mod date_and_time;
 mod engineering;
 mod financial;
 mod information;
-mod logical;
+pub(crate) mod logical;
 pub(crate) mod lookup_and_reference;
 mod macros;
 pub(crate) mod math_and_trigonometry;

@@ -32,11 +32,16 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
 - gen-m7/7c48e2456500644f Calc!A35 `=IF(FILTERXML(EXPAND(Data!$A$1,1,2,Data!B8),INDEX(Data!C8:C10,2,Data!B4)),..)`: Excel `#VALUE!`, engine `#NAME?`.
 - gen-m7/c5d278a8662ef4b2 Calc!A2 `=FILTERXML("1.5",((Data!D3&"ABC")&LEFT(" x ",2)))`: Excel `#VALUE!`, engine `#NAME?`.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/b58b6d7cd39d195f Calc!A8 `=FILTERXML(Data!D$7,"1")`: Excel `#VALUE!`, engine `#NAME?`.
+- gen-m9/d5bd4272655c5211 Calc!A37 `=(Data!A5+UNIQUE(FILTERXML(Data!C9,Data!A12)))`: Excel `#VALUE!`, engine `#NAME?`.
+
 ## Acceptance criteria
 - [ ] gen-m6/3ee7ffc8d6ab061f A11, gen-m6/42b001dc2803fe24 A19, gen-m6/abcfd9979f316267 A9 and gen-m6/f94b5b8236742618 A13, A21
       pass in `./target/release/rustsheet-eval show <case>`, with no new failing gen-m6 cell and no new known failures in eval/baseline/.
 - [ ] probes/catalog/function-name-forms A7 still passes (or now passes); web.md's entry gets an `Implemented in:` line.
 - [ ] gen-m7/4629e931955aa4b8 A34, gen-m7/7c48e2456500644f A35 and gen-m7/c5d278a8662ef4b2 A2 pass. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
+- [ ] gen-m9/b58b6d7cd39d195f A8 and d5bd4272655c5211 A37 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

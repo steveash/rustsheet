@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::expressions::parser::move_formula::{move_formula as mf, MoveContext};
+use crate::expressions::parser::stringify::to_english_string;
 use crate::expressions::parser::tests::utils::new_parser;
 use crate::expressions::parser::Node;
 use crate::expressions::types::{Area, CellReferenceRC};
@@ -703,5 +704,85 @@ fn test_move_formula_at_intersection_prints_as_excel() {
             },
         );
         assert_eq!(t, formula);
+    }
+}
+
+/// Every formula of the probe corpus, as `(sheet names, cell address, formula)`.
+fn probe_corpus_formulas() -> Vec<(Vec<String>, String, String)> {
+    let cases =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../eval/suites/probes/cases");
+    let mut formulas = Vec::new();
+    let Ok(entries) = std::fs::read_dir(&cases) else {
+        panic!("no probe corpus at {}", cases.display());
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.to_string_lossy().ends_with(".case.json") {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            panic!("cannot read {}", path.display());
+        };
+        let Ok(case) = serde_json::from_str::<serde_json::Value>(&text) else {
+            panic!("not JSON: {}", path.display());
+        };
+        let sheets = case["sheets"].as_array().cloned().unwrap_or_default();
+        let names: Vec<String> = sheets
+            .iter()
+            .filter_map(|sheet| sheet["name"].as_str().map(str::to_string))
+            .collect();
+        for sheet in &sheets {
+            let Some(cells) = sheet["cells"].as_object() else {
+                continue;
+            };
+            for (address, value) in cells {
+                if let Some(formula) = value.as_str().and_then(|v| v.strip_prefix('=')) {
+                    formulas.push((names.clone(), address.clone(), formula.to_string()));
+                }
+            }
+        }
+    }
+    formulas
+}
+
+/// A cut and paste prints the formula as FORMULATEXT does: moving it by (0, 0) changes no
+/// text (SPEC-0007 step 5, T-1344). Before, the moved text had its own precedence table, so
+/// `=SUM(A1)^2` printed differently in the two.
+#[test]
+fn moving_by_nothing_prints_the_formula_text_over_the_probe_corpus() {
+    let formulas = probe_corpus_formulas();
+    assert!(formulas.len() > 1000, "probe corpus: {}", formulas.len());
+    for (sheets, address, formula) in formulas {
+        let Some(cell) = crate::expressions::utils::parse_reference_a1(&address) else {
+            continue;
+        };
+        let sheet = sheets.first().cloned().unwrap_or_default();
+        let context = CellReferenceRC {
+            sheet: sheet.clone(),
+            row: cell.row,
+            column: cell.column,
+        };
+        let mut parser = new_parser(sheets, vec![], HashMap::new());
+        let node = parser.parse_cell_formula(&formula, &context);
+        let area = Area {
+            sheet: 0,
+            row: cell.row,
+            column: cell.column,
+            width: 1,
+            height: 1,
+        };
+        let moved = move_formula(
+            &node,
+            &MoveContext {
+                source_sheet_name: &sheet,
+                row: cell.row,
+                column: cell.column,
+                area: &area,
+                target_sheet_name: &sheet,
+                row_delta: 0,
+                column_delta: 0,
+            },
+        );
+        assert_eq!(moved, to_english_string(&node, &context), "={formula}");
     }
 }

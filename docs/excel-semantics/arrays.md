@@ -167,6 +167,13 @@ Implemented in: `array_of_errors` and `MISSING` (crates/rustsheet-engine/src/ari
 `TextArg::Error` (crates/rustsheet-engine/src/functions/text/text_arg.rs), `fn_date`, `fn_weekday`.
 Tasks: T-0129, T-0994, T-1022, T-1056
 
+## ROUND, ROUNDUP, ROUNDDOWN and TRUNC lift over arrays
+Rule: `ROUNDDOWN(array, num_digits)` returns an array, element-wise, with either argument an array; an error in either argument broadcasts (`ROUND(A1:B1,1/0)` and `ROUND(1/0,A1:B1)` are `#DIV/0!`).
+Evidence: gen-m2/893302d6c5b99e2e Calc!A313; probes/round-concat-array-lift (excel-graph, 2026-10-05).
+Status: VERIFIED
+Implemented in: functions/math_and_trigonometry/mathematical.rs (`round_family`), cast.rs (`lift_numbers`)
+Tasks: T-0222
+
 ## Array results above 1,048,576 cells are #ERROR!
 Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000,
 `ROWS(SEQUENCE(1048576))` = 1048576, and a range lifted element-wise by a scalar function becomes
@@ -178,7 +185,7 @@ with A1 = -2, A2 = 3, `ROWS(ABS(A:A))` = `ROWS(A:A+0)` = 1048576, `SUM(ABS(A:A))
 Only a dimension past the grid is `#VALUE!` (`SEQUENCE(1048577)`).
 RustSheet returns `#ERROR!` (not even an Excel error value) for any array above 1,048,576 cells
 (one whole column): SEQUENCE, RANDARRAY, MAKEARRAY/BYROW/BYCOL results, matrix results, an *IF(S)
-criteria grid (broadcast criteria included), a lifted INDEX's broadcast indices (T-1260), and every range lifted into an array (`Model::evaluate_range`: scalar functions
+criteria grid (broadcast criteria included), the broadcast result of `lift_numbers` (ROUND family, MOD, DATE), a lifted INDEX's broadcast indices (T-1260), and every range lifted into an array (`Model::evaluate_range`: scalar functions
 over a range, operators, IF/IFERROR, TEXT, IS*, NOT, a bare range spilled from a cell), checked
 before any cell is read, to bound allocation on untrusted input (CLAUDE.md directive 5); so
 `DATE(11:1899,12,1)` and `ROWS(DATE(11:1899,12,1))` are `#ERROR!`. Past-the-grid dimensions are

@@ -29,10 +29,20 @@ functions/text/textsplit.rs; find the shared delimiter reader and fix it once. A
 `TEXTAFTER("TRUE",{"TRUE","x"})`) and lifting the text over a range are T-1272; check which lands first and do not
 duplicate the list reader.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/0c7fc447bc2eebfd Calc!A6 `=(((Data!E12*Data!E4)-TEXTBEFORE(Data!C6,Data!A9:D10,1))/Data!E1)` (text 2; delimiters 0, "?b", blank, 1.005, FALSE and three blanks): Excel 100000000002, so TEXTBEFORE is "2" (the whole text), engine `#VALUE!`.
+- gen-m9/4df1b22d3ed63f58 Calc!A14 `=(Data!D5&(" x "&TEXTBEFORE(Data!C$8,Data!C11:D11,Data!A5)))` (text 42; delimiters 1E+15 and a blank; instance_num 1E+15): Excel " x ", so TEXTBEFORE is "", engine `#VALUE!`.
+- gen-m9/4df1b22d3ed63f58 Calc!A30 `=TEXTBEFORE((""&("1"&Data!A11)),Data!A8:C11)` ("1TRUE"; a 4x3 range holding 1 and TRUE): Excel "", engine `#VALUE!`.
+- gen-m9/3ec66461400faf2f Calc!A3 `=TEXTBEFORE(Data!C6,Data!D4:E5,-1)` (TRUE; 2.5, 1E-15, "x", "1"): Excel `#N/A`, engine `#VALUE!`.
+- gen-m9/696af2c8cee2f57e Calc!A23 `=TEXTAFTER(Data!$E$3,Data!D4:E10)` (123456789.123; numbers, text and FALSE): Excel `#N/A`, engine `#VALUE!`.
+- gen-m9/95efb37a9874f82e Calc!A25 `=TEXTBEFORE(" x ",Data!D10:E11)`: Excel `#N/A`, engine `#VALUE!`.
+- The first two contradict "a blank cell is the empty delimiter" (that would give "" in A6) and the instance_num bound (A14): add `TEXTBEFORE("2",A1:B1)` with A1 blank and B1 "q", and `TEXTBEFORE("42",A1:B1,1E+15)`, to the probe (text.md entry updated).
+
 ## Acceptance criteria
 - [ ] gen-m7/0e40208f51c2454c A17, gen-m7/8ed8a680e9794b77 A17 and A26 and gen-m7/4629e931955aa4b8 A19 pass in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
 - [ ] An excel-probe case settles the UNVERIFIED parts first: `TEXTBEFORE("xyz",A1:B1)` with A1 blank and B1 "q", `TEXTBEFORE("a1b",A1:B1)` with A1 = 1, `TEXTAFTER("a TRUE b",A1:B1)` with A1 = TRUE; text.md updated.
 - [ ] Unit tests: a 2x2 delimiter range, a range with a blank cell, a range with a number and a boolean, per the probe.
+- [ ] gen-m9/0c7fc447bc2eebfd A6, 4df1b22d3ed63f58 A14 and A30, 3ec66461400faf2f A3, 696af2c8cee2f57e A23 and 95efb37a9874f82e A25 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

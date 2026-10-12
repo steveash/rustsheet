@@ -1,7 +1,7 @@
 #![allow(clippy::panic, reason = "tests")]
 
 //! A cell formula written wholly in parentheses keeps them: `=(A1-1)` parses to a
-//! `GroupedRootKind` root and prints back unchanged (T-1017). Excel evidence: it skips near-zero
+//! root `Group` and prints back unchanged (T-1017). Excel evidence: it skips near-zero
 //! snapping for `=(Inputs!A2-1)` (probes-numeric/30bc5f8fab02d0a2, docs/excel-semantics/numbers.md
 //! "Near-zero snapping in addition and subtraction").
 
@@ -26,11 +26,11 @@ fn parser() -> Parser {
 }
 
 fn is_grouped(node: &Node) -> bool {
-    matches!(node, Node::GroupedRootKind { .. })
+    matches!(node, Node::Group { .. })
 }
 
 #[test]
-fn whole_formula_in_parentheses_is_a_grouped_root() {
+fn whole_formula_in_parentheses_is_a_root_group() {
     let mut parser = parser();
     let grouped = parser.parse_cell_formula("(A1-1)", &context());
     let bare = parser.parse_cell_formula("A1-1", &context());
@@ -66,11 +66,14 @@ fn printing_round_trips_through_rc_format() {
 #[test]
 fn nested_outer_parentheses_keep_every_level() {
     // Excel keeps every written level around a whole formula (probes/near-zero-snap-groups B6,
-    // docs/excel-semantics/numbers.md), one `GroupedRootKind` per level (T-1161).
+    // docs/excel-semantics/numbers.md), one root `Group` with a level per pair (T-1161).
     let mut parser = parser();
     for formula in ["((A1-1))", "(((A1-1)))"] {
         let node = parser.parse_cell_formula(formula, &context());
-        assert!(is_grouped(&node), "{formula}");
+        let Node::Group { levels, .. } = &node else {
+            panic!("{formula} is not grouped");
+        };
+        assert_eq!(usize::from(*levels), formula.matches('(').count());
         assert_eq!(to_english_localized_string(&node, &context()), formula);
     }
 }
@@ -80,7 +83,7 @@ fn inner_groups_that_are_only_part_of_the_content_add_no_level() {
     let mut parser = parser();
     for formula in ["((A1)+(B1))", "(1+(B1))", "((A1)+B1)", "((A1-1)*2)"] {
         let node = parser.parse_cell_formula(formula, &context());
-        let Node::GroupedRootKind { child } = &node else {
+        let Node::Group { levels: 1, child } = &node else {
             panic!("{formula} is not grouped");
         };
         assert!(!is_grouped(child), "{formula} counted a second level");
@@ -108,8 +111,11 @@ fn parentheses_that_do_not_span_the_formula_are_not_a_grouped_root() {
 #[test]
 fn a_union_keeps_its_own_parentheses_and_is_not_wrapped() {
     let mut parser = parser();
+    // Its parentheses are its own one-level `Group`, not a root group around it.
     let node = parser.parse_cell_formula("(A1,B2)", &context());
-    assert!(matches!(node, Node::OpUnionKind { .. }));
+    assert!(
+        matches!(&node, Node::Group { levels: 1, child } if matches!(**child, Node::OpUnionKind { .. }))
+    );
     assert_eq!(to_english_localized_string(&node, &context()), "(A1,B2)");
 }
 

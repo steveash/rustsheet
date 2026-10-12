@@ -326,8 +326,15 @@ the size-mismatch `#VALUE!`, which is unprobed) and
 Evidence: gen-m6/ec7b2cc2fb9f0354 Calc!A33, gen-m6/5cc04d6f42b23b51 Calc!A27, gen-m6/63012866a9d8b7db Calc!A39,
 gen-m6/6b2aa08e3b916da5 Calc!A35 (excel-graph, 2026-10-09, T-1239).
 Ours: `WEEKDAY(0.16)`, `NETWORKDAYS(0,7872)` and `WORKDAY(28131,-16,0)` are `#NUM!`; `WEEKDAY(31330,0)` is `#VALUE!`.
+More serial-0 cells (gen-m9, excel-graph, 2026-10-12, T-1289): `YEARFRAC(33752,0)` is 92.41111111111 (from
+`(0.3+YEARFRAC(33752,Data!$C12))^SUM(-0.0001)` = 0.9995471537332011 with C12 = 0), which is basis 0 counted from
+1900-01-00: (92*360 + 4*30 + 28)/360 (gen-m9/a2e51f48717af2a1 Calc!A32; ours `#NUM!`, T-1409).
+`NETWORKDAYS.INTL(44900,0.2)` is a number (`AVERAGE(NETWORKDAYS.INTL(44900,0.2)/<#VALUE!>,..)` is `#VALUE!`,
+gen-m9/50f10c4062fb2e98 Calc!A12; ours `#NUM!`). `WORKDAY(33393,0,A3:D3)` with holidays "a", 0.3, 0.3, 0.5 is 33393
+(`COLUMNS(B8:E10)%+WORKDAY(..)` = 33393.04, gen-m9/288b99797f58f149 Calc!A10): neither the fractional holidays below 1
+nor the text cell are an error, at least with 0 days (ours `#VALUE!` for the text, `#NUM!` for 0.3).
 Status: VERIFIED for WEEKDAY (excel-graph); UNVERIFIED for the WORKDAY/NETWORKDAYS values (probe pending, T-1254)
-Tasks: T-1253, T-1254
+Tasks: T-1253, T-1254, T-1409
 
 ## Date function argument modes
 Rule: DATE, DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, ISOWEEKNUM, TIME, TIMEVALUE and WEEKDAY lift
@@ -404,6 +411,17 @@ Evidence: gen-m7/bf889c3917eb54c5 Calc!A1, gen-m7/851eb2099ae3f805 Calc!A39 (exc
 Ours: only negative serials are rejected (`HOUR(123456789.123)` = 2).
 Status: VERIFIED (web) for these values; SECOND and the exact bound (2958466 or above) are UNVERIFIED
 Tasks: T-1353
+
+## HOUR, MINUTE and SECOND round to the nearest second
+Rule: SECOND of a time of day 22:24:01.729 is 2: `SECOND(DDB(81074,518,21,6,1))`, where DDB is 3024.9333533459067 (a
+last-digit difference in DDB cannot move it by 0.27 s). So the seconds are rounded, not truncated. Yet
+`SECOND("10:11.5")` is 11 (probes/clock-text-oddities F43), so an exact half does not round up there (tie rule or the
+serial's binary noise). The tie rule and whether the carry reaches MINUTE and HOUR (x:59:59.6, 23:59:59.6) are unprobed.
+Evidence: gen-m9/55fc8c4ffbd7c7cc Calc!A40 (excel-graph, 2026-10-12, T-1289); probes/clock-text-oddities F43 (excel-graph,
+2026-10-06, T-0153).
+Ours: the time is rounded to the millisecond and the seconds truncated (`SECOND(0.5+1.7/86400)` = 1).
+Status: VERIFIED (web) for these two cells; ties and carries UNVERIFIED
+Tasks: T-1408
 
 ## YEARFRAC swaps reversed dates for every basis
 Rule: YEARFRAC with a start date after the end date swaps them for basis 1 as for basis 0: `YEARFRAC(52874,24708,1)` =

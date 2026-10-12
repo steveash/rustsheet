@@ -107,8 +107,10 @@ impl Model {
             return target;
         }
         let match_type = if args.len() == 3 {
-            match self.get_number(&args[2], cell) {
-                Ok(v) => v as i32,
+            match self.match_type_arg(&args[2], cell) {
+                // floor, not truncation: -0.5 searches descending (docs/excel-semantics/lookup.md,
+                // gen-m2/f7e6d351c8538ef5 A160, gen-m2/96a0952412cefa6c A241).
+                Ok(v) => v.floor() as i32,
                 Err(s) => return s,
             }
         } else {
@@ -141,6 +143,29 @@ impl Model {
         }
     }
 
+    /// MATCH's match_type as a number. Text that comes from a cell (a reference) and is not a
+    /// number is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
+    /// descending search skips backward", probes/match-descending-argcheck J9-J20; T-1313).
+    fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+        let value = self.eval_ref_or_index(node, cell);
+        let from_cell = matches!(value, CalcResult::Range { .. });
+        let value = self.dereference(value, cell);
+        // Only non-numeric text is remapped: an error in the cell, or a failed implicit
+        // intersection, propagates unchanged (no oracle evidence for remapping those).
+        if from_cell {
+            if let CalcResult::String(text) = &value {
+                if self.cast_number(text).is_none() {
+                    return Err(CalcResult::Error {
+                        error: Error::REF,
+                        origin: cell,
+                        message: "Invalid reference".to_string(),
+                    });
+                }
+            }
+        }
+        self.cast_to_number(value, cell)
+    }
+
     /// HLOOKUP(lookup_value, table_array, row_index, [is_sorted])
     /// We look for `lookup_value` in the first row of table array
     /// We return the value in row `row_index` of the same column in `table_array`
@@ -170,13 +195,9 @@ impl Model {
             Err(error) => return error,
         };
         let as_reference = as_reference && matches!(row_index, LookupIndexArg::Reference(_));
-        let is_sorted = if args.len() == 4 {
-            match self.get_boolean(&args[3], cell) {
-                Ok(v) => v,
-                Err(s) => return s,
-            }
-        } else {
-            true
+        let is_sorted = match self.lookup_sorted_arg(args.get(3), cell) {
+            Ok(is_sorted) => is_sorted,
+            Err(error) => return error,
         };
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
         let table = match range {
@@ -246,13 +267,9 @@ impl Model {
             Err(error) => return error,
         };
         let as_reference = as_reference && matches!(column_index, LookupIndexArg::Reference(_));
-        let is_sorted = if args.len() == 4 {
-            match self.get_boolean(&args[3], cell) {
-                Ok(v) => v,
-                Err(s) => return s,
-            }
-        } else {
-            true
+        let is_sorted = match self.lookup_sorted_arg(args.get(3), cell) {
+            Ok(is_sorted) => is_sorted,
+            Err(error) => return error,
         };
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
         let table = match range {

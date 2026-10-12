@@ -406,7 +406,7 @@ impl Model {
             // evaluated once and intersected, so nested `@INDEX` stays linear (T-1321).
             Node::ImplicitIntersection { child, .. }
                 if matches!(
-                    **child,
+                    child.ungrouped(),
                     Node::FunctionKind {
                         kind: Function::Index,
                         ..
@@ -476,7 +476,6 @@ impl Model {
             },
             // A name whose body is a formula, parenthesized or not, joins as what the body is
             // in reference context (`ig:B3`, probes/defined-name-grouped-reference A10, T-1173).
-            Node::GroupedRootKind { child } => self.range_operand(child, cell),
             Node::DefinedNameKind(..) if self.defined_name_formula(node).is_some() => {
                 self.defined_name_range_operand(node, cell)
             }

@@ -127,6 +127,14 @@ Ours:
 Status: VERIFIED (excel-graph)
 Tasks: T-1085, T-1383, T-1384, T-0907
 
+## OCT2BIN of a blank cell is 0
+Rule: `OCT2BIN(E5,2)` with E5 blank is "00": a blank cell is the number 0. The other X2Y conversions of a blank cell,
+and of typed empty text, are unprobed.
+Evidence: gen-m9/d244411dd90f7fbd Calc!A15 (`VLOOKUP(..)&UPPER(OCT2BIN(Data!E5,2))` = "-0.000100", excel-graph, 2026-10-12, T-1289).
+Ours: `#NUM!` for OCT2BIN, OCT2DEC and HEX2BIN of a blank cell; BIN2DEC gives 0 and DEC2BIN "0".
+Status: VERIFIED (web) for OCT2BIN; the rest UNVERIFIED
+Tasks: T-1413
+
 ## Engineering edge cases seen in a generated sample (unprobed)
 Excel gave these values in a seeded engineering sample, which was not committed. They were read from
 nested generated formulas, so each one needs a one-question probe before it is implemented (T-1385).

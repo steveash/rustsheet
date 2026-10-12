@@ -25,9 +25,15 @@ Before generalising, probe with the excel-probe skill `WRAPCOLS({1,2},4)`, `WRAP
 `WRAPROWS({1,2},4)` and wrap_count 0.5, 0, -1 for both functions, and match all of them (the engine pads `WRAPCOLS({1,2},4)` to
 4 rows today). Lifting wrap_count/pad_with over an array is T-1271.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/3b8e9078261b5bd2 Calc!A9 `=WRAPCOLS(FIXED(SINH(Data!E12)),4,(-1))`: Excel "1.18" (one cell), engine `#SPILL!`.
+- gen-m9/675763979c1defb6 Calc!A6 `=WRAPCOLS(Data!D6:D6,2,VALUE("Hello World"))`: Excel `#VALUE!` (pad_with's error, although a single value needs no padding), engine `#SPILL!`.
+- gen-m9/50f10c4062fb2e98 Calc!A21 `=WRAPROWS(Data!C5:C12,(Data!$D12+BESSELI(Data!$D12,Data!C9)))` (wrap_count 0): Excel `#NUM!`, engine `#VALUE!`; WRAPROWS too.
+
 ## Acceptance criteria
 - [ ] gen-m7/bb4617644fee40c9 A30, gen-m7/d38b52bfa1a9f9e6 A26 and gen-m7/f68fafa0ca2eba26 A39 pass in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
 - [ ] The probe cells pass; arrays.md's entry is VERIFIED.
+- [ ] gen-m9/3b8e9078261b5bd2 A9, 675763979c1defb6 A6 and 50f10c4062fb2e98 A21 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
