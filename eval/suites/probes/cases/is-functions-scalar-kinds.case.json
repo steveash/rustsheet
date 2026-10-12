@@ -21,6 +21,9 @@
         "A10": "=#DIV/0!",
         "A11": "=#VALUE!",
         "A12": "=NA()"
+      },
+      "number_formats": {
+        "A8": "m/d/yyyy"
       }
     },
     {
