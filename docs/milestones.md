@@ -84,8 +84,8 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
 - The frozen M1 probe list is `eval/milestones/m1-probes.txt` (decision 0043): 89 `probes` cases
   in M1 scope, fixed at commit e5c7ae9. Its cases have no F line left in
   eval/baseline/probes.txt (61 at the freeze; `make eval` reports it once T-1146 lands). Probe
-  cases outside the list, including every probe added after the freeze, count toward M2 exit and
-  never toward M1, whatever their tag.
+  cases outside the list, including every probe added after the freeze, count toward the milestone
+  decision 0051 assigns them and never toward M1, whatever their tag.
 - Known parity bugs from the IronCalc assessment fixed: `ROUND(1.005,2)`, `CONCAT(0.1+0.2)`,
   `DATE(1900,2,29)`, and the parser accepting trailing garbage.
 - API v0 spec merged and implemented. Python `rustsheet.Workbook` passes binding tests.
@@ -103,10 +103,13 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
 
 **Exit criteria:**
 - `gen-m2` (≥ 10,000 oracle cells across those functions, with edge pools) at 100%.
-- The whole `probes` suite at 100% bit-exact, excluding accepted deviations (decision 0036). This
-  covers every probe case off the frozen M1 list (136 F lines at the M1 freeze) and every probe
-  case added before M2 exits, including probes of functions whose own milestone is later than M2
-  (decision 0043; the owner may move those to their own milestones, an open question there).
+- Every `probes` case assigned M0, M1 or M2 at 100% bit-exact, excluding accepted deviations
+  (decision 0036). Decision 0051 assigns each case one milestone. The frozen M1 list is M1. A
+  case listed in `eval/milestones/probe-milestones.tsv` takes the milestone given there. Each
+  `probes/catalog/*` cell takes the milestone of the function it calls. Any other case takes its
+  case.json milestone tag, or M2 if it has none. Probes of later-milestone functions and
+  features count toward their own milestone, not M2 (the owner's answer to decision 0043). At
+  9ad32ae1, 74 of the 2,881 F lines in eval/baseline/probes.txt were assigned M0–M2.
 - ironcalc-calc cells using only M1/M2 functions at 100%.
 - One implementation of aggregate-argument iteration and criteria matching, used by every
   consumer. Duplication baseline reduced by ≥ 15%.
@@ -150,7 +153,8 @@ cases, ROUND family, TEXT (with number-format subset), VALUE, FIND/SEARCH, SUBST
 the IS* functions, TYPE, N, ERROR.TYPE, SWITCH, IFS, XOR, CHOOSE.
 
 **Exit criteria:** catalog coverage 100% for these categories; bit-exact ≥ 99.9% on generated
-suites (≥ 20k cells); 100% on ironcalc-calc for these categories.
+suites (≥ 20k cells); 100% on ironcalc-calc for these categories;
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M6 — Lookup & reference, date & time
 
@@ -160,7 +164,8 @@ suites (≥ 20k cells); 100% on ironcalc-calc for these categories.
 - **Date and time:** DATEVALUE/TIMEVALUE parsing (en-US), EDATE/EOMONTH, WORKDAY/NETWORKDAYS(.INTL),
   DATEDIF, YEARFRAC (all bases), WEEKNUM/ISOWEEKNUM, DAYS360.
 
-**Exit criteria:** same as M5 for these categories.
+**Exit criteria:** same as M5 for these categories, and
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M7 — Dynamic arrays & modern Excel
 
@@ -172,7 +177,8 @@ suites (≥ 20k cells); 100% on ironcalc-calc for these categories.
 - GROUPBY/PIVOTBY, REGEX*.
 
 **Exit criteria:** generated dynamic-array suite (≥ 10k cells, spill shapes included) at ≥ 99.9%;
-spill extents identical to Excel.
+spill extents identical to Excel;
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M8 — Names, tables, structured references, multi-sheet
 
@@ -183,7 +189,8 @@ spill extents identical to Excel.
 - External workbook references (read cached values).
 - Sheet add, rename and move with reference rewriting.
 
-**Exit criteria:** oracle suites for each feature at 100%; POI corpus subset ≥ 99.5%.
+**Exit criteria:** oracle suites for each feature at 100%; POI corpus subset ≥ 99.5%;
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M9 — Numerical parity: statistical, financial, engineering, database
 
@@ -195,7 +202,8 @@ spill extents identical to Excel.
 - Database functions D*.
 
 **Exit criteria:** ironcalc-calc at ≥ 99.95% bit-exact overall (from 97.33%); dense oracle sweeps
-per numeric function at ≥ 99.9% bit-exact and 100% within 4 ULP.
+per numeric function at ≥ 99.9% bit-exact and 100% within 4 ULP;
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M10 — Formatting & display
 
@@ -207,7 +215,8 @@ per numeric function at ≥ 99.9% bit-exact and 100% within 4 ULP.
 - Style storage and round-trip (deduplicated).
 - Locale plumbing (en-US first).
 
-**Exit criteria:** formatted-text oracle suite (≥ 10k cells) at 100%.
+**Exit criteria:** formatted-text oracle suite (≥ 10k cells) at 100%;
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M11 — Real-world fidelity
 
@@ -218,7 +227,8 @@ per numeric function at ≥ 99.9% bit-exact and 100% within 4 ULP.
   the implementation needs the M3 graph.
 
 **Exit criteria:** formula-cell match on xlsx-corpus-bench ≥ 99.8%, matching or beating the best
-published engine.
+published engine;
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M12 — API v1, bindings & release
 
