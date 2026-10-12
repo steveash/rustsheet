@@ -32,12 +32,12 @@ Tasks: T-0247, T-0248
 ## IS* and TYPE over every scalar value kind
 Only a truly empty cell is blank: `ISBLANK` is FALSE for a formula returning `""`, a single space,
 `0`, FALSE, text and errors, and TRUE for an unused cell (`Data!Z99`) and for a blank passed
-through `IF(1,Data!A1)`. `ISTEXT` is TRUE for `""` (literal, formula result and `1&""`), a space
+through `IF(1,Data!A1)`. `ISTEXT` is TRUE for `""` (literal and formula result), `1&""` (text "1"), a space
 and the text `"TRUE"`/`"1"`; FALSE for blanks, numbers (date-formatted too), booleans and errors.
 `ISNONTEXT` is the exact complement (TRUE for blank and errors). `ISLOGICAL` is TRUE only for
 real booleans (`1=1`, a FALSE cell), not `"FALSE"`/`"TRUE"` text. `ISNA` is TRUE only for `#N/A`
 (`NA()`, `#N/A`, `NA()+1`), FALSE for `#DIV/0!`/`#VALUE!`. `TYPE`: blank 1, number 1,
-text (including `""`) 2, boolean 4, error 16, array/range 64, and `TYPE(LAMBDA(x,x))` is 128
+text (including `""`) 2, boolean 4, error 16, array/range 64 (evidenced by probes/info-logic-argument-modes, not this probe), and `TYPE(LAMBDA(x,x))` is 128
 (the engine returned `#N/IMPL!`; fixed in T-1278).
 Evidence: probes/is-functions-scalar-kinds (Calc!A1:F12 direct references, A20:F24 direct
 arguments; excel-graph oracle sidecar). Desktop Excel was not checked.
