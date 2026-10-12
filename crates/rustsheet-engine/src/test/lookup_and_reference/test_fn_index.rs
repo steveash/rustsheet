@@ -278,3 +278,36 @@ fn lifted_index_broadcast_is_bounded() {
     model.evaluate();
     assert_eq!(model._get_text("B1"), "#ERROR!");
 }
+
+// probes/index-tiny-negative and probes/index-snap-tolerance (T-1407): a negative index within
+// 2^-23 + 2^-34 of 0 is 0 (the whole row), and an index within 2^-22 + 2^-33 below an integer
+// is that integer; gen-m9/1466c66c61189a83 reads `INDEX(Data!A1:C3,3,-1e-15)` as row A3:C3.
+#[test]
+fn index_snaps_near_integer_indexes() {
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("C1", "1"),
+        ("D1", "2"),
+        ("E1", "3"),
+        ("C3", "0.5"),
+        ("D3", "8"),
+        ("E3", "9"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("A1", "=SUM(INDEX(C1:E3,3,-1e-15))");
+    model._set("A2", "=COLUMNS(INDEX(C1:E3,3,-1.19E-7))");
+    model._set("A3", "=COLUMNS(INDEX(C1:E3,3,-1.193E-7))");
+    model._set("A4", "=COLUMNS(INDEX(C1:E3,3,1-2.3853E-7))");
+    model._set("A5", "=COLUMNS(INDEX(C1:E3,3,1-2.3854E-7))");
+    model._set("A6", "=ROWS(INDEX(C1:E3,-1E-7,1))");
+    model._set("A7", "=INDEX(C1:E3,3,-0.5)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "17.5");
+    assert_eq!(model._get_text("A2"), "3");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "1");
+    assert_eq!(model._get_text("A5"), "3");
+    assert_eq!(model._get_text("A6"), "3");
+    assert_eq!(model._get_text("A7"), "#VALUE!");
+}
