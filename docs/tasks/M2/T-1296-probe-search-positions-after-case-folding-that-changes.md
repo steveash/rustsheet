@@ -3,7 +3,7 @@ id: T-1296
 title: "Probe SEARCH positions after case-folding that changes length (U+0130) and SEARCH of empty text"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
