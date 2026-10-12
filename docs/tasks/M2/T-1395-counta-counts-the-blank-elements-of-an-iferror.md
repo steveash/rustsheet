@@ -3,7 +3,7 @@ id: T-1395
 title: "COUNTA counts the blank elements of an IFERROR array but not those of TAKE of a blank range"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
