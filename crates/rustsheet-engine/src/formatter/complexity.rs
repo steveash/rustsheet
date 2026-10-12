@@ -16,7 +16,7 @@
 //!
 //! Known misses: a date or text token followed by a quoted string at the string's limit
 //! (`d"<125 a's>"` works in Excel, costs 252 here), and quoted text followed by more text or a
-//! token, which costs about 4 more than modeled (T-1453).
+//! token, which costs about 4 more than modeled (T-1455).
 
 use super::lexer::{Lexer, Token};
 

@@ -33,4 +33,4 @@ T-1434 fitted the limit as a 250 budget (quoted character 2, unquoted 3, placeho
 - The quoted-text discount is not a date-token rule: a date token is free before quoted text, but quoted text followed
   by unquoted text or a token costs about 4 more, and quoted text after a condition costs more too. A free per-boundary
   fit overfits, so the cost model is unchanged; the measurements are in docs/excel-semantics/number-formats.md and the
-  refit is T-1453.
+  refit is T-1455.
