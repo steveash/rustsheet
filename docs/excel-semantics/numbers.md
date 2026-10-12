@@ -548,11 +548,11 @@ Evidence:
 - ironcalc-calc POWER.xlsx Sheet1!D3 and F9.
 Not probed: negative bases beyond `(-8)^(1/3)`; exponents within 1E-15 of ±0.5.
 Implemented in: `non_integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
-Status: VERIFIED (web)
+Status: VERIFIED (excel-graph)
 Tasks: T-1319, T-1421, T-0221
 
 ## POWER and `^`: odd roots of negatives, zero and overflow
-Rule: `POWER(-8, 1/3)` is -2 (an odd root of a negative number is real); `POWER(0,0)` is #NUM!;
+Rule: `POWER(-8, 1/3)` is -1.9999999999999998 (an odd root of a negative number is real; see "Non-integer exponents: exp(y·ln x)"); `POWER(0,0)` is #NUM!;
 `POWER(0,-1)` is #DIV/0!; text operands give #VALUE!; array operands work element by element.
 Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx (Excel-authored): Sheet1!D2 (#DIV/0!),
 D3 and F9 (-1.9999999999999998, matched since T-1319: see "Non-integer exponents"), sheets 2-8 for ranges.
