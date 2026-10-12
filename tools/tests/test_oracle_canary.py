@@ -202,6 +202,49 @@ def test_refusal_scan_follows_the_workbook_rels_to_a_nonstandard_sheet_path() ->
         embed_canary(_repack(moved))
 
 
+def _rels_path() -> str:
+    return "xl/_rels/workbook.xml.rels"
+
+
+def test_refusal_scan_reads_single_quoted_and_entity_escaped_rels() -> None:
+    spec = {"sheets": [{"name": "Sheet1", "cells": {"A1": "=SHEETS()"}}]}
+    parts = _move_sheet(_parts(build_xlsx(spec)), "xl/other/data.xml")
+    rels = parts[_rels_path()]
+    parts[_rels_path()] = rels.replace("other/data.xml", "other/dat&#97;.xml").replace('"', "'")
+    with pytest.raises(OracleError, match=r"xl/other/data.xml uses SHEETS\(\)"):
+        embed_canary(_repack(parts))
+
+
+def test_a_relationship_to_a_missing_sheet_part_is_refused() -> None:
+    parts = _parts(build_xlsx(SPEC))
+    parts[_rels_path()] = parts[_rels_path()].replace("worksheets/sheet1.xml", "worksheets/missing.xml")
+    with pytest.raises(OracleError, match="not in the package"):
+        embed_canary(_repack(parts))
+
+
+def test_unparseable_workbook_rels_are_refused() -> None:
+    parts = _parts(build_xlsx(SPEC))
+    parts[_rels_path()] = "<Relationships><Relationship"
+    with pytest.raises(OracleError, match="unreadable relationships"):
+        embed_canary(_repack(parts))
+
+
+def test_workbook_rels_with_a_dtd_are_refused() -> None:
+    parts = _parts(build_xlsx(SPEC))
+    parts[_rels_path()] = '<!DOCTYPE r [<!ENTITY a "b">]>' + parts[_rels_path()]
+    with pytest.raises(OracleError, match="declares a DTD"):
+        embed_canary(_repack(parts))
+
+
+def test_a_sheet_in_the_worksheets_directory_is_scanned_even_without_a_relationship() -> None:
+    parts = _parts(build_xlsx(SPEC))
+    parts["xl/worksheets/orphan.xml"] = (
+        "<worksheet><sheetData><row><c><f>SHEETS()</f></c></row></sheetData></worksheet>"
+    )
+    with pytest.raises(OracleError, match=r"xl/worksheets/orphan.xml uses SHEETS\(\)"):
+        embed_canary(_repack(parts))
+
+
 def test_a_clean_sheet_at_a_nonstandard_path_is_embedded() -> None:
     moved = _move_sheet(_parts(build_xlsx(SPEC)), "xl/other/data.xml")
     assert SHEET in _parts(embed_canary(_repack(moved)))["xl/workbook.xml"]
