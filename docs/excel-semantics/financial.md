@@ -172,8 +172,9 @@ Tasks: T-1405
 
 ## Analysis ToolPak securities functions check frequency and dates first
 Rule: COUPDAYSNC with an invalid frequency is `#NUM!` even when its basis argument is an error:
-`COUPDAYSNC(37342,46362,-0.0001,<#DIV/0!>)` is `#NUM!`. TBILLEQ with maturity before settlement is `#NUM!` even when the
-discount is text: `TBILLEQ(38887,2.5,"a*")` is `#NUM!`. The general order (which argument errors still win) is unprobed.
+`COUPDAYSNC(37342,46362,-0.0001,<#DIV/0!>)` is `#NUM!`. TBILLEQ with a negative maturity serial is `#NUM!` even when the
+discount is a TEXTSPLIT result (text or an error): `TBILLEQ(38887,1e-15-2,TEXTSPLIT("a*",A1:D2))` is `#NUM!`
+(gen-m9/4df1b22d3ed63f58 Calc!A20); that dates come before the discount is inferred from this one cell. The general order (which argument errors still win) is unprobed.
 Evidence: gen-m9/0c7fc447bc2eebfd Calc!A24, gen-m9/4df1b22d3ed63f58 Calc!A20 (excel-graph, 2026-10-12, T-1289).
 Ours: the basis error (`#DIV/0!`) and `#VALUE!` for the text discount.
 Status: VERIFIED (web) for these two shapes; the general order UNVERIFIED

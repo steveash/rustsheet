@@ -27,7 +27,6 @@ Semantics: docs/excel-semantics/statistics.md "SKEW.P of two numbers is #DIV/0!"
 - [ ] gen-m9/3b8e9078261b5bd2 A13 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] The SKEW.P probe cells pass; statistics.md's entry is VERIFIED.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -

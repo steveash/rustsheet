@@ -31,7 +31,6 @@ Semantics: docs/excel-semantics/dates.md "HOUR, MINUTE and SECOND round to the n
 - [ ] gen-m9/55fc8c4ffbd7c7cc A40 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, and probes/clock-text-oddities still passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] The rounding probe cells pass; dates.md's entry is VERIFIED.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -

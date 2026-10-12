@@ -26,7 +26,6 @@ array; ASC was only probed on one cell. DBCS also gives `#VALUE!` for a range in
 - [ ] gen-m9/65faaeb48419087d A5 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] The ASC/DBCS lift probe cells pass; text.md says ASC (and DBCS, per the probe) lifts.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -

@@ -27,7 +27,6 @@ Semantics: docs/excel-semantics/text.md "TEXTSPLIT with an empty delimiter is #V
 - [ ] gen-m9/d244411dd90f7fbd A6 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] The empty-delimiter probe cells pass; text.md's entry is VERIFIED.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -

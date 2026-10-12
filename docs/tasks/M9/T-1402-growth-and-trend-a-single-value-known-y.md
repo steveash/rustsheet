@@ -33,7 +33,6 @@ Semantics: docs/excel-semantics/statistics.md "Array arguments given a scalar, a
 - [ ] gen-m9/d244411dd90f7fbd A21 and gen-m9/89693ab0cafc29df A24 pass in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `GROWTH(5)` and `TREND(5)` return a number; gen-m9/d244411dd90f7fbd A17 passes once T-0973 lands (note it in the Outcome if it still misses only on GAMMA's digits).
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -

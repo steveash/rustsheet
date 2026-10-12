@@ -27,7 +27,6 @@ T-1254 accept it in WEEKDAY, WORKDAY and NETWORKDAYS: reuse what they use. Code:
 - [ ] gen-m9/a2e51f48717af2a1 A32 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] Unit tests: `YEARFRAC(33752,0)` = 33268/360 and `YEARFRAC(0,33752)` the same; other bases with serial 0 only if probed.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -

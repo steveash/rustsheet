@@ -39,7 +39,6 @@ Semantics: docs/excel-semantics/statistics.md "Array arguments given a scalar, a
 - [ ] The 6 gen-m9 cells above pass in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] The PERCENTRANK.EXC single-value probe cells pass; the rule is in docs/excel-semantics/statistics.md.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -

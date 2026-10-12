@@ -397,7 +397,7 @@ Tasks: T-1260
 
 ## INDEX truncates a tiny negative index to 0
 Rule: `INDEX(A1:C3,3,-1E-15)` is the whole row 3, as `INDEX(A1:C3,3,0)`: the column index is truncated toward zero.
-`EXPONDIST(INDEX(A1:C3,3,-1e-15),12.14659,FALSE)` is 0.027981694209681673, which is the density at A3 = 0.5, the first cell of
+`EXPONDIST(INDEX(A1:C3,3,-1e-15),12.14649,FALSE)` is 0.027981694209681673, which is the density at A3 = 0.5, the first cell of
 A3:C3 (EXPONDIST lifts over the row; the cell holds the spill's anchor). Indexes from -0.5 to -1 are unprobed.
 Evidence: gen-m9/1466c66c61189a83 Calc!A1 (excel-graph, 2026-10-12, T-1289).
 Ours: `#VALUE!` for any negative index (`INDEX(A1:C3,3,-0.5)` too).

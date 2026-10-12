@@ -28,7 +28,6 @@ crates/rustsheet-engine/src/functions/engineering/number_basis.rs; find the shar
 - [ ] gen-m9/d244411dd90f7fbd A15 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] The blank/empty-text probe cells pass; engineering.md records the rule.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -

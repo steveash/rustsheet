@@ -29,7 +29,6 @@ Code: `fn_pmt` in crates/rustsheet-engine/src/functions/financial/mod.rs.
 - [ ] gen-m9/3b8e9078261b5bd2 A34 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] The overflow probe cells pass; financial.md records the rule (VERIFIED).
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -

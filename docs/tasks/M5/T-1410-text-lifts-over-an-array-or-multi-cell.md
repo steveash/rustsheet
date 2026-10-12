@@ -28,7 +28,6 @@ VALUETOTEXT already lifts its format (T-1229): reuse that lifting. Code: `fn_tex
 - [ ] gen-m9/89693ab0cafc29df A36 and gen-m9/95efb37a9874f82e A16 pass in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] Unit tests: `ROWS(TEXT(1,{"0";"0.0"}))` = 2 and a two-cell format range spills two results.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
