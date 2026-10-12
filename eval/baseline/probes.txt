@@ -327,6 +327,7 @@ C	probes/number-to-text-notation.case.json	52
 C	probes/off-grid-corners.case.json	6
 C	probes/offset-negative-height-width.case.json	80
 C	probes/omitted-arg-compare.case.json	10
+C	probes/operand-wrap-text.case.json	30
 C	probes/operator-chain-limit.case.json	6
 C	probes/paren-call-callee-indirect.case.json	1
 C	probes/paren-call-callee-offset.case.json	1
@@ -450,6 +451,7 @@ C	probes/variance-rule.case.json	312
 C	probes/variance-scale.case.json	492
 C	probes/variance-switch.case.json	82
 C	probes/variance-underflow.case.json	36
+C	probes/vlookup-array-index-range-lookup.case.json	155
 C	probes/vlookup-array-lookup-value.case.json	35
 C	probes/volatile-invariant.case.json	55
 C	probes/weeknum-1900-later.case.json	23

@@ -42,6 +42,17 @@ fn written_groups_print_back_and_round_trip() {
         "A1^(2^3)",
         "-A1^2",
         "(-A1)^2",
+        // Operands print bare where no parentheses were written (probes/operand-wrap-text).
+        "SUM(A1)^2",
+        "2^SUM(A1)",
+        "2^-A1",
+        "2^A2%",
+        "SUM({1,2}^2)",
+        "-A1%",
+        "2*-A1",
+        "-SUM(A1)^2",
+        "2^-A1^2",
+        "2^--A1",
     ] {
         let node = parser.parse_cell_formula(formula, &context());
         assert_eq!(to_english_localized_string(&node, &context()), formula);
@@ -78,4 +89,26 @@ fn directly_nested_levels_are_one_group() {
         panic!("not one level: {right:?}");
     };
     assert!(matches!(*child, Node::OpSumKind { .. }));
+}
+
+/// A tree built in code with no `Group` prints the parentheses it needs to parse back to the
+/// same tree: an equal-level right operand is wrapped, operators being left associative
+/// (T-1344's one precedence rule).
+#[test]
+fn a_right_nested_tree_without_groups_prints_its_parentheses() {
+    use crate::expressions::parser::ChainLeft;
+    use crate::expressions::token::OpSum;
+    let mut parser = parser();
+    let operand = |formula: &str, parser: &mut Parser| parser.parse(formula, &context());
+    let node = Node::OpSumKind {
+        kind: OpSum::Minus,
+        left: ChainLeft::new(operand("A1", &mut parser)),
+        right: Box::new(operand("B1+C1", &mut parser)),
+    };
+    assert_eq!(to_english_localized_string(&node, &context()), "A1-(B1+C1)");
+    let node = Node::OpPowerKind {
+        left: ChainLeft::new(operand("A1", &mut parser)),
+        right: Box::new(operand("2^3", &mut parser)),
+    };
+    assert_eq!(to_english_localized_string(&node, &context()), "A1^(2^3)");
 }
