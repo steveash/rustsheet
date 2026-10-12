@@ -327,15 +327,6 @@ impl Node {
         node
     }
 
-    /// [`Node::ungrouped`], by value.
-    pub(super) fn into_ungrouped(self) -> Node {
-        let mut node = self;
-        while let Node::Group { child, .. } = node {
-            node = *child;
-        }
-        node
-    }
-
     /// The `@` an xlsx import adds around a range-valued operand.
     pub(crate) fn automatic_at(child: Node) -> Node {
         Node::at(child, true)
@@ -367,14 +358,6 @@ pub struct Parser {
     /// function/name completion even when the surrounding parse succeeds (`SU`,
     /// `A1+F`) or fails for an unrelated reason (`IF(VLOOK`). See that method.
     trailing_name: Option<(String, usize)>,
-    /// The formula starts with `(` and that group has not been parsed yet.
-    leading_paren: bool,
-    /// The group opened by the formula's first `(` closes at the end of the formula: the whole
-    /// formula is parenthesized (`=(A1-1)`, `=((A1-1))`). The levels written, 0 if it is not.
-    grouped_root: u8,
-    /// The last parenthesized group parsed: its levels (a group holding only such a group has
-    /// one more), and the lexer positions after its `(` and after its `)`.
-    root_group: Option<(u8, usize, usize)>,
     /// Primaries (operands) open on the current parse path. Checked before
     /// descending so the parser's own recursion stays bounded.
     nesting: usize,
@@ -423,9 +406,6 @@ impl Parser {
             language,
             expecting_here: vec![ExpectedTokens::Other],
             trailing_name: None,
-            leading_paren: false,
-            grouped_root: 0,
-            root_group: None,
             nesting: 0,
             top_level: false,
             depth: 0,
@@ -471,9 +451,6 @@ impl Parser {
         self.depth = 0;
         self.inner_depth = 0;
         self.value_operators = 0;
-        self.leading_paren = self.lexer.peek_token() == TokenType::LeftParenthesis;
-        self.grouped_root = 0;
-        self.root_group = None;
         self.top_level = true;
         let node = self.parse_expr();
         self.top_level = false;

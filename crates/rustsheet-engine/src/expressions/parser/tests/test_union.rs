@@ -334,11 +334,11 @@ fn parenthesized_cut_of_a_union_keeps_its_parentheses() {
         ("((A1,B1) B1) ((A1,B1) B1)", "((A1,B1) B1) ((A1,B1) B1)"),
         ("((A1,B1) @B1) C1", "((A1,B1) @B1) C1"),
     ] {
-        let node = parser.parse_cell_formula(formula, &context());
+        let node = parser.parse(formula, &context());
         let text = to_english_localized_string(&node, &context());
         assert_eq!(text, expected);
         // Printing is a fixed point: a re-parse gains no level.
-        let reparsed = parser.parse_cell_formula(&text, &context());
+        let reparsed = parser.parse(&text, &context());
         assert_eq!(to_english_localized_string(&reparsed, &context()), expected);
     }
 }
@@ -349,7 +349,7 @@ fn parenthesized_cut_of_a_union_keeps_its_parentheses() {
 #[test]
 fn union_and_cut_parentheses_are_groups() {
     let mut parser = parser();
-    let node = parser.parse_cell_formula("((A1,B1) B1)", &context());
+    let node = parser.parse("((A1,B1) B1)", &context());
     let Node::Group { levels: 1, child } = &node else {
         panic!("expected one group around the cut, got {node:?}");
     };
@@ -379,7 +379,7 @@ fn subtotal_and_areas_of_a_grouped_union_are_scalar() {
         "SUBTOTAL(9,((A1,B1) B1))",
         "AREAS(((A1,B1)))",
     ] {
-        let node = parser.parse_cell_formula(formula, &context());
+        let node = parser.parse(formula, &context());
         assert!(
             matches!(run_static_analysis_on_node(&node), StaticResult::Scalar),
             "{formula}"

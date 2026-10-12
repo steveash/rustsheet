@@ -275,13 +275,13 @@ fn written_parentheses_are_exported_as_excel_stores_them() {
         ("SIN(@((Z1:Z3)))", "SIN(_xlfn.SINGLE(((Z1:Z3))))"),
     ];
     for (typed, stored) in cases {
-        let t = parser.parse_cell_formula(typed, &cell_reference);
+        let t = parser.parse(typed, &cell_reference);
         assert_eq!(
             to_excel_string(&t, &cell_reference),
             stored,
             "export of `{typed}`"
         );
-        let mut imported = parser.parse_cell_formula(stored, &cell_reference);
+        let mut imported = parser.parse(stored, &cell_reference);
         add_implicit_intersection(&mut imported, true);
         assert_eq!(
             to_english_localized_string(&imported, &cell_reference),
