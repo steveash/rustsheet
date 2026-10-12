@@ -3,7 +3,7 @@ id: T-1397
 title: "xlsx import: match Excel's formula-length count for non-BMP text and refuse over-limit defined-name bodies (probe first)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
