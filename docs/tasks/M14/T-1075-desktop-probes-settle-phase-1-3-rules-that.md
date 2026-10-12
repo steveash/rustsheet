@@ -43,7 +43,7 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    (probes/and-or-xor-text-arguments). The engine follows the web; J136 stays a known failure.
 8. **Formula and defined-name length** (T-1386; syntax.md "Formulas over 8,192 characters refuse the workbook").
    Desktop Excel's limit for a formula typed into a cell and for a defined-name body, whether the web file-load
-   limit (8,192 UTF-16 units; names 8,191) holds on desktop, and how `_xHHHH_` escapes inside `<f>` text count
+   limit (8,192 characters, ASCII; non-BMP counting unsettled, see T-1397; name bodies 8,191 ASCII characters) holds on desktop, and how `_xHHHH_` escapes inside `<f>` text count
    (the spec-to-xlsx writer cannot emit them raw, so this also needs a raw-XML fixture).
 
 ## Acceptance criteria

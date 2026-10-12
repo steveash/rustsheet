@@ -69,8 +69,8 @@ RustSheet's xlsx importer refuses the same workbooks with `XlsxError::Workbook` 
 Evidence: T-1091, probe `operator-chain-limit` (T-1060), probes `formula-length-nonbmp-33pieces` and `name-body-length-*` (T-1386; two more inputs were dropped after the run because Excel cannot load them, so no sidecar can exist: LEN of 34 `&`-joined 120-emoji literals, and an 8,192-character `1+1+...+11` name body), all excel-graph; see "Formula nesting depth cap" below.
 Non-BMP text: a formula holding 33 concatenated 120-emoji literals loads (4,063 Unicode scalars, 8,023 UTF-16 code
 units) and one holding 34 is refused (4,186 scalars, 8,266 UTF-16 units; createSession 501), so Excel does not count
-Unicode scalars: it counts UTF-16 code units or something else above them (the exact boundary between 8,192 and 8,266
-units is not probed). The importer counts scalars and so accepts workbooks Excel refuses (T-1397).
+Unicode scalars: it counts UTF-16 code units or something else above them (a formula of 8,024 to 8,265 UTF-16
+units is unprobed). The importer counts scalars and so accepts workbooks Excel refuses (T-1397).
 Defined names: a name body of 8,191 characters (`=1+1+...` stored without `=`) loads and one of 8,192 is refused, so
 the body limit is one below the 8,192 of a cell formula (bodies of 255, 256, 1,000, 4,000, 6,000 and 8,000 characters
 all load and evaluate). The importer has no name-body limit yet (T-1397).
