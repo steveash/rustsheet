@@ -30,6 +30,9 @@
         unchanged (decision 0043).
      2. A case listed in `eval/milestones/probe-milestones.tsv` takes the milestone given there.
         The file holds tab-separated lines: case id, milestone, subject. It has 142 lines.
+        A cell line (case id, `Sheet!A1`, milestone, subject) sets the milestone of that one
+        cell instead, ahead of a case line for the same case (T-1423). It has one: see "Known
+        consequences".
      3. In `probes/catalog/*`, the milestone is set per checked cell. A cell takes the highest
         catalog milestone (`eval/catalog/scope.json`) of the functions its formula calls,
         written `NAME(` (an `_xlfn.` prefix does not change the name), apart from the observing
@@ -136,8 +139,10 @@
       half their cells are operator coercion of time text (`0+A`) or near-zero snapping, which
       are M1/M2 subjects.
     - `subtotal-reference-operands-d` stays M2 for its SUBTOTAL reference-operand cells, so its
-      one F line, the M9 GEOMEAN cell H28 (`=GEOMEAN(5,7)`), still counts toward M2 exit. T-1423
-      adds per-cell overrides to the mapping file so that cell can move to M9.
+      one F line, the M9 GEOMEAN cell H28 (`=GEOMEAN(5,7)`), counted toward M2 exit until
+      T-1423. T-1423 added cell lines to the mapping file and moved that cell to M9 with
+      `probes/subtotal-reference-operands-d.case.json<TAB>Sheet1!H28<TAB>M9<TAB>GEOMEAN`; the
+      case's other cells stay M2.
     - Deliberate keeps with no F line today: `name-body-length-*` (7, name-body limits that
       agents and the xlsx reader share), `subnormal-sumsq-sumproduct-edges` and
       `ifs-shape-mismatch` (the shared criteria engine). Revisit if they gain failures.
@@ -149,8 +154,11 @@
     - `availability-17` A4, GROUPBY (M7);
     - `availability-30` A3, PIVOTBY (M7);
     - `function-name-forms` A7, FILTERXML (M5).
-  - Until T-1423 lands, the steward counts the F lines from the repository root with this
-    command. It prints one count per assigned milestone:
+  - Since T-1423, `make eval` reports these counts, with cases, scored cells, bit-exact cells and
+    deviations, in the "Probe milestones (decision 0051)" section of report.md (report.json:
+    `probe_milestones`); the steward reads them there. Before T-1423 the steward counted the F
+    lines from the repository root with this command, which predates cell lines (it misreads a
+    cell line, so it is no longer exact). It prints one count per assigned milestone:
 
     ```
     python3 -c 'import json,re,collections as C;S={f["name"]:f["milestone"] for f in json.load(open("eval/catalog/scope.json"))["functions"]};L={l.strip() for l in open("eval/milestones/m1-probes.txt") if l.strip() and l[0]!="#"};O=dict(l.split("\t")[:2] for l in open("eval/milestones/probe-milestones.tsv") if l[0]!="#");J=lambda c:json.load(open("eval/suites/probes/cases/"+c[7:]));K=lambda c,i:max([S[n] for n in re.findall(r"([A-Z][A-Z0-9.]*)\(",str({s["name"]+"!"+a:v for s in J(c)["sheets"] for a,v in s["cells"].items()}.get(i,""))) if n in S and n not in ("OR","IFERROR","ERROR.TYPE","INDEX")],key=lambda m:int(m[1:]),default="M2");T=lambda c:([x for x in J(c).get("tags",[]) if re.fullmatch(r"M\d+",x)]+["M2"])[0];M=lambda c,i:"M1" if c in L else O[c] if c in O else K(c,i) if c.startswith("probes/catalog/") else T(c);N=C.Counter(("M0-M2" if m in ("M0","M1","M2") else m) for m in (M(p[1],p[2]) for p in (l.rstrip("\n").split("\t") for l in open("eval/baseline/probes.txt")) if p[0]=="F"));print(" ".join(f"{k}={N[k]}" for k in ["M0-M2"]+[f"M{n}" for n in range(5,12)]),"total="+str(sum(N.values())))'
@@ -158,7 +166,10 @@
 
     At 9ad32ae1 it prints
     `M0-M2=74 M5=35 M6=175 M7=1547 M8=3 M9=994 M10=53 M11=0 total=2881`. M1's frozen list is
-    still read from the report's "Milestone probe lists" section (decision 0044).
+    still read from the report's "Milestone probe lists" section (decision 0044). At 6a44e7c9,
+    T-1423's base, the command and the new report section both gave
+    `M0-M2=75 M5=35 M6=175 M7=1547 M8=3 M9=994 M10=48 M11=0 total=2877`; with H28 moved, the
+    report gives M0-M2 74 and M9 995.
 - **Consequences:**
   - docs/milestones.md: the M2 exit criterion cites this record, and M5–M11 each gain the probe
     criterion. `.claude/skills/steward/SKILL.md` ("Frozen probe lists") reports the M0–M2 count,

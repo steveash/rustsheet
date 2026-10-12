@@ -1,9 +1,10 @@
-# Probe cases whose milestone is not their case.json tag (decision 0051). One case per line,
-# tab-separated: case id (as in eval/baseline/probes.txt), milestone, subject. The rule, in
-# order: a case on eval/milestones/m1-probes.txt is M1; a case listed here takes this milestone;
-# each checked cell of probes/catalog/* takes the highest catalog milestone of the functions its
-# formula calls, apart from the OR, IFERROR, ERROR.TYPE and INDEX wrappers (M2 when none); any
-# other case takes its milestone tag (M0, M1, M2, M5-M11), and M2 when it has none.
+# Probe cases whose milestone is not their case.json tag (decision 0051). One case or cell per
+# line, tab-separated: case id (as in eval/baseline/probes.txt), milestone, subject. A line with a
+# cell (case id, Sheet!A1, milestone, subject) sets that one cell's milestone instead. The rule,
+# in order: a case on eval/milestones/m1-probes.txt is M1; a cell or case listed here takes this
+# milestone; each checked cell of probes/catalog/* takes the highest catalog milestone of the
+# functions its formula calls, apart from the OR, IFERROR, ERROR.TYPE and INDEX wrappers (M2 when
+# none); any other case takes its milestone tag (M0, M1, M2, M5-M11), and M2 when it has none.
 # Case files are never edited to fix a tag (oracle input hashes). Change this file only by a
 # decision record (decision 0044 protects eval/milestones/).
 probes/3d-ref-aggregates.case.json	M8	3-D references
@@ -148,3 +149,5 @@ probes/xmatch-blank-extensions.case.json	M6	XLOOKUP, XMATCH
 probes/xmatch-text-bool-equal-runs.case.json	M6	XLOOKUP, XMATCH
 probes/xmatch-xlookup-blanks.case.json	M6	XLOOKUP, XMATCH
 probes/xnpv-argument-count.case.json	M9	XIRR, XNPV
+# Per-cell lines (T-1423): a cell whose subject is not its case's.
+probes/subtotal-reference-operands-d.case.json	Sheet1!H28	M9	GEOMEAN

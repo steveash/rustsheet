@@ -20,6 +20,7 @@ pub mod engine;
 pub mod fetch;
 pub mod milestone_lists;
 pub mod overrides;
+pub mod probe_milestones;
 pub mod report;
 pub mod runner;
 pub mod suite;
