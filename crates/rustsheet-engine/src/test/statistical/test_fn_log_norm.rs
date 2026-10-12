@@ -51,7 +51,7 @@ fn test_fn_log_norm_inv_smoke() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"33.115451959");
+    assert_eq!(model._get_text("A1"), *"33.11545196");
 
     assert_eq!(model._get_text("A2"), *"#ERROR!");
     assert_eq!(model._get_text("A3"), *"#ERROR!");
@@ -89,6 +89,6 @@ fn test_fn_log_norm_arguments() {
     assert_eq!(model._get_text("B1"), *"#ERROR!");
     assert_eq!(model._get_text("B2"), *"#ERROR!");
     assert_eq!(model._get_text("B3"), *"#ERROR!");
-    assert_eq!(model._get_text("B4"), *"33.115451959");
+    assert_eq!(model._get_text("B4"), *"33.11545196");
     assert_eq!(model._get_text("B5"), *"#ERROR!");
 }

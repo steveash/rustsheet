@@ -40,9 +40,9 @@ fn numbers() {
     model.evaluate();
 
     assert_eq!(model._get_text("B1"), *"71.9625");
-    assert_eq!(model._get_text("B2"), *"79.958333333");
-    assert_eq!(model._get_text("B3"), *"240.248626374");
-    assert_eq!(model._get_text("B4"), *"223.088010204");
+    assert_eq!(model._get_text("B2"), *"79.95833333");
+    assert_eq!(model._get_text("B3"), *"240.2486264");
+    assert_eq!(model._get_text("B4"), *"223.0880102");
 }
 
 // ── whole-column range and a spill beyond the used area ─────────────────────

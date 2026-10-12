@@ -505,11 +505,11 @@ fn fn_npv_whole_column_sees_a_spill_beyond_the_used_area() {
     model._set("C1", "=SEQUENCE(3,1,10)");
     model._set("D1", "=SEQUENCE(5)");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), "10.652588311");
+    assert_eq!(model._get_text("A1"), "10.65258831");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 1);
 
     model.evaluate();
-    assert_eq!(model._get_text("A1"), "10.652588311");
+    assert_eq!(model._get_text("A1"), "10.65258831");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
 }
 

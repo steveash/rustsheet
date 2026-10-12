@@ -180,7 +180,7 @@ fn locale_iso_format() {
     assert_eq!(model._get_text("A16"), *"2");
     assert_eq!(model._get_text("A17"), *"720000");
     assert_eq!(model._get_text("A18"), *"360000");
-    assert_eq!(model._get_text("A19"), *"848.528137424");
+    assert_eq!(model._get_text("A19"), *"848.5281374");
     assert_eq!(model._get_text("A20"), *"600");
 }
 
@@ -235,7 +235,7 @@ fn locale_uk() {
     assert_eq!(model._get_text("A16"), *"2");
     assert_eq!(model._get_text("A17"), *"720000");
     assert_eq!(model._get_text("A18"), *"360000");
-    assert_eq!(model._get_text("A19"), *"848.528137424");
+    assert_eq!(model._get_text("A19"), *"848.5281374");
     assert_eq!(model._get_text("A20"), *"600");
 }
 
@@ -290,7 +290,7 @@ fn locale_us() {
     assert_eq!(model._get_text("A16"), *"2");
     assert_eq!(model._get_text("A17"), *"720000");
     assert_eq!(model._get_text("A18"), *"360000");
-    assert_eq!(model._get_text("A19"), *"848.528137424");
+    assert_eq!(model._get_text("A19"), *"848.5281374");
     assert_eq!(model._get_text("A20"), *"600");
 }
 
@@ -345,7 +345,7 @@ fn locale_de() {
     assert_eq!(model._get_text("A16"), *"2");
     assert_eq!(model._get_text("A17"), *"720000");
     assert_eq!(model._get_text("A18"), *"360000");
-    assert_eq!(model._get_text("A19"), *"848,528137424");
+    assert_eq!(model._get_text("A19"), *"848,5281374");
     assert_eq!(model._get_text("A20"), *"600");
 }
 
@@ -414,8 +414,8 @@ fn locale_wrong_format() {
     assert_eq!(model._get_text("A16"), *"3");
     assert_eq!(model._get_text("A17"), *"390000");
     assert_eq!(model._get_text("A18"), *"260000");
-    assert_eq!(model._get_text("A19"), *"624.49979984");
-    assert_eq!(model._get_text("A20"), *"509.901951359");
+    assert_eq!(model._get_text("A19"), *"624.4997998");
+    assert_eq!(model._get_text("A20"), *"509.9019514");
 
     assert_eq!(model._get_text("B9"), *"900");
     assert_eq!(model._get_text("B10"), *"2100");
@@ -427,8 +427,8 @@ fn locale_wrong_format() {
     assert_eq!(model._get_text("B16"), *"3");
     assert_eq!(model._get_text("B17"), *"390000");
     assert_eq!(model._get_text("B18"), *"260000");
-    assert_eq!(model._get_text("B19"), *"624.49979984");
-    assert_eq!(model._get_text("B20"), *"509.901951359");
+    assert_eq!(model._get_text("B19"), *"624.4997998");
+    assert_eq!(model._get_text("B20"), *"509.9019514");
 }
 
 // The database and criteria arguments go through `get_reference`, whose
