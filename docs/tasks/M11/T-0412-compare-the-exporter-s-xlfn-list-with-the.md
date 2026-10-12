@@ -3,7 +3,7 @@ id: T-0412
 title: "Compare the exporter's _xlfn. list with the function catalog"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
