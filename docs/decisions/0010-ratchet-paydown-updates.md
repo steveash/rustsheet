@@ -53,7 +53,7 @@
   T-0300: lint debt shrinks by `clippy::doc_markdown`, `clippy::semicolon_if_nothing_returned` (engine,
   xlsx, python bindings) and `clippy::uninlined_format_args` (engine, xlsx); 8 entries removed
   (`check_lint_debt.py --update`).
-  T-1440: duplicated lines 6647 → 6641, already shrunk on main (`check_duplication.py --update`);
+  T-1440: duplicated lines 6647 → 6622, already shrunk on main (`check_duplication.py --update`);
   financial_bonds.rs 1367 → 1334 lines (the coupon day counts and the 1904 broken-schedule helpers moved to
   `financial/dates.rs`) (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
