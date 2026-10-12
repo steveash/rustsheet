@@ -253,3 +253,11 @@ Ours: Rust's shortest round-trip text ("80.02777777777777"; `ARRAYTOTEXT(1/3)` "
 "100000000000000000000").
 Status: VERIFIED (web)
 Tasks: T-1356
+
+## SEARCH folds case one character at a time
+Rule: SEARCH lowercases per character and never changes the text's length: a character whose full lowercase is longer (U+0130 "İ" is "i" + U+0307 in Unicode) is left as it is, so it neither shifts later positions nor matches "i".
+`SEARCH("x","İx")` is 2, `SEARCH("x","İİx")` is 3 (also with start 3), `SEARCH("i","İx")` and `SEARCH("i̇","İx")` are `#VALUE!`; `SEARCH("x","ẞx")` is 2 and `SEARCH("ss","ẞx")` is `#VALUE!`. `SEARCH("","")` and `SEARCH("","",1)` are `#VALUE!` (no start fits), `SEARCH("","abc")` is 1 and `SEARCH("","abc",4)` is `#VALUE!`.
+Evidence: probes/text-search-casefold-length A1-A13 (oracle: excel-graph, 2026-10-12, T-1296).
+Status: VERIFIED (excel-graph)
+Implemented in: `fold_case` (functions/text/position.rs).
+Tasks: T-1296

@@ -26,7 +26,7 @@ pub(super) fn find_element(
     // (probes/text-surrogate-positions A14-A26, B11-B15).
     let (find_text, within_text) = if is_search {
         // SEARCH is case insensitive
-        (find_text.to_lowercase(), within_text.to_lowercase())
+        (fold_case(&find_text), fold_case(&within_text))
     } else {
         (find_text, within_text)
     };
@@ -51,6 +51,22 @@ pub(super) fn find_element(
         // Text not found
         None => Err(Error::VALUE),
     }
+}
+
+/// Lowercases `text` one character at a time, leaving a character whose lowercase form is longer
+/// than one character as it is. Excel's SEARCH never changes the length of the text it counts in:
+/// `SEARCH("x","İx")` is 2 and `SEARCH("i","İx")` is #VALUE!, whereas Rust's `to_lowercase` turns
+/// U+0130 into "i" + U+0307 (probes/text-search-casefold-length A1, A2, A8, A12, A13).
+fn fold_case(text: &str) -> String {
+    text.chars()
+        .map(|c| {
+            let mut lower = c.to_lowercase();
+            match (lower.next(), lower.next()) {
+                (Some(single), None) => single,
+                _ => c,
+            }
+        })
+        .collect()
 }
 
 /// Finds the first instance of 'search_for' in text starting at char index start

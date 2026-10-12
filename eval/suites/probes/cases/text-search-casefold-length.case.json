@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1296 SEARCH positions when lowercasing changes a character's length (U+0130, U+1E9E), SEARCH of empty text, and FIND for contrast",
+  "tags": ["M2", "probe", "text"],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SEARCH(\"x\",\"İx\")",
+        "A2": "=SEARCH(\"i\",\"İx\")",
+        "A3": "=SEARCH(\"x\",\"ẞx\")",
+        "A4": "=SEARCH(\"\",\"\")",
+        "A5": "=SEARCH(\"\",\"\"&\"\",1)",
+        "A6": "=FIND(\"x\",\"İx\")",
+        "A7": "=SEARCH(\"ss\",\"ẞx\")",
+        "A8": "=SEARCH(\"i̇\",\"İx\")",
+        "A9": "=SEARCH(\"\",\"abc\")",
+        "A10": "=SEARCH(\"\",\"abc\",4)",
+        "A11": "=SEARCH(\"\",\"\",1)",
+        "A12": "=SEARCH(\"x\",\"İİx\")",
+        "A13": "=SEARCH(\"x\",\"İİx\",3)"
+      }
+    }
+  ]
+}

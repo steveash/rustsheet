@@ -439,6 +439,7 @@ C	probes/text-order-nbsp-space.case.json	333
 C	probes/text-result-limit-errors-refs.case.json	24
 C	probes/text-result-limit-errors.case.json	11
 C	probes/text-result-limit.case.json	24
+C	probes/text-search-casefold-length.case.json	13
 C	probes/text-surrogate-positions.case.json	68
 C	probes/timevalue-ampm-limits.case.json	44
 C	probes/timevalue-component-limits.case.json	72

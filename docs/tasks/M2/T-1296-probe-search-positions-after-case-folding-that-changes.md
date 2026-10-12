@@ -3,7 +3,7 @@ id: T-1296
 title: "Probe SEARCH positions after case-folding that changes length (U+0130) and SEARCH of empty text"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,6 @@ position (e.g. `SEARCH("x","İx")`). Also unprobed: `SEARCH("","")` (the engine 
 
 ## Out of scope
 -
+
+## Outcome
+Probed (probes/text-search-casefold-length, excel-graph). Excel folds case per character without changing length; `find_element` now uses `fold_case` instead of `to_lowercase`. The empty-text cases already matched. 5 probe cells fixed.
