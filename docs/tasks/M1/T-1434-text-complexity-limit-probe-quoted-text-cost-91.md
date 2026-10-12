@@ -43,6 +43,9 @@ docs/excel-semantics/number-formats.md "TEXT format code complexity limit"; code
   but `0`+122 quoted works / 123 fails while `d`+125 works. So the quoted cost depends on what precedes it (a
   placeholder vs a date token vs a color). Next hypothesis to test: the code is rebuilt into a normalized string
   (quoted text re-escaped, a placeholder followed by a literal getting a separator), with a byte budget.
-  Probe the same quoted string after `#`, `?`, `@`, `%`, `m` and `h`.
+  Round i did that: the longest quoted string is 125 after nothing, a date token or `@`; 124 after `%` or a color;
+  122 after a placeholder or an escaped character; 121 after `0.0` or `0 `. A plausible model is floor(4n/3) per
+  quoted run plus the usual costs, except that a date or text section, or a long quoted run, is cheaper. Pin it with
+  `d`/`0` + quoted + spaces at several lengths before coding.
 - Not done yet: the code changes (fourth-section `#VALUE!`, colon collapse, condition cost, error precedence over
-  arrays if it differs), and `make eval-baseline` for cases f, g and h.
+  arrays if it differs), and `make eval-baseline` for cases f to i.
