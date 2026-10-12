@@ -1,7 +1,7 @@
 use crate::arithmetic::{bcast_idx, flush_subnormal};
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
-use crate::reference_operators::{Ranges, RefArg};
+use crate::reference_operators::{Ranges, RefArg, MAX_AREA_CELLS, TOO_MANY_AREA_CELLS};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -275,6 +275,12 @@ impl Model {
         }
         let rows = lifted.iter().map(|na| na.dims().0).max().unwrap_or(0);
         let cols = lifted.iter().map(|na| na.dims().1).max().unwrap_or(0);
+        // A column against a row would build rows x cols nodes (`ROUND(A:A, 1:1)` is 1.7e10):
+        // bound the result like a multi-area argument (DEVIATION, decision 0014: references.md
+        // "Union area cap"; resource limit, CLAUDE.md directive 5).
+        if (rows as u64).saturating_mul(cols as u64) > MAX_AREA_CELLS {
+            return CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREA_CELLS.to_string());
+        }
         let result = (0..rows)
             .map(|i| {
                 (0..cols)

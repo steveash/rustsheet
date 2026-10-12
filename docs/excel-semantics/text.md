@@ -88,7 +88,18 @@ Implemented in: `fn_concat`/`fn_textjoin` in functions/text/concatenate.rs (`Con
 Tasks: T-0243, T-0262, T-0284, T-0285
 
 ## CONCAT joins an array argument element by element
-Rule: `CONCAT` of an array (a function result, not only a range) joins its elements row by row, like a range; `CONCAT(MID(INDEX(Data!B3:E8,0.1,0),7,0))` is "" (gen-m2/d0c29dd5c530e28c Calc!A246, excel-graph). The same lifting applies to the ROUND family: `ROUNDDOWN(array, num_digits)` returns an array, and an error in `num_digits` (`#DIV/0!`) wins (gen-m2/893302d6c5b99e2e Calc!A313; T-0222).
+Rule: `CONCAT` of an array (a function result, not only a range) joins its elements row by row, like a range; `CONCAT(MID(INDEX(Data!B3:E8,0.1,0),7,0))` is "".
+Evidence: gen-m2/d0c29dd5c530e28c Calc!A246 (excel-graph).
+Status: implemented
+Implemented in: functions/text/concatenate.rs (`fn_concat`)
+Tasks: T-0222
+
+## ROUND, ROUNDUP, ROUNDDOWN and TRUNC lift over arrays
+Rule: `ROUNDDOWN(array, num_digits)` returns an array, element-wise, and an error in `num_digits` (`#DIV/0!`) wins. Our lifted result is capped at `MAX_AREA_CELLS` cells: `ROUND(A:A,1:1)` is `#VALUE!` (DEVIATION, decision 0014: resource limit, directive 5).
+Evidence: gen-m2/893302d6c5b99e2e Calc!A313 (excel-graph).
+Status: implemented
+Implemented in: functions/math_and_trigonometry/mathematical.rs (`round_family`), cast.rs (`lift_numbers`)
+Tasks: T-0222
 
 ## TEXTJOIN with ignore_empty FALSE joins every cell of a whole column or row
 Rule: with ignore_empty FALSE every cell of a whole-column or whole-row argument adds a delimiter, however
