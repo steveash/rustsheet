@@ -157,8 +157,9 @@ The 11-character limit also applies from 1 on: the sign does not count, the deci
 and the value is rounded to fit, so decimals are cut to `11 - integer digits - 1`:
 `123456.123456789` → "123456.1235", `-123456.123456789` → "-123456.1235", `22.712470704` →
 "22.7124707", `1234567.891234` → "1234567.891", `100000.123456789` → "100000.1235",
-`12345.123456789` → "12345.12346", `1234.5678901234` → "1234.56789". Integers of 11 digits round
-half up to the integer: `9999999999.5` → "10000000000", `12345678901.5` → "12345678902", and
+`12345.123456789` → "12345.12346", `1234.5678901234` → "1234.56789". Values whose rounded integer part has
+11 digits round to the integer (half-up versus half-even is unprobed: both .5 cases land on an even
+result; TODO(T-1422) probe `12345678902.5`): `9999999999.5` → "10000000000", `12345678901.5` → "12345678902", and
 `99999999999.6` rounds up to 1E+11 and prints "1E+11" (the engine's 9-decimal form is wrong for
 all of these; T-1422).
 Evidence: poi/GeneralFormatTests.xlsx A13, A17, A18, A26-A28, A61; probes/number-text-exponent-digits

@@ -19,7 +19,7 @@ evidence (T-1225, docs/excel-semantics/number-formats.md): `123456.123456789` �
 `22.712470704` → "22.7124707", `9999999999.5` → "10000000000", `99999999999.6` → "1E+11".
 Failing cells: probes/text-general-ties-wide-fixed Calc!A4-A10, A15-A17. About 30 engine unit tests
 (e.g. test_convert, test_database) pin the 9-decimal form; update them to the oracle forms in the
-same PR. Mind the digit-count comparison against E notation after rounding.
+same PR. The engine prints `99999999999.6` as "99999999999.600006104" (binary noise), so this is not only a decimals-count problem. Probe the .5 tie (`12345678902.5`) before choosing a rounding mode. Mind the digit-count comparison against E notation after rounding.
 
 ## Acceptance criteria
 - [ ] probes/text-general-ties-wide-fixed has no known failures in eval/baseline/probes.txt (rerun `make eval-baseline`).
