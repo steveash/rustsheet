@@ -18,7 +18,7 @@ T-1375 made `format_number`'s date/time arm return #VALUE! over 255 characters, 
 
 ## Acceptance criteria
 - [x] A probe with oracle values lands, the assumption is corrected, and number-formats.md is updated (the engine change is T-1393).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -

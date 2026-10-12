@@ -216,7 +216,7 @@ Status: VERIFIED
 Tasks: T-0981
 
 ## TEXT format code complexity limit
-Rule: `TEXT` is `#VALUE!` when the format code is too long in a way that is not simply its character count (VERIFIED, probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b, excel-graph, T-1388; excel-desktop unprobed). Every first-pass cell `TEXT(1,REPT("d ",n))` for n = 20..250, and `REPT("yyyy ",n)` / `REPT("dddd ",n)` for n >= 20, is `#VALUE!`, though the result is far under 255 characters. Observed boundaries (the result has the same length as the format when it works):
+Rule: `TEXT` is `#VALUE!` when the format code is too long in a way that is not simply its character count (VERIFIED, probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b, excel-graph, T-1388; excel-desktop unprobed). Every first-pass cell `TEXT(1,REPT("d ",n))` for the probed n = 20, 30, 50, 80, 100, 126, 127, 200 and 250, and `REPT("yyyy ",n)` / `REPT("dddd ",n)` for n >= 20, is `#VALUE!`, though the result is far under 255 characters. Observed boundaries (the result has the same length as the format when it works):
 - Unquoted literal padding: `"d"&REPT(" ",k)` works up to a format of 82 characters (k=81) and is `#VALUE!` from 84 (k=83); `REPT("-",n)&"d"` and `&"0"` work at n=80 and fail at n=90.
 - Placeholder/literal pairs: `REPT("0 ",n)`, `REPT("d ",n)`, `REPT("d-",n)`, `REPT("0-",n)` and, for a text value, `REPT("@ ",n)` work to n=16 (32 characters) and fail at n=17. `REPT("0 ",17)&"d"` and a 17-pair numeric format on 1.5 fail too.
 - No limit seen for: a run of one placeholder (`REPT("0",200)` works; `REPT("d",40)` = "Sunday"), quoted literals (`REPT("""a"" ",17)` and `REPT("\a",30)` work), `REPT("0,",17)`.
