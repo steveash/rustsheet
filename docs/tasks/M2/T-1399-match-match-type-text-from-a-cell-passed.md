@@ -18,7 +18,7 @@ T-1313 made a text match_type read directly from a cell #REF! (`match_type_arg` 
 
 ## Acceptance criteria
 - [x] gen-m7/6db767d720c5b55a A5 (not committed; reproduced by probes/match-type-text-passthrough K1) passes; baseline updated.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
