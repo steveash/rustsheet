@@ -3,7 +3,7 @@ id: T-1230
 title: "Probe CELL(contents) of a multi-cell range: same-sheet vs other-sheet vs intersection (follow-up of T-1218)"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
