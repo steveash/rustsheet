@@ -208,9 +208,19 @@ impl SearchVector {
             let mid = lo + (hi - 1 - lo) / 2;
             // Each scan stays inside the live range, which at least halves
             // whenever a scan finds nothing, so all scans total O(n).
-            let Some(m) = (mid..hi.min(evaluated))
-                .find(|&index| value_kind(&self.values[index]) == Some(kind))
-            else {
+            // A descending search steps backward, an ascending one forward
+            // (docs/excel-semantics/lookup.md "MATCH descending search skips
+            // backward", probes/match-descending-argcheck J1-J8).
+            let of_kind = |index: &usize| value_kind(&self.values[*index]) == Some(kind);
+            let found = if descending {
+                (lo..=mid.min(evaluated.saturating_sub(1)))
+                    .rev()
+                    .filter(|_| evaluated > 0)
+                    .find(of_kind)
+            } else {
+                (mid..hi.min(evaluated)).find(of_kind)
+            };
+            let Some(m) = found else {
                 hi = mid;
                 continue;
             };
