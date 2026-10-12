@@ -4,7 +4,7 @@ title: "WORKDAY.INTL steps whole weeks instead of single days"
 milestone: M6
 lane: functions-date
 status: todo
-priority: P3
+priority: P2
 size: S
 tier: sonnet
 depends_on: []

@@ -43,3 +43,15 @@ fn leftmost_error_and_single_cell_ranges() {
     assert_eq!(model._get_text("A2"), *"#DIV/0!");
     assert_eq!(model._get_text("A3"), *"0.4375");
 }
+
+// Review of T-1235: a 3D-range weekend is unprobed (T-1428), so it keeps main's result.
+#[test]
+fn three_d_range_weekend_is_unchanged() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model._set("A1", "=NETWORKDAYS.INTL(1,30,Sheet1:Sheet2!B1:B3)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#REF!");
+}

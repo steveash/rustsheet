@@ -43,6 +43,6 @@ falls back to a number (pre-epoch date text stays `#VALUE!`). DATEDIF keeps its 
 before the unit's error); the inferred order is UNVERIFIED (T-1427). Remaining probe cells are the date arguments of
 EDATE, EOMONTH, WEEKNUM, WORKDAY(.INTL), NETWORKDAYS(.INTL), YEARFRAC over an array (T-1236) and G3/G4 (T-1237).
 Review notes: a single-cell range `weekend` (`NETWORKDAYS.INTL(1,30,C1:C1)`) and a 3D range in the lifted text/weekend
-arguments are unprobed and keep the old behavior (`#VALUE!` / first sheet); probe them before changing. Follow-ups:
+arguments are unprobed and keep the old behavior (`#VALUE!`; a 3D-range weekend is guarded so it never lifts over its first sheet); probe them before changing. Follow-ups:
 T-1295 (WORKDAY.INTL week stepping), T-1428 (3D ranges in the lifted arguments, DATEDIF's unit and DAYS360's method
 over an array, now `#N/IMPL!`).

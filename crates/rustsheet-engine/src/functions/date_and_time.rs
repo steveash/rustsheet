@@ -200,7 +200,7 @@ fn error_kind(result: &CalcResult) -> Error {
 }
 
 /// Saturday-Sunday weekend (pattern 1), Monday first.
-const DEFAULT_WEEKEND: [bool; 7] = [false, false, false, false, false, true, true];
+const DEFAULT_WEEKEND: [bool; 7] = WeekendPattern::SatSun.to_mask();
 
 /// A weekend argument: one mask, or one (possibly invalid) mask per element of a lifted
 /// range or array.
@@ -585,7 +585,8 @@ impl Model {
             return Ok(Weekend::One(DEFAULT_WEEKEND));
         };
         let elements = match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Range { left, right } if left != right => {
+            // A 3D range (two sheets) is unprobed (T-1428): never lift it over its first sheet.
+            CalcResult::Range { left, right } if left != right && left.sheet == right.sheet => {
                 self.evaluate_range(left, right, cell)?
             }
             CalcResult::Array(rows) => rows,
@@ -888,7 +889,7 @@ impl Model {
 
     /// A DATEDIF date given as text (other elements are kept): date text reads as DATEVALUE reads
     /// it, so a 1904 workbook counts it from 1904-01-01 (T-1330); plain number text is that number
-    /// (probes/date-argument-modes F89); any other text is #VALUE!, as `get_date_serial` had it.
+    /// (probes/date-argument-modes F89); any other text is #VALUE! (the behaviour before lifting).
     fn datedif_date_text(&self, node: ArrayNode) -> ArrayNode {
         let ArrayNode::String(s) = node else {
             return node;
@@ -1102,7 +1103,7 @@ impl Model {
             Ok(f) => f.floor() as i32,
             Err(s) => return s,
         };
-        let weekend = [false, false, false, false, false, true, true];
+        let weekend = DEFAULT_WEEKEND;
         let holiday_set = match self.get_holiday_set(args.get(2), cell) {
             Ok(h) => h,
             Err(e) => return e,

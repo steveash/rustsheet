@@ -358,7 +358,7 @@ Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE a
 DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. Still `#N/IMPL!` (T-1236) for an array literal in
 a date argument: EDATE, EOMONTH, WEEKNUM, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL, YEARFRAC;
 `DATE(2024,45031.5,1)` is a number (1415864). In a 1904 workbook DATEDIF reads date text as DATEVALUE does (from
-1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330).
+1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330; unprobed in 1904, T-1416).
 Status: VERIFIED
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
 
