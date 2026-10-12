@@ -56,7 +56,7 @@ pub(super) fn parse_time_string(
     ];
     for p in patterns_dt {
         if let Ok(dt) = NaiveDateTime::parse_from_str(text, p) {
-            return Some(crate::utils::time_of_day_from_datetime(dt));
+            return crate::utils::time_of_day_from_datetime(dt, date_system);
         }
     }
     // "date clock" text the patterns above do not cover (fractional seconds, hours past 23,

@@ -344,12 +344,18 @@ pub fn get_all_timezones() -> Vec<String> {
 /// the float error of the subtraction: `TIMEVALUE("7/7/2026 4:35 PM")` = 0.69097222221898846, not
 /// 16:35 / 24 (TIMEVALUE.xlsx B18, Excel-cached). Only the "date time" patterns have this evidence;
 /// time-only and RFC 3339 text keep the exact fraction.
-pub(crate) fn time_of_day_from_datetime(dt: chrono::NaiveDateTime) -> f64 {
+pub(crate) fn time_of_day_from_datetime(
+    dt: chrono::NaiveDateTime,
+    date_system: crate::types::DateSystem,
+) -> Option<f64> {
     use chrono::{Datelike, Timelike};
     let days = dt.date().num_days_from_ce() - crate::constants::EXCEL_DATE_BASE;
+    // The fraction comes from the workbook's serial, and a day before the 1904 epoch is no date
+    // (probes/date-system-1904-timevalue A2, A5).
+    let days = date_system.serial_from_1900_serial(i64::from(days))?;
     let seconds = dt.time().num_seconds_from_midnight();
-    let serial = f64::from(days) + f64::from(seconds) / 86_400.0;
-    serial - serial.floor()
+    let serial = days as f64 + f64::from(seconds) / 86_400.0;
+    Some(serial - serial.floor())
 }
 
 #[cfg(test)]
