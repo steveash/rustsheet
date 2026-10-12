@@ -1,0 +1,43 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ECMA.CEILING (T-1301): Excel stores it as `_xlfn.ECMA.CEILING`; the bare name in a file makes Graph reject the workbook (createSession 501 unsupportedWorkbook). Compared against two-argument CEILING.",
+  "tags": [
+    "M2",
+    "probe",
+    "math"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=_xlfn.ECMA.CEILING(2.5,2)",
+        "A2": "=_xlfn.ECMA.CEILING(-2.5,-2)",
+        "A3": "=_xlfn.ECMA.CEILING(-2.5,2)",
+        "A4": "=_xlfn.ECMA.CEILING(2.5,-2)",
+        "A5": "=_xlfn.ECMA.CEILING(2.5,0)",
+        "A6": "=_xlfn.ECMA.CEILING(0,2)",
+        "A8": "=_xlfn.ECMA.CEILING(\"2.5\",2)",
+        "A9": "=_xlfn.ECMA.CEILING(TRUE,2)",
+        "A10": "=_xlfn.ECMA.CEILING(2.5,\"a\")",
+        "A11": "=_xlfn.ECMA.CEILING(2.5,2)+0",
+        "A13": "=CEILING(-2.5,2)",
+        "A14": "=CEILING(2.5,-2)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A8",
+    "Sheet1!A9",
+    "Sheet1!A10",
+    "Sheet1!A11",
+    "Sheet1!A13",
+    "Sheet1!A14"
+  ]
+}
