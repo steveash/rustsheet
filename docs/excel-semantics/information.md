@@ -209,7 +209,7 @@ Tasks: T-1088, T-1218
 Rule: ISFORMULA is TRUE for a cell holding a formula, whatever it returns (`=1+1`, `=""`, `=1/0`), and FALSE for a constant number, a constant text and a blank cell. A spill anchor (`=SEQUENCE(3)`) is TRUE and a spilled child (the cell below it) is FALSE. A cell on another sheet works the same, and the reference may come from INDIRECT, OFFSET or INDEX; `ISFORMULA(Data!D1:D3)` lifts.
 Evidence: probes/ifna-isformula-edges Calc!B1:B13 (oracle: excel-graph, 2026-10-12, T-1279).
 Status: VERIFIED (excel-graph)
-Ours: matches except `ISFORMULA(INDEX(range,1))` (#VALUE!, Calc!B12; T-1453).
+Ours: matches except `ISFORMULA(INDEX(range,1))`, which Excel gives as TRUE and we give as #VALUE! (Calc!B12; T-1453).
 Tasks: T-1279, T-1453
 
 ## CELL("contents", ref) reads the formula's own sheet (excel-graph)
