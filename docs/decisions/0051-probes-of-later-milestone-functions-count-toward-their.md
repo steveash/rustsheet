@@ -1,7 +1,7 @@
 # 0051 — Probes of later-milestone functions count toward their own milestone, not M2
 
 - **Status:** accepted (2026-10-12, owner answer to decision 0043's open question; measurement in
-  T-1416). Amends decision 0043, item 2.
+  T-1423). Amends decision 0043, item 2.
 - **Context:**
   - Decision 0043 left an open owner question: should probes of functions whose milestone is
     after M2 count toward M2 exit, or toward each function's own milestone? Until the owner
@@ -136,7 +136,7 @@
       half their cells are operator coercion of time text (`0+A`) or near-zero snapping, which
       are M1/M2 subjects.
     - `subtotal-reference-operands-d` stays M2 for its SUBTOTAL reference-operand cells, so its
-      one F line, the M9 GEOMEAN cell H28 (`=GEOMEAN(5,7)`), still counts toward M2 exit. T-1416
+      one F line, the M9 GEOMEAN cell H28 (`=GEOMEAN(5,7)`), still counts toward M2 exit. T-1423
       adds per-cell overrides to the mapping file so that cell can move to M9.
     - Deliberate keeps with no F line today: `name-body-length-*` (7, name-body limits that
       agents and the xlsx reader share), `subnormal-sumsq-sumproduct-edges` and
@@ -149,7 +149,7 @@
     - `availability-17` A4, GROUPBY (M7);
     - `availability-30` A3, PIVOTBY (M7);
     - `function-name-forms` A7, FILTERXML (M5).
-  - Until T-1416 lands, the steward counts the F lines from the repository root with this
+  - Until T-1423 lands, the steward counts the F lines from the repository root with this
     command. It prints one count per assigned milestone:
 
     ```
@@ -163,7 +163,7 @@
   - docs/milestones.md: the M2 exit criterion cites this record, and M5–M11 each gain the probe
     criterion. `.claude/skills/steward/SKILL.md` ("Frozen probe lists") reports the M0–M2 count,
     not the whole suite's, when it chooses the Critical lane.
-  - T-1416 (harness, M2) makes `make eval` report scored cells, bit-exact cells, deviations and
+  - T-1423 (harness, M2) makes `make eval` report scored cells, bit-exact cells, deviations and
     known failures for each assigned milestone, using rules 1–5 above. T-1146's per-list report
     stays as it is.
   - M2's finish line no longer moves with later-milestone probes: 74 F lines today, not 2,881.
