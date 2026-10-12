@@ -115,9 +115,11 @@ C	probes/criteria-padded-text.case.json	14
 C	probes/date-argument-modes.case.json	168
 C	probes/date-clock-text-length-limit.case.json	36
 C	probes/date-huge-month-day.case.json	63
+C	probes/date-system-1900-coupon-bound.case.json	140
 C	probes/date-system-1900-financial-daycount.case.json	40
 C	probes/date-system-1900-negatives.case.json	18
 C	probes/date-system-1904-clock-text.case.json	13
+C	probes/date-system-1904-coupon-bound.case.json	140
 C	probes/date-system-1904-financial-daycount.case.json	40
 C	probes/date-system-1904-financial-shift.case.json	36
 C	probes/date-system-1904-financial.case.json	44
@@ -201,6 +203,7 @@ C	probes/geomean-stored-3ulps-low.case.json	9
 C	probes/groupby-pivotby.case.json	1432
 C	probes/if-index-ref-args-aggregates.case.json	54
 C	probes/iferror-blank-value.case.json	23
+C	probes/ifna-isformula-edges.case.json	40
 C	probes/ifs-array-criteria-edges.case.json	22
 C	probes/ifs-array-criteria.case.json	39
 C	probes/ifs-legacy-sumproduct.case.json	33
@@ -571,6 +574,7 @@ F	probes/date-argument-modes.case.json	Sheet1!G60
 F	probes/date-argument-modes.case.json	Sheet1!G62
 F	probes/date-argument-modes.case.json	Sheet1!G66
 F	probes/date-argument-modes.case.json	Sheet1!G68
+F	probes/date-system-1900-coupon-bound.case.json	S!A20
 F	probes/date-system-1900-financial-daycount.case.json	S!A1
 F	probes/date-system-1900-financial-daycount.case.json	S!A19
 F	probes/date-system-1900-financial-daycount.case.json	S!A2
@@ -593,7 +597,6 @@ F	probes/date-system-1904-financial.case.json	S!A27
 F	probes/date-system-1904-financial.case.json	S!A29
 F	probes/date-system-1904-financial.case.json	S!A30
 F	probes/date-system-1904-financial.case.json	S!A32
-F	probes/date-system-1904-financial.case.json	S!A43
 F	probes/db-argument-modes.case.json	Calc!C11
 F	probes/db-argument-modes.case.json	Calc!C12
 F	probes/db-argument-modes.case.json	Calc!C13
@@ -2563,6 +2566,7 @@ F	probes/groupby-pivotby.case.json	P!Z78
 F	probes/groupby-pivotby.case.json	P!Z97
 F	probes/groupby-pivotby.case.json	P!Z98
 F	probes/groupby-pivotby.case.json	P!Z99
+F	probes/ifna-isformula-edges.case.json	Calc!B12
 F	probes/index-lifted-edge-cases.case.json	Sheet1!H131
 F	probes/index-lifted-edge-cases.case.json	Sheet1!I131
 F	probes/index-lifted-edge-cases.case.json	Sheet1!J131

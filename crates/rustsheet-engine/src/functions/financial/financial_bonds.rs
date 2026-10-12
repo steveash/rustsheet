@@ -2,6 +2,11 @@ use chrono::{Datelike, NaiveDate};
 
 use crate::formatter::dates::shift_months;
 
+use super::dates::{
+    actual_days, basis_days, broken_schedule_days, broken_schedule_error, days_30_360_us,
+    last_day_of_feb, BROKEN_SCHEDULE_PCD,
+};
+
 use crate::{
     calc_result::CalcResult,
     constants::EXCEL_DATE_BASE,
@@ -16,72 +21,6 @@ use crate::{
 
 fn naivedate_to_serial(d: NaiveDate) -> i64 {
     (d.num_days_from_ce() - EXCEL_DATE_BASE) as i64
-}
-
-fn last_day_of_feb(year: i32) -> u32 {
-    if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 {
-        29
-    } else {
-        28
-    }
-}
-
-// Days d1→d2 via the US (NASD) 30/360 convention (basis 0).
-//
-// Port of `dateDiff360Us` with the `ModifyStartDate` method from
-// ExcelFinancialFunctions (the variant used by `DaysBetween` in the
-// Numerator position). The order matters: the `day == 31 → 30` adjustment for
-// the end date tests the *original* start day, before the start day is itself
-// normalised.
-fn days_30_360_us(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    let y1 = d1.year();
-    let m1 = d1.month() as i32;
-    let mut day1 = d1.day() as i32;
-    let y2 = d2.year();
-    let m2 = d2.month() as i32;
-    let mut day2 = d2.day() as i32;
-
-    let start_is_feb_last = m1 == 2 && d1.day() == last_day_of_feb(y1);
-    let end_is_feb_last = m2 == 2 && d2.day() == last_day_of_feb(y2);
-
-    if end_is_feb_last && start_is_feb_last {
-        day2 = 30;
-    }
-    if day2 == 31 && day1 >= 30 {
-        day2 = 30;
-    }
-    if day1 == 31 {
-        day1 = 30;
-    }
-    if start_is_feb_last {
-        day1 = 30;
-    }
-    (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
-}
-
-// Days d1→d2 via the EU 30/360 convention (basis 4).
-fn days_30_360_eu(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    let y1 = d1.year();
-    let m1 = d1.month() as i32;
-    let day1 = (d1.day() as i32).min(30);
-    let y2 = d2.year();
-    let m2 = d2.month() as i32;
-    let day2 = (d2.day() as i32).min(30);
-    (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
-}
-
-fn actual_days(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    (d2 - d1).num_days() as f64
-}
-
-// Basis-aware days from d1 to d2.
-fn basis_days(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
-    match basis {
-        0 => days_30_360_us(d1, d2),
-        1..=3 => actual_days(d1, d2),
-        4 => days_30_360_eu(d1, d2),
-        _ => 0.0,
-    }
 }
 
 // ============================================================
@@ -766,14 +705,9 @@ impl Model {
                 "rate and yld must be >= 0".to_string(),
             );
         }
-        if settlement >= maturity {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "settlement must be before maturity".to_string(),
-            );
+        if let Err(e) = self.check_bond_dates(settlement, maturity, cell) {
+            return e;
         }
-
         let n = match coupon_count(settlement, maturity, frequency) {
             Ok(v) => v as f64,
             Err(e) => return map_date_err(e, cell),
@@ -882,14 +816,9 @@ impl Model {
                 "rate and yld must be >= 0; redemption must be > 0".to_string(),
             );
         }
-        if settlement >= maturity {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "settlement must be before maturity".to_string(),
-            );
+        if let Err(e) = self.check_bond_dates(settlement, maturity, cell) {
+            return e;
         }
-
         match compute_price(
             settlement, maturity, rate, yld, redemption, frequency, basis,
         ) {
@@ -946,14 +875,9 @@ impl Model {
                 "pr and redemption must be > 0".to_string(),
             );
         }
-        if settlement >= maturity {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "settlement must be before maturity".to_string(),
-            );
+        if let Err(e) = self.check_bond_dates(settlement, maturity, cell) {
+            return e;
         }
-
         match compute_yield_from_price(pr, settlement, maturity, rate, redemption, frequency, basis)
         {
             Ok(y) => CalcResult::Number(y),
@@ -1268,6 +1192,9 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
+        if self.coupon_schedule_breaks(maturity) {
+            return broken_schedule_days(BROKEN_SCHEDULE_PCD, settlement, basis, cell);
+        }
         match coupon_days_a(settlement, maturity, frequency, basis) {
             Ok(v) => CalcResult::Number(v),
             Err(e) => map_date_err(e, cell),
@@ -1281,6 +1208,10 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
+        // Bases 0, 2, 3 and 4 keep their fixed period length (J1-J8).
+        if basis == 1 && self.coupon_schedule_breaks(maturity) {
+            return broken_schedule_days(BROKEN_SCHEDULE_PCD, maturity, basis, cell);
+        }
         match coupon_days_e(settlement, maturity, frequency, basis) {
             Ok(v) => CalcResult::Number(v),
             Err(e) => map_date_err(e, cell),
@@ -1294,6 +1225,9 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
+        if self.coupon_schedule_breaks(maturity) {
+            return broken_schedule_days(settlement, maturity, basis, cell);
+        }
         let next = match next_coupon_date(settlement, maturity, frequency) {
             Ok(v) => v,
             Err(e) => return map_date_err(e, cell),
@@ -1333,6 +1267,9 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
+        if self.coupon_schedule_breaks(maturity) {
+            return self.financial_date_result(maturity);
+        }
         match next_coupon_date(settlement, maturity, frequency) {
             Ok(serial) => self.financial_date_result(serial),
             Err(e) => map_date_err(e, cell),
@@ -1346,6 +1283,9 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
+        if self.coupon_schedule_breaks(maturity) {
+            return broken_schedule_error(cell);
+        }
         match coupon_count(settlement, maturity, frequency) {
             Ok(n) => CalcResult::Number(n as f64),
             Err(e) => map_date_err(e, cell),
@@ -1359,6 +1299,9 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
+        if self.coupon_schedule_breaks(maturity) {
+            return self.financial_date_result(BROKEN_SCHEDULE_PCD);
+        }
         match prev_coupon_date(settlement, maturity, frequency) {
             Ok(serial) => self.financial_date_result(serial),
             Err(e) => map_date_err(e, cell),
