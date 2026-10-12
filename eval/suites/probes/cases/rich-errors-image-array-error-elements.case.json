@@ -1,0 +1,32 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "IMAGE with an error element inside a sizing/height/width array (T-1417)",
+ "tags": [
+  "M1",
+  "probe",
+  "image",
+  "T-1417"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{0,#DIV/0!}))",
+    "A5": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{#DIV/0!,0}))",
+    "A9": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{#N/A,#DIV/0!}))",
+    "A13": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",{0,#DIV/0!}))",
+    "A17": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",3,{5,#DIV/0!}))",
+    "A21": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",3,5,{5,#DIV/0!}))",
+    "A25": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",3,{5,#DIV/0!}))",
+    "A29": "=ERROR.TYPE(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",3,5,{5,#DIV/0!}))",
+    "A33": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{0,#N/A},{5,5}))",
+    "A37": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{#DIV/0!,0},{5,#N/A}))",
+    "A41": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{9,#DIV/0!}))",
+    "A45": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",#DIV/0!))",
+    "A49": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",3,#DIV/0!))",
+    "A53": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",{#DIV/0!}))"
+   }
+  }
+ ],
+ "expected": {}
+}

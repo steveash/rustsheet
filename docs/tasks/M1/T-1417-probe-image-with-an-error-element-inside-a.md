@@ -3,7 +3,7 @@ id: T-1417
 title: "Probe IMAGE with an error element inside a sizing/height/width array"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,3 +24,8 @@ T-1370 lifts array options element by element (`Model::image_grid`, functions/in
 
 ## Out of scope
 -
+
+## Outcome
+Probe `rich-errors-image-array-error-elements` (14 formulas, 25 cells, excel-graph) shows an error element inside a
+`sizing`/`height`/`width` array propagates as itself per element (first option error wins), not `#VALUE!`.
+`Model::image_grid` now does this; `information.md` is VERIFIED. Eval delta: probes +14 cells passing.

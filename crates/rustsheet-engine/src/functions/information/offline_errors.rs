@@ -194,6 +194,17 @@ impl Model {
                             else {
                                 return ArrayNode::Error(Error::NA);
                             };
+                            // An error element propagates as itself, the first option in argument
+                            // order winning (probes/rich-errors-image-array-error-elements, T-1417);
+                            // a `source` error still wins over all of them.
+                            if let ArrayNode::Error(_) = source {
+                                return ArrayNode::Error(image_error(&source, false));
+                            }
+                            if let Some(CalcResult::Error { error, .. }) =
+                                picked.iter().find(|option| option.is_error())
+                            {
+                                return ArrayNode::Error(error.clone());
+                            }
                             ArrayNode::Error(image_error(&source, image_options_valid(&picked)))
                         })
                         .collect()
