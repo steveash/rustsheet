@@ -123,18 +123,23 @@ stays inside SINGLE's own parentheses:
 | `=SUM((Z1:Z2))` | `SUM((Z1:Z2))` |
 | `=(1)+((2))` | `(1)+((2))` |
 | `=@(Z1+(Z2))` | `_xlfn.SINGLE((Z1+(Z2)))` |
+| `=@(A1:A3)` | `_xlfn.SINGLE((A1:A3))` |
+| `=@((A1:A3))` | `_xlfn.SINGLE(((A1:A3)))` |
+| `=SIN(@(A1:A3))` | `SIN(_xlfn.SINGLE((A1:A3)))` |
+| `=SIN(@((A1:A3)))` | `SIN(_xlfn.SINGLE(((A1:A3))))` |
+| `=@A1:A3` (no group) | `A1:A3` |
 
 The Graph range API reads the formulas back exactly as entered.
 Evidence: formulas entered through the Graph range API and the file Excel for the web saved
 (excel-graph, 2026-10-11, T-1244).
 Ours: export prints from the parse tree, which keeps a written group as a `Node::Group` (T-1340), so every shape
 above is stored as written; the `@` operand's group is the `@` node's `Group` child, printed inside SINGLE's own
-parentheses (T-1343). Import of `_xlfn.SINGLE((x))` prints `@(x)` back. Not probed: whether Excel stores a redundant
-`@` with a written group (`=@(A1:A3)` in a scalar context) as `(A1:A3)`; the engine keeps it as
-`_xlfn.SINGLE((A1:A3))`, which round-trips (UNVERIFIED).
+parentheses (T-1343). Import of `_xlfn.SINGLE((x))` prints `@(x)` back. A `@` with a written group is never dropped as redundant, even in a scalar context (`=SIN(@(A1:A3))`);
+only the group-less `@A1:A3` loses its `@`. The engine does the same (test_implicit_intersection_export.rs).
+Evidence for the `A1:A3` rows: same method, excel-graph, 2026-10-12, T-1398, sheet1.xml `C1`..`C5`.
 Status: VERIFIED (web)
 Implemented in: expressions/parser/stringify.rs (`Group`, T-1340; `_xlfn.SINGLE((x))`, T-1343).
-Tasks: T-1244, T-1340, T-1343
+Tasks: T-1244, T-1340, T-1343, T-1398
 
 ## LAMBDA optional parameters are stored `_xlop.`
 Rule: Excel stores an optional LAMBDA parameter `[y]` as `_xlop.y`, brackets dropped, and every use of

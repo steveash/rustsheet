@@ -269,6 +269,9 @@ fn written_parentheses_are_exported_as_excel_stores_them() {
         ("SUM((Z1:Z2))", "SUM((Z1:Z2))"),
         ("(1)+((2))", "(1)+((2))"),
         ("@(Z1+(Z2))", "_xlfn.SINGLE((Z1+(Z2)))"),
+        ("@(Z1:Z3)", "_xlfn.SINGLE((Z1:Z3))"),
+        ("@((Z1:Z3))", "_xlfn.SINGLE(((Z1:Z3)))"),
+        ("SIN(@(Z1:Z3))", "SIN(_xlfn.SINGLE((Z1:Z3)))"),
     ];
     for (typed, stored) in cases {
         let t = parser.parse_cell_formula(typed, &cell_reference);
