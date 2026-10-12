@@ -9,7 +9,7 @@ use crate::{
 use super::{
     date_text::{parse_date, CurrentYear},
     dates::{excel_serial_to_ymd, negative_serial_allowed},
-    parser::{ParsePart, Parser, TextToken},
+    parser::{GeneralPart, ParsePart, Parser, TextToken},
 };
 
 pub struct Formatted {
@@ -211,8 +211,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
     // you must include a semicolon for each of the missing sections of code.
     // You can use the ampersand (&) text operator to join, or concatenate, two values.
     let mut value = value_original;
+    let general = ParsePart::General(GeneralPart {});
     let part;
     match parts.len() {
+        // A single text section (`@` in it) does not apply to numbers, which print in General:
+        // `TEXT(1,"@""aaa""")` is "1" (probes/text-format-length-limit-i A19:A26, T-1434).
+        1 if section_tokens(&parts[0])
+            .is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw))) =>
+        {
+            part = &general;
+        }
         1 => {
             part = &parts[0];
         }
