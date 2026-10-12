@@ -185,6 +185,7 @@ match_type inside it is `#VALUE!` and `INDEX(A5:B7,NA(),3)` is `#N/A` (the row e
 out-of-range column, which alone is `#REF!`).
 Evidence: eval/suites/probes/cases/match-descending-argcheck.case.json J1–J20 (oracle: excel-graph,
 2026-10-10, T-1305); gen-m2/f7e6d351c8538ef5 Calc!A334, b4392a6514a36ade Calc!A277, 04cfd82f54dbc2b2 Calc!A81, f9d4df4efdfbcbd5 Calc!A14.
+Implemented in: `fn_match` / `match_type_arg` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs` (Rule 2: non-numeric text from a cell only; numeric text and booleans in the cell are unprobed).
 Status: VERIFIED
 Tasks: T-1305, T-1312, T-1313
 

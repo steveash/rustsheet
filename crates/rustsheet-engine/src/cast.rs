@@ -10,7 +10,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     formatter::format::parse_formatted_number,
-    functions::math_and_trigonometry::array_size::check_range_size,
+    functions::math_and_trigonometry::array_size::{check_array_size, check_range_size},
     model::Model,
 };
 
@@ -275,6 +275,11 @@ impl Model {
         }
         let rows = lifted.iter().map(|na| na.dims().0).max().unwrap_or(0);
         let cols = lifted.iter().map(|na| na.dims().1).max().unwrap_or(0);
+        // Bounds the broadcast result (`ROUND(A:A, 1:1)`): DEVIATION, arrays.md "Array results
+        // above 1,048,576 cells".
+        if let Some((error, message)) = check_array_size(rows, cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
         let result = (0..rows)
             .map(|i| {
                 (0..cols)
