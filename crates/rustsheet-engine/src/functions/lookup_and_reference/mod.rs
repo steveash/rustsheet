@@ -152,7 +152,8 @@ impl Model {
     /// descending search skips backward", probes/match-descending-argcheck J9-J20; T-1313).
     fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
         // IF, IFS, SWITCH and LET hand back the cell they pick, as CHOOSE does
-        // (probes/match-type-text-passthrough K1:K9); IFERROR gives its value.
+        // (probes/match-type-text-passthrough K1:K9); IFERROR gives its value. MATCH-only until
+        // there is evidence for aggregates; sharing the dispatch is T-1452.
         let value = match node.ungrouped() {
             Node::FunctionKind {
                 kind: Function::If,

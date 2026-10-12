@@ -351,11 +351,6 @@ impl Model {
         CalcResult::Array(output)
     }
 
-    /// =IFS(condition1, value, [condition, value]*). An array or range condition lifts
-    /// IFS element by element over it and the arguments after it, broadcast as the element-wise
-    /// operators do: `IFS(A1:B2>1,5)` is `{#N/A,5;5,5}` (probes/ifs-switch-array-values M1, M3;
-    /// docs/excel-semantics/logic.md). A scalar condition keeps a range value a reference:
-    /// `SUM(IFS(TRUE,A1:B2))` is 10.
     /// A chosen branch as the reference it is (`as_reference`) or as a value.
     pub(crate) fn evaluate_node_as(
         &mut self,
@@ -370,6 +365,11 @@ impl Model {
         }
     }
 
+    /// =IFS(condition1, value, [condition, value]*). An array or range condition lifts
+    /// IFS element by element over it and the arguments after it, broadcast as the element-wise
+    /// operators do: `IFS(A1:B2>1,5)` is `{#N/A,5;5,5}` (probes/ifs-switch-array-values M1, M3;
+    /// docs/excel-semantics/logic.md). A scalar condition keeps a range value a reference:
+    /// `SUM(IFS(TRUE,A1:B2))` is 10.
     pub(crate) fn fn_ifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.ifs_impl(args, cell, false)
     }
