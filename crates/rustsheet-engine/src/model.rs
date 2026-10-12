@@ -2261,9 +2261,9 @@ impl Model {
                 }
 
                 //  We try to parse as number
-                let year = || self.current_year();
+                let (year, ds) = (|| self.current_year(), self.workbook.settings.date_system);
                 if let Ok((v, number_format)) =
-                    parse_formatted_number(&value, &currencies, self.locale, &year)
+                    parse_formatted_number(&value, &currencies, self.locale, &year, ds)
                 {
                     if let Some(num_fmt) = number_format {
                         // Should not apply the format in the following cases:
