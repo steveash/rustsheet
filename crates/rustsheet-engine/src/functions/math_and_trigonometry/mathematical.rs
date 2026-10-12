@@ -190,8 +190,8 @@ impl Model {
         CalcResult::finite_number_or_num(flush_subnormal(result), cell)
     }
 
-    /// SUMIF(criteria_range, criteria, [sum_range])
-    /// if sum_range is missing then criteria_range will be used.
+    /// `SUMIF(criteria_range`, criteria, [`sum_range`])
+    /// if `sum_range` is missing then `criteria_range` will be used.
     ///
     /// The `criteria` argument may be a single value, a range or an array; in the
     /// latter two cases SUMIF spills one sum per criterion (see `Model::lift_criteria`).
@@ -205,7 +205,7 @@ impl Model {
         self.sumif(criteria_range, criteria, sum_range, cell)
     }
 
-    /// SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...)
+    /// `SUMIFS(sum_range`, `criteria_range1`, criteria1, [`criteria_range2`, criteria2], ...)
     pub(crate) fn fn_sumifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.sum_ifs(args, cell, true)
     }

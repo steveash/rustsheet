@@ -219,7 +219,7 @@ impl Model {
     }
 
     /// What a LET value or a LAMBDA argument binds. A reference stays a reference, a single
-    /// cell too (upstream MIN_MAX_extras.xlsx A16, MAX_MIN.xlsx H54), and so does one INDEX,
+    /// cell too (upstream `MIN_MAX_extras.xlsx` A16, `MAX_MIN.xlsx` H54), and so does one INDEX,
     /// XLOOKUP, TAKE, DROP or TRIMRANGE picks (T-1232), but VLOOKUP and HLOOKUP bind their value (probes/let-bind-reference-forms; a
     /// called `LET(f,INDEX(A1:A3,2),f(2))` is `#REF!`, let-name-call-refs H5). An argument that
     /// may stand for several areas is read in reference context, so a union stays its areas

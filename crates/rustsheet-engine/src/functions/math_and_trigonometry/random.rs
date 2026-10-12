@@ -54,7 +54,7 @@ impl Model {
     ///   * cols         – number of columns (default 1)
     ///   * min          – minimum value (default 0)
     ///   * max          – maximum value (default 1)
-    ///   * whole_number – FALSE = decimal, TRUE = integer (default FALSE)
+    ///   * `whole_number` – FALSE = decimal, TRUE = integer (default FALSE)
     pub(crate) fn fn_randarray(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 5 {
             return CalcResult::new_args_number_error(cell);

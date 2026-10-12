@@ -1,5 +1,5 @@
-//! AGGREGATE(function_num, options, ref1, [ref2], ...) and
-//! AGGREGATE(function_num, options, array, k).
+//! `AGGREGATE(function_num`, options, ref1, [ref2], ...) and
+//! `AGGREGATE(function_num`, options, array, k).
 //!
 //! AGGREGATE gathers the numbers its options keep and hands them, as an array, to the function
 //! it names (SUM, LARGE, PERCENTILE.INC, ...) as number arguments or an array, so every
@@ -129,7 +129,7 @@ impl Model {
         )
     }
 
-    /// One AGGREGATE call with function_num and options already evaluated.
+    /// One AGGREGATE call with `function_num` and options already evaluated.
     fn aggregate_scalar(
         &mut self,
         function: CalcResult,

@@ -165,7 +165,7 @@ fn load_columns(ws: &XmlNode) -> Result<Vec<Col>, XlsxError> {
                 custom_width,
                 style,
                 hidden,
-            })
+            });
         }
     }
     Ok(cols)
@@ -292,7 +292,7 @@ fn parse_reference(s: &str) -> Result<CellReferenceRC, ParseReferenceError> {
         match state {
             "sheet" => {
                 if ch == '!' {
-                    state = "col"
+                    state = "col";
                 } else {
                     sheet_name.push(ch);
                 }
