@@ -367,7 +367,7 @@ C	probes/rich-errors-arg-kinds.case.json	70
 C	probes/rich-errors-args.case.json	54
 C	probes/rich-errors-calc.case.json	10
 C	probes/rich-errors-field.case.json	5
-C	probes/rich-errors-image-array-error-elements.case.json	41
+C	probes/rich-errors-image-array-error-elements.case.json	95
 C	probes/rich-errors-image-array-options.case.json	61
 C	probes/rich-errors-image-sizing.case.json	58
 C	probes/rich-errors-image.case.json	15
