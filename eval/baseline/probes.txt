@@ -393,6 +393,7 @@ C	probes/subtotal-reference-operands-d.case.json	42
 C	probes/subtotal-reference-operands-e.case.json	36
 C	probes/subtotal-reference-operands-f.case.json	97
 C	probes/subtotal-reference-operands.case.json	40
+C	probes/subtotal-variance-one-vs-two-pass.case.json	64
 C	probes/sum-error-precedence.case.json	24
 C	probes/sum-long-text-args.case.json	11
 C	probes/sumif-edge-single-cell.case.json	15
