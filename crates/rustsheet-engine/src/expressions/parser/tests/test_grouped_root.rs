@@ -126,3 +126,11 @@ fn plain_parse_keeps_the_root_group() {
     let node = parser.parse("(A1-1)", &context());
     assert!(is_grouped(&node));
 }
+
+#[test]
+fn spaces_between_nested_parentheses_still_nest() {
+    let mut parser = parser();
+    let node = parser.parse("( (A1) )", &context());
+    assert!(matches!(node, Node::Group { levels: 2, .. }));
+    assert_eq!(to_english_localized_string(&node, &context()), "((A1))");
+}

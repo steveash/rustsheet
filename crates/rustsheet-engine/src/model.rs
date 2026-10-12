@@ -441,16 +441,6 @@ impl Model {
         self.parse_internal_with(|parser| parser.parse(body, context))
     }
 
-    /// Like [`Model::parse_internal_formula`], but keeps the grouped root, which Excel does not
-    /// snap (numbers.md "Near-zero snapping", T-1164); use it when the node is printed back.
-    pub(crate) fn parse_internal_cell_formula(
-        &mut self,
-        body: &str,
-        ctx: &CellReferenceRC,
-    ) -> Node {
-        self.parse_internal_with(|parser| parser.parse(body, ctx))
-    }
-
     fn parse_internal_with(&mut self, parse: impl FnOnce(&mut Parser) -> Node) -> Node {
         let locale = self.locale;
         let language = self.language;
@@ -482,7 +472,7 @@ impl Model {
         if let Node::ParseErrorKind { .. } = node {
             // The user's language could not parse it: it might already be in the
             // internal English form.
-            node = self.parse_internal_cell_formula(body, context);
+            node = self.parse_internal_formula(body, context);
         }
         if let Node::ParseErrorKind { .. } = node {
             return Err(format!("Invalid formula: '{formula}'"));

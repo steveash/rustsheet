@@ -166,7 +166,7 @@ impl Model {
                 // Defined-name formulas are stored internally in English, so
                 // they must be parsed with the English parser regardless of the
                 // user's active language.
-                match self.parse_internal_cell_formula(formula_body, &dummy_ref) {
+                match self.parse_internal_formula(formula_body, &dummy_ref) {
                     Node::LambdaDefKind { parameters, body } => {
                         ParsedDefinedName::LambdaDefinition(parameters, *body)
                     }
@@ -429,7 +429,7 @@ impl Model {
                 .formula
                 .strip_prefix('=')
                 .unwrap_or(&defined_name.formula);
-            let mut node = self.parse_internal_cell_formula(body, &context);
+            let mut node = self.parse_internal_formula(body, &context);
             let before = to_english_string(&node, &context);
             rename_sheet_in_node(&mut node, source_index, &new_name);
             let after = to_english_string(&node, &context);

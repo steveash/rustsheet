@@ -311,7 +311,10 @@ impl Model {
             if let Node::ParseErrorKind { .. } = node {
                 node = self.parse_internal_formula(formula_body, &dummy_ref);
             }
-            if !matches!(node, Node::LambdaDefKind { .. } | Node::ErrorKind(_)) {
+            if !matches!(
+                node.ungrouped(),
+                Node::LambdaDefKind { .. } | Node::ErrorKind(_)
+            ) {
                 return Err("Formula: Invalid defined name formula".to_string());
             }
         }
