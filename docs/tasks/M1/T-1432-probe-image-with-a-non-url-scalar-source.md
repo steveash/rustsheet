@@ -3,7 +3,7 @@ id: T-1432
 title: "Probe IMAGE with a non-URL scalar source beside an array alt_text or a scalar error option beside an array option"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
