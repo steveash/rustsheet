@@ -3,7 +3,7 @@ id: T-1435
 title: "1904 workbooks: date text coerced to a number, typed into a cell, and in criteria counts from 1904-01-01"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
