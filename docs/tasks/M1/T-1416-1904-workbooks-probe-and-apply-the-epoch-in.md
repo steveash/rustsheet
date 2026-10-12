@@ -3,7 +3,7 @@ id: T-1416
 title: "1904 workbooks: probe and apply the epoch in the remaining date readers (WEEKDAY, EDATE/EOMONTH, DATEDIF, date-text coercion, criteria, TODAY)"
 milestone: M1
 lane: functions-date
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -31,9 +31,16 @@ epoch (#NUM! today). Probe first in a `date_system: 1904` case (excel-probe skil
 evidence.
 
 ## Acceptance criteria
-- [ ] A 1904 probe case covers each reader above; dates.md "The 1904 date system" records the results.
-- [ ] The engine follows the evidence, reusing `DateSystem::to_1900_serial`/`serial_from_1900_serial`.
-- [ ] `make check` green; reviewers approve.
+- [x] A 1904 probe case covers each reader above; dates.md "The 1904 date system" records the results.
+- [x] The engine follows the evidence (date_and_time readers here; text coercion/criteria in T-1435, financial in T-1436), reusing `DateSystem::to_1900_serial`/`serial_from_1900_serial`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cell display of negatives (not observable through excel-graph; M14).
+
+## Outcome
+- **Probe:** probes/date-system-1904-readers (42 questions, excel-graph) covers every reader in this task. It is recorded in dates.md, "The 1904 date system: date readers, the epoch's edges and EDATE/EOMONTH before it".
+- **Quirk found:** EDATE and EOMONTH return a negative serial for a day before 1904-01-01. DATE, YEAR and WEEKDAY are #NUM! there.
+- **Implemented:** WEEKDAY, WEEKNUM, ISOWEEKNUM, EDATE, EOMONTH, DATEDIF, DAYS360, YEARFRAC, NETWORKDAYS(.INTL) and WORKDAY(.INTL), with their holidays, read 1904 serials through the new `DateSystem::date_of_serial` or `to_1900_serial`. Results go back through `signed_serial_from_1900_serial`.
+- **Split off:** date text coercion, typed input and criteria (8 cells) went to T-1435 (sonnet). The financial date arguments (COUPDAYS cell) went to T-1436 (opus).
+- **Eval:** probes known failures 2797 → 2806. That is 9 new-coverage cells, all owned by T-1435 and T-1436; 0 fixed, 0 regressions. The 35 other cells of the new case pass. poi has 0 regressions.
