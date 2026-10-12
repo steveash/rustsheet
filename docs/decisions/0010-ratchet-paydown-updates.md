@@ -35,5 +35,8 @@
   T-1105: model.rs 3554 → 3520 lines (`get_fmt_settings` and the new `format_context` moved to
   number_format.rs); evaluation.rs, stringify.rs and functions/mod.rs lower and parser/mod.rs no longer
   oversized, already shrunk on main (`check_file_size.py --update`).
+  T-0411: functions/mod.rs 2363 → 2179 lines (`Function::to_xlsx_string` moved to
+  `functions/xlsx_names.rs`); stringify.rs and model.rs already shrunk on main
+  (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
