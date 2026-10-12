@@ -2,6 +2,7 @@ use crate::cast::{calc_result_to_array_node, NumberOrArray};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::logical::IfBranchMode;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
 use crate::reference_operators::{Ranges, RefArg};
@@ -150,7 +151,30 @@ impl Model {
     /// number is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
     /// descending search skips backward", probes/match-descending-argcheck J9-J20; T-1313).
     fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
-        let value = self.eval_ref_or_index(node, cell);
+        // IF, IFS, SWITCH and LET hand back the cell they pick, as CHOOSE does
+        // (probes/match-type-text-passthrough K1:K9); IFERROR gives its value. MATCH-only until
+        // there is evidence for aggregates; sharing the dispatch is T-1452.
+        let value = match node.ungrouped() {
+            Node::FunctionKind {
+                kind: Function::If,
+                args,
+            } => self
+                .if_impl(args, cell, IfBranchMode::Aggregate)
+                .into_single_area(cell),
+            Node::FunctionKind {
+                kind: Function::Ifs,
+                args,
+            } => self.ifs_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Switch,
+                args,
+            } => self.switch_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Let,
+                args,
+            } => self.let_impl(args, cell, true).into_single_area(cell),
+            _ => self.eval_ref_or_index(node, cell),
+        };
         let from_cell = matches!(value, CalcResult::Range { .. });
         let value = self.dereference(value, cell);
         // Only non-numeric text is remapped: an error in the cell, or a failed implicit
