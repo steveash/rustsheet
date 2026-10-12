@@ -27,3 +27,8 @@ Semantics: docs/excel-semantics/dates.md "Date function argument modes". Split p
 
 ## Out of scope
 -
+
+## Note (T-1269)
+gen-m7/4629e931955aa4b8 Calc!A29 (`HLOOKUP(..., TIMEVALUE(CHOOSEROWS(Data!A2:A7,-1,2)))`, Excel `#N/A`)
+fails with `#N/IMPL!` only because TIMEVALUE does not lift over an array yet; the HLOOKUP side is done.
+Check that cell once this lands.
