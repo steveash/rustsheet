@@ -3,7 +3,7 @@ id: T-1436
 title: "1904 workbooks: financial date arguments (COUP*, bond, ACCRINT, AMORLINC) count from 1904-01-01"
 milestone: M1
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
