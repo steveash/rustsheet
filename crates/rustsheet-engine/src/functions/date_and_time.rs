@@ -3,7 +3,9 @@ use chrono::Datelike;
 use chrono::Months;
 
 pub(crate) mod time_text;
+mod weekend;
 mod weeknum;
+use weekend::WeekendPattern;
 
 const SECONDS_PER_DAY: i32 = 86_400;
 const SECONDS_PER_DAY_F64: f64 = SECONDS_PER_DAY as f64;
@@ -128,11 +130,16 @@ macro_rules! date_part_fn {
             if args.len() != 1 {
                 return CalcResult::new_args_number_error(cell);
             }
-            // Convert the serial number to a NaiveDate and return the requested
-            // component. Broadcasts element-wise over ranges/arrays. Uses the free
-            // function from_excel_date to avoid borrowing self in the closure.
+            // Convert the serial number (in the workbook's date system: YEAR(0) is 1904 in a
+            // 1904 workbook) to its date and return the requested component. Broadcasts
+            // element-wise over ranges/arrays. The date system is copied out so the closure
+            // does not borrow self.
+            let date_system = self.workbook.settings.date_system;
             self.apply_number_unary(&args[0], cell, |f| {
-                match excel_serial_to_ymd(f.floor() as i64) {
+                match date_system
+                    .to_1900_serial(f.floor() as i64)
+                    .and_then(excel_serial_to_ymd)
+                {
                     Some(ymd) => Ok(f64::from(ymd.$part)),
                     None => Err(Error::NUM),
                 }
@@ -185,68 +192,6 @@ use crate::{
     model::Model,
 };
 
-#[derive(Debug, Clone, Copy)]
-enum WeekendPattern {
-    SatSun,
-    SunMon,
-    MonTue,
-    TueWed,
-    WedThu,
-    ThuFri,
-    FriSat,
-    SunOnly,
-    MonOnly,
-    TueOnly,
-    WedOnly,
-    ThuOnly,
-    FriOnly,
-    SatOnly,
-}
-
-impl std::convert::TryFrom<i32> for WeekendPattern {
-    type Error = ();
-    fn try_from(code: i32) -> Result<Self, Self::Error> {
-        Ok(match code {
-            1 => Self::SatSun,
-            2 => Self::SunMon,
-            3 => Self::MonTue,
-            4 => Self::TueWed,
-            5 => Self::WedThu,
-            6 => Self::ThuFri,
-            7 => Self::FriSat,
-            11 => Self::SunOnly,
-            12 => Self::MonOnly,
-            13 => Self::TueOnly,
-            14 => Self::WedOnly,
-            15 => Self::ThuOnly,
-            16 => Self::FriOnly,
-            17 => Self::SatOnly,
-            _ => return Err(()),
-        })
-    }
-}
-
-impl WeekendPattern {
-    fn to_mask(self) -> [bool; 7] {
-        match self {
-            Self::SatSun => [false, false, false, false, false, true, true],
-            Self::SunMon => [true, false, false, false, false, false, true],
-            Self::MonTue => [true, true, false, false, false, false, false],
-            Self::TueWed => [false, true, true, false, false, false, false],
-            Self::WedThu => [false, false, true, true, false, false, false],
-            Self::ThuFri => [false, false, false, true, true, false, false],
-            Self::FriSat => [false, false, false, false, true, true, false],
-            Self::SunOnly => [false, false, false, false, false, false, true],
-            Self::MonOnly => [true, false, false, false, false, false, false],
-            Self::TueOnly => [false, true, false, false, false, false, false],
-            Self::WedOnly => [false, false, true, false, false, false, false],
-            Self::ThuOnly => [false, false, false, true, false, false, false],
-            Self::FriOnly => [false, false, false, false, true, false, false],
-            Self::SatOnly => [false, false, false, false, false, true, false],
-        }
-    }
-}
-
 impl Model {
     /// DATEVALUE's reading of date text (also date arguments read as text, e.g. DATEDIF): the
     /// date of [`parse_date`] text, or of "date clock" text the day its clock time lands on
@@ -254,13 +199,25 @@ impl Model {
     /// year-less text in [`Model::current_year`]. Excel: see docs/excel-semantics/dates.md.
     pub(crate) fn parse_datevalue_text(&self, value: &str) -> Option<i32> {
         let (text, year) = (value.trim(), &|| self.current_year());
-        if let Ok((serial, _)) = parse_date(text, self.locale, year) {
-            return Some(serial);
-        }
-        let serial = time_text::parse_date_clock_serial(text, self.locale, year)?.floor();
-        (f64::from(MINIMUM_DATE_SERIAL_NUMBER)..=f64::from(MAXIMUM_DATE_SERIAL_NUMBER))
-            .contains(&serial)
-            .then_some(serial as i32)
+        let serial = if let Ok((serial, _)) = parse_date(text, self.locale, year) {
+            serial
+        } else {
+            let serial = time_text::parse_date_clock_serial(text, self.locale, year)?.floor();
+            if !(f64::from(MINIMUM_DATE_SERIAL_NUMBER)..=f64::from(MAXIMUM_DATE_SERIAL_NUMBER))
+                .contains(&serial)
+            {
+                return None;
+            }
+            serial as i32
+        };
+        // The parsers count from the 1900 epoch; a 1904 workbook counts from 1904-01-01
+        // (`DATEVALUE("1904-01-02")` is 1, probes/date-system-1904-negatives A12).
+        let serial = self
+            .workbook
+            .settings
+            .date_system
+            .serial_from_1900_serial(i64::from(serial))?;
+        i32::try_from(serial).ok()
     }
 
     fn get_date_serial(
@@ -379,6 +336,7 @@ impl Model {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
+        let date_system = self.workbook.settings.date_system;
         self.lift_numbers(
             args,
             cell,
@@ -392,9 +350,13 @@ impl Model {
                 if year < 1900 {
                     year += 1900;
                 }
+                // In a 1904 workbook the serial counts from 1904-01-01 (`DATE(1904,1,1)` is 0).
+                // An earlier day is #NUM! here; Excel is unprobed for it (T-1416).
                 permissive_date_to_serial_number(day.floor() as i32, month.floor() as i32, year)
-                    .map(f64::from)
-                    .map_err(|_| Error::NUM)
+                    .ok()
+                    .and_then(|serial| date_system.serial_from_1900_serial(i64::from(serial)))
+                    .map(|serial| serial as f64)
+                    .ok_or(Error::NUM)
             },
         )
     }

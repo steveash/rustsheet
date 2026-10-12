@@ -319,6 +319,28 @@ class BranchClaims(unittest.TestCase):
                 tasks.branch_claims(fetch=False), ({"T-0001", "T-0002"}, set(), {("engine", "T-0001")})
             )
 
+    def test_task_blocked_on_a_stale_branch_stays_claimed(self) -> None:
+        stale = int(time.time()) - 3 * tasks.CLAIM_TTL_SECONDS
+        refs = (
+            f"refs/remotes/origin/agent/research/T-0002-blocked {stale}\n"
+            f"refs/remotes/origin/agent/engine/T-0001-abandoned {stale}\n"
+        )
+
+        def fake_run(cmd: list[str], **_: object) -> mock.Mock:
+            args = cmd[3:]
+            if args[0] == "for-each-ref":
+                return mock.Mock(stdout=refs)
+            if args[0] == "ls-tree":
+                tid = args[3].rsplit("/", 1)[-1][:6]
+                return mock.Mock(stdout=f"docs/tasks/M0/{tid}-x.md\n")
+            status = "blocked" if "T-0002" in args[1] else "in-progress"
+            return mock.Mock(stdout=f"---\nid: x\nstatus: {status}\n---\nbody\n")
+
+        with mock.patch.object(tasks.subprocess, "run", side_effect=fake_run):
+            # A blocked task stays claimed however old its branch is (decision 0048); an abandoned
+            # in-progress branch past the TTL frees its task.
+            self.assertEqual(tasks.branch_claims(fetch=False), ({"T-0002"}, set(), set()))
+
 
 class Slug(unittest.TestCase):
     def test_slug(self) -> None:

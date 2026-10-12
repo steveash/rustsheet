@@ -922,3 +922,20 @@ fn edate_eomonth_huge_month_offsets_are_num_errors() {
         assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
     }
 }
+
+// In a 1904 workbook serial 0 is 1904-01-01 (probes/date-system-1904-negatives A10-A12, T-1330).
+#[test]
+fn date_functions_count_from_the_1904_epoch() {
+    let mut model = new_empty_model();
+    model.workbook.settings.date_system = crate::types::DateSystem::Excel1904;
+    // N() reads the serial without DATE's automatic date format.
+    model._set("A1", "=N(DATE(1904,1,1))");
+    model._set("A2", "=YEAR(0)");
+    model._set("A3", "=N(DATEVALUE(\"1904-01-02\"))");
+    model._set("A4", "=TEXT(1,\"yyyy-mm-dd\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"0");
+    assert_eq!(model._get_text("A2"), *"1904");
+    assert_eq!(model._get_text("A3"), *"1");
+    assert_eq!(model._get_text("A4"), *"1904-01-02");
+}
