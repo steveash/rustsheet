@@ -36,7 +36,7 @@ fn simple() {
             automatic: false,
             child: Box::new(child)
         }
-    )
+    );
 }
 
 #[test]
@@ -73,5 +73,5 @@ fn simple_add() {
             }),
             right: Box::new(Node::NumberKind(12.0))
         }
-    )
+    );
 }

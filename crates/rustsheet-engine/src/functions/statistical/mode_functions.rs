@@ -20,16 +20,12 @@ impl Model {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Range { left, right } => {
                     let v = self.values_from_range(left, right)?;
-                    values.extend(v.into_iter().flatten())
+                    values.extend(v.into_iter().flatten());
                 }
                 CalcResult::Array(arr) => match self.values_from_array(arr) {
                     Ok(v) => values.extend(v.into_iter().flatten()),
                     Err(e) => {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            format!("{:?}", e),
-                        ))
+                        return Err(CalcResult::new_error(Error::VALUE, cell, format!("{e:?}")))
                     }
                 },
                 CalcResult::Number(n) => values.push(n),
@@ -131,7 +127,7 @@ impl Model {
     }
 }
 
-/// Returns (modes_in_first_encounter_order, max_frequency).
+/// Returns (`modes_in_first_encounter_order`, `max_frequency`).
 /// When multiple values tie for the highest frequency, they are returned in the
 /// order they were first seen in the input — matching Excel's behaviour.
 fn find_modes(values: &[f64]) -> (Vec<f64>, usize) {

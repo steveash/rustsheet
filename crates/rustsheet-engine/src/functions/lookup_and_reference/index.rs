@@ -15,8 +15,8 @@ use crate::{
     model::Model,
 };
 
-/// INDEX's validated numeric arguments: row_num and column_num read by [`index_number`] (`0` = the
-/// whole row or column), area_num floored and at least 1.
+/// INDEX's validated numeric arguments: `row_num` and `column_num` read by [`index_number`] (`0` = the
+/// whole row or column), `area_num` floored and at least 1.
 #[derive(Clone, Copy)]
 struct IndexNumbers {
     row: usize,
@@ -24,10 +24,10 @@ struct IndexNumbers {
     area: f64,
 }
 
-/// Validates INDEX's numbers, each cast already tried, in Excel's order: area_num's cast error,
-/// then area_num below 1 (`#VALUE!`; past the last area, or NaN, is `#REF!` later, SPEC-0004), then
-/// row_num's cast error and a negative row_num (`#VALUE!`, see [`index_number`]), then the same
-/// for column_num.
+/// Validates INDEX's numbers, each cast already tried, in Excel's order: `area_num`'s cast error,
+/// then `area_num` below 1 (`#VALUE!`; past the last area, or NaN, is `#REF!` later, SPEC-0004), then
+/// `row_num`'s cast error and a negative `row_num` (`#VALUE!`, see [`index_number`]), then the same
+/// for `column_num`.
 fn index_numbers<E>(
     area: Result<f64, E>,
     row: Result<f64, E>,
@@ -155,7 +155,7 @@ impl Model {
     /// INDEX; [`IndexForm::Reference`] keeps a single selected cell as a 1x1 range, as an
     /// aggregate argument sees it (T-0216; docs/excel-semantics/references.md).
     ///
-    /// A multi-cell range or array as row_num, column_num or area_num lifts INDEX: the indices
+    /// A multi-cell range or array as `row_num`, `column_num` or `area_num` lifts INDEX: the indices
     /// broadcast like arithmetic operands and each element is the scalar INDEX of its indices,
     /// as a value (`INDEX(A1:A5,{1,3})` spills A1 and A3; `ROWS` of it is 1 and `ISREF` FALSE).
     /// An element that selects a whole row, column or array keeps only its top-left value

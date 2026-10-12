@@ -502,8 +502,8 @@ impl Model {
         CalcResult::Number(sheet_count)
     }
 
-    /// CELL(info_type, [reference])
-    /// NB: In Excel "info_type" is localized. Here it is always in English.
+    /// `CELL(info_type`, [reference])
+    /// NB: In Excel "`info_type`" is localized. Here it is always in English.
     pub(crate) fn fn_cell(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if arg_count == 0 || arg_count > 2 {
@@ -552,7 +552,7 @@ impl Model {
         self.cell_info(&info_type, ranges.as_deref(), reference, cell)
     }
 
-    /// The value of one CELL info_type for `reference`; `ranges` holds every area of a union.
+    /// The value of one CELL `info_type` for `reference`; `ranges` holds every area of a union.
     fn cell_info(
         &mut self,
         info_type: &str,
@@ -614,7 +614,7 @@ impl Model {
                         }
                     }
                 };
-                CalcResult::String(format!("[{}.xlsx]{}", workbook_name, worksheet_name))
+                CalcResult::String(format!("[{workbook_name}.xlsx]{worksheet_name}"))
             }
             "ROW" => CalcResult::Number(reference.row as f64),
             "TYPE" => {
@@ -638,8 +638,8 @@ impl Model {
         }
     }
 
-    /// INFO(text_type)
-    /// NB: In Excel "text_type" is localized. Here it is always in English.
+    /// `INFO(text_type)`
+    /// NB: In Excel "`text_type`" is localized. Here it is always in English.
     pub(crate) fn fn_info(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);

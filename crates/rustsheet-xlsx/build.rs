@@ -24,7 +24,7 @@ struct FolderConfig {
     dir: &'static str,
     /// Prefix for the generated test function names
     prefix: &'static str,
-    /// Whether to call test_load_and_saving in addition to test_file
+    /// Whether to call `test_load_and_saving` in addition to `test_file`
     test_save: bool,
     /// File stems (without extension) to skip entirely
     skip: &'static [&'static str],
@@ -72,7 +72,7 @@ const FOLDERS: &[FolderConfig] = &[
     },
 ];
 
-/// Collects (fn_suffix, file_path) for every .xlsx file under `current`.
+/// Collects (`fn_suffix`, `file_path`) for every .xlsx file under `current`.
 /// When `recursive` is true, descends into subdirectories and emits
 /// `cargo:rerun-if-changed` for each one found.
 fn collect_xlsx(

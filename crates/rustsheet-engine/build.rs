@@ -19,5 +19,5 @@ fn main() {
         .or_else(|| run_git(&["describe", "--tags", "--dirty", "--always"]))
         .unwrap_or_else(|| "unknown".into());
 
-    println!("cargo:rustc-env=GIT_VERSION={}", version);
+    println!("cargo:rustc-env=GIT_VERSION={version}");
 }

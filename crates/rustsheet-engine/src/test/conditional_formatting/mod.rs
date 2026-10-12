@@ -531,7 +531,7 @@ fn test_list_index_resolves_dxf_after_priority_swap() {
 // Formula-based CF evaluation (evaluate_formula)
 // ---------------------------------------------------------------------------
 
-/// CellIs threshold computed via SUM: B1:B3 = {1,2,3}, SUM = 6; cells > SUM(B1:B3)/2 = 3.
+/// `CellIs` threshold computed via SUM: B1:B3 = {1,2,3}, SUM = 6; cells > SUM(B1:B3)/2 = 3.
 #[test]
 fn test_cell_is_threshold_from_sum() {
     let mut model = new_empty_model();
@@ -580,7 +580,7 @@ fn test_cell_is_threshold_from_sum() {
         .is_none());
 }
 
-/// CellIs threshold using addition: B1+B2 where B1=1, B2=2 → threshold=3.
+/// `CellIs` threshold using addition: B1+B2 where B1=1, B2=2 → threshold=3.
 #[test]
 fn test_cell_is_threshold_addition() {
     let mut model = new_empty_model();
@@ -869,7 +869,7 @@ fn test_no_errors_applies_to_non_error_cells() {
         .is_none());
 }
 
-/// ColorScale with Formula cfvo using SUM: min=SUM(B1:B2)=1, max=SUM(B3:B4)=5.
+/// `ColorScale` with Formula cfvo using SUM: min=SUM(B1:B2)=1, max=SUM(B3:B4)=5.
 #[test]
 fn test_color_scale_formula_cfvo_with_sum() {
     let mut model = new_empty_model();

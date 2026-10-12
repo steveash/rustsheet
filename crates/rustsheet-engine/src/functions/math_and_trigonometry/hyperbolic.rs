@@ -7,7 +7,7 @@
 //! `docs/excel-semantics/numbers.md`.
 
 /// Below this |x| the exp formulation loses precision and Excel's values match the Taylor series
-/// (evidence: SINH_COSH_TANH!B10, B18, B42; the exp form matches all cells with |x| >= 0.5).
+/// (evidence: `SINH_COSH_TANH!B10`, B18, B42; the exp form matches all cells with |x| >= 0.5).
 const SINH_SERIES_LIMIT: f64 = 0.5;
 /// `exp(x)` overflows near here; defer to libm so the finite/infinite boundary is unchanged.
 const EXP_SAFE_LIMIT: f64 = 700.0;

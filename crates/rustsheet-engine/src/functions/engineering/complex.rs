@@ -13,8 +13,8 @@ use crate::{
 };
 
 /// This implements all functions with complex arguments in the standard
-/// NOTE: If performance is ever needed we should have a new entry in CalcResult,
-/// So this functions will return CalcResult::Complex(x,y, Suffix)
+/// NOTE: If performance is ever needed we should have a new entry in `CalcResult`,
+/// So this functions will return `CalcResult::Complex(x,y`, Suffix)
 /// and not having to parse it over and over again.
 
 #[derive(PartialEq, Debug)]
@@ -174,7 +174,7 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
                 }
             };
             if matches!(operation, OpSum::Minus) {
-                number2 = -number2
+                number2 = -number2;
             }
             Ok((sign * number1, number2, suffix))
         }

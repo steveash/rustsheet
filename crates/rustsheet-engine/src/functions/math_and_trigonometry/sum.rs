@@ -162,7 +162,7 @@ impl Model {
                         return Err(CalcResult::new_error(
                             Error::VALUE,
                             cell,
-                            format!("Error in first array: {:?}", error),
+                            format!("Error in first array: {error:?}"),
                         ));
                     }
                     Ok(v) => v,
@@ -195,7 +195,7 @@ impl Model {
                         return Err(CalcResult::new_error(
                             Error::VALUE,
                             cell,
-                            format!("Error in second array: {:?}", error),
+                            format!("Error in second array: {error:?}"),
                         ));
                     }
                     Ok(v) => v,
@@ -220,7 +220,7 @@ impl Model {
                         return Err(CalcResult::new_error(
                             Error::VALUE,
                             cell,
-                            format!("Error in first array: {:?}", error),
+                            format!("Error in first array: {error:?}"),
                         ));
                     }
                     Ok(v) => v,
@@ -230,7 +230,7 @@ impl Model {
                         return Err(CalcResult::new_error(
                             Error::VALUE,
                             cell,
-                            format!("Error in second array: {:?}", error),
+                            format!("Error in second array: {error:?}"),
                         ));
                     }
                     Ok(v) => v,
@@ -279,11 +279,11 @@ impl Model {
     /// # Details
     /// Generally each argument is evaluated and the result is converted to a number. However there are some special
     /// cases:
-    /// - **Args evaluating to CalcResult::Range**: The sum of all the numbers in the range is calculated. No
+    /// - **Args evaluating to `CalcResult::Range`**: The sum of all the numbers in the range is calculated. No
     ///   conversions are performed, non-numeric values are ignored and errors are propagated.
-    /// - **Node::ReferenceKind args**: Similar to ranges, conversions are not performed on the evaluated value of the
+    /// - **`Node::ReferenceKind` args**: Similar to ranges, conversions are not performed on the evaluated value of the
     ///   referenced cell and errors are propagated.
-    /// - **Args evaluating to CalcResult::Error**: Errors are propagated.
+    /// - **Args evaluating to `CalcResult::Error`**: Errors are propagated.
     ///
     /// SUM's final addition snaps a near-zero result to 0 like `+`/`-` do, wherever the call sits
     /// (`=SUM(0.1,0.2,-0.3)`, `=(SUM(...))`, `=SUM(...)+0` and `=SUM(...)*1` all give 0:
@@ -356,7 +356,7 @@ impl Model {
                 }
                 RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
                 RefArg::Value(calc_result) => {
-                    sum.add(self.cast_aggregate_arg_to_number(calc_result, cell)?)
+                    sum.add(self.cast_aggregate_arg_to_number(calc_result, cell)?);
                 }
             };
         }

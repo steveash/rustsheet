@@ -257,7 +257,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
             } else {
                 bg_color
             },
-        })
+        });
     }
 
     let mut borders = Vec::new();
@@ -327,7 +327,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
             name,
             xf_id,
             builtin_id,
-        })
+        });
     }
 
     let mut cell_xfs = Vec::new();
