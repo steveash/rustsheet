@@ -532,11 +532,39 @@ Evidence: `probes-numeric/m9-trig-reduction` (`rustsheet-eval show probes-numeri
 247 of 666 cells pass; the 419 others differ from the engine (252 clear mismatches, 152 close, 15 ulp).
 Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0915.
 
+## Non-integer exponents: exp(y·ln x)
+Rule: for an exponent that is not an integer, Excel computes `x^y` as follows:
+- `y` > 0: `exp(y·ln x)`. `6^2.5` = 88.18163074019438, 2 ulps below libm `pow`, and `10^33.5` = 3.162277660168401E+33.
+- `y` < 0: one over the positive power, `1/exp(-y·ln x)`. `10^-33.5` = 3.1622776601683576E-34 and `27^-2.5` = 0.0002639918926335737.
+- `y` = 0.5: `sqrt(x)`. `2^0.5` = 1.4142135623730951, where `exp(0.5·ln 2)` is 1.4142135623730950.
+- `y` = -0.5: `1/sqrt(x)`. `3^-0.5` = 0.5773502691896258 and `0.5^-0.5` = 1.414213562373095.
+
+An odd root of a negative base is minus the same formula on the magnitude. `(-8)^(1/3)` = -exp(ln 8/3) = -1.9999999999999998, which is the value Excel's own workbook caches.
+
+Libm `pow` (correctly rounded) matches only 93 of the 180 numeric sweep cells. `exp(y·ln x)` without the ±0.5 cases matches 148. The model matches all 180.
+
+Out-of-range results:
+- A positive exponent that overflows is `#NUM!`.
+- Quirk: a negative exponent is one over the positive power even when that power underflows, so the result is `#DIV/0!`. This holds for integer exponents too: `1E-10^-33.5`, `POWER(1E-10,-33.5)`, `0.1^-400`, `1E-10^-40`, `1E-10^-31` and `1E-300^-1.1` (where the positive power is subnormal).
+- A negative exponent whose result underflows is 0: `1E10^-33.5` = 0, `1E+200^-1.6` = 0, `2^-1074.5` = 0.
+
+Unresolved (T-0221): `(-8)^(-1/3)` is -0.5 in Excel, while the model gives -0.5000000000000001. `(-27)^(-1/3)` = -0.33333333333333337 and `(-8)^(1/3)` = -1.9999999999999998 do match.
+Evidence:
+- probes-numeric/power-non-integer-sweep A1-A182: bases 2, 3, 5, 6, 7, 10, 0.5, 1.5, 100, 1E10, 1E-10, 123.456, 0.9 and 1.1, each with exponents ±0.5, ±1.5, ±2.5, ±0.3, 1/3, ±33.5, 0.25 and 2.7.
+- probes-numeric/power-non-integer-sweep A183-A194: odd roots of negatives and out-of-range results.
+- Both are oracle excel-graph, 2026-10-12, T-1319.
+- gen-m1/6462bf910ef9f28f Calc!A41 and A207; gen-m2/1b6ceed7489e0800 Calc!A62; gen-m7/9ff3afcacd3bd0fc Calc!A13.
+- ironcalc-calc POWER.xlsx Sheet1!D3 and F9.
+Not probed: other negative bases; exponents within 1E-15 of ±0.5.
+Implemented in: `non_integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
+Status: VERIFIED (excel-graph)
+Tasks: T-1319, T-1421, T-0221
+
 ## POWER and `^`: odd roots of negatives, zero and overflow
-Rule: `POWER(-8, 1/3)` is -2 (an odd root of a negative number is real); `POWER(0,0)` is #NUM!;
+Rule: `POWER(-8, 1/3)` is -1.9999999999999998 (an odd root of a negative number is real; see "Non-integer exponents: exp(y·ln x)"); `POWER(0,0)` is #NUM!;
 `POWER(0,-1)` is #DIV/0!; text operands give #VALUE!; array operands work element by element.
 Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx (Excel-authored): Sheet1!D2 (#DIV/0!),
-D3 and F9 (-1.9999999999999998 — we return -2, a 1-ulp NumericUlp known failure), sheets 2-8 for ranges.
+D3 and F9 (-1.9999999999999998, matched since T-1319: see "Non-integer exponents"), sheets 2-8 for ranges.
 The operator `^` shares the zero case: `0^-0`, `+0^0`, `(-0)^0` and `0%^0` are all `#NUM!`, while
 `-0^0.5` = 0 (gen-m1/6462bf910ef9f28f Calc!A19, A30, A205, A222; gen-m1/1c62c4bff4ed1976 Calc!A60;
 oracle: excel-graph, 2026-10-05, T-0109).
@@ -708,9 +736,8 @@ every base except 10 (about 280 cells across `1.0000001`, `0.9999999`, `1.5`, `2
    are plain square-and-multiply (`0.1^-33` = 9.999999999999965E+32, not 1E+33):
    `(-10)^33` = -1.0000000000000001E+33, `100^100` = 1.0000000000000005E+200.
 4. Overflow is `#NUM!` as before (`100^200`, `1E15^23`, `10^309`).
-Not explained (T-1319): non-integer exponents of 10 differ from libm in the last digits (`10^33.5` =
-3.162277660168401E+33, libm 3.162277660168379E+33; `10^-33.5` = 3.1622776601683576E-34;
-`10^40.0000001` = 1.0000002302585496E+40).
+Non-integer exponents (`10^33.5` = 3.162277660168401E+33, libm 3.162277660168379E+33; `10^-33.5` =
+3.1622776601683576E-34; `10^40.0000001` = 1.0000002302585496E+40) follow "Non-integer exponents: exp(y·ln x)" (T-1319).
 Evidence: probes-numeric/power-large-integer-exponents{,-2,-3,-4}.case.json (oracle: excel-graph,
 2026-10-11, T-1311; the non-integer cells are A54-A56 of -4).
 Implemented in: `power` and `integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
@@ -1023,3 +1050,9 @@ Evidence: ironcalc-calc MATH_AND_TRIGONOMETRY/SERIESSUM.xlsx C1, H7 (Excel-cache
 Ours: `#NUM!` for every x = 0.
 Status: UNVERIFIED (probe pending: negative powers, a blank x)
 Tasks: T-1359
+
+## ECMA.CEILING
+Rule: `ECMA.CEILING(number, significance)` is a real Excel function with exactly the two-argument `CEILING` semantics (rounds away from zero for negative `number` with negative `significance`; `#NUM!` when `number` is positive and `significance` negative; zero significance gives 0; number text `"2.5"` and `TRUE` are read as numbers; text significance is `#VALUE!`). It is stored in a file as `_xlfn.ECMA.CEILING`, and `FORMULATEXT` prints it as `=ECMA.CEILING(2.5,2)` (no prefix). Written bare (`ECMA.CEILING(...)`) in a file, Graph rejects the whole workbook (`createSession` 501 `unsupportedWorkbook`); the one-argument form `_xlfn.ECMA.CEILING(2.5)` is rejected the same way (arity is exactly 2, like CEILING).
+Evidence: probes/ecma-ceiling A1:A6, A8:A11, A13:A14; probes/ecma-ceiling-formulatext A12 (excel-graph, 2026-10-12, T-1301).
+Status: VERIFIED. Ours: implemented (T-1301) as its own `Function::EcmaCeiling` (not an alias of CEILING, so FORMULATEXT keeps the name) dispatched to `fn_ceiling`, with an `_xlfn.ECMA.CEILING` entry in `functions/xlsx_names.rs`. The name is `ECMA.CEILING` in every `language.bin` locale (as upstream IronCalc 8a82396a has it).
+Tasks: T-1301

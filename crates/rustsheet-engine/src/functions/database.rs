@@ -669,6 +669,7 @@ impl Model {
             crit_cell,
             self.locale,
             &|| self.current_year(),
+            self.workbook.settings.date_system,
             CriteriaFlavor::Database,
         );
         matches(db_val)

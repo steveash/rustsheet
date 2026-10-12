@@ -101,6 +101,15 @@ fn date_system_serial_conversion() {
     assert_eq!(Excel1904.serial_from_1900_serial(i64::MIN), None);
     assert_eq!(Excel1900.to_1900_serial(-5), Some(-5));
     assert_eq!(Excel1900.serial_from_1900_serial(-5), Some(-5));
+    // EDATE/EOMONTH keep a day before the 1904 epoch as a negative serial.
+    assert_eq!(Excel1904.signed_serial_from_1900_serial(1431), -31);
+    assert_eq!(Excel1900.signed_serial_from_1900_serial(1431), 1431);
+    // 1904 serial 0 is Friday 1904-01-01; a negative 1904 serial is no date.
+    assert_eq!(
+        Excel1904.date_of_serial(0),
+        chrono::NaiveDate::from_ymd_opt(1904, 1, 1)
+    );
+    assert_eq!(Excel1904.date_of_serial(-1), None);
     // The last day Excel accepts, 9999-12-31, is 1900 serial 2958465 and 1904 serial 2957003.
     assert_eq!(
         format_in(2_957_003.0, "yyyy-mm-dd", Excel1904),

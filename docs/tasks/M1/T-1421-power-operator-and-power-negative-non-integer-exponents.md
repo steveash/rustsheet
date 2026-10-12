@@ -3,7 +3,7 @@ id: T-1421
 title: "Power operator and POWER: negative non-integer exponents (gen-m1 3^-0.5, 0.5^-0.5; split from T-0221)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -50,17 +50,24 @@ and "Integer exponents". Keep the special cases there unchanged: `0^-1` is #DIV/
 root of a negative base is real.
 
 ## Acceptance criteria
-- [ ] A probe sweep (a new probes case, milestone M2, oracle excel-graph) shows the rule for
+- [x] A probe sweep (a new probes case, milestone M2, oracle excel-graph) shows the rule for
       negative non-integer exponents. The numbers.md "POWER and `^`" entry states the rule with that
       evidence and lists `Tasks: T-1421`.
-- [ ] `gen-m1/6462bf910ef9f28f` Calc!A41 and Calc!A207 disappear from eval/baseline/gen-m1.txt, so the file
+- [x] `gen-m1/6462bf910ef9f28f` Calc!A41 and Calc!A207 disappear from eval/baseline/gen-m1.txt, so the file
       has no F lines. gen-m2 `1b6ceed7489e0800` Calc!A62 disappears too if the rule covers it.
       No suite gets a new F line.
-- [ ] Unit tests in `arithmetic` pin `3^-0.5`, `0.5^-0.5` and `2^-0.5` to Excel's doubles, and pin the
+- [x] Unit tests in `arithmetic` pin `3^-0.5`, `0.5^-0.5` and `2^-0.5` to Excel's doubles, and pin the
       unchanged special cases `0^-1` (#DIV/0!) and `(-8)^(-1/3)` (-0.5, or whatever the probe shows).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Positive non-integer exponents (`100^0.3`, `3.14159^3.14159`): T-0221.
 - Integer exponents: T-1302 (done).
 - Desktop confirmation of the fit: T-1075 item 2 (M14).
+
+## Outcome
+- **Done by T-1319.** Its sweep (probes-numeric/power-non-integer-sweep, excel-graph) refutes the plain `1/(x^|y|)` lead with libm. The rule is `1/exp(|y|·ln x)` for a negative non-integer `y`, with `1/sqrt(x)` at `y` = -0.5. numbers.md "Non-integer exponents: exp(y·ln x)" lists T-1421.
+- **Probe location:** the sweep is in the ungated probes-numeric suite rather than a new `probes` case. It is outside the frozen M1 list either way (decision 0043).
+- **Cells:** gen-m1/6462bf910ef9f28f A41 and A207 and gen-m2/1b6ceed7489e0800 A62 pass, so eval/baseline/gen-m1.txt has no F lines.
+- **Tests:** unit tests `non_integer_exponents_use_exp_of_y_ln_x` and `special_cases_keep_the_general_path` pin `3^-0.5`, `0.5^-0.5`, `2^-0.5`, `0^-1` (#DIV/0!) and `(-8)^(1/3)` (-1.9999999999999998, POWER.xlsx).
+- **Not met:** `(-8)^(-1/3)` was probed and is -0.5 in Excel, but we give -0.5000000000000001. It is not pinned and is handed to T-0221 (numbers.md "Non-integer exponents").

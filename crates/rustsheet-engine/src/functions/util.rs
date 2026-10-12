@@ -502,3 +502,44 @@ pub(crate) fn excel_mod(value: f64, divisor: f64) -> f64 {
         remainder
     }
 }
+
+/// How far below the next integer a whole-number argument may fall and still count as that
+/// integer: 2^-22 + 2^-33, the same at 1, 500, 1000, 30000 and 100000 (an absolute bound, not
+/// relative). LEFT, RIGHT, REPLACE counts and INDEX's row and column indexes share it.
+pub(crate) const NEAR_INTEGER_TOLERANCE: f64 = 1.0 / 4_194_304.0 + 1.0 / 8_589_934_592.0;
+
+/// The whole number LEFT, RIGHT, REPLACE and INDEX read from a count, position or index: `x`
+/// truncated, except that a fraction within [`NEAR_INTEGER_TOLERANCE`] of the next integer counts
+/// as that integer, so `LEFT("abc",1-2^-22)` is "a". MID truncates exactly and does not use this.
+// Excel: docs/excel-semantics/text.md "LEFT, RIGHT and REPLACE round counts up near an
+// integer" (probes/text-count-argument-bounds) and lookup.md "INDEX rounds an index up near an
+// integer" (probes/index-snap-tolerance).
+pub(crate) fn near_integer_count(x: f64) -> f64 {
+    let whole = x.floor();
+    // `x - whole` is exact for every finite double, so the bound is not blurred at large x.
+    if x - whole >= 1.0 - NEAR_INTEGER_TOLERANCE {
+        whole + 1.0
+    } else {
+        whole
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::near_integer_count;
+
+    #[test]
+    fn near_integer_count_rounds_up_within_the_tolerance() {
+        // probes/text-count-argument-bounds Z10, Z9, AA1, AA2: 1 - (2^-22 + 2^-33) is 1, a hair
+        // further down is 0; the bound is absolute (AA13, AA14 below 30000).
+        let at = 2f64.powi(-22) + 2f64.powi(-33);
+        let past = 2f64.powi(-22) + 9.0 * 2f64.powi(-36);
+        assert_eq!(near_integer_count(1.0 - at), 1.0);
+        assert_eq!(near_integer_count(1.0 - past), 0.0);
+        assert_eq!(near_integer_count(30000.0 - at), 30000.0);
+        assert_eq!(near_integer_count(30000.0 - past), 29999.0);
+        assert_eq!(near_integer_count(2.5), 2.0);
+        assert_eq!(near_integer_count(1e-300), 0.0);
+        assert_eq!(near_integer_count(1e100), 1e100);
+    }
+}

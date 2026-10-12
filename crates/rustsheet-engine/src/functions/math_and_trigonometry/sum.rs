@@ -318,7 +318,7 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         }
         let mut sum = SumParts::default();
-        // Excel: an error in a referenced cell ranks below an error in a direct argument, whichever
+        // Excel: an error in a referenced cell or an array ranks below an error in a direct argument, whichever
         // comes first, and the leftmost reference error wins (docs/excel-semantics/syntax.md,
         // "Stored #BUSY! behaviors", probes/sum-error-precedence). So a reference error is held
         // back until the direct arguments are known to be clean.
@@ -339,14 +339,17 @@ impl Model {
                     for value in array.into_iter().flatten() {
                         match value {
                             ArrayNode::Number(value) => sum.add(value),
-                            ArrayNode::Error(error) => {
-                                return Err(CalcResult::Error {
+                            // An error inside an array is not a scalar direct error: it ranks with
+                            // the reference errors (leftmost wins, a direct scalar error beats it;
+                            // probes/aggregate-error-precedence C50, C53, C61, C77).
+                            ArrayNode::Error(error) if reference_error.is_none() => {
+                                reference_error = Some(CalcResult::Error {
                                     error,
                                     origin: cell,
                                     message: "Error in array".to_string(),
-                                })
+                                });
                             }
-                            // Booleans and text in an array are ignored.
+                            // Later errors, booleans and text in an array are ignored.
                             _ => {}
                         }
                     }

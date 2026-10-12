@@ -160,8 +160,13 @@ impl Model {
         currencies: &[&str],
         year: CurrentYear,
     ) -> Option<f64> {
-        if let Ok((v, _number_format)) = parse_formatted_number(text, currencies, self.locale, year)
-        {
+        if let Ok((v, _number_format)) = parse_formatted_number(
+            text,
+            currencies,
+            self.locale,
+            year,
+            self.workbook.settings.date_system,
+        ) {
             return Some(crate::arithmetic::flush_subnormal(v));
         }
         crate::functions::date_and_time::time_text::parse_time_serial(text, self.locale, year)
