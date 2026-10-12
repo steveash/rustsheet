@@ -117,6 +117,7 @@ C	probes/date-clock-text-length-limit.case.json	36
 C	probes/date-huge-month-day.case.json	63
 C	probes/date-system-1900-negatives.case.json	18
 C	probes/date-system-1904-negatives.case.json	18
+C	probes/date-system-1904-readers.case.json	54
 C	probes/date-text-dotted-criteria.case.json	16
 C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
@@ -568,6 +569,16 @@ F	probes/date-argument-modes.case.json	Sheet1!G60
 F	probes/date-argument-modes.case.json	Sheet1!G62
 F	probes/date-argument-modes.case.json	Sheet1!G66
 F	probes/date-argument-modes.case.json	Sheet1!G68
+F	probes/date-system-1904-readers.case.json	S!A18
+F	probes/date-system-1904-readers.case.json	S!A20
+F	probes/date-system-1904-readers.case.json	S!A21
+F	probes/date-system-1904-readers.case.json	S!A22
+F	probes/date-system-1904-readers.case.json	S!A23
+F	probes/date-system-1904-readers.case.json	S!A24
+F	probes/date-system-1904-readers.case.json	S!A25
+F	probes/date-system-1904-readers.case.json	S!A38
+F	probes/date-system-1904-readers.case.json	S!A39
+F	probes/date-system-1904-readers.case.json	S!A51
 F	probes/db-argument-modes.case.json	Calc!C11
 F	probes/db-argument-modes.case.json	Calc!C12
 F	probes/db-argument-modes.case.json	Calc!C13

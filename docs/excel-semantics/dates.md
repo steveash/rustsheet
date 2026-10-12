@@ -375,7 +375,7 @@ Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE a
 DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. Still `#N/IMPL!` (T-1236) for an array literal in
 a date argument: EDATE, EOMONTH, WEEKNUM, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL, YEARFRAC.
 In a 1904 workbook DATEDIF reads date text as DATEVALUE does (from
-1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330; unprobed in 1904, T-1416).
+1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330). It counts the days on the 1904 calendar since T-1416 (`DATEDIF(0,1000,"ym")` = 8, probes/date-system-1904-readers A11).
 Status: VERIFIED
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
 
@@ -409,12 +409,45 @@ Ours: both cases pass 18 of 18. The formatter reads the date system since T-1105
 TEXT and cell-format date tokens (day, month, year and weekday names), DATE, DATEVALUE (and every reader of
 date text through `Model::parse_datevalue_text`) and YEAR/MONTH/DAY shift by the 1462 days of
 `DateSystem::to_1900_serial` / `serial_from_1900_serial` (formatter/dates.rs), checked, with no 1904 serial
-below 0 (a day before the epoch is #NUM! in DATE and YEAR/MONTH/DAY, unprobed). This also passes 18 cells of poi
-DateFormatTests.xlsx and DateFormatNumberTests.xlsx (1904 workbooks). The other date readers (WEEKDAY,
-EDATE/EOMONTH, DATEDIF, date-text coercion, criteria, TODAY, DATE with a year below 1904) are unprobed in 1904
-and still count from 1900 (T-1416).
+below 0 (a day before the epoch is #NUM! in DATE and YEAR/MONTH/DAY, probed in the next entry). This also passes 18 cells of poi
+DateFormatTests.xlsx and DateFormatNumberTests.xlsx (1904 workbooks). The other date readers were probed by T-1416 (next entry).
+Since T-1416 the date functions read 1904 serials the same way:
+- WEEKDAY, WEEKNUM, ISOWEEKNUM, EDATE, EOMONTH, DATEDIF, DAYS360, YEARFRAC, NETWORKDAYS(.INTL) and WORKDAY(.INTL) (with their holidays) use `DateSystem::date_of_serial` or `to_1900_serial`.
+- EDATE and EOMONTH return their result through `signed_serial_from_1900_serial`. WORKDAY(.INTL) uses the checked `serial_from_1900_serial`.
+Still 1900-only: date text coerced to a number, typed date input and criteria date text (T-1435), and the financial date arguments (T-1436).
 Status: VERIFIED (web)
-Tasks: T-1268, T-1105, T-1330, T-1416
+Tasks: T-1268, T-1105, T-1330, T-1416, T-1435, T-1436
+
+## The 1904 date system: date readers, the epoch's edges and EDATE/EOMONTH before it
+Rule: in a 1904 workbook every date reader counts serials from 1904-01-01, not only TEXT, DATE, DATEVALUE and YEAR/MONTH/DAY:
+- **Weekdays and weeks.** `WEEKDAY(0)` = 6 (1904-01-01 is a Friday). `WEEKDAY(DATE(2024,3,15))` = 6. `WEEKNUM(0)` = 1. `WEEKNUM(DATE(2024,3,15))` = `ISOWEEKNUM(DATE(2024,3,15))` = 11.
+- **Month arithmetic.** `EDATE(DATE(2024,1,31),1)` = 43889 (2024-02-29). `EOMONTH(DATE(2024,1,15),0)` = 43860.
+- **Day counts.** `DATEDIF(0,1000,"ym")` = 8. `DAYS360(DATE(2024,1,31),DATE(2024,2,29))` = 29. `YEARFRAC(0,365,1)` = 365/366 (1904 is a leap year). `WORKDAY(DATE(2024,3,15),1)` = 43907 (Monday). `NETWORKDAYS` over March 2024 = 21.
+- **Coupon days.** `COUPDAYS(DATE(2024,1,15),DATE(2030,6,30),2,1)` = 182, using the end-of-month coupon rule on the 1904 dates.
+- **Date text and typed input.** `"1904-01-02"+0` = 1. `"2024-03-15"+0` = `--"3/15/2024"` = `VALUE("2024-03-15")` = 43904. Typing `1904-01-02` stores 1 and typing `3/15/2024` stores 43904, both formatted `m/d/yyyy`.
+- **Criteria.** A criterion's date text is a 1904 serial: `COUNTIF(..,"2024-03-15")` matches a cell holding `DATE(2024,3,15)`, and `COUNTIF(E1,"<=1/1/1908")` is 0 for E1 = 2000 (1/1/1908 is 1461).
+- **TODAY and NOW** agree with DATE: `TODAY()-DATE(YEAR(TODAY()),MONTH(TODAY()),DAY(TODAY()))` = 0.
+
+Before the epoch:
+- `DATE(1903,12,31)`, `DATE(0,1,1)` (year 0 is 1900), `YEAR(-1)`, `MONTH(-1)` and `WEEKDAY(-1)` are #NUM!.
+- `DATE(5,1,1)` = 366 (1905-01-01).
+- Quirk: EDATE and EOMONTH return a day before 1904-01-01 as a negative serial instead of #NUM!: `EDATE(0,-1)` = -31 (1903-12-01) and `EOMONTH(0,-1)` = -1 (1903-12-31).
+- They do not accept such a serial back: `EDATE(-31,1)` and `EOMONTH(-1,0)` are #NUM!.
+- WORKDAY and WORKDAY.INTL are #NUM! for a result before the epoch: `WORKDAY(0,-1)`, `WORKDAY.INTL(1,-2)`.
+- A negative serial is #NUM! in ISOWEEKNUM, WEEKNUM, DAYS360, DATEDIF and NETWORKDAYS too: `ISOWEEKNUM(-1)`, `WEEKNUM(-1)`, `DAYS360(-1,0)`, `DATEDIF(-1,0,"d")`, `NETWORKDAYS(-5,0)`.
+
+The upper bound matches the 1900 system's 9999-12-31:
+- `TEXT(2957003,"yyyy-mm-dd")` = "9999-12-31", `YEAR(2957003)` = 9999 and `DATEVALUE("12/31/9999")` = 2957003.
+- 2957004 is `#VALUE!` in TEXT and #NUM! in YEAR.
+- This confirms the hand-derived bounds in formatter/test/test_dates.rs.
+
+Evidence: probes/date-system-1904-readers A1-A52 (excel-graph, 2026-10-12, T-1416).
+Ours: every cell matches except these, which still count from 1900:
+- the text coercion, typed input and criteria cells A20-A25, A38, A39 and A51 (T-1435);
+- COUPDAYS A18 (T-1436).
+
+Status: VERIFIED (web)
+Tasks: T-1416, T-1435, T-1436
 
 ## Negative serials under an explicit negative section; lone elapsed tokens
 Rule: Excel decides whether a negative serial formats from the value's own sign, before a negative section drops it.
