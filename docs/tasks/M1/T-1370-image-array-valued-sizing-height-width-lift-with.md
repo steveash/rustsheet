@@ -3,7 +3,7 @@ id: T-1370
 title: "IMAGE array-valued sizing/height/width lift with an array source"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,7 @@ probes/rich-errors-image-sizing B121 (T-1345): Excel gives A121 `#BLOCKED!`, B12
 
 ## Out of scope
 -
+
+## Outcome
+- New probe `probes/rich-errors-image-array-options` (61 cells, excel-graph): the source and an array `sizing`, `height` or `width` broadcast against each other (length-1 axis repeats, a shorter array is `#N/A` beyond its end) and each element is validated alone. `Model::image_grid` implements it; `image_options_valid` no longer special-cases arrays.
+- probes/rich-errors-image-sizing B121 leaves the baseline. Rule in information.md.
