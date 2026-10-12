@@ -128,7 +128,8 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
   An error in `alt_text` lifts the same way: `IMAGE(url,#N/A,{0,0})` is `#N/A`, `#N/A`, and a scalar error option beside an array `alt_text`
   gives the array's shape (`IMAGE(url,{"a","b"},#DIV/0!)` is `#DIV/0!`, `#DIV/0!`; `IMAGE(url,{"a","b"},3,#N/A)` is `#N/A`, `#N/A`). With
   several errors the first in argument order wins: `IMAGE(url,"alt",#N/A,{#DIV/0!,0})`, `IMAGE(url,"alt",#N/A,{5,5},#DIV/0!)` and
-  `IMAGE(url,#N/A,{0,0},#DIV/0!)` are all `#N/A` (probes/rich-errors-image-array-error-elements, T-1427).
+  `IMAGE(url,#N/A,{0,0},#DIV/0!)` are all `#N/A`, and `IMAGE(url,{#N/A,"b"},#DIV/0!)` is `#N/A`, `#DIV/0!` element by element
+  (probes/rich-errors-image-array-error-elements, T-1427; VERIFIED).
   An array `alt_text` lifts and shapes the grid like any other IMAGE argument: `IMAGE(url,{"a","b"})` and `IMAGE(url,{"a","b"},0)` are
   1x2 of `#BLOCKED!`, `IMAGE(url,{"a";"b"},{0,0})` is 2x2, `{"a","b","c"}` with `{0,0}` is `#BLOCKED!`, `#BLOCKED!`, `#N/A` (and `{"a","b"}`
   with `{0,0,0}` the same), and an error element in `alt_text` propagates per element (`{#N/A,"b"}` with `{0,0}` is `#N/A`, `#BLOCKED!`;
