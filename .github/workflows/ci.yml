@@ -48,7 +48,6 @@ jobs:
           n=0
           while IFS= read -r -d '' f; do
             n=$((n + 1))
-            echo "changed: $f"
             case "$f" in
               # Paths read at build or test time count as code (decision 0049): add new ones here.
               docs/excel-semantics/*) code=true ;;
@@ -59,6 +58,8 @@ jobs:
             esac
           done < "$RUNNER_TEMP/changed"
           if [ "$n" -eq 0 ]; then code=true; fi
+          # File names are attacker-controlled: never echo them raw (workflow-command injection).
+          echo "changed files: $n, code=$code"
           echo "code=$code" >> "$GITHUB_OUTPUT"
 
   rust:
