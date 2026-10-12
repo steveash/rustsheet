@@ -194,3 +194,9 @@ Status: VERIFIED (excel-graph); desktop UNVERIFIED. A desktop Excel that honours
 Ours: matches since T-1230 (`cell_info` reads the top-left cell on `cell.sheet`; CELL's `reference` argument has a vector signature, so a legacy formula does not intersect it).
 Also: `CELL({1,"row"},B2)` is `#VALUE!` (a non-string element) and `CELL({"row",1},B2)` spills 2, `#VALUE!`; `N(range)` with an error top-left cell is that error (Calc!J1, K1); the info_type array lifts per element.
 Tasks: T-1230
+
+## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
+The oracle appends a canary sheet to every workbook it recalculates, which changes `SHEETS()`, `INFO()`
+and the XLM `GET.WORKBOOK(...)` sheet list. Workbooks that use `GET.WORKBOOK(` (defined names or macro
+sheets) are refused by `embed_canary` for that reason only; this says nothing about what Excel returns
+(T-0014, tools/src/rustsheet_tools/oracle/canary.py).
