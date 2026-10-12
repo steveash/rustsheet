@@ -175,7 +175,9 @@ use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::{ArrayNode, Node},
     expressions::token::Error,
-    formatter::dates::{excel_serial_to_ymd, month_arithmetic_date, real_date_to_serial},
+    formatter::dates::{
+        excel_serial_to_ymd, from_excel_date, month_arithmetic_date, real_date_to_serial,
+    },
     model::Model,
 };
 
@@ -1100,12 +1102,15 @@ impl Model {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let start_serial = match self.get_number_no_bools(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
+        // The dates as the 1900 serials the financial day counts read: a day late in a 1904
+        // workbook (`DateSystem::financial_1900_serial`).
+        let date_system = self.workbook.settings.date_system;
+        let start_raw = match self.get_number_no_bools(&args[0], cell) {
+            Ok(c) => date_system.financial_1900_serial(c),
             Err(s) => return s,
         };
-        let end_serial = match self.get_number_no_bools(&args[1], cell) {
-            Ok(c) => c.floor() as i64,
+        let end_raw = match self.get_number_no_bools(&args[1], cell) {
+            Ok(c) => date_system.financial_1900_serial(c),
             Err(s) => return s,
         };
         let basis = if args.len() == 3 {
@@ -1116,13 +1121,14 @@ impl Model {
         } else {
             0
         };
-        let start_date = match self.excel_date(start_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let end_date = match self.excel_date(end_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
+        let (start_date, end_date) = match (
+            from_excel_date(start_raw.floor() as i64),
+            from_excel_date(end_raw.floor() as i64),
+        ) {
+            (Ok(start), Ok(end)) => (start, end),
+            (Err(message), _) | (_, Err(message)) => {
+                return CalcResult::new_error(Error::NUM, cell, message)
+            }
         };
         let days = (end_date - start_date).num_days() as f64;
         let result = match basis {
@@ -1190,17 +1196,20 @@ impl Model {
             }
             2 => days / 360.0,
             3 => days / 365.0,
-            4 => {
-                let d360 = self.fn_days360(
-                    &[args[0].clone(), args[1].clone(), Node::NumberKind(1.0)],
-                    cell,
-                );
-                if let CalcResult::Number(n) = d360 {
-                    n / 360.0
-                } else {
-                    return d360;
+            // DAYS360(start, end, TRUE) over the same (shifted) dates.
+            4 => match (
+                excel_serial_to_ymd(days360_serial(start_raw)),
+                excel_serial_to_ymd(days360_serial(end_raw)),
+            ) {
+                (Some(start), Some(end)) => days360_eu(start, end) / 360.0,
+                _ => {
+                    return CalcResult::new_error(
+                        Error::NUM,
+                        cell,
+                        DATE_OUT_OF_RANGE_MESSAGE.to_string(),
+                    )
                 }
-            }
+            },
             _ => return CalcResult::new_error(Error::NUM, cell, "Invalid basis".to_string()),
         };
         CalcResult::Number(result.abs())

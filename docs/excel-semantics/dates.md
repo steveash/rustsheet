@@ -412,9 +412,10 @@ date text through `Model::parse_datevalue_text`) and YEAR/MONTH/DAY shift by the
 below 0 (a day before the epoch is #NUM! in DATE and YEAR/MONTH/DAY, probed in the next entry). This also passes 18 cells of poi
 DateFormatTests.xlsx and DateFormatNumberTests.xlsx (1904 workbooks). The other date readers were probed by T-1416 (next entry).
 Since T-1416 the date functions read 1904 serials the same way:
-- WEEKDAY, WEEKNUM, ISOWEEKNUM, EDATE, EOMONTH, DATEDIF, DAYS360, YEARFRAC, NETWORKDAYS(.INTL) and WORKDAY(.INTL) (with their holidays) use `DateSystem::date_of_serial` or `to_1900_serial`.
+- WEEKDAY, WEEKNUM, ISOWEEKNUM, EDATE, EOMONTH, DATEDIF, DAYS360, NETWORKDAYS(.INTL) and WORKDAY(.INTL) (with their holidays) use `DateSystem::date_of_serial` or `to_1900_serial`.
+- YEARFRAC and the financial functions read every date one day late, through `DateSystem::financial_1900_serial` (T-1436, the entry after next).
 - EDATE and EOMONTH return their result through `signed_serial_from_1900_serial`. WORKDAY(.INTL) uses the checked `serial_from_1900_serial`.
-Still 1900-only: date text coerced to a number, typed date input and criteria date text (T-1435), and the financial date arguments (T-1436).
+Still 1900-only: date text coerced to a number, typed date input and criteria date text (T-1435).
 Status: VERIFIED (web)
 Tasks: T-1268, T-1105, T-1330, T-1416, T-1435, T-1436
 
@@ -422,8 +423,8 @@ Tasks: T-1268, T-1105, T-1330, T-1416, T-1435, T-1436
 Rule: in a 1904 workbook every date reader counts serials from 1904-01-01, not only TEXT, DATE, DATEVALUE and YEAR/MONTH/DAY:
 - **Weekdays and weeks.** `WEEKDAY(0)` = 6 (1904-01-01 is a Friday). `WEEKDAY(DATE(2024,3,15))` = 6. `WEEKNUM(0)` = 1. `WEEKNUM(DATE(2024,3,15))` = `ISOWEEKNUM(DATE(2024,3,15))` = 11.
 - **Month arithmetic.** `EDATE(DATE(2024,1,31),1)` = 43889 (2024-02-29). `EOMONTH(DATE(2024,1,15),0)` = 43860.
-- **Day counts.** `DATEDIF(0,1000,"ym")` = 8. `DAYS360(DATE(2024,1,31),DATE(2024,2,29))` = 29. `YEARFRAC(0,365,1)` = 365/366 (1904 is a leap year). `WORKDAY(DATE(2024,3,15),1)` = 43907 (Monday). `NETWORKDAYS` over March 2024 = 21.
-- **Coupon days.** `COUPDAYS(DATE(2024,1,15),DATE(2030,6,30),2,1)` = 182, using the end-of-month coupon rule on the 1904 dates.
+- **Day counts.** `DATEDIF(0,1000,"ym")` = 8. `DAYS360(DATE(2024,1,31),DATE(2024,2,29))` = 29. `YEARFRAC(0,365,1)` = 365/366 (but YEARFRAC reads each date a day late; see the next entry). `WORKDAY(DATE(2024,3,15),1)` = 43907 (Monday). `NETWORKDAYS` over March 2024 = 21.
+- **Coupon days.** `COUPDAYS(DATE(2024,1,15),DATE(2030,6,30),2,1)` = 182 (the financial functions read each date a day late; see the next entry).
 - **Date text and typed input.** `"1904-01-02"+0` = 1. `"2024-03-15"+0` = `--"3/15/2024"` = `VALUE("2024-03-15")` = 43904. Typing `1904-01-02` stores 1 and typing `3/15/2024` stores 43904, both formatted `m/d/yyyy`.
 - **Criteria.** A criterion's date text is a 1904 serial: `COUNTIF(..,"2024-03-15")` matches a cell holding `DATE(2024,3,15)`, and `COUNTIF(E1,"<=1/1/1908")` is 0 for E1 = 2000 (1/1/1908 is 1461).
 - **TODAY and NOW** agree with DATE: `TODAY()-DATE(YEAR(TODAY()),MONTH(TODAY()),DAY(TODAY()))` = 0.
@@ -442,12 +443,47 @@ The upper bound matches the 1900 system's 9999-12-31:
 - This confirms the hand-derived bounds in formatter/test/test_dates.rs.
 
 Evidence: probes/date-system-1904-readers A1-A52 (excel-graph, 2026-10-12, T-1416).
-Ours: every cell matches except these, which still count from 1900:
-- the text coercion, typed input and criteria cells A20-A25, A38, A39 and A51 (T-1435);
-- COUPDAYS A18 (T-1436).
+Ours: every cell matches except the text coercion, typed input and criteria cells A20-A25, A38, A39 and A51,
+which still count from 1900 (T-1435). COUPDAYS A18 passes since T-1436.
 
 Status: VERIFIED (web)
 Tasks: T-1416, T-1435, T-1436
+
+## The 1904 date system: financial day counts read every date one day late
+Rule: in a 1904 workbook, YEARFRAC and the financial functions with date arguments read each date as the
+**next** day. Serial s is read as 1900 serial s + 1463, while every other reader adds 1462. A date they return
+(COUPNCD, COUPPCD) comes back one day early. The coupon schedule, the end-of-month rule and the 30/360 and
+actual/actual counts all run on the shifted dates.
+- `YEARFRAC(DATE(2024,1,31),DATE(2024,2,29),0)` = 30/360 (2/1 to 3/1). The same cell in a 1900 workbook is 29/360.
+  `YEARFRAC(0,59,0)` = 59/360. `YEARFRAC(DATE(2023,2,28),DATE(2024,2,29),1)` = 1 (3/1 to 3/1).
+- `COUPPCD(DATE(2030,1,15),DATE(2030,8,30),4)` = 2029-11-29, not 2029-11-30. The maturity reads as 8/31, a
+  month end, so the coupons fall on month ends and come back a day early. `COUPNCD` of the same is 2030-02-27.
+  `COUPNUM(DATE(2030,2,27),DATE(2030,8,30),4)` = 2, not 3.
+- DISC, INTRATE, PRICEDISC, YIELDDISC, RECEIVED, ACCRINTM, PRICEMAT and YIELDMAT (through YEARFRAC), ACCRINT,
+  AMORLINC and AMORDEGRC change the same way. `DISC(DATE(2024,1,31),DATE(2024,2,29),97,100,0)` = 0.36 (30 days).
+  `AMORLINC(2400,DATE(2023,12,31),DATE(2024,12,31),300,0,0.15,1)` = 360 (1900: 360.986).
+- PRICE, YIELD, DURATION, MDURATION, ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD change too.
+  `ODDFPRICE(DATE(2024,1,31),DATE(2030,2,28),DATE(2023,12,1),DATE(2024,2,29),0.05,0.06,100,2,0)` = 94.9666 (1900: 94.9546).
+- TBILLPRICE, TBILLYIELD and TBILLEQ apply their one-year limit to the shifted dates.
+  `TBILLPRICE(DATE(2023,2,28),DATE(2024,2,29),0.09)` = 90.85 (3/1 to 3/1 is one year); on the true dates it would be #NUM!.
+- Unaffected: DAYS360 (`DAYS360(DATE(2023,8,31),DATE(2024,2,29))` = 179 in both systems) and the other date
+  readers of the previous entry.
+
+At the edges:
+- Serial 0 is a valid date: `PRICE(0,DATE(1905,6,30),...)`, `ACCRINT(0,...)` and `AMORLINC(2400,0,...)` give values.
+- A negative serial is #NUM!: `COUPDAYBS(-1,400,2)`, `YEARFRAC(-1,10,1)`.
+- A returned date may be negative: `COUPPCD(10,DATE(1905,6,30),2)` = -1 and `COUPPCD(0,400,2)` = -150.
+- Quirk: the last date fails once shifted. `YEARFRAC(0,2957003,1)` and `DISC(0,2957003,97,100,0)` are #NUM!, but
+  `COUPNCD(DATE(9999,1,1),DATE(9999,12,31),2)` = 2957003, the maturity itself. `COUPPCD(DATE(2024,1,15),2957004,2)` is #NUM!.
+
+Probes: date-system-1904-financial, date-system-1904-financial-shift, and the twins date-system-1900-financial-daycount
+and date-system-1904-financial-daycount (the same 40 cells in each system). All excel-graph, 2026-10-12, T-1436.
+Ours: `DateSystem::financial_1900_serial` / `serial_from_financial_1900_serial` (formatter/dates.rs), applied by
+YEARFRAC and the financial date readers. Every shift cell matches except COUPNCD at 9999-12-31 (A43, T-1440).
+A few other cells are one last digit off, in both systems: XIRR, YIELD, INTRATE, DISC, PRICEMAT, YIELDMAT, TBILL*.
+Those belong to T-1374 and T-0916.
+Status: VERIFIED (web)
+Tasks: T-1436, T-1440
 
 ## Negative serials under an explicit negative section; lone elapsed tokens
 Rule: Excel decides whether a negative serial formats from the value's own sign, before a negative section drops it.

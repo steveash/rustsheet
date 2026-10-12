@@ -201,6 +201,26 @@ fn compute_ppmt(
 // In these formulas the payment (pmt) is normally negative
 
 impl Model {
+    /// The floored 1900 serial a financial function's day counts read for the date argument
+    /// `serial`: a day late in a 1904 workbook (`DateSystem::financial_1900_serial`).
+    fn financial_date(&self, serial: f64) -> i64 {
+        self.workbook
+            .settings
+            .date_system
+            .financial_1900_serial(serial)
+            .floor() as i64
+    }
+
+    /// A date argument of a financial function (no booleans), as `financial_date` reads it.
+    fn get_financial_date(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<i64, CalcResult> {
+        let serial = self.get_number_no_bools(node, cell)?;
+        Ok(self.financial_date(serial))
+    }
+
     fn get_array_of_numbers_generic(
         &mut self,
         arg: &Node,
@@ -1359,7 +1379,10 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let less_than_one_year = match is_less_than_one_year(settlement as i64, maturity as i64) {
+        let less_than_one_year = match is_less_than_one_year(
+            self.financial_date(settlement),
+            self.financial_date(maturity),
+        ) {
             Ok(f) => f,
             Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
         };
@@ -1424,7 +1447,10 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let less_than_one_year = match is_less_than_one_year(settlement as i64, maturity as i64) {
+        let less_than_one_year = match is_less_than_one_year(
+            self.financial_date(settlement),
+            self.financial_date(maturity),
+        ) {
             Ok(f) => f,
             Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
         };
@@ -1475,7 +1501,10 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let less_than_one_year = match is_less_than_one_year(settlement as i64, maturity as i64) {
+        let less_than_one_year = match is_less_than_one_year(
+            self.financial_date(settlement),
+            self.financial_date(maturity),
+        ) {
             Ok(f) => f,
             Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
         };

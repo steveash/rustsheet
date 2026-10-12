@@ -310,15 +310,15 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let issue_serial = match self.get_number(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
+            Ok(c) => self.financial_date(c),
             Err(s) => return s,
         };
         let first_interest_serial = match self.get_number(&args[1], cell) {
-            Ok(c) => c.floor() as i64,
+            Ok(c) => self.financial_date(c),
             Err(s) => return s,
         };
         let settlement_serial = match self.get_number(&args[2], cell) {
-            Ok(c) => c.floor() as i64,
+            Ok(c) => self.financial_date(c),
             Err(s) => return s,
         };
         let rate = match self.get_number(&args[3], cell) {

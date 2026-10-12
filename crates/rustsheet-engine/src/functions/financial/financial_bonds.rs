@@ -692,14 +692,8 @@ fn parse_coupon_args(
     if !(3..=4).contains(&arg_count) {
         return Err(CalcResult::new_args_number_error(cell));
     }
-    let settlement = {
-        let f = model.get_number_no_bools(&args[0], cell)?;
-        f.floor() as i64
-    };
-    let maturity = {
-        let f = model.get_number_no_bools(&args[1], cell)?;
-        f.floor() as i64
-    };
+    let settlement = model.get_financial_date(&args[0], cell)?;
+    let maturity = model.get_financial_date(&args[1], cell)?;
     let frequency = {
         let f = model.get_number_no_bools(&args[2], cell)?;
         f.floor() as u32
@@ -735,12 +729,12 @@ impl Model {
         if !(5..=6).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let settlement = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f.floor() as i64,
+        let settlement = match self.get_financial_date(&args[0], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
-        let maturity = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.floor() as i64,
+        let maturity = match self.get_financial_date(&args[1], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[2], cell) {
@@ -851,12 +845,12 @@ impl Model {
         if !(6..=7).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let settlement = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f.floor() as i64,
+        let settlement = match self.get_financial_date(&args[0], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
-        let maturity = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.floor() as i64,
+        let maturity = match self.get_financial_date(&args[1], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[2], cell) {
@@ -919,12 +913,12 @@ impl Model {
         if !(6..=7).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let settlement = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f.floor() as i64,
+        let settlement = match self.get_financial_date(&args[0], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
-        let maturity = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.floor() as i64,
+        let maturity = match self.get_financial_date(&args[1], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[2], cell) {
@@ -986,20 +980,20 @@ impl Model {
         if !(8..=9).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let settlement = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f.floor() as i64,
+        let settlement = match self.get_financial_date(&args[0], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
-        let maturity = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.floor() as i64,
+        let maturity = match self.get_financial_date(&args[1], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
-        let issue = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f.floor() as i64,
+        let issue = match self.get_financial_date(&args[2], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
-        let first_coupon = match self.get_number_no_bools(&args[3], cell) {
-            Ok(f) => f.floor() as i64,
+        let first_coupon = match self.get_financial_date(&args[3], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[4], cell) {
@@ -1066,20 +1060,20 @@ impl Model {
         if !(8..=9).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let settlement = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f.floor() as i64,
+        let settlement = match self.get_financial_date(&args[0], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
-        let maturity = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.floor() as i64,
+        let maturity = match self.get_financial_date(&args[1], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
-        let issue = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f.floor() as i64,
+        let issue = match self.get_financial_date(&args[2], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
-        let first_coupon = match self.get_number_no_bools(&args[3], cell) {
-            Ok(f) => f.floor() as i64,
+        let first_coupon = match self.get_financial_date(&args[3], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[4], cell) {
@@ -1151,16 +1145,16 @@ impl Model {
         if !(7..=8).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let settlement = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f.floor() as i64,
+        let settlement = match self.get_financial_date(&args[0], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
-        let maturity = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.floor() as i64,
+        let maturity = match self.get_financial_date(&args[1], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
-        let last_interest = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f.floor() as i64,
+        let last_interest = match self.get_financial_date(&args[2], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[3], cell) {
@@ -1226,16 +1220,16 @@ impl Model {
         if !(7..=8).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let settlement = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f.floor() as i64,
+        let settlement = match self.get_financial_date(&args[0], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
-        let maturity = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.floor() as i64,
+        let maturity = match self.get_financial_date(&args[1], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
-        let last_interest = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f.floor() as i64,
+        let last_interest = match self.get_financial_date(&args[2], cell) {
+            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[3], cell) {
@@ -1369,7 +1363,12 @@ impl Model {
             Err(e) => return e,
         };
         match next_coupon_date(settlement, maturity, frequency) {
-            Ok(serial) => CalcResult::Number(serial as f64),
+            Ok(serial) => CalcResult::Number(
+                self.workbook
+                    .settings
+                    .date_system
+                    .serial_from_financial_1900_serial(serial) as f64,
+            ),
             Err(e) => map_date_err(e, cell),
         }
     }
@@ -1395,7 +1394,12 @@ impl Model {
             Err(e) => return e,
         };
         match prev_coupon_date(settlement, maturity, frequency) {
-            Ok(serial) => CalcResult::Number(serial as f64),
+            Ok(serial) => CalcResult::Number(
+                self.workbook
+                    .settings
+                    .date_system
+                    .serial_from_financial_1900_serial(serial) as f64,
+            ),
             Err(e) => map_date_err(e, cell),
         }
     }
