@@ -319,7 +319,7 @@ def test_refusal_scan_covers_formulas_outside_cells() -> None:
 def test_an_unparseable_sheet_part_is_refused() -> None:
     parts = _parts(build_xlsx(SPEC))
     parts["xl/worksheets/sheet1.xml"] = "<worksheet><sheetData>"
-    with pytest.raises(OracleError, match="unreadable xl/worksheets/sheet1.xml"):
+    with pytest.raises(OracleError, match=r"unreadable xl/worksheets/sheet1\.xml"):
         embed_canary(_repack(parts))
 
 
