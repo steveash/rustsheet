@@ -148,7 +148,8 @@ impl Model {
     /// IMAGE with an array `sizing`, `height` or `width`: the source and those options broadcast
     /// against each other like any arrays (a length-1 axis repeats, a shorter array is `#N/A`
     /// beyond its end) and each element is checked on its own (probes/rich-errors-image-array-options,
-    /// T-1370). `options` is `sizing`, `height`, `width` as given.
+    /// T-1370). `options` is `sizing`, `height`, `width` as given. An error element propagates as
+    /// itself (T-1417).
     fn image_grid(
         &mut self,
         source: &Lifted,
@@ -196,7 +197,7 @@ impl Model {
                             };
                             // An error element propagates as itself, the first option in argument
                             // order winning (probes/rich-errors-image-array-error-elements, T-1417);
-                            // a `source` error still wins over all of them.
+                            // a `source` error wins over them as for a scalar `source` (UNVERIFIED with an option error).
                             if let ArrayNode::Error(_) = source {
                                 return ArrayNode::Error(image_error(&source, false));
                             }
