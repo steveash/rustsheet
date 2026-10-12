@@ -3,7 +3,7 @@ id: T-1407
 title: "INDEX truncates a tiny negative row or column index (-1E-15) to 0 instead of #VALUE!"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
