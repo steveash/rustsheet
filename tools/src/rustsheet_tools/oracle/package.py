@@ -12,8 +12,9 @@ import io
 import posixpath
 import re
 import zipfile
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from xml.etree import ElementTree
+from xml.parsers import expat
 
 # Part types that carry formulas: worksheets, XLM macro sheets, dialog sheets. Chartsheets hold none.
 _FORMULA_SHEET_TYPE = re.compile(r"/(?:worksheet|xlMacrosheet|dialogsheet)$")
@@ -27,7 +28,12 @@ def read_parts(xlsx: bytes) -> dict[str, bytes]:
     """Every part of the package by name, in archive order."""
     try:
         with zipfile.ZipFile(io.BytesIO(xlsx)) as zf:
-            return {i.filename: zf.read(i.filename) for i in zf.infolist()}
+            infos = zf.infolist()
+            # Readers disagree on which of two same-named entries wins, so a scan could pass one
+            # copy while Excel loads the other.
+            if len({i.filename for i in infos}) != len(infos):
+                raise PackageError("unreadable xlsx (duplicate part names)")
+            return {i.filename: zf.read(i) for i in infos}
     except zipfile.BadZipFile as e:
         raise PackageError(f"unreadable xlsx ({e})") from e
 
@@ -41,16 +47,50 @@ def write_parts(parts: dict[str, bytes]) -> bytes:
     return out.getvalue()
 
 
-def _relationships(part: str, data: bytes) -> list[dict[str, str]]:
-    """The attributes of each Relationship in a rels part; a rels part that does not parse is an error."""
-    # A relationships part never needs a DTD; refusing one rules out entity-expansion bombs.
-    if b"<!DOCTYPE" in data.upper() or b"<!ENTITY" in data.upper():
-        raise PackageError(f"unreadable relationships in {part} (it declares a DTD)")
+def _refuse_dtd(*_: object) -> None:
+    raise PackageError("it declares a DTD")
+
+
+def parse_part(part: str, data: bytes) -> ElementTree.Element:
+    """The XML tree of a part; a part that does not parse, or declares a DTD, is an error.
+
+    No package part needs a DTD, so refusing one rules out entity-expansion bombs and external
+    entities. Expat reads the encoding itself (UTF-8, UTF-16 with a BOM, an `encoding=`
+    declaration), so a DTD cannot hide behind an encoding the way it could from a byte search.
+    """
+    check = expat.ParserCreate()
+    check.StartDoctypeDeclHandler = _refuse_dtd
+    check.EntityDeclHandler = _refuse_dtd
     try:
-        root = ElementTree.fromstring(data)  # noqa: S314 - no DTD, checked above
-    except ElementTree.ParseError as e:
-        raise PackageError(f"unreadable relationships in {part} ({e})") from e
-    return [dict(el.attrib) for el in root.iter() if el.tag.rpartition("}")[2] == "Relationship"]
+        check.Parse(data, True)
+        # The checking pass proved there is no DTD, so the tree parse cannot expand entities.
+        return ElementTree.fromstring(data)  # noqa: S314
+    except (expat.ExpatError, ElementTree.ParseError, ValueError) as e:  # ValueError: _refuse_dtd
+        raise PackageError(f"unreadable {part} ({e})") from e
+
+
+def _local(tag: str) -> str:
+    return tag.rpartition("}")[2]
+
+
+def _relationships(part: str, data: bytes) -> list[dict[str, str]]:
+    """The attributes of each Relationship in a rels part."""
+    root = parse_part(part, data)
+    return [dict(el.attrib) for el in root.iter() if _local(el.tag) == "Relationship"]
+
+
+def text_runs(part: str, data: bytes) -> Iterator[str]:
+    """Every run of character data and every attribute value in a part, unescaped.
+
+    For pattern scans: entity and character references are resolved and comments and CDATA
+    sections do not split a run, so `SHEETS&#40;)` or `SHE<!---->ETS()` read as `SHEETS()`.
+    """
+    for el in parse_part(part, data).iter():
+        yield from el.attrib.values()
+        if el.text:
+            yield el.text
+        if el.tail:
+            yield el.tail
 
 
 def _resolve(base_dir: str, target: str) -> str:

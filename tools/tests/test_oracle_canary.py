@@ -225,7 +225,7 @@ def test_a_relationship_to_a_missing_sheet_part_is_refused() -> None:
 def test_unparseable_workbook_rels_are_refused() -> None:
     parts = _parts(build_xlsx(SPEC))
     parts[_rels_path()] = "<Relationships><Relationship"
-    with pytest.raises(OracleError, match="unreadable relationships"):
+    with pytest.raises(OracleError, match=r"unreadable xl/_rels/workbook.xml.rels"):
         embed_canary(_repack(parts))
 
 
@@ -256,6 +256,74 @@ def test_xlm_get_workbook_in_a_defined_name_is_refused() -> None:
     parts["xl/workbook.xml"] = parts["xl/workbook.xml"].replace("</sheets>", f"</sheets>{names}")
     with pytest.raises(OracleError, match=r"GET\.WORKBOOK\(\)"):
         embed_canary(_repack(parts))
+
+
+def _with_part(xlsx: bytes, name: str, data: bytes) -> bytes:
+    """`xlsx` with part `name` replaced by raw `data` (for encodings `_repack` cannot write)."""
+    src = zipfile.ZipFile(io.BytesIO(xlsx))
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        for item in src.infolist():
+            zf.writestr(item.filename, data if item.filename == name else src.read(item))
+    return buf.getvalue()
+
+
+def test_a_utf16_rels_part_with_a_dtd_is_refused() -> None:
+    raw = build_xlsx(SPEC)
+    rels = _parts(raw)[_rels_path()].split("?>", 1)[1]
+    doc = '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE r [<!ENTITY a "b">]>' + rels
+    with pytest.raises(OracleError, match="declares a DTD"):
+        embed_canary(_with_part(raw, _rels_path(), doc.encode("utf-16")))
+
+
+@pytest.mark.parametrize(
+    "formula",
+    ["SHEETS&#40;)", "SHE<!-- -->ETS()", "<![CDATA[SHE]]>ETS()", "_xlfn.SHEETS&#x28;)", "INFO&#40;&quot;x&quot;)"],
+)
+def test_refusal_scan_reads_unescaped_text(formula: str) -> None:
+    parts = _parts(build_xlsx(SPEC))
+    parts["xl/worksheets/sheet1.xml"] = parts["xl/worksheets/sheet1.xml"].replace(
+        "</sheetData>", f"<row r='9'><c r='A9'><f>{formula}</f></c></row></sheetData>"
+    )
+    with pytest.raises(OracleError, match=r"SHEETS\(\) or INFO\(\)"):
+        embed_canary(_repack(parts))
+
+
+def test_refusal_scan_reads_a_utf16_sheet() -> None:
+    raw = build_xlsx({"sheets": [{"name": "Sheet1", "cells": {"A1": "=SHEETS()"}}]})
+    sheet = _parts(raw)["xl/worksheets/sheet1.xml"].split("?>", 1)[1]
+    doc = '<?xml version="1.0" encoding="UTF-16"?>' + sheet
+    with pytest.raises(OracleError, match=r"SHEETS\(\)"):
+        embed_canary(_with_part(raw, "xl/worksheets/sheet1.xml", doc.encode("utf-16")))
+
+
+def test_refusal_scan_covers_formulas_outside_cells() -> None:
+    parts = _parts(build_xlsx(SPEC))
+    validation = (
+        '<dataValidations count="1"><dataValidation type="whole" sqref="B1">'
+        "<formula1>SHEETS()</formula1></dataValidation></dataValidations>"
+    )
+    parts["xl/worksheets/sheet1.xml"] = parts["xl/worksheets/sheet1.xml"].replace(
+        "</sheetData>", f"</sheetData>{validation}"
+    )
+    with pytest.raises(OracleError, match=r"SHEETS\(\)"):
+        embed_canary(_repack(parts))
+
+
+def test_an_unparseable_sheet_part_is_refused() -> None:
+    parts = _parts(build_xlsx(SPEC))
+    parts["xl/worksheets/sheet1.xml"] = "<worksheet><sheetData>"
+    with pytest.raises(OracleError, match="unreadable xl/worksheets/sheet1.xml"):
+        embed_canary(_repack(parts))
+
+
+def test_duplicate_part_names_are_refused() -> None:
+    raw = build_xlsx(SPEC)
+    buf = io.BytesIO(raw)
+    with pytest.warns(UserWarning, match="Duplicate name"), zipfile.ZipFile(buf, "a") as zf:
+        zf.writestr("xl/worksheets/sheet1.xml", "<worksheet/>")
+    with pytest.raises(OracleError, match="duplicate part names"):
+        embed_canary(buf.getvalue())
 
 
 @pytest.mark.parametrize("has_calc_pr", [False, True])

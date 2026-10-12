@@ -38,6 +38,7 @@ from rustsheet_tools.oracle.package import (
     formula_parts,
     read_parts,
     rels_part,
+    text_runs,
     workbook_part,
     write_parts,
 )
@@ -51,7 +52,7 @@ _SHEET_COUNT_FUNCTIONS = re.compile(r"\b(?:_xlfn\.)?(?:SHEETS|INFO)\s*\(", re.IG
 # Excel for the web does not implement CELL("width") and returns #VALUE!, where desktop Excel
 # returns the column width (poi/47804.xlsx: desktop cached 10 and 11). Not Excel semantics.
 # Only a literal "width" argument is caught; the fill's desktop-conflict check is the backstop.
-_WEB_UNSUPPORTED = re.compile(r"\bCELL\s*\(\s*(?:\"|&quot;)width", re.IGNORECASE)
+_WEB_UNSUPPORTED = re.compile(r'\bCELL\s*\(\s*"width', re.IGNORECASE)
 
 # XLM GET.WORKBOOK (a defined name or a macro-sheet cell) lists the sheet names, canary included.
 _SHEET_LIST_MACRO = re.compile(r"\bGET\.WORKBOOK\s*\(", re.IGNORECASE)
@@ -129,6 +130,14 @@ def _append_child(text: str, parent: str, child: str, part: str) -> str:
     return text[: at.start()] + f"<{at.group(1)}{child}/>" + text[at.start() :]
 
 
+def _utf8(parts: dict[str, bytes], name: str) -> str:
+    """A part's text, for the regex edits below, which only handle UTF-8 parts."""
+    try:
+        return parts[name].decode("utf-8")
+    except UnicodeDecodeError as e:
+        raise OracleError(f"cannot embed the canary: {name} is not UTF-8 ({e})") from e
+
+
 def embed_canary(xlsx: bytes) -> bytes:
     """Returns `xlsx` with the canary sheet appended after its last sheet.
 
@@ -138,7 +147,10 @@ def embed_canary(xlsx: bytes) -> bytes:
     try:
         parts = read_parts(xlsx)
         wb_path = workbook_part(parts)
-        scanned = formula_parts(parts, wb_path)
+        # Scanned as parsed text, so escapes, comments and encodings cannot hide a function name.
+        # Text and attributes of every element, not only <f>: data validations, conditional
+        # formats and defined names hold formulas too.
+        scanned = [(name, list(text_runs(name, parts[name]))) for name in formula_parts(parts, wb_path)]
     except PackageError as e:
         raise OracleError(f"cannot embed the canary: {e}") from e
     wb_dir = posixpath.dirname(wb_path)
@@ -147,13 +159,12 @@ def embed_canary(xlsx: bytes) -> bytes:
     if rels_path not in parts or "[Content_Types].xml" not in parts or sheet_path in parts:
         raise OracleError("cannot embed the canary: unexpected package layout")
 
-    for name in scanned:
-        text = parts[name].decode("utf-8", "replace")
+    for name, runs in scanned:
         for pattern, why in _REFUSALS:
-            if pattern.search(text):
+            if any(pattern.search(run) for run in runs):
                 raise OracleError(f"refusing to recalculate: {name} {why}")
 
-    workbook = parts[wb_path].decode("utf-8")
+    workbook = _utf8(parts, wb_path)
     sheets = re.search(r"<((?:\w+:)?)sheets\b[^>]*>(.*?)</\1sheets>", workbook, re.S)
     rel_attr = sheets and re.search(r"\s(\w+):id=", sheets.group(2))
     if not sheets or not rel_attr:
@@ -166,14 +177,14 @@ def embed_canary(xlsx: bytes) -> bytes:
     entry = f'sheet name="{SHEET}" sheetId="{next_id}" {rel_attr.group(1)}:id="{_REL_ID}"'
     workbook = _append_child(workbook, "sheets", entry, wb_path)
 
-    rels = parts[rels_path].decode("utf-8")
+    rels = _utf8(parts, rels_path)
     ws_type = re.search(r'Type="([^"]*/worksheet)"', rels)
     if not ws_type or f'Id="{_REL_ID}"' in rels:
         raise OracleError(f"cannot embed the canary: unexpected relationships in {rels_path}")
     rel = f'Relationship Id="{_REL_ID}" Type="{ws_type.group(1)}" Target="{_PART}"'
     rels = _append_child(rels, "Relationships", rel, rels_path)
 
-    types = parts["[Content_Types].xml"].decode("utf-8")
+    types = _utf8(parts, "[Content_Types].xml")
     ct = re.search(r'ContentType="([^"]*worksheet\+xml)"', types)
     override = f'Override PartName="/{sheet_path}" ContentType="{ct.group(1) if ct else _WORKSHEET_CT}"'
     types = _append_child(types, "Types", override, "[Content_Types].xml")
