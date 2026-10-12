@@ -43,8 +43,17 @@ impl Model {
             |value: &CalcResult| matches!(value, CalcResult::Range { .. } | CalcResult::Array(_));
         let lifts = is_array(&lookup_value) || is_array(&search.is_sorted);
         let as_reference = as_reference && !lifts;
+        // Only an array range_lookup is lifted; a boolean one adds no criterion, so it does not
+        // multiply the cell-visit estimate.
+        let mut criteria = vec![lookup_value];
+        if is_array(&search.is_sorted) {
+            criteria.push(search.is_sorted.clone());
+        }
+        // A lifted lookup or range_lookup reads only the first element of an index array.
+        let narrowed = lifts.then(|| search.index.first_element(cell));
+        let index = narrowed.as_ref().unwrap_or(&search.index);
         self.lift_with_cost(
-            vec![lookup_value, search.is_sorted.clone()],
+            criteria,
             // Each element scans the evaluated cells of the first column (or row) once, however
             // the table was given: a computed array table counts too, not just a range.
             |_| {
@@ -58,7 +67,9 @@ impl Model {
                 if value.is_error() {
                     return value.clone();
                 }
-                let is_sorted = match model.cast_to_bool(values[1].clone(), cell) {
+                let is_sorted = match model
+                    .cast_to_bool(values.get(1).unwrap_or(&search.is_sorted).clone(), cell)
+                {
                     Ok(is_sorted) => is_sorted,
                     Err(error) => return error,
                 };
@@ -72,9 +83,7 @@ impl Model {
                 if let (false, LookupIndexArg::Array(grid)) = (lifts, &search.index) {
                     return model.pick_each(grid, found, search.size, cell, &pick);
                 }
-                // A lifted lookup or range_lookup reads only the first element of an index array.
-                let index = search.index.first_element(cell);
-                match model.resolve_lookup_index(index, search.size, cell) {
+                match model.resolve_lookup_index(index.clone(), search.size, cell) {
                     Ok(index) => pick(model, found, index, as_reference),
                     Err(error) => error,
                 }
