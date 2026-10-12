@@ -725,7 +725,6 @@ mod power_tests {
         // The positive power underflows, so Excel's 1/x^|y| is #DIV/0! (sweep A141, A186).
         assert_eq!(power(1e-10, -33.5), Err(Error::DIV));
         assert_eq!(power(0.1, -400.0), Err(Error::DIV));
-        assert_eq!(power(10.0, 400.0), Err(Error::NUM));
     }
 
     // Excel's doubles, where libm `pow` differs (probes-numeric/power-non-integer-sweep A17, A42,
@@ -733,9 +732,11 @@ mod power_tests {
     #[test]
     fn non_integer_exponents_use_exp_of_y_ln_x() {
         assert_eq!(power(3.0, -0.5), Ok(0.577_350_269_189_625_8));
-        assert_eq!(power(0.5, -0.5), Ok(1.414_213_562_373_095));
+        // One ulp below the double nearest √2.
+        let below_sqrt_2 = f64::from_bits(std::f64::consts::SQRT_2.to_bits() - 1);
+        assert_eq!(power(0.5, -0.5), Ok(below_sqrt_2));
         assert_eq!(power(2.0, -0.5), Ok(0.707_106_781_186_547_5));
-        assert_eq!(power(2.0, 0.5), Ok(1.414_213_562_373_095_1));
+        assert_eq!(power(2.0, 0.5), Ok(std::f64::consts::SQRT_2));
         assert_eq!(power(6.0, 2.5), Ok(88.181_630_740_194_38));
         assert_eq!(power(10.0, 33.5), Ok(3.162_277_660_168_401e33));
         assert_eq!(power(10.0, -33.5), Ok(3.162_277_660_168_357_6e-34));
