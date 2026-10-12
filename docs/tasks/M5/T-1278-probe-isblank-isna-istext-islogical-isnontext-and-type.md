@@ -3,7 +3,7 @@ id: T-1278
 title: "Probe ISBLANK, ISNA, ISTEXT, ISLOGICAL, ISNONTEXT and TYPE on scalar value kinds (evidence gap: 15-23 Excel cells each)"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -29,3 +29,8 @@ Code: `crates/rustsheet-engine/src/functions/information/mod.rs` (`fn_isblank` a
 ## Out of scope
 - Range and array lifting (probes/is-functions-array-lift) and the newer rich errors (information.md), already evidenced.
 - ISERR/ISERROR/ISNUMBER/ISREF/ISEVEN/ISODD, which already have 25+ Excel cells.
+
+## Outcome
+Added probes/is-functions-scalar-kinds (89 excel-graph cells). 88 passed at once; `TYPE(LAMBDA(x,x))`
+was `#N/IMPL!` where Excel gives 128, fixed in `fn_type`. All six functions now exceed 25 Excel
+cells. Semantics entry added to information.md.
