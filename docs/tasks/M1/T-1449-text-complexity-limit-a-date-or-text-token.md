@@ -3,7 +3,7 @@ id: T-1449
 title: "TEXT complexity limit: a date or text token before a quoted string at its limit, and two conditions in a section (follow-up of T-1434)"
 milestone: M1
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
