@@ -15,25 +15,26 @@
 - **Decision:**
   - **Orphan rule.** The steward may squash-merge a task PR opened by another session (branch
     `agent/<lane>/T-XXXX-*`) when all of these hold:
-    - It has been open 24 h or more, and its head has had no commit for 2 h or more, so no session
-      is working on it. The steward's own commits (merges of `main`, bookkeeping) do not reset
-      this clock.
+    - It has been open 24 h or more, and its branch has not moved for 2 h or more, so no session
+      is working on it. "Moved" is measured by push time (the latest head's first CI run, or the
+      branch's last push event), not by commit date. The steward's own commits (merges of `main`,
+      bookkeeping, identified by its `Claude-Session` trailer) do not reset this clock.
     - It is not a draft, and its task is not `status: blocked`.
     - CI is green on the latest head.
     - The branch passes decision 0028's up-to-date gate. The steward may merge `main` into the
       branch first.
-    - The PR body's agent-review table shows APPROVE from every applicable reviewer on the current
-      code. No review thread or comment asks for changes without a later resolution.
-      - If the steward resolved conflicts itself while merging `main` in, it re-runs the `review`
-        skill's reviewers on the merged diff before merging.
-      - A clean, conflict-free merge of `main` needs no re-review.
+    - The steward has run the `review` skill's applicable reviewers itself on the current diff, at
+      the head it merges, and each says APPROVE; no review thread or comment asks for changes
+      without a later resolution. It does not trust the PR body's agent-review table, which names
+      no head sha and may predate later commits or never have been run (architecture review).
     - The task file on the branch is `status: done` with an Outcome section. If it is not, the
-      steward either finishes that bookkeeping or leaves the PR alone.
-  - **Duplicates.** When two open PRs implement the same task id, the steward keeps the more
-    complete one: the one that is green and reviewed or, if that does not decide it, the newer
-    one. It closes the other with a comment linking the survivor, and deletes nothing else. It closes
-    a duplicate only when that PR's head has had no commit for 2 hours or more, so a session still
-    pushing to it is never cut off.
+      steward either finishes that bookkeeping (and waits for CI on the new head) or leaves the PR
+      alone.
+  - **Duplicates.** When two open PRs implement the same task id, the steward picks the survivor:
+    the one that is green and reviewed or, only if neither is, the newer one. It closes the other
+    (a comment linking the survivor; nothing is deleted) only after the survivor has merged, and
+    only when the other's branch has not moved for 2 hours, so a session still pushing to it is
+    never cut off. The 24 h age does not apply to closing a duplicate.
   - **Otherwise.** If any condition fails, today's behaviour stays: fix CI, comment the blocker,
     or mark the task blocked with reasons.
   - The rule is written in `.claude/skills/steward/SKILL.md`. It is not copied into other files.
