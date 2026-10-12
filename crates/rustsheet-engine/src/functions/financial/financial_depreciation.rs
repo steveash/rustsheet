@@ -422,11 +422,11 @@ impl Model {
             Err(s) => return s,
         };
         let date_purchased_serial = match self.get_number(&args[1], cell) {
-            Ok(f) => f.floor() as i64,
+            Ok(f) => self.financial_date(f),
             Err(s) => return s,
         };
         let first_period_serial = match self.get_number(&args[2], cell) {
-            Ok(f) => f.floor() as i64,
+            Ok(f) => self.financial_date(f),
             Err(s) => return s,
         };
         let salvage = match self.get_number(&args[3], cell) {
@@ -498,11 +498,11 @@ impl Model {
             Err(s) => return s,
         };
         let date_purchased_serial = match self.get_number(&args[1], cell) {
-            Ok(f) => f.floor() as i64,
+            Ok(f) => self.financial_date(f),
             Err(s) => return s,
         };
         let first_period_serial = match self.get_number(&args[2], cell) {
-            Ok(f) => f.floor() as i64,
+            Ok(f) => self.financial_date(f),
             Err(s) => return s,
         };
         let salvage = match self.get_number(&args[3], cell) {

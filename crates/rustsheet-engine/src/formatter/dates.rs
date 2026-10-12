@@ -33,6 +33,10 @@ fn convert_to_serial_number(date: NaiveDate) -> i32 {
 /// A8-A12, docs/excel-semantics/dates.md "The 1904 date system").
 const EPOCH_1904_IN_1900_SERIALS: i64 = 1462;
 
+/// The 1900 serial the financial functions read for 1904 serial 0: one more than
+/// `EPOCH_1904_IN_1900_SERIALS` (see `DateSystem::financial_1900_serial`).
+const FINANCIAL_EPOCH_1904_IN_1900_SERIALS: i64 = EPOCH_1904_IN_1900_SERIALS + 1;
+
 impl DateSystem {
     /// The 1900-system serial of this system's day `serial`, the form the calendar helpers
     /// (`excel_serial_to_ymd`) read. `None` for a 1904 serial before the epoch, which is no date
@@ -63,6 +67,31 @@ impl DateSystem {
         match self {
             Self::Excel1900 => serial,
             Self::Excel1904 => serial - EPOCH_1904_IN_1900_SERIALS,
+        }
+    }
+
+    /// The 1900-system serial that YEARFRAC and the financial functions (COUP*, PRICE, ACCRINT,
+    /// AMORLINC, ...) read for this system's date argument `serial`, before truncation. In a 1904
+    /// workbook they read every date one day late, as if it were serial + 1463, not + 1462:
+    /// `COUPPCD(DATE(2030,1,15),DATE(2030,8,30),4)` is 2029-11-29 and `YEARFRAC(0,59,0)` is 59/360
+    /// (probes/date-system-1904-financial-shift A1, A26; dates.md "The 1904 date system"). A
+    /// negative 1904 serial stays negative, so it is no date there, as in the 1900 system.
+    pub(crate) fn financial_1900_serial(self, serial: f64) -> f64 {
+        match self {
+            Self::Excel1904 if serial >= 0.0 => {
+                serial + FINANCIAL_EPOCH_1904_IN_1900_SERIALS as f64
+            }
+            Self::Excel1900 | Self::Excel1904 => serial,
+        }
+    }
+
+    /// This system's serial for a date the financial functions computed as a 1900 serial in the
+    /// space of `financial_1900_serial` (COUPNCD, COUPPCD): one day before that date in a 1904
+    /// workbook, so it can be before the epoch (`COUPPCD(10,DATE(1905,6,30),2)` is -1).
+    pub(crate) fn serial_from_financial_1900_serial(self, serial: i64) -> i64 {
+        match self {
+            Self::Excel1900 => serial,
+            Self::Excel1904 => serial - FINANCIAL_EPOCH_1904_IN_1900_SERIALS,
         }
     }
 
