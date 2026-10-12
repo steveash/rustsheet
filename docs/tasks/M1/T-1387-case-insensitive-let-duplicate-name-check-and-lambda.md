@@ -3,7 +3,7 @@ id: T-1387
 title: "Duplicate LET/LAMBDA names that differ only in case (follow-up of T-1378)"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
