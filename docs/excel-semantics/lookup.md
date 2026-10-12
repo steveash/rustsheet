@@ -207,10 +207,10 @@ out-of-range column, which alone is `#REF!`).
 Rule 3: the cell stays a reference through IF, IFS, CHOOSE, SWITCH and LET, so `MATCH(2,A5:A7,IFS(TRUE,D1))`
 with D1 = "x" is `#REF!` too (as are the same with IF, CHOOSE, SWITCH, `LET(a,D1,a)`); D2 = 1
 gives 2. IFERROR returns the value, so `IFERROR(D1,0)` is `#VALUE!`, like literal text
-(probes/match-type-text-passthrough K1:K9, excel-graph, T-1399).
+(probes/match-type-text-passthrough K1:K9, excel-graph, T-1399). Unprobed: nested forms (`IFS(TRUE,IF(TRUE,D1))`), a multi-cell range or 3-D span picked as match_type, the SWITCH default branch.
 Evidence: eval/suites/probes/cases/match-descending-argcheck.case.json J1–J20 (oracle: excel-graph,
 2026-10-10, T-1305); gen-m2/f7e6d351c8538ef5 Calc!A334, b4392a6514a36ade Calc!A277, 04cfd82f54dbc2b2 Calc!A81, f9d4df4efdfbcbd5 Calc!A14.
-Implemented in: `fn_match` / `match_type_arg` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs` (Rule 2: non-numeric text from a cell only; numeric text and booleans in the cell are unprobed).
+Implemented in: `fn_match` / `match_type_arg` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs` (Rule 2: non-numeric text from a cell only; numeric text and booleans in the cell are unprobed). Rule 3: `match_type_arg` evaluates IF, IFS (`ifs_impl`), SWITCH (`switch_impl`) and LET in reference context; aggregates such as SUM are deliberately unchanged (no oracle evidence).
 Status: VERIFIED
 Tasks: T-1305, T-1312, T-1313
 
