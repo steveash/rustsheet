@@ -123,7 +123,7 @@ impl DateSystem {
     /// The 1900-system serial of this system's day `serial`, the form the calendar helpers
     /// (`excel_serial_to_ymd`) read. `None` for a 1904 serial before the epoch, which is no date
     /// (DATE gives no serial below 0 there). Checked, since serials come from untrusted input.
-    pub fn to_1900_serial(self, serial: i64) -> Option<i64> {
+    pub(crate) fn to_1900_serial(self, serial: i64) -> Option<i64> {
         match self {
             Self::Excel1900 => Some(serial),
             Self::Excel1904 if serial < 0 => None,
@@ -133,7 +133,7 @@ impl DateSystem {
 
     /// This system's serial for the 1900-system serial `serial` that the calendar helpers produce
     /// (`DATE`, date text); `None` for a day before the 1904 epoch, which has no 1904 serial.
-    pub fn from_1900_serial(self, serial: i64) -> Option<i64> {
+    pub(crate) fn from_1900_serial(self, serial: i64) -> Option<i64> {
         match self {
             Self::Excel1900 => Some(serial),
             Self::Excel1904 => serial
