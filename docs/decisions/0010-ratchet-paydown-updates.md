@@ -47,5 +47,8 @@
   T-1416: functions/date_and_time.rs 1371 → 1243 lines (WORKDAY, WORKDAY.INTL and their holiday/weekend
   helpers moved to `date_and_time/workday.rs`); functions/mod.rs 2183 → 2182 (T-1301) and model.rs 3509 → 3499, already
   shrunk on main (`check_file_size.py --update`).
+  T-1436: functions/date_and_time.rs 1243 → 1134 lines (YEARFRAC moved to `date_and_time/yearfrac.rs`),
+  functions/financial/mod.rs 2323 → 2303 (the financial date helpers and `is_less_than_one_year` moved to
+  `financial/dates.rs`) and financial_bonds.rs 1402 → 1367 (shared settlement/maturity read).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
