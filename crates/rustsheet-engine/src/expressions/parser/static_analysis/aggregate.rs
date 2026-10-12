@@ -41,7 +41,8 @@ pub(super) fn areas_static_result(args: &[Node]) -> StaticResult {
 /// reference, or XLOOKUP, TAKE, DROP and TRIMRANGE, which evaluate to the cells they pick
 /// (`Model::evaluate_picked_reference_arg`, probes/subtotal-reference-operands-b H12, H15:H17).
 fn is_read_reference(arg: &Node) -> bool {
-    match arg {
+    // A written group is its child: `AREAS((A1,B1))` reads the union (T-1342).
+    match arg.ungrouped() {
         Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
         | Node::OpRangeKind { .. }

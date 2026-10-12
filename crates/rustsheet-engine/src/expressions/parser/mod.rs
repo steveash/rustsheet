@@ -232,17 +232,11 @@ pub enum Node {
     OpIntersectKind {
         left: Box<Node>,
         right: Box<Node>,
-        /// Parentheses levels written around a cut whose leftmost operand is a parenthesized
-        /// union, `((A1,B1) B1)`; FORMULATEXT keeps them (T-1176). Plain cuts drop theirs.
-        written: usize,
     },
     /// `(left,right)`: the areas of both references (Excel's union operator).
     OpUnionKind {
         left: Box<Node>,
         right: Box<Node>,
-        /// Parentheses levels written around the union: 0 for the left link of a plain chain
-        /// `(A1,B2,C3)`, 1 for `(A1,B2)`, 2 for `((A1,B2))`; FORMULATEXT keeps them (T-1024).
-        written: usize,
         /// Written outside any parentheses or argument list, where the comma is a reference
         /// operator binding tighter than arithmetic: `=A1,B2`, `=1+A1,B2` (T-1073).
         bare: bool,
