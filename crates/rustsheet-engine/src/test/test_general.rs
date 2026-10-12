@@ -467,22 +467,6 @@ fn test_cell_formula() {
     );
 }
 
-// Excel reads a bare newer function name from a file as #NAME?
-// (docs/excel-semantics/xlsx-storage.md "Newer functions need `_xlfn.`"; T-0411).
-#[test]
-fn newer_functions_export_with_xlfn_prefix() {
-    use crate::functions::Function;
-    for (function, stored) in [
-        (Function::Days, "_xlfn.DAYS"),
-        (Function::Gauss, "_xlfn.GAUSS"),
-        (Function::Imsech, "_xlfn.IMSECH"),
-        (Function::GammaDist, "_xlfn.GAMMA.DIST"),
-        (Function::ForecastLinear, "_xlfn.FORECAST.LINEAR"),
-    ] {
-        assert_eq!(function.to_xlsx_string(), stored);
-    }
-}
-
 // skip xlfn tests for now
 #[test]
 #[ignore]

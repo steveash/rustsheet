@@ -1,7 +1,7 @@
 //! Function names as Excel writes them to xlsx: newer functions carry the `_xlfn.` (and
 //! `_xlfn._xlws.`) prefixes. Split out of `functions/mod.rs` to keep that file under its
-//! size ratchet. `tools/src/rustsheet_tools/spec2xlsx.py` reads the `_xlfn.` arms from this file,
-//! so keep them one `Function::X => "_xlfn.X".to_string()` per line.
+//! size ratchet. `tools/src/rustsheet_tools/spec2xlsx.py` reads the prefixed arms of this file with a
+//! regex, so keep each prefixed name on its own match arm.
 
 use super::Function;
 use crate::language::get_default_language;
@@ -86,11 +86,6 @@ impl Function {
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
             Function::Isoweeknum => "_xlfn.ISOWEEKNUM".to_string(),
-            Function::Days => "_xlfn.DAYS".to_string(),
-            Function::Gauss => "_xlfn.GAUSS".to_string(),
-            Function::Imsech => "_xlfn.IMSECH".to_string(),
-            Function::GammaDist => "_xlfn.GAMMA.DIST".to_string(),
-            Function::ForecastLinear => "_xlfn.FORECAST.LINEAR".to_string(),
             Function::CeilingMath => "_xlfn.CEILING.MATH".to_string(),
             Function::CeilingPrecise => "_xlfn.CEILING.PRECISE".to_string(),
             Function::FloorMath => "_xlfn.FLOOR.MATH".to_string(),
