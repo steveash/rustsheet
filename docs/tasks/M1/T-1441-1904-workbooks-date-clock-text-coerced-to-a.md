@@ -3,7 +3,7 @@ id: T-1441
 title: "1904 workbooks: date-clock text coerced to a number, and a negative 1904 holiday serial in WORKDAY"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
