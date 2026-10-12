@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "C5": {
+    "t": "s",
+    "v": "\u0e2b\u0e49\u0e32\u0e1a\u0e32\u0e17\u0e16\u0e49\u0e27\u0e19"
+   },
+   "C6": {
+    "t": "s",
+    "v": "\u0e2a\u0e2d\u0e07\u0e1a\u0e32\u0e17\u0e2b\u0e49\u0e32\u0e2a\u0e34\u0e1a\u0e2a\u0e15\u0e32\u0e07\u0e04\u0e4c"
+   },
+   "C7": {
+    "t": "e",
+    "v": "#VALUE!"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "7ea91f0a38a68856881cf35d536cc71b11a4318790c3c360185b0a8c18643bc9",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-09T14:37:19+00:00",
+  "version": null
+ }
+}

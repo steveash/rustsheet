@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "C2": {
+    "t": "e",
+    "v": "#DIV/0!"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "3e9e05627ed4e9832b88941e4a35217179ddb2ea9ad64c375b2cce542b24ec57",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-09T14:25:06+00:00",
+  "version": null
+ }
+}
