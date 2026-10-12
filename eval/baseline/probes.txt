@@ -525,7 +525,6 @@ F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11
 F	probes/concatenate-limit-spill.case.json	Sheet1!E8
 F	probes/concatenate-limit-spill.case.json	Sheet1!E9
-F	probes/counta-empty-value.case.json	Sheet1!D18
 F	probes/counta-empty-value.case.json	Sheet1!D22
 F	probes/counta-empty-value.case.json	Sheet1!D23
 F	probes/counta-empty-value.case.json	Sheet1!D24
@@ -2523,7 +2522,6 @@ F	probes/groupby-pivotby.case.json	P!Z97
 F	probes/groupby-pivotby.case.json	P!Z98
 F	probes/groupby-pivotby.case.json	P!Z99
 F	probes/index-lifted-edge-cases.case.json	Sheet1!H131
-F	probes/index-lifted-edge-cases.case.json	Sheet1!H136
 F	probes/index-lifted-edge-cases.case.json	Sheet1!I131
 F	probes/index-lifted-edge-cases.case.json	Sheet1!J131
 F	probes/info-logic-argument-modes-2.case.json	Calc!A1
