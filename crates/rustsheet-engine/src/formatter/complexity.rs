@@ -6,6 +6,7 @@
 //! the size in bytes of a compiled code (a quoted character 2, a UTF-16 unit; an unquoted one 3):
 //! - at most four sections, and a fourth section may not hold a digit placeholder or a date or
 //!   time token (`"0;0;0;0"` and `"d;d;d;d"` are `#VALUE!` whatever the value);
+//! - at most one condition in a section (`"[>5][<9]0"` is `#VALUE!` for any value);
 //! - at most 32 elements in a section, where an element is a run of digit placeholders (with
 //!   their `,` and `.`), a run of literals (unquoted, escaped and quoted text merge), or any other
 //!   token (`d`, `mm`, `%`, `@`, `_x`, `*x`, `[h]`, `AM/PM`, ...);
@@ -14,7 +15,8 @@
 //!   character, 2 per other token, 1 per color, 7 per condition, 0 per `;`.
 //!
 //! Known misses: a date or text token followed by a quoted string at the string's limit
-//! (`d"<125 a's>"` works in Excel, costs 252 here), and two conditions in a section.
+//! (`d"<125 a's>"` works in Excel, costs 252 here), and quoted text followed by more text or a
+//! token, which costs about 4 more than modeled (T-1453).
 
 use super::lexer::{Lexer, Token};
 
@@ -80,6 +82,7 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
     let mut lexer = Lexer::new(format);
     let mut sections = 1;
     let mut elements = 0;
+    let mut conditions = 0;
     let mut cost = 0;
     let mut run = Run::None;
     loop {
@@ -93,6 +96,7 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
             Token::Separator => {
                 sections += 1;
                 elements = 0;
+                conditions = 0;
                 run = Run::None;
                 if sections > MAX_SECTIONS {
                     return true;
@@ -100,7 +104,13 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
                 continue;
             }
             Token::Color(_) => (Run::None, COLOR_COST),
-            Token::Condition(..) => (Run::None, CONDITION_COST),
+            Token::Condition(..) => {
+                conditions += 1;
+                if conditions > 1 {
+                    return true;
+                }
+                (Run::None, CONDITION_COST)
+            }
             Token::Zero | Token::Sharp | Token::QuestionMark => (Run::Digits, 0),
             Token::Comma if run == Run::Digits => continue,
             Token::Period if run == Run::Digits => (Run::Digits, DECIMAL_POINT_COST),
@@ -168,6 +178,8 @@ mod tests {
             "d;d;d".to_string(),
             format!("[Red]0{}", " ".repeat(80)),
             format!("[>5]0{}", " ".repeat(79)),
+            "[Red][>5]0".to_string(),
+            "[>5]0;[<9]0".to_string(),
         ];
         for code in ok {
             assert!(!exceeds_complexity_limit(&code), "{code}");
@@ -192,6 +204,8 @@ mod tests {
             "d;d;d;d".to_string(),
             "0%".repeat(17),
             format!("[>5]0{}", " ".repeat(80)),
+            "[>5][<9]0".to_string(),
+            "[>5]0[<9]".to_string(),
         ];
         for code in too_complex {
             assert!(exceeds_complexity_limit(&code), "{code}");
