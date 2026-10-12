@@ -90,7 +90,6 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
         Node::UnaryKind { right, .. } => assign_variable_ids(right, target, id),
         Node::ImplicitIntersection { child, .. }
         | Node::SpillRangeOperator { child }
-        | Node::GroupedRootKind { child }
         | Node::Group { child, .. } => {
             assign_variable_ids(child, target, id);
         }

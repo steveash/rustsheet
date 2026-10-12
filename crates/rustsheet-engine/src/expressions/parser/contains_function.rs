@@ -23,7 +23,6 @@ impl Node {
                 }
                 | Node::ImplicitIntersection { child, .. }
                 | Node::SpillRangeOperator { child }
-                | Node::GroupedRootKind { child }
                 | Node::Group { child, .. }
                 | Node::UnaryKind { right: child, .. }
                 | Node::LambdaDefKind { body: child, .. } => pending.push(child),
