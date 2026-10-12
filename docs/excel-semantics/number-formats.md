@@ -148,16 +148,26 @@ as many significant digits as the E form (6 significant digits; 5 from `|exp| >=
   against 6), and 9.9999996E-10 → "1E-09" (boundary A10: below 1E-09, although the fixed
   "0.000000001" would show the same digit).
 This differs from number→text conversion (`numbers.md`, 15 digits).
-Single-digit ties go to fixed (A27: "0.000000001" against "1E-09"). Unprobed (T-1225): multi-digit
-ties (`0.000123456789`, `1.2345E-05`: the engine prints fixed)
-and fixed values from 1 on whose integer digits plus 9 decimals exceed 11 characters (the engine
-keeps 9 decimals, `123456.123456789` → "123456.123456789"; if the 11-character limit holds there
-too it would be "123456.1235").
+Single-digit ties go to fixed (A27: "0.000000001" against "1E-09"). Multi-digit ties also go to
+fixed when the digit counts are equal: `0.000123456789` → "0.000123457", `1.2345E-05` →
+"0.000012345". When fixed shows fewer digits than E, E wins: `1.5E-09` → "1.5E-09" (fixed
+"0.000000002", 1 digit), `2.5E-09` → "2.5E-09", `1.4E-09` → "1.4E-09", `1.23456789E-06` →
+"1.23457E-06".
+The 11-character limit also applies from 1 on: the sign does not count, the decimal point does,
+and the value is rounded to fit, so decimals are cut to `11 - integer digits - 1`:
+`123456.123456789` → "123456.1235", `-123456.123456789` → "-123456.1235", `22.712470704` →
+"22.7124707", `1234567.891234` → "1234567.891", `100000.123456789` → "100000.1235",
+`12345.123456789` → "12345.12346", `1234.5678901234` → "1234.56789". Values whose rounded integer part has
+11 digits round to the integer (half-up versus half-even is unprobed: both .5 cases land on an even
+result; TODO(T-1422) probe `12345678902.5`): `9999999999.5` → "10000000000", `12345678901.5` → "12345678902", and
+`99999999999.6` rounds up to 1E+11 and prints "1E+11" (the engine's 9-decimal form is wrong for
+all of these; T-1422).
 Evidence: poi/GeneralFormatTests.xlsx A13, A17, A18, A26-A28, A61; probes/number-text-exponent-digits
-Calc!D8 (excel-graph); probes/text-general-exponent-boundary A9, A10 (excel-graph, 2026-10-07).
-Status: VERIFIED (multi-digit ties and wide fixed values: INFERRED)
+Calc!D8 (excel-graph); probes/text-general-exponent-boundary A9, A10 (excel-graph, 2026-10-07); probes/text-general-ties-wide-fixed
+A1-A17 (excel-graph, 2026-10-12).
+Status: VERIFIED
 Implemented in: `format_general` (formatter/format.rs).
-Tasks: T-0938, T-1225
+Tasks: T-0938, T-1225, T-1422
 
 ## A comma between digit placeholders turns on thousands grouping
 Rule: a `,` anywhere between digit placeholders (not only in `#,##0`) means "group the integer
