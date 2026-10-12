@@ -70,7 +70,9 @@ _STRING_LITERAL = re.compile(r'"(?:[^"]|"")*"')
 
 
 _IDENT = re.compile(r"[A-Za-z_][\w.]*")
-_ENGINE_FUNCTIONS = Path(__file__).resolve().parents[3] / "crates/rustsheet-engine/src/functions/mod.rs"
+_ENGINE_FUNCTIONS = (
+    Path(__file__).resolve().parents[3] / "crates/rustsheet-engine/src/functions/xlsx_names.rs"
+)
 _XLSX_NAME_ARM = re.compile(r'Function::\w+ => "(_xlfn\.[\w.]+)"\.to_string\(\)')
 
 
