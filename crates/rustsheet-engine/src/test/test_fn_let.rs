@@ -61,6 +61,22 @@ fn test_let_rebind_same_name_within_single_let() {
 }
 
 #[test]
+fn test_let_duplicate_names_differing_in_case_are_refused() {
+    // Excel for the web refuses `LET(x,1,X,2,x)` and `LET(é,1,É,2,é)` as it refuses
+    // `LET(x,1,x,2,x)` (docs/excel-semantics/references.md, T-1387).
+    let mut model = new_empty_model();
+    model._set("A1", "=LET(x,1,X,2,x)");
+    model._set("A2", "=LET(é,1,É,2,é)");
+    model._set("A3", "=LET(é,1,É+1)");
+    model._set("A4", "=LET(Ä,2,ä*10)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+    assert_eq!(model._get_text("A2"), "#ERROR!");
+    assert_eq!(model._get_text("A3"), "2");
+    assert_eq!(model._get_text("A4"), "20");
+}
+
+#[test]
 fn test_let_r_and_c_variables() {
     let mut model = new_empty_model();
     // r and c must work as LET variable names

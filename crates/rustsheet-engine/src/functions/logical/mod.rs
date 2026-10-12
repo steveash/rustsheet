@@ -6,7 +6,7 @@ mod map_reduce;
 mod scan;
 mod switch;
 
-pub(crate) use r#let::same_variable;
+pub(crate) use r#let::{has_duplicate_parameter, same_variable};
 
 use crate::{
     arithmetic::bcast_idx,
