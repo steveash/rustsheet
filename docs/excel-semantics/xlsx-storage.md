@@ -107,12 +107,14 @@ prefixed: normsdist-stored-form A1-A2 and availability-27 A8-A9 (refilled bare) 
 Status: VERIFIED
 Implemented in: `Function::to_xlsx_string` (functions/xlsx_names.rs; test `newer_functions_export_with_xlfn_prefix`, T-0411). The engine parser resolves a bare newer name read from a file, and the
 exporter never writes `_xleta.` (T-1089).
-Comparison (T-0412): the exporter's arm list was checked against XlsxWriter 3.2.9's future-function list and the
-catalog. No XlsxWriter name with an engine function was missing. PERCENTOF, which XlsxWriter does not list, was
-also written bare; the oracle evidence above (function-name-forms A1) makes it `#NAME?`, so it was added. XlsxWriter also prefixes ANCHORARRAY (the `#` operator),
-SINGLE (the `@` operator, handled by the parser), FILTERXML, QUERYSTRING and WEBSERVICE; the engine has no
-Function variant for the last three or for GROUPBY/PIVOTBY, so there is nothing to export yet.
-Tasks: T-0040, T-0412, T-1089
+Comparison (T-0412): the exporter's arms were checked against XlsxWriter 3.2.9's future-function list; every
+name there that has an engine function already has an arm. XlsxWriter also prefixes ANCHORARRAY (the `#`
+operator), SINGLE (the `@` operator, handled by the parser), FILTERXML, QUERYSTRING and WEBSERVICE; the engine
+has no Function variant for the last three or for GROUPBY/PIVOTBY (not on XlsxWriter's list), so nothing is
+exported for them. PERCENTOF has an engine function but no arm; adding one also makes the case builder prefix it
+(spec2xlsx.py reads these arms), which would stale the bare-form evidence above, so it is T-0416. Two existing arms
+add a prefix Excel-authored workbooks omit (`GAMMALN`, `ISO.CEILING`): T-0417.
+Tasks: T-0040, T-0412, T-0416, T-0417, T-1089
 
 ## Written parentheses are stored as written; `@(x)` is `_xlfn.SINGLE((x))`
 Rule: the stored `<f>` text keeps every redundant parenthesis as written. A group directly after `@`

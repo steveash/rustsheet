@@ -175,7 +175,6 @@ impl Function {
             Function::RankAvg => "_xlfn.RANK.AVG".to_string(),
             Function::RankEq => "_xlfn.RANK.EQ".to_string(),
             Function::Munit => "_xlfn.MUNIT".to_string(),
-            Function::Percentof => "_xlfn.PERCENTOF".to_string(),
 
             Function::ModeMult => "_xlfn.MODE.MULT".to_string(),
             Function::ModeSingl => "_xlfn.MODE.SNGL".to_string(),

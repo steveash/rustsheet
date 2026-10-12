@@ -24,4 +24,4 @@ T-0411 added five missing arms (DAYS, GAUSS, IMSECH, GAMMA.DIST, FORECAST.LINEAR
 -
 
 ## Outcome
-Compared the arm list with XlsxWriter 3.2.9 and the catalog: every XlsxWriter name with an engine function was already prefixed, but PERCENTOF (not on XlsxWriter's list; oracle: function-name-forms A1) was written bare; added it with a unit test. The other XlsxWriter names (FILTERXML, QUERYSTRING, WEBSERVICE, GROUPBY, PIVOTBY) have no engine function yet. Recorded in docs/excel-semantics/xlsx-storage.md. Eval delta: none.
+Compared the exporter's arm list with XlsxWriter 3.2.9 and the catalog. Every XlsxWriter name with an engine function already has an arm. The only engine function missing an arm is PERCENTOF, but adding it also changes the case builder and stales existing oracle evidence, so it is T-0416. Review also found two arms that add a prefix Excel omits (GAMMALN, ISO.CEILING): T-0417. No code change; recorded in docs/excel-semantics/xlsx-storage.md. Eval delta: none.
