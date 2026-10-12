@@ -254,7 +254,7 @@ Not explained or not implemented (known failures):
 - `TEXT(1,"0:a:")` is "1:a:" and an escaped backslash followed by an unquoted `x` prints "\x": Excel accepts these letters unquoted, our lexer rejects them (-g A42, A43; -i A100:A104). T-1450.
 - `TEXT(1,{"0",#N/A})` is "1", `#N/A`: an array of format codes is not implemented (-f A54:B54). T-1451.
 
-Cell display with a long format could not be probed: excel-graph rejects such workbooks (createSession 501 unsupportedWorkbook).
+Cell display with a long format could not be probed: excel-graph rejects such workbooks (createSession 501 unsupportedWorkbook). The colon-run and text-section rules live in the shared formatter, so they apply to cell display too; they are probed through TEXT only.
 Ours: `formatter/complexity.rs` (`exceeds_complexity_limit`), applied by TEXT only; colon runs in `formatter/parser.rs`; the text section with a number in `format_number` (formatter/format.rs).
 Status: VERIFIED (excel-graph, fitted model)
 Tasks: T-1388, T-1393, T-1434, T-1449, T-1450, T-1451

@@ -35,29 +35,43 @@ enum Run {
     None,
     Digits,
     Literal,
-    /// A literal colon; the next colon joins it at no cost (colon runs print as one).
+    /// A literal colon. It belongs to the literal run for element counting, and the next colon
+    /// joins it at no cost: colon runs print as one (probes/text-format-length-limit-f, -g).
     Colon,
 }
 
-/// Whether `token` is a number or date/time token, which a fourth section may not hold.
+/// Whether `token` is a number or date/time token, which a fourth section may not hold. A positive
+/// list (not `Token::is_date`, which leaves out time tokens), so a new variant is not caught by default.
 fn is_number_or_date(token: &Token) -> bool {
-    !matches!(
+    matches!(
         token,
-        Token::Color(_)
-            | Token::Condition(..)
-            | Token::Currency(_)
-            | Token::Literal(_)
-            | Token::Spacer(_)
-            | Token::Ghost(_)
-            | Token::Text(_)
-            | Token::Separator
-            | Token::Raw
-            | Token::Comma
-            | Token::Period
-            | Token::Percent
-            | Token::General
-            | Token::ILLEGAL
-            | Token::EOF
+        Token::Zero
+            | Token::Sharp
+            | Token::QuestionMark
+            | Token::Scientific
+            | Token::ScientificMinus
+            | Token::Day
+            | Token::DayPadded
+            | Token::DayNameShort
+            | Token::DayName
+            | Token::Month
+            | Token::MonthPadded
+            | Token::MonthNameShort
+            | Token::MonthName
+            | Token::MonthLetter
+            | Token::YearShort
+            | Token::Year
+            | Token::Hour
+            | Token::HourPadded
+            | Token::Second
+            | Token::SecondPadded
+            | Token::ElapsedHour
+            | Token::ElapsedMinute
+            | Token::ElapsedSecond
+            | Token::ElapsedHourPadded
+            | Token::ElapsedMinutePadded
+            | Token::ElapsedSecondPadded
+            | Token::AMPM
     )
 }
 
