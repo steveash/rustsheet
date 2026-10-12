@@ -3,7 +3,7 @@ id: T-1301
 title: "Probe ECMA.CEILING, port if Excel evaluates it as CEILING (ironcalc 8a82396a)"
 milestone: M2
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
