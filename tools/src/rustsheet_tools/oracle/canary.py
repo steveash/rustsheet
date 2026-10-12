@@ -23,11 +23,9 @@ Evidence for the expected values: live excel-graph runs on 2026-10-04
 
 from __future__ import annotations
 
-import io
 import math
 import posixpath
 import re
-import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from html import escape
@@ -35,6 +33,14 @@ from pathlib import Path
 from typing import Any
 
 from rustsheet_tools.oracle.backends import OracleError
+from rustsheet_tools.oracle.package import (
+    PackageError,
+    formula_parts,
+    read_parts,
+    rels_part,
+    workbook_part,
+    write_parts,
+)
 from rustsheet_tools.snapshot import formula_values, snapshot
 
 SHEET = "RustSheetCanary"
@@ -47,7 +53,11 @@ _SHEET_COUNT_FUNCTIONS = re.compile(r"\b(?:_xlfn\.)?(?:SHEETS|INFO)\s*\(", re.IG
 # Only a literal "width" argument is caught; the fill's desktop-conflict check is the backstop.
 _WEB_UNSUPPORTED = re.compile(r"\bCELL\s*\(\s*(?:\"|&quot;)width", re.IGNORECASE)
 
+# XLM GET.WORKBOOK (a defined name or a macro-sheet cell) lists the sheet names, canary included.
+_SHEET_LIST_MACRO = re.compile(r"\bGET\.WORKBOOK\s*\(", re.IGNORECASE)
+
 _REFUSALS = (
+    (_SHEET_LIST_MACRO, "uses GET.WORKBOOK(), whose answer the canary sheet would change"),
     (_SHEET_COUNT_FUNCTIONS, "uses SHEETS() or INFO(), whose answer the canary sheet would change"),
     (_WEB_UNSUPPORTED, 'uses CELL("width"), which Excel for the web does not implement'),
 )
@@ -126,27 +136,19 @@ def embed_canary(xlsx: bytes) -> bytes:
     own parts reach Excel byte-for-byte unchanged.
     """
     try:
-        src = zipfile.ZipFile(io.BytesIO(xlsx))
-        parts = {i.filename: src.read(i.filename) for i in src.infolist()}
-        root_rels = parts["_rels/.rels"].decode("utf-8")
-    except (KeyError, UnicodeDecodeError, zipfile.BadZipFile) as e:
-        raise OracleError(f"cannot embed the canary: unreadable xlsx ({e})") from e
-    office = re.search(r'Target="/?([^"]+)"[^>]*Type="[^"]*/officeDocument"', root_rels) or re.search(
-        r'Type="[^"]*/officeDocument"[^>]*Target="/?([^"]+)"', root_rels
-    )
-    if not office or office.group(1) not in parts:
-        raise OracleError("cannot embed the canary: workbook part not found")
-    wb_path = office.group(1)
-    wb_dir, wb_file = posixpath.split(wb_path)
-    rels_path = posixpath.join(wb_dir, "_rels", f"{wb_file}.rels")
+        parts = read_parts(xlsx)
+        wb_path = workbook_part(parts)
+        scanned = formula_parts(parts, wb_path)
+    except PackageError as e:
+        raise OracleError(f"cannot embed the canary: {e}") from e
+    wb_dir = posixpath.dirname(wb_path)
+    rels_path = rels_part(wb_path)
     sheet_path = posixpath.join(wb_dir, _PART)
     if rels_path not in parts or "[Content_Types].xml" not in parts or sheet_path in parts:
         raise OracleError("cannot embed the canary: unexpected package layout")
 
-    formula_parts = (n for n in parts if n == wb_path or n.startswith(posixpath.join(wb_dir, "worksheets/")))
-    for name in formula_parts:
-        data = parts[name]
-        text = data.decode("utf-8", "replace")
+    for name in scanned:
+        text = parts[name].decode("utf-8", "replace")
         for pattern, why in _REFUSALS:
             if pattern.search(text):
                 raise OracleError(f"refusing to recalculate: {name} {why}")
@@ -182,11 +184,7 @@ def embed_canary(xlsx: bytes) -> bytes:
     parts[sheet_path] = _sheet_xml(
         ns.group(1) if ns else "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
     ).encode("utf-8")
-    out = io.BytesIO()
-    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
-        for name, data in parts.items():
-            zf.writestr(name, data)
-    return out.getvalue()
+    return write_parts(parts)
 
 
 def canary_problems(values: dict[str, dict[str, Any]]) -> list[str]:

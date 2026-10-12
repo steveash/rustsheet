@@ -14,7 +14,6 @@ Backends:
 from __future__ import annotations
 
 import contextlib
-import io
 import os
 import shutil
 import subprocess
@@ -22,7 +21,6 @@ import sys
 import tempfile
 import time
 import uuid
-import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -30,6 +28,7 @@ from urllib.parse import quote
 
 import requests
 
+from rustsheet_tools.oracle.package import PackageError, patch_workbook
 from rustsheet_tools.spec2xlsx import entered_cells
 
 
@@ -58,21 +57,18 @@ class Backend(Protocol):
 
 def force_full_calc_on_load(xlsx: bytes) -> bytes:
     """Sets `<calcPr fullCalcOnLoad="1"/>` so any Excel opening the file recalculates everything."""
-    src = zipfile.ZipFile(io.BytesIO(xlsx))
-    out_buf = io.BytesIO()
-    with zipfile.ZipFile(out_buf, "w", zipfile.ZIP_DEFLATED) as out:
-        for item in src.infolist():
-            data = src.read(item.filename)
-            if item.filename == "xl/workbook.xml":
-                text = data.decode("utf-8")
-                if "<calcPr" in text:
-                    if "fullCalcOnLoad" not in text:
-                        text = text.replace("<calcPr", '<calcPr fullCalcOnLoad="1"', 1)
-                else:
-                    text = text.replace("</workbook>", '<calcPr fullCalcOnLoad="1"/></workbook>', 1)
-                data = text.encode("utf-8")
-            out.writestr(item, data)
-    return out_buf.getvalue()
+
+    def patch(text: str) -> str:
+        if "<calcPr" in text:
+            return (
+                text if "fullCalcOnLoad" in text else text.replace("<calcPr", '<calcPr fullCalcOnLoad="1"', 1)
+            )
+        return text.replace("</workbook>", '<calcPr fullCalcOnLoad="1"/></workbook>', 1)
+
+    try:
+        return patch_workbook(xlsx, patch)
+    except PackageError as e:
+        raise OracleError(str(e)) from e
 
 
 def typed_entries(xlsx: bytes) -> list[tuple[str, str, str]]:

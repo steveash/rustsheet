@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 
 from rustsheet_tools.oracle import canary, cli
-from rustsheet_tools.oracle.backends import OracleError, OracleInfo
+from rustsheet_tools.oracle.backends import OracleError, OracleInfo, force_full_calc_on_load
 from rustsheet_tools.oracle.canary import CELLS, SHEET, canary_problems, checked_values, embed_canary
 from rustsheet_tools.snapshot import formula_values, snapshot
 from rustsheet_tools.spec2xlsx import build_xlsx
@@ -182,6 +182,52 @@ def test_new_sheet_id_follows_the_largest_and_names_cannot_collide() -> None:
     taken = build_xlsx({"sheets": [{"name": SHEET, "cells": {"A1": 1}}]})
     with pytest.raises(OracleError, match="already has a sheet"):
         embed_canary(taken)
+
+
+def _move_sheet(parts: dict[str, str], new: str) -> dict[str, str]:
+    """The same package with its worksheet stored at `new`, which only the workbook rels point at."""
+    old = "xl/worksheets/sheet1.xml"
+    moved = {(new if n == old else n): t for n, t in parts.items()}
+    moved["xl/_rels/workbook.xml.rels"] = moved["xl/_rels/workbook.xml.rels"].replace(
+        "worksheets/sheet1.xml", new.removeprefix("xl/")
+    )
+    moved["[Content_Types].xml"] = moved["[Content_Types].xml"].replace(f"/{old}", f"/{new}")
+    return moved
+
+
+def test_refusal_scan_follows_the_workbook_rels_to_a_nonstandard_sheet_path() -> None:
+    spec = {"sheets": [{"name": "Sheet1", "cells": {"A1": "=SHEETS()"}}]}
+    moved = _move_sheet(_parts(build_xlsx(spec)), "xl/other/data.xml")
+    with pytest.raises(OracleError, match=r"xl/other/data.xml uses SHEETS\(\)"):
+        embed_canary(_repack(moved))
+
+
+def test_a_clean_sheet_at_a_nonstandard_path_is_embedded() -> None:
+    moved = _move_sheet(_parts(build_xlsx(SPEC)), "xl/other/data.xml")
+    assert SHEET in _parts(embed_canary(_repack(moved)))["xl/workbook.xml"]
+
+
+def test_xlm_get_workbook_in_a_defined_name_is_refused() -> None:
+    parts = _parts(build_xlsx(SPEC))
+    names = '<definedNames><definedName name="Sheets">GET.WORKBOOK(1)</definedName></definedNames>'
+    parts["xl/workbook.xml"] = parts["xl/workbook.xml"].replace("</sheets>", f"</sheets>{names}")
+    with pytest.raises(OracleError, match=r"GET\.WORKBOOK\(\)"):
+        embed_canary(_repack(parts))
+
+
+@pytest.mark.parametrize("has_calc_pr", [False, True])
+def test_force_full_calc_on_load_sets_the_flag_once(has_calc_pr: bool) -> None:
+    parts = _parts(build_xlsx(SPEC))
+    if has_calc_pr:
+        parts["xl/workbook.xml"] = parts["xl/workbook.xml"].replace(
+            "</workbook>", '<calcPr calcId="1"/></workbook>'
+        )
+    text = _parts(force_full_calc_on_load(_repack(parts)))["xl/workbook.xml"]
+    assert text.count('fullCalcOnLoad="1"') == 1
+    assert (
+        _parts(force_full_calc_on_load(_repack({**parts, "xl/workbook.xml": text})))["xl/workbook.xml"]
+        == text
+    )
 
 
 def test_not_an_xlsx_is_an_oracle_error() -> None:

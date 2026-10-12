@@ -3,7 +3,7 @@ id: T-0014
 title: "Oracle tooling: one xlsx part-rewrite helper; rels-based formula-part scan"
 milestone: M0
 lane: quality
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ Review follow-ups from T-0013:
 
 ## Out of scope
 Changing canary contents or the Graph session flow.
+
+## Outcome
+New `tools/src/rustsheet_tools/oracle/package.py` is the one place that reads and rewrites an xlsx package: `read_parts`/`write_parts`, a rels-based `workbook_part`, `formula_parts` (the workbook plus every worksheet/macrosheet/dialogsheet its rels target) and `patch_workbook`. `force_full_calc_on_load` (no longer hardcodes `xl/workbook.xml`) and `embed_canary` both use it. The canary's SHEETS()/INFO() scan follows the rels, so a worksheet at a nonstandard path is covered, and `GET.WORKBOOK(` (XLM, defined names and macro sheets) is now refused too, as a conservative refusal rather than an Excel-semantics claim. Tests added for a nonstandard sheet path, GET.WORKBOOK and `force_full_calc_on_load`. The optional total-size cap was not added. No eval change.
