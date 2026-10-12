@@ -3,7 +3,7 @@ id: T-1344
 title: "One printer: to_string_moved reuses stringify precedence (SPEC-0007 step 5)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
