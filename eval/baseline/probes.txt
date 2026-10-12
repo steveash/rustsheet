@@ -200,6 +200,7 @@ C	probes/geomean-stored-3ulps-low.case.json	9
 C	probes/groupby-pivotby.case.json	1432
 C	probes/if-index-ref-args-aggregates.case.json	54
 C	probes/iferror-blank-value.case.json	23
+C	probes/ifna-isformula-edges.case.json	40
 C	probes/ifs-array-criteria-edges.case.json	22
 C	probes/ifs-array-criteria.case.json	39
 C	probes/ifs-legacy-sumproduct.case.json	33
@@ -2552,6 +2553,7 @@ F	probes/groupby-pivotby.case.json	P!Z78
 F	probes/groupby-pivotby.case.json	P!Z97
 F	probes/groupby-pivotby.case.json	P!Z98
 F	probes/groupby-pivotby.case.json	P!Z99
+F	probes/ifna-isformula-edges.case.json	Calc!B12
 F	probes/index-lifted-edge-cases.case.json	Sheet1!H131
 F	probes/index-lifted-edge-cases.case.json	Sheet1!I131
 F	probes/index-lifted-edge-cases.case.json	Sheet1!J131
