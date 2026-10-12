@@ -29,7 +29,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     bookkeeping (then wait for CI on the new head) or leave the PR alone.
   Duplicates: when two open PRs implement the same task id, keep the more complete one (green and
   reviewed; if that does not decide it, the newer one), close the other with a comment linking the
-  survivor, and delete nothing else. When a condition fails, do what you did before: fix CI,
+  survivor, and delete nothing else. Close a duplicate only when its head has had no commit
+  for 2 hours or more, so a live session is never cut off. When a condition fails, do what you did before: fix CI,
   comment the blocker, or mark the task blocked with reasons.
 - **Merge style**: squash merge; title `T-XXXX: <task title>`; keep the Co-Authored-By trailer.
   Exception: the daily steward PR uses branch `agent/steward/<YYYY-MM-DD>` and title

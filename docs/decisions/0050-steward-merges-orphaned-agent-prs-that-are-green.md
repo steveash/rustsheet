@@ -31,7 +31,9 @@
       steward either finishes that bookkeeping or leaves the PR alone.
   - **Duplicates.** When two open PRs implement the same task id, the steward keeps the more
     complete one: the one that is green and reviewed or, if that does not decide it, the newer
-    one. It closes the other with a comment linking the survivor, and deletes nothing else.
+    one. It closes the other with a comment linking the survivor, and deletes nothing else. It closes
+    a duplicate only when that PR's head has had no commit for 2 hours or more, so a session still
+    pushing to it is never cut off.
   - **Otherwise.** If any condition fails, today's behaviour stays: fix CI, comment the blocker,
     or mark the task blocked with reasons.
   - The rule is written in `.claude/skills/steward/SKILL.md`. It is not copied into other files.
@@ -55,8 +57,8 @@ The steward routine's current step (4), quoted verbatim:
 
 > for agent PRs open longer than 24 h: do not merge PRs opened by another session; instead fix CI on them per the `steward` skill, comment the blocker, or mark their tasks blocked with reasons
 
-Replace it, both in the steward routine and in the "Prompt — steward (daily)" block of
-docs/process/routines.md, with:
+Replace it in the steward routine with the text below. This PR already updates the "Prompt —
+steward (daily)" block of docs/process/routines.md to match (decision 0008 keeps them identical):
 
 ```
 for agent PRs open longer than 24 h: merge a PR opened by another session only when it meets every condition of the `steward` skill's "Orphaned agent PRs" rule (decision 0050), close duplicates per that rule, and otherwise fix CI on them per the `steward` skill, comment the blocker, or mark their tasks blocked with reasons
