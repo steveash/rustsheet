@@ -836,14 +836,9 @@ impl Model {
         };
         broadcast_text(cell, &[&text], |i, j| {
             let text = array_node_to_string(text.elem(i, j))?;
-            time_text::parse_time_string(
-                &text,
-                self.locale,
-                &|| self.current_year(),
-                self.workbook.settings.date_system,
-            )
-            .map(ArrayNode::Number)
-            .ok_or(Error::VALUE)
+            self.parse_time_text(&text)
+                .map(ArrayNode::Number)
+                .ok_or(Error::VALUE)
         })
     }
 

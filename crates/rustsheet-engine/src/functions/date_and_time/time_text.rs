@@ -9,8 +9,21 @@ use crate::{
     cast::number_text_too_long,
     formatter::date_text::{parse_date, CurrentYear},
     locale::Locale,
+    model::Model,
     types::DateSystem,
 };
+
+impl Model {
+    /// [`parse_time_string`] with the model's locale, year and date system.
+    pub(super) fn parse_time_text(&self, text: &str) -> Option<f64> {
+        parse_time_string(
+            text,
+            self.locale,
+            &|| self.current_year(),
+            self.workbook.settings.date_system,
+        )
+    }
+}
 
 /// Time of day for TIMEVALUE text: the fractional part of the serial the text denotes, so clock
 /// text past 24 hours wraps (`TIMEVALUE("25:00")` is 1.0416666666666667 - 1) and "date time" text
