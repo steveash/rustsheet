@@ -50,7 +50,7 @@ Status: VERIFIED (excel-graph)
 Tasks: T-0235, T-0291, T-1294, T-1395
 
 ## IFNA edges: only #N/A is caught, lifts over arrays (excel-graph)
-Rule: IFNA replaces only `#N/A` (`#DIV/0!`, `#VALUE!` pass through); a non-error value of any type is returned as is (`IFNA(5,1)` 5, `IFNA("",1)` ""). An omitted fallback (`IFNA(#N/A,)`) is 0, and an error fallback is returned (`IFNA(#N/A,#DIV/0!)` is `#DIV/0!`). It lifts elementwise: `IFNA({1,#N/A,3},0)` spills 1, 0, 3, `SUM(IFNA({1,#N/A,3},10))` is 14, `IFNA(#N/A,{1,2})` spills 1, 2, and `IFNA(Data!A1:A3,0)` over a range holding `#N/A` spills (a blocked spill is `#SPILL!`). `IFNA(VLOOKUP(9,..,FALSE),"none")` is "none", `IFNA(MATCH("z",..,0),0)` is 0, `IFNA(<blank cell>,1)` is 0 (see the blank rule above).
+Rule: IFNA replaces only `#N/A` (`#DIV/0!`, `#VALUE!` pass through); a non-error value of any type is returned as is (`IFNA(5,1)` 5, `IFNA("",1)` ""). An omitted fallback (`IFNA(#N/A,)`) is 0, and an error fallback is returned (`IFNA(#N/A,#DIV/0!)` is `#DIV/0!`). It lifts elementwise: `IFNA({1,#N/A,3},0)` spills 1, 0, 3, `SUM(IFNA({1,#N/A,3},10))` is 14, `IFNA(#N/A,{1,2})` spills 1, 2, and `IFNA(Data!A1:A3,0)` over a range holding `#N/A` is `#SPILL!` in this probe only because Calc!A13 blocks the spill (range lifting itself is shown by the array-constant cells). `IFNA(VLOOKUP(9,..,FALSE),"none")` is "none", `IFNA(MATCH("z",..,0),0)` is 0, `IFNA(<blank cell>,1)` is 0 (see the blank rule above).
 Evidence: probes/ifna-isformula-edges Calc!A1:A13, C1:E3 (oracle: excel-graph, 2026-10-12, T-1279).
 Status: VERIFIED (excel-graph); the engine matches.
 Tasks: T-1279
