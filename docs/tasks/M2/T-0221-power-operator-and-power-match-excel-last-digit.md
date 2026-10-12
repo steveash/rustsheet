@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: [T-1302]
+depends_on: [T-1302, T-1421]
 ---
 
 ## Goal
@@ -50,6 +50,8 @@ integer-exponent rule. On the planner's check, that rule alone clears 6 of the 8
 A57, A86, A54, A104) and the m9-fin-power `^`/POWER cells. After T-1302, this task owns the
 non-integer exponents. Two of their cells still block M1: 6462bf910ef9f28f A41 `3^-0.5` and
 A207 `0.5^-0.5`. Take those first.
+Split again on 2026-10-12: T-1421 (M1, opus) owns negative non-integer exponents, including those
+two gen-m1 cells and the `1/(x^|y|)` lead below. This task keeps positive non-integer exponents.
 Lead to fit (a hypothesis, not verified): for a negative exponent, Excel's value equals
 `1/(x^|y|)`. That gives `1/(3^0.5)` = 0.5773502691896258, `1/(0.5^0.5)` = 1.414213562373095 and,
 for gen-m2 1b6ceed7489e0800 A62, `1/(2^0.5)` = 0.7071067811865475. All three are Excel's values,
@@ -62,8 +64,9 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Acceptance criteria
 - [ ] A probe sweep pins the formulation. docs/excel-semantics/numbers.md entry updated with evidence.
-- [ ] The gen-m2 cells above that T-1302 did not clear disappear from eval/baseline/gen-m2.txt, and gen-m1 A41 and A207 disappear from eval/baseline/gen-m1.txt, with no new F lines in any suite.
+- [ ] The gen-m2 cells above that T-1302 did not clear disappear from eval/baseline/gen-m2.txt, with no new F lines in any suite (gen-m1 A41 and A207 are T-1421's).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Integer exponents: T-1302.
+- Negative non-integer exponents and gen-m1 A41/A207: T-1421.
