@@ -228,45 +228,33 @@ Status: VERIFIED
 Tasks: T-0981
 
 ## TEXT format code complexity limit
-Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens long before 255 characters. The model below is fitted to the probed boundaries: every cell of the five probes fits it except the three listed under "Not explained" (VERIFIED, excel-graph; excel-desktop unprobed).
+Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens long before 255 characters. The model below is fitted to the probed boundaries of probes c to i (481 cells; VERIFIED, excel-graph; excel-desktop unprobed). Its weights look like the size in bytes of a compiled code, a quoted character being one UTF-16 unit (2) and an unquoted one 3.
 - **Sections:** more than four is `#VALUE!`, even when the fifth is empty (`"0;;;;"`, `"0;0;0;@;"`); `"0;;;"` works.
 - **Elements:** at most 32 elements per section. An element is a run of digit placeholders together with their `,` and `.` (`REPT("0.",20)` and `REPT("#,",17)` work), a run of literals (unquoted, escaped and quoted text merge into one run, so `REPT("""a"" ",17)` works), or any other token (`d`, `mm`, `dddd`, `%`, `@`, `_x`, `*x`, `[h]`, `AM/PM`, ...). `REPT("dm",16)` works (32 elements), `REPT("dm",16)&"d"` fails (33). The count restarts at each `;` (two sections of 17 elements work).
-- **Cost:** at most 166 over the whole code, counted as follows:
-  - 2 per placeholder element (`"0000000000"` costs 2);
-  - 2 per unquoted or escaped literal character; `$` costs 1;
-  - about 1.5 per quoted character;
-  - 1 per `;`;
-  - colors and conditions cost 0 (`"[Red]0"` plus 80 spaces works).
+- **Cost:** at most 250 over the whole code (T-1434; the earlier 166 model counted the same boundaries in units of 1.5), counted as follows:
+  - 5 per placeholder run, plus 2 per `.` in it (`"0000000000"` costs 5; `0.0` costs 7);
+  - 3 per unquoted or escaped literal character; `$` costs 1; a run of colons costs 3 once (see "Colon runs");
+  - 2 per quoted character;
+  - 2 per other token (`d`, `mm`, `%`, `@`, ...);
+  - 1 per color; 6 to 8 per condition (`"[>5]0"` plus 79 spaces works, 80 fails; the engine uses 7);
+  - 0 per `;`.
 
-  Examples: `"d"&REPT(" ",82)` (166) works and `"d"&REPT(" ",83)` (168) fails; `REPT("-",83)` works and `REPT("-",84)` fails; `"d"&REPT("\a",82)` works and `REPT("\a",83)` fails; `"d"&REPT("$",160)` works and `REPT("$",250)` fails; `"0"&REPT(" ",40)&";0"&REPT(" ",40)` works and 41/40 fails; `"0;0;0;"&REPT(" ",78)` works.
-- **Quoted text** is only bounded:
-  - `"d"&""""&REPT("a",90)&""""` works, and with 150 characters it fails;
-  - a quoted string alone fails at 158 characters;
-  - `d"a"` plus 81 spaces works, so one quoted character costs at most 2;
-  - two 40-character strings plus 40 spaces fail.
-
-  Any per-character cost between 1.08 and 1.8 fits. The engine uses n + ceil(n/2). Strings of 91–149 characters next to a placeholder are unprobed.
-- **Quoted text, bisected (T-1434, probes/text-format-length-limit-f, -g):** no single per-character cost fits yet.
-  - A quoted string alone works at 125 characters and fails at 126. `"d"` plus one quoted string has the same boundary (125 works, 126 fails), so the `d` seems to cost nothing here.
-  - After `d`, two adjacent quoted strings of 62 characters each work and 63 + 63 fail; the merged run stops at 125 characters in total.
-  - `"d"` plus a 50-character quoted string plus 48 spaces works; with 50 spaces it fails. That needs about 1.3 per quoted character if `d` costs 2.
-  - A quoted string of 20, 40, 60 or 80 characters padded with (166 − n)/2 spaces fails.
-  - Mixed with unquoted spaces (round h): `"d"` + 20 quoted + 68 spaces works and 70 fails; `"d"` + 80 quoted + 28 spaces works and 30 fails; `"d"` + 100 quoted + 15 spaces works and 18 fails; 50 spaces + 50 quoted works and 52 spaces fails; 100 quoted + 15 dashes works and 18 fails. These alone fit about 4/3 per quoted character.
-  - The quoted string's limit depends on what comes before it: `"0"` + 122 quoted works and 123 fails, `"[Red]"` + 124 works and 125 fails, while a quoted string alone or after `"d"` stops at 125. With `0` costing 2 this contradicts any fixed per-character cost.
-  - The longest quoted string after one token (round i): 125 characters alone or after `d`, `dd`, `m`, `h` or `@`; 124 after `%` or `[Red]`; 123 after `d ` (d and a space); 122 after `#`, `?`, `0`, `00` or `\\x`; 121 after `0.0` or `0 `. So after a date or text token the quoted string costs as if alone, and after a number token it costs 3 or 4 characters more.
-  - Outside this "quoted string after one token" case, the mixed runs fit a cost of floor(4n/3) for n quoted characters with `d` costing 2 (`"d"` + 50 quoted + 48 spaces = 164 works, 50 spaces = 168 fails; 50 spaces + 50 quoted = 166 works). That model wrongly predicts that `"d"` + 125 quoted (2 + 166) fails.
-  - Two conditions plus `0` plus 73 spaces fail (`"[>5][<9]0"`); one condition plus `0` plus 79 spaces works and 80 fails, so a condition costs 5 or 6 there, unlike a color.
+  Examples: `"d"&REPT(" ",82)` (248) works and `"d"&REPT(" ",83)` (251) fails; `REPT("-",83)` (249) works and `REPT("-",84)` fails; `"d"&REPT("$",160)` works and `REPT("$",250)` fails; `"0"&REPT(" ",40)&";0"&REPT(" ",40)` (250) works and 41/40 fails; `"0;0;0;"&REPT(" ",78)` works.
+- **Quoted text** (T-1434, probes/text-format-length-limit-f to -i): a quoted string alone works at 125 characters (250) and fails at 126. After a placeholder (`0`, `#`, `?`, `00`) it stops at 122, after `0.0` or `0 ` at 121, after `%` or `[Red]` at 124, after an escaped backslash plus an unquoted `x` at 122. Mixed with unquoted text: `"d"` + 50 quoted + 48 spaces works (246) and 50 spaces fails (252); `"d"` + 20 quoted + 68 spaces works, 70 fails; `"d"` + 80 quoted + 28 spaces works, 30 fails; `"d"` + 100 quoted + 15 spaces works, 18 fails; 50 spaces + 50 quoted works (250), 52 fails; 100 quoted + 15 dashes works, 18 fails; after `d`, two adjacent quoted strings of 62 + 62 work and 63 + 63 fail.
+- **Not fitted:** a date or text token directly followed by a quoted string at its limit costs 2 less than the model says: `"d"`, `"dd"`, `"m"`, `"h"` or `"@"` + 125 quoted works (252 in the model) and + 126 fails; `"d "` + 123 quoted works (251). The same token before unquoted text costs its 2 (`"d"&REPT(" ",83)` fails). Two conditions in one section fail far below the budget: `"[>5][<9]0"` plus 73 to 77 spaces are `#VALUE!` (probes/text-format-length-limit-g A37:A41). T-1449.
+- **Text section with a number:** a single section holding `@` does not apply to a number, which prints in General: `TEXT(1,"@"&""""&REPT("a",118)&"""")` is "1" (probes/text-format-length-limit-i A19:A26).
 - **Fourth section:** a fourth section holding a number or date token is `#VALUE!` whatever the value: `TEXT(1,"0;0;0;0")`, `"0;0;0;d"`, `"d;0;0;0"`, `"0;d;0;0"`, `"0;0;d;0"`, `TEXT(-1,"d;d;d;d")`, `TEXT(0,..)`, `TEXT("x",..)`. `"d;d"` and `"d;d;d"` give "1". This explains `"d;d;d;d"`.
 - **Error precedence:** an error value wins over a too-complex code: `TEXT(NA(),REPT("dm",17))` is `#N/A`, `TEXT(1/0,"0;;;;")` `#DIV/0!`. Over an array, each element is `#VALUE!` except an error element, which keeps its error (`TEXT({1,#N/A},REPT("dm",17))` is `#VALUE!`, `#N/A`). An error inside an array of formats is that element's result (`TEXT(1,{"0",#N/A})` is "1", `#N/A`).
 - **Colon runs:** consecutive colons print as one, whatever the run's length: `TEXT(1,"d"&REPT(":",n))` is "1:" for n from 2 to 85, and `"0"&REPT(":",n)` is "1:" for n from 2 to 84. A colon run broken by anything else prints in full: `"0:a:"` gives "1:a:", `"0::a"` "1:a", `"0: :"` "1: :", `d:"":` "1::". This is a formatter rule, not a cost rule.
 
 Evidence: probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b (T-1388), text-format-length-limit-c, -d, -e (T-1393), -f, -g, -h, -i (T-1434), all excel-graph.
-Not explained (known failures):
-- `TEXT(1,"d;d;d;d")` is `#VALUE!`: a number or date token in the fourth section (see "Fourth section"; not yet implemented, T-1434).
-- `TEXT(1,"d"&REPT(":",84))` is "1:": colon runs collapse (see "Colon runs"; not yet implemented, T-1434).
-- `TEXT(1,"[>5]0"&REPT(" ",79))` is "1": an unmatched single condition prints General, dropping the padding; with 80 spaces it is `#VALUE!` (a condition costs 5 or 6).
+Not explained or not implemented (known failures):
+- The "Not fitted" cells above (probes/text-format-length-limit-f A7; -g A37:A41; -i A26, A44, A53, A78, A98). T-1449.
+- `TEXT(1,"[>5]0"&REPT(" ",79))` is "1" (also with 40 spaces): an unmatched single condition prints General, dropping the padding. We do not apply conditions yet (see "Conditional sections", T-0936).
+- `TEXT(1,"0:a:")` is "1:a:" and an escaped backslash followed by an unquoted `x` prints "\x": Excel accepts these letters unquoted, our lexer rejects them (-g A42, A43; -i A100:A104). T-1450.
+- `TEXT(1,{"0",#N/A})` is "1", `#N/A`: an array of format codes is not implemented (-f A54:B54). T-1451.
 
 Cell display with a long format could not be probed: excel-graph rejects such workbooks (createSession 501 unsupportedWorkbook).
-Ours: `formatter/complexity.rs` (`exceeds_complexity_limit`), applied by TEXT only.
+Ours: `formatter/complexity.rs` (`exceeds_complexity_limit`), applied by TEXT only; colon runs in `formatter/parser.rs`; the text section with a number in `format_number` (formatter/format.rs).
 Status: VERIFIED (excel-graph, fitted model)
-Tasks: T-1388, T-1393, T-1434
+Tasks: T-1388, T-1393, T-1434, T-1449, T-1450, T-1451
