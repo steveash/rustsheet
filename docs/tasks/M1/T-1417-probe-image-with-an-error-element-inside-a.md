@@ -3,7 +3,7 @@ id: T-1417
 title: "Probe IMAGE with an error element inside a sizing/height/width array"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
