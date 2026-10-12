@@ -47,5 +47,11 @@ docs/excel-semantics/number-formats.md "TEXT format code complexity limit"; code
   122 after a placeholder or an escaped character; 121 after `0.0` or `0 `. A plausible model is floor(4n/3) per
   quoted run plus the usual costs, except that a date or text section, or a long quoted run, is cheaper. Pin it with
   `d`/`0` + quoted + spaces at several lengths before coding.
+- A brute-force fit over 42 measured boundaries found no integer cost model that fits them all. The space searched:
+  `d`, `0`, color, `%` and `@` costs; quoted cost n + o·ceil(n/k) + s, adjacent quoted strings merged or not;
+  limit 160..174. The best models miss 4 boundaries: limit 167, `0` 3, color 1, `%` 1, quoted n + ceil(n/3) or
+  n + 2·ceil(n/6). They miss `d`+83 spaces, two 62-char strings after `d`, 50 spaces + 50 quoted, and `0 ` + 121 quoted.
+  The rule is probably not one additive budget. Consider modeling Excel's internal format buffer instead (e.g. a
+  per-section byte length after normalization).
 - Not done yet: the code changes (fourth-section `#VALUE!`, colon collapse, condition cost, error precedence over
   arrays if it differs), and `make eval-baseline` for cases f to i.
