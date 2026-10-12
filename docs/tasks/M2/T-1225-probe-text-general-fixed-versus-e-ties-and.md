@@ -3,7 +3,7 @@ id: T-1225
 title: "Probe TEXT General fixed-versus-E ties and wide fixed values"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -40,3 +40,10 @@ fixed-notation limit"). If Excel disagrees, file an engine task with the failing
 
 ## Out of scope
 - Number-to-text coercion (`&""`, 15 digits; numbers.md).
+
+## Outcome
+Probe `text-general-ties-wide-fixed` (17 cells, excel-graph) settles it: equal-digit ties go to fixed,
+fixed with fewer digits loses to E (`1.5E-09`), and the 11-character limit applies to wide fixed values
+too (`123456.123456789` → "123456.1235"). The engine fails 10 of the 17 cells (new coverage in the
+probes baseline: 2881 → 2891 known failures, no regressions). Filed T-1417 for the engine fix.
+number-formats.md updated.
