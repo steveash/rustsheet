@@ -15,7 +15,8 @@ use crate::{
 };
 
 use super::text_arg::broadcast_text;
-use super::util::{near_integer_count, utf16_slice};
+use super::util::utf16_slice;
+use crate::functions::util::near_integer_count;
 
 fn format_thousands(n: u64) -> String {
     let s = n.to_string();

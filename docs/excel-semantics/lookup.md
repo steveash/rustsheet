@@ -427,25 +427,51 @@ element-wise. The indices broadcast like arithmetic operands, and each element i
   A1, A2; `SUM(INDEX(A1:B5,0,{1,2}))` = A1 + B1; `INDEX({1,2;3,4},{1,2})` is 1, 3 (the first value of each row).
 - The elements are values, not references: `ROWS(INDEX(A1:A5,{1,3}))` is 1, `COLUMNS` 2, and `ISREF` of it is a single
   FALSE. `SUM` of it is the sum of the values.
-Unprobed (T-1376): index arrays of mismatched lengths (the engine gives `#N/A` past the shorter, as the arithmetic
-broadcast does), negative and boolean elements other than `{0,FALSE}`, a scalar error index next to an array index
-(the engine broadcasts the error), and whether an empty selected cell spills as 0 or blank. The legacy, implicitly
-intersected form is T-0294.
+Edge cases (probes/index-lifted-edge-cases, T-1376):
+- Mismatched index lengths broadcast like arithmetic: `INDEX(A1:B5,{1,2,3},{1,2})` is 10, 2, `#N/A` (the third pair has no
+  column element); `{1,2}` against `{1,2,3}` is the same; `{1;2;3}` against `{1,2}` is a 3x2 grid (first row 10, 1);
+  `{1;2}` against `{1;2;3}` is a 3x1 column 10, 2, `#N/A`.
+- A negative element is `#VALUE!` in its own slot (`{1,-1}` is 10, `#VALUE!`; `{-1,-2}` is two `#VALUE!`). A boolean element
+  is its number: `{TRUE,2}` is A1, A2, `{FALSE,2}` is A1 (as `{0,FALSE}` in probes/index-array-indices), A2, and `{TRUE,FALSE}` is A1, A1.
+- A scalar error index next to an array index spreads over the whole result: `INDEX(A1:A5,{1,3},#N/A)` is `#N/A`, `#N/A`;
+  `1/0` gives `#DIV/0!`, `#DIV/0!`; the error in row_num (`INDEX(A1:A5,#N/A,{1,3})`), in either position of a 2-D range, or
+  in area_num spreads the same.
+- An empty selected cell spills as 0 (`INDEX(D1:D5,{1,2})` with D2 blank is 10, 0; `INDEX(D1:D5,{2,4,5})` is 0, "x", TRUE and the
+  scalar `INDEX(D1:D5,2)` is 0), `&"x"` makes it "x", `+1` makes 1,
+  `=0` and `=""` are TRUE, `SUM(INDEX(D1:D5,{1,2,3}))` is 40, `ISBLANK` of the lifted result is FALSE, TRUE (the elements keep blankness).
+- `COUNTBLANK(INDEX(D1:D5,{1,2,3}))` is a 1x3 spill of `#VALUE!` (one per element) and
+  `COUNTA(INDEX(D1:D5,{1,2,3}))` is 3, counting the blank element; the engine gives 0 and 2 (T-1437, with T-1395).
+The legacy, implicitly intersected form is T-0294.
 DEVIATION (decision 0014): a lifted INDEX whose broadcast indices exceed 1,048,576 elements is `#ERROR!`, the shared
 array bound (arrays.md, "Array results above 1,048,576 cells are #ERROR!").
-Evidence: probes/index-array-indices (60 cells, excel-graph, 2026-10-11, T-1260); gen-m6/2c1a6e93a1974f48 Calc!A25
+Evidence: probes/index-array-indices (60 cells, excel-graph, 2026-10-11, T-1260); probes/index-lifted-edge-cases (excel-graph, 2026-10-12, T-1376); gen-m6/2c1a6e93a1974f48 Calc!A25
 (excel-graph, 2026-10-09, T-1239).
 Status: VERIFIED (excel-graph)
 Implemented in: `Model::index_impl` / `index_lifted` (functions/lookup_and_reference/index.rs).
-Tasks: T-1260
+Tasks: T-1260, T-1376, T-1437
 
-## INDEX truncates a tiny negative index to 0
-Rule: `INDEX(A1:C3,3,-1E-15)` is the whole row 3, as `INDEX(A1:C3,3,0)`: the column index is truncated toward zero.
-`EXPONDIST(INDEX(A1:C3,3,-1e-15),12.14649,FALSE)` is 0.027981694209681673, which is the density at A3 = 0.5, the first cell of
-A3:C3 (EXPONDIST lifts over the row; the cell holds the spill's anchor). Indexes from -0.5 to -1 are unprobed.
-Evidence: gen-m9/1466c66c61189a83 Calc!A1 (excel-graph, 2026-10-12, T-1289).
-Ours: `#VALUE!` for any negative index (`INDEX(A1:C3,3,-0.5)` too).
-Status: VERIFIED (web) for -1E-15; other negative fractions UNVERIFIED
+## INDEX rounds an index up near an integer; a tiny negative index is 0
+Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
+counts up near an integer"): truncated, except that a value within 2^-22 + 2^-33 (about 2.38535E-7) below an integer
+counts as that integer, an absolute bound. A negative index no further below 0 than half that bound,
+2^-23 + 2^-34 (about 1.192675E-7), counts as 0 (the whole row or column); anything further below is `#VALUE!`.
+`INDEX(A1:C3,3,-1E-15)` is the whole row 3, as `INDEX(A1:C3,3,0)`, and
+`EXPONDIST(INDEX(A1:C3,3,-1e-15),12.14649,FALSE)` is 0.027981694209681673, the density at A3 = 0.5, the first cell of
+A3:C3 (EXPONDIST lifts over the row; the cell holds the spill's anchor).
+Probed (excel-graph, 2026-10-12, T-1407), row and column index alike:
+- Negatives: -1E-15, -1E-7, -1.19E-7, -2^-23, -1.19267E-7 and -1.1926749E-7 are index 0; -1.1926751E-7, -1.19268E-7,
+  -1.193E-7, -1.2E-7,
+  -1.5E-7, -1E-6, -0.5, -0.999, -0.9999999, -1 and -2147483648.5 are `#VALUE!`.
+- Positives: `COLUMNS(INDEX(A1:C3,3,1-2.3853E-7))` is 1 (column 1) and `1-2.3854E-7` is 3 (index 0, the whole row);
+  `ROW(INDEX(A1:A100000,500-2.3853E-7,1))` is 500 and `500-2.3855E-7` is 499; at 100000, 2.38E-7 below snaps and
+  2.39E-7 does not. Both cuts bracket the text functions' bound, which is known to 2^-36.
+- area_num -0.5 is `#VALUE!`; `INDEX((A1:C3,E1:G3),3,-1E-15,2)` is the third row of the second area (16, 17, 18).
+  Whether area_num, or a near-integer element of an array index, shares the rounding is unprobed (T-1424).
+Evidence: probes/index-tiny-negative and probes/index-snap-tolerance.
+Implemented in: `index_number` (functions/lookup_and_reference/index.rs) with `near_integer_count` and
+`NEAR_INTEGER_TOLERANCE` (functions/util.rs). The negative cut is half the positive bound to within 1E-14
+(-1.1926749E-7 vs -1.1926751E-7); the engine takes it as exactly half, inclusive.
+Status: VERIFIED (web)
 Tasks: T-1407
 
 ## XLOOKUP with an array lookup_value looks up each element
