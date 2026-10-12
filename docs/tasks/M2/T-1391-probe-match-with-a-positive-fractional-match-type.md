@@ -3,7 +3,7 @@ id: T-1391
 title: "Probe MATCH with a positive fractional match_type (0 < m < 1): exact or ascending? (follow-up of T-1304)"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1304 floored match_type (fn_match, lookup_and_reference/mod.rs), which leaves 
 
 ## Out of scope
 -
+
+## Outcome
+Oracle (excel-graph) probe `probes/match-fractional-match-type`: `MATCH(2.5,{1..5},m)` is 2 for m = 0.5, 0.0001 and 0.999 (ascending), `#N/A` for m = 0. The engine now takes only the sign of match_type; the earlier floor made 0 < m < 1 exact. Recorded in docs/excel-semantics/lookup.md.
