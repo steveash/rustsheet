@@ -11,7 +11,7 @@ depends_on: []
 ---
 
 ## Goal
-COUNTA counts the empty elements of an array made by IFERROR/IFNA over a range, while still skipping those of TAKE/INDEX over a blank range.
+COUNTA counts the empty elements of an array made by IFERROR/IFNA over a range, while still skipping the blank of TAKE over a blank range. (A lifted INDEX over a range with a blank cell counts it: probes/index-lifted-edge-cases H136, T-1437.)
 
 ## Context
 probes/counta-empty-value D18: `COUNTA(IFERROR(B1:B2,1))` (B1 blank, B2 "x") is 2 in Excel, the engine gives 1. Counting every `ArrayNode::Empty` fixes it but regresses probes/subtotal-reference-operands-c H13 (`COUNTA(TAKE(B3:B3,1))` of a blank is 0), so the two empties must be told apart in the array representation (an IFERROR empty value vs a blank cell). Design question, hence opus.

@@ -427,17 +427,28 @@ element-wise. The indices broadcast like arithmetic operands, and each element i
   A1, A2; `SUM(INDEX(A1:B5,0,{1,2}))` = A1 + B1; `INDEX({1,2;3,4},{1,2})` is 1, 3 (the first value of each row).
 - The elements are values, not references: `ROWS(INDEX(A1:A5,{1,3}))` is 1, `COLUMNS` 2, and `ISREF` of it is a single
   FALSE. `SUM` of it is the sum of the values.
-Unprobed (T-1376): index arrays of mismatched lengths (the engine gives `#N/A` past the shorter, as the arithmetic
-broadcast does), negative and boolean elements other than `{0,FALSE}`, a scalar error index next to an array index
-(the engine broadcasts the error), and whether an empty selected cell spills as 0 or blank. The legacy, implicitly
-intersected form is T-0294.
+Edge cases (probes/index-lifted-edge-cases, T-1376):
+- Mismatched index lengths broadcast like arithmetic: `INDEX(A1:B5,{1,2,3},{1,2})` is 10, 2, `#N/A` (the third pair has no
+  column element); `{1,2}` against `{1,2,3}` is the same; `{1;2;3}` against `{1,2}` is a 3x2 grid (first row 10, 1);
+  `{1;2}` against `{1;2;3}` is a 3x1 column 10, 2, `#N/A`.
+- A negative element is `#VALUE!` in its own slot (`{1,-1}` is 10, `#VALUE!`; `{-1,-2}` is two `#VALUE!`). A boolean element
+  is its number: `{TRUE,2}` is A1, A2, `{FALSE,2}` is A1 (as `{0,FALSE}` in probes/index-array-indices), A2, and `{TRUE,FALSE}` is A1, A1.
+- A scalar error index next to an array index spreads over the whole result: `INDEX(A1:A5,{1,3},#N/A)` is `#N/A`, `#N/A`;
+  `1/0` gives `#DIV/0!`, `#DIV/0!`; the error in row_num (`INDEX(A1:A5,#N/A,{1,3})`), in either position of a 2-D range, or
+  in area_num spreads the same.
+- An empty selected cell spills as 0 (`INDEX(D1:D5,{1,2})` with D2 blank is 10, 0; `INDEX(D1:D5,{2,4,5})` is 0, "x", TRUE and the
+  scalar `INDEX(D1:D5,2)` is 0), `&"x"` makes it "x", `+1` makes 1,
+  `=0` and `=""` are TRUE, `SUM(INDEX(D1:D5,{1,2,3}))` is 40, `ISBLANK` of the lifted result is FALSE, TRUE (the elements keep blankness).
+- `COUNTBLANK(INDEX(D1:D5,{1,2,3}))` is a 1x3 spill of `#VALUE!` (one per element) and
+  `COUNTA(INDEX(D1:D5,{1,2,3}))` is 3, counting the blank element; the engine gives 0 and 2 (T-1437, with T-1395).
+The legacy, implicitly intersected form is T-0294.
 DEVIATION (decision 0014): a lifted INDEX whose broadcast indices exceed 1,048,576 elements is `#ERROR!`, the shared
 array bound (arrays.md, "Array results above 1,048,576 cells are #ERROR!").
-Evidence: probes/index-array-indices (60 cells, excel-graph, 2026-10-11, T-1260); gen-m6/2c1a6e93a1974f48 Calc!A25
+Evidence: probes/index-array-indices (60 cells, excel-graph, 2026-10-11, T-1260); probes/index-lifted-edge-cases (excel-graph, 2026-10-12, T-1376); gen-m6/2c1a6e93a1974f48 Calc!A25
 (excel-graph, 2026-10-09, T-1239).
 Status: VERIFIED (excel-graph)
 Implemented in: `Model::index_impl` / `index_lifted` (functions/lookup_and_reference/index.rs).
-Tasks: T-1260
+Tasks: T-1260, T-1376, T-1437
 
 ## INDEX rounds an index up near an integer; a tiny negative index is 0
 Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round

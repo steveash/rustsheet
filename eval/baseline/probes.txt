@@ -200,6 +200,7 @@ C	probes/ifs-shape-mismatch.case.json	11
 C	probes/ifs-switch-array-values.case.json	41
 C	probes/ifs-switch-lift-edges.case.json	26
 C	probes/index-array-indices.case.json	60
+C	probes/index-lifted-edge-cases.case.json	61
 C	probes/index-single-index.case.json	6
 C	probes/index-snap-tolerance.case.json	67
 C	probes/index-tiny-negative.case.json	150
@@ -2578,6 +2579,10 @@ F	probes/groupby-pivotby.case.json	P!Z78
 F	probes/groupby-pivotby.case.json	P!Z97
 F	probes/groupby-pivotby.case.json	P!Z98
 F	probes/groupby-pivotby.case.json	P!Z99
+F	probes/index-lifted-edge-cases.case.json	Sheet1!H131
+F	probes/index-lifted-edge-cases.case.json	Sheet1!H136
+F	probes/index-lifted-edge-cases.case.json	Sheet1!I131
+F	probes/index-lifted-edge-cases.case.json	Sheet1!J131
 F	probes/info-logic-argument-modes-2.case.json	Calc!A1
 F	probes/info-logic-argument-modes-2.case.json	Calc!A2
 F	probes/info-logic-argument-modes-2.case.json	Calc!A3
