@@ -3,7 +3,7 @@ id: T-0414
 title: "xlsx import indexes shared strings instead of a linear search per inline string (port ironcalc 31b0c731)"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
