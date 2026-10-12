@@ -26,4 +26,5 @@ same PR. Mind the digit-count comparison against E notation after rounding.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Number-to-text coercion (`&""`, 15 digits; numbers.md).
+- Split the task if the unit-test updates grow beyond the `format_general` change.
