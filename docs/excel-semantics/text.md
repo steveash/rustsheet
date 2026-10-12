@@ -87,6 +87,14 @@ Status: VERIFIED
 Implemented in: `fn_concat`/`fn_textjoin` in functions/text/concatenate.rs (`ConcatText`, `JoinSize`) stop appending text once over the limit but still evaluate later arguments. `fn_concat` drops a range or reference cell error met once over the limit and continues; `fn_textjoin` does the same for range cells (through `JoinSize::push_cell`, also used for the sheet-by-sheet 3-D walk) and, in its `Node::ReferenceKind` arm, for a direct single-cell reference, counting the preceding delimiter through `JoinSize::exceeds_with_separator`. Both read their arguments through `evaluate_aggregate_arg` (which also treats `:` expressions, `Node::OpRangeKind`, as references), and `get_range` (reference_operators.rs) keeps an INDEX operand of `:` a reference (T-0243, T-0262, T-0284, T-0285)
 Tasks: T-0243, T-0262, T-0284, T-0285
 
+## CONCAT joins an array argument element by element
+Rule: `CONCAT` of an array (a function result, not only a range) joins its elements row by row, like a range; `CONCAT(MID(INDEX(Data!B3:E8,0.1,0),7,0))` is "".
+Evidence: gen-m2/d0c29dd5c530e28c Calc!A246; probes/round-concat-array-lift (excel-graph, 2026-10-05): the first error wins in a CONCAT array.
+Status: VERIFIED
+Implemented in: functions/text/concatenate.rs (`fn_concat`)
+Unprobed: an error element met inside an array once the text is over 32,767 characters is dropped like a range cell error (`CONCAT(REPT("a",32767),{"b",#N/A})`), unverified
+Tasks: T-0222
+
 ## TEXTJOIN with ignore_empty FALSE joins every cell of a whole column or row
 Rule: with ignore_empty FALSE every cell of a whole-column or whole-row argument adds a delimiter, however
 small the used area: `TEXTJOIN(",",FALSE,D:D)` is `#CALC!` (1,048,576 values join to over 32,767
