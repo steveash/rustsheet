@@ -17,8 +17,8 @@ fn fn_average_accrint_simple_cases() {
     );
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"16.666666667");
-    assert_eq!(model._get_text("A2"), *"15.555555556");
+    assert_eq!(model._get_text("A1"), *"16.66666667");
+    assert_eq!(model._get_text("A2"), *"15.55555556");
     assert_eq!(model._get_text("A3"), *"7.222222222");
 }
 

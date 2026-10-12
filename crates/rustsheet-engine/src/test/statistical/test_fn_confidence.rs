@@ -41,7 +41,7 @@ fn test_fn_confidence_t_smoke() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"9921.08475793");
+    assert_eq!(model._get_text("A1"), *"9921.084758");
 
     assert_eq!(model._get_text("A2"), *"#NUM!");
     assert_eq!(model._get_text("A3"), *"#NUM!");

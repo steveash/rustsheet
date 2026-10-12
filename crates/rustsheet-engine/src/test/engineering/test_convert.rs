@@ -28,7 +28,7 @@ fn fn_convert() {
 
     assert_eq!(model._get_text("A5"), "42.8");
     assert_eq!(model._get_text("A6"), "2");
-    assert_eq!(model._get_text("A7"), "22.712470704"); //22.71741274");
+    assert_eq!(model._get_text("A7"), "22.7124707"); //22.71741274");
     assert_eq!(model._get_text("A8"), "9.656064");
     assert_eq!(model._get_text("A9"), "3.728227153");
     assert_eq!(model._get_text("A10"), "0.5");

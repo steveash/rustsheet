@@ -120,7 +120,7 @@ fn fn_pricedisc_example() {
     let mut model = new_empty_model();
     model._set("A1", "=PRICEDISC(39494, 39508, 0.0525, 100, 2)");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"99.795833333");
+    assert_eq!(model._get_text("A1"), *"99.79583333");
 }
 
 #[test]
@@ -143,7 +143,7 @@ fn fn_pricemat_example() {
     let mut model = new_empty_model();
     model._set("A1", "=PRICEMAT(39493, 39551, 39397, 0.0610, 0.0625, 0)");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"99.960195753");
+    assert_eq!(model._get_text("A1"), *"99.96019575");
 }
 
 #[test]
@@ -167,7 +167,7 @@ fn fn_received_example() {
     let mut model = new_empty_model();
     model._set("A1", "=RECEIVED(39493, 39583, 1000000, 0.0575, 2)");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"1014584.654407102");
+    assert_eq!(model._get_text("A1"), *"1014584.654");
 }
 
 #[test]

@@ -14,7 +14,7 @@ fn fn_accrintm_microsoft_example() {
     let mut model = new_empty_model();
     model._set("A1", "=ACCRINTM(39539, 39614, 0.1, 1000, 3)");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"20.547945205");
+    assert_eq!(model._get_text("A1"), *"20.54794521");
 }
 
 #[test]
@@ -24,7 +24,7 @@ fn fn_accrintm_defaults() {
     let mut model = new_empty_model();
     model._set("A1", "=ACCRINTM(39539, 39614, 0.1)");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"20.555555556");
+    assert_eq!(model._get_text("A1"), *"20.55555556");
 }
 
 #[test]
@@ -53,11 +53,11 @@ fn fn_accrintm_all_bases() {
         "=ACCRINTM(DATE(2024,1,15), DATE(2024,3,15), 0.1, 1000, 4)",
     );
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"16.666666667"); // basis 0: 60/360
-    assert_eq!(model._get_text("A2"), *"16.393442623"); // basis 1: 60/366 (leap)
-    assert_eq!(model._get_text("A3"), *"16.666666667"); // basis 2: 60/360
-    assert_eq!(model._get_text("A4"), *"16.438356164"); // basis 3: 60/365
-    assert_eq!(model._get_text("A5"), *"16.666666667"); // basis 4: 60/360
+    assert_eq!(model._get_text("A1"), *"16.66666667"); // basis 0: 60/360
+    assert_eq!(model._get_text("A2"), *"16.39344262"); // basis 1: 60/366 (leap)
+    assert_eq!(model._get_text("A3"), *"16.66666667"); // basis 2: 60/360
+    assert_eq!(model._get_text("A4"), *"16.43835616"); // basis 3: 60/365
+    assert_eq!(model._get_text("A5"), *"16.66666667"); // basis 4: 60/360
 }
 
 // =============================================================================
@@ -140,8 +140,8 @@ fn fn_accrintm_basis0_vs_basis4_month_end() {
     );
     model.evaluate();
     assert_ne!(model._get_text("A1"), model._get_text("A2"));
-    assert_eq!(model._get_text("A1"), *"21.111111111");
-    assert_eq!(model._get_text("A2"), *"20.833333333");
+    assert_eq!(model._get_text("A1"), *"21.11111111");
+    assert_eq!(model._get_text("A2"), *"20.83333333");
 }
 
 #[test]
@@ -162,8 +162,8 @@ fn fn_accrintm_basis0_feb28_leap_vs_nonleap() {
     );
     model.evaluate();
     assert_ne!(model._get_text("A1"), model._get_text("A2"));
-    assert_eq!(model._get_text("A1"), *"29.166666667"); // non-leap: 105/360
-    assert_eq!(model._get_text("A2"), *"29.722222222"); // leap: 107/360
+    assert_eq!(model._get_text("A1"), *"29.16666667"); // non-leap: 105/360
+    assert_eq!(model._get_text("A2"), *"29.72222222"); // leap: 107/360
 }
 
 #[test]

@@ -185,7 +185,7 @@ fn test_value_date_text_with_clock_suffix() {
     model._set("A1", "=VALUE(\"July 1, 2026 10:00\")");
     model._set("A2", "=VALUE(\"1/2/2020 6 PM\")");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), "46204.416666667");
+    assert_eq!(model._get_text("A1"), "46204.41667");
     // probes/date-text-grammar C63.
     assert_eq!(model._get_text("A2"), "43832.75");
 }
