@@ -364,6 +364,7 @@ C	probes/rich-errors-arg-kinds.case.json	70
 C	probes/rich-errors-args.case.json	54
 C	probes/rich-errors-calc.case.json	10
 C	probes/rich-errors-field.case.json	5
+C	probes/rich-errors-image-array-options.case.json	61
 C	probes/rich-errors-image-sizing.case.json	58
 C	probes/rich-errors-image.case.json	15
 C	probes/rich-errors-shapes-urls.case.json	51
@@ -611,14 +612,6 @@ F	probes/date-argument-modes.case.json	Sheet1!G68
 F	probes/date-argument-modes.case.json	Sheet1!G7
 F	probes/date-argument-modes.case.json	Sheet1!G8
 F	probes/date-argument-modes.case.json	Sheet1!G9
-F	probes/date-system-1904-negatives.case.json	S!A1
-F	probes/date-system-1904-negatives.case.json	S!A10
-F	probes/date-system-1904-negatives.case.json	S!A11
-F	probes/date-system-1904-negatives.case.json	S!A12
-F	probes/date-system-1904-negatives.case.json	S!A14
-F	probes/date-system-1904-negatives.case.json	S!A6
-F	probes/date-system-1904-negatives.case.json	S!A8
-F	probes/date-system-1904-negatives.case.json	S!A9
 F	probes/db-argument-modes.case.json	Calc!C11
 F	probes/db-argument-modes.case.json	Calc!C12
 F	probes/db-argument-modes.case.json	Calc!C13
@@ -2834,12 +2827,7 @@ F	probes/multinomial-large-arguments.case.json	Sheet1!A20
 F	probes/multinomial-large-arguments.case.json	Sheet1!A7
 F	probes/negative-date-sections-1900.case.json	S!A21
 F	probes/negative-date-sections-1900.case.json	S!A22
-F	probes/negative-date-sections-1904.case.json	S!A1
 F	probes/negative-date-sections-1904.case.json	S!A10
-F	probes/negative-date-sections-1904.case.json	S!A12
-F	probes/negative-date-sections-1904.case.json	S!A17
-F	probes/negative-date-sections-1904.case.json	S!A2
-F	probes/negative-date-sections-1904.case.json	S!A20
 F	probes/negative-date-sections-1904.case.json	S!A21
 F	probes/negative-date-sections-1904.case.json	S!A22
 F	probes/negative-date-sections-1904.case.json	S!A23
@@ -2853,7 +2841,6 @@ F	probes/rate-empty-arguments.case.json	Sheet1!A5
 F	probes/rate-empty-arguments.case.json	Sheet1!A6
 F	probes/rate-empty-arguments.case.json	Sheet1!A8
 F	probes/rate-empty-arguments.case.json	Sheet1!A9
-F	probes/rich-errors-image-sizing.case.json	Sheet1!B121
 F	probes/stat-argument-modes.case.json	Sheet1!H101
 F	probes/stat-argument-modes.case.json	Sheet1!H102
 F	probes/stat-argument-modes.case.json	Sheet1!H103
