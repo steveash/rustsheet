@@ -3,7 +3,7 @@ id: T-1376
 title: "Probe lifted INDEX edge cases: mismatched index lengths, negative and boolean elements, scalar error next to an array, empty cells"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,9 +23,16 @@ follow the arithmetic-lift rules but have no oracle cell (excel-fidelity review 
 - an empty selected cell (`INDEX(A1:A5,{1,2})` with A2 blank): does it spill as 0 or as blank?
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) covers the cases above; lookup.md's Unprobed line is replaced by the findings.
-- [ ] Any engine mismatch is fixed here if small, otherwise filed as its own task.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case (excel-graph) covers the cases above; lookup.md's Unprobed line is replaced by the findings.
+- [x] Any engine mismatch is fixed here if small, otherwise filed as its own task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The legacy, implicitly intersected form (T-0294).
+
+## Outcome
+Added probes/index-lifted-edge-cases (28 questions, excel-graph). Excel follows the arithmetic broadcast for mismatched lengths,
+puts `#VALUE!` in negative slots, takes booleans as 0/1, spreads a scalar error index over the result and spills an empty
+cell as 0 while keeping its blankness. The engine matches all of it except COUNTBLANK (Excel `#VALUE!` per element) and
+COUNTA (counts the blank element) over a lifted INDEX, filed as T-1437 (with T-1395). lookup.md's Unprobed line is replaced
+by the findings. Eval delta: 4 known-failure cells recorded in the new case, 0 regressions.
