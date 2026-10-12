@@ -195,13 +195,9 @@ impl Model {
             Err(error) => return error,
         };
         let as_reference = as_reference && matches!(row_index, LookupIndexArg::Reference(_));
-        let is_sorted = if args.len() == 4 {
-            match self.get_boolean(&args[3], cell) {
-                Ok(v) => v,
-                Err(s) => return s,
-            }
-        } else {
-            true
+        let is_sorted = match self.lookup_sorted_arg(args.get(3), cell) {
+            Ok(is_sorted) => is_sorted,
+            Err(error) => return error,
         };
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
         let table = match range {
@@ -271,13 +267,9 @@ impl Model {
             Err(error) => return error,
         };
         let as_reference = as_reference && matches!(column_index, LookupIndexArg::Reference(_));
-        let is_sorted = if args.len() == 4 {
-            match self.get_boolean(&args[3], cell) {
-                Ok(v) => v,
-                Err(s) => return s,
-            }
-        } else {
-            true
+        let is_sorted = match self.lookup_sorted_arg(args.get(3), cell) {
+            Ok(is_sorted) => is_sorted,
+            Err(error) => return error,
         };
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
         let table = match range {

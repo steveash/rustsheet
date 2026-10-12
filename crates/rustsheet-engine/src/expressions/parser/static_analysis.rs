@@ -418,6 +418,17 @@ fn broadcast_static_result<'a>(args: impl IntoIterator<Item = &'a Node>) -> Stat
     StaticResult::Array(n, m)
 }
 
+/// VLOOKUP/HLOOKUP spill by lookup_value, the index and range_lookup, broadcast
+/// (probes/vlookup-array-index-range-lookup).
+fn lookup_static_result(args: &[Node]) -> StaticResult {
+    broadcast_static_result(
+        args.iter()
+            .enumerate()
+            .filter(|(i, _)| *i != 1)
+            .map(|(_, a)| a),
+    )
+}
+
 // We only care if the function can return a range or not
 fn not_implemented(_args: &[Node]) -> StaticResult {
     StaticResult::Scalar
@@ -1708,7 +1719,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Choosecols => StaticResult::Unknown,
         Function::Chooserows => StaticResult::Unknown,
         Function::Expand => StaticResult::Unknown,
-        Function::Hlookup => broadcast_static_result(args.first()), // lifts over lookup_value (T-0270)
+        Function::Hlookup => lookup_static_result(args), // T-0270, T-1269
         Function::Hstack => StaticResult::Unknown,
         Function::Hyperlink => StaticResult::Scalar,
         Function::Index => static_analysis_index(args),
@@ -1718,7 +1729,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Offset => static_analysis_offset(args),
         Function::Row => row_column::static_analysis_row_column(args, true),
         Function::Rows => not_implemented(args),
-        Function::Vlookup => broadcast_static_result(args.first()), // lifts over lookup_value (T-0270)
+        Function::Vlookup => lookup_static_result(args), // T-0270, T-1269
         Function::Vstack => StaticResult::Unknown,
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,

@@ -3,7 +3,7 @@ id: T-1269
 title: "VLOOKUP/HLOOKUP with an array col_index or range_lookup use the first element (#N/IMPL! today)"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,11 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
 
 ## Out of scope
 - XLOOKUP/MATCH.
+
+## Outcome
+- New probe `probes/vlookup-array-index-range-lookup` (155 cells, excel-graph): all pass. Rule in
+  lookup.md: lookup_value and range_lookup lift together; the index array lifts only with both scalar
+  (all elements validated first, first bad one fails the call); otherwise its first element is used.
+- gen-m7/4629e931955aa4b8 A29 still fails: the `TIMEVALUE` over an array in its row_index is
+  `#N/IMPL!` until T-1235 (PR #520, lifting TIMEVALUE) lands; the HLOOKUP side (`CHOOSEROWS(...)`
+  as row_index gives `#N/A`) is covered by the probe cell A133.

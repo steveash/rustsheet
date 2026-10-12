@@ -79,15 +79,32 @@ itself (`{2;#DIV/0!;"x"}` → "two", `#DIV/0!`, `#N/A`). Approximate match lifts
 column lifts too (`ROWS(VLOOKUP(D:D,A1:B4,2,FALSE))` is 1048576) and the engine bounds it by the
 shared cell-visit cap (criteria.md): elements times the evaluated cells of the searched column or row,
 whatever the table is (DEVIATION, decision 0014: `VLOOKUP(SEQUENCE(1048576),SEQUENCE(1048576,2),2,FALSE)`
-is `#ERROR!`). UNVERIFIED: an array col_index or range_lookup looks unlifted (a first oracle fill showed
-`VLOOKUP({2;3},A1:B4,{1,2},FALSE)` spilling only 2; 3); the cells were moved to T-1269, which re-probes
-them (the engine gives `#N/IMPL!`).
-Unprobed: blank elements of a multi-cell lookup_value, and an error or bad-text index or range_lookup with an
-array lookup_value (the engine gives one scalar error before lifting; T-1269 probes it).
+is `#ERROR!`).
+Unprobed: blank elements of a multi-cell lookup_value.
 Evidence: probes/vlookup-array-lookup-value (35 cells, excel-graph, 2026-10-09, T-0270).
 Implemented in: `Model::lookup_each` (functions/lookup_and_reference/lookup_each.rs) through
 `Model::lift_with_cost`; the spill shape follows lookup_value in static analysis.
 Status: VERIFIED (web)
+
+## VLOOKUP / HLOOKUP with an array index or range_lookup
+Rule: lookup_value and range_lookup lift together, broadcast like any two arrays (a 3x1 lookup_value
+against a 2x1 range_lookup gives `#N/A` in the third row; a column against a row gives 2-D). Each pair
+is a scalar call, so an error or text range_lookup element is that element's result
+(`VLOOKUP({2;3},A1:B4,2,{#DIV/0!;TRUE})` is `#DIV/0!`, "three"; `{"a";"b"}` is `#VALUE!` twice).
+The index array lifts only when lookup_value and range_lookup are both single values: then a scalar
+search runs, not found is `#N/A` (before any index is looked at), and otherwise every index element is
+validated in reading order and the first bad one is the error of the whole call, with no spill
+(`{0,9}` is `#VALUE!`, `{9,0}` is `#REF!`, `{2,"a"}` and `{2,#DIV/0!}` are `#REF!`, an element is read like
+a referenced cell, so text and errors are `#REF!`); valid indexes give a same-shaped array
+(`VLOOKUP(2,A1:B4,{2,1},FALSE)` is "two", 2; a fractional element truncates). When lookup_value or
+range_lookup lifts, the index uses only its first element (`VLOOKUP({2;3},A1:B4,{1;2},FALSE)` is 2, 3,
+`{2;"a"}` is "two", "three", `{#DIV/0!;2}` is `#REF!` twice, a 2-D index likewise).
+Evidence: probes/vlookup-array-index-range-lookup (155 cells, excel-graph, 2026-10-12, T-1269); the
+first-fill reading that an array range_lookup "looks unlifted" (T-0270) does not hold: each probe here has its own rows, so no spill collides.
+Implemented in: `Model::lookup_each` and `Model::pick_each` (lookup_each.rs), `LookupIndexArg::Array`
+(index_arg.rs); static analysis broadcasts lookup_value, index and range_lookup.
+Status: VERIFIED (web)
+Tasks: T-1269
 
 ## VLOOKUP / HLOOKUP search before validating the index
 Rule: the value is looked up first. Not found is `#N/A` whatever the column/row index
