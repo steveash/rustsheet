@@ -3,7 +3,7 @@ id: T-1398
 title: "Probe the stored xlsx form of a redundant @ with a written group (=@(A1:A3))"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,8 @@ T-1343 folded the `@` group cases into `Node::Group`. The engine now exports `=@
 
 ## Out of scope
 - Changing the exporter.
+
+## Outcome
+Probed via the Graph range API (excel-graph, 2026-10-12): Excel stores `=@(A1:A3)` as `_xlfn.SINGLE((A1:A3))`,
+`=@((A1:A3))` as `_xlfn.SINGLE(((A1:A3)))` and `=SIN(@(A1:A3))` as `SIN(_xlfn.SINGLE((A1:A3)))`, so the `@` is kept.
+The engine already matches; the shapes are now unit-tested and xlsx-storage.md is VERIFIED. No follow-up. Eval delta: none.
