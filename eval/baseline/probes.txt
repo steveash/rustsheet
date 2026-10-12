@@ -135,6 +135,8 @@ C	probes/defined-name-formula-bodies.case.json	17
 C	probes/defined-name-grouped-reference.case.json	13
 C	probes/defined-name-intersection.case.json	10
 C	probes/dvar-one-vs-two-pass.case.json	32
+C	probes/ecma-ceiling-formulatext.case.json	2
+C	probes/ecma-ceiling.case.json	12
 C	probes/edate-serial-0-months.case.json	12
 C	probes/elapsed-fractions-1900.case.json	14
 C	probes/elapsed-fractions-1904.case.json	14
@@ -602,6 +604,18 @@ F	probes/db-argument-modes.case.json	Calc!F21
 F	probes/db-argument-modes.case.json	Calc!F23
 F	probes/db-argument-modes.case.json	Calc!K12
 F	probes/db-argument-modes.case.json	Calc!K13
+F	probes/ecma-ceiling-formulatext.case.json	Sheet1!A1
+F	probes/ecma-ceiling-formulatext.case.json	Sheet1!A12
+F	probes/ecma-ceiling.case.json	Sheet1!A1
+F	probes/ecma-ceiling.case.json	Sheet1!A10
+F	probes/ecma-ceiling.case.json	Sheet1!A11
+F	probes/ecma-ceiling.case.json	Sheet1!A2
+F	probes/ecma-ceiling.case.json	Sheet1!A3
+F	probes/ecma-ceiling.case.json	Sheet1!A4
+F	probes/ecma-ceiling.case.json	Sheet1!A5
+F	probes/ecma-ceiling.case.json	Sheet1!A6
+F	probes/ecma-ceiling.case.json	Sheet1!A8
+F	probes/ecma-ceiling.case.json	Sheet1!A9
 F	probes/eng-argument-modes.case.json	Calc!A20
 F	probes/eng-argument-modes.case.json	Calc!A21
 F	probes/eng-argument-modes.case.json	Calc!A22

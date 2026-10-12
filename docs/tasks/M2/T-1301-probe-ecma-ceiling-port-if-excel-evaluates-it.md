@@ -3,10 +3,10 @@ id: T-1301
 title: "Probe ECMA.CEILING, port if Excel evaluates it as CEILING (ironcalc 8a82396a)"
 milestone: M2
 lane: functions-math
-status: in-progress
+status: todo
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -30,3 +30,8 @@ docs/excel-semantics/.
 
 ## Out of scope
 - CEILING.MATH, CEILING.PRECISE, ISO.CEILING and the FLOOR family.
+
+## Handoff
+Probe done (sonnet run, 2026-10-12): `probes/ecma-ceiling` and `probes/ecma-ceiling-formulatext` are oracle-filled and recorded in docs/excel-semantics/numbers.md ("ECMA.CEILING"). Excel has ECMA.CEILING with exactly CEILING's 2-argument semantics, stored as `_xlfn.ECMA.CEILING`, printed unprefixed by FORMULATEXT. Baseline `eval/baseline/probes.txt` already carries the 12 new known failures (via `make eval-baseline`).
+
+Not done, because it needs a protected path: implement the function. `crates/rustsheet-engine/src/functions/mod.rs` is exactly at its oversized-file ratchet (2183 lines), so the new `Function::EcmaCeiling` variant, name-table row, language row and dispatch (about 4 lines, as in T-1214/#619) need a ratchet decision record (decision 0010 style). Also needed: a `ecmaceiling` field in `tools/upstream/generate_language` and `language/mod.rs`, a regenerated `language.bin`, `static_analysis.rs` (signature = `args_signature_scalars(arg_count, 2, 0)`, `scalar_arguments`), an `_xlfn.ECMA.CEILING` row in `functions/xlsx_names.rs`, and a dispatcher that reuses `fn_ceiling` (no copy). Then `make eval-baseline` to record the 12 fixes.

@@ -1023,3 +1023,9 @@ Evidence: ironcalc-calc MATH_AND_TRIGONOMETRY/SERIESSUM.xlsx C1, H7 (Excel-cache
 Ours: `#NUM!` for every x = 0.
 Status: UNVERIFIED (probe pending: negative powers, a blank x)
 Tasks: T-1359
+
+## ECMA.CEILING
+Rule: `ECMA.CEILING(number, significance)` is a real Excel function with exactly the two-argument `CEILING` semantics (rounds away from zero for negative `number` with negative `significance`; `#NUM!` when `number` is positive and `significance` negative; zero significance gives 0; number text `"2.5"` and `TRUE` are read as numbers; text significance is `#VALUE!`). It is stored in a file as `_xlfn.ECMA.CEILING`, and `FORMULATEXT` prints it as `=ECMA.CEILING(2.5,2)` (no prefix). Written bare (`ECMA.CEILING(...)`) in a file, Graph rejects the whole workbook (`createSession` 501 `unsupportedWorkbook`); the one-argument form `_xlfn.ECMA.CEILING(2.5)` is rejected the same way (arity is exactly 2, like CEILING).
+Evidence: probes/ecma-ceiling A1:A6, A8:A11, A13:A14; probes/ecma-ceiling-formulatext A12 (excel-graph, 2026-10-12, T-1301).
+Status: VERIFIED. Ours: unknown function (not implemented yet); needs its own `Function` variant (not an alias of CEILING, or FORMULATEXT would lose the name), a `language.bin` field and an `_xlfn.ECMA.CEILING` entry in `functions/xlsx_names.rs`.
+Tasks: T-1301
