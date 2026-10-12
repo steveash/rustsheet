@@ -14,7 +14,7 @@ use crate::{
 };
 
 impl Model {
-    /// REGEXEXTRACT(text, regular_expression, [return_all])
+    /// REGEXEXTRACT(text, `regular_expression`, [`return_all`])
     ///
     /// Returns the first substring of `text` that matches `regular_expression`.
     /// If the pattern contains capture groups, returns the content of the first group.
@@ -81,7 +81,7 @@ impl Model {
         }
     }
 
-    /// REGEXREPLACE(text, regular_expression, replacement)
+    /// REGEXREPLACE(text, `regular_expression`, replacement)
     ///
     /// Replaces every substring of `text` that matches `regular_expression` with
     /// `replacement`. Returns #VALUE! if the regex is invalid.
@@ -118,7 +118,7 @@ impl Model {
         CalcResult::String(re.replace_all(&text, replacement.as_str()).into_owned())
     }
 
-    /// REGEXTEST(text, regular_expression)
+    /// REGEXTEST(text, `regular_expression`)
     ///
     /// Returns `TRUE` if `regular_expression` matches anywhere in `text`, `FALSE`
     /// otherwise. Returns #VALUE! if the regex is invalid.

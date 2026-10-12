@@ -137,16 +137,16 @@ impl Parser {
 
         if self.lexer.is_a1_mode() {
             if !absolute_row1 {
-                row1 -= context.row
+                row1 -= context.row;
             };
             if !absolute_column1 {
-                column1 -= context.column
+                column1 -= context.column;
             };
             if !absolute_row2 {
-                row2 -= context.row
+                row2 -= context.row;
             };
             if !absolute_column2 {
-                column2 -= context.column
+                column2 -= context.column;
             };
         }
 

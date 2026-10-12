@@ -318,7 +318,7 @@ impl Model {
                     return CalcResult::new_error(
                         Error::VALUE,
                         cell,
-                        format!("Error in first array: {:?}", error),
+                        format!("Error in first array: {error:?}"),
                     );
                 }
             },
@@ -342,7 +342,7 @@ impl Model {
                     return CalcResult::new_error(
                         Error::VALUE,
                         cell,
-                        format!("Error in second array: {:?}", error),
+                        format!("Error in second array: {error:?}"),
                     );
                 }
             },

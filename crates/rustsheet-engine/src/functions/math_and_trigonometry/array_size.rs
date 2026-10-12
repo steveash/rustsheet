@@ -30,7 +30,7 @@ pub fn check_array_size(rows: usize, columns: usize) -> Option<(Error, String)> 
     if rows * columns > MAX_SIZE {
         return Some((
             Error::ERROR,
-            format!("rows * columns exceeds matrix size limit of {}", MAX_SIZE),
+            format!("rows * columns exceeds matrix size limit of {MAX_SIZE}"),
         ));
     }
     None

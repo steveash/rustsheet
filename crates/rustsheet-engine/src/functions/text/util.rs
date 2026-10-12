@@ -51,7 +51,7 @@ pub(crate) enum Case {
     Insensitive,
 }
 
-/// Finds the text after the occurrence instance of 'search_for' in text
+/// Finds the text after the occurrence instance of '`search_for`' in text
 pub(crate) fn text_after(
     text: &str,
     delimiter: &str,
