@@ -80,23 +80,13 @@ fn image_options_valid(options: &[CalcResult]) -> bool {
     }
 }
 
-/// Whether any of IMAGE's `sizing`, `height`, `width` (`options` is `alt_text` onward) is an
-/// array.
+/// Whether any of IMAGE's arguments after `source` is an array: they all broadcast against each
+/// other and the source in [`Model::image_grid`], `alt_text` included (probes/rich-errors-image-
+/// array-error-elements, T-1427).
 fn has_array_option(options: &[CalcResult]) -> bool {
     options
-        .get(1..)
-        .unwrap_or_default()
         .iter()
         .any(|option| matches!(option, CalcResult::Array(_)))
-}
-
-/// Whether IMAGE's `alt_text`-onward `options` are lifted element by element by
-/// [`Model::image_grid`]: an array `sizing`, `height` or `width`, or an error beside an array
-/// `alt_text` (probes/rich-errors-image-array-error-elements, T-1427).
-fn image_options_lift(options: &[CalcResult]) -> bool {
-    has_array_option(options)
-        || (options.iter().any(CalcResult::is_error)
-            && options.iter().any(|o| matches!(o, CalcResult::Array(_))))
 }
 
 /// The error IMAGE gives for one `source` value: an error stays, a URL is `#BLOCKED!` (no fetch)
@@ -176,10 +166,7 @@ impl Model {
             rest_values.push(value);
         }
         if let Some(error) = pending {
-            if !rest_values
-                .iter()
-                .any(|v| matches!(v, CalcResult::Array(_)))
-            {
+            if !has_array_option(&rest_values) {
                 return Err(error);
             }
         }
@@ -189,8 +176,8 @@ impl Model {
     /// IMAGE with an array `sizing`, `height` or `width`: the source and those options broadcast
     /// against each other like any arrays (a length-1 axis repeats, a shorter array is `#N/A`
     /// beyond its end) and each element is checked on its own (probes/rich-errors-image-array-options,
-    /// T-1370). `options` is `alt_text`, `sizing`, `height`, `width` as given; only an array `sizing`/`height`/`width`
-    /// sets the shape, unless an error lifts over an array `alt_text` alone. An error element propagates as
+    /// T-1370). `options` is `alt_text`, `sizing`, `height`, `width` as given (an array `alt_text` shapes the grid
+    /// too). An error element propagates as
     /// itself (T-1417).
     fn image_grid(
         &mut self,
@@ -199,12 +186,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let (mut rows, mut cols) = source.dims();
-        let shaping = if has_array_option(options) {
-            options.get(1..).unwrap_or_default()
-        } else {
-            options
-        };
-        for option in shaping {
+        for option in options {
             if let CalcResult::Array(values) = option {
                 rows = rows.max(values.len());
                 cols = cols.max(values.iter().map(Vec::len).max().unwrap_or(0));
@@ -229,12 +211,10 @@ impl Model {
                                 }
                             };
                             let mut picked = Vec::with_capacity(options.len());
-                            for (index, option) in options.iter().enumerate() {
+                            for option in options {
                                 picked.push(match option {
                                     CalcResult::Array(values) => element(values, row, col)
-                                        .map(|node| array_node_to_calc_result(&node, cell))
-                                        // `alt_text` does not shape the grid: past its end it is no error.
-                                        .or_else(|| (index == 0).then_some(CalcResult::EmptyCell)),
+                                        .map(|node| array_node_to_calc_result(&node, cell)),
                                     other => Some(other.clone()),
                                 });
                             }
@@ -275,7 +255,7 @@ impl Model {
         }
         match self.offline_args(args, cell, true) {
             Err(error) => error,
-            Ok((source, options)) if image_options_lift(&options) => {
+            Ok((source, options)) if has_array_option(&options) => {
                 self.image_grid(&source, &options, cell)
             }
             Ok((Lifted::Array(values), options)) => {

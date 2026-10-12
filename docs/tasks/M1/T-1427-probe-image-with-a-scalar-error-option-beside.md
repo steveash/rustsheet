@@ -24,6 +24,6 @@ T-1417 reviewer follow-up. `Model::image_grid` (functions/information/offline_er
 -
 
 ## Outcome
-Probe cells added to `rich-errors-image-array-error-elements` (now 71 cells). Excel lifts a scalar error option over an array option
+Probe cells added to `rich-errors-image-array-error-elements` (now 95 cells). an array `alt_text` lifts and shapes the grid like the other options, and Excel lifts a scalar error option over an array option
 (a grid, not one scalar error) and an option error element beats a non-URL source element. `offline_args` now keeps a scalar
 argument error (`alt_text` included) for `image_grid` when IMAGE has an array argument (STOCKHISTORY unchanged); `information.md` is VERIFIED.

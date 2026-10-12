@@ -47,7 +47,16 @@
     "A137": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"a\",\"b\"},3,#N/A))",
     "A141": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",#N/A,{#DIV/0!,0}))",
     "A145": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",#N/A,{5,5},#DIV/0!))",
-    "A149": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",#N/A,{0,0},#DIV/0!))"
+    "A149": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",#N/A,{0,0},#DIV/0!))",
+    "A153": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{#N/A,\"b\"},{0,0}))",
+    "A157": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{#N/A,\"b\"},#DIV/0!))",
+    "A161": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"a\",\"b\",\"c\"},{0,0}))",
+    "A165": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"a\",\"b\"},{0,0,0}))",
+    "A169": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"b\",#N/A},{0,0,0}))",
+    "A173": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"b\",#N/A,\"c\"},{0,0}))",
+    "A177": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"a\",\"b\"}))",
+    "A181": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"a\",\"b\"},0))",
+    "A185": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"a\";\"b\"},{0,0}))"
    }
   }
  ],
