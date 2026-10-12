@@ -1,0 +1,49 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1332: SUBTOTAL/AREAS over XLOOKUP with a computed return array, and over TAKE/DROP of IF, LET. Sheet1 A1:A4=1..4. Each formula sits in row 1 with empty cells below so that a lifted array result can spill.",
+  "tags": [
+    "M1",
+    "references",
+    "subtotal",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "C1": "=SUBTOTAL(9,XLOOKUP(1,A1:A4,SEQUENCE(4)))",
+        "D1": "=AREAS(XLOOKUP(1,A1:A4,SEQUENCE(4)))",
+        "E1": "=ISREF(XLOOKUP(1,A1:A4,SEQUENCE(4)))",
+        "F1": "=SUBTOTAL(9,TAKE(IF(TRUE,A1:A4),2))",
+        "G1": "=AREAS(TAKE(IF(TRUE,A1:A4),2))",
+        "H1": "=ISREF(TAKE(IF(TRUE,A1:A4),2))",
+        "I1": "=SUBTOTAL(9,TAKE(IF(TRUE,SEQUENCE(4)),2))",
+        "J1": "=AREAS(TAKE(IF(TRUE,SEQUENCE(4)),2))",
+        "K1": "=ISREF(TAKE(IF(TRUE,SEQUENCE(4)),2))",
+        "L1": "=SUBTOTAL(9,TAKE(LET(x,A1:A4,x),2))",
+        "M1": "=AREAS(TAKE(LET(x,A1:A4,x),2))",
+        "N1": "=ISREF(TAKE(LET(x,A1:A4,x),2))",
+        "O1": "=SUBTOTAL(9,TAKE(LET(x,SEQUENCE(4),x),2))",
+        "P1": "=AREAS(TAKE(LET(x,SEQUENCE(4),x),2))",
+        "Q1": "=ISREF(TAKE(LET(x,SEQUENCE(4),x),2))",
+        "R1": "=SUBTOTAL(9,DROP(IF(TRUE,SEQUENCE(4)),2))",
+        "S1": "=AREAS(DROP(IF(TRUE,SEQUENCE(4)),2))",
+        "T1": "=SUBTOTAL(9,DROP(LET(x,SEQUENCE(4),x),2))",
+        "U1": "=AREAS(DROP(LET(x,SEQUENCE(4),x),2))",
+        "V1": "=SUBTOTAL(9,XLOOKUP(1,A1:A4,LET(x,A1:A4,x)))",
+        "W1": "=AREAS(XLOOKUP(1,A1:A4,LET(x,A1:A4,x)))",
+        "X1": "=ISREF(XLOOKUP(1,A1:A4,LET(x,SEQUENCE(4),x)))",
+        "Y1": "=ISREF(XLOOKUP(1,A1:A4,IF(TRUE,A1:A4)))",
+        "Z1": "=ISREF(XLOOKUP(1,A1:A4,LET(x,A1:A4,x)))",
+        "AA1": "=SUBTOTAL(9,XLOOKUP(1,A1:A4,IF(TRUE,A1:A4)))",
+        "AB1": "=AREAS(XLOOKUP(1,A1:A4,IF(TRUE,A1:A4)))",
+        "AC1": "=ISREF(DROP(IF(TRUE,SEQUENCE(4)),2))",
+        "AD1": "=ISREF(DROP(LET(x,SEQUENCE(4),x),2))"
+      }
+    }
+  ]
+}

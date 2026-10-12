@@ -1,0 +1,45 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Reference-only checks (ISREF, OFFSET, CELL, ANCHORARRAY) through written parentheses, plain vs grouped; follow-up to T-1339 (T-1364).",
+  "tags": [
+    "M1",
+    "references",
+    "probe",
+    "T-1364"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "D1": "=SEQUENCE(3)",
+        "E30": "=ISREF((A1:A3))",
+        "F30": "=FORMULATEXT(E30)",
+        "E35": "=ISREF(A1:A3)",
+        "F35": "=FORMULATEXT(E35)",
+        "E40": "=ISREF(LET(x,(A1:A3),x))",
+        "F40": "=FORMULATEXT(E40)",
+        "E45": "=ISREF(LET(x,A1:A3,x))",
+        "F45": "=FORMULATEXT(E45)",
+        "E50": "=OFFSET((A1:A3),1,0)",
+        "F50": "=FORMULATEXT(E50)",
+        "E55": "=OFFSET(A1:A3,1,0)",
+        "F55": "=FORMULATEXT(E55)",
+        "E60": "=CELL(\"address\",(A1))",
+        "F60": "=FORMULATEXT(E60)",
+        "E65": "=CELL(\"address\",A1)",
+        "F65": "=FORMULATEXT(E65)",
+        "E70": "=ANCHORARRAY(@IF(TRUE,D1))",
+        "F70": "=FORMULATEXT(E70)",
+        "E75": "=ANCHORARRAY((INDEX(D1:D3,1)))",
+        "F75": "=FORMULATEXT(E75)",
+        "E80": "=ANCHORARRAY(INDEX(D1:D3,1))",
+        "F80": "=FORMULATEXT(E80)"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -56,12 +56,13 @@ ignored: `"1"&CHAR(160)` and `CHAR(160)&"1"` (and `"="&CHAR(160)&"1"`) are text 
 only the cell with exactly that text, and CHAR(160)-padded text cells never match a numeric
 criterion. `"<> 1"` / `"<>1 "` count every cell except number 1 (text "1" still counts, 5 of 6).
 `">= 1"`, `"> 0 "` match number cells only (→ 1). `"<>"&CHAR(160)&"1"` → 5 (all but the exact text).
-Open: `">"&CHAR(160)&"0"` (a text comparison) matched 4 of the 5 text cells; the string ordering
-Excel uses around CHAR(160)/space is not implemented (engine gives 1), see the follow-up task.
+`">"&CHAR(160)&"0"` (a text comparison) matches 4 of the 5 text cells, all but " 1": text order puts
+CHAR(160) right after the space and before digits (coercion.md "Text comparison uses Excel's
+collation", T-0244).
 Evidence: probes/criteria-padded-text C1–C14 over A1:A6 = "1", "1 ", " 1", CHAR(160)&"1",
 "1"&CHAR(160), 1 → 4,4,4,4,4,5,5,1,1,1,1,1,4,5. Oracle: excel-graph, 2026-10-05 (T-0242).
-Status: VERIFIED (C13 string ordering unimplemented)
-Implemented in: functions::criteria::result_is_equal_to_number
+Status: VERIFIED
+Implemented in: functions::criteria::result_is_equal_to_number; C13 ordering in functions::util::cmp_text_excel (T-0244)
 Tasks: T-0242
 
 ## "=" matches blank cells, not an empty-string cell
@@ -163,7 +164,9 @@ so those cases are unprobed.
 DEVIATION (directive 5, decision 0014): a lifted call whose walks would visit more than 2^27 cells
 (used cells of the walked range x criteria count x distinct consecutive criteria elements) is
 `#ERROR!` before any walk; Excel computes it. Example: `SUM(COUNTIF(A1:A3000,SEQUENCE(50000)))`
-over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walking`).
+over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walking`). VLOOKUP/HLOOKUP over an array lookup_value
+use the same cap, at elements x evaluated cells of the searched column or row (lookup.md, T-0270; unit test
+`lifted_lookup_over_an_array_table_hits_the_visit_cap`).
 AGGREGATE's array function_num, options and k lift through the same code and cap (numbers.md "AGGREGATE", T-1038).
 Implemented in: `Model::lift_criteria` / `lift_ifs` (crates/rustsheet-engine/src/functions/statistical/if_ifs.rs),
 `criteria_static_result` (expressions/parser/static_analysis.rs)
@@ -211,3 +214,5 @@ Tests: `test_equal_and_not_equal_use_15_digit_comparison`, `cmp_excel_precision_
 Status: UNVERIFIED (probe pending: T-1051)
 Implemented in: `ValueOperator::Equal`/`NotEqual` in `crates/rustsheet-engine/src/conditional_formatting.rs`, `cmp_excel_precision` in `number_format.rs`
 Tasks: T-1033
+
+Exception: an error-valued criterion that is a stored `#BUSY!` (e.g. `COUNTIF(A1:A2,A1)`) matches nothing, not even `#BUSY!` cells, unlike a `#N/A` criterion (probes/error-stored-busy-behaviors C15, T-1314). COUNTIFS, SUMIF, SUMIFS, AVERAGEIF and DCOUNTA agree (probes/aggregate-error-precedence C79-C92, T-1334): a stored `#BUSY!` criterion matches nothing (`COUNTIFS(A1:A2,A1)` 0, `COUNTIFS(A1:A2,"<>"&A1)` 0 (the concatenation passes the error on, so it is the same criterion as C82), `DCOUNTA(...,J1:J2)` 0) while a stored `#N/A` criterion matches the `#N/A` cell (`COUNTIFS(A1:A2,A2)` 1, `DCOUNTA(...,K1:K2)` 1); `AVERAGEIF` with nothing matched is `#DIV/0!` (C86). Limitation: the SUMIF/SUMIFS cells (C79-C81, C87, C88) have a text or empty sum cell aligned with the error rows, so they give 0 either way and only show that no error propagates; the COUNTIFS and DCOUNTA cells are the real evidence.

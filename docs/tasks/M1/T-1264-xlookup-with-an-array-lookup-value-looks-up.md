@@ -1,0 +1,35 @@
+---
+id: T-1264
+title: "XLOOKUP with an array lookup_value looks up each element"
+milestone: M1
+lane: functions-logic
+status: done
+priority: P2
+size: S
+tier: opus
+depends_on: []
+---
+
+## Goal
+XLOOKUP with an array `lookup_value` (`SUM(XLOOKUP({1;2},A1:A3,B1:B3))`) returns one result per element, as Excel does.
+
+## Context
+probes/let-name-uncalled-picked-refs Sheet1!H21: Excel gives 30, the engine `#N/A` (`xlookup_impl`, functions/xlookup.rs, evaluates lookup_value to a single value). Probe the shapes first (row/column/2-D lookup_value, with if_not_found and the reference form) with the excel-probe skill, and record them in docs/excel-semantics/lookup.md.
+
+## Acceptance criteria
+- [x] H21 passes and its baseline entry is removed; probed shapes are recorded in docs/excel-semantics/lookup.md.
+- [x] `make check` green; reviewers approve.
+
+## Out of scope
+-
+
+## Outcome
+XLOOKUP lifts an array or multi-cell `lookup_value`, `match_mode` or `search_mode` per element (functions/xlookup.rs). The lookup and return arrays are evaluated and shape-checked once (`xlookup_table`, a `SearchVector` for ranges and arrays alike); each element runs only the search and the pick, costed by `SearchVector::search_cost()` against the shared visit cap (DEVIATION recorded). A lifted element keeps the first cell of its match; an array `if_not_found` gives its first element and a reference one `#VALUE!`. Also from the new probe: a bad search_mode and a 2-D range lookup_array are `#VALUE!` (were `#ERROR!`), and a row lookup over a taller return range returns the matched column. Probes probes/xlookup-array-lookup-value (27 cells) and probes/xlookup-array-lookup-value-args (57 cells) all pass; let-name-uncalled-picked-refs H21 and lookup-argument-modes F22, F23, G22, G23, H22, H23 (lifted lookups) and F25, G25, H25 newly pass (probes known failures 928 -> 925 since the handoff, which had already removed H21 and the 22/23 rows).
+
+## Handoff (resumed)
+Branch has a working implementation (XLOOKUP lifts an array/multi-cell `lookup_value` through `lift_with_cost`, wrapping the scalar path as `xlookup_scalar`), probe `probes/xlookup-array-lookup-value` (27 oracle cells) and the lookup.md entry; `make check` was green with the baseline updated. Reviews: architecture APPROVE; security, quality, performance REQUEST_CHANGES.
+- Security (MAJOR): `xlookup_walk_cost` charges 1 for a computed-array lookup_array and ignores return_array/if_not_found, so `=XLOOKUP(ROW(1:1000000),SEQUENCE(100000),SEQUENCE(100000))` is about 1e11 operations. Needs a DEVIATION entry (decision 0014) for the refusal and a test.
+- Quality (MAJOR): do not fork `Model::walk_cost` (if_ifs.rs); extend it (e.g. count computed arrays) instead.
+- Performance (MAJOR): each distinct element re-evaluates args[1..5], re-clips and rebuilds the search vector, so the work is O(elements x used cells). Restructure like `lookup_each.rs` (T-0270): evaluate and validate arguments once, build the SearchVector once, run only `linear_search`/`binary_hit` plus `xlookup_pick` per element, and cost with `SearchVector::search_cost()`. The current range-size cost also falsely refuses `XLOOKUP(A:A,B:B,C:C)` with about 128+ distinct values; add a unit test for that case.
+- Next: do the restructure, then rerun `make check` and all reviewers.
+- Fidelity review (REQUEST_CHANGES, same cost finding plus probe asks): `=SUM(XLOOKUP(A1:A300,B:B,C:C))` gives `#ERROR!` today (unclipped whole-column cost) where Excel computes it. Probe and record in lookup.md: argument errors under a lifted lookup_value (one error or one per element), an array `if_not_found` with an array lookup_value (the engine takes its first cell), a 2-D return with a horizontal lookup_array, and add `=COLUMNS(XLOOKUP({2;3},Data!A1:A4,Data!C1:E4))` to the probe so the first-cell shape is scored.

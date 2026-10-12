@@ -169,7 +169,7 @@ impl Model {
     /// A multi-cell range k reads its top-left cell (probes/aggregate-range-args A31, A61-A71).
     /// Any other k, or a top-left cell that is not a plain value, is passed on unchanged.
     fn top_left_k(&mut self, k: &Node, cell: CellReferenceIndex) -> Node {
-        if !matches!(k, Node::RangeKind { .. }) {
+        if !matches!(k.ungrouped(), Node::RangeKind { .. }) {
             return k.clone();
         }
         match self.evaluate_node_with_reference(k, cell) {

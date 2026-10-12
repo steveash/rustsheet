@@ -39,6 +39,8 @@ pub enum ErrorKind {
     Blocked,
     /// `#FIELD!`
     Field,
+    /// `#BUSY!`: only a stored constant; its ERROR.TYPE code is 0 (SPEC-0003, "Stored `#BUSY!`")
+    Busy,
 }
 
 impl ErrorKind {
@@ -61,6 +63,7 @@ impl ErrorKind {
             EngineError::CONNECT => Self::Connect,
             EngineError::BLOCKED => Self::Blocked,
             EngineError::FIELD => Self::Field,
+            EngineError::BUSY => Self::Busy,
         }
     }
 
@@ -83,6 +86,7 @@ impl ErrorKind {
             Self::Connect => EngineError::CONNECT,
             Self::Blocked => EngineError::BLOCKED,
             Self::Field => EngineError::FIELD,
+            Self::Busy => EngineError::BUSY,
         }
     }
 
@@ -109,6 +113,7 @@ impl ErrorKind {
             Self::Connect => "#CONNECT!",
             Self::Blocked => "#BLOCKED!",
             Self::Field => "#FIELD!",
+            Self::Busy => "#BUSY!",
         }
     }
 
@@ -127,7 +132,7 @@ impl ErrorKind {
     /// Parses an en-US error literal, case-insensitively (not oracle-verified for Excel).
     ///
     /// Uses the engine's stored-name table, so it accepts every kind, including `#BLOCKED!`,
-    /// `#CONNECT!` and `#FIELD!`, which are not formula literals (SPEC-0003).
+    /// `#CONNECT!`, `#FIELD!` and `#BUSY!`, which are not formula literals (SPEC-0003).
     #[must_use]
     pub fn from_literal(literal: &str) -> Option<Self> {
         rustsheet_engine::expressions::token::get_error_by_english_name(&literal.to_uppercase())
@@ -137,7 +142,8 @@ impl ErrorKind {
 
     /// The number `ERROR.TYPE` returns for this error.
     ///
-    /// Always `Some` today; `Option` leaves room for kinds without a code.
+    /// Always `Some` today; `Option` leaves room for kinds without a code. [`ErrorKind::Busy`]
+    /// has one, and it is `Some(0)`.
     #[must_use]
     pub fn code(self) -> Option<u8> {
         Some(self.to_engine().error_type_code())
@@ -406,7 +412,7 @@ impl Array {
 mod tests {
     use super::*;
 
-    const ALL: [ErrorKind; 16] = [
+    const ALL: [ErrorKind; 17] = [
         ErrorKind::Null,
         ErrorKind::Div0,
         ErrorKind::Value,
@@ -423,6 +429,7 @@ mod tests {
         ErrorKind::Connect,
         ErrorKind::Blocked,
         ErrorKind::Field,
+        ErrorKind::Busy,
     ];
 
     #[test]
@@ -482,7 +489,7 @@ mod tests {
     #[test]
     fn codes_follow_error_type() {
         // Excel's ERROR.TYPE numbers; 101/102/104 are engine-specific.
-        let expected = [1, 2, 3, 4, 5, 6, 7, 9, 14, 104, 102, 101, 8, 10, 11, 13];
+        let expected = [1, 2, 3, 4, 5, 6, 7, 9, 14, 104, 102, 101, 8, 10, 11, 13, 0];
         for (kind, code) in ALL.into_iter().zip(expected) {
             assert_eq!(kind.code(), Some(code), "{kind:?}");
         }

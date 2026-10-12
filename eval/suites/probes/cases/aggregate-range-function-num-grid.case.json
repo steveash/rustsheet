@@ -1,0 +1,50 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "AGGREGATE with a 2x2 range function_num, and sheet-qualified cell-shaped names off the grid (row 0, past row 1048576) from the formula_eval fuzz crash (T-0296).",
+  "tags": [
+    "M2",
+    "probe",
+    "aggregate",
+    "T-0296"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=AGGREGATE(Data!G1:H2,0,Data!E1:E6)",
+        "A6": "=AGGREGATE(9,Data!G1:H2,Data!E1:E6)",
+        "A11": "=AGGREGATE(Data!G1:H2,Data!G4:H5,Data!E1:E6)",
+        "A16": "=AGGREGATE(Data!H0:I1,0,Data!E1:E6)",
+        "A21": "=ROWS(Data!H0:I1)",
+        "A22": "=Data!H0",
+        "A23": "=ISREF(Data!H0:I1)",
+        "A24": "=Data!A1048577",
+        "A25": "=Data!H00",
+        "A26": "=ROWS(H0:I1)",
+        "A27": "=Data!H01",
+        "A28": "=ISREF(Data!H0)",
+        "A29": "=SUM(Data!G0:H2)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "E1": 3,
+        "E2": 1,
+        "E3": 4,
+        "E4": 1,
+        "E5": 5,
+        "E6": 9,
+        "G1": 9,
+        "H1": 4,
+        "G2": 1,
+        "H2": 14,
+        "G4": 0,
+        "H4": 6,
+        "G5": 9,
+        "H5": 3
+      }
+    }
+  ],
+  "expected": {}
+}

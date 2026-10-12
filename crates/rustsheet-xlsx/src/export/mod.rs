@@ -119,7 +119,7 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     zip.start_file("xl/styles.xml", options)?;
     zip.write_all(styles::get_styles_xml(workbook).as_bytes())?;
     zip.start_file("xl/workbook.xml", options)?;
-    zip.write_all(workbook::get_workbook_xml(workbook, selected_sheet).as_bytes())?;
+    zip.write_all(workbook::get_workbook_xml(workbook, selected_sheet)?.as_bytes())?;
     zip.start_file(crate::import::rich_errors::METADATA_PART, options)?;
     zip.write_all(rich_errors::get_metadata_xml(rich).as_bytes())?;
     if rich {

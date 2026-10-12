@@ -49,6 +49,9 @@ whether one shared kernel (e.g. ln of the GAMMA routine's internal Lanczos sum, 
 log form) reproduces both families. If the cached cells cannot separate the candidates, stop and fit
 against the T-1042 gamma-function sweep instead of guessing.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/d244411dd90f7fbd Calc!A17 `=IF(..,GROWTH(GAMMA(Data!$E7)),..)` (E7 = 100): Excel 9.332621544394404e+155; the engine's `GAMMA(100)` is 9.332621544395446e+155, about 1e-13 relative off 99! = 9.33262154439441e+155 (the cell also needs T-1402 for GROWTH of one value).
+
 ## Acceptance criteria
 - [ ] All 16 GAMMA NumericClose lines leave `eval/baseline/ironcalc-calc.txt` (exact integers among
       them), no new lines in any baseline (GAMMALN lines T-0926 fixed must stay fixed).

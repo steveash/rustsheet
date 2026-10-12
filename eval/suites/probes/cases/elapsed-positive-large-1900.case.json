@@ -1,0 +1,36 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1362: positive near-integer and large-serial elapsed tokens, 1900 date system.",
+  "tags": [
+    "M1",
+    "probe",
+    "dates",
+    "T-1362"
+  ],
+  "date_system": 1900,
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=TEXT((3-1E-7)/24,\"[h]\")",
+        "A2": "=TEXT((2-1E-9)/1440,\"[m]\")",
+        "A3": "=TEXT((5-1E-6)/86400,\"[s]\")",
+        "A4": "=TEXT(0.49999999999/86400,\"[s]\")",
+        "A5": "=TEXT((3-1E-11)/24,\"[h]\")",
+        "A6": "=TEXT((2-1E-9)/1440,\"[mm]\")",
+        "A7": "=TEXT(30000,\"[s]\")",
+        "A8": "=TEXT(30000,\"[m]\")",
+        "A9": "=TEXT(30000,\"[h]\")",
+        "A10": "=TEXT(24855,\"[s]\")",
+        "A11": "=TEXT(24856,\"[s]\")",
+        "A12": "=TEXT(1500000,\"[m]\")",
+        "A13": "=TEXT(2958465,\"[s]\")",
+        "A14": "=TEXT(2958465,\"[m]\")",
+        "A15": "=TEXT(2958465,\"[ss]\")",
+        "A16": "=TEXT(1E9,\"[h]\")",
+        "A17": "=TEXT(1E7,\"[s]\")"
+      }
+    }
+  ],
+  "expected": {}
+}

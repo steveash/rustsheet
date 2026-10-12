@@ -6,7 +6,7 @@ use crate::{
         token::{Error, OpCompare, OpProduct, OpSum},
         types::CellReferenceIndex,
     },
-    functions::{util::compare_values, Function},
+    functions::util::compare_values,
     model::Model,
 };
 
@@ -81,9 +81,9 @@ pub(crate) fn flush_subnormal(value: f64) -> f64 {
 
 /// Excel's near-zero snapping of a formula's final addition: `total` is `x + y`, and when the two
 /// addends have opposite signs and `total` is below 8 ULP of the smaller addend in magnitude,
-/// Excel returns exactly 0. It applies only when the cell formula's outermost operation is `+`/`-`
-/// or SUM, and not when the whole formula is parenthesized (the callers decide that). Across the
-/// 1,296 probe cells, snapped results are at most 7 ULP of the smaller addend and kept ones at
+/// Excel returns exactly 0. It applies when the cell formula's outermost operation is `+`/`-`
+/// (not when the whole formula is parenthesized) and to every SUM call (the callers decide that).
+/// Across the 1,296 probe cells, snapped results are at most 7 ULP of the smaller addend and kept ones at
 /// least 8 (docs/excel-semantics/numbers.md "Near-zero snapping in addition and subtraction",
 /// probes-numeric/30bc5f8fab02d0a2).
 pub(crate) fn snap_near_zero(x: f64, y: f64, total: f64) -> f64 {
@@ -101,6 +101,9 @@ pub(crate) fn snap_near_zero(x: f64, y: f64, total: f64) -> f64 {
     }
 }
 
+/// 2^32 - 1: from this exponent on a negative base is `#NUM!` (docs/excel-semantics/numbers.md).
+const NEGATIVE_BASE_EXPONENT_LIMIT: f64 = 4_294_967_295.0;
+
 /// `x` to the power of `y`, as POWER and the operator `^` compute it.
 pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
     if x == 0.0 && y == 0.0 {
@@ -108,6 +111,14 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
     }
     if y == 0.0 {
         return Ok(1.0);
+    }
+    // Excel: a negative base with |y| >= 2^32 - 1 is #NUM!, even for (-1)^y and for results that
+    // underflow (docs/excel-semantics/numbers.md "Integer exponents beyond 360").
+    if x < 0.0 && y.abs() >= NEGATIVE_BASE_EXPONENT_LIMIT {
+        return Err(Error::NUM);
+    }
+    if let Some(result) = integer_power(x, y) {
+        return Ok(result);
     }
     let result = if x < 0.0 && is_one_over_an_odd_integer(y) {
         // An odd root of a negative number is a real number: the cube root of
@@ -127,6 +138,59 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
         return Err(Error::NUM);
     }
     finite_or_num(result)
+}
+
+/// `x^y` for an integer `y`, by binary exponentiation scanning the bits of `|y|` from the low end,
+/// as Excel computes it (docs/excel-semantics/numbers.md "Integer exponents: right-to-left
+/// square-and-multiply"; libm `pow` and `powi` round differently). A negative `y` is one over
+/// the result. `None` leaves the case to the general path: a non-integer or huge `y` (bounding the
+/// loop to 54 iterations), and any result that is zero or not finite, whose overflow and
+/// underflow behavior is unverified beyond the oracle's exponents 1..360.
+fn integer_power(x: f64, y: f64) -> Option<f64> {
+    // 2^53: beyond it every float is an integer, and the loop would need more than 54 iterations
+    const MAX_EXPONENT: f64 = 9_007_199_254_740_992.0;
+    if !x.is_finite() || !y.is_finite() || y.fract() != 0.0 || y.abs() > MAX_EXPONENT {
+        return None;
+    }
+    let mut result =
+        decimal_power_of_ten(x, y.abs()).unwrap_or_else(|| square_and_multiply(x, y.abs()));
+    if y < 0.0 {
+        result = 1.0 / result;
+    }
+    if !result.is_finite() || result == 0.0 {
+        return None;
+    }
+    // Excel flushes a subnormal result to zero (T-1311 oracle: 0.1^310, 2^-1074, (-0.5)^1073).
+    Some(if result.abs() < f64::MIN_POSITIVE {
+        0.0
+    } else {
+        result
+    })
+}
+
+/// `x^n` for a non-negative integer `n` <= 2^53 by scanning the bits of `n` from the low end.
+fn square_and_multiply(x: f64, n: f64) -> f64 {
+    let mut remaining = n;
+    let mut base = x;
+    let mut result = 1.0_f64;
+    while remaining >= 1.0 {
+        if remaining % 2.0 == 1.0 {
+            result *= base;
+        }
+        base *= base;
+        remaining = (remaining / 2.0).floor();
+    }
+    result
+}
+
+/// `10^n` for an integer `n` in 23..=308 as the nearest double to the decimal `1En`, which is what
+/// Excel returns for base 10 there (square-and-multiply drifts from it: `10^33` is exactly 1E+33
+/// in Excel). Smaller exponents are exact either way, and `10^23` is the square-and-multiply
+/// value. Other bases, even `100` and `-10`, follow the square-and-multiply rule.
+fn decimal_power_of_ten(x: f64, n: f64) -> Option<f64> {
+    (x == 10.0 && (23.0..=308.0).contains(&n))
+        .then(|| format!("1e{n}").parse::<f64>().ok())
+        .flatten()
 }
 
 /// Whether `y` is 1/3, 1/5, -1/7 and so on. A float cannot hold a third, so
@@ -181,8 +245,8 @@ pub(crate) fn array_of_errors(
 
 impl Model {
     /// Evaluates a cell formula's outermost node. Excel snaps a near-zero result of the formula's
-    /// outermost `+`/`-` or SUM to 0, but not for a wholly parenthesized formula, which is a
-    /// `GroupedRootKind` root (docs/excel-semantics/numbers.md "Near-zero snapping in addition
+    /// outermost `+`/`-` to 0, but not for a wholly parenthesized formula, which is a
+    /// root `Group` (docs/excel-semantics/numbers.md "Near-zero snapping in addition
     /// and subtraction"); every other node evaluates as usual.
     pub(crate) fn evaluate_formula_root(
         &mut self,
@@ -194,10 +258,6 @@ impl Model {
                 let left = self.evaluate_node_in_context(left, cell);
                 self.handle_outermost_sum(left, right, cell, matches!(kind, OpSum::Minus))
             }
-            Node::FunctionKind {
-                kind: Function::Sum,
-                args,
-            } => self.fn_sum_outermost(args, cell),
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
@@ -610,5 +670,30 @@ impl Model {
                 CalcResult::Array(array)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod power_tests {
+    use super::power;
+    use crate::expressions::token::Error;
+
+    // Oracle doubles: gen-m1/6462bf910ef9f28f A33, gen-m1/57fe331cb7611dbf A104, gen-m2
+    // f0d1bacec5de8146 A196 (docs/excel-semantics/numbers.md "Integer exponents").
+    #[test]
+    fn integer_exponents_use_square_and_multiply() {
+        assert_eq!(power(1e-15, 3.0), Ok(1.000_000_000_000_000_1e-45));
+        assert_eq!(power(3.25, 100.0), Ok(1.54289402744788e+51));
+        assert_eq!(power(100.0, 100.0), Ok(1.000_000_000_000_000_5e200));
+        assert_eq!(power(2.0, -2.0), Ok(0.25));
+        assert_eq!(power(-2.0, 3.0), Ok(-8.0));
+    }
+
+    #[test]
+    fn special_cases_keep_the_general_path() {
+        assert_eq!(power(0.0, -1.0), Err(Error::DIV));
+        assert_eq!(power(0.0, 0.0), Err(Error::NUM));
+        assert_eq!(power(-8.0, 1.0 / 3.0), Ok(-2.0));
+        assert_eq!(power(10.0, 400.0), Err(Error::NUM));
     }
 }

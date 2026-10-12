@@ -27,3 +27,23 @@ cell (5) is TRUE. `=XOR()` makes Excel for the web refuse the workbook (`FileCor
 Evidence: probes/info-logic-argument-modes A1:A5, info-logic-argument-modes-2 A10:A11 (oracle: excel-graph, 2026-10-09, T-1088).
 Status: VERIFIED (excel-graph); the engine matches.
 Tasks: T-1088
+
+## IFERROR / IFNA of a blank cell is an empty value, not the reference
+Rule: when IFERROR's or IFNA's value argument is a blank cell, the result is the blank's value, not a reference to it.
+OR and AND read that value as FALSE (`OR(IFERROR(D9,A9))` with D9 blank is FALSE, whereas OR ignores a blank cell it is
+given directly: `OR(B1)` is `#VALUE!`, `OR(B1,FALSE)` FALSE), `&` reads it as "" (`IFERROR(D5,A3)&" x "&"1"` is " x 1"), a
+lookup reads it as 0 (`VLOOKUP(IFERROR(B8,D1),C8:D10,1,TRUE)` with B8 blank finds the largest value <= 0, -1;
+`MATCH(IFERROR(B1,1),C1:C2,0)` over -1, 0 is 2), like an omitted lookup value (lookup.md, "XLOOKUP / XMATCH with an omitted
+lookup_value is a blank cell"), and comparisons treat it as a blank: `IFERROR(B1,1)=0`, `=""`, `=FALSE`, `<1` and `<"a"`
+are all TRUE and `SWITCH(IFERROR(B1,1),0,"zero",..)` is "zero". An omitted argument compares the same way:
+`SWITCH(0,,"a","b")` and `SWITCH(,0,"a","b")` are "a", and `CHOOSE(1,)=0`, `=FALSE`, `=""`, `<1`, `IF(TRUE,)=""` and `IF(TRUE,)=0`
+are TRUE. Unlike a blank cell given directly, COUNT and COUNTA
+count it (`COUNT(IFERROR(B1,1))` = 1, COUNTA 1); so does an omitted argument (`COUNTA(,)` = 2, `COUNTA(1,)` = 2, `COUNTA(,,)` = 3, `COUNT(,)` = 2, `COUNT(1,)` = 2, `COUNTA(B1,)` = 1 with B1 blank, probes/counta-empty-value D1-D8, T-1294), and the count also holds through LET (`LET(x,IFERROR(B1,1),COUNTA(x))` = 1) and for two such arguments (2). The array form counts the empty element too (`COUNTA(IFERROR(B1:B2,1))` with B2 "x" is 2, D18; not implemented, T-1395) whereas `COUNTA(TAKE(<blank>,1))` is 0 (probes/subtotal-reference-operands-c H13), yet ISBLANK of it is TRUE, ISNUMBER and ISTEXT FALSE, TYPE 1, N 0,
+and the cell itself shows 0 (as a consumer it reads as 0/FALSE/"": `NOT(IFERROR(B1,1))` TRUE, `IF(IFERROR(B1,1),..)` takes the false branch, `-IFERROR(B1,1)`, SUM, AVERAGE, MAX, PRODUCT and LEN of it are 0, `ISLOGICAL` FALSE, `LET(x,IFERROR(B1,1),ISBLANK(x))` TRUE; probes/counta-empty-value D9-D17, D25-D26). IFNA behaves the same (OR FALSE, `&` "", VLOOKUP 0).
+Evidence: gen-m2 7469c3e920e1ade4 Calc!A351, ef5c55a81783b7d5 Calc!A291, dd99be1f2454159f Calc!A110 (excel-graph);
+probes/iferror-blank-value D1:D23 and probes/omitted-arg-compare D1:D10 (excel-graph, 2026-10-09, T-0291).
+Ours: matches since T-0291 (`if_error_like` returns `CalcResult::EmptyArg`; `lookup_key` reads it as 0 and
+`compare_values` reads any `EmptyArg`, an omitted argument included, as a blank cell; before T-0291 the six omitted-argument
+comparisons above were wrong) except COUNTA, which is 0 (T-1294).
+Status: VERIFIED (excel-graph)
+Tasks: T-0235, T-0291, T-1294

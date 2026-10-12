@@ -28,6 +28,10 @@ Excel-cached expected values reveal the algorithm (no new oracle access needed):
 Code: `crates/rustsheet-engine/src/functions/math_and_trigonometry/{sequence,multinomial,mathematical}.rs`.
 If one function cannot be fit with the existing evidence, split it out and leave its lines in baseline.
 
+More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/<case>.case.json`):
+- gen-m7/3a62e0950c1074fd Calc!A34 `=COMBIN((DEGREES(0.2)+IF(..)),9)` = COMBIN(11,9) after truncation: Excel 55, engine 54.999999999999986 (`COMBIN(11,9)` alone).
+- gen-m7/8ed8a680e9794b77 Calc!A21 `=COMBIN(23,ISOWEEKNUM(36264))` = COMBIN(23,15): Excel 490314, engine 490313.9999999999 (`COMBIN(23,4)` is exact 8855). Excel gives exact integers for both; fit these with the five COMBIN_COMBINA cells.
+
 ## Acceptance criteria
 - [ ] 16 known-failure lines (5 SEQUENCE: I9, I10, I11, L14, M14; 6 MULTINOMIAL; 5 COMBIN_COMBINA)
       disappear from eval/baseline/ironcalc-calc.txt with no new ones.

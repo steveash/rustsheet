@@ -158,7 +158,7 @@ fn intersection_formula_text_round_trips() {
     model.evaluate();
 
     assert_eq!(model._get_formula("A1"), "=Data!A1:C7 Data!C7:E12");
-    assert_eq!(model._get_formula("A2"), "=Data!C2:C11 Data!C6:E6+0.1");
+    assert_eq!(model._get_formula("A2"), "=(Data!C2:C11 Data!C6:E6)+0.1");
     assert_eq!(model._get_formula("A3"), "=B1:C3 (C1:C2 C2)");
 }
 
@@ -254,7 +254,7 @@ fn at_operand_keeps_a_group_that_is_only_its_leftmost_operand() {
 #[test]
 fn at_operand_group_leftmost_shapes_match_the_probe() {
     // probes/at-group-leftmost-shapes E30:E39 (excel-graph, T-1245): Excel prints every form as
-    // written. The engine matches all but E34, E35 and E36, asserted separately below.
+    // written. E34 and E35 are asserted separately below.
     let mut model = model();
     let forms = [
         "=@((A1)):B1 C1",
@@ -264,29 +264,38 @@ fn at_operand_group_leftmost_shapes_match_the_probe() {
         "=@(A1 B1):C1",
         "=@(A1 B1 C1) D1",
         "=@(A1):OFFSET(B1,0,0) C1",
+        // E36: the group is the left corner of a range that is the whole operand (T-1251); the
+        // next four are probes/at-group-range-corner-whole E30:E33 (excel-graph).
+        "=@(A1):B1",
+        "=@(A1:B1):C1",
+        "=@((A1)):B1:C1",
+        "=@((A1)):B1",
+        "=@(A1):B1:C1",
     ];
     for (i, formula) in forms.iter().enumerate() {
         model._set(&format!("E{}", 50 + i), formula);
     }
     model._set("F50", "=@((A1 B1) C1) D1");
     model._set("F51", "=@(A1):(B1) C1");
-    model._set("F52", "=@(A1):B1");
+    model._set("F52", "=@(A1):(B1)");
     model.evaluate();
     for (i, formula) in forms.iter().enumerate() {
         assert_eq!(model._get_formula(&format!("E{}", 50 + i)), *formula);
     }
-    // Engine output that differs from Excel, which prints each as written (T-1251).
-    assert_eq!(model._get_formula("F50"), "=@(A1 B1 C1) D1");
-    assert_eq!(model._get_formula("F51"), "=@(A1):B1 C1");
-    assert_eq!(model._get_formula("F52"), "=@A1:B1");
+    // E34 and E35: every group is a `Group` where it was written, a group nested in the leading
+    // one (F50) as one right of it (F51, F52), so all print as written (SPEC-0007, T-1343).
+    assert_eq!(model._get_formula("F50"), "=@((A1 B1) C1) D1");
+    assert_eq!(model._get_formula("F51"), "=@(A1):(B1) C1");
+    // probes/at-group-range-corner-whole E34.
+    assert_eq!(model._get_formula("F52"), "=@(A1):(B1)");
 }
 
 #[test]
 fn at_operand_adds_no_level_for_a_nested_inner_group() {
     // T-1167: an inner group that only ends right before the outer `)` adds no level to the `@`
-    // operand (only `@((A1))`, a group opening right after the `(`, does). E40, E41, E43 and E44
-    // characterize the engine, not Excel: it drops the inner groups, while Excel prints every
-    // written parenthesis back (probes/at-operand-nested-groups, T-1178; engine: T-1244).
+    // operand (only `@((A1))`, a group opening right after the `(`, does). Excel prints every
+    // written parenthesis back (probes/at-operand-nested-groups, T-1178), and each is a `Group`
+    // where it was written (SPEC-0007, T-1343).
     let mut model = model();
     model._set("A1", "1");
     model._set("B1", "2");
@@ -296,11 +305,11 @@ fn at_operand_adds_no_level_for_a_nested_inner_group() {
     model._set("E43", "=@(((A1)) B1)");
     model._set("E44", "=@((A1)+(B1))");
     model.evaluate();
-    assert_eq!(model._get_formula("E40"), "=@(A1+B1)");
-    assert_eq!(model._get_formula("E41"), "=@(A1 B1)");
+    assert_eq!(model._get_formula("E40"), "=@(A1+(B1))");
+    assert_eq!(model._get_formula("E41"), "=@((A1) (B1))");
     assert_eq!(model._get_formula("E42"), "=@((A1))");
-    assert_eq!(model._get_formula("E43"), "=@(A1 B1)");
-    assert_eq!(model._get_formula("E44"), "=@(A1+B1)");
+    assert_eq!(model._get_formula("E43"), "=@(((A1)) B1)");
+    assert_eq!(model._get_formula("E44"), "=@((A1)+(B1))");
 }
 
 #[test]
