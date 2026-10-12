@@ -17,7 +17,7 @@ A workbook exported by RustSheet stores every newer function with its `_xlfn.` p
 Found in T-0052. XlsxWriter (3.2.9) prefixes these five names (`_xlfn.DAYS`, `_xlfn.GAUSS`,
 `_xlfn.IMSECH`, `_xlfn.GAMMA.DIST`, `_xlfn.FORECAST.LINEAR`). The engine implements all five
 (`Function::Days`, `Gauss`, `Imsech`, `GammaDist`, `ForecastLinear`), but
-`Function::to_xlsx_string` (crates/rustsheet-engine/src/functions/mod.rs) has no `_xlfn.` arm for
+`Function::to_xlsx_string` (crates/rustsheet-engine/src/functions/xlsx_names.rs) has no `_xlfn.` arm for
 any of them, so the exporter writes them bare. A bare newer name read from a file is `#NAME?` in
 Excel (docs/excel-semantics/xlsx-storage.md, "Newer functions need `_xlfn.`").
 The case builder lists these names in `_BUILDER_ONLY_PREFIXES` (tools/src/rustsheet_tools/spec2xlsx.py)

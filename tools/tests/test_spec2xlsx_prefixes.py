@@ -4,9 +4,11 @@ import inspect
 import io
 import re
 import zipfile
+from pathlib import Path
 
 import xlsxwriter.worksheet
 
+from rustsheet_tools.gen.generator import load_excel_functions
 from rustsheet_tools.spec2xlsx import (
     build_xlsx,
     future_function_prefixes,
@@ -73,6 +75,13 @@ def test_engine_prefix_list_is_not_empty() -> None:
     prefixes = future_function_prefixes()
     assert {"LET", "TRIMRANGE", "FILTER"} <= prefixes.keys()
     assert "CEILING" not in prefixes  # classic: stored without a prefix (T-0172)
+
+
+def test_engine_prefix_list_names_only_real_functions() -> None:
+    # The list is parsed from xlsx_names.rs with a regex, so a comment that looks like an arm would
+    # add a fake name whose calls the builder would then write as `_xlfn.<name>` (#NAME? in Excel).
+    excel = load_excel_functions(Path(__file__).resolve().parents[2] / "eval/catalog/excel-functions.tsv")
+    assert set(future_function_prefixes()) <= set(excel)
 
 
 def test_classic_names_xlsxwriter_misreads_keep_their_function() -> None:
