@@ -12,6 +12,7 @@ mod test_column_width;
 mod test_criteria;
 mod test_database;
 mod test_date_and_time;
+mod test_date_huge_month_day;
 mod test_datedif_leap_month_end;
 mod test_days360_month_end;
 mod test_days_days360;
