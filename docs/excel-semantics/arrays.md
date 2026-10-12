@@ -331,11 +331,14 @@ reference and MAP, SCAN and REDUCE each cell as a reference. With A1 x, A3 z, B3
 `BYROW(..,COUNTBLANK(r))` 1, 2, 0, `BYROW(A1:B3,LAMBDA(r,ROW(r)))` 1, 2, 3, `ISREF` of the slice is TRUE in all five
 helpers, `BYCOL(TAKE(A1:B3,2),LAMBDA(c,COUNTA(c)))` 1, 0 and `LET(x,A1:B3,BYCOL(x,..))` 2, 1. Over an array the slices are
 arrays and every element counts: `BYCOL(IFERROR(A1:B3,1),LAMBDA(c,COUNTA(c)))` is 3, 3. An eta-reduced COUNTA,
-`BYCOL(A1:B3,COUNTA)`, is `#VALUE!`.
+`BYCOL(A1:B3,COUNTA)`, is `#VALUE!`. A whole column or row keeps its full size, not the used area:
+`ROWS(BYROW(H:H,LAMBDA(r,1)))` and `BYCOL(H:H,LAMBDA(c,ROWS(c)))` are 1048576, `COLUMNS(BYCOL(60:60,LAMBDA(c,1)))` and
+`BYROW(60:60,LAMBDA(r,COLUMNS(r)))` 16384 (G1:G4).
 Evidence: probes/lambda-helper-range-slices (excel-graph, 2026-10-12, T-1395).
-Ours: BYROW and BYCOL pass references since T-1395 (`by_slices_source`, bycol_byrow.rs). MAP, SCAN and REDUCE pass
-values (ISREF FALSE) and the eta-reduced COUNTA is `#NAME?` (T-1442).
-Status: VERIFIED (web)
+Ours: BYROW and BYCOL pass references since T-1395 (`by_slices_source`, bycol_byrow.rs); a range keeps its full size
+(a whole column gives 1,048,576 calls and full-column slices) under the 2^20-cell array bound of "Array results above
+1,048,576 cells". MAP, SCAN and REDUCE pass values (ISREF FALSE) and the eta-reduced COUNTA is `#NAME?` (T-1442).
+Status: VERIFIED (excel-graph)
 Tasks: T-1395, T-1442
 
 ## BYROW and BYCOL of a single value

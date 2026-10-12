@@ -169,14 +169,30 @@
    "F7": {
     "t": "b",
     "v": true
+   },
+   "G1": {
+    "t": "n",
+    "v": 1048576.0
+   },
+   "G2": {
+    "t": "n",
+    "v": 1048576.0
+   },
+   "G3": {
+    "t": "n",
+    "v": 16384.0
+   },
+   "G4": {
+    "t": "n",
+    "v": 16384.0
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "91e50ef9fbdeadef98877eb18f38ee99444fbe7cfafdd9c174968b9d9fc7b775",
+  "input_sha256": "6a515de34cbb97c7a42be521d162eda43468e0bc6e030b8011e9b9e6dd9fcd66",
   "kind": "excel-graph",
-  "produced_at": "2026-10-12T17:41:52+00:00",
+  "produced_at": "2026-10-12T18:10:40+00:00",
   "version": null
  }
 }

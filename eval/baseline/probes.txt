@@ -225,7 +225,7 @@ C	probes/isref-names-filter-if-empty.case.json	10
 C	probes/isref-range-operands.case.json	27
 C	probes/isref-reference-lookups.case.json	11
 C	probes/isref-union-operands.case.json	9
-C	probes/lambda-helper-range-slices.case.json	42
+C	probes/lambda-helper-range-slices.case.json	46
 C	probes/lambda-optional-params.case.json	9
 C	probes/lambda-param-call.case.json	6
 C	probes/large-small-k.case.json	35

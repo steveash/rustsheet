@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1395: do BYROW/BYCOL/MAP/SCAN/REDUCE hand a range's rows, columns and cells to the LAMBDA as references or as arrays? COUNTA/COUNTBLANK/ISREF/ROW of the slice. A1 x, A3 z, B3 y, A2:B2 and B1 blank.",
+ "description": "T-1395: do BYROW/BYCOL/MAP/SCAN/REDUCE hand a range's rows, columns and cells to the LAMBDA as references or as arrays? COUNTA/COUNTBLANK/ISREF/ROW of the slice. A1 x, A3 z, B3 y, A2:B2 and B1 blank. G1:G4: whole-column and whole-row sources keep their full size.",
  "tags": [
   "M2",
   "probe",
@@ -31,7 +31,11 @@
     "E42": "=MAP(A1:A3,LAMBDA(v,COUNTBLANK(v)))",
     "E46": "=REDUCE(0,A1:B3,LAMBDA(a,v,a+COUNTA(v)))",
     "E47": "=BYCOL(A1:B3,LAMBDA(c,ROWS(c)))",
-    "E49": "=BYROW(A1:B3,LAMBDA(r,SUM(COUNTA(r),0)))"
+    "E49": "=BYROW(A1:B3,LAMBDA(r,SUM(COUNTA(r),0)))",
+    "G1": "=ROWS(BYROW(H:H,LAMBDA(r,1)))",
+    "G2": "=BYCOL(H:H,LAMBDA(c,ROWS(c)))",
+    "G3": "=COLUMNS(BYCOL(60:60,LAMBDA(c,1)))",
+    "G4": "=BYROW(60:60,LAMBDA(r,COLUMNS(r)))"
    }
   }
  ],

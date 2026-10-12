@@ -5,7 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::math_and_trigonometry::array_size::check_array_size,
+    functions::math_and_trigonometry::array_size::{check_array_size, check_range_size},
     model::Model,
     reference_operators::{Ranges, RefArg},
 };
@@ -32,7 +32,7 @@ impl Model {
     /// `=BYCOL(array, lambda)`
     ///
     /// Applies a LAMBDA to each column of `array`, returning a 1-row array of results.
-    /// The lambda receives each column as an N×1 array.
+    /// The lambda receives each column of a range as a reference, of an array as an N×1 array.
     pub(crate) fn fn_bycol(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
@@ -51,14 +51,10 @@ impl Model {
         let results = match source {
             Source::Range(range) => (range.left.column..=range.right.column)
                 .map(|column| {
-                    let mut left = range.left;
-                    let mut right = range.right;
-                    left.column = column;
-                    right.column = column;
-                    let slice = CalcResult::Range { left, right };
-                    let result =
-                        self.call_lambda_with_values(lambda_result.clone(), vec![slice], cell);
-                    calc_result_to_array_node(result)
+                    let mut slice = range.clone();
+                    slice.left.column = column;
+                    slice.right.column = column;
+                    self.call_lambda_on_slice(&lambda_result, slice, cell)
                 })
                 .collect(),
             Source::Values(data) => (0..data[0].len())
@@ -77,7 +73,7 @@ impl Model {
     /// `=BYROW(array, lambda)`
     ///
     /// Applies a LAMBDA to each row of `array`, returning a 1-column array of results.
-    /// The lambda receives each row as a 1×M array.
+    /// The lambda receives each row of a range as a reference, of an array as a 1×M array.
     pub(crate) fn fn_byrow(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
@@ -96,14 +92,10 @@ impl Model {
         let results = match source {
             Source::Range(range) => (range.left.row..=range.right.row)
                 .map(|row| {
-                    let mut left = range.left;
-                    let mut right = range.right;
-                    left.row = row;
-                    right.row = row;
-                    let slice = CalcResult::Range { left, right };
-                    let result =
-                        self.call_lambda_with_values(lambda_result.clone(), vec![slice], cell);
-                    vec![calc_result_to_array_node(result)]
+                    let mut slice = range.clone();
+                    slice.left.row = row;
+                    slice.right.row = row;
+                    vec![self.call_lambda_on_slice(&lambda_result, slice, cell)]
                 })
                 .collect(),
             Source::Values(data) => data
@@ -122,11 +114,31 @@ impl Model {
         CalcResult::Array(results)
     }
 
+    /// One BYROW or BYCOL call of `lambda` on the row or column `slice`, bound as a reference.
+    fn call_lambda_on_slice(
+        &mut self,
+        lambda: &CalcResult,
+        slice: Range,
+        cell: CellReferenceIndex,
+    ) -> ArrayNode {
+        let reference = CalcResult::Range {
+            left: slice.left,
+            right: slice.right,
+        };
+        calc_result_to_array_node(self.call_lambda_with_values(
+            lambda.clone(),
+            vec![reference],
+            cell,
+        ))
+    }
+
     /// The array argument of BYROW or BYCOL. A range on one sheet (also through TAKE, DROP,
-    /// INDEX and the like) stays a reference, clipped to the used area for whole rows and
-    /// columns, so the LAMBDA gets each row or column as a reference: COUNTA of a column skips
-    /// its blank cells and `ISREF`, `ROW` work on it (probes/lambda-helper-range-slices,
-    /// excel-graph 2026-10-12, T-1395). Anything else is read as values.
+    /// INDEX and the like) stays a reference, so the LAMBDA gets each row or column as a
+    /// reference: COUNTA of a column skips its blank cells and `ISREF`, `ROW` work on it
+    /// (probes/lambda-helper-range-slices, excel-graph 2026-10-12, T-1395). The range keeps its
+    /// full size, as a range read as an array does (docs/excel-semantics/arrays.md "Array
+    /// results above 1,048,576 cells"), under the same size bound. Anything else is read as
+    /// values.
     fn by_slices_source(
         &mut self,
         arg: &Node,
@@ -134,27 +146,10 @@ impl Model {
     ) -> Result<Source, CalcResult> {
         let data = match self.evaluate_picked_reference_arg(arg, cell) {
             RefArg::Ranges(Ranges::One(range)) if range.left.sheet == range.right.sheet => {
-                let left = range.left;
-                let (row, column) = self
-                    .used_area_corner(
-                        left.sheet,
-                        left.row,
-                        left.column,
-                        range.right.row,
-                        range.right.column,
-                    )
-                    .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-                if row < left.row || column < left.column {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "empty array".to_string(),
-                    ));
+                if let Some((error, message)) = check_range_size(&range.left, &range.right) {
+                    return Err(CalcResult::new_error(error, cell, message));
                 }
-                let mut right = range.right;
-                right.row = row;
-                right.column = column;
-                return Ok(Source::Range(Range { left, right }));
+                return Ok(Source::Range(range));
             }
             other => {
                 let value = other.into_single_area(cell);
