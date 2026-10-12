@@ -51,6 +51,6 @@ index with the text functions' `near_integer_count`: an index within 2^-22 + 2^-
 integer, at 1, 500 and 100000 alike. A negative index within half that bound (2^-23 + 2^-34) counts as 0, and
 anything further below 0 is `#VALUE!`. `near_integer_count` and its constant (now `NEAR_INTEGER_TOLERANCE`) moved
 from functions/text/util.rs to functions/util.rs so INDEX shares them; `index_number` in index.rs applies the rule.
-Eval delta: probes 51 known failures fixed (all of index-tiny-negative), plus the new case at 63 of 63;
+Eval delta: probes 51 known failures fixed (all of index-tiny-negative), plus the new case at 67 of 67 (the negative cut pinned to 1E-14 as half the positive bound);
 0 regressions. gen-m9/1466c66c61189a83 A1 still needs T-1290 (EXPONDIST lift); the unit test covers the
-`INDEX(..,3,-1e-15)` row. Whether area_num shares the rounding is unprobed and noted in lookup.md.
+`INDEX(..,3,-1e-15)` row. area_num and array-index elements are unprobed: follow-up T-1424.

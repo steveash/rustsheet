@@ -425,16 +425,18 @@ counts as that integer, an absolute bound. A negative index no further below 0 t
 `EXPONDIST(INDEX(A1:C3,3,-1e-15),12.14649,FALSE)` is 0.027981694209681673, the density at A3 = 0.5, the first cell of
 A3:C3 (EXPONDIST lifts over the row; the cell holds the spill's anchor).
 Probed (excel-graph, 2026-10-12, T-1407), row and column index alike:
-- Negatives: -1E-15, -1E-7, -1.19E-7, -2^-23 and -1.19209289551E-7 to -1.1920929E-7 are index 0; -1.193E-7, -1.2E-7,
+- Negatives: -1E-15, -1E-7, -1.19E-7, -2^-23, -1.19267E-7 and -1.1926749E-7 are index 0; -1.1926751E-7, -1.19268E-7,
+  -1.193E-7, -1.2E-7,
   -1.5E-7, -1E-6, -0.5, -0.999, -0.9999999, -1 and -2147483648.5 are `#VALUE!`.
 - Positives: `COLUMNS(INDEX(A1:C3,3,1-2.3853E-7))` is 1 (column 1) and `1-2.3854E-7` is 3 (index 0, the whole row);
   `ROW(INDEX(A1:A100000,500-2.3853E-7,1))` is 500 and `500-2.3855E-7` is 499; at 100000, 2.38E-7 below snaps and
   2.39E-7 does not. Both cuts bracket the text functions' bound, which is known to 2^-36.
 - area_num -0.5 is `#VALUE!`; `INDEX((A1:C3,E1:G3),3,-1E-15,2)` is the third row of the second area (16, 17, 18).
-  Whether area_num shares the rounding is unprobed.
+  Whether area_num, or a near-integer element of an array index, shares the rounding is unprobed (T-1424).
 Evidence: probes/index-tiny-negative and probes/index-snap-tolerance.
 Implemented in: `index_number` (functions/lookup_and_reference/index.rs) with `near_integer_count` and
-`NEAR_INTEGER_TOLERANCE` (functions/util.rs). The negative bound is taken as exactly half the positive one.
+`NEAR_INTEGER_TOLERANCE` (functions/util.rs). The negative cut is half the positive bound to within 1E-14
+(-1.1926749E-7 vs -1.1926751E-7); the engine takes it as exactly half, inclusive.
 Status: VERIFIED (web)
 Tasks: T-1407
 

@@ -242,6 +242,22 @@
     "t": "n",
     "v": 499.0
    },
+   "A64": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A65": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A66": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A67": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A7": {
     "t": "n",
     "v": 3.0
@@ -259,9 +275,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "9b4d8f6c22b7f84addb6a87ff17743dd0836c5c16de9274b71e184ed3aad6f3f",
+  "input_sha256": "8ab6e748da4b2b6d9ca7d8bb44ccf873da1087fc27f75f875a66a032c2e8854f",
   "kind": "excel-graph",
-  "produced_at": "2026-10-12T06:18:07+00:00",
+  "produced_at": "2026-10-12T06:27:18+00:00",
   "version": null
  }
 }

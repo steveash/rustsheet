@@ -15,8 +15,8 @@ use crate::{
     model::Model,
 };
 
-/// INDEX's validated numeric arguments: row_num and column_num floored (`0` = the whole row or
-/// column), area_num floored and at least 1.
+/// INDEX's validated numeric arguments: row_num and column_num read by [`index_number`] (`0` = the
+/// whole row or column), area_num floored and at least 1.
 #[derive(Clone, Copy)]
 struct IndexNumbers {
     row: usize,
@@ -26,7 +26,8 @@ struct IndexNumbers {
 
 /// Validates INDEX's numbers, each cast already tried, in Excel's order: area_num's cast error,
 /// then area_num below 1 (`#VALUE!`; past the last area, or NaN, is `#REF!` later, SPEC-0004), then
-/// row_num's cast error and a negative row_num (`#VALUE!`), then the same for column_num.
+/// row_num's cast error and a negative row_num (`#VALUE!`, see [`index_number`]), then the same
+/// for column_num.
 fn index_numbers<E>(
     area: Result<f64, E>,
     row: Result<f64, E>,
