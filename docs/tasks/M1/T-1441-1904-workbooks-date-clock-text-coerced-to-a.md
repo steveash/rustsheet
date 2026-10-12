@@ -24,4 +24,4 @@ Split from T-1435, which shifted date text, typed dates and date criteria. `time
 -
 
 ## Outcome
-Probe `date-system-1904-clock-text` (13 cells, excel-graph). Date-clock text now reads the date part in the workbook's date system (`parse_time_serial` takes the `DateSystem`, shifts the day before adding the clock to keep Excel's low bits; a pre-epoch day is #VALUE!). The negative-holiday WORKDAY case was already right: Excel gives #NUM! too. Probes: 5 cells newly pass (no baseline entries needed). dates.md updated.
+Probe `date-system-1904-clock-text` (13 cells, excel-graph). Date-clock text now reads the date part in the workbook's date system (`parse_time_serial` takes the `DateSystem`, shifts the day before adding the clock to keep Excel's low bits; a pre-epoch day is #VALUE!). The negative-holiday WORKDAY case was already right: Excel gives #NUM! too. Probes: 5 cells newly pass (no known-failure entries). dates.md updated.

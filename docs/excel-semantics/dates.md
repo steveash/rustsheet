@@ -447,7 +447,7 @@ Evidence: probes/date-system-1904-readers A1-A52 (excel-graph, 2026-10-12, T-141
 Ours: every cell matches. The text coercion, typed input and criteria cells A20-A25, A38, A39 and A51 read the 1904 serial since T-1435, and COUPDAYS A18 since T-1436. Date-clock text counts from 1904-01-01 too (T-1441, probes/date-system-1904-clock-text, excel-graph 2026-10-12): `"1904-01-02 10:00"+0` = 1.4166666666666667, `"2024-03-15 18:00"+0` = `"3/15/2024 6:00 PM"+0` = 43904.75, `VALUE("2024-03-15 12:00")` = 43904.5, `DATEVALUE` of it = 43904 and `TIMEVALUE` = 0.5. A clock on a day before the epoch is #VALUE! (`"1903-12-31 10:00"+0`, ERROR.TYPE 3), like plain date text. A negative holiday serial is #NUM! (ERROR.TYPE 6) in WORKDAY, WORKDAY.INTL and NETWORKDAYS: `WORKDAY(DATE(2024,3,15),1,-1)`, `WORKDAY(..,1,-5)`, `NETWORKDAYS(..,..,-1)` and `WORKDAY.INTL(..,1,1,-1)` (A8-A11). Ours already matched.
 
 Status: VERIFIED (web)
-Tasks: T-1416, T-1435, T-1436
+Tasks: T-1416, T-1435, T-1436, T-1441
 
 ## The 1904 date system: financial day counts read every date one day late
 Rule: in a 1904 workbook, YEARFRAC and the financial functions with date arguments read each date as the

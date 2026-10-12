@@ -91,7 +91,7 @@ pub(crate) fn parse_time_serial(
         return Some(serial);
     }
     parse_hour_only_am_pm(text).or_else(|| {
-        // The date part counts from the workbook's epoch, a day before the 1904 epoch is no date
+        // The date part counts from the workbook's epoch. A day before the 1904 epoch is no date
         // (`"1904-01-02 10:00"+0` is 1.4166666666666667, `"1903-12-31 10:00"+0` is #VALUE!;
         // probes/date-system-1904-clock-text A1, A7).
         // The clock is added after the shift: summing in the 1900 system first loses low bits.
@@ -116,6 +116,7 @@ fn parse_hour_only_am_pm(text: &str) -> Option<f64> {
 /// "Date clock" text (`"1/2/2020 10:11:12.5"`, `"July 1, 2026 6 PM"`) as the unwrapped serial:
 /// date serial plus clock serial. The clock is the last word, or the last two when they end in
 /// AM/PM, since date text has spaces of its own (probes/date-text-grammar C30, C31, C55).
+/// The sum is a 1900-system serial; a 1904 reader goes through [`parse_time_serial`] instead.
 pub(crate) fn parse_date_clock_serial(
     text: &str,
     locale: &Locale,
@@ -125,7 +126,7 @@ pub(crate) fn parse_date_clock_serial(
     Some(f64::from(days) + clock)
 }
 
-/// The 1900-system date serial and the clock fraction of "date clock" text.
+/// The 1900-system date serial (not shifted for a 1904 workbook) and the clock fraction of "date clock" text.
 fn parse_date_clock_parts(
     text: &str,
     locale: &Locale,
