@@ -798,19 +798,18 @@ fn stringify(
         ImplicitIntersection {
             automatic: _,
             child,
-            written,
-            lead,
-            grouped: _,
         } => {
             if export_to_excel {
                 // Redundant operators have already been stripped by
                 // `remove_redundant_implicit_intersection`; whatever remains is
-                // meaningful and must be exported explicitly.
+                // meaningful and must be exported explicitly. A written group prints inside
+                // SINGLE's own parentheses, `_xlfn.SINGLE((Z1+(Z2)))`, as Excel stores `=@(Z1+(Z2))`
+                // (docs/excel-semantics/xlsx-storage.md, SPEC-0007).
                 return format!("_xlfn.SINGLE({})", sub(child));
             }
             // The space binds tighter than `@`, so `@A1:A3 A2:B2` is `@(A1:A3 A2:B2)`; Excel's
             // FORMULATEXT prints it without parentheses (T-1098).
-            at_text(child, *written, *lead, &sub)
+            at_text(child, &sub)
         }
     }
 }

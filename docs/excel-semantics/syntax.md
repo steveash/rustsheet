@@ -63,15 +63,24 @@ RustSheet today: all of these forms are rejected (`parse_array_item` takes one s
 Status: VERIFIED
 
 ## Formulas over 8,192 characters refuse the workbook
-Rule: Excel for the web refuses a whole workbook holding a formula of more than 8,192 stored characters (the
+Rule: Excel for the web refuses a whole workbook holding a formula of more than 8,192 stored characters (ASCII; non-BMP text below; the
 `<f>` text without the leading `=`; createSession 501 `FileCorruptTryRepair`). A formula of 8,192 characters loads.
-RustSheet's xlsx importer refuses the same workbooks with `XlsxError::Workbook` (decision 0047).
-Evidence: T-1091 and probe `operator-chain-limit` (T-1060), both excel-graph; see "Formula nesting depth cap" below.
-Unprobed: the limit for typed (API) formulas, for defined names and for desktop Excel, and whether Excel counts
-UTF-16 code units (the importer counts Unicode scalar values, which is never stricter) (T-1386).
+RustSheet's xlsx importer refuses the same ASCII workbooks with `XlsxError::Workbook` (decision 0047).
+Evidence: T-1091, probe `operator-chain-limit` (T-1060), probes `formula-length-nonbmp-33pieces` and `name-body-length-*` (T-1386; two more inputs were dropped after the run because Excel cannot load them, so no sidecar can exist: LEN of 34 `&`-joined 120-emoji literals, and an 8,192-character `1+1+...+11` name body), all excel-graph; see "Formula nesting depth cap" below.
+Non-BMP text: a formula holding 33 concatenated 120-emoji literals loads (4,063 Unicode scalars, 8,023 UTF-16 code
+units) and one holding 34 is refused (4,186 scalars, 8,266 UTF-16 units; createSession 501), so, assuming the refusal is the length limit, Excel does not count
+Unicode scalars: it counts UTF-16 code units or something else above them (a formula of 8,024 to 8,265 UTF-16
+units is unprobed). The importer counts scalars and so accepts workbooks Excel refuses (T-1397).
+Defined names: a name body of 8,191 characters (`=1+1+...` stored without `=`) loads and one of 8,192 is refused, so
+the body limit is one below the 8,192 of a cell formula (bodies of 255, 256, 1,000, 4,000, 6,000 and 8,000 characters
+all load and evaluate). The importer has no name-body limit yet (T-1397).
+Unprobed: how the name-body limit counts non-BMP text (only ASCII bodies were probed), a name defined through the API, typed (API) formulas (the oracle builds workbooks from files; a manual Graph `range.formulas` call or desktop
+Excel is needed, deferred to M14 item 8 of T-1075, decision 0039), desktop Excel, and `_xHHHH_` escapes inside `<f>` text (the spec-to-xlsx
+writer cannot emit them raw; T-1075 item 8).
+Notes: the first attempts (a single string literal of 4,090 or 4,100 emoji) were refused as well; a string-literal length limit (unprobed; 255 characters is the published figure) is the likely cause for the literals, which is why the cases split them.
 Status: VERIFIED (excel-graph, file load)
 Implemented in: rustsheet-xlsx `import::sheet_data::check_formula_length`
-Tasks: T-1091, T-1093
+Tasks: T-1091, T-1093, T-1386, T-1397
 
 ## Formula nesting depth cap
 Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse
@@ -217,10 +226,8 @@ kept the same way is UNVERIFIED (excel-graph loads file text; an M14 desktop que
 (`=@(A1+(B1))` = 3, `=@((A1) (B1))` = `#NULL!` with A1 = 1, B1 = 2).
 Evidence: probes/at-operand-nested-groups (36 cells, excel-graph, 2026-10-09, T-1178).
 More shapes (probes/formulatext-written-groups-shapes, excel-graph 2026-10-11, T-1380; A1 = 4; desktop UNVERIFIED as above), all printed as written: a group before a postfix `%` `=(A1)%` (value 0.04), a group as a LAMBDA callee `=(LAMBDA(x,x))(1)` (1), a left-grouped operand `=(1/2)/3`, a right-grouped operand `=1+(3+5)` (9), a group around an intersection `=(D:D 2:2)&""` (empty text) and a group around a negated base `=(-A1)^2` (16). The engine's FORMULATEXT matches in all six (12 cells).
-Ours: a written group is a `Node::Group` (SPEC-0007, T-1340), transparent to evaluation and printed as written, so the
-plain-operator cells match. The groups the `@` fields still track (an inner group that starts an `@` operand,
-`=@((A1) (B1))`, `=@(((A1)) B1)`, `=@((A1)+(B1))`, and a group around a whole `@`) print as before until T-1343.
-All 18 values of the T-1178 probe match; 3 of its FORMULATEXT cells differ (F11, F13, F14). The T-1380 shapes above are separate from that count.
+Ours: a written group is a `Node::Group` (SPEC-0007, T-1340), transparent to evaluation and printed as written, around
+and inside `@` operands too (T-1343). All 36 cells of the T-1178 probe match. The T-1380 shapes above are separate from that count.
 Status: VERIFIED
 The stored file text keeps them as well (xlsx-storage.md "Written parentheses are stored as written").
 Design: SPEC-0007 (a `Group` node).

@@ -406,7 +406,7 @@ impl Model {
             // evaluated once and intersected, so nested `@INDEX` stays linear (T-1321).
             Node::ImplicitIntersection { child, .. }
                 if matches!(
-                    **child,
+                    child.ungrouped(),
                     Node::FunctionKind {
                         kind: Function::Index,
                         ..
