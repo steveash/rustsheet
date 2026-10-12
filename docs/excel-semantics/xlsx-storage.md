@@ -105,7 +105,7 @@ formula; GROUPBY, PIVOTBY and PERCENTOF are not on it, so specs spell them `_xlf
 prefixed: normsdist-stored-form A1-A2 and availability-27 A8-A9 (refilled bare) and A4
 `_xlfn.NORMSDIST(0)` = 0.5 (excel-graph, 2026-10-07, T-0052).
 Status: VERIFIED
-Implemented in: not yet. The engine parser resolves a bare newer name read from a file, and the
+Implemented in: `Function::to_xlsx_string` (functions/xlsx_names.rs; test `newer_functions_export_with_xlfn_prefix`, T-0411). The engine parser resolves a bare newer name read from a file, and the
 exporter never writes `_xleta.` (T-1089).
 Tasks: T-0040, T-1089
 
