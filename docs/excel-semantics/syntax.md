@@ -70,12 +70,12 @@ Evidence: T-1091, probe `operator-chain-limit` (T-1060), probes `formula-length-
 Non-BMP text: Excel counts UTF-16 code units (an emoji is two). A formula holding 33 concatenated 120-emoji literals loads
 (4,063 Unicode scalars, 8,023 units) and one holding 34 is refused (4,186 scalars, 8,266 units; createSession 501). Boundary
 probe `formula-length-nonbmp-8192u` (T-1397, excel-graph; emoji and ASCII literals of at most 255 units): a stored formula of exactly 8,192
-UTF-16 units loads; 8,193 and 8,194 units are refused (createSession 501; the two cases were dropped after the run, so no sidecar).
+UTF-16 units loads; 8,193 and 8,194 units are refused (createSession 501; those two cases were dropped after the run, so only the loading 8,192-unit case has a sidecar).
 The importer counts UTF-16 units and so refuses the same workbooks (T-1397).
 Defined names: a name body of 8,191 characters (`=1+1+...` stored without `=`) loads and one of 8,192 is refused, so
 the body limit is one below the 8,192 of a cell formula (bodies of 255, 256, 1,000, 4,000, 6,000 and 8,000 characters
 all load and evaluate). Non-BMP bodies count UTF-16 units the same way: probe `name-body-nonbmp-8191u` (8,191 units, emoji
-included) loads and a body of 8,192 units is refused (T-1397; dropped case). The importer refuses a name body over 8,191 units
+included) loads (it has the only sidecar) and a body of 8,192 units is refused (T-1397; that case was dropped). The importer refuses a name body over 8,191 units
 (`XlsxError::Workbook`, T-1397).
 Unprobed: a name defined through the API, typed (API) formulas (the oracle builds workbooks from files; a manual Graph `range.formulas` call or desktop
 Excel is needed, deferred to M14 item 8 of T-1075, decision 0039), desktop Excel, and `_xHHHH_` escapes inside `<f>` text (the spec-to-xlsx
