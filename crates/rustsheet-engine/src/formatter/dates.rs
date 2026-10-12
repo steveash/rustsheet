@@ -85,6 +85,30 @@ impl DateSystem {
         }
     }
 
+    /// Whether Excel's coupon schedule breaks for a maturity the financial functions read as
+    /// `financial_maturity` (a `financial_1900_serial`). In a 1904 workbook it does for a maturity
+    /// serial m with m + 2 * 1462 past the last date, 2958465: 9995-12-30 still has a schedule,
+    /// 9995-12-31 does not (probes/date-system-1904-coupon-bound G1-G2, T-1440). Excel then takes
+    /// the previous coupon as 1900 serial 1 and the next as the maturity read. A maturity past the
+    /// last date stays #NUM! (`COUPPCD(DATE(2024,1,15),2957004,2)`, date-system-1904-financial A44).
+    /// The maturity is untrusted (a saturated `i64::MAX` for `1E+300`), so the bounds are compared
+    /// without arithmetic on it.
+    pub(crate) fn coupon_schedule_breaks(self, financial_maturity: i64) -> bool {
+        let last = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
+        match self {
+            Self::Excel1900 => false,
+            Self::Excel1904 => {
+                // The 1904 maturity is `financial_maturity - FINANCIAL_EPOCH_1904_IN_1900_SERIALS`.
+                let first_broken = last - 2 * EPOCH_1904_IN_1900_SERIALS
+                    + 1
+                    + FINANCIAL_EPOCH_1904_IN_1900_SERIALS;
+                let last_date =
+                    last - EPOCH_1904_IN_1900_SERIALS + FINANCIAL_EPOCH_1904_IN_1900_SERIALS;
+                (first_broken..=last_date).contains(&financial_maturity)
+            }
+        }
+    }
+
     /// This system's serial for a date the financial functions computed as a 1900 serial in the
     /// space of `financial_1900_serial` (COUPNCD, COUPPCD): one day before that date in a 1904
     /// workbook, so it can be before the epoch (`COUPPCD(10,DATE(1905,6,30),2)` is -1).
@@ -285,6 +309,22 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn coupon_schedule_breaks_at_its_bounds_without_overflow() {
+        use crate::types::DateSystem;
+        // 1904 serials 2955541 (9995-12-30) and 2955542 (9995-12-31) read one day late (+1463);
+        // 2957003 is the last date, 2957004 is past it (probes/date-system-1904-coupon-bound).
+        let read = |serial: i64| serial + 1463;
+        assert!(!DateSystem::Excel1904.coupon_schedule_breaks(read(2_955_541)));
+        assert!(DateSystem::Excel1904.coupon_schedule_breaks(read(2_955_542)));
+        assert!(DateSystem::Excel1904.coupon_schedule_breaks(read(2_957_003)));
+        assert!(!DateSystem::Excel1904.coupon_schedule_breaks(read(2_957_004)));
+        // A saturated `1E+300` or `-1E+300` maturity (M6-M8).
+        assert!(!DateSystem::Excel1904.coupon_schedule_breaks(i64::MAX));
+        assert!(!DateSystem::Excel1904.coupon_schedule_breaks(i64::MIN));
+        assert!(!DateSystem::Excel1900.coupon_schedule_breaks(2_958_465));
+    }
+
     #[test]
     fn month_arithmetic_and_real_serials_skip_the_fictitious_dates() {
         use super::{month_arithmetic_date, real_date_to_serial};
