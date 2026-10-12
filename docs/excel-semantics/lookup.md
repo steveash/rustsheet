@@ -429,15 +429,17 @@ element-wise. The indices broadcast like arithmetic operands, and each element i
   FALSE. `SUM` of it is the sum of the values.
 Edge cases (probes/index-lifted-edge-cases, T-1376):
 - Mismatched index lengths broadcast like arithmetic: `INDEX(A1:B5,{1,2,3},{1,2})` is 10, 2, `#N/A` (the third pair has no
-  column element); `{1,2}` against `{1,2,3}` is the same; `{1;2;3}` against `{1,2}` is a 3x2 grid (first row 10, 1).
+  column element); `{1,2}` against `{1,2,3}` is the same; `{1;2;3}` against `{1,2}` is a 3x2 grid (first row 10, 1);
+  `{1;2}` against `{1;2;3}` is a 3x1 column 10, 2, `#N/A`.
 - A negative element is `#VALUE!` in its own slot (`{1,-1}` is 10, `#VALUE!`; `{-1,-2}` is two `#VALUE!`). A boolean element
   is its number: `{TRUE,2}` is A1, A2, `{FALSE,2}` is A1 (0 selects the whole column, top-left kept), A2, and `{TRUE,FALSE}` is A1, A1.
 - A scalar error index next to an array index spreads over the whole result: `INDEX(A1:A5,{1,3},#N/A)` is `#N/A`, `#N/A`;
   `1/0` gives `#DIV/0!`, `#DIV/0!`; the error in row_num (`INDEX(A1:A5,#N/A,{1,3})`), in either position of a 2-D range, or
   in area_num spreads the same.
-- An empty selected cell spills as 0 (`INDEX(D1:D5,{1,2})` with D2 blank is 10, 0), `&"x"` makes it "x", `+1` makes 1,
-  `=0` and `=""` are TRUE, `SUM` skips it, `ISBLANK` of the lifted result is FALSE, TRUE (the elements keep blankness).
-- `COUNTBLANK(INDEX(D1:D5,{1,2,3}))` is `#VALUE!` per element (a lifted INDEX is not a reference) and
+- An empty selected cell spills as 0 (`INDEX(D1:D5,{1,2})` with D2 blank is 10, 0; `INDEX(D1:D5,{2,4,5})` is 0, "x", TRUE and the
+  scalar `INDEX(D1:D5,2)` is 0), `&"x"` makes it "x", `+1` makes 1,
+  `=0` and `=""` are TRUE, `SUM(INDEX(D1:D5,{1,2,3}))` is 40, `ISBLANK` of the lifted result is FALSE, TRUE (the elements keep blankness).
+- `COUNTBLANK(INDEX(D1:D5,{1,2,3}))` is a 1x3 spill of `#VALUE!` (one per element) and
   `COUNTA(INDEX(D1:D5,{1,2,3}))` is 3, counting the blank element; the engine gives 0 and 2 (T-1437, with T-1395).
 The legacy, implicitly intersected form is T-0294.
 DEVIATION (decision 0014): a lifted INDEX whose broadcast indices exceed 1,048,576 elements is `#ERROR!`, the shared
