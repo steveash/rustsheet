@@ -3,7 +3,7 @@ id: T-1398
 title: "Probe the stored xlsx form of a redundant @ with a written group (=@(A1:A3))"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
