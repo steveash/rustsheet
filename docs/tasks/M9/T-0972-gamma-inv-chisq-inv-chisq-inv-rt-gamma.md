@@ -36,6 +36,9 @@ kernel (T-0971); CHISQ.INV.RT solves on the upper tail. The round-trip residue (
 points at a tolerance-based stop. **Needs an oracle sweep (T-0018):** fit against the T-1045
 incomplete-gamma sweep (family 6), never blind.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/4df1b22d3ed63f58 Calc!A9 `=CHIINV(T.DIST(0.1,7,Data!D1),2)` (D1 = 0.2, cumulative): Excel 1.2382105318705625, engine 1.2382105318705663. CHIINV with 2 degrees of freedom is -2*LN(p) in closed form; the miss may be T.DIST's (T-0969) as much as CHIINV's.
+
 ## Acceptance criteria
 - [ ] All 11 NumericClose lines above leave that class, at least 20 of the 39 lines leave
       `eval/baseline/ironcalc-calc.txt`, no new lines in any baseline; remaining lines listed in the PR.

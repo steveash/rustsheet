@@ -24,6 +24,9 @@ divergences") found IMARGUMENT, IMREAL/IMSQRT, IMCOS and IMTAN differ by a few u
 the web and desktop: use the desktop cached values here, and say which a golden comes from.
 Code: `crates/rustsheet-engine/src/functions/engineering/`.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/a2e51f48717af2a1 Calc!A24 `=IMSECH("3+4i")`: Excel "-0.065294027857947+0.0752249603027732i", engine "-0.0652940278579471+0.0752249603027732i".
+
 ## Acceptance criteria
 - [ ] COMPLEXs.xlsx baseline lines in eval/baseline/ironcalc-calc.txt drop with no new F lines;
       record how many remain and why.

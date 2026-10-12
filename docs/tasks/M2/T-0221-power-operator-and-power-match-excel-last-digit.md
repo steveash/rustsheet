@@ -56,6 +56,10 @@ for gen-m2 1b6ceed7489e0800 A62, `1/(2^0.5)` = 0.7071067811865475. All three are
 and correctly rounded `powf` misses all three. Positive non-integer exponents, such as A155
 `100^0.3`, are not explained by this lead.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/b5352ebdb9c5f1a1 Calc!A1 `=DROP(((Data!$C$10/Data!D3)+(Data!B3^Data!B3)),..)` (3.14159^3.14159): Excel 36.46195209318106, engine 36.461952093181075.
+- gen-m9/b5352ebdb9c5f1a1 Calc!A16 `=(AVERAGE(WEEKNUM(46206,1))^Data!C4)` (27^-2.5): Excel 0.0002639918926335737, engine 0.00026399189263357376.
+
 ## Acceptance criteria
 - [ ] A probe sweep pins the formulation. docs/excel-semantics/numbers.md entry updated with evidence.
 - [ ] The gen-m2 cells above that T-1302 did not clear disappear from eval/baseline/gen-m2.txt, and gen-m1 A41 and A207 disappear from eval/baseline/gen-m1.txt, with no new F lines in any suite.

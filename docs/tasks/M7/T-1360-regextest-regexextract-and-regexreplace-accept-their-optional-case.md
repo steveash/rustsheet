@@ -27,9 +27,19 @@ crates/rustsheet-engine/src/functions/text/regex_functions.rs (REGEXEXTRACT take
 occurrence 0, 2, -1 and beyond the match count, non-integer and text values) and record them in docs/excel-semantics/text.md.
 Lifting over a range or array is T-1272.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/3462856259a37891 Calc!A39 `=(("a"&TRIM("?b"))&SORTBY(Data!B1:E12,REGEXREPLACE(Data!B10,"(\w)(\w)","<$0>",Data!D12,1),..))`: Excel `#VALUE!`, engine `#ERROR!`.
+- gen-m9/3ec66461400faf2f Calc!A35 `=RIGHT(REGEXEXTRACT((Data!$D$1&""),"(\w)(\w)",1,1),7)` ("0.1", no match): Excel `#N/A`, engine `#ERROR!`.
+- gen-m9/65faaeb48419087d Calc!A31 `=TEXT(SHEET(),(("x~*"&Data!E6)&REGEXREPLACE("1","(\w)(\w)","$1",0.1,1)))`: Excel `#VALUE!`, engine `#ERROR!`.
+- gen-m9/adb3fd63c7368166 Calc!A1 `=REGEXTEST(CELL("type",Data!E1),"a",0)` ("l"): Excel FALSE, engine `#ERROR!`.
+- gen-m9/adb3fd63c7368166 Calc!A8 `=REGEXREPLACE(Data!$D7,CONCATENATE(Data!$C4),"-",-1)` (D7 = TRUE, C4 blank, occurrence -1): Excel "TRUE-", engine `#ERROR!`.
+- gen-m9/adb3fd63c7368166 Calc!A30 `=REGEXREPLACE(JIS(Data!A$5),"a|b","",0,0)`: Excel `#NAME?` (JIS is `#NAME?` on the web), engine `#ERROR!`: the arity check must not hide an argument's error.
+- gen-m9/d244411dd90f7fbd Calc!A38 `=CONCATENATE(REGEXREPLACE(SUBSTITUTE(Data!C5,Data!A$12,Data!B6),CONCAT("ABC",Data!$D8),"a",-1,Data!$D7),Data!D6)`: Excel "abc0.000000000000001", engine `#ERROR!`.
+
 ## Acceptance criteria
 - [ ] gen-m7/8ed8a680e9794b77 A1 passes in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
 - [ ] An excel-graph probe case covers the optional arguments listed above and passes; text.md records the rules (VERIFIED).
+- [ ] gen-m9/3462856259a37891 A39, 3ec66461400faf2f A35, 65faaeb48419087d A31, adb3fd63c7368166 A1, A8 and A30, and d244411dd90f7fbd A38 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

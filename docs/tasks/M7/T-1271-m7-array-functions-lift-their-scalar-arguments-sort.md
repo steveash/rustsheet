@@ -21,9 +21,14 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
 - gen-m7/a0cbc75358b429b6 Calc!A12 `=SORT(CONCAT(..),Data!D1:E3,Data!A9:C12,(..=..))` (range sort_index and sort_order): Excel `#N/A`, engine `#N/IMPL!`.
 WRAPCOLS of a single value and wrap_count below 1 are T-1348; SORT's argument-error order is T-1351.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/1782efcecd5d4b1b Calc!A19 `=TOCOL(Data!C8:D11,HSTACK(Data!E5:E6),..)` (ignore over a 2x1 array): Excel `#SPILL!`, engine `#N/IMPL!`.
+- gen-m9/4df1b22d3ed63f58 Calc!A36 `=UNIQUE(Data!A6:D10,INDEX(Data!D4:D10,0))` (by_col over a 7-cell range): Excel `#SPILL!`, engine `#VALUE!`.
+
 ## Acceptance criteria
 - [ ] The listed probes/m7-argument-modes cells and K1-K10 pass (H cells that need T-1242, INDEX of a single value, excepted); baseline updated.
 - [ ] gen-m7/6db767d720c5b55a A12 and gen-m7/a0cbc75358b429b6 A12 pass. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
+- [ ] gen-m9/1782efcecd5d4b1b A19 and 4df1b22d3ed63f58 A36 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

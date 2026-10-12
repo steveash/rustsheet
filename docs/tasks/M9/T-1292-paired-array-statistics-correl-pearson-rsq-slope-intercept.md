@@ -22,9 +22,13 @@ engine, which is 2 minus Excel's value, above 1 for a p-value: the two-tailed do
 sample's variance is the smaller (H248, H251; FTEST too). Probe the error
 order (size check before or after the text check) with equal sizes too before implementing.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/95efb37a9874f82e Calc!A21 `=INTERCEPT(Data!C5:E6,Data!D8:E9)` (6 cells with a boolean and a blank against 4 with FALSE and " x "): Excel `#N/A`, engine `#VALUE!`.
+
 ## Acceptance criteria
 - [ ] The eight `#N/A` cells and the F.TEST/FTEST cells (H248, H251) of probes/stat-argument-modes pass.
 - [ ] The rule is in docs/excel-semantics/statistics.md.
+- [ ] gen-m9/95efb37a9874f82e A21 passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

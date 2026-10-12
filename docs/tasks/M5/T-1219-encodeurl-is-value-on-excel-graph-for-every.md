@@ -21,8 +21,12 @@ desktop question goes to T-1081 (M14). The engine encodes (functions/text/encode
 Record the decision in docs/excel-semantics/web.md "ENCODEURL is #VALUE! in Excel for the web". Should the engine follow the golden, or keep encoding as
 a DEVIATION until desktop evidence exists? Decision 0039 rule 4 decides. If the golden wins, update the IronCalc-ported tests that assert encoding.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/fcf11f2ec6f7a59d Calc!A7 `=CODE((ENCODEURL(Data!B3)&DOLLAR(Data!$E$1)))`: Excel `#VALUE!`, engine 49.
+
 ## Acceptance criteria
 - [ ] The ENCODEURL probe cells either pass or are recorded as a DEVIATION with a decision citation.
+- [ ] gen-m9/fcf11f2ec6f7a59d A7 passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

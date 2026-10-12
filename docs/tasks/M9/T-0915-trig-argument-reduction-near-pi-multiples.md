@@ -23,6 +23,9 @@ cached workbooks give. Fit against the T-1008 sweep (`probes-numeric/m9-trig-red
 More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/<case>.case.json`):
 - gen-m7/0e40208f51c2454c Calc!A3 `=TAN((Data!D6/(Data!C7*Data!A$9)))` = TAN(28000): Excel -1.611178907173344, engine (libm) -1.6111789071733424 (NumericClose). Not near a multiple of pi; libm `tan`, `sin/cos` and reduction by `fmod(x, 2*pi)` (-1.6111789071694178) all miss, so the reduction constant matters for ordinary large arguments too.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/3b8e9078261b5bd2 Calc!A40 `=SIN(EDATE(54267,((-0.5)*(-1))))` (SIN(54267)): Excel -0.7652941001153616, engine -0.765294100115361.
+
 ## Acceptance criteria
 - [ ] The 11 NumericMismatch SIN/COS/TAN cells above plus SEC/CSC cells on the same inputs leave eval/baseline/ironcalc-calc.txt, with no new F lines (NumericClose cells may remain; list them in Outcome).
 - [ ] The 12 poi/47813.xlsx lines (Numbers!C92, B182, C272, B362, C452, B542, C632 at multiples of 90°, and the few-ulp

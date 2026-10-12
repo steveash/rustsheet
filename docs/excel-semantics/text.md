@@ -179,10 +179,14 @@ while generating, not committed: a refused workbook has no oracle file); both ar
 unconfirmed (decision 0039).
 Evidence: probes/text-argument-modes, text-modes-bytes, text-modes-dbcs, text-modes-bahttext, text-modes-phonetic,
 -phonetic-range, -phonetic-number (excel-graph, 2026-10-09, T-1087).
+Generated cells (gen-m9, excel-graph, 2026-10-12, T-1289): ASC lifts over a range (`ASC(INDEX(A6:D8,0,3))` is
+`#SPILL!`, gen-m9/65faaeb48419087d Calc!A5; ours `#VALUE!`, T-1411), and TEXT lifts over its format argument
+(`TEXT(E7,FILTER(B1:E12,..))` and `TEXT(x,UNIQUE(D9:D12)&..)` are `#SPILL!`, gen-m9/89693ab0cafc29df A36 and
+95efb37a9874f82e A16; ours `#N/IMPL!` for an array format and `#VALUE!` for a range, T-1410).
 Ours: matches except BAHTTEXT (T-1214), which is not implemented. DBCS returns its text unchanged and PHONETIC of any reference is `#N/A` (T-1213); DBCS widening of non-ASCII text (katakana, full-width forms), DBCS of a number cell or range, and PHONETIC of an error or empty cell are UNVERIFIED (T-1248). CODE and VALUETOTEXT
 lift over ranges (T-1212). VALUETOTEXT's format (probes/valuetotext-format, excel-graph, T-1229): 1 quotes text and doubles embedded quotes (`"a""b"`; empty text is `""`), while a blank cell is empty, numbers, booleans and errors print as in format 0 (an error spells out, `#N/A`). The format is coerced to a number like any argument (`"1"`, TRUE and a blank cell work; other text is `#VALUE!`); a value in `[0, 2)` is truncated (`1.9` is 1, `1E-20` is 0), and anything else, `2`, `2.5`, `-0.5`, `-1`, is `#VALUE!`; an error format is returned as it is when the value is plain text; which error wins when the value is an error or the format is invalid as well, and a format given as a range reference, are UNVERIFIED (T-1288). The format lifts over arrays like the value (`VALUETOTEXT(A1:A2,{0,1})` is 2x2, `VALUETOTEXT(A1,{0,1})` 1x2). Ours: matches.
 Status: VERIFIED (excel-graph)
-Tasks: T-1087, T-1212, T-1213, T-1214, T-1229, T-1248
+Tasks: T-1087, T-1212, T-1213, T-1214, T-1229, T-1248, T-1410, T-1411
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
@@ -192,6 +196,14 @@ delimiters 1E+15, TRUE is not an error); `TEXTAFTER("TRUE",A5:D6)` (A5 = "TRUE")
 (`INDIRECT` of it is `#REF!`), inferred to be "" since "TRUE" matches at the start; `TEXTBEFORE("a*",C1:D11)` is "".
 UNVERIFIED: whether a blank cell in the range is an empty delimiter (in `TEXTBEFORE("a*",C1:D11)` the "a" in C5 matches at
 the start anyway) and whether numbers and booleans match as their text; T-1361 probes both first.
+More cells (gen-m9, excel-graph, 2026-10-12, T-1289). Blank cells do not act as the empty delimiter of
+`TEXTBEFORE(x,"")` (which matches at the start and gives ""): `TEXTBEFORE(2,A9:D10)` over 0, "?b", blank, 1.005, FALSE, blank, 1 and
+a blank is "2", the whole text (`((-1E+11)-TEXTBEFORE(..))/-1` = 100000000002, gen-m9/0c7fc447bc2eebfd Calc!A6), and
+`TEXTBEFORE(42,C11:D11,1E+15)` over 1E+15 and a blank is "" although instance_num 1E+15 is far past the text
+(gen-m9/4df1b22d3ed63f58 Calc!A14). Both are inferred from the surrounding formula and look inconsistent; record, do not
+explain, until T-1361's probe. Without blanks, nothing found is `#N/A` as usual: `TEXTBEFORE(TRUE,D4:E5,-1)`,
+`TEXTAFTER(123456789.123,D4:E10)`, `TEXTBEFORE(" x ",D10:E11)` (gen-m9/3ec66461400faf2f A3, 696af2c8cee2f57e A23,
+95efb37a9874f82e A25), and `TEXTBEFORE("1TRUE",A8:C11)` (number 1 among the delimiters) is "" (4df1b22d3ed63f58 A30).
 Evidence: gen-m7/8ed8a680e9794b77 Calc!A17, A26; gen-m7/0e40208f51c2454c Calc!A17; gen-m7/4629e931955aa4b8 Calc!A19 (excel-graph, 2026-10-11, T-1275).
 Ours: a one-row range of text delimiters works; a multi-row range, or one holding a blank or a boolean, is `#VALUE!`.
 Status: VERIFIED (web) for the listed cells; blank and number/boolean matching UNVERIFIED
@@ -204,6 +216,15 @@ Evidence: gen-m7/3a62e0950c1074fd Calc!A5 (excel-graph, 2026-10-11, T-1275).
 Ours: "" (so the comparison is FALSE).
 Status: VERIFIED (web) for this form; a blank cell as the text and `TEXTSPLIT("",",")` alone are UNVERIFIED
 Tasks: T-1347
+
+## TEXTSPLIT with an empty delimiter is #VALUE!
+Rule: an empty row_delimiter is `#VALUE!` even when a non-empty col_delimiter is given:
+`TEXTSPLIT("TRUE"&"abc"&"x~*","TRUE1E-15a*","")` is `#VALUE!`.
+Evidence: gen-m9/d244411dd90f7fbd Calc!A6 (excel-graph, 2026-10-12, T-1289).
+Ours: the empty row delimiter is ignored (the whole text comes back; `TEXTSPLIT("abc","b","")` is "a"); `TEXTSPLIT("abc","")` and
+`TEXTSPLIT("abc",,"")` are already `#VALUE!`.
+Status: VERIFIED (web) for this form; an empty element inside a delimiter list is UNVERIFIED
+Tasks: T-1412
 
 ## ARRAYTOTEXT number text
 Rule: ARRAYTOTEXT writes a number as General text with 15 significant digits, like VALUETOTEXT and `&`:

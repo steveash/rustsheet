@@ -24,9 +24,14 @@ not evidenced: probe them first with the excel-probe skill (`MAP({1;2;3},{10;20}
 `MAP({1,2},{1;2},..)`, ranges of different sizes, ROWS/COLUMNS of each, INDEX of the padded corner), expecting the usual
 broadcast/`#N/A` padding of arrays.md "Array arithmetic" but not assuming it. Reuse the existing broadcast helper.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/55fc8c4ffbd7c7cc Calc!A33 `=(MAP(Data!B8:E10,Data!A8:C12,Data!A2:C5,LAMBDA(z,v,x,CHIINV(Data!A$1,2)))<..)` (3x4, 5x3, 4x3): Excel `#SPILL!`, engine `#VALUE!`.
+- gen-m9/95efb37a9874f82e Calc!A17 `=IF(OR(..),MAP(Data!B6,Data!A7:B12,LAMBDA(w,y,"Hello World"))%)` (a cell and 6x2): Excel `#SPILL!`, engine `#VALUE!`.
+
 ## Acceptance criteria
 - [ ] gen-m7/a0cbc75358b429b6 A31 and gen-m7/b5186d194fec0fdc A13 pass in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
 - [ ] The probe cells pass; arrays.md's entry is VERIFIED.
+- [ ] gen-m9/55fc8c4ffbd7c7cc A33 and 95efb37a9874f82e A17 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
