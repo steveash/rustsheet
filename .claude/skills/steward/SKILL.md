@@ -77,11 +77,15 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   means the line goes in the next PR; a listed cell with any value but its pinned one fails the
   gate like any regression.
 - **Frozen probe lists** (decision 0043): M1's probe criterion is `eval/milestones/m1-probes.txt`,
-  never the whole `probes` suite; every other probe case, including any added later, is M2 exit
-  scope. Read the list's known failures from the "Milestone probe lists" section of
-  `eval/runs/latest/report.md` after `make eval` (also printed by `make eval-check`; decision
-  0044). While the list has failures, put the fixing lanes (engine, then harness) first on the
-  `**Critical lane:**` line, ahead of research. Never add a line to a frozen list.
+  never the whole `probes` suite. Read the list's known failures from the "Milestone probe lists"
+  section of `eval/runs/latest/report.md` after `make eval` (also printed by `make eval-check`;
+  decision 0044). While the list has failures, put the fixing lanes (engine, then harness) first
+  on the `**Critical lane:**` line, ahead of research. Never add a line to a frozen list.
+- **Probe milestones** (decision 0051): every other probe case counts toward the milestone that
+  decision 0051 assigns it, and only M0–M2 cases count toward M2 exit. When you choose the
+  Critical lane and report probe failures in docs/status.md, use the M0–M2 count, not the whole
+  suite's. Until T-1423 adds that count to the report, get it from the one-liner in decision
+  0051, "Measurement".
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
   explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
