@@ -29,8 +29,8 @@ Split from T-1436. The financial functions read a 1904 date one day late (dates.
 
 ## Outcome
 Probed the coupon functions at the 9999-12-31 bound in both date systems (date-system-1904-coupon-bound and
-its 1900 twin, 108 cells each). In a 1904 workbook the coupon schedule breaks from a 9995-12-31 maturity
+its 1900 twin, 140 cells each, including every basis, annual/quarterly thresholds and a `1E+300` maturity). In a 1904 workbook the coupon schedule breaks from a 9995-12-31 maturity
 on (m + 2·1462 past the last date): the previous coupon is 1900 serial 1, the next the maturity, and
-COUPNUM/PRICE/YIELD/DURATION are #NUM! (dates.md). Implemented as `DateSystem::coupon_schedule_breaks`.
-Eval: date-system-1904-financial A43 fixed; the new 1904 case passes 108/108, the 1900 twin 107/108
+COUPNUM/PRICE/YIELD/(M)DURATION and the 30/360 COUPDAYBS/COUPDAYSNC are #NUM! (dates.md). Implemented as `DateSystem::coupon_schedule_breaks`.
+Eval: date-system-1904-financial A43 fixed; the new 1904 case passes 140/140, the 1900 twin 139/140
 (DURATION last digit, T-1374).

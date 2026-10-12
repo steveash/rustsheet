@@ -115,11 +115,11 @@ C	probes/criteria-padded-text.case.json	14
 C	probes/date-argument-modes.case.json	168
 C	probes/date-clock-text-length-limit.case.json	36
 C	probes/date-huge-month-day.case.json	63
-C	probes/date-system-1900-coupon-bound.case.json	108
+C	probes/date-system-1900-coupon-bound.case.json	140
 C	probes/date-system-1900-financial-daycount.case.json	40
 C	probes/date-system-1900-negatives.case.json	18
 C	probes/date-system-1904-clock-text.case.json	13
-C	probes/date-system-1904-coupon-bound.case.json	108
+C	probes/date-system-1904-coupon-bound.case.json	140
 C	probes/date-system-1904-financial-daycount.case.json	40
 C	probes/date-system-1904-financial-shift.case.json	36
 C	probes/date-system-1904-financial.case.json	44

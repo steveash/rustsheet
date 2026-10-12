@@ -479,12 +479,14 @@ At the edges:
   from 9995-12-31 on (9995-12-30 still has one), as if the 1904 offset were added twice. Excel then takes the
   previous coupon as 1900 serial 1 and the next as the maturity read, whatever the settlement:
   `COUPPCD` is -1462 and `COUPNCD` the maturity (`COUPNCD(DATE(2024,1,15),DATE(9999,12,31),2)` = 2957003, in 1900
-  2024-06-30). On the actual bases the day counts are serial differences from those two dates:
-  `COUPDAYS(DATE(9999,1,1),DATE(9999,12,31),2,1)` = 2958465, `COUPDAYBS` = 2958101, `COUPDAYSNC` = 364.
-  `COUPDAYS` on the other bases keeps 360/freq (180). COUPNUM, PRICE, YIELD and DURATION are #NUM!, and so is
-  `COUPDAYSNC(...,2,0)` at the 9999-12-31 maturity (its next coupon is past the last date). A maturity past the
-  last date is #NUM! as before. Unprobed: COUPDAYBS/COUPDAYSNC on bases 0 and 4 below 9999-12-31, and the ODDF*/ODDL*
-  functions. The 1900 twin has no such break: every cell gives the normal schedule up to 9999-12-31.
+  2024-06-30). The threshold is the same for annual, semiannual and quarterly coupons. On the actual bases (1-3)
+  COUPDAYBS and COUPDAYSNC are serial differences from those two dates, and so is COUPDAYS on basis 1:
+  `COUPDAYS(DATE(9999,1,1),DATE(9999,12,31),2,1)` = 2958465, `COUPDAYBS` = 2958101, `COUPDAYSNC` = 364;
+  `COUPDAYSNC(DATE(9998,1,10),DATE(9999,12,31),2,3)` = 720. On the 30/360 bases 0 and 4 COUPDAYBS and COUPDAYSNC are
+  #NUM!. COUPDAYS on bases 0, 2, 3 and 4 keeps its fixed length (180, 180, 182.5, 180). COUPNUM, PRICE, YIELD,
+  DURATION and MDURATION are #NUM!. A maturity past the last date (`1E+300` included) is #NUM! as before.
+  Unprobed: the ODDF*/ODDL* functions. The 1900 twin has no such break: every cell gives the normal schedule up to
+  9999-12-31.
   Probes: date-system-1904-coupon-bound and its twin date-system-1900-coupon-bound (excel-graph, 2026-10-12, T-1440).
   Ours: `DateSystem::coupon_schedule_breaks` (formatter/dates.rs), applied by the COUP* functions, PRICE, YIELD and
   DURATION (functions/financial/financial_bonds.rs).
