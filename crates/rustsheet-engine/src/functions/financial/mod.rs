@@ -211,7 +211,9 @@ impl Model {
             .floor() as i64
     }
 
-    /// A date argument of a financial function (no booleans), as `financial_date` reads it.
+    /// A date argument of a financial function, as `financial_date` reads it. Booleans are
+    /// rejected; ACCRINT, ACCRINTM and AMORLINC accept them, so they call `get_number` and
+    /// `financial_date` themselves.
     fn get_financial_date(
         &mut self,
         node: &Node,
@@ -219,6 +221,25 @@ impl Model {
     ) -> Result<i64, CalcResult> {
         let serial = self.get_number_no_bools(node, cell)?;
         Ok(self.financial_date(serial))
+    }
+
+    /// The first two arguments, settlement and maturity, as `get_financial_date` reads them.
+    fn get_settlement_and_maturity(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(i64, i64), CalcResult> {
+        Ok((
+            self.get_financial_date(&args[0], cell)?,
+            self.get_financial_date(&args[1], cell)?,
+        ))
+    }
+
+    /// A date a financial function computed in the `financial_date` space (COUPNCD, COUPPCD), as
+    /// this workbook's serial: a day early in a 1904 workbook.
+    fn financial_date_result(&self, serial: i64) -> CalcResult {
+        let date_system = self.workbook.settings.date_system;
+        CalcResult::Number(date_system.serial_from_financial_1900_serial(serial) as f64)
     }
 
     fn get_array_of_numbers_generic(
