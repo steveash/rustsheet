@@ -1,5 +1,6 @@
 use crate::expressions::parser::{ExpectedTokens, NamedVariable, Node, Parser};
 use crate::expressions::token::TokenType;
+use crate::functions::logical::has_duplicate_parameter;
 
 use super::reference_operators::is_reference_operand;
 
@@ -95,6 +96,15 @@ impl Parser {
                 };
             }
         };
+
+        if has_duplicate_parameter(&parameters) {
+            return Node::ParseErrorKind {
+                formula: self.lexer.get_formula(),
+                expecting: vec![ExpectedTokens::Other],
+                position: self.lexer.get_position() as usize,
+                message: "LAMBDA parameter names must be distinct".to_string(),
+            };
+        }
 
         let def = Node::LambdaDefKind {
             parameters,

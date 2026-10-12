@@ -221,6 +221,13 @@ impl Model {
                 }
             })
             .collect();
+        if super::has_duplicate_parameter(&parameters) {
+            return CalcResult::new_error(
+                Error::ERROR,
+                cell,
+                "LAMBDA parameter names must be distinct".to_string(),
+            );
+        }
 
         let id = self.get_next_lambda_id();
         self.lambdas.insert(id, (parameters, body));
