@@ -1,5 +1,5 @@
 use crate::{
-    calc_result::CalcResult,
+    calc_result::{CalcResult, Range},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -7,7 +7,15 @@ use crate::{
     },
     functions::math_and_trigonometry::array_size::check_array_size,
     model::Model,
+    reference_operators::{Ranges, RefArg},
 };
+
+/// What BYROW and BYCOL walk: a range on one sheet, whose rows or columns reach the LAMBDA as
+/// references, or the values of anything else.
+enum Source {
+    Range(Range),
+    Values(Vec<Vec<ArrayNode>>),
+}
 
 fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     match result {
@@ -30,28 +38,38 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let data = match self.eval_to_array(&args[0], cell) {
-            Ok(d) => d,
+        let source = match self.by_slices_source(&args[0], cell) {
+            Ok(source) => source,
             Err(e) => return e,
         };
-
-        if data.is_empty() || data[0].is_empty() {
-            return CalcResult::new_error(Error::VALUE, cell, "empty array".to_string());
-        }
 
         let lambda_result = self.evaluate_node_in_context(&args[1], cell);
         if lambda_result.is_error() {
             return lambda_result;
         }
 
-        let num_cols = data[0].len();
-        let mut results = Vec::with_capacity(num_cols);
-
-        for j in 0..num_cols {
-            let column: Vec<Vec<ArrayNode>> = data.iter().map(|row| vec![row[j].clone()]).collect();
-            let result = self.call_lambda(lambda_result.clone(), &[Node::ArrayKind(column)], cell);
-            results.push(calc_result_to_array_node(result));
-        }
+        let results = match source {
+            Source::Range(range) => (range.left.column..=range.right.column)
+                .map(|column| {
+                    let mut left = range.left;
+                    let mut right = range.right;
+                    left.column = column;
+                    right.column = column;
+                    let slice = CalcResult::Range { left, right };
+                    let result =
+                        self.call_lambda_with_values(lambda_result.clone(), vec![slice], cell);
+                    calc_result_to_array_node(result)
+                })
+                .collect(),
+            Source::Values(data) => (0..data[0].len())
+                .map(|j| {
+                    let column = data.iter().map(|row| vec![row[j].clone()]).collect();
+                    let result =
+                        self.call_lambda(lambda_result.clone(), &[Node::ArrayKind(column)], cell);
+                    calc_result_to_array_node(result)
+                })
+                .collect(),
+        };
 
         CalcResult::Array(vec![results])
     }
@@ -65,32 +83,92 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let data = match self.eval_to_array(&args[0], cell) {
-            Ok(d) => d,
+        let source = match self.by_slices_source(&args[0], cell) {
+            Ok(source) => source,
             Err(e) => return e,
         };
-
-        if data.is_empty() || data[0].is_empty() {
-            return CalcResult::new_error(Error::VALUE, cell, "empty array".to_string());
-        }
 
         let lambda_result = self.evaluate_node_in_context(&args[1], cell);
         if lambda_result.is_error() {
             return lambda_result;
         }
 
-        let mut results = Vec::with_capacity(data.len());
-
-        for row in &data {
-            let result = self.call_lambda(
-                lambda_result.clone(),
-                &[Node::ArrayKind(vec![row.clone()])],
-                cell,
-            );
-            results.push(vec![calc_result_to_array_node(result)]);
-        }
+        let results = match source {
+            Source::Range(range) => (range.left.row..=range.right.row)
+                .map(|row| {
+                    let mut left = range.left;
+                    let mut right = range.right;
+                    left.row = row;
+                    right.row = row;
+                    let slice = CalcResult::Range { left, right };
+                    let result =
+                        self.call_lambda_with_values(lambda_result.clone(), vec![slice], cell);
+                    vec![calc_result_to_array_node(result)]
+                })
+                .collect(),
+            Source::Values(data) => data
+                .into_iter()
+                .map(|row| {
+                    let result = self.call_lambda(
+                        lambda_result.clone(),
+                        &[Node::ArrayKind(vec![row])],
+                        cell,
+                    );
+                    vec![calc_result_to_array_node(result)]
+                })
+                .collect(),
+        };
 
         CalcResult::Array(results)
+    }
+
+    /// The array argument of BYROW or BYCOL. A range on one sheet (also through TAKE, DROP,
+    /// INDEX and the like) stays a reference, clipped to the used area for whole rows and
+    /// columns, so the LAMBDA gets each row or column as a reference: COUNTA of a column skips
+    /// its blank cells and `ISREF`, `ROW` work on it (probes/lambda-helper-range-slices,
+    /// excel-graph 2026-10-12, T-1395). Anything else is read as values.
+    fn by_slices_source(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Source, CalcResult> {
+        let data = match self.evaluate_picked_reference_arg(arg, cell) {
+            RefArg::Ranges(Ranges::One(range)) if range.left.sheet == range.right.sheet => {
+                let left = range.left;
+                let (row, column) = self
+                    .used_area_corner(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        range.right.row,
+                        range.right.column,
+                    )
+                    .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+                if row < left.row || column < left.column {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "empty array".to_string(),
+                    ));
+                }
+                let mut right = range.right;
+                right.row = row;
+                right.column = column;
+                return Ok(Source::Range(Range { left, right }));
+            }
+            other => {
+                let value = other.into_single_area(cell);
+                self.result_to_array(value, cell)?
+            }
+        };
+        if data.is_empty() || data[0].is_empty() {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "empty array".to_string(),
+            ));
+        }
+        Ok(Source::Values(data))
     }
 
     /// `=MAKEARRAY(rows, cols, lambda)`

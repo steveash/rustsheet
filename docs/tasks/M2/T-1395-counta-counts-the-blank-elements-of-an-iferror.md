@@ -27,5 +27,10 @@ probes/counta-empty-value D18: `COUNTA(IFERROR(B1:B2,1))` (B1 blank, B2 "x") is 
 COUNTA reads each argument in picked-reference context (`evaluate_picked_reference_arg`), so TAKE, DROP, INDEX and
 OFFSET over a range stay references whose blank cells are skipped, and it counts every element of an array value,
 the empty values IFERROR gives for blank cells included. No new array representation was needed: the two empties
-were already told apart by whether the argument is a reference. Eval: probes known failures 2753 → 2751 (D18 and
-probes/index-lifted-edge-cases H136, the COUNTA half of T-1437), 0 regressions in any suite (poi included).
+were already told apart by whether the argument is a reference. Counting array empties broke the upstream
+`BYCOL(A1:C3,LAMBDA(col,COUNTA(col)))` test, because BYCOL handed the LAMBDA arrays: a new excel-graph probe
+(probes/lambda-helper-range-slices) shows that BYROW, BYCOL, MAP, SCAN and REDUCE all hand a range's slices over as
+references, so BYROW and BYCOL now do (`by_slices_source`). MAP/SCAN/REDUCE references and the eta-reduced
+`BYCOL(..,COUNTA)` go to T-1442. Eval: probes known failures 2753 → 2759: fixed 2 (D18 and
+probes/index-lifted-edge-cases H136, the COUNTA half of T-1437), and the new probe case adds 42 scored cells with
+8 new-coverage failures (T-1442). 0 regressions in any suite (poi included).

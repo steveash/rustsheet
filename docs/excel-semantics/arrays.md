@@ -324,6 +324,20 @@ Ours: `#VALUE!` ("all arrays must have the same dimensions").
 Status: VERIFIED that the result is an array (web); its size and values are UNVERIFIED
 Tasks: T-1349
 
+## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
+Rule: over a range (written, or picked by TAKE and the like), BYROW and BYCOL give the LAMBDA each row or column as a
+reference and MAP, SCAN and REDUCE each cell as a reference. With A1 x, A3 z, B3 y (A2:B2, B1 blank):
+`BYCOL(A1:B3,LAMBDA(c,COUNTA(c)))` is 2, 1 (blank cells are skipped, as for any reference), `BYROW(..,COUNTA(r))` 1, 0, 2,
+`BYROW(..,COUNTBLANK(r))` 1, 2, 0, `BYROW(A1:B3,LAMBDA(r,ROW(r)))` 1, 2, 3, `ISREF` of the slice is TRUE in all five
+helpers, `BYCOL(TAKE(A1:B3,2),LAMBDA(c,COUNTA(c)))` 1, 0 and `LET(x,A1:B3,BYCOL(x,..))` 2, 1. Over an array the slices are
+arrays and every element counts: `BYCOL(IFERROR(A1:B3,1),LAMBDA(c,COUNTA(c)))` is 3, 3. An eta-reduced COUNTA,
+`BYCOL(A1:B3,COUNTA)`, is `#VALUE!`.
+Evidence: probes/lambda-helper-range-slices (excel-graph, 2026-10-12, T-1395).
+Ours: BYROW and BYCOL pass references since T-1395 (`by_slices_source`, bycol_byrow.rs). MAP, SCAN and REDUCE pass
+values (ISREF FALSE) and the eta-reduced COUNTA is `#NAME?` (T-1442).
+Status: VERIFIED (web)
+Tasks: T-1395, T-1442
+
 ## BYROW and BYCOL of a single value
 Rule: BYROW and BYCOL take a single value as a 1x1 array and call the LAMBDA once: `"ü"&BYROW(COUNT(..),LAMBDA(z,z))` with
 the COUNT 7 is "ü7", and `BYROW("",_xleta.PRODUCT)` is 0 (PRODUCT of the row {""}).
