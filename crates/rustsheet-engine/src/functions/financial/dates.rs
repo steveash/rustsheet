@@ -75,6 +75,15 @@ impl Model {
         ))
     }
 
+    /// Whether Excel's coupon schedule breaks for `maturity`, as `financial_date` read it
+    /// (`DateSystem::coupon_schedule_breaks`): only in a 1904 workbook, from 9995-12-31 on.
+    pub(super) fn coupon_schedule_breaks(&self, maturity: i64) -> bool {
+        self.workbook
+            .settings
+            .date_system
+            .coupon_schedule_breaks(maturity)
+    }
+
     /// A date a financial function computed in the `financial_date` space (COUPNCD, COUPPCD), as
     /// this workbook's serial: a day early in a 1904 workbook.
     pub(super) fn financial_date_result(&self, serial: i64) -> CalcResult {

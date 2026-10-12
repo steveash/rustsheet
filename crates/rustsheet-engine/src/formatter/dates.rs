@@ -85,6 +85,24 @@ impl DateSystem {
         }
     }
 
+    /// Whether Excel's coupon schedule breaks for a maturity the financial functions read as
+    /// `financial_maturity` (a `financial_1900_serial`). In a 1904 workbook it does for a maturity
+    /// serial m with m + 2 * 1462 past the last date, 2958465: 9995-12-30 still has a schedule,
+    /// 9995-12-31 does not (probes/date-system-1904-coupon-bound G1-G2, T-1440). Excel then takes
+    /// the previous coupon as 1900 serial 1 and the next as the maturity read. A maturity past the
+    /// last date stays #NUM! (`COUPPCD(DATE(2024,1,15),2957004,2)`, date-system-1904-financial A44).
+    pub(crate) fn coupon_schedule_breaks(self, financial_maturity: i64) -> bool {
+        let last = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
+        match self {
+            Self::Excel1900 => false,
+            Self::Excel1904 => {
+                let maturity = financial_maturity - FINANCIAL_EPOCH_1904_IN_1900_SERIALS;
+                maturity + 2 * EPOCH_1904_IN_1900_SERIALS > last
+                    && maturity + EPOCH_1904_IN_1900_SERIALS <= last
+            }
+        }
+    }
+
     /// This system's serial for a date the financial functions computed as a 1900 serial in the
     /// space of `financial_1900_serial` (COUPNCD, COUPPCD): one day before that date in a 1904
     /// workbook, so it can be before the epoch (`COUPPCD(10,DATE(1905,6,30),2)` is -1).

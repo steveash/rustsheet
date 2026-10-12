@@ -224,6 +224,18 @@ fn map_date_err(e: String, cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::NUM, cell, e)
 }
 
+/// The previous coupon date (a 1900 serial) Excel takes when the coupon schedule breaks
+/// (`Model::coupon_schedule_breaks`); the next one is then the maturity itself. Day counts on the
+/// actual bases are serial differences there: `COUPDAYS(DATE(9999,1,1),DATE(9999,12,31),2,1)` is
+/// 2958465 in a 1904 workbook (probes/date-system-1904-coupon-bound A4-A6).
+const BROKEN_SCHEDULE_PCD: i64 = 1;
+
+/// COUPNUM, PRICE, YIELD and DURATION are #NUM! when the coupon schedule breaks
+/// (probes/date-system-1904-coupon-bound A3, A7, A19, A20, H3, I3).
+fn broken_schedule_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::NUM, cell, "no coupon schedule".to_string())
+}
+
 // ============================================================
 // Core bond price computation (standard coupon bond)
 // ============================================================
@@ -774,6 +786,9 @@ impl Model {
             );
         }
 
+        if self.coupon_schedule_breaks(maturity) {
+            return broken_schedule_error(cell);
+        }
         let n = match coupon_count(settlement, maturity, frequency) {
             Ok(v) => v as f64,
             Err(e) => return map_date_err(e, cell),
@@ -890,6 +905,9 @@ impl Model {
             );
         }
 
+        if self.coupon_schedule_breaks(maturity) {
+            return broken_schedule_error(cell);
+        }
         match compute_price(
             settlement, maturity, rate, yld, redemption, frequency, basis,
         ) {
@@ -954,6 +972,9 @@ impl Model {
             );
         }
 
+        if self.coupon_schedule_breaks(maturity) {
+            return broken_schedule_error(cell);
+        }
         match compute_yield_from_price(pr, settlement, maturity, rate, redemption, frequency, basis)
         {
             Ok(y) => CalcResult::Number(y),
@@ -1268,6 +1289,18 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
+        if self.coupon_schedule_breaks(maturity) {
+            if (1..=3).contains(&basis) {
+                return CalcResult::Number((settlement - BROKEN_SCHEDULE_PCD) as f64);
+            }
+            return match (
+                from_excel_date(BROKEN_SCHEDULE_PCD),
+                from_excel_date(settlement),
+            ) {
+                (Ok(prev), Ok(set)) => CalcResult::Number(basis_days(prev, set, basis)),
+                (Err(e), _) | (_, Err(e)) => map_date_err(e, cell),
+            };
+        }
         match coupon_days_a(settlement, maturity, frequency, basis) {
             Ok(v) => CalcResult::Number(v),
             Err(e) => map_date_err(e, cell),
@@ -1281,6 +1314,9 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
+        if basis == 1 && self.coupon_schedule_breaks(maturity) {
+            return CalcResult::Number((maturity - BROKEN_SCHEDULE_PCD) as f64);
+        }
         match coupon_days_e(settlement, maturity, frequency, basis) {
             Ok(v) => CalcResult::Number(v),
             Err(e) => map_date_err(e, cell),
@@ -1294,9 +1330,17 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
-        let next = match next_coupon_date(settlement, maturity, frequency) {
-            Ok(v) => v,
-            Err(e) => return map_date_err(e, cell),
+        let broken = self.coupon_schedule_breaks(maturity);
+        if broken && (1..=3).contains(&basis) {
+            return CalcResult::Number((maturity - settlement) as f64);
+        }
+        let next = if broken {
+            maturity
+        } else {
+            match next_coupon_date(settlement, maturity, frequency) {
+                Ok(v) => v,
+                Err(e) => return map_date_err(e, cell),
+            }
         };
         let set_date = match from_excel_date(settlement) {
             Ok(d) => d,
@@ -1311,9 +1355,13 @@ impl Model {
             // for the US 30/360 basis: the total 30/360 days in the coupon period
             // (ModifyBothDates) minus the days from its start to settlement
             // (ModifyStartDate). This is *not* simply 30/360(settlement, next).
-            let prev = match prev_coupon_date(settlement, maturity, frequency) {
-                Ok(v) => v,
-                Err(e) => return map_date_err(e, cell),
+            let prev = if broken {
+                BROKEN_SCHEDULE_PCD
+            } else {
+                match prev_coupon_date(settlement, maturity, frequency) {
+                    Ok(v) => v,
+                    Err(e) => return map_date_err(e, cell),
+                }
             };
             let prev_date = match from_excel_date(prev) {
                 Ok(d) => d,
@@ -1333,6 +1381,9 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
+        if self.coupon_schedule_breaks(maturity) {
+            return self.financial_date_result(maturity);
+        }
         match next_coupon_date(settlement, maturity, frequency) {
             Ok(serial) => self.financial_date_result(serial),
             Err(e) => map_date_err(e, cell),
@@ -1346,6 +1397,9 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
+        if self.coupon_schedule_breaks(maturity) {
+            return broken_schedule_error(cell);
+        }
         match coupon_count(settlement, maturity, frequency) {
             Ok(n) => CalcResult::Number(n as f64),
             Err(e) => map_date_err(e, cell),
@@ -1359,6 +1413,9 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
+        if self.coupon_schedule_breaks(maturity) {
+            return self.financial_date_result(BROKEN_SCHEDULE_PCD);
+        }
         match prev_coupon_date(settlement, maturity, frequency) {
             Ok(serial) => self.financial_date_result(serial),
             Err(e) => map_date_err(e, cell),
