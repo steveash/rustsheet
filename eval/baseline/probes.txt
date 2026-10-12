@@ -124,6 +124,7 @@ C	probes/date-system-1904-financial.case.json	44
 C	probes/date-system-1904-negatives.case.json	18
 C	probes/date-system-1904-pre-epoch-text.case.json	15
 C	probes/date-system-1904-readers.case.json	54
+C	probes/date-system-1904-timevalue.case.json	7
 C	probes/date-text-dotted-criteria.case.json	16
 C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
