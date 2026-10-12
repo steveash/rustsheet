@@ -149,19 +149,21 @@ impl Model {
     fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
         let value = self.eval_ref_or_index(node, cell);
         let from_cell = matches!(value, CalcResult::Range { .. });
+        let value = self.dereference(value, cell);
+        // Only non-numeric text is remapped: an error in the cell, or a failed implicit
+        // intersection, propagates unchanged (no oracle evidence for remapping those).
+        if from_cell {
+            if let CalcResult::String(text) = &value {
+                if self.cast_number(text).is_none() {
+                    return Err(CalcResult::Error {
+                        error: Error::REF,
+                        origin: cell,
+                        message: "Invalid reference".to_string(),
+                    });
+                }
+            }
+        }
         self.cast_to_number(value, cell)
-            .map_err(|error| match error {
-                CalcResult::Error {
-                    error: Error::VALUE,
-                    origin,
-                    ..
-                } if from_cell => CalcResult::Error {
-                    error: Error::REF,
-                    origin,
-                    message: "Invalid reference".to_string(),
-                },
-                other => other,
-            })
     }
 
     /// HLOOKUP(lookup_value, table_array, row_index, [is_sorted])
