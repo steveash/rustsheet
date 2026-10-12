@@ -146,6 +146,25 @@ baseline counts its F lines, so they equal the list's F lines in `eval/baseline/
 an exit measure, not a gate on their pass rate; editing one needs a decision record
 (`scripts/check_governance.py`).
 
+## Probe milestones
+Decision 0051 gives every `probes` case one milestone, and every checked cell of
+`probes/catalog/*` its own (`crates/rustsheet-eval/src/probe_milestones.rs`). The first rule that
+applies decides: (1) a case on `eval/milestones/m1-probes.txt` is M1; (2) a line of
+`eval/milestones/probe-milestones.tsv` sets the milestone, either of a case
+(`case<TAB>milestone<TAB>subject`) or of one of its cells (`case<TAB>Sheet!A1<TAB>milestone<TAB>subject`,
+which beats a case line); (3) a catalog cell takes the highest `eval/catalog/scope.json`
+milestone of the functions its formula calls, apart from the observing wrappers OR, IFERROR,
+ERROR.TYPE and INDEX, and M2 when it calls none; (4) any other case takes its case.json
+milestone tag (`M\d+`, the highest when there are several); (5) an untagged case is M2. `run`
+and `check` parse the mapping file and fail, naming the line, on a malformed line, a milestone
+that is not `M\d+`, a duplicate case or cell, or a case that no suite discovers. report.md has a
+"Probe milestones (decision 0051)" section (report.json: `probe_milestones`) with one row each
+for M0–M2 (combined), M5, M6, M7, M8, M9, M10 and M11, plus a row for any other milestone a case
+takes: cases, scored cells, bit-exact, deviations and known failures (cells). Known failures are
+counted as the baseline counts its F lines; an item that is not a cell (`*`, `!Panic`) counts at
+the case's milestone, which for a catalog case is M2. The console summary prints the M0–M2 row.
+The rows are exit measures; `eval-check` is the gate.
+
 ## CLI
 ```
 rustsheet-eval suites | fetch [--suite S] | run [--suite S] [--filter X] | check | update-baseline [--allow-regressions]

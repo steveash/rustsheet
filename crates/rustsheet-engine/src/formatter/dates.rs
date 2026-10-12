@@ -161,6 +161,36 @@ pub fn date_to_serial_number(day: u32, month: u32, year: i32) -> Result<i32, Str
     }
 }
 
+/// `date` moved by `months` calendar months, `None` past chrono's range so a huge offset
+/// (`EDATE(40000,2000000000)`) is #NUM! instead of a panic.
+pub fn shift_months(date: NaiveDate, months: i32) -> Option<NaiveDate> {
+    let shift = Months::new(months.unsigned_abs());
+    if months > 0 {
+        date.checked_add_months(shift)
+    } else {
+        date.checked_sub_months(shift)
+    }
+}
+
+/// DATE's month and day arguments, floored and bounded as Excel does: a month outside
+/// -32767..=32766 is `None` (#NUM!) even when the date it names is in the calendar
+/// (`DATE(2000,32767,1)`, `DATE(9999,-32768,1)`), and a day outside the 16-bit range
+/// -32768..=32767 counts as 32767 (`DATE(2000,1,-1E+15)` = `DATE(2000,1,32767)`).
+/// Evidence: probes/date-huge-month-day, docs/excel-semantics/dates.md "DATE month and day bounds".
+pub fn date_month_and_day(month: f64, day: f64) -> Option<(i32, i32)> {
+    let month = month.floor();
+    if !(-32767.0..=32766.0).contains(&month) {
+        return None;
+    }
+    let day = day.floor();
+    let day = if (-32768.0..=32767.0).contains(&day) {
+        day as i32
+    } else {
+        32767
+    };
+    Some((month as i32, day))
+}
+
 pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Result<i32, String> {
     // Excel parses `DATE` very permissively. It allows not just for valid date values, but it
     // allows for invalid dates as well. If you for example enter `DATE(1900, 1, 32)` it will
@@ -187,18 +217,14 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
         return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
     }
 
-    date = {
-        let month_diff = month - 1;
-        let abs_month = month_diff.unsigned_abs();
-        if month_diff <= 0 {
-            date = date - Months::new(abs_month);
-        } else {
-            date = date + Months::new(abs_month);
-        }
-        if !is_date_within_range(date) {
-            return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
-        }
-        date
+    // A month near `i32::MAX`/`MIN` would overflow `month - 1` and chrono's calendar (a panic in
+    // `NaiveDate + Months`, fuzz T-1419), so both steps are checked and an overflow is out of range.
+    date = match month
+        .checked_sub(1)
+        .and_then(|offset| shift_months(date, offset))
+    {
+        Some(date) if is_date_within_range(date) => date,
+        _ => return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string()),
     };
 
     // Days wrap linearly from the first of the month in Excel serials, so the fictitious

@@ -325,7 +325,7 @@ pub(super) fn from_a1_to_rc(
 ) -> Result<String, XlsxError> {
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
-    let mut t = parser.parse_cell_formula(&formula, &cell_reference);
+    let mut t = parser.parse(&formula, &cell_reference);
     if !is_array_formula {
         add_implicit_intersection(&mut t, true);
     }

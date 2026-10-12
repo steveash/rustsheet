@@ -42,7 +42,7 @@ impl std::convert::TryFrom<i32> for WeekendPattern {
 }
 
 impl WeekendPattern {
-    pub(super) fn to_mask(self) -> [bool; 7] {
+    pub(super) const fn to_mask(self) -> [bool; 7] {
         match self {
             Self::SatSun => [false, false, false, false, false, true, true],
             Self::SunMon => [true, false, false, false, false, false, true],

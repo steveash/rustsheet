@@ -35,5 +35,14 @@
   T-1105: model.rs 3554 → 3520 lines (`get_fmt_settings` and the new `format_context` moved to
   number_format.rs); evaluation.rs, stringify.rs and functions/mod.rs lower and parser/mod.rs no longer
   oversized, already shrunk on main (`check_file_size.py --update`).
+  T-1214: functions/mod.rs 2363 → 2183 lines (records T-1425's move of `to_xlsx_string`, less BAHTTEXT's 4
+  registration lines); stringify.rs, date_and_time.rs and model.rs already shrunk on main
+  (`check_file_size.py --update`).
+  T-1235: duplicated lines 7158 → 6672 (lifting reuses `lift_numbers` and `text_arg`/`broadcast_text`; TODAY/NOW share
+  `now_in_timezone_arg`, NETWORKDAYS(.INTL) share `networkdays_bounds`/`networkdays_holidays`)
+  (`check_duplication.py --update`).
+  T-1230: expressions/parser/static_analysis.rs 2156 → 2147 lines (`args_signature_sheet` and
+  `args_signature_no_args` folded into `args_signature_scalars`); date_and_time.rs and
+  financial_bonds.rs already shrunk on main (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

@@ -440,7 +440,7 @@ impl Model {
     /// Evaluates an argument of a text function into a scalar value or a 2-D array of
     /// values. References to a single cell collapse to a scalar; multi-cell ranges
     /// and array literals/spills become arrays that the result is broadcast over.
-    pub(super) fn text_arg(
+    pub(crate) fn text_arg(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,

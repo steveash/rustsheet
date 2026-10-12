@@ -1,0 +1,28 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1387: LET names and LAMBDA parameters that start with a non-ASCII letter, and their case: same-case use, use in another case (Unicode case folding), a lower-case-only letter, and a name shadowed by a parameter of another case. Duplicates that differ only in case are refused by Excel, so they are not in this case (docs/excel-semantics/references.md).",
+  "tags": [
+    "M7",
+    "let",
+    "lambda",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LET(é,1,é+1)",
+        "A2": "=LET(é,1,É+1)",
+        "A3": "=LET(É,3,é*2)",
+        "A4": "=LET(Ä,2,ä*10)",
+        "A5": "=LAMBDA(ß,ß*2)(3)",
+        "A6": "=LAMBDA(é,É+1)(4)",
+        "A7": "=LET(é,1,LAMBDA(É,é*10)(2))",
+        "A8": "=LET(Ärger,5,äRGER+1)",
+        "A9": "=LET(xé,1,XÉ+1)",
+        "A10": "=LET(f,LAMBDA(ñ,Ñ+1),F(2))"
+      }
+    }
+  ],
+  "expected": {}
+}
