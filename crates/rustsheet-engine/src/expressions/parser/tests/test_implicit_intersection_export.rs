@@ -246,3 +246,43 @@ fn sumproduct_is_an_array_context() {
         ),
     ]);
 }
+
+// Excel stores every written parenthesis in the `<f>` text, and an `@` with a written group as
+// `_xlfn.SINGLE(` + the operand with its group + `)` (excel-graph, T-1244; SPEC-0007 "Excel
+// behavior to match"; docs/excel-semantics/xlsx-storage.md). Export → import → print is the
+// identity (T-1343).
+#[test]
+fn written_parentheses_are_exported_as_excel_stores_them() {
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let cases = [
+        ("Z1+(Z2)", "Z1+(Z2)"),
+        ("((Z1))", "((Z1))"),
+        ("-(Z1)", "-(Z1)"),
+        ("IF((Z1>0),(Z2),Z3)", "IF((Z1>0),(Z2),Z3)"),
+        ("(Z1^2)^3", "(Z1^2)^3"),
+        ("SUM((Z1:Z2))", "SUM((Z1:Z2))"),
+        ("(1)+((2))", "(1)+((2))"),
+        ("@(Z1+(Z2))", "_xlfn.SINGLE((Z1+(Z2)))"),
+    ];
+    for (typed, stored) in cases {
+        let t = parser.parse_cell_formula(typed, &cell_reference);
+        assert_eq!(
+            to_excel_string(&t, &cell_reference),
+            stored,
+            "export of `{typed}`"
+        );
+        let mut imported = parser.parse_cell_formula(stored, &cell_reference);
+        add_implicit_intersection(&mut imported, true);
+        assert_eq!(
+            to_english_localized_string(&imported, &cell_reference),
+            typed,
+            "import of `{stored}`"
+        );
+    }
+}

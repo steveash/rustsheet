@@ -226,10 +226,8 @@ kept the same way is UNVERIFIED (excel-graph loads file text; an M14 desktop que
 (`=@(A1+(B1))` = 3, `=@((A1) (B1))` = `#NULL!` with A1 = 1, B1 = 2).
 Evidence: probes/at-operand-nested-groups (36 cells, excel-graph, 2026-10-09, T-1178).
 More shapes (probes/formulatext-written-groups-shapes, excel-graph 2026-10-11, T-1380; A1 = 4; desktop UNVERIFIED as above), all printed as written: a group before a postfix `%` `=(A1)%` (value 0.04), a group as a LAMBDA callee `=(LAMBDA(x,x))(1)` (1), a left-grouped operand `=(1/2)/3`, a right-grouped operand `=1+(3+5)` (9), a group around an intersection `=(D:D 2:2)&""` (empty text) and a group around a negated base `=(-A1)^2` (16). The engine's FORMULATEXT matches in all six (12 cells).
-Ours: a written group is a `Node::Group` (SPEC-0007, T-1340), transparent to evaluation and printed as written, so the
-plain-operator cells match. The groups the `@` fields still track (an inner group that starts an `@` operand,
-`=@((A1) (B1))`, `=@(((A1)) B1)`, `=@((A1)+(B1))`, and a group around a whole `@`) print as before until T-1343.
-All 18 values of the T-1178 probe match; 3 of its FORMULATEXT cells differ (F11, F13, F14). The T-1380 shapes above are separate from that count.
+Ours: a written group is a `Node::Group` (SPEC-0007, T-1340), transparent to evaluation and printed as written, around
+and inside `@` operands too (T-1343). All 36 cells of the T-1178 probe match. The T-1380 shapes above are separate from that count.
 Status: VERIFIED
 The stored file text keeps them as well (xlsx-storage.md "Written parentheses are stored as written").
 Design: SPEC-0007 (a `Group` node).
