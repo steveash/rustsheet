@@ -20,6 +20,8 @@ blank element of the array (D2 is an empty element of the lifted INDEX result), 
 do both together or build on T-1395. See docs/excel-semantics/logic.md ("IFERROR / IFNA of a blank cell is an empty value")
 and lookup.md ("INDEX lifts over array and range indices"). Code: functions/statistical/count.rs.
 
+T-1395 made COUNTA count every element of an array value, so H136 passes; only the COUNTBLANK cells H131:J131 remain.
+
 ## Acceptance criteria
 - [ ] H131:J131 and H136 of probes/index-lifted-edge-cases pass; `make eval-baseline` records the fix.
 - [ ] `make check` green; reviewers approve.
