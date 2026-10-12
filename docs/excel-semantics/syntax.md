@@ -66,12 +66,20 @@ Status: VERIFIED
 Rule: Excel for the web refuses a whole workbook holding a formula of more than 8,192 stored characters (the
 `<f>` text without the leading `=`; createSession 501 `FileCorruptTryRepair`). A formula of 8,192 characters loads.
 RustSheet's xlsx importer refuses the same workbooks with `XlsxError::Workbook` (decision 0047).
-Evidence: T-1091 and probe `operator-chain-limit` (T-1060), both excel-graph; see "Formula nesting depth cap" below.
-Unprobed: the limit for typed (API) formulas, for defined names and for desktop Excel, and whether Excel counts
-UTF-16 code units (the importer counts Unicode scalar values, which is never stricter) (T-1386).
+Evidence: T-1091, probe `operator-chain-limit` (T-1060), probes `formula-length-nonbmp-33pieces`/`-34pieces` and `name-body-length-*` (T-1386; the 34-piece and 8,192-name cases are refused on load, so they have no sidecar), all excel-graph; see "Formula nesting depth cap" below.
+Non-BMP text: a formula holding 33 concatenated 120-emoji literals loads (4,063 Unicode scalars, 8,023 UTF-16 code
+units) and one holding 34 is refused (4,186 scalars, 8,266 UTF-16 units; createSession 501), so Excel does not count
+Unicode scalars: it counts UTF-16 code units or something else above them (the exact boundary between 8,192 and 8,266
+units is not probed). The importer counts scalars and so accepts workbooks Excel refuses (T-1397).
+Defined names: a name body of 8,191 characters (`=1+1+...` stored without `=`) loads and one of 8,192 is refused, so
+the body limit is one below the 8,192 of a cell formula (bodies of 255, 256, 1,000, 4,000, 6,000 and 8,000 characters
+all load and evaluate). The importer has no name-body limit yet (T-1397).
+Unprobed: typed (API) formulas (the oracle builds workbooks from files; a manual Graph `range.formulas` call or desktop
+Excel is needed, deferred to M14, decision 0039), desktop Excel, and `_xHHHH_` escapes inside `<f>` text (the spec-to-xlsx
+writer cannot emit them raw; deferred to M14). The first attempts, a single string literal of 4,090 or 4,100 emoji were refused as well (as was a name body of 8,192 characters, above); the 255-character string literal limit is the likely cause for the literals (not probed), which is why the cases split them.
 Status: VERIFIED (excel-graph, file load)
 Implemented in: rustsheet-xlsx `import::sheet_data::check_formula_length`
-Tasks: T-1091, T-1093
+Tasks: T-1091, T-1093, T-1386, T-1397
 
 ## Formula nesting depth cap
 Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse

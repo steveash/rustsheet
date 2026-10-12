@@ -3,7 +3,7 @@ id: T-1386
 title: "Probe Excel's formula length limit for typed formulas and defined names (8,192 characters)"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -29,8 +29,11 @@ Record the findings in docs/excel-semantics/syntax.md "Formulas over 8,192 chara
 workbook". If they show an API limit, file an engine task to implement it.
 
 ## Acceptance criteria
-- [ ] Each question above is answered with evidence or explicitly deferred to M14, and recorded in syntax.md.
-- [ ] `make check` green; reviewers approve.
+- [x] Each question above is answered with evidence or explicitly deferred to M14, and recorded in syntax.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing an API limit (file a task if the evidence calls for one).
+
+## Outcome
+Probed through excel-graph (file load). Non-BMP: 33 concatenated 120-emoji literals (8,023 UTF-16 units, 4,063 scalars) load, 34 (8,266 units, 4,186 scalars) are refused, so Excel does not count scalars. Defined-name bodies: up to 8,191 characters load, 8,192 is refused. Typed (API) formulas and `_xHHHH_` escapes in `<f>` are deferred to M14 (the oracle builds workbooks from files; decision 0039). Recorded in docs/excel-semantics/syntax.md; filed T-1397 (importer: UTF-16 count and name-body limit). New probes: formula-length-nonbmp-33pieces, name-body-length-{255,256,1000,4000,6000,8000,8191}; the two refused cases were dropped (no sidecar can exist).
