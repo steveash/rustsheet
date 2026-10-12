@@ -3,7 +3,7 @@ id: T-0413
 title: "xlsx export doubles quotes in every conditional-format text rule operator (port ironcalc 4d38ff0e)"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
