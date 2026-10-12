@@ -296,3 +296,31 @@ A-variants and MODE (T-1291); the pairing functions are `#VALUE!` and F.TEST tak
 `#N/IMPL!`; many distribution values are a few ulps off (the existing accuracy entries above).
 Status: VERIFIED (excel-graph)
 Tasks: T-1080, T-1290, T-1291, T-1292, T-1293
+
+## Database function argument modes
+Rule: in the database functions (DAVERAGE, DCOUNT, DCOUNTA, DGET, DMAX, DMIN, DPRODUCT, DSTDEV, DSTDEVP, DSUM,
+DVAR, DVARP), `database` must be a reference. A database given as an array literal
+(`DSUM({"Name","Qty","Price";"a",1,2.5;...},"Price",E1:E2)`) makes Excel for the web refuse the whole workbook
+(createSession 501 `FileCorruptTryRepair`, excel-graph 2026-10-11; a refused workbook cannot be committed. To
+reproduce, recalc a one-cell spec with `=DSUM({"Name","Qty","Price";"a",1,2.5;"b",3,4},"Price",E1:E2)`).
+DGET returns the matching cell's value, text included (T-1390 sample: "?b").
+`field` is a header name or a 1-based column index: `DSUM(A1:C6,"Price",E1:E2)` = `DSUM(A1:C6,3,E1:E2)` = 14.
+Over an array literal `field` lifts (`ROWS(DSUM(A1:C6,{2;3},E1:E2))` is 2), but a two-cell range is
+`#VALUE!`. An unknown name (`"Nope"`) and the numeric text `"2"` are `#VALUE!`, so text is never read as an
+index. A boolean field (`TRUE`) selects no column: DSUM, DMAX, DMIN, DPRODUCT and DCOUNT give 0, DAVERAGE,
+DSTDEV, DSTDEVP, DVAR and DVARP give `#DIV/0!`, DGET gives `#NUM!`, and DCOUNTA counts the matching records
+(4). An empty field (`DCOUNT(A1:C6,,E1:E2)`) gives DCOUNT and DCOUNTA the count of
+matching records (4), and `#VALUE!` in every other function.
+A criteria given as an array literal (`{"Qty";">2"}`) lifts elementwise to `#VALUE!` per element, so it
+spills (`#SPILL!` where blocked).
+DGET with more than one matching record is `#NUM!`. A text cell and a boolean cell in the field column are
+skipped by the numeric functions and counted by DCOUNTA.
+These set the generator modes in eval/catalog/functions.yaml: `database` and `criteria` are `range`, and
+`field` is `value`.
+Evidence: probes/db-argument-modes (121 cells, excel-graph, 2026-10-11, T-1086).
+The data is A1:C6, with headers Name, Qty and Price. Price holds 2.5, 4, "x", TRUE and 10. The criteria
+are E1:E2 (Qty ">2") and F1:F2 (Name "e").
+Ours: field and criteria do not lift (`#N/IMPL!`, `#VALUE!`), and DCOUNT/DCOUNTA with an empty field are
+`#VALUE!` (T-1389). A generated sample also showed gaps in header matching and criteria (T-1390).
+Status: VERIFIED (excel-graph)
+Tasks: T-1086, T-1389, T-1390

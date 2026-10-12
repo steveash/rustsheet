@@ -47,8 +47,8 @@
 # (decision 0040): after editing, run `cd tools && uv run rustsheet-catalog-view`.
 # Entries with `params` are generator-ready signatures (the M2 block, then the M5 math (T-1082), text (T-1087),
 # logical, information and web (T-1088) ones, the M6 date and time (T-1090) and lookup (T-1238) ones and the M7
-# dynamic-array and LAMBDA ones (T-1083), the M9 statistical (T-1080), financial (T-1084) and engineering (T-1085) ones,
-# in alphabetical place). The rest (one line each) carry only these fields until a milestone needs their signature:
+# dynamic-array and LAMBDA ones (T-1083), the M9 statistical (T-1080), financial (T-1084), engineering (T-1085)
+# and database (T-1086) ones, in alphabetical place). The rest (one line each) carry only these fields until a milestone needs their signature:
 #   category   functional family: math, logical, text, information, web, addin (M5); lookup, date (M6);
 #              statistical, financial, engineering, database, cube (M9). Compatibility functions take
 #              their family (CEILING/FLOOR math, the rest statistical).
@@ -1251,7 +1251,16 @@ functions:
     returns: number
     params:
       - { name: date_text, mode: value, type: text, domain: { enum: ["1/15/2024", "2023-03-01", "15-Mar-2021", "March 5, 2020", "12/31/1899"] } }
-  - { name: DAVERAGE, category: database, milestone: M9, scope: in }
+  - name: DAVERAGE
+    category: database
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: database, mode: range, type: any }
+      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, type: any }
   - name: DAYS
     category: date
     milestone: M6
@@ -1291,8 +1300,26 @@ functions:
     returns: text
     params:
       - { name: text, mode: value, type: text }
-  - { name: DCOUNT, category: database, milestone: M9, scope: in }
-  - { name: DCOUNTA, category: database, milestone: M9, scope: in }
+  - name: DCOUNT
+    category: database
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: database, mode: range, type: any }
+      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, type: any }
+  - name: DCOUNTA
+    category: database
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: database, mode: range, type: any }
+      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, type: any }
   - name: DDB
     category: financial
     milestone: M9
@@ -1365,7 +1392,16 @@ functions:
     prior: 0.1
     returns: number
     params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
-  - { name: DGET, category: database, milestone: M9, scope: in }
+  - name: DGET
+    category: database
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: any
+    params:
+      - { name: database, mode: range, type: any }
+      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, type: any }
   - name: DISC
     category: financial
     milestone: M9
@@ -1378,8 +1414,26 @@ functions:
       - { name: pr, mode: value, type: number, domain: { int: true, min: 80, max: 99 } }
       - { name: redemption, mode: value, type: number, domain: { int: true, min: 100, max: 110 } }
       - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
-  - { name: DMAX, category: database, milestone: M9, scope: in }
-  - { name: DMIN, category: database, milestone: M9, scope: in }
+  - name: DMAX
+    category: database
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: database, mode: range, type: any }
+      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, type: any }
+  - name: DMIN
+    category: database
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: database, mode: range, type: any }
+      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, type: any }
   - name: DOLLAR
     category: text
     milestone: M5
@@ -1407,7 +1461,16 @@ functions:
     params:
       - { name: decimal_dollar, mode: value, type: number }
       - { name: fraction, mode: value, type: number, domain: { int: true, min: 1, max: 32 } }
-  - { name: DPRODUCT, category: database, milestone: M9, scope: in }
+  - name: DPRODUCT
+    category: database
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: database, mode: range, type: any }
+      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, type: any }
   - name: DROP
     category: lookup
     milestone: M7
@@ -1418,9 +1481,36 @@ functions:
       - { name: array, mode: array, type: any }
       - { name: rows, mode: value, type: number, domain: { int: true, min: -3, max: 3 } }
       - { name: columns, mode: value, type: number, optional: true, domain: { int: true, min: -3, max: 3 } }
-  - { name: DSTDEV, category: database, milestone: M9, scope: in }
-  - { name: DSTDEVP, category: database, milestone: M9, scope: in }
-  - { name: DSUM, category: database, milestone: M9, scope: in }
+  - name: DSTDEV
+    category: database
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: database, mode: range, type: any }
+      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, type: any }
+  - name: DSTDEVP
+    category: database
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: database, mode: range, type: any }
+      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, type: any }
+  - name: DSUM
+    category: database
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: database, mode: range, type: any }
+      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, type: any }
   - name: DURATION
     category: financial
     milestone: M9
@@ -1434,8 +1524,26 @@ functions:
       - { name: yld, mode: value, type: number }
       - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
       - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
-  - { name: DVAR, category: database, milestone: M9, scope: in }
-  - { name: DVARP, category: database, milestone: M9, scope: in }
+  - name: DVAR
+    category: database
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: database, mode: range, type: any }
+      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, type: any }
+  - name: DVARP
+    category: database
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: database, mode: range, type: any }
+      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, type: any }
   # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: EDATE
     category: date
