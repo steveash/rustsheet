@@ -160,7 +160,8 @@ impl Model {
         let num_rows = data.len();
         let num_cols = data[0].len();
 
-        let sort_index: usize = if args.len() >= 2 {
+        // An omitted argument (`SORT(arr,,)`) takes its default: probes/counta-empty-value D22-D24.
+        let sort_index: usize = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {
             match self.get_number(&args[1], cell) {
                 Ok(n) => {
                     let n = n as i64;
@@ -179,7 +180,7 @@ impl Model {
             1
         };
 
-        let ascending: bool = if args.len() >= 3 {
+        let ascending: bool = if args.len() >= 3 && !matches!(args[2], Node::EmptyArgKind) {
             match self.get_number(&args[2], cell) {
                 Ok(n) => match n as i32 {
                     1 => true,

@@ -356,3 +356,14 @@ Evidence: gen-m7/c5d278a8662ef4b2 Calc!A39 (by_col `HLOOKUP(ADDRESS(19,19),Data!
 Ours: `#VALUE!` (sort_index 0 is rejected before by_col is looked at).
 Status: VERIFIED (web) for this cell; SORTBY and the order among several error arguments are UNVERIFIED
 Tasks: T-1351
+
+## SORT: omitted sort_index / sort_order take their defaults
+
+An omitted (empty) `sort_index` or `sort_order` is the same as leaving it off: `SORT({3;1;2},,)`
+is ascending by column 1 (3 values; `INDEX(...,1)` = 1) and `SORT({3;1;2},,-1)` is descending
+(`INDEX(...,1)` = 3). Evidence: probes/counta-empty-value D22-D24 (excel-graph, T-1294); the engine
+treats the empty argument as the default (T-1394). Omitted combinations beyond these three cells
+are not yet probed (SORTBY's omitted arguments and `SORT(arr,,,)`'s by_col in particular).
+
+Status: VERIFIED (excel-graph) for D22-D24; other omitted combinations UNVERIFIED.
+Tasks: T-1394, T-1446.
