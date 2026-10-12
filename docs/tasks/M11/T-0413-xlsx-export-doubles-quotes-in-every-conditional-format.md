@@ -3,7 +3,7 @@ id: T-0413
 title: "xlsx export doubles quotes in every conditional-format text rule operator (port ironcalc 4d38ff0e)"
 milestone: M11
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,3 +28,10 @@ and changed the rule after a round trip. Our copy, `crates/rustsheet-xlsx/src/ex
 
 ## Out of scope
 - Evaluating conditional formats.
+
+## Outcome
+`text_formula_str` now writes the quote-doubled value for all five text operators. A unit test on
+the function covers each operator; a save/load round trip cannot see the bug because the importer
+reads the rule's `text` attribute, not the formula. Eval delta: none.
+
+Ported-From: ironcalc@4d38ff0e495bb074fc4a95fc364f8ab5b6b5e600
