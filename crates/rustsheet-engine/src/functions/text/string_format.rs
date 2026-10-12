@@ -87,14 +87,14 @@ impl Model {
         };
         let formatted = format_abs(value.abs(), decimals, true);
         let result = if value < 0.0 {
-            format!("(${})", formatted)
+            format!("(${formatted})")
         } else {
-            format!("${}", formatted)
+            format!("${formatted}")
         };
         CalcResult::String(result)
     }
 
-    /// FIXED(number, [decimals], [no_commas]) — Formats a number as text with fixed decimal places.
+    /// FIXED(number, [decimals], [`no_commas`]) — Formats a number as text with fixed decimal places.
     pub(crate) fn fn_fixed(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
@@ -122,14 +122,14 @@ impl Model {
         let use_thousands = !no_commas;
         let formatted = format_abs(value.abs(), decimals, use_thousands);
         let result = if value < 0.0 {
-            format!("-{}", formatted)
+            format!("-{formatted}")
         } else {
             formatted
         };
         CalcResult::String(result)
     }
 
-    /// NUMBERVALUE(text, [decimal_separator], [group_separator])
+    /// NUMBERVALUE(text, [`decimal_separator`], [`group_separator`])
     /// Converts text to a number using the given separators.
     pub(crate) fn fn_numbervalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() || args.len() > 3 {
@@ -211,8 +211,8 @@ impl Model {
         self.apply_text_unary(args, cell, proper_case)
     }
 
-    /// REPLACE(old_text, start_num, num_chars, new_text)
-    /// Replaces num_chars characters starting at start_num (1-indexed) with new_text.
+    /// `REPLACE(old_text`, `start_num`, `num_chars`, `new_text`)
+    /// Replaces `num_chars` characters starting at `start_num` (1-indexed) with `new_text`.
     /// If any of the arguments is an array it works element by element.
     pub(crate) fn fn_replace(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 4 {

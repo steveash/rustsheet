@@ -525,7 +525,7 @@ fn build_cf_rule_xml(
 
 /// Returns `(cf_sections_xml, ext_lst_xml)`.
 /// `cf_sections_xml` contains all the `<conditionalFormatting>` blocks.
-/// `ext_lst_xml` contains the `<extLst>` block for x14 DataBar extensions (may be empty).
+/// `ext_lst_xml` contains the `<extLst>` block for x14 `DataBar` extensions (may be empty).
 pub(crate) fn get_conditional_formatting_xml(cfs: &[ConditionalFormatting]) -> (String, String) {
     if cfs.is_empty() {
         return (String::new(), String::new());

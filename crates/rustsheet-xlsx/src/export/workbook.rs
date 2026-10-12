@@ -110,7 +110,7 @@ pub(crate) fn get_workbook_xml(
         let formula = escape_xml(&formula);
         defined_names_str.push(format!(
             "<definedName name=\"{name}\"{local_sheet_id}>{formula}</definedName>"
-        ))
+        ));
     }
 
     // Only the 1904 system is written; a 1900 export stays byte-identical (SPEC-0005).

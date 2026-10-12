@@ -20,7 +20,7 @@ fn create_test_table(
             id: id as u32,
             name: name.to_string(),
             ..Default::default()
-        })
+        });
     }
     let init_cell = parse_reference_a1(cell_ref).unwrap();
     let start_row = init_cell.row;

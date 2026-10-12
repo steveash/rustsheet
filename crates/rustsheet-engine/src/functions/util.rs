@@ -489,7 +489,7 @@ impl Model {
 }
 
 /// Excel's `MOD`: the exact remainder (`fmod`) shifted into the divisor's sign. Not
-/// `n - d*floor(n/d)`, which loses precision for tiny divisors; evidence: MOD_QUOTIENT.xlsx
+/// `n - d*floor(n/d)`, which loses precision for tiny divisors; evidence: `MOD_QUOTIENT.xlsx`
 /// C20/C21/C25/C26 (docs/excel-semantics/numbers.md). `divisor` must be non-zero.
 pub(crate) fn excel_mod(value: f64, divisor: f64) -> f64 {
     let remainder = value % divisor;

@@ -748,7 +748,7 @@ impl Model {
             Err(_) => Err(CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,
-                message: format!("Invalid timezone: {}", tz_str),
+                message: format!("Invalid timezone: {tz_str}"),
             }),
         }
     }
@@ -836,7 +836,7 @@ impl Model {
         };
         broadcast_text(cell, &[&text], |i, j| {
             let text = array_node_to_string(text.elem(i, j))?;
-            time_text::parse_time_string(&text, self.locale, &|| self.current_year())
+            self.parse_time_text(&text)
                 .map(ArrayNode::Number)
                 .ok_or(Error::VALUE)
         })

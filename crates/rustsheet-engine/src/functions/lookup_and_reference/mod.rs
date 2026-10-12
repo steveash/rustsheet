@@ -74,11 +74,11 @@ impl Model {
         })
     }
 
-    /// The lookup_value of MATCH, XMATCH or LOOKUP. A function that returns a one-cell reference
+    /// The `lookup_value` of MATCH, XMATCH or LOOKUP. A function that returns a one-cell reference
     /// (`CHOOSE(1,A1)`, `OFFSET(A1,0,0)`, `INDIRECT("A1")`, `A1:A1`) gives that cell's value: Excel
     /// finds 30 for `MATCH(CHOOSE(1,J1),A1:A5,0)` with J1 = 30 (docs/excel-semantics/lookup.md,
     /// probes/lookup-reference-lookup-value). VLOOKUP, HLOOKUP and XLOOKUP get there by lifting.
-    /// A multi-cell lookup_value is left as it is (T-0270).
+    /// A multi-cell `lookup_value` is left as it is (T-0270).
     pub(super) fn lookup_value_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         match self.evaluate_node_in_context(node, cell) {
             range @ CalcResult::Range { left, right } if left == right => {
@@ -146,7 +146,7 @@ impl Model {
         }
     }
 
-    /// MATCH's match_type as a number. Text that comes from a cell (a reference) and is not a
+    /// MATCH's `match_type` as a number. Text that comes from a cell (a reference) and is not a
     /// number is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
     /// descending search skips backward", probes/match-descending-argcheck J9-J20; T-1313).
     fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
@@ -169,7 +169,7 @@ impl Model {
         self.cast_to_number(value, cell)
     }
 
-    /// HLOOKUP(lookup_value, table_array, row_index, [is_sorted])
+    /// `HLOOKUP(lookup_value`, `table_array`, `row_index`, [`is_sorted`])
     /// We look for `lookup_value` in the first row of table array
     /// We return the value in row `row_index` of the same column in `table_array`
     /// `is_sorted` is true by default and assumes that values in first row are ordered
@@ -241,7 +241,7 @@ impl Model {
         )
     }
 
-    /// VLOOKUP(lookup_value, table_array, row_index, [is_sorted])
+    /// `VLOOKUP(lookup_value`, `table_array`, `row_index`, [`is_sorted`])
     /// We look for `lookup_value` in the first column of table array
     /// We return the value in column `column_index` of the same row in `table_array`
     /// `is_sorted` is true by default and assumes that values in first column are ordered
@@ -485,8 +485,8 @@ impl Model {
         self.row_or_column(args, cell, false, false)
     }
 
-    /// CHOOSE(index_num, value1, [value2], ...)
-    /// Uses index_num to return a value from the list of value arguments.
+    /// `CHOOSE(index_num`, value1, [value2], ...)
+    /// Uses `index_num` to return a value from the list of value arguments.
     pub(crate) fn fn_choose(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.choose_impl(args, cell, false).into_single_area(cell)
     }

@@ -31,7 +31,7 @@ fn name_refers_to_itself(name: &str, cell: CellReferenceIndex) -> CalcResult {
 /// A parsed formula for a defined name
 #[derive(Clone)]
 pub(crate) enum ParsedDefinedName {
-    /// CellReference (`=C4`)
+    /// `CellReference` (`=C4`)
     CellReference(CellReferenceIndex),
     /// A Range (`=C4:D6`)
     RangeReference(Range),
