@@ -525,8 +525,7 @@ pub(crate) fn near_integer_count(x: f64) -> f64 {
 }
 
 #[cfg(test)]
-mod near_integer_tests {
-    #![allow(clippy::float_cmp)]
+mod tests {
     use super::near_integer_count;
 
     #[test]
