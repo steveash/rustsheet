@@ -3,7 +3,7 @@ id: T-0411
 title: "xlsx export writes DAYS, GAUSS, IMSECH, GAMMA.DIST and FORECAST.LINEAR without _xlfn."
 milestone: M11
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,10 +25,14 @@ until the exporter covers them. Other newer functions may be missing from the ex
 its list with the catalog.
 
 ## Acceptance criteria
-- [ ] `to_xlsx_string` returns the `_xlfn.` form for the five functions; a unit test covers them.
-- [ ] Remove the five names from `_BUILDER_ONLY_PREFIXES`, and check that no committed spec's built
+- [x] `to_xlsx_string` returns the `_xlfn.` form for the five functions; a unit test covers them.
+- [x] Remove the five names from `_BUILDER_ONLY_PREFIXES`, and check that no committed spec's built
   bytes change.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+`Function::to_xlsx_string` now stores DAYS, GAUSS, IMSECH, GAMMA.DIST and FORECAST.LINEAR with `_xlfn.`; unit test added; the five names left `_BUILDER_ONLY_PREFIXES` (the builder reads the engine list). Eval: no change.
+The comparison of the whole exporter list with the catalog (task Context) is filed as T-0412. Landed as a port of #330 onto `main` after T-1425 moved the list to `functions/xlsx_names.rs`.
