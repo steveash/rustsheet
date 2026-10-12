@@ -163,7 +163,10 @@ fn nested_unions_at_the_limit_parse_evaluate_and_print() {
     on_small_stack(|| {
         // T-0134: the union is one more parser and evaluator frame per level.
         let formula = nested("(", "A1", ",A1)", MAX_UNION_NESTING);
-        assert!(matches!(parse(&formula), Node::OpUnionKind { .. }));
+        assert!(matches!(
+            parse(&formula).ungrouped(),
+            Node::OpUnionKind { .. }
+        ));
         assert!(is_too_deep(&parse(&nested(
             "(",
             "A1",
@@ -171,7 +174,10 @@ fn nested_unions_at_the_limit_parse_evaluate_and_print() {
             MAX_UNION_NESTING + 1
         ))));
         let right = nested("(A1,", "A1", ")", MAX_UNION_NESTING);
-        assert!(matches!(parse(&right), Node::OpUnionKind { .. }));
+        assert!(matches!(
+            parse(&right).ungrouped(),
+            Node::OpUnionKind { .. }
+        ));
         let mut model = crate::test::util::new_empty_model();
         model._set("B1", &format!("={formula}"));
         model._set("B2", &format!("={right} A1"));

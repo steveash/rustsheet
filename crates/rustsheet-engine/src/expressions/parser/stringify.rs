@@ -624,16 +624,11 @@ fn stringify(
             let operand = |n: &Node| tight_operand(sub(n), n);
             format!("{}:{}", operand(left), operand(right))
         }
-        OpIntersectKind {
-            left,
-            right,
-            written,
-        } => {
+        OpIntersectKind { left, right } => {
             let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
-            let cut = format!("{} {}", operand(left, true), operand(right, false));
-            format!("{}{cut}{}", "(".repeat(*written), ")".repeat(*written))
+            format!("{} {}", operand(left, true), operand(right, false))
         }
-        OpUnionKind { left, right, .. } => union_text(node, &sub(left), &sub(right), locale),
+        OpUnionKind { left, right, .. } => union_text(&sub(left), &sub(right), locale),
         OpConcatenateKind { .. }
         | CompareKind { .. }
         | OpSumKind { .. }
