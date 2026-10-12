@@ -3,7 +3,7 @@ id: T-1450
 title: "Probe which unquoted letters a number format prints as literals (follow-up of T-1434)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
