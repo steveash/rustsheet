@@ -246,14 +246,23 @@ Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens lon
   - two 40-character strings plus 40 spaces fail.
 
   Any per-character cost between 1.08 and 1.8 fits. The engine uses n + ceil(n/2). Strings of 91–149 characters next to a placeholder are unprobed.
+- **Quoted text, bisected (T-1434, probes/text-format-length-limit-f, -g):** no single per-character cost fits yet.
+  - A quoted string alone works at 125 characters and fails at 126. `"d"` plus one quoted string has the same boundary (125 works, 126 fails), so the `d` seems to cost nothing here.
+  - After `d`, two adjacent quoted strings of 62 characters each work and 63 + 63 fail; the merged run stops at 125 characters in total.
+  - `"d"` plus a 50-character quoted string plus 48 spaces works; with 50 spaces it fails. That needs about 1.3 per quoted character if `d` costs 2.
+  - A quoted string of 20, 40, 60 or 80 characters padded with (166 − n)/2 spaces fails.
+  - Two conditions plus `0` plus 73 spaces fail (`"[>5][<9]0"`); one condition plus `0` plus 79 spaces works and 80 fails, so a condition costs 5 or 6 there, unlike a color.
+- **Fourth section:** a fourth section holding a number or date token is `#VALUE!` whatever the value: `TEXT(1,"0;0;0;0")`, `"0;0;0;d"`, `"d;0;0;0"`, `"0;d;0;0"`, `"0;0;d;0"`, `TEXT(-1,"d;d;d;d")`, `TEXT(0,..)`, `TEXT("x",..)`. `"d;d"` and `"d;d;d"` give "1". This explains `"d;d;d;d"`.
+- **Error precedence:** an error value wins over a too-complex code: `TEXT(NA(),REPT("dm",17))` is `#N/A`, `TEXT(1/0,"0;;;;")` `#DIV/0!`. Over an array, each element is `#VALUE!` except an error element, which keeps its error (`TEXT({1,#N/A},REPT("dm",17))` is `#VALUE!`, `#N/A`). An error inside an array of formats is that element's result (`TEXT(1,{"0",#N/A})` is "1", `#N/A`).
+- **Colon runs:** consecutive colons print as one, whatever the run's length: `TEXT(1,"d"&REPT(":",n))` is "1:" for n from 2 to 85, and `"0"&REPT(":",n)` is "1:" for n from 2 to 84. A colon run broken by anything else prints in full: `"0:a:"` gives "1:a:", `"0::a"` "1:a", `"0: :"` "1: :", `d:"":` "1::". This is a formatter rule, not a cost rule.
 
-Evidence: probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b (T-1388), text-format-length-limit-c, -d, -e (T-1393), all excel-graph.
+Evidence: probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b (T-1388), text-format-length-limit-c, -d, -e (T-1393), -f, -g (T-1434), all excel-graph.
 Not explained (known failures):
-- `TEXT(1,"d;d;d;d")` is `#VALUE!`, probably because a date token sits in the text section.
-- `TEXT(1,"d"&REPT(":",84))` is "1:": colons after a day collapse, and the cost rule does not apply.
-- `TEXT(1,"[>5]0"&REPT(" ",79))` is "1", the unmatched condition dropping the padding.
+- `TEXT(1,"d;d;d;d")` is `#VALUE!`: a number or date token in the fourth section (see "Fourth section"; not yet implemented, T-1434).
+- `TEXT(1,"d"&REPT(":",84))` is "1:": colon runs collapse (see "Colon runs"; not yet implemented, T-1434).
+- `TEXT(1,"[>5]0"&REPT(" ",79))` is "1": an unmatched single condition prints General, dropping the padding; with 80 spaces it is `#VALUE!` (a condition costs 5 or 6).
 
 Cell display with a long format could not be probed: excel-graph rejects such workbooks (createSession 501 unsupportedWorkbook).
 Ours: `formatter/complexity.rs` (`exceeds_complexity_limit`), applied by TEXT only.
 Status: VERIFIED (excel-graph, fitted model)
-Tasks: T-1388, T-1393
+Tasks: T-1388, T-1393, T-1434

@@ -30,3 +30,14 @@ docs/excel-semantics/number-formats.md "TEXT format code complexity limit"; code
 
 ## Out of scope
 -
+
+## Progress (in flight, 2026-10-12)
+- Probe rounds f and g (excel-graph sidecars committed) answer the error-precedence question and explain the three
+  cells: the fourth-section rule, colon-run collapse, and the unmatched condition printing General (a condition
+  costs 5 or 6). See docs/excel-semantics/number-formats.md "TEXT format code complexity limit".
+- The quoted-text cost is not one additive weight: `d` seems free next to quoted text (`d`+125 quoted works, like
+  quoted alone) but `d`+50 quoted+50 spaces fails. Next: probe whether a long literal run has its own limit
+  (125 quoted characters, or a byte budget where unquoted characters count double). Bisect `d`+n quoted+k spaces
+  for several n, and quoted text after `0` and after `[Red]`, before changing `complexity.rs`.
+- Not done yet: the code changes (fourth-section `#VALUE!`, colon collapse, condition cost, error precedence over
+  arrays if it differs), and `make eval-baseline` for cases f and g.
