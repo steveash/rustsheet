@@ -228,10 +228,32 @@ Status: VERIFIED
 Tasks: T-0981
 
 ## TEXT format code complexity limit
-Rule: `TEXT` is `#VALUE!` when the format code is too long in a way that is not simply its character count (VERIFIED, probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b, excel-graph, T-1388; excel-desktop unprobed). Every first-pass cell `TEXT(1,REPT("d ",n))` for the probed n = 20, 30, 50, 80, 100, 126, 127, 200 and 250, and `REPT("yyyy ",n)` / `REPT("dddd ",n)` for n >= 20, is `#VALUE!`, though for the smaller n the result is well under 255 characters (n = 20 is a 40-character result). Observed boundaries (the result has the same length as the format when it works):
-- Unquoted literal padding: `"d"&REPT(" ",k)` works up to a format of 82 characters (k=81) and is `#VALUE!` from 84 (k=83); `REPT("-",n)&"d"` and `&"0"` work at n=80 and fail at n=90.
-- Placeholder/literal pairs: `REPT("0 ",n)`, `REPT("d ",n)`, `REPT("d-",n)`, `REPT("0-",n)` and, for a text value, `REPT("@ ",n)` work to n=16 (32 characters) and fail at n=17. `REPT("0 ",17)&"d"` and a 17-pair numeric format on 1.5 fail too.
-- More than four sections: `"d"&REPT(";",n)` is `#VALUE!` for every n probed (49, 99, 199, 249, 253, 254, 255; text-date-255-char-limit A11, A13, A15, A17, A19, A21, A23), while the same code padded with spaces works at 50 characters (A10), so the cause is the section count, not the length; the smallest failing n is unprobed.
-- No limit seen for: a run of one placeholder (`REPT("0",200)` works; `REPT("d",40)` = "Sunday"), quoted literals (`REPT("""a"" ",17)` and `REPT("\a",30)` work), `REPT("0,",17)`.
-Reading: not a plain length cap. A cap on the number of parsed format elements fits roughly, but the pair limit (16 ok, 17 fail) and the padding limit (about 82 literal characters) are inconsistent with a uniform weight, so the model is unknown. Not implemented: the engine only applies a 255-character result cap. Cell display with a long date format could not be probed: excel-graph rejects workbooks whose number format code is that long (createSession 501 unsupportedWorkbook).
-Status: PARTIAL (boundaries measured, model unknown)
+Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens long before 255 characters. The model below is fitted to the probed boundaries: every cell of the five probes fits it except the three listed under "Not explained" (VERIFIED, excel-graph; excel-desktop unprobed).
+- **Sections:** more than four is `#VALUE!`, even when the fifth is empty (`"0;;;;"`, `"0;0;0;@;"`); `"0;;;"` works.
+- **Elements:** at most 32 elements per section. An element is a run of digit placeholders together with their `,` and `.` (`REPT("0.",20)` and `REPT("#,",17)` work), a run of literals (unquoted, escaped and quoted text merge into one run, so `REPT("""a"" ",17)` works), or any other token (`d`, `mm`, `dddd`, `%`, `@`, `_x`, `*x`, `[h]`, `AM/PM`, ...). `REPT("dm",16)` works (32 elements), `REPT("dm",16)&"d"` fails (33). The count restarts at each `;` (two sections of 17 elements work).
+- **Cost:** at most 166 over the whole code, counted as follows:
+  - 2 per placeholder element (`"0000000000"` costs 2);
+  - 2 per unquoted or escaped literal character; `$` costs 1;
+  - about 1.5 per quoted character;
+  - 1 per `;`;
+  - colors and conditions cost 0 (`"[Red]0"` plus 80 spaces works).
+
+  Examples: `"d"&REPT(" ",82)` (166) works and `"d"&REPT(" ",83)` (168) fails; `REPT("-",83)` works and `REPT("-",84)` fails; `"d"&REPT("\a",82)` works and `REPT("\a",83)` fails; `"d"&REPT("$",160)` works and `REPT("$",250)` fails; `"0"&REPT(" ",40)&";0"&REPT(" ",40)` works and 41/40 fails; `"0;0;0;"&REPT(" ",78)` works.
+- **Quoted text** is only bounded:
+  - `"d"&""""&REPT("a",90)&""""` works, and with 150 characters it fails;
+  - a quoted string alone fails at 158 characters;
+  - `d"a"` plus 81 spaces works, so one quoted character costs at most 2;
+  - two 40-character strings plus 40 spaces fail.
+
+  Any per-character cost between 1.08 and 1.8 fits. The engine uses n + ceil(n/2). Strings of 91–149 characters next to a placeholder are unprobed.
+
+Evidence: probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b (T-1388), text-format-length-limit-c, -d, -e (T-1393), all excel-graph.
+Not explained (known failures):
+- `TEXT(1,"d;d;d;d")` is `#VALUE!`, probably because a date token sits in the text section.
+- `TEXT(1,"d"&REPT(":",84))` is "1:": colons after a day collapse, and the cost rule does not apply.
+- `TEXT(1,"[>5]0"&REPT(" ",79))` is "1", the unmatched condition dropping the padding.
+
+Cell display with a long format could not be probed: excel-graph rejects such workbooks (createSession 501 unsupportedWorkbook).
+Ours: `formatter/complexity.rs` (`exceeds_complexity_limit`), applied by TEXT only.
+Status: VERIFIED (excel-graph, fitted model)
+Tasks: T-1388, T-1393
