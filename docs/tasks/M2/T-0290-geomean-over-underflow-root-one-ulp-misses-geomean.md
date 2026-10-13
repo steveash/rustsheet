@@ -3,7 +3,7 @@ id: T-0290
 title: "GEOMEAN over/underflow root: one-ulp misses (geomean-pow2-count L4, M1, M4 and the product-order set)"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
