@@ -227,7 +227,7 @@ settlement 2023-06-15: 365, not 366. A period ending on 28 February of a common 
 182-day period, and bases 0, 2, 3 and 4 have fixed lengths. Unprobed: a walk that lands on a 29 February itself (maturity 2028-08-31, settlement 2027-11-15; the rule predicts 184, 2027-08-29 to 2028-02-29).
 Evidence: probes/coupdays-feb-month-end (296 cells, excel-graph, 2026-10-13, T-1493) and
 probes/date-system-1900-financial-readers E15.
-Ours: `coupdays_actual` (functions/financial/financial_bonds.rs).
+Ours: `coupdays_actual` (functions/financial/financial_bonds/coupon_schedule.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1489, T-1493
 
