@@ -83,6 +83,7 @@ impl Model {
                 "decimals too large".to_string(),
             ));
         }
+        // The clamp only keeps the cast in range: every large negative gives "0" (FIXED(1,-400)).
         Ok(d.max(-1000.0) as i32)
     }
 
