@@ -21,4 +21,4 @@ probes/lambda-helper-range-slices E32 (`BYCOL(A1:B3,COUNTA)`: Excel `#VALUE!`, e
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Ranges on several sheets (3-D) and unions.
