@@ -7,7 +7,7 @@ mod general;
 pub mod lexer;
 pub mod parser;
 
-pub(crate) use complexity::exceeds_complexity_limit;
+pub(crate) use complexity::{exceeds_complexity_limit, is_unparseable};
 
 #[cfg(test)]
 mod test;

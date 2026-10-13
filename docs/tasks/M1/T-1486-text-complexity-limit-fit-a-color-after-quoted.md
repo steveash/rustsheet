@@ -34,11 +34,18 @@ three misses (`@_` + 122..126 quoted; `"0"` + n quoted + `[Red]0` for several n;
 + n quoted for several n), refit, update the semantics entry and the baseline.
 
 ## Outcome
-Three probe rounds (probes/text-format-length-limit-n, -o, -p; 107 cells, excel-graph) pinned the
-misses and refitted the model in `formatter/complexity.rs`: a section with digit placeholders pays
-3 once plus 2 per placeholder run (was 5 per run); after quoted text a token pays 4 directly and 2
-when unquoted text, a color or a condition comes between, a placeholder run pays 1, or 0 after a
-color or condition. The `@_"` cells were not a cost question: `_` takes the quote, leaving an
-unclosed one, and TEXT on text with an unparseable code is now `#VALUE!` (it returned the text).
-Eval: probes l A13:A15, A40 and m A22 fixed (5 cells); the new rounds add 7 known failures, all
-unquoted letters after `_"`/`*"` (T-1450's scope), recorded in docs/excel-semantics/number-formats.md.
+Five probe rounds (probes/text-format-length-limit-n to -r; 147 cells, excel-graph) pinned the
+misses and refitted `formatter/complexity.rs`:
+- a section with digit placeholders pays 3 once, plus 2 per placeholder run (was 5 per run);
+- a later section that holds a placeholder and quoted text pays 1 more;
+- after quoted text, a token pays 4 directly, 2 after unquoted text and 1 after a color or condition;
+- a placeholder run pays 1 after quoted text, or 0 after a color or condition;
+- the condition-with-quoted 3 only applies with a placeholder.
+
+The `@_"` cells were not a cost question: `_` takes the quote, which leaves an unclosed one. TEXT now
+rejects a code with any unparseable section, for any value (`TEXT(5,"0;""")` is `#VALUE!`).
+
+Eval: probes l A13:A15, l A40 and m A22 are fixed (5 cells). The new rounds add 10 known failures.
+Nine are unquoted letters that our lexer rejects (T-1450), which now give `#VALUE!` on text too
+(q A1, A3). One is an unmatched condition printing General (q A16, T-0936). All are recorded in
+docs/excel-semantics/number-formats.md.

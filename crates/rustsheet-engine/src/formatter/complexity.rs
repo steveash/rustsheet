@@ -15,21 +15,26 @@
 //!   placeholder run (`"0"` costs 5, `"0-0"` 10) plus 2 per `.` in it, 3 per
 //!   unquoted or escaped literal character (`$` 1; a run of colons counts once), 2 per quoted
 //!   character, 2 per other token (`AM/PM` 3), 2 per color, 7 per condition, 0 per `;`;
-//! - quoted text pays 4 more when a token follows it directly, 2 when unquoted text, a color or a
-//!   condition comes between them (`"a" @` + 120 quoted works, 121 fails), 1 when a placeholder
-//!   run follows it directly or after unquoted text and 0 after a color or condition (`"0"` + 120
-//!   quoted + `"[Red]0"` works, 121 fails), and 4 when the literal run that closes its section goes
+//! - quoted text pays 4 more when a token follows it directly, 2 when unquoted text comes between
+//!   them (`"a" @` + 120 quoted works, 121 fails) and 1 when a color or condition does; 1 when a
+//!   placeholder run follows it directly or after unquoted text and 0 after a color or condition
+//!   (`"0"` + 120 quoted + `"[Red]0"` works, 121 fails); and 4 when the literal run that closes its section goes
 //!   on with unquoted text after it (`"d"` + 120 quoted + 2 spaces works, + 3 fails; 122 quoted +
 //!   `d` works, 123 fails);
 //! - in a section whose closing literal run holds quoted text, its date, time and `@` tokens are
 //!   free (`"d"` + 125 quoted works, like 125 quoted alone; `"h:mm"` + 123 quoted works), and `@`
 //!   even takes 1 off the rest (`"@ "` + 124 quoted works, `"@  "` + 122 works and 123 fails,
 //!   `"@ - "` + 121 works and 122 fails; `"d "` + 124 quoted fails);
-//! - a section holding both a condition and quoted text pays 3 more (`"[>5]0"` + 116 quoted works,
-//!   118 fails, while `"[>5]0"` + 79 spaces works).
+//! - a section holding a condition, quoted text and a placeholder pays 3 more (`"[>5]0"` + 116
+//!   quoted works, 118 fails, while `"[>5]0"` + 79 spaces works), and a section after the first
+//!   holding quoted text and a placeholder 1 more (`"0;0"` + 120 quoted fails).
+//!
+//! A code with a section that does not parse is rejected too, whatever the value
+//! ([`is_unparseable`]).
 //!
 
 use super::lexer::{Lexer, Token};
+use super::parser::{ParsePart, Parser};
 
 const MAX_SECTIONS: usize = 4;
 const MAX_ELEMENTS: usize = 32;
@@ -52,16 +57,26 @@ const COLOR_COST: usize = 2;
 const CONDITION_COST: usize = 7;
 /// What quoted text costs on top of its characters when more of the section follows it.
 const QUOTED_SWITCH_COST: usize = 4;
-/// What a token pays instead of `QUOTED_SWITCH_COST` when unquoted text, a color or a condition
-/// comes between the quoted text and the token (`"a" @` + 120 quoted works and 121 fails,
-/// `"d"` + 121 quoted + `"[Red]d"` works and 122 fails; probes/text-format-length-limit-n, -o).
+/// What a token pays instead of `QUOTED_SWITCH_COST` when unquoted text comes between the quoted
+/// text and the token (`"a" @` + 120 quoted works and 121 fails, `"a"--d` + 120 works and 121
+/// fails; probes/text-format-length-limit-n, -o).
 const QUOTED_SWITCH_INDIRECT_COST: usize = 2;
+/// What a token pays instead when a color or condition comes between (`"d"` + 121 quoted +
+/// `"[Red]d"` works and 122 fails, + 119 quoted + `"[>5]d"` works and 120 fails;
+/// probes/text-format-length-limit-n, -o, -q).
+const QUOTED_SWITCH_BRACKET_COST: usize = 1;
 /// What a placeholder run pays after quoted text, directly or after unquoted text; nothing after a
 /// color or condition (`"a" 0` + 119 quoted works and 120 fails, `"0"` + 120 quoted + `"[Red]0"`
 /// works and 121 fails; probes/text-format-length-limit-l, -n, -o, -p).
 const QUOTED_SWITCH_PLACEHOLDER_COST: usize = 1;
-/// What a condition costs on top of `CONDITION_COST` in a section that also holds quoted text.
+/// What a condition costs on top of `CONDITION_COST` in a section that also holds quoted text and a
+/// digit placeholder (`"[>5]0"` + 116 quoted works and 118 fails; without a placeholder,
+/// `"d"` + 119 quoted + `"[>5]d"` works; probes/text-format-length-limit-q A16, T-1486).
 const CONDITION_WITH_QUOTED_COST: usize = 3;
+/// What a section after the first pays when it holds both a digit placeholder and quoted text
+/// (`"0-0;0-0"` + 114 quoted works and 115 fails, `"0;0"` + 120 fails, while `"0-0"` + 120 works
+/// and `"0-0;"` + 120 works; probes/text-format-length-limit-r, -q A14:A15, T-1486).
+const LATER_NUMBER_SECTION_WITH_QUOTED_COST: usize = 1;
 
 /// What came after the latest quoted text of a section, which sets what the next token or
 /// placeholder run pays for following it.
@@ -93,7 +108,8 @@ impl AfterQuoted {
         match (self, placeholder) {
             (AfterQuoted::None, _) | (AfterQuoted::Bracket, true) => 0,
             (AfterQuoted::Directly, false) => QUOTED_SWITCH_COST,
-            (AfterQuoted::Unquoted | AfterQuoted::Bracket, false) => QUOTED_SWITCH_INDIRECT_COST,
+            (AfterQuoted::Unquoted, false) => QUOTED_SWITCH_INDIRECT_COST,
+            (AfterQuoted::Bracket, false) => QUOTED_SWITCH_BRACKET_COST,
             (AfterQuoted::Directly | AfterQuoted::Unquoted, true) => QUOTED_SWITCH_PLACEHOLDER_COST,
         }
     }
@@ -163,6 +179,8 @@ fn is_free_before_closing_quoted(token: &Token) -> bool {
 /// The context-dependent costs of one section, settled when the section ends.
 #[derive(Default)]
 struct Section {
+    /// Whether a section comes before this one.
+    later: bool,
     elements: usize,
     conditions: usize,
     has_quoted: bool,
@@ -193,11 +211,23 @@ impl Section {
             refund +=
                 TOKEN_COST * self.free_tokens + TEXT_TOKEN_EXTRA_REFUND * self.free_text_tokens;
         }
-        if self.conditions > 0 && self.has_quoted {
+        if self.conditions > 0 && self.has_quoted && self.has_placeholder {
             extra += CONDITION_WITH_QUOTED_COST;
+        }
+        if self.later && self.has_quoted && self.has_placeholder {
+            extra += LATER_NUMBER_SECTION_WITH_QUOTED_COST;
         }
         (extra, refund)
     }
+}
+
+/// Whether any section of `format` fails to parse. TEXT is then `#VALUE!` whatever the value,
+/// even when another section would format it: `TEXT(5,"0;""")` and `TEXT("x","0;0;0;""")` are
+/// `#VALUE!` (probes/text-format-length-limit-q; docs/excel-semantics/number-formats.md).
+pub(crate) fn is_unparseable(format: &str) -> bool {
+    let mut parser = Parser::new(format);
+    parser.parse();
+    parser.parts.iter().any(ParsePart::is_error)
 }
 
 /// Whether Excel's TEXT rejects `format` as too complex (see the module docs).
@@ -223,7 +253,10 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
                     return true;
                 }
                 sections += 1;
-                section = Section::default();
+                section = Section {
+                    later: true,
+                    ..Section::default()
+                };
                 run = Run::None;
                 if sections > MAX_SECTIONS {
                     return true;
@@ -441,51 +474,59 @@ mod tests {
         }
     }
 
-    /// What follows quoted text, and placeholder runs after the first (probes/text-format-length-
-    /// limit-l to -p, T-1486).
+    /// What follows quoted text, and placeholder runs after the first: each code works with `n`
+    /// quoted characters between its prefix and suffix and fails with `n + 1`, or only works where
+    /// one side was probed (probes/text-format-length-limit-l to -q, T-1486).
     #[test]
     fn after_quoted_text_and_placeholder_runs() {
-        let ok = [
-            format!("0{}[Red]0", quoted(120)),
-            format!("{}[Red]0", quoted(121)),
-            format!(" {}[Red]0", quoted(120)),
-            format!("0{}[>5]0", quoted(116)),
-            format!(" {}[>5]0", quoted(116)),
-            format!("d{}[Red]d", quoted(121)),
-            format!("\"a\" @ {}", quoted(120)),
-            format!("\"a\"@{}", quoted(122)),
-            format!("\"a\"-@{}", quoted(122)),
-            format!("\"a\" d{}", quoted(121)),
-            format!("d\"a\"d{}", quoted(122)),
-            format!("\"a\"--d{}", quoted(120)),
-            format!("\"a\" 0{}", quoted(119)),
-            format!(" {}d", quoted(120)),
-            format!("{}0", quoted(121)),
-            format!("0{}0", quoted(121)),
-            format!("0-0{}", quoted(120)),
-            format!("0-0-0{}", quoted(117)),
-            format!("0[Red]0{}", quoted(121)),
+        let code = |prefix: &str, n: usize, suffix: &str| format!("{prefix}{}{suffix}", quoted(n));
+        let boundaries = [
+            ("0", 120, "[Red]0"),
+            ("", 121, "[Red]0"),
+            ("0", 116, "[>5]0"),
+            ("d", 121, "[Red]d"),
+            ("d", 119, "[>5]d"),
+            ("\"a\" @ ", 120, ""),
+            ("\"a\"-@", 122, ""),
+            ("\"a\" d", 121, ""),
+            ("d\"a\" d", 121, ""),
+            ("\"a\"\\-d", 121, ""),
+            ("\"a\"--d", 120, ""),
+            ("\"a\" 0", 119, ""),
+            (" ", 120, "d"),
+            ("0-0", 120, ""),
+            ("0-0-0", 117, ""),
+            ("0-0;0-0", 114, ""),
+            ("0-0;0", 117, ""),
+            ("0;0-0", 117, ""),
+            ("0-0;", 120, ""),
+            ("0-0;-", 118, ""),
+            ("0;", 122, ""),
         ];
-        for code in ok {
-            assert!(!exceeds_complexity_limit(&code), "{code}");
+        for (prefix, n, suffix) in boundaries {
+            assert!(
+                !exceeds_complexity_limit(&code(prefix, n, suffix)),
+                "{prefix} {n} {suffix}"
+            );
+            assert!(
+                exceeds_complexity_limit(&code(prefix, n + 1, suffix)),
+                "{prefix} {n} {suffix}"
+            );
         }
-        let too_complex = [
-            format!("0{}[Red]0", quoted(121)),
-            format!("{}[Red]0", quoted(122)),
-            format!("0{}[>5]0", quoted(117)),
-            format!("d{}[Red]d", quoted(122)),
-            format!("\"a\" @ {}", quoted(121)),
-            format!("\"a\"-@{}", quoted(123)),
-            format!("\"a\" d{}", quoted(122)),
-            format!("\"a\"--d{}", quoted(121)),
-            format!("\"a\" 0{}", quoted(120)),
-            format!(" {}d", quoted(121)),
-            format!("0-0{}", quoted(121)),
-            format!("0-0-0{}", quoted(118)),
-            format!("0-0;0-0{}", quoted(116)),
+        let works = [
+            (" ", 120, "[Red]0"),
+            (" ", 116, "[>5]0"),
+            ("\"a\"@", 122, ""),
+            ("d\"a\"d", 122, ""),
+            ("", 121, "0"),
+            ("0", 121, "0"),
+            ("0[Red]0", 121, ""),
         ];
-        for code in too_complex {
-            assert!(exceeds_complexity_limit(&code), "{code}");
+        for (prefix, n, suffix) in works {
+            assert!(
+                !exceeds_complexity_limit(&code(prefix, n, suffix)),
+                "{prefix} {n} {suffix}"
+            );
         }
     }
 }

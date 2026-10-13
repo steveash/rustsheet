@@ -476,6 +476,8 @@ C	probes/text-format-length-limit-m.case.json	24
 C	probes/text-format-length-limit-n.case.json	51
 C	probes/text-format-length-limit-o.case.json	41
 C	probes/text-format-length-limit-p.case.json	15
+C	probes/text-format-length-limit-q.case.json	19
+C	probes/text-format-length-limit-r.case.json	21
 C	probes/text-format-length-limit.case.json	39
 C	probes/text-format-text-limit.case.json	25
 C	probes/text-general-exponent-boundary.case.json	10
@@ -3474,6 +3476,9 @@ F	probes/text-format-length-limit-o.case.json	Sheet1!A37
 F	probes/text-format-length-limit-o.case.json	Sheet1!A38
 F	probes/text-format-length-limit-o.case.json	Sheet1!A39
 F	probes/text-format-length-limit-o.case.json	Sheet1!A40
+F	probes/text-format-length-limit-q.case.json	Sheet1!A1
+F	probes/text-format-length-limit-q.case.json	Sheet1!A16
+F	probes/text-format-length-limit-q.case.json	Sheet1!A3
 F	probes/text-modes-dbcs-lift.case.json	Sheet1!G2
 F	probes/text-modes-dbcs-lift.case.json	Sheet1!I1
 F	probes/text-modes-dbcs-lift.case.json	Sheet1!I2

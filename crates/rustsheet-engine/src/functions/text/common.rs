@@ -13,6 +13,7 @@ use crate::{
     formatter::{
         exceeds_complexity_limit,
         format::{format_text, format_text_value, FormatContext, Formatted},
+        is_unparseable,
     },
     functions::{
         text::{
@@ -192,9 +193,20 @@ fn text_value_result(value: &ArrayNode, format: &str, cell: CellReferenceIndex) 
     }
 }
 
-/// TEXT's `#VALUE!` for a format code over Excel's complexity limit (T-1393).
-fn too_complex(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::VALUE, cell, "Format code too complex".to_string())
+/// Whether TEXT is `#VALUE!` for `format_code` whatever the value: the code is over Excel's
+/// complexity limit (T-1393), or one of its sections does not parse, even a section the value
+/// does not use (probes/text-format-length-limit-q, T-1486).
+fn rejects_format_code(format_code: &str) -> bool {
+    exceeds_complexity_limit(format_code) || is_unparseable(format_code)
+}
+
+/// TEXT's `#VALUE!` for a format code it rejects (see [`rejects_format_code`]).
+fn rejected_format(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::VALUE,
+        cell,
+        "Format code too complex or invalid".to_string(),
+    )
 }
 
 impl Model {
@@ -240,7 +252,7 @@ impl Model {
                     return Ok(e.clone());
                 }
                 let format_code = array_node_to_string(formats.elem(i, j))?;
-                if exceeds_complexity_limit(&format_code) {
+                if rejects_format_code(&format_code) {
                     return Err(Error::VALUE);
                 }
                 Ok(text_element(value.elem(i, j), &format_code, &ctx))
@@ -254,8 +266,8 @@ impl Model {
                     // An error in every element; error elements keep theirs.
                     Err(e) => return array_of_errors(&arr, e, own_error),
                 };
-                if exceeds_complexity_limit(&format_code) {
-                    return array_of_errors(&arr, too_complex(cell), own_error);
+                if rejects_format_code(&format_code) {
+                    return array_of_errors(&arr, rejected_format(cell), own_error);
                 }
                 let ctx = self.format_context();
                 CalcResult::Array(
@@ -275,8 +287,8 @@ impl Model {
                     Ok(s) => s,
                     Err(s) => return s,
                 };
-                if exceeds_complexity_limit(&format_code) {
-                    return too_complex(cell);
+                if rejects_format_code(&format_code) {
+                    return rejected_format(cell);
                 }
                 let is_blank = matches!(other, CalcResult::EmptyCell);
                 let value = match other {
