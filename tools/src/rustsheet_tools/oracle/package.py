@@ -31,7 +31,11 @@ class PackageError(ValueError):
 
 
 def _check_size(infos: list[zipfile.ZipInfo]) -> None:
-    """Refuses too many entries or too many uncompressed bytes, from the directory, before any read."""
+    """Refuses too many entries or too many uncompressed bytes, from the directory, before any read.
+
+    The sizes are the directory's own claim; zipfile raises `BadZipFile` if a part holds more than it
+    declares, so a forged directory cannot get past the cap by understating.
+    """
     if len(infos) > MAX_PARTS:
         raise PackageError(f"xlsx has too many parts ({len(infos)} > {MAX_PARTS})")
     if sum(i.file_size for i in infos) > MAX_UNCOMPRESSED_BYTES:
@@ -75,8 +79,9 @@ def patch_parts(xlsx: bytes, patches: list[tuple[str, Callable[[str], str]]]) ->
     out = io.BytesIO()
     try:
         with zipfile.ZipFile(io.BytesIO(xlsx)) as src, zipfile.ZipFile(out, "w") as dst:
-            _check_size(src.infolist())
-            for info in src.infolist():
+            infos = src.infolist()
+            _check_size(infos)
+            for info in infos:
                 data = src.read(info.filename)
                 if info.filename in by_part:
                     text = data.decode()
