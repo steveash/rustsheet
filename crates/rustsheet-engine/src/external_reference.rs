@@ -13,7 +13,9 @@ use crate::{
     },
     functions::{math_and_trigonometry::array_size::check_array_size, Function},
     model::Model,
-    reference_operators::{empty_intersection, names_other_workbook, too_many_areas, MAX_AREAS},
+    reference_operators::{
+        empty_intersection, names_other_workbook, several_areas_ref, too_many_areas, MAX_AREAS,
+    },
 };
 
 /// The rows and columns a reference into another workbook covers, absolute and in order.
@@ -241,11 +243,7 @@ impl Model {
             self.external_reference(node, cell)?
                 .and_then(|areas| match areas[..] {
                     [area] => Ok(area),
-                    _ => Err(CalcResult::new_error(
-                        Error::REF,
-                        cell,
-                        "Reference of several areas".to_string(),
-                    )),
+                    _ => Err(several_areas_ref(cell)),
                 }),
         )
     }

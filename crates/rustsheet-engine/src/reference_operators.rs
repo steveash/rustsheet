@@ -238,6 +238,12 @@ pub(crate) fn several_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, "Reference of several areas".to_string())
 }
 
+/// `#REF!` for a reference of several areas in the contexts where Excel gives `#REF!` rather than
+/// the `#VALUE!` of [`several_areas`] (ROW/COLUMN/ROWS/COLUMNS, a VLOOKUP/HLOOKUP index).
+pub(crate) fn several_areas_ref(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::REF, cell, "Reference of several areas".to_string())
+}
+
 pub(crate) fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREAS.to_string())
 }

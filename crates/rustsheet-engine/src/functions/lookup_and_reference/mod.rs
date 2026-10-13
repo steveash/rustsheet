@@ -4,7 +4,7 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
-use crate::reference_operators::{Ranges, RefArg};
+use crate::reference_operators::{several_areas_ref, Ranges, RefArg};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
@@ -406,13 +406,7 @@ impl Model {
             match self.reference_ranges(&args[0], cell) {
                 // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
                 // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
-                Ok(Ranges::Areas(_)) => {
-                    return CalcResult::new_error(
-                        Error::REF,
-                        cell,
-                        "Reference of several areas".to_string(),
-                    )
-                }
+                Ok(Ranges::Areas(_)) => return several_areas_ref(cell),
                 Ok(Ranges::One(range)) => {
                     let (a, b) = if by_row {
                         (range.left.row, range.right.row)
