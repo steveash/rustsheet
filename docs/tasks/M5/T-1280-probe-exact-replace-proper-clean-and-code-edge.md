@@ -3,7 +3,7 @@ id: T-1280
 title: "Probe EXACT, REPLACE, PROPER, CLEAN and CODE edge cases (evidence gap: 4-24 Excel cells each)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
