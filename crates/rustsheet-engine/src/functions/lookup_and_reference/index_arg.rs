@@ -167,8 +167,8 @@ impl Model {
             LookupIndexArg::Reference(range) => self
                 .cast_to_number(range, cell)
                 .map_err(|_| invalid_reference())?,
-            // Callers narrow an array or range with `first_element`; one that does not gets `#REF!`.
             LookupIndexArg::Failed(error) => return Err(error),
+            // Callers narrow an array or range with `first_element`; one that does not gets `#REF!`.
             LookupIndexArg::Array(_) | LookupIndexArg::Range { .. } => {
                 return Err(invalid_reference())
             }
