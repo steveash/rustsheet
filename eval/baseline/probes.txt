@@ -475,6 +475,8 @@ C	probes/text-general-ties-below-one.case.json	19
 C	probes/text-general-ties-wide-fixed.case.json	24
 C	probes/text-modes-bahttext.case.json	2
 C	probes/text-modes-bytes.case.json	8
+C	probes/text-modes-dbcs-lift.case.json	10
+C	probes/text-modes-dbcs-phonetic-b.case.json	30
 C	probes/text-modes-dbcs.case.json	3
 C	probes/text-modes-phonetic-number.case.json	1
 C	probes/text-modes-phonetic-range.case.json	1
@@ -3478,6 +3480,13 @@ F	probes/text-format-length-limit-l.case.json	Sheet1!A14
 F	probes/text-format-length-limit-l.case.json	Sheet1!A15
 F	probes/text-format-length-limit-l.case.json	Sheet1!A40
 F	probes/text-format-length-limit-m.case.json	Sheet1!A22
+F	probes/text-modes-dbcs-lift.case.json	Sheet1!G2
+F	probes/text-modes-dbcs-lift.case.json	Sheet1!I1
+F	probes/text-modes-dbcs-lift.case.json	Sheet1!I2
+F	probes/text-modes-dbcs-lift.case.json	Sheet1!I3
+F	probes/text-modes-dbcs-lift.case.json	Sheet1!M2
+F	probes/text-modes-dbcs-lift.case.json	Sheet1!O2
+F	probes/text-modes-dbcs-phonetic-b.case.json	Sheet1!C8
 F	probes/text-order-nbsp-space.case.json	Calc!D17
 F	probes/text-surrogate-positions.case.json	Sheet1!A11
 F	probes/text-surrogate-positions.case.json	Sheet1!A12
