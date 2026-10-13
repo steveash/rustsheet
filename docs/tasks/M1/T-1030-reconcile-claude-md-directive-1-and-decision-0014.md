@@ -3,7 +3,7 @@ id: T-1030
 title: "Reconcile CLAUDE.md directive 1 and decision 0014 with non-directive-5 deviation records"
 milestone: M1
 lane: quality
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
