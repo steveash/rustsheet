@@ -3,7 +3,7 @@ id: T-1162
 title: "One pair and cell budget per formula evaluation for multi-area references"
 milestone: M1
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
