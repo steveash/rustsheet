@@ -3,7 +3,7 @@ id: T-1496
 title: "Probe whether *, function-internal divisions and other ops round twice like /"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
