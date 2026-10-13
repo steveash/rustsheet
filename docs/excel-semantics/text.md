@@ -266,7 +266,7 @@ Tasks: T-1296
 ## TEXT over an array of format codes
 Rule: TEXT lifts over its format argument like over its value: a range or array of formats gives one result per format (value and formats broadcast together). Each format gets its own complexity check (a too-complex format is `#VALUE!` in its element only) and an error element of the format array stays that error.
 `TEXT(1,{"0",#N/A})` is `{"1",#N/A}`.
-Evidence: probes/text-format-length-limit-f A54:B54 (T-1434).
-Status: VERIFIED (probes) for the per-format result and `#N/A` element; INFERRED, not probed: an error value wins over a bad or too complex format, and a scalar error lifts to the formats' shape (number-formats.md)
+Evidence: probes/text-format-length-limit-f A54:B54 (T-1434); probes/text-format-array: `TEXT(NA(),{"0","0"})` is `{#N/A,#N/A}`; `TEXT({1,#N/A},{"0",#DIV/0!})` is `{"1",#N/A}` (an error value wins over an error format element); a too-complex format (`REPT("dm",17)`) in a range of formats is `#VALUE!` in its own element (`{"1",#VALUE!}`), but `#N/A` where the value is an error; value column against format row, `{1,2,3}` against `{"0.0","00"}` and `{1;2;3}` against a 2x2 give the max shape with `#N/A` padding; text and TRUE pass through `@` and `0` formats unchanged.
+Status: VERIFIED (excel-graph, probes/text-format-array, T-1458)
 Implemented in: `fn_text` (functions/text/common.rs); the format argument is evaluated once (TEXT nested in a format must not be exponential).
 Tasks: T-1451

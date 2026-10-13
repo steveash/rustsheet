@@ -448,6 +448,7 @@ C	probes/text-bahttext-wide2.case.json	33
 C	probes/text-count-argument-bounds.case.json	623
 C	probes/text-date-255-char-limit.case.json	43
 C	probes/text-ddd-negative-fraction.case.json	9
+C	probes/text-format-array.case.json	37
 C	probes/text-format-length-limit-b.case.json	27
 C	probes/text-format-length-limit-c.case.json	82
 C	probes/text-format-length-limit-d.case.json	73
