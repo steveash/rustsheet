@@ -1137,3 +1137,7 @@ the workbook (`FileCorruptTryRepair`) for the written `IF(TRUE,D1)#`, `@IF(TRUE,
 the engine gives the written `(range)#` form the same `#REF!` by inference (both are one `SpillRangeOperator`).
 Evidence strength: excel-graph oracle, 21 cells. Status: VERIFIED (web).
 Tasks: T-1369
+
+### LET / LAMBDA binding of `@INDEX(..)` (T-1503)
+
+`@INDEX(B1:B3,2)` bound by LET or passed to a LAMBDA keeps the reference, like the unprefixed INDEX: ISREF TRUE, ROW 2, value 20, `COUNT(x)` 1, and calling the name is `#REF!` (probes/let-bind-implicit-index H1:H10, excel-graph 2026-10-13).

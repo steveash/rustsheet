@@ -1,0 +1,44 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "What a LET value or LAMBDA argument written as @INDEX(...) binds: ISREF, ROW, value and a call through the variable, against the unprefixed INDEX (T-1503). Sheet1 A1:B3 = 1,2,3 / 10,20,30.",
+  "tags": [
+    "M1",
+    "references",
+    "let",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "H1": "=LET(x,@INDEX(B1:B3,2),ISREF(x))",
+        "H2": "=LET(x,@INDEX(B1:B3,2),ROW(x))",
+        "H3": "=LET(x,@INDEX(B1:B3,2),x)",
+        "H4": "=LAMBDA(x,ISREF(x))(@INDEX(B1:B3,2))",
+        "H5": "=LAMBDA(x,ROW(x))(@INDEX(B1:B3,2))",
+        "H6": "=LAMBDA(x,x)(@INDEX(B1:B3,2))",
+        "H7": "=LET(x,INDEX(B1:B3,2),ISREF(x))",
+        "H8": "=LET(x,@INDEX(B1:B3,2),x(2))",
+        "H9": "=LET(x,@INDEX(B1:B3,2),COUNT(x))"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!H4",
+    "Sheet1!H5",
+    "Sheet1!H6",
+    "Sheet1!H7",
+    "Sheet1!H8",
+    "Sheet1!H9"
+  ]
+}

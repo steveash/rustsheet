@@ -3,7 +3,7 @@ id: T-1503
 title: "Probe LET binding of @INDEX(...): does ISREF see a reference?"
 milestone: M1
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1223 made `bind_argument` (functions/logical/let.rs) use `Model::eval_ref_or_i
 
 ## Out of scope
 - Changing any other LET binding form.
+
+## Outcome
+Probe probes/let-bind-implicit-index (excel-graph): Excel keeps the reference for a LET/LAMBDA binding of `@INDEX(..)`. `bind_argument` no longer excludes it; finding recorded in references.md.

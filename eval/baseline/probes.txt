@@ -263,6 +263,7 @@ C	probes/lambda-param-call.case.json	6
 C	probes/large-small-k.case.json	35
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
+C	probes/let-bind-implicit-index.case.json	9
 C	probes/let-bind-reference-forms.case.json	11
 C	probes/let-lambda-name-case.case.json	14
 C	probes/let-name-call-arrays.case.json	4
