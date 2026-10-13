@@ -3,7 +3,7 @@ id: T-1485
 title: "HLOOKUP/VLOOKUP lift a multi-cell index and report #REF! for an IF union index (follow-up of T-1426)"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
