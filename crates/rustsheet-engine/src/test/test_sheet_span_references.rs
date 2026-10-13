@@ -161,6 +161,49 @@ fn unknown_sheet_prefix_errors() {
     );
 }
 
+// A reference into another workbook with no cached data is still a reference of the written
+// shape: ISREF and the shape functions read it, its cells are #BLOCKED!, and the unquoted
+// `[book]Sheet!` prefix parses (probes/external-ref-no-link A4, A7, A10; external-ref-no-link-
+// shapes; T-1381).
+#[test]
+fn external_reference_keeps_its_shape() {
+    let mut model = sample();
+    assert_eq!(eval(&mut model, "=ISREF('[other.xlsx]Sheet1'!A1)"), "TRUE");
+    assert_eq!(
+        eval(&mut model, "=ISREF('[other.xlsx]Sheet1'!A1:B3)"),
+        "TRUE"
+    );
+    assert_eq!(eval(&mut model, "=ROWS('[other.xlsx]Sheet1'!A1:B3)"), "3");
+    assert_eq!(
+        eval(&mut model, "=COLUMNS('[other.xlsx]Sheet1'!A1:C2)"),
+        "3"
+    );
+    assert_eq!(
+        eval(&mut model, "=ROWS('[other.xlsx]Sheet1'!A:A)"),
+        "1048576"
+    );
+    assert_eq!(eval(&mut model, "=AREAS('[other.xlsx]Sheet1'!A1:C2)"), "1");
+    assert_eq!(eval(&mut model, "=ROW('[other.xlsx]Sheet1'!B5)"), "5");
+    assert_eq!(eval(&mut model, "=COLUMN('[other.xlsx]Sheet1'!B5)"), "2");
+    assert_eq!(eval(&mut model, "=COUNT('[other.xlsx]Sheet1'!A1:B1)"), "0");
+    // The unquoted prefix.
+    assert_eq!(
+        eval(&mut model, "=SUM([other.xlsx]Sheet1!A1:B1)"),
+        "#BLOCKED!"
+    );
+    assert_eq!(eval(&mut model, "=ROWS([other.xlsx]Sheet1!A1:B3)"), "3");
+    assert_eq!(eval(&mut model, "=ISREF([other.xlsx]Sheet1!A1)"), "TRUE");
+    // A 3-D prefix naming another workbook is not a reference.
+    assert_eq!(
+        eval(&mut model, "=SUM('[other.xlsx]S1:S2'!A1)"),
+        "#BLOCKED!"
+    );
+    assert_eq!(eval(&mut model, "=ISREF('[other.xlsx]S1:S2'!A1)"), "FALSE");
+    // A missing sheet of this workbook stays #REF!, not a reference.
+    assert_eq!(eval(&mut model, "=ISREF(Nope!A1)"), "FALSE");
+    assert_eq!(eval(&mut model, "=ROWS(Nope!A1:B3)"), "#REF!");
+}
+
 // Span edge forms (T-1170; probes/3d-ref-span-edges A1, A2, B1-B3, C4, C5).
 #[test]
 fn span_edge_forms_match_excel() {
