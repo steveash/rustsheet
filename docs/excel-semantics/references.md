@@ -602,7 +602,16 @@ multi-area argument (SUM, SUBTOTAL, AGGREGATE's reference form, ...) takes its c
 budget, so `LET(x,(A:A,A:A),SUM(x,x,...))` is `#VALUE!` at the argument that passes it, and so is a
 formula that walks a union again and again (`MAP` over a `SUM` of one). A single range argument is
 not counted, as before.
-Excel's limit, if any, is not known.
+Excel computes formulas past this budget (probes/union-walk-repeated-in-lambda, excel-graph,
+2026-10-13, T-1462), so it is a DEVIATION (decision 0014) on realistic formulas, not only
+adversarial ones. On a sheet with 10,000 used rows, `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
+is 8000 in Excel (2*10^7 cells walked) and `#VALUE!` in the engine; so are the MAP, COUNTA and
+SUBTOTAL(9,..) forms, `MAP(A1:A10000,...)` (2*10^8 cells, 80000), and the bounded union
+`(B1:B10000,C1:C10000)`. With data in row 1,048,576 even `=SUM((B:B,C:C),...)` with nine union
+arguments (9*2^21 cells) is 27 in Excel and `#VALUE!` here. The single-range forms (`SUM(B:C)`)
+agree. MAP over a union (`=SUM(MAP((B1:B3,C1:C3),LAMBDA(x,x)))`, `ROWS(...)`) is `#VALUE!` in both.
+The oracle gives no timings. T-1497 is to bound the walks by the data they visit instead.
+Excel's actual limit, if any, is not known; the probe only shows it is above 2*10^8 walked cells.
 The LET variables and LAMBDA parameters in scope may hold at most 262,144 areas together (`MAX_HELD_AREAS`,
 four `MAX_AREAS`): each binding may hold a fresh union (`LET(x_1,(A1,A1),x_2,(x_1,x_1),...)`), so memory would
 otherwise grow with formula length. A binding that would pass the total is `#VALUE!`.
@@ -686,8 +695,9 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   (`ISREF((Data!A1,Data!B2))`). An error cell inside an area is the aggregate's error as in a plain range, the
   first in formula order winning (`SUM((A1,E1))` = `#DIV/0!` with E1 = 1/0, `SUM((E2,E1))` = `#N/A` with E2 = NA()),
   COUNT skips it (1) and COUNTA counts it (2). SUMSQ, AVERAGEA, MAXA, GEOMEAN, VAR.S and DEVSQ take a union too
-  (`(A1,B2)`: 26, 3, 5, 2.2360679775, 8, 8). PERCENTOF is `#NAME?` in Excel for the web, so it is not probed
-  (probes/multiarea-more, oracle: excel-graph, 2026-10-08, T-1062).
+  (`(A1,B2)`: 26, 3, 5, 2.2360679775, 8, 8) (probes/multiarea-more, oracle: excel-graph, 2026-10-08, T-1062).
+  PERCENTOF takes a union in either argument (`PERCENTOF((A1,B2),(A1,B2))` = 1,
+  `PERCENTOF(A1,(A1:A3,B2))` = 0.025; probes/percentof-snap-overflow-union, excel-graph, 2026-10-13, T-0416).
 - The remaining `for_each_value` aggregates over `(A1,B2,C3,D4)` = 1, 5, 7, 9 (probes/multiarea-foreach, excel-graph,
   2026-10-08, T-1150): HARMEAN 2.7510917031, AVEDEV 2.5, SKEW -0.7528371991, SKEW.P -0.4346507596, KURT
   0.3428571429, MINA 1, STDEV.P, STDEVP and STDEVPA 2.9580398915, STDEV and STDEVA 3.4156502553, VAR.P, VARP and
@@ -708,7 +718,7 @@ UNVERIFIED (no probe): an IF or CHOOSE over an array condition keeps its value f
 SPEC-0004 and T-1065, T-1069 to T-1073 implement the rest;
 until then CONCAT and TEXTJOIN read a union as `#VALUE!` (`RefArg::into_single_area`).
 PERCENTOF takes a union
-too but is unprobed (`#NAME?` in Excel for the web).
+too (T-0416, probes/percentof-snap-overflow-union D8, D9, D13).
 COUNTBLANK (`#VALUE!`) and ROWS/COLUMNS (`#REF!`) of a union: `Model::rows_columns_extent` (cast.rs) and `fn_countblank`
 (statistical/count.rs), T-1069. UNVERIFIED engine behavior: a cross-sheet union in ROWS/COLUMNS stays `#VALUE!`, and
 a union holding an error in COUNTBLANK counts nothing (no probes).

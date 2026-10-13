@@ -389,6 +389,7 @@ C	probes/paren-negative-variants.case.json	32
 C	probes/paren-number-text-currency-variants.case.json	4
 C	probes/paren-number-text-euro-suffix.case.json	7
 C	probes/paren-number-text-forms.case.json	14
+C	probes/percentof-snap-overflow-union.case.json	15
 C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-elements.case.json	9
@@ -528,6 +529,7 @@ C	probes/union-operand-neg-cut-group.case.json	2
 C	probes/union-operand-nested-parens.case.json	6
 C	probes/union-operand-quad-minus.case.json	2
 C	probes/union-operand-triple-minus.case.json	2
+C	probes/union-walk-repeated-in-lambda.case.json	15
 C	probes/value-clock-text.case.json	135
 C	probes/valuetotext-format.case.json	37
 C	probes/variance-digits.case.json	234
@@ -5666,6 +5668,15 @@ F	probes/text-surrogate-positions.case.json	Sheet1!A29
 F	probes/text-surrogate-positions.case.json	Sheet1!A38
 F	probes/text-surrogate-positions.case.json	Sheet1!A6
 F	probes/text-surrogate-positions.case.json	Sheet1!B10
+F	probes/union-walk-repeated-in-lambda.case.json	Big!E1
+F	probes/union-walk-repeated-in-lambda.case.json	Big!E2
+F	probes/union-walk-repeated-in-lambda.case.json	Big!E4
+F	probes/union-walk-repeated-in-lambda.case.json	Calc!E1
+F	probes/union-walk-repeated-in-lambda.case.json	Calc!E11
+F	probes/union-walk-repeated-in-lambda.case.json	Calc!E2
+F	probes/union-walk-repeated-in-lambda.case.json	Calc!E6
+F	probes/union-walk-repeated-in-lambda.case.json	Calc!E7
+F	probes/union-walk-repeated-in-lambda.case.json	Calc!E8
 F	probes/volatile-invariant.case.json	Calc!A12
 F	probes/volatile-invariant.case.json	Calc!A13
 F	probes/volatile-invariant.case.json	Calc!A2

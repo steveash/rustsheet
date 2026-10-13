@@ -16,7 +16,7 @@
    },
    "A12": {
     "t": "e",
-    "v": "#NAME?"
+    "v": "#N/A"
    },
    "A13": {
     "t": "n",
@@ -167,9 +167,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "93425d9fd25e4a0adb2eac8b314818da80c2b49efdc15d40085d76b9225a8233",
+  "input_sha256": "6e3a0ae2b0633a1c4dcb7a81be017456c5fa3540c95cbb94fe996b473f33cf2e",
   "kind": "excel-graph",
-  "produced_at": "2026-10-09T12:19:44+00:00",
+  "produced_at": "2026-10-13T16:20:12+00:00",
   "version": null
  }
 }

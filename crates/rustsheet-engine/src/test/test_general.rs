@@ -478,6 +478,7 @@ fn newer_functions_export_with_xlfn_prefix() {
         (Function::Imsech, "_xlfn.IMSECH"),
         (Function::GammaDist, "_xlfn.GAMMA.DIST"),
         (Function::ForecastLinear, "_xlfn.FORECAST.LINEAR"),
+        (Function::Percentof, "_xlfn.PERCENTOF"),
     ] {
         assert_eq!(function.to_xlsx_string(), stored);
     }
