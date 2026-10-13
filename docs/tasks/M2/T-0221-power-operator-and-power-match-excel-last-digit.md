@@ -3,7 +3,7 @@ id: T-0221
 title: "Power operator and POWER: match Excel last-digit results (15 gen-m2 known failures)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
