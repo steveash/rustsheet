@@ -3,7 +3,7 @@ id: T-1489
 title: "Probe whether the other 1904 financial readers use serial + 2*1462 near non-leap century years"
 milestone: M1
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,7 @@ settlement 2096-03-01 or 2100-02-15 and maturity 2100-06-30 or 2104-02-27, and t
 
 ## Out of scope
 - The odd-period functions (done in T-1457).
+
+## Outcome
+Probed 165 cells in a 1904 workbook and its 1900 twin (date-system-{1904,1900}-financial-readers, excel-graph). All financial readers read s + 2*1462, not s + 1463 (dates.md). The switch is not a one-line change (date outputs convert back, bounds), so it is filed as T-1492. The new 1904 case is a recorded known failure (new-coverage failures in eval/baseline/probes.txt) until then.
+The 1900 twin also records known failures that are 1900-calendar gaps, not the 1904 reading: COUPDAYS basis 1 across 2100-02-28 and YIELD last digits (T-1493).
