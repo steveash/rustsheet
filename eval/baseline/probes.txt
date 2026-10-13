@@ -496,6 +496,7 @@ C	probes/trunc-decimal-stages.case.json	56
 C	probes/typed-currency-percent-input.case.json	66
 C	probes/typed-number-tiny.case.json	24
 C	probes/typed-paren-number-input.case.json	24
+C	probes/unichar-arg-shapes.case.json	13
 C	probes/union-accepted.case.json	9
 C	probes/union-cut-precedence.case.json	15
 C	probes/union-defined-name-uses.case.json	22
