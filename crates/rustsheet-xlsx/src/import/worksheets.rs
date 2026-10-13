@@ -19,6 +19,7 @@ use rustsheet_engine::{
         ArrayKind, Cell, Col, Color, Comment, DefinedName, Dxf, FormulaValue, Link, MergedCell,
         SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
     },
+    COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH,
 };
 use thiserror::Error;
 
@@ -141,6 +142,14 @@ fn load_columns(ws: &XmlNode) -> Result<Vec<Col>, XlsxError> {
     //     <col min="8" max="8" width="4" customWidth="1"/>
     // </cols>
     let mut cols = Vec::new();
+    // A column without a width takes the sheet default: `<sheetFormatPr defaultColWidth>` when
+    // present, else the engine's default column width (in Excel character units).
+    let default_width = ws
+        .children()
+        .find(|n| n.has_tag_name("sheetFormatPr"))
+        .and_then(|n| n.attribute("defaultColWidth"))
+        .and_then(|w| w.parse::<f64>().ok())
+        .unwrap_or(DEFAULT_COLUMN_WIDTH / COLUMN_WIDTH_FACTOR);
     let columns = ws
         .children()
         .filter(|n| n.has_tag_name("cols"))
@@ -151,8 +160,12 @@ fn load_columns(ws: &XmlNode) -> Result<Vec<Col>, XlsxError> {
             let min = min.parse::<i32>()?;
             let max = get_attribute(col, "max")?;
             let max = max.parse::<i32>()?;
-            let width = get_attribute(col, "width")?;
-            let width = width.parse::<f64>()?;
+            // `width` is optional (ECMA-376 18.3.1.13): producers that only set a style or
+            // hide columns omit it. Port of ironcalc@9d5fa0dc.
+            let width = match col.attribute("width") {
+                Some(width) => width.parse::<f64>()?,
+                None => default_width,
+            };
             let custom_width = get_bool_false(col, "customWidth");
             let hidden = get_bool_false(col, "hidden");
             let style = col
