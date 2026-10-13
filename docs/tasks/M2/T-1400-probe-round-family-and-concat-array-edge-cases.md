@@ -3,7 +3,7 @@ id: T-1400
 title: "Probe ROUND-family and CONCAT array edge cases (non-number elements, error past the text limit)"
 milestone: M2
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
