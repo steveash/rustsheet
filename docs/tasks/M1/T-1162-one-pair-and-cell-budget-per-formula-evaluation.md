@@ -34,3 +34,4 @@ T-1064 performance review: the pair budget restarts per argument and per IF/CHOO
 - File-size ratchet: `Binding`/`VariableStack` moved unchanged to `variable_stack.rs` and `Model::evaluate_formula` to `outside_cell.rs` (with `evaluate_outside_cell`, the conditional formats' entry point), so reference_operators.rs stays under 1,000 lines and model.rs shrinks (3,499 → 3,476).
 - references.md "Union area cap" describes the per-formula budgets (DEVIATION, decision 0014).
 - Eval: no change (no case reaches the budgets).
+- Follow-ups: T-1461 (AGGREGATE borrows its areas), T-1462 (probe large multi-area walks in MAP/BYROW), T-1463 (bound seen-range records of long walks).
