@@ -211,9 +211,37 @@ Evidence: probes/date-system-1900-odd-accrint-bound D7-D10 (excel-graph, 2026-10
 Status: VERIFIED. Tasks: T-1447, T-1457.
 Implemented in: `odd_l_func` (functions/financial/financial_bonds.rs).
 
-## COUPDAYS basis 1 does not use the end-of-month rule (T-1489, T-1493)
-`COUPDAYS(DATE(2096,2,15),DATE(2100,2,28),2,1)` is 184 in 1900, the length of 2095-08-28 to 2096-02-28, while the same
-call's COUPPCD (2095-08-31), COUPNCD (2096-02-29), COUPDAYBS (168) and COUPDAYSNC (14) describe a 182-day period. So
-COUPDAYS on basis 1 appears to step the schedule without the end-of-month rule that the other COUP* functions apply.
-Ours gives 182 (not yet implemented; T-1493). Evidence: probes/date-system-1900-financial-readers E12-E16
-(excel-graph, 2026-10-13); the single probed shape, so the general rule is UNVERIFIED.
+## COUPDAYS basis 1 around 29 February
+Rule: COUPDAYS on basis 1 is the length of the coupon period around settlement, except that when that period (as
+COUPPCD/COUPNCD give it, with the end-of-month rule) starts or ends on a 29 February that is not the maturity, it is
+the length of the period of the schedule walked back from the maturity *without* the end-of-month rule (each date
+the one after it moved back a period, its day clamped to the month). So with maturity 2025-02-28 the dates fall on the
+28th: `COUPDAYS(DATE(2023,11,15),DATE(2025,2,28),2,1)` is 184 (2023-08-28 to 2024-02-28) while COUPPCD, COUPNCD,
+COUPDAYBS (76) and COUPDAYSNC (106) describe 2023-08-31 to 2024-02-29 (182 days); settlement 2024-03-15 gives 182
+(2024-02-28 to 2024-08-28, not 184), settlement 2024-02-28 gives 182 (2024-02-28 is then the period's start) and
+2024-02-27 gives 184. A maturity of 2025-08-31 (frequency 2) and of 2025-05-31 (frequency 4) behave the same, since
+the walk passes 2025-02-28: 184 and 92 for settlements 2023-11-15 and 2023-12-15. Frequency 1, maturity 2025-02-28,
+settlement 2023-06-15: 365, not 366. A period ending on 28 February of a common year keeps the end-of-month rule
+(2099-08-31 to 2100-02-28, 181), and so does one ending on a 29 February that is the maturity
+(`COUPDAYS(DATE(2399,11,15),DATE(2400,2,29),2,1)` is 182). Only COUPDAYS shows it: PRICE and DURATION on basis 1 use the
+182-day period, and bases 0, 2, 3 and 4 have fixed lengths. Unprobed: a walk that lands on a 29 February itself (maturity 2028-08-31, settlement 2027-11-15; the rule predicts 184, 2027-08-29 to 2028-02-29).
+Evidence: probes/coupdays-feb-month-end (296 cells, excel-graph, 2026-10-13, T-1493) and
+probes/date-system-1900-financial-readers E15.
+Ours: `coupdays_actual` (functions/financial/financial_bonds/coupon_schedule.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-1489, T-1493
+
+## YIELD stops short of PRICE's root
+Rule: YIELD's last digits are not the exact root of PRICE: Excel stops early, below the root, by up to about 1e-9
+relative (`YIELD(DATE(2096,3,1),DATE(2100,6,30),0.05,98,100,2,0)` is 0.05523587030251456; the root, as we compute
+it, is 0.0552358703070220). Some price, rate and redemption values reach the root (price 101: 0.0474016398691), others stop
+1e-11 to 1e-9 short. The same bond moved by whole four-year blocks (1 March of 2000, 2004, ..., 2040 and 2096, maturity
+30 June four years later, basis 0) gives the same bits, but two bonds with equal coupon count, accrued days and period
+length need not: `YIELD(DATE(2096,2,15),DATE(2100,2,28),0.05,98,100,2,0)` is 0.05558592876555125 and
+`YIELD(DATE(2100,2,16),DATE(2104,3,1),0.05,98,100,2,0)` is 0.05558592884303248 (both 9 coupons, 165 of 180 days
+accrued); their YEARFRAC differs (4.0361 against 4.0417), so the starting point may come from the dates.
+Evidence: probes/yield-solver-sweep (66 cells), probes/date-system-1900-financial-readers row 8 and its -shifted twin
+(excel-graph, 2026-10-13, T-1493).
+Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted (T-1374).
+Status: UNVERIFIED (the algorithm); the values are excel-graph
+Tasks: T-1374, T-1493
