@@ -39,6 +39,6 @@ Files by area: `numbers.md`, `dates.md`, `financial.md`, `coercion.md`, `errors.
 ## <short rule name>
 Rule: one sentence.
 Evidence: <suite/case> <Sheet!A1> (oracle: excel-graph 16.0.xxxx) …
-Status: VERIFIED | UNVERIFIED (probe pending) | CONFLICTING (web vs desktop) | DEVIATION (decision NNNN)
+Status: VERIFIED | UNVERIFIED (probe pending) | CONFLICTING (web vs desktop) | DEVIATION (decision 0014)
 Implemented in: path::fn (once implemented)
 ```
