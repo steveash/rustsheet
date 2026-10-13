@@ -37,4 +37,4 @@ Probe `probes-numeric/double-rounding-ops` (89 cells, excel-graph): `/` with any
 `*`, PRODUCT, `+`, `-`, SUM, AVERAGE, SQRT and `^0.5` all round twice (80 of 80 discriminating
 cells). `x%`, `/3` and AVERAGE of three have no discriminating operands. numbers.md updated.
 Follow-ups: T-1498 (`*`, PRODUCT), T-1499 (`+`, `-`, SUM, AVERAGE), T-1500 (SQRT, `^0.5`).
-Eval: new probe case; the 64 failing cells are recorded in the baseline.
+Eval: new probe case in the ungated probes-numeric suite (no baseline change); its 64 failing cells are covered by T-1498, T-1499 and T-1500.
