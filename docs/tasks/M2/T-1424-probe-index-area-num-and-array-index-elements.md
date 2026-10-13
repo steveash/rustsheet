@@ -3,7 +3,7 @@ id: T-1424
 title: "Probe INDEX area_num and array-index elements near an integer (does the 2^-22+2^-33 rounding apply?)"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -26,3 +26,6 @@ floored (`index_numbers` in functions/lookup_and_reference/index.rs), and the li
 
 ## Out of scope
 -
+
+## Outcome
+`probes/index-area-num-snap` (11 cells, excel-graph): area_num rounds up near an integer like row_num (3 cells failed before), and near-integer array-index elements already matched. `index_numbers` now uses `near_integer_count` for area_num. Recorded in lookup.md.

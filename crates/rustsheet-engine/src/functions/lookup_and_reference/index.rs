@@ -16,7 +16,7 @@ use crate::{
 };
 
 /// INDEX's validated numeric arguments: `row_num` and `column_num` read by [`index_number`] (`0` = the
-/// whole row or column), `area_num` floored and at least 1.
+/// whole row or column), `area_num` read like them ([`near_integer_count`]) and at least 1.
 #[derive(Clone, Copy)]
 struct IndexNumbers {
     row: usize,
@@ -34,7 +34,8 @@ fn index_numbers<E>(
     col: Result<f64, E>,
     out_of_range: impl Fn() -> E,
 ) -> Result<IndexNumbers, E> {
-    let area = area?.floor();
+    // area_num rounds up near an integer like row_num (probes/index-area-num-snap J1:J6; T-1424).
+    let area = near_integer_count(area?);
     if area < 1.0 {
         return Err(out_of_range());
     }
