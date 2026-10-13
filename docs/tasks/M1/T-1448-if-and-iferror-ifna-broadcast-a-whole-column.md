@@ -3,7 +3,7 @@ id: T-1448
 title: "IF and IFERROR/IFNA broadcast a whole column against a whole row unbounded (=IF(D:D,4:4))"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P0
 size: S
 tier: sonnet
@@ -33,3 +33,8 @@ docs/excel-semantics/arrays.md "Array results above 1,048,576 cells".
 
 ## Out of scope
 - Raising or changing the 2^20-cell limit.
+
+## Outcome
+`fn_if` and the shared IFERROR/IFNA path now call `check_array_size` on the broadcast output shape
+before allocating, so `=IF(D:D,4:4)`, `=IF(D:D,1,4:4)`, `=IFERROR(D:D,4:4)` and `=IFNA(D:D,4:4)`
+are `#ERROR!` (unit test in test_operator_broadcast_bound.rs; arrays.md updated). Eval delta: none.
