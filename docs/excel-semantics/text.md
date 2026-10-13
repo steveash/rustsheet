@@ -273,8 +273,8 @@ Implemented in: `fn_text` (functions/text/common.rs); the format argument is eva
 Tasks: T-1451
 
 ## CLEAN and CODE scalar edges
-Rule: CLEAN removes code points 0-31 and the C1 controls 128-159 (U+0080-U+009F, including the Windows-1252
-holes 129, 141, 143, 144, 157), and nothing else: DEL (127), NBSP (160) and U+200B stay. CODE of a character
+Rule: CLEAN removes code points 0-31 and the C1 controls U+0080-U+009F (128-159; including the Windows-1252
+holes 129, 141, 143, 144, 157; CHAR(128..159) strings were not probed), and no other probed code point: DEL (127), NBSP (160) and U+200B stay. CODE of a character
 outside Windows-1252 is 63 (the code of "?"), not `#VALUE!`: `CODE(UNICHAR(256))`, `CODE(UNICHAR(960))` and
 `CODE(UNICHAR(128512))` are 63; `CODE("€")` is 128 and `CODE("é")` is 233. `CODE("")` is `#VALUE!`; `CODE(TRUE)`
 is 84.
