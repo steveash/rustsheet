@@ -1,0 +1,32 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1457: ODDFPRICE with the issue date on a quasi-coupon date before the first coupon (follow-up of date-system-1900-oddf-schedule A3, which is #NUM!). A1 two periods back, A2 day 15, A3 month ends, A4/A5 a day after/before, A6 basis 1, A7 quarterly, A8 nearer maturity, A9 later settlement, A10 basis 4, A11 day 15 on 15 July schedule, A12 issue a day after.",
+  "tags": [
+    "M1",
+    "probe",
+    "dates",
+    "financial",
+    "T-1457"
+  ],
+  "date_system": 1900,
+  "expected": {},
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=ODDFPRICE(DATE(2024,2,1),DATE(2025,7,1),DATE(2023,7,1),DATE(2024,7,1),0.05,0.06,100,2,0)",
+        "A2": "=ODDFPRICE(DATE(2024,2,1),DATE(2025,1,15),DATE(2024,1,15),DATE(2024,7,15),0.05,0.06,100,2,0)",
+        "A3": "=ODDFPRICE(DATE(2024,2,1),DATE(2025,6,30),DATE(2023,12,31),DATE(2024,6,30),0.05,0.06,100,2,0)",
+        "A4": "=ODDFPRICE(DATE(2024,2,1),DATE(2025,7,1),DATE(2024,1,2),DATE(2024,7,1),0.05,0.06,100,2,0)",
+        "A5": "=ODDFPRICE(DATE(2024,2,1),DATE(2025,7,1),DATE(2023,12,31),DATE(2024,7,1),0.05,0.06,100,2,0)",
+        "A6": "=ODDFPRICE(DATE(2024,2,1),DATE(2025,7,1),DATE(2024,1,1),DATE(2024,7,1),0.05,0.06,100,2,1)",
+        "A7": "=ODDFPRICE(DATE(2024,5,1),DATE(2025,7,1),DATE(2024,4,1),DATE(2024,7,1),0.05,0.06,100,4,0)",
+        "A8": "=ODDFPRICE(DATE(2024,2,1),DATE(2025,1,1),DATE(2024,1,1),DATE(2024,7,1),0.05,0.06,100,2,0)",
+        "A9": "=ODDFPRICE(DATE(2024,3,1),DATE(2025,7,1),DATE(2024,1,1),DATE(2024,7,1),0.05,0.06,100,2,0)",
+        "A10": "=ODDFPRICE(DATE(2024,2,1),DATE(2025,7,1),DATE(2024,1,1),DATE(2024,7,1),0.05,0.06,100,2,4)",
+        "A11": "=ODDFPRICE(DATE(2024,2,1),DATE(2025,7,15),DATE(2024,1,15),DATE(2024,7,15),0.05,0.06,100,2,0)",
+        "A12": "=ODDFPRICE(DATE(2024,2,1),DATE(2025,7,15),DATE(2024,1,16),DATE(2024,7,15),0.05,0.06,100,2,0)"
+      }
+    }
+  ]
+}
