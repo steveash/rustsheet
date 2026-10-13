@@ -602,7 +602,16 @@ multi-area argument (SUM, SUBTOTAL, AGGREGATE's reference form, ...) takes its c
 budget, so `LET(x,(A:A,A:A),SUM(x,x,...))` is `#VALUE!` at the argument that passes it, and so is a
 formula that walks a union again and again (`MAP` over a `SUM` of one). A single range argument is
 not counted, as before.
-Excel's limit, if any, is not known.
+Excel computes formulas past this budget (probes/union-walk-repeated-in-lambda, excel-graph,
+2026-10-13, T-1462), so it is a DEVIATION (decision 0014) on realistic formulas, not only
+adversarial ones. On a sheet with 10,000 used rows, `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
+is 8000 in Excel (2*10^7 cells walked) and `#VALUE!` in the engine; so are the MAP, COUNTA and
+SUBTOTAL(9,..) forms, `MAP(A1:A10000,...)` (2*10^8 cells, 80000), and the bounded union
+`(B1:B10000,C1:C10000)`. With data in row 1,048,576 even `=SUM((B:B,C:C),...)` with nine union
+arguments (9*2^21 cells) is 27 in Excel and `#VALUE!` here. The single-range forms (`SUM(B:C)`)
+agree. MAP over a union (`=SUM(MAP((B1:B3,C1:C3),LAMBDA(x,x)))`, `ROWS(...)`) is `#VALUE!` in both.
+The oracle gives no timings. T-1497 is to bound the walks by the data they visit instead.
+Excel's actual limit, if any, is not known; the probe only shows it is above 2*10^8 walked cells.
 The LET variables and LAMBDA parameters in scope may hold at most 262,144 areas together (`MAX_HELD_AREAS`,
 four `MAX_AREAS`): each binding may hold a fresh union (`LET(x_1,(A1,A1),x_2,(x_1,x_1),...)`), so memory would
 otherwise grow with formula length. A binding that would pass the total is `#VALUE!`.
