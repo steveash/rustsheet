@@ -3,7 +3,7 @@ id: T-1503
 title: "Probe LET binding of @INDEX(...): does ISREF see a reference?"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
