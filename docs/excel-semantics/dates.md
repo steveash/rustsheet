@@ -467,7 +467,7 @@ Rule: in a 1904 workbook, YEARFRAC and the financial functions with date argumen
 serial s + 2·1462 (T-1489, T-1492), while every other reader adds 1462. Within a four-year span with one 29 February
 that is the date a day later than the 1900 reading s + 1462, so the day counts look "a day late"; near the non-leap
 century years the two differ (the 18 cells T-1493 leaves, the odd-period notes below). A date they return
-(COUPNCD, COUPPCD) comes back one day early. The coupon schedule, the end-of-month rule and the 30/360 and
+(COUPNCD, COUPPCD) comes back 2·1462 serials lower (one day early within a four-year span with one 29 February). The coupon schedule, the end-of-month rule and the 30/360 and
 actual/actual counts all run on the shifted dates.
 - `YEARFRAC(DATE(2024,1,31),DATE(2024,2,29),0)` = 30/360 (2/1 to 3/1). The same cell in a 1900 workbook is 29/360.
   `YEARFRAC(0,59,0)` = 59/360. `YEARFRAC(DATE(2023,2,28),DATE(2024,2,29),1)` = 1 (3/1 to 3/1).
@@ -547,7 +547,7 @@ At the edges:
   A date read past 9999-12-31 is #NUM! in YEARFRAC and DISC (1904 serial 2955542, 9995-12-31, onward), but ACCRINT with
   basis 1 and calc_method FALSE takes its *settlement* up to the last 1904 date 2957003:
   `ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9999,12,31),0.05,1000,2,1,FALSE)` is 504.28 while 2957004 is #NUM!
-  (probes/date-system-1904-financial-settlement-bound column A, 30 cells in all, excel-graph, 2026-10-13, T-1492;
+  (probes/date-system-1904-financial-settlement-bound column A (60 cells in all), excel-graph, 2026-10-13, T-1492;
   `DateSystem::accrint_settlement_limit`). The other columns of that probe differ and are known failures (T-1494):
   with calc_method TRUE, basis 0 (D) and basis 1 (E), ACCRINT is #NUM! for every settlement from 9995-12-30 on, and with
   basis 0 and calc_method FALSE (F) it is 299.86 for 9995-12-30 and 410415.83 for every settlement from 9995-12-31 to

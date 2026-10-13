@@ -18,10 +18,10 @@ T-1489 verified the rule on 165 cells (dates.md "The 1904 date system", probes/d
 
 ## Acceptance criteria
 - [x] The cells of probes/date-system-1904-financial-readers leave eval/baseline via `make eval-baseline`, with no new F line in any suite.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The odd-period functions (done in T-1457).
 
 ## Outcome
-`DateSystem::financial_1900_serial` now reads a 1904 serial as s + 2*1462 (and `serial_from_financial_1900_serial`, `coupon_schedule_breaks` and the broken-schedule previous coupon follow). 147 of the 165 probes/date-system-1904-financial-readers cells pass (79 fixed overall, 0 regressions, no new F line); the other 18 fail identically in the shifted 1900 twin (T-1493). New probe probes/date-system-1904-financial-settlement-bound (30 cells): ACCRINT takes a settlement up to the last 1904 date although it reads past 9999-12-31 (`DateSystem::accrint_settlement_limit`), YEARFRAC and DISC do not. Unprobed readers beyond the 11 probed (e.g. AMORLINC, TBILL*) share the same reader and move with it; no probe or case covers them. ACCRINT is extended only for basis 1 / calc_method FALSE; columns D-F of the probe (other bases, calc_method TRUE) are baselined known failures, follow-up T-1494.
+`DateSystem::financial_1900_serial` now reads a 1904 serial as s + 2*1462 (and `serial_from_financial_1900_serial`, `coupon_schedule_breaks` and the broken-schedule previous coupon follow). 147 of the 165 probes/date-system-1904-financial-readers cells pass (79 fixed overall, 0 regressions, no new F line); the other 18 fail identically in the shifted 1900 twin (T-1493). New probe probes/date-system-1904-financial-settlement-bound (60 cells): ACCRINT takes a settlement up to the last 1904 date although it reads past 9999-12-31 (`DateSystem::accrint_settlement_limit`), YEARFRAC and DISC do not. Unprobed readers beyond the 11 probed (e.g. AMORLINC, TBILL*) share the same reader and move with it; no probe or case covers them. ACCRINT is extended only for basis 1 / calc_method FALSE; columns D-F of the probe (other bases, calc_method TRUE) are baselined known failures, follow-up T-1494.
