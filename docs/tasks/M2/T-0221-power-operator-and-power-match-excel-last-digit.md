@@ -69,8 +69,8 @@ Update (T-1319, 2026-10-12): non-integer exponents are now `exp(y·ln x)`, see n
 
 ## Acceptance criteria
 - [x] A probe sweep pins the formulation. docs/excel-semantics/numbers.md entry updated with evidence.
-- [ ] The gen-m2 cells above that T-1302 did not clear disappear from eval/baseline/gen-m2.txt, with no new F lines in any suite (gen-m1 A41 and A207 are T-1421's).
-- [ ] `make check` green; reviewers approve.
+- [x] (except gen-m2/fa437879253827be Calc!A23, moved to T-1495) The gen-m2 cells above that T-1302 did not clear disappear from eval/baseline/gen-m2.txt, with no new F lines in any suite (gen-m1 A41 and A207 are T-1421's).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Integer exponents: T-1302.

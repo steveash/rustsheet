@@ -30,4 +30,4 @@ twice (the helper is `arithmetic::extended_quotient`).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Implementing double rounding for any newly found operation (the follow-up tasks).

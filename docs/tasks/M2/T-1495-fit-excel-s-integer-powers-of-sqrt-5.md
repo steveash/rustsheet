@@ -31,4 +31,4 @@ Calc!A23 (`(0.2^-0.5)^99`). Code: `integer_power` in crates/rustsheet-engine/src
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Operations other than integer powers.

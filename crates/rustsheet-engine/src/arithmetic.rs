@@ -93,6 +93,7 @@ pub(crate) fn extended_quotient(x: f64, y: f64) -> f64 {
         return plain;
     };
     let sign = u64::from(x.is_sign_negative() != y.is_sign_negative()) << 63;
+    // The significand has 53 bits after the second rounding, so the conversion cannot fail.
     let fraction = u64::try_from(significand).unwrap_or(0) & 0x000F_FFFF_FFFF_FFFF;
     f64::from_bits(sign | (biased << 52) | fraction)
 }
@@ -119,6 +120,7 @@ fn round_to_bits(value: u128, bits: u32, inexact: bool) -> (u128, i32) {
     if dropped > half || (dropped == half && (inexact || significand & 1 == 1)) {
         significand += 1;
     }
+    // At most 75 - 53 bits are dropped, so the conversion cannot fail.
     let mut shift = i32::try_from(shift).unwrap_or(0);
     // A carry out of the top bit (all ones rounded up) is one more bit to drop.
     if significand >> bits != 0 {
