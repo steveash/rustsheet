@@ -3,7 +3,7 @@ id: T-1454
 title: "External-workbook references through INDEX, OFFSET, union, intersection, COUNTA and spill"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
@@ -39,7 +39,7 @@ reads (ISBLANK, ISTEXT, `=INDEX(…)`, `&""`) first (excel-probe).
 ## Out of scope
 - Cached values of `[n]Sheet!ref` (T-1382). Opening other workbooks (directive 5).
 
-## Handoff
+## Handoff (resumed)
 - Claimed 2026-10-13 by an opus run near the end of its session budget. Released untouched: no code
   and no probe were written, and the branch holds only the claim and this note.
 - Reading so far: `reference_operators::external_area` gives the shape of a written external
