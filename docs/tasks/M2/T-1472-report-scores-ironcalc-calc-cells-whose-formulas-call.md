@@ -3,7 +3,7 @@ id: T-1472
 title: "Report scores ironcalc-calc cells whose formulas call only M0-M2 functions (M2 exit criterion)"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,13 +24,23 @@ whose D input is a TBILLEQ result; T-1475). Spill children have no formula of th
 so the gap stays visible.
 
 ## Acceptance criteria
-- [ ] report.md gets a "Milestone function scope" table for ironcalc-calc: cells scored, bit-exact, failing (with
+- [x] report.md gets a "Milestone function scope" table for ironcalc-calc: cells scored, bit-exact, failing (with
       case/cell ids), and spill children left out. report.json carries the same data.
-- [ ] The function-to-milestone lookup reuses `Catalog` and `functions_in`, with no second parser of the catalog.
-- [ ] A unit test covers a function-free formula (in scope), an M2-only formula (in scope) and a formula calling an M9 function (out).
-- [ ] On today's tree it reports the 9 TBILLs.xlsx cells above as failing.
-- [ ] `make check` green; reviewers approve.
+- [x] The function-to-milestone lookup reuses `Catalog` and `functions_in`, with no second parser of the catalog.
+- [x] A unit test covers a function-free formula (in scope), an M2-only formula (in scope) and a formula calling an M9 function (out).
+- [x] On today's tree it reports the 9 TBILLs.xlsx cells above as failing.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Following precedents transitively (decide that in the milestone text if wanted; note it in the Outcome).
 - Other suites.
+
+## Outcome
+`make eval` now prints a "Milestone function scope (ironcalc-calc)" section (report.md, and
+`function_scope` in report.json): 3977 scored formula cells whose functions are all M0–M2 (or none),
+3968 bit-exact, 9 failing (the TBILLs.xlsx L5, L6, L7, L9, L10, L16, L20, L24, L26 cells), plus 1378
+formula-less cells (spill children) left out, 46 of them failing. Implemented in
+`crates/rustsheet-eval/src/function_scope.rs` on `Catalog` and `functions_in`; the milestone parser
+is the one in `probe_milestones`. A function the catalog does not list counts as in scope, as in
+`Catalog::in_scope`. Precedents are not followed transitively: the TBILLs cells fail because of a
+TBILLEQ precedent (T-1475), not their own formula. Eval delta: none (reporting only).
