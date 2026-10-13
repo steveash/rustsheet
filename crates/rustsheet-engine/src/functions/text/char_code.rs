@@ -113,7 +113,9 @@ impl Model {
         broadcast_text(cell, &[&text], |i, j| {
             let s = array_node_to_string(text.elem(i, j))?;
             let c = s.chars().next().ok_or(Error::VALUE)?;
-            let n = char_to_win1252(c).ok_or(Error::VALUE)?;
+            // Excel: a character outside Windows-1252 gives 63, the code of "?"
+            // (docs/excel-semantics/text.md#clean-and-code-scalar-edges).
+            let n = char_to_win1252(c).unwrap_or(63);
             Ok(ArrayNode::Number(f64::from(n)))
         })
     }
@@ -135,10 +137,13 @@ impl Model {
         }
     }
 
-    /// CLEAN(text) — Removes all non-printable characters (code points 0-31) from text.
+    /// CLEAN(text) — removes code points 0-31 and the C1 controls 128-159, and nothing else
+    /// (docs/excel-semantics/text.md#clean-and-code-scalar-edges).
     pub(crate) fn fn_clean(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.apply_text_unary(args, cell, |s| {
-            s.chars().filter(|&c| (c as u32) >= 32).collect()
+            s.chars()
+                .filter(|&c| !matches!(c as u32, 0..=31 | 128..=159))
+                .collect()
         })
     }
 
