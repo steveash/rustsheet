@@ -271,3 +271,17 @@ Evidence: probes/text-format-length-limit-f A54:B54 (T-1434); probes/text-format
 Status: VERIFIED (excel-graph, probes/text-format-array, T-1458)
 Implemented in: `fn_text` (functions/text/common.rs); the format argument is evaluated once (TEXT nested in a format must not be exponential).
 Tasks: T-1451
+
+## CLEAN and CODE scalar edges
+Rule: CLEAN removes code points 0-31 and the C1 controls 128-159 (U+0080-U+009F, including the Windows-1252
+holes 129, 141, 143, 144, 157), and nothing else: DEL (127), NBSP (160) and U+200B stay. CODE of a character
+outside Windows-1252 is 63 (the code of "?"), not `#VALUE!`: `CODE(UNICHAR(256))`, `CODE(UNICHAR(960))` and
+`CODE(UNICHAR(128512))` are 63; `CODE("€")` is 128 and `CODE("é")` is 233. `CODE("")` is `#VALUE!`; `CODE(TRUE)`
+is 84.
+Evidence: probes/text-scalar-edges A32-A39, A40-A50, A51-A62 (excel-graph, T-1280).
+Also verified there, all matching the engine: EXACT is case-sensitive, compares numbers by their text
+(`EXACT(0.1+0.2,"0.3")` TRUE) and does not normalise Unicode (composed vs decomposed é is FALSE); REPLACE
+truncates fractional counts, appends when start_num is past the end, and is `#VALUE!` for start_num 0 or a
+negative count; PROPER capitalises after any non-letter (`O'Neil`, `Abc123Def`, `X.Y Z_W`) and lowers the rest
+(`PROPER(TRUE)` = "True").
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)

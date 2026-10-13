@@ -64,7 +64,20 @@
     "A47": "=CODE(UNICHAR(128512))",
     "A48": "=CODE(1)",
     "A49": "=CODE(TRUE)",
-    "A50": "=CODE(#DIV/0!)"
+    "A50": "=CODE(#DIV/0!)",
+    "A51": "=CLEAN(\"a\"&UNICHAR(128)&\"b\")",
+    "A52": "=CLEAN(\"a\"&UNICHAR(130)&\"b\")",
+    "A53": "=CLEAN(\"a\"&UNICHAR(133)&\"b\")",
+    "A54": "=CLEAN(\"a\"&UNICHAR(141)&\"b\")",
+    "A55": "=CLEAN(\"a\"&UNICHAR(143)&\"b\")",
+    "A56": "=CLEAN(\"a\"&UNICHAR(144)&\"b\")",
+    "A57": "=CLEAN(\"a\"&UNICHAR(157)&\"b\")",
+    "A58": "=CLEAN(\"a\"&UNICHAR(159)&\"b\")",
+    "A59": "=CODE(UNICHAR(129))",
+    "A60": "=CODE(UNICHAR(256))",
+    "A61": "=CODE(UNICHAR(960))",
+    "A62": "=CODE(UNICHAR(65536))",
+    "A63": "=CODE(\"é\"&\"x\")"
    }
   }
  ],
