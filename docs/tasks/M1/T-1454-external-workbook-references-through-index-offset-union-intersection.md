@@ -3,7 +3,7 @@ id: T-1454
 title: "External-workbook references through INDEX, OFFSET, union, intersection, COUNTA and spill"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
