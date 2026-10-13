@@ -24,7 +24,7 @@ used area:
   SUBTOTAL(9,..) and COUNTA forms, `MAP(A1:A10000,...)` = 80000, and the bounded union
   `(B1:B10000,C1:C10000)` too.
 - Big (data in row 1,048,576): `SUM(BYROW(A1:A10,LAMBDA(r,SUM((B:B,C:C)))))` = 30, and with no
-  repetition at all `=SUM((B:B,C:C),...)` with nine union arguments = 27 (9 x 2^21 cells).
+  LAMBDA repetition `=SUM((B:B,C:C),...)` with nine union arguments = 27 (9 x 2^21 cells).
 The single-range forms (`SUM(B:C)`, `SUM(B:B)`) pass. `for_each_position_in_areas`
 (functions/util.rs) walks every row of the used area densely, so charging what it visits is
 right for that walk; the fix is to make the walk cheaper or charge it differently. Options to

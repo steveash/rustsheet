@@ -611,7 +611,7 @@ SUBTOTAL(9,..) forms, `MAP(A1:A10000,...)` (2*10^8 cells, 80000), and the bounde
 arguments (9*2^21 cells) is 27 in Excel and `#VALUE!` here. The single-range forms (`SUM(B:C)`)
 agree. MAP over a union (`=SUM(MAP((B1:B3,C1:C3),LAMBDA(x,x)))`, `ROWS(...)`) is `#VALUE!` in both.
 The oracle gives no timings. T-1497 is to bound the walks by the data they visit instead.
-Excel's actual limit, if any, is not known; the probe only shows it is well above 2^24 cells.
+Excel's actual limit, if any, is not known; the probe only shows it is above 2*10^8 walked cells.
 The LET variables and LAMBDA parameters in scope may hold at most 262,144 areas together (`MAX_HELD_AREAS`,
 four `MAX_AREAS`): each binding may hold a fresh union (`LET(x_1,(A1,A1),x_2,(x_1,x_1),...)`), so memory would
 otherwise grow with formula length. A binding that would pass the total is `#VALUE!`.
