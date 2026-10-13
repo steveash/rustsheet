@@ -50,6 +50,7 @@ pub use crate::constants::ROW_HEIGHT_FACTOR;
 pub use crate::constants::{LAST_COLUMN, LAST_ROW};
 
 mod actions;
+mod area_budget;
 mod arithmetic;
 mod cast;
 mod conditional_formatting;
@@ -64,6 +65,7 @@ mod legacy_formula;
 pub mod links;
 mod merged_cells;
 mod model;
+mod outside_cell;
 mod reference_operators;
 mod styles;
 mod tables;
@@ -71,6 +73,7 @@ mod tz;
 mod units;
 mod user_model;
 mod utils;
+mod variable_stack;
 mod workbook;
 
 #[cfg(test)]
