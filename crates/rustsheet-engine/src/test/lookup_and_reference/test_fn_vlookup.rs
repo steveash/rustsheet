@@ -251,6 +251,27 @@ fn array_lookup_value_lifts_element_by_element() {
 }
 
 #[test]
+fn range_lookup_range_lifts_and_spills() {
+    // gen-m2 (excel-graph, T-0203): a multi-cell range range_lookup lifts like an array; the
+    // first element is range_lookup FALSE (exact), the second TRUE (approximate).
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "1"), ("A2", "3"), ("B1", "one"), ("B2", "three")] {
+        model._set(cell, value);
+    }
+    model._set("C1", "FALSE");
+    model._set("C2", "TRUE");
+    model._set("D1", "=VLOOKUP(2,A1:B2,2,C1:C2)");
+    // A spill collision: F2 is occupied.
+    model._set("F1", "=VLOOKUP(2,A1:B2,2,C1:C2)");
+    model._set("F2", "x");
+    model.evaluate();
+
+    assert_eq!(model._get_text("D1"), *"#N/A");
+    assert_eq!(model._get_text("D2"), *"one");
+    assert_eq!(model._get_text("F1"), *"#SPILL!");
+}
+
+#[test]
 fn lifted_lookup_over_an_array_table_hits_the_visit_cap() {
     // A computed table is charged its length per element (T-0270, CLAUDE.md directive 5): 2^20
     // lookups over a 2^20-row array would be ~10^12 comparisons. DEVIATION (decision 0014):
@@ -262,4 +283,25 @@ fn lifted_lookup_over_an_array_table_hits_the_visit_cap() {
     );
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#ERROR!");
+}
+
+#[test]
+fn failed_arguments_still_lift_with_a_range_range_lookup() {
+    // gen-m2/f7e6d351c8538ef5 Calc!A296 and 942bdade381b7537 Calc!A381 (excel-graph, T-1468): an
+    // error lookup value or index does not stop a multi-cell range_lookup lifting, so the
+    // formula spills (here: two rows) instead of returning the error.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("C1", "TRUE");
+    model._set("C2", "TRUE");
+    model._set("D1", "=VLOOKUP(1/0,A1:A2,1,C1:C2)");
+    model._set("E1", "=VLOOKUP(1,A1:A2,1/0,C1:C2)");
+    model._set("F1", "=VLOOKUP(1/0,A1:A2,1,TRUE)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), *"#DIV/0!");
+    assert_eq!(model._get_text("D2"), *"#DIV/0!");
+    assert_eq!(model._get_text("E1"), *"#DIV/0!");
+    assert_eq!(model._get_text("E2"), *"#DIV/0!");
+    assert_eq!(model._get_text("F1"), *"#DIV/0!");
+    assert_eq!(model._get_text("F2"), *"");
 }

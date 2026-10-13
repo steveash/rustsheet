@@ -33,6 +33,9 @@ pub(super) enum LookupIndexArg {
         left: CellReferenceIndex,
         right: CellReferenceIndex,
     },
+    /// An index that is an error, kept only while `range_lookup` lifts: every found element is
+    /// that error (gen-m2/942bdade381b7537 Calc!A381, T-1468).
+    Failed(CalcResult),
 }
 
 impl LookupIndexArg {
@@ -56,6 +59,34 @@ impl LookupIndexArg {
 }
 
 impl Model {
+    /// Reads `lookup_value`, the index and `range_lookup` of VLOOKUP/HLOOKUP in argument order.
+    /// An error in the first two returns at once, unless `range_lookup` is a multi-cell range or
+    /// an array: that still lifts, so each element is the error and the result spills
+    /// (gen-m2/f7e6d351c8538ef5 Calc!A296 and 942bdade381b7537 Calc!A381, T-1468). Which error
+    /// wins when several arguments fail is unprobed.
+    pub(super) fn lookup_head(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(CalcResult, LookupIndexArg, CalcResult), CalcResult> {
+        let lookup_value = self.evaluate_node_in_context(&args[0], cell);
+        let index = self.lookup_index_arg(&args[2], cell);
+        let is_sorted = self.lookup_sorted_arg(args.get(3), cell);
+        let lifts = matches!(
+            is_sorted,
+            Ok(CalcResult::Range { .. } | CalcResult::Array(_))
+        );
+        if lookup_value.is_error() && !lifts {
+            return Err(lookup_value);
+        }
+        let index = match index {
+            Ok(index) => index,
+            Err(error) if lifts => LookupIndexArg::Failed(error),
+            Err(error) => return Err(error),
+        };
+        Ok((lookup_value, index, is_sorted?))
+    }
+
     /// Reads the index argument of VLOOKUP/HLOOKUP. A value argument is coerced now, so literal
     /// text or an error fails before the search (probes/lookup-index-order H9, H13, H28); a
     /// reference is kept for [`Model::resolve_lookup_index`]. `INDEX(...)` is a reference too: its
@@ -107,6 +138,12 @@ impl Model {
         };
         match self.evaluate_node_in_context(node, cell) {
             array @ CalcResult::Array(_) => Ok(array),
+            // A multi-cell range lifts like an array (gen-m2 T-1468); a one-cell range is a scalar.
+            range @ CalcResult::Range { left, right }
+                if left.row != right.row || left.column != right.column =>
+            {
+                Ok(range)
+            }
             value => self.cast_to_bool(value, cell).map(CalcResult::Boolean),
         }
     }
@@ -131,6 +168,7 @@ impl Model {
                 .cast_to_number(range, cell)
                 .map_err(|_| invalid_reference())?,
             // Callers narrow an array or range with `first_element`; one that does not gets `#REF!`.
+            LookupIndexArg::Failed(error) => return Err(error),
             LookupIndexArg::Array(_) | LookupIndexArg::Range { .. } => {
                 return Err(invalid_reference())
             }
