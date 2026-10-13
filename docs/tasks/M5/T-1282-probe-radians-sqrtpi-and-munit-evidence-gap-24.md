@@ -3,7 +3,7 @@ id: T-1282
 title: "Probe RADIANS, SQRTPI and MUNIT (evidence gap: 24, 13 and 11 Excel cells)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
