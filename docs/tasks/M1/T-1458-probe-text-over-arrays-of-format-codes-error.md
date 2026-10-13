@@ -3,7 +3,7 @@ id: T-1458
 title: "Probe TEXT over arrays of format codes: error precedence, broadcast shape, per-format complexity (follow-up of T-1451)"
 milestone: M1
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
