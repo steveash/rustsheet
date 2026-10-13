@@ -3,7 +3,7 @@ id: T-1426
 title: "Probe a multi-cell IF branch as a VLOOKUP/HLOOKUP index (follow-up of T-1377)"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1377 made an `IF` index a reference (`lookup_index_arg`, index_arg.rs), so `IF
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/lookup-index-multicell-if with excel-graph values; recorded in docs/excel-semantics/references.md. Excel lifts a multi-cell VLOOKUP/HLOOKUP index (no implicit intersection) and gives `#REF!` for an `IF` union index; the engine does neither (filed T-1485). Eval: new case, its mismatching cells recorded as known failures in the baseline.
