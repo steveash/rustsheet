@@ -8,6 +8,8 @@ use rustsheet_engine::{COLUMN_WIDTH_FACTOR, DEFAULT_COLUMN_WIDTH};
 use rustsheet_xlsx::import::load_from_xlsx_bytes;
 
 type TestResult = Result<(), Box<dyn Error>>;
+/// (width, hidden, style) of each imported `<col>`.
+type ColSummary = (f64, bool, Option<i32>);
 
 /// `tests/basic_text.xlsx` with its `<cols>` replaced by `cols` and, when given, its
 /// `<sheetFormatPr>` attributes extended with `format_attrs`.
@@ -38,7 +40,7 @@ fn workbook_with(cols: &str, format_attrs: &str) -> Result<Vec<u8>, Box<dyn Erro
     Ok(out.finish()?.into_inner())
 }
 
-fn widths(bytes: &[u8]) -> Result<Vec<(f64, bool, Option<i32>)>, Box<dyn Error>> {
+fn widths(bytes: &[u8]) -> Result<Vec<ColSummary>, Box<dyn Error>> {
     let workbook = load_from_xlsx_bytes(bytes, "case", "en", "UTC")?;
     Ok(workbook.worksheets[0]
         .cols
