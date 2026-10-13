@@ -108,10 +108,10 @@ impl DateSystem {
     }
 
     /// The last serial ACCRINT reads for its settlement, in the space of `financial_1900_serial`.
-    /// With basis 1 and calc_method FALSE a 1904 workbook takes every settlement up to the last
+    /// With basis 1 and `calc_method` FALSE a 1904 workbook takes every settlement up to the last
     /// 1904 date, 2957003, though that reads past 9999-12-31 (2957003 + 2 * 1462) where YEARFRAC and
     /// DISC are #NUM! from 1904 serial 2955542 on; 2957004 is #NUM! (probes/date-system-1904-
-    /// financial-settlement-bound column A, excel-graph, T-1492). Other bases and calc_method TRUE
+    /// financial-settlement-bound column A, excel-graph, T-1492). Other bases and `calc_method` TRUE
     /// are not modelled and keep the 9999-12-31 limit (columns D-F there give other values; T-1494).
     pub(crate) fn accrint_settlement_limit(self, basis: i32, calc_method: bool) -> i64 {
         let last = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
