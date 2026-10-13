@@ -3,7 +3,7 @@ id: T-1047
 title: "Excel evidence for legacy distribution names BETADIST to FTEST"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
