@@ -329,6 +329,7 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
             let row = cell_rows.get(&item).copied().unwrap_or(case_row);
             let s = rows.entry(row).or_default();
             s.known_failures += 1;
+            // The items of one case are contiguous, so only the row's last entry can be this case.
             match s.failing_cases.last_mut() {
                 Some((id, n)) if *id == r.id => *n += 1,
                 _ => s.failing_cases.push((r.id.clone(), 1)),
