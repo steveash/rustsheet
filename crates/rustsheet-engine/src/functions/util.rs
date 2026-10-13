@@ -210,6 +210,43 @@ impl Model {
         }
     }
 
+    /// An argument that reads one cell of a reference (MATCH's `match_type`, IFS and SWITCH's chosen
+    /// value): IF, IFS, SWITCH, LET and CHOOSE hand back the cell they pick, however deeply they
+    /// nest (probes/match-type-text-passthrough K1:K9, match-type-nested-passthrough K1:K17;
+    /// T-1399, T-1452). Aggregates keep [`Self::evaluate_reference_arg`], where IFS and SWITCH are
+    /// values (`SUM(IFS(TRUE,A1:B2))`, docs/excel-semantics/logic.md).
+    pub(crate) fn evaluate_chosen_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node.ungrouped() {
+            Node::FunctionKind {
+                kind: Function::If,
+                args,
+            } => self
+                .if_impl(args, cell, IfBranchMode::Chosen)
+                .into_single_area(cell),
+            Node::FunctionKind {
+                kind: Function::Ifs,
+                args,
+            } => self.ifs_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Switch,
+                args,
+            } => self.switch_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Let,
+                args,
+            } => self.let_impl(args, cell, true).into_single_area(cell),
+            Node::FunctionKind {
+                kind: Function::Choose,
+                args,
+            } => self.choose_impl(args, cell, true).into_single_area(cell),
+            other => self.eval_ref_or_index(other, cell),
+        }
+    }
+
     /// Evaluates one argument of an aggregate (SUM, COUNT, AVERAGE, MIN, ...).
     /// A cell reference, and an IF or INDEX that selects one, comes back as a
     /// range, so the caller skips its text, booleans and blanks like any range
