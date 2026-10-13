@@ -1,4 +1,3 @@
-use crate::functions::util::array_node_to_calc_result;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
@@ -38,7 +37,7 @@ impl Model {
             return lambda_result;
         }
 
-        let data = match self.eval_to_array(&args[array_idx], cell) {
+        let data = match self.lambda_cells(&args[array_idx], cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -57,7 +56,7 @@ impl Model {
             }
             init
         } else {
-            array_node_to_calc_result(&data[0][0], cell)
+            self.lambda_result_value(data[0][0].clone(), cell)
         };
 
         let mut result = vec![vec![ArrayNode::Empty; num_cols]; num_rows];
@@ -73,12 +72,12 @@ impl Model {
         for i in 0..num_rows {
             let col_start = if i == 0 { start_col } else { 0 };
             for j in col_start..num_cols {
-                let current = array_node_to_calc_result(&data[i][j], cell);
                 accumulator = self.call_lambda_with_values(
                     lambda_result.clone(),
-                    vec![accumulator, current],
+                    vec![accumulator, data[i][j].clone()],
                     cell,
                 );
+                accumulator = self.lambda_result_value(accumulator, cell);
                 if accumulator.is_error() {
                     return accumulator;
                 }
