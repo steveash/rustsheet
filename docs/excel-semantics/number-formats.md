@@ -163,12 +163,13 @@ family's rule, `numbers.md`): `12345678902.5` → "12345678903", `12345678903.5`
 `123456.12345` → "123456.1235", `1234567.8915` → "1234567.892" (A18-A24). Values whose integer part has
 10 or 11 digits round to the integer: `9999999999.5` → "10000000000", `12345678901.5` → "12345678902", and
 `99999999999.6` rounds up to 1E+11 and prints "1E+11".
+Ties and near-ties below 1 follow the same rule (probes/text-general-ties-below-one A1-A19, excel-graph, 2026-10-13, T-1429): the value is rounded half away from zero on the 15-digit decimal to at most 9 decimals, then trailing zeros are dropped. `0.1234567895` → "0.12345679" (the tie rounds up to ...790), `0.1234567885` → "0.123456789", `0.5000000005` → "0.500000001", `0.12345678951` → "0.12345679", `0.123456789499` → "0.123456789", `-0.1234567895` → "-0.12345679", `0.0123456785` → "0.012345679", `0.9999999995` and `0.9999999996` → "1", `0.9999999994` → "0.999999999", `0.000000015` → "0.000000015". The digit-count rule still picks E notation where fixed would show fewer significant digits: the ties `1.5E-09`, `2.5E-09`, `3.5E-09` (and `-1.5E-09`) stay "1.5E-09", "2.5E-09", "3.5E-09", and `0.0000001235`/`0.00000012345` stay "1.235E-07"/"1.2345E-07" (their fixed forms need more than 9 decimals). The engine matches.
 Evidence: poi/GeneralFormatTests.xlsx A13, A17, A18, A26-A28, A61; probes/number-text-exponent-digits
 Calc!D8 (excel-graph); probes/text-general-exponent-boundary A9, A10 (excel-graph, 2026-10-07); probes/text-general-ties-wide-fixed
 A1-A24 (excel-graph, 2026-10-12).
 Status: VERIFIED
 Implemented in: `format_general` (formatter/general.rs).
-Tasks: T-0938, T-1225, T-1422
+Tasks: T-0938, T-1225, T-1422, T-1429
 
 ## A comma between digit placeholders turns on thousands grouping
 Rule: a `,` anywhere between digit placeholders (not only in `#,##0`) means "group the integer
