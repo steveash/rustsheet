@@ -1,9 +1,9 @@
 use crate::arithmetic::{flush_subnormal, power};
 use crate::cast::NumberOrArray;
 use crate::constants::EXCEL_PRECISION;
+use crate::decimal_round::{round_decimal, RoundMode};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::math_and_trigonometry::decimal_round::{round_decimal, RoundMode};
 use crate::number_format::to_excel_precision;
 use crate::reference_operators::RefArg;
 use crate::single_number_fn;

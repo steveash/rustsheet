@@ -6,7 +6,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::math_and_trigonometry::array_size::{check_array_size, check_range_size},
+    limits::{check_array_size, check_range_size},
     model::Model,
     reference_operators::{Ranges, RefArg},
 };

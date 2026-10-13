@@ -11,9 +11,9 @@ use crate::{
         types::CellReferenceIndex,
         utils::number_to_column,
     },
-    functions::math_and_trigonometry::array_size::check_range_size,
     functions::util::array_node_to_calc_result,
     get_all_timezones,
+    limits::check_range_size,
     model::Model,
     reference_operators::{external_area, RefArg},
 };
