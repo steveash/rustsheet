@@ -374,3 +374,13 @@ fn byte_functions_spill_like_the_non_byte_functions() {
     assert_eq!(model._get_text("A10"), "0");
     assert_eq!(model._get_text("A11"), "0");
 }
+
+#[test]
+fn text_over_an_array_of_formats() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXT(1,{\"0\",#N/A})");
+    model._set("A2", "=TEXT({1,2},{\"0.0\",\"00\"})");
+    model.evaluate();
+    assert_eq!(row(&model, 1, 2), ["1", "#N/A"]);
+    assert_eq!(row(&model, 2, 2), ["1.0", "02"]);
+}

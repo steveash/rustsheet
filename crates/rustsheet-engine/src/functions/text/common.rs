@@ -200,6 +200,33 @@ impl Model {
             },
             other => other,
         };
+        // An array or range of format codes: one result per format (probes/text-format-length-limit-f).
+        if let TextArg::Array(formats) = match self.text_arg(&args[1], cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        } {
+            let value = match value_result {
+                CalcResult::Array(a) => TextArg::Array(a),
+                CalcResult::Error { .. } => return value_result,
+                other => TextArg::Scalar(calc_result_to_array_node(other)),
+            };
+            let formats = TextArg::Array(formats);
+            let ctx = self.format_context();
+            return broadcast_text(cell, &[&value, &formats], |i, j| {
+                let format_code = array_node_to_string(formats.elem(i, j))?;
+                if exceeds_complexity_limit(&format_code) {
+                    return Err(Error::VALUE);
+                }
+                Ok(match value.elem(i, j) {
+                    ArrayNode::Number(f) => text_node(Some(*f), &format_code, &ctx),
+                    ArrayNode::Empty => text_node(None, &format_code, &ctx),
+                    text @ (ArrayNode::Boolean(_) | ArrayNode::String(_)) => {
+                        text_value_node(text, &format_code)
+                    }
+                    e @ ArrayNode::Error(_) => e.clone(),
+                })
+            });
+        }
         match value_result {
             CalcResult::Array(arr) => {
                 let format_code = match self.get_string(&args[1], cell) {
