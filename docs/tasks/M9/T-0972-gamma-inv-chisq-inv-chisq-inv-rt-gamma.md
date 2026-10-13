@@ -15,6 +15,7 @@ GAMMA.INV, CHISQ.INV and CHISQ.INV.RT return Excel's values from one gamma-quant
 on the T-0971 incomplete-gamma kernel.
 
 ## Context
+Oracle targets: probes-numeric cases `m9-gamma-dist-a*`, `m9-chisq-dist`, `m9-chisq-dist-rt`, `m9-gamma-inv`, `m9-chisq-inv`, `m9-chisq-inv-rt` (T-1045).
 Triage T-0903. Kernel: statrs' default `ContinuousCDF::inverse_cdf` for `Gamma` (bisection from
 [1,2] widened by halving/doubling, 8 bisection steps, then Newton on statrs' CDF), reached through
 `functions/statistical/gamma.rs` `fn_gamma_inv` and `functions/statistical/chisq.rs` `fn_chisq_inv`,

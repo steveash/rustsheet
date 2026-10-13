@@ -131,18 +131,17 @@ fn financial_1900_serial_reads_two_epochs_on() {
     assert_eq!(Excel1900.serial_from_financial_1900_serial(45000), 45000);
 }
 
-// ACCRINT takes a settlement up to the last 1904 date, 2957003, though it reads past 9999-12-31
-// (probes/date-system-1904-financial-settlement-bound, T-1492).
+// ACCRINT with calc_method FALSE takes a settlement up to the last 1904 date, 2957003, though it
+// reads past 9999-12-31 (probes/date-system-1904-financial-settlement-bound, T-1492, T-1494).
 #[test]
-fn accrint_settlement_limit_is_the_last_1904_date_read_for_basis_1_calc_false() {
+fn accrint_settlement_limit_is_the_last_1904_date_read_for_calc_false() {
     use DateSystem::{Excel1900, Excel1904};
-    assert_eq!(Excel1900.accrint_settlement_limit(1, false), 2_958_465);
+    assert_eq!(Excel1900.accrint_settlement_limit(false), 2_958_465);
     assert_eq!(
-        Excel1904.accrint_settlement_limit(1, false),
+        Excel1904.accrint_settlement_limit(false),
         Excel1904.financial_1900_serial(2_957_003.0) as i64
     );
-    assert_eq!(Excel1904.accrint_settlement_limit(0, false), 2_958_465);
-    assert_eq!(Excel1904.accrint_settlement_limit(1, true), 2_958_465);
+    assert_eq!(Excel1904.accrint_settlement_limit(true), 2_958_465);
 }
 
 // The odd-period functions read a 1904 serial 2 * 1462 days on, so the last 1904 serial they read

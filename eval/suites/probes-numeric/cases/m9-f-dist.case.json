@@ -1,0 +1,50 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1044 sweep: F.DIST(x,d1,d2,cum).",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-1044",
+  "sweep",
+  "incomplete-beta"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=F.DIST(0.5,1,1,TRUE)",
+    "A2": "=F.DIST(0.5,1,1,FALSE)",
+    "A3": "=F.DIST(1,1,1,TRUE)",
+    "A4": "=F.DIST(1,1,1,FALSE)",
+    "A5": "=F.DIST(3,1,1,TRUE)",
+    "A6": "=F.DIST(3,1,1,FALSE)",
+    "A7": "=F.DIST(0.5,2,5,TRUE)",
+    "A8": "=F.DIST(0.5,2,5,FALSE)",
+    "A9": "=F.DIST(1,2,5,TRUE)",
+    "A10": "=F.DIST(1,2,5,FALSE)",
+    "A11": "=F.DIST(3,2,5,TRUE)",
+    "A12": "=F.DIST(3,2,5,FALSE)",
+    "A13": "=F.DIST(0.5,5,2,TRUE)",
+    "A14": "=F.DIST(0.5,5,2,FALSE)",
+    "A15": "=F.DIST(1,5,2,TRUE)",
+    "A16": "=F.DIST(1,5,2,FALSE)",
+    "A17": "=F.DIST(3,5,2,TRUE)",
+    "A18": "=F.DIST(3,5,2,FALSE)",
+    "A19": "=F.DIST(0.5,10,10,TRUE)",
+    "A20": "=F.DIST(0.5,10,10,FALSE)",
+    "A21": "=F.DIST(1,10,10,TRUE)",
+    "A22": "=F.DIST(1,10,10,FALSE)",
+    "A23": "=F.DIST(3,10,10,TRUE)",
+    "A24": "=F.DIST(3,10,10,FALSE)",
+    "A25": "=F.DIST(0.5,50,100,TRUE)",
+    "A26": "=F.DIST(0.5,50,100,FALSE)",
+    "A27": "=F.DIST(1,50,100,TRUE)",
+    "A28": "=F.DIST(1,50,100,FALSE)",
+    "A29": "=F.DIST(3,50,100,TRUE)",
+    "A30": "=F.DIST(3,50,100,FALSE)"
+   }
+  }
+ ],
+ "expected": {}
+}

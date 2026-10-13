@@ -3,7 +3,7 @@ id: T-1045
 title: "Oracle sweep: incomplete gamma (GAMMA.DIST, CHISQ.DIST, CHISQ.DIST.RT, GAMMA.INV, CHISQ.INV, CHISQ.INV.RT)"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,3 +27,6 @@ Split from T-0966 (one sweep per kernel family), which explains why: Excel's dis
 
 ## Out of scope
 - Fitting or changing any implementation (the dependent fitting tasks do that).
+
+## Outcome
+Added 11 probes-numeric case files (6 GAMMA.DIST by a, CHISQ.DIST, CHISQ.DIST.RT, GAMMA.INV, CHISQ.INV, CHISQ.INV.RT; 467 cells) with excel-graph sidecars, none pending. Findings in `docs/excel-semantics/statistics.md`. T-0971 and T-0972 link the case ids.

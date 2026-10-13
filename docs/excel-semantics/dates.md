@@ -549,10 +549,20 @@ At the edges:
   basis 1 and calc_method FALSE takes its *settlement* up to the last 1904 date 2957003:
   `ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9999,12,31),0.05,1000,2,1,FALSE)` is 504.28 while 2957004 is #NUM!
   (probes/date-system-1904-financial-settlement-bound column A (60 cells in all), excel-graph, 2026-10-13, T-1492;
-  `DateSystem::accrint_settlement_limit`). The other columns of that probe differ and are known failures (T-1494):
-  with calc_method TRUE, basis 0 (D) and basis 1 (E), ACCRINT is #NUM! for every settlement from 9995-12-30 on, and with
-  basis 0 and calc_method FALSE (F) it is 299.86 for 9995-12-30 and 410415.83 for every settlement from 9995-12-31 to
-  9999-12-31 (#NUM! at 2957004), the same value for all of them.
+  `DateSystem::accrint_settlement_limit`). Every basis with calc_method FALSE takes it that far (T-1494): bases 1, 2
+  and 3 count the actual days to the settlement read past 9999-12-31 (`ACCRINT(DATE(9990,1,1),DATE(9990,6,30),
+  DATE(9996,1,1),0.05,1000,2,2,FALSE)` is 304.31, 2191 days from the issue read 9994-01-02 to 10000-01-02), while
+  bases 0 and 4, which need the settlement's date for 30/360, take first_interest's 1904 serial plus 1462 (its 1900-system
+  serial, actual days from the 1900 epoch) as the day count of the settlement slice, whatever the settlement and the issue: 410415.83 = 25 * 2954994 / 180 for
+  first_interest 9990-06-30 (1904 serial 2953532), for every settlement from 9995-12-31 to 9999-12-31 and issues
+  9990-01-01 to 9990-06-29; moving first_interest by -91 days moves the count by -91, and an issue before the
+  regular period adds its stub as usual (179/180 for issue 9989-01-01 or 9980-01-01). The slice is over the normal
+  period (360/frequency days): 410415.83 for frequencies 1 and 2, 410428.19 for 4 (with an 89/90 stub). With
+  calc_method TRUE, every basis is #NUM! for a settlement read past 9999-12-31, and from 9995-12-30 on too, since the
+  next coupon is then past 9999-12-31 (financial.md, "ACCRINT with calc_method TRUE: a next coupon past the calendar
+  is #NUM!"; it holds in 1900 too). Evidence: probes/date-system-1904-accrint-settlement-bound A1:A22 (excel-graph,
+  2026-10-13, T-1494); its 1900 twin date-system-1900-accrint-settlement-bound gives #NUM! for those settlements
+  (2958465 is the 1900 input bound). Ours: `fn_accrint` (accrint.rs) passes the day count to `compute_accrint`.
   The break threshold of COUPPCD/COUPNCD/COUPDAYS is unchanged: the previous coupon of a broken schedule is 1900 serial 1462 in the doubled reading. All probes excel-graph, 2026-10-13. In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
   9999-05-15) are #NUM!, and so is ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity 9999-06-30.
   COUPDAYS on basis 1 in the broken range ignores the settlement: 2958465 for settlements 9999-01-01, 9998-03-01 and
@@ -571,7 +581,7 @@ The other failing cells are last-digit misses (DISC, INTRATE, PRICEDISC, PRICEMA
 or iteration stopping points (XIRR, YIELD, ODDFYIELD; T-0916). Most fail in the 1900 twin too; PRICEDISC
 daycount A20 is 1 ulp off in 1904 only.
 Status: VERIFIED (web)
-Tasks: T-1436, T-1440, T-1447, T-1457, T-1489, T-1492
+Tasks: T-1436, T-1440, T-1447, T-1457, T-1489, T-1492, T-1494
 
 ## Negative serials under an explicit negative section; lone elapsed tokens
 Rule: Excel decides whether a negative serial formats from the value's own sign, before a negative section drops it.
