@@ -452,12 +452,14 @@ impl Model {
         F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
     {
         let Range { left, right } = area;
+        // The columns of a row found by a union walk, reused from row to row and sheet to sheet.
+        let mut columns = Vec::new();
         // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one
         // is clipped to its own used area, so a span of whole columns walks only data.
         debug_assert!(left.sheet <= right.sheet, "3-D span corners out of order");
         for sheet in left.sheet..=right.sheet {
             if of_union {
-                self.for_each_existing_position(sheet, left, right, cell, f)?;
+                self.for_each_existing_position(sheet, (left, right), cell, &mut columns, f)?;
                 continue;
             }
             let (row2, column2) = self
@@ -479,9 +481,9 @@ impl Model {
     fn for_each_existing_position<F>(
         &mut self,
         sheet: u32,
-        left: &CellReferenceIndex,
-        right: &CellReferenceIndex,
+        (left, right): (&CellReferenceIndex, &CellReferenceIndex),
         cell: CellReferenceIndex,
+        columns: &mut Vec<i32>,
         f: &mut F,
     ) -> Result<(), CalcResult>
     where
@@ -495,7 +497,6 @@ impl Model {
         // a LAMBDA repeating a union over an empty sheet would grow the record without bound.
         self.spend_area_walk(1, cell)?;
         self.record_seen_empty_range(sheet, left.row, left.column, right.row, right.column);
-        let mut columns = Vec::new();
         // Slots are paid for in whole steps as they add up, so a dense column costs a step per
         // cell and one more per `SLOTS_PER_WALK_STEP` rows.
         let mut slots: u64 = 0;
@@ -518,11 +519,11 @@ impl Model {
                 .worksheet(sheet)
                 .map_err(sheet_error)?
                 .sheet_data
-                .columns_in_row_between(row, left.column, right.column, &mut columns);
+                .columns_in_row_between(row, left.column, right.column, columns);
             // A row costs a step even with no cell in the area's columns: finding them is a
             // search of the row.
             self.spend_area_walk((columns.len() as u64).max(1), cell)?;
-            for &column in &columns {
+            for &column in columns.iter() {
                 f(self, CellReferenceIndex { sheet, row, column })?;
             }
             from = row + 1;

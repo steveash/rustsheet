@@ -624,7 +624,12 @@ With data in row 1,048,576 `=SUM((B:B,C:C),...)` with nine union arguments (9*2^
 27. The engine now agrees on all of them (T-1497). MAP over a union
 (`=SUM(MAP((B1:B3,C1:C3),LAMBDA(x,x)))`, `ROWS(...)`) is `#VALUE!` in both. The oracle gives no
 timings, so whether Excel walks only data is not known; a union over filled cells past the budget
-remains a DEVIATION.
+remains a DEVIATION. So does a union over a sheet with many rows filled in other columns: a row is
+found through the sheet's row storage, not per column, and costs a step even when the area's
+columns are blank in it, so `MAP(A1:A10000,LAMBDA(r,SUM((B:B,C:C))))` is `#VALUE!` here when
+another column fills 9,000 rows (Excel: 80000). A per-column index would lift that (T-1502).
+A union area is recorded as read-empty as one rectangle per formula root, once however often it is
+walked, so repeated walks do not grow the record that each spill is checked against.
 Excel's actual limit, if any, is not known; the probe only shows it is above 2*10^8 walked cells.
 The LET variables and LAMBDA parameters in scope may hold at most 262,144 areas together (`MAX_HELD_AREAS`,
 four `MAX_AREAS`): each binding may hold a fresh union (`LET(x_1,(A1,A1),x_2,(x_1,x_1),...)`), so memory would

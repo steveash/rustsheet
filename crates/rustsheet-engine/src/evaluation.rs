@@ -150,7 +150,7 @@ pub(crate) struct SeenRecord {
 /// A rectangle read as empty on behalf of `root`, in one go. A function that walks a whole
 /// column or row visits only the sheet's used area; the rest holds nothing, and the formula
 /// depends on it all the same. That remainder is one record, not one per cell.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct SeenRange {
     pub(crate) root: CellReferenceIndex,
     pub(crate) sheet: u32,
@@ -391,6 +391,10 @@ pub(crate) struct Evaluation {
     pub(crate) seen: HashMap<CellKey, SeenRecord, KeyBuild>,
     /// Rectangles read as empty in one go, with their root (`SeenRange`).
     pub(crate) seen_ranges: Vec<SeenRange>,
+    /// The members of `seen_ranges`, so a rectangle read again on behalf of the same root (a
+    /// union walked once per row of a MAP) is recorded once and the spill check stays
+    /// proportional to the distinct rectangles read.
+    pub(crate) seen_range_set: HashSet<SeenRange>,
     /// Set when the current pass must be abandoned. Every evaluation in
     /// progress then returns without storing anything.
     pub(crate) restart: Option<Restart>,
@@ -461,6 +465,7 @@ impl Default for Evaluation {
             circular: HashSet::default(),
             seen: HashMap::default(),
             seen_ranges: Vec::new(),
+            seen_range_set: HashSet::default(),
             restart: None,
             in_pass: false,
             restarts_in_last_evaluation: 0,
@@ -661,6 +666,7 @@ impl Model {
         state.stack.clear();
         state.seen.clear();
         state.seen_ranges.clear();
+        state.seen_range_set.clear();
         state.restart = None;
         state.depth = 0;
         state.unwinding = false;
@@ -1004,14 +1010,17 @@ impl Model {
             return;
         }
         if let Some(root) = self.evaluation.root {
-            self.evaluation.seen_ranges.push(SeenRange {
+            let range = SeenRange {
                 root,
                 sheet,
                 row1,
                 column1,
                 row2,
                 column2,
-            });
+            };
+            if self.evaluation.seen_range_set.insert(range) {
+                self.evaluation.seen_ranges.push(range);
+            }
         }
     }
 
