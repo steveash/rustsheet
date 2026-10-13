@@ -283,6 +283,7 @@ C	probes/lookup-whole-column-blank-tail.case.json	60
 C	probes/m7-argument-modes.case.json	174
 C	probes/match-descending-argcheck.case.json	20
 C	probes/match-fractional-match-type.case.json	8
+C	probes/match-type-nested-passthrough.case.json	17
 C	probes/match-type-text-passthrough.case.json	9
 C	probes/math-argument-modes.case.json	56
 C	probes/min-max-reference-forms.case.json	25
@@ -401,6 +402,7 @@ C	probes/rich-errors-image-sizing.case.json	58
 C	probes/rich-errors-image.case.json	15
 C	probes/rich-errors-shapes-urls.case.json	51
 C	probes/rich-errors-stockhistory.case.json	5
+C	probes/round-concat-array-edges.case.json	25
 C	probes/round-concat-array-lift.case.json	14
 C	probes/round-family.case.json	53
 C	probes/round-huge-digits-carry.case.json	6

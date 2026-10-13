@@ -29,6 +29,9 @@ pub(crate) enum IfBranchMode {
     Aggregate,
     /// As an argument that needs one sheet's reference (INDEX, MATCH): a 3-D span is `#VALUE!`.
     SingleSheet,
+    /// As a cell-reading argument sees it ([`Model::evaluate_chosen_reference`]): a nested IFS,
+    /// SWITCH, LET or CHOOSE branch stays the cell it picks.
+    Chosen,
 }
 
 // ── IF array helpers ──────────────────────────────────────────────────────────
@@ -178,6 +181,7 @@ impl Model {
                         IfBranchMode::SingleSheet => {
                             self.evaluate_single_sheet_arg(node, cell).into()
                         }
+                        IfBranchMode::Chosen => self.evaluate_chosen_reference(node, cell).into(),
                         IfBranchMode::Value => self.evaluate_node_in_context(node, cell).into(),
                     },
                     None => RefArg::Value(CalcResult::Boolean(false)),
@@ -359,7 +363,7 @@ impl Model {
         as_reference: bool,
     ) -> CalcResult {
         if as_reference {
-            self.evaluate_node_with_reference(node, cell)
+            self.evaluate_chosen_reference(node, cell)
         } else {
             self.evaluate_node_in_context(node, cell)
         }

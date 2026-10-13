@@ -3,7 +3,7 @@ id: T-1452
 title: "Probe nested reference pass-through for MATCH match_type and share the reference-context dispatch"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1399 added IF/IFS/SWITCH/LET pass-through in `match_type_arg` (lookup_and_refe
 
 ## Out of scope
 -
+
+## Outcome
+Probed `probes/match-type-nested-passthrough` (17 cells, excel-graph): nesting, the SWITCH default and 3-D spans pass the cell through, and a multi-cell range is its top-left cell, plain or picked. Fixed 9 mismatches. `match_type_arg` now uses the shared `evaluate_chosen_reference` (also behind IFS/SWITCH `as_reference`); aggregates keep `evaluate_reference_arg` unchanged, since IFS/SWITCH there stay values. Recorded in lookup.md Rule 3.

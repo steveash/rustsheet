@@ -3,7 +3,7 @@ id: T-1400
 title: "Probe ROUND-family and CONCAT array edge cases (non-number elements, error past the text limit)"
 milestone: M2
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Reviewer follow-ups on T-0222. (1) Non-number elements in the ROUND family: `ROU
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/round-concat-array-edges` (excel-graph) covers both groups; the engine already matched all 25 cells, so no code change. Findings recorded in docs/excel-semantics/arrays.md and text.md. Eval delta: probes +25 cells passing (one generated C line added to eval/baseline/probes.txt, no F lines).
