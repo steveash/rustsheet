@@ -3,7 +3,7 @@ id: T-1496
 title: "Probe whether *, function-internal divisions and other ops round twice like /"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,3 +31,10 @@ twice (the helper is `arithmetic::extended_quotient`).
 
 ## Out of scope
 - Implementing double rounding for any newly found operation (the follow-up tasks).
+
+## Outcome
+Probe `probes-numeric/double-rounding-ops` (89 cells, excel-graph): `/` with any numerator,
+`*`, PRODUCT, `+`, `-`, SUM, AVERAGE, SQRT and `^0.5` all round twice (80 of 80 discriminating
+cells). `x%`, `/3` and AVERAGE of three have no discriminating operands. numbers.md updated.
+Follow-ups: T-1498 (`*`, PRODUCT), T-1499 (`+`, `-`, SUM, AVERAGE), T-1500 (SQRT, `^0.5`).
+Eval: new probe case; the 64 failing cells are recorded in the baseline.
