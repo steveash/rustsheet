@@ -210,3 +210,10 @@ next quasi-coupon date after 9999-11-15 would be 10000-05-15), on bases 0 and 1.
 Evidence: probes/date-system-1900-odd-accrint-bound D7-D10 (excel-graph, 2026-10-12).
 Status: VERIFIED. Tasks: T-1447, T-1457.
 Implemented in: `odd_l_func` (functions/financial/financial_bonds.rs).
+
+## COUPDAYS basis 1 does not use the end-of-month rule (T-1489, T-1493)
+`COUPDAYS(DATE(2096,2,15),DATE(2100,2,28),2,1)` is 184 in 1900, the length of 2095-08-28 to 2096-02-28, while the same
+call's COUPPCD (2095-08-31), COUPNCD (2096-02-29), COUPDAYBS (168) and COUPDAYSNC (14) describe a 182-day period. So
+COUPDAYS on basis 1 appears to step the schedule without the end-of-month rule that the other COUP* functions apply.
+Ours gives 182 (not yet implemented; T-1493). Evidence: probes/date-system-1900-financial-readers E12-E16
+(excel-graph, 2026-10-13); the single probed shape, so the general rule is UNVERIFIED.
