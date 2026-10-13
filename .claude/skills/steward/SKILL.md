@@ -14,6 +14,13 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   clean` only means "no textual conflict", and two PRs that each add `T-0129` (or decision `0026`)
   never conflict textually. Merge `origin/main` in, run `make check`, push, and merge only after
   CI is green on that new head.
+- **Merge queue** (decision 0053): once the owner has turned on the merge queue for `main` (a merge
+  call is refused with "merge queue" in the message, or the PR shows as queued), do not merge and
+  skip check (c): on a head that meets (a) and (b), call `enable_pr_auto_merge` with `mergeMethod:
+  SQUASH` to enqueue it. The queue tests it merged with current `main` and the PRs ahead of it.
+  Never merge `main` in only because the branch is behind; do merge it in to fix a conflict. A PR
+  the queue removes (a failed merge-group check) is red CI: fix it per this skill, then enqueue
+  again.
 - **Orphaned agent PRs** (decision 0050): the steward may merge a task PR (branch
   `agent/<lane>/T-XXXX-*`) opened by another session only when ALL of these hold:
   - it has been open 24 h or more, and its branch has not moved for 2 h or more. Measure when the
@@ -22,7 +29,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     session's `Claude-Session` trailer) do not reset this clock;
   - it is not a draft, and its task is not `status: blocked`;
   - CI is green on the latest head;
-  - the branch passes the up-to-date check above (decision 0028); you may merge `main` in first;
+  - the branch passes the up-to-date check above (decision 0028; with the merge queue on, enqueue
+    instead, decision 0053); you may merge `main` in first;
   - you have run the `review` skill's applicable reviewers yourself on the current diff
     (`git diff origin/main...origin/<branch>` at the head you will merge) and every one says
     APPROVE. Do not rely on the PR body's table: it records no head sha and may predate later
