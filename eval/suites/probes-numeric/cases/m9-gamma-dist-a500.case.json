@@ -1,0 +1,50 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1045 sweep for T-0971/T-0972: GAMMA.DIST(x,500,b,cum) over b, x around the mean, cum.",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-1045",
+  "sweep",
+  "incomplete-gamma"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=GAMMA.DIST(50,500,1,TRUE)",
+    "A2": "=GAMMA.DIST(50,500,1,FALSE)",
+    "A3": "=GAMMA.DIST(250,500,1,TRUE)",
+    "A4": "=GAMMA.DIST(250,500,1,FALSE)",
+    "A5": "=GAMMA.DIST(500,500,1,TRUE)",
+    "A6": "=GAMMA.DIST(500,500,1,FALSE)",
+    "A7": "=GAMMA.DIST(750,500,1,TRUE)",
+    "A8": "=GAMMA.DIST(750,500,1,FALSE)",
+    "A9": "=GAMMA.DIST(1500,500,1,TRUE)",
+    "A10": "=GAMMA.DIST(1500,500,1,FALSE)",
+    "A11": "=GAMMA.DIST(100,500,2,TRUE)",
+    "A12": "=GAMMA.DIST(100,500,2,FALSE)",
+    "A13": "=GAMMA.DIST(500,500,2,TRUE)",
+    "A14": "=GAMMA.DIST(500,500,2,FALSE)",
+    "A15": "=GAMMA.DIST(1000,500,2,TRUE)",
+    "A16": "=GAMMA.DIST(1000,500,2,FALSE)",
+    "A17": "=GAMMA.DIST(1500,500,2,TRUE)",
+    "A18": "=GAMMA.DIST(1500,500,2,FALSE)",
+    "A19": "=GAMMA.DIST(3000,500,2,TRUE)",
+    "A20": "=GAMMA.DIST(3000,500,2,FALSE)",
+    "A21": "=GAMMA.DIST(50000000,500,1000000,TRUE)",
+    "A22": "=GAMMA.DIST(50000000,500,1000000,FALSE)",
+    "A23": "=GAMMA.DIST(250000000,500,1000000,TRUE)",
+    "A24": "=GAMMA.DIST(250000000,500,1000000,FALSE)",
+    "A25": "=GAMMA.DIST(500000000,500,1000000,TRUE)",
+    "A26": "=GAMMA.DIST(500000000,500,1000000,FALSE)",
+    "A27": "=GAMMA.DIST(750000000,500,1000000,TRUE)",
+    "A28": "=GAMMA.DIST(750000000,500,1000000,FALSE)",
+    "A29": "=GAMMA.DIST(1500000000,500,1000000,TRUE)",
+    "A30": "=GAMMA.DIST(1500000000,500,1000000,FALSE)"
+   }
+  }
+ ],
+ "expected": {}
+}
