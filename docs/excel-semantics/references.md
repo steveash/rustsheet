@@ -153,7 +153,7 @@ and `sheetDataSet/sheetData[@sheetId]/row/cell`): `=[1]Uses!$A$1` → "Hello!" (
 Evidence: poi/ref-56737.xlsx Refs!E3, G3, I3; poi/ref2-56737.xlsx Refs!E3, G3, I3, E5, G5, I5;
 poi/56737.xlsx Uses!C5, D3, D5 (Excel 2010-written, Excel-cached values).
 An add-in function called through an external name, `=[1]!HsGetValue(…)` (poi/HsGetVal.xlsx
-Sheet1!B5, C5 cached "#Missing") and `=[1]!LUCANET("Ist")` (poi/56502.xlsx Tabelle1!A4 cached
+Sheet1!B5, C5 cached "#Missing") and `=[1]!LUCANET(…)` (poi/56502.xlsx Tabelle1!A4 cached
 "pls. update"), keeps its result only in the cell: the externalLink part caches nothing for it, so
 those values came from the add-in. What Excel gives on recalculation without the add-in is
 unprobed; the engine gives `#NAME?` (an unknown function).
