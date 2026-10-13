@@ -179,3 +179,34 @@ Evidence: gen-m9/0c7fc447bc2eebfd Calc!A24, gen-m9/4df1b22d3ed63f58 Calc!A20 (ex
 Ours: the basis error (`#DIV/0!`) and `#VALUE!` for the text discount.
 Status: VERIFIED (web) for these two shapes; the general order UNVERIFIED
 Tasks: T-1406
+
+## ODDFPRICE and ODDFYIELD need the first coupon on the maturity's schedule
+
+ODDFPRICE and ODDFYIELD are #NUM! unless the first coupon is one of the maturity's coupon dates (stepping back from
+the maturity by whole periods, with the month-end rule when the maturity is the last day of a month), strictly before
+the maturity, and the issue is not the quasi-coupon date one period before the first coupon. An issue two or more
+periods before is fine, and so is an issue a day off the quasi-coupon date. Examples (1900, semiannual, basis 0):
+- `ODDFPRICE(DATE(2024,2,1),DATE(2025,7,2),DATE(2024,1,1),DATE(2024,7,1),0.05,0.06,100,2,0)` is #NUM!: the maturity
+  is a day off the schedule. Maturity 2025-06-30 with first coupon 2024-07-01 is #NUM! too, as are basis 1 and
+  quarterly twins.
+- Maturity 2025-02-28 with first coupon 2024-08-31 gives 98.9344 (month-end rule); maturity 2025-02-27 is #NUM!.
+- First coupon equal to the maturity is #NUM!.
+- Issue 2024-01-01, first coupon 2024-07-01, maturity 2025-07-01 is #NUM! (a regular first period), for bases 0, 1
+  and 4, quarterly as well, and for issue 2024-01-15 / first coupon 2024-07-15. Issue 2023-07-01 (two periods) gives
+  98.5951, issue 2024-01-02 98.6562 and issue 2023-12-31 98.6556.
+ODDFYIELD follows the same checks. Unexplained: ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity
+9999-06-30 (issue 9998-07-01, settlement 9998-08-01) are #NUM! in 1900 although the first coupon is on the schedule
+(probes/date-system-1900-odd-accrint-bound C5, C6; T-1490).
+Evidence: probes/date-system-1900-oddf-schedule, probes/date-system-1900-oddf-issue-boundary (excel-graph,
+2026-10-13).
+Status: VERIFIED (the C5/C6 cells above UNVERIFIED, T-1490). Tasks: T-1457.
+Implemented in: `check_odd_first_coupon` (functions/financial/financial_bonds.rs).
+
+## ODDLPRICE and ODDLYIELD: a quasi-coupon date past the calendar is #NUM!
+
+ODDLPRICE and ODDLYIELD are #NUM! when a quasi-coupon date of the odd last period, including the one after the
+maturity, is past 9999-12-31: `ODDLPRICE(DATE(9999,8,1),DATE(9999,12,31),DATE(9999,5,15),0.05,0.06,100,2,0)` (the
+next quasi-coupon date after 9999-11-15 would be 10000-05-15), on bases 0 and 1.
+Evidence: probes/date-system-1900-odd-accrint-bound D7-D10 (excel-graph, 2026-10-12).
+Status: VERIFIED. Tasks: T-1447, T-1457.
+Implemented in: `odd_l_func` (functions/financial/financial_bonds.rs).

@@ -99,8 +99,17 @@ a referenced cell, so text and errors are `#REF!`); valid indexes give a same-sh
 (`VLOOKUP(2,A1:B4,{2,1},FALSE)` is "two", 2; a fractional element truncates). When lookup_value or
 range_lookup lifts, the index uses only its first element (`VLOOKUP({2;3},A1:B4,{1;2},FALSE)` is 2, 3,
 `{2;"a"}` is "two", "three", `{#DIV/0!;2}` is `#REF!` twice, a 2-D index likewise).
-Unprobed: a valid multi-cell *range* index or range_lookup with a scalar lookup_value (the engine
-intersects it implicitly, yet static analysis marks the formula as spilling), which error wins when a
+A multi-cell *range* range_lookup lifts like an array and spills (gen-m2/942bdade381b7537 Calc!A381,
+d3e2df0bef2f173a Calc!A20, f7e6d351c8538ef5 Calc!A296: `#SPILL!` on a collision;
+04cfd82f54dbc2b2 Calc!A19: a 1x4 range whose first element is `#N/A`; excel-graph, T-0203, T-1468).
+An error lookup_value or index does not stop that lift either: a `#VALUE!` lookup_value (the inner
+HLOOKUP's `E12-A6` in f7e6d351c8538ef5 Calc!A296) or index (`E$2/0.1` in 942bdade381b7537 Calc!A381)
+with a lifting range_lookup spills, giving `#SPILL!` on a collision (T-1468). The element values of
+such a spill were never seen (both cells collide). The engine gives the lookup_value error per
+element; for an error index it gives that error, but Excel may give `#REF!` as for an array index
+whose first element is an error. The engine lifts a scalar error with an *array* range_lookup the same way (inference, unprobed: T-1491).
+A multi-cell range *index* stays implicitly intersected (T-1426). Unprobed: the element values of an
+error index with a lifting range_lookup, which error wins when a
 lookup_value element and a range_lookup element are both errors (the engine gives the lookup error),
 and blank elements of a computed index array (read as 0, `#VALUE!`).
 Evidence: probes/vlookup-array-index-range-lookup (155 cells, excel-graph, 2026-10-12, T-1269); the

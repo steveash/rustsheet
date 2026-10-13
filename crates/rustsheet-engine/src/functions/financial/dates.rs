@@ -77,6 +77,23 @@ impl Model {
         ))
     }
 
+    /// The first `N` arguments of ODDFPRICE, ODDFYIELD, ODDLPRICE or ODDLYIELD, all dates, as 1900
+    /// serials (`DateSystem::odd_period_1900_serial`). A date Excel's reading moves off the calendar
+    /// is `None`: the caller makes it #NUM! once every argument has been read, so an error in a
+    /// later argument still wins.
+    pub(super) fn get_odd_period_dates<const N: usize>(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<[Option<i64>; N], CalcResult> {
+        let date_system = self.workbook.settings.date_system;
+        let mut dates = [None; N];
+        for (date, arg) in dates.iter_mut().zip(args) {
+            *date = date_system.odd_period_1900_serial(self.get_number_no_bools(arg, cell)?);
+        }
+        Ok(dates)
+    }
+
     /// Whether Excel's coupon schedule breaks for `maturity`, as `financial_date` read it
     /// (`DateSystem::coupon_schedule_breaks`): only in a 1904 workbook, from 9995-12-31 on.
     pub(super) fn coupon_schedule_breaks(&self, maturity: i64) -> bool {
@@ -147,6 +164,34 @@ pub(super) fn days_30_360_us(d1: NaiveDate, d2: NaiveDate) -> f64 {
         day2 = 30;
     }
     if day2 == 31 && day1 >= 30 {
+        day2 = 30;
+    }
+    if day1 == 31 {
+        day1 = 30;
+    }
+    if start_is_feb_last {
+        day1 = 30;
+    }
+    (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
+}
+
+// Days d1→d2 via US 30/360 with the `ModifyBothDates` rule — the "PSA hack"
+// the odd-last-coupon code uses for basis 0.
+pub(super) fn days_30_360_us_both(d1: NaiveDate, d2: NaiveDate) -> f64 {
+    let y1 = d1.year();
+    let m1 = d1.month() as i32;
+    let mut day1 = d1.day() as i32;
+    let y2 = d2.year();
+    let m2 = d2.month() as i32;
+    let mut day2 = d2.day() as i32;
+
+    let start_is_feb_last = m1 == 2 && d1.day() == last_day_of_feb(y1);
+    let end_is_feb_last = m2 == 2 && d2.day() == last_day_of_feb(y2);
+
+    if end_is_feb_last {
+        day2 = 30;
+    }
+    if day2 == 31 {
         day2 = 30;
     }
     if day1 == 31 {
