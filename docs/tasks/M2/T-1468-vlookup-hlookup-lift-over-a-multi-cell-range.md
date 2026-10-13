@@ -3,7 +3,7 @@ id: T-1468
 title: "VLOOKUP/HLOOKUP lift over a multi-cell range range_lookup (4 gen-m2 known failures)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -44,3 +44,6 @@ range_lookup lifts) is already implemented for arrays in `Model::lookup_each`
 ## Out of scope
 - A multi-cell range index (stays intersected; T-1426 probes the IF-branch form).
 - Error precedence between a lookup_value element and a range_lookup element (unprobed; file a probe task in M2 if needed).
+
+## Outcome
+A multi-cell range range_lookup now lifts like an array (`lookup_sorted_arg`), and an error lookup_value or index no longer short-circuits when range_lookup lifts (`lookup_head`). All 4 gen-m2 cells leave the baseline (gen-m2 known failures 10 -> 6). Which error wins between several failing arguments stays unprobed.
