@@ -84,7 +84,9 @@ file and its acceptance criteria.
    sleep). Fix failures per the `steward` skill. When CI is green and all reviewers approve:
    **squash-merge**, but only after the `steward` skill's mechanical up-to-date check (decision
    0028: the PR head must contain the current `origin/main`). If it fails, follow the steward
-   remedy: merge `main` in, `make check`, push, and wait for CI on the new head.
+   remedy: merge `main` in, `make check`, push, and wait for CI on the new head. Once the merge
+   queue is on (decision 0053), enqueue with `enable_pr_auto_merge` (`mergeMethod: SQUASH`)
+   instead of merging, and skip the up-to-date check; the queue does it.
 4. Delete the branch.
 5. Go back to step 1 for the next task while the session budget allows (110 minutes, 10 tasks;
    decision 0025); the opus tier first does step 6.5.

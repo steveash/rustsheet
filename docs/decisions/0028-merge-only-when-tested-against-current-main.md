@@ -1,6 +1,7 @@
 # 0028 — Merge only a head that contains the current main
 
-- **Status:** accepted (2026-10-05, owner request). It refines 0023 (a clash caught by the
+- **Status:** accepted (2026-10-05, owner request). Amended by 0053: with the merge queue on, the
+  queue gives this guarantee. It refines 0023 (a clash caught by the
   second PR's CI now also has to be caught at merge time) and the up-to-date clause of the steward
   merge policy, fits 0020 (merge `main` in, never rebase), and leaves 0016's allocator as best
   effort.
