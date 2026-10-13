@@ -600,7 +600,8 @@ union (an aggregate argument of several areas: SUM, COUNT, COUNTA, SUBTOTAL, AGG
 are walked over the cells that exist only, not every position of the used area: every function
 that takes a union skips blank cells, and the cells are met in the same row-major order, so the
 first error cell is the same. The walk pays as it goes from a budget of 16,777,216 steps
-(`MAX_AREA_WALK`, 2^24) per formula evaluation: one step per cell handed to the function, one per
+(`MAX_AREA_WALK`, 2^24) per formula evaluation: one step per area walked (so a repeated walk of
+an empty union is paid for too), one per cell handed to the function, one per
 row found (at least one, even with no cell in the area's columns), one per unallocated chunk of
 1,024 rows passed over, and one per 16 row slots tested in allocated chunks
 (`SLOTS_PER_WALK_STEP`). Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET

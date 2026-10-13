@@ -374,9 +374,11 @@ impl Model {
     /// sit on two sheets is a 3-D reference (only [`Self::evaluate_reference_arg`]
     /// builds one) and is walked sheet by sheet in tab order; whole-row and
     /// whole-column ranges are clipped to each sheet's used area so the walk
-    /// stays proportional to the data. The first
-    /// error cell aborts the walk and is returned as `Err`, as does an `Err`
-    /// from `f`. `f` never sees `CalcResult::Error`.
+    /// stays proportional to the data. Several areas (a union) are walked over
+    /// their existing cells only, so `f` is never handed a blank cell of a union
+    /// ([`Self::for_each_position_in_area`]). The first error cell aborts the walk
+    /// and is returned as `Err`, as does an `Err` from `f`. `f` never sees
+    /// `CalcResult::Error`.
     pub(crate) fn for_each_cell_in_areas<F>(
         &mut self,
         areas: &[Range],
@@ -393,7 +395,7 @@ impl Model {
     }
 
     /// [`Self::for_each_cell_in_areas`] that also hands `f` the error cells
-    /// (COUNTA counts them, COUNT and COUNTBLANK skip them).
+    /// (COUNTA counts them, COUNT skips them).
     pub(crate) fn for_each_cell_or_error_in_areas<F>(
         &mut self,
         areas: &[Range],
@@ -472,8 +474,8 @@ impl Model {
 
     /// The union-area walk of [`Self::for_each_position_in_area`] on one sheet: the existing
     /// cells of the rectangle `left..=right`, in row-major order like the dense walk, so the
-    /// first error cell is the same one. Every chunk and row slot the search looks at and every
-    /// cell it hands to `f` is paid for before `f` runs.
+    /// first error cell is the same one. The area, every chunk and row slot the search looks at
+    /// and every cell it hands to `f` are paid for before `f` runs.
     fn for_each_existing_position<F>(
         &mut self,
         sheet: u32,
@@ -489,6 +491,9 @@ impl Model {
         // The positions not handed to `f` are empty. Recording the whole rectangle covers the
         // existing cells too, which is harmless: a spill can only write where nothing but its
         // own spill cells stands, and those read as empty until it has run.
+        // The area itself is a step: its record must be paid for even when it finds nothing, or
+        // a LAMBDA repeating a union over an empty sheet would grow the record without bound.
+        self.spend_area_walk(1, cell)?;
         self.record_seen_empty_range(sheet, left.row, left.column, right.row, right.column);
         let mut columns = Vec::new();
         // Slots are paid for in whole steps as they add up, so a dense column costs a step per

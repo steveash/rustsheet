@@ -242,9 +242,10 @@ fn a_union_walked_by_a_lambda_costs_what_its_data_costs() {
 #[test]
 fn a_let_bound_union_shares_the_walk_budget_across_arguments() {
     // DEVIATION (references.md "Union area cap"): the formula, not each argument, may take
-    // MAX_AREA_WALK steps of union walks. Over 65,536 filled rows one walk of A:A is 65,536
-    // cells and 4,160 steps of row slots (66,559 slots), so sixteen copies are 1,115,136 steps:
-    // fifteen arguments of them (16,727,040) fit in 2^24 and a sixteenth is past it.
+    // MAX_AREA_WALK steps of union walks. Over 65,536 filled rows one walk of A:A is a step for
+    // the area, 65,536 cells and 4,160 steps of row slots (66,559 slots), so sixteen copies are
+    // 1,115,152 steps: fifteen arguments of them (16,727,280) fit in 2^24 and a sixteenth is past
+    // it.
     let mut model = model_with_ones_in_column_a(1 << 16);
     let union = balanced_union("A:A", 16);
     let within = vec!["x"; 15].join(",");
@@ -261,7 +262,7 @@ fn a_let_bound_union_shares_the_walk_budget_across_arguments() {
 fn a_dense_union_repeated_by_a_lambda_is_bounded() {
     // DEVIATION (directive 5): the walk budget is per formula run, so a LAMBDA repeating a
     // walk of dense data stops at MAX_AREA_WALK steps: 300 walks of (A:A,A:A) over 65,536
-    // filled rows are 41,817,600 steps, past it.
+    // filled rows are 41,818,200 steps, past it.
     let mut model = model_with_ones_in_column_a(1 << 16);
     model._set("Z1", "=SUM(MAP(A1:A300,LAMBDA(r,SUM((A:A,A:A)))))");
     model.evaluate();

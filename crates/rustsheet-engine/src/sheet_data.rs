@@ -298,9 +298,8 @@ impl SheetData {
 
     /// The first row of `from..=to` that exists, if any, with the work of finding it: how many
     /// unallocated chunks were passed over and how many row slots of allocated chunks were
-    /// tested. A walk over
-    /// sparse rows calls it again from the row after the one found, so its total work is one
-    /// pass over the chunks of the span, whatever the number of rows in it.
+    /// tested. A walk over sparse rows calls it again from the row after the one found, so its
+    /// total work is one pass over the chunks of the span, whatever the number of rows in it.
     pub(crate) fn next_row_between(&self, from: i32, to: i32) -> RowSearch {
         let mut search = RowSearch::default();
         if from > to {
