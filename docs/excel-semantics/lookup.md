@@ -208,7 +208,7 @@ Rule 3: the cell stays a reference through IF, IFS, CHOOSE, SWITCH and LET, so `
 with D1 = "x" is `#REF!` too (as are the same with IF, CHOOSE, SWITCH, `LET(a,D1,a)`); D2 = 1
 gives 2. IFERROR returns the value, so `IFERROR(D1,0)` is `#VALUE!`, like literal text
 (probes/match-type-text-passthrough K1:K9, excel-graph, T-1399).
-Nesting changes nothing: `IFS(TRUE,IF(TRUE,D1))`, `IF(TRUE,IFS(TRUE,D1))`, `IFS(TRUE,SWITCH(1,1,D1))` and the SWITCH default branch (`SWITCH(9,1,D2,D1)`) are `#REF!` for D1 = "x" (D2 = 1 gives 2).
+Nesting of IF, IFS and SWITCH inside each other changes nothing (IFS or SWITCH inside CHOOSE or a LET body is unprobed): `IFS(TRUE,IF(TRUE,D1))`, `IF(TRUE,IFS(TRUE,D1))`, `IFS(TRUE,SWITCH(1,1,D1))` and the SWITCH default branch (`SWITCH(9,1,D2,D1)`) are `#REF!` for D1 = "x" (D2 = 1 gives 2).
 A multi-cell range is its top-left cell, plain or picked by IF, IFS, SWITCH, LET or CHOOSE (no implicit intersection): with D1 = "x", D2 = 1, D3 = "y", `MATCH(2,A5:A7,D1:D2)` is `#REF!` and `D2:D3` gives 2, in row 2 or 3 alike. A 3-D span (`Sheet1:Sheet1!D1`) behaves as the cell
 (probes/match-type-nested-passthrough K1:K17, excel-graph, T-1452).
 Evidence: eval/suites/probes/cases/match-descending-argcheck.case.json J1–J20 (oracle: excel-graph,
