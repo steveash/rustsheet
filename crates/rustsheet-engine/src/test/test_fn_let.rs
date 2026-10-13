@@ -135,7 +135,7 @@ fn test_lambda_parameter_names_are_case_insensitive() {
 }
 
 #[test]
-fn test_let_binds_index_reference_and_and_at_index_reference() {
+fn test_let_binds_index_reference_and_at_index_reference() {
     let mut model = new_empty_model();
     model._set("B1", "5");
     model._set("B2", "6");

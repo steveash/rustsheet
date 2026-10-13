@@ -1140,4 +1140,4 @@ Tasks: T-1369
 
 ### LET / LAMBDA binding of `@INDEX(..)` (T-1503)
 
-`@INDEX(B1:B3,2)` bound by LET or passed to a LAMBDA keeps the reference, like the unprefixed INDEX: ISREF TRUE, ROW 2, value 20, `COUNT(x)` 1, and calling the name is `#REF!` (probes/let-bind-implicit-index H1:H10, excel-graph 2026-10-13).
+`@INDEX(B1:B3,2)` bound by LET or passed to a LAMBDA keeps the reference, like the unprefixed INDEX: ISREF TRUE, ROW 2, value 20, `COUNT(x)` 1, and calling the name is `#REF!` (probes/let-bind-implicit-index H1:H9, excel-graph 2026-10-13).
