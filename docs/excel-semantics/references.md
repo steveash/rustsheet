@@ -155,7 +155,7 @@ INDEX's value, the intersection's value and the aggregates read it (T-1454). Not
 IF and CHOOSE picking an external reference (follow-up task), INDEX with an index array into one
 (`#BLOCKED!`, UNVERIFIED), and cached multi-cell `[n]` ranges (INDEX, unions and the other
 reference paths above read a `[n]` reference as one with no cache). A one-cell `[n]Sheet!A1` reads
-the cache (`external_links.rs`, below; T-1382), in the aggregates and COUNTA too
+the cache (`external_links.rs`, below; T-1382), in the aggregates, COUNTA and COUNTBLANK too
 (`Model::uncached_external_reference`). UNVERIFIED (not probed, T-1487): COUNTA
 counts an external reference that gives an error instead (`COUNTA((…!A1,E1))`, a disjoint
 intersection, INDEX past the area) as 1, as it does a local error argument; OFFSET and COUNTBLANK

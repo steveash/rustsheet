@@ -205,7 +205,7 @@ impl Model {
         }
     }
 
-    /// [`Model::external_reference`] for a value reader (the aggregates, COUNTA): a one-cell
+    /// [`Model::external_reference`] for a value reader (the aggregates, COUNTA, COUNTBLANK): a one-cell
     /// `[n]Sheet!A1` the externalLink cache holds is `None`, a value read from the cache as
     /// evaluation reads it (`SUM([1]Defines!$B$2)` is the cached 142; T-1382). It stays a
     /// reference for ISREF and the shape readers.

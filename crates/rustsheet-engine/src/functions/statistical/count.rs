@@ -123,8 +123,8 @@ impl Model {
         let mut result = 0.0;
         for arg in args {
             // COUNTBLANK over the cells of another workbook is `#VALUE!`
-            // (probes/external-ref-no-link-index A9).
-            if let Some(areas) = self.external_reference(arg, cell) {
+            // (probes/external-ref-no-link-index A9); a cached `[n]` cell is its value.
+            if let Some(areas) = self.uncached_external_reference(arg, cell) {
                 return match areas {
                     Ok(_) => CalcResult::new_error(
                         Error::VALUE,
