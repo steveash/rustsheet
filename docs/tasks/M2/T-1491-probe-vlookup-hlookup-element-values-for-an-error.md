@@ -3,7 +3,7 @@ id: T-1491
 title: "Probe VLOOKUP/HLOOKUP element values for an error index or lookup_value with a lifting range_lookup"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
