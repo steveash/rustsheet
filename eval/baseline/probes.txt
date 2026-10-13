@@ -416,6 +416,7 @@ C	probes/rows-columns-args.case.json	14
 C	probes/sheet-qualified-both-corners.case.json	9
 C	probes/sheet-qualified-corner-order.case.json	13
 C	probes/sheet-qualified-ref-error-forms.case.json	10
+C	probes/sort-omitted-args.case.json	75
 C	probes/stat-argument-modes.case.json	573
 C	probes/subnormal-flush-edges.case.json	50
 C	probes/subnormal-function-boundaries.case.json	30
