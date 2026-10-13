@@ -18,11 +18,12 @@
 //!   run that closes its section goes on with unquoted text after it (`"d"` + 120 quoted + 2
 //!   spaces works, + 3 fails; 122 quoted + `d` works, 123 fails);
 //! - in a section whose closing literal run holds quoted text, its date, time and `@` tokens are
-//!   free (`"d"` + 125 quoted works, like 125 quoted alone; `"h:mm"` + 123 quoted works);
+//!   free (`"d"` + 125 quoted works, like 125 quoted alone; `"h:mm"` + 123 quoted works), and `@`
+//!   even takes 1 off the rest (`"@ "` + 124 quoted works, `"@  "` + 122 works and 123 fails,
+//!   `"@ - "` + 121 works and 122 fails; `"d "` + 124 quoted fails);
 //! - a section holding both a condition and quoted text pays 3 more (`"[>5]0"` + 116 quoted works,
 //!   118 fails, while `"[>5]0"` + 79 spaces works).
 //!
-//! Known miss: `TEXT("x","@ "&<124 quoted>)` works in Excel and costs 251 here (T-1481).
 
 use super::lexer::{Lexer, Token};
 
@@ -35,6 +36,9 @@ const LITERAL_COST: usize = 3;
 const DOLLAR_COST: usize = 1;
 const QUOTED_CHAR_COST: usize = 2;
 const TOKEN_COST: usize = 2;
+/// What `@` is refunded on top of its `TOKEN_COST` in a section whose closing literal run holds
+/// quoted text (probes/text-format-length-limit-l, -m, T-1481).
+const TEXT_TOKEN_EXTRA_REFUND: usize = 1;
 const AMPM_COST: usize = 3;
 const COLOR_COST: usize = 2;
 const CONDITION_COST: usize = 7;
@@ -113,6 +117,8 @@ struct Section {
     /// The date, time and `@` tokens anywhere in the section (not only next to the closing run:
     /// both `h` and `mm` are free in `"h:mm"` + 123 quoted), free if that run holds quoted text.
     free_tokens: usize,
+    /// How many of `free_tokens` are `@`.
+    free_text_tokens: usize,
     /// Whether the latest element is quoted text.
     after_quoted: bool,
     /// Whether the current literal run holds quoted text and whether it now ends in unquoted text;
@@ -130,7 +136,8 @@ impl Section {
             if self.run_ends_unquoted {
                 extra += QUOTED_SWITCH_COST;
             }
-            refund += TOKEN_COST * self.free_tokens;
+            refund +=
+                TOKEN_COST * self.free_tokens + TEXT_TOKEN_EXTRA_REFUND * self.free_text_tokens;
         }
         if self.conditions > 0 && self.has_quoted {
             extra += CONDITION_WITH_QUOTED_COST;
@@ -223,6 +230,7 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
             section.after_quoted = quoted;
             if is_free_before_closing_quoted(&token) {
                 section.free_tokens += 1;
+                section.free_text_tokens += usize::from(matches!(token, Token::Raw));
             }
             run = next_run;
         }
@@ -310,6 +318,11 @@ mod tests {
             format!("dd{}", quoted(125)),
             format!("yyyy{}", quoted(125)),
             format!("@{}", quoted(125)),
+            format!("@ {}", quoted(124)),
+            format!("@-{}", quoted(124)),
+            format!("@  {}", quoted(122)),
+            format!("@ - {}", quoted(121)),
+            format!(" @ {}", quoted(122)),
             format!("d {}", quoted(123)),
             format!("h:mm{}", quoted(123)),
             format!("[h]{}", quoted(124)),
@@ -332,6 +345,11 @@ mod tests {
         let too_complex = [
             format!("d{}", quoted(126)),
             format!("d {}", quoted(124)),
+            format!("@{}", quoted(126)),
+            format!("@ {}", quoted(125)),
+            format!("@  {}", quoted(123)),
+            format!("@ - {}", quoted(122)),
+            format!(" @ {}", quoted(123)),
             format!("[h]{}", quoted(125)),
             format!("AM/PM{}", quoted(124)),
             format!("%{}", quoted(125)),
