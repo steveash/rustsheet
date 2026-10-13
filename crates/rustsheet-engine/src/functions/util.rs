@@ -423,9 +423,7 @@ impl Model {
     where
         F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
     {
-        if areas.len() > 1 {
-            self.check_area_cells(areas, cell)?;
-        }
+        self.check_area_cells(areas, cell)?;
         for Range { left, right } in areas {
             // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one
             // is clipped to its own used area, so a span of whole columns walks only data.

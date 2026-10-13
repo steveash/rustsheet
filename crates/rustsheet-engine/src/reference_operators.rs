@@ -65,6 +65,7 @@ impl AreaList {
 pub(crate) struct Areas(Arc<[Range]>);
 
 impl Areas {
+    /// How many areas the reference has: 2..=[`MAX_AREAS`].
     pub(crate) fn len(&self) -> usize {
         self.0.len()
     }

@@ -31,7 +31,10 @@ pub(crate) const TOO_MANY_AREA_CELLS: &str = "Too many cells in the areas of a r
 /// What is left of one formula evaluation's budgets of area pairs ([`MAX_AREA_PAIRS`]) and of
 /// multi-area cells ([`MAX_AREA_CELLS`]). [`Model::with_area_budget`] gives each formula run a
 /// fresh one, so every argument and operand of the formula draws on the same budget, and its
-/// worst-case work does not grow with the number of arguments.
+/// worst-case work does not grow with the number of arguments. Only that call refills it, so
+/// every entry point that starts a formula evaluation (`run_cell_formula`,
+/// `evaluate_outside_cell`) must go through it; a new one that did not would draw on whatever
+/// budget the model holds.
 #[derive(Clone, Copy)]
 pub(crate) struct AreaBudget {
     pairs: usize,
@@ -87,12 +90,16 @@ impl Model {
     /// Takes the cells of `areas`, each clipped to its sheet's used area, from what is left of
     /// the formula's budget of [`MAX_AREA_CELLS`], shared by all its multi-area walks, or gives
     /// the `#VALUE!` of a walk past it: arithmetic only, before any cell is read, so `MAX_AREAS`
-    /// whole columns over a populated sheet are `#VALUE!` without a walk.
+    /// whole columns over a populated sheet are `#VALUE!` without a walk. One range is not
+    /// counted, as a plain range argument never was.
     pub(crate) fn check_area_cells(
         &mut self,
         areas: &[Range],
         cell: CellReferenceIndex,
     ) -> Result<(), CalcResult> {
+        if areas.len() <= 1 {
+            return Ok(());
+        }
         let left = self.area_budget.cells;
         let mut total: u64 = 0;
         for area in areas {
@@ -109,7 +116,8 @@ impl Model {
             let columns = u64::try_from(column2 - area.left.column + 1).unwrap_or(0);
             total = total.saturating_add(rows.saturating_mul(columns));
             if total > left {
-                // Past the budget already: the rest of the areas need not be counted.
+                // Past the budget already: the rest of the areas need not be counted, and the
+                // partial total fails to spend all the same.
                 break;
             }
         }
