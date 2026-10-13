@@ -3,7 +3,7 @@ id: T-1490
 title: "ODDFPRICE/ODDFYIELD #NUM! with first coupon 9998-12-31 and maturity 9999-06-30 in 1900"
 milestone: M1
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
