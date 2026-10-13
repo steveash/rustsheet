@@ -34,4 +34,4 @@ The in-range root (T-0288).
 Rejected-model note, no code change. `exp((ln(M) + r*ln2)/n) * 2^q` matches all three target cells
 (geomean-pow2-count L4, M1, M4). Over the whole eval it fixes 16 known failures but regresses 9
 cells the current model passes, so it was not adopted. numbers.md "GEOMEAN root rounding" lists
-both sets. Eval: no change. A per-cell selector between the two models is the open lead.
+both sets. Eval: no change. A per-cell selector between the two models is the open lead, under T-1108's root-model question.
