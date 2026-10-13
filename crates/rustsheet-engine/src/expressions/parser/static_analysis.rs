@@ -338,15 +338,24 @@ fn static_analysis_op_results(lhs: StaticResult, rhs: StaticResult) -> StaticRes
 //  * Unknown if we cannot guaranty either
 pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
     match node {
-        // A parse error and a wrong reference could be Unknown too (or Array for a range).
+        // A parse error and a wrong reference could be Unknown too.
         Node::BooleanKind(_)
         | Node::NumberKind(_)
         | Node::StringKind(_)
         | Node::ErrorKind(_)
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
-        | Node::WrongRangeKind { .. }
         | Node::EmptyArgKind => StaticResult::Scalar,
+        // A range into another workbook spills its `#BLOCKED!` cells as a range of this
+        // workbook spills its values (`='[other.xlsx]Sheet1'!A1:B2`,
+        // probes/external-ref-no-link-index C1:D2, T-1454).
+        Node::WrongRangeKind {
+            row1,
+            column1,
+            row2,
+            column2,
+            ..
+        } => StaticResult::Range(row2 - row1, column2 - column1),
         Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
             run_static_analysis_on_node(child)
         }

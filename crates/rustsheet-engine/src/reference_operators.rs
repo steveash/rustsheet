@@ -11,7 +11,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::{util::is_at_if, Function},
+    functions::{math_and_trigonometry::array_size::check_array_size, util::is_at_if, Function},
     model::Model,
 };
 
@@ -369,6 +369,179 @@ pub(crate) fn external_area(node: &Node, cell: CellReferenceIndex) -> Option<Ext
     on_grid.then_some(area)
 }
 
+impl ExternalArea {
+    /// The area's cells in a value context, where the area was reached through INDEX or an
+    /// intersection: one cell reads as empty (`INDEX(…!A1:C4,2,2)+1` is 1, `&"x"` is "x",
+    /// ISBLANK TRUE, ERROR.TYPE `#N/A`), and several are `#BLOCKED!` each, spilled
+    /// (`=INDEX(…!A1:C4,2,0)` spills three; probes/external-ref-no-link-index A1:A6, A19, A36,
+    /// C7:E7).
+    pub(crate) fn picked_value(self, cell: CellReferenceIndex) -> CalcResult {
+        if self.extent() == (1, 1) {
+            CalcResult::EmptyCell
+        } else {
+            self.blocked_value(cell)
+        }
+    }
+
+    /// The written area's cells in a value context: `#BLOCKED!` each, one cell a scalar and
+    /// several spilled (`='[other.xlsx]Sheet1'!A1:B2` spills four, `…!A1:B2*1` too;
+    /// probes/external-ref-no-link A2, external-ref-no-link-index C1:D5). An area past the
+    /// array bound is that bound's error (CLAUDE.md directive 5).
+    pub(crate) fn blocked_value(self, cell: CellReferenceIndex) -> CalcResult {
+        let blocked = || CalcResult::new_error(Error::BLOCKED, cell, "External reference".into());
+        let (rows, columns) = self.extent();
+        if (rows, columns) == (1, 1) {
+            return blocked();
+        }
+        if let Some((error, message)) = check_array_size(rows, columns) {
+            return CalcResult::new_error(error, cell, message);
+        }
+        CalcResult::Array(vec![vec![ArrayNode::Error(Error::BLOCKED); columns]; rows])
+    }
+
+    /// The cells this area and `other` share, `None` if none.
+    fn intersect(self, other: ExternalArea) -> Option<ExternalArea> {
+        let area = ExternalArea {
+            first_row: self.first_row.max(other.first_row),
+            first_column: self.first_column.max(other.first_column),
+            last_row: self.last_row.min(other.last_row),
+            last_column: self.last_column.min(other.last_column),
+        };
+        (area.first_row <= area.last_row && area.first_column <= area.last_column).then_some(area)
+    }
+}
+
+/// The areas a reference into another workbook stands for, or the result it gives instead
+/// ([`Model::external_reference`]).
+pub(crate) type ExternalAreas = Result<Vec<ExternalArea>, CalcResult>;
+
+/// The areas of both operands of a union or intersection into another workbook, or the result it
+/// gives instead ([`Model::external_operands`]).
+type ExternalOperands = Result<(Vec<ExternalArea>, Vec<ExternalArea>), CalcResult>;
+
+/// `#VALUE!` for a union or intersection of a reference into another workbook with one into this
+/// workbook (`AREAS((…!A1,E1))`, `ROWS(…!A1:B3 E1:F3)`; probes/external-ref-no-link-index A13,
+/// A14).
+fn two_workbooks(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::VALUE,
+        cell,
+        "Reference into two workbooks".to_string(),
+    )
+}
+
+impl Model {
+    /// The areas of `node` when it is a reference into another workbook: written
+    /// ([`external_area`]), an INDEX into one, or a union or intersection of them; several
+    /// areas in formula order, never more than [`MAX_AREAS`]. `Err` holds what `node` gives
+    /// instead: an operand's error, `#NULL!` for an empty intersection, `#VALUE!` for an
+    /// operator joining two workbooks, INDEX's error. `None` when `node` is none of these: then
+    /// nothing in it was evaluated, so the caller evaluates it as usual. Recursion is bounded by
+    /// the parser's depth cap.
+    /// Excel: docs/excel-semantics/references.md "External reference with no cached data"
+    /// (probes/external-ref-no-link-shapes, external-ref-no-link-index).
+    pub(crate) fn external_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<ExternalAreas> {
+        let node = node.ungrouped();
+        match node {
+            Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. } => {
+                external_area(node, cell).map(|area| Ok(vec![area]))
+            }
+            Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } => self
+                .external_index(args, cell)
+                .map(|picked| picked.map(|area| vec![area])),
+            Node::OpUnionKind { left, right, .. } => Some(
+                self.external_operands(left, right, cell)?
+                    .and_then(|(left, right)| {
+                        if left.len() + right.len() > MAX_AREAS {
+                            return Err(too_many_areas(cell));
+                        }
+                        Ok([left, right].concat())
+                    }),
+            ),
+            Node::OpIntersectKind { left, right, .. } => {
+                self.external_intersection(left, right, cell)
+            }
+            _ => None,
+        }
+    }
+
+    /// `left right` when either operand is a reference into another workbook
+    /// ([`Model::external_reference`]): the cells both share, pairwise as for areas of this
+    /// workbook (`ROWS(…!A1:B3 …!A2:B5)` is 2, disjoint areas `#NULL!`;
+    /// probes/external-ref-no-link-shapes A17, external-ref-no-link-index A18).
+    fn external_intersection(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<ExternalAreas> {
+        let operands = self.external_operands(left, right, cell)?;
+        Some(operands.and_then(|(left, right)| {
+            let pairs = left.len().saturating_mul(right.len());
+            if pairs > MAX_AREAS {
+                return Err(too_many_areas(cell));
+            }
+            self.spend_area_pairs(pairs, cell)?;
+            let areas: Vec<ExternalArea> = left
+                .iter()
+                .flat_map(|a| right.iter().filter_map(|b| a.intersect(*b)))
+                .collect();
+            if areas.is_empty() {
+                return Err(empty_intersection(cell));
+            }
+            Ok(areas)
+        }))
+    }
+
+    /// [`Model::external_reference`] where one area is read: several are `#REF!`, as ROWS,
+    /// COLUMNS, ROW and COLUMN give for a union (probes/multiarea-count H2, multiarea-cellfn H3).
+    pub(crate) fn one_external_area(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<Result<ExternalArea, CalcResult>> {
+        Some(
+            self.external_reference(node, cell)?
+                .and_then(|areas| match areas[..] {
+                    [area] => Ok(area),
+                    _ => Err(CalcResult::new_error(
+                        Error::REF,
+                        cell,
+                        "Reference of several areas".to_string(),
+                    )),
+                }),
+        )
+    }
+
+    /// The areas of both operands of a union or intersection when either is a reference into
+    /// another workbook ([`Model::external_reference`]); `#VALUE!` when only one is, and the
+    /// left operand's error first.
+    fn external_operands(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<ExternalOperands> {
+        let left = self.external_reference(left, cell);
+        if let Some(Err(error)) = left {
+            return Some(Err(error));
+        }
+        match (left, self.external_reference(right, cell)) {
+            (None, None) => None,
+            (Some(Ok(left)), Some(Ok(right))) => Some(Ok((left, right))),
+            (_, Some(Err(error))) => Some(Err(error)),
+            _ => Some(Err(two_workbooks(cell))),
+        }
+    }
+}
+
 impl Model {
     /// The error of a spill range operator whose anchor is not a single reference. The `@` of a
     /// value (`=ANCHORARRAY(@1)`) is `#VALUE!` in Excel (probes/colon-hash-value-operands D3,
@@ -685,6 +858,15 @@ impl Model {
         right: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        // Into another workbook, the one area's cells are read at once (`ERROR.TYPE(…!A1
+        // …!A1:B2)` is `#N/A`, probes/external-ref-no-link-index A36).
+        if let Some(areas) = self.external_intersection(left, right, cell) {
+            return match areas.as_deref() {
+                Ok([area]) => area.picked_value(cell),
+                Ok(_) => several_areas(cell),
+                Err(error) => error.clone(),
+            };
+        }
         match self.intersect_to_one_area(left, right, cell) {
             Ok(area) => CalcResult::Range {
                 left: area.left,

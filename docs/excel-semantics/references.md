@@ -130,12 +130,32 @@ is FALSE and `COUNTA(…!A1:B2)` 0 (it counts no `#BLOCKED!`). `='[other.xlsx]Sh
 `SUM('[other.xlsx]S1:S2'!A1)` is `#BLOCKED!` and `ISREF('[other.xlsx]S1:S2'!A1)` FALSE; a range
 whose corners are in two workbooks (`ISREF('[other.xlsx]Sheet1'!A1:Calc!B2)`) is FALSE.
 Evidence: probes/external-ref-no-link-shapes Calc!A1:A20 (excel-graph, 2026-10-12, T-1381).
-Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`, and
-`reference_operators::external_area` gives ISREF, ROWS, COLUMNS, ROW, COLUMN and AREAS the written
-shape; the lexer reads the unquoted `[book]Sheet!` prefix (T-1381). INDEX, OFFSET, unions,
-intersections, COUNTA and the spill (T-1454) and cached `[n]` values (T-1382) are not yet
-implemented. Unprobed: a `[n]` index with no externalLink part, and ROW/COLUMN of a multi-cell
-external area (the engine spills the row or column numbers as for a sheet reference, UNVERIFIED).
+The cell INDEX picks reads as **empty**, not `#BLOCKED!`: `INDEX(…!A1:C4,2,2)` is 0 in a cell,
+`+1` gives 1, `&"x"` gives "x", ISBLANK is TRUE, ISERROR, ISTEXT and ISNUMBER FALSE, and ERROR.TYPE
+`#N/A`; `INDEX(…!A1,1,1)`, the area INDEX picks from a union, and the one cell an intersection
+leaves (`ERROR.TYPE(…!A1 …!A1:B2)`) read empty too. Several cells are `#BLOCKED!` each, spilled:
+`=INDEX(…!A1:C4,2,0)` spills three, `='[other.xlsx]Sheet1'!A1:B2` and `=…!A1:B2*1` four, and
+`ERROR.TYPE(…!A1:A3)` lifts (`#SPILL!` where blocked). Aggregates over any of these are `#BLOCKED!`
+(`SUM(INDEX(…,2,2))`, `SUM(INDEX(…,2,0))`, `SUM((…!A1,…!B2))`, `SUM(…!A1:B3 …!A2:B5)`,
+`SUMPRODUCT(…!A1:B2)`), but COUNTA counts nothing in them, even the written `…!A1` that reads
+`#BLOCKED!` (`COUNTA(…!A1)` 0, `COUNTA(…!A1:B2,1)` 1), COUNT gives 0 and COUNTBLANK `#VALUE!`.
+`OFFSET(…!A1,1,1)` is `#VALUE!` (ISREF FALSE, ERROR.TYPE 3), `OFFSET(…!A1:B2,0,0)` too. A union or
+intersection of an external reference with one on this workbook is `#VALUE!` (`AREAS((…!A1,E1))`,
+`ROWS(…!A1:B3 E1:F3)`); disjoint external areas intersect to `#NULL!`; `ISREF(…!A1:B3 …!A2:B5)` and
+`ISREF(INDEX((…!A1,…!B2),1,1,2))` are TRUE, `ROWS(INDEX((…!A1:B2,…!C3:D5),1,1,2))` 1. IF and LET keep
+the reference too: `ROWS(IF(TRUE,…!A1:B3))` and `LET(r,…!A1:B3,ROWS(r))` are 3, and the cell IF picks
+reads empty (`ERROR.TYPE(IF(TRUE,…!A1))` is `#N/A`), so only a written external reference read
+directly as a value is `#BLOCKED!`.
+Evidence: probes/external-ref-no-link-index Calc!A1:A36, C1:F7 (excel-graph, 2026-10-13, T-1454).
+Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`; the
+lexer reads the unquoted `[book]Sheet!` prefix (T-1381). `Model::external_reference`
+(reference_operators.rs) gives the areas of a written external reference, an INDEX into one and a
+union or intersection of them; ISREF, ROWS, COLUMNS, ROW, COLUMN, AREAS, COUNTA, COUNTBLANK, OFFSET,
+INDEX's value, the intersection's value and the aggregates read it (T-1454). Not yet implemented:
+IF and CHOOSE picking an external reference (follow-up task), INDEX with an index array into one
+(`#BLOCKED!`, UNVERIFIED), cached `[n]` values (T-1382). Unprobed: a `[n]` index with no
+externalLink part, and ROW/COLUMN of a multi-cell external area (the engine spills the row or column
+numbers as for a sheet reference, UNVERIFIED).
 Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
 Tasks: T-0124, T-1381, T-1382, T-1454
 

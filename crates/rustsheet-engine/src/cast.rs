@@ -1,7 +1,7 @@
 use crate::arithmetic::{bcast_idx, flush_subnormal};
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
-use crate::reference_operators::{external_area, Ranges, RefArg};
+use crate::reference_operators::{ExternalArea, Ranges, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -772,8 +772,8 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<(usize, usize), CalcResult> {
-        if let Some(area) = external_area(node, cell) {
-            return Ok(area.extent());
+        if let Some(area) = self.one_external_area(node, cell) {
+            return area.map(ExternalArea::extent);
         }
         // ROWS/COLUMNS of a reference of several areas is #REF!, not the #VALUE! of a value
         // context (probes/multiarea-count H2, H3; SPEC-0004 row 5).

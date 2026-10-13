@@ -69,6 +69,17 @@ impl Model {
         }
         let mut result = 0.0;
         for arg in args {
+            // The cells of another workbook count none, written or reached through INDEX, a
+            // union or an intersection, although `='[other.xlsx]Sheet1'!A1` is `#BLOCKED!`
+            // (`COUNTA(…!A1)` is 0, `COUNTA(…!A1:B2,1)` 1; probes/external-ref-no-link-shapes
+            // A16, external-ref-no-link-index A8, A10, A12, A23, A30). An error instead of a
+            // reference is a value, counted.
+            if let Some(areas) = self.external_reference(arg, cell) {
+                if areas.is_err() {
+                    result += 1.0;
+                }
+                continue;
+            }
             // A reference, 3-D ones included, arrives as a Range: its non-empty cells count.
             // TAKE, DROP, INDEX, OFFSET and the like over a range pick a reference too, so
             // `COUNTA(TAKE(B3:B3,1))` of a blank is 0 (probes/subtotal-reference-operands-c H13).
@@ -111,6 +122,18 @@ impl Model {
         }
         let mut result = 0.0;
         for arg in args {
+            // COUNTBLANK over the cells of another workbook is `#VALUE!`
+            // (probes/external-ref-no-link-index A9).
+            if let Some(areas) = self.external_reference(arg, cell) {
+                return match areas {
+                    Ok(_) => CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "COUNTBLANK of an external reference".to_string(),
+                    ),
+                    Err(error) => error,
+                };
+            }
             let value = if self.is_multi_area(arg) && !is_span_or_if_of_span(arg) {
                 // A union is #VALUE! here (probes/multiarea-count H1), and so is a 3-D span bound
                 // by LET (probes/3d-ref-let-bound-span-readers C11); one area is a range.

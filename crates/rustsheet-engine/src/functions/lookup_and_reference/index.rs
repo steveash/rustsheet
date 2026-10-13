@@ -6,7 +6,7 @@ use crate::functions::math_and_trigonometry::array_size::check_array_size;
 use crate::functions::util::{
     array_node_to_calc_result, near_integer_count, NEAR_INTEGER_TOLERANCE,
 };
-use crate::reference_operators::{three_d_needs_one_sheet, RefArg};
+use crate::reference_operators::{three_d_needs_one_sheet, ExternalArea, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::{ArrayNode, Node},
@@ -92,6 +92,32 @@ fn index_effective_indices(
     }
 }
 
+/// The rows and columns INDEX selects in an area of `num_rows` by `num_cols` cells, 0-based and
+/// inclusive: `(first_row, last_row, first_column, last_column)`. `None` is `#REF!`: an index past
+/// the area, or one index into a 2-D area, where an array would give the row
+/// (docs/excel-semantics/lookup.md).
+fn index_window(
+    num_rows: usize,
+    num_cols: usize,
+    numbers: IndexNumbers,
+    two_arg: bool,
+) -> Option<(usize, usize, usize, usize)> {
+    let (row_eff, col_eff) = index_effective_indices(num_rows, numbers.row, numbers.col, two_arg);
+    if row_eff > num_rows || col_eff > num_cols || (two_arg && num_rows > 1 && num_cols > 1) {
+        return None;
+    }
+    let span = |eff: usize, count: usize| {
+        if eff == 0 {
+            (0, count.saturating_sub(1))
+        } else {
+            (eff - 1, eff - 1)
+        }
+    };
+    let (first_row, last_row) = span(row_eff, num_rows);
+    let (first_col, last_col) = span(col_eff, num_cols);
+    Some((first_row, last_row, first_col, last_col))
+}
+
 /// Extracts the requested cell, row, column or whole array from `arr`.
 /// `row_eff`/`col_eff` of `0` select every row/column respectively. A selection
 /// that resolves to a single cell is returned as a scalar; otherwise an array, unless `top_left`
@@ -135,6 +161,16 @@ fn wrong_reference(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::REF, cell, "Wrong reference".into())
 }
 
+/// INDEX's indices: validated numbers, or the evaluated indices when one lifts INDEX.
+enum IndexArgs {
+    Numbers(IndexNumbers),
+    Lifted {
+        row: CalcResult,
+        col: Option<CalcResult>,
+        area: Option<CalcResult>,
+    },
+}
+
 /// What INDEX returns for its selection.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum IndexForm {
@@ -170,25 +206,105 @@ impl Model {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
+        if let Some(picked) = self.external_index(args, cell) {
+            return match picked {
+                Ok(area) => area.picked_value(cell),
+                Err(error) => error,
+            };
+        }
         let two_arg = args.len() == 2;
-        // A missing or empty row_num or column_num is 0 ("the whole row/column"); area_num defaults to 1.
-        let row = self.evaluate_node_in_context(&args[1], cell);
+        let numbers = match self.index_numbers(args, cell) {
+            Ok(IndexArgs::Numbers(numbers)) => numbers,
+            Ok(IndexArgs::Lifted { row, col, area }) => {
+                return self.index_lifted(&args[0], row, col, area, two_arg, cell)
+            }
+            Err(error) => return error,
+        };
+        let arg = self.evaluate_reference_arg(&args[0], cell);
+        self.index_select(&arg, numbers, two_arg, cell, form)
+    }
+
+    /// INDEX's `row_num`, `column_num` and `area_num` (`args[1..]`), evaluated and validated, or
+    /// the evaluated indices when one lifts. A missing or empty `row_num` or `column_num` is 0
+    /// ("the whole row/column"); `area_num` defaults to 1.
+    fn index_numbers(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<IndexArgs, CalcResult> {
+        let row = args.get(1).map_or(CalcResult::EmptyArg, |a| {
+            self.evaluate_node_in_context(a, cell)
+        });
         let col = args.get(2).map(|a| self.evaluate_node_in_context(a, cell));
         let area = args.get(3).map(|a| self.evaluate_node_in_context(a, cell));
         if lifts(&row) || col.as_ref().is_some_and(lifts) || area.as_ref().is_some_and(lifts) {
-            return self.index_lifted(&args[0], row, col, area, two_arg, cell);
+            return Ok(IndexArgs::Lifted { row, col, area });
         }
         let area = area.map_or(Ok(1.0), |a| self.cast_to_number(a, cell));
         let row = self.cast_to_number(row, cell);
         let col = col.map_or(Ok(0.0), |c| self.cast_to_number(c, cell));
-        let numbers = match index_numbers(area, row, col, || {
+        index_numbers(area, row, col, || {
             CalcResult::new_error(Error::VALUE, cell, "Index out of range".into())
-        }) {
-            Ok(n) => n,
-            Err(e) => return e,
+        })
+        .map(IndexArgs::Numbers)
+    }
+
+    /// INDEX into a reference into another workbook ([`Model::external_reference`]): the area
+    /// it picks, still a reference (`ROWS(INDEX(…!A1:C4,2,0))` is 1, `ISREF(INDEX(…,2,2))` TRUE,
+    /// `ROWS(INDEX((…!A1:B2,…!C3:D5),1,1,2))` 1; probes/external-ref-no-link-shapes A3, A4,
+    /// external-ref-no-link-index A21). `None` when `args[0]` is no such reference (nothing is
+    /// evaluated then) or the argument count is wrong. An index array that would lift INDEX is
+    /// `#BLOCKED!`, as before this path existed (UNVERIFIED: not probed).
+    pub(crate) fn external_index(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Option<Result<ExternalArea, CalcResult>> {
+        if !(2..=4).contains(&args.len()) {
+            return None;
+        }
+        let areas = match self.external_reference(&args[0], cell)? {
+            Ok(areas) => areas,
+            Err(error) => return Some(Err(error)),
         };
-        let arg = self.evaluate_reference_arg(&args[0], cell);
-        self.index_select(&arg, numbers, two_arg, cell, form)
+        let numbers = match self.index_numbers(args, cell) {
+            Ok(IndexArgs::Numbers(numbers)) => numbers,
+            Ok(IndexArgs::Lifted { .. }) => {
+                return Some(Err(CalcResult::new_error(
+                    Error::BLOCKED,
+                    cell,
+                    "External reference".into(),
+                )))
+            }
+            Err(error) => return Some(Err(error)),
+        };
+        // NaN is out of range too; in range the conversion below is exact.
+        let area = if numbers.area.is_nan() || numbers.area > areas.len() as f64 {
+            None
+        } else {
+            areas.get(numbers.area as usize - 1)
+        };
+        let Some(&area) = area else {
+            return Some(Err(CalcResult::new_error(
+                Error::REF,
+                cell,
+                "Area out of range".into(),
+            )));
+        };
+        let (num_rows, num_cols) = area.extent();
+        let Some((first_row, last_row, first_col, last_col)) =
+            index_window(num_rows, num_cols, numbers, args.len() == 2)
+        else {
+            return Some(Err(wrong_reference(cell)));
+        };
+        // Offsets within an area on the grid, so they fit an i32.
+        let offset = |first: i32, by: usize| first + by as i32;
+        Some(Ok(ExternalArea {
+            first_row: offset(area.first_row, first_row),
+            first_column: offset(area.first_column, first_col),
+            last_row: offset(area.first_row, last_row),
+            last_column: offset(area.first_column, last_col),
+        }))
     }
 
     /// The lifted INDEX: one scalar INDEX per broadcast element of the indices, the reference
@@ -290,29 +406,16 @@ impl Model {
         match reference {
             &CalcResult::Range { left, right } => {
                 let num_rows = (right.row - left.row + 1) as usize;
-                let (row_eff, col_eff) =
-                    index_effective_indices(num_rows, row_num, col_num, two_arg);
                 let num_cols = (right.column - left.column + 1) as usize;
-                // Excel: one index into a 2-D range is #REF!, while an array
-                // gives the row (docs/excel-semantics/lookup.md).
-                if row_eff > num_rows
-                    || col_eff > num_cols
-                    || (two_arg && num_rows > 1 && num_cols > 1)
-                {
+                let Some((first_row, last_row, first_col, last_col)) =
+                    index_window(num_rows, num_cols, numbers, two_arg)
+                else {
                     return wrong_reference(cell);
-                }
-                let (row_start, row_end) = if row_eff == 0 {
-                    (left.row, right.row)
-                } else {
-                    let r = left.row + row_eff as i32 - 1;
-                    (r, r)
                 };
-                let (col_start, col_end) = if col_eff == 0 {
-                    (left.column, right.column)
-                } else {
-                    let c = left.column + col_eff as i32 - 1;
-                    (c, c)
-                };
+                let row_start = left.row + first_row as i32;
+                let row_end = left.row + last_row as i32;
+                let col_start = left.column + first_col as i32;
+                let col_end = left.column + last_col as i32;
                 let single = row_start == row_end && col_start == col_end;
                 if form == IndexForm::TopLeft || (form == IndexForm::Value && single) {
                     self.evaluate_cell(CellReferenceIndex {

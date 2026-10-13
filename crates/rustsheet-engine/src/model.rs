@@ -29,6 +29,7 @@ use crate::{
     implicit_intersection::implicit_intersection,
     language::{get_default_language, get_language, Language},
     locale::{get_default_locale, get_locale, Locale},
+    reference_operators::external_area,
     types::*,
     utils as common,
 };
@@ -597,9 +598,10 @@ impl Model {
                 ..
             } => self.get_sheet_span_value(*first_index, *last_index, reference, cell),
             OpUnionKind { left, right, .. } => self.get_union(left, right, cell),
-            WrongRangeKind { sheet_name, .. } => {
-                Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong range")
-            }
+            WrongRangeKind { sheet_name, .. } => match external_area(node, cell) {
+                Some(area) => area.blocked_value(cell),
+                None => Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong range"),
+            },
             RangeKind {
                 sheet_index,
                 row1,
