@@ -112,11 +112,18 @@ pub fn format_text(value: Option<f64>, format: &str, ctx: &FormatContext) -> For
 /// (poi `TextFormatTests` A3:A10, A12:A29; docs/excel-semantics/number-formats.md "Text and
 /// booleans use the format's text section"). A single section with `@` is a text section too
 /// (`@" ""q"""` on "x" is "x q", probes/format-doubled-quotes C11). Any other format with fewer
-/// than four sections returns the text unchanged; that case is unprobed. A result over 255
+/// than four sections returns the text unchanged; that case is unprobed. A code that does not
+/// parse is `#VALUE!` (probes/text-format-length-limit-n, -o). A result over 255
 /// characters is `#VALUE!` ([`MAX_TEXT_FORMAT_CHARS`]).
 pub fn format_text_value(text: &str, format: &str) -> Formatted {
     let mut parser = Parser::new(format);
     parser.parse();
+    // An unparseable code is `#VALUE!` for text too, even without a text section: `@_""` (the `_`
+    // takes the first quote, leaving an unclosed one) and `@"` are `#VALUE!` on "x"
+    // (probes/text-format-length-limit-n A5, -o A41; docs/excel-semantics/number-formats.md).
+    if parser.parts.iter().any(ParsePart::is_error) {
+        return format_error();
+    }
     let section = match parser.parts.as_slice() {
         [only]
             if section_tokens(only)
@@ -128,13 +135,6 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
         _ => 3,
     };
     let tokens = match parser.parts.get(section) {
-        Some(ParsePart::Error(_)) => {
-            return Formatted {
-                text: "#VALUE!".to_owned(),
-                color: None,
-                error: Some("Problem parsing format string".to_owned()),
-            }
-        }
         Some(part) => match section_tokens(part) {
             Some(tokens) => tokens,
             None => return capped_text(text.to_string()),
@@ -164,6 +164,15 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
 /// Excel: TEXT of a text value is `#VALUE!` once the result is over 255 characters, also when the
 /// format leaves the text unchanged (probes/text-format-text-limit A10, A11, A19-A21, A24, A25).
 const MAX_TEXT_FORMAT_CHARS: usize = 255;
+
+/// The `#VALUE!` of a format code that does not parse.
+fn format_error() -> Formatted {
+    Formatted {
+        text: "#VALUE!".to_owned(),
+        color: None,
+        error: Some("Problem parsing format string".to_owned()),
+    }
+}
 
 fn text_too_long() -> Formatted {
     Formatted {
@@ -263,11 +272,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         }
     }
     match part {
-        ParsePart::Error(..) => Formatted {
-            text: "#VALUE!".to_owned(),
-            color: None,
-            error: Some("Problem parsing format string".to_owned()),
-        },
+        ParsePart::Error(..) => format_error(),
         ParsePart::General(..) => {
             let mut text = format_general(value);
             if locale.numbers.symbols.decimal != "." {

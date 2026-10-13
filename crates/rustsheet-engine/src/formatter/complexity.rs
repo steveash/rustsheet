@@ -1,7 +1,7 @@
 //! Excel's complexity limit on a format code, which TEXT reports as `#VALUE!` long before the
 //! code reaches 255 characters (docs/excel-semantics/number-formats.md, "TEXT format code
-//! complexity limit"; probes/text-format-length-limit-c to -k, excel-graph, T-1393, T-1434,
-//! T-1455).
+//! complexity limit"; probes/text-format-length-limit-c to -p, excel-graph, T-1393, T-1434,
+//! T-1455, T-1481, T-1486).
 //!
 //! The rule is fitted to the probed boundaries, not documented by Microsoft. The weights look like
 //! the size in bytes of a compiled code (a quoted character 2, a UTF-16 unit; an unquoted one 3):
@@ -11,12 +11,16 @@
 //! - at most 32 elements in a section, where an element is a run of digit placeholders (with
 //!   their `,` and `.`), a run of literals (unquoted, escaped and quoted text merge), or any other
 //!   token (`d`, `mm`, `%`, `@`, `_x`, `*x`, `[h]`, `AM/PM`, ...);
-//! - a cost of at most 250 over the whole code: 5 per placeholder run plus 2 per `.` in it, 3 per
+//! - a cost of at most 250 over the whole code: 3 per section holding a digit placeholder, 2 per
+//!   placeholder run (`"0"` costs 5, `"0-0"` 10) plus 2 per `.` in it, 3 per
 //!   unquoted or escaped literal character (`$` 1; a run of colons counts once), 2 per quoted
 //!   character, 2 per other token (`AM/PM` 3), 2 per color, 7 per condition, 0 per `;`;
-//! - quoted text pays 4 more when a token or placeholder follows it directly, or when the literal
-//!   run that closes its section goes on with unquoted text after it (`"d"` + 120 quoted + 2
-//!   spaces works, + 3 fails; 122 quoted + `d` works, 123 fails);
+//! - quoted text pays 4 more when a token follows it directly, 2 when unquoted text, a color or a
+//!   condition comes between them (`"a" @` + 120 quoted works, 121 fails), 1 when a placeholder
+//!   run follows it directly or after unquoted text and 0 after a color or condition (`"0"` + 120
+//!   quoted + `"[Red]0"` works, 121 fails), and 4 when the literal run that closes its section goes
+//!   on with unquoted text after it (`"d"` + 120 quoted + 2 spaces works, + 3 fails; 122 quoted +
+//!   `d` works, 123 fails);
 //! - in a section whose closing literal run holds quoted text, its date, time and `@` tokens are
 //!   free (`"d"` + 125 quoted works, like 125 quoted alone; `"h:mm"` + 123 quoted works), and `@`
 //!   even takes 1 off the rest (`"@ "` + 124 quoted works, `"@  "` + 122 works and 123 fails,
@@ -30,7 +34,11 @@ use super::lexer::{Lexer, Token};
 const MAX_SECTIONS: usize = 4;
 const MAX_ELEMENTS: usize = 32;
 const MAX_COST: usize = 250;
-const PLACEHOLDER_RUN_COST: usize = 5;
+/// What a section's first digit placeholder costs once, on top of `PLACEHOLDER_RUN_COST` per run
+/// (`"0-0"` + 120 quoted works and 121 fails, `"0-0-0"` + 117 works and 118 fails;
+/// probes/text-format-length-limit-o, -p, T-1486).
+const NUMBER_SECTION_COST: usize = 3;
+const PLACEHOLDER_RUN_COST: usize = 2;
 const DECIMAL_POINT_COST: usize = 2;
 const LITERAL_COST: usize = 3;
 const DOLLAR_COST: usize = 1;
@@ -44,8 +52,52 @@ const COLOR_COST: usize = 2;
 const CONDITION_COST: usize = 7;
 /// What quoted text costs on top of its characters when more of the section follows it.
 const QUOTED_SWITCH_COST: usize = 4;
+/// What a token pays instead of `QUOTED_SWITCH_COST` when unquoted text, a color or a condition
+/// comes between the quoted text and the token (`"a" @` + 120 quoted works and 121 fails,
+/// `"d"` + 121 quoted + `"[Red]d"` works and 122 fails; probes/text-format-length-limit-n, -o).
+const QUOTED_SWITCH_INDIRECT_COST: usize = 2;
+/// What a placeholder run pays after quoted text, directly or after unquoted text; nothing after a
+/// color or condition (`"a" 0` + 119 quoted works and 120 fails, `"0"` + 120 quoted + `"[Red]0"`
+/// works and 121 fails; probes/text-format-length-limit-l, -n, -o, -p).
+const QUOTED_SWITCH_PLACEHOLDER_COST: usize = 1;
 /// What a condition costs on top of `CONDITION_COST` in a section that also holds quoted text.
 const CONDITION_WITH_QUOTED_COST: usize = 3;
+
+/// What came after the latest quoted text of a section, which sets what the next token or
+/// placeholder run pays for following it.
+#[derive(Clone, Copy, Default, PartialEq)]
+enum AfterQuoted {
+    /// No quoted text, or a token or placeholder already followed it.
+    #[default]
+    None,
+    /// The quoted text is the latest element.
+    Directly,
+    /// Unquoted text in the same literal run followed it.
+    Unquoted,
+    /// A color or condition followed it.
+    Bracket,
+}
+
+impl AfterQuoted {
+    /// The state after a color or condition.
+    fn through_bracket(self) -> Self {
+        if self == AfterQuoted::None {
+            self
+        } else {
+            AfterQuoted::Bracket
+        }
+    }
+
+    /// What a token (`placeholder` false) or a placeholder run pays for following quoted text.
+    fn switch_cost(self, placeholder: bool) -> usize {
+        match (self, placeholder) {
+            (AfterQuoted::None, _) | (AfterQuoted::Bracket, true) => 0,
+            (AfterQuoted::Directly, false) => QUOTED_SWITCH_COST,
+            (AfterQuoted::Unquoted | AfterQuoted::Bracket, false) => QUOTED_SWITCH_INDIRECT_COST,
+            (AfterQuoted::Directly | AfterQuoted::Unquoted, true) => QUOTED_SWITCH_PLACEHOLDER_COST,
+        }
+    }
+}
 
 #[derive(PartialEq)]
 enum Run {
@@ -119,8 +171,10 @@ struct Section {
     free_tokens: usize,
     /// How many of `free_tokens` are `@`.
     free_text_tokens: usize,
-    /// Whether the latest element is quoted text.
-    after_quoted: bool,
+    /// Whether the section holds a digit placeholder (it pays `NUMBER_SECTION_COST` once).
+    has_placeholder: bool,
+    /// What followed the latest quoted text.
+    after_quoted: AfterQuoted,
     /// Whether the current literal run holds quoted text and whether it now ends in unquoted text;
     /// both reset when a non-literal element starts.
     run_has_quoted: bool,
@@ -176,8 +230,12 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
                 }
                 continue;
             }
-            Token::Color(_) => (Run::None, COLOR_COST),
+            Token::Color(_) => {
+                section.after_quoted = section.after_quoted.through_bracket();
+                (Run::None, COLOR_COST)
+            }
             Token::Condition(..) => {
+                section.after_quoted = section.after_quoted.through_bracket();
                 section.conditions += 1;
                 if section.conditions > 1 {
                     return true;
@@ -204,6 +262,10 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
         if counts_as_element && !joins_run {
             section.elements += 1;
             if next_run == Run::Digits {
+                if !section.has_placeholder {
+                    section.has_placeholder = true;
+                    cost += NUMBER_SECTION_COST;
+                }
                 cost += PLACEHOLDER_RUN_COST;
             }
         }
@@ -218,16 +280,24 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
                     section.run_has_quoted |= quoted;
                     section.run_ends_unquoted = !quoted;
                     section.has_quoted |= quoted;
+                    section.after_quoted = if quoted {
+                        AfterQuoted::Directly
+                    } else if section.after_quoted == AfterQuoted::None {
+                        AfterQuoted::None
+                    } else {
+                        AfterQuoted::Unquoted
+                    };
                 }
                 Run::None | Run::Digits => {
-                    if section.after_quoted {
-                        cost += QUOTED_SWITCH_COST;
+                    // A digit joining its run (after a color) pays nothing more.
+                    if !joins_run {
+                        cost += section.after_quoted.switch_cost(next_run == Run::Digits);
                     }
+                    section.after_quoted = AfterQuoted::None;
                     section.run_has_quoted = false;
                     section.run_ends_unquoted = false;
                 }
             }
-            section.after_quoted = quoted;
             if is_free_before_closing_quoted(&token) {
                 section.free_tokens += 1;
                 section.free_text_tokens += usize::from(matches!(token, Token::Raw));
@@ -365,6 +435,54 @@ mod tests {
             format!("[Red]0{}", quoted(122)),
             format!("[>5]{}", quoted(122)),
             format!("[>5]0{}", quoted(118)),
+        ];
+        for code in too_complex {
+            assert!(exceeds_complexity_limit(&code), "{code}");
+        }
+    }
+
+    /// What follows quoted text, and placeholder runs after the first (probes/text-format-length-
+    /// limit-l to -p, T-1486).
+    #[test]
+    fn after_quoted_text_and_placeholder_runs() {
+        let ok = [
+            format!("0{}[Red]0", quoted(120)),
+            format!("{}[Red]0", quoted(121)),
+            format!(" {}[Red]0", quoted(120)),
+            format!("0{}[>5]0", quoted(116)),
+            format!(" {}[>5]0", quoted(116)),
+            format!("d{}[Red]d", quoted(121)),
+            format!("\"a\" @ {}", quoted(120)),
+            format!("\"a\"@{}", quoted(122)),
+            format!("\"a\"-@{}", quoted(122)),
+            format!("\"a\" d{}", quoted(121)),
+            format!("d\"a\"d{}", quoted(122)),
+            format!("\"a\"--d{}", quoted(120)),
+            format!("\"a\" 0{}", quoted(119)),
+            format!(" {}d", quoted(120)),
+            format!("{}0", quoted(121)),
+            format!("0{}0", quoted(121)),
+            format!("0-0{}", quoted(120)),
+            format!("0-0-0{}", quoted(117)),
+            format!("0[Red]0{}", quoted(121)),
+        ];
+        for code in ok {
+            assert!(!exceeds_complexity_limit(&code), "{code}");
+        }
+        let too_complex = [
+            format!("0{}[Red]0", quoted(121)),
+            format!("{}[Red]0", quoted(122)),
+            format!("0{}[>5]0", quoted(117)),
+            format!("d{}[Red]d", quoted(122)),
+            format!("\"a\" @ {}", quoted(121)),
+            format!("\"a\"-@{}", quoted(123)),
+            format!("\"a\" d{}", quoted(122)),
+            format!("\"a\"--d{}", quoted(121)),
+            format!("\"a\" 0{}", quoted(120)),
+            format!(" {}d", quoted(121)),
+            format!("0-0{}", quoted(121)),
+            format!("0-0-0{}", quoted(118)),
+            format!("0-0;0-0{}", quoted(116)),
         ];
         for code in too_complex {
             assert!(exceeds_complexity_limit(&code), "{code}");
