@@ -25,8 +25,8 @@ T-1281 made `fn_unichar` (functions/text/char_code.rs) lift over arrays via `tex
 -
 
 ## Outcome
-Added `probes/unichar-arg-shapes` (13 excel-graph cells: range, TRUE, empty cell, numeric text, non-numeric text,
-"", error). The engine already matched every cell, so there is no code change. Recorded in
+Added `probes/unichar-arg-shapes` (22 excel-graph cells: scalar TRUE, empty cell, numeric text, non-numeric text, "",
+error; ranges with a blank cell, all empty, boolean/text and numeric/non-numeric text elements, each in its own column
+so spills do not collide). The engine already matched every cell, so there is no code change. Recorded in
 docs/excel-semantics/text.md ("UNICHAR argument shapes"). Eval: probes known failures 2855 -> 2855, one new case,
-13/13 pass. Two of the range cells collide with other probes in column D (`#SPILL!` in Excel and in the engine); a
-clean spill layout is not needed for the rule.
+22/22 pass.
