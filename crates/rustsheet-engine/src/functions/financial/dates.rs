@@ -1,6 +1,6 @@
 //! Date arguments of the financial functions: Excel reads a 1904 serial as the 1900 serial
 //! s + 2 * 1462 (`DateSystem::financial_1900_serial`; docs/excel-semantics/dates.md "The 1904 date
-//! system: financial day counts read every date one day late").
+//! system: financial day counts read a 1904 serial as the 1900 serial + 2 * 1462").
 //! Also the coupon functions' day counts per basis and the coupon schedule Excel breaks in a 1904
 //! workbook (`Model::coupon_schedule_breaks`).
 
@@ -9,7 +9,7 @@ use chrono::{Datelike, NaiveDate};
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::from_excel_date,
+    formatter::dates::{from_excel_date, EPOCH_1904_IN_1900_SERIALS},
     model::Model,
 };
 
@@ -234,7 +234,7 @@ pub(super) fn basis_days(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
 /// (`Model::coupon_schedule_breaks`); the next one is then the maturity itself. It reads as
 /// 1904 serial -1462 (`COUPPCD` is -1462), 1900 serial 1462 in the doubled-offset reading of
 /// `DateSystem::financial_1900_serial` (T-1492).
-pub(super) const BROKEN_SCHEDULE_PCD: i64 = 1462;
+pub(super) const BROKEN_SCHEDULE_PCD: i64 = EPOCH_1904_IN_1900_SERIALS;
 
 /// Days between two serials of a broken coupon schedule: their difference on the actual bases
 /// 1-3 (`COUPDAYS(DATE(9999,1,1),DATE(9999,12,31),2,1)` is 2958465 in a 1904 workbook), #NUM! on

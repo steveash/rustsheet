@@ -129,7 +129,7 @@ C	probes/date-system-1904-clock-text.case.json	13
 C	probes/date-system-1904-coupon-bound.case.json	140
 C	probes/date-system-1904-financial-daycount.case.json	40
 C	probes/date-system-1904-financial-readers.case.json	165
-C	probes/date-system-1904-financial-settlement-bound.case.json	30
+C	probes/date-system-1904-financial-settlement-bound.case.json	60
 C	probes/date-system-1904-financial-shift.case.json	36
 C	probes/date-system-1904-financial.case.json	44
 C	probes/date-system-1904-negatives.case.json	18
@@ -724,6 +724,16 @@ F	probes/date-system-1904-financial-readers.case.json	S!E19
 F	probes/date-system-1904-financial-readers.case.json	S!E20
 F	probes/date-system-1904-financial-readers.case.json	S!E30
 F	probes/date-system-1904-financial-readers.case.json	S!E8
+F	probes/date-system-1904-financial-settlement-bound.case.json	S!D1
+F	probes/date-system-1904-financial-settlement-bound.case.json	S!E1
+F	probes/date-system-1904-financial-settlement-bound.case.json	S!F2
+F	probes/date-system-1904-financial-settlement-bound.case.json	S!F3
+F	probes/date-system-1904-financial-settlement-bound.case.json	S!F4
+F	probes/date-system-1904-financial-settlement-bound.case.json	S!F5
+F	probes/date-system-1904-financial-settlement-bound.case.json	S!F6
+F	probes/date-system-1904-financial-settlement-bound.case.json	S!F7
+F	probes/date-system-1904-financial-settlement-bound.case.json	S!F8
+F	probes/date-system-1904-financial-settlement-bound.case.json	S!F9
 F	probes/date-system-1904-financial-shift.case.json	S!A32
 F	probes/date-system-1904-financial-shift.case.json	S!A8
 F	probes/date-system-1904-financial.case.json	S!A14

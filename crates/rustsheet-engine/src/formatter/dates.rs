@@ -31,7 +31,7 @@ fn convert_to_serial_number(date: NaiveDate) -> i32 {
 /// Days from 1900-01-00 (1900-system serial 0) to 1904-01-01 (1904-system serial 0), counting
 /// Excel's fictitious 1900-02-29: 1904 serial 0 is 1900 serial 1462 (probes/date-system-1904-negatives
 /// A8-A12, docs/excel-semantics/dates.md "The 1904 date system").
-const EPOCH_1904_IN_1900_SERIALS: i64 = 1462;
+pub(crate) const EPOCH_1904_IN_1900_SERIALS: i64 = 1462;
 
 /// The 1900 serial the financial functions read for 1904 serial 0: the epoch offset applied twice
 /// (see `DateSystem::financial_1900_serial`).
@@ -101,22 +101,23 @@ impl DateSystem {
         let day = serial.floor() as i64;
         match self {
             Self::Excel1904 if day >= 0 => day
-                .checked_add(2 * EPOCH_1904_IN_1900_SERIALS)
+                .checked_add(FINANCIAL_EPOCH_1904_IN_1900_SERIALS)
                 .filter(|moved| *moved <= i64::from(MAXIMUM_DATE_SERIAL_NUMBER)),
             Self::Excel1900 | Self::Excel1904 => Some(day),
         }
     }
 
     /// The last serial ACCRINT reads for its settlement, in the space of `financial_1900_serial`.
-    /// In a 1904 workbook it takes every settlement up to the last 1904 date, 2957003, though that
-    /// reads past 9999-12-31 (2957003 + 2 * 1462) where YEARFRAC, DISC and the like are #NUM!
-    /// from 1904 serial 2955542 on; 2957004 is #NUM! (probes/date-system-1904-financial-settlement-bound
-    /// A1-A10, excel-graph, T-1492). Other ACCRINT dates and the other readers keep the 9999-12-31 limit.
-    pub(crate) fn accrint_settlement_limit(self) -> i64 {
+    /// With basis 1 and calc_method FALSE a 1904 workbook takes every settlement up to the last
+    /// 1904 date, 2957003, though that reads past 9999-12-31 (2957003 + 2 * 1462) where YEARFRAC and
+    /// DISC are #NUM! from 1904 serial 2955542 on; 2957004 is #NUM! (probes/date-system-1904-
+    /// financial-settlement-bound column A, excel-graph, T-1492). Other bases and calc_method TRUE
+    /// are not modelled and keep the 9999-12-31 limit (columns D-F there give other values; T-1494).
+    pub(crate) fn accrint_settlement_limit(self, basis: i32, calc_method: bool) -> i64 {
         let last = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
         match self {
-            Self::Excel1900 => last,
-            Self::Excel1904 => last + EPOCH_1904_IN_1900_SERIALS,
+            Self::Excel1904 if basis == 1 && !calc_method => last + EPOCH_1904_IN_1900_SERIALS,
+            Self::Excel1900 | Self::Excel1904 => last,
         }
     }
 
@@ -134,7 +135,7 @@ impl DateSystem {
             Self::Excel1900 => false,
             Self::Excel1904 => {
                 // The 1904 maturity is `financial_maturity - FINANCIAL_EPOCH_1904_IN_1900_SERIALS`.
-                let first_broken = last - 2 * EPOCH_1904_IN_1900_SERIALS
+                let first_broken = last - FINANCIAL_EPOCH_1904_IN_1900_SERIALS
                     + 1
                     + FINANCIAL_EPOCH_1904_IN_1900_SERIALS;
                 let last_date =
@@ -348,6 +349,14 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn from_excel_date_up_to_accepts_its_last_serial_only() {
+        use super::from_excel_date_up_to;
+        assert!(from_excel_date_up_to(2_959_927, 2_959_927).is_ok());
+        assert!(from_excel_date_up_to(2_959_928, 2_959_927).is_err());
+        assert!(from_excel_date_up_to(i64::MAX, 2_959_927).is_err());
+    }
+
     #[test]
     fn coupon_schedule_breaks_at_its_bounds_without_overflow() {
         use crate::types::DateSystem;

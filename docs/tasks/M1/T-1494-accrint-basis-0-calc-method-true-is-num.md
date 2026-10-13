@@ -11,10 +11,10 @@ depends_on: []
 ---
 
 ## Goal
-Establish and match why `ACCRINT(DATE(9990,1,1),DATE(9990,6,30),S,0.05,1000,2,0,TRUE)` is `#NUM!` in a 1904 workbook for settlements S from 9995-12-30 on.
+Establish and match ACCRINT in a 1904 workbook for settlements from 9995-12-30 on when not basis 1 / calc_method FALSE: calc_method TRUE is `#NUM!` (bases 0 and 1), and basis 0 / FALSE gives 410415.83 for every settlement from 9995-12-31 (probes/date-system-1904-financial-settlement-bound columns D-F).
 
 ## Context
-T-1492 probed ACCRINT settlements near the 1904 upper bound (probes/date-system-1904-financial-settlement-bound, dates.md); the basis 1 / calc_method FALSE column matched, but a basis 0 / calc_method TRUE column was `#NUM!` for every settlement from 9995-12-30 (where YEARFRAC still works) while the engine gives 299.86. The column was cut from that probe. Needs a new probe (vary basis, calc_method, first_interest, and the 1900 twin) to find the rule. Code: `Model::fn_accrint` (accrint.rs).
+T-1492 probed ACCRINT settlements near the 1904 upper bound (probes/date-system-1904-financial-settlement-bound, dates.md); the basis 1 / calc_method FALSE column matched, but a basis 0 / calc_method TRUE column was `#NUM!` for every settlement from 9995-12-30 (where YEARFRAC still works) while the engine gives a value; column F (basis 0, calc FALSE) gives 410415.83. The failing cells are baselined. Needs a probe (vary basis, calc_method, first_interest, and the 1900 twin) to find the rule. Code: `Model::fn_accrint` (accrint.rs).
 
 ## Acceptance criteria
 - [ ] A probe with its 1900 twin pins the rule; dates.md and the engine match it.

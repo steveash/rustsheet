@@ -397,7 +397,7 @@ impl Model {
             .workbook
             .settings
             .date_system
-            .accrint_settlement_limit();
+            .accrint_settlement_limit(basis, calc_method);
         let settlement = match from_excel_date_up_to(settlement_serial, settlement_limit) {
             Ok(d) => d,
             Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
