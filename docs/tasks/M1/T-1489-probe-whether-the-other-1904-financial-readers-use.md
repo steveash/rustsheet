@@ -3,7 +3,7 @@ id: T-1489
 title: "Probe whether the other 1904 financial readers use serial + 2*1462 near non-leap century years"
 milestone: M1
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
