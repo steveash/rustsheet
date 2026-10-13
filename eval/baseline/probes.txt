@@ -149,6 +149,7 @@ C	probes/decimal-unreadable.case.json	84
 C	probes/defined-name-formula-bodies.case.json	17
 C	probes/defined-name-grouped-reference.case.json	13
 C	probes/defined-name-intersection.case.json	10
+C	probes/dollar-fixed-unichar-edges.case.json	76
 C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/ecma-ceiling-formulatext.case.json	2
 C	probes/ecma-ceiling.case.json	12
@@ -483,6 +484,7 @@ C	probes/text-order-nbsp-space.case.json	333
 C	probes/text-result-limit-errors-refs.case.json	24
 C	probes/text-result-limit-errors.case.json	11
 C	probes/text-result-limit.case.json	24
+C	probes/text-scalar-edges.case.json	63
 C	probes/text-search-casefold-length.case.json	24
 C	probes/text-surrogate-positions.case.json	68
 C	probes/timevalue-ampm-limits.case.json	44
@@ -724,6 +726,8 @@ F	probes/db-argument-modes.case.json	Calc!F21
 F	probes/db-argument-modes.case.json	Calc!F23
 F	probes/db-argument-modes.case.json	Calc!K12
 F	probes/db-argument-modes.case.json	Calc!K13
+F	probes/dollar-fixed-unichar-edges.case.json	Sheet1!A49
+F	probes/dollar-fixed-unichar-edges.case.json	Sheet1!A50
 F	probes/eng-argument-modes.case.json	Calc!A20
 F	probes/eng-argument-modes.case.json	Calc!A21
 F	probes/eng-argument-modes.case.json	Calc!A22
