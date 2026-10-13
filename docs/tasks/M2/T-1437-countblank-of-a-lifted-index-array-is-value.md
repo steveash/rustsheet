@@ -3,7 +3,7 @@ id: T-1437
 title: "COUNTBLANK of a lifted INDEX array is #VALUE! per element; COUNTA counts blank elements of a lifted INDEX"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
