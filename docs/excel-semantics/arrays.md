@@ -377,5 +377,5 @@ ascending. The Graph backend refuses to load a workbook holding `SORTBY(a,k,,)`,
 `SORTBY(a,k,,k2)` (two empties after a key, or an empty order before a second key): UNVERIFIED, desktop
 question (decision 0039).
 
-Status: VERIFIED (excel-graph) for D22-D24; other omitted combinations UNVERIFIED.
+Status: VERIFIED (excel-graph) for all probed combinations; the three Graph-refused SORTBY forms are UNVERIFIED (desktop question).
 Tasks: T-1394, T-1446.
