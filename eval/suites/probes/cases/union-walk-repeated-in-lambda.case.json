@@ -1,0 +1,43 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1462: a multi-area (union) walk repeated inside BYROW and MAP, where the engine's per-formula MAX_AREA_CELLS budget (2^24 cells, T-1162) is exceeded although each walk is small: Calc has 10,000 used rows (2*10^4 cells per (B:B,C:C) walk), Big has 1,048,576 (2^21 per walk). Single-range controls (B:C, B:B) and bounded unions alongside.",
+  "tags": [
+    "probe",
+    "union",
+    "lambda",
+    "T-1462"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "B1": 5,
+        "B10000": 1,
+        "C10000": 2,
+        "E1": "=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))",
+        "E2": "=SUM(MAP(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))",
+        "E3": "=SUM(BYROW(A1:A1000,LAMBDA(r,SUM(B:C))))",
+        "E4": "=SUM(MAP(A1:A1000,LAMBDA(r,SUM(B:B))))",
+        "E5": "=SUM(BYROW(A1:A100,LAMBDA(r,SUM((B:B,C:C)))))",
+        "E6": "=SUM(MAP(A1:A10000,LAMBDA(r,SUM((B:B,C:C)))))",
+        "E7": "=SUM(MAP(A1:A1000,LAMBDA(r,COUNTA((B:B,C:C)))))",
+        "E8": "=SUM(MAP(A1:A1000,LAMBDA(r,SUM((B1:B10000,C1:C10000)))))",
+        "E9": "=ROWS(MAP((B1:B3,C1:C3),LAMBDA(x,x)))",
+        "E10": "=SUM(MAP((B1:B3,C1:C3),LAMBDA(x,x)))",
+        "E11": "=SUM(BYROW(A1:A1000,LAMBDA(r,SUBTOTAL(9,(B:B,C:C)))))"
+      }
+    },
+    {
+      "name": "Big",
+      "cells": {
+        "B1048576": 1,
+        "C1048576": 2,
+        "E1": "=SUM(BYROW(A1:A10,LAMBDA(r,SUM((B:B,C:C)))))",
+        "E2": "=SUM(BYROW(A1:A100,LAMBDA(r,SUM((B:B,C:C)))))",
+        "E3": "=SUM(BYROW(A1:A100,LAMBDA(r,SUM(B:C))))",
+        "E4": "=SUM((B:B,C:C),(B:B,C:C),(B:B,C:C),(B:B,C:C),(B:B,C:C),(B:B,C:C),(B:B,C:C),(B:B,C:C),(B:B,C:C))"
+      }
+    }
+  ],
+  "expected": {}
+}
