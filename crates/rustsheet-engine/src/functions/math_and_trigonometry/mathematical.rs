@@ -858,16 +858,18 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    // PERCENTOF(part, total) — returns SUM(part) / SUM(total) as a decimal fraction.
+    // PERCENTOF(part, total) — returns SUM(part) / SUM(total) as a decimal fraction. Both sums snap
+    // near zero like SUM: `PERCENTOF(A1:A3,1)` over 0.1, 0.2, -0.3 is 0 and `PERCENTOF(1,A1:A3)` is
+    // #DIV/0! (probes/percentof-snap-overflow-union, excel-graph; numbers.md "Near-zero snapping").
     pub(crate) fn fn_percentof(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let part = match self.fn_sum_unsnapped(&args[0..1], cell) {
+        let part = match self.fn_sum(&args[0..1], cell) {
             CalcResult::Number(v) => v,
             other => return other,
         };
-        let total = match self.fn_sum_unsnapped(&args[1..2], cell) {
+        let total = match self.fn_sum(&args[1..2], cell) {
             CalcResult::Number(v) => v,
             other => return other,
         };

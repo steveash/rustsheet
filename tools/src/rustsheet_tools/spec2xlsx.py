@@ -35,6 +35,9 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
   * Future functions get their `_xlfn.` prefixes from the builder's own table (the engine exporter's
     list plus `_BUILDER_ONLY_PREFIXES`), never from XlsxWriter's `use_future_functions`, which skips a
     whole formula once any call in it is prefixed (T-0052); LET/LAMBDA names are written as `_xlpm.x`.
+    A sheet may list formula cells in `"bare_function_names": ["A1", ...]`; those keep their function
+    names as typed (no `_xlfn.` added), to probe how a bare newer name loads (T-0416). The engine
+    adapter ignores the list.
 """
 
 from __future__ import annotations
@@ -277,8 +280,20 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
         if unknown := legacy - sheet["cells"].keys():
             msg = f"legacy_formulas names cells not in the sheet: {sorted(unknown)}"
             raise ValueError(msg)
+        bare = set(sheet.get("bare_function_names", ()))
+        if unknown := bare - sheet["cells"].keys():
+            msg = f"bare_function_names names cells not in the sheet: {sorted(unknown)}"
+            raise ValueError(msg)
         for a1, raw in sheet["cells"].items():
             row, col = parse_a1(a1)
+            if a1 in bare:
+                if not (isinstance(raw, str) and raw.startswith("=")) or a1 in legacy:
+                    msg = f"bare_function_names cell {a1} must be a (dynamic-array) formula"
+                    raise ValueError(msg)
+                ws.write_dynamic_array_formula(
+                    row, col, row, col, _formula_text(raw, prefix_functions=False), formats.get(a1)
+                )
+                continue
             if a1 in legacy:
                 if not (isinstance(raw, str) and raw.startswith("=")):
                     msg = f"legacy_formulas cell {a1} is not a formula"
@@ -509,9 +524,11 @@ def _store_numbers(xlsx: bytes, lossy: list[tuple[int, str, float]]) -> bytes:
     return _patch_sheets(xlsx, [(number, patch(ref, value)) for number, ref, value in lossy])
 
 
-def _formula_text(raw: str) -> str:
-    """The formula as written to the file: spill refs anchored, bound names and future functions prefixed."""
-    return prefix_future_functions(prefix_bound_names(anchor_spill_refs(raw)))
+def _formula_text(raw: str, *, prefix_functions: bool = True) -> str:
+    """The formula as written to the file: spill refs anchored, bound names and (unless
+    `prefix_functions` is false, for `bare_function_names` cells) future functions prefixed."""
+    text = prefix_bound_names(anchor_spill_refs(raw))
+    return prefix_future_functions(text) if prefix_functions else text
 
 
 def _write(ws: Any, row: int, col: int, raw: Any, fmt: Any = None) -> float | None:

@@ -131,8 +131,8 @@
     "v": "#VALUE!"
    },
    "A39": {
-    "t": "e",
-    "v": "#NAME?"
+    "t": "n",
+    "v": 0.0
    },
    "A4": {
     "t": "n",
@@ -171,9 +171,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "038fc6a7eb9a8c2f5cba61fbcc59ef97222b9fc3bc77dc5027d88a43bcfdc010",
+  "input_sha256": "efee0c3f75da7ced4127b220b6396221a5c10de07063d5c68ddb2e88501f275d",
   "kind": "excel-graph",
-  "produced_at": "2026-10-09T12:20:23+00:00",
+  "produced_at": "2026-10-13T16:20:34+00:00",
   "version": null
  }
 }

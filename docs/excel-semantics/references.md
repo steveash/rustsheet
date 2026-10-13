@@ -686,8 +686,8 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   (`ISREF((Data!A1,Data!B2))`). An error cell inside an area is the aggregate's error as in a plain range, the
   first in formula order winning (`SUM((A1,E1))` = `#DIV/0!` with E1 = 1/0, `SUM((E2,E1))` = `#N/A` with E2 = NA()),
   COUNT skips it (1) and COUNTA counts it (2). SUMSQ, AVERAGEA, MAXA, GEOMEAN, VAR.S and DEVSQ take a union too
-  (`(A1,B2)`: 26, 3, 5, 2.2360679775, 8, 8). PERCENTOF is `#NAME?` in Excel for the web, so it is not probed
-  (probes/multiarea-more, oracle: excel-graph, 2026-10-08, T-1062).
+  (`(A1,B2)`: 26, 3, 5, 2.2360679775, 8, 8). PERCENTOF takes a union in either argument
+  (`PERCENTOF((A1,B2),(A1,B2))` = 1, `PERCENTOF(A1,(A1:A3,B2))` = 0.025; probes/percentof-snap-overflow-union (excel-graph, 2026-10-13, T-0416)) (probes/multiarea-more, oracle: excel-graph, 2026-10-08, T-1062).
 - The remaining `for_each_value` aggregates over `(A1,B2,C3,D4)` = 1, 5, 7, 9 (probes/multiarea-foreach, excel-graph,
   2026-10-08, T-1150): HARMEAN 2.7510917031, AVEDEV 2.5, SKEW -0.7528371991, SKEW.P -0.4346507596, KURT
   0.3428571429, MINA 1, STDEV.P, STDEVP and STDEVPA 2.9580398915, STDEV and STDEVA 3.4156502553, VAR.P, VARP and
@@ -708,7 +708,7 @@ UNVERIFIED (no probe): an IF or CHOOSE over an array condition keeps its value f
 SPEC-0004 and T-1065, T-1069 to T-1073 implement the rest;
 until then CONCAT and TEXTJOIN read a union as `#VALUE!` (`RefArg::into_single_area`).
 PERCENTOF takes a union
-too but is unprobed (`#NAME?` in Excel for the web).
+too (T-0416, probes/percentof-snap-overflow-union D8, D9, D13).
 COUNTBLANK (`#VALUE!`) and ROWS/COLUMNS (`#REF!`) of a union: `Model::rows_columns_extent` (cast.rs) and `fn_countblank`
 (statistical/count.rs), T-1069. UNVERIFIED engine behavior: a cross-sheet union in ROWS/COLUMNS stays `#VALUE!`, and
 a union holding an error in COUNTBLANK counts nothing (no probes).

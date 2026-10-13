@@ -167,9 +167,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "c9d65532bd2f411a549fea3627509cf658c4b79040568966c345483fb22d69e7",
+  "input_sha256": "d461af7366dd36cfdbde9919afd6b363f4f1e45e0e0ae049c73f4f06302faaf4",
   "kind": "excel-graph",
-  "produced_at": "2026-10-11T14:16:56+00:00",
+  "produced_at": "2026-10-13T16:20:59+00:00",
   "version": null
  }
 }
