@@ -273,12 +273,12 @@ round twice, so `8^(-1/3)` = 0.5 and `(-8)^(-1/3)` = -0.5 although `8^(1/3)` = 1
 Evidence: probes-numeric/power-reciprocal-rounding (72 cells: 8 values whose reciprocal rounds
 differently, each through `^-1`, `POWER(,-1)` and `/`, 4 controls, 6 each through `^-3`, `^-0.5`
 and `^-0.3`, every one double-rounded; oracle: excel-graph, 2026-10-13, T-0221);
-probes-numeric/power-odd-roots A20, A26 (`(±8)^(-1/3)`).
-Not probed: whether `*`, function-internal divisions (AVERAGE, MOD, QUOTIENT, financial functions)
+probes-numeric/power-odd-roots A50, A56 (`(±8)^(-1/3)`).
+Not probed: `x/y` with a numerator other than 1 (implemented as the same division, inferred from x87 FDIV being one operation), and whether `*`, function-internal divisions (AVERAGE, MOD, QUOTIENT, financial functions)
 and other results round twice too (T-1496).
 Implemented in: `arithmetic::extended_quotient`, used by `arithmetic::divide` and the reciprocals in
 `arithmetic::power`.
-Status: VERIFIED (excel-graph)
+Status: VERIFIED (excel-graph) for reciprocals `1/r`; inferred for other numerators (T-1496)
 Tasks: T-0221
 
 ## Numbers near 1E+307 print with 14 significant digits
