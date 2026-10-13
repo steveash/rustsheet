@@ -3,7 +3,7 @@ id: T-1045
 title: "Oracle sweep: incomplete gamma (GAMMA.DIST, CHISQ.DIST, CHISQ.DIST.RT, GAMMA.INV, CHISQ.INV, CHISQ.INV.RT)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
