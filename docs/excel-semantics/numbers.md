@@ -279,11 +279,11 @@ double-rounded value; oracle: excel-graph, 2026-10-13, T-1496): `x/y` with neith
 (8 pairs) and `SUMPRODUCT(x/(y+{0}))` round twice, as do `a*b` and `PRODUCT(a,b)` (the 106-bit
 product, 8 pairs), `a+b`, `a-b`, `SUM(a,b)` and `AVERAGE(a,b)` (operands whose exponents differ by
 12-52, so the sum needs more than 64 bits; 8 pairs each), and `SQRT(x)` and `x^0.5` (8 values).
-So Excel computes every basic operation in x87 extended precision and then stores a double.
+Each of these operations, taken alone, rounds to a double twice. Whether the intermediate of a chained expression such as `a*b+c` or `SQRT(a*b)` stays at 64 bits or is rounded to a double between operators has not been probed (T-1501).
 No operand set exists for a division by a small constant: `x%` (= x/100), `x/3` and AVERAGE of
 three cells divide by a number whose binary expansion repeats within a few bits, so the run of
 zeros or ones that double rounding needs never occurs (3,000,000 random operands found no
-difference for `x/100`, or for `(a+b+c)/3`); their values were not probed. MOD and QUOTIENT cannot
+difference for `x/100`, or for `(a+b+c)/3`); so this probe cannot say whether they round twice (they have oracle values in A81-A89, which the engine matches). MOD and QUOTIENT cannot
 be told apart by this construction: `MOD(0.3,0.1)` = 0.09999999999999998, `MOD(1,0.1)` =
 0.09999999999999995, `QUOTIENT(0.3,0.1)` = 2, `QUOTIENT(1,0.1)` = 10 are recorded only.
 The engine rounds once for `*`, PRODUCT, `+`, `-`, SUM, AVERAGE, SQRT and `^0.5` (tasks T-1498,
