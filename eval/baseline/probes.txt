@@ -275,6 +275,7 @@ C	probes/lookup-approximate-search.case.json	44
 C	probes/lookup-argument-modes.case.json	117
 C	probes/lookup-index-hlookup.case.json	11
 C	probes/lookup-index-multicell-if.case.json	21
+C	probes/lookup-index-multicell-lifted.case.json	14
 C	probes/lookup-index-order.case.json	50
 C	probes/lookup-index-shapes.case.json	43
 C	probes/lookup-pick-aggregates.case.json	64

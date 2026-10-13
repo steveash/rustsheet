@@ -71,9 +71,12 @@ impl Model {
             Node::FunctionKind {
                 kind: Function::If, ..
             } => match self.evaluate_reference_arg(node, cell) {
-                // A union picked by `IF` is `#REF!` here, not the `#VALUE!` of other several-area
-                // arguments (probes/lookup-index-multicell-if M1, T-1426).
-                RefArg::Ranges(Ranges::Areas(_)) => return Err(several_areas_ref(cell)),
+                // A union picked by `IF` is `#REF!` like a non-numeric referenced cell, so only
+                // after a match: a value not found is `#N/A` (probes/lookup-index-multicell-if
+                // M1, lookup-index-multicell-lifted M1; T-1426).
+                RefArg::Ranges(Ranges::Areas(_)) => {
+                    return Ok(LookupIndexArg::Reference(several_areas_ref(cell)))
+                }
                 picked => picked.into_single_area(cell),
             },
             _ => self.eval_ref_or_index(node, cell),
