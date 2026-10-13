@@ -57,3 +57,19 @@ fn broadcast_under_the_limit_is_unchanged() {
     assert_eq!(model._get_text("H1"), *"2");
     assert_eq!(model._get_text("I3"), *"2");
 }
+
+#[test]
+fn if_iferror_ifna_whole_column_against_whole_row_is_bounded() {
+    let mut model = new_empty_model();
+    // Out of column D and row 4 (where they would be circular). T-1448.
+    model._set("G1", "=IF(D:D,4:4)");
+    model._set("G2", "=IF(D:D,1,4:4)");
+    model._set("G6", "=IFERROR(D:D,4:4)");
+    model._set("G5", "=IFNA(D:D,4:4)");
+
+    model.evaluate();
+
+    for cell in ["G1", "G2", "G6", "G5"] {
+        assert_eq!(model._get_text(cell), *"#ERROR!", "{cell}");
+    }
+}
