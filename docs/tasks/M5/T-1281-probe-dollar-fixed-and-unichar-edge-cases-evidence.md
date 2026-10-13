@@ -3,7 +3,7 @@ id: T-1281
 title: "Probe DOLLAR, FIXED and UNICHAR edge cases (evidence gap: 2-3 Excel cells each)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
