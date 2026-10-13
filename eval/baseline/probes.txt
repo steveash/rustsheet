@@ -198,6 +198,7 @@ C	probes/filter-if-empty-array.case.json	12
 C	probes/fin-argument-modes.case.json	386
 C	probes/format-doubled-quotes.case.json	11
 C	probes/formula-length-nonbmp-33pieces.case.json	1
+C	probes/formula-length-nonbmp-8192u.case.json	1
 C	probes/formulatext-written-groups-shapes.case.json	12
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/geomean-exponent-sum-2.case.json	34
@@ -365,6 +366,7 @@ C	probes/name-body-length-4000.case.json	1
 C	probes/name-body-length-6000.case.json	1
 C	probes/name-body-length-8000.case.json	1
 C	probes/name-body-length-8191.case.json	1
+C	probes/name-body-nonbmp-8191u.case.json	1
 C	probes/near-zero-aggregate-forms.case.json	10
 C	probes/near-zero-snap-groups.case.json	14
 C	probes/near-zero-snap-name-bodies.case.json	7
