@@ -97,7 +97,8 @@ impl Clock {
   reader can then convert the instant without an error path, `DateTime::from_timestamp` included,
   so export never fails on a fixed clock. A timezone offset can move the local date one day
   outside that range. NOW then gives a number or the existing `#ERROR!` "Invalid date" result,
-  and never panics. The test plan
+  and never panics. Excel cannot reach such a date, so `#ERROR!` there is no parity claim. The
+  type cannot be built invalid because its field is private. The test plan
   pins both bounds in a non-UTC timezone.
 - **Serials before 1900-03-01.** `excel_serial_for_now` must number days as DATE does, through
   the same conversion (`convert_to_serial_number` in formatter/dates.rs, made `pub(crate)` and
@@ -106,8 +107,7 @@ impl Clock {
   - The current `num_days_from_ce() - EXCEL_DATE_BASE` gives one more than that before
     1900-03-01. T-1479 fixes it.
   - NOW in early 1900 cannot be probed, since Excel's clock is the host's, so this is inferred
-    from the DATE rule. The type cannot be built
-  invalid because its field is private.
+    from the DATE rule.
 - **System time.** `now_unix_millis` on `System` reads `SystemTime` (or `js_sys::Date` on
   wasm32) and clamps the result to the same range as `Fixed`, so the "no error path" guarantee
   holds for both kinds.
