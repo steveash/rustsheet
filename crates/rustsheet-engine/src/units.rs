@@ -201,7 +201,6 @@ impl Model {
             Node::NamedFunctionKind { .. } => None,
             Node::ArrayKind(_) => None,
             Node::DefinedNameKind(_) => None,
-            Node::ExternalNameKind { .. } => None,
             Node::TableNameKind(_) => None,
             Node::NamedVariableKind { .. } => None,
             Node::CompareKind { .. } => None,

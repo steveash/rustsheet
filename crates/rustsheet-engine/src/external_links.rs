@@ -6,12 +6,30 @@
 
 use crate::{
     calc_result::CalcResult,
+    cell::spill_value_to_calc_result,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     reference_operators::external_area,
-    types::ExternalBook,
+    types::{DefinedName, SpillValue},
     utils::ParsedReference,
     Model,
 };
+
+use bitcode::{Decode, Encode};
+use std::collections::HashMap;
+
+/// A workbook this one links to, as far as Excel cached it in `xl/externalLinks/externalLinkN.xml`
+/// (`externalBook`). The other workbook is never opened (directive 5): a reference into it reads
+/// these cached values (docs/excel-semantics/references.md, "External reference with no cached
+/// data is `#BLOCKED!`").
+#[derive(Encode, Decode, Debug, PartialEq, Clone, Default)]
+pub struct ExternalBook {
+    /// Its sheet names in `sheetNames` order; a sheet's index here is its `sheetId` in the cache.
+    pub sheet_names: Vec<String>,
+    /// Its defined names; `sheet_id` is the index in `sheet_names` of a sheet-scoped name's sheet.
+    pub defined_names: Vec<DefinedName>,
+    /// The cached cell values, keyed by (sheet index, row, column).
+    pub cells: HashMap<(u32, i32, i32), SpillValue>,
+}
 
 /// The book index and sheet name of an external sheet prefix, `[1]Sheet` → (`1`, `Sheet`).
 fn split_book_prefix(sheet_name: &str) -> Option<(&str, &str)> {
@@ -48,7 +66,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         match book.cells.get(&(sheet, row, column)) {
-            Some(value) => self.spill_value_result(value, cell),
+            Some(value) => spill_value_to_calc_result(value, cell, self.language),
             None => CalcResult::EmptyCell,
         }
     }
@@ -75,29 +93,33 @@ impl Model {
         Some(self.cached_cell(book, sheet, area.first_row, area.first_column, cell))
     }
 
-    /// `[book]!name` or `[book]Sheet!name`: a defined name of a linked workbook, read through its
-    /// cache: `=[1]Defines!NR_To_A1` → "Test A1" and `=[1]!NR_Global_B2` → 142 (poi/ref-56737.xlsx
-    /// Refs!G3, I3, Excel-cached). `[0]` is this workbook: `=[0]!NR_Global_B2` is the name
-    /// `NR_Global_B2` (poi/56737.xlsx Uses!D3). A name the cache does not hold, or whose
-    /// `refersTo` is not one cell, is `#BLOCKED!` (UNVERIFIED, references.md).
+    /// `[book]!name` or `[book]Sheet!name`: a defined name of a linked workbook (the parser keeps
+    /// the prefix in the `DefinedNameKind` name), read through its cache: `=[1]Defines!NR_To_A1` →
+    /// "Test A1" and `=[1]!NR_Global_B2` → 142 (poi/ref-56737.xlsx Refs!G3, I3, Excel-cached).
+    /// `[0]` is this workbook: `=[0]!NR_Global_B2` is the name `NR_Global_B2` (poi/56737.xlsx
+    /// Uses!D3). A name the cache does not hold, or whose `refersTo` is not one cell, is
+    /// `#BLOCKED!` (UNVERIFIED, references.md). `None` for a name with no such prefix.
     pub(crate) fn evaluate_external_name(
         &mut self,
-        book: &str,
-        sheet: Option<&str>,
-        name: &str,
+        prefixed_name: &str,
         cell: CellReferenceIndex,
-    ) -> CalcResult {
+    ) -> Option<CalcResult> {
+        let (book, rest) = prefixed_name.strip_prefix('[')?.split_once(']')?;
+        let (sheet, name) = rest.split_once('!')?;
+        let sheet = (!sheet.is_empty()).then_some(sheet);
         if book == "0" {
-            return self.evaluate_own_name(sheet, name, cell);
+            return Some(self.evaluate_own_name(sheet, name, cell));
         }
-        self.cached_name_value(book, sheet, name, cell)
-            .unwrap_or_else(|| {
-                CalcResult::new_error(
-                    Error::BLOCKED,
-                    cell,
-                    format!("No cached value for [{book}]!{name}"),
-                )
-            })
+        Some(
+            self.cached_name_value(book, sheet, name, cell)
+                .unwrap_or_else(|| {
+                    CalcResult::new_error(
+                        Error::BLOCKED,
+                        cell,
+                        format!("No cached value for {prefixed_name}"),
+                    )
+                }),
+        )
     }
 
     fn cached_name_value(
@@ -112,9 +134,9 @@ impl Model {
             Some(sheet) => Some(sheet_index(book, sheet)?),
             None => None,
         };
+        let name = name.to_uppercase();
         let defined_name = book.defined_names.iter().find(|defined_name| {
-            defined_name.sheet_id == scope
-                && defined_name.name.to_lowercase() == name.to_lowercase()
+            defined_name.sheet_id == scope && defined_name.name.to_uppercase() == name
         })?;
         let formula = defined_name
             .formula

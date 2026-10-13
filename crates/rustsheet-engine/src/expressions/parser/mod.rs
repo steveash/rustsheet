@@ -267,14 +267,6 @@ pub enum Node {
     },
     ArrayKind(Vec<Vec<ArrayNode>>),
     DefinedNameKind(DefinedNameS),
-    /// `[1]!Name` or `[1]Sheet!Name`: a defined name of the linked workbook `[1]` (workbook- or
-    /// `Sheet`-scoped), read from what Excel cached for it; `[0]` is this workbook
-    /// (docs/excel-semantics/references.md, "Defined names of a linked workbook").
-    ExternalNameKind {
-        book: String,
-        sheet: Option<String>,
-        name: String,
-    },
     TableNameKind(String),
     NamedVariableKind {
         name: String,

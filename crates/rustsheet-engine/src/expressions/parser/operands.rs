@@ -201,8 +201,10 @@ impl Parser {
 
     /// A name that is not called: a defined name, a table or a LAMBDA parameter.
     fn name_operand(&mut self, name: String) -> Node {
-        if let Some(node) = external_name(&name) {
-            return node;
+        // A defined name of a linked workbook, `[1]!Name` or `[1]Sheet!Name` (one identifier to
+        // the lexer), keeps its prefix: evaluation reads it from the link's cache.
+        if name.starts_with('[') {
+            return Node::DefinedNameKind((name, None, String::new()));
         }
         let context = &self.context;
 
@@ -563,16 +565,4 @@ impl Parser {
             }
         }
     }
-}
-
-/// The defined name of a linked workbook the lexer reads as one identifier, `[1]!Name` or
-/// `[1]Sheet!Name`.
-fn external_name(identifier: &str) -> Option<Node> {
-    let (book, rest) = identifier.strip_prefix('[')?.split_once(']')?;
-    let (sheet, name) = rest.split_once('!')?;
-    Some(Node::ExternalNameKind {
-        book: book.to_string(),
-        sheet: (!sheet.is_empty()).then(|| sheet.to_string()),
-        name: name.to_string(),
-    })
 }

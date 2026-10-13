@@ -74,7 +74,6 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
-        | Node::ExternalNameKind { .. }
         | Node::SheetSpanKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
@@ -221,7 +220,6 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
-        | Node::ExternalNameKind { .. }
         | Node::SheetSpanKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
@@ -348,7 +346,6 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
-        | Node::ExternalNameKind { .. }
         | Node::EmptyArgKind => StaticResult::Scalar,
         Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
             run_static_analysis_on_node(child)

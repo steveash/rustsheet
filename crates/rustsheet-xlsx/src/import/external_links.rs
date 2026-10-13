@@ -88,11 +88,14 @@ fn read_external_book(book: &XmlNode) -> ExternalBook {
     }
 }
 
-/// The value a cache `<cell t=…><v>…</v></cell>` holds; `t` is absent or `n` for a number.
+/// The value a cache `<cell t=…><v>…</v></cell>` holds: `t` absent or `n` for a number, `str`
+/// for text as Excel writes it (poi/ref-56737.xlsx), `b` with `1`/`0`, `e`. `t="s"` would be a
+/// shared-string index, which an externalLink part has no table for, so it is read as a number
+/// like any type this does not know.
 fn cached_value(cell_type: Option<&str>, value: &str) -> SpillValue {
     match cell_type {
-        Some("str" | "s" | "inlineStr") => SpillValue::Text(value.to_string()),
-        Some("b") => SpillValue::Boolean(value == "1" || value == "true"),
+        Some("str") => SpillValue::Text(value.to_string()),
+        Some("b") => SpillValue::Boolean(value == "1"),
         Some("e") => SpillValue::Error(get_error_by_english_name(value).unwrap_or(Error::ERROR)),
         _ => SpillValue::Number(parse_cell_number(Some(value))),
     }

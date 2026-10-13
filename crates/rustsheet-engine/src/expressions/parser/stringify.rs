@@ -723,9 +723,6 @@ fn stringify(
         }
         TableNameKind(value) => value.to_string(),
         DefinedNameKind((name, ..)) => name.to_string(),
-        ExternalNameKind { book, sheet, name } => {
-            format!("[{book}]{}!{name}", sheet.as_deref().unwrap_or_default())
-        }
         NamedVariableKind { name, id: _ } => name.to_string(),
         UnaryKind { kind, right } => {
             let operand = wrap(sub(right), binding(right) < binding(node));
@@ -972,7 +969,6 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::ParseErrorKind { .. } => {}
         Node::ArrayKind(_) => {}
         Node::DefinedNameKind(_) => {}
-        Node::ExternalNameKind { .. } => {}
         Node::TableNameKind(_) => {}
         Node::NamedVariableKind { .. } => {}
         Node::EmptyArgKind => {}
@@ -1056,7 +1052,6 @@ pub(crate) fn rename_defined_name_in_node(
         Node::SheetSpanKind { .. } => {}
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
-        Node::ExternalNameKind { .. } => {}
         Node::TableNameKind(_) => {}
         Node::NamedVariableKind { .. } => {}
         Node::LambdaDefKind {

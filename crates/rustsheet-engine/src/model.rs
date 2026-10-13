@@ -7,7 +7,7 @@ use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
     calc_result::{CalcResult, Range},
-    cell::CellValue,
+    cell::{spill_value_to_calc_result, CellValue},
     constants::{self, LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{
@@ -693,6 +693,9 @@ impl Model {
             }
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
             DefinedNameKind((name, scope, _)) => {
+                if let Some(value) = self.evaluate_external_name(name, cell) {
+                    return value;
+                }
                 let key = (*scope, name.to_lowercase());
                 if let Some(parsed_defined_name) = self.parsed_defined_names.get(&key).cloned() {
                     match parsed_defined_name {
@@ -729,9 +732,6 @@ impl Model {
                         format!("Defined name \"{name}\" not found."),
                     )
                 }
-            }
-            ExternalNameKind { book, sheet, name } => {
-                self.evaluate_external_name(book, sheet.as_deref(), name, cell)
             }
             TableNameKind(s) => CalcResult::new_error(
                 Error::NAME,
@@ -1423,24 +1423,7 @@ impl Model {
                     }
                 }
             }
-            SpillCell { v, .. } => self.spill_value_result(v, cell_reference),
-        }
-    }
-
-    /// A stored plain value (a spill cell's, or a linked workbook's cached cell) as a result.
-    pub(crate) fn spill_value_result(
-        &self,
-        value: &SpillValue,
-        cell_reference: CellReferenceIndex,
-    ) -> CalcResult {
-        match value {
-            SpillValue::Number(v) => CalcResult::Number(*v),
-            SpillValue::Boolean(v) => CalcResult::Boolean(*v),
-            SpillValue::Text(v) => CalcResult::String(v.clone()),
-            SpillValue::Error(ei) => {
-                let message = ei.to_localized_error_string(self.language);
-                CalcResult::new_error(ei.clone(), cell_reference, message)
-            }
+            SpillCell { v, .. } => spill_value_to_calc_result(v, cell_reference, self.language),
         }
     }
 
