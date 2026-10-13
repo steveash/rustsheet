@@ -3,7 +3,7 @@ id: T-1464
 title: "Probe UNICHAR with a range, boolean and empty-cell argument"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet

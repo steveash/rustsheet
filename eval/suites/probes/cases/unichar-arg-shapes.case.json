@@ -1,0 +1,40 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "UNICHAR with a range, boolean, empty-cell, numeric-text and non-numeric-text argument (T-1464). Sheet1 A1=65, A2=66, A3 blank, A4=TRUE, A5=\"67\" (text), A6=\"x\", B10=72, B11=73. Column D, one probe per row (ranges spill to the right).",
+ "tags": [
+  "M5",
+  "probe",
+  "text",
+  "unichar"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 65,
+    "A2": 66,
+    "A4": true,
+    "A5": {
+     "t": "s",
+     "v": "67"
+    },
+    "A6": "x",
+    "D1": "=UNICHAR(A1:A2)",
+    "D2": "=UNICHAR(A4)",
+    "D3": "=UNICHAR(A3)",
+    "D4": "=UNICHAR(A5)",
+    "D5": "=UNICHAR(A6)",
+    "D6": "=UNICHAR(TRUE)",
+    "D7": "=UNICHAR(A1:A3)",
+    "D8": "=UNICHAR(A7:A8)",
+    "D9": "=UNICHAR(\"\")",
+    "D10": "=UNICHAR(#N/A)",
+    "D11": "=UNICHAR(A1:A2)&\"!\"",
+    "D12": "=UNICHAR(B10:B11)",
+    "B10": 72,
+    "B11": 73
+   }
+  }
+ ],
+ "expected": {}
+}
