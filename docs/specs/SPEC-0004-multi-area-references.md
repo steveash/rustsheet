@@ -218,7 +218,9 @@ column 65,536 times (directive 5). So:
   `MAX_AREA_CELLS` = 2^24 (16,777,216) cells in one `Areas` argument gives `#VALUE!`. That is 16
   full used columns of 1,048,576 rows, far above any real Print_Area. Excel's own limit, if any,
   is not known. This is recorded as a DEVIATION under references.md "Union area cap"
-  (decision 0014) by T-1062.
+  (decision 0014) by T-1062. Superseded by T-1162 (one budget per formula evaluation) and T-1497:
+  union areas are now walked over their existing cells only, paying `MAX_AREA_WALK` steps as they
+  go (references.md "Union area cap" has the current rule).
 - `seen_ranges` (evaluation.rs) gets at most two entries per walked area (`clip_to_used_area`),
   so it is bounded by 2 × `MAX_AREAS` per argument.
 

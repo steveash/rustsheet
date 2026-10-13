@@ -1,4 +1,5 @@
 use crate::{
+    area_budget::SLOTS_PER_WALK_STEP,
     calc_result::{CalcResult, Range},
     constants::{LAST_COLUMN, LAST_ROW},
     expressions::{
@@ -411,9 +412,9 @@ impl Model {
     /// Calls `f` with the position of every cell of `areas`, as
     /// [`Self::for_each_cell_in_areas`] orders them, without evaluating it: for walks that
     /// skip cells by position (AGGREGATE's hidden rows and nested SUBTOTAL/AGGREGATE cells).
-    /// Several areas are first held to the formula's budget of
-    /// [`MAX_AREA_CELLS`](crate::area_budget::MAX_AREA_CELLS); one range is not, as before.
-    /// An `Err` from `f` stops the walk.
+    /// Several areas are walked by [`Self::for_each_position_in_area`] as areas of a union: only
+    /// their cells that exist, held to the formula's walk budget. An `Err` from `f` stops the
+    /// walk.
     pub(crate) fn for_each_position_in_areas<F>(
         &mut self,
         areas: &[Range],
@@ -423,21 +424,103 @@ impl Model {
     where
         F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
     {
-        self.check_area_cells(areas, cell)?;
-        for Range { left, right } in areas {
-            // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one
-            // is clipped to its own used area, so a span of whole columns walks only data.
-            debug_assert!(left.sheet <= right.sheet, "3-D span corners out of order");
-            for sheet in left.sheet..=right.sheet {
-                let (row2, column2) = self
-                    .clip_to_used_area(sheet, left.row, left.column, right.row, right.column)
-                    .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-                for row in left.row..=row2 {
-                    for column in left.column..=column2 {
-                        f(self, CellReferenceIndex { sheet, row, column })?;
-                    }
+        let of_union = areas.len() > 1;
+        for area in areas {
+            self.for_each_position_in_area(area, of_union, cell, &mut f)?;
+        }
+        Ok(())
+    }
+
+    /// Calls `f` with the position of the cells of one area, row by row. A range that is the
+    /// whole argument (`of_union` false) is walked densely, every position of its sheets' used
+    /// areas, as it always was. An area of a union is walked over the cells that exist only:
+    /// every caller of a union walk skips blank cells, and a union can repeat a whole column
+    /// many times over (`MAX_AREAS` copies, or a LAMBDA walking one per row), so the walk must
+    /// cost what the data costs (T-1497). Its work is drawn from the formula's walk budget
+    /// ([`Model::spend_area_walk`]) as it goes, and the area is recorded as seen empty in one
+    /// piece rather than cell by cell.
+    pub(crate) fn for_each_position_in_area<F>(
+        &mut self,
+        area: &Range,
+        of_union: bool,
+        cell: CellReferenceIndex,
+        f: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
+    {
+        let Range { left, right } = area;
+        // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one
+        // is clipped to its own used area, so a span of whole columns walks only data.
+        debug_assert!(left.sheet <= right.sheet, "3-D span corners out of order");
+        for sheet in left.sheet..=right.sheet {
+            if of_union {
+                self.for_each_existing_position(sheet, left, right, cell, f)?;
+                continue;
+            }
+            let (row2, column2) = self
+                .clip_to_used_area(sheet, left.row, left.column, right.row, right.column)
+                .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+            for row in left.row..=row2 {
+                for column in left.column..=column2 {
+                    f(self, CellReferenceIndex { sheet, row, column })?;
                 }
             }
+        }
+        Ok(())
+    }
+
+    /// The union-area walk of [`Self::for_each_position_in_area`] on one sheet: the existing
+    /// cells of the rectangle `left..=right`, in row-major order like the dense walk, so the
+    /// first error cell is the same one. Every chunk and row slot the search looks at and every
+    /// cell it hands to `f` is paid for before `f` runs.
+    fn for_each_existing_position<F>(
+        &mut self,
+        sheet: u32,
+        left: &CellReferenceIndex,
+        right: &CellReferenceIndex,
+        cell: CellReferenceIndex,
+        f: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
+    {
+        let sheet_error = |message| CalcResult::new_error(Error::ERROR, cell, message);
+        // The positions not handed to `f` are empty. Recording the whole rectangle covers the
+        // existing cells too, which is harmless: a spill can only write where nothing but its
+        // own spill cells stands, and those read as empty until it has run.
+        self.record_seen_empty_range(sheet, left.row, left.column, right.row, right.column);
+        let mut columns = Vec::new();
+        // Slots are paid for in whole steps as they add up, so a dense column costs a step per
+        // cell and one more per `SLOTS_PER_WALK_STEP` rows.
+        let mut slots: u64 = 0;
+        let mut from = left.row;
+        while from <= right.row {
+            let search = self
+                .workbook
+                .worksheet(sheet)
+                .map_err(sheet_error)?
+                .sheet_data
+                .next_row_between(from, right.row);
+            let paid = slots.div_ceil(SLOTS_PER_WALK_STEP);
+            slots += search.slots;
+            let steps = search.absent_chunks + (slots.div_ceil(SLOTS_PER_WALK_STEP) - paid);
+            self.spend_area_walk(steps, cell)?;
+            let Some(row) = search.row else {
+                break;
+            };
+            self.workbook
+                .worksheet(sheet)
+                .map_err(sheet_error)?
+                .sheet_data
+                .columns_in_row_between(row, left.column, right.column, &mut columns);
+            // A row costs a step even with no cell in the area's columns: finding them is a
+            // search of the row.
+            self.spend_area_walk((columns.len() as u64).max(1), cell)?;
+            for &column in &columns {
+                f(self, CellReferenceIndex { sheet, row, column })?;
+            }
+            from = row + 1;
         }
         Ok(())
     }

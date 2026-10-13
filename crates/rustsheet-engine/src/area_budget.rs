@@ -1,9 +1,9 @@
 //! The budgets of one formula evaluation for multi-area references: how many pairs of areas its
-//! intersections may compare and how many cells its multi-area arguments may walk, in all
+//! intersections may compare and how many steps the walks of its union areas may take, in all
 //! (DEVIATION, decision 0014: docs/excel-semantics/references.md "Union area cap").
 
 use crate::{
-    calc_result::{CalcResult, Range},
+    calc_result::CalcResult,
     expressions::{token::Error, types::CellReferenceIndex},
     model::Model,
 };
@@ -17,19 +17,27 @@ pub(crate) const MAX_AREA_PAIRS: usize = 1 << 20;
 /// Message of the `#VALUE!` for an expression comparing more than [`MAX_AREA_PAIRS`] pairs.
 pub(crate) const TOO_MANY_AREA_PAIRS: &str = "Too many areas to intersect";
 
-/// Most cells the multi-area arguments of one formula evaluation may walk in all
-/// ([`AreaBudget`]), counted over their areas clipped to the used area. The area cap bounds the
-/// length of an area list, not the work of walking it: `MAX_AREAS` copies of `A:A` fit in a
-/// short formula, and a LET-bound union can be passed again and again (`SUM(x,x,...)`). Past the
-/// bound the argument is `#VALUE!`, found before any of its cells is walked (DEVIATION, decision
-/// 0014: references.md "Union area cap").
-pub(crate) const MAX_AREA_CELLS: u64 = 1 << 24;
+/// Most steps the walks of the union areas of one formula evaluation may take in all
+/// ([`AreaBudget`]). The area cap bounds the length of an area list, not the work of walking it:
+/// `MAX_AREAS` copies of `A:A` fit in a short formula, a LET-bound union can be passed again and
+/// again (`SUM(x,x,...)`), and a LAMBDA can walk one per row of a MAP. A union area is walked
+/// over its existing cells only ([`Model::for_each_position_in_area`]), and each step is one cell
+/// handed to the caller, one unallocated chunk of rows passed over, or [`SLOTS_PER_WALK_STEP`] row slots
+/// tested, so the work follows the data visited, not the size of the areas. Past the bound the
+/// argument is `#VALUE!` (DEVIATION, decision 0014: references.md "Union area cap").
+pub(crate) const MAX_AREA_WALK: u64 = 1 << 24;
 
-/// Message of the `#VALUE!` for a multi-area argument of more than [`MAX_AREA_CELLS`] cells.
+/// Row slots of an allocated chunk tested per step of [`MAX_AREA_WALK`]: testing a slot is one
+/// comparison over a contiguous array, while a step handed to the caller reads and evaluates a
+/// cell, so a slot is charged a fraction of a step (measured in T-1497, references.md "Union area
+/// cap").
+pub(crate) const SLOTS_PER_WALK_STEP: u64 = 16;
+
+/// Message of the `#VALUE!` for union walks past [`MAX_AREA_WALK`] steps.
 pub(crate) const TOO_MANY_AREA_CELLS: &str = "Too many cells in the areas of a reference";
 
 /// What is left of one formula evaluation's budgets of area pairs ([`MAX_AREA_PAIRS`]) and of
-/// multi-area cells ([`MAX_AREA_CELLS`]). [`Model::with_area_budget`] gives each formula run a
+/// union walk steps ([`MAX_AREA_WALK`]). [`Model::with_area_budget`] gives each formula run a
 /// fresh one, so every argument and operand of the formula draws on the same budget, and its
 /// worst-case work does not grow with the number of arguments. Only that call refills it, so
 /// every entry point that starts a formula evaluation (`run_cell_formula`,
@@ -38,14 +46,14 @@ pub(crate) const TOO_MANY_AREA_CELLS: &str = "Too many cells in the areas of a r
 #[derive(Clone, Copy)]
 pub(crate) struct AreaBudget {
     pairs: usize,
-    cells: u64,
+    walk: u64,
 }
 
 impl Default for AreaBudget {
     fn default() -> AreaBudget {
         AreaBudget {
             pairs: MAX_AREA_PAIRS,
-            cells: MAX_AREA_CELLS,
+            walk: MAX_AREA_WALK,
         }
     }
 }
@@ -61,14 +69,14 @@ impl Model {
         result
     }
 
-    /// Takes `cells` from what is left of the formula's budget of [`MAX_AREA_CELLS`], or gives
+    /// Takes `steps` from what is left of the formula's budget of [`MAX_AREA_WALK`], or gives
     /// the `#VALUE!` of a walk past it and leaves the budget as it was.
-    pub(crate) fn spend_area_cells(
+    pub(crate) fn spend_area_walk(
         &mut self,
-        cells: u64,
+        steps: u64,
         cell: CellReferenceIndex,
     ) -> Result<(), CalcResult> {
-        self.area_budget.cells = self.area_budget.cells.checked_sub(cells).ok_or_else(|| {
+        self.area_budget.walk = self.area_budget.walk.checked_sub(steps).ok_or_else(|| {
             CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREA_CELLS.to_string())
         })?;
         Ok(())
@@ -85,42 +93,5 @@ impl Model {
             CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREA_PAIRS.to_string())
         })?;
         Ok(())
-    }
-
-    /// Takes the cells of `areas`, each clipped to its sheet's used area, from what is left of
-    /// the formula's budget of [`MAX_AREA_CELLS`], shared by all its multi-area walks, or gives
-    /// the `#VALUE!` of a walk past it: arithmetic only, before any cell is read, so `MAX_AREAS`
-    /// whole columns over a populated sheet are `#VALUE!` without a walk. One range is not
-    /// counted, as a plain range argument never was.
-    pub(crate) fn check_area_cells(
-        &mut self,
-        areas: &[Range],
-        cell: CellReferenceIndex,
-    ) -> Result<(), CalcResult> {
-        if areas.len() <= 1 {
-            return Ok(());
-        }
-        let left = self.area_budget.cells;
-        let mut total: u64 = 0;
-        for area in areas {
-            let (row2, column2) = self
-                .used_area_corner(
-                    area.left.sheet,
-                    area.left.row,
-                    area.left.column,
-                    area.right.row,
-                    area.right.column,
-                )
-                .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-            let rows = u64::try_from(row2 - area.left.row + 1).unwrap_or(0);
-            let columns = u64::try_from(column2 - area.left.column + 1).unwrap_or(0);
-            total = total.saturating_add(rows.saturating_mul(columns));
-            if total > left {
-                // Past the budget already: the rest of the areas need not be counted, and the
-                // partial total fails to spend all the same.
-                break;
-            }
-        }
-        self.spend_area_cells(total, cell)
     }
 }

@@ -119,6 +119,17 @@ impl Row {
     }
 }
 
+/// What [`SheetData::next_row_between`] found and what it looked at to find it.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct RowSearch {
+    /// The first existing row of the span, if any.
+    pub(crate) row: Option<i32>,
+    /// Unallocated chunks passed over.
+    pub(crate) absent_chunks: u64,
+    /// Row slots of allocated chunks tested.
+    pub(crate) slots: u64,
+}
+
 /// The chunk and the place in it of a row, if the row is within the sheet.
 #[inline]
 fn locate(row: i32) -> Option<(usize, usize)> {
@@ -285,6 +296,66 @@ impl SheetData {
         }
     }
 
+    /// The first row of `from..=to` that exists, if any, with the work of finding it: how many
+    /// unallocated chunks were passed over and how many row slots of allocated chunks were
+    /// tested. A walk over
+    /// sparse rows calls it again from the row after the one found, so its total work is one
+    /// pass over the chunks of the span, whatever the number of rows in it.
+    pub(crate) fn next_row_between(&self, from: i32, to: i32) -> RowSearch {
+        let mut search = RowSearch::default();
+        if from > to {
+            return search;
+        }
+        let (Some((mut chunk_index, mut index)), Some((last_chunk, last_index))) =
+            (locate(from.max(1)), locate(to.min(LAST_ROW)))
+        else {
+            return search;
+        };
+        while chunk_index <= last_chunk && chunk_index < self.chunks.len() {
+            if let Some(chunk) = &self.chunks[chunk_index] {
+                let end = if chunk_index == last_chunk {
+                    last_index
+                } else {
+                    CHUNK_MASK
+                };
+                for slot in index..=end {
+                    search.slots += 1;
+                    if chunk.rows[slot].is_some() {
+                        search.row = Some(((chunk_index << CHUNK_BITS) | slot) as i32);
+                        return search;
+                    }
+                }
+            } else {
+                search.absent_chunks += 1;
+            }
+            chunk_index += 1;
+            index = 0;
+        }
+        search
+    }
+
+    /// Replaces `columns` with the columns of `row` in `column1..=column2` that have cells, in
+    /// ascending order. The row is searched once, as [`Self::cell`] would search it.
+    pub(crate) fn columns_in_row_between(
+        &self,
+        row: i32,
+        column1: i32,
+        column2: i32,
+        columns: &mut Vec<i32>,
+    ) {
+        columns.clear();
+        let Some(row_data) = self.row(row) else {
+            return;
+        };
+        let start = row_data.position(column1).unwrap_or_else(|index| index);
+        columns.extend(
+            row_data.cells[start..]
+                .iter()
+                .map(|(column, _)| *column)
+                .take_while(|column| *column <= column2),
+        );
+    }
+
     /// The cells of a row with their column, in ascending order of column.
     pub fn cells_in_row(&self, row: i32) -> Vec<(i32, &Cell)> {
         match self.row(row) {
@@ -366,6 +437,42 @@ mod test {
 
     fn number(v: f64) -> Cell {
         Cell::NumberCell { v, s: 0 }
+    }
+
+    #[test]
+    fn next_row_between_skips_absent_rows_and_chunks() {
+        let mut data = SheetData::new();
+        data.set_cell(1, 2, number(1.0));
+        data.set_cell(10_000, 3, number(1.0));
+        let first = data.next_row_between(1, LAST_ROW);
+        assert_eq!(
+            (first.row, first.absent_chunks, first.slots),
+            (Some(1), 0, 1)
+        );
+        // Rows 2..=1023 of chunk 0, chunks 1..=8 absent, then 785 slots of chunk 9.
+        let second = data.next_row_between(2, LAST_ROW);
+        assert_eq!(second.row, Some(10_000));
+        assert_eq!((second.absent_chunks, second.slots), (8, 1022 + 785));
+        // Past the last chunk the search stops: the chunks after it are never looked at.
+        let none = data.next_row_between(10_001, LAST_ROW);
+        assert_eq!((none.row, none.absent_chunks, none.slots), (None, 0, 239));
+        assert_eq!(data.next_row_between(3, 2), RowSearch::default());
+        assert_eq!(data.next_row_between(2, 9_999).row, None);
+    }
+
+    #[test]
+    fn columns_in_row_between_keeps_the_span() {
+        let mut data = SheetData::new();
+        for column in [1, 3, 5, 7, 9, 11, 13, 15, 17, 19] {
+            data.set_cell(4, column, number(1.0));
+        }
+        let mut columns = vec![99];
+        data.columns_in_row_between(4, 4, 15, &mut columns);
+        assert_eq!(columns, [5, 7, 9, 11, 13, 15]);
+        data.columns_in_row_between(4, 2, 2, &mut columns);
+        assert!(columns.is_empty());
+        data.columns_in_row_between(5, 1, 20, &mut columns);
+        assert!(columns.is_empty());
     }
 
     #[test]
