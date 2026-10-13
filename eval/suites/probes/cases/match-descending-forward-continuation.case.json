@@ -1,0 +1,49 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "MATCH descending forward continuation when nothing of the key type lies at or below the midpoint (T-1396).",
+ "tags": [
+  "M2",
+  "lookup",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "a",
+    "A2": "b",
+    "A3": "c",
+    "A4": 5,
+    "A5": 3,
+    "A6": 1,
+    "B1": "a",
+    "C1": "b",
+    "D1": "c",
+    "E1": 5,
+    "F1": 3,
+    "G1": 1,
+    "J1": "=MATCH(3,{\"a\",\"b\",\"c\",5,3,1},-1)",
+    "J2": "=MATCH(1,{TRUE,FALSE,\"c\",9,7,5,3,1},-1)",
+    "J3": "=MATCH(\"b\",{1,TRUE,2,\"c\",\"b\",\"a\"},-1)",
+    "J4": "=MATCH(1,{\"a\",\"b\",0.5,0.2},-1)",
+    "J5": "=MATCH(0.5,{\"a\",\"b\",0.5,0.2},-1)",
+    "J6": "=MATCH(3,{#N/A,#N/A,5,4,3,2},-1)",
+    "J7": "=MATCH(4,{\"a\",\"b\",\"c\",9,8,7,6,5,4,3},-1)",
+    "J8": "=MATCH(6,{\"a\",\"b\",\"c\",9,8,7,6,5,4,3},-1)",
+    "J9": "=MATCH(5,{\"a\",\"b\",\"c\",9,8,7,6,5,4,3},-1)",
+    "J10": "=MATCH(4.5,{\"a\",\"b\",\"c\",9,8,7,6,5,4,3},-1)",
+    "J11": "=MATCH(3,{\"a\",\"b\",\"c\",\"d\",5,3,1},-1)",
+    "J12": "=MATCH(1,{\"a\",\"b\",\"c\",\"d\",5,3,1},-1)",
+    "J13": "=MATCH(2,{TRUE,FALSE,TRUE,5,3,1},-1)",
+    "J14": "=MATCH(0,{\"a\",TRUE,5,3,1},-1)",
+    "J15": "=MATCH(\"a\",{1,2,\"c\",\"b\",\"a\"},-1)",
+    "J16": "=MATCH(\"b\",{TRUE,2,\"c\",\"b\",\"a\"},-1)",
+    "J17": "=MATCH(3,A1:A6,-1)",
+    "J18": "=MATCH(3,B1:G1,-1)",
+    "J19": "=MATCH(1,A1:A6,-1)",
+    "J20": "=MATCH(4,A1:A6,-1)"
+   }
+  }
+ ],
+ "expected": {}
+}

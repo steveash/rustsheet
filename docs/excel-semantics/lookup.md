@@ -206,7 +206,13 @@ below the key, so nothing qualifies; a forward skip would reach 3.14159 and give
 other rules for a skip that passes the low bound. When the backward skip finds no cell of the key's
 type between the live range's low bound and the midpoint, the search continues forward from the
 midpoint: `MATCH(-14,{FALSE,0.5},-1)` = 2 (gen-m2 b4392a6514a36ade Calc!A277; a backward-only skip
-gives #N/A). Whether the forward continuation is the exact rule is only evidenced by that cell.
+gives #N/A). The forward continuation is verified by 20 further cells (probes/match-descending-forward-continuation J1-J20, excel-graph, T-1396):
+with a prefix of text, boolean or error cells before a run of numbers (or text), the descending
+search behaves as a plain binary search over the cells of the key's type (J1, J3 and J11-J16 have nothing of the key's type at or below the midpoint; the longer vectors J2 and J7-J10 only exercise the ordinary search after a mixed prefix). `MATCH(3,{"a","b","c",5,3,1},-1)` = 5,
+`MATCH(1,{TRUE,FALSE,"c",9,7,5,3,1},-1)` = 8, `MATCH("b",{1,TRUE,2,"c","b","a"},-1)` = 5, `{#N/A,#N/A,5,4,3,2}` and
+prefixes of 2-4 text, boolean or mixed cells (J11-J14) give the same positions as the typed tail alone; an inexact key picks the last cell >= key
+(`MATCH(4.5,{"a","b","c",9,8,7,6,5,4,3},-1)` = 8) and a key above everything is #N/A (`MATCH(1,{"a","b",0.5,0.2},-1)`);
+range forms (a column and a row) agree. The engine already matches all 20 cells.
 Rule 2: a literal text match_type is `#VALUE!` (`MATCH(1,A5:A7,"x")`, and also on a 2-D range:
 `MATCH(1,A5:B7,"x")`), but a text match_type that comes from a *cell* is `#REF!`, for a 1-D and a 2-D
 lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and D2 = " x "). The 2-D
