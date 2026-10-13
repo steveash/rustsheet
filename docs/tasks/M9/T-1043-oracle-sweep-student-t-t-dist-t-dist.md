@@ -3,7 +3,7 @@ id: T-1043
 title: "Oracle sweep: Student t (T.DIST, T.DIST.RT, T.DIST.2T, T.INV, T.INV.2T, CONFIDENCE.T)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
