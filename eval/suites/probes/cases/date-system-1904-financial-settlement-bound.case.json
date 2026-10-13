@@ -1,0 +1,50 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1492: ACCRINT, YEARFRAC and DISC settlements/end dates (rows 1-10) from 9995-12-30 to past 9999-12-31 in a 1904 workbook, where the doubled-offset reading passes 2958465; first_interest/issue far earlier. Cols: A ACCRINT basis 1 calc FALSE, B YEARFRAC basis 1, C DISC basis 1,",
+ "tags": [
+  "M1",
+  "probe",
+  "dates",
+  "financial",
+  "T-1492"
+ ],
+ "date_system": 1904,
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9995,12,30),0.05,1000,2,1,FALSE)",
+    "B1": "=YEARFRAC(DATE(9990,1,1),DATE(9995,12,30),1)",
+    "C1": "=DISC(DATE(9990,1,1),DATE(9995,12,30),97,100,1)",
+    "A2": "=ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9995,12,31),0.05,1000,2,1,FALSE)",
+    "B2": "=YEARFRAC(DATE(9990,1,1),DATE(9995,12,31),1)",
+    "C2": "=DISC(DATE(9990,1,1),DATE(9995,12,31),97,100,1)",
+    "A3": "=ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9996,1,1),0.05,1000,2,1,FALSE)",
+    "B3": "=YEARFRAC(DATE(9990,1,1),DATE(9996,1,1),1)",
+    "C3": "=DISC(DATE(9990,1,1),DATE(9996,1,1),97,100,1)",
+    "A4": "=ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9996,6,30),0.05,1000,2,1,FALSE)",
+    "B4": "=YEARFRAC(DATE(9990,1,1),DATE(9996,6,30),1)",
+    "C4": "=DISC(DATE(9990,1,1),DATE(9996,6,30),97,100,1)",
+    "A5": "=ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9997,12,31),0.05,1000,2,1,FALSE)",
+    "B5": "=YEARFRAC(DATE(9990,1,1),DATE(9997,12,31),1)",
+    "C5": "=DISC(DATE(9990,1,1),DATE(9997,12,31),97,100,1)",
+    "A6": "=ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9998,12,31),0.05,1000,2,1,FALSE)",
+    "B6": "=YEARFRAC(DATE(9990,1,1),DATE(9998,12,31),1)",
+    "C6": "=DISC(DATE(9990,1,1),DATE(9998,12,31),97,100,1)",
+    "A7": "=ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9999,6,30),0.05,1000,2,1,FALSE)",
+    "B7": "=YEARFRAC(DATE(9990,1,1),DATE(9999,6,30),1)",
+    "C7": "=DISC(DATE(9990,1,1),DATE(9999,6,30),97,100,1)",
+    "A8": "=ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9999,12,30),0.05,1000,2,1,FALSE)",
+    "B8": "=YEARFRAC(DATE(9990,1,1),DATE(9999,12,30),1)",
+    "C8": "=DISC(DATE(9990,1,1),DATE(9999,12,30),97,100,1)",
+    "A9": "=ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9999,12,31),0.05,1000,2,1,FALSE)",
+    "B9": "=YEARFRAC(DATE(9990,1,1),DATE(9999,12,31),1)",
+    "C9": "=DISC(DATE(9990,1,1),DATE(9999,12,31),97,100,1)",
+    "A10": "=ACCRINT(DATE(9990,1,1),DATE(9990,6,30),2957004,0.05,1000,2,1,FALSE)",
+    "B10": "=YEARFRAC(DATE(9990,1,1),2957004,1)",
+    "C10": "=DISC(DATE(9990,1,1),2957004,97,100,1)"
+   }
+  }
+ ],
+ "expected": {}
+}

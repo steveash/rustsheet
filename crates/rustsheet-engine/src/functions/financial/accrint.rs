@@ -4,7 +4,7 @@ use super::dates::broken_schedule_error;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::from_excel_date,
+    formatter::dates::{from_excel_date, from_excel_date_up_to},
     model::Model,
 };
 
@@ -393,7 +393,12 @@ impl Model {
             Ok(d) => d,
             Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
         };
-        let settlement = match from_excel_date(settlement_serial) {
+        let settlement_limit = self
+            .workbook
+            .settings
+            .date_system
+            .accrint_settlement_limit();
+        let settlement = match from_excel_date_up_to(settlement_serial, settlement_limit) {
             Ok(d) => d,
             Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
         };

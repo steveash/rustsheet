@@ -464,7 +464,7 @@ Tasks: T-1416, T-1435, T-1436, T-1441, T-1444
 
 ## The 1904 date system: financial day counts read every date one day late
 Rule: in a 1904 workbook, YEARFRAC and the financial functions with date arguments read each date as the
-**next** day. Serial s is read as 1900 serial s + 1463, while every other reader adds 1462. A date they return
+**next** day. Serial s is read as 1900 serial s + 2·1462 (T-1492; for dates inside a four-year span with one 29 February that is the same day counts as s + 1463, a day late), while every other reader adds 1462. A date they return
 (COUPNCD, COUPPCD) comes back one day early. The coupon schedule, the end-of-month rule and the 30/360 and
 actual/actual counts all run on the shifted dates.
 - `YEARFRAC(DATE(2024,1,31),DATE(2024,2,29),0)` = 30/360 (2/1 to 3/1). The same cell in a 1900 workbook is 29/360.
@@ -536,11 +536,19 @@ At the edges:
   2104-02-27, 2104-06-30, 2100-12-31 and 2100-02-28 (165 cells), give in a 1904 workbook exactly the values of a 1900
   workbook with every date moved 1462 days later; COUPPCD and COUPNCD are 2·1462 serials lower. All 165 cells agree
   bit for bit (probes/date-system-1900-financial-readers-shifted against probes/date-system-1904-financial-readers).
-  The s + 1463 reading differs in 93 of the 165 cells (COUPNCD on basis 1 70308
-  against our 70309, COUPDAYS 181 against 182, YEARFRAC basis 0 4.32778 against 4.33056) and misses 4 more in the last
-  digits. Ours still reads
-  s + 1463 (T-1492). The unshifted 1900 twin (probes/date-system-1900-financial-readers) has its own gaps, COUPDAYS
-  basis 1 across 2100-02-28 and YIELD last digits (T-1493). All probes excel-graph, 2026-10-13. In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
+  The s + 1463 reading differed in 93 of the 165 cells (COUPNCD on basis 1 70308
+  against 70309, COUPDAYS 181 against 182, YEARFRAC basis 0 4.32778 against 4.33056) and missed 4 more in the last
+  digits. Ours reads s + 2·1462 since T-1492 (`DateSystem::financial_1900_serial`, results mapped back by
+  `serial_from_financial_1900_serial`): 147 of the 165 cells pass, the other 18 fail the same way in the shifted 1900 twin
+  (probes/date-system-1900-financial-readers-shifted), the 1900 gaps of the next sentence. The unshifted 1900 twin (probes/date-system-1900-financial-readers) has its own gaps, COUPDAYS
+  basis 1 across 2100-02-28 and YIELD last digits (T-1493).
+  A date read past 9999-12-31 is #NUM! in YEARFRAC and DISC (1904 serial 2955542, 9995-12-31, onward), but ACCRINT takes its
+  *settlement* up to the last 1904 date 2957003: `ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9999,12,31),0.05,1000,2,1,FALSE)`
+  is 504.28 while 2957004 is #NUM! (probes/date-system-1904-financial-settlement-bound, 30 cells, excel-graph, 2026-10-13, T-1492;
+  `DateSystem::accrint_settlement_limit`). Unexplained: `ACCRINT(DATE(9990,1,1),DATE(9990,6,30),S,0.05,1000,2,0,TRUE)`
+  (basis 0, calc_method TRUE) was #NUM! in the same probe for every settlement from 9995-12-30 on, where we give a value
+  (column cut from the probe; follow-up task).
+  The break threshold of COUPPCD/COUPNCD/COUPDAYS is unchanged: the previous coupon of a broken schedule is 1900 serial 1462 in the doubled reading. All probes excel-graph, 2026-10-13. In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
   9999-05-15) are #NUM!, and so is ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity 9999-06-30.
   COUPDAYS on basis 1 in the broken range ignores the settlement: 2958465 for settlements 9999-01-01, 9998-03-01 and
   9996-02-01.
@@ -558,7 +566,7 @@ The other failing cells are last-digit misses (DISC, INTRATE, PRICEDISC, PRICEMA
 or iteration stopping points (XIRR, YIELD, ODDFYIELD; T-0916). Most fail in the 1900 twin too; PRICEDISC
 daycount A20 is 1 ulp off in 1904 only.
 Status: VERIFIED (web)
-Tasks: T-1436, T-1440, T-1447, T-1457
+Tasks: T-1436, T-1440, T-1447, T-1457, T-1489, T-1492
 
 ## Negative serials under an explicit negative section; lone elapsed tokens
 Rule: Excel decides whether a negative serial formats from the value's own sign, before a negative section drops it.
