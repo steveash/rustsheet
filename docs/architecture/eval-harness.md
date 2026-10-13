@@ -162,7 +162,10 @@ that is not `M\d+`, a duplicate case or cell, or a case that no suite discovers.
 for M0–M2 (combined), M5, M6, M7, M8, M9, M10 and M11, plus a row for any other milestone a case
 takes: cases, scored cells, bit-exact, deviations and known failures (cells). Known failures are
 counted as the baseline counts its F lines; an item that is not a cell (`*`, `!Panic`) counts at
-the case's milestone, which for a catalog case is M2. The console summary prints the M0–M2 row.
+the case's milestone, which for a catalog case is M2. Each row with known failures is followed by a "Failing cases in <row>" list of case id and
+the row's known-failure item count there (most first, then by id; also
+`probe_milestones[].failing_cases`).
+The console summary prints the M0–M2 row.
 The rows are exit measures; `eval-check` is the gate.
 
 ## CLI
