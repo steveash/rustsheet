@@ -199,7 +199,7 @@ Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lif
 C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are listed in
 eval/suites/probes/deviations, decision 0036).
 Status: DEVIATION (decision 0014)
-Implemented in: functions/math_and_trigonometry/array_size.rs (`MAX_SIZE`, `check_array_size`,
+Implemented in: limits.rs (`MAX_SIZE`, `check_array_size`,
 `check_range_size`); `Model::evaluate_range` in crates/rustsheet-engine/src/cast.rs;
 `broadcast_arrays` in crates/rustsheet-engine/src/arithmetic.rs
 Tasks: T-0047, T-1420

@@ -1,6 +1,6 @@
 //! The General number format: fixed or E notation (T-0938).
 
-use crate::functions::math_and_trigonometry::decimal_round::{round_decimal, RoundMode};
+use crate::decimal_round::{round_decimal, RoundMode};
 
 /// Characters General's fixed notation may use, the sign excluded and the decimal point counted:
 /// "0." plus 9 decimals below 1 (poi/GeneralFormatTests A27 `1E-09` → "0.000000001", A61 `-1E-09`

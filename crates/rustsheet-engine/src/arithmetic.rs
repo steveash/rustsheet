@@ -6,7 +6,8 @@ use crate::{
         token::{Error, OpCompare, OpProduct, OpSum},
         types::CellReferenceIndex,
     },
-    functions::{math_and_trigonometry::array_size::check_array_size, util::compare_values},
+    functions::util::compare_values,
+    limits::check_array_size,
     model::Model,
 };
 
