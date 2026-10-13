@@ -22,4 +22,4 @@ T-1497 walks union areas over existing rows (`SheetData::next_row_between`, `Mod
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- The `MAX_AREA_WALK` value and single-range (dense) walks.
