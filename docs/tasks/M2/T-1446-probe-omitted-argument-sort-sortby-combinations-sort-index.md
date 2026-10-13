@@ -3,7 +3,7 @@ id: T-1446
 title: "Probe omitted-argument SORT/SORTBY combinations (sort_index, sort_order, by_col)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
