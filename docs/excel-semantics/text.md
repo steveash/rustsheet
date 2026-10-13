@@ -304,3 +304,12 @@ above 1114111 (U+10FFFF) is `#VALUE!`. A surrogate (55296-57343) or a Unicode no
 surrogate pair (`LEN(UNICHAR(65536))` is 2). A fractional value is truncated first (`UNICHAR(55296.5)` is `#N/A`).
 Evidence: probes/dollar-fixed-unichar-edges A30-A45, A51-A53, D54-D68 (excel-graph, T-1281).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
+
+## UNICHAR argument shapes
+Rule: UNICHAR's argument is coerced like any number argument: TRUE is 1 (`UNICHAR(TRUE)` and `UNICHAR(A4)` with A4 = TRUE
+give U+0001), numeric text converts (`UNICHAR(A5)` with A5 = "67" is "C"), an empty cell is 0 so `#VALUE!`, and
+non-numeric text and "" are `#VALUE!`. An error argument is returned as it came (`UNICHAR(#N/A)` is `#N/A`). A
+multi-cell range lifts and spills (`UNICHAR(B10:B11)` is "H" over "I"); a spill blocked by occupied cells is
+`#SPILL!` (D1, D7, D8, D11, where the cells below held other probes). The engine already matches all of these.
+Evidence: probes/unichar-arg-shapes D1-D13 (excel-graph, T-1464).
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
