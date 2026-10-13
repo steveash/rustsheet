@@ -1,5 +1,6 @@
 use chrono::{Datelike, NaiveDate};
 
+use super::dates::broken_schedule_error;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
@@ -382,11 +383,7 @@ impl Model {
         // while 9995-12-30 still accrues (probes/date-system-1904-odd-accrint-bound A11:D15;
         // docs/excel-semantics/dates.md; T-1447).
         if self.coupon_schedule_breaks(first_interest_serial) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "first_interest past the coupon schedule".to_string(),
-            );
+            return broken_schedule_error(cell);
         }
         let issue = match from_excel_date(issue_serial) {
             Ok(d) => d,
