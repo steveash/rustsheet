@@ -536,7 +536,8 @@ At the edges:
   2100-06-30, 2104-02-27, 2104-06-30, 2100-12-31, 2100-02-28), exactly the 1900 value for the same dates moved 1462 days
   later (YIELD to its solver's last digits); the date-returning COUPPCD and COUPNCD differ by the 2·1462 serials
   the reading added. The s + 1463 reading differs in 97 of the 165 cells (COUPNCD on basis 1 70308 against our 70309,
-  COUPDAYS 181 against 182, YEARFRAC basis 0 4.32778 against 4.33056). Ours still reads s + 1463 (follow-up task)
+  COUPDAYS 181 against 182, YEARFRAC basis 0 4.32778 against 4.33056). Ours still reads s + 1463 (T-1492).
+  The 1900 twin has its own gaps, COUPDAYS basis 1 across 2100-02-28 and YIELD last digits (T-1493)
   (probes/date-system-1904-financial-readers and its 1900 twin, excel-graph, 2026-10-13). In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
   9999-05-15) are #NUM!, and so is ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity 9999-06-30.
   COUPDAYS on basis 1 in the broken range ignores the settlement: 2958465 for settlements 9999-01-01, 9998-03-01 and
