@@ -57,10 +57,11 @@ surrogate as one character and do not pair a lone high surrogate with a followin
 Evidence: probes/text-surrogate-positions A6, A11, A12, A29, A38, B6, B7, B10 (excel-graph,
 2026-10-09, T-0249).
 Ours: a Rust `String` cannot hold a lone surrogate, so `utf16_slice` drops a pair that straddles
-a cut whole (A6, A11, A12, A29, A38 and B10 stay known failures).
-Status: DEVIATION (decision 0033)
+a cut whole (A6, A11, A12, A29, A38 and B10 stay known failures). A known gap, not a deviation
+(decision 0052): T-1483.
+Status: VERIFIED
 Implemented in: `utf16_slice` in functions/text/util.rs
-Tasks: T-0249
+Tasks: T-0249, T-1483
 
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for

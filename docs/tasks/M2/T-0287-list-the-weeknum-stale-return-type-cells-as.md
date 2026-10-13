@@ -62,3 +62,5 @@ Consequences already settle this: they stay F lines in eval/baseline/probes.txt,
 cells do, and decision 0043 already names them in M2 scope. The sonnet run's mechanical change
 (draft PR #394) is not merged. Revisit only together with 0038's revisit trigger (RustSheet
 reproducing Excel's calc order).
+Superseded by decision 0052 (2026-10-13, T-1030): decision 0038 is no longer a deviation, so these
+cells are a known gap that T-1484 specifies, never `deviations` lines.
