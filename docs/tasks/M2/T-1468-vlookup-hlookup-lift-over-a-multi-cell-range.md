@@ -3,7 +3,7 @@ id: T-1468
 title: "VLOOKUP/HLOOKUP lift over a multi-cell range range_lookup (4 gen-m2 known failures)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
