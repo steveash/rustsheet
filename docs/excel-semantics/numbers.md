@@ -259,6 +259,28 @@ Status: VERIFIED
 Implemented in: `arithmetic::divide`.
 Tasks: T-0173
 
+## Division rounds twice (64-bit, then double)
+Rule: the operator `/` rounds the exact quotient first to a 64-bit significand (x87 extended
+precision) and then to a double, both to nearest, ties to even. This differs from the correctly
+rounded quotient only when the exact quotient lies within half an extended ulp of the midpoint
+between two doubles (about 1 division in 4,000 with full-significand operands): the first rounding
+lands on the midpoint, and the second rounds it to the even neighbor.
+`=1/(2-2^-52)` is 0.5, where the correctly rounded quotient is 0.5000000000000001;
+`=1/(1+26955297717044*2^-52)` = 0.994050331987417 (correctly rounded: …4171).
+The reciprocal inside `^` and POWER is the same division: `x^-1`, `POWER(x,-1)`, `x^-3` (1 over
+the square-and-multiply power), `x^-0.5` (1 over `sqrt`) and `x^-0.3` (1 over `exp(0.3·ln x)`) all
+round twice, so `8^(-1/3)` = 0.5 and `(-8)^(-1/3)` = -0.5 although `8^(1/3)` = 1.9999999999999998.
+Evidence: probes-numeric/power-reciprocal-rounding (72 cells: 8 values whose reciprocal rounds
+differently, each through `^-1`, `POWER(,-1)` and `/`, 4 controls, 6 each through `^-3`, `^-0.5`
+and `^-0.3`, every one double-rounded; oracle: excel-graph, 2026-10-13, T-0221);
+probes-numeric/power-odd-roots A50, A56 (`(±8)^(-1/3)`).
+Not probed: `x/y` with a numerator other than 1 (implemented as the same division, inferred from x87 FDIV being one operation), and whether `*`, function-internal divisions (AVERAGE, MOD, QUOTIENT, financial functions)
+and other results round twice too (T-1496).
+Implemented in: `arithmetic::extended_quotient`, used by `arithmetic::divide` and the reciprocals in
+`arithmetic::power`.
+Status: VERIFIED (excel-graph) for reciprocals `1/r`; inferred for other numerators (T-1496)
+Tasks: T-0221
+
 ## Numbers near 1E+307 print with 14 significant digits
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is
 4.49423283715579E+307 (15 digits, A16); the engine prints 4.49423283715579E+307.
@@ -538,6 +560,7 @@ Rule: for an exponent that is not an integer, Excel computes `x^y` as follows:
 - `y` < 0: one over the positive power, `1/exp(-y·ln x)`. `10^-33.5` = 3.1622776601683576E-34 and `27^-2.5` = 0.0002639918926335737.
 - `y` = 0.5: `sqrt(x)`. `2^0.5` = 1.4142135623730951, where `exp(0.5·ln 2)` is 1.4142135623730950.
 - `y` = -0.5: `1/sqrt(x)`. `3^-0.5` = 0.5773502691896258 and `0.5^-0.5` = 1.414213562373095.
+- Each `1/` is the operator `/`, which rounds twice (see "Division rounds twice"): `8^(-1/3)` = 0.5.
 
 An odd root of a negative base is minus the same formula on the magnitude. `(-8)^(1/3)` = -exp(ln 8/3) = -1.9999999999999998, which is the value Excel's own workbook caches.
 
@@ -548,11 +571,13 @@ Out-of-range results:
 - Quirk: a negative exponent is one over the positive power even when that power underflows, so the result is `#DIV/0!`. This holds for integer exponents too: `1E-10^-33.5`, `POWER(1E-10,-33.5)`, `0.1^-400`, `1E-10^-40`, `1E-10^-31` and `1E-300^-1.1` (where the positive power is subnormal).
 - A negative exponent whose result underflows is 0: `1E10^-33.5` = 0, `1E+200^-1.6` = 0, `2^-1074.5` = 0.
 
-Unresolved (T-0221): `(-8)^(-1/3)` is -0.5 in Excel, while the model gives -0.5000000000000001. `(-27)^(-1/3)` = -0.33333333333333337 and `(-8)^(1/3)` = -1.9999999999999998 do match.
+`(-8)^(-1/3)` is -0.5: the twice-rounded `1/1.9999999999999998`. The model matches all 156 cells
+of `(±x)^(±1/n)` for n = 3, 5, 7 over 13 bases (probes-numeric/power-odd-roots A1-A156, T-0221).
 Evidence:
 - probes-numeric/power-non-integer-sweep A1-A182: bases 2, 3, 5, 6, 7, 10, 0.5, 1.5, 100, 1E10, 1E-10, 123.456, 0.9 and 1.1, each with exponents ±0.5, ±1.5, ±2.5, ±0.3, 1/3, ±33.5, 0.25 and 2.7.
 - probes-numeric/power-non-integer-sweep A183-A194: odd roots of negatives and out-of-range results.
 - Both are oracle excel-graph, 2026-10-12, T-1319.
+- probes-numeric/power-odd-roots A1-A156 (excel-graph, 2026-10-13, T-0221).
 - gen-m1/6462bf910ef9f28f Calc!A41 and A207; gen-m2/1b6ceed7489e0800 Calc!A62; gen-m7/9ff3afcacd3bd0fc Calc!A13.
 - ironcalc-calc POWER.xlsx Sheet1!D3 and F9.
 Not probed: other negative bases; exponents within 1E-15 of ±0.5.
@@ -749,6 +774,25 @@ every base except 10 (about 280 cells across `1.0000001`, `0.9999999`, `1.5`, `2
    are plain square-and-multiply (`0.1^-33` = 9.999999999999965E+32, not 1E+33):
    `(-10)^33` = -1.0000000000000001E+33, `100^100` = 1.0000000000000005E+200.
 4. Overflow is `#NUM!` as before (`100^200`, `1E15^23`, `10^309`).
+5. Negative bases follow the same out-of-range rules as positive ones (T-0221): a positive power
+   that overflows is `#NUM!` (`(-10)^401`, `(-2)^1025`) and one that underflows is 0
+   (`(-0.1)^401`); a negative exponent whose positive power underflows is `#DIV/0!`
+   (`(-0.1)^-401`, `(-0.1)^-400`, `(-1E-10)^-31`, `(-0.5)^-1075`, `(-1E-200)^-2`, `POWER(-0.1,-401)`)
+   and one whose positive power overflows is 0 (`(-10)^-401`, `(-1E10)^-33`, `(-2)^-1074`,
+   `(-1E200)^-2`). Evidence: probes-numeric/power-negative-base-range, power-odd-roots A157-A162
+   (excel-graph, 2026-10-13).
+
+Unresolved (T-1495): `SQRT(5)^n` (equally `(0.2^-0.5)^n` and `POWER(SQRT(5),n)`) is not
+square-and-multiply. Of 9 full-significand bases probed at 19 exponents 3..255 (pi, e, 1.1, 1/3,
+0.7, SQRT(2), 1.0000001, and 2.23606797749979 written two ways), the rule matches all 133 cells
+of the other 7 bases and 2 of the 38 sqrt(5) cells. `SQRT(5)^99` = 3.9720546451956613E+34
+(square-and-multiply: …6807E+34; correctly rounded: …656E+34); `SQRT(5)^10` = 3125.0000000000023
+(…030; …014). Excel's results track `exp(n·ln b)` with `ln b` the double logarithm (10 of 19
+cells) and drift up to 2 ulps below it by n = 255. Rejected: left-to-right and repeated
+multiplication, every multiplication order of the four squares for n = 99, a 54- to 65-bit
+significand for the loop, the exact decimal 2.23606797749979 raised to n, and `exp`/`log2`/`log10`
+compositions. Evidence: probes-numeric/power-integer-full-mantissa (184 cells; excel-graph,
+2026-10-13, T-0221); gen-m2/fa437879253827be Calc!A23 is `(0.2^-0.5)^99`.
 Non-integer exponents (`10^33.5` = 3.162277660168401E+33, libm 3.162277660168379E+33; `10^-33.5` =
 3.1622776601683576E-34; `10^40.0000001` = 1.0000002302585496E+40) follow "Non-integer exponents: exp(y·ln x)" (T-1319).
 Evidence: probes-numeric/power-large-integer-exponents{,-2,-3,-4}.case.json (oracle: excel-graph,

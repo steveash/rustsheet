@@ -1,0 +1,29 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-0221: integer powers of negative bases whose power overflows or underflows, for negative and positive exponents (power-odd-roots A157-A162 cover the underflow of a negative exponent's power).",
+  "tags": [
+    "probe",
+    "power",
+    "T-0221"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=(-10)^-401",
+        "A2": "=(-10)^401",
+        "A3": "=(-10)^-400",
+        "A4": "=(-1E10)^-33",
+        "A5": "=(-2)^-1075",
+        "A6": "=(-2)^1025",
+        "A7": "=(-2)^-1074",
+        "A8": "=(-0.5)^-1075",
+        "A9": "=POWER(-10,-401)",
+        "A10": "=(-1E-200)^-2",
+        "A11": "=(-1E-200)^-3",
+        "A12": "=(-1E200)^-2"
+      }
+    }
+  ],
+  "expected": {}
+}
