@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-1336: near-zero snapping in AGGREGATE(9) and SUBTOTAL(9/109) over 0.1, 0.2, -0.3 (no PERCENTOF cell: #NAME? on excel-graph).",
+  "description": "T-1336: near-zero snapping in AGGREGATE(9) and SUBTOTAL(9/109) over 0.1, 0.2, -0.3 (PERCENTOF is in probes/percentof-snap-overflow-union, T-0416).",
   "tags": [
     "M1",
     "numbers",

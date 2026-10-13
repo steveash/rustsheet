@@ -63,8 +63,8 @@
     "v": "#N/A"
    },
    "A23": {
-    "t": "e",
-    "v": "#NAME?"
+    "t": "n",
+    "v": 1.5049999999999997e+30
    },
    "A24": {
     "t": "e",
@@ -179,9 +179,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "6b9ac39d14929d71e340fc12ccfc5730d723fd8058eb9e600431e19a266dfcc0",
+  "input_sha256": "f653e4bf61116e36d251628b1ae30828c953b4bd43d08bc81f2f26701656fb3a",
   "kind": "excel-graph",
-  "produced_at": "2026-10-11T14:18:51+00:00",
+  "produced_at": "2026-10-13T16:21:11+00:00",
   "version": null
  }
 }

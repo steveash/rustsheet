@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-0040: how function names must be stored for Excel for the web to recognise them, and FILTERXML on the web. A1/A2: PERCENTOF stored bare vs as _xlfn.PERCENTOF (the case builder prefixes neither PERCENTOF nor GROUPBY). A3/A4: an eta-reduced function argument stored bare (SUM) vs as _xleta.SUM. A5/A6: _xlfn. on a classic function and on an unknown name. A7: FILTERXML with a well-formed document and XPath (its page says it relies on Windows). Results of ERROR.TYPE: 5 = #NAME?, 3 = #VALUE!; IFERROR(..., 0) = no error. A1 and A3 are not scored: they ask how a stored (file) formula loads, while the engine reads the spec text as a typed formula, where PERCENTOF and an eta SUM are valid; their oracle values are the evidence (docs/excel-semantics/xlsx-storage.md).",
+ "description": "T-0040: how function names must be stored for Excel for the web to recognise them, and FILTERXML on the web. A1/A2: PERCENTOF stored bare vs as _xlfn.PERCENTOF (A1 is listed in bare_function_names, so the case builder writes it bare; T-0416). A3/A4: an eta-reduced function argument stored bare (SUM) vs as _xleta.SUM. A5/A6: _xlfn. on a classic function and on an unknown name. A7: FILTERXML with a well-formed document and XPath (its page says it relies on Windows). Results of ERROR.TYPE: 5 = #NAME?, 3 = #VALUE!; IFERROR(..., 0) = no error. A1 and A3 are not scored: they ask how a stored (file) formula loads, while the engine reads the spec text as a typed formula, where PERCENTOF and an eta SUM are valid; their oracle values are the evidence (docs/excel-semantics/xlsx-storage.md).",
  "tags": [
   "M0",
   "probe",
@@ -18,7 +18,10 @@
     "A5": "=IFERROR(ERROR.TYPE(_xlfn.SUM(1,2)),0)",
     "A6": "=IFERROR(ERROR.TYPE(_xlfn.NOSUCHFUNCTION(1)),0)",
     "A7": "=IFERROR(ERROR.TYPE(FILTERXML(\"<a>1</a>\",\"//a\")),0)"
-   }
+   },
+   "bare_function_names": [
+    "A1"
+   ]
   }
  ],
  "expected": {},
