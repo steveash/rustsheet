@@ -9,6 +9,7 @@ use crate::{
     },
     functions::{util::array_node_to_calc_result, Function},
     model::Model,
+    reference_operators::{Ranges, RefArg},
 };
 
 /// The row/column index argument of VLOOKUP/HLOOKUP, read before the search but validated only
@@ -57,12 +58,29 @@ impl Model {
         let index = match node.ungrouped() {
             Node::FunctionKind {
                 kind: Function::If, ..
-            } => self
-                .evaluate_reference_arg(node, cell)
-                .into_single_area(cell),
+            } => match self.evaluate_reference_arg(node, cell) {
+                // A union picked by `IF` is `#REF!` here, not the `#VALUE!` of other several-area
+                // arguments (probes/lookup-index-multicell-if M1, T-1426).
+                RefArg::Ranges(Ranges::Areas(_)) => {
+                    return Err(CalcResult::new_error(
+                        Error::REF,
+                        cell,
+                        "Reference of several areas".to_string(),
+                    ))
+                }
+                picked => picked.into_single_area(cell),
+            },
             _ => self.eval_ref_or_index(node, cell),
         };
         match index {
+            // A multi-cell range index lifts like an array of its values, never intersecting
+            // (probes/lookup-index-multicell-if A1-D2, J1-L2, O1; T-1426).
+            CalcResult::Range { left, right }
+                if left.row != right.row || left.column != right.column =>
+            {
+                self.evaluate_range(left, right, cell)
+                    .map(LookupIndexArg::Array)
+            }
             range @ CalcResult::Range { .. } => Ok(LookupIndexArg::Reference(range)),
             CalcResult::Array(grid) => Ok(LookupIndexArg::Array(grid)),
             value => self.cast_to_number(value, cell).map(LookupIndexArg::Number),

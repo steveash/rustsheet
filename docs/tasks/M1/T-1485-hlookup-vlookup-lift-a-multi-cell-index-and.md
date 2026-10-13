@@ -3,7 +3,7 @@ id: T-1485
 title: "HLOOKUP/VLOOKUP lift a multi-cell index and report #REF! for an IF union index (follow-up of T-1426)"
 milestone: M1
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Probe `probes/lookup-index-multicell-if` (excel-graph, T-1426): `COUNT(HLOOKUP(4
 
 ## Out of scope
 -
+
+## Outcome
+`lookup_index_arg` (index_arg.rs) reads a multi-cell range index as an array of its values, which the existing array-index lifting handles, and an `IF` picking a union gives `#REF!`. Eval: probes known failures 2991 -> 2982 (fixed 9, regressions 0).

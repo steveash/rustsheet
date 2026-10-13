@@ -2753,15 +2753,6 @@ F	probes/lookup-argument-modes.case.json	Sheet1!H4
 F	probes/lookup-argument-modes.case.json	Sheet1!H7
 F	probes/lookup-argument-modes.case.json	Sheet1!H8
 F	probes/lookup-argument-modes.case.json	Sheet1!H9
-F	probes/lookup-index-multicell-if.case.json	Sheet1!A2
-F	probes/lookup-index-multicell-if.case.json	Sheet1!B2
-F	probes/lookup-index-multicell-if.case.json	Sheet1!C2
-F	probes/lookup-index-multicell-if.case.json	Sheet1!D2
-F	probes/lookup-index-multicell-if.case.json	Sheet1!J2
-F	probes/lookup-index-multicell-if.case.json	Sheet1!K2
-F	probes/lookup-index-multicell-if.case.json	Sheet1!L2
-F	probes/lookup-index-multicell-if.case.json	Sheet1!M1
-F	probes/lookup-index-multicell-if.case.json	Sheet1!O1
 F	probes/m7-argument-modes.case.json	Sheet1!F1
 F	probes/m7-argument-modes.case.json	Sheet1!F10
 F	probes/m7-argument-modes.case.json	Sheet1!F11
