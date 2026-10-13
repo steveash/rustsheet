@@ -13,7 +13,7 @@ use crate::{
 /// MUNIT's dimension: the number truncated, `#VALUE!` below 1.
 fn munit_dimension(f: f64) -> Result<usize, Error> {
     let n = f.trunc();
-    if n < 1.0 {
+    if n.is_nan() || n < 1.0 {
         Err(Error::VALUE)
     } else {
         // A saturating cast: a huge dimension is rejected by the size check.
