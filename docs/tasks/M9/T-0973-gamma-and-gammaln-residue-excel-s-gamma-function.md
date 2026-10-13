@@ -11,7 +11,7 @@ depends_on: []
 ---
 
 ## Goal
-GAMMA returns Excel's values (exact factorials at positive integers up to 25, Excel's last digits elsewhere, finite up to 171.6)
+GAMMA returns Excel's values (correctly rounded factorials at positive integers up to 25 (exact up to 23), Excel's last digits elsewhere, finite up to 171.6)
 from one accurate gamma-function routine, and the 18 GAMMALN/GAMMALN.PRECISE cells T-0926 left
 behind are matched by the same kernel or explained.
 
@@ -39,10 +39,10 @@ Examples (expected vs actual):
 - BETA_GAMMA B10: expected 9.332621544394421e+155, actual 9.332621544395446e+155 (1.1e-13).
 - `GAMMALN(3)` GAMMALN B5: expected 0.6931471805599454, actual (lgamma) 0.6931471805599453;
   B23 expected -5.772155829918508e-08, actual -5.772155829918507e-08.
-Quirks recorded in `docs/excel-semantics/statistics.md` ("GAMMA is exact at positive integers but
-not always correctly rounded") and `numbers.md` ("GAMMALN / GAMMALN.PRECISE (T-0926)").
+Quirks recorded in `docs/excel-semantics/statistics.md` ("GAMMA is exact at small positive integers
+but not always correctly rounded" and "GAMMA and GAMMALN sweep (T-1042)") and `numbers.md` ("GAMMALN / GAMMALN.PRECISE (T-0926)").
 
-Hypothesis (the oracle is the judge): exact product for positive integers up to 25 (the T-1042 sweep shows Excel deviates from the correctly rounded factorial from n = 26); otherwise a
+Hypothesis (the oracle is the judge): correctly rounded product for positive integers up to 25 (the T-1042 sweep shows Excel deviates from the correctly rounded factorial from n = 26); otherwise a
 high-accuracy routine (fdlibm/musl `tgamma`, or a Lanczos variant with reflection for x < 0.5).
 GAMMALN(3) = 0.6931471805599454 is one ulp above the correctly rounded ln 2 (0.6931471805599453),
 so Excel's GAMMALN is not correctly rounded either and is not plain `ln(GAMMA(3))` in doubles; test

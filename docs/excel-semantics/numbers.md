@@ -769,14 +769,14 @@ Tasks: T-0218
 
 ## GAMMALN / GAMMALN.PRECISE (T-0926)
 
-Excel's cached values in `ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx` are mostly the correctly
-rounded ln|Gamma(x)| (the T-1042 sweep shows 91 of the integers 1..171 are not): exactly 0 at x = 1 and 2, GAMMALN(4) = ln 6. The Lanczos `statrs::ln_gamma`
-is off by a few ulp, so `special::ln_gamma` uses fdlibm's `lgamma` (`libm` crate; chosen over a
-vendored port to keep one maintained definition). 12 cells (B/C rows 5, 9, 15, 23, 24, 26) still
-differ in the last digit and need oracle probes (T-0004).
-Some of those 12 are not correctly rounded: `GAMMALN(3)` (B5) is 0.6931471805599454, one ulp above
-the correctly rounded ln 2 = 0.6931471805599453, so "correctly rounded" only describes the cells
-T-0926 fixed. Follow-up: T-0973 (see also `statistics.md`).
+Excel's GAMMALN is not correctly rounded in general: the T-1042 sweep finds 91 of the integers 1..171
+differ from the correctly rounded ln((n-1)!) (`GAMMALN(3)` = 0.6931471805599454, one ulp above ln 2;
+`t1042-gamma-int-1-90` first GAMMALN cell A91; see `statistics.md`, "GAMMA and GAMMALN sweep (T-1042)").
+Observed in `ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx`: exactly 0 at x = 1 and 2,
+GAMMALN(4) = ln 6 (correctly rounded). The Lanczos `statrs::ln_gamma` is off by a few ulp, so
+`special::ln_gamma` uses fdlibm's `lgamma` (`libm` crate; chosen over a vendored port to keep one
+maintained definition), which fixed some cells; 12 cells (B/C rows 5, 9, 15, 23, 24, 26) still differ
+in the last digit (T-0004, T-0973).
 
 ## Excel for the web and desktop Excel differ in the last digits of some functions
 Rule: for ATAN2, IMARGUMENT, IMREAL∘IMSQRT, IMCOS, IMTAN, ERFC/ERFC.PRECISE, BESSELJ/BESSELY,

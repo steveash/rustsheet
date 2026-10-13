@@ -29,4 +29,4 @@ Split from T-0966 (one sweep per kernel family), which explains why: Excel's dis
 - Fitting or changing any implementation (the dependent fitting tasks do that).
 
 ## Outcome
-Five case files (GAMMA and GAMMALN, 568 cells) with `*.oracle.json` from Excel for the web; no cell pending. Quirks recorded in `docs/excel-semantics/statistics.md`. Eval delta: none (probe cases carry no expectations).
+Five case files (GAMMA and GAMMALN, 568 cells) with `*.oracle.json` from Excel for the web; no cell pending. Quirks recorded in `docs/excel-semantics/statistics.md`. Eval delta: none gated (`probes-numeric` is `gate = false` with no baseline); starting point for T-0973: 56/180 (`t1042-gamma-int-1-90`) and 53/162 (`t1042-gamma-int-91-171`) cells pass.
