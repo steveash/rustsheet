@@ -529,7 +529,8 @@ At the edges:
   quasi-coupon date there) is #NUM!. With a first coupon on 30 June of the maturity year and maturity 31 December,
   ODDFPRICE and ODDLPRICE differ from 1900 in every probed year, 2104 included (98.8602 against 95.9686 for ODDFPRICE,
   99.1983 against 99.1825 for ODDLPRICE); in the failing years the values follow the same rule (98.8631 and 99.1990
-  for 2100, 98.8572 and 99.1977 for 2096). The other financial readers read s + 2·1462 too, not s + 1463 (T-1489, VERIFIED):
+  for 2100, 98.8572 and 99.1977 for 2096). 
+  The other financial readers read s + 2·1462 too, not s + 1463 (T-1489, VERIFIED):
   COUPPCD, COUPNCD, COUPDAYBS, COUPDAYS, COUPDAYSNC, COUPNUM, PRICE, YIELD, DURATION, YEARFRAC and ACCRINT on bases 0, 1
   and 4 give, for every probed 1904 pair (settlement 2096-03-01, 2100-02-15, 2100-03-01, 2099-12-31, 2096-02-15; maturity
   2100-06-30, 2104-02-27, 2104-06-30, 2100-12-31, 2100-02-28), exactly the 1900 value for the same dates moved 1462 days
