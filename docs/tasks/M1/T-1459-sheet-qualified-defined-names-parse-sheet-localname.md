@@ -19,8 +19,8 @@ Found in T-1382. poi/56737.xlsx Uses!D2 `=Defines!NR_To_A1` (Excel-cached "Test 
 `NR_To_A1` is scoped to sheet Defines) is `#ERROR!` today: after `Sheet!` the lexer only reads a
 cell or range (`consume_range` in `crates/rustsheet-engine/src/expressions/lexer/mod.rs`), so a name
 is an illegal token. The `[n]Sheet!Name` form already lexes as one identifier
-(`consume_external_sheet_reference`, T-1382) and the parser splits it (`external_name` in
-`parser/operands.rs`); `[0]Sheet!Name` resolves the sheet-scoped name in `external_links.rs`
+(`consume_external_sheet_reference`, T-1382) the parser keeps it whole (`name_operand` in
+`parser/operands.rs`) and `evaluate_external_name` splits it at evaluation; `[0]Sheet!Name` resolves the sheet-scoped name in `external_links.rs`
 (`evaluate_own_name`). Reuse that path: lex `Sheet!Name` as an identifier when no cell follows and
 resolve it to the `DefinedNameKind` of that sheet's scope. The formula text must round-trip as typed.
 docs/excel-semantics/references.md "Cached values of a linked workbook" notes the gap.

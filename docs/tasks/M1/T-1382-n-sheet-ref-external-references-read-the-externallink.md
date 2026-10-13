@@ -46,6 +46,6 @@ Add-in calls through an external name (`[1]!HsGetValue`, `[1]!LUCANET`) keep the
 the cell; they give `#NAME?` and stay known failures (references.md "Cached values of a linked
 workbook").
 Eval delta: poi known failures 525 → 513 (ref-56737 Refs!E3/G3/I3, ref2-56737
-Refs!E3/G3/I3/E5/G5/I5, 56737 Uses!C5/D3/D5); no regressions. Duplication 6587 → 6560.
+Refs!E3/G3/I3/E5/G5/I5, 56737 Uses!C5/D3/D5); no regressions. Duplication 6587 → 6577 (after merging main).
 Follow-ups: T-1459 (`Sheet!LocalName`, poi/56737 Uses!D2), T-1460 (cached multi-cell ranges and a
 cached cell inside an aggregate).
