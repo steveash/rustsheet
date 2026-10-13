@@ -77,6 +77,23 @@ impl Model {
         ))
     }
 
+    /// The first `N` arguments of ODDFPRICE, ODDFYIELD, ODDLPRICE or ODDLYIELD, all dates, as 1900
+    /// serials (`DateSystem::odd_period_1900_serial`). A date Excel's reading moves off the calendar
+    /// is `None`: the caller makes it #NUM! once every argument has been read, so an error in a
+    /// later argument still wins.
+    pub(super) fn get_odd_period_dates<const N: usize>(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<[Option<i64>; N], CalcResult> {
+        let date_system = self.workbook.settings.date_system;
+        let mut dates = [None; N];
+        for (date, arg) in dates.iter_mut().zip(args) {
+            *date = date_system.odd_period_1900_serial(self.get_number_no_bools(arg, cell)?);
+        }
+        Ok(dates)
+    }
+
     /// Whether Excel's coupon schedule breaks for `maturity`, as `financial_date` read it
     /// (`DateSystem::coupon_schedule_breaks`): only in a 1904 workbook, from 9995-12-31 on.
     pub(super) fn coupon_schedule_breaks(&self, maturity: i64) -> bool {

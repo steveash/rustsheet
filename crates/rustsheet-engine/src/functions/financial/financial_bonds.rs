@@ -891,16 +891,8 @@ impl Model {
         if !(8..=9).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let (settlement, maturity) = match self.get_settlement_and_maturity(args, cell) {
+        let dates = match self.get_odd_period_dates::<4>(args, cell) {
             Ok(dates) => dates,
-            Err(e) => return e,
-        };
-        let issue = match self.get_financial_date(&args[2], cell) {
-            Ok(serial) => serial,
-            Err(e) => return e,
-        };
-        let first_coupon = match self.get_financial_date(&args[3], cell) {
-            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[4], cell) {
@@ -928,6 +920,9 @@ impl Model {
             0
         };
 
+        let [Some(settlement), Some(maturity), Some(issue), Some(first_coupon)] = dates else {
+            return CalcResult::new_error(Error::NUM, cell, "date out of range".to_string());
+        };
         if let Err(e) = validate_frequency(frequency, cell) {
             return e;
         }
@@ -967,16 +962,8 @@ impl Model {
         if !(8..=9).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let (settlement, maturity) = match self.get_settlement_and_maturity(args, cell) {
+        let dates = match self.get_odd_period_dates::<4>(args, cell) {
             Ok(dates) => dates,
-            Err(e) => return e,
-        };
-        let issue = match self.get_financial_date(&args[2], cell) {
-            Ok(serial) => serial,
-            Err(e) => return e,
-        };
-        let first_coupon = match self.get_financial_date(&args[3], cell) {
-            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[4], cell) {
@@ -1004,6 +991,9 @@ impl Model {
             0
         };
 
+        let [Some(settlement), Some(maturity), Some(issue), Some(first_coupon)] = dates else {
+            return CalcResult::new_error(Error::NUM, cell, "date out of range".to_string());
+        };
         if let Err(e) = validate_frequency(frequency, cell) {
             return e;
         }
@@ -1048,12 +1038,8 @@ impl Model {
         if !(7..=8).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let (settlement, maturity) = match self.get_settlement_and_maturity(args, cell) {
+        let dates = match self.get_odd_period_dates::<3>(args, cell) {
             Ok(dates) => dates,
-            Err(e) => return e,
-        };
-        let last_interest = match self.get_financial_date(&args[2], cell) {
-            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[3], cell) {
@@ -1081,6 +1067,9 @@ impl Model {
             0
         };
 
+        let [Some(settlement), Some(maturity), Some(last_interest)] = dates else {
+            return CalcResult::new_error(Error::NUM, cell, "date out of range".to_string());
+        };
         if let Err(e) = validate_frequency(frequency, cell) {
             return e;
         }
@@ -1119,12 +1108,8 @@ impl Model {
         if !(7..=8).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let (settlement, maturity) = match self.get_settlement_and_maturity(args, cell) {
+        let dates = match self.get_odd_period_dates::<3>(args, cell) {
             Ok(dates) => dates,
-            Err(e) => return e,
-        };
-        let last_interest = match self.get_financial_date(&args[2], cell) {
-            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[3], cell) {
@@ -1152,6 +1137,9 @@ impl Model {
             0
         };
 
+        let [Some(settlement), Some(maturity), Some(last_interest)] = dates else {
+            return CalcResult::new_error(Error::NUM, cell, "date out of range".to_string());
+        };
         if let Err(e) = validate_frequency(frequency, cell) {
             return e;
         }
