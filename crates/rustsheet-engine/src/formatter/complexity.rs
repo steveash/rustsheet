@@ -36,9 +36,9 @@ const LITERAL_COST: usize = 3;
 const DOLLAR_COST: usize = 1;
 const QUOTED_CHAR_COST: usize = 2;
 const TOKEN_COST: usize = 2;
-/// What `@` is refunded in a section whose closing literal run holds quoted text: its own
-/// `TOKEN_COST` and one more (probes/text-format-length-limit-l, -m, T-1481).
-const TEXT_TOKEN_REFUND: usize = TOKEN_COST + 1;
+/// What `@` is refunded on top of its `TOKEN_COST` in a section whose closing literal run holds
+/// quoted text (probes/text-format-length-limit-l, -m, T-1481).
+const TEXT_TOKEN_EXTRA_REFUND: usize = 1;
 const AMPM_COST: usize = 3;
 const COLOR_COST: usize = 2;
 const CONDITION_COST: usize = 7;
@@ -136,8 +136,8 @@ impl Section {
             if self.run_ends_unquoted {
                 extra += QUOTED_SWITCH_COST;
             }
-            refund += TOKEN_COST * self.free_tokens
-                + (TEXT_TOKEN_REFUND - TOKEN_COST) * self.free_text_tokens;
+            refund +=
+                TOKEN_COST * self.free_tokens + TEXT_TOKEN_EXTRA_REFUND * self.free_text_tokens;
         }
         if self.conditions > 0 && self.has_quoted {
             extra += CONDITION_WITH_QUOTED_COST;
