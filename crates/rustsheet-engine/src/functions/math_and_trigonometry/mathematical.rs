@@ -1,4 +1,4 @@
-use crate::arithmetic::{flush_subnormal, power};
+use crate::arithmetic::{divide, flush_subnormal, power};
 use crate::cast::NumberOrArray;
 use crate::constants::EXCEL_PRECISION;
 use crate::expressions::parser::ArrayNode;
@@ -873,10 +873,12 @@ impl Model {
             CalcResult::Number(v) => v,
             other => return other,
         };
-        if total == 0.0 {
-            return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
+        // Divided like the operator `/`: a zero (or subnormal) total is #DIV/0! and an overflowing
+        // quotient #NUM! (the latter two UNVERIFIED for PERCENTOF).
+        match divide(part, total) {
+            Ok(ratio) => CalcResult::Number(ratio),
+            Err(error) => CalcResult::new_error(error, cell, "Invalid division".to_string()),
         }
-        CalcResult::Number(part / total)
     }
 
     pub(crate) fn fn_combina(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

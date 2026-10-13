@@ -154,5 +154,5 @@ def test_bare_function_names_cell_keeps_the_typed_name() -> None:
 def test_bare_function_names_cell_must_exist_and_be_a_formula() -> None:
     with pytest.raises(ValueError, match="not in the sheet"):
         build_xlsx({"sheets": [{"name": "S", "cells": {"A1": "=1"}, "bare_function_names": ["B1"]}]})
-    with pytest.raises(ValueError, match="must be a"):
+    with pytest.raises(ValueError, match="not a formula"):
         build_xlsx({"sheets": [{"name": "S", "cells": {"A1": 5}, "bare_function_names": ["A1"]}]})

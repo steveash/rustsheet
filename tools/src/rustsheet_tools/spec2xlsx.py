@@ -276,28 +276,18 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
         for table in sheet.get("tables", ()):
             filters.append(_add_table(ws, sheet, table, hidden))
         formats = _number_formats(wb, sheet)
-        legacy = set(sheet.get("legacy_formulas", ()))
-        if unknown := legacy - sheet["cells"].keys():
-            msg = f"legacy_formulas names cells not in the sheet: {sorted(unknown)}"
-            raise ValueError(msg)
-        bare = set(sheet.get("bare_function_names", ()))
-        if unknown := bare - sheet["cells"].keys():
-            msg = f"bare_function_names names cells not in the sheet: {sorted(unknown)}"
+        legacy = _listed_formula_cells(sheet, "legacy_formulas")
+        bare = _listed_formula_cells(sheet, "bare_function_names")
+        if both := legacy & bare:
+            msg = f"cells both legacy_formulas and bare_function_names: {sorted(both)}"
             raise ValueError(msg)
         for a1, raw in sheet["cells"].items():
             row, col = parse_a1(a1)
             if a1 in bare:
-                if not (isinstance(raw, str) and raw.startswith("=")) or a1 in legacy:
-                    msg = f"bare_function_names cell {a1} must be a (dynamic-array) formula"
-                    raise ValueError(msg)
-                ws.write_dynamic_array_formula(
-                    row, col, row, col, _formula_text(raw, prefix_functions=False), formats.get(a1)
-                )
+                text = _formula_text(raw, prefix_functions=False)
+                ws.write_dynamic_array_formula(row, col, row, col, text, formats.get(a1))
                 continue
             if a1 in legacy:
-                if not (isinstance(raw, str) and raw.startswith("=")):
-                    msg = f"legacy_formulas cell {a1} is not a formula"
-                    raise ValueError(msg)
                 ws.write_formula(row, col, _formula_text(raw), formats.get(a1))
                 continue
             if isinstance(raw, dict) and raw.get("t") == "e" and raw.get("stored"):
@@ -522,6 +512,21 @@ def _store_numbers(xlsx: bytes, lossy: list[tuple[int, str, float]]) -> bytes:
         return apply
 
     return _patch_sheets(xlsx, [(number, patch(ref, value)) for number, ref, value in lossy])
+
+
+def _listed_formula_cells(sheet: dict[str, Any], key: str) -> set[str]:
+    """The cells a sheet lists under `key` (`legacy_formulas`, `bare_function_names`), each checked
+    to be a formula cell of the sheet."""
+    listed = set(sheet.get(key, ()))
+    if unknown := listed - sheet["cells"].keys():
+        msg = f"{key} names cells not in the sheet: {sorted(unknown)}"
+        raise ValueError(msg)
+    for a1 in sorted(listed):
+        raw = sheet["cells"][a1]
+        if not (isinstance(raw, str) and raw.startswith("=")):
+            msg = f"{key} cell {a1} is not a formula"
+            raise ValueError(msg)
+    return listed
 
 
 def _formula_text(raw: str, *, prefix_functions: bool = True) -> str:
