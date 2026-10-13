@@ -282,6 +282,9 @@ pub struct MilestoneRow {
     pub deviations: usize,
     /// Known-failure items, counted as the baseline counts its F lines.
     pub known_failures: usize,
+    /// The cases behind `known_failures`: case id and its known-failure items in this row,
+    /// most first, then by id.
+    pub failing_cases: Vec<(String, usize)>,
 }
 
 /// Scores the `probes` cases of `results` per milestone; `mode` is the suite's baseline mode.
@@ -324,7 +327,12 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
         // Items that are not cells (`*`, `!Panic`, …) count at the case's own milestone.
         for (_, item) in Baseline::from_results(mode, &[r]).failing {
             let row = cell_rows.get(&item).copied().unwrap_or(case_row);
-            rows.entry(row).or_default().known_failures += 1;
+            let s = rows.entry(row).or_default();
+            s.known_failures += 1;
+            match s.failing_cases.last_mut() {
+                Some((id, n)) if *id == r.id => *n += 1,
+                _ => s.failing_cases.push((r.id.clone(), 1)),
+            }
             rows_of_case.insert(row);
         }
         for row in rows_of_case {
@@ -332,9 +340,13 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
         }
     }
     rows.into_iter()
-        .map(|(row, s)| MilestoneRow {
-            milestone: row_label(row),
-            ..s
+        .map(|(row, mut s)| {
+            s.failing_cases
+                .sort_by(|(a, na), (b, nb)| nb.cmp(na).then_with(|| a.cmp(b)));
+            MilestoneRow {
+                milestone: row_label(row),
+                ..s
+            }
         })
         .collect()
 }
@@ -362,6 +374,12 @@ pub fn write_markdown(rows: &[MilestoneRow], md: &mut String) {
             "| {} | {} | {} | {} | {} | {} |",
             s.milestone, s.cases, s.cells, s.bit_exact, s.deviations, s.known_failures
         );
+    }
+    for s in rows.iter().filter(|s| !s.failing_cases.is_empty()) {
+        let _ = writeln!(md, "\nFailing cases in {}:\n", s.milestone);
+        for (id, n) in &s.failing_cases {
+            let _ = writeln!(md, "- `{id}`: {n}");
+        }
     }
 }
 
@@ -652,26 +670,36 @@ mod tests {
             },
         ];
         let rows = summarize(&rules, &results, BaselineMode::Cells);
-        let row = |m: &str, cases, cells, bit_exact, deviations, known_failures| MilestoneRow {
-            milestone: m.into(),
-            cases,
-            cells,
-            bit_exact,
-            deviations,
-            known_failures,
+        let row = |m: &str, cases, cells, bit_exact, deviations, failing: &[(&str, usize)]| {
+            MilestoneRow {
+                milestone: m.into(),
+                cases,
+                cells,
+                bit_exact,
+                deviations,
+                known_failures: failing.iter().map(|f| f.1).sum(),
+                failing_cases: failing.iter().map(|f| (f.0.to_owned(), f.1)).collect(),
+            }
         };
         assert_eq!(
             rows,
             [
-                row("M0-M2", 2, 3, 1, 1, 1),
-                row("M5", 0, 0, 0, 0, 0),
-                row("M6", 1, 1, 1, 0, 0),
-                row("M7", 1, 0, 0, 0, 1),
-                row("M8", 0, 0, 0, 0, 0),
-                row("M9", 2, 2, 0, 0, 2),
-                row("M10", 0, 0, 0, 0, 0),
-                row("M11", 0, 0, 0, 0, 0),
-                row("M12", 1, 0, 0, 0, 0),
+                row("M0-M2", 2, 3, 1, 1, &[("probes/d.case.json", 1)]),
+                row("M5", 0, 0, 0, 0, &[]),
+                row("M6", 1, 1, 1, 0, &[]),
+                row("M7", 1, 0, 0, 0, &[("probes/p.case.json", 1)]),
+                row("M8", 0, 0, 0, 0, &[]),
+                row(
+                    "M9",
+                    2,
+                    2,
+                    0,
+                    0,
+                    &[("probes/catalog/c.case.json", 1), ("probes/d.case.json", 1)]
+                ),
+                row("M10", 0, 0, 0, 0, &[]),
+                row("M11", 0, 0, 0, 0, &[]),
+                row("M12", 1, 0, 0, 0, &[]),
             ]
         );
         let mut md = String::new();
@@ -679,6 +707,10 @@ mod tests {
         assert!(md.contains("## Probe milestones (decision 0051)"), "{md}");
         assert!(md.contains("| M0-M2 | 2 | 3 | 1 | 1 | 1 |"), "{md}");
         assert!(md.contains("| M9 | 2 | 2 | 0 | 0 | 2 |"), "{md}");
+        assert!(
+            md.contains("Failing cases in M9:\n\n- `probes/catalog/c.case.json`: 1\n- `probes/d.case.json`: 1\n"),
+            "{md}"
+        );
         assert!(summarize(&rules, &results[5..], BaselineMode::Cells).is_empty());
     }
 }
