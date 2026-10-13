@@ -3,7 +3,7 @@ id: T-0418
 title: "xlsx import accepts a col element without a width attribute (port ironcalc 9d5fa0dc)"
 milestone: M11
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,9 @@ evidence of Excel values, but this is import robustness, not a computed value.
 
 ## Out of scope
 - Column width round-trip precision on export.
+
+## Outcome
+`load_columns` no longer requires `width`: a `<col>` without it takes `<sheetFormatPr defaultColWidth>`
+when present, else `DEFAULT_COLUMN_WIDTH / COLUMN_WIDTH_FACTOR` (the engine constant, now exported
+from `rustsheet_engine`). `load_columns` moved to `import/columns.rs` so `worksheets.rs` (oversized, ratcheted) shrinks. Tests in `crates/rustsheet-xlsx/tests/col_without_width.rs`. Eval delta: none.
+Ported-From: ironcalc@9d5fa0dc1d596fb9ace1f9f5491df34dc051ae50

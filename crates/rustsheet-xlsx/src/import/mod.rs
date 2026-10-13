@@ -1,3 +1,4 @@
+mod columns;
 mod conditional_formatting;
 mod iso_date;
 mod metadata;

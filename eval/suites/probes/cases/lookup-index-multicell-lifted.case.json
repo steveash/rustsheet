@@ -1,0 +1,34 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "HLOOKUP/VLOOKUP with a multi-cell range index and an array lookup_value, range_lookup or table-range lookup_value (rows 1 and 10 tell intersection from lifting), and a not-found lookup with an IF union index (T-1485, follow-up of T-1426).",
+ "tags": [
+  "M2",
+  "references",
+  "lookup",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "F5": 3.14159,
+    "G5": 2,
+    "F6": 5,
+    "G6": false,
+    "F7": "y",
+    "G7": "5",
+    "H1": 1,
+    "H2": 2,
+    "A1": "=VLOOKUP({9,2},F5:G7,H1:H2)",
+    "D1": "=HLOOKUP(42,F5:G6,H1:H2,{TRUE,FALSE})",
+    "J1": "=VLOOKUP(F5:F6,F5:G7,H1:H2)",
+    "A10": "=VLOOKUP({9,2},F5:G7,H1:H2)",
+    "D10": "=HLOOKUP(42,F5:G6,H1:H2,{TRUE,FALSE})",
+    "J10": "=VLOOKUP(F5:F6,F5:G7,H1:H2)",
+    "M1": "=HLOOKUP(99,F5:G6,IF(TRUE,(G5,G6)),FALSE)",
+    "N1": "=HLOOKUP(99,F5:G6,H1:H2,FALSE)"
+   }
+  }
+ ],
+ "expected": {}
+}

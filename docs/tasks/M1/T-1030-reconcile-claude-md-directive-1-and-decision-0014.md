@@ -3,7 +3,7 @@ id: T-1030
 title: "Reconcile CLAUDE.md directive 1 and decision 0014 with non-directive-5 deviation records"
 milestone: M1
 lane: quality
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -29,13 +29,23 @@ directive-5 limits, so they count as known failures. M2 exit ("100% bit-exact, e
 cannot be reached until this task rules either way.
 
 ## Acceptance criteria
-- [ ] CLAUDE.md directive 1, decision 0014 and the semantics README state the same rule (either allow per-decision deviations, with what qualifies, or forbid them and reopen 0033/0038).
-- [ ] Decision 0036's `deviations` file scope is stated for non-directive-5 deviations.
-- [ ] The 10 lone-surrogate cells above have a route out of eval/baseline/probes.txt. If per-decision deviations
+- [x] CLAUDE.md directive 1, decision 0014 and the semantics README state the same rule (either allow per-decision deviations, with what qualifies, or forbid them and reopen 0033/0038).
+- [x] Decision 0036's `deviations` file scope is stated for non-directive-5 deviations.
+- [x] The 10 lone-surrogate cells above have a route out of eval/baseline/probes.txt. If per-decision deviations
       are allowed, they are listed in eval/suites/probes/deviations with their pinned values and leave the baseline
       via `make eval-baseline`. If they are forbidden, decision 0033 is reopened and an engine spec task for
       lone-surrogate text is filed in M2.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Decision 0052: RustSheet deviates from Excel only where directive 5 requires it. CLAUDE.md
+directive 1 and decision 0014 already said so; docs/excel-semantics/README.md no longer allows a
+deviation by its own decision record. Decisions 0033 (lone surrogates) and 0038 (WEEKNUM stale
+return_type) are superseded: their semantics entries are `VERIFIED` known gaps, and code comments
+cite `TODO(T-1483)` / `TODO(T-1484)`. Decision 0036 is amended: `deviations` files hold only
+directive-5 cells citing decision 0014. The 10 lone-surrogate cells stay F lines; their route out
+of the baseline is T-1483 (engine spec, M2, P1) and its implementation tasks. Filed T-1484
+(WEEKNUM calc-order state spec, M6). Eval: no change (docs and comments only).

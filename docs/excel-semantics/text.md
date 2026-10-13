@@ -57,10 +57,11 @@ surrogate as one character and do not pair a lone high surrogate with a followin
 Evidence: probes/text-surrogate-positions A6, A11, A12, A29, A38, B6, B7, B10 (excel-graph,
 2026-10-09, T-0249).
 Ours: a Rust `String` cannot hold a lone surrogate, so `utf16_slice` drops a pair that straddles
-a cut whole (A6, A11, A12, A29, A38 and B10 stay known failures).
-Status: DEVIATION (decision 0033)
+a cut whole (A6, A11, A12, A29, A38 and B10 stay known failures). A known gap, not a deviation
+(decision 0052): T-1483.
+Status: VERIFIED
 Implemented in: `utf16_slice` in functions/text/util.rs
-Tasks: T-0249
+Tasks: T-0249, T-1483
 
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
@@ -180,14 +181,15 @@ while generating, not committed: a refused workbook has no oracle file); both ar
 unconfirmed (decision 0039).
 Evidence: probes/text-argument-modes, text-modes-bytes, text-modes-dbcs, text-modes-bahttext, text-modes-phonetic,
 -phonetic-range, -phonetic-number (excel-graph, 2026-10-09, T-1087).
+T-1248 (excel-graph, 2026-10-13; probes/text-modes-dbcs-phonetic-b, text-modes-dbcs-lift): en-US DBCS widens nothing: half-width katakana (`DBCS("ｱｲｳ")` = "ｱｲｳ", LEN 3), ASCII punctuation (`abc,.!?` stays, LENB 7), full-width, accented and CJK text, a literal argument and `~-` come back unchanged; a number cell gives text (`DBCS(5)` = "5"), an empty cell "", an error cell its error. DBCS lifts over a range like ASC does (`DBCS(A3:A5)` spills "5", "ｱｲｳ", "カタカナ"; `ASC(A1:A2)` spills two elements; `DBCS(A11:A12)` with the spill range blocked is `#SPILL!`). PHONETIC is `#N/A` for every reference probed: an error cell (`#N/A` and `#DIV/0!` both give `#N/A`), an empty cell, half-width and full-width katakana text, and ranges of any content, including a one-cell range and `ISNA(PHONETIC(..))` TRUE; the error is not propagated.
 Generated cells (gen-m9, excel-graph, 2026-10-12, T-1289): ASC lifts over a range (`ASC(INDEX(A6:D8,0,3))` is
 `#SPILL!`, gen-m9/65faaeb48419087d Calc!A5; ours `#VALUE!`, T-1411), and TEXT lifts over its format argument
 (`TEXT(E7,FILTER(B1:E12,..))` and `TEXT(x,UNIQUE(D9:D12)&..)` are `#SPILL!`, gen-m9/89693ab0cafc29df A36 and
 95efb37a9874f82e A16; ours `#N/IMPL!` for an array format and `#VALUE!` for a range, T-1410).
-Ours: matches. DBCS returns its text unchanged and PHONETIC of any reference is `#N/A` (T-1213); DBCS widening of non-ASCII text (katakana, full-width forms), DBCS of a number cell or range, and PHONETIC of an error or empty cell are UNVERIFIED (T-1248). CODE and VALUETOTEXT
+Ours: matches except range lift. DBCS returns its text unchanged and PHONETIC of any reference is `#N/A` (T-1213); DBCS and ASC do not lift over a range yet, which Excel does (T-1488); the T-1248 findings are above. CODE and VALUETOTEXT
 lift over ranges (T-1212). VALUETOTEXT's format (probes/valuetotext-format, excel-graph, T-1229): 1 quotes text and doubles embedded quotes (`"a""b"`; empty text is `""`), while a blank cell is empty, numbers, booleans and errors print as in format 0 (an error spells out, `#N/A`). The format is coerced to a number like any argument (`"1"`, TRUE and a blank cell work; other text is `#VALUE!`); a value in `[0, 2)` is truncated (`1.9` is 1, `1E-20` is 0), and anything else, `2`, `2.5`, `-0.5`, `-1`, is `#VALUE!`; an error format is returned as it is when the value is plain text; which error wins when the value is an error or the format is invalid as well, and a format given as a range reference, are UNVERIFIED (T-1288). The format lifts over arrays like the value (`VALUETOTEXT(A1:A2,{0,1})` is 2x2, `VALUETOTEXT(A1,{0,1})` 1x2). Ours: matches.
 Status: VERIFIED (excel-graph)
-Tasks: T-1087, T-1212, T-1213, T-1214, T-1229, T-1248, T-1410, T-1411
+Tasks: T-1087, T-1212, T-1213, T-1214, T-1229, T-1248, T-1410, T-1411, T-1488
 
 ## BAHTTEXT
 Rule: the number is rounded to 15 significant digits (as ROUND does), then rounded half away from zero to two decimals
@@ -303,4 +305,14 @@ above 1114111 (U+10FFFF) is `#VALUE!`. A surrogate (55296-57343) or a Unicode no
 1114111). The neighbours are fine: 55295, 57344, 64975, 65008, 65533, 65536. A code point above 65535 is a
 surrogate pair (`LEN(UNICHAR(65536))` is 2). A fractional value is truncated first (`UNICHAR(55296.5)` is `#N/A`).
 Evidence: probes/dollar-fixed-unichar-edges A30-A45, A51-A53, D54-D68 (excel-graph, T-1281).
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
+
+## UNICHAR argument shapes
+Rule: UNICHAR's argument is coerced like any number argument: TRUE is 1 (`UNICHAR(TRUE)` and `UNICHAR(A4)` with A4 = TRUE
+give U+0001), numeric text converts (`UNICHAR(A5)` with A5 = "67" is "C"), an empty cell is 0 so `#VALUE!`, and
+non-numeric text and "" are `#VALUE!`. An `#N/A` argument is returned as it came (`UNICHAR(#N/A)`; other error types and errors inside a range are unprobed). A
+multi-cell range lifts element by element and spills: `UNICHAR(A1:A2)` is "A","B"; `UNICHAR(A1:A3)` with A3 blank is
+"A","B",`#VALUE!`; an all-empty range (`UNICHAR(A7:A8)`) is `#VALUE!` in every row; `UNICHAR(A4:A5)` (TRUE, "67") is
+U+0001, "C"; the lifted result broadcasts through `&` (`UNICHAR(A1:A2)&"!"` is "A!","B!"); `UNICHAR(A5:A6)` ("67", "x") is "C", `#VALUE!`. The engine already matches all of these.
+Evidence: probes/unichar-arg-shapes D1-D7, F1-F2, H1-H3, J1-J2, L1-L2, N1-N2, P1-P2, R1-R2 (excel-graph, T-1464).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)

@@ -3,7 +3,7 @@ id: T-1481
 title: "TEXT complexity limit: probe @ followed by unquoted text then quoted text (follow-up of T-1455)"
 milestone: M1
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ The T-1455 model (formatter/complexity.rs; docs/excel-semantics/number-formats.m
 
 ## Out of scope
 - Letters as literals (T-1450), conditions (T-0936).
+
+## Outcome
+Probe rounds l and m (excel-graph, 71 cells) pinned `@`: in a section whose closing literal run holds quoted text it is refunded 3 (its 2 plus 1), where other free tokens are refunded 2. Model, tests and semantics entry updated; also pinned `ss`, `ddd`, `mmm`, `dddd`, `mmmm` (free) and `A/P` (not free). Eval: probes known failures 2982 -> 2986 (k A30 fixed; 5 new-coverage failures in the new probes, filed as T-1486).

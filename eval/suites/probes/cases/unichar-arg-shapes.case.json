@@ -1,0 +1,42 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "UNICHAR with a range, boolean, empty-cell, numeric-text and non-numeric-text argument (T-1464). Sheet1 A1=65, A2=66, A3 blank, A4=TRUE, A5=\"67\" (text), A6=\"x\", A7:A8 blank, B10=72, B11=73. Scalar probes in column D; each range probe has its own column (F, H, J, L, N, P, R) and spills downward from row 1 without collisions.",
+ "tags": [
+  "M5",
+  "probe",
+  "text",
+  "unichar"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 65,
+    "A2": 66,
+    "A4": true,
+    "A5": {
+     "t": "s",
+     "v": "67"
+    },
+    "A6": "x",
+    "B10": 72,
+    "B11": 73,
+    "D1": "=UNICHAR(A4)",
+    "D2": "=UNICHAR(A3)",
+    "D3": "=UNICHAR(A5)",
+    "D4": "=UNICHAR(A6)",
+    "D5": "=UNICHAR(TRUE)",
+    "D6": "=UNICHAR(\"\")",
+    "D7": "=UNICHAR(#N/A)",
+    "F1": "=UNICHAR(A1:A2)",
+    "H1": "=UNICHAR(A1:A3)",
+    "J1": "=UNICHAR(A7:A8)",
+    "L1": "=UNICHAR(A1:A2)&\"!\"",
+    "N1": "=UNICHAR(B10:B11)",
+    "P1": "=UNICHAR(A4:A5)",
+    "R1": "=UNICHAR(A5:A6)"
+   }
+  }
+ ],
+ "expected": {}
+}

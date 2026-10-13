@@ -134,7 +134,7 @@ pub struct CellInfo { pub value: Value, pub formula: Option<String>, pub number_
 violations return `LoadError::Options`. Loading never resolves external-link targets or part
 names against the filesystem. T-0102 adds a zip-bomb test.
 
-Zip limits are enforced on the bytes actually inflated (declared sizes are only a fast reject); the defaults are 256 MiB and 5,000 entries. `open` refuses files larger than `max_uncompressed_bytes`. Cargo feature (harness only): `mock_time` adds `Workbook::pin_clock_from_metadata`. In v0 `values()` does a per-cell lookup over the rectangle (O(area), bounded by `max_read_cells`) and sheet lookups scan the sheet list (no cached id-to-index map yet).
+Zip limits are enforced on the bytes actually inflated (declared sizes are only a fast reject); the defaults are 256 MiB and 5,000 entries. `open` refuses files larger than `max_uncompressed_bytes`. Cargo feature (harness only): `mock_time` adds `Workbook::pin_clock_from_metadata`. SPEC-0008 replaces it with a per-workbook `Clock` (`WorkbookOptions.clock`, `Workbook::set_clock`, `Txn::set_clock`) and renames the feature `metadata_clock`. In v0 `values()` does a per-cell lookup over the rectangle (O(area), bounded by `max_read_cells`) and sheet lookups scan the sheet list (no cached id-to-index map yet).
 
 Reads never mutate. `open`/`from_xlsx_bytes` recalculate once when `opts.recalc`. Loading and
 saving are the only I/O; formula evaluation performs none (CLAUDE.md prime directive 5).
@@ -200,7 +200,8 @@ Semantics:
   evaluation per `edit`.
 - **Volatile cells** (NOW, RAND, INDIRECT/OFFSET with changing targets) change value on every
   recalc and are therefore reported in every `ChangeSet`; this is intended and M3 dirty tracking
-  must preserve it (test with INDIRECT whose target changes).
+  must preserve it (test with INDIRECT whose target changes). Under a fixed clock (SPEC-0008), NOW, TODAY and year-less date
+  text give the same value on every recalc, so they are reported only when the clock changes.
 - **Budget gate.** T-0103 must record that the diff costs under 25% of recalc time at 100k
   formula cells (tracking on, default); if it does not, the default flips to off for v0 and the
   task notes why.

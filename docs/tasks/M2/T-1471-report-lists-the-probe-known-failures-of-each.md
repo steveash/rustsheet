@@ -3,7 +3,7 @@ id: T-1471
 title: "Report lists the probe known failures of each milestone row by case"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ the 24 failing cases behind those 196 cells. The frozen-list table already has a
 
 ## Out of scope
 - Changing the assignment rules or the mapping file (T-1470).
+
+## Outcome
+`MilestoneRow.failing_cases` (case id, known-failure items in that row; most first, then id) is serialized in report.json and listed per row in report.md ("Failing cases in <row>"). Unit test covers a case spread over two rows. On the run today the per-row counts sum to `known_failures` (M0-M2: 170 across 25 cases; the task's 196 and 24 were counted before later fixes landed on main). No eval cell changes.
