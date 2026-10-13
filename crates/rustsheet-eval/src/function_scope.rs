@@ -3,8 +3,8 @@
 //!
 //! A scored `ironcalc-calc` cell is in scope when every function its formula calls has a catalog
 //! milestone of M0, M1 or M2; a formula that calls no function is in scope too. A function the
-//! catalog does not list counts as in scope, so no cell drops out silently (as
-//! [`Catalog::in_scope`] does). Cells without a formula of their own (spill children) cannot be
+//! catalog does not list counts as in scope, so no cell drops out silently (the same
+//! convention as [`Catalog::in_scope`]). Cells without a formula of their own (spill children) cannot be
 //! classified; they are left out and counted on their own line so the gap stays visible.
 //! Precedents are not followed transitively: only the cell's own formula decides.
 
