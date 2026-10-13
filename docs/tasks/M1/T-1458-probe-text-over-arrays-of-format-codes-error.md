@@ -24,4 +24,4 @@ T-1451 implemented the lift in `fn_text` (functions/text/common.rs) with hand-wr
 -
 
 ## Outcome
-Added probes/text-format-array (37 cells, excel-graph oracle). The engine already matched Excel on all of them, so the INFERRED notes in text.md and number-formats.md are now VERIFIED. No engine change; eval known failures unchanged.
+Added probes/text-format-array (37 scored cells, excel-graph oracle). The engine already matched Excel on every scored cell (rustsheet-eval, 37 of 37), so the INFERRED notes in text.md and number-formats.md are now VERIFIED. No engine change; eval known failures unchanged.
