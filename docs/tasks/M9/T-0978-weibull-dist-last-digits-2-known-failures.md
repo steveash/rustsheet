@@ -14,6 +14,7 @@ depends_on: [T-1046]
 WEIBULL.DIST (cumulative and density) reproduces Excel's last digits.
 
 ## Context
+Oracle targets: probes-numeric case `m9-weibull-dist` (T-1046).
 Triage T-0903. Kernel: `statrs::distribution::Weibull` (`cdf` = `-expm1(-x^k * scale^-k)`,
 `pdf` = `k (x/l)^(k-1) exp(-x^k scale^-k) / l`), called from `functions/statistical/weibull.rs`.
 2 baseline lines in `eval/baseline/ironcalc-calc.txt`, both NumericUlp:

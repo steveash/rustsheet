@@ -3,7 +3,7 @@ id: T-1046
 title: "Oracle sweep: WEIBULL.DIST"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,3 +27,6 @@ Split from T-0966 (one sweep per kernel family), which explains why: Excel's dis
 
 ## Out of scope
 - Fitting or changing any implementation (the dependent fitting tasks do that).
+
+## Outcome
+Added probes-numeric case `m9-weibull-dist` (176 cells) with its excel-graph sidecar, none pending. Findings in `docs/excel-semantics/statistics.md`. T-0978 links the case id.
