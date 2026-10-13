@@ -7,6 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
+spec: docs/specs/SPEC-0008-workbook-clock.md
 depends_on: [T-1478]
 ---
 
@@ -31,4 +32,6 @@ mock_time.rs under `cfg(test)`/`mock_time`). The harness pins the clock through
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The public `Workbook` method and the Python binding (T-1480).
+- The public `Workbook::clock`/`set_clock`, `Txn::set_clock` and the Python binding (T-1480). SPEC-0008's
+  Rollout puts `WorkbookOptions.clock` (which the eval adapter needs), the `metadata_clock` feature rename and
+  `HARNESS_CLOCK_MS` in this task.
