@@ -9,7 +9,7 @@ use crate::{
     functions::{logical::IfBranchMode, Function},
     model::Model,
     number_format::cmp_excel_precision,
-    reference_operators::{RefArg, MAX_AREA_CELLS, TOO_MANY_AREA_CELLS},
+    reference_operators::RefArg,
 };
 
 /// Converts a single array element into a scalar [`CalcResult`].
@@ -366,39 +366,6 @@ impl Model {
         Ok((last_row, last_column))
     }
 
-    /// Checks that walking `areas` stays within [`MAX_AREA_CELLS`] cells once each area is
-    /// clipped to its sheet's used area: arithmetic only, before any cell is read, so
-    /// `MAX_AREAS` whole columns over a populated sheet are `#VALUE!` without a walk.
-    pub(crate) fn check_area_cells(
-        &self,
-        areas: &[Range],
-        cell: CellReferenceIndex,
-    ) -> Result<(), CalcResult> {
-        let mut total: u64 = 0;
-        for area in areas {
-            let (row2, column2) = self
-                .used_area_corner(
-                    area.left.sheet,
-                    area.left.row,
-                    area.left.column,
-                    area.right.row,
-                    area.right.column,
-                )
-                .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-            let rows = u64::try_from(row2 - area.left.row + 1).unwrap_or(0);
-            let columns = u64::try_from(column2 - area.left.column + 1).unwrap_or(0);
-            total = total.saturating_add(rows.saturating_mul(columns));
-            if total > MAX_AREA_CELLS {
-                return Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    TOO_MANY_AREA_CELLS.to_string(),
-                ));
-            }
-        }
-        Ok(())
-    }
-
     /// Calls `f` with the value of every cell of `areas`, area by area in formula
     /// order, each in row-major order.
     ///
@@ -444,7 +411,8 @@ impl Model {
     /// Calls `f` with the position of every cell of `areas`, as
     /// [`Self::for_each_cell_in_areas`] orders them, without evaluating it: for walks that
     /// skip cells by position (AGGREGATE's hidden rows and nested SUBTOTAL/AGGREGATE cells).
-    /// Several areas are first held to [`MAX_AREA_CELLS`]; one range is not, as before.
+    /// Several areas are first held to the formula's budget of
+    /// [`MAX_AREA_CELLS`](crate::area_budget::MAX_AREA_CELLS); one range is not, as before.
     /// An `Err` from `f` stops the walk.
     pub(crate) fn for_each_position_in_areas<F>(
         &mut self,
@@ -455,9 +423,7 @@ impl Model {
     where
         F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
     {
-        if areas.len() > 1 {
-            self.check_area_cells(areas, cell)?;
-        }
+        self.check_area_cells(areas, cell)?;
         for Range { left, right } in areas {
             // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one
             // is clipped to its own used area, so a span of whole columns walks only data.

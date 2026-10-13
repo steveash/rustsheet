@@ -810,7 +810,7 @@ impl Model {
             for row in r1..=r2 {
                 for column in c1..=c2 {
                     let ctx = CellReferenceIndex { sheet, row, column };
-                    let matches = match self.evaluate_node_in_context(&node, ctx) {
+                    let matches = match self.evaluate_outside_cell(&node, ctx) {
                         CalcResult::Number(n) => n != 0.0,
                         CalcResult::Boolean(b) => b,
                         _ => false,

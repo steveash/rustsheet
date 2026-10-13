@@ -118,9 +118,7 @@ impl Model {
                 "Ranges are in different sheets".to_string(),
             ));
         }
-        if areas.len() > 1 {
-            self.check_area_cells(areas, cell)?;
-        }
+        self.check_area_cells(areas, cell)?;
         for area in areas {
             // A row is skipped or kept whole, whatever its column (unevidenced per column, see
             // T-1036); whether its hide counts as a filter is decided per sheet, once per area

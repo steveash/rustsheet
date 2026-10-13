@@ -549,10 +549,12 @@ and a union whose accumulated areas would exceed `MAX_AREAS`, checked after each
 the next is evaluated (so `(I,A1,#REF!)`, with `I` an intersection of 65,536 areas, is `#VALUE!`,
 not `#REF!`). No operator ever returns more than `MAX_AREAS` areas, so the pairwise cost of one
 intersection is at most `MAX_AREAS` comparisons. A chain of cuts (`(U1 U2) A1 A1 ...`) would
-repeat that per three characters of formula, so one top-level reference expression may compare at most
-1,048,576 pairs in all (`MAX_AREA_PAIRS`), with `#VALUE!` past it; a reference-returning function
-used as an operand (`INDEX`, `OFFSET`, `IF`) starts its own budget, so total work stays linear in
-formula length. In a value context a union
+repeat that per three characters of formula, and a LET-bound union per argument
+(`LET(u,...,SUM(IF(1,u u A1),IF(1,u u A1),...))`), so one formula evaluation may compare at most
+1,048,576 pairs in all (`MAX_AREA_PAIRS`), with `#VALUE!` past it, wherever in the formula the
+pairs are compared: every argument, IF/CHOOSE/LET operand and reference-returning function draws on
+the same budget. Each cell's formula run (a cell it reads has its own), each conditional-format
+evaluation and each `evaluate_formula` call gets a fresh one (T-1162). In a value context a union
 keeps only its area count, not the areas. Excel's limits, if any, are not known, and neither is
 its result past them; it would differ where later cuts bring the areas back down to one, or where
 a later operand's error would come first.
@@ -560,7 +562,11 @@ The area cap bounds the length of an area list, not the work of walking it: `MAX
 `A:A` fit in a short formula. So an aggregate argument of several areas (`SUM((A:A,C:C))`) first
 adds up the cells of its areas, each clipped to its sheet's used area, in saturating arithmetic
 and before any cell is read; more than 16,777,216 cells (`MAX_AREA_CELLS`, 2^24, 16 full used
-columns) is `#VALUE!`. The bound is per argument, as a plain range argument's work already is.
+columns) is `#VALUE!`. The bound is per formula evaluation, like the pair budget: every
+multi-area argument (SUM, SUBTOTAL, AGGREGATE's reference form, ...) takes its cells from the same
+budget, so `LET(x,(A:A,A:A),SUM(x,x,...))` is `#VALUE!` at the argument that passes it, and so is a
+formula that walks a union again and again (`MAP` over a `SUM` of one). A single range argument is
+not counted, as before.
 Excel's limit, if any, is not known.
 The LET variables and LAMBDA parameters in scope may hold at most 262,144 areas together (`MAX_HELD_AREAS`,
 four `MAX_AREAS`): each binding may hold a fresh union (`LET(x_1,(A1,A1),x_2,(x_1,x_1),...)`), so memory would
