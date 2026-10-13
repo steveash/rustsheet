@@ -3,7 +3,7 @@ id: T-1223
 title: "LET/LAMBDA bind_argument reuses eval_ref_or_index for INDEX instead of its own check"
 milestone: M1
 lane: quality
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,9 +27,12 @@ Same review, minor: the `#NAME?` from calling a number or boolean has an empty m
 (`lambda.rs` ~59-61); give it one (e.g. "A value cannot be called") while there.
 
 ## Acceptance criteria
-- [ ] `bind_argument` has no INDEX special case of its own; it calls the shared helper.
-- [ ] Eval shows 0 regressions; the LET/LAMBDA probe cases still pass.
-- [ ] `make check` green; reviewers approve.
+- [x] `bind_argument` has no INDEX special case of its own; it calls the shared helper.
+- [x] Eval shows 0 regressions; the LET/LAMBDA probe cases still pass.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing which functions count as reference forms (T-1224 probes that).
+
+## Outcome
+`bind_argument` drops its inline INDEX check and reads a non-union argument through `eval_ref_or_index`. That helper also has an `@INDEX` arm (T-1247) that would have changed `LET(x,@INDEX(..),ISREF(x))` from FALSE to TRUE with no evidence, so `ImplicitIntersection` nodes keep the old path (unit test); probe filed as T-1503. Eval: 0 regressions, no cells fixed. The `#NAME?` message for calling a number was not changed: that result is built per element as an `ArrayNode::Error`, which carries no message.
