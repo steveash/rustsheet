@@ -3,7 +3,7 @@ id: T-1486
 title: "TEXT complexity limit: fit a color after quoted text, _' and a quoted run before @ (follow-up of T-1481)"
 milestone: M1
 lane: functions-text
-status: done
+status: blocked
 priority: P3
 size: S
 tier: opus
@@ -34,7 +34,7 @@ three misses (`@_` + 122..126 quoted; `"0"` + n quoted + `[Red]0` for several n;
 + n quoted for several n), refit, update the semantics entry and the baseline.
 
 ## Outcome
-Five probe rounds (probes/text-format-length-limit-n to -r; 147 cells, excel-graph) pinned the
+Six probe rounds (probes/text-format-length-limit-n to -s; 156 cells, excel-graph) pinned the
 misses and refitted `formatter/complexity.rs`:
 - a section with digit placeholders pays 3 once, plus 2 per placeholder run (was 5 per run);
 - a later section that holds a placeholder and quoted text pays 1 more;
@@ -50,3 +50,10 @@ Eval: probes l A13:A15, l A40 and m A22 are fixed (5 cells). The new rounds add 
 Eleven are unquoted letters after `_"`/`*"` (n A1, A2, A6:A9, o A35, A37:A40; T-1450): Excel accepts
 `a` and `aa` there and rejects `aaa` and longer runs, while our lexer rejects all of them. One is an unmatched
 condition printing General (q A16, T-0936). All are recorded in docs/excel-semantics/number-formats.md.
+
+## Blocked because
+Review hit the three-round limit (work-loop step 5). Security, architecture and quality approved.
+Excel fidelity's third round asked for one thing: evidence for the trailing `\`/`_`/`*` part of
+`is_unterminated`. Probe round s (probes/text-format-length-limit-s, 9 cells) supplies it, and every
+cell confirms the rule. The doc and code now cite that evidence. To unblock: re-run
+`reviewer-excel-fidelity` on the PR; if it approves, set `status: done` and merge.

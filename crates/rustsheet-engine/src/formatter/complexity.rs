@@ -228,8 +228,9 @@ pub(crate) fn rejects_format_code(format: &str) -> bool {
 /// Whether `format` ends inside a quoted run or a `[...]` bracket, or with a `\`, `_` or `*` that
 /// has no character to take. Excel rejects such a code in TEXT whatever the value, even when the
 /// section the value uses is complete: `TEXT(5,"0;""")`, `TEXT("x","0;0;0;""")` and
-/// `TEXT("x","0;[Red")` are `#VALUE!`, and so is `@_""` on "x", as `_` takes the first quote
-/// (probes/text-format-length-limit-n, -o, -q; docs/excel-semantics/number-formats.md). Other
+/// `TEXT("x","0;[Red")` are `#VALUE!`, and so are `@_""` on "x", as `_` takes the first quote,
+/// and `TEXT(5,"0;0_")` (probes/text-format-length-limit-n, -o, -q, -s;
+/// docs/excel-semantics/number-formats.md). Other
 /// codes our parser rejects are not covered: Excel accepts some of them (`TEXT("x","0 a")` is
 /// "x", -q A3; T-1450).
 fn is_unterminated(format: &str) -> bool {
@@ -548,7 +549,7 @@ mod tests {
         }
     }
 
-    /// Codes TEXT rejects whatever the value (probes/text-format-length-limit-n, -o, -q, T-1486).
+    /// Codes TEXT rejects whatever the value (probes/text-format-length-limit-n, -o, -q, -s, T-1486).
     #[test]
     fn unterminated_codes() {
         for code in [
