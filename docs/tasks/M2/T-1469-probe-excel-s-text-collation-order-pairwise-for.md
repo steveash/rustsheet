@@ -3,7 +3,7 @@ id: T-1469
 title: "Probe Excel's text collation order pairwise for comparison operators (evidence for T-0220)"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -37,3 +37,6 @@ ties (case, hyphen-only differences). Rank cells keep the cell count small: one 
 ## Out of scope
 - Implementing the collation (T-0220).
 - Locales other than en-US, and SORT/criteria call sites (they share `compare_values`; T-0220 checks them).
+
+## Outcome
+Added probes/text-collation-order (146 strings, rank and pairwise cells), oracle-filled on excel-graph; documented the observed order in docs/excel-semantics/coercion.md. Engine mismatches are recorded as known failures for T-0220.
