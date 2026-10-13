@@ -3,7 +3,7 @@ id: T-1382
 title: "[n]Sheet!ref external references read the externalLink sheetDataSet cache"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -27,9 +27,25 @@ references.md) and record it. Needs the xlsx importer to keep externalLink cache
 architecture docs; split if it is bigger than M.
 
 ## Acceptance criteria
-- [ ] poi/ref-56737 and poi/ref2-56737 Refs!E3, G3, I3 leave eval/baseline/poi.txt with no new F lines.
-- [ ] The rule (cached `[n]` reference) is in docs/excel-semantics/references.md.
-- [ ] `make check` green; reviewers approve.
+- [x] poi/ref-56737 and poi/ref2-56737 Refs!E3, G3, I3 leave eval/baseline/poi.txt with no new F lines.
+- [x] The rule (cached `[n]` reference) is in docs/excel-semantics/references.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Refreshing links or reading the other workbook (directive 5).
+
+## Outcome
+The xlsx importer keeps each `externalReference`'s externalLink cache (`sheetNames`, `definedNames`,
+`sheetDataSet`) in the new `Workbook::external_books`
+(`rustsheet-xlsx/src/import/external_links.rs`); a link that is not to a workbook or cannot be read
+is an empty book that keeps its index. The lexer reads `[n]!Name` and `[n]Sheet!Name` as one
+identifier, which the parser keeps as a defined name with its prefix, and
+`rustsheet-engine/src/external_links.rs` reads a one-cell `[n]Sheet!A1` and those names from the
+cache; `[0]` is this workbook (poi/56737.xlsx). Anything the cache does not hold stays `#BLOCKED!`.
+Add-in calls through an external name (`[1]!HsGetValue`, `[1]!LUCANET`) keep their result only in
+the cell; they give `#NAME?` and stay known failures (references.md "Cached values of a linked
+workbook").
+Eval delta: poi known failures 525 → 513 (ref-56737 Refs!E3/G3/I3, ref2-56737
+Refs!E3/G3/I3/E5/G5/I5, 56737 Uses!C5/D3/D5); no regressions. Duplication 6587 → 6577 (after merging main).
+Follow-ups: T-1459 (`Sheet!LocalName`, poi/56737 Uses!D2), T-1460 (cached multi-cell ranges and a
+cached cell inside an aggregate).

@@ -132,12 +132,47 @@ whose corners are in two workbooks (`ISREF('[other.xlsx]Sheet1'!A1:Calc!B2)`) is
 Evidence: probes/external-ref-no-link-shapes Calc!A1:A20 (excel-graph, 2026-10-12, T-1381).
 Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`, and
 `reference_operators::external_area` gives ISREF, ROWS, COLUMNS, ROW, COLUMN and AREAS the written
-shape; the lexer reads the unquoted `[book]Sheet!` prefix (T-1381). INDEX, OFFSET, unions,
-intersections, COUNTA and the spill (T-1454) and cached `[n]` values (T-1382) are not yet
-implemented. Unprobed: a `[n]` index with no externalLink part, and ROW/COLUMN of a multi-cell
+shape; the lexer reads the unquoted `[book]Sheet!` prefix (T-1381). A one-cell `[n]Sheet!A1` reads
+the cache (`external_links.rs`, below; T-1382). INDEX, OFFSET, unions, intersections, COUNTA and the
+spill (T-1454) and cached multi-cell `[n]` ranges are not yet implemented. Unprobed: a `[n]` index with no externalLink part, and ROW/COLUMN of a multi-cell
 external area (the engine spills the row or column numbers as for a sheet reference, UNVERIFIED).
 Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
 Tasks: T-0124, T-1381, T-1382, T-1454
+
+## Cached values of a linked workbook (`[n]Sheet!A1`, `[n]!Name`, `[0]!Name`)
+Rule: in xlsx, Excel writes a reference into another workbook with the 1-based index of its
+`externalReference` in `workbook.xml`: `[1]Sheet!$A$1`, a workbook-scoped defined name of that book
+`[1]!Name`, and a sheet-scoped one `[1]Sheet!Name`. Without opening the other file, Excel gives the
+values it cached in `xl/externalLinks/externalLinkN.xml` (`externalBook`: `sheetNames`,
+`definedNames` with `refersTo` and, for a sheet-scoped name, `sheetId` = index in `sheetNames`,
+and `sheetDataSet/sheetData[@sheetId]/row/cell`): `=[1]Uses!$A$1` → "Hello!" (cached `t="str"`),
+`=[1]Defines!NR_To_A1` → "Test A1" (name `refersTo="='Defines'!$A$1" sheetId="1"`) and
+`=[1]!NR_Global_B2` → 142 (`refersTo="='Defines'!$B$2"`); a second link reads its own part
+(`=[2]Uses!$C$1` → "Hello!"). `[0]` is the workbook itself: `=[0]!NR_Global_B2` is the defined name
+`NR_Global_B2` → 142, and `=IF(Defines!B2 = 42, [0]!NR_Global_B2, -1)` → -1.
+Evidence: poi/ref-56737.xlsx Refs!E3, G3, I3; poi/ref2-56737.xlsx Refs!E3, G3, I3, E5, G5, I5;
+poi/56737.xlsx Uses!C5, D3, D5 (Excel 2010-written, Excel-cached values).
+An add-in function called through an external name, `=[1]!HsGetValue(…)` (poi/HsGetVal.xlsx
+Sheet1!B5, C5 cached "#Missing") and `=[1]!LUCANET(…)` (poi/56502.xlsx Tabelle1!A4 cached
+"pls. update"), keeps its result only in the cell: the externalLink part caches nothing for it, so
+those values came from the add-in. What Excel gives on recalculation without the add-in is
+unprobed; the engine gives `#NAME?` (an unknown function).
+Engine: `rustsheet-xlsx` keeps each link's cache in `Workbook::external_books` (a link that is not
+to a workbook, or whose part is missing or unreadable, is an empty book that keeps its index); the
+lexer reads `[n]!Name` and `[n]Sheet!Name` as one identifier, which the parser keeps as a defined
+name with its prefix, and `external_links.rs` reads the cache. Unprobed, so UNVERIFIED: a cell the
+cache does not hold reads as empty (0); a book, sheet or name the cache does not hold, a name whose
+`refersTo` is not one cell, and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
+uncached reference is; a sheet with `refreshError="1"` is read like any other; `[0]!Missing` is
+`#NAME?` and `[0]Nope!Name` (no such sheet) `#REF!`, as the plain name and a missing sheet are; only
+evaluation strips the `[0]` prefix, so ISREF and a rename of the name do not see through it
+(T-1459). The engine passes a cached cell to a function as a value, not as a reference cell, so
+`SUM([1]Uses!A1)` over cached text is `#VALUE!` where a sheet cell's text would be skipped (T-1460).
+A cached multi-cell range (`[1]Sheet!A1:B2`) stays `#BLOCKED!` (T-1454 covers the uncached shapes).
+`Sheet!Name` with no book prefix (poi/56737.xlsx Uses!D2 `=Defines!NR_To_A1`) does not parse yet
+(T-1459).
+Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
+Tasks: T-1382
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
