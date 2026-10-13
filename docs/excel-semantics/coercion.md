@@ -81,8 +81,7 @@ Full order (T-1469, VERIFIED, probes/text-collation-order, 146 strings ranked by
 3. Letters compare case-insensitively first (`"a" = "A"`, `"ab" = "AB"`); accents are a later tiebreak, not a different letter:
    `"a" < "á" < "à"="À" < "â" < "ä" < "å" < "aa"`; `"é"="É"` sits after `"E"` and before `"F"`; `"résumé" > "resume"`.
 4. Expansions and multi-letter folds: `"æ"="ae"` and `"ß"="ss"` are equal (`=` TRUE); `"ø" > "o"` but `"ø"` sorts after `"ö"` and before `"P"`
-   (a separate letter-like key, not an accent of `o`); `"ÿ"` sorts after `"Y"` and before `"Z"`.
-5. Within the same case-folded letters, position of the punctuation tiebreak is: letter+mark `<` mark+letter (`"a-" < "-a"`).
+   (it ranks as its own letter, not as an accent of `o`); `"ÿ"` sorts after `"Y"` and before `"Z"`.
 Ranks for every string are in the oracle sidecar (Calc!A, ties in Calc!B). Fitting the key is T-0220's.
 Tasks: T-0220, T-0244, T-1469
 
