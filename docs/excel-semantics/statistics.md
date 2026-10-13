@@ -41,8 +41,9 @@ Evidence: `ironcalc-calc/STATISTICAL/GAMMA.xlsx` `GAMMA.DIST GAMMA.INV`!F2, F19,
 `BETADIST_BETAINV.xlsx` Sheet1!H16; `T_DIST.xlsx` `T.DIST T.INV T.DIST.RT`!E7, `T.DIST.2T T.INV.2T`!D15.
 Status: VERIFIED (observation); the solver is UNVERIFIED (T-0967, T-0972, T-0974, T-0925)
 
-## GAMMA is exact at positive integers but not always correctly rounded
-Rule: GAMMA(n) for a positive integer n is exactly (n-1)!: `GAMMA(5)` = 24, `GAMMA(6)` = 120,
+## GAMMA is exact at small positive integers but not always correctly rounded
+Rule: GAMMA(n) for a positive integer n is exactly (n-1)! only up to n = 25 (T-1042 sweep: 131 of the
+171 integers differ in the last digits, first at n = 26): `GAMMA(5)` = 24, `GAMMA(6)` = 120,
 `GAMMA(1)` = `GAMMA(2)` = 1. Half-integers are not uniformly correctly rounded: `GAMMA(0.5)` =
 1.772453850905516 (correctly rounded sqrt(pi)), but `GAMMA(-0.5)` = -3.5449077018110318, one ulp
 from the correctly rounded -2*sqrt(pi) = -3.544907701811032 (and not GAMMA(0.5)/-0.5 either).
@@ -380,17 +381,15 @@ Status: VERIFIED (excel-graph)
 Tasks: T-1086, T-1389, T-1390
 
 ## GAMMA and GAMMALN sweep (T-1042)
-Oracle values (Excel for the web) for the probe cases `t1042-gamma-int-1-90`, `t1042-gamma-int-91-171`,
-`t1042-gamma-half-int`, `t1042-gamma-unit-interval` and `t1042-gamma-negatives-edges`
-(`eval/suites/probes-numeric/cases/`), the input to the fits in T-0973. In each file the first half
-of the cells is GAMMA and the second half GAMMALN, in the order of the formulas.
+Rule: Excel's GAMMA is exact only for small integers, GAMMALN is not correctly rounded at integers,
+and the two functions have different domains.
 - **GAMMA at integers**: `GAMMA(n)` equals the correctly rounded `(n-1)!` for n = 1..25 and differs
-  from it in the last digits for most larger n (131 of the 171 integers 1..171, first at n = 26:
-  1.5511210043330984e+25 against the correctly rounded 1.5511210043330986e+25). Excel's own kernel
-  is not exact beyond 24!, so a table of factorials is wrong for n >= 26.
-- **GAMMALN at integers** is not the correctly rounded `ln((n-1)!)` either: `GAMMALN(3)` =
-  0.6931471805599454 (libm gives 0.693147180559945), `GAMMALN(1)` = `GAMMALN(2)` = 0; 99 of the
-  171 integers differ from fdlibm `lgamma` in the last digit.
+  from it in the last digits for 131 of the 171 integers 1..171, first at n = 26 (1.5511210043330984e+25
+  against the correctly rounded 1.5511210043330986e+25). A table of factorials is wrong for n >= 26.
+- **GAMMALN at integers** is not the correctly rounded `ln((n-1)!)`: `GAMMALN(3)` = 0.6931471805599454
+  (ln 2 correctly rounded is 0.6931471805599453); 91 of the 171 integers differ from the correctly
+  rounded value (first at n = 3, 8, 9, 10; 60-digit reference), `GAMMALN(1)` = `GAMMALN(2)` = 0.
+  The engine's fdlibm kernel (`libm::lgamma`) misses 63 of these 171 cells; glibc's `lgamma` misses 99.
 - **Overflow edge**: `GAMMA(171.5)` = 9.483367566824801e+307 and `GAMMA(171.6)` = 1.5858969096672508e+308
   are finite; `GAMMA(171.7)`, `GAMMA(171.99)`, `GAMMA(172)` and `GAMMA(200)` are `#NUM!`.
   `GAMMALN` has no upper limit: `GAMMALN(200)` = 857.9336698258575, `GAMMALN(1E+300)` = 6.897755278982137e+302.
@@ -400,7 +399,15 @@ of the cells is GAMMA and the second half GAMMALN, in the order of the formulas.
 - **Near zero**: `GAMMA(1E-300)` = 9.999999999999999e+299 (not 1e300), `GAMMA(-1E-300)` =
   -9.999999999999999e+299, `GAMMA(1E-10)` = 9999999999.422787, `GAMMA(-1E-10)` = -10000000000.577215.
   `GAMMALN(1E-300)` = 690.7755278982137.
-- **GAMMALN of any x <= 0 is `#NUM!`** (all negative half-integers, non-integers such as -0.5, 0,
-  negative integers and -1E-300), although GAMMA is defined at the negative non-integers.
+- **GAMMALN of any x <= 0 is `#NUM!`** (negative half-integers and non-integers, 0, negative integers,
+  -1E-300), although GAMMA is defined at the negative non-integers.
 - **Coercion**: `GAMMA("a")` and `GAMMALN("a")` are `#VALUE!`; `GAMMA(TRUE)` = 1, `GAMMA("3")` = 2,
   `GAMMALN(TRUE)` = 0, `GAMMALN("3")` = 0.6931471805599454.
+Ours: GAMMA is `statrs` Lanczos (not exact at integers) and returns `#NUM!` for `GAMMA(171.5)` and
+`GAMMA(171.6)`; GAMMALN is fdlibm `lgamma` (63 of the 171 integer cells differ).
+Evidence: probes-numeric cases `t1042-gamma-int-1-90`, `t1042-gamma-int-91-171`, `t1042-gamma-half-int`,
+`t1042-gamma-unit-interval`, `t1042-gamma-negatives-edges` (first half of each case's cells is GAMMA,
+second half GAMMALN, in formula order; GAMMA overflow edge: `t1042-gamma-negatives-edges` Calc!A18:A22;
+GAMMALN of x <= 0: Calc!A28:A44 there and A63:A73 of `t1042-gamma-half-int`). Oracle: excel-graph, 2026-10-13.
+Status: VERIFIED (excel-graph)
+Tasks: T-0973 (kernel, including the 171 < x < 171.62 overflow edge)

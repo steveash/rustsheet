@@ -769,8 +769,8 @@ Tasks: T-0218
 
 ## GAMMALN / GAMMALN.PRECISE (T-0926)
 
-Excel's cached values in `ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx` are the correctly
-rounded ln|Gamma(x)|: exactly 0 at x = 1 and 2, GAMMALN(4) = ln 6. The Lanczos `statrs::ln_gamma`
+Excel's cached values in `ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx` are mostly the correctly
+rounded ln|Gamma(x)| (the T-1042 sweep shows 91 of the integers 1..171 are not): exactly 0 at x = 1 and 2, GAMMALN(4) = ln 6. The Lanczos `statrs::ln_gamma`
 is off by a few ulp, so `special::ln_gamma` uses fdlibm's `lgamma` (`libm` crate; chosen over a
 vendored port to keep one maintained definition). 12 cells (B/C rows 5, 9, 15, 23, 24, 26) still
 differ in the last digit and need oracle probes (T-0004).
