@@ -3,7 +3,7 @@ id: T-1458
 title: "Probe TEXT over arrays of format codes: error precedence, broadcast shape, per-format complexity (follow-up of T-1451)"
 milestone: M1
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1451 implemented the lift in `fn_text` (functions/text/common.rs) with hand-wr
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/text-format-array (37 cells, excel-graph oracle). The engine already matched Excel on all of them, so the INFERRED notes in text.md and number-formats.md are now VERIFIED. No engine change; eval known failures unchanged.

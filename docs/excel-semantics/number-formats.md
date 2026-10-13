@@ -259,4 +259,4 @@ Ours: `formatter/complexity.rs` (`exceeds_complexity_limit`), applied by TEXT on
 Status: VERIFIED (excel-graph, fitted model)
 Tasks: T-1388, T-1393, T-1434, T-1449, T-1450, T-1451, T-1455
 
-TEXT over an array of format codes (T-1451): one result per format, value and formats broadcast together (see text.md). `TEXT(1,{"0",#N/A})` is "1", `#N/A` (-f A54:B54). INFERRED, not probed: an error value element wins over a bad or too complex format element, and a scalar error value lifts to the formats' shape.
+TEXT over an array of format codes (T-1451): one result per format, value and formats broadcast together (see text.md). `TEXT(1,{"0",#N/A})` is "1", `#N/A` (-f A54:B54). The error-precedence and lifting rules are verified by probes/text-format-array (T-1458).

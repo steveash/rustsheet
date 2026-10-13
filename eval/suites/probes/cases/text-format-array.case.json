@@ -1,0 +1,40 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1458: TEXT over an array or range of format codes: scalar error value, error precedence against error and too-complex format elements, broadcast shape (row x column, size mismatch #N/A padding), range of formats, text and boolean values.",
+ "tags": [
+  "M1",
+  "probe",
+  "text",
+  "T-1458"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=TEXT(NA(),{\"0\",\"0\"})",
+    "A3": "=TEXT({1,#N/A},{\"0\",#DIV/0!})",
+    "A5": "=TEXT({1,2},{\"0.0\",\"00\"})",
+    "A7": "=TEXT({1;2},{\"0\",\"00\"})",
+    "A10": "=TEXT({1,2,3},{\"0.0\",\"00\"})",
+    "A12": "=TEXT({1;2;3},{\"0\",\"00\";\"0.0\",\"000\"})",
+    "A16": "=TEXT(1,H16:I16)",
+    "A18": "=TEXT({1,#N/A},H16:I16)",
+    "A20": "=TEXT(1,{\"0\";\"0.00\";\"0.000\"})",
+    "A24": "=TEXT(1,H24:I24)",
+    "A26": "=TEXT(H26:I26,J26:K26)",
+    "A28": "=TEXT({1,2},{\"0.0\"})",
+    "A30": "=TEXT(\"abc\",{\"@\",\"0\"})",
+    "A32": "=TEXT(TRUE,{\"0\",\"@\"})",
+    "H16": "0",
+    "I16": "=REPT(\"dm\",17)",
+    "H24": "0.0",
+    "I24": "00",
+    "H26": 1,
+    "I26": 2,
+    "J26": "0.0",
+    "K26": "00"
+   }
+  }
+ ],
+ "expected": {}
+}
