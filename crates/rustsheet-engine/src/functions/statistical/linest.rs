@@ -227,7 +227,7 @@ impl Model {
 
 /// Result of the core linear regression.
 struct RegResult {
-    /// Coefficients in Excel output order: [β_p, β_{p-1}, ..., β_1, β_0]
+    /// Coefficients in Excel output order: [`β_p`, β_{p-1}, ..., `β_1`, `β_0`]
     /// (last x column first, intercept last, or omitted if const=FALSE)
     coeffs: Vec<f64>,
     /// Standard errors in the same order (only if stats=TRUE)
@@ -241,8 +241,8 @@ struct RegResult {
 }
 
 /// Core linear regression for any number of predictors.
-/// Design matrix columns: [1, x_1, x_2, ..., x_p] (or [x_1, ..., x_p] if !const_term).
-/// Returns coefficients in internal order: [β_0, β_1, ..., β_p] (intercept first if const).
+/// Design matrix columns: [1, `x_1`, `x_2`, ..., `x_p`] (or [`x_1`, ..., `x_p`] if !`const_term`).
+/// Returns coefficients in internal order: [`β_0`, `β_1`, ..., `β_p`] (intercept first if const).
 fn linear_regression(
     y: &[f64],
     x: &[Vec<f64>],
@@ -391,8 +391,8 @@ fn linear_regression(
     })
 }
 
-/// Build LINEST/LOGEST output array from a RegResult.
-/// ncols = coeffs.len() (one column per coefficient)
+/// Build LINEST/LOGEST output array from a `RegResult`.
+/// ncols = `coeffs.len()` (one column per coefficient)
 fn build_output_array(reg: RegResult, stats: bool) -> CalcResult {
     let ncols = reg.coeffs.len();
 
@@ -682,7 +682,7 @@ fn eval_optional_bool(
     }
 }
 
-/// Reconstruct internal beta vector [β_0, β_1, ..., β_p] from Excel-order coefficients.
+/// Reconstruct internal beta vector [`β_0`, `β_1`, ..., `β_p`] from Excel-order coefficients.
 fn reconstruct_beta(coeffs: &[f64], const_term: bool, p: usize) -> Vec<f64> {
     // coeffs is: [β_p, β_{p-1}, ..., β_1, β_0] (if const) or [β_p, ..., β_1]
     let mut beta = vec![0.0_f64; p + const_term as usize];

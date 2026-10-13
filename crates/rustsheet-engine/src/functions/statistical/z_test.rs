@@ -26,7 +26,7 @@ impl Model {
                     return CalcResult::new_error(
                         Error::VALUE,
                         cell,
-                        format!("Error in array argument: {:?}", error),
+                        format!("Error in array argument: {error:?}"),
                     );
                 }
             },

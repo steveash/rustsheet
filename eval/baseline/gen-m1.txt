@@ -17,5 +17,3 @@ C	gen-m1/9646257ac139cd1e.case.json	250
 C	gen-m1/c3c9e48ba5211b94.case.json	250
 C	gen-m1/c940d3cfb0d3b083.case.json	250
 C	gen-m1/f91603cd8616521f.case.json	250
-F	gen-m1/6462bf910ef9f28f.case.json	Calc!A207
-F	gen-m1/6462bf910ef9f28f.case.json	Calc!A41

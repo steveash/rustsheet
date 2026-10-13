@@ -480,7 +480,7 @@ impl Model {
         }
 
         if value >= OCT_MAX_HALF {
-            value -= OCT_MAX
+            value -= OCT_MAX;
         }
         CalcResult::Number(value as f64)
     }

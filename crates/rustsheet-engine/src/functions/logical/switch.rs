@@ -12,6 +12,17 @@ impl Model {
     /// broadcast as the element-wise operators do: `SWITCH(A1:B2,1,"a","z")` is
     /// `{"a","z";"z","z"}` (probes/ifs-switch-array-values M6, M8; docs/excel-semantics/logic.md).
     pub(crate) fn fn_switch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.switch_impl(args, cell, false)
+    }
+
+    /// SWITCH; `as_reference` hands the chosen result back as the reference it is, for an
+    /// argument that reads one (MATCH's `match_type`: probes/match-type-text-passthrough K4).
+    pub(crate) fn switch_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
         let args_count = args.len();
         if args_count < 3 {
             return CalcResult::new_args_number_error(cell);
@@ -42,13 +53,13 @@ impl Model {
                 return case;
             }
             if compare_values(&expr, &case) == 0 {
-                return self.evaluate_node_in_context(&args[2 * case_index + 2], cell);
+                return self.evaluate_node_as(&args[2 * case_index + 2], cell, as_reference);
             }
         }
         // None of the cases matched so we return the default
         // If there is an even number of args is the last one otherwise is #N/A
         if args_count.is_multiple_of(2) {
-            return self.evaluate_node_in_context(&args[args_count - 1], cell);
+            return self.evaluate_node_as(&args[args_count - 1], cell, as_reference);
         }
         no_match(cell)
     }

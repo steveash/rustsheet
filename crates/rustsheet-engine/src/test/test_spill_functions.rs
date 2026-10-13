@@ -18,6 +18,19 @@ fn sort_single_column_ascending() {
 }
 
 #[test]
+fn sort_omitted_index_and_order_use_defaults() {
+    // probes/counta-empty-value D22-D24 (Excel): `SORT(arr,,)` is ascending, `SORT(arr,,-1)` descending.
+    let mut model = new_empty_model();
+    model._set("A1", "=INDEX(SORT({3;1;2},,),1)");
+    model._set("A2", "=INDEX(SORT({3;1;2},,-1),1)");
+    model._set("A3", "=COUNTA(SORT({3;1;2},,))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "3");
+    assert_eq!(model._get_text("A3"), "3");
+}
+
+#[test]
 fn sort_single_column_descending() {
     let mut model = new_empty_model();
     model._set("A1", "3");

@@ -327,7 +327,7 @@ pub(crate) fn compare_models(m1: &Model, m2: &Model, skip: &[&str]) -> Result<()
     }
 }
 
-/// Tests that file in file_path produces the same results in Excel and in IronCalc.
+/// Tests that file in `file_path` produces the same results in Excel and in IronCalc.
 pub fn test_file(file_path: &str, skip: &[&str]) -> Result<(), String> {
     // FIXME: we need to load the model twice :S
     let model1 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
@@ -371,7 +371,7 @@ fn save_error_constants_as_exported(model: &mut Model) {
     model.evaluate();
 }
 
-/// Tests that file in file_path can be converted to xlsx and read again
+/// Tests that file in `file_path` can be converted to xlsx and read again
 pub fn test_load_and_saving(
     file_path: &str,
     temp_dir_name: &Path,

@@ -1,4 +1,6 @@
+mod columns;
 mod conditional_formatting;
+mod external_links;
 mod iso_date;
 mod metadata;
 mod package;
@@ -38,6 +40,7 @@ pub use shared_strings::decode_xlsx_escapes;
 use shared_strings::read_shared_strings;
 pub use workbook::date_system_from_attribute;
 
+use external_links::load_external_books;
 use metadata::load_metadata;
 use package::{resolve_target, Package};
 use styles::load_styles;
@@ -141,6 +144,7 @@ fn load_package<R: Read + Seek>(
     for dn in &mut workbook.defined_names {
         dn.formula = reparse_formula_hack(&dn.formula, &worksheet_names)?;
     }
+    let external_books = load_external_books(archive, &rels, &workbook.external_references);
     let metadata = match load_metadata(archive) {
         Ok(metadata) => metadata,
         Err(_) => {
@@ -165,7 +169,7 @@ fn load_package<R: Read + Seek>(
         },
     );
     Ok(Workbook {
-        shared_strings,
+        shared_strings: shared_strings.into_strings(),
         defined_names: workbook.defined_names,
         worksheets,
         styles,
@@ -179,6 +183,7 @@ fn load_package<R: Read + Seek>(
         tables,
         views,
         theme,
+        external_books,
     })
 }
 
@@ -195,7 +200,7 @@ fn load_from_excel(file_name: &str, locale: &str, tz: &str) -> Result<Workbook, 
     load_xlsx_from_reader(name, reader, locale, tz, &ImportLimits::default())
 }
 
-/// Loads a [Workbook] from the bytes of an xlsx file, under the default [ImportLimits].
+/// Loads a [Workbook] from the bytes of an xlsx file, under the default [`ImportLimits`].
 /// This is useful, for instance, when bytes are transferred over the network
 pub fn load_from_xlsx_bytes(
     bytes: &[u8],
@@ -207,7 +212,7 @@ pub fn load_from_xlsx_bytes(
 }
 
 /// Loads a [Workbook] from the bytes of an xlsx file, rejecting it with
-/// [XlsxError::Limit] if it exceeds `limits`.
+/// [`XlsxError::Limit`] if it exceeds `limits`.
 pub fn load_from_xlsx_bytes_with_limits(
     bytes: &[u8],
     name: &str,

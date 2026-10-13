@@ -56,7 +56,9 @@
     "A173": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"b\",#N/A,\"c\"},{0,0}))",
     "A177": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"a\",\"b\"}))",
     "A181": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"a\",\"b\"},0))",
-    "A185": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"a\";\"b\"},{0,0}))"
+    "A185": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"a\";\"b\"},{0,0}))",
+    "A189": "=ERROR.TYPE(IMAGE(\"x\",{\"a\",\"b\"}))",
+    "A193": "=ERROR.TYPE(IMAGE(1,\"alt\",#DIV/0!,{5,5}))"
    }
   }
  ],

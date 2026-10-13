@@ -38,12 +38,19 @@ lookup_value is a blank cell"), and comparisons treat it as a blank: `IFERROR(B1
 are all TRUE and `SWITCH(IFERROR(B1,1),0,"zero",..)` is "zero". An omitted argument compares the same way:
 `SWITCH(0,,"a","b")` and `SWITCH(,0,"a","b")` are "a", and `CHOOSE(1,)=0`, `=FALSE`, `=""`, `<1`, `IF(TRUE,)=""` and `IF(TRUE,)=0`
 are TRUE. Unlike a blank cell given directly, COUNT and COUNTA
-count it (`COUNT(IFERROR(B1,1))` = 1, COUNTA 1); so does an omitted argument (`COUNTA(,)` = 2, `COUNTA(1,)` = 2, `COUNTA(,,)` = 3, `COUNT(,)` = 2, `COUNT(1,)` = 2, `COUNTA(B1,)` = 1 with B1 blank, probes/counta-empty-value D1-D8, T-1294), and the count also holds through LET (`LET(x,IFERROR(B1,1),COUNTA(x))` = 1) and for two such arguments (2). The array form counts the empty element too (`COUNTA(IFERROR(B1:B2,1))` with B2 "x" is 2, D18; not implemented, T-1395) whereas `COUNTA(TAKE(<blank>,1))` is 0 (probes/subtotal-reference-operands-c H13), yet ISBLANK of it is TRUE, ISNUMBER and ISTEXT FALSE, TYPE 1, N 0,
+count it (`COUNT(IFERROR(B1,1))` = 1, COUNTA 1); so does an omitted argument (`COUNTA(,)` = 2, `COUNTA(1,)` = 2, `COUNTA(,,)` = 3, `COUNT(,)` = 2, `COUNT(1,)` = 2, `COUNTA(B1,)` = 1 with B1 blank, probes/counta-empty-value D1-D8, T-1294), and the count also holds through LET (`LET(x,IFERROR(B1,1),COUNTA(x))` = 1) and for two such arguments (2). The array form counts the empty element too (`COUNTA(IFERROR(B1:B2,1))` with B2 "x" is 2, D18) whereas `COUNTA(TAKE(<blank>,1))` is 0 (probes/subtotal-reference-operands-c H13): TAKE of a range is a reference (references.md), so COUNTA skips its blank cells, while every element of an array value counts; the blank element of a lifted INDEX, an array, counts too (`COUNTA(INDEX(D1:D5,{1,2,3}))` with D2 blank is 3, probes/index-lifted-edge-cases H136), yet ISBLANK of it is TRUE, ISNUMBER and ISTEXT FALSE, TYPE 1, N 0,
 and the cell itself shows 0 (as a consumer it reads as 0/FALSE/"": `NOT(IFERROR(B1,1))` TRUE, `IF(IFERROR(B1,1),..)` takes the false branch, `-IFERROR(B1,1)`, SUM, AVERAGE, MAX, PRODUCT and LEN of it are 0, `ISLOGICAL` FALSE, `LET(x,IFERROR(B1,1),ISBLANK(x))` TRUE; probes/counta-empty-value D9-D17, D25-D26). IFNA behaves the same (OR FALSE, `&` "", VLOOKUP 0).
 Evidence: gen-m2 7469c3e920e1ade4 Calc!A351, ef5c55a81783b7d5 Calc!A291, dd99be1f2454159f Calc!A110 (excel-graph);
 probes/iferror-blank-value D1:D23 and probes/omitted-arg-compare D1:D10 (excel-graph, 2026-10-09, T-0291).
 Ours: matches since T-0291 (`if_error_like` returns `CalcResult::EmptyArg`; `lookup_key` reads it as 0 and
 `compare_values` reads any `EmptyArg`, an omitted argument included, as a blank cell; before T-0291 the six omitted-argument
-comparisons above were wrong) except COUNTA, which is 0 (T-1294).
+comparisons above were wrong). COUNTA reads its arguments in picked-reference context (TAKE, DROP, INDEX, OFFSET of a
+range stay references) and counts every element of an array value, the empty ones included (T-1395).
 Status: VERIFIED (excel-graph)
-Tasks: T-0235, T-0291, T-1294
+Tasks: T-0235, T-0291, T-1294, T-1395
+
+## IFNA edges: only #N/A is caught, lifts over arrays (excel-graph)
+Rule: IFNA replaces only `#N/A` (`#DIV/0!`, `#VALUE!` pass through); a non-error value of any type is returned as is (`IFNA(5,1)` 5, `IFNA("",1)` ""). An omitted fallback (`IFNA(#N/A,)`) is 0, and an error fallback is returned (`IFNA(#N/A,#DIV/0!)` is `#DIV/0!`). It lifts elementwise: `IFNA({1,#N/A,3},0)` spills 1, 0, 3, `SUM(IFNA({1,#N/A,3},10))` is 14, `IFNA(#N/A,{1,2})` spills 1, 2, and `IFNA(Data!A1:A3,0)` over a range holding `#N/A` is `#SPILL!` in this probe only because Calc!A13 blocks the spill (range lifting itself is shown by the array-constant cells). `IFNA(VLOOKUP(9,..,FALSE),"none")` is "none", `IFNA(MATCH("z",..,0),0)` is 0, `IFNA(<blank cell>,1)` is 0 (see the blank rule above).
+Evidence: probes/ifna-isformula-edges Calc!A1:A13, C1:E3 (oracle: excel-graph, 2026-10-12, T-1279).
+Status: VERIFIED (excel-graph); the engine matches.
+Tasks: T-1279

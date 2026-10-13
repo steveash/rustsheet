@@ -1,0 +1,43 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1435: date text before the 1904 epoch (1903-12-31) coerced to a number, typed into a cell and used in criteria in a 1904 workbook; 1904-01-01 as a control.",
+ "tags": [
+  "M1",
+  "probe",
+  "dates",
+  "T-1435"
+ ],
+ "date_system": 1904,
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "B1": "=DATE(2024,3,15)",
+    "B2": "=DATE(1904,1,1)",
+    "B3": "=DATE(1904,1,5)",
+    "D1": {
+     "entered": "1903-12-31"
+    },
+    "D2": {
+     "entered": "12/31/1903"
+    },
+    "D3": {
+     "entered": "1904-01-01"
+    },
+    "A1": "=IF(ISERROR(\"1903-12-31\"+0),ERROR.TYPE(\"1903-12-31\"+0),\"1903-12-31\"+0)",
+    "A2": "=IF(ISERROR(VALUE(\"1903-12-31\")),ERROR.TYPE(VALUE(\"1903-12-31\")),VALUE(\"1903-12-31\"))",
+    "A3": "=IF(ISERROR(--\"12/31/1903\"),ERROR.TYPE(--\"12/31/1903\"),--\"12/31/1903\")",
+    "A4": "=IF(ISERROR(\"1904-01-01\"+0),ERROR.TYPE(\"1904-01-01\"+0),\"1904-01-01\"+0)",
+    "A5": "=IF(ISERROR(DATEVALUE(\"1903-12-31\")),ERROR.TYPE(DATEVALUE(\"1903-12-31\")),DATEVALUE(\"1903-12-31\"))",
+    "A6": "=IF(ISERROR(D1+0),ERROR.TYPE(D1+0),D1+0)",
+    "A7": "=IF(ISERROR(D2+0),ERROR.TYPE(D2+0),D2+0)",
+    "A8": "=IF(ISERROR(D3+0),ERROR.TYPE(D3+0),D3+0)",
+    "A9": "=COUNTIF(B1:B3,\"<1903-12-31\")",
+    "A10": "=COUNTIF(B1:B3,\">1903-12-31\")",
+    "A11": "=COUNTIF(B1:B3,\"1903-12-31\")",
+    "A12": "=COUNTIF(B1:B3,\"<=1904-01-01\")"
+   }
+  }
+ ]
+}

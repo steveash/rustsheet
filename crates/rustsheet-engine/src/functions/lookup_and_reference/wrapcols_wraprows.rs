@@ -15,8 +15,8 @@ impl Model {
     ///
     /// Wraps the provided row or column vector by columns after a specified
     /// number of values. The vector is read top-to-bottom then left-to-right.
-    ///   * wrap_count – number of values per column (must be >= 1)
-    ///   * pad_with   – value used to pad the last column; defaults to #N/A
+    ///   * `wrap_count` – number of values per column (must be >= 1)
+    ///   * `pad_with`   – value used to pad the last column; defaults to #N/A
     pub(crate) fn fn_wrapcols(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
@@ -67,8 +67,8 @@ impl Model {
     ///
     /// Wraps the provided row or column vector by rows after a specified number
     /// of values. The vector is read top-to-bottom then left-to-right.
-    ///   * wrap_count – number of values per row (must be >= 1)
-    ///   * pad_with   – value used to pad the last row; defaults to #N/A
+    ///   * `wrap_count` – number of values per row (must be >= 1)
+    ///   * `pad_with`   – value used to pad the last row; defaults to #N/A
     pub(crate) fn fn_wraprows(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);

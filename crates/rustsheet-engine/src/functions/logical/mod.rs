@@ -16,6 +16,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    limits::check_array_size,
     model::Model,
     reference_operators::RefArg,
 };
@@ -29,6 +30,9 @@ pub(crate) enum IfBranchMode {
     Aggregate,
     /// As an argument that needs one sheet's reference (INDEX, MATCH): a 3-D span is `#VALUE!`.
     SingleSheet,
+    /// As a cell-reading argument sees it ([`Model::evaluate_chosen_reference`]): a nested IFS,
+    /// SWITCH, LET or CHOOSE branch stays the cell it picks.
+    Chosen,
 }
 
 // ── IF array helpers ──────────────────────────────────────────────────────────
@@ -178,6 +182,7 @@ impl Model {
                         IfBranchMode::SingleSheet => {
                             self.evaluate_single_sheet_arg(node, cell).into()
                         }
+                        IfBranchMode::Chosen => self.evaluate_chosen_reference(node, cell).into(),
                         IfBranchMode::Value => self.evaluate_node_in_context(node, cell).into(),
                     },
                     None => RefArg::Value(CalcResult::Boolean(false)),
@@ -227,6 +232,10 @@ impl Model {
         let (false_rows, false_cols) = false_arg.as_ref().map_or((1, 1), if_arg_dims);
         let max_rows = cond_rows.max(true_rows).max(false_rows);
         let max_cols = cond_cols.max(true_cols).max(false_cols);
+
+        if let Some((error, message)) = check_array_size(max_rows, max_cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
 
         let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(max_rows);
         for r in 0..max_rows {
@@ -324,6 +333,10 @@ impl Model {
         let max_rows = value_rows.max(fb_rows);
         let max_cols = value_cols.max(fb_cols);
 
+        if let Some((error, message)) = check_array_size(max_rows, max_cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
+
         let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(max_rows);
         for r in 0..max_rows {
             let mut row: Vec<ArrayNode> = Vec::with_capacity(max_cols);
@@ -351,12 +364,37 @@ impl Model {
         CalcResult::Array(output)
     }
 
+    /// A chosen branch as the reference it is (`as_reference`) or as a value.
+    pub(crate) fn evaluate_node_as(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
+        if as_reference {
+            self.evaluate_chosen_reference(node, cell)
+        } else {
+            self.evaluate_node_in_context(node, cell)
+        }
+    }
+
     /// =IFS(condition1, value, [condition, value]*). An array or range condition lifts
     /// IFS element by element over it and the arguments after it, broadcast as the element-wise
     /// operators do: `IFS(A1:B2>1,5)` is `{#N/A,5;5,5}` (probes/ifs-switch-array-values M1, M3;
     /// docs/excel-semantics/logic.md). A scalar condition keeps a range value a reference:
     /// `SUM(IFS(TRUE,A1:B2))` is 10.
     pub(crate) fn fn_ifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.ifs_impl(args, cell, false)
+    }
+
+    /// IFS; `as_reference` hands the chosen value back as the reference it is, for an argument
+    /// that reads one (MATCH's `match_type`: probes/match-type-text-passthrough K1, T-1399).
+    pub(crate) fn ifs_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
         let args_count = args.len();
         if args_count < 2 {
             return CalcResult::new_args_number_error(cell);
@@ -384,7 +422,9 @@ impl Model {
                 );
             }
             match self.cast_to_bool(condition, cell) {
-                Ok(true) => return self.evaluate_node_in_context(&args[2 * case_index + 1], cell),
+                Ok(true) => {
+                    return self.evaluate_node_as(&args[2 * case_index + 1], cell, as_reference)
+                }
                 Ok(false) => {}
                 Err(error) => return error,
             }

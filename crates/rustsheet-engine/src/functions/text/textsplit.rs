@@ -16,11 +16,11 @@ impl Model {
     /// Each delimiter argument can be a single string or an array of strings — any
     /// matching delimiter triggers a split.
     ///   * text          – text to split (required)
-    ///   * col_delimiter – one or more delimiters that split into columns (required)
-    ///   * row_delimiter – one or more delimiters that split into rows (default: no row split)
-    ///   * ignore_empty  – TRUE to skip empty segments (default FALSE)
-    ///   * match_mode    – 0 = case-sensitive (default), 1 = case-insensitive
-    ///   * pad_with      – value to pad short rows (default: #N/A error)
+    ///   * `col_delimiter` – one or more delimiters that split into columns (required)
+    ///   * `row_delimiter` – one or more delimiters that split into rows (default: no row split)
+    ///   * `ignore_empty`  – TRUE to skip empty segments (default FALSE)
+    ///   * `match_mode`    – 0 = case-sensitive (default), 1 = case-insensitive
+    ///   * `pad_with`      – value to pad short rows (default: #N/A error)
     pub(crate) fn fn_textsplit(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 6 {
             return CalcResult::new_args_number_error(cell);

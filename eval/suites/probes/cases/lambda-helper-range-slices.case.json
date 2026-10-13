@@ -1,0 +1,43 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1395: do BYROW/BYCOL/MAP/SCAN/REDUCE hand a range's rows, columns and cells to the LAMBDA as references or as arrays? COUNTA/COUNTBLANK/ISREF/ROW of the slice. A1 x, A3 z, B3 y, A2:B2 and B1 blank. G1:G4: whole-column and whole-row sources keep their full size.",
+ "tags": [
+  "M2",
+  "probe",
+  "stat",
+  "T-1395"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "x",
+    "A3": "z",
+    "B3": "y",
+    "E1": "=BYCOL(A1:B3,LAMBDA(c,COUNTA(c)))",
+    "E3": "=BYROW(A1:B3,LAMBDA(r,COUNTA(r)))",
+    "E7": "=BYCOL(A1:B3,LAMBDA(c,ISREF(c)))",
+    "E9": "=MAP(A1:A3,LAMBDA(v,ISREF(v)))",
+    "E13": "=MAP(A1:A3,LAMBDA(v,COUNTA(v)))",
+    "E17": "=BYCOL(IFERROR(A1:B3,1),LAMBDA(c,COUNTA(c)))",
+    "E19": "=BYROW(A1:B3,LAMBDA(r,ROW(r)))",
+    "E23": "=SCAN(0,A1:A3,LAMBDA(a,v,a+ISREF(v)))",
+    "E27": "=REDUCE(0,A1:A3,LAMBDA(a,v,a+ISREF(v)))",
+    "E28": "=BYCOL(TAKE(A1:B3,2),LAMBDA(c,COUNTA(c)))",
+    "E30": "=LET(x,A1:B3,BYCOL(x,LAMBDA(c,COUNTA(c))))",
+    "E32": "=BYCOL(A1:B3,COUNTA)",
+    "E34": "=BYROW(A1:B3,LAMBDA(r,COUNTBLANK(r)))",
+    "E38": "=BYROW(A1:B3,LAMBDA(r,ISREF(r)))",
+    "E42": "=MAP(A1:A3,LAMBDA(v,COUNTBLANK(v)))",
+    "E46": "=REDUCE(0,A1:B3,LAMBDA(a,v,a+COUNTA(v)))",
+    "E47": "=BYCOL(A1:B3,LAMBDA(c,ROWS(c)))",
+    "E49": "=BYROW(A1:B3,LAMBDA(r,SUM(COUNTA(r),0)))",
+    "G1": "=ROWS(BYROW(H:H,LAMBDA(r,1)))",
+    "G2": "=BYCOL(H:H,LAMBDA(c,ROWS(c)))",
+    "G3": "=COLUMNS(BYCOL(60:60,LAMBDA(c,1)))",
+    "G4": "=BYROW(60:60,LAMBDA(r,COLUMNS(r)))"
+   }
+  }
+ ],
+ "expected": {}
+}

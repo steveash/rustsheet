@@ -153,7 +153,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
                     horizontal: horizontal(value)?,
                     ..Default::default()
                 };
-                style.alignment = Some(alignment)
+                style.alignment = Some(alignment);
             }
         },
         "alignment.vertical" => match style.alignment {
@@ -163,7 +163,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
                     vertical: vertical(value)?,
                     ..Default::default()
                 };
-                style.alignment = Some(alignment)
+                style.alignment = Some(alignment);
             }
         },
         "alignment.wrap_text" => match style.alignment {
@@ -173,7 +173,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
                     wrap_text: boolean(value)?,
                     ..Default::default()
                 };
-                style.alignment = Some(alignment)
+                style.alignment = Some(alignment);
             }
         },
         _ => {
@@ -184,14 +184,14 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
 }
 
 /// # A wrapper around [`Model`] for a spreadsheet end user.
-/// UserModel is a wrapper around Model with undo/redo history, _diffs_, automatic evaluation and view management.
+/// `UserModel` is a wrapper around Model with undo/redo history, _diffs_, automatic evaluation and view management.
 ///
 /// A diff in this context (or more correctly a _user diff_) is a change created by a user.
 ///
 /// Automatic evaluation means that actions like setting a value on a cell or deleting a column
 /// will evaluate the model if needed.
 ///
-/// It is meant to be used by UI applications like Web IronCalc or TironCalc.
+/// It is meant to be used by UI applications like Web IronCalc or `TironCalc`.
 ///
 ///
 /// # Examples
@@ -254,10 +254,10 @@ impl UserModel {
         }
     }
 
-    /// Creates a new UserModel.
+    /// Creates a new `UserModel`.
     ///
     /// See also:
-    /// * [Model::new_empty]
+    /// * [`Model::new_empty`]
     pub fn new_empty(
         name: &str,
         locale_id: &str,
@@ -276,7 +276,7 @@ impl UserModel {
     /// Creates a model from it's internal representation
     ///
     /// See also:
-    /// * [Model::from_bytes]
+    /// * [`Model::from_bytes`]
     pub fn from_bytes(s: &[u8], language_id: &str) -> Result<UserModel, String> {
         let model = Model::from_bytes(s, language_id)?;
         Ok(UserModel {
@@ -290,7 +290,7 @@ impl UserModel {
     /// Returns the internal representation of a model
     ///
     /// See also:
-    ///  * [Model::to_bytes]
+    ///  * [`Model::to_bytes`]
     pub fn to_bytes(&self) -> Vec<u8> {
         self.model.to_bytes()
     }
@@ -321,7 +321,7 @@ impl UserModel {
     /// Undoes last change if any, places the change in the redo list and evaluates the model if needed
     ///
     /// See also:
-    /// * [UserModel::redo]
+    /// * [`UserModel::redo`]
     pub fn undo(&mut self) -> Result<(), String> {
         if let Some(diff_list) = self.history.undo() {
             self.apply_undo_diff_list(&diff_list)?;
@@ -336,7 +336,7 @@ impl UserModel {
     /// Redoes the last undone change, places the change in the undo list and evaluates the model if needed
     ///
     /// See also:
-    /// * [UserModel::redo]
+    /// * [`UserModel::redo`]
     pub fn redo(&mut self) -> Result<(), String> {
         if let Some(diff_list) = self.history.redo() {
             self.apply_diff_list(&diff_list)?;
@@ -361,8 +361,8 @@ impl UserModel {
     /// Pauses automatic evaluation.
     ///
     /// See also:
-    /// * [UserModel::evaluate]
-    /// * [UserModel::resume_evaluation]
+    /// * [`UserModel::evaluate`]
+    /// * [`UserModel::resume_evaluation`]
     pub fn pause_evaluation(&mut self) {
         self.pause_evaluation = true;
     }
@@ -370,8 +370,8 @@ impl UserModel {
     /// Resumes automatic evaluation.
     ///
     /// See also:
-    /// * [UserModel::evaluate]
-    /// * [UserModel::pause_evaluation]
+    /// * [`UserModel::evaluate`]
+    /// * [`UserModel::pause_evaluation`]
     pub fn resume_evaluation(&mut self) {
         self.pause_evaluation = false;
     }
@@ -379,19 +379,19 @@ impl UserModel {
     /// Forces an evaluation of the model
     ///
     /// See also:
-    /// * [Model::evaluate]
-    /// * [UserModel::pause_evaluation]
+    /// * [`Model::evaluate`]
+    /// * [`UserModel::pause_evaluation`]
     pub fn evaluate(&mut self) {
-        self.model.evaluate()
+        self.model.evaluate();
     }
 
     /// Returns the list of pending diffs and removes them from the queue
     ///
-    /// This is used together with [apply_external_diffs](UserModel::apply_external_diffs) to keep two remote models
+    /// This is used together with [`apply_external_diffs`](UserModel::apply_external_diffs) to keep two remote models
     /// in sync.
     ///
     /// See also:
-    /// * [UserModel::apply_external_diffs]
+    /// * [`UserModel::apply_external_diffs`]
     pub fn flush_send_queue(&mut self) -> Vec<u8> {
         // This can never fail :O:
         let q = bitcode::encode(&self.send_queue);
@@ -401,10 +401,10 @@ impl UserModel {
 
     /// This are external diffs that need to be applied to the model
     ///
-    /// This is used together with [flush_send_queue](UserModel::flush_send_queue) to keep two remote models in sync
+    /// This is used together with [`flush_send_queue`](UserModel::flush_send_queue) to keep two remote models in sync
     ///
     /// See also:
-    /// * [UserModel::flush_send_queue]
+    /// * [`UserModel::flush_send_queue`]
     pub fn apply_external_diffs(&mut self, diff_list_str: &[u8]) -> Result<(), String> {
         if let Ok(queue_diffs_list) = bitcode::decode::<Vec<QueueDiffs>>(diff_list_str) {
             for queue_diff in queue_diffs_list {
@@ -423,7 +423,7 @@ impl UserModel {
     /// Set the input in a cell
     ///
     /// See also:
-    /// * [Model::set_user_input]
+    /// * [`Model::set_user_input`]
     pub fn set_user_input(
         &mut self,
         sheet: u32,
@@ -526,7 +526,7 @@ impl UserModel {
     /// Returns the content of a cell
     ///
     /// See also:
-    /// * [Model::get_localized_cell_content]
+    /// * [`Model::get_localized_cell_content`]
     #[inline]
     pub fn get_cell_content(&self, sheet: u32, row: i32, column: i32) -> Result<String, String> {
         self.model.get_localized_cell_content(sheet, row, column)
@@ -538,7 +538,7 @@ impl UserModel {
     /// char offset into it.
     ///
     /// See also:
-    /// * [Model::formula_completion]
+    /// * [`Model::formula_completion`]
     #[inline]
     pub fn formula_completion(
         &mut self,
@@ -557,7 +557,7 @@ impl UserModel {
     /// Returns the new text together with the new cursor start and end.
     ///
     /// See also:
-    /// * [Model::cycle_reference]
+    /// * [`Model::cycle_reference`]
     #[inline]
     pub fn cycle_reference(
         &self,
@@ -571,7 +571,7 @@ impl UserModel {
     /// Returns the formatted value of a cell
     ///
     /// See also:
-    /// * [Model::get_formatted_cell_value]
+    /// * [`Model::get_formatted_cell_value`]
     #[inline]
     pub fn get_formatted_cell_value(
         &self,
@@ -585,7 +585,7 @@ impl UserModel {
     /// Returns the type of the cell
     ///
     /// See also
-    /// * [Model::get_cell_type]
+    /// * [`Model::get_cell_type`]
     pub fn get_cell_type(&self, sheet: u32, row: i32, column: i32) -> Result<CellType, String> {
         self.model.get_cell_type(sheet, row, column)
     }
@@ -593,7 +593,7 @@ impl UserModel {
     /// Adds new sheet
     ///
     /// See also:
-    /// * [Model::new_sheet]
+    /// * [`Model::new_sheet`]
     pub fn new_sheet(&mut self) -> Result<(), String> {
         let (name, index) = self.model.new_sheet();
         self.set_selected_sheet(index)?;
@@ -605,7 +605,7 @@ impl UserModel {
     /// selecting it.
     ///
     /// See also:
-    /// * [Model::duplicate_sheet]
+    /// * [`Model::duplicate_sheet`]
     pub fn duplicate_sheet(&mut self, sheet: u32) -> Result<(), String> {
         let (_name, new_index) = self.model.duplicate_sheet(sheet)?;
         self.set_selected_sheet(new_index)?;
@@ -619,7 +619,7 @@ impl UserModel {
     /// Deletes sheet by index
     ///
     /// See also:
-    /// * [Model::delete_sheet]
+    /// * [`Model::delete_sheet`]
     pub fn delete_sheet(&mut self, sheet: u32) -> Result<(), String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
 
@@ -643,7 +643,7 @@ impl UserModel {
     /// Renames a sheet by index
     ///
     /// See also:
-    /// * [Model::rename_sheet_by_index]
+    /// * [`Model::rename_sheet_by_index`]
     pub fn rename_sheet(&mut self, sheet: u32, new_name: &str) -> Result<(), String> {
         let old_value = self.model.workbook.worksheet(sheet)?.name.clone();
         if old_value == new_name {
@@ -671,7 +671,7 @@ impl UserModel {
     /// if either index is out of range.
     ///
     /// See also:
-    /// * [Model::move_sheet]
+    /// * [`Model::move_sheet`]
     pub fn move_sheet(&mut self, sheet_index: u32, new_index: u32) -> Result<(), String> {
         let sheet_count = self.model.workbook.worksheets.len() as u32;
         if sheet_index >= sheet_count {
@@ -696,8 +696,8 @@ impl UserModel {
     /// Hides sheet by index
     ///
     /// See also:
-    /// * [Model::set_sheet_state]
-    /// * [UserModel::unhide_sheet]
+    /// * [`Model::set_sheet_state`]
+    /// * [`UserModel::unhide_sheet`]
     pub fn hide_sheet(&mut self, sheet: u32) -> Result<(), String> {
         let sheet_count = self.model.workbook.worksheets.len() as u32;
         for index in 1..sheet_count {
@@ -722,8 +722,8 @@ impl UserModel {
     /// Un hides sheet by index
     ///
     /// See also:
-    /// * [Model::set_sheet_state]
-    /// * [UserModel::hide_sheet]
+    /// * [`Model::set_sheet_state`]
+    /// * [`UserModel::hide_sheet`]
     pub fn unhide_sheet(&mut self, sheet: u32) -> Result<(), String> {
         let old_value = self.model.workbook.worksheet(sheet)?.state.clone();
         self.push_diff_list(vec![Diff::SetSheetState {
@@ -740,8 +740,8 @@ impl UserModel {
     /// Note: an empty string will remove the color
     ///
     /// See also
-    /// * [Model::set_sheet_color]
-    /// * [UserModel::get_worksheets_properties]
+    /// * [`Model::set_sheet_color`]
+    /// * [`UserModel::get_worksheets_properties`]
     pub fn set_sheet_color(&mut self, sheet: u32, color: &Color) -> Result<(), String> {
         let old_value = self.model.workbook.worksheet(sheet)?.color.clone();
         self.model.set_sheet_color(sheet, color)?;
@@ -756,7 +756,7 @@ impl UserModel {
     /// Removes cells contents and style
     ///
     /// See also:
-    /// * [Model::range_clear_all]
+    /// * [`Model::range_clear_all`]
     pub fn range_clear_all(&mut self, range: &Area) -> Result<(), String> {
         let sheet = range.sheet;
         // TODO: full rows/columns
@@ -802,7 +802,7 @@ impl UserModel {
     /// Deletes the content in cells, but keeps the style
     ///
     /// See also:
-    /// * [Model::range_clear_contents]
+    /// * [`Model::range_clear_contents`]
     pub fn range_clear_contents(&mut self, range: &Area) -> Result<(), String> {
         let sheet = range.sheet;
         // TODO: full rows/columns
@@ -995,8 +995,8 @@ impl UserModel {
     /// Removes cells styles and formatting, but keeps the content
     ///
     /// See also:
-    /// * [UserModel::range_clear_all]
-    /// * [UserModel::range_clear_contents]
+    /// * [`UserModel::range_clear_all`]
+    /// * [`UserModel::range_clear_contents`]
     pub fn range_clear_formatting(&mut self, range: &Area) -> Result<(), String> {
         let sheet = range.sheet;
         let mut diff_list = Vec::new();
@@ -1346,7 +1346,7 @@ impl UserModel {
     /// Sets the width of a group of columns in a single diff list
     ///
     /// See also:
-    /// * [Model::set_column_width]
+    /// * [`Model::set_column_width`]
     pub fn set_columns_width(
         &mut self,
         sheet: u32,
@@ -1372,7 +1372,7 @@ impl UserModel {
     /// Sets the hidden state of a range of columns in a single diff list
     ////
     /// See also:
-    /// * [Model::set_column_hidden]
+    /// * [`Model::set_column_hidden`]
     pub fn set_columns_hidden(
         &mut self,
         sheet: u32,
@@ -1440,7 +1440,7 @@ impl UserModel {
 
     /// Sets the hidden state of a range of rows in a single diff list
     ///// See also:
-    /// * [Model::set_row_hidden]
+    /// * [`Model::set_row_hidden`]
     pub fn set_rows_hidden(
         &mut self,
         sheet: u32,
@@ -1495,7 +1495,7 @@ impl UserModel {
     /// Sets the height of a range of rows in a single diff list
     ///
     /// See also:
-    /// * [Model::set_row_height]
+    /// * [`Model::set_row_height`]
     pub fn set_rows_height(
         &mut self,
         sheet: u32,
@@ -1521,7 +1521,7 @@ impl UserModel {
     /// Gets the height of a row
     ///
     /// See also:
-    /// * [Model::get_row_height]
+    /// * [`Model::get_row_height`]
     #[inline]
     pub fn get_row_height(&self, sheet: u32, row: i32) -> Result<f64, String> {
         self.model.get_row_height(sheet, row)
@@ -1530,7 +1530,7 @@ impl UserModel {
     /// Gets the width of a column
     ///
     /// See also:
-    /// * [Model::get_column_width]
+    /// * [`Model::get_column_width`]
     #[inline]
     pub fn get_column_width(&self, sheet: u32, column: i32) -> Result<f64, String> {
         self.model.get_column_width(sheet, column)
@@ -1539,7 +1539,7 @@ impl UserModel {
     /// Returns the number of frozen rows in the sheet
     ///
     /// See also:
-    /// * [Model::get_frozen_rows_count()]
+    /// * [`Model::get_frozen_rows_count()`]
     #[inline]
     pub fn get_frozen_rows_count(&self, sheet: u32) -> Result<i32, String> {
         self.model.get_frozen_rows_count(sheet)
@@ -1548,7 +1548,7 @@ impl UserModel {
     /// Returns the number of frozen columns in the sheet
     ///
     /// See also:
-    /// * [Model::get_frozen_columns_count()]
+    /// * [`Model::get_frozen_columns_count()`]
     #[inline]
     pub fn get_frozen_columns_count(&self, sheet: u32) -> Result<i32, String> {
         self.model.get_frozen_columns_count(sheet)
@@ -1557,7 +1557,7 @@ impl UserModel {
     /// Sets the number of frozen rows in sheet
     ///
     /// See also:
-    /// * [Model::set_frozen_rows()]
+    /// * [`Model::set_frozen_rows()`]
     pub fn set_frozen_rows_count(&mut self, sheet: u32, frozen_rows: i32) -> Result<(), String> {
         let old_value = self.model.get_frozen_rows_count(sheet)?;
         self.push_diff_list(vec![Diff::SetFrozenRowsCount {
@@ -1571,7 +1571,7 @@ impl UserModel {
     /// Sets the number of frozen columns in sheet
     ///
     /// See also:
-    /// * [Model::set_frozen_columns()]
+    /// * [`Model::set_frozen_columns()`]
     pub fn set_frozen_columns_count(
         &mut self,
         sheet: u32,
@@ -1670,7 +1670,7 @@ impl UserModel {
 
     /// Updates the range with a cell style.
     /// See also:
-    /// * [Model::set_cell_style]
+    /// * [`Model::set_cell_style`]
     pub fn update_range_style(
         &mut self,
         range: &Area,
@@ -1812,7 +1812,7 @@ impl UserModel {
     /// We always pick the "heaviest" border.
     ///
     /// See also:
-    /// * [Model::get_style_for_cell]
+    /// * [`Model::get_style_for_cell`]
     pub fn get_cell_style(&self, sheet: u32, row: i32, column: i32) -> Result<Style, String> {
         let mut style = self.model.get_style_for_cell(sheet, row, column)?;
 
@@ -1945,7 +1945,7 @@ impl UserModel {
     /// Returns information about the sheets
     ///
     /// See also:
-    /// * [Model::get_worksheets_properties]
+    /// * [`Model::get_worksheets_properties`]
     #[inline]
     pub fn get_worksheets_properties(&self) -> Vec<SheetProperties> {
         self.model.get_worksheets_properties()

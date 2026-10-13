@@ -70,7 +70,9 @@ impl Model {
         let mut result = 0.0;
         for arg in args {
             // A reference, 3-D ones included, arrives as a Range: its non-empty cells count.
-            match self.evaluate_reference_arg(arg, cell) {
+            // TAKE, DROP, INDEX, OFFSET and the like over a range pick a reference too, so
+            // `COUNTA(TAKE(B3:B3,1))` of a blank is 0 (probes/subtotal-reference-operands-c H13).
+            match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Value(CalcResult::EmptyCell) => {}
                 // Excel: an omitted argument and the empty value IFERROR/IFNA give for a blank
                 // cell both count (COUNTA(,) = 2, COUNTA(IFERROR(B1,1)) = 1), unlike a blank
@@ -88,14 +90,11 @@ impl Model {
                         return error;
                     }
                 }
+                // Every element of an array value counts, the empty values IFERROR gives for
+                // blank cells included: `COUNTA(IFERROR(B1:B2,1))` with B1 blank is 2
+                // (probes/counta-empty-value D18).
                 RefArg::Value(CalcResult::Array(a)) => {
-                    for row in a {
-                        for node in row {
-                            if !matches!(node, ArrayNode::Empty) {
-                                result += 1.0;
-                            }
-                        }
-                    }
+                    result += a.iter().map(Vec::len).sum::<usize>() as f64;
                 }
                 RefArg::Value(_) => {
                     result += 1.0;

@@ -160,7 +160,7 @@ impl Model {
         Ok(())
     }
 
-    /// Same as [Model::merge_cells] but the merged cell is also centered
+    /// Same as [`Model::merge_cells`] but the merged cell is also centered
     /// horizontally ("merge & center").
     pub fn merge_cells_center(&mut self, range: &Area) -> Result<(), String> {
         self.merge_cells(range)?;
@@ -168,7 +168,7 @@ impl Model {
     }
 
     /// Merges each row of `range` separately into a one-row-tall merged cell
-    /// ("merge across"), following the rules of [Model::merge_cells] row by
+    /// ("merge across"), following the rules of [`Model::merge_cells`] row by
     /// row. Every row is validated up front, so the operation is
     /// all-or-nothing: if any row cannot be merged nothing changes.
     pub fn merge_cells_across(&mut self, range: &Area) -> Result<(), String> {
@@ -183,7 +183,7 @@ impl Model {
     }
 
     /// Merges each column of `range` separately into a one-column-wide merged
-    /// cell ("merge down"), following the rules of [Model::merge_cells]
+    /// cell ("merge down"), following the rules of [`Model::merge_cells`]
     /// column by column. Every column is validated up front, so the operation
     /// is all-or-nothing: if any column cannot be merged nothing changes.
     pub fn merge_cells_down(&mut self, range: &Area) -> Result<(), String> {

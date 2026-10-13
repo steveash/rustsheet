@@ -10,16 +10,18 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::format::{format_text, format_text_value, FormatContext, Formatted},
+    formatter::{
+        exceeds_complexity_limit,
+        format::{format_text, format_text_value, FormatContext, Formatted},
+    },
     functions::{
         text::{
             position::find_element,
             util::{
-                near_integer_count, substitute, substitute_exceeds_limit, text_after, text_before,
-                utf16_slice, Case,
+                substitute, substitute_exceeds_limit, text_after, text_before, utf16_slice, Case,
             },
         },
-        util::array_node_to_calc_result,
+        util::{array_node_to_calc_result, near_integer_count},
     },
     model::Model,
     number_format::to_precision,
@@ -53,7 +55,7 @@ fn right_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode,
     Ok(ArrayNode::String(s.chars().skip(skip).collect()))
 }
 
-/// MID's start_num and num_chars must be below 2^31 (they are read as 32-bit integers).
+/// MID's `start_num` and `num_chars` must be below 2^31 (they are read as 32-bit integers).
 const MID_ARGUMENT_LIMIT: f64 = 2_147_483_648.0;
 
 /// Computes a single MID result from one element of each argument.
@@ -167,6 +169,17 @@ fn text_value_node(value: &ArrayNode, format: &str) -> ArrayNode {
     }
 }
 
+/// The TEXT array element for one value: numbers and blanks by the number sections, text and
+/// booleans by the text section, an error element stays as it is.
+fn text_element(node: &ArrayNode, format: &str, ctx: &FormatContext) -> ArrayNode {
+    match node {
+        ArrayNode::Number(f) => text_node(Some(*f), format, ctx),
+        ArrayNode::Empty => text_node(None, format, ctx),
+        text @ (ArrayNode::Boolean(_) | ArrayNode::String(_)) => text_value_node(text, format),
+        e @ ArrayNode::Error(_) => e.clone(),
+    }
+}
+
 /// TEXT of a scalar text or boolean value.
 fn text_value_result(value: &ArrayNode, format: &str, cell: CellReferenceIndex) -> CalcResult {
     match text_value_node(value, format) {
@@ -177,6 +190,11 @@ fn text_value_result(value: &ArrayNode, format: &str, cell: CellReferenceIndex) 
             message: "Invalid format code".to_string(),
         },
     }
+}
+
+/// TEXT's `#VALUE!` for a format code over Excel's complexity limit (T-1393).
+fn too_complex(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, "Format code too complex".to_string())
 }
 
 impl Model {
@@ -193,39 +211,73 @@ impl Model {
             },
             other => other,
         };
+        // The format is evaluated once: evaluating it again per path would make TEXT nested in
+        // the format argument exponential in its depth.
+        let format_result = match self.evaluate_node_in_context(&args[1], cell) {
+            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
+                Ok(array) => CalcResult::Array(array),
+                Err(error) => return error,
+            },
+            other => other,
+        };
+        // An array or range of format codes gives one result per format; each format has its own
+        // complexity check and an error element keeps its error (probes/text-format-length-limit-f
+        // A54:B54).
+        if let CalcResult::Array(formats) = format_result {
+            let value = match value_result {
+                CalcResult::Array(a) => TextArg::Array(a),
+                // An error value lifts over the formats like a scalar.
+                err @ CalcResult::Error { .. } => {
+                    TextArg::Error(calc_result_to_array_node(err.clone()), err)
+                }
+                other => TextArg::Scalar(calc_result_to_array_node(other)),
+            };
+            let formats = TextArg::Array(formats);
+            let ctx = self.format_context();
+            return broadcast_text(cell, &[&value, &formats], |i, j| {
+                // An error value wins over a bad or too complex format (number-formats.md).
+                if let e @ ArrayNode::Error(_) = value.elem(i, j) {
+                    return Ok(e.clone());
+                }
+                let format_code = array_node_to_string(formats.elem(i, j))?;
+                if exceeds_complexity_limit(&format_code) {
+                    return Err(Error::VALUE);
+                }
+                Ok(text_element(value.elem(i, j), &format_code, &ctx))
+            });
+        }
+        let format_code = self.cast_to_string(format_result, cell);
         match value_result {
             CalcResult::Array(arr) => {
-                let format_code = match self.get_string(&args[1], cell) {
+                let format_code = match format_code {
                     Ok(s) => s,
                     // An error in every element; error elements keep theirs.
                     Err(e) => return array_of_errors(&arr, e, own_error),
                 };
-                let ctx = self.format_context();
-                let mut output = Vec::with_capacity(arr.len());
-                for row in arr {
-                    let mut data_row = Vec::with_capacity(row.len());
-                    for node in row {
-                        let out = match node {
-                            ArrayNode::Number(f) => text_node(Some(f), &format_code, &ctx),
-                            ArrayNode::Empty => text_node(None, &format_code, &ctx),
-                            text @ (ArrayNode::Boolean(_) | ArrayNode::String(_)) => {
-                                text_value_node(&text, &format_code)
-                            }
-                            e @ ArrayNode::Error(_) => e,
-                        };
-                        data_row.push(out);
-                    }
-                    output.push(data_row);
+                if exceeds_complexity_limit(&format_code) {
+                    return array_of_errors(&arr, too_complex(cell), own_error);
                 }
-                CalcResult::Array(output)
+                let ctx = self.format_context();
+                CalcResult::Array(
+                    arr.iter()
+                        .map(|row| {
+                            row.iter()
+                                .map(|node| text_element(node, &format_code, &ctx))
+                                .collect()
+                        })
+                        .collect(),
+                )
             }
             error @ CalcResult::Error { .. } => error,
             other => {
                 // An error in the format wins, also for text (error_broadcast.xlsx Sheet2!A1).
-                let format_code = match self.get_string(&args[1], cell) {
+                let format_code = match format_code {
                     Ok(s) => s,
                     Err(s) => return s,
                 };
+                if exceeds_complexity_limit(&format_code) {
+                    return too_complex(cell);
+                }
                 let is_blank = matches!(other, CalcResult::EmptyCell);
                 let value = match other {
                     CalcResult::Number(f) => f,
@@ -263,13 +315,13 @@ impl Model {
         }
     }
 
-    /// FIND(find_text, within_text, [start_num])
+    /// `FIND(find_text`, `within_text`, [`start_num`])
     ///  * FIND and FINDB are case sensitive and don't allow wildcard characters.
-    ///  * If find_text is "" (empty text), FIND matches the first character in the search string (that is, the character numbered start_num or 1).
-    ///  * Find_text cannot contain any wildcard characters.
-    ///  * If find_text does not appear in within_text, FIND and FINDB return the #VALUE! error value.
-    ///  * If start_num is not greater than zero, FIND and FINDB return the #VALUE! error value.
-    ///  * If start_num is greater than the length of within_text, FIND and FINDB return the #VALUE! error value.
+    ///  * If `find_text` is "" (empty text), FIND matches the first character in the search string (that is, the character numbered `start_num` or 1).
+    ///  * `Find_text` cannot contain any wildcard characters.
+    ///  * If `find_text` does not appear in `within_text`, FIND and FINDB return the #VALUE! error value.
+    ///  * If `start_num` is not greater than zero, FIND and FINDB return the #VALUE! error value.
+    ///  * If `start_num` is greater than the length of `within_text`, FIND and FINDB return the #VALUE! error value.
     ///    NB: FINDB is not implemented. It is the same as FIND function unless locale is a DBCS (Double Byte Character Set)
     ///  * If any of the arguments is an array it works element by element.
     pub(crate) fn fn_find(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -279,7 +331,7 @@ impl Model {
     /// Same API as FIND but:
     ///  * Allows wildcards
     ///  * It is case insensitive
-    ///    SEARCH(find_text, within_text, [start_num])
+    ///    `SEARCH(find_text`, `within_text`, [`start_num`])
     pub(crate) fn fn_search(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.find_or_search(args, cell, true)
     }

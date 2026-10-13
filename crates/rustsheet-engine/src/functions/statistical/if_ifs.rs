@@ -3,8 +3,8 @@ use crate::cast::{calc_result_to_array_node, number_text_too_long};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
-use crate::functions::math_and_trigonometry::array_size::check_array_size;
 use crate::functions::util::array_node_to_calc_result;
+use crate::limits::check_array_size;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::{ArrayNode, Node},
@@ -155,7 +155,7 @@ impl Model {
     }
 
     /// [`Model::lift_criteria`] with the cells one element visits given by `walk_cost` (called
-    /// only when something lifts). AGGREGATE lifts its function_num, options and k this way.
+    /// only when something lifts). AGGREGATE lifts its `function_num`, options and k this way.
     pub(crate) fn lift_with_cost(
         &mut self,
         criteria: Vec<CalcResult>,
@@ -285,8 +285,8 @@ impl Model {
         }
     }
 
-    /// AVERAGEIF(criteria_range, criteria, [average_range])
-    /// if average_rage is missing then criteria_range will be used
+    /// `AVERAGEIF(criteria_range`, criteria, [`average_range`])
+    /// if `average_rage` is missing then `criteria_range` will be used
     pub(crate) fn fn_averageif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arguments = match args.len() {
             2 => vec![args[0].clone(), args[0].clone(), args[1].clone()],
@@ -350,9 +350,12 @@ impl Model {
             return CalcResult::new_error(Error::VALUE, cell, TOO_LONG.to_string());
         }
         for criterion in criteria.iter() {
-            fn_criteria.push(build_criteria(criterion, self.locale, &|| {
-                self.current_year()
-            }));
+            fn_criteria.push(build_criteria(
+                criterion,
+                self.locale,
+                &|| self.current_year(),
+                self.workbook.settings.date_system,
+            ));
         }
 
         let mut total = 0.0;
@@ -539,9 +542,12 @@ impl Model {
             ));
         }
         for criterion in criteria.iter() {
-            fn_criteria.push(build_criteria(criterion, self.locale, &|| {
-                self.current_year()
-            }));
+            fn_criteria.push(build_criteria(
+                criterion,
+                self.locale,
+                &|| self.current_year(),
+                self.workbook.settings.date_system,
+            ));
         }
 
         self.run_ifs(&sum_range, ranges.as_slice(), &fn_criteria, cell, apply)

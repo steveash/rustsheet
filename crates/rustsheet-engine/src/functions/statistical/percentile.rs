@@ -16,13 +16,7 @@ impl Model {
             }
             CalcResult::Array(arr) => match self.values_from_array(arr) {
                 Ok(v) => v.into_iter().flatten().collect::<Vec<_>>(),
-                Err(e) => {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        format!("{:?}", e),
-                    ))
-                }
+                Err(e) => return Err(CalcResult::new_error(Error::VALUE, cell, format!("{e:?}"))),
             },
             CalcResult::Number(n) => vec![n],
             CalcResult::EmptyCell | CalcResult::EmptyArg => vec![],
@@ -283,7 +277,7 @@ pub(crate) fn percentrank_inc_impl(sorted: &[f64], x: f64) -> f64 {
     (k as f64 - 1.0 + frac) / (n - 1) as f64
 }
 
-/// PERCENTRANK.EXC: rank = (virtual_position + 1) / (n + 1).
+/// PERCENTRANK.EXC: rank = (`virtual_position` + 1) / (n + 1).
 pub(crate) fn percentrank_exc_impl(sorted: &[f64], x: f64) -> f64 {
     let n = sorted.len();
     let k = sorted.partition_point(|&v| v < x);

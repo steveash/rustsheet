@@ -1544,6 +1544,15 @@ functions:
       - { name: database, mode: range, type: any }
       - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
       - { name: criteria, mode: range, type: any }
+  - name: ECMA.CEILING
+    category: math
+    milestone: M5
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: number, mode: value, type: number }
+      - { name: significance, mode: value, type: number }
   # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: EDATE
     category: date

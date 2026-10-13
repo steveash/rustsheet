@@ -22,8 +22,8 @@ whose exit criteria are not met.
 in-scope function has oracle-backed cases covering each parameter mode and edge pool, and
 reaches ≥ 99.9% bit-exact and 100% within 4 ULP. Each remaining failure has a filed task or a
 `DEVIATION` entry. "Bit-exact" percentages here and in every milestone count only scored cells
-not listed as accepted deviations, which are scored in their own column (decision 0036). The
-exit criteria of M1, M2, M5–M10 and M11 are met.
+not listed as accepted deviations, which are scored in their own column (decision 0036). Accepted
+deviations are directive-5 limits only (decision 0052). The exit criteria of M1, M2, M5–M10 and M11 are met.
 
 A failure whose only open question needs desktop Excel evidence has its filed task in M14
 (Phase 4). It never blocks the exit of Phase 1, any other phase or any milestone. excel-graph is
@@ -80,7 +80,7 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
   Measured for gen-m1 by eval/baseline/gen-m1.txt reaching zero failing cells (T-0109: 978 left,
   in T-0105, T-0107, T-0130–T-0132, T-0134 and T-0221; 8 left on 2026-10-10: 6 in T-1302, the
   integer-exponent power rule, and 2 in T-0221, an M2 task that also blocks M1; 2 left on
-  2026-10-12, both negative non-integer exponents, split from T-0221 into M1 task T-1421).
+  2026-10-12, both negative non-integer exponents, split from T-0221 into M1 task T-1421; 0 left on 2026-10-13 after T-1319, #640).
 - The frozen M1 probe list is `eval/milestones/m1-probes.txt` (decision 0043): 89 `probes` cases
   in M1 scope, fixed at commit e5c7ae9. Its cases have no F line left in
   eval/baseline/probes.txt (61 at the freeze; `make eval` reports it once T-1146 lands). Probe

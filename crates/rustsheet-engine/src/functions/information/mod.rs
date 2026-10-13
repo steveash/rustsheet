@@ -11,11 +11,11 @@ use crate::{
         types::CellReferenceIndex,
         utils::number_to_column,
     },
-    functions::math_and_trigonometry::array_size::check_range_size,
     functions::util::array_node_to_calc_result,
     get_all_timezones,
+    limits::check_range_size,
     model::Model,
-    reference_operators::RefArg,
+    reference_operators::{external_area, RefArg},
 };
 
 /// Applies `f` to every element of a 2-D array, keeping its shape.
@@ -194,6 +194,9 @@ impl Model {
                 self.evaluate_node_with_reference(node, cell),
                 CalcResult::Range { .. }
             ),
+            Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. } => {
+                external_area(node, cell).is_some()
+            }
             _ => false,
         }
     }
@@ -353,11 +356,8 @@ impl Model {
             // `TYPE(IFERROR(<blank>,1))` is 1 (probes/iferror-blank-value D14, T-0291).
             CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Number(1.0),
             CalcResult::Array(_) => CalcResult::Number(64.0),
-            CalcResult::Lambda(_) => CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Lambdas not supported yet".to_string(),
-            },
+            // `TYPE(LAMBDA(x,x))` is 128 (probes/is-functions-scalar-kinds Calc!F24).
+            CalcResult::Lambda(_) => CalcResult::Number(128.0),
         }
     }
     pub(crate) fn fn_sheet(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -505,8 +505,8 @@ impl Model {
         CalcResult::Number(sheet_count)
     }
 
-    /// CELL(info_type, [reference])
-    /// NB: In Excel "info_type" is localized. Here it is always in English.
+    /// `CELL(info_type`, [reference])
+    /// NB: In Excel "`info_type`" is localized. Here it is always in English.
     pub(crate) fn fn_cell(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if arg_count == 0 || arg_count > 2 {
@@ -555,7 +555,7 @@ impl Model {
         self.cell_info(&info_type, ranges.as_deref(), reference, cell)
     }
 
-    /// The value of one CELL info_type for `reference`; `ranges` holds every area of a union.
+    /// The value of one CELL `info_type` for `reference`; `ranges` holds every area of a union.
     fn cell_info(
         &mut self,
         info_type: &str,
@@ -597,22 +597,14 @@ impl Model {
                     message: "info_type not implemented".to_string(),
                 }
             }
-            // A multi-cell range on the formula's own sheet reads its top-left cell
-            // (ironcalc-calc CELL.xlsx B14, excel-cached); on another sheet it is #VALUE!
-            // (probes/info-logic-argument-modes A18, excel-graph). Which of the two facts decides
-            // is not separated by the evidence (docs/excel-semantics/information.md, T-1218).
-            "CONTENTS"
-                if ranges
-                    .and_then(<[_]>::first)
-                    .is_some_and(|r| r.left != r.right && r.left.sheet != cell.sheet) =>
-            {
-                CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "contents needs a single cell".to_string(),
-                }
-            }
-            "CONTENTS" => self.evaluate_cell(reference),
+            // The top-left cell of the reference taken on the formula's own sheet, whatever sheet
+            // the reference names, with no implicit intersection: `CELL("contents",Data!A2)` on
+            // Calc reads Calc!A2 (probes/info-cell-contents-range, excel-graph, T-1230). Desktop
+            // Excel is unverified (T-1075 item 9); excel-graph is the oracle of record (decision 0039).
+            "CONTENTS" => self.evaluate_cell(CellReferenceIndex {
+                sheet: cell.sheet,
+                ..reference
+            }),
             "FILENAME" => {
                 let workbook_name = &self.workbook.name;
                 let worksheet_name = match self.workbook.worksheet(reference.sheet) {
@@ -625,7 +617,7 @@ impl Model {
                         }
                     }
                 };
-                CalcResult::String(format!("[{}.xlsx]{}", workbook_name, worksheet_name))
+                CalcResult::String(format!("[{workbook_name}.xlsx]{worksheet_name}"))
             }
             "ROW" => CalcResult::Number(reference.row as f64),
             "TYPE" => {
@@ -649,8 +641,8 @@ impl Model {
         }
     }
 
-    /// INFO(text_type)
-    /// NB: In Excel "text_type" is localized. Here it is always in English.
+    /// `INFO(text_type)`
+    /// NB: In Excel "`text_type`" is localized. Here it is always in English.
     pub(crate) fn fn_info(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);

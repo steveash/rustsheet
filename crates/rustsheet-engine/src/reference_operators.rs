@@ -1,10 +1,11 @@
 //! Evaluation of the reference operators: the range (`:`), the intersection (a space) and
 //! the union (a comma inside parentheses).
 
-use std::{collections::HashMap, ops::Deref, sync::Arc};
+use std::{ops::Deref, sync::Arc};
 
 use crate::{
     calc_result::{CalcResult, Range},
+    constants::{LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -22,26 +23,39 @@ use crate::{
 /// docs/excel-semantics/references.md "Union area cap").
 pub(crate) const MAX_AREAS: usize = 1 << 16;
 
-/// Most pairs of areas one top-level reference expression may compare. Each intersection compares at
-/// most [`MAX_AREAS`] pairs, but a chain of cuts (`(U1 U2) A1 A1 A1 ...`) repeats that once
-/// per three characters of formula, so the whole expression shares this budget.
-pub(crate) const MAX_AREA_PAIRS: usize = 1 << 20;
-
 /// Message of the `#VALUE!` for a union or intersection of more than [`MAX_AREAS`] areas.
 pub(crate) const TOO_MANY_AREAS: &str = "Too many areas in a reference";
 
-/// Message of the `#VALUE!` for an expression comparing more than [`MAX_AREA_PAIRS`] pairs.
-pub(crate) const TOO_MANY_AREA_PAIRS: &str = "Too many areas to intersect";
+/// The areas [`Model::evaluate_areas`] finds: one area, held without an allocation (the
+/// common `LET(r,A1:C3,r B2)`), a list built for this expression, or a list shared with the
+/// binding or name it came from, read without a copy.
+enum AreaList {
+    One(Range),
+    Owned(Vec<Range>),
+    Shared(Arc<[Range]>),
+}
 
-/// Most cells one multi-area argument may walk, counted over its areas clipped to the used
-/// area. The area cap bounds the length of an area list, not the work of walking it:
-/// `MAX_AREAS` copies of `A:A` fit in a short formula. Past the bound the argument is
-/// `#VALUE!`, found before any cell is walked (DEVIATION, decision 0014: references.md "Union
-/// area cap").
-pub(crate) const MAX_AREA_CELLS: u64 = 1 << 24;
+impl Deref for AreaList {
+    type Target = [Range];
 
-/// Message of the `#VALUE!` for a multi-area argument of more than [`MAX_AREA_CELLS`] cells.
-pub(crate) const TOO_MANY_AREA_CELLS: &str = "Too many cells in the areas of a reference";
+    fn deref(&self) -> &[Range] {
+        match self {
+            AreaList::One(range) => std::slice::from_ref(range),
+            AreaList::Owned(areas) => areas,
+            AreaList::Shared(areas) => areas,
+        }
+    }
+}
+
+impl AreaList {
+    fn into_vec(self) -> Vec<Range> {
+        match self {
+            AreaList::One(range) => vec![range],
+            AreaList::Owned(areas) => areas,
+            AreaList::Shared(areas) => areas.to_vec(),
+        }
+    }
+}
 
 /// The areas of a reference that has more than one, in formula order, duplicates kept
 /// (`SUM((A1:B2,B2))` counts B2 twice, probes/multiarea-agg H3): 2..=[`MAX_AREAS`] ranges, all
@@ -49,6 +63,13 @@ pub(crate) const TOO_MANY_AREA_CELLS: &str = "Too many cells in the areas of a r
 /// binding stays `Send`), so a copy is never made on read.
 #[derive(Clone)]
 pub(crate) struct Areas(Arc<[Range]>);
+
+impl Areas {
+    /// How many areas the reference has: 2..=[`MAX_AREAS`].
+    pub(crate) fn len(&self) -> usize {
+        self.0.len()
+    }
+}
 
 /// The ranges a reference argument stands for: one range (a 3-D reference included, whose
 /// corners sit on two sheets), or the areas of a multi-area reference. Derefs to the ranges in
@@ -60,10 +81,16 @@ pub(crate) enum Ranges {
 }
 
 impl Ranges {
-    /// The ranges of an area list built by [`Model::reference_areas`]: one area is a plain
+    /// The ranges of an area list built by [`Model::evaluate_areas`]: one area is a plain
     /// range; several must sit on one sheet, as a reference across sheets is `#VALUE!` where a
     /// function takes a union (`SUM((Data!A1,Other!A1))`, probes/multiarea-xsheet).
-    fn from_list(mut areas: Vec<Range>, cell: CellReferenceIndex) -> Result<Ranges, CalcResult> {
+    fn from_list(areas: AreaList, cell: CellReferenceIndex) -> Result<Ranges, CalcResult> {
+        let mut areas = match areas {
+            AreaList::One(area) => return Ok(Ranges::One(area)),
+            // The areas of an `Areas`, which hold to its rules already.
+            AreaList::Shared(areas) => return Ok(Ranges::Areas(Areas(areas))),
+            AreaList::Owned(areas) => areas,
+        };
         if areas.len() > MAX_AREAS {
             return Err(too_many_areas(cell));
         }
@@ -180,85 +207,6 @@ impl RefArg {
     }
 }
 
-/// What a LET variable or a LAMBDA parameter is bound to: a value (a single reference
-/// included), the areas of a union, or a 3-D span. Only reference context reads the last two as
-/// such ([`Model::variable_reference`]); everywhere else they are `#VALUE!`, as `LET(x,(A1,B2),x)`
-/// is (probes/multiarea-let H3) and as the bare span is (`LET(x,Data1:Data3!A1,x)`,
-/// `INDEX(x,1)`, `ROWS(x)`: probes/3d-ref-let-bound-span, T-1158).
-#[derive(Clone)]
-pub(crate) enum Binding {
-    Value(CalcResult),
-    Areas(Areas),
-    /// A range whose corners sit on two sheets: an aggregate reads it like the written span
-    /// (`LET(x,Data1:Data3!A1,SUM(x))` is 111, probes/3d-ref-let-bound-span C1:C3).
-    Span(Range),
-}
-
-impl Binding {
-    /// The binding where a value or a single reference is needed.
-    pub(crate) fn value(&self, cell: CellReferenceIndex) -> CalcResult {
-        match self {
-            Binding::Value(value) => value.clone(),
-            Binding::Areas(_) => several_areas(cell),
-            Binding::Span(_) => three_d_needs_one_sheet(cell),
-        }
-    }
-
-    /// How many areas the binding holds: those of a union, none for a value or a span.
-    pub(crate) fn held_areas(&self) -> usize {
-        match self {
-            Binding::Value(_) | Binding::Span(_) => 0,
-            Binding::Areas(Areas(areas)) => areas.len(),
-        }
-    }
-}
-
-/// Most areas the LET variables and LAMBDA parameters in scope may hold together. One union is
-/// at most [`MAX_AREAS`] areas, but each binding may hold a fresh one
-/// (`LET(x1,(A1,A2),x2,(x1,x1),x3,(x2,A1),...)`), so memory would grow with formula length;
-/// past this total a binding is `#VALUE!` (DEVIATION, decision 0014: references.md "Union area
-/// cap").
-const MAX_HELD_AREAS: usize = 4 * MAX_AREAS;
-
-/// The LET variables and LAMBDA parameters in scope, by variable id, with the areas their
-/// union bindings hold, which may not pass [`MAX_HELD_AREAS`].
-#[derive(Clone, Default)]
-pub(crate) struct VariableStack {
-    bindings: HashMap<usize, Binding>,
-    held_areas: usize,
-}
-
-impl VariableStack {
-    pub(crate) fn get(&self, id: usize) -> Option<&Binding> {
-        self.bindings.get(&id)
-    }
-
-    /// Binds `id`; a union that would pass [`MAX_HELD_AREAS`] is bound to `#VALUE!` instead.
-    pub(crate) fn insert(&mut self, id: usize, binding: Binding, cell: CellReferenceIndex) {
-        let held = self.held_areas + binding.held_areas();
-        let binding = if held > MAX_HELD_AREAS {
-            Binding::Value(too_many_areas(cell))
-        } else {
-            self.held_areas = held;
-            binding
-        };
-        if let Some(old) = self.bindings.insert(id, binding) {
-            self.held_areas -= old.held_areas();
-        }
-    }
-
-    pub(crate) fn remove(&mut self, id: usize) {
-        if let Some(old) = self.bindings.remove(&id) {
-            self.held_areas -= old.held_areas();
-        }
-    }
-
-    pub(crate) fn clear(&mut self) {
-        self.bindings.clear();
-        self.held_areas = 0;
-    }
-}
-
 /// `#VALUE!` for a 3-D reference where a single-sheet reference is needed (INDEX, AREAS,
 /// VLOOKUP, MATCH, ..., probes/3d-ref-functions).
 pub(crate) fn three_d_needs_one_sheet(cell: CellReferenceIndex) -> CalcResult {
@@ -287,11 +235,17 @@ fn bounding_area(areas: &[Range]) -> CalcResult {
 }
 
 /// `#VALUE!` for a reference of several areas where one area is needed.
-fn several_areas(cell: CellReferenceIndex) -> CalcResult {
+pub(crate) fn several_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, "Reference of several areas".to_string())
 }
 
-fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
+/// `#REF!` for a reference of several areas in the contexts where Excel gives `#REF!` rather than
+/// the `#VALUE!` of [`several_areas`] (ROW/COLUMN/ROWS/COLUMNS, a VLOOKUP/HLOOKUP index).
+pub(crate) fn several_areas_ref(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::REF, cell, "Reference of several areas".to_string())
+}
+
+pub(crate) fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREAS.to_string())
 }
 
@@ -334,6 +288,93 @@ fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::NULL, cell, "Empty intersection".to_string())
 }
 
+/// Whether a sheet prefix names a sheet of another workbook: `[book]Sheet` (a sheet name cannot
+/// hold `[`). That workbook is never opened (directive 5).
+fn names_other_workbook(sheet_name: Option<&str>) -> bool {
+    sheet_name.is_some_and(|name| name.contains('['))
+}
+
+/// The rows and columns a reference into another workbook covers, absolute and in order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ExternalArea {
+    pub(crate) first_row: i32,
+    pub(crate) first_column: i32,
+    pub(crate) last_row: i32,
+    pub(crate) last_column: i32,
+}
+
+impl ExternalArea {
+    /// `(rows, columns)` of the area.
+    pub(crate) fn extent(self) -> (usize, usize) {
+        let span = |first: i32, last: i32| usize::try_from(last - first + 1).unwrap_or(0);
+        (
+            span(self.first_row, self.last_row),
+            span(self.first_column, self.last_column),
+        )
+    }
+}
+
+/// The area of `node` when it is a reference on one sheet of another workbook whose data the
+/// engine does not hold: still a reference of the written shape (its cells read `#BLOCKED!`), so
+/// `ISREF('[other.xlsx]Sheet1'!A1)` is TRUE, `ROWS('[other.xlsx]Sheet1'!A1:B3)` 3, `COLUMNS`,
+/// `ROW`, `COLUMN` and `AREAS` read its shape (probes/external-ref-no-link A4, A10;
+/// external-ref-no-link-shapes A1, A2, A6:A10, A13). A 3-D prefix naming another workbook
+/// (`'[other.xlsx]S1:S2'!A1`) is not a reference: ISREF is FALSE (external-ref-no-link-shapes
+/// A12). `None` also for an area off the grid.
+pub(crate) fn external_area(node: &Node, cell: CellReferenceIndex) -> Option<ExternalArea> {
+    let (sheet_name, first, last) = match node.ungrouped() {
+        Node::WrongReferenceKind {
+            sheet_name,
+            absolute_row,
+            absolute_column,
+            row,
+            column,
+        } => {
+            let corner = (*row, *column, *absolute_row, *absolute_column);
+            (sheet_name, corner, corner)
+        }
+        Node::WrongRangeKind {
+            sheet_name,
+            absolute_row1,
+            absolute_column1,
+            row1,
+            column1,
+            absolute_row2,
+            absolute_column2,
+            row2,
+            column2,
+        } => (
+            sheet_name,
+            (*row1, *column1, *absolute_row1, *absolute_column1),
+            (*row2, *column2, *absolute_row2, *absolute_column2),
+        ),
+        _ => return None,
+    };
+    let name = sheet_name.as_deref();
+    if !names_other_workbook(name) || name.is_some_and(|name| name.contains(':')) {
+        return None;
+    }
+    // Relative coordinates are offsets from the formula's cell, as for a reference on a sheet.
+    let absolute = |(row, column, absolute_row, absolute_column): (i32, i32, bool, bool)| {
+        (
+            row + if absolute_row { 0 } else { cell.row },
+            column + if absolute_column { 0 } else { cell.column },
+        )
+    };
+    let ((row1, column1), (row2, column2)) = (absolute(first), absolute(last));
+    let area = ExternalArea {
+        first_row: row1.min(row2),
+        first_column: column1.min(column2),
+        last_row: row1.max(row2),
+        last_column: column1.max(column2),
+    };
+    let on_grid = area.first_row >= 1
+        && area.first_column >= 1
+        && area.last_row <= LAST_ROW
+        && area.last_column <= LAST_COLUMN;
+    on_grid.then_some(area)
+}
+
 impl Model {
     /// The error of a spill range operator whose anchor is not a single reference. The `@` of a
     /// value (`=ANCHORARRAY(@1)`) is `#VALUE!` in Excel (probes/colon-hash-value-operands D3,
@@ -373,7 +414,7 @@ impl Model {
         cell: CellReferenceIndex,
         message: &str,
     ) -> CalcResult {
-        let error = if sheet_name.is_some_and(|name| name.contains('[')) {
+        let error = if names_other_workbook(sheet_name) {
             Error::BLOCKED
         } else if sheet_name.is_some_and(|name| name.contains(':')) {
             Error::NAME
@@ -385,7 +426,7 @@ impl Model {
 
     /// A reference-context operand: a reference, or an INDEX that selects one cell, which stays
     /// a reference: the anchor of `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109),
-    /// a lookup index argument and LOOKUP's result_vector (probes/lookup-vector-edges A9, A12).
+    /// a lookup index argument and LOOKUP's `result_vector` (probes/lookup-vector-edges A9, A12).
     pub(crate) fn eval_ref_or_index(
         &mut self,
         node: &Node,
@@ -422,7 +463,7 @@ impl Model {
 
     /// The operand of `#` and ANCHORARRAY: [`Model::eval_ref_or_index`], and the `@` of an IF
     /// that picks one cell keeps the reference, so `ANCHORARRAY(@IF(TRUE,D1))` spills D1#
-    /// (probes/at-signed-operand H71:H73, T-1321). Also LOOKUP's result_vector, for `@IF`
+    /// (probes/at-signed-operand H71:H73, T-1321). Also LOOKUP's `result_vector`, for `@IF`
     /// only (probes/at-if-spill-anchor-operand H50, T-1368); the other lookup callers of
     /// `eval_ref_or_index` have no evidence for `@IF`.
     pub(crate) fn spill_anchor_operand(
@@ -672,11 +713,12 @@ impl Model {
             let b = self.evaluate_intersection_operand(right, cell)?;
             return intersect_pair(&a, &b, cell)?.ok_or_else(|| empty_intersection(cell));
         }
-        let mut budget = MAX_AREA_PAIRS;
-        let mut areas = self.intersect_areas(left, right, cell, &mut budget)?;
-        match areas.pop() {
-            Some(area) if areas.is_empty() => Ok(area),
-            _ => Err(several_areas(cell)),
+        match self.intersect_areas(left, right, cell)? {
+            AreaList::One(area) => Ok(area),
+            areas => match &*areas {
+                [area] => Ok(area.clone()),
+                _ => Err(several_areas(cell)),
+            },
         }
     }
 
@@ -692,8 +734,7 @@ impl Model {
         right: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let mut budget = MAX_AREA_PAIRS;
-        match self.count_union_areas(left, right, cell, &mut budget) {
+        match self.count_union_areas(left, right, cell) {
             Ok(_) => several_areas(cell),
             Err(error) => error,
         }
@@ -708,7 +749,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Ranges, CalcResult> {
-        let areas = self.reference_areas(node, cell)?;
+        let areas = self.evaluate_areas(node, cell)?;
         Ranges::from_list(areas, cell)
     }
 
@@ -720,8 +761,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<Range>, CalcResult> {
-        let mut budget = MAX_AREA_PAIRS;
-        self.evaluate_areas(node, cell, &mut budget)
+        self.evaluate_areas(node, cell).map(AreaList::into_vec)
     }
 
     /// The number of areas `(left,right)` stands for, or the result to give instead, exactly
@@ -731,16 +771,15 @@ impl Model {
         left: &Node,
         right: &Node,
         cell: CellReferenceIndex,
-        budget: &mut usize,
     ) -> Result<usize, CalcResult> {
         let mut count = 0;
         for node in [left, right] {
             let node = node.ungrouped();
             count += match node {
                 Node::OpUnionKind { left, right, .. } => {
-                    self.count_union_areas(left, right, cell, budget)?
+                    self.count_union_areas(left, right, cell)?
                 }
-                _ => self.evaluate_union_operand(node, cell, budget)?.len(),
+                _ => self.evaluate_union_operand(node, cell)?.len(),
             };
             if count > MAX_AREAS {
                 return Err(too_many_areas(cell));
@@ -756,24 +795,28 @@ impl Model {
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
-        budget: &mut usize,
-    ) -> Result<Vec<Range>, CalcResult> {
+    ) -> Result<AreaList, CalcResult> {
         let node = node.ungrouped();
         match node {
-            Node::OpUnionKind { left, right, .. } => self.union_areas(left, right, cell, budget),
-            Node::OpIntersectKind { left, right, .. } => {
-                self.intersect_areas(left, right, cell, budget)
+            Node::OpUnionKind { left, right, .. } => {
+                self.union_areas(left, right, cell).map(AreaList::Owned)
             }
+            Node::OpIntersectKind { left, right, .. } => self.intersect_areas(left, right, cell),
             Node::NamedVariableKind { .. }
             | Node::DefinedNameKind(_)
             | Node::FunctionKind {
                 kind: Function::If | Function::Choose | Function::Let,
                 ..
             } => match self.evaluate_reference_arg(node, cell) {
-                RefArg::Ranges(Ranges::Areas(areas)) => Ok(areas.0.to_vec()),
-                other => Ok(vec![single_sheet_area(other.into_single_area(cell), cell)?]),
+                RefArg::Ranges(Ranges::Areas(Areas(areas))) => Ok(AreaList::Shared(areas)),
+                other => Ok(AreaList::One(single_sheet_area(
+                    other.into_single_area(cell),
+                    cell,
+                )?)),
             },
-            _ => Ok(vec![self.evaluate_intersection_operand(node, cell)?]),
+            _ => Ok(AreaList::One(
+                self.evaluate_intersection_operand(node, cell)?,
+            )),
         }
     }
 
@@ -785,14 +828,14 @@ impl Model {
         left: &Node,
         right: &Node,
         cell: CellReferenceIndex,
-        budget: &mut usize,
     ) -> Result<Vec<Range>, CalcResult> {
-        let mut areas = self.evaluate_union_operand(left, cell, budget)?;
-        let right = self.evaluate_union_operand(right, cell, budget)?;
-        if areas.len() + right.len() > MAX_AREAS {
+        let left = self.evaluate_union_operand(left, cell)?;
+        let right = self.evaluate_union_operand(right, cell)?;
+        if left.len() + right.len() > MAX_AREAS {
             return Err(too_many_areas(cell));
         }
-        areas.extend(right);
+        let mut areas = left.into_vec();
+        areas.extend_from_slice(&right);
         Ok(areas)
     }
 
@@ -803,8 +846,7 @@ impl Model {
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
-        budget: &mut usize,
-    ) -> Result<Vec<Range>, CalcResult> {
+    ) -> Result<AreaList, CalcResult> {
         if let Node::SheetSpanKind {
             first_index,
             last_index,
@@ -819,40 +861,43 @@ impl Model {
                 ));
             }
         }
-        self.evaluate_areas(node, cell, budget)
+        self.evaluate_areas(node, cell)
     }
 
     /// The pairwise intersections of the areas of `left` and `right` that hold a cell. A pair
     /// on different sheets is `#VALUE!`, and no shared cell at all is `#NULL!`. Unions of
     /// unions multiply the areas, so more than [`MAX_AREAS`] pairs is `#VALUE!`, and so is
-    /// going over what is left of the expression's `budget` of [`MAX_AREA_PAIRS`] (DEVIATION,
-    /// decision 0014: references.md "Union area cap").
+    /// going over what is left of the formula's budget of
+    /// [`MAX_AREA_PAIRS`](crate::area_budget::MAX_AREA_PAIRS) (DEVIATION, decision 0014:
+    /// references.md "Union area cap"). Two single areas give one, with no list.
     fn intersect_areas(
         &mut self,
         left: &Node,
         right: &Node,
         cell: CellReferenceIndex,
-        budget: &mut usize,
-    ) -> Result<Vec<Range>, CalcResult> {
-        let left = self.evaluate_areas(left, cell, budget)?;
-        let right = self.evaluate_areas(right, cell, budget)?;
+    ) -> Result<AreaList, CalcResult> {
+        let left = self.evaluate_areas(left, cell)?;
+        let right = self.evaluate_areas(right, cell)?;
         let pairs = left.len().saturating_mul(right.len());
         if pairs > MAX_AREAS {
             return Err(too_many_areas(cell));
         }
-        *budget = budget.checked_sub(pairs).ok_or_else(|| {
-            CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREA_PAIRS.to_string())
-        })?;
+        self.spend_area_pairs(pairs, cell)?;
+        if let ([a], [b]) = (&*left, &*right) {
+            return intersect_pair(a, b, cell)?
+                .map(AreaList::One)
+                .ok_or_else(|| empty_intersection(cell));
+        }
         let mut areas = Vec::new();
-        for a in &left {
-            for b in &right {
+        for a in left.iter() {
+            for b in right.iter() {
                 areas.extend(intersect_pair(a, b, cell)?);
             }
         }
         if areas.is_empty() {
             return Err(empty_intersection(cell));
         }
-        Ok(areas)
+        Ok(AreaList::Owned(areas))
     }
 
     /// An operand of the intersection as a single-sheet area with its corners in order, or

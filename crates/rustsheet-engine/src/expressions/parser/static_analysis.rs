@@ -86,7 +86,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             let mut new_node = child.as_ref().clone();
             add_implicit_intersection(&mut new_node, add);
             if matches!(&new_node, Node::ImplicitIntersection { .. }) {
-                *node = new_node
+                *node = new_node;
             }
         }
         Node::SpillRangeOperator { child } => {
@@ -123,13 +123,13 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::Group { .. } if add && at_outside(node) => *node = Node::automatic_at(node.clone()),
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } => {
             if add {
-                *node = Node::automatic_at(node.clone())
+                *node = Node::automatic_at(node.clone());
             }
         }
 
         // operations
         Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
-            add_implicit_intersection(child, add)
+            add_implicit_intersection(child, add);
         }
         Node::OpConcatenateKind { .. }
         | Node::OpSumKind { .. }
@@ -144,7 +144,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 // Not all defined names deserve the II operator
                 // For instance =Sheet1!A1 doesn't need to be intersected
                 if is_range_reference(&v.2) {
-                    *node = Node::automatic_at(Node::DefinedNameKind(v.to_owned()))
+                    *node = Node::automatic_at(Node::DefinedNameKind(v.to_owned()));
                 }
             }
         }
@@ -153,7 +153,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 *node = Node::automatic_at(Node::NamedVariableKind {
                     name: name.clone(),
                     id: *id,
-                })
+                });
             }
         }
         Node::TableNameKind(_) => {
@@ -185,7 +185,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                     StaticResult::Range(_, _) | StaticResult::Unknown
                 )
             {
-                *node = Node::automatic_at(node.clone())
+                *node = Node::automatic_at(node.clone());
             }
         }
     };
@@ -262,7 +262,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::OpPowerKind { .. }
         | Node::CompareKind { .. } => {
             for_each_chain_operand_mut(node, |operand| {
-                remove_redundant_implicit_intersection(operand, add)
+                remove_redundant_implicit_intersection(operand, add);
             });
         }
         Node::FunctionKind { kind, .. } if is_array_context(kind) => {}
@@ -486,14 +486,6 @@ enum Signature {
     Error,
 }
 
-fn args_signature_no_args(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 0 {
-        vec![]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
-
 fn args_signature_scalars(
     arg_count: usize,
     required_count: usize,
@@ -506,7 +498,7 @@ fn args_signature_scalars(
     }
 }
 
-/// FIELDVALUE(value, field_name): `value` may be an array (the result then has its shape).
+/// FIELDVALUE(value, `field_name)`: `value` may be an array (the result then has its shape).
 fn args_signature_fieldvalue(arg_count: usize) -> Vec<Signature> {
     if arg_count == 2 {
         vec![Signature::Vector, Signature::Scalar]
@@ -584,14 +576,13 @@ fn args_signature_ifs(arg_count: usize, first_criterion: usize) -> Vec<Signature
     signature
 }
 
-// 1 or none scalars
-fn args_signature_sheet(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 0 {
-        vec![]
-    } else if arg_count == 1 {
-        vec![Signature::Scalar]
-    } else {
-        vec![Signature::Error; arg_count]
+/// `CELL(info_type`, [reference]): a legacy formula does not intersect `reference` (C3 and C8 both
+/// read A1 for `A1:A5`; probes/info-cell-contents-range D3, D8, excel-graph, T-1230).
+fn args_signature_cell(arg_count: usize) -> Vec<Signature> {
+    match arg_count {
+        1 => vec![Signature::Scalar],
+        2 => vec![Signature::Scalar, Signature::Vector],
+        _ => vec![Signature::Error; arg_count],
     }
 }
 
@@ -980,7 +971,7 @@ fn args_signature_wrapcols(arg_count: usize) -> Vec<Signature> {
 fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signature> {
     match kind {
         Function::And => vec![Signature::Vector; arg_count],
-        Function::False => args_signature_no_args(arg_count),
+        Function::False => args_signature_scalars(arg_count, 0, 0),
         Function::If => args_signature_scalars(arg_count, 2, 1),
         Function::Iferror => args_signature_scalars(arg_count, 2, 0),
         Function::Ifna => args_signature_scalars(arg_count, 2, 0),
@@ -990,7 +981,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Not => args_signature_scalars(arg_count, 1, 0),
         Function::Or => vec![Signature::Vector; arg_count],
         Function::Switch => vec![Signature::Scalar; arg_count],
-        Function::True => args_signature_no_args(arg_count),
+        Function::True => args_signature_scalars(arg_count, 0, 0),
         Function::Xor => vec![Signature::Vector; arg_count],
         Function::Abs => args_signature_scalars(arg_count, 1, 0),
         Function::Acos => args_signature_scalars(arg_count, 1, 0),
@@ -1010,7 +1001,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Cosh => args_signature_scalars(arg_count, 1, 0),
         Function::Max => vec![Signature::Vector; arg_count],
         Function::Min => vec![Signature::Vector; arg_count],
-        Function::Pi => args_signature_no_args(arg_count),
+        Function::Pi => args_signature_scalars(arg_count, 0, 0),
         Function::Power => args_signature_scalars(arg_count, 2, 0),
         Function::Product => vec![Signature::Vector; arg_count],
         Function::Round => args_signature_scalars(arg_count, 2, 0),
@@ -1039,8 +1030,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Isomitted => args_signature_scalars(arg_count, 1, 0),
         Function::Isref => args_signature_one_vector(arg_count),
         Function::Istext => args_signature_scalars(arg_count, 1, 0),
-        Function::Na => args_signature_no_args(arg_count),
-        Function::Sheet => args_signature_sheet(arg_count),
+        Function::Na => args_signature_scalars(arg_count, 0, 0),
+        Function::Sheet => args_signature_scalars(arg_count, 0, 1),
         Function::Type => args_signature_one_vector(arg_count),
         Function::Address => args_signature_address(arg_count),
         Function::Areas | Function::Phonetic => args_signature_one_vector(arg_count),
@@ -1137,8 +1128,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Hour => args_signature_scalars(arg_count, 1, 0),
         Function::Minute => args_signature_scalars(arg_count, 1, 0),
         Function::Second => args_signature_scalars(arg_count, 1, 0),
-        Function::Now => args_signature_no_args(arg_count),
-        Function::Today => args_signature_no_args(arg_count),
+        Function::Now => args_signature_scalars(arg_count, 0, 0),
+        Function::Today => args_signature_scalars(arg_count, 0, 0),
         Function::Year => args_signature_scalars(arg_count, 1, 0),
         Function::Days => args_signature_scalars(arg_count, 2, 0),
         Function::Days360 => args_signature_scalars(arg_count, 2, 1),
@@ -1258,7 +1249,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Delta => args_signature_scalars(arg_count, 1, 1),
         Function::Gestep => args_signature_scalars(arg_count, 1, 1),
         Function::Subtotal | Function::Aggregate => args_signature_npv(arg_count),
-        Function::Rand => args_signature_no_args(arg_count),
+        Function::Rand => args_signature_scalars(arg_count, 0, 0),
         Function::Randbetween => args_signature_scalars(arg_count, 2, 0),
         Function::Formulatext => args_signature_scalars(arg_count, 1, 0),
         Function::Unicode => args_signature_scalars(arg_count, 1, 0),
@@ -1304,7 +1295,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Int => args_signature_scalars(arg_count, 1, 0),
         Function::Even => args_signature_scalars(arg_count, 1, 0),
         Function::Odd => args_signature_scalars(arg_count, 1, 0),
-        Function::Ceiling => args_signature_scalars(arg_count, 2, 0),
+        Function::Ceiling | Function::EcmaCeiling => args_signature_scalars(arg_count, 2, 0),
         Function::CeilingMath => args_signature_scalars(arg_count, 1, 2),
         Function::CeilingPrecise => args_signature_scalars(arg_count, 1, 1),
         Function::Floor => args_signature_scalars(arg_count, 2, 0),
@@ -1350,7 +1341,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         }
         Function::N => args_signature_scalars(arg_count, 1, 0),
         Function::Sheets => args_signature_scalars(arg_count, 0, 1),
-        Function::Cell => args_signature_scalars(arg_count, 1, 1),
+        Function::Cell => args_signature_cell(arg_count),
         Function::Info => args_signature_scalars(arg_count, 1, 1),
         Function::Daverage => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::Dcount => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
@@ -1680,7 +1671,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sin => scalar_arguments(args),
         Function::Sinh => scalar_arguments(args),
         Function::Sqrt => scalar_arguments(args),
-        Function::Sqrtpi => StaticResult::Scalar,
+        Function::Sqrtpi => scalar_arguments(args),
         Function::Sum => StaticResult::Scalar,
         Function::Sumif => criteria_static_result(args, 1),
         Function::Sumifs => criteria_static_result(args, 2),
@@ -1774,7 +1765,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Textjoin => not_implemented(args),
         Function::Trim => scalar_arguments(args),
         Function::Unicode => not_implemented(args),
-        Function::Unichar => not_implemented(args),
+        Function::Unichar => scalar_arguments(args),
         Function::Char => not_implemented(args),
         Function::Clean => scalar_arguments(args),
         Function::Code | Function::Bahttext => scalar_arguments(args),
@@ -1970,7 +1961,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Int => scalar_arguments(args),
         Function::Even => scalar_arguments(args),
         Function::Odd => scalar_arguments(args),
-        Function::Ceiling => scalar_arguments(args),
+        Function::Ceiling | Function::EcmaCeiling => scalar_arguments(args),
         Function::CeilingMath => scalar_arguments(args),
         Function::CeilingPrecise => scalar_arguments(args),
         Function::Floor => scalar_arguments(args),

@@ -162,7 +162,7 @@ impl Model {
                         return Err(CalcResult::new_error(
                             Error::VALUE,
                             cell,
-                            format!("Error in first array: {:?}", error),
+                            format!("Error in first array: {error:?}"),
                         ));
                     }
                     Ok(v) => v,
@@ -195,7 +195,7 @@ impl Model {
                         return Err(CalcResult::new_error(
                             Error::VALUE,
                             cell,
-                            format!("Error in second array: {:?}", error),
+                            format!("Error in second array: {error:?}"),
                         ));
                     }
                     Ok(v) => v,
@@ -220,7 +220,7 @@ impl Model {
                         return Err(CalcResult::new_error(
                             Error::VALUE,
                             cell,
-                            format!("Error in first array: {:?}", error),
+                            format!("Error in first array: {error:?}"),
                         ));
                     }
                     Ok(v) => v,
@@ -230,7 +230,7 @@ impl Model {
                         return Err(CalcResult::new_error(
                             Error::VALUE,
                             cell,
-                            format!("Error in second array: {:?}", error),
+                            format!("Error in second array: {error:?}"),
                         ));
                     }
                     Ok(v) => v,
@@ -279,11 +279,11 @@ impl Model {
     /// # Details
     /// Generally each argument is evaluated and the result is converted to a number. However there are some special
     /// cases:
-    /// - **Args evaluating to CalcResult::Range**: The sum of all the numbers in the range is calculated. No
+    /// - **Args evaluating to `CalcResult::Range`**: The sum of all the numbers in the range is calculated. No
     ///   conversions are performed, non-numeric values are ignored and errors are propagated.
-    /// - **Node::ReferenceKind args**: Similar to ranges, conversions are not performed on the evaluated value of the
+    /// - **`Node::ReferenceKind` args**: Similar to ranges, conversions are not performed on the evaluated value of the
     ///   referenced cell and errors are propagated.
-    /// - **Args evaluating to CalcResult::Error**: Errors are propagated.
+    /// - **Args evaluating to `CalcResult::Error`**: Errors are propagated.
     ///
     /// SUM's final addition snaps a near-zero result to 0 like `+`/`-` do, wherever the call sits
     /// (`=SUM(0.1,0.2,-0.3)`, `=(SUM(...))`, `=SUM(...)+0` and `=SUM(...)*1` all give 0:
@@ -291,19 +291,6 @@ impl Model {
     pub(crate) fn fn_sum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         match self.sum_with_last_addition(args, cell) {
             Ok(sum) => CalcResult::finite_number_or_num(sum.snapped(), cell),
-            Err(error) => error,
-        }
-    }
-
-    /// SUM without the near-zero snap, for PERCENTOF, whose Excel behavior is not observable
-    /// (`#NAME?` on excel-graph; docs/excel-semantics/numbers.md "Near-zero snapping").
-    pub(crate) fn fn_sum_unsnapped(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        match self.sum_with_last_addition(args, cell) {
-            Ok(sum) => CalcResult::finite_number_or_num(sum.total, cell),
             Err(error) => error,
         }
     }
@@ -318,7 +305,7 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         }
         let mut sum = SumParts::default();
-        // Excel: an error in a referenced cell ranks below an error in a direct argument, whichever
+        // Excel: an error in a referenced cell or an array ranks below an error in a direct argument, whichever
         // comes first, and the leftmost reference error wins (docs/excel-semantics/syntax.md,
         // "Stored #BUSY! behaviors", probes/sum-error-precedence). So a reference error is held
         // back until the direct arguments are known to be clean.
@@ -339,21 +326,24 @@ impl Model {
                     for value in array.into_iter().flatten() {
                         match value {
                             ArrayNode::Number(value) => sum.add(value),
-                            ArrayNode::Error(error) => {
-                                return Err(CalcResult::Error {
+                            // An error inside an array is not a scalar direct error: it ranks with
+                            // the reference errors (leftmost wins, a direct scalar error beats it;
+                            // probes/aggregate-error-precedence C50, C53, C61, C77).
+                            ArrayNode::Error(error) if reference_error.is_none() => {
+                                reference_error = Some(CalcResult::Error {
                                     error,
                                     origin: cell,
                                     message: "Error in array".to_string(),
-                                })
+                                });
                             }
-                            // Booleans and text in an array are ignored.
+                            // Later errors, booleans and text in an array are ignored.
                             _ => {}
                         }
                     }
                 }
                 RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
                 RefArg::Value(calc_result) => {
-                    sum.add(self.cast_aggregate_arg_to_number(calc_result, cell)?)
+                    sum.add(self.cast_aggregate_arg_to_number(calc_result, cell)?);
                 }
             };
         }

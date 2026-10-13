@@ -454,8 +454,7 @@ fn test_icon_rating_count_from_cell_value() {
         let rating = style.rating.unwrap();
         assert_eq!(
             rating.count, i as u32,
-            "row {} count should equal its value",
-            i
+            "row {i} count should equal its value"
         );
         assert_eq!(rating.max, 5, "max should always be 5");
     }

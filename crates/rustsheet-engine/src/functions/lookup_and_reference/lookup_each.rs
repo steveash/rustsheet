@@ -1,12 +1,11 @@
-//! VLOOKUP/HLOOKUP over an array or multi-cell lookup_value (T-0270).
+//! VLOOKUP/HLOOKUP over an array or multi-cell `lookup_value` (T-0270).
 
 use crate::{
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
     expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
-    functions::{
-        math_and_trigonometry::array_size::check_array_size, util::array_node_to_calc_result,
-    },
+    functions::util::array_node_to_calc_result,
+    limits::check_array_size,
     model::Model,
 };
 
@@ -18,7 +17,7 @@ pub(super) struct LookupSearch<'a> {
     pub(super) search_vector: &'a SearchVector,
     pub(super) index: LookupIndexArg,
     pub(super) size: i32,
-    /// The range_lookup argument: a boolean, or an array that lifts with the lookup value.
+    /// The `range_lookup` argument: a boolean, or an array that lifts with the lookup value.
     pub(super) is_sorted: CalcResult,
 }
 
@@ -80,8 +79,19 @@ impl Model {
                         message: "Not found".to_string(),
                     };
                 };
-                if let (false, LookupIndexArg::Array(grid)) = (lifts, &search.index) {
-                    return model.pick_each(grid, found, search.size, cell, &pick);
+                match (lifts, &search.index) {
+                    (false, LookupIndexArg::Array(grid)) => {
+                        return model.pick_each(grid, found, search.size, cell, &pick);
+                    }
+                    // Read only now that the value is found, so the range's size or errors never
+                    // hide a `#N/A`.
+                    (false, LookupIndexArg::Range { left, right }) => {
+                        return match model.evaluate_range(*left, *right, cell) {
+                            Ok(grid) => model.pick_each(&grid, found, search.size, cell, &pick),
+                            Err(error) => error,
+                        };
+                    }
+                    _ => {}
                 }
                 match model.resolve_lookup_index(index.clone(), search.size, cell) {
                     Ok(index) => pick(model, found, index, as_reference),

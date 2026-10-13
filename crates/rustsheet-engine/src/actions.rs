@@ -228,7 +228,7 @@ fn displace_cf_sqref(sqref: &str, data: &DisplaceData, sheet: u32) -> String {
 // I feel this is unimportant for now.
 
 /// Displaces a single formula string (with or without leading `=`) using `to_string_displaced`.
-/// CF formulas are stored in English (see [Model::user_formula_to_internal]),
+/// CF formulas are stored in English (see [`Model::user_formula_to_internal`]),
 /// so the caller must have the parser in the default (English) locale/language.
 fn displace_cf_formula_str(
     parser: &mut ExprParser,
@@ -473,7 +473,7 @@ impl Model {
         Ok(columns)
     }
 
-    /// Moves the contents of cell (source_row, source_column) to (target_row, target_column).
+    /// Moves the contents of cell (`source_row`, `source_column`) to (`target_row`, `target_column`).
     ///
     /// It assumes that the caller has already checked that the move is valid
     /// (e.g. it does not split an array formula). And that dynamic array spills have been reset.
@@ -1665,14 +1665,14 @@ impl Model {
     /// Moves a group of columns [column, column+column_count-1] by delta positions.
     /// CSE array formulas fully within the moved group are preserved as arrays.
     /// Displaces cells due to a move column action
-    /// from initial_column to target_column = initial_column + column_delta
+    /// from `initial_column` to `target_column` = `initial_column` + `column_delta`
     /// References will be updated following:
     /// Cell references:
-    ///    * All cell references to initial_column will go to target_column
-    ///    * All cell references to columns in between (initial_column, target_column] will be displaced one to the left
+    ///    * All cell references to `initial_column` will go to `target_column`
+    ///    * All cell references to columns in between (`initial_column`, `target_column`] will be displaced one to the left
     ///    * All other cell references are left unchanged
     ///      Ranges. This is the tricky bit:
-    ///    * Column is one of the extremes of the range. The new extreme would be target_column.
+    ///    * Column is one of the extremes of the range. The new extreme would be `target_column`.
     ///      Range is then normalized
     ///    * Any other case, range is left unchanged.
     ///      NOTE: This moves the data and column styles along with the formulas
@@ -1750,8 +1750,8 @@ impl Model {
     }
 
     /// Displaces cells due to a move row action
-    /// from initial_row to target_row = initial_row + row_delta
-    /// References will be updated following the same rules as move_column_action
+    /// from `initial_row` to `target_row` = `initial_row` + `row_delta`
+    /// References will be updated following the same rules as `move_column_action`
     /// NOTE: This moves the data and row styles along with the formulas
     /// Moves a group of rows [row, row+row_count-1] by delta positions.
     /// CSE array formulas fully within the moved group are preserved as arrays.

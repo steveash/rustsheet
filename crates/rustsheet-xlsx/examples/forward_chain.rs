@@ -11,7 +11,7 @@
 //! the column is. It is evaluated and saved as xlsx.
 //!
 //! Usage:
-//!   cargo run --release --example forward_chain -- [rows] [file]
+//!   cargo run --release --example `forward_chain` -- [rows] [file]
 //!
 //! Defaults: 1,000,000 rows, `forward-chain.xlsx`.
 

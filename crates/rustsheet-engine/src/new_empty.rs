@@ -27,8 +27,8 @@ use crate::{
     utils::ParsedReference,
 };
 
-use crate::reference_operators::VariableStack;
 use crate::tz::Tz;
+use crate::variable_stack::VariableStack;
 
 pub const APPLICATION: &str = "IronCalc Sheets";
 pub const APP_VERSION: &str = "10.0000";
@@ -43,7 +43,7 @@ fn is_valid_sheet_name(name: &str) -> bool {
 }
 
 impl Model {
-    /// Creates a new worksheet. Note that it does not check if the name or the sheet_id exists
+    /// Creates a new worksheet. Note that it does not check if the name or the `sheet_id` exists
     fn new_empty_worksheet(name: &str, sheet_id: u32, view_ids: &[&u32]) -> Worksheet {
         let mut views = HashMap::new();
         for id in view_ids {
@@ -592,8 +592,8 @@ impl Model {
         }
     }
 
-    /// Deletes a sheet by sheet_id. Fails if:
-    ///   * The sheet by sheet_id does not exists
+    /// Deletes a sheet by `sheet_id`. Fails if:
+    ///   * The sheet by `sheet_id` does not exists
     ///   * It is the last sheet
     pub fn delete_sheet_by_sheet_id(&mut self, sheet_id: u32) -> Result<(), String> {
         if let Some(sheet_index) = self.get_sheet_index_by_sheet_id(sheet_id) {
@@ -677,6 +677,7 @@ impl Model {
             tables: HashMap::new(),
             views,
             theme: Default::default(),
+            external_books: Vec::new(),
         };
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
@@ -699,6 +700,7 @@ impl Model {
             lambdas: HashMap::new(),
             last_lambda_id: 0,
             defined_names_running: Default::default(),
+            area_budget: Default::default(),
             evaluation: crate::evaluation::Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),

@@ -3,7 +3,7 @@ id: T-1279
 title: "Probe IFNA and ISFORMULA edge cases (evidence gap: 18 and 10 Excel cells)"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,10 +24,13 @@ Fill with `cd tools && uv run rustsheet-oracle fill -b excel-graph --suite probe
 Code: `fn_ifna` / `if_error_like` (crates/rustsheet-engine/src/functions/logical/mod.rs); `fn_isformula` (crates/rustsheet-engine/src/functions/information/mod.rs).
 
 ## Acceptance criteria
-- [ ] `probes/ifna-isformula-edges` is committed with its excel-graph oracle sidecar, and report.md's evidence table shows IFNA and ISFORMULA with 25 or more Excel cells each.
-- [ ] docs/excel-semantics/information.md (ISFORMULA) and logic.md (IFNA) record the results (VERIFIED, citing cells), including the spilled-child and empty-fallback answers.
-- [ ] Every failing probe cell is either fixed in this PR (only if local to the function) or filed as a task naming the cells; an IFNA-of-a-blank failure is attributed to the existing T-0291 instead of a new task. `make eval-baseline` shows no known failures outside the new case.
-- [ ] `make check` green; reviewers approve.
+- [x] `probes/ifna-isformula-edges` is committed with its excel-graph oracle sidecar, and report.md's evidence table shows IFNA and ISFORMULA with 25 or more Excel cells each.
+- [x] docs/excel-semantics/information.md (ISFORMULA) and logic.md (IFNA) record the results (VERIFIED, citing cells), including the spilled-child and empty-fallback answers.
+- [x] Every failing probe cell is either fixed in this PR (only if local to the function) or filed as a task naming the cells; an IFNA-of-a-blank failure is attributed to the existing T-0291 instead of a new task. `make eval-baseline` shows no known failures outside the new case.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IFERROR (1632 Excel cells) and the IFERROR/IFNA blank-cell rule itself (T-0291).
+
+## Outcome
+Added probes/ifna-isformula-edges (40 cells, excel-graph). 39 pass; `ISFORMULA(INDEX(range,1))` (Calc!B12) fails with #VALUE! and is filed as T-1453 (known failure in the probes baseline). IFNA and ISFORMULA semantics recorded in logic.md and information.md. `ISFORMULA(1)`/`ISFORMULA("A1")` were not probed (excel-graph refuses them, already documented).

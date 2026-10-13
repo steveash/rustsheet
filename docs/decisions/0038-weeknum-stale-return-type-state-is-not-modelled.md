@@ -1,6 +1,7 @@
 # 0038 — WEEKNUM stale return_type state is not modelled
 
-- **Status:** accepted (2026-10-06, T-1025)
+- **Status:** superseded by decision 0052 (2026-10-13). The stale state is a known gap, not a
+  deviation; T-1484 specifies reproducing it. Accepted 2026-10-06, T-1025.
 - **Context:**
   - In Excel, `WEEKNUM(serial, return_type)` with a return_type of 22 or more, or negative, is not
     an error: it reuses the start weekday of the last WEEKNUM with a valid type evaluated earlier

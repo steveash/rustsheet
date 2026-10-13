@@ -1,9 +1,13 @@
 use crate::{
-    expressions::token::Error, language::Language, locale::Locale,
-    number_format::to_excel_precision_str, types::*,
+    calc_result::CalcResult,
+    expressions::{token::Error, types::CellReferenceIndex},
+    language::Language,
+    locale::Locale,
+    number_format::to_excel_precision_str,
+    types::*,
 };
 
-/// A CellValue is the representation of the cell content.
+/// A `CellValue` is the representation of the cell content.
 #[derive(Debug, PartialEq)]
 pub enum CellValue {
     None,
@@ -205,6 +209,24 @@ fn formula_value_to_cell_value(v: &FormulaValue, language: &Language) -> CellVal
         FormulaValue::Number(n) => CellValue::Number(*n),
         FormulaValue::Text(s) => CellValue::String(s.clone()),
         FormulaValue::Error { ei, .. } => CellValue::String(ei.to_localized_error_string(language)),
+    }
+}
+
+/// A stored plain value (a spill cell's, or a linked workbook's cached cell) as a result; an error
+/// originates at `cell_reference`.
+pub(crate) fn spill_value_to_calc_result(
+    value: &SpillValue,
+    cell_reference: CellReferenceIndex,
+    language: &Language,
+) -> CalcResult {
+    match value {
+        SpillValue::Number(v) => CalcResult::Number(*v),
+        SpillValue::Boolean(v) => CalcResult::Boolean(*v),
+        SpillValue::Text(v) => CalcResult::String(v.clone()),
+        SpillValue::Error(ei) => {
+            let message = ei.to_localized_error_string(language);
+            CalcResult::new_error(ei.clone(), cell_reference, message)
+        }
     }
 }
 

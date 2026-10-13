@@ -3,7 +3,7 @@ id: T-1379
 title: "PRODUCT/MIN/MAX/AVERAGE: a direct scalar error beats a referenced error; SUM: scalar direct error beats array error and array vs reference is leftmost"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Follow-up of T-1334. Failing cells in probes/aggregate-error-precedence: C1, C5,
 
 ## Out of scope
 -
+
+## Outcome
+PRODUCT, MIN, MAX, AVERAGE hold back a referenced-cell error until the direct arguments are clean; SUM does the same for array errors. probes/aggregate-error-precedence passes all cells (16 baseline failures fixed, no regressions). `for_each_value` is shared with other statistical functions (MEDIAN, GEOMEAN, variance...), which now follow the same order; their Excel behavior is not probed.

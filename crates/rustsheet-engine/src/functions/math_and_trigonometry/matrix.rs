@@ -1,13 +1,25 @@
 use crate::{
     calc_result::CalcResult,
+    cast::NumberOrArray,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::math_and_trigonometry::array_size::check_array_size,
+    limits::check_array_size,
     model::Model,
 };
+
+/// MUNIT's dimension: the number truncated, `#VALUE!` below 1.
+fn munit_dimension(f: f64) -> Result<usize, Error> {
+    let n = f.trunc();
+    if n.is_nan() || n < 1.0 {
+        Err(Error::VALUE)
+    } else {
+        // A saturating cast: a huge dimension is rejected by the size check.
+        Ok(n as usize)
+    }
+}
 
 fn coerce_to_f64(node: &ArrayNode, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
     match node {
@@ -27,7 +39,7 @@ fn coerce_to_f64(node: &ArrayNode, cell: CellReferenceIndex) -> Result<f64, Calc
     }
 }
 
-/// Coerce a 2-D ArrayNode grid into a flat Vec<f64> in row-major order,
+/// Coerce a 2-D `ArrayNode` grid into a flat Vec<f64> in row-major order,
 /// returning the size n (asserts square).
 fn to_square_matrix(
     arr: &[Vec<ArrayNode>],
@@ -199,18 +211,35 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let n = match self.get_number(&args[0], cell) {
-            Ok(v) => v.trunc() as i64,
-            Err(e) => return e,
-        };
-        if n <= 0 {
-            return CalcResult::new_error(
-                Error::VALUE,
+        let operand = self.get_number_or_array(&args[0], cell);
+        // An array or range argument lifts: each element becomes the 1 at the top left of its own
+        // identity matrix, or the error it would give alone (probes/radians-sqrtpi-munit,
+        // docs/excel-semantics/numbers.md "RADIANS, SQRTPI and MUNIT", T-1282).
+        if matches!(operand, Ok(NumberOrArray::Array(_))) {
+            return self.lift_number_operands::<1>(
+                vec![operand],
                 cell,
-                "MUNIT requires a positive integer".to_string(),
+                "MUNIT requires a positive integer",
+                |[f]| {
+                    let n = munit_dimension(f)?;
+                    check_array_size(n, n).map_or(Ok(1.0), |(error, _)| Err(error))
+                },
             );
         }
-        let n = n as usize;
+        let n = match operand {
+            Ok(NumberOrArray::Number(v)) => match munit_dimension(v) {
+                Ok(n) => n,
+                Err(error) => {
+                    return CalcResult::new_error(
+                        error,
+                        cell,
+                        "MUNIT requires a positive integer".to_string(),
+                    )
+                }
+            },
+            Ok(NumberOrArray::Array(_)) => return CalcResult::new_args_number_error(cell),
+            Err(e) => return e,
+        };
         if let Some((error, message)) = check_array_size(n, n) {
             return CalcResult::new_error(error, cell, message);
         }

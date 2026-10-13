@@ -446,7 +446,7 @@ fn test_weeknum_function() {
     assert_eq!(model._get_text("A13"), *"#ERROR!");
     // Excel: return_type 0, 3-10 and 18-20 are always #NUM! (probes/weeknum-serial-0 C3, C4,
     // C18, C19, C25; T-1023). 22+ and negatives depend on calc order in Excel;
-    // we always give #NUM! (decision 0038).
+    // we give #NUM!, Excel's no-state value, until T-1484.
     assert_eq!(model._get_text("A14"), *"#NUM!");
     assert_eq!(model._get_text("A15"), *"#NUM!");
     assert_eq!(model._get_text("A16"), *"#NUM!");
@@ -1005,4 +1005,34 @@ fn datedif_date_errors_come_before_the_unit_error() {
     assert_eq!(model._get_text("A2"), *"#DIV/0!");
     assert_eq!(model._get_text("A3"), *"#N/A");
     assert_eq!(model._get_text("A4"), *"#NUM!");
+}
+
+// ACCRINT walks the schedule of first_interest, which in a 1904 workbook breaks from 9995-12-31
+// on: #NUM!, while 9995-12-30 still accrues (probes/date-system-1904-odd-accrint-bound A11, B11,
+// D11, A12, B15; T-1447).
+#[test]
+fn accrint_first_interest_past_the_1904_coupon_schedule_is_num() {
+    let mut model = new_empty_model();
+    model.workbook.settings.date_system = crate::types::DateSystem::Excel1904;
+    model._set(
+        "A1",
+        "=ACCRINT(DATE(9994,1,1),DATE(9995,12,30),DATE(9995,12,20),0.05,1000,2,0,TRUE)",
+    );
+    model._set(
+        "A2",
+        "=ACCRINT(DATE(9994,1,1),DATE(9995,12,31),DATE(9995,12,21),0.05,1000,2,0,TRUE)",
+    );
+    model._set(
+        "A3",
+        "=ACCRINT(DATE(9998,1,1),DATE(9999,12,31),DATE(9999,12,21),0.05,1000,2,0,FALSE)",
+    );
+    model._set(
+        "A4",
+        "=ACCRINT(DATE(9994,1,1),DATE(9995,6,30),DATE(9995,12,31),0.05,1000,2,1,FALSE)",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"98.47222222");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"75.27624309");
 }

@@ -1,0 +1,190 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "s",
+    "v": "1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A10": {
+    "t": "s",
+    "v": "1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa        "
+   },
+   "A11": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A12": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A13": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A14": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A15": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A16": {
+    "t": "s",
+    "v": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1"
+   },
+   "A17": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A18": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A19": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A20": {
+    "t": "s",
+    "v": "1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1"
+   },
+   "A21": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A22": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A23": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A24": {
+    "t": "s",
+    "v": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-"
+   },
+   "A25": {
+    "t": "s",
+    "v": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa--"
+   },
+   "A26": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A27": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A28": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A29": {
+    "t": "s",
+    "v": "xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A3": {
+    "t": "s",
+    "v": "1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A30": {
+    "t": "s",
+    "v": "xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A31": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A32": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A33": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A34": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A35": {
+    "t": "s",
+    "v": "7"
+   },
+   "A36": {
+    "t": "s",
+    "v": "7"
+   },
+   "A37": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A38": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A39": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A4": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A40": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A41": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A42": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A43": {
+    "t": "s",
+    "v": "1"
+   },
+   "A44": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A6": {
+    "t": "s",
+    "v": "1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa "
+   },
+   "A7": {
+    "t": "s",
+    "v": "1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  "
+   },
+   "A8": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A9": {
+    "t": "e",
+    "v": "#VALUE!"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "b17d1ef5ed42a0b7064a8fa21c72d00b2ca67e5b542208897692d4948db036e9",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-12T22:24:30+00:00",
+  "version": null
+ }
+}

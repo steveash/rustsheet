@@ -17,14 +17,19 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        // Serial 0 is "Saturday 0 January 1900": no calendar date, but WEEKNUM numbers it.
-        let date = match self.excel_date(serial, cell) {
-            Ok(d) => Some(d),
-            Err(_) if serial == 0 => None,
-            Err(e) => return e,
-        };
         let out_of_range =
             || CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
+        // The weeks are numbered on the 1900 calendar: a 1904 serial is shifted to it first, so
+        // `WEEKNUM(0)` is 1 there (1904-01-01; probes/date-system-1904-readers A5).
+        let Some(serial) = self.workbook.settings.date_system.to_1900_serial(serial) else {
+            return out_of_range();
+        };
+        // Serial 0 is "Saturday 0 January 1900": no calendar date, but WEEKNUM numbers it.
+        let date = match from_excel_date(serial) {
+            Ok(d) => Some(d),
+            Err(_) if serial == 0 => None,
+            Err(_) => return out_of_range(),
+        };
         // A boolean return_type is #VALUE! (`WEEKNUM(100,TRUE)`); text that reads as a number
         // is accepted (`WEEKNUM(100,"2")` = 16; probes/weeknum-serial-0 C35-C38, T-1023).
         let return_type = if args.len() == 2 {
@@ -55,8 +60,8 @@ impl Model {
             // 0, 3-10 and 18-20 are #NUM! (probes/weeknum-serial-0 C3, C4, C18, C19, C23-C26).
             // Excel gives 22+ and negatives the start weekday of the last valid WEEKNUM evaluated
             // earlier in the recalc, #NUM! only when none ran (probes/weeknum-stale-return-type,
-            // docs/excel-semantics/dates.md). That value depends on Excel's calc order, so we
-            // always give #NUM!, Excel's no-state value (DEVIATION, decision 0038).
+            // docs/excel-semantics/dates.md). That value depends on Excel's calc order; we give
+            // #NUM!, Excel's no-state value, until TODO(T-1484) reproduces the state.
             _ => return CalcResult::new_error(Error::NUM, cell, "Invalid return_type".to_string()),
         };
         // Excel numbers the weeks of 1900 as if serial 1 were a Sunday (the real 1 Jan 1900 is a

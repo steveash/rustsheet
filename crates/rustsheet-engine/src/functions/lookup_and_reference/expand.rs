@@ -16,7 +16,7 @@ impl Model {
     /// Expands or pads an array to the specified dimensions.
     ///   * rows    – target row count (must be >= current rows)
     ///   * columns – target column count (must be >= current columns); defaults to current columns
-    ///   * pad_with – value to fill new cells with; defaults to #N/A
+    ///   * `pad_with` – value to fill new cells with; defaults to #N/A
     pub(crate) fn fn_expand(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 4 {
             return CalcResult::new_args_number_error(cell);

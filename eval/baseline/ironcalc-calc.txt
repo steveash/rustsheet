@@ -808,7 +808,6 @@ F	ironcalc-calc/FINANCIAL/RATE.xlsx	Sheet1!G7
 F	ironcalc-calc/FINANCIAL/RATE.xlsx	Sheet1!G8
 F	ironcalc-calc/FINANCIAL/RATE.xlsx	Sheet1!G9
 F	ironcalc-calc/FINANCIAL/RRI.xlsx	Sheet1!D12
-F	ironcalc-calc/FINANCIAL/RRI.xlsx	Sheet1!E7
 F	ironcalc-calc/FINANCIAL/TBILLs.xlsx	Sheet1!D10
 F	ironcalc-calc/FINANCIAL/TBILLs.xlsx	Sheet1!D16
 F	ironcalc-calc/FINANCIAL/TBILLs.xlsx	Sheet1!D20
@@ -857,7 +856,6 @@ F	ironcalc-calc/FINANCIAL/XNPV.xlsx	Sheet1!R5
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!C11
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!C4
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!E4
-F	ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx	Sheet1!C15
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx	Sheet1!D14
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx	Sheet1!D26
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/COMBIN_COMBINA.xlsx	COMBIN_COMBINA!C16
@@ -876,8 +874,6 @@ F	ironcalc-calc/MATH_AND_TRIGONOMETRY/MULTINOMIAL.xlsx	Sheet1!B16
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/MULTINOMIAL.xlsx	Sheet1!B22
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/MULTINOMIAL.xlsx	Sheet1!B3
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/MULTINOMIAL.xlsx	Sheet1!D12
-F	ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx	Sheet1!D3
-F	ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx	Sheet1!F9
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx	inside_a_lambda!C3
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx	inside_a_lambda!C4
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/SEQUENCE.xlsx	Sheet1!I10

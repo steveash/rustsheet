@@ -5,6 +5,7 @@ use crate::functions::criteria::{
     build_criteria, build_criteria_with, wildcard_text_matcher, CriteriaFlavor,
 };
 use crate::locale::{get_locale, Locale};
+use crate::types::DateSystem;
 
 fn en_locale() -> &'static Locale {
     get_locale("en").unwrap()
@@ -42,14 +43,14 @@ fn year_2026() -> Option<i32> {
 #[test]
 fn test_build_criteria_is_number() {
     let c = CalcResult::Number(42.0);
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(42.0)));
     assert!(fn_criteria(&CalcResult::String("42".to_string())));
     assert!(fn_criteria(&CalcResult::String("42.00".to_string())));
     assert!(!fn_criteria(&CalcResult::Number(2.0)));
 
     let c = CalcResult::String("=42".to_string());
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(42.0)));
     assert!(fn_criteria(&CalcResult::String("42".to_string())));
     assert!(fn_criteria(&CalcResult::String("42.00".to_string())));
@@ -59,13 +60,13 @@ fn test_build_criteria_is_number() {
 #[test]
 fn test_build_criteria_is_bool() {
     let c = CalcResult::Boolean(true);
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Boolean(true)));
     assert!(!fn_criteria(&CalcResult::String("true".to_string())));
     assert!(!fn_criteria(&CalcResult::Number(1.0)));
 
     let c = CalcResult::String("=True".to_string());
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Boolean(true)));
     assert!(!fn_criteria(&CalcResult::String("true".to_string())));
     assert!(!fn_criteria(&CalcResult::Number(1.0)));
@@ -79,12 +80,12 @@ fn test_build_criteria_ordering_with_bool_operand() {
     let text = CalcResult::String("abc".to_string());
     for op in ["<", ">"] {
         let c = CalcResult::String(format!("{op}TRUE"));
-        let f = build_criteria(&c, en_locale(), &year_2026);
+        let f = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
         assert!(!f(&t) && !f(&text));
     }
     for op in ["<=", ">="] {
         let c = CalcResult::String(format!("{op}TRUE"));
-        let f = build_criteria(&c, en_locale(), &year_2026);
+        let f = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
         assert!(f(&t) && !f(&text) && !f(&CalcResult::Boolean(false)));
     }
 }
@@ -97,8 +98,20 @@ fn test_database_explicit_equals_is_exact_not_prefix() {
         CalcResult::String("ab".to_string()),
         CalcResult::String("=ab".to_string()),
     );
-    let plain = build_criteria_with(&plain_c, en_locale(), &year_2026, CriteriaFlavor::Database);
-    let exact = build_criteria_with(&exact_c, en_locale(), &year_2026, CriteriaFlavor::Database);
+    let plain = build_criteria_with(
+        &plain_c,
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+        CriteriaFlavor::Database,
+    );
+    let exact = build_criteria_with(
+        &exact_c,
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+        CriteriaFlavor::Database,
+    );
     assert!(plain(&abc) && !exact(&abc));
     assert!(exact(&CalcResult::String("AB".to_string())));
 }
@@ -106,7 +119,7 @@ fn test_database_explicit_equals_is_exact_not_prefix() {
 #[test]
 fn test_build_criteria_is_less_than() {
     let c = CalcResult::String("<100".to_string());
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Boolean(true)));
     assert!(!fn_criteria(&CalcResult::String("23".to_string())));
     assert!(fn_criteria(&CalcResult::Number(1.0)));
@@ -116,7 +129,7 @@ fn test_build_criteria_is_less_than() {
 #[test]
 fn test_build_criteria_is_less_wildcard() {
     let c = CalcResult::String("=D* G*".to_string());
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::String(
         "Diarmuid Glynn".to_string()
     )));
@@ -143,7 +156,7 @@ fn test_build_criteria_is_less_wildcard() {
 #[test]
 fn test_build_criteria_date_less_than() {
     let c = CalcResult::String("<7/31/2023".to_string());
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45137.0)));
     assert!(!fn_criteria(&CalcResult::Number(45138.0)));
     assert!(!fn_criteria(&CalcResult::Number(45139.0)));
@@ -152,7 +165,7 @@ fn test_build_criteria_date_less_than() {
 #[test]
 fn test_build_criteria_date_less_or_equal() {
     let c = CalcResult::String("<=7/31/2023".to_string());
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45137.0)));
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
     assert!(!fn_criteria(&CalcResult::Number(45139.0)));
@@ -161,7 +174,7 @@ fn test_build_criteria_date_less_or_equal() {
 #[test]
 fn test_build_criteria_date_greater_than() {
     let c = CalcResult::String(">7/31/2023".to_string());
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Number(45137.0)));
     assert!(!fn_criteria(&CalcResult::Number(45138.0)));
     assert!(fn_criteria(&CalcResult::Number(45139.0)));
@@ -170,7 +183,7 @@ fn test_build_criteria_date_greater_than() {
 #[test]
 fn test_build_criteria_date_greater_or_equal() {
     let c = CalcResult::String(">=7/31/2023".to_string());
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Number(45137.0)));
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
     assert!(fn_criteria(&CalcResult::Number(45139.0)));
@@ -179,7 +192,7 @@ fn test_build_criteria_date_greater_or_equal() {
 #[test]
 fn test_build_criteria_date_not_equal() {
     let c = CalcResult::String("<>7/31/2023".to_string());
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45137.0)));
     assert!(!fn_criteria(&CalcResult::Number(45138.0)));
     assert!(fn_criteria(&CalcResult::Number(45139.0)));
@@ -188,14 +201,14 @@ fn test_build_criteria_date_not_equal() {
 #[test]
 fn test_build_criteria_date_equal() {
     let c = CalcResult::String("7/31/2023".to_string());
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Number(45137.0)));
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
     assert!(!fn_criteria(&CalcResult::Number(45139.0)));
 
     // Same with a leading "=" prefix.
     let c = CalcResult::String("=7/31/2023".to_string());
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Number(45137.0)));
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
     assert!(!fn_criteria(&CalcResult::Number(45139.0)));
@@ -223,13 +236,13 @@ fn test_build_criteria_date_dmy_locale_en_gb() {
     // (M/D/Y) the would-be month is 31 and the parse must fail.
     let en_gb = get_locale("en-GB").unwrap();
     let c = CalcResult::String("<31/7/2023".to_string());
-    let fn_criteria = build_criteria(&c, en_gb, &year_2026);
+    let fn_criteria = build_criteria(&c, en_gb, &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45137.0)));
     assert!(!fn_criteria(&CalcResult::Number(45138.0)));
 
     // Under en, the same string is not a parseable date so it falls through to
     // string comparison; numeric cells must never match.
-    let fn_criteria_en = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria_en = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_criteria_en(&CalcResult::Number(45137.0)));
     assert!(!fn_criteria_en(&CalcResult::Number(45138.0)));
 }
@@ -240,12 +253,12 @@ fn test_build_criteria_date_dmy_locale_es() {
     // branches than the en-GB test above.
     let es = get_locale("es").unwrap();
     let c = CalcResult::String("31/7/2023".to_string());
-    let fn_criteria = build_criteria(&c, es, &year_2026);
+    let fn_criteria = build_criteria(&c, es, &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
     assert!(!fn_criteria(&CalcResult::Number(45137.0)));
 
     let c = CalcResult::String(">=31/7/2023".to_string());
-    let fn_criteria = build_criteria(&c, es, &year_2026);
+    let fn_criteria = build_criteria(&c, es, &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Number(45137.0)));
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
 }
@@ -256,13 +269,13 @@ fn test_build_criteria_date_dot_separator_locale_de() {
     // through parse_date, separate from `/` and `-`.
     let de = get_locale("de").unwrap();
     let c = CalcResult::String("<=31.7.2023".to_string());
-    let fn_criteria = build_criteria(&c, de, &year_2026);
+    let fn_criteria = build_criteria(&c, de, &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45137.0)));
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
     assert!(!fn_criteria(&CalcResult::Number(45139.0)));
 
     let c = CalcResult::String("<>31.7.2023".to_string());
-    let fn_criteria = build_criteria(&c, de, &year_2026);
+    let fn_criteria = build_criteria(&c, de, &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45137.0)));
     assert!(!fn_criteria(&CalcResult::Number(45138.0)));
 }
@@ -275,7 +288,7 @@ fn test_build_criteria_date_iso_is_locale_independent() {
     let iso = CalcResult::String("2023-07-31".to_string());
     for id in ["en", "en-GB", "es", "de", "fr", "it"] {
         let loc = get_locale(id).unwrap();
-        let fn_criteria = build_criteria(&iso, loc, &year_2026);
+        let fn_criteria = build_criteria(&iso, loc, &year_2026, DateSystem::default());
         assert!(
             fn_criteria(&CalcResult::Number(45138.0)),
             "ISO date should match 45138 under locale {id}"
@@ -294,12 +307,12 @@ fn test_build_criteria_date_locale_disambiguation() {
     // rather than silently defaulted.
     let c = CalcResult::String("3/7/2023".to_string());
 
-    let fn_en = build_criteria(&c, en_locale(), &year_2026);
+    let fn_en = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_en(&CalcResult::Number(44992.0))); // March 7
     assert!(!fn_en(&CalcResult::Number(45110.0))); // July 3
 
     let es = get_locale("es").unwrap();
-    let fn_es = build_criteria(&c, es, &year_2026);
+    let fn_es = build_criteria(&c, es, &year_2026, DateSystem::default());
     assert!(!fn_es(&CalcResult::Number(44992.0)));
     assert!(fn_es(&CalcResult::Number(45110.0)));
 }
@@ -310,13 +323,13 @@ fn test_build_criteria_date_localized_month_name() {
     // months_short list, so this only matches under the matching locale.
     let es = get_locale("es").unwrap();
     let c = CalcResult::String("=15-ene-2023".to_string());
-    let fn_es = build_criteria(&c, es, &year_2026);
+    let fn_es = build_criteria(&c, es, &year_2026, DateSystem::default());
     assert!(fn_es(&CalcResult::Number(44941.0))); // 2023-01-15
     assert!(!fn_es(&CalcResult::Number(44942.0)));
 
     // Under en, "ene" is not a known month — parse fails and the criterion
     // falls back to string equality, so no Number cell should match.
-    let fn_en = build_criteria(&c, en_locale(), &year_2026);
+    let fn_en = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_en(&CalcResult::Number(44941.0)));
 }
 
@@ -324,7 +337,7 @@ fn test_build_criteria_date_localized_month_name() {
 #[test]
 fn test_build_criteria_not_equal_text_matches_non_text() {
     let c = CalcResult::String("<>Banana".to_string());
-    let f = build_criteria(&c, en_locale(), &year_2026);
+    let f = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(f(&CalcResult::String("Apple".to_string())));
     assert!(!f(&CalcResult::String("BANANA".to_string())));
     assert!(f(&CalcResult::Number(1.0)));
@@ -336,14 +349,26 @@ fn test_build_criteria_not_equal_text_matches_non_text() {
 #[test]
 fn test_build_criteria_database_flavor_prefix_equality() {
     let c = CalcResult::String("ab".to_string());
-    let db = build_criteria_with(&c, en_locale(), &year_2026, CriteriaFlavor::Database);
+    let db = build_criteria_with(
+        &c,
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+        CriteriaFlavor::Database,
+    );
     assert!(db(&CalcResult::String("ABc".to_string())));
     assert!(!db(&CalcResult::String("xab".to_string())));
-    let std = build_criteria(&c, en_locale(), &year_2026);
+    let std = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!std(&CalcResult::String("abc".to_string())));
     // Operators are unaffected by the flavor.
     let ne = CalcResult::String("<>ab".to_string());
-    let db_ne = build_criteria_with(&ne, en_locale(), &year_2026, CriteriaFlavor::Database);
+    let db_ne = build_criteria_with(
+        &ne,
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+        CriteriaFlavor::Database,
+    );
     assert!(db_ne(&CalcResult::String("abc".to_string())));
     // A blank cell only starts with the empty string.
     assert!(!db(&CalcResult::EmptyCell));
@@ -369,7 +394,7 @@ fn test_padded_numeric_operand_compares_numerically() {
     let locale = en_locale();
     let hits = |criteria: &str, n: f64| {
         let crit = CalcResult::String(criteria.to_string());
-        let matcher = build_criteria(&crit, locale, &year_2026);
+        let matcher = build_criteria(&crit, locale, &year_2026, DateSystem::default());
         matcher(&CalcResult::Number(n))
     };
     assert!(hits("> 1", 2.0) && !hits("> 1", 1.0));
@@ -386,11 +411,11 @@ fn test_padded_numeric_operand_compares_numerically() {
 #[test]
 fn test_build_criteria_bare_equals_skips_empty_string() {
     let eq_c = CalcResult::String("=".to_string());
-    let eq = build_criteria(&eq_c, en_locale(), &year_2026);
+    let eq = build_criteria(&eq_c, en_locale(), &year_2026, DateSystem::default());
     assert!(!eq(&CalcResult::String(String::new())));
     assert!(eq(&CalcResult::EmptyCell));
     let empty_c = CalcResult::String(String::new());
-    let empty = build_criteria(&empty_c, en_locale(), &year_2026);
+    let empty = build_criteria(&empty_c, en_locale(), &year_2026, DateSystem::default());
     assert!(empty(&CalcResult::String(String::new())));
     assert!(empty(&CalcResult::EmptyCell));
 }
@@ -399,13 +424,23 @@ fn test_build_criteria_bare_equals_skips_empty_string() {
 #[test]
 fn test_build_criteria_number_tolerance_is_relative() {
     let one_plus_ulp = 1.0 + f64::EPSILON;
-    let fn_criteria = build_criteria(&CalcResult::Number(1.0), en_locale(), &year_2026);
+    let fn_criteria = build_criteria(
+        &CalcResult::Number(1.0),
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+    );
     assert!(fn_criteria(&CalcResult::Number(one_plus_ulp)));
-    let fn_criteria = build_criteria(&CalcResult::Number(0.0), en_locale(), &year_2026);
+    let fn_criteria = build_criteria(
+        &CalcResult::Number(0.0),
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+    );
     assert!(!fn_criteria(&CalcResult::Number(1e-17)));
     assert!(fn_criteria(&CalcResult::Number(0.0)));
     let c = CalcResult::String("<>1".to_string());
-    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Number(one_plus_ulp)));
 }
 

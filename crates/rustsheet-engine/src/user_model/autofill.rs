@@ -365,7 +365,7 @@ impl UserModel {
             return Err(format!("Invalid row: '{row1}'"));
         }
         if width <= 0 || height <= 0 {
-            return Err(format!("Invalid width='{}' or height='{}'", width, height));
+            return Err(format!("Invalid width='{width}' or height='{height}'"));
         }
 
         let last_column = column1 + width - 1;
@@ -544,7 +544,7 @@ impl UserModel {
             return Err(format!("Invalid row: '{row1}'"));
         }
         if width <= 0 || height <= 0 {
-            return Err(format!("Invalid width='{}' or height='{}'", width, height));
+            return Err(format!("Invalid width='{width}' or height='{height}'"));
         }
 
         let last_column = column1 + width - 1;

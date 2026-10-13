@@ -5,6 +5,8 @@ use std::collections::HashMap;
 pub(crate) mod time_text;
 mod weekend;
 mod weeknum;
+mod workday;
+mod yearfrac;
 use weekend::WeekendPattern;
 
 const SECONDS_PER_DAY: i32 = 86_400;
@@ -169,14 +171,12 @@ use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
 use crate::functions::text::text_arg::broadcast_text;
 use crate::functions::util::array_node_to_calc_result;
 use crate::number_format::parse_excel_number;
+use crate::types::DateSystem;
 use crate::{
     calc_result::{CalcResult, Range},
-    constants::EXCEL_DATE_BASE,
     expressions::parser::{ArrayNode, Node},
     expressions::token::Error,
-    formatter::dates::{
-        excel_serial_to_ymd, from_excel_date, month_arithmetic_date, real_date_to_serial,
-    },
+    formatter::dates::{excel_serial_to_ymd, month_arithmetic_date, real_date_to_serial},
     model::Model,
 };
 
@@ -292,6 +292,12 @@ impl Model {
             }
             Err(s) => return s,
         };
+        // The month arithmetic runs on the 1900 calendar; in a 1904 workbook the serial counts
+        // from 1904-01-01 (probes/date-system-1904-readers A7).
+        let date_system = self.workbook.settings.date_system;
+        let Some(serial_number) = date_system.to_1900_serial(serial_number) else {
+            return CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
+        };
         if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
             return CalcResult::Error {
                 error: Error::NUM,
@@ -330,7 +336,9 @@ impl Model {
         }
         let last_day = chrono::NaiveDate::from_ymd_opt(year, month, 1).and_then(|d| d.pred_opt());
         match last_day.and_then(real_date_to_serial) {
-            Some(serial) => CalcResult::Number(f64::from(serial)),
+            Some(serial) => CalcResult::Number(
+                date_system.signed_serial_from_1900_serial(i64::from(serial)) as f64,
+            ),
             None => CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
@@ -362,7 +370,8 @@ impl Model {
                     year += 1900;
                 }
                 // In a 1904 workbook the serial counts from 1904-01-01 (`DATE(1904,1,1)` is 0).
-                // An earlier day is #NUM! here; Excel is unprobed for it (T-1416).
+                // An earlier day is #NUM!, `DATE(1903,12,31)` and `DATE(0,1,1)` included
+                // (probes/date-system-1904-readers A29, A31).
                 permissive_date_to_serial_number(day, month, year)
                     .ok()
                     .and_then(|serial| date_system.serial_from_1900_serial(i64::from(serial)))
@@ -382,7 +391,12 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let Some(date) = month_arithmetic_date(serial_number) else {
+        // As in EOMONTH: 1900-calendar arithmetic on a 1904 serial shifted to it (A6).
+        let date_system = self.workbook.settings.date_system;
+        let Some((serial_number, date)) = date_system
+            .to_1900_serial(serial_number)
+            .and_then(|serial| month_arithmetic_date(serial).map(|date| (serial, date)))
+        else {
             return CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
         };
         let months = match self.get_number_no_bools(&args[1], cell) {
@@ -401,7 +415,9 @@ impl Model {
         // serial before that month's first day (EDATE(0,1) = 31, EDATE(0,12) = 366).
         let day_offset = i32::from(serial_number == 0);
         match real_date_to_serial(native_date) {
-            Some(serial) => CalcResult::Number(f64::from(serial - day_offset)),
+            Some(serial) => CalcResult::Number(
+                date_system.signed_serial_from_1900_serial(i64::from(serial - day_offset)) as f64,
+            ),
             None => CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
@@ -557,9 +573,9 @@ impl Model {
         serial: i64,
         cell: CellReferenceIndex,
     ) -> Result<chrono::NaiveDate, CalcResult> {
-        match from_excel_date(serial) {
-            Ok(date) => Ok(date),
-            Err(_) => Err(CalcResult::Error {
+        match self.workbook.settings.date_system.date_of_serial(serial) {
+            Some(date) => Ok(date),
+            None => Err(CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
                 message: "Out of range parameters for date".to_string(),
@@ -702,7 +718,7 @@ impl Model {
             if holidays.contains(&serial) {
                 continue;
             }
-            let Ok(date) = from_excel_date(serial) else {
+            let Some(date) = self.workbook.settings.date_system.date_of_serial(serial) else {
                 continue;
             };
             per_weekday[date.weekday().number_from_monday() as usize - 1] += 1;
@@ -732,7 +748,7 @@ impl Model {
             Err(_) => Err(CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,
-                message: format!("Invalid timezone: {}", tz_str),
+                message: format!("Invalid timezone: {tz_str}"),
             }),
         }
     }
@@ -820,7 +836,7 @@ impl Model {
         };
         broadcast_text(cell, &[&text], |i, j| {
             let text = array_node_to_string(text.elem(i, j))?;
-            time_text::parse_time_string(&text, self.locale, &|| self.current_year())
+            self.parse_time_text(&text)
                 .map(ArrayNode::Number)
                 .ok_or(Error::VALUE)
         })
@@ -875,8 +891,9 @@ impl Model {
                 })
             })
             .collect();
+        let date_system = self.workbook.settings.date_system;
         self.lift_number_operands(operands, cell, "Invalid arguments", |[start, end]| {
-            Self::datedif_value(start, end, unit.as_deref().map_err(error_kind))
+            Self::datedif_value(date_system, start, end, unit.as_deref().map_err(error_kind))
         })
     }
 
@@ -898,6 +915,7 @@ impl Model {
 
     /// DATEDIF of two date serials for the (upper-cased) `unit`.
     fn datedif_value(
+        date_system: DateSystem,
         start_serial: f64,
         end_serial: f64,
         unit: Result<&str, Error>,
@@ -906,8 +924,8 @@ impl Model {
         if end_serial < start_serial {
             return Err(Error::NUM);
         }
-        let start = from_excel_date(start_serial).map_err(|_| Error::NUM)?;
-        let end = from_excel_date(end_serial).map_err(|_| Error::NUM)?;
+        let start = date_system.date_of_serial(start_serial).ok_or(Error::NUM)?;
+        let end = date_system.date_of_serial(end_serial).ok_or(Error::NUM)?;
         match unit? {
             "Y" => {
                 let mut years = end.year() - start.year();
@@ -1023,14 +1041,20 @@ impl Model {
             Ok(false)
         };
         // Both dates lift over a range or array (probes/date-argument-modes F15:F18).
+        let date_system = self.workbook.settings.date_system;
         self.lift_numbers(
             args,
             cell,
             "Out of range parameters for date",
             |[start, end]| {
                 let method = method.as_ref().map_err(error_kind)?;
-                let start = excel_serial_to_ymd(days360_serial(start)).ok_or(Error::NUM)?;
-                let end = excel_serial_to_ymd(days360_serial(end)).ok_or(Error::NUM)?;
+                let ymd = |serial| {
+                    date_system
+                        .to_1900_serial(days360_serial(serial))
+                        .and_then(excel_serial_to_ymd)
+                        .ok_or(Error::NUM)
+                };
+                let (start, end) = (ymd(start)?, ymd(end)?);
                 Ok(if *method {
                     days360_eu(start, end)
                 } else {
@@ -1044,17 +1068,20 @@ impl Model {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
+        let date_system = self.workbook.settings.date_system;
+        let date = move |serial: f64| {
+            date_system
+                .date_of_serial(serial.floor() as i64)
+                .ok_or(Error::NUM)
+        };
         if args.len() == 1 {
             // Broadcasts element-wise over a range/array date argument.
-            return self.apply_number_unary(&args[0], cell, |serial| {
-                let date = from_excel_date(serial.floor() as i64).map_err(|_| Error::NUM)?;
-                weekday_number(date, 1)
-            });
+            return self
+                .apply_number_unary(&args[0], cell, |serial| weekday_number(date(serial)?, 1));
         }
         // The return type lifts too (probes/date-argument-modes F51:F52).
         self.lift_numbers(args, cell, "Invalid arguments", |[serial, return_type]| {
-            let date = from_excel_date(serial.floor() as i64).map_err(|_| Error::NUM)?;
-            weekday_number(date, return_type as i32)
+            weekday_number(date(serial)?, return_type as i32)
         })
     }
 
@@ -1063,275 +1090,11 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         // Broadcasts element-wise over a range/array date argument.
+        let date_system = self.workbook.settings.date_system;
         self.apply_number_unary(&args[0], cell, |serial| {
-            weeknum::iso_week(serial.floor() as i64)
+            let serial = date_system.to_1900_serial(serial.floor() as i64);
+            weeknum::iso_week(serial.ok_or(Error::NUM)?)
         })
-    }
-
-    fn is_weekend(day: chrono::Weekday, weekend_mask: &[bool; 7]) -> bool {
-        match day {
-            chrono::Weekday::Mon => weekend_mask[0],
-            chrono::Weekday::Tue => weekend_mask[1],
-            chrono::Weekday::Wed => weekend_mask[2],
-            chrono::Weekday::Thu => weekend_mask[3],
-            chrono::Weekday::Fri => weekend_mask[4],
-            chrono::Weekday::Sat => weekend_mask[5],
-            chrono::Weekday::Sun => weekend_mask[6],
-        }
-    }
-
-    pub(crate) fn fn_workday(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(2..=3).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let start_serial = match self.get_number_no_bools(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let mut date = match self.excel_date(start_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let mut days = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.floor() as i32,
-            Err(s) => return s,
-        };
-        let weekend = DEFAULT_WEEKEND;
-        let holiday_set = match self.get_holiday_set(args.get(2), cell) {
-            Ok(h) => h,
-            Err(e) => return e,
-        };
-        while days != 0 {
-            if days > 0 {
-                if date.num_days_from_ce() - EXCEL_DATE_BASE >= MAXIMUM_DATE_SERIAL_NUMBER {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
-                    };
-                }
-                date += chrono::Duration::days(1);
-                if !Self::is_weekend(date.weekday(), &weekend) && !holiday_set.contains(&date) {
-                    days -= 1;
-                }
-            } else {
-                if date.num_days_from_ce() - EXCEL_DATE_BASE <= MINIMUM_DATE_SERIAL_NUMBER {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
-                    };
-                }
-                date -= chrono::Duration::days(1);
-                if !Self::is_weekend(date.weekday(), &weekend) && !holiday_set.contains(&date) {
-                    days += 1;
-                }
-            }
-        }
-        let serial = date.num_days_from_ce() - EXCEL_DATE_BASE;
-        CalcResult::Number(serial as f64)
-    }
-
-    fn get_holiday_set(
-        &mut self,
-        arg_option: Option<&Node>,
-        cell: CellReferenceIndex,
-    ) -> Result<std::collections::HashSet<chrono::NaiveDate>, CalcResult> {
-        let mut holiday_set = std::collections::HashSet::new();
-
-        if let Some(arg) = arg_option {
-            self.collect_serial_numbers(arg, cell, |serial| match from_excel_date(serial) {
-                Ok(date) => {
-                    holiday_set.insert(date);
-                    Ok(())
-                }
-                Err(_) => Err(CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid holiday date".to_string(),
-                }),
-            })?;
-        }
-
-        Ok(holiday_set)
-    }
-
-    pub(crate) fn fn_workday_intl(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        if !(2..=4).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let start_serial = match self.get_number_no_bools(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let date = match self.excel_date(start_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let days = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.floor() as i32,
-            Err(s) => return s,
-        };
-        let weekend = match self.weekend_arg(args.get(2), cell) {
-            Ok(w) => w,
-            Err(e) => return e,
-        };
-        let holiday_set = match self.get_holiday_set(args.get(3), cell) {
-            Ok(h) => h,
-            Err(e) => return e,
-        };
-
-        weekend.lift(|weekend_mask| {
-            // Checks if all days are weekends
-            if weekend_mask == [true; 7] {
-                return Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Invalid weekend mask".to_string(),
-                ));
-            }
-            let out_of_range =
-                || CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
-            let (mut date, mut days) = (date, days);
-            while days != 0 {
-                if days > 0 {
-                    if date.num_days_from_ce() - EXCEL_DATE_BASE >= MAXIMUM_DATE_SERIAL_NUMBER {
-                        return Err(out_of_range());
-                    }
-                    date += chrono::Duration::days(1);
-                    if !Self::is_weekend(date.weekday(), &weekend_mask)
-                        && !holiday_set.contains(&date)
-                    {
-                        days -= 1;
-                    }
-                } else {
-                    if date.num_days_from_ce() - EXCEL_DATE_BASE <= MINIMUM_DATE_SERIAL_NUMBER {
-                        return Err(out_of_range());
-                    }
-                    date -= chrono::Duration::days(1);
-                    if !Self::is_weekend(date.weekday(), &weekend_mask)
-                        && !holiday_set.contains(&date)
-                    {
-                        days += 1;
-                    }
-                }
-            }
-            Ok(f64::from(date.num_days_from_ce() - EXCEL_DATE_BASE))
-        })
-    }
-
-    pub(crate) fn fn_yearfrac(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(2..=3).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let start_serial = match self.get_number_no_bools(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let end_serial = match self.get_number_no_bools(&args[1], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let basis = if args.len() == 3 {
-            match self.get_number_no_bools(&args[2], cell) {
-                Ok(f) => f as i32,
-                Err(s) => return s,
-            }
-        } else {
-            0
-        };
-        let start_date = match self.excel_date(start_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let end_date = match self.excel_date(end_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let days = (end_date - start_date).num_days() as f64;
-        let result = match basis {
-            0 => {
-                // YEARFRAC basis 0 uses the financial US 30/360 convention
-                // (`dateDiff360Us`, ModifyStartDate), which differs from the
-                // DAYS360 worksheet function for February month-ends: a
-                // February-end *end* date only collapses to 30 when the *start*
-                // is also a February month-end, and the `end == 31` rule tests
-                // the original (un-normalised) start day.
-                let last_day_feb = |year: i32| if is_leap_year(year) { 29 } else { 28 };
-                let sd_is_feb_last =
-                    start_date.month() == 2 && start_date.day() == last_day_feb(start_date.year());
-                let ed_is_feb_last =
-                    end_date.month() == 2 && end_date.day() == last_day_feb(end_date.year());
-                let mut sd_day = start_date.day() as i32;
-                let mut ed_day = end_date.day() as i32;
-
-                if ed_is_feb_last && sd_is_feb_last {
-                    ed_day = 30;
-                }
-                if ed_day == 31 && sd_day >= 30 {
-                    ed_day = 30;
-                }
-                if sd_day == 31 {
-                    sd_day = 30;
-                }
-                if sd_is_feb_last {
-                    sd_day = 30;
-                }
-                let d360 = (end_date.year() - start_date.year()) * 360
-                    + (end_date.month() as i32 - start_date.month() as i32) * 30
-                    + (ed_day - sd_day);
-                d360 as f64 / 360.0
-            }
-            1 => {
-                // Actual/Actual. Port of ExcelFinancialFunctions
-                // `ActualActual.DaysInYear`: yearfrac = actual_days / DaysInYear.
-                let (y1, m1, d1) = (start_date.year(), start_date.month(), start_date.day());
-                let (y2, m2, d2) = (end_date.year(), end_date.month(), end_date.day());
-
-                // lessOrEqualToAYearApart
-                let within_a_year =
-                    y1 == y2 || (y2 == y1 + 1 && (m1 > m2 || (m1 == m2 && d1 >= d2)));
-
-                let days_in_year = if !within_a_year {
-                    // Dates more than a year apart: average the calendar-year
-                    // lengths spanned, inclusive of both end years.
-                    let tot_days: i64 = (y1..=y2)
-                        .map(|y| if is_leap_year(y) { 366 } else { 365 })
-                        .sum();
-                    tot_days as f64 / (y2 - y1 + 1) as f64
-                } else {
-                    // considerAsBisestile
-                    let consider = (y1 == y2 && is_leap_year(y1))
-                        || (m2 == 2 && d2 == 29)
-                        || is_feb29_between_consecutive_years(start_date, end_date);
-                    if consider {
-                        366.0
-                    } else {
-                        365.0
-                    }
-                };
-                days / days_in_year
-            }
-            2 => days / 360.0,
-            3 => days / 365.0,
-            4 => {
-                let d360 = self.fn_days360(
-                    &[args[0].clone(), args[1].clone(), Node::NumberKind(1.0)],
-                    cell,
-                );
-                if let CalcResult::Number(n) = d360 {
-                    n / 360.0
-                } else {
-                    return d360;
-                }
-            }
-            _ => return CalcResult::new_error(Error::NUM, cell, "Invalid basis".to_string()),
-        };
-        CalcResult::Number(result.abs())
     }
 }
 

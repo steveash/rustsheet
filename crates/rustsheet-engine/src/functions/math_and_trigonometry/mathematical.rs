@@ -1,9 +1,9 @@
-use crate::arithmetic::{flush_subnormal, power};
+use crate::arithmetic::{divide, flush_subnormal, power};
 use crate::cast::NumberOrArray;
 use crate::constants::EXCEL_PRECISION;
+use crate::decimal_round::{round_decimal, RoundMode};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::math_and_trigonometry::decimal_round::{round_decimal, RoundMode};
 use crate::number_format::to_excel_precision;
 use crate::reference_operators::RefArg;
 use crate::single_number_fn;
@@ -33,13 +33,18 @@ impl Model {
         pick: fn(f64, f64) -> f64,
     ) -> CalcResult {
         let mut result = f64::NAN;
+        // A referenced-cell error ranks below a direct scalar error; the leftmost wins
+        // (probes/aggregate-error-precedence C9-C24).
+        let mut reference_error = None;
         for arg in args {
             match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
-                    if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
-                        result = pick(value, result);
-                    }) {
-                        return error;
+                    if reference_error.is_none() {
+                        if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
+                            result = pick(value, result);
+                        }) {
+                            reference_error = Some(error);
+                        }
                     }
                 }
                 RefArg::Value(CalcResult::Array(array)) => {
@@ -59,6 +64,9 @@ impl Model {
                     Err(error) => return error,
                 },
             }
+        }
+        if let Some(error) = reference_error {
+            return error;
         }
         if result.is_nan() || result.is_infinite() {
             return CalcResult::Number(0.0);
@@ -182,8 +190,8 @@ impl Model {
         CalcResult::finite_number_or_num(flush_subnormal(result), cell)
     }
 
-    /// SUMIF(criteria_range, criteria, [sum_range])
-    /// if sum_range is missing then criteria_range will be used.
+    /// `SUMIF(criteria_range`, criteria, [`sum_range`])
+    /// if `sum_range` is missing then `criteria_range` will be used.
     ///
     /// The `criteria` argument may be a single value, a range or an array; in the
     /// latter two cases SUMIF spills one sum per criterion (see `Model::lift_criteria`).
@@ -197,7 +205,7 @@ impl Model {
         self.sumif(criteria_range, criteria, sum_range, cell)
     }
 
-    /// SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...)
+    /// `SUMIFS(sum_range`, `criteria_range1`, criteria1, [`criteria_range2`, criteria2], ...)
     pub(crate) fn fn_sumifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.sum_ifs(args, cell, true)
     }
@@ -586,11 +594,36 @@ impl Model {
     } else {
         Ok(f64::sqrt(f))
     });
-    single_number_fn!(fn_sqrtpi, |f: f64| if f < 0.0 {
-        Err(Error::NUM)
-    } else {
-        Ok((f * PI).sqrt())
-    });
+    /// SQRTPI. Unlike RADIANS, a boolean argument is `#VALUE!` (a literal, a comparison, a cell
+    /// reference or an array element), while numeric text is read (probes/radians-sqrtpi-munit,
+    /// docs/excel-semantics/numbers.md "RADIANS, SQRTPI and MUNIT", T-1282).
+    pub(crate) fn fn_sqrtpi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = self.evaluate_node_in_context(&args[0], cell);
+        if matches!(value, CalcResult::Boolean(_)) {
+            return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
+        }
+        let operand = match self.number_or_array(value, cell) {
+            Ok(NumberOrArray::Array(mut rows)) => {
+                for node in rows.iter_mut().flatten() {
+                    if matches!(node, ArrayNode::Boolean(_)) {
+                        *node = ArrayNode::Error(Error::VALUE);
+                    }
+                }
+                Ok(NumberOrArray::Array(rows))
+            }
+            other => other,
+        };
+        self.lift_number_operands::<1>(vec![operand], cell, "Invalid number", |[f]| {
+            if f < 0.0 {
+                Err(Error::NUM)
+            } else {
+                Ok((f * PI).sqrt())
+            }
+        })
+    }
 
     single_number_fn!(fn_acot, |f| {
         let v = f64::atan(1.0 / f);
@@ -825,23 +858,27 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    // PERCENTOF(part, total) — returns SUM(part) / SUM(total) as a decimal fraction.
+    // PERCENTOF(part, total) — returns SUM(part) / SUM(total) as a decimal fraction. Both sums snap
+    // near zero like SUM: `PERCENTOF(A1:A3,1)` over 0.1, 0.2, -0.3 is 0 and `PERCENTOF(1,A1:A3)` is
+    // #DIV/0! (probes/percentof-snap-overflow-union, excel-graph; numbers.md "Near-zero snapping").
     pub(crate) fn fn_percentof(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let part = match self.fn_sum_unsnapped(&args[0..1], cell) {
+        let part = match self.fn_sum(&args[0..1], cell) {
             CalcResult::Number(v) => v,
             other => return other,
         };
-        let total = match self.fn_sum_unsnapped(&args[1..2], cell) {
+        let total = match self.fn_sum(&args[1..2], cell) {
             CalcResult::Number(v) => v,
             other => return other,
         };
-        if total == 0.0 {
-            return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
+        // Divided like the operator `/`: a zero (or subnormal) total is #DIV/0! and an overflowing
+        // quotient #NUM! (the latter two UNVERIFIED for PERCENTOF).
+        match divide(part, total) {
+            Ok(ratio) => CalcResult::Number(ratio),
+            Err(error) => CalcResult::new_error(error, cell, "Invalid division".to_string()),
         }
-        CalcResult::Number(part / total)
     }
 
     pub(crate) fn fn_combina(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

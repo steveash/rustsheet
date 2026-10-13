@@ -29,7 +29,7 @@ Status: VERIFIED
 Implemented in: `snap_near_zero` (arithmetic.rs), applied at the cell formula's root by `Model::evaluate_formula_root` (an outermost `+`/`-`) and `fn_sum` (every SUM call, functions/math_and_trigonometry/sum.rs); a wholly parenthesized formula is a root `Node::Group` (`Parser::parse_parenthesized`, T-1017, T-1341, T-1392) and is not snapped. Array operands of `+`/`-` are not snapped (unprobed); SUM over array arguments does snap (below).
 Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). Name bodies written as a group or a SUM (T-1164, probes/near-zero-snap-name-bodies, excel-graph 2026-10-08): `nzg` = `=(0.1+0.2-0.3)` and `nzgg` = `=((0.1+0.2-0.3))` are not snapped (`=nzg`, `=nzgg`, `=nzg+0` and `=SUM(nzg)` give 5.551115123125783e-17, like the cell forms), while `nzs` = `=SUM(0.1,0.2,-0.3)` is snapped (`=nzs` and `=nzs+0` give 0). The engine keeps a grouped root on a name body (`Model::parse_internal_formula`, `user_formula_to_internal`, the xlsx import re-parse, sheet copy and rename, name display); a parenthesized reference body stays a reference (`rg` = `=(Sheet1!$B$1:$B$2)`, `ig` = `=(INDEX(...))` and `og` = `=(OFFSET(...))` give ISREF TRUE, ROWS/SUM as without the parentheses: probes/defined-name-grouped-reference, excel-graph 2026-10-08), so `is_reference` looks through the group (`Node::ungrouped`). The same parse also keeps the grouped root of a conditional-formatting formula written wholly in parentheses (`user_formula_to_internal` serves both); whether Excel snaps inside CF formulas is UNVERIFIED and not observable through the oracle (T-1171: excel-graph reads cell values only, the case format and the Graph workbook API carry no conditional-formatting rules or their rendered fill; see docs/architecture/oracle.md, Unobservable features), so it needs desktop Excel (M14, Phase 4, decision 0039, T-1204). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`: the engine keeps every written level around a whole formula (one root `Group` holding every level, T-1161, T-1341).
 
-SUM forms (T-1131, probes/near-zero-sum-forms, excel-graph 2026-10-11): a SUM call snaps its final addition **wherever it sits**, unlike `+`/`-`: `=(SUM(0.1,0.2,-0.3))`, `=SUM(A1:A3)+0` and `=SUM(A1:A3)*1` (A1:A3 = 0.1, 0.2, -0.3) all give 0, as do `=SUM({0.1,0.2,-0.3})`, `=SUM({0.1,0.2},-0.3)`, `=SUM(0.1,{0.2,-0.3})`, `=SUM(A1:A2,A3)` and a range with a blank or text between the addends. A trailing zero addend stops the snap: `=SUM(0.1,0.2,-0.3,0)` and `=SUM(A1:A3,0)` give 5.551115123125783e-17 (the last two addends are -0.3 and 0). 2-D ranges add in row-major order, so `=SUM(D1:E2)` (0.1, 0.2 / -0.3, 0) is 5.551115123125783e-17 (last addend 0) and `=SUM(J1:K2)` (0.1, -0.3 / 0.2, -0.1) is -0.09999999999999998. The engine snaps in `Model::fn_sum` for every SUM call. AGGREGATE(9, ...) and SUBTOTAL(9/109, ...) snap the same way (T-1336, probes/near-zero-aggregate-forms B1-B6, B10-B12, excel-graph 2026-10-11: `=AGGREGATE(9,4,A1:A3)`, `=AGGREGATE(9,6,A1:A3)`, `=SUBTOTAL(9,A1:A3)`, `=SUBTOTAL(109,A1:A3)` and `+0` of each give 0 over 0.1, 0.2, -0.3; `=AGGREGATE(9,4,{0.1,0.2,-0.3})` is #VALUE!); the engine snaps in `subtotal_sum` and the AGGREGATE dispatch. PERCENTOF is `#NAME?` on excel-graph (a probe of `=PERCENTOF(A1:A3,A5)` and `=PERCENTOF(A1:A3,A1:A3)` returned it 2026-10-11; the oracle cannot evaluate it, so the probe has no PERCENTOF cell; so whether it snaps is UNVERIFIED, needs desktop Excel, M14 Phase 4); the engine keeps it unsnapped through `fn_sum_unsnapped`. 
+SUM forms (T-1131, probes/near-zero-sum-forms, excel-graph 2026-10-11): a SUM call snaps its final addition **wherever it sits**, unlike `+`/`-`: `=(SUM(0.1,0.2,-0.3))`, `=SUM(A1:A3)+0` and `=SUM(A1:A3)*1` (A1:A3 = 0.1, 0.2, -0.3) all give 0, as do `=SUM({0.1,0.2,-0.3})`, `=SUM({0.1,0.2},-0.3)`, `=SUM(0.1,{0.2,-0.3})`, `=SUM(A1:A2,A3)` and a range with a blank or text between the addends. A trailing zero addend stops the snap: `=SUM(0.1,0.2,-0.3,0)` and `=SUM(A1:A3,0)` give 5.551115123125783e-17 (the last two addends are -0.3 and 0). 2-D ranges add in row-major order, so `=SUM(D1:E2)` (0.1, 0.2 / -0.3, 0) is 5.551115123125783e-17 (last addend 0) and `=SUM(J1:K2)` (0.1, -0.3 / 0.2, -0.1) is -0.09999999999999998. The engine snaps in `Model::fn_sum` for every SUM call. AGGREGATE(9, ...) and SUBTOTAL(9/109, ...) snap the same way (T-1336, probes/near-zero-aggregate-forms B1-B6, B10-B12, excel-graph 2026-10-11: `=AGGREGATE(9,4,A1:A3)`, `=AGGREGATE(9,6,A1:A3)`, `=SUBTOTAL(9,A1:A3)`, `=SUBTOTAL(109,A1:A3)` and `+0` of each give 0 over 0.1, 0.2, -0.3; `=AGGREGATE(9,4,{0.1,0.2,-0.3})` is #VALUE!); the engine snaps in `subtotal_sum` and the AGGREGATE dispatch. PERCENTOF snaps both of its sums the same way (probes/percentof-snap-overflow-union, excel-graph, 2026-10-13, T-0416; it was `#NAME?` only because the case builder stored it without `_xlfn.`): `=PERCENTOF(A1:A3,C1)` and `=PERCENTOF({0.1,0.2,-0.3},1)` are 0, and `=PERCENTOF(A1:A2,A1:A3)` and `=PERCENTOF(A1:A3,A1:A3)` are #DIV/0! (the total snaps to 0). The engine sums both arguments through `fn_sum`. 
 Tasks: T-0110 (implementation), T-1131 (SUM forms), T-1336 (AGGREGATE/SUBTOTAL), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies)
 
 ## ROUND family rounds in two decimal stages
@@ -52,7 +52,7 @@ and `ROUNDDOWN(…,0)` are `#NUM!`. A result of zero has no sign (`ROUNDDOWN(-0.
 `ROUND(1.23456789012345E+300,-299)` = 1.2E+300.
 Evidence: probes/round-family A1–A53 (except A20); probes/precision-and-rounding A6 (1.01),
 A7 (2.68), A8 (`ROUND(-2.5,0)` = -3). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0106).
-Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs` (T-0106).
+Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/decimal_round.rs` (T-0106).
 ROUNDUP's stage 2 differs in its last ulp: see "ROUNDUP adds the unit in binary" below.
 
 ## TRUNC is ROUNDDOWN
@@ -92,7 +92,7 @@ and -(65536+k), ROUNDUP and ROUNDDOWN); probes/round-huge-digits-wrap A16, A35, 
 Rejected: multiplying the rounded-up digits by `10^-k` (52/80 cells) and binary scaling
 `ceil(x*10^k)` (37/80); the add model matches 80/80.
 Status: VERIFIED
-Implemented in: `round_decimal` in functions/math_and_trigonometry/decimal_round.rs (T-0268)
+Implemented in: `round_decimal` in decimal_round.rs (T-0268)
 Tasks: T-0268
 
 ## ROUND family: huge num_digits wrap
@@ -122,7 +122,7 @@ the exponent), probes/round-huge-digits-negative (91 cells), probes/round-huge-d
 gen-m2/caa981b0753f455c Calc!A270 (`ROUND(1E+15,1E+15)` = 0, so the quotient is `#DIV/0!`) and
 gen-m2/dd99be1f2454159f Calc!A159.
 Status: VERIFIED
-Implemented in: `effective_digits` in crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs (T-0218).
+Implemented in: `effective_digits` in crates/rustsheet-engine/src/decimal_round.rs (T-0218).
 Tasks: T-0218, T-0268
 
 ## MOD is #NUM! for a huge quotient
@@ -227,9 +227,8 @@ AVERAGE (also `AVERAGE(9E+307,9E+307,-9E+307)`), PRODUCT (`PRODUCT(1E+200,1E+200
 factor 0 or 1E-200), SUMSQ (`SUMSQ(1E+200)`), SUBTOTAL 9, 1 and 6 (and 7, 8, 10, 11, 107, 108, 110 and 111 over three 1E+200, probes/subtotal-variance-one-vs-two-pass K10:K17), AGGREGATE 9 and 1 (option 6), SUMIF, SUMIFS,
 SERIESSUM, MMULT, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR, and `SUM(F1:F2)+0`, `SUM(F1:F2)&""`,
 `MAX(F1:F2)+F1` propagate it. Not an overflow: `COUNT` (3), `SUMX2MY2({9E+153},{0})` (8.1E+307, a finite near-limit result: SUMX2MY2 overflow itself is unprobed),
-`MEDIAN(F1:F2)` (9E+307) and `GEOMEAN(F1:F2)` (9E+307, exactly), F1:F2 holding 9E+307 twice (direct arguments not probed). `PERCENTOF` is `#NAME?` in
-excel-graph (the oracle does not know it), so its overflow stays UNVERIFIED and the probe has no PERCENTOF cell
-(the engine's PERCENTOF sums through `fn_sum_unsnapped`, so it overflows to `#NUM!` like SUM; unverified).
+`MEDIAN(F1:F2)` (9E+307) and `GEOMEAN(F1:F2)` (9E+307, exactly), F1:F2 holding 9E+307 twice (direct arguments not probed). `PERCENTOF(F1:F2,F1:F2)`
+and `PERCENTOF(F1,F1:F2)` are `#NUM!` (an overflowing sum, like SUM; probes/percentof-snap-overflow-union (excel-graph, 2026-10-13, T-0416)).
 Implementation: `+ - * /` (T-0173), `SUM` (T-0185), and SUMPRODUCT, SUMSQ, PRODUCT, AVERAGE and SUBTOTAL 1, 6, 9
 (T-0990, `CalcResult::finite_number_or_num` on the final result, which covers a later 0 or 1E-200 factor
 since an infinity stays infinite or turns NaN; SUBTOTAL 101/106/109 share the code but are unprobed), and
@@ -258,6 +257,47 @@ Evidence: probes/arith-overflow Calc!A8:D9, A16:D18. Oracle: excel-graph, 2026-1
 Status: VERIFIED
 Implemented in: `arithmetic::divide`.
 Tasks: T-0173
+
+## Division rounds twice (64-bit, then double)
+Rule: the operator `/` rounds the exact quotient first to a 64-bit significand (x87 extended
+precision) and then to a double, both to nearest, ties to even. This differs from the correctly
+rounded quotient only when the exact quotient lies within half an extended ulp of the midpoint
+between two doubles (about 1 division in 4,000 with full-significand operands): the first rounding
+lands on the midpoint, and the second rounds it to the even neighbor.
+`=1/(2-2^-52)` is 0.5, where the correctly rounded quotient is 0.5000000000000001;
+`=1/(1+26955297717044*2^-52)` = 0.994050331987417 (correctly rounded: …4171).
+The reciprocal inside `^` and POWER is the same division: `x^-1`, `POWER(x,-1)`, `x^-3` (1 over
+the square-and-multiply power), `x^-0.5` (1 over `sqrt`) and `x^-0.3` (1 over `exp(0.3·ln x)`) all
+round twice, so `8^(-1/3)` = 0.5 and `(-8)^(-1/3)` = -0.5 although `8^(1/3)` = 1.9999999999999998.
+Evidence: probes-numeric/power-reciprocal-rounding (72 cells: 8 values whose reciprocal rounds
+differently, each through `^-1`, `POWER(,-1)` and `/`, 4 controls, 6 each through `^-3`, `^-0.5`
+and `^-0.3`, every one double-rounded; oracle: excel-graph, 2026-10-13, T-0221);
+probes-numeric/power-odd-roots A50, A56 (`(±8)^(-1/3)`).
+Other operations (probes-numeric/double-rounding-ops, 80 cells with operands picked by exact
+simulation so that single and double rounding give different doubles; every cell matches the
+double-rounded value; oracle: excel-graph, 2026-10-13, T-1496): `x/y` with neither operand 1
+(8 pairs) and `SUMPRODUCT(x/(y+{0}))` round twice, as do `a*b` and `PRODUCT(a,b)` (the 106-bit
+product, 8 pairs), `a+b`, `a-b`, `SUM(a,b)` and `AVERAGE(a,b)` (operands whose exponents differ by
+12-52, so the sum needs more than 64 bits; 8 pairs each), and `SQRT(x)` and `x^0.5` (8 values).
+Each of these operations, taken alone, rounds to a double twice. Intermediates do not stay at 64
+bits: in a chained expression every operator's result is rounded (twice) to a double before the next
+operator uses it. probes-numeric/double-rounding-chained (54 cells; operands picked so that keeping
+64-bit intermediates would give a different double; oracle: excel-graph, 2026-10-13, T-1501): all
+of `a*b+c` (+ the control `SUM(a*b,c)`), `a*b-c`, `(a+b)*c`, `a*b*c`, `a*b/c`, `a/b*c`,
+`SQRT(a*b)` and `SQRT(a+b)` (6 operand sets each) equal the value with a double-rounded
+intermediate, none the 64-bit-intermediate value and none the exact (fused) value.
+No operand set exists for a division by a small constant: `x%` (= x/100), `x/3` and AVERAGE of
+three cells divide by a number whose binary expansion repeats within a few bits, so the run of
+zeros or ones that double rounding needs never occurs (3,000,000 random operands found no
+difference for `x/100`, or for `(a+b+c)/3`); so this probe cannot say whether they round twice (they have oracle values in A81-A89, which the engine matches). MOD and QUOTIENT cannot
+be told apart by this construction: `MOD(0.3,0.1)` = 0.09999999999999998, `MOD(1,0.1)` =
+0.09999999999999995, `QUOTIENT(0.3,0.1)` = 2, `QUOTIENT(1,0.1)` = 10 are recorded only.
+The engine rounds once for `*`, PRODUCT, `+`, `-`, SUM, AVERAGE, SQRT and `^0.5` (tasks T-1498,
+T-1499, T-1500); `/` already passes.
+Implemented in: `arithmetic::extended_quotient`, used by `arithmetic::divide` and the reciprocals in
+`arithmetic::power`.
+Status: VERIFIED (excel-graph)
+Tasks: T-0221, T-1496, T-1498, T-1499, T-1500, T-1501
 
 ## Numbers near 1E+307 print with 14 significant digits
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is
@@ -532,11 +572,42 @@ Evidence: `probes-numeric/m9-trig-reduction` (`rustsheet-eval show probes-numeri
 247 of 666 cells pass; the 419 others differ from the engine (252 clear mismatches, 152 close, 15 ulp).
 Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0915.
 
+## Non-integer exponents: exp(y·ln x)
+Rule: for an exponent that is not an integer, Excel computes `x^y` as follows:
+- `y` > 0: `exp(y·ln x)`. `6^2.5` = 88.18163074019438, 2 ulps below libm `pow`, and `10^33.5` = 3.162277660168401E+33.
+- `y` < 0: one over the positive power, `1/exp(-y·ln x)`. `10^-33.5` = 3.1622776601683576E-34 and `27^-2.5` = 0.0002639918926335737.
+- `y` = 0.5: `sqrt(x)`. `2^0.5` = 1.4142135623730951, where `exp(0.5·ln 2)` is 1.4142135623730950.
+- `y` = -0.5: `1/sqrt(x)`. `3^-0.5` = 0.5773502691896258 and `0.5^-0.5` = 1.414213562373095.
+- Each `1/` is the operator `/`, which rounds twice (see "Division rounds twice"): `8^(-1/3)` = 0.5.
+
+An odd root of a negative base is minus the same formula on the magnitude. `(-8)^(1/3)` = -exp(ln 8/3) = -1.9999999999999998, which is the value Excel's own workbook caches.
+
+Libm `pow` (correctly rounded) matches only 93 of the 180 numeric sweep cells. `exp(y·ln x)` without the ±0.5 cases matches 148. The model matches all 180.
+
+Out-of-range results:
+- A positive exponent that overflows is `#NUM!`.
+- Quirk: a negative exponent is one over the positive power even when that power underflows, so the result is `#DIV/0!`. This holds for integer exponents too: `1E-10^-33.5`, `POWER(1E-10,-33.5)`, `0.1^-400`, `1E-10^-40`, `1E-10^-31` and `1E-300^-1.1` (where the positive power is subnormal).
+- A negative exponent whose result underflows is 0: `1E10^-33.5` = 0, `1E+200^-1.6` = 0, `2^-1074.5` = 0.
+
+`(-8)^(-1/3)` is -0.5: the twice-rounded `1/1.9999999999999998`. The model matches all 156 cells
+of `(±x)^(±1/n)` for n = 3, 5, 7 over 13 bases (probes-numeric/power-odd-roots A1-A156, T-0221).
+Evidence:
+- probes-numeric/power-non-integer-sweep A1-A182: bases 2, 3, 5, 6, 7, 10, 0.5, 1.5, 100, 1E10, 1E-10, 123.456, 0.9 and 1.1, each with exponents ±0.5, ±1.5, ±2.5, ±0.3, 1/3, ±33.5, 0.25 and 2.7.
+- probes-numeric/power-non-integer-sweep A183-A194: odd roots of negatives and out-of-range results.
+- Both are oracle excel-graph, 2026-10-12, T-1319.
+- probes-numeric/power-odd-roots A1-A156 (excel-graph, 2026-10-13, T-0221).
+- gen-m1/6462bf910ef9f28f Calc!A41 and A207; gen-m2/1b6ceed7489e0800 Calc!A62; gen-m7/9ff3afcacd3bd0fc Calc!A13.
+- ironcalc-calc POWER.xlsx Sheet1!D3 and F9.
+Not probed: other negative bases; exponents within 1E-15 of ±0.5.
+Implemented in: `non_integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
+Status: VERIFIED (excel-graph)
+Tasks: T-1319, T-1421, T-0221
+
 ## POWER and `^`: odd roots of negatives, zero and overflow
-Rule: `POWER(-8, 1/3)` is -2 (an odd root of a negative number is real); `POWER(0,0)` is #NUM!;
+Rule: `POWER(-8, 1/3)` is -1.9999999999999998 (an odd root of a negative number is real; see "Non-integer exponents: exp(y·ln x)"); `POWER(0,0)` is #NUM!;
 `POWER(0,-1)` is #DIV/0!; text operands give #VALUE!; array operands work element by element.
 Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx (Excel-authored): Sheet1!D2 (#DIV/0!),
-D3 and F9 (-1.9999999999999998 — we return -2, a 1-ulp NumericUlp known failure), sheets 2-8 for ranges.
+D3 and F9 (-1.9999999999999998, matched since T-1319: see "Non-integer exponents"), sheets 2-8 for ranges.
 The operator `^` shares the zero case: `0^-0`, `+0^0`, `(-0)^0` and `0%^0` are all `#NUM!`, while
 `-0^0.5` = 0 (gen-m1/6462bf910ef9f28f Calc!A19, A30, A205, A222; gen-m1/1c62c4bff4ed1976 Calc!A60;
 oracle: excel-graph, 2026-10-05, T-0109).
@@ -592,8 +663,21 @@ Z1, Z5, Z11) and `10^(LOG10(X)/n)` 11. No tried model reproduces all 17.
 The "about 0.38 ulp" agreement bound does not hold: of 8 new sets whose glibc root lies 0.32 to 0.40
 ulp from the exact root, Pin!C60 (0.357 ulp) and Pin!F60 (0.397) miss by one ulp and the other six
 match.
-Status: VERIFIED (the misses and the probe values); no reproducible root model (T-1108).
-Tasks: T-1099, T-1108, T-0221
+Log-domain root with the remainder added in logs (T-0290, rejected): `exp((ln(M) + r*ln2)/n) * 2^q`,
+the in-range path's `exp(ln/n)` with `r` added to `ln(M)` instead of scaling M by `2^r`. Run over every
+probe, it fixes 16 known failures and regresses 9 that the current model passes. The experiment
+replaced both of the current model's branches: `(M*2^r)^(1/n)`, and `M^(1/n) * 2^(r/n)` above r = 1000.
+- Fixes: geomean-pow2-count L4, M1, M4 (the wrapped n-copies cells); geomean-product-order Z6, Z8,
+  Z10, Z13, Z14; geomean-overflow-many-values F4; geomean-stored-3ulps-low R1;
+  geomean-exponent-sum C2; exponent-sum-2 C28; overflow-count C1; overflow-cut C1;
+  overflow-cut-2 C9; overflow-cut-3 C13.
+- Regressions: geomean-product-order Z1, Z5, Z17; geomean-overflow-many-values F1, F3;
+  geomean-stored-3ulps-low R2; exponent-sum C9; overflow-cut C26; overflow-cut-2 C8.
+Neither model reproduces all cells. Choosing between them per cell would need a selector backed by
+evidence, which was not searched for (T-0290 was time-boxed). As with `EXP(LN(X)/n)` in the
+separating probe, Excel's root looks like a power rounded differently from both.
+Status: VERIFIED (the misses and the probe values); no reproducible root model (T-1108, T-0290).
+Tasks: T-1099, T-1108, T-0221, T-0290
 
 ## GEOMEAN is #NUM! when the product of significands overflows
 Rule: Excel splits every value into a binary significand M in [1, 2) and a power of two, multiplies
@@ -708,9 +792,27 @@ every base except 10 (about 280 cells across `1.0000001`, `0.9999999`, `1.5`, `2
    are plain square-and-multiply (`0.1^-33` = 9.999999999999965E+32, not 1E+33):
    `(-10)^33` = -1.0000000000000001E+33, `100^100` = 1.0000000000000005E+200.
 4. Overflow is `#NUM!` as before (`100^200`, `1E15^23`, `10^309`).
-Not explained (T-1319): non-integer exponents of 10 differ from libm in the last digits (`10^33.5` =
-3.162277660168401E+33, libm 3.162277660168379E+33; `10^-33.5` = 3.1622776601683576E-34;
-`10^40.0000001` = 1.0000002302585496E+40).
+5. Negative bases follow the same out-of-range rules as positive ones (T-0221): a positive power
+   that overflows is `#NUM!` (`(-10)^401`, `(-2)^1025`) and one that underflows is 0
+   (`(-0.1)^401`); a negative exponent whose positive power underflows is `#DIV/0!`
+   (`(-0.1)^-401`, `(-0.1)^-400`, `(-1E-10)^-31`, `(-0.5)^-1075`, `(-1E-200)^-2`, `POWER(-0.1,-401)`)
+   and one whose positive power overflows is 0 (`(-10)^-401`, `(-1E10)^-33`, `(-2)^-1074`,
+   `(-1E200)^-2`). Evidence: probes-numeric/power-negative-base-range, power-odd-roots A157-A162
+   (excel-graph, 2026-10-13).
+
+Unresolved (T-1495): `SQRT(5)^n` (equally `(0.2^-0.5)^n` and `POWER(SQRT(5),n)`) is not
+square-and-multiply. Of 9 full-significand bases probed at 19 exponents 3..255 (pi, e, 1.1, 1/3,
+0.7, SQRT(2), 1.0000001, and 2.23606797749979 written two ways), the rule matches all 133 cells
+of the other 7 bases and 2 of the 38 sqrt(5) cells. `SQRT(5)^99` = 3.9720546451956613E+34
+(square-and-multiply: …6807E+34; correctly rounded: …656E+34); `SQRT(5)^10` = 3125.0000000000023
+(…030; …014). Excel's results track `exp(n·ln b)` with `ln b` the double logarithm (10 of 19
+cells) and drift up to 2 ulps below it by n = 255. Rejected: left-to-right and repeated
+multiplication, every multiplication order of the four squares for n = 99, a 54- to 65-bit
+significand for the loop, the exact decimal 2.23606797749979 raised to n, and `exp`/`log2`/`log10`
+compositions. Evidence: probes-numeric/power-integer-full-mantissa (184 cells; excel-graph,
+2026-10-13, T-0221); gen-m2/fa437879253827be Calc!A23 is `(0.2^-0.5)^99`.
+Non-integer exponents (`10^33.5` = 3.162277660168401E+33, libm 3.162277660168379E+33; `10^-33.5` =
+3.1622776601683576E-34; `10^40.0000001` = 1.0000002302585496E+40) follow "Non-integer exponents: exp(y·ln x)" (T-1319).
 Evidence: probes-numeric/power-large-integer-exponents{,-2,-3,-4}.case.json (oracle: excel-graph,
 2026-10-11, T-1311; the non-integer cells are A54-A56 of -4).
 Implemented in: `power` and `integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
@@ -729,14 +831,14 @@ Tasks: T-0218
 
 ## GAMMALN / GAMMALN.PRECISE (T-0926)
 
-Excel's cached values in `ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx` are the correctly
-rounded ln|Gamma(x)|: exactly 0 at x = 1 and 2, GAMMALN(4) = ln 6. The Lanczos `statrs::ln_gamma`
-is off by a few ulp, so `special::ln_gamma` uses fdlibm's `lgamma` (`libm` crate; chosen over a
-vendored port to keep one maintained definition). 12 cells (B/C rows 5, 9, 15, 23, 24, 26) still
-differ in the last digit and need oracle probes (T-0004).
-Some of those 12 are not correctly rounded: `GAMMALN(3)` (B5) is 0.6931471805599454, one ulp above
-the correctly rounded ln 2 = 0.6931471805599453, so "correctly rounded" only describes the cells
-T-0926 fixed. Follow-up: T-0973 (see also `statistics.md`).
+Excel's GAMMALN is not correctly rounded in general: the T-1042 sweep finds 91 of the integers 1..171
+differ from the correctly rounded ln((n-1)!) (`GAMMALN(3)` = 0.6931471805599454, one ulp above ln 2;
+`t1042-gamma-int-1-90` Calc!A93; see `statistics.md`, "GAMMA and GAMMALN sweep (T-1042)").
+Observed in `ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx`: exactly 0 at x = 1 and 2,
+GAMMALN(4) = ln 6 (correctly rounded). The Lanczos `statrs::ln_gamma` is off by a few ulp, so
+`special::ln_gamma` uses fdlibm's `lgamma` (`libm` crate; chosen over a vendored port to keep one
+maintained definition), which fixed some cells; 12 cells (B/C rows 5, 9, 15, 23, 24, 26) still differ
+in the last digit (T-0004, T-0973).
 
 ## Excel for the web and desktop Excel differ in the last digits of some functions
 Rule: for ATAN2, IMARGUMENT, IMREAL∘IMSQRT, IMCOS, IMTAN, ERFC/ERFC.PRECISE, BESSELJ/BESSELY,
@@ -1023,3 +1125,19 @@ Evidence: ironcalc-calc MATH_AND_TRIGONOMETRY/SERIESSUM.xlsx C1, H7 (Excel-cache
 Ours: `#NUM!` for every x = 0.
 Status: UNVERIFIED (probe pending: negative powers, a blank x)
 Tasks: T-1359
+
+## ECMA.CEILING
+Rule: `ECMA.CEILING(number, significance)` is a real Excel function with exactly the two-argument `CEILING` semantics (rounds away from zero for negative `number` with negative `significance`; `#NUM!` when `number` is positive and `significance` negative; zero significance gives 0; number text `"2.5"` and `TRUE` are read as numbers; text significance is `#VALUE!`). It is stored in a file as `_xlfn.ECMA.CEILING`, and `FORMULATEXT` prints it as `=ECMA.CEILING(2.5,2)` (no prefix). Written bare (`ECMA.CEILING(...)`) in a file, Graph rejects the whole workbook (`createSession` 501 `unsupportedWorkbook`); the one-argument form `_xlfn.ECMA.CEILING(2.5)` is rejected the same way (arity is exactly 2, like CEILING).
+Evidence: probes/ecma-ceiling A1:A6, A8:A11, A13:A14; probes/ecma-ceiling-formulatext A12 (excel-graph, 2026-10-12, T-1301).
+Status: VERIFIED. Ours: implemented (T-1301) as its own `Function::EcmaCeiling` (not an alias of CEILING, so FORMULATEXT keeps the name) dispatched to `fn_ceiling`, with an `_xlfn.ECMA.CEILING` entry in `functions/xlsx_names.rs`. The name is `ECMA.CEILING` in every `language.bin` locale (as upstream IronCalc 8a82396a has it).
+Tasks: T-1301
+
+## RADIANS, SQRTPI and MUNIT
+Rule: all 94 cells of probes/radians-sqrtpi-munit agree with `x * (PI / 180)` for RADIANS and `sqrt(x * PI)` for SQRTPI to the last bit (`RADIANS(180)` = PI(), `RADIANS(1E-300)`, `SQRTPI(1E-155*1E-155)` and `SQRTPI(10^308)` included), so there are no ulp differences to file.
+- **SQRTPI rejects booleans, RADIANS reads them.** `SQRTPI(TRUE)`, `SQRTPI(FALSE)`, `SQRTPI(1=1)`, a reference to a TRUE cell and `SQRTPI({TRUE})` are `#VALUE!`, while `RADIANS(TRUE)`, `RADIANS(D1)` and `RADIANS({TRUE})` are 0.01745...; numeric text (`SQRTPI("4")`) is read, `-TRUE` is a number (`SQRTPI(-TRUE)` is `#NUM!`). In an array the boolean element is the error: `SQRTPI({1,TRUE})` starts with 1.77... (the second element is not probed; we give `#VALUE!`). A negative argument is `#NUM!`.
+- **MUNIT truncates its dimension** (`ROWS(MUNIT(2.9))` is 2), is `#VALUE!` below 1 (`MUNIT(0)`, `MUNIT(0.5)`, `MUNIT(-1)`) and for text that is not a number, and reads numeric text and TRUE as 1.
+- **MUNIT lifts over an array or range argument**: each element gives the 1 at the top left of its own matrix, so `MUNIT({1,2})` is {1,1} (`ROWS` 1, `COLUMNS` 2, `SUM` 2), `MUNIT({2;3})` is 2 rows by 1 column, and an element of 0 or text makes that element, and so `SUM`, `#VALUE!`.
+- excel-graph rejects the workbook (`createSession` 501 `unsupportedWorkbook`) for a literal `1E+308` (as numbers.md "Formula literals of 1E+308 or more" says) and also for the denormal literals `1E-310` and `-1E-310`; the probe computes them (`1E-155*1E-155`). `MUNIT(1048577)` and `MUNIT(1E+10)` were left out of the case for the huge-dimension reason in text.md, unprobed.
+Evidence: probes/radians-sqrtpi-munit (excel-graph, 2026-10-13, T-1282).
+Status: VERIFIED. Ours: `fn_sqrtpi` (mathematical.rs) reads booleans as errors and lifts, `fn_munit` (matrix.rs) lifts through `lift_number_operands`; SQRTPI's static result is `scalar_arguments` since it can return an array.
+Tasks: T-1282

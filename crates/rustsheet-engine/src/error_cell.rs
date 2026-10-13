@@ -28,7 +28,7 @@ impl Model {
     /// It does not change the style, except that it drops a quote prefix.
     ///
     /// See also:
-    /// * [Model::update_cell_with_bool()]
+    /// * [`Model::update_cell_with_bool()`]
     pub fn update_cell_with_error(
         &mut self,
         sheet: u32,

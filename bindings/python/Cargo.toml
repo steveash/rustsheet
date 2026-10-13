@@ -52,7 +52,5 @@ missing_errors_doc = "allow"
 missing_panics_doc = "allow"
 similar_names = "allow"
 # LINT-DEBT-BEGIN (inherited from the IronCalc fork; entries may only be removed, never added — see docs/process/quality-gates.md)
-doc_markdown = "allow"  # 20 at fork time
 redundant_closure_for_method_calls = "allow"  # 4 at fork time
-semicolon_if_nothing_returned = "allow"  # 10 at fork time
 # LINT-DEBT-END

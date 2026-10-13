@@ -161,7 +161,7 @@ impl Model {
                             match node {
                                 ArrayNode::Boolean(value) => result = Some(fold_fn(result, *value)),
                                 ArrayNode::Number(value) => {
-                                    result = Some(fold_fn(result, *value != 0.0))
+                                    result = Some(fold_fn(result, *value != 0.0));
                                 }
                                 ArrayNode::Error(error) => {
                                     return CalcResult::new_error(

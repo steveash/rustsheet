@@ -1,6 +1,7 @@
 # 0033 — Engine text cannot hold lone surrogates
 
-- **Status:** accepted (2026-10-06, T-0233)
+- **Status:** superseded by decision 0052 (2026-10-13). Lone surrogates are a known gap, not a
+  deviation; T-1483 specifies engine text that can hold them. Accepted 2026-10-06, T-0233.
 - **Context:**
   - Excel text is UTF-16. Operations that cut text at a code-unit position can leave an unpaired
     surrogate, and Excel keeps it: a concatenation truncated at the 32,767-unit limit inside an

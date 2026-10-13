@@ -2,7 +2,7 @@
 
 use crate::expressions::{
     lexer::{Lexer, LexerMode},
-    token::{TableReference, TableSpecifier, TokenType::*},
+    token::{OpSum, TableReference, TableSpecifier, TokenType::*},
 };
 use crate::language::get_language;
 use crate::locale::get_locale;
@@ -70,4 +70,46 @@ fn table_totals_no_reference() {
         }
     );
     assert_eq!(lx.next_token(), EOF);
+}
+
+// The unquoted `[book]Sheet!` prefix is a reference prefix (T-1381); a `[` that no `book]Sheet!`
+// follows stays a bracket, so structured references and a LAMBDA's `[x]` lex as before.
+#[test]
+fn external_book_prefix_and_plain_brackets() {
+    let mut lx = new_lexer("[other.xlsx]Sheet1!B5");
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: Some("[other.xlsx]Sheet1".to_string()),
+            row: 5,
+            column: 2,
+            absolute_row: false,
+            absolute_column: false,
+        }
+    );
+    assert_eq!(lx.next_token(), EOF);
+    let mut lx = new_lexer("[x],1");
+    assert_eq!(lx.next_token(), LeftBracket);
+    assert_eq!(lx.next_token(), Ident("x".to_string()));
+    let mut lx = new_lexer("tbInfo[Jan]");
+    assert!(matches!(lx.next_token(), StructuredReference { .. }));
+}
+
+// A defined name of a linked workbook, `[1]!Name` or `[1]Sheet!Name`, is one identifier
+// (poi/ref-56737.xlsx Refs!G3, I3; T-1382); a cell after the same prefix stays a reference.
+#[test]
+fn external_book_names_are_identifiers() {
+    let mut lx = new_lexer("[1]!NR_Global_B2");
+    assert_eq!(lx.next_token(), Ident("[1]!NR_Global_B2".to_string()));
+    assert_eq!(lx.next_token(), EOF);
+    let mut lx = new_lexer("[1]Defines!NR_To_A1+1");
+    assert_eq!(lx.next_token(), Ident("[1]Defines!NR_To_A1".to_string()));
+    assert_eq!(lx.next_token(), Addition(OpSum::Add));
+    let mut lx = new_lexer("[1]Uses!$A$1");
+    assert!(matches!(lx.next_token(), Reference { .. }));
+    let mut lx = new_lexer("[1]!HsGetValue(1)");
+    assert_eq!(lx.next_token(), Ident("[1]!HsGetValue".to_string()));
+    assert_eq!(lx.next_token(), LeftParenthesis);
+    let mut lx = new_lexer("[1]!");
+    assert_eq!(lx.next_token(), LeftBracket);
 }

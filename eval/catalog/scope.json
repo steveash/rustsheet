@@ -149,6 +149,7 @@
   {"name": "DURATION", "milestone": "M9", "scope": "in"},
   {"name": "DVAR", "milestone": "M9", "scope": "in"},
   {"name": "DVARP", "milestone": "M9", "scope": "in"},
+  {"name": "ECMA.CEILING", "milestone": "M5", "scope": "in"},
   {"name": "EDATE", "milestone": "M6", "scope": "in"},
   {"name": "EFFECT", "milestone": "M9", "scope": "in"},
   {"name": "ENCODEURL", "milestone": "M5", "scope": "in"},

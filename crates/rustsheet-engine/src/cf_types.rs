@@ -211,8 +211,8 @@ pub enum CfRule {
 
 /// User-facing input type for creating or updating a CF rule.
 /// Mirrors `CfRule` but dxf-based variants carry a `Dxf` format
-/// instead of a `dxf_id` index.  Non-dxf variants (ColorScale, DataBar,
-/// IconSet, IconRating) are identical to their `CfRule` counterparts.
+/// instead of a `dxf_id` index.  Non-dxf variants (`ColorScale`, `DataBar`,
+/// `IconSet`, `IconRating`) are identical to their `CfRule` counterparts.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(tag = "type")]
 pub enum CfRuleInput {
@@ -336,14 +336,14 @@ pub struct ConditionalFormattingView {
 // Evaluated CF result for a single cell (transient, not stored in Workbook).
 // ---------------------------------------------------------------------------
 
-/// The winning CF result for a cell, stored in Model::cf_cache after evaluate().
+/// The winning CF result for a cell, stored in `Model::cf_cache` after `evaluate()`.
 #[derive(Clone, Debug)]
 pub(crate) enum CfCellResult {
-    /// A dxf-based rule matched; dxf_id indexes into styles.dxfs.
+    /// A dxf-based rule matched; `dxf_id` indexes into styles.dxfs.
     Dxf(u32),
     /// Color scale: the pre-computed interpolated fill color.
     ColorScale(Color),
-    /// Data bar: proportion filled (0..1), colors, gradient flag, and show_value flag.
+    /// Data bar: proportion filled (0..1), colors, gradient flag, and `show_value` flag.
     DataBar {
         positive_color: Color,
         negative_color: Color,

@@ -1,0 +1,82 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "K1": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "K10": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "K11": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "K12": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "K13": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "K14": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "K15": {
+    "t": "n",
+    "v": 2.0
+   },
+   "K16": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "K17": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "K2": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "K3": {
+    "t": "n",
+    "v": 2.0
+   },
+   "K4": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "K5": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "K6": {
+    "t": "n",
+    "v": 2.0
+   },
+   "K7": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "K8": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "K9": {
+    "t": "e",
+    "v": "#REF!"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "0735002e3fa13c557fc5c8f4114176065cccc16dce61c3bc363af33cac9df19e",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-13T01:54:00+00:00",
+  "version": null
+ }
+}

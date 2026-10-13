@@ -5,7 +5,7 @@ use crate::{
     model::Model,
 };
 
-/// Returns true if an ArrayNode counts as a blank/empty cell for TRIMRANGE purposes.
+/// Returns true if an `ArrayNode` counts as a blank/empty cell for TRIMRANGE purposes.
 fn is_blank(node: &ArrayNode) -> bool {
     matches!(node, ArrayNode::Empty)
 }
@@ -25,7 +25,7 @@ impl Model {
     ///
     /// Trims blank rows and/or columns from the outer edges of a range or array.
     ///
-    /// trim_rows / trim_cols:
+    /// `trim_rows` / `trim_cols`:
     ///   * 0 – no trimming
     ///   * 1 – trim leading (top / left) blanks only
     ///   * 2 – trim trailing (bottom / right) blanks only

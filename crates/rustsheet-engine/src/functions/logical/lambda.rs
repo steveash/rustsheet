@@ -11,7 +11,7 @@ use crate::{
 };
 
 use super::r#let::assign_variable_ids;
-use crate::reference_operators::Binding;
+use crate::variable_stack::Binding;
 
 /// `#REF!` for a reference that is called like a function.
 fn reference_called(cell: CellReferenceIndex) -> CalcResult {
@@ -84,7 +84,7 @@ impl Model {
     }
 
     /// Evaluates the body of a named lambda with the given call-site argument nodes.
-    /// Optional parameters not covered by call_args receive EmptyArg.
+    /// Optional parameters not covered by `call_args` receive `EmptyArg`.
     pub(crate) fn call_lambda(
         &mut self,
         lambda_result: CalcResult,
@@ -139,7 +139,7 @@ impl Model {
     }
 
     /// Like `call_lambda` but accepts already-evaluated `CalcResult` values instead of `Node`s.
-    /// Optional parameters not covered by `values` receive EmptyArg.
+    /// Optional parameters not covered by `values` receive `EmptyArg`.
     pub(crate) fn call_lambda_with_values(
         &mut self,
         lambda_result: CalcResult,
@@ -244,12 +244,9 @@ fn check_arg_count(
     let total = parameters.len();
     if provided < required || provided > total {
         let msg = if required == total {
-            format!("LAMBDA expected {} argument(s), got {}", total, provided)
+            format!("LAMBDA expected {total} argument(s), got {provided}")
         } else {
-            format!(
-                "LAMBDA expected between {} and {} argument(s), got {}",
-                required, total, provided
-            )
+            format!("LAMBDA expected between {required} and {total} argument(s), got {provided}")
         };
         Err(CalcResult::new_error(Error::VALUE, cell, msg))
     } else {

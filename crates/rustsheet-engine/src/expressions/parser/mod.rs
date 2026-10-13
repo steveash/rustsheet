@@ -414,7 +414,7 @@ impl Parser {
         }
     }
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
-        self.lexer.set_lexer_mode(mode)
+        self.lexer.set_lexer_mode(mode);
     }
 
     pub fn set_locale(&mut self, locale: &'static Locale) {

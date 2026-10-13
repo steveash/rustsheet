@@ -1,0 +1,37 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "TEXT(x,\"General\") ties below 1 at the 9-decimal fixed limit (T-1429; follow-up of T-1422).",
+  "tags": [
+    "M2",
+    "number-format",
+    "text-general",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=TEXT(0.0000000015,\"General\")",
+        "A2": "=TEXT(0.0000000025,\"General\")",
+        "A3": "=TEXT(0.1234567895,\"General\")",
+        "A4": "=TEXT(0.1234567885,\"General\")",
+        "A5": "=TEXT(0.5000000005,\"General\")",
+        "A6": "=TEXT(0.9999999995,\"General\")",
+        "A7": "=TEXT(0.9999999994,\"General\")",
+        "A8": "=TEXT(0.0000000035,\"General\")",
+        "A9": "=TEXT(0.000000015,\"General\")",
+        "A10": "=TEXT(0.12345678951,\"General\")",
+        "A11": "=TEXT(0.123456789499,\"General\")",
+        "A12": "=TEXT(-0.1234567895,\"General\")",
+        "A13": "=TEXT(-0.0000000015,\"General\")",
+        "A14": "=TEXT(0.0000001235,\"General\")",
+        "A15": "=TEXT(0.00000012345,\"General\")",
+        "A16": "=TEXT(0.012345678951,\"General\")",
+        "A17": "=TEXT(0.0123456785,\"General\")",
+        "A18": "=TEXT(0.5,\"General\")",
+        "A19": "=TEXT(0.9999999996,\"General\")"
+      }
+    }
+  ],
+  "expected": {}
+}

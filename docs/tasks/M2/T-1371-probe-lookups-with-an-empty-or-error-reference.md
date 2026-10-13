@@ -3,7 +3,7 @@ id: T-1371
 title: "Probe lookups with an empty or error reference-valued lookup_value; give the XMATCH text-vs-number order its own entry"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -24,10 +24,16 @@ give `#N/A`. That finding sits inside the reference-lookup_value entry in docs/e
 search for XMATCH ordering would miss it.
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) adds a blank-cell and a `#DIV/0!`-cell row for each reference shape and lookup function;
+- [x] A probe case (excel-graph) adds a blank-cell and a `#DIV/0!`-cell row for each reference shape and lookup function;
   any engine mismatch gets its own task.
-- [ ] lookup.md has its own heading for the XMATCH/XLOOKUP text-vs-number order, citing the T-1256 probe cells.
-- [ ] `make check` green; reviewers approve.
+- [x] lookup.md has its own heading for the XMATCH/XLOOKUP text-vs-number order, citing the T-1256 probe cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Multi-cell lookup_value (T-0270).
+
+## Outcome
+Added probes/lookup-reference-lookup-value-blank-error (165 formula cells, excel-graph). Excel: an error cell's error
+comes back from all eleven forms; a blank key against an all-number table gives `#N/A` (the existing blank-key rules) except XMATCH/XLOOKUP next-smaller mode, which take
+the last row. The engine already matched every cell, so no engine task. lookup.md gained the blank/error entry and a
+separate XMATCH/XLOOKUP text-vs-number entry. Eval delta: +167 checked, passing cells (165 formulas + 2 error source cells; probes), 0 failures.

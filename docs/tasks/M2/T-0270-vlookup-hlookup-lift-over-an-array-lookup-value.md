@@ -33,7 +33,7 @@ The Excel behavior is not yet evidenced here. Probe it first (excel-probe skill)
 
 Code: `functions/lookup_and_reference/` (VLOOKUP/HLOOKUP). Reuse the existing element-wise lift
 helpers (`functions/text/text_arg.rs`, the IS* `check_range_size` bound in
-`math_and_trigonometry/array_size.rs`); do not add a new lifting primitive (directive 3).
+`limits.rs`); do not add a new lifting primitive (directive 3).
 
 ## Acceptance criteria
 - [x] Oracle-backed probe case (excel-graph sidecar) covering the cases above; semantics entry in

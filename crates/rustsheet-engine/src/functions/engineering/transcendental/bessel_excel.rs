@@ -11,7 +11,7 @@ use super::{bessel_j, bessel_y};
 
 const SMALL_ARG_LIMIT: f64 = 8.0;
 /// Orders above this yield NaN (reported as `#NUM!`): every algorithm here is O(n) per cell and the
-/// formula layer truncates `n` from untrusted input. Excel's own cap is not measured; 100_000 is far
+/// formula layer truncates `n` from untrusted input. Excel's own cap is not measured; `100_000` is far
 /// beyond any n where results are finite anyway. Deliberate deviation: see
 /// docs/excel-semantics/engineering.md "BESSEL order cap" (decision 0014).
 const MAX_ORDER: i32 = 100_000;

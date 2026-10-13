@@ -1,0 +1,88 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1416: date readers in a 1904 workbook (WEEKDAY/WEEKNUM, EDATE/EOMONTH, DATEDIF/DAYS360/YEARFRAC/NETWORKDAYS/WORKDAY, coupon dates, date-text coercion, criteria, TODAY/NOW, DATE with a year below 1904, the 9999-12-31 bound, typed date input). A43-A52: pre-epoch inputs and results, a criterion that tells the systems apart.",
+ "tags": [
+  "M1",
+  "probe",
+  "dates",
+  "T-1416"
+ ],
+ "date_system": 1904,
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=WEEKDAY(0)",
+    "A2": "=WEEKDAY(DATE(2024,3,15))",
+    "A3": "=WEEKNUM(DATE(2024,3,15))",
+    "A4": "=ISOWEEKNUM(DATE(2024,3,15))",
+    "A5": "=WEEKNUM(0)",
+    "A6": "=EDATE(DATE(2024,1,31),1)",
+    "A7": "=EOMONTH(DATE(2024,1,15),0)",
+    "A8": "=EDATE(0,-1)",
+    "A9": "=EOMONTH(0,-1)",
+    "A10": "=DATEDIF(DATE(2000,2,28),DATE(2024,3,1),\"md\")",
+    "A11": "=DATEDIF(0,1000,\"ym\")",
+    "A12": "=DAYS360(DATE(2024,1,31),DATE(2024,2,29))",
+    "A13": "=YEARFRAC(DATE(2024,1,1),DATE(2024,7,1),1)",
+    "A14": "=NETWORKDAYS(DATE(2024,3,1),DATE(2024,3,31))",
+    "A15": "=WORKDAY(DATE(2024,3,15),1)",
+    "A16": "=DAYS(DATE(2024,3,15),0)",
+    "A17": "=COUPNCD(DATE(2024,1,15),DATE(2030,6,30),2)",
+    "A18": "=COUPDAYS(DATE(2024,1,15),DATE(2030,6,30),2,1)",
+    "A19": "=YEARFRAC(0,365,1)",
+    "A20": "=\"1904-01-02\"+0",
+    "A21": "=\"2024-03-15\"+0",
+    "A22": "=--\"3/15/2024\"",
+    "A23": "=VALUE(\"2024-03-15\")",
+    "A24": "=COUNTIF(B1:B3,\"2024-03-15\")",
+    "A25": "=COUNTIF(B1:B3,\">2024-03-14\")",
+    "A26": "=SUMIF(B1:B3,\"<=1/1/1905\",C1:C3)",
+    "A27": "=TODAY()-DATE(YEAR(TODAY()),MONTH(TODAY()),DAY(TODAY()))",
+    "A28": "=INT(NOW())-TODAY()",
+    "A29": "=DATE(0,1,1)",
+    "A30": "=DATE(5,1,1)",
+    "A31": "=DATE(1903,12,31)",
+    "A32": "=YEAR(-1)",
+    "A33": "=TEXT(2957003,\"yyyy-mm-dd\")",
+    "A34": "=TEXT(2957004,\"yyyy-mm-dd\")",
+    "A35": "=YEAR(2957003)",
+    "A36": "=YEAR(2957004)",
+    "A37": "=DATEVALUE(\"12/31/9999\")",
+    "A38": "=D1+0",
+    "A39": "=D2+0",
+    "A40": "=MONTH(-1)",
+    "A41": "=WEEKDAY(-1)",
+    "A42": "=TEXT(DATE(2024,3,15),\"dddd\")",
+    "B1": "=DATE(2024,3,15)",
+    "B2": "=DATE(1904,1,2)",
+    "B3": 0,
+    "C1": 1,
+    "C2": 10,
+    "C3": 100,
+    "D1": {
+     "entered": "1904-01-02"
+    },
+    "D2": {
+     "entered": "3/15/2024"
+    },
+    "A43": "=WORKDAY(0,-1)",
+    "A44": "=WORKDAY.INTL(1,-2)",
+    "A45": "=EDATE(-31,1)",
+    "A46": "=EOMONTH(-1,0)",
+    "A47": "=ISOWEEKNUM(-1)",
+    "A48": "=DAYS360(-1,0)",
+    "A49": "=DATEDIF(-1,0,\"d\")",
+    "A50": "=NETWORKDAYS(-5,0)",
+    "A51": "=COUNTIF(E1,\"<=1/1/1908\")",
+    "A52": "=WEEKNUM(-1)",
+    "E1": 2000
+   }
+  }
+ ],
+ "expected": {},
+ "invariant": [
+  "S!A27",
+  "S!A28"
+ ]
+}

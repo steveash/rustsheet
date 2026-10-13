@@ -28,6 +28,8 @@ impl Function {
             Function::Xlookup => "_xlfn.XLOOKUP".to_string(),
             Function::Xmatch => "_xlfn.XMATCH".to_string(),
             Function::Trimrange => "_xlfn.TRIMRANGE".to_string(),
+            // Stored bare it is #NAME? in Excel (probes/catalog/function-name-forms A1/A2, T-0416).
+            Function::Percentof => "_xlfn.PERCENTOF".to_string(),
             Function::Take => "_xlfn.TAKE".to_string(),
             Function::Drop => "_xlfn.DROP".to_string(),
             Function::Tocol => "_xlfn.TOCOL".to_string(),
@@ -96,6 +98,7 @@ impl Function {
             Function::FloorMath => "_xlfn.FLOOR.MATH".to_string(),
             Function::FloorPrecise => "_xlfn.FLOOR.PRECISE".to_string(),
             Function::IsoCeiling => "_xlfn.ISO.CEILING".to_string(),
+            Function::EcmaCeiling => "_xlfn.ECMA.CEILING".to_string(),
             Function::Base => "_xlfn.BASE".to_string(),
             Function::Decimal => "_xlfn.DECIMAL".to_string(),
             Function::Arabic => "_xlfn.ARABIC".to_string(),

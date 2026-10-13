@@ -19,6 +19,10 @@ impl Model {
     where
         F: FnMut(f64),
     {
+        // An error in a referenced cell ranks below a direct scalar error whichever comes first;
+        // the leftmost reference error wins (docs/excel-semantics/syntax.md, "Aggregate error
+        // precedence"; probes/aggregate-error-precedence C25-C31).
+        let mut reference_error = None;
         for arg in args {
             // References (also via IF/INDEX) arrive as a Range; the scalar
             // arms below only see values.
@@ -63,7 +67,11 @@ impl Model {
                     }
                 }
                 RefArg::Ranges(areas) => {
-                    self.for_each_number_in_areas(&areas, cell, &mut f)?;
+                    if reference_error.is_none() {
+                        if let Err(error) = self.for_each_number_in_areas(&areas, cell, &mut f) {
+                            reference_error = Some(error);
+                        }
+                    }
                 }
                 RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
                 // Everything else is ignored
@@ -71,7 +79,7 @@ impl Model {
             }
         }
 
-        Ok(())
+        reference_error.map_or(Ok(()), Err)
     }
 
     /// `for_each_value` that skips empty arguments (`DEVSQ(1, )`) instead of counting them as 0.

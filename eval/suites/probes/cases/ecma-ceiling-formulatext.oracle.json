@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "n",
+    "v": 4.0
+   },
+   "A12": {
+    "t": "s",
+    "v": "=ECMA.CEILING(2.5,2)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "540630c018fc9d735d169845af1e1fa4e31aac0757b4fb8daa6309742e0d4763",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-12T12:36:14+00:00",
+  "version": null
+ }
+}

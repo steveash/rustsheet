@@ -249,7 +249,7 @@ impl Model {
         CalcResult::String(result.text)
     }
 
-    /// TEXTJOIN(delimiter, ignore_empty, text1, [text2], ...): joins text with a delimiter; over 32767
+    /// TEXTJOIN(delimiter, `ignore_empty`, text1, [text2], ...): joins text with a delimiter; over 32767
     /// characters is #CALC! (probes/text-result-limit C9).
     pub(crate) fn fn_textjoin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
@@ -364,14 +364,14 @@ impl Model {
                 CalcResult::String(value) => values.push(value),
                 CalcResult::Boolean(value) => {
                     if value {
-                        values.push("TRUE".to_string())
+                        values.push("TRUE".to_string());
                     } else {
-                        values.push("FALSE".to_string())
+                        values.push("FALSE".to_string());
                     }
                 }
                 CalcResult::EmptyCell => {
                     if !ignore_empty {
-                        values.push("".to_string())
+                        values.push("".to_string());
                     }
                 }
                 CalcResult::EmptyArg => {}

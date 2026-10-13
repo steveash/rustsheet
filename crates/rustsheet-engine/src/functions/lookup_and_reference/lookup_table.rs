@@ -175,8 +175,8 @@ impl SearchVector {
         }
     }
 
-    /// Excel's approximate-match search (VLOOKUP/HLOOKUP with range_lookup
-    /// TRUE, LOOKUP, MATCH with a positive or negative match_type; T-0212).
+    /// Excel's approximate-match search (VLOOKUP/HLOOKUP with `range_lookup`
+    /// TRUE, LOOKUP, MATCH with a positive or negative `match_type`; T-0212).
     /// A binary search that only ever compares values of `target`'s own type:
     /// from each midpoint it skips past blanks, errors and other types (upwards;
     /// when `descending`, downwards to the live range's low bound and then
@@ -261,7 +261,7 @@ impl SearchVector {
         best
     }
 
-    /// Exact-match search (range_lookup FALSE, MATCH 0) for a non-text
+    /// Exact-match search (`range_lookup` FALSE, MATCH 0) for a non-text
     /// `target`: the first value of its own type equal to it. A blank never
     /// matches, a blank `target` is 0, and numbers must be exactly equal:
     /// `MATCH(0.1+0.2,{0.3},0)` is #N/A (probes/lookup-approximate-search

@@ -15,7 +15,7 @@ impl Model {
     ///
     /// Flattens an array into a single column.
     ///   * ignore: 0=keep all (default), 1=ignore blanks, 2=ignore errors, 3=ignore both
-    ///   * scan_by_col: FALSE=row-by-row (default), TRUE=column-by-column
+    ///   * `scan_by_col`: FALSE=row-by-row (default), TRUE=column-by-column
     pub(crate) fn fn_tocol(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         match self.flatten_array_impl(args, cell) {
             Ok(flat) => CalcResult::Array(flat.into_iter().map(|v| vec![v]).collect()),
@@ -29,7 +29,7 @@ impl Model {
     ///
     /// Flattens an array into a single row.
     ///   * ignore: 0=keep all (default), 1=ignore blanks, 2=ignore errors, 3=ignore both
-    ///   * scan_by_col: FALSE=row-by-row (default), TRUE=column-by-column
+    ///   * `scan_by_col`: FALSE=row-by-row (default), TRUE=column-by-column
     pub(crate) fn fn_torow(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         match self.flatten_array_impl(args, cell) {
             Ok(flat) => CalcResult::Array(vec![flat]),

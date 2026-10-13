@@ -1,0 +1,46 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "INDEX area_num and array row/column index elements near an integer (T-1424).",
+ "tags": [
+  "M2",
+  "lookup",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 11,
+    "E1": 111,
+    "B1": 12,
+    "F1": 112,
+    "C1": 13,
+    "G1": 113,
+    "A2": 21,
+    "E2": 121,
+    "B2": 22,
+    "F2": 122,
+    "C2": 23,
+    "G2": 123,
+    "A3": 31,
+    "E3": 131,
+    "B3": 32,
+    "F3": 132,
+    "C3": 33,
+    "G3": 133,
+    "J1": "=INDEX((A1:C3,E1:G3),1,1,2-1E-7)",
+    "J2": "=INDEX((A1:C3,E1:G3),1,1,1-1E-7)",
+    "J3": "=INDEX((A1:C3,E1:G3),1,1,2-3E-7)",
+    "J4": "=INDEX((A1:C3,E1:G3),1,1,-1E-8)",
+    "J5": "=INDEX((A1:C3,E1:G3),1,1,2-2E-8)",
+    "J6": "=INDEX((A1:C3,E1:G3),1,1,1.9999)",
+    "J7": "=SUM(INDEX(A1:C3,{1;3}-{0;1E-7},1))",
+    "J8": "=SUM(INDEX(A1:C3,{0;1}-{1E-8;0},1))",
+    "J9": "=SUM(INDEX(A1:C3,{1;3}-{0;3E-7},1))",
+    "J10": "=SUM(INDEX(A1:C3,1,{1,3}-{0,1E-7}))",
+    "J11": "=SUM(INDEX(A1:C3,1,{0,2}-{1E-8,0}))"
+   }
+  }
+ ],
+ "expected": {}
+}

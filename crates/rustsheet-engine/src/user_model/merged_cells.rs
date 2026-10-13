@@ -16,39 +16,39 @@ impl UserModel {
     /// content.
     ///
     /// See also:
-    /// * [Model::merge_cells](crate::Model::merge_cells)
+    /// * [`Model::merge_cells`](crate::Model::merge_cells)
     pub fn merge_cells(&mut self, range: &Area) -> Result<(), String> {
         self.merge_ranges(std::slice::from_ref(range), false)
     }
 
-    /// Same as [UserModel::merge_cells] but the merged cell is also centered
+    /// Same as [`UserModel::merge_cells`] but the merged cell is also centered
     /// horizontally ("merge & center"). Merging and centering form a single
     /// undo step.
     ///
     /// See also:
-    /// * [Model::merge_cells_center](crate::Model::merge_cells_center)
+    /// * [`Model::merge_cells_center`](crate::Model::merge_cells_center)
     pub fn merge_cells_center(&mut self, range: &Area) -> Result<(), String> {
         self.merge_ranges(std::slice::from_ref(range), true)
     }
 
     /// Merges each row of `range` separately into a one-row-tall merged cell
-    /// ("merge across"), following the rules of [UserModel::merge_cells] row
+    /// ("merge across"), following the rules of [`UserModel::merge_cells`] row
     /// by row. Every row is validated up front, so the operation is
     /// all-or-nothing, and all the merges form a single undo step.
     ///
     /// See also:
-    /// * [Model::merge_cells_across](crate::Model::merge_cells_across)
+    /// * [`Model::merge_cells_across`](crate::Model::merge_cells_across)
     pub fn merge_cells_across(&mut self, range: &Area) -> Result<(), String> {
         self.merge_ranges(&merge_across_ranges(range)?, false)
     }
 
     /// Merges each column of `range` separately into a one-column-wide merged
-    /// cell ("merge down"), following the rules of [UserModel::merge_cells]
+    /// cell ("merge down"), following the rules of [`UserModel::merge_cells`]
     /// column by column. Every column is validated up front, so the operation
     /// is all-or-nothing, and all the merges form a single undo step.
     ///
     /// See also:
-    /// * [Model::merge_cells_down](crate::Model::merge_cells_down)
+    /// * [`Model::merge_cells_down`](crate::Model::merge_cells_down)
     pub fn merge_cells_down(&mut self, range: &Area) -> Result<(), String> {
         self.merge_ranges(&merge_down_ranges(range)?, false)
     }
@@ -213,7 +213,7 @@ impl UserModel {
     /// anchors is kept. Removing no merged cells at all is a no-op.
     ///
     /// See also:
-    /// * [Model::unmerge_cells](crate::Model::unmerge_cells)
+    /// * [`Model::unmerge_cells`](crate::Model::unmerge_cells)
     pub fn unmerge_cells(&mut self, range: &Area) -> Result<(), String> {
         let sheet = range.sheet;
         let old_value = self.model.get_merged_cells(sheet)?.to_vec();

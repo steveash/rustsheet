@@ -4,8 +4,8 @@ use crate::functions::Function;
 
 use super::{broadcast_static_result, run_static_analysis_on_node, Node, StaticResult};
 
-/// AGGREGATE spills over an array function_num, options or fourth argument, broadcast against
-/// each other (`Model::fn_aggregate`). A multi-cell range function_num or options lifts too
+/// AGGREGATE spills over an array `function_num`, options or fourth argument, broadcast against
+/// each other (`Model::fn_aggregate`). A multi-cell range `function_num` or options lifts too
 /// (probes/aggregate-range-args); a single cell and a range fourth argument are read, not lifted.
 /// `StaticResult::Range` holds the extents minus one, so a single cell is `Range(0, 0)` (a 2x2
 /// range is `Range(1, 1)` and lifts, T-0296).
@@ -132,7 +132,7 @@ fn yields_cells<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
     }
 }
 
-/// VLOOKUP/HLOOKUP spill by lookup_value, the index and range_lookup, broadcast; the table is
+/// VLOOKUP/HLOOKUP spill by `lookup_value`, the index and `range_lookup`, broadcast; the table is
 /// consumed (probes/vlookup-array-index-range-lookup, T-1269).
 pub(super) fn lookup_static_result(args: &[Node]) -> StaticResult {
     broadcast_static_result(

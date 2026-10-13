@@ -30,7 +30,7 @@ pub(crate) struct MoveContext<'a> {
 }
 
 /// This implements Excel's cut && paste
-/// We are moving a formula in (row, column) to (row+row_delta, column + column_delta).
+/// We are moving a formula in (row, column) to (`row+row_delta`, column + `column_delta`).
 /// All references that do not point to a cell in area will be left untouched.
 /// All references that point to a cell in area will be displaced
 ///

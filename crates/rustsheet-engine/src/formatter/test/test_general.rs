@@ -325,3 +325,21 @@ fn general_fixed_versus_scientific() {
     assert_eq!(general(1E11), "1E+11");
     assert_eq!(general(1.123_456_789E-10), "1.12346E-10");
 }
+
+#[test]
+fn colon_runs_print_as_one() {
+    // probes/text-format-length-limit-f A30:A39, -g A42:A46 (T-1434).
+    let ctx = FormatContext::new(get_default_locale());
+    assert_eq!(format_number(1.0, "0::", &ctx).text, "1:");
+    assert_eq!(format_number(1.0, "d:::", &ctx).text, "1:");
+    assert_eq!(format_number(1.0, "0: :", &ctx).text, "1: :");
+    assert_eq!(format_number(1.0, "d:\"\":", &ctx).text, "1::");
+}
+
+#[test]
+fn single_text_section_prints_a_number_in_general() {
+    // probes/text-format-length-limit-i A19:A26 (T-1434).
+    let ctx = FormatContext::new(get_default_locale());
+    assert_eq!(format_number(1.0, "@\"aaa\"", &ctx).text, "1");
+    assert_eq!(format_number(1.5, "@", &ctx).text, "1.5");
+}

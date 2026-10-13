@@ -3,7 +3,7 @@ id: T-0412
 title: "Compare the exporter's _xlfn. list with the function catalog"
 milestone: M11
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0411 added five missing arms (DAYS, GAUSS, IMSECH, GAMMA.DIST, FORECAST.LINEAR
 
 ## Out of scope
 -
+
+## Outcome
+Compared the exporter's arm list with XlsxWriter 3.2.9 and the catalog. Every XlsxWriter name with an engine function already has an arm. The only engine function missing an arm is PERCENTOF, but adding it also changes the case builder and stales existing oracle evidence, so it is T-0416. Review also found two arms that add a prefix Excel omits (GAMMALN, ISO.CEILING): T-0417. No code change; recorded in docs/excel-semantics/xlsx-storage.md. Eval delta: none.

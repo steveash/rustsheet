@@ -1,0 +1,60 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1436: day counts of the financial functions in a 1904 workbook; the twin of date-system-1900-financial-daycount (same cells, other date system). Dates straddle a month end, 29 February or a year end so a one-day shift of either date changes the count.",
+ "tags": [
+  "M1",
+  "probe",
+  "dates",
+  "financial",
+  "T-1436"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=DISC(DATE(2024,1,31),DATE(2024,2,29),97,100,0)",
+    "A2": "=DISC(DATE(2024,1,15),DATE(2024,3,31),97,100,0)",
+    "A3": "=DISC(DATE(2023,1,15),DATE(2023,1,31),97,100,0)",
+    "A4": "=DISC(DATE(2023,1,15),DATE(2023,2,28),97,100,0)",
+    "A5": "=DISC(DATE(2023,1,31),DATE(2023,2,28),97,100,0)",
+    "A6": "=DISC(DATE(2024,2,29),DATE(2024,3,31),97,100,0)",
+    "A7": "=DISC(DATE(2023,12,31),DATE(2024,12,31),97,100,1)",
+    "A8": "=DISC(DATE(2024,1,15),DATE(2024,3,31),97,100,4)",
+    "A9": "=YEARFRAC(DATE(2024,1,31),DATE(2024,2,29),0)",
+    "A10": "=YEARFRAC(DATE(2024,1,15),DATE(2024,3,31),0)",
+    "A11": "=YEARFRAC(DATE(2023,12,31),DATE(2024,12,31),1)",
+    "A12": "=DAYS360(DATE(2023,8,31),DATE(2024,2,29))",
+    "A13": "=ACCRINTM(DATE(2024,1,31),DATE(2024,2,29),0.06,1000,0)",
+    "A14": "=ACCRINTM(DATE(2024,1,15),DATE(2024,3,31),0.06,1000,0)",
+    "A15": "=ACCRINTM(DATE(2023,12,31),DATE(2024,12,31),0.06,1000,1)",
+    "A16": "=AMORLINC(2400,DATE(2023,8,31),DATE(2024,2,29),300,0,0.15,0)",
+    "A17": "=AMORLINC(2400,DATE(2024,1,15),DATE(2024,3,31),300,0,0.15,0)",
+    "A18": "=AMORLINC(2400,DATE(2023,12,31),DATE(2024,12,31),300,0,0.15,1)",
+    "A19": "=INTRATE(DATE(2024,1,15),DATE(2024,3,31),97,100,0)",
+    "A20": "=PRICEDISC(DATE(2024,1,15),DATE(2024,3,31),0.05,100,0)",
+    "A21": "=YIELDDISC(DATE(2024,1,15),DATE(2024,3,31),97,100,0)",
+    "A22": "=RECEIVED(DATE(2024,1,15),DATE(2024,3,31),97,0.05,0)",
+    "A23": "=PRICEMAT(DATE(2024,2,29),DATE(2025,2,28),DATE(2023,8,31),0.06,0.061,0)",
+    "A24": "=PRICEMAT(DATE(2024,3,15),DATE(2025,3,31),DATE(2024,1,15),0.06,0.061,0)",
+    "A25": "=YIELDMAT(DATE(2024,2,29),DATE(2025,2,28),DATE(2023,8,31),0.06,99,0)",
+    "A26": "=ACCRINT(DATE(2024,1,15),DATE(2024,7,31),DATE(2024,3,31),0.06,1000,2,0)",
+    "A27": "=ACCRINT(DATE(2023,12,31),DATE(2024,6,30),DATE(2024,12,31),0.06,1000,2,1)",
+    "A28": "=PRICE(DATE(2024,2,15),DATE(2030,8,31),0.05,0.06,100,2,0)",
+    "A29": "=PRICE(DATE(2024,1,15),DATE(2030,3,31),0.05,0.06,100,2,0)",
+    "A30": "=COUPDAYBS(DATE(2024,1,15),DATE(2030,3,31),2,0)",
+    "A31": "=COUPDAYSNC(DATE(2024,1,15),DATE(2030,3,31),2,0)",
+    "A32": "=COUPPCD(DATE(2024,1,15),DATE(2030,3,31),2)",
+    "A33": "=DURATION(DATE(2024,2,15),DATE(2030,8,31),0.05,0.06,2,1)",
+    "A34": "=ODDFPRICE(DATE(2024,1,31),DATE(2030,2,28),DATE(2023,12,1),DATE(2024,2,29),0.05,0.06,100,2,0)",
+    "A35": "=ODDLPRICE(DATE(2024,2,29),DATE(2024,8,31),DATE(2023,11,30),0.05,0.06,100,2,0)",
+    "A36": "=ODDLPRICE(DATE(2024,1,15),DATE(2024,3,31),DATE(2023,11,15),0.05,0.06,100,2,0)",
+    "A37": "=TBILLPRICE(DATE(2023,12,31),DATE(2024,12,30),0.09)",
+    "A38": "=TBILLPRICE(DATE(2023,12,31),DATE(2024,12,31),0.09)",
+    "A39": "=XNPV(0.1,{-100,110},{0,366})",
+    "A40": "=XIRR({-100,110},{0,366})"
+   }
+  }
+ ],
+ "expected": {},
+ "date_system": 1904
+}

@@ -3,7 +3,7 @@ id: T-1319
 title: "Explain last-digit differences of non-integer powers of 10 (10^33.5)"
 milestone: M2
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -23,9 +23,23 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
   exp-ln …476) or `3^-0.5` (Excel …258, exp-ln …257), so it is a lead, not the rule.
 
 ## Acceptance criteria
-- [ ] The three probe cells pass in `rustsheet-eval show` (probes-numeric is ungated and has no baseline); the rule is in numbers.md.
-- [ ] gen-m7/9ff3afcacd3bd0fc A13 passes, or the rule found explains why it cannot yet. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
-- [ ] `make check` green; reviewers approve.
+- [x] The three probe cells pass in `rustsheet-eval show` (probes-numeric is ungated and has no baseline); the rule is in numbers.md.
+- [x] gen-m7/9ff3afcacd3bd0fc A13 passes, or the rule found explains why it cannot yet. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+- **Rule:** for a non-integer `y`, Excel computes `exp(y·ln x)`, a negative `y` as one over the positive power, and `y` = ±0.5 through `sqrt`. Recorded in numbers.md as "Non-integer exponents: exp(y·ln x)".
+- **Evidence:** the new probes-numeric/power-non-integer-sweep (194 cells, excel-graph) has 193 of 194 cells passing. libm `pow` matches 93 of the 180 numeric cells in the main sweep.
+- **Quirk found:** a negative exponent whose positive power underflows is #DIV/0!, integer exponents included; this is implemented.
+- **Open:** `(-8)^(-1/3)` is -0.5 in Excel and -0.5000000000000001 in ours, and goes to T-0221. The three task cells pass, as does gen-m7/9ff3afcacd3bd0fc A13 (6^2.5).
+- **Code:** `arithmetic::non_integer_power` replaces `powf`, including for odd roots of negatives. With it, POWER.xlsx `(-8)^(1/3)` = -1.9999999999999998, which is Excel's cached value.
+- **Eval, 0 regressions in every suite:**
+  - gen-m1 2 → 0 (T-1421's two cells, so gen-m1 is at 100%);
+  - gen-m2 23 → 11;
+  - ironcalc-calc 1478 → 1474;
+  - probes 2797 → 2764;
+  - poi unchanged.
+- **Related tasks:** T-1421 is closed by this change. T-0221 keeps the remaining gen-m2 power cell (fa437879253827be A23).

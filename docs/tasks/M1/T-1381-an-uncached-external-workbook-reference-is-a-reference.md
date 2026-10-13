@@ -3,7 +3,7 @@ id: T-1381
 title: "An uncached external-workbook reference is a reference: ISREF, ROWS, unquoted [book]Sheet! prefix"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -31,9 +31,17 @@ area; probe COLUMNS, AREAS, INDEX, OFFSET on it first, and a 3-D prefix naming a
 (`'[b.xlsx]S1:S2'!A1`, `#BLOCKED!` today, UNVERIFIED) (excel-probe).
 
 ## Acceptance criteria
-- [ ] probes/external-ref-no-link A4, A7, A10 leave eval/baseline/probes.txt with no new F lines.
-- [ ] The extra shapes probed are recorded in docs/excel-semantics/references.md.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/external-ref-no-link A4, A7, A10 leave eval/baseline/probes.txt with no new F lines.
+- [x] The extra shapes probed are recorded in docs/excel-semantics/references.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cached values of `[n]Sheet!ref` (T-1382). Opening other workbooks (directive 5).
+
+## Outcome
+`reference_operators::external_area` gives ISREF, ROWS, COLUMNS, ROW, COLUMN and AREAS the written
+shape of a reference on one sheet of another workbook (its cells still read `#BLOCKED!`), and the
+lexer reads the unquoted `[book]Sheet!ref`. New probe probes/external-ref-no-link-shapes (20 cells,
+excel-graph) recorded in references.md. Eval: probes fixed 3 (external-ref-no-link A4, A7, A10;
+that case now passes 10/10), 8 new-coverage failures in the new case (INDEX, OFFSET, union,
+intersection, COUNTA, spill), 0 regressions. Follow-up: T-1454.

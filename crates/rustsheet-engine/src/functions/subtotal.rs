@@ -118,9 +118,7 @@ impl Model {
                 "Ranges are in different sheets".to_string(),
             ));
         }
-        if areas.len() > 1 {
-            self.check_area_cells(areas, cell)?;
-        }
+        let of_union = areas.len() > 1;
         for area in areas {
             // A row is skipped or kept whole, whatever its column (unevidenced per column, see
             // T-1036); whether its hide counts as a filter is decided per sheet, once per area
@@ -128,12 +126,13 @@ impl Model {
             // are consecutive and the lookup scans the sheet's row styles.
             let mut last_row: Option<(u32, i32, bool)> = None;
             let sheet_filtered = self.sheet_has_filtered_table(area.left.sheet);
-            // A single area is clipped to the used area like a union's: the cells past it are
-            // empty, which no function number reads.
-            self.for_each_position_in_areas(
-                std::slice::from_ref(area),
+            // A single area is clipped to the used area, and a union's areas are walked over
+            // their existing cells: the cells left out are empty, which no function number reads.
+            self.for_each_position_in_area(
+                area,
+                of_union,
                 cell,
-                |model, position| {
+                &mut |model: &mut Self, position: CellReferenceIndex| {
                     let skip = match last_row {
                         Some((sheet, row, skip))
                             if (sheet, row) == (position.sheet, position.row) =>

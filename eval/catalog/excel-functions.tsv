@@ -6,6 +6,7 @@
 #   521 names ("FIND, FINDB" style rows split). Five more (COPILOT, FIELDVALUE, IMPORTCSV, IMPORTTEXT, PY)
 #   come from the function index on every per-function page, which the alphabetical table lacks;
 #   HIDDEN there is excluded ("available only in another language version").
+#   ECMA.CEILING is in neither; it was added from oracle evidence (probes/ecma-ceiling, T-1301).
 # min_args: argument positions a call must have, from the Syntax section of each function's page
 #   (`page`, fetched 2026-10-07), counting arguments not in
 #   [brackets]. A leading optional argument still takes its position (REDUCE([initial_value], array, ...)).
@@ -160,6 +161,7 @@ DSUM	Database	3	DSUM(database, field, criteria)	https://support.microsoft.com/en
 DURATION	Financial	5	DURATION(settlement, maturity, coupon, yld, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/duration-function	
 DVAR	Database	3	DVAR(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/dvar-function	
 DVARP	Database	3	DVARP(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/dvarp-function	
+ECMA.CEILING	Math and trigonometry	2	ECMA.CEILING(number, significance)	https://support.microsoft.com/en-us/office/excel-functions-alphabetical-b3944572-255d-4efb-bb96-c6d90033e188	not in Microsoft's list or index; Excel evaluates it as two-argument CEILING and refuses one argument (probes/ecma-ceiling, T-1301)
 EDATE	Date and time	2	EDATE(start_date, months)	https://support.microsoft.com/en-us/excel/functions/edate-function	
 EFFECT	Financial	2	EFFECT(nominal_rate, npery)	https://support.microsoft.com/en-us/excel/functions/effect-function	
 ENCODEURL	Web	1	ENCODEURL(text)	https://support.microsoft.com/en-us/excel/functions/encodeurl-function	

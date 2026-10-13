@@ -1,6 +1,6 @@
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::math_and_trigonometry::array_size::check_array_size;
+use crate::limits::check_array_size;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -54,7 +54,7 @@ impl Model {
     ///   * cols         – number of columns (default 1)
     ///   * min          – minimum value (default 0)
     ///   * max          – maximum value (default 1)
-    ///   * whole_number – FALSE = decimal, TRUE = integer (default FALSE)
+    ///   * `whole_number` – FALSE = decimal, TRUE = integer (default FALSE)
     pub(crate) fn fn_randarray(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 5 {
             return CalcResult::new_args_number_error(cell);

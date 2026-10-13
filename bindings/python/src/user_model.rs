@@ -123,17 +123,17 @@ impl PyUserModel {
 
     /// Pauses automatic evaluation after each change
     pub fn pause_evaluation(&mut self) {
-        self.model.pause_evaluation()
+        self.model.pause_evaluation();
     }
 
     /// Resumes automatic evaluation after each change
     pub fn resume_evaluation(&mut self) {
-        self.model.resume_evaluation()
+        self.model.resume_evaluation();
     }
 
     /// Forces an evaluation of the workbook (only needed while paused)
     pub fn evaluate(&mut self) {
-        self.model.evaluate()
+        self.model.evaluate();
     }
 
     // Workbook properties
@@ -145,7 +145,7 @@ impl PyUserModel {
 
     /// Sets the name of the workbook
     pub fn set_name(&mut self, name: &str) {
-        self.model.set_name(name)
+        self.model.set_name(name);
     }
 
     pub fn get_timezone(&self) -> String {
@@ -302,7 +302,7 @@ impl PyUserModel {
         to_python(py, &cell_structure)
     }
 
-    /// Returns the bounds of all non-empty cells as (min_row, max_row, min_column, max_column).
+    /// Returns the bounds of all non-empty cells as (`min_row`, `max_row`, `min_column`, `max_column`).
     /// For an empty sheet, returns (1, 1, 1, 1).
     pub fn get_sheet_dimensions(&self, sheet: u32) -> PyResult<(i32, i32, i32, i32)> {
         let model = self.model.get_model();
@@ -656,7 +656,7 @@ impl PyUserModel {
 
     /// Updates a single style property in all cells of the range.
     /// `style_path` examples: "font.b", "font.color", "fill.color",
-    /// "alignment.horizontal", "num_fmt". The value is always a string,
+    /// "alignment.horizontal", "`num_fmt`". The value is always a string,
     /// i.e. "true", "#FF5566", "center", "#,##0.00".
     #[allow(clippy::too_many_arguments)]
     pub fn update_range_style(

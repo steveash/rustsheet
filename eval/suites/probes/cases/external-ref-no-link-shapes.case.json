@@ -1,0 +1,37 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "External-workbook references with no externalLink part: reference functions on them (COLUMNS, AREAS, INDEX, OFFSET, ROW, COLUMN, CELL), the unquoted prefix, and a 3-D prefix naming another workbook (T-1381).",
+  "tags": [
+    "M1",
+    "references",
+    "external-reference",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=COLUMNS('[other.xlsx]Sheet1'!A1:C2)",
+        "A2": "=AREAS('[other.xlsx]Sheet1'!A1:C2)",
+        "A3": "=ROWS(INDEX('[other.xlsx]Sheet1'!A1:C4,2,0))",
+        "A4": "=ISREF(INDEX('[other.xlsx]Sheet1'!A1:C4,2,2))",
+        "A5": "=ROWS(OFFSET('[other.xlsx]Sheet1'!A1,1,1,4,2))",
+        "A6": "=ROW('[other.xlsx]Sheet1'!B5)",
+        "A7": "=COLUMN('[other.xlsx]Sheet1'!B5)",
+        "A8": "=ISREF('[other.xlsx]Sheet1'!A1:B3)",
+        "A9": "=ROWS([other.xlsx]Sheet1!A1:B3)",
+        "A10": "=ISREF([other.xlsx]Sheet1!A1)",
+        "A11": "=SUM('[other.xlsx]S1:S2'!A1)",
+        "A12": "=ISREF('[other.xlsx]S1:S2'!A1)",
+        "A13": "=ROWS('[other.xlsx]Sheet1'!A:A)",
+        "A14": "=ISBLANK('[other.xlsx]Sheet1'!A1)",
+        "A15": "=AREAS(('[other.xlsx]Sheet1'!A1,'[other.xlsx]Sheet1'!B2))",
+        "A16": "=COUNTA('[other.xlsx]Sheet1'!A1:B2)",
+        "A17": "=ROWS('[other.xlsx]Sheet1'!A1:B3 '[other.xlsx]Sheet1'!A2:B5)",
+        "A18": "=ERROR.TYPE(INDEX('[other.xlsx]Sheet1'!A1:C4,2,2))",
+        "A19": "='[other.xlsx]Sheet1'!A1:B2",
+        "A20": "=ISREF('[other.xlsx]Sheet1'!A1:Calc!B2)"
+      }
+    }
+  ]
+}

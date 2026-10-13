@@ -11,7 +11,7 @@ use crate::{
 use super::lookup_index;
 use super::lookup_table::{LookupTable, SearchVector};
 
-/// LOOKUP's `#N/A` for a value that is not found or a position its result_vector cannot give.
+/// LOOKUP's `#N/A` for a value that is not found or a position its `result_vector` cannot give.
 fn not_found(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::Error {
         error: Error::NA,
@@ -123,7 +123,7 @@ impl Model {
         }
     }
 
-    /// The value at 0-based `position` of LOOKUP's result_vector (docs/excel-semantics/lookup.md
+    /// The value at 0-based `position` of LOOKUP's `result_vector` (docs/excel-semantics/lookup.md
     /// "LOOKUP vector form with 2-D or short vectors"; probes/lookup-2d-vector, -wide): a 2-D
     /// result is `#N/A`; a range shorter than `position` reads on past its end, down for a column
     /// and to the right for a row or a single cell (`LOOKUP(99,A1:B2,F1)` reads G1); an array

@@ -119,12 +119,60 @@ IFERROR takes the fallback, `COUNT(…!A1:B1)` is 0 and `ROWS(…!A1:B3)` is 3. 
 Evidence: probes/external-ref-no-link Calc!A1:A10 (excel-graph, 2026-10-11, T-0124).
 With a cache (`[1]Sheet!ref` and an externalBook `sheetDataSet`), Excel reads the cached value:
 `=[1]Uses!$A$1` → "Hello!", `=[1]!NR_Global_B2` → 142 (poi/ref-56737.xlsx Refs!E3, I3, Excel-cached).
-Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`.
-ISREF/ROWS on it, the unquoted prefix (T-1381) and cached `[n]` values (T-1382) are not yet
-implemented. Unprobed: a 3-D prefix naming another workbook (`'[b.xlsx]S1:S2'!A1`; the engine gives
-`#BLOCKED!`, UNVERIFIED), and a `[n]` index with no externalLink part.
+The shape functions read it as a reference too: `COLUMNS(…!A1:C2)` is 3, `AREAS(…!A1:C2)` 1,
+`ROW(…!B5)` 5, `COLUMN(…!B5)` 2, `ROWS(…!A:A)` 1048576, `ISREF(…!A1:B3)` TRUE, and the unquoted
+`ROWS([other.xlsx]Sheet1!A1:B3)` 3. INDEX keeps it a reference (`ROWS(INDEX(…!A1:C4,2,0))` 1,
+`ISREF(INDEX(…!A1:C4,2,2))` TRUE), but the cell INDEX picks is not an error value:
+`ERROR.TYPE(INDEX(…!A1:C4,2,2))` is `#N/A`, where `ERROR.TYPE(…!A1)` is 11. OFFSET on it is
+`#VALUE!`; a union of two is 2 areas, the intersection `…!A1:B3 …!A2:B5` has 2 rows, `ISBLANK(…!A1)`
+is FALSE and `COUNTA(…!A1:B2)` 0 (it counts no `#BLOCKED!`). `='[other.xlsx]Sheet1'!A1:B2` spills
+(`#SPILL!` with the spill area occupied). A 3-D prefix naming another workbook is no reference:
+`SUM('[other.xlsx]S1:S2'!A1)` is `#BLOCKED!` and `ISREF('[other.xlsx]S1:S2'!A1)` FALSE; a range
+whose corners are in two workbooks (`ISREF('[other.xlsx]Sheet1'!A1:Calc!B2)`) is FALSE.
+Evidence: probes/external-ref-no-link-shapes Calc!A1:A20 (excel-graph, 2026-10-12, T-1381).
+Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`, and
+`reference_operators::external_area` gives ISREF, ROWS, COLUMNS, ROW, COLUMN and AREAS the written
+shape; the lexer reads the unquoted `[book]Sheet!` prefix (T-1381). A one-cell `[n]Sheet!A1` reads
+the cache (`external_links.rs`, below; T-1382). INDEX, OFFSET, unions, intersections, COUNTA and the
+spill (T-1454) and cached multi-cell `[n]` ranges are not yet implemented. Unprobed: a `[n]` index with no externalLink part, and ROW/COLUMN of a multi-cell
+external area (the engine spills the row or column numbers as for a sheet reference, UNVERIFIED).
 Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
-Tasks: T-0124, T-1381, T-1382
+Tasks: T-0124, T-1381, T-1382, T-1454
+
+## Cached values of a linked workbook (`[n]Sheet!A1`, `[n]!Name`, `[0]!Name`)
+Rule: in xlsx, Excel writes a reference into another workbook with the 1-based index of its
+`externalReference` in `workbook.xml`: `[1]Sheet!$A$1`, a workbook-scoped defined name of that book
+`[1]!Name`, and a sheet-scoped one `[1]Sheet!Name`. Without opening the other file, Excel gives the
+values it cached in `xl/externalLinks/externalLinkN.xml` (`externalBook`: `sheetNames`,
+`definedNames` with `refersTo` and, for a sheet-scoped name, `sheetId` = index in `sheetNames`,
+and `sheetDataSet/sheetData[@sheetId]/row/cell`): `=[1]Uses!$A$1` → "Hello!" (cached `t="str"`),
+`=[1]Defines!NR_To_A1` → "Test A1" (name `refersTo="='Defines'!$A$1" sheetId="1"`) and
+`=[1]!NR_Global_B2` → 142 (`refersTo="='Defines'!$B$2"`); a second link reads its own part
+(`=[2]Uses!$C$1` → "Hello!"). `[0]` is the workbook itself: `=[0]!NR_Global_B2` is the defined name
+`NR_Global_B2` → 142, and `=IF(Defines!B2 = 42, [0]!NR_Global_B2, -1)` → -1.
+Evidence: poi/ref-56737.xlsx Refs!E3, G3, I3; poi/ref2-56737.xlsx Refs!E3, G3, I3, E5, G5, I5;
+poi/56737.xlsx Uses!C5, D3, D5 (Excel 2010-written, Excel-cached values).
+An add-in function called through an external name, `=[1]!HsGetValue(…)` (poi/HsGetVal.xlsx
+Sheet1!B5, C5 cached "#Missing") and `=[1]!LUCANET(…)` (poi/56502.xlsx Tabelle1!A4 cached
+"pls. update"), keeps its result only in the cell: the externalLink part caches nothing for it, so
+those values came from the add-in. What Excel gives on recalculation without the add-in is
+unprobed; the engine gives `#NAME?` (an unknown function).
+Engine: `rustsheet-xlsx` keeps each link's cache in `Workbook::external_books` (a link that is not
+to a workbook, or whose part is missing or unreadable, is an empty book that keeps its index); the
+lexer reads `[n]!Name` and `[n]Sheet!Name` as one identifier, which the parser keeps as a defined
+name with its prefix, and `external_links.rs` reads the cache. Unprobed, so UNVERIFIED: a cell the
+cache does not hold reads as empty (0); a book, sheet or name the cache does not hold, a name whose
+`refersTo` is not one cell, and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
+uncached reference is; a sheet with `refreshError="1"` is read like any other; `[0]!Missing` is
+`#NAME?` and `[0]Nope!Name` (no such sheet) `#REF!`, as the plain name and a missing sheet are; only
+evaluation strips the `[0]` prefix, so ISREF and a rename of the name do not see through it
+(T-1459). The engine passes a cached cell to a function as a value, not as a reference cell, so
+`SUM([1]Uses!A1)` over cached text is `#VALUE!` where a sheet cell's text would be skipped (T-1460).
+A cached multi-cell range (`[1]Sheet!A1:B2`) stays `#BLOCKED!` (T-1454 covers the uncached shapes).
+`Sheet!Name` with no book prefix (poi/56737.xlsx Uses!D2 `=Defines!NR_To_A1`) does not parse yet
+(T-1459).
+Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
+Tasks: T-1382
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
@@ -149,7 +197,7 @@ lookup value changes nothing (P8). `ISREF` of the lookup result is FALSE either 
 visible only to aggregates. This explains gen-m2/60a543744fc4a8f7 A200 (index `Data!C9` is a cell, the picked FALSE is skipped: -2;
 replicated in L1-L7). A bare `=HLOOKUP(..)` is the picked value (N1-N7).
 `INDEX(A1:A2,3) A1:A2` is `#REF!`, and so is `SUM` of it (D10, D11); `INDEX(A1:A3,2) A1:A3` is the picked cell (E16, E17).
-Status: VERIFIED (excel-graph 2026-10-09, T-0292). The engine matches: `hlookup_impl`/`vlookup_impl` give the pick as a reference only when `lookup_index_arg` returned a reference (T-0295). Index shapes (probes/lookup-pick-index-shapes, excel-graph 2026-10-11, T-0299): every reference-returning index keeps the pick a reference: `COUNT(HLOOKUP(42,F5:G6,<idx>))` picking FALSE is 0 for `INDEX(G5:G5,1)`, `INDEX(G5:G6,1)`, `IF(TRUE,G5)`, `IF(FALSE,1,G5)`, `CHOOSE(1,G5)`, `OFFSET(G5,0,0)`, `OFFSET(G5,0,0,1,1)`, and a defined name `=Sheet1!$G$5`, and the same for VLOOKUP (A2-A6, A8-A10, B1-B5), while a literal index 2 gives 1 (A1, B7); `ISREF` of each such index is TRUE (C1-C5). The engine matches except the `IF` shapes (A3, A9, B2: engine 1), filed as T-1377. A multi-cell range index (`H1:H2`, A7/B6) is 0 whether it is implicitly intersected, lifted or a reference pick, so those cells do not decide it: unprobed.
+Status: VERIFIED (excel-graph 2026-10-09, T-0292). The engine matches: `hlookup_impl`/`vlookup_impl` give the pick as a reference only when `lookup_index_arg` returned a reference (T-0295). Index shapes (probes/lookup-pick-index-shapes, excel-graph 2026-10-11, T-0299): every reference-returning index keeps the pick a reference: `COUNT(HLOOKUP(42,F5:G6,<idx>))` picking FALSE is 0 for `INDEX(G5:G5,1)`, `INDEX(G5:G6,1)`, `IF(TRUE,G5)`, `IF(FALSE,1,G5)`, `CHOOSE(1,G5)`, `OFFSET(G5,0,0)`, `OFFSET(G5,0,0,1,1)`, and a defined name `=Sheet1!$G$5`, and the same for VLOOKUP (A2-A6, A8-A10, B1-B5), while a literal index 2 gives 1 (A1, B7); `ISREF` of each such index is TRUE (C1-C5). The engine matches, the `IF` shapes included (`lookup_index_arg` reads an `IF` index as the reference it picks, T-1377). A multi-cell range index (`H1:H2`, A7/B6) is 0 whether it is implicitly intersected, lifted or a reference pick, so those cells do not decide it. Multi-cell index (probes/lookup-index-multicell-if, excel-graph 2026-10-13, T-1426, H1=1, H2=2): Excel does not implicitly intersect it as a reference (probed in rows 1 and 2 only, where H1:H2 sits): `COUNT(HLOOKUP(42,F5:G6,H1:H2))` is 1 in both row 1 and row 2 (an intersection that keeps the pick a reference would give 1 then 0; an intersection to a value is not told apart by these cells, the spills and ROWS are what show lifting), as are the `VLOOKUP` form and `IF(TRUE,H1:H2)` as the index; the plain formula lifts and spills one pick per index cell (`HLOOKUP(42,F5:G6,H1:H2)` J1 2, J2 FALSE; `IF(TRUE,H1:H2)` the same; `VLOOKUP(9,F5:G7,IF(TRUE,H1:H2))` L1 5, L2 FALSE; `ROWS(HLOOKUP(42,F5:G6,IF(TRUE,H1:H2)))` 2, O1), and `ISREF` of the lifted pick is FALSE. `IF(TRUE,(G5,G6))` as the index is `#REF!` (not `#VALUE!`; M1), so `COUNT` of it is 0. The engine matches (`lookup_index_arg` lifts a multi-cell range index as an array of its values and gives `#REF!` for an `IF` union, T-1485). Lifted lookups (probes/lookup-index-multicell-lifted, excel-graph 2026-10-13, T-1485): the same index with an array `lookup_value` (`VLOOKUP({9,2},F5:G7,H1:H2)` A1 5, B1 `#N/A`), an array `range_lookup` (`HLOOKUP(42,F5:G6,H1:H2,{TRUE,FALSE})` D1 2, E1 `#N/A`) or a range `lookup_value` (`VLOOKUP(F5:F6,F5:G7,H1:H2)` J1 3.14159, J2 5, J10 and J11 the same) gives identical results in row 1 and in row 10, so it is never intersected there either; the engine matches (a lifted lookup reads the top-left index cell only; whether Excel reads another cell for other index values is unprobed). The `IF` union index is validated only after a match: `HLOOKUP(99,F5:G6,IF(TRUE,(G5,G6)),FALSE)` is `#N/A` (M1), as is `HLOOKUP(99,F5:G6,H1:H2,FALSE)` (N1). Unprobed: a one-row or 2-D range index, and a multi-cell index from `INDEX(..,0)`, `OFFSET`, `CHOOSE` or a defined name (the engine lifts them like `H1:H2`); a range index holding text or an error gives one `#REF!` for the whole call (probes/lookup-index-shapes J10).
 ISREF sees the same references: `ISREF(INDEX(A1:A2,2))`, `ISREF(IF(TRUE,A1))` and `ISREF(CHOOSE(1,A1))` are TRUE,
 while `ISREF(INDEX(A1:A2,3))` (an error), `ISREF(IF(TRUE,1))` and `ISREF(CHOOSE(1,5))` are FALSE (probes/isref-function-results,
 excel-graph 2026-10-05; ironcalc ISREF_ISFORMULA!F9 `ISREF(INDEX(A1,1,2,2))` = FALSE). The engine matches all six (T-0235).
@@ -536,19 +584,53 @@ and a union whose accumulated areas would exceed `MAX_AREAS`, checked after each
 the next is evaluated (so `(I,A1,#REF!)`, with `I` an intersection of 65,536 areas, is `#VALUE!`,
 not `#REF!`). No operator ever returns more than `MAX_AREAS` areas, so the pairwise cost of one
 intersection is at most `MAX_AREAS` comparisons. A chain of cuts (`(U1 U2) A1 A1 ...`) would
-repeat that per three characters of formula, so one top-level reference expression may compare at most
-1,048,576 pairs in all (`MAX_AREA_PAIRS`), with `#VALUE!` past it; a reference-returning function
-used as an operand (`INDEX`, `OFFSET`, `IF`) starts its own budget, so total work stays linear in
-formula length. In a value context a union
+repeat that per three characters of formula, and a LET-bound union per argument
+(`LET(u,...,SUM(IF(1,u u A1),IF(1,u u A1),...))`), so one formula evaluation may compare at most
+1,048,576 pairs in all (`MAX_AREA_PAIRS`), with `#VALUE!` past it, wherever in the formula the
+pairs are compared: every argument, IF/CHOOSE/LET operand and reference-returning function draws on
+the same budget. Each cell's formula run (a cell it reads has its own), each conditional-format
+evaluation and each `evaluate_formula` call gets a fresh one (T-1162). In a value context a union
 keeps only its area count, not the areas. Excel's limits, if any, are not known, and neither is
 its result past them; it would differ where later cuts bring the areas back down to one, or where
 a later operand's error would come first.
 The area cap bounds the length of an area list, not the work of walking it: `MAX_AREAS` copies of
-`A:A` fit in a short formula. So an aggregate argument of several areas (`SUM((A:A,C:C))`) first
-adds up the cells of its areas, each clipped to its sheet's used area, in saturating arithmetic
-and before any cell is read; more than 16,777,216 cells (`MAX_AREA_CELLS`, 2^24, 16 full used
-columns) is `#VALUE!`. The bound is per argument, as a plain range argument's work already is.
-Excel's limit, if any, is not known.
+`A:A` fit in a short formula, a LET-bound union can be passed again and again
+(`LET(x,(A:A,A:A),SUM(x,x,...))`), and a LAMBDA can walk one per row of a MAP. So the areas of a
+union (an aggregate argument of several areas: SUM, COUNT, COUNTA, SUBTOTAL, AGGREGATE, LARGE, ...)
+are walked over the cells that exist only, not every position of the used area: every function
+that takes a union skips blank cells, and the cells are met in the same row-major order, so the
+first error cell is the same. The walk pays as it goes from a budget of 16,777,216 steps
+(`MAX_AREA_WALK`, 2^24) per formula evaluation: one step per area walked (so a repeated walk of
+an empty union is paid for too), one per cell handed to the function, one per
+row found (at least one, even with no cell in the area's columns), one per unallocated chunk of
+1,024 rows passed over, and one per 16 row slots tested in allocated chunks
+(`SLOTS_PER_WALK_STEP`). Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
+operand and LAMBDA call of the formula draws on the same budget, like the pair budget; a single
+range argument is not counted and is walked as before (every position of its used area). Over
+sparse data a union then costs what the data costs: `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
+with three cells in 10,000 used rows is about 50 steps per walk, and `MAX_AREAS` copies of `A:A`
+over a cell in row 1,000 fit. Over filled cells a step is a cell: sixteen arguments of a 16-column
+union over 65,536 filled rows, or a MAP of 300 walks of `(A:A,A:A)` over them, are `#VALUE!`.
+The slot rate is measured (T-1497, release build): a step handed to a function costs about 15 ns
+and a slot test about 1.4 ns. With it the budget's worst shapes, a 16-column union of `A:A` passed
+again and again over 65,536 filled rows, over one row in every chunk of the sheet, over 65,536 rows
+with a cell in column B only, or over a cell in the last row only, each stop at `#VALUE!` within
+0.31 s; the old dense budget's worst was 1.09 s (one row per chunk).
+Excel computes formulas well past this budget's old dense form (probes/union-walk-repeated-in-lambda,
+excel-graph, 2026-10-13, T-1462): `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))` on a sheet with
+10,000 used rows is 8000 (2*10^7 positions), and so are the MAP, COUNTA and SUBTOTAL(9,..) forms;
+`MAP(A1:A10000,...)` (2*10^8 positions) is 80000; the bounded union `(B1:B10000,C1:C10000)` too.
+With data in row 1,048,576 `=SUM((B:B,C:C),...)` with nine union arguments (9*2^21 positions) is
+27. The engine now agrees on all of them (T-1497). MAP over a union
+(`=SUM(MAP((B1:B3,C1:C3),LAMBDA(x,x)))`, `ROWS(...)`) is `#VALUE!` in both. The oracle gives no
+timings, so whether Excel walks only data is not known; a union over filled cells past the budget
+remains a DEVIATION. So does a union over a sheet with many rows filled in other columns: a row is
+found through the sheet's row storage, not per column, and costs a step even when the area's
+columns are blank in it, so `MAP(A1:A10000,LAMBDA(r,SUM((B:B,C:C))))` is `#VALUE!` here when
+another column fills 9,000 rows (Excel: 80000). A per-column index would lift that (T-1502).
+A union area is recorded as read-empty as one rectangle per formula root, once however often it is
+walked, so repeated walks do not grow the record that each spill is checked against.
+Excel's actual limit, if any, is not known; the probe only shows it is above 2*10^8 walked cells.
 The LET variables and LAMBDA parameters in scope may hold at most 262,144 areas together (`MAX_HELD_AREAS`,
 four `MAX_AREAS`): each binding may hold a fresh union (`LET(x_1,(A1,A1),x_2,(x_1,x_1),...)`), so memory would
 otherwise grow with formula length. A binding that would pass the total is `#VALUE!`.
@@ -557,10 +639,10 @@ A defined name's union body is capped like a written union, at each use: more th
 needed (SPEC-0004 planned one for stored area lists): names keep only their parsed body, never an area list,
 so memory is bounded by the workbook's formula text and each use by the caps above.
 Status: DEVIATION (decision 0014)
-Implemented in: reference_operators.rs (`MAX_AREAS`, `MAX_AREA_PAIRS`, `MAX_AREA_CELLS`,
-`Model::union_areas`, `Model::count_union_areas`, `Model::intersect_areas`); functions/util.rs
-(`Model::check_area_cells`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
-Tasks: T-0134, T-1062, T-1064, T-1065
+Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
+`Model::count_union_areas`, `Model::intersect_areas`); area_budget.rs (`MAX_AREA_PAIRS`,
+`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
+Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497
 
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence
@@ -632,8 +714,9 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   (`ISREF((Data!A1,Data!B2))`). An error cell inside an area is the aggregate's error as in a plain range, the
   first in formula order winning (`SUM((A1,E1))` = `#DIV/0!` with E1 = 1/0, `SUM((E2,E1))` = `#N/A` with E2 = NA()),
   COUNT skips it (1) and COUNTA counts it (2). SUMSQ, AVERAGEA, MAXA, GEOMEAN, VAR.S and DEVSQ take a union too
-  (`(A1,B2)`: 26, 3, 5, 2.2360679775, 8, 8). PERCENTOF is `#NAME?` in Excel for the web, so it is not probed
-  (probes/multiarea-more, oracle: excel-graph, 2026-10-08, T-1062).
+  (`(A1,B2)`: 26, 3, 5, 2.2360679775, 8, 8) (probes/multiarea-more, oracle: excel-graph, 2026-10-08, T-1062).
+  PERCENTOF takes a union in either argument (`PERCENTOF((A1,B2),(A1,B2))` = 1,
+  `PERCENTOF(A1,(A1:A3,B2))` = 0.025; probes/percentof-snap-overflow-union, excel-graph, 2026-10-13, T-0416).
 - The remaining `for_each_value` aggregates over `(A1,B2,C3,D4)` = 1, 5, 7, 9 (probes/multiarea-foreach, excel-graph,
   2026-10-08, T-1150): HARMEAN 2.7510917031, AVEDEV 2.5, SKEW -0.7528371991, SKEW.P -0.4346507596, KURT
   0.3428571429, MINA 1, STDEV.P, STDEVP and STDEVPA 2.9580398915, STDEV and STDEVA 3.4156502553, VAR.P, VARP and
@@ -654,7 +737,7 @@ UNVERIFIED (no probe): an IF or CHOOSE over an array condition keeps its value f
 SPEC-0004 and T-1065, T-1069 to T-1073 implement the rest;
 until then CONCAT and TEXTJOIN read a union as `#VALUE!` (`RefArg::into_single_area`).
 PERCENTOF takes a union
-too but is unprobed (`#NAME?` in Excel for the web).
+too (T-0416, probes/percentof-snap-overflow-union D8, D9, D13).
 COUNTBLANK (`#VALUE!`) and ROWS/COLUMNS (`#REF!`) of a union: `Model::rows_columns_extent` (cast.rs) and `fn_countblank`
 (statistical/count.rs), T-1069. UNVERIFIED engine behavior: a cross-sheet union in ROWS/COLUMNS stays `#VALUE!`, and
 a union holding an error in COUNTBLANK counts nothing (no probes).

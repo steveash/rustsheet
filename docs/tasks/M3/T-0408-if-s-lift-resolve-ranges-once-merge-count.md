@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-1477]
 ---
 
 ## Goal
@@ -22,12 +22,12 @@ volatile range argument could differ between elements while Excel evaluates it o
 only reuses consecutive equal criteria, so the occurrence-count idiom is O(n^2); a hash memo
 (f64 bit patterns as keys) or one grouping pass for a single equality criterion would help.
 (3) Every element builds a cloned key vector. (4) `count_ifs` and `apply_ifs` duplicate the range
-resolution and walk (the old FIXME, now `TODO(T-0408)`). The cell-visit cap
+resolution and walk (the old FIXME, now `TODO(T-0408)`): split to T-1477 (quality, M2) on 2026-10-13,
+because M2 exit needs one criteria implementation; build on its shared helper. The cell-visit cap
 (`MAX_LIFTED_CELL_VISITS`, a DEVIATION) bounds the worst case meanwhile.
 
 ## Acceptance criteria
 - [ ] Ranges resolve once per formula before the lift; a volatile range argument is evaluated once.
-- [ ] `count_ifs` and `apply_ifs` share one range resolution and walk.
 - [ ] A bench case (SUMIFS/COUNTIFS with a 10,000-element criteria range) shows the improvement.
 - [ ] probes/ifs-array-criteria and poi/70005-countifs still pass; `make check` green; reviewers approve.
 

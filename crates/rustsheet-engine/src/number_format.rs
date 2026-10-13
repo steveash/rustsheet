@@ -389,7 +389,7 @@ fn plain_len(count: usize, exponent: i32) -> usize {
     }
 }
 
-/// `digits` (no leading or trailing zeros) times 10^(exponent + 1 - digits.len()) in plain
+/// `digits` (no leading or trailing zeros) times 10^(exponent + 1 - `digits.len()`) in plain
 /// decimal notation.
 fn plain_notation(digits: &str, exponent: i32) -> String {
     let count = digits.len();
@@ -476,7 +476,7 @@ impl Model {
         // "#,##0.00 ¤" Currency format might have weird spaces
         let currency_format_template = &self.locale.numbers.currency_formats.standard;
         let currency_format = currency_format_template
-            .replace("¤", &format!("\"{}\"", currency_symbol))
+            .replace("¤", &format!("\"{currency_symbol}\""))
             .replace(" ", " ");
 
         let number_fmt = "#,##0.00".to_string();

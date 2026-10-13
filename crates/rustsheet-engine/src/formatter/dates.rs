@@ -31,7 +31,11 @@ fn convert_to_serial_number(date: NaiveDate) -> i32 {
 /// Days from 1900-01-00 (1900-system serial 0) to 1904-01-01 (1904-system serial 0), counting
 /// Excel's fictitious 1900-02-29: 1904 serial 0 is 1900 serial 1462 (probes/date-system-1904-negatives
 /// A8-A12, docs/excel-semantics/dates.md "The 1904 date system").
-const EPOCH_1904_IN_1900_SERIALS: i64 = 1462;
+pub(crate) const EPOCH_1904_IN_1900_SERIALS: i64 = 1462;
+
+/// The 1900 serial the financial functions read for 1904 serial 0: the epoch offset applied twice
+/// (see `DateSystem::financial_1900_serial`).
+const FINANCIAL_EPOCH_1904_IN_1900_SERIALS: i64 = 2 * EPOCH_1904_IN_1900_SERIALS;
 
 impl DateSystem {
     /// The 1900-system serial of this system's day `serial`, the form the calendar helpers
@@ -54,6 +58,108 @@ impl DateSystem {
                 .checked_sub(EPOCH_1904_IN_1900_SERIALS)
                 .filter(|s| *s >= 0),
         }
+    }
+
+    /// Like `serial_from_1900_serial`, but a day before the 1904 epoch keeps its negative serial:
+    /// EDATE and EOMONTH return such days (`EDATE(0,-1)` is -31 and `EOMONTH(0,-1)` is -1 in a 1904
+    /// workbook; probes/date-system-1904-readers A8, A9). WORKDAY gives #NUM! there instead (A43).
+    pub(crate) fn signed_serial_from_1900_serial(self, serial: i64) -> i64 {
+        match self {
+            Self::Excel1900 => serial,
+            Self::Excel1904 => serial - EPOCH_1904_IN_1900_SERIALS,
+        }
+    }
+
+    /// The 1900-system serial that YEARFRAC and the financial functions (COUP*, PRICE, ACCRINT,
+    /// AMORLINC, ...) read for this system's date argument `serial`, before truncation. In a 1904
+    /// workbook they read each date as serial + 2 * 1462, the epoch offset twice (T-1489, T-1492;
+    /// probes/date-system-1904-financial-readers). Across four years with one 29 February that is
+    /// the date four years and a day later, so the day counts are the one-day-late ones:
+    /// `COUPPCD(DATE(2030,1,15),DATE(2030,8,30),4)` is 2029-11-29 and `YEARFRAC(0,59,0)` is 59/360
+    /// (probes/date-system-1904-financial-shift A1, A26; dates.md "The 1904 date system"). A
+    /// negative 1904 serial stays negative, so it is no date there, as in the 1900 system.
+    pub(crate) fn financial_1900_serial(self, serial: f64) -> f64 {
+        match self {
+            Self::Excel1904 if serial >= 0.0 => {
+                serial + FINANCIAL_EPOCH_1904_IN_1900_SERIALS as f64
+            }
+            Self::Excel1900 | Self::Excel1904 => serial,
+        }
+    }
+
+    /// The 1900 serial ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD read for this system's date
+    /// argument `serial`; `None` where they are #NUM!. In a 1904 workbook they read the 1904 serial
+    /// as a 1900 serial twice over, `serial + 2 * 1462`: the date 1462 days later, so they count
+    /// days in the calendar four years on. Across four years with one 29 February that is the date
+    /// four years and one day later, which gives the one-day-late values of `financial_1900_serial`;
+    /// within four years before 1 March of a non-leap century year (2100, 2200, ..., 9900) it is one
+    /// day less, a 29 February of the later year counts as the last day of February, and a date
+    /// that moves past 9999-12-31 is #NUM! (probes/date-system-1904-odd-years,
+    /// date-system-1904-odd-feb29; T-1457). A negative 1904 serial stays negative, as in
+    /// `financial_1900_serial`. `serial` is untrusted, so the arithmetic is checked.
+    pub(crate) fn odd_period_1900_serial(self, serial: f64) -> Option<i64> {
+        let day = serial.floor() as i64;
+        match self {
+            Self::Excel1904 if day >= 0 => day
+                .checked_add(FINANCIAL_EPOCH_1904_IN_1900_SERIALS)
+                .filter(|moved| *moved <= i64::from(MAXIMUM_DATE_SERIAL_NUMBER)),
+            Self::Excel1900 | Self::Excel1904 => Some(day),
+        }
+    }
+
+    /// The last serial ACCRINT reads for its settlement, in the space of `financial_1900_serial`.
+    /// With basis 1 and `calc_method` FALSE a 1904 workbook takes every settlement up to the last
+    /// 1904 date, 2957003, though that reads past 9999-12-31 (2957003 + 2 * 1462) where YEARFRAC and
+    /// DISC are #NUM! from 1904 serial 2955542 on; 2957004 is #NUM! (probes/date-system-1904-
+    /// financial-settlement-bound column A, excel-graph, T-1492). Other bases and `calc_method` TRUE
+    /// are not modelled and keep the 9999-12-31 limit (columns D-F there give other values; T-1494).
+    pub(crate) fn accrint_settlement_limit(self, basis: i32, calc_method: bool) -> i64 {
+        let last = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
+        match self {
+            Self::Excel1904 if basis == 1 && !calc_method => last + EPOCH_1904_IN_1900_SERIALS,
+            Self::Excel1900 | Self::Excel1904 => last,
+        }
+    }
+
+    /// Whether Excel's coupon schedule breaks for a maturity the financial functions read as
+    /// `financial_maturity` (a `financial_1900_serial`). In a 1904 workbook it does for a maturity
+    /// serial m with m + 2 * 1462 past the last date, 2958465: 9995-12-30 still has a schedule,
+    /// 9995-12-31 does not (probes/date-system-1904-coupon-bound G1-G2, T-1440). Excel then takes
+    /// the previous coupon as 1900 serial 1 and the next as the maturity read. A maturity past the
+    /// last date stays #NUM! (`COUPPCD(DATE(2024,1,15),2957004,2)`, date-system-1904-financial A44).
+    /// The maturity is untrusted (a saturated `i64::MAX` for `1E+300`), so the bounds are compared
+    /// without arithmetic on it.
+    pub(crate) fn coupon_schedule_breaks(self, financial_maturity: i64) -> bool {
+        let last = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
+        match self {
+            Self::Excel1900 => false,
+            Self::Excel1904 => {
+                // The 1904 maturity is `financial_maturity - FINANCIAL_EPOCH_1904_IN_1900_SERIALS`.
+                let first_broken = last - FINANCIAL_EPOCH_1904_IN_1900_SERIALS
+                    + 1
+                    + FINANCIAL_EPOCH_1904_IN_1900_SERIALS;
+                let last_date =
+                    last - EPOCH_1904_IN_1900_SERIALS + FINANCIAL_EPOCH_1904_IN_1900_SERIALS;
+                (first_broken..=last_date).contains(&financial_maturity)
+            }
+        }
+    }
+
+    /// This system's serial for a date the financial functions computed as a 1900 serial in the
+    /// space of `financial_1900_serial` (COUPNCD, COUPPCD): 2 * 1462 days before that date in a
+    /// 1904 workbook, so it can be before the epoch (`COUPPCD(10,DATE(1905,6,30),2)` is -1).
+    pub(crate) fn serial_from_financial_1900_serial(self, serial: i64) -> i64 {
+        match self {
+            Self::Excel1900 => serial,
+            Self::Excel1904 => serial - FINANCIAL_EPOCH_1904_IN_1900_SERIALS,
+        }
+    }
+
+    /// The weekday-faithful calendar date (`from_excel_date`) of this system's day `serial`, the
+    /// date WEEKDAY, WORKDAY, NETWORKDAYS, YEARFRAC and DATEDIF read; `None` where they are #NUM!.
+    /// A 1904 serial below 0 is no date: `WEEKDAY(-1)` is #NUM! (probes/date-system-1904-readers A41).
+    pub(crate) fn date_of_serial(self, serial: i64) -> Option<NaiveDate> {
+        from_excel_date(self.to_1900_serial(serial)?).ok()
     }
 }
 
@@ -136,15 +242,19 @@ fn is_date_within_range(date: NaiveDate) -> bool {
 }
 
 pub fn from_excel_date(days: i64) -> Result<NaiveDate, String> {
+    from_excel_date_up_to(days, i64::from(MAXIMUM_DATE_SERIAL_NUMBER))
+}
+
+/// `from_excel_date` with a caller-chosen last serial, for readers whose limit is not 9999-12-31
+/// (`DateSystem::accrint_settlement_limit`). `last` must keep the date inside chrono's range.
+pub(crate) fn from_excel_date_up_to(days: i64, last: i64) -> Result<NaiveDate, String> {
     if days < MINIMUM_DATE_SERIAL_NUMBER as i64 {
         return Err(format!(
             "Excel date must be greater than {MINIMUM_DATE_SERIAL_NUMBER}"
         ));
     };
-    if days > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
-        return Err(format!(
-            "Excel date must be less than {MAXIMUM_DATE_SERIAL_NUMBER}"
-        ));
+    if days > last {
+        return Err(format!("Excel date must be less than {last}"));
     };
     #[allow(clippy::expect_used)]
     let dt = NaiveDate::from_ymd_opt(1900, 1, 1).expect("problem with chrono::NaiveDate");
@@ -239,6 +349,30 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn from_excel_date_up_to_accepts_its_last_serial_only() {
+        use super::from_excel_date_up_to;
+        assert!(from_excel_date_up_to(2_959_927, 2_959_927).is_ok());
+        assert!(from_excel_date_up_to(2_959_928, 2_959_927).is_err());
+        assert!(from_excel_date_up_to(i64::MAX, 2_959_927).is_err());
+    }
+
+    #[test]
+    fn coupon_schedule_breaks_at_its_bounds_without_overflow() {
+        use crate::types::DateSystem;
+        // 1904 serials 2955541 (9995-12-30) and 2955542 (9995-12-31) read 2 * 1462 days on;
+        // 2957003 is the last date, 2957004 is past it (probes/date-system-1904-coupon-bound).
+        let read = |serial: i64| serial + 2 * 1462;
+        assert!(!DateSystem::Excel1904.coupon_schedule_breaks(read(2_955_541)));
+        assert!(DateSystem::Excel1904.coupon_schedule_breaks(read(2_955_542)));
+        assert!(DateSystem::Excel1904.coupon_schedule_breaks(read(2_957_003)));
+        assert!(!DateSystem::Excel1904.coupon_schedule_breaks(read(2_957_004)));
+        // A saturated `1E+300` or `-1E+300` maturity (M6-M8).
+        assert!(!DateSystem::Excel1904.coupon_schedule_breaks(i64::MAX));
+        assert!(!DateSystem::Excel1904.coupon_schedule_breaks(i64::MIN));
+        assert!(!DateSystem::Excel1900.coupon_schedule_breaks(2_958_465));
+    }
+
     #[test]
     fn month_arithmetic_and_real_serials_skip_the_fictitious_dates() {
         use super::{month_arithmetic_date, real_date_to_serial};

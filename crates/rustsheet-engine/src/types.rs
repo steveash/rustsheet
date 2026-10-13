@@ -2,6 +2,7 @@ use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
+pub use crate::external_links::ExternalBook;
 use crate::{cf_types::ConditionalFormatting, expressions::token::Error};
 
 fn default_as_false() -> bool {
@@ -23,8 +24,7 @@ pub enum Color {
     None,
 }
 
-/// Valid hex colors are #FFAABB
-/// #fff is not valid
+/// Valid hex colors are #FFAABB; #fff is not valid
 fn is_valid_hex_color(color: &str) -> bool {
     if color.chars().count() != 7 {
         return false;
@@ -63,7 +63,7 @@ impl Color {
         if is_valid_hex_color(color) {
             return Ok(Color::Rgb(color.to_string()));
         }
-        Err(format!("Invalid color: '{}'.", color))
+        Err(format!("Invalid color: '{color}'."))
     }
 
     /// Parses a color from the JS/WASM parameter format:
@@ -88,7 +88,7 @@ impl Color {
                 }
             }
         }
-        Err(format!("Invalid color: '{}'.", s))
+        Err(format!("Invalid color: '{s}'."))
     }
 }
 
@@ -155,6 +155,8 @@ pub struct Workbook {
     pub tables: HashMap<String, Table>,
     pub views: HashMap<u32, WorkbookView>,
     pub theme: Theme,
+    /// The linked workbooks formulas name by index, `[1]` first (`[1]Sheet!A1`, `[1]!Name`).
+    pub external_books: Vec<ExternalBook>,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
@@ -166,7 +168,7 @@ pub struct DefinedName {
 }
 
 /// * state:
-///   18.18.68 ST_SheetState (Sheet Visibility Types)
+///   18.18.68 `ST_SheetState` (Sheet Visibility Types)
 ///   hidden, veryHidden, visible
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub enum SheetState {
@@ -185,16 +187,15 @@ impl Display for SheetState {
     }
 }
 
-/// Represents the state of the worksheet as seen by the user. This includes
-/// details such as the currently selected cell, the visible range, and the
-/// position of the viewport.
+/// Represents the state of the worksheet as seen by the user. This includes details such as the
+/// currently selected cell, the visible range, and the position of the viewport.
 #[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct WorksheetView {
     /// The row index of the currently selected cell (the anchor of the selection).
     pub row: i32,
     /// The column index of the currently selected cell (the anchor of the selection).
     pub column: i32,
-    /// The selected range in the worksheet, specified as [start_row, start_column, end_row, end_column].
+    /// The selected range in the worksheet, specified as [`start_row`, `start_column`, `end_row`, `end_column`].
     /// Always normalized (start <= end). This is derived state: the bounding box of the
     /// anchor and the focus, grown so it never covers a merged cell partially.
     pub range: [i32; 4],
@@ -232,10 +233,9 @@ pub enum Link {
     },
 }
 
-/// A rectangular range of cells that is displayed as a single cell.
-/// The anchor (top-left) cell holds the content and is the only cell of the
-/// range users can edit; every other cell of the range is "covered" and must
-/// stay empty of content, although it can hold styles.
+/// A rectangular range of cells that is displayed as a single cell. The anchor (top-left) cell
+/// holds the content and is the only cell of the range users can edit; every other cell of the
+/// range is "covered" and must stay empty of content, although it can hold styles.
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct MergedCell {
     /// Row of the anchor (top-left) cell
@@ -301,8 +301,8 @@ pub struct Worksheet {
     pub links: HashMap<(i32, i32), Link>,
 }
 
-/// Internal representation of Excel's sheet_data
-/// It is row first and because of this all of our API's should be row first
+/// Internal representation of Excel's `sheet_data`. It is row first and because of this all of our
+/// API's should be row first
 pub use crate::sheet_data::SheetData;
 
 // ECMA-376-1:2016 section 18.3.1.73
@@ -331,7 +331,7 @@ pub struct Col {
     pub style: Option<i32>,
 }
 
-/// Cell type enum matching Excel TYPE() function values.
+/// Cell type enum matching Excel `TYPE()` function values.
 #[derive(Debug, Eq, PartialEq)]
 pub enum CellType {
     Number = 1,
@@ -907,7 +907,7 @@ pub struct Border {
 }
 
 /// Information need to show a sheet tab in the UI
-/// The color is serialized only if it is not Color::None
+/// The color is serialized only if it is not `Color::None`
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SheetProperties {
     pub name: String,

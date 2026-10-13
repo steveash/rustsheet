@@ -2,7 +2,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex, utils::quote_name},
     model::Model,
-    reference_operators::{not_a_reference_array, three_d_needs_one_sheet, RefArg},
+    reference_operators::{external_area, not_a_reference_array, three_d_needs_one_sheet, RefArg},
 };
 
 use crate::expressions::utils::number_to_column;
@@ -27,9 +27,9 @@ impl Model {
     /// `=ADDRESS(row_num, col_num, [abs_num], [a1], [sheet_text])`
     ///
     /// Returns a cell address as text.
-    ///   * abs_num: 1=absolute $A$1 (default), 2=row-abs/col-rel A$1, 3=row-rel/col-abs $A1, 4=relative A1
+    ///   * `abs_num`: 1=absolute $A$1 (default), 2=row-abs/col-rel A$1, 3=row-rel/col-abs $A1, 4=relative A1
     ///   * a1: TRUE=A1 style (default), FALSE=R1C1 style
-    ///   * sheet_text: optional sheet name prefix
+    ///   * `sheet_text`: optional sheet name prefix
     pub(crate) fn fn_address(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 5 {
             return CalcResult::new_args_number_error(cell);
@@ -101,10 +101,10 @@ impl Model {
                 }
             };
             match abs_num {
-                1 => format!("{}${}${}", sheet_prefix, col_letter, row_num),
-                2 => format!("{}{}${}", sheet_prefix, col_letter, row_num),
-                3 => format!("{}${}{}", sheet_prefix, col_letter, row_num),
-                4 => format!("{}{}{}", sheet_prefix, col_letter, row_num),
+                1 => format!("{sheet_prefix}${col_letter}${row_num}"),
+                2 => format!("{sheet_prefix}{col_letter}${row_num}"),
+                3 => format!("{sheet_prefix}${col_letter}{row_num}"),
+                4 => format!("{sheet_prefix}{col_letter}{row_num}"),
                 _ => {
                     // This should never happen due to the earlier check
                     return CalcResult::new_error(
@@ -117,16 +117,16 @@ impl Model {
         } else {
             // R1C1 style
             let row_part = if abs_num == 1 || abs_num == 2 {
-                format!("R{}", row_num)
+                format!("R{row_num}")
             } else {
-                format!("R[{}]", row_num)
+                format!("R[{row_num}]")
             };
             let col_part = if abs_num == 1 || abs_num == 3 {
-                format!("C{}", col_num)
+                format!("C{col_num}")
             } else {
-                format!("C[{}]", col_num)
+                format!("C[{col_num}]")
             };
-            format!("{}{}{}", sheet_prefix, row_part, col_part)
+            format!("{sheet_prefix}{row_part}{col_part}")
         };
 
         CalcResult::String(address)
@@ -145,6 +145,9 @@ impl Model {
     pub(crate) fn fn_areas(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
+        }
+        if external_area(&args[0], cell).is_some() {
+            return CalcResult::Number(1.0);
         }
         let arg = self.evaluate_picked_reference_arg(&args[0], cell);
         if let Some(areas) = arg.single_sheet_areas() {

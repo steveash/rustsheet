@@ -83,8 +83,8 @@ fn binary_hit<S: Sequence<CalcResult> + ?Sized>(
     }
 }
 
-/// XLOOKUP's lookup_array and return_array, evaluated and shape-checked once, so that a lifted
-/// lookup_value runs only the search and the pick for each element (T-1264).
+/// XLOOKUP's `lookup_array` and `return_array`, evaluated and shape-checked once, so that a lifted
+/// `lookup_value` runs only the search and the pick for each element (T-1264).
 struct XlookupTable {
     /// The lookup vector. A range is evaluated only up to the sheet's used area.
     values: SearchVector,
@@ -93,7 +93,7 @@ struct XlookupTable {
     returns: XlookupReturns,
 }
 
-/// An XLOOKUP return_array.
+/// An XLOOKUP `return_array`.
 enum XlookupReturns {
     Range(CellReferenceIndex, CellReferenceIndex),
     Array(Vec<Vec<ArrayNode>>),
@@ -106,12 +106,12 @@ enum XlookupPick {
     /// array, as a reference when `as_reference`.
     Whole { as_reference: bool },
     /// The first cell of the match only, as a value: the result of each element of a lifted
-    /// lookup_value. `XLOOKUP({2;3},A1:A4,C1:E4)` is 12; 13 in one column
+    /// `lookup_value`. `XLOOKUP({2;3},A1:A4,C1:E4)` is 12; 13 in one column
     /// (probes/xlookup-array-lookup-value A15, probes/xlookup-array-lookup-value-args A1, A33).
     FirstCell,
 }
 
-/// XLOOKUP's match_mode and search_mode from their values.
+/// XLOOKUP's `match_mode` and `search_mode` from their values.
 fn xlookup_modes(
     model: &mut Model,
     match_mode: &CalcResult,
@@ -253,12 +253,12 @@ impl Model {
         CalcResult::Array(rows)
     }
 
-    /// XLOOKUP's lookup_array and return_array. The lookup array, a range or an array, must be a
+    /// XLOOKUP's `lookup_array` and `return_array`. The lookup array, a range or an array, must be a
     /// row or a column ([`xlookup_orientation`]). The return array, a range or an array, needs
     /// the lookup column's row count (any width: the matched row is returned) or the lookup
     /// row's column count (any height: the matched column); otherwise it is `#VALUE!`
     /// (poi/xlookup.xlsx Sheet1!C2; probes/xlookup-array-return E1-E24,
-    /// probes/xlookup-row-column-picks; docs/excel-semantics/lookup.md "Array lookup_array").
+    /// probes/xlookup-row-column-picks; docs/excel-semantics/lookup.md "Array `lookup_array`").
     fn xlookup_table(
         &mut self,
         lookup_node: &Node,
@@ -314,7 +314,7 @@ impl Model {
         })
     }
 
-    /// One XLOOKUP search: `values` are the lookup value, match_mode and search_mode. A lookup
+    /// One XLOOKUP search: `values` are the lookup value, `match_mode` and `search_mode`. A lookup
     /// value error comes first, then a mode error, then an error of the table; `if_not_found`
     /// only when nothing matches (probes/xlookup-array-lookup-value-args A18, A61, A64).
     fn xlookup_one(
@@ -376,28 +376,28 @@ impl Model {
 
     /// The XLOOKUP function searches a range or an array, and then returns the item corresponding
     /// to the first match it finds. If no match exists, then XLOOKUP can return the closest (approximate) match.
-    /// =XLOOKUP(lookup_value, lookup_array, return_array, [if_not_found], [match_mode], [search_mode])
+    /// =`XLOOKUP(lookup_value`, `lookup_array`, `return_array`, [`if_not_found`], [`match_mode`], [`search_mode`])
     ///
-    /// lookup_array and return_array must be column or row arrays and of the same dimension.
+    /// `lookup_array` and `return_array` must be column or row arrays and of the same dimension.
     /// Otherwise #VALUE! is returned
-    /// [if_not_found]
-    /// Where a valid match is not found, return the [if_not_found] text you supply.
-    /// If a valid match is not found, and [if_not_found] is missing, #N/A is returned.
+    /// [`if_not_found`]
+    /// Where a valid match is not found, return the [`if_not_found`] text you supply.
+    /// If a valid match is not found, and [`if_not_found`] is missing, #N/A is returned.
     ///
-    /// [match_mode]
+    /// [`match_mode`]
     /// Specify the match type:
     ///   *  0 - Exact match. If none found, return #N/A. This is the default.
     ///   * -1 - Exact match. If none found, return the next smaller item.
     ///   *  1 - Exact match. If none found, return the next larger item.
     ///   *  2 - A wildcard match where *, ?, and ~ have special meaning.
     ///
-    /// [search_mode]
+    /// [`search_mode`]
     /// Specify the search mode to use:
     ///   *  1 - Perform a search starting at the first item. This is the default.
     ///   * -1 - Perform a reverse search starting at the last item.
-    ///   *  2 - Perform a binary search that relies on lookup_array being sorted
+    ///   *  2 - Perform a binary search that relies on `lookup_array` being sorted
     ///      in ascending order. If not sorted, invalid results will be returned.
-    ///   * -2 - Perform a binary search that relies on lookup_array being sorted
+    ///   * -2 - Perform a binary search that relies on `lookup_array` being sorted
     ///     in descending order. If not sorted, invalid results will be returned.
     pub(crate) fn fn_xlookup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.xlookup_impl(args, cell, false)
@@ -407,7 +407,7 @@ impl Model {
     /// intersection operand sees them: `=A1:A3 XLOOKUP(2,A1:A3,A1:B3)` is 2
     /// (probes/intersection-function-operands H8; T-0165).
     ///
-    /// An array or multi-cell lookup_value, match_mode or search_mode lifts: the result has
+    /// An array or multi-cell `lookup_value`, `match_mode` or `search_mode` lifts: the result has
     /// their broadcast shape, each element looked up by the scalar rules, an error argument
     /// giving that error per element (probes/let-name-uncalled-picked-refs H21,
     /// probes/xlookup-array-lookup-value, probes/xlookup-array-lookup-value-args; T-1264). The
@@ -465,9 +465,9 @@ impl Model {
         )
     }
 
-    /// XLOOKUP's if_not_found (`#N/A` when omitted or empty). A range stays a reference in the
+    /// XLOOKUP's `if_not_found` (`#N/A` when omitted or empty). A range stays a reference in the
     /// reference form: `ISREF(XLOOKUP(9,A1:A3,B1:B3,C1))` is TRUE
-    /// (probes/intersection-lookup-operand-errors H10). Under a lifted lookup_value an array
+    /// (probes/intersection-lookup-operand-errors H10). Under a lifted `lookup_value` an array
     /// gives its first element and a reference, even a single cell, `#VALUE!`
     /// (probes/xlookup-array-lookup-value-args A27-A31, A58).
     fn xlookup_if_not_found(

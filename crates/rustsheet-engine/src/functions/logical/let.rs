@@ -7,7 +7,8 @@ use crate::{
     },
     functions::Function,
     model::Model,
-    reference_operators::{Binding, Ranges, RefArg},
+    reference_operators::{Ranges, RefArg},
+    variable_stack::Binding,
 };
 
 /// Whether two LET variable or LAMBDA parameter names are the same variable: Excel compares them
@@ -219,7 +220,7 @@ impl Model {
     }
 
     /// What a LET value or a LAMBDA argument binds. A reference stays a reference, a single
-    /// cell too (upstream MIN_MAX_extras.xlsx A16, MAX_MIN.xlsx H54), and so does one INDEX,
+    /// cell too (upstream `MIN_MAX_extras.xlsx` A16, `MAX_MIN.xlsx` H54), and so does one INDEX,
     /// XLOOKUP, TAKE, DROP or TRIMRANGE picks (T-1232), but VLOOKUP and HLOOKUP bind their value (probes/let-bind-reference-forms; a
     /// called `LET(f,INDEX(A1:A3,2),f(2))` is `#REF!`, let-name-call-refs H5). An argument that
     /// may stand for several areas is read in reference context, so a union stays its areas
@@ -227,19 +228,19 @@ impl Model {
     /// (probes/multiarea-let H1, multiarea-letbind H1:H3 and H7).
     pub(crate) fn bind_argument(&mut self, node: &Node, cell: CellReferenceIndex) -> Binding {
         let node = node.ungrouped();
-        let is_index = matches!(
-            node,
-            Node::FunctionKind {
-                kind: Function::Index,
-                ..
-            }
-        );
         let is_span = matches!(node, Node::SheetSpanKind { .. });
         // XLOOKUP, TAKE, DROP and TRIMRANGE bind the reference they pick, so calling the name is
         // `#REF!` as for OFFSET (probes/let-name-call-forms H7:H9, H11; T-1232).
         let is_picked = matches!(node, Node::FunctionKind { kind, .. } if kind.picks_reference());
-        if !is_index && !is_span && !is_picked && !self.is_multi_area(node) {
-            return Binding::Value(self.evaluate_node_with_reference(node, cell));
+        if !is_span && !is_picked && !self.is_multi_area(node) {
+            // An INDEX that picks one cell stays a reference: `eval_ref_or_index` owns that rule.
+            // Its `@INDEX` arm is for the spill anchor operands (T-1247); a binding of `@INDEX(..)`
+            // stays a value as before (no probe says otherwise, T-1223).
+            return Binding::Value(if matches!(node, Node::ImplicitIntersection { .. }) {
+                self.evaluate_node_with_reference(node, cell)
+            } else {
+                self.eval_ref_or_index(node, cell)
+            });
         }
         match self.evaluate_picked_reference_arg(node, cell) {
             RefArg::Ranges(Ranges::Areas(areas)) => Binding::Areas(areas),

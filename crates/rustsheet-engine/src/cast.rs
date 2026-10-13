@@ -1,7 +1,7 @@
 use crate::arithmetic::{bcast_idx, flush_subnormal};
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
-use crate::reference_operators::{Ranges, RefArg};
+use crate::reference_operators::{external_area, several_areas_ref, Ranges, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -10,7 +10,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     formatter::format::parse_formatted_number,
-    functions::math_and_trigonometry::array_size::{check_array_size, check_range_size},
+    limits::{check_array_size, check_range_size},
     model::Model,
 };
 
@@ -29,7 +29,7 @@ impl NumberOrArray {
     }
 }
 
-/// A scalar CalcResult or a 2-D array, used for element-wise comparison.
+/// A scalar `CalcResult` or a 2-D array, used for element-wise comparison.
 pub(crate) enum ValueOrArray {
     Value(CalcResult),
     Array(Vec<Vec<ArrayNode>>),
@@ -62,7 +62,7 @@ pub(crate) const MAX_TEXT_UNITS: usize = 32767;
 /// Truncates `text` to [`MAX_TEXT_UNITS`] UTF-16 code units, as Excel does for CONCATENATE and
 /// `&` (probes/resource-limits C9, C10; probes/concatenate-limit-spill, excel-graph). A character
 /// that would straddle the limit is dropped whole: Excel keeps its lone high surrogate, which a
-/// Rust `String` cannot hold (decision 0033).
+/// Rust `String` cannot hold; TODO(T-1483) keeps it.
 pub(crate) fn truncate_text(text: &mut String) {
     // UTF-8 never takes fewer bytes than UTF-16 takes code units, so short text skips the scan.
     if text.len() <= MAX_TEXT_UNITS {
@@ -160,11 +160,21 @@ impl Model {
         currencies: &[&str],
         year: CurrentYear,
     ) -> Option<f64> {
-        if let Ok((v, _number_format)) = parse_formatted_number(text, currencies, self.locale, year)
-        {
+        if let Ok((v, _number_format)) = parse_formatted_number(
+            text,
+            currencies,
+            self.locale,
+            year,
+            self.workbook.settings.date_system,
+        ) {
             return Some(crate::arithmetic::flush_subnormal(v));
         }
-        crate::functions::date_and_time::time_text::parse_time_serial(text, self.locale, year)
+        crate::functions::date_and_time::time_text::parse_time_serial(
+            text,
+            self.locale,
+            year,
+            self.workbook.settings.date_system,
+        )
     }
     /// Lifts the range `left:right` into a 2-D array of its cell values, for a function or
     /// operator that works on it element by element (or a formula that spills it).
@@ -267,7 +277,7 @@ impl Model {
         for na in operands {
             match na {
                 Err(CalcResult::Error { error, .. }) if any_array => {
-                    lifted.push(NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]]))
+                    lifted.push(NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]]));
                 }
                 Ok(na) => lifted.push(na),
                 Err(e) => return e,
@@ -384,7 +394,7 @@ impl Model {
         }
     }
 
-    /// Like `get_number_or_array` but preserves the full CalcResult type (no coercion to f64).
+    /// Like `get_number_or_array` but preserves the full `CalcResult` type (no coercion to f64).
     /// Used for element-wise comparison operators.
     pub(crate) fn get_value_or_array(
         &mut self,
@@ -440,7 +450,7 @@ impl Model {
 
     /// Evaluates a unary `-` or `%` node. A chain such as `B:B%%%` or `---B:B` is applied
     /// in one element-wise pass, so a whole column is lifted once rather than once per
-    /// operator (the formula_eval fuzz timeout, T-1078). The operators commute (negation is
+    /// operator (the `formula_eval` fuzz timeout, T-1078). The operators commute (negation is
     /// exact and the subnormal flush is sign-symmetric), so only the minus parity and the
     /// `%` count matter, and the walk allocates nothing.
     pub(crate) fn apply_unary_chain(
@@ -762,17 +772,14 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<(usize, usize), CalcResult> {
+        if let Some(area) = external_area(node, cell) {
+            return Ok(area.extent());
+        }
         // ROWS/COLUMNS of a reference of several areas is #REF!, not the #VALUE! of a value
         // context (probes/multiarea-count H2, H3; SPEC-0004 row 5).
         let result = if self.is_multi_area(node) {
             match self.evaluate_reference_arg(node, cell) {
-                RefArg::Ranges(Ranges::Areas(_)) => {
-                    return Err(CalcResult::new_error(
-                        Error::REF,
-                        cell,
-                        "Reference of several areas".to_string(),
-                    ))
-                }
+                RefArg::Ranges(Ranges::Areas(_)) => return Err(several_areas_ref(cell)),
                 // A 3-D span through a variable, IF or CHOOSE is `#VALUE!`, as the written one
                 // is (probes/3d-ref-let-bound-span C7:C8, 3d-ref-let-values C5).
                 other => other.into_single_sheet_area(cell),

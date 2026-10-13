@@ -173,7 +173,7 @@ pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
             }
             '0'..='9' => {
                 if state == 1 {
-                    state = 2
+                    state = 2;
                 }
                 row.push(ch);
             }

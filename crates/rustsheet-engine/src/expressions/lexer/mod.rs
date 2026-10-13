@@ -16,7 +16,7 @@
 //!
 //! Formulas look different in different locales:
 //!
-//! =IF(A1, B1, NA()) versus =IF(A1; B1; NA())
+//! =IF(A1, B1, `NA()`) versus =IF(A1; B1; `NA()`)
 //!
 //! Also numbers are different:
 //!
@@ -186,7 +186,7 @@ impl Lexer {
     }
 
     /// Checks the next token without advancing position
-    /// See also [advance_token](Self::advance_token)
+    /// See also [`advance_token`](Self::advance_token)
     pub fn peek_token(&mut self) -> TokenType {
         let position = self.position;
         let tk = self.next_token();
@@ -230,7 +230,7 @@ impl Lexer {
     }
 
     /// Advances position. This is used in conjunction with [`peek_token`](Self::peek_token)
-    /// It is a noop if the has not been a previous peek_token
+    /// It is a noop if the has not been a previous `peek_token`
     pub fn advance_token(&mut self) {
         if let Some(position) = self.next_token_position {
             self.position = position;
@@ -255,7 +255,9 @@ impl Lexer {
                     '=' => TokenType::Compare(OpCompare::Equal),
                     '{' => TokenType::LeftBrace,
                     '}' => TokenType::RightBrace,
-                    '[' => TokenType::LeftBracket,
+                    '[' => self
+                        .consume_external_sheet_reference()
+                        .unwrap_or(TokenType::LeftBracket),
                     ']' => TokenType::RightBracket,
                     ':' => TokenType::Colon,
                     ';' => TokenType::Semicolon,
@@ -564,14 +566,14 @@ impl Lexer {
         let position = self.position;
         if position >= self.len {
             return Err(self.set_error(
-                &format!("Error, expected {} found EOF", ch_expected),
+                &format!("Error, expected {ch_expected} found EOF"),
                 self.position,
             ));
         } else {
             let ch = self.chars[position];
             if ch_expected != ch {
                 return Err(self.set_error(
-                    &format!("Error, expected {} found {}", ch_expected, ch),
+                    &format!("Error, expected {ch_expected} found {ch}"),
                     self.position,
                 ));
             }
@@ -880,6 +882,45 @@ impl Lexer {
             return TokenType::Illegal(self.set_error("Expected '!'", self.position));
         }
         self.consume_range(Some(sheet_name))
+    }
+
+    /// An unquoted prefix naming a sheet of another workbook, `[book]Sheet!ref`, read as its
+    /// quoted spelling `'[book]Sheet'!ref` is: `=SUM([other.xlsx]Sheet1!A1:B1)` parses and is
+    /// `#BLOCKED!` (probes/external-ref-no-link A7; docs/excel-semantics/references.md "External
+    /// reference with no cached data"). A defined name of that workbook, `[1]!Name` or
+    /// `[1]Sheet!Name` (Excel writes both in xlsx: poi/ref-56737.xlsx Refs!G3, I3), is the
+    /// identifier `[1]!Name` or `[1]Sheet!Name`. Called with the `[` consumed; `None`, with the
+    /// position left after the `[`, when no `book]Sheet!` follows (a LAMBDA's optional `[x]`).
+    fn consume_external_sheet_reference(&mut self) -> Option<TokenType> {
+        let start = self.position;
+        let rest = &self.chars[start..];
+        let book_len = rest.iter().position(|&c| c == ']' || c == '[')?;
+        if book_len == 0 || rest[book_len] != ']' {
+            return None;
+        }
+        self.position = start + book_len + 1;
+        let sheet = self.consume_identifier();
+        if self.peek_char() != Some('!') {
+            self.position = start;
+            return None;
+        }
+        self.position += 1;
+        let book: String = self.chars[start..start + book_len].iter().collect();
+        let prefix = format!("[{book}]{sheet}");
+        if !sheet.is_empty() {
+            let after_bang = self.position;
+            let token = self.consume_range(Some(prefix.clone()));
+            if !matches!(token, TokenType::Illegal(_)) {
+                return Some(token);
+            }
+            self.position = after_bang;
+        }
+        let name = self.consume_identifier();
+        if name.is_empty() {
+            self.position = start;
+            return None;
+        }
+        Some(TokenType::Ident(format!("{prefix}!{name}")))
     }
 
     fn consume_range(&mut self, sheet: Option<String>) -> TokenType {

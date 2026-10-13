@@ -17,6 +17,7 @@ use rustsheet_engine::types::{Cell, Row, SheetData};
 use crate::error::XlsxError;
 
 use super::package::ImportLimits;
+use super::shared_strings::SharedStringTable;
 use super::util::parse_bool_with_default;
 use super::worksheets::{
     find_or_add_formula, from_a1_to_rc, get_cell_from_excel, parse_cell_reference, parse_range,
@@ -138,7 +139,7 @@ struct CellXml {
 struct SheetDataReader<'a> {
     sheet_name: &'a str,
     parser: &'a mut Parser,
-    shared_strings: &'a mut Vec<String>,
+    shared_strings: &'a mut SharedStringTable,
     limits: &'a ImportLimits,
     /// The rich-value error of each value-metadata entry (`vm` is 1-based into it).
     rich_errors: &'a [Option<&'static str>],
@@ -568,7 +569,7 @@ impl SheetDataReader<'_> {
                     };
                     // The reference is the set of cell it spills into.
                     let (row1, column1, row2, column2) = parse_range(&range)
-                        .map_err(|_| XlsxError::Xml(format!("Invalid range: {}", range)))?;
+                        .map_err(|_| XlsxError::Xml(format!("Invalid range: {range}")))?;
                     // (row1, column1) has to be this cell. We need to mark all the other ones as part of the array formula
                     if row1 != r_index || column1 != column_index {
                         return Err(XlsxError::Xml(
@@ -645,7 +646,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
     reader: R,
     sheet_name: &str,
     parser: &mut Parser,
-    shared_strings: &mut Vec<String>,
+    shared_strings: &mut SharedStringTable,
     limits: &ImportLimits,
     rich_errors: &[Option<&'static str>],
 ) -> Result<SheetDataXml, XlsxError> {
@@ -738,7 +739,7 @@ mod tests {
             xml.as_bytes(),
             "Sheet1",
             &mut parser,
-            &mut Vec::new(),
+            &mut SharedStringTable::default(),
             &ImportLimits::default(),
             &[],
         )?;

@@ -214,3 +214,47 @@ fn bycol_lambda_counta() {
     assert_eq!(model._get_text("H1"), "1");
     assert_eq!(model._get_text("I1"), "2");
 }
+
+#[test]
+fn bycol_range_slices_are_references() {
+    // probes/lambda-helper-range-slices (excel-graph): blank cells of a column slice are skipped.
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("A3", "z");
+    model._set("B3", "y");
+    model._set("E1", "=BYCOL(A1:B3,LAMBDA(c,COUNTA(c)))");
+    model._set("E3", "=BYROW(A1:B3,LAMBDA(r,ROW(r)))");
+    model._set("G1", "=BYCOL(IFERROR(A1:B3,1),LAMBDA(c,COUNTA(c)))");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), "2");
+    assert_eq!(model._get_text("F1"), "1");
+    assert_eq!(model._get_text("E5"), "3");
+    assert_eq!(model._get_text("G1"), "3");
+    assert_eq!(model._get_text("H1"), "3");
+}
+
+#[test]
+fn byrow_bycol_whole_column_keeps_full_size() {
+    // A whole column keeps its 1,048,576 rows, not the used area (arrays.md "Array results
+    // above 1,048,576 cells").
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("D1", "=BYCOL(A:A,LAMBDA(c,ROWS(c)))");
+    model._set("D2", "=ROWS(BYROW(C:C,LAMBDA(r,1)))");
+    // Two whole columns are above the 2^20-cell array bound: the documented DEVIATION.
+    model._set("D3", "=BYCOL(A:B,LAMBDA(c,ROWS(c)))");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "1048576");
+    assert_eq!(model._get_text("D2"), "1048576");
+    assert_eq!(model._get_text("D3"), "#ERROR!");
+}
+
+#[test]
+fn byrow_over_a_range_above_the_array_bound_is_an_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BYROW(B1:XFD1048575,LAMBDA(r,COUNTA(r)))");
+    model._set("A2", "=BYCOL(B1:XFD1048575,LAMBDA(c,COUNTA(c)))");
+    model.evaluate();
+    assert!(model._get_text("A1").starts_with('#'));
+    assert!(model._get_text("A2").starts_with('#'));
+}

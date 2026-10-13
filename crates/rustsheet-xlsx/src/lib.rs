@@ -1,7 +1,7 @@
 //! # IronCalc - Core API documentation
 //!
 //! This technical API documentation is aimed at developers.
-//! It is used to build language bindings (like python, javascript or nodejs) or to build full fledged applications like TironCalc in the terminal or IronCalc, the Web application.
+//! It is used to build language bindings (like python, javascript or nodejs) or to build full fledged applications like `TironCalc` in the terminal or IronCalc, the Web application.
 //!
 //! ## Basic usage
 //!

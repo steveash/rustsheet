@@ -100,14 +100,23 @@ A5 (no error), A6 (5); function-name-forms-2 A3 `_xlfn.SUM(1,2)` = 3; probes/cat
 A4 `_xlfn.NORMSDIST(0)` = 0.5 (oracle: excel-graph, 2026-10-07, T-0040; A1 until T-0052). Consequence for case specs: the
 case builder (tools/src/rustsheet_tools/spec2xlsx.py) prefixes every call of a name on its own table
 (the engine exporter's list plus the names only XlsxWriter knew; T-0052), whatever else shares the
-formula; GROUPBY, PIVOTBY and PERCENTOF are not on it, so specs spell them `_xlfn.`
+formula; GROUPBY and PIVOTBY are not on it, so specs spell them `_xlfn.`
 (probes/catalog/availability-*). The classic NORMSDIST/NORMSINV give the same values bare as
 prefixed: normsdist-stored-form A1-A2 and availability-27 A8-A9 (refilled bare) and A4
 `_xlfn.NORMSDIST(0)` = 0.5 (excel-graph, 2026-10-07, T-0052).
 Status: VERIFIED
 Implemented in: `Function::to_xlsx_string` (functions/xlsx_names.rs; test `newer_functions_export_with_xlfn_prefix`, T-0411). The engine parser resolves a bare newer name read from a file, and the
 exporter never writes `_xleta.` (T-1089).
-Tasks: T-0040, T-1089
+Comparison (T-0412): the exporter's arms were checked against XlsxWriter 3.2.9's future-function list; every
+name there that has an engine function already has an arm. XlsxWriter also prefixes ANCHORARRAY (the `#`
+operator), SINGLE (the `@` operator, handled by the parser), FILTERXML, QUERYSTRING and WEBSERVICE; the engine
+has no Function variant for the last three or for GROUPBY/PIVOTBY (not on XlsxWriter's list), so nothing is
+exported for them. PERCENTOF has an arm since T-0416. The case builder (which reads these arms) now prefixes it, and a
+sheet's `bare_function_names` list keeps a cell's names as typed, so function-name-forms A1 still
+stores the bare form (refilled 2026-10-13: still `#NAME?`). The gen-m5/m6/m7 cases that call PERCENTOF
+were refilled with the prefixed form. Two existing arms
+add a prefix Excel-authored workbooks omit (`GAMMALN`, `ISO.CEILING`): T-0417.
+Tasks: T-0040, T-0412, T-0416, T-0417, T-1089
 
 ## Written parentheses are stored as written; `@(x)` is `_xlfn.SINGLE((x))`
 Rule: the stored `<f>` text keeps every redundant parenthesis as written. A group directly after `@`

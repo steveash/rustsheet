@@ -415,7 +415,7 @@ impl Styles {
         })
     }
 
-    /// Removes a named style entry. Does not remove the underlying cell_xfs entry.
+    /// Removes a named style entry. Does not remove the underlying `cell_xfs` entry.
     /// Fails if the style does not exist or is a built-in.
     pub(crate) fn delete_named_style_entry(&mut self, style_name: &str) -> Result<(), String> {
         let pos = self
@@ -532,7 +532,7 @@ impl Model {
             .set_cell_style(destination_cell.1, destination_cell.2, source_style_index)
     }
 
-    /// Applies the named style "style_name" to the cell. Only the categories
+    /// Applies the named style "`style_name`" to the cell. Only the categories
     /// the style includes are stamped; the rest of the cell's formatting is
     /// kept as local overrides.
     pub fn set_cell_style_by_name(

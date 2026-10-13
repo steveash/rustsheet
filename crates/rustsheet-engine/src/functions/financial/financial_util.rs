@@ -49,7 +49,7 @@ pub(crate) fn compute_rate(
 pub(crate) fn compute_npv(rate: f64, values: &[f64]) -> Result<f64, (Error, String)> {
     let mut npv = 0.0;
     for (i, item) in values.iter().enumerate() {
-        npv += item / (1.0 + rate).powi(i as i32 + 1)
+        npv += item / (1.0 + rate).powi(i as i32 + 1);
     }
     Ok(npv)
 }
@@ -112,7 +112,7 @@ pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, Str
 fn compute_npv_prime(rate: f64, values: &[f64]) -> Result<f64, (Error, String)> {
     let mut npv = 0.0;
     for (i, item) in values.iter().enumerate() {
-        npv += -item * (i as f64 + 1.0) / (1.0 + rate).powi(i as i32 + 2)
+        npv += -item * (i as f64 + 1.0) / (1.0 + rate).powi(i as i32 + 2);
     }
     if npv.is_infinite() || npv.is_nan() {
         return Err((Error::NUM, "NaN".to_string()));
@@ -156,7 +156,7 @@ pub(crate) fn compute_xnpv(
     for i in 1..n {
         let vi = values[i];
         let di = dates[i];
-        xnpv += vi / ((1.0 + rate).powf((di - d0) / 365.0))
+        xnpv += vi / ((1.0 + rate).powf((di - d0) / 365.0));
     }
     if xnpv.is_infinite() || xnpv.is_nan() {
         return Err((Error::NUM, "NaN".to_string()));

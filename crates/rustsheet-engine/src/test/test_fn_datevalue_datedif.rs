@@ -27,7 +27,7 @@ fn eval_formula_raw_number(formula: &str) -> Result<f64, String> {
             ..
         } => Ok(*v),
         Cell::BooleanCell { v, .. } => Ok(if *v { 1.0 } else { 0.0 }),
-        Cell::ErrorCell { ei, .. } => Err(format!("{}", ei)),
+        Cell::ErrorCell { ei, .. } => Err(format!("{ei}")),
         _ => Err(model._get_text("A1")),
     }
 }
@@ -133,7 +133,7 @@ fn test_datevalue_error_conditions() {
     ];
     for formula in cases {
         let result = eval_formula(formula);
-        assert_eq!(result, *"#VALUE!", "Expected #VALUE! for {}", formula);
+        assert_eq!(result, *"#VALUE!", "Expected #VALUE! for {formula}");
     }
 }
 
@@ -153,7 +153,7 @@ fn test_datevalue_arguments() {
 // Helper to set and evaluate a single DATEDIF call
 fn eval_datedif(unit: &str) -> String {
     let mut model = new_empty_model();
-    let formula = format!("=DATEDIF(\"2020-01-01\", \"2021-06-15\", \"{}\")", unit);
+    let formula = format!("=DATEDIF(\"2020-01-01\", \"2021-06-15\", \"{unit}\")");
     model._set("A1", &formula);
     model.evaluate();
     model._get_text("A1")

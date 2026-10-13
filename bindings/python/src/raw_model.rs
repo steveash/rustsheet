@@ -37,7 +37,7 @@ impl PyModel {
 
     /// Evaluates the workbook
     pub fn evaluate(&mut self) {
-        self.model.evaluate()
+        self.model.evaluate();
     }
 
     // Set values
@@ -473,7 +473,7 @@ impl PyModel {
             .map_err(to_py_err)
     }
 
-    /// Returns the bounds of all non-empty cells as (min_row, max_row, min_column, max_column).
+    /// Returns the bounds of all non-empty cells as (`min_row`, `max_row`, `min_column`, `max_column`).
     /// For an empty sheet, returns (1, 1, 1, 1).
     pub fn get_sheet_dimensions(&self, sheet: u32) -> PyResult<(i32, i32, i32, i32)> {
         let worksheet = self.model.workbook.worksheet(sheet).map_err(to_py_err)?;

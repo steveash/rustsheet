@@ -1,0 +1,44 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1446: SORT/SORTBY omitted-argument combinations.",
+ "tags": [
+  "M2",
+  "probe",
+  "lookup",
+  "T-1446"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 3,
+    "A2": 1,
+    "A3": 2,
+    "B1": "c",
+    "B2": "a",
+    "B3": "b",
+    "C1": 2,
+    "C2": 1,
+    "C3": 3,
+    "H1": "=SORT(A1:A3,,)",
+    "H5": "=SORT(A1:A3,,,)",
+    "H9": "=SORT(A1:A3,,-1,)",
+    "H13": "=SORT(A1:A3,,,TRUE)",
+    "H17": "=SORT(A1:A3,1,,)",
+    "H21": "=SORT(A1:A3,,1)",
+    "H25": "=SORT(A1:A3,,-1)",
+    "H29": "=SORT(A1:A3,1,)",
+    "H33": "=SORT(A1:A3,)",
+    "H37": "=SORT(A1:A3,,,FALSE)",
+    "H41": "=SORT(A1:C3,2,,)",
+    "H45": "=SORT(A1:C3,,,TRUE)",
+    "H49": "=SORT(A1:C3,2,-1,TRUE)",
+    "H53": "=SORT(A1:C3,2,,TRUE)",
+    "H57": "=SORTBY(A1:A3,C1:C3,)",
+    "H61": "=SORTBY(A1:A3,C1:C3,,B1:B3,)",
+    "H65": "=SORTBY(A1:A3,C1:C3,-1,B1:B3,)"
+   }
+  }
+ ],
+ "expected": {}
+}

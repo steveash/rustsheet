@@ -1,0 +1,41 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "MATCH match_type through nested IF/IFS/SWITCH/LET, multi-cell ranges, 3-D spans and the SWITCH default branch (T-1452).",
+ "tags": [
+  "M2",
+  "lookup",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A5": 1,
+    "A6": 2,
+    "A7": 3,
+    "D1": "x",
+    "D2": 1,
+    "D3": "y",
+    "D4": 0,
+    "K1": "=MATCH(2,A5:A7,IFS(TRUE,IF(TRUE,D1)))",
+    "K2": "=MATCH(2,A5:A7,IF(TRUE,D1:D2))",
+    "K3": "=MATCH(2,A5:A7,IF(TRUE,D2:D3))",
+    "K4": "=MATCH(2,A5:A7,IF(TRUE,IFS(TRUE,D1)))",
+    "K5": "=MATCH(2,A5:A7,SWITCH(9,1,D2,D1))",
+    "K6": "=MATCH(2,A5:A7,SWITCH(9,1,D2,D2))",
+    "K7": "=MATCH(2,A5:A7,IFS(TRUE,D1:D2))",
+    "K8": "=MATCH(2,A5:A7,SWITCH(1,1,D1:D2))",
+    "K9": "=MATCH(2,A5:A7,LET(a,D1:D2,a))",
+    "K10": "=MATCH(2,A5:A7,IFS(TRUE,Sheet1:Sheet1!D1))",
+    "K11": "=MATCH(2,A5:A7,IF(TRUE,Sheet1:Sheet1!D1))",
+    "K12": "=MATCH(2,A5:A7,IFS(TRUE,SWITCH(1,1,D1)))",
+    "K13": "=MATCH(2,A5:A7,LET(a,IF(TRUE,D1),a))",
+    "K14": "=MATCH(2,A5:A7,D1:D2)",
+    "K15": "=MATCH(2,A5:A7,D2:D3)",
+    "K16": "=MATCH(2,A5:A7,CHOOSE(1,D1:D2))",
+    "K17": "=MATCH(2,A5:A7,CHOOSE(1,IF(TRUE,D1)))"
+   }
+  }
+ ],
+ "expected": {}
+}

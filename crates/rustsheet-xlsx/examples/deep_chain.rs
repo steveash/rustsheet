@@ -12,7 +12,7 @@
 //! It is evaluated and saved as xlsx.
 //!
 //! Usage:
-//!   cargo run --release --example deep_chain -- [rows] [file]
+//!   cargo run --release --example `deep_chain` -- [rows] [file]
 //!
 //! Defaults: 1,000,000 rows, `deep-chain.xlsx`.
 

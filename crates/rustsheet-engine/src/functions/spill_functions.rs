@@ -53,8 +53,8 @@ fn array_node_is_truthy(node: &ArrayNode) -> bool {
 }
 
 /// A hashable, equality-normalised representation of a single cell value.
-/// Strings are uppercased (matching case-insensitive array_nodes_equal).
-/// Numbers use bit-level identity (f64::to_bits), which is exact for all
+/// Strings are uppercased (matching case-insensitive `array_nodes_equal`).
+/// Numbers use bit-level identity (`f64::to_bits`), which is exact for all
 /// values that actually appear in spreadsheet cells.
 #[derive(Hash, Eq, PartialEq)]
 enum CellKey {
@@ -102,7 +102,7 @@ fn extract_key_column(data: &[Vec<ArrayNode>], expected_len: usize) -> Option<Ve
 }
 
 impl Model {
-    /// Evaluate a node and convert the result to a 2-D array of ArrayNodes.
+    /// Evaluate a node and convert the result to a 2-D array of `ArrayNodes`.
     /// Handles Range references, inline Arrays, and scalar values.
     pub(crate) fn eval_to_array(
         &mut self,
@@ -137,12 +137,33 @@ impl Model {
 
     // ── SORT ──────────────────────────────────────────────────────────────────
 
+    /// A `sort_order` argument: 1 ascending, -1 descending, an omitted one (`SORT(a,,,)`,
+    /// `SORTBY(a,k,)`) ascending. Excel: probes/sort-omitted-args (T-1446).
+    fn get_sort_order(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<bool, CalcResult> {
+        if matches!(node, Node::EmptyArgKind) {
+            return Ok(true);
+        }
+        match self.get_number(node, cell)? as i32 {
+            1 => Ok(true),
+            -1 => Ok(false),
+            _ => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "sort_order must be 1 or -1".to_string(),
+            )),
+        }
+    }
+
     /// `=SORT(array, [sort_index], [sort_order], [by_col])`
     ///
-    /// Returns the array sorted by the given column (or row when by_col=TRUE).
-    ///   * sort_index – 1-based column/row index to sort by (default 1)
-    ///   * sort_order – 1 = ascending, -1 = descending (default 1)
-    ///   * by_col     – FALSE = sort rows, TRUE = sort columns (default FALSE)
+    /// Returns the array sorted by the given column (or row when `by_col=TRUE`).
+    ///   * `sort_index` – 1-based column/row index to sort by (default 1)
+    ///   * `sort_order` – 1 = ascending, -1 = descending (default 1)
+    ///   * `by_col`     – FALSE = sort rows, TRUE = sort columns (default FALSE)
     pub(crate) fn fn_sort(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() || args.len() > 4 {
             return CalcResult::new_args_number_error(cell);
@@ -160,7 +181,8 @@ impl Model {
         let num_rows = data.len();
         let num_cols = data[0].len();
 
-        let sort_index: usize = if args.len() >= 2 {
+        // An omitted argument (`SORT(arr,,)`) takes its default: probes/counta-empty-value D22-D24.
+        let sort_index: usize = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {
             match self.get_number(&args[1], cell) {
                 Ok(n) => {
                     let n = n as i64;
@@ -180,18 +202,8 @@ impl Model {
         };
 
         let ascending: bool = if args.len() >= 3 {
-            match self.get_number(&args[2], cell) {
-                Ok(n) => match n as i32 {
-                    1 => true,
-                    -1 => false,
-                    _ => {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "sort_order must be 1 or -1".to_string(),
-                        )
-                    }
-                },
+            match self.get_sort_order(&args[2], cell) {
+                Ok(a) => a,
                 Err(e) => return e,
             }
         } else {
@@ -253,8 +265,8 @@ impl Model {
     /// `=SORTBY(array, by_array1, [sort_order1], [by_array2, sort_order2], ...)`
     ///
     /// Sorts array rows using one or more external key arrays.
-    ///   * sort_order values: 1 = ascending (default), -1 = descending
-    ///   * by_array must have the same number of rows as array
+    ///   * `sort_order` values: 1 = ascending (default), -1 = descending
+    ///   * `by_array` must have the same number of rows as array
     ///   * Valid argument counts: 2, 3, 5, 7, … (additional keys in pairs)
     pub(crate) fn fn_sortby(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let n = args.len();
@@ -293,18 +305,8 @@ impl Model {
             }
         };
         let order1 = if n >= 3 {
-            match self.get_number(&args[2], cell) {
-                Ok(v) => match v as i32 {
-                    1 => true,
-                    -1 => false,
-                    _ => {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "sort_order must be 1 or -1".to_string(),
-                        )
-                    }
-                },
+            match self.get_sort_order(&args[2], cell) {
+                Ok(a) => a,
                 Err(e) => return e,
             }
         } else {
@@ -330,18 +332,8 @@ impl Model {
                 }
             };
             let ascending = if i + 1 < n {
-                match self.get_number(&args[i + 1], cell) {
-                    Ok(v) => match v as i32 {
-                        1 => true,
-                        -1 => false,
-                        _ => {
-                            return CalcResult::new_error(
-                                Error::VALUE,
-                                cell,
-                                "sort_order must be 1 or -1".to_string(),
-                            )
-                        }
-                    },
+                match self.get_sort_order(&args[i + 1], cell) {
+                    Ok(a) => a,
                     Err(e) => return e,
                 }
             } else {
@@ -370,8 +362,8 @@ impl Model {
     /// `=UNIQUE(array, [by_col], [exactly_once])`
     ///
     /// Returns the unique rows (or columns) from array.
-    ///   * by_col       – FALSE = deduplicate rows, TRUE = deduplicate columns (default FALSE)
-    ///   * exactly_once – FALSE = return one copy of every distinct value (default)
+    ///   * `by_col`       – FALSE = deduplicate rows, TRUE = deduplicate columns (default FALSE)
+    ///   * `exactly_once` – FALSE = return one copy of every distinct value (default)
     ///     TRUE  = return only rows/columns that appear exactly once
     pub(crate) fn fn_unique(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() || args.len() > 3 {
@@ -478,7 +470,7 @@ impl Model {
     ///
     /// Returns only the rows of array where the corresponding include value is truthy.
     ///   * include  – a column vector of booleans/numbers with the same height as array
-    ///   * if_empty – value returned when no rows pass the filter (default: #CALC! error)
+    ///   * `if_empty` – value returned when no rows pass the filter (default: #CALC! error)
     ///
     /// Note: include must be a range reference or inline array containing boolean/numeric
     /// values. For comparison-based filtering (e.g. A1:A5>3) store the comparison result

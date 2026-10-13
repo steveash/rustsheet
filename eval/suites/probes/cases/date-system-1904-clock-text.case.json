@@ -1,0 +1,27 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1441: date-clock text coerced to a number and WORKDAY holidays before the epoch in a 1904 workbook.",
+ "tags": ["M1", "probe", "dates", "T-1441"],
+ "date_system": 1904,
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "B1": "=DATE(2024,3,15)",
+    "B2": "=-5",
+    "A1": "=\"1904-01-02 10:00\"+0",
+    "A2": "=\"2024-03-15 18:00\"+0",
+    "A3": "=\"3/15/2024 6:00 PM\"+0",
+    "A4": "=VALUE(\"2024-03-15 12:00\")",
+    "A5": "=DATEVALUE(\"2024-03-15 12:00\")",
+    "A6": "=TIMEVALUE(\"2024-03-15 12:00\")",
+    "A7": "=IF(ISERROR(\"1903-12-31 10:00\"+0),ERROR.TYPE(\"1903-12-31 10:00\"+0),\"1903-12-31 10:00\"+0)",
+    "A8": "=IF(ISERROR(WORKDAY(B1,1,-1)),ERROR.TYPE(WORKDAY(B1,1,-1)),WORKDAY(B1,1,-1))",
+    "A9": "=IF(ISERROR(WORKDAY(B1,1,B2)),ERROR.TYPE(WORKDAY(B1,1,B2)),WORKDAY(B1,1,B2))",
+    "A10": "=IF(ISERROR(NETWORKDAYS(B1,B1+5,-1)),ERROR.TYPE(NETWORKDAYS(B1,B1+5,-1)),NETWORKDAYS(B1,B1+5,-1))",
+    "A11": "=IF(ISERROR(WORKDAY.INTL(B1,1,1,-1)),ERROR.TYPE(WORKDAY.INTL(B1,1,1,-1)),WORKDAY.INTL(B1,1,1,-1))"
+   }
+  }
+ ]
+}

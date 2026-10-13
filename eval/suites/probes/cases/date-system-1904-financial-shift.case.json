@@ -1,0 +1,56 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1436: 1904 workbook cells that tell 'reads the true date' from 'reads the next day' apart: a non-month-end quarterly maturity whose next day is a month end (8/30 -> 8/31), ACCRINT with basis 1 over a year end, YEARFRAC across 29 February and at the 1904 bounds. A31-A36: TBILL* one-year limit across 29 February and a month end.",
+ "tags": [
+  "M1",
+  "probe",
+  "dates",
+  "financial",
+  "T-1436"
+ ],
+ "date_system": 1904,
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=COUPPCD(DATE(2030,1,15),DATE(2030,8,30),4)",
+    "A2": "=COUPNCD(DATE(2030,1,15),DATE(2030,8,30),4)",
+    "A3": "=COUPDAYBS(DATE(2030,1,15),DATE(2030,8,30),4,1)",
+    "A4": "=COUPDAYS(DATE(2030,1,15),DATE(2030,8,30),4,1)",
+    "A5": "=COUPNUM(DATE(2030,2,27),DATE(2030,8,30),4)",
+    "A6": "=COUPDAYSNC(DATE(2030,2,27),DATE(2030,8,30),4,1)",
+    "A7": "=PRICE(DATE(2030,1,15),DATE(2030,8,30),0.05,0.06,100,4,1)",
+    "A8": "=YIELD(DATE(2030,2,27),DATE(2030,8,30),0.05,99,100,4,1)",
+    "A9": "=DURATION(DATE(2029,1,15),DATE(2030,8,30),0.05,0.06,4,1)",
+    "A10": "=COUPNUM(DATE(2024,1,30),DATE(2030,2,27),1)",
+    "A11": "=COUPPCD(DATE(2024,3,30),DATE(2030,4,29),2)",
+    "A12": "=ACCRINT(DATE(2023,12,31),DATE(2024,6,30),DATE(2024,12,31),0.06,1000,2,1,FALSE)",
+    "A13": "=ACCRINT(DATE(2024,1,1),DATE(2024,7,1),DATE(2025,1,1),0.06,1000,2,1)",
+    "A14": "=ACCRINT(DATE(2023,12,31),DATE(2024,6,30),DATE(2024,12,31),0.06,1000,2,3)",
+    "A15": "=ACCRINT(DATE(2023,12,31),DATE(2024,6,30),DATE(2024,6,30),0.06,1000,2,1)",
+    "A16": "=ACCRINT(DATE(2024,1,15),DATE(2024,7,31),DATE(2024,3,31),0.06,1000,2,1)",
+    "A17": "=ACCRINT(DATE(2024,1,15),DATE(2024,8,30),DATE(2024,3,31),0.06,1000,4,1)",
+    "A18": "=ACCRINT(DATE(2024,1,15),DATE(2024,8,30),DATE(2024,3,31),0.06,1000,4,0)",
+    "A19": "=ODDFPRICE(DATE(2024,1,15),DATE(2030,8,30),DATE(2023,12,1),DATE(2024,5,30),0.05,0.06,100,4,1)",
+    "A20": "=ODDLPRICE(DATE(2024,1,15),DATE(2024,4,15),DATE(2023,11,30),0.05,0.06,100,4,1)",
+    "A21": "=YEARFRAC(DATE(2024,1,30),DATE(2024,2,29),0)",
+    "A22": "=YEARFRAC(DATE(2023,2,28),DATE(2024,2,29),1)",
+    "A23": "=YEARFRAC(DATE(2023,3,1),DATE(2024,2,29),1)",
+    "A24": "=YEARFRAC(DATE(2024,1,1),DATE(2028,12,31),1)",
+    "A25": "=YEARFRAC(DATE(2024,1,31),DATE(2024,3,31),4)",
+    "A26": "=YEARFRAC(0,59,0)",
+    "A27": "=YEARFRAC(0,2957003,1)",
+    "A28": "=YEARFRAC(-1,10,1)",
+    "A29": "=DISC(0,2957003,97,100,0)",
+    "A30": "=AMORLINC(2400,DATE(2024,1,31),DATE(2024,2,29),300,0,0.15,0)",
+    "A31": "=TBILLPRICE(DATE(2023,2,28),DATE(2024,2,29),0.09)",
+    "A32": "=TBILLYIELD(DATE(2023,2,28),DATE(2024,2,29),98)",
+    "A33": "=TBILLEQ(DATE(2023,2,28),DATE(2024,2,29),0.09)",
+    "A34": "=TBILLPRICE(DATE(2023,1,31),DATE(2024,1,31),0.09)",
+    "A35": "=TBILLPRICE(DATE(2024,3,31),DATE(2025,3,31),0.09)",
+    "A36": "=TBILLPRICE(-1,10,0.09)"
+   }
+  }
+ ],
+ "expected": {}
+}

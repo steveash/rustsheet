@@ -6,7 +6,7 @@ use crate::locale::{get_locale, Locale};
 
 use super::{Lexer, LexerMode};
 
-/// A MarkedToken is a token together with its position on a formula
+/// A `MarkedToken` is a token together with its position on a formula
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct MarkedToken {
     pub token: token::TokenType,

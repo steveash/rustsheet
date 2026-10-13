@@ -16,7 +16,7 @@ mod information;
 pub(crate) mod logical;
 pub(crate) mod lookup_and_reference;
 mod macros;
-pub(crate) mod math_and_trigonometry;
+mod math_and_trigonometry;
 mod spill_functions;
 mod statistical;
 mod subtotal;
@@ -112,6 +112,7 @@ pub enum Function {
     FloorMath,
     FloorPrecise,
     IsoCeiling,
+    EcmaCeiling,
     Mod,
     Quotient,
     Mround,
@@ -678,6 +679,7 @@ impl_function_lookup! {
     floormath       => FloorMath,
     floorprecise    => FloorPrecise,
     isoceiling      => IsoCeiling,
+    ecmaceiling     => EcmaCeiling,
     r#mod           => Mod,
     quotient        => Quotient,
     mround          => Mround,
@@ -1229,6 +1231,7 @@ impl Function {
             Function::FloorMath => functions.floormath.clone(),
             Function::FloorPrecise => functions.floorprecise.clone(),
             Function::IsoCeiling => functions.isoceiling.clone(),
+            Function::EcmaCeiling => functions.ecmaceiling.clone(),
             Function::Mod => functions.r#mod.clone(),
             Function::Quotient => functions.quotient.clone(),
             Function::Mround => functions.mround.clone(),
@@ -1997,7 +2000,7 @@ impl Model {
             Function::Int => Self::fn_int,
             Function::Even => Self::fn_even,
             Function::Odd => Self::fn_odd,
-            Function::Ceiling => Self::fn_ceiling,
+            Function::Ceiling | Function::EcmaCeiling => Self::fn_ceiling,
             Function::CeilingMath => Self::fn_ceiling_math,
             Function::CeilingPrecise => Self::fn_ceiling_precise,
             Function::Floor => Self::fn_floor,
@@ -2122,11 +2125,11 @@ impl Model {
             Function::NormDistCompat => Self::fn_norm_dist,
             Function::NormInvCompat => Self::fn_norm_inv,
             Function::NormSInvCompat => Self::fn_norm_s_inv,
-            Function::PercentileCompat => Self::fn_percentile_inc,
-            Function::PercentrankCompat => Self::fn_percentrank_inc,
+            Function::PercentileCompat | Function::PercentileInc => Self::fn_percentile_inc,
+            Function::PercentrankCompat | Function::PercentrankInc => Self::fn_percentrank_inc,
             Function::PoissonCompat => Self::fn_poisson_dist,
-            Function::QuartileCompat => Self::fn_quartile_inc,
-            Function::RankCompat => Self::fn_rank_eq,
+            Function::QuartileCompat | Function::QuartileInc => Self::fn_quartile_inc,
+            Function::RankCompat | Function::RankEq => Self::fn_rank_eq,
             Function::StDevPCompat => Self::fn_stdev_p,
             Function::TInvCompat => Self::fn_t_inv_2t,
             Function::TTestCompat => Self::fn_t_test,
@@ -2155,14 +2158,11 @@ impl Model {
             Function::ModeMult => Self::fn_mode_mult,
             Function::ModeSingl => Self::fn_mode_sngl,
             Function::PercentileExc => Self::fn_percentile_exc,
-            Function::PercentileInc => Self::fn_percentile_inc,
             Function::PercentrankExc => Self::fn_percentrank_exc,
-            Function::PercentrankInc => Self::fn_percentrank_inc,
             Function::Permut => Self::fn_permut,
             Function::Permutationa => Self::fn_permutationa,
             Function::Prob => Self::fn_prob,
             Function::QuartileExc => Self::fn_quartile_exc,
-            Function::QuartileInc => Self::fn_quartile_inc,
             Function::Trend => Self::fn_trend,
             Function::Trimmean => Self::fn_trimmean,
             Function::Gauss => Self::fn_gauss,
@@ -2173,7 +2173,6 @@ impl Model {
             Function::Median => Self::fn_median,
             Function::MinA => Self::fn_mina,
             Function::RankAvg => Self::fn_rank_avg,
-            Function::RankEq => Self::fn_rank_eq,
             Function::Skew => Self::fn_skew,
             Function::SkewP => Self::fn_skew_p,
             Function::Small => Self::fn_small,

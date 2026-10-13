@@ -137,16 +137,16 @@ impl Parser {
 
         if self.lexer.is_a1_mode() {
             if !absolute_row1 {
-                row1 -= context.row
+                row1 -= context.row;
             };
             if !absolute_column1 {
-                column1 -= context.column
+                column1 -= context.column;
             };
             if !absolute_row2 {
-                row2 -= context.row
+                row2 -= context.row;
             };
             if !absolute_column2 {
-                column2 -= context.column
+                column2 -= context.column;
             };
         }
 
@@ -201,6 +201,11 @@ impl Parser {
 
     /// A name that is not called: a defined name, a table or a LAMBDA parameter.
     fn name_operand(&mut self, name: String) -> Node {
+        // A defined name of a linked workbook, `[1]!Name` or `[1]Sheet!Name` (one identifier to
+        // the lexer), keeps its prefix: evaluation reads it from the link's cache.
+        if name.starts_with('[') {
+            return Node::DefinedNameKind((name, None, String::new()));
+        }
         let context = &self.context;
 
         let context_sheet_index = match self.get_sheet_index_by_name(&context.sheet) {

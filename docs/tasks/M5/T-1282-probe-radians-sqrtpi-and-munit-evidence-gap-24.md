@@ -3,7 +3,7 @@ id: T-1282
 title: "Probe RADIANS, SQRTPI and MUNIT (evidence gap: 24, 13 and 11 Excel cells)"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -32,3 +32,6 @@ Code: `fn_radians` and `fn_sqrtpi` (crates/rustsheet-engine/src/functions/math_a
 
 ## Out of scope
 - DEGREES (27 Excel cells), MINVERSE/MDETERM (legacy CSE work in T-0950).
+
+## Outcome
+Added probes/radians-sqrtpi-munit (94 cells, excel-graph). It found three engine misses, now fixed: SQRTPI took booleans as numbers (Excel: `#VALUE!`), MUNIT gave `#N/IMPL!` for an array argument and `#VALUE!` for a range (Excel lifts), and SQRTPI was typed as a scalar result. No ulp differences in RADIANS or SQRTPI, so no M9 follow-up. Recorded in numbers.md. Excel cells now: RADIANS 62, SQRTPI 47, MUNIT 42 (report.md evidence table).

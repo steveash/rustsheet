@@ -361,7 +361,7 @@ impl UserModel {
                 match &value.link {
                     Some(link) => {
                         self.model
-                            .set_cell_link(sheet, target_row, target_column, link.clone())?
+                            .set_cell_link(sheet, target_row, target_column, link.clone())?;
                     }
                     None => self
                         .model

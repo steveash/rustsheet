@@ -18,7 +18,7 @@ impl UserModel {
     }
 
     /// Returns the differential format (Dxf) for the CF rule at `index` on `sheet`,
-    /// or `None` if the rule type has no associated dxf (e.g. ColorScale, DataBar).
+    /// or `None` if the rule type has no associated dxf (e.g. `ColorScale`, `DataBar`).
     pub fn get_dxf_for_conditional_formatting(
         &self,
         sheet: u32,

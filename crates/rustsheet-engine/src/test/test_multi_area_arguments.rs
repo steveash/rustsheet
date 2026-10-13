@@ -5,9 +5,10 @@
 //! probes/multiarea-* (oracle excel-graph, 2026-10-07, T-1061) unless marked otherwise. See
 //! docs/excel-semantics/references.md "Multi-area references in functions".
 
+use crate::area_budget::TOO_MANY_AREA_CELLS;
 use crate::expressions::types::CellReferenceRC;
 use crate::model::Model;
-use crate::reference_operators::{MAX_AREAS, TOO_MANY_AREAS, TOO_MANY_AREA_CELLS};
+use crate::reference_operators::{MAX_AREAS, TOO_MANY_AREAS};
 use crate::test::util::new_empty_model;
 use crate::types::{Cell, FormulaValue};
 
@@ -166,20 +167,126 @@ fn union_at_and_over_the_area_cap() {
     assert_eq!(error_message(&model, "Z2"), TOO_MANY_AREAS);
 }
 
+/// `count` rows of column A holding 1, from row 1.
+fn model_with_ones_in_column_a(count: i32) -> Model {
+    let mut model = new_empty_model();
+    for row in 1..=count {
+        model._set(&format!("A{row}"), "1");
+    }
+    model
+}
+
 #[test]
-fn whole_columns_over_the_cell_bound_are_not_walked() {
-    // DEVIATION (references.md "Union area cap"): MAX_AREAS copies of A:A over 1,000 used
-    // rows are 65,536,000 cells, past MAX_AREA_CELLS, so the sum is `#VALUE!` from the bound
-    // alone. A walk would read every cell; the message shows the bound answered first.
+fn whole_columns_over_sparse_data_cost_what_the_data_costs() {
+    // T-1497: a union area is walked over its existing cells, so MAX_AREAS copies of A:A over
+    // one cell in row 1,000 are a step or two each, well inside the walk budget.
     let mut model = model();
     model._set("A1000", "1");
     model._set("Z1", &format!("=SUM({})", balanced_union("A:A", MAX_AREAS)));
-    // A handful of whole columns stays under the bound and is walked.
     model._set("Z2", &format!("=SUM({})", balanced_union("A:A", 16)));
+    model.evaluate();
+    assert_eq!(model._get_text("Z1"), (2 * MAX_AREAS).to_string());
+    assert_eq!(model._get_text("Z2"), "32");
+}
+
+#[test]
+fn a_union_walked_by_a_lambda_costs_what_its_data_costs() {
+    // probes/union-walk-repeated-in-lambda (excel-graph, 2026-10-13, T-1462), Big!E1:E4 and
+    // Calc!E1, E6, E8: data in the last row, or 10,000 used rows with three cells, walked again
+    // and again; Excel computes them all.
+    let mut model = new_empty_model();
+    model.add_sheet("Big").unwrap();
+    for (cell, value) in [
+        ("B1", "5"),
+        ("B10000", "1"),
+        ("C10000", "2"),
+        ("Big!B1048576", "1"),
+        ("Big!C1048576", "2"),
+    ] {
+        model._set(cell, value);
+    }
+    let nine = ["(B:B,C:C)"; 9].join(",");
+    results(
+        &mut model,
+        &[
+            (
+                "E1",
+                "=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))",
+                "8000",
+            ),
+            (
+                "E6",
+                "=SUM(MAP(A1:A10000,LAMBDA(r,SUM((B:B,C:C)))))",
+                "80000",
+            ),
+            (
+                "E8",
+                "=SUM(MAP(A1:A1000,LAMBDA(r,SUM((B1:B10000,C1:C10000)))))",
+                "8000",
+            ),
+            (
+                "E11",
+                "=SUM(BYROW(A1:A1000,LAMBDA(r,SUBTOTAL(9,(B:B,C:C)))))",
+                "8000",
+            ),
+            (
+                "Big!E2",
+                "=SUM(BYROW(A1:A100,LAMBDA(r,SUM((B:B,C:C)))))",
+                "300",
+            ),
+            ("Big!E4", &format!("=SUM({nine})"), "27"),
+        ],
+    );
+}
+
+#[test]
+fn a_let_bound_union_shares_the_walk_budget_across_arguments() {
+    // DEVIATION (references.md "Union area cap"): the formula, not each argument, may take
+    // MAX_AREA_WALK steps of union walks. Over 65,536 filled rows one walk of A:A is a step for
+    // the area, 65,536 cells and 4,160 steps of row slots (66,559 slots), so sixteen copies are
+    // 1,115,152 steps: fifteen arguments of them (16,727,280) fit in 2^24 and a sixteenth is past
+    // it.
+    let mut model = model_with_ones_in_column_a(1 << 16);
+    let union = balanced_union("A:A", 16);
+    let within = vec!["x"; 15].join(",");
+    model._set("Z1", &format!("=LET(x,{union},SUM({within}))"));
+    let past = vec!["x"; 16].join(",");
+    model._set("Z2", &format!("=LET(x,{union},SUM({past}))"));
+    model.evaluate();
+    assert_eq!(model._get_text("Z1"), (15 * 16 * 65536).to_string());
+    assert_eq!(model._get_text("Z2"), "#VALUE!");
+    assert_eq!(error_message(&model, "Z2"), TOO_MANY_AREA_CELLS);
+}
+
+#[test]
+fn a_dense_union_repeated_by_a_lambda_is_bounded() {
+    // DEVIATION (directive 5): the walk budget is per formula run, so a LAMBDA repeating a
+    // walk of dense data stops at MAX_AREA_WALK steps: 300 walks of (A:A,A:A) over 65,536
+    // filled rows are 41,818,200 steps, past it.
+    let mut model = model_with_ones_in_column_a(1 << 16);
+    model._set("Z1", "=SUM(MAP(A1:A300,LAMBDA(r,SUM((A:A,A:A)))))");
+    model.evaluate();
+    assert_eq!(model._get_text("Z1"), "#VALUE!");
+}
+
+#[test]
+fn aggregate_of_a_union_obeys_the_walk_budget() {
+    // Same budget as SUM (`a_let_bound_union_shares_the_walk_budget_across_arguments`) for
+    // AGGREGATE's reference form, which walks area by area: 256 copies of A:A over 65,536
+    // filled rows are past it, sixteen are not.
+    let mut model = model_with_ones_in_column_a(1 << 16);
+    model._set(
+        "Z1",
+        &format!("=AGGREGATE(9,4,{})", balanced_union("A:A", 256)),
+    );
+    model._set(
+        "Z2",
+        &format!("=AGGREGATE(9,4,{})", balanced_union("A:A", 16)),
+    );
     model.evaluate();
     assert_eq!(model._get_text("Z1"), "#VALUE!");
     assert_eq!(error_message(&model, "Z1"), TOO_MANY_AREA_CELLS);
-    assert_eq!(model._get_text("Z2"), "32");
+    assert_eq!(model._get_text("Z2"), (16 * 65536).to_string());
 }
 
 #[test]
@@ -212,21 +319,20 @@ fn subtotal_of_a_union() {
 }
 
 #[test]
-fn subtotal_of_a_union_obeys_the_area_cell_bound() {
-    // Same bound as SUM (`whole_columns_over_the_cell_bound_are_not_walked`): MAX_AREAS copies
-    // of A:A over 1,000 used rows are past MAX_AREA_CELLS, so SUBTOTAL answers `#VALUE!` at
-    // once instead of walking them; a handful of whole columns is walked.
-    let mut model = model();
-    model._set("A1000", "1");
+fn subtotal_of_a_union_obeys_the_walk_budget() {
+    // Same budget as SUM (`a_let_bound_union_shares_the_walk_budget_across_arguments`): 256
+    // copies of A:A over 65,536 filled rows are past it, so SUBTOTAL answers `#VALUE!`; a
+    // handful of whole columns is walked.
+    let mut model = model_with_ones_in_column_a(1 << 16);
     model._set(
         "Z1",
-        &format!("=SUBTOTAL(9,{})", balanced_union("A:A", MAX_AREAS)),
+        &format!("=SUBTOTAL(9,{})", balanced_union("A:A", 256)),
     );
     model._set("Z2", &format!("=SUBTOTAL(9,{})", balanced_union("A:A", 16)));
     model.evaluate();
     assert_eq!(model._get_text("Z1"), "#VALUE!");
     assert_eq!(error_message(&model, "Z1"), TOO_MANY_AREA_CELLS);
-    assert_eq!(model._get_text("Z2"), "32");
+    assert_eq!(model._get_text("Z2"), (16 * 65536).to_string());
 }
 
 #[test]
@@ -586,4 +692,23 @@ fn self_referential_union_names_are_bounded() {
             ("Z3", "=loop A1", "#NAME?"),
         ],
     );
+}
+
+#[test]
+fn a_spill_into_a_union_area_is_read_after_its_anchor_runs() {
+    // T-1497: a union area is recorded as seen empty in one piece. A spill written into it
+    // after the union was read must restart the reader, not be missed or reported circular,
+    // both when the spill appears and when it grows.
+    let mut model = new_empty_model();
+    model._set("A1", "=SUM((D:D,E:E))");
+    model._set("B1", "=COUNT((D1:D10,E:E))");
+    model._set("D1", "=SEQUENCE(C1)");
+    model._set("C1", "3");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "6");
+    assert_eq!(model._get_text("B1"), "3");
+    model._set("C1", "5");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "15");
+    assert_eq!(model._get_text("B1"), "5");
 }

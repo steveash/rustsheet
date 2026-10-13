@@ -1,11 +1,11 @@
 use crate::{calc_result::Range, expressions::types::CellReferenceIndex};
 
-/// It returns the closest cell from cell_reference to range in the same column/row
+/// It returns the closest cell from `cell_reference` to range in the same column/row
 /// Examples
-///  * i_i(B5, A2:A9) -> B5
-///  * i_i(B5, A7:A9) -> None
-///  * i_i(B5, A2:D2) -> B2
-///  * i_i(B2, Data!A2:D2) -> Data!B2 (a cell in the row of a one-row range intersects by column)
+///  * `i_i(B5`, A2:A9) -> B5
+///  * `i_i(B5`, A7:A9) -> None
+///  * `i_i(B5`, A2:D2) -> B2
+///  * `i_i(B2`, Data!A2:D2) -> Data!B2 (a cell in the row of a one-row range intersects by column)
 ///
 /// Excel-parity, cross-sheet:
 ///  * a 1x1 range always dereferences, regardless of the consuming cell's

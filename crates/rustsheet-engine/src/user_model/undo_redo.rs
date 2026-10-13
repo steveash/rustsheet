@@ -882,7 +882,7 @@ impl UserModel {
                     self.model.workbook.theme = *new_value.clone();
                 }
                 Diff::CreateDefinedName { name, scope, value } => {
-                    self.model.new_defined_name(name, *scope, value)?
+                    self.model.new_defined_name(name, *scope, value)?;
                 }
                 Diff::DeleteDefinedName {
                     name,

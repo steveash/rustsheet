@@ -31,7 +31,7 @@ fn name_refers_to_itself(name: &str, cell: CellReferenceIndex) -> CalcResult {
 /// A parsed formula for a defined name
 #[derive(Clone)]
 pub(crate) enum ParsedDefinedName {
-    /// CellReference (`=C4`)
+    /// `CellReference` (`=C4`)
     CellReference(CellReferenceIndex),
     /// A Range (`=C4:D6`)
     RangeReference(Range),
@@ -103,12 +103,13 @@ impl Model {
         Some(result)
     }
 
-    /// Evaluates the formula `node` of the cell `cell` with a name budget of its own, so that
-    /// the budget belongs to this one run of this one formula: a cell evaluated inside another
-    /// cell's name body, or the same cell run again after a restart, does not inherit it.
+    /// Evaluates the formula `node` of the cell `cell` with a name budget and an area budget of
+    /// its own, so that the budgets belong to this one run of this one formula: a cell evaluated
+    /// inside another cell's name body, or the same cell run again after a restart, does not
+    /// inherit them.
     pub(crate) fn run_cell_formula(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         let outer = std::mem::take(&mut self.defined_names_running);
-        let result = self.evaluate_formula_root(node, cell);
+        let result = self.with_area_budget(|model| model.evaluate_formula_root(node, cell));
         self.defined_names_running = outer;
         result
     }

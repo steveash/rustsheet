@@ -62,7 +62,7 @@ impl Model {
                 return Some(CalcResult::new_error(
                     Error::VALUE,
                     cell,
-                    format!("Non-finite number in {}", fn_name),
+                    format!("Non-finite number in {fn_name}"),
                 ));
             }
             let n = value.trunc() as i64;
@@ -71,7 +71,7 @@ impl Model {
                 return Some(CalcResult::new_error(
                     Error::NUM,
                     cell,
-                    format!("{} only accepts non-negative integers", fn_name),
+                    format!("{fn_name} only accepts non-negative integers"),
                 ));
             } else if n > MAX_LCM_GCD {
                 return Some(CalcResult::new_error(
@@ -88,7 +88,7 @@ impl Model {
                         return Some(CalcResult::new_error(
                             Error::NUM,
                             cell,
-                            format!("{} result too large", fn_name),
+                            format!("{fn_name} result too large"),
                         ));
                     }
                 },
