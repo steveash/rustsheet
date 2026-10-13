@@ -146,6 +146,8 @@ fn coupon_days_e(
 ) -> Result<f64, String> {
     match basis {
         0 | 2 | 4 => Ok(360.0 / frequency as f64),
+        // The period PRICE, YIELD and DURATION use. The COUPDAYS function itself differs around
+        // 29 February (`coupdays_actual`); keep the two apart.
         1 => {
             let prev = from_excel_date(prev_coupon_date(settlement, maturity, frequency)?)?;
             let next = from_excel_date(next_coupon_date(settlement, maturity, frequency)?)?;
