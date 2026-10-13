@@ -3,7 +3,7 @@ id: T-1481
 title: "TEXT complexity limit: probe @ followed by unquoted text then quoted text (follow-up of T-1455)"
 milestone: M1
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
