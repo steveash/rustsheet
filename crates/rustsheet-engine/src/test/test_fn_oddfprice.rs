@@ -101,9 +101,9 @@ fn test_oddfprice_basis1_long_first_period_unchanged() {
     assert_eq!(model._get_text("C3"), "131.5569687");
 }
 
-// The first coupon must be on the maturity's schedule and before the maturity,
-// and the issue may not be the quasi-coupon date one period before it; two periods before is fine
-// (probes/date-system-1900-oddf-schedule, date-system-1900-oddf-issue-boundary; T-1457).
+// The first coupon must be on the maturity's schedule and before the maturity, and a first period
+// exactly one regular period long on the basis (DFC = E) is #NUM!; two periods is fine
+// (probes/date-system-1900-oddf-schedule, date-system-1900-oddf-issue-boundary; T-1457, T-1490).
 #[test]
 fn oddfprice_first_coupon_must_fit_the_schedule() {
     let mut model = new_empty_model();
@@ -142,4 +142,28 @@ fn oddfprice_first_coupon_must_fit_the_schedule() {
     assert_eq!(model._get_text("A3"), "#NUM!");
     assert_eq!(model._get_text("A4"), "98.59507655");
     assert_eq!(model._get_text("A5"), "98.93442798");
+}
+
+// A first period of exactly E days on the basis is #NUM!, even an issue a day after the quasi-coupon
+// date (180 days 30/360), while the quasi-coupon date itself is a value on basis 2 (184 actual days)
+// (probes/date-system-1900-oddf-issue-after-quasi A28, A36, A38, A41, A5; T-1490).
+#[test]
+fn oddfprice_first_period_of_one_period_on_the_basis_is_num() {
+    let mut model = new_empty_model();
+    let call = |issue: &str, basis: u32| {
+        format!(
+            "=ODDFPRICE(DATE(2023,8,1),DATE(2024,6,30),{issue},DATE(2023,12,31),0.05,0.06,100,2,{basis})"
+        )
+    };
+    model._set("A1", &call("DATE(2023,7,1)", 0));
+    model._set("A2", &call("DATE(2023,7,1)", 1));
+    model._set("A3", &call("DATE(2023,7,1)", 4));
+    model._set("A4", &call("DATE(2023,7,4)", 2));
+    model._set("A5", &call("DATE(2023,6,30)", 2));
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "99.11926909");
+    assert_eq!(model._get_text("A3"), "99.11852867");
+    assert_eq!(model._get_text("A4"), "#NUM!");
+    assert_eq!(model._get_text("A5"), "96.20983152");
 }

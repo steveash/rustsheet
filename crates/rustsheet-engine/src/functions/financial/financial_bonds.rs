@@ -288,7 +288,8 @@ fn compute_oddfprice(
     // 2023-07-01 with first coupon 2023-12-31 (180 days 30/360) on basis 0 but not 1 (183 of 184
     // days) or 4 (179), issue 2023-07-04 (180 actual days) on basis 2, while the quasi-coupon date
     // 2023-06-30 is a value on bases 2 and 3 (probes/date-system-1900-oddf-issue-after-quasi;
-    // docs/excel-semantics/financial.md; T-1490).
+    // docs/excel-semantics/financial.md; T-1490). Both are whole day counts (E is 182.5 or 91.25 on
+    // basis 3), so the comparison is exact by design.
     if dfc.partial_cmp(&e) == Some(Ordering::Equal) {
         return Err("first period is one regular period".to_string());
     }
