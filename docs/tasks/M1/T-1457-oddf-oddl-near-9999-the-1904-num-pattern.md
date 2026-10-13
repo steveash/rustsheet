@@ -3,7 +3,7 @@ id: T-1457
 title: "ODDF*/ODDL* near 9999: the 1904 #NUM! pattern and the 1900 #NUM! at the last dates"
 milestone: M1
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -31,14 +31,14 @@ first-coupon/maturity combinations around 9998-12-31. Code: functions/financial 
 Last-digit misses of ODDFYIELD in these cases are T-0916, not this task.
 
 ## Acceptance criteria
-- [ ] The listed cells leave eval/baseline/probes.txt, or the rule they follow is documented and each cell left is
+- [x] The listed cells leave eval/baseline/probes.txt, or the rule they follow is documented and each cell left is
       explained in dates.md.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Last-digit precision (T-1374, T-0916).
 
-## Progress (session 2026-10-13, opus; work in flight, not a handoff)
+## Progress (session 2026-10-13, opus; first session)
 - Probed the years: probes/date-system-1904-odd-years and its control probes/date-system-1900-odd-years (114 cells
   each, excel-graph). Findings are recorded in docs/excel-semantics/dates.md (after "The odd-period functions break
   differently"). In short, a 1904 date within about four years before 1 March of a non-leap century year (2100, 2200,
@@ -51,3 +51,19 @@ Last-digit misses of ODDFYIELD in these cases are T-0916, not this task.
   Try "add 4 calendar years" (EDATE +48 months) in place of +1462, and see whether that reproduces the #NUM!, the
   99.67182 vs 99.67128 split (2100 vs 2096) and the row 5/6 values (98.86311 / 99.19898 for 2100). Then recheck the
   original T-1447 cells listed in Context.
+
+## Outcome
+- In a 1904 workbook ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD read a serial s as the 1900 serial s + 2*1462
+  (`DateSystem::odd_period_1900_serial`), the date 1462 days later. It fits every probed odd-period cell: the
+  non-leap-century breaks, the 99.67182 / 99.67128 split, and the 29 February cells of the new
+  probes/date-system-1904-odd-feb29. Dates read past 9999-12-31 are #NUM!.
+- New 1900 rules from new probes (date-system-1900-oddf-schedule, date-system-1900-oddf-issue-boundary): ODDF* are
+  #NUM! unless the first coupon is on the maturity's schedule and before it, and the issue is not the quasi-coupon
+  date one period before the first coupon (`check_odd_first_coupon`). This is what makes the 1904 ODDF* cells #NUM!.
+  ODDL* are #NUM! when a quasi-coupon date is past 9999-12-31 (1900 D7-D10 and 1904 A7-A10 of the accrint-bound
+  cases).
+- Recorded in dates.md (odd-period paragraph) and financial.md (two new sections).
+- Eval: probes known failures 2986 -> 2977 against main, while adding five cases (263 cells). Of the T-1447 cells in
+  Context, only 1900 C5/C6 remain (T-1490). The cells still failing in the new cases are ODDFYIELD last-digit misses
+  (row 3, T-0916). No regressions.
+- Follow-ups: T-1489 (do the other financial readers use s + 2*1462?), T-1490 (1900 C5/C6).
