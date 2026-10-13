@@ -9,7 +9,7 @@ use crate::{
     },
     functions::{util::array_node_to_calc_result, Function},
     model::Model,
-    reference_operators::{Ranges, RefArg},
+    reference_operators::{several_areas_ref, Ranges, RefArg},
 };
 
 /// The row/column index argument of VLOOKUP/HLOOKUP, read before the search but validated only
@@ -25,6 +25,14 @@ pub(super) enum LookupIndexArg {
     /// the value is found; otherwise only its first element is used. Elements validate like a
     /// referenced cell (probes/vlookup-array-index-range-lookup, T-1269).
     Array(Vec<Vec<ArrayNode>>),
+    /// A multi-cell range argument, kept unread like a reference: it lifts like an array of its
+    /// values once the value is found, so a value that is not found is `#N/A` however large the
+    /// range is (probes/lookup-index-multicell-if, T-1426); a lifted lookup reads only its
+    /// first cell.
+    Range {
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+    },
 }
 
 impl LookupIndexArg {
@@ -38,6 +46,10 @@ impl LookupIndexArg {
                 .map_or(LookupIndexArg::Number(f64::NAN), |node| {
                     LookupIndexArg::Reference(array_node_to_calc_result(node, cell))
                 }),
+            LookupIndexArg::Range { left, .. } => LookupIndexArg::Reference(CalcResult::Range {
+                left: *left,
+                right: *left,
+            }),
             other => other.clone(),
         }
     }
@@ -61,13 +73,7 @@ impl Model {
             } => match self.evaluate_reference_arg(node, cell) {
                 // A union picked by `IF` is `#REF!` here, not the `#VALUE!` of other several-area
                 // arguments (probes/lookup-index-multicell-if M1, T-1426).
-                RefArg::Ranges(Ranges::Areas(_)) => {
-                    return Err(CalcResult::new_error(
-                        Error::REF,
-                        cell,
-                        "Reference of several areas".to_string(),
-                    ))
-                }
+                RefArg::Ranges(Ranges::Areas(_)) => return Err(several_areas_ref(cell)),
                 picked => picked.into_single_area(cell),
             },
             _ => self.eval_ref_or_index(node, cell),
@@ -78,8 +84,7 @@ impl Model {
             CalcResult::Range { left, right }
                 if left.row != right.row || left.column != right.column =>
             {
-                self.evaluate_range(left, right, cell)
-                    .map(LookupIndexArg::Array)
+                Ok(LookupIndexArg::Range { left, right })
             }
             range @ CalcResult::Range { .. } => Ok(LookupIndexArg::Reference(range)),
             CalcResult::Array(grid) => Ok(LookupIndexArg::Array(grid)),
@@ -122,8 +127,10 @@ impl Model {
             LookupIndexArg::Reference(range) => self
                 .cast_to_number(range, cell)
                 .map_err(|_| invalid_reference())?,
-            // Callers narrow an array with `first_element`; one that does not gets `#REF!`.
-            LookupIndexArg::Array(_) => return Err(invalid_reference()),
+            // Callers narrow an array or range with `first_element`; one that does not gets `#REF!`.
+            LookupIndexArg::Array(_) | LookupIndexArg::Range { .. } => {
+                return Err(invalid_reference())
+            }
         };
         // -2147483648 is already #REF! while -2147483647 is #VALUE! (probes/lookup-index-shapes
         // H19-H20, H31-H32); a fractional index near the cut-off is unprobed.

@@ -80,8 +80,19 @@ impl Model {
                         message: "Not found".to_string(),
                     };
                 };
-                if let (false, LookupIndexArg::Array(grid)) = (lifts, &search.index) {
-                    return model.pick_each(grid, found, search.size, cell, &pick);
+                match (lifts, &search.index) {
+                    (false, LookupIndexArg::Array(grid)) => {
+                        return model.pick_each(grid, found, search.size, cell, &pick);
+                    }
+                    // Read only now that the value is found, so the range's size or errors never
+                    // hide a `#N/A`.
+                    (false, LookupIndexArg::Range { left, right }) => {
+                        return match model.evaluate_range(*left, *right, cell) {
+                            Ok(grid) => model.pick_each(&grid, found, search.size, cell, &pick),
+                            Err(error) => error,
+                        };
+                    }
+                    _ => {}
                 }
                 match model.resolve_lookup_index(index.clone(), search.size, cell) {
                     Ok(index) => pick(model, found, index, as_reference),
