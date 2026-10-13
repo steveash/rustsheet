@@ -224,7 +224,7 @@ the walk passes 2025-02-28: 184 and 92 for settlements 2023-11-15 and 2023-12-15
 settlement 2023-06-15: 365, not 366. A period ending on 28 February of a common year keeps the end-of-month rule
 (2099-08-31 to 2100-02-28, 181), and so does one ending on a 29 February that is the maturity
 (`COUPDAYS(DATE(2399,11,15),DATE(2400,2,29),2,1)` is 182). Only COUPDAYS shows it: PRICE and DURATION on basis 1 use the
-182-day period, and bases 0, 2, 3 and 4 have fixed lengths.
+182-day period, and bases 0, 2, 3 and 4 have fixed lengths. Unprobed: a walk that lands on a 29 February itself (maturity 2028-08-31, settlement 2027-11-15; the rule predicts 184, 2027-08-29 to 2028-02-29).
 Evidence: probes/coupdays-feb-month-end (296 cells, excel-graph, 2026-10-13, T-1493) and
 probes/date-system-1900-financial-readers E15.
 Ours: `coupdays_actual` (functions/financial/financial_bonds.rs).
@@ -233,8 +233,8 @@ Tasks: T-1489, T-1493
 
 ## YIELD stops short of PRICE's root
 Rule: YIELD's last digits are not the exact root of PRICE: Excel stops early, below the root, by up to about 1e-9
-relative (`YIELD(DATE(2096,3,1),DATE(2100,6,30),0.05,98,100,2,0)` is 0.05523587030251456; the root is
-0.0552358703070220). Some price, rate and redemption values reach the root (price 101: 0.0474016398691), others stop
+relative (`YIELD(DATE(2096,3,1),DATE(2100,6,30),0.05,98,100,2,0)` is 0.05523587030251456; the root, as we compute
+it, is 0.0552358703070220). Some price, rate and redemption values reach the root (price 101: 0.0474016398691), others stop
 1e-11 to 1e-9 short. The same bond moved by whole four-year blocks (1 March of 2000, 2004, ..., 2040 and 2096, maturity
 30 June four years later, basis 0) gives the same bits, but two bonds with equal coupon count, accrued days and period
 length need not: `YIELD(DATE(2096,2,15),DATE(2100,2,28),0.05,98,100,2,0)` is 0.05558592876555125 and
