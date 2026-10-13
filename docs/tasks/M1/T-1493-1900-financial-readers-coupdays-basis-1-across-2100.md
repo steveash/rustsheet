@@ -6,7 +6,7 @@ lane: functions-financial
 status: todo
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -22,3 +22,6 @@ These are 1900-calendar gaps found by T-1489, independent of the 1904 reading (T
 
 ## Out of scope
 - The 1904 reading (T-1492).
+
+## Handoff
+Escalated by a sonnet run without implementing anything (work-loop 5b, "numeric fitting"). Why: the YIELD cells (A8-E8, A19-E19, A30-E30) differ in the 10th digit or later, E8/E30 at 1e-9 relative, which the context ties to the solver's stopping rule; matching that is numeric fitting against oracle values, and the DURATION 1-ulp cells likely need the same care. Not tried: the COUPDAYS basis 1 case (E15, 184 vs 182 across the non-leap 2100-02-28/29 boundary) looks separable and probably smaller. Next: read the YIELD iteration rule in docs/excel-semantics/financial.md, diff `make eval-show CASE=probes/date-system-1900-financial-readers`, fix E15 first, then the YIELD stopping rule.
