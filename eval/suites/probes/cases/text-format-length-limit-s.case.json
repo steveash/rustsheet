@@ -1,0 +1,27 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1486: TEXT round s: a code ending in \\, _ or * (nothing left for it to take), in the section the value uses and in another one.",
+  "tags": [
+    "M1",
+    "probe",
+    "text",
+    "T-1486"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=TEXT(\"x\",\"0\\\")",
+        "A2": "=TEXT(\"x\",\"0_\")",
+        "A3": "=TEXT(\"x\",\"0*\")",
+        "A4": "=TEXT(5,\"0;0\\\")",
+        "A5": "=TEXT(7,\"0_\")",
+        "A6": "=TEXT(5,\"0;0_\")",
+        "A7": "=TEXT(5,\"0;0*\")",
+        "A8": "=TEXT(\"x\",\"@\\\")",
+        "A9": "=TEXT(-5,\"0;0\\\")"
+      }
+    }
+  ]
+}
