@@ -11,9 +11,8 @@ use crate::{
         types::CellReferenceIndex,
     },
     formatter::{
-        exceeds_complexity_limit,
         format::{format_text, format_text_value, FormatContext, Formatted},
-        is_unparseable,
+        rejects_format_code,
     },
     functions::{
         text::{
@@ -193,19 +192,12 @@ fn text_value_result(value: &ArrayNode, format: &str, cell: CellReferenceIndex) 
     }
 }
 
-/// Whether TEXT is `#VALUE!` for `format_code` whatever the value: the code is over Excel's
-/// complexity limit (T-1393), or one of its sections does not parse, even a section the value
-/// does not use (probes/text-format-length-limit-q, T-1486).
-fn rejects_format_code(format_code: &str) -> bool {
-    exceeds_complexity_limit(format_code) || is_unparseable(format_code)
-}
-
 /// TEXT's `#VALUE!` for a format code it rejects (see [`rejects_format_code`]).
 fn rejected_format(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(
         Error::VALUE,
         cell,
-        "Format code too complex or invalid".to_string(),
+        "Format code too complex or unterminated".to_string(),
     )
 }
 

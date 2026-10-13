@@ -43,9 +43,10 @@ misses and refitted `formatter/complexity.rs`:
 - the condition-with-quoted 3 only applies with a placeholder.
 
 The `@_"` cells were not a cost question: `_` takes the quote, which leaves an unclosed one. TEXT now
-rejects a code with any unparseable section, for any value (`TEXT(5,"0;""")` is `#VALUE!`).
+rejects an unterminated code (an open quote or bracket, or a trailing `\`, `_` or `*`) for any value,
+even when the section the value uses is complete (`TEXT(5,"0;""")` is `#VALUE!`).
 
-Eval: probes l A13:A15, l A40 and m A22 are fixed (5 cells). The new rounds add 10 known failures.
-Nine are unquoted letters that our lexer rejects (T-1450), which now give `#VALUE!` on text too
-(q A1, A3). One is an unmatched condition printing General (q A16, T-0936). All are recorded in
-docs/excel-semantics/number-formats.md.
+Eval: probes l A13:A15, l A40 and m A22 are fixed (5 cells). The new rounds add 12 known failures.
+Eleven are unquoted letters after `_"`/`*"` (n A1, A2, A6:A9, o A35, A37:A40; T-1450): Excel accepts
+`a` and `aa` there and rejects `aaa` and longer runs, while our lexer rejects all of them. One is an unmatched
+condition printing General (q A16, T-0936). All are recorded in docs/excel-semantics/number-formats.md.

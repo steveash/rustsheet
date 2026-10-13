@@ -29,12 +29,10 @@
 //!   quoted works, 118 fails, while `"[>5]0"` + 79 spaces works), and a section after the first
 //!   holding quoted text and a placeholder 1 more (`"0;0"` + 120 quoted fails).
 //!
-//! A code with a section that does not parse is rejected too, whatever the value
-//! ([`is_unparseable`]).
+//! A code left unterminated is rejected too, whatever the value ([`rejects_format_code`]).
 //!
 
 use super::lexer::{Lexer, Token};
-use super::parser::{ParsePart, Parser};
 
 const MAX_SECTIONS: usize = 4;
 const MAX_ELEMENTS: usize = 32;
@@ -221,17 +219,37 @@ impl Section {
     }
 }
 
-/// Whether any section of `format` fails to parse. TEXT is then `#VALUE!` whatever the value,
-/// even when another section would format it: `TEXT(5,"0;""")` and `TEXT("x","0;0;0;""")` are
-/// `#VALUE!` (probes/text-format-length-limit-q; docs/excel-semantics/number-formats.md).
-pub(crate) fn is_unparseable(format: &str) -> bool {
-    let mut parser = Parser::new(format);
-    parser.parse();
-    parser.parts.iter().any(ParsePart::is_error)
+/// Whether TEXT is `#VALUE!` for `format` whatever the value: the code is over the complexity
+/// limit, or it is left unterminated (see [`is_unterminated`]).
+pub(crate) fn rejects_format_code(format: &str) -> bool {
+    exceeds_complexity_limit(format) || is_unterminated(format)
+}
+
+/// Whether `format` ends inside a quoted run or a `[...]` bracket, or with a `\`, `_` or `*` that
+/// has no character to take. Excel rejects such a code in TEXT whatever the value, even when the
+/// section the value uses is complete: `TEXT(5,"0;""")`, `TEXT("x","0;0;0;""")` and
+/// `TEXT("x","0;[Red")` are `#VALUE!`, and so is `@_""` on "x", as `_` takes the first quote
+/// (probes/text-format-length-limit-n, -o, -q; docs/excel-semantics/number-formats.md). Other
+/// codes our parser rejects are not covered: Excel accepts some of them (`TEXT("x","0 a")` is
+/// "x", -q A3; T-1450).
+fn is_unterminated(format: &str) -> bool {
+    let mut chars = format.chars();
+    while let Some(c) = chars.next() {
+        let closed = match c {
+            '"' => chars.any(|c| c == '"'),
+            '[' => chars.any(|c| c == ']'),
+            '\\' | '_' | '*' => chars.next().is_some(),
+            _ => true,
+        };
+        if !closed {
+            return true;
+        }
+    }
+    false
 }
 
 /// Whether Excel's TEXT rejects `format` as too complex (see the module docs).
-pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
+fn exceeds_complexity_limit(format: &str) -> bool {
     let mut lexer = Lexer::new(format);
     let mut sections = 1;
     let mut section = Section::default();
@@ -347,7 +365,7 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::exceeds_complexity_limit;
+    use super::{exceeds_complexity_limit, is_unterminated};
 
     fn quoted(n: usize) -> String {
         format!("\"{}\"", "a".repeat(n))
@@ -527,6 +545,30 @@ mod tests {
                 !exceeds_complexity_limit(&code(prefix, n, suffix)),
                 "{prefix} {n} {suffix}"
             );
+        }
+    }
+
+    /// Codes TEXT rejects whatever the value (probes/text-format-length-limit-n, -o, -q, T-1486).
+    #[test]
+    fn unterminated_codes() {
+        for code in [
+            "0\"", "\"", "0;\"", "0;0;0;\"", "@;\"", "0[Red", "0;[Red", "@_\"a\"", "@_\"\"",
+            "@*\"\"", "@\"", "0\\",
+        ] {
+            assert!(is_unterminated(code), "{code}");
+        }
+        for code in [
+            "0:a:",
+            "0\\x",
+            "0 a",
+            "@_\"a",
+            "@*\"a",
+            "0_\"a",
+            "@_\"a-\"b\"",
+            "[Red]0\"x\"",
+            "@_\"",
+        ] {
+            assert!(!is_unterminated(code), "{code}");
         }
     }
 }
