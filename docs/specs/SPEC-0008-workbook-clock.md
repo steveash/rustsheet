@@ -53,7 +53,10 @@ Non-goals:
 
 ## Excel behavior to match
 - Excel has no clock setting: NOW and TODAY read the machine's local time at each recalc, and
-  both are volatile. A fixed clock is an embedder feature, not Excel behavior. Under it, NOW and
+  both are volatile (Microsoft's NOW/TODAY documentation; probes/volatile-invariant shows they
+  return numbers and that TODAY is within NOW's day, numbers.md). The engine's "local time" is
+  the workbook timezone, `"UTC"` by default, not the host's zone. That difference predates this
+  spec, and `System` keeps it. A fixed clock is an embedder feature, not Excel behavior. Under it, NOW and
   TODAY must still give exactly what Excel gives at that instant:
   - NOW keeps sub-second precision (dates.md "NOW() keeps sub-second precision", ironcalc-calc
     DATE_AND_TIME/NOW_TODAY.xlsx);
@@ -93,9 +96,17 @@ impl Clock {
   1900-01-01 through 9999-12-31. That is -2,208,988,800,000 ≤ ms ≤ 253,402,300,799,999. Every
   reader can then convert the instant without an error path, `DateTime::from_timestamp` included,
   so export never fails on a fixed clock. A timezone offset can move the local date one day
-  outside that range. NOW then goes through the existing `excel_serial_for_now` arithmetic, which
-  gives a number or the existing `#ERROR!` "Invalid date" result and never panics. The test plan
-  pins both bounds in a non-UTC timezone. The type cannot be built
+  outside that range. NOW then gives a number or the existing `#ERROR!` "Invalid date" result,
+  and never panics. The test plan
+  pins both bounds in a non-UTC timezone.
+- **Serials before 1900-03-01.** `excel_serial_for_now` must number days as DATE does, through
+  the same conversion (`convert_to_serial_number` in formatter/dates.rs, made `pub(crate)` and
+  reused; no second copy). Excel's fictitious 1900-02-29 is serial 60, so 1900-01-01 is serial 1
+  and 1900-02-28 is 59 (dates.md "Serial 60 is the fictitious 1900-02-29", VERIFIED for DATE).
+  - The current `num_days_from_ce() - EXCEL_DATE_BASE` gives one more than that before
+    1900-03-01. T-1479 fixes it.
+  - NOW in early 1900 cannot be probed, since Excel's clock is the host's, so this is inferred
+    from the DATE rule. The type cannot be built
   invalid because its field is private.
 - **System time.** `now_unix_millis` on `System` reads `SystemTime` (or `js_sys::Date` on
   wasm32) and clamps the result to the same range as `Fixed`, so the "no error path" guarantee
@@ -230,7 +241,8 @@ timezone keeps the clock.
   and it leaks state between tests.
 - **A fixed Excel serial instead of an instant.** It would be closer to what a spreadsheet user
   types. But it depends on the date system and the timezone, and the exporter and the year logic
-  need an instant anyway. Rejected. Callers convert with `(serial - 25569) * 86_400_000` in UTC.
+  need an instant anyway. Rejected. Callers convert with `(serial - 25569) * 86_400_000` in UTC, for serials of 61 and above
+  (below 61 the fictitious 1900-02-29 shifts the count by one day).
 - **A `Fn() -> i64` callback.** It would allow simulated time, but it runs foreign code inside
   evaluation (directive 5), is not `Copy`, and complicates `Send` and the Python GIL. Rejected for
   v0.
@@ -248,8 +260,9 @@ timezone keeps the clock.
     `SystemTime::now()`.
   - `fixed_unix_millis` accepts both bounds and rejects one millisecond beyond each.
   - At both bounds NOW and TODAY give numbers, with no error and no panic. `TODAY()` at the upper
-    bound is 2958465 (9999-12-31). The serial of the lower bound depends on how
-    `excel_serial_for_now` handles dates before 1900-03-01, and the test records it.
+    bound is 2958465 (9999-12-31).
+  - In UTC, `TODAY()` is 1 at 1900-01-01T00:00Z, 59 at 1900-02-28 and 61 at 1900-03-01, matching
+    `DATE()` for those dates.
   - Year-less `"7/1"+0` follows the fixed year: 2022 under the harness instant, 2030 under an
     instant in 2030.
   - The exporter's `dcterms:modified` equals the fixed instant, and two saves are byte-identical.
