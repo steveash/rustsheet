@@ -297,7 +297,7 @@ T-1499, T-1500); `/` already passes.
 Implemented in: `arithmetic::extended_quotient`, used by `arithmetic::divide` and the reciprocals in
 `arithmetic::power`.
 Status: VERIFIED (excel-graph)
-Tasks: T-0221, T-1496, T-1501, T-1498, T-1499, T-1500
+Tasks: T-0221, T-1496, T-1498, T-1499, T-1500, T-1501
 
 ## Numbers near 1E+307 print with 14 significant digits
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is
