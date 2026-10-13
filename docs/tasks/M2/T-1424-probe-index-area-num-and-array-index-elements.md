@@ -3,7 +3,7 @@ id: T-1424
 title: "Probe INDEX area_num and array-index elements near an integer (does the 2^-22+2^-33 rounding apply?)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
