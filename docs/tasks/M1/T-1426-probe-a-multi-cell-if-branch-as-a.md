@@ -3,7 +3,7 @@ id: T-1426
 title: "Probe a multi-cell IF branch as a VLOOKUP/HLOOKUP index (follow-up of T-1377)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
