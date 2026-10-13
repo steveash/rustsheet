@@ -135,15 +135,15 @@ fn test_lambda_parameter_names_are_case_insensitive() {
 }
 
 #[test]
-fn test_let_binds_index_reference_and_keeps_at_index_value() {
+fn test_let_binds_index_reference_and_at_index_reference() {
     let mut model = new_empty_model();
     model._set("B1", "5");
     model._set("B2", "6");
     // An INDEX binding stays a reference (probes/let-bind-reference-forms).
     model._set("A1", "=LET(x,INDEX(B1:B2,2),ROW(x))");
-    // `@INDEX(..)` is bound as a value (T-1223: unprobed, kept as it was; T-1503 probes it and must update this assertion).
+    // `@INDEX(..)` stays a reference too (probes/let-bind-implicit-index, T-1503).
     model._set("A2", "=LET(x,@INDEX(B1:B2,2),ISREF(x))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "2");
-    assert_eq!(model._get_text("A2"), "FALSE");
+    assert_eq!(model._get_text("A2"), "TRUE");
 }
