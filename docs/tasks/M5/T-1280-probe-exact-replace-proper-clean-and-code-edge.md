@@ -37,7 +37,7 @@ Code: `fn_exact` (functions/text/common.rs), `fn_replace` / `replace_element` an
 - Array and range lifting (already evidenced).
 
 ## Outcome
-Added `probes/text-scalar-edges` (62 excel-graph cells). Two mismatches found and fixed in place: CLEAN also
+Added `probes/text-scalar-edges` (63 excel-graph cells). Two mismatches found and fixed in place: CLEAN also
 removes the C1 controls 128-159, and CODE of a character outside Windows-1252 is 63, not `#VALUE!`. Everything
 else matched. Recorded in docs/excel-semantics/text.md ("CLEAN and CODE scalar edges"). Eval: probes known
 failures 2853 -> 2853, one new case, all cells pass.
