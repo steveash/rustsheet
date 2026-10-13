@@ -7,6 +7,7 @@ use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use super::package::{part_folder_and_rels, resolve_target, Package};
 use super::rich_errors::{cached_error_name, load_value_metadata_errors};
+use super::workbook::WorkbookXML;
 use super::xml::XmlNode;
 use rustsheet_engine::{
     expressions::{
@@ -16,8 +17,8 @@ use rustsheet_engine::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        ArrayKind, Cell, Color, Comment, DefinedName, Dxf, FormulaValue, Link, MergedCell,
-        SheetState, SpillValue, Table, Theme, Worksheet, WorksheetView,
+        ArrayKind, Cell, Color, Comment, Dxf, FormulaValue, Link, MergedCell, SheetState,
+        SpillValue, Table, Theme, Worksheet, WorksheetView,
     },
 };
 use thiserror::Error;
@@ -33,18 +34,6 @@ use super::{
     tables::load_table,
     util::{get_attribute, get_color, get_number, get_relationship, parse_cell_number},
 };
-
-pub(crate) struct Sheet {
-    pub(crate) name: String,
-    pub(crate) sheet_id: u32,
-    pub(crate) id: String,
-    pub(crate) state: SheetState,
-}
-
-pub(crate) struct WorkbookXML {
-    pub(crate) worksheets: Vec<Sheet>,
-    pub(crate) defined_names: Vec<DefinedName>,
-}
 
 pub(crate) struct Relationship {
     pub(crate) target: String,
