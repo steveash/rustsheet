@@ -279,7 +279,13 @@ double-rounded value; oracle: excel-graph, 2026-10-13, T-1496): `x/y` with neith
 (8 pairs) and `SUMPRODUCT(x/(y+{0}))` round twice, as do `a*b` and `PRODUCT(a,b)` (the 106-bit
 product, 8 pairs), `a+b`, `a-b`, `SUM(a,b)` and `AVERAGE(a,b)` (operands whose exponents differ by
 12-52, so the sum needs more than 64 bits; 8 pairs each), and `SQRT(x)` and `x^0.5` (8 values).
-Each of these operations, taken alone, rounds to a double twice. Whether the intermediate of a chained expression such as `a*b+c` or `SQRT(a*b)` stays at 64 bits or is rounded to a double between operators has not been probed (T-1501).
+Each of these operations, taken alone, rounds to a double twice. Intermediates do not stay at 64
+bits: in a chained expression every operator's result is rounded (twice) to a double before the next
+operator uses it. probes-numeric/double-rounding-chained (54 cells; operands picked so that keeping
+64-bit intermediates would give a different double; oracle: excel-graph, 2026-10-13, T-1501): all
+of `a*b+c` (+ the control `SUM(a*b,c)`), `a*b-c`, `(a+b)*c`, `a*b*c`, `a*b/c`, `a/b*c`,
+`SQRT(a*b)` and `SQRT(a+b)` (6 operand sets each) equal the value with a double-rounded
+intermediate, none the 64-bit-intermediate value and none the exact (fused) value.
 No operand set exists for a division by a small constant: `x%` (= x/100), `x/3` and AVERAGE of
 three cells divide by a number whose binary expansion repeats within a few bits, so the run of
 zeros or ones that double rounding needs never occurs (3,000,000 random operands found no
@@ -291,7 +297,7 @@ T-1499, T-1500); `/` already passes.
 Implemented in: `arithmetic::extended_quotient`, used by `arithmetic::divide` and the reciprocals in
 `arithmetic::power`.
 Status: VERIFIED (excel-graph)
-Tasks: T-0221, T-1496, T-1498, T-1499, T-1500
+Tasks: T-0221, T-1496, T-1498, T-1499, T-1500, T-1501
 
 ## Numbers near 1E+307 print with 14 significant digits
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is

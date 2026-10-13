@@ -71,6 +71,7 @@ mod merged_cells;
 mod model;
 mod outside_cell;
 mod reference_operators;
+mod seen_ranges;
 mod styles;
 mod tables;
 mod tz;

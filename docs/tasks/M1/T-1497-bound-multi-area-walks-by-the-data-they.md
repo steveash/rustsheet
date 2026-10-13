@@ -3,7 +3,7 @@ id: T-1497
 title: "Bound multi-area walks by the data they visit, not by repetition: union walks inside MAP/BYROW and many whole-column union arguments"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -35,11 +35,23 @@ weigh (a spec in docs/specs/ first if the change is architectural):
 2. Charge each distinct union (same areas) once per formula run, caching its cell count, so a
    LAMBDA repeating one union is charged once (does not fix the nine-argument case).
 Keep the existing caps on area counts and pairs (`MAX_AREAS`, `MAX_AREA_PAIRS`).
-- [ ] The 9 failing cells of probes/union-walk-repeated-in-lambda pass, with no new failures.
-- [ ] A unit test still shows a bounded result (`#VALUE!` or bounded time) for an adversarial
+- [x] The 9 failing cells of probes/union-walk-repeated-in-lambda pass, with no new failures.
+- [x] A unit test still shows a bounded result (`#VALUE!` or bounded time) for an adversarial
   formula that repeats a dense multi-area walk (directive 5), with the new bound documented in
   references.md "Union area cap".
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The `MAX_AREAS` and `MAX_AREA_PAIRS` caps.
+
+## Outcome
+Option 1. The areas of a union are walked over their existing cells only (`SheetData::next_row_between`
+and `columns_in_row_between`; `Model::for_each_position_in_area`), in the same row-major order, and
+the walk pays as it goes from the per-formula budget, renamed `MAX_AREA_WALK` (2^24 steps): a step
+per cell handed over, per row found (at least one), per unallocated chunk passed over, and per 16
+row slots tested (`SLOTS_PER_WALK_STEP`, measured: ~15 ns per cell step, ~1.4 ns per slot). The
+up-front dense count (`check_area_cells`) is gone; SUBTOTAL and AGGREGATE (both forms; the array
+form had no budget before) walk unions the same way. Single ranges are walked as before. The
+seen-empty record of an area is one rectangle. Worst adversarial shapes stop at `#VALUE!` in
+<= 0.31 s release (main's old worst: 1.09 s). Eval: probes known failures 5092 -> 5083 (the 9 cells
+of probes/union-walk-repeated-in-lambda), no regressions. references.md "Union area cap" updated.
