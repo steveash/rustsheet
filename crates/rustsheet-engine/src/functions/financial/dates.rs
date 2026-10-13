@@ -205,8 +205,9 @@ pub(super) fn broken_schedule_days(
     }
 }
 
-/// COUPNUM, PRICE, YIELD, DURATION and MDURATION are #NUM! when the coupon schedule breaks
-/// (probes/date-system-1904-coupon-bound A3, A7, A19, A20, H3, I3, M1).
+/// COUPNUM, PRICE, YIELD, DURATION, MDURATION and ACCRINT (on its `first_interest`) are #NUM! when
+/// the coupon schedule breaks (probes/date-system-1904-coupon-bound A3, A7, A19, A20, H3, I3, M1;
+/// date-system-1904-odd-accrint-bound B11:D15).
 pub(super) fn broken_schedule_error(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::NUM, cell, "no coupon schedule".to_string())
 }

@@ -15,7 +15,7 @@ use crate::{
     functions::util::array_node_to_calc_result,
     get_all_timezones,
     model::Model,
-    reference_operators::RefArg,
+    reference_operators::{external_area, RefArg},
 };
 
 /// Applies `f` to every element of a 2-D array, keeping its shape.
@@ -194,6 +194,9 @@ impl Model {
                 self.evaluate_node_with_reference(node, cell),
                 CalcResult::Range { .. }
             ),
+            Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. } => {
+                external_area(node, cell).is_some()
+            }
             _ => false,
         }
     }
