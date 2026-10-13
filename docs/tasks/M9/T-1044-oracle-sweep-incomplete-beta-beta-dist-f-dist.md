@@ -29,4 +29,4 @@ Split from T-0966 (one sweep per kernel family), which explains why: Excel's dis
 - Fitting or changing any implementation (the dependent fitting tasks do that).
 
 ## Outcome
-Added 14 probes-numeric case files (9 BETA.DIST by a, F.DIST, F.DIST.RT, BETA.INV, F.INV, F.INV.RT; 576 cells) with excel-graph sidecars, none pending. Findings in `docs/excel-semantics/statistics.md`. T-0970 and T-0974 link the case ids.
+Added 14 probes-numeric case files (9 BETA.DIST by a, F.DIST, F.DIST.RT, BETA.INV, F.INV, F.INV.RT; 781 cells) with excel-graph sidecars, none pending. Findings in `docs/excel-semantics/statistics.md`. T-0970 and T-0974 link the case ids.
