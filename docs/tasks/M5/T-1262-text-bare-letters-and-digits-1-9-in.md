@@ -45,3 +45,7 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
 
 ## Out of scope
 - Other TEXT format families already tasked (T-0953 £/¥/|, T-0982 fractions, T-1129 sign of values rounding to zero).
+
+
+## Update (T-1450)
+The ASCII letter set is now probed (docs/excel-semantics/number-formats.md "Unquoted ASCII letters in a number format", probes/format-unquoted-letters) and its lexer change is T-1456. Use that evidence instead of re-probing letters; T-1262 keeps digits 1-9, non-ASCII letters, the integer-before-point rule and the empty format.

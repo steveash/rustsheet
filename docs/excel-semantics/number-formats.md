@@ -25,8 +25,8 @@ error: `INDIRECT(TEXT(-0.0001,""),..)` is `#REF!`, not `#VALUE!`. Not every lett
 Evidence: gen-m6/2c1a6e93a1974f48 Calc!A15, gen-m6/63012866a9d8b7db Calc!A3, gen-m6/17223361bef5b5cb Calc!A12
 (excel-graph, 2026-10-09, T-1239); gen-m7/6db767d720c5b55a Calc!A30 `TEXT(Data!A3,"ABC")` with A3 = 100 (excel-graph, 2026-10-11, T-1275).
 Ours: `#VALUE!` for all four (the lexer rejects these formats).
-Status: UNVERIFIED (probe pending: which letters are tokens, the integer-before-point rule, the value of `TEXT(x,"")`)
-Tasks: T-1262
+Status: UNVERIFIED (probe pending: the integer-before-point rule, the value of `TEXT(x,"")`); which letters are tokens is now VERIFIED, see "Unquoted ASCII letters in a number format" (T-1450), which supersedes the letter part of this rule
+Tasks: T-1262, T-1450
 
 ## Text and booleans use the format's text section
 Rule: for a text or boolean value, `TEXT` applies the 4th (text) section; `@` stands for the

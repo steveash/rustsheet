@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: sonnet
-depends_on: []
+depends_on: [T-1262]
 ---
 
 ## Goal
@@ -22,4 +22,4 @@ See docs/excel-semantics/number-formats.md "Unquoted ASCII letters in a number f
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Digits 1-9, the integer-before-point rule and the empty format: those stay with T-1262 (same lexer code). T-1456 is the ASCII-letter set only, and lands first or together with T-1262; whoever lands second merges, not re-implements.
