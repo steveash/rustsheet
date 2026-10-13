@@ -9,7 +9,8 @@
   full CI run plus an agent wake-up.
 - **Decision:**
   - CI runs on the `merge_group` event too, running every job (the docs-only shortcut of decision
-    0049 only applies to `pull_request`). The queue tests each PR merged with current `main` and
+    0049 only applies to `pull_request`). The `governance` step stays PR-only: it needs the PR's
+    base ref, and it has already passed on the PR head the queue merges. The queue tests each PR merged with current `main` and
     the PRs queued ahead of it, so `tasks.py validate`, `check_decisions.py`, the ratchets and the
     eval gate still see the real merged tree: duplicate task or decision ids still fail before
     they land (0028's reason).
@@ -21,10 +22,15 @@
     merge `main` in just because the branch is behind; they still merge it in to resolve a
     conflict. If the queue removes a PR (a check failed on the merge group), that is red CI on
     that PR, handled per the `steward` skill.
+  - A queued PR gets no new pushes: auto-merge stays armed across a push, so new commits could
+    land unreviewed. To change a queued PR, first `disable_pr_auto_merge`, push, re-run the
+    reviewers on the new diff, then enqueue again.
   - Owner settings (Settings → Rules → the ruleset on `main`): turn on "Require merge queue"
     (merge method Squash, build concurrency 5, minimum group size 1, maximum group size 5,
     "only merge non-failing pull requests", status check timeout 60 minutes), and keep the
-    required checks: the `changes`, `rust`, `eval`, `python` and `hygiene` jobs. Turn off
+    existing required checks unchanged: `changes (docs-only?)`, `rust (fmt, clippy, test)`,
+    `eval (Excel-compatibility gate)`, `python (tools + bindings)` and `hygiene (ratchets, deny,
+    machete, typos, governance)`. Turn off
     "Require branches to be up to date before merging" (the queue replaces it), and turn on
     "Allow auto-merge" under Settings → General.
 - **Consequences:** a PR costs one CI run on its own head and one on its merge group. A busy

@@ -20,7 +20,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   SQUASH` to enqueue it. The queue tests it merged with current `main` and the PRs ahead of it.
   Never merge `main` in only because the branch is behind; do merge it in to fix a conflict. A PR
   the queue removes (a failed merge-group check) is red CI: fix it per this skill, then enqueue
-  again.
+  again. Never push to a queued PR: `disable_pr_auto_merge` first, push, re-run the reviewers on
+  the new diff, then enqueue again.
 - **Orphaned agent PRs** (decision 0050): the steward may merge a task PR (branch
   `agent/<lane>/T-XXXX-*`) opened by another session only when ALL of these hold:
   - it has been open 24 h or more, and its branch has not moved for 2 h or more. Measure when the

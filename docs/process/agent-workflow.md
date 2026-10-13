@@ -102,7 +102,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 8. **PR:** use the template. Set the task to `done` with an Outcome note.
 9. **Merge:** once CI is green and reviews are approved, and the PR head contains the current
    `origin/main` (the steward skill's mechanical check, decision 0028), squash-merge. Once the
-   merge queue is on, enqueue with auto-merge instead and skip the up-to-date check (decision 0053). The squash commit title and the
+   merge queue is on, enqueue with auto-merge instead and skip the up-to-date check
+   (decision 0053). The squash commit title and the
    task's Outcome are the record; the steward's daily run lists merged work in `docs/status.md`
    (decision 0024), so PRs do not edit its log.
 

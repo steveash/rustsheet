@@ -21,8 +21,8 @@ env:
 
 jobs:
   # Decision 0049: a PR that touches only docs skips the rust, eval and python jobs. A skipped job
-  # reports success to required checks, so this job decides safely: anything it cannot classify,
-  # every push to main and every merge-queue group (decision 0053) runs everything. docs/excel-semantics/ is code-relevant (the eval
+  # reports success to required checks, so this job decides safely: anything it cannot
+  # classify, every push to main and every merge-queue group (decision 0053) runs everything. docs/excel-semantics/ is code-relevant (the eval
   # harness reads its DEVIATION anchors), so it never counts as docs-only.
   changes:
     name: changes (docs-only?)
