@@ -50,7 +50,7 @@ fn left_and_right_count_code_points() {
 
 #[test]
 fn split_pair_is_dropped_whole() {
-    // Excel keeps the lone surrogate; a Rust String cannot hold one (decision 0033).
+    // Excel keeps the lone surrogate; a Rust String cannot hold one yet (T-1483).
     let mut model = new_empty_model();
     model._set("A1", "=MID(\"a😀b\",3,2)");
     model._set("A2", "=MID(\"a😀b\",2,1)");

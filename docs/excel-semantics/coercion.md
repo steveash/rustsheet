@@ -144,10 +144,11 @@ Rule: when the 32,767-unit limit falls inside a surrogate pair, Excel keeps the 
 `UNICODE(RIGHT(CONCATENATE(REPT("a",32766),"😀"),1))` is `#VALUE!` (UNICODE of a lone surrogate).
 Evidence: probes/concatenate-limit-spill E8–E11 (excel-graph, 2026-10-06, T-0233).
 Ours: a Rust `String` cannot hold a lone surrogate, so `truncate_text` drops the straddling pair
-whole (32,766 units; E8–E11 stay known failures).
-Status: DEVIATION (decision 0033)
+whole (32,766 units; E8–E11 stay known failures). A known gap, not a deviation (decision
+0052): T-1483.
+Status: VERIFIED
 Implemented in: `truncate_text` in cast.rs
-Tasks: T-0233
+Tasks: T-0233, T-1483
 
 ## SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing
 Rule: the two arrays are paired element by element in row-major order and need only the same

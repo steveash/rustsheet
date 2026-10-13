@@ -26,10 +26,11 @@ arbitrary, inconsistent or undocumented ones. RustSheet matches every entry exac
   formulas (e.g. WEBSERVICE, external links), no panics. Directive 5 wins over fidelity.
   Decision 0014 is the standing record for these; each one needs an entry here with
   `Status: DEVIATION (decision 0014)` stating Excel's behavior and ours. Example:
-  BESSELJ/BESSELY orders above 100,000 return `#NUM!` (`engineering.md`). Any other kind of
-  deviation needs its own decision record, and its entries cite that record instead:
-  `Status: DEVIATION (decision NNNN)` (e.g. decision 0033, lone surrogates the engine's text
-  cannot hold).
+  BESSELJ/BESSELY orders above 100,000 return `#NUM!` (`engineering.md`). There is no other
+  kind of deviation, and no other decision record can create one (decision 0052). Excel
+  behavior RustSheet does not match for any other reason, however costly to match, is a known
+  gap: its entry stays `VERIFIED`, says what RustSheet gives under "Ours", and names the task
+  that will close it.
 
 Files by area: `numbers.md`, `dates.md`, `financial.md`, `coercion.md`, `errors.md`, `criteria.md`,
 `arrays.md`, `lookup.md`, `web.md`, `number-formats.md`, `references.md`, `syntax.md`, `logic.md`, … (create as needed). Format per rule:
@@ -38,6 +39,6 @@ Files by area: `numbers.md`, `dates.md`, `financial.md`, `coercion.md`, `errors.
 ## <short rule name>
 Rule: one sentence.
 Evidence: <suite/case> <Sheet!A1> (oracle: excel-graph 16.0.xxxx) …
-Status: VERIFIED | UNVERIFIED (probe pending) | CONFLICTING (web vs desktop) | DEVIATION (decision NNNN)
+Status: VERIFIED | UNVERIFIED (probe pending) | CONFLICTING (web vs desktop) | DEVIATION (decision 0014)
 Implemented in: path::fn (once implemented)
 ```
