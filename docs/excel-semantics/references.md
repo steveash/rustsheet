@@ -153,7 +153,7 @@ lexer reads the unquoted `[book]Sheet!` prefix (T-1381). `Model::external_refere
 union or intersection of them; ISREF, ROWS, COLUMNS, ROW, COLUMN, AREAS, COUNTA, COUNTBLANK, OFFSET,
 INDEX's value, the intersection's value and the aggregates read it (T-1454). Not yet implemented:
 IF and CHOOSE picking an external reference (follow-up task), INDEX with an index array into one
-(`#BLOCKED!`, UNVERIFIED), cached `[n]` values (T-1382). UNVERIFIED (not probed, T-1485): COUNTA
+(`#BLOCKED!`, UNVERIFIED), cached `[n]` values (T-1382). UNVERIFIED (not probed, T-1487): COUNTA
 counts an external reference that gives an error instead (`COUNTA((…!A1,E1))`, a disjoint
 intersection, INDEX past the area) as 1, as it does a local error argument; OFFSET and COUNTBLANK
 give their `#VALUE!` before evaluating their other arguments (`OFFSET(…!A1,1/0,1)` is `#VALUE!`). Unprobed: a `[n]` index with no

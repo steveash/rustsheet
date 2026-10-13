@@ -64,5 +64,5 @@ reads (ISBLANK, ISTEXT, `=INDEX(…)`, `&""`) first (excel-probe).
   INDEX's window geometry is shared by both paths (`index_window`). A written external range spills.
 - Eval delta: probes known failures 2826 -> 2820 (8 fixed: external-ref-no-link-shapes A3, A4, A5,
   A15:A19; the new case adds 2 known failures, A25 and A26, IF picking an external reference).
-- Follow-up: T-1485 (IF and CHOOSE picking an external reference).
+- Follow-up: T-1487 (IF and CHOOSE picking an external reference).
 
