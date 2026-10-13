@@ -3,7 +3,7 @@ id: T-1451
 title: "TEXT over an array of format codes: one result per format, error elements keep theirs (follow-up of T-1434)"
 milestone: M1
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
