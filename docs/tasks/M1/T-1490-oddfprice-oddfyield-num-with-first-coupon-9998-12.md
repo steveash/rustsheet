@@ -3,7 +3,7 @@ id: T-1490
 title: "ODDFPRICE/ODDFYIELD #NUM! with first coupon 9998-12-31 and maturity 9999-06-30 in 1900"
 milestone: M1
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -25,9 +25,18 @@ and with issue 9998-07-15 or 9998-06-15, to separate the end of the calendar fro
 `check_odd_first_coupon`, `compute_oddfprice` (functions/financial/financial_bonds.rs).
 
 ## Acceptance criteria
-- [ ] Probe cells with excel-graph values; the rule recorded in financial.md.
-- [ ] C5 and C6 leave eval/baseline/probes.txt, or the reason they cannot is recorded.
-- [ ] `make check` green; reviewers approve.
+- [x] Probe cells with excel-graph values; the rule recorded in financial.md.
+- [x] C5 and C6 leave eval/baseline/probes.txt, or the reason they cannot is recorded.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - ODDFYIELD last-digit precision (T-0916).
+
+## Outcome
+Probe date-system-1900-oddf-issue-after-quasi (51 cells, excel-graph) shows C5/C6 are not a calendar-end effect: the
+same shape in 2023 is #NUM! too. ODDFPRICE/ODDFYIELD are #NUM! when the issue-to-first-coupon day count on the basis
+(DFC) equals the coupon period E: issue 07-01 to first coupon 12-31 is 180 days 30/360. This replaces the T-1457
+"issue is the quasi-coupon date" check, which was wrong on bases 2 and 3 (the quasi-coupon date gives a value there).
+`compute_oddfprice` errors on DFC = E; `check_odd_first_coupon` keeps only the schedule check. Recorded in
+financial.md. Eval delta: probes 5152 -> 5152 (fixed 2: odd-accrint-bound C5, C6; new-coverage 2: ODDFYIELD
+last-digit misses A17, A32 of the new case, T-0916), 0 regressions.

@@ -1,4 +1,5 @@
 use chrono::{Datelike, NaiveDate};
+use std::cmp::Ordering;
 
 use crate::formatter::dates::real_date_to_serial;
 
@@ -20,10 +21,9 @@ use crate::{
     model::Model,
 };
 
-// #NUM! unless ODDFPRICE and ODDFYIELD take this first coupon. It must be on the maturity's
-// coupon schedule, and the issue must not be the quasi-coupon date one period before it (a first
-// period that is not odd), while two periods before is fine
-// (probes/date-system-1900-oddf-schedule, date-system-1900-oddf-issue-boundary; T-1457).
+// #NUM! unless ODDFPRICE and ODDFYIELD take this first coupon: it must be on the maturity's
+// coupon schedule (probes/date-system-1900-oddf-schedule; T-1457). A first period exactly one
+// period long is #NUM! too, in `compute_oddfprice`.
 fn check_odd_first_coupon(
     issue: i64,
     first_coupon: i64,
@@ -33,11 +33,11 @@ fn check_odd_first_coupon(
 ) -> Result<(), CalcResult> {
     // Off-calendar dates are #NUM! anyway (`compute_oddfprice`); checking them first keeps the
     // schedule walk back from the maturity within the calendar for a far-negative serial.
-    let (quasi_coupon, next_coupon) = from_excel_date(issue)
+    let (_, next_coupon) = from_excel_date(issue)
         .and_then(|_| from_excel_date(first_coupon))
         .and_then(|_| find_pcd_ncd(first_coupon.saturating_sub(1), maturity, frequency))
         .map_err(|e| map_date_err(e, cell))?;
-    if next_coupon != first_coupon || quasi_coupon == issue {
+    if next_coupon != first_coupon {
         return Err(CalcResult::new_error(
             Error::NUM,
             cell,
@@ -284,6 +284,14 @@ fn compute_oddfprice(
     // E: length of the quasi-coupon period that ends on the first coupon.
     let e = coupon_days_e(settlement, first_coupon, frequency, basis)?;
     let dfc = days_between_not_neg(issue_d, first_coupon_d, basis);
+    // Excel: a first period neither shorter nor longer than E is #NUM!, counted on the basis: issue
+    // 2023-07-01 with first coupon 2023-12-31 (180 days 30/360) on basis 0 but not 1 (183 of 184
+    // days) or 4 (179), issue 2023-07-04 (180 actual days) on basis 2, while the quasi-coupon date
+    // 2023-06-30 is a value on bases 2 and 3 (probes/date-system-1900-oddf-issue-after-quasi;
+    // docs/excel-semantics/financial.md; T-1490).
+    if dfc.partial_cmp(&e) == Some(Ordering::Equal) {
+        return Err("first period is one regular period".to_string());
+    }
 
     if dfc < e {
         // --- Short odd first coupon period ---

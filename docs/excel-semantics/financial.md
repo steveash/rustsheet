@@ -184,8 +184,10 @@ Tasks: T-1406
 
 ODDFPRICE and ODDFYIELD are #NUM! unless the first coupon is one of the maturity's coupon dates (stepping back from
 the maturity by whole periods, with the month-end rule when the maturity is the last day of a month), strictly before
-the maturity, and the issue is not the quasi-coupon date one period before the first coupon. An issue two or more
-periods before is fine, and so is an issue a day off the quasi-coupon date. Examples (1900, semiannual, basis 0):
+the maturity. They are also #NUM! when the first period is exactly one regular period long *as the basis counts it*:
+when DFC, the issue-to-first-coupon day count, equals E, the length of the coupon period (360/frequency on bases 0, 2
+and 4, 365/frequency on basis 3, the actual quasi-coupon period on basis 1). Excel prices DFC < E as a short first
+period and DFC > E as a long one, and has no case for equality. Examples (1900, semiannual, basis 0):
 - `ODDFPRICE(DATE(2024,2,1),DATE(2025,7,2),DATE(2024,1,1),DATE(2024,7,1),0.05,0.06,100,2,0)` is #NUM!: the maturity
   is a day off the schedule. Maturity 2025-06-30 with first coupon 2024-07-01 is #NUM! too, as are basis 1 and
   quarterly twins.
@@ -194,13 +196,23 @@ periods before is fine, and so is an issue a day off the quasi-coupon date. Exam
 - Issue 2024-01-01, first coupon 2024-07-01, maturity 2025-07-01 is #NUM! (a regular first period), for bases 0, 1
   and 4, quarterly as well, and for issue 2024-01-15 / first coupon 2024-07-15. Issue 2023-07-01 (two periods) gives
   98.5951, issue 2024-01-02 98.6562 and issue 2023-12-31 98.6556.
-ODDFYIELD follows the same checks. Unexplained: ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity
-9999-06-30 (issue 9998-07-01, settlement 9998-08-01) are #NUM! in 1900 although the first coupon is on the schedule
-(probes/date-system-1900-odd-accrint-bound C5, C6; T-1490).
+- An issue a day *after* the quasi-coupon date can still be one 30/360 period: issue 2023-07-01, first coupon
+  2023-12-31, maturity 2024-06-30, settlement 2023-08-01 is #NUM! on basis 0 (days360 counts 180) but 99.1193 on
+  basis 1 (183 of 184 days) and 99.1185 on basis 4 (179). Likewise issue 2023-03-01 → first coupon 2023-08-31,
+  issue 2023-08-01 → 2024-01-31, and quarterly 2023-10-01 → 2023-12-31 (90). Annual 2022-07-01 → 2023-06-30 counts
+  359 and gives 98.2306. The same shape at the end of the calendar (9998-07-01 → 9998-12-31, maturity 9999-06-30)
+  is #NUM! for the same reason, not because of the calendar (probes/date-system-1900-odd-accrint-bound C5, C6).
+- Basis 2 counts actual days against 180: issue 2023-07-04 (180 days to 2023-12-31) is #NUM!, and the quasi-coupon
+  date 2023-06-30 itself (184 days) is a value (96.2098). Basis 3 (E = 182.5) gives a value for the quasi-coupon date
+  too (96.2158).
+- On basis 1, E comes from the first coupon's own schedule: with first coupon 2023-11-30 (a month end) and maturity
+  2024-05-30, issue 2023-05-31 is #NUM! (183 days, the period 2023-05-31 to 2023-11-30), as on basis 0.
+ODDFYIELD follows the same checks. Unprobed: basis 3 annual with a 365-day first period (the rule predicts #NUM!).
 Evidence: probes/date-system-1900-oddf-schedule, probes/date-system-1900-oddf-issue-boundary (excel-graph,
-2026-10-13).
-Status: VERIFIED (the C5/C6 cells above UNVERIFIED, T-1490). Tasks: T-1457.
-Implemented in: `check_odd_first_coupon` (functions/financial/financial_bonds.rs).
+2026-10-13), probes/date-system-1900-oddf-issue-after-quasi (51 cells, excel-graph, 2026-10-13, T-1490).
+Status: VERIFIED. Tasks: T-1457, T-1490.
+Implemented in: `check_odd_first_coupon` (the schedule) and `compute_oddfprice` (DFC = E)
+(functions/financial/financial_bonds.rs).
 
 ## ODDLPRICE and ODDLYIELD: a quasi-coupon date past the calendar is #NUM!
 
