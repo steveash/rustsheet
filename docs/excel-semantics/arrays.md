@@ -301,14 +301,22 @@ and a header row of function names; `VSTACK(SUM,MAX)` repeats each group row per
 name column. PIVOTBY relative_to: 0 column total, 1 row total, 2 grand total; with one field per axis 3
 equals 1 and 4 equals 0. Out-of-range sort_order, a filter of another height, an all-FALSE filter and
 field_relationship 2 are `#VALUE!`.
-Surprising (re-probe before implementing, T-1328): PIVOTBY with two value columns leaves its Total
-columns `""` (P!Y97); field_relationship 1 with total_depth 2 returned nothing (G!J169); values one row
-short and total_depth 3 with one key are errors excel-graph cannot decode (G!AB193, G!J217).
+T-1328 follow-up (probes/groupby-pivotby-followup, -followup2, -followup3; spills paired with ROWS/ISERROR/ERROR.TYPE so
+excel-graph's undecodable errors are still answered): values of another height than the keys, total_depth 3 or -3 (and 2 with a
+single key) and field_relationship 1 with total_depth ±2 are all `#VALUE!`; the all-FALSE filter is `#VALUE!` (never `#CALC!`),
+also scalar `FALSE`/`0`/`{FALSE}`, and a scalar `TRUE` filters nothing. PIVOTBY with two value columns: there are two Total
+columns (one per value), both `""` in every row (P!Y97 confirmed). Multi-key sort arrays are signed key-column indices whose priority is the column order
+(`{2,-1}` = `{-1,2}`), duplicates and 0 are `#VALUE!`. Header auto-detect looks at the first row of the values only: text over
+a non-text second row is a header; a first value cell of text over rows that mix text and non-text is `#VALUE!` (otherwise mixed values aggregate, text ignored). Number keys compare exactly (0.1+0.2 and
+0.3 differ; 0, -0, computed 0 equal; blank is its own group shown as 0); equal errors share a group, sorted after numeric keys (against text/boolean/blank unprobed).
+An array field_relationship (e.g. a filter-shaped column in argument 8) is lifted per element (10x1 of the group result; `{FALSE}` 1x1; a
+numeric column 10x1 `#VALUE!`; scalar FALSE/0 act as 0) (followup G!A861-A981, followup2 G!A1-A161). With two keys, sort_order 3 (the value
+column) orders parents by their aggregate (sum, max and mean not separated) and children by value within each parent, and the blank parent is not pinned last (followup2 G!A261).
 Evidence: probes/groupby-pivotby (61 formulas over sheets G and P, excel-graph, 2026-10-11, T-1276);
 every anchor is listed in docs/specs/SPEC-0006-groupby-pivotby.md.
-Ours: `#NAME?` (not implemented; SPEC-0006 rollout T-1322..T-1328).
+Ours: `#NAME?` (not implemented; SPEC-0006 rollout T-1322..T-1327).
 Status: VERIFIED (web)
-Tasks: T-1276
+Tasks: T-1276, T-1328
 
 ## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!
 Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:
