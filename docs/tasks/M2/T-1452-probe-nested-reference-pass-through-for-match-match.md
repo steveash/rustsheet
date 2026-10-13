@@ -3,7 +3,7 @@ id: T-1452
 title: "Probe nested reference pass-through for MATCH match_type and share the reference-context dispatch"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
