@@ -211,6 +211,21 @@ Evidence: probes/date-system-1900-odd-accrint-bound D7-D10 (excel-graph, 2026-10
 Status: VERIFIED. Tasks: T-1447, T-1457.
 Implemented in: `odd_l_func` (functions/financial/financial_bonds.rs).
 
+## ACCRINT with calc_method TRUE: a next coupon past the calendar is #NUM!
+Rule: with calc_method TRUE and the settlement after first_interest, ACCRINT is #NUM! when the coupon date that ends
+the settlement's period (first_interest stepped forward by 12/frequency months until it reaches the settlement) is
+past 9999-12-31, on every basis and frequency, in both date systems. With issue 2956276 (9994-01-02) and
+first_interest 2956456 (9994-07-01; coupons on 1 January and 1 July), `ACCRINT(2956276,2956456,2958283,0.05,1000,2,0,TRUE)`
+(settlement 9999-07-02, next coupon 10000-01-01) is #NUM!, and a settlement on 9999-07-01 itself (2958282) is a value
+(274.86). With first_interest 9994-06-29 a settlement in November 9999 still accrues (next coupon 9999-12-29), one on
+9999-12-30 does not. With the 9994-07-01 first_interest, a settlement on 9999-09-02 is #NUM! with frequency 1
+(next coupon 10000-07-01) and accrues with frequency 4 (next coupon 9999-10-01). calc_method FALSE does not walk the schedule and is not affected (a settlement on 9999-12-30 accrues).
+Evidence: probes/date-system-1900-accrint-settlement-bound A23:A53 and its 1904 twin
+date-system-1904-accrint-settlement-bound (the same cells, every date 2 * 1462 serials lower; excel-graph,
+2026-10-13, T-1494).
+Ours: `compute_accrint` (functions/financial/accrint.rs).
+Status: VERIFIED (excel-graph). Tasks: T-1494.
+
 ## COUPDAYS basis 1 around 29 February
 Rule: COUPDAYS on basis 1 is the length of the coupon period around settlement, except that when that period (as
 COUPPCD/COUPNCD give it, with the end-of-month rule) starts or ends on a 29 February that is not the maturity, it is
