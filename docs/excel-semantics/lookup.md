@@ -105,11 +105,12 @@ d3e2df0bef2f173a Calc!A20, f7e6d351c8538ef5 Calc!A296: `#SPILL!` on a collision;
 An error lookup_value or index does not stop that lift either: a `#VALUE!` lookup_value (the inner
 HLOOKUP's `E12-A6` in f7e6d351c8538ef5 Calc!A296) or index (`E$2/0.1` in 942bdade381b7537 Calc!A381)
 with a lifting range_lookup spills, giving `#SPILL!` on a collision (T-1468). The element values of
-such a spill were never seen (both cells collide). The engine gives the lookup_value error per
-element; for an error index it gives that error, but Excel may give `#REF!` as for an array index
-whose first element is an error. The engine lifts a scalar error with an *array* range_lookup the same way (inference, unprobed: T-1491).
-A multi-cell range *index* stays implicitly intersected (T-1426). Unprobed: the element values of an
-error index with a lifting range_lookup, which error wins when a
+such a spill are the error itself, per row, with room to spill: an error lookup_value, an error
+index (`1/0`, `NA()`) and a text index (`"a"` is `#VALUE!`, not the `#REF!` of an array index element)
+each fill every row with that scalar error, for a range or an array range_lookup, VLOOKUP and HLOOKUP
+alike (probes/vlookup-error-arg-lifting-range-lookup, 22 cells, excel-graph, 2026-10-13, T-1491).
+Matches the engine (`LookupIndexArg::Failed`).
+A multi-cell range *index* stays implicitly intersected (T-1426). Unprobed: which error wins when a
 lookup_value element and a range_lookup element are both errors (the engine gives the lookup error),
 and blank elements of a computed index array (read as 0, `#VALUE!`).
 Evidence: probes/vlookup-array-index-range-lookup (155 cells, excel-graph, 2026-10-12, T-1269); the
