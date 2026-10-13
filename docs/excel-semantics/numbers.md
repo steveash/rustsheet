@@ -771,7 +771,7 @@ Tasks: T-0218
 
 Excel's GAMMALN is not correctly rounded in general: the T-1042 sweep finds 91 of the integers 1..171
 differ from the correctly rounded ln((n-1)!) (`GAMMALN(3)` = 0.6931471805599454, one ulp above ln 2;
-`t1042-gamma-int-1-90` first GAMMALN cell A91; see `statistics.md`, "GAMMA and GAMMALN sweep (T-1042)").
+`t1042-gamma-int-1-90` Calc!A93; see `statistics.md`, "GAMMA and GAMMALN sweep (T-1042)").
 Observed in `ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx`: exactly 0 at x = 1 and 2,
 GAMMALN(4) = ln 6 (correctly rounded). The Lanczos `statrs::ln_gamma` is off by a few ulp, so
 `special::ln_gamma` uses fdlibm's `lgamma` (`libm` crate; chosen over a vendored port to keep one
