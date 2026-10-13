@@ -473,13 +473,17 @@ Probed (excel-graph, 2026-10-12, T-1407), row and column index alike:
   `ROW(INDEX(A1:A100000,500-2.3853E-7,1))` is 500 and `500-2.3855E-7` is 499; at 100000, 2.38E-7 below snaps and
   2.39E-7 does not. Both cuts bracket the text functions' bound, which is known to 2^-36.
 - area_num -0.5 is `#VALUE!`; `INDEX((A1:C3,E1:G3),3,-1E-15,2)` is the third row of the second area (16, 17, 18).
-  Whether area_num, or a near-integer element of an array index, shares the rounding is unprobed (T-1424).
-Evidence: probes/index-tiny-negative and probes/index-snap-tolerance.
-Implemented in: `index_number` (functions/lookup_and_reference/index.rs) with `near_integer_count` and
+- area_num rounds up the same way: with `(A1:C3,E1:G3)`, `2-1E-7` and `2-2E-8` are the second area (111) and `1-1E-7` the first,
+  while `2-3E-7` is outside the bound and floors to the first; `-1E-8` is `#VALUE!` (area_num below 1). A near-integer element of an
+  array row or column index rounds too: `SUM(INDEX(A1:C3,{1;3}-{0;1E-7},1))` is 42 (rows 1 and 3: 11+31) and `{1;3}-{0;3E-7}` is 32 (rows 1 and 2). A tiny negative element counts as 0, which inside a
+  lifted index gives the top-left value, not the whole column (`{0;1}-{1E-8;0}` is 22, `{0,2}-{1E-8,0}` is 23)
+  (probes/index-area-num-snap J1:J11, excel-graph, T-1424).
+Evidence: probes/index-tiny-negative, probes/index-snap-tolerance and probes/index-area-num-snap.
+Implemented in: `index_number` and `index_numbers` (area_num) (functions/lookup_and_reference/index.rs) with `near_integer_count` and
 `NEAR_INTEGER_TOLERANCE` (functions/util.rs). The negative cut is half the positive bound to within 1E-14
 (-1.1926749E-7 vs -1.1926751E-7); the engine takes it as exactly half, inclusive.
 Status: VERIFIED (web)
-Tasks: T-1407
+Tasks: T-1407, T-1424
 
 ## XLOOKUP with an array lookup_value looks up each element
 `SUM(XLOOKUP({1;2},A1:A3,B1:B3))` is 30 with A1:A3 = 1,2,3 and B1:B3 = 10,20,30: an array `lookup_value` gives one result per element (10, 20).
