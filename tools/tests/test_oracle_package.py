@@ -7,6 +7,7 @@ import zipfile
 
 import pytest
 
+from rustsheet_tools.oracle import package
 from rustsheet_tools.oracle.package import PackageError, patch_parts
 
 
@@ -29,3 +30,15 @@ def test_patches_apply_in_order_and_keep_zipinfo() -> None:
 def test_missing_part_is_a_package_error() -> None:
     with pytest.raises(PackageError, match="not in the package"):
         patch_parts(_zip(), [("c.xml", lambda t: t)])
+
+
+def test_too_many_parts_or_bytes_is_refused_before_reading(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(package, "MAX_PARTS", 1)
+    with pytest.raises(PackageError, match="too many parts"):
+        package.read_parts(_zip())
+    with pytest.raises(PackageError, match="too many parts"):
+        patch_parts(_zip(), [])
+    monkeypatch.setattr(package, "MAX_PARTS", 10)
+    monkeypatch.setattr(package, "MAX_UNCOMPRESSED_BYTES", 4)
+    with pytest.raises(PackageError, match="uncompressed"):
+        package.read_parts(_zip())

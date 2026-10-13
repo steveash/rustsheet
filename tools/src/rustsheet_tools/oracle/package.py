@@ -20,8 +20,26 @@ from xml.parsers import expat
 _FORMULA_SHEET_TYPE = re.compile(r"/(?:worksheet|xlMacrosheet|dialogsheet)$")
 
 
+# Caps on what the tooling decompresses (directive 5: workbooks are untrusted). Oracle workbooks are
+# a few parts and well under a megabyte; the caps leave orders of magnitude of headroom.
+MAX_PARTS = 10_000
+MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024
+
+
 class PackageError(ValueError):
     """The bytes are not an xlsx package this tooling can read or rewrite."""
+
+
+def _check_size(infos: list[zipfile.ZipInfo]) -> None:
+    """Refuses too many entries or too many uncompressed bytes, from the directory, before any read.
+
+    The sizes are the directory's own claim; zipfile raises `BadZipFile` if a part holds more than it
+    declares, so a forged directory cannot get past the cap by understating.
+    """
+    if len(infos) > MAX_PARTS:
+        raise PackageError(f"xlsx has too many parts ({len(infos)} > {MAX_PARTS})")
+    if sum(i.file_size for i in infos) > MAX_UNCOMPRESSED_BYTES:
+        raise PackageError(f"xlsx is over {MAX_UNCOMPRESSED_BYTES} bytes uncompressed")
 
 
 def read_parts(xlsx: bytes) -> dict[str, bytes]:
@@ -29,6 +47,7 @@ def read_parts(xlsx: bytes) -> dict[str, bytes]:
     try:
         with zipfile.ZipFile(io.BytesIO(xlsx)) as zf:
             infos = zf.infolist()
+            _check_size(infos)
             # Readers disagree on which of two same-named entries wins, so a scan could pass one
             # copy while Excel loads the other.
             if len({i.filename for i in infos}) != len(infos):
@@ -60,7 +79,9 @@ def patch_parts(xlsx: bytes, patches: list[tuple[str, Callable[[str], str]]]) ->
     out = io.BytesIO()
     try:
         with zipfile.ZipFile(io.BytesIO(xlsx)) as src, zipfile.ZipFile(out, "w") as dst:
-            for info in src.infolist():
+            infos = src.infolist()
+            _check_size(infos)
+            for info in infos:
                 data = src.read(info.filename)
                 if info.filename in by_part:
                     text = data.decode()
