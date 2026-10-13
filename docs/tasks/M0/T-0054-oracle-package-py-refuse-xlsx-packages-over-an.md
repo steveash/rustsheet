@@ -3,7 +3,7 @@ id: T-0054
 title: "oracle/package.py: refuse xlsx packages over an uncompressed-size cap before reading parts"
 milestone: M0
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
