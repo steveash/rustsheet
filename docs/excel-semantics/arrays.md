@@ -311,7 +311,7 @@ a non-text second row is a header; a first value cell of text over rows that mix
 0.3 differ; 0, -0, computed 0 equal; blank is its own group shown as 0); equal errors share a group, sorted after numeric keys (against text/boolean/blank unprobed).
 An array field_relationship (e.g. a filter-shaped column in argument 8) is lifted per element (10x1 of the group result; `{FALSE}` 1x1; a
 numeric column 10x1 `#VALUE!`; scalar FALSE/0 act as 0) (followup G!A861-A981, followup2 G!A1-A161). With two keys, sort_order 3 (the value
-column) orders parents by their subtotal and children by value within each parent, and the blank parent is not pinned last (followup2 G!A261).
+column) orders parents by their aggregate (sum, max and mean not separated) and children by value within each parent, and the blank parent is not pinned last (followup2 G!A261).
 Evidence: probes/groupby-pivotby (61 formulas over sheets G and P, excel-graph, 2026-10-11, T-1276);
 every anchor is listed in docs/specs/SPEC-0006-groupby-pivotby.md.
 Ours: `#NAME?` (not implemented; SPEC-0006 rollout T-1322..T-1327).

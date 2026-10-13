@@ -62,7 +62,7 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
   empty text `""`, not empty cells (oracle `t:"s"`, G!AC33). Only the blank-key group shows 0.
 - **sort_order**: an integer column index, 1-based over keys then values. Negative means
   descending. `-1` sorts keys descending, but blank stays last and the total stays at the bottom
-  (G!A145). `2` and `-2` sort by the value column (G!J145, G!S145): rows are ordered by value, blank key included (blank 9 sits in the middle); with two keys and sort_order 3, parents are ordered by subtotal and children by value inside each parent, again without pinning blank (followup2 G!A261). An index past the last column
+  (G!A145). `2` and `-2` sort by the value column (G!J145, G!S145): rows are ordered by value, blank key included (blank 9 sits in the middle); with two keys and sort_order 3, parents are ordered by their aggregate (consistent with sum, max or mean; not separated by this probe) and children by value inside each parent, again without pinning blank (followup2 G!A261). An index past the last column
   is `#VALUE!` (G!S217). The array `{2,-1}` with two key fields gives region descending, then
   product ascending (G!AB145). Multi-key arrays name key columns with a sign: the priority is the column
   order, not the array order. `{2,-1}` equals `{-1,2}` (Region desc, Product asc), `{1,-2}` equals `{-2,1}` (Region asc,
