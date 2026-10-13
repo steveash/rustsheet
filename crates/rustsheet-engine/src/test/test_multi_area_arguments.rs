@@ -5,9 +5,10 @@
 //! probes/multiarea-* (oracle excel-graph, 2026-10-07, T-1061) unless marked otherwise. See
 //! docs/excel-semantics/references.md "Multi-area references in functions".
 
+use crate::area_budget::TOO_MANY_AREA_CELLS;
 use crate::expressions::types::CellReferenceRC;
 use crate::model::Model;
-use crate::reference_operators::{MAX_AREAS, TOO_MANY_AREAS, TOO_MANY_AREA_CELLS};
+use crate::reference_operators::{MAX_AREAS, TOO_MANY_AREAS};
 use crate::test::util::new_empty_model;
 use crate::types::{Cell, FormulaValue};
 
@@ -176,6 +177,45 @@ fn whole_columns_over_the_cell_bound_are_not_walked() {
     model._set("Z1", &format!("=SUM({})", balanced_union("A:A", MAX_AREAS)));
     // A handful of whole columns stays under the bound and is walked.
     model._set("Z2", &format!("=SUM({})", balanced_union("A:A", 16)));
+    model.evaluate();
+    assert_eq!(model._get_text("Z1"), "#VALUE!");
+    assert_eq!(error_message(&model, "Z1"), TOO_MANY_AREA_CELLS);
+    assert_eq!(model._get_text("Z2"), "32");
+}
+
+#[test]
+fn a_let_bound_union_shares_the_cell_budget_across_arguments() {
+    // DEVIATION (references.md "Union area cap"): the formula, not each argument, may walk
+    // MAX_AREA_CELLS cells of multi-area arguments. Sixteen copies of A:A over 65,536 used rows
+    // are 2^20 cells, so sixteen arguments of them are the whole budget and a seventeenth is past
+    // it.
+    let mut model = model();
+    model._set("A65536", "1");
+    let union = balanced_union("A:A", 16);
+    let within = vec!["x"; 16].join(",");
+    model._set("Z1", &format!("=LET(x,{union},SUM({within}))"));
+    let past = vec!["x"; 17].join(",");
+    model._set("Z2", &format!("=LET(x,{union},SUM({past}))"));
+    model.evaluate();
+    assert_eq!(model._get_text("Z1"), (16 * 16 * 2).to_string());
+    assert_eq!(model._get_text("Z2"), "#VALUE!");
+    assert_eq!(error_message(&model, "Z2"), TOO_MANY_AREA_CELLS);
+}
+
+#[test]
+fn aggregate_of_a_union_obeys_the_area_cell_bound() {
+    // Same bound as SUM (`whole_columns_over_the_cell_bound_are_not_walked`) for AGGREGATE's
+    // reference form, which walks area by area.
+    let mut model = model();
+    model._set("A1000", "1");
+    model._set(
+        "Z1",
+        &format!("=AGGREGATE(9,4,{})", balanced_union("A:A", MAX_AREAS)),
+    );
+    model._set(
+        "Z2",
+        &format!("=AGGREGATE(9,4,{})", balanced_union("A:A", 16)),
+    );
     model.evaluate();
     assert_eq!(model._get_text("Z1"), "#VALUE!");
     assert_eq!(error_message(&model, "Z1"), TOO_MANY_AREA_CELLS);
