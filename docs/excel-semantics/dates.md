@@ -504,9 +504,19 @@ At the edges:
   earlier, or in the last year), where 1900 gives values. ODDF* with issue, settlement and first coupon in the year
   before a 30 June maturity are #NUM! for 9000 and 9900 but give the 1900 values for 9980 through 9995, and ODDL* for
   9000 and 9900 differ from 1900 (`ODDLPRICE(DATE(9000,3,1),DATE(9000,6,30),DATE(9000,2,15),0.05,0.06,100,2,0)` is
-  99.6718 against 99.6715). 9000 and 9900 are the century years that are not leap years, so a guess (UNVERIFIED) is
-  that these functions move 1904 dates by four calendar years, not by 1462 days. Settled in 2024, every maturity to
-  9995 gives the 1900 value. In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
+  99.6718 against 99.6715). Settled in 2024, every maturity to 9995 gives the 1900 value.
+  The break follows the non-leap century years, not the end of the calendar (probes/date-system-1904-odd-years and its
+  1900 twin, T-1457): with issue, settlement and first coupon in the year before a 30 June maturity, ODDF* are #NUM!
+  in 1904 for maturity years 2096, 2100, 2200, 8100, 8996, 9000, 9100, 9300, 9700, 9800, 9896 and 9900, and give
+  the 1900 values for 2104, 2400, 8000, 9004, 9200, 9600 and 9904. In the failing years ODDL* (last interest
+  15 February, settlement 1 March, maturity 30 June) differ from 1900 in the last digits: 99.67182 for 2100, 2200,
+  8100, 9000 and the other century years, and 99.67128 for 2096, 8996 and 9896, against 99.67155 in 1900. So a date
+  within four years before a 1 March of a non-leap century year (2100, 2200, 2300, 2500, ...) breaks, which fits
+  moving a 1904 date four calendar years forward rather than 1462 days (UNVERIFIED as the mechanism). With a first
+  coupon on 30 June of the maturity year and maturity 31 December, ODDFPRICE and ODDLPRICE differ from 1900 in every
+  probed year, 2104 included (98.8602 against 95.9686 for ODDFPRICE, 99.1983 against 99.1825 for ODDLPRICE). That is
+  the general 1904 change noted above, which the engine already matches. In the failing years these cells take other
+  values again (98.8631 and 99.1990 for 2100, 98.8572 and 99.1977 for 2096); the engine does not follow that yet (T-1457). In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
   9999-05-15) are #NUM!, and so is ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity 9999-06-30.
   COUPDAYS on basis 1 in the broken range ignores the settlement: 2958465 for settlements 9999-01-01, 9998-03-01 and
   9996-02-01.

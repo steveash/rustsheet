@@ -37,3 +37,17 @@ Last-digit misses of ODDFYIELD in these cases are T-0916, not this task.
 
 ## Out of scope
 - Last-digit precision (T-1374, T-0916).
+
+## Progress (session 2026-10-13, opus; work in flight, not a handoff)
+- Probed the years: probes/date-system-1904-odd-years and its control probes/date-system-1900-odd-years (114 cells
+  each, excel-graph). Findings are recorded in docs/excel-semantics/dates.md (after "The odd-period functions break
+  differently"). In short, a 1904 date within about four years before 1 March of a non-leap century year (2100, 2200,
+  ..., 9900) breaks the odd-period functions, from 2096 on. So it is not an end-of-calendar effect. This fits moving
+  1904 dates by four calendar years instead of 1462 days.
+- Baseline: the new cases add 98 known failures. Rows 1, 2, 4, 5 and 6 of the 1904 case fail only in the 12 broken
+  years. Row 3 (ODDFYIELD) misses in every column of both cases; that looks like T-0916 last-digit precision, so check
+  it before treating it as this task's.
+- Next: find where the odd-period code converts 1904 serials (`DateSystem::financial_1900_serial`, formatter/dates.rs).
+  Try "add 4 calendar years" (EDATE +48 months) in place of +1462, and see whether that reproduces the #NUM!, the
+  99.67182 vs 99.67128 split (2100 vs 2096) and the row 5/6 values (98.86311 / 99.19898 for 2100). Then recheck the
+  original T-1447 cells listed in Context.
