@@ -40,7 +40,7 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
   numbers < text < FALSE < TRUE < blank (G!A193). That is `sort_key_cmp` in
   `functions/spill_functions.rs`. Errors as keys: equal errors share one group, sorted after the numbers (see above).
 - A blank key is its own group, shown as the number 0, and it sorts last even when sorting
-  descending (G!A1, G!A145).
+  descending, for key sorts (G!A1, G!A145); sorting by a value column does not pin it (see sort_order).
 - Within a group, function inputs keep source order: ARRAYTOTEXT gives "Apple, Pear, Apple"
   (G!AB97). The total row applies the function to all values in source order, not to the group
   results: AVERAGE's total is 13.05 = 130.5/10, MAX's is 40 (G!S73, G!J97).
@@ -62,20 +62,20 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
   empty text `""`, not empty cells (oracle `t:"s"`, G!AC33). Only the blank-key group shows 0.
 - **sort_order**: an integer column index, 1-based over keys then values. Negative means
   descending. `-1` sorts keys descending, but blank stays last and the total stays at the bottom
-  (G!A145). `2` and `-2` sort by the value column (G!J145, G!S145). An index past the last column
+  (G!A145). `2` and `-2` sort by the value column (G!J145, G!S145): rows are ordered by value, blank key included (blank 9 sits in the middle); with two keys and sort_order 3, parents are ordered by subtotal and children by value inside each parent, again without pinning blank (followup2 G!A261). An index past the last column
   is `#VALUE!` (G!S217). The array `{2,-1}` with two key fields gives region descending, then
   product ascending (G!AB145). Multi-key arrays name key columns with a sign: the priority is the column
   order, not the array order. `{2,-1}` equals `{-1,2}` (Region desc, Product asc), `{1,-2}` equals `{-2,1}` (Region asc,
   Product desc), `{2,1}` equals `{1,2}` (both asc); a one-element array is accepted (`{1}`, `{2}`: both asc);
   `{1,-1}` (a column twice), `{0,1}` are `#VALUE!` (PIVOTBY's row_sort_order 0 was `#VALUE!` too, but in a formula with other changed arguments: confounded); `{1,2,3}` over two keys is
-  `#VALUE!` (followup G!A341-A541, followup2 #10-13; T-1328).
+  `#VALUE!` (followup G!A341-A541, followup2 G!A181-A241; T-1328; probed under the default hierarchy relationship only).
 - **filter_array**: a Boolean column as tall as the data. FALSE rows are dropped before grouping,
   so groups with no rows vanish and totals cover only kept rows (G!A169). A height mismatch is
   `#VALUE!` (G!AB217). All FALSE is `#VALUE!`, not `#CALC!` (ERROR.TYPE 3, unlike FILTER's 14), also as a scalar `FALSE`, `0` or `{FALSE}`, with two key
-  fields, and for PIVOTBY; a scalar `TRUE` filters nothing (followup3 #1-12; G!A241).
+  fields, and for PIVOTBY; a scalar `TRUE` filters nothing (followup3 G!A1-A133; G!A241).
 - **field_relationship**: `0` (hierarchy, the default) gives the same result as omitted
   (G!S169). `2` is `#VALUE!` (G!J241). `1` (table) with total_depth 2 or -2 is `#VALUE!` (ERROR.TYPE 3; followup G!A181, G!A261); with total_depth 1 or omitted it
-  equals 0 (T-1328).
+  equals 0 (T-1328; probed with default sorting only). An array in argument 8 is lifted per element (a 10x1 column of group results, `{FALSE}` 1x1, a numeric column 10x1 `#VALUE!`, scalar FALSE/0 act as 0; followup G!A861-A981, followup2 G!A1-A161).
 - **function** forms: an eta name (`SUM`, `AVERAGE`, `COUNT`, `COUNTA`, `MAX`, `PERCENTOF`,
   `ARRAYTOTEXT`) or a one-parameter LAMBDA (`LAMBDA(x,ROWS(x))`, text results too, G!A121,
   G!AB241). A LAMBDA that returns an array gives `#VALUE!` in each cell, totals included (G!J121).
@@ -147,7 +147,7 @@ struct Aggregate<'a> { rows: &'a [usize], relative: &'a [usize] }
    header when its first value cell is text and the next row's is not text (`{"v";1;2;3}`: header; `{5;1;2;3}`, `{TRUE;..}` and
    `{#N/A;..}`: data; all-text `{"v";"1";"2";"3"}`: data; `{5,"w";..}` over two columns: data). A header is hidden
    (the key range then drops its first row too).
-   The result is `#VALUE!` when the first value cell is text and the rows below mix text with non-text
+   (Probed with SUM and the first value column only; do not generalise to other functions or later columns.) The result is `#VALUE!` when the first value cell is text and the rows below mix text with non-text
    (`{"v";1;2;"3"}`, followup3 G!A205/A277/A349; `"h","1",2,3`, followup2 G!A521; `"v","1","2",<blank>`, followup2 G!A341/A381). When the
    first cell is not text, mixed values aggregate normally and text is ignored (G!S193); all-text values SUM to 0.
 2. **Grouping**: a hash map from `Vec<CellKey>` (`cell_key` in spill_functions.rs, case-folded
