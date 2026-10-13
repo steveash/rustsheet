@@ -3,7 +3,7 @@ id: T-1472
 title: "Report scores ironcalc-calc cells whose formulas call only M0-M2 functions (M2 exit criterion)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
