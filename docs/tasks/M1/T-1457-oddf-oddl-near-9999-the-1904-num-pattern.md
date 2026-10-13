@@ -3,7 +3,7 @@ id: T-1457
 title: "ODDF*/ODDL* near 9999: the 1904 #NUM! pattern and the 1900 #NUM! at the last dates"
 milestone: M1
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
