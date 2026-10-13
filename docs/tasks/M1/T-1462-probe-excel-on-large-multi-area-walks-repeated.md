@@ -3,7 +3,7 @@ id: T-1462
 title: "Probe Excel on large multi-area walks repeated inside MAP and BYROW"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
