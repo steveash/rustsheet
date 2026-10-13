@@ -8,6 +8,8 @@ use super::{
 };
 use crate::error::XlsxError;
 
+/// Reads the `<cols>` of a worksheet. `width` is optional (ECMA-376 18.3.1.13): a `<col>` without
+/// it takes `<sheetFormatPr defaultColWidth>`, else the engine default width.
 pub(super) fn load_columns(ws: &XmlNode) -> Result<Vec<Col>, XlsxError> {
     // cols
     // <cols>
