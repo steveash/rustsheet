@@ -100,7 +100,7 @@ Spot-audit: none this run (not yet due). The last audit, 2026-10-09 (steward PR 
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M2.
 - engine holds most of M2's remaining failures (T-0220, T-0221, T-0293/T-0294) and the aggregate walker (T-1473/T-1474).
-- research comes next: T-1470 re-assigns 149 mis-tagged probe cells, and T-1469 unblocks T-0220.
+- research comes next: T-1470 re-assigns 149 wrongly tagged probe cells, and T-1469 unblocks T-0220.
 - quality: T-1030 (10 surrogate cells), T-1476 and T-1477 (one implementation).
 - api: T-1478 and T-1480 (NOW/TODAY clock).
 - harness: T-1471 and T-1472 only measure M2's exit.
