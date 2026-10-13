@@ -1,7 +1,7 @@
 use crate::arithmetic::{bcast_idx, flush_subnormal};
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
-use crate::reference_operators::{external_area, Ranges, RefArg};
+use crate::reference_operators::{external_area, several_areas_ref, Ranges, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -779,13 +779,7 @@ impl Model {
         // context (probes/multiarea-count H2, H3; SPEC-0004 row 5).
         let result = if self.is_multi_area(node) {
             match self.evaluate_reference_arg(node, cell) {
-                RefArg::Ranges(Ranges::Areas(_)) => {
-                    return Err(CalcResult::new_error(
-                        Error::REF,
-                        cell,
-                        "Reference of several areas".to_string(),
-                    ))
-                }
+                RefArg::Ranges(Ranges::Areas(_)) => return Err(several_areas_ref(cell)),
                 // A 3-D span through a variable, IF or CHOOSE is `#VALUE!`, as the written one
                 // is (probes/3d-ref-let-bound-span C7:C8, 3d-ref-let-values C5).
                 other => other.into_single_sheet_area(cell),
