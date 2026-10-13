@@ -3,7 +3,7 @@ id: T-1467
 title: "Regression test for the fuzz FIXED huge-decimals OOM (nightly fuzz run 38344232074)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
