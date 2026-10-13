@@ -169,6 +169,17 @@ fn text_value_node(value: &ArrayNode, format: &str) -> ArrayNode {
     }
 }
 
+/// The TEXT array element for one value: numbers and blanks by the number sections, text and
+/// booleans by the text section, an error element stays as it is.
+fn text_element(node: &ArrayNode, format: &str, ctx: &FormatContext) -> ArrayNode {
+    match node {
+        ArrayNode::Number(f) => text_node(Some(*f), format, ctx),
+        ArrayNode::Empty => text_node(None, format, ctx),
+        text @ (ArrayNode::Boolean(_) | ArrayNode::String(_)) => text_value_node(text, format),
+        e @ ArrayNode::Error(_) => e.clone(),
+    }
+}
+
 /// TEXT of a scalar text or boolean value.
 fn text_value_result(value: &ArrayNode, format: &str, cell: CellReferenceIndex) -> CalcResult {
     match text_value_node(value, format) {
@@ -200,9 +211,45 @@ impl Model {
             },
             other => other,
         };
+        // The format is evaluated once: evaluating it again per path would make TEXT nested in
+        // the format argument exponential in its depth.
+        let format_result = match self.evaluate_node_in_context(&args[1], cell) {
+            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
+                Ok(array) => CalcResult::Array(array),
+                Err(error) => return error,
+            },
+            other => other,
+        };
+        // An array or range of format codes gives one result per format; each format has its own
+        // complexity check and an error element keeps its error (probes/text-format-length-limit-f
+        // A54:B54).
+        if let CalcResult::Array(formats) = format_result {
+            let value = match value_result {
+                CalcResult::Array(a) => TextArg::Array(a),
+                // An error value lifts over the formats like a scalar.
+                err @ CalcResult::Error { .. } => {
+                    TextArg::Error(calc_result_to_array_node(err.clone()), err)
+                }
+                other => TextArg::Scalar(calc_result_to_array_node(other)),
+            };
+            let formats = TextArg::Array(formats);
+            let ctx = self.format_context();
+            return broadcast_text(cell, &[&value, &formats], |i, j| {
+                // An error value wins over a bad or too complex format (number-formats.md).
+                if let e @ ArrayNode::Error(_) = value.elem(i, j) {
+                    return Ok(e.clone());
+                }
+                let format_code = array_node_to_string(formats.elem(i, j))?;
+                if exceeds_complexity_limit(&format_code) {
+                    return Err(Error::VALUE);
+                }
+                Ok(text_element(value.elem(i, j), &format_code, &ctx))
+            });
+        }
+        let format_code = self.cast_to_string(format_result, cell);
         match value_result {
             CalcResult::Array(arr) => {
-                let format_code = match self.get_string(&args[1], cell) {
+                let format_code = match format_code {
                     Ok(s) => s,
                     // An error in every element; error elements keep theirs.
                     Err(e) => return array_of_errors(&arr, e, own_error),
@@ -211,28 +258,20 @@ impl Model {
                     return array_of_errors(&arr, too_complex(cell), own_error);
                 }
                 let ctx = self.format_context();
-                let mut output = Vec::with_capacity(arr.len());
-                for row in arr {
-                    let mut data_row = Vec::with_capacity(row.len());
-                    for node in row {
-                        let out = match node {
-                            ArrayNode::Number(f) => text_node(Some(f), &format_code, &ctx),
-                            ArrayNode::Empty => text_node(None, &format_code, &ctx),
-                            text @ (ArrayNode::Boolean(_) | ArrayNode::String(_)) => {
-                                text_value_node(&text, &format_code)
-                            }
-                            e @ ArrayNode::Error(_) => e,
-                        };
-                        data_row.push(out);
-                    }
-                    output.push(data_row);
-                }
-                CalcResult::Array(output)
+                CalcResult::Array(
+                    arr.iter()
+                        .map(|row| {
+                            row.iter()
+                                .map(|node| text_element(node, &format_code, &ctx))
+                                .collect()
+                        })
+                        .collect(),
+                )
             }
             error @ CalcResult::Error { .. } => error,
             other => {
                 // An error in the format wins, also for text (error_broadcast.xlsx Sheet2!A1).
-                let format_code = match self.get_string(&args[1], cell) {
+                let format_code = match format_code {
                     Ok(s) => s,
                     Err(s) => return s,
                 };

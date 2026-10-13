@@ -253,9 +253,10 @@ Not explained or not implemented (known failures):
 - The "Not fitted" cells above (probes/text-format-length-limit-f A7; -i A26, A44, A53, A78, A98; -j A30, a text token before 125 quoted characters; -j A4, A11, A14, A17, A18, A21, A22, A26, A27, A37, A38, A40, A41, quoted text next to more text or after a condition). T-1455.
 - `TEXT(1,"[>5]0"&REPT(" ",79))` is "1" (also with 40 spaces): an unmatched single condition prints General, dropping the padding. So is `"[>55555]0"` plus 79 spaces (-j A43). We do not apply conditions yet (see "Conditional sections", T-0936).
 - `TEXT(1,"0:a:")` is "1:a:" and an escaped backslash followed by an unquoted `x` prints "\x": Excel accepts these letters unquoted, our lexer rejects them (-g A42, A43; -i A100:A104). T-1450.
-- `TEXT(1,{"0",#N/A})` is "1", `#N/A`: an array of format codes is not implemented (-f A54:B54). T-1451.
 
 Cell display with a long format could not be probed: excel-graph rejects such workbooks (createSession 501 unsupportedWorkbook). The colon-run and text-section rules live in the shared formatter, so they apply to cell display too; they are probed through TEXT only.
 Ours: `formatter/complexity.rs` (`exceeds_complexity_limit`), applied by TEXT only; colon runs in `formatter/parser.rs`; the text section with a number in `format_number` (formatter/format.rs).
 Status: VERIFIED (excel-graph, fitted model)
 Tasks: T-1388, T-1393, T-1434, T-1449, T-1450, T-1451, T-1455
+
+TEXT over an array of format codes (T-1451): one result per format, value and formats broadcast together (see text.md). `TEXT(1,{"0",#N/A})` is "1", `#N/A` (-f A54:B54). INFERRED, not probed: an error value element wins over a bad or too complex format element, and a scalar error value lifts to the formats' shape.

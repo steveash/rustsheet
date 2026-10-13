@@ -374,3 +374,35 @@ fn byte_functions_spill_like_the_non_byte_functions() {
     assert_eq!(model._get_text("A10"), "0");
     assert_eq!(model._get_text("A11"), "0");
 }
+
+#[test]
+fn text_over_an_array_of_formats() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXT(1,{\"0\",#N/A})");
+    model._set("A2", "=TEXT({1,2},{\"0.0\",\"00\"})");
+    model.evaluate();
+    assert_eq!(row(&model, 1, 2), ["1", "#N/A"]);
+    assert_eq!(row(&model, 2, 2), ["1.0", "02"]);
+}
+
+#[test]
+fn text_nested_in_the_format_is_not_reevaluated() {
+    let mut model = new_empty_model();
+    let mut f = String::from("\"0\"");
+    for _ in 0..40 {
+        f = format!("TEXT(0,{f})");
+    }
+    model._set("A1", &format!("=TEXT(1,{f})"));
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1");
+}
+
+#[test]
+fn text_error_value_with_an_array_of_formats() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXT(NA(),{\"0\",\"0\"})");
+    model._set("A2", "=TEXT({1,#N/A},{\"0\",#DIV/0!})");
+    model.evaluate();
+    assert_eq!(row(&model, 1, 2), ["#N/A", "#N/A"]);
+    assert_eq!(row(&model, 2, 2), ["1", "#N/A"]);
+}
