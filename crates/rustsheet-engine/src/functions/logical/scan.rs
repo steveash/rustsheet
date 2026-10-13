@@ -56,7 +56,7 @@ impl Model {
             }
             init
         } else {
-            self.lambda_result_value(data[0][0].clone(), cell)
+            data[0][0].clone()
         };
 
         let mut result = vec![vec![ArrayNode::Empty; num_cols]; num_rows];
@@ -65,7 +65,8 @@ impl Model {
         // slot in the output is that seed value itself (not the result of calling lambda).
         let mut start_col = 0;
         if !has_initial {
-            result[0][0] = calc_result_to_array_node(accumulator.clone());
+            let seed = self.lambda_result_value(accumulator.clone(), cell);
+            result[0][0] = calc_result_to_array_node(seed);
             start_col = 1;
         }
 
@@ -77,11 +78,11 @@ impl Model {
                     vec![accumulator, data[i][j].clone()],
                     cell,
                 );
-                accumulator = self.lambda_result_value(accumulator, cell);
                 if accumulator.is_error() {
                     return accumulator;
                 }
-                result[i][j] = calc_result_to_array_node(accumulator.clone());
+                let value = self.lambda_result_value(accumulator.clone(), cell);
+                result[i][j] = calc_result_to_array_node(value);
             }
         }
 

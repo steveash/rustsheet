@@ -111,7 +111,7 @@ impl Model {
             }
             (init, 0)
         } else {
-            (self.lambda_result_value(elements[0].clone(), cell), 1)
+            (elements[0].clone(), 1)
         };
 
         for element in &elements[start..] {
@@ -120,12 +120,11 @@ impl Model {
                 vec![accumulator, (*element).clone()],
                 cell,
             );
-            accumulator = self.lambda_result_value(accumulator, cell);
             if accumulator.is_error() {
                 return accumulator;
             }
         }
 
-        self.lambda_result_value(accumulator, cell)
+        accumulator
     }
 }

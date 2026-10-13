@@ -342,7 +342,7 @@ arrays and every element counts: `BYCOL(IFERROR(A1:B3,1),LAMBDA(c,COUNTA(c)))` i
 Evidence: probes/lambda-helper-range-slices (excel-graph, 2026-10-12, T-1395).
 Ours: BYROW and BYCOL pass references since T-1395 (`by_slices_source`, bycol_byrow.rs); a range keeps its full size
 (a whole column gives 1,048,576 calls and full-column slices) under the 2^20-cell array bound of "Array results above
-1,048,576 cells". MAP, SCAN and REDUCE pass each cell of a one-sheet range as a one-cell reference too (`lambda_cells`, T-1442); the eta-reduced COUNTA is still `#NAME?`, as every `_xleta.` name is.
+1,048,576 cells". MAP, SCAN and REDUCE pass each cell of a one-sheet range as a one-cell reference too (`lambda_cells`, T-1442); a reference the LAMBDA returns is read when it becomes a MAP or SCAN output cell, while a REDUCE or SCAN accumulator stays as returned (what Excel does with `ISREF(a)` on an accumulator is unprobed); the eta-reduced COUNTA is still `#NAME?`, as every `_xleta.` name is.
 Status: VERIFIED (excel-graph)
 Tasks: T-1395, T-1442
 
