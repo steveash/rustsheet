@@ -3,7 +3,7 @@ id: T-1501
 title: "Probe whether intermediates of a chained expression stay at 64 bits (a*b+c, SQRT(a*b))"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,10 @@ T-1496 showed each of `*`, `+`, `-`, SQRT rounds twice taken alone (numbers.md "
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes-numeric/double-rounding-chained` (54 cells, excel-graph): in `a*b+c`, `a*b-c`, `(a+b)*c`,
+`a*b*c`, `a*b/c`, `a/b*c`, `SQRT(a*b)`, `SQRT(a+b)` each operator's result is rounded twice to a
+double before the next operator (48 of 48 discriminating cells; SUM(a*b,c) control agrees). No
+follow-up engine task beyond T-1498, T-1499 and T-1500: once each operator rounds twice, chains
+follow. The ungated probes-numeric suite has no baseline change.
