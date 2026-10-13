@@ -3,8 +3,11 @@ use chrono::{Datelike, NaiveDate};
 use super::dates::broken_schedule_error;
 use crate::{
     calc_result::CalcResult,
+    constants::MAXIMUM_DATE_SERIAL_NUMBER,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::{from_excel_date, from_excel_date_up_to},
+    formatter::dates::{
+        from_excel_date, from_excel_date_up_to, real_date_to_serial, EPOCH_1904_IN_1900_SERIALS,
+    },
     model::Model,
 };
 
@@ -214,7 +217,7 @@ fn acc_coup_days(settl: NaiveDate, mat: NaiveDate, freq: i32, basis: i32) -> Res
 // period contributes a prorated slice; each earlier full period contributes
 // `calc_method` (1 for the default issue→settlement, 0 for
 // first_interest→settlement); the issue-stub period contributes its own prorated
-// slice.
+// slice. `settlement_days`, when given, replaces the day count of the settlement slice.
 #[allow(clippy::too_many_arguments)]
 fn compute_accrint(
     issue: NaiveDate,
@@ -225,6 +228,7 @@ fn compute_accrint(
     frequency: i32,
     basis: i32,
     calc_method: bool,
+    settlement_days: Option<f64>,
 ) -> Result<f64, String> {
     let num_months = 12 / frequency;
     let freq = frequency as f64;
@@ -238,13 +242,24 @@ fn compute_accrint(
     // first_interest (only meaningful for the default calc_method) walk the
     // schedule forward to find it; otherwise it is the regular coupon start.
     let pcd = if settlement > first_interest && calc_method {
-        acc_find_pcd_ncd(first_interest, settlement, num_months, end_month_bond)?.1
+        let (ncd, pcd) = acc_find_pcd_ncd(first_interest, settlement, num_months, end_month_bond)?;
+        // Excel: the coupon date that ends the settlement's period must be a date; one past
+        // 9999-12-31 is #NUM! in either date system (`ACCRINT(2956276,2956456,2958100,0.05,1000,
+        // 2,0,TRUE)`, next coupon 10000-01-01; probes/date-system-1900-accrint-settlement-bound
+        // A23:A28, A39:A49; docs/excel-semantics/financial.md).
+        if real_date_to_serial(ncd).is_none() {
+            return Err("Next coupon date is past 9999-12-31".to_string());
+        }
+        pcd
     } else {
         reg_pcd
     };
 
     let first_date = if issue > pcd { issue } else { pcd };
-    let days0 = acc_days_between(first_date, settlement, true, basis)?;
+    let days0 = match settlement_days {
+        Some(days) => days,
+        None => acc_days_between(first_date, settlement, true, basis)?,
+    };
     let coup_days0 = acc_coup_days(reg_pcd, first_interest, frequency, basis)?;
     let mut acc = days0 / coup_days0;
 
@@ -397,12 +412,20 @@ impl Model {
             .workbook
             .settings
             .date_system
-            .accrint_settlement_limit(basis, calc_method);
+            .accrint_settlement_limit(calc_method);
         let settlement = match from_excel_date_up_to(settlement_serial, settlement_limit) {
             Ok(d) => d,
             Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
         };
 
+        // Excel: a 1904 settlement read past 9999-12-31 (calc_method FALSE) has no 30/360 date;
+        // bases 0 and 4 then accrue first_interest's 1904 serial plus 1462 days in the settlement
+        // slice, whatever the settlement and the issue (410415.83 for first_interest 9990-06-30,
+        // 1904 serial 2953532; probes/date-system-1904-accrint-settlement-bound A1:A17,
+        // docs/excel-semantics/dates.md). Bases 1 to 3 count its actual days.
+        let settlement_days = (settlement_serial > i64::from(MAXIMUM_DATE_SERIAL_NUMBER)
+            && matches!(basis, 0 | 4))
+        .then(|| (first_interest_serial - EPOCH_1904_IN_1900_SERIALS) as f64);
         match compute_accrint(
             issue,
             first_interest,
@@ -412,6 +435,7 @@ impl Model {
             frequency,
             basis,
             calc_method,
+            settlement_days,
         ) {
             Ok(value) => CalcResult::Number(value),
             Err(e) => CalcResult::new_error(Error::NUM, cell, e),
