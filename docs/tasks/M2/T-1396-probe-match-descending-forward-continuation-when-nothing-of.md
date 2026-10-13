@@ -3,7 +3,7 @@ id: T-1396
 title: "Probe MATCH descending forward continuation when nothing of the key type lies at or below the midpoint"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1312 continues the search forward from the midpoint in that case, evidenced by
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/match-descending-forward-continuation (20 cells, oracle excel-graph). Engine already matches all 20; rule recorded in docs/excel-semantics/lookup.md. Eval delta: probes +20 cells passing, 0 regressions; no follow-ups.
