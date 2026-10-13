@@ -3,7 +3,7 @@ id: T-0418
 title: "xlsx import accepts a col element without a width attribute (port ironcalc 9d5fa0dc)"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
