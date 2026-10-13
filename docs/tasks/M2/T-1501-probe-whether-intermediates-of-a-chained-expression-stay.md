@@ -3,7 +3,7 @@ id: T-1501
 title: "Probe whether intermediates of a chained expression stay at 64 bits (a*b+c, SQRT(a*b))"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
