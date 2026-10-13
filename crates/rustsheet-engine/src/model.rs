@@ -22,6 +22,7 @@ use crate::{
         types::*,
         utils::{self, is_valid_column_number, is_valid_row},
     },
+    external_reference::external_area,
     formatter::{
         format::{format_number, parse_formatted_number},
         lexer::is_likely_date_number_format,
@@ -29,7 +30,6 @@ use crate::{
     implicit_intersection::implicit_intersection,
     language::{get_default_language, get_language, Language},
     locale::{get_default_locale, get_locale, Locale},
-    reference_operators::external_area,
     types::*,
     utils as common,
 };

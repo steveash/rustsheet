@@ -57,7 +57,7 @@ reads (ISBLANK, ISTEXT, `=INDEX(…)`, `&""`) first (excel-probe).
   one cell INDEX, an intersection or IF picks reads **empty**; several spill `#BLOCKED!`; aggregates
   are `#BLOCKED!` but COUNTA counts nothing, COUNTBLANK and OFFSET are `#VALUE!`; a union or
   intersection across two workbooks is `#VALUE!`. Recorded in docs/excel-semantics/references.md.
-- `Model::external_reference` (reference_operators.rs) gives the areas of a written external
+- `Model::external_reference` (external_reference.rs) gives the areas of a written external
   reference, INDEX into one, and unions/intersections of them, evaluating nothing when the
   expression is none of these; ISREF, ROWS/COLUMNS, ROW/COLUMN, AREAS, COUNTA, COUNTBLANK, OFFSET,
   INDEX, the intersection and `evaluate_reference_arg` read it instead of per-node special cases.

@@ -1,7 +1,8 @@
 use crate::arithmetic::{bcast_idx, flush_subnormal};
+use crate::external_reference::ExternalArea;
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
-use crate::reference_operators::{ExternalArea, Ranges, RefArg};
+use crate::reference_operators::{Ranges, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{

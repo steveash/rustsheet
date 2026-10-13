@@ -149,11 +149,14 @@ directly as a value is `#BLOCKED!`.
 Evidence: probes/external-ref-no-link-index Calc!A1:A36, C1:F7 (excel-graph, 2026-10-13, T-1454).
 Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`; the
 lexer reads the unquoted `[book]Sheet!` prefix (T-1381). `Model::external_reference`
-(reference_operators.rs) gives the areas of a written external reference, an INDEX into one and a
+(external_reference.rs) gives the areas of a written external reference, an INDEX into one and a
 union or intersection of them; ISREF, ROWS, COLUMNS, ROW, COLUMN, AREAS, COUNTA, COUNTBLANK, OFFSET,
 INDEX's value, the intersection's value and the aggregates read it (T-1454). Not yet implemented:
 IF and CHOOSE picking an external reference (follow-up task), INDEX with an index array into one
-(`#BLOCKED!`, UNVERIFIED), cached `[n]` values (T-1382). Unprobed: a `[n]` index with no
+(`#BLOCKED!`, UNVERIFIED), cached `[n]` values (T-1382). UNVERIFIED (not probed, T-1485): COUNTA
+counts an external reference that gives an error instead (`COUNTA((…!A1,E1))`, a disjoint
+intersection, INDEX past the area) as 1, as it does a local error argument; OFFSET and COUNTBLANK
+give their `#VALUE!` before evaluating their other arguments (`OFFSET(…!A1,1/0,1)` is `#VALUE!`). Unprobed: a `[n]` index with no
 externalLink part, and ROW/COLUMN of a multi-cell external area (the engine spills the row or column
 numbers as for a sheet reference, UNVERIFIED).
 Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
