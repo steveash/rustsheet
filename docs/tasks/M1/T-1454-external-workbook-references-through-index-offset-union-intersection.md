@@ -3,7 +3,7 @@ id: T-1454
 title: "External-workbook references through INDEX, OFFSET, union, intersection, COUNTA and spill"
 milestone: M1
 lane: engine
-status: in-progress
+status: todo
 priority: P3
 size: M
 tier: opus
@@ -38,3 +38,16 @@ reads (ISBLANK, ISTEXT, `=INDEX(…)`, `&""`) first (excel-probe).
 
 ## Out of scope
 - Cached values of `[n]Sheet!ref` (T-1382). Opening other workbooks (directive 5).
+
+## Handoff
+- Claimed 2026-10-13 by an opus run near the end of its session budget. Released untouched: no code
+  and no probe were written, and the branch holds only the claim and this note.
+- Reading so far: `reference_operators::external_area` gives the shape of a written external
+  reference. `Ranges`/`RefArg` hold only on-sheet `Range`s, so INDEX, OFFSET, the union and
+  intersection operators, COUNTA and the spill path never see an external area.
+- The cells imply this: an external area's cells, read through INDEX or a range, are not
+  `#BLOCKED!` (ERROR.TYPE `#N/A`, COUNTA 0). Only the written single cell is `#BLOCKED!`. Probe what
+  INDEX's picked cell reads before designing (ISBLANK, ISTEXT, `=INDEX(..)`, `&""`).
+- Do not represent "another workbook" with a sentinel sheet index. Code that indexes worksheets by
+  `sheet` would then panic or misread it (directive 5). Add an explicit variant to `Ranges`/`RefArg`
+  instead, as the task suggests.
