@@ -390,6 +390,7 @@ C	probes/paren-negative-variants.case.json	32
 C	probes/paren-number-text-currency-variants.case.json	4
 C	probes/paren-number-text-euro-suffix.case.json	7
 C	probes/paren-number-text-forms.case.json	14
+C	probes/percentof-snap-overflow-union.case.json	15
 C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-elements.case.json	9
