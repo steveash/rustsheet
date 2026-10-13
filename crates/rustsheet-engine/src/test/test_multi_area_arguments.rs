@@ -693,3 +693,22 @@ fn self_referential_union_names_are_bounded() {
         ],
     );
 }
+
+#[test]
+fn a_spill_into_a_union_area_is_read_after_its_anchor_runs() {
+    // T-1497: a union area is recorded as seen empty in one piece. A spill written into it
+    // after the union was read must restart the reader, not be missed or reported circular,
+    // both when the spill appears and when it grows.
+    let mut model = new_empty_model();
+    model._set("A1", "=SUM((D:D,E:E))");
+    model._set("B1", "=COUNT((D1:D10,E:E))");
+    model._set("D1", "=SEQUENCE(C1)");
+    model._set("C1", "3");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "6");
+    assert_eq!(model._get_text("B1"), "3");
+    model._set("C1", "5");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "15");
+    assert_eq!(model._get_text("B1"), "5");
+}
