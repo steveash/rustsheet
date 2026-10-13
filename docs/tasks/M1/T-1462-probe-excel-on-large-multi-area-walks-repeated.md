@@ -33,4 +33,4 @@ T-1162 Excel-fidelity review: since T-1162 the cell budget (2^24 cells) is share
 - The budget is stricter than needed: follow-up T-1497 (bound the walks by the data they visit,
   e.g. a sparse walk charged by populated cells; caching each distinct union once is the weaker
   option, since it does not fix the nine-argument case).
-- Eval delta: probes gains 15 checked cells, 9 known failures (the new case); no other change.
+- Eval delta: probes gains 15 checked cells, 9 known failures (the new case; baseline regenerated with `make eval-baseline`); no other change.
