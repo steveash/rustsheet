@@ -24,4 +24,4 @@ Reviewer follow-ups on T-0222. (1) Non-number elements in the ROUND family: `ROU
 -
 
 ## Outcome
-Probe `probes/round-concat-array-edges` (excel-graph) covers both groups; the engine already matched all 24 cells, so no code change. Findings recorded in docs/excel-semantics/arrays.md and text.md. Eval delta: probes +24 cells passing (baseline unchanged, none were failing).
+Probe `probes/round-concat-array-edges` (excel-graph) covers both groups; the engine already matched all 25 cells, so no code change. Findings recorded in docs/excel-semantics/arrays.md and text.md. Eval delta: probes +25 cells passing (baseline unchanged, none were failing).
