@@ -11,11 +11,12 @@ depends_on: []
 ---
 
 ## Goal
-GAMMA returns Excel's values (exact factorials at positive integers, Excel's last digits elsewhere)
+GAMMA returns Excel's values (correctly rounded factorials at positive integers up to 25 (exact up to 23), Excel's last digits elsewhere, finite up to 171.6)
 from one accurate gamma-function routine, and the 18 GAMMALN/GAMMALN.PRECISE cells T-0926 left
 behind are matched by the same kernel or explained.
 
 ## Context
+Oracle sweep (T-1042): probe cases `t1042-gamma-int-1-90`, `t1042-gamma-int-91-171`, `t1042-gamma-half-int`, `t1042-gamma-unit-interval`, `t1042-gamma-negatives-edges` in `eval/suites/probes-numeric`; findings in `docs/excel-semantics/statistics.md` (GAMMA and GAMMALN sweep).
 Triage T-0903. Kernels: GAMMA uses `statrs::function::gamma::gamma` (Lanczos, a few ulp to 1e-13
 off, not exact at integers); GAMMALN uses `special::ln_gamma` = `libm::lgamma` (fdlibm, T-0926,
 correctly rounded at the points it fixed). Code: `functions/statistical/gamma.rs` `fn_gamma`,
@@ -38,10 +39,10 @@ Examples (expected vs actual):
 - BETA_GAMMA B10: expected 9.332621544394421e+155, actual 9.332621544395446e+155 (1.1e-13).
 - `GAMMALN(3)` GAMMALN B5: expected 0.6931471805599454, actual (lgamma) 0.6931471805599453;
   B23 expected -5.772155829918508e-08, actual -5.772155829918507e-08.
-Quirks recorded in `docs/excel-semantics/statistics.md` ("GAMMA is exact at positive integers but
-not always correctly rounded") and `numbers.md` ("GAMMALN / GAMMALN.PRECISE (T-0926)").
+Quirks recorded in `docs/excel-semantics/statistics.md` ("GAMMA is exact at small positive integers
+but not always correctly rounded" and "GAMMA and GAMMALN sweep (T-1042)") and `numbers.md` ("GAMMALN / GAMMALN.PRECISE (T-0926)").
 
-Hypothesis (the oracle is the judge): exact product for positive integers up to 171; otherwise a
+Hypothesis (the oracle is the judge): correctly rounded product for positive integers up to 25 (the T-1042 sweep shows Excel deviates from the correctly rounded factorial from n = 26); otherwise a
 high-accuracy routine (fdlibm/musl `tgamma`, or a Lanczos variant with reflection for x < 0.5).
 GAMMALN(3) = 0.6931471805599454 is one ulp above the correctly rounded ln 2 (0.6931471805599453),
 so Excel's GAMMALN is not correctly rounded either and is not plain `ln(GAMMA(3))` in doubles; test
@@ -57,6 +58,8 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
       them), no new lines in any baseline (GAMMALN lines T-0926 fixed must stay fixed).
 - [ ] GAMMALN/GAMMALN.PRECISE: either the 18 lines leave the baseline, or the PR lists them with the
       formulations tried and this task's Outcome points at the T-1042 sweep follow-up.
+- [ ] `GAMMA(171.5)` and `GAMMA(171.6)` are finite (9.483367566824801e+307, 1.5858969096672508e+308) and
+      `GAMMA(171.7)` is `#NUM!` (T-1042, `t1042-gamma-negatives-edges`); the t1042 probe cases improve.
 - [ ] No statrs `gamma::gamma` left in `functions/statistical/gamma.rs` (one gamma-function definition
       in `special.rs`); unit tests GAMMA(1..=6) exact, GAMMA(0.5), poles are #NUM!.
 - [ ] `make check` green; reviewers approve.
