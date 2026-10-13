@@ -58,11 +58,12 @@ Evidence (oracle: excel-graph, 2026-10-06, T-1023): probes/weeknum-serial-0 (57 
 probes/weeknum-invalid-type (8 cells, no valid WEEKNUM in the workbook: all `#NUM!`),
 probes/weeknum-stale-return-type (13 cells over five layouts: Up, Down, Mixed, Type21, Type1);
 the first 94-cell version of weeknum-serial-0 (commit 042ad31) reproduces deterministically.
-Status: VERIFIED, except the stale state: DEVIATION (decision 0038). RustSheet always gives
-`#NUM!` for 22+ and negatives, which is Excel's value only when no valid WEEKNUM ran earlier in
-the recalc. The stale value depends on Excel's calc order (and so on its calc chain and edit
-history), which RustSheet does not reproduce; probes/weeknum-stale-return-type Up!A1, Mixed!A3,
-Mixed!A4, Type21!A1 and Type1!A1 stay known failures.
+Ours: RustSheet always gives `#NUM!` for 22+ and negatives, which is Excel's value only when no
+valid WEEKNUM ran earlier in the recalc. The stale value depends on Excel's calc order (and so on
+its calc chain and edit history), which RustSheet does not reproduce yet;
+probes/weeknum-stale-return-type Up!A1, Mixed!A3, Mixed!A4, Type21!A1 and Type1!A1 stay known
+failures. A known gap, not a deviation (decision 0052): T-1484.
+Status: VERIFIED
 Implemented in: `fn_weeknum`, `iso_week` (crates/rustsheet-engine/src/functions/date_and_time/weeknum.rs), `fn_isoweeknum`.
 
 ## DATE month and day bounds
@@ -93,6 +94,9 @@ Evidence: eval/suites/ironcalc-calc DATE_AND_TIME/NOW_TODAY.xlsx cached `=NOW()`
 (59002.58 s into the day). The engine truncated to whole seconds before T-0005; fixed in `tz/os_tz.rs`
 (the wasm `tz/browser_tz.rs` path still truncates).
 Status: VERIFIED (Excel-cached values)
+Unprobed: whether Excel reads its clock once per recalc, so that two `=NOW()` cells and
+`=NOW()-NOW()` agree exactly, or once per call. RustSheet's system clock reads once per call;
+a fixed clock (SPEC-0008) makes the question moot.
 
 ## TIMEVALUE of "date time" text keeps serial-subtraction error
 Rule: for text carrying a date and a time, Excel builds the full serial and returns its fractional

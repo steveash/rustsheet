@@ -62,7 +62,7 @@ pub(crate) const MAX_TEXT_UNITS: usize = 32767;
 /// Truncates `text` to [`MAX_TEXT_UNITS`] UTF-16 code units, as Excel does for CONCATENATE and
 /// `&` (probes/resource-limits C9, C10; probes/concatenate-limit-spill, excel-graph). A character
 /// that would straddle the limit is dropped whole: Excel keeps its lone high surrogate, which a
-/// Rust `String` cannot hold (decision 0033).
+/// Rust `String` cannot hold; TODO(T-1483) keeps it.
 pub(crate) fn truncate_text(text: &mut String) {
     // UTF-8 never takes fewer bytes than UTF-16 takes code units, so short text skips the scan.
     if text.len() <= MAX_TEXT_UNITS {
