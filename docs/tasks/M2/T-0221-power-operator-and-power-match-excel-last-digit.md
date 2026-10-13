@@ -3,7 +3,7 @@ id: T-0221
 title: "Power operator and POWER: match Excel last-digit results (15 gen-m2 known failures)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -68,10 +68,28 @@ Update (T-1319, 2026-10-12): non-integer exponents are now `exp(y·ln x)`, see n
 - `(-0.1)^-401` is unprobed. The positive power underflows, so numbers.md's rule predicts #DIV/0!; ours gives #NUM!, because `non_integer_power` of a negative base is NaN.
 
 ## Acceptance criteria
-- [ ] A probe sweep pins the formulation. docs/excel-semantics/numbers.md entry updated with evidence.
-- [ ] The gen-m2 cells above that T-1302 did not clear disappear from eval/baseline/gen-m2.txt, with no new F lines in any suite (gen-m1 A41 and A207 are T-1421's).
-- [ ] `make check` green; reviewers approve.
+- [x] A probe sweep pins the formulation. docs/excel-semantics/numbers.md entry updated with evidence.
+- [x] (except gen-m2/fa437879253827be Calc!A23, moved to T-1495) The gen-m2 cells above that T-1302 did not clear disappear from eval/baseline/gen-m2.txt, with no new F lines in any suite (gen-m1 A41 and A207 are T-1421's).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Integer exponents: T-1302.
 - Negative non-integer exponents and gen-m1 A41/A207: T-1421.
+
+## Outcome
+- Probes (excel-graph, 2026-10-13): probes-numeric/power-odd-roots (166 cells),
+  power-reciprocal-rounding (72), power-negative-base-range (12), power-integer-full-mantissa (184).
+- Found: Excel's operator `/` rounds twice, to a 64-bit significand and then to a double, and the
+  reciprocal inside `^`/POWER is that division. This explains `(-8)^(-1/3)` = -0.5 (and
+  `8^(-1/3)` = 0.5). New `arithmetic::extended_quotient`, used by `divide` and by `power`'s
+  reciprocals (integer and non-integer exponents). numbers.md "Division rounds twice".
+- Integer powers out of range now follow the positive-base rules for negative bases too:
+  `(-0.1)^401` = 0, `(-0.1)^-401` = #DIV/0!, `(-10)^-401` = 0 (were #NUM!).
+- Not resolved: gen-m2/fa437879253827be Calc!A23 is `SQRT(5)^99`, and integer powers of SQRT(5)
+  are not square-and-multiply although 7 other full-significand bases are (133/133 cells). Moved
+  to T-1495 with the rejected models in numbers.md. So the second criterion is met except for that
+  cell, which stays a known failure.
+- Eval delta: gated suites unchanged (no fixes, no regressions; gen-m2 6 known failures); the
+  non-gated probes-numeric suite 6704 -> 6782 passing cells (+78: the new probes plus
+  power-large-integer-exponents{,-2,-3} and power-non-integer-sweep A183).
+- Follow-ups: T-1495 (SQRT(5)^n), T-1496 (do `*` and function-internal divisions round twice?).
