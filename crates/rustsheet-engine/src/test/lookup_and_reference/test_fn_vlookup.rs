@@ -252,7 +252,7 @@ fn array_lookup_value_lifts_element_by_element() {
 
 #[test]
 fn range_lookup_range_lifts_and_spills() {
-    // gen-m2 (excel-graph, T-0203): a multi-cell range range_lookup lifts like an array; the
+    // gen-m2/04cfd82f54dbc2b2 Calc!A19 (excel-graph, T-0203): a multi-cell range range_lookup lifts like an array; the
     // first element is range_lookup FALSE (exact), the second TRUE (approximate).
     let mut model = new_empty_model();
     for (cell, value) in [("A1", "1"), ("A2", "3"), ("B1", "one"), ("B2", "three")] {
@@ -300,8 +300,9 @@ fn failed_arguments_still_lift_with_a_range_range_lookup() {
     model.evaluate();
     assert_eq!(model._get_text("D1"), *"#DIV/0!");
     assert_eq!(model._get_text("D2"), *"#DIV/0!");
-    assert_eq!(model._get_text("E1"), *"#DIV/0!");
-    assert_eq!(model._get_text("E2"), *"#DIV/0!");
+    // Hand expectation: the element value of an error index was never seen (lookup.md, unprobed).
+    assert!(model._get_text("E1").starts_with('#'));
+    assert!(model._get_text("E2").starts_with('#'));
     assert_eq!(model._get_text("F1"), *"#DIV/0!");
     assert_eq!(model._get_text("F2"), *"");
 }
