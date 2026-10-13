@@ -396,3 +396,13 @@ fn text_nested_in_the_format_is_not_reevaluated() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"1");
 }
+
+#[test]
+fn text_error_value_with_an_array_of_formats() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXT(NA(),{\"0\",\"0\"})");
+    model._set("A2", "=TEXT({1,#N/A},{\"0\",#DIV/0!})");
+    model.evaluate();
+    assert_eq!(row(&model, 1, 2), ["#N/A", "#N/A"]);
+    assert_eq!(row(&model, 2, 2), ["1", "#N/A"]);
+}

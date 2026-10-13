@@ -226,12 +226,19 @@ impl Model {
         if let CalcResult::Array(formats) = format_result {
             let value = match value_result {
                 CalcResult::Array(a) => TextArg::Array(a),
-                CalcResult::Error { .. } => return value_result,
+                // An error value lifts over the formats like a scalar.
+                err @ CalcResult::Error { .. } => {
+                    TextArg::Error(calc_result_to_array_node(err.clone()), err)
+                }
                 other => TextArg::Scalar(calc_result_to_array_node(other)),
             };
             let formats = TextArg::Array(formats);
             let ctx = self.format_context();
             return broadcast_text(cell, &[&value, &formats], |i, j| {
+                // An error value wins over a bad or too complex format (number-formats.md).
+                if let e @ ArrayNode::Error(_) = value.elem(i, j) {
+                    return Ok(e.clone());
+                }
                 let format_code = array_node_to_string(formats.elem(i, j))?;
                 if exceeds_complexity_limit(&format_code) {
                     return Err(Error::VALUE);
