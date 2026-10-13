@@ -7,7 +7,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::util::array_node_to_calc_result,
+    functions::{util::array_node_to_calc_result, Function},
     model::Model,
 };
 
@@ -52,7 +52,16 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<LookupIndexArg, CalcResult> {
-        let index = self.eval_ref_or_index(node, cell);
+        // An `IF` index is the cell it picks, so the lookup pick stays a reference
+        // (probes/lookup-pick-index-shapes A3, A9, B2; T-1377).
+        let index = match node.ungrouped() {
+            Node::FunctionKind {
+                kind: Function::If, ..
+            } => self
+                .evaluate_reference_arg(node, cell)
+                .into_single_area(cell),
+            _ => self.eval_ref_or_index(node, cell),
+        };
         match index {
             range @ CalcResult::Range { .. } => Ok(LookupIndexArg::Reference(range)),
             CalcResult::Array(grid) => Ok(LookupIndexArg::Array(grid)),

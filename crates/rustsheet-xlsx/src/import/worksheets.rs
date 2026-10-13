@@ -17,7 +17,7 @@ use rustsheet_engine::{
         utils::{column_to_number, parse_reference_a1},
     },
     types::{
-        ArrayKind, Cell, Col, Color, Comment, Dxf, FormulaValue, Link, MergedCell, SheetState,
+        ArrayKind, Cell, Color, Comment, Dxf, FormulaValue, Link, MergedCell, SheetState,
         SpillValue, Table, Theme, Worksheet, WorksheetView,
     },
 };
@@ -26,14 +26,13 @@ use thiserror::Error;
 use crate::error::XlsxError;
 
 use super::{
+    columns::load_columns,
     conditional_formatting::load_conditional_formatting,
     iso_date::iso8601_to_serial,
     shared_strings::{decode_xlsx_escapes, SharedStringTable},
     sheet_data::{read_sheet_data, SheetDataXml},
     tables::load_table,
-    util::{
-        get_attribute, get_bool_false, get_color, get_number, get_relationship, parse_cell_number,
-    },
+    util::{get_attribute, get_color, get_number, get_relationship, parse_cell_number},
 };
 
 pub(crate) struct Relationship {
@@ -120,44 +119,6 @@ fn load_dimension(ws: &XmlNode) -> String {
     } else {
         "A1".to_string()
     }
-}
-
-fn load_columns(ws: &XmlNode) -> Result<Vec<Col>, XlsxError> {
-    // cols
-    // <cols>
-    //     <col min="5" max="5" width="38.26953125" customWidth="1"/>
-    //     <col min="6" max="6" width="9.1796875" style="1"/>
-    //     <col min="8" max="8" width="4" customWidth="1"/>
-    // </cols>
-    let mut cols = Vec::new();
-    let columns = ws
-        .children()
-        .filter(|n| n.has_tag_name("cols"))
-        .collect::<Vec<&XmlNode>>();
-    if columns.len() == 1 {
-        for col in columns[0].children() {
-            let min = get_attribute(col, "min")?;
-            let min = min.parse::<i32>()?;
-            let max = get_attribute(col, "max")?;
-            let max = max.parse::<i32>()?;
-            let width = get_attribute(col, "width")?;
-            let width = width.parse::<f64>()?;
-            let custom_width = get_bool_false(col, "customWidth");
-            let hidden = get_bool_false(col, "hidden");
-            let style = col
-                .attribute("style")
-                .map(|s| s.parse::<i32>().unwrap_or(0));
-            cols.push(Col {
-                min,
-                max,
-                width,
-                custom_width,
-                style,
-                hidden,
-            });
-        }
-    }
-    Ok(cols)
 }
 
 fn load_merge_cells(ws: &XmlNode) -> Result<Vec<MergedCell>, XlsxError> {

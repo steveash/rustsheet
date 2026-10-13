@@ -197,6 +197,10 @@ impl Model {
                 Ok(areas) => areas,
                 Err(error) => return error,
             };
+            // Several areas draw on the formula's cell budget, as SUM's do.
+            if let Err(error) = self.check_area_cells(&areas, cell) {
+                return error;
+            }
             for area in areas {
                 if let Err(error) = self.aggregate_collect_area(&area, ignore, &mut collected, cell)
                 {

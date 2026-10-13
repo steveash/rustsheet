@@ -3,7 +3,7 @@ id: T-1281
 title: "Probe DOLLAR, FIXED and UNICHAR edge cases (evidence gap: 2-3 Excel cells each)"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,3 +33,10 @@ Code: `fn_dollar`, `fn_fixed` and `format_abs` (crates/rustsheet-engine/src/func
 ## Out of scope
 - TEXT and number-format rendering (number-formats.md), BAHTTEXT (T-1214).
 - Any last-digit rounding work beyond filing it (decimal rounding is shared with ROUND; file a task if a tie case differs).
+
+## Outcome
+Added `probes/dollar-fixed-unichar-edges` (76 excel-graph cells). Fixed: DOLLAR/FIXED `decimals` truncates toward
+zero (was floor) and is `#VALUE!` from 128; UNICHAR lifts over arrays (static analysis said not-implemented), gives
+`#N/A` for surrogates and Unicode noncharacters. Recorded in docs/excel-semantics/text.md. The FIXED rounds-to-zero
+sign cells (A49, A50) remain known failures, attributed to T-1257 (evidence added there). Eval: probes known
+failures 2853 -> 2855 (the 2 FIXED cells; 74/76 cells pass, no regressions).

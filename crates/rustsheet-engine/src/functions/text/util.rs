@@ -5,7 +5,7 @@ use crate::cast::MAX_TEXT_UNITS;
 /// The characters of `text` that lie wholly within the UTF-16 code units `start..end`, the unit
 /// MID and REPLACE count positions in (docs/excel-semantics/text.md "Text positions count UTF-16
 /// code units"). A surrogate pair straddling either bound is dropped whole: Excel keeps its lone
-/// half, which a Rust `String` cannot hold (decision 0033).
+/// half, which a Rust `String` cannot hold; TODO(T-1483) keeps it.
 pub(crate) fn utf16_slice(text: &str, start: usize, end: usize) -> String {
     let mut slice = String::new();
     let mut unit = 0;

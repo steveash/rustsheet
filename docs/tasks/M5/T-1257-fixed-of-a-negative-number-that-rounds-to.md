@@ -29,3 +29,8 @@ mark other shapes UNVERIFIED unless probed).
 
 ## Out of scope
 - TEXT's sign for values rounding to zero (T-1129).
+
+## Additional evidence (T-1281)
+`probes/dollar-fixed-unichar-edges` A49 `FIXED(-0.004,2)` = "0.00" and A50 `FIXED(-0.4,0)` = "0" confirm the rule for
+more shapes; both are known failures in eval/baseline/probes.txt until this lands. DOLLAR keeps its parentheses
+(`DOLLAR(-0.004)` = "($0.00)").

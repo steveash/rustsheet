@@ -57,10 +57,11 @@ surrogate as one character and do not pair a lone high surrogate with a followin
 Evidence: probes/text-surrogate-positions A6, A11, A12, A29, A38, B6, B7, B10 (excel-graph,
 2026-10-09, T-0249).
 Ours: a Rust `String` cannot hold a lone surrogate, so `utf16_slice` drops a pair that straddles
-a cut whole (A6, A11, A12, A29, A38 and B10 stay known failures).
-Status: DEVIATION (decision 0033)
+a cut whole (A6, A11, A12, A29, A38 and B10 stay known failures). A known gap, not a deviation
+(decision 0052): T-1483.
+Status: VERIFIED
 Implemented in: `utf16_slice` in functions/text/util.rs
-Tasks: T-0249
+Tasks: T-0249, T-1483
 
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
@@ -271,3 +272,46 @@ Evidence: probes/text-format-length-limit-f A54:B54 (T-1434); probes/text-format
 Status: VERIFIED (excel-graph, probes/text-format-array, T-1458)
 Implemented in: `fn_text` (functions/text/common.rs); the format argument is evaluated once (TEXT nested in a format must not be exponential).
 Tasks: T-1451
+
+## CLEAN and CODE scalar edges
+Rule: CLEAN removes code points 0-31 and the C1 controls U+0080-U+009F (128-159; including the Windows-1252
+holes 129, 141, 143, 144, 157; CHAR(128..159) strings were not probed), and no other probed code point: DEL (127), NBSP (160) and U+200B stay. CODE of a character
+outside Windows-1252 is 63 (the code of "?"), not `#VALUE!`: `CODE(UNICHAR(256))`, `CODE(UNICHAR(960))` and
+`CODE(UNICHAR(128512))` are 63; `CODE("€")` is 128 and `CODE("é")` is 233. `CODE("")` is `#VALUE!`; `CODE(TRUE)`
+is 84.
+Evidence: probes/text-scalar-edges A32-A39, A40-A50, A51-A62 (excel-graph, T-1280).
+Also verified there, all matching the engine: EXACT is case-sensitive, compares numbers by their text
+(`EXACT(0.1+0.2,"0.3")` TRUE) and does not normalise Unicode (composed vs decomposed é is FALSE); REPLACE
+truncates fractional counts, appends when start_num is past the end, and is `#VALUE!` for start_num 0 or a
+negative count; PROPER capitalises after any non-letter (`O'Neil`, `Abc123Def`, `X.Y Z_W`) and lowers the rest
+(`PROPER(TRUE)` = "True").
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
+
+## DOLLAR and FIXED decimals
+Rule: `decimals` is truncated toward zero, not floored: `DOLLAR(1234.5,-1.5)` is "$1,230" (decimals -1), `FIXED(1234.5,-0.5)`
+is "1,235" (decimals 0), `DOLLAR(1234.5,1.9)` is "$1,234.5". A `decimals` of 128 or more (also 128.5) is `#VALUE!`;
+127 is fine and prints 127 fraction digits; large negatives just give "0" (`FIXED(1,-400)`, `DOLLAR(1,-129)`).
+`FIXED(1234,0,"x")` is `#VALUE!`; a numeric no_commas is a boolean (`FIXED(1234,0,2)` = "1234").
+Evidence: probes/dollar-fixed-unichar-edges A1-A29, A46-A50, D69-D75 (excel-graph, T-1281).
+FIXED of a value that rounds to zero drops the sign (`FIXED(-0.004,2)` "0.00", `FIXED(-0.4,0)` "0"; DOLLAR keeps
+parentheses: `DOLLAR(-0.004)` "($0.00)"). Ours still prints "-0.00"/"-0": task T-1257.
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
+
+## UNICHAR code point bounds
+Rule: UNICHAR truncates toward zero and lifts over arrays (`UNICHAR({65,66})` spills "A","B"). Below 1 (0, -1, 0.5) or
+above 1114111 (U+10FFFF) is `#VALUE!`. A surrogate (55296-57343) or a Unicode noncharacter is `#N/A`: U+FDD0-U+FDEF
+(64976-65007) and the last two code points of every plane (65534, 65535, 131070, 131071, 196607, ..., 1114110,
+1114111). The neighbours are fine: 55295, 57344, 64975, 65008, 65533, 65536. A code point above 65535 is a
+surrogate pair (`LEN(UNICHAR(65536))` is 2). A fractional value is truncated first (`UNICHAR(55296.5)` is `#N/A`).
+Evidence: probes/dollar-fixed-unichar-edges A30-A45, A51-A53, D54-D68 (excel-graph, T-1281).
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
+
+## UNICHAR argument shapes
+Rule: UNICHAR's argument is coerced like any number argument: TRUE is 1 (`UNICHAR(TRUE)` and `UNICHAR(A4)` with A4 = TRUE
+give U+0001), numeric text converts (`UNICHAR(A5)` with A5 = "67" is "C"), an empty cell is 0 so `#VALUE!`, and
+non-numeric text and "" are `#VALUE!`. An `#N/A` argument is returned as it came (`UNICHAR(#N/A)`; other error types and errors inside a range are unprobed). A
+multi-cell range lifts element by element and spills: `UNICHAR(A1:A2)` is "A","B"; `UNICHAR(A1:A3)` with A3 blank is
+"A","B",`#VALUE!`; an all-empty range (`UNICHAR(A7:A8)`) is `#VALUE!` in every row; `UNICHAR(A4:A5)` (TRUE, "67") is
+U+0001, "C"; the lifted result broadcasts through `&` (`UNICHAR(A1:A2)&"!"` is "A!","B!"); `UNICHAR(A5:A6)` ("67", "x") is "C", `#VALUE!`. The engine already matches all of these.
+Evidence: probes/unichar-arg-shapes D1-D7, F1-F2, H1-H3, J1-J2, L1-L2, N1-N2, P1-P2, R1-R2 (excel-graph, T-1464).
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)

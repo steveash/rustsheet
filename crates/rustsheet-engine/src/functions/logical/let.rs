@@ -7,7 +7,8 @@ use crate::{
     },
     functions::Function,
     model::Model,
-    reference_operators::{Binding, Ranges, RefArg},
+    reference_operators::{Ranges, RefArg},
+    variable_stack::Binding,
 };
 
 /// Whether two LET variable or LAMBDA parameter names are the same variable: Excel compares them

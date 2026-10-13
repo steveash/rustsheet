@@ -34,7 +34,7 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
-use crate::{cf_types::CfCellResult, reference_operators::VariableStack, tz::Tz};
+use crate::{cf_types::CfCellResult, tz::Tz, variable_stack::VariableStack};
 
 #[cfg(any(test, feature = "mock_time"))]
 pub use crate::mock_time::get_milliseconds_since_epoch;
@@ -192,6 +192,8 @@ pub struct Model {
     pub(crate) last_lambda_id: usize,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).
     pub(crate) defined_names_running: crate::defined_names::DefinedNameRun,
+    /// What the formula being evaluated has left of its area budgets (`with_area_budget`).
+    pub(crate) area_budget: crate::area_budget::AreaBudget,
     /// Everything the evaluation algorithm needs besides the workbook. See `evaluation.rs`.
     pub(crate) evaluation: Evaluation,
     /// Evaluated CF results per cell, keyed by (`sheet_index`, row, column).
@@ -547,32 +549,6 @@ impl Model {
             format!("={local}")
         } else {
             local
-        }
-    }
-
-    /// Evaluates a formula string on a sheet, returning the numeric result.
-    /// Assumes the workbook has already been evaluated (cell values are up-to-date).
-    /// Returns `None` if the formula is invalid or does not produce a number.
-    pub(crate) fn evaluate_formula(&mut self, formula: &str, sheet: u32) -> Option<f64> {
-        let body = formula.trim().strip_prefix('=').unwrap_or(formula.trim());
-        if body.is_empty() {
-            return None;
-        }
-        let sheet_name = self.workbook.worksheets.get(sheet as usize)?.get_name();
-        let context_rc = CellReferenceRC {
-            sheet: sheet_name,
-            row: 1,
-            column: 1,
-        };
-        let node = self.parse_internal_formula(body, &context_rc);
-        let context_index = CellReferenceIndex {
-            sheet,
-            row: 1,
-            column: 1,
-        };
-        match self.evaluate_node_in_context(&node, context_index) {
-            CalcResult::Number(n) => Some(n),
-            _ => None,
         }
     }
 
@@ -1551,6 +1527,7 @@ impl Model {
             lambdas: HashMap::new(),
             last_lambda_id: 0,
             defined_names_running: Default::default(),
+            area_budget: Default::default(),
             evaluation: Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),

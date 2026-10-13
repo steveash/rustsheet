@@ -11,7 +11,7 @@ use crate::{
 };
 
 use super::r#let::assign_variable_ids;
-use crate::reference_operators::Binding;
+use crate::variable_stack::Binding;
 
 /// `#REF!` for a reference that is called like a function.
 fn reference_called(cell: CellReferenceIndex) -> CalcResult {

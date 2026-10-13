@@ -197,7 +197,7 @@ lookup value changes nothing (P8). `ISREF` of the lookup result is FALSE either 
 visible only to aggregates. This explains gen-m2/60a543744fc4a8f7 A200 (index `Data!C9` is a cell, the picked FALSE is skipped: -2;
 replicated in L1-L7). A bare `=HLOOKUP(..)` is the picked value (N1-N7).
 `INDEX(A1:A2,3) A1:A2` is `#REF!`, and so is `SUM` of it (D10, D11); `INDEX(A1:A3,2) A1:A3` is the picked cell (E16, E17).
-Status: VERIFIED (excel-graph 2026-10-09, T-0292). The engine matches: `hlookup_impl`/`vlookup_impl` give the pick as a reference only when `lookup_index_arg` returned a reference (T-0295). Index shapes (probes/lookup-pick-index-shapes, excel-graph 2026-10-11, T-0299): every reference-returning index keeps the pick a reference: `COUNT(HLOOKUP(42,F5:G6,<idx>))` picking FALSE is 0 for `INDEX(G5:G5,1)`, `INDEX(G5:G6,1)`, `IF(TRUE,G5)`, `IF(FALSE,1,G5)`, `CHOOSE(1,G5)`, `OFFSET(G5,0,0)`, `OFFSET(G5,0,0,1,1)`, and a defined name `=Sheet1!$G$5`, and the same for VLOOKUP (A2-A6, A8-A10, B1-B5), while a literal index 2 gives 1 (A1, B7); `ISREF` of each such index is TRUE (C1-C5). The engine matches except the `IF` shapes (A3, A9, B2: engine 1), filed as T-1377. A multi-cell range index (`H1:H2`, A7/B6) is 0 whether it is implicitly intersected, lifted or a reference pick, so those cells do not decide it: unprobed.
+Status: VERIFIED (excel-graph 2026-10-09, T-0292). The engine matches: `hlookup_impl`/`vlookup_impl` give the pick as a reference only when `lookup_index_arg` returned a reference (T-0295). Index shapes (probes/lookup-pick-index-shapes, excel-graph 2026-10-11, T-0299): every reference-returning index keeps the pick a reference: `COUNT(HLOOKUP(42,F5:G6,<idx>))` picking FALSE is 0 for `INDEX(G5:G5,1)`, `INDEX(G5:G6,1)`, `IF(TRUE,G5)`, `IF(FALSE,1,G5)`, `CHOOSE(1,G5)`, `OFFSET(G5,0,0)`, `OFFSET(G5,0,0,1,1)`, and a defined name `=Sheet1!$G$5`, and the same for VLOOKUP (A2-A6, A8-A10, B1-B5), while a literal index 2 gives 1 (A1, B7); `ISREF` of each such index is TRUE (C1-C5). The engine matches, the `IF` shapes included (`lookup_index_arg` reads an `IF` index as the reference it picks, T-1377). A multi-cell range index (`H1:H2`, A7/B6) is 0 whether it is implicitly intersected, lifted or a reference pick, so those cells do not decide it. Multi-cell index (probes/lookup-index-multicell-if, excel-graph 2026-10-13, T-1426, H1=1, H2=2): Excel does not implicitly intersect it as a reference (probed in rows 1 and 2 only, where H1:H2 sits): `COUNT(HLOOKUP(42,F5:G6,H1:H2))` is 1 in both row 1 and row 2 (an intersection that keeps the pick a reference would give 1 then 0; an intersection to a value is not told apart by these cells, the spills and ROWS are what show lifting), as are the `VLOOKUP` form and `IF(TRUE,H1:H2)` as the index; the plain formula lifts and spills one pick per index cell (`HLOOKUP(42,F5:G6,H1:H2)` J1 2, J2 FALSE; `IF(TRUE,H1:H2)` the same; `VLOOKUP(9,F5:G7,IF(TRUE,H1:H2))` L1 5, L2 FALSE; `ROWS(HLOOKUP(42,F5:G6,IF(TRUE,H1:H2)))` 2, O1), and `ISREF` of the lifted pick is FALSE. `IF(TRUE,(G5,G6))` as the index is `#REF!` (not `#VALUE!`; M1), so `COUNT` of it is 0. The engine intersects the index (row 2 gives 0) and gives `#VALUE!` for the union: T-1485.
 ISREF sees the same references: `ISREF(INDEX(A1:A2,2))`, `ISREF(IF(TRUE,A1))` and `ISREF(CHOOSE(1,A1))` are TRUE,
 while `ISREF(INDEX(A1:A2,3))` (an error), `ISREF(IF(TRUE,1))` and `ISREF(CHOOSE(1,5))` are FALSE (probes/isref-function-results,
 excel-graph 2026-10-05; ironcalc ISREF_ISFORMULA!F9 `ISREF(INDEX(A1,1,2,2))` = FALSE). The engine matches all six (T-0235).
@@ -584,10 +584,12 @@ and a union whose accumulated areas would exceed `MAX_AREAS`, checked after each
 the next is evaluated (so `(I,A1,#REF!)`, with `I` an intersection of 65,536 areas, is `#VALUE!`,
 not `#REF!`). No operator ever returns more than `MAX_AREAS` areas, so the pairwise cost of one
 intersection is at most `MAX_AREAS` comparisons. A chain of cuts (`(U1 U2) A1 A1 ...`) would
-repeat that per three characters of formula, so one top-level reference expression may compare at most
-1,048,576 pairs in all (`MAX_AREA_PAIRS`), with `#VALUE!` past it; a reference-returning function
-used as an operand (`INDEX`, `OFFSET`, `IF`) starts its own budget, so total work stays linear in
-formula length. In a value context a union
+repeat that per three characters of formula, and a LET-bound union per argument
+(`LET(u,...,SUM(IF(1,u u A1),IF(1,u u A1),...))`), so one formula evaluation may compare at most
+1,048,576 pairs in all (`MAX_AREA_PAIRS`), with `#VALUE!` past it, wherever in the formula the
+pairs are compared: every argument, IF/CHOOSE/LET operand and reference-returning function draws on
+the same budget. Each cell's formula run (a cell it reads has its own), each conditional-format
+evaluation and each `evaluate_formula` call gets a fresh one (T-1162). In a value context a union
 keeps only its area count, not the areas. Excel's limits, if any, are not known, and neither is
 its result past them; it would differ where later cuts bring the areas back down to one, or where
 a later operand's error would come first.
@@ -595,7 +597,11 @@ The area cap bounds the length of an area list, not the work of walking it: `MAX
 `A:A` fit in a short formula. So an aggregate argument of several areas (`SUM((A:A,C:C))`) first
 adds up the cells of its areas, each clipped to its sheet's used area, in saturating arithmetic
 and before any cell is read; more than 16,777,216 cells (`MAX_AREA_CELLS`, 2^24, 16 full used
-columns) is `#VALUE!`. The bound is per argument, as a plain range argument's work already is.
+columns) is `#VALUE!`. The bound is per formula evaluation, like the pair budget: every
+multi-area argument (SUM, SUBTOTAL, AGGREGATE's reference form, ...) takes its cells from the same
+budget, so `LET(x,(A:A,A:A),SUM(x,x,...))` is `#VALUE!` at the argument that passes it, and so is a
+formula that walks a union again and again (`MAP` over a `SUM` of one). A single range argument is
+not counted, as before.
 Excel's limit, if any, is not known.
 The LET variables and LAMBDA parameters in scope may hold at most 262,144 areas together (`MAX_HELD_AREAS`,
 four `MAX_AREAS`): each binding may hold a fresh union (`LET(x_1,(A1,A1),x_2,(x_1,x_1),...)`), so memory would

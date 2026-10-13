@@ -1,3 +1,4 @@
+use crate::functions::util::array_node_to_calc_result;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -164,6 +165,61 @@ impl Model {
             ));
         }
         Ok(Source::Values(data))
+    }
+
+    /// The array argument of MAP, SCAN and REDUCE as a grid of LAMBDA arguments: over a range on
+    /// one sheet each cell is a one-cell reference (`ISREF(v)` is TRUE, `COUNTA` and `ROW` see
+    /// the cell), over anything else its value (probes/lambda-helper-range-slices, excel-graph
+    /// 2026-10-12, T-1442).
+    pub(super) fn lambda_cells(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<CalcResult>>, CalcResult> {
+        Ok(match self.by_slices_source(arg, cell)? {
+            Source::Range(range) => (range.left.row..=range.right.row)
+                .map(|row| {
+                    (range.left.column..=range.right.column)
+                        .map(|column| {
+                            let mut position = range.left;
+                            position.row = row;
+                            position.column = column;
+                            CalcResult::Range {
+                                left: position,
+                                right: position,
+                            }
+                        })
+                        .collect()
+                })
+                .collect(),
+            Source::Values(data) => data
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|node| array_node_to_calc_result(node, cell))
+                        .collect()
+                })
+                .collect(),
+        })
+    }
+
+    /// A LAMBDA's result as a value: a reference it returns (`LAMBDA(v,v)` over a range cell)
+    /// is read, so MAP, SCAN and REDUCE never carry one into their output.
+    pub(super) fn lambda_result_value(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match result {
+            CalcResult::Range { .. } => match self.result_to_array(result, cell) {
+                Ok(data) if data.len() == 1 && data[0].len() == 1 => {
+                    array_node_to_calc_result(&data[0][0], cell)
+                }
+                Ok(data) => CalcResult::Array(data),
+                Err(e) => e,
+            },
+            other => other,
+        }
     }
 
     /// `=MAKEARRAY(rows, cols, lambda)`
