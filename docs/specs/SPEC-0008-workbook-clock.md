@@ -92,12 +92,23 @@ impl Clock {
 - **Validation.** `fixed_unix_millis` accepts only instants whose UTC date is in Excel's calendar,
   1900-01-01 through 9999-12-31. That is -2,208,988,800,000 ≤ ms ≤ 253,402,300,799,999. Every
   reader can then convert the instant without an error path, `DateTime::from_timestamp` included,
-  so export never fails on a fixed clock. A timezone offset can move the local date a day outside
-  that range, and NOW then behaves as it does today for such dates. The type cannot be built
+  so export never fails on a fixed clock. A timezone offset can move the local date one day
+  outside that range. NOW then goes through the existing `excel_serial_for_now` arithmetic, which
+  gives a number or the existing `#ERROR!` "Invalid date" result and never panics. The test plan
+  pins both bounds in a non-UTC timezone. The type cannot be built
   invalid because its field is private.
 - **System time.** `now_unix_millis` on `System` reads `SystemTime` (or `js_sys::Date` on
-  wasm32). A system time before 1970 gives a negative value from the `duration_since` error's
-  duration, never a panic. This replaces the `expect`.
+  wasm32) and clamps the result to the same range as `Fixed`, so the "no error path" guarantee
+  holds for both kinds.
+  - A system time before 1970 is negated from the `duration_since` error's duration.
+  - Every conversion is checked: `Duration::as_millis` (a `u128`) goes through `i64::try_from`,
+    and the negation through `checked_neg`. On failure the value saturates to the nearer bound.
+  - A non-finite wasm `Date::now()` gives the lower bound.
+  - One internal helper, `fn system_unix_millis(t: SystemTime) -> i64`, does the conversion and
+    the clamp. It is the test seam.
+  - This replaces the `expect`. A host clock outside 1900..=9999 is a misconfiguration, and
+    clamping it is a directive-5 choice. Excel itself cannot run with such a clock, so no Excel
+    behavior is involved.
 - **Model.**
   - `Model` gets a field `clock: Clock`, with `Model::clock(&self) -> Clock` and
     `Model::set_clock(&mut self, Clock)`. `set_clock` does not evaluate, unlike `set_timezone`.
@@ -163,6 +174,14 @@ impl Txn<'_> {
   changes. SPEC-0001's "Volatile cells … are reported in every `ChangeSet`" bullet gets that
   qualification. Volatility and M3 dirty tracking still treat a clock change as dirtying every
   cell that reads the clock. Today that is every formula cell, since the recalc is full.
+  - Clock readers cannot be found from the formula. Year-less date text (`A1+0`,
+    `DATEVALUE(A1)`) reads the clock only when its text has no year. So until M3 has a
+    conservative mechanism, a clock change dirties every formula cell. Such a mechanism could
+    flag a cell at evaluation time when it calls `Model::now_unix_millis`.
+  - M3's tests include a year-less text cell that is not NOW/TODAY and changes under
+    `set_clock`.
+  - Making NOW/TODAY non-volatile while the clock is fixed is a possible M3 optimization, but
+    only together with that invalidation on `set_clock`.
 - **Saving.** `to_xlsx_bytes` and `save_xlsx` stamp `dcterms:modified` from the workbook's clock.
   With a fixed clock, saving the same workbook twice gives identical bytes.
 - **Harness hook.**
@@ -179,7 +198,9 @@ impl Txn<'_> {
     it through the thread-local, so their results stay the same.
   - A named constant `HARNESS_CLOCK_MS` in the adapter holds the instant, with a comment citing
     this spec.
-  - rustsheet-eval's Cargo.toml enables `metadata_clock` on the facade only.
+  - rustsheet-eval's Cargo.toml enables `metadata_clock` on the facade only. It drops its
+    `mock_time` features on the engine and xlsx dependencies.
+  - The xlsx crate's self dev-dependency (`features = ["mock_time"]`, Cargo.toml) goes too.
 
 ### Python (T-1480)
 ```python
@@ -188,7 +209,8 @@ wb = rs.Workbook.open(path, recalc=True, clock=None)  # also from_bytes(data, re
 wb.clock                     # int | None
 wb.clock = 1_700_000_000_000 # one edit: recalculates, sets wb.changes; None restores the system clock
 ```
-- An int outside the range raises `ValueError` (from `ClockError`). A non-int, non-None value
+- An int outside the range raises `ValueError` (from `ClockError`). A `bool` (an `int`
+  subclass in Python) raises `TypeError` explicitly, and so does any other non-int, non-None value
   raises `TypeError`. The setter releases the GIL during the recalc, as `edit` does.
 - `datetime` is not accepted in v0 (`int(dt.timestamp() * 1000)` is the conversion). A future
   overload must be timezone-aware.
@@ -232,6 +254,12 @@ timezone keeps the clock.
     instant in 2030.
   - The exporter's `dcterms:modified` equals the fixed instant, and two saves are byte-identical.
   - `rg get_milliseconds_since_epoch` and `rg MOCK_TIME` find nothing.
+  - `system_unix_millis` gives 0 at the Unix epoch.
+  - It gives a negative value for a time before 1970.
+  - It clamps to each bound for `UNIX_EPOCH ± 400 years` and for `UNIX_EPOCH + Duration::MAX`
+    when the platform can represent it, with no panic and no wrap.
+  - `NOW()` and `TODAY()` at both fixed bounds in `Pacific/Kiritimati` (UTC+14) and
+    `Pacific/Pago_Pago` (UTC-11) give a number or `#ERROR!`, never a panic. The test records which.
 - **Harness (T-1479).**
   - `make eval` gives 0 fixes and 0 regressions in every suite.
   - The volatile and run-invariant counts in report.json are unchanged.
@@ -243,7 +271,7 @@ timezone keeps the clock.
   - An `edit` that sets the clock and then fails restores the old clock, and values are unchanged.
 - **Python (T-1480).**
   - The same three cases through `rs.Workbook(clock=0)` and `wb.clock = 86_400_000`, plus the
-    `ValueError` and `TypeError` cases.
+    `ValueError` and `TypeError` cases, `clock=True` included.
   - `wb.clock = None` makes `wb.clock` return `None`.
 
 ## Rollout
@@ -253,12 +281,14 @@ timezone keeps the clock.
    - renames the facade feature to `metadata_clock` (`pin_clock_from_metadata` on the engine
      clock);
    - moves the eval adapter onto `HARNESS_CLOCK_MS`;
-   - adds `WorkbookOptions.clock`, which the adapter needs.
+   - adds `WorkbookOptions.clock` and the facade re-export of `Clock`/`ClockError`, which the
+     adapter needs;
+   - lists the new public `WorkbookOptions` field in its PR as an API change: struct literals
+     need `..Default::default()`, as with `date_system` in SPEC-0005.
 
    Merge gate: 0 eval delta.
 2. **T-1480** (api, S, sonnet):
-   - adds `Workbook::clock`/`set_clock`, `Txn::set_clock`, and the `Clock`/`ClockError`
-     re-export;
+   - adds `Workbook::clock`/`set_clock` and `Txn::set_clock`;
    - adds the Python keyword and property, the tests, and the stub;
    - marks SPEC-0001's clock lines implemented.
 

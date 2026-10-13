@@ -200,8 +200,8 @@ Semantics:
   evaluation per `edit`.
 - **Volatile cells** (NOW, RAND, INDIRECT/OFFSET with changing targets) change value on every
   recalc and are therefore reported in every `ChangeSet`; this is intended and M3 dirty tracking
-  must preserve it (test with INDIRECT whose target changes). Under a fixed clock (SPEC-0008) NOW and TODAY give the same
-  value on every recalc, so they are reported only when the clock changes.
+  must preserve it (test with INDIRECT whose target changes). Under a fixed clock (SPEC-0008), NOW, TODAY and year-less date
+  text give the same value on every recalc, so they are reported only when the clock changes.
 - **Budget gate.** T-0103 must record that the diff costs under 25% of recalc time at 100k
   formula cells (tracking on, default); if it does not, the default flips to off for v0 and the
   task notes why.
