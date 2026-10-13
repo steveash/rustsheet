@@ -3,7 +3,7 @@ id: T-1494
 title: "ACCRINT basis 0 calc_method TRUE is #NUM! in a 1904 workbook for a settlement near 9995-12-30 (unexplained)"
 milestone: M1
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
