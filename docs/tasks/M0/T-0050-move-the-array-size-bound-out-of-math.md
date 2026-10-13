@@ -3,7 +3,7 @@ id: T-0050
 title: "Move the array-size bound out of math_and_trigonometry into a core limits module"
 milestone: M0
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
