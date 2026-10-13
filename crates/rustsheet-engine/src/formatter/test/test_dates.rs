@@ -130,3 +130,19 @@ fn financial_1900_serial_reads_a_day_late() {
     assert_eq!(Excel1904.serial_from_financial_1900_serial(1462), -1);
     assert_eq!(Excel1900.serial_from_financial_1900_serial(45000), 45000);
 }
+
+// The odd-period functions read a 1904 serial 2 * 1462 days on, so the last 1904 serial they read
+// as a date is 2958465 - 2924; a negative 1904 serial stays negative (T-1457).
+#[test]
+fn odd_period_1900_serial_reads_two_epochs_on() {
+    use DateSystem::{Excel1900, Excel1904};
+    assert_eq!(Excel1904.odd_period_1900_serial(0.5), Some(2924));
+    assert_eq!(
+        Excel1904.odd_period_1900_serial(2_955_541.0),
+        Some(2_958_465)
+    );
+    assert_eq!(Excel1904.odd_period_1900_serial(2_955_542.0), None);
+    assert_eq!(Excel1904.odd_period_1900_serial(1e300), None);
+    assert_eq!(Excel1904.odd_period_1900_serial(-1.0), Some(-1));
+    assert_eq!(Excel1900.odd_period_1900_serial(45000.7), Some(45000));
+}
