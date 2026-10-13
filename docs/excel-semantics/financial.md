@@ -214,7 +214,8 @@ Implemented in: `odd_l_func` (functions/financial/financial_bonds.rs).
 ## ACCRINT with calc_method TRUE: a next coupon past the calendar is #NUM!
 Rule: with calc_method TRUE and the settlement after first_interest, ACCRINT is #NUM! when the coupon date that ends
 the settlement's period (first_interest stepped forward by 12/frequency months until it reaches the settlement) is
-past 9999-12-31, on every basis and frequency, in both date systems. With issue 2956276 (9994-01-02) and
+past 9999-12-31, on bases 0 and 1 and frequencies 1, 2 and 4, in both date systems (bases 2-4 unprobed; the engine
+applies it to every basis, UNVERIFIED). With issue 2956276 (9994-01-02) and
 first_interest 2956456 (9994-07-01; coupons on 1 January and 1 July), `ACCRINT(2956276,2956456,2958283,0.05,1000,2,0,TRUE)`
 (settlement 9999-07-02, next coupon 10000-01-01) is #NUM!, and a settlement on 9999-07-01 itself (2958282) is a value
 (274.86). With first_interest 9994-06-29 a settlement in November 9999 still accrues (next coupon 9999-12-29), one on

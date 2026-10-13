@@ -552,8 +552,8 @@ At the edges:
   `DateSystem::accrint_settlement_limit`). Every basis with calc_method FALSE takes it that far (T-1494): bases 1, 2
   and 3 count the actual days to the settlement read past 9999-12-31 (`ACCRINT(DATE(9990,1,1),DATE(9990,6,30),
   DATE(9996,1,1),0.05,1000,2,2,FALSE)` is 304.31, 2191 days from the issue read 9994-01-02 to 10000-01-02), while
-  bases 0 and 4, which need the settlement's date for 30/360, take first_interest's 1904 serial plus 1462 as the day
-  count of the settlement slice, whatever the settlement and the issue: 410415.83 = 25 * 2954994 / 180 for
+  bases 0 and 4, which need the settlement's date for 30/360, take first_interest's 1904 serial plus 1462 (its 1900-system
+  serial, actual days from the 1900 epoch) as the day count of the settlement slice, whatever the settlement and the issue: 410415.83 = 25 * 2954994 / 180 for
   first_interest 9990-06-30 (1904 serial 2953532), for every settlement from 9995-12-31 to 9999-12-31 and issues
   9990-01-01 to 9990-06-29; moving first_interest by -91 days moves the count by -91, and an issue before the
   regular period adds its stub as usual (179/180 for issue 9989-01-01 or 9980-01-01). The slice is over the normal
