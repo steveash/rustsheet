@@ -378,3 +378,29 @@ Ours: field and criteria do not lift (`#N/IMPL!`, `#VALUE!`), and DCOUNT/DCOUNTA
 `#VALUE!` (T-1389). A generated sample also showed gaps in header matching and criteria (T-1390).
 Status: VERIFIED (excel-graph)
 Tasks: T-1086, T-1389, T-1390
+
+## GAMMA and GAMMALN sweep (T-1042)
+Oracle values (Excel for the web) for the probe cases `t1042-gamma-int-1-90`, `t1042-gamma-int-91-171`,
+`t1042-gamma-half-int`, `t1042-gamma-unit-interval` and `t1042-gamma-negatives-edges`
+(`eval/suites/probes-numeric/cases/`), the input to the fits in T-0973. In each file the first half
+of the cells is GAMMA and the second half GAMMALN, in the order of the formulas.
+- **GAMMA at integers**: `GAMMA(n)` equals the correctly rounded `(n-1)!` for n = 1..25 and differs
+  from it in the last digits for most larger n (131 of the 171 integers 1..171, first at n = 26:
+  1.5511210043330984e+25 against the correctly rounded 1.5511210043330986e+25). Excel's own kernel
+  is not exact beyond 24!, so a table of factorials is wrong for n >= 26.
+- **GAMMALN at integers** is not the correctly rounded `ln((n-1)!)` either: `GAMMALN(3)` =
+  0.6931471805599454 (libm gives 0.693147180559945), `GAMMALN(1)` = `GAMMALN(2)` = 0; 99 of the
+  171 integers differ from fdlibm `lgamma` in the last digit.
+- **Overflow edge**: `GAMMA(171.5)` = 9.483367566824801e+307 and `GAMMA(171.6)` = 1.5858969096672508e+308
+  are finite; `GAMMA(171.7)`, `GAMMA(171.99)`, `GAMMA(172)` and `GAMMA(200)` are `#NUM!`.
+  `GAMMALN` has no upper limit: `GAMMALN(200)` = 857.9336698258575, `GAMMALN(1E+300)` = 6.897755278982137e+302.
+- **Poles**: `GAMMA(0)`, `GAMMA(-1)`, `GAMMA(-2)`, `GAMMA(-10)` are `#NUM!`; between poles GAMMA is
+  defined (`GAMMA(-0.5)` = -3.5449077018110318, `GAMMA(-2.25)` = -1.742814865728253,
+  `GAMMA(-9.9)` = 3.542684553080843e-06).
+- **Near zero**: `GAMMA(1E-300)` = 9.999999999999999e+299 (not 1e300), `GAMMA(-1E-300)` =
+  -9.999999999999999e+299, `GAMMA(1E-10)` = 9999999999.422787, `GAMMA(-1E-10)` = -10000000000.577215.
+  `GAMMALN(1E-300)` = 690.7755278982137.
+- **GAMMALN of any x <= 0 is `#NUM!`** (all negative half-integers, non-integers such as -0.5, 0,
+  negative integers and -1E-300), although GAMMA is defined at the negative non-integers.
+- **Coercion**: `GAMMA("a")` and `GAMMALN("a")` are `#VALUE!`; `GAMMA(TRUE)` = 1, `GAMMA("3")` = 2,
+  `GAMMALN(TRUE)` = 0, `GAMMALN("3")` = 0.6931471805599454.

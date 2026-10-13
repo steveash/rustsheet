@@ -16,6 +16,7 @@ from one accurate gamma-function routine, and the 18 GAMMALN/GAMMALN.PRECISE cel
 behind are matched by the same kernel or explained.
 
 ## Context
+Oracle sweep (T-1042): probe cases `t1042-gamma-int-1-90`, `t1042-gamma-int-91-171`, `t1042-gamma-half-int`, `t1042-gamma-unit-interval`, `t1042-gamma-negatives-edges` in `eval/suites/probes-numeric`; findings in `docs/excel-semantics/statistics.md` (GAMMA and GAMMALN sweep).
 Triage T-0903. Kernels: GAMMA uses `statrs::function::gamma::gamma` (Lanczos, a few ulp to 1e-13
 off, not exact at integers); GAMMALN uses `special::ln_gamma` = `libm::lgamma` (fdlibm, T-0926,
 correctly rounded at the points it fixed). Code: `functions/statistical/gamma.rs` `fn_gamma`,
