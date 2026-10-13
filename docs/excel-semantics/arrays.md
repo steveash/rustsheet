@@ -374,7 +374,8 @@ T-1446 probed every combination (probes/sort-omitted-args, excel-graph, 2026-10-
 (`SORT(a,,,)`, `SORT(a,,-1,)`, `SORT(a,1,,)`, `SORT(a,,,TRUE)` by columns). In SORTBY an omitted
 `sort_order` (`SORTBY(a,k,)`, and the dangling order after a second key `SORTBY(a,k1,,k2,)`) is
 ascending. The Graph backend refuses to load a workbook holding `SORTBY(a,k,,)`, `SORTBY(a,k,-1,)` or
-`SORTBY(a,k,,k2)` (two empties after a key, or an empty order before a second key): UNVERIFIED, desktop
+`SORTBY(a,k,,k2)` (two empties after a key, or an empty order followed by a second key and no
+further argument; `SORTBY(a,k1,,k2,)` loads): UNVERIFIED, desktop
 question (decision 0039).
 
 Status: VERIFIED (excel-graph) for all probed combinations; the three Graph-refused SORTBY forms are UNVERIFIED (desktop question).
