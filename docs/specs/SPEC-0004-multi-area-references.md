@@ -218,7 +218,9 @@ column 65,536 times (directive 5). So:
   `MAX_AREA_CELLS` = 2^24 (16,777,216) cells in one `Areas` argument gives `#VALUE!`. That is 16
   full used columns of 1,048,576 rows, far above any real Print_Area. Excel's own limit, if any,
   is not known. This is recorded as a DEVIATION under references.md "Union area cap"
-  (decision 0014) by T-1062.
+  (decision 0014) by T-1062. Superseded by T-1162 (one budget per formula evaluation) and T-1497:
+  union areas are now walked over their existing cells only, paying `MAX_AREA_WALK` steps as they
+  go (references.md "Union area cap" has the current rule).
 - `seen_ranges` (evaluation.rs) gets at most two entries per walked area (`clip_to_used_area`),
   so it is bounded by 2 × `MAX_AREAS` per argument.
 
@@ -298,7 +300,8 @@ probe row 15).
 ### Errors and limits
 - An operand error inside the union wins, in operand order, as today (`union_areas`).
 - Every `Areas` is built by `union_areas`/`intersect_areas`, so the `MAX_AREAS` and
-  `MAX_AREA_PAIRS` caps apply unchanged. Walking is bounded by `MAX_AREA_CELLS`, and name bodies by
+  `MAX_AREA_PAIRS` caps apply unchanged. Walking is bounded by `MAX_AREA_CELLS` (now `MAX_AREA_WALK`,
+  T-1497), and name bodies by
   the per-workbook cap. All three are DEVIATIONs (decision 0014). Building `Areas` from the `Vec`
   that `union_areas` returns copies it once into the `Rc`. After that, reads never copy.
 - No panics: `area_num` is range-checked as a float before conversion, and `Areas` is never empty.
@@ -333,7 +336,7 @@ this paragraph.
   `test/` for: errors inside unions, `MAX_AREAS` at the limit and one past it through each new
   entry point (name body, LET, INDEX area_num), whole-column unions (`SUM((A:A,C:C))`), and the
   worst case: `MAX_AREAS` whole-column areas over a populated sheet gives `#VALUE!` from the
-  `MAX_AREA_CELLS` check without walking (T-1062).
+  `MAX_AREA_CELLS` check without walking (T-1062; since T-1497 the walk pays `MAX_AREA_WALK` as it goes).
 - 3-D cells of probes/3d-ref-functions stay green at every step (T-1062, T-1063).
 - Metamorphic, only if probe row 1 confirms it: `SUM((r1,r2,…))` = `SUM(r1,r2,…)` for same-sheet,
   non-3-D references (gen-m1 generator family, T-1062), and `AREAS(u)` equals the number of
