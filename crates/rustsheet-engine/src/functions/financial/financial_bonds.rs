@@ -96,10 +96,13 @@ fn check_odd_first_coupon(
     frequency: u32,
     cell: CellReferenceIndex,
 ) -> Result<(), CalcResult> {
-    let previous =
-        |date: i64| prev_coupon_date(date, maturity, frequency).map_err(|e| map_date_err(e, cell));
-    if previous(first_coupon)? != first_coupon || previous(first_coupon.saturating_sub(1))? == issue
-    {
+    // Off-calendar dates are #NUM! anyway (`compute_oddfprice`); checking them first keeps the
+    // schedule walk back from the maturity within the calendar for a far-negative serial.
+    let (quasi_coupon, next_coupon) = from_excel_date(issue)
+        .and_then(|_| from_excel_date(first_coupon))
+        .and_then(|_| find_pcd_ncd(first_coupon.saturating_sub(1), maturity, frequency))
+        .map_err(|e| map_date_err(e, cell))?;
+    if next_coupon != first_coupon || quasi_coupon == issue {
         return Err(CalcResult::new_error(
             Error::NUM,
             cell,

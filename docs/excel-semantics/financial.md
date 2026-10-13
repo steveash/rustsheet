@@ -197,12 +197,16 @@ periods before is fine, and so is an issue a day off the quasi-coupon date. Exam
 ODDFYIELD follows the same checks. Unexplained: ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity
 9999-06-30 (issue 9998-07-01, settlement 9998-08-01) are #NUM! in 1900 although the first coupon is on the schedule
 (probes/date-system-1900-odd-accrint-bound C5, C6; T-1490).
-Probes: date-system-1900-oddf-schedule, date-system-1900-oddf-issue-boundary (excel-graph, 2026-10-13, T-1457).
-Ours: `check_odd_first_coupon` (functions/financial/financial_bonds.rs).
+Evidence: probes/date-system-1900-oddf-schedule, probes/date-system-1900-oddf-issue-boundary (excel-graph,
+2026-10-13).
+Status: VERIFIED (the C5/C6 cells above UNVERIFIED, T-1490). Tasks: T-1457.
+Implemented in: `check_odd_first_coupon` (functions/financial/financial_bonds.rs).
 
 ## ODDLPRICE and ODDLYIELD: a quasi-coupon date past the calendar is #NUM!
 
 ODDLPRICE and ODDLYIELD are #NUM! when a quasi-coupon date of the odd last period, including the one after the
 maturity, is past 9999-12-31: `ODDLPRICE(DATE(9999,8,1),DATE(9999,12,31),DATE(9999,5,15),0.05,0.06,100,2,0)` (the
 next quasi-coupon date after 9999-11-15 would be 10000-05-15), on bases 0 and 1.
-Probes: date-system-1900-odd-accrint-bound D7-D10 (excel-graph, 2026-10-12, T-1447). Ours: `odd_l_func`.
+Evidence: probes/date-system-1900-odd-accrint-bound D7-D10 (excel-graph, 2026-10-12).
+Status: VERIFIED. Tasks: T-1447, T-1457.
+Implemented in: `odd_l_func` (functions/financial/financial_bonds.rs).

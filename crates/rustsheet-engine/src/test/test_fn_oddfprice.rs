@@ -130,7 +130,13 @@ fn oddfprice_first_coupon_must_fit_the_schedule() {
             "=ODDFPRICE(DATE(2024,2,1),DATE(2025,2,28),DATE(2024,1,1),DATE(2024,8,31),{price}"
         ),
     );
+    // Far-negative dates are #NUM! without walking the schedule past the calendar.
+    model._set(
+        "A6",
+        "=ODDFPRICE(DATE(2024,2,1),DATE(2025,7,1),-1E+15,-1E+14,0.05,0.06,100,4,0)",
+    );
     model.evaluate();
+    assert_eq!(model._get_text("A6"), "#NUM!");
     assert_eq!(model._get_text("A1"), "#NUM!");
     assert_eq!(model._get_text("A2"), "#NUM!");
     assert_eq!(model._get_text("A3"), "#NUM!");
