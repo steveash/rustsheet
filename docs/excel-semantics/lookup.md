@@ -107,8 +107,8 @@ HLOOKUP's `E12-A6` in f7e6d351c8538ef5 Calc!A296) or index (`E$2/0.1` in 942bdad
 with a lifting range_lookup spills, giving `#SPILL!` on a collision (T-1468). The element values of
 such a spill are the error itself, per row, with room to spill: an error lookup_value, an error
 index (`1/0`, `NA()`) and a text index (`"a"` is `#VALUE!`, not the `#REF!` of an array index element)
-each fill every row with that scalar error, for a range or an array range_lookup, VLOOKUP and HLOOKUP
-alike (probes/vlookup-error-arg-lifting-range-lookup, 22 cells, excel-graph, 2026-10-13, T-1491).
+each fill every row with that scalar error (VLOOKUP with a range or an array range_lookup; HLOOKUP and
+`NA()` probed with an array range_lookup only, the engine shares one path) (probes/vlookup-error-arg-lifting-range-lookup, 22 cells, excel-graph, 2026-10-13, T-1491).
 Matches the engine (`LookupIndexArg::Failed`).
 A multi-cell range *index* stays implicitly intersected (T-1426). Unprobed: which error wins when a
 lookup_value element and a range_lookup element are both errors (the engine gives the lookup error),
