@@ -3,7 +3,7 @@ id: T-0416
 title: "Export PERCENTOF with _xlfn. without staling the bare-PERCENTOF oracle evidence"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
