@@ -386,6 +386,7 @@ C	probes/paren-number-text-forms.case.json	14
 C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-elements.case.json	9
+C	probes/radians-sqrtpi-munit.case.json	94
 C	probes/range-operator-column-letter-before-colon.case.json	1
 C	probes/range-operator-unnamed-operands.case.json	10
 C	probes/range-right-operand-errors.case.json	4
