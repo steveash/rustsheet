@@ -3,7 +3,7 @@ id: T-1497
 title: "Bound multi-area walks by the data they visit, not by repetition: union walks inside MAP/BYROW and many whole-column union arguments"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
