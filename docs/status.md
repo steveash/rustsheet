@@ -69,7 +69,7 @@ Open PRs: 10.
 - Drafts over 24 h:
   - #551 (T-1331) and #314 (T-1100) are superseded: both tasks are done on `main` (#581, #541). I commented that they can be closed.
   - #553 (T-1284), #436 (T-1186) and #409 (T-1155) hold blocked tasks. No action.
-- Id collision ahead: `agent/functions-logic/T-1442-lambda-range-refs` and `agent/functions-text/T-1455-text-quoted-cost` both add a task file **T-1466**. Whichever merges second must renumber.
+- Id collision: T-1442 (#673, merged during this run) brought `docs/tasks/M2/T-1466-eta-reduced-…` to `main`. The pushed branch `agent/functions-text/T-1455-text-quoted-cost` adds a different task file with the same id **T-1466**, so it must renumber before it merges (`make new-task` gives a free id).
 
 Queues at the start of the run:
 - functions: 76 ready. The sonnet buffer is 52, so the gap-triager did not run.
