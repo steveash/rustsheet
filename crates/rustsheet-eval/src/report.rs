@@ -8,6 +8,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
+use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
 use crate::probe_milestones::{self, MilestoneRow};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
@@ -224,6 +225,10 @@ pub struct RunReport {
     /// caller, which loads the rules.
     #[serde(default)]
     pub probe_milestones: Vec<MilestoneRow>,
+    /// How the M0–M2-only `ironcalc-calc` cells scored (the M2 exit criterion); `None` when the
+    /// suite did not run.
+    #[serde(default)]
+    pub function_scope: Option<FunctionScope>,
 }
 
 impl RunReport {
@@ -324,6 +329,7 @@ impl RunReport {
             out_of_scope: lists.out_of_scope,
             milestone_lists: Vec::new(),
             probe_milestones: Vec::new(),
+            function_scope: function_scope::summarize(catalog, results),
         }
     }
 
@@ -483,6 +489,7 @@ impl RunReport {
         self.write_suites_table(&mut md);
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
         probe_milestones::write_markdown(&self.probe_milestones, &mut md);
+        function_scope::write_markdown(self.function_scope.as_ref(), &mut md);
         self.write_timing(&mut md);
         let broken: Vec<&CaseResult> = self
             .cases

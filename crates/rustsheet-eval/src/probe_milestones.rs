@@ -47,7 +47,7 @@ const REPORT_ROWS: [u32; 8] = [2, 5, 6, 7, 8, 9, 10, 11];
 
 /// Parses `M<digits>`. Numeric order is the phase order of docs/milestones.md for every
 /// milestone a probe can take (M0–M2 and M5–M11).
-fn parse_milestone(s: &str) -> Option<u32> {
+pub(crate) fn parse_milestone(s: &str) -> Option<u32> {
     let digits = s.strip_prefix('M')?;
     if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
         return None;
