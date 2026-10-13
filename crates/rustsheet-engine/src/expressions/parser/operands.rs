@@ -201,6 +201,11 @@ impl Parser {
 
     /// A name that is not called: a defined name, a table or a LAMBDA parameter.
     fn name_operand(&mut self, name: String) -> Node {
+        // A defined name of a linked workbook, `[1]!Name` or `[1]Sheet!Name` (one identifier to
+        // the lexer), keeps its prefix: evaluation reads it from the link's cache.
+        if name.starts_with('[') {
+            return Node::DefinedNameKind((name, None, String::new()));
+        }
         let context = &self.context;
 
         let context_sheet_index = match self.get_sheet_index_by_name(&context.sheet) {

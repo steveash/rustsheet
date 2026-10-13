@@ -7,7 +7,7 @@ use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
     calc_result::{CalcResult, Range},
-    cell::CellValue,
+    cell::{spill_value_to_calc_result, CellValue},
     constants::{self, LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{
@@ -585,9 +585,11 @@ impl Model {
                     column: column1,
                 })
             }
-            WrongReferenceKind { sheet_name, .. } => {
-                Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong reference")
-            }
+            WrongReferenceKind { sheet_name, .. } => self
+                .external_reference_value(node, cell)
+                .unwrap_or_else(|| {
+                    Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong reference")
+                }),
             OpRangeKind { left, right } => self.get_range(left, right, cell),
             OpIntersectKind { left, right, .. } => self.get_intersection(left, right, cell),
             SheetSpanKind {
@@ -667,6 +669,9 @@ impl Model {
             }
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
             DefinedNameKind((name, scope, _)) => {
+                if let Some(value) = self.evaluate_external_name(name, cell) {
+                    return value;
+                }
                 let key = (*scope, name.to_lowercase());
                 if let Some(parsed_defined_name) = self.parsed_defined_names.get(&key).cloned() {
                     match parsed_defined_name {
@@ -1394,25 +1399,7 @@ impl Model {
                     }
                 }
             }
-            SpillCell {
-                v: SpillValue::Number(v),
-                ..
-            } => CalcResult::Number(*v),
-            SpillCell {
-                v: SpillValue::Boolean(v),
-                ..
-            } => CalcResult::Boolean(*v),
-            SpillCell {
-                v: SpillValue::Text(v),
-                ..
-            } => CalcResult::String(v.clone()),
-            SpillCell {
-                v: SpillValue::Error(ei),
-                ..
-            } => {
-                let message = ei.to_localized_error_string(self.language);
-                CalcResult::new_error(ei.clone(), cell_reference, message)
-            }
+            SpillCell { v, .. } => spill_value_to_calc_result(v, cell_reference, self.language),
         }
     }
 
