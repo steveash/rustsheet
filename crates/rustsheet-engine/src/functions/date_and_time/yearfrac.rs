@@ -16,7 +16,7 @@ impl Model {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        // The dates as the 1900 serials the financial day counts read: a day late in a 1904
+        // The dates as the 1900 serials the financial day counts read: 2 * 1462 days on in a 1904
         // workbook (`DateSystem::financial_1900_serial`).
         let date_system = self.workbook.settings.date_system;
         let start_raw = match self.get_number_no_bools(&args[0], cell) {
