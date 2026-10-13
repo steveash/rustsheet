@@ -2,7 +2,7 @@ use crate::calc_result::Range;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::is_span_or_if_of_span;
+use crate::functions::util::{error_array, is_span_or_if_of_span};
 use crate::reference_operators::RefArg;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
@@ -166,8 +166,6 @@ impl Model {
                 }
             };
             match value {
-                CalcResult::EmptyCell | CalcResult::EmptyArg => result += 1.0,
-                CalcResult::String(s) if s.is_empty() => result += 1.0,
                 CalcResult::Range { left, right } => {
                     // Only the used area is walked: the cells past it are empty,
                     // so every cell that is not blank is found in the walk.
@@ -193,7 +191,18 @@ impl Model {
                 // (`#NAME?`), `CHOOSE(1,NA())`, an empty intersection (`#NULL!`), a 3-D or union
                 // `#VALUE!` (probes/countblank-choose-errors, excel-graph 2026-10-10, T-1181).
                 error @ CalcResult::Error { .. } => return error,
-                _ => {}
+                // Any other value is not a reference, so COUNTBLANK is `#VALUE!`; an array lifts it
+                // to one `#VALUE!` per element: a lifted INDEX, CHOOSE or IF with an array
+                // condition, and `CHOOSE(1,5)` or `CHOOSE(1,"")` (probes/countblank-array-values,
+                // probes/index-lifted-edge-cases H131, excel-graph 2026-10-13, T-1437).
+                CalcResult::Array(values) => return error_array(&values, &Error::VALUE),
+                _ => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "COUNTBLANK needs a reference".to_string(),
+                    )
+                }
             };
         }
         CalcResult::Number(result)

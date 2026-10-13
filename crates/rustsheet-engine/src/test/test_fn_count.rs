@@ -89,3 +89,23 @@ fn test_fn_countif_whole_column_sees_a_spill_beyond_the_used_area() {
         assert_eq!(model.evaluation.restarts_in_last_evaluation, 1, "{formula}");
     }
 }
+
+// A value that is not a reference is `#VALUE!` in COUNTBLANK, one per element for an
+// array (probes/countblank-array-values, excel-graph 2026-10-13, T-1437).
+#[test]
+fn test_fn_countblank_of_a_value_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("D1", "10");
+    model._set("D3", "30");
+    model._set("A1", "=COUNTBLANK(INDEX(D1:D5,{1,2,3}))");
+    model._set("A2", "=COUNTBLANK(IF({1;1},D1:D2))");
+    model._set("A5", "=COUNTBLANK(CHOOSE(1,\"\"))");
+    model._set("A6", "=COUNTBLANK(INDEX(D1:D5,2))");
+    model.evaluate();
+
+    for cell in ["A1", "B1", "C1", "A2", "A3", "A5"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
+    }
+    // A single picked cell is still a reference.
+    assert_eq!(model._get_text("A6"), *"1");
+}

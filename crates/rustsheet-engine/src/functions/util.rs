@@ -13,6 +13,23 @@ use crate::{
     reference_operators::RefArg,
 };
 
+/// An array of `error` with the shape of `values` (an element that is already an error stays).
+pub(crate) fn error_array(values: &[Vec<ArrayNode>], error: &Error) -> CalcResult {
+    CalcResult::Array(
+        values
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|v| match v {
+                        ArrayNode::Error(_) => v.clone(),
+                        _ => ArrayNode::Error(error.clone()),
+                    })
+                    .collect()
+            })
+            .collect(),
+    )
+}
+
 /// Converts a single array element into a scalar [`CalcResult`].
 pub(crate) fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
     match node {

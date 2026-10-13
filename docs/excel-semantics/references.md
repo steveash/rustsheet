@@ -1021,6 +1021,27 @@ Evidence: probes/countblank-formula-names A1:A21 and probes/countblank-formula-n
 Status: VERIFIED. Implemented in: `fn_countblank` (functions/statistical/count.rs).
 Tasks: T-1199, T-1207, T-1209
 
+## COUNTBLANK of a value that is not a reference is #VALUE!, one per element of an array
+Rule: an argument that evaluates to a value rather than a reference makes COUNTBLANK `#VALUE!`, as for a name
+(above), and an array value lifts it: the result is an array of that shape holding `#VALUE!` in every slot. D1=10,
+D2 empty, D3=30, D4="x", D5=TRUE: `COUNTBLANK(INDEX(D1:D5,{1,2,3}))` is a 1x3 spill of `#VALUE!` (H131 of
+probes/index-lifted-edge-cases), `INDEX(D1:D5,{2,4})` 1x2, `INDEX(D1:D5,{1;2})` 2x1, `INDEX(D1:D5,{1,2},{1;1})` 2x2,
+and even the 1x1 `INDEX(D1:D5,{2})` (a blank cell) is `#VALUE!`; `CHOOSE({1,2},D1:D2,D3:D4)`, `IF({1,1},D1:D2)` and
+`IF({1,0},D1:D2,D3:D4)` are 2x2 grids of `#VALUE!`; `SUM` of the INDEX result is `#VALUE!` and `ISERROR` of it TRUE per
+element. A scalar value picked by CHOOSE is `#VALUE!` too: `COUNTBLANK(CHOOSE(1,5))` and `COUNTBLANK(CHOOSE(1,""))` (an
+empty string is not a blank here). A workbook holding `COUNTBLANK(SEQUENCE(1,2))` and `COUNTBLANK(TOROW(D1:D3))`, with
+or without `COUNTBLANK(D1:D2+0)`, would not open in Excel for the web (`FileCorruptTryRepair`, as for the literal
+expressions above), so those have no value. An error element of an array is unprobed (the engine keeps it, by the
+error-argument rule).
+Evidence: probes/countblank-array-values (excel-graph, 2026-10-13, T-1437); probes/index-lifted-edge-cases H131:J131
+(excel-graph, 2026-10-12, T-1376).
+Status: VERIFIED (excel-graph), except the 1x1 `INDEX(D1:D5,{2})`: the engine treats a 1x1 array index as a scalar
+index, so it counts the picked cell (1) (T-1507). The CHOOSE grid spills 1x2, not 2x2, because the engine's `CHOOSE({1,2},D1:D2,D3:D4)`
+is itself 1x2 (T-1508).
+Implemented in: `fn_countblank` (functions/statistical/count.rs) and `reference_parameter_static_result`
+(expressions/parser/static_analysis.rs), shared with RANK.
+Tasks: T-1437
+
 ## `@` operand parentheses: every level is kept; a group that is only part of the operand is kept too
 Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` operand: `=@((A1))` and
 `=@(((A1)))` print as written (value 1), `=@((A1:B1))`, `=@((A1,B2))` and `=@(A1:B2)` print as written (value
