@@ -62,9 +62,19 @@ fn change_month(date: NaiveDate, num_months: i32, return_last: bool) -> Result<N
 // `findPcdNcd`/`findCouponDates` from ExcelFinancialFunctions, including the
 // end-of-month rule anchored on the maturity date.
 fn find_pcd_ncd(settlement: i64, maturity: i64, frequency: u32) -> Result<(i64, i64), String> {
+    let return_last = is_last_day_of_month(from_excel_date(maturity)?);
+    walk_coupon_schedule(settlement, maturity, frequency, return_last)
+}
+
+// The schedule walk of `find_pcd_ncd`, with the end-of-month rule given by the caller.
+fn walk_coupon_schedule(
+    settlement: i64,
+    maturity: i64,
+    frequency: u32,
+    return_last: bool,
+) -> Result<(i64, i64), String> {
     let months_per = (12 / frequency) as i32;
     let mat = from_excel_date(maturity)?;
-    let return_last = is_last_day_of_month(mat);
 
     let mut front = mat;
     let mut trailing = mat;
@@ -144,6 +154,26 @@ fn coupon_days_e(
         3 => Ok(365.0 / frequency as f64),
         _ => Err("Invalid basis".to_string()),
     }
+}
+
+// COUPDAYS on basis 1. When the coupon period around settlement starts or ends on a 29 February
+// that is not the maturity, Excel counts the period of the schedule walked back from the maturity
+// without the end-of-month rule (every date clamped from the one after it): with maturity
+// 2025-02-28 and settlement 2023-11-15 it is 2023-08-28 to 2024-02-28, 184 days, although
+// COUPPCD/COUPNCD are 2023-08-31/2024-02-29. PRICE and the other readers keep the 182-day period.
+// Excel: see docs/excel-semantics/financial.md#coupdays-basis-1-around-29-february.
+fn coupdays_actual(settlement: i64, maturity: i64, frequency: u32) -> Result<f64, String> {
+    let (prev, next) = find_pcd_ncd(settlement, maturity, frequency)?;
+    let on_leap_day = |serial: i64| -> Result<bool, String> {
+        let d = from_excel_date(serial)?;
+        Ok(serial != maturity && d.month() == 2 && d.day() == 29)
+    };
+    let (prev, next) = if on_leap_day(prev)? || on_leap_day(next)? {
+        walk_coupon_schedule(settlement, maturity, frequency, false)?
+    } else {
+        (prev, next)
+    };
+    Ok(actual_days(from_excel_date(prev)?, from_excel_date(next)?))
 }
 
 // Accrued days from the previous coupon to settlement (A).
@@ -1211,7 +1241,12 @@ impl Model {
         if basis == 1 && self.coupon_schedule_breaks(maturity) {
             return broken_schedule_days(BROKEN_SCHEDULE_PCD, maturity, basis, cell);
         }
-        match coupon_days_e(settlement, maturity, frequency, basis) {
+        let days = if basis == 1 {
+            coupdays_actual(settlement, maturity, frequency)
+        } else {
+            coupon_days_e(settlement, maturity, frequency, basis)
+        };
+        match days {
             Ok(v) => CalcResult::Number(v),
             Err(e) => map_date_err(e, cell),
         }
