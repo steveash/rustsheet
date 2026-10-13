@@ -21,4 +21,4 @@ T-1223 made `bind_argument` (functions/logical/let.rs) use `Model::eval_ref_or_i
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Changing any other LET binding form.
