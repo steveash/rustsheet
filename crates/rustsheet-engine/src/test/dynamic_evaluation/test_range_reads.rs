@@ -129,6 +129,26 @@ fn a_whole_column_read_records_one_rectangle() {
     assert_eq!(range.row2, crate::constants::LAST_ROW);
 }
 
+// A union area is recorded as one rectangle (T-1497), and a union walked once per
+// row of a MAP records its rectangles once: the spill check scans what was read,
+// not how often.
+#[test]
+fn a_repeated_union_walk_records_its_rectangles_once() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SUM(MAP(F1:F1000,LAMBDA(r,SUM((D:D,E1:E10)))))");
+    model._set("D1", "1");
+    model._set("E2", "2");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3000");
+    let union_reads: Vec<_> = model
+        .evaluation
+        .seen_ranges
+        .iter()
+        .filter(|range| range.column1 >= 4)
+        .collect();
+    assert_eq!(union_reads.len(), 2, "{union_reads:?}");
+}
+
 // XLOOKUP clips its whole-column arrays like the others; it has no test
 // file of its own, so its case lives here. The other clipped functions are
 // tested the same way in their own files.

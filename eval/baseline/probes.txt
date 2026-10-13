@@ -5601,15 +5601,6 @@ F	probes/text-surrogate-positions.case.json	Sheet1!A29
 F	probes/text-surrogate-positions.case.json	Sheet1!A38
 F	probes/text-surrogate-positions.case.json	Sheet1!A6
 F	probes/text-surrogate-positions.case.json	Sheet1!B10
-F	probes/union-walk-repeated-in-lambda.case.json	Big!E1
-F	probes/union-walk-repeated-in-lambda.case.json	Big!E2
-F	probes/union-walk-repeated-in-lambda.case.json	Big!E4
-F	probes/union-walk-repeated-in-lambda.case.json	Calc!E1
-F	probes/union-walk-repeated-in-lambda.case.json	Calc!E11
-F	probes/union-walk-repeated-in-lambda.case.json	Calc!E2
-F	probes/union-walk-repeated-in-lambda.case.json	Calc!E6
-F	probes/union-walk-repeated-in-lambda.case.json	Calc!E7
-F	probes/union-walk-repeated-in-lambda.case.json	Calc!E8
 F	probes/volatile-invariant.case.json	Calc!A12
 F	probes/volatile-invariant.case.json	Calc!A13
 F	probes/volatile-invariant.case.json	Calc!A2

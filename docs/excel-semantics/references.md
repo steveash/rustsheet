@@ -594,23 +594,42 @@ keeps only its area count, not the areas. Excel's limits, if any, are not known,
 its result past them; it would differ where later cuts bring the areas back down to one, or where
 a later operand's error would come first.
 The area cap bounds the length of an area list, not the work of walking it: `MAX_AREAS` copies of
-`A:A` fit in a short formula. So an aggregate argument of several areas (`SUM((A:A,C:C))`) first
-adds up the cells of its areas, each clipped to its sheet's used area, in saturating arithmetic
-and before any cell is read; more than 16,777,216 cells (`MAX_AREA_CELLS`, 2^24, 16 full used
-columns) is `#VALUE!`. The bound is per formula evaluation, like the pair budget: every
-multi-area argument (SUM, SUBTOTAL, AGGREGATE's reference form, ...) takes its cells from the same
-budget, so `LET(x,(A:A,A:A),SUM(x,x,...))` is `#VALUE!` at the argument that passes it, and so is a
-formula that walks a union again and again (`MAP` over a `SUM` of one). A single range argument is
-not counted, as before.
-Excel computes formulas past this budget (probes/union-walk-repeated-in-lambda, excel-graph,
-2026-10-13, T-1462), so it is a DEVIATION (decision 0014) on realistic formulas, not only
-adversarial ones. On a sheet with 10,000 used rows, `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
-is 8000 in Excel (2*10^7 cells walked) and `#VALUE!` in the engine; so are the MAP, COUNTA and
-SUBTOTAL(9,..) forms, `MAP(A1:A10000,...)` (2*10^8 cells, 80000), and the bounded union
-`(B1:B10000,C1:C10000)`. With data in row 1,048,576 even `=SUM((B:B,C:C),...)` with nine union
-arguments (9*2^21 cells) is 27 in Excel and `#VALUE!` here. The single-range forms (`SUM(B:C)`)
-agree. MAP over a union (`=SUM(MAP((B1:B3,C1:C3),LAMBDA(x,x)))`, `ROWS(...)`) is `#VALUE!` in both.
-The oracle gives no timings. T-1497 is to bound the walks by the data they visit instead.
+`A:A` fit in a short formula, a LET-bound union can be passed again and again
+(`LET(x,(A:A,A:A),SUM(x,x,...))`), and a LAMBDA can walk one per row of a MAP. So the areas of a
+union (an aggregate argument of several areas: SUM, COUNT, COUNTA, SUBTOTAL, AGGREGATE, LARGE, ...)
+are walked over the cells that exist only, not every position of the used area: every function
+that takes a union skips blank cells, and the cells are met in the same row-major order, so the
+first error cell is the same. The walk pays as it goes from a budget of 16,777,216 steps
+(`MAX_AREA_WALK`, 2^24) per formula evaluation: one step per area walked (so a repeated walk of
+an empty union is paid for too), one per cell handed to the function, one per
+row found (at least one, even with no cell in the area's columns), one per unallocated chunk of
+1,024 rows passed over, and one per 16 row slots tested in allocated chunks
+(`SLOTS_PER_WALK_STEP`). Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
+operand and LAMBDA call of the formula draws on the same budget, like the pair budget; a single
+range argument is not counted and is walked as before (every position of its used area). Over
+sparse data a union then costs what the data costs: `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
+with three cells in 10,000 used rows is about 50 steps per walk, and `MAX_AREAS` copies of `A:A`
+over a cell in row 1,000 fit. Over filled cells a step is a cell: sixteen arguments of a 16-column
+union over 65,536 filled rows, or a MAP of 300 walks of `(A:A,A:A)` over them, are `#VALUE!`.
+The slot rate is measured (T-1497, release build): a step handed to a function costs about 15 ns
+and a slot test about 1.4 ns. With it the budget's worst shapes, a 16-column union of `A:A` passed
+again and again over 65,536 filled rows, over one row in every chunk of the sheet, over 65,536 rows
+with a cell in column B only, or over a cell in the last row only, each stop at `#VALUE!` within
+0.31 s; the old dense budget's worst was 1.09 s (one row per chunk).
+Excel computes formulas well past this budget's old dense form (probes/union-walk-repeated-in-lambda,
+excel-graph, 2026-10-13, T-1462): `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))` on a sheet with
+10,000 used rows is 8000 (2*10^7 positions), and so are the MAP, COUNTA and SUBTOTAL(9,..) forms;
+`MAP(A1:A10000,...)` (2*10^8 positions) is 80000; the bounded union `(B1:B10000,C1:C10000)` too.
+With data in row 1,048,576 `=SUM((B:B,C:C),...)` with nine union arguments (9*2^21 positions) is
+27. The engine now agrees on all of them (T-1497). MAP over a union
+(`=SUM(MAP((B1:B3,C1:C3),LAMBDA(x,x)))`, `ROWS(...)`) is `#VALUE!` in both. The oracle gives no
+timings, so whether Excel walks only data is not known; a union over filled cells past the budget
+remains a DEVIATION. So does a union over a sheet with many rows filled in other columns: a row is
+found through the sheet's row storage, not per column, and costs a step even when the area's
+columns are blank in it, so `MAP(A1:A10000,LAMBDA(r,SUM((B:B,C:C))))` is `#VALUE!` here when
+another column fills 9,000 rows (Excel: 80000). A per-column index would lift that (T-1502).
+A union area is recorded as read-empty as one rectangle per formula root, once however often it is
+walked, so repeated walks do not grow the record that each spill is checked against.
 Excel's actual limit, if any, is not known; the probe only shows it is above 2*10^8 walked cells.
 The LET variables and LAMBDA parameters in scope may hold at most 262,144 areas together (`MAX_HELD_AREAS`,
 four `MAX_AREAS`): each binding may hold a fresh union (`LET(x_1,(A1,A1),x_2,(x_1,x_1),...)`), so memory would
@@ -620,10 +639,10 @@ A defined name's union body is capped like a written union, at each use: more th
 needed (SPEC-0004 planned one for stored area lists): names keep only their parsed body, never an area list,
 so memory is bounded by the workbook's formula text and each use by the caps above.
 Status: DEVIATION (decision 0014)
-Implemented in: reference_operators.rs (`MAX_AREAS`, `MAX_AREA_PAIRS`, `MAX_AREA_CELLS`,
-`Model::union_areas`, `Model::count_union_areas`, `Model::intersect_areas`); functions/util.rs
-(`Model::check_area_cells`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
-Tasks: T-0134, T-1062, T-1064, T-1065
+Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
+`Model::count_union_areas`, `Model::intersect_areas`); area_budget.rs (`MAX_AREA_PAIRS`,
+`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
+Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497
 
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence
