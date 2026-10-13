@@ -539,6 +539,7 @@ C	probes/variance-switch.case.json	82
 C	probes/variance-underflow.case.json	36
 C	probes/vlookup-array-index-range-lookup.case.json	155
 C	probes/vlookup-array-lookup-value.case.json	35
+C	probes/vlookup-error-arg-lifting-range-lookup.case.json	22
 C	probes/volatile-invariant.case.json	55
 C	probes/weeknum-1900-later.case.json	23
 C	probes/weeknum-invalid-type.case.json	8

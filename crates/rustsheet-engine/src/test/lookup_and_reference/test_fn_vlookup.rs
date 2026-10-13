@@ -300,9 +300,24 @@ fn failed_arguments_still_lift_with_a_range_range_lookup() {
     model.evaluate();
     assert_eq!(model._get_text("D1"), *"#DIV/0!");
     assert_eq!(model._get_text("D2"), *"#DIV/0!");
-    // Hand expectation: the element value of an error index was never seen (lookup.md, unprobed).
-    assert!(model._get_text("E1").starts_with('#'));
-    assert!(model._get_text("E2").starts_with('#'));
+    // probes/vlookup-error-arg-lifting-range-lookup (excel-graph, T-1491): every element is the
+    // error itself, `#DIV/0!` for an error index, not `#REF!` as for an array index.
+    assert_eq!(model._get_text("E1"), *"#DIV/0!");
+    assert_eq!(model._get_text("E2"), *"#DIV/0!");
     assert_eq!(model._get_text("F1"), *"#DIV/0!");
     assert_eq!(model._get_text("F2"), *"");
+}
+
+#[test]
+fn text_index_with_a_range_range_lookup_is_value_per_element() {
+    // probes/vlookup-error-arg-lifting-range-lookup (excel-graph, T-1491): `"a"` is `#VALUE!` in
+    // each row, unlike an array index element (`#REF!`).
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("C1", "TRUE");
+    model._set("C2", "TRUE");
+    model._set("D1", "=VLOOKUP(1,A1:A2,\"a\",C1:C2)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), *"#VALUE!");
+    assert_eq!(model._get_text("D2"), *"#VALUE!");
 }
