@@ -493,7 +493,11 @@ impl SheetDataReader<'_> {
             }
             let formula_text = formula.text.unwrap_or_default();
             let context = format!("{}!{}", self.sheet_name, cell.reference);
-            check_formula_length(&formula_text, &context)?;
+            check_stored_length(
+                &formula_text,
+                MAX_FORMULA_UNITS,
+                &format!("Formula in {context}"),
+            )?;
             match formula_type {
                 "shared" => {
                     let si = formula
@@ -693,20 +697,28 @@ pub(super) fn read_sheet_data<R: BufRead>(
     })
 }
 
-/// Most characters a stored formula (the `<f>` text, without the leading `=`) may hold. Excel for
-/// the web refuses a workbook with a longer one (createSession 501 `FileCorruptTryRepair`): 8,192
-/// stored characters load and 8,193 do not (docs/excel-semantics/syntax.md "Formulas over 8,192
-/// characters refuse the workbook"; T-1060, T-1091, T-1093).
-const MAX_FORMULA_CHARS: usize = 8_192;
+/// Most UTF-16 code units a stored formula (the `<f>` text, without the leading `=`) may hold.
+/// Excel for the web refuses a workbook with a longer one (createSession 501
+/// `FileCorruptTryRepair`): 8,192 stored units load and 8,193 do not, counting emoji as two units
+/// (docs/excel-semantics/syntax.md "Formulas over 8,192 characters refuse the workbook"; T-1060,
+/// T-1091, T-1093, T-1397).
+pub(super) const MAX_FORMULA_UNITS: usize = 8_192;
 
-/// Refuses the workbook, as Excel does, when the formula stored at `context` is longer than
-/// [`MAX_FORMULA_CHARS`]. Characters are Unicode scalar values; whether Excel counts UTF-16 code
-/// units is not probed, and counting scalars is never stricter.
-fn check_formula_length(formula: &str, context: &str) -> Result<(), XlsxError> {
-    // Counting characters is only needed once the byte length could exceed the limit.
-    if formula.len() > MAX_FORMULA_CHARS && formula.chars().count() > MAX_FORMULA_CHARS {
+/// Most UTF-16 code units a stored defined-name body may hold: one fewer than a cell formula
+/// (T-1386, T-1397; same section of syntax.md).
+pub(super) const MAX_NAME_BODY_UNITS: usize = 8_191;
+
+/// Refuses the workbook, as Excel does, when `text` (stored formula or name body) is longer than
+/// `limit` UTF-16 code units. `subject` names it in the error, e.g. "Formula in Sheet1!A1".
+pub(super) fn check_stored_length(
+    text: &str,
+    limit: usize,
+    subject: &str,
+) -> Result<(), XlsxError> {
+    // A UTF-16 unit count never exceeds the byte length, so counting is only needed above the limit.
+    if text.len() > limit && text.encode_utf16().count() > limit {
         return Err(XlsxError::Workbook(format!(
-            "Formula in {context} is longer than {MAX_FORMULA_CHARS} characters"
+            "{subject} is longer than {limit} UTF-16 code units"
         )));
     }
     Ok(())
