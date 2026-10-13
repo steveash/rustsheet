@@ -3,7 +3,7 @@ id: T-1467
 title: "Regression test for the fuzz FIXED huge-decimals OOM (nightly fuzz run 38344232074)"
 milestone: M2
 lane: functions-text
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ cells for decimals 128, but no test with this input, so it is the finding that n
 
 ## Out of scope
 - Any change to FIXED/DOLLAR semantics.
+
+## Outcome
+Added `fixed_and_dollar_with_huge_decimals_are_value_errors` (text_functions/fn_fixed_huge_decimals.rs) covering the fuzz input and `DOLLAR(0,123456789)`; both are `#VALUE!`. No semantic change; eval delta none.
