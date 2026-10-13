@@ -22,7 +22,7 @@ That looks like a binary `x * 10^-k` path (12346 * 0.01 rounds to 123.4600000000
 when the digit count was wrapped. Probe more wrapped digit counts and values with the
 `excel-probe` skill to find which path and when, before implementing. Cells:
 probes/round-huge-digits-wrap Sheet1!A16, A35, A38 (NumericUlp). Code:
-`effective_digits` / `round_decimal` in functions/math_and_trigonometry/decimal_round.rs.
+`effective_digits` / `round_decimal` in decimal_round.rs.
 
 ## Acceptance criteria
 - [x] The three cells pass, with the rule recorded in numbers.md (VERIFIED by new probe cells).

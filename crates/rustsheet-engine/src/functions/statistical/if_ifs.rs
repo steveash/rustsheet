@@ -3,8 +3,8 @@ use crate::cast::{calc_result_to_array_node, number_text_too_long};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
-use crate::functions::math_and_trigonometry::array_size::check_array_size;
 use crate::functions::util::array_node_to_calc_result;
+use crate::limits::check_array_size;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::{ArrayNode, Node},

@@ -24,7 +24,7 @@ through the facade under `ulimit -v 4000000`: allocation failure and abort. Smal
 the same way: `=D:D>4:4`, `=D:D+4:4`, `=D1:D100000>4:4` and `=SUM(D:D>4:4)`.
 A column of R rows against a row of C columns broadcasts to an R x C array (here 2^20 x 2^14), and
 the arithmetic/comparison paths (`arithmetic.rs` `arithmetic_on_values`, `handle_comparison`)
-build it without `check_array_size` (`functions/math_and_trigonometry/array_size.rs`, the
+build it without `check_array_size` (`limits.rs`, the
 decision-0014 DEVIATION limit of 2^20 cells; docs/excel-semantics/arrays.md "Array results above
 1,048,576 cells"). T-0047 bounded lifting a whole range into one array; this is the two-operand
 broadcast. Check the result size before allocating (from the operand shapes, before

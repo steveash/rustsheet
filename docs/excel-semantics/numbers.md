@@ -52,7 +52,7 @@ and `ROUNDDOWN(…,0)` are `#NUM!`. A result of zero has no sign (`ROUNDDOWN(-0.
 `ROUND(1.23456789012345E+300,-299)` = 1.2E+300.
 Evidence: probes/round-family A1–A53 (except A20); probes/precision-and-rounding A6 (1.01),
 A7 (2.68), A8 (`ROUND(-2.5,0)` = -3). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0106).
-Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs` (T-0106).
+Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/decimal_round.rs` (T-0106).
 ROUNDUP's stage 2 differs in its last ulp: see "ROUNDUP adds the unit in binary" below.
 
 ## TRUNC is ROUNDDOWN
@@ -92,7 +92,7 @@ and -(65536+k), ROUNDUP and ROUNDDOWN); probes/round-huge-digits-wrap A16, A35, 
 Rejected: multiplying the rounded-up digits by `10^-k` (52/80 cells) and binary scaling
 `ceil(x*10^k)` (37/80); the add model matches 80/80.
 Status: VERIFIED
-Implemented in: `round_decimal` in functions/math_and_trigonometry/decimal_round.rs (T-0268)
+Implemented in: `round_decimal` in decimal_round.rs (T-0268)
 Tasks: T-0268
 
 ## ROUND family: huge num_digits wrap
@@ -122,7 +122,7 @@ the exponent), probes/round-huge-digits-negative (91 cells), probes/round-huge-d
 gen-m2/caa981b0753f455c Calc!A270 (`ROUND(1E+15,1E+15)` = 0, so the quotient is `#DIV/0!`) and
 gen-m2/dd99be1f2454159f Calc!A159.
 Status: VERIFIED
-Implemented in: `effective_digits` in crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs (T-0218).
+Implemented in: `effective_digits` in crates/rustsheet-engine/src/decimal_round.rs (T-0218).
 Tasks: T-0218, T-0268
 
 ## MOD is #NUM! for a huge quotient
@@ -812,14 +812,14 @@ Tasks: T-0218
 
 ## GAMMALN / GAMMALN.PRECISE (T-0926)
 
-Excel's cached values in `ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx` are the correctly
-rounded ln|Gamma(x)|: exactly 0 at x = 1 and 2, GAMMALN(4) = ln 6. The Lanczos `statrs::ln_gamma`
-is off by a few ulp, so `special::ln_gamma` uses fdlibm's `lgamma` (`libm` crate; chosen over a
-vendored port to keep one maintained definition). 12 cells (B/C rows 5, 9, 15, 23, 24, 26) still
-differ in the last digit and need oracle probes (T-0004).
-Some of those 12 are not correctly rounded: `GAMMALN(3)` (B5) is 0.6931471805599454, one ulp above
-the correctly rounded ln 2 = 0.6931471805599453, so "correctly rounded" only describes the cells
-T-0926 fixed. Follow-up: T-0973 (see also `statistics.md`).
+Excel's GAMMALN is not correctly rounded in general: the T-1042 sweep finds 91 of the integers 1..171
+differ from the correctly rounded ln((n-1)!) (`GAMMALN(3)` = 0.6931471805599454, one ulp above ln 2;
+`t1042-gamma-int-1-90` Calc!A93; see `statistics.md`, "GAMMA and GAMMALN sweep (T-1042)").
+Observed in `ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx`: exactly 0 at x = 1 and 2,
+GAMMALN(4) = ln 6 (correctly rounded). The Lanczos `statrs::ln_gamma` is off by a few ulp, so
+`special::ln_gamma` uses fdlibm's `lgamma` (`libm` crate; chosen over a vendored port to keep one
+maintained definition), which fixed some cells; 12 cells (B/C rows 5, 9, 15, 23, 24, 26) still differ
+in the last digit (T-0004, T-0973).
 
 ## Excel for the web and desktop Excel differ in the last digits of some functions
 Rule: for ATAN2, IMARGUMENT, IMREAL∘IMSQRT, IMCOS, IMTAN, ERFC/ERFC.PRECISE, BESSELJ/BESSELY,

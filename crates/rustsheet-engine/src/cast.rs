@@ -10,7 +10,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     formatter::format::parse_formatted_number,
-    functions::math_and_trigonometry::array_size::{check_array_size, check_range_size},
+    limits::{check_array_size, check_range_size},
     model::Model,
 };
 

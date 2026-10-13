@@ -16,8 +16,8 @@ use crate::{
 
 use super::{map_elements, Lifted};
 use crate::arithmetic::bcast_idx;
-use crate::functions::math_and_trigonometry::array_size::check_array_size;
 use crate::functions::util::array_node_to_calc_result;
+use crate::limits::check_array_size;
 
 /// Whether IMAGE `source` text is URL-shaped and so reaches the (never performed) fetch (narrower
 /// than `links.rs`, which also accepts ftp and mailto): after leading spaces, tabs and
