@@ -529,9 +529,18 @@ At the edges:
   quasi-coupon date there) is #NUM!. With a first coupon on 30 June of the maturity year and maturity 31 December,
   ODDFPRICE and ODDLPRICE differ from 1900 in every probed year, 2104 included (98.8602 against 95.9686 for ODDFPRICE,
   99.1983 against 99.1825 for ODDLPRICE); in the failing years the values follow the same rule (98.8631 and 99.1990
-  for 2100, 98.8572 and 99.1977 for 2096). Whether the other financial functions also read s + 2·1462 rather than
-  s + 1463 (the two differ only near non-leap century years) is UNVERIFIED; the coupon schedule bound above
-  (m + 2·1462) suggests they do (T-1489). In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
+  for 2100, 98.8572 and 99.1977 for 2096).
+  The other financial readers read s + 2·1462 too, not s + 1463 (T-1489, VERIFIED):
+  COUPPCD, COUPNCD, COUPDAYBS, COUPDAYS, COUPDAYSNC, COUPNUM, PRICE, YIELD, DURATION, YEARFRAC and ACCRINT on bases 0, 1
+  and 4, for settlements 2096-03-01, 2100-02-15, 2100-03-01, 2099-12-31 and 2096-02-15 and maturities 2100-06-30,
+  2104-02-27, 2104-06-30, 2100-12-31 and 2100-02-28 (165 cells), give in a 1904 workbook exactly the values of a 1900
+  workbook with every date moved 1462 days later; COUPPCD and COUPNCD are 2·1462 serials lower. All 165 cells agree
+  bit for bit (probes/date-system-1900-financial-readers-shifted against probes/date-system-1904-financial-readers).
+  The s + 1463 reading differs in 93 of the 165 cells (COUPNCD on basis 1 70308
+  against our 70309, COUPDAYS 181 against 182, YEARFRAC basis 0 4.32778 against 4.33056) and misses 4 more in the last
+  digits. Ours still reads
+  s + 1463 (T-1492). The unshifted 1900 twin (probes/date-system-1900-financial-readers) has its own gaps, COUPDAYS
+  basis 1 across 2100-02-28 and YIELD last digits (T-1493). All probes excel-graph, 2026-10-13. In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
   9999-05-15) are #NUM!, and so is ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity 9999-06-30.
   COUPDAYS on basis 1 in the broken range ignores the settlement: 2958465 for settlements 9999-01-01, 9998-03-01 and
   9996-02-01.
