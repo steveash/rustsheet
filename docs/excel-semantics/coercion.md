@@ -60,7 +60,7 @@ Tasks: T-0219 (huge and near-integer counts), T-0257 (numeric text and booleans)
 Rule: `<`, `>`, `>=` between texts follow Excel's collation: "x" >= "ü" is TRUE, "1.5" > "?b" is TRUE
 (code-point order says otherwise for both: "x" < "ü" and "1" < "?").
 Evidence: gen-m2/2cfe279fe77a000d Calc!A318, 96a0952412cefa6c Calc!A284. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
-Status: VERIFIED (two cells; the full collation table needs probes, T-0220)
+Status: VERIFIED (two cells here; the full order is below, T-1469 probes/text-collation-order)
 CHAR(160) and spaces (T-0244, VERIFIED, probes/text-order-nbsp-space, 333 cells, excel-graph
 2026-10-09): texts compare character by character, with the space first, CHAR(160) right after it,
 then digits and letters: `" 1" < CHAR(160)&"1" < "0" < "1" < "1"&CHAR(160)`, `" " < CHAR(160)`,
@@ -72,16 +72,16 @@ Implemented in: `functions::util::cmp_text_excel`, used by `compare_values` (ope
 lookups) and the text criteria in functions/criteria.rs. Inferred, not probed: SORT and approximate lookups
 place CHAR(160) the same way (they share `compare_values`), and control characters below the space.
 Full order (T-1469, VERIFIED, probes/text-collation-order, 146 strings ranked by
-`SUMPRODUCT(--(range<x))`, excel-graph 2026-10-13). `=` is case-insensitive and accent-sensitive; `<`/`>` order, lowest first:
+`SUMPRODUCT(--(range<x))`, excel-graph 2026-10-13). `=`, `<` and `>` ignore case completely (`"a"<"A"` and `"a">"A"` are both FALSE) but not accents; `<`/`>` order, lowest first:
 1. The empty string, then a lone `'`, `''`, `-`, `--`, then space, `  `, then the punctuation
-   `! " # $ % & ( ) * , . / : ; ? @ [ \ ] ^ _ ` + "`" + ` { | } ~`, then `+ < = >`, then digits `0 1 2 ... 9`, then letters.
+   ``! " # $ % & ( ) * , . / : ; ? @ [ \ ] ^ _ ` { | } ~``, then `+ < = >`, then digits `0 1 2 ... 9`, then letters.
 2. Hyphen and apostrophe are ignored at the first pass and only break ties afterwards (Excel's "word sort"):
    `"ab" < "a'b" < "a-b"`, `"coop" < "co-op"` (but `"co op" < "coop"`: a space is not ignored), `"1" < "'1" < "-1" < "2"`,
    `"a" < "a'" < "a-" < "'a" < "-a" < "aa"`. `"-1" > "0"` is TRUE.
-3. Letters compare case-insensitively first (`"a" = "A"`, `"ab" = "AB"`); accents are a later tiebreak, not a different letter:
+3. Case is ignored at every level (`"a" = "A"`, `"ab" = "AB"`); accents are a later tiebreak, not a different letter:
    `"a" < "á" < "à"="À" < "â" < "ä" < "å" < "aa"`; `"é"="É"` sits after `"E"` and before `"F"`; `"résumé" > "resume"`.
 4. Expansions and multi-letter folds: `"æ"="ae"` and `"ß"="ss"` are equal (`=` TRUE); `"ø" > "o"` but `"ø"` sorts after `"ö"` and before `"P"`
-   (it ranks as its own letter, not as an accent of `o`); `"ÿ"` sorts after `"Y"` and before `"Z"`.
+   (observed position only; whether it is a separate letter or a heavier accent of `o` is not probed); `"ÿ"` sorts after `"Y"` and before `"Z"`.
 Ranks for every string are in the oracle sidecar (Calc!A, ties in Calc!B). Fitting the key is T-0220's.
 Tasks: T-0220, T-0244, T-1469
 
