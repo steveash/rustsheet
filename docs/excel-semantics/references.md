@@ -1141,3 +1141,11 @@ Tasks: T-1369
 ### LET / LAMBDA binding of `@INDEX(..)` (T-1503)
 
 `@INDEX(B1:B3,2)` bound by LET or passed to a LAMBDA keeps the reference, like the unprefixed INDEX: ISREF TRUE, ROW 2, value 20, `COUNT(x)` 1, and calling the name is `#REF!` (probes/let-bind-implicit-index H1:H9, excel-graph 2026-10-13).
+Evidence strength: excel-graph oracle, 9 cells. Status: VERIFIED (web).
+Tasks: T-1503
+
+### ISREF of a written `@INDEX(..)` (T-1503, known gap)
+
+`=ISREF(@INDEX(B1:B3,2))` is TRUE (probes/let-bind-implicit-index H10, excel-graph 2026-10-13). Ours: FALSE (`is_reference` has no `ImplicitIntersection` arm).
+Evidence strength: excel-graph oracle, 1 cell. Status: VERIFIED (web).
+Tasks: T-1506

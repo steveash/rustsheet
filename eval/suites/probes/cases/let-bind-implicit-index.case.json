@@ -25,7 +25,8 @@
         "H6": "=LAMBDA(x,x)(@INDEX(B1:B3,2))",
         "H7": "=LET(x,INDEX(B1:B3,2),ISREF(x))",
         "H8": "=LET(x,@INDEX(B1:B3,2),x(2))",
-        "H9": "=LET(x,@INDEX(B1:B3,2),COUNT(x))"
+        "H9": "=LET(x,@INDEX(B1:B3,2),COUNT(x))",
+        "H10": "=ISREF(@INDEX(B1:B3,2))"
       }
     }
   ],
@@ -39,6 +40,7 @@
     "Sheet1!H6",
     "Sheet1!H7",
     "Sheet1!H8",
-    "Sheet1!H9"
+    "Sheet1!H9",
+    "Sheet1!H10"
   ]
 }

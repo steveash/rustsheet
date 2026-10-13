@@ -14,7 +14,7 @@ depends_on: []
 `ISREF(@INDEX(B1:B3,2))` is TRUE, as in Excel.
 
 ## Context
-Excel (excel-graph, 2026-10-13) gives TRUE for `=ISREF(@INDEX(B1:B3,2))`; the engine gives FALSE. `is_reference` in functions/information/mod.rs has no `ImplicitIntersection` arm for INDEX. Found by T-1503 (the LET/LAMBDA binding already keeps the reference, probes/let-bind-implicit-index). Add the ISREF cell to that probe case (or a new one), probe `@XLOOKUP`/`@TAKE` forms too.
+Excel (excel-graph, 2026-10-13) gives TRUE for `=ISREF(@INDEX(B1:B3,2))`; the engine gives FALSE. `is_reference` in functions/information/mod.rs has no `ImplicitIntersection` arm for INDEX. Evidence: probes/let-bind-implicit-index H10, docs/excel-semantics/references.md. Found by T-1503 (the LET/LAMBDA binding already keeps the reference, probes/let-bind-implicit-index). Add the ISREF cell to that probe case (or a new one), probe `@XLOOKUP`/`@TAKE` forms too.
 
 ## Acceptance criteria
 - [ ] A probe case covers ISREF of `@INDEX`; the engine matches it.
