@@ -215,6 +215,7 @@ C	probes/ifs-long-criterion-precedence.case.json	7
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/ifs-switch-array-values.case.json	41
 C	probes/ifs-switch-lift-edges.case.json	26
+C	probes/index-area-num-snap.case.json	11
 C	probes/index-array-indices.case.json	60
 C	probes/index-lifted-edge-cases.case.json	61
 C	probes/index-single-index.case.json	6
@@ -462,6 +463,7 @@ C	probes/text-format-length-limit-j.case.json	44
 C	probes/text-format-length-limit.case.json	39
 C	probes/text-format-text-limit.case.json	25
 C	probes/text-general-exponent-boundary.case.json	10
+C	probes/text-general-ties-below-one.case.json	19
 C	probes/text-general-ties-wide-fixed.case.json	24
 C	probes/text-modes-bahttext.case.json	2
 C	probes/text-modes-bytes.case.json	8
