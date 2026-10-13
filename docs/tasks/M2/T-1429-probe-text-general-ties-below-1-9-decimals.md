@@ -3,7 +3,7 @@ id: T-1429
 title: "Probe TEXT General ties below 1 (9 decimals) now rounded half away on the 15-digit decimal (follow-up of T-1422)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
