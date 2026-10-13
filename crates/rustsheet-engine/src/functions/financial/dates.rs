@@ -175,6 +175,34 @@ pub(super) fn days_30_360_us(d1: NaiveDate, d2: NaiveDate) -> f64 {
     (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
 }
 
+// Days d1→d2 via US 30/360 with the `ModifyBothDates` rule — the "PSA hack"
+// the odd-last-coupon code uses for basis 0.
+pub(super) fn days_30_360_us_both(d1: NaiveDate, d2: NaiveDate) -> f64 {
+    let y1 = d1.year();
+    let m1 = d1.month() as i32;
+    let mut day1 = d1.day() as i32;
+    let y2 = d2.year();
+    let m2 = d2.month() as i32;
+    let mut day2 = d2.day() as i32;
+
+    let start_is_feb_last = m1 == 2 && d1.day() == last_day_of_feb(y1);
+    let end_is_feb_last = m2 == 2 && d2.day() == last_day_of_feb(y2);
+
+    if end_is_feb_last {
+        day2 = 30;
+    }
+    if day2 == 31 {
+        day2 = 30;
+    }
+    if day1 == 31 {
+        day1 = 30;
+    }
+    if start_is_feb_last {
+        day1 = 30;
+    }
+    (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
+}
+
 // Days d1→d2 via the EU 30/360 convention (basis 4).
 pub(super) fn days_30_360_eu(d1: NaiveDate, d2: NaiveDate) -> f64 {
     let y1 = d1.year();
