@@ -48,7 +48,6 @@ import io
 import json
 import math
 import re
-import zipfile
 from collections.abc import Callable, Iterator
 from datetime import datetime
 from pathlib import Path
@@ -56,6 +55,8 @@ from typing import Any
 from xml.sax.saxutils import escape, unescape
 
 import xlsxwriter
+
+from rustsheet_tools.oracle.package import PackageError, patch_parts, read_parts
 
 # XlsxWriter stamps docProps/core.xml with the wall clock; a fixed instant keeps identical specs
 # byte-identical so `input_sha256` (sidecars, eval/.cache/oracle) is stable across runs (T-0015).
@@ -422,7 +423,7 @@ def _filter_tables(xlsx: bytes, filters: list[tuple[str, str]]) -> bytes:
 
         return apply
 
-    return _patch_parts(
+    return patch_parts(
         xlsx, [(f"xl/tables/table{n}.xml", patch(name, el)) for n, (name, el) in enumerate(filters, 1) if el]
     )
 
@@ -433,17 +434,17 @@ def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
     Raises ValueError when the package or the property is malformed (xlsx inputs are untrusted).
     """
     try:
-        with zipfile.ZipFile(io.BytesIO(xlsx)) as z:
-            if "docProps/custom.xml" not in z.namelist():
-                return []
-            custom = z.read("docProps/custom.xml").decode("utf-8")
+        parts = read_parts(xlsx)
+        if "docProps/custom.xml" not in parts:
+            return []
+        custom = parts["docProps/custom.xml"].decode("utf-8")
         # A regex, not an XML parser: the part is untrusted, and only XlsxWriter's own layout matters.
         found = sorted(
             (int(n), json.loads(unescape(v, {"&quot;": '"', "&apos;": "'"})))
             for n, v in _ENTERED_XML.findall(custom)
         )
         return [(str(s), str(a1), str(t)) for _, (s, a1, t) in found]
-    except (zipfile.BadZipFile, UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as e:
+    except (PackageError, UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as e:
         msg = f"malformed {ENTERED_PROPERTY} property: {e}"
         raise ValueError(msg) from e
 
@@ -451,28 +452,7 @@ def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
 def _patch_sheets(xlsx: bytes, patches: list[tuple[int, Callable[[str], str]]]) -> bytes:
     """Rewrites worksheet XML parts: each `(sheet number, patch)` maps the sheet's text to its new text and
     raises ValueError when its cell is not there (XlsxWriter has no API for what the patches write)."""
-    return _patch_parts(xlsx, [(f"xl/worksheets/sheet{number}.xml", patch) for number, patch in patches])
-
-
-def _patch_parts(xlsx: bytes, patches: list[tuple[str, Callable[[str], str]]]) -> bytes:
-    """Rewrites package parts: each `(part name, patch)` maps the part's text to its new text."""
-    by_part: dict[str, list[Callable[[str], str]]] = {}
-    for part, patch in patches:
-        by_part.setdefault(part, []).append(patch)
-    out = io.BytesIO()
-    with zipfile.ZipFile(io.BytesIO(xlsx)) as src, zipfile.ZipFile(out, "w") as dst:
-        for info in src.infolist():
-            data = src.read(info.filename)
-            if info.filename in by_part:
-                text = data.decode()
-                for patch in by_part[info.filename]:
-                    text = patch(text)
-                data = text.encode()
-            dst.writestr(info, data)
-        if missing := by_part.keys() - set(src.namelist()):
-            msg = f"parts not in the package: {sorted(missing)}"
-            raise ValueError(msg)
-    return out.getvalue()
+    return patch_parts(xlsx, [(f"xl/worksheets/sheet{number}.xml", patch) for number, patch in patches])
 
 
 def _store_errors(xlsx: bytes, stored: list[tuple[int, str, str]]) -> bytes:

@@ -47,6 +47,33 @@ def write_parts(parts: dict[str, bytes]) -> bytes:
     return out.getvalue()
 
 
+def patch_parts(xlsx: bytes, patches: list[tuple[str, Callable[[str], str]]]) -> bytes:
+    """`xlsx` with each `(part name, patch)` applied to that part's text, in order.
+
+    Keeps every entry's `ZipInfo` (timestamp, compression), so unpatched parts and the archive
+    layout are unchanged. A part that is not in the package is an error.
+    """
+    by_part: dict[str, list[Callable[[str], str]]] = {}
+    for part, patch in patches:
+        by_part.setdefault(part, []).append(patch)
+    out = io.BytesIO()
+    try:
+        with zipfile.ZipFile(io.BytesIO(xlsx)) as src, zipfile.ZipFile(out, "w") as dst:
+            for info in src.infolist():
+                data = src.read(info.filename)
+                if info.filename in by_part:
+                    text = data.decode()
+                    for patch in by_part[info.filename]:
+                        text = patch(text)
+                    data = text.encode()
+                dst.writestr(info, data)
+            if missing := by_part.keys() - set(src.namelist()):
+                raise PackageError(f"parts not in the package: {sorted(missing)}")
+    except zipfile.BadZipFile as e:
+        raise PackageError(f"unreadable xlsx ({e})") from e
+    return out.getvalue()
+
+
 def _refuse_dtd(*_: object) -> None:
     raise PackageError("it declares a DTD")
 
