@@ -3,7 +3,7 @@ id: T-1248
 title: "Probe DBCS on non-ASCII text and a number cell, and PHONETIC of an error or empty cell"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
