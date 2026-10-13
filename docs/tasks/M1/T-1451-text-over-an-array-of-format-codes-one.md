@@ -3,7 +3,7 @@ id: T-1451
 title: "TEXT over an array of format codes: one result per format, error elements keep theirs (follow-up of T-1434)"
 milestone: M1
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ TEXT accepts an array (or range) of format codes and returns one result per form
 
 ## Out of scope
 - Value arrays (already handled).
+
+## Outcome
+TEXT now broadcasts over an array/range of format codes via `broadcast_text`; each format gets its own complexity check and error elements keep theirs. probes/text-format-length-limit-f A54:B54 pass (probes known failures 2771 -> 2769). Unit test in fn_text_arrays.rs.
