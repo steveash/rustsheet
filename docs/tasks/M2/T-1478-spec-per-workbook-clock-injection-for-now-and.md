@@ -3,7 +3,7 @@ id: T-1478
 title: "Spec: per-workbook clock injection for NOW and TODAY in the public API and Python binding"
 milestone: M2
 lane: api
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
