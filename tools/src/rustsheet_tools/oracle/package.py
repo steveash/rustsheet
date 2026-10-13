@@ -51,7 +51,8 @@ def patch_parts(xlsx: bytes, patches: list[tuple[str, Callable[[str], str]]]) ->
     """`xlsx` with each `(part name, patch)` applied to that part's text, in order.
 
     Keeps every entry's `ZipInfo` (timestamp, compression), so unpatched parts and the archive
-    layout are unchanged. A part that is not in the package is an error.
+    layout are unchanged (unlike `write_parts`, which restamps every entry, so
+    callers that need byte-stable output use this). A part that is not in the package is an error.
     """
     by_part: dict[str, list[Callable[[str], str]]] = {}
     for part, patch in patches:

@@ -56,7 +56,7 @@ from xml.sax.saxutils import escape, unescape
 
 import xlsxwriter
 
-from rustsheet_tools.oracle.package import PackageError, patch_parts, read_parts
+from rustsheet_tools.oracle.package import patch_parts, read_parts
 
 # XlsxWriter stamps docProps/core.xml with the wall clock; a fixed instant keeps identical specs
 # byte-identical so `input_sha256` (sidecars, eval/.cache/oracle) is stable across runs (T-0015).
@@ -444,7 +444,7 @@ def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
             for n, v in _ENTERED_XML.findall(custom)
         )
         return [(str(s), str(a1), str(t)) for _, (s, a1, t) in found]
-    except (PackageError, UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as e:
+    except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as e:
         msg = f"malformed {ENTERED_PROPERTY} property: {e}"
         raise ValueError(msg) from e
 
