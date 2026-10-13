@@ -3,7 +3,7 @@ id: T-0290
 title: "GEOMEAN over/underflow root: one-ulp misses (geomean-pow2-count L4, M1, M4 and the product-order set)"
 milestone: M2
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -24,8 +24,14 @@ instead of after, and try the in-range findings of T-1123 (numbers.md "GEOMEAN i
 Code: crates/rustsheet-engine/src/functions/statistical/geomean.rs.
 
 ## Acceptance criteria
-- [ ] A model that fixes some of the misses with no regression, or a numbers.md note of the models rejected.
-- [ ] `make check` green; reviewers approve.
+- [x] A model that fixes some of the misses with no regression, or a numbers.md note of the models rejected.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 The in-range root (T-0288).
+
+## Outcome
+Rejected-model note, no code change. `exp((ln(M) + r*ln2)/n) * 2^q` matches all three target cells
+(geomean-pow2-count L4, M1, M4). Over the whole eval it fixes 16 known failures but regresses 9
+cells the current model passes, so it was not adopted. numbers.md "GEOMEAN root rounding" lists
+both sets. Eval: no change. A per-cell selector between the two models is the open lead, under T-1108's root-model question.

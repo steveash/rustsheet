@@ -620,8 +620,21 @@ Z1, Z5, Z11) and `10^(LOG10(X)/n)` 11. No tried model reproduces all 17.
 The "about 0.38 ulp" agreement bound does not hold: of 8 new sets whose glibc root lies 0.32 to 0.40
 ulp from the exact root, Pin!C60 (0.357 ulp) and Pin!F60 (0.397) miss by one ulp and the other six
 match.
-Status: VERIFIED (the misses and the probe values); no reproducible root model (T-1108).
-Tasks: T-1099, T-1108, T-0221
+Log-domain root with the remainder added in logs (T-0290, rejected): `exp((ln(M) + r*ln2)/n) * 2^q`,
+the in-range path's `exp(ln/n)` with `r` added to `ln(M)` instead of scaling M by `2^r`. Run over every
+probe, it fixes 16 known failures and regresses 9 that the current model passes. The experiment
+replaced both of the current model's branches: `(M*2^r)^(1/n)`, and `M^(1/n) * 2^(r/n)` above r = 1000.
+- Fixes: geomean-pow2-count L4, M1, M4 (the wrapped n-copies cells); geomean-product-order Z6, Z8,
+  Z10, Z13, Z14; geomean-overflow-many-values F4; geomean-stored-3ulps-low R1;
+  geomean-exponent-sum C2; exponent-sum-2 C28; overflow-count C1; overflow-cut C1;
+  overflow-cut-2 C9; overflow-cut-3 C13.
+- Regressions: geomean-product-order Z1, Z5, Z17; geomean-overflow-many-values F1, F3;
+  geomean-stored-3ulps-low R2; exponent-sum C9; overflow-cut C26; overflow-cut-2 C8.
+Neither model reproduces all cells. Choosing between them per cell would need a selector backed by
+evidence, which was not searched for (T-0290 was time-boxed). As with `EXP(LN(X)/n)` in the
+separating probe, Excel's root looks like a power rounded differently from both.
+Status: VERIFIED (the misses and the probe values); no reproducible root model (T-1108, T-0290).
+Tasks: T-1099, T-1108, T-0221, T-0290
 
 ## GEOMEAN is #NUM! when the product of significands overflows
 Rule: Excel splits every value into a binary significand M in [1, 2) and a power of two, multiplies
