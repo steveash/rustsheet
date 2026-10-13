@@ -38,7 +38,7 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
   (`East`, `east` → `East`, G!A1). Numbers compare exactly: 0.1+0.2 and 0.3 are two groups (0.3 first), 1E-17 is not 0, 1 and 1+1E-15 are two groups, but 0, -0 and a computed 0 are one group. The blank key is a separate group from numeric 0 (both show 0, the blank one last, also when descending). Equal errors form one group, sorted after the numbers and before Total (`1/{1;0;2;0}` keys: 0.5, 1, #DIV/0!). Evidence: probes/groupby-pivotby-followup G!A761-A821, G!A741, G!A841 (T-1328).
 - Groups are sorted ascending by key, with no option to keep source order. Mixed key types sort
   numbers < text < FALSE < TRUE < blank (G!A193). That is `sort_key_cmp` in
-  `functions/spill_functions.rs`. Errors as keys are unprobed.
+  `functions/spill_functions.rs`. Errors as keys: equal errors share one group, sorted after the numbers (see above).
 - A blank key is its own group, shown as the number 0, and it sorts last even when sorting
   descending (G!A1, G!A145).
 - Within a group, function inputs keep source order: ARRAYTOTEXT gives "Apple, Pear, Apple"
@@ -224,7 +224,7 @@ Ordered; each is S/M. The grouping core lands with GROUPBY; PIVOTBY reuses it.
 5. PIVOTBY (opus, M): the grid on the shared core, totals and subtotals on both axes, sort
    orders, filter, headers, several values and functions.
 6. PIVOTBY relative_to (opus, S): the reference sets 0-4 for two-argument functions.
-7. Probe follow-up (sonnet, S; research): the undecoded cells (G!AB193, G!J217),
+7. DONE (T-1328) Probe follow-up (sonnet, S; research): the undecoded cells (G!AB193, G!J217),
    field_relationship 1 with subtotals (G!J169), the two-values PIVOTBY Totals (P!Y97), the
    multi-key sort array, the header auto-detect rule, errors as keys, and whether all-FALSE
    filters are `#VALUE!` or `#CALC!`. A cell excel-graph cannot answer goes to M14 Phase 4
