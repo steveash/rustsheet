@@ -107,7 +107,7 @@ HLOOKUP's `E12-A6` in f7e6d351c8538ef5 Calc!A296) or index (`E$2/0.1` in 942bdad
 with a lifting range_lookup spills, giving `#SPILL!` on a collision (T-1468). The element values of
 such a spill were never seen (both cells collide). The engine gives the lookup_value error per
 element; for an error index it gives that error, but Excel may give `#REF!` as for an array index
-whose first element is an error. A scalar error with an *array* range_lookup lifts the same way.
+whose first element is an error. The engine lifts a scalar error with an *array* range_lookup the same way (inference, unprobed: T-1491).
 A multi-cell range *index* stays implicitly intersected (T-1426). Unprobed: the element values of an
 error index with a lifting range_lookup, which error wins when a
 lookup_value element and a range_lookup element are both errors (the engine gives the lookup error),
