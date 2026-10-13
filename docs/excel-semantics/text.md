@@ -262,3 +262,10 @@ Evidence: probes/text-search-casefold-length A1-A24 (oracle: excel-graph, 2026-1
 Status: VERIFIED (excel-graph)
 Implemented in: `fold_case` (functions/text/position.rs).
 Tasks: T-1296
+## TEXT over an array of format codes
+Rule: TEXT lifts over its format argument like over its value: a range or array of formats gives one result per format (value and formats broadcast together). Each format gets its own complexity check (a too-complex format is `#VALUE!` in its element only) and an error element of the format array stays that error.
+`TEXT(1,{"0",#N/A})` is `{"1",#N/A}`.
+Evidence: probes/text-format-length-limit-f A54:B54 (T-1434).
+Status: VERIFIED (probes)
+Implemented in: `fn_text` (functions/text/common.rs); the format argument is evaluated once (TEXT nested in a format must not be exponential).
+Tasks: T-1451

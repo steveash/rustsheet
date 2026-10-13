@@ -384,3 +384,15 @@ fn text_over_an_array_of_formats() {
     assert_eq!(row(&model, 1, 2), ["1", "#N/A"]);
     assert_eq!(row(&model, 2, 2), ["1.0", "02"]);
 }
+
+#[test]
+fn text_nested_in_the_format_is_not_reevaluated() {
+    let mut model = new_empty_model();
+    let mut f = String::from("\"0\"");
+    for _ in 0..40 {
+        f = format!("TEXT(0,{f})");
+    }
+    model._set("A1", &format!("=TEXT(1,{f})"));
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1");
+}
