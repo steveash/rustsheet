@@ -3,7 +3,7 @@ id: T-1442
 title: "MAP, SCAN and REDUCE hand range cells to the LAMBDA as references; BYCOL(range,COUNTA) is #VALUE!"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
