@@ -510,13 +510,24 @@ At the edges:
   in 1904 for maturity years 2096, 2100, 2200, 8100, 8996, 9000, 9100, 9300, 9700, 9800, 9896 and 9900, and give
   the 1900 values for 2104, 2400, 8000, 9004, 9200, 9600 and 9904. In the failing years ODDL* (last interest
   15 February, settlement 1 March, maturity 30 June) differ from 1900 in the last digits: 99.67182 for 2100, 2200,
-  8100, 9000 and the other century years, and 99.67128 for 2096, 8996 and 9896, against 99.67155 in 1900. So a date
-  within four years before a 1 March of a non-leap century year (2100, 2200, 2300, 2500, ...) breaks, which fits
-  moving a 1904 date four calendar years forward rather than 1462 days (UNVERIFIED as the mechanism). With a first
-  coupon on 30 June of the maturity year and maturity 31 December, ODDFPRICE and ODDLPRICE differ from 1900 in every
-  probed year, 2104 included (98.8602 against 95.9686 for ODDFPRICE, 99.1983 against 99.1825 for ODDLPRICE). That is
-  the general 1904 change noted above, which the engine already matches. In the failing years these cells take other
-  values again (98.8631 and 99.1990 for 2100, 98.8572 and 99.1977 for 2096); the engine does not follow that yet (T-1457). In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
+  8100, 9000 and the other century years, and 99.67128 for 2096, 8996 and 9896, against 99.67155 in 1900.
+  Rule (T-1457, fits every probed odd-period cell): the four odd-period functions read a 1904 serial s as the 1900
+  serial s + 2·1462, the date 1462 days later, and count days in that calendar. Across four years with one 29 February
+  that is the date four years and a day later, so the day counts are those of the one-day-late reading above. Within
+  four years before 1 March of a non-leap century year it is the date four years later with no extra day, so dates on
+  either side of that 1 March move apart by a day: 2096-02-15 reads as 2100-02-16 but 2096-03-01 as 2100-03-03,
+  which gives 99.67128, and 2100-02-15 reads as 2104-02-17 but 2100-03-01 as 2104-03-02, which gives 99.67182.
+  The later calendar's 29 February counts too: last interest 2100-02-26, 2100-02-27 and 2100-02-28 read as
+  2104-02-28, 2104-02-29 (the last day of February) and 2104-03-01, giving ODDLPRICE 99.70905, 99.70791 and 99.70977
+  (probes/date-system-1904-odd-feb29). The ODDF* #NUM! cells are dates moved off the first coupon's schedule
+  (financial.md "ODDFPRICE and ODDFYIELD need the first coupon on the maturity's schedule"): 2099-06-30 reads as
+  2103-07-02 but 2100-06-30 as 2104-07-01. A date read past 9999-12-31 (1904 serials from 9995-12-31 on, or a
+  quasi-coupon date there) is #NUM!. With a first coupon on 30 June of the maturity year and maturity 31 December,
+  ODDFPRICE and ODDLPRICE differ from 1900 in every probed year, 2104 included (98.8602 against 95.9686 for ODDFPRICE,
+  99.1983 against 99.1825 for ODDLPRICE); in the failing years the values follow the same rule (98.8631 and 99.1990
+  for 2100, 98.8572 and 99.1977 for 2096). Whether the other financial functions also read s + 2·1462 rather than
+  s + 1463 (the two differ only near non-leap century years) is UNVERIFIED; the coupon schedule bound above
+  (m + 2·1462) suggests they do (T-1489). In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
   9999-05-15) are #NUM!, and so is ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity 9999-06-30.
   COUPDAYS on basis 1 in the broken range ignores the settlement: 2958465 for settlements 9999-01-01, 9998-03-01 and
   9996-02-01.

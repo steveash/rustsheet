@@ -86,24 +86,21 @@ impl DateSystem {
     }
 
     /// The 1900 serial ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD read for this system's date
-    /// argument `serial`; `None` where they are #NUM!. In a 1904 workbook they move the date 1462
-    /// days forward and then four calendar years back. Across four years with one 29 February that
-    /// is the one-day-late reading of `financial_1900_serial`, but a date within four years before
-    /// 1 March of a non-leap century year (2100, 2200, ..., 9900) moves one day less, and a date
-    /// that moves past 9999-12-31 is #NUM! (probes/date-system-1904-odd-years, T-1457).
-    /// A forward move onto a 29 February whose year four back has none lands on 28 February
-    /// (`shift_months`; UNVERIFIED). A negative 1904 serial stays negative, as in
+    /// argument `serial`; `None` where they are #NUM!. In a 1904 workbook they read the 1904 serial
+    /// as a 1900 serial twice over, `serial + 2 * 1462`: the date 1462 days later, so they count
+    /// days in the calendar four years on. Across four years with one 29 February that is the date
+    /// four years and one day later, which gives the one-day-late values of `financial_1900_serial`;
+    /// within four years before 1 March of a non-leap century year (2100, 2200, ..., 9900) it is one
+    /// day less, a 29 February of the later year counts as the last day of February, and a date
+    /// that moves past 9999-12-31 is #NUM! (probes/date-system-1904-odd-years,
+    /// date-system-1904-odd-feb29; T-1457). A negative 1904 serial stays negative, as in
     /// `financial_1900_serial`. `serial` is untrusted, so the arithmetic is checked.
     pub(crate) fn odd_period_1900_serial(self, serial: f64) -> Option<i64> {
         let day = serial.floor() as i64;
         match self {
-            Self::Excel1904 if day >= 0 => {
-                let moved = day
-                    .checked_add(EPOCH_1904_IN_1900_SERIALS)?
-                    .checked_add(EPOCH_1904_IN_1900_SERIALS)?;
-                let date = shift_months(from_excel_date(moved).ok()?, -48)?;
-                real_date_to_serial(date).map(i64::from)
-            }
+            Self::Excel1904 if day >= 0 => day
+                .checked_add(2 * EPOCH_1904_IN_1900_SERIALS)
+                .filter(|moved| *moved <= i64::from(MAXIMUM_DATE_SERIAL_NUMBER)),
             Self::Excel1900 | Self::Excel1904 => Some(day),
         }
     }

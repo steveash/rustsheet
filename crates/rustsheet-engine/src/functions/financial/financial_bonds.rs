@@ -1,6 +1,6 @@
 use chrono::{Datelike, NaiveDate};
 
-use crate::formatter::dates::shift_months;
+use crate::formatter::dates::{real_date_to_serial, shift_months};
 
 use super::dates::{
     actual_days, basis_days, broken_schedule_days, broken_schedule_error, days_30_360_us,
@@ -83,6 +83,30 @@ fn prev_coupon_date(settlement: i64, maturity: i64, frequency: u32) -> Result<i6
 // Earliest coupon date strictly after settlement.
 fn next_coupon_date(settlement: i64, maturity: i64, frequency: u32) -> Result<i64, String> {
     Ok(find_pcd_ncd(settlement, maturity, frequency)?.1)
+}
+
+// #NUM! unless ODDFPRICE and ODDFYIELD take this first coupon. It must be on the maturity's
+// coupon schedule, and the issue must not be the quasi-coupon date one period before it (a first
+// period that is not odd), while two periods before is fine
+// (probes/date-system-1900-oddf-schedule, date-system-1900-oddf-issue-boundary; T-1457).
+fn check_odd_first_coupon(
+    issue: i64,
+    first_coupon: i64,
+    maturity: i64,
+    frequency: u32,
+    cell: CellReferenceIndex,
+) -> Result<(), CalcResult> {
+    let previous =
+        |date: i64| prev_coupon_date(date, maturity, frequency).map_err(|e| map_date_err(e, cell));
+    if previous(first_coupon)? != first_coupon || previous(first_coupon.saturating_sub(1))? == issue
+    {
+        return Err(CalcResult::new_error(
+            Error::NUM,
+            cell,
+            "first coupon off the maturity's schedule".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 // Number of coupon payments strictly after settlement up to and including maturity.
@@ -497,6 +521,12 @@ fn odd_l_func(
     let mut dscnl = 0.0_f64;
     for index in 1..=nc {
         let late_coupon = change_month(early_coupon, num_months, false)?;
+        // A quasi-coupon date past 9999-12-31 is #NUM!, even the one after the maturity
+        // (`ODDLPRICE(DATE(9999,8,1),DATE(9999,12,31),DATE(9999,5,15),...)`,
+        // probes/date-system-1900-odd-accrint-bound D7-D10; T-1457).
+        if real_date_to_serial(late_coupon).is_none() {
+            return Err("quasi-coupon date past the last date".to_string());
+        }
         let nl = days_between_not_neg_with_hack(early_coupon, late_coupon, basis);
         let dci = if index < nc {
             nl
@@ -929,8 +959,11 @@ impl Model {
         if let Err(e) = validate_basis(basis, cell) {
             return e;
         }
-        if issue >= first_coupon || first_coupon > maturity || settlement >= maturity {
+        if issue >= first_coupon || first_coupon >= maturity || settlement >= maturity {
             return CalcResult::new_error(Error::NUM, cell, "invalid date ordering".to_string());
+        }
+        if let Err(e) = check_odd_first_coupon(issue, first_coupon, maturity, frequency, cell) {
+            return e;
         }
         if rate < 0.0 || yld < 0.0 || redemption <= 0.0 {
             return CalcResult::new_error(
@@ -1000,8 +1033,11 @@ impl Model {
         if let Err(e) = validate_basis(basis, cell) {
             return e;
         }
-        if issue >= first_coupon || first_coupon > maturity || settlement >= maturity {
+        if issue >= first_coupon || first_coupon >= maturity || settlement >= maturity {
             return CalcResult::new_error(Error::NUM, cell, "invalid date ordering".to_string());
+        }
+        if let Err(e) = check_odd_first_coupon(issue, first_coupon, maturity, frequency, cell) {
+            return e;
         }
         if rate < 0.0 || pr <= 0.0 || redemption <= 0.0 {
             return CalcResult::new_error(

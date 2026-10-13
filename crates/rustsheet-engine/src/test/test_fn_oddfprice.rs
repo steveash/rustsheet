@@ -100,3 +100,40 @@ fn test_oddfprice_basis1_long_first_period_unchanged() {
     model.evaluate();
     assert_eq!(model._get_text("C3"), "131.5569687");
 }
+
+// The first coupon must be on the maturity's schedule and before the maturity,
+// and the issue may not be the quasi-coupon date one period before it; two periods before is fine
+// (probes/date-system-1900-oddf-schedule, date-system-1900-oddf-issue-boundary; T-1457).
+#[test]
+fn oddfprice_first_coupon_must_fit_the_schedule() {
+    let mut model = new_empty_model();
+    let price = "0.05,0.06,100,2,0)";
+    model._set(
+        "A1",
+        &format!("=ODDFPRICE(DATE(2024,2,1),DATE(2025,7,2),DATE(2024,1,1),DATE(2024,7,1),{price}"),
+    );
+    model._set(
+        "A2",
+        &format!("=ODDFPRICE(DATE(2024,2,1),DATE(2024,7,1),DATE(2024,1,1),DATE(2024,7,1),{price}"),
+    );
+    model._set(
+        "A3",
+        &format!("=ODDFPRICE(DATE(2024,2,1),DATE(2025,7,1),DATE(2024,1,1),DATE(2024,7,1),{price}"),
+    );
+    model._set(
+        "A4",
+        &format!("=ODDFPRICE(DATE(2024,2,1),DATE(2025,7,1),DATE(2023,7,1),DATE(2024,7,1),{price}"),
+    );
+    model._set(
+        "A5",
+        &format!(
+            "=ODDFPRICE(DATE(2024,2,1),DATE(2025,2,28),DATE(2024,1,1),DATE(2024,8,31),{price}"
+        ),
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+    assert_eq!(model._get_text("A3"), "#NUM!");
+    assert_eq!(model._get_text("A4"), "98.59507655");
+    assert_eq!(model._get_text("A5"), "98.93442798");
+}
