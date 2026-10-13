@@ -3,7 +3,7 @@ id: T-1492
 title: "Read a 1904 serial as the 1900 serial + 2*1462 in every financial date reader"
 milestone: M1
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
