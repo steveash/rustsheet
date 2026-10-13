@@ -74,7 +74,7 @@ impl Model {
             // (`COUNTA(…!A1)` is 0, `COUNTA(…!A1:B2,1)` 1; probes/external-ref-no-link-shapes
             // A16, external-ref-no-link-index A8, A10, A12, A23, A30). An error instead of a
             // reference is a value, counted.
-            if let Some(areas) = self.external_reference(arg, cell) {
+            if let Some(areas) = self.uncached_external_reference(arg, cell) {
                 if areas.is_err() {
                     result += 1.0;
                 }

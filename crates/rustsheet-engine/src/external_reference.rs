@@ -205,6 +205,21 @@ impl Model {
         }
     }
 
+    /// [`Model::external_reference`] for a value reader (the aggregates, COUNTA): a one-cell
+    /// `[n]Sheet!A1` the externalLink cache holds is `None`, a value read from the cache as
+    /// evaluation reads it (`SUM([1]Defines!$B$2)` is the cached 142; T-1382). It stays a
+    /// reference for ISREF and the shape readers.
+    pub(crate) fn uncached_external_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<ExternalAreas> {
+        if self.external_reference_value(node, cell).is_some() {
+            return None;
+        }
+        self.external_reference(node, cell)
+    }
+
     /// `left right` when either operand is a reference into another workbook
     /// ([`Model::external_reference`]): the cells both share, pairwise as for areas of this
     /// workbook (`ROWS(…!A1:B3 …!A2:B5)` is 2, disjoint areas `#NULL!`;
