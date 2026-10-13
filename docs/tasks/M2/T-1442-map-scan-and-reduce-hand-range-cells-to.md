@@ -23,7 +23,7 @@ see `by_slices_source` in bycol_byrow.rs for the BYROW/BYCOL version).
 
 ## Acceptance criteria
 - [x] probes/lambda-helper-range-slices E9:E11, E23:E25 and E27 pass; `make eval-baseline` records the fix.
-- [x] E32 `BYCOL(A1:B3,COUNTA)` is `#VALUE!`: moved to T-1461 (needs engine-wide `_xleta.` name support).
+- [x] E32 `BYCOL(A1:B3,COUNTA)` is `#VALUE!`: moved to T-1466 (needs engine-wide `_xleta.` name support).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
