@@ -3,7 +3,7 @@ id: T-1382
 title: "[n]Sheet!ref external references read the externalLink sheetDataSet cache"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
