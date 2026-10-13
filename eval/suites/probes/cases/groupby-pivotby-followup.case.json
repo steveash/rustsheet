@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "GROUPBY/PIVOTBY follow-up probes: mismatched key/value heights, total_depth 3, field_relationship 1 with subtotals, two-value PIVOTBY totals, multi-key sort arrays, header auto-detect, error and numeric-equality keys, all-FALSE filters (T-1328). Each spill is paired with ROWS/COLUMNS/ISERROR/ERROR.TYPE/INDEX scalar wrappers so cells excel-graph cannot decode are still answered.",
+ "description": "GROUPBY/PIVOTBY follow-up probes: mismatched key/value heights, total_depth 3, field_relationship 1 with subtotals, two-value PIVOTBY totals, multi-key sort arrays, header auto-detect, error and numeric-equality keys, all-FALSE filters (T-1328). Each spill is paired with ROWS/COLUMNS/ISERROR/ERROR.TYPE/INDEX scalar wrappers so cells excel-graph cannot decode are still answered. Note: the all-FALSE filter cells in this file put the filter in argument 8 (field_relationship); the real filter probes are in followup3.",
  "tags": [
   "M7",
   "probe",

@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "GROUPBY/PIVOTBY follow-up 2: all-FALSE filter shapes via LET and ERROR.TYPE, error types of the cells round 1 left undecoded, header auto-detect variants (T-1328).",
+ "description": "GROUPBY/PIVOTBY follow-up 2: all-FALSE filter shapes via LET and ERROR.TYPE, error types of the cells round 1 left undecoded, header auto-detect variants (T-1328). Note: the all-FALSE filter cells in this file put the filter in argument 8 (field_relationship); the real filter probes are in followup3.",
  "tags": [
   "M7",
   "probe",
