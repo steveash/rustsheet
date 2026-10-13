@@ -1,0 +1,21 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1214 BAHTTEXT form C5",
+ "tags": [
+  "M5",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "C5": "=BAHTTEXT(A1:A3)",
+    "A1": 5,
+    "A2": 2.5,
+    "A3": "x"
+   }
+  }
+ ],
+ "expected": {}
+}

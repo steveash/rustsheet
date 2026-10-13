@@ -1,4 +1,4 @@
-//! VLOOKUP/HLOOKUP over an array or multi-cell lookup_value (T-0270).
+//! VLOOKUP/HLOOKUP over an array or multi-cell `lookup_value` (T-0270).
 
 use crate::{
     calc_result::CalcResult,
@@ -18,7 +18,7 @@ pub(super) struct LookupSearch<'a> {
     pub(super) search_vector: &'a SearchVector,
     pub(super) index: LookupIndexArg,
     pub(super) size: i32,
-    /// The range_lookup argument: a boolean, or an array that lifts with the lookup value.
+    /// The `range_lookup` argument: a boolean, or an array that lifts with the lookup value.
     pub(super) is_sorted: CalcResult,
 }
 

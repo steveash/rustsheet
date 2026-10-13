@@ -45,6 +45,10 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    Desktop Excel's limit for a formula typed into a cell and for a defined-name body, whether the web file-load
    limit (8,192 characters, ASCII; non-BMP counting unsettled, see T-1397; name bodies 8,191 ASCII characters) holds on desktop, and how `_xHHHH_` escapes inside `<f>` text count
    (the spec-to-xlsx writer cannot emit them raw, so this also needs a raw-XML fixture).
+9. **`CELL("contents", ref)` reads the formula's own sheet** (T-1230; information.md "CELL(\"contents\", ref)
+   on excel-graph"). probes/info-cell-contents-range: excel-graph reads `CELL("contents",Data!A2)` on Calc
+   as Calc!A2 and never gives `#VALUE!` for a cross-sheet range. Desktop very likely honours the named
+   sheet (a web bug?); if so, the engine goes back to reading `reference.sheet`.
 
 ## Acceptance criteria
 - [ ] Each item above has its desktop value(s) in docs/excel-semantics/ with the probe or workbook

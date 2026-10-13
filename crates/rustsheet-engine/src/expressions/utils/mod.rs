@@ -173,7 +173,7 @@ pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
             }
             '0'..='9' => {
                 if state == 1 {
-                    state = 2
+                    state = 2;
                 }
                 row.push(ch);
             }
@@ -232,7 +232,10 @@ pub fn is_valid_a1_identifier(name: &str) -> bool {
     };
 
     // The first character of a name must be a letter, an underscore character (_), or a backslash (\).
-    if !(first.is_ascii_alphabetic() || first == '_' || first == '\\') {
+    // A letter of any script: Excel for the web loads `LET(é,1,É+1)` (2) and `LET(Ä,2,ä*10)` (20)
+    // (probes/let-name-non-ascii, T-1387). An ASCII-only test rejected `é` but passed `ß`, whose
+    // uppercase is `SS`.
+    if !(first.is_alphabetic() || first == '_' || first == '\\') {
         return false;
     }
     if upper == *"TRUE" || upper == *"FALSE" {

@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-1469]
 ---
 
 ## Goal
@@ -27,6 +27,11 @@ gen-m2 (T-0203) evidence (excel-graph):
   over a column whose only text is "ü"; Excel ranks "ü" below "x") and `gen-m2/ef5c55a81783b7d5`
   Calc!A151 (`VLOOKUP("1",...)` over {blank, FALSE, "?b", 1}; Excel ranks "?b" below "1").
 
+- Added 2026-10-13 (planner): `gen-m2/d04d501154afc771` Calc!A97 `VLOOKUP(Data!B8,Data!D3:E6,..,TRUE)` with B8 = "ü"
+  over {-0.0001, FALSE, 0, "x"}: Excel `#N/A` ("ü" ranks below "x", so no text at or below it), engine "x"
+  (code-point order puts U+00FC above "x").
+- Probe split out on 2026-10-13: T-1469 (research) fills the pairwise collation probe. Fit the key against it.
+
 - Added by T-0244: `functions::util::cmp_text_excel` is the one text-order function (CHAR(160) right
   after the space); extend it rather than adding another. It leaves `probes/text-order-nbsp-space`
   Calc!D17 failing: a hyphen is skipped, `"-1" > "0"` is TRUE in Excel.
@@ -38,10 +43,11 @@ and case, pairwise. Then write a short spec if the table is non-trivial (CLAUDE.
 Code: `compare_values` and the text comparison in `crates/rustsheet-engine/src/` (`rg compare_values`).
 
 ## Acceptance criteria
-- [ ] Probe suite of pairwise text comparisons filled by the oracle. docs/excel-semantics/ entry (new
-      `text.md` or `numbers.md` sibling) with the rule and evidence.
+- [ ] The collation rule fitted to T-1469's probe is recorded in docs/excel-semantics/coercion.md ("Text comparison uses Excel's
+      collation"), and the T-1469 probe cells pass.
 - [ ] One collation key function used by all comparison sites. The two cells above disappear from
-      eval/baseline/gen-m2.txt with no new F lines, and so do the two decision-0037 cells.
+      eval/baseline/gen-m2.txt with no new F lines, and so do the two decision-0037 cells, d04d501154afc771 A97
+      and probes/text-order-nbsp-space Calc!D17.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

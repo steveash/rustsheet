@@ -1,21 +1,21 @@
-use std::collections::HashSet;
-
 use crate::{
     calc_result::CalcResult,
     expressions::{
-        parser::{for_each_chain_operand_mut, Node},
+        parser::{for_each_chain_operand_mut, NamedVariable, Node},
         token::Error,
         types::CellReferenceIndex,
     },
     functions::Function,
     model::Model,
-    reference_operators::{Binding, Ranges, RefArg},
+    reference_operators::{Ranges, RefArg},
+    variable_stack::Binding,
 };
 
 /// Whether two LET variable or LAMBDA parameter names are the same variable: Excel compares them
 /// case-insensitively (`LET(x,A1:A4,X)` reads `x`, probes/subtotal-reference-operands-f C41;
-/// `LAMBDA(x,X+1)(2)` is 3 and `LET(x,1,LAMBDA(X,x*10)(2))` is 20, probes/let-lambda-name-case).
-/// Folding non-ASCII names with Unicode lowercase is unprobed (TODO(T-1387)).
+/// `LAMBDA(x,X+1)(2)` is 3 and `LET(x,1,LAMBDA(X,x*10)(2))` is 20, probes/let-lambda-name-case),
+/// folding non-ASCII letters too (`LET(é,1,É+1)` is 2, `LET(Ärger,5,äRGER+1)` is 6,
+/// probes/let-name-non-ascii).
 pub(crate) fn same_variable(a: &str, b: &str) -> bool {
     // No allocation: this runs per node on every LAMBDA call and LET evaluation.
     if a.is_ascii() && b.is_ascii() {
@@ -24,6 +24,17 @@ pub(crate) fn same_variable(a: &str, b: &str) -> bool {
     a.chars()
         .flat_map(char::to_lowercase)
         .eq(b.chars().flat_map(char::to_lowercase))
+}
+
+/// Whether two LAMBDA parameters are the same variable ([`same_variable`]): Excel refuses
+/// `LAMBDA(x,x,x)(1,2)`, `LAMBDA(x,X,x+X)(1,2)` and `LAMBDA(ä,Ä,ä+Ä)(1,2)` as corrupt files
+/// (docs/excel-semantics/references.md, T-1387).
+pub(crate) fn has_duplicate_parameter(parameters: &[NamedVariable]) -> bool {
+    parameters.iter().enumerate().any(|(i, p)| {
+        parameters[..i]
+            .iter()
+            .any(|q| same_variable(&q.name, &p.name))
+    })
 }
 
 /// Recursively walks `node`, replacing every `NamedVariableKind { name, id: None }` whose
@@ -139,12 +150,16 @@ impl Model {
         let mut cloned: Vec<Node> = args.to_vec();
         let mut bound_ids: Vec<usize> = Vec::with_capacity(pair_count);
 
-        let mut seen_names = HashSet::new();
+        // Excel refuses a formula that binds one name twice, in any case (`LET(x,1,X,2,x)`,
+        // docs/excel-semantics/references.md); a LET has few names, so a linear scan is enough.
+        let mut seen_names: Vec<String> = Vec::with_capacity(pair_count);
 
         for i in 0..pair_count {
             // Extract the variable name from the declaration node.
             let name = match &cloned[2 * i] {
-                Node::NamedVariableKind { name, .. } if seen_names.insert(name.clone()) => {
+                Node::NamedVariableKind { name, .. }
+                    if !seen_names.iter().any(|seen| same_variable(seen, name)) =>
+                {
                     Ok(name.clone())
                 }
                 Node::NamedVariableKind { name, .. } => Err(CalcResult::new_error(
@@ -159,7 +174,10 @@ impl Model {
                 )),
             };
             let name = match name {
-                Ok(name) => name,
+                Ok(name) => {
+                    seen_names.push(name.clone());
+                    name
+                }
                 Err(error) => {
                     // Remove only the ids introduced by this LET frame.
                     for id in bound_ids {
@@ -202,7 +220,7 @@ impl Model {
     }
 
     /// What a LET value or a LAMBDA argument binds. A reference stays a reference, a single
-    /// cell too (upstream MIN_MAX_extras.xlsx A16, MAX_MIN.xlsx H54), and so does one INDEX,
+    /// cell too (upstream `MIN_MAX_extras.xlsx` A16, `MAX_MIN.xlsx` H54), and so does one INDEX,
     /// XLOOKUP, TAKE, DROP or TRIMRANGE picks (T-1232), but VLOOKUP and HLOOKUP bind their value (probes/let-bind-reference-forms; a
     /// called `LET(f,INDEX(A1:A3,2),f(2))` is `#REF!`, let-name-call-refs H5). An argument that
     /// may stand for several areas is read in reference context, so a union stays its areas

@@ -9,7 +9,7 @@ use crate::{
 use super::{
     date_text::{parse_date, CurrentYear},
     dates::{excel_serial_to_ymd, negative_serial_allowed},
-    parser::{ParsePart, Parser, TextToken},
+    parser::{GeneralPart, ParsePart, Parser, TextToken},
 };
 
 pub struct Formatted {
@@ -61,8 +61,8 @@ fn get_fract_part(value: f64, precision: i32, int_len: usize) -> Vec<char> {
     b[2..last_non_zero].to_vec()
 }
 
-/// Return true if we need to add a separator in position digit_index
-/// It normally happens if if digit_index -1 is 3, 6, 9,... digit_index ≡ 1 mod 3
+/// Return true if we need to add a separator in position `digit_index`
+/// It normally happens if if `digit_index` -1 is 3, 6, 9,... `digit_index` ≡ 1 mod 3
 fn use_group_separator(use_thousands: bool, digit_index: i32, group_sizes: &str) -> bool {
     if use_thousands {
         if group_sizes == "#,##0.###" {
@@ -109,7 +109,7 @@ pub fn format_text(value: Option<f64>, format: &str, ctx: &FormatContext) -> For
 
 /// Formats a text value (a boolean's "TRUE"/"FALSE" included) the way `TEXT` does: only the
 /// 4th section applies, `@` stands for the text and the section's other tokens print as literals
-/// (poi TextFormatTests A3:A10, A12:A29; docs/excel-semantics/number-formats.md "Text and
+/// (poi `TextFormatTests` A3:A10, A12:A29; docs/excel-semantics/number-formats.md "Text and
 /// booleans use the format's text section"). A single section with `@` is a text section too
 /// (`@" ""q"""` on "x" is "x q", probes/format-doubled-quotes C11). Any other format with fewer
 /// than four sections returns the text unchanged; that case is unprobed. A result over 255
@@ -211,14 +211,22 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
     // you must include a semicolon for each of the missing sections of code.
     // You can use the ampersand (&) text operator to join, or concatenate, two values.
     let mut value = value_original;
+    let general = ParsePart::General(GeneralPart {});
     let part;
     match parts.len() {
+        // A single text section (`@` in it) does not apply to numbers, which print in General:
+        // `TEXT(1,"@""aaa""")` is "1" (probes/text-format-length-limit-i A19:A26, T-1434).
+        1 if section_tokens(&parts[0])
+            .is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw))) =>
+        {
+            part = &general;
+        }
         1 => {
             part = &parts[0];
         }
         2 => {
             if value >= 0.0 {
-                part = &parts[0]
+                part = &parts[0];
             } else {
                 value = -value;
                 part = &parts[1];
@@ -226,7 +234,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         }
         3 => {
             if value > 0.0 {
-                part = &parts[0]
+                part = &parts[0];
             } else if value < 0.0 {
                 value = -value;
                 part = &parts[1];
@@ -237,7 +245,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         }
         4 => {
             if value > 0.0 {
-                part = &parts[0]
+                part = &parts[0];
             } else if value < 0.0 {
                 value = -value;
                 part = &parts[1];
@@ -395,7 +403,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         if !date_valid {
                             return invalid_date(value);
                         }
-                        text = format!("{}{}", text, ymd_year);
+                        text = format!("{text}{ymd_year}");
                     }
                     TextToken::Hour => {
                         let mut hour = hours as i32;
@@ -510,7 +518,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             } else {
                 value_abs.floor()
             };
-            let mut int_part: Vec<char> = format!("{}", int_number).chars().collect();
+            let mut int_part: Vec<char> = format!("{int_number}").chars().collect();
             if int_number as i64 == 0 {
                 int_part = vec![];
             }
@@ -632,7 +640,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                 }
                             } else if digit.kind == '0' {
                                 if needs_period {
-                                    text = format!("{text}{}0", decimal_separator);
+                                    text = format!("{text}{decimal_separator}0");
                                 } else {
                                     text = format!("{text}0");
                                 }
@@ -640,7 +648,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                 text = format!("{text} ");
                             } else if digit.kind == '#' && needs_period {
                                 // FIXME: This is what Excel does, but it transforms "3" into "3."
-                                text = format!("{text}{}", decimal_separator);
+                                text = format!("{text}{decimal_separator}");
                             }
                             needs_period = false;
                         } else if digit.number.is_exponent() {
@@ -724,6 +732,7 @@ pub(crate) fn parse_formatted_number(
     currencies: &[&str],
     locale: &Locale,
     current_year: CurrentYear,
+    date_system: DateSystem,
 ) -> Result<(f64, Option<String>), String> {
     let value = original.trim();
 
@@ -739,8 +748,12 @@ pub(crate) fn parse_formatted_number(
 
     // Date text, untrimmed: number coercion rejects date text with surrounding spaces (see
     // `parse_date`); VALUE trims before calling.
+    // The parser counts from the 1900 epoch; a 1904 workbook counts from 1904-01-01
+    // (`="1904-01-02"+0` is 1, probes/date-system-1904-readers A20).
     if let Ok((serial_number, format)) = parse_date(original, locale, current_year) {
-        return Ok((serial_number as f64, Some(format)));
+        if let Some(serial) = date_system.serial_from_1900_serial(i64::from(serial_number)) {
+            return Ok((serial as f64, Some(format)));
+        }
     }
 
     // Excel reads accounting text in parentheses as negative: `0+"(1)"` = -1, `0+"(1,000)"` =

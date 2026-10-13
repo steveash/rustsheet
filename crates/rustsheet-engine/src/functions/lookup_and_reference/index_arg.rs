@@ -20,7 +20,7 @@ pub(super) enum LookupIndexArg {
     Number(f64),
     /// A reference argument; its cell is read only once the lookup value is found.
     Reference(CalcResult),
-    /// An array argument (`{1,2}`): with a scalar lookup_value and range_lookup it lifts, once
+    /// An array argument (`{1,2}`): with a scalar `lookup_value` and `range_lookup` it lifts, once
     /// the value is found; otherwise only its first element is used. Elements validate like a
     /// referenced cell (probes/vlookup-array-index-range-lookup, T-1269).
     Array(Vec<Vec<ArrayNode>>),
@@ -69,7 +69,7 @@ impl Model {
         }
     }
 
-    /// Reads range_lookup (default TRUE): a scalar is coerced to a boolean now, so a bad one
+    /// Reads `range_lookup` (default TRUE): a scalar is coerced to a boolean now, so a bad one
     /// fails before the search; an array stays as it is and lifts with the lookup value.
     pub(super) fn lookup_sorted_arg(
         &mut self,

@@ -3,7 +3,7 @@ id: T-1422
 title: "TEXT General: round fixed values to the 11-character limit"
 milestone: M2
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: M
 tier: sonnet
@@ -28,3 +28,6 @@ same PR. The engine prints `99999999999.6` as "99999999999.600006104" (binary no
 ## Out of scope
 - Number-to-text coercion (`&""`, 15 digits; numbers.md).
 - Split the task if the unit-test updates grow beyond the `format_general` change.
+
+## Outcome
+`format_general` keeps `11 - integer digits - 1` decimals from 1 on and rounds half away from zero on the 15-digit decimal (via `round_decimal`); a value that rounds up to 1E+11 prints in E notation. Probed the .5 ties (probes/text-general-ties-wide-fixed A18-A24, excel-graph): half away from zero. 29 engine unit tests updated to the oracle forms. Eval: probes known failures 2874 -> 2864 (all of text-general-ties-wide-fixed now passes).

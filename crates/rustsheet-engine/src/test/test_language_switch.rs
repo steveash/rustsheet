@@ -168,6 +168,17 @@ fn cf_invalid_formula_is_rejected() {
 // Defined names
 // ---------------------------------------------------------------------------
 
+/// A defined-name body written wholly in parentheses is still accepted when it is a LAMBDA or an
+/// error literal (T-1392: `parse` keeps the root group, the check looks through it).
+#[test]
+fn parenthesized_lambda_and_error_defined_names_are_valid() {
+    let mut model = new_empty_model();
+    model
+        .new_defined_name("PL", None, "=(LAMBDA(x,x+1))")
+        .unwrap();
+    model.new_defined_name("PE", None, "=(#REF!)").unwrap();
+}
+
 /// A LAMBDA defined name entered in English is stored in English, and after
 /// switching to Spanish it is displayed in Spanish and keeps evaluating —
 /// even after an edit that forces the defined names to be reparsed.

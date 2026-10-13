@@ -27,8 +27,7 @@ fn precedence_ast() {
         Node::OpSumKind { kind, left, right } => {
             assert!(
                 matches!(kind, OpSum::Add),
-                "root should be Add, got {:?}",
-                kind
+                "root should be Add, got {kind:?}"
             );
             assert!(
                 matches!(
@@ -38,8 +37,7 @@ fn precedence_ast() {
                         ..
                     }
                 ),
-                "left of + should be CompareKind(=), got {:?}",
-                left
+                "left of + should be CompareKind(=), got {left:?}"
             );
             assert!(
                 matches!(
@@ -49,11 +47,10 @@ fn precedence_ast() {
                         ..
                     }
                 ),
-                "right of + should be CompareKind(=), got {:?}",
-                right
+                "right of + should be CompareKind(=), got {right:?}"
             );
         }
-        other => panic!("Expected OpSumKind at root, got {:?}", other),
+        other => panic!("Expected OpSumKind at root, got {other:?}"),
     }
 }
 
@@ -72,5 +69,5 @@ fn precedence() {
 
     let parsed = parser.parse(formula, &cell_reference);
     let result = to_english_localized_string(&parsed, &cell_reference);
-    assert_eq!(result, expected, "Failed for formula '{}'", formula);
+    assert_eq!(result, expected, "Failed for formula '{formula}'");
 }

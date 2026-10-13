@@ -258,3 +258,20 @@ fn called_variable_holding_a_value() {
     // C7 is C6's spill.
     assert_eq!(model._get_text("C7"), *"0");
 }
+
+#[test]
+fn duplicate_parameters_are_refused_in_any_case() {
+    // Excel for the web refuses `LAMBDA(x,x,x)(1,2)`, `LAMBDA(x,X,x+X)(1,2)` and
+    // `LAMBDA(ä,Ä,ä+Ä)(1,2)` (docs/excel-semantics/references.md, T-1387).
+    let mut model = new_empty_model();
+    model._set("A1", "=LAMBDA(x,x,x)(1,2)");
+    model._set("A2", "=LAMBDA(x,X,x+X)(1,2)");
+    model._set("A3", "=LAMBDA(ä,Ä,ä+Ä)(1,2)");
+    model._set("A4", "=LAMBDA(x,[X],x)(1)");
+    model._set("A5", "=LAMBDA(ß,ß*2)(3)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4"] {
+        assert_eq!(model._get_text(cell), *"#ERROR!", "{cell}");
+    }
+    assert_eq!(model._get_text("A5"), *"6");
+}

@@ -27,7 +27,7 @@ fn coerce_to_f64(node: &ArrayNode, cell: CellReferenceIndex) -> Result<f64, Calc
     }
 }
 
-/// Coerce a 2-D ArrayNode grid into a flat Vec<f64> in row-major order,
+/// Coerce a 2-D `ArrayNode` grid into a flat Vec<f64> in row-major order,
 /// returning the size n (asserts square).
 fn to_square_matrix(
     arr: &[Vec<ArrayNode>],

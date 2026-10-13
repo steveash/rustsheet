@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "MATCH with a positive fractional match_type (0<m<1): exact or ascending (T-1391)",
+  "tags": [
+    "M2",
+    "lookup",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5,
+        "C1": "=MATCH(2.5,A1:A5,0.5)",
+        "C2": "=MATCH(2.5,A1:A5,0.0001)",
+        "C3": "=MATCH(2.5,A1:A5,0.999)",
+        "C4": "=MATCH(2.5,A1:A5,0)",
+        "C5": "=MATCH(2.5,A1:A5,1)",
+        "C6": "=MATCH(3,A1:A5,0.5)",
+        "C7": "=MATCH(3,A1:A5,0.0001)",
+        "C8": "=MATCH(3,A1:A5,0.999)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!C1",
+    "Sheet1!C2",
+    "Sheet1!C3",
+    "Sheet1!C4",
+    "Sheet1!C5",
+    "Sheet1!C6",
+    "Sheet1!C7",
+    "Sheet1!C8"
+  ]
+}

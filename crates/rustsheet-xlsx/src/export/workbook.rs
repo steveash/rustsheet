@@ -105,12 +105,12 @@ pub(crate) fn get_workbook_xml(
             .formula
             .strip_prefix('=')
             .unwrap_or(&defined_name.formula);
-        let node = parser.parse_cell_formula(formula_body, &parse_context);
+        let node = parser.parse(formula_body, &parse_context);
         let formula = to_excel_string(&node, &parse_context);
         let formula = escape_xml(&formula);
         defined_names_str.push(format!(
             "<definedName name=\"{name}\"{local_sheet_id}>{formula}</definedName>"
-        ))
+        ));
     }
 
     // Only the 1904 system is written; a 1900 export stays byte-identical (SPEC-0005).

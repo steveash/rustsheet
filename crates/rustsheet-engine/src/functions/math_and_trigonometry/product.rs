@@ -12,19 +12,22 @@ impl Model {
     /// # Details
     /// Generally each argument is evaluated and the result is converted to a number. However there are some special
     /// cases:
-    /// - **Args evaluating to CalcResult::Range**: The product of all the numbers in the range is calculated. No
+    /// - **Args evaluating to `CalcResult::Range`**: The product of all the numbers in the range is calculated. No
     ///   conversions are performed, non-numeric values are ignored and errors are propagated.
-    /// - **Node::ReferenceKind args**: Similar to ranges, conversions are not performed on the evaluated value of the
+    /// - **`Node::ReferenceKind` args**: Similar to ranges, conversions are not performed on the evaluated value of the
     ///   referenced cell and errors are propagated.
-    /// - **Args evaluating to CalcResult::Array**: Only the numbers are multiplied; text and booleans are skipped and
+    /// - **Args evaluating to `CalcResult::Array`**: Only the numbers are multiplied; text and booleans are skipped and
     ///   the first error element is propagated.
-    /// - **Args evaluating to CalcResult::Error**: Errors are propagated.
+    /// - **Args evaluating to `CalcResult::Error`**: Errors are propagated.
     pub(crate) fn fn_product(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
         let mut result = 1.0;
         let mut seen_value = false;
+        // A referenced-cell error ranks below a direct scalar error; the leftmost wins
+        // (probes/aggregate-error-precedence C1-C8).
+        let mut reference_error = None;
 
         for arg in args {
             // Handle reference special case. Behaviour of a reference is equivalent to a range of one cell.
@@ -52,11 +55,13 @@ impl Model {
             };
             match self.evaluate_reference_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
-                    if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
-                        seen_value = true;
-                        result = flush_subnormal(result * value);
-                    }) {
-                        return error;
+                    if reference_error.is_none() {
+                        if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
+                            seen_value = true;
+                            result = flush_subnormal(result * value);
+                        }) {
+                            reference_error = Some(error);
+                        }
                     }
                 }
                 RefArg::Value(error @ CalcResult::Error { .. }) => return error,
@@ -83,6 +88,9 @@ impl Model {
                     }
                 }
             };
+        }
+        if let Some(error) = reference_error {
+            return error;
         }
         if !seen_value {
             return CalcResult::Number(0.0);

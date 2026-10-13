@@ -27,8 +27,8 @@ use crate::{
     utils::ParsedReference,
 };
 
-use crate::reference_operators::VariableStack;
 use crate::tz::Tz;
+use crate::variable_stack::VariableStack;
 
 pub const APPLICATION: &str = "IronCalc Sheets";
 pub const APP_VERSION: &str = "10.0000";
@@ -43,7 +43,7 @@ fn is_valid_sheet_name(name: &str) -> bool {
 }
 
 impl Model {
-    /// Creates a new worksheet. Note that it does not check if the name or the sheet_id exists
+    /// Creates a new worksheet. Note that it does not check if the name or the `sheet_id` exists
     fn new_empty_worksheet(name: &str, sheet_id: u32, view_ids: &[&u32]) -> Worksheet {
         let mut views = HashMap::new();
         for id in view_ids {
@@ -114,7 +114,7 @@ impl Model {
             };
             let mut parse_formula = Vec::new();
             for formula in shared_formulas {
-                let t = self.parser.parse_cell_formula(formula, &cell_reference);
+                let t = self.parser.parse(formula, &cell_reference);
                 let static_result = run_static_analysis_on_node(&t);
                 parse_formula.push((std::sync::Arc::new(t), static_result));
             }
@@ -166,7 +166,7 @@ impl Model {
                 // Defined-name formulas are stored internally in English, so
                 // they must be parsed with the English parser regardless of the
                 // user's active language.
-                match self.parse_internal_cell_formula(formula_body, &dummy_ref) {
+                match self.parse_internal_formula(formula_body, &dummy_ref) {
                     Node::LambdaDefKind { parameters, body } => {
                         ParsedDefinedName::LambdaDefinition(parameters, *body)
                     }
@@ -380,7 +380,7 @@ impl Model {
         };
         let mut shared_formulas = Vec::with_capacity(new_worksheet.shared_formulas.len());
         for formula in &new_worksheet.shared_formulas {
-            let mut t = self.parser.parse_cell_formula(formula, &cell_reference);
+            let mut t = self.parser.parse(formula, &cell_reference);
             rename_sheet_in_node(&mut t, source_index, &new_name);
             shared_formulas.push(to_rc_format(&t));
         }
@@ -429,7 +429,7 @@ impl Model {
                 .formula
                 .strip_prefix('=')
                 .unwrap_or(&defined_name.formula);
-            let mut node = self.parse_internal_cell_formula(body, &context);
+            let mut node = self.parse_internal_formula(body, &context);
             let before = to_english_string(&node, &context);
             rename_sheet_in_node(&mut node, source_index, &new_name);
             let after = to_english_string(&node, &context);
@@ -503,7 +503,7 @@ impl Model {
             };
             let mut formulas = Vec::new();
             for formula in &worksheet.shared_formulas {
-                let mut t = self.parser.parse_cell_formula(formula, cell_reference);
+                let mut t = self.parser.parse(formula, cell_reference);
                 rename_sheet_in_node(&mut t, sheet_index, new_name);
                 formulas.push(to_rc_format(&t));
             }
@@ -525,7 +525,7 @@ impl Model {
             // A stored body may carry a leading `=` (`define_name` keeps the one it is given).
             let stored = defined_name.formula.trim_start();
             let (eq, body) = stored.strip_prefix('=').map_or(("", stored), |b| ("=", b));
-            let mut t = self.parser.parse_cell_formula(body, cell_reference);
+            let mut t = self.parser.parse(body, cell_reference);
             rename_sheet_in_node(&mut t, sheet_index, new_name);
             let formula = format!(
                 "{eq}{}",
@@ -592,8 +592,8 @@ impl Model {
         }
     }
 
-    /// Deletes a sheet by sheet_id. Fails if:
-    ///   * The sheet by sheet_id does not exists
+    /// Deletes a sheet by `sheet_id`. Fails if:
+    ///   * The sheet by `sheet_id` does not exists
     ///   * It is the last sheet
     pub fn delete_sheet_by_sheet_id(&mut self, sheet_id: u32) -> Result<(), String> {
         if let Some(sheet_index) = self.get_sheet_index_by_sheet_id(sheet_id) {
@@ -699,6 +699,7 @@ impl Model {
             lambdas: HashMap::new(),
             last_lambda_id: 0,
             defined_names_running: Default::default(),
+            area_budget: Default::default(),
             evaluation: crate::evaluation::Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),

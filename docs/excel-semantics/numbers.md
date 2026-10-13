@@ -26,8 +26,8 @@ The earlier hypothesis (no snapping with parentheses or in SUM) was wrong for SU
 Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/30bc5f8fab02d0a2
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Implemented in: `snap_near_zero` (arithmetic.rs), applied at the cell formula's root by `Model::evaluate_formula_root` (an outermost `+`/`-`) and `fn_sum` (every SUM call, functions/math_and_trigonometry/sum.rs); a wholly parenthesized formula is a root `Node::Group` (`Parser::parse_cell_formula`, T-1017, T-1341) and is not snapped. Array operands of `+`/`-` are not snapped (unprobed); SUM over array arguments does snap (below).
-Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). Name bodies written as a group or a SUM (T-1164, probes/near-zero-snap-name-bodies, excel-graph 2026-10-08): `nzg` = `=(0.1+0.2-0.3)` and `nzgg` = `=((0.1+0.2-0.3))` are not snapped (`=nzg`, `=nzgg`, `=nzg+0` and `=SUM(nzg)` give 5.551115123125783e-17, like the cell forms), while `nzs` = `=SUM(0.1,0.2,-0.3)` is snapped (`=nzs` and `=nzs+0` give 0). The engine keeps a grouped root on a name body (`Model::parse_internal_cell_formula`, `user_formula_to_internal`, the xlsx import re-parse, sheet copy and rename, name display); a parenthesized reference body stays a reference (`rg` = `=(Sheet1!$B$1:$B$2)`, `ig` = `=(INDEX(...))` and `og` = `=(OFFSET(...))` give ISREF TRUE, ROWS/SUM as without the parentheses: probes/defined-name-grouped-reference, excel-graph 2026-10-08), so `is_reference` looks through the group (`Node::ungrouped`). The same parse also keeps the grouped root of a conditional-formatting formula written wholly in parentheses (`user_formula_to_internal` serves both); whether Excel snaps inside CF formulas is UNVERIFIED and not observable through the oracle (T-1171: excel-graph reads cell values only, the case format and the Graph workbook API carry no conditional-formatting rules or their rendered fill; see docs/architecture/oracle.md, Unobservable features), so it needs desktop Excel (M14, Phase 4, decision 0039, T-1204). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`: the engine keeps every written level around a whole formula (one root `Group` holding every level, T-1161, T-1341).
+Implemented in: `snap_near_zero` (arithmetic.rs), applied at the cell formula's root by `Model::evaluate_formula_root` (an outermost `+`/`-`) and `fn_sum` (every SUM call, functions/math_and_trigonometry/sum.rs); a wholly parenthesized formula is a root `Node::Group` (`Parser::parse_parenthesized`, T-1017, T-1341, T-1392) and is not snapped. Array operands of `+`/`-` are not snapped (unprobed); SUM over array arguments does snap (below).
+Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). Name bodies written as a group or a SUM (T-1164, probes/near-zero-snap-name-bodies, excel-graph 2026-10-08): `nzg` = `=(0.1+0.2-0.3)` and `nzgg` = `=((0.1+0.2-0.3))` are not snapped (`=nzg`, `=nzgg`, `=nzg+0` and `=SUM(nzg)` give 5.551115123125783e-17, like the cell forms), while `nzs` = `=SUM(0.1,0.2,-0.3)` is snapped (`=nzs` and `=nzs+0` give 0). The engine keeps a grouped root on a name body (`Model::parse_internal_formula`, `user_formula_to_internal`, the xlsx import re-parse, sheet copy and rename, name display); a parenthesized reference body stays a reference (`rg` = `=(Sheet1!$B$1:$B$2)`, `ig` = `=(INDEX(...))` and `og` = `=(OFFSET(...))` give ISREF TRUE, ROWS/SUM as without the parentheses: probes/defined-name-grouped-reference, excel-graph 2026-10-08), so `is_reference` looks through the group (`Node::ungrouped`). The same parse also keeps the grouped root of a conditional-formatting formula written wholly in parentheses (`user_formula_to_internal` serves both); whether Excel snaps inside CF formulas is UNVERIFIED and not observable through the oracle (T-1171: excel-graph reads cell values only, the case format and the Graph workbook API carry no conditional-formatting rules or their rendered fill; see docs/architecture/oracle.md, Unobservable features), so it needs desktop Excel (M14, Phase 4, decision 0039, T-1204). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`: the engine keeps every written level around a whole formula (one root `Group` holding every level, T-1161, T-1341).
 
 SUM forms (T-1131, probes/near-zero-sum-forms, excel-graph 2026-10-11): a SUM call snaps its final addition **wherever it sits**, unlike `+`/`-`: `=(SUM(0.1,0.2,-0.3))`, `=SUM(A1:A3)+0` and `=SUM(A1:A3)*1` (A1:A3 = 0.1, 0.2, -0.3) all give 0, as do `=SUM({0.1,0.2,-0.3})`, `=SUM({0.1,0.2},-0.3)`, `=SUM(0.1,{0.2,-0.3})`, `=SUM(A1:A2,A3)` and a range with a blank or text between the addends. A trailing zero addend stops the snap: `=SUM(0.1,0.2,-0.3,0)` and `=SUM(A1:A3,0)` give 5.551115123125783e-17 (the last two addends are -0.3 and 0). 2-D ranges add in row-major order, so `=SUM(D1:E2)` (0.1, 0.2 / -0.3, 0) is 5.551115123125783e-17 (last addend 0) and `=SUM(J1:K2)` (0.1, -0.3 / 0.2, -0.1) is -0.09999999999999998. The engine snaps in `Model::fn_sum` for every SUM call. AGGREGATE(9, ...) and SUBTOTAL(9/109, ...) snap the same way (T-1336, probes/near-zero-aggregate-forms B1-B6, B10-B12, excel-graph 2026-10-11: `=AGGREGATE(9,4,A1:A3)`, `=AGGREGATE(9,6,A1:A3)`, `=SUBTOTAL(9,A1:A3)`, `=SUBTOTAL(109,A1:A3)` and `+0` of each give 0 over 0.1, 0.2, -0.3; `=AGGREGATE(9,4,{0.1,0.2,-0.3})` is #VALUE!); the engine snaps in `subtotal_sum` and the AGGREGATE dispatch. PERCENTOF is `#NAME?` on excel-graph (a probe of `=PERCENTOF(A1:A3,A5)` and `=PERCENTOF(A1:A3,A1:A3)` returned it 2026-10-11; the oracle cannot evaluate it, so the probe has no PERCENTOF cell; so whether it snaps is UNVERIFIED, needs desktop Excel, M14 Phase 4); the engine keeps it unsnapped through `fn_sum_unsnapped`. 
 Tasks: T-0110 (implementation), T-1131 (SUM forms), T-1336 (AGGREGATE/SUBTOTAL), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies)
@@ -532,11 +532,39 @@ Evidence: `probes-numeric/m9-trig-reduction` (`rustsheet-eval show probes-numeri
 247 of 666 cells pass; the 419 others differ from the engine (252 clear mismatches, 152 close, 15 ulp).
 Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0915.
 
+## Non-integer exponents: exp(y·ln x)
+Rule: for an exponent that is not an integer, Excel computes `x^y` as follows:
+- `y` > 0: `exp(y·ln x)`. `6^2.5` = 88.18163074019438, 2 ulps below libm `pow`, and `10^33.5` = 3.162277660168401E+33.
+- `y` < 0: one over the positive power, `1/exp(-y·ln x)`. `10^-33.5` = 3.1622776601683576E-34 and `27^-2.5` = 0.0002639918926335737.
+- `y` = 0.5: `sqrt(x)`. `2^0.5` = 1.4142135623730951, where `exp(0.5·ln 2)` is 1.4142135623730950.
+- `y` = -0.5: `1/sqrt(x)`. `3^-0.5` = 0.5773502691896258 and `0.5^-0.5` = 1.414213562373095.
+
+An odd root of a negative base is minus the same formula on the magnitude. `(-8)^(1/3)` = -exp(ln 8/3) = -1.9999999999999998, which is the value Excel's own workbook caches.
+
+Libm `pow` (correctly rounded) matches only 93 of the 180 numeric sweep cells. `exp(y·ln x)` without the ±0.5 cases matches 148. The model matches all 180.
+
+Out-of-range results:
+- A positive exponent that overflows is `#NUM!`.
+- Quirk: a negative exponent is one over the positive power even when that power underflows, so the result is `#DIV/0!`. This holds for integer exponents too: `1E-10^-33.5`, `POWER(1E-10,-33.5)`, `0.1^-400`, `1E-10^-40`, `1E-10^-31` and `1E-300^-1.1` (where the positive power is subnormal).
+- A negative exponent whose result underflows is 0: `1E10^-33.5` = 0, `1E+200^-1.6` = 0, `2^-1074.5` = 0.
+
+Unresolved (T-0221): `(-8)^(-1/3)` is -0.5 in Excel, while the model gives -0.5000000000000001. `(-27)^(-1/3)` = -0.33333333333333337 and `(-8)^(1/3)` = -1.9999999999999998 do match.
+Evidence:
+- probes-numeric/power-non-integer-sweep A1-A182: bases 2, 3, 5, 6, 7, 10, 0.5, 1.5, 100, 1E10, 1E-10, 123.456, 0.9 and 1.1, each with exponents ±0.5, ±1.5, ±2.5, ±0.3, 1/3, ±33.5, 0.25 and 2.7.
+- probes-numeric/power-non-integer-sweep A183-A194: odd roots of negatives and out-of-range results.
+- Both are oracle excel-graph, 2026-10-12, T-1319.
+- gen-m1/6462bf910ef9f28f Calc!A41 and A207; gen-m2/1b6ceed7489e0800 Calc!A62; gen-m7/9ff3afcacd3bd0fc Calc!A13.
+- ironcalc-calc POWER.xlsx Sheet1!D3 and F9.
+Not probed: other negative bases; exponents within 1E-15 of ±0.5.
+Implemented in: `non_integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
+Status: VERIFIED (excel-graph)
+Tasks: T-1319, T-1421, T-0221
+
 ## POWER and `^`: odd roots of negatives, zero and overflow
-Rule: `POWER(-8, 1/3)` is -2 (an odd root of a negative number is real); `POWER(0,0)` is #NUM!;
+Rule: `POWER(-8, 1/3)` is -1.9999999999999998 (an odd root of a negative number is real; see "Non-integer exponents: exp(y·ln x)"); `POWER(0,0)` is #NUM!;
 `POWER(0,-1)` is #DIV/0!; text operands give #VALUE!; array operands work element by element.
 Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx (Excel-authored): Sheet1!D2 (#DIV/0!),
-D3 and F9 (-1.9999999999999998 — we return -2, a 1-ulp NumericUlp known failure), sheets 2-8 for ranges.
+D3 and F9 (-1.9999999999999998, matched since T-1319: see "Non-integer exponents"), sheets 2-8 for ranges.
 The operator `^` shares the zero case: `0^-0`, `+0^0`, `(-0)^0` and `0%^0` are all `#NUM!`, while
 `-0^0.5` = 0 (gen-m1/6462bf910ef9f28f Calc!A19, A30, A205, A222; gen-m1/1c62c4bff4ed1976 Calc!A60;
 oracle: excel-graph, 2026-10-05, T-0109).
@@ -708,9 +736,8 @@ every base except 10 (about 280 cells across `1.0000001`, `0.9999999`, `1.5`, `2
    are plain square-and-multiply (`0.1^-33` = 9.999999999999965E+32, not 1E+33):
    `(-10)^33` = -1.0000000000000001E+33, `100^100` = 1.0000000000000005E+200.
 4. Overflow is `#NUM!` as before (`100^200`, `1E15^23`, `10^309`).
-Not explained (T-1319): non-integer exponents of 10 differ from libm in the last digits (`10^33.5` =
-3.162277660168401E+33, libm 3.162277660168379E+33; `10^-33.5` = 3.1622776601683576E-34;
-`10^40.0000001` = 1.0000002302585496E+40).
+Non-integer exponents (`10^33.5` = 3.162277660168401E+33, libm 3.162277660168379E+33; `10^-33.5` =
+3.1622776601683576E-34; `10^40.0000001` = 1.0000002302585496E+40) follow "Non-integer exponents: exp(y·ln x)" (T-1319).
 Evidence: probes-numeric/power-large-integer-exponents{,-2,-3,-4}.case.json (oracle: excel-graph,
 2026-10-11, T-1311; the non-integer cells are A54-A56 of -4).
 Implemented in: `power` and `integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
@@ -1023,3 +1050,9 @@ Evidence: ironcalc-calc MATH_AND_TRIGONOMETRY/SERIESSUM.xlsx C1, H7 (Excel-cache
 Ours: `#NUM!` for every x = 0.
 Status: UNVERIFIED (probe pending: negative powers, a blank x)
 Tasks: T-1359
+
+## ECMA.CEILING
+Rule: `ECMA.CEILING(number, significance)` is a real Excel function with exactly the two-argument `CEILING` semantics (rounds away from zero for negative `number` with negative `significance`; `#NUM!` when `number` is positive and `significance` negative; zero significance gives 0; number text `"2.5"` and `TRUE` are read as numbers; text significance is `#VALUE!`). It is stored in a file as `_xlfn.ECMA.CEILING`, and `FORMULATEXT` prints it as `=ECMA.CEILING(2.5,2)` (no prefix). Written bare (`ECMA.CEILING(...)`) in a file, Graph rejects the whole workbook (`createSession` 501 `unsupportedWorkbook`); the one-argument form `_xlfn.ECMA.CEILING(2.5)` is rejected the same way (arity is exactly 2, like CEILING).
+Evidence: probes/ecma-ceiling A1:A6, A8:A11, A13:A14; probes/ecma-ceiling-formulatext A12 (excel-graph, 2026-10-12, T-1301).
+Status: VERIFIED. Ours: implemented (T-1301) as its own `Function::EcmaCeiling` (not an alias of CEILING, so FORMULATEXT keeps the name) dispatched to `fn_ceiling`, with an `_xlfn.ECMA.CEILING` entry in `functions/xlsx_names.rs`. The name is `ECMA.CEILING` in every `language.bin` locale (as upstream IronCalc 8a82396a has it).
+Tasks: T-1301

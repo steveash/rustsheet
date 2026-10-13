@@ -41,8 +41,8 @@ fn numbers() {
 
     assert_eq!(model._get_text("B1"), *"8.483071378");
     assert_eq!(model._get_text("B2"), *"8.941942369");
-    assert_eq!(model._get_text("B3"), *"15.499955689");
-    assert_eq!(model._get_text("B4"), *"14.936131032");
+    assert_eq!(model._get_text("B3"), *"15.49995569");
+    assert_eq!(model._get_text("B4"), *"14.93613103");
 }
 
 // ── whole-column range and a spill beyond the used area ─────────────────────

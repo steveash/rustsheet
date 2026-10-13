@@ -34,7 +34,7 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
-use crate::{cf_types::CfCellResult, reference_operators::VariableStack, tz::Tz};
+use crate::{cf_types::CfCellResult, tz::Tz, variable_stack::VariableStack};
 
 #[cfg(any(test, feature = "mock_time"))]
 pub use crate::mock_time::get_milliseconds_since_epoch;
@@ -192,10 +192,12 @@ pub struct Model {
     pub(crate) last_lambda_id: usize,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).
     pub(crate) defined_names_running: crate::defined_names::DefinedNameRun,
+    /// What the formula being evaluated has left of its area budgets (`with_area_budget`).
+    pub(crate) area_budget: crate::area_budget::AreaBudget,
     /// Everything the evaluation algorithm needs besides the workbook. See `evaluation.rs`.
     pub(crate) evaluation: Evaluation,
-    /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
-    /// Rebuilt from scratch on every call to evaluate_conditional_formatting().
+    /// Evaluated CF results per cell, keyed by (`sheet_index`, row, column).
+    /// Rebuilt from scratch on every call to `evaluate_conditional_formatting()`.
     pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
     /// Dynamic links: links created by formulas like HYPERLINK
     pub(crate) links: HashMap<(u32, i32, i32), Link>,
@@ -434,21 +436,11 @@ impl Model {
     ///
     /// Formula strings kept outside of cells (defined names and conditional
     /// formatting rules) are always stored in English — see
-    /// [Model::user_formula_to_internal]. They must therefore be parsed with
+    /// [`Model::user_formula_to_internal`]. They must therefore be parsed with
     /// the English language and locale regardless of the user's active
     /// language. This temporarily switches the parser, parses, and restores it.
     pub(crate) fn parse_internal_formula(&mut self, body: &str, context: &CellReferenceRC) -> Node {
         self.parse_internal_with(|parser| parser.parse(body, context))
-    }
-
-    /// Like [`Model::parse_internal_formula`], but keeps the grouped root, which Excel does not
-    /// snap (numbers.md "Near-zero snapping", T-1164); use it when the node is printed back.
-    pub(crate) fn parse_internal_cell_formula(
-        &mut self,
-        body: &str,
-        ctx: &CellReferenceRC,
-    ) -> Node {
-        self.parse_internal_with(|parser| parser.parse_cell_formula(body, ctx))
     }
 
     fn parse_internal_with(&mut self, parse: impl FnOnce(&mut Parser) -> Node) -> Node {
@@ -478,11 +470,11 @@ impl Model {
         let trimmed = formula.trim();
         let had_equals = trimmed.starts_with('=');
         let body = trimmed.strip_prefix('=').unwrap_or(trimmed);
-        let mut node = self.parser.parse_cell_formula(body, context);
+        let mut node = self.parser.parse(body, context);
         if let Node::ParseErrorKind { .. } = node {
             // The user's language could not parse it: it might already be in the
             // internal English form.
-            node = self.parse_internal_cell_formula(body, context);
+            node = self.parse_internal_formula(body, context);
         }
         if let Node::ParseErrorKind { .. } = node {
             return Err(format!("Invalid formula: '{formula}'"));
@@ -548,7 +540,7 @@ impl Model {
         let defined_names = self.workbook.get_defined_names_with_scope();
         let mut parser =
             new_parser_english(worksheet_names, defined_names, self.workbook.tables.clone());
-        let node = parser.parse_cell_formula(body, context);
+        let node = parser.parse(body, context);
         if let Node::ParseErrorKind { .. } = node {
             return formula.to_string();
         }
@@ -557,32 +549,6 @@ impl Model {
             format!("={local}")
         } else {
             local
-        }
-    }
-
-    /// Evaluates a formula string on a sheet, returning the numeric result.
-    /// Assumes the workbook has already been evaluated (cell values are up-to-date).
-    /// Returns `None` if the formula is invalid or does not produce a number.
-    pub(crate) fn evaluate_formula(&mut self, formula: &str, sheet: u32) -> Option<f64> {
-        let body = formula.trim().strip_prefix('=').unwrap_or(formula.trim());
-        if body.is_empty() {
-            return None;
-        }
-        let sheet_name = self.workbook.worksheets.get(sheet as usize)?.get_name();
-        let context_rc = CellReferenceRC {
-            sheet: sheet_name,
-            row: 1,
-            column: 1,
-        };
-        let node = self.parse_internal_formula(body, &context_rc);
-        let context_index = CellReferenceIndex {
-            sheet,
-            row: 1,
-            column: 1,
-        };
-        match self.evaluate_node_in_context(&node, context_index) {
-            CalcResult::Number(n) => Some(n),
-            _ => None,
         }
     }
 
@@ -1505,7 +1471,7 @@ impl Model {
     /// ```
     ///
     /// See also:
-    /// * [Model::to_bytes]
+    /// * [`Model::to_bytes`]
     pub fn from_bytes(s: &[u8], language_id: &str) -> Result<Model, String> {
         let workbook: Workbook =
             bitcode::decode(s).map_err(|e| format!("Error parsing workbook: {e}"))?;
@@ -1574,6 +1540,7 @@ impl Model {
             lambdas: HashMap::new(),
             last_lambda_id: 0,
             defined_names_running: Default::default(),
+            area_budget: Default::default(),
             evaluation: Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
@@ -1611,7 +1578,7 @@ impl Model {
             match state {
                 "sheet" => {
                     if byte == b'!' {
-                        state = "col"
+                        state = "col";
                     } else {
                         sheet_name.push(byte as char);
                     }
@@ -1671,8 +1638,8 @@ impl Model {
     /// ```
     ///
     /// See also:
-    /// * [Model::extend_to()]
-    /// * [Model::extend_copied_value()]
+    /// * [`Model::extend_to()`]
+    /// * [`Model::extend_copied_value()`]
     pub fn move_cell_value_to_area(
         &mut self,
         value: &str,
@@ -1706,7 +1673,7 @@ impl Model {
                 column: source.column,
             };
             let formula_str = move_formula(
-                &self.parser.parse_cell_formula(formula, &cell_reference),
+                &self.parser.parse(formula, &cell_reference),
                 &MoveContext {
                     source_sheet_name: &source_sheet_name,
                     row: source.row,
@@ -1743,8 +1710,8 @@ impl Model {
     /// ```
     ///
     /// See also:
-    /// * [Model::extend_copied_value()]
-    /// * [Model::move_cell_value_to_area()]
+    /// * [`Model::extend_copied_value()`]
+    /// * [`Model::move_cell_value_to_area()`]
     pub fn extend_to(
         &self,
         sheet: u32,
@@ -1798,8 +1765,8 @@ impl Model {
     /// ```
     ///
     /// See also:
-    /// * [Model::extend_to()]
-    /// * [Model::move_cell_value_to_area()]
+    /// * [`Model::extend_to()`]
+    /// * [`Model::move_cell_value_to_area()`]
     pub fn extend_copied_value(
         &mut self,
         value: &str,
@@ -1825,7 +1792,7 @@ impl Model {
                 row: source.row,
                 column: source.column,
             };
-            let formula = &self.parser.parse_cell_formula(formula_str, &cell_reference);
+            let formula = &self.parser.parse(formula_str, &cell_reference);
             let cell_reference = CellReferenceRC {
                 sheet: target_sheet_name,
                 row: target.row,
@@ -1857,7 +1824,7 @@ impl Model {
     /// ```
     ///
     /// See also:
-    /// * [Model::get_localized_cell_content()]
+    /// * [`Model::get_localized_cell_content()`]
     pub fn get_cell_formula(
         &self,
         sheet: u32,
@@ -1893,7 +1860,7 @@ impl Model {
     /// Returns the text for the formula in (`sheet`, `row`, `column`) in English if any
     ///
     /// See also:
-    /// * [Model::get_localized_cell_content()]
+    /// * [`Model::get_localized_cell_content()`]
     pub(crate) fn get_english_cell_formula(
         &self,
         sheet: u32,
@@ -1947,10 +1914,10 @@ impl Model {
     /// ```
     ///
     /// See also:
-    /// * [Model::set_user_input()]
-    /// * [Model::update_cell_with_number()]
-    /// * [Model::update_cell_with_bool()]
-    /// * [Model::update_cell_with_formula()]
+    /// * [`Model::set_user_input()`]
+    /// * [`Model::update_cell_with_number()`]
+    /// * [`Model::update_cell_with_bool()`]
+    /// * [`Model::update_cell_with_formula()`]
     pub fn update_cell_with_text(
         &mut self,
         sheet: u32,
@@ -1995,10 +1962,10 @@ impl Model {
     /// ```
     ///
     /// See also:
-    /// * [Model::set_user_input()]
-    /// * [Model::update_cell_with_number()]
-    /// * [Model::update_cell_with_text()]
-    /// * [Model::update_cell_with_formula()]
+    /// * [`Model::set_user_input()`]
+    /// * [`Model::update_cell_with_number()`]
+    /// * [`Model::update_cell_with_text()`]
+    /// * [`Model::update_cell_with_formula()`]
     pub fn update_cell_with_bool(
         &mut self,
         sheet: u32,
@@ -2030,10 +1997,10 @@ impl Model {
     /// ```
     ///
     /// See also:
-    /// * [Model::set_user_input()]
-    /// * [Model::update_cell_with_text()]
-    /// * [Model::update_cell_with_bool()]
-    /// * [Model::update_cell_with_formula()]
+    /// * [`Model::set_user_input()`]
+    /// * [`Model::update_cell_with_text()`]
+    /// * [`Model::update_cell_with_bool()`]
+    /// * [`Model::update_cell_with_formula()`]
     pub fn update_cell_with_number(
         &mut self,
         sheet: u32,
@@ -2068,10 +2035,10 @@ impl Model {
     /// ```
     ///
     /// See also:
-    /// * [Model::set_user_input()]
-    /// * [Model::update_cell_with_number()]
-    /// * [Model::update_cell_with_bool()]
-    /// * [Model::update_cell_with_text()]
+    /// * [`Model::set_user_input()`]
+    /// * [`Model::update_cell_with_number()`]
+    /// * [`Model::update_cell_with_bool()`]
+    /// * [`Model::update_cell_with_text()`]
     pub fn update_cell_with_formula(
         &mut self,
         sheet: u32,
@@ -2207,10 +2174,10 @@ impl Model {
     /// ```
     ///
     /// See also:
-    /// * [Model::update_cell_with_formula()]
-    /// * [Model::update_cell_with_number()]
-    /// * [Model::update_cell_with_bool()]
-    /// * [Model::update_cell_with_text()]
+    /// * [`Model::update_cell_with_formula()`]
+    /// * [`Model::update_cell_with_number()`]
+    /// * [`Model::update_cell_with_bool()`]
+    /// * [`Model::update_cell_with_text()`]
     pub fn set_user_input(
         &mut self,
         sheet: u32,
@@ -2271,9 +2238,9 @@ impl Model {
                 }
 
                 //  We try to parse as number
-                let year = || self.current_year();
+                let (year, ds) = (|| self.current_year(), self.workbook.settings.date_system);
                 if let Ok((v, number_format)) =
-                    parse_formatted_number(&value, &currencies, self.locale, &year)
+                    parse_formatted_number(&value, &currencies, self.locale, &year, ds)
                 {
                     if let Some(num_fmt) = number_format {
                         // Should not apply the format in the following cases:
@@ -2510,10 +2477,10 @@ impl Model {
     ) -> Result<Node, String> {
         let sheet = self.workbook.worksheet(sheet)?.get_name();
         let cell_reference = &CellReferenceRC { sheet, row, column };
-        let mut node = self.parser.parse_cell_formula(formula, cell_reference);
+        let mut node = self.parser.parse(formula, cell_reference);
         if matches!(&node, Node::ParseErrorKind { message, .. } if !is_limit_error(message)) {
             let closed = format!("{formula})");
-            let retry = self.parser.parse_cell_formula(&closed, cell_reference);
+            let retry = self.parser.parse(&closed, cell_reference);
             if !matches!(retry, Node::ParseErrorKind { .. }) {
                 node = retry;
             }
@@ -2667,7 +2634,7 @@ impl Model {
     /// Gets the Excel Value (Bool, Number, String) of a cell
     ///
     /// See also:
-    /// * [Model::get_cell_value_by_index()]
+    /// * [`Model::get_cell_value_by_index()`]
     pub fn get_cell_value_by_ref(&self, cell_ref: &str) -> Result<CellValue, String> {
         let cell_reference = match self.parse_reference(cell_ref) {
             Some(c) => c,
@@ -2683,7 +2650,7 @@ impl Model {
     /// Returns the cell value for (`sheet`, `row`, `column`)
     ///
     /// See also:
-    /// * [Model::get_formatted_cell_value()]
+    /// * [`Model::get_formatted_cell_value()`]
     pub fn get_cell_value_by_index(
         &self,
         sheet_index: u32,
@@ -2703,8 +2670,8 @@ impl Model {
     /// Returns the formatted cell value for (`sheet`, `row`, `column`)
     ///
     /// See also:
-    /// * [Model::get_cell_value_by_index()]
-    /// * [Model::get_cell_value_by_ref]
+    /// * [`Model::get_cell_value_by_index()`]
+    /// * [`Model::get_cell_value_by_ref`]
     ///
     /// # Examples
     ///
@@ -2830,7 +2797,7 @@ impl Model {
     /// Removes the content of every cell in the range but leaves the style.
     ///
     /// See also:
-    /// * [Model::range_clear_all()]
+    /// * [`Model::range_clear_all()`]
     ///
     /// # Examples
     ///
@@ -2933,7 +2900,7 @@ impl Model {
     /// Deletes the whole spill if it is part of a dynamic array formula.
     ///
     /// See also:
-    /// * [Model::range_clear_contents()]
+    /// * [`Model::range_clear_contents()`]
     ///
     /// # Examples
     ///
@@ -3109,7 +3076,7 @@ impl Model {
     /// Returns an internal binary representation of the workbook
     ///
     /// See also:
-    /// * [Model::from_bytes]
+    /// * [`Model::from_bytes`]
     pub fn to_bytes(&self) -> Vec<u8> {
         bitcode::encode(&self.workbook)
     }
@@ -3145,7 +3112,7 @@ impl Model {
                 };
                 let style = self.get_style_for_cell(sheet, row, column)?;
                 if style.font.b {
-                    cell_markup = format!("**{cell_markup}**")
+                    cell_markup = format!("**{cell_markup}**");
                 }
                 row_markup.push(cell_markup);
             }
@@ -3354,7 +3321,7 @@ impl Model {
     pub fn set_timezone(&mut self, timezone: &str) -> Result<(), String> {
         let tz = match Tz::parse(timezone) {
             Ok(tz) => tz,
-            Err(_) => return Err(format!("Invalid timezone: {}", timezone)),
+            Err(_) => return Err(format!("Invalid timezone: {timezone}")),
         };
         self.tz = tz;
         self.workbook.settings.tz = timezone.to_string();
@@ -3392,7 +3359,7 @@ impl Model {
     /// absolute/relative states, Excel F4 style: A1 -> $A$1 -> A$1 -> $A1 -> A1.
     /// Returns the new text together with the new cursor start and end.
     ///
-    /// Given cycle_reference("=A1", 3, 3) returns ("=$A$1", 5, 5)
+    /// Given `cycle_reference("=A1`", 3, 3) returns ("=$A$1", 5, 5)
     pub fn cycle_reference(
         &self,
         value: &str,
@@ -3426,7 +3393,7 @@ mod tests {
         assert_eq!(
             model.cell_reference_to_string(&reference),
             Ok("Sheet1!P32".to_string())
-        )
+        );
     }
 
     #[test]
@@ -3440,7 +3407,7 @@ mod tests {
         assert_eq!(
             model.cell_reference_to_string(&reference),
             Err("Invalid sheet index".to_string())
-        )
+        );
     }
 
     #[test]
@@ -3454,7 +3421,7 @@ mod tests {
         assert_eq!(
             model.cell_reference_to_string(&reference),
             Err("Invalid column".to_string())
-        )
+        );
     }
 
     #[test]
@@ -3468,7 +3435,7 @@ mod tests {
         assert_eq!(
             model.cell_reference_to_string(&reference),
             Err("Invalid row".to_string())
-        )
+        );
     }
 
     #[test]
@@ -3485,7 +3452,7 @@ mod tests {
 
         // Clears the content of A2 but not the style
         assert_eq!(worksheet.cell(2, 1), Some(&Cell::EmptyCell { s: 0 }));
-        assert_eq!(worksheet.cell(3, 1), None)
+        assert_eq!(worksheet.cell(3, 1), None);
     }
 
     #[test]
@@ -3494,7 +3461,7 @@ mod tests {
         assert_eq!(
             model.workbook.worksheet(5),
             Err("Invalid sheet index".to_string()),
-        )
+        );
     }
 
     #[test]

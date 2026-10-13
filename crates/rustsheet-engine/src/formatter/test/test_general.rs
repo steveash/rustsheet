@@ -292,6 +292,18 @@ fn test_german_locale() {
     assert_eq!(format_number(1234.56, "General", &ctx).text, "1234,56");
 }
 
+// Excel evidence: poi/NumberFormatTests.xlsx Tests!A5, A18, A22, A107 (docs/excel-semantics/number-formats.md).
+#[test]
+fn pound_yen_and_pipe_are_unquoted_literals() {
+    let ctx = FormatContext::new(get_default_locale());
+    assert_eq!(format_number(12.3, "£000.00", &ctx).text, "£012.30");
+    assert_eq!(
+        format_number(-12.3, "\"before \"¥#.00", &ctx).text,
+        "-before ¥12.30"
+    );
+    assert_eq!(format_number(1.1, "|?.?|", &ctx).text, "|1.1|");
+}
+
 #[test]
 fn general_fixed_versus_scientific() {
     // T-0938: probes/number-text-exponent-digits D8, poi/GeneralFormatTests (A13, A17, A18, A26-A28,
@@ -312,4 +324,22 @@ fn general_fixed_versus_scientific() {
     assert_eq!(general(9.999_999_6E10), "99999996000");
     assert_eq!(general(1E11), "1E+11");
     assert_eq!(general(1.123_456_789E-10), "1.12346E-10");
+}
+
+#[test]
+fn colon_runs_print_as_one() {
+    // probes/text-format-length-limit-f A30:A39, -g A42:A46 (T-1434).
+    let ctx = FormatContext::new(get_default_locale());
+    assert_eq!(format_number(1.0, "0::", &ctx).text, "1:");
+    assert_eq!(format_number(1.0, "d:::", &ctx).text, "1:");
+    assert_eq!(format_number(1.0, "0: :", &ctx).text, "1: :");
+    assert_eq!(format_number(1.0, "d:\"\":", &ctx).text, "1::");
+}
+
+#[test]
+fn single_text_section_prints_a_number_in_general() {
+    // probes/text-format-length-limit-i A19:A26 (T-1434).
+    let ctx = FormatContext::new(get_default_locale());
+    assert_eq!(format_number(1.0, "@\"aaa\"", &ctx).text, "1");
+    assert_eq!(format_number(1.5, "@", &ctx).text, "1.5");
 }

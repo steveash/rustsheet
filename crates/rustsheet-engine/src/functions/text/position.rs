@@ -26,7 +26,7 @@ pub(super) fn find_element(
     // (probes/text-surrogate-positions A14-A26, B11-B15).
     let (find_text, within_text) = if is_search {
         // SEARCH is case insensitive
-        (find_text.to_lowercase(), within_text.to_lowercase())
+        (fold_case(&find_text), fold_case(&within_text))
     } else {
         (find_text, within_text)
     };
@@ -53,7 +53,28 @@ pub(super) fn find_element(
     }
 }
 
-/// Finds the first instance of 'search_for' in text starting at char index start
+/// Lowercases `text` one character at a time, leaving a character whose lowercase form is longer
+/// than one character as it is. Excel's SEARCH never changes the length of the text it counts in:
+/// `SEARCH("x","İx")` is 2 and `SEARCH("i","İx")` is #VALUE!, whereas Rust's `to_lowercase` turns
+/// U+0130 into "i" + U+0307 (probes/text-search-casefold-length A1, A2, A8, A12, A13).
+fn fold_case(text: &str) -> String {
+    text.chars()
+        .map(|c| {
+            // Final sigma matches sigma in either case (`SEARCH("ς","ΟΣ")` is 2), while the other
+            // simple-fold pairs do not: ſ/s, µ/μ and ϐ/β are #VALUE! (A14-A24).
+            if c == 'ς' {
+                return 'σ';
+            }
+            let mut lower = c.to_lowercase();
+            match (lower.next(), lower.next()) {
+                (Some(single), None) => single,
+                _ => c,
+            }
+        })
+        .collect()
+}
+
+/// Finds the first instance of '`search_for`' in text starting at char index start
 fn find(search_for: &str, text: &str, start: usize) -> Option<i32> {
     let ch = text.chars();
     let mut byte_index = 0;
@@ -66,7 +87,7 @@ fn find(search_for: &str, text: &str, start: usize) -> Option<i32> {
     None
 }
 
-/// You can use the wildcard characters — the question mark (?) and asterisk (*) — in the find_text argument.
+/// You can use the wildcard characters — the question mark (?) and asterisk (*) — in the `find_text` argument.
 /// * A question mark matches any single character.
 /// * An asterisk matches any sequence of characters.
 /// * If you want to find an actual question mark or asterisk, type a tilde (~) before the character.

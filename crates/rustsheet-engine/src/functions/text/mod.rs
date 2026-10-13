@@ -1,4 +1,5 @@
 mod arraytotext;
+mod bahttext;
 mod byte_functions;
 mod char_code;
 mod common;
@@ -7,6 +8,6 @@ mod encodeurl;
 mod position;
 mod regex_functions;
 mod string_format;
-mod text_arg;
+pub(crate) mod text_arg;
 mod textsplit;
 mod util;

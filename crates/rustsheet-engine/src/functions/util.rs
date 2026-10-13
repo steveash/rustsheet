@@ -9,7 +9,7 @@ use crate::{
     functions::{logical::IfBranchMode, Function},
     model::Model,
     number_format::cmp_excel_precision,
-    reference_operators::{RefArg, MAX_AREA_CELLS, TOO_MANY_AREA_CELLS},
+    reference_operators::RefArg,
 };
 
 /// Converts a single array element into a scalar [`CalcResult`].
@@ -210,6 +210,43 @@ impl Model {
         }
     }
 
+    /// An argument that reads one cell of a reference (MATCH's `match_type`, IFS and SWITCH's chosen
+    /// value): IF, IFS, SWITCH, LET and CHOOSE hand back the cell they pick, however deeply they
+    /// nest (probes/match-type-text-passthrough K1:K9, match-type-nested-passthrough K1:K17;
+    /// T-1399, T-1452). Aggregates keep [`Self::evaluate_reference_arg`], where IFS and SWITCH are
+    /// values (`SUM(IFS(TRUE,A1:B2))`, docs/excel-semantics/logic.md).
+    pub(crate) fn evaluate_chosen_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node.ungrouped() {
+            Node::FunctionKind {
+                kind: Function::If,
+                args,
+            } => self
+                .if_impl(args, cell, IfBranchMode::Chosen)
+                .into_single_area(cell),
+            Node::FunctionKind {
+                kind: Function::Ifs,
+                args,
+            } => self.ifs_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Switch,
+                args,
+            } => self.switch_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Let,
+                args,
+            } => self.let_impl(args, cell, true).into_single_area(cell),
+            Node::FunctionKind {
+                kind: Function::Choose,
+                args,
+            } => self.choose_impl(args, cell, true).into_single_area(cell),
+            other => self.eval_ref_or_index(other, cell),
+        }
+    }
+
     /// Evaluates one argument of an aggregate (SUM, COUNT, AVERAGE, MIN, ...).
     /// A cell reference, and an IF or INDEX that selects one, comes back as a
     /// range, so the caller skips its text, booleans and blanks like any range
@@ -329,39 +366,6 @@ impl Model {
         Ok((last_row, last_column))
     }
 
-    /// Checks that walking `areas` stays within [`MAX_AREA_CELLS`] cells once each area is
-    /// clipped to its sheet's used area: arithmetic only, before any cell is read, so
-    /// `MAX_AREAS` whole columns over a populated sheet are `#VALUE!` without a walk.
-    pub(crate) fn check_area_cells(
-        &self,
-        areas: &[Range],
-        cell: CellReferenceIndex,
-    ) -> Result<(), CalcResult> {
-        let mut total: u64 = 0;
-        for area in areas {
-            let (row2, column2) = self
-                .used_area_corner(
-                    area.left.sheet,
-                    area.left.row,
-                    area.left.column,
-                    area.right.row,
-                    area.right.column,
-                )
-                .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-            let rows = u64::try_from(row2 - area.left.row + 1).unwrap_or(0);
-            let columns = u64::try_from(column2 - area.left.column + 1).unwrap_or(0);
-            total = total.saturating_add(rows.saturating_mul(columns));
-            if total > MAX_AREA_CELLS {
-                return Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    TOO_MANY_AREA_CELLS.to_string(),
-                ));
-            }
-        }
-        Ok(())
-    }
-
     /// Calls `f` with the value of every cell of `areas`, area by area in formula
     /// order, each in row-major order.
     ///
@@ -407,7 +411,8 @@ impl Model {
     /// Calls `f` with the position of every cell of `areas`, as
     /// [`Self::for_each_cell_in_areas`] orders them, without evaluating it: for walks that
     /// skip cells by position (AGGREGATE's hidden rows and nested SUBTOTAL/AGGREGATE cells).
-    /// Several areas are first held to [`MAX_AREA_CELLS`]; one range is not, as before.
+    /// Several areas are first held to the formula's budget of
+    /// [`MAX_AREA_CELLS`](crate::area_budget::MAX_AREA_CELLS); one range is not, as before.
     /// An `Err` from `f` stops the walk.
     pub(crate) fn for_each_position_in_areas<F>(
         &mut self,
@@ -418,9 +423,7 @@ impl Model {
     where
         F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
     {
-        if areas.len() > 1 {
-            self.check_area_cells(areas, cell)?;
-        }
+        self.check_area_cells(areas, cell)?;
         for Range { left, right } in areas {
             // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one
             // is clipped to its own used area, so a span of whole columns walks only data.
@@ -489,7 +492,7 @@ impl Model {
 }
 
 /// Excel's `MOD`: the exact remainder (`fmod`) shifted into the divisor's sign. Not
-/// `n - d*floor(n/d)`, which loses precision for tiny divisors; evidence: MOD_QUOTIENT.xlsx
+/// `n - d*floor(n/d)`, which loses precision for tiny divisors; evidence: `MOD_QUOTIENT.xlsx`
 /// C20/C21/C25/C26 (docs/excel-semantics/numbers.md). `divisor` must be non-zero.
 pub(crate) fn excel_mod(value: f64, divisor: f64) -> f64 {
     let remainder = value % divisor;
@@ -500,5 +503,46 @@ pub(crate) fn excel_mod(value: f64, divisor: f64) -> f64 {
         remainder + divisor
     } else {
         remainder
+    }
+}
+
+/// How far below the next integer a whole-number argument may fall and still count as that
+/// integer: 2^-22 + 2^-33, the same at 1, 500, 1000, 30000 and 100000 (an absolute bound, not
+/// relative). LEFT, RIGHT, REPLACE counts and INDEX's row and column indexes share it.
+pub(crate) const NEAR_INTEGER_TOLERANCE: f64 = 1.0 / 4_194_304.0 + 1.0 / 8_589_934_592.0;
+
+/// The whole number LEFT, RIGHT, REPLACE and INDEX read from a count, position or index: `x`
+/// truncated, except that a fraction within [`NEAR_INTEGER_TOLERANCE`] of the next integer counts
+/// as that integer, so `LEFT("abc",1-2^-22)` is "a". MID truncates exactly and does not use this.
+// Excel: docs/excel-semantics/text.md "LEFT, RIGHT and REPLACE round counts up near an
+// integer" (probes/text-count-argument-bounds) and lookup.md "INDEX rounds an index up near an
+// integer" (probes/index-snap-tolerance).
+pub(crate) fn near_integer_count(x: f64) -> f64 {
+    let whole = x.floor();
+    // `x - whole` is exact for every finite double, so the bound is not blurred at large x.
+    if x - whole >= 1.0 - NEAR_INTEGER_TOLERANCE {
+        whole + 1.0
+    } else {
+        whole
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::near_integer_count;
+
+    #[test]
+    fn near_integer_count_rounds_up_within_the_tolerance() {
+        // probes/text-count-argument-bounds Z10, Z9, AA1, AA2: 1 - (2^-22 + 2^-33) is 1, a hair
+        // further down is 0; the bound is absolute (AA13, AA14 below 30000).
+        let at = 2f64.powi(-22) + 2f64.powi(-33);
+        let past = 2f64.powi(-22) + 9.0 * 2f64.powi(-36);
+        assert_eq!(near_integer_count(1.0 - at), 1.0);
+        assert_eq!(near_integer_count(1.0 - past), 0.0);
+        assert_eq!(near_integer_count(30000.0 - at), 30000.0);
+        assert_eq!(near_integer_count(30000.0 - past), 29999.0);
+        assert_eq!(near_integer_count(2.5), 2.0);
+        assert_eq!(near_integer_count(1e-300), 0.0);
+        assert_eq!(near_integer_count(1e100), 1e100);
     }
 }

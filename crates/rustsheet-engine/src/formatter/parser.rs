@@ -244,7 +244,13 @@ impl Parser {
                     if value == ':' {
                         is_time = true;
                     }
-                    tokens.push(TextToken::Literal(value));
+                    // A run of colons prints as one ("0::a" → "1:a"; number-formats.md
+                    // "Colon runs", probes/text-format-length-limit-f/g, T-1434).
+                    let repeated_colon =
+                        value == ':' && matches!(tokens.last(), Some(TextToken::Literal(':')));
+                    if !repeated_colon {
+                        tokens.push(TextToken::Literal(value));
+                    }
                 }
                 Token::Text(value) => {
                     tokens.push(TextToken::Text(value));

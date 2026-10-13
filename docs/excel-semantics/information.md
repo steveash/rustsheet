@@ -29,6 +29,22 @@ Implemented in: `Model::parity_predicate` (functions/information/mod.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-0247, T-0248
 
+## IS* and TYPE over every scalar value kind
+Only a truly empty cell is blank: `ISBLANK` is FALSE for a formula returning `""`, a single space,
+`0`, FALSE, text and errors, and TRUE for an unused cell (`Data!Z99`) and for a blank passed
+through `IF(1,Data!A1)`. `ISTEXT` is TRUE for `""` (literal and formula result), `1&""` (text "1"), a space
+and the text `"TRUE"`/`"1"`; FALSE for blanks, numbers (date-formatted too), booleans and errors.
+`ISNONTEXT` is the exact complement (TRUE for blank and errors). `ISLOGICAL` is TRUE only for
+real booleans (`1=1`, a FALSE cell), not `"FALSE"`/`"TRUE"` text. `ISNA` is TRUE only for `#N/A`
+(`NA()`, `#N/A`, `NA()+1`), FALSE for `#DIV/0!`/`#VALUE!`. `TYPE`: blank 1, number 1,
+text (including `""`) 2, boolean 4, error 16, array/range 64 (evidenced by probes/info-logic-argument-modes, not this probe), and `TYPE(LAMBDA(x,x))` is 128
+(the engine returned `#N/IMPL!`; fixed in T-1278).
+Evidence: probes/is-functions-scalar-kinds (Calc!A1:F12 direct references, A20:F24 direct
+arguments; excel-graph oracle sidecar). Desktop Excel was not checked.
+Implemented in: `fn_type`, `fn_isblank` and the IS* helpers (functions/information/mod.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-1278
+
 ## Resource bound on lifted IS* ranges
 Rule: Excel spills `ISBLANK(A:A)` (1,048,576 rows) and even `ISBLANK(A:XFD)`. RustSheet returns
 `#ERROR!` for a lifted IS* range above 1,048,576 cells (one whole column), to bound allocation on
@@ -111,8 +127,31 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
   element is checked on its own (`IMAGE({url,url},"alt",{0,9})` is `#BLOCKED!`, `#VALUE!`; `{9;0}` with a 1x2 source is 2x2;
   a scalar source with `{0;9;1}` is 3x1; a length-1 array repeats; a shorter array is `#N/A` past its end,
   `IMAGE({url,url,url},"alt",{0,9})` is `#BLOCKED!`, `#VALUE!`, `#N/A`). A `sizing` of `{3,3}` with `height` `{5,-1}` is valid, then
-  invalid, and so on per element (probes/rich-errors-image-array-options, 61 cells, excel-graph, 2026-10-12, T-1370). UNVERIFIED:
-  an error element inside an option array.
+  invalid, and so on per element (probes/rich-errors-image-array-options, 61 cells, excel-graph, 2026-10-12, T-1370).
+  An error element inside an option array is that error itself, per element, not `#VALUE!`: `IMAGE(url,"alt",{0,#DIV/0!})` is
+  `#BLOCKED!`, `#DIV/0!`; `{#DIV/0!,0}` is `#DIV/0!`, `#BLOCKED!`; `{9,#DIV/0!}` is `#VALUE!`, `#DIV/0!`. With several options the first
+  error in argument order (`sizing`, `height`, `width`) wins for that element (`{#DIV/0!,0}` with `{5,#N/A}` is `#DIV/0!`, `#N/A`;
+  `{0,#N/A}` with `{5,5}` is `#VALUE!` for the invalid 0-with-height, then `#N/A`), and it holds for a scalar or array source. Two errors in one element: the earlier option wins (`{#DIV/0!,0}` with `{#N/A,5}`
+  is `#DIV/0!` first; `sizing` `{#N/A,..}`, `height` `{#DIV/0!,..}`, `width` `{#NUM!,..}` is `#N/A`). An error element beats an invalid option
+  (`{9,0}` with height `{#DIV/0!,5}` is `#DIV/0!`, `#VALUE!`), and a `source` error element beats an option error element
+  (`IMAGE({#N/A,url},"alt",{#DIV/0!,0})` is `#N/A`, `#BLOCKED!`; `IMAGE({url,#N/A},"alt",{0,#DIV/0!})` is `#BLOCKED!`, `#N/A`)
+  (probes/rich-errors-image-array-error-elements, 41 cells, excel-graph, 2026-10-12, T-1417; VERIFIED).
+  A scalar error option beside an array option also lifts: `IMAGE(url,"alt",#DIV/0!,{5,5})` and `IMAGE(url,"alt",{0,0},#DIV/0!)` are
+  1x2 of `#DIV/0!`, not one scalar error (`ERROR.TYPE` 2, 2), and `IMAGE({url,url},"alt",3,#N/A,{5,5})` is `#N/A`, `#N/A`. An option error
+  element beats a non-URL `source` element in the same column: `IMAGE({"x",url},"alt",{#DIV/0!,0})` is `#DIV/0!`, `#BLOCKED!`;
+  `{1,url}` with `{#N/A,0}` is `#N/A`, `#BLOCKED!`; `{"",url}` with `{#DIV/0!,9}` is `#DIV/0!`, `#VALUE!`. Without an option error the
+  non-URL element is `#VALUE!` (`{TRUE,url}` with `{0,#N/A}` is `#VALUE!`, `#N/A`) (T-1427; VERIFIED).
+  An error in `alt_text` lifts the same way: `IMAGE(url,#N/A,{0,0})` is `#N/A`, `#N/A`, and a scalar error option beside an array `alt_text`
+  gives the array's shape (`IMAGE(url,{"a","b"},#DIV/0!)` is `#DIV/0!`, `#DIV/0!`; `IMAGE(url,{"a","b"},3,#N/A)` is `#N/A`, `#N/A`). With
+  several errors the first in argument order wins: `IMAGE(url,"alt",#N/A,{#DIV/0!,0})`, `IMAGE(url,"alt",#N/A,{5,5},#DIV/0!)` and
+  `IMAGE(url,#N/A,{0,0},#DIV/0!)` are all `#N/A`, and `IMAGE(url,{#N/A,"b"},#DIV/0!)` is `#N/A`, `#DIV/0!` element by element
+  (probes/rich-errors-image-array-error-elements, T-1427; VERIFIED).
+  An array `alt_text` lifts and shapes the grid like any other IMAGE argument: `IMAGE(url,{"a","b"})` and `IMAGE(url,{"a","b"},0)` are
+  1x2 of `#BLOCKED!`, `IMAGE(url,{"a";"b"},{0,0})` is 2x2, `{"a","b","c"}` with `{0,0}` is `#BLOCKED!`, `#BLOCKED!`, `#N/A` (and `{"a","b"}`
+  with `{0,0,0}` the same), and an error element in `alt_text` propagates per element (`{#N/A,"b"}` with `{0,0}` is `#N/A`, `#BLOCKED!`;
+  `{"b",#N/A}` with `{0,0,0}` is `#BLOCKED!`, `#N/A`, `#N/A`) (95 cells, T-1427; VERIFIED).
+  A non-URL scalar source keeps the lift: `IMAGE("x",{"a","b"})` is `#VALUE!`, `#VALUE!` (1x2, not a scalar), and a scalar error option beside an array option
+  still shapes the grid and wins over the source: `IMAGE(1,"alt",#DIV/0!,{5,5})` is `#DIV/0!`, `#DIV/0!` (probes/rich-errors-image-array-error-elements A189, A193, T-1432; VERIFIED; the engine already matches).
 - IMAGE with an invalid `sizing` (`IMAGE({url,url},"alt",9)`) is `#VALUE!` per element (A16).
 - A `field_name` array shorter than the `FIELDVALUE` result along an axis wider than 1 is `#N/A` past its end:
   `FIELDVALUE({1,2,3},{"a","b"})` is `#FIELD!`, `#FIELD!`, `#N/A`; `{1,2,3}` with `{"a";"b"}` is 2x3 of `#FIELD!`, and `{1;2;3}` with `{"a","b"}` is 3x2 of `#FIELD!`; the row-axis form (`{1;2;3}` with `{"a";"b"}`) is UNVERIFIED (probes/rich-errors-image-sizing). A
@@ -161,7 +200,28 @@ Rule: how the other M5 information functions take a range, an array and a direct
 Evidence: probes/info-logic-argument-modes A6:A29, info-logic-argument-modes-2 A7:A8, info-modes-sheet-text,
 info-modes-isref-value-op (oracle: excel-graph, 2026-10-09, T-1088). The refusals come from scratch fills that failed and were not kept.
 Status: VERIFIED (excel-graph)
-Ours: matches since T-1218 (SHEET/N of a range, CELL's array info_type, ISFORMULA's lift, `CELL("contents")` of a multi-cell range on another sheet = `#VALUE!`).
-UNVERIFIED: ironcalc-calc CELL.xlsx B14 (excel-cached, a legacy CSE array formula) shows `CELL("contents",A10:A14)` on the formula's own sheet giving the top-left cell (3.4, not the intersection with row 14), while probes/info-logic-argument-modes A18 (a dynamic-array formula) is `#VALUE!` for an other-sheet row range. We key on the sheet, but the evidence does not separate that from "the formula cell is not inside the range" or "CSE reads the top-left, dynamic arrays give `#VALUE!`". Also unprobed: a non-string element in an array `info_type` (we give `#VALUE!`) and `N(range)` whose top-left cell is an error (we pass the error through).
+Ours: matches since T-1218 (SHEET/N of a range, CELL's array info_type, ISFORMULA's lift, `CELL("contents")` superseded by T-1230 below).
+Settled by T-1230 (next entry): ironcalc-calc CELL.xlsx B14 (top-left of a same-sheet range) and probes/info-logic-argument-modes A18 (`#VALUE!`, which is the formula's own-sheet cell Calc!A2) both fit "the top-left cell, read on the formula's own sheet".
 `CELL("address")` across sheets depends on the file name, which the engine does not know (T-1218 leaves it unimplemented).
 Tasks: T-1088, T-1218
+
+## ISFORMULA over reference kinds (excel-graph)
+Rule: ISFORMULA is TRUE for a cell holding a formula, whatever it returns (`=1+1`, `=""`, `=1/0`), and FALSE for a constant number, a constant text and a blank cell. A spill anchor (`=SEQUENCE(3)`) is TRUE and a spilled child (the cell below it) is FALSE. A cell on another sheet works the same, and the reference may come from INDIRECT, OFFSET or INDEX; `ISFORMULA(Data!D1:D3)` lifts.
+Evidence: probes/ifna-isformula-edges Calc!B1:B13 (oracle: excel-graph, 2026-10-12, T-1279).
+Status: VERIFIED (excel-graph)
+Ours: matches except `ISFORMULA(INDEX(range,1))`, which Excel gives as TRUE and we give as #VALUE! (Calc!B12; T-1453).
+Tasks: T-1279, T-1453
+
+## CELL("contents", ref) reads the formula's own sheet (excel-graph)
+Rule (excel-graph): `CELL("contents", ref)` reads the top-left cell of `ref` taken **on the formula's own sheet**, whatever sheet `ref` names; a multi-cell range is never implicitly intersected, and a legacy (non-array) formula gives the same value as a dynamic one. `=CELL("contents",Data!A2)` on Calc is Calc!A2 (12.5), not Data!A2 (2.5); `Data!A7:C7` is Calc!A7 (21.5); `Data!E1:F1` is Calc!E1 (blank, 0). The earlier "other sheet = `#VALUE!`" reading (probes/info-logic-argument-modes A18) was this: Calc!A2 there is `=XOR(Data!B1)` = `#VALUE!`. Same-sheet ranges give the top-left cell (`A1:A5` in C1, C3, C8 all 11.5), legacy twins included. Only `"contents"` has legacy-twin evidence; the vector signature for CELL's `reference` covers every info_type (other info_types: T-1433).
+Evidence: probes/info-cell-contents-range Calc!C1:F8, S2:S7, T1:T6, V1:V5 (oracle: excel-graph, 2026-10-12, T-1230).
+Status: VERIFIED (excel-graph); desktop UNVERIFIED. A desktop Excel that honours the sheet is likely (this looks like a web bug); the desktop check is T-1075 item 9 (decision 0039: excel-graph is the oracle of record until then).
+Ours: matches since T-1230 (`cell_info` reads the top-left cell on `cell.sheet`; CELL's `reference` argument has a vector signature, so a legacy formula does not intersect it).
+Also: `CELL({1,"row"},B2)` is `#VALUE!` (a non-string element) and `CELL({"row",1},B2)` spills 2, `#VALUE!`; `N(range)` with an error top-left cell is that error (Calc!J1, K1); the info_type array lifts per element.
+Tasks: T-1230
+
+## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
+The oracle appends a canary sheet to every workbook it recalculates, which changes `SHEETS()`, `INFO()`
+and the XLM `GET.WORKBOOK(...)` sheet list. Workbooks that use `GET.WORKBOOK(` (defined names or macro
+sheets) are refused by `embed_canary` for that reason only; this says nothing about what Excel returns
+(T-0014, tools/src/rustsheet_tools/oracle/canary.py).

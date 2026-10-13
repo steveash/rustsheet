@@ -939,3 +939,100 @@ fn date_functions_count_from_the_1904_epoch() {
     assert_eq!(model._get_text("A3"), *"1");
     assert_eq!(model._get_text("A4"), *"1904-01-02");
 }
+
+// DATEDIF reads date text as DATEVALUE does, so in a 1904 workbook it counts from 1904-01-01
+// too (T-1330): text and the equivalent serials give the same result, scalar or lifted.
+#[test]
+fn datedif_date_text_counts_from_the_1904_epoch() {
+    let mut model = new_empty_model();
+    model.workbook.settings.date_system = crate::types::DateSystem::Excel1904;
+    model._set("A1", "=DATEDIF(\"1904-01-02\",60,\"D\")");
+    model._set("A2", "=DATEDIF(1,60,\"D\")");
+    model._set("A3", "=DATEDIF(1,\"1904-03-01\",\"D\")");
+    model._set(
+        "A4",
+        "=INDEX(DATEDIF({\"1904-01-02\",\"1904-01-11\"},60,\"D\"),2)",
+    );
+    model._set("A5", "=INDEX(DATEDIF({1,10},60,\"D\"),2)");
+    // Quoted, so the cells hold text rather than an entered date.
+    model._set("B1", "'1904-01-02");
+    model._set("B2", "'1904-01-11");
+    model._set("A6", "=INDEX(DATEDIF(B1:B2,60,\"D\"),2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"59");
+    assert_eq!(model._get_text("A2"), *"59");
+    assert_eq!(model._get_text("A3"), *"59");
+    assert_eq!(model._get_text("A4"), *"50");
+    assert_eq!(model._get_text("A5"), *"50");
+    assert_eq!(model._get_text("A6"), *"50");
+}
+
+// Date text before the 1904 epoch is no date of a 1904 workbook: DATEDIF reads it as #VALUE!,
+// as DATEVALUE does, rather than casting it from the 1900 epoch (T-1330). Plain number text is
+// still its number (probes/date-argument-modes F89).
+#[test]
+fn datedif_pre_epoch_date_text_is_a_value_error_in_1904() {
+    let mut model = new_empty_model();
+    model.workbook.settings.date_system = crate::types::DateSystem::Excel1904;
+    model._set("A1", "=DATEDIF(\"1903-06-01\",5000,\"D\")");
+    model._set(
+        "A2",
+        "=INDEX(DATEDIF({\"1903-06-01\",\"1904-01-02\"},60,\"D\"),1)",
+    );
+    model._set(
+        "A3",
+        "=INDEX(DATEDIF({\"1903-06-01\",\"1904-01-02\"},60,\"D\"),2)",
+    );
+    model._set("A4", "=DATEDIF(\"10\",60,\"D\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"59");
+    assert_eq!(model._get_text("A4"), *"50");
+}
+
+// DATEDIF's errors keep their pre-lift order: the dates' own errors, then the dates' #NUM!, then
+// the unit's error (UNVERIFIED against Excel, dates.md "DATEDIF and DAYS360 error order", T-1430).
+#[test]
+fn datedif_date_errors_come_before_the_unit_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DATEDIF(10,5,NA())");
+    model._set("A2", "=DATEDIF(1/0,5,NA())");
+    model._set("A3", "=DATEDIF(5,10,NA())");
+    model._set("A4", "=DATEDIF(10,5,\"X\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#N/A");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+}
+
+// ACCRINT walks the schedule of first_interest, which in a 1904 workbook breaks from 9995-12-31
+// on: #NUM!, while 9995-12-30 still accrues (probes/date-system-1904-odd-accrint-bound A11, B11,
+// D11, A12, B15; T-1447).
+#[test]
+fn accrint_first_interest_past_the_1904_coupon_schedule_is_num() {
+    let mut model = new_empty_model();
+    model.workbook.settings.date_system = crate::types::DateSystem::Excel1904;
+    model._set(
+        "A1",
+        "=ACCRINT(DATE(9994,1,1),DATE(9995,12,30),DATE(9995,12,20),0.05,1000,2,0,TRUE)",
+    );
+    model._set(
+        "A2",
+        "=ACCRINT(DATE(9994,1,1),DATE(9995,12,31),DATE(9995,12,21),0.05,1000,2,0,TRUE)",
+    );
+    model._set(
+        "A3",
+        "=ACCRINT(DATE(9998,1,1),DATE(9999,12,31),DATE(9999,12,21),0.05,1000,2,0,FALSE)",
+    );
+    model._set(
+        "A4",
+        "=ACCRINT(DATE(9994,1,1),DATE(9995,6,30),DATE(9995,12,31),0.05,1000,2,1,FALSE)",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"98.47222222");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"75.27624309");
+}

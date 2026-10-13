@@ -1,3 +1,4 @@
+mod columns;
 mod conditional_formatting;
 mod iso_date;
 mod metadata;
@@ -86,7 +87,7 @@ fn reparse_formula_hack(formula: &str, worksheets: &[String]) -> Result<String, 
         column: 1,
         row: 1,
     };
-    let t = parser.parse_cell_formula(formula, &cell_reference);
+    let t = parser.parse(formula, &cell_reference);
 
     Ok(to_english_string(&t, &cell_reference))
 }
@@ -165,7 +166,7 @@ fn load_package<R: Read + Seek>(
         },
     );
     Ok(Workbook {
-        shared_strings,
+        shared_strings: shared_strings.into_strings(),
         defined_names: workbook.defined_names,
         worksheets,
         styles,
@@ -195,7 +196,7 @@ fn load_from_excel(file_name: &str, locale: &str, tz: &str) -> Result<Workbook, 
     load_xlsx_from_reader(name, reader, locale, tz, &ImportLimits::default())
 }
 
-/// Loads a [Workbook] from the bytes of an xlsx file, under the default [ImportLimits].
+/// Loads a [Workbook] from the bytes of an xlsx file, under the default [`ImportLimits`].
 /// This is useful, for instance, when bytes are transferred over the network
 pub fn load_from_xlsx_bytes(
     bytes: &[u8],
@@ -207,7 +208,7 @@ pub fn load_from_xlsx_bytes(
 }
 
 /// Loads a [Workbook] from the bytes of an xlsx file, rejecting it with
-/// [XlsxError::Limit] if it exceeds `limits`.
+/// [`XlsxError::Limit`] if it exceeds `limits`.
 pub fn load_from_xlsx_bytes_with_limits(
     bytes: &[u8],
     name: &str,

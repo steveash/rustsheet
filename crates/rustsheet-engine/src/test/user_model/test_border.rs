@@ -28,7 +28,7 @@ fn check_no_borders(model: &UserModel) {
                         bottom: None,
                         diagonal: None
                     }
-                )
+                );
             }
         }
     }

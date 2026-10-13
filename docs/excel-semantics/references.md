@@ -119,12 +119,25 @@ IFERROR takes the fallback, `COUNT(…!A1:B1)` is 0 and `ROWS(…!A1:B3)` is 3. 
 Evidence: probes/external-ref-no-link Calc!A1:A10 (excel-graph, 2026-10-11, T-0124).
 With a cache (`[1]Sheet!ref` and an externalBook `sheetDataSet`), Excel reads the cached value:
 `=[1]Uses!$A$1` → "Hello!", `=[1]!NR_Global_B2` → 142 (poi/ref-56737.xlsx Refs!E3, I3, Excel-cached).
-Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`.
-ISREF/ROWS on it, the unquoted prefix (T-1381) and cached `[n]` values (T-1382) are not yet
-implemented. Unprobed: a 3-D prefix naming another workbook (`'[b.xlsx]S1:S2'!A1`; the engine gives
-`#BLOCKED!`, UNVERIFIED), and a `[n]` index with no externalLink part.
+The shape functions read it as a reference too: `COLUMNS(…!A1:C2)` is 3, `AREAS(…!A1:C2)` 1,
+`ROW(…!B5)` 5, `COLUMN(…!B5)` 2, `ROWS(…!A:A)` 1048576, `ISREF(…!A1:B3)` TRUE, and the unquoted
+`ROWS([other.xlsx]Sheet1!A1:B3)` 3. INDEX keeps it a reference (`ROWS(INDEX(…!A1:C4,2,0))` 1,
+`ISREF(INDEX(…!A1:C4,2,2))` TRUE), but the cell INDEX picks is not an error value:
+`ERROR.TYPE(INDEX(…!A1:C4,2,2))` is `#N/A`, where `ERROR.TYPE(…!A1)` is 11. OFFSET on it is
+`#VALUE!`; a union of two is 2 areas, the intersection `…!A1:B3 …!A2:B5` has 2 rows, `ISBLANK(…!A1)`
+is FALSE and `COUNTA(…!A1:B2)` 0 (it counts no `#BLOCKED!`). `='[other.xlsx]Sheet1'!A1:B2` spills
+(`#SPILL!` with the spill area occupied). A 3-D prefix naming another workbook is no reference:
+`SUM('[other.xlsx]S1:S2'!A1)` is `#BLOCKED!` and `ISREF('[other.xlsx]S1:S2'!A1)` FALSE; a range
+whose corners are in two workbooks (`ISREF('[other.xlsx]Sheet1'!A1:Calc!B2)`) is FALSE.
+Evidence: probes/external-ref-no-link-shapes Calc!A1:A20 (excel-graph, 2026-10-12, T-1381).
+Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`, and
+`reference_operators::external_area` gives ISREF, ROWS, COLUMNS, ROW, COLUMN and AREAS the written
+shape; the lexer reads the unquoted `[book]Sheet!` prefix (T-1381). INDEX, OFFSET, unions,
+intersections, COUNTA and the spill (T-1454) and cached `[n]` values (T-1382) are not yet
+implemented. Unprobed: a `[n]` index with no externalLink part, and ROW/COLUMN of a multi-cell
+external area (the engine spills the row or column numbers as for a sheet reference, UNVERIFIED).
 Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
-Tasks: T-0124, T-1381, T-1382
+Tasks: T-0124, T-1381, T-1382, T-1454
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
@@ -176,8 +189,8 @@ PRODUCT skips a text or boolean cell from a reference, so with no number left it
 LARGE of a one-cell reference with no number is `#NUM!`; RANK of a number absent
 from a one-cell reference is `#N/A` (statistics.md, T-1055). Over `A1:A5` = {"5", TRUE, 7, "9", 3}: MAXA 7, MINA 0,
 AVERAGEA 2.2, PRODUCT 21, LARGE(,1) 7, RANK(3,) 2.
-Probe T-1378 (probes/subtotal-reference-operands-f, excel-graph, 2026-10-11): TAKE and DROP pick cells (SUBTOTAL reads them, AREAS 1, ISREF TRUE) or values (SUBTOTAL and AREAS spill `#VALUE!` per element, ISREF FALSE) according to the arm the IF, CHOOSE, SWITCH or IFS actually selects: `TAKE(IF(TRUE,A1:A4,SEQUENCE(4)),2)`, `TAKE(CHOOSE(1,A1:A4,SEQUENCE(4)),2)` and `TAKE(IFS(TRUE,A1:A4,FALSE,SEQUENCE(4)),2)` are cells, `CHOOSE(2,...)` and `IF(FALSE,A1:A4,SEQUENCE(4))` are values. LET variable names and LAMBDA parameters are case-insensitive (`LET(x,A1:A4,X)` reads `x`; probes/let-lambda-name-case: `LAMBDA(x,X+1)(2)` 3, `LAMBDA(Ab,aB*2)(4)` 8, `LET(f,LAMBDA(x,x+1),F(2))` 3, and a parameter of another case shadows the LET name, `LET(x,1,LAMBDA(X,x*10)(2))` 20, `LET(x,1,LET(X,5,x))` 5); an inner LET rebinding a name shadows the outer one. Excel for the web refuses (`FileCorruptTryRepair`) a workbook holding `LET(x,1,X,2,x)`, `LAMBDA(x,X,x+X)(1,2)` or `LET(é,1,É+1)` as written by spec2xlsx, so duplicate names that differ only in case are unprobed (T-1387).
-Tasks: T-0216, T-0235, T-0940, T-1003, T-1378
+Probe T-1378 (probes/subtotal-reference-operands-f, excel-graph, 2026-10-11): TAKE and DROP pick cells (SUBTOTAL reads them, AREAS 1, ISREF TRUE) or values (SUBTOTAL and AREAS spill `#VALUE!` per element, ISREF FALSE) according to the arm the IF, CHOOSE, SWITCH or IFS actually selects: `TAKE(IF(TRUE,A1:A4,SEQUENCE(4)),2)`, `TAKE(CHOOSE(1,A1:A4,SEQUENCE(4)),2)` and `TAKE(IFS(TRUE,A1:A4,FALSE,SEQUENCE(4)),2)` are cells, `CHOOSE(2,...)` and `IF(FALSE,A1:A4,SEQUENCE(4))` are values. LET variable names and LAMBDA parameters are case-insensitive (`LET(x,A1:A4,X)` reads `x`; probes/let-lambda-name-case: `LAMBDA(x,X+1)(2)` 3, `LAMBDA(Ab,aB*2)(4)` 8, `LET(f,LAMBDA(x,x+1),F(2))` 3, and a parameter of another case shadows the LET name, `LET(x,1,LAMBDA(X,x*10)(2))` 20, `LET(x,1,LET(X,5,x))` 5); an inner LET rebinding a name shadows the outer one. A LET or LAMBDA that binds one name twice is refused in any case: Excel for the web refuses (createSession 501 `FileCorruptTryRepair`) a single-cell workbook holding `LET(x,1,x,2,x)`, `LET(x,1,X,2,x)`, `LET(é,1,É,2,é)`, `LAMBDA(x,x,x)(1,2)`, `LAMBDA(x,X,x+X)(1,2)`, `LAMBDA(ä,Ä,ä+Ä)(1,2)` or `LAMBDA(x,[X],x)(1)` (an optional parameter too) (`rustsheet-oracle recalc -b excel-graph`, 2026-10-12, T-1387; refused inputs cannot be committed), while `LET(x,1,LET(X,2,x))` loads and gives 2. The engine gives `#ERROR!` for each (a parse error for LAMBDA, the LET duplicate check). Names may start with a non-ASCII letter, and one-to-one letter pairs fold case (probes/let-name-non-ascii: `LET(é,1,É+1)` 2, `LET(Ä,2,ä*10)` 20, `LET(Ärger,5,äRGER+1)` 6, `LAMBDA(ß,ß*2)(3)` 6, `LET(é,1,LAMBDA(É,é*10)(2))` 20); a fold that changes length does not: `LET(ß,1,ẞ+1)` is 2 but `LET(ß,1,SS+1)` is `#NAME?` (probes/let-name-sharp-s, which stores the use as `_xlpm.SS`: spec2xlsx decides which names are bound with Python `str.lower()`, so a probe of a fold where Python and Excel may differ must write the `_xlpm.` prefix itself). Other scripts (CJK) and letters such as Turkish `İ` are unprobed (T-1431). The earlier refusal of `LET(é,1,É+1)` was spec2xlsx leaving a non-ASCII name without its `_xlpm.` prefix; before T-1387 the engine also rejected a name whose first letter is non-ASCII, unless it uppercased to ASCII (`ß` → `SS`). The same identifier check (`is_valid_a1_identifier`) validates defined names, so a defined name may now start with a non-ASCII letter too; that is unprobed for defined names.
+Tasks: T-0216, T-0235, T-0940, T-1003, T-1378, T-1387
 
 ## Names, LET/LAMBDA variables and @ are references; FILTER's scalar if_empty is a value
 Rule: a defined name for a single cell, a LET variable or LAMBDA parameter bound to a reference, and `@range`
@@ -536,10 +549,12 @@ and a union whose accumulated areas would exceed `MAX_AREAS`, checked after each
 the next is evaluated (so `(I,A1,#REF!)`, with `I` an intersection of 65,536 areas, is `#VALUE!`,
 not `#REF!`). No operator ever returns more than `MAX_AREAS` areas, so the pairwise cost of one
 intersection is at most `MAX_AREAS` comparisons. A chain of cuts (`(U1 U2) A1 A1 ...`) would
-repeat that per three characters of formula, so one top-level reference expression may compare at most
-1,048,576 pairs in all (`MAX_AREA_PAIRS`), with `#VALUE!` past it; a reference-returning function
-used as an operand (`INDEX`, `OFFSET`, `IF`) starts its own budget, so total work stays linear in
-formula length. In a value context a union
+repeat that per three characters of formula, and a LET-bound union per argument
+(`LET(u,...,SUM(IF(1,u u A1),IF(1,u u A1),...))`), so one formula evaluation may compare at most
+1,048,576 pairs in all (`MAX_AREA_PAIRS`), with `#VALUE!` past it, wherever in the formula the
+pairs are compared: every argument, IF/CHOOSE/LET operand and reference-returning function draws on
+the same budget. Each cell's formula run (a cell it reads has its own), each conditional-format
+evaluation and each `evaluate_formula` call gets a fresh one (T-1162). In a value context a union
 keeps only its area count, not the areas. Excel's limits, if any, are not known, and neither is
 its result past them; it would differ where later cuts bring the areas back down to one, or where
 a later operand's error would come first.
@@ -547,7 +562,11 @@ The area cap bounds the length of an area list, not the work of walking it: `MAX
 `A:A` fit in a short formula. So an aggregate argument of several areas (`SUM((A:A,C:C))`) first
 adds up the cells of its areas, each clipped to its sheet's used area, in saturating arithmetic
 and before any cell is read; more than 16,777,216 cells (`MAX_AREA_CELLS`, 2^24, 16 full used
-columns) is `#VALUE!`. The bound is per argument, as a plain range argument's work already is.
+columns) is `#VALUE!`. The bound is per formula evaluation, like the pair budget: every
+multi-area argument (SUM, SUBTOTAL, AGGREGATE's reference form, ...) takes its cells from the same
+budget, so `LET(x,(A:A,A:A),SUM(x,x,...))` is `#VALUE!` at the argument that passes it, and so is a
+formula that walks a union again and again (`MAP` over a `SUM` of one). A single range argument is
+not counted, as before.
 Excel's limit, if any, is not known.
 The LET variables and LAMBDA parameters in scope may hold at most 262,144 areas together (`MAX_HELD_AREAS`,
 four `MAX_AREAS`): each binding may hold a fresh union (`LET(x_1,(A1,A1),x_2,(x_1,x_1),...)`), so memory would

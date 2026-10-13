@@ -158,16 +158,16 @@ fn time_period_formula_str(anchor: &str, period: &PeriodType) -> String {
 }
 
 fn text_formula_str(anchor: &str, op: &TextOperator, value: &str) -> String {
-    // For Equals, double any embedded quotes (Excel formula string escaping)
+    // Excel formula string escaping: double any embedded quote, for every operator.
     let escaped = value.replace('"', "\"\"");
     match op {
         TextOperator::Contains => {
-            format!(r#"NOT(ISERROR(SEARCH("{value}",{anchor})))"#)
+            format!(r#"NOT(ISERROR(SEARCH("{escaped}",{anchor})))"#)
         }
         TextOperator::Equals => format!(r#"{anchor}="{escaped}""#),
-        TextOperator::DoesNotContain => format!(r#"ISERROR(SEARCH("{value}",{anchor}))"#),
-        TextOperator::BeginsWith => format!(r#"LEFT({anchor},LEN("{value}"))="{value}""#),
-        TextOperator::EndsWith => format!(r#"RIGHT({anchor},LEN("{value}"))="{value}""#),
+        TextOperator::DoesNotContain => format!(r#"ISERROR(SEARCH("{escaped}",{anchor}))"#),
+        TextOperator::BeginsWith => format!(r#"LEFT({anchor},LEN("{escaped}"))="{escaped}""#),
+        TextOperator::EndsWith => format!(r#"RIGHT({anchor},LEN("{escaped}"))="{escaped}""#),
     }
 }
 
@@ -525,7 +525,7 @@ fn build_cf_rule_xml(
 
 /// Returns `(cf_sections_xml, ext_lst_xml)`.
 /// `cf_sections_xml` contains all the `<conditionalFormatting>` blocks.
-/// `ext_lst_xml` contains the `<extLst>` block for x14 DataBar extensions (may be empty).
+/// `ext_lst_xml` contains the `<extLst>` block for x14 `DataBar` extensions (may be empty).
 pub(crate) fn get_conditional_formatting_xml(cfs: &[ConditionalFormatting]) -> (String, String) {
     if cfs.is_empty() {
         return (String::new(), String::new());
@@ -554,4 +554,26 @@ pub(crate) fn get_conditional_formatting_xml(cfs: &[ConditionalFormatting]) -> (
         )
     };
     (main_xml, ext_lst_xml)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn text_rule_formulas_double_embedded_quotes_for_every_operator() {
+        let cases = [
+            (TextOperator::Contains, r#"NOT(ISERROR(SEARCH("a""b",A1)))"#),
+            (TextOperator::Equals, r#"A1="a""b""#),
+            (
+                TextOperator::DoesNotContain,
+                r#"ISERROR(SEARCH("a""b",A1))"#,
+            ),
+            (TextOperator::BeginsWith, r#"LEFT(A1,LEN("a""b"))="a""b""#),
+            (TextOperator::EndsWith, r#"RIGHT(A1,LEN("a""b"))="a""b""#),
+        ];
+        for (op, expected) in cases {
+            assert_eq!(text_formula_str("A1", &op, r#"a"b"#), expected, "{op:?}");
+        }
+    }
 }

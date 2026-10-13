@@ -54,7 +54,7 @@ fn written_groups_print_back_and_round_trip() {
         "2^-A1^2",
         "2^--A1",
     ] {
-        let node = parser.parse_cell_formula(formula, &context());
+        let node = parser.parse(formula, &context());
         assert_eq!(to_english_localized_string(&node, &context()), formula);
         assert_eq!(
             to_english_localized_string(&node.clone(), &context()),
@@ -64,7 +64,7 @@ fn written_groups_print_back_and_round_trip() {
         assert_eq!(to_excel_string(&node, &context()), formula);
         let rc = to_rc_format(&node);
         parser.set_lexer_mode(LexerMode::R1C1);
-        let reparsed = parser.parse_cell_formula(&rc, &context());
+        let reparsed = parser.parse(&rc, &context());
         parser.set_lexer_mode(LexerMode::A1);
         assert_eq!(reparsed, node, "{formula}");
     }

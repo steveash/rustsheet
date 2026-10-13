@@ -33,13 +33,18 @@ impl Model {
         pick: fn(f64, f64) -> f64,
     ) -> CalcResult {
         let mut result = f64::NAN;
+        // A referenced-cell error ranks below a direct scalar error; the leftmost wins
+        // (probes/aggregate-error-precedence C9-C24).
+        let mut reference_error = None;
         for arg in args {
             match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
-                    if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
-                        result = pick(value, result);
-                    }) {
-                        return error;
+                    if reference_error.is_none() {
+                        if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
+                            result = pick(value, result);
+                        }) {
+                            reference_error = Some(error);
+                        }
                     }
                 }
                 RefArg::Value(CalcResult::Array(array)) => {
@@ -59,6 +64,9 @@ impl Model {
                     Err(error) => return error,
                 },
             }
+        }
+        if let Some(error) = reference_error {
+            return error;
         }
         if result.is_nan() || result.is_infinite() {
             return CalcResult::Number(0.0);
@@ -182,8 +190,8 @@ impl Model {
         CalcResult::finite_number_or_num(flush_subnormal(result), cell)
     }
 
-    /// SUMIF(criteria_range, criteria, [sum_range])
-    /// if sum_range is missing then criteria_range will be used.
+    /// `SUMIF(criteria_range`, criteria, [`sum_range`])
+    /// if `sum_range` is missing then `criteria_range` will be used.
     ///
     /// The `criteria` argument may be a single value, a range or an array; in the
     /// latter two cases SUMIF spills one sum per criterion (see `Model::lift_criteria`).
@@ -197,7 +205,7 @@ impl Model {
         self.sumif(criteria_range, criteria, sum_range, cell)
     }
 
-    /// SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...)
+    /// `SUMIFS(sum_range`, `criteria_range1`, criteria1, [`criteria_range2`, criteria2], ...)
     pub(crate) fn fn_sumifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.sum_ifs(args, cell, true)
     }

@@ -4,7 +4,7 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
-use crate::reference_operators::{Ranges, RefArg};
+use crate::reference_operators::{external_area, Ranges, RefArg};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
@@ -74,11 +74,11 @@ impl Model {
         })
     }
 
-    /// The lookup_value of MATCH, XMATCH or LOOKUP. A function that returns a one-cell reference
+    /// The `lookup_value` of MATCH, XMATCH or LOOKUP. A function that returns a one-cell reference
     /// (`CHOOSE(1,A1)`, `OFFSET(A1,0,0)`, `INDIRECT("A1")`, `A1:A1`) gives that cell's value: Excel
     /// finds 30 for `MATCH(CHOOSE(1,J1),A1:A5,0)` with J1 = 30 (docs/excel-semantics/lookup.md,
     /// probes/lookup-reference-lookup-value). VLOOKUP, HLOOKUP and XLOOKUP get there by lifting.
-    /// A multi-cell lookup_value is left as it is (T-0270).
+    /// A multi-cell `lookup_value` is left as it is (T-0270).
     pub(super) fn lookup_value_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         match self.evaluate_node_in_context(node, cell) {
             range @ CalcResult::Range { left, right } if left == right => {
@@ -108,9 +108,12 @@ impl Model {
         }
         let match_type = if args.len() == 3 {
             match self.match_type_arg(&args[2], cell) {
-                // floor, not truncation: -0.5 searches descending (docs/excel-semantics/lookup.md,
-                // gen-m2/f7e6d351c8538ef5 A160, gen-m2/96a0952412cefa6c A241).
-                Ok(v) => v.floor() as i32,
+                // Only the sign counts: -0.5 searches descending (gen-m2/f7e6d351c8538ef5 A160,
+                // gen-m2/96a0952412cefa6c A241) and 0.5 ascending (probes/match-fractional-match-type
+                // C1-C3), so neither is the exact search that 0 is (docs/excel-semantics/lookup.md).
+                Ok(v) if v < 0.0 => -1,
+                Ok(v) if v > 0.0 => 1,
+                Ok(_) => 0,
                 Err(s) => return s,
             }
         } else {
@@ -143,11 +146,16 @@ impl Model {
         }
     }
 
-    /// MATCH's match_type as a number. Text that comes from a cell (a reference) and is not a
+    /// MATCH's `match_type` as a number. Text that comes from a cell (a reference) and is not a
     /// number is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
     /// descending search skips backward", probes/match-descending-argcheck J9-J20; T-1313).
     fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
-        let value = self.eval_ref_or_index(node, cell);
+        // A range of several cells is its top-left cell, plain or picked by IF, IFS, SWITCH or
+        // LET (probes/match-type-nested-passthrough K2, K3, K7:K9, K14, K15, T-1452).
+        let value = match self.evaluate_chosen_reference(node, cell) {
+            CalcResult::Range { left, .. } => CalcResult::Range { left, right: left },
+            other => other,
+        };
         let from_cell = matches!(value, CalcResult::Range { .. });
         let value = self.dereference(value, cell);
         // Only non-numeric text is remapped: an error in the cell, or a failed implicit
@@ -166,7 +174,7 @@ impl Model {
         self.cast_to_number(value, cell)
     }
 
-    /// HLOOKUP(lookup_value, table_array, row_index, [is_sorted])
+    /// `HLOOKUP(lookup_value`, `table_array`, `row_index`, [`is_sorted`])
     /// We look for `lookup_value` in the first row of table array
     /// We return the value in row `row_index` of the same column in `table_array`
     /// `is_sorted` is true by default and assumes that values in first row are ordered
@@ -238,7 +246,7 @@ impl Model {
         )
     }
 
-    /// VLOOKUP(lookup_value, table_array, row_index, [is_sorted])
+    /// `VLOOKUP(lookup_value`, `table_array`, `row_index`, [`is_sorted`])
     /// We look for `lookup_value` in the first column of table array
     /// We return the value in column `column_index` of the same row in `table_array`
     /// `is_sorted` is true by default and assumes that values in first column are ordered
@@ -384,31 +392,43 @@ impl Model {
         if args.is_empty() {
             return CalcResult::Number(if by_row { cell.row } else { cell.column } as f64);
         }
-        match self.reference_ranges(&args[0], cell) {
-            // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
-            // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
-            Ok(Ranges::Areas(_)) => {
-                CalcResult::new_error(Error::REF, cell, "Reference of several areas".to_string())
+        let (first, last) = if let Some(area) = external_area(&args[0], cell) {
+            if by_row {
+                (area.first_row, area.last_row)
+            } else {
+                (area.first_column, area.last_column)
             }
-            Ok(Ranges::One(range)) => {
-                let (a, b) = if by_row {
-                    (range.left.row, range.right.row)
-                } else {
-                    (range.left.column, range.right.column)
-                };
-                let (first, last) = (a.min(b), a.max(b));
-                if first == last || first_only {
-                    return CalcResult::Number(first as f64);
+        } else {
+            match self.reference_ranges(&args[0], cell) {
+                // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
+                // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
+                Ok(Ranges::Areas(_)) => {
+                    return CalcResult::new_error(
+                        Error::REF,
+                        cell,
+                        "Reference of several areas".to_string(),
+                    )
                 }
-                let numbers = (first..=last).map(|n| ArrayNode::Number(n as f64));
-                CalcResult::Array(if by_row {
-                    numbers.map(|n| vec![n]).collect()
-                } else {
-                    vec![numbers.collect()]
-                })
+                Ok(Ranges::One(range)) => {
+                    let (a, b) = if by_row {
+                        (range.left.row, range.right.row)
+                    } else {
+                        (range.left.column, range.right.column)
+                    };
+                    (a.min(b), a.max(b))
+                }
+                Err(s) => return s,
             }
-            Err(s) => s,
+        };
+        if first == last || first_only {
+            return CalcResult::Number(first as f64);
         }
+        let numbers = (first..=last).map(|n| ArrayNode::Number(n as f64));
+        CalcResult::Array(if by_row {
+            numbers.map(|n| vec![n]).collect()
+        } else {
+            vec![numbers.collect()]
+        })
     }
 
     /// The reference an explicit `@` reads. `@` of a span over several sheets is `#REF!`, not
@@ -482,8 +502,8 @@ impl Model {
         self.row_or_column(args, cell, false, false)
     }
 
-    /// CHOOSE(index_num, value1, [value2], ...)
-    /// Uses index_num to return a value from the list of value arguments.
+    /// `CHOOSE(index_num`, value1, [value2], ...)
+    /// Uses `index_num` to return a value from the list of value arguments.
     pub(crate) fn fn_choose(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.choose_impl(args, cell, false).into_single_area(cell)
     }

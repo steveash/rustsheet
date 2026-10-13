@@ -15,7 +15,8 @@ use crate::{
 };
 
 use super::text_arg::broadcast_text;
-use super::util::{near_integer_count, utf16_slice};
+use super::util::utf16_slice;
+use crate::functions::util::near_integer_count;
 
 fn format_thousands(n: u64) -> String {
     let s = n.to_string();
@@ -66,6 +67,26 @@ fn format_abs(abs_value: f64, decimals: i32, use_thousands: bool) -> String {
 }
 
 impl Model {
+    /// The `decimals` argument of DOLLAR and FIXED (default 2): truncated toward zero, and
+    /// `#VALUE!` from 128 up (docs/excel-semantics/text.md#dollar-and-fixed-decimals).
+    fn decimals_arg(
+        &mut self,
+        arg: Option<&Node>,
+        cell: CellReferenceIndex,
+    ) -> Result<i32, CalcResult> {
+        let Some(node) = arg else { return Ok(2) };
+        let d = self.get_number(node, cell)?.trunc();
+        if d >= 128.0 {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "decimals too large".to_string(),
+            ));
+        }
+        // The clamp only keeps the cast in range: every large negative gives "0" (FIXED(1,-400)).
+        Ok(d.max(-1000.0) as i32)
+    }
+
     /// DOLLAR(number, [decimals]) — Formats a number as a dollar currency string.
     /// Negative numbers use parentheses: ($1,234.57)
     pub(crate) fn fn_dollar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -76,24 +97,20 @@ impl Model {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let decimals = if args.len() == 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f.floor() as i32,
-                Err(e) => return e,
-            }
-        } else {
-            2
+        let decimals = match self.decimals_arg(args.get(1), cell) {
+            Ok(d) => d,
+            Err(e) => return e,
         };
         let formatted = format_abs(value.abs(), decimals, true);
         let result = if value < 0.0 {
-            format!("(${})", formatted)
+            format!("(${formatted})")
         } else {
-            format!("${}", formatted)
+            format!("${formatted}")
         };
         CalcResult::String(result)
     }
 
-    /// FIXED(number, [decimals], [no_commas]) — Formats a number as text with fixed decimal places.
+    /// FIXED(number, [decimals], [`no_commas`]) — Formats a number as text with fixed decimal places.
     pub(crate) fn fn_fixed(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
@@ -102,13 +119,9 @@ impl Model {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let decimals = if args.len() >= 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f.floor() as i32,
-                Err(e) => return e,
-            }
-        } else {
-            2
+        let decimals = match self.decimals_arg(args.get(1), cell) {
+            Ok(d) => d,
+            Err(e) => return e,
         };
         let no_commas = if args.len() == 3 {
             match self.get_boolean(&args[2], cell) {
@@ -121,14 +134,14 @@ impl Model {
         let use_thousands = !no_commas;
         let formatted = format_abs(value.abs(), decimals, use_thousands);
         let result = if value < 0.0 {
-            format!("-{}", formatted)
+            format!("-{formatted}")
         } else {
             formatted
         };
         CalcResult::String(result)
     }
 
-    /// NUMBERVALUE(text, [decimal_separator], [group_separator])
+    /// NUMBERVALUE(text, [`decimal_separator`], [`group_separator`])
     /// Converts text to a number using the given separators.
     pub(crate) fn fn_numbervalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() || args.len() > 3 {
@@ -210,8 +223,8 @@ impl Model {
         self.apply_text_unary(args, cell, proper_case)
     }
 
-    /// REPLACE(old_text, start_num, num_chars, new_text)
-    /// Replaces num_chars characters starting at start_num (1-indexed) with new_text.
+    /// `REPLACE(old_text`, `start_num`, `num_chars`, `new_text`)
+    /// Replaces `num_chars` characters starting at `start_num` (1-indexed) with `new_text`.
     /// If any of the arguments is an array it works element by element.
     pub(crate) fn fn_replace(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 4 {
