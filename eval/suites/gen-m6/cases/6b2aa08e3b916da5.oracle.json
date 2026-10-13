@@ -104,7 +104,7 @@
    },
    "A32": {
     "t": "e",
-    "v": "#NAME?"
+    "v": "#NUM!"
    },
    "A33": {
     "t": "n",
@@ -167,9 +167,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "99de8886ae91b1a90acb13cb60259f9c062c73c1dc20cd68144b02326d4af0df",
+  "input_sha256": "625ce08f9391285ac821b46758df840f97a782d4b8b35bef4fd961ec9ce1a852",
   "kind": "excel-graph",
-  "produced_at": "2026-10-09T12:18:53+00:00",
+  "produced_at": "2026-10-13T16:20:00+00:00",
   "version": null
  }
 }

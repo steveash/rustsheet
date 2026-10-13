@@ -6,6 +6,7 @@ import re
 import zipfile
 from pathlib import Path
 
+import pytest
 import xlsxwriter.worksheet
 
 from rustsheet_tools.gen.generator import load_excel_functions
@@ -131,3 +132,27 @@ def test_builder_table_covers_xlsxwriters_list() -> None:
     assert len(theirs) > 100
     for name, stored in theirs.items():
         assert prefix_future_functions(f"={name}(1)") == f"={stored}(1)", name
+
+
+def test_bare_function_names_cell_keeps_the_typed_name() -> None:
+    """T-0416: PERCENTOF is prefixed, except in a cell that probes the bare stored form."""
+    spec = {
+        "sheets": [
+            {
+                "name": "S",
+                "cells": {"A1": "=PERCENTOF(1,2)", "A2": "=PERCENTOF(1,2)"},
+                "bare_function_names": ["A1"],
+            }
+        ]
+    }
+    sheet = zipfile.ZipFile(io.BytesIO(build_xlsx(spec))).read("xl/worksheets/sheet1.xml").decode()
+    a1, a2 = sheet.split('r="A2"')
+    assert ">PERCENTOF(1,2)</f>" in a1
+    assert ">_xlfn.PERCENTOF(1,2)</f>" in a2
+
+
+def test_bare_function_names_cell_must_exist_and_be_a_formula() -> None:
+    with pytest.raises(ValueError, match="not in the sheet"):
+        build_xlsx({"sheets": [{"name": "S", "cells": {"A1": "=1"}, "bare_function_names": ["B1"]}]})
+    with pytest.raises(ValueError, match="not a formula"):
+        build_xlsx({"sheets": [{"name": "S", "cells": {"A1": 5}, "bare_function_names": ["A1"]}]})
