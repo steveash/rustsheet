@@ -3,7 +3,7 @@ id: T-1471
 title: "Report lists the probe known failures of each milestone row by case"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
