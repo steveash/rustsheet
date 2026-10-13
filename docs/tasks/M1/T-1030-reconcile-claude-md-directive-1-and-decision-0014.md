@@ -4,7 +4,7 @@ title: "Reconcile CLAUDE.md directive 1 and decision 0014 with non-directive-5 d
 milestone: M1
 lane: quality
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: opus
 depends_on: []
@@ -20,9 +20,21 @@ directive 5 is the only exception to "Excel is always right", while docs/excel-s
 0033 (lone surrogates) and 0038 (WEEKNUM calc-order state) use that route. CLAUDE.md is a protected
 path: the change needs its own decision record approved by reviewers.
 
+M2 exit blocker (planner, 2026-10-13): 10 of the 196 known-failure cells assigned to M0-M2 are the decision-0033
+lone-surrogate cells: probes/text-surrogate-positions A6, A11, A12, A29, A38, B10 (docs/excel-semantics/text.md
+"MID and REPLACE positions inside a surrogate pair keep the lone half") and probes/concatenate-limit-spill E8-E11
+(coercion.md "Truncation inside a surrogate pair keeps a lone high surrogate"). Both entries are `Status: DEVIATION
+(decision 0033)`. They are not in eval/suites/probes/deviations, because decision 0036 lets that file cite only
+directive-5 limits, so they count as known failures. M2 exit ("100% bit-exact, excluding accepted deviations")
+cannot be reached until this task rules either way.
+
 ## Acceptance criteria
 - [ ] CLAUDE.md directive 1, decision 0014 and the semantics README state the same rule (either allow per-decision deviations, with what qualifies, or forbid them and reopen 0033/0038).
 - [ ] Decision 0036's `deviations` file scope is stated for non-directive-5 deviations.
+- [ ] The 10 lone-surrogate cells above have a route out of eval/baseline/probes.txt. If per-decision deviations
+      are allowed, they are listed in eval/suites/probes/deviations with their pinned values and leave the baseline
+      via `make eval-baseline`. If they are forbidden, decision 0033 is reopened and an engine spec task for
+      lone-surrogate text is filed in M2.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
