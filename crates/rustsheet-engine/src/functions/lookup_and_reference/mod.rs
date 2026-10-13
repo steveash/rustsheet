@@ -4,7 +4,7 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
-use crate::reference_operators::{external_area, Ranges, RefArg};
+use crate::reference_operators::{external_area, several_areas_ref, Ranges, RefArg};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
@@ -194,19 +194,11 @@ impl Model {
         if args.len() > 4 || args.len() < 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let lookup_value = self.evaluate_node_in_context(&args[0], cell);
-        if lookup_value.is_error() {
-            return lookup_value;
-        }
-        let row_index = match self.lookup_index_arg(&args[2], cell) {
-            Ok(index) => index,
+        let (lookup_value, row_index, is_sorted) = match self.lookup_head(args, cell) {
+            Ok(head) => head,
             Err(error) => return error,
         };
         let as_reference = as_reference && matches!(row_index, LookupIndexArg::Reference(_));
-        let is_sorted = match self.lookup_sorted_arg(args.get(3), cell) {
-            Ok(is_sorted) => is_sorted,
-            Err(error) => return error,
-        };
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
         let table = match range {
             CalcResult::Range { left, right } => LookupTable::Range { left, right },
@@ -266,19 +258,11 @@ impl Model {
         if args.len() > 4 || args.len() < 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let lookup_value = self.evaluate_node_in_context(&args[0], cell);
-        if lookup_value.is_error() {
-            return lookup_value;
-        }
-        let column_index = match self.lookup_index_arg(&args[2], cell) {
-            Ok(index) => index,
+        let (lookup_value, column_index, is_sorted) = match self.lookup_head(args, cell) {
+            Ok(head) => head,
             Err(error) => return error,
         };
         let as_reference = as_reference && matches!(column_index, LookupIndexArg::Reference(_));
-        let is_sorted = match self.lookup_sorted_arg(args.get(3), cell) {
-            Ok(is_sorted) => is_sorted,
-            Err(error) => return error,
-        };
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
         let table = match range {
             CalcResult::Range { left, right } => LookupTable::Range { left, right },
@@ -402,13 +386,7 @@ impl Model {
             match self.reference_ranges(&args[0], cell) {
                 // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
                 // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
-                Ok(Ranges::Areas(_)) => {
-                    return CalcResult::new_error(
-                        Error::REF,
-                        cell,
-                        "Reference of several areas".to_string(),
-                    )
-                }
+                Ok(Ranges::Areas(_)) => return several_areas_ref(cell),
                 Ok(Ranges::One(range)) => {
                     let (a, b) = if by_row {
                         (range.left.row, range.right.row)

@@ -16,6 +16,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    limits::check_array_size,
     model::Model,
     reference_operators::RefArg,
 };
@@ -232,6 +233,10 @@ impl Model {
         let max_rows = cond_rows.max(true_rows).max(false_rows);
         let max_cols = cond_cols.max(true_cols).max(false_cols);
 
+        if let Some((error, message)) = check_array_size(max_rows, max_cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
+
         let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(max_rows);
         for r in 0..max_rows {
             let mut row: Vec<ArrayNode> = Vec::with_capacity(max_cols);
@@ -327,6 +332,10 @@ impl Model {
         let (fb_rows, fb_cols) = if_arg_dims(&fallback_arg);
         let max_rows = value_rows.max(fb_rows);
         let max_cols = value_cols.max(fb_cols);
+
+        if let Some((error, message)) = check_array_size(max_rows, max_cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
 
         let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(max_rows);
         for r in 0..max_rows {

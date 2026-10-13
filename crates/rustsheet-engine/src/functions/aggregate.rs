@@ -197,8 +197,11 @@ impl Model {
                 Ok(areas) => areas,
                 Err(error) => return error,
             };
+            // Several areas are walked as a union's, on the formula's walk budget, as SUM's are.
+            let of_union = areas.len() > 1;
             for area in areas {
-                if let Err(error) = self.aggregate_collect_area(&area, ignore, &mut collected, cell)
+                if let Err(error) =
+                    self.aggregate_collect_area(&area, of_union, ignore, &mut collected, cell)
                 {
                     return error;
                 }
@@ -284,8 +287,11 @@ impl Model {
             Ok(areas) => areas,
             Err(error) => return error,
         };
+        let of_union = areas.len() > 1;
         for area in areas {
-            if let Err(error) = self.aggregate_collect_area(&area, ignore, &mut collected, cell) {
+            if let Err(error) =
+                self.aggregate_collect_area(&area, of_union, ignore, &mut collected, cell)
+            {
                 return error;
             }
         }
@@ -313,6 +319,7 @@ impl Model {
     fn aggregate_collect_area(
         &mut self,
         area: &Range,
+        of_union: bool,
         ignore: Ignore,
         collected: &mut Collected,
         cell: CellReferenceIndex,
@@ -338,7 +345,7 @@ impl Model {
                 );
             }
         }
-        self.for_each_position_in_areas(std::slice::from_ref(area), cell, |model, position| {
+        let mut f = |model: &mut Self, position: CellReferenceIndex| {
             if collected
                 .hidden_rows
                 .contains(&(position.sheet, position.row))
@@ -358,7 +365,8 @@ impl Model {
             let value = model.evaluate_cell(position);
             collect_value(value, ignore, collected);
             Ok(())
-        })
+        };
+        self.for_each_position_in_area(area, of_union, cell, &mut f)
     }
 }
 

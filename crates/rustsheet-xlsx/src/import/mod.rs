@@ -1,4 +1,6 @@
+mod columns;
 mod conditional_formatting;
+mod external_links;
 mod iso_date;
 mod metadata;
 mod package;
@@ -38,6 +40,7 @@ pub use shared_strings::decode_xlsx_escapes;
 use shared_strings::read_shared_strings;
 pub use workbook::date_system_from_attribute;
 
+use external_links::load_external_books;
 use metadata::load_metadata;
 use package::{resolve_target, Package};
 use styles::load_styles;
@@ -141,6 +144,7 @@ fn load_package<R: Read + Seek>(
     for dn in &mut workbook.defined_names {
         dn.formula = reparse_formula_hack(&dn.formula, &worksheet_names)?;
     }
+    let external_books = load_external_books(archive, &rels, &workbook.external_references);
     let metadata = match load_metadata(archive) {
         Ok(metadata) => metadata,
         Err(_) => {
@@ -179,6 +183,7 @@ fn load_package<R: Read + Seek>(
         tables,
         views,
         theme,
+        external_books,
     })
 }
 

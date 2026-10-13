@@ -254,3 +254,52 @@ fn test_lookup_array_index_and_range_lookup() {
     assert_eq!(model._get_text("J1"), "#N/A");
     assert_eq!(model._get_text("J2"), "b");
 }
+
+#[test]
+fn test_lookup_pick_stays_a_reference_for_an_if_index() {
+    // probes/lookup-pick-index-shapes A3, A9, B2 (T-1377, excel-graph): an `IF` index that picks a
+    // cell keeps the lookup pick a reference, so COUNT skips the picked FALSE like a plain cell.
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("F5", "42"),
+        ("G5", "2"),
+        ("F6", "FALSE"),
+        ("A1", "1"),
+        ("B1", "FALSE"),
+        ("A2", "1"),
+        ("B2", "5"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("H1", "=COUNT(HLOOKUP(42,F5:G6,G5))");
+    model._set("H2", "=COUNT(HLOOKUP(42,F5:G6,IF(TRUE,G5)))");
+    model._set("H3", "=COUNT(HLOOKUP(42,F5:G6,2))");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "0");
+    assert_eq!(model._get_text("H2"), "0");
+    assert_eq!(model._get_text("H3"), "1");
+}
+
+#[test]
+fn test_hlookup_multi_cell_index_is_read_only_after_a_match() {
+    // A multi-cell index lifts once the value is found (probes/lookup-index-multicell-if), but a
+    // value that is not found is #N/A whatever the index is, even one past the array-size cap.
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("A1", "1"),
+        ("B1", "2"),
+        ("A2", "x"),
+        ("B2", "y"),
+        ("D1", "1"),
+        ("D2", "2"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("H1", "=HLOOKUP(9,A1:B2,D1:D2,FALSE)");
+    model._set("H2", "=HLOOKUP(9,A1:B2,D:E,FALSE)");
+    model._set("H3", "=HLOOKUP(2,A1:B2,D1:D2,FALSE)");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "#N/A");
+    assert_eq!(model._get_text("H2"), "#N/A");
+    assert_eq!(model._get_text("H3"), "2");
+}

@@ -7,7 +7,7 @@ use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
     calc_result::{CalcResult, Range},
-    cell::CellValue,
+    cell::{spill_value_to_calc_result, CellValue},
     constants::{self, LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{
@@ -34,7 +34,7 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
-use crate::{cf_types::CfCellResult, reference_operators::VariableStack, tz::Tz};
+use crate::{cf_types::CfCellResult, tz::Tz, variable_stack::VariableStack};
 
 #[cfg(any(test, feature = "mock_time"))]
 pub use crate::mock_time::get_milliseconds_since_epoch;
@@ -192,6 +192,8 @@ pub struct Model {
     pub(crate) last_lambda_id: usize,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).
     pub(crate) defined_names_running: crate::defined_names::DefinedNameRun,
+    /// What the formula being evaluated has left of its area budgets (`with_area_budget`).
+    pub(crate) area_budget: crate::area_budget::AreaBudget,
     /// Everything the evaluation algorithm needs besides the workbook. See `evaluation.rs`.
     pub(crate) evaluation: Evaluation,
     /// Evaluated CF results per cell, keyed by (`sheet_index`, row, column).
@@ -550,32 +552,6 @@ impl Model {
         }
     }
 
-    /// Evaluates a formula string on a sheet, returning the numeric result.
-    /// Assumes the workbook has already been evaluated (cell values are up-to-date).
-    /// Returns `None` if the formula is invalid or does not produce a number.
-    pub(crate) fn evaluate_formula(&mut self, formula: &str, sheet: u32) -> Option<f64> {
-        let body = formula.trim().strip_prefix('=').unwrap_or(formula.trim());
-        if body.is_empty() {
-            return None;
-        }
-        let sheet_name = self.workbook.worksheets.get(sheet as usize)?.get_name();
-        let context_rc = CellReferenceRC {
-            sheet: sheet_name,
-            row: 1,
-            column: 1,
-        };
-        let node = self.parse_internal_formula(body, &context_rc);
-        let context_index = CellReferenceIndex {
-            sheet,
-            row: 1,
-            column: 1,
-        };
-        match self.evaluate_node_in_context(&node, context_index) {
-            CalcResult::Number(n) => Some(n),
-            _ => None,
-        }
-    }
-
     pub(crate) fn evaluate_node_in_context(
         &mut self,
         node: &Node,
@@ -609,9 +585,11 @@ impl Model {
                     column: column1,
                 })
             }
-            WrongReferenceKind { sheet_name, .. } => {
-                Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong reference")
-            }
+            WrongReferenceKind { sheet_name, .. } => self
+                .external_reference_value(node, cell)
+                .unwrap_or_else(|| {
+                    Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong reference")
+                }),
             OpRangeKind { left, right } => self.get_range(left, right, cell),
             OpIntersectKind { left, right, .. } => self.get_intersection(left, right, cell),
             SheetSpanKind {
@@ -691,6 +669,9 @@ impl Model {
             }
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
             DefinedNameKind((name, scope, _)) => {
+                if let Some(value) = self.evaluate_external_name(name, cell) {
+                    return value;
+                }
                 let key = (*scope, name.to_lowercase());
                 if let Some(parsed_defined_name) = self.parsed_defined_names.get(&key).cloned() {
                     match parsed_defined_name {
@@ -1418,25 +1399,7 @@ impl Model {
                     }
                 }
             }
-            SpillCell {
-                v: SpillValue::Number(v),
-                ..
-            } => CalcResult::Number(*v),
-            SpillCell {
-                v: SpillValue::Boolean(v),
-                ..
-            } => CalcResult::Boolean(*v),
-            SpillCell {
-                v: SpillValue::Text(v),
-                ..
-            } => CalcResult::String(v.clone()),
-            SpillCell {
-                v: SpillValue::Error(ei),
-                ..
-            } => {
-                let message = ei.to_localized_error_string(self.language);
-                CalcResult::new_error(ei.clone(), cell_reference, message)
-            }
+            SpillCell { v, .. } => spill_value_to_calc_result(v, cell_reference, self.language),
         }
     }
 
@@ -1564,6 +1527,7 @@ impl Model {
             lambdas: HashMap::new(),
             last_lambda_id: 0,
             defined_names_running: Default::default(),
+            area_budget: Default::default(),
             evaluation: Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),

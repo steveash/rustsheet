@@ -887,8 +887,10 @@ impl Lexer {
     /// An unquoted prefix naming a sheet of another workbook, `[book]Sheet!ref`, read as its
     /// quoted spelling `'[book]Sheet'!ref` is: `=SUM([other.xlsx]Sheet1!A1:B1)` parses and is
     /// `#BLOCKED!` (probes/external-ref-no-link A7; docs/excel-semantics/references.md "External
-    /// reference with no cached data"). Called with the `[` consumed; `None`, with the position
-    /// left after the `[`, when no `book]Sheet!` follows (a LAMBDA's optional `[x]`).
+    /// reference with no cached data"). A defined name of that workbook, `[1]!Name` or
+    /// `[1]Sheet!Name` (Excel writes both in xlsx: poi/ref-56737.xlsx Refs!G3, I3), is the
+    /// identifier `[1]!Name` or `[1]Sheet!Name`. Called with the `[` consumed; `None`, with the
+    /// position left after the `[`, when no `book]Sheet!` follows (a LAMBDA's optional `[x]`).
     fn consume_external_sheet_reference(&mut self) -> Option<TokenType> {
         let start = self.position;
         let rest = &self.chars[start..];
@@ -898,13 +900,27 @@ impl Lexer {
         }
         self.position = start + book_len + 1;
         let sheet = self.consume_identifier();
-        if sheet.is_empty() || self.peek_char() != Some('!') {
+        if self.peek_char() != Some('!') {
             self.position = start;
             return None;
         }
         self.position += 1;
         let book: String = self.chars[start..start + book_len].iter().collect();
-        Some(self.consume_range(Some(format!("[{book}]{sheet}"))))
+        let prefix = format!("[{book}]{sheet}");
+        if !sheet.is_empty() {
+            let after_bang = self.position;
+            let token = self.consume_range(Some(prefix.clone()));
+            if !matches!(token, TokenType::Illegal(_)) {
+                return Some(token);
+            }
+            self.position = after_bang;
+        }
+        let name = self.consume_identifier();
+        if name.is_empty() {
+            self.position = start;
+            return None;
+        }
+        Some(TokenType::Ident(format!("{prefix}!{name}")))
     }
 
     fn consume_range(&mut self, sheet: Option<String>) -> TokenType {

@@ -1,7 +1,7 @@
 use crate::arithmetic::{bcast_idx, flush_subnormal};
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
-use crate::reference_operators::{external_area, Ranges, RefArg};
+use crate::reference_operators::{external_area, several_areas_ref, Ranges, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -10,7 +10,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     formatter::format::parse_formatted_number,
-    functions::math_and_trigonometry::array_size::{check_array_size, check_range_size},
+    limits::{check_array_size, check_range_size},
     model::Model,
 };
 
@@ -62,7 +62,7 @@ pub(crate) const MAX_TEXT_UNITS: usize = 32767;
 /// Truncates `text` to [`MAX_TEXT_UNITS`] UTF-16 code units, as Excel does for CONCATENATE and
 /// `&` (probes/resource-limits C9, C10; probes/concatenate-limit-spill, excel-graph). A character
 /// that would straddle the limit is dropped whole: Excel keeps its lone high surrogate, which a
-/// Rust `String` cannot hold (decision 0033).
+/// Rust `String` cannot hold; TODO(T-1483) keeps it.
 pub(crate) fn truncate_text(text: &mut String) {
     // UTF-8 never takes fewer bytes than UTF-16 takes code units, so short text skips the scan.
     if text.len() <= MAX_TEXT_UNITS {
@@ -779,13 +779,7 @@ impl Model {
         // context (probes/multiarea-count H2, H3; SPEC-0004 row 5).
         let result = if self.is_multi_area(node) {
             match self.evaluate_reference_arg(node, cell) {
-                RefArg::Ranges(Ranges::Areas(_)) => {
-                    return Err(CalcResult::new_error(
-                        Error::REF,
-                        cell,
-                        "Reference of several areas".to_string(),
-                    ))
-                }
+                RefArg::Ranges(Ranges::Areas(_)) => return Err(several_areas_ref(cell)),
                 // A 3-D span through a variable, IF or CHOOSE is `#VALUE!`, as the written one
                 // is (probes/3d-ref-let-bound-span C7:C8, 3d-ref-let-values C5).
                 other => other.into_single_sheet_area(cell),

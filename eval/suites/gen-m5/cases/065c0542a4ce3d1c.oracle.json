@@ -12,7 +12,7 @@
    },
    "A11": {
     "t": "e",
-    "v": "#NAME?"
+    "v": "#DIV/0!"
    },
    "A12": {
     "t": "n",
@@ -167,9 +167,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "c6ec32b9ab6a98e09f2afc9d9d70f6b8ee1cfd733af0ae3f2fd37126a0298c99",
+  "input_sha256": "1f90f11ea44b49e02ec39c29811f6e5d1186c70145e25eedf4e191e51af6598a",
   "kind": "excel-graph",
-  "produced_at": "2026-10-09T00:19:10+00:00",
+  "produced_at": "2026-10-13T16:19:12+00:00",
   "version": null
  }
 }

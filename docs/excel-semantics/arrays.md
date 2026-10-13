@@ -189,7 +189,7 @@ RustSheet returns `#ERROR!` (not even an Excel error value) for any array above 
 (one whole column): SEQUENCE, RANDARRAY, MAKEARRAY/BYROW/BYCOL results, matrix results, an *IF(S)
 criteria grid (broadcast criteria included), the broadcast result of `lift_numbers` (ROUND family, MOD, DATE), a lifted INDEX's broadcast indices (T-1260), the broadcast of a binary operator over two arrays
 (arithmetic, `&` and comparisons: a whole column against a whole row, `=D:D+4:4`, would be 2^34
-cells, and even a whole column against two columns, `SUM(A1:A1048576*B1:C1)`, is 2^21; T-1420), and every range lifted into an array (`Model::evaluate_range`: scalar functions
+cells, and even a whole column against two columns, `SUM(A1:A1048576*B1:C1)`, is 2^21; T-1420), the broadcast of IF, IFERROR and IFNA (`=IF(D:D,4:4)`, `=IFERROR(D:D,4:4)`; T-1448), and every range lifted into an array (`Model::evaluate_range`: scalar functions
 over a range, operators, IF/IFERROR, TEXT, IS*, NOT, a bare range spilled from a cell), checked
 before any cell is read, to bound allocation on untrusted input (CLAUDE.md directive 5); so
 `DATE(11:1899,12,1)` and `ROWS(DATE(11:1899,12,1))` are `#ERROR!`. Past-the-grid dimensions are
@@ -199,7 +199,7 @@ Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lif
 C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are listed in
 eval/suites/probes/deviations, decision 0036).
 Status: DEVIATION (decision 0014)
-Implemented in: functions/math_and_trigonometry/array_size.rs (`MAX_SIZE`, `check_array_size`,
+Implemented in: limits.rs (`MAX_SIZE`, `check_array_size`,
 `check_range_size`); `Model::evaluate_range` in crates/rustsheet-engine/src/cast.rs;
 `broadcast_arrays` in crates/rustsheet-engine/src/arithmetic.rs
 Tasks: T-0047, T-1420
@@ -301,14 +301,22 @@ and a header row of function names; `VSTACK(SUM,MAX)` repeats each group row per
 name column. PIVOTBY relative_to: 0 column total, 1 row total, 2 grand total; with one field per axis 3
 equals 1 and 4 equals 0. Out-of-range sort_order, a filter of another height, an all-FALSE filter and
 field_relationship 2 are `#VALUE!`.
-Surprising (re-probe before implementing, T-1328): PIVOTBY with two value columns leaves its Total
-columns `""` (P!Y97); field_relationship 1 with total_depth 2 returned nothing (G!J169); values one row
-short and total_depth 3 with one key are errors excel-graph cannot decode (G!AB193, G!J217).
+T-1328 follow-up (probes/groupby-pivotby-followup, -followup2, -followup3; spills paired with ROWS/ISERROR/ERROR.TYPE so
+excel-graph's undecodable errors are still answered): values of another height than the keys, total_depth 3 or -3 (and 2 with a
+single key) and field_relationship 1 with total_depth ±2 are all `#VALUE!`; the all-FALSE filter is `#VALUE!` (never `#CALC!`),
+also scalar `FALSE`/`0`/`{FALSE}`, and a scalar `TRUE` filters nothing. PIVOTBY with two value columns: there are two Total
+columns (one per value), both `""` in every row (P!Y97 confirmed). Multi-key sort arrays are signed key-column indices whose priority is the column order
+(`{2,-1}` = `{-1,2}`), duplicates and 0 are `#VALUE!`. Header auto-detect looks at the first row of the values only: text over
+a non-text second row is a header; a first value cell of text over rows that mix text and non-text is `#VALUE!` (otherwise mixed values aggregate, text ignored). Number keys compare exactly (0.1+0.2 and
+0.3 differ; 0, -0, computed 0 equal; blank is its own group shown as 0); equal errors share a group, sorted after numeric keys (against text/boolean/blank unprobed).
+An array field_relationship (e.g. a filter-shaped column in argument 8) is lifted per element (10x1 of the group result; `{FALSE}` 1x1; a
+numeric column 10x1 `#VALUE!`; scalar FALSE/0 act as 0) (followup G!A861-A981, followup2 G!A1-A161). With two keys, sort_order 3 (the value
+column) orders parents by their aggregate (sum, max and mean not separated) and children by value within each parent, and the blank parent is not pinned last (followup2 G!A261).
 Evidence: probes/groupby-pivotby (61 formulas over sheets G and P, excel-graph, 2026-10-11, T-1276);
 every anchor is listed in docs/specs/SPEC-0006-groupby-pivotby.md.
-Ours: `#NAME?` (not implemented; SPEC-0006 rollout T-1322..T-1328).
+Ours: `#NAME?` (not implemented; SPEC-0006 rollout T-1322..T-1327).
 Status: VERIFIED (web)
-Tasks: T-1276
+Tasks: T-1276, T-1328
 
 ## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!
 Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:
@@ -342,7 +350,7 @@ arrays and every element counts: `BYCOL(IFERROR(A1:B3,1),LAMBDA(c,COUNTA(c)))` i
 Evidence: probes/lambda-helper-range-slices (excel-graph, 2026-10-12, T-1395).
 Ours: BYROW and BYCOL pass references since T-1395 (`by_slices_source`, bycol_byrow.rs); a range keeps its full size
 (a whole column gives 1,048,576 calls and full-column slices) under the 2^20-cell array bound of "Array results above
-1,048,576 cells". MAP, SCAN and REDUCE pass values (ISREF FALSE) and the eta-reduced COUNTA is `#NAME?` (T-1442).
+1,048,576 cells". MAP, SCAN and REDUCE pass each cell of a one-sheet range as a one-cell reference too (`lambda_cells`, T-1442); a reference the LAMBDA returns is read when it becomes a MAP or SCAN output cell, while a REDUCE or SCAN accumulator stays as returned (what Excel does with `ISREF(a)` on an accumulator is unprobed); the eta-reduced COUNTA is still `#NAME?`, as every `_xleta.` name is.
 Status: VERIFIED (excel-graph)
 Tasks: T-1395, T-1442
 
@@ -367,8 +375,16 @@ Tasks: T-1351
 An omitted (empty) `sort_index` or `sort_order` is the same as leaving it off: `SORT({3;1;2},,)`
 is ascending by column 1 (3 values; `INDEX(...,1)` = 1) and `SORT({3;1;2},,-1)` is descending
 (`INDEX(...,1)` = 3). Evidence: probes/counta-empty-value D22-D24 (excel-graph, T-1294); the engine
-treats the empty argument as the default (T-1394). Omitted combinations beyond these three cells
-are not yet probed (SORTBY's omitted arguments and `SORT(arr,,,)`'s by_col in particular).
+treats the empty argument as the default (T-1394).
 
-Status: VERIFIED (excel-graph) for D22-D24; other omitted combinations UNVERIFIED.
+T-1446 probed every combination (probes/sort-omitted-args, excel-graph, 2026-10-13): an omitted `sort_index`,
+`sort_order` or `by_col` is the default whatever its position or how many empties trail
+(`SORT(a,,,)`, `SORT(a,,-1,)`, `SORT(a,1,,)`, `SORT(a,,,TRUE)` by columns). In SORTBY an omitted
+`sort_order` (`SORTBY(a,k,)`, and the dangling order after a second key `SORTBY(a,k1,,k2,)`) is
+ascending. The Graph backend refuses to load a workbook holding `SORTBY(a,k,,)`, `SORTBY(a,k,-1,)` or
+`SORTBY(a,k,,k2)` (two empties after a key, or an empty order followed by a second key and no
+further argument; `SORTBY(a,k1,,k2,)` loads): UNVERIFIED, desktop
+question (decision 0039).
+
+Status: VERIFIED (excel-graph) for all probed combinations; the three Graph-refused SORTBY forms are UNVERIFIED (desktop question).
 Tasks: T-1394, T-1446.

@@ -18,6 +18,7 @@ pub mod cellref;
 pub mod deviations;
 pub mod engine;
 pub mod fetch;
+pub mod function_scope;
 pub mod milestone_lists;
 pub mod overrides;
 pub mod probe_milestones;

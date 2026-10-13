@@ -5,8 +5,9 @@
 //! UNVERIFIED; see docs/excel-semantics/references.md "Union (comma) reference in a value
 //! context is #VALUE!".
 
+use crate::area_budget::{MAX_AREA_PAIRS, TOO_MANY_AREA_PAIRS};
 use crate::model::Model;
-use crate::reference_operators::{MAX_AREAS, MAX_AREA_PAIRS, TOO_MANY_AREAS, TOO_MANY_AREA_PAIRS};
+use crate::reference_operators::{MAX_AREAS, TOO_MANY_AREAS};
 use crate::test::util::new_empty_model;
 use crate::types::{Cell, FormulaValue};
 
@@ -285,4 +286,27 @@ fn chain_of_cuts_over_the_pair_budget() {
     assert_eq!(error_message(&model, "Z1"), "Reference of several areas");
     assert_eq!(model._get_text("Z2"), "#VALUE!");
     assert_eq!(error_message(&model, "Z2"), TOO_MANY_AREA_PAIRS);
+}
+
+#[test]
+fn a_let_bound_union_shares_the_pair_budget_across_arguments() {
+    // DEVIATION (references.md "Union area cap"): the formula, not each argument, has
+    // MAX_AREA_PAIRS. `u u` compares MAX_AREAS pairs and each cut by A1 as many again, so two
+    // arguments of `cuts / 2 - 1` cuts spend the budget exactly, and one cut more each is past it.
+    let units = MAX_AREA_PAIRS / MAX_AREAS;
+    let union = balanced_union("A1", 1 << 8);
+    let argument = |cuts: usize| format!("IF(1,u u{})", " A1".repeat(cuts));
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    let within = argument(units / 2 - 1);
+    model._set("Z1", &format!("=LET(u,{union},SUM({within},{within}))"));
+    let past = argument(units / 2);
+    model._set("Z2", &format!("=LET(u,{union},SUM({past},{past}))"));
+    // Each argument alone is within the budget.
+    model._set("Z3", &format!("=LET(u,{union},SUM({past}))"));
+    model.evaluate();
+    assert_eq!(model._get_text("Z1"), (2 * MAX_AREAS).to_string());
+    assert_eq!(model._get_text("Z2"), "#VALUE!");
+    assert_eq!(error_message(&model, "Z2"), TOO_MANY_AREA_PAIRS);
+    assert_eq!(model._get_text("Z3"), MAX_AREAS.to_string());
 }

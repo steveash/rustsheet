@@ -3,7 +3,7 @@ id: T-1377
 title: "HLOOKUP/VLOOKUP pick is a reference when the index argument is IF(..) picking a cell (follow-up of T-0299)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Probe `probes/lookup-pick-index-shapes` (T-0299), excel-graph: Sheet1!A3, A9 and
 
 ## Out of scope
 -
+
+## Outcome
+`lookup_index_arg` evaluates an `IF` index as the reference it picks, so the lookup pick stays a reference. probes/lookup-pick-index-shapes A3, A9, B2 pass (probes 2867 -> 2864 known failures, gen-m2 23 -> 22); unit test added.

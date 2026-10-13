@@ -58,11 +58,12 @@ Evidence (oracle: excel-graph, 2026-10-06, T-1023): probes/weeknum-serial-0 (57 
 probes/weeknum-invalid-type (8 cells, no valid WEEKNUM in the workbook: all `#NUM!`),
 probes/weeknum-stale-return-type (13 cells over five layouts: Up, Down, Mixed, Type21, Type1);
 the first 94-cell version of weeknum-serial-0 (commit 042ad31) reproduces deterministically.
-Status: VERIFIED, except the stale state: DEVIATION (decision 0038). RustSheet always gives
-`#NUM!` for 22+ and negatives, which is Excel's value only when no valid WEEKNUM ran earlier in
-the recalc. The stale value depends on Excel's calc order (and so on its calc chain and edit
-history), which RustSheet does not reproduce; probes/weeknum-stale-return-type Up!A1, Mixed!A3,
-Mixed!A4, Type21!A1 and Type1!A1 stay known failures.
+Ours: RustSheet always gives `#NUM!` for 22+ and negatives, which is Excel's value only when no
+valid WEEKNUM ran earlier in the recalc. The stale value depends on Excel's calc order (and so on
+its calc chain and edit history), which RustSheet does not reproduce yet;
+probes/weeknum-stale-return-type Up!A1, Mixed!A3, Mixed!A4, Type21!A1 and Type1!A1 stay known
+failures. A known gap, not a deviation (decision 0052): T-1484.
+Status: VERIFIED
 Implemented in: `fn_weeknum`, `iso_week` (crates/rustsheet-engine/src/functions/date_and_time/weeknum.rs), `fn_isoweeknum`.
 
 ## DATE month and day bounds
@@ -93,6 +94,9 @@ Evidence: eval/suites/ironcalc-calc DATE_AND_TIME/NOW_TODAY.xlsx cached `=NOW()`
 (59002.58 s into the day). The engine truncated to whole seconds before T-0005; fixed in `tz/os_tz.rs`
 (the wasm `tz/browser_tz.rs` path still truncates).
 Status: VERIFIED (Excel-cached values)
+Unprobed: whether Excel reads its clock once per recalc, so that two `=NOW()` cells and
+`=NOW()-NOW()` agree exactly, or once per call. RustSheet's system clock reads once per call;
+a fixed clock (SPEC-0008) makes the question moot.
 
 ## TIMEVALUE of "date time" text keeps serial-subtraction error
 Rule: for text carrying a date and a time, Excel builds the full serial and returns its fractional
@@ -458,10 +462,12 @@ Ours: every cell matches. The text coercion, typed input and criteria cells A20-
 Status: VERIFIED (web)
 Tasks: T-1416, T-1435, T-1436, T-1441, T-1444
 
-## The 1904 date system: financial day counts read every date one day late
-Rule: in a 1904 workbook, YEARFRAC and the financial functions with date arguments read each date as the
-**next** day. Serial s is read as 1900 serial s + 1463, while every other reader adds 1462. A date they return
-(COUPNCD, COUPPCD) comes back one day early. The coupon schedule, the end-of-month rule and the 30/360 and
+## The 1904 date system: financial day counts read a 1904 serial as the 1900 serial + 2·1462
+Rule: in a 1904 workbook, YEARFRAC and the financial functions with date arguments read serial s as the 1900
+serial s + 2·1462 (T-1489, T-1492), while every other reader adds 1462. Within a four-year span with one 29 February
+that is the date a day later than the 1900 reading s + 1462, so the day counts look "a day late"; near the non-leap
+century years the two differ (the 18 cells T-1493 leaves, the odd-period notes below). A date they return
+(COUPNCD, COUPPCD) comes back 2·1462 serials lower (one day early within a four-year span with one 29 February). The coupon schedule, the end-of-month rule and the 30/360 and
 actual/actual counts all run on the shifted dates.
 - `YEARFRAC(DATE(2024,1,31),DATE(2024,2,29),0)` = 30/360 (2/1 to 3/1). The same cell in a 1900 workbook is 29/360.
   `YEARFRAC(0,59,0)` = 59/360. `YEARFRAC(DATE(2023,2,28),DATE(2024,2,29),1)` = 1 (3/1 to 3/1).
@@ -504,9 +510,50 @@ At the edges:
   earlier, or in the last year), where 1900 gives values. ODDF* with issue, settlement and first coupon in the year
   before a 30 June maturity are #NUM! for 9000 and 9900 but give the 1900 values for 9980 through 9995, and ODDL* for
   9000 and 9900 differ from 1900 (`ODDLPRICE(DATE(9000,3,1),DATE(9000,6,30),DATE(9000,2,15),0.05,0.06,100,2,0)` is
-  99.6718 against 99.6715). 9000 and 9900 are the century years that are not leap years, so a guess (UNVERIFIED) is
-  that these functions move 1904 dates by four calendar years, not by 1462 days. Settled in 2024, every maturity to
-  9995 gives the 1900 value. In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
+  99.6718 against 99.6715). Settled in 2024, every maturity to 9995 gives the 1900 value.
+  The break follows the non-leap century years, not the end of the calendar (probes/date-system-1904-odd-years and its
+  1900 twin, T-1457): with issue, settlement and first coupon in the year before a 30 June maturity, ODDF* are #NUM!
+  in 1904 for maturity years 2096, 2100, 2200, 8100, 8996, 9000, 9100, 9300, 9700, 9800, 9896 and 9900, and give
+  the 1900 values for 2104, 2400, 8000, 9004, 9200, 9600 and 9904. In the failing years ODDL* (last interest
+  15 February, settlement 1 March, maturity 30 June) differ from 1900 in the last digits: 99.67182 for 2100, 2200,
+  8100, 9000 and the other century years, and 99.67128 for 2096, 8996 and 9896, against 99.67155 in 1900.
+  Rule (T-1457, fits every probed odd-period cell): the four odd-period functions read a 1904 serial s as the 1900
+  serial s + 2·1462, the date 1462 days later, and count days in that calendar. Across four years with one 29 February
+  that is the date four years and a day later, so the day counts are those of the one-day-late reading above. Within
+  four years before 1 March of a non-leap century year it is the date four years later with no extra day, so dates on
+  either side of that 1 March move apart by a day: 2096-02-15 reads as 2100-02-16 but 2096-03-01 as 2100-03-03,
+  which gives 99.67128, and 2100-02-15 reads as 2104-02-17 but 2100-03-01 as 2104-03-02, which gives 99.67182.
+  The later calendar's 29 February counts too: last interest 2100-02-26, 2100-02-27 and 2100-02-28 read as
+  2104-02-28, 2104-02-29 (the last day of February) and 2104-03-01, giving ODDLPRICE 99.70905, 99.70791 and 99.70977
+  (probes/date-system-1904-odd-feb29). The ODDF* #NUM! cells are dates moved off the first coupon's schedule
+  (financial.md "ODDFPRICE and ODDFYIELD need the first coupon on the maturity's schedule"): 2099-06-30 reads as
+  2103-07-02 but 2100-06-30 as 2104-07-01. A date read past 9999-12-31 (1904 serials from 9995-12-31 on, or a
+  quasi-coupon date there) is #NUM!. With a first coupon on 30 June of the maturity year and maturity 31 December,
+  ODDFPRICE and ODDLPRICE differ from 1900 in every probed year, 2104 included (98.8602 against 95.9686 for ODDFPRICE,
+  99.1983 against 99.1825 for ODDLPRICE); in the failing years the values follow the same rule (98.8631 and 99.1990
+  for 2100, 98.8572 and 99.1977 for 2096).
+  The other financial readers read s + 2·1462 too, not s + 1463 (T-1489, VERIFIED):
+  COUPPCD, COUPNCD, COUPDAYBS, COUPDAYS, COUPDAYSNC, COUPNUM, PRICE, YIELD, DURATION, YEARFRAC and ACCRINT on bases 0, 1
+  and 4, for settlements 2096-03-01, 2100-02-15, 2100-03-01, 2099-12-31 and 2096-02-15 and maturities 2100-06-30,
+  2104-02-27, 2104-06-30, 2100-12-31 and 2100-02-28 (165 cells), give in a 1904 workbook exactly the values of a 1900
+  workbook with every date moved 1462 days later; COUPPCD and COUPNCD are 2·1462 serials lower. All 165 cells agree
+  bit for bit (probes/date-system-1900-financial-readers-shifted against probes/date-system-1904-financial-readers).
+  The s + 1463 reading differed in 93 of the 165 cells (COUPNCD on basis 1 70308
+  against 70309, COUPDAYS 181 against 182, YEARFRAC basis 0 4.32778 against 4.33056) and missed 4 more in the last
+  digits. Ours reads s + 2·1462 since T-1492 (`DateSystem::financial_1900_serial`, results mapped back by
+  `serial_from_financial_1900_serial`): 147 of the 165 cells pass, the other 18 fail the same way in the shifted 1900 twin
+  (probes/date-system-1900-financial-readers-shifted), the 1900 gaps of the next sentence. The unshifted 1900 twin (probes/date-system-1900-financial-readers) has its own gaps: COUPDAYS
+  basis 1 around 2096-02-29 (financial.md, "COUPDAYS basis 1 around 29 February"; fixed in T-1493) and YIELD and
+  DURATION last digits (financial.md, "YIELD stops short of PRICE's root"; T-1374).
+  A date read past 9999-12-31 is #NUM! in YEARFRAC and DISC (1904 serial 2955542, 9995-12-31, onward), but ACCRINT with
+  basis 1 and calc_method FALSE takes its *settlement* up to the last 1904 date 2957003:
+  `ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9999,12,31),0.05,1000,2,1,FALSE)` is 504.28 while 2957004 is #NUM!
+  (probes/date-system-1904-financial-settlement-bound column A (60 cells in all), excel-graph, 2026-10-13, T-1492;
+  `DateSystem::accrint_settlement_limit`). The other columns of that probe differ and are known failures (T-1494):
+  with calc_method TRUE, basis 0 (D) and basis 1 (E), ACCRINT is #NUM! for every settlement from 9995-12-30 on, and with
+  basis 0 and calc_method FALSE (F) it is 299.86 for 9995-12-30 and 410415.83 for every settlement from 9995-12-31 to
+  9999-12-31 (#NUM! at 2957004), the same value for all of them.
+  The break threshold of COUPPCD/COUPNCD/COUPDAYS is unchanged: the previous coupon of a broken schedule is 1900 serial 1462 in the doubled reading. All probes excel-graph, 2026-10-13. In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
   9999-05-15) are #NUM!, and so is ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity 9999-06-30.
   COUPDAYS on basis 1 in the broken range ignores the settlement: 2958465 for settlements 9999-01-01, 9998-03-01 and
   9996-02-01.
@@ -524,7 +571,7 @@ The other failing cells are last-digit misses (DISC, INTRATE, PRICEDISC, PRICEMA
 or iteration stopping points (XIRR, YIELD, ODDFYIELD; T-0916). Most fail in the 1900 twin too; PRICEDISC
 daycount A20 is 1 ulp off in 1904 only.
 Status: VERIFIED (web)
-Tasks: T-1436, T-1440, T-1447, T-1457
+Tasks: T-1436, T-1440, T-1447, T-1457, T-1489, T-1492
 
 ## Negative serials under an explicit negative section; lone elapsed tokens
 Rule: Excel decides whether a negative serial formats from the value's own sign, before a negative section drops it.

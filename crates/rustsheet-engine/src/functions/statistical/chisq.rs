@@ -299,9 +299,10 @@ impl Model {
         Ok(values)
     }
 
-    /// One entry per cell of every area of a multi-area reference, in formula order, as
-    /// [`Self::values_from_range`] gives them for one range: a number is `Some`, text, booleans
-    /// and blanks are `None`, and the first error cell is the `Err`. Areas are counted as
+    /// One entry per existing cell of every area of a multi-area reference, in formula order:
+    /// a number is `Some`, text and booleans are `None`, and the first error cell is the `Err`.
+    /// Blank cells give no entry, as a union is walked over its existing cells only (T-1497), so
+    /// callers must not pair entries by position (none does: they keep the numbers). Areas are counted as
     /// written, so an overlap counts twice (docs/excel-semantics/references.md "Multi-area
     /// references in functions"; probes/multiarea-rank, multiarea-cond).
     pub(crate) fn values_from_areas(

@@ -1,0 +1,44 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "HLOOKUP/VLOOKUP with a multi-cell range or multi-cell IF branch as the index: implicit intersection (rows 1 and 2) against lifting (spills J1:L2) (T-1426, follow-up of T-1377).",
+ "tags": [
+  "M2",
+  "references",
+  "lookup",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "F5": 3.14159,
+    "G5": 2,
+    "F6": 5,
+    "G6": false,
+    "F7": "y",
+    "G7": "5",
+    "H1": 1,
+    "H2": 2,
+    "A1": "=COUNT(HLOOKUP(42,F5:G6,H1:H2))",
+    "B1": "=COUNT(HLOOKUP(42,F5:G6,IF(TRUE,H1:H2)))",
+    "C1": "=COUNT(VLOOKUP(9,F5:G7,H1:H2))",
+    "D1": "=COUNT(VLOOKUP(9,F5:G7,IF(TRUE,H1:H2)))",
+    "E1": "=COUNT(HLOOKUP(42,F5:G6,IF(TRUE,(G5,G6))))",
+    "I1": "=ISREF(HLOOKUP(42,F5:G6,IF(TRUE,H1:H2)))",
+    "A2": "=COUNT(HLOOKUP(42,F5:G6,H1:H2))",
+    "B2": "=COUNT(HLOOKUP(42,F5:G6,IF(TRUE,H1:H2)))",
+    "C2": "=COUNT(VLOOKUP(9,F5:G7,H1:H2))",
+    "D2": "=COUNT(VLOOKUP(9,F5:G7,IF(TRUE,H1:H2)))",
+    "E2": "=COUNT(HLOOKUP(42,F5:G6,IF(TRUE,(G5,G6))))",
+    "I2": "=ISREF(HLOOKUP(42,F5:G6,IF(TRUE,H1:H2)))",
+    "J1": "=HLOOKUP(42,F5:G6,H1:H2)",
+    "K1": "=HLOOKUP(42,F5:G6,IF(TRUE,H1:H2))",
+    "L1": "=VLOOKUP(9,F5:G7,IF(TRUE,H1:H2))",
+    "M1": "=HLOOKUP(42,F5:G6,IF(TRUE,(G5,G6)))",
+    "N1": "=COUNT(HLOOKUP(42,F5:G6,IF(TRUE,(G5,G6))))",
+    "O1": "=ROWS(HLOOKUP(42,F5:G6,IF(TRUE,H1:H2)))"
+   }
+  }
+ ],
+ "expected": {}
+}

@@ -67,6 +67,26 @@ fn format_abs(abs_value: f64, decimals: i32, use_thousands: bool) -> String {
 }
 
 impl Model {
+    /// The `decimals` argument of DOLLAR and FIXED (default 2): truncated toward zero, and
+    /// `#VALUE!` from 128 up (docs/excel-semantics/text.md#dollar-and-fixed-decimals).
+    fn decimals_arg(
+        &mut self,
+        arg: Option<&Node>,
+        cell: CellReferenceIndex,
+    ) -> Result<i32, CalcResult> {
+        let Some(node) = arg else { return Ok(2) };
+        let d = self.get_number(node, cell)?.trunc();
+        if d >= 128.0 {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "decimals too large".to_string(),
+            ));
+        }
+        // The clamp only keeps the cast in range: every large negative gives "0" (FIXED(1,-400)).
+        Ok(d.max(-1000.0) as i32)
+    }
+
     /// DOLLAR(number, [decimals]) — Formats a number as a dollar currency string.
     /// Negative numbers use parentheses: ($1,234.57)
     pub(crate) fn fn_dollar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -77,13 +97,9 @@ impl Model {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let decimals = if args.len() == 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f.floor() as i32,
-                Err(e) => return e,
-            }
-        } else {
-            2
+        let decimals = match self.decimals_arg(args.get(1), cell) {
+            Ok(d) => d,
+            Err(e) => return e,
         };
         let formatted = format_abs(value.abs(), decimals, true);
         let result = if value < 0.0 {
@@ -103,13 +119,9 @@ impl Model {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let decimals = if args.len() >= 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f.floor() as i32,
-                Err(e) => return e,
-            }
-        } else {
-            2
+        let decimals = match self.decimals_arg(args.get(1), cell) {
+            Ok(d) => d,
+            Err(e) => return e,
         };
         let no_commas = if args.len() == 3 {
             match self.get_boolean(&args[2], cell) {

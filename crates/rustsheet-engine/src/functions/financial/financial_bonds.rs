@@ -1,134 +1,50 @@
 use chrono::{Datelike, NaiveDate};
 
-use crate::formatter::dates::shift_months;
+use crate::formatter::dates::real_date_to_serial;
+
+mod coupon_schedule;
 
 use super::dates::{
-    actual_days, basis_days, broken_schedule_days, broken_schedule_error, days_30_360_us,
-    last_day_of_feb, BROKEN_SCHEDULE_PCD,
+    basis_days, broken_schedule_days, broken_schedule_error, days_30_360_us, days_30_360_us_both,
+    BROKEN_SCHEDULE_PCD,
+};
+use coupon_schedule::{
+    change_month, coupdays_actual, coupon_count, coupon_days_a, coupon_days_e, find_pcd_ncd,
+    is_last_day_of_month, last_day_of_month, next_coupon_date, prev_coupon_date,
 };
 
 use crate::{
     calc_result::CalcResult,
-    constants::EXCEL_DATE_BASE,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
     model::Model,
 };
 
-// ============================================================
-// Date helpers
-// ============================================================
-
-fn naivedate_to_serial(d: NaiveDate) -> i64 {
-    (d.num_days_from_ce() - EXCEL_DATE_BASE) as i64
-}
-
-// ============================================================
-// Coupon-schedule helpers
-// ============================================================
-
-fn last_day_of_month(year: i32, month: u32) -> u32 {
-    match month {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        2 => last_day_of_feb(year),
-        _ => 30,
-    }
-}
-
-fn is_last_day_of_month(d: NaiveDate) -> bool {
-    d.day() == last_day_of_month(d.year(), d.month())
-}
-
-// Shifts `date` by `num_months` (clamping the day to the target month.
-// When `return_last` is set the result rounds to the last
-// day of the target month.
-// The end-of-month coupon rule: when maturity
-// falls on a month end, every coupon date does too (so a 11/30 maturity yields
-// coupons on 5/31, not 5/30).
-fn change_month(date: NaiveDate, num_months: i32, return_last: bool) -> Result<NaiveDate, String> {
-    let shifted = shift_months(date, num_months).ok_or("Date arithmetic error")?;
-    if return_last {
-        let last = last_day_of_month(shifted.year(), shifted.month());
-        NaiveDate::from_ymd_opt(shifted.year(), shifted.month(), last)
-            .ok_or("Date error".to_string())
-    } else {
-        Ok(shifted)
-    }
-}
-
-// Walks the coupon schedule backwards from maturity to find the previous coupon
-// date (<= settlement) and the next coupon date (> settlement). Port of
-// `findPcdNcd`/`findCouponDates` from ExcelFinancialFunctions, including the
-// end-of-month rule anchored on the maturity date.
-fn find_pcd_ncd(settlement: i64, maturity: i64, frequency: u32) -> Result<(i64, i64), String> {
-    let months_per = (12 / frequency) as i32;
-    let mat = from_excel_date(maturity)?;
-    let return_last = is_last_day_of_month(mat);
-
-    let mut front = mat;
-    let mut trailing = mat;
-    while naivedate_to_serial(front) > settlement {
-        trailing = front;
-        front = change_month(front, -months_per, return_last)?;
-    }
-    Ok((naivedate_to_serial(front), naivedate_to_serial(trailing)))
-}
-
-// Latest coupon date that is <= settlement, anchored by maturity & frequency.
-fn prev_coupon_date(settlement: i64, maturity: i64, frequency: u32) -> Result<i64, String> {
-    Ok(find_pcd_ncd(settlement, maturity, frequency)?.0)
-}
-
-// Earliest coupon date strictly after settlement.
-fn next_coupon_date(settlement: i64, maturity: i64, frequency: u32) -> Result<i64, String> {
-    Ok(find_pcd_ncd(settlement, maturity, frequency)?.1)
-}
-
-// Number of coupon payments strictly after settlement up to and including maturity.
-fn coupon_count(settlement: i64, maturity: i64, frequency: u32) -> Result<u32, String> {
-    let months_per = 12 / frequency as i32;
-    let next = from_excel_date(next_coupon_date(settlement, maturity, frequency)?)?;
-    let mat = from_excel_date(maturity)?;
-
-    let next_months = next.year() * 12 + next.month() as i32;
-    let mat_months = mat.year() * 12 + mat.month() as i32;
-    let diff = mat_months - next_months;
-    if diff < 0 {
-        return Err("Maturity before next coupon".to_string());
-    }
-    Ok((diff / months_per) as u32 + 1)
-}
-
-// Total days in the coupon period that contains settlement (E).
-fn coupon_days_e(
-    settlement: i64,
+// #NUM! unless ODDFPRICE and ODDFYIELD take this first coupon. It must be on the maturity's
+// coupon schedule, and the issue must not be the quasi-coupon date one period before it (a first
+// period that is not odd), while two periods before is fine
+// (probes/date-system-1900-oddf-schedule, date-system-1900-oddf-issue-boundary; T-1457).
+fn check_odd_first_coupon(
+    issue: i64,
+    first_coupon: i64,
     maturity: i64,
     frequency: u32,
-    basis: u32,
-) -> Result<f64, String> {
-    match basis {
-        0 | 2 | 4 => Ok(360.0 / frequency as f64),
-        1 => {
-            let prev = from_excel_date(prev_coupon_date(settlement, maturity, frequency)?)?;
-            let next = from_excel_date(next_coupon_date(settlement, maturity, frequency)?)?;
-            Ok(actual_days(prev, next))
-        }
-        3 => Ok(365.0 / frequency as f64),
-        _ => Err("Invalid basis".to_string()),
+    cell: CellReferenceIndex,
+) -> Result<(), CalcResult> {
+    // Off-calendar dates are #NUM! anyway (`compute_oddfprice`); checking them first keeps the
+    // schedule walk back from the maturity within the calendar for a far-negative serial.
+    let (quasi_coupon, next_coupon) = from_excel_date(issue)
+        .and_then(|_| from_excel_date(first_coupon))
+        .and_then(|_| find_pcd_ncd(first_coupon.saturating_sub(1), maturity, frequency))
+        .map_err(|e| map_date_err(e, cell))?;
+    if next_coupon != first_coupon || quasi_coupon == issue {
+        return Err(CalcResult::new_error(
+            Error::NUM,
+            cell,
+            "first coupon off the maturity's schedule".to_string(),
+        ));
     }
-}
-
-// Accrued days from the previous coupon to settlement (A).
-fn coupon_days_a(
-    settlement: i64,
-    maturity: i64,
-    frequency: u32,
-    basis: u32,
-) -> Result<f64, String> {
-    let prev = from_excel_date(prev_coupon_date(settlement, maturity, frequency)?)?;
-    let set = from_excel_date(settlement)?;
-    Ok(basis_days(prev, set, basis))
+    Ok(())
 }
 
 // ============================================================
@@ -282,34 +198,6 @@ fn compute_yield_from_price(
 // ============================================================
 // Odd-coupon helpers (port of ExcelFinancialFunctions oddbonds.fs)
 // ============================================================
-
-// Days d1→d2 via US 30/360 with the `ModifyBothDates` rule — the "PSA hack"
-// the odd-last-coupon code uses for basis 0.
-fn days_30_360_us_both(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    let y1 = d1.year();
-    let m1 = d1.month() as i32;
-    let mut day1 = d1.day() as i32;
-    let y2 = d2.year();
-    let m2 = d2.month() as i32;
-    let mut day2 = d2.day() as i32;
-
-    let start_is_feb_last = m1 == 2 && d1.day() == last_day_of_feb(y1);
-    let end_is_feb_last = m2 == 2 && d2.day() == last_day_of_feb(y2);
-
-    if end_is_feb_last {
-        day2 = 30;
-    }
-    if day2 == 31 {
-        day2 = 30;
-    }
-    if day1 == 31 {
-        day1 = 30;
-    }
-    if start_is_feb_last {
-        day1 = 30;
-    }
-    (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
-}
 
 // `DaysBetween` (Numerator position), clamped to be non-negative.
 fn days_between_not_neg(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
@@ -497,6 +385,12 @@ fn odd_l_func(
     let mut dscnl = 0.0_f64;
     for index in 1..=nc {
         let late_coupon = change_month(early_coupon, num_months, false)?;
+        // A quasi-coupon date past 9999-12-31 is #NUM!, even the one after the maturity
+        // (`ODDLPRICE(DATE(9999,8,1),DATE(9999,12,31),DATE(9999,5,15),...)`,
+        // probes/date-system-1900-odd-accrint-bound D7-D10; T-1457).
+        if real_date_to_serial(late_coupon).is_none() {
+            return Err("quasi-coupon date past the last date".to_string());
+        }
         let nl = days_between_not_neg_with_hack(early_coupon, late_coupon, basis);
         let dci = if index < nc {
             nl
@@ -891,16 +785,8 @@ impl Model {
         if !(8..=9).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let (settlement, maturity) = match self.get_settlement_and_maturity(args, cell) {
+        let dates = match self.get_odd_period_dates::<4>(args, cell) {
             Ok(dates) => dates,
-            Err(e) => return e,
-        };
-        let issue = match self.get_financial_date(&args[2], cell) {
-            Ok(serial) => serial,
-            Err(e) => return e,
-        };
-        let first_coupon = match self.get_financial_date(&args[3], cell) {
-            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[4], cell) {
@@ -928,14 +814,20 @@ impl Model {
             0
         };
 
+        let [Some(settlement), Some(maturity), Some(issue), Some(first_coupon)] = dates else {
+            return CalcResult::new_error(Error::NUM, cell, "date out of range".to_string());
+        };
         if let Err(e) = validate_frequency(frequency, cell) {
             return e;
         }
         if let Err(e) = validate_basis(basis, cell) {
             return e;
         }
-        if issue >= first_coupon || first_coupon > maturity || settlement >= maturity {
+        if issue >= first_coupon || first_coupon >= maturity || settlement >= maturity {
             return CalcResult::new_error(Error::NUM, cell, "invalid date ordering".to_string());
+        }
+        if let Err(e) = check_odd_first_coupon(issue, first_coupon, maturity, frequency, cell) {
+            return e;
         }
         if rate < 0.0 || yld < 0.0 || redemption <= 0.0 {
             return CalcResult::new_error(
@@ -967,16 +859,8 @@ impl Model {
         if !(8..=9).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let (settlement, maturity) = match self.get_settlement_and_maturity(args, cell) {
+        let dates = match self.get_odd_period_dates::<4>(args, cell) {
             Ok(dates) => dates,
-            Err(e) => return e,
-        };
-        let issue = match self.get_financial_date(&args[2], cell) {
-            Ok(serial) => serial,
-            Err(e) => return e,
-        };
-        let first_coupon = match self.get_financial_date(&args[3], cell) {
-            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[4], cell) {
@@ -1004,14 +888,20 @@ impl Model {
             0
         };
 
+        let [Some(settlement), Some(maturity), Some(issue), Some(first_coupon)] = dates else {
+            return CalcResult::new_error(Error::NUM, cell, "date out of range".to_string());
+        };
         if let Err(e) = validate_frequency(frequency, cell) {
             return e;
         }
         if let Err(e) = validate_basis(basis, cell) {
             return e;
         }
-        if issue >= first_coupon || first_coupon > maturity || settlement >= maturity {
+        if issue >= first_coupon || first_coupon >= maturity || settlement >= maturity {
             return CalcResult::new_error(Error::NUM, cell, "invalid date ordering".to_string());
+        }
+        if let Err(e) = check_odd_first_coupon(issue, first_coupon, maturity, frequency, cell) {
+            return e;
         }
         if rate < 0.0 || pr <= 0.0 || redemption <= 0.0 {
             return CalcResult::new_error(
@@ -1048,12 +938,8 @@ impl Model {
         if !(7..=8).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let (settlement, maturity) = match self.get_settlement_and_maturity(args, cell) {
+        let dates = match self.get_odd_period_dates::<3>(args, cell) {
             Ok(dates) => dates,
-            Err(e) => return e,
-        };
-        let last_interest = match self.get_financial_date(&args[2], cell) {
-            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[3], cell) {
@@ -1081,6 +967,9 @@ impl Model {
             0
         };
 
+        let [Some(settlement), Some(maturity), Some(last_interest)] = dates else {
+            return CalcResult::new_error(Error::NUM, cell, "date out of range".to_string());
+        };
         if let Err(e) = validate_frequency(frequency, cell) {
             return e;
         }
@@ -1119,12 +1008,8 @@ impl Model {
         if !(7..=8).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let (settlement, maturity) = match self.get_settlement_and_maturity(args, cell) {
+        let dates = match self.get_odd_period_dates::<3>(args, cell) {
             Ok(dates) => dates,
-            Err(e) => return e,
-        };
-        let last_interest = match self.get_financial_date(&args[2], cell) {
-            Ok(serial) => serial,
             Err(e) => return e,
         };
         let rate = match self.get_number_no_bools(&args[3], cell) {
@@ -1152,6 +1037,9 @@ impl Model {
             0
         };
 
+        let [Some(settlement), Some(maturity), Some(last_interest)] = dates else {
+            return CalcResult::new_error(Error::NUM, cell, "date out of range".to_string());
+        };
         if let Err(e) = validate_frequency(frequency, cell) {
             return e;
         }
@@ -1212,7 +1100,12 @@ impl Model {
         if basis == 1 && self.coupon_schedule_breaks(maturity) {
             return broken_schedule_days(BROKEN_SCHEDULE_PCD, maturity, basis, cell);
         }
-        match coupon_days_e(settlement, maturity, frequency, basis) {
+        let days = if basis == 1 {
+            coupdays_actual(settlement, maturity, frequency)
+        } else {
+            coupon_days_e(settlement, maturity, frequency, basis)
+        };
+        match days {
             Ok(v) => CalcResult::Number(v),
             Err(e) => map_date_err(e, cell),
         }

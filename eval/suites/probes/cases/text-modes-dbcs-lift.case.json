@@ -1,0 +1,28 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1248: DBCS over a range with room to spill (does it lift?), and PHONETIC over a range.",
+  "tags": [
+    "M5",
+    "probe",
+    "text",
+    "T-1248"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "abc",
+        "A2": "x y",
+        "A3": 5,
+        "A4": "ｱｲｳ",
+        "A5": "カタカナ",
+        "G1": "=DBCS(A1:A2)",
+        "I1": "=DBCS(A3:A5)",
+        "K1": "=PHONETIC(A1:A5)&\"\"",
+        "M1": "=ASC(A1:A2)",
+        "O1": "=DBCS(A1:A2)&\"\""
+      }
+    }
+  ]
+}

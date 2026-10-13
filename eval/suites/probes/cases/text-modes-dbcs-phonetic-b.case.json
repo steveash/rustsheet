@@ -1,0 +1,58 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1248: DBCS of half-width katakana, ASCII punctuation, full-width, accented and CJK text, a number cell, a range, an error and an empty cell; PHONETIC of an error cell, an empty cell, half-width and full-width katakana and ranges (references only; a literal argument is refused by excel-graph).",
+  "tags": [
+    "M5",
+    "probe",
+    "text",
+    "T-1248"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "ｱｲｳ",
+        "A2": "abc,.!?",
+        "A3": "カタカナ",
+        "A4": "ＡＢＣ",
+        "A5": 5,
+        "A6": "é",
+        "A7": "日本語",
+        "A8": "=NA()",
+        "A9": "=1/0",
+        "A11": "abc",
+        "A12": "x y",
+        "A13": "~-",
+        "C1": "=DBCS(A1)",
+        "C2": "=DBCS(A2)",
+        "C3": "=DBCS(A3)",
+        "C4": "=DBCS(A4)",
+        "C5": "=DBCS(A5)",
+        "C6": "=DBCS(A6)",
+        "C7": "=DBCS(A7)",
+        "C8": "=DBCS(A11:A12)",
+        "C9": "=DBCS(A5)&\"|\"",
+        "C10": "=LEN(DBCS(A1))",
+        "C11": "=LENB(DBCS(A2))",
+        "C12": "=DBCS(A8)",
+        "C13": "=DBCS(A10)",
+        "C14": "=DBCS(\"ｱｲｳ\")",
+        "C15": "=DBCS(\" \")=\" \"",
+        "C16": "=DBCS(A13)",
+        "E1": "=PHONETIC(A8)",
+        "E2": "=PHONETIC(A9)",
+        "E3": "=PHONETIC(A10)",
+        "E4": "=PHONETIC(A14)",
+        "E5": "=PHONETIC(A1)",
+        "E6": "=PHONETIC(A3)",
+        "E7": "=PHONETIC(A8:A10)",
+        "E8": "=PHONETIC(A10:A10)",
+        "E9": "=ISNA(PHONETIC(A8))",
+        "E10": "=ISERROR(PHONETIC(A9))",
+        "E11": "=PHONETIC(A10)&\"|\"",
+        "E12": "=PHONETIC(A1:A3)"
+      }
+    }
+  ]
+}

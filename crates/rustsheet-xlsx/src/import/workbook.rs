@@ -2,16 +2,28 @@ use std::io::Read;
 
 use super::package::Package;
 
+use super::sheet_data::{check_stored_length, MAX_NAME_BODY_UNITS};
 use super::xml::XmlNode;
 use rustsheet_engine::types::{DateSystem, DefinedName, SheetState};
 
 use crate::error::XlsxError;
 use crate::util::name_from_xlsx;
 
-use super::{
-    util::get_attribute,
-    worksheets::{Sheet, WorkbookXML},
-};
+use super::util::get_attribute;
+
+pub(crate) struct Sheet {
+    pub(crate) name: String,
+    pub(crate) sheet_id: u32,
+    pub(crate) id: String,
+    pub(crate) state: SheetState,
+}
+
+pub(crate) struct WorkbookXML {
+    pub(crate) worksheets: Vec<Sheet>,
+    pub(crate) defined_names: Vec<DefinedName>,
+    /// The `r:id` of each `externalReference`, in order: the first is the book formulas call `[1]`.
+    pub(crate) external_references: Vec<String>,
+}
 
 /// The date system a `workbookPr@date1904` attribute selects: `1` and `true` are 1904; absent,
 /// `0`, `false` and anything else are 1900, never an error (workbooks are untrusted).
@@ -70,6 +82,11 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
     for node in name_nodes {
         let name = name_from_xlsx(get_attribute(node, "name")?).to_string();
         let formula = node.text().unwrap_or("").to_string();
+        check_stored_length(
+            &formula,
+            MAX_NAME_BODY_UNITS,
+            &format!("definedName {name} body"),
+        )?;
         // NOTE: In Excel the `localSheetId` is just the index of the worksheet and unrelated to the sheetId
         let sheet_id = match node.attribute("localSheetId") {
             Some(s) => {
@@ -89,11 +106,17 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
             sheet_id,
         });
     }
-    // read the relationships file
+    let external_references = doc
+        .descendants()
+        .filter(|n| n.has_tag_name("externalReference"))
+        // One without an id still takes its index, so the books after it keep theirs.
+        .map(|n| n.relationship_id().unwrap_or_default().to_string())
+        .collect();
     Ok((
         WorkbookXML {
             worksheets: sheets,
             defined_names,
+            external_references,
         },
         date_system,
     ))

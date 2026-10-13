@@ -137,6 +137,27 @@ impl Model {
 
     // ── SORT ──────────────────────────────────────────────────────────────────
 
+    /// A `sort_order` argument: 1 ascending, -1 descending, an omitted one (`SORT(a,,,)`,
+    /// `SORTBY(a,k,)`) ascending. Excel: probes/sort-omitted-args (T-1446).
+    fn get_sort_order(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<bool, CalcResult> {
+        if matches!(node, Node::EmptyArgKind) {
+            return Ok(true);
+        }
+        match self.get_number(node, cell)? as i32 {
+            1 => Ok(true),
+            -1 => Ok(false),
+            _ => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "sort_order must be 1 or -1".to_string(),
+            )),
+        }
+    }
+
     /// `=SORT(array, [sort_index], [sort_order], [by_col])`
     ///
     /// Returns the array sorted by the given column (or row when `by_col=TRUE`).
@@ -180,19 +201,9 @@ impl Model {
             1
         };
 
-        let ascending: bool = if args.len() >= 3 && !matches!(args[2], Node::EmptyArgKind) {
-            match self.get_number(&args[2], cell) {
-                Ok(n) => match n as i32 {
-                    1 => true,
-                    -1 => false,
-                    _ => {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "sort_order must be 1 or -1".to_string(),
-                        )
-                    }
-                },
+        let ascending: bool = if args.len() >= 3 {
+            match self.get_sort_order(&args[2], cell) {
+                Ok(a) => a,
                 Err(e) => return e,
             }
         } else {
@@ -294,18 +305,8 @@ impl Model {
             }
         };
         let order1 = if n >= 3 {
-            match self.get_number(&args[2], cell) {
-                Ok(v) => match v as i32 {
-                    1 => true,
-                    -1 => false,
-                    _ => {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "sort_order must be 1 or -1".to_string(),
-                        )
-                    }
-                },
+            match self.get_sort_order(&args[2], cell) {
+                Ok(a) => a,
                 Err(e) => return e,
             }
         } else {
@@ -331,18 +332,8 @@ impl Model {
                 }
             };
             let ascending = if i + 1 < n {
-                match self.get_number(&args[i + 1], cell) {
-                    Ok(v) => match v as i32 {
-                        1 => true,
-                        -1 => false,
-                        _ => {
-                            return CalcResult::new_error(
-                                Error::VALUE,
-                                cell,
-                                "sort_order must be 1 or -1".to_string(),
-                            )
-                        }
-                    },
+                match self.get_sort_order(&args[i + 1], cell) {
+                    Ok(a) => a,
                     Err(e) => return e,
                 }
             } else {
