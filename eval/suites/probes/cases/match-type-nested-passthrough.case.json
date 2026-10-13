@@ -29,7 +29,11 @@
     "K10": "=MATCH(2,A5:A7,IFS(TRUE,Sheet1:Sheet1!D1))",
     "K11": "=MATCH(2,A5:A7,IF(TRUE,Sheet1:Sheet1!D1))",
     "K12": "=MATCH(2,A5:A7,IFS(TRUE,SWITCH(1,1,D1)))",
-    "K13": "=MATCH(2,A5:A7,LET(a,IF(TRUE,D1),a))"
+    "K13": "=MATCH(2,A5:A7,LET(a,IF(TRUE,D1),a))",
+    "K14": "=MATCH(2,A5:A7,D1:D2)",
+    "K15": "=MATCH(2,A5:A7,D2:D3)",
+    "K16": "=MATCH(2,A5:A7,CHOOSE(1,D1:D2))",
+    "K17": "=MATCH(2,A5:A7,CHOOSE(1,IF(TRUE,D1)))"
    }
   }
  ],

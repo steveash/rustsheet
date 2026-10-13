@@ -208,10 +208,12 @@ Rule 3: the cell stays a reference through IF, IFS, CHOOSE, SWITCH and LET, so `
 with D1 = "x" is `#REF!` too (as are the same with IF, CHOOSE, SWITCH, `LET(a,D1,a)`); D2 = 1
 gives 2. IFERROR returns the value, so `IFERROR(D1,0)` is `#VALUE!`, like literal text
 (probes/match-type-text-passthrough K1:K9, excel-graph, T-1399).
-Unprobed: nested forms (`IFS(TRUE,IF(TRUE,D1))`), a multi-cell range or 3-D span picked as match_type, the SWITCH default branch.
+Nesting changes nothing: `IFS(TRUE,IF(TRUE,D1))`, `IF(TRUE,IFS(TRUE,D1))`, `IFS(TRUE,SWITCH(1,1,D1))` and the SWITCH default branch (`SWITCH(9,1,D2,D1)`) are `#REF!` for D1 = "x" (D2 = 1 gives 2).
+A multi-cell range is its top-left cell, plain or picked by IF, IFS, SWITCH, LET or CHOOSE (no implicit intersection): with D1 = "x", D2 = 1, D3 = "y", `MATCH(2,A5:A7,D1:D2)` is `#REF!` and `D2:D3` gives 2, in row 2 or 3 alike. A 3-D span (`Sheet1:Sheet1!D1`) behaves as the cell
+(probes/match-type-nested-passthrough K1:K17, excel-graph, T-1452).
 Evidence: eval/suites/probes/cases/match-descending-argcheck.case.json J1–J20 (oracle: excel-graph,
 2026-10-10, T-1305); gen-m2/f7e6d351c8538ef5 Calc!A334, b4392a6514a36ade Calc!A277, 04cfd82f54dbc2b2 Calc!A81, f9d4df4efdfbcbd5 Calc!A14.
-Implemented in: `fn_match` / `match_type_arg` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs` (Rule 2: non-numeric text from a cell only; numeric text and booleans in the cell are unprobed). Rule 3: `match_type_arg` evaluates IF, IFS (`ifs_impl`), SWITCH (`switch_impl`) and LET in reference context; aggregates such as SUM are deliberately unchanged (no oracle evidence).
+Implemented in: `fn_match` / `match_type_arg` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs` (Rule 2: non-numeric text from a cell only; numeric text and booleans in the cell are unprobed). Rule 3: `match_type_arg` evaluates through `evaluate_chosen_reference` (util.rs), which IF, IFS, SWITCH, LET and CHOOSE share; aggregates such as SUM are deliberately unchanged (no oracle evidence).
 Status: VERIFIED
 Tasks: T-1305, T-1312, T-1313
 
