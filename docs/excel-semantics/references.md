@@ -164,10 +164,11 @@ name with its prefix, and `external_links.rs` reads the cache. Unprobed, so UNVE
 cache does not hold reads as empty (0); a book, sheet or name the cache does not hold, a name whose
 `refersTo` is not one cell, and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
 uncached reference is; a sheet with `refreshError="1"` is read like any other; `[0]!Missing` is
-`#NAME?` and `[0]Nope!Name` (no such sheet) `#REF!`, as the plain name and a missing sheet are. The
-engine passes a cached cell to a function as a value, not as a reference cell, so `SUM([1]Uses!A1)`
-over cached text is `#VALUE!` where a sheet cell's text would be skipped (T-1460). A cached
-multi-cell range (`[1]Sheet!A1:B2`) stays `#BLOCKED!` (T-1454 covers the uncached shapes).
+`#NAME?` and `[0]Nope!Name` (no such sheet) `#REF!`, as the plain name and a missing sheet are; only
+evaluation strips the `[0]` prefix, so ISREF and a rename of the name do not see through it
+(T-1459). The engine passes a cached cell to a function as a value, not as a reference cell, so
+`SUM([1]Uses!A1)` over cached text is `#VALUE!` where a sheet cell's text would be skipped (T-1460).
+A cached multi-cell range (`[1]Sheet!A1:B2`) stays `#BLOCKED!` (T-1454 covers the uncached shapes).
 `Sheet!Name` with no book prefix (poi/56737.xlsx Uses!D2 `=Defines!NR_To_A1`) does not parse yet
 (T-1459).
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED

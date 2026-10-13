@@ -29,6 +29,9 @@ docs/excel-semantics/references.md "Cached values of a linked workbook" notes th
 - [ ] poi/56737.xlsx Uses!D2 leaves eval/baseline/poi.txt (baseline updated), no new F lines.
 - [ ] Unit test: `=Sheet2!Local` reads the Sheet2-scoped name from a formula on Sheet1, and the
       formula text round-trips; `Sheet1!A1` still lexes as a reference.
+- [ ] `[0]!Name` and `[0]Sheet!Name` resolve the same way at parse time (T-1382 keeps the prefix
+      in the `DefinedNameKind` name and strips it only in evaluation, so ISREF, the reference
+      context and a rename of the name miss it); unit test `ISREF([0]!CellName)` and a rename.
 - [ ] references.md updated (drop the "does not parse yet" note).
 - [ ] `make check` green; reviewers approve.
 
