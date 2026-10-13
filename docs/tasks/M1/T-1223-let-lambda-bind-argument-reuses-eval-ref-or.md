@@ -3,7 +3,7 @@ id: T-1223
 title: "LET/LAMBDA bind_argument reuses eval_ref_or_index for INDEX instead of its own check"
 milestone: M1
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
