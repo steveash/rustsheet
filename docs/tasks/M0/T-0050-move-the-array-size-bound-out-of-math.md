@@ -3,7 +3,7 @@ id: T-0050
 title: "Move the array-size bound out of math_and_trigonometry into a core limits module"
 milestone: M0
 lane: quality
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -15,7 +15,7 @@ The engine-wide array-size bound (`MAX_SIZE`, `check_array_size`, `check_range_s
 
 ## Context
 Raised by the architecture reviewer on T-0047. The bound lives in
-`functions/math_and_trigonometry/array_size.rs`, but since T-0047 the core lift
+`limits.rs`, but since T-0047 the core lift
 `Model::evaluate_range` (cast.rs) uses it, so `functions/mod.rs` made `math_and_trigonometry`
 `pub(crate)`. Move the file to a core location (e.g. `crates/rustsheet-engine/src/limits.rs`) and
 update its importers (cast.rs, sequence.rs, random.rs, matrix.rs, bycol_byrow.rs). Pure move, no
@@ -27,3 +27,6 @@ behaviour change.
 
 ## Out of scope
 -
+
+## Outcome
+`array_size.rs` is now `crates/rustsheet-engine/src/limits.rs` and `mod math_and_trigonometry;` is private again. `decimal_round.rs` also moved to the crate root, a necessary extra move: `formatter/general.rs` (core) imported it through the now-private module. Pure move, no behaviour change; path references in open task files and `docs/excel-semantics/` updated. Eval delta: none.
