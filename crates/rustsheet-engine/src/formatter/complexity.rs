@@ -345,6 +345,7 @@ mod tests {
         let too_complex = [
             format!("d{}", quoted(126)),
             format!("d {}", quoted(124)),
+            format!("@{}", quoted(126)),
             format!("@ {}", quoted(125)),
             format!("@  {}", quoted(123)),
             format!("@ - {}", quoted(122)),
