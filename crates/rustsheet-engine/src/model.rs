@@ -609,9 +609,11 @@ impl Model {
                     column: column1,
                 })
             }
-            WrongReferenceKind { sheet_name, .. } => {
-                Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong reference")
-            }
+            WrongReferenceKind { sheet_name, .. } => self
+                .external_reference_value(node, cell)
+                .unwrap_or_else(|| {
+                    Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong reference")
+                }),
             OpRangeKind { left, right } => self.get_range(left, right, cell),
             OpIntersectKind { left, right, .. } => self.get_intersection(left, right, cell),
             SheetSpanKind {
@@ -727,6 +729,9 @@ impl Model {
                         format!("Defined name \"{name}\" not found."),
                     )
                 }
+            }
+            ExternalNameKind { book, sheet, name } => {
+                self.evaluate_external_name(book, sheet.as_deref(), name, cell)
             }
             TableNameKind(s) => CalcResult::new_error(
                 Error::NAME,
@@ -1418,22 +1423,21 @@ impl Model {
                     }
                 }
             }
-            SpillCell {
-                v: SpillValue::Number(v),
-                ..
-            } => CalcResult::Number(*v),
-            SpillCell {
-                v: SpillValue::Boolean(v),
-                ..
-            } => CalcResult::Boolean(*v),
-            SpillCell {
-                v: SpillValue::Text(v),
-                ..
-            } => CalcResult::String(v.clone()),
-            SpillCell {
-                v: SpillValue::Error(ei),
-                ..
-            } => {
+            SpillCell { v, .. } => self.spill_value_result(v, cell_reference),
+        }
+    }
+
+    /// A stored plain value (a spill cell's, or a linked workbook's cached cell) as a result.
+    pub(crate) fn spill_value_result(
+        &self,
+        value: &SpillValue,
+        cell_reference: CellReferenceIndex,
+    ) -> CalcResult {
+        match value {
+            SpillValue::Number(v) => CalcResult::Number(*v),
+            SpillValue::Boolean(v) => CalcResult::Boolean(*v),
+            SpillValue::Text(v) => CalcResult::String(v.clone()),
+            SpillValue::Error(ei) => {
                 let message = ei.to_localized_error_string(self.language);
                 CalcResult::new_error(ei.clone(), cell_reference, message)
             }

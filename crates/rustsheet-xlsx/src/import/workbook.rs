@@ -89,11 +89,17 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
             sheet_id,
         });
     }
-    // read the relationships file
+    let external_references = doc
+        .descendants()
+        .filter(|n| n.has_tag_name("externalReference"))
+        // One without an id still takes its index, so the books after it keep theirs.
+        .map(|n| n.relationship_id().unwrap_or_default().to_string())
+        .collect();
     Ok((
         WorkbookXML {
             worksheets: sheets,
             defined_names,
+            external_references,
         },
         date_system,
     ))

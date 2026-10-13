@@ -677,6 +677,7 @@ impl Model {
             tables: HashMap::new(),
             views,
             theme: Default::default(),
+            external_books: Vec::new(),
         };
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;

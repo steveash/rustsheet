@@ -45,6 +45,8 @@ pub(crate) struct Sheet {
 pub(crate) struct WorkbookXML {
     pub(crate) worksheets: Vec<Sheet>,
     pub(crate) defined_names: Vec<DefinedName>,
+    /// The `r:id` of each `externalReference`, in order: the first is the book formulas call `[1]`.
+    pub(crate) external_references: Vec<String>,
 }
 
 pub(crate) struct Relationship {

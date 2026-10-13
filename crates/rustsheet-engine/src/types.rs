@@ -155,6 +155,22 @@ pub struct Workbook {
     pub tables: HashMap<String, Table>,
     pub views: HashMap<u32, WorkbookView>,
     pub theme: Theme,
+    /// The other workbooks formulas name by index, `[1]` first (`[1]Sheet!A1`, `[1]!Name`).
+    pub external_books: Vec<ExternalBook>,
+}
+
+/// A workbook this one links to, as far as Excel cached it in `xl/externalLinks/externalLinkN.xml`
+/// (`externalBook`). The other workbook is never opened (directive 5): a reference into it reads
+/// these cached values (docs/excel-semantics/references.md, "External reference with no cached
+/// data is `#BLOCKED!`").
+#[derive(Encode, Decode, Debug, PartialEq, Clone, Default)]
+pub struct ExternalBook {
+    /// Its sheet names in `sheetNames` order; a sheet's index here is its `sheetId` in the cache.
+    pub sheet_names: Vec<String>,
+    /// Its defined names; `sheet_id` is the index in `sheet_names` of a sheet-scoped name's sheet.
+    pub defined_names: Vec<DefinedName>,
+    /// The cached cell values, keyed by (sheet index, row, column).
+    pub cells: HashMap<(u32, i32, i32), SpillValue>,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local

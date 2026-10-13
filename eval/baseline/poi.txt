@@ -153,10 +153,7 @@ F	poi/54764-2.xlsx	!EngineError
 F	poi/54764.xlsx	!EngineError
 F	poi/56278.xlsx	!EngineError
 F	poi/56502.xlsx	Tabelle1!A4
-F	poi/56737.xlsx	Uses!C5
 F	poi/56737.xlsx	Uses!D2
-F	poi/56737.xlsx	Uses!D3
-F	poi/56737.xlsx	Uses!D5
 F	poi/57535.xlsx	Sheet1!E5
 F	poi/57535.xlsx	Sheet1!E6
 F	poi/58616.xlsx	!InvalidCase
@@ -649,13 +646,4 @@ F	poi/poc-shared-strings.xlsx	!InvalidCase
 F	poi/poc-xmlbomb-empty.xlsx	!EngineError
 F	poi/poc-xmlbomb.xlsx	!EngineError
 F	poi/protected_passtika.xlsx	!InvalidCase
-F	poi/ref-56737.xlsx	Refs!E3
-F	poi/ref-56737.xlsx	Refs!G3
-F	poi/ref-56737.xlsx	Refs!I3
-F	poi/ref2-56737.xlsx	Refs!E3
-F	poi/ref2-56737.xlsx	Refs!E5
-F	poi/ref2-56737.xlsx	Refs!G3
-F	poi/ref2-56737.xlsx	Refs!G5
-F	poi/ref2-56737.xlsx	Refs!I3
-F	poi/ref2-56737.xlsx	Refs!I5
 F	poi/style-alternate-content.xlsx	!EngineError

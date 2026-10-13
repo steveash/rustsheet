@@ -201,6 +201,9 @@ impl Parser {
 
     /// A name that is not called: a defined name, a table or a LAMBDA parameter.
     fn name_operand(&mut self, name: String) -> Node {
+        if let Some(node) = external_name(&name) {
+            return node;
+        }
         let context = &self.context;
 
         let context_sheet_index = match self.get_sheet_index_by_name(&context.sheet) {
@@ -560,4 +563,16 @@ impl Parser {
             }
         }
     }
+}
+
+/// The defined name of a linked workbook the lexer reads as one identifier, `[1]!Name` or
+/// `[1]Sheet!Name`.
+fn external_name(identifier: &str) -> Option<Node> {
+    let (book, rest) = identifier.strip_prefix('[')?.split_once(']')?;
+    let (sheet, name) = rest.split_once('!')?;
+    Some(Node::ExternalNameKind {
+        book: book.to_string(),
+        sheet: (!sheet.is_empty()).then(|| sheet.to_string()),
+        name: name.to_string(),
+    })
 }

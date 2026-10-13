@@ -20,6 +20,7 @@ mod test_defined_name_formulas;
 mod test_defined_name_grouped;
 mod test_degrees_radians;
 mod test_error_propagation;
+mod test_external_links;
 mod test_fact_factdouble;
 mod test_fn_accrint;
 mod test_fn_accrintm;

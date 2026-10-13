@@ -90,6 +90,7 @@ pub(super) fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         | Node::SheetSpanKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
+        | Node::ExternalNameKind { .. }
         | Node::ArrayKind(_)
         | Node::DefinedNameKind(_)
         | Node::TableNameKind(_)
