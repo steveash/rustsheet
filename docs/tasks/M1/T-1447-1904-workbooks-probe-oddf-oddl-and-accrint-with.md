@@ -34,5 +34,5 @@ Four probes (excel-graph): date-system-1904-odd-accrint-bound and date-system-19
 ACCRINT now follows `coupon_schedule_breaks` on its first_interest (#NUM! from 9995-12-31 on in 1904), so all 20
 ACCRINT cells pass. The odd-period functions break on another, irregular pattern (9000 and 9900, and 9995-12-30 on in
 1904; ODDL at 9999-12-31 in 1900), recorded in dates.md and filed as T-1457. COUPDAYS basis 1 ignores the settlement
-(confirmed). Eval: 4 new probe cases, 79 new-coverage failures (39 odd-period cells for T-1457, 40 last-digit
+(confirmed). Eval: 4 new probe cases, 79 new-coverage failures (44 odd-period cells for T-1457, 35 last-digit
 ODDFYIELD/ODDLYIELD misses for T-0916), 0 regressions.
