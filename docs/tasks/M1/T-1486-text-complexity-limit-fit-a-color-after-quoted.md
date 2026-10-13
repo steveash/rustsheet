@@ -3,7 +3,7 @@ id: T-1486
 title: "TEXT complexity limit: fit a color after quoted text, _' and a quoted run before @ (follow-up of T-1481)"
 milestone: M1
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -23,7 +23,7 @@ T-1481 fitted what `@` costs. Left over (see "Not explained" in docs/excel-seman
 ## Out of scope
 - Letters as literals (T-1450), conditions (T-0936).
 
-## Handoff
+## Handoff (resumed)
 Escalated by a sonnet run before any code change: the task is numeric fitting that needs several
 oracle probe rounds (probes/text-format-length-limit-l and -m live in the oracle history, not as
 suites under eval/suites/probes in this checkout; look in eval/ for the case ids first).
