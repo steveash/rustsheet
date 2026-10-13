@@ -3,7 +3,7 @@ id: T-1044
 title: "Oracle sweep: incomplete beta (BETA.DIST, F.DIST, F.DIST.RT, BETA.INV, F.INV, F.INV.RT)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
