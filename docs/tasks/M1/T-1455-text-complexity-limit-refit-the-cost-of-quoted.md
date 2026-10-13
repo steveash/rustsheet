@@ -28,19 +28,6 @@ A free MILP over per-boundary weights overfits; look for a structural explanatio
 
 ## Out of scope
 - Conditions (T-0936), letters as literals (T-1450).
-
-## Outcome
-Refit TEXT's complexity model with three context rules and two corrected weights, fitted with an
-integer min-miss search over 463 probed cells and then checked out of sample by a new probe round
-(probes/text-format-length-limit-k, 43 cells, excel-graph):
-- quoted text pays 4 extra when a token or placeholder follows it directly, or when the section's
-  closing literal run goes on with unquoted text after it;
-- in a section whose closing literal run holds quoted text, date/time letters and `@` are free;
-- a condition costs 3 more in a section that also holds quoted text;
-- a color costs 2 (was 1), `AM/PM` 3 (was 2).
-Every probed cell of c to j now matches; k misses one (`"@ "` + 124 quoted on text, T-1466).
-Eval delta: probes known failures 2853 -> 2834 (fixed 20 in -f, -i, -j; +1 new-coverage failure k A30).
-
 ## Outcome
 Refit TEXT's complexity model with three context rules and two corrected weights, found with an
 integer min-miss search over 463 probed cells and checked out of sample by a new probe round

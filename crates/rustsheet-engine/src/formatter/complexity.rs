@@ -22,7 +22,7 @@
 //! - a section holding both a condition and quoted text pays 3 more (`"[>5]0"` + 116 quoted works,
 //!   118 fails, while `"[>5]0"` + 79 spaces works).
 //!
-//! Known miss: `TEXT("x","@ "&<124 quoted>)` works in Excel and costs 251 here (T-1455).
+//! Known miss: `TEXT("x","@ "&<124 quoted>)` works in Excel and costs 251 here (T-1466).
 
 use super::lexer::{Lexer, Token};
 
@@ -53,45 +53,9 @@ enum Run {
     Colon,
 }
 
-/// Whether `token` is a number or date/time token, which a fourth section may not hold. A positive
+/// Whether `token` is a date or time letter token (`d`, `mmm`, `yy`, `h`, `ss`, ...). A positive
 /// list (not `Token::is_date`, which leaves out time tokens), so a new variant is not caught by default.
-fn is_number_or_date(token: &Token) -> bool {
-    matches!(
-        token,
-        Token::Zero
-            | Token::Sharp
-            | Token::QuestionMark
-            | Token::Scientific
-            | Token::ScientificMinus
-            | Token::Day
-            | Token::DayPadded
-            | Token::DayNameShort
-            | Token::DayName
-            | Token::Month
-            | Token::MonthPadded
-            | Token::MonthNameShort
-            | Token::MonthName
-            | Token::MonthLetter
-            | Token::YearShort
-            | Token::Year
-            | Token::Hour
-            | Token::HourPadded
-            | Token::Second
-            | Token::SecondPadded
-            | Token::ElapsedHour
-            | Token::ElapsedMinute
-            | Token::ElapsedSecond
-            | Token::ElapsedHourPadded
-            | Token::ElapsedMinutePadded
-            | Token::ElapsedSecondPadded
-            | Token::AMPM
-    )
-}
-
-/// Whether `token` costs nothing in a section whose closing literal run holds quoted text: the
-/// date and time letters and `@` (probed: `d`, `dd`, `m`, `mm`, `h`, `yyyy`, `@`). Elapsed tokens,
-/// `AM/PM` and `%` keep their cost (`"[h]"` + 125 quoted and `"%"` + 125 quoted fail).
-fn is_free_before_closing_quoted(token: &Token) -> bool {
+fn is_date_time_letter(token: &Token) -> bool {
     matches!(
         token,
         Token::Day
@@ -109,8 +73,35 @@ fn is_free_before_closing_quoted(token: &Token) -> bool {
             | Token::HourPadded
             | Token::Second
             | Token::SecondPadded
-            | Token::Raw
     )
+}
+
+/// Whether `token` is a number or date/time token, which a fourth section may not hold.
+fn is_number_or_date(token: &Token) -> bool {
+    is_date_time_letter(token)
+        || matches!(
+            token,
+            Token::Zero
+                | Token::Sharp
+                | Token::QuestionMark
+                | Token::Scientific
+                | Token::ScientificMinus
+                | Token::ElapsedHour
+                | Token::ElapsedMinute
+                | Token::ElapsedSecond
+                | Token::ElapsedHourPadded
+                | Token::ElapsedMinutePadded
+                | Token::ElapsedSecondPadded
+                | Token::AMPM
+        )
+}
+
+/// Whether `token` costs nothing in a section whose closing literal run holds quoted text: the
+/// date and time letters and `@` (probed: `d`, `dd`, `m`, `mm`, `h`, `yyyy`, `@`; seconds and day or
+/// month names are inferred). Elapsed tokens, `AM/PM` and `%` keep their cost (`"[h]"` + 125 quoted
+/// and `"%"` + 125 quoted fail).
+fn is_free_before_closing_quoted(token: &Token) -> bool {
+    is_date_time_letter(token) || matches!(token, Token::Raw)
 }
 
 /// The context-dependent costs of one section, settled when the section ends.
@@ -119,7 +110,8 @@ struct Section {
     elements: usize,
     conditions: usize,
     has_quoted: bool,
-    /// The date, time and `@` tokens, which are free if the closing literal run holds quoted text.
+    /// The date, time and `@` tokens anywhere in the section (not only next to the closing run:
+    /// both `h` and `mm` are free in `"h:mm"` + 123 quoted), free if that run holds quoted text.
     free_tokens: usize,
     /// Whether the latest element is quoted text.
     after_quoted: bool,
