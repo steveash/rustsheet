@@ -120,21 +120,30 @@ impl Model {
         })
     }
 
-    /// UNICHAR(number) — Returns the Unicode character for the given code point.
+    /// UNICHAR(number) — the character for a Unicode code point, truncated toward zero. Lifts over
+    /// a range or array argument. Below 1 or above 0x10FFFF is `#VALUE!`; a surrogate or a Unicode
+    /// noncharacter (U+FDD0..U+FDEF, U+xxFFFE, U+xxFFFF) is `#N/A`
+    /// (docs/excel-semantics/text.md#unichar-code-point-bounds).
     pub(crate) fn fn_unichar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let n = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor() as u32,
+        let number = match self.text_arg(&args[0], cell) {
+            Ok(t) => t,
             Err(e) => return e,
         };
-        match char::from_u32(n) {
-            Some(c) if n > 0 => CalcResult::String(c.to_string()),
-            _ => {
-                CalcResult::new_error(Error::VALUE, cell, "Invalid Unicode code point".to_string())
+        broadcast_text(cell, &[&number], |i, j| {
+            let n = self.array_node_to_number(number.elem(i, j))?.trunc();
+            if !(1.0..=f64::from(char::MAX as u32)).contains(&n) {
+                return Err(Error::VALUE);
             }
-        }
+            let cp = n as u32;
+            let noncharacter = (0xFDD0..=0xFDEF).contains(&cp) || cp & 0xFFFE == 0xFFFE;
+            match char::from_u32(cp) {
+                Some(c) if !noncharacter => Ok(ArrayNode::String(c.to_string())),
+                _ => Err(Error::NA),
+            }
+        })
     }
 
     /// CLEAN(text) — removes code points 0-31 and the C1 controls 128-159, and nothing else
