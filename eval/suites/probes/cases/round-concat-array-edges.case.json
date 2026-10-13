@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ROUND-family over arrays with non-number elements, and CONCAT over arrays past the 32767-character limit with an error element (T-1400).",
+  "tags": [
+    "M2",
+    "math",
+    "text",
+    "array",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ROUND({TRUE,\"2.5\",\"\"},0)",
+        "A2": "=ROUNDUP({TRUE,\"2.5\",\"\"},0)",
+        "A3": "=ROUNDDOWN({TRUE,\"2.5\",\"\"},0)",
+        "A4": "=ROUND({\"abc\"},0)",
+        "A5": "=ROUND({\"abc\",1.5},0)",
+        "A6": "=ROUND(2.567,{TRUE,\"1\",\"\"})",
+        "A7": "=ROUND({TRUE;\"2.5\";\"\"},0)",
+        "F1": "=LEN(CONCAT(REPT(\"a\",32767),{\"b\",\"c\"}))",
+        "F2": "=CONCAT(REPT(\"a\",32767),{\"b\",#N/A})",
+        "F3": "=CONCAT({\"b\",#N/A},REPT(\"a\",32767))",
+        "F4": "=CONCAT(REPT(\"a\",32767),{#N/A,\"b\"})",
+        "F5": "=CONCAT(REPT(\"a\",32767),{\"b\";#DIV/0!})",
+        "F6": "=CONCAT({\"b\",#N/A},{\"c\",#DIV/0!})",
+        "F7": "=CONCAT(REPT(\"a\",32767),{\"b\";\"c\"})"
+      }
+    }
+  ],
+  "expected": {}
+}
