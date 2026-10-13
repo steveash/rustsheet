@@ -22,7 +22,7 @@
 //! - a section holding both a condition and quoted text pays 3 more (`"[>5]0"` + 116 quoted works,
 //!   118 fails, while `"[>5]0"` + 79 spaces works).
 //!
-//! Known miss: `TEXT("x","@ "&<124 quoted>)` works in Excel and costs 251 here (T-1468).
+//! Known miss: `TEXT("x","@ "&<124 quoted>)` works in Excel and costs 251 here (T-1481).
 
 use super::lexer::{Lexer, Token};
 

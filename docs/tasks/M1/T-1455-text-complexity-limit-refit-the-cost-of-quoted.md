@@ -37,5 +37,5 @@ integer min-miss search over 463 probed cells and checked out of sample by a new
 - in a section whose closing literal run holds quoted text, date/time letters and `@` are free;
 - a condition costs 3 more in a section that also holds quoted text;
 - a color costs 2 (was 1), `AM/PM` 3 (was 2).
-Every probed complexity cell of c to j now matches; k misses one (`"@ "` + 124 quoted on text, T-1468).
+Every probed complexity cell of c to j now matches; k misses one (`"@ "` + 124 quoted on text, T-1481).
 Eval delta: probes known failures 2853 -> 2834 (fixed 20 in -f, -i, -j; 1 new-coverage failure, k A30).

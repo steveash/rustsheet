@@ -253,7 +253,7 @@ Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens lon
 
 Evidence: probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b (T-1388), text-format-length-limit-c, -d, -e (T-1393), -f, -g, -h, -i (T-1434), -j (T-1449), -k (T-1455), all excel-graph.
 Not explained or not implemented (known failures):
-- `TEXT("x","@ "&<124 quoted characters>)` works in Excel ("x aaa...") but costs 251 in the model, while `"d "` and `"dd "` + 124 quoted fail as modeled (probes/text-format-length-limit-k A30). T-1468.
+- `TEXT("x","@ "&<124 quoted characters>)` works in Excel ("x aaa...") but costs 251 in the model, while `"d "` and `"dd "` + 124 quoted fail as modeled (probes/text-format-length-limit-k A30). T-1481.
 - `TEXT(1,"[>5]0"&REPT(" ",79))` is "1" (also with 40 spaces): an unmatched single condition prints General, dropping the padding. So is `"[>55555]0"` plus 79 spaces (-j A43). We do not apply conditions yet (see "Conditional sections", T-0936).
 - `TEXT(1,"0:a:")` is "1:a:" and an escaped backslash followed by an unquoted `x` prints "\x": Excel accepts these letters unquoted, our lexer rejects them (-g A42, A43; -i A100:A104). T-1450.
 
