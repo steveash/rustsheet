@@ -6,7 +6,7 @@ lane: functions-text
 status: todo
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -22,3 +22,13 @@ T-1481 fitted what `@` costs. Left over (see "Not explained" in docs/excel-seman
 
 ## Out of scope
 - Letters as literals (T-1450), conditions (T-0936).
+
+## Handoff
+Escalated by a sonnet run before any code change: the task is numeric fitting that needs several
+oracle probe rounds (probes/text-format-length-limit-l and -m live in the oracle history, not as
+suites under eval/suites/probes in this checkout; look in eval/ for the case ids first).
+`rustsheet-oracle status` showed excel-graph OK, so probing is possible. Starting points:
+`formatter/complexity.rs` (`Section::settle`, `QUOTED_SWITCH_COST`, `TEXT_TOKEN_EXTRA_REFUND`)
+and the "Not explained" bullet in docs/excel-semantics/number-formats.md. Next: probe each of the
+three misses (`@_` + 122..126 quoted; `"0"` + n quoted + `[Red]0` for several n; quoted `a` + ` @ `
++ n quoted for several n), refit, update the semantics entry and the baseline.
