@@ -71,7 +71,20 @@ a hyphen is skipped, `"-1" > "0"` is TRUE (Data!A17 vs C3, still FALSE in the en
 Implemented in: `functions::util::cmp_text_excel`, used by `compare_values` (operators, sort,
 lookups) and the text criteria in functions/criteria.rs. Inferred, not probed: SORT and approximate lookups
 place CHAR(160) the same way (they share `compare_values`), and control characters below the space.
-Tasks: T-0220, T-0244
+Full order (T-1469, VERIFIED, probes/text-collation-order, 146 strings ranked by
+`SUMPRODUCT(--(range<x))`, excel-graph 2026-10-13). `=` is case-insensitive and accent-sensitive; `<`/`>` order, lowest first:
+1. The empty string, then a lone `'`, `''`, `-`, `--`, then space, `  `, then the punctuation
+   `! " # $ % & ( ) * , . / : ; ? @ [ \ ] ^ _ ` + "`" + ` { | } ~`, then `+ < = >`, then digits `0 1 2 ... 9`, then letters.
+2. Hyphen and apostrophe are ignored at the first pass and only break ties afterwards (Excel's "word sort"):
+   `"ab" < "a'b" < "a-b"`, `"coop" < "co-op"` (but `"co op" < "coop"`: a space is not ignored), `"1" < "'1" < "-1" < "2"`,
+   `"a" < "a'" < "a-" < "'a" < "-a" < "aa"`. `"-1" > "0"` is TRUE.
+3. Letters compare case-insensitively first (`"a" = "A"`, `"ab" = "AB"`); accents are a later tiebreak, not a different letter:
+   `"a" < "á" < "à"="À" < "â" < "ä" < "å" < "aa"`; `"é"="É"` sits after `"E"` and before `"F"`; `"résumé" > "resume"`.
+4. Expansions and multi-letter folds: `"æ"="ae"` and `"ß"="ss"` are equal (`=` TRUE); `"ø" > "o"` but `"ø"` sorts after `"ö"` and before `"P"`
+   (a separate letter-like key, not an accent of `o`); `"ÿ"` sorts after `"Y"` and before `"Z"`.
+5. Within the same case-folded letters, position of the punctuation tiebreak is: letter+mark `<` mark+letter (`"a-" < "-a"`).
+Ranks for every string are in the oracle sidecar (Calc!A, ties in Calc!B). Fitting the key is T-0220's.
+Tasks: T-0220, T-0244, T-1469
 
 ## Double unary minus coerces to a number
 Rule: `--x` is not a no-op. Each unary minus coerces its operand to a number: `--FALSE` = 0,
