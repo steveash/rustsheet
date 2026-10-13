@@ -3,7 +3,7 @@ id: T-1248
 title: "Probe DBCS on non-ASCII text and a number cell, and PHONETIC of an error or empty cell"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1213 implemented DBCS as a pass-through and PHONETIC as `#N/A` from the ASCII 
 
 ## Out of scope
 -
+
+## Outcome
+Probes text-modes-dbcs-phonetic-b and text-modes-dbcs-lift (excel-graph) answer every listed input; text.md updated (en-US DBCS widens nothing; PHONETIC of any reference is `#N/A`, errors included). One mismatch found: DBCS (and ASC) lift over ranges and we do not, filed as T-1488. Eval: known-failure delta in the Outcome of the PR (new-coverage only, no regressions).
