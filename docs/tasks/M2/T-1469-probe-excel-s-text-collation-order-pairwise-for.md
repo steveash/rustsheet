@@ -3,7 +3,7 @@ id: T-1469
 title: "Probe Excel's text collation order pairwise for comparison operators (evidence for T-0220)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
