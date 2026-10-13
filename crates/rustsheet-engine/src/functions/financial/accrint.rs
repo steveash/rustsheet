@@ -377,6 +377,17 @@ impl Model {
             );
         }
 
+        // ACCRINT walks the coupon schedule of `first_interest`, which in a 1904 workbook breaks
+        // from 9995-12-31 on as a maturity's does: #NUM! for any settlement and calc_method,
+        // while 9995-12-30 still accrues (probes/date-system-1904-odd-accrint-bound A11:D15;
+        // docs/excel-semantics/dates.md; T-1447).
+        if self.coupon_schedule_breaks(first_interest_serial) {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "first_interest past the coupon schedule".to_string(),
+            );
+        }
         let issue = match from_excel_date(issue_serial) {
             Ok(d) => d,
             Err(e) => return CalcResult::new_error(Error::NUM, cell, e),

@@ -494,8 +494,23 @@ At the edges:
   `COUPDAYSNC(DATE(9998,1,10),DATE(9999,12,31),2,3)` = 720. On the 30/360 bases 0 and 4 COUPDAYBS and COUPDAYSNC are
   #NUM!. COUPDAYS on bases 0, 2, 3 and 4 keeps its fixed length (180, 180, 182.5, 180). COUPNUM, PRICE, YIELD,
   DURATION and MDURATION are #NUM!. A maturity past the last date (`1E+300` included) is #NUM! as before.
-  Unprobed: the ODDF*/ODDL* functions. The 1900 twin has no such break: every cell gives the normal schedule up to
-  9999-12-31.
+  The 1900 twin has no such break: every cell gives the normal schedule up to 9999-12-31.
+  ACCRINT breaks on its first_interest the same way: from 9995-12-31 on it is #NUM! for any settlement, calc_method
+  and basis (`ACCRINT(DATE(9994,1,1),DATE(9995,12,31),DATE(9995,12,21),0.05,1000,2,0,TRUE)`), while 9995-12-30
+  accrues 98.47 as in 1900, and a first_interest of 9995-06-30 settled on 9995-12-31 still gives 75.28.
+  The odd-period functions break differently, and not on that threshold. In 1904, ODDFPRICE, ODDFYIELD, ODDLPRICE
+  and ODDLYIELD are #NUM! for maturities 9995-12-30, 9995-12-31 and 9999-06-30 (issue and settlement five years
+  earlier, or in the last year), where 1900 gives values. ODDF* with issue, settlement and first coupon in the year
+  before a 30 June maturity are #NUM! for 9000 and 9900 but give the 1900 values for 9980 through 9995, and ODDL* for
+  9000 and 9900 differ from 1900 (`ODDLPRICE(DATE(9000,3,1),DATE(9000,6,30),DATE(9000,2,15),0.05,0.06,100,2,0)` is
+  99.6718 against 99.6715). 9000 and 9900 are the century years that are not leap years, so a guess (UNVERIFIED) is
+  that these functions move 1904 dates by four calendar years, not by 1462 days. Settled in 2024, every maturity to
+  9995 gives the 1900 value. In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
+  9999-05-15) are #NUM!, and so is ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity 9999-06-30.
+  COUPDAYS on basis 1 in the broken range ignores the settlement: 2958465 for settlements 9999-01-01, 9998-03-01 and
+  9996-02-01.
+  Probes: date-system-1904-odd-accrint-bound, date-system-1904-odd-threshold and their 1900 twins (excel-graph,
+  2026-10-12, T-1447). Ours: ACCRINT follows `coupon_schedule_breaks` (T-1447). The odd-period cells are T-1457.
   Probes: date-system-1904-coupon-bound and its twin date-system-1900-coupon-bound (excel-graph, 2026-10-12, T-1440).
   Ours: `DateSystem::coupon_schedule_breaks` (formatter/dates.rs), applied by the COUP* functions, PRICE, YIELD and
   DURATION (functions/financial/financial_bonds.rs).
@@ -508,7 +523,7 @@ The other failing cells are last-digit misses (DISC, INTRATE, PRICEDISC, PRICEMA
 or iteration stopping points (XIRR, YIELD, ODDFYIELD; T-0916). Most fail in the 1900 twin too; PRICEDISC
 daycount A20 is 1 ulp off in 1904 only.
 Status: VERIFIED (web)
-Tasks: T-1436, T-1440
+Tasks: T-1436, T-1440, T-1447, T-1457
 
 ## Negative serials under an explicit negative section; lone elapsed tokens
 Rule: Excel decides whether a negative serial formats from the value's own sign, before a negative section drops it.
