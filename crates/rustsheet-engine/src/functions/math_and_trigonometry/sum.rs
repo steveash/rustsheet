@@ -295,19 +295,6 @@ impl Model {
         }
     }
 
-    /// SUM without the near-zero snap, for PERCENTOF, whose Excel behavior is not observable
-    /// (`#NAME?` on excel-graph; docs/excel-semantics/numbers.md "Near-zero snapping").
-    pub(crate) fn fn_sum_unsnapped(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        match self.sum_with_last_addition(args, cell) {
-            Ok(sum) => CalcResult::finite_number_or_num(sum.total, cell),
-            Err(error) => error,
-        }
-    }
-
     /// The sum of SUM's arguments, with the two addends of its final addition.
     fn sum_with_last_addition(
         &mut self,

@@ -150,7 +150,7 @@ pub(crate) struct SeenRecord {
 /// A rectangle read as empty on behalf of `root`, in one go. A function that walks a whole
 /// column or row visits only the sheet's used area; the rest holds nothing, and the formula
 /// depends on it all the same. That remainder is one record, not one per cell.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct SeenRange {
     pub(crate) root: CellReferenceIndex,
     pub(crate) sheet: u32,
@@ -390,7 +390,7 @@ pub(crate) struct Evaluation {
     /// evaluating at the time), one record per kind.
     pub(crate) seen: HashMap<CellKey, SeenRecord, KeyBuild>,
     /// Rectangles read as empty in one go, with their root (`SeenRange`).
-    pub(crate) seen_ranges: Vec<SeenRange>,
+    pub(crate) seen_ranges: crate::seen_ranges::SeenRanges,
     /// Set when the current pass must be abandoned. Every evaluation in
     /// progress then returns without storing anything.
     pub(crate) restart: Option<Restart>,
@@ -460,7 +460,7 @@ impl Default for Evaluation {
             root: None,
             circular: HashSet::default(),
             seen: HashMap::default(),
-            seen_ranges: Vec::new(),
+            seen_ranges: crate::seen_ranges::SeenRanges::default(),
             restart: None,
             in_pass: false,
             restarts_in_last_evaluation: 0,

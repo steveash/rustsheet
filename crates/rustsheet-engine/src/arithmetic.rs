@@ -6,7 +6,8 @@ use crate::{
         token::{Error, OpCompare, OpProduct, OpSum},
         types::CellReferenceIndex,
     },
-    functions::{math_and_trigonometry::array_size::check_array_size, util::compare_values},
+    functions::util::compare_values,
+    limits::check_array_size,
     model::Model,
 };
 
@@ -58,7 +59,76 @@ pub(crate) fn divide(x: f64, y: f64) -> Result<f64, Error> {
     if y.abs() < f64::MIN_POSITIVE {
         return Err(Error::DIV);
     }
-    finite_or_num(x / y)
+    finite_or_num(extended_quotient(x, y))
+}
+
+/// `x / y` rounded twice, first to a 64-bit significand and then to a double, as an x87 division
+/// in extended precision stored to a double would be. It differs from the correctly rounded
+/// quotient (about once in 4,000 random divisions) only when the exact quotient lies within half
+/// an extended ulp of a double midpoint: the first rounding lands on the midpoint and the second
+/// rounds it to even. `1/(2-2^-52)` is 0.5, not 0.5000000000000001, and so is `8^(-1/3)`
+/// (docs/excel-semantics/numbers.md "Division rounds twice", probes-numeric/power-reciprocal-rounding).
+/// A quotient that is not a normal double, and any non-finite or zero operand, is the plain `x / y`.
+pub(crate) fn extended_quotient(x: f64, y: f64) -> f64 {
+    let plain = x / y;
+    if !plain.is_normal() || !x.is_normal() || !y.is_normal() {
+        return plain;
+    }
+    let (x_significand, x_exponent) = significand_and_exponent(x);
+    let (y_significand, y_exponent) = significand_and_exponent(y);
+    // Both significands are 53-bit integers, so the integer quotient of x << 74 by y has 74 or 75
+    // bits, and the remainder makes the result exact enough to round to 64 bits.
+    let numerator = u128::from(x_significand) << 74;
+    let divisor = u128::from(y_significand);
+    let quotient = numerator / divisor;
+    let inexact = numerator % divisor != 0;
+    // First rounding: to 64 bits, ties to even, the remainder breaking ties.
+    let (extended, shift) = round_to_bits(quotient, 64, inexact);
+    // Second rounding: the 64-bit value to 53 bits; the value is now exact, so a tie is a tie.
+    let (significand, second_shift) = round_to_bits(extended, 53, false);
+    let exponent = x_exponent - y_exponent - 74 + shift + second_shift;
+    let Some(biased) = u64::try_from(exponent + 1075)
+        .ok()
+        .filter(|b| (1..=2046).contains(b))
+    else {
+        return plain;
+    };
+    let sign = u64::from(x.is_sign_negative() != y.is_sign_negative()) << 63;
+    // The significand has 53 bits after the second rounding, so the conversion cannot fail.
+    let fraction = u64::try_from(significand).unwrap_or(0) & 0x000F_FFFF_FFFF_FFFF;
+    f64::from_bits(sign | (biased << 52) | fraction)
+}
+
+/// The 53-bit integer significand `m` and exponent `e` of a normal double, `|x| = m·2^e`.
+fn significand_and_exponent(x: f64) -> (u64, i32) {
+    let bits = x.to_bits();
+    let biased = i32::try_from((bits >> 52) & 0x7FF).unwrap_or(0);
+    ((bits & 0x000F_FFFF_FFFF_FFFF) | (1 << 52), biased - 1075)
+}
+
+/// `value` (non-zero) rounded to nearest, ties to even, to `bits` significant bits: the rounded
+/// significand and the number of low bits dropped, so the result is `significand·2^shift`.
+/// `inexact` says the exact value lies a little above `value`, which turns a tie into a round up.
+fn round_to_bits(value: u128, bits: u32, inexact: bool) -> (u128, i32) {
+    let width = 128 - value.leading_zeros();
+    if width <= bits {
+        return (value, 0);
+    }
+    let shift = width - bits;
+    let mut significand = value >> shift;
+    let dropped = value & ((1 << shift) - 1);
+    let half = 1 << (shift - 1);
+    if dropped > half || (dropped == half && (inexact || significand & 1 == 1)) {
+        significand += 1;
+    }
+    // At most 75 - 53 bits are dropped, so the conversion cannot fail.
+    let mut shift = i32::try_from(shift).unwrap_or(0);
+    // A carry out of the top bit (all ones rounded up) is one more bit to drop.
+    if significand >> bits != 0 {
+        significand >>= 1;
+        shift += 1;
+    }
+    (significand, shift)
 }
 
 /// An infinite (or NaN) result is the error `#NUM!`; a result below the smallest normal double
@@ -118,7 +188,7 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
         return Err(Error::NUM);
     }
     if let Some(result) = integer_power(x, y) {
-        return Ok(result);
+        return result;
     }
     let result = if x < 0.0 && is_one_over_an_odd_integer(y) {
         // An odd root of a negative number is a real number, minus the root of the magnitude:
@@ -156,40 +226,46 @@ fn non_integer_power(x: f64, y: f64) -> f64 {
     if y == 0.5 {
         x.sqrt()
     } else if y == -0.5 {
-        1.0 / x.sqrt()
+        extended_quotient(1.0, x.sqrt())
     } else if y > 0.0 {
         (y * x.ln()).exp()
     } else {
-        1.0 / (-y * x.ln()).exp()
+        extended_quotient(1.0, (-y * x.ln()).exp())
     }
 }
 
 /// `x^y` for an integer `y`, by binary exponentiation scanning the bits of `|y|` from the low end,
 /// as Excel computes it (docs/excel-semantics/numbers.md "Integer exponents: right-to-left
 /// square-and-multiply"; libm `pow` and `powi` round differently). A negative `y` is one over
-/// the result. `None` leaves the case to the general path: a non-integer or huge `y` (bounding the
-/// loop to 54 iterations), and any result that is zero or not finite, whose overflow and
-/// underflow behavior is unverified beyond the oracle's exponents 1..360.
-fn integer_power(x: f64, y: f64) -> Option<f64> {
+/// the positive power, divided like the operator `/`. `None` leaves a non-integer or huge `y` to
+/// the general path (bounding the loop to 54 iterations).
+///
+/// Out of range, for any sign of `x` (probes-numeric/power-negative-base-range,
+/// power-odd-roots A157-A162): a positive power that overflows is `#NUM!` and one that underflows
+/// is 0, so `(-0.1)^401` is 0; a negative exponent whose positive power underflows is `#DIV/0!`
+/// (`(-0.1)^-401`, `(-0.5)^-1075`), and one whose positive power overflows is 0 (`(-10)^-401`).
+fn integer_power(x: f64, y: f64) -> Option<Result<f64, Error>> {
     // 2^53: beyond it every float is an integer, and the loop would need more than 54 iterations
     const MAX_EXPONENT: f64 = 9_007_199_254_740_992.0;
     if !x.is_finite() || !y.is_finite() || y.fract() != 0.0 || y.abs() > MAX_EXPONENT {
         return None;
     }
-    let mut result =
+    let positive_power =
         decimal_power_of_ten(x, y.abs()).unwrap_or_else(|| square_and_multiply(x, y.abs()));
-    if y < 0.0 {
-        result = 1.0 / result;
-    }
-    if !result.is_finite() || result == 0.0 {
-        return None;
-    }
-    // Excel flushes a subnormal result to zero (T-1311 oracle: 0.1^310, 2^-1074, (-0.5)^1073).
-    Some(if result.abs() < f64::MIN_POSITIVE {
-        0.0
+    let result = if y > 0.0 {
+        if positive_power.is_infinite() {
+            return Some(Err(Error::NUM));
+        }
+        positive_power
+    } else if positive_power.abs() < f64::MIN_POSITIVE {
+        // Excel divides 1 by the positive power, and a subnormal divisor counts as zero
+        // (`1E-10^-31`, numbers.md "Non-integer exponents: exp(y·ln x)").
+        return Some(Err(Error::DIV));
     } else {
-        result
-    })
+        extended_quotient(1.0, positive_power)
+    };
+    // Excel flushes a subnormal result to zero (T-1311 oracle: 0.1^310, 2^-1074, (-0.5)^1073).
+    Some(Ok(flush_subnormal(result)))
 }
 
 /// `x^n` for a non-negative integer `n` <= 2^53 by scanning the bits of `n` from the low end.
@@ -672,8 +748,64 @@ impl Model {
 
 #[cfg(test)]
 mod power_tests {
-    use super::power;
+    use super::{divide, extended_quotient, power};
     use crate::expressions::token::Error;
+
+    // Excel's doubles where rounding 1/r once gives the next double up
+    // (probes-numeric/power-reciprocal-rounding A4, A8, A49, A55, A61, A71, A72; excel-graph).
+    #[test]
+    fn division_rounds_twice() {
+        let r = 1.0 + 26_955_297_717_044.0 * f64::EPSILON;
+        assert_eq!(divide(1.0, r), Ok(0.994_050_331_987_417));
+        assert_eq!(power(r, -1.0), Ok(0.994_050_331_987_417));
+        let r = 1.0 + 780_397_999_260_180.0 * f64::EPSILON;
+        assert_eq!(divide(1.0, r), Ok(0.852_309_169_230_683_7));
+        assert_eq!(divide(-1.0, r), Ok(-0.852_309_169_230_683_7));
+        let r = 1.0 + 420_768_487_504_071.0 * f64::EPSILON;
+        assert_eq!(power(r, -3.0), Ok(0.764_940_740_225_364_1));
+        let r = 1.0 + 368_921_494_764_048.0 * f64::EPSILON;
+        assert_eq!(power(r, -0.5), Ok(0.961_397_574_339_056_6));
+        let r = 1.0 + 795_749_138_188_910.0 * f64::EPSILON;
+        assert_eq!(power(r, -0.3), Ok(0.952_360_077_234_193_6));
+        assert_eq!(divide(1.0, 2.0 - f64::EPSILON), Ok(0.5));
+        assert_eq!(power(8.0, -1.0 / 3.0), Ok(0.5));
+        assert_eq!(power(-8.0, -1.0 / 3.0), Ok(-0.5));
+    }
+
+    // Away from a double midpoint the quotient is the correctly rounded one, at every scale.
+    #[test]
+    fn extended_quotient_is_the_plain_quotient_elsewhere() {
+        for k in 1..2_000_u32 {
+            // A divisor with a full significand, as the probe writes it: 1 + k·2^-52.
+            let y = 1.0 + f64::from(k * 1_000_003) * f64::EPSILON;
+            for x in [1.0, -3.5, 1e300, 7e-300, 0.1] {
+                let plain = x / y;
+                let twice = extended_quotient(x, y);
+                // At most one ulp apart: the second rounding only moves a midpoint tie.
+                assert!((twice - plain).abs() <= plain.abs() * f64::EPSILON);
+            }
+        }
+        assert_eq!(extended_quotient(6.0, 3.0), 2.0);
+        assert_eq!(extended_quotient(1.0, 3.0), 1.0 / 3.0);
+        assert_eq!(extended_quotient(1e-308, 1e10), 1e-308 / 1e10);
+        assert!(extended_quotient(1e308, 1e-10).is_infinite());
+        assert_eq!(extended_quotient(1.0, f64::INFINITY), 0.0);
+    }
+
+    // Excel, for negative and positive bases alike (probes-numeric/power-negative-base-range,
+    // power-odd-roots A157-A162).
+    #[test]
+    fn integer_powers_out_of_range() {
+        assert_eq!(power(-0.1, 401.0), Ok(0.0));
+        assert_eq!(power(-0.1, -401.0), Err(Error::DIV));
+        assert_eq!(power(-0.1, -400.0), Err(Error::DIV));
+        assert_eq!(power(-1e-10, -31.0), Err(Error::DIV));
+        assert_eq!(power(-0.5, -1075.0), Err(Error::DIV));
+        assert_eq!(power(-10.0, 401.0), Err(Error::NUM));
+        assert_eq!(power(-10.0, -401.0), Ok(0.0));
+        assert_eq!(power(-2.0, -1074.0), Ok(0.0));
+        assert_eq!(power(-1e200, -2.0), Ok(0.0));
+    }
 
     // Oracle doubles: gen-m1/6462bf910ef9f28f A33, gen-m1/57fe331cb7611dbf A104, gen-m2
     // f0d1bacec5de8146 A196 (docs/excel-semantics/numbers.md "Integer exponents").

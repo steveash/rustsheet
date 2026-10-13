@@ -95,6 +95,10 @@ pub struct SheetSpec {
     /// `Input::LegacyFormula`, with the implicit intersections xlsx import adds (T-1096).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub legacy_formulas: Vec<String>,
+    /// Formula cells that spec2xlsx writes without `_xlfn.` prefixes, as typed: a probe of how a
+    /// bare newer function name loads from a file (T-0416). The engine adapter ignores the list.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub bare_function_names: Vec<String>,
     /// 1-based rows written hidden (T-1036). On a sheet with a filtered table every hidden row
     /// counts as filtered, as Excel reads such a file.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

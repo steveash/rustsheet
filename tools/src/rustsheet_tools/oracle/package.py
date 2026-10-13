@@ -20,8 +20,26 @@ from xml.parsers import expat
 _FORMULA_SHEET_TYPE = re.compile(r"/(?:worksheet|xlMacrosheet|dialogsheet)$")
 
 
+# Caps on what the tooling decompresses (directive 5: workbooks are untrusted). Oracle workbooks are
+# a few parts and well under a megabyte; the caps leave orders of magnitude of headroom.
+MAX_PARTS = 10_000
+MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024
+
+
 class PackageError(ValueError):
     """The bytes are not an xlsx package this tooling can read or rewrite."""
+
+
+def _check_size(infos: list[zipfile.ZipInfo]) -> None:
+    """Refuses too many entries or too many uncompressed bytes, from the directory, before any read.
+
+    The sizes are the directory's own claim; zipfile raises `BadZipFile` if a part holds more than it
+    declares, so a forged directory cannot get past the cap by understating.
+    """
+    if len(infos) > MAX_PARTS:
+        raise PackageError(f"xlsx has too many parts ({len(infos)} > {MAX_PARTS})")
+    if sum(i.file_size for i in infos) > MAX_UNCOMPRESSED_BYTES:
+        raise PackageError(f"xlsx is over {MAX_UNCOMPRESSED_BYTES} bytes uncompressed")
 
 
 def read_parts(xlsx: bytes) -> dict[str, bytes]:
@@ -29,6 +47,7 @@ def read_parts(xlsx: bytes) -> dict[str, bytes]:
     try:
         with zipfile.ZipFile(io.BytesIO(xlsx)) as zf:
             infos = zf.infolist()
+            _check_size(infos)
             # Readers disagree on which of two same-named entries wins, so a scan could pass one
             # copy while Excel loads the other.
             if len({i.filename for i in infos}) != len(infos):
@@ -44,6 +63,36 @@ def write_parts(parts: dict[str, bytes]) -> bytes:
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
         for name, data in parts.items():
             zf.writestr(name, data)
+    return out.getvalue()
+
+
+def patch_parts(xlsx: bytes, patches: list[tuple[str, Callable[[str], str]]]) -> bytes:
+    """`xlsx` with each `(part name, patch)` applied to that part's text, in order.
+
+    Keeps every entry's `ZipInfo` (timestamp, compression), so unpatched parts and the archive
+    layout are unchanged (unlike `write_parts`, which restamps every entry, so
+    callers that need byte-stable output use this). A part that is not in the package is an error.
+    """
+    by_part: dict[str, list[Callable[[str], str]]] = {}
+    for part, patch in patches:
+        by_part.setdefault(part, []).append(patch)
+    out = io.BytesIO()
+    try:
+        with zipfile.ZipFile(io.BytesIO(xlsx)) as src, zipfile.ZipFile(out, "w") as dst:
+            infos = src.infolist()
+            _check_size(infos)
+            for info in infos:
+                data = src.read(info.filename)
+                if info.filename in by_part:
+                    text = data.decode()
+                    for patch in by_part[info.filename]:
+                        text = patch(text)
+                    data = text.encode()
+                dst.writestr(info, data)
+            if missing := by_part.keys() - set(src.namelist()):
+                raise PackageError(f"parts not in the package: {sorted(missing)}")
+    except zipfile.BadZipFile as e:
+        raise PackageError(f"unreadable xlsx ({e})") from e
     return out.getvalue()
 
 

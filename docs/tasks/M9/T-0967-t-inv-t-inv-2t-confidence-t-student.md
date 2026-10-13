@@ -42,6 +42,8 @@ directly (no `1 - p`). The last digits depend on the solver's start, step and st
 Previous evidence from T-0925 (inverse normal): a closed-form inverse plus one Newton step regressed
 cells that the old code matched by luck; measure regressions on every attempt.
 
+Oracle sweep (T-1043): probes-numeric cases `m9-t-inv`, `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`; findings in docs/excel-semantics/statistics.md "Student t sweep".
+
 ## Acceptance criteria
 - [ ] All 6 NumericMismatch and all 48 NumericClose lines above leave the NumericClose/Mismatch
       classes, at least 45 of the 89 lines leave `eval/baseline/ironcalc-calc.txt`, no new lines in

@@ -3,10 +3,10 @@
 
 use crate::cast::{calc_result_to_array_node, NumberOrArray};
 use crate::external_reference::ExternalArea;
-use crate::functions::math_and_trigonometry::array_size::check_array_size;
 use crate::functions::util::{
     array_node_to_calc_result, near_integer_count, NEAR_INTEGER_TOLERANCE,
 };
+use crate::limits::check_array_size;
 use crate::reference_operators::{three_d_needs_one_sheet, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},

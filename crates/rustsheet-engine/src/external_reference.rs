@@ -11,7 +11,8 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::{math_and_trigonometry::array_size::check_array_size, Function},
+    functions::Function,
+    limits::check_array_size,
     model::Model,
     reference_operators::{
         empty_intersection, names_other_workbook, several_areas_ref, too_many_areas, MAX_AREAS,

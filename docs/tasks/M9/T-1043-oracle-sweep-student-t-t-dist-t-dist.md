@@ -3,7 +3,7 @@ id: T-1043
 title: "Oracle sweep: Student t (T.DIST, T.DIST.RT, T.DIST.2T, T.INV, T.INV.2T, CONFIDENCE.T)"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,3 +27,6 @@ Split from T-0966 (one sweep per kernel family), which explains why: Excel's dis
 
 ## Out of scope
 - Fitting or changing any implementation (the dependent fitting tasks do that).
+
+## Outcome
+Nine probes-numeric case files (m9-t-*, m9-confidence-t) with excel-graph oracle values, none pending; findings in statistics.md; T-0969 and T-0967 link the case ids. No implementation changed.

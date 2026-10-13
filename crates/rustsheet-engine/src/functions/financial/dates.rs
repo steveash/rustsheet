@@ -1,6 +1,6 @@
-//! Date arguments of the financial functions: Excel reads a 1904 serial one day late
-//! (`DateSystem::financial_1900_serial`; docs/excel-semantics/dates.md "The 1904 date system:
-//! financial day counts read every date one day late").
+//! Date arguments of the financial functions: Excel reads a 1904 serial as the 1900 serial
+//! s + 2 * 1462 (`DateSystem::financial_1900_serial`; docs/excel-semantics/dates.md "The 1904 date
+//! system: financial day counts read a 1904 serial as the 1900 serial + 2 * 1462").
 //! Also the coupon functions' day counts per basis and the coupon schedule Excel breaks in a 1904
 //! workbook (`Model::coupon_schedule_breaks`).
 
@@ -9,7 +9,7 @@ use chrono::{Datelike, NaiveDate};
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::from_excel_date,
+    formatter::dates::{from_excel_date, EPOCH_1904_IN_1900_SERIALS},
     model::Model,
 };
 
@@ -44,7 +44,7 @@ pub(super) fn is_less_than_one_year(start_date: i64, end_date: i64) -> Result<bo
 
 impl Model {
     /// The floored 1900 serial a financial function's day counts read for the date argument
-    /// `serial`: a day late in a 1904 workbook (`DateSystem::financial_1900_serial`).
+    /// `serial`: 2 * 1462 days on in a 1904 workbook (`DateSystem::financial_1900_serial`).
     pub(super) fn financial_date(&self, serial: f64) -> i64 {
         self.workbook
             .settings
@@ -75,6 +75,23 @@ impl Model {
             self.get_financial_date(&args[0], cell)?,
             self.get_financial_date(&args[1], cell)?,
         ))
+    }
+
+    /// The first `N` arguments of ODDFPRICE, ODDFYIELD, ODDLPRICE or ODDLYIELD, all dates, as 1900
+    /// serials (`DateSystem::odd_period_1900_serial`). A date Excel's reading moves off the calendar
+    /// is `None`: the caller makes it #NUM! once every argument has been read, so an error in a
+    /// later argument still wins.
+    pub(super) fn get_odd_period_dates<const N: usize>(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<[Option<i64>; N], CalcResult> {
+        let date_system = self.workbook.settings.date_system;
+        let mut dates = [None; N];
+        for (date, arg) in dates.iter_mut().zip(args) {
+            *date = date_system.odd_period_1900_serial(self.get_number_no_bools(arg, cell)?);
+        }
+        Ok(dates)
     }
 
     /// Whether Excel's coupon schedule breaks for `maturity`, as `financial_date` read it
@@ -108,7 +125,7 @@ impl Model {
     }
 
     /// A date a financial function computed in the `financial_date` space (COUPNCD, COUPPCD), as
-    /// this workbook's serial: a day early in a 1904 workbook.
+    /// this workbook's serial: 2 * 1462 days earlier in a 1904 workbook.
     pub(super) fn financial_date_result(&self, serial: i64) -> CalcResult {
         let date_system = self.workbook.settings.date_system;
         CalcResult::Number(date_system.serial_from_financial_1900_serial(serial) as f64)
@@ -158,6 +175,34 @@ pub(super) fn days_30_360_us(d1: NaiveDate, d2: NaiveDate) -> f64 {
     (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
 }
 
+// Days d1→d2 via US 30/360 with the `ModifyBothDates` rule — the "PSA hack"
+// the odd-last-coupon code uses for basis 0.
+pub(super) fn days_30_360_us_both(d1: NaiveDate, d2: NaiveDate) -> f64 {
+    let y1 = d1.year();
+    let m1 = d1.month() as i32;
+    let mut day1 = d1.day() as i32;
+    let y2 = d2.year();
+    let m2 = d2.month() as i32;
+    let mut day2 = d2.day() as i32;
+
+    let start_is_feb_last = m1 == 2 && d1.day() == last_day_of_feb(y1);
+    let end_is_feb_last = m2 == 2 && d2.day() == last_day_of_feb(y2);
+
+    if end_is_feb_last {
+        day2 = 30;
+    }
+    if day2 == 31 {
+        day2 = 30;
+    }
+    if day1 == 31 {
+        day1 = 30;
+    }
+    if start_is_feb_last {
+        day1 = 30;
+    }
+    (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
+}
+
 // Days d1→d2 via the EU 30/360 convention (basis 4).
 pub(super) fn days_30_360_eu(d1: NaiveDate, d2: NaiveDate) -> f64 {
     let y1 = d1.year();
@@ -186,8 +231,10 @@ pub(super) fn basis_days(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
 // The coupon schedule Excel breaks in a 1904 workbook (`Model::coupon_schedule_breaks`).
 
 /// The previous coupon date (a 1900 serial) Excel takes when the coupon schedule breaks
-/// (`Model::coupon_schedule_breaks`); the next one is then the maturity itself.
-pub(super) const BROKEN_SCHEDULE_PCD: i64 = 1;
+/// (`Model::coupon_schedule_breaks`); the next one is then the maturity itself. It reads as
+/// 1904 serial -1462 (`COUPPCD` is -1462), 1900 serial 1462 in the doubled-offset reading of
+/// `DateSystem::financial_1900_serial` (T-1492).
+pub(super) const BROKEN_SCHEDULE_PCD: i64 = EPOCH_1904_IN_1900_SERIALS;
 
 /// Days between two serials of a broken coupon schedule: their difference on the actual bases
 /// 1-3 (`COUPDAYS(DATE(9999,1,1),DATE(9999,12,31),2,1)` is 2958465 in a 1904 workbook), #NUM! on

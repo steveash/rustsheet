@@ -3,8 +3,8 @@
  "sheets": {
   "Calc": {
    "A1": {
-    "t": "e",
-    "v": "#NAME?"
+    "t": "n",
+    "v": 2.5
    },
    "A10": {
     "t": "n",
@@ -167,9 +167,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "8a37158ec0c5d282fceb28de298810bf80fc9665ee06c37face99b747c9c1192",
+  "input_sha256": "25914412eb937e22ced1b6d3d3f92677fb11a2cbd7a292787a5781736bbdbd8e",
   "kind": "excel-graph",
-  "produced_at": "2026-10-09T00:20:09+00:00",
+  "produced_at": "2026-10-13T16:19:34+00:00",
   "version": null
  }
 }
