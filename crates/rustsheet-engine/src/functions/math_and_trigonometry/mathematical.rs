@@ -594,11 +594,36 @@ impl Model {
     } else {
         Ok(f64::sqrt(f))
     });
-    single_number_fn!(fn_sqrtpi, |f: f64| if f < 0.0 {
-        Err(Error::NUM)
-    } else {
-        Ok((f * PI).sqrt())
-    });
+    /// SQRTPI. Unlike RADIANS, a boolean argument is `#VALUE!` (a literal, a comparison, a cell
+    /// reference or an array element), while numeric text is read (probes/radians-sqrtpi-munit,
+    /// docs/excel-semantics/numbers.md "RADIANS, SQRTPI and MUNIT", T-1282).
+    pub(crate) fn fn_sqrtpi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = self.evaluate_node_in_context(&args[0], cell);
+        if matches!(value, CalcResult::Boolean(_)) {
+            return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
+        }
+        let operand = match self.number_or_array(value, cell) {
+            Ok(NumberOrArray::Array(mut rows)) => {
+                for node in rows.iter_mut().flatten() {
+                    if matches!(node, ArrayNode::Boolean(_)) {
+                        *node = ArrayNode::Error(Error::VALUE);
+                    }
+                }
+                Ok(NumberOrArray::Array(rows))
+            }
+            other => other,
+        };
+        self.lift_number_operands::<1>(vec![operand], cell, "Invalid number", |[f]| {
+            if f < 0.0 {
+                Err(Error::NUM)
+            } else {
+                Ok((f * PI).sqrt())
+            }
+        })
+    }
 
     single_number_fn!(fn_acot, |f| {
         let v = f64::atan(1.0 / f);

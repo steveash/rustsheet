@@ -1671,7 +1671,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sin => scalar_arguments(args),
         Function::Sinh => scalar_arguments(args),
         Function::Sqrt => scalar_arguments(args),
-        Function::Sqrtpi => StaticResult::Scalar,
+        Function::Sqrtpi => scalar_arguments(args),
         Function::Sum => StaticResult::Scalar,
         Function::Sumif => criteria_static_result(args, 1),
         Function::Sumifs => criteria_static_result(args, 2),
