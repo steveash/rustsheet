@@ -3,7 +3,7 @@ id: T-0053
 title: "spec2xlsx: use oracle/package.py for its zip read/patch/rewrite (_patch_parts, entered_cells)"
 milestone: M0
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
