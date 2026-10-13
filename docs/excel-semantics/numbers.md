@@ -1069,3 +1069,13 @@ Rule: `ECMA.CEILING(number, significance)` is a real Excel function with exactly
 Evidence: probes/ecma-ceiling A1:A6, A8:A11, A13:A14; probes/ecma-ceiling-formulatext A12 (excel-graph, 2026-10-12, T-1301).
 Status: VERIFIED. Ours: implemented (T-1301) as its own `Function::EcmaCeiling` (not an alias of CEILING, so FORMULATEXT keeps the name) dispatched to `fn_ceiling`, with an `_xlfn.ECMA.CEILING` entry in `functions/xlsx_names.rs`. The name is `ECMA.CEILING` in every `language.bin` locale (as upstream IronCalc 8a82396a has it).
 Tasks: T-1301
+
+## RADIANS, SQRTPI and MUNIT
+Rule: all 94 cells of probes/radians-sqrtpi-munit agree with `x * (PI / 180)` for RADIANS and `sqrt(x * PI)` for SQRTPI to the last bit (`RADIANS(180)` = PI(), `RADIANS(1E-300)`, `SQRTPI(1E-155*1E-155)` and `SQRTPI(10^308)` included), so there are no ulp differences to file.
+- **SQRTPI rejects booleans, RADIANS reads them.** `SQRTPI(TRUE)`, `SQRTPI(FALSE)`, `SQRTPI(1=1)`, a reference to a TRUE cell and `SQRTPI({TRUE})` are `#VALUE!`, while `RADIANS(TRUE)`, `RADIANS(D1)` and `RADIANS({TRUE})` are 0.01745...; numeric text (`SQRTPI("4")`) is read, `-TRUE` is a number (`SQRTPI(-TRUE)` is `#NUM!`). In an array only the boolean element is the error: `SQRTPI({1,TRUE})` is {1.77..., #VALUE!}. A negative argument is `#NUM!`.
+- **MUNIT truncates its dimension** (`ROWS(MUNIT(2.9))` is 2), is `#VALUE!` below 1 (`MUNIT(0)`, `MUNIT(0.5)`, `MUNIT(-1)`) and for text that is not a number, and reads numeric text and TRUE as 1.
+- **MUNIT lifts over an array or range argument**: each element gives the 1 at the top left of its own matrix, so `MUNIT({1,2})` is {1,1} (`ROWS` 1, `COLUMNS` 2, `SUM` 2), `MUNIT({2;3})` is 2 rows by 1 column, and an element of 0 or text makes that element, and so `SUM`, `#VALUE!`.
+- excel-graph rejects the workbook (`createSession` 501 `unsupportedWorkbook`) for a literal `1E+308` (as numbers.md "Formula literals of 1E+308 or more" says) and also for the denormal literals `1E-310` and `-1E-310`; the probe computes them (`1E-155*1E-155`). `MUNIT(1048577)` and `MUNIT(1E+10)` were left out of the case for the huge-dimension reason in text.md, unprobed.
+Evidence: probes/radians-sqrtpi-munit (excel-graph, 2026-10-13, T-1282).
+Status: VERIFIED. Ours: `fn_sqrtpi` (mathematical.rs) reads booleans as errors and lifts, `fn_munit` (matrix.rs) lifts through `lift_number_operands`; SQRTPI's static result is `scalar_arguments` since it can return an array.
+Tasks: T-1282
