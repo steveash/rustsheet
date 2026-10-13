@@ -466,6 +466,8 @@ C	probes/text-format-length-limit-h.case.json	67
 C	probes/text-format-length-limit-i.case.json	108
 C	probes/text-format-length-limit-j.case.json	44
 C	probes/text-format-length-limit-k.case.json	43
+C	probes/text-format-length-limit-l.case.json	47
+C	probes/text-format-length-limit-m.case.json	24
 C	probes/text-format-length-limit.case.json	39
 C	probes/text-format-text-limit.case.json	25
 C	probes/text-general-exponent-boundary.case.json	10
@@ -3471,7 +3473,11 @@ F	probes/text-format-length-limit-i.case.json	Sheet1!A102
 F	probes/text-format-length-limit-i.case.json	Sheet1!A103
 F	probes/text-format-length-limit-i.case.json	Sheet1!A104
 F	probes/text-format-length-limit-j.case.json	Sheet1!A43
-F	probes/text-format-length-limit-k.case.json	Sheet1!A30
+F	probes/text-format-length-limit-l.case.json	Sheet1!A13
+F	probes/text-format-length-limit-l.case.json	Sheet1!A14
+F	probes/text-format-length-limit-l.case.json	Sheet1!A15
+F	probes/text-format-length-limit-l.case.json	Sheet1!A40
+F	probes/text-format-length-limit-m.case.json	Sheet1!A22
 F	probes/text-order-nbsp-space.case.json	Calc!D17
 F	probes/text-surrogate-positions.case.json	Sheet1!A11
 F	probes/text-surrogate-positions.case.json	Sheet1!A12
