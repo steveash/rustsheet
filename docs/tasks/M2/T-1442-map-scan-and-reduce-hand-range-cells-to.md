@@ -3,7 +3,7 @@ id: T-1442
 title: "MAP, SCAN and REDUCE hand range cells to the LAMBDA as references; BYCOL(range,COUNTA) is #VALUE!"
 milestone: M2
 lane: functions-logic
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,8 +22,12 @@ Code: functions/logical/map_reduce.rs (`call_lambda_with_values` already binds a
 see `by_slices_source` in bycol_byrow.rs for the BYROW/BYCOL version).
 
 ## Acceptance criteria
-- [ ] probes/lambda-helper-range-slices E9:E11, E23:E25, E27 and E32 pass; `make eval-baseline` records the fix.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/lambda-helper-range-slices E9:E11, E23:E25 and E27 pass; `make eval-baseline` records the fix.
+- [x] E32 `BYCOL(A1:B3,COUNTA)` is `#VALUE!`: moved to T-1466 (needs engine-wide `_xleta.` name support).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Ranges on several sheets (3-D) and unions.
+
+## Outcome
+MAP, SCAN and REDUCE take a one-sheet range through `lambda_cells` (bycol_byrow.rs), so each cell reaches the LAMBDA as a one-cell reference; a reference the LAMBDA returns is read (`lambda_result_value`). Eval delta: probes known failures 2853 -> 2846 (7 fixed), 0 regressions. E32 is not fixed: no `_xleta.` support exists in the engine, so a bare function name is `#NAME?`; filed as a follow-up task.

@@ -1,4 +1,3 @@
-use crate::functions::util::array_node_to_calc_result;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
@@ -33,9 +32,9 @@ impl Model {
             return lambda_result;
         }
 
-        let mut arrays: Vec<Vec<Vec<ArrayNode>>> = Vec::with_capacity(n_arrays);
+        let mut arrays: Vec<Vec<Vec<CalcResult>>> = Vec::with_capacity(n_arrays);
         for arg in &args[..n_arrays] {
-            let data = match self.eval_to_array(arg, cell) {
+            let data = match self.lambda_cells(arg, cell) {
                 Ok(d) => d,
                 Err(e) => return e,
             };
@@ -63,11 +62,9 @@ impl Model {
 
         for i in 0..num_rows {
             for j in 0..num_cols {
-                let values: Vec<CalcResult> = arrays
-                    .iter()
-                    .map(|arr| array_node_to_calc_result(&arr[i][j], cell))
-                    .collect();
+                let values: Vec<CalcResult> = arrays.iter().map(|arr| arr[i][j].clone()).collect();
                 let cell_result = self.call_lambda_with_values(lambda_result.clone(), values, cell);
+                let cell_result = self.lambda_result_value(cell_result, cell);
                 result[i][j] = calc_result_to_array_node(cell_result);
             }
         }
@@ -96,12 +93,12 @@ impl Model {
             return lambda_result;
         }
 
-        let data = match self.eval_to_array(&args[array_idx], cell) {
+        let data = match self.lambda_cells(&args[array_idx], cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
 
-        let elements: Vec<&ArrayNode> = data.iter().flat_map(|row| row.iter()).collect();
+        let elements: Vec<&CalcResult> = data.iter().flat_map(|row| row.iter()).collect();
 
         if elements.is_empty() {
             return CalcResult::new_error(Error::VALUE, cell, "empty array".to_string());
@@ -114,14 +111,13 @@ impl Model {
             }
             (init, 0)
         } else {
-            (array_node_to_calc_result(elements[0], cell), 1)
+            (elements[0].clone(), 1)
         };
 
         for element in &elements[start..] {
-            let current = array_node_to_calc_result(element, cell);
             accumulator = self.call_lambda_with_values(
                 lambda_result.clone(),
-                vec![accumulator, current],
+                vec![accumulator, (*element).clone()],
                 cell,
             );
             if accumulator.is_error() {
