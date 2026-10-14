@@ -375,7 +375,26 @@ impl Model {
                     }
                 }
                 CalcResult::EmptyArg => {}
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                // Excel joins an array row by row; the first error element wins and an empty element
+                // (a blank cell passed through SORT, UNIQUE, TRANSPOSE) is skipped only with
+                // ignore_empty (probes/textjoin-array-arguments A1-A28).
+                CalcResult::Array(array) => {
+                    for element in array.iter().flatten() {
+                        // An empty string element counts as empty too (A4, A19, A20).
+                        if ignore_empty
+                            && matches!(element, ArrayNode::String(text) if text.is_empty())
+                        {
+                            continue;
+                        }
+                        let value = array_node_to_calc_result(element, cell);
+                        if let Err(error) =
+                            size.push_cell(value, ignore_empty, &mut values, &mut over_limit, cell)
+                        {
+                            return error;
+                        }
+                    }
+                }
+                CalcResult::Lambda(_) => {
                     return CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,

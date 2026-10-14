@@ -316,3 +316,10 @@ multi-cell range lifts element by element and spills: `UNICHAR(A1:A2)` is "A","B
 U+0001, "C"; the lifted result broadcasts through `&` (`UNICHAR(A1:A2)&"!"` is "A!","B!"); `UNICHAR(A5:A6)` ("67", "x") is "C", `#VALUE!`. The engine already matches all of these.
 Evidence: probes/unichar-arg-shapes D1-D7, F1-F2, H1-H3, J1-J2, L1-L2, N1-N2, P1-P2, R1-R2 (excel-graph, T-1464).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
+
+## TEXTJOIN over arrays, and an array or range delimiter (T-1482)
+Rule: TEXTJOIN joins the elements of an array literal or function result row by row, like a range: `TEXTJOIN(",",FALSE,{1,2;3,4})` is `1,2,3,4`, `SEQUENCE(2,2)` and `SORT(B1:B3)` likewise. The first error element (row-major) is the result (`{#DIV/0!,#N/A}` is `#DIV/0!`, `{1,2},#N/A` is `#N/A`). An empty element (a blank cell that went through SORT, UNIQUE or TRANSPOSE) and an empty string are joined as empty with ignore_empty FALSE (`SORT(B1:B3)` with B2 blank is `apple,pear,`) and skipped with TRUE (`{"a","","c"}` is `a,c`).
+The delimiter may be an array or a range, and then it cycles between the joined values: `TEXTJOIN({",",";"},FALSE,{1,2,3,4,5})` is `1,2;3,4;5` and `TEXTJOIN(B1:B2,FALSE,1,2,3)` with B1 = "-", B2 = "+" is `1-2+3`; a delimiter `{""}` joins with nothing.
+Evidence: probes cases `textjoin-array-arguments` (A1-A34) and `textjoin-delimiter-array` (A1-A6). Oracle: excel-graph, 2026-10-14.
+Status: VERIFIED (excel-graph); the array argument is implemented (T-1482), the cycling delimiter is not (follow-up).
+Tasks: T-1482
