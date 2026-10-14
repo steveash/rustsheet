@@ -1,6 +1,7 @@
 use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::statistical::special::ln_gamma;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -53,10 +54,72 @@ pub(crate) const T_DF_MAX: f64 = 1e10;
 /// normal quantile and the A&S 26.7.5 series instead.
 const T_QUANTILE_SERIES_DF: f64 = 1e5;
 
+/// Probabilities below this take the tail path of [`t_tail_quantile`] instead of `statrs`.
+const T_TAIL_P: f64 = 1e-5;
+
+/// Below this `x = df / (df + t^2)` the incomplete beta `I_x(df/2, 1/2)` equals its leading term and
+/// the first correction to better than 1E-16, so the tail quantile has a closed form.
+const T_TAIL_X: f64 = 1e-8;
+
+/// Magnitude `t > 0` with `P(T < -t) = q` for a small `q`, `df < T_QUANTILE_SERIES_DF`; bounded time.
+/// Excel gives finite values down to the smallest p it accepts (probes-numeric `t1531-t-tiny-p`:
+/// `T.INV(1E-300,1)` = -3.183098861837907E299).
+fn t_tail_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
+    let a = 0.5 * df;
+    // P(T < -t) = I_x(a, 1/2) / 2 with I_x ~ x^a / (a B(a, 1/2)) * (1 + a / (2 (a + 1)) x).
+    let ln_b = ln_gamma(a) + ln_gamma(0.5) - ln_gamma(a + 0.5);
+    let mut ln_x = (2.0 * q).ln() + a.ln() + ln_b;
+    ln_x /= a;
+    if ln_x < T_TAIL_X.ln() {
+        let x = ln_x.exp();
+        ln_x -= (a / (2.0 * (a + 1.0)) * x).ln_1p() / a;
+        let x = ln_x.exp();
+        return df.sqrt() * (-0.5 * ln_x).exp() * (1.0 - x).sqrt();
+    }
+    // x is not small: the quantile is moderate, so bisect on the cdf (statrs is only inaccurate
+    // for the quantile search, and panics for p below about 1E-200).
+    let mut hi = 1.0_f64;
+    for _ in 0..64 {
+        if dist.cdf(-hi) <= q {
+            break;
+        }
+        hi *= 2.0;
+    }
+    let mut lo = 0.0_f64;
+    for _ in 0..200 {
+        let mid = 0.5 * (lo + hi);
+        if mid <= lo || mid >= hi {
+            break;
+        }
+        if dist.cdf(-mid) > q {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    0.5 * (lo + hi)
+}
+
+/// Quantile `t` with `P(T > t) = q`. For a tiny `q`, `1 - q` rounds to 1, so the tail is asked for
+/// directly (T-1531); otherwise this is `t_quantile(1 - q)` as before.
+pub(crate) fn t_upper_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
+    if q < T_TAIL_P {
+        -t_quantile(dist, df, q)
+    } else {
+        t_quantile(dist, df, 1.0 - q)
+    }
+}
+
 /// Quantile of Student's t with `df` degrees of freedom for `p` in (0,1); the time is bounded for
 /// every df up to [`T_DF_MAX`].
 pub(crate) fn t_quantile(dist: &StudentsT, df: f64, p: f64) -> f64 {
     if df < T_QUANTILE_SERIES_DF {
+        // Below the tail threshold `statrs` is fine; above it its inverse saturates (T.INV(1E-10,1)
+        // gives -8.9E7, Excel -3.18E9) and panics from p about 1E-200 (T-1531).
+        let (q, sign) = if p < 0.5 { (p, -1.0) } else { (1.0 - p, 1.0) };
+        if q < T_TAIL_P {
+            return sign * t_tail_quantile(dist, df, q);
+        }
         return dist.inverse_cdf(p);
     }
     let Ok(normal) = Normal::new(0.0, 1.0) else {
@@ -320,8 +383,7 @@ impl Model {
         };
 
         // Two-sided: F(x) = 1 - p/2
-        let target_cdf = 1.0 - p / 2.0;
-        let x = t_quantile(&dist, df, target_cdf);
+        let x = t_upper_quantile(&dist, df, p / 2.0);
 
         if !x.is_finite() {
             return CalcResult::Error {
