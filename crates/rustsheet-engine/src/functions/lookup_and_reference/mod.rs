@@ -380,6 +380,8 @@ impl Model {
         let reference = match self.pick_branch(&args[0], cell) {
             Picked::Node(node) => node,
             Picked::Value(error @ CalcResult::Error { .. }) => return error,
+            // Unprobed: a value an IF or CHOOSE gives here (an array condition's result) is no
+            // reference, `#VALUE!` as `reference_ranges` gives for one.
             Picked::Value(_) => {
                 return CalcResult::new_error(Error::VALUE, cell, "Expected a reference".into())
             }
@@ -693,16 +695,13 @@ impl Model {
         // (`ISREF(OFFSET(…!A1,1,1))` is FALSE; probes/external-ref-no-link-shapes A5,
         // external-ref-no-link-index A16, A17, A32).
         // An error in `rows` comes first: `OFFSET(…!A1,1/0,1)` is `#DIV/0!`
-        // (probes/external-ref-no-link-ifchoose A7); `cols`, `height` and `width` are read the
-        // same way, in order (UNVERIFIED: not probed).
+        // (probes/external-ref-no-link-ifchoose A7); `cols`, `height` and `width` are not probed.
         if let Some(areas) = self.external_reference(&args[0], cell) {
             if let Err(error) = areas {
                 return error;
             }
-            for arg in &args[1..] {
-                if let Err(error) = self.get_number(arg, cell) {
-                    return error;
-                }
+            if let Err(error) = self.get_number(&args[1], cell) {
+                return error;
             }
             return CalcResult::new_error(
                 Error::VALUE,
