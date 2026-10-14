@@ -36,6 +36,6 @@ fn f_inv_at_df_limit_is_bounded() {
     model.evaluate();
     assert_ne!(model._get_text("A1"), *"#NUM!");
     assert_ne!(model._get_text("A2"), *"#NUM!");
-    // Accuracy at huge df is limited by the statrs cdf (about 1E-6); exact values are a follow-up.
+    // Accuracy at huge df is limited by the statrs cdf (about 1E-6); TODO(T-1538): tighten to Excel's exact 1.
     assert_eq!(model._get_text("A3").get(..4), Some("1.00"));
 }
