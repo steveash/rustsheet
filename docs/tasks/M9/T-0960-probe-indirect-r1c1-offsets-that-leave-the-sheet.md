@@ -3,7 +3,7 @@ id: T-0960
 title: "Probe INDIRECT R1C1 offsets that leave the sheet: wrap or clamp"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0957 saw `INDIRECT("R[-20]C",FALSE)` in B15 return 0, not #REF!, but the wrapp
 
 ## Out of scope
 -
+
+## Outcome
+Probe `indirect-r1c1-offset-overflow` (excel-graph oracle): R1C1 relative offsets wrap modulo the sheet size in both directions for rows and columns; magnitude >= sheet size is #REF!. Engine already matches; lookup.md now VERIFIED. Eval: 7 new probe cells, all passing.
