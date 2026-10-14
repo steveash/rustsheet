@@ -292,14 +292,14 @@ pub(crate) fn name_needs_quoting(name: &str) -> bool {
     false
 }
 
-/// Quotes a string sheet name if it needs to
-/// NOTE: Invalid characters in a sheet name \, /, *, \[, \], :, ?
 /// A defined name without its scope prefix: `Name` for `Name`, `Sheet!Name` and `[0]Sheet!Name`
 /// (the parser keeps the prefix in the node so the formula text round-trips as typed).
 pub(crate) fn bare_defined_name(name: &str) -> &str {
     name.rsplit_once('!').map_or(name, |(_, bare)| bare)
 }
 
+/// Quotes a string sheet name if it needs to
+/// NOTE: Invalid characters in a sheet name \, /, *, \[, \], :, ?
 pub fn quote_name(name: &str) -> String {
     if name_needs_quoting(name) {
         return format!("'{}'", name.replace('\'', "''"));
