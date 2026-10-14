@@ -16,6 +16,43 @@ fn f_df_ok(df: f64) -> bool {
     (1.0..=F_DF_MAX).contains(&df)
 }
 
+/// Above this df `statrs`' `inverse_cdf` for the F distribution does not finish (found at 1E10, the
+/// same failure as Student-t), so the quantile is found by bisection on the cdf instead.
+const F_QUANTILE_BISECT_DF: f64 = 1e5;
+
+/// Quantile of the F distribution for `p` in [0,1]; the time is bounded for every df up to
+/// [`F_DF_MAX`] (at most ~1200 cdf evaluations).
+fn f_quantile(dist: &FisherSnedecor, df1: f64, df2: f64, p: f64) -> f64 {
+    if df1 < F_QUANTILE_BISECT_DF && df2 < F_QUANTILE_BISECT_DF {
+        return dist.inverse_cdf(p);
+    }
+    if p <= 0.0 {
+        return 0.0;
+    }
+    if p >= 1.0 {
+        return f64::INFINITY;
+    }
+    let mut hi = 1.0_f64;
+    let mut doublings = 0;
+    while dist.cdf(hi) < p {
+        hi *= 2.0;
+        doublings += 1;
+        if doublings > 1100 {
+            return f64::INFINITY;
+        }
+    }
+    let mut lo = 0.0_f64;
+    for _ in 0..200 {
+        let mid = 0.5 * (lo + hi);
+        if dist.cdf(mid) < p {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    0.5 * (lo + hi)
+}
+
 impl Model {
     // FISHER(x) = 0.5 * ln((1 + x) / (1 - x))
     pub(crate) fn fn_fisher(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -249,7 +286,7 @@ impl Model {
             }
         };
 
-        let x = dist.inverse_cdf(p);
+        let x = f_quantile(&dist, df1, df2, p);
         if x.is_nan() || x.is_infinite() || x < 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "Invalid result for F.INV".to_string());
         }
@@ -303,7 +340,7 @@ impl Model {
         };
 
         // p is right-tail: p = P(F > x) = 1 - CDF(x)
-        let x = dist.inverse_cdf(1.0 - p);
+        let x = f_quantile(&dist, df1, df2, 1.0 - p);
         if x.is_nan() || x.is_infinite() || x < 0.0 {
             return CalcResult::new_error(
                 Error::NUM,

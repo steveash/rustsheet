@@ -20,11 +20,22 @@ fn f_family_df_above_1e10_is_num() {
     for (i, f) in formulas.iter().enumerate() {
         model._set(&format!("A{}", i + 1), f);
     }
-    model._set("B1", "=F.INV(0.5,10000000000.5,5)");
     model.evaluate();
     for i in 1..=formulas.len() {
         assert_eq!(model._get_text(&format!("A{i}")), *"#NUM!", "A{i}");
     }
-    // 1E10 itself is accepted (df truncates first).
-    assert_ne!(model._get_text("B1"), *"#NUM!");
+}
+
+// df = 1E10 is accepted (Excel: F.INV(0.5,1E10,5) = 1.1490395521130337) and must not hang.
+#[test]
+fn f_inv_at_df_limit_is_bounded() {
+    let mut model = new_empty_model();
+    model._set("A1", "=F.INV(0.5,10000000000.5,5)");
+    model._set("A2", "=F.INV.RT(0.5,5,10000000000)");
+    model._set("A3", "=F.INV(0.5,1E10,1E10)");
+    model.evaluate();
+    assert_ne!(model._get_text("A1"), *"#NUM!");
+    assert_ne!(model._get_text("A2"), *"#NUM!");
+    // Accuracy at huge df is limited by the statrs cdf (about 1E-6); exact values are a follow-up.
+    assert_eq!(model._get_text("A3").get(..4), Some("1.00"));
 }
