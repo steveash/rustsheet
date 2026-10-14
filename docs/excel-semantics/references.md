@@ -1358,7 +1358,12 @@ argument) "2"; a parenthesized operation, `SUM((B1:B6*1))`, a comparison,
 `SUM(B1:B6>1)` 1 / `#VALUE!`, and a concatenation, `SUM(B1:B6&"")` 2 / `#VALUE!`, intersect too, and
 `SUMPRODUCT(ABS(IFERROR(B1:B6,100)))` is 2 / 100. The exception is `MODE.SNGL(B1:B6*1)`: 1 on both rows (it
 evaluates the argument as an array). `MAXA`/`MINA(XLOOKUP("a",A1:A6,A1:A6))` over a text cell is 0.
-`FORMULATEXT` of a legacy `SUM(B1:B6+0)` is `=SUM(@B1:B6+0)`. Dynamic `AVERAGEA({1,"a",TRUE})` is 0.5 (we give 0.667; the rule for an array
+The compatibility and remaining statistics aggregates intersect too (probes/legacy-value-argument-intersection-c, excel-graph,
+2026-10-14, T-1556): over `B1:B6*1`, STDEV, VAR, STDEVA and VARA `#DIV/0!` on row 2; STDEVP, VARP, STDEVPA and VARPA 0;
+PERCENTILE, QUARTILE, PERCENTILE.EXC 2; QUARTILE.EXC `#NUM!`; PERCENTRANK and PERCENTRANK.INC 1 (`PERCENTRANK(B1:B6*1,2)`);
+every one is `#VALUE!` on row 10. MODE and MODE.MULT are 1 on both rows (an array argument, like MODE.SNGL). Excel for the web
+refuses to open a workbook holding `RANK(2,B1:B6*1)` (RANK, RANK.EQ, RANK.AVG take a reference) or `COUNTBLANK(B1:B6*1)`
+(`FileCorruptTryRepair`), so those are unprobed. `FORMULATEXT` of a legacy `SUM(B1:B6+0)` is `=SUM(@B1:B6+0)`. Dynamic `AVERAGEA({1,"a",TRUE})` is 0.5 (we give 0.667; the rule for an array
 constant is open, statistics.md "AVERAGEA over an array constant", T-1555) and `AVERAGEA("1/2/2020",1)` is 21916.5.
 A range of a linked workbook is intersected the same way, reading the cached cell
 (fixtures/external-link-cached-ranges Refs!B38, B44, B56, B62; "Cached values of a linked workbook").
@@ -1372,7 +1377,7 @@ and under SUMPRODUCT IF's condition and IFERROR's and IFNA's value
 (`for_each_array_context_condition`); `remove_redundant_implicit_intersection` mirrors it so the
 export drops exactly those `@`s. Unprobed: the arguments after the first of CONCAT, GCD and LCM and TEXTJOIN's delimiter and ignore-empty (the engine
 intersects every argument of these functions), the arithmetic argument of the compatibility
-aggregates (STDEV, VAR, PERCENTILE, QUARTILE, MODE; the engine keeps the range whole; T-1556), IFERROR/IFNA nested below another
+aggregates other than MODE are in `legacy_value_operand` too (T-1556), IFERROR/IFNA nested below another
 function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, and the other control functions
 (CHOOSE's index under SUMPRODUCT lifts, T-0294).
 Status: VERIFIED
