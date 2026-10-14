@@ -194,12 +194,17 @@ over a range, operators, IF/IFERROR, TEXT, IS*, NOT, a bare range spilled from a
 before any cell is read, to bound allocation on untrusted input (CLAUDE.md directive 5); so
 `DATE(11:1899,12,1)` and `ROWS(DATE(11:1899,12,1))` are `#ERROR!`. Past-the-grid dimensions are
 `#VALUE!` as in Excel. A cached range of a linked workbook (`[1]Sheet!A1:B2`, T-1460) is read as
-an array of its cached cells under the same bound: an area above 1,048,576 cells that is not a
-whole column or row (`SUM([1]Uses!$A$2:$B$1048576)`, `VLOOKUP(x,[1]Uses!$A$1:$C$1048576,2,0)`) is
-`#ERROR!`, and the cells an aggregate reads from a union of cached areas are capped together, so
-`SUM(([1]Uses!$A:$A,…))` over eight whole columns of a cache spanning A1:A1048576 is `#VALUE!`
-(test_external_links.rs `union_of_sparse_whole_columns_is_bounded`); Excel gives the value. A
-whole column or row is first cut to the rows and columns the cache spans, which changes no result.
+an array of its cached cells under the same bound. An aggregate that skips blanks (SUM, COUNT,
+AVERAGE, AVERAGEA, MIN, MAX, the other `for_each_value` statistics, SUBTOTAL, AGGREGATE's reference
+form, RANK) first cuts any area to the rows and columns the cache spans, which changes none of its
+results, so `SUM([1]Uses!$A$2:$B$1048576)` adds the cached cells (T-1550). Every other reader keeps
+the written shape with its blanks (only a whole column or row is cut to the cache): TEXTJOIN, BYROW,
+BYCOL, a LET variable, lookups, PRODUCT, LARGE/SMALL and value contexts, so there an area above
+1,048,576 cells that is not a whole column or row (`TEXTJOIN(",",TRUE,[1]Uses!$A$2:$B$1048576)`,
+`VLOOKUP(x,[1]Uses!$A$1:$C$1048576,2,0)`) is `#ERROR!`. The cells an aggregate reads from a union
+of cached areas are capped together, so `SUM(([1]Uses!$A:$A,…))` over eight whole columns of a
+cache spanning A1:A1048576 is `#VALUE!` (test_external_links.rs
+`union_of_sparse_whole_columns_is_bounded`); Excel gives the value.
 Excel for the web refuses to open a workbook whose formula sums such a
 31M-cell array (`SUM(DATE(11:1899,12,1))`: Graph `SessionMemoryQuotaExceededOnOpenWorkbook`).
 Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lifted-range-size

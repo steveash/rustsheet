@@ -37,7 +37,7 @@ impl Model {
         // (probes/aggregate-error-precedence C9-C24).
         let mut reference_error = None;
         for arg in args {
-            match self.evaluate_picked_reference_arg(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
                     if reference_error.is_none() {
                         if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
