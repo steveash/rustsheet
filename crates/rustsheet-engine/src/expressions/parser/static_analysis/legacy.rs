@@ -119,9 +119,11 @@ fn for_each_array_context_condition(node: &mut Node, f: &mut impl FnMut(&mut Nod
 /// `SUM(-B1:B6)`, `MAX(B1:B6*1)` and `LARGE(B1:B6*1,1)` are `#VALUE!` off the range's rows and
 /// `COUNT(B1:B6*1)` 0, while `SUM(B1:B6)` and `SUM((B1:B6))` read the range
 /// (probes/legacy-value-argument-intersection; `[1]Uses!$A$2:$A$3+0` in
-/// fixtures/external-link-cached-ranges Refs!B44; T-1526). Only the aggregates probed so far
-/// (the others: T-1551); MMULT, INDEX and LOOKUP evaluate such an argument as an array
-/// (probes/array-context-legacy-sumproduct N, P, Q).
+/// fixtures/external-link-cached-ranges Refs!B44; T-1526), and so do MIN, MINA, MAXA, PRODUCT, SUMSQ,
+/// STDEV.S/P, VAR.S/P, DEVSQ, AVEDEV, GEOMEAN, HARMEAN, SMALL, PERCENTILE.INC, QUARTILE.INC, KURT, SKEW,
+/// GCD, LCM, CONCAT and TEXTJOIN (probes/legacy-value-argument-intersection-b, T-1551); MODE.SNGL,
+/// MMULT, INDEX and LOOKUP evaluate such an argument as an array (that probe S;
+/// probes/array-context-legacy-sumproduct N, P, Q).
 fn legacy_value_operand(kind: &Function, arg: &Node) -> bool {
     matches!(
         kind,
@@ -133,13 +135,43 @@ fn legacy_value_operand(kind: &Function, arg: &Node) -> bool {
             | Function::Counta
             | Function::Large
             | Function::Median
-    ) && matches!(
-        arg,
+            | Function::Min
+            | Function::MinA
+            | Function::MaxA
+            | Function::Product
+            | Function::Sumsq
+            | Function::StDevS
+            | Function::StDevP
+            | Function::VarS
+            | Function::VarP
+            | Function::Devsq
+            | Function::Avedev
+            | Function::Geomean
+            | Function::Harmean
+            | Function::Small
+            | Function::PercentileInc
+            | Function::QuartileInc
+            | Function::Kurt
+            | Function::Skew
+            | Function::Gcd
+            | Function::Lcm
+            | Function::Concat
+            | Function::Textjoin
+    ) && is_value_operation(arg)
+}
+
+/// Whether `node` is arithmetic, concatenation or a comparison, possibly in parentheses:
+/// `SUM((B1:B6*1))` intersects like `SUM(B1:B6*1)`, unlike `SUM((B1:B6))`
+/// (probes/legacy-value-argument-intersection-b Z2, Z10; T-1551).
+fn is_value_operation(node: &Node) -> bool {
+    match node {
+        Node::Group { child, .. } => is_value_operation(child),
         Node::UnaryKind { .. }
-            | Node::OpConcatenateKind { .. }
-            | Node::OpSumKind { .. }
-            | Node::OpProductKind { .. }
-            | Node::OpPowerKind { .. }
-            | Node::CompareKind { .. }
-    )
+        | Node::OpConcatenateKind { .. }
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. } => true,
+        _ => false,
+    }
 }

@@ -1337,6 +1337,16 @@ With B1:B6 = 1,2,3,1,2,3, each formula on row 2 (on the range's rows, B2 = 2) an
   value branch stays the whole range), while `SUMPRODUCT(B1:B6+0)` is 12 on both rows;
 - the reference functions are unchanged: `ROWS(B1:B6)` 6, `SUBTOTAL(9,B1:B6)` and
   `AGGREGATE(9,6,B1:B6)` 12, `AVERAGEA(B1:D1)` (C1 "x", D1 TRUE) 0.667 on both rows.
+The same holds for the other aggregates (probes/legacy-value-argument-intersection-b, excel-graph,
+2026-10-14, T-1551): `MIN`, `MINA`, `MAXA`, `PRODUCT`, `SUMSQ`, `STDEV.S`, `STDEV.P`, `VAR.S`, `VAR.P`, `DEVSQ`,
+`AVEDEV`, `GEOMEAN`, `HARMEAN`, `SMALL`, `PERCENTILE.INC`, `QUARTILE.INC`, `KURT`, `SKEW`, `GCD`, `LCM`, `CONCAT`
+and `TEXTJOIN` (third argument) of `B1:B6*1` give the row-2 value (2, or `#DIV/0!` for the one-value
+STDEV.S, VAR.S, KURT and SKEW) and `#VALUE!` on row 10; a parenthesized operation, `SUM((B1:B6*1))`, a comparison,
+`SUM(B1:B6>1)` 1 / `#VALUE!`, and a concatenation, `SUM(B1:B6&"")` 2 / `#VALUE!`, intersect too, and
+`SUMPRODUCT(ABS(IFERROR(B1:B6,100)))` is 2 / 100. The exception is `MODE.SNGL(B1:B6*1)`: 1 on both rows (it
+evaluates the argument as an array). `MAXA`/`MINA(XLOOKUP("a",A1:A6,A1:A6))` over a text cell is 0.
+`FORMULATEXT` of a legacy `SUM(B1:B6+0)` is `=SUM(@B1:B6+0)`. Dynamic `AVERAGEA({1,"a",TRUE})` is 0.5 (we give 0.667,
+UNVERIFIED reading: the TRUE of an array constant is not counted; T-1555) and `AVERAGEA("1/2/2020",1)` is 21916.5.
 A range of a linked workbook is intersected the same way, reading the cached cell
 (fixtures/external-link-cached-ranges Refs!B38, B44, B56, B62; "Cached values of a linked workbook").
 Evidence: probes/legacy-value-argument-intersection, probes/legacy-type-intersection (excel-graph,
@@ -1347,11 +1357,9 @@ argument of the probed aggregates (`legacy_value_operand`: SUM, AVERAGE, AVERAGE
 COUNTA, LARGE, MEDIAN), TYPE's argument (`is_scalar_context`), a range of another workbook,
 and under SUMPRODUCT IF's condition and IFERROR's and IFNA's value
 (`for_each_array_context_condition`); `remove_redundant_implicit_intersection` mirrors it so the
-export drops exactly those `@`s. Unprobed (T-1551): the arithmetic
-argument of the other aggregates (MIN, PRODUCT, STDEV, ...; the engine keeps the range whole), a
-parenthesized one (`SUM((B1:B6*1))`, kept whole) and a comparison or `&` one (`SUM(B1:B6>1)`,
-intersected), IFERROR/IFNA nested below another function under SUMPRODUCT (intersected), a nested
-aggregate under SUMPRODUCT, and the other control functions (CHOOSE's index under SUMPRODUCT lifts,
-T-0294).
+export drops exactly those `@`s. Unprobed: the arithmetic argument of the compatibility
+aggregates (STDEV, VAR, PERCENTILE, QUARTILE, MODE; the engine keeps the range whole), IFERROR/IFNA nested below another
+function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, and the other control functions
+(CHOOSE's index under SUMPRODUCT lifts, T-0294).
 Status: VERIFIED
-Tasks: T-0293, T-1526
+Tasks: T-0293, T-1526, T-1551, T-1555
