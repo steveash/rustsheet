@@ -3,7 +3,10 @@
 ## Annuity evaluation order and `(1+r)^n` (PV/FV/PMT/NPER/IPMT/PPMT)
 Rule: with `P = (1+r)^n` by right-to-left square-and-multiply (numbers.md, "Integer exponents"),
 `k = 1+r*type` and `T = pmt*(k*((P-1)/r))`, Excel computes PV = `-(fv+T)/P` and FV = `-(pv*P+T)`
-(integer nper, rate ≠ 0). PMT/IPMT/PPMT/NPER/NPV are still unexplained.
+(integer nper, rate ≠ 0), and NPER = `ln((pmt*k - fv*r)/(pmt*k + pv*r)) / ln(1+r)`, every
+operation in doubles and each logarithm a double logarithm of the double `1+r` (libm or correctly
+rounded; the sweep does not separate them), not `log1p`. PMT, IPMT, PPMT and NPV are still
+unexplained; 64-bit intermediates do not explain them either (below).
 Evidence (Excel-cached values, `ironcalc-calc/FINANCIAL/PMT.xlsx`, `PV.xlsx`, `FV.xlsx`):
 - `PMT.xlsx` Sheet1!F36 (rate 0.2, nper 5, pv -200): Excel's `(1+r)^n` behaves as exactly `2.48832`
   (square-and-multiply, or exp/log), not libm `powf` (`2.4883199999999994`). With that value
@@ -24,7 +27,24 @@ Evidence (Excel-cached values, `ironcalc-calc/FINANCIAL/PMT.xlsx`, `PV.xlsx`, `F
   Desktop agreement: the same PV formula matches all 23 cells of `ironcalc-calc/FINANCIAL/PV.xlsx`
   (Mac Excel 16 cached values) with integer nper > 0 and rate ≠ 0.
   The engine passes 315/616 power, 208/616 PV/FV, 258/924 PMT/IPMT/PPMT and 119/220 NPER/NPV cells.
-Status: PARTLY VERIFIED (PV/FV formulation fitted on the sweep; PMT/IPMT/PPMT/NPER/NPV open; T-0901)
+- NPER and the x87 test (T-1524, fit lab `annuity-*` fits, same sweeps; numbers.md "x87 precision
+  is per operator, not per kernel"): NPER as above matches 95 of 95 numeric cells
+  (m9-fin-nper-npv; with libm or with correctly rounded double logarithms alike; the engine 61;
+  `log1p(r)` in the denominator 11; the correctly rounded NPER 6). Keeping
+  the intermediates at 64 bits (x87 registers, 1+r included) breaks the fitted forms: PV 174/308,
+  FV 230/308, NPER 6/95. PMT (m9-fin-pmt, 308 cells; Excel lies up to 3.5 ulps from the exact
+  value with the rate as a double): correctly rounded and every 64-bit model (P from the exact
+  power, by square-and-multiply at 64 bits, or by fyl2x/f2xm1/fscale) 132, the best double
+  formulation with `P-1 = expm1(n*log1p(r))` 129 (`-(pv*r+(pv+fv)*r/(P-1))/k`; `-(pv*P+fv)/((P-1)/r*k)`
+  is 120 bit-exact and 308/308 within 4 ulp), double shapes on the square-and-multiply P at most 91, the
+  engine 54 (176 within 4 ulp: its `(1+r)^n - 1` cancels for small r*n). Cell A7 `PMT(0.2,2,10000)`
+  = -6545.454545454547 is 1.45 ulps from the exact value. IPMT (PMT then the FV recurrence):
+  correctly rounded 219/308, 64-bit 218, doubles 195, engine 189. PPMT: 94, 85, 43, engine 15. NPV
+  (88 cells): best 27 (a running factor `d *= 1+r`, or Horner), 64-bit 26, correctly rounded 18,
+  engine 21; 11 further double orderings (`v*d` with `d /= 1+r`, `pow(1+r,-i)`, `exp(-i*log1p r)`,
+  reverse sums, `fsum`) reach at most 27.
+Status: PARTLY VERIFIED (PV/FV/NPER fitted on the sweep; PMT/IPMT/PPMT/NPV open, time-boxed per
+decision 0056 after T-1524's two attempts, in T-1528; implementation of the fitted ones: T-0901)
 Implemented in: n/a (T-0901). Salvaged from draft PR #13 by T-0031.
 
 ## IRR, RATE and XIRR stop early, and the guess and flow scaling change the result
@@ -77,9 +97,116 @@ labels in the case's `hypotheses`):
   every rate pair.
 Engine today: 96 of 691 cells pass (IRR 19/216, RATE 36/368, XIRR 9/72, MIRR 32/35). RATE rejects
 its sixth argument (guess) with `#ERROR!` (T-1050).
-Status: VERIFIED (observations); the iteration (update rule, stopping test, cap) is UNVERIFIED (T-0916)
+Status: VERIFIED (observations). XIRR's iteration is fitted (next section, T-1525); IRR's and RATE's
+update rule and stopping test are UNVERIFIED (T-0916; partial findings below)
 Implemented in: n/a (T-0916)
 
+## XIRR is a bracketing bisection, not Newton
+Rule: XIRR finds a sign change of XNPV on a chain of trial rates, then bisects it. The chain starts at
+0. With s = guess (s = 1e-5 when the guess is 0), it runs upward through s, 2s, 4s, ... (only when the
+guess is not negative). If no upward point changes sign, it runs downward from -s, each point halving its
+distance to -1 (p -> (p - 1) / 2); a guess of 1 or more has no downward chain, so a negative root is
+`#NUM!`. A negative guess walks only the downward chain from the guess itself (g, (g - 1) / 2, ...), so a
+positive root is `#NUM!`. The bracket is the first chain point whose XNPV sign differs from XNPV(0)'s,
+with the point before it (0 included); no bracket is `#NUM!`. Bisection: `a` starts at the bracket's upper
+end and `b` at its lower end; each step takes m = a + (b - a) / 2 and replaces the end whose XNPV has the
+sign of XNPV(m). An exact XNPV(m) = 0 does not stop it. It returns m at the first step where both
+h < 5e-9 + 1e-8 * |m| (h = (b - a) / 2, which equals |m - previous m|) and |XNPV(m)| < 2e-8 * max|value|.
+So the result lies on the binary lattice of the bracket (for the default guess and a root of exactly 0.1
+it is 3355443/2^25 = 0.09999999403953552), which explains why XIRR is scale- and sign-invariant,
+converged only to about 1e-8, and why guess -0.5 or 1 gives `#NUM!` on one side.
+Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitlab xirr` and `xirr-oos`,
+`tools/src/rustsheet_tools/fitlab/kernels/solvers.py`):
+- Fit set: probes/solver-iteration-traces sheet X (155 cells: two-flow roots 0.013 to 0.94 and -0.013 to
+  -0.918 at guesses 1, 0.1, -0.5 and 0, one- and ten-year spans, three-flow roots to 2.0) and the 72 XIRR
+  cells of probes-numeric/m9-fin-irr-rate. The model is bit-exact on all 208 numeric cells, and it gives
+  no result on all 19 `#NUM!` cells (the lab scores numbers only; `solvers.xirr_error_agreement`, checked by
+  tools/tests/test_fitlab_solvers.py). The engine (Newton) gets 0/208.
+- Rejected variants (fit set, numeric cells): the step test alone 195/208, h < 6e-9 81/208,
+  h < 1e-8 * |m| 33/208, the XNPV test alone 13/208; m = (a + b) / 2 206/208 and starting `a` at the
+  lower end 205/208 (each moves m by an ulp somewhere). The constants are tight: with B = 1e-8,
+  A = 4.95e-9 gives 191/208, A = 5.05e-9 208/208 and A = 5.15e-9 203/208; with A = 5e-9, B = 9.9e-9 and
+  1.03e-8 give 206/208 and B = 1.02e-8 208/208. |XNPV| < 1.5e-8 * sum|value| also fits all 208.
+- The step test has no derivative in it, and the ten-year span (X!C, ten times the derivative) is
+  reproduced with the same rule as the one-year span (X!A); the depth per cell comes from a scratch
+  analysis, reproducible in the lab after T-1534.
+- Out of sample (the literal XIRR cells of five older probes; `xirr-oos`): 8 of 11 numeric cells, and
+  8 of 11 `#NUM!` cells. The `#NUM!` misses are input checks recorded elsewhere in this file
+  (xirr-mismatched-empties X12, X13, xirr-early-dates A7), which the model does not apply. The numeric
+  misses: a zero first value (xirr-early-dates A10, A11 give 2.9802322387695314e-09 = 0.1 * 2^-25; the model
+  gives 0.09999999403953552), and the 124-year span of xirr-early-dates A8, where Excel returns bisection
+  step 25 (|XNPV|/max|value| is 1.1e-7 there; the model goes to step 28). So the XNPV part of the stop test
+  is not normalised by max|value| alone. The step test alone gets A8 but misses
+  xirr-xnpv-whole-column-nogaps A4 (8/11, and 13 fitted cells); the sum|value| variant misses A4 too
+  (7/11).
+- Unprobed: the cap on the chain walk (up to 17 doublings, X!F15, and 4 halvings are seen; day serials
+  1..6, which need about 770 halvings, are `#NUM!`), the bisection cap, the order when both chains have
+  a root, and a guess at or below -1.
+Ours: Newton's method to 1e-7 (`compute_xirr`, functions/financial/financial_util.rs): 0/208 on the fit
+set (9 of the 72 m9-fin-irr-rate cells pass the harness's tolerance).
+Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test; the XNPV part of the stop
+test is UNVERIFIED beyond the fit set (T-1533)
+Tasks: T-1525, T-0916, T-1533
+
+## IRR returns x - 1 and stops after a few Newton-like steps (partly fitted)
+Rule: IRR iterates on x = 1 + r (or on 1/x) and returns x - 1: for all 263 numeric IRR cells of
+m9-fin-irr-rate and solver-iteration-traces, value + 1 is exactly representable
+(tools/tests/test_fitlab_solvers.py), which a value computed as a rate would fail for most rates below
+0.5. The update rule and the stop test are not fitted. The guess sweep shows quadratic convergence stopped
+early: for `{-20,5,5,5,5,5}` with guesses 0.05 to 0.07 and 0.0875 to 0.115 (I!A1:A9, I!A16:A27), Excel's
+error grows as (guess - root)^8, the signature of the third iterate of a quadratic method, with an
+effective constant f''/(2f') between -1.19 and -1.25 (Newton in v has -1.17, Newton in r -2.11; scratch
+analysis, reproducible in the lab after T-1534). Guesses 0.0725, 0.075, 0.085 and 0.12 return the root's bits
+(0.07930826116052869), as if one more step was taken; 0.1175 (I!A28) is 16 ulp below them. Guesses close
+to the root break the law: 0.0775, 0.08 and 0.0825 (I!A12:A14) give -1.7e-13, +5.9e-15 and +1.6e-12, and
+0.0793 (m9-fin-irr-rate Calc!A187) gives -1.6e-11, so the stop test is not a fixed step tolerance.
+Two-flow roots come back as the nearest x or one to three ulp off (`IRR({-1,7})` is 5.999999999999997).
+Evidence: probes/solver-iteration-traces I!A1:A29 (guess sweep), I!B (far guesses on
+`{-1,0,...,0,2}`), I!C, I!D (closed-form two- and three-flow roots); excel-graph, 2026-10-14, T-1525.
+`uv run rustsheet-fitlab irr` (263 cells) scores value-returning candidates (k = 1 to 8 steps, or
+converged): Newton in v = 1/(1+r) converged 74/263 bit-exact (the best), FD Newton in v (h = 1e-4v, 1e-6v,
+1e-8v) 73 to 74, Newton in x = 1 + r 47 (8 steps), Newton in r 5; the union of all is 96/263. The engine
+gets 1/263.
+Ours: Newton in r to 1e-8, with a bisection fallback (`compute_irr`, functions/financial/financial_util.rs).
+Status: UNVERIFIED (the update rule and the stop test)
+Tasks: T-1525, T-0916, T-1533
+
+## RATE iterates on the rate itself
+Rule: RATE's results are rates, not x - 1: only 7 of the 136 literal RATE cells pass the x - 1 test above
+(tools/tests/test_fitlab_solvers.py). The update rule and the stop test are not fitted. `RATE(1,0,-1,X)` cannot separate
+rules: f is linear in r, so every Newton step from the first on gives the same value, and 9 of the 10
+cells are that value; the informative cell is X = 1.37 (R!A4), where Excel gives 0.3700000000000002 and
+every Newton candidate 0.37. Plain Newton cannot be the method: from 0.1 it crawls on
+RATE(360,-599.55,100000) (about 0.003 per step), which Excel solves.
+Evidence: probes/solver-iteration-traces R!A1:A10, R!B1:B30 (RATE(n,0,-1,2)), R!C1:C31 (a guess sweep on
+RATE(48,-200,8000,0,1)), R!D:F (annuities with type 0/1 and fv); excel-graph, 2026-10-14, T-1525.
+`uv run rustsheet-fitlab rate` (136 literal cells; the 277 nested `RATE(n,PMT(...),...)` cells are not
+parsed): Newton in r on the documented f(r) = pv(1+r)^n + pmt(1+r*type)((1+r)^n - 1)/r + fv gives at most
+11/136 bit-exact (4 to 8 steps), FD Newton (h = 1e-8) 7/136; the engine gets 12/136.
+Ours: Newton, up to 50 iterations (`compute_rate`, functions/financial/financial_util.rs).
+Status: UNVERIFIED (the update rule and the stop test)
+Tasks: T-1525, T-0916, T-1533
+
+## YIELD with one coupon period left is closed form
+Rule: when at most one coupon period is left, Excel evaluates the documented formula
+`((red/100 + rate/f) - (pr/100 + A/E*rate/f)) / (pr/100 + (A/E)*(rate/f)) * (f*E/DSR)` in that order, with
+DSR the basis' day count from settlement to maturity (DAYS360 US on basis 0, DAYS360 European on basis 4,
+actual days on bases 1-3), not E - A: 2024-03-01 to 2024-08-31 on basis 0 is DSR 180 with A 181 and E
+360. E is 360/f on bases 0 and 4 and the actual coupon-period length on bases 1, 2 and 3 (182 and 366
+days for the probe bonds, not 360/f or 365/f). PRICE's one-period form differs: it discounts with
+DSR = E - A and the nominal E (360/f on basis 2, 365/f on basis 3).
+Evidence (excel-graph, 2026-10-14, T-1525): `uv run rustsheet-fitlab yield-one-period` is bit-exact on 60 of
+60 cells: probes/solver-iteration-traces Y!A1:A10 (semiannual, maturity 2024-06-30) and Y!B1:B10 (annual,
+maturity 2024-08-31), prices 90 to 110, basis 0, and probes/bond-one-period-bases sheet Y (the same two
+bonds on bases 0 to 4, prices 95 to 105). E - A for DSR gives 30/60 and the nominal E on bases 2 and 3
+44/60. PRICE: probes/bond-one-period-bases sheet P (40 cells, yields 0.02 to 0.3) all pass in the engine,
+whose one-period PRICE uses E - A.
+Ours: the engine solves PRICE for YIELD (`fn_yield`, functions/financial/financial_bonds.rs) and gets 0/60.
+Where PRICE's E - A and E equal YIELD's (basis 0 on the semiannual bond, bases 1 and 4) it lands a few to
+about 15 ulp off; elsewhere it solves a different equation: basis 0 annual (Y!B) is about 0.56% off (ratio
+180/179, Y!B1 0.2807210017227244 against 0.2791614406020427), bases 2 and 3 up to 4%.
+Status: VERIFIED (excel-graph)
+Tasks: T-1525, T-1532
 
 ## RATE: an empty guess is guess 0, not the default 0.1
 Rule: an empty guess argument (`RATE(48,-200,8000,0,1,)`) or a reference to an empty cell behaves as
@@ -269,7 +396,12 @@ length need not: `YIELD(DATE(2096,2,15),DATE(2100,2,28),0.05,98,100,2,0)` is 0.0
 `YIELD(DATE(2100,2,16),DATE(2104,3,1),0.05,98,100,2,0)` is 0.05558592884303248 (both 9 coupons, 165 of 180 days
 accrued); their YEARFRAC differs (4.0361 against 4.0417), so the starting point may come from the dates.
 Evidence: probes/yield-solver-sweep (66 cells), probes/date-system-1900-financial-readers row 8 and its -shifted twin
-(excel-graph, 2026-10-13, T-1493).
-Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted (T-1374).
+(excel-graph, 2026-10-13, T-1493); probes/solver-iteration-traces Y!C:E (24 cells: prices 40 to 160 over ten years
+at frequency 2, 4 and 1; excel-graph, 2026-10-14, T-1525). `uv run rustsheet-fitlab yield` scores the 90 basis-0
+cells with more than one coupon left: Newton on PRICE from 0, the coupon rate or 0.1 (step tolerances 1e-6 to
+1e-12), the secant from 0 and 1, and LibreOffice's regula falsi reach at most 2/90 bit-exact (5/90 for their
+union); the engine gets 0/90. With one coupon period left YIELD is closed form (see "YIELD with one coupon period
+left is closed form").
+Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
 Status: UNVERIFIED (the algorithm); the values are excel-graph
-Tasks: T-1374, T-1493
+Tasks: T-1374, T-1493, T-1525, T-1533

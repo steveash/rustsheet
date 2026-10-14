@@ -11,15 +11,26 @@ import pytest
 
 from rustsheet_tools.fitlab.exact import (
     DOUBLE_MIN_EXP,
+    ROUNDINGS,
     X87,
     Ext,
+    X87Insn,
     double_round,
+    exact_value,
+    exp_at,
     exp_cr,
+    extended_value,
+    ln_at,
     ln_cr,
+    pi_cr,
     pow_cr,
     round_to_bits,
+    rounded_to,
     sqrt_cr,
+    square_and_multiply,
     to_double,
+    to_double_value,
+    x87_value,
 )
 
 
@@ -124,3 +135,42 @@ def test_out_of_range_inputs_raise() -> None:
         sqrt_cr(-1)
     with pytest.raises(ValueError, match="no exact value"):
         round_to_bits(math.inf, 53)
+
+
+def test_square_and_multiply_rounds_each_product() -> None:
+    assert square_and_multiply(3, 5, exact_value) == 243
+    assert square_and_multiply(1.5, 0, to_double_value) == 1
+    b = math.sqrt(5)
+    once = to_double(square_and_multiply(b, 10, to_double_value))
+    twice = to_double(square_and_multiply(b, 10, x87_value))
+    assert (once, twice) == (3125.000000000003, 3125.0000000000023)  # Excel: ...023 (T-1495)
+    with pytest.raises(ValueError, match="n >= 0"):
+        square_and_multiply(2, -1, x87_value)
+
+
+def test_x87_instruction_model_and_pi() -> None:
+    assert float(pi_cr()) == math.pi
+    assert round_to_bits(pi_cr(64), 64) == pi_cr(64)
+    assert X87Insn.pow(2, 10) == 1024  # exact powers of two survive fyl2x/f2xm1/fscale
+    assert float(X87Insn.exp(1)) == math.e
+    assert float(X87Insn.ln(math.e)) == pytest.approx(1.0, rel=1e-18)
+    for v in (X87Insn.pow(1.2, 2), X87Insn.exp(0.3), X87Insn.ln(10)):
+        assert round_to_bits(v, 64) == v
+
+
+def test_huge_exponents_stop_at_the_x87_range() -> None:
+    with pytest.raises(OverflowError):
+        square_and_multiply(1.5, 1 << 53, extended_value)
+    with pytest.raises(OverflowError):
+        X87Insn.pow(1.0000001, 9007199254740992)
+    assert square_and_multiply(0.5, 1 << 53, to_double_value) == 0  # a double underflows to 0
+
+
+def test_shared_roundings() -> None:
+    v = Fraction(1, 3)
+    assert exact_value(v) is v
+    assert ROUNDINGS["double"](v) == Fraction(1 / 3)
+    assert ROUNDINGS["ext"](v) == round_to_bits(v, 64)
+    assert rounded_to(128)(v) == round_to_bits(v, 128)
+    assert ln_at(53)(Fraction(10)) == Fraction(math.log(10))
+    assert exp_at(64)(Fraction(1)) == exp_cr(1, 64)
