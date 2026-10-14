@@ -12,7 +12,8 @@ fn fn_filterxml_args_number() {
     assert_eq!(model._get_text("A2"), *"#ERROR!");
 }
 
-// docs/excel-semantics/web.md: `#VALUE!` for a valid call, the first argument error wins.
+// docs/excel-semantics/web.md: `#VALUE!` for a valid call; A2 is oracle-backed (first argument error).
+// A3 and A4 are hand-expected (second-argument error, both erring) pending an oracle probe.
 #[test]
 fn fn_filterxml_value_and_error_precedence() {
     let mut model = new_empty_model();
