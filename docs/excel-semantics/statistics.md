@@ -605,8 +605,11 @@ read only the numbers. `AVERAGEA({1,"a",TRUE})` is 0.5, `AVERAGEA({3,TRUE})` and
 direct date text is its serial (`AVERAGEA("1/2/2020",1)` is 21916.5). A reference reads text as 0 and
 booleans as 1/0 (coercion.md "MAXA / MINA: single-cell references are read like ranges"), a cached
 range of a linked workbook too.
-Evidence: probes/averagea-array-constant-elements (25 cells, excel-graph, 2026-10-14);
+An array computed from a range follows the same array rule: over A1:A4 = 4, TRUE, "x", 2, `AVERAGEA`, `MAXA` and `MINA`
+of `FILTER(A1:A4,{1;1;1;1})`, `SORT(A1:A4)`, `IF({1;1;1;1},A1:A4)`, `IF(A1:A4>0,A1:A4)` and `CHOOSE({1,1},A1:A4)` are
+2, 4 and 2 (the plain range gives 1.75, 4 and 0). We give `#VALUE!` for the CHOOSE form only (T-1565).
+Evidence: probes/stat-a-computed-arrays (18 cells, excel-graph, 2026-10-14, T-1559); probes/averagea-array-constant-elements (25 cells, excel-graph, 2026-10-14);
 probes/legacy-value-argument-intersection-b AI2, AJ2.
 Status: VERIFIED (excel-graph)
 Implemented in: `Model::for_each_value_a` (statistical/count_and_average.rs), `ArrayText`.
-Tasks: T-1551, T-1555
+Tasks: T-1551, T-1555, T-1559
