@@ -31,6 +31,7 @@ pub mod builtin_styles;
 pub mod calc_result;
 pub mod cell;
 pub mod cf_types;
+pub mod clock;
 pub mod colors;
 pub(crate) mod error_cell;
 pub mod expressions;
@@ -85,14 +86,10 @@ mod workbook;
 #[cfg(test)]
 mod test;
 
-#[cfg(any(test, feature = "mock_time"))]
-pub mod mock_time;
-
 pub use evaluation::{KeyBuild, KeyHasher};
 pub use function_names::implemented_function_names;
 pub use locale::get_supported_locales;
 pub use merged_cells::MergeStructure;
-pub use model::get_milliseconds_since_epoch;
 pub use model::FmtSettings;
 pub use model::Model;
 pub use user_model::BorderArea;

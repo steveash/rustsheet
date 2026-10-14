@@ -34,38 +34,7 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
-use crate::{cf_types::CfCellResult, tz::Tz, variable_stack::VariableStack};
-
-#[cfg(any(test, feature = "mock_time"))]
-pub use crate::mock_time::get_milliseconds_since_epoch;
-
-/// Number of milliseconds since January 1, 1970
-/// Used by time and date functions. It takes the value from the environment:
-/// * The Operative System
-/// * The JavaScript environment
-/// * Or mocked for tests
-#[cfg(not(any(test, feature = "mock_time")))]
-#[cfg(not(target_arch = "wasm32"))]
-#[allow(clippy::expect_used)]
-pub fn get_milliseconds_since_epoch() -> i64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("problem with system time")
-        .as_millis() as i64
-}
-
-/// Number of milliseconds since January 1, 1970
-/// Used by time and date functions. It takes the value from the environment:
-/// * The Operative System
-/// * The JavaScript environment
-/// * Or mocked for tests
-#[cfg(not(any(test, feature = "mock_time")))]
-#[cfg(target_arch = "wasm32")]
-pub fn get_milliseconds_since_epoch() -> i64 {
-    use js_sys::Date;
-    Date::now() as i64
-}
+use crate::{cf_types::CfCellResult, clock::Clock, tz::Tz, variable_stack::VariableStack};
 
 // The structure of a cell. It can be:
 // * A single cell
@@ -180,6 +149,8 @@ pub struct Model {
     pub(crate) language: &'static Language,
     /// The timezone used to evaluate the model
     pub(crate) tz: Tz,
+    /// Where NOW, TODAY and the other readers of the time get it from (SPEC-0008).
+    pub(crate) clock: Clock,
     /// The view id. A view consists of a selected sheet and ranges.
     pub(crate) view_id: u32,
     /// A stack of variables used for LET function evaluation. The key is the variable id, and the value is the variable value.
@@ -1479,7 +1450,17 @@ impl Model {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_workbook(mut workbook: Workbook, language_id: &str) -> Result<Model, String> {
+    pub fn from_workbook(workbook: Workbook, language_id: &str) -> Result<Model, String> {
+        Self::from_workbook_with_clock(workbook, language_id, Clock::system())
+    }
+
+    /// [`Model::from_workbook`] on `clock`. Loading already evaluates the cells that conditional
+    /// formatting reads, so a fixed clock must be set here, not after loading (SPEC-0008).
+    pub fn from_workbook_with_clock(
+        mut workbook: Workbook,
+        language_id: &str,
+        clock: Clock,
+    ) -> Result<Model, String> {
         workbook.rebuild_derived_state();
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
@@ -1517,6 +1498,7 @@ impl Model {
             language,
             locale,
             tz,
+            clock,
             view_id: 0,
             variable_stack: VariableStack::default(),
             last_variable_id: 0,
@@ -3299,6 +3281,24 @@ impl Model {
         self.workbook.settings.locale = locale_id.to_string();
         self.evaluate();
         Ok(())
+    }
+
+    /// The clock NOW, TODAY and the other readers of the current time use (SPEC-0008).
+    #[must_use]
+    pub fn clock(&self) -> Clock {
+        self.clock
+    }
+
+    /// Sets the clock. Unlike [`Model::set_timezone`] it does not evaluate: the caller decides
+    /// when to recalculate.
+    pub fn set_clock(&mut self, clock: Clock) {
+        self.clock = clock;
+    }
+
+    /// The current instant in ms since the Unix epoch, read from the model's clock. Every
+    /// in-engine reader of the time goes through here.
+    pub(crate) fn now_unix_millis(&self) -> i64 {
+        self.clock.now_unix_millis()
     }
 
     /// Sets the timezone of the model

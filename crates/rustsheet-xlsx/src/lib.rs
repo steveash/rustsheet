@@ -50,5 +50,4 @@ pub mod import;
 pub mod util;
 pub use rustsheet_engine as base;
 
-#[cfg(feature = "mock_time")]
-pub mod mock_time;
+pub mod metadata_clock;
