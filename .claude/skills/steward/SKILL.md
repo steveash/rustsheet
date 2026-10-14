@@ -101,5 +101,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
   explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
+- **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision 0056)"
+  is not reopened when its dependencies land, only when a new hypothesis is recorded there.
 - **Stuck**: after 3 failed fix attempts on the same failure, mark the task blocked with details,
   leave the PR as draft, and move on. Do not leave `main` red: if a merge broke `main`, revert first.
