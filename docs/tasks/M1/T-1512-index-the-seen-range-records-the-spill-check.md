@@ -3,7 +3,7 @@ id: T-1512
 title: "Index the seen-range records the spill check scans"
 milestone: M1
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
