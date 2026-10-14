@@ -332,4 +332,7 @@ fn functions_passed_by_name_with_special_forms_do_not_panic() {
     for row in 0..formulas.len() {
         let _ = model._get_text(&format!("D{}", 4 * row + 1));
     }
+    // An uncalled function is one value, like an uncalled LAMBDA (probes/eta-reduced-names E73).
+    assert_eq!(model._get_text("D41"), "#CALC!");
+    assert_eq!(model._get_text("D45"), "#NAME?");
 }

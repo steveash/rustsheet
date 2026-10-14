@@ -20,9 +20,9 @@ Goals:
 3. Every documented argument. Undocumented behavior follows the probe, never the documentation.
 
 Non-goals:
-- Eta-reduced names (`_xleta.SUM`) as values. T-1273 adds them for BYROW and the other LAMBDA
+- Eta-reduced names (`_xleta.SUM`) as values. T-1466 added them (it superseded T-1273) for BYROW and the other LAMBDA
   helpers. This spec only needs a function value it can call with one argument (two for
-  PERCENTOF-style relative totals). Until T-1273 lands, only the LAMBDA forms work.
+  PERCENTOF-style relative totals). GROUPBY and PIVOTBY get them through the same LAMBDA call path.
 - Rendering pivot-like formatting. Excel's bold total rows are cell styles, which the engine
   does not produce for spills.
 
@@ -162,7 +162,7 @@ struct Aggregate<'a> { rows: &'a [usize], relative: &'a [usize] }
    that order, so the subtotal rows are inserted in one linear pass, not by any quadratic search.
 3. **Aggregation**: for each (group, value column, function) build a column array of the
    group's values in source order and call the function value: `call_lambda_with_values` for a
-   LAMBDA, or the T-1273 eta-call path for a name. Any array result becomes `#VALUE!`, a 1x1 array included: never unwrap it
+   LAMBDA, or the T-1466 eta-call path (`eta_definition`, lambda.rs) for a name. Any array result becomes `#VALUE!`, a 1x1 array included: never unwrap it
    (G!J121 is `#VALUE!` for the one-record groups too). A function array (`HSTACK`/`VSTACK` of function values) is a list of functions plus
    an orientation. Two-parameter functions (PERCENTOF) also get the relative set's values:
    - Each distinct relative set is built once and shared, never rebuilt per call. GROUPBY has one
@@ -220,7 +220,7 @@ Ordered; each is S/M. The grouping core lands with GROUPBY; PIVOTBY reuses it.
 2. GROUPBY options (sonnet, S): sort_order (scalar and array), filter_array, the `#VALUE!`
    argument errors.
 3. GROUPBY subtotals (opus, M): total_depth ±2 with "Grand Total", field_relationship.
-4. Function arrays (sonnet, S; after T-1273): eta names, HSTACK/VSTACK of functions, and the
+4. Function arrays (sonnet, S; after T-1466): eta names, HSTACK/VSTACK of functions, and the
    PERCENTOF relative set in GROUPBY.
 5. PIVOTBY (opus, M): the grid on the shared core, totals and subtotals on both axes, sort
    orders, filter, headers, several values and functions.

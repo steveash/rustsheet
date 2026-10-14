@@ -19,6 +19,7 @@ Left over from T-1466 and T-1273 (docs/excel-semantics/arrays.md "Functions pass
 - probes/m7-argument-modes F44:H44 `ROWS(LAMBDA(x,x))` 1, `COLUMNS` 1, `INDEX(..,1,1)` `#CALC!`: ours `#VALUE!`.
 - probes/eta-reduced-names E93 `ISERROR(_xleta.SUM)`: Excel FALSE, ours TRUE (probably the automatic `@` on a LAMBDA value; check `ISERROR(LAMBDA(x,x))` too, adding a probe question if needed).
 - gen-m7/44ef4f5638e25bcd Calc!A7 `SUM(MAP(scalar,scalar,scalar,_xleta.MAX),..)`: Excel `#VALUE!`, ours a number (MAP over single values; probe MAP(1,LAMBDA(x,x)) and friends first).
+- Unprobed (T-1466 fidelity review): BYCOL/BYROW with `1/0` or `{1,2}` as the function, `MAKEARRAY(2,2,_xleta.ABS)` and `BYROW(A1:B3,_xleta.NOW)` (excel-graph cannot decode them; try `ERROR.TYPE(..)`), special forms passed by name (`_xleta.LET`, `_xleta.LAMBDA`, `_xleta.SUBTOTAL`, `_xleta.OFFSET`) and `LET(f,_xleta.SUM,f())`: probe them and match.
 Code: `fn_byrow`/`fn_bycol` and `calc_result_to_array_node` (bycol_byrow.rs), `call_lambda` (lambda.rs), ROWS/COLUMNS/INDEX on `CalcResult::Lambda`.
 
 ## Acceptance criteria

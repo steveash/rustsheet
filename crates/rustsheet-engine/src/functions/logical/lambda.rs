@@ -211,13 +211,8 @@ impl Model {
             .get(..ETA_PREFIX.len())
             .filter(|prefix| prefix.eq_ignore_ascii_case(ETA_PREFIX))
             .and_then(|_| name.get(ETA_PREFIX.len()..))
-            .and_then(|function| {
-                // Stored formulas use the English function names, whatever the UI language.
-                let functions = &get_default_language().functions;
-                functions
-                    .lookup(function.trim_start_matches("_xlfn._xlws."))
-                    .or_else(|| functions.lookup(function.trim_start_matches("_xlfn.")))
-            });
+            // Stored formulas use the English function names, whatever the UI language.
+            .and_then(|function| get_default_language().functions.lookup_stored(function));
         match function {
             Some(kind) => {
                 let id = self.get_next_lambda_id();
