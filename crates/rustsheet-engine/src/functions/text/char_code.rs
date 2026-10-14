@@ -71,9 +71,12 @@ fn char_to_win1252(c: char) -> Option<u32> {
     let cp = c as u32;
     match cp {
         1..=127 => Some(cp),
+        // Excel: CODE of a C1 control character (U+0080-U+009F) is its own code point, not 63, even where the
+        // 1252 slot holds another character (CODE(UNICHAR(159)) = 159; see docs/excel-semantics/text.md "CLEAN and CODE scalar edges").
+        128..=159 => Some(cp),
         160..=255 => Some(cp),
         _ => {
-            // Search the 128-159 table
+            // Search the 128-159 table (the characters 1252 puts in those slots, such as the euro sign)
             for (i, &wc) in WIN1252_128_159.iter().enumerate() {
                 if wc == c {
                     return Some(128 + i as u32);
