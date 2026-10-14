@@ -1,0 +1,42 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1555 probe: AVERAGEA, MAXA and MINA over array constants holding text, numeric text and booleans (which elements count, as what), next to the same values as direct arguments.",
+ "tags": [
+  "M2",
+  "statistical",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=AVERAGEA({1,\"a\",TRUE})",
+    "A2": "=AVERAGEA({1,\"a\"})",
+    "A3": "=AVERAGEA({1,TRUE})",
+    "A4": "=AVERAGEA({\"a\",TRUE})",
+    "A5": "=AVERAGEA({1,\"1\"})",
+    "A6": "=AVERAGEA({3,TRUE})",
+    "A7": "=AVERAGEA({3,FALSE})",
+    "A8": "=AVERAGEA({3,\"a\"})",
+    "A9": "=AVERAGEA({3,\"7\"})",
+    "A10": "=AVERAGEA({3,\"\"})",
+    "A11": "=AVERAGEA({TRUE})",
+    "A12": "=AVERAGEA({\"a\"})",
+    "A13": "=MAXA({0.5,TRUE})",
+    "A14": "=MAXA({-1,\"a\"})",
+    "A15": "=MINA({2,TRUE})",
+    "A16": "=MINA({2,\"a\"})",
+    "A17": "=MAXA({-1,\"5\"})",
+    "A18": "=AVERAGEA(IF(1,{3,TRUE}))",
+    "A19": "=AVERAGEA(--{3,TRUE})",
+    "A20": "=AVERAGEA({3,TRUE},TRUE)",
+    "A21": "=AVERAGEA({3,\"a\"},\"a\")",
+    "A22": "=MAXA({\"a\"})",
+    "A23": "=MINA({TRUE,\"b\"})",
+    "A24": "=MAXA(Z1:Z3)",
+    "A25": "=MINA(Z1)"
+   }
+  }
+ ],
+ "expected": {}
+}
