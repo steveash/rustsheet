@@ -12,7 +12,7 @@ pub(crate) fn get_color_xml(color: &Color, name: &str) -> String {
             if *tint == 0.0 {
                 format!("<{name} theme=\"{idx}\"/>")
             } else {
-                format!("<{name} theme=\"{idx}\" tint=\"{tint:.16}\"/>")
+                format!("<{name} theme=\"{idx}\" tint=\"{tint}\"/>")
             }
         }
         Color::None => "".to_string(),

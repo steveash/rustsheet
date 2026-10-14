@@ -28,7 +28,7 @@ fn get_dxf_font_xml(font: &DxfFont) -> String {
             if *tint == 0.0 {
                 parts.push(format!("<color theme=\"{idx}\"/>"));
             } else {
-                parts.push(format!("<color theme=\"{idx}\" tint=\"{tint:.16}\"/>"));
+                parts.push(format!("<color theme=\"{idx}\" tint=\"{tint}\"/>"));
             }
         }
         Color::None => {}

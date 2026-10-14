@@ -18,7 +18,7 @@ fn get_fonts_xml(styles: &Styles) -> String {
                 if *tint == 0.0 {
                     format!("<color theme=\"{idx}\"/>")
                 } else {
-                    format!("<color theme=\"{idx}\" tint=\"{tint:.16}\"/>")
+                    format!("<color theme=\"{idx}\" tint=\"{tint}\"/>")
                 }
             }
             Color::None => "".to_string(),
