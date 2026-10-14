@@ -1,4 +1,4 @@
-use crate::arithmetic::{divide, flush_subnormal, power};
+use crate::arithmetic::{divide, extended_sqrt, flush_subnormal, power};
 use crate::cast::NumberOrArray;
 use crate::constants::EXCEL_PRECISION;
 use crate::decimal_round::{round_decimal, RoundMode};
@@ -592,7 +592,7 @@ impl Model {
     single_number_fn!(fn_sqrt, |f| if f < 0.0 {
         Err(Error::NUM)
     } else {
-        Ok(f64::sqrt(f))
+        Ok(extended_sqrt(f))
     });
     /// SQRTPI. Unlike RADIANS, a boolean argument is `#VALUE!` (a literal, a comparison, a cell
     /// reference or an array element), while numeric text is read (probes/radians-sqrtpi-munit,

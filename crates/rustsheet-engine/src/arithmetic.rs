@@ -93,6 +93,44 @@ pub(crate) fn extended_quotient(x: f64, y: f64) -> f64 {
     .unwrap_or(plain)
 }
 
+/// `sqrt(x)` rounded twice, first to a 64-bit significand and then to a double, like
+/// [`extended_quotient`] (docs/excel-semantics/numbers.md "Division rounds twice",
+/// probes-numeric/double-rounding-ops A65-A80, excel-graph). The root is built bit by bit from the
+/// exact significand, so the first rounding sees the true root. A zero, negative, non-normal or
+/// non-finite `x` is the plain `x.sqrt()`.
+pub(crate) fn extended_sqrt(x: f64) -> f64 {
+    let plain = x.sqrt();
+    if !x.is_normal() || x < 0.0 {
+        return plain;
+    }
+    let (significand, mut exponent) = significand_and_exponent(x);
+    let mut radicand = u128::from(significand);
+    if exponent % 2 != 0 {
+        // The exponent must be even to halve it; the significand then has 54 bits.
+        radicand <<= 1;
+        exponent -= 1;
+    }
+    // 27 bit pairs of the (zero-padded to 54 bits) radicand, then 39 zero pairs: a 66-bit root
+    // `root·2^-39` of the significand, and `remainder != 0` says it is only the floor.
+    let (mut root, mut remainder) = (0u128, 0u128);
+    for pair in (0..66).rev() {
+        let digits = if pair >= 39 {
+            (radicand >> (2 * (pair - 39))) & 3
+        } else {
+            0
+        };
+        remainder = (remainder << 2) | digits;
+        let trial = (root << 2) | 1;
+        root <<= 1;
+        if remainder >= trial {
+            remainder -= trial;
+            root |= 1;
+        }
+    }
+    let (extended, shift) = round_to_bits(root, 64, remainder != 0);
+    round_extended_to_double(extended, exponent / 2 - 39 + shift, false).unwrap_or(plain)
+}
+
 /// `x * y` rounded twice, first to a 64-bit significand and then to a double, like
 /// [`extended_quotient`] (docs/excel-semantics/numbers.md "Division rounds twice",
 /// probes-numeric/double-rounding-ops A1-A16, excel-graph). The exact 106-bit product is rounded to
@@ -353,7 +391,7 @@ fn non_integer_power(x: f64, y: f64) -> f64 {
     // -0 has the logarithm of 0: `-0^0.5` is 0, not `sqrt`'s -0 (gen-m1/6462bf910ef9f28f Calc!A19).
     let x = if x == 0.0 { 0.0 } else { x };
     if y == 0.5 {
-        x.sqrt()
+        extended_sqrt(x)
     } else if y == -0.5 {
         extended_quotient(1.0, x.sqrt())
     } else if y > 0.0 {
