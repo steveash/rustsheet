@@ -2,20 +2,22 @@ use rustsheet_engine::types::{
     Alignment, Border, BorderItem, Color, Fill, HorizontalAlignment, VerticalAlignment,
 };
 
+/// The attributes of a colour element (`rgb="FF…"`, or `theme` plus a tint that is omitted when
+/// zero); empty for no colour. The one place a theme colour and its tint are formatted: the tint
+/// is written in shortest round-trip form so it survives an export/import round trip.
+pub(crate) fn get_color_attrs(color: &Color) -> String {
+    match color {
+        Color::Rgb(s) => format!("rgb=\"FF{}\"", s.trim_start_matches('#')),
+        Color::Theme(idx, tint) if *tint == 0.0 => format!("theme=\"{idx}\""),
+        Color::Theme(idx, tint) => format!("theme=\"{idx}\" tint=\"{tint}\""),
+        Color::None => String::new(),
+    }
+}
+
 pub(crate) fn get_color_xml(color: &Color, name: &str) -> String {
     match color {
-        Color::Rgb(s) => {
-            let hex = s.trim_start_matches('#');
-            format!("<{name} rgb=\"FF{hex}\"/>")
-        }
-        Color::Theme(idx, tint) => {
-            if *tint == 0.0 {
-                format!("<{name} theme=\"{idx}\"/>")
-            } else {
-                format!("<{name} theme=\"{idx}\" tint=\"{tint:.16}\"/>")
-            }
-        }
-        Color::None => "".to_string(),
+        Color::None => String::new(),
+        _ => format!("<{name} {}/>", get_color_attrs(color)),
     }
 }
 
