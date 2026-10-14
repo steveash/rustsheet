@@ -3,7 +3,7 @@ id: T-1537
 title: "INDEX with an index array into another workbook reads the picked cells as empty"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -29,3 +29,9 @@ Rule: docs/excel-semantics/references.md "External reference with no cached data
 
 ## Out of scope
 - Opening other workbooks (directive 5).
+
+## Outcome
+`INDEX` over an index array into another workbook now lifts: each element is the top-left cell of
+the scalar pick (`external_picked_value`), empty with no cache, the cached cell with one. A nested
+INDEX used as a reference still gives `#BLOCKED!` for lifted indices. Eval: probes known failures
+5588 -> 5586 (external-ref-no-link-ifchoose Calc!H1, I1 fixed); no regressions.
