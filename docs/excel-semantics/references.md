@@ -1144,8 +1144,8 @@ Tasks: T-1369
 Evidence strength: excel-graph oracle, 9 cells. Status: VERIFIED (web).
 Tasks: T-1503
 
-### ISREF of a written `@INDEX(..)` (T-1503, known gap)
+### ISREF of a written `@INDEX(..)` (T-1506)
 
-`=ISREF(@INDEX(B1:B3,2))` is TRUE (probes/let-bind-implicit-index H10, excel-graph 2026-10-13). Ours: FALSE (`is_reference` has no `ImplicitIntersection` arm).
+`=ISREF(@INDEX(B1:B3,2))` is TRUE (probes/let-bind-implicit-index H10, excel-graph 2026-10-13). Fixed by T-1506: `is_reference` has an `ImplicitIntersection(INDEX)` arm. `@XLOOKUP` and `@TAKE` forms are not yet probed.
 Evidence strength: excel-graph oracle, 1 cell. Status: VERIFIED (web).
 Tasks: T-1506
