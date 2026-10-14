@@ -476,6 +476,7 @@ C	probes/sum-error-precedence.case.json	24
 C	probes/sum-long-text-args.case.json	11
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/tbill-equal-dates.case.json	11
+C	probes/tbilleq-nonpositive-price.case.json	9
 C	probes/tbilleq-zero-price.case.json	4
 C	probes/text-argument-modes.case.json	47
 C	probes/text-b-functions-broadcast.case.json	29
@@ -5841,7 +5842,6 @@ F	probes/stat-argument-modes.case.json	Sheet1!H98
 F	probes/stat-argument-modes.case.json	Sheet1!H99
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
-F	probes/tbilleq-zero-price.case.json	Calc!A3
 F	probes/text-collation-order.case.json	Calc!A1
 F	probes/text-collation-order.case.json	Calc!A100
 F	probes/text-collation-order.case.json	Calc!A101
