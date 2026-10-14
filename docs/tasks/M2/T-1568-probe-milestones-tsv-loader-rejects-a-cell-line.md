@@ -3,7 +3,7 @@ id: T-1568
 title: "probe-milestones.tsv loader rejects a cell line whose cell is not a checked cell of its case"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
