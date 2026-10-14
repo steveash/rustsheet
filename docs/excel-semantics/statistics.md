@@ -359,6 +359,23 @@ Ours: `#N/IMPL!` for every call.
 Status: VERIFIED (web) for these three shapes
 Tasks: T-1293
 
+## FORECAST.ETS family: excel-graph never computes it
+Rule: on excel-graph (Excel for the web) every valid call of FORECAST.ETS, FORECAST.ETS.CONFINT,
+FORECAST.ETS.SEASONALITY and FORECAST.ETS.STAT is `#N/A`, whatever the series: 12, 24 and 36 points (timeline 1..n,
+a period-4 seasonal signal), seasonality omitted/0/1/4, `data_completion`/`aggregation` omitted or set, every
+`statistic_type`. The out-of-range arguments are `#N/A` too (seasonality 5, data_completion 2, aggregation 3,
+statistic_type 0 and 9, confidence_level 0 and 1, values/timeline of 23 and 24 cells), so the web value does not tell
+a valid call from an invalid one. The only distinguishable result is a text `target_date` (`"x"`), which is `#VALUE!`
+before the `#N/A`. So the web oracle gives no evidence for the algorithm or for most argument validation; it is a
+golden only for the type-coercion step (decision 0039). Catalog `oracle: none` is not used: the canary does not
+refuse these workbooks, Excel for the web just does not calculate the family.
+Consequence: a validation-only engine (`#N/A` like excel-graph) would score on excel-graph values but would be wrong on
+desktop Excel, so the family stays `#N/IMPL!` until desktop values exist (M14, Phase 4, T-1553).
+Evidence: probes/forecast-ets-longer-series.case.json K1:K42 (excel-graph, 2026-10-14, T-1293).
+Ours: `#N/IMPL!` for every call.
+Status: VERIFIED (web) that the family is `#N/A` there; desktop behavior UNKNOWN
+Tasks: T-1293, T-1553
+
 ## Database function argument modes
 Rule: in the database functions (DAVERAGE, DCOUNT, DCOUNTA, DGET, DMAX, DMIN, DPRODUCT, DSTDEV, DSTDEVP, DSUM,
 DVAR, DVARP), `database` must be a reference. A database given as an array literal
