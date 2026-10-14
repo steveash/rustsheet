@@ -3,7 +3,7 @@ id: T-1566
 title: "Probe the aggregate differences SPEC-0009 keeps unevidenced: PRODUCT over picked references, direct blank/LAMBDA values, A-variant error order"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
