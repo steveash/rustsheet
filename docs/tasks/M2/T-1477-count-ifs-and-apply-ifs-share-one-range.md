@@ -3,7 +3,7 @@ id: T-1477
 title: "count_ifs and apply_ifs share one range resolution and criteria walk (split from T-0408)"
 milestone: M2
 lane: quality
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -26,11 +26,17 @@ T-0408 (perf, M3, Phase 2) lists this merge as one of its four criteria. It is s
 now. T-0408 keeps the per-formula range caching, the memo and the bench.
 
 ## Acceptance criteria
-- [ ] One helper resolves the criteria ranges and builds the predicates. count_ifs and apply_ifs both call it, and the `TODO(T-0408)` comment is gone.
-- [ ] `make eval`: 0 regressions and 0 fixes in every suite. probes/ifs-array-criteria, probes/ifs-shape-mismatch, probes/sumif-edge-single-cell and poi/70005-countifs still pass.
-- [ ] scripts/check_duplication.py does not rise; record any drop with `--update` per decision 0010.
-- [ ] `make check` green; reviewers approve.
+- [x] One helper resolves the criteria ranges and builds the predicates. count_ifs and apply_ifs both call it, and the `TODO(T-0408)` comment is gone.
+- [x] `make eval`: 0 regressions and 0 fixes in every suite. probes/ifs-array-criteria, probes/ifs-shape-mismatch, probes/sumif-edge-single-cell and poi/70005-countifs still pass.
+- [x] scripts/check_duplication.py does not rise; record any drop with `--update` per decision 0010.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Performance work: resolving ranges once per lifted formula, the criteria memo, the bench (T-0408).
 - The D-functions (they already share `build_criteria_with`).
+
+## Outcome
+`Model::resolve_ifs_criteria` (functions/statistical/if_ifs.rs) now resolves the criteria ranges, runs a
+caller-supplied shape check and builds the predicates for both `count_ifs` and `apply_ifs`; the
+`TODO(T-0408)` is gone. Error order is unchanged (range errors, shape, then too-long criterion).
+Eval: 0 regressions, 0 fixes in every suite. Duplicated lines 6522 -> 6369 (`--update` run).
