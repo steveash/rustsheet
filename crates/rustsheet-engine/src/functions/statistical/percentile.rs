@@ -135,11 +135,11 @@ impl Model {
             Err(e) => return e,
         };
 
-        if sorted.len() < 2 {
+        if sorted.is_empty() {
             return CalcResult::new_error(
                 Error::NA,
                 cell,
-                "PERCENTRANK.INC: array must have at least 2 values".to_string(),
+                "PERCENTRANK.INC: empty array".to_string(),
             );
         }
 
@@ -264,6 +264,11 @@ pub(crate) fn percentile_inc_impl(sorted: &[f64], k: f64) -> f64 {
 /// PERCENTRANK.INC: virtual position in sorted array, divided by (n-1).
 pub(crate) fn percentrank_inc_impl(sorted: &[f64], x: f64) -> f64 {
     let n = sorted.len();
+    // A single value equal to x ranks 1 (probes/legacy-value-argument-intersection-c T2, U2);
+    // the range check in the caller leaves any other x as #N/A.
+    if n == 1 {
+        return 1.0;
+    }
     // Number of values strictly less than x
     let k = sorted.partition_point(|&v| v < x);
 

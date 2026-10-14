@@ -334,7 +334,7 @@ A33; b58b6d7cd39d195f A2, A31; bc0901ce6193d576 A12; d244411dd90f7fbd A10, A17, 
 are read from the cases' Data sheets; each cell's other operands were checked not to decide the result.
 Ours: a plain number or single cell in these arguments is `#VALUE!` (one-element array literals already work:
 `COVAR({0},{1,2})` is `#N/A`, `SLOPE({1},{2})` `#DIV/0!`); `LARGE(#N/A,1)` is `#N/IMPL!`; PERCENTILE.EXC checks empty data
-before k; `PERCENTRANK.EXC` of a single value is 0.5. `PERCENTRANK` and `PERCENTRANK.INC` of a single value equal to x are 1 (probes/legacy-value-argument-intersection-c T2, U2; we give `#N/A`, T-1558).
+before k; `PERCENTRANK.EXC` of a single value is 0.5. `PERCENTRANK` and `PERCENTRANK.INC` of a single value equal to x are 1 (probes/legacy-value-argument-intersection-c T2, U2); a single value with x outside it stays `#N/A` (range check, unprobed).
 Status: VERIFIED (web) for the listed cells; PERCENTRANK.EXC of one value UNVERIFIED
 Tasks: T-1401, T-1402, T-1403
 
