@@ -1229,3 +1229,9 @@ Rule: all 94 cells of probes/radians-sqrtpi-munit agree with `x * (PI / 180)` fo
 Evidence: probes/radians-sqrtpi-munit (excel-graph, 2026-10-13, T-1282).
 Status: VERIFIED. Ours: `fn_sqrtpi` (mathematical.rs) reads booleans as errors and lifts, `fn_munit` (matrix.rs) lifts through `lift_number_operands`; SQRTPI's static result is `scalar_arguments` since it can return an array.
 Tasks: T-1282
+
+## Trig of a huge angle
+SIN, COS, TAN, COT, SEC and CSC return `#NUM!` when |x| >= 2^27 (134217728); 2^27-1 still gives a
+number, and the cut is the same for negative arguments and for 1E+300. The error is a real error
+(`ISERROR(N(SIN(1E+15)))` is TRUE). Evidence: probes/trig-huge-argument (T-1201). The hyperbolic
+functions are unaffected (COSH(1E+15) is `#NUM!` only through overflow).
