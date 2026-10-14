@@ -16,7 +16,8 @@ use crate::{
     limits::check_array_size,
     model::Model,
     reference_operators::{
-        empty_intersection, names_other_workbook, several_areas_ref, too_many_areas, MAX_AREAS,
+        empty_intersection, names_other_workbook, several_areas, several_areas_ref, too_many_areas,
+        Picked, MAX_AREAS,
     },
 };
 
@@ -159,6 +160,39 @@ impl ExternalArea {
     }
 }
 
+/// Whether `node` is an IF or CHOOSE one of whose value arguments may stand for a reference into
+/// another workbook ([`may_be_external`]): only then does [`Model::pick_branch`] read its
+/// condition or index ahead of the caller.
+fn may_pick_external(node: &Node) -> bool {
+    match node.ungrouped() {
+        Node::FunctionKind {
+            kind: Function::If | Function::Choose,
+            args,
+        } => args.iter().skip(1).any(may_be_external),
+        _ => false,
+    }
+}
+
+/// Whether `node` may stand for a reference into another workbook, from its form alone: such a
+/// reference written, an external name, or INDEX, a reference operator, IF or CHOOSE over one.
+/// Bounded by the parser's depth cap.
+fn may_be_external(node: &Node) -> bool {
+    match node.ungrouped() {
+        Node::WrongReferenceKind { sheet_name, .. } | Node::WrongRangeKind { sheet_name, .. } => {
+            names_other_workbook(sheet_name.as_deref())
+        }
+        Node::DefinedNameKind((name, ..)) => name.starts_with('['),
+        Node::FunctionKind {
+            kind: Function::Index,
+            args,
+        } => args.first().is_some_and(may_be_external),
+        Node::OpUnionKind { left, right, .. } | Node::OpIntersectKind { left, right, .. } => {
+            may_be_external(left) || may_be_external(right)
+        }
+        node => may_pick_external(node),
+    }
+}
+
 /// The areas a reference into another workbook stands for, or the result it gives instead
 /// ([`Model::external_reference`]).
 pub(crate) type ExternalAreas = Result<Vec<ExternalArea>, CalcResult>;
@@ -222,6 +256,65 @@ impl Model {
                 self.external_intersection(left, right, cell)
             }
             _ => None,
+        }
+    }
+
+    /// `node` with every IF and CHOOSE at its root that may pick a reference into another
+    /// workbook ([`may_pick_external`]) replaced by the argument it picks, each condition and
+    /// index read once: an IF or CHOOSE picking such a reference is that reference
+    /// (`ROWS(IF(TRUE,…!A1:B3))` is 3, `ISREF(CHOOSE(1,…!A1))` TRUE, `COUNTA(IF(TRUE,…!A1:B2))`
+    /// 0; probes/external-ref-no-link-index A25, external-ref-no-link-ifchoose). A caller reads
+    /// the picked node in place of `node`, so nothing is evaluated twice; any other `node` comes
+    /// back unread. Bounded by the parser's depth cap.
+    pub(crate) fn pick_branch<'a>(
+        &mut self,
+        node: &'a Node,
+        cell: CellReferenceIndex,
+    ) -> Picked<'a> {
+        let mut node = node.ungrouped();
+        loop {
+            let picked = match node {
+                Node::FunctionKind {
+                    kind: Function::If,
+                    args,
+                } if may_pick_external(node) => self.if_pick(args, cell),
+                Node::FunctionKind {
+                    kind: Function::Choose,
+                    args,
+                } if may_pick_external(node) => self.choose_pick(args, cell),
+                _ => return Picked::Node(node),
+            };
+            match picked {
+                Picked::Node(branch) => node = branch.ungrouped(),
+                value @ Picked::Value(_) => return value,
+            }
+        }
+    }
+
+    /// What `node` reads as in a value context when IF or CHOOSE picked it and it is a reference
+    /// into another workbook ([`Model::external_reference`]): one area as the cells INDEX picks
+    /// ([`Model::external_picked_value`]), several `#VALUE!`. `None` for any other `node`, unread.
+    pub(crate) fn external_reference_picked_value(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        let areas = self.external_reference(node, cell)?;
+        Some(self.external_areas_value(areas, cell))
+    }
+
+    /// The value of the areas a reference into another workbook stands for, picked by INDEX, an
+    /// intersection, IF or CHOOSE: one area's cells read at once (`ERROR.TYPE(…!A1 …!A1:B2)` is
+    /// `#N/A`, probes/external-ref-no-link-index A36), several `#VALUE!`.
+    pub(crate) fn external_areas_value(
+        &self,
+        areas: ExternalAreas,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match areas.as_deref() {
+            Ok([area]) => self.external_picked_value(*area, cell),
+            Ok(_) => several_areas(cell),
+            Err(error) => error.clone(),
         }
     }
 

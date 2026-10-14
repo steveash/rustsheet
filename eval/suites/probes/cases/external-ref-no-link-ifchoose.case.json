@@ -1,0 +1,54 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "External-workbook references with no externalLink part picked by IF and CHOOSE: what reference functions, aggregates and value contexts read (T-1487), and the T-1454 unverified union, intersection, OFFSET and lifted-INDEX forms.",
+  "tags": [
+    "M2",
+    "references",
+    "external-reference",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ROWS(CHOOSE(1,'[other.xlsx]Sheet1'!A1:B3))",
+        "A2": "=ERROR.TYPE(CHOOSE(1,'[other.xlsx]Sheet1'!A1))",
+        "A3": "=SUM(IF(TRUE,'[other.xlsx]Sheet1'!A1))",
+        "A4": "=COUNTA(IF(TRUE,'[other.xlsx]Sheet1'!A1:B2))",
+        "A5": "=COUNTA(('[other.xlsx]Sheet1'!A1,'[other.xlsx]Sheet1'!E1))",
+        "A6": "=COUNTA('[other.xlsx]Sheet1'!A1:B3 '[other.xlsx]Sheet1'!D4:E5)",
+        "A7": "=OFFSET('[other.xlsx]Sheet1'!A1,1/0,1)",
+        "A8": "=ROWS(IF(TRUE,'[other.xlsx]Sheet1'!A1))",
+        "A9": "=ISREF(IF(TRUE,'[other.xlsx]Sheet1'!A1))",
+        "A10": "=ISREF(CHOOSE(1,'[other.xlsx]Sheet1'!A1:B3))",
+        "A11": "=IF(TRUE,'[other.xlsx]Sheet1'!A1)",
+        "A12": "=CHOOSE(1,'[other.xlsx]Sheet1'!A1)",
+        "A13": "=IF(TRUE,'[other.xlsx]Sheet1'!A1)&\"x\"",
+        "A14": "=ROWS(IF(FALSE,'[other.xlsx]Sheet1'!A1:B3,A1:C1))",
+        "A15": "=ROWS(IF(FALSE,'[other.xlsx]Sheet1'!A1:B3))",
+        "A16": "=ROWS(IF({TRUE,FALSE},'[other.xlsx]Sheet1'!A1:B3,'[other.xlsx]Sheet1'!A1:B3))",
+        "A17": "=AREAS(IF(TRUE,('[other.xlsx]Sheet1'!A1,'[other.xlsx]Sheet1'!B2)))",
+        "A18": "=COUNTA(CHOOSE(1,'[other.xlsx]Sheet1'!A1))",
+        "A19": "=COLUMNS(CHOOSE(2,A1,'[other.xlsx]Sheet1'!A1:C1))",
+        "A20": "=SUM(CHOOSE(1,'[other.xlsx]Sheet1'!A1:B2))",
+        "A21": "=ISBLANK(IF(TRUE,'[other.xlsx]Sheet1'!A1))",
+        "A22": "=ERROR.TYPE(INDEX(IF(TRUE,'[other.xlsx]Sheet1'!A1:C4),2,2))",
+        "A23": "=ROWS(INDEX(IF(TRUE,'[other.xlsx]Sheet1'!A1:C4),2,0))",
+        "A24": "=COUNTBLANK(IF(TRUE,'[other.xlsx]Sheet1'!A1:B2))",
+        "A25": "=ROW(IF(TRUE,'[other.xlsx]Sheet1'!B3))",
+        "A26": "=ROWS(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1:B3)))",
+        "A27": "=ROWS(IF(TRUE,IF(FALSE,A1,'[other.xlsx]Sheet1'!A1:B3)))",
+        "A28": "=ERROR.TYPE(IF(TRUE,'[other.xlsx]Sheet1'!A1)+1)",
+        "A29": "=IF(TRUE,'[other.xlsx]Sheet1'!A1)+1",
+        "A30": "=COUNTA(IF(TRUE,'[other.xlsx]Sheet1'!A1),1)",
+        "A31": "=ISREF(IF(TRUE,'[other.xlsx]Sheet1'!A1:B3,A1))",
+        "A32": "=ROWS(CHOOSE({1,2},'[other.xlsx]Sheet1'!A1:B3,A1))",
+        "A33": "=ERROR.TYPE(IF(TRUE,'[other.xlsx]Sheet1'!A1:B3))",
+        "A34": "=SUM(IF(TRUE,'[other.xlsx]Sheet1'!A1:B3,A1))",
+        "H1": "=INDEX('[other.xlsx]Sheet1'!A1:C4,{1,2},1)",
+        "J1": "=IF(TRUE,'[other.xlsx]Sheet1'!A1:B2)",
+        "M1": "=CHOOSE(1,'[other.xlsx]Sheet1'!A1:B2)"
+      }
+    }
+  ]
+}
