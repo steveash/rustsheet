@@ -21,6 +21,7 @@ pub(crate) struct SeenRange {
 }
 
 impl SeenRange {
+    /// Whether the position `(sheet, row, column)` lies inside the rectangle.
     pub(crate) fn contains(&self, (sheet, row, column): CellKey) -> bool {
         sheet == self.sheet
             && (self.row1..=self.row2).contains(&row)
