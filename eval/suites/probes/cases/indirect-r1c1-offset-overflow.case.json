@@ -1,0 +1,28 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "INDIRECT R1C1 relative offsets that leave the sheet: wrap modulo the sheet size or clamp (T-0960)",
+  "tags": ["M9", "probe", "indirect"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "D1": "clampTop",
+        "D1048571": "wrapTop",
+        "D1048576": "clampBottom",
+        "D14": "wrapBottom",
+        "A5": "clampLeft",
+        "XFB5": "wrapLeft",
+        "XFD6": "clampRight",
+        "B6": "wrapRight",
+        "D15": "=INDIRECT(\"R[-20]C\",FALSE)",
+        "D30": "=INDIRECT(\"R[1048560]C\",FALSE)",
+        "C5": "=INDIRECT(\"RC[-5]\",FALSE)",
+        "C6": "=INDIRECT(\"RC[16383]\",FALSE)",
+        "E15": "=INDIRECT(\"R[-1048575]C[-1]\",FALSE)",
+        "E16": "=INDIRECT(\"R[-1048576]C\",FALSE)",
+        "E17": "=INDIRECT(\"RC[-16384]\",FALSE)"
+      }
+    }
+  ],
+  "expected": {}
+}

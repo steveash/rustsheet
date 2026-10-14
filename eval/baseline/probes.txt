@@ -246,6 +246,7 @@ C	probes/index-lifted-edge-cases.case.json	61
 C	probes/index-single-index.case.json	6
 C	probes/index-snap-tolerance.case.json	67
 C	probes/index-tiny-negative.case.json	150
+C	probes/indirect-r1c1-offset-overflow.case.json	7
 C	probes/indirect-text-broadcast.case.json	58
 C	probes/info-cell-contents-range.case.json	50
 C	probes/info-logic-argument-modes-2.case.json	11
