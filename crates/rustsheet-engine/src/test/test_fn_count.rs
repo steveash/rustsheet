@@ -101,6 +101,9 @@ fn test_fn_countblank_of_a_value_is_value_error() {
     model._set("A2", "=COUNTBLANK(IF({1;1},D1:D2))");
     model._set("A5", "=COUNTBLANK(CHOOSE(1,\"\"))");
     model._set("A6", "=COUNTBLANK(INDEX(D1:D5,2))");
+    model._set("D6", "=NA()");
+    model._set("A8", "=COUNTBLANK(INDEX(D1:D6,{5,6}))");
+    model._set("A10", "=COUNTBLANK(CHOOSE({1,2},D1:D2,D3:D4))");
     model.evaluate();
 
     for cell in ["A1", "B1", "C1", "A2", "A3", "A5"] {
@@ -108,4 +111,10 @@ fn test_fn_countblank_of_a_value_is_value_error() {
     }
     // A single picked cell is still a reference.
     assert_eq!(model._get_text("A6"), *"1");
+    // An error element keeps its error.
+    assert_eq!(model._get_text("A8"), *"#VALUE!");
+    assert_eq!(model._get_text("B8"), *"#N/A");
+    // CHOOSE with an array index spills (2x2 in Excel; the engine's CHOOSE grid is 1x2, T-1508).
+    assert_eq!(model._get_text("A10"), *"#VALUE!");
+    assert_eq!(model._get_text("B10"), *"#VALUE!");
 }

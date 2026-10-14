@@ -138,9 +138,9 @@ pub(crate) enum RefArg {
     Value(CalcResult),
 }
 
-/// What an array stands for where a function takes a reference (SUBTOTAL, AREAS): `#VALUE!`
-/// per element, an element that is an error kept (`SUBTOTAL(9,IF(TRUE,{1,#N/A}))` is `#VALUE!`,
-/// `#N/A`; probes/subtotal-reference-operands, T-1163).
+/// What an array stands for where a function takes a reference (SUBTOTAL, AREAS, COUNTBLANK):
+/// `#VALUE!` per element, an element that is an error kept (`SUBTOTAL(9,IF(TRUE,{1,#N/A}))` is
+/// `#VALUE!`, `#N/A`; probes/subtotal-reference-operands, T-1163; probes/countblank-array-values).
 pub(crate) fn not_a_reference_array(rows: Vec<Vec<ArrayNode>>) -> CalcResult {
     CalcResult::Array(
         rows.into_iter()

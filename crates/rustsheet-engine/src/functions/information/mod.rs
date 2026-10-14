@@ -11,12 +11,23 @@ use crate::{
         types::CellReferenceIndex,
         utils::number_to_column,
     },
-    functions::util::{array_node_to_calc_result, map_elements},
+    functions::util::array_node_to_calc_result,
     get_all_timezones,
     limits::check_range_size,
     model::Model,
     reference_operators::{external_area, RefArg},
 };
+
+/// Applies `f` to every element of a 2-D array, keeping its shape.
+fn map_elements(
+    values: &[Vec<ArrayNode>],
+    f: impl Fn(&ArrayNode) -> ArrayNode,
+) -> Vec<Vec<ArrayNode>> {
+    values
+        .iter()
+        .map(|row| row.iter().map(&f).collect())
+        .collect()
+}
 
 /// An argument that lifts: a multi-cell range or an array gives its values, anything else
 /// (a one-cell range included) a single value.

@@ -2,12 +2,12 @@ use crate::calc_result::Range;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::{error_array, is_span_or_if_of_span};
-use crate::reference_operators::RefArg;
+use crate::functions::util::is_span_or_if_of_span;
+use crate::reference_operators::{not_a_reference_array, RefArg};
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// COUNTBLANK's `#VALUE!` for an argument that is not a reference.
-fn not_a_reference(cell: CellReferenceIndex) -> CalcResult {
+fn countblank_needs_reference(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(
         Error::VALUE,
         cell,
@@ -153,13 +153,13 @@ impl Model {
                 match value {
                     error @ CalcResult::Error { .. } => return error,
                     range @ CalcResult::Range { .. } => range,
-                    _ => return not_a_reference(cell),
+                    _ => return countblank_needs_reference(cell),
                 }
             } else {
                 match self.defined_name_range_operand(arg, cell) {
                     range @ CalcResult::Range { .. } => range,
                     error @ CalcResult::Error { .. } => return error,
-                    _ => return not_a_reference(cell),
+                    _ => return countblank_needs_reference(cell),
                 }
             };
             match value {
@@ -192,8 +192,8 @@ impl Model {
                 // to one `#VALUE!` per element: a lifted INDEX, CHOOSE or IF with an array
                 // condition, and `CHOOSE(1,5)` or `CHOOSE(1,"")` (probes/countblank-array-values,
                 // probes/index-lifted-edge-cases H131, excel-graph 2026-10-13, T-1437).
-                CalcResult::Array(values) => return error_array(&values, &Error::VALUE),
-                _ => return not_a_reference(cell),
+                CalcResult::Array(values) => return not_a_reference_array(values),
+                _ => return countblank_needs_reference(cell),
             };
         }
         CalcResult::Number(result)

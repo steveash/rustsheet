@@ -14,9 +14,9 @@ use crate::{
     model::Model,
 };
 
-use super::Lifted;
+use super::{map_elements, Lifted};
 use crate::arithmetic::bcast_idx;
-use crate::functions::util::{array_node_to_calc_result, error_array, map_elements};
+use crate::functions::util::array_node_to_calc_result;
 use crate::limits::check_array_size;
 
 /// Whether IMAGE `source` text is URL-shaped and so reaches the (never performed) fetch (narrower
@@ -98,6 +98,14 @@ fn image_error(source: &ArrayNode, valid: bool) -> Error {
         ArrayNode::String(text) if valid && is_url(text) => Error::BLOCKED,
         _ => Error::VALUE,
     }
+}
+
+/// An array of `error` with the shape of `values` (an element that is already an error stays).
+fn error_array(values: &[Vec<ArrayNode>], error: &Error) -> CalcResult {
+    CalcResult::Array(map_elements(values, |v| match v {
+        ArrayNode::Error(_) => v.clone(),
+        _ => ArrayNode::Error(error.clone()),
+    }))
 }
 
 impl Model {

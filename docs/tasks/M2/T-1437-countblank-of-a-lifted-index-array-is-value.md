@@ -34,8 +34,8 @@ COUNTBLANK of any argument that is a value rather than a reference is `#VALUE!`;
 `#VALUE!` array of its shape (an error element keeps its error). New probe probes/countblank-array-values (35 cells,
 excel-graph) established the general rule: lifted INDEX shapes, CHOOSE and IF with array conditions, `CHOOSE(1,5)` and
 `CHOOSE(1,"")` (the old code counted an empty-string value as blank). Static analysis now lets COUNTBLANK spill
-(`reference_parameter.rs`, shared with RANK, plus a CHOOSE-with-array-index case). `error_array` and `map_elements`
-moved to functions/util.rs for reuse.
+(`reference_parameter.rs`, shared with RANK, plus a CHOOSE-with-array-index case). The array result reuses
+`not_a_reference_array` (reference_operators.rs, shared with SUBTOTAL and AREAS).
 Eval delta: probes/index-lifted-edge-cases H131:J131 fixed; new case 30/35 passing; 0 regressions. Remaining cells
 filed: T-1507 (1x1 array index to INDEX is still a reference, H1) and T-1508 (CHOOSE with an array index over range
 arms gives the wrong grid shape, H21/I21, H35/I35).
