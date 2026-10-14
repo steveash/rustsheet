@@ -3,7 +3,7 @@ id: T-0419
 title: "xlsx export writes theme tints at full precision and rows that only carry a height or hidden flag (port ironcalc 306daf40, f428b2eb)"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
