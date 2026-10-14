@@ -3,7 +3,7 @@ id: T-1509
 title: "Probe ISREF of @XLOOKUP and @TAKE (implicit intersection keeps the reference?)"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1506 made `ISREF(@INDEX(range,n))` TRUE (`is_reference` in functions/informati
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/isref-implicit-xlookup-take` (11 cells, excel-graph). `eval_at_picked_reference` keeps the picked cell of `@XLOOKUP`/`@TAKE` a reference for ISREF and LET binding only; the other `eval_ref_or_index` callers are unchanged and unprobed (follow-up T-1527). Probe 11/11; the `@INDEX` multi/fail shapes already matched. Quirk recorded in references.md.

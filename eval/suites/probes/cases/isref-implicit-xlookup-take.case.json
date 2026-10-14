@@ -1,0 +1,47 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ISREF of @XLOOKUP, @TAKE and multi-cell/failing @INDEX, plain and LET-bound (T-1509). Sheet1 A1:B3 = 1,2,3 / 10,20,30.",
+  "tags": [
+    "M1",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "H1": "=ISREF(@XLOOKUP(2,A1:A3,B1:B3))",
+        "H2": "=ISREF(XLOOKUP(2,A1:A3,B1:B3))",
+        "H3": "=ISREF(@TAKE(B1:B3,1))",
+        "H4": "=ISREF(TAKE(B1:B3,1))",
+        "H5": "=LET(x,@XLOOKUP(2,A1:A3,B1:B3),ISREF(x))",
+        "H6": "=LET(x,@TAKE(B1:B3,1),ISREF(x))",
+        "H7": "=ISREF(@INDEX(B1:C3,0,1))",
+        "H8": "=ISREF(@INDEX(B1:B3,9))",
+        "H9": "=LET(x,@INDEX(B1:C3,0,1),ISREF(x))",
+        "H10": "=LET(x,@INDEX(B1:B3,9),ISREF(x))",
+        "H11": "=ISREF(@TAKE(B1:B3,2))"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!H4",
+    "Sheet1!H5",
+    "Sheet1!H6",
+    "Sheet1!H7",
+    "Sheet1!H8",
+    "Sheet1!H9",
+    "Sheet1!H10",
+    "Sheet1!H11"
+  ]
+}

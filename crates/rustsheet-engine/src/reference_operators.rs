@@ -342,6 +342,29 @@ impl Model {
         CalcResult::new_error(error, cell, message.to_string())
     }
 
+    /// `@XLOOKUP(..)` / `@TAKE(..)`: the one cell they pick stays a reference, `None` for any
+    /// other node. Only ISREF and LET binding use it (probes/isref-implicit-xlookup-take H1, H3,
+    /// H5, H6, excel-graph; T-1509): the spill-anchor and LOOKUP callers of `eval_ref_or_index`
+    /// have no evidence for these forms and keep their value reading.
+    pub(crate) fn eval_at_picked_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        let Node::ImplicitIntersection { child, .. } = node.ungrouped() else {
+            return None;
+        };
+        let Node::FunctionKind {
+            kind: kind @ (Function::Xlookup | Function::Take),
+            args,
+        } = child.ungrouped()
+        else {
+            return None;
+        };
+        let picked = self.evaluate_reference_form(kind, args, cell)?;
+        Some(Self::intersect_reference(picked, cell))
+    }
+
     /// A reference-context operand: a reference, or an INDEX that selects one cell, which stays
     /// a reference: the anchor of `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109),
     /// a lookup index argument and LOOKUP's `result_vector` (probes/lookup-vector-edges A9, A12).

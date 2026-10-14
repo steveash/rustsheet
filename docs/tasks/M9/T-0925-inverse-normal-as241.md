@@ -14,6 +14,7 @@ depends_on: [T-1006]
 NORM.S.INV, NORM.INV, LOGNORM.INV, CONFIDENCE.NORM (and the NORM-based part of CONFIDENCE.T inputs where applicable) return Excel's values, using one shared accurate inverse-normal routine.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 11 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Oracle-free: Excel's cached values are the exact quantiles, ours (statrs `Normal::inverse_cdf`, which goes through a lower-accuracy erf_inv) are off by ~1e-11.
 - `ironcalc-calc/STATISTICAL/NORM_DIST.xlsx` `NORM.S.DIST NORM.S.INV!D2` `=NORM.S.INV(C2)` expected 1.3333330000000008, actual 1.3333329999747054; `D4` expected 0.8000000000000002 actual 0.7999999999297425. NORM.S.INV 35 cells, NORM.INV 29 cells (incl. 2 NumericMismatch).
 - `ironcalc-calc/STATISTICAL/LOGNORM.xlsx` `LOGNORM.DIST LOGNORM.INV!F2` expected 4.000000000000003 actual 4.000000000091908 (31 cells).

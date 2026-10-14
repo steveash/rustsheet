@@ -15,6 +15,7 @@ T.INV, T.INV.2T and CONFIDENCE.T return Excel's values from one Student-t quanti
 the T-0969 CDF kernel.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 5 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Triage T-0903. Kernel: `statrs::distribution::StudentsT::inverse_cdf`, which calls statrs'
 `inv_beta_reg(df/2, 0.5, 2p)` and back-transforms (`sqrt(df(1-y)/y)`), losing precision near p = 0.5.
 Code: `functions/statistical/t_dist.rs` (`fn_t_inv`, `fn_t_inv_2t`), `functions/statistical/normal.rs`
