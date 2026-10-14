@@ -96,23 +96,52 @@ pub(crate) fn extended_quotient(x: f64, y: f64) -> f64 {
 /// `x * y` rounded twice, first to a 64-bit significand and then to a double, like
 /// [`extended_quotient`] (docs/excel-semantics/numbers.md "Division rounds twice",
 /// probes-numeric/double-rounding-ops A1-A16, excel-graph). The exact 106-bit product is rounded to
-/// 64 bits and then to 53. A product that is not a normal double, and any non-finite or zero
-/// operand, is the plain `x * y`.
+/// 64 bits and then to 53. A zero or non-finite operand or product is the plain `x * y`.
+/// The range edges follow the same two roundings (probes-numeric/double-rounding-range-edges): a
+/// product just under the midpoint between `f64::MAX` and 2^1024 rounds up to 2^1024 and is
+/// infinite (`#NUM!`), and one just under the midpoint between the largest subnormal and 2^-1022
+/// is 2^-1022. A subnormal product is rounded on the 2^-1074 grid (callers flush it to 0 unless it reaches 2^-1022).
 pub(crate) fn extended_product(x: f64, y: f64) -> f64 {
     let plain = x * y;
-    if !plain.is_normal() || !x.is_normal() || !y.is_normal() {
+    if plain == 0.0 || !plain.is_finite() || !x.is_normal() || !y.is_normal() {
         return plain;
     }
     let (x_significand, x_exponent) = significand_and_exponent(x);
     let (y_significand, y_exponent) = significand_and_exponent(y);
     let product = u128::from(x_significand) * u128::from(y_significand);
     let (extended, shift) = round_to_bits(product, 64, false);
-    round_extended_to_double(
-        extended,
-        x_exponent + y_exponent + shift,
-        x.is_sign_negative() != y.is_sign_negative(),
-    )
-    .unwrap_or(plain)
+    let negative = x.is_sign_negative() != y.is_sign_negative();
+    match round_extended_to_double(extended, x_exponent + y_exponent + shift, negative) {
+        Some(rounded) => rounded,
+        // A plain `f64::MAX` with no double-rounded double means the exponent ran past the top.
+        None if plain.abs() == f64::MAX => f64::INFINITY.copysign(plain),
+        None if plain.abs() < f64::MIN_POSITIVE => {
+            round_extended_to_subnormal(extended, x_exponent + y_exponent + shift, negative)
+                .unwrap_or(plain)
+        }
+        None => plain,
+    }
+}
+
+/// The 64-bit `extended·2^exponent` rounded, ties to even, to a multiple of 2^-1074 (a subnormal
+/// has fewer than 53 bits, so a tie of the second rounding is a tie on that grid, not on 53 bits),
+/// or `None` when the grid is not coarser than the value or the result is zero.
+fn round_extended_to_subnormal(extended: u128, exponent: i32, negative: bool) -> Option<f64> {
+    let drop = u32::try_from(-1074 - exponent)
+        .ok()
+        .filter(|d| (1..128).contains(d))?;
+    let mut units = extended >> drop;
+    let dropped = extended & ((1 << drop) - 1);
+    let half = 1 << (drop - 1);
+    if dropped > half || (dropped == half && units & 1 == 1) {
+        units += 1;
+    }
+    let units = u64::try_from(units)
+        .ok()
+        .filter(|u| *u != 0 && *u <= 1 << 52)?;
+    // `units` is at most 2^52, so it converts exactly and 2^-1074 is a subnormal power of two.
+    let magnitude = units as f64 * f64::from_bits(1);
+    Some(if negative { -magnitude } else { magnitude })
 }
 
 /// Whether `plain = x + y` can differ from the twice-rounded sum. The rounding error `e` of the
@@ -847,136 +876,4 @@ impl Model {
 }
 
 #[cfg(test)]
-mod power_tests {
-    use super::{
-        divide, extended_product, extended_quotient, extended_sum, minus, plus, power, times,
-    };
-    use crate::expressions::token::Error;
-
-    // probes-numeric/double-rounding-ops A33 (excel-graph, T-1496): a sum whose single rounding is
-    // the next double up.
-    #[test]
-    fn sum_rounds_twice() {
-        let a = 1.0 + 256_568_457_449_524.0 * f64::EPSILON;
-        let b = (1.0 + 26_897_232_841_496.0 * f64::EPSILON) * 2f64.powi(-32);
-        assert_eq!(plus(a, b), Ok(1.056_969_642_004_825_3));
-        assert_eq!(minus(a, -b), Ok(1.056_969_642_004_825_3));
-        assert_eq!(plus(-a, -b), Ok(-1.056_969_642_004_825_3));
-        // Mixed signs with partial cancellation, and the 70-bit gap boundary.
-        assert_eq!(plus(a, -(b / 2.0)), Ok(a - b / 2.0));
-        assert_eq!(extended_sum(1.0, 2f64.powi(-70)), 1.0);
-        assert_eq!(extended_sum(1.0, 1e-300), 1.0);
-        assert_eq!(extended_sum(0.5, -0.5), 0.0);
-        assert_eq!(extended_sum(0.0, 5.0), 5.0);
-        assert_eq!(extended_sum(f64::MAX, f64::MAX), f64::INFINITY);
-    }
-
-    // probes-numeric/double-rounding-ops A1 (excel-graph, T-1496): a full-significand product whose
-    // single rounding is a different double.
-    #[test]
-    fn product_rounds_twice() {
-        let a = 1.0 + 57_546_701_686_154.0 * f64::EPSILON;
-        let b = 1.0 + 791_744_674_158_799.0 * f64::EPSILON;
-        assert_eq!(times(a, b), Ok(1.190_826_962_574_648_4));
-        assert_eq!(extended_product(-a, b), -1.190_826_962_574_648_4);
-        assert_eq!(extended_product(3.0, 0.5), 1.5);
-        assert_eq!(extended_product(0.0, 5.0), 0.0);
-        assert_eq!(extended_product(1e200, 1e200), f64::INFINITY);
-    }
-
-    // Excel's doubles where rounding 1/r once gives the next double up
-    // (probes-numeric/power-reciprocal-rounding A4, A8, A49, A55, A61, A71, A72; excel-graph).
-    #[test]
-    fn division_rounds_twice() {
-        let r = 1.0 + 26_955_297_717_044.0 * f64::EPSILON;
-        assert_eq!(divide(1.0, r), Ok(0.994_050_331_987_417));
-        assert_eq!(power(r, -1.0), Ok(0.994_050_331_987_417));
-        let r = 1.0 + 780_397_999_260_180.0 * f64::EPSILON;
-        assert_eq!(divide(1.0, r), Ok(0.852_309_169_230_683_7));
-        assert_eq!(divide(-1.0, r), Ok(-0.852_309_169_230_683_7));
-        let r = 1.0 + 420_768_487_504_071.0 * f64::EPSILON;
-        assert_eq!(power(r, -3.0), Ok(0.764_940_740_225_364_1));
-        let r = 1.0 + 368_921_494_764_048.0 * f64::EPSILON;
-        assert_eq!(power(r, -0.5), Ok(0.961_397_574_339_056_6));
-        let r = 1.0 + 795_749_138_188_910.0 * f64::EPSILON;
-        assert_eq!(power(r, -0.3), Ok(0.952_360_077_234_193_6));
-        assert_eq!(divide(1.0, 2.0 - f64::EPSILON), Ok(0.5));
-        assert_eq!(power(8.0, -1.0 / 3.0), Ok(0.5));
-        assert_eq!(power(-8.0, -1.0 / 3.0), Ok(-0.5));
-    }
-
-    // Away from a double midpoint the quotient is the correctly rounded one, at every scale.
-    #[test]
-    fn extended_quotient_is_the_plain_quotient_elsewhere() {
-        for k in 1..2_000_u32 {
-            // A divisor with a full significand, as the probe writes it: 1 + k·2^-52.
-            let y = 1.0 + f64::from(k * 1_000_003) * f64::EPSILON;
-            for x in [1.0, -3.5, 1e300, 7e-300, 0.1] {
-                let plain = x / y;
-                let twice = extended_quotient(x, y);
-                // At most one ulp apart: the second rounding only moves a midpoint tie.
-                assert!((twice - plain).abs() <= plain.abs() * f64::EPSILON);
-            }
-        }
-        assert_eq!(extended_quotient(6.0, 3.0), 2.0);
-        assert_eq!(extended_quotient(1.0, 3.0), 1.0 / 3.0);
-        assert_eq!(extended_quotient(1e-308, 1e10), 1e-308 / 1e10);
-        assert!(extended_quotient(1e308, 1e-10).is_infinite());
-        assert_eq!(extended_quotient(1.0, f64::INFINITY), 0.0);
-    }
-
-    // Excel, for negative and positive bases alike (probes-numeric/power-negative-base-range,
-    // power-odd-roots A157-A162).
-    #[test]
-    fn integer_powers_out_of_range() {
-        assert_eq!(power(-0.1, 401.0), Ok(0.0));
-        assert_eq!(power(-0.1, -401.0), Err(Error::DIV));
-        assert_eq!(power(-0.1, -400.0), Err(Error::DIV));
-        assert_eq!(power(-1e-10, -31.0), Err(Error::DIV));
-        assert_eq!(power(-0.5, -1075.0), Err(Error::DIV));
-        assert_eq!(power(-10.0, 401.0), Err(Error::NUM));
-        assert_eq!(power(-10.0, -401.0), Ok(0.0));
-        assert_eq!(power(-2.0, -1074.0), Ok(0.0));
-        assert_eq!(power(-1e200, -2.0), Ok(0.0));
-    }
-
-    // Oracle doubles: gen-m1/6462bf910ef9f28f A33, gen-m1/57fe331cb7611dbf A104, gen-m2
-    // f0d1bacec5de8146 A196 (docs/excel-semantics/numbers.md "Integer exponents").
-    #[test]
-    fn integer_exponents_use_square_and_multiply() {
-        assert_eq!(power(1e-15, 3.0), Ok(1.000_000_000_000_000_1e-45));
-        assert_eq!(power(3.25, 100.0), Ok(1.54289402744788e+51));
-        assert_eq!(power(100.0, 100.0), Ok(1.000_000_000_000_000_5e200));
-        assert_eq!(power(2.0, -2.0), Ok(0.25));
-        assert_eq!(power(-2.0, 3.0), Ok(-8.0));
-    }
-
-    #[test]
-    fn special_cases_keep_the_general_path() {
-        assert_eq!(power(0.0, -1.0), Err(Error::DIV));
-        assert_eq!(power(0.0, 0.0), Err(Error::NUM));
-        // Excel's cached -1.9999999999999998 (ironcalc-calc POWER.xlsx Sheet1!D3, F9), exp(ln 8/3).
-        assert_eq!(power(-8.0, 1.0 / 3.0), Ok(-1.999_999_999_999_999_8));
-        assert_eq!(power(10.0, 400.0), Err(Error::NUM));
-        assert_eq!(power(-0.0, 0.5), Ok(0.0));
-        assert_eq!(power(0.0, -0.5), Err(Error::DIV));
-        // The positive power underflows, so Excel's 1/x^|y| is #DIV/0! (sweep A141, A186).
-        assert_eq!(power(1e-10, -33.5), Err(Error::DIV));
-        assert_eq!(power(0.1, -400.0), Err(Error::DIV));
-    }
-
-    // Excel's doubles, where libm `pow` differs (probes-numeric/power-non-integer-sweep A17, A42,
-    // A75; gen-m1/6462bf910ef9f28f Calc!A41, A207; gen-m2/1b6ceed7489e0800 Calc!A62).
-    #[test]
-    fn non_integer_exponents_use_exp_of_y_ln_x() {
-        assert_eq!(power(3.0, -0.5), Ok(0.577_350_269_189_625_8));
-        // One ulp below the double nearest √2.
-        let below_sqrt_2 = f64::from_bits(std::f64::consts::SQRT_2.to_bits() - 1);
-        assert_eq!(power(0.5, -0.5), Ok(below_sqrt_2));
-        assert_eq!(power(2.0, -0.5), Ok(0.707_106_781_186_547_5));
-        assert_eq!(power(2.0, 0.5), Ok(std::f64::consts::SQRT_2));
-        assert_eq!(power(6.0, 2.5), Ok(88.181_630_740_194_38));
-        assert_eq!(power(10.0, 33.5), Ok(3.162_277_660_168_401e33));
-        assert_eq!(power(10.0, -33.5), Ok(3.162_277_660_168_357_6e-34));
-    }
-}
+mod power_tests;
