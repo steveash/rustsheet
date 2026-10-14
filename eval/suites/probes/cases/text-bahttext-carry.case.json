@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1270 BAHTTEXT satang carry, negative baht+satang, inner group ending in 1, argument count",
+ "description": "T-1270 BAHTTEXT satang carry, negative baht+satang, inner group ending in 1 (argument count deferred to M14)",
  "tags": [
   "M5",
   "probe",
