@@ -3,7 +3,7 @@ id: T-1477
 title: "count_ifs and apply_ifs share one range resolution and criteria walk (split from T-0408)"
 milestone: M2
 lane: quality
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
