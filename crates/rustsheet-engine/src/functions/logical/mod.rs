@@ -18,7 +18,7 @@ use crate::{
     },
     limits::check_array_size,
     model::Model,
-    reference_operators::RefArg,
+    reference_operators::{Picked, RefArg},
 };
 
 /// How IF hands back the branch a scalar condition chose.
@@ -155,41 +155,54 @@ impl Model {
         cell: CellReferenceIndex,
         mode: IfBranchMode,
     ) -> RefArg {
+        let node = match self.if_pick(args, cell) {
+            Picked::Node(node) => node,
+            Picked::Value(value) => return RefArg::Value(value),
+        };
+        match mode {
+            IfBranchMode::Aggregate => self.evaluate_reference_arg(node, cell),
+            IfBranchMode::SingleSheet => self.evaluate_single_sheet_arg(node, cell).into(),
+            IfBranchMode::Chosen => self.evaluate_chosen_reference(node, cell).into(),
+            // A reference into another workbook picked is read as INDEX reads the cell it picks:
+            // `IF(TRUE,…!A1)` is 0, `&"x"` "x", ERROR.TYPE `#N/A`, where the written `…!A1` is
+            // `#BLOCKED!` (probes/external-ref-no-link-index A26, external-ref-no-link-ifchoose).
+            IfBranchMode::Value => self
+                .external_reference_picked_value(node, cell)
+                .unwrap_or_else(|| self.evaluate_node_in_context(node, cell))
+                .into(),
+        }
+    }
+
+    /// What IF's condition picks: with a scalar condition the branch it chooses, unevaluated;
+    /// otherwise the value IF gives (the condition's error, FALSE for a missing branch, or IF
+    /// over an array condition, its branches evaluated).
+    pub(crate) fn if_pick<'a>(&mut self, args: &'a [Node], cell: CellReferenceIndex) -> Picked<'a> {
         if args.len() != 2 && args.len() != 3 {
-            return RefArg::Value(CalcResult::new_args_number_error(cell));
+            return Picked::Value(CalcResult::new_args_number_error(cell));
         }
         let cond_result = self.evaluate_node_in_context(&args[0], cell);
 
         // Normalize cond to a 2-D array, or take the scalar early-return path.
         let cond_array: Vec<Vec<ArrayNode>> = match cond_result {
-            error @ CalcResult::Error { .. } => return RefArg::Value(error),
+            error @ CalcResult::Error { .. } => return Picked::Value(error),
             CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
                 Ok(array) => array,
-                Err(error) => return RefArg::Value(error),
+                Err(error) => return Picked::Value(error),
             },
             CalcResult::Array(a) => a,
             other => {
-                // Scalar cond: cast to bool and evaluate the chosen branch directly.
+                // Scalar cond: cast to bool and pick the chosen branch.
                 // The branch result may itself be an array (it will spill).
-                let b = match self.cast_to_bool(other, cell) {
-                    Ok(b) => b,
-                    Err(e) => return RefArg::Value(e),
-                };
-                let branch = if b { args.get(1) } else { args.get(2) };
-                return match branch {
-                    Some(node) => match mode {
-                        IfBranchMode::Aggregate => self.evaluate_reference_arg(node, cell),
-                        IfBranchMode::SingleSheet => {
-                            self.evaluate_single_sheet_arg(node, cell).into()
-                        }
-                        IfBranchMode::Chosen => self.evaluate_chosen_reference(node, cell).into(),
-                        IfBranchMode::Value => self.evaluate_node_in_context(node, cell).into(),
-                    },
-                    None => RefArg::Value(CalcResult::Boolean(false)),
+                return match self.cast_to_bool(other, cell) {
+                    Ok(true) => Picked::Node(&args[1]),
+                    Ok(false) => args
+                        .get(2)
+                        .map_or(Picked::Value(CalcResult::Boolean(false)), Picked::Node),
+                    Err(error) => Picked::Value(error),
                 };
             }
         };
-        RefArg::Value(self.if_array(args, cond_array, cell))
+        Picked::Value(self.if_array(args, cond_array, cell))
     }
 
     /// IF over an array condition: one result per position, the branches broadcast.

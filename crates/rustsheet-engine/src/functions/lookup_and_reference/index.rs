@@ -7,7 +7,7 @@ use crate::functions::util::{
     array_node_to_calc_result, near_integer_count, NEAR_INTEGER_TOLERANCE,
 };
 use crate::limits::check_array_size;
-use crate::reference_operators::{three_d_needs_one_sheet, RefArg};
+use crate::reference_operators::{three_d_needs_one_sheet, Picked, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::{ArrayNode, Node},
@@ -221,7 +221,24 @@ impl Model {
             }
             Err(error) => return error,
         };
-        let arg = self.evaluate_reference_arg(&args[0], cell);
+        // INDEX into an IF or CHOOSE that picks a reference into another workbook picks from
+        // that reference (`ERROR.TYPE(INDEX(IF(TRUE,…!A1:C4),2,2))` is `#N/A`;
+        // probes/external-ref-no-link-ifchoose A22, A23). The pick reads the condition once,
+        // after the indices, as the reference is read otherwise.
+        let arg = match self.pick_branch(&args[0], cell) {
+            Picked::Node(reference) => {
+                if let Some(areas) = self.external_reference(reference, cell) {
+                    return match areas
+                        .and_then(|areas| external_index_area(&areas, numbers, two_arg, cell))
+                    {
+                        Ok(area) => self.external_picked_value(area, cell),
+                        Err(error) => error,
+                    };
+                }
+                self.evaluate_reference_arg(reference, cell)
+            }
+            Picked::Value(value) => RefArg::Value(value),
+        };
         self.index_select(&arg, numbers, two_arg, cell, form)
     }
 
@@ -279,34 +296,7 @@ impl Model {
             }
             Err(error) => return Some(Err(error)),
         };
-        // NaN is out of range too; in range the conversion below is exact.
-        let area = if numbers.area.is_nan() || numbers.area > areas.len() as f64 {
-            None
-        } else {
-            areas.get(numbers.area as usize - 1)
-        };
-        let Some(&area) = area else {
-            return Some(Err(CalcResult::new_error(
-                Error::REF,
-                cell,
-                "Area out of range".into(),
-            )));
-        };
-        let (num_rows, num_cols) = area.extent();
-        let Some((first_row, last_row, first_col, last_col)) =
-            index_window(num_rows, num_cols, numbers, args.len() == 2)
-        else {
-            return Some(Err(wrong_reference(cell)));
-        };
-        // Offsets within an area on the grid, so they fit an i32.
-        let offset = |first: i32, by: usize| first + by as i32;
-        Some(Ok(ExternalArea {
-            first_row: offset(area.first_row, first_row),
-            first_column: offset(area.first_column, first_col),
-            last_row: offset(area.first_row, last_row),
-            last_column: offset(area.first_column, last_col),
-            cache: area.cache,
-        }))
+        Some(external_index_area(&areas, numbers, args.len() == 2, cell))
     }
 
     /// The lifted INDEX: one scalar INDEX per broadcast element of the indices, the reference
@@ -460,4 +450,42 @@ impl Model {
             },
         }
     }
+}
+
+/// The area INDEX picks from `areas` of another workbook with `numbers` (`two_arg` when no
+/// `column_num` is given), or the error it gives: `#REF!` past the last area or the area's edge.
+fn external_index_area(
+    areas: &[ExternalArea],
+    numbers: IndexNumbers,
+    two_arg: bool,
+    cell: CellReferenceIndex,
+) -> Result<ExternalArea, CalcResult> {
+    // NaN is out of range too; in range the conversion below is exact.
+    let area = if numbers.area.is_nan() || numbers.area > areas.len() as f64 {
+        None
+    } else {
+        areas.get(numbers.area as usize - 1)
+    };
+    let Some(&area) = area else {
+        return Err(CalcResult::new_error(
+            Error::REF,
+            cell,
+            "Area out of range".into(),
+        ));
+    };
+    let (num_rows, num_cols) = area.extent();
+    let Some((first_row, last_row, first_col, last_col)) =
+        index_window(num_rows, num_cols, numbers, two_arg)
+    else {
+        return Err(wrong_reference(cell));
+    };
+    // Offsets within an area on the grid, so they fit an i32.
+    let offset = |first: i32, by: usize| first + by as i32;
+    Ok(ExternalArea {
+        first_row: offset(area.first_row, first_row),
+        first_column: offset(area.first_column, first_col),
+        last_row: offset(area.first_row, last_row),
+        last_column: offset(area.first_column, last_col),
+        cache: area.cache,
+    })
 }
