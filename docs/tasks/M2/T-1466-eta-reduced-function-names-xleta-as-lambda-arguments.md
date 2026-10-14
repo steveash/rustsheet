@@ -3,7 +3,7 @@ id: T-1466
 title: "Eta-reduced function names (_xleta.) as LAMBDA arguments; BYCOL(range,COUNTA) is #VALUE!"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
