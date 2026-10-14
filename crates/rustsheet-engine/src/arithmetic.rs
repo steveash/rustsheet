@@ -922,3 +922,6 @@ impl Model {
 
 #[cfg(test)]
 mod power_tests;
+
+#[cfg(test)]
+mod bcast_tests;
