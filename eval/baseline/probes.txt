@@ -793,13 +793,10 @@ F	probes/date-system-1904-financial-readers.case.json	S!E19
 F	probes/date-system-1904-financial-readers.case.json	S!E20
 F	probes/date-system-1904-financial-readers.case.json	S!E30
 F	probes/date-system-1904-financial-readers.case.json	S!E8
-F	probes/date-system-1904-financial-shift.case.json	S!A32
 F	probes/date-system-1904-financial-shift.case.json	S!A8
 F	probes/date-system-1904-financial.case.json	S!A14
 F	probes/date-system-1904-financial.case.json	S!A25
 F	probes/date-system-1904-financial.case.json	S!A27
-F	probes/date-system-1904-financial.case.json	S!A29
-F	probes/date-system-1904-financial.case.json	S!A30
 F	probes/date-system-1904-financial.case.json	S!A32
 F	probes/date-system-1904-odd-threshold.case.json	S!C5
 F	probes/date-system-1904-odd-threshold.case.json	S!D5
@@ -1182,7 +1179,6 @@ F	probes/fin-argument-modes.case.json	Sheet1!H31
 F	probes/fin-argument-modes.case.json	Sheet1!H310
 F	probes/fin-argument-modes.case.json	Sheet1!H311
 F	probes/fin-argument-modes.case.json	Sheet1!H312
-F	probes/fin-argument-modes.case.json	Sheet1!H313
 F	probes/fin-argument-modes.case.json	Sheet1!H314
 F	probes/fin-argument-modes.case.json	Sheet1!H316
 F	probes/fin-argument-modes.case.json	Sheet1!H317

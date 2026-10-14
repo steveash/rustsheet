@@ -283,7 +283,7 @@ schedule containing text.
 Ours: no scalar argument lifts (`#N/IMPL!` for an array literal, `#VALUE!` for a range; T-1372). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE ignores text in the schedule (T-1373).
 The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
-ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD, TBILLEQ and YIELD are off at 1e-10 to 1e-12 relative (T-1374). The
+ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD and YIELD are off at 1e-10 to 1e-12 relative (T-1374; TBILLEQ and TBILLYIELD are exact since T-1475). The
 annuity, NPV and solver misses are T-0901's and T-0916's.
 Status: VERIFIED (excel-graph)
 Tasks: T-1084, T-1372, T-1373, T-1374
@@ -405,3 +405,18 @@ left is closed form").
 Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
 Status: UNVERIFIED (the algorithm); the values are excel-graph
 Tasks: T-1374, T-1493, T-1525, T-1533
+
+## TBILLEQ and TBILLYIELD
+Rule: Excel's TBILLYIELD is `(100 - pr)/pr * (360/DSM)`, evaluated in that order; the textbook
+`(100 - pr)*360/(pr*DSM)` is 1 ulp off (`TBILLYIELD(45366,45731,2000)` is -0.9369863013698629, not
+-0.936986301369863). TBILLEQ keeps `365*rate/(360 - rate*DSM)` up to 182 days; from 183 days it is
+the root of the semi-annual equivalence in this form: `price = 100 - rate*DSM*100/360`, `t = DSM/Y`
+(Y = 366 when DSM is 366, else 365), `(-t + sqrt(t*t - (2*t - 1)*(1 - 100/price)))/(t - 0.5)`.
+Solving the same equation as a general quadratic `a y² + b y + c` is 1-2 ulps off, and up to
+~7e-15 relative at 183 days (`TBILLEQ(2040,2223,0.8)` is 1.364497682211261). Writing the price as
+`100*(1 - rate*DSM/360)` matches 5 of the 7 fitted cells but misses `rate` 0.1 and 1 at 318 days.
+Evidence: ironcalc-calc/FINANCIAL/TBILLs.xlsx D2:D31, R2:R31 and L5:L26 (Excel-cached, Microsoft
+Macintosh Excel; all 273 cells bit-exact, T-1475); the same formulation is bit-exact on the excel-graph
+probes fin-argument-modes H313, date-system-1904-financial A29:A30 and -shift A32.
+Status: VERIFIED (desktop-cached)
+Tasks: T-1475
