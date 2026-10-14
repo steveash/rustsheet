@@ -68,11 +68,12 @@ eval/milestones/ is protected (decision 0044), so the mapping edit needs this de
 - Editing case.json tags (oracle input hashes; decision 0043).
 
 ## Outcome
-Decision 0058 applies decision 0051 item 2 to the probes written since 0051. It adds 42 case lines and
-21 cell lines to `eval/milestones/probe-milestones.tsv`: M9 22, M10 12, M8 3, M7 2, M5 3. The cell
+Decision 0058 applies decision 0051 item 2 to the probes written since 0051. It adds 48 case lines and
+53 cell lines to `eval/milestones/probe-milestones.tsv`: M9 26, M10 13, M8 3, M7 3, M5 3. The cell
 lines are on `volatile-invariant`, `index-lifted-edge-cases` and `written-parens-reference-only`. The
 decision also lists the cases that keep their tag under 0051's exception, with the reason for each.
 The excel-probe skill now says to tag a probe with its subject's milestone. `make eval` probe
-milestone M0-M2 known failures went from 512 to 179 (361 cases / 13,249 cells before, 319 / 10,186
+milestone M0-M2 known failures went from 512 to 179 (361 cases / 13,249 cells before, 313 / 9,948
 after). Every cell still counted for M0-M2 is an M2 subject. Eval delta: none (no cell changes
-pass/fail).
+pass/fail). The review asked for six passing post-0051 siblings and for all of `volatile-invariant` mapped
+by subject; both done. A sweep of the older cases is T-1547.
