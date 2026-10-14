@@ -212,6 +212,11 @@ in the argument's position among the direct arguments (`SUM("x",#DIV/0!)` 3, `SU
 error (`SUM(A2,"x")` 3); text in a referenced cell is ignored (`SUM(A5)` 0, `SUM(A5:A6)` 2). A direct `#REF!` behaves like any scalar direct
 error: it beats referenced errors and `{1,#N/A}` (`SUM(A2,#REF!)` 4, `SUM(#REF!,{1,#N/A})` 4, `SUM({1,#N/A},#REF!)` 4, C77) and ties by position (`SUM(#REF!,#DIV/0!)` 4,
 `SUM(#DIV/0!,#REF!)` 2).
+Aggregates over picked cells, direct LAMBDA/blank values and the A variants (probes/aggregate-picked-direct-a-variants, excel-graph 2026-10-14, T-1566; B1 "x", A5 #N/A, A6 #VALUE!):
+- PRODUCT reads a cell picked by XLOOKUP, TAKE or DROP as a reference, exactly like SUM: the text cell is skipped (`PRODUCT(XLOOKUP(1,A1:A2,B1:B2),2)`, `PRODUCT(TAKE(B1:B2,1),2)`, `PRODUCT(DROP(B1:B2,-1),2)` are all 2, D1-D6). Ours gives `#VALUE!`.
+- A direct LAMBDA value is `#VALUE!` (ERROR.TYPE 3) for SUM, PRODUCT, MIN, MAX **and AVERAGE and MEDIAN** (D7-D12); only COUNT skips it (`COUNT(LAMBDA(x,x),2)` 1, D13). Ours skips it in AVERAGE/MEDIAN, and gives `#CALC!` (102) rather than `#VALUE!` for SUM/PRODUCT/MIN/MAX.
+- A blank `LET(b,Z99,b)` is read as a referenced blank: skipped by SUM, PRODUCT, MIN, MAX (`MAX(..,-5)` is -5, not 0), AVERAGE and COUNT (D14-D19). Ours agrees.
+- MAXA, MINA, AVERAGEA follow the same precedence as MAX/MIN/AVERAGE: a scalar direct error beats a referenced one either way (`MAXA(A5,#DIV/0!)`, `MAXA(#DIV/0!,A5)`, `AVERAGEA(A5,1/0)`, `AVERAGEA(1/0,A5)` all 2, D20-D23), and between referenced errors the leftmost wins (`MINA(A5,A6)` 7, `MINA(A6,A5)` 3, `MAXA(A5,A6)` 7, `AVERAGEA(A6,A5)` 3, D24-D27). Ours returns the first error at once (7 for D20 and D22).
 Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
 rejections were run as throw-away one-cell cases (not committed; no value to record);
 probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five

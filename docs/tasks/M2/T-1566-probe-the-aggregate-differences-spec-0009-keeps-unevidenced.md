@@ -3,7 +3,7 @@ id: T-1566
 title: "Probe the aggregate differences SPEC-0009 keeps unevidenced: PRODUCT over picked references, direct blank/LAMBDA values, A-variant error order"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,6 @@ Array-error order and the `for_each_value` family's referenced errors are T-1439
 ## Out of scope
 - T-1439's error-order probes.
 - Changing engine code.
+
+## Outcome
+Probe case probes/aggregate-picked-direct-a-variants (27 cells, excel-graph 2026-10-14) answered all three questions; findings in syntax.md, SPEC-0009 rows updated. Excel differs from the engine in each: PRODUCT over picked cells reads references; direct LAMBDA is #VALUE! in AVERAGE/MEDIAN too (and #VALUE!, not #CALC!, elsewhere); MAXA/MINA/AVERAGEA rank errors like MAX/MIN/AVERAGE. A direct blank via LET matches. Follow-ups filed (see the three new engine tasks). Eval: 18/27 cells of the new case pass; 9 are known failures to baseline.
