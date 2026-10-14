@@ -1,0 +1,56 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1049: F.DIST.RT argument coercion and error edges.",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-1049"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "C1": "=\"3\"",
+    "C2": true,
+    "C4": "abc",
+    "C6": "=NA()",
+    "A1": "=F.DIST.RT(\"3\",3,4)",
+    "A2": "=F.DIST.RT(TRUE,3,4)",
+    "A3": "=F.DIST.RT(C3,3,4)",
+    "A4": "=F.DIST.RT(C4,3,4)",
+    "A5": "=F.DIST.RT(C1,3,4)",
+    "A6": "=F.DIST.RT(C2,3,4)",
+    "A7": "=F.DIST.RT(C6,3,4)",
+    "A8": "=F.DIST.RT(\"\",3,4)",
+    "A9": "=F.DIST.RT(2,\"3\",4)",
+    "A10": "=F.DIST.RT(2,TRUE,4)",
+    "A11": "=F.DIST.RT(2,C3,4)",
+    "A12": "=F.DIST.RT(2,C4,4)",
+    "A13": "=F.DIST.RT(2,C1,4)",
+    "A14": "=F.DIST.RT(2,C2,4)",
+    "A15": "=F.DIST.RT(2,C6,4)",
+    "A16": "=F.DIST.RT(2,\"\",4)",
+    "A17": "=F.DIST.RT(2,3,\"3\")",
+    "A18": "=F.DIST.RT(2,3,TRUE)",
+    "A19": "=F.DIST.RT(2,3,C3)",
+    "A20": "=F.DIST.RT(2,3,C4)",
+    "A21": "=F.DIST.RT(2,3,C1)",
+    "A22": "=F.DIST.RT(2,3,C2)",
+    "A23": "=F.DIST.RT(2,3,C6)",
+    "A24": "=F.DIST.RT(2,3,\"\")",
+    "A25": "=F.DIST.RT(0,3,4)",
+    "A26": "=F.DIST.RT(-1,3,4)",
+    "A27": "=F.DIST.RT(2,0,4)",
+    "A28": "=F.DIST.RT(2,3,0)",
+    "A29": "=F.DIST.RT(2,1.9,4.9)",
+    "A30": "=F.DIST.RT(2,0.5,4)",
+    "A31": "=F.DIST.RT(2,10000000000.0,4)",
+    "A32": "=F.DIST.RT(1e-300,3,4)",
+    "A33": "=F.DIST.RT(1e+300,3,4)",
+    "A34": "=F.DIST.RT(2,1,1)"
+   }
+  }
+ ],
+ "expected": {}
+}
