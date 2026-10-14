@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-1513: * (column A) and PRODUCT (column D) of two cells whose exact 106-bit product lies just below a rounding midpoint at a range boundary, so the first (64-bit) rounding lands on the midpoint and the second rounds it away. Rows 1-3 and 5(neg row 4): exact product within 2^-13 ulp below the midpoint between DBL_MAX and 2^1024 (single rounding: DBL_MAX; double rounding: overflow); row 5 control well below the midpoint. Rows 6-8: exact product just below (2^53-1)*2^-1075, the midpoint between the largest subnormal and 2^-1022 (single: 2.225073858507201E-308 subnormal; double: the smallest normal 2^-1022).",
+  "description": "T-1513: * (column A) and PRODUCT (column D) of two cells whose exact 106-bit product lies just below a rounding midpoint at a range boundary, so the first (64-bit) rounding lands on the midpoint and the second rounds it away. Rows 1-3 (row 4 negative): exact product within 2^-13 ulp below the midpoint between DBL_MAX and 2^1024 (single rounding: DBL_MAX; double rounding: overflow). Row 5 control: just outside that window, stays DBL_MAX. Rows 6-8: exact product just below (2^53-1)*2^-1075, the midpoint between the largest subnormal and 2^-1022 (single: 2.225073858507201E-308 subnormal; double: the smallest normal 2^-1022).",
   "tags": [
     "probe",
     "numbers",

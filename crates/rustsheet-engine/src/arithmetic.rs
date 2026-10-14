@@ -100,7 +100,7 @@ pub(crate) fn extended_quotient(x: f64, y: f64) -> f64 {
 /// The range edges follow the same two roundings (probes-numeric/double-rounding-range-edges): a
 /// product just under the midpoint between `f64::MAX` and 2^1024 rounds up to 2^1024 and is
 /// infinite (`#NUM!`), and one just under the midpoint between the largest subnormal and 2^-1022
-/// is 2^-1022. A product that stays subnormal after the second rounding is the plain `x * y`.
+/// is 2^-1022. A subnormal product is rounded on the 2^-1074 grid (callers flush it to 0 unless it reaches 2^-1022).
 pub(crate) fn extended_product(x: f64, y: f64) -> f64 {
     let plain = x * y;
     if plain == 0.0 || !plain.is_finite() || !x.is_normal() || !y.is_normal() {
