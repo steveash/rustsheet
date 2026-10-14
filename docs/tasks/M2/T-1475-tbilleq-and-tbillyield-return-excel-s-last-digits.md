@@ -3,7 +3,7 @@ id: T-1475
 title: "TBILLEQ and TBILLYIELD return Excel's last digits (ironcalc-calc TBILLs.xlsx, 27 cells)"
 milestone: M2
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
