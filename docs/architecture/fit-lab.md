@@ -41,7 +41,7 @@ other than a number, misses that cell and is counted under `err`. It does not st
   `rustsheet-eval cases` (`snapshot.suite_cases`). No xlsx is parsed. Only cells whose Excel value
   is a number are scored, plus error cells when the `Fit` sets `errors=True`: a candidate signals an
   error by raising `ExcelError` (code `#NUM!` by default), the same error is an exact match, and another
-  error or a number is a miss. Text and bool cells are counted as non-numeric.
+  error or a number is a miss (not counted under `err`, only as not comparable). Text and bool cells are counted as non-numeric.
 - **Iterate traces:** a candidate may expose `trace` (its iterates on a cell, in order). The report then
   lists, per candidate, on how many cells Excel's value is one of the iterates and at which index
   (`iterate_hits` in the JSON).
