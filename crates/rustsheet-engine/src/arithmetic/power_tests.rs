@@ -167,3 +167,13 @@ fn extended_sqrt_is_the_plain_root_away_from_midpoints() {
     assert_eq!(extended_sqrt(f64::INFINITY), f64::INFINITY);
     assert_eq!(extended_sqrt(5e-324), 5e-324_f64.sqrt());
 }
+
+// probes-numeric/double-rounding-ops A65, excel-graph: the root is within half an extended ulp of
+// a double midpoint, so the second rounding differs from the correctly rounded root.
+#[test]
+fn extended_sqrt_rounds_twice() {
+    let x = (1.0 + 931_920_125_665_803.0 * f64::EPSILON) * 2.0;
+    assert_eq!(extended_sqrt(x), 1.553_658_801_748_407_6);
+    assert_ne!(x.sqrt(), extended_sqrt(x));
+    assert_eq!(power(x, 0.5), Ok(1.553_658_801_748_407_6));
+}
