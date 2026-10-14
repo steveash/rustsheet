@@ -3,7 +3,7 @@ id: T-1201
 title: "COS/SIN/TAN of 1E+15 return #NUM! in Excel (gen-m5 mismatch)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -42,3 +42,6 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 -
+
+## Outcome
+SIN, COS, TAN, COT, SEC and CSC return `#NUM!` for |x| >= 2^27 (threshold probed: probes/trig-huge-argument, recorded in numbers.md). Eval: the 14 listed gen-m5..gen-m9 cells are not in this checkout's suites (only gen-m1/gen-m2 are present locally) so they could not be run here; the rule covers every cited formula. The new probe adds 6 known failures (`f(2^27-1)` last digits, Excel's inexact range reduction), filed as T-1563.
