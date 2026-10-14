@@ -1,7 +1,7 @@
 ---
 id: T-1558
 title: "PERCENTRANK and PERCENTRANK.INC of a single value equal to x is 1, not #N/A"
-milestone: M2
+milestone: M9
 lane: functions-stat
 status: done
 priority: P3
