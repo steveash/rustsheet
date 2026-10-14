@@ -206,7 +206,7 @@ probes/if-index-ref-args-aggregates.case.json	M9	MAXA, MINA, AVERAGEA, PRODUCT, 
 probes/ifs-shape-mismatch.case.json	M9	AVERAGEIF(S), MINIFS, MAXIFS
 probes/isref-reference-lookups.case.json	M7	XLOOKUP, TAKE, DROP, TRIMRANGE
 probes/legacy-type-intersection.case.json	M5	TYPE
-probes/legacy-value-argument-intersection-c.case.json	M9	STDEV, VAR, PERCENTILE, QUARTILE, MODE, PERCENTRANK, COUNTBLANK
+probes/legacy-value-argument-intersection-c.case.json	M9	STDEV, VAR, PERCENTILE, QUARTILE, MODE, PERCENTRANK
 probes/multiarea-cellfn-types.case.json	M6	CELL, COLUMN
 probes/multiarea-foreach.case.json	M9	statistical aggregates over a union
 probes/multiarea-order-stats.case.json	M9	LARGE, SMALL, RANK, FREQUENCY over a union
@@ -352,3 +352,21 @@ probes/subnormal-text-and-tail-companions.case.json	Sheet1!A14	M9	ERFC
 probes/subnormal-text-and-tail-companions.case.json	Sheet1!B14	M9	ERFC
 probes/subnormal-text-and-tail-companions.case.json	Sheet1!A15	M9	ERFC.PRECISE
 probes/subnormal-text-and-tail-companions.case.json	Sheet1!B15	M9	ERFC.PRECISE
+probes/if-index-ref-args-aggregates.case.json	Calc!A28	M5	PRODUCT
+probes/if-index-ref-args-aggregates.case.json	Calc!A29	M5	PRODUCT
+probes/if-index-ref-args-aggregates.case.json	Calc!A30	M5	PRODUCT
+probes/if-index-ref-args-aggregates.case.json	Calc!A31	M5	PRODUCT
+probes/if-index-ref-args-aggregates.case.json	Calc!A32	M5	PRODUCT
+probes/if-index-ref-args-aggregates.case.json	Calc!A33	M5	PRODUCT
+probes/if-index-ref-args-aggregates.case.json	Calc!A34	M5	PRODUCT
+probes/if-index-ref-args-aggregates.case.json	Calc!A35	M5	PRODUCT
+probes/if-index-ref-args-aggregates.case.json	Calc!A36	M5	PRODUCT
+probes/rich-errors-image.case.json	Sheet1!A3	M7	SEQUENCE
+probes/rich-errors-image.case.json	Sheet1!A6	M7	FILTER
+probes/rich-errors-image.case.json	Sheet1!A8	M2	division error control
+probes/multiarea-more.case.json	Sheet1!H7	M5	SUMSQ
+probes/multiarea-more.case.json	Sheet1!H8	M9	AVERAGEA
+probes/multiarea-more.case.json	Sheet1!H9	M9	MAXA
+probes/multiarea-more.case.json	Sheet1!H10	M9	GEOMEAN
+probes/multiarea-more.case.json	Sheet1!H11	M9	VAR.S
+probes/multiarea-more.case.json	Sheet1!H12	M9	DEVSQ

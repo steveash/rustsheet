@@ -2,7 +2,9 @@
 
 - **Status:** accepted (2026-10-14, T-1547). Amends decision 0051 (the lines of
   `eval/milestones/probe-milestones.tsv`, and its examples `subnormal-*` and `rich-errors-*`) and
-  completes decision 0058; the rule of 0051 is unchanged.
+  completes decision 0058; the rule of 0051 is unchanged. It also reverses two of 0051's
+  "deliberate keeps with no F line today", `subnormal-sumsq-sumproduct-edges` and
+  `ifs-shape-mismatch`, which T-1547 named for review (reasons below).
 - **Context:**
   - Decision 0058 applied 0051 item 2 to the probes added after 0051 and left the older cases to
     T-1547.
@@ -29,7 +31,8 @@
     SUBTOTAL and AGGREGATE are controls); `multiarea-subtotal-counts-a` to `-e` (SUBTOTAL of a
     union; LET, IF and CHOOSE only route it); `percentof-snap-overflow-union`;
     `rich-errors-stockhistory` (DATE builds the argument); `subnormal-sumsq-sumproduct-edges`
-    (SUMSQ's per-square flush; 0051's blanket `subnormal-*` named the coercion cases);
+    (SUMSQ's per-square flush; it calls no M2 function, only SUMSQ and SUMPRODUCT, so 0051's
+    exception does not reach it);
     `subtotal-variance-one-vs-two-pass` (like 0051's `dvar-one-vs-two-pass`);
     `text-search-casefold-length` (SEARCH, FIND); `textjoin-delimiter-elements`.
   - **M6 (9 cases):** `date-huge-month-day` (DATE); `multiarea-cellfn-types` (CELL, COLUMN over a
@@ -38,12 +41,13 @@
   - **M7 (1 case):** `isref-reference-lookups` (XLOOKUP, TAKE, DROP, TRIMRANGE; ISREF observes).
   - **M9 (6 cases):** `averagea-array-constant-elements`; `if-index-ref-args-aggregates`
     (MAXA, MINA, AVERAGEA, LARGE, RANK; IF and INDEX build the argument);
-    `ifs-shape-mismatch` (the AVERAGEIF(S)/MINIFS/MAXIFS shape check, not the criteria grammar
-    that 0051's `ifs-*` keeps); `legacy-value-argument-intersection-c` (STDEV … PERCENTRANK);
+    `ifs-shape-mismatch` (it calls only AVERAGEIF, AVERAGEIFS, MINIFS and MAXIFS, and the shape
+    check it probes is theirs; it has no SUMIFS or COUNTIFS cell, and no criteria-grammar
+    cell, so 0051's "shared criteria engine" keep gives it no M2 subject); `legacy-value-argument-intersection-c` (STDEV … PERCENTRANK; the description also names COUNTBLANK, which no cell calls);
     `multiarea-foreach` and `multiarea-order-stats` (statistical functions over a union).
   - **M10 (2 cases):** `text-general-ties-below-one` and `-wide-fixed` (the `General` format
     code, like 0051's `text-general-exponent-boundary`).
-  - **Cell lines (66):**
+  - **Cell lines (84):**
     - XOR → M5: `and-or-xor-error-order` Logic!A5, A6, A9, A25; `and-or-xor-text-arguments`
       Sheet1!H57:H84.
     - SWITCH → M5: `omitted-arg-compare` Sheet1!D1, D2.
@@ -54,8 +58,19 @@
     - Inside moved cases: `legacy-type-intersection` Sheet1!M2, M10 → M9 (AVERAGEA); its
       legacy control O10 (`=B1:B6*1`) → M2, and so is `legacy-value-argument-intersection-c`
       Sheet1!AG10.
-    The rest of these five kept cases keeps its tag (AND, OR, IF, INDEX, the comparison of an
-    omitted argument, date-clock coercion, subnormal number text).
+    - Inside moved cases, a cell whose own subject is another milestone: PRODUCT →
+      M5 in `if-index-ref-args-aggregates` Calc!A28:A36; `rich-errors-image` Sheet1!A3 (SEQUENCE)
+      and A6 (FILTER) → M7, and its `=1/0` control A8 → M2.
+    - `multiarea-more` keeps its tag (SUM, COUNT, COUNTA over a union), and its later-milestone
+      cells move: Sheet1!H7 (SUMSQ) → M5; H8 (AVERAGEA), H9 (MAXA), H10 (GEOMEAN), H11 (VAR.S),
+      H12 (DEVSQ) → M9.
+    - Not given lines: cells that only route the argument (LET in `multiarea-subtotal-counts-c`,
+      IF and CHOOSE in its twins) and `=1/0` cells that only set up data (C4 of
+      `multiarea-subtotal-counts-*`, E1 of `multiarea-order-stats`).
+    The rest of the seven kept cases with cell lines keeps its tag (AND, OR, IF, INDEX, the comparison of an
+    omitted argument, date-clock coercion, subnormal number text, SUM, COUNT and COUNTA over a union).
+  - IMAGE, FIELDVALUE and STOCKHISTORY are `scope: out` (decision 0027); like every function, they
+    count by their catalog milestone.
   - **Keep their tag (0051's exception: the subject includes an M2 function or an M1 subject):**
     - Operators and formula printing: `at-group-leftmost-shapes` and `at-signed-operand` (`@`;
       OFFSET and INDIRECT build its operand), `colon-hash-value-operands`,
@@ -75,8 +90,8 @@
   - T-1558, the open task for the two moved failing cells (PERCENTRANK and PERCENTRANK.INC in
     `legacy-value-argument-intersection-c` T2, U2), moves to M9 with them.
 - **Consequences:** at origin/main 4fbdd96c, `make eval` assigned **175** probe known-failure
-  cells to M0-M2 (319 cases, 10,156 cells). With these lines it assigns **173** (289 cases,
-  9,211 cells): `text-collation-order` 156, `array-context-legacy-sumproduct` 6,
+  cells to M0-M2 (319 cases, 10,156 cells). With these lines it assigns **173** (290 cases,
+  9,206 cells): `text-collation-order` 156, `array-context-legacy-sumproduct` 6,
   `text-surrogate-positions` 6, `concatenate-limit-spill` 4, `text-order-nbsp-space` 1, all M2
   subjects (0058). Only T2 and U2 moved; the other moved cells pass today, and a later
   regression in them counts toward their own milestone. No case now counted for M0-M2 has only
