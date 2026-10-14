@@ -3,7 +3,7 @@ id: T-1454
 title: "External-workbook references through INDEX, OFFSET, union, intersection, COUNTA and spill"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -32,9 +32,37 @@ of this workbook) rather than more special cases per function; probe what INDEX'
 reads (ISBLANK, ISTEXT, `=INDEX(…)`, `&""`) first (excel-probe).
 
 ## Acceptance criteria
-- [ ] probes/external-ref-no-link-shapes A3, A4, A5, A15:A19 leave eval/baseline/probes.txt.
-- [ ] The probed value of INDEX's picked cell is recorded in docs/excel-semantics/references.md.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/external-ref-no-link-shapes A3, A4, A5, A15:A19 leave eval/baseline/probes.txt.
+- [x] The probed value of INDEX's picked cell is recorded in docs/excel-semantics/references.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cached values of `[n]Sheet!ref` (T-1382). Opening other workbooks (directive 5).
+
+## Handoff (resumed)
+- Claimed 2026-10-13 by an opus run near the end of its session budget. Released untouched: no code
+  and no probe were written, and the branch holds only the claim and this note.
+- Reading so far: `reference_operators::external_area` gives the shape of a written external
+  reference. `Ranges`/`RefArg` hold only on-sheet `Range`s, so INDEX, OFFSET, the union and
+  intersection operators, COUNTA and the spill path never see an external area.
+- The cells imply this: an external area's cells, read through INDEX or a range, are not
+  `#BLOCKED!` (ERROR.TYPE `#N/A`, COUNTA 0). Only the written single cell is `#BLOCKED!`. Probe what
+  INDEX's picked cell reads before designing (ISBLANK, ISTEXT, `=INDEX(..)`, `&""`).
+- Do not represent "another workbook" with a sentinel sheet index. Code that indexes worksheets by
+  `sheet` would then panic or misread it (directive 5). Add an explicit variant to `Ranges`/`RefArg`
+  instead, as the task suggests.
+
+## Outcome
+- Probed what the reached cells read (probes/external-ref-no-link-index, 47 cells, excel-graph):
+  one cell INDEX, an intersection or IF picks reads **empty**; several spill `#BLOCKED!`; aggregates
+  are `#BLOCKED!` but COUNTA counts nothing, COUNTBLANK and OFFSET are `#VALUE!`; a union or
+  intersection across two workbooks is `#VALUE!`. Recorded in docs/excel-semantics/references.md.
+- `Model::external_reference` (external_reference.rs) gives the areas of a written external
+  reference, INDEX into one, and unions/intersections of them, evaluating nothing when the
+  expression is none of these; ISREF, ROWS/COLUMNS, ROW/COLUMN, AREAS, COUNTA, COUNTBLANK, OFFSET,
+  INDEX, the intersection and `evaluate_reference_arg` read it instead of per-node special cases.
+  INDEX's window geometry is shared by both paths (`index_window`). A written external range spills.
+- Eval delta: probes known failures 2826 -> 2820 (8 fixed: external-ref-no-link-shapes A3, A4, A5,
+  A15:A19; the new case adds 2 known failures, A25 and A26, IF picking an external reference).
+- Follow-up: T-1487 (IF and CHOOSE picking an external reference).
+

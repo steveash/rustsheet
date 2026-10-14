@@ -201,8 +201,9 @@ eval/suites/probes/deviations, decision 0036).
 Status: DEVIATION (decision 0014)
 Implemented in: limits.rs (`MAX_SIZE`, `check_array_size`,
 `check_range_size`); `Model::evaluate_range` in crates/rustsheet-engine/src/cast.rs;
-`broadcast_arrays` in crates/rustsheet-engine/src/arithmetic.rs
-Tasks: T-0047, T-1420
+`broadcast_arrays` in crates/rustsheet-engine/src/arithmetic.rs; `ExternalArea::blocked_value` in
+crates/rustsheet-engine/src/external_reference.rs (a spilled range into another workbook, T-1454)
+Tasks: T-0047, T-1420, T-1454
 
 ## The edit API refuses a cell inside a spill extent above 4,194,304 cells
 Rule: Excel lets you edit any cell. `Workbook` edits (crates/rustsheet) snapshot the spill footprint

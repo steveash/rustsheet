@@ -62,6 +62,7 @@ mod decimal_round;
 mod defined_names;
 mod evaluation;
 mod external_links;
+mod external_reference;
 mod function_names;
 mod functions;
 mod implicit_intersection;

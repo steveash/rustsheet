@@ -4,7 +4,7 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
-use crate::reference_operators::{external_area, several_areas_ref, Ranges, RefArg};
+use crate::reference_operators::{several_areas_ref, Ranges, RefArg};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
@@ -376,7 +376,11 @@ impl Model {
         if args.is_empty() {
             return CalcResult::Number(if by_row { cell.row } else { cell.column } as f64);
         }
-        let (first, last) = if let Some(area) = external_area(&args[0], cell) {
+        let (first, last) = if let Some(area) = self.one_external_area(&args[0], cell) {
+            let area = match area {
+                Ok(area) => area,
+                Err(error) => return error,
+            };
             if by_row {
                 (area.first_row, area.last_row)
             } else {
@@ -658,6 +662,19 @@ impl Model {
         let l = args.len();
         if !(3..=5).contains(&l) {
             return CalcResult::new_args_number_error(cell);
+        }
+        // OFFSET of a reference into another workbook is `#VALUE!`, not a reference
+        // (`ISREF(OFFSET(…!A1,1,1))` is FALSE; probes/external-ref-no-link-shapes A5,
+        // external-ref-no-link-index A16, A17, A32).
+        if let Some(areas) = self.external_reference(&args[0], cell) {
+            return match areas {
+                Ok(_) => CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "OFFSET of an external reference".to_string(),
+                ),
+                Err(error) => error,
+            };
         }
         let reference = match self.get_reference(&args[0], cell) {
             Ok(c) => c,

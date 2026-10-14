@@ -262,6 +262,18 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> RefArg {
         let node = node.ungrouped();
+        // An aggregate reading cells of another workbook is `#BLOCKED!`, however the reference
+        // was reached (`SUM(INDEX(…!A1:C4,2,2))`, `SUM((…!A1,…!B2))`, `SUMPRODUCT(…!A1:B2)`;
+        // probes/external-ref-no-link-index A7, A11, A15, A22, A27). COUNTA, COUNTBLANK and the
+        // reference functions read [`Model::external_reference`] first.
+        if let Some(areas) = self.uncached_external_reference(node, cell) {
+            return RefArg::Value(match areas {
+                Ok(_) => {
+                    CalcResult::new_error(Error::BLOCKED, cell, "External reference".to_string())
+                }
+                Err(error) => error,
+            });
+        }
         let result = match node {
             Node::OpUnionKind { .. } | Node::OpIntersectKind { .. } if self.is_multi_area(node) => {
                 return match self.reference_ranges(node, cell) {
