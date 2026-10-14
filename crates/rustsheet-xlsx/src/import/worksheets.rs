@@ -401,10 +401,11 @@ pub(super) fn get_cell_from_excel(
                 Some(v) => Cell::NumberCell { v, s: cell_style },
                 // A date before 1900-01-01 is `#VALUE!` in Excel (fixtures/t-d-pre-1900); Excel
                 // refuses a workbook with other unparsable text (docs/excel-semantics/xlsx-storage.md).
-                None => Cell::ErrorCell {
+                None if cell_value.is_some() => Cell::ErrorCell {
                     ei: Error::VALUE,
                     s: cell_style,
                 },
+                None => Cell::EmptyCell { s: cell_style },
             },
             "inlineStr" => {
                 let s = rich_text_inline.unwrap_or_default();

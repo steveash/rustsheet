@@ -68,6 +68,7 @@ mod tests {
         assert_eq!(iso8601_to_serial("abc"), None);
         assert_eq!(iso8601_to_serial("1990-13-01"), None);
         assert_eq!(iso8601_to_serial("1899-12-30"), None);
+        assert_eq!(iso8601_to_serial("1899-12-31"), None);
         assert_eq!(iso8601_to_serial("1990-01-01T25:00:00"), None);
     }
 }
