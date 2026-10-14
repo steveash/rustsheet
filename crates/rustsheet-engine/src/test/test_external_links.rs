@@ -252,3 +252,101 @@ fn lifted_index_reads_each_picked_cell_from_the_cache() {
     assert_eq!(model._get_text("C2"), "Hello!");
     assert_eq!(model._get_text("D2"), "TRUE");
 }
+
+// Book `[1]` caches what fixtures/external-link-cached-ranges does: `Uses` A1 "Hello!", B1 10,
+// C1 #N/A, A2 5, B2 the text "7", C2 1, A3 TRUE.
+fn cached_ranges_fixture() -> Model {
+    let mut model = new_empty_model();
+    let cells = HashMap::from([
+        ((0, 1, 1), SpillValue::Text("Hello!".to_string())),
+        ((0, 1, 2), SpillValue::Number(10.0)),
+        ((0, 1, 3), SpillValue::Error(Error::NA)),
+        ((0, 2, 1), SpillValue::Number(5.0)),
+        ((0, 2, 2), SpillValue::Text("7".to_string())),
+        ((0, 2, 3), SpillValue::Number(1.0)),
+        ((0, 3, 1), SpillValue::Boolean(true)),
+    ]);
+    model.workbook.external_books.push(ExternalBook {
+        sheet_names: vec!["Uses".to_string()],
+        defined_names: vec![DefinedName {
+            name: "NR_Range".to_string(),
+            formula: "='Uses'!$A$1:$B$3".to_string(),
+            sheet_id: None,
+        }],
+        cells,
+    });
+    model
+}
+
+// The functions that take a reference see a cached range as one (fixtures/external-link-cached-ranges
+// Refs!B53, B59, B60; T-1526).
+#[test]
+fn reference_functions_take_a_cached_range() {
+    let mut model = cached_ranges_fixture();
+    assert_eq!(eval(&mut model, "=SUBTOTAL(9,[1]Uses!$A$1:$B$3)"), "15");
+    assert_eq!(eval(&mut model, "=SUBTOTAL(109,[1]!NR_Range)"), "15");
+    assert_eq!(eval(&mut model, "=SUBTOTAL(9,[1]Uses!$C$1:$C$2)"), "#N/A");
+    assert_eq!(eval(&mut model, "=AGGREGATE(9,6,[1]Uses!$A$1:$C$2)"), "16");
+    assert_eq!(
+        eval(&mut model, "=AGGREGATE(9,4,[1]Uses!$A$1:$C$2)"),
+        "#N/A"
+    );
+    assert_eq!(eval(&mut model, "=AVERAGEA([1]Uses!$A$1:$B$3)"), "3.2");
+    assert_eq!(eval(&mut model, "=AVERAGEA([1]!NR_Range)"), "3.2");
+    // A sheet the cache does not hold stays #BLOCKED!.
+    assert_eq!(
+        eval(&mut model, "=SUBTOTAL(9,[1]Nope!$A$1:$B$3)"),
+        "#BLOCKED!"
+    );
+    assert_eq!(
+        eval(&mut model, "=AVERAGEA([1]Nope!$A$1:$B$3)"),
+        "#BLOCKED!"
+    );
+}
+
+/// `formula` set in `cell` as a legacy (pre-dynamic-array) formula, as xlsx import reads one.
+fn eval_legacy(model: &mut Model, cell: &str, formula: &str) -> String {
+    let reference = model._parse_reference(cell);
+    let text = model
+        .legacy_formula_text(reference.sheet, reference.row, reference.column, formula)
+        .unwrap();
+    model._set(cell, &text);
+    model.evaluate();
+    model._get_text(cell)
+}
+
+// A legacy formula implicitly intersects a cached range as it does a range of this workbook
+// (fixtures/external-link-cached-ranges Refs!B38, B44, B56, B62; T-1526).
+#[test]
+fn legacy_formula_intersects_a_cached_range() {
+    let mut model = cached_ranges_fixture();
+    let sum = "=SUM(IFERROR([1]Uses!$A$1:$B$3*1,100))";
+    assert_eq!(eval_legacy(&mut model, "D38", sum), "100");
+    let sumproduct = "=SUMPRODUCT(IFERROR([1]Uses!$A$1:$B$3*1,100))";
+    assert_eq!(eval_legacy(&mut model, "D56", sumproduct), "100");
+    assert_eq!(
+        eval_legacy(&mut model, "D44", "=SUM([1]Uses!$A$2:$A$3+0)"),
+        "#VALUE!"
+    );
+    // In a row the range spans, the intersection reads the cached cell.
+    assert_eq!(
+        eval_legacy(&mut model, "D2", "=SUM([1]Uses!$A$1:$A$3+0)"),
+        "5"
+    );
+    assert_eq!(
+        eval_legacy(&mut model, "B9", "=[1]Uses!$B$1:$B$3"),
+        "#VALUE!"
+    );
+    assert_eq!(eval_legacy(&mut model, "B9", "=[1]Uses!$A$1:$C$1"), "10");
+    // A legacy TYPE intersects too (Refs!B62; probes/legacy-type-intersection).
+    assert_eq!(
+        eval_legacy(&mut model, "D62", "=TYPE([1]Uses!$A$1:$B$3)"),
+        "16"
+    );
+    assert_eq!(
+        eval_legacy(&mut model, "D2", "=TYPE([1]Uses!$A$1:$A$3)"),
+        "1"
+    );
+    // The same formula typed today (dynamic) reads the whole range.
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$A$1:$A$3+0)"), "#VALUE!");
+}

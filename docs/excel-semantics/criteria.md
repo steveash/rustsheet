@@ -149,9 +149,9 @@ SUMPRODUCT: `SUMPRODUCT(IF(B1:B6>1,B1:B6,0))` is 0 on row 1 and `#VALUE!` on row
 `#VALUE!`, exactly like `SUM(IF(A1:A6="a",1,0))` (presumably it needs CSE; an inference, not probed). LOOKUP's vector and MMULT/INDEX arguments evaluate
 their arithmetic as arrays without SUMPRODUCT: `LOOKUP(2,1/(B1:B6>1),B1:B6)` 3, `SUM(MMULT(B1:B6*1,{1}))` 12,
 `INDEX(B1:B6*1,2)` 2, on and off the row. An array `row_num` in legacy INDEX gives its first element only:
-`SUMPRODUCT(INDEX(B1:B6,{1;2;3}))` and `SUMPRODUCT(INDEX(B1:B6*1,{1;2;3}))` are 1. The engine differs on the IF condition (it lifts it, in `SUM(IF(..))` too, so `is_array_context` is not the only cause:
-F, R and S cells give 10, 3 and 3), on INDEX with an array row (`#N/IMPL!`) and on CHOOSE with an array index
-(2 on row 1, `#VALUE!` on row 10): filed as T-0293 and T-0294.
+`SUMPRODUCT(INDEX(B1:B6,{1;2;3}))` and `SUMPRODUCT(INDEX(B1:B6*1,{1;2;3}))` are 1. The engine matches the IF condition since T-1526 (references.md "Legacy formulas intersect the ranges in value
+arguments", which also covers IFERROR and IFNA under SUMPRODUCT); it differs on INDEX with an array row
+(`#N/IMPL!`) and on CHOOSE with an array index (2 on row 1, `#VALUE!` on row 10): T-0294.
 Dynamic edge cases (probes/ifs-array-criteria-edges, oracle excel-graph 2026-10-07): a SUMIFS or COUNTIFS whose ranges
 differ in shape with an array criterion is an array of `#VALUE!` (1x2 for `{"a","b"}`), not one scalar `#VALUE!`;
 a blank cell in a range criterion (D3, criteria range D1:D3) matched none of the non-empty text cells A1:A6: COUNTIF/COUNTIFS/SUMIFS/SUMIF/MAXIFS
