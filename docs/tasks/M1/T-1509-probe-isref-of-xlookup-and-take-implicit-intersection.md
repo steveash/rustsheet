@@ -18,6 +18,7 @@ T-1506 made `ISREF(@INDEX(range,n))` TRUE (`is_reference` in functions/informati
 
 ## Acceptance criteria
 - [ ] A probe case covers ISREF of `@XLOOKUP` and `@TAKE` (and LET-bound forms); the engine matches it.
+- [ ] The probe also covers `@INDEX` shapes that pick several cells or fail (`ISREF(@INDEX(B1:C3,0,1))`, `ISREF(@INDEX(B1:B3,9))`); the engine matches Excel.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
