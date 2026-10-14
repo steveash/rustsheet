@@ -3,7 +3,7 @@ id: T-1418
 title: "One bcast_get(grid,row,col) helper next to bcast_idx for the repeated broadcast lookups"
 milestone: M1
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
