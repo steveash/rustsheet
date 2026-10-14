@@ -3,7 +3,7 @@ id: T-1460
 title: "Cached multi-cell ranges of a linked workbook: [n]Sheet!A1:B2"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
