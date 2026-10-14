@@ -9,7 +9,7 @@
   "crates/rustsheet-engine/src/functions/financial/financial_bonds.rs": 1203,
   "crates/rustsheet-engine/src/functions/financial/mod.rs": 2303,
   "crates/rustsheet-engine/src/functions/mod.rs": 2182,
-  "crates/rustsheet-engine/src/model.rs": 3459,
+  "crates/rustsheet-engine/src/model.rs": 3463,
   "crates/rustsheet-engine/src/user_model/common.rs": 2373,
   "crates/rustsheet-engine/src/user_model/ui.rs": 1088,
   "crates/rustsheet-engine/src/user_model/undo_redo.rs": 1103
