@@ -187,7 +187,7 @@ Calc!H1, I1; T-1537). Over a cached range the same lift gives the cached cell pe
 top-left cached cell (`{0,2},1` is "Hello!", 5; `{1,2},0` is "Hello!", 5), an out-of-range element is a per-element `#REF!`
 (`{1,4},1` is "Hello!", #REF!) and a cached `#N/A` stays that element (`INDEX(…A1:C3,1,{1,2,3})` is "Hello!", 10, #N/A)
 (fixtures/external-link-cached-ranges Refs!B83:D88, excel-graph, 2026-10-14, T-1546; the engine matches).
-Excel treats the lifted INDEX over an external range as a reference to its first element only:
+Excel treats the lifted INDEX over an external range as a single-cell reference (its first element, which in these probes is also the range's top-left cell; `{2,1}` would tell them apart, UNVERIFIED):
 `SUM(INDEX(…,{1,2},1))` is 0 ("Hello!" is text), `ROWS(…)` is 1, `ISREF(…)` is TRUE and a further
 `INDEX(INDEX(…,{1,2},1),2)` is `#REF!` (Refs!B89:B92). Not implemented: we give `#BLOCKED!`, `#BLOCKED!`, FALSE and
 `#BLOCKED!` for those four (T-1554).

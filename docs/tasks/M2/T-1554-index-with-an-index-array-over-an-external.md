@@ -20,6 +20,7 @@ index array over an external range as a reference to its first element only (doc
 `external_index_args` and gives `#BLOCKED!` to the consumers of it as a reference.
 
 ## Acceptance criteria
+- [ ] A probe `SUM(INDEX([1]Uses!$A$1:$B$3,{2,1},1))` (5 if the first element, 0 if the top-left cell) decides which cell the single-cell reference is.
 - [ ] Refs!B89:B92 of fixtures/external-link-cached-ranges pass and leave the baseline as fixed cells.
 - [ ] `make check` green; reviewers approve.
 
