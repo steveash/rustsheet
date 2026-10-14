@@ -38,6 +38,14 @@ fn lcm_i64(a: i64, b: i64) -> Option<i64> {
     }
 }
 
+fn negative_error(cell: CellReferenceIndex, fn_name: &str) -> CalcResult {
+    CalcResult::new_error(
+        Error::NUM,
+        cell,
+        format!("{fn_name} only accepts non-negative integers"),
+    )
+}
+
 impl Model {
     fn gcd_lcm_impl<F>(
         &mut self,
@@ -99,7 +107,13 @@ impl Model {
         };
 
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            let evaluated = self.evaluate_node_in_context(arg, cell);
+            // Only a text or boolean range cell is evidenced to beat the negative; typed
+            // arguments, errors and array elements after one keep the immediate `#NUM!`.
+            if negative_seen.get() && !matches!(evaluated, CalcResult::Range { .. }) {
+                return negative_error(cell, fn_name);
+            }
+            match evaluated {
                 CalcResult::Number(value) => {
                     if let Some(res) = handle_number(value) {
                         return res;
@@ -166,6 +180,9 @@ impl Model {
                 CalcResult::Array(array) => {
                     for row in array {
                         for value in row {
+                            if negative_seen.get() {
+                                return negative_error(cell, fn_name);
+                            }
                             match value {
                                 ArrayNode::Number(value) => {
                                     if let Some(res) = handle_number(value) {
@@ -219,11 +236,7 @@ impl Model {
         }
 
         if negative_seen.get() {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                format!("{fn_name} only accepts non-negative integers"),
-            );
+            return negative_error(cell, fn_name);
         }
 
         if !saw_number && !has_range {

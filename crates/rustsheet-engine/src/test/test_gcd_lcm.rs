@@ -143,7 +143,12 @@ fn range_text_or_boolean_is_value_even_after_a_negative() {
     model._set("A1", "=GCD(-1,B1:B2)");
     model._set("A2", "=GCD(C1:C3)");
     model._set("A3", "=GCD(D1:D2)");
+    // Unprobed paths keep the immediate `#NUM!`.
+    model._set("A4", "=GCD(-1,\"a\")");
+    model._set("A5", "=GCD(-1,NA())");
     model.evaluate();
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(model._get_text("A1"), *"#VALUE!");
     assert_eq!(model._get_text("A2"), *"#VALUE!");
     assert_eq!(model._get_text("A3"), *"#NUM!");

@@ -16,6 +16,14 @@ fn log_factorial(n: u64) -> f64 {
     (1..=n).map(|i| (i as f64).ln()).sum()
 }
 
+fn negative_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::NUM,
+        cell,
+        "MULTINOMIAL requires non-negative values".to_string(),
+    )
+}
+
 impl Model {
     // ── MULTINOMIAL ───────────────────────────────────────────────────────────
 
@@ -35,7 +43,13 @@ impl Model {
         let negative_seen = std::cell::Cell::new(false);
 
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            let evaluated = self.evaluate_node_in_context(arg, cell);
+            // Only a text or boolean range cell is evidenced to beat the negative; typed
+            // arguments, errors and array elements after one keep the immediate `#NUM!`.
+            if negative_seen.get() && !matches!(evaluated, CalcResult::Range { .. }) {
+                return negative_error(cell);
+            }
+            match evaluated {
                 CalcResult::Number(v) => {
                     if v < 0.0 {
                         negative_seen.set(true);
@@ -75,6 +89,9 @@ impl Model {
                 CalcResult::Array(arr) => {
                     for row in arr {
                         for node in row {
+                            if negative_seen.get() {
+                                return negative_error(cell);
+                            }
                             match node {
                                 ArrayNode::Number(v) => {
                                     if v < 0.0 {
@@ -115,11 +132,7 @@ impl Model {
         }
 
         if negative_seen.get() {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "MULTINOMIAL requires non-negative values".to_string(),
-            );
+            return negative_error(cell);
         }
         // Excel: `#NUM!` once the arguments add up to more than 170, where `sum!` overflows a
         // double: `MULTINOMIAL(171)`, `(170,1)`, `(86,86)` and `(1E+15)` are `#NUM!`, while
