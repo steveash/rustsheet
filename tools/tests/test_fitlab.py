@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import re
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +13,8 @@ import pytest
 
 from rustsheet_tools import repo_root
 from rustsheet_tools.fitlab import cli, fit, sweep
-from rustsheet_tools.fitlab.kernels import erfc, registry
+from rustsheet_tools.fitlab.exact import exact_value, to_double_value
+from rustsheet_tools.fitlab.kernels import annuity, erfc, gamma, registry
 from rustsheet_tools.fitlab.score import Candidate, candidate, families, rank, score, ulp_distance
 from rustsheet_tools.fitlab.sweep import Cell, Sweep, UnparsedError, Workbook, parse_arg, select, split_args
 from rustsheet_tools.snapshot import parse_show
@@ -68,7 +70,18 @@ def test_arithmetic_arguments_use_excels_operator_model() -> None:
     assert sweep.arithmetic("-2^2") == 4.0  # a unary sign binds tighter than ^
     assert sweep.arithmetic("2^3^2") == 64.0  # ^ is left-associative
     assert sweep.arithmetic("(1+0.2)") == 1.2
-    for bad in ("2^0.5", "1/0", "(1+2", "1+", "1 2", "2^2000"):
+    for bad in (
+        "2^0.5",
+        "1/0",
+        "(1+2",
+        "1+",
+        "1 2",
+        "2^2000",
+        "1E999",
+        "1E308*10",
+        "-" * 60 + "1",
+        "(" * 60 + "1" + ")" * 60,
+    ):
         with pytest.raises(UnparsedError):
             sweep.arithmetic(bad)
 
@@ -238,3 +251,63 @@ def test_gamma_at_integers_is_a_downward_double_product() -> None:
     scores = _scores("gamma-int", r"^(double: product|correctly rounded|ext: product downward)")
     assert scores["double: product downward"][0] == 92  # every n <= 88 (T-1524)
     assert scores["correctly rounded"][0] == scores["ext: product downward"][0] == 40
+
+
+def test_numeric_arg_accepts_only_numbers() -> None:
+    assert sweep.numeric_arg(2.5) == 2.5
+    for bad in (True, "1", None, [1.0]):
+        with pytest.raises(TypeError):
+            sweep.numeric_arg(bad)
+
+
+def _cell(args: tuple[float, ...]) -> Cell:
+    return Cell("s/c", "S", "A1", "=F()", args, 0.0)
+
+
+def _by_name(cands: list[Candidate]) -> dict[str, Candidate]:
+    return {c.name: c for c in cands}
+
+
+def test_ipmt_and_ppmt_correctly_rounded_values() -> None:
+    # IPMT(0.1, 1, 2, 1000): the first period's interest is -pv*r; PMT = -1000*0.1*1.21/0.21.
+    args = (0.1, 1.0, 2.0, 1000.0)
+    ipmt = _by_name(annuity.ipmt_grid(principal=False)())
+    ppmt = _by_name(annuity.ipmt_grid(principal=True)())
+    r = Fraction(0.1)
+    pmt = -1000 * r * (1 + r) ** 2 / ((1 + r) ** 2 - 1)
+    assert ipmt["correctly rounded"].evaluate(_cell(args)) == float(-1000 * r)
+    assert ppmt["correctly rounded"].evaluate(_cell(args)) == float(pmt + 1000 * r)
+    assert all(isinstance(c.evaluate(_cell(args)), float) for c in ipmt.values())
+
+
+def test_npv_candidates_discount_each_value() -> None:
+    cands = _by_name(annuity.npv_candidates())
+    # NPV(0.2,-1000,300) = -1000/1.2 + 300/1.44 = -625 (oracle m9-fin-nper-npv A133)
+    assert cands["correctly rounded"].evaluate(_cell((0.2, -1000.0, 300.0))) == -625.0
+    assert len({c.family for c in cands.values()}) == 5
+
+
+def test_factorial_products_and_half_integer_gamma() -> None:
+    for n in (1, 2, 5, 30):
+        exact = math.factorial(n - 1)
+        assert (
+            gamma.factorial_product(n, exact_value, True)
+            == gamma.factorial_product(n, exact_value, False)
+            == exact
+        )
+    # GAMMA(26): the downward double product is Excel's 1.5511210043330984e+25, upward is correctly rounded.
+    assert float(gamma.factorial_product(26, to_double_value, True)) == 1.5511210043330984e25
+    assert float(gamma.factorial_product(26, to_double_value, False)) == 1.5511210043330986e25
+    root = Fraction(7, 4)  # any stand-in for sqrt(pi): the recurrence is linear in it
+    assert gamma.half_int_gamma(Fraction(3, 2), root, exact_value, downward=False) == root / 2
+    assert gamma.half_int_gamma(Fraction(3, 2), root, exact_value, downward=True) == root / 2
+    assert gamma.half_int_gamma(Fraction(-1, 2), root, exact_value, downward=False) == -2 * root
+    with pytest.raises(ValueError, match="half-integer"):
+        gamma.half_int_gamma(Fraction(1), root, exact_value, downward=False)
+
+
+def test_erfc_x87_fraction_reproduces_bu_even_in_doubles() -> None:
+    for x in (1.0, 2.5, 7.3, 26.0):
+        assert float(erfc.bu_even_rounded(Fraction(x), 30, to_double_value)) == erfc.bu_even(x, 30)
+    names = [c.name for c in erfc.x87_candidates()]
+    assert names[0].startswith("128-bit") and len(names) == 1 + 3 * 2 * 3

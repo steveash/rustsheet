@@ -11,16 +11,21 @@ import pytest
 
 from rustsheet_tools.fitlab.exact import (
     DOUBLE_MIN_EXP,
+    ROUNDINGS,
     X87,
     Ext,
     X87Insn,
     double_round,
+    exact_value,
+    exp_at,
     exp_cr,
     extended_value,
+    ln_at,
     ln_cr,
     pi_cr,
     pow_cr,
     round_to_bits,
+    rounded_to,
     sqrt_cr,
     square_and_multiply,
     to_double,
@@ -133,7 +138,7 @@ def test_out_of_range_inputs_raise() -> None:
 
 
 def test_square_and_multiply_rounds_each_product() -> None:
-    assert square_and_multiply(3, 5, lambda v: v) == 243
+    assert square_and_multiply(3, 5, exact_value) == 243
     assert square_and_multiply(1.5, 0, to_double_value) == 1
     b = math.sqrt(5)
     once = to_double(square_and_multiply(b, 10, to_double_value))
@@ -159,3 +164,13 @@ def test_huge_exponents_stop_at_the_x87_range() -> None:
     with pytest.raises(OverflowError):
         X87Insn.pow(1.0000001, 9007199254740992)
     assert square_and_multiply(0.5, 1 << 53, to_double_value) == 0  # a double underflows to 0
+
+
+def test_shared_roundings() -> None:
+    v = Fraction(1, 3)
+    assert exact_value(v) is v
+    assert ROUNDINGS["double"](v) == Fraction(1 / 3)
+    assert ROUNDINGS["ext"](v) == round_to_bits(v, 64)
+    assert rounded_to(128)(v) == round_to_bits(v, 128)
+    assert ln_at(53)(Fraction(10)) == Fraction(math.log(10))
+    assert exp_at(64)(Fraction(1)) == exp_cr(1, 64)

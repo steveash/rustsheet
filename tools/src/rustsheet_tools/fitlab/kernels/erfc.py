@@ -26,15 +26,15 @@ from rustsheet_tools.fitlab.exact import (
     EXTENDED,
     Rounding,
     X87Insn,
-    exp_cr,
+    exp_at,
     pi_cr,
-    round_to_bits,
+    rounded_to,
     sqrt_cr,
     to_double,
 )
 from rustsheet_tools.fitlab.fit import Fit
 from rustsheet_tools.fitlab.score import Candidate, candidate
-from rustsheet_tools.fitlab.sweep import Cell
+from rustsheet_tools.fitlab.sweep import Arg, Cell, numeric_arg
 
 SQPI = math.sqrt(math.pi)
 ISQPI = 1 / SQPI
@@ -186,11 +186,8 @@ def nr_erfc(x: float, gln: float, eps: float) -> float:
 def _x(fn: Callable[[float], float]) -> Callable[..., float]:
     """ERFC's one argument as a float (the sweep's literals parse as floats)."""
 
-    def call(x: float | bool | str | list[float | bool | str | None] | None) -> float:
-        if not isinstance(x, float):
-            msg = f"ERFC argument {x!r}"
-            raise TypeError(msg)
-        return fn(x)
+    def call(x: Arg) -> float:
+        return fn(numeric_arg(x))
 
     return call
 
@@ -252,22 +249,21 @@ _REFERENCE_DEPTH = 1500  # converged to well beyond 128 bits for x >= 1
 
 
 def bu_even_rounded(x: Fraction, n: int, rnd: Rounding) -> Fraction:
-    """`bu_even` with every operation rounded by `rnd` (exact for `lambda v: v`)."""
-    z = rnd(2 * rnd(x * x))
-    t = rnd(z + 1 + 4 * n)
+    """`bu_even` operation for operation, each rounded by `rnd`: `to_double_value` reproduces
+    `bu_even` exactly, `exact_value` gives the exact fraction."""
+    two_x = rnd(2 * x)
+    z = rnd(two_x * x)
+    z1 = rnd(z + 1)
+    t = rnd(z1 + 4 * n)
     for k in range(n, 0, -1):
-        t = rnd(rnd(z + (1 + 4 * (k - 1))) - rnd((2 * k - 1) * (2 * k) / t))
-    return rnd(2 * x / t)
-
-
-def _at(bits: int) -> Rounding:
-    return lambda v: round_to_bits(v, bits)
+        t = rnd(rnd(z1 + 4 * (k - 1)) - rnd((2 * k - 1) * (2 * k) / t))
+    return rnd(two_x / t)
 
 
 def _erfc_rounded(x: float, n: int, bits: int, exp: Callable[[Fraction], Fraction], divide: bool) -> float:
     """sqrt(pi)^-1 * K * exp(-x^2) at `bits`: as (1/exp(x*x)) * (K * ISQPI) (`divide`) or as
     exp(-x*x) * (K * ISQPI), the two best T-1187 combinations."""
-    rnd = _at(bits)
+    rnd = rounded_to(bits)
     v = Fraction(x)
     isqpi = rnd(1 / sqrt_cr(pi_cr(bits + 8), bits + 8))
     k = bu_even_rounded(v, n, rnd)
@@ -276,19 +272,16 @@ def _erfc_rounded(x: float, n: int, bits: int, exp: Callable[[Fraction], Fractio
     return to_double(rnd(factor * rnd(k * isqpi)))
 
 
-def _exp64(v: Fraction) -> Fraction:
-    return exp_cr(v, EXTENDED)
-
-
-def _exp_reference(v: Fraction) -> Fraction:
-    return exp_cr(v, _REFERENCE_BITS)
+_EXP64, _EXP_REFERENCE = exp_at(EXTENDED), exp_at(_REFERENCE_BITS)
 
 
 def x87_candidates() -> list[Candidate]:
+    """The `erfc-x87` candidates: the 128-bit reference, then per depth and combination the
+    fraction in doubles and at 64 bits with each exp model."""
     out = [
         candidate(
             f"128-bit bu_even n={_REFERENCE_DEPTH} (reference)",
-            _x(lambda x: _erfc_rounded(x, _REFERENCE_DEPTH, _REFERENCE_BITS, _exp_reference, divide=False)),
+            _x(lambda x: _erfc_rounded(x, _REFERENCE_DEPTH, _REFERENCE_BITS, _EXP_REFERENCE, divide=False)),
             "reference",
         )
     ]
@@ -299,7 +292,7 @@ def x87_candidates() -> list[Candidate]:
             out.append(
                 candidate(f"double bu_even n={n} {label}", _x(_bottom_up(bu_even, n, form, sign)), "double")
             )
-            for exp_name, exp in (("exp64", _exp64), ("x87 insn exp", X87Insn.exp)):
+            for exp_name, exp in (("exp64", _EXP64), ("x87 insn exp", X87Insn.exp)):
 
                 def evaluate(
                     x: float, n: int = n, exp: Callable[[Fraction], Fraction] = exp, divide: bool = divide

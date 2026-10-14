@@ -14,6 +14,7 @@ commas; a pattern with several groups gives one argument per group that took par
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -29,14 +30,26 @@ from rustsheet_tools.spec2xlsx import parse_a1
 # or, for a range, the list of those values in row-major order.
 Arg = float | bool | str | None | list[float | bool | str | None]
 
-_NUMBER = re.compile(r"[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?")
+
+def numeric_arg(a: Arg) -> float:
+    """`a` as a number for a kernel candidate; TypeError for anything else (a bool, text, an
+    empty cell or a range), which the scorer counts as that candidate's miss on the cell."""
+    if isinstance(a, bool) or not isinstance(a, float):
+        msg = f"non-numeric argument {a!r}"
+        raise TypeError(msg)
+    return a
+
+
+_UNSIGNED = r"(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?"
+_NUMBER = re.compile(rf"[+-]?{_UNSIGNED}")
 _REF = re.compile(
     r"(?:(?P<sheet>'(?:[^']|'')+'|[A-Za-z_][\w.]*)!)?(?P<first>\$?[A-Za-z]{1,3}\$?\d+)"
     r"(?:\s*:\s*(?P<last>\$?[A-Za-z]{1,3}\$?\d+))?"
 )
 _MAX_RANGE_CELLS = 1_000_000
-_ARITH = re.compile(r"\s*(?:(?P<num>(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)|(?P<op>[-+*/^()]))")
+_ARITH = re.compile(rf"\s*(?:(?P<num>{_UNSIGNED})|(?P<op>[-+*/^()]))")
 _MAX_EXACT_EXPONENT = 1100  # beyond the double range either way
+_MAX_NESTING = 50  # parentheses and unary signs: a bound on the parser's recursion (directive 5)
 
 
 class UnparsedError(ValueError):
@@ -139,9 +152,11 @@ def _sheet_name(raw: str | None, default: str) -> str:
 
 
 def _tokens(text: str) -> list[str]:
+    """`text` split into unsigned numbers and the operators `+ - * / ^ ( )`, whitespace dropped;
+    UnparsedError at anything else (a function name, a reference, a comma)."""
     out: list[str] = []
-    pos = 0
-    while pos < len(text.rstrip()):
+    pos, end = 0, len(text.rstrip())
+    while pos < end:
         m = _ARITH.match(text, pos)
         if not m:
             msg = f"cannot evaluate argument {text!r}"
@@ -169,71 +184,84 @@ def _exact_power(base: float, power: float) -> float:
         raise UnparsedError(msg) from None
 
 
+class _Arithmetic:
+    """A recursive-descent parser over `_tokens(text)`, evaluating as it goes (see `arithmetic`)."""
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self.tokens = _tokens(text)
+        self.pos = 0
+
+    def fail(self, what: str) -> UnparsedError:
+        return UnparsedError(f"{what} in argument {self.text!r}")
+
+    def peek(self) -> str | None:
+        return self.tokens[self.pos] if self.pos < len(self.tokens) else None
+
+    def take(self) -> str:
+        if self.pos >= len(self.tokens):
+            raise self.fail("unexpected end")
+        self.pos += 1
+        return self.tokens[self.pos - 1]
+
+    def primary(self, depth: int) -> float:
+        if depth > _MAX_NESTING:
+            raise self.fail("nesting too deep")
+        tok = self.take()
+        if tok in ("+", "-"):
+            value = self.primary(depth + 1)
+            return -value if tok == "-" else value
+        if tok == "(":
+            value = self.additive(depth + 1)
+            if self.take() != ")":
+                raise self.fail("unbalanced parentheses")
+            return value
+        if not _NUMBER.fullmatch(tok):
+            raise self.fail(f"unexpected {tok!r}")
+        literal = float(tok)
+        if not math.isfinite(literal):
+            raise self.fail(f"non-finite literal {tok}")
+        return literal
+
+    def power(self, depth: int) -> float:
+        value = self.primary(depth)
+        while self.peek() == "^":
+            self.take()
+            value = _exact_power(value, self.primary(depth))  # Excel's ^ is left-associative
+        return value
+
+    def multiplicative(self, depth: int) -> float:
+        value = self.power(depth)
+        while (op := self.peek()) in ("*", "/"):
+            self.take()
+            rhs = self.power(depth)
+            if op == "/" and rhs == 0:
+                raise self.fail("division by zero")
+            value = X87.mul(value, rhs) if op == "*" else X87.div(value, rhs)
+        return value
+
+    def additive(self, depth: int) -> float:
+        value = self.multiplicative(depth)
+        while (op := self.peek()) in ("+", "-"):
+            self.take()
+            rhs = self.multiplicative(depth)
+            value = X87.add(value, rhs) if op == "+" else X87.sub(value, rhs)
+        return value
+
+
 def arithmetic(text: str) -> float:
     """Evaluates `+ - * / ^`, unary signs and parentheses over numeric literals with Excel's
     operator model: each of `+ - * /` rounds its exact result to 64 bits, then to a double
     (numbers.md, "Division rounds twice"), and `^` must be exact (`_exact_power`). As in Excel,
-    a unary sign binds tighter than `^` (`-2^2` is 4)."""
-    tokens = _tokens(text)
-    pos = 0
-
-    def peek() -> str | None:
-        return tokens[pos] if pos < len(tokens) else None
-
-    def take() -> str:
-        nonlocal pos
-        if pos >= len(tokens):
-            msg = f"argument {text!r} ends early"
-            raise UnparsedError(msg)
-        pos += 1
-        return tokens[pos - 1]
-
-    def primary() -> float:
-        tok = take()
-        if tok in "+-" and len(tok) == 1:
-            value = primary()
-            return -value if tok == "-" else value
-        if tok == "(":
-            value = additive()
-            if take() != ")":
-                msg = f"unbalanced parentheses in {text!r}"
-                raise UnparsedError(msg)
-            return value
-        if _NUMBER.fullmatch(tok):
-            return float(tok)
-        msg = f"unexpected {tok!r} in {text!r}"
-        raise UnparsedError(msg)
-
-    def power() -> float:
-        value = primary()
-        while peek() == "^":
-            take()
-            value = _exact_power(value, primary())  # Excel's ^ is left-associative
-        return value
-
-    def multiplicative() -> float:
-        value = power()
-        while (op := peek()) in ("*", "/"):
-            take()
-            rhs = power()
-            if op == "/" and rhs == 0:
-                msg = f"division by zero in {text!r}"
-                raise UnparsedError(msg)
-            value = X87.mul(value, rhs) if op == "*" else X87.div(value, rhs)
-        return value
-
-    def additive() -> float:
-        value = multiplicative()
-        while (op := peek()) in ("+", "-"):
-            take()
-            rhs = multiplicative()
-            value = X87.add(value, rhs) if op == "+" else X87.sub(value, rhs)
-        return value
-
-    result = additive()
-    if pos != len(tokens):
-        msg = f"cannot evaluate argument {text!r}"
-        raise UnparsedError(msg)
+    a unary sign binds tighter than `^` (`-2^2` is 4). A non-finite literal, an overflow, or
+    nesting deeper than 50 is UnparsedError."""
+    parser = _Arithmetic(text)
+    try:
+        result = parser.additive(0)
+    except OverflowError:  # an X87 operation's result is beyond the double range
+        raise parser.fail("overflow") from None
+    if parser.pos != len(parser.tokens):
+        raise parser.fail("trailing input")
     return result
 
 

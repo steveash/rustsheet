@@ -23,36 +23,29 @@ from collections.abc import Callable
 from fractions import Fraction
 
 from rustsheet_tools.fitlab.exact import (
+    DOUBLE,
     EXTENDED,
+    ROUNDINGS,
     Rounding,
-    extended_value,
-    ln_cr,
+    exact_value,
+    ln_at,
     pi_cr,
     round_to_bits,
     sqrt_cr,
     to_double,
-    to_double_value,
-    x87_value,
 )
 from rustsheet_tools.fitlab.fit import Fit
 from rustsheet_tools.fitlab.score import Candidate, candidate
-from rustsheet_tools.fitlab.sweep import Arg
+from rustsheet_tools.fitlab.sweep import Arg, numeric_arg
 
-INT_CASES = ["probes-numeric/t1042-gamma-int-1-90", "probes-numeric/t1042-gamma-int-91-171"]
-HALF_CASE = "probes-numeric/t1042-gamma-half-int"
+_INT_CASES = ["probes-numeric/t1042-gamma-int-1-90", "probes-numeric/t1042-gamma-int-91-171"]
+_HALF_CASE = "probes-numeric/t1042-gamma-half-int"
 _SQRT_PI_BITS = 200
-ROUNDINGS: dict[str, Rounding] = {
-    "double": to_double_value,
-    "x87 op": x87_value,
-    "ext": extended_value,
-}
+_LN64, _LN53 = ln_at(EXTENDED), ln_at(DOUBLE)
 
 
 def _arg(x: Arg) -> Fraction:
-    if isinstance(x, bool) or not isinstance(x, float):
-        msg = f"non-numeric argument {x!r}"
-        raise TypeError(msg)
-    return Fraction(x)
+    return Fraction(numeric_arg(x))
 
 
 def _positive_int(x: Fraction) -> int:
@@ -88,14 +81,15 @@ def _libm_log(v: Fraction) -> float:
 
 
 def _ln64(v: Fraction) -> float:
-    return to_double(round_to_bits(ln_cr(v, EXTENDED), EXTENDED))
+    return to_double(_LN64(v))
 
 
 def _exact_ln(v: Fraction) -> float:
-    return to_double(ln_cr(v))
+    return to_double(_LN53(v))
 
 
 def gamma_int_candidates() -> list[Candidate]:
+    """GAMMA(n): correctly rounded, libm, and the factorial products per rounding and order."""
     out = [
         candidate("correctly rounded", lambda x: to_double(math.factorial(_positive_int(_arg(x)) - 1))),
         candidate("libm tgamma", lambda x: math.gamma(float(_arg(x)))),
@@ -108,8 +102,9 @@ def gamma_int_candidates() -> list[Candidate]:
 
 
 def gammaln_int_candidates() -> list[Candidate]:
+    """GAMMALN(n): correctly rounded, libm, and logarithms of the factorial products."""
     out = [
-        candidate("correctly rounded", _gammaln_int(lambda v: v, True, _exact_ln)),
+        candidate("correctly rounded", _gammaln_int(exact_value, True, _exact_ln)),
         candidate("libm lgamma", lambda x: math.lgamma(float(_arg(x)))),
     ]
     for name, rnd in ROUNDINGS.items():
@@ -148,11 +143,12 @@ def half_int_gamma(x: Fraction, sqrt_pi: Fraction, rnd: Rounding, downward: bool
 
 
 def gamma_half_candidates() -> list[Candidate]:
+    """GAMMA(m+1/2): correctly rounded, libm, and the sqrt(pi) recurrences."""
     exact_sqrt_pi = sqrt_cr(pi_cr(_SQRT_PI_BITS), _SQRT_PI_BITS)
     double_sqrt_pi = Fraction(math.sqrt(math.pi))
 
     def exact(x: Arg) -> float:
-        return to_double(half_int_gamma(_arg(x), exact_sqrt_pi, lambda v: v, downward=False))
+        return to_double(half_int_gamma(_arg(x), exact_sqrt_pi, exact_value, downward=False))
 
     out = [
         candidate("correctly rounded", exact),
@@ -179,21 +175,21 @@ FITS = [
     Fit(
         name="gamma-int",
         description="GAMMA(n), n = 1..171 (T-1042): factorial products per rounding model",
-        cases=INT_CASES,
+        cases=_INT_CASES,
         pattern=r"^=GAMMA\((.*)\)$",
         candidates=gamma_int_candidates,
     ),
     Fit(
         name="gammaln-int",
         description="GAMMALN(n), n = 1..171 (T-1042): ln of the factorial products per rounding model",
-        cases=INT_CASES,
+        cases=_INT_CASES,
         pattern=r"^=GAMMALN\((.*)\)$",
         candidates=gammaln_int_candidates,
     ),
     Fit(
         name="gamma-half-int",
         description="GAMMA(m+1/2), m = -11..50 (T-1042): the sqrt(pi) recurrence per rounding model",
-        cases=[HALF_CASE],
+        cases=[_HALF_CASE],
         pattern=r"^=GAMMA\((.*)\)$",
         candidates=gamma_half_candidates,
     ),

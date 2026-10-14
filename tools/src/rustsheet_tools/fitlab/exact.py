@@ -330,6 +330,36 @@ def extended_value(x: Fraction) -> Fraction:
     return round_to_bits(x, EXTENDED)
 
 
+def exact_value(x: Fraction) -> Fraction:
+    """`x` unchanged: the identity `Rounding`, for the exact (correctly rounded) variant of a
+    chained model."""
+    return x
+
+
+# The rounding models the kernels' candidates share: each operation rounded once to a double,
+# rounded like an Excel operator, or kept at 64 bits.
+ROUNDINGS: dict[str, Rounding] = {
+    "double": to_double_value,
+    "x87 op": x87_value,
+    "ext": extended_value,
+}
+
+
+def rounded_to(bits: int) -> Rounding:
+    """Round to `bits` (a `Rounding` at any precision, e.g. a 128-bit reference)."""
+    return lambda x: round_to_bits(x, bits)
+
+
+def ln_at(bits: int) -> Callable[[Fraction], Fraction]:
+    """ln correctly rounded to `bits` (53: a double; 64: the idealized x87 model)."""
+    return lambda x: ln_cr(x, bits)
+
+
+def exp_at(bits: int) -> Callable[[Fraction], Fraction]:
+    """exp correctly rounded to `bits`."""
+    return lambda x: exp_cr(x, bits)
+
+
 # The x87 extended exponent range is about 2^±16384; no model needs values beyond it, and a bound
 # keeps a huge exponent (n up to 2^53) from building enormous Fractions (directive 5).
 _EXPONENT_LIMIT = 1 << 14

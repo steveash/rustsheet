@@ -18,7 +18,7 @@ One set of pow models is scored on every sweep:
 The `power-1+r` fit passes the rate, not the base, so the base 1+r can also stay at 64 bits (as
 it would in an x87 register). The `exp-ln` fit scores EXP(n*LN(1+r)) as a chain of Excel
 functions with each function's result stored as a double, or kept at 64 bits throughout.
-Results: docs/excel-semantics/numbers.md, "x87 extended precision is not a kernel-wide model".
+Results: docs/excel-semantics/numbers.md, "x87 precision is per operator, not per kernel (T-1524)".
 """
 
 from __future__ import annotations
@@ -28,13 +28,14 @@ from collections.abc import Callable
 from fractions import Fraction
 
 from rustsheet_tools.fitlab.exact import (
+    DOUBLE,
     EXTENDED,
     X87,
     Rounding,
     X87Insn,
-    exp_cr,
+    exp_at,
     extended_value,
-    ln_cr,
+    ln_at,
     pow_cr,
     round_to_bits,
     sqrt_cr,
@@ -45,20 +46,13 @@ from rustsheet_tools.fitlab.exact import (
 )
 from rustsheet_tools.fitlab.fit import Fit
 from rustsheet_tools.fitlab.score import Candidate, candidate
-from rustsheet_tools.fitlab.sweep import Arg, Cell
+from rustsheet_tools.fitlab.sweep import Arg, Cell, numeric_arg
 
 Pow = Callable[[Fraction, float], float]  # (base, possibly at 64 bits; exponent) -> result
 
 _OPERAND = r"\([^()]*\)|-?[0-9.]+(?:E[-+]?\d+)?"  # a number or a parenthesized expression
 _BINARY = rf"({_OPERAND})\^({_OPERAND})"
 PATTERN_POW = rf"^=(?:POWER\(([^,]+),([^,]+)\)|{_BINARY})$"
-
-
-def _float(a: Arg) -> float:
-    if isinstance(a, bool) or not isinstance(a, float):
-        msg = f"non-numeric argument {a!r}"
-        raise TypeError(msg)
-    return a
 
 
 def _is_int(y: float) -> bool:
@@ -70,9 +64,18 @@ def _recip_double(v: Fraction) -> float:
     return X87.div(1.0, to_double(v))
 
 
+def integer_power(base: Fraction, n: int, rnd: Rounding) -> Fraction:
+    """base^n, n >= 0, as Excel's `^` computes it (numbers.md, "Integer exponents"): right-to-left
+    square-and-multiply with the base and every product rounded by `rnd` (`x87_value` is Excel's
+    `*`; the annuity fits share this power)."""
+    return square_and_multiply(rnd(base), n, rnd)
+
+
 def excel_model(x: Fraction, y: float, product: Rounding = x87_value) -> float:
+    """numbers.md's model of `^`: square-and-multiply, SQRT for ±0.5, else exp(y ln x) in libm;
+    a negative exponent is Excel's 1/ of the positive power."""
     if _is_int(y):
-        positive = square_and_multiply(x87_value(x), abs(int(y)), product)
+        positive = integer_power(x, abs(int(y)), product)
     elif abs(y) == 0.5:
         positive = Fraction(X87.sqrt(to_double(x)))
     else:
@@ -87,31 +90,38 @@ def excel_model_single(x: Fraction, y: float) -> float:
 
 
 def correctly_rounded(x: Fraction, y: float) -> float:
+    """x^y rounded once."""
     return to_double(pow_cr(x, y))
 
 
 def x87_ideal(x: Fraction, y: float) -> float:
+    """x^y rounded once to 64 bits, then to a double."""
     return to_double(round_to_bits(pow_cr(x, y, EXTENDED), EXTENDED))
 
 
 def x87_insn(x: Fraction, y: float) -> float:
+    """fyl2x, frndint, f2xm1, fscale (`X87Insn.pow`), then to a double."""
     return to_double(X87Insn.pow(x, y))
 
 
 def x87_insn_recip(x: Fraction, y: float) -> float:
+    """`x87_insn` of |y|, and Excel's 1/ of it for a negative y."""
     positive = X87Insn.pow(x, abs(y))
     return _recip_double(positive) if y < 0 else to_double(positive)
 
 
+_LN64, _EXP64 = ln_at(EXTENDED), exp_at(EXTENDED)
+
+
 def _ext_explog(x: Fraction, y: float) -> Fraction:
-    log = round_to_bits(ln_cr(x, EXTENDED), EXTENDED)
-    return round_to_bits(exp_cr(round_to_bits(log * Fraction(y), EXTENDED), EXTENDED), EXTENDED)
+    return _EXP64(extended_value(_LN64(x) * Fraction(y)))
 
 
 def ext_model(x: Fraction, y: float) -> float:
+    """`excel_model`'s steps with every intermediate at 64 bits and one final rounding."""
     base = extended_value(x)
     if _is_int(y):
-        positive = square_and_multiply(base, abs(int(y)), extended_value)
+        positive = integer_power(base, abs(int(y)), extended_value)
     elif abs(y) == 0.5:
         positive = sqrt_cr(base, EXTENDED)
     else:
@@ -120,11 +130,13 @@ def ext_model(x: Fraction, y: float) -> float:
 
 
 def ext_explog(x: Fraction, y: float) -> float:
+    """exp(y ln x) at 64 bits for every exponent, integers included."""
     positive = _ext_explog(extended_value(x), abs(y))
     return to_double(extended_value(1 / positive) if y < 0 else positive)
 
 
 def libm_pow(x: Fraction, y: float) -> float:
+    """The platform's pow on doubles."""
     return float(to_double(x) ** y)
 
 
@@ -145,7 +157,7 @@ def binary_candidates() -> list[Candidate]:
     """The models on (x, y) arguments, x a double."""
 
     def wrap(model: Pow) -> Callable[..., float]:
-        return lambda x, y: model(Fraction(_float(x)), _float(y))
+        return lambda x, y: model(Fraction(numeric_arg(x)), numeric_arg(y))
 
     return [candidate(name, wrap(model)) for name, model in MODELS.items()]
 
@@ -162,7 +174,7 @@ def rate_candidates() -> list[Candidate]:
             def evaluate(
                 r: Arg, n: Arg, model: Pow = model, base: Callable[[float], Fraction] = base
             ) -> float:
-                return model(base(_float(r)), _float(n))
+                return model(base(numeric_arg(r)), numeric_arg(n))
 
             out.append(candidate(f"{name}, {base_name}", evaluate, name))
     return out
@@ -179,7 +191,7 @@ def sqrt5_candidates() -> list[Candidate]:
         for name, model in MODELS.items():
 
             def evaluate(n: Arg, model: Pow = model, base: Fraction = base) -> float:
-                return model(base, _float(n))
+                return model(base, numeric_arg(n))
 
             out.append(candidate(f"{name}, {base_name}", evaluate, name))
     return out
@@ -194,33 +206,27 @@ def exp_ln_candidates() -> list[Candidate]:
         store = extended_value if keep else x87_value
 
         def evaluate(n: Arg, r: Arg) -> float:
-            base = extended_value(1 + Fraction(_float(r))) if keep else Fraction(X87.add(1.0, _float(r)))
+            base = (
+                extended_value(1 + Fraction(numeric_arg(r)))
+                if keep
+                else Fraction(X87.add(1.0, numeric_arg(r)))
+            )
             log = store(ln(base))
-            return to_double(store(exp(store(log * Fraction(_float(n))))))
+            return to_double(store(exp(store(log * Fraction(numeric_arg(n))))))
 
         return evaluate
 
     def libm(n: Arg, r: Arg) -> float:
-        return math.exp(X87.mul(_float(n), math.log(X87.add(1.0, _float(r)))))
-
-    def ln_cr53(x: Fraction) -> Fraction:
-        return Fraction(to_double(ln_cr(x)))
-
-    def exp_cr53(x: Fraction) -> Fraction:
-        return Fraction(to_double(exp_cr(x)))
-
-    def ln_cr64(x: Fraction) -> Fraction:
-        return ln_cr(x, EXTENDED)
-
-    def exp_cr64(x: Fraction) -> Fraction:
-        return exp_cr(x, EXTENDED)
+        return math.exp(X87.mul(numeric_arg(n), math.log(X87.add(1.0, numeric_arg(r)))))
 
     return [
         candidate("libm exp/log, x87 op", libm, "double"),
-        candidate("correctly rounded LN and EXP, x87 op", chain(ln_cr53, exp_cr53, keep=False), "double"),
-        candidate("x87 LN/EXP (idealized), stored", chain(ln_cr64, exp_cr64, keep=False), "x87 stored"),
+        candidate(
+            "correctly rounded LN and EXP, x87 op", chain(ln_at(DOUBLE), exp_at(DOUBLE), keep=False), "double"
+        ),
+        candidate("x87 LN/EXP (idealized), stored", chain(_LN64, _EXP64, keep=False), "x87 stored"),
         candidate("x87 insn LN/EXP, stored", chain(X87Insn.ln, X87Insn.exp, keep=False), "x87 stored"),
-        candidate("ext chain (idealized)", chain(ln_cr64, exp_cr64, keep=True), "ext"),
+        candidate("ext chain (idealized)", chain(_LN64, _EXP64, keep=True), "ext"),
         candidate("ext chain (x87 insn)", chain(X87Insn.ln, X87Insn.exp, keep=True), "ext"),
     ]
 

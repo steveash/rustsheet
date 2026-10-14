@@ -25,34 +25,33 @@ from fractions import Fraction
 from functools import cache
 
 from rustsheet_tools.fitlab.exact import (
+    DOUBLE,
+    EXTENDED,
+    ROUNDINGS,
     Rounding,
     X87Insn,
+    exact_value,
     extended_value,
-    ln_cr,
-    round_to_bits,
-    square_and_multiply,
+    ln_at,
     to_double,
     to_double_value,
     x87_value,
 )
 from rustsheet_tools.fitlab.fit import Fit
+from rustsheet_tools.fitlab.kernels.power import integer_power
 from rustsheet_tools.fitlab.score import Candidate, candidate
-from rustsheet_tools.fitlab.sweep import Arg
+from rustsheet_tools.fitlab.sweep import Arg, numeric_arg
 
-CASE_PMT = "probes-numeric/m9-fin-pmt"
-CASE_PV_FV = "probes-numeric/m9-fin-pv-fv"
-CASE_NPER_NPV = "probes-numeric/m9-fin-nper-npv"
-_HIGH = 120  # bits for the near-exact logarithms of NPER
+_CASE_PMT = "probes-numeric/m9-fin-pmt"
+_CASE_PV_FV = "probes-numeric/m9-fin-pv-fv"
+_CASE_NPER_NPV = "probes-numeric/m9-fin-nper-npv"
+_LN_HIGH = ln_at(120)  # the near-exact logarithms of NPER's reference
+_LN64, _LN53 = ln_at(EXTENDED), ln_at(DOUBLE)
 
 
 def _nums(args: tuple[Arg, ...], count: int) -> list[Fraction]:
     """The cell's numeric arguments, padded with zeros (omitted fv/pv/type) to `count`."""
-    out: list[Fraction] = []
-    for a in args:
-        if isinstance(a, bool) or not isinstance(a, float):
-            msg = f"non-numeric argument {a!r}"
-            raise TypeError(msg)
-        out.append(Fraction(a))
+    out = [Fraction(numeric_arg(a)) for a in args]
     return out + [Fraction(0)] * (count - len(out))
 
 
@@ -66,31 +65,37 @@ def _int(n: Fraction) -> int:
 # Power sources: (r, n) -> P, possibly at 64 bits. Cached: shapes and models share them.
 @cache
 def p_sqm_double(r: Fraction, n: int) -> Fraction:
-    return square_and_multiply(x87_value(1 + r), n, x87_value)
+    """(1+r)^n as Excel's `^` (twice-rounded square-and-multiply on the double 1+r)."""
+    return integer_power(1 + r, n, x87_value)
 
 
 @cache
 def p_sqm_ext(r: Fraction, n: int) -> Fraction:
-    return square_and_multiply(extended_value(1 + r), n, extended_value)
+    """The same with 1+r and every product at 64 bits (x87 registers)."""
+    return integer_power(1 + r, n, extended_value)
 
 
 @cache
 def p_exact(r: Fraction, n: int) -> Fraction:
+    """The exact power."""
     return (1 + r) ** n
 
 
 @cache
 def p_x87_insn(r: Fraction, n: int) -> Fraction:
+    """fyl2x/f2xm1/fscale on the 64-bit 1+r (`X87Insn.pow`)."""
     return X87Insn.pow(extended_value(1 + r), n) if n else Fraction(1)
 
 
 @cache
 def p_libm_pow(r: Fraction, n: int) -> Fraction:
+    """libm pow on the double 1+r."""
     return Fraction((1 + float(r)) ** n)
 
 
 @cache
 def p_exp_log1p(r: Fraction, n: int) -> Fraction:
+    """libm exp(n log1p r)."""
     return Fraction(math.exp(n * math.log1p(float(r))))
 
 
@@ -111,28 +116,28 @@ class Ops:
         self.rnd = rnd
 
     def add(self, a: Fraction, b: Fraction) -> Fraction:
+        """a + b, rounded."""
         return self.rnd(a + b)
 
     def sub(self, a: Fraction, b: Fraction) -> Fraction:
+        """a - b, rounded."""
         return self.rnd(a - b)
 
     def mul(self, a: Fraction, b: Fraction) -> Fraction:
+        """a * b, rounded."""
         return self.rnd(a * b)
 
     def div(self, a: Fraction, b: Fraction) -> Fraction:
+        """a / b, rounded."""
         return self.rnd(a / b)
-
-
-def _exact_value(x: Fraction) -> Fraction:
-    return x
 
 
 # name -> (rounding of each operation, rounding applied to P before the formula)
 MODELS: dict[str, tuple[Rounding, Rounding]] = {
-    "double": (to_double_value, to_double_value),
-    "x87 op": (x87_value, to_double_value),
-    "ext": (extended_value, extended_value),
-    "ext, P double": (extended_value, to_double_value),
+    "double": (ROUNDINGS["double"], to_double_value),
+    "x87 op": (ROUNDINGS["x87 op"], to_double_value),
+    "ext": (ROUNDINGS["ext"], ROUNDINGS["ext"]),
+    "ext, P double": (ROUNDINGS["ext"], to_double_value),
 }
 
 # A shape computes the result from the arguments and P under `Ops`.
@@ -198,7 +203,7 @@ def _model_fn(
 
 
 def _exact_fn(shape: Shape, count: int) -> Callable[..., float]:
-    ops = Ops(_exact_value)
+    ops = Ops(exact_value)
 
     def evaluate(*args: Arg) -> float:
         a = _nums(args, count)
@@ -249,6 +254,7 @@ PMT_ACCURATE: dict[str, Callable[[float, float, float, float, float, float], flo
 
 
 def pmt_candidates() -> list[Candidate]:
+    """The PMT grid plus the accurate-P-1 double formulations."""
     out = grid(PMT_SHAPES, 5)()
     out += [
         candidate(f"double, P-1 = expm1(n log1p r): {name}", _pmt_accurate(shape), "double, accurate P-1")
@@ -276,9 +282,11 @@ def _ipmt_parts(
 
 
 def ipmt_grid(principal: bool) -> Callable[[], list[Candidate]]:
+    """IPMT (or PPMT when `principal`) per power source and rounding model, plus the exact value."""
+
     def build() -> list[Candidate]:
         out: list[Candidate] = []
-        models = {"exact": (_exact_value, _exact_value), **MODELS}
+        models = {"exact": (exact_value, exact_value), **MODELS}
         powers = {"P exact": p_exact} | {k: v for k, v in POWERS.items() if k != "P exact"}
         for model_name, (rnd, p_rnd) in models.items():
             for power_name, power in powers.items():
@@ -304,17 +312,19 @@ def ipmt_grid(principal: bool) -> Callable[[], list[Candidate]]:
 
 # NPER(r, pmt, pv, fv, type) = ln((pmt*k - fv*r)/(pmt*k + pv*r)) / ln(1+r)
 def nper_candidates() -> list[Candidate]:
+    """NPER with libm, idealized or instruction logarithms, per rounding model."""
+
     def ratio(o: Ops, a: list[Fraction]) -> Fraction:
         r, pmt, pv, fv, t = a
         pk = o.mul(pmt, _k(o, r, t))
         return o.div(o.sub(pk, o.mul(fv, r)), o.add(pk, o.mul(pv, r)))
 
-    exact_ops = Ops(_exact_value)
+    exact_ops = Ops(exact_value)
 
     def correctly_rounded(*args: Arg) -> float:
         a = _nums(args, 5)
-        num = ln_cr(ratio(exact_ops, a), _HIGH)
-        return to_double(num / ln_cr(1 + a[0], _HIGH))
+        num = _LN_HIGH(ratio(exact_ops, a))
+        return to_double(num / _LN_HIGH(1 + a[0]))
 
     def libm(log_rate: Callable[[float], float], rnd: Rounding) -> Callable[..., float]:
         ops = Ops(rnd)
@@ -327,12 +337,23 @@ def nper_candidates() -> list[Candidate]:
 
         return evaluate
 
+    def rounded_logs(rnd: Rounding) -> Callable[..., float]:
+        """The libm form with both logarithms correctly rounded to doubles."""
+        ops = Ops(rnd)
+
+        def evaluate(*args: Arg) -> float:
+            a = _nums(args, 5)
+            num = Fraction(to_double(_LN53(ratio(ops, a))))
+            return float(x87_value(num / Fraction(to_double(_LN53(x87_value(1 + a[0]))))))
+
+        return evaluate
+
     def x87(insn: bool, keep: bool) -> Callable[..., float]:
         rnd = extended_value if keep else x87_value
         ops = Ops(rnd)
 
         def ln(x: Fraction) -> Fraction:
-            value = X87Insn.ln(x) if insn else round_to_bits(ln_cr(x, _HIGH), 64)
+            value = X87Insn.ln(x) if insn else _LN64(x)
             return rnd(value)
 
         def evaluate(*args: Arg) -> float:
@@ -346,6 +367,7 @@ def nper_candidates() -> list[Candidate]:
         candidate("correctly rounded", correctly_rounded, "correctly rounded"),
         candidate("double: log(ratio)/log(1+r)", libm(lambda r: math.log(1 + r), to_double_value), "double"),
         candidate("double: log(ratio)/log1p(r)", libm(math.log1p, to_double_value), "double"),
+        candidate("double: correctly rounded logs", rounded_logs(to_double_value), "double"),
         candidate("x87 op: log(ratio)/log(1+r)", libm(lambda r: math.log(1 + r), x87_value), "x87 op"),
         candidate("x87 op: ln64 (idealized)", x87(insn=False, keep=False), "x87 op"),
         candidate("ext: ln64 (idealized)", x87(insn=False, keep=True), "ext"),
@@ -356,6 +378,8 @@ def nper_candidates() -> list[Candidate]:
 
 # NPV(r, v1, ..., vn) = sum v_i / (1+r)^i
 def npv_candidates() -> list[Candidate]:
+    """NPV by power sources, Horner and a running factor, per rounding model."""
+
     def values(args: tuple[Arg, ...]) -> tuple[Fraction, list[Fraction]]:
         a = _nums(args, len(args))
         return a[0], a[1:]
@@ -396,7 +420,7 @@ def npv_candidates() -> list[Candidate]:
 
         return evaluate
 
-    out = [candidate("correctly rounded", by_power(p_exact, _exact_value, _exact_value), "correctly rounded")]
+    out = [candidate("correctly rounded", by_power(p_exact, exact_value, exact_value), "correctly rounded")]
     for model_name, (rnd, p_rnd) in MODELS.items():
         for power_name, power in POWERS.items():
             out.append(
@@ -411,49 +435,49 @@ FITS = [
     Fit(
         name="annuity-pv",
         description="PV over the T-0942 sweep: power sources x shapes x rounding models",
-        cases=[CASE_PV_FV],
+        cases=[_CASE_PV_FV],
         pattern=r"^=PV\((.*)\)$",
         candidates=grid(PV_SHAPES, 5),
     ),
     Fit(
         name="annuity-fv",
         description="FV over the T-0942 sweep: power sources x shapes x rounding models",
-        cases=[CASE_PV_FV],
+        cases=[_CASE_PV_FV],
         pattern=r"^=FV\((.*)\)$",
         candidates=grid(FV_SHAPES, 5),
     ),
     Fit(
         name="annuity-pmt",
         description="PMT over the T-0942 sweep: power sources x shapes x rounding models",
-        cases=[CASE_PMT],
+        cases=[_CASE_PMT],
         pattern=r"^=PMT\((.*)\)$",
         candidates=pmt_candidates,
     ),
     Fit(
         name="annuity-ipmt",
         description="IPMT over the T-0942 sweep: PMT, then the FV recurrence, per rounding model",
-        cases=[CASE_PMT],
+        cases=[_CASE_PMT],
         pattern=r"^=IPMT\((.*)\)$",
         candidates=ipmt_grid(principal=False),
     ),
     Fit(
         name="annuity-ppmt",
         description="PPMT over the T-0942 sweep: PMT - IPMT, per rounding model",
-        cases=[CASE_PMT],
+        cases=[_CASE_PMT],
         pattern=r"^=PPMT\((.*)\)$",
         candidates=ipmt_grid(principal=True),
     ),
     Fit(
         name="annuity-nper",
         description="NPER over the T-0942 sweep: logarithm sources x rounding models",
-        cases=[CASE_NPER_NPV],
+        cases=[_CASE_NPER_NPV],
         pattern=r"^=NPER\((.*)\)$",
         candidates=nper_candidates,
     ),
     Fit(
         name="annuity-npv",
         description="NPV over the T-0942 sweep: discounting orders x power sources x rounding models",
-        cases=[CASE_NPER_NPV],
+        cases=[_CASE_NPER_NPV],
         pattern=r"^=NPV\((.*)\)$",
         candidates=npv_candidates,
     ),
