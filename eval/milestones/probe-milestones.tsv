@@ -43,7 +43,7 @@ probes/date-system-1904-accrint-settlement-bound.case.json	M9	ODDF*, ODDL*, ACCR
 probes/date-system-1904-coupon-bound.case.json	M9	COUP*, PRICE, YIELD, DURATION
 probes/date-system-1904-financial-daycount.case.json	M9	financial date readers (COUP*, PRICE/YIELD, DISC, TBILL*, ODDF*)
 probes/date-system-1904-financial-readers.case.json	M9	financial date readers (COUP*, PRICE/YIELD, DISC, TBILL*, ODDF*)
-probes/date-system-1904-financial-settlement-bound.case.json	M9	ODDF*, ODDL*, ACCRINT
+probes/date-system-1904-financial-settlement-bound.case.json	M9	ACCRINT, DISC, YEARFRAC
 probes/date-system-1904-financial-shift.case.json	M9	financial date readers (COUP*, PRICE/YIELD, DISC, TBILL*, ODDF*)
 probes/date-system-1904-financial.case.json	M9	financial date readers (COUP*, PRICE/YIELD, DISC, TBILL*, ODDF*)
 probes/date-system-1904-odd-accrint-bound.case.json	M9	ODDF*, ODDL*, ACCRINT

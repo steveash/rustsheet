@@ -25,7 +25,7 @@
     `yield-solver-sweep`; COUPDAYS `coupdays-feb-month-end`; TBILLEQ `tbilleq-zero-price`
     (tagged `M2`). COUNTBLANK `countblank-array-values` (tagged `M2`).
   - **M10, number-format codes in TEXT (13 cases):** `text-format-unquoted-letters`, `text-format-array`,
-    `text-format-length-limit-c` to `-m` (0051 already maps the first two of the series).
+    `text-format-length-limit-c` to `-m` (0051 already maps `text-format-length-limit` and `-b`).
   - **M8, external references (3 cases):** `external-ref-no-link-shapes`, `-index`, `-ifchoose`
     (the last tagged `M2`); 0051 maps `external-ref-no-link`.
   - **M7, SORT (1 case):** `sort-omitted-args` (SORT, SORTBY; tagged `M2`, passing).
