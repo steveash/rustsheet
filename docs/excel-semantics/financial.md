@@ -172,13 +172,15 @@ representable (tools/tests/test_fitlab_solvers.py). Evidence for each part:
   1e-6 188, with 1e-8 180.
 - The retry: guesses 0.7, 2, 3, 5 on `{-1,0,...,0,2}` (I!B13:B16) and 1, 10 (Calc!A134, A135, A159, A160)
   return exactly Excel's guess-0.1 value; from those guesses the secant creeps on a flat NPV and does not
-  stop. Without the retry 187/263.
-- The step cap is between 35 (the most steps an exact cell takes) and unbounded; 50 is used. A cap of 20
+  stop. Without the retry 187/263. (The model misses these cells by 1 ulp, as it misses the guess-0.1
+  cells themselves, Calc!A132 and A157: the last-bit question below.)
+- The step cap is at least 35 (the most steps an exact cell takes, I!B1) and below 1000 on this data
+  (caps 35 to 100 score 189, 1000 scores 188: a slow run must fail and retry); 50 is used. A cap of 20
   (Excel's documented "20 tries") scores 181.
 Open: 18 of the 74 misses are 1 to 4 ulp off, and most of the rest are within 1e-9 (NPV's evaluation
 order matters: as sum c_i/x^i with x = 1/v the model gets 189, by Horner in v also 189 but on different
-cells, and the two-flow cells prefer Horner), and `{0,0,-100,110}` with guess 1 or 10 (Calc!A174, A175)
-and `{-100,10,10,10,10,110}` with guess 10 (A125) are not reproduced.
+cells, and the two-flow cells prefer Horner), and `{0,0,-100,110}` with guess -0.5 (Calc!A173, 3 ulp)
+and guess 10 (A175, where the model converges to another root, 6348552.78) are not reproduced.
 Evidence: probes/solver-iteration-traces I!A1:A29 (guess sweep), I!B (far guesses on `{-1,0,...,0,2}`),
 I!C, I!D (closed-form two- and three-flow roots), probes-numeric/m9-fin-irr-rate (scaled and sign-flipped
 flows, guesses); excel-graph, 2026-10-14. `uv run rustsheet-fitlab irr` (263 cells): the fitted secant
@@ -187,7 +189,7 @@ engine 1.
 Ours: Newton in r to 1e-8, with a bisection fallback (`compute_irr`, functions/financial/financial_util.rs);
 T-0916 implements the secant.
 Status: VERIFIED for the method (secant in v, offset, both stop tests, retry; 189/263 bit-exact); UNVERIFIED
-for the last bit (NPV's evaluation order) and the step cap
+for the last bit (NPV's evaluation order), the step cap, and flows with leading zeros (A173, A175)
 Tasks: T-1525, T-1533, T-0916
 
 ## RATE iterates on the rate itself
@@ -207,7 +209,7 @@ r0 + 0.001, -0.001 or 0.0001 times the sign of f(r0); stop |dr| < 1e-7 or 1e-10,
 |f| < 1e-7): at most 19/136 bit-exact (-0.001, |dr| < 1e-7, |f| < 1e-7), 40 within 4 ulp. Excel's
 errors on the guess sweep R!C1:C31 are not smooth in the guess (C8 -1.8e-13, C9 +2.6e-16, C11
 +1.6e-13), unlike IRR's; between 0.019 and 0.028 they are positive and grow as about (guess - root)^26
-(a secant's order 21 or 34).
+(a secant's order 21 or 34; scratch analysis against a 60-digit root, not a lab fit, until T-1534's traces).
 Ours: Newton, up to 50 iterations (`compute_rate`, functions/financial/financial_util.rs).
 Status: UNVERIFIED (the update rule and the stop test)
 Tasks: T-1525, T-0916, T-1533

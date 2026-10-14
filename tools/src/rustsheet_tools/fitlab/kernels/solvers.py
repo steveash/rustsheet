@@ -8,7 +8,7 @@ Sweeps (excel-graph): probes-numeric/m9-fin-irr-rate (T-1009) and probes/solver-
   midpoint order, the bound on the step test).
 - `irr`: the fitted secant in v = 1/(1 + r) (`irr_secant_v`, T-1533) and its rejected variants, and the
   value-returning Newton candidates (k steps, or to convergence, in r, x = 1 + r and v).
-- `rate`: Newton candidates in r; none is Excel's method.
+- `rate`: Newton candidates in r and IRR's secant applied to r (T-1533); none is Excel's method.
 - `yield-one-period`: the documented closed form with each day-count choice.
 - `yield`: basis-0 bonds with more than one coupon left: Newton, secant and regula falsi on PRICE.
 
@@ -785,7 +785,7 @@ FITS = [
     ),
     Fit(
         name="rate",
-        description="RATE literal cells of the fit set: Newton k-step and converged candidates (none fits)",
+        description="RATE literal cells of the fit set: Newton and secant candidates in r (none fits)",
         cases=FIT_CASES,
         pattern=r"^=RATE\((.*)\)$",
         candidates=rate_candidates,
