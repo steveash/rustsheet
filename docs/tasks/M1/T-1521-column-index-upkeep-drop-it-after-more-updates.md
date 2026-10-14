@@ -1,5 +1,5 @@
 ---
-id: T-1520
+id: T-1521
 title: "Column index upkeep: drop it after more updates than cells, skip it in undo snapshots"
 milestone: M1
 lane: perf
