@@ -3,7 +3,7 @@ id: T-1510
 title: "TEXTJOIN with an array or range delimiter cycles the delimiters"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
