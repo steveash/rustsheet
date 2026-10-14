@@ -77,94 +77,8 @@ labels in the case's `hypotheses`):
   every rate pair.
 Engine today: 96 of 691 cells pass (IRR 19/216, RATE 36/368, XIRR 9/72, MIRR 32/35). RATE rejects
 its sixth argument (guess) with `#ERROR!` (T-1050).
-Status: VERIFIED (observations). XIRR's iteration is fitted (next section, T-1525); IRR's and RATE's
-update rule and stopping test are UNVERIFIED (T-0916; partial findings below)
+Status: VERIFIED (observations); the iteration (update rule, stopping test, cap) is UNVERIFIED (T-0916)
 Implemented in: n/a (T-0916)
-
-## XIRR is a bracketing bisection, not Newton
-Rule: XIRR finds a sign change of XNPV on a chain of trial rates, then bisects it. The chain starts at
-0. With s = guess (s = 1e-5 when the guess is 0), it runs upward through s, 2s, 4s, ... (only when the
-guess is not negative). If no upward point changes sign, it runs downward from -s, each point halving its
-distance to -1 (p -> (p - 1) / 2); a guess of 1 or more has no downward chain, so a negative root is
-`#NUM!`. A negative guess walks only the downward chain from the guess itself (g, (g - 1) / 2, ...), so a
-positive root is `#NUM!`. The bracket is the first pair of consecutive chain points (0 and its neighbour
-included) whose XNPV signs differ, and no bracket is `#NUM!`. Bisection: `a` starts at the bracket's
-upper end and `b` at its lower end; each step takes m = a + (b - a) / 2 and replaces the end whose XNPV has
-the sign of XNPV(m). An exact XNPV(m) = 0 does not stop it. It returns m at the first step where both
-h < 5e-9 + 1e-8 * |m| (h = (b - a) / 2, which equals |m - previous m|) and |XNPV(m)| is small: < 2e-8 *
-max|value| fits every fitted cell (< 1.5e-8 * sum|value| fits them too), but neither fits
-xirr-early-dates A8 below, so the XNPV part of the test is not pinned. So the result lies on the binary
-lattice of the bracket (for the default guess and a root of exactly 0.1 it is 3355443/2^25 =
-0.09999999403953552), which explains why XIRR is scale- and sign-invariant, converged only to about 1e-8,
-and why guess -0.5 or 1 gives `#NUM!` on one side.
-Evidence (excel-graph, 2026-10-14, T-1525; `docs/research/t1525-solver-fit.py`):
-- probes/solver-iteration-traces sheet X (155 cells: two-flow roots 0.013 to 0.94 and -0.013 to -0.918 at
-  guesses 1, 0.1, -0.5 and 0, one- and ten-year spans, three-flow roots to 2.0) and the 72 XIRR cells of
-  probes-numeric/m9-fin-irr-rate: the model is bit-exact on 227 of 227, including all 19 `#NUM!`.
-- The rejected stop tests score 214/227 (the h test alone), 100/227 (h < 6e-9), 52/227 (h < 1e-8 * |m|)
-  and 32/227 (the XNPV test alone). The h bound is tight: 4.93e-9 <= A <= 5.09e-9 in A + B * |m|.
-- The midpoint order matters: m = (a + b) / 2, or starting `a` at the lower end, moves m by an ulp in
-  X!D9, X!D11 and m9-fin-irr-rate A643.
-- The ten-year span (X!C, ten times the derivative) gives the same bisection depth as the one-year span
-  (X!A) for every root, so the step-size part of the test does not depend on the derivative.
-- Out of sample (literal XIRR cells of other probes): 16 of 22 match. The misses are input checks
-  recorded elsewhere in this file (xirr-mismatched-empties X12, X13, xirr-early-dates A7: `#NUM!`), a
-  zero first value (xirr-early-dates A10, A11 give 2.9802322387695314e-09 = 0.1 * 2^-25; the model gives
-  0.09999999403953552) and the 124-year span of xirr-early-dates A8, which Excel stops at bisection step
-  25 where |XNPV|/max|value| is 1.1e-7.
-- Unprobed: the cap on the chain walk (up to 17 doublings, X!F15, and 4 halvings are seen; day serials
-  1..6, which need about 770 halvings, are `#NUM!`), the bisection cap, the order when both chains have
-  a root, and a guess at or below -1.
-Ours: Newton's method to 1e-7 (`compute_xirr`, functions/financial/financial_util.rs) passes 9 of 72
-m9-fin-irr-rate XIRR cells.
-Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step-size test; the XNPV part of the
-stop test is UNVERIFIED beyond the fitted cells
-Tasks: T-1525, T-0916
-
-## IRR returns x - 1 and stops after a few Newton-like steps (partly fitted)
-Rule: IRR iterates on x = 1 + r (or on 1/x) and returns x - 1: for all 263 numeric IRR cells of
-m9-fin-irr-rate and solver-iteration-traces, value + 1 is exactly representable, which a value computed
-as a rate would fail for most rates below 0.5. Its result is not any iterate of Newton in r, in x or in
-v = 1/x, nor of finite-difference Newton in v (h = 1e-4v, 1e-6v, 1e-8v) or of the earlier secant starts
-(T-0916 Findings); those candidates contain Excel's value for only 15 to 91 of the 263 cells, the
-converged ones. The guess sweep shows quadratic convergence stopped early: for `{-20,5,5,5,5,5}` with
-guesses 0.05 to 0.115, Excel's error grows as (guess - root)^8, the signature of the third iterate of a
-quadratic method, with an effective constant f''/(2f') between -1.19 and -1.25 (Newton in v has -1.17,
-Newton in r -2.11); guesses 0.0725, 0.075, 0.085, 0.1175 and 0.12 return the root's bits
-(0.07930826116052869), as if one more step was taken. A guess nearer the
-root gives a worse result (0.0793: -1.6e-11), so the stop test is not a fixed step tolerance.
-Evidence: probes/solver-iteration-traces I!A1:A29 (guess sweep), I!B (far guesses on
-`{-1,0,...,0,2}`), I!C, I!D (closed-form two- and three-flow roots); excel-graph, 2026-10-14, T-1525.
-Two-flow roots come back as the nearest x or one to three ulp off (`IRR({-1,7})` is 5.999999999999997).
-Ours: Newton in r to 1e-8, with a bisection fallback (`compute_irr`, functions/financial/financial_util.rs).
-Status: UNVERIFIED (the update rule and the stop test)
-Tasks: T-1525, T-0916
-
-## RATE iterates on the rate itself
-Rule: RATE's results are rates, not x - 1 (310 of 324 numeric RATE cells in m9-fin-irr-rate fail the
-x - 1 test above). With one period and no payment (`RATE(1,0,-1,X)`), two Newton steps in r from 0.1 on
-f(r) = pv * (1 + r)^n + fv reproduce 9 of 10 cells (X = 1.37 gives 0.3700000000000002 where two steps give
-0.37). Newton in r on the documented f(r) = pv(1+r)^n + pmt(1+r*type)((1+r)^n - 1)/r + fv contains
-Excel's value among its iterates for 23 of 134 numeric literal RATE cells, finite-difference Newton
-(h = 1e-8) for 18; plain Newton cannot be the method, since from 0.1 it crawls on RATE(360,-599.55,100000)
-(about 0.003 per step), which Excel solves.
-Evidence: probes/solver-iteration-traces R!A1:A10, R!B1:B30 (RATE(n,0,-1,2)), R!C1:C31 (a guess sweep on
-RATE(48,-200,8000,0,1)), R!D:F (annuities with type 0/1 and fv); excel-graph, 2026-10-14, T-1525.
-Ours: Newton, up to 50 iterations (`compute_rate`, functions/financial/financial_util.rs).
-Status: UNVERIFIED (the update rule and the stop test)
-Tasks: T-1525, T-0916
-
-## YIELD with one coupon period left is closed form
-Rule: when at most one coupon period is left, Excel evaluates the documented formula
-`((red/100 + rate/f) - (pr/100 + A/E*rate/f)) / (pr/100 + (A/E)*(rate/f)) * (f*E/DSR)` in that order, with
-DSR the basis' day count from settlement to maturity (DAYS360 on basis 0), not E - A: 2024-03-01 to
-2024-08-31 is DSR 180 with A 181 and E 360.
-Evidence: probes/solver-iteration-traces Y!A1:A10 (semiannual, maturity 2024-06-30) and Y!B1:B10
-(annual, maturity 2024-08-31), prices 90 to 110: 20 of 20 bit-exact (excel-graph, 2026-10-14, T-1525).
-Ours: the engine iterates (`fn_yield`, functions/financial/financial_bonds.rs) and misses these by a few to
-about 15 ulp.
-Status: VERIFIED (excel-graph)
-Tasks: T-1525, T-1528
 
 
 ## RATE: an empty guess is guess 0, not the default 0.1
@@ -356,10 +270,6 @@ length need not: `YIELD(DATE(2096,2,15),DATE(2100,2,28),0.05,98,100,2,0)` is 0.0
 accrued); their YEARFRAC differs (4.0361 against 4.0417), so the starting point may come from the dates.
 Evidence: probes/yield-solver-sweep (66 cells), probes/date-system-1900-financial-readers row 8 and its -shifted twin
 (excel-graph, 2026-10-13, T-1493).
-More evidence: probes/solver-iteration-traces Y!C:E (24 cells: prices 40 to 160 over ten years at frequency
-2, 4 and 1). Newton on PRICE from the coupon rate, 0 or 0.1, the secant from 0 and 1, and LibreOffice's
-regula falsi do not reproduce them (at best 6 of 24 have Excel's value among the iterates; T-1525). With one
-coupon period left YIELD is closed form (section above).
 Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted (T-1374).
 Status: UNVERIFIED (the algorithm); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525
+Tasks: T-1374, T-1493

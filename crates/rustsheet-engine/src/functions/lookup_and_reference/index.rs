@@ -209,7 +209,7 @@ impl Model {
         }
         if let Some(picked) = self.external_index(args, cell) {
             return match picked {
-                Ok(area) => area.picked_value(cell),
+                Ok(area) => self.external_picked_value(area, cell),
                 Err(error) => error,
             };
         }
@@ -305,6 +305,7 @@ impl Model {
             first_column: offset(area.first_column, first_col),
             last_row: offset(area.first_row, last_row),
             last_column: offset(area.first_column, last_col),
+            cache: area.cache,
         }))
     }
 

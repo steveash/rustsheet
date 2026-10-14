@@ -361,6 +361,31 @@ impl Model {
                 message: "Unsupported argument type".to_string(),
             })
         };
+        // A cached range of another workbook is a reference: its cached numbers count and its
+        // text, booleans and blanks do not (`RANK(5,[1]Uses!$A$1:$B$3)` is 2;
+        // fixtures/external-link-cached-ranges Refs!B71).
+        if let Some(areas) = self.external_reference(node, cell) {
+            let values = match areas {
+                Ok(areas) => self.external_aggregate_value(&areas, cell),
+                Err(error) => error,
+            };
+            let CalcResult::Array(rows) = values else {
+                return Err(values);
+            };
+            return rows
+                .into_iter()
+                .flatten()
+                .map(|value| match value {
+                    ArrayNode::Number(number) => Ok(Some(number)),
+                    ArrayNode::Error(error) => Err(CalcResult::new_error(
+                        error,
+                        cell,
+                        "Error in external reference".to_string(),
+                    )),
+                    _ => Ok(None),
+                })
+                .collect();
+        }
         let single = match self.evaluate_reference_arg(node, cell) {
             RefArg::Ranges(areas @ Ranges::Areas(_)) => {
                 return self.values_from_areas(&areas, cell)

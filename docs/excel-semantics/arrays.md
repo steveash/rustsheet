@@ -193,7 +193,14 @@ cells, and even a whole column against two columns, `SUM(A1:A1048576*B1:C1)`, is
 over a range, operators, IF/IFERROR, TEXT, IS*, NOT, a bare range spilled from a cell), checked
 before any cell is read, to bound allocation on untrusted input (CLAUDE.md directive 5); so
 `DATE(11:1899,12,1)` and `ROWS(DATE(11:1899,12,1))` are `#ERROR!`. Past-the-grid dimensions are
-`#VALUE!` as in Excel. Excel for the web refuses to open a workbook whose formula sums such a
+`#VALUE!` as in Excel. A cached range of a linked workbook (`[1]Sheet!A1:B2`, T-1460) is read as
+an array of its cached cells under the same bound: an area above 1,048,576 cells that is not a
+whole column or row (`SUM([1]Uses!$A$2:$B$1048576)`, `VLOOKUP(x,[1]Uses!$A$1:$C$1048576,2,0)`) is
+`#ERROR!`, and the cells an aggregate reads from a union of cached areas are capped together, so
+`SUM(([1]Uses!$A:$A,…))` over eight whole columns of a cache spanning A1:A1048576 is `#VALUE!`
+(test_external_links.rs `union_of_sparse_whole_columns_is_bounded`); Excel gives the value. A
+whole column or row is first cut to the rows and columns the cache spans, which changes no result.
+Excel for the web refuses to open a workbook whose formula sums such a
 31M-cell array (`SUM(DATE(11:1899,12,1))`: Graph `SessionMemoryQuotaExceededOnOpenWorkbook`).
 Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lifted-range-size
 C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are listed in
@@ -202,8 +209,10 @@ Status: DEVIATION (decision 0014)
 Implemented in: limits.rs (`MAX_SIZE`, `check_array_size`,
 `check_range_size`); `Model::evaluate_range` in crates/rustsheet-engine/src/cast.rs;
 `broadcast_arrays` in crates/rustsheet-engine/src/arithmetic.rs; `ExternalArea::blocked_value` in
-crates/rustsheet-engine/src/external_reference.rs (a spilled range into another workbook, T-1454)
-Tasks: T-0047, T-1420, T-1454
+crates/rustsheet-engine/src/external_reference.rs (a spilled range into another workbook, T-1454);
+`Model::external_area_value` and `Model::external_aggregate_value` in
+crates/rustsheet-engine/src/external_links.rs (a cached range of a linked workbook, T-1460)
+Tasks: T-0047, T-1420, T-1454, T-1460
 
 ## The edit API refuses a cell inside a spill extent above 4,194,304 cells
 Rule: Excel lets you edit any cell. `Workbook` edits (crates/rustsheet) snapshot the spill footprint
