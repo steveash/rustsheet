@@ -3,7 +3,7 @@ id: T-1519
 title: "Hygiene gate: a newly added probes case must carry exactly one milestone tag, never M0 or M1"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -46,24 +46,24 @@ subjects only. Today it has to be cleaned up by hand after the fact (T-1470).
   not import the Rust code.
 
 ## Acceptance criteria
-- [ ] `scripts/check_governance.py` fails, and names each offending file and its milestone tags,
+- [x] `scripts/check_governance.py` fails, and names each offending file and its milestone tags,
       when the diff adds an `eval/suites/probes/cases/**/*.case.json` outside `cases/catalog/`
       that has zero milestone tags, more than one, or a single `M0` or `M1` tag. Added cases with
       one tag of `M2` or later pass. Modified and deleted case files are not checked.
-- [ ] The rule is a pure function, for example `probe_tag_problems(name_status_lines, read_tags)`,
+- [x] The rule is a pure function, for example `probe_tag_problems(name_status_lines, read_tags)`,
       that `main` calls with the real diff and file reader. Unit tests in
       `scripts/test_governance.py` call it directly, without git, as the existing tests call
       `is_protected`. They cover an added `M1` case (fail), an added untagged case (fail), an added
       case tagged both `M2` and `M9` (fail), an added `M2` case (pass), an added `M9` case (pass),
       an added `catalog/` case tagged `M0` (pass) and a modified `M1` case (pass).
-- [ ] A new decision record in `docs/decisions/` states the rule and cites decisions 0043 and 0051.
+- [x] A new decision record in `docs/decisions/` states the rule and cites decisions 0043 and 0051.
       `scripts/check_decisions.py` passes.
-- [ ] Running `python3 scripts/check_governance.py a9380cb7` (decision 0051's merge commit) on the
+- [x] Running `python3 scripts/check_governance.py a9380cb7` (decision 0051's merge commit) on the
       branch lists the 51 non-catalog probe cases added since then that are tagged `M0`/`M1` or
       untagged, as counted on 2026-10-14. The PR description pastes the count, which may be higher
       if more land first. This shows the check would have caught them. `python3 scripts/check_governance.py origin/main` on the PR itself
       passes.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Remapping the existing wrongly tagged cases in `eval/milestones/probe-milestones.tsv`. That is
@@ -72,3 +72,12 @@ subjects only. Today it has to be cleaned up by hand after the fact (T-1470).
 - Checking that a tag matches the case's subject. That is a reviewer judgment (decision 0051 item
   2) and is not mechanical.
 - A `tasks.py validate` rule against new `milestone: M1` probe tasks (planner rule, decision 0043).
+
+## Outcome
+`scripts/check_governance.py` gains `probe_tag_problems` (pure; 3 new unit tests in
+`scripts/test_governance.py` cover the seven listed shapes) and fails a PR that adds a non-catalog
+probes case with zero, several, or an `M0`/`M1` milestone tag, naming each file and its tags.
+Decision 0057 records the rule. `python3 scripts/check_governance.py a9380cb7` lists 53 such cases
+added since decision 0051 (51 on 2026-10-14 morning; two more landed since). The check needs the
+merge base in history: in a shallow clone deepen with `git fetch --unshallow origin` (decision 0055).
+No eval delta.
