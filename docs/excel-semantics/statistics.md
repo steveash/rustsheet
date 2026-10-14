@@ -599,3 +599,19 @@ give 0.5, so the rule is open (T-1555). `AVERAGEA("1/2/2020",1)` is 21916.5 (AJ2
 date serial 43832 and averaged with 1).
 Status: VERIFIED for the two values; the rule for array constants is UNVERIFIED
 Tasks: T-1551, T-1555
+
+## AVERAGEA, MAXA and MINA over an array
+Rule: an array value's elements are not read like range cells. AVERAGEA skips a boolean element and
+counts a text element, numeric text and the empty string included, as 0; MAXA and MINA skip both and
+read only the numbers. `AVERAGEA({1,"a",TRUE})` is 0.5, `AVERAGEA({3,TRUE})` and `{3,FALSE}` 3,
+`{3,"a"}`, `{3,"7"}` and `{3,""}` 1.5, `{"a",TRUE}` 0, `{"a"}` 0, `{TRUE}` `#DIV/0!`;
+`MAXA({0.5,TRUE})` is 0.5, `MAXA({-1,"a"})` and `MAXA({-1,"5"})` -1, `MINA({2,TRUE})` and
+`MINA({2,"a"})` 2. An array from IF behaves the same (`AVERAGEA(IF(1,{3,TRUE}))` is 3), while a direct
+boolean argument still counts (`AVERAGEA({3,TRUE},TRUE)` is 2) and direct non-numeric text is
+`#VALUE!` (`AVERAGEA({3,"a"},"a")`). A reference reads text as 0 and booleans as 1/0 (coercion.md
+"MAXA / MINA: single-cell references are read like ranges"), a cached range of a linked workbook too.
+Evidence: probes/averagea-array-constant-elements (21 cells, excel-graph, 2026-10-14);
+probes/legacy-value-argument-intersection-b AI2.
+Status: VERIFIED (excel-graph)
+Implemented in: `Model::for_each_value_a` (statistical/count_and_average.rs), `ArrayText`.
+Tasks: T-1555
