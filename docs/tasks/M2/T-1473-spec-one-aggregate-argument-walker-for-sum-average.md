@@ -3,10 +3,11 @@ id: T-1473
 title: "Spec: one aggregate-argument walker for SUM, AVERAGE, MIN, MAX, PRODUCT, COUNT and COUNTA"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
+spec: docs/specs/SPEC-0009-aggregate-argument-walker.md
 depends_on: []
 ---
 
@@ -35,12 +36,22 @@ coerce in ranges, and COUNT counts types instead of values.
 Use docs/specs/TEMPLATE.md.
 
 ## Acceptance criteria
-- [ ] docs/specs/SPEC-NNNN-aggregate-argument-walker.md: the walker's signature, the per-consumer policy (the
+- [x] docs/specs/SPEC-0009-aggregate-argument-walker.md: the walker's signature, the per-consumer policy (the
       differences above, each with its evidence link) and the error-precedence rule. It includes the migration
       order: T-1474 (walker, SUM, AVERAGE family), then T-1476 (MIN, MAX, PRODUCT, COUNT, COUNTA).
-- [ ] docs/architecture/overview.md's "one definition per concept" line points to the spec.
-- [ ] No engine code changes; `make check` green; reviewers approve.
+- [x] docs/architecture/overview.md's "one definition per concept" line points to the spec.
+- [x] No engine code changes; `make check` green; reviewers approve.
 
 ## Out of scope
 - The implementation (T-1474, T-1476).
 - *IF(S) criteria walks (T-1477) and the D-functions.
+
+## Outcome
+SPEC-0009 (docs/specs/SPEC-0009-aggregate-argument-walker.md) defines the walker. It has one
+module, `functions/aggregate_args.rs`, with an `AggregatePolicy` (reading, `ErrorRule`
+Ranked/First/Items, skip-empty) and a visitor over `(ItemSource, CalcResult)` items, plus a
+number layer (`NumberRules`). Each of the seven current dispatches gets its own policy row with
+evidence, or is marked "current behavior; unprobed". docs/architecture/overview.md design rule 2
+points to the spec. T-1474 and T-1476 now carry `spec:`. Filed T-1566 (research, sonnet) to probe
+the unevidenced differences: PRODUCT over picked references, direct LAMBDA/blank values, and the
+A-variants' error order. Also filed T-1567 (quality, sonnet) for VARA/VARPA/STDEVA/STDEVPA. Docs only, eval unchanged.

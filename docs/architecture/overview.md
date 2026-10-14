@@ -48,6 +48,8 @@ rustsheet (public facade crate, M1)          stable API: Workbook / Txn / Change
 1. **Values vs failures:** Excel errors are values; Rust `Err` is only for API misuse and refused edits.
 2. **One definition per concept:** coercion, aggregate-argument iteration, criteria matching,
    reference adjustment and float formatting each have exactly one implementation.
+   Aggregate-argument iteration is the walker of
+   [SPEC-0009](../specs/SPEC-0009-aggregate-argument-walker.md).
 3. **Laziness:** nothing is computed unless observed (OnDemand) or required by Excel's automatic
    mode. The evaluator is pull-based, so laziness is natural; the graph supplies dirtiness.
 4. **Sharing:** repeated text, styles and formulas are stored once (interning plus R1C1 families).

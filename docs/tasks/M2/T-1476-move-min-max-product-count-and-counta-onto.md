@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: sonnet
+spec: docs/specs/SPEC-0009-aggregate-argument-walker.md
 depends_on: [T-1474]
 ---
 
