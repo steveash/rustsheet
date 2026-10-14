@@ -104,3 +104,25 @@ fn empty_strings_are_skipped_with_ignore_empty() {
     assert_eq!(model._get_text("A2"), *"a,c");
     assert_eq!(model._get_text("A3"), *"a,,c");
 }
+
+#[test]
+fn textjoin_array_delimiter_cycles_and_counts_toward_the_limit() {
+    // probes/textjoin-delimiter-array A1-A6 (excel-graph, T-1510). The limit with a cycled
+    // delimiter is unprobed: the engine counts each delimiter's own size.
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTJOIN({\",\",\";\"},FALSE,{1,2,3,4,5})");
+    model._set(
+        "A2",
+        "=TEXTJOIN({\"\",\"ab\"},FALSE,REPT(\"a\",32766),\"b\",\"c\")",
+    );
+    model._set(
+        "A3",
+        "=TEXTJOIN({\"\",\"ab\"},FALSE,REPT(\"a\",32763),\"b\",\"c\")",
+    );
+    model._set("A4", "=TEXTJOIN({\"x\",#N/A},FALSE,1,2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1,2;3,4;5");
+    assert_eq!(model._get_text("A2"), "#CALC!");
+    assert_eq!(model._get_text("A3").len(), 32_767);
+    assert_eq!(model._get_text("A4"), "#N/A");
+}

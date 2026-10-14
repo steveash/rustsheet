@@ -3,7 +3,7 @@ id: T-1510
 title: "TEXTJOIN with an array or range delimiter cycles the delimiters"
 milestone: M2
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -17,9 +17,12 @@ TEXTJOIN with an array literal or a range as the delimiter cycles through its el
 Found in T-1482. Probe case `textjoin-delimiter-array` (A1-A6, excel-graph) fails: the engine reads only a scalar delimiter (`fn_textjoin` in functions/text/concatenate.rs, `get_string(&args[0])`). Semantics in `docs/excel-semantics/text.md` (TEXTJOIN over arrays).
 
 ## Acceptance criteria
-- [ ] `probes/textjoin-delimiter-array` passes and its known failures leave the baseline.
-- [ ] Delimiter cycling interacts correctly with the 32,767 limit (`JoinSize`).
-- [ ] `make check` green; reviewers approve.
+- [x] `probes/textjoin-delimiter-array` passes and its known failures leave the baseline.
+- [x] Delimiter cycling interacts correctly with the 32,767 limit (`JoinSize`).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+`fn_textjoin` reads the delimiter through `textjoin_delimiters` (scalar, array or range, row-major) and `JoinSize` sizes each cycled delimiter. `probes/textjoin-delimiter-array` 6/6 now passes. The limit interaction with differently sized delimiters is covered by a unit test only (unprobed, noted UNVERIFIED in text.md).

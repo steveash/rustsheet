@@ -142,3 +142,44 @@ fn reduce_wrong_arg_count() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
+
+#[test]
+fn map_scan_reduce_read_blank_and_error_cells_of_a_range_without_a_grid() {
+    // T-1465: a one-cell reference is built on demand and read directly; a returned blank cell
+    // is 0 and a cell error stays that error, as when the reference was read as an array.
+    let mut model = new_empty_model();
+    model._set("A1", "5");
+    model._set("A3", "=1/0");
+    model._set("C1", "=MAP(A1:A3,LAMBDA(v,v))");
+    model._set("D1", "=SCAN(0,A1:A2,LAMBDA(a,v,a+v))");
+    model._set("E1", "=REDUCE(0,A1:A2,LAMBDA(a,v,a+v))");
+    model._set("F1", "=MAP(A1:A2,LAMBDA(v,ISREF(v)))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "5");
+    assert_eq!(model._get_text("C2"), "0");
+    assert_eq!(model._get_text("C3"), "#DIV/0!");
+    assert_eq!(model._get_text("D1"), "5");
+    assert_eq!(model._get_text("D2"), "5");
+    assert_eq!(model._get_text("E1"), "5");
+    assert_eq!(model._get_text("F1"), "TRUE");
+    assert_eq!(model._get_text("F2"), "TRUE");
+}
+
+#[test]
+fn reduce_and_scan_walk_a_two_dimensional_range_row_by_row() {
+    // T-1465: the element index is split into row and column, so a 2x2 range pins the order.
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "1"), ("B1", "2"), ("A2", "3"), ("B2", "4")] {
+        model._set(cell, value);
+    }
+    model._set("D1", "=REDUCE(0,A1:B2,LAMBDA(a,v,a*10+v))");
+    model._set("E1", "=SCAN(0,A1:B2,LAMBDA(a,v,a*10+v))");
+    model._set("H1", "=REDUCE(0,{1,2;3,4},LAMBDA(a,v,a*10+v))");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "1234");
+    assert_eq!(model._get_text("E1"), "1");
+    assert_eq!(model._get_text("F1"), "12");
+    assert_eq!(model._get_text("E2"), "123");
+    assert_eq!(model._get_text("F2"), "1234");
+    assert_eq!(model._get_text("H1"), "1234");
+}

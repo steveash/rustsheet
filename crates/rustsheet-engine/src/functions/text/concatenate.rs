@@ -4,7 +4,7 @@ use crate::functions::util::array_node_to_calc_result;
 use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
-    cast::{array_node_to_string, truncate_text, MAX_TEXT_UNITS},
+    cast::{array_node_to_string, truncate_text, StringOrArray, MAX_TEXT_UNITS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -26,27 +26,35 @@ fn text_limit_error(cell: CellReferenceIndex) -> CalcResult {
 /// Running UTF-16 size of a TEXTJOIN result, kept incrementally so each check is O(new values)
 /// and an oversized join stops before it is built (CLAUDE.md directive 5).
 struct JoinSize {
-    delimiter_units: usize,
+    /// UTF-16 size of each delimiter; the one before value `n` (n >= 1) is `delimiter_units[(n - 1) % len]`.
+    delimiter_units: Vec<usize>,
     counted: usize,
     units: usize,
 }
 
 impl JoinSize {
-    fn new(delimiter: &str) -> Self {
+    fn new(delimiters: &[String]) -> Self {
         JoinSize {
-            delimiter_units: delimiter.encode_utf16().count(),
+            delimiter_units: delimiters
+                .iter()
+                .map(|d| d.encode_utf16().count())
+                .collect(),
             counted: 0,
             units: 0,
         }
     }
 
+    /// Size of the delimiter before the value at index `counted`; delimiters cycle (T-1510).
+    fn separator(&self) -> usize {
+        match self.counted.checked_sub(1) {
+            Some(gap) => self.delimiter_units[gap % self.delimiter_units.len()],
+            None => 0,
+        }
+    }
+
     fn exceeds(&mut self, values: &[String]) -> bool {
         for value in values.get(self.counted..).unwrap_or_default() {
-            let separator = if self.counted == 0 {
-                0
-            } else {
-                self.delimiter_units
-            };
+            let separator = self.separator();
             self.units = self
                 .units
                 .saturating_add(separator + value.encode_utf16().count());
@@ -60,11 +68,7 @@ impl JoinSize {
     /// over the limit (probes/text-result-limit-errors C2-C3, C7-C9).
     fn exceeds_with_separator(&mut self, values: &[String]) -> bool {
         let over = self.exceeds(values);
-        let separator = if self.counted == 0 {
-            0
-        } else {
-            self.delimiter_units
-        };
+        let separator = self.separator();
         over || self.units.saturating_add(separator) > MAX_TEXT_UNITS
     }
 
@@ -112,7 +116,7 @@ impl JoinSize {
     /// join is over the limit (so at most about 32,767 are added). Returns whether it is over.
     /// With an empty delimiter they add nothing, so none are added.
     fn push_empties(&mut self, values: &mut Vec<String>, count: i64) -> bool {
-        if self.delimiter_units == 0 {
+        if self.delimiter_units.iter().all(|&units| units == 0) {
             return false;
         }
         for _ in 0..count {
@@ -252,6 +256,31 @@ impl Model {
         CalcResult::String(result.text)
     }
 
+    /// TEXTJOIN's delimiter: a scalar, or the elements of an array or range in row-major order,
+    /// which cycle between the joined values (probes/textjoin-delimiter-array A1-A6, T-1510).
+    /// Never empty.
+    fn textjoin_delimiters(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<String>, CalcResult> {
+        match self.get_string_or_array(node, cell)? {
+            StringOrArray::String(text) => Ok(vec![text]),
+            StringOrArray::Array(array) => {
+                let mut delimiters = Vec::new();
+                for element in array.iter().flatten() {
+                    delimiters.push(array_node_to_string(element).map_err(|error| {
+                        CalcResult::new_error(error, cell, "Error in delimiter".to_string())
+                    })?);
+                }
+                if delimiters.is_empty() {
+                    delimiters.push(String::new());
+                }
+                Ok(delimiters)
+            }
+        }
+    }
+
     /// TEXTJOIN(delimiter, `ignore_empty`, text1, [text2], ...): joins text with a delimiter; over 32767
     /// characters is #CALC! (probes/text-result-limit C9).
     pub(crate) fn fn_textjoin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -259,8 +288,8 @@ impl Model {
         if arg_count < 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let delimiter = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
+        let delimiters = match self.textjoin_delimiters(&args[0], cell) {
+            Ok(delimiters) => delimiters,
             Err(error) => return error,
         };
         let ignore_empty = match self.get_boolean(&args[1], cell) {
@@ -268,7 +297,7 @@ impl Model {
             Err(error) => return error,
         };
         let mut values: Vec<String> = Vec::new();
-        let mut size = JoinSize::new(&delimiter);
+        let mut size = JoinSize::new(&delimiters);
         // Once over the limit the values are dropped, but arguments are still evaluated so an error
         // argument after the limit wins; a cell error read past it is dropped and evaluation goes on,
         // so the result is #CALC! unless a later error argument wins
@@ -405,6 +434,14 @@ impl Model {
         if over_limit || size.exceeds(&values) {
             return text_limit_error(cell);
         }
-        CalcResult::String(values.join(&delimiter))
+        let mut joined = String::new();
+        for (index, value) in values.iter().enumerate() {
+            // Same cycling rule as `JoinSize::separator`, which sizes these delimiters.
+            if let Some(gap) = index.checked_sub(1) {
+                joined.push_str(&delimiters[gap % delimiters.len()]);
+            }
+            joined.push_str(value);
+        }
+        CalcResult::String(joined)
     }
 }
