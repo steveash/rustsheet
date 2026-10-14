@@ -61,5 +61,7 @@
   (`check_file_size.py --update`).
   T-1523: duplicated lines 6587 → 6522 (the oracle CLI's case discovery moved to
   `snapshot.suite_cases`, shared with the fit lab) (`check_duplication.py --update`).
+  T-1474: duplicated lines 6522 → 6369 (SUM and the AVERAGE family's argument dispatches became SPEC-0009's
+  walker, `functions/util/aggregate_args.rs`; the rest already shrunk on main) (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

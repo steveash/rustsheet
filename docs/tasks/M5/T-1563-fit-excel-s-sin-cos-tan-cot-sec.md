@@ -1,7 +1,7 @@
 ---
 id: T-1563
 title: "Fit Excel's SIN/COS/TAN/COT/SEC/CSC range reduction for angles near 2^27 (last digits differ)"
-milestone: M2
+milestone: M5
 lane: functions-math
 status: todo
 priority: P2

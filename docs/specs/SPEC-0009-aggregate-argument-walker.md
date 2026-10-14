@@ -99,7 +99,7 @@ No new probe is needed to write this spec: every rule above is evidenced or kept
 unprobed rows stay as they are, and **T-1439** plus the new **T-1566** (below) probe them.
 
 ## Design
-New module `crates/rustsheet-engine/src/functions/aggregate_args.rs` (engine lane). The
+New module `crates/rustsheet-engine/src/functions/util/aggregate_args.rs` (engine lane; a child of util.rs, beside the shared range walks). The
 item-level API is `pub(crate)`, and nothing leaves the engine crate.
 
 ### Items
@@ -315,7 +315,7 @@ as `First`.
   aggregate_args.rs after T-1476. After T-1474 it also finds product.rs and mathematical.rs.
 - `scripts/check_duplication.py` must not rise. Record a drop with `--update` (decision 0010).
 - Performance (reviewer-performance): T-1474 adds a criterion bench
-  `crates/rustsheet-engine/benches/aggregate.rs` beside `benches/edit.rs`. It covers
+  `crates/rustsheet/benches/aggregate.rs` beside `benches/edit.rs`. It covers
   `=SUM(A1:A1000000)` and `=AVERAGE(A1:A1000000)` over a numeric column, plus `=SUM(A1:A1000000)`
   with an error in A2 (early exit). The bench runs on `main` before the change and on the branch
   after, in release. Results must be within 5%, and the numbers go in the task's Outcome.
