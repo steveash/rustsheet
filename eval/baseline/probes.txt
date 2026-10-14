@@ -88,6 +88,7 @@ C	probes/catalog/function-name-forms-2.case.json	3
 C	probes/catalog/function-name-forms.case.json	5
 C	probes/catalog/normsdist-stored-form.case.json	4
 C	probes/ceiling-xlfn-prefix.case.json	4
+C	probes/choose-array-index-range-arms.case.json	66
 C	probes/clock-text-length-limit.case.json	16
 C	probes/clock-text-long-fraction.case.json	33
 C	probes/clock-text-long-fraction2.case.json	51
@@ -459,6 +460,7 @@ C	probes/sheet-qualified-corner-order.case.json	13
 C	probes/sheet-qualified-ref-error-forms.case.json	10
 C	probes/solver-iteration-traces.case.json	353
 C	probes/sort-omitted-args.case.json	75
+C	probes/stat-a-computed-arrays.case.json	18
 C	probes/stat-argument-modes.case.json	573
 C	probes/subnormal-flush-edges.case.json	50
 C	probes/subnormal-function-boundaries.case.json	30
@@ -601,8 +603,6 @@ C	probes/xnpv-argument-count.case.json	3
 C	probes/yield-solver-sweep.case.json	66
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!G1
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!G10
-F	probes/array-context-legacy-sumproduct.case.json	Sheet1!H1
-F	probes/array-context-legacy-sumproduct.case.json	Sheet1!H10
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T1
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T10
 F	probes/bond-one-period-bases.case.json	Y!A1
@@ -654,10 +654,6 @@ F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11
 F	probes/concatenate-limit-spill.case.json	Sheet1!E8
 F	probes/concatenate-limit-spill.case.json	Sheet1!E9
-F	probes/countblank-array-values.case.json	Sheet1!H21
-F	probes/countblank-array-values.case.json	Sheet1!H35
-F	probes/countblank-array-values.case.json	Sheet1!I21
-F	probes/countblank-array-values.case.json	Sheet1!I35
 F	probes/coupdays-feb-month-end.case.json	S!B20
 F	probes/coupdays-feb-month-end.case.json	S!C20
 F	probes/coupdays-feb-month-end.case.json	S!D20
@@ -989,7 +985,6 @@ F	probes/eta-reduced-names.case.json	Sheet1!E101
 F	probes/eta-reduced-names.case.json	Sheet1!E49
 F	probes/eta-reduced-names.case.json	Sheet1!E93
 F	probes/external-ref-no-link-ifchoose.case.json	Calc!A26
-F	probes/external-ref-no-link-ifchoose.case.json	Calc!A32
 F	probes/fact-large-arguments.case.json	Sheet1!A1
 F	probes/fact-large-arguments.case.json	Sheet1!A11
 F	probes/fact-large-arguments.case.json	Sheet1!A12

@@ -1,0 +1,35 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1559: AVERAGEA, MAXA and MINA over arrays computed from a range (FILTER, SORT, IF array condition, CHOOSE) holding a boolean and text. A1:A4 = 4, TRUE, x, 2 (A2 boolean, A3 text); controls on the plain range.",
+ "tags": ["M2", "probe", "T-1559"],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 4,
+    "A2": true,
+    "A3": "x",
+    "A4": 2,
+    "B1": "=AVERAGEA(A1:A4)",
+    "B2": "=MAXA(A1:A4)",
+    "B3": "=MINA(A1:A4)",
+    "B4": "=AVERAGEA(FILTER(A1:A4,{1;1;1;1}))",
+    "B5": "=MAXA(FILTER(A1:A4,{1;1;1;1}))",
+    "B6": "=MINA(FILTER(A1:A4,{1;1;1;1}))",
+    "B7": "=AVERAGEA(SORT(A1:A4))",
+    "B8": "=MAXA(SORT(A1:A4))",
+    "B9": "=MINA(SORT(A1:A4))",
+    "B10": "=AVERAGEA(IF({1;1;1;1},A1:A4))",
+    "B11": "=MAXA(IF({1;1;1;1},A1:A4))",
+    "B12": "=MINA(IF({1;1;1;1},A1:A4))",
+    "B13": "=AVERAGEA(CHOOSE({1,1},A1:A4))",
+    "B14": "=MAXA(CHOOSE({1,1},A1:A4))",
+    "B15": "=MINA(CHOOSE({1,1},A1:A4))",
+    "B16": "=AVERAGEA(IF(A1:A4>0,A1:A4))",
+    "B17": "=MAXA(IF(A1:A4>0,A1:A4))",
+    "B18": "=MINA(IF(A1:A4>0,A1:A4))"
+   }
+  }
+ ]
+}

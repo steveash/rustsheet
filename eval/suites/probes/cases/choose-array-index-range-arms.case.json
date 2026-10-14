@@ -1,0 +1,41 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1508 probe: CHOOSE with an array index over multi-cell range arms (standalone, spilled): row and column indexes over column and row arms, mismatched arm sizes, a scalar or error arm beside a range arm, an out-of-range index element, a 2x2 arm, a range index, ROWS/COLUMNS and SUM of the result, and an arm no index element picks (A66, A71). D1=10, D2 empty, D3=30, D4=\"x\", E1:E3=11,12,31, F1:G1=1,2.",
+ "tags": [
+  "M6",
+  "lookup",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "D1": 10,
+    "D3": 30,
+    "D4": "x",
+    "E1": 11,
+    "E2": 12,
+    "E3": 31,
+    "F1": 1,
+    "G1": 2,
+    "A1": "=CHOOSE({1,2},D1:D2,D3:D4)",
+    "A6": "=CHOOSE({1;2},D1:E1,D3:E3)",
+    "A11": "=CHOOSE({1,2},D1:D3,D3:D4)",
+    "A16": "=CHOOSE({1,2},5,D3:D4)",
+    "A21": "=CHOOSE({1,2,3},D1:D2,D3:D4)",
+    "A26": "=CHOOSE({1,2},D1:E2,D3:D4)",
+    "A31": "=CHOOSE({1;2},D1:D2,D3:D4)",
+    "A36": "=ROWS(CHOOSE({1,2},D1:D2,D3:D4))",
+    "B36": "=COLUMNS(CHOOSE({1,2},D1:D2,D3:D4))",
+    "A41": "=CHOOSE({1,2},{1,2,3},{4;5})",
+    "A46": "=CHOOSE({1,2},D1:D2,1/0)",
+    "A51": "=CHOOSE(F1:G1,D1:D2,D3:D4)",
+    "A56": "=CHOOSE({1,2},D1:D2,D3)",
+    "A61": "=SUM(CHOOSE({1,2},D1:D2,E1:E2))",
+    "A66": "=CHOOSE({1,1},D1:D2,D1:E3)",
+    "A71": "=CHOOSE({1,2},D1:D2,D3:D4,D1:F3)"
+   }
+  }
+ ],
+ "expected": {}
+}
