@@ -167,18 +167,21 @@ cell they pick reads empty, as INDEX's does: `=IF(TRUE,…!A1)` and `=CHOOSE(1,�
 gives "x", `+1` 1, ISBLANK TRUE, `ERROR.TYPE(CHOOSE(1,…!A1))` `#N/A`; several cells spill
 `#BLOCKED!` (`=IF(TRUE,…!A1:B2)`, `=CHOOSE(1,…!A1:B2)`), and aggregates stay `#BLOCKED!`
 (`SUM(IF(TRUE,…!A1))`, `SUM(CHOOSE(1,…!A1:B2))`, `SUM(IF(TRUE,…!A1:B3,A1))`). An array condition
-lifts IF as usual: `ROWS(IF({TRUE,FALSE},…!A1:B3,…!A1:B3))` is 3. COUNTA counts nothing in
-`(…!A1,E1)` (0, although `AREAS` of it is `#VALUE!`) and 1 for the disjoint `…!A1:B3 …!D4:E5`
-(`#NULL!`); `OFFSET(…!A1,1/0,1)` is `#DIV/0!`, so OFFSET reads `rows` before giving its `#VALUE!`.
-Evidence: probes/external-ref-no-link-ifchoose Calc!A1:A34, H1:N2 (excel-graph, 2026-10-14, T-1487).
+lifts IF as usual: `ROWS(IF({TRUE,FALSE},…!A1:B3,…!A1:B3))` is 3, and `ROW(IF(FALSE,…!A1))`
+(FALSE, no reference) `#VALUE!`. COUNTA of the two-area external union `(…!A1,…!E1)` is 0; it
+counts 1 for an argument that gives an error instead of a reference: the union or intersection
+with a local cell (`COUNTA((…!A1,E1))`, `COUNTA(…!A1 E1)`, both `#VALUE!`) and the disjoint
+`…!A1:B3 …!D4:E5` (`#NULL!`). OFFSET reads its numbers before giving its `#VALUE!`:
+`OFFSET(…!A1,1/0,1)`, `OFFSET(…!A1,1,1/0)` and `OFFSET(…!A1,1,1,1,1/0)` are `#DIV/0!`, while
+`OFFSET(…!A1,1,1,0)` (height 0) is still `#VALUE!`.
+Evidence: probes/external-ref-no-link-ifchoose Calc!A1:A34, H1:N2, external-ref-no-link-ifchoose-b
+Calc!A1:A6 (excel-graph, 2026-10-14, T-1487).
 Engine: `Model::pick_branch` reads the condition or index of an IF or CHOOSE that may pick an
 external reference once and hands the picked argument to ROWS, COLUMNS, ROW, COLUMN, ISREF, AREAS,
 COUNTA, COUNTBLANK, INDEX and the aggregates; IF's and CHOOSE's value read it as INDEX's (T-1487).
 Not yet implemented: `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3 (a LET body picking one; we give
 `#BLOCKED!`), `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3 (we give 1), and INDEX with an index array into
 an external reference reads empty cells (`=INDEX(…!A1:C4,{1,2},1)` spills 0, 0; we give `#BLOCKED!`).
-Unprobed: whether OFFSET reads `cols`, `height` and `width` before its `#VALUE!` too (the engine
-reads only `rows`).
 Unprobed: a `[n]` index with no
 externalLink part, and ROW/COLUMN of a multi-cell external area (the engine spills the row or column
 numbers as for a sheet reference, UNVERIFIED).

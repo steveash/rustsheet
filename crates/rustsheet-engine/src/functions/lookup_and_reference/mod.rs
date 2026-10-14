@@ -380,8 +380,8 @@ impl Model {
         let reference = match self.pick_branch(&args[0], cell) {
             Picked::Node(node) => node,
             Picked::Value(error @ CalcResult::Error { .. }) => return error,
-            // Unprobed: a value an IF or CHOOSE gives here (an array condition's result) is no
-            // reference, `#VALUE!` as `reference_ranges` gives for one.
+            // A value an IF or CHOOSE gives here is no reference: `ROW(IF(FALSE,…!A1))` is
+            // `#VALUE!` (probes/external-ref-no-link-ifchoose-b A4).
             Picked::Value(_) => {
                 return CalcResult::new_error(Error::VALUE, cell, "Expected a reference".into())
             }
@@ -694,14 +694,17 @@ impl Model {
         // OFFSET of a reference into another workbook is `#VALUE!`, not a reference
         // (`ISREF(OFFSET(…!A1,1,1))` is FALSE; probes/external-ref-no-link-shapes A5,
         // external-ref-no-link-index A16, A17, A32).
-        // An error in `rows` comes first: `OFFSET(…!A1,1/0,1)` is `#DIV/0!`
-        // (probes/external-ref-no-link-ifchoose A7); `cols`, `height` and `width` are not probed.
+        // An error in `rows`, `cols` or `width` comes first: `OFFSET(…!A1,1/0,1)`,
+        // `OFFSET(…!A1,1,1/0)` and `OFFSET(…!A1,1,1,1,1/0)` are `#DIV/0!`, but a height of 0 is
+        // still `#VALUE!` (probes/external-ref-no-link-ifchoose A7, -ifchoose-b A2, A3, A6).
         if let Some(areas) = self.external_reference(&args[0], cell) {
             if let Err(error) = areas {
                 return error;
             }
-            if let Err(error) = self.get_number(&args[1], cell) {
-                return error;
+            for arg in &args[1..] {
+                if let Err(error) = self.get_number(arg, cell) {
+                    return error;
+                }
             }
             return CalcResult::new_error(
                 Error::VALUE,
