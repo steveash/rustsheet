@@ -3,8 +3,17 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::is_span_or_if_of_span;
-use crate::reference_operators::RefArg;
+use crate::reference_operators::{not_a_reference_array, RefArg};
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
+
+/// COUNTBLANK's `#VALUE!` for an argument that is not a reference.
+fn countblank_needs_reference(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::VALUE,
+        cell,
+        "COUNTBLANK needs a reference".to_string(),
+    )
+}
 
 impl Model {
     pub(crate) fn fn_count(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -144,30 +153,16 @@ impl Model {
                 match value {
                     error @ CalcResult::Error { .. } => return error,
                     range @ CalcResult::Range { .. } => range,
-                    _ => {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "COUNTBLANK needs a reference".to_string(),
-                        )
-                    }
+                    _ => return countblank_needs_reference(cell),
                 }
             } else {
                 match self.defined_name_range_operand(arg, cell) {
                     range @ CalcResult::Range { .. } => range,
                     error @ CalcResult::Error { .. } => return error,
-                    _ => {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "COUNTBLANK needs a reference".to_string(),
-                        )
-                    }
+                    _ => return countblank_needs_reference(cell),
                 }
             };
             match value {
-                CalcResult::EmptyCell | CalcResult::EmptyArg => result += 1.0,
-                CalcResult::String(s) if s.is_empty() => result += 1.0,
                 CalcResult::Range { left, right } => {
                     // Only the used area is walked: the cells past it are empty,
                     // so every cell that is not blank is found in the walk.
@@ -193,7 +188,12 @@ impl Model {
                 // (`#NAME?`), `CHOOSE(1,NA())`, an empty intersection (`#NULL!`), a 3-D or union
                 // `#VALUE!` (probes/countblank-choose-errors, excel-graph 2026-10-10, T-1181).
                 error @ CalcResult::Error { .. } => return error,
-                _ => {}
+                // Any other value is not a reference, so COUNTBLANK is `#VALUE!`; an array lifts it
+                // to one `#VALUE!` per element: a lifted INDEX, CHOOSE or IF with an array
+                // condition, and `CHOOSE(1,5)` or `CHOOSE(1,"")` (probes/countblank-array-values,
+                // probes/index-lifted-edge-cases H131, excel-graph 2026-10-13, T-1437).
+                CalcResult::Array(values) => return not_a_reference_array(values),
+                _ => return countblank_needs_reference(cell),
             };
         }
         CalcResult::Number(result)
