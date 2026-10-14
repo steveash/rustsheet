@@ -467,14 +467,21 @@ Edge cases (probes/index-lifted-edge-cases, T-1376):
 - `COUNTBLANK(INDEX(D1:D5,{1,2,3}))` is a 1x3 spill of `#VALUE!` (one per element) and
   `COUNTA(INDEX(D1:D5,{1,2,3}))` is 3, counting the blank element (references.md, "COUNTBLANK of a value that is not a
   reference is #VALUE!"; T-1437, T-1395).
+- A 1x1 array index lifts too: `INDEX(D1:D5,{2})` is a 1x1 array, not the reference the scalar index 2 picks, and so are
+  `{2}` as column_num, as both indices, as row_num with column_num 0, `{2}+0`, `SEQUENCE(1)+1` and `{1}` as area_num
+  (probes/index-1x1-array-index, excel-graph, 2026-10-14, T-1507). ISREF of it is FALSE, TYPE 64 (1 for the scalar
+  index), ROWS 1; what needs a reference is `#VALUE!`: AREAS, the range operator (`ROWS(INDEX(D1:D5,{2}):D5)`,
+  `SUM(INDEX(D1:D5,{1}):D3)`), OFFSET, `CELL("address",…)`, SUMIF, COUNTIF and COUNTBLANK (countblank-array-values H1).
+  COUNTA counts its blank element (1; the scalar index gives 0) while ISBLANK of it is TRUE and `&"|"` gives "|";
+  `N(INDEX(D1:D5,{1}))` is 10 (the engine: `#N/IMPL!`, T-1557).
 The legacy, implicitly intersected form is T-0294.
 DEVIATION (decision 0014): a lifted INDEX whose broadcast indices exceed 1,048,576 elements is `#ERROR!`, the shared
 array bound (arrays.md, "Array results above 1,048,576 cells are #ERROR!").
-Evidence: probes/index-array-indices (60 cells, excel-graph, 2026-10-11, T-1260); probes/index-lifted-edge-cases (excel-graph, 2026-10-12, T-1376); gen-m6/2c1a6e93a1974f48 Calc!A25
+Evidence: probes/index-array-indices (60 cells, excel-graph, 2026-10-11, T-1260); probes/index-lifted-edge-cases (excel-graph, 2026-10-12, T-1376); probes/index-1x1-array-index (excel-graph, 2026-10-14, T-1507); gen-m6/2c1a6e93a1974f48 Calc!A25
 (excel-graph, 2026-10-09, T-1239).
 Status: VERIFIED (excel-graph)
 Implemented in: `Model::index_impl` / `index_lifted` (functions/lookup_and_reference/index.rs).
-Tasks: T-1260, T-1376, T-1437
+Tasks: T-1260, T-1376, T-1437, T-1507
 
 ## INDEX rounds an index up near an integer; a tiny negative index is 0
 Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
