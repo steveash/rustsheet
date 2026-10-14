@@ -436,6 +436,7 @@ impl Model {
         }
         let mut joined = String::new();
         for (index, value) in values.iter().enumerate() {
+            // Same cycling rule as `JoinSize::separator`, which sizes these delimiters.
             if let Some(gap) = index.checked_sub(1) {
                 joined.push_str(&delimiters[gap % delimiters.len()]);
             }
