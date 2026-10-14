@@ -3,7 +3,7 @@ id: T-1547
 title: "Sweep the older probe cases counted for M0-M2 for later-milestone subjects"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
