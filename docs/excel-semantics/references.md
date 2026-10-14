@@ -152,12 +152,11 @@ lexer reads the unquoted `[book]Sheet!` prefix (T-1381). `Model::external_refere
 (external_reference.rs) gives the areas of a written external reference, an INDEX into one and a
 union or intersection of them; ISREF, ROWS, COLUMNS, ROW, COLUMN, AREAS, COUNTA, COUNTBLANK, OFFSET,
 INDEX's value, the intersection's value and the aggregates read it (T-1454). Not yet implemented:
-IF and CHOOSE picking an external reference (follow-up task), INDEX with an index array into one
-(`#BLOCKED!`, UNVERIFIED), and cached multi-cell `[n]` ranges (INDEX, unions and the other
-reference paths above read a `[n]` reference as one with no cache). A one-cell `[n]Sheet!A1` reads
-the cache (`external_links.rs`, below; T-1382), in the aggregates, COUNTA and COUNTBLANK too
-(`Model::uncached_external_reference`; COUNTBLANK reads the cached cell itself). UNVERIFIED (not probed, T-1487):
-COUNTBLANK counts a cached "" as blank and a cached error as 0, as for a local cell; COUNTA
+IF and CHOOSE picking an external reference (follow-up task) and INDEX with an index array into one
+(`#BLOCKED!`, UNVERIFIED). A `[n]` reference the externalLink cache holds, one cell or several,
+reads the cache on all these paths (`external_links.rs`; "Cached values of a linked workbook"
+below, T-1382, T-1460); there COUNTBLANK is `#VALUE!` too, a one-cell `COUNTBLANK([1]Uses!$B$3)`
+included (fixtures/external-link-cached-ranges Refs!B13, B69). UNVERIFIED (not probed, T-1487): COUNTA
 counts an external reference that gives an error instead (`COUNTA((…!A1,E1))`, a disjoint
 intersection, INDEX past the area) as 1, as it does a local error argument; OFFSET and COUNTBLANK
 give their `#VALUE!` before evaluating their other arguments (`OFFSET(…!A1,1/0,1)` is `#VALUE!`). Unprobed: a `[n]` index with no
@@ -187,8 +186,9 @@ unprobed; the engine gives `#NAME?` (an unknown function).
 Engine: `rustsheet-xlsx` keeps each link's cache in `Workbook::external_books` (a link that is not
 to a workbook, or whose part is missing or unreadable, is an empty book that keeps its index); the
 lexer reads `[n]!Name` and `[n]Sheet!Name` as one identifier, which the parser keeps as a defined
-name with its prefix, and `external_links.rs` reads the cache. Unprobed, so UNVERIFIED: a cell the
-cache does not hold reads as empty (0); a book, sheet or name the cache does not hold and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
+name with its prefix, and `external_links.rs` reads the cache. A cell the cache does not hold reads
+as empty: `=[1]Uses!$B$3` is 0, `SUM` and `COUNTA` of `[1]Uses!$E$1:$F$2` are 0
+(fixtures/external-link-cached-ranges Refs!B24, B55, B77). Unprobed, so UNVERIFIED: a book, sheet or name the cache does not hold and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
 uncached reference is; a sheet with `refreshError="1"` is read like any other; `[0]!Missing` is
 `#NAME?` and `[0]Nope!Name` (no such sheet) `#REF!`, as the plain name and a missing sheet are; only
 evaluation strips the `[0]` prefix, so ISREF and a rename of the name do not see through it
@@ -224,7 +224,9 @@ not open in Excel for the web ("unsupportedWorkbook"), so what that reads is a d
 Engine: a cached area carries its cache (`external_links.rs`); aggregates and RANK read its cells
 as reference cells, several areas as one row of cells. Engine-only bound (not Excel behavior, which
 is unobservable here): a whole column or row is cut to the extent the cache holds, as a whole
-column of this workbook is cut to its used area; any other area keeps its shape and blanks. Not
+column of this workbook is cut to its used area; any other area keeps its shape and blanks. The
+array bound on cached ranges (an area or a union's cells above 1,048,576) is a DEVIATION: see
+arrays.md "Array results above 1,048,576 cells". Not
 yet matched: TYPE (64), SUBTOTAL and AGGREGATE (`#VALUE!`, they take a reference), AVERAGEA (`#N/IMPL!`, no array support) and the legacy implicit
 intersection of an external range (T-1526).
 `Sheet!Name` with no book prefix (poi/56737.xlsx Uses!D2 `=Defines!NR_To_A1`, Excel-cached
