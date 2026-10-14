@@ -3,7 +3,7 @@ id: T-1202
 title: "Out-of-domain ACOS/ASIN/ACOSH nested in another function give #NUM!, not NaN"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
