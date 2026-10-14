@@ -1358,8 +1358,8 @@ argument) "2"; a parenthesized operation, `SUM((B1:B6*1))`, a comparison,
 `SUM(B1:B6>1)` 1 / `#VALUE!`, and a concatenation, `SUM(B1:B6&"")` 2 / `#VALUE!`, intersect too, and
 `SUMPRODUCT(ABS(IFERROR(B1:B6,100)))` is 2 / 100. The exception is `MODE.SNGL(B1:B6*1)`: 1 on both rows (it
 evaluates the argument as an array). `MAXA`/`MINA(XLOOKUP("a",A1:A6,A1:A6))` over a text cell is 0.
-`FORMULATEXT` of a legacy `SUM(B1:B6+0)` is `=SUM(@B1:B6+0)`. Dynamic `AVERAGEA({1,"a",TRUE})` is 0.5 (we give 0.667,
-UNVERIFIED reading: the TRUE of an array constant is not counted; T-1555) and `AVERAGEA("1/2/2020",1)` is 21916.5.
+`FORMULATEXT` of a legacy `SUM(B1:B6+0)` is `=SUM(@B1:B6+0)`. Dynamic `AVERAGEA({1,"a",TRUE})` is 0.5 (we give 0.667; the rule for an array
+constant is open, statistics.md "AVERAGEA over an array constant", T-1555) and `AVERAGEA("1/2/2020",1)` is 21916.5.
 A range of a linked workbook is intersected the same way, reading the cached cell
 (fixtures/external-link-cached-ranges Refs!B38, B44, B56, B62; "Cached values of a linked workbook").
 Evidence: probes/legacy-value-argument-intersection, probes/legacy-type-intersection (excel-graph,

@@ -596,6 +596,6 @@ Tasks: T-1531, T-1542
 `AVERAGEA({1,"a",TRUE})` is 0.5 in Excel (probes/legacy-value-argument-intersection-b AI2, excel-graph,
 2026-10-14); we give 0.667 (text 0 and TRUE 1, as for a range). "Text 0, TRUE ignored" and "text ignored, TRUE 0" both
 give 0.5, so the rule is open (T-1555). `AVERAGEA("1/2/2020",1)` is 21916.5 (AJ2: a text argument is coerced to the
-date serial 43831 and averaged with 1).
+date serial 43832 and averaged with 1).
 Status: VERIFIED for the two values; the rule for array constants is UNVERIFIED
 Tasks: T-1551, T-1555
