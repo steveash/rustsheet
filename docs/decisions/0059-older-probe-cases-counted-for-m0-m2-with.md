@@ -31,7 +31,7 @@
     SUBTOTAL and AGGREGATE are controls); `multiarea-subtotal-counts-a` to `-e` (SUBTOTAL of a
     union; LET, IF and CHOOSE only route it); `percentof-snap-overflow-union`;
     `rich-errors-stockhistory` (DATE builds the argument); `subnormal-sumsq-sumproduct-edges`
-    (SUMSQ's per-square flush; it calls no M2 function, only SUMSQ and SUMPRODUCT, so 0051's
+    (SUMSQ's per-square flush; it calls no M2 function, only SUMSQ, SUMPRODUCT and ROW building an argument, so 0051's
     exception does not reach it);
     `subtotal-variance-one-vs-two-pass` (like 0051's `dvar-one-vs-two-pass`);
     `text-search-casefold-length` (SEARCH, FIND); `textjoin-delimiter-elements`.

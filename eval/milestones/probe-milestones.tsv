@@ -328,10 +328,10 @@ probes/isref-function-results.case.json	Sheet1!C5	M6	CHOOSE
 probes/isref-function-results.case.json	Sheet1!C6	M6	CHOOSE
 probes/omitted-arg-compare.case.json	Sheet1!D1	M5	SWITCH
 probes/omitted-arg-compare.case.json	Sheet1!D2	M5	SWITCH
-probes/date-system-1904-clock-text.case.json	S!A8	M6	WORKDAY, NETWORKDAYS
-probes/date-system-1904-clock-text.case.json	S!A9	M6	WORKDAY, NETWORKDAYS
-probes/date-system-1904-clock-text.case.json	S!A10	M6	WORKDAY, NETWORKDAYS
-probes/date-system-1904-clock-text.case.json	S!A11	M6	WORKDAY, NETWORKDAYS
+probes/date-system-1904-clock-text.case.json	S!A8	M6	WORKDAY
+probes/date-system-1904-clock-text.case.json	S!A9	M6	WORKDAY
+probes/date-system-1904-clock-text.case.json	S!A10	M6	NETWORKDAYS
+probes/date-system-1904-clock-text.case.json	S!A11	M6	WORKDAY.INTL
 probes/subnormal-text-and-tail-companions.case.json	Sheet1!A5	M5	CSCH
 probes/subnormal-text-and-tail-companions.case.json	Sheet1!B5	M5	CSCH
 probes/subnormal-text-and-tail-companions.case.json	Sheet1!A6	M9	NORM.S.DIST
