@@ -868,8 +868,6 @@ F	probes/db-argument-modes.case.json	Calc!F21
 F	probes/db-argument-modes.case.json	Calc!F23
 F	probes/db-argument-modes.case.json	Calc!K12
 F	probes/db-argument-modes.case.json	Calc!K13
-F	probes/dollar-fixed-unichar-edges.case.json	Sheet1!A49
-F	probes/dollar-fixed-unichar-edges.case.json	Sheet1!A50
 F	probes/eng-argument-modes.case.json	Calc!A20
 F	probes/eng-argument-modes.case.json	Calc!A21
 F	probes/eng-argument-modes.case.json	Calc!A22

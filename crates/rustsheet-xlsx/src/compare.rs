@@ -3,17 +3,16 @@
 use std::path::Path;
 
 use rustsheet_engine::cell::CellValue;
+use rustsheet_engine::clock::Clock;
 use rustsheet_engine::expressions::token::Error;
 use rustsheet_engine::types::*;
 use rustsheet_engine::{expressions::utils::number_to_column, Model};
 
 use crate::export::{exported_error_literal, rich_error_vm, save_to_xlsx};
-use crate::import::load_from_xlsx;
+use crate::import::{load_from_excel, load_from_xlsx};
 
 use super::util::get_workbook_metadata;
-
-#[cfg(feature = "mock_time")]
-use crate::mock_time::set_mock_time_from_metadata;
+use crate::metadata_clock::clock_from_metadata;
 
 pub struct CompareError {
     message: String,
@@ -327,17 +326,27 @@ pub(crate) fn compare_models(m1: &Model, m2: &Model, skip: &[&str]) -> Result<()
     }
 }
 
+/// The locale of the workbook at `file_path`, and the clock its `NOW()`/`TODAY()` give the values
+/// Excel saved on: its METADATA time, or the system clock without one.
+fn locale_and_clock(file_path: &str) -> (String, Clock) {
+    let model = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
+    let clock = clock_from_metadata(&model).unwrap_or_default();
+    (get_workbook_metadata(&model), clock)
+}
+
+/// Loads `file_path` on `clock`. Loading already evaluates the cells conditional formatting
+/// reads, so the clock is set before that, not after.
+fn load_on_clock(file_path: &str, locale: &str, clock: Clock) -> Model {
+    let workbook = load_from_excel(file_path, locale, "UTC").unwrap();
+    Model::from_workbook_with_clock(workbook, "en", clock).unwrap()
+}
+
 /// Tests that file in `file_path` produces the same results in Excel and in IronCalc.
 pub fn test_file(file_path: &str, skip: &[&str]) -> Result<(), String> {
     // FIXME: we need to load the model twice :S
-    let model1 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
-    let locale = get_workbook_metadata(&model1);
-    // Loading a model already evaluates some cells (conditional formatting),
-    // so the clock must be mocked before loading the models we compare.
-    #[cfg(feature = "mock_time")]
-    set_mock_time_from_metadata(&model1);
-    let model1 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
-    let mut model2 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
+    let (locale, clock) = locale_and_clock(file_path);
+    let model1 = load_on_clock(file_path, &locale, clock);
+    let mut model2 = load_on_clock(file_path, &locale, clock);
     model2.evaluate();
     compare_models(&model1, &model2, skip)
 }
@@ -378,14 +387,8 @@ pub fn test_load_and_saving(
     skip: &[&str],
 ) -> Result<(), String> {
     // FIXME: we need to evaluate the model twice :S
-    let model1 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
-    let locale = get_workbook_metadata(&model1);
-    // Loading a model already evaluates some cells (conditional formatting),
-    // so the clock must be mocked before loading the models we compare.
-    #[cfg(feature = "mock_time")]
-    set_mock_time_from_metadata(&model1);
-
-    let mut model1 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
+    let (locale, clock) = locale_and_clock(file_path);
+    let mut model1 = load_on_clock(file_path, &locale, clock);
 
     let base_name = Path::new(file_path).file_name().unwrap().to_str().unwrap();
 
@@ -394,7 +397,7 @@ pub fn test_load_and_saving(
     // test can save
     save_to_xlsx(&model1, temp_file_path).unwrap();
     // test can open
-    let mut model2 = load_from_xlsx(temp_file_path, &locale, "UTC", "en").unwrap();
+    let mut model2 = load_on_clock(temp_file_path, &locale, clock);
     model2.evaluate();
     save_error_constants_as_exported(&mut model1);
     compare_models(&model1, &model2, skip)

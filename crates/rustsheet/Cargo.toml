@@ -17,8 +17,9 @@ thiserror = "1"
 zip = { version = "0.6.6", default-features = false, features = ["deflate"] }
 
 [features]
-# Lets the eval harness pin NOW()/TODAY() (see `Workbook::pin_clock_from_metadata`).
-mock_time = ["rustsheet_engine/mock_time", "rustsheet_xlsx/mock_time"]
+# Lets the eval harness pin the workbook clock to IronCalc's METADATA `NOW` convention
+# (see `Workbook::pin_clock_from_metadata`).
+metadata_clock = []
 
 [lints]
 workspace = true

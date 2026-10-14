@@ -2,8 +2,9 @@
 
 use crate::{expressions::types::Area, types::Border, BorderArea, UserModel};
 
+/// An empty en-US user model in UTC on the fixed test clock.
 pub fn new_empty_user_model() -> UserModel {
-    UserModel::new_empty("model", "en", "UTC", "en").unwrap()
+    UserModel::from_model(crate::test::util::new_empty_model())
 }
 
 impl UserModel {

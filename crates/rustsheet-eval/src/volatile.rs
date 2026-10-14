@@ -93,8 +93,8 @@ pub fn is_volatile(formula: &str, clock_pinned: bool) -> bool {
 
 /// The Excel serial stored next to the label `NOW` in the first rows of a `METADATA` sheet.
 ///
-/// This is IronCalc's mock-time convention (`rustsheet_xlsx::mock_time`); the engine adapter
-/// pins its clock to the same value, so `NOW()`/`TODAY()` cells reproduce Excel's cached values.
+/// This is IronCalc's METADATA clock convention (`rustsheet_xlsx::metadata_clock`); the engine
+/// adapter pins the workbook clock to the same value, so `NOW()`/`TODAY()` cells reproduce Excel's cached values.
 #[must_use]
 pub fn pinned_clock_serial(sheets: &[SheetSnapshot]) -> Option<f64> {
     let sheet = sheets

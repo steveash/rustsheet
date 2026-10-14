@@ -2,11 +2,12 @@
 //!
 //! See `docs/architecture/eval-harness.md` for the normative description.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
 use crate::cellref::Addr;
+use crate::suite::CaseFile;
 use crate::value::Value;
 
 pub const CASE_FORMAT: &str = "rustsheet-case/v1";
@@ -216,6 +217,46 @@ pub fn cell_key(sheet: &str, addr: Addr) -> String {
 pub fn canonical_key(key: &str) -> Option<String> {
     let (sheet, a1) = split_qualified(key)?;
     Some(cell_key(&sheet, Addr::parse(&a1)?))
+}
+
+/// The cells a spec case holds an expectation for, as `Sheet!A1` (the form of
+/// `runner::CellResult::key`): the keys of its `expected` and of its oracle sidecar.
+///
+/// # Errors
+/// When the case or its sidecar cannot be read, or names a malformed cell.
+pub fn expectation_cells(case: &CaseFile) -> Result<BTreeSet<String>, String> {
+    let text = std::fs::read_to_string(&case.path).map_err(|e| e.to_string())?;
+    let spec: CaseSpec = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+    let mut keys = Vec::new();
+    for key in spec.expected.keys() {
+        keys.push(split_qualified(key).ok_or_else(|| format!("bad cell key {key}"))?);
+    }
+    if let Some(o) = load_oracle(case)? {
+        for (sheet, cells) in o.sheets {
+            keys.extend(cells.into_keys().map(|a1| (sheet.clone(), a1)));
+        }
+    }
+    keys.into_iter()
+        .map(|(sheet, a1)| {
+            let addr = Addr::parse(&a1).ok_or_else(|| format!("bad cell key {sheet}!{a1}"))?;
+            Ok(format!("{sheet}!{addr}"))
+        })
+        .collect()
+}
+
+/// The case's oracle sidecar, or `None` when it has none.
+///
+/// # Errors
+/// When the sidecar cannot be read or parsed.
+pub fn load_oracle(case: &CaseFile) -> Result<Option<OracleFile>, String> {
+    let path = &case.sidecar;
+    if !path.exists() {
+        return Ok(None);
+    }
+    let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    serde_json::from_str(&text)
+        .map(Some)
+        .map_err(|e| format!("{}: {e}", path.display()))
 }
 
 #[cfg(test)]

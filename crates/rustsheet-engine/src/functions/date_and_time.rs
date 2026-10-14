@@ -732,25 +732,22 @@ impl Model {
         })
     }
 
-    /// The serial of now in the optional timezone argument of TODAY / NOW (the model's own
-    /// timezone without one); `None` when the clock cannot be read.
+    /// The serial of the model clock's now in the optional timezone argument of TODAY / NOW (the
+    /// model's own timezone without one); `None` when that instant has no date there.
     fn now_in_timezone_arg(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> Result<Option<f64>, CalcResult> {
+        let now = self.now_unix_millis();
         let Some(arg0) = args.first() else {
-            return Ok(crate::tz::excel_serial_for_now(&self.tz));
+            return Ok(crate::tz::excel_serial_for_now(&self.tz, now));
         };
         let tz_str = self.get_string(arg0, cell)?;
-        match Tz::parse(&tz_str) {
-            Ok(tz) => Ok(crate::tz::excel_serial_for_now(&tz)),
-            Err(_) => Err(CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: format!("Invalid timezone: {tz_str}"),
-            }),
-        }
+        let tz = Tz::parse(&tz_str).map_err(|_| {
+            CalcResult::new_error(Error::VALUE, cell, format!("Invalid timezone: {tz_str}"))
+        })?;
+        Ok(crate::tz::excel_serial_for_now(&tz, now))
     }
 
     // Extends the standard by adding an optional timezone parameter
