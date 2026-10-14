@@ -1,10 +1,13 @@
 use crate::expressions::types::CellReferenceIndex;
-use crate::reference_operators::RefArg;
+use crate::functions::aggregate_args::{
+    AggregatePolicy, ArrayErrorRank, ArrayNumbers, CellNumbers, DirectNumbers, ErrorRule,
+    NumberRules,
+};
 
 use crate::{
     arithmetic::{extended_sum, snap_near_zero},
     calc_result::CalcResult,
-    expressions::parser::{ArrayNode, Node},
+    expressions::parser::Node,
     expressions::token::Error,
     model::Model,
 };
@@ -271,6 +274,25 @@ impl SumParts {
     }
 }
 
+/// SUM: an error in a referenced cell or an array ranks below an error in a direct argument,
+/// whichever comes first, and the leftmost reference error wins (docs/excel-semantics/syntax.md
+/// "Aggregate error precedence", probes/sum-error-precedence; arrays: probes/aggregate-error-precedence
+/// C50, C53, C61, C77).
+const SUM_ARGS: AggregatePolicy = AggregatePolicy {
+    errors: ErrorRule::Ranked {
+        array_errors: ArrayErrorRank::Referenced,
+    },
+    skip_empty_args: false,
+};
+
+/// SUM's coercion: every direct value is cast; references and arrays give only their numbers
+/// (a reference, also via IF/INDEX, is a one-cell range: text is skipped).
+const SUM_NUMBERS: NumberRules = NumberRules {
+    direct: DirectNumbers::Cast,
+    cells: CellNumbers::Numbers,
+    array: ArrayNumbers::Numbers,
+};
+
 impl Model {
     /// SUM(number1, [number2], ...)
     ///
@@ -305,51 +327,7 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         }
         let mut sum = SumParts::default();
-        // Excel: an error in a referenced cell or an array ranks below an error in a direct argument, whichever
-        // comes first, and the leftmost reference error wins (docs/excel-semantics/syntax.md,
-        // "Stored #BUSY! behaviors", probes/sum-error-precedence). So a reference error is held
-        // back until the direct arguments are known to be clean.
-        let mut reference_error = None;
-        for arg in args {
-            // A reference (also via IF/INDEX) is a one-cell range: text is skipped.
-            match self.evaluate_aggregate_arg(arg, cell) {
-                RefArg::Ranges(areas) => {
-                    if reference_error.is_none() {
-                        if let Err(error) =
-                            self.for_each_number_in_areas(&areas, cell, |value| sum.add(value))
-                        {
-                            reference_error = Some(error);
-                        }
-                    }
-                }
-                RefArg::Value(CalcResult::Array(array)) => {
-                    for value in array.into_iter().flatten() {
-                        match value {
-                            ArrayNode::Number(value) => sum.add(value),
-                            // An error inside an array is not a scalar direct error: it ranks with
-                            // the reference errors (leftmost wins, a direct scalar error beats it;
-                            // probes/aggregate-error-precedence C50, C53, C61, C77).
-                            ArrayNode::Error(error) if reference_error.is_none() => {
-                                reference_error = Some(CalcResult::Error {
-                                    error,
-                                    origin: cell,
-                                    message: "Error in array".to_string(),
-                                });
-                            }
-                            // Later errors, booleans and text in an array are ignored.
-                            _ => {}
-                        }
-                    }
-                }
-                RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
-                RefArg::Value(calc_result) => {
-                    sum.add(self.cast_aggregate_arg_to_number(calc_result, cell)?);
-                }
-            };
-        }
-        match reference_error {
-            Some(error) => Err(error),
-            None => Ok(sum),
-        }
+        self.for_each_aggregate_number(args, cell, SUM_ARGS, SUM_NUMBERS, |value| sum.add(value))?;
+        Ok(sum)
     }
 }
