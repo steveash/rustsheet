@@ -548,6 +548,7 @@ C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/tiny-vs-zero-criteria.case.json	75
+C	probes/trig-huge-argument.case.json	86
 C	probes/trunc-decimal-stages.case.json	56
 C	probes/typed-currency-percent-input.case.json	66
 C	probes/typed-number-tiny.case.json	24
@@ -6103,6 +6104,12 @@ F	probes/text-surrogate-positions.case.json	Sheet1!A29
 F	probes/text-surrogate-positions.case.json	Sheet1!A38
 F	probes/text-surrogate-positions.case.json	Sheet1!A6
 F	probes/text-surrogate-positions.case.json	Sheet1!B10
+F	probes/trig-huge-argument.case.json	Sheet1!A1
+F	probes/trig-huge-argument.case.json	Sheet1!A15
+F	probes/trig-huge-argument.case.json	Sheet1!A29
+F	probes/trig-huge-argument.case.json	Sheet1!A43
+F	probes/trig-huge-argument.case.json	Sheet1!A57
+F	probes/trig-huge-argument.case.json	Sheet1!A71
 F	probes/volatile-invariant.case.json	Calc!A12
 F	probes/volatile-invariant.case.json	Calc!A13
 F	probes/volatile-invariant.case.json	Calc!A2
