@@ -3,7 +3,7 @@ id: T-1504
 title: "Give the #NAME? of calling a number or boolean variable a message"
 milestone: M1
 lane: quality
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,7 @@ Split from T-1223. `called_value` in functions/logical/lambda.rs builds `ArrayNo
 
 ## Out of scope
 -
+
+## Outcome
+`Model::call_variable` now gives the scalar `#NAME?` the message "A value cannot be called"
+(array elements carry no message, so they stay as they were). Unit test pins it; eval delta 0.
