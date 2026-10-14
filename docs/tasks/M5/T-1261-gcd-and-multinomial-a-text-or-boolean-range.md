@@ -3,7 +3,7 @@ id: T-1261
 title: "GCD and MULTINOMIAL: a text or boolean range cell is #VALUE! even after a negative argument (2 gen-m6 cells)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
