@@ -3,7 +3,7 @@ id: T-1049
 title: "Excel evidence for thinly covered modern distribution functions (F.*, CHISQ.*, HYPGEOM.DIST, WEIBULL.DIST, Z.TEST, PHI, T.TEST)"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -26,3 +26,6 @@ Split from T-0966 (one sweep per kernel family), which explains why: Excel's dis
 
 ## Out of scope
 - Fitting or changing any implementation (the dependent fitting tasks do that).
+
+## Outcome
+Added 15 probes-numeric cases (`t1049-*`, 653 cells, all with excel-graph oracle values) covering F.DIST, F.DIST.RT, F.INV, F.INV.RT, F.TEST, CHISQ.DIST, CHISQ.DIST.RT, CHISQ.INV, CHISQ.INV.RT, CHISQ.TEST, HYPGEOM.DIST (83-cell grid), WEIBULL.DIST, PHI, Z.TEST and T.TEST. probes-numeric is ungated; the engine passes 327 of 653 cells. Quirks recorded in docs/excel-semantics/statistics.md. Follow-ups: T-1514 (P0: F.INV/F.INV.RT hang for df 1E10, found by the sweep; the cell is not in the committed cases so `make eval` does not time out), T-1515 (coercion and edge gaps).

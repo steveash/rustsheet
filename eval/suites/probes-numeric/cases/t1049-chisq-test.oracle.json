@@ -117,14 +117,18 @@
    "A9": {
     "t": "e",
     "v": "#N/A"
+   },
+   "C6": {
+    "t": "e",
+    "v": "#N/A"
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "660aa65476df05a2add02cabdcdd772d2c00b909ce675a5aaa7154a09af9e35e",
+  "input_sha256": "3ec146e6602717d00bb60c1ac5bea14aef84e68bfb5e29619fa638a7f7df6029",
   "kind": "excel-graph",
-  "produced_at": "2026-10-14T04:20:52+00:00",
+  "produced_at": "2026-10-14T04:52:11+00:00",
   "version": null
  }
 }

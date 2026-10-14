@@ -152,11 +152,11 @@
    },
    "A43": {
     "t": "e",
-    "v": "#NUM!"
+    "v": "#VALUE!"
    },
    "A44": {
     "t": "e",
-    "v": "#NUM!"
+    "v": "#VALUE!"
    },
    "A45": {
     "t": "e",
@@ -234,9 +234,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "883a2c25aa0d215a0a349ceb11e4f4c5f9c28d522a159663900bf8cd49ba5960",
+  "input_sha256": "f8ae5a43c3826df452defb687c171f0f060b843fbb9f08ecec7d94a8ce323acb",
   "kind": "excel-graph",
-  "produced_at": "2026-10-14T04:22:08+00:00",
+  "produced_at": "2026-10-14T04:52:32+00:00",
   "version": null
  }
 }

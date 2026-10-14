@@ -27,8 +27,8 @@
     "v": 2.825439313895175e-10
    },
    "A15": {
-    "t": "n",
-    "v": 2.825439313895175e-10
+    "t": "e",
+    "v": "#VALUE!"
    },
    "A16": {
     "t": "n",
@@ -52,7 +52,7 @@
    },
    "A20": {
     "t": "e",
-    "v": "#NUM!"
+    "v": "#VALUE!"
    },
    "A21": {
     "t": "e",
@@ -186,9 +186,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "8a723e2e34fff01333eba3f83ea51995e4ca035d4b42d1fc847b436ad8944e84",
+  "input_sha256": "24cb038f59d4d3b0195e6b3706b431a78b73d23bd00cae539c51a7f00f4925d5",
   "kind": "excel-graph",
-  "produced_at": "2026-10-14T04:22:27+00:00",
+  "produced_at": "2026-10-14T04:52:41+00:00",
   "version": null
  }
 }
