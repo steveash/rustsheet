@@ -1,5 +1,5 @@
 ---
-id: T-1534
+id: T-1537
 title: "INDEX with an index array into another workbook reads the picked cells as empty"
 milestone: M2
 lane: engine

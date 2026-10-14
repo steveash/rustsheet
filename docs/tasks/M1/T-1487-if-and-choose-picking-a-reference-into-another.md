@@ -47,5 +47,5 @@ COLUMNS, ROW, COLUMN, ISREF, AREAS, COUNTA, COUNTBLANK, INDEX and `evaluate_refe
 `if_impl`/`choose_impl` share the pick (`if_pick`, `choose_pick`) and read a picked external
 reference as INDEX's value. OFFSET of an external reference reads its numbers before its `#VALUE!` (probe -ifchoose-b).
 Eval: probes known failures 5208 -> 5210 (fixed index A25, A26; new cases 40/44 and 6/6, the 4 failures
-filed as T-1532 LET body, T-1533 CHOOSE over an index array, T-1534 lifted INDEX).
+filed as T-1535 LET body, T-1536 CHOOSE over an index array, T-1537 lifted INDEX).
 

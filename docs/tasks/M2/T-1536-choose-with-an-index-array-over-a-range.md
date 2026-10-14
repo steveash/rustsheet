@@ -1,5 +1,5 @@
 ---
-id: T-1533
+id: T-1536
 title: "CHOOSE with an index array over a range argument broadcasts the range"
 milestone: M2
 lane: engine

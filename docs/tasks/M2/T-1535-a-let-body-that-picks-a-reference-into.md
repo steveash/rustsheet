@@ -1,5 +1,5 @@
 ---
-id: T-1532
+id: T-1535
 title: "A LET body that picks a reference into another workbook keeps it a reference"
 milestone: M2
 lane: engine
