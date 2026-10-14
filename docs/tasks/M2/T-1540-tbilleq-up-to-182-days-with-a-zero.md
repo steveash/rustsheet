@@ -3,7 +3,7 @@ id: T-1540
 title: "TBILLEQ up to 182 days with a zero denominator is 0"
 milestone: M2
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,8 +23,14 @@ price from 183 days whose square-root argument stays positive, `TBILLEQ(1000,118
 Rule: docs/excel-semantics/financial.md "TBILLEQ and TBILLYIELD".
 
 ## Acceptance criteria
-- [ ] probes/tbilleq-zero-price A3 leaves eval/baseline/probes.txt; the new probe values are recorded.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/tbilleq-zero-price A3 leaves eval/baseline/probes.txt; the new probe values are recorded.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The 183-day-plus branch (T-1475).
+
+## Outcome
+Probed (probes/tbilleq-nonpositive-price, excel-graph): TBILLEQ is `#NUM!` for every negative price (both
+branches), 0 at a zero denominator up to 182 days; TBILLPRICE is 0 at price 0 and `#NUM!` when negative.
+`fn_tbilleq` now matches (zero denominator is 0, negative price is `#NUM!` instead of a finite negative
+yield). Eval delta: probes/tbilleq-zero-price A3 fixed, new case 9/9 bit-exact, regressions 0.

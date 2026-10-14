@@ -1356,15 +1356,29 @@ impl Model {
         }
         let d_m = maturity - settlement;
         let result = if d_m < 183.0 {
-            365.0 * discount / (360.0 - discount * d_m)
+            // A zero denominator (price 0) is 0 and a negative one `#NUM!`, not `#DIV/0!`
+            // (probes/tbilleq-zero-price A3, probes/tbilleq-nonpositive-price; financial.md
+            // "TBILLEQ and TBILLYIELD").
+            let denominator = 360.0 - discount * d_m;
+            if denominator < 0.0 {
+                return CalcResult::new_error(Error::NUM, cell, "Price is negative".to_string());
+            }
+            if denominator == 0.0 {
+                return CalcResult::Number(0.0);
+            }
+            365.0 * discount / denominator
         } else {
             // The root of (1 + y/2)(1 + (d_m - year/2) y / year) = 100/price in Excel's form and
-            // order, fitted bit-exact on ironcalc-calc TBILLs.xlsx D4:D10, D24:D30; a price of 0 is
+            // order, fitted bit-exact on ironcalc-calc TBILLs.xlsx D4:D10, D24:D30; a price <= 0 is
             // `#NUM!` (probes/tbilleq-zero-price A1:A2; financial.md "TBILLEQ and TBILLYIELD").
             let year = if d_m == 366.0 { 366.0 } else { 365.0 };
             let price = 100.0 - discount * d_m * 100.0 / 360.0;
-            if price == 0.0 {
-                return CalcResult::new_error(Error::NUM, cell, "Price is zero".to_string());
+            if price <= 0.0 {
+                return CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "Price is not positive".to_string(),
+                );
             }
             let t = d_m / year;
             (-t + (t * t - (2.0 * t - 1.0) * (1.0 - 100.0 / price)).sqrt()) / (t - 0.5)
