@@ -144,7 +144,7 @@ class Score:
 def _measure(cell: Cell, cand: Candidate) -> CellResult:
     try:
         value = cand.evaluate(cell)
-    except ExcelError as e:
+    except ExcelError as e:  # before the ArithmeticError clause: ExcelError is one
         return _error_result(cell, e.code)
     except (ArithmeticError, ValueError, TypeError, KeyError, IndexError, RecursionError) as e:
         return CellResult(cell, None, None, f"{type(e).__name__}: {e}")
