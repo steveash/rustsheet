@@ -3,7 +3,7 @@ id: T-1288
 title: "Probe VALUETOTEXT with an error value and an invalid or error format, and a range-reference format"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1229 left these unprobed (fn_valuetotext in functions/text/common.rs): VALUETO
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/valuetotext-error-format` (excel-graph) answers the three forms; the engine already matches all 10 cells (no code change). An error value with an invalid format is `#VALUE!`, with an error format the format's error wins, a one-cell range format works as a number and a 2-cell one is `#SPILL!` when blocked (lifted values unverified). text.md drops the UNVERIFIED note. Eval delta: +10 passing cells, no regressions.

@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1288 VALUETOTEXT with an error value and an invalid/error format, and a range-reference format",
+ "tags": ["M5", "probe", "text", "valuetotext"],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "ab",
+    "B1": 1,
+    "B2": 0,
+    "C1": "=VALUETOTEXT(#N/A,2)",
+    "C2": "=VALUETOTEXT(#N/A,#DIV/0!)",
+    "C3": "=VALUETOTEXT(A1,B1:B2)",
+    "C4": "=VALUETOTEXT(#N/A,1)",
+    "C5": "=VALUETOTEXT(#N/A,0)",
+    "C6": "=VALUETOTEXT(A1,B1)",
+    "C7": "=VALUETOTEXT(#N/A,\"x\")",
+    "C8": "=VALUETOTEXT(5,#DIV/0!)",
+    "C9": "=VALUETOTEXT(#N/A,-1)",
+    "C10": "=VALUETOTEXT(A1,B1:B1)"
+   }
+  }
+ ],
+ "expected": {}
+}
