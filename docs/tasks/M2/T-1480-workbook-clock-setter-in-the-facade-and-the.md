@@ -3,7 +3,7 @@ id: T-1480
 title: "Workbook clock setter in the facade and the Python binding"
 milestone: M2
 lane: api
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
