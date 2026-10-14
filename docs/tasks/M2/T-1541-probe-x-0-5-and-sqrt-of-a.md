@@ -3,7 +3,7 @@ id: T-1541
 title: "Probe x^-0.5 and SQRT of a subnormal where rounding the root first differs"
 milestone: M2
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
