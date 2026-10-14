@@ -1354,22 +1354,20 @@ impl Model {
         if discount <= 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "discount should be >0".to_string());
         }
-        // days to maturity
         let d_m = maturity - settlement;
         let result = if d_m < 183.0 {
             365.0 * discount / (360.0 - discount * d_m)
         } else {
-            // Equation here is:
-            // (1-days*rate/360)*(1+y/2)*(1+d_extra*y/year)=1
+            // The root of (1 + y/2)(1 + (d_m - year/2) y / year) = 100/price in Excel's form and
+            // order, fitted bit-exact on ironcalc-calc TBILLs.xlsx D4:D10, D24:D30; a price of 0 is
+            // `#NUM!` (probes/tbilleq-zero-price A1:A2; financial.md "TBILLEQ and TBILLYIELD").
             let year = if d_m == 366.0 { 366.0 } else { 365.0 };
-            let d_extra = d_m - year / 2.0;
-            let alpha = 1.0 - d_m * discount / 360.0;
-            let beta = 0.5 + d_extra / year;
-            // ay^2+by+c=0
-            let a = d_extra * alpha / (year * 2.0);
-            let b = alpha * beta;
-            let c = alpha - 1.0;
-            (-b + (b * b - 4.0 * a * c).sqrt()) / (2.0 * a)
+            let price = 100.0 - discount * d_m * 100.0 / 360.0;
+            if price == 0.0 {
+                return CalcResult::new_error(Error::NUM, cell, "Price is zero".to_string());
+            }
+            let t = d_m / year;
+            (-t + (t * t - (2.0 * t - 1.0) * (1.0 - 100.0 / price)).sqrt()) / (t - 0.5)
         };
         if result.is_infinite() {
             return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
@@ -1477,7 +1475,9 @@ impl Model {
             return CalcResult::new_error(Error::NUM, cell, "discount should be >0".to_string());
         }
         let days = maturity - settlement;
-        let result = (100.0 - pr) * 360.0 / (pr * days);
+        // Excel's order: `(100 - pr)/pr * (360/days)` (ironcalc-calc TBILLs.xlsx R6:R30, bit-exact;
+        // docs/excel-semantics/financial.md "TBILLEQ and TBILLYIELD").
+        let result = (100.0 - pr) / pr * (360.0 / days);
 
         CalcResult::Number(result)
     }
