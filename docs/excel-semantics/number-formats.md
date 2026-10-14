@@ -263,3 +263,15 @@ Status: VERIFIED (excel-graph, fitted model)
 Tasks: T-1388, T-1393, T-1434, T-1449, T-1450, T-1451, T-1455
 
 TEXT over an array of format codes (T-1451): one result per format, value and formats broadcast together (see text.md). `TEXT(1,{"0",#N/A})` is "1", `#N/A` (-f A54:B54). The error-precedence and lifting rules are verified by probes/text-format-array (T-1458) for error and too-complex format elements; a syntactically invalid format element next to an error value is not probed.
+
+## Unquoted ASCII letters in a number format (T-1450)
+
+Excel prints most ASCII letters that are not format tokens as literals, with no quotes or backslash. Probed as `TEXT(1,"0"&L)` and `TEXT(1,"d"&L)` for every ASCII letter in both cases (probes/text-format-unquoted-letters A1:A104, excel-graph 2026-10-14):
+
+- **After `0`:** the letters `b d e g h m n s y` and their capitals (`B D E G H M N S Y`) are `#VALUE!` (date/time/exponent/era tokens that do not fit a number format). Every other letter prints as a literal: `TEXT(1,"0a")` is "1a", and likewise `c f i j k l o p q r t u v w x z` and `A C F I J K L O P Q R T U V W X Z`. `TEXT(1,"0x")` is "1x".
+- **After `d`** (a date format), the date tokens keep their meaning: `db` "143" (Buddhist year), `dd` "01", `de` "11900", `dg` "1", `dh` "10", `dm` "11", `ds` "10", `dy` "100", and `dD`, `dG`, `dH`, `dM`, `dS`, `dY` the same as lowercase. `dB`, `dE`, `dn` and `dN` are `#VALUE!`. The remaining letters (`a c f i j k l o p q r t u v w x z` and capitals `A C F I J K L O P Q R T U V W X Z`) print as literals ("1a").
+- **Colons:** `TEXT(1,"0\:\:")` is "1::" (escaped colons do not collapse); `TEXT(0.5,"h::mm")` and `"h:::mm"` are "12:00" (a run collapses to one); `"0::"` and `"0:::"` are "1:"; `"0:a:"` is "1:a:" and `"0::a"` is "1:a".
+
+Evidence strength: excel-graph oracle, 111 cells. Status: VERIFIED (web).
+Ours: the lexer (formatter/lexer.rs `next_token`) treats every non-token letter as illegal, so all the literal cases are `#VALUE!`. Follow-up lexer task filed.
+Tasks: T-1450
