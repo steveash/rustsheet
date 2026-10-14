@@ -85,7 +85,7 @@ behavior with no evidence:
 | Consumer | Difference | Evidence |
 |---|---|---|
 | SUM | tracks its last addition for near-zero snapping (`SumParts`) | numbers.md "Near-zero snapping", probes/near-zero-sum-forms |
-| SUM, MIN, MAX, PRODUCT | every direct value goes through `cast_aggregate_arg_to_number`, so a direct blank value is 0 and a direct LAMBDA or range value is an error | blank: probes/aggregate-picked-direct-a-variants D14-D19 (a `LET` blank is a referenced blank, skipped); direct LAMBDA: `#VALUE!` (syntax.md), see the AVERAGE/MEDIAN row |
+| SUM, MIN, MAX, PRODUCT | every direct value goes through `cast_aggregate_arg_to_number`, so a direct blank value is 0 and a direct LAMBDA or range value is an error | direct LAMBDA: Excel `#VALUE!`, ours `#CALC!` (probes/aggregate-picked-direct-a-variants D7-D10): DIVERGES, T-1572. A `LET` blank is a referenced blank and skipped (D14-D19, ours agrees); a truly direct blank value and a direct range value are unprobed |
 | `for_each_value` family, COUNT | only a direct number, boolean, text or empty argument counts; other direct values are skipped | Excel: COUNT skips a direct LAMBDA, but AVERAGE and MEDIAN give `#VALUE!` for it (probes/aggregate-picked-direct-a-variants D11-D13); ours skips: DIVERGES, T-1572 |
 | `for_each_value` family, COUNT | a value that a reference node gives without areas (a cached cell of a linked workbook) is read like a referenced cell, and its text and booleans are skipped | current behavior (the `ReferenceKind` guards) |
 | DEVSQ, AVEDEV, SUMSQ | an empty argument is skipped, and each argument's first error is returned at once | current behavior, TODO(T-0236); T-1439 |
