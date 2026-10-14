@@ -524,7 +524,8 @@
       "encodeurl": "ENCODEURL",
       "image": "IMAGE",
       "stockhistory": "STOCKHISTORY",
-      "fieldvalue": "FIELDVALUE"
+      "fieldvalue": "FIELDVALUE",
+      "filterxml": "FILTERXML"
     }
   },
   "it": {
@@ -1052,7 +1053,8 @@
       "encodeurl": "CODIFICA.URL",
       "image": "IMAGE",
       "stockhistory": "STOCKHISTORY",
-      "fieldvalue": "FIELDVALUE"
+      "fieldvalue": "FIELDVALUE",
+      "filterxml": "FILTERXML"
     }
   },
   "fr": {
@@ -1580,7 +1582,8 @@
       "encodeurl": "URLENCODAGE",
       "image": "IMAGE",
       "stockhistory": "STOCKHISTORY",
-      "fieldvalue": "FIELDVALUE"
+      "fieldvalue": "FIELDVALUE",
+      "filterxml": "FILTERXML"
     }
   },
   "de": {
@@ -2108,7 +2111,8 @@
       "encodeurl": "URLCODIEREN",
       "image": "IMAGE",
       "stockhistory": "STOCKHISTORY",
-      "fieldvalue": "FIELDVALUE"
+      "fieldvalue": "FIELDVALUE",
+      "filterxml": "FILTERXML"
     }
   },
   "es": {
@@ -2636,7 +2640,8 @@
       "encodeurl": "URLCODIF",
       "image": "IMAGE",
       "stockhistory": "STOCKHISTORY",
-      "fieldvalue": "FIELDVALUE"
+      "fieldvalue": "FIELDVALUE",
+      "filterxml": "FILTERXML"
     }
   }
 }
