@@ -19,7 +19,7 @@ docs/specs/SPEC-0010-text-with-lone-surrogates.md "Where `Text` replaces `String
 ## Acceptance criteria
 - [ ] `CalcResult::String(Text)` and `ArrayNode::String(Text)`; no new `clone`s on hot paths (a site that cloned a `String` clones the `Text`).
 - [ ] Zero eval delta (`make eval` known failures unchanged).
-- [ ] Outcome: `crates/rustsheet/benches` aggregate before/after (release), within ±3%.
+- [ ] Outcome: `crates/rustsheet/benches/text.rs` (added by T-1575) before/after (release), within ±3%; aggregate as a sanity check.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

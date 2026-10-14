@@ -14,7 +14,7 @@ depends_on: [T-1576]
 Cached formula and spill results keep a lone surrogate, and the xlsx writer writes it as Excel does (`_xHHHH_`).
 
 ## Context
-docs/specs/SPEC-0010-text-with-lone-surrogates.md "Where `Text` replaces `String`" and "Boundaries / xlsx writer". `FormulaValue::Text` and `SpillValue::Text` (types.rs) carry `Text`. Excel writes a lone unit of a cached value as `_xDE00_` (the oracle file of probes/text-surrogate-positions A6 holds `a😀_xDE00_b`). Add one helper in rustsheet-xlsx export/escape.rs that writes a `Text` segment by segment (`escape_xml` for `Str`, upper-case `_xHHHH_` for `Lone`); T-1578 reuses it for the harness.
+docs/specs/SPEC-0010-text-with-lone-surrogates.md "Where `Text` replaces `String`" and "Boundaries / xlsx writer". `FormulaValue::Text` and `SpillValue::Text` (types.rs) carry `Text`. Excel writes a lone unit of a cached value as `_xDE00_` (the oracle file of probes/text-surrogate-positions A6 holds `a😀_xDE00_b`). Add one public, documented helper in rustsheet-xlsx export/escape.rs that writes a `Text` segment by segment (`escape_xml` for `Str`, upper-case `_xHHHH_` for `Lone`); T-1578 reuses it for the harness.
 
 ## Acceptance criteria
 - [ ] `FormulaValue::Text(Text)`, `SpillValue::Text(Text)`; the bitcode format change is covered by a test that bytes from the old layout are an `Err` from `Model::from_bytes`, not a panic.

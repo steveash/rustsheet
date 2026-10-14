@@ -39,7 +39,7 @@ Non-goals (follow-ups once the probe task below has evidence):
   behavior stays (the xlsx reader keeps an undecodable `_xD83D_` literally; Rust inputs are `str`
   and cannot hold one; PyO3 rejects such a Python `str`).
 - Formula text: the parser reads formulas from `str`, so a string literal cannot hold a lone
-  surrogate (Excel's formula bar cannot type one either).
+  surrogate.
 - Functions other than the ones below seeing a lone surrogate exactly (UPPER, TRIM, SUBSTITUTE,
   FIND, comparisons, …): they see the lossy view (below) until probed.
 
@@ -48,8 +48,8 @@ Non-goals (follow-ups once the probe task below has evidence):
   positions inside a surrogate pair keep the lone half"; probes/text-surrogate-positions A6, A11,
   A12, A29, A38, B10; excel-graph 2026-10-09, T-0249).
 - LEFT/RIGHT count a lone surrogate as one character and do not pair a lone high surrogate with
-  the next character (same entry; B6, B7, which pass today only because the lossy U+FFFD is one
-  character too).
+  the next character (same entry; B6, B7, which pass today because the pair is dropped, and after
+  T-1579 keep passing through the lossy view until T-1581 makes LEFT/RIGHT exact).
 - Truncation at 32,767 units inside a pair keeps the high surrogate (coercion.md "Truncation inside
   a surrogate pair keeps a lone high surrogate"; probes/concatenate-limit-spill E8-E11, T-0233).
 - `UNICODE` of a lone high surrogate is `#VALUE!`, of a lone low one its code (E10; A38).
@@ -73,13 +73,13 @@ New module `crates/rustsheet-engine/src/text.rs` (public, re-exported from the c
 ```rust
 /// Excel text: a sequence of UTF-16 code units. Well-formed text (every surrogate paired) is
 /// stored as UTF-8; text holding a lone surrogate also keeps its exact units.
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq)] // Encode/Decode hand-written, below
 pub enum Text {
     Utf8(String),
     Lone(Box<LoneText>),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LoneText {
     units: Box<[u16]>,  // the exact text; holds at least one lone surrogate
     lossy: String,      // String::from_utf16_lossy(&units): each lone unit as U+FFFD
@@ -88,7 +88,11 @@ pub struct LoneText {
 
 Invariant (kept by the constructors, the only way to build a `Text`): `Lone` if and only if the
 units are ill-formed UTF-16. So `Text` has one form per value and derived `PartialEq` is value
-equality (a lone surrogate never equals a real U+FFFD).
+equality (a lone surrogate never equals a real U+FFFD). `Model::from_bytes` decodes untrusted
+bytes, so `Encode`/`Decode` are hand-written, not derived: `Utf8` is encoded as its string,
+`Lone` as its units only (`lossy` is not serialized), and decoding a `Lone` rebuilds it through
+`from_utf16`, so no byte string can produce a non-normalized `Text` or a `lossy` that disagrees
+with `units`.
 
 Why this layout: `Text` is 24 bytes, the size of `String`, and `ArrayNode` stays 24 bytes and
 `CalcResult` 40 (measured with `size_of` on stand-ins; the first task asserts both in a test).
@@ -106,10 +110,13 @@ API (engine-internal callers, plus the boundaries):
   (MID, REPLACE). Replaces `utf16_slice`.
 - `chars_lossless()`: iterator of `Char::Scalar(char) | Char::Lone(u16)` (LEFT, RIGHT, UNICODE,
   CODE count and read characters with it).
-- `concat(&Text, &Text) -> Text` and `truncate_utf16(&mut self, max)` (keeps a cut pair's high
+- `concat(&Text, &Text) -> Text`, `push(&mut self, &Text)` (appends in place, amortized
+  linear: stays `Utf8` until a lone unit arrives and re-pairs only at the join, so CONCATENATE's
+  argument loop stays O(n)), and `truncate_utf16(&mut self, max)` (keeps a cut pair's high
   half). Replace `concat_text` and `truncate_text` in cast.rs. Concatenation is of unit
   sequences, so a lone high followed by a lone low surrogate becomes the pair (UTF-16's own rule;
-  to be confirmed by the probe task).
+  a hand expectation, `EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`, provisional until T-1582 probes
+  it; T-1580 revisits it if T-1582 disagrees).
 - `segments()`: iterator of `Segment::Str(&str) | Segment::Lone(u16)` for the boundary writers.
 - `into_lossy_string(self) -> String` for consumers that need an owned `String`.
 
@@ -129,8 +136,11 @@ work on the unit slice and are rare. Allocation bounds are unchanged: every resu
 ### Boundaries
 - **xlsx writer** (rustsheet-xlsx export): a cached text value is written segment by segment:
   `escape_xml` for each `Str` segment, `_xHHHH_` (upper-case hex, as Excel writes and as
-  `escape_xml` already writes control characters) for each `Lone` unit. One helper in
-  export/escape.rs formats the escape; the harness reuses it.
+  `escape_xml` already writes control characters) for each `Lone` unit. A literal `_xHHHH_` look-alike in a `Str` segment is
+  still written `_x005F_xHHHH_` (xlsx-storage.md). One public, documented helper in
+  export/escape.rs formats the escape; the harness reuses it. Only a lone low unit has been
+  observed in an Excel file (A6); a lone high one is assumed to be written the same way
+  (UNVERIFIED, T-1582).
 - **Public API** (crates/rustsheet): `Value::Text(Arc<str>)` stays and holds the lossy view, so no
   consumer silently drops a text value. New accessor
   `Workbook::text_utf16(r) -> Result<Option<Arc<[u16]>>, RefError>`: `Some(units)` exactly when the
@@ -139,15 +149,21 @@ work on the unit slice and are rare. Allocation bounds are unchanged: every resu
   empty.)
 - **Python bindings**: when a text value contains U+FFFD, the facade asks `text_utf16` and, on
   `Some`, builds the `str` from the units with `surrogatepass` (Python `str` holds lone
-  surrogates), so `wb["A6"]` is `'a😀\ude00b'`.
+  surrogates), so `wb["A6"]` is `'a😀\ude00b'`. The U+FFFD scan is deliberate: it is a constant
+  factor on the O(len) conversion to `str` already paid, cheaper than a second cell lookup on
+  every read. The binding's Python surface (method names, types) is unchanged.
 - **Eval harness** (rustsheet-eval engine.rs): renders our text with a lone unit as the oracle
   sees Excel's: `Str` segments as-is, `Lone` units as `_xHHHH_` via the xlsx helper. Known
   ambiguity, harness only: Excel text that literally reads `_xDE00_` snapshots the same way.
 
 ### Performance
 Well-formed text pays one enum match per `Deref` and nothing else; `Text` and `ArrayNode` keep
-their sizes. The first task adds the `size_of` asserts; the `CalcResult`/`ArrayNode` migration
-task reports `crates/rustsheet/benches` (aggregate) before/after in its Outcome, budget ±3%.
+their sizes. The existing benches (`crates/rustsheet/benches` aggregate, edit) never touch text,
+so the first task also adds `crates/rustsheet/benches/text.rs` and records its numbers on main
+before any value type changes: recalc of a large column of `=A1&"x"`, of `=MID(A1,2,3)` and
+`=LEFT(A1,2)` over a text column, and of a many-argument `CONCATENATE` near the 32,767-unit limit.
+T-1576 (the `CalcResult`/`ArrayNode` migration) and T-1580 (`&`, CONCATENATE, truncation) report
+that bench before/after in their Outcomes, budget ±3%; aggregate stays a sanity check.
 
 ## Alternatives considered
 - *WTF-8 bytes (`Vec<u8>`) everywhere.* Exact and 24 bytes, but it has no `&str` view: every one of
@@ -175,7 +191,7 @@ task reports `crates/rustsheet/benches` (aggregate) before/after in its Outcome,
 
 ## Rollout
 Ordered; each S/M; the old `String` paths stay until the task that replaces them.
-1. **T-1575** (engine, M): `Text` type and tests, not yet wired.
+1. **T-1575** (engine, M): `Text` type and tests, not yet wired; the text bench and its baseline.
 2. **T-1576** (engine, M): `ArrayNode::String` and `CalcResult::String` carry `Text` (mechanical,
    lossy view everywhere; zero eval delta; benchmark in the Outcome).
 3. **T-1577** (engine, S): `FormulaValue::Text`/`SpillValue::Text` carry `Text`; xlsx writer escape
