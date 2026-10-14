@@ -14,6 +14,7 @@ depends_on: [T-1046]
 WEIBULL.DIST (cumulative and density) reproduces Excel's last digits.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 14 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Oracle targets: probes-numeric case `m9-weibull-dist` (T-1046).
 Triage T-0903. Kernel: `statrs::distribution::Weibull` (`cdf` = `-expm1(-x^k * scale^-k)`,
 `pdf` = `k (x/l)^(k-1) exp(-x^k scale^-k) / l`), called from `functions/statistical/weibull.rs`.

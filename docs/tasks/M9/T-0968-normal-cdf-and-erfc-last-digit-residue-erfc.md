@@ -15,6 +15,7 @@ The cumulative normal family and erfc reproduce Excel's last digits from the sin
 in `functions/statistical/special.rs`, finishing what T-0924 started.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 2 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Oracle sweep (T-1040): probes-numeric cases `t1040-norm-s-dist-cdf-a`, `t1040-norm-s-dist-cdf-b`, `t1040-erfc`, `t1040-erfc-precise`, `t1040-gauss`, `t1040-norm-dist-cdf`, `t1040-lognorm-dist-cdf`; summary in docs/excel-semantics/statistics.md.
 
 Triage T-0903. T-0924 (done) replaced statrs' erf with a series / continued-fraction kernel that is

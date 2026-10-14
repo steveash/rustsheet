@@ -15,6 +15,7 @@ Fix the COMPLEX/IM* last-digit gaps in `ironcalc-calc/ENGINEERING/COMPLEXs.xlsx`
 Excel-cached values already in the suite.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 18 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Filed in draft PR #11 (2026-10-02, never merged) together with CONVERT, which T-0922 now covers;
 salvaged by T-0031. COMPLEXs.xlsx: IMREAL/IMAGINARY/IMABS/IMARGUMENT/IMTAN/IMCOT/IMCSC/IMSEC/IMSECH/
 IMLOG2 differ in the last 1-3 digits, e.g. `IMREAL(IMTAN(D2))` expected -1.11280735120837e-5, got

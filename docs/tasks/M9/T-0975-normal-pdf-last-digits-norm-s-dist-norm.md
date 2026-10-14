@@ -15,6 +15,7 @@ The normal densities (NORM.S.DIST and NORM.DIST with cumulative FALSE, LOGNORM.D
 reproduce Excel's last digits from one density helper.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 16 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Triage T-0903. Kernel: `special::normal_pdf` = `exp(-0.5*d*d) / (SQRT_2PI * std_dev)` with the
 correctly rounded constant `SQRT_2PI` = 2.5066282746310007; LOGNORM.DIST's density is inlined in
 `log_normal.rs` (`exp(-0.5 d^2) / (x * SQRT_2PI * std_dev)`); PHI (`phi.rs`) uses
