@@ -591,3 +591,11 @@ Tasks: T-1531, T-1542
 - `T.INV.2T(1E-300,1)` = 6.366197723675814E299 (exactly twice the one-sided magnitude); `CONFIDENCE.T(1E-300,1,2)` = 4.50158158078553E299.
 - Ours: `statrs`' `StudentsT::inverse_cdf` is wrong for small df well before it fails (`T.INV(1E-10,1)` gives -8.9E7, Excel -3.18E9) and panics from p about 1E-200. For p < 1E-5 we use a closed-form tail asymptotic once x = df/(df+t^2) < 1E-8; otherwise `statrs` for p >= 1E-8 (it is bit-exact with Excel there) and bisection on its cdf below 1E-8 (`statrs`' inverse hangs at p = 1E-100 for df = 1000). Results agree with Excel to about 1E-13 relative for df <= 5, but only 7 of 105 cells are bit-exact, and for df >= 99999 at p <= 1E-200 we are wrong (-37.17 where Excel gives -79.06: for df = 99999 the `statrs` cdf saturates in the bisection branch, for df = 1E5 the normal series is used): T-1542.
 - `T.INV.2T` with p in (1,2) is `#NUM!` for us; Excel returns a negative number (`T.INV.2T(1.5,1)` = -1, cells A121-A128), see the entry above.
+
+## AVERAGEA over an array constant
+`AVERAGEA({1,"a",TRUE})` is 0.5 in Excel (probes/legacy-value-argument-intersection-b AI2, excel-graph,
+2026-10-14); we give 0.667 (text 0 and TRUE 1, as for a range). "Text 0, TRUE ignored" and "text ignored, TRUE 0" both
+give 0.5, so the rule is open (T-1555). `AVERAGEA("1/2/2020",1)` is 21916.5 (AJ2: a text argument is coerced to the
+date serial 43831 and averaged with 1).
+Status: VERIFIED for the two values; the rule for array constants is UNVERIFIED
+Tasks: T-1551, T-1555

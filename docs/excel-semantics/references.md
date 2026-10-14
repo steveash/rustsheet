@@ -1338,10 +1338,10 @@ With B1:B6 = 1,2,3,1,2,3, each formula on row 2 (on the range's rows, B2 = 2) an
 - the reference functions are unchanged: `ROWS(B1:B6)` 6, `SUBTOTAL(9,B1:B6)` and
   `AGGREGATE(9,6,B1:B6)` 12, `AVERAGEA(B1:D1)` (C1 "x", D1 TRUE) 0.667 on both rows.
 The same holds for the other aggregates (probes/legacy-value-argument-intersection-b, excel-graph,
-2026-10-14, T-1551): `MIN`, `MINA`, `MAXA`, `PRODUCT`, `SUMSQ`, `STDEV.S`, `STDEV.P`, `VAR.S`, `VAR.P`, `DEVSQ`,
-`AVEDEV`, `GEOMEAN`, `HARMEAN`, `SMALL`, `PERCENTILE.INC`, `QUARTILE.INC`, `KURT`, `SKEW`, `GCD`, `LCM`, `CONCAT`
-and `TEXTJOIN` (third argument) of `B1:B6*1` give the row-2 value (2, or `#DIV/0!` for the one-value
-STDEV.S, VAR.S, KURT and SKEW) and `#VALUE!` on row 10; a parenthesized operation, `SUM((B1:B6*1))`, a comparison,
+2026-10-14, T-1551): over `B1:B6*1`, whose only on-row value is 2, every one gives its row-2 value and `#VALUE!` on row 10:
+MIN, MINA, MAXA, PRODUCT, GEOMEAN, HARMEAN, SMALL, PERCENTILE.INC, QUARTILE.INC, GCD and LCM 2; SUMSQ 4;
+STDEV.P, VAR.P, DEVSQ and AVEDEV 0; STDEV.S, VAR.S, KURT and SKEW `#DIV/0!`; CONCAT and TEXTJOIN (third
+argument) "2"; a parenthesized operation, `SUM((B1:B6*1))`, a comparison,
 `SUM(B1:B6>1)` 1 / `#VALUE!`, and a concatenation, `SUM(B1:B6&"")` 2 / `#VALUE!`, intersect too, and
 `SUMPRODUCT(ABS(IFERROR(B1:B6,100)))` is 2 / 100. The exception is `MODE.SNGL(B1:B6*1)`: 1 on both rows (it
 evaluates the argument as an array). `MAXA`/`MINA(XLOOKUP("a",A1:A6,A1:A6))` over a text cell is 0.
@@ -1357,7 +1357,8 @@ argument, parenthesized or not, of the probed aggregates (`legacy_value_operand`
 MAX, COUNT, COUNTA, LARGE, MEDIAN and the T-1551 list above), TYPE's argument (`is_scalar_context`), a range of another workbook,
 and under SUMPRODUCT IF's condition and IFERROR's and IFNA's value
 (`for_each_array_context_condition`); `remove_redundant_implicit_intersection` mirrors it so the
-export drops exactly those `@`s. Unprobed: the arithmetic argument of the compatibility
+export drops exactly those `@`s. Unprobed: the arguments after the first of CONCAT, GCD and LCM and TEXTJOIN's delimiter and ignore-empty (the engine
+intersects every argument of these functions), the arithmetic argument of the compatibility
 aggregates (STDEV, VAR, PERCENTILE, QUARTILE, MODE; the engine keeps the range whole; T-1556), IFERROR/IFNA nested below another
 function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, and the other control functions
 (CHOOSE's index under SUMPRODUCT lifts, T-0294).
