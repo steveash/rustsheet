@@ -158,6 +158,19 @@ impl Model {
                 kind: crate::functions::Function::If | crate::functions::Function::Choose,
                 ..
             } => matches!(self.evaluate_reference_arg(node, cell), RefArg::Ranges(_)),
+            // The `@` of an INDEX that picks one cell keeps the reference: `ISREF(@INDEX(B1:B3,2))`
+            // is TRUE (probes/let-bind-implicit-index H10, excel-graph; T-1506).
+            Node::ImplicitIntersection { child, .. }
+                if matches!(
+                    child.ungrouped(),
+                    Node::FunctionKind {
+                        kind: crate::functions::Function::Index,
+                        ..
+                    }
+                ) =>
+            {
+                matches!(self.eval_ref_or_index(node, cell), CalcResult::Range { .. })
+            }
             // INDEX, XLOOKUP, TAKE, DROP and TRIMRANGE are references when they pick cells of a
             // range, and not when they fail or work on an array (`ISREF(INDEX(A1,1,2,2))` is
             // FALSE; probes/isref-reference-lookups).
@@ -173,10 +186,7 @@ impl Model {
             // but not one whose body is a value (`=SUM(...)`, `=total*2`): probes/defined-name-
             // intersection H2, H9 and probes/defined-name-formula-bodies H7, H8, H10, H16.
             Node::DefinedNameKind((name, scope, _)) => {
-                match self
-                    .parsed_defined_names
-                    .get(&(*scope, name.to_lowercase()))
-                {
+                match self.parsed_defined_name(name, *scope) {
                     Some(
                         ParsedDefinedName::CellReference(_) | ParsedDefinedName::RangeReference(_),
                     ) => true,
@@ -373,10 +383,7 @@ impl Model {
         match args[0].ungrouped() {
             Node::DefinedNameKind((name, scope, _)) => {
                 // Let's see if it is a defined name
-                if let Some(defined_name) = self
-                    .parsed_defined_names
-                    .get(&(*scope, name.to_lowercase()))
-                {
+                if let Some(defined_name) = self.parsed_defined_name(name, *scope) {
                     match defined_name {
                         ParsedDefinedName::CellReference(reference) => {
                             return CalcResult::Number(reference.sheet as f64 + 1.0)

@@ -199,10 +199,48 @@ impl Parser {
         self.name_operand(name)
     }
 
+    /// `Sheet!Name`, `[0]!Name` or `[0]Sheet!Name`: a defined name of this workbook written with
+    /// its scope, resolved here so every lookup finds it. The node keeps the prefix in its name
+    /// so the formula text round-trips as typed (`utils::bare_defined_name` strips it for
+    /// lookups). `None` for an unprefixed name, a linked workbook's name (`[1]!Name`) or a sheet
+    /// this workbook lacks.
+    fn prefixed_name_operand(&self, name: &str) -> Option<Node> {
+        let (prefix, bare) = name.rsplit_once('!')?;
+        let sheet = match prefix.strip_prefix('[') {
+            Some(external) => {
+                let (book, sheet) = external.split_once(']')?;
+                if book != "0" {
+                    return None;
+                }
+                sheet.to_string()
+            }
+            None => match prefix.strip_prefix('\'') {
+                Some(quoted) => quoted.strip_suffix('\'')?.replace("''", "'"),
+                None => prefix.to_string(),
+            },
+        };
+        let scope = if sheet.is_empty() {
+            None
+        } else {
+            Some(self.get_sheet_index_by_name(&sheet)?)
+        };
+        let bare_lower = bare.to_lowercase();
+        let formula = self
+            .defined_names
+            .iter()
+            .find(|(n, s, _)| *s == scope && n.to_lowercase() == bare_lower)
+            .map(|(.., formula)| formula.clone())
+            .unwrap_or_default();
+        Some(Node::DefinedNameKind((name.to_string(), scope, formula)))
+    }
+
     /// A name that is not called: a defined name, a table or a LAMBDA parameter.
     fn name_operand(&mut self, name: String) -> Node {
         // A defined name of a linked workbook, `[1]!Name` or `[1]Sheet!Name` (one identifier to
         // the lexer), keeps its prefix: evaluation reads it from the link's cache.
+        if let Some(node) = self.prefixed_name_operand(&name) {
+            return node;
+        }
         if name.starts_with('[') {
             return Node::DefinedNameKind((name, None, String::new()));
         }
@@ -306,19 +344,7 @@ impl Parser {
             };
         }
         // We should do this *only* importing functions from xlsx
-        if let Some(function_kind) = self
-            .language
-            .functions
-            .lookup(name.trim_start_matches("_xlfn._xlws."))
-        {
-            return self.function_call(function_kind, args);
-        }
-
-        if let Some(function_kind) = self
-            .language
-            .functions
-            .lookup(name.trim_start_matches("_xlfn."))
-        {
+        if let Some(function_kind) = self.language.functions.lookup_stored(&name) {
             return self.function_call(function_kind, args);
         }
         Node::NamedFunctionKind {

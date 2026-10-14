@@ -3,7 +3,7 @@ id: T-1273
 title: "Eta-reduced function arguments (_xleta.SUM) in BYROW, BYCOL, MAP, REDUCE, SCAN and MAKEARRAY"
 milestone: M7
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -43,3 +43,11 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 -
+
+## Outcome
+Superseded by T-1466, which added `_xleta.` names (a LAMBDA whose arity is set by each call, lambda.rs) and BYROW/BYCOL's
+`#VALUE!` for anything but a LAMBDA. Probe rows 28, 48, 50 and 51 pass. Of the gen-m7 and gen-m9 cells under Context,
+59cc50701f4937c9 A4, 8ed8a680e9794b77 A19, A23, A30, 9ff3afcacd3bd0fc A19, c263b43217a5898b A17, d38b52bfa1a9f9e6 A39 and
+the six `_xleta.` gen-m9 cells pass. Left, with their own tasks: rows 44-45 and the BYROW `#CALC!` cells
+(gen-m9/4df1b22d3ed63f58 A35, 95efb37a9874f82e A19) and gen-m7/44ef4f5638e25bcd A7 (MAP over single values) in T-1511;
+6db767d720c5b55a A28 and A29 wait on T-1272/T-1361 and T-1360.

@@ -961,6 +961,11 @@ impl Lexer {
                 self.position = end;
             }
         }
+        if let (Err(_), Some(sheet)) = (&m, &sheet) {
+            if let Some(name) = self.consume_sheet_scoped_name(sheet, start) {
+                return name;
+            }
+        }
         match m {
             Ok(ParsedRange { left, right }) => {
                 if let Some(right) = right {

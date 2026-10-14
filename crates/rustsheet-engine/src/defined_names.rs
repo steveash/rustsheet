@@ -109,7 +109,7 @@ impl Model {
     /// inherit them.
     pub(crate) fn run_cell_formula(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         let outer = std::mem::take(&mut self.defined_names_running);
-        let result = self.with_area_budget(|model| model.evaluate_formula_root(node, cell));
+        let result = self.with_area_budget(cell, |model| model.evaluate_formula_root(node, cell));
         self.defined_names_running = outer;
         result
     }
@@ -127,16 +127,24 @@ impl Model {
             .unwrap_or_else(|| name_refers_to_itself(name, cell))
     }
 
+    /// The parsed defined name `name` of `scope`, as written in a formula: any `Sheet!` or `[0]`
+    /// prefix is not part of the name.
+    pub(crate) fn parsed_defined_name(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+    ) -> Option<&ParsedDefinedName> {
+        let bare = crate::expressions::utils::bare_defined_name(name);
+        self.parsed_defined_names.get(&(scope, bare.to_lowercase()))
+    }
+
     /// The body of the defined name `node` when it is a formula (T-0158), shared, not copied;
     /// `None` for any other node or name.
     pub(crate) fn defined_name_formula(&self, node: &Node) -> Option<std::sync::Arc<Node>> {
         let Node::DefinedNameKind((name, scope, _)) = node else {
             return None;
         };
-        match self
-            .parsed_defined_names
-            .get(&(*scope, name.to_lowercase()))
-        {
+        match self.parsed_defined_name(name, *scope) {
             Some(ParsedDefinedName::Formula(body)) => Some(std::sync::Arc::clone(body)),
             _ => None,
         }
@@ -148,10 +156,7 @@ impl Model {
         let Node::DefinedNameKind((name, scope, _)) = node else {
             return None;
         };
-        match self
-            .parsed_defined_names
-            .get(&(*scope, name.to_lowercase()))
-        {
+        match self.parsed_defined_name(name, *scope) {
             Some(ParsedDefinedName::ErrorLiteral(error)) => Some(error.clone()),
             Some(ParsedDefinedName::InvalidDefinedNameFormula) => Some(Error::NAME),
             _ => None,

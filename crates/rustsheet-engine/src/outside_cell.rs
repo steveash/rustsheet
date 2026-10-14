@@ -20,7 +20,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.with_area_budget(|model| model.evaluate_node_in_context(node, cell))
+        self.with_area_budget(cell, |model| model.evaluate_node_in_context(node, cell))
     }
 
     /// Evaluates a formula string on a sheet, returning the numeric result.
