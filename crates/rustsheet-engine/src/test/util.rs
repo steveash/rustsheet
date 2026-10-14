@@ -1,11 +1,22 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::clock::Clock;
 use crate::expressions::types::{Area, CellReferenceIndex};
 use crate::model::Model;
 use crate::types::{Cell, FormulaValue};
 
+/// The instant unit tests read as "now": 2022-11-08T11:13:28.578Z (8 November 2022 12:13 Berlin
+/// time), the one the former thread-local mock clock defaulted to (SPEC-0008).
+pub const TEST_CLOCK_MS: i64 = 1_667_906_008_578;
+
+/// A fixed clock at `ms` since the Unix epoch.
+pub fn fixed_clock(ms: i64) -> Clock {
+    Clock::fixed_unix_millis(ms).unwrap()
+}
+
+/// An empty en-US model in UTC on the fixed test clock.
 pub fn new_empty_model() -> Model {
-    Model::new_empty("model", "en", "UTC", "en").unwrap()
+    Model::new_empty_with_clock("model", "en", "UTC", "en", fixed_clock(TEST_CLOCK_MS)).unwrap()
 }
 
 /// A union of `leaves` copies of `leaf`, nested as a balanced tree so that its depth, about

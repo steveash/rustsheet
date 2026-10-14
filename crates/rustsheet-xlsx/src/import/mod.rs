@@ -188,7 +188,11 @@ fn load_package<R: Read + Seek>(
 }
 
 // Imports a file from disk into an internal representation
-fn load_from_excel(file_name: &str, locale: &str, tz: &str) -> Result<Workbook, XlsxError> {
+pub(crate) fn load_from_excel(
+    file_name: &str,
+    locale: &str,
+    tz: &str,
+) -> Result<Workbook, XlsxError> {
     let file_path = std::path::Path::new(file_name);
     let file = fs::File::open(file_path)?;
     let reader = BufReader::new(file);

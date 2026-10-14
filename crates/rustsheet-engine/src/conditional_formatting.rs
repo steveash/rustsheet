@@ -880,7 +880,7 @@ impl Model {
         stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
     ) {
-        let today_serial = match crate::tz::excel_serial_for_now(&self.tz) {
+        let today_serial = match crate::tz::excel_serial_for_now(&self.tz, self.now_unix_millis()) {
             Some(s) => s.floor() as i64,
             None => return,
         };

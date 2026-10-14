@@ -8,6 +8,7 @@ mod test_cell;
 mod test_cell_clear_contents;
 mod test_circular_references;
 mod test_clipped_range_walks;
+mod test_clock;
 mod test_column_width;
 mod test_criteria;
 mod test_database;

@@ -1,4 +1,7 @@
-use rustsheet_engine::{cell::CellValue, Model};
+//! The IronCalc `METADATA`/`NOW` convention: Excel-authored test workbooks carry the time they
+//! were computed at, which the harness pins the workbook clock to (SPEC-0008).
+
+use rustsheet_engine::{cell::CellValue, clock::Clock, Model};
 
 use crate::util::get_metadata_sheet_index;
 
@@ -27,18 +30,20 @@ pub fn get_metadata_timestamp(model: &Model) -> Option<i64> {
     None
 }
 
-/// Mocks the engine clock to the timestamp stored in the METADATA sheet so
-/// that volatile functions (NOW, TODAY, ...) evaluate to the same values
-/// Excel saved. Workbooks without a timestamp use the actual system time.
-/// This module only exists behind the `mock_time` feature, which this
-/// crate's own tests enable through the self dev-dependency in Cargo.toml.
-pub fn set_mock_time_from_metadata(model: &Model) {
-    #[allow(clippy::unwrap_used)]
-    let milliseconds = get_metadata_timestamp(model).unwrap_or_else(|| {
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as i64
-    });
-    rustsheet_engine::mock_time::set_mock_time(milliseconds);
+/// Pins `model`'s clock to the timestamp stored in its METADATA sheet, so that NOW, TODAY and
+/// the other readers of the time evaluate to the values Excel saved (SPEC-0008). Returns whether
+/// it pinned: a workbook without a timestamp, or with one outside Excel's calendar, keeps its
+/// clock.
+pub fn pin_clock_from_metadata(model: &mut Model) -> bool {
+    let Some(clock) = clock_from_metadata(model) else {
+        return false;
+    };
+    model.set_clock(clock);
+    true
+}
+
+/// The fixed clock at `model`'s METADATA timestamp; `None` without one, or when it is outside
+/// Excel's calendar.
+pub fn clock_from_metadata(model: &Model) -> Option<Clock> {
+    get_metadata_timestamp(model).and_then(|ms| Clock::fixed_unix_millis(ms).ok())
 }

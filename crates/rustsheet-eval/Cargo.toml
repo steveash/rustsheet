@@ -13,10 +13,10 @@ name = "rustsheet-eval"
 path = "src/main.rs"
 
 [dependencies]
-# `mock_time` pins the clock per evaluation thread so NOW()/TODAY() are reproducible.
-rustsheet_engine = { path = "../rustsheet-engine", features = ["mock_time"] }
-rustsheet = { path = "../rustsheet", features = ["mock_time"] }
-rustsheet_xlsx = { path = "../rustsheet-xlsx", features = ["mock_time"] }
+rustsheet_engine = { path = "../rustsheet-engine" }
+# `metadata_clock` pins a workbook's clock to its METADATA `NOW` row (SPEC-0008).
+rustsheet = { path = "../rustsheet", features = ["metadata_clock"] }
+rustsheet_xlsx = { path = "../rustsheet-xlsx" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 globset = "0.4"

@@ -1,8 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::mock_time;
 use crate::model::Model;
-use crate::test::util::new_empty_model;
+use crate::test::util::{fixed_clock, new_empty_model};
 
 // 14:44 20 Mar 2023 Berlin
 const TIMESTAMP_2023: i64 = 1679319865208;
@@ -45,8 +44,8 @@ fn today_with_wrong_tz() {
 
 #[test]
 fn now_basic_utc() {
-    mock_time::set_mock_time(TIMESTAMP_2023);
     let mut model = Model::new_empty("model", "en", "UTC", "en").unwrap();
+    model.set_clock(fixed_clock(TIMESTAMP_2023));
     model._set("A1", "=TODAY()");
     model._set("A2", "=NOW()");
     model.evaluate();
@@ -58,8 +57,8 @@ fn now_basic_utc() {
 
 #[test]
 fn now_basic_europe_berlin() {
-    mock_time::set_mock_time(TIMESTAMP_2023);
     let mut model = Model::new_empty("model", "en", "Europe/Berlin", "en").unwrap();
+    model.set_clock(fixed_clock(TIMESTAMP_2023));
     model._set("A1", "=TODAY()");
     model._set("A2", "=NOW()");
     model.evaluate();
@@ -71,8 +70,8 @@ fn now_basic_europe_berlin() {
 
 #[test]
 fn today_with_timezone() {
-    mock_time::set_mock_time(TIMESTAMP_2023);
     let mut model = Model::new_empty("model", "en", "UTC", "en").unwrap();
+    model.set_clock(fixed_clock(TIMESTAMP_2023));
     model._set("A1", "=TODAY(\"Pacific/Kiritimati\")");
     model._set("A2", "=NOW(\"Europe/Berlin\")");
     model.evaluate();
@@ -85,8 +84,8 @@ fn today_with_timezone() {
 
 #[test]
 fn today_with_invalid_timezone() {
-    mock_time::set_mock_time(TIMESTAMP_2023);
     let mut model = Model::new_empty("model", "en", "UTC", "en").unwrap();
+    model.set_clock(fixed_clock(TIMESTAMP_2023));
     model._set("A1", "=TODAY(\"Invalid/Timezone\")");
     model._set("A2", "=NOW(\"Invalid/Timezone\")");
     model.evaluate();
