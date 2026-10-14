@@ -592,14 +592,6 @@ Tasks: T-1531, T-1542
 - Ours: `statrs`' `StudentsT::inverse_cdf` is wrong for small df well before it fails (`T.INV(1E-10,1)` gives -8.9E7, Excel -3.18E9) and panics from p about 1E-200. For p < 1E-5 we use a closed-form tail asymptotic once x = df/(df+t^2) < 1E-8; otherwise `statrs` for p >= 1E-8 (it is bit-exact with Excel there) and bisection on its cdf below 1E-8 (`statrs`' inverse hangs at p = 1E-100 for df = 1000). Results agree with Excel to about 1E-13 relative for df <= 5, but only 7 of 105 cells are bit-exact, and for df >= 99999 at p <= 1E-200 we are wrong (-37.17 where Excel gives -79.06: for df = 99999 the `statrs` cdf saturates in the bisection branch, for df = 1E5 the normal series is used): T-1542.
 - `T.INV.2T` with p in (1,2) is `#NUM!` for us; Excel returns a negative number (`T.INV.2T(1.5,1)` = -1, cells A121-A128), see the entry above.
 
-## AVERAGEA over an array constant
-`AVERAGEA({1,"a",TRUE})` is 0.5 in Excel (probes/legacy-value-argument-intersection-b AI2, excel-graph,
-2026-10-14); we give 0.667 (text 0 and TRUE 1, as for a range). "Text 0, TRUE ignored" and "text ignored, TRUE 0" both
-give 0.5, so the rule is open (T-1555). `AVERAGEA("1/2/2020",1)` is 21916.5 (AJ2: a text argument is coerced to the
-date serial 43832 and averaged with 1).
-Status: VERIFIED for the two values; the rule for array constants is UNVERIFIED
-Tasks: T-1551, T-1555
-
 ## AVERAGEA, MAXA and MINA over an array
 Rule: an array value's elements are not read like range cells. AVERAGEA skips a boolean element and
 counts a text element, numeric text and the empty string included, as 0; MAXA and MINA skip both and
@@ -607,12 +599,14 @@ read only the numbers. `AVERAGEA({1,"a",TRUE})` is 0.5, `AVERAGEA({3,TRUE})` and
 `{3,"a"}`, `{3,"7"}` and `{3,""}` 1.5, `{"a",TRUE}` 0, `{"a"}` 0, `{TRUE}` `#DIV/0!`;
 `MAXA({0.5,TRUE})` is 0.5, `MAXA({-1,"a"})` and `MAXA({-1,"5"})` -1, `MINA({2,TRUE})` and
 `MINA({2,"a"})` 2. With no value read, MAXA and MINA are 0, as MAX is: `MAXA({"a"})`,
-`MINA({TRUE,"b"})`, `MAXA(Z1:Z3)` and `MINA(Z1)` over blanks. An array from IF behaves the same (`AVERAGEA(IF(1,{3,TRUE}))` is 3), while a direct
-boolean argument still counts (`AVERAGEA({3,TRUE},TRUE)` is 2) and direct non-numeric text is
-`#VALUE!` (`AVERAGEA({3,"a"},"a")`). A reference reads text as 0 and booleans as 1/0 (coercion.md
-"MAXA / MINA: single-cell references are read like ranges"), a cached range of a linked workbook too.
+`MINA({TRUE,"b"})`, `MAXA(Z1:Z3)` and `MINA(Z1)` over blanks. An array from IF behaves the same
+(`AVERAGEA(IF(1,{3,TRUE}))` is 3), while a direct boolean argument still counts
+(`AVERAGEA({3,TRUE},TRUE)` is 2), direct non-numeric text is `#VALUE!` (`AVERAGEA({3,"a"},"a")`) and
+direct date text is its serial (`AVERAGEA("1/2/2020",1)` is 21916.5). A reference reads text as 0 and
+booleans as 1/0 (coercion.md "MAXA / MINA: single-cell references are read like ranges"), a cached
+range of a linked workbook too.
 Evidence: probes/averagea-array-constant-elements (25 cells, excel-graph, 2026-10-14);
-probes/legacy-value-argument-intersection-b AI2.
+probes/legacy-value-argument-intersection-b AI2, AJ2.
 Status: VERIFIED (excel-graph)
 Implemented in: `Model::for_each_value_a` (statistical/count_and_average.rs), `ArrayText`.
-Tasks: T-1555
+Tasks: T-1551, T-1555
