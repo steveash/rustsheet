@@ -207,11 +207,12 @@ impl Model {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
+        let two_arg = args.len() == 2;
         match self.external_index_args(args, cell) {
             None => {}
             Some(Err(error)) => return error,
             Some(Ok((areas, IndexArgs::Numbers(numbers)))) => {
-                return match external_index_area(&areas, numbers, args.len() == 2, cell) {
+                return match external_index_area(&areas, numbers, two_arg, cell) {
                     Ok(area) => self.external_picked_value(area, cell),
                     Err(error) => error,
                 };
@@ -219,7 +220,6 @@ impl Model {
             // Each element is the scalar INDEX's top-left cell, empty with no cache
             // (probes/external-ref-no-link-ifchoose H1, I1).
             Some(Ok((areas, IndexArgs::Lifted { row, col, area }))) => {
-                let two_arg = args.len() == 2;
                 return self.index_lifted(row, col, area, cell, None, |model, numbers| {
                     match external_index_area(&areas, numbers, two_arg, cell) {
                         Ok(picked) => model.external_picked_value(picked.top_left(), cell),
@@ -228,7 +228,6 @@ impl Model {
                 });
             }
         }
-        let two_arg = args.len() == 2;
         let numbers = match self.index_numbers(args, cell) {
             Ok(IndexArgs::Numbers(numbers)) => numbers,
             Ok(IndexArgs::Lifted { row, col, area }) => {
@@ -295,7 +294,7 @@ impl Model {
     /// `ROWS(INDEX((…!A1:B2,…!C3:D5),1,1,2))` 1; probes/external-ref-no-link-shapes A3, A4,
     /// external-ref-no-link-index A21). `None` when `args[0]` is no such reference (nothing is
     /// evaluated then) or the argument count is wrong. An index array that would lift INDEX is
-    /// `#BLOCKED!` here, as a reference; INDEX itself lifts it ([`Self::index_impl`]).
+    /// `#BLOCKED!` here, as a reference (UNVERIFIED: not probed); INDEX itself lifts it ([`Self::index_impl`]).
     pub(crate) fn external_index(
         &mut self,
         args: &[Node],
