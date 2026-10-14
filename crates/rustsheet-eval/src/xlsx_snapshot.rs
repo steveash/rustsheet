@@ -683,7 +683,9 @@ fn decode_value(
         ("str", v) => Value::Text(decode_xlsx_escapes(v.unwrap_or_default())),
         ("b", Some(v)) => Value::Bool(v.trim() == "1" || v.trim().eq_ignore_ascii_case("true")),
         ("e", Some(v)) => Value::Error(v.trim().to_string()),
-        ("d", Some(v)) => iso8601_to_serial(v).map_or(Value::Empty, Value::Number),
+        ("d", Some(v)) => {
+            iso8601_to_serial(v).map_or_else(|| Value::Error("#VALUE!".to_string()), Value::Number)
+        }
         (_, Some(v)) if !v.trim().is_empty() => v
             .trim()
             .parse::<f64>()
