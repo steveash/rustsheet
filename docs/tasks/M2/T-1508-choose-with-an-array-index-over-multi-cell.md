@@ -3,7 +3,7 @@ id: T-1508
 title: "CHOOSE with an array index over multi-cell range arms lifts to the broadcast grid"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
