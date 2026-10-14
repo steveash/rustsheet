@@ -3,7 +3,7 @@ id: T-1550
 title: "Cached external ranges: clip blank-skipping aggregates to the cache, probe COUNTA over a cached empty string and GCD/LCM over cached text"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
