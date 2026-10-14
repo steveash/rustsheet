@@ -126,7 +126,7 @@ Rule: FIXED prints no minus sign when the number rounds to zero at the requested
 (`EVEN(-0.0001)` is -2).
 Evidence: gen-m6/f94b5b8236742618 Calc!A24 (excel-graph, 2026-10-09, T-1239).
 Implemented in: `fn_fixed` (T-1257): the sign is dropped when the rounded text has no non-zero digit. Further shapes: `FIXED(-0.004,2)` and `FIXED(-0.4,0)` (probes/dollar-fixed-unichar-edges A49, A50).
-Status: VERIFIED (one cell)
+Status: VERIFIED (excel-graph: gen-m6 A24, probes/dollar-fixed-unichar-edges A49, A50); desktop confirmation pending (T-1081). `FIXED(-0.005,2)` keeping its sign ("-0.01") is UNVERIFIED
 Tasks: T-1257
 
 ## Count and position bounds of LEFT, RIGHT, MID and REPLACE
@@ -295,7 +295,7 @@ is "1,235" (decimals 0), `DOLLAR(1234.5,1.9)` is "$1,234.5". A `decimals` of 128
 `FIXED(1234,0,"x")` is `#VALUE!`; a numeric no_commas is a boolean (`FIXED(1234,0,2)` = "1234").
 Evidence: probes/dollar-fixed-unichar-edges A1-A29, A46-A50, D69-D75 (excel-graph, T-1281).
 FIXED of a value that rounds to zero drops the sign (`FIXED(-0.004,2)` "0.00", `FIXED(-0.4,0)` "0"; DOLLAR keeps
-parentheses: `DOLLAR(-0.004)` "($0.00)"). Ours still prints "-0.00"/"-0": task T-1257.
+parentheses: `DOLLAR(-0.004)` "($0.00)"). Implemented (T-1257), see "FIXED drops the sign of a value that rounds to zero".
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 
 ## UNICHAR code point bounds
