@@ -60,9 +60,16 @@ impl Model {
                 CalcResult::Range { left, right } => {
                     // A cell past the used area is empty, which counts as 0 here
                     // and changes neither the sum nor the product of factorials.
-                    if let Err(error) =
-                        self.for_each_cell_in_areas(&[Range { left, right }], cell, |_, value| {
+                    if let Err(error) = self.for_each_cell_or_error_in_areas(
+                        &[Range { left, right }],
+                        cell,
+                        |_, value| {
                             match value {
+                                // An error cell after a negative keeps the immediate `#NUM!`.
+                                CalcResult::Error { .. } if negative_seen.get() => {
+                                    Err(negative_error(cell))
+                                }
+                                error @ CalcResult::Error { .. } => Err(error),
                                 CalcResult::Number(v) if v < 0.0 => {
                                     negative_seen.set(true);
                                     Ok(())
@@ -81,8 +88,8 @@ impl Model {
                                     "MULTINOMIAL requires numeric values".to_string(),
                                 )),
                             }
-                        })
-                    {
+                        },
+                    ) {
                         return error;
                     }
                 }

@@ -148,11 +148,16 @@ impl Model {
                 }
                 CalcResult::Range { left, right } => {
                     has_range = true;
-                    if let Err(error) = self.for_each_cell_in_areas(
+                    if let Err(error) = self.for_each_cell_or_error_in_areas(
                         &[Range { left, right }],
                         cell,
                         |model, value| {
                             let number = match value {
+                                // An error cell after a negative keeps the immediate `#NUM!`.
+                                CalcResult::Error { .. } if negative_seen.get() => {
+                                    return Err(negative_error(cell, fn_name));
+                                }
+                                error @ CalcResult::Error { .. } => return Err(error),
                                 CalcResult::Number(value) => value,
                                 CalcResult::String(s) => model
                                     .cast_to_number(CalcResult::String(s), cell)
