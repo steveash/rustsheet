@@ -176,6 +176,10 @@ impl Model {
             );
         }
 
+        if n == 1 {
+            // Any numeric significance leaves 1 (probes/percentrank-single-value B9, B14-B19).
+            return CalcResult::Number(1.0);
+        }
         let rank = percentrank_inc_impl(&sorted, x);
         let factor = 10f64.powi(sig);
         let result = (rank * factor).floor() / factor;
@@ -231,7 +235,7 @@ impl Model {
         };
 
         let n = sorted.len();
-        // EXC range is strictly inside the array bounds
+        // Unlike the documentation, x at either end of the array is in range
         if x < sorted[0] || x > sorted[n - 1] {
             return CalcResult::new_error(
                 Error::NA,
@@ -240,6 +244,10 @@ impl Model {
             );
         }
 
+        if n == 1 {
+            // Any numeric significance leaves 1 (probes/percentrank-single-value B9, B14-B19).
+            return CalcResult::Number(1.0);
+        }
         let rank = percentrank_exc_impl(&sorted, x);
         let factor = 10f64.powi(sig);
         let result = (rank * factor).floor() / factor;
