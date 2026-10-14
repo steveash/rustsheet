@@ -306,19 +306,7 @@ impl Parser {
             };
         }
         // We should do this *only* importing functions from xlsx
-        if let Some(function_kind) = self
-            .language
-            .functions
-            .lookup(name.trim_start_matches("_xlfn._xlws."))
-        {
-            return self.function_call(function_kind, args);
-        }
-
-        if let Some(function_kind) = self
-            .language
-            .functions
-            .lookup(name.trim_start_matches("_xlfn."))
-        {
+        if let Some(function_kind) = self.language.functions.lookup_stored(&name) {
             return self.function_call(function_kind, args);
         }
         Node::NamedFunctionKind {

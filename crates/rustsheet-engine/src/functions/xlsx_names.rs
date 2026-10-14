@@ -4,7 +4,17 @@
 //! regex, so keep each prefixed name on its own match arm.
 
 use super::Function;
-use crate::language::get_default_language;
+use crate::language::{get_default_language, Functions};
+
+impl Functions {
+    /// The function a name read from a file stands for: `name` itself, or `name` without the
+    /// `_xlfn._xlws.` or `_xlfn.` prefix newer functions are stored under
+    /// (docs/excel-semantics/xlsx-storage.md).
+    pub fn lookup_stored(&self, name: &str) -> Option<Function> {
+        self.lookup(name.trim_start_matches("_xlfn._xlws."))
+            .or_else(|| self.lookup(name.trim_start_matches("_xlfn.")))
+    }
+}
 
 impl Function {
     /// Some functions in Excel like CONCAT are stringified as `_xlfn.CONCAT`. (known as "future functions")
