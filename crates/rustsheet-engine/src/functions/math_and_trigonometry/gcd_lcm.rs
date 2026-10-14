@@ -56,6 +56,10 @@ impl Model {
         let mut acc: Option<i64> = None;
         let mut saw_number = false;
         let mut has_range = false;
+        // A negative number only sets this flag: the type check over every argument wins over
+        // it whatever the order (gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m7/4629e931955aa4b8
+        // Calc!A7, docs/excel-semantics/coercion.md), so `#NUM!` is returned after the last one.
+        let negative_seen = std::cell::Cell::new(false);
 
         let mut handle_number = |value: f64| -> Option<CalcResult> {
             if !value.is_finite() {
@@ -68,11 +72,8 @@ impl Model {
             let n = value.trunc() as i64;
 
             if value < 0.0 {
-                return Some(CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    format!("{fn_name} only accepts non-negative integers"),
-                ));
+                negative_seen.set(true);
+                return None;
             } else if n > MAX_LCM_GCD {
                 return Some(CalcResult::new_error(
                     Error::NUM,
@@ -215,6 +216,14 @@ impl Model {
                     // ignore strings / booleans
                 }
             }
+        }
+
+        if negative_seen.get() {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                format!("{fn_name} only accepts non-negative integers"),
+            );
         }
 
         if !saw_number && !has_range {

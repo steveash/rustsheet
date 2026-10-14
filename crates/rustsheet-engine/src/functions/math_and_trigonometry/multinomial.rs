@@ -29,18 +29,19 @@ impl Model {
         }
 
         let mut values: Vec<u64> = Vec::new();
+        // The type check over every argument wins over a negative number whatever the order
+        // (gen-m6/2c1a6e93a1974f48 Calc!A35, docs/excel-semantics/coercion.md), so a negative
+        // only sets this flag and `#NUM!` is returned after the last argument.
+        let negative_seen = std::cell::Cell::new(false);
 
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Number(v) => {
                     if v < 0.0 {
-                        return CalcResult::new_error(
-                            Error::NUM,
-                            cell,
-                            "MULTINOMIAL requires non-negative values".to_string(),
-                        );
+                        negative_seen.set(true);
+                    } else {
+                        values.push(v.trunc() as u64);
                     }
-                    values.push(v.trunc() as u64);
                 }
                 CalcResult::Range { left, right } => {
                     // A cell past the used area is empty, which counts as 0 here
@@ -48,11 +49,10 @@ impl Model {
                     if let Err(error) =
                         self.for_each_cell_in_areas(&[Range { left, right }], cell, |_, value| {
                             match value {
-                                CalcResult::Number(v) if v < 0.0 => Err(CalcResult::new_error(
-                                    Error::NUM,
-                                    cell,
-                                    "MULTINOMIAL requires non-negative values".to_string(),
-                                )),
+                                CalcResult::Number(v) if v < 0.0 => {
+                                    negative_seen.set(true);
+                                    Ok(())
+                                }
                                 CalcResult::Number(v) => {
                                     values.push(v.trunc() as u64);
                                     Ok(())
@@ -78,13 +78,10 @@ impl Model {
                             match node {
                                 ArrayNode::Number(v) => {
                                     if v < 0.0 {
-                                        return CalcResult::new_error(
-                                            Error::NUM,
-                                            cell,
-                                            "MULTINOMIAL requires non-negative values".to_string(),
-                                        );
+                                        negative_seen.set(true);
+                                    } else {
+                                        values.push(v.trunc() as u64);
                                     }
-                                    values.push(v.trunc() as u64);
                                 }
                                 ArrayNode::Empty => values.push(0),
                                 ArrayNode::Error(e) => {
@@ -117,6 +114,13 @@ impl Model {
             }
         }
 
+        if negative_seen.get() {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "MULTINOMIAL requires non-negative values".to_string(),
+            );
+        }
         // Excel: `#NUM!` once the arguments add up to more than 170, where `sum!` overflows a
         // double: `MULTINOMIAL(171)`, `(170,1)`, `(86,86)` and `(1E+15)` are `#NUM!`, while
         // `(170)`, `(169,1)` and `(85,85)` have values (probes/multinomial-large-arguments,

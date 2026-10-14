@@ -3,7 +3,7 @@ id: T-1261
 title: "GCD and MULTINOMIAL: a text or boolean range cell is #VALUE! even after a negative argument (2 gen-m6 cells)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -38,3 +38,6 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
 
 ## Out of scope
 - MULTINOMIAL's inexact values and numeric text (T-1190).
+
+## Outcome
+`gcd_lcm_impl` and `fn_multinomial` now only flag a negative number and return `#NUM!` after every argument has been type-checked, so a later text or boolean cell gives `#VALUE!`. gen-m6/5cc04d6f42b23b51 A11, gen-m6/2c1a6e93a1974f48 A35 and gen-m7/4629e931955aa4b8 A7 pass (all non-gating suites, so no baseline change; no new failures in the gen-m6/gen-m7 runs). Unit tests added for GCD and MULTINOMIAL. A later error value after a negative now returns that error instead of `#NUM!` (unprobed).
