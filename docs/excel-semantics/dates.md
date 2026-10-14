@@ -564,7 +564,8 @@ At the edges:
   2026-10-13, T-1494); its 1900 twin date-system-1900-accrint-settlement-bound gives #NUM! for those settlements
   (2958465 is the 1900 input bound). Ours: `fn_accrint` (accrint.rs) passes the day count to `compute_accrint`.
   The break threshold of COUPPCD/COUPNCD/COUPDAYS is unchanged: the previous coupon of a broken schedule is 1900 serial 1462 in the doubled reading. All probes excel-graph, 2026-10-13. In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
-  9999-05-15) are #NUM!, and so is ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity 9999-06-30.
+  9999-05-15) are #NUM!, and so is ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity 9999-06-30
+  (issue 9998-07-01: a first period of exactly 180 days 30/360, not the calendar; financial.md, T-1490).
   COUPDAYS on basis 1 in the broken range ignores the settlement: 2958465 for settlements 9999-01-01, 9998-03-01 and
   9996-02-01.
   Probes: date-system-1904-odd-accrint-bound, date-system-1904-odd-threshold and their 1900 twins (excel-graph,
