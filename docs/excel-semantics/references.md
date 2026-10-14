@@ -182,7 +182,9 @@ COUNTA, COUNTBLANK, INDEX and the aggregates; IF's and CHOOSE's value read it as
 Not yet implemented: `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3 (a LET body picking one; we give
 `#BLOCKED!`), `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3 (we give 1), and INDEX with an index array into
 an external reference reads empty cells (`=INDEX(…!A1:C4,{1,2},1)` spills 0, 0; we give `#BLOCKED!`).
-Unprobed: a `[n]` index with no
+Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external
+reference (`ROW(IF({TRUE,FALSE},…!A1,…!A1))`; the engine gives `#VALUE!`, UNVERIFIED), OFFSET of one
+with an array or two error arguments, a `[n]` index with no
 externalLink part, and ROW/COLUMN of a multi-cell external area (the engine spills the row or column
 numbers as for a sheet reference, UNVERIFIED).
 Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
