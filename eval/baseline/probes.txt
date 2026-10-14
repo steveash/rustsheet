@@ -484,6 +484,7 @@ C	probes/tbilleq-nonpositive-price.case.json	9
 C	probes/tbilleq-zero-price.case.json	4
 C	probes/text-argument-modes.case.json	47
 C	probes/text-b-functions-broadcast.case.json	29
+C	probes/text-bahttext-carry.case.json	6
 C	probes/text-bahttext-form1.case.json	1
 C	probes/text-bahttext-form2.case.json	1
 C	probes/text-bahttext-form3.case.json	1

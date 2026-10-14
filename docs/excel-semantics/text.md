@@ -202,13 +202,16 @@ rounds to zero (-0.001 is "ลบศูนย์บาทถ้วน"; -0.005 i
 group (10^12 is หนึ่งล้านล้าน, 1e100 is หนึ่งหมื่น plus sixteen ล้าน). The argument coerces like a number: "5", " 5 " and
 "1e2" work, TRUE is 1, an empty cell is 0, "abc", "" and "1,5" are `#VALUE!`, an error
 passes through; a range or array argument lifts (`BAHTTEXT({1,2.5})` spills "หนึ่งบาทถ้วน", "สองบาทห้าสิบสตางค์").
-Unprobed (T-1270): the argument count (0 or 2 arguments), a satang carry through 9s (9.995, 999999.999), and
-an inner six-digit group ending in 1 (1000001000000).
+A satang that rounds to 100 carries into the baht (`BAHTTEXT(9.995)` = "สิบบาทถ้วน", `99.995` = "หนึ่งร้อยบาทถ้วน",
+`999999.999` = "หนึ่งล้านบาทถ้วน"), also for a negative (`-9.995` = "ลบสิบบาทถ้วน"); a negative with baht and satang reads
+`-1234.56` = "ลบหนึ่งพันสองร้อยสามสิบสี่บาทห้าสิบหกสตางค์"; 1000001000000 reads "หนึ่งล้านเอ็ดล้านบาทถ้วน" (the inner group's
+units 1 is เอ็ด). UNVERIFIED: the argument count (`BAHTTEXT()`, `BAHTTEXT(1,2)`): excel-graph refuses a workbook with a
+wrong-arity formula (createSession 501 unsupportedWorkbook), so only desktop Excel can answer (M14, decision 0039).
 Evidence: probes/text-modes-bahttext, text-bahttext-wide, -wide2, -form1 to -form8, -text1 to -text3 (excel-graph,
-2026-10-09, T-1214).
+2026-10-09, T-1214), text-bahttext-carry (excel-graph, 2026-10-14, T-1270).
 Ours: matches (`fn_bahttext`, functions/text/bahttext.rs).
 Status: VERIFIED (excel-graph)
-Tasks: T-1214
+Tasks: T-1214, T-1270
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
