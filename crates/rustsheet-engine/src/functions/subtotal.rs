@@ -26,6 +26,12 @@ use crate::{
 /// If you try to hide rows in a table with filtered rows they will behave as if filtered
 /// // Also subtotals ignore subtotals
 ///
+#[derive(PartialEq)]
+enum SubTotalMode {
+    Full,
+    SkipHidden,
+}
+
 /// A SUBTOTAL argument after the function number, resolved before any cell is read.
 enum SubtotalArg {
     /// Areas of this workbook, a union's in formula order.
@@ -33,12 +39,6 @@ enum SubtotalArg {
     /// The cached cells of a reference into a linked workbook
     /// ([`Model::external_reference_cells`]); none of them is hidden or a SUBTOTAL there.
     Cached(Vec<ArrayNode>),
-}
-
-#[derive(PartialEq)]
-enum SubTotalMode {
-    Full,
-    SkipHidden,
 }
 
 #[derive(PartialEq, Debug)]
