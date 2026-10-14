@@ -3,7 +3,7 @@ id: T-1293
 title: "Probe the FORECAST.ETS family on excel-graph: when is it a number, not #N/A"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ These are the only ETS calls in gen-m9 and all three are argument errors, so the
 
 ## Out of scope
 -
+
+## Outcome
+Probe `forecast-ets-longer-series` (excel-graph, 2026-10-14): 12/24/36-point series, seasonality 0/1/4 and the argument edge cases are all `#N/A` for the whole FORECAST.ETS family; only a text `target_date` is `#VALUE!`. Excel for the web does not calculate it, so the family gets no web evidence. Not marked `oracle: none` (that flag means the canary refuses the workbook); a validation-only implementation is not acceptable. Desktop values filed as T-1553 (M14, blocked). statistics.md updated. Eval: 42 new probe cells, all new known failures (engine `#N/IMPL!` vs web `#N/A`), 0 regressions; no engine change.
