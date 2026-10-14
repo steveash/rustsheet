@@ -1,0 +1,43 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "TEXTJOIN delimiter elements that are errors, numbers, booleans or blanks; 32,767 limit with cycled delimiters of different sizes (T-1548)",
+ "tags": [
+  "M2",
+  "probe",
+  "textjoin"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A2": "-",
+    "A4": "=NA()",
+    "A5": "+",
+    "C1": "=TEXTJOIN({\"x\",#N/A},FALSE,1,2)",
+    "C2": "=TEXTJOIN({\"x\",#N/A},FALSE,1,2,3)",
+    "C3": "=TEXTJOIN({#N/A,\"x\"},FALSE,1,2)",
+    "C4": "=TEXTJOIN({#N/A,\"x\"},FALSE,1)",
+    "C5": "=TEXTJOIN({#DIV/0!},TRUE,\"a\")",
+    "C6": "=TEXTJOIN({1,2},FALSE,\"a\",\"b\",\"c\")",
+    "C7": "=TEXTJOIN({TRUE,FALSE},FALSE,\"a\",\"b\",\"c\")",
+    "C8": "=TEXTJOIN(A1:A2,FALSE,\"a\",\"b\",\"c\")",
+    "C9": "=TEXTJOIN(A2:A1,FALSE,\"a\",\"b\",\"c\")",
+    "C10": "=TEXTJOIN(A4:A5,FALSE,1,2,3)",
+    "C11": "=TEXTJOIN(A4:A5,FALSE,1)",
+    "C12": "=TEXTJOIN(1.5,FALSE,\"a\",\"b\")",
+    "C13": "=TEXTJOIN(TRUE,FALSE,\"a\",\"b\")",
+    "C14": "=TEXTJOIN(NA(),FALSE,\"a\")",
+    "C15": "=TEXTJOIN(A1,FALSE,\"a\",\"b\")",
+    "C16": "=TEXTJOIN({\"ab\",\"c\"},FALSE,REPT(\"a\",32762),\"b\",\"c\")",
+    "C17": "=TEXTJOIN({\"ab\",\"c\"},FALSE,REPT(\"a\",32763),\"b\",\"c\")",
+    "C18": "=TEXTJOIN({\"ab\",\"c\"},FALSE,REPT(\"a\",32759),\"b\",\"c\",\"d\")",
+    "C19": "=TEXTJOIN({\"ab\",\"c\"},FALSE,REPT(\"a\",32760),\"b\",\"c\",\"d\")",
+    "C20": "=TEXTJOIN({\"abc\",\"d\"},FALSE,REPT(\"a\",32763),\"b\")",
+    "C21": "=TEXTJOIN({\"abc\",\"d\"},FALSE,REPT(\"a\",32764),\"b\")",
+    "C22": "=TEXTJOIN({\"ab\",\"c\"},TRUE,REPT(\"a\",32762),\"\",A1,\"b\",\"c\")",
+    "C23": "=TEXTJOIN({\"ab\",\"c\"},TRUE,REPT(\"a\",32763),\"\",A1,\"b\",\"c\")"
+   }
+  }
+ ],
+ "expected": {}
+}
