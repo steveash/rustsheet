@@ -3,7 +3,7 @@ id: T-1474
 title: "Implement the shared aggregate-argument walker and move SUM and the AVERAGE family onto it"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
