@@ -1240,3 +1240,14 @@ Near the cut Excel's trig values differ from a correctly rounded libm in the 10t
 (SIN(2^27-1) is -0.9559933287726706 in Excel, -0.9559933287732995 here): Excel's argument
 reduction is not exact for large angles. The 6 `x = 2^27-1` cells of probes/trig-huge-argument are
 known failures until the fit task lands.
+
+## Out-of-domain ACOS/ASIN/ACOSH/ATANH are `#NUM!` at once, even nested (T-1202)
+
+An argument outside the domain of ACOS, ASIN, ACOSH or ATANH gives `#NUM!` as the function's own
+result, so an enclosing function never sees a number: `SERIESSUM(ACOS(1E+15),0,...)` is `#NUM!`
+(not `x^0 = 1`), `ADDRESS(ACOSH(-1),4)` is `#NUM!` (not `#VALUE!` from row 0),
+`CHOOSECOLS(0,ASIN(100))` is `#NUM!`, and `x<ASIN(PI())` is `#NUM!` (not FALSE).
+Evidence (excel-graph): gen-m5/cd883013bea3b305 Calc!A23, gen-m6/3ee7ffc8d6ab061f Calc!A26,
+gen-m7/2bb922eef72e785e Calc!A30, gen-m7/93976dd9a3578ed9 Calc!A13. Implemented in
+`single_number_fn!` (functions/macros.rs), which maps any NaN result to `#NUM!`; ATANH is covered
+by the same macro, not by its own oracle cell.

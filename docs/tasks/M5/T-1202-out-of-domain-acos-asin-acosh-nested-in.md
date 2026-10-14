@@ -26,11 +26,11 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
 - gen-m7/93976dd9a3578ed9 Calc!A13 `=(Data!A10<ASIN(PI()))`: Excel `#NUM!`, engine FALSE.
 
 ## Acceptance criteria
-- [ ] gen-m5/cd883013bea3b305 A23 passes.
-- [ ] A unit/eval case for each domain-limited function nested in another function.
-- [ ] gen-m6/3ee7ffc8d6ab061f A26 passes.
-- [ ] gen-m7/2bb922eef72e785e A30 and gen-m7/93976dd9a3578ed9 A13 pass. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m5/cd883013bea3b305 A23 passes.
+- [x] A unit/eval case for each domain-limited function nested in another function.
+- [x] gen-m6/3ee7ffc8d6ab061f A26 passes.
+- [x] gen-m7/2bb922eef72e785e A30 and gen-m7/93976dd9a3578ed9 A13 pass. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -

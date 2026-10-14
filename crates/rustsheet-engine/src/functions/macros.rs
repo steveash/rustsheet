@@ -28,13 +28,8 @@ macro_rules! single_number_fn {
                         origin: cell,
                         message: "Divide by 0".to_string(),
                     },
-                    Err(Error::VALUE) => CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Invalid number".to_string(),
-                    },
-                    Err(Error::NUM) => CalcResult::Error {
-                        error: Error::NUM,
+                    Err(e @ (Error::VALUE | Error::NUM)) => CalcResult::Error {
+                        error: e,
                         origin: cell,
                         message: "Invalid number".to_string(),
                     },

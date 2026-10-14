@@ -109,7 +109,7 @@ fn test_trigonometric_identity() {
 }
 
 // T-1202: an out-of-domain argument is `#NUM!` at once, so an enclosing function cannot swallow
-// the NaN (gen-m5/cd883013bea3b305, gen-m6/3ee7ffc8d6ab061f, gen-m7/93976dd9a3578ed9).
+// the NaN (gen-m5/cd883013bea3b305, gen-m6/3ee7ffc8d6ab061f, gen-m7/93976dd9a3578ed9; ATANH by the same macro).
 #[test]
 fn out_of_domain_inverse_functions_nested_are_num() {
     let mut model = new_empty_model();
@@ -117,7 +117,7 @@ fn out_of_domain_inverse_functions_nested_are_num() {
     model._set("A2", "=ADDRESS(ACOSH(-1),4)");
     model._set("A3", "=CHOOSECOLS(0,ASIN(100))");
     model._set("A4", "=(1<ASIN(PI()))");
-    model._set("A5", "=SUM(ACOS({2,1}))");
+    model._set("A5", "=SUM(ATANH(2),1)");
     model.evaluate();
 
     for cell in ["A1", "A2", "A3", "A4", "A5"] {
