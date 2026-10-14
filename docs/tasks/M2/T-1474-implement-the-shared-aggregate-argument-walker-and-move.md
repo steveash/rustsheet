@@ -7,6 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
+spec: docs/specs/SPEC-0009-aggregate-argument-walker.md
 depends_on: [T-1473]
 ---
 
