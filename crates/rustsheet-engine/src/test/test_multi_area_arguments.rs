@@ -9,8 +9,7 @@ use crate::area_budget::TOO_MANY_AREA_CELLS;
 use crate::expressions::types::CellReferenceRC;
 use crate::model::Model;
 use crate::reference_operators::{MAX_AREAS, TOO_MANY_AREAS};
-use crate::test::util::new_empty_model;
-use crate::types::{Cell, FormulaValue};
+use crate::test::util::{balanced_union, new_empty_model};
 
 fn model() -> Model {
     let mut model = new_empty_model();
@@ -35,34 +34,6 @@ fn results(model: &mut Model, cases: &[(&str, &str, &str)]) {
     for (cell, formula, expected) in cases {
         assert_eq!(model._get_text(cell), *expected, "{cell}: {formula}");
     }
-}
-
-fn error_message(model: &Model, cell: &str) -> String {
-    match model._get_cell(cell) {
-        Cell::CellFormula {
-            v: FormulaValue::Error { m, .. },
-            ..
-        }
-        | Cell::ArrayFormula {
-            v: FormulaValue::Error { m, .. },
-            ..
-        } => m.clone(),
-        other => format!("not an error: {other:?}"),
-    }
-}
-
-/// A union of `leaves` copies of `leaf`, nested as a balanced tree to stay under the parser's
-/// depth cap.
-fn balanced_union(leaf: &str, leaves: usize) -> String {
-    if leaves <= 1 {
-        return leaf.to_string();
-    }
-    let half = leaves / 2;
-    format!(
-        "({},{})",
-        balanced_union(leaf, half),
-        balanced_union(leaf, leaves - half)
-    )
 }
 
 #[test]
@@ -164,7 +135,7 @@ fn union_at_and_over_the_area_cap() {
     model.evaluate();
     assert_eq!(model._get_text("Z1"), MAX_AREAS.to_string());
     assert_eq!(model._get_text("Z2"), "#VALUE!");
-    assert_eq!(error_message(&model, "Z2"), TOO_MANY_AREAS);
+    assert_eq!(model._get_error_message("Z2"), TOO_MANY_AREAS);
 }
 
 /// `count` rows of column A holding 1, from row 1.
@@ -255,7 +226,7 @@ fn a_let_bound_union_shares_the_walk_budget_across_arguments() {
     model.evaluate();
     assert_eq!(model._get_text("Z1"), (15 * 16 * 65536).to_string());
     assert_eq!(model._get_text("Z2"), "#VALUE!");
-    assert_eq!(error_message(&model, "Z2"), TOO_MANY_AREA_CELLS);
+    assert_eq!(model._get_error_message("Z2"), TOO_MANY_AREA_CELLS);
 }
 
 #[test]
@@ -285,7 +256,7 @@ fn aggregate_of_a_union_obeys_the_walk_budget() {
     );
     model.evaluate();
     assert_eq!(model._get_text("Z1"), "#VALUE!");
-    assert_eq!(error_message(&model, "Z1"), TOO_MANY_AREA_CELLS);
+    assert_eq!(model._get_error_message("Z1"), TOO_MANY_AREA_CELLS);
     assert_eq!(model._get_text("Z2"), (16 * 65536).to_string());
 }
 
@@ -331,7 +302,7 @@ fn subtotal_of_a_union_obeys_the_walk_budget() {
     model._set("Z2", &format!("=SUBTOTAL(9,{})", balanced_union("A:A", 16)));
     model.evaluate();
     assert_eq!(model._get_text("Z1"), "#VALUE!");
-    assert_eq!(error_message(&model, "Z1"), TOO_MANY_AREA_CELLS);
+    assert_eq!(model._get_error_message("Z1"), TOO_MANY_AREA_CELLS);
     assert_eq!(model._get_text("Z2"), (16 * 65536).to_string());
 }
 
@@ -554,7 +525,7 @@ fn union_bindings_held_at_once_are_capped() {
             ("Z3", &x15, &(MAX_AREAS / 2).to_string()),
         ],
     );
-    assert_eq!(error_message(&model, "Z2"), TOO_MANY_AREAS);
+    assert_eq!(model._get_error_message("Z2"), TOO_MANY_AREAS);
 }
 
 #[test]
@@ -673,7 +644,7 @@ fn union_bodied_name_over_the_area_cap() {
             ("Z2", "=SUM(over)", "#VALUE!"),
         ],
     );
-    assert_eq!(error_message(&model, "Z2"), TOO_MANY_AREAS);
+    assert_eq!(model._get_error_message("Z2"), TOO_MANY_AREAS);
 }
 
 #[test]
