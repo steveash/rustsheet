@@ -334,14 +334,9 @@ impl Model {
 
         // value is an array: replace each handled error element with the
         // fallback, broadcasting the fallback across positions.
-        let fallback_result = self.evaluate_node_in_context(&args[1], cell);
-        let fallback_arg = match fallback_result {
-            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
-                Ok(array) => IfArg::Array(array),
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => IfArg::Array(a),
-            other => IfArg::Scalar(calc_result_to_array_node(other)),
+        let fallback_arg = match self.evaluate_if_arg(&args[1], cell) {
+            Ok(arg) => arg,
+            Err(error) => return error,
         };
 
         // Output size = largest extent across value and the fallback.
