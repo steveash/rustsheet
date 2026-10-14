@@ -224,7 +224,8 @@ fn a_large_spill_is_checked_against_many_rectangles_in_near_linear_time() {
     model.evaluate();
     model.evaluate();
     let elapsed = start.elapsed();
-    assert!(elapsed < Duration::from_secs(60), "{elapsed:?}");
+    // About 3 s in a debug build; the cell-by-rectangle scan took 34 s in a release build.
+    assert!(elapsed < Duration::from_secs(20), "{elapsed:?}");
     assert_eq!(model._get_text("A50000"), "0");
     assert_eq!(model._get_text("C100001"), "100000");
     assert_eq!(model.evaluation.seen_ranges.len(), 100_000);

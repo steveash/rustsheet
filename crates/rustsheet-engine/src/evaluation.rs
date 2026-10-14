@@ -1049,12 +1049,16 @@ impl Model {
         let CellReferenceIndex { sheet, row, column } = anchor;
         let (width, height) = area;
         let seen = &self.evaluation.seen;
-        let mut by_ranges: Vec<((i32, i32), CellReferenceIndex)> = self
-            .evaluation
-            .seen_ranges
-            .iter()
-            .filter_map(|range| Some((range.first_cell_written(anchor, area)?, range.root)))
-            .collect();
+        // An area of one cell writes nothing: the clear-only check skips the rectangles.
+        let mut by_ranges: Vec<((i32, i32), CellReferenceIndex)> = if width <= 1 && height <= 1 {
+            Vec::new()
+        } else {
+            self.evaluation
+                .seen_ranges
+                .iter()
+                .filter_map(|range| Some((range.first_cell_written(anchor, area)?, range.root)))
+                .collect()
+        };
         // Stable: rectangles first written at the same cell keep the order they were read in.
         by_ranges.sort_by_key(|(cell, _)| *cell);
         let contradicted_by_writes: Vec<CellReferenceIndex> = (row..row + height)
