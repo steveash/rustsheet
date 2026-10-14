@@ -11,7 +11,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::case::{
-    canonical_key, cell_key, is_excel_evidence, split_qualified, CaseSpec, CellInput, OracleFile,
+    canonical_key, cell_key, is_excel_evidence, load_oracle, split_qualified, CaseSpec, CellInput,
     CASE_FORMAT, GRAPH_ORACLE,
 };
 use crate::case_log;
@@ -331,17 +331,6 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
             }
         })
         .collect()
-}
-
-fn load_oracle(case: &CaseFile) -> Result<Option<OracleFile>, String> {
-    let path = &case.sidecar;
-    if !path.exists() {
-        return Ok(None);
-    }
-    let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-    serde_json::from_str(&text)
-        .map(Some)
-        .map_err(|e| format!("{}: {e}", path.display()))
 }
 
 fn prepare(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> {

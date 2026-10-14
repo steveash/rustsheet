@@ -826,6 +826,7 @@ dependencies = [
  "serde",
  "serde_json",
  "statrs",
+ "thiserror",
  "wasm-bindgen",
 ]
 
@@ -873,7 +874,6 @@ dependencies = [
  "itertools",
  "quick-xml",
  "rustsheet_engine",
- "rustsheet_xlsx",
  "thiserror",
  "uuid",
  "zip",

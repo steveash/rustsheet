@@ -19,7 +19,7 @@ const FIRST_SERIAL_AFTER_LEAP_BUG: i32 = 61;
 /// so real dates before 1900-03-01 sit one lower than the plain day count from `EXCEL_DATE_BASE`.
 /// Evidence: probes/dates-and-blanks A1-A3 (docs/excel-semantics/dates.md).
 #[inline]
-fn convert_to_serial_number(date: NaiveDate) -> i32 {
+pub(crate) fn convert_to_serial_number(date: NaiveDate) -> i32 {
     let serial = date.num_days_from_ce() - EXCEL_DATE_BASE;
     if serial < FIRST_SERIAL_AFTER_LEAP_BUG {
         serial - 1
