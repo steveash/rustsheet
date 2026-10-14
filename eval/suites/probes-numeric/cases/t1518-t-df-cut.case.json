@@ -1,0 +1,41 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1518: where between df 1E10 and 1.5E10 the Student-t functions turn #NUM!.",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-1518",
+  "student-t"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=T.INV(0.9,10000000001)",
+    "A2": "=T.INV(0.9,1.0000001E10)",
+    "A3": "=T.INV(0.9,1.1E10)",
+    "A4": "=T.INV(0.9,1.2E10)",
+    "A5": "=T.INV(0.9,1.3E10)",
+    "A6": "=T.INV(0.9,1.4E10)",
+    "A7": "=T.INV(0.9,1.4999E10)",
+    "A8": "=T.DIST(2,1.2E10,TRUE)",
+    "A9": "=T.DIST(2,1.4E10,TRUE)",
+    "A10": "=T.DIST.RT(2,1.2E10)",
+    "A11": "=T.DIST.2T(2,1.2E10)",
+    "A12": "=T.INV.2T(0.1,1.2E10)",
+    "A13": "=T.DIST(2,1.4E10,FALSE)",
+    "A14": "=T.INV(0.9,10000000000.5)",
+    "A15": "=T.INV(0.9,10000000000)",
+    "A16": "=T.DIST(2,10000000000.9,TRUE)",
+    "A17": "=T.INV.2T(0.1,10000000000.5)",
+    "A18": "=T.DIST(2,10000000000.5,FALSE)",
+    "A19": "=T.DIST.RT(2,10000000000.9)",
+    "A20": "=CONFIDENCE.T(0.05,1,10000000001)",
+    "A21": "=CONFIDENCE.T(0.05,1,10000000002)",
+    "A22": "=CONFIDENCE.T(0.05,1,1E11)",
+    "A23": "=CONFIDENCE.T(0.05,1,1E10)"
+   }
+  }
+ ]
+}

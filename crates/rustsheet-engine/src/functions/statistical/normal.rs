@@ -2,6 +2,7 @@ use statrs::distribution::{ContinuousCDF, Normal, StudentsT};
 
 use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::statistical::t_dist::T_DF_MAX;
 use crate::functions::statistical::special::{normal_cdf, normal_pdf, standard_normal_pdf};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -285,6 +286,13 @@ impl Model {
         }
 
         let df = size - 1.0;
+        if df > T_DF_MAX {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Degrees of freedom too large for CONFIDENCE.T".to_string(),
+            );
+        }
 
         let t_dist = match StudentsT::new(0.0, 1.0, df) {
             Ok(d) => d,

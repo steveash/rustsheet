@@ -42,6 +42,12 @@ enum TTestTails {
     TwoTailed,
 }
 
+/// Largest (truncated) `deg_freedom` for which Excel evaluates the cumulative and inverse Student-t
+/// functions; above it they are `#NUM!` while the pdf stays finite. Without the guard `statrs`'
+/// quantile search does not finish for a huge df (fuzz hang on `T.INV(0.9,5E10)`).
+/// Excel: see docs/excel-semantics/statistics.md#student-t-sweep-df-truncation-df-limits-tinv2t-above-1-t-1043
+pub(crate) const T_DF_MAX: f64 = 1e10;
+
 impl Model {
     // T.DIST(x, deg_freedom, cumulative)
     pub(crate) fn fn_t_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -64,11 +70,11 @@ impl Model {
             Err(e) => return e,
         };
 
-        if df < 1.0 {
+        if df < 1.0 || (cumulative && df > T_DF_MAX) {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
-                message: "deg_freedom must be >= 1 in T.DIST".to_string(),
+                message: "deg_freedom out of range in T.DIST".to_string(),
             };
         }
 
@@ -120,7 +126,7 @@ impl Model {
             };
         }
 
-        if df < 1.0 {
+        if !(1.0..=T_DF_MAX).contains(&df) {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
@@ -171,7 +177,7 @@ impl Model {
             Err(e) => return e,
         };
 
-        if df < 1.0 {
+        if !(1.0..=T_DF_MAX).contains(&df) {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
@@ -219,7 +225,7 @@ impl Model {
             Err(e) => return e,
         };
 
-        if p <= 0.0 || p >= 1.0 || df < 1.0 {
+        if p <= 0.0 || p >= 1.0 || !(1.0..=T_DF_MAX).contains(&df) {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
@@ -267,7 +273,7 @@ impl Model {
             Err(e) => return e,
         };
 
-        if p <= 0.0 || p > 1.0 || df < 1.0 {
+        if p <= 0.0 || p > 1.0 || !(1.0..=T_DF_MAX).contains(&df) {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
