@@ -14,9 +14,9 @@ use crate::{
     model::Model,
 };
 
-use super::{map_elements, Lifted};
+use super::Lifted;
 use crate::arithmetic::bcast_idx;
-use crate::functions::util::{array_node_to_calc_result, error_array};
+use crate::functions::util::{array_node_to_calc_result, error_array, map_elements};
 use crate::limits::check_array_size;
 
 /// Whether IMAGE `source` text is URL-shaped and so reaches the (never performed) fetch (narrower

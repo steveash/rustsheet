@@ -2,6 +2,7 @@ use super::reference_operators::at_outside;
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
 mod aggregate;
+mod reference_parameter;
 mod row_column;
 
 #[cfg(target_arch = "wasm32")]
@@ -465,44 +466,6 @@ fn static_analysis_indirect(_args: &[Node]) -> StaticResult {
 fn static_analysis_index(_args: &[Node]) -> StaticResult {
     // INDEX has two forms, but they are indistinguishable at parse time.
     StaticResult::Unknown
-}
-
-/// RANK's `ref` must be a reference: an array that is not one (`IF(A1:C1>0,A1:C1)`) makes the
-/// result a `#VALUE!` array of that array's shape, which spills (docs/excel-semantics/statistics.md,
-/// "RANK of a non-reference array"). A `ref` whose shape is `Unknown` (INDEX, CHOOSE, OFFSET, a
-/// defined name, `A1:<name>`) may still evaluate to such an array, so the result is `Unknown` too:
-/// a reference ranks to a 1x1 result, an array spills (probes/rank-unknown-shape-ref).
-fn static_analysis_rank(args: &[Node]) -> StaticResult {
-    reference_parameter_static_result(args.get(1))
-}
-
-/// The result shape of a function whose parameter `reference` must be a reference (RANK's
-/// `ref`, COUNTBLANK's `range`): an array that is not one makes a `#VALUE!` array of its shape,
-/// and a `reference` of unknown shape may still be such an array.
-fn reference_parameter_static_result(reference: Option<&Node>) -> StaticResult {
-    match reference.map(run_static_analysis_on_node) {
-        Some(shape @ (StaticResult::Array(..) | StaticResult::Unknown)) => shape,
-        // CHOOSE with an array index lifts to an array of values, though its shape reads as a
-        // range (`COUNTBLANK(CHOOSE({1,2},D1:D2,D3:D4))` is a 2x2 of `#VALUE!`,
-        // probes/countblank-array-values H20).
-        Some(StaticResult::Range(..)) if reference.is_some_and(is_choose_with_array_index) => {
-            StaticResult::Unknown
-        }
-        _ => StaticResult::Scalar,
-    }
-}
-
-/// Whether `node` is a CHOOSE call whose index is not a scalar.
-fn is_choose_with_array_index(node: &Node) -> bool {
-    match node.ungrouped() {
-        Node::FunctionKind {
-            kind: Function::Choose,
-            args,
-        } => args.first().is_some_and(|index| {
-            !matches!(run_static_analysis_on_node(index), StaticResult::Scalar)
-        }),
-        _ => false,
-    }
 }
 
 #[derive(Clone)]
@@ -1824,8 +1787,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Averageifs => criteria_static_result(args, 2),
         Function::Count => not_implemented(args),
         Function::Counta => not_implemented(args),
-        // COUNTBLANK of an array is one `#VALUE!` per element (probes/countblank-array-values).
-        Function::Countblank => reference_parameter_static_result(args.first()),
+        Function::Countblank => reference_parameter::countblank_static_result(args),
         Function::Countif => criteria_static_result(args, 1),
         Function::Countifs => criteria_static_result(args, 1),
         Function::Maxifs => criteria_static_result(args, 2),
@@ -2117,7 +2079,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::PercentrankCompat => StaticResult::Scalar,
         Function::PoissonCompat => StaticResult::Scalar,
         Function::QuartileCompat => StaticResult::Scalar,
-        Function::RankCompat => static_analysis_rank(args),
+        Function::RankCompat => reference_parameter::rank_static_result(args),
         Function::StDevPCompat => StaticResult::Scalar,
         Function::TInvCompat => StaticResult::Scalar,
         Function::TTestCompat => StaticResult::Scalar,
@@ -2165,8 +2127,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::MaxA => StaticResult::Scalar,
         Function::Median => StaticResult::Scalar,
         Function::MinA => StaticResult::Scalar,
-        Function::RankAvg => static_analysis_rank(args),
-        Function::RankEq => static_analysis_rank(args),
+        Function::RankAvg => reference_parameter::rank_static_result(args),
+        Function::RankEq => reference_parameter::rank_static_result(args),
         Function::Skew => StaticResult::Scalar,
         Function::SkewP => StaticResult::Scalar,
         Function::Small => StaticResult::Scalar,

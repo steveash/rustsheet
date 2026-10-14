@@ -6,6 +6,15 @@ use crate::functions::util::{error_array, is_span_or_if_of_span};
 use crate::reference_operators::RefArg;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
+/// COUNTBLANK's `#VALUE!` for an argument that is not a reference.
+fn not_a_reference(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::VALUE,
+        cell,
+        "COUNTBLANK needs a reference".to_string(),
+    )
+}
+
 impl Model {
     pub(crate) fn fn_count(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
@@ -144,25 +153,13 @@ impl Model {
                 match value {
                     error @ CalcResult::Error { .. } => return error,
                     range @ CalcResult::Range { .. } => range,
-                    _ => {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "COUNTBLANK needs a reference".to_string(),
-                        )
-                    }
+                    _ => return not_a_reference(cell),
                 }
             } else {
                 match self.defined_name_range_operand(arg, cell) {
                     range @ CalcResult::Range { .. } => range,
                     error @ CalcResult::Error { .. } => return error,
-                    _ => {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "COUNTBLANK needs a reference".to_string(),
-                        )
-                    }
+                    _ => return not_a_reference(cell),
                 }
             };
             match value {
@@ -196,13 +193,7 @@ impl Model {
                 // condition, and `CHOOSE(1,5)` or `CHOOSE(1,"")` (probes/countblank-array-values,
                 // probes/index-lifted-edge-cases H131, excel-graph 2026-10-13, T-1437).
                 CalcResult::Array(values) => return error_array(&values, &Error::VALUE),
-                _ => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "COUNTBLANK needs a reference".to_string(),
-                    )
-                }
+                _ => return not_a_reference(cell),
             };
         }
         CalcResult::Number(result)

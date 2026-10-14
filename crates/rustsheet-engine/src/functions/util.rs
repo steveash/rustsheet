@@ -13,21 +13,23 @@ use crate::{
     reference_operators::RefArg,
 };
 
+/// Applies `f` to every element of a 2-D array, keeping its shape.
+pub(crate) fn map_elements(
+    values: &[Vec<ArrayNode>],
+    f: impl Fn(&ArrayNode) -> ArrayNode,
+) -> Vec<Vec<ArrayNode>> {
+    values
+        .iter()
+        .map(|row| row.iter().map(&f).collect())
+        .collect()
+}
+
 /// An array of `error` with the shape of `values` (an element that is already an error stays).
 pub(crate) fn error_array(values: &[Vec<ArrayNode>], error: &Error) -> CalcResult {
-    CalcResult::Array(
-        values
-            .iter()
-            .map(|row| {
-                row.iter()
-                    .map(|v| match v {
-                        ArrayNode::Error(_) => v.clone(),
-                        _ => ArrayNode::Error(error.clone()),
-                    })
-                    .collect()
-            })
-            .collect(),
-    )
+    CalcResult::Array(map_elements(values, |v| match v {
+        ArrayNode::Error(_) => v.clone(),
+        _ => ArrayNode::Error(error.clone()),
+    }))
 }
 
 /// Converts a single array element into a scalar [`CalcResult`].

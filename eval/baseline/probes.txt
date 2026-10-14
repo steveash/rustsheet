@@ -101,7 +101,7 @@ C	probes/colon-hash-value-operands.case.json	6
 C	probes/concatenate-limit-spill.case.json	68
 C	probes/count-direct-text.case.json	13
 C	probes/counta-empty-value.case.json	26
-C	probes/countblank-array-values.case.json	26
+C	probes/countblank-array-values.case.json	35
 C	probes/countblank-choose-errors.case.json	8
 C	probes/countblank-error-cell-refs.case.json	9
 C	probes/countblank-error-forms-b.case.json	8
@@ -594,7 +594,9 @@ F	probes/concatenate-limit-spill.case.json	Sheet1!E8
 F	probes/concatenate-limit-spill.case.json	Sheet1!E9
 F	probes/countblank-array-values.case.json	Sheet1!H1
 F	probes/countblank-array-values.case.json	Sheet1!H21
+F	probes/countblank-array-values.case.json	Sheet1!H35
 F	probes/countblank-array-values.case.json	Sheet1!I21
+F	probes/countblank-array-values.case.json	Sheet1!I35
 F	probes/coupdays-feb-month-end.case.json	S!B20
 F	probes/coupdays-feb-month-end.case.json	S!C20
 F	probes/coupdays-feb-month-end.case.json	S!D20

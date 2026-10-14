@@ -1031,15 +1031,17 @@ and even the 1x1 `INDEX(D1:D5,{2})` (a blank cell) is `#VALUE!`; `CHOOSE({1,2},D
 element. A scalar value picked by CHOOSE is `#VALUE!` too: `COUNTBLANK(CHOOSE(1,5))` and `COUNTBLANK(CHOOSE(1,""))` (an
 empty string is not a blank here). A workbook holding `COUNTBLANK(SEQUENCE(1,2))` and `COUNTBLANK(TOROW(D1:D3))`, with
 or without `COUNTBLANK(D1:D2+0)`, would not open in Excel for the web (`FileCorruptTryRepair`, as for the literal
-expressions above), so those have no value. An error element of an array is unprobed (the engine keeps it, by the
-error-argument rule).
+expressions above), so those have no value. An error element stays that error, by the error-argument rule: with
+D6 = `=NA()`, `COUNTBLANK(INDEX(D1:D6,{5,6}))` is `#VALUE!`, `#N/A` and `COUNTBLANK(IF({1,0},NA(),D1))` is `#N/A`,
+`#VALUE!` (H30, H32). RANK's `ref` behaves the same over that CHOOSE: `RANK(10,CHOOSE({1,2},D1:D2,D3:D4))` is a 2x2 of
+`#VALUE!` (H34; statistics.md, "RANK of a non-reference array").
 Evidence: probes/countblank-array-values (excel-graph, 2026-10-13, T-1437); probes/index-lifted-edge-cases H131:J131
 (excel-graph, 2026-10-12, T-1376).
 Status: VERIFIED (excel-graph), except the 1x1 `INDEX(D1:D5,{2})`: the engine treats a 1x1 array index as a scalar
-index, so it counts the picked cell (1) (T-1507). The CHOOSE grid spills 1x2, not 2x2, because the engine's `CHOOSE({1,2},D1:D2,D3:D4)`
+index, so it counts the picked cell (1) (T-1507). The CHOOSE grids (H20, H34) spill 1x2, not 2x2, because the engine's `CHOOSE({1,2},D1:D2,D3:D4)`
 is itself 1x2 (T-1508).
 Implemented in: `fn_countblank` (functions/statistical/count.rs) and `reference_parameter_static_result`
-(expressions/parser/static_analysis.rs), shared with RANK.
+(expressions/parser/static_analysis/reference_parameter.rs), shared with RANK.
 Tasks: T-1437
 
 ## `@` operand parentheses: every level is kept; a group that is only part of the operand is kept too
