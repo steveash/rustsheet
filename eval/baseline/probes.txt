@@ -126,6 +126,7 @@ C	probes/date-system-1900-negatives.case.json	18
 C	probes/date-system-1900-odd-accrint-bound.case.json	64
 C	probes/date-system-1900-odd-threshold.case.json	78
 C	probes/date-system-1900-odd-years.case.json	114
+C	probes/date-system-1900-oddf-issue-after-quasi.case.json	51
 C	probes/date-system-1900-oddf-issue-boundary.case.json	12
 C	probes/date-system-1900-oddf-schedule.case.json	15
 C	probes/date-system-1904-accrint-settlement-bound.case.json	56
@@ -688,8 +689,6 @@ F	probes/date-system-1900-odd-accrint-bound.case.json	S!B4
 F	probes/date-system-1900-odd-accrint-bound.case.json	S!B6
 F	probes/date-system-1900-odd-accrint-bound.case.json	S!C3
 F	probes/date-system-1900-odd-accrint-bound.case.json	S!C4
-F	probes/date-system-1900-odd-accrint-bound.case.json	S!C5
-F	probes/date-system-1900-odd-accrint-bound.case.json	S!C6
 F	probes/date-system-1900-odd-accrint-bound.case.json	S!D3
 F	probes/date-system-1900-odd-accrint-bound.case.json	S!D4
 F	probes/date-system-1900-odd-accrint-bound.case.json	S!D6
@@ -725,6 +724,8 @@ F	probes/date-system-1900-odd-years.case.json	S!P3
 F	probes/date-system-1900-odd-years.case.json	S!Q3
 F	probes/date-system-1900-odd-years.case.json	S!R3
 F	probes/date-system-1900-odd-years.case.json	S!S3
+F	probes/date-system-1900-oddf-issue-after-quasi.case.json	S!A17
+F	probes/date-system-1900-oddf-issue-after-quasi.case.json	S!A32
 F	probes/date-system-1904-financial-daycount.case.json	S!A19
 F	probes/date-system-1904-financial-daycount.case.json	S!A20
 F	probes/date-system-1904-financial-daycount.case.json	S!A21
