@@ -290,3 +290,52 @@ fn written_parentheses_are_exported_as_excel_stores_them() {
         );
     }
 }
+
+// A legacy formula intersects the ranges in arithmetic under a scalar argument, in an
+// aggregate's arithmetic argument, TYPE's argument, a range of a linked workbook, and IF's
+// condition and IFERROR's value under SUMPRODUCT; those `@`s are automatic, so the export drops
+// them (probes/legacy-value-argument-intersection, legacy-type-intersection,
+// array-context-legacy-sumproduct; fixtures/external-link-cached-ranges; T-1526).
+#[test]
+fn legacy_value_arguments_intersect_and_export_unchanged() {
+    check(&[
+        (
+            "SUM(IFERROR(B1:B6*1,100))",
+            "SUM(IFERROR(@B1:B6*1,100))",
+            "SUM(IFERROR(B1:B6*1,100))",
+        ),
+        ("SUM(B1:B6+0)", "SUM(@B1:B6+0)", "SUM(B1:B6+0)"),
+        ("SUM(-B1:B6)", "SUM(-@B1:B6)", "SUM(-B1:B6)"),
+        (
+            "SUM(B1:B6,(B1:B6))",
+            "SUM(B1:B6,(B1:B6))",
+            "SUM(B1:B6,(B1:B6))",
+        ),
+        ("TYPE(B1:B6)", "TYPE(@B1:B6)", "TYPE(B1:B6)"),
+        (
+            "SUMPRODUCT(IF(B1:B6>1,B1:B6,0))",
+            "SUMPRODUCT(IF(@B1:B6>1,B1:B6,0))",
+            "SUMPRODUCT(IF(B1:B6>1,B1:B6,0))",
+        ),
+        (
+            "SUMPRODUCT(ABS(IFERROR(B1:B6,100)))",
+            "SUMPRODUCT(ABS(IFERROR(@B1:B6,100)))",
+            "SUMPRODUCT(ABS(IFERROR(B1:B6,100)))",
+        ),
+        (
+            "SUMPRODUCT(ABS(B1:B6-2))",
+            "SUMPRODUCT(ABS(B1:B6-2))",
+            "SUMPRODUCT(ABS(B1:B6-2))",
+        ),
+        (
+            "SUM(MMULT(B1:B6*1,{1}))",
+            "SUM(MMULT(B1:B6*1,{1}))",
+            "SUM(MMULT(B1:B6*1,{1}))",
+        ),
+        (
+            "SUM([1]Uses!$A$2:$A$3+0)",
+            "SUM(@'[1]Uses'!$A$2:$A$3+0)",
+            "SUM('[1]Uses'!$A$2:$A$3+0)",
+        ),
+    ]);
+}

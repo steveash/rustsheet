@@ -1,0 +1,61 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1526: does a legacy (non-dynamic) TYPE intersect a multi-cell range (16 off the range's rows, the cell's type on them) as the cached external TYPE([1]Uses!$A$1:$B$3) = 16 suggests; reference-taking controls ROWS, SUBTOTAL, AGGREGATE, AVERAGEA. Rows 2 (on-row) and 10 (off-row). B1:B6 = 1,2,3,1,2,3, C1 = x, D1 = TRUE. O10 proves legacy.",
+ "tags": [
+  "M2",
+  "references",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "B1": 1,
+    "B2": 2,
+    "B3": 3,
+    "B4": 1,
+    "B5": 2,
+    "B6": 3,
+    "C1": "x",
+    "D1": true,
+    "F2": "=TYPE(B1:B6)",
+    "F10": "=TYPE(B1:B6)",
+    "G2": "=TYPE(B1:D1)",
+    "G10": "=TYPE(B1:D1)",
+    "H2": "=TYPE(B1:B6*1)",
+    "H10": "=TYPE(B1:B6*1)",
+    "I2": "=TYPE((B1:B6))",
+    "I10": "=TYPE((B1:B6))",
+    "J2": "=ROWS(B1:B6)",
+    "J10": "=ROWS(B1:B6)",
+    "K2": "=SUBTOTAL(9,B1:B6)",
+    "K10": "=SUBTOTAL(9,B1:B6)",
+    "L2": "=AGGREGATE(9,6,B1:B6)",
+    "L10": "=AGGREGATE(9,6,B1:B6)",
+    "M2": "=AVERAGEA(B1:D1)",
+    "M10": "=AVERAGEA(B1:D1)",
+    "O10": "=B1:B6*1"
+   },
+   "legacy_formulas": [
+    "F2",
+    "F10",
+    "G2",
+    "G10",
+    "H2",
+    "H10",
+    "I2",
+    "I10",
+    "J2",
+    "J10",
+    "K2",
+    "K10",
+    "L2",
+    "L10",
+    "M2",
+    "M10",
+    "O10"
+   ]
+  }
+ ],
+ "expected": {}
+}

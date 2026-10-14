@@ -1,7 +1,12 @@
 use super::reference_operators::{at_outside, wrong_range_shape};
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
+use legacy::{
+    add_in_array_context, is_array_context, legacy_context_intersects, legacy_intersects,
+    remove_in_array_context,
+};
 mod aggregate;
+mod legacy;
 mod reference_parameter;
 mod row_column;
 
@@ -74,7 +79,6 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         | Node::EmptyArgKind
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
-        | Node::WrongRangeKind { .. }
         | Node::SheetSpanKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
@@ -122,7 +126,8 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             }
         }
         Node::Group { .. } if add && at_outside(node) => *node = Node::automatic_at(node.clone()),
-        Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } => {
+        // A range of another workbook too (fixtures/external-link-cached-ranges Refs!B44, T-1526).
+        Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } | Node::WrongRangeKind { .. } => {
             if add {
                 *node = Node::automatic_at(node.clone());
             }
@@ -160,18 +165,13 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::TableNameKind(_) => {
             // noop for now
         }
-        Node::FunctionKind { kind, .. } if is_array_context(kind) => {}
+        Node::FunctionKind { kind, args } if is_array_context(kind) => add_in_array_context(args),
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
-                if matches!(signature.get(index), Some(Signature::Scalar))
-                    && matches!(
-                        run_static_analysis_on_node(arg),
-                        StaticResult::Range(_, _) | StaticResult::Unknown
-                    )
-                {
+                if legacy_intersects(kind, signature.get(index), arg) {
                     add_implicit_intersection(arg, true);
                 } else {
                     add_implicit_intersection(arg, false);
@@ -266,24 +266,19 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
                 remove_redundant_implicit_intersection(operand, add);
             });
         }
-        Node::FunctionKind { kind, .. } if is_array_context(kind) => {}
+        Node::FunctionKind { kind, args } if is_array_context(kind) => {
+            remove_in_array_context(args);
+        }
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
                 // Scalar arguments are an intersecting context; vector arguments
-                // (ranges/arrays) are not.
-                let child_add = matches!(signature.get(index), Some(Signature::Scalar));
+                // (ranges/arrays) are not (`legacy_context_intersects`).
+                let child_add = legacy_context_intersects(kind, signature.get(index), arg);
                 remove_redundant_implicit_intersection(arg, child_add);
             }
         }
     };
-}
-
-/// Legacy formulas evaluate SUMPRODUCT's arguments as arrays, with no implicit intersection inside
-/// (`SUMPRODUCT(SUMIFS(B1:B6,A1:A6,D1:D2))` lifts the criterion where `SUM` intersects it;
-/// probes/ifs-legacy-sumproduct, excel-graph, T-0278), so on export no `@` inside is redundant.
-fn is_array_context(kind: &Function) -> bool {
-    matches!(kind, Function::Sumproduct)
 }
 
 /// The result of the static analysis of a node
