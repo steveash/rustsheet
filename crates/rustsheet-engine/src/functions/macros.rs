@@ -5,6 +5,13 @@ macro_rules! single_number_fn {
     //   2) The operation to apply (e.g. f64::sin)
     ($fn_name:ident, $op:expr) => {
         pub(crate) fn $fn_name(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+            // A NaN result (ACOS(2), ACOSH(-1), ...) is `#NUM!` at once: left as a number it is
+            // swallowed by an enclosing function (`x^0` is 1, `ADDRESS` takes row 0, a comparison is
+            // FALSE) instead of reaching the cell as `#NUM!` (T-1202, gen-m5/gen-m6/gen-m7 cells).
+            let op = |f: f64| match $op(f) {
+                Ok(x) if x.is_nan() => Err(Error::NUM),
+                other => other,
+            };
             // 1) Check exactly one argument
             if args.len() != 1 {
                 return CalcResult::new_args_number_error(cell);
@@ -14,15 +21,15 @@ macro_rules! single_number_fn {
                 // -----------------------------------------
                 // Case A: It's a single number
                 // -----------------------------------------
-                Ok(NumberOrArray::Number(f)) => match $op(f) {
+                Ok(NumberOrArray::Number(f)) => match op(f) {
                     Ok(x) => CalcResult::Number(x),
                     Err(Error::DIV) => CalcResult::Error {
                         error: Error::DIV,
                         origin: cell,
                         message: "Divide by 0".to_string(),
                     },
-                    Err(Error::VALUE) => CalcResult::Error {
-                        error: Error::VALUE,
+                    Err(e @ (Error::VALUE | Error::NUM)) => CalcResult::Error {
+                        error: e,
                         origin: cell,
                         message: "Invalid number".to_string(),
                     },
@@ -46,7 +53,7 @@ macro_rules! single_number_fn {
                                 // If Boolean, treat as 0.0 or 1.0
                                 ArrayNode::Boolean(b) => {
                                     let n = if b { 1.0 } else { 0.0 };
-                                    match $op(n) {
+                                    match op(n) {
                                         Ok(x) => data_row.push(ArrayNode::Number(x)),
                                         Err(Error::DIV) => {
                                             data_row.push(ArrayNode::Error(Error::DIV))
@@ -58,7 +65,7 @@ macro_rules! single_number_fn {
                                     }
                                 }
                                 // If Number, apply directly
-                                ArrayNode::Number(n) => match $op(n) {
+                                ArrayNode::Number(n) => match op(n) {
                                     Ok(x) => data_row.push(ArrayNode::Number(x)),
                                     Err(Error::DIV) => data_row.push(ArrayNode::Error(Error::DIV)),
                                     Err(Error::VALUE) => {
@@ -69,7 +76,7 @@ macro_rules! single_number_fn {
                                 // If String, parse to f64 then apply or #VALUE! error
                                 ArrayNode::String(s) => {
                                     let node = match self.cast_number(&s) {
-                                        Some(f) => match $op(f) {
+                                        Some(f) => match op(f) {
                                             Ok(x) => ArrayNode::Number(x),
                                             Err(Error::DIV) => ArrayNode::Error(Error::DIV),
                                             Err(Error::VALUE) => ArrayNode::Error(Error::VALUE),
@@ -84,7 +91,7 @@ macro_rules! single_number_fn {
                                     data_row.push(e);
                                 }
                                 // Empty cell: treat as 0.0
-                                ArrayNode::Empty => match $op(0.0) {
+                                ArrayNode::Empty => match op(0.0) {
                                     Ok(x) => data_row.push(ArrayNode::Number(x)),
                                     Err(Error::DIV) => data_row.push(ArrayNode::Error(Error::DIV)),
                                     Err(Error::VALUE) => {
