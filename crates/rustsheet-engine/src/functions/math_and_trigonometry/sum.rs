@@ -312,7 +312,7 @@ impl Model {
         let mut reference_error = None;
         for arg in args {
             // A reference (also via IF/INDEX) is a one-cell range: text is skipped.
-            match self.evaluate_picked_reference_arg(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
                     if reference_error.is_none() {
                         if let Err(error) =

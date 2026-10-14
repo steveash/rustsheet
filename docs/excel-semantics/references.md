@@ -257,13 +257,26 @@ workbook is read:
 - a sheet-scoped name of a range, `[1]Defines!NR_Local_Range`, is `#BLOCKED!` (ROWS too; ERROR.TYPE
   11), although a sheet-scoped name of one cell reads its cached value; a sheet the cache does not
   hold, `[1]Nope!$A$1:$B$2`, is `#BLOCKED!`.
+A cached empty string and cached text (T-1550; fixtures/external-link-cached-text, excel-graph,
+cache `Uses` A1 the empty string `t="str"` `<v></v>`, B1 18, A2 12, B2 TRUE, A3 the text "8", A4
+"abc", A5 30):
+- COUNTA counts the cached empty string as a value, as it counts a `=""` cell of this workbook:
+  `COUNTA([1]Uses!$A$1)` 1, over `$A$1:$A$5` 5; `LEN([1]Uses!$A$1)` is 0;
+- GCD and LCM read a cached range as a range of this workbook (coercion.md "GCD / LCM /
+  MULTINOMIAL range cells"): numeric text counts as its number (`GCD(…!$A$2:$A$3)` 4, LCM 24),
+  text, a boolean and the empty string are `#VALUE!` (`GCD`/`LCM` of `$A$2:$A$5`, `$A$2:$B$2`,
+  `$A$1:$A$2`), a one-cell `GCD([1]Uses!$A$3)` over "8" is 8, and blanks past the cache read 0
+  (`GCD(…!$A$5:$A$9)` 30, LCM 0);
+- an area taller than the array bound reads its cached cells: `SUM([1]Uses!$A$2:$B$1048576)` 42,
+  COUNT 2, MAX 30, AVERAGEA 8.6.
 A workbook whose formulas reference a sheet with `refreshError="1"` (`[1]'56737'!$A$1:$B$2`) does
 not open in Excel for the web ("unsupportedWorkbook"), so what that reads is a desktop question.
 Engine: a cached area carries its cache (`external_links.rs`); aggregates and RANK read its cells
 as reference cells, several areas as one row of cells. Engine-only bound (not Excel behavior, which
 is unobservable here): a whole column or row is cut to the extent the cache holds, as a whole
-column of this workbook is cut to its used area; any other area keeps its shape and blanks. The
-array bound on cached ranges (an area or a union's cells above 1,048,576) is a DEVIATION: see
+column of this workbook is cut to its used area; an aggregate that skips blanks cuts any other
+area to that extent too, and every other reader keeps its shape and blanks (T-1550). The
+array bound on the rest (an area or a union's cells above 1,048,576) is a DEVIATION: see
 arrays.md "Array results above 1,048,576 cells". SUBTOTAL, AGGREGATE's reference form and RANK
 read the cached cells through `Model::external_reference_cells`, AVERAGEA coerces them as MAXA
 does, and an automatic `@` on a cached range reads the cached cell it intersects
@@ -274,7 +287,7 @@ cached one inside an aggregate's argument (the engine reads the picked cell as a
 the same way at parse time, so ISREF and a rename see them. A sheet-qualified workbook-scoped name
 (`Sheet!GlobalName`), an unknown `Sheet!Nope` (engine: `#NAME?`) and a missing sheet are UNVERIFIED (T-1459).
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
-Tasks: T-1382, T-1459, T-1460, T-1526
+Tasks: T-1382, T-1459, T-1460, T-1526, T-1550
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in

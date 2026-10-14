@@ -47,3 +47,9 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   readers, lookups, COUNTIF/SUMIF/COUNTBLANK, names, whole columns, unions. A formula over the
   cache's third sheet (`refreshError="1"`) is left out: Excel for the web refuses to open such a
   workbook.
+- `external-link-cached-text.xlsx` (T-1550): `external-link-cached-ranges.xlsx` with sheet `Refs`
+  rewritten (one legacy formula per row in column B, placeholder cached 0) and the cached `Uses`
+  sheet replaced: A1 the empty string (`t="str"`, `<v></v>`), B1 18, A2 12, B2 TRUE, A3 the text
+  "8", A4 "abc", A5 30. It probes COUNTA over the cached empty string, GCD/LCM over cached text,
+  booleans, the empty string and blanks, and SUM/COUNT/MAX/AVERAGEA over an area taller than the
+  array bound.

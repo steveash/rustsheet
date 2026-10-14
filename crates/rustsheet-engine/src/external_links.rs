@@ -25,6 +25,17 @@ use crate::{
 use bitcode::{Decode, Encode};
 use std::collections::HashMap;
 
+/// Whether a reader of a cached area of a linked workbook sees the blanks around the cells the
+/// cache holds ([`Model::external_aggregate_value`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CachedBlanks {
+    /// The area keeps its written shape (only a whole column or row is cut): TEXTJOIN joins its
+    /// blanks, BYROW and a LET variable see its rows.
+    Kept,
+    /// The area is cut to the cells the cache spans: SUM, COUNT, MAX and the like skip blanks.
+    Skipped,
+}
+
 /// A workbook this one links to, as far as Excel cached it in `xl/externalLinks/externalLinkN.xml`
 /// (`externalBook`). The other workbook is never opened (directive 5): a reference into it reads
 /// these cached values (docs/excel-semantics/references.md, "External reference with no cached
@@ -268,13 +279,14 @@ impl Model {
     /// The cells of `areas` an aggregate reads, as reference cells: an array that skips text,
     /// booleans and blanks where SUM, COUNT, AVERAGE, MAX and the like skip them in a range
     /// (`SUM([1]Uses!$A$1)` over cached text is 0, `SUM([1]Uses!$A$1:$B$3)` 15), and MAXA
-    /// coerces them as in a range (10; fixtures/external-link-cached-ranges). Each area is clipped to the cells its cache
-    /// holds, as a whole column of this workbook is clipped to the used area, so
+    /// coerces them as in a range (10; fixtures/external-link-cached-ranges). Each area is
+    /// clipped to the cells its cache holds as `blanks` says ([`Model::clip_to_cache`]), so
     /// `SUM([1]Uses!$B:$B)` reads three rows; several areas are one row of their cells in
     /// formula order. `#BLOCKED!` when the cache does not hold an area's sheet.
     pub(crate) fn external_aggregate_value(
         &self,
         areas: &[ExternalArea],
+        blanks: CachedBlanks,
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let mut rows = Vec::new();
@@ -285,7 +297,7 @@ impl Model {
             let Some(sheet) = area.cache else {
                 return external_blocked(cell);
             };
-            let Some(clipped) = self.clip_to_cache(sheet, *area) else {
+            let Some(clipped) = self.clip_to_cache(sheet, *area, blanks) else {
                 continue;
             };
             total = total.saturating_add(cell_count(clipped));
@@ -318,10 +330,13 @@ impl Model {
             Ok(areas) => areas,
             Err(error) => return Some(Err(error)),
         };
-        Some(match self.external_aggregate_value(&areas, cell) {
-            CalcResult::Array(rows) => Ok(rows.into_iter().flatten().collect()),
-            other => Err(other),
-        })
+        // SUBTOTAL, AGGREGATE and RANK skip blanks and read no cell by its position.
+        Some(
+            match self.external_aggregate_value(&areas, CachedBlanks::Skipped, cell) {
+                CalcResult::Array(rows) => Ok(rows.into_iter().flatten().collect()),
+                other => Err(other),
+            },
+        )
     }
 
     /// How many cells of `areas` the cache holds a value for, as COUNTA counts the non-empty
@@ -350,16 +365,33 @@ impl Model {
         Some(count)
     }
 
-    /// `area` as an aggregate reads it: a whole column or row cut to the cells the cache of
-    /// `sheet` spans, as a whole column of this workbook is cut to its used area (engine bound,
-    /// CLAUDE.md directive 5; Excel's own reach is not observable, `SUM([1]Uses!$B:$B)` reads the
-    /// same), `None` when they share none. Any other area keeps its shape, blanks included
+    /// `area` as an aggregate reads it, `None` when it shares no cell with what the cache of
+    /// `sheet` spans. A whole column or row is cut to the cells the cache spans, as a whole column
+    /// of this workbook is cut to its used area (engine bound, CLAUDE.md directive 5; Excel's own
+    /// reach is not observable, `SUM([1]Uses!$B:$B)` reads the same). With
+    /// [`CachedBlanks::Skipped`] any other area is cut too, which changes no result of a reader
+    /// that skips blanks (`SUM([1]Uses!$A$2:$B$1048576)` adds the cached cells, not the array bound's
+    /// `#ERROR!`; T-1550); with [`CachedBlanks::Kept`] it keeps its shape, blanks included
     /// (`TEXTJOIN("|",FALSE,[1]Uses!$A$1:$B$3)` ends in a blank; fixtures/external-link-cached-ranges).
-    fn clip_to_cache(&self, sheet: CachedSheet, area: ExternalArea) -> Option<ExternalArea> {
+    fn clip_to_cache(
+        &self,
+        sheet: CachedSheet,
+        area: ExternalArea,
+        blanks: CachedBlanks,
+    ) -> Option<ExternalArea> {
         let whole_columns = area.first_row == 1 && area.last_row == LAST_ROW;
         let whole_rows = area.first_column == 1 && area.last_column == LAST_COLUMN;
         if !whole_columns && !whole_rows {
-            return Some(area);
+            // Finding the extent walks the book's cache, so only an area larger than the cache
+            // is cut; a smaller one already reads no more cells than the cache holds.
+            let small = self
+                .workbook
+                .external_books
+                .get(sheet.book)
+                .is_none_or(|book| cell_count(area) <= book.cells.len());
+            if blanks == CachedBlanks::Kept || small {
+                return Some(area);
+            }
         }
         self.cached_extent(sheet)
             .and_then(|extent| area.intersect(extent))

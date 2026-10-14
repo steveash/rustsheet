@@ -7,6 +7,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    external_links::CachedBlanks,
     functions::{logical::IfBranchMode, Function},
     model::Model,
     number_format::cmp_excel_precision,
@@ -307,6 +308,17 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> RefArg {
+        self.reference_arg_reading(node, CachedBlanks::Kept, cell)
+    }
+
+    /// [`Self::evaluate_reference_arg`] with a cached area of a linked workbook read as `blanks`
+    /// says ([`Model::external_aggregate_value`]).
+    fn reference_arg_reading(
+        &mut self,
+        node: &Node,
+        blanks: CachedBlanks,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
         // An IF or CHOOSE that may pick a reference into another workbook is the argument it
         // picks (`SUM(IF(TRUE,…!A1))` is `#BLOCKED!`; probes/external-ref-no-link-ifchoose A3).
         let node = match self.pick_branch(node, cell) {
@@ -321,7 +333,7 @@ impl Model {
         // reference functions read [`Model::external_reference`] first.
         if let Some(areas) = self.external_reference(node, cell) {
             return RefArg::Value(match areas {
-                Ok(areas) => self.external_aggregate_value(&areas, cell),
+                Ok(areas) => self.external_aggregate_value(&areas, blanks, cell),
                 Err(error) => error,
             });
         }
@@ -394,6 +406,17 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> RefArg {
+        self.picked_reference_arg_reading(node, CachedBlanks::Kept, cell)
+    }
+
+    /// [`Self::evaluate_picked_reference_arg`] with a cached area of a linked workbook read as
+    /// `blanks` says.
+    fn picked_reference_arg_reading(
+        &mut self,
+        node: &Node,
+        blanks: CachedBlanks,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
         if let Node::FunctionKind { kind, args } = node.ungrouped() {
             if kind.picks_reference() {
                 if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
@@ -401,7 +424,20 @@ impl Model {
                 }
             }
         }
-        self.evaluate_reference_arg(node, cell)
+        self.reference_arg_reading(node, blanks, cell)
+    }
+
+    /// [`Self::evaluate_picked_reference_arg`] for an aggregate that skips the blanks of a range
+    /// (SUM, COUNT, AVERAGE, AVERAGEA, MIN, MAX and the like): a cached area of a linked
+    /// workbook reads only the cells its cache spans ([`CachedBlanks::Skipped`]), so
+    /// `SUM([1]Uses!$A$2:$B$1048576)` reads the cache instead of tripping the array bound
+    /// (docs/excel-semantics/arrays.md "Array results above 1,048,576 cells"; T-1550).
+    pub(crate) fn evaluate_aggregate_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
+        self.picked_reference_arg_reading(node, CachedBlanks::Skipped, cell)
     }
 
     /// The bottom-right corner of the range `row1:column1..=row2:column2` once a whole-column

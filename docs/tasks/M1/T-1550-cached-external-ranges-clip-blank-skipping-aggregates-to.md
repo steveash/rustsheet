@@ -3,7 +3,7 @@ id: T-1550
 title: "Cached external ranges: clip blank-skipping aggregates to the cache, probe COUNTA over a cached empty string and GCD/LCM over cached text"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -25,11 +25,23 @@ as fixtures/external-link-cached-ranges): COUNTA over a cached `t="str"` empty s
 over a cached range holding text.
 
 ## Acceptance criteria
-- [ ] `SUM`/`COUNT`/`MAX` over a tall cached area read the cached cells (unit test in
+- [x] `SUM`/`COUNT`/`MAX` over a tall cached area read the cached cells (unit test in
       `test_external_links.rs`); the arrays.md DEVIATION names only the readers that keep blanks.
-- [ ] The COUNTA and GCD/LCM questions have oracle values recorded in references.md and the
+- [x] The COUNTA and GCD/LCM questions have oracle values recorded in references.md and the
       engine matches them (or a follow-up is filed).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Blank-skipping aggregates (SUM, COUNT, AVERAGE, AVERAGEA, MIN, MAX and the other `for_each_value`
+statistics, plus SUBTOTAL, AGGREGATE's reference form and RANK through `external_reference_cells`)
+now cut any cached area to the cache extent (`CachedBlanks::Skipped`, via the new
+`Model::evaluate_aggregate_arg`); every other reader (TEXTJOIN, BYROW, LET, lookups, PRODUCT,
+LARGE/SMALL) keeps the written shape (`CachedBlanks::Kept`). New fixture
+fixtures/external-link-cached-text (19 cells, excel-graph): COUNTA counts a cached empty string (1),
+GCD/LCM read cached cells as range cells (numeric text a number; text, booleans and the empty string
+`#VALUE!`; blanks 0), and `SUM([1]Uses!$A$2:$B$1048576)` is 42 (COUNT 2, MAX 30, AVERAGEA 8.6).
+All 19 pass; on main the four tall cells were `#ERROR!`. The arrays.md DEVIATION now names only the
+readers that keep the shape; references.md records the new findings. No follow-ups.
