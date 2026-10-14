@@ -1,0 +1,57 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Aggregate differences SPEC-0009 leaves unevidenced (T-1566): PRODUCT over XLOOKUP/TAKE/DROP-picked cells (B1 is text) vs SUM; direct LAMBDA and blank (LET) values in SUM/PRODUCT/MIN/MAX vs AVERAGE/MEDIAN/COUNT; A-variant error order (A5 #N/A, A6 #VALUE!). Each D cell is ERROR.TYPE of the error, else the value.",
+ "tags": [
+  "M2",
+  "aggregates",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": 1,
+    "A2": 2,
+    "B1": "x",
+    "B2": 5,
+    "A5": {
+     "t": "e",
+     "v": "#N/A",
+     "stored": true
+    },
+    "A6": {
+     "t": "e",
+     "v": "#VALUE!",
+     "stored": true
+    },
+    "D1": "=IF(ISERROR(PRODUCT(XLOOKUP(1,A1:A2,B1:B2),2)),ERROR.TYPE(PRODUCT(XLOOKUP(1,A1:A2,B1:B2),2)),PRODUCT(XLOOKUP(1,A1:A2,B1:B2),2))",
+    "D2": "=IF(ISERROR(SUM(XLOOKUP(1,A1:A2,B1:B2),2)),ERROR.TYPE(SUM(XLOOKUP(1,A1:A2,B1:B2),2)),SUM(XLOOKUP(1,A1:A2,B1:B2),2))",
+    "D3": "=IF(ISERROR(PRODUCT(TAKE(B1:B2,1),2)),ERROR.TYPE(PRODUCT(TAKE(B1:B2,1),2)),PRODUCT(TAKE(B1:B2,1),2))",
+    "D4": "=IF(ISERROR(SUM(TAKE(B1:B2,1),2)),ERROR.TYPE(SUM(TAKE(B1:B2,1),2)),SUM(TAKE(B1:B2,1),2))",
+    "D5": "=IF(ISERROR(PRODUCT(DROP(B1:B2,-1),2)),ERROR.TYPE(PRODUCT(DROP(B1:B2,-1),2)),PRODUCT(DROP(B1:B2,-1),2))",
+    "D6": "=IF(ISERROR(SUM(DROP(B1:B2,-1),2)),ERROR.TYPE(SUM(DROP(B1:B2,-1),2)),SUM(DROP(B1:B2,-1),2))",
+    "D7": "=IF(ISERROR(SUM(LAMBDA(x,x))),ERROR.TYPE(SUM(LAMBDA(x,x))),SUM(LAMBDA(x,x)))",
+    "D8": "=IF(ISERROR(PRODUCT(LAMBDA(x,x),2)),ERROR.TYPE(PRODUCT(LAMBDA(x,x),2)),PRODUCT(LAMBDA(x,x),2))",
+    "D9": "=IF(ISERROR(MIN(LAMBDA(x,x),2)),ERROR.TYPE(MIN(LAMBDA(x,x),2)),MIN(LAMBDA(x,x),2))",
+    "D10": "=IF(ISERROR(MAX(LAMBDA(x,x),2)),ERROR.TYPE(MAX(LAMBDA(x,x),2)),MAX(LAMBDA(x,x),2))",
+    "D11": "=IF(ISERROR(AVERAGE(LAMBDA(x,x),2)),ERROR.TYPE(AVERAGE(LAMBDA(x,x),2)),AVERAGE(LAMBDA(x,x),2))",
+    "D12": "=IF(ISERROR(MEDIAN(LAMBDA(x,x),2)),ERROR.TYPE(MEDIAN(LAMBDA(x,x),2)),MEDIAN(LAMBDA(x,x),2))",
+    "D13": "=IF(ISERROR(COUNT(LAMBDA(x,x),2)),ERROR.TYPE(COUNT(LAMBDA(x,x),2)),COUNT(LAMBDA(x,x),2))",
+    "D14": "=IF(ISERROR(SUM(LET(b,Z99,b),5)),ERROR.TYPE(SUM(LET(b,Z99,b),5)),SUM(LET(b,Z99,b),5))",
+    "D15": "=IF(ISERROR(PRODUCT(LET(b,Z99,b),5)),ERROR.TYPE(PRODUCT(LET(b,Z99,b),5)),PRODUCT(LET(b,Z99,b),5))",
+    "D16": "=IF(ISERROR(MIN(LET(b,Z99,b),5)),ERROR.TYPE(MIN(LET(b,Z99,b),5)),MIN(LET(b,Z99,b),5))",
+    "D17": "=IF(ISERROR(MAX(LET(b,Z99,b),-5)),ERROR.TYPE(MAX(LET(b,Z99,b),-5)),MAX(LET(b,Z99,b),-5))",
+    "D18": "=IF(ISERROR(AVERAGE(LET(b,Z99,b),5)),ERROR.TYPE(AVERAGE(LET(b,Z99,b),5)),AVERAGE(LET(b,Z99,b),5))",
+    "D19": "=IF(ISERROR(COUNT(LET(b,Z99,b),5)),ERROR.TYPE(COUNT(LET(b,Z99,b),5)),COUNT(LET(b,Z99,b),5))",
+    "D20": "=IF(ISERROR(MAXA(A5,#DIV/0!)),ERROR.TYPE(MAXA(A5,#DIV/0!)),MAXA(A5,#DIV/0!))",
+    "D21": "=IF(ISERROR(MAXA(#DIV/0!,A5)),ERROR.TYPE(MAXA(#DIV/0!,A5)),MAXA(#DIV/0!,A5))",
+    "D22": "=IF(ISERROR(AVERAGEA(A5,1/0)),ERROR.TYPE(AVERAGEA(A5,1/0)),AVERAGEA(A5,1/0))",
+    "D23": "=IF(ISERROR(AVERAGEA(1/0,A5)),ERROR.TYPE(AVERAGEA(1/0,A5)),AVERAGEA(1/0,A5))",
+    "D24": "=IF(ISERROR(MINA(A5,A6)),ERROR.TYPE(MINA(A5,A6)),MINA(A5,A6))",
+    "D25": "=IF(ISERROR(MINA(A6,A5)),ERROR.TYPE(MINA(A6,A5)),MINA(A6,A5))",
+    "D26": "=IF(ISERROR(MAXA(A5,A6)),ERROR.TYPE(MAXA(A5,A6)),MAXA(A5,A6))",
+    "D27": "=IF(ISERROR(AVERAGEA(A6,A5)),ERROR.TYPE(AVERAGEA(A6,A5)),AVERAGEA(A6,A5))"
+   }
+  }
+ ]
+}
