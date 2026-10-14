@@ -24,4 +24,4 @@ Performance review of T-1465 (MINOR): `map_reduce.rs` and `scan.rs` build a `Vec
 -
 
 ## Outcome
-`call_lambda_with_values` takes the LAMBDA and its arguments by reference (`&CalcResult`, `&[CalcResult]`); MAP reuses one argument buffer, REDUCE, SCAN, BYROW/BYCOL and the (row, column) index loop pass a stack array and no longer clone the LAMBDA per element. `lambda_definition` borrows too. No behavior change; eval delta none; existing lambda unit tests and probes pass.
+`call_lambda_with_values` takes the LAMBDA and its arguments by reference (`&CalcResult`, `&[CalcResult]`); MAP reuses one argument buffer, REDUCE, SCAN, BYROW/BYCOL and the (row, column) index loop pass a stack array and no longer allocate an argument Vec per element (the LAMBDA clone was only an integer id, so the gain is the Vec). `lambda_definition` borrows too. No behavior change; eval delta none; existing lambda unit tests and probes pass.
