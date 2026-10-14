@@ -6,7 +6,7 @@
 // that a spill into it restarts the pass like a spill into a recorded cell,
 // and so that a whole-column read does not record one entry per cell.
 
-use crate::test::util::new_empty_model;
+use crate::test::util::{balanced_union, new_empty_model};
 use crate::Model;
 
 fn restarts(model: &Model) -> u32 {
@@ -166,4 +166,43 @@ fn an_xlookup_over_a_whole_column_sees_a_spill_beyond_the_used_area() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "5");
     assert_eq!(restarts(&model), 0);
+}
+
+// T-1463: `MAX_AREAS` copies of A:A walked once per row of a MAP over an empty sheet record one
+// rectangle, not one per area per walk (2 x 2^24 before T-1497). The walk budget stops the
+// formula (`#VALUE!`), as it does on main.
+#[test]
+fn many_copies_of_a_whole_column_in_a_map_record_one_rectangle() {
+    let mut model = new_empty_model();
+    let union = balanced_union("A:A", crate::reference_operators::MAX_AREAS);
+    model._set(
+        "Z1",
+        &format!("=LET(u,{union},SUM(MAP(SEQUENCE(16),LAMBDA(r,SUM(u)))))"),
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("Z1"), "#VALUE!");
+    assert_eq!(model.evaluation.seen_ranges.len(), 1);
+}
+
+// DEVIATION (references.md "Seen-range cap"): one formula may put at most MAX_SEEN_RANGES
+// distinct rectangles on record. Each whole row OFFSET picks below the used area is one, so a MAP
+// over MAX_SEEN_RANGES rows fits and one more row is `#VALUE!`, uncatchable by IFERROR; the
+// formulas next to it keep their own budgets.
+#[test]
+fn a_formula_records_at_most_max_seen_ranges_rectangles() {
+    use crate::area_budget::{MAX_SEEN_RANGES, TOO_MANY_SEEN_RANGES};
+    let rows = |n: usize| format!("MAP(SEQUENCE({n}),LAMBDA(r,SUM(OFFSET(1:1,r,0))))");
+    let mut model = new_empty_model();
+    model._set("A1", &format!("=SUM({})", rows(MAX_SEEN_RANGES)));
+    model._set("B1", &format!("=SUM({})", rows(MAX_SEEN_RANGES + 1)));
+    model._set(
+        "C1",
+        &format!("=IFERROR(SUM({}),1)", rows(MAX_SEEN_RANGES + 1)),
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0");
+    assert_eq!(model._get_text("B1"), "#VALUE!");
+    assert_eq!(model._get_error_message("B1"), TOO_MANY_SEEN_RANGES);
+    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert!(model.evaluation.seen_ranges.len() <= 3 * MAX_SEEN_RANGES);
 }

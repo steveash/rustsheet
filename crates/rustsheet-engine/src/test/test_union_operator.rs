@@ -8,8 +8,7 @@
 use crate::area_budget::{MAX_AREA_PAIRS, TOO_MANY_AREA_PAIRS};
 use crate::model::Model;
 use crate::reference_operators::{MAX_AREAS, TOO_MANY_AREAS};
-use crate::test::util::new_empty_model;
-use crate::types::{Cell, FormulaValue};
+use crate::test::util::{balanced_union, new_empty_model};
 
 /// Sheet1 (the formulas) and `Data`, with values like the gen-m1 case's.
 fn model() -> Model {
@@ -177,36 +176,6 @@ fn union_survives_row_insertion() {
     assert_eq!(model._get_text("A1"), "a");
 }
 
-/// The message of the error in formula cell `cell`, which tells the area caps apart from the
-/// plain `#VALUE!` of a reference of several areas.
-fn error_message(model: &Model, cell: &str) -> String {
-    match model._get_cell(cell) {
-        Cell::CellFormula {
-            v: FormulaValue::Error { m, .. },
-            ..
-        }
-        | Cell::ArrayFormula {
-            v: FormulaValue::Error { m, .. },
-            ..
-        } => m.clone(),
-        other => format!("not an error: {other:?}"),
-    }
-}
-
-/// A union of `leaves` copies of `leaf`, nested as a balanced tree so that its depth, about
-/// three levels per halving, stays far under the parser's `MAX_FORMULA_DEPTH`.
-fn balanced_union(leaf: &str, leaves: usize) -> String {
-    if leaves <= 1 {
-        return leaf.to_string();
-    }
-    let half = leaves / 2;
-    format!(
-        "({},{})",
-        balanced_union(leaf, half),
-        balanced_union(leaf, leaves - half)
-    )
-}
-
 /// An intersection of exactly [`MAX_AREAS`] areas: two unions of 256 copies of `A1:A2`.
 fn maximal_intersection() -> String {
     let side = 1 << 8;
@@ -223,7 +192,7 @@ fn intersection_of_unions_at_the_area_cap() {
     model._set("Z1", &format!("={intersection} A1"));
     model.evaluate();
     assert_eq!(model._get_text("Z1"), "#VALUE!");
-    assert_eq!(error_message(&model, "Z1"), "Reference of several areas");
+    assert_eq!(model._get_error_message("Z1"), "Reference of several areas");
 }
 
 #[test]
@@ -236,7 +205,7 @@ fn union_of_two_maximal_intersections_is_over_the_area_cap() {
     model.evaluate();
     for cell in ["Z1", "Z2"] {
         assert_eq!(model._get_text(cell), "#VALUE!", "{cell}");
-        assert_eq!(error_message(&model, cell), TOO_MANY_AREAS, "{cell}");
+        assert_eq!(model._get_error_message(cell), TOO_MANY_AREAS, "{cell}");
     }
 }
 
@@ -254,7 +223,7 @@ fn union_chain_over_the_area_cap() {
     model.evaluate();
     for cell in ["Z1", "Z2", "Z3", "Z4"] {
         assert_eq!(model._get_text(cell), "#VALUE!", "{cell}");
-        assert_eq!(error_message(&model, cell), TOO_MANY_AREAS, "{cell}");
+        assert_eq!(model._get_error_message(cell), TOO_MANY_AREAS, "{cell}");
     }
 }
 
@@ -268,7 +237,7 @@ fn balanced_union_over_the_area_cap() {
     model.evaluate();
     for cell in ["Z1", "Z2"] {
         assert_eq!(model._get_text(cell), "#VALUE!", "{cell}");
-        assert_eq!(error_message(&model, cell), TOO_MANY_AREAS, "{cell}");
+        assert_eq!(model._get_error_message(cell), TOO_MANY_AREAS, "{cell}");
     }
 }
 
@@ -283,9 +252,9 @@ fn chain_of_cuts_over_the_pair_budget() {
     model._set("Z1", &format!("={intersection}{}", " A1".repeat(cuts - 1)));
     model._set("Z2", &format!("={intersection}{}", " A1".repeat(cuts)));
     model.evaluate();
-    assert_eq!(error_message(&model, "Z1"), "Reference of several areas");
+    assert_eq!(model._get_error_message("Z1"), "Reference of several areas");
     assert_eq!(model._get_text("Z2"), "#VALUE!");
-    assert_eq!(error_message(&model, "Z2"), TOO_MANY_AREA_PAIRS);
+    assert_eq!(model._get_error_message("Z2"), TOO_MANY_AREA_PAIRS);
 }
 
 #[test]
@@ -307,6 +276,6 @@ fn a_let_bound_union_shares_the_pair_budget_across_arguments() {
     model.evaluate();
     assert_eq!(model._get_text("Z1"), (2 * MAX_AREAS).to_string());
     assert_eq!(model._get_text("Z2"), "#VALUE!");
-    assert_eq!(error_message(&model, "Z2"), TOO_MANY_AREA_PAIRS);
+    assert_eq!(model._get_error_message("Z2"), TOO_MANY_AREA_PAIRS);
     assert_eq!(model._get_text("Z3"), MAX_AREAS.to_string());
 }
