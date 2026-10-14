@@ -135,11 +135,11 @@ impl Model {
             Err(e) => return e,
         };
 
-        if sorted.len() < 2 {
+        if sorted.is_empty() {
             return CalcResult::new_error(
                 Error::NA,
                 cell,
-                "PERCENTRANK.INC: array must have at least 2 values".to_string(),
+                "PERCENTRANK.INC: empty array".to_string(),
             );
         }
 
@@ -152,7 +152,7 @@ impl Model {
             match self.get_number(&args[2], cell) {
                 Ok(v) => {
                     let s = v.floor() as i32;
-                    if s < 1 {
+                    if s < 1 && sorted.len() > 1 {
                         return CalcResult::new_error(
                             Error::NUM,
                             cell,
@@ -176,6 +176,10 @@ impl Model {
             );
         }
 
+        if n == 1 {
+            // One value equal to x ranks 1 (EXC too, not 0.5); any numeric significance leaves 1 (probes/percentrank-single-value B9, B14-B19).
+            return CalcResult::Number(1.0);
+        }
         let rank = percentrank_inc_impl(&sorted, x);
         let factor = 10f64.powi(sig);
         let result = (rank * factor).floor() / factor;
@@ -215,7 +219,7 @@ impl Model {
             match self.get_number(&args[2], cell) {
                 Ok(v) => {
                     let s = v.floor() as i32;
-                    if s < 1 {
+                    if s < 1 && sorted.len() > 1 {
                         return CalcResult::new_error(
                             Error::NUM,
                             cell,
@@ -231,7 +235,7 @@ impl Model {
         };
 
         let n = sorted.len();
-        // EXC range is strictly inside the array bounds
+        // Unlike the documentation, x at either end of the array is in range
         if x < sorted[0] || x > sorted[n - 1] {
             return CalcResult::new_error(
                 Error::NA,
@@ -240,6 +244,10 @@ impl Model {
             );
         }
 
+        if n == 1 {
+            // One value equal to x ranks 1 (EXC too, not 0.5); any numeric significance leaves 1 (probes/percentrank-single-value B9, B14-B19).
+            return CalcResult::Number(1.0);
+        }
         let rank = percentrank_exc_impl(&sorted, x);
         let factor = 10f64.powi(sig);
         let result = (rank * factor).floor() / factor;
