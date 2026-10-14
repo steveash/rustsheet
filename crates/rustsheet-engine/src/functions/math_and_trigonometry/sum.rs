@@ -2,7 +2,7 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::reference_operators::RefArg;
 
 use crate::{
-    arithmetic::snap_near_zero,
+    arithmetic::{extended_sum, snap_near_zero},
     calc_result::CalcResult,
     expressions::parser::{ArrayNode, Node},
     expressions::token::Error,
@@ -262,7 +262,7 @@ impl SumParts {
     pub(crate) fn add(&mut self, value: f64) {
         self.before_last = self.total;
         self.last = value;
-        self.total += value;
+        self.total = extended_sum(self.total, value);
     }
 
     /// The total with its final addition snapped by [`snap_near_zero`].

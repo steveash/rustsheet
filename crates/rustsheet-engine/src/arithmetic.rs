@@ -27,14 +27,14 @@ pub(crate) fn bcast_idx(len: usize, i: usize) -> Option<usize> {
 /// `x + y`; a sum beyond the double range is `#NUM!` at once, like a product
 /// (probes/arith-overflow Calc!B1:B5, excel-graph).
 pub(crate) fn plus(x: f64, y: f64) -> Result<f64, Error> {
-    finite_or_overflow(x + y)
+    finite_or_overflow(extended_sum(x, y))
 }
 
 /// `x - y`; a difference beyond the double range is `#NUM!` (probes/arith-overflow Calc!B2:B3).
 /// A subnormal difference is kept, unlike a product's: `(3E-308-2.5E-308)=0` is FALSE
 /// (probes/subnormal-function-results C69, T-1027).
 pub(crate) fn minus(x: f64, y: f64) -> Result<f64, Error> {
-    finite_or_overflow(x - y)
+    finite_or_overflow(extended_sum(x, -y))
 }
 
 /// `value`, or `#NUM!` beyond the double range; subnormals are kept (addition, subtraction).
@@ -113,6 +113,77 @@ pub(crate) fn extended_product(x: f64, y: f64) -> f64 {
         x.is_sign_negative() != y.is_sign_negative(),
     )
     .unwrap_or(plain)
+}
+
+/// Whether `plain = x + y` can differ from the twice-rounded sum. The rounding error `e` of the
+/// addition is found exactly (Knuth's `TwoSum`); the first rounding to 64 bits can land on a double
+/// midpoint, and so change the result, only when `|e|` is within 2^-8 of half a unit in the last
+/// place of the sum (or of a quarter, below a power of two, where the next lower double is closer).
+/// An exact sum and every other error keep `plain`, so the 128-bit path runs for few additions.
+fn sum_may_round_twice(x: f64, y: f64, plain: f64) -> bool {
+    let virtual_y = plain - x;
+    let error = (x - (plain - virtual_y)) + (y - virtual_y);
+    if error == 0.0 {
+        return false;
+    }
+    // The unit in the last place of `plain`, a power of two (`plain` is normal).
+    let ulp = f64::from_bits(plain.to_bits() & (0x7FF << 52)) * f64::EPSILON;
+    let ratio = error.abs() / ulp;
+    (ratio - 0.5).abs() <= 1.0 / 256.0 || (ratio - 0.25).abs() <= 1.0 / 256.0
+}
+
+/// `x + y` rounded twice, first to a 64-bit significand and then to a double, like
+/// [`extended_quotient`] (docs/excel-semantics/numbers.md "Division rounds twice",
+/// probes-numeric/double-rounding-ops A33-A64, excel-graph). The sum is formed exactly in 128 bits.
+/// These give the plain `x + y`: a zero, subnormal or non-finite operand or result; a difference
+/// that cancels down to 53 bits or fewer (exact in a double); and operands whose lowest-bit
+/// exponents are 70 or more apart (the smaller lies far under half a 64-bit ulp of the larger, so
+/// both roundings return the larger operand, which is also the plain sum).
+pub(crate) fn extended_sum(x: f64, y: f64) -> f64 {
+    let plain = x + y;
+    if !plain.is_normal() || !x.is_normal() || !y.is_normal() || !sum_may_round_twice(x, y, plain) {
+        return plain;
+    }
+    let (x_significand, x_exponent) = significand_and_exponent(x);
+    let (y_significand, y_exponent) = significand_and_exponent(y);
+    // `high` has the larger exponent for its lowest bit; `low` is aligned down to it.
+    let (
+        (high_significand, high_exponent, high_negative),
+        (low_significand, low_exponent, low_negative),
+    ) = if x_exponent >= y_exponent {
+        (
+            (x_significand, x_exponent, x < 0.0),
+            (y_significand, y_exponent, y < 0.0),
+        )
+    } else {
+        (
+            (y_significand, y_exponent, y < 0.0),
+            (x_significand, x_exponent, x < 0.0),
+        )
+    };
+    let Ok(gap) = u32::try_from(high_exponent - low_exponent) else {
+        return plain;
+    };
+    if gap >= 70 {
+        return plain;
+    }
+    let aligned = u128::from(high_significand) << gap;
+    let low_magnitude = u128::from(low_significand);
+    let (magnitude, negative) = if high_negative == low_negative {
+        (aligned + low_magnitude, high_negative)
+    } else if aligned >= low_magnitude {
+        (aligned - low_magnitude, high_negative)
+    } else {
+        (low_magnitude - aligned, low_negative)
+    };
+    // Cancellation can leave fewer than 53 bits (below 2^52), which a double holds exactly: the
+    // plain sum.
+    if magnitude >> 52 == 0 {
+        return plain;
+    }
+    let (extended, shift) = round_to_bits(magnitude, 64, false);
+    // A double-rounded value past the range (no probe reaches it) falls back to the plain sum.
+    round_extended_to_double(extended, low_exponent + shift, negative).unwrap_or(plain)
 }
 
 /// The 64-bit `extended·2^exponent` rounded to a double (second rounding: the value is exact now,
@@ -777,8 +848,28 @@ impl Model {
 
 #[cfg(test)]
 mod power_tests {
-    use super::{divide, extended_product, extended_quotient, power, times};
+    use super::{
+        divide, extended_product, extended_quotient, extended_sum, minus, plus, power, times,
+    };
     use crate::expressions::token::Error;
+
+    // probes-numeric/double-rounding-ops A33 (excel-graph, T-1496): a sum whose single rounding is
+    // the next double up.
+    #[test]
+    fn sum_rounds_twice() {
+        let a = 1.0 + 256_568_457_449_524.0 * f64::EPSILON;
+        let b = (1.0 + 26_897_232_841_496.0 * f64::EPSILON) * 2f64.powi(-32);
+        assert_eq!(plus(a, b), Ok(1.056_969_642_004_825_3));
+        assert_eq!(minus(a, -b), Ok(1.056_969_642_004_825_3));
+        assert_eq!(plus(-a, -b), Ok(-1.056_969_642_004_825_3));
+        // Mixed signs with partial cancellation, and the 70-bit gap boundary.
+        assert_eq!(plus(a, -(b / 2.0)), Ok(a - b / 2.0));
+        assert_eq!(extended_sum(1.0, 2f64.powi(-70)), 1.0);
+        assert_eq!(extended_sum(1.0, 1e-300), 1.0);
+        assert_eq!(extended_sum(0.5, -0.5), 0.0);
+        assert_eq!(extended_sum(0.0, 5.0), 5.0);
+        assert_eq!(extended_sum(f64::MAX, f64::MAX), f64::INFINITY);
+    }
 
     // probes-numeric/double-rounding-ops A1 (excel-graph, T-1496): a full-significand product whose
     // single rounding is a different double.
