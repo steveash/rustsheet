@@ -1377,7 +1377,7 @@ and under SUMPRODUCT IF's condition and IFERROR's and IFNA's value
 (`for_each_array_context_condition`); `remove_redundant_implicit_intersection` mirrors it so the
 export drops exactly those `@`s. Unprobed: the arguments after the first of CONCAT, GCD and LCM and TEXTJOIN's delimiter and ignore-empty (the engine
 intersects every argument of these functions), the arithmetic argument of the compatibility
-aggregates other than MODE are in `legacy_value_operand` too (T-1556), IFERROR/IFNA nested below another
+aggregates RANK, RANK.EQ, RANK.AVG, COUNTBLANK and PERCENTRANK.EXC (T-1556; the others are in `legacy_value_operand`), IFERROR/IFNA nested below another
 function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, and the other control functions
 (CHOOSE's index under SUMPRODUCT lifts, T-0294).
 Status: VERIFIED
