@@ -1354,17 +1354,18 @@ impl Model {
         if discount <= 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "discount should be >0".to_string());
         }
-        // days to maturity
         let d_m = maturity - settlement;
         let result = if d_m < 183.0 {
             365.0 * discount / (360.0 - discount * d_m)
         } else {
-            // The bond-equivalent yield solving (1 + y/2)(1 + (d_m - year/2) y / year) = 100/price,
-            // in Excel's formulation and order: the price is `100 - discount*d_m*100/360` and
-            // `t = d_m/year`. Fitted on ironcalc-calc TBILLs.xlsx D4:D10, D24, D26, D28, D30
-            // (Excel-cached, bit-exact; docs/excel-semantics/financial.md "TBILLEQ and TBILLYIELD").
+            // The root of (1 + y/2)(1 + (d_m - year/2) y / year) = 100/price in Excel's form and
+            // order, fitted bit-exact on ironcalc-calc TBILLs.xlsx D4:D10, D24:D30; a price of 0 is
+            // `#NUM!` (probes/tbilleq-zero-price A1:A2; financial.md "TBILLEQ and TBILLYIELD").
             let year = if d_m == 366.0 { 366.0 } else { 365.0 };
             let price = 100.0 - discount * d_m * 100.0 / 360.0;
+            if price == 0.0 {
+                return CalcResult::new_error(Error::NUM, cell, "Price is zero".to_string());
+            }
             let t = d_m / year;
             (-t + (t * t - (2.0 * t - 1.0) * (1.0 - 100.0 / price)).sqrt()) / (t - 0.5)
         };

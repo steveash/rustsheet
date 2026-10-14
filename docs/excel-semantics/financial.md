@@ -415,6 +415,10 @@ the root of the semi-annual equivalence in this form: `price = 100 - rate*DSM*10
 Solving the same equation as a general quadratic `a y² + b y + c` is 1-2 ulps off, and up to
 ~7e-15 relative at 183 days (`TBILLEQ(2040,2223,0.8)` is 1.364497682211261). Writing the price as
 `100*(1 - rate*DSM/360)` matches 5 of the 7 fitted cells but misses `rate` 0.1 and 1 at 318 days.
+At the error boundary: a negative price is `#NUM!` (D29, D31) and so is a price of exactly 0 from
+183 days (`TBILLEQ(1000,1200,1.8)`, `TBILLEQ(1000,1360,1)`), but up to 182 days a zero denominator
+gives **0**, not an error: `TBILLEQ(1000,1100,3.6)` is 0 (probes/tbilleq-zero-price, excel-graph,
+2026-10-14). Ours: that 0 is not matched yet (we give `#DIV/0!`; T-1540).
 Evidence: ironcalc-calc/FINANCIAL/TBILLs.xlsx D2:D31, R2:R31 and L5:L26 (Excel-cached, Microsoft
 Macintosh Excel; all 273 cells bit-exact, T-1475); the same formulation is bit-exact on the excel-graph
 probes fin-argument-modes H313, date-system-1904-financial A29:A30 and -shift A32.

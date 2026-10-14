@@ -46,4 +46,6 @@ written with `price = 100 - rate*DSM*100/360` and `t = DSM/Y`, replacing the gen
 Both were fitted on the Excel-cached cells (docs/excel-semantics/financial.md "TBILLEQ and
 TBILLYIELD"). Eval: ironcalc-calc known failures 1474 -> 1447 (TBILLs.xlsx 273/273), probes
 -4 (fin-argument-modes H313, date-system-1904-financial A29:A30, -shift A32), with 0 regressions.
+New probe tbilleq-zero-price 3/4 (A3, the ≤182-day zero denominator, filed as T-1540). Follow-up T-1539
+(zero-day TBILLYIELD).
 
