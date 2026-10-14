@@ -15,6 +15,15 @@ fn countblank_needs_reference(cell: CellReferenceIndex) -> CalcResult {
     )
 }
 
+/// Whether COUNTBLANK counts a cell's value as blank: empty, or the empty string.
+fn is_countblank_blank(value: &CalcResult) -> bool {
+    match value {
+        CalcResult::EmptyCell | CalcResult::EmptyArg => true,
+        CalcResult::String(s) => s.is_empty(),
+        _ => false,
+    }
+}
+
 impl Model {
     pub(crate) fn fn_count(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
@@ -135,12 +144,11 @@ impl Model {
             // cache: blank when the cache holds nothing or "" there (T-1382). It reaches here as a
             // value, which COUNTBLANK would otherwise reject as not a reference (T-1437).
             if let Some(value) = self.external_reference_value(arg, cell) {
-                let blank = match value {
-                    CalcResult::EmptyCell | CalcResult::EmptyArg => true,
-                    CalcResult::String(s) => s.is_empty(),
-                    _ => false,
-                };
-                return CalcResult::Number(if blank { 1.0 } else { 0.0 });
+                return CalcResult::Number(if is_countblank_blank(&value) {
+                    1.0
+                } else {
+                    0.0
+                });
             }
             // COUNTBLANK over the cells of another workbook is `#VALUE!`
             // (probes/external-ref-no-link-index A9); a cached `[n]` cell is its value.
@@ -205,10 +213,8 @@ impl Model {
                         &[Range { left, right }],
                         cell,
                         |_, value| {
-                            match value {
-                                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                                CalcResult::String(s) if s.is_empty() => {}
-                                _ => filled += 1.0,
+                            if !is_countblank_blank(&value) {
+                                filled += 1.0;
                             }
                             Ok(())
                         },

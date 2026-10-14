@@ -156,7 +156,8 @@ IF and CHOOSE picking an external reference (follow-up task), INDEX with an inde
 (`#BLOCKED!`, UNVERIFIED), and cached multi-cell `[n]` ranges (INDEX, unions and the other
 reference paths above read a `[n]` reference as one with no cache). A one-cell `[n]Sheet!A1` reads
 the cache (`external_links.rs`, below; T-1382), in the aggregates, COUNTA and COUNTBLANK too
-(`Model::uncached_external_reference`). UNVERIFIED (not probed, T-1487): COUNTA
+(`Model::uncached_external_reference`; COUNTBLANK reads the cached cell itself). UNVERIFIED (not probed, T-1487):
+COUNTBLANK counts a cached "" as blank and a cached error as 0, as for a local cell; COUNTA
 counts an external reference that gives an error instead (`COUNTA((…!A1,E1))`, a disjoint
 intersection, INDEX past the area) as 1, as it does a local error argument; OFFSET and COUNTBLANK
 give their `#VALUE!` before evaluating their other arguments (`OFFSET(…!A1,1/0,1)` is `#VALUE!`). Unprobed: a `[n]` index with no
