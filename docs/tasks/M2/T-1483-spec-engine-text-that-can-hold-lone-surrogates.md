@@ -3,7 +3,7 @@ id: T-1483
 title: "Spec: engine text that can hold lone surrogates (decision 0033 reopened)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
