@@ -211,12 +211,88 @@ fn a_union_walked_by_a_lambda_costs_what_its_data_costs() {
 }
 
 #[test]
+fn a_union_walk_costs_its_own_columns_not_the_rows_others_fill() {
+    // T-1502: probes/union-walk-repeated-in-lambda Calc!E6 (excel-graph, 2026-10-13, T-1462) is
+    // 80000 in Excel; the value is inferred for this sheet, which adds 9,000 rows in column G that
+    // the sum does not read. With them a walk of B:B used to find every one
+    // of them and pay a step each, 2*10^8 steps for the MAP; through the column index each walk
+    // visits only the cells of B and C.
+    let mut model = new_empty_model();
+    for (cell, value) in [("B1", "5"), ("B10000", "1"), ("C10000", "2")] {
+        model._set(cell, value);
+    }
+    for row in 1..=9_000 {
+        model._set(&format!("G{row}"), "1");
+    }
+    results(
+        &mut model,
+        &[(
+            "E6",
+            "=SUM(MAP(A1:A10000,LAMBDA(r,SUM((B:B,C:C)))))",
+            "80000",
+        )],
+    );
+}
+
+#[test]
+fn only_a_union_area_over_more_than_a_chunk_of_rows_builds_the_column_index() {
+    // A short area gains nothing from the index (its row walk is a chunk at most), so it leaves
+    // the sheet without one, and its writes keep paying nothing for it.
+    let mut model = new_empty_model();
+    for row in 1..=3_000 {
+        model._set(&format!("A{row}"), "1");
+    }
+    model._set("Z1", "=SUM((A1:A1000,A5))");
+    model.evaluate();
+    assert_eq!(model._get_text("Z1"), "1001");
+    let indexed = |model: &Model| {
+        model
+            .workbook
+            .worksheet(0)
+            .unwrap()
+            .sheet_data
+            .has_column_index()
+    };
+    assert!(!indexed(&model));
+    model._set("Z2", "=SUM((A:A,A5))");
+    model.evaluate();
+    assert_eq!(model._get_text("Z2"), "3001");
+    assert!(indexed(&model));
+}
+
+#[test]
+fn an_indexed_union_walk_meets_cells_in_row_major_order() {
+    // The first error in row-major order is the result, as in the dense walk
+    // (references.md "Union area cap"): B1 comes before A2 although A is walked first. A2000
+    // makes the whole columns span more than a chunk of rows, so they take the index walk.
+    let mut model = new_empty_model();
+    for (cell, value) in [("A2", "=1/0"), ("B1", "=NA()"), ("A3", "4"), ("A2000", "1")] {
+        model._set(cell, value);
+    }
+    for column in [
+        "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+    ] {
+        model._set(&format!("{column}5"), "1");
+    }
+    results(
+        &mut model,
+        &[
+            ("Z1", "=SUM((A:B,A3))", "#N/A"),
+            ("Z2", "=SUM((A3:B3,A3))", "8"),
+            // seventeen columns with cells: the row walk, same order
+            ("Z3", "=SUM((A:Q,A3))", "#N/A"),
+            ("Z4", "=SUM((A3:Q5,A3))", "23"),
+        ],
+    );
+}
+
+#[test]
 fn a_let_bound_union_shares_the_walk_budget_across_arguments() {
     // DEVIATION (references.md "Union area cap"): the formula, not each argument, may take
     // MAX_AREA_WALK steps of union walks. Over 65,536 filled rows one walk of A:A is a step for
-    // the area, 65,536 cells and 4,160 steps of row slots (66,559 slots), so sixteen copies are
-    // 1,115,152 steps: fifteen arguments of them (16,727,280) fit in 2^24 and a sixteenth is past
-    // it.
+    // the area, one to find its column in the column index, 1,025 reads of 64 rows from it and
+    // 65,536 cells (66,563 steps), so sixteen copies are 1,065,008 steps: fifteen arguments of
+    // them (15,975,120) fit in 2^24 and a sixteenth (17,040,128) is past it.
     let mut model = model_with_ones_in_column_a(1 << 16);
     let union = balanced_union("A:A", 16);
     let within = vec!["x"; 15].join(",");
@@ -233,7 +309,7 @@ fn a_let_bound_union_shares_the_walk_budget_across_arguments() {
 fn a_dense_union_repeated_by_a_lambda_is_bounded() {
     // DEVIATION (directive 5): the walk budget is per formula run, so a LAMBDA repeating a
     // walk of dense data stops at MAX_AREA_WALK steps: 300 walks of (A:A,A:A) over 65,536
-    // filled rows are 41,818,200 steps, past it.
+    // filled rows are 39,937,800 steps, past it.
     let mut model = model_with_ones_in_column_a(1 << 16);
     model._set("Z1", "=SUM(MAP(A1:A300,LAMBDA(r,SUM((A:A,A:A)))))");
     model.evaluate();
