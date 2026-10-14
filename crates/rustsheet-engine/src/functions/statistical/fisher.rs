@@ -6,6 +6,16 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
+/// Largest (truncated) degrees of freedom Excel accepts for the F family (F.DIST, F.DIST.RT,
+/// F.INV, F.INV.RT, FDIST, FINV): either df above 1E10 is `#NUM!`, the pdf included. Without the
+/// guard `statrs`' quantile search does not finish for a huge df.
+/// Excel: see docs/excel-semantics/statistics.md#f-distribution-df-limit-t-1530
+const F_DF_MAX: f64 = 1e10;
+
+fn f_df_ok(df: f64) -> bool {
+    (1.0..=F_DF_MAX).contains(&df)
+}
+
 impl Model {
     // FISHER(x) = 0.5 * ln((1 + x) / (1 - x))
     pub(crate) fn fn_fisher(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -101,7 +111,7 @@ impl Model {
         if x < 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "x must be >= 0 in F.DIST".to_string());
         }
-        if df1 < 1.0 || df2 < 1.0 {
+        if !f_df_ok(df1) || !f_df_ok(df2) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
@@ -160,7 +170,7 @@ impl Model {
                 "x must be >= 0 in F.DIST.RT".to_string(),
             );
         }
-        if df1 < 1.0 || df2 < 1.0 {
+        if !f_df_ok(df1) || !f_df_ok(df2) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
@@ -220,7 +230,7 @@ impl Model {
                 "probability must be in [0,1] in F.INV".to_string(),
             );
         }
-        if df1 < 1.0 || df2 < 1.0 {
+        if !f_df_ok(df1) || !f_df_ok(df2) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
@@ -273,7 +283,7 @@ impl Model {
                 "probability must be in (0,1] in F.INV.RT".to_string(),
             );
         }
-        if df1 < 1.0 || df2 < 1.0 {
+        if !f_df_ok(df1) || !f_df_ok(df2) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,

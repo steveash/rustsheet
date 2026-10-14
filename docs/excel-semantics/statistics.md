@@ -541,3 +541,10 @@ Oracle sweep (excel-graph), 16 cases, 34-102 cells each; every paired cell (colu
 Evidence: probes-numeric cases `t1048-gammadist`, `-gammainv`, `-hypgeomdist`, `-loginv`, `-lognormdist`, `-negbinomdist`, `-normdist`, `-norminv`, `-normsdist`, `-normsinv`, `-poisson`, `-tdist`, `-tinv`, `-ttest`, `-weibull`, `-ztest`. Oracle: excel-graph, 2026-10-14.
 Status: VERIFIED (excel-graph)
 Tasks: T-1048
+
+## F-distribution df limit (T-1530)
+Either df above 1E10 (after truncation) makes every F function `#NUM!`: F.DIST (cumulative and pdf), F.DIST.RT,
+F.INV, F.INV.RT, FDIST and FINV, in both df positions (probed at 10000000001, 1.5E10 and 1E11). df = 1E10 and
+10000000000.5 (truncates to 1E10) are accepted: `F.INV(0.5,1E10,5)` = 1.1490395521130337,
+`F.INV.RT(0.5,5,1E10)` = 0.8702920610183031, `F.DIST(2,5,1E10,FALSE)` = 0.14167277676179968, `F.INV(0.5,1E10,1E10)` = 1.
+Evidence: probes-numeric case `t1530-f-df-cut` (excel-graph, 2026-10-14). Unlike Student-t, the pdf is also cut.
