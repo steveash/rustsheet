@@ -1,0 +1,52 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1047 sweep: CONFIDENCE vs CONFIDENCE.NORM, size truncation, domain errors, coercion",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-1047",
+  "legacy"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=CONFIDENCE(0.05,1,100)",
+    "A2": "=CONFIDENCE.NORM(0.05,1,100)",
+    "A3": "=CONFIDENCE(0.05,2.5,30)",
+    "A4": "=CONFIDENCE.NORM(0.05,2.5,30)",
+    "A5": "=CONFIDENCE(0.01,10,1000)",
+    "A6": "=CONFIDENCE.NORM(0.01,10,1000)",
+    "A7": "=CONFIDENCE(0.5,1,2)",
+    "A8": "=CONFIDENCE.NORM(0.5,1,2)",
+    "A9": "=CONFIDENCE(1e-09,1,50)",
+    "A10": "=CONFIDENCE.NORM(1e-09,1,50)",
+    "A11": "=CONFIDENCE(0.999,3,7)",
+    "A12": "=CONFIDENCE.NORM(0.999,3,7)",
+    "A13": "=CONFIDENCE(0.05,1e-08,100)",
+    "A14": "=CONFIDENCE.NORM(0.05,1e-08,100)",
+    "A15": "=CONFIDENCE(0.05,100000000.0,1000000.0)",
+    "A16": "=CONFIDENCE.NORM(0.05,100000000.0,1000000.0)",
+    "A17": "=CONFIDENCE(0.05,1,1)",
+    "A18": "=CONFIDENCE.NORM(0.05,1,1)",
+    "A19": "=CONFIDENCE(0.05,1,100.9)",
+    "A20": "=CONFIDENCE(0.05,1,0.9)",
+    "A21": "=CONFIDENCE(0.05,1,1.5)",
+    "A22": "=CONFIDENCE(0,1,100)",
+    "A23": "=CONFIDENCE(1,1,100)",
+    "A24": "=CONFIDENCE(-0.1,1,100)",
+    "A25": "=CONFIDENCE(0.05,0,100)",
+    "A26": "=CONFIDENCE(0.05,-1,100)",
+    "A27": "=CONFIDENCE(0.05,1,0)",
+    "A28": "=CONFIDENCE(0.05,1,-5)",
+    "A29": "=CONFIDENCE(\"0.05\",1,100)",
+    "A30": "=CONFIDENCE(TRUE,1,100)",
+    "A31": "=CONFIDENCE(0.05,1,TRUE)",
+    "A32": "=CONFIDENCE($Z$1,1,100)",
+    "A33": "=CONFIDENCE(0.05,1,$Z$1)"
+   }
+  }
+ ],
+ "expected": {}
+}
