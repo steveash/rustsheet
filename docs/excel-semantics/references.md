@@ -603,13 +603,17 @@ are walked over the cells that exist only, not every position of the used area: 
 that takes a union skips blank cells, and the cells are met in the same row-major order, so the
 first error cell is the same. The walk pays as it goes from a budget of 16,777,216 steps
 (`MAX_AREA_WALK`, 2^24) per formula evaluation: one step per area walked (so a repeated walk of
-an empty union is paid for too), one per cell handed to the function, and one per search of the
-sheet's column index: one per column of the area that holds cells (at least one) to find them,
-then, when there are at most 16 such columns, one per read of up to 64 of a column's rows, merged
-in row-major order (T-1502). An area with cells in more columns is walked by rows instead: one
+an empty union is paid for too), one per cell handed to the function, and, for an area over more
+than 1,024 of the sheet's rows, one per search of the sheet's column index (built by the first
+such walk, then kept in step by every write): one per column of the area that holds cells (at
+least one) to find them, then, when there are at most 16 such columns, one per read of up to 64
+of a column's rows, merged in row-major order with a row costing at least a step per four columns
+still being merged (T-1502), and one per column again after a cell the walk hands on writes to
+the sheet (a spill), since the reads are then out of date. Such a walk keeps the columns it found
+at its start; a spill into another column of the area is caught by the area's read-empty record. An area with cells in more columns is walked by rows instead: one
 step per row found (at least one, even with no cell in the area's columns), one per unallocated
 chunk of 1,024 rows passed over, and one per 16 row slots tested in allocated chunks
-(`SLOTS_PER_WALK_STEP`). Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
+(`SLOTS_PER_WALK_STEP`); so is a shorter area, whose row walk is a chunk of slots at most. Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
 operand and LAMBDA call of the formula draws on the same budget, like the pair budget; a single
 range argument is not counted and is walked as before (every position of its used area). Over
 sparse data a union then costs what the data costs: `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`

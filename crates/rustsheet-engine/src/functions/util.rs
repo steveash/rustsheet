@@ -186,6 +186,10 @@ pub(crate) fn is_span_or_if_of_span(node: &Node) -> bool {
 /// no more than the step it is charged.
 const MAX_INDEXED_COLUMNS: usize = 16;
 
+/// Fewest rows of the sheet a union area must span to be walked through the column index
+/// ([`Model::for_each_existing_position`]): one chunk of row storage.
+const MIN_INDEXED_ROWS: i32 = 1024;
+
 /// Rows of one column an indexed walk reads from the index at a time: one search, then a step per
 /// row, so a dense column costs a read step per this many cells.
 const INDEX_BATCH_ROWS: usize = 64;
@@ -528,18 +532,22 @@ impl Model {
         // a LAMBDA repeating a union over an empty sheet would grow the record without bound.
         self.spend_area_walk(1, cell)?;
         self.record_seen_empty_range(sheet, left.row, left.column, right.row, right.column);
-        // Finding the area's columns is a search of the index per column found (one when none).
-        // The sheet's first union walk builds the index, once: a pass over its cells.
         let data = &mut self
             .workbook
             .worksheet_mut(sheet)
             .map_err(sheet_error)?
             .sheet_data;
-        data.build_column_index();
-        let few = data.columns_between(left.column, right.column, MAX_INDEXED_COLUMNS, columns);
-        self.spend_area_walk((columns.len() as u64).max(1), cell)?;
-        if few {
-            return self.for_each_indexed_position(sheet, (left, right), cell, columns, f);
+        // Only an area over more rows of the sheet than one chunk gains from the index: the row
+        // walk of a shorter one is a chunk's slots at most. Such an area builds the index, once
+        // per sheet: a pass over its cells, after which every write keeps it in step. Finding
+        // the area's columns is then a search of the index per column found (one when none).
+        if right.row.min(data.last_row()) - left.row >= MIN_INDEXED_ROWS {
+            data.build_column_index();
+            let few = data.columns_between(left.column, right.column, MAX_INDEXED_COLUMNS, columns);
+            self.spend_area_walk((columns.len() as u64).max(1), cell)?;
+            if few {
+                return self.for_each_indexed_position(sheet, (left, right), cell, columns, f);
+            }
         }
         // Slots are paid for in whole steps as they add up, so a dense column costs a step per
         // cell and one more per `SLOTS_PER_WALK_STEP` rows.
@@ -579,9 +587,12 @@ impl Model {
     /// whose cells lie in `columns` (ascending, at most [`MAX_INDEXED_COLUMNS`] of them): each
     /// column's rows are read from the index [`INDEX_BATCH_ROWS`] at a time and merged in
     /// row-major order, so only the area's own cells are visited. A read is a step and every
-    /// cell handed to `f` is a step, paid before `f` runs. `f` may write to the sheet (a spill
-    /// anchored in the area); every column is then read again from the next row on, as the row
-    /// walk finds each next row afresh.
+    /// cell handed to `f` is a step (a row at least one per four columns still being merged), paid
+    /// before `f` runs. `f` may write to the sheet (a spill
+    /// anchored in the area); each of `columns` is then read again from the next row on, a step
+    /// each, as the row walk finds each next row afresh. The set of columns is fixed when the walk
+    /// starts: a spill into a column of the area that held no cell is not walked, and is caught
+    /// by the seen-empty record of the area, which restarts the pass.
     fn for_each_indexed_position<F>(
         &mut self,
         sheet: u32,
@@ -627,6 +638,9 @@ impl Model {
                 }
             }
             self.spend_area_walk(reads, cell)?;
+            // A column with no rows left is done (a write by `f` into it is caught by the
+            // area's read-empty record, as for a column that held none at the start).
+            batches.retain(|batch| batch.head().is_some());
             let Some(row) = batches.iter().filter_map(ColumnBatch::head).min() else {
                 break;
             };
@@ -637,7 +651,10 @@ impl Model {
                     batch.next += 1;
                 }
             }
-            self.spend_area_walk(row_columns.len() as u64, cell)?;
+            // A row is a step per cell handed on, and at least a step per four columns still
+            // being merged, which each row compares.
+            let merge = batches.len().div_ceil(4);
+            self.spend_area_walk(row_columns.len().max(merge) as u64, cell)?;
             for &column in &row_columns {
                 f(self, CellReferenceIndex { sheet, row, column })?;
             }

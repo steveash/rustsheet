@@ -294,6 +294,12 @@ impl SheetData {
         }
     }
 
+    /// Whether the column index is built, for tests of when a walk builds it.
+    #[cfg(test)]
+    pub(crate) fn has_column_index(&self) -> bool {
+        self.column_rows.is_some()
+    }
+
     fn index_cell(&mut self, row: i32, column: i32) {
         *self.column_counts.entry(column).or_insert(0) += 1;
         if let Some(index) = &mut self.column_rows {
@@ -355,8 +361,8 @@ impl SheetData {
     }
 
     /// Replaces `rows` with the first `limit` rows of `from..=to` at which `column` holds a cell,
-    /// in ascending order: one search of the index, then a step per row. None when the index is
-    /// not built ([`Self::build_column_index`]).
+    /// in ascending order: one search of the index, then a step per row. `rows` is left empty
+    /// when the index is not built ([`Self::build_column_index`]).
     pub(crate) fn rows_in_column_between(
         &self,
         column: i32,

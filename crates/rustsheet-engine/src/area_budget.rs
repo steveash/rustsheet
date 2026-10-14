@@ -26,8 +26,9 @@ pub(crate) const TOO_MANY_AREA_PAIRS: &str = "Too many areas to intersect";
 /// walked, one cell handed to the caller, one search of the sheet's column index (an area with
 /// cells in few columns walks them through it), one row found, one unallocated chunk of rows
 /// passed over, or [`SLOTS_PER_WALK_STEP`] row slots tested, so the work follows the data
-/// visited, not the size of the areas. Past the bound the argument is `#VALUE!` (DEVIATION, decision 0014:
-/// references.md "Union area cap"). The message keeps its words ([`TOO_MANY_AREA_CELLS`]).
+/// visited, not the size of the areas. Past the bound the argument is `#VALUE!` (DEVIATION,
+/// decision 0014: references.md "Union area cap"). The message keeps its words
+/// ([`TOO_MANY_AREA_CELLS`]).
 pub(crate) const MAX_AREA_WALK: u64 = 1 << 24;
 
 /// Row slots of an allocated chunk tested per step of [`MAX_AREA_WALK`]: testing a slot is one

@@ -213,7 +213,8 @@ fn a_union_walked_by_a_lambda_costs_what_its_data_costs() {
 #[test]
 fn a_union_walk_costs_its_own_columns_not_the_rows_others_fill() {
     // T-1502: probes/union-walk-repeated-in-lambda Calc!E6 (excel-graph, 2026-10-13, T-1462) is
-    // 80000 in Excel. With 9,000 rows filled in column G a walk of B:B used to find every one
+    // 80000 in Excel; the value is inferred for this sheet, which adds 9,000 rows in column G that
+    // the sum does not read. With them a walk of B:B used to find every one
     // of them and pay a step each, 2*10^8 steps for the MAP; through the column index each walk
     // visits only the cells of B and C.
     let mut model = new_empty_model();
@@ -234,11 +235,38 @@ fn a_union_walk_costs_its_own_columns_not_the_rows_others_fill() {
 }
 
 #[test]
+fn only_a_union_area_over_more_than_a_chunk_of_rows_builds_the_column_index() {
+    // A short area gains nothing from the index (its row walk is a chunk at most), so it leaves
+    // the sheet without one, and its writes keep paying nothing for it.
+    let mut model = new_empty_model();
+    for row in 1..=3_000 {
+        model._set(&format!("A{row}"), "1");
+    }
+    model._set("Z1", "=SUM((A1:A1000,A5))");
+    model.evaluate();
+    assert_eq!(model._get_text("Z1"), "1001");
+    let indexed = |model: &Model| {
+        model
+            .workbook
+            .worksheet(0)
+            .unwrap()
+            .sheet_data
+            .has_column_index()
+    };
+    assert!(!indexed(&model));
+    model._set("Z2", "=SUM((A:A,A5))");
+    model.evaluate();
+    assert_eq!(model._get_text("Z2"), "3001");
+    assert!(indexed(&model));
+}
+
+#[test]
 fn an_indexed_union_walk_meets_cells_in_row_major_order() {
     // The first error in row-major order is the result, as in the dense walk
-    // (references.md "Union area cap"): B1 comes before A2 although A is walked first.
+    // (references.md "Union area cap"): B1 comes before A2 although A is walked first. A2000
+    // makes the whole columns span more than a chunk of rows, so they take the index walk.
     let mut model = new_empty_model();
-    for (cell, value) in [("A2", "=1/0"), ("B1", "=NA()"), ("A3", "4")] {
+    for (cell, value) in [("A2", "=1/0"), ("B1", "=NA()"), ("A3", "4"), ("A2000", "1")] {
         model._set(cell, value);
     }
     for column in [
