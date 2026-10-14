@@ -365,7 +365,7 @@ def irr_secant_v(
             u0, f0, u1, f1 = u1, f1, u2, f2
         raise NoResultError(f"no convergence in {max_steps} steps")
 
-    def method(values: list[float], g: float, k: int | None) -> float:  # noqa: ARG001
+    def method(values: list[float], g: float, k: int | None) -> float:  # noqa: ARG001 - IrrMethod's step count
         try:
             return run(values, g)
         except (NoResultError, ZeroDivisionError, OverflowError):

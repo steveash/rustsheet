@@ -47,7 +47,9 @@ value (A10, A11); T-1533 continues that fit. The walk and bisection caps are unp
 v = 1/(1 + r)"). Secant on NPV(v), v0 = 1/(1 + guess), v1 = v0 + 0.001*sign(NPV(v0)); v2 = v0 -
 NPV(v0)(v1 - v0)/(NPV(v1) - NPV(v0)); stop at the first v2 with |v2 - v1| < 1e-7 and |NPV(v2)| < 1e-7,
 return 1/v2 - 1; a run that does not stop in 50 steps is retried once from 0.1; NPV(v) as sum c_i/x^i with
-x = 1/v and x87-rounded divisions (numbers.md "Division rounds twice").
+x = 1/v and x87-rounded divisions (numbers.md "Division rounds twice"). The Rust port must round its divisions the same way
+(`arithmetic::extended_quotient`) and use the same NPV evaluation order, or it will
+not reproduce the lab's count.
 
 **Scope.** The XIRR and IRR parts can be implemented now. RATE is not fitted (financial.md "RATE iterates
 on the rate itself"); its part of this task waits for a new hypothesis.

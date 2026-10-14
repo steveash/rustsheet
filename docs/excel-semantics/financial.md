@@ -186,7 +186,8 @@ flows, guesses); excel-graph, 2026-10-14. `uv run rustsheet-fitlab irr` (263 cel
 engine 1.
 Ours: Newton in r to 1e-8, with a bisection fallback (`compute_irr`, functions/financial/financial_util.rs);
 T-0916 implements the secant.
-Status: VERIFIED (fitted model, 189/263 bit-exact; the last-bit NPV order and the step cap are open)
+Status: VERIFIED for the method (secant in v, offset, both stop tests, retry; 189/263 bit-exact); UNVERIFIED
+for the last bit (NPV's evaluation order) and the step cap
 Tasks: T-1525, T-1533, T-0916
 
 ## RATE iterates on the rate itself
@@ -201,12 +202,12 @@ RATE(48,-200,8000,0,1)), R!D:F (annuities with type 0/1 and fv); excel-graph, 20
 `uv run rustsheet-fitlab rate` (136 literal cells; the 277 nested `RATE(n,PMT(...),...)` cells are not
 parsed): Newton in r on the documented f(r) = pv(1+r)^n + pmt(1+r*type)((1+r)^n - 1)/r + fv gives at most
 11/136 bit-exact (4 to 8 steps), FD Newton (h = 1e-8) 7/136; the engine gets 12/136.
-T-1533 tried IRR's secant on RATE's f(r) (lab `rate`, family "secant"; second point r +- 0.001 by the sign of f, 0.1, 0.01, 1e-4 to
-1e-7 absolute and 1% relative; stop |dr| < 1e-6 to 1e-10, with and without |f| < 1e-7; four forms of f):
-at most 19/136 bit-exact (offset -0.001 against f's sign, |dr| < 1e-7, |f| < 1e-7), and no variant
-returns any iterate equal to Excel's on the guess sweep R!C1:C31 except C7 and C12. Excel's errors there
-are not smooth in the guess (C8 -1.8e-13, C9 +2.6e-16, C11 +1.6e-13), unlike IRR's; between 0.019 and
-0.028 they are positive and grow as about (guess - root)^26 (a secant's order 21 or 34).
+T-1533 tried IRR's secant on RATE's documented f(r) (lab `rate`, family "secant": second point
+r0 + 0.001, -0.001 or 0.0001 times the sign of f(r0); stop |dr| < 1e-7 or 1e-10, with and without
+|f| < 1e-7): at most 19/136 bit-exact (-0.001, |dr| < 1e-7, |f| < 1e-7), 40 within 4 ulp. Excel's
+errors on the guess sweep R!C1:C31 are not smooth in the guess (C8 -1.8e-13, C9 +2.6e-16, C11
++1.6e-13), unlike IRR's; between 0.019 and 0.028 they are positive and grow as about (guess - root)^26
+(a secant's order 21 or 34).
 Ours: Newton, up to 50 iterations (`compute_rate`, functions/financial/financial_util.rs).
 Status: UNVERIFIED (the update rule and the stop test)
 Tasks: T-1525, T-0916, T-1533

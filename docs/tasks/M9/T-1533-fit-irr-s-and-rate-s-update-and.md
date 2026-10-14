@@ -35,7 +35,7 @@ FV form; Excel's PMT-style f for RATE; secant on PRICE from the coupon rate; an 
 the span or the derivative. Per-iterate traces need T-1534.
 
 ## Acceptance criteria
-- [x] Each solver's candidates and their bit-exact and within-4-ulp counts recorded (decision 0056), as lab fits.
+- [x] Each solver's candidates and their bit-exact and within-4-ulp counts recorded (decision 0056), as lab fits (IRR and RATE; XIRR and YIELD moved to T-1583).
 - [x] A model that raises the bit-exact count on at least one solver, or the task set `blocked` with the candidates tried.
 - [x] Findings in `docs/excel-semantics/financial.md`; T-0916 updated with any fitted model.
 - [x] `make check` green; reviewers approve.
@@ -54,6 +54,9 @@ v0 + 0.001*sign(NPV(v0)), stopping at |dv| < 1e-7 and |NPV| < 1e-7, retried once
 updated with the model.
 RATE: IRR's secant on f(r) with every offset/stop combination tried scores at most 19/136 (Newton 11, engine
 12) and hits no guess-sweep iterate; recorded in financial.md as tried. XIRR's long-span and zero-first-value
-cells and multi-period YIELD were not attempted this session (open; T-1534 traces would help RATE and
-YIELD).
+cells and multi-period YIELD were not attempted; they move to T-1583 (T-1534 traces would help RATE and
+YIELD). RATE stays open: this was its second attempt (T-1525 the first) without a fitted model, but the
+lab's best secant variant does raise RATE's bit-exact count (19/136 against Newton's 11 and the engine's
+12), so it is not time-boxed under decision 0056; the next RATE attempt needs a new hypothesis
+(per-iterate traces, T-1534).
 Eval delta: none (lab and docs only; the engine change is T-0916).
