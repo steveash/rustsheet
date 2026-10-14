@@ -162,6 +162,18 @@ pub(crate) fn is_at_if(node: &Node) -> bool {
     )
 }
 
+/// Whether `node` is `@XLOOKUP(...)` or `@TAKE(...)`: the `@` keeps the reference they pick.
+pub(crate) fn is_at_xlookup_take(node: &Node) -> bool {
+    matches!(
+        node,
+        Node::ImplicitIntersection { child, .. }
+            if matches!(
+                child.ungrouped(),
+                Node::FunctionKind { kind: Function::Xlookup | Function::Take, .. }
+            )
+    )
+}
+
 /// Whether `node` is a multi-sheet 3-D span, possibly as a branch of IF (which hands its branch on
 /// as a reference). Recursion is bounded by the parser's depth cap.
 pub(crate) fn is_span_or_if_of_span(node: &Node) -> bool {

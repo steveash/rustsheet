@@ -10,7 +10,10 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::{util::is_at_if, Function},
+    functions::{
+        util::{is_at_if, is_at_xlookup_take},
+        Function,
+    },
     model::Model,
 };
 
@@ -354,22 +357,22 @@ impl Model {
     }
 
     /// `@XLOOKUP(..)` / `@TAKE(..)`: the one cell they pick stays a reference, `None` for any
-    /// other node. Only ISREF and LET binding use it (probes/isref-implicit-xlookup-take H1, H3,
-    /// H5, H6, excel-graph; T-1509): the spill-anchor and LOOKUP callers of `eval_ref_or_index`
-    /// have no evidence for these forms and keep their value reading.
+    /// other node. ISREF and LET binding (probes/isref-implicit-xlookup-take H1, H3, H5, H6,
+    /// excel-graph; T-1509), the operand of `#`/ANCHORARRAY and LOOKUP's `result_vector`
+    /// (probes/anchorarray-lookup-implicit-xlookup-take H1, L1, J10, L10, N10; T-1527) use it.
     pub(crate) fn eval_at_picked_reference(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Option<CalcResult> {
-        let Node::ImplicitIntersection { child, .. } = node.ungrouped() else {
+        let node = node.ungrouped();
+        if !is_at_xlookup_take(node) {
+            return None;
+        }
+        let Node::ImplicitIntersection { child, .. } = node else {
             return None;
         };
-        let Node::FunctionKind {
-            kind: kind @ (Function::Xlookup | Function::Take),
-            args,
-        } = child.ungrouped()
-        else {
+        let Node::FunctionKind { kind, args } = child.ungrouped() else {
             return None;
         };
         let picked = self.evaluate_reference_form(kind, args, cell)?;
@@ -416,14 +419,18 @@ impl Model {
     /// The operand of `#` and ANCHORARRAY: [`Model::eval_ref_or_index`], and the `@` of an IF
     /// that picks one cell keeps the reference, so `ANCHORARRAY(@IF(TRUE,D1))` spills D1#
     /// (probes/at-signed-operand H71:H73, T-1321). Also LOOKUP's `result_vector`, for `@IF`
-    /// only (probes/at-if-spill-anchor-operand H50, T-1368); the other lookup callers of
-    /// `eval_ref_or_index` have no evidence for `@IF`.
+    /// only (probes/at-if-spill-anchor-operand H50, T-1368), and for `@XLOOKUP`/`@TAKE`
+    /// (probes/anchorarray-lookup-implicit-xlookup-take, T-1527); the other lookup callers of
+    /// `eval_ref_or_index` have no evidence for these.
     pub(crate) fn spill_anchor_operand(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let node = node.ungrouped();
+        if let Some(picked) = self.eval_at_picked_reference(node, cell) {
+            return picked;
+        }
         match node {
             Node::ImplicitIntersection { child, .. } if is_at_if(node) => {
                 let picked = self
