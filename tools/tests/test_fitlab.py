@@ -14,7 +14,16 @@ from rustsheet_tools import repo_root
 from rustsheet_tools.fitlab import cli, fit, sweep
 from rustsheet_tools.fitlab.exact import exact_value, to_double_value
 from rustsheet_tools.fitlab.kernels import annuity, erfc, gamma, registry
-from rustsheet_tools.fitlab.score import Candidate, candidate, families, rank, score, ulp_distance
+from rustsheet_tools.fitlab.score import (
+    Candidate,
+    ExcelError,
+    candidate,
+    families,
+    iterate_text,
+    rank,
+    score,
+    ulp_distance,
+)
 from rustsheet_tools.fitlab.sweep import Cell, Sweep, UnparsedError, Workbook, parse_arg, select, split_args
 from rustsheet_tools.snapshot import parse_show
 
@@ -293,3 +302,38 @@ def test_erfc_x87_fraction_reproduces_bu_even_in_doubles() -> None:
         assert float(erfc.bu_even_rounded(Fraction(x), 30, to_double_value)) == erfc.bu_even(x, 30)
     names = [c.name for c in erfc.x87_candidates()]
     assert names[0].startswith("128-bit") and len(names) == 1 + 3 * 2 * 3
+
+
+def test_error_cells_are_scored_by_the_error_and_iterates_are_located() -> None:
+    num = Cell("s/c", "S", "A1", "=F(1)", (1.0,), math.nan, "#NUM!")
+    val = Cell("s/c", "S", "A2", "=F(2)", (2.0,), math.nan, "#VALUE!")
+    ok = Cell("s/c", "S", "A3", "=F(3)", (3.0,), 6.0)
+
+    def fn(x: float) -> float:
+        if x == 1.0:
+            raise ExcelError()
+        if x == 2.0:
+            return 4.0  # a number where Excel has an error
+        return x * 2
+
+    s = score([num, val, ok], candidate("f", fn, trace=lambda x: [0.0, x * 2, 9.0]))
+    assert (s.exact, s.errors, s.incomparable) == (2, 0, 1)
+    assert s.iterate_hits == {"s/c S!A3": 1}  # the error cells are not traced
+    assert s.traced == 1
+    assert [r.note for r in s.worst(5)] == ["number instead of #VALUE!"]
+    wrong = score([num], candidate("w", lambda _x: (_ for _ in ()).throw(ExcelError(code="#DIV/0!"))))
+    assert wrong.worst(1)[0].note == "#DIV/0! instead of #NUM!"
+    assert "1/1" in iterate_text([s])
+
+
+def test_select_keeps_error_cells_only_when_asked() -> None:
+    book = Workbook(
+        {"S": {"A1": "=F(1)", "A2": "=F(2)"}},
+        {"S": {"A1": {"t": "e", "v": "#NUM!"}, "A2": {"t": "n", "v": 2.0}}},
+    )
+    pattern = re.compile(r"^=F\((.*)\)$")
+    off, on = Sweep(), Sweep()
+    select("s/c", book, pattern, off)
+    select("s/c", book, pattern, on, errors=True)
+    assert (len(off.cells), off.non_numeric) == (1, 1)
+    assert [c.error for c in on.cells] == ["#NUM!", None]

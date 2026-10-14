@@ -69,7 +69,8 @@ class Cell:
     address: str
     formula: str
     args: tuple[Arg, ...]
-    expected: float
+    expected: float  # NaN when Excel's value is an error (`error` names it)
+    error: str | None = None  # Excel's error value (`#NUM!`) when the cell holds one
 
     @property
     def key(self) -> str:
@@ -83,7 +84,7 @@ class Sweep:
 
     cells: list[Cell] = field(default_factory=list)
     unparsed: list[str] = field(default_factory=list)  # "case Sheet!A1: reason"
-    non_numeric: int = 0  # Excel's value is an error, text or bool: nothing for a float to match
+    non_numeric: int = 0  # Excel's value is text, a bool (or an error unless the fit scores errors)
     excluded: int = 0  # matched the pattern but the fit's `where` filter left it out
 
 
@@ -367,15 +368,25 @@ def _arg_texts(m: re.Match[str]) -> list[str]:
     return [g.strip() for g in groups if g is not None]
 
 
-def select(case_id: str, book: Workbook, pattern: re.Pattern[str], sweep: Sweep, where: Any = None) -> None:
+def select(
+    case_id: str,
+    book: Workbook,
+    pattern: re.Pattern[str],
+    sweep: Sweep,
+    where: Any = None,
+    *,
+    errors: bool = False,
+) -> None:
     """Adds `book`'s cells whose formula matches `pattern` to `sweep`. `where(cell)`, when given,
-    keeps only the cells it returns true for."""
+    keeps only the cells it returns true for. With `errors`, cells whose Excel value is an error
+    are kept too (a `Cell` with `error` set), so a candidate is scored on rejecting them."""
     for sheet, cells in book.sheets.items():
         for address, raw in cells.items():
             if not (isinstance(raw, str) and (m := pattern.match(raw))):
                 continue
             entry = book.oracle.get(sheet, {}).get(address)
-            if not isinstance(entry, dict) or entry.get("t") != "n":
+            is_error = errors and isinstance(entry, dict) and entry.get("t") == "e"
+            if not isinstance(entry, dict) or (entry.get("t") != "n" and not is_error):
                 sweep.non_numeric += 1
                 continue
             try:
@@ -383,19 +394,22 @@ def select(case_id: str, book: Workbook, pattern: re.Pattern[str], sweep: Sweep,
             except UnparsedError as e:
                 sweep.unparsed.append(f"{case_id} {sheet}!{address}: {e}")
                 continue
-            cell = Cell(case_id, sheet, address, raw, args, float(entry["v"]))
+            if is_error:
+                cell = Cell(case_id, sheet, address, raw, args, math.nan, str(entry["v"]))
+            else:
+                cell = Cell(case_id, sheet, address, raw, args, float(entry["v"]))
             if where is not None and not where(cell):
                 sweep.excluded += 1
                 continue
             sweep.cells.append(cell)
 
 
-def load_sweep(case_ids: list[str], pattern: str, where: Any = None) -> Sweep:
+def load_sweep(case_ids: list[str], pattern: str, where: Any = None, errors: bool = False) -> Sweep:
     """The matching cells of every case in `case_ids` (`suite/name`)."""
     regex = re.compile(pattern)
     sweep = Sweep()
     for case_id in case_ids:
         entry = case_entry(case_id)
         book = load_workbook(Path(entry["path"]), Path(entry["sidecar"]))
-        select(entry["id"], book, regex, sweep, where)
+        select(entry["id"], book, regex, sweep, where, errors=errors)
     return sweep
