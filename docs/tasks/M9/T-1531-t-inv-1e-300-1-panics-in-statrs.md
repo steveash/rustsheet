@@ -3,7 +3,7 @@ id: T-1531
 title: "T.INV(1E-300,1) panics in statrs inverse_cdf: reject or guard tiny p before the Student-t quantile"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: sonnet
