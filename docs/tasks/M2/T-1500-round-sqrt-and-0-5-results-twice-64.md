@@ -24,4 +24,4 @@ T-1496 probed this: probes-numeric/double-rounding-ops A65-A80 (`SQRT(x)` and `x
 -
 
 ## Outcome
-`arithmetic::extended_sqrt` (bitwise 66-bit root of the exact significand, then 64-bit and double rounding) now backs SQRT, `^0.5` and the `sqrt` in `^-0.5`. probes-numeric/double-rounding-ops passes 89/89 (A65-A80 fixed). Unit test `extended_sqrt_is_the_plain_root_away_from_midpoints`.
+`arithmetic::extended_sqrt` (bitwise 66-bit root of the exact significand, then 64-bit and double rounding) now backs SQRT and `^0.5` (not the `sqrt` in `^-0.5`, unprobed; T-1541). probes-numeric/double-rounding-ops passes 89/89 (A65-A80 fixed). Unit test `extended_sqrt_is_the_plain_root_away_from_midpoints`.

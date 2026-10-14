@@ -393,7 +393,7 @@ fn non_integer_power(x: f64, y: f64) -> f64 {
     if y == 0.5 {
         extended_sqrt(x)
     } else if y == -0.5 {
-        extended_quotient(1.0, extended_sqrt(x))
+        extended_quotient(1.0, x.sqrt())
     } else if y > 0.0 {
         (y * x.ln()).exp()
     } else {
