@@ -86,6 +86,9 @@ impl JoinSize {
         }
         match value {
             CalcResult::Number(n) => values.push(number_to_text(n)),
+            // An empty string is skipped like an empty cell with ignore_empty
+            // (probes/textjoin-array-limit-empty-strings A7-A10).
+            CalcResult::String(text) if ignore_empty && text.is_empty() => {}
             CalcResult::String(text) => values.push(text),
             CalcResult::Boolean(b) => values.push(if b { "TRUE" } else { "FALSE" }.to_string()),
             CalcResult::EmptyCell if !ignore_empty => values.push(String::new()),
@@ -361,6 +364,7 @@ impl Model {
                     over_limit = true;
                 }
                 error @ CalcResult::Error { .. } => return error,
+                CalcResult::String(value) if ignore_empty && value.is_empty() => {}
                 CalcResult::String(value) => values.push(value),
                 CalcResult::Boolean(value) => {
                     if value {
@@ -375,7 +379,21 @@ impl Model {
                     }
                 }
                 CalcResult::EmptyArg => {}
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                // Excel joins an array row by row; the first error element wins and an empty element
+                // (a blank cell passed through SORT, UNIQUE, TRANSPOSE) is skipped only with
+                // ignore_empty (probes/textjoin-array-arguments A1-A28, A30-A35); an error element past the 32,767
+                // limit is dropped like a range cell's (probes/textjoin-array-limit-empty-strings A1-A5).
+                CalcResult::Array(array) => {
+                    for element in array.iter().flatten() {
+                        let value = array_node_to_calc_result(element, cell);
+                        if let Err(error) =
+                            size.push_cell(value, ignore_empty, &mut values, &mut over_limit, cell)
+                        {
+                            return error;
+                        }
+                    }
+                }
+                CalcResult::Lambda(_) => {
                     return CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,

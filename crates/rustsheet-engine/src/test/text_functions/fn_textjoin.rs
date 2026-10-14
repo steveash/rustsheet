@@ -59,3 +59,48 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
     assert_eq!(model._get_text("A1"), "9");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
 }
+
+// Excel values: probes/textjoin-array-arguments.
+#[test]
+fn array_literals_and_function_results() {
+    let mut model = new_empty_model();
+    model._set("B1", "pear");
+    model._set("B3", "apple");
+    model._set("A1", "=TEXTJOIN(\",\",FALSE,{1,2;3,4})");
+    model._set("A2", "=TEXTJOIN(\",\",TRUE,{\"a\",\"\",\"c\"})");
+    model._set("A3", "=TEXTJOIN(\",\",FALSE,{\"a\",\"\",\"c\"})");
+    model._set("A4", "=TEXTJOIN(\",\",FALSE,{1,#N/A,3})");
+    model._set("A5", "=TEXTJOIN(\",\",FALSE,{#DIV/0!,#N/A})");
+    model._set("A6", "=TEXTJOIN(\",\",FALSE,SORT(B1:B3))");
+    model._set("A7", "=TEXTJOIN(\",\",TRUE,SORT(B1:B3))");
+    model._set("A8", "=TEXTJOIN(\",\",FALSE,SEQUENCE(2,2))");
+    model._set("A9", "=TEXTJOIN(\",\",FALSE,{1,2},5,\"x\")");
+    model._set("A10", "=TEXTJOIN(\",\",FALSE,{TRUE,FALSE,1.5})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1,2,3,4");
+    assert_eq!(model._get_text("A2"), *"a,c");
+    assert_eq!(model._get_text("A3"), *"a,,c");
+    assert_eq!(model._get_text("A4"), *"#N/A");
+    assert_eq!(model._get_text("A5"), *"#DIV/0!");
+    assert_eq!(model._get_text("A6"), *"apple,pear,");
+    assert_eq!(model._get_text("A7"), *"apple,pear");
+    assert_eq!(model._get_text("A8"), *"1,2,3,4");
+    assert_eq!(model._get_text("A9"), *"1,2,5,x");
+    assert_eq!(model._get_text("A10"), *"TRUE,FALSE,1.5");
+}
+
+// Excel values: probes/textjoin-array-limit-empty-strings A7-A9.
+#[test]
+fn empty_strings_are_skipped_with_ignore_empty() {
+    let mut model = new_empty_model();
+    model._set("B1", "a");
+    model._set("B2", "=\"\"");
+    model._set("B3", "c");
+    model._set("A1", "=TEXTJOIN(\",\",TRUE,\"a\",\"\",\"c\")");
+    model._set("A2", "=TEXTJOIN(\",\",TRUE,B1:B3)");
+    model._set("A3", "=TEXTJOIN(\",\",FALSE,B1:B3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"a,c");
+    assert_eq!(model._get_text("A2"), *"a,c");
+    assert_eq!(model._get_text("A3"), *"a,,c");
+}

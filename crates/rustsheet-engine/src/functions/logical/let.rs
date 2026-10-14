@@ -263,11 +263,7 @@ impl Model {
                     ),
                 }
             }
-            Node::NamedVariableKind { name, id: None } => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("Variable name \"{name}\" not found."),
-            ),
+            Node::NamedVariableKind { name, id: None } => self.unbound_name(name, cell),
             _ => CalcResult::new_error(Error::ERROR, cell, "Not a variable".to_string()),
         }
     }
