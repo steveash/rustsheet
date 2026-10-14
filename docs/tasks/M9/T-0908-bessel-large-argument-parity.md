@@ -16,6 +16,7 @@ T-0900 made `|x| < 8` bit-exact. The remaining BESSELJ/BESSELY failures in
 values, differing from fdlibm and from NR's asymptotic branch).
 
 ## Notes
+Kernel map (T-1522, decision 0056): rank 9 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Once settled, drop the fdlibm fallback for |x| >= 8 in `bessel_excel.rs` if Excel never uses it.
 
 Also probe Excel's real cap on the order `n` (currently UNVERIFIED: > 100_000 returns #NUM!).

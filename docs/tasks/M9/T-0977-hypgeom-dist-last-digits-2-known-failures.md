@@ -14,6 +14,7 @@ depends_on: [T-1048, T-1049]
 HYPGEOM.DIST (density and cumulative) reproduces Excel's last digits.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 17 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Triage T-0903. Kernel: `statrs::distribution::Hypergeometric` (`pmf` = ratio of `factorial::binomial`
 values; `cdf` = sum of `exp(ln_binomial + ln_binomial - ln_binomial)` terms), called from
 `functions/statistical/hypegeom.rs` `fn_hyp_geom_dist`.

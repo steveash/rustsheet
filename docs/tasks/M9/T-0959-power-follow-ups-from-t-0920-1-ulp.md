@@ -14,6 +14,7 @@ depends_on: []
 POWER and `^` match Excel on odd roots of negatives (bit for bit), overflow errors and the odd-root exponent tolerance.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 13 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Review follow-ups recorded in T-0920 (2026-10-04): Excel gives -1.9999999999999998 for
 `POWER(-8,1/3)` (POWER.xlsx Sheet1!D3, F9 and inside_a_lambda!C3/C4 are NumericUlp known failures),
 we give -2. docs/excel-semantics/numbers.md "POWER and `^`" lists the UNVERIFIED parts: overflow

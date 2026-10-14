@@ -15,6 +15,7 @@ One accurate regularized incomplete beta I_x(a,b) (and its complement, computed 
 engine, used by BETA.DIST, F.DIST, F.DIST.RT and F.TEST, replacing statrs' `beta_reg`.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 3 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Oracle targets: probes-numeric cases `m9-beta-dist-a*`, `m9-f-dist`, `m9-f-dist-rt`, `m9-beta-inv`, `m9-f-inv`, `m9-f-inv-rt` (T-1044).
 Triage T-0903. Kernel: `statrs::function::beta::beta_reg` (Numerical-Recipes Lentz continued fraction
 whose prefactor uses statrs' Lanczos `ln_gamma`; ~1e-15..1e-13 relative error here), reached through

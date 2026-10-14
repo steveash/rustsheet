@@ -15,6 +15,7 @@ BETA.INV, F.INV and F.INV.RT return Excel's values from one inverse-incomplete-b
 the T-0970 kernel.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 5 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Oracle targets: probes-numeric cases `m9-beta-dist-a*`, `m9-f-dist`, `m9-f-dist-rt`, `m9-beta-inv`, `m9-f-inv`, `m9-f-inv-rt` (T-1044).
 Triage T-0903. Kernel: `statrs::function::beta::inv_beta_reg` via `Beta::inverse_cdf`
 (`functions/statistical/beta.rs` `fn_beta_inv`, then `A + (B-A) t`) and `FisherSnedecor::inverse_cdf`

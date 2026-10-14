@@ -15,6 +15,7 @@ TBILLEQ and TBILLYIELD give Excel's exact doubles. This clears the TBILL cells o
 them, the function-free cells that M2's criterion "ironcalc-calc cells using only M1/M2 functions" counts.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 15 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 ironcalc-calc/FINANCIAL/TBILLs.xlsx (Excel-cached, Microsoft Macintosh Excel) has 27 failing cells (28 baseline
 items). They are 1 to a few ulps off, or NumericClose for D24/D26:
 - TBILLEQ: D5, D6, D7, D9, D10, D16, D20, D24, D26, D30;
