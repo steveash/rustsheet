@@ -267,7 +267,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
             });
         }
         Node::FunctionKind { kind, args } if is_array_context(kind) => {
-            remove_in_array_context(args)
+            remove_in_array_context(args);
         }
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
