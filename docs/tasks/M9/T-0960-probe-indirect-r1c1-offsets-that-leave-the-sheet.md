@@ -3,7 +3,7 @@ id: T-0960
 title: "Probe INDIRECT R1C1 offsets that leave the sheet: wrap or clamp"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
