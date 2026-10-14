@@ -206,3 +206,70 @@ fn a_formula_records_at_most_max_seen_ranges_rectangles() {
     assert_eq!(model._get_text("C1"), "#VALUE!");
     assert!(model.evaluation.seen_ranges.len() <= 3 * MAX_SEEN_RANGES);
 }
+
+// T-1512: a spill's commit check costs about its cells plus the rectangles on record, not their
+// product. The anchors A1 and B1 each put 50,000 whole-row rectangles on record (rows 200,001 to
+// 300,000, below the used area) and spill 50,000 cells; then C2 spills 100,000 cells above the
+// rectangles. Checking every cell against every rectangle is over 10^10 tests.
+#[test]
+fn a_large_spill_is_checked_against_many_rectangles_in_near_linear_time() {
+    use std::time::{Duration, Instant};
+    let rows =
+        |from: usize| format!("=MAP(SEQUENCE(50000,1,{from}),LAMBDA(r,SUM(OFFSET(1:1,r,0))))");
+    let mut model = new_empty_model();
+    model._set("A1", &rows(200_000));
+    model._set("B1", &rows(250_000));
+    model._set("C2", "=SEQUENCE(100000)");
+    let start = Instant::now();
+    model.evaluate();
+    model.evaluate();
+    let elapsed = start.elapsed();
+    assert!(elapsed < Duration::from_secs(60), "{elapsed:?}");
+    assert_eq!(model._get_text("A50000"), "0");
+    assert_eq!(model._get_text("C100001"), "100000");
+    assert_eq!(model.evaluation.seen_ranges.len(), 100_000);
+    assert_eq!(restarts(&model), 0);
+}
+
+// The spill check meets a rectangle at the first cell, row by row, that the spill writes in it;
+// the anchor's own cell is not a write.
+#[test]
+fn a_rectangle_is_met_at_the_first_cell_the_spill_writes_in_it() {
+    use crate::expressions::types::CellReferenceIndex;
+    use crate::seen_ranges::SeenRange;
+    let anchor = CellReferenceIndex {
+        sheet: 0,
+        row: 2,
+        column: 3,
+    };
+    let range = |sheet, row1, column1, row2, column2| SeenRange {
+        root: anchor,
+        sheet,
+        row1,
+        column1,
+        row2,
+        column2,
+    };
+    // A spill of 3 wide by 4 high: C2:E5.
+    let area = (3, 4);
+    assert_eq!(
+        range(0, 1, 1, 9, 9).first_cell_written(anchor, area),
+        Some((2, 4))
+    );
+    assert_eq!(
+        range(0, 1, 1, 9, 3).first_cell_written(anchor, area),
+        Some((3, 3))
+    );
+    assert_eq!(
+        range(0, 4, 5, 9, 9).first_cell_written(anchor, area),
+        Some((4, 5))
+    );
+    assert_eq!(range(0, 2, 3, 2, 3).first_cell_written(anchor, area), None);
+    assert_eq!(range(0, 6, 1, 9, 9).first_cell_written(anchor, area), None);
+    assert_eq!(range(0, 1, 6, 9, 9).first_cell_written(anchor, area), None);
+    assert_eq!(range(1, 1, 1, 9, 9).first_cell_written(anchor, area), None);
+    assert_eq!(
+        range(0, 1, 1, 9, 9).first_cell_written(anchor, (1, 1)),
+        None
+    );
+}

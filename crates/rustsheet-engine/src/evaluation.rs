@@ -1023,33 +1023,45 @@ impl Model {
         Ok((last_row, last_column))
     }
 
-    /// Checks, on behalf of the dynamic anchor about to commit, whether writing
-    /// spill cells at `writes` and removing its own spill cells at `clears` would
-    /// contradict what a formula read earlier in this pass. If so, the pass is
-    /// abandoned so that it can start again with the anchor first, and `true`
-    /// is returned: the anchor must not write anything. When every contradicted
-    /// read was made on the anchor's own behalf, the anchor is circular, unless
-    /// only the removals contradict: then the cells were stale, and they go.
+    /// Checks, on behalf of the dynamic anchor about to commit, whether spilling
+    /// over `area` (width, height; every cell of it but the anchor's own is
+    /// written, so `(1, 1)` writes nothing) and removing its own spill cells at
+    /// `clears` would contradict what a formula read earlier in this pass. If
+    /// so, the pass is abandoned so that it can start again with the anchor
+    /// first, and `true` is returned: the anchor must not write anything. When
+    /// every contradicted read was made on the anchor's own behalf, the anchor
+    /// is circular, unless only the removals contradict: then the cells were
+    /// stale, and they go.
+    ///
+    /// The readers are listed in the order of the writes that contradict them,
+    /// cell records first, then rectangles; the rectangles are each met once,
+    /// at their first cell written, so the check costs the cells plus the
+    /// rectangles, not their product (T-1512).
     pub(crate) fn spill_contradicts_a_read(
         &mut self,
         anchor: CellReferenceIndex,
-        writes: &[CellKey],
+        area: (i32, i32),
         clears: &[CellKey],
     ) -> bool {
         if !self.evaluation.in_pass {
             return false;
         }
+        let CellReferenceIndex { sheet, row, column } = anchor;
+        let (width, height) = area;
         let seen = &self.evaluation.seen;
-        let ranges = &self.evaluation.seen_ranges;
-        let contradicted_by_writes: Vec<CellReferenceIndex> = writes
+        let mut by_ranges: Vec<((i32, i32), CellReferenceIndex)> = self
+            .evaluation
+            .seen_ranges
             .iter()
-            .filter_map(|p| seen.get(p).and_then(|record| record.empty))
-            .chain(writes.iter().flat_map(|p| {
-                ranges
-                    .iter()
-                    .filter(move |range| range.contains(*p))
-                    .map(|range| range.root)
-            }))
+            .filter_map(|range| Some((range.first_cell_written(anchor, area)?, range.root)))
+            .collect();
+        // Stable: rectangles first written at the same cell keep the order they were read in.
+        by_ranges.sort_by_key(|(cell, _)| *cell);
+        let contradicted_by_writes: Vec<CellReferenceIndex> = (row..row + height)
+            .flat_map(|r| (column..column + width).map(move |c| (sheet, r, c)))
+            .filter(|&(_, r, c)| (r, c) != (row, column))
+            .filter_map(|p| seen.get(&p).and_then(|record| record.empty))
+            .chain(by_ranges.into_iter().map(|(_, root)| root))
             .collect();
         let contradicted_by_clears: Vec<CellReferenceIndex> = clears
             .iter()
@@ -1058,12 +1070,13 @@ impl Model {
         if contradicted_by_writes.is_empty() && contradicted_by_clears.is_empty() {
             return false;
         }
-        let mut readers: Vec<CellReferenceIndex> = Vec::new();
-        for root in contradicted_by_writes.iter().chain(&contradicted_by_clears) {
-            if *root != anchor && !readers.contains(root) {
-                readers.push(*root);
-            }
-        }
+        let mut listed: HashSet<CellReferenceIndex> = HashSet::new();
+        let readers: Vec<CellReferenceIndex> = contradicted_by_writes
+            .iter()
+            .chain(&contradicted_by_clears)
+            .copied()
+            .filter(|root| *root != anchor && listed.insert(*root))
+            .collect();
         self.evaluation.restart = Some(if !readers.is_empty() {
             Restart::Conflict { anchor, readers }
         } else if contradicted_by_writes.is_empty() {
