@@ -275,3 +275,17 @@ fn duplicate_parameters_are_refused_in_any_case() {
     }
     assert_eq!(model._get_text("A5"), *"6");
 }
+
+// Messages are not Excel-visible; the value stays `#NAME?`.
+#[test]
+fn calling_a_number_or_boolean_variable_is_name_with_a_message() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LET(f, 1, f(2))");
+    model._set("A2", "=LET(f, TRUE, f(2))");
+    model.evaluate();
+
+    for cell in ["A1", "A2"] {
+        assert_eq!(model._get_text(cell), *"#NAME?");
+        assert_eq!(model._get_error_message(cell), "A value cannot be called");
+    }
+}

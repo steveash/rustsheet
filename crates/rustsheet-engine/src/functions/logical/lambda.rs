@@ -79,7 +79,16 @@ impl Model {
             ),
             error @ CalcResult::Error { .. } => error,
             other => {
-                array_node_to_calc_result(&called_value(&calc_result_to_array_node(other)), cell)
+                let called = called_value(&calc_result_to_array_node(other));
+                if let ArrayNode::Error(error) = &called {
+                    // Array elements carry no message, so only the scalar call can give one.
+                    return CalcResult::new_error(
+                        error.clone(),
+                        cell,
+                        "A value cannot be called".to_string(),
+                    );
+                }
+                array_node_to_calc_result(&called, cell)
             }
         }
     }
