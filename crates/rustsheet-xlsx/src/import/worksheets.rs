@@ -399,8 +399,12 @@ pub(super) fn get_cell_from_excel(
             }
             "d" => match cell_value.and_then(iso8601_to_serial) {
                 Some(v) => Cell::NumberCell { v, s: cell_style },
-                // Excel refuses a workbook with unparsable `t="d"` text; an empty cell is the
-                // safe import (docs/excel-semantics/xlsx-storage.md).
+                // A date before 1900-01-01 is `#VALUE!` in Excel (fixtures/t-d-pre-1900); Excel
+                // refuses a workbook with other unparsable text (docs/excel-semantics/xlsx-storage.md).
+                None if cell_value.is_some() => Cell::ErrorCell {
+                    ei: Error::VALUE,
+                    s: cell_style,
+                },
                 None => Cell::EmptyCell { s: cell_style },
             },
             "inlineStr" => {

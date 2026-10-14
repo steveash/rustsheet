@@ -3,7 +3,7 @@ id: T-0409
 title: "Probe t=d edge forms: Z suffix, fractional seconds, 1900-02-29, pre-1900, time-only"
 milestone: M11
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-0406 verified only the plain date, date-time, 1900-02-28 and 1900-03-01 forms 
 
 ## Out of scope
 -
+
+## Outcome
+Five fixtures (fixtures/t-d-*) with excel-graph values: `Z` suffix ignored (32874.5), fractional seconds counted, `1900-02-29` = 60, time-only `12:00:00` = 0.5, pre-1900 date = `#VALUE!` cell. `iso8601_to_serial` now reads 1900-02-29 and time-only text and the importer (and eval snapshot) turn unparsable/pre-1900 `t="d"` text into `#VALUE!` instead of an empty cell. Semantics entry updated in xlsx-storage.md.

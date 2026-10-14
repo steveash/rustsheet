@@ -51,6 +51,11 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   (as in every Excel-saved Strict file). A1 is a `t="d"` cell `1900-01-01`; B1:B6 = `DATE(1900,2,28)`, `DATE(1900,3,1)`,
   `DATE(1900,2,29)`, `TEXT(60,"yyyy-mm-dd")`, `DAY(59)`, `DATEVALUE("1900-01-01")`; B7 = `A1`, C7 = `ISNUMBER(A1)`.
   Excel for the web gives 59, 61, 60, `1900-02-29`, 28, 1, 1, TRUE.
+- `t-d-z-suffix.xlsx`, `t-d-fractional-seconds.xlsx`, `t-d-1900-02-29.xlsx`, `t-d-pre-1900.xlsx`,
+  `t-d-time-only.xlsx` (T-0409): `t-d-iso-date-cells.xlsx` cut to row 1, with A1 a `t="d"` cell
+  `1990-01-01T12:00:00Z`, `1990-01-01T12:00:00.5`, `1900-02-29`, `1899-12-31` and `12:00:00`; B1 = `A1`,
+  C1 = `ISNUMBER(A1)`. One form per workbook because Excel for the web rejects unparsable text. Excel gives
+  32874.5, 32874.500005787035, 60, `#VALUE!` (ISNUMBER FALSE) and 0.5.
 - `external-link-cached-text.xlsx` (T-1550): `external-link-cached-ranges.xlsx` with sheet `Refs`
   rewritten (one legacy formula per row in column B, placeholder cached 0) and the cached `Uses`
   sheet replaced: A1 the empty string (`t="str"`, `<v></v>`), B1 18, A2 12, B2 TRUE, A3 the text

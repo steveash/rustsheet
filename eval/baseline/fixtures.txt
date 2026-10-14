@@ -9,7 +9,12 @@ C	fixtures/rich-error-export-formulas.xlsx	15
 C	fixtures/rich-error-export.xlsx	15
 C	fixtures/shared-string-phonetic-runs.xlsx	3
 C	fixtures/strict-date-compatibility-0.xlsx	8
+C	fixtures/t-d-1900-02-29.xlsx	2
+C	fixtures/t-d-fractional-seconds.xlsx	2
 C	fixtures/t-d-iso-date-cells.xlsx	8
+C	fixtures/t-d-pre-1900.xlsx	2
+C	fixtures/t-d-time-only.xlsx	2
+C	fixtures/t-d-z-suffix.xlsx	2
 C	fixtures/workday-intl-legacy-holidays.xlsx	6
 F	fixtures/external-link-cached-ranges.xlsx	Refs!B89
 F	fixtures/external-link-cached-ranges.xlsx	Refs!B90

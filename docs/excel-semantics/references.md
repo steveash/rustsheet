@@ -192,7 +192,8 @@ Excel treats the lifted INDEX over an external range as a single-cell reference 
 `INDEX(INDEX(…,{1,2},1),2)` is `#REF!` (Refs!B89:B92). Not implemented: we give `#BLOCKED!`, `#BLOCKED!`, FALSE and
 `#BLOCKED!` for those four (T-1554).
 Not yet implemented: `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3 (a LET body picking one; we give
-`#BLOCKED!`) and `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3 (we give 1).
+`#BLOCKED!`). `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3, and the engine matches since T-1508, which broadcasts CHOOSE's
+arms over an index array (external-ref-no-link-ifchoose A32).
 Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external
 reference (`ROW(IF({TRUE,FALSE},…!A1,…!A1))`; the engine gives `#VALUE!`, UNVERIFIED), OFFSET of one
 with an array or two error arguments, a `[n]` index with no
@@ -1192,8 +1193,8 @@ D6 = `=NA()`, `COUNTBLANK(INDEX(D1:D6,{5,6}))` is `#VALUE!`, `#N/A` and `COUNTBL
 Evidence: probes/countblank-array-values (excel-graph, 2026-10-13, T-1437); probes/index-lifted-edge-cases H131:J131
 (excel-graph, 2026-10-12, T-1376).
 Status: VERIFIED (excel-graph), except the 1x1 `INDEX(D1:D5,{2})`: the engine treats a 1x1 array index as a scalar
-index, so it counts the picked cell (1) (T-1507). The CHOOSE grids (H20, H34) spill 1x2, not 2x2, because the engine's `CHOOSE({1,2},D1:D2,D3:D4)`
-is itself 1x2 (T-1508).
+index, so it counts the picked cell (1) (T-1507). The CHOOSE grids (H20, H34) spill 2x2 since T-1508 (lookup.md, "CHOOSE
+over an index array broadcasts its value arguments").
 Implemented in: `fn_countblank` (functions/statistical/count.rs) and `reference_parameter_static_result`
 (expressions/parser/static_analysis/reference_parameter.rs), shared with RANK.
 Tasks: T-1437
