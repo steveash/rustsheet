@@ -16,6 +16,7 @@ pub use error::{EditError, LoadError, RefError, SaveError};
 pub use refs::{
     parse_cell, parse_range, resolve_sheet_by_name, CellRef, RangeRef, SheetId, Target,
 };
+pub use rustsheet_engine::clock::{Clock, ClockError};
 pub use rustsheet_engine::types::DateSystem;
 pub use value::{Array, ArrayShapeError, ErrorKind, ParseErrorKindError, Value, XlError};
 pub use workbook::{CellInfo, LoadOptions, SaveOptions, SheetMeta, Workbook, WorkbookOptions};

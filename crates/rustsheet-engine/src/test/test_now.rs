@@ -1,14 +1,14 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::{mock_time, test::util::new_empty_model};
+use crate::test::util::{fixed_clock, new_empty_model};
 
 // 14:44 20 Mar 2023 Berlin
 const TIMESTAMP_2023: i64 = 1679319865208;
 
 #[test]
 fn arguments() {
-    mock_time::set_mock_time(TIMESTAMP_2023);
     let mut model = new_empty_model();
+    model.set_clock(fixed_clock(TIMESTAMP_2023));
 
     model._set("A1", "=NOW(1, 1)");
     model._set("A2", "=NOW(\"Europe/Berlin\")");
@@ -30,8 +30,8 @@ fn arguments() {
 
 #[test]
 fn returns_date_time() {
-    mock_time::set_mock_time(TIMESTAMP_2023);
     let mut model = new_empty_model();
+    model.set_clock(fixed_clock(TIMESTAMP_2023));
     model._set("A1", "=NOW()");
     model.evaluate();
     let text = model._get_text("A1");
@@ -41,8 +41,8 @@ fn returns_date_time() {
 #[test]
 fn keeps_sub_second_precision() {
     // 13:44:25.208 UTC: Excel's NOW() is not truncated to whole seconds.
-    mock_time::set_mock_time(TIMESTAMP_2023);
     let mut model = new_empty_model();
+    model.set_clock(fixed_clock(TIMESTAMP_2023));
     model._set("A1", "=ROUND((NOW()-INT(NOW()))*86400, 3)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"49465.208");

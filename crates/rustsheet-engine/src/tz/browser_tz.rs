@@ -1,4 +1,4 @@
-use crate::constants::EXCEL_DATE_BASE;
+use crate::formatter::dates::convert_to_serial_number;
 
 #[derive(Clone)]
 pub(crate) struct Tz(String);
@@ -74,35 +74,30 @@ pub fn get_all_timezone_names() -> Vec<String> {
         .collect()
 }
 
-pub(crate) fn excel_serial_for_now(tz: &Tz) -> Option<f64> {
-    let ms = crate::model::get_milliseconds_since_epoch();
+/// The Excel serial of the instant `ms` (ms since the Unix epoch) in `tz`.
+pub(crate) fn excel_serial_for_now(tz: &Tz, ms: i64) -> Option<f64> {
     let parts = js::ic_tz_parts(ms as f64, &tz.0);
     if parts.length() != 6 {
         return None;
     }
 
     let get = |i: u32| parts.get(i).as_f64().unwrap_or(0.0) as i32;
-    // TODO: handle invalid dates
     let (year, month, day) = (get(0), get(1), get(2));
     let (hour, minute, second) = (get(3), get(4), get(5));
-
-    let y = year - 1;
-    let n = 365 * y + y / 4 - y / 100 + y / 400;
-    let month_starts: [i32; 12] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
-    let leap = if month > 2 && year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) {
-        1
-    } else {
-        0
-    };
-    let days_from_ce = n + month_starts[(month - 1) as usize] + leap + day;
+    // Days are numbered as DATE numbers them, fictitious 1900-02-29 included
+    // (docs/excel-semantics/dates.md "Serial 60 is the fictitious 1900-02-29").
+    let date = chrono::NaiveDate::from_ymd_opt(
+        year,
+        u32::try_from(month).ok()?,
+        u32::try_from(day).ok()?,
+    )?;
     let secs = hour * 3600 + minute * 60 + second;
 
-    Some((days_from_ce - EXCEL_DATE_BASE) as f64 + secs as f64 / 86400.0)
+    Some(f64::from(convert_to_serial_number(date)) + f64::from(secs) / 86400.0)
 }
 
-/// The calendar year of now in `tz`.
-pub(crate) fn current_year(tz: &Tz) -> Option<i32> {
-    let ms = crate::model::get_milliseconds_since_epoch();
+/// The calendar year in `tz` of the instant `ms` (ms since the Unix epoch).
+pub(crate) fn current_year(tz: &Tz, ms: i64) -> Option<i32> {
     let parts = js::ic_tz_parts(ms as f64, &tz.0);
     (parts.length() == 6).then(|| parts.get(0).as_f64().unwrap_or(0.0) as i32)
 }

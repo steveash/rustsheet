@@ -3,6 +3,7 @@
 use std::io::{Cursor, Read};
 use std::path::Path;
 
+use rustsheet_engine::clock::Clock;
 use rustsheet_engine::types::DateSystem;
 use rustsheet_engine::{Model, LAST_COLUMN, LAST_ROW};
 use rustsheet_xlsx::error::XlsxError;
@@ -29,6 +30,10 @@ pub struct WorkbookOptions {
     /// Date system of a new workbook ([`Workbook::new`]). A loaded workbook keeps the one its
     /// xlsx stores (`workbookPr@date1904`), so this field does not apply to loading.
     pub date_system: DateSystem,
+    /// The clock NOW, TODAY and the other readers of the current time use: the system time
+    /// (the default) or a fixed instant (SPEC-0008). Applied before the first recalc, also when
+    /// loading.
+    pub clock: Clock,
 }
 
 impl Default for WorkbookOptions {
@@ -39,6 +44,7 @@ impl Default for WorkbookOptions {
             timezone: "UTC".to_string(),
             language: "en".to_string(),
             date_system: DateSystem::default(),
+            clock: Clock::system(),
         }
     }
 }
@@ -165,8 +171,14 @@ impl Workbook {
     /// # Errors
     /// [`LoadError::Options`] when the locale, timezone or language is unknown.
     pub fn new(opts: &WorkbookOptions) -> Result<Self, LoadError> {
-        let mut model = Model::new_empty("workbook", &opts.locale, &opts.timezone, &opts.language)
-            .map_err(LoadError::Options)?;
+        let mut model = Model::new_empty_with_clock(
+            "workbook",
+            &opts.locale,
+            &opts.timezone,
+            &opts.language,
+            opts.clock,
+        )
+        .map_err(LoadError::Options)?;
         model.workbook.settings.date_system = opts.date_system;
         Ok(Self::from_model(model, opts.max_read_cells))
     }
@@ -230,7 +242,8 @@ impl Workbook {
             XlsxError::Limit { .. } => LoadError::Options(e.to_string()),
             e => engine_load_error(e),
         })?;
-        let model = Model::from_workbook(book, &w.language).map_err(LoadError::Format)?;
+        let model = Model::from_workbook_with_clock(book, &w.language, w.clock)
+            .map_err(LoadError::Format)?;
         let mut workbook = Self::from_model(model, w.max_read_cells);
         if opts.recalc {
             workbook.recalculate();
@@ -243,15 +256,13 @@ impl Workbook {
         self.model.evaluate();
     }
 
-    /// Pins the engine clock (`NOW`, `TODAY`) to the timestamp in the workbook's `METADATA`
-    /// sheet, as Excel-authored test workbooks carry it. Returns whether a timestamp was found.
-    #[cfg(feature = "mock_time")]
-    pub fn pin_clock_from_metadata(&self) -> bool {
-        let Some(millis) = rustsheet_xlsx::mock_time::get_metadata_timestamp(&self.model) else {
-            return false;
-        };
-        rustsheet_engine::mock_time::set_mock_time(millis);
-        true
+    /// Pins the workbook clock (`NOW`, `TODAY`) to the timestamp in the workbook's `METADATA`
+    /// sheet, as Excel-authored test workbooks carry it. Returns whether it pinned: a workbook
+    /// without a timestamp, or with one outside Excel's calendar, keeps its clock. Harness only
+    /// (SPEC-0008); it does not recalculate.
+    #[cfg(feature = "metadata_clock")]
+    pub fn pin_clock_from_metadata(&mut self) -> bool {
+        rustsheet_xlsx::metadata_clock::pin_clock_from_metadata(&mut self.model)
     }
 
     /// Serializes to xlsx bytes.
@@ -451,6 +462,7 @@ impl Workbook {
 mod tests {
     use super::*;
     use crate::value::{ErrorKind, XlError};
+    use crate::Input;
 
     #[test]
     fn date_system_is_chosen_at_new_and_survives_a_round_trip() {
@@ -465,6 +477,31 @@ mod tests {
         let bytes = wb.to_xlsx_bytes(SaveOptions::default()).expect("save");
         let loaded = Workbook::from_xlsx_bytes(&bytes, &LoadOptions::default()).expect("load");
         assert_eq!(loaded.date_system(), DateSystem::Excel1904);
+    }
+
+    #[test]
+    fn options_clock_applies_at_new_and_at_the_load_time_recalc() {
+        let opts = WorkbookOptions {
+            clock: Clock::fixed_unix_millis(0).expect("clock"),
+            ..WorkbookOptions::default()
+        };
+        let mut wb = Workbook::new(&opts).expect("new");
+        wb.set("A1", Input::Formula("=NOW()".into())).expect("a1");
+        wb.set("A2", Input::Formula("=TODAY()".into())).expect("a2");
+        assert_eq!(wb.value("A1").unwrap(), Value::Number(25569.0));
+        assert_eq!(wb.value("A2").unwrap(), Value::Number(25569.0));
+
+        let bytes = wb.to_xlsx_bytes(SaveOptions::default()).expect("save");
+        let next_day = LoadOptions {
+            workbook: WorkbookOptions {
+                clock: Clock::fixed_unix_millis(86_400_000).expect("clock"),
+                ..WorkbookOptions::default()
+            },
+            ..LoadOptions::default()
+        };
+        let loaded = Workbook::from_xlsx_bytes(&bytes, &next_day).expect("load");
+        assert_eq!(loaded.value("A1").unwrap(), Value::Number(25570.0));
+        assert_eq!(loaded.value("A2").unwrap(), Value::Number(25570.0));
     }
 
     /// A workbook built through the engine and round-tripped through xlsx.
@@ -624,7 +661,7 @@ mod tests {
         ));
     }
 
-    #[cfg(feature = "mock_time")]
+    #[cfg(feature = "metadata_clock")]
     #[test]
     fn pin_clock_reads_the_metadata_now_row() {
         let mut model = Model::new_empty("w", "en", "UTC", "en").expect("model");
@@ -636,9 +673,14 @@ mod tests {
         let bytes = rustsheet_xlsx::export::save_xlsx_to_writer(&model, Cursor::new(Vec::new()))
             .expect("save")
             .into_inner();
-        let pinned = Workbook::from_xlsx_bytes(&bytes, &LoadOptions::default()).unwrap();
+        let mut pinned = Workbook::from_xlsx_bytes(&bytes, &LoadOptions::default()).unwrap();
+        assert_eq!(pinned.model.clock(), Clock::system());
         assert!(pinned.pin_clock_from_metadata());
-        assert!(!sample().pin_clock_from_metadata());
+        // (45000.5 - 25569) days after the Unix epoch.
+        assert_eq!(pinned.model.clock().fixed(), Some(1_678_881_600_000));
+        let mut unpinned = sample();
+        assert!(!unpinned.pin_clock_from_metadata());
+        assert_eq!(unpinned.model.clock(), Clock::system());
     }
 
     #[test]

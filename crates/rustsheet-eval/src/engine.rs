@@ -3,8 +3,8 @@
 //! can be plugged in and compared side by side.
 
 use rustsheet::{
-    CellRef, DateSystem, ErrorKind, Input, LoadOptions, RangeRef, SheetId, Value as ApiValue,
-    Workbook, WorkbookOptions, XlError,
+    CellRef, Clock, DateSystem, ErrorKind, Input, LoadOptions, RangeRef, SheetId,
+    Value as ApiValue, Workbook, WorkbookOptions, XlError,
 };
 
 use crate::case::{split_qualified, CaseSpec, CellInput};
@@ -31,6 +31,19 @@ pub trait Engine: Sync {
     fn evaluate_spec(&self, spec: &CaseSpec) -> Result<Box<dyn Evaluated>, String>;
     /// Worksheet functions the engine implements, by en-US name (for the evidence report).
     fn implemented_functions(&self) -> Vec<String>;
+}
+
+/// The instant every evaluation reads as "now" unless a METADATA `NOW` row pins another one:
+/// 2022-11-08T11:13:28.578Z, the instant the engine's former thread-local mock clock defaulted to,
+/// so harness results did not change when the clock moved into the workbook (SPEC-0008).
+const HARNESS_CLOCK_MS: i64 = 1_667_906_008_578;
+
+/// Default workbook options on the harness clock.
+fn harness_options() -> Result<WorkbookOptions, String> {
+    Ok(WorkbookOptions {
+        clock: Clock::fixed_unix_millis(HARNESS_CLOCK_MS).map_err(|e| e.to_string())?,
+        ..WorkbookOptions::default()
+    })
 }
 
 /// The RustSheet engine (currently the forked IronCalc `Model`).
@@ -71,12 +84,13 @@ impl Engine for RustSheetEngine {
     fn evaluate_xlsx(&self, bytes: &[u8]) -> Result<Box<dyn Evaluated>, String> {
         let opts = LoadOptions {
             recalc: false,
+            workbook: harness_options()?,
             ..LoadOptions::default()
         };
         let mut workbook =
             Workbook::from_xlsx_bytes(bytes, &opts).map_err(|e| format!("import failed: {e}"))?;
-        // The mock clock is thread-local and defaults to a fixed instant; a METADATA `NOW` row
-        // (IronCalc convention, mirrored by `volatile::pinned_clock_serial`) overrides it.
+        // A METADATA `NOW` row (IronCalc convention, mirrored by `volatile::pinned_clock_serial`)
+        // overrides the harness clock.
         workbook.pin_clock_from_metadata();
         workbook.recalculate();
         Ok(Box::new(RustSheetEvaluated { workbook }))
@@ -90,7 +104,7 @@ impl Engine for RustSheetEngine {
         };
         let mut workbook = Workbook::new(&WorkbookOptions {
             date_system,
-            ..WorkbookOptions::default()
+            ..harness_options()?
         })
         .map_err(|e| e.to_string())?;
         // The harness only reads final values: skip the per-edit value diff.
