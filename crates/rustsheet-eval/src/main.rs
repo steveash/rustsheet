@@ -253,12 +253,16 @@ fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
 }
 
 /// Fills the report's milestone sections from the run's `results`.
+///
+/// # Errors
+/// When a cell line of the probe-milestone mapping names a cell its case does not check.
 fn score_milestones(
     milestones: &Milestones,
     suites: &[Suite],
     results: &[CaseResult],
     report: &mut RunReport,
-) {
+) -> Result<()> {
+    milestones.rules.check_cells(results)?;
     let modes: BTreeMap<String, BaselineMode> = suites
         .iter()
         .map(|s| (s.manifest.name.clone(), s.manifest.baseline))
@@ -273,6 +277,7 @@ fn score_milestones(
         .copied()
         .unwrap_or(BaselineMode::Cells);
     report.probe_milestones = probe_milestones::summarize(&milestones.rules, results, probes_mode);
+    Ok(())
 }
 
 fn print_summary(report: &RunReport) {
@@ -342,7 +347,7 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         &RustSheetEngine.implemented_functions(),
         &catalog,
     );
-    score_milestones(&milestones, &suites, &results, &mut report);
+    score_milestones(&milestones, &suites, &results, &mut report)?;
     print_summary(&report);
     let mut failed = false;
     for suite in &suites {
@@ -499,7 +504,7 @@ fn run() -> Result<ExitCode> {
                 &RustSheetEngine.implemented_functions(),
                 &catalog,
             );
-            score_milestones(&milestones, &suites, &results, &mut report);
+            score_milestones(&milestones, &suites, &results, &mut report)?;
             let out = out.unwrap_or_else(|| root.join("eval/runs/latest"));
             std::fs::create_dir_all(&out)?;
             std::fs::write(

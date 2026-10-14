@@ -105,6 +105,13 @@ pub enum MappingError {
     /// A line names a case that the `probes` suite does not discover.
     #[error("{MAPPING_PATH} line {line}: no case {case}")]
     UnknownCase { line: usize, case: String },
+    /// A cell line names a cell that its case does not check.
+    #[error("{MAPPING_PATH} line {line}: {case} has no checked cell {cell}")]
+    UnknownCell {
+        line: usize,
+        case: String,
+        cell: String,
+    },
 }
 
 impl Mapping {
@@ -196,6 +203,41 @@ impl Mapping {
     }
 }
 
+impl Mapping {
+    /// Checks that every cell line names a checked cell of its case, so a typo cannot leave a cell
+    /// counted at its case's milestone unnoticed. A case that did not run (a partial run), that
+    /// has no scored cells (it failed to load) or that skipped volatile cells is not checked: the
+    /// results do not say which cells were skipped, and a line may name one (probes/volatile-invariant
+    /// Calc!A6).
+    ///
+    /// # Errors
+    /// The first line, in file order, whose cell the case's results do not contain.
+    pub fn check_cells(&self, results: &[CaseResult]) -> Result<(), MappingError> {
+        let checked: BTreeMap<&str, BTreeSet<String>> = results
+            .iter()
+            .filter(|r| !r.cells.is_empty() && r.skipped_volatile == 0)
+            .map(|r| (r.id.as_str(), r.cells.iter().map(CellResult::key).collect()))
+            .collect();
+        match self
+            .cells
+            .iter()
+            .filter(|((case, cell), _)| {
+                checked
+                    .get(case.as_str())
+                    .is_some_and(|cells| !cells.contains(cell))
+            })
+            .min_by_key(|(_, a)| a.line)
+        {
+            Some(((case, cell), a)) => Err(MappingError::UnknownCell {
+                line: a.line,
+                case: case.clone(),
+                cell: cell.clone(),
+            }),
+            None => Ok(()),
+        }
+    }
+}
+
 /// Applies rules 1–5.
 #[derive(Debug, Clone, Default)]
 pub struct Rules {
@@ -206,6 +248,14 @@ pub struct Rules {
 }
 
 impl Rules {
+    /// See [`Mapping::check_cells`].
+    ///
+    /// # Errors
+    /// The first cell line that names a cell its case does not check.
+    pub fn check_cells(&self, results: &[CaseResult]) -> Result<(), MappingError> {
+        self.mapping.check_cells(results)
+    }
+
     /// The rules from the frozen lists (only [`FROZEN_M1_LIST`] matters), the mapping file and
     /// the catalog.
     #[must_use]
@@ -473,6 +523,38 @@ mod tests {
             .map(String::from)
             .into();
         assert_eq!(mapping.check_known(&known), Ok(()));
+    }
+
+    #[test]
+    fn an_unchecked_cell_names_its_line() {
+        let mapping = Mapping::parse(
+            "# c\nprobes/a.case.json\tS!A1\tM9\tx\nprobes/a.case.json\tS!B2\tM9\tx\nprobes/b.case.json\tS!Z9\tM9\tx\n",
+        )
+        .expect("parse");
+        let a = case(
+            "probes/a.case.json",
+            &[],
+            CaseStatus::Pass,
+            vec![cell("S!A1", "=1", Verdict::Pass)],
+        );
+        assert_eq!(
+            mapping
+                .check_cells(std::slice::from_ref(&a))
+                .expect_err("unchecked")
+                .to_string(),
+            format!("{MAPPING_PATH} line 3: probes/a.case.json has no checked cell S!B2")
+        );
+        // A case that did not run (probes/b) is not checked.
+        let a = case(
+            "probes/a.case.json",
+            &[],
+            CaseStatus::Pass,
+            vec![
+                cell("S!A1", "=1", Verdict::Pass),
+                cell("S!B2", "=2", Verdict::Pass),
+            ],
+        );
+        assert_eq!(mapping.check_cells(&[a]), Ok(()));
     }
 
     #[test]
