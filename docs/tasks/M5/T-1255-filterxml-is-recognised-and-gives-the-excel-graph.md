@@ -3,7 +3,7 @@ id: T-1255
 title: "FILTERXML is recognised and gives the excel-graph golden #VALUE! (5 gen-m6 cells)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
