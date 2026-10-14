@@ -288,6 +288,11 @@ PRODUCT of an array argument (`PRODUCT(IF(SEQUENCE(5),7))`) multiplies its numbe
 (probes/geomean-single-and-copies Copies!B1:B35). Text and booleans inside the array are skipped, an array with no
 numbers gives 0 (`PRODUCT({"a"})`, `PRODUCT({TRUE,FALSE})`), and the first error element wins
 (`PRODUCT({2,#N/A,#DIV/0!})` = #N/A) (probes/product-array-elements, excel-graph).
+In a 2D array the first error in row-major order wins (`PRODUCT({1,#N/A;#DIV/0!,2})` = #N/A, `PRODUCT({1,#DIV/0!;#N/A,2})` = #DIV/0!). A
+no-number array with a scalar gives the scalar (`PRODUCT({"a"},3)` = `PRODUCT(3,{"a"})` = `PRODUCT({TRUE,FALSE},3)` = 3). An error inside an array
+ranks like a referenced-cell error, as in SUM: a direct scalar error beats it either way (`PRODUCT({1,#N/A},#NUM!,#DIV/0!)` = #NUM!,
+`PRODUCT(#NUM!,{1,#N/A})` = #NUM!), and against a referenced error or another array the leftmost wins (`PRODUCT({1,#N/A},C1)` with C1=#NUM! is #N/A,
+`PRODUCT(C1,{1,#N/A})` #NUM!, `PRODUCT({#N/A},{#DIV/0!})` #N/A) (probes/product-array-2d-and-scalar, excel-graph 2026-10-14, T-1287).
 MDETERM, MINVERSE and MMULT are `#VALUE!` for a text cell in a matrix (arrays.md has blanks).
 These decide the generator's argument modes (eval/catalog/functions.yaml `array`, T-1082); the
 SUMX2MY2 family's `array` mode rests on "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing" above, and
