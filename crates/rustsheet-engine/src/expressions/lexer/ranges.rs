@@ -1,7 +1,7 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::{
     token::TokenType,
-    utils::{column_to_number, is_valid_column},
+    utils::{column_to_number, is_valid_column, is_valid_identifier, quote_name},
 };
 
 use super::Lexer;
@@ -19,6 +19,28 @@ enum CornerRow {
 }
 
 impl Lexer {
+    /// `Sheet!LocalName` after a sheet prefix whose range did not parse: a defined name scoped to
+    /// a sheet of this workbook, as the identifier `Sheet!LocalName` so the formula text
+    /// round-trips (the parser resolves the scope; poi/56737.xlsx Uses!D2). `start` is where the
+    /// range began; the position is left untouched when this is not a name.
+    pub(super) fn consume_sheet_scoped_name(
+        &mut self,
+        sheet: &str,
+        start: usize,
+    ) -> Option<TokenType> {
+        if sheet.starts_with('[') || sheet.contains(':') {
+            return None;
+        }
+        let failed_at = self.position;
+        self.position = start;
+        let name = self.consume_identifier();
+        if is_valid_identifier(&name) && !matches!(self.peek_char(), Some('(' | '[')) {
+            return Some(TokenType::Ident(format!("{}!{name}", quote_name(sheet))));
+        }
+        self.position = failed_at;
+        None
+    }
+
     /// Consumes a reference in A1 style like:
     /// AS23, $AS23, AS$23, $AS$23, R12
     /// Or returns an error
