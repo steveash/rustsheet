@@ -3,7 +3,7 @@ id: T-1293
 title: "Probe the FORECAST.ETS family on excel-graph: when is it a number, not #N/A"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
