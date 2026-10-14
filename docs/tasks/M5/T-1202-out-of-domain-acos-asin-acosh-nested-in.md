@@ -3,7 +3,7 @@ id: T-1202
 title: "Out-of-domain ACOS/ASIN/ACOSH nested in another function give #NUM!, not NaN"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -34,3 +34,9 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
 
 ## Out of scope
 -
+
+## Outcome
+`single_number_fn!` (functions/macros.rs) turns a NaN result into `#NUM!` for scalar and array
+elements, so nested ACOS/ASIN/ACOSH/ATANH and the like no longer leak NaN. The four listed gen
+cells no longer appear among failing cells in `rustsheet-eval show`; a unit test covers each
+nesting. Eval baselines unchanged (these gen suites have no baseline).
