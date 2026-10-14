@@ -37,6 +37,7 @@ Each failing cell already has an open task in its own milestone (T-1457, T-1374,
 T-1454, T-1442, T-1316, T-1318, T-1437, T-1106). This task moves no failure out of sight. It only applies
 0051's assignment rule. The 10 lone-surrogate cells (`text-surrogate-positions`, `concatenate-limit-spill`)
 are M2 subjects and stay M2 (T-1030).
+
 **Update (steward 2026-10-14):** the list above is out of date. On main 6ab245f0, `make eval`
 assigns 518 known-failure cells to M0-M2 (it was 196). Cases added on 2026-10-13 also carry an `M1` tag
 but probe later-milestone subjects. Include each of these too, after checking its subject:
@@ -47,6 +48,7 @@ but probe later-milestone subjects. Include each of these too, after checking it
 `text-collation-order` (156) and `text-order-nbsp-space` (1) are M2 subjects (T-0220) and stay M2. The
 "about 47" target in the acceptance criteria no longer holds: report the before/after counts from `make eval`
 instead. T-1519 (harness) adds a gate that stops new mis-tagged probe cases.
+
 Reproduce the per-case list: `make eval`, then compare eval/runs/latest/report.json `cases[]` (suite
 `probes`) against the rules in crates/rustsheet-eval/src/probe_milestones.rs. T-1471 adds this list to the report.
 eval/milestones/ is protected (decision 0044), so the mapping edit needs this decision record (`make new-decision`).
