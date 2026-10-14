@@ -3,7 +3,7 @@ id: T-1287
 title: "Probe PRODUCT error order in a 2D array and a no-number array with a scalar"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
