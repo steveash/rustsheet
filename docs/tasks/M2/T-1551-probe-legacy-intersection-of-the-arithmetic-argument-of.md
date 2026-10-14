@@ -3,7 +3,7 @@ id: T-1551
 title: "Probe legacy intersection of the arithmetic argument of the remaining aggregates (MIN, PRODUCT, STDEV, VAR, SUMSQ, ...)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
