@@ -26,4 +26,4 @@ Excel accepts `TEXT(1,"0:a:")` = "1:a:", `"0::a"` = "1:a" (probes/text-format-le
 - Non-ASCII letters.
 
 ## Outcome
-Probed every ASCII letter after `0` and after `d`, plus the colon runs: probes/text-format-unquoted-letters (111 cells, excel-graph). Result and letter table are in docs/excel-semantics/number-formats.md. Eval delta: probes known failures 5142 -> 5217 (new coverage: 75 cells the lexer rejects; 0 regressions). Lexer change filed as T-1510.
+Probed every ASCII letter after `0` and after `d`, plus the colon runs: probes/text-format-unquoted-letters (111 cells, excel-graph). Result and letter table are in docs/excel-semantics/number-formats.md. Eval delta: probes known failures 5142 -> 5217 (new coverage: 75 cells the lexer rejects; 0 regressions). The lexer change is covered by T-1262 (extended with this evidence); reproduce with `rustsheet-eval show probes/text-format-unquoted-letters.case.json`.
