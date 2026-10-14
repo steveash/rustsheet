@@ -49,7 +49,7 @@ fn finite_or_overflow(value: f64) -> Result<f64, Error> {
 /// `x * y`; a product beyond the double range is `#NUM!` at once, so it stays an error through
 /// `&`, CONCAT, TEXT and LEN (probes-numeric/4f413cc257ce15c4 Calc!A121:A124, excel-graph).
 pub(crate) fn times(x: f64, y: f64) -> Result<f64, Error> {
-    finite_or_num(x * y)
+    finite_or_num(extended_product(x, y))
 }
 
 /// `x / y`. A divisor below the smallest normal double counts as zero, so `1/1E-308` and
@@ -84,19 +84,48 @@ pub(crate) fn extended_quotient(x: f64, y: f64) -> f64 {
     let inexact = numerator % divisor != 0;
     // First rounding: to 64 bits, ties to even, the remainder breaking ties.
     let (extended, shift) = round_to_bits(quotient, 64, inexact);
-    // Second rounding: the 64-bit value to 53 bits; the value is now exact, so a tie is a tie.
-    let (significand, second_shift) = round_to_bits(extended, 53, false);
-    let exponent = x_exponent - y_exponent - 74 + shift + second_shift;
-    let Some(biased) = u64::try_from(exponent + 1075)
-        .ok()
-        .filter(|b| (1..=2046).contains(b))
-    else {
+    let exponent = x_exponent - y_exponent - 74 + shift;
+    round_extended_to_double(
+        extended,
+        exponent,
+        x.is_sign_negative() != y.is_sign_negative(),
+    )
+    .unwrap_or(plain)
+}
+
+/// `x * y` rounded twice, first to a 64-bit significand and then to a double, like
+/// [`extended_quotient`] (docs/excel-semantics/numbers.md "Division rounds twice",
+/// probes-numeric/double-rounding-ops A1-A16, excel-graph). The exact 106-bit product is rounded to
+/// 64 bits and then to 53. A product that is not a normal double, and any non-finite or zero
+/// operand, is the plain `x * y`.
+pub(crate) fn extended_product(x: f64, y: f64) -> f64 {
+    let plain = x * y;
+    if !plain.is_normal() || !x.is_normal() || !y.is_normal() {
         return plain;
-    };
-    let sign = u64::from(x.is_sign_negative() != y.is_sign_negative()) << 63;
+    }
+    let (x_significand, x_exponent) = significand_and_exponent(x);
+    let (y_significand, y_exponent) = significand_and_exponent(y);
+    let product = u128::from(x_significand) * u128::from(y_significand);
+    let (extended, shift) = round_to_bits(product, 64, false);
+    round_extended_to_double(
+        extended,
+        x_exponent + y_exponent + shift,
+        x.is_sign_negative() != y.is_sign_negative(),
+    )
+    .unwrap_or(plain)
+}
+
+/// The 64-bit `extended·2^exponent` rounded to a double (second rounding: the value is exact now,
+/// so a tie is a tie), or `None` when the result is not a normal double.
+fn round_extended_to_double(extended: u128, exponent: i32, negative: bool) -> Option<f64> {
+    let (significand, shift) = round_to_bits(extended, 53, false);
+    let biased = u64::try_from(exponent + shift + 1075)
+        .ok()
+        .filter(|b| (1..=2046).contains(b))?;
+    let sign = u64::from(negative) << 63;
     // The significand has 53 bits after the second rounding, so the conversion cannot fail.
     let fraction = u64::try_from(significand).unwrap_or(0) & 0x000F_FFFF_FFFF_FFFF;
-    f64::from_bits(sign | (biased << 52) | fraction)
+    Some(f64::from_bits(sign | (biased << 52) | fraction))
 }
 
 /// The 53-bit integer significand `m` and exponent `e` of a normal double, `|x| = m·2^e`.
