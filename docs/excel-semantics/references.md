@@ -1353,8 +1353,8 @@ Evidence: probes/legacy-value-argument-intersection, probes/legacy-type-intersec
 2026-10-14, T-1526), probes/array-context-legacy-sumproduct (T-0286).
 Engine: `add_implicit_intersection` (parser/static_analysis.rs) adds the automatic `@` at import
 and in `legacy_formula_text`: a scalar argument whose static shape is not a scalar, the arithmetic
-argument of the probed aggregates (`legacy_value_operand`: SUM, AVERAGE, AVERAGEA, MAX, COUNT,
-COUNTA, LARGE, MEDIAN), TYPE's argument (`is_scalar_context`), a range of another workbook,
+argument, parenthesized or not, of the probed aggregates (`legacy_value_operand`: SUM, AVERAGE, AVERAGEA,
+MAX, COUNT, COUNTA, LARGE, MEDIAN and the T-1551 list above), TYPE's argument (`is_scalar_context`), a range of another workbook,
 and under SUMPRODUCT IF's condition and IFERROR's and IFNA's value
 (`for_each_array_context_condition`); `remove_redundant_implicit_intersection` mirrors it so the
 export drops exactly those `@`s. Unprobed: the arithmetic argument of the compatibility
