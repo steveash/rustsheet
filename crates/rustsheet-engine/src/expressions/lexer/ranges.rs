@@ -1,7 +1,7 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::{
     token::TokenType,
-    utils::{column_to_number, is_valid_column, quote_name},
+    utils::{column_to_number, is_valid_column, is_valid_identifier, quote_name},
 };
 
 use super::Lexer;
@@ -34,7 +34,7 @@ impl Lexer {
         let failed_at = self.position;
         self.position = start;
         let name = self.consume_identifier();
-        if name_can_be_defined_name(&name) && !matches!(self.peek_char(), Some('(' | '[')) {
+        if is_valid_identifier(&name) && !matches!(self.peek_char(), Some('(' | '[')) {
             return Some(TokenType::Ident(format!("{}!{name}", quote_name(sheet))));
         }
         self.position = failed_at;
@@ -514,37 +514,4 @@ impl Lexer {
             absolute_row,
         })
     }
-}
-
-/// Whether `text` after a sheet prefix may be a defined name rather than a cell: it starts like
-/// a name and is not a cell in A1 (`A1`, `$B$2`) or R1C1 (`R2C3`, `RC`, `R`) style, which Excel
-/// forbids as names.
-fn name_can_be_defined_name(text: &str) -> bool {
-    let Some(first) = text.chars().next() else {
-        return false;
-    };
-    if !(first.is_alphabetic() || first == '_' || first == '\\') {
-        return false;
-    }
-    let upper = text.to_uppercase();
-    let letters = upper.chars().take_while(char::is_ascii_alphabetic).count();
-    let digits = upper[letters..].chars().all(|c| c.is_ascii_digit());
-    let a1_cell = (1..=3).contains(&letters) && digits && letters < upper.len();
-    // R1C1 shapes only: `R`, `C`, `RC`, `R<n>`, `C<n>`, `R<n>C<n>`.
-    let r1c1 = r1c1_shape(&upper);
-    !(a1_cell || r1c1)
-}
-
-/// Whether upper-case `text` is `R`, `C`, `RC`, `R<n>`, `C<n>` or `R<n>C<n>` (`<n>` digits).
-fn r1c1_shape(text: &str) -> bool {
-    let digits = |t: &str| {
-        t.trim_start_matches(|c: char| c.is_ascii_digit())
-            .to_string()
-    };
-    if let Some(rest) = text.strip_prefix('R') {
-        let rest = digits(rest);
-        return rest.is_empty() || digits(rest.strip_prefix('C').unwrap_or("x")).is_empty();
-    }
-    text.strip_prefix('C')
-        .is_some_and(|rest| digits(rest).is_empty())
 }
