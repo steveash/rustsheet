@@ -1,7 +1,7 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::{
     token::TokenType,
-    utils::{column_to_number, is_valid_column},
+    utils::{column_to_number, is_valid_column, quote_name},
 };
 
 use super::Lexer;
@@ -19,6 +19,28 @@ enum CornerRow {
 }
 
 impl Lexer {
+    /// `Sheet!LocalName` after a sheet prefix whose range did not parse: a defined name scoped to
+    /// a sheet of this workbook, as the identifier `Sheet!LocalName` so the formula text
+    /// round-trips (the parser resolves the scope; poi/56737.xlsx Uses!D2). `start` is where the
+    /// range began; the position is left untouched when this is not a name.
+    pub(super) fn consume_sheet_scoped_name(
+        &mut self,
+        sheet: &str,
+        start: usize,
+    ) -> Option<TokenType> {
+        if sheet.starts_with('[') || sheet.contains(':') {
+            return None;
+        }
+        let failed_at = self.position;
+        self.position = start;
+        let name = self.consume_identifier();
+        if name_can_be_defined_name(&name) && !matches!(self.peek_char(), Some('(' | '[')) {
+            return Some(TokenType::Ident(format!("{}!{name}", quote_name(sheet))));
+        }
+        self.position = failed_at;
+        None
+    }
+
     /// Consumes a reference in A1 style like:
     /// AS23, $AS23, AS$23, $AS$23, R12
     /// Or returns an error
@@ -492,4 +514,25 @@ impl Lexer {
             absolute_row,
         })
     }
+}
+
+/// Whether `text` after a sheet prefix may be a defined name rather than a cell: it starts like
+/// a name and is not a cell in A1 (`A1`, `$B$2`) or R1C1 (`R2C3`, `RC`, `R`) style, which Excel
+/// forbids as names.
+fn name_can_be_defined_name(text: &str) -> bool {
+    let Some(first) = text.chars().next() else {
+        return false;
+    };
+    if !(first.is_alphabetic() || first == '_' || first == '\\') {
+        return false;
+    }
+    let upper = text.to_uppercase();
+    let letters = upper.chars().take_while(char::is_ascii_alphabetic).count();
+    let digits = upper[letters..].chars().all(|c| c.is_ascii_digit());
+    let a1_cell = (1..=3).contains(&letters) && digits && letters < upper.len();
+    let r1c1 = upper
+        .chars()
+        .all(|c| matches!(c, 'R' | 'C') || c.is_ascii_digit())
+        && upper.starts_with(['R', 'C']);
+    !(a1_cell || r1c1)
 }

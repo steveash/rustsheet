@@ -133,10 +133,10 @@ impl Model {
         let Node::DefinedNameKind((name, scope, _)) = node else {
             return None;
         };
-        match self
-            .parsed_defined_names
-            .get(&(*scope, name.to_lowercase()))
-        {
+        match self.parsed_defined_names.get(&(
+            *scope,
+            crate::expressions::utils::bare_defined_name(name).to_lowercase(),
+        )) {
             Some(ParsedDefinedName::Formula(body)) => Some(std::sync::Arc::clone(body)),
             _ => None,
         }
@@ -148,10 +148,10 @@ impl Model {
         let Node::DefinedNameKind((name, scope, _)) = node else {
             return None;
         };
-        match self
-            .parsed_defined_names
-            .get(&(*scope, name.to_lowercase()))
-        {
+        match self.parsed_defined_names.get(&(
+            *scope,
+            crate::expressions::utils::bare_defined_name(name).to_lowercase(),
+        )) {
             Some(ParsedDefinedName::ErrorLiteral(error)) => Some(error.clone()),
             Some(ParsedDefinedName::InvalidDefinedNameFormula) => Some(Error::NAME),
             _ => None,

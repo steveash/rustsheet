@@ -352,10 +352,10 @@ impl Model {
             // A defined name that stands for a reference is that reference, to a single cell as
             // well: `MAX(TextCell)` ignores the text in it (upstream MIN_MAX_extras.xlsx A1-A3).
             Node::DefinedNameKind((name, scope, _)) => {
-                match self
-                    .parsed_defined_names
-                    .get(&(*scope, name.to_lowercase()))
-                {
+                match self.parsed_defined_names.get(&(
+                    *scope,
+                    crate::expressions::utils::bare_defined_name(name).to_lowercase(),
+                )) {
                     Some(&ParsedDefinedName::CellReference(reference)) => CalcResult::Range {
                         left: reference,
                         right: reference,
@@ -672,7 +672,10 @@ impl Model {
                 if let Some(value) = self.evaluate_external_name(name, cell) {
                     return value;
                 }
-                let key = (*scope, name.to_lowercase());
+                let key = (
+                    *scope,
+                    crate::expressions::utils::bare_defined_name(name).to_lowercase(),
+                );
                 if let Some(parsed_defined_name) = self.parsed_defined_names.get(&key).cloned() {
                     match parsed_defined_name {
                         ParsedDefinedName::CellReference(reference) => {

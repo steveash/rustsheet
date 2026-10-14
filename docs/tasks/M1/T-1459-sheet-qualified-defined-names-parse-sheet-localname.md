@@ -3,7 +3,7 @@ id: T-1459
 title: "Sheet-qualified defined names parse: Sheet!LocalName"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -37,3 +37,9 @@ docs/excel-semantics/references.md "Cached values of a linked workbook" notes th
 
 ## Out of scope
 - A sheet-qualified workbook-scoped name (`Sheet!GlobalName`): unprobed, leave as is.
+
+## Outcome
+`Sheet!Name` lexes as an identifier when no cell follows (`consume_range` fallback) and the parser
+resolves it, `[0]!Name` and `[0]Sheet!Name` to the name's scope at parse time, keeping the prefix
+in the node name for round-trip; lookups use `utils::bare_defined_name`, so ISREF, reference
+context and rename see them. Eval: poi known failures 513 -> 512 (56737.xlsx Uses!D2 fixed).
