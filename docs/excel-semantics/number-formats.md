@@ -272,6 +272,6 @@ Excel prints most ASCII letters that are not format tokens as literals, with no 
 - **After `d`** (a date format), the date tokens keep their meaning: `db` "143" (Buddhist year), `dd` "01", `de` "11900", `dg` "1", `dh` "10", `dm` "11", `ds` "10", `dy` "100", and `dD`, `dG`, `dH`, `dM`, `dS`, `dY` the same as lowercase. `dB`, `dE`, `dn` and `dN` are `#VALUE!`. The remaining letters (`a c f i j k l o p q r t u v w x z` and capitals `A C F I J K L O P Q R T U V W X Z`) print as literals ("1a").
 - **Colons:** `TEXT(1,"0\:\:")` is "1::" (escaped colons do not collapse); `TEXT(0.5,"h::mm")` and `"h:::mm"` are "12:00" (a run collapses to one); `"0::"` and `"0:::"` are "1:"; `"0:a:"` is "1:a:" and `"0::a"` is "1:a".
 
-Evidence strength: excel-graph oracle, 111 cells. Status: VERIFIED (web).
-Ours: the lexer (formatter/lexer.rs `next_token`) treats every non-token letter as illegal, so all the literal cases are `#VALUE!`. Follow-up lexer task filed.
-Tasks: T-1450
+Evidence strength: excel-graph oracle, 111 cells. Status: VERIFIED (excel-graph).
+Ours: the lexer (formatter/lexer.rs `next_token`) treats every non-token letter as illegal, so all the literal cases are `#VALUE!`. Lexer fix: T-1510.
+Tasks: T-1450, T-1510
