@@ -22,6 +22,19 @@ cached workbooks give. Fit against the T-0942 sweep, never blind: `eval/suites/p
 `m9-fin-power`, `m9-fin-pv-fv`, `m9-fin-pmt`, `m9-fin-nper-npv` (oracle-filled 2026-10-06). The PV and FV
 formulations already fit 308/308 each (docs/excel-semantics/financial.md); PMT does not yet.
 
+**T-1524 (fit lab `annuity-*`, 2026-10-14):** NPER is fitted: `ln((pmt*k - fv*r)/(pmt*k + pv*r)) / ln(1+r)`
+in doubles (libm `log` of the double 1+r, k = 1+r*type) matches 95/95 numeric cells of m9-fin-nper-npv
+(engine 61); `log1p(r)` gives 11. PV and FV refit 308/308 in the lab. Excel's annuity code is plain double
+arithmetic: keeping intermediates at 64 bits (x87 registers) drops PV to 174, FV to 230, NPER to 6.
+PMT stays unexplained. Every model accurate to about half an ulp (correctly rounded, 64-bit intermediates
+on the exact or fyl2x/f2xm1/fscale power) gets 132/308, because Excel's own PMT lies up to 3.5 ulps from
+the exact value. An implementable gain: PMT in doubles with `P-1 = expm1(n*ln_1p(r))` and
+`-(pv*P+fv)/((P-1)/r*k)` gives 120 bit-exact (engine 54) and 308/308 within 4 ulp (engine 176), and
+`-(pv*r+(pv+fv)*r/(P-1))/k` gives 129 (306 within 4 ulp). The engine's `(1+r)^n - 1` cancels for small r*n.
+IPMT/PPMT best 219/94 (correctly rounded), NPV best 27/88; both time-boxed under decision 0056. Details:
+docs/excel-semantics/financial.md "Annuity evaluation order"; numbers.md "x87 precision is per operator, not
+per kernel".
+
 ## Acceptance criteria
 - [ ] Known failures for these functions drop by ≥ 90% with no new failures; root cause documented in docs/excel-semantics/financial.md.
 - [ ] `make check` green; reviewers approve.

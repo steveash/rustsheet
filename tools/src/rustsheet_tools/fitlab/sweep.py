@@ -3,9 +3,12 @@
 A sweep is a case plus its oracle sidecar (Excel's values), both JSON, located through the
 harness's own discovery (`rustsheet-eval cases`, `snapshot.suite_cases`); no xlsx is parsed.
 Cells are selected by a regex over the formula text whose first group is the argument list.
-Arguments are numeric literals, TRUE/FALSE, string literals, and references (`A1`, `$Z$1`,
-`Data!B2`, `D1:D10`) to constant cells of the case or to formula cells with an oracle value.
-A cell whose arguments are anything else (a nested expression) is reported as unparsed.
+Arguments are numeric literals, TRUE/FALSE, string literals, references (`A1`, `$Z$1`,
+`Data!B2`, `D1:D10`) to constant cells of the case or to formula cells with an oracle value, and
+arithmetic over numeric literals (`0.05/12`, `1+26955297717044*2^-52`), which is evaluated with
+Excel's operator model (`arithmetic`). A cell whose arguments are anything else (a function
+call) is reported as unparsed. A pattern with one group is an argument list split at top-level
+commas; a pattern with several groups gives one argument per group that took part in the match.
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ from typing import Any
 
 from xlsxwriter.utility import xl_rowcol_to_cell
 
+from rustsheet_tools.fitlab.exact import DOUBLE, DOUBLE_MIN_EXP, X87, exact, round_to_bits
 from rustsheet_tools.snapshot import suite_cases
 from rustsheet_tools.spec2xlsx import parse_a1
 
@@ -31,6 +35,8 @@ _REF = re.compile(
     r"(?:\s*:\s*(?P<last>\$?[A-Za-z]{1,3}\$?\d+))?"
 )
 _MAX_RANGE_CELLS = 1_000_000
+_ARITH = re.compile(r"\s*(?:(?P<num>(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)|(?P<op>[-+*/^()]))")
+_MAX_EXACT_EXPONENT = 1100  # beyond the double range either way
 
 
 class UnparsedError(ValueError):
@@ -132,6 +138,105 @@ def _sheet_name(raw: str | None, default: str) -> str:
     return raw[1:-1].replace("''", "'") if raw.startswith("'") else raw
 
 
+def _tokens(text: str) -> list[str]:
+    out: list[str] = []
+    pos = 0
+    while pos < len(text.rstrip()):
+        m = _ARITH.match(text, pos)
+        if not m:
+            msg = f"cannot evaluate argument {text!r}"
+            raise UnparsedError(msg)
+        out.append(m.group("num") or m.group("op"))
+        pos = m.end()
+    return out
+
+
+def _exact_power(base: float, power: float) -> float:
+    """`base^power` when it is an integer power whose exact value is a double (`2^-52`). Other
+    powers are themselves the subject of fits (numbers.md, "`^` / POWER are not correctly
+    rounded"), so a sweep argument does not guess one."""
+    if power != int(power) or abs(power) > _MAX_EXACT_EXPONENT or base == 0:
+        msg = f"power {base}^{power} in an argument"
+        raise UnparsedError(msg)
+    value = exact(base) ** int(power)
+    if round_to_bits(value, DOUBLE, DOUBLE_MIN_EXP) != value:
+        msg = f"power {base}^{power} in an argument is not exact"
+        raise UnparsedError(msg)
+    try:
+        return float(value)
+    except OverflowError:
+        msg = f"power {base}^{power} in an argument overflows"
+        raise UnparsedError(msg) from None
+
+
+def arithmetic(text: str) -> float:
+    """Evaluates `+ - * / ^`, unary signs and parentheses over numeric literals with Excel's
+    operator model: each of `+ - * /` rounds its exact result to 64 bits, then to a double
+    (numbers.md, "Division rounds twice"), and `^` must be exact (`_exact_power`). As in Excel,
+    a unary sign binds tighter than `^` (`-2^2` is 4)."""
+    tokens = _tokens(text)
+    pos = 0
+
+    def peek() -> str | None:
+        return tokens[pos] if pos < len(tokens) else None
+
+    def take() -> str:
+        nonlocal pos
+        if pos >= len(tokens):
+            msg = f"argument {text!r} ends early"
+            raise UnparsedError(msg)
+        pos += 1
+        return tokens[pos - 1]
+
+    def primary() -> float:
+        tok = take()
+        if tok in "+-" and len(tok) == 1:
+            value = primary()
+            return -value if tok == "-" else value
+        if tok == "(":
+            value = additive()
+            if take() != ")":
+                msg = f"unbalanced parentheses in {text!r}"
+                raise UnparsedError(msg)
+            return value
+        if _NUMBER.fullmatch(tok):
+            return float(tok)
+        msg = f"unexpected {tok!r} in {text!r}"
+        raise UnparsedError(msg)
+
+    def power() -> float:
+        value = primary()
+        while peek() == "^":
+            take()
+            value = _exact_power(value, primary())  # Excel's ^ is left-associative
+        return value
+
+    def multiplicative() -> float:
+        value = power()
+        while (op := peek()) in ("*", "/"):
+            take()
+            rhs = power()
+            if op == "/" and rhs == 0:
+                msg = f"division by zero in {text!r}"
+                raise UnparsedError(msg)
+            value = X87.mul(value, rhs) if op == "*" else X87.div(value, rhs)
+        return value
+
+    def additive() -> float:
+        value = multiplicative()
+        while (op := peek()) in ("+", "-"):
+            take()
+            rhs = multiplicative()
+            value = X87.add(value, rhs) if op == "+" else X87.sub(value, rhs)
+        return value
+
+    result = additive()
+    if pos != len(tokens):
+        msg = f"cannot evaluate argument {text!r}"
+        raise UnparsedError(msg)
+    return result
+
+
 def parse_arg(text: str, sheet: str, book: Workbook) -> Arg:
     """One argument's value (see the module doc for what is supported)."""
     if _NUMBER.fullmatch(text):
@@ -150,8 +255,7 @@ def parse_arg(text: str, sheet: str, book: Workbook) -> Arg:
             raise UnparsedError(msg)
         values = [book.value(name, xl_rowcol_to_cell(r, c)) for r in rows for c in cols]
         return values if m.group("last") else values[0]
-    msg = f"cannot evaluate argument {text!r}"
-    raise UnparsedError(msg)
+    return arithmetic(text)
 
 
 def case_entry(case_id: str) -> dict[str, Any]:
@@ -175,6 +279,15 @@ def load_workbook(case_path: Path, sidecar: Path) -> Workbook:
     return Workbook(sheets={s["name"]: s["cells"] for s in spec["sheets"]}, oracle=oracle["sheets"])
 
 
+def _arg_texts(m: re.Match[str]) -> list[str]:
+    """One group: the argument list, split at top-level commas. Several groups: one argument per
+    group that matched (so alternatives in a pattern can leave some out)."""
+    groups = m.groups()
+    if len(groups) <= 1:
+        return split_args(groups[0]) if groups and groups[0] is not None else []
+    return [g.strip() for g in groups if g is not None]
+
+
 def select(case_id: str, book: Workbook, pattern: re.Pattern[str], sweep: Sweep, where: Any = None) -> None:
     """Adds `book`'s cells whose formula matches `pattern` to `sweep`. `where(cell)`, when given,
     keeps only the cells it returns true for."""
@@ -187,7 +300,7 @@ def select(case_id: str, book: Workbook, pattern: re.Pattern[str], sweep: Sweep,
                 sweep.non_numeric += 1
                 continue
             try:
-                args = tuple(parse_arg(a, sheet, book) for a in split_args(m.group(1))) if m.groups() else ()
+                args = tuple(parse_arg(a, sheet, book) for a in _arg_texts(m))
             except UnparsedError as e:
                 sweep.unparsed.append(f"{case_id} {sheet}!{address}: {e}")
                 continue

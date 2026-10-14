@@ -310,3 +310,131 @@ class Ext:
 
     def __repr__(self) -> str:
         return f"Ext({float(self.value)!r})"
+
+
+Rounding = Callable[[Fraction], Fraction]
+
+
+def to_double_value(x: Fraction) -> Fraction:
+    """`x` correctly rounded to a double, as a Fraction (a `Rounding` for chained models)."""
+    return Fraction(to_double(x))
+
+
+def x87_value(x: Fraction) -> Fraction:
+    """`x` rounded to 64 bits, then to a double: one Excel operator (a `Rounding`)."""
+    return Fraction(double_round(x))
+
+
+def extended_value(x: Fraction) -> Fraction:
+    """`x` rounded to 64 bits and kept there, as in an x87 register (a `Rounding`)."""
+    return round_to_bits(x, EXTENDED)
+
+
+# The x87 extended exponent range is about 2^±16384; no model needs values beyond it, and a bound
+# keeps a huge exponent (n up to 2^53) from building enormous Fractions (directive 5).
+_EXPONENT_LIMIT = 1 << 14
+
+
+def check_range(v: Fraction) -> Fraction:
+    """`v`, or OverflowError when |v| is outside 2^±(16384 + a margin): beyond every double and
+    x87 extended value, so no model's result can be there."""
+    if v and abs(v.numerator.bit_length() - v.denominator.bit_length()) > _EXPONENT_LIMIT + 64:
+        msg = "value beyond the x87 extended exponent range"
+        raise OverflowError(msg)
+    return v
+
+
+def square_and_multiply(base: Number, n: int, rnd: Rounding) -> Fraction:
+    """`base^n` for n >= 0 by right-to-left binary exponentiation (numbers.md, "Integer exponents:
+    right-to-left square-and-multiply"), rounding every product with `rnd`. The last squaring is
+    skipped: it is unused and would overflow a double for large n."""
+    if n < 0:
+        msg = "square_and_multiply needs n >= 0"
+        raise ValueError(msg)
+    result, b, k = Fraction(1), exact(base), n
+    while k:
+        if k & 1:
+            result = check_range(rnd(result * b))
+        k >>= 1
+        if k:
+            b = check_range(rnd(b * b))
+    return result
+
+
+_INSN_BITS = 128  # working precision of the instruction models before their one 64-bit rounding
+
+
+class X87Insn:
+    """The x87 transcendental instructions, each rounded once to 64 bits: a closer model of
+    compiled x87 code than `X87.exp/ln/pow`, which round the whole function once. Real `fyl2x`
+    and `f2xm1` are not correctly rounded either (about 1 extended ulp), so this is still an
+    idealization. Results are Fractions held at 64 bits (`Ext` values)."""
+
+    LN2 = round_to_bits(ln_cr(2, _INSN_BITS), EXTENDED)  # fldln2
+    LOG2E = round_to_bits(1 / ln_cr(2, _INSN_BITS), EXTENDED)  # fldl2e
+
+    @staticmethod
+    def fyl2x(y: Number, x: Number) -> Fraction:
+        """y * log2(x), rounded once to 64 bits."""
+        log2 = ln_cr(x, _INSN_BITS) / ln_cr(2, _INSN_BITS)
+        return round_to_bits(exact(y) * log2, EXTENDED)
+
+    @staticmethod
+    def f2xm1(f: Number) -> Fraction:
+        """2^f - 1 for |f| <= 1, rounded once to 64 bits."""
+        v = exact(f)
+        if v == 0:
+            return Fraction(0)
+        return round_to_bits(exp_cr(v * ln_cr(2, _INSN_BITS), _INSN_BITS) - 1, EXTENDED)
+
+    @staticmethod
+    def frndint(x: Fraction) -> int:
+        """Round to the nearest integer, ties to even (the default x87 rounding mode)."""
+        return round(x)
+
+    @classmethod
+    def exp2(cls, t: Fraction) -> Fraction:
+        """2^t the x87 way: frndint, f2xm1 on the fraction, add 1, fscale (exact)."""
+        i = cls.frndint(t)
+        if abs(i) > _EXPONENT_LIMIT:
+            msg = "fscale beyond the x87 extended exponent range"
+            raise OverflowError(msg)
+        mantissa = round_to_bits(cls.f2xm1(t - i) + 1, EXTENDED)
+        return mantissa * Fraction(2) ** i
+
+    @classmethod
+    def pow(cls, x: Number, y: Number) -> Fraction:
+        """x^y for x > 0: fyl2x, then `exp2`."""
+        return cls.exp2(cls.fyl2x(y, x))
+
+    @classmethod
+    def exp(cls, x: Number) -> Fraction:
+        """e^x: fldl2e, fmul (rounded to 64 bits), then `exp2`."""
+        return cls.exp2(round_to_bits(exact(x) * cls.LOG2E, EXTENDED))
+
+    @classmethod
+    def ln(cls, x: Number) -> Fraction:
+        """ln x: fldln2, fyl2x."""
+        return cls.fyl2x(cls.LN2, x)
+
+
+def _arctan_inverse(k: int, bits: int) -> Fraction:
+    """arctan(1/k) to within 2^-bits (alternating series; its error is below the first omitted
+    term)."""
+    x2 = Fraction(1, k * k)
+    term, total, i = Fraction(1, k), Fraction(0), 0
+    bound = Fraction(1, 1 << bits)
+    while term > bound:
+        total += term / (2 * i + 1) if i % 2 == 0 else -term / (2 * i + 1)
+        term *= x2
+        i += 1
+    return total
+
+
+def pi_cr(p: int = DOUBLE) -> Fraction:
+    """pi rounded to `p` bits from Machin's formula with 64 guard bits. That is the correctly
+    rounded value unless pi lies within 2^-(p+60) of a p-bit rounding boundary; the tests check
+    p = 53 against `math.pi`."""
+    bits = p + 64
+    approx = 16 * _arctan_inverse(5, bits + 4) - 4 * _arctan_inverse(239, bits + 4)
+    return round_to_bits(approx, p)

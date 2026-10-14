@@ -51,6 +51,12 @@ or 0.5*erf(z/sqrt2). The far-tail Close cells (C19, E17, E18, E32) show the tail
 differs too. **Needs an oracle sweep (T-0018):** fit against the T-1040 normal-CDF sweep
 (family 1), never blind; T-0924's Outcome records that blind tweaks only trade cells.
 
+**T-1524 (fit lab `erfc-x87`, 2026-10-14):** the x87 hypothesis is rejected for ERFC. The best T-1187 fraction
+evaluated with 64-bit intermediates and exp (idealized or fldl2e/f2xm1/fscale) gets at most 44/205 tail
+cells, the same as a 128-bit evaluation and the engine, while the same fraction in doubles gets 58. Excel's
+ERFC is less accurate than a 64-bit evaluation, so look for a double-precision formulation (statistics.md
+"ERFC core factor").
+
 ## Acceptance criteria
 - [ ] At least 40 of the 59 lines leave `eval/baseline/ironcalc-calc.txt`, including every NumericClose
       line, and no new lines appear in any baseline (the T-0924 fixes and T-0925's cells must not

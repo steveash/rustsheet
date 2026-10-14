@@ -3,7 +3,9 @@
 ## Annuity evaluation order and `(1+r)^n` (PV/FV/PMT/NPER/IPMT/PPMT)
 Rule: with `P = (1+r)^n` by right-to-left square-and-multiply (numbers.md, "Integer exponents"),
 `k = 1+r*type` and `T = pmt*(k*((P-1)/r))`, Excel computes PV = `-(fv+T)/P` and FV = `-(pv*P+T)`
-(integer nper, rate ≠ 0). PMT/IPMT/PPMT/NPER/NPV are still unexplained.
+(integer nper, rate ≠ 0), and NPER = `ln((pmt*k - fv*r)/(pmt*k + pv*r)) / ln(1+r)`, every
+operation and logarithm in doubles (libm `log` of the double `1+r`, not `log1p`). PMT, IPMT,
+PPMT and NPV are still unexplained, and they are not an x87 computation (below).
 Evidence (Excel-cached values, `ironcalc-calc/FINANCIAL/PMT.xlsx`, `PV.xlsx`, `FV.xlsx`):
 - `PMT.xlsx` Sheet1!F36 (rate 0.2, nper 5, pv -200): Excel's `(1+r)^n` behaves as exactly `2.48832`
   (square-and-multiply, or exp/log), not libm `powf` (`2.4883199999999994`). With that value
@@ -24,7 +26,23 @@ Evidence (Excel-cached values, `ironcalc-calc/FINANCIAL/PMT.xlsx`, `PV.xlsx`, `F
   Desktop agreement: the same PV formula matches all 23 cells of `ironcalc-calc/FINANCIAL/PV.xlsx`
   (Mac Excel 16 cached values) with integer nper > 0 and rate ≠ 0.
   The engine passes 315/616 power, 208/616 PV/FV, 258/924 PMT/IPMT/PPMT and 119/220 NPER/NPV cells.
-Status: PARTLY VERIFIED (PV/FV formulation fitted on the sweep; PMT/IPMT/PPMT/NPER/NPV open; T-0901)
+- NPER and the x87 test (T-1524, fit lab `annuity-*` fits, same sweeps; numbers.md "x87 precision
+  is per operator, not per kernel"): NPER as above matches 95 of 95 numeric cells
+  (m9-fin-nper-npv; the engine 61; `log1p(r)` in the denominator 11; correctly rounded 6). Keeping
+  the intermediates at 64 bits (x87 registers, 1+r included) breaks the fitted forms: PV 174/308,
+  FV 230/308, NPER 6/95. PMT (m9-fin-pmt, 308 cells; Excel lies up to 3.5 ulps from the exact
+  value with the rate as a double): correctly rounded and every 64-bit model (P from the exact
+  power, by square-and-multiply at 64 bits, or by fyl2x/f2xm1/fscale) 132, the best double
+  formulation with `P-1 = expm1(n*log1p(r))` 129 (`-(pv*r+(pv+fv)*r/(P-1))/k`; `-(pv*P+fv)/((P-1)/r*k)`
+  is 120 bit-exact and 308/308 within 4 ulp), double shapes on the square-and-multiply P at most 91, the
+  engine 54 (176 within 4 ulp: its `(1+r)^n - 1` cancels for small r*n). Cell A7 `PMT(0.2,2,10000)`
+  = -6545.454545454547 is 1.45 ulps from the exact value. IPMT (PMT then the FV recurrence):
+  correctly rounded 219/308, 64-bit 218, doubles 195, engine 189. PPMT: 94, 85, 43, engine 15. NPV
+  (88 cells): best 27 (a running factor `d *= 1+r`, or Horner), 64-bit 26, correctly rounded 18,
+  engine 21; 11 further double orderings (`v*d` with `d /= 1+r`, `pow(1+r,-i)`, `exp(-i*log1p r)`,
+  reverse sums, `fsum`) reach at most 27.
+Status: PARTLY VERIFIED (PV/FV/NPER fitted on the sweep; PMT/IPMT/PPMT/NPV open, time-boxed per
+decision 0056 after T-1524's two attempts; T-0901)
 Implemented in: n/a (T-0901). Salvaged from draft PR #13 by T-0031.
 
 ## IRR, RATE and XIRR stop early, and the guess and flow scaling change the result

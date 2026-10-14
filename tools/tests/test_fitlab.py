@@ -33,7 +33,7 @@ def test_ulp_distance_matches_the_harness() -> None:
 
 def _book() -> Workbook:
     sheets = {
-        "Calc": {"A1": '=F(1.5,-2E3,TRUE,"a""b")', "A2": "=F($Z$1,Data!B1:C2)", "A3": "=F(1+1)", "Z1": 4},
+        "Calc": {"A1": '=F(1.5,-2E3,TRUE,"a""b")', "A2": "=F($Z$1,Data!B1:C2)", "A3": "=F(SQRT(2))", "Z1": 4},
         "Data": {"B1": 1, "C1": 2.5, "B2": None, "C2": "=G()"},
     }
     oracle = {
@@ -58,7 +58,34 @@ def test_parse_arg_literals_and_references() -> None:
     assert parse_arg("$Z$1", "Calc", book) == 4.0
     assert parse_arg("Data!B1:C2", "Calc", book) == [1.0, 2.5, None, 9.0]  # row-major, formula → oracle
     with pytest.raises(UnparsedError):
-        parse_arg("1+1", "Calc", book)
+        parse_arg("SQRT(2)", "Calc", book)
+
+
+def test_arithmetic_arguments_use_excels_operator_model() -> None:
+    assert sweep.arithmetic("1/(2-2^-52)") == 0.5  # `/` rounds twice (numbers.md)
+    assert sweep.arithmetic("1/(1+26955297717044*2^-52)") == 0.994050331987417
+    assert sweep.arithmetic("0.05/12") == 0.05 / 12
+    assert sweep.arithmetic("-2^2") == 4.0  # a unary sign binds tighter than ^
+    assert sweep.arithmetic("2^3^2") == 64.0  # ^ is left-associative
+    assert sweep.arithmetic("(1+0.2)") == 1.2
+    for bad in ("2^0.5", "1/0", "(1+2", "1+", "1 2", "2^2000"):
+        with pytest.raises(UnparsedError):
+            sweep.arithmetic(bad)
+
+
+def test_several_groups_give_one_argument_each() -> None:
+    book = Workbook(
+        {"Calc": {"A1": "=(1+0.2)^3", "A2": "=POWER(1+0.1,-2)"}},
+        {"Calc": {"A1": {"t": "n", "v": 1.728}, "A2": {"t": "n", "v": 0.8264462809917354}}},
+    )
+    found = Sweep()
+    select(
+        "s/c.case.json",
+        book,
+        re.compile(r"^=(?:POWER\(1\+([^,]+),(-?\d+)\)|\(1\+([^()]+)\)\^(-?\d+))$"),
+        found,
+    )
+    assert [c.args for c in found.cells] == [(0.2, 3.0), (0.1, -2.0)]
 
 
 def test_select_parses_and_reports_unparsed_cells() -> None:
@@ -180,3 +207,34 @@ def test_cli_writes_json_and_ranks_the_engine(monkeypatch: pytest.MonkeyPatch, t
     data = json.loads(out.read_text())
     assert [c["name"] for c in data["candidates"]] == ["math:erfc", fit.ENGINE]
     assert data["cells"] == 265 and data["candidates"][0]["within_4_ulp"] > 250
+
+
+def _scores(name: str, only: str) -> dict[str, tuple[int, int]]:
+    result = fit.run(registry()[name], engine=False, only=only)
+    return {s.name: (s.exact, len(result.sweep.cells)) for s in result.scores}
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_annuity_pv_and_nper_are_plain_doubles_not_x87_registers() -> None:
+    # T-1524: Excel's PV keeps every intermediate as a double; 64-bit registers lose half the cells.
+    pv = _scores("annuity-pv", r"^(double|ext): P sqm (double|ext), -\(fv")
+    assert pv["double: P sqm double, -(fv+pmt*(k*((P-1)/r)))/P"] == (308, 308)
+    assert pv["ext: P sqm ext, -(fv+pmt*(k*((P-1)/r)))/P"][0] < 200
+    nper = _scores("annuity-nper", r"^(double: log\(ratio\)/log\(1|ext: ln64)")
+    assert nper["double: log(ratio)/log(1+r)"] == (95, 95)
+    assert nper["ext: ln64 (idealized)"][0] < 10
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_sqrt5_powers_need_twice_rounded_products() -> None:
+    # T-1495 resolved by T-1524: square-and-multiply with Excel's `*` (64 bits, then double).
+    scores = _scores("power-sqrt5", r"^Excel model.*SQRT double$")
+    assert scores["Excel model (doubles), SQRT double"] == (20, 20)
+    assert scores["Excel model, products rounded once, SQRT double"][0] == 1
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_gamma_at_integers_is_a_downward_double_product() -> None:
+    scores = _scores("gamma-int", r"^(double: product|correctly rounded|ext: product downward)")
+    assert scores["double: product downward"][0] == 92  # every n <= 88 (T-1524)
+    assert scores["correctly rounded"][0] == scores["ext: product downward"][0] == 40

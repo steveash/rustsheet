@@ -9,6 +9,10 @@ Two fits over the T-1040 sweeps (probes-numeric/t1040-erfc and t1040-erfc-precis
   K = sqrt(pi) erfc(x) exp(x^2) that docs/research/t1187-erfc-candidates.py tried (moved here;
   results in docs/excel-semantics/statistics.md "ERFC core factor"). Each is plain IEEE double
   (Python floats; `math.exp` is the platform libm, glibc on the agent containers).
+- `erfc-x87`: the same grid's best fraction (`bu_even`, the two best combinations) evaluated
+  with every operation at 64 bits and one final rounding to a double (the x87 hypothesis,
+  T-1524), with exp at 64 bits idealized or as the x87 instruction sequence, against the same
+  fraction in doubles and a 128-bit evaluation that stands in for the correctly rounded erfc.
 """
 
 from __future__ import annotations
@@ -16,7 +20,18 @@ from __future__ import annotations
 import math
 import sys
 from collections.abc import Callable
+from fractions import Fraction
 
+from rustsheet_tools.fitlab.exact import (
+    EXTENDED,
+    Rounding,
+    X87Insn,
+    exp_cr,
+    pi_cr,
+    round_to_bits,
+    sqrt_cr,
+    to_double,
+)
 from rustsheet_tools.fitlab.fit import Fit
 from rustsheet_tools.fitlab.score import Candidate, candidate
 from rustsheet_tools.fitlab.sweep import Cell
@@ -231,6 +246,70 @@ def t1187_candidates() -> list[Candidate]:
     return out
 
 
+X87_DEPTHS = [30, 60, 100]
+_REFERENCE_BITS = 128
+_REFERENCE_DEPTH = 1500  # converged to well beyond 128 bits for x >= 1
+
+
+def bu_even_rounded(x: Fraction, n: int, rnd: Rounding) -> Fraction:
+    """`bu_even` with every operation rounded by `rnd` (exact for `lambda v: v`)."""
+    z = rnd(2 * rnd(x * x))
+    t = rnd(z + 1 + 4 * n)
+    for k in range(n, 0, -1):
+        t = rnd(rnd(z + (1 + 4 * (k - 1))) - rnd((2 * k - 1) * (2 * k) / t))
+    return rnd(2 * x / t)
+
+
+def _at(bits: int) -> Rounding:
+    return lambda v: round_to_bits(v, bits)
+
+
+def _erfc_rounded(x: float, n: int, bits: int, exp: Callable[[Fraction], Fraction], divide: bool) -> float:
+    """sqrt(pi)^-1 * K * exp(-x^2) at `bits`: as (1/exp(x*x)) * (K * ISQPI) (`divide`) or as
+    exp(-x*x) * (K * ISQPI), the two best T-1187 combinations."""
+    rnd = _at(bits)
+    v = Fraction(x)
+    isqpi = rnd(1 / sqrt_cr(pi_cr(bits + 8), bits + 8))
+    k = bu_even_rounded(v, n, rnd)
+    square = rnd(v * v)
+    factor = rnd(1 / rnd(exp(square))) if divide else rnd(exp(-square))
+    return to_double(rnd(factor * rnd(k * isqpi)))
+
+
+def _exp64(v: Fraction) -> Fraction:
+    return exp_cr(v, EXTENDED)
+
+
+def _exp_reference(v: Fraction) -> Fraction:
+    return exp_cr(v, _REFERENCE_BITS)
+
+
+def x87_candidates() -> list[Candidate]:
+    out = [
+        candidate(
+            f"128-bit bu_even n={_REFERENCE_DEPTH} (reference)",
+            _x(lambda x: _erfc_rounded(x, _REFERENCE_DEPTH, _REFERENCE_BITS, _exp_reference, divide=False)),
+            "reference",
+        )
+    ]
+    for n in X87_DEPTHS:
+        for divide, label in ((True, "(1/big)*(k*ISQPI)"), (False, "e*(k*ISQPI)")):
+            sign = 1.0 if divide else -1.0
+            form = DIV_FORMS[label] if divide else MUL_FORMS[label]
+            out.append(
+                candidate(f"double bu_even n={n} {label}", _x(_bottom_up(bu_even, n, form, sign)), "double")
+            )
+            for exp_name, exp in (("exp64", _exp64), ("x87 insn exp", X87Insn.exp)):
+
+                def evaluate(
+                    x: float, n: int = n, exp: Callable[[Fraction], Fraction] = exp, divide: bool = divide
+                ) -> float:
+                    return _erfc_rounded(x, n, EXTENDED, exp, divide)
+
+                out.append(candidate(f"ext bu_even n={n} {label}, {exp_name}", _x(evaluate), "ext"))
+    return out
+
+
 def _tail(cell: Cell) -> bool:
     """The T-1187 grid: x >= 1 and Excel's value is not 0."""
     x = cell.args[0] if cell.args else None
@@ -251,6 +330,14 @@ FITS = [
         cases=CASES,
         pattern=PATTERN,
         candidates=t1187_candidates,
+        where=_tail,
+    ),
+    Fit(
+        name="erfc-x87",
+        description="ERFC(x), x >= 1, Excel non-zero: the best T-1187 fraction in doubles, at 64 bits, and at 128 bits",
+        cases=CASES,
+        pattern=PATTERN,
+        candidates=x87_candidates,
         where=_tail,
     ),
 ]

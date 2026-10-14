@@ -43,8 +43,15 @@ other than a number, misses that cell and is counted under `err`. It does not st
   `^=GAMMA\.DIST\((.*)\)$`. The arguments are split at top-level commas. The reader handles
   numeric literals, TRUE/FALSE, string literals, and references (`A1`, `$Z$1`, `Data!B2`,
   `D1:D10`, which gives a row-major list). A reference to a constant cell gives the case's value.
-  A reference to a formula cell gives Excel's value from the sidecar. A cell with any other
-  argument, such as a nested expression, is listed as unparsed.
+  A reference to a formula cell gives Excel's value from the sidecar. Arithmetic over numeric
+  literals (`0.05/12`, `(1+26955297717044*2^-52)`) is evaluated with Excel's operator model
+  (`sweep.arithmetic`): each of `+ - * /` rounds to 64 bits, then to a double, and `^` must be an
+  exact integer power such as `2^-52`. A cell with any other argument, such as a function call,
+  is listed as unparsed.
+- **Several groups:** a pattern with more than one group gives one argument per group that took
+  part in the match, unsplit. Alternatives can then pick the arguments out of different forms, for
+  example `^=(?:POWER\(1\+([^,]+),(-?\d+)\)|\(1\+([^()]+)\)\^(-?\d+))$` gives (r, n) for both
+  `POWER(1+r,n)` and `(1+r)^n`.
 - **The engine:** a pseudo-candidate read from `rustsheet-eval show --all <case>`
   (`snapshot.show_cells`). It needs the release harness binary, which `snapshot.eval_binary`
   builds on first use. `--no-engine` skips it.
@@ -106,6 +113,14 @@ Candidates that model Excel's rounding use `Fraction`s:
 
   `X87.exp`, `X87.ln` and `X87.pow` are idealized. They round correctly to 64 bits, which the
   x87 microcode instructions (`f2xm1`, `fyl2x`) do not.
+- `X87Insn` models the instruction sequence instead: `fyl2x` (y·log2 x), `f2xm1`, `frndint` and
+  `fscale`, each rounded once to 64 bits, composed into `pow`, `exp` (via `fldl2e`) and `ln` (via
+  `fldln2`). It is still idealized: real `fyl2x` and `f2xm1` err by about an extended ulp.
+- `square_and_multiply(base, n, rnd)`: right-to-left binary exponentiation with each product
+  rounded by `rnd`. The roundings `to_double_value` (once), `x87_value` (64 bits, then double: an
+  Excel operator) and `extended_value` (kept at 64 bits) also serve kernel models that take a
+  rounding as a parameter (`kernels/annuity.py`, `gamma.py`).
+- `pi_cr(p)`: pi correctly rounded to p bits (Machin's formula).
 
 ## Shipped fits
 
@@ -113,6 +128,13 @@ Candidates that model Excel's rounding use `Fraction`s:
 |---|---|---|
 | `erfc` | 530 (ERFC and ERFC.PRECISE, x in -6..27) | engine, `math.erfc`, `1 - math.erf` |
 | `erfc-tail` | 205 (x >= 1, Excel non-zero) | engine, libm, and the T-1187 continued-fraction, Lentz and Numerical Recipes families (5,794 in all) |
+| `erfc-x87` | 205 (the `erfc-tail` cells) | the best T-1187 fraction in doubles, at 64 bits (two exp models) and at 128 bits (T-1524) |
+| `annuity-pv`, `annuity-fv`, `annuity-pmt` | 308 each (m9-fin-pv-fv, m9-fin-pmt) | power sources x formula shapes x rounding models (doubles, Excel operators, 64-bit intermediates, 64-bit with P stored), correctly rounded; PMT also `expm1`/`log1p` doubles |
+| `annuity-ipmt`, `annuity-ppmt` | 308 each (m9-fin-pmt) | PMT, then the FV recurrence, per power source and rounding model |
+| `annuity-nper`, `annuity-npv` | 95, 88 (m9-fin-nper-npv) | libm, idealized and instruction logarithms; discounting orders; per rounding model |
+| `power-1+r`, `exp-ln` | 462, 154 (m9-fin-power) | the pow models (`kernels/power.py`) with 1+r a double or at 64 bits; EXP(n*LN(1+r)) stored or kept at 64 bits |
+| `power-nonint`, `power-recip`, `power-mantissa`, `power-large-int`, `power-sqrt5` | 183, 45, 76, 224, 20 | the pow models on the T-1319, T-0221 and T-1311 power sweeps |
+| `gamma-int`, `gammaln-int`, `gamma-half-int` | 171, 171, 62 (T-1042) | factorial and sqrt(pi) recurrences per rounding model and order, correctly rounded, libm |
 
 The `erfc-tail` fit replaces `docs/research/t1187-erfc-candidates.py`. It reproduces that
 script's counts: best 57, 58, 38 and 4, with a union of 174/205.

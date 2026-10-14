@@ -54,6 +54,14 @@ against the T-1042 gamma-function sweep instead of guessing.
 More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
 - gen-m9/d244411dd90f7fbd Calc!A17 `=IF(..,GROWTH(GAMMA(Data!$E7)),..)` (E7 = 100): Excel 9.332621544394404e+155; the engine's `GAMMA(100)` is 9.332621544395446e+155, about 1e-13 relative off 99! = 9.33262154439441e+155 (the cell also needs T-1402 for GROWTH of one value).
 
+**T-1524 (fit lab `gamma-int`, `gammaln-int`, `gamma-half-int`, 2026-10-14):** GAMMA(n) for integers n <= 88 is
+the downward product `(n-1)*(n-2)*...*2` in doubles: it matches all of them, 92/171 integer cells in all
+(engine 1, correctly rounded 40, upward product 38, 64-bit product 40). From n = 89 Excel switches to another
+routine (up to 11 ulps from the factorial). GAMMALN at integers: ln of that product 82/171, correctly rounded
+80, engine 108, so GAMMALN is a separate routine. GAMMA(m+1/2): best double recurrence 34/62, correctly
+rounded and 64-bit 45, engine 0. The x87 64-bit-intermediate model only ties correctly rounded, so it is not
+Excel's gamma. Details: statistics.md "GAMMA and GAMMALN sweep (T-1042)".
+
 ## Acceptance criteria
 - [ ] All 16 GAMMA NumericClose lines leave `eval/baseline/ironcalc-calc.txt` (exact integers among
       them), no new lines in any baseline (GAMMALN lines T-0926 fixed must stay fixed).

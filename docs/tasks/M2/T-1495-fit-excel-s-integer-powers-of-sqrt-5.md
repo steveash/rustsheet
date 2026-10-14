@@ -25,6 +25,14 @@ the base value (try the neighbors of SQRT(5), SQRT(3), SQRT(6), SQRT(7), SQRT(10
 whose square is one ulp off an integer) or the exponent? Known failure: gen-m2/fa437879253827be
 Calc!A23 (`(0.2^-0.5)^99`). Code: `integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
 
+**Resolved model (T-1524, fit lab `power-sqrt5`, 2026-10-14):** Excel's square-and-multiply rounds each
+product twice, like its `*` operator (64 bits, then double; numbers.md "Division rounds twice"). With that,
+the loop gives all 20 `SQRT(5)^n` cells (n = 3..255 and -99); with products rounded once (the engine's
+`square_and_multiply` in arithmetic.rs uses plain `*`) it gives 1. The double rounding matches exactly the
+same cells as today on the other bases and exponents (fits `power-mantissa` 76/76, `power-1+r` 462/462,
+`power-large-int`), so the fix is to use `arithmetic::extended_product` for the loop's products. Recorded in
+numbers.md "Integer exponents beyond 360" (the former "Unresolved (T-1495)" paragraph).
+
 ## Acceptance criteria
 - [ ] A probe sweep separates the candidate rules; numbers.md entry updated.
 - [ ] power-integer-full-mantissa passes and gen-m2/fa437879253827be Calc!A23 leaves the baseline,
