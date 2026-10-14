@@ -20,7 +20,7 @@ Owner request 2026-10-14 (decision 0056); the near-miss figures and their source
 - [ ] `tools/src/rustsheet_tools/fitlab/` (uv project, ruff and mypy strict): reads sweep inputs and Excel values through the existing readers (`tools/src/rustsheet_tools/snapshot.py`, the oracle package's sidecar reading; never re-parsing xlsx), runs candidate functions, prints a ranked table and writes JSON.
 - [ ] Exact arithmetic helpers: correctly rounded results from `fractions`, rounding to a p-bit significand (53 and 64), so candidates can model x87 double rounding.
 - [ ] One worked example: the engine's current kernel and at least two candidates for one kernel, run on its sweep.
-- [ ] It replaces `docs/research/t1187-erfc-candidates.py`: those candidates are ported into the lab and the script is removed.
+- [ ] It replaces `docs/research/t1187-erfc-candidates.py`: those candidates (T-1187) are ported into the lab and the script is removed. The lab only reads: it never edits `eval/baseline/` or case files.
 - [ ] Documented in `docs/architecture/` (how to add a candidate).
 - [ ] `make check` green; reviewers approve.
 

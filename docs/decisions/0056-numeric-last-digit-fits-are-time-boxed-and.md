@@ -23,7 +23,7 @@
     candidates tried. Unlike other blocked tasks, the steward does not reopen it when a
     dependency lands. It reopens only when a new hypothesis is recorded in that section: a
     cross-kernel finding such as the x87 model (T-1524), or new oracle evidence.
-  - Residue within 4 ulp counts against Phase 1's 0.1% bit-exact allowance. It is never a
-    DEVIATION (0052).
+  - Residue within 4 ulp falls under the Phase 1 rule "≥ 99.9% bit-exact and 100% within 4 ULP"
+    (docs/milestones.md). It is never a DEVIATION (0052).
 - **Consequences:** fewer, larger numeric tasks, each scored against data. A stuck function stops
   absorbing sessions. M9's exit criteria are unchanged.
