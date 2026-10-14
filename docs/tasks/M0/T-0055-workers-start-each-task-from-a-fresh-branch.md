@@ -3,7 +3,7 @@ id: T-0055
 title: "Workers start each task from a fresh branch off origin/main, never a local main"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
