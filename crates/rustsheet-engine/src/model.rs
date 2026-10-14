@@ -22,7 +22,6 @@ use crate::{
         types::*,
         utils::{self, is_valid_column_number, is_valid_row},
     },
-    external_reference::external_area,
     formatter::{
         format::{format_number, parse_formatted_number},
         lexer::is_likely_date_number_format,
@@ -600,8 +599,8 @@ impl Model {
                 ..
             } => self.get_sheet_span_value(*first_index, *last_index, reference, cell),
             OpUnionKind { left, right, .. } => self.get_union(left, right, cell),
-            WrongRangeKind { sheet_name, .. } => match external_area(node, cell) {
-                Some(area) => area.blocked_value(cell),
+            WrongRangeKind { sheet_name, .. } => match self.cached_external_area(node, cell) {
+                Some(area) => self.external_area_value(area, cell),
                 None => Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong range"),
             },
             RangeKind {
