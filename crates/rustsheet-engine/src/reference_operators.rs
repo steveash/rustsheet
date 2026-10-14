@@ -449,12 +449,19 @@ impl Model {
                 if matches!(
                     child.ungrouped(),
                     Node::FunctionKind {
-                        kind: Function::Index,
+                        kind: Function::Index | Function::Xlookup | Function::Take,
                         ..
                     }
                 ) =>
             {
-                let picked = self.eval_ref_or_index(child, cell);
+                // `@XLOOKUP` and `@TAKE` keep the reference too: `ISREF(@TAKE(B1:B3,1))` is TRUE
+                // (probes/isref-implicit-xlookup-take H1, H3, H5, H6, excel-graph; T-1509).
+                let picked = match child.ungrouped() {
+                    Node::FunctionKind { kind, args } if *kind != Function::Index => self
+                        .evaluate_reference_form(kind, args, cell)
+                        .unwrap_or_else(|| self.eval_ref_or_index(child, cell)),
+                    _ => self.eval_ref_or_index(child, cell),
+                };
                 Self::intersect_reference(picked, cell)
             }
             _ => self.evaluate_node_with_reference(node, cell),

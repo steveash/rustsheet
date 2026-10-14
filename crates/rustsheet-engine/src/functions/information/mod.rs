@@ -158,13 +158,16 @@ impl Model {
                 kind: crate::functions::Function::If | crate::functions::Function::Choose,
                 ..
             } => matches!(self.evaluate_reference_arg(node, cell), RefArg::Ranges(_)),
-            // The `@` of an INDEX that picks one cell keeps the reference: `ISREF(@INDEX(B1:B3,2))`
-            // is TRUE (probes/let-bind-implicit-index H10, excel-graph; T-1506).
+            // The `@` of an INDEX, XLOOKUP or TAKE that picks one cell keeps the reference:
+            // `ISREF(@INDEX(B1:B3,2))` is TRUE (probes/let-bind-implicit-index H10, excel-graph;
+            // T-1506), `ISREF(@TAKE(B1:B3,1))` too (probes/isref-implicit-xlookup-take; T-1509).
             Node::ImplicitIntersection { child, .. }
                 if matches!(
                     child.ungrouped(),
                     Node::FunctionKind {
-                        kind: crate::functions::Function::Index,
+                        kind: crate::functions::Function::Index
+                            | crate::functions::Function::Xlookup
+                            | crate::functions::Function::Take,
                         ..
                     }
                 ) =>

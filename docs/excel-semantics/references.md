@@ -1201,6 +1201,6 @@ Tasks: T-1503
 
 ### ISREF of a written `@INDEX(..)` (T-1506)
 
-`=ISREF(@INDEX(B1:B3,2))` is TRUE (probes/let-bind-implicit-index H10, excel-graph 2026-10-13). Fixed by T-1506: `is_reference` has an `ImplicitIntersection(INDEX)` arm. `@XLOOKUP` and `@TAKE` forms are not yet probed.
-Evidence strength: excel-graph oracle, 1 cell. Status: VERIFIED (web).
-Tasks: T-1506
+`=ISREF(@INDEX(B1:B3,2))` is TRUE (probes/let-bind-implicit-index H10, excel-graph 2026-10-13). Fixed by T-1506: `is_reference` has an `ImplicitIntersection(INDEX)` arm. `@XLOOKUP` and `@TAKE` keep the reference the same way (T-1509): `ISREF(@XLOOKUP(2,A1:A3,B1:B3))` and `ISREF(@TAKE(B1:B3,1))` are TRUE, also LET-bound (probes/isref-implicit-xlookup-take H1, H3, H5, H6). An `@` over several cells or a failure is not a reference: `ISREF(@TAKE(B1:B3,2))` (outside the rows), `ISREF(@INDEX(B1:C3,0,1))` and `ISREF(@INDEX(B1:B3,9))` are FALSE (H7:H11), plain or LET-bound.
+Evidence strength: excel-graph oracle, 11 cells. Status: VERIFIED (web).
+Tasks: T-1506, T-1509
