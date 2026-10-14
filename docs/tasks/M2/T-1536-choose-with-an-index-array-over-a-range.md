@@ -3,7 +3,7 @@ id: T-1536
 title: "CHOOSE with an index array over a range argument broadcasts the range"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -25,10 +25,13 @@ values), `=CHOOSE({1;2},A1:B1,C1)`, `SUM(CHOOSE({1,2},A1:A3,B1:B3))`, then imple
 docs/excel-semantics/ (arrays.md or logic.md).
 
 ## Acceptance criteria
-- [ ] probes/external-ref-no-link-ifchoose A32 leaves eval/baseline/probes.txt, and the local
+- [x] probes/external-ref-no-link-ifchoose A32 leaves eval/baseline/probes.txt, and the local
       probes pass.
-- [ ] The rule is recorded in docs/excel-semantics/.
-- [ ] `make check` green; reviewers approve.
+- [x] The rule is recorded in docs/excel-semantics/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - CHOOSECOLS/CHOOSEROWS.
+
+## Outcome
+Done by T-1508 (#779): CHOOSE over an index array broadcasts its value arguments like IF over an array condition, so A32 is 3 and leaves the baseline. The local shapes are probed in probes/choose-array-index-range-arms (excel-graph, 66 cells), and the rule is in lookup.md ("CHOOSE over an index array broadcasts its value arguments").

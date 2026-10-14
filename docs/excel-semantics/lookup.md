@@ -536,3 +536,29 @@ Tasks: T-1352
 `XMATCH(1,{1,2,3},)` (omitted match_mode) is 1 and `XMATCH(,{0,1,2})` (omitted lookup_value) is #N/A in this array (VERIFIED, probes/counta-empty-value D20-D21, excel-graph, T-1294). `SORT({3;1;2},,)` sorts ascending (`INDEX(...,1)` = 1, three elements) and `INDEX(SORT({3;1;2},,-1),1)` = 3 (D22-D24); the engine differs on the omitted-argument forms, see T-1394. (A bare `=SORT({3;1;2},,-1)` in D24 first read #SPILL! only because D25 and D26 were occupied; the probe was changed to INDEX.)
 Status: VERIFIED (excel-graph; excel-desktop unprobed)
 Tasks: T-1394
+
+## CHOOSE over an index array broadcasts its value arguments
+Rule: with an array (or range) index, CHOOSE lifts like IF over an array condition. Every value argument is
+read as a scalar or an array (a range as its values). The result spans the largest extent of the index and of
+all value arguments, including an argument that no index element picks. Each position takes the picked argument's
+element at that position, with size-1 broadcasting. A ragged position (no element there in the index, or in the
+picked argument) is `#N/A`. An index element out of range is `#VALUE!`. An arm is not reduced to one cell.
+With D1=10, D2 empty, D3=30, D4="x", E1:E3 = 11, 12, 31:
+- `CHOOSE({1,2},D1:D2,D3:D4)` is the 2x2 `{10,30;0,"x"}`, and `CHOOSE({1;2},D1:E1,D3:E3)` is `{10,11;30,31}`.
+- `CHOOSE({1;2},D1:D2,D3:D4)` is `{10;"x"}`.
+- `CHOOSE({1,2},D1:D3,D3:D4)` is 3x2 with `#N/A` at the bottom right.
+- `CHOOSE({1,2},5,D3:D4)` is `{5,30;5,"x"}`, and `CHOOSE({1,2},D1:D2,1/0)` has a column of `#DIV/0!`.
+- `CHOOSE({1,2,3},D1:D2,D3:D4)` has a third column of `#VALUE!`.
+- `CHOOSE({1,2},{1,2,3},{4;5})` is `{1,4,#N/A;1,5,#N/A}`.
+- A range index (`F1:G1` = 1,2) is the same as `{1,2}`.
+- ROWS and COLUMNS of the 2x2 are 2, and `SUM(CHOOSE({1,2},D1:D2,E1:E2))` is 33.
+- `CHOOSE({1,1},D1:D2,D1:E3)` is 3x2: the unpicked arm's 3 rows count.
+- `CHOOSE({1,2},D1:D2,D3:D4,D1:F3)` is 3x3, with `#N/A` beyond the picked 2x2.
+So `COUNTBLANK(CHOOSE({1,2},D1:D2,D3:D4))` and `RANK(10,CHOOSE(…))` are 2x2 grids of `#VALUE!` (references.md).
+`SUMPRODUCT(CHOOSE({1,2},B1:B6,B1:B6))` is 24 on and off the row (criteria.md).
+Evidence: probes/choose-array-index-range-arms (excel-graph, 2026-10-14, T-1508); probes/countblank-array-values H20,
+H34; probes/array-context-legacy-sumproduct H1, H10; probes/external-ref-no-link-ifchoose A32.
+Status: VERIFIED (excel-graph)
+Implemented in: `choose_array` (functions/lookup_and_reference/mod.rs), using IF's `evaluate_if_arg`/`if_arg_at`
+(functions/logical/mod.rs).
+Tasks: T-1508
