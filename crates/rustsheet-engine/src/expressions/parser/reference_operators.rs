@@ -571,3 +571,20 @@ pub(super) fn at_outside(node: &Node) -> bool {
     matches!(node, Node::Group { child, .. }
         if !matches!(child.ungrouped(), Node::OpUnionKind { .. }) && keeps_own_group(child))
 }
+
+/// The static shape of a written range on a sheet the workbook does not hold. One into another
+/// workbook spills its `#BLOCKED!` cells as a range of this workbook spills its values
+/// (`='[other.xlsx]Sheet1'!A1:B2`, probes/external-ref-no-link-index C1:D2; T-1454), so it has the
+/// shape a `RangeKind` has; any other is a scalar error, which that shape evaluates to as well.
+pub(super) fn wrong_range_shape(node: &Node) -> super::static_analysis::StaticResult {
+    match node {
+        Node::WrongRangeKind {
+            row1,
+            column1,
+            row2,
+            column2,
+            ..
+        } => super::static_analysis::StaticResult::Range(row2 - row1, column2 - column1),
+        _ => super::static_analysis::StaticResult::Scalar,
+    }
+}

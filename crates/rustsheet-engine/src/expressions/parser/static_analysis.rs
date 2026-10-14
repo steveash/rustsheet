@@ -1,4 +1,4 @@
-use super::reference_operators::at_outside;
+use super::reference_operators::{at_outside, wrong_range_shape};
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
 mod aggregate;
@@ -346,8 +346,8 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         | Node::ErrorKind(_)
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
-        | Node::WrongRangeKind { .. }
         | Node::EmptyArgKind => StaticResult::Scalar,
+        Node::WrongRangeKind { .. } => wrong_range_shape(node), // T-1454
         Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
             run_static_analysis_on_node(child)
         }
