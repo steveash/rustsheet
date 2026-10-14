@@ -3,7 +3,7 @@ id: T-1306
 title: "Probe and match CODE and UNICHAR edge code points: characters outside Windows-1252, surrogates and out-of-range values"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
