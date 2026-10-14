@@ -3,7 +3,7 @@ id: T-1255
 title: "FILTERXML is recognised and gives the excel-graph golden #VALUE! (5 gen-m6 cells)"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -46,3 +46,6 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 - Real XML/XPath evaluation (only if T-1081 shows desktop Excel computes it).
+
+## Outcome
+FILTERXML is `Function::Filterxml` (functions/text/filterxml.rs): arguments evaluated left to right, first error wins, otherwise `#VALUE!` (decision 0039, web.md). `language.bin` regenerated (debug build of tools/upstream/generate_language; the release build hung). `functions/mod.rs` stays at its 2182-line ratchet by merging four compat-alias dispatch arms. Eval: probes known failures 5615 -> 5613 (2 fixed, 0 regressions); all nine listed gen-m6/m7/m9 cells pass.

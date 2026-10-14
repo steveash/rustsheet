@@ -645,11 +645,9 @@ F	probes/bond-one-period-bases.case.json	Y!J1
 F	probes/bond-one-period-bases.case.json	Y!J2
 F	probes/bond-one-period-bases.case.json	Y!J3
 F	probes/bond-one-period-bases.case.json	Y!J4
-F	probes/catalog/availability-14.case.json	Sheet1!A7
 F	probes/catalog/availability-17.case.json	Sheet1!A3
 F	probes/catalog/availability-17.case.json	Sheet1!A4
 F	probes/catalog/availability-30.case.json	Sheet1!A3
-F	probes/catalog/function-name-forms.case.json	Sheet1!A7
 F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11
 F	probes/concatenate-limit-spill.case.json	Sheet1!E8
