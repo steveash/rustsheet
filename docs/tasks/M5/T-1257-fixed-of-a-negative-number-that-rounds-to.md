@@ -3,7 +3,7 @@ id: T-1257
 title: "FIXED of a negative number that rounds to zero prints 0, not -0"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
