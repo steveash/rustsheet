@@ -44,8 +44,9 @@ Non-goals:
 - MODE, LARGE/SMALL, PERCENTILE/QUARTILE, RANK and the other functions that collect a data
   array with their own rules (`collect_mode_values` etc.). They can move later if their rules
   fit the policy. This spec does not require it.
-- VARA/VARPA/STDEVA/STDEVPA (`variance_of_values_a`). T-1474 may move them onto the A-rules
-  below if it stays a pure refactor. Otherwise a follow-up does.
+- VARA/VARPA/STDEVA/STDEVPA (`variance_of_values_a`). They are out of T-1474's and T-1476's
+  scope and move onto the A-rules below in **T-1567**. Until then they are the one remaining
+  dispatch, and they hold no `reference_error` of their own.
 - Settling T-0236 (empty arguments of DEVSQ/AVEDEV/SUMSQ) or T-1439 (array and referenced error
   order for the `for_each_value` family). The walker has a knob for each. The probes set it.
 
@@ -64,8 +65,10 @@ Shared rules, all VERIFIED:
   - An array element gives only its number. Booleans and text there are skipped.
   - A direct value is coerced: numeric text is its number, other text is `#VALUE!`, TRUE/FALSE
     is 1/0, and an empty argument is 0.
-  - Direct text over 255 characters is `#N/A` (`aggregate_text_too_long`; probes/sum-long-text-args,
-    long-text-args-min-criteria; numbers.md).
+  - For the number-folding consumers, direct text over 255 characters is `#N/A`
+    (`aggregate_text_too_long`; probes/sum-long-text-args, long-text-args-min-criteria;
+    numbers.md). COUNT does not count such text, and it is not an error there
+    (probes/text-number-long-paths, numbers.md). COUNTA counts it like any text.
 - **Error precedence** (syntax.md "Aggregate error precedence"; probes/aggregate-error-precedence
   C1–C77, probes/sum-error-precedence):
   - A *direct* error beats every referenced-cell error, whichever comes first. A direct error is
@@ -89,7 +92,7 @@ behavior with no evidence:
 | AVERAGEA, MAXA, MINA | referenced cells and single-cell references coerce (text 0, TRUE/FALSE 1/0), array text is 0 for AVERAGEA and skipped by MAXA/MINA, array booleans are skipped; a cached range of a linked workbook is read through `external_reference_cells`; the first error is returned at once | coercion.md "MAXA / MINA"; statistics.md "AVERAGEA, MAXA and MINA over an array" (probes/averagea-array-constant-elements); fixtures/external-link-cached-ranges Refs!B53; error order unprobed |
 | MIN, MAX | 0 when no number was seen | probes/min-max-value-args |
 | PRODUCT | 0 when nothing was seen (an empty argument counts as seen); reads with `evaluate_reference_arg`, so XLOOKUP, TAKE, DROP and TRIMRANGE are values, and cached blanks of a linked workbook are kept | `seen_value`: current behavior; reading: current behavior, unprobed |
-| COUNT | counts types: a number, a direct boolean, an empty argument, direct text that `cast_number` reads as a finite number, a referenced number, an array number. Errors are ignored | probes/average-value-args F16, F32; probes/count-direct-text; syntax.md (COUNT ignores errors) |
+| COUNT | counts types: a number, a direct boolean, an empty argument, direct text that `cast_number` reads as a finite number (no `#N/A` for text over 255 characters, which `cast_number` does not read), a referenced number, an array number. Errors are ignored | probes/average-value-args F16, F32; probes/count-direct-text; probes/lookup-pick-aggregates D4, D9 (direct boolean); probes/text-number-long-paths; syntax.md (COUNT ignores errors) |
 | COUNTA | counts every direct value but a blank one, every non-empty referenced cell (errors included), every array element (empty values included); reads with `evaluate_picked_reference_arg` (cached blanks kept) after its `external_reference` count | logic.md "IFERROR / IFNA of a blank cell is an empty value"; probes/counta-empty-value D18; probes/external-ref-no-link-shapes, -index, -ifchoose |
 
 No new probe is needed to write this spec: every rule above is evidenced or kept as it is. The
@@ -200,8 +203,11 @@ impl Model {
 Rules the walker enforces:
 1. The argument is read as `policy.reading` says. `Node::EmptyArgKind` is skipped when
    `skip_empty_args` is set.
-2. `RefArg::Ranges` → `for_each_cell_or_error_in_areas`. Under `Ranked`, the areas are not read
-   once an error is held, as every copy does today.
+2. `RefArg::Ranges` → `for_each_cell_or_error_in_areas`. Under `Ranked` and `First`, the first
+   error cell of an argument's areas ends the walk of those areas: the per-cell closure returns
+   `Err`, as `for_each_cell_in_areas` does today, so the remaining cells are not evaluated. Under
+   `Ranked`, a later argument's areas are not read at all once an error is held, as every copy
+   does today. An `Err` from the area walk itself (the walk budget) ranks like an error cell.
 3. Errors, under `Ranked` and `First`, never reach the visitor:
    - A direct error, and under `Ranked { array_errors: Direct }` or `First` an array error, is
      returned at once.
@@ -209,9 +215,12 @@ Rules the walker enforces:
    - Under `Ranked`, a referenced error, and an array error under `Referenced`, is held if
      nothing is held yet. Later ones are dropped. This keeps "the leftmost wins".
 4. A visitor `Err`, such as uncoercible direct text or a too-long text, is a direct error and is
-   returned at once whatever the source. These are always direct today. A visitor that would err
-   on a referenced item must say why in its policy's doc.
-5. Order: arguments left to right, cells in `for_each_cell_in_areas` order, array elements row
+   returned at once whatever the source. These are always direct today. A visitor that errs on a
+   referenced item (today only the A-rules' "Unexpected Range") says why in a comment on its
+   consumer's `const` policy.
+5. No panics, indexing or unchecked arithmetic on cell data (directive 5). Counts stay `f64` or
+   saturating, as today.
+6. Order: arguments left to right, cells in `for_each_cell_in_areas` order, array elements row
    by row. It is the order every copy uses today, and the order that "leftmost wins" and
    AVEDEV's two-pass sums depend on.
 
@@ -253,9 +262,14 @@ impl Model {
 `for_each_value`, `for_each_value_skip_empty` and `for_each_value_a` become thin wrappers or
 calls with a named policy, and are removed once their callers move. `for_each_number_in_areas`
 and `for_each_coerced_number_in_areas` stay. Their other callers (NPV, the D-functions, …) are
-outside this spec. The walker's `CellNumbers` arms must use the same per-cell rules as these two
-helpers, so that "numbers of a reference" keeps one definition: one function per rule, shared by
-both.
+outside this spec. "Numbers of a reference" must keep one definition. T-1474 extracts the
+per-cell rules of these two helpers into two free functions in util.rs,
+`cell_number(&CalcResult) -> Option<f64>` (numbers only) and
+`coerced_cell_number(&CalcResult) -> Option<f64>` (text 0, TRUE/FALSE 1/0). The two helpers and
+the walker's `CellNumbers::Numbers` / `CoercedA` arms all call them.
+
+The walker and `for_each_aggregate_number` are `#[inline]` and take the policy by value. With a
+`const` policy the per-cell branches on `ErrorRule` and `CellNumbers` fold away in each consumer.
 
 ### Consumer mapping
 | Consumer | reading | errors | skip empty | number rules | own state kept |
@@ -293,14 +307,18 @@ as `First`.
   near-zero-sum-forms, and fixtures/external-link-cached-ranges.
 - Unit tests in `aggregate_args.rs` (or test/): one per `ErrorRule` arm, covering direct before
   and after a referenced error, two referenced errors, an array error under each rank, and a
-  visitor error on direct text; `skip_empty_args`; and the order of items across a range, an
-  array and direct values.
+  visitor error on direct text; `skip_empty_args`; the order of items across a range, an array
+  and direct values; an empty range; an array holding `ArrayNode::Empty`; and early exit (after
+  a held error, the cells after the error cell and a later range argument are not evaluated,
+  checked by a visitor that counts items).
 - `rg "let mut reference_error" crates/rustsheet-engine/src/functions` finds only
   aggregate_args.rs after T-1476. After T-1474 it also finds product.rs and mathematical.rs.
 - `scripts/check_duplication.py` must not rise. Record a drop with `--update` (decision 0010).
-- Performance (reviewer-performance): `=SUM(A1:A1000000)` and `=AVERAGE(A1:A1000000)` over a
-  numeric column, release build, before and after T-1474, within 5%. The numbers go in the
-  task's Outcome.
+- Performance (reviewer-performance): T-1474 adds a criterion bench
+  `crates/rustsheet-engine/benches/aggregate.rs` beside `benches/edit.rs`. It covers
+  `=SUM(A1:A1000000)` and `=AVERAGE(A1:A1000000)` over a numeric column, plus `=SUM(A1:A1000000)`
+  with an error in A2 (early exit). The bench runs on `main` before the change and on the branch
+  after, in release. Results must be within 5%, and the numbers go in the task's Outcome.
 
 ## Rollout
 1. **T-1474** (engine, opus, M): add `aggregate_args.rs` (walker, policy, number layer, unit
