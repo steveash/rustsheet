@@ -3,7 +3,7 @@ id: T-1500
 title: "Round SQRT and ^0.5 results twice (64-bit, then double)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
