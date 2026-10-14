@@ -2,7 +2,7 @@
   "format": "rustsheet-case/v1",
   "description": "@XLOOKUP/@TAKE as ANCHORARRAY operand, LOOKUP result_vector and INDEX index argument (T-1527). A1:B3 = 1,2,3 / 10,20,30; F1:F3 = 5,6,7; D1 =SEQUENCE(3).",
   "tags": [
-    "M1",
+    "M7",
     "references",
     "probe"
   ],
