@@ -47,6 +47,10 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   readers, lookups, COUNTIF/SUMIF/COUNTBLANK, names, whole columns, unions. A formula over the
   cache's third sheet (`refreshError="1"`) is left out: Excel for the web refuses to open such a
   workbook.
+- `strict-date-compatibility-0.xlsx` (T-0407): `t-d-iso-date-cells.xlsx` with `<workbookPr dateCompatibility="0">`
+  (as in every Excel-saved Strict file). A1 is a `t="d"` cell `1900-01-01`; B1:B6 = `DATE(1900,2,28)`, `DATE(1900,3,1)`,
+  `DATE(1900,2,29)`, `TEXT(60,"yyyy-mm-dd")`, `DAY(59)`, `DATEVALUE("1900-01-01")`; B7 = `A1`, C7 = `ISNUMBER(A1)`.
+  Excel for the web gives 59, 61, 60, `1900-02-29`, 28, 1, 1, TRUE.
 - `external-link-cached-text.xlsx` (T-1550): `external-link-cached-ranges.xlsx` with sheet `Refs`
   rewritten (one legacy formula per row in column B, placeholder cached 0) and the cached `Uses`
   sheet replaced: A1 the empty string (`t="str"`, `<v></v>`), B1 18, A2 12, B2 TRUE, A3 the text
