@@ -574,3 +574,19 @@ Tasks: T-1531, T-1542
 - `T.INV.2T(1E-300,1)` = 6.366197723675814E299 (exactly twice the one-sided magnitude); `CONFIDENCE.T(1E-300,1,2)` = 4.50158158078553E299.
 - Ours: `statrs`' `StudentsT::inverse_cdf` is wrong for small df well before it fails (`T.INV(1E-10,1)` gives -8.9E7, Excel -3.18E9) and panics from p about 1E-200. For p < 1E-5 we use a closed-form tail asymptotic once x = df/(df+t^2) < 1E-8; otherwise `statrs` for p >= 1E-8 (it is bit-exact with Excel there) and bisection on its cdf below 1E-8 (`statrs`' inverse hangs at p = 1E-100 for df = 1000). Results agree with Excel to about 1E-13 relative for df <= 5, but only 7 of 105 cells are bit-exact, and for df >= 99999 at p <= 1E-200 we are wrong (-37.17 where Excel gives -79.06: for df = 99999 the `statrs` cdf saturates in the bisection branch, for df = 1E5 the normal series is used): T-1542.
 - `T.INV.2T` with p in (1,2) is `#NUM!` for us; Excel returns a negative number (`T.INV.2T(1.5,1)` = -1, cells A121-A128), see the entry above.
+
+## BETA.INV at a tiny probability (T-1543)
+Rule: BETA.INV and BETAINV return a finite value down to p = 1E-300 for most shapes, but Excel's root is not always the exact one.
+
+Status: VERIFIED (excel-graph, 2026-10-14; probes-numeric case `t1543-beta-inv-tiny-p`, 63 cells, p from 1E-300 to 1E-5)
+
+Implemented in: functions/statistical/beta.rs `beta_quantile`
+
+Tasks: T-1543, T-1544
+
+- Exact where the tail law holds: `BETA.INV(1E-300,1,1)` = 1.0000000000000237E-300, `BETA.INV(1E-200,2,5)` = 2.5819888974715887E-101, `BETA.INV(1E-100,0.5,0.5)` = 2.4674011002723493E-200, `BETA.INV(1E-300,5,1000)` = 2.5999737324309835E-63.
+- Not exact: `BETA.INV(1E-300,2,5)` = 2.0890948717820835E-154 (exact 2.58E-151); `BETA.INV(1E-300,0.5,0.5)` and `BETA.INV(1E-200,0.5,0.5)` are both 2.7055792171147168E-151; `BETA.INV(1E-200,10000,1)` = 0.8765595985431334 (exact 0.955).
+- `#NUM!` for any tiny p with alpha = beta = 0.001, and for `BETA.INV(1E-20,10000,1)` (but not for 1E-10).
+- `BETA.INV(1E-300,2,5,10,20)` = 10 (the result rounds to A).
+- Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 for every shape tried; below p = 1E-100 we use the closed-form tail asymptotic (x < 1E-8) or a bisection on the `statrs` cdf, which give the exact root, so the cells above where Excel is inexact differ (T-1544).
+- Sweep of the other `statrs` quantiles (T-1543): `Normal`, `LogNormal`, `ChiSquared` (df 1 to 1E10) and `Gamma` (shape 1E-3 to 1E4) `inverse_cdf` neither panic nor hang (2 s limit) for p from 1E-300 to 1-1E-16; `StudentsT` is T-1531 and `FisherSnedecor` T-1530.

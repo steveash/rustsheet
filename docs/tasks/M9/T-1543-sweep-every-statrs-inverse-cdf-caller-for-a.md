@@ -3,7 +3,7 @@ id: T-1543
 title: "Sweep every statrs inverse_cdf caller for a panic at a tiny probability (normal, lognormal, chi-square, gamma, beta)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P0
 size: S
 tier: sonnet
@@ -23,3 +23,9 @@ T-1531 found that `StudentsT::inverse_cdf` panics from p about 1E-200 and is ina
 
 ## Out of scope
 -
+
+## Outcome
+- Swept `StudentsT` (T-1531), `FisherSnedecor` (T-1530), `Normal`, `LogNormal`, `ChiSquared`, `Gamma` and `Beta` `inverse_cdf` with p from 1E-300 to 1-1E-16 over 5 to 7 shapes each (scratch test, each call in a thread with a 2 s limit): only `Beta::inverse_cdf` panics (p <= 1E-200); nothing hangs, so the other callers need no guard.
+- BETA.INV/BETAINV now use `beta_quantile` (tail asymptotic where x < 1E-8, `statrs` for p >= 1E-100, bisection otherwise). Excel probed in `t1543-beta-inv-tiny-p` and recorded in statistics.md.
+- Eval: no gated change; probes-numeric is ungated.
+- Follow-up T-1544: Excel's BETA.INV is inexact in places at a tiny p.
