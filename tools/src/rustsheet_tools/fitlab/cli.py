@@ -27,6 +27,7 @@ from rustsheet_tools.fitlab.score import (
     candidate,
     families,
     family_table,
+    iterate_text,
     rank,
     table,
     worst_text,
@@ -65,12 +66,14 @@ def report(result: FitResult, top: int, worst: int) -> str:
     lines = [
         f"fit {fit.name}: {fit.description}",
         f"{len(sweep.cells)} cells from {', '.join(fit.cases)}; {sweep.excluded} excluded by the fit's "
-        f"filter, {sweep.non_numeric} with a non-numeric Excel value, {len(sweep.unparsed)} unparsed",
+        f"filter, {sweep.non_numeric} with a text or bool Excel value, {len(sweep.unparsed)} unparsed",
         "",
         table(result.scores, top),
     ]
     if len({s.family for s in result.scores}) < len(result.scores):
         lines += ["", family_table(families(result.scores), len(sweep.cells))]
+    if iterates := iterate_text(result.scores):
+        lines += ["", iterates]
     ranked = rank(result.scores)
     shown = [s for s in ranked if s.name == ENGINE] + [s for s in ranked if s.name != ENGINE][:3]
     lines += ["", *(worst_text(s, worst) for s in shown if s.exact < s.total)]

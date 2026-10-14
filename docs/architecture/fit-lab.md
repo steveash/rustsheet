@@ -39,7 +39,12 @@ other than a number, misses that cell and is counted under `err`. It does not st
 
 - **Sweep:** an oracle-filled `.case.json` plus its `.oracle.json` sidecar, found through
   `rustsheet-eval cases` (`snapshot.suite_cases`). No xlsx is parsed. Only cells whose Excel value
-  is a number are scored. The others are counted as non-numeric.
+  is a number are scored, plus error cells when the `Fit` sets `errors=True`: a candidate signals an
+  error by raising `ExcelError` (code `#NUM!` by default), the same error is an exact match, and another
+  error or a number is a miss. Text and bool cells are counted as non-numeric.
+- **Iterate traces:** a candidate may expose `trace` (its iterates on a cell, in order). The report then
+  lists, per candidate, on how many cells Excel's value is one of the iterates and at which index
+  (`iterate_hits` in the JSON).
 - **Cell selection:** a regex over the formula text. Group 1 is the argument list, for example
   `^=GAMMA\.DIST\((.*)\)$`. The arguments are split at top-level commas. The reader handles
   numeric literals, TRUE/FALSE, string literals, array literals of those (`{1,2;3,4}`, a row-major

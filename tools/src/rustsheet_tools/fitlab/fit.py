@@ -7,7 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from rustsheet_tools.fitlab.score import Candidate, Score, families, rank, score
+from rustsheet_tools.fitlab.score import Candidate, ExcelError, Score, families, rank, score
 from rustsheet_tools.fitlab.sweep import Cell, Sweep, load_sweep
 from rustsheet_tools.snapshot import show_cells
 
@@ -25,6 +25,7 @@ class Fit:
     pattern: str
     candidates: Callable[[], list[Candidate]]  # built lazily: some families are large
     where: Callable[[Cell], bool] | None = None
+    errors: bool = False  # also score the cells whose Excel value is an error
     notes: list[str] = field(default_factory=list)
 
 
@@ -41,6 +42,8 @@ def engine_candidate(case_ids: list[str]) -> Candidate:
         if text is None:
             msg = f"the engine did not score {cell.key}"
             raise KeyError(msg)
+        if text.startswith("#"):
+            raise ExcelError(code=text)
         try:
             return float(text)  # Rust's `{:?}` of an f64 round-trips exactly
         except ValueError:
@@ -74,7 +77,7 @@ class FitResult:
 def run(fit: Fit, *, engine: bool = True, only: str | None = None, keep: int = 10) -> FitResult:
     """Loads the sweep and scores the engine (unless `engine` is false) and every candidate whose
     name matches the regex `only`."""
-    sweep = load_sweep(fit.cases, fit.pattern, fit.where)
+    sweep = load_sweep(fit.cases, fit.pattern, fit.where, fit.errors)
     cases = sorted({c.case for c in sweep.cells})
     candidates = [engine_candidate(cases)] if engine and cases else []
     wanted = re.compile(only) if only else None
