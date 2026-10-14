@@ -3,7 +3,7 @@ id: T-1555
 title: "AVERAGEA over an array constant with text and a boolean: {1,a,TRUE} is 0.5"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
