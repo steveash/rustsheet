@@ -376,3 +376,1095 @@ probes/rich-errors-shapes-urls.case.json	Sheet1!A21	M5	ERROR.TYPE over a range
 probes/rich-errors-shapes-urls.case.json	Sheet1!A22	M5	ERROR.TYPE over a range
 probes/rich-errors-shapes-urls.case.json	Sheet1!A23	M5	ERROR.TYPE over a range
 probes/formulatext-written-groups-shapes.case.json	Sheet1!B3	M7	LAMBDA
+# Cases of decision 0060 (T-1562): every checked cell has a later-milestone subject.
+probes/external-ref-no-link-ifchoose-b.case.json	M8	external references (OFFSET, COUNTA, ROW of a reference into another workbook)
+probes/percentrank-single-value.case.json	M9	PERCENTRANK, PERCENTRANK.INC, PERCENTRANK.EXC
+probes/stat-a-computed-arrays.case.json	M9	AVERAGEA, MAXA, MINA
+probes/trig-huge-argument.case.json	M5	SIN, COS, TAN, COT, SEC, CSC
+# Per-cell lines of decision 0060 (T-1562).
+probes/aggregate-error-precedence.case.json	S!C1	M5	PRODUCT
+probes/aggregate-error-precedence.case.json	S!C2	M5	PRODUCT
+probes/aggregate-error-precedence.case.json	S!C3	M5	PRODUCT
+probes/aggregate-error-precedence.case.json	S!C4	M5	PRODUCT
+probes/aggregate-error-precedence.case.json	S!C5	M5	PRODUCT
+probes/aggregate-error-precedence.case.json	S!C6	M5	PRODUCT
+probes/aggregate-error-precedence.case.json	S!C7	M5	PRODUCT
+probes/aggregate-error-precedence.case.json	S!C8	M5	PRODUCT
+probes/aggregate-error-precedence.case.json	S!C86	M9	AVERAGEIF
+probes/aggregate-error-precedence.case.json	S!C89	M9	DCOUNT
+probes/aggregate-error-precedence.case.json	S!C90	M9	DCOUNT
+probes/aggregate-error-precedence.case.json	S!C91	M9	DCOUNTA
+probes/aggregate-error-precedence.case.json	S!C92	M9	DCOUNTA
+probes/aggregate-overflow.case.json	Calc!A11	M5	SUMPRODUCT
+probes/aggregate-overflow.case.json	Calc!B11	M5	SUMPRODUCT
+probes/aggregate-overflow.case.json	Calc!C11	M5	SUMPRODUCT
+probes/aggregate-overflow.case.json	Calc!A12	M5	SUMPRODUCT
+probes/aggregate-overflow.case.json	Calc!B12	M5	SUMPRODUCT
+probes/aggregate-overflow.case.json	Calc!C12	M5	SUMPRODUCT
+probes/aggregate-overflow.case.json	Calc!A13	M5	SUMPRODUCT
+probes/aggregate-overflow.case.json	Calc!B13	M5	SUMPRODUCT
+probes/aggregate-overflow.case.json	Calc!C13	M5	SUMPRODUCT
+probes/aggregate-overflow.case.json	Calc!A17	M5	PRODUCT
+probes/aggregate-overflow.case.json	Calc!B17	M5	PRODUCT
+probes/aggregate-overflow.case.json	Calc!C17	M5	PRODUCT
+probes/aggregate-overflow.case.json	Calc!A18	M5	PRODUCT
+probes/aggregate-overflow.case.json	Calc!B18	M5	PRODUCT
+probes/aggregate-overflow.case.json	Calc!C18	M5	PRODUCT
+probes/aggregate-overflow.case.json	Calc!A19	M5	PRODUCT
+probes/aggregate-overflow.case.json	Calc!B19	M5	PRODUCT
+probes/aggregate-overflow.case.json	Calc!C19	M5	PRODUCT
+probes/aggregate-overflow.case.json	Calc!A20	M5	PRODUCT
+probes/aggregate-overflow.case.json	Calc!B20	M5	PRODUCT
+probes/aggregate-overflow.case.json	Calc!C20	M5	PRODUCT
+probes/aggregate-overflow.case.json	Calc!A21	M5	SUMSQ
+probes/aggregate-overflow.case.json	Calc!B21	M5	SUMSQ
+probes/aggregate-overflow.case.json	Calc!C21	M5	SUMSQ
+probes/aggregate-overflow.case.json	Calc!A22	M5	SUMSQ
+probes/aggregate-overflow.case.json	Calc!B22	M5	SUMSQ
+probes/aggregate-overflow.case.json	Calc!C22	M5	SUMSQ
+probes/aggregate-overflow.case.json	Calc!A23	M5	SUMSQ
+probes/aggregate-overflow.case.json	Calc!B23	M5	SUMSQ
+probes/aggregate-overflow.case.json	Calc!C23	M5	SUMSQ
+probes/aggregate-overflow.case.json	Calc!A24	M5	SUBTOTAL
+probes/aggregate-overflow.case.json	Calc!B24	M5	SUBTOTAL
+probes/aggregate-overflow.case.json	Calc!C24	M5	SUBTOTAL
+probes/aggregate-overflow.case.json	Calc!A25	M5	SUBTOTAL
+probes/aggregate-overflow.case.json	Calc!B25	M5	SUBTOTAL
+probes/aggregate-overflow.case.json	Calc!C25	M5	SUBTOTAL
+probes/aggregate-overflow.case.json	Calc!A26	M5	SUBTOTAL
+probes/aggregate-overflow.case.json	Calc!B26	M5	SUBTOTAL
+probes/aggregate-overflow.case.json	Calc!C26	M5	SUBTOTAL
+probes/aggregate-overflow.case.json	Calc!A27	M5	AGGREGATE
+probes/aggregate-overflow.case.json	Calc!B27	M5	AGGREGATE
+probes/aggregate-overflow.case.json	Calc!C27	M5	AGGREGATE
+probes/aggregate-overflow.case.json	Calc!A28	M5	AGGREGATE
+probes/aggregate-overflow.case.json	Calc!B28	M5	AGGREGATE
+probes/aggregate-overflow.case.json	Calc!C28	M5	AGGREGATE
+probes/aggregate-overflow.case.json	Calc!A29	M5	AGGREGATE
+probes/aggregate-overflow.case.json	Calc!B29	M5	AGGREGATE
+probes/aggregate-overflow.case.json	Calc!C29	M5	AGGREGATE
+probes/aggregate-overflow.case.json	Calc!A39	M5	SERIESSUM
+probes/aggregate-overflow.case.json	Calc!B39	M5	SERIESSUM
+probes/aggregate-overflow.case.json	Calc!C39	M5	SERIESSUM
+probes/aggregate-overflow.case.json	Calc!A40	M5	MMULT
+probes/aggregate-overflow.case.json	Calc!B40	M5	MMULT
+probes/aggregate-overflow.case.json	Calc!C40	M5	MMULT
+probes/aggregate-overflow.case.json	Calc!A41	M5	SUMX2MY2
+probes/aggregate-overflow.case.json	Calc!B41	M5	SUMX2MY2
+probes/aggregate-overflow.case.json	Calc!C41	M5	SUMX2MY2
+probes/aggregate-overflow.case.json	Calc!A42	M5	SUMX2PY2
+probes/aggregate-overflow.case.json	Calc!B42	M5	SUMX2PY2
+probes/aggregate-overflow.case.json	Calc!C42	M5	SUMX2PY2
+probes/aggregate-overflow.case.json	Calc!A43	M5	SUMXMY2
+probes/aggregate-overflow.case.json	Calc!B43	M5	SUMXMY2
+probes/aggregate-overflow.case.json	Calc!C43	M5	SUMXMY2
+probes/aggregate-overflow.case.json	Calc!A44	M9	DEVSQ
+probes/aggregate-overflow.case.json	Calc!B44	M9	DEVSQ
+probes/aggregate-overflow.case.json	Calc!C44	M9	DEVSQ
+probes/aggregate-overflow.case.json	Calc!A45	M9	STDEV
+probes/aggregate-overflow.case.json	Calc!B45	M9	STDEV
+probes/aggregate-overflow.case.json	Calc!C45	M9	STDEV
+probes/aggregate-overflow.case.json	Calc!A46	M9	VAR
+probes/aggregate-overflow.case.json	Calc!B46	M9	VAR
+probes/aggregate-overflow.case.json	Calc!C46	M9	VAR
+probes/aggregate-overflow.case.json	Calc!A47	M9	GEOMEAN
+probes/aggregate-overflow.case.json	Calc!B47	M9	GEOMEAN
+probes/aggregate-overflow.case.json	Calc!C47	M9	GEOMEAN
+probes/aggregate-overflow.case.json	Calc!A48	M9	MEDIAN
+probes/aggregate-overflow.case.json	Calc!B48	M9	MEDIAN
+probes/aggregate-overflow.case.json	Calc!C48	M9	MEDIAN
+probes/aggregate-overflow.case.json	Calc!A49	M9	VAR.S
+probes/aggregate-overflow.case.json	Calc!B49	M9	VAR.S
+probes/aggregate-overflow.case.json	Calc!C49	M9	VAR.S
+probes/aggregate-overflow.case.json	Calc!A50	M9	STDEV.S
+probes/aggregate-overflow.case.json	Calc!B50	M9	STDEV.S
+probes/aggregate-overflow.case.json	Calc!C50	M9	STDEV.S
+probes/aggregate-overflow.case.json	Calc!A51	M9	VAR.P
+probes/aggregate-overflow.case.json	Calc!B51	M9	VAR.P
+probes/aggregate-overflow.case.json	Calc!C51	M9	VAR.P
+probes/aggregate-overflow.case.json	Calc!A52	M9	STDEV.P
+probes/aggregate-overflow.case.json	Calc!B52	M9	STDEV.P
+probes/aggregate-overflow.case.json	Calc!C52	M9	STDEV.P
+probes/aggregate-overflow.case.json	Calc!A53	M9	VARA
+probes/aggregate-overflow.case.json	Calc!B53	M9	VARA
+probes/aggregate-overflow.case.json	Calc!C53	M9	VARA
+probes/aggregate-overflow.case.json	Calc!A54	M9	STDEVA
+probes/aggregate-overflow.case.json	Calc!B54	M9	STDEVA
+probes/aggregate-overflow.case.json	Calc!C54	M9	STDEVA
+probes/aggregate-overflow.case.json	Calc!A55	M9	VAR.S
+probes/aggregate-overflow.case.json	Calc!B55	M9	VAR.S
+probes/aggregate-overflow.case.json	Calc!C55	M9	VAR.S
+probes/aggregate-overflow.case.json	Calc!A56	M9	STDEV.S
+probes/aggregate-overflow.case.json	Calc!B56	M9	STDEV.S
+probes/aggregate-overflow.case.json	Calc!C56	M9	STDEV.S
+probes/aggregate-overflow.case.json	Calc!A57	M9	VAR.P
+probes/aggregate-overflow.case.json	Calc!B57	M9	VAR.P
+probes/aggregate-overflow.case.json	Calc!C57	M9	VAR.P
+probes/aggregate-overflow.case.json	Calc!A58	M9	STDEV.P
+probes/aggregate-overflow.case.json	Calc!B58	M9	STDEV.P
+probes/aggregate-overflow.case.json	Calc!C58	M9	STDEV.P
+probes/aggregate-overflow.case.json	Calc!A59	M9	VARA
+probes/aggregate-overflow.case.json	Calc!B59	M9	VARA
+probes/aggregate-overflow.case.json	Calc!C59	M9	VARA
+probes/aggregate-overflow.case.json	Calc!A60	M9	STDEVA
+probes/aggregate-overflow.case.json	Calc!B60	M9	STDEVA
+probes/aggregate-overflow.case.json	Calc!C60	M9	STDEVA
+probes/aggregate-range-function-num-grid.case.json	Calc!A1	M5	AGGREGATE
+probes/aggregate-range-function-num-grid.case.json	Calc!A6	M5	AGGREGATE
+probes/aggregate-range-function-num-grid.case.json	Calc!A11	M5	AGGREGATE
+probes/aggregate-range-function-num-grid.case.json	Calc!A16	M5	AGGREGATE
+probes/at-if-spill-anchor-operand.case.json	Sheet1!H50	M6	LOOKUP
+probes/at-if-spill-anchor-operand.case.json	Sheet1!H60	M6	LOOKUP
+probes/at-if-spill-anchor-operand.case.json	Sheet1!H70	M6	LOOKUP
+probes/average-value-args.case.json	Sheet1!F5	M9	MEDIAN
+probes/average-value-args.case.json	Sheet1!F6	M9	MEDIAN
+probes/average-value-args.case.json	Sheet1!F7	M9	MEDIAN
+probes/average-value-args.case.json	Sheet1!F8	M9	GEOMEAN
+probes/average-value-args.case.json	Sheet1!F9	M9	GEOMEAN
+probes/average-value-args.case.json	Sheet1!F10	M9	STDEV
+probes/average-value-args.case.json	Sheet1!F11	M9	STDEV
+probes/average-value-args.case.json	Sheet1!F12	M9	VAR
+probes/average-value-args.case.json	Sheet1!F13	M9	VARP
+probes/average-value-args.case.json	Sheet1!F14	M9	STDEVP
+probes/average-value-args.case.json	Sheet1!F18	M9	MEDIAN
+probes/average-value-args.case.json	Sheet1!F19	M9	STDEV
+probes/average-value-args.case.json	Sheet1!F20	M9	GEOMEAN
+probes/average-value-args.case.json	Sheet1!F21	M9	VAR
+probes/average-value-args.case.json	Sheet1!F22	M9	VARP
+probes/average-value-args.case.json	Sheet1!F23	M9	STDEVP
+probes/average-value-args.case.json	Sheet1!F24	M9	HARMEAN
+probes/average-value-args.case.json	Sheet1!F25	M9	HARMEAN
+probes/average-value-args.case.json	Sheet1!F26	M9	SKEW
+probes/average-value-args.case.json	Sheet1!F27	M9	SKEW
+probes/average-value-args.case.json	Sheet1!F28	M9	SKEW.P
+probes/average-value-args.case.json	Sheet1!F29	M9	SKEW.P
+probes/average-value-args.case.json	Sheet1!F30	M9	KURT
+probes/average-value-args.case.json	Sheet1!F31	M9	KURT
+probes/clock-text-oddities.case.json	Sheet1!F36	M5	PRODUCT
+probes/clock-text-oddities.case.json	Sheet1!F39	M9	LARGE
+probes/clock-text-oddities.case.json	Sheet1!F40	M9	SMALL
+probes/clock-text-oddities.case.json	Sheet1!F41	M6	HOUR
+probes/clock-text-oddities.case.json	Sheet1!F42	M6	MINUTE
+probes/clock-text-oddities.case.json	Sheet1!F43	M6	SECOND
+probes/clock-text-oddities.case.json	Sheet1!F44	M6	HOUR
+probes/clock-text-oddities.case.json	Sheet1!F49	M6	HOUR
+probes/clock-text-oddities.case.json	Sheet1!F50	M5	SUMPRODUCT
+probes/clock-text-oddities.case.json	Sheet1!F54	M5	INT
+probes/clock-text-oddities.case.json	Sheet1!F55	M5	MOD
+probes/counta-empty-value.case.json	Sheet1!D20	M6	XMATCH
+probes/counta-empty-value.case.json	Sheet1!D21	M6	XMATCH
+probes/counta-empty-value.case.json	Sheet1!D23	M7	SORT
+probes/counta-empty-value.case.json	Sheet1!D24	M7	SORT
+probes/counta-empty-value.case.json	Sheet1!D26	M5	PRODUCT
+probes/criteria-gaps.case.json	Sheet1!C15	M9	DSUM
+probes/criteria-gaps.case.json	Sheet1!C16	M9	DSUM
+probes/criteria-gaps.case.json	Sheet1!C17	M9	DSUM
+probes/criteria-gaps.case.json	Sheet1!C18	M9	DSUM
+probes/criteria-gaps.case.json	Sheet1!C19	M9	DCOUNTA
+probes/criteria-gaps.case.json	Sheet1!C20	M9	DCOUNTA
+probes/criteria-gaps.case.json	Sheet1!C21	M9	DCOUNTA
+probes/criteria-grammar.case.json	Sheet1!C11	M9	DCOUNTA
+probes/criteria-ifs-bare-equals.case.json	Sheet1!C3	M9	AVERAGEIF
+probes/criteria-ifs-bare-equals.case.json	Sheet1!C4	M9	AVERAGEIF
+probes/criteria-ifs-bare-equals.case.json	Sheet1!C9	M9	AVERAGEIFS
+probes/criteria-ifs-bare-equals.case.json	Sheet1!C10	M9	AVERAGEIFS
+probes/criteria-ifs-bare-equals.case.json	Sheet1!C11	M9	MAXIFS
+probes/criteria-ifs-bare-equals.case.json	Sheet1!C12	M9	MINIFS
+probes/criteria-operands.case.json	Sheet1!D17	M9	DCOUNTA
+probes/criteria-operands.case.json	Sheet1!D18	M9	DCOUNTA
+probes/criteria-operands.case.json	Sheet1!D19	M9	DCOUNTA
+probes/criteria-operands.case.json	Sheet1!D20	M9	DCOUNTA
+probes/criteria-operands.case.json	Sheet1!D21	M9	DCOUNTA
+probes/criteria-operands.case.json	Sheet1!D22	M9	DCOUNTA
+probes/criteria-operands.case.json	Sheet1!D23	M9	DCOUNTA
+probes/criteria-operands.case.json	Sheet1!D24	M9	DCOUNTA
+probes/criteria-operands.case.json	Sheet1!D25	M9	DCOUNTA
+probes/date-system-1900-negatives.case.json	S!A1	M10	number-format codes in TEXT
+probes/date-system-1900-negatives.case.json	S!A2	M10	number-format codes in TEXT
+probes/date-system-1900-negatives.case.json	S!A3	M10	number-format codes in TEXT
+probes/date-system-1900-negatives.case.json	S!A4	M10	number-format codes in TEXT
+probes/date-system-1900-negatives.case.json	S!A5	M10	number-format codes in TEXT
+probes/date-system-1900-negatives.case.json	S!A6	M10	number-format codes in TEXT
+probes/date-system-1900-negatives.case.json	S!A7	M10	number-format codes in TEXT
+probes/date-system-1900-negatives.case.json	S!A8	M10	number-format codes in TEXT
+probes/date-system-1900-negatives.case.json	S!A9	M10	number-format codes in TEXT
+probes/date-system-1900-negatives.case.json	S!A10	M6	DATE
+probes/date-system-1900-negatives.case.json	S!A12	M6	DATEVALUE
+probes/date-system-1900-negatives.case.json	S!A13	M10	number-format codes in TEXT
+probes/date-system-1900-negatives.case.json	S!A14	M10	number-format codes in TEXT
+probes/date-system-1900-negatives.case.json	S!A15	M10	number-format codes in TEXT
+probes/date-system-1900-negatives.case.json	S!A17	M10	number-format codes in TEXT
+probes/date-system-1900-negatives.case.json	S!A18	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A1	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A2	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A3	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A4	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A5	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A6	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A7	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A8	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A9	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A10	M6	DATE
+probes/date-system-1904-negatives.case.json	S!A12	M6	DATEVALUE
+probes/date-system-1904-negatives.case.json	S!A13	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A14	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A15	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A17	M10	number-format codes in TEXT
+probes/date-system-1904-negatives.case.json	S!A18	M10	number-format codes in TEXT
+probes/date-system-1904-readers.case.json	S!A1	M6	WEEKDAY
+probes/date-system-1904-readers.case.json	S!B1	M6	DATE
+probes/date-system-1904-readers.case.json	S!A2	M6	WEEKDAY
+probes/date-system-1904-readers.case.json	S!B2	M6	DATE
+probes/date-system-1904-readers.case.json	S!A3	M6	WEEKNUM
+probes/date-system-1904-readers.case.json	S!A4	M6	ISOWEEKNUM
+probes/date-system-1904-readers.case.json	S!A5	M6	WEEKNUM
+probes/date-system-1904-readers.case.json	S!A6	M6	EDATE
+probes/date-system-1904-readers.case.json	S!A7	M6	EOMONTH
+probes/date-system-1904-readers.case.json	S!A8	M6	EDATE
+probes/date-system-1904-readers.case.json	S!A9	M6	EOMONTH
+probes/date-system-1904-readers.case.json	S!A10	M6	DATEDIF
+probes/date-system-1904-readers.case.json	S!A11	M6	DATEDIF
+probes/date-system-1904-readers.case.json	S!A12	M6	DAYS360
+probes/date-system-1904-readers.case.json	S!A13	M6	YEARFRAC
+probes/date-system-1904-readers.case.json	S!A14	M6	NETWORKDAYS
+probes/date-system-1904-readers.case.json	S!A15	M6	WORKDAY
+probes/date-system-1904-readers.case.json	S!A16	M6	DAYS
+probes/date-system-1904-readers.case.json	S!A17	M9	COUPNCD
+probes/date-system-1904-readers.case.json	S!A18	M9	COUPDAYS
+probes/date-system-1904-readers.case.json	S!A19	M6	YEARFRAC
+probes/date-system-1904-readers.case.json	S!A29	M6	DATE
+probes/date-system-1904-readers.case.json	S!A30	M6	DATE
+probes/date-system-1904-readers.case.json	S!A31	M6	DATE
+probes/date-system-1904-readers.case.json	S!A33	M10	number-format codes in TEXT
+probes/date-system-1904-readers.case.json	S!A34	M10	number-format codes in TEXT
+probes/date-system-1904-readers.case.json	S!A41	M6	WEEKDAY
+probes/date-system-1904-readers.case.json	S!A42	M10	number-format codes in TEXT
+probes/date-system-1904-readers.case.json	S!A43	M6	WORKDAY
+probes/date-system-1904-readers.case.json	S!A44	M6	WORKDAY.INTL
+probes/date-system-1904-readers.case.json	S!A45	M6	EDATE
+probes/date-system-1904-readers.case.json	S!A46	M6	EOMONTH
+probes/date-system-1904-readers.case.json	S!A47	M6	ISOWEEKNUM
+probes/date-system-1904-readers.case.json	S!A48	M6	DAYS360
+probes/date-system-1904-readers.case.json	S!A49	M6	DATEDIF
+probes/date-system-1904-readers.case.json	S!A50	M6	NETWORKDAYS
+probes/date-system-1904-readers.case.json	S!A52	M6	WEEKNUM
+probes/date-text-dotted-criteria.case.json	Sheet1!E1	M9	DMIN
+probes/date-text-dotted-criteria.case.json	Sheet1!E2	M9	DMAX
+probes/date-text-dotted-criteria.case.json	Sheet1!E3	M9	DSUM
+probes/date-text-dotted-criteria.case.json	Sheet1!E4	M9	DCOUNT
+probes/date-text-dotted-criteria.case.json	Sheet1!E5	M9	DGET
+probes/defined-name-grouped-reference.case.json	Sheet1!A8	M6	OFFSET
+probes/defined-name-grouped-reference.case.json	Sheet1!A9	M6	AREAS
+probes/error-arg-vs-range-check.case.json	Calc!A1	M5	REPLACE
+probes/error-arg-vs-range-check.case.json	Calc!A2	M5	REPLACE
+probes/error-arg-vs-range-check.case.json	Calc!A4	M5	FIND
+probes/error-arg-vs-range-check.case.json	Calc!A5	M5	REPLACE
+probes/error-arg-vs-range-check.case.json	Calc!A8	M5	FIND
+probes/error-arg-vs-range-check.case.json	Calc!A9	M5	REPLACE
+probes/error-precedence-text.case.json	Calc!C1	M6	WEEKDAY
+probes/error-precedence-text.case.json	Calc!C2	M6	WEEKDAY
+probes/error-precedence-text.case.json	Calc!C3	M6	WEEKDAY
+probes/error-precedence-text.case.json	Calc!C4	M6	WEEKDAY
+probes/error-precedence-text.case.json	Calc!C5	M6	WEEKDAY
+probes/error-precedence-text.case.json	Calc!C6	M6	WEEKDAY
+probes/error-precedence-text.case.json	Calc!C7	M6	WEEKDAY
+probes/error-precedence-text.case.json	Calc!C8	M6	WEEKDAY
+probes/error-precedence-text.case.json	Calc!C9	M6	WEEKDAY
+probes/error-precedence-text.case.json	Calc!C10	M6	WEEKDAY
+probes/error-precedence-text.case.json	Calc!C20	M5	REPT
+probes/error-precedence-text.case.json	Calc!C21	M5	REPT
+probes/error-precedence-text.case.json	Calc!C22	M5	REPT
+probes/error-precedence-text.case.json	Calc!C23	M5	REPT
+probes/error-precedence-text.case.json	Calc!C24	M5	FIND
+probes/error-precedence-text.case.json	Calc!C25	M5	FIND
+probes/error-precedence-text.case.json	Calc!C26	M5	FIND
+probes/error-precedence-text.case.json	Calc!C27	M5	FIND
+probes/error-precedence-text.case.json	Calc!C28	M5	FIND
+probes/error-stored-busy-behaviors.case.json	S!C1	M5	VALUETOTEXT
+probes/error-stored-busy-behaviors.case.json	S!C2	M5	ARRAYTOTEXT
+probes/error-stored-busy-behaviors.case.json	S!C3	M5	VALUETOTEXT
+probes/error-stored-busy-behaviors.case.json	S!C4	M5	ARRAYTOTEXT
+probes/error-stored-busy-behaviors.case.json	S!C17	M5	ARRAYTOTEXT
+probes/error-stored-busy-behaviors.case.json	S!C18	M7	UNIQUE
+probes/error-stored-busy-behaviors.case.json	S!C19	M7	UNIQUE
+probes/error-stored-busy-behaviors.case.json	S!C20	M7	UNIQUE
+probes/error-stored-busy-behaviors.case.json	S!C21	M5	VALUETOTEXT
+probes/iferror-blank-value.case.json	Sheet1!D5	M5	SWITCH
+probes/iferror-blank-value.case.json	Sheet1!D6	M5	SWITCH
+probes/ifs-array-criteria-edges.case.json	Sheet1!H11	M9	AVERAGEIFS
+probes/ifs-array-criteria-edges.case.json	Sheet1!H12	M9	MAXIFS
+probes/ifs-array-criteria-edges.case.json	Sheet1!H17	M9	AVERAGEIFS
+probes/ifs-array-criteria-edges.case.json	Sheet1!H18	M9	MAXIFS
+probes/ifs-array-criteria.case.json	Sheet1!H20	M9	AVERAGEIFS
+probes/ifs-array-criteria.case.json	Sheet1!H21	M9	MAXIFS
+probes/ifs-array-criteria.case.json	Sheet1!H22	M9	MINIFS
+probes/ifs-array-criteria.case.json	Sheet1!H23	M9	AVERAGEIF
+probes/ifs-array-criteria.case.json	Sheet1!H30	M9	AVERAGEIFS
+probes/ifs-array-criteria.case.json	Sheet1!H31	M9	AVERAGEIFS
+probes/ifs-legacy-sumproduct.case.json	Sheet1!J1	M9	AVERAGEIF
+probes/ifs-legacy-sumproduct.case.json	Sheet1!K1	M9	AVERAGEIFS
+probes/ifs-legacy-sumproduct.case.json	Sheet1!L1	M9	MAXIFS
+probes/ifs-legacy-sumproduct.case.json	Sheet1!M1	M9	MINIFS
+probes/ifs-legacy-sumproduct.case.json	Sheet1!J10	M9	AVERAGEIF
+probes/ifs-legacy-sumproduct.case.json	Sheet1!K10	M9	AVERAGEIFS
+probes/ifs-legacy-sumproduct.case.json	Sheet1!L10	M9	MAXIFS
+probes/ifs-legacy-sumproduct.case.json	Sheet1!M10	M9	MINIFS
+probes/ifs-legacy-sumproduct.case.json	Sheet1!J12	M9	AVERAGEIF
+probes/ifs-legacy-sumproduct.case.json	Sheet1!K12	M9	AVERAGEIFS
+probes/ifs-legacy-sumproduct.case.json	Sheet1!L12	M9	MAXIFS
+probes/ifs-legacy-sumproduct.case.json	Sheet1!M12	M9	MINIFS
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!AD2	M9	MAXA
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!AE2	M9	MINA
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!AI2	M9	AVERAGEA
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!AJ2	M9	AVERAGEA
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!D2	M9	MINA
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!E2	M9	MAXA
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!F2	M5	PRODUCT
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!G2	M5	SUMSQ
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!H2	M9	STDEV.S
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!I2	M9	STDEV.P
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!J2	M9	VAR.S
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!K2	M9	VAR.P
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!L2	M9	DEVSQ
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!M2	M9	AVEDEV
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!N2	M9	GEOMEAN
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!O2	M9	HARMEAN
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!P2	M9	SMALL
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!Q2	M9	PERCENTILE.INC
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!R2	M9	QUARTILE.INC
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!S2	M9	MODE.SNGL
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!T2	M9	KURT
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!U2	M9	SKEW
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!V2	M5	GCD
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!W2	M5	LCM
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!Y2	M5	TEXTJOIN
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!AD10	M9	MAXA
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!AE10	M9	MINA
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!D10	M9	MINA
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!E10	M9	MAXA
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!F10	M5	PRODUCT
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!G10	M5	SUMSQ
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!H10	M9	STDEV.S
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!I10	M9	STDEV.P
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!J10	M9	VAR.S
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!K10	M9	VAR.P
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!L10	M9	DEVSQ
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!M10	M9	AVEDEV
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!N10	M9	GEOMEAN
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!O10	M9	HARMEAN
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!P10	M9	SMALL
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!Q10	M9	PERCENTILE.INC
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!R10	M9	QUARTILE.INC
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!S10	M9	MODE.SNGL
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!T10	M9	KURT
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!U10	M9	SKEW
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!V10	M5	GCD
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!W10	M5	LCM
+probes/legacy-value-argument-intersection-b.case.json	Sheet1!Y10	M5	TEXTJOIN
+probes/legacy-value-argument-intersection.case.json	Sheet1!J2	M5	SUMPRODUCT
+probes/legacy-value-argument-intersection.case.json	Sheet1!K2	M5	SUMPRODUCT
+probes/legacy-value-argument-intersection.case.json	Sheet1!L2	M5	SUMPRODUCT
+probes/legacy-value-argument-intersection.case.json	Sheet1!P2	M9	LARGE
+probes/legacy-value-argument-intersection.case.json	Sheet1!T2	M9	MEDIAN
+probes/legacy-value-argument-intersection.case.json	Sheet1!U2	M5	SUMPRODUCT
+probes/legacy-value-argument-intersection.case.json	Sheet1!X2	M9	AVERAGEA
+probes/legacy-value-argument-intersection.case.json	Sheet1!Y2	M5	SUMPRODUCT
+probes/legacy-value-argument-intersection.case.json	Sheet1!J10	M5	SUMPRODUCT
+probes/legacy-value-argument-intersection.case.json	Sheet1!K10	M5	SUMPRODUCT
+probes/legacy-value-argument-intersection.case.json	Sheet1!L10	M5	SUMPRODUCT
+probes/legacy-value-argument-intersection.case.json	Sheet1!P10	M9	LARGE
+probes/legacy-value-argument-intersection.case.json	Sheet1!T10	M9	MEDIAN
+probes/legacy-value-argument-intersection.case.json	Sheet1!U10	M5	SUMPRODUCT
+probes/legacy-value-argument-intersection.case.json	Sheet1!X10	M9	AVERAGEA
+probes/legacy-value-argument-intersection.case.json	Sheet1!Y10	M5	SUMPRODUCT
+probes/long-text-args-min-criteria.case.json	Sheet1!A4	M9	AVERAGEA
+probes/long-text-args-min-criteria.case.json	Sheet1!A5	M9	AVERAGEA
+probes/long-text-args-min-criteria.case.json	Sheet1!A6	M9	MAXA
+probes/long-text-args-min-criteria.case.json	Sheet1!A7	M9	MAXA
+probes/long-text-args-min-criteria.case.json	Sheet1!A8	M9	MINA
+probes/long-text-args-min-criteria.case.json	Sheet1!A9	M9	MINA
+probes/long-text-args-min-criteria.case.json	Sheet1!A17	M9	AVERAGEIF
+probes/long-text-args-min-criteria.case.json	Sheet1!A19	M9	AVERAGEIFS
+probes/long-text-args-min-criteria.case.json	Sheet1!A20	M9	MINIFS
+probes/long-text-args-min-criteria.case.json	Sheet1!A21	M9	MAXIFS
+probes/long-text-args-min-criteria.case.json	Sheet1!A22	M9	AVERAGEIF
+probes/lookup-2d-vector.case.json	Sheet1!H1	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H2	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H3	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H4	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H5	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H6	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H7	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H8	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H9	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H10	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H11	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H12	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H13	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H18	M6	LOOKUP
+probes/lookup-2d-vector.case.json	Sheet1!H19	M6	LOOKUP
+probes/lookup-approximate-search.case.json	Sheet1!N14	M6	LOOKUP
+probes/lookup-approximate-search.case.json	Sheet1!N15	M6	LOOKUP
+probes/lookup-approximate-search.case.json	Sheet1!N33	M6	LOOKUP
+probes/lookup-pick-index-shapes.case.json	Sheet1!C3	M6	CHOOSE
+probes/lookup-pick-index-shapes.case.json	Sheet1!C4	M6	OFFSET
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R10	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S10	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T10	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U10	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V10	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R11	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S11	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T11	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U11	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V11	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R12	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S12	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T12	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U12	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V12	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R13	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S13	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T13	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U13	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V13	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R14	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S14	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T14	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U14	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V14	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R15	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S15	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T15	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U15	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V15	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R16	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S16	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T16	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U16	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V16	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R17	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S17	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T17	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U17	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V17	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R18	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S18	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T18	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U18	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V18	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R19	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S19	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T19	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U19	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V19	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R20	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S20	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T20	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U20	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V20	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R21	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S21	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T21	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U21	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V21	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R22	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S22	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T22	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U22	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V22	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R23	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S23	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T23	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U23	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V23	M6	LOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!R24	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!S24	M6	XMATCH
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!T24	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!U24	M6	XLOOKUP
+probes/lookup-reference-lookup-value-blank-error.case.json	Sheet1!V24	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R10	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S10	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T10	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U10	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V10	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R11	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S11	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T11	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U11	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V11	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R12	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S12	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T12	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U12	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V12	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R13	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S13	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T13	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U13	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V13	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R14	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S14	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T14	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U14	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V14	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R15	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S15	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T15	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U15	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V15	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R16	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S16	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T16	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U16	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V16	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R17	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S17	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T17	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U17	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V17	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R18	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S18	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T18	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U18	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V18	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R19	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S19	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T19	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U19	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V19	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R20	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S20	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T20	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U20	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V20	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R21	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S21	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T21	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U21	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V21	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R22	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S22	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T22	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U22	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V22	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R23	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S23	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T23	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U23	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V23	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R24	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S24	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T24	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U24	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V24	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R25	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S25	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T25	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U25	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V25	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R26	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S26	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T26	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U26	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V26	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R27	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S27	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T27	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U27	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V27	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R28	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S28	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T28	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U28	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V28	M6	LOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!R29	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!S29	M6	XMATCH
+probes/lookup-reference-lookup-value.case.json	Sheet1!T29	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!U29	M6	XLOOKUP
+probes/lookup-reference-lookup-value.case.json	Sheet1!V29	M6	LOOKUP
+probes/lookup-whole-column-blank-tail.case.json	Col!M6	M6	LOOKUP
+probes/lookup-whole-column-blank-tail.case.json	Col!M7	M6	LOOKUP
+probes/lookup-whole-column-blank-tail.case.json	Col!M8	M6	LOOKUP
+probes/lookup-whole-column-blank-tail.case.json	Col!M14	M6	XMATCH
+probes/lookup-whole-column-blank-tail.case.json	ColFar!M6	M6	LOOKUP
+probes/lookup-whole-column-blank-tail.case.json	ColFar!M7	M6	LOOKUP
+probes/lookup-whole-column-blank-tail.case.json	ColFar!M8	M6	LOOKUP
+probes/lookup-whole-column-blank-tail.case.json	ColFar!M14	M6	XMATCH
+probes/lookup-whole-column-blank-tail.case.json	Row!A17	M6	XMATCH
+probes/lookup-whole-column-blank-tail.case.json	Row!A18	M6	LOOKUP
+probes/lookup-whole-column-blank-tail.case.json	RowFar!A17	M6	XMATCH
+probes/lookup-whole-column-blank-tail.case.json	RowFar!A18	M6	LOOKUP
+probes/min-max-reference-forms.case.json	Sheet1!G1	M7	LET
+probes/min-max-reference-forms.case.json	Sheet1!D3	M7	LET
+probes/min-max-reference-forms.case.json	Sheet1!F3	M7	FILTER
+probes/min-max-reference-forms.case.json	Sheet1!D4	M7	LET
+probes/min-max-reference-forms.case.json	Sheet1!G5	M7	LET
+probes/min-max-reference-forms.case.json	Sheet1!D9	M7	LET
+probes/near-zero-aggregate-forms.case.json	Sheet1!B1	M5	AGGREGATE
+probes/near-zero-aggregate-forms.case.json	Sheet1!B2	M5	AGGREGATE
+probes/near-zero-aggregate-forms.case.json	Sheet1!B3	M5	SUBTOTAL
+probes/near-zero-aggregate-forms.case.json	Sheet1!B4	M5	SUBTOTAL
+probes/near-zero-aggregate-forms.case.json	Sheet1!B5	M5	SUBTOTAL
+probes/near-zero-aggregate-forms.case.json	Sheet1!B6	M5	AGGREGATE
+probes/near-zero-aggregate-forms.case.json	Sheet1!B10	M5	AGGREGATE
+probes/near-zero-aggregate-forms.case.json	Sheet1!B11	M5	SUBTOTAL
+probes/near-zero-aggregate-forms.case.json	Sheet1!B12	M5	AGGREGATE
+probes/operand-wrap-text.case.json	Sheet1!C20	M7	LAMBDA
+probes/operand-wrap-text.case.json	Sheet1!C22	M7	LAMBDA
+probes/resource-limits.case.json	Sheet1!C1	M5	GCD
+probes/resource-limits.case.json	Sheet1!C2	M5	GCD
+probes/resource-limits.case.json	Sheet1!C3	M5	LCM
+probes/resource-limits.case.json	Sheet1!C4	M5	LCM
+probes/resource-limits.case.json	Sheet1!C5	M9	CHISQ.DIST
+probes/resource-limits.case.json	Sheet1!C6	M9	CHISQ.DIST
+probes/resource-limits.case.json	Sheet1!C7	M9	BITAND
+probes/resource-limits.case.json	Sheet1!C8	M9	BITAND
+probes/rich-errors-args.case.json	Sheet1!A20	M6	IMAGE
+probes/rich-errors-args.case.json	Sheet1!A21	M6	IMAGE
+probes/rich-errors-args.case.json	Sheet1!E22	M5	VALUETOTEXT
+probes/rich-errors-args.case.json	Sheet1!E23	M5	VALUETOTEXT
+probes/rich-errors-args.case.json	Sheet1!A24	M5	STOCKHISTORY
+probes/rich-errors-args.case.json	Sheet1!A25	M5	STOCKHISTORY
+probes/rich-errors-args.case.json	Sheet1!A26	M6	FIELDVALUE
+probes/rich-errors-args.case.json	Sheet1!A27	M6	FIELDVALUE
+probes/rich-errors-args.case.json	Sheet1!A28	M6	FIELDVALUE
+probes/rich-errors-args.case.json	Sheet1!A40	M6	IMAGE
+probes/rich-errors-args.case.json	Sheet1!A50	M5	STOCKHISTORY
+probes/rich-errors-args.case.json	Sheet1!A60	M6	FIELDVALUE
+probes/rich-errors-calc.case.json	Sheet1!A1	M7	SEQUENCE
+probes/rich-errors-calc.case.json	Sheet1!B1	M7	SEQUENCE
+probes/rich-errors-calc.case.json	Sheet1!C1	M7	SEQUENCE
+probes/rich-errors-calc.case.json	Sheet1!A4	M7	FILTER
+probes/rich-errors-calc.case.json	Sheet1!B4	M7	FILTER
+probes/rich-errors-calc.case.json	Sheet1!C4	M7	FILTER
+probes/round-family.case.json	Sheet1!A20	M5	MOD
+probes/subnormal-flush-edges.case.json	Calc!A1	M5	PRODUCT
+probes/subnormal-flush-edges.case.json	Calc!B1	M5	PRODUCT
+probes/subnormal-flush-edges.case.json	Calc!C1	M5	PRODUCT
+probes/subnormal-flush-edges.case.json	Calc!A4	M5	PRODUCT
+probes/subnormal-flush-edges.case.json	Calc!B4	M5	PRODUCT
+probes/subnormal-flush-edges.case.json	Calc!C4	M5	PRODUCT
+probes/subnormal-flush-edges.case.json	Calc!A5	M5	PRODUCT
+probes/subnormal-flush-edges.case.json	Calc!B5	M5	PRODUCT
+probes/subnormal-flush-edges.case.json	Calc!C5	M5	PRODUCT
+probes/subnormal-flush-edges.case.json	Calc!A6	M5	SUMPRODUCT
+probes/subnormal-flush-edges.case.json	Calc!B6	M5	SUMPRODUCT
+probes/subnormal-flush-edges.case.json	Calc!C6	M5	SUMPRODUCT
+probes/subnormal-flush-edges.case.json	Calc!A7	M5	SUMPRODUCT
+probes/subnormal-flush-edges.case.json	Calc!B7	M5	SUMPRODUCT
+probes/subnormal-flush-edges.case.json	Calc!C7	M5	SUMPRODUCT
+probes/subnormal-flush-edges.case.json	Calc!A8	M9	AVERAGEA
+probes/subnormal-flush-edges.case.json	Calc!B8	M9	AVERAGEA
+probes/subnormal-flush-edges.case.json	Calc!C8	M9	AVERAGEA
+probes/subnormal-flush-edges.case.json	Calc!A10	M9	AVERAGEA
+probes/subnormal-flush-edges.case.json	Calc!B10	M9	AVERAGEA
+probes/subnormal-flush-edges.case.json	Calc!C10	M9	AVERAGEA
+probes/subnormal-flush-edges.case.json	Calc!A11	M9	AVERAGEIF
+probes/subnormal-flush-edges.case.json	Calc!B11	M9	AVERAGEIF
+probes/subnormal-flush-edges.case.json	Calc!C11	M9	AVERAGEIF
+probes/subnormal-flush-edges.case.json	Calc!A12	M9	AVERAGEIFS
+probes/subnormal-flush-edges.case.json	Calc!B12	M9	AVERAGEIFS
+probes/subnormal-flush-edges.case.json	Calc!C12	M9	AVERAGEIFS
+probes/subnormal-flush-edges.case.json	Calc!A13	M5	SUBTOTAL
+probes/subnormal-flush-edges.case.json	Calc!B13	M5	SUBTOTAL
+probes/subnormal-flush-edges.case.json	Calc!C13	M5	SUBTOTAL
+probes/subnormal-flush-edges.case.json	Calc!A14	M5	SUBTOTAL
+probes/subnormal-flush-edges.case.json	Calc!B14	M5	SUBTOTAL
+probes/subnormal-flush-edges.case.json	Calc!C14	M5	SUBTOTAL
+probes/subnormal-flush-edges.case.json	Calc!A15	M5	AGGREGATE
+probes/subnormal-flush-edges.case.json	Calc!B15	M5	AGGREGATE
+probes/subnormal-flush-edges.case.json	Calc!C15	M5	AGGREGATE
+probes/subnormal-function-results.case.json	Calc!A4	M5	EXP
+probes/subnormal-function-results.case.json	Calc!B4	M5	EXP
+probes/subnormal-function-results.case.json	Calc!C4	M5	EXP
+probes/subnormal-function-results.case.json	Calc!A5	M5	EXP
+probes/subnormal-function-results.case.json	Calc!B5	M5	EXP
+probes/subnormal-function-results.case.json	Calc!C5	M5	EXP
+probes/subnormal-function-results.case.json	Calc!A6	M5	EXP
+probes/subnormal-function-results.case.json	Calc!B6	M5	EXP
+probes/subnormal-function-results.case.json	Calc!C6	M5	EXP
+probes/subnormal-function-results.case.json	Calc!A9	M5	PRODUCT
+probes/subnormal-function-results.case.json	Calc!B9	M5	PRODUCT
+probes/subnormal-function-results.case.json	Calc!C9	M5	PRODUCT
+probes/subnormal-function-results.case.json	Calc!A10	M5	PRODUCT
+probes/subnormal-function-results.case.json	Calc!B10	M5	PRODUCT
+probes/subnormal-function-results.case.json	Calc!C10	M5	PRODUCT
+probes/subnormal-function-results.case.json	Calc!A12	M5	POWER
+probes/subnormal-function-results.case.json	Calc!B12	M5	POWER
+probes/subnormal-function-results.case.json	Calc!C12	M5	POWER
+probes/subnormal-function-results.case.json	Calc!A13	M5	POWER
+probes/subnormal-function-results.case.json	Calc!B13	M5	POWER
+probes/subnormal-function-results.case.json	Calc!C13	M5	POWER
+probes/subnormal-function-results.case.json	Calc!A41	M5	SUMPRODUCT
+probes/subnormal-function-results.case.json	Calc!B41	M5	SUMPRODUCT
+probes/subnormal-function-results.case.json	Calc!C41	M5	SUMPRODUCT
+probes/subnormal-function-results.case.json	Calc!A43	M10	number-format codes in TEXT
+probes/subnormal-function-results.case.json	Calc!B43	M10	number-format codes in TEXT
+probes/subnormal-function-results.case.json	Calc!C43	M10	number-format codes in TEXT
+probes/subnormal-function-results.case.json	Calc!A48	M5	SQRT
+probes/subnormal-function-results.case.json	Calc!B48	M5	SQRT
+probes/subnormal-function-results.case.json	Calc!C48	M5	SQRT
+probes/subnormal-function-results.case.json	Calc!A65	M5	SUBTOTAL
+probes/subnormal-function-results.case.json	Calc!B65	M5	SUBTOTAL
+probes/subnormal-function-results.case.json	Calc!C65	M5	SUBTOTAL
+probes/subnormal-function-results.case.json	Calc!A66	M5	PRODUCT
+probes/subnormal-function-results.case.json	Calc!B66	M5	PRODUCT
+probes/subnormal-function-results.case.json	Calc!C66	M5	PRODUCT
+probes/subnormal-function-results.case.json	Calc!A67	M5	SUMPRODUCT
+probes/subnormal-function-results.case.json	Calc!B67	M5	SUMPRODUCT
+probes/subnormal-function-results.case.json	Calc!C67	M5	SUMPRODUCT
+probes/subnormal-function-results.case.json	Calc!A68	M5	SUMSQ
+probes/subnormal-function-results.case.json	Calc!B68	M5	SUMSQ
+probes/subnormal-function-results.case.json	Calc!C68	M5	SUMSQ
+probes/subnormal-function-results.case.json	Calc!A75	M5	SIN
+probes/subnormal-function-results.case.json	Calc!B75	M5	SIN
+probes/subnormal-function-results.case.json	Calc!C75	M5	SIN
+probes/subnormal-function-results.case.json	Calc!A76	M5	SQRT
+probes/subnormal-function-results.case.json	Calc!B76	M5	SQRT
+probes/subnormal-function-results.case.json	Calc!C76	M5	SQRT
+probes/subtotal-reference-operands-c.case.json	Sheet1!H1	M5	SUBTOTAL
+probes/subtotal-reference-operands-c.case.json	Sheet1!H2	M6	AREAS
+probes/subtotal-reference-operands-c.case.json	Sheet1!H3	M6	AREAS
+probes/subtotal-reference-operands-d.case.json	Sheet1!H1	M9	MEDIAN
+probes/subtotal-reference-operands-d.case.json	Sheet1!J1	M5	SUBTOTAL
+probes/subtotal-reference-operands-d.case.json	Sheet1!H2	M9	MEDIAN
+probes/subtotal-reference-operands-d.case.json	Sheet1!H3	M9	MEDIAN
+probes/subtotal-reference-operands-d.case.json	Sheet1!H4	M9	STDEV.S
+probes/subtotal-reference-operands-d.case.json	Sheet1!J4	M5	SUBTOTAL
+probes/subtotal-reference-operands-d.case.json	Sheet1!L4	M9	AVERAGEA
+probes/subtotal-reference-operands-d.case.json	Sheet1!H5	M9	STDEV.S
+probes/subtotal-reference-operands-d.case.json	Sheet1!L5	M9	AVERAGEA
+probes/subtotal-reference-operands-d.case.json	Sheet1!H6	M9	STDEV.S
+probes/subtotal-reference-operands-d.case.json	Sheet1!H7	M9	GEOMEAN
+probes/subtotal-reference-operands-d.case.json	Sheet1!J7	M6	AREAS
+probes/subtotal-reference-operands-d.case.json	Sheet1!L7	M9	AVERAGEA
+probes/subtotal-reference-operands-d.case.json	Sheet1!H8	M9	GEOMEAN
+probes/subtotal-reference-operands-d.case.json	Sheet1!H9	M9	GEOMEAN
+probes/subtotal-reference-operands-d.case.json	Sheet1!H10	M5	SUMSQ
+probes/subtotal-reference-operands-d.case.json	Sheet1!J10	M5	SUBTOTAL
+probes/subtotal-reference-operands-d.case.json	Sheet1!H11	M5	SUMSQ
+probes/subtotal-reference-operands-d.case.json	Sheet1!H12	M5	SUMSQ
+probes/subtotal-reference-operands-d.case.json	Sheet1!J13	M6	AREAS
+probes/subtotal-reference-operands-d.case.json	Sheet1!J16	M5	SUBTOTAL
+probes/subtotal-reference-operands-d.case.json	Sheet1!H22	M9	AVERAGEA
+probes/subtotal-reference-operands-d.case.json	Sheet1!H23	M9	AVERAGEA
+probes/subtotal-reference-operands-d.case.json	Sheet1!H24	M9	AVERAGEA
+probes/sum-long-text-args.case.json	Sheet1!A8	M5	SUMSQ
+probes/sum-long-text-args.case.json	Sheet1!A9	M5	PRODUCT
+probes/sumif-edge-single-cell.case.json	Sheet1!F2	M9	AVERAGEIF
+probes/sumif-edge-single-cell.case.json	Sheet1!F4	M9	AVERAGEIF
+probes/sumif-edge-single-cell.case.json	Sheet1!F6	M9	AVERAGEIF
+probes/sumif-edge-single-cell.case.json	Sheet1!F8	M9	MINIFS
+probes/sumif-edge-single-cell.case.json	Sheet1!F9	M9	MAXIFS
+probes/text-count-argument-bounds.case.json	Sheet1!J1	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K1	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L1	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M1	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R1	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S1	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U1	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y1	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!J2	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K2	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L2	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M2	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R2	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S2	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U2	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y2	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!J3	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K3	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L3	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M3	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R3	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S3	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U3	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y3	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!J4	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K4	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L4	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M4	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R4	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S4	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U4	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y4	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!J5	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K5	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L5	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M5	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R5	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S5	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U5	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y5	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!J6	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K6	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L6	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M6	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R6	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S6	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U6	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y6	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!J7	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K7	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L7	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M7	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R7	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S7	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U7	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y7	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!J8	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K8	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L8	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M8	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R8	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S8	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U8	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y8	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!J9	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K9	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L9	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M9	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R9	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S9	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U9	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y9	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!J10	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K10	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L10	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M10	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R10	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S10	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U10	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y10	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!J11	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K11	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L11	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M11	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R11	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S11	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U11	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y11	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!J12	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K12	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L12	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M12	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R12	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S12	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U12	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y12	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!J13	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K13	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L13	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M13	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R13	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S13	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U13	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y13	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!J14	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!K14	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!L14	M5	MIDB
+probes/text-count-argument-bounds.case.json	Sheet1!M14	M5	LEFTB
+probes/text-count-argument-bounds.case.json	Sheet1!R14	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S14	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U14	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y14	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!R15	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S15	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U15	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y15	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!R16	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S16	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U16	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y16	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!R17	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S17	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U17	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y17	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!R18	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S18	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U18	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y18	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!R19	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!S19	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U19	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y19	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U20	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y20	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U21	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y21	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!F22	M5	REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U22	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y22	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U23	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y23	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U24	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y24	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U25	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y25	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U26	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y26	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U27	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y27	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U28	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y28	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U29	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y29	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U30	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!Y30	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U31	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U32	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U33	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U34	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U35	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U36	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U37	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U38	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U39	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U40	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U41	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U42	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U43	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U44	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U45	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U46	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U47	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U48	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U49	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U50	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U51	M5	FIND, REPLACE
+probes/text-count-argument-bounds.case.json	Sheet1!U52	M5	FIND, REPLACE
+probes/text-result-limit-errors-refs.case.json	Sheet1!D1	M5	TEXTJOIN
+probes/text-result-limit-errors-refs.case.json	Sheet1!D2	M5	TEXTJOIN
+probes/text-result-limit-errors-refs.case.json	Sheet1!D3	M5	TEXTJOIN
+probes/text-result-limit-errors-refs.case.json	Sheet1!D4	M5	TEXTJOIN
+probes/text-result-limit-errors-refs.case.json	Sheet1!D5	M5	TEXTJOIN
+probes/text-result-limit-errors-refs.case.json	Sheet1!D6	M5	TEXTJOIN
+probes/text-result-limit-errors-refs.case.json	Sheet1!D7	M5	TEXTJOIN
+probes/text-result-limit-errors-refs.case.json	Sheet1!D8	M5	TEXTJOIN
+probes/text-result-limit-errors-refs.case.json	Sheet1!D9	M5	TEXTJOIN
+probes/text-result-limit-errors-refs.case.json	Sheet1!D10	M5	TEXTJOIN
+probes/text-result-limit-errors-refs.case.json	Sheet1!D11	M5	TEXTJOIN
+probes/text-result-limit-errors-refs.case.json	Sheet1!D12	M5	TEXTJOIN
+probes/text-result-limit-errors.case.json	Sheet1!C2	M5	TEXTJOIN
+probes/text-result-limit-errors.case.json	Sheet1!C3	M5	TEXTJOIN
+probes/text-result-limit-errors.case.json	Sheet1!C4	M5	TEXTJOIN
+probes/text-result-limit-errors.case.json	Sheet1!C7	M5	TEXTJOIN
+probes/text-result-limit-errors.case.json	Sheet1!C8	M5	TEXTJOIN
+probes/text-result-limit-errors.case.json	Sheet1!C9	M5	TEXTJOIN
+probes/text-result-limit-errors.case.json	Sheet1!C11	M5	TEXTJOIN
+probes/text-result-limit.case.json	Sheet1!C10	M5	SUBSTITUTE
+probes/text-result-limit.case.json	Sheet1!C19	M5	TEXTJOIN
+probes/text-result-limit.case.json	Sheet1!C20	M5	TEXTJOIN
+probes/text-result-limit.case.json	Sheet1!C22	M5	TEXTJOIN
+probes/text-surrogate-positions.case.json	Sheet1!C1	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!A2	M5	LENB
+probes/text-surrogate-positions.case.json	Sheet1!C2	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!C3	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!C4	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!C5	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!C6	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!C7	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!C8	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!C9	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!B11	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!B12	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!B13	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!A14	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!B14	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!A15	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!B15	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!A16	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!A17	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!A18	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!A19	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!A20	M5	FINDB
+probes/text-surrogate-positions.case.json	Sheet1!A21	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!A22	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!A23	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!A24	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!A25	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!A26	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!A27	M5	REPLACE
+probes/text-surrogate-positions.case.json	Sheet1!A28	M5	REPLACE
+probes/text-surrogate-positions.case.json	Sheet1!A30	M5	REPLACE
+probes/text-surrogate-positions.case.json	Sheet1!A31	M5	REPLACEB
+probes/text-surrogate-positions.case.json	Sheet1!A32	M5	LEFTB
+probes/text-surrogate-positions.case.json	Sheet1!A37	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!A39	M5	RIGHTB
+probes/text-surrogate-positions.case.json	Sheet1!A40	M5	MIDB
+probes/text-surrogate-positions.case.json	Sheet1!A41	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!A42	M5	FIND
+probes/text-surrogate-positions.case.json	Sheet1!A43	M5	SEARCH
+probes/text-surrogate-positions.case.json	Sheet1!A44	M5	SEARCH
+probes/tiny-vs-zero-criteria.case.json	Calc!A20	M6	XMATCH
+probes/tiny-vs-zero-criteria.case.json	Calc!D20	M6	XMATCH
+probes/tiny-vs-zero-criteria.case.json	Calc!A21	M6	XMATCH
+probes/tiny-vs-zero-criteria.case.json	Calc!D21	M6	XMATCH
+probes/tiny-vs-zero-criteria.case.json	Calc!A22	M6	XMATCH
+probes/tiny-vs-zero-criteria.case.json	Calc!D22	M6	XMATCH
+probes/tiny-vs-zero-criteria.case.json	Calc!A23	M6	XMATCH
+probes/tiny-vs-zero-criteria.case.json	Calc!D23	M6	XMATCH
+probes/tiny-vs-zero-criteria.case.json	Calc!A24	M6	XMATCH
+probes/tiny-vs-zero-criteria.case.json	Calc!D24	M6	XMATCH
+probes/tiny-vs-zero-criteria.case.json	Calc!A27	M6	XLOOKUP
+probes/tiny-vs-zero-criteria.case.json	Calc!D27	M6	XLOOKUP
+probes/tiny-vs-zero-criteria.case.json	Calc!A28	M6	XLOOKUP
+probes/tiny-vs-zero-criteria.case.json	Calc!D28	M6	XLOOKUP
+probes/tiny-vs-zero-criteria.case.json	Calc!A31	M7	SORT
+probes/tiny-vs-zero-criteria.case.json	Calc!D31	M7	SORT
+probes/trunc-decimal-stages.case.json	Sheet1!A1	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A2	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A3	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A4	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A5	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A6	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A7	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A8	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A9	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A10	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A11	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A12	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A13	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A14	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A15	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A16	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A17	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A18	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A19	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A20	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A21	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A22	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A23	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A24	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A25	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A26	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A27	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A28	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A29	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A30	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A31	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A32	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A33	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A34	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A35	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A36	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A37	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A38	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A39	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A40	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A41	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A42	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A43	M5	TRUNC
+probes/trunc-decimal-stages.case.json	Sheet1!A44	M5	TRUNC
+probes/union-defined-name-uses.case.json	Sheet1!H1	M6	AREAS
+probes/union-defined-name-uses.case.json	Sheet1!H3	M5	AGGREGATE
+probes/union-defined-name-uses.case.json	Sheet1!H4	M5	AGGREGATE
+probes/union-defined-name-uses.case.json	Sheet1!H9	M9	FREQUENCY
+probes/union-defined-name-uses.case.json	Sheet1!H12	M9	COUNTBLANK
+probes/union-defined-name-uses.case.json	Sheet1!H13	M9	COUNTBLANK
+probes/union-defined-name-uses.case.json	Sheet1!H15	M5	AGGREGATE
+probes/union-defined-name-uses.case.json	Sheet1!H17	M6	AREAS
+probes/union-defined-name-uses.case.json	Sheet1!H20	M9	FREQUENCY
+probes/written-parens-reference-context.case.json	Sheet1!E14	M7	LET
+probes/written-parens-reference-context.case.json	Sheet1!G14	M7	LET
