@@ -21,4 +21,4 @@ probes/aggregate-picked-direct-a-variants D20-D27 (ours: first error at once, `M
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Cases the probe did not cover.

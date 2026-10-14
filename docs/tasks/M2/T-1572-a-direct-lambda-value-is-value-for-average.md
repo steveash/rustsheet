@@ -21,4 +21,4 @@ probes/aggregate-picked-direct-a-variants D7-D13 (ours: #CALC! (102) for SUM/PRO
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Cases the probe did not cover.
