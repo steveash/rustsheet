@@ -1,0 +1,39 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1306 CODE of the C1 control characters U+0080-U+009F (UNICHAR 128-159) against the Windows-1252 table",
+ "tags": [
+  "M5",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=CODE(UNICHAR(128))",
+    "A2": "=CODE(UNICHAR(130))",
+    "A3": "=CODE(UNICHAR(133))",
+    "A4": "=CODE(UNICHAR(138))",
+    "A5": "=CODE(UNICHAR(140))",
+    "A6": "=CODE(UNICHAR(141))",
+    "A7": "=CODE(UNICHAR(143))",
+    "A8": "=CODE(UNICHAR(144))",
+    "A9": "=CODE(UNICHAR(145))",
+    "A10": "=CODE(UNICHAR(150))",
+    "A11": "=CODE(UNICHAR(152))",
+    "A12": "=CODE(UNICHAR(157))",
+    "A13": "=CODE(UNICHAR(158))",
+    "A14": "=CODE(UNICHAR(159))",
+    "A15": "=CODE(UNICHAR(160))",
+    "A16": "=CODE(UNICHAR(161))",
+    "A17": "=CODE(UNICHAR(8218))",
+    "A18": "=CODE(UNICHAR(376))",
+    "A19": "=CODE(UNICHAR(338))",
+    "A20": "=CODE(UNICHAR(353))",
+    "A21": "=CODE(UNICHAR(255))",
+    "A22": "=CODE(UNICHAR(256))"
+   }
+  }
+ ],
+ "expected": {}
+}
