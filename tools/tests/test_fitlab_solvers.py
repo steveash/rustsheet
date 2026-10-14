@@ -78,6 +78,23 @@ def test_irr_results_are_x_minus_one() -> None:
 
 
 @pytest.mark.usefixtures("real_cases")
+def test_irr_secant_fit_scores() -> None:
+    s = _scores("irr")
+    assert s["secant in v, fitted"] == 189
+    assert s["secant in v, no residual test"] == 181
+    assert s["secant in v, no retry"] == 187
+    assert s["Newton in v=1/(1+r), converged"] == 74
+
+
+def test_irr_secant_on_a_two_flow_root() -> None:
+    # {-1, 1.1}: one secant step on a line lands on v = 1/1.1; the next step is below 1e-7.
+    got = solvers.irr_secant_v()([-1.0, 1.1], 0.1, None)
+    assert math.isclose(got, 0.1, rel_tol=1e-14)
+    with pytest.raises(solvers.NoResultError):
+        solvers.irr_secant_v(retry=False)([-20.0, -5.0], 0.1, None)
+
+
+@pytest.mark.usefixtures("real_cases")
 def test_rate_results_are_rates() -> None:
     cells = fit.run(registry()["rate"], engine=False, only="^$").sweep.cells
     assert len(cells) == 136

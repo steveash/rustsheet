@@ -42,14 +42,21 @@ return m once (b - a)/2 < 5e-9 + 1e-8*|m| and |XNPV(m)| < 2e-8*max|value|. The X
 124-year span (xirr-early-dates A8: Excel returns bisection step 25, the model step 28) and a zero first
 value (A10, A11); T-1533 continues that fit. The walk and bisection caps are unprobed.
 
-**Scope.** The XIRR part can be implemented now. IRR and RATE are not fitted (see
-`docs/excel-semantics/financial.md`, "IRR returns x - 1 ..." and "RATE iterates on the rate itself"); their
-part of this task waits for T-1533.
+**IRR model fitted by T-1533** (`uv run rustsheet-fitlab irr`, 189/263 bit-exact, 207 within 4 ulp;
+`irr_secant_v` in `tools/src/rustsheet_tools/fitlab/kernels/solvers.py`; financial.md "IRR is a secant in
+v = 1/(1 + r)"). Secant on NPV(v), v0 = 1/(1 + guess), v1 = v0 + 0.001*sign(NPV(v0)); v2 = v0 -
+NPV(v0)(v1 - v0)/(NPV(v1) - NPV(v0)); stop at the first v2 with |v2 - v1| < 1e-7 and |NPV(v2)| < 1e-7,
+return 1/v2 - 1; a run that does not stop in 50 steps is retried once from 0.1; NPV(v) as sum c_i/x^i with
+x = 1/v and x87-rounded divisions (numbers.md "Division rounds twice").
+
+**Scope.** The XIRR and IRR parts can be implemented now. RATE is not fitted (financial.md "RATE iterates
+on the rate itself"); its part of this task waits for a new hypothesis.
 
 ## Acceptance criteria
-- [ ] The listed XIRR and MIRR F lines leave eval/baseline/ironcalc-calc.txt with no new ones (the IRR and RATE lines wait for T-1533's fit); the Outcome note lists the remainder.
+- [ ] The listed XIRR and MIRR F lines leave eval/baseline/ironcalc-calc.txt with no new ones (the RATE lines wait for a RATE fit; IRR lines leave where the T-1533 model is exact); the Outcome note lists the remainder.
 - [ ] Algorithm parameters (guess, tolerance, iteration cap) documented in docs/excel-semantics/numbers.md with evidence cell ids.
 - [ ] Error cases (#NUM! when no convergence) still pass.
+- [ ] IRR follows the T-1533 secant model; `uv run rustsheet-fitlab irr` shows the engine at the fitted candidate's 189/263.
 - [ ] XIRR follows the T-1525 model (bracket chain, bisection, stop test); `uv run rustsheet-fitlab xirr` shows the engine at 208/208.
 - [ ] The chain-walk and bisection caps (unprobed; 100 points per walk and 200 bisection steps are enough on all data) are either probed or recorded as a DEVIATION candidate under decision 0052 and directive 5 (a bound the engine needs whatever Excel's cap is).
 - [ ] `make check` green.
