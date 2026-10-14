@@ -7,6 +7,7 @@ C	fixtures/ifs-legacy-range-criteria.xlsx	20
 C	fixtures/rich-error-export-formulas.xlsx	15
 C	fixtures/rich-error-export.xlsx	15
 C	fixtures/shared-string-phonetic-runs.xlsx	3
+C	fixtures/strict-date-compatibility-0.xlsx	8
 C	fixtures/t-d-iso-date-cells.xlsx	8
 C	fixtures/workday-intl-legacy-holidays.xlsx	6
 F	fixtures/external-link-cached-ranges.xlsx	Refs!B89

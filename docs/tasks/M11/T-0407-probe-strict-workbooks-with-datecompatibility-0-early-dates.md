@@ -3,7 +3,7 @@ id: T-0407
 title: "Probe Strict workbooks with dateCompatibility=0: early dates and t=d serials"
 milestone: M11
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -21,12 +21,18 @@ all declare `dateCompatibility="0"`; nothing in crates/ reads the attribute, so 
 serial-60 leap-year bug and dates before 1900-03-01). T-0406 (`t="d"` cells) depends on the answer.
 
 ## Acceptance criteria
-- [ ] A fixture workbook (gated `fixtures` suite) with `dateCompatibility="0"` holds `=DATE(1900,2,28)`,
+- [x] A fixture workbook (gated `fixtures` suite) with `dateCompatibility="0"` holds `=DATE(1900,2,28)`,
   `=DATE(1900,3,1)`, `=DATE(1900,2,29)`, `=TEXT(60,"yyyy-mm-dd")`, `=DAY(59)`, `=DATEVALUE("1900-01-01")`
   and a `t="d"` cell `1900-01-01` read by `=A1`; oracle-filled with excel-graph.
-- [ ] The Strict entry in docs/excel-semantics/xlsx-storage.md records the finding (VERIFIED or
+- [x] The Strict entry in docs/excel-semantics/xlsx-storage.md records the finding (VERIFIED or
   CONFLICTING), and a follow-up implementation task is filed if Excel differs from today's engine.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing the behavior (follow-up task).
+
+## Outcome
+Fixture `fixtures/strict-date-compatibility-0.xlsx` (8 cells, all bit-exact) filled by excel-graph: the
+attribute changes nothing (leap-year bug and `t="d"` serials behave as in a Transitional workbook), so the
+importer ignoring it is correct. Recorded in docs/excel-semantics/xlsx-storage.md; no follow-up needed.
+Eval delta: fixtures +8 cells passing, no regressions.
