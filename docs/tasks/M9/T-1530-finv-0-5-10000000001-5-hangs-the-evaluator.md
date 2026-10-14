@@ -3,7 +3,7 @@ id: T-1530
 title: "FINV(0.5,10000000001,5) hangs the evaluator: bound the F-distribution quantile for huge df"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P0
 size: S
 tier: sonnet
@@ -24,3 +24,9 @@ No F-distribution function hangs on a huge df: `FINV(0.5,10000000001,5)` and `FI
 
 ## Out of scope
 -
+
+## Outcome
+- Probed Excel (case `t1530-f-df-cut`): either df above 1E10 is `#NUM!` for every F function (cdf, pdf, inverse, legacy names); recorded in statistics.md.
+- `fisher.rs` rejects df outside 1..=1E10 and finds the quantile by bisection on the cdf when either df is 1E5 or more (`statrs` `inverse_cdf` does not finish there). Unit tests in `test_fn_f_df_limit.rs`.
+- Eval: `m9-legacy-finv` now runs to completion (was a 60s timeout); `t1530-f-df-cut` 42 of 58 cells pass; no baseline change (probes-numeric has none).
+- Follow-up T-1538: values at df 1E7 to 1E10 are off from Excel in the 6th digit (`statrs` cdf accuracy).
