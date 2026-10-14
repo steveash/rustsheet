@@ -1,5 +1,5 @@
 ---
-id: T-1521
+id: T-1527
 title: "Probe @XLOOKUP/@TAKE as ANCHORARRAY operand, LOOKUP result_vector and lookup index argument"
 milestone: M1
 lane: functions-lookup
