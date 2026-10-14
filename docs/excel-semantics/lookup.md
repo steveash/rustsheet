@@ -23,13 +23,15 @@ Status: VERIFIED (Excel for the web only; the engine matches all of these)
 
 ## INDIRECT R1C1 relative offsets
 Rule: `INDIRECT("R[-1]C[6]",FALSE)` is relative to the cell holding the formula (`R[-11]C[6]` in B12 reads H1, "data";
-B11's `R[-1]C[6]` = 0 reads the empty H10). An offset that leaves the sheet is not `#REF!` (`R[-20]C` in B15 is 0, an
-empty cell); whether it wraps or clamps is unknown, because the probe's target cell is empty. A result row exactly at the last row (`R[1048560]C` in B16)
-is also fine.
-RustSheet today: `parse_r1c1_number` (engine utils.rs) wraps and returns `#REF!` when the offset magnitude is
-at least the sheet size; T-0960 should check both that and the wrap itself against the oracle.
-Evidence: indirect-text-broadcast.case.json B11:B16 (oracle: excel-graph, 2026-10-05, T-0957).
-Status: UNVERIFIED for the wrap-around itself (T-0960)
+B11's `R[-1]C[6]` = 0 reads the empty H10). An offset that leaves the sheet is not `#REF!`: it **wraps modulo the sheet size** (1048576 rows, 16384
+columns), in both directions, for rows and columns (`R[-20]C` in D15 reads D1048571, `R[1048560]C` in D30 reads D14,
+`RC[-5]` in C5 reads XFB5, `RC[16383]` in C6 reads B6; a clamp would have read D1/D1048576/A5/XFD6). An offset equal to
+minus the sheet size (`R[-1048576]C`, `RC[-16384]`) is `#REF!` (positive offsets of the sheet size or more are not probed; the engine treats them symmetrically); `R[-1048575]C[-1]` wraps to row 16
+(0, an empty cell). A result row exactly at the last row (`R[1048560]C` in B16) is also fine.
+RustSheet matches (`parse_r1c1_number`, engine utils.rs).
+Evidence: indirect-text-broadcast.case.json B11:B16 (T-0957); indirect-r1c1-offset-overflow.case.json (oracle:
+excel-graph, 2026-10-14, T-0960).
+Status: VERIFIED (Excel for the web only)
 Tasks: T-0960
 
 ## MATCH on a 2-D lookup_array is #N/A; argument errors win

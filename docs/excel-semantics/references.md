@@ -235,16 +235,18 @@ workbook is read:
   (`SUM(…!$C$1:$C$2)` `#N/A`); the *A functions coerce as in a range (AVERAGEA 3.2, MAXA 10);
   COUNTA counts the cells the cache holds (5; 7 over `$A$1:$D$10`; 3 over `$A:$A`); cells and
   whole columns past what the cache holds read empty (`SUM(…!$E$1:$F$2)` 0, `SUM(…!$B:$B)` 10);
-- the reference readers see a reference: ISREF TRUE, ROWS 3, COLUMNS 2, AREAS 1, TYPE 16, RANK 2,
-  SUBTOTAL(9,…) 15, `AGGREGATE(9,6,…!$A$1:$C$2)` 16 (the error skipped);
+- the reference readers see a reference: ISREF TRUE, ROWS 3, COLUMNS 2, AREAS 1, RANK 2,
+  SUBTOTAL(9,…) 15, `AGGREGATE(9,6,…!$A$1:$C$2)` 16 (the error skipped); legacy `TYPE(…)` in row 62
+  is 16, an implicit intersection that finds no cell (below);
 - lookups, INDEX and element-wise functions read the values: VLOOKUP, HLOOKUP, MATCH, XMATCH,
   XLOOKUP, `INDEX(…,2,2)` "7", `INDEX(…,3,2)` (blank) 0, `SUMPRODUCT(--ISTEXT(…))` 2, ISLOGICAL 1,
   ISBLANK 1, `CONCAT` "Hello!1057TRUE", `TEXTJOIN("|",FALSE,…)` "Hello!|10|5|7|TRUE|";
 - the functions that need the other workbook open are `#VALUE!`: COUNTIF, SUMIF, SUMIFS (also over
   `[1]!NR_Range`) and COUNTBLANK, a one-cell `COUNTBLANK([1]Uses!$B$3)` included; OFFSET of one
   (`SUM(OFFSET([1]Uses!$A$1,0,1,2,1))`) is `#VALUE!`;
-- in a legacy (non-dynamic) formula, arithmetic on the range is implicitly intersected as a range
-  of this workbook is: `SUM(IFERROR(…*1,100))` and even `SUMPRODUCT(IFERROR(…*1,100))` are 100,
+- in a legacy (non-dynamic) formula, the range is implicitly intersected as a range of this
+  workbook is ("Legacy formulas intersect the ranges in value arguments"): in rows 38, 44 and 56,
+  outside the range's rows, `SUM(IFERROR(…*1,100))` and `SUMPRODUCT(IFERROR(…*1,100))` are 100 and
   `SUM(…!$A$2:$A$3+0)` `#VALUE!`;
 - a sheet-scoped name of a range, `[1]Defines!NR_Local_Range`, is `#BLOCKED!` (ROWS too; ERROR.TYPE
   11), although a sheet-scoped name of one cell reads its cached value; a sheet the cache does not
@@ -256,15 +258,17 @@ as reference cells, several areas as one row of cells. Engine-only bound (not Ex
 is unobservable here): a whole column or row is cut to the extent the cache holds, as a whole
 column of this workbook is cut to its used area; any other area keeps its shape and blanks. The
 array bound on cached ranges (an area or a union's cells above 1,048,576) is a DEVIATION: see
-arrays.md "Array results above 1,048,576 cells". Not
-yet matched: TYPE (64), SUBTOTAL and AGGREGATE (`#VALUE!`, they take a reference), AVERAGEA (`#N/IMPL!`, no array support) and the legacy implicit
-intersection of an external range (T-1526).
+arrays.md "Array results above 1,048,576 cells". SUBTOTAL, AGGREGATE's reference form and RANK
+read the cached cells through `Model::external_reference_cells`, AVERAGEA coerces them as MAXA
+does, and an automatic `@` on a cached range reads the cached cell it intersects
+(`Model::cached_external_at`; T-1526). Unprobed: `@` of an uncached external range, and of a
+cached one inside an aggregate's argument (the engine reads the picked cell as a value).
 `Sheet!Name` with no book prefix (poi/56737.xlsx Uses!D2 `=Defines!NR_To_A1`, Excel-cached
 "Test A1") is the name scoped to that sheet of this workbook; `[0]!Name` and `[0]Sheet!Name` resolve
 the same way at parse time, so ISREF and a rename see them. A sheet-qualified workbook-scoped name
 (`Sheet!GlobalName`), an unknown `Sheet!Nope` (engine: `#NAME?`) and a missing sheet are UNVERIFIED (T-1459).
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
-Tasks: T-1382, T-1459, T-1460
+Tasks: T-1382, T-1459, T-1460, T-1526
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
@@ -1303,3 +1307,45 @@ Tasks: T-1503
 `=ISREF(@INDEX(B1:B3,2))` is TRUE (probes/let-bind-implicit-index H10, excel-graph 2026-10-13). Fixed by T-1506: `is_reference` has an `ImplicitIntersection(INDEX)` arm. `@XLOOKUP` and `@TAKE` keep the reference the same way (T-1509): `ISREF(@XLOOKUP(2,A1:A3,B1:B3))` and `ISREF(@TAKE(B1:B3,1))` are TRUE, also LET-bound (probes/isref-implicit-xlookup-take H1, H3, H5, H6). An `@` whose intersection fails (formula row outside the picked rows) or a failing INDEX is not a reference: `ISREF(@TAKE(B1:B3,2))`, `ISREF(@INDEX(B1:C3,0,1))` and `ISREF(@INDEX(B1:B3,9))` are FALSE (H7:H11), plain or LET-bound. `@XLOOKUP`/`@TAKE` also keep the reference as the operand of `#`/ANCHORARRAY (`ANCHORARRAY(@TAKE(D1:D3,1))` spills D1#) and as LOOKUP's `result_vector` (a one-cell reference is read on past to the right, `LOOKUP(3,A1:A3,@TAKE(F1:F3,1))` reads H1; an `@` that fails to intersect is `#VALUE!`); as a lookup index argument the value and the reference read the same (probes/anchorarray-lookup-implicit-xlookup-take, excel-graph 2026-10-14, T-1527).
 Evidence strength: excel-graph oracle, 11 + 17 cells (T-1527); the postfix `#` spelling of the ANCHORARRAY case is inferred, not probed. Status: VERIFIED (web).
 Tasks: T-1506, T-1509, T-1527
+
+## Legacy formulas intersect the ranges in value arguments
+Rule: in a legacy (non-dynamic, no `cm`) formula a range is implicitly intersected wherever Excel
+evaluates it as a value, not only at the formula's root (FORMULATEXT of these forms is unprobed;
+for `=ABS(A1:A2)` it shows the `@`, probes/multiarea-at-legacy).
+With B1:B6 = 1,2,3,1,2,3, each formula on row 2 (on the range's rows, B2 = 2) and row 10 (off):
+- a scalar argument intersects arithmetic and comparisons over a range, not only a bare range:
+  `SUM(IFERROR(B1:B6*1,100))` 2 / 100, `SUM(IF(A1:A6="a",1,0))` 1-or-0 / `#VALUE!`
+  (array-context-legacy-sumproduct R1, R10), `SUM(IF(TRUE,B1:B6+0))` 2 / `#VALUE!`;
+- an aggregate's arithmetic argument is a value too, while a bare or parenthesized range stays a
+  reference: `SUM(B1:B6+0)` 2 / `#VALUE!`, `SUM(-B1:B6)` -2 / `#VALUE!`, `AVERAGE`, `MAX`, `MEDIAN`,
+  `AVERAGEA(B1:B6*1)` 2 / `#VALUE!`, `LARGE(B1:B6*1,1)` 2 / `#VALUE!`, `COUNT(B1:B6*1)` 1 / 0,
+  `COUNTA(B1:B6*1)` 1 / 1, `SUM(B1:B6,B1:B6*1)` 14 / `#VALUE!`, but `SUM(B1:B6)` and `SUM((B1:B6))` 12 on
+  both rows; MMULT, INDEX and LOOKUP evaluate such an argument as an array (criteria.md, T-0286);
+- TYPE's argument is intersected whole: `TYPE(B1:B6)`, `TYPE((B1:B6))` and `TYPE(B1:B6*1)` are 1 on
+  row 2 and 16 on row 10, `TYPE(B1:D1)` (a row, read from column G) 16 — where the dynamic
+  `TYPE(A2:C2)` is 64 (information.md);
+- under SUMPRODUCT (an array context), the value of IFERROR and IFNA and the condition of IF still
+  intersect, at any depth: `SUMPRODUCT(IFERROR(B1:B6*1,100))` and `SUMPRODUCT(IFERROR(B1:B6,100))`
+  2 / 100, `SUMPRODUCT(IFNA(B1:B6*1,100))` 2 / `#VALUE!`, `SUMPRODUCT(IFERROR(1/(B1:B6-2),100))`
+  100 / 100, `SUMPRODUCT(ABS(IF(B1:B6>1,B1:B6,0)))` 12 / `#VALUE!` (the condition intersects, the
+  value branch stays the whole range), while `SUMPRODUCT(B1:B6+0)` is 12 on both rows;
+- the reference functions are unchanged: `ROWS(B1:B6)` 6, `SUBTOTAL(9,B1:B6)` and
+  `AGGREGATE(9,6,B1:B6)` 12, `AVERAGEA(B1:D1)` (C1 "x", D1 TRUE) 0.667 on both rows.
+A range of a linked workbook is intersected the same way, reading the cached cell
+(fixtures/external-link-cached-ranges Refs!B38, B44, B56, B62; "Cached values of a linked workbook").
+Evidence: probes/legacy-value-argument-intersection, probes/legacy-type-intersection (excel-graph,
+2026-10-14, T-1526), probes/array-context-legacy-sumproduct (T-0286).
+Engine: `add_implicit_intersection` (parser/static_analysis.rs) adds the automatic `@` at import
+and in `legacy_formula_text`: a scalar argument whose static shape is not a scalar, the arithmetic
+argument of the probed aggregates (`legacy_value_operand`: SUM, AVERAGE, AVERAGEA, MAX, COUNT,
+COUNTA, LARGE, MEDIAN), TYPE's argument (`is_scalar_context`), a range of another workbook,
+and under SUMPRODUCT IF's condition and IFERROR's and IFNA's value
+(`for_each_array_context_condition`); `remove_redundant_implicit_intersection` mirrors it so the
+export drops exactly those `@`s. Unprobed (T-1551): the arithmetic
+argument of the other aggregates (MIN, PRODUCT, STDEV, ...; the engine keeps the range whole), a
+parenthesized one (`SUM((B1:B6*1))`, kept whole) and a comparison or `&` one (`SUM(B1:B6>1)`,
+intersected), IFERROR/IFNA nested below another function under SUMPRODUCT (intersected), a nested
+aggregate under SUMPRODUCT, and the other control functions (CHOOSE's index under SUMPRODUCT lifts,
+T-0294).
+Status: VERIFIED
+Tasks: T-0293, T-1526

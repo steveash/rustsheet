@@ -449,7 +449,9 @@ impl Model {
                 kind: Function::Xlookup,
                 args,
             } => self.xlookup_impl(args, cell, true),
-            _ => self.evaluate_node_with_reference(node, cell),
+            _ => self
+                .cached_external_at(node, cell)
+                .unwrap_or_else(|| self.evaluate_node_with_reference(node, cell)),
         }
     }
 
