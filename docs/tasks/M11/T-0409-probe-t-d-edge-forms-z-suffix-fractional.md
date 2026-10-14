@@ -3,7 +3,7 @@ id: T-0409
 title: "Probe t=d edge forms: Z suffix, fractional seconds, 1900-02-29, pre-1900, time-only"
 milestone: M11
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
