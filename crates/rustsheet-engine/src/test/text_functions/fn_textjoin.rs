@@ -88,3 +88,19 @@ fn array_literals_and_function_results() {
     assert_eq!(model._get_text("A9"), *"1,2,5,x");
     assert_eq!(model._get_text("A10"), *"TRUE,FALSE,1.5");
 }
+
+// Excel values: probes/textjoin-array-limit-empty-strings A7-A9.
+#[test]
+fn empty_strings_are_skipped_with_ignore_empty() {
+    let mut model = new_empty_model();
+    model._set("B1", "a");
+    model._set("B2", "=\"\"");
+    model._set("B3", "c");
+    model._set("A1", "=TEXTJOIN(\",\",TRUE,\"a\",\"\",\"c\")");
+    model._set("A2", "=TEXTJOIN(\",\",TRUE,B1:B3)");
+    model._set("A3", "=TEXTJOIN(\",\",FALSE,B1:B3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"a,c");
+    assert_eq!(model._get_text("A2"), *"a,c");
+    assert_eq!(model._get_text("A3"), *"a,,c");
+}
