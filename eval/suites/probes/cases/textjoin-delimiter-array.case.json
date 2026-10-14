@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1482 TEXTJOIN with an array or range delimiter (cycled)",
+ "tags": [
+  "probe",
+  "text",
+  "T-1482",
+  "textjoin"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=TEXTJOIN({\",\",\";\"},FALSE,{1,2,3})",
+    "A2": "=TEXTJOIN({\",\",\";\"},FALSE,{1,2,3,4,5})",
+    "A3": "=TEXTJOIN({\",\";\"-\"},FALSE,{1,2,3})",
+    "A4": "=TEXTJOIN(B1:B2,FALSE,{1,2,3,4})",
+    "A5": "=TEXTJOIN(B1:B2,FALSE,1,2,3)",
+    "A6": "=TEXTJOIN({\"\"},FALSE,{1,2})",
+    "B1": "-",
+    "B2": "+"
+   }
+  }
+ ],
+ "expected": {}
+}
