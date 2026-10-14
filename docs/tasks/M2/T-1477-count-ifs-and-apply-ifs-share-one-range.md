@@ -39,4 +39,4 @@ now. T-0408 keeps the per-formula range caching, the memo and the bench.
 `Model::resolve_ifs_criteria` (functions/statistical/if_ifs.rs) now resolves the criteria ranges, runs a
 caller-supplied shape check and builds the predicates for both `count_ifs` and `apply_ifs`; the
 `TODO(T-0408)` is gone. Error order is unchanged (range errors, shape, then too-long criterion).
-Eval: 0 regressions, 0 fixes in every suite. Duplicated lines 6522 -> 6369 (`--update` run).
+Eval: 0 regressions, 0 fixes in every suite. Duplicated lines 6522 -> 6369; the ratchet file is left as is (a protected path needs a decision record, so the paydown is recorded by whoever next runs `check_duplication.py --update` under decision 0010).
