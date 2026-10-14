@@ -112,7 +112,8 @@ API (engine-internal callers, plus the boundaries):
   CODE count and read characters with it).
 - `concat(&Text, &Text) -> Text`, `push(&mut self, &Text)` (appends in place, amortized
   linear: stays `Utf8` until a lone unit arrives and re-pairs only at the join, so CONCATENATE's
-  argument loop stays O(n)), and `truncate_utf16(&mut self, max)` (keeps a cut pair's high
+  argument loop stays O(n); on the `Lone` path it grows a `Vec<u16>` and the lossy `String`
+  incrementally and freezes them into `LoneText` once, so a lone early argument stays linear too), and `truncate_utf16(&mut self, max)` (keeps a cut pair's high
   half). Replace `concat_text` and `truncate_text` in cast.rs. Concatenation is of unit
   sequences, so a lone high followed by a lone low surrogate becomes the pair (UTF-16's own rule;
   a hand expectation, `EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`, provisional until T-1582 probes

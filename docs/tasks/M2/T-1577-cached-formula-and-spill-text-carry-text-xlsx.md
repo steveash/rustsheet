@@ -18,7 +18,7 @@ docs/specs/SPEC-0010-text-with-lone-surrogates.md "Where `Text` replaces `String
 
 ## Acceptance criteria
 - [ ] `FormulaValue::Text(Text)`, `SpillValue::Text(Text)`; the bitcode format change is covered by a test that bytes from the old layout are an `Err` from `Model::from_bytes`, not a panic.
-- [ ] xlsx writer test: a cached value with a lone U+DE00 is written as `_xDE00_`, and `_x` look-alikes in the well-formed segments are still escaped as `_x005F_`.
+- [ ] xlsx writer test: a cached value with a lone U+DE00 is written as `_xDE00_`, and an `_x` lookalike in a well-formed segment is still escaped as `_x005F_`.
 - [ ] Zero eval delta.
 - [ ] `make check` green; reviewers approve.
 

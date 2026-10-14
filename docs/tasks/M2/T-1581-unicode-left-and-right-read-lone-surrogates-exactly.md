@@ -19,6 +19,7 @@ docs/specs/SPEC-0010-text-with-lone-surrogates.md; docs/excel-semantics/text.md 
 ## Acceptance criteria
 - [ ] A38 and E10 pass and leave eval/baseline; B6, B7 still pass; no eval regressions.
 - [ ] Unit test: `LEFT(MID("a😀b",3,2),1)` keeps the lone U+DE00 (not U+FFFD).
+- [ ] Outcome: `crates/rustsheet/benches/text.rs` before/after (release), within ±3%; the `Utf8` paths stay today's code (no UTF-16 conversion pass).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -19,6 +19,7 @@ docs/specs/SPEC-0010-text-with-lone-surrogates.md; docs/excel-semantics/text.md 
 ## Acceptance criteria
 - [ ] A11, A12, A29, B10 pass and leave eval/baseline; no eval regressions.
 - [ ] text.md entry updated ("Ours" line: implemented; known-gap note removed for these cells).
+- [ ] Outcome: `crates/rustsheet/benches/text.rs` before/after (release), within ±3%; the `Utf8` paths stay today's code (no UTF-16 conversion pass).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

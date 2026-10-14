@@ -21,7 +21,7 @@ docs/specs/SPEC-0010-text-with-lone-surrogates.md "Representation". New public m
 - [ ] Unit and property tests against a `Vec<u16>` model: round trip, `slice_utf16`, `concat` (lone high + lone low becomes the pair: a hand expectation from UTF-16, pending T-1582's probe of `EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`), `truncate_utf16`, `chars_lossless`, normalization invariant (`Utf8` iff well-formed).
 - [ ] Tests assert `size_of::<Text>() == size_of::<String>()` and that an `ArrayNode`-shaped enum carrying `Text` is 24 bytes.
 - [ ] Hand-written bitcode `Encode`/`Decode`: `Lone` serializes its units only and decodes through `from_utf16`; a test that crafted bytes (a `Lone` with well-formed units, a truncated buffer) decode to a normalized `Text` or an `Err`, never a panic.
-- [ ] `push(&mut self, &Text)` appends in amortized linear time (stays `Utf8` until a lone unit arrives).
+- [ ] `push(&mut self, &Text)` appends in amortized linear time (stays `Utf8` until a lone unit arrives; on the `Lone` path grows a `Vec<u16>` and the lossy `String`, frozen once); a test or bench case with a lone early argument followed by many more.
 - [ ] `crates/rustsheet/benches/text.rs` (recalc of `=A1&"x"`, `=MID(A1,2,3)`, `=LEFT(A1,2)` over a large text column, and a many-argument CONCATENATE near 32,767 units); its main numbers recorded in the Outcome as the baseline for T-1576 and T-1580.
 - [ ] `Text` is public and documented; the Python binding surface is unchanged.
 - [ ] No `unwrap`/`expect`/`panic`; no new dependency.
