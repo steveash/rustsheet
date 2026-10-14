@@ -1,5 +1,5 @@
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::aggregate_args::{
+use crate::functions::util::aggregate_args::{
     AggregatePolicy, ArrayErrorRank, ArrayNumbers, CellNumbers, DirectNumbers, ErrorRule,
     NumberRules,
 };
@@ -285,8 +285,9 @@ const SUM_ARGS: AggregatePolicy = AggregatePolicy {
     skip_empty_args: false,
 };
 
-/// SUM's coercion: every direct value is cast; references and arrays give only their numbers
-/// (a reference, also via IF/INDEX, is a one-cell range: text is skipped).
+/// SUM's coercion: every direct value (and a value a reference node gives without areas) is
+/// cast; referenced cells and arrays give only their numbers (a reference, also via IF/INDEX, is
+/// a one-cell range: text is skipped).
 const SUM_NUMBERS: NumberRules = NumberRules {
     direct: DirectNumbers::Cast,
     cells: CellNumbers::Numbers,

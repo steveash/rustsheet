@@ -33,7 +33,7 @@ spec's walker. SUM's last-addition tracking for near-zero snapping stays SUM's o
 - Settling T-0236 (empty arguments of DEVSQ/SUMSQ); keep today's behavior.
 
 ## Outcome
-`functions/aggregate_args.rs` holds SPEC-0009's walker (`walk_aggregate_args` /
+`functions/util/aggregate_args.rs` (a child of util.rs: `functions/mod.rs` is oversized and may only shrink) holds SPEC-0009's walker (`walk_aggregate_args` /
 `walk_aggregate_arg`, `AggregatePolicy`, `AggregateWalk`) and its number layer
 (`for_each_aggregate_number`, `NumberRules`), with unit tests for each error rule, the early exit,
 item order and empty array elements.

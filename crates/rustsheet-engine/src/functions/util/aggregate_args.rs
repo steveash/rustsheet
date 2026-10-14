@@ -20,7 +20,9 @@ use crate::reference_operators::RefArg;
 pub(crate) enum ItemSource {
     /// A direct value: a literal, a computed scalar, a function's value result.
     Direct,
-    /// A value a reference node gave without areas (a cached cell of a linked workbook).
+    /// A value a reference node gave without areas (a cached cell of a linked workbook). Today
+    /// that is only ever an array or an error, which the walker handles itself, so no consumer
+    /// sees one yet. The rules for it keep the old dispatches' `ReferenceKind` guards.
     ReferenceValue,
     /// A cell of a range, reference, union or 3-D span.
     ReferencedCell,
@@ -134,29 +136,38 @@ impl AggregateWalk {
         }
     }
 
-    fn array_error(&mut self, error: CalcResult) -> Result<(), CalcResult> {
+    /// An error inside an array. Its `CalcResult` is built only when it is kept or returned, so
+    /// the later errors of a large array cost nothing once one is held.
+    fn array_error(&mut self, error: Error, cell: CellReferenceIndex) -> Result<(), CalcResult> {
+        let value = || CalcResult::Error {
+            error,
+            origin: cell,
+            message: "Error in array".to_string(),
+        };
         match self.policy.errors {
             ErrorRule::Ranked {
                 array_errors: ArrayErrorRank::Referenced,
-            } => self.referenced_error(error),
-            _ => Err(error),
+            } => {
+                if self.held.is_none() {
+                    self.held = Some(value());
+                }
+                Ok(())
+            }
+            _ => Err(value()),
         }
     }
 }
 
-/// An array element as an item value, by value so text is moved, not cloned.
-fn array_item(node: ArrayNode, cell: CellReferenceIndex) -> CalcResult {
-    match node {
+/// An array element as an item value, by value so text is moved, not cloned
+/// ([`crate::functions::util::array_node_to_calc_result`] borrows), or its error.
+fn array_item(node: ArrayNode) -> Result<CalcResult, Error> {
+    Ok(match node {
         ArrayNode::Number(n) => CalcResult::Number(n),
         ArrayNode::Boolean(b) => CalcResult::Boolean(b),
         ArrayNode::String(s) => CalcResult::String(s),
-        ArrayNode::Error(error) => CalcResult::Error {
-            error,
-            origin: cell,
-            message: "Error in array".to_string(),
-        },
+        ArrayNode::Error(error) => return Err(error),
         ArrayNode::Empty => CalcResult::EmptyCell,
-    }
+    })
 }
 
 impl Model {
@@ -231,11 +242,11 @@ impl Model {
             }
             RefArg::Value(CalcResult::Array(array)) => {
                 for node in array.into_iter().flatten() {
-                    match array_item(node, cell) {
+                    match array_item(node) {
+                        Ok(value) => visit(self, ItemSource::ArrayElement, value)?,
                         // Under `Referenced` only the first array or referenced error is held;
                         // under `Direct` an array error beats a held one.
-                        error @ CalcResult::Error { .. } => walk.array_error(error)?,
-                        value => visit(self, ItemSource::ArrayElement, value)?,
+                        Err(error) => walk.array_error(error, cell)?,
                     }
                 }
                 Ok(())

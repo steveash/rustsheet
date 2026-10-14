@@ -14,6 +14,8 @@ use crate::{
     reference_operators::{Picked, RefArg},
 };
 
+pub(crate) mod aggregate_args;
+
 /// The number a referenced cell gives an aggregate: numbers count, booleans, text and empty cells
 /// are skipped (SPEC-0009 `CellNumbers::Numbers`).
 pub(crate) fn cell_number(value: &CalcResult) -> Option<f64> {
