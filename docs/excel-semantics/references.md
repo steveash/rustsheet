@@ -1310,7 +1310,8 @@ Tasks: T-1506, T-1509, T-1527
 
 ## Legacy formulas intersect the ranges in value arguments
 Rule: in a legacy (non-dynamic, no `cm`) formula a range is implicitly intersected wherever Excel
-evaluates it as a value, not only at the formula's root; Excel shows that `@` in FORMULATEXT.
+evaluates it as a value, not only at the formula's root (FORMULATEXT of these forms is unprobed;
+for `=ABS(A1:A2)` it shows the `@`, probes/multiarea-at-legacy).
 With B1:B6 = 1,2,3,1,2,3, each formula on row 2 (on the range's rows, B2 = 2) and row 10 (off):
 - a scalar argument intersects arithmetic and comparisons over a range, not only a bare range:
   `SUM(IFERROR(B1:B6*1,100))` 2 / 100, `SUM(IF(A1:A6="a",1,0))` 1-or-0 / `#VALUE!`
@@ -1321,7 +1322,7 @@ With B1:B6 = 1,2,3,1,2,3, each formula on row 2 (on the range's rows, B2 = 2) an
   `COUNTA(B1:B6*1)` 1 / 1, `SUM(B1:B6,B1:B6*1)` 14 / `#VALUE!`, but `SUM(B1:B6)` and `SUM((B1:B6))` 12 on
   both rows; MMULT, INDEX and LOOKUP evaluate such an argument as an array (criteria.md, T-0286);
 - TYPE's argument is intersected whole: `TYPE(B1:B6)`, `TYPE((B1:B6))` and `TYPE(B1:B6*1)` are 1 on
-  row 2 and 16 on row 10, `TYPE(B1:D1)` (a row, read from column F) 16 — where the dynamic
+  row 2 and 16 on row 10, `TYPE(B1:D1)` (a row, read from column G) 16 — where the dynamic
   `TYPE(A2:C2)` is 64 (information.md);
 - under SUMPRODUCT (an array context), the value of IFERROR and IFNA and the condition of IF still
   intersect, at any depth: `SUMPRODUCT(IFERROR(B1:B6*1,100))` and `SUMPRODUCT(IFERROR(B1:B6,100))`
@@ -1337,11 +1338,14 @@ Evidence: probes/legacy-value-argument-intersection, probes/legacy-type-intersec
 Engine: `add_implicit_intersection` (parser/static_analysis.rs) adds the automatic `@` at import
 and in `legacy_formula_text`: a scalar argument whose static shape is not a scalar, the arithmetic
 argument of the probed aggregates (`legacy_value_operand`: SUM, AVERAGE, AVERAGEA, MAX, COUNT,
-COUNTA, LARGE, MEDIAN), TYPE's argument (`legacy_scalar_arguments`), a range of another workbook,
+COUNTA, LARGE, MEDIAN), TYPE's argument (`is_scalar_context`), a range of another workbook,
 and under SUMPRODUCT IF's condition and IFERROR's and IFNA's value
 (`for_each_array_context_condition`); `remove_redundant_implicit_intersection` mirrors it so the
-export drops exactly those `@`s. Unprobed (the engine keeps the range whole): the arithmetic
-argument of the other aggregates (MIN, PRODUCT, STDEV, ...), a nested aggregate under SUMPRODUCT
-and the other control functions (CHOOSE's index under SUMPRODUCT lifts, T-0294).
+export drops exactly those `@`s. Unprobed (T-1551): the arithmetic
+argument of the other aggregates (MIN, PRODUCT, STDEV, ...; the engine keeps the range whole), a
+parenthesized one (`SUM((B1:B6*1))`, kept whole) and a comparison or `&` one (`SUM(B1:B6>1)`,
+intersected), IFERROR/IFNA nested below another function under SUMPRODUCT (intersected), a nested
+aggregate under SUMPRODUCT, and the other control functions (CHOOSE's index under SUMPRODUCT lifts,
+T-0294).
 Status: VERIFIED
 Tasks: T-0293, T-1526

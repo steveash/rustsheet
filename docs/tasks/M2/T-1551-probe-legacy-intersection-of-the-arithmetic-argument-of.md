@@ -22,7 +22,10 @@ The engine applies it only to those eight (`legacy_value_operand` in parser/stat
 Write one probe case (same layout: B1:B6 = 1,2,3,1,2,3, each formula on row 2 and row 10, listed in
 `legacy_formulas`, `O10 = B1:B6*1` as the control) for MIN, MINA, MAXA, PRODUCT, SUMSQ, STDEV.S,
 STDEV.P, VAR.S, VAR.P, DEVSQ, AVEDEV, GEOMEAN, HARMEAN, SMALL, PERCENTILE.INC, QUARTILE.INC, MODE.SNGL,
-KURT, SKEW, GCD, LCM, CONCAT and TEXTJOIN (third argument), fill it with excel-graph, then add the
+KURT, SKEW, GCD, LCM, CONCAT and TEXTJOIN (third argument); also `SUM((B1:B6*1))`, `SUM(B1:B6>1)`,
+`SUM(B1:B6&"")`, `SUMPRODUCT(ABS(IFERROR(B1:B6,100)))`, `MAXA`/`MINA(XLOOKUP(..))` over a text cell,
+dynamic `AVERAGEA({1,"a",TRUE})` and `AVERAGEA("1/2/2020",1)` (engine choices from T-1526 with no
+oracle cell yet), and FORMULATEXT of one legacy `SUM(B1:B6+0)`; fill it with excel-graph, then add the
 ones that intersect to `legacy_value_operand` with the case as evidence.
 
 ## Acceptance criteria
