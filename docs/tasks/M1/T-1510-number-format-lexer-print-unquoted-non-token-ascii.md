@@ -21,4 +21,4 @@ Evidence and the full letter table: docs/excel-semantics/number-formats.md "Unqu
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Non-ASCII letters.
