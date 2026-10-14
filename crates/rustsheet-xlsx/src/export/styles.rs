@@ -1,8 +1,8 @@
-use rustsheet_engine::types::{Color, Styles, Workbook};
+use rustsheet_engine::types::{Styles, Workbook};
 
 use crate::export::{
     dxfs_styles::get_dxfs_xml,
-    styles_util::{get_alignment, get_border_xml, get_fill_xml},
+    styles_util::{get_alignment, get_border_xml, get_color_xml, get_fill_xml},
 };
 
 use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
@@ -12,17 +12,7 @@ fn get_fonts_xml(styles: &Styles) -> String {
     let mut fonts_str: Vec<String> = vec![];
     for font in fonts {
         let size = format!("<sz val=\"{}\"/>", font.sz);
-        let color = match &font.color {
-            Color::Rgb(s) => format!("<color rgb=\"FF{}\"/>", s.trim_start_matches('#')),
-            Color::Theme(idx, tint) => {
-                if *tint == 0.0 {
-                    format!("<color theme=\"{idx}\"/>")
-                } else {
-                    format!("<color theme=\"{idx}\" tint=\"{tint}\"/>")
-                }
-            }
-            Color::None => "".to_string(),
-        };
+        let color = get_color_xml(&font.color, "color");
         let name = format!("<name val=\"{}\"/>", escape_xml(&font.name));
         let bold = if font.b { "<b/>" } else { "" };
         let italic = if font.i { "<i/>" } else { "" };
