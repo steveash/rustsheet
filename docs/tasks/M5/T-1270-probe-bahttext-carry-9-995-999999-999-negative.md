@@ -3,7 +3,7 @@ id: T-1270
 title: "Probe BAHTTEXT carry (9.995, 999999.999), negative baht+satang and argument count"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
