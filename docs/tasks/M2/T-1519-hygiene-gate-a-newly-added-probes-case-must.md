@@ -66,7 +66,7 @@ subjects only. Today it has to be cleaned up by hand after the fact (T-1470).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Remapping the existing mis-tagged cases in `eval/milestones/probe-milestones.tsv`. That is
+- Remapping the existing wrongly tagged cases in `eval/milestones/probe-milestones.tsv`. That is
   T-1470, whose case list predates the 2026-10-13 additions named above.
 - Editing any case.json tag (oracle input hashes, decision 0043).
 - Checking that a tag matches the case's subject. That is a reviewer judgment (decision 0051 item

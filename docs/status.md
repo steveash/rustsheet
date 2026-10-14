@@ -81,7 +81,7 @@ Queues at the start of the run:
 - quality 5, perf 11.
 - Planner notes for reviewers:
   - T-1480's acceptance criteria leave out tests from SPEC-0008's test plan: rollback, setting the same clock, `bool` raising `TypeError`, and the `open`/`from_bytes` keywords. Its reviewers should hold it to the spec.
-  - Probe tasks are still filed with `milestone: M1` (e.g. T-1489, T-1493), which is how the mis-tagged cases arise.
+  - Probe tasks are still filed with `milestone: M1` (e.g. T-1489, T-1493), which is how the wrongly tagged cases arise.
 
 Upstream IronCalc: 4 new commits through 1f40af93.
 - Filed **T-1517** (functions-date, M6, sonnet) to add the Excel-authored workbooks `EOMONTH_issue_1388.xlsx` (1f40af93) and `WEEKDAY_WEEKNUM_ISOWEEKNUM_issue_1502.xlsx` (37b43745) to calc_tests.
@@ -100,8 +100,8 @@ Spot-audit: none this run (not yet due). The last audit, 2026-10-09 (steward PR 
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M2.
 - engine holds M2's remaining failures: T-0220 (collation: 5 gen-m2 cells and 157 probe cells) and T-1495. It also holds the aggregate walker (T-1473/T-1474) and the clock (T-1479).
-- research: T-1470 moves the mis-tagged probe cases that now hold most of the M0–M2 row's 518 known failures.
-- harness: T-1519 stops new mis-tagged probe cases.
+- research: T-1470 moves the wrongly tagged probe cases that now hold most of the M0–M2 row's 518 known failures.
+- harness: T-1519 stops new wrongly tagged probe cases.
 - quality: T-1476 and T-1477 (one implementation).
 - api: T-1480 (clock setter), after T-1479.
 - T-1475 (TBILLEQ) and the P0 T-1518 are reached through `functions`. perf stays out: Phase 2.)
