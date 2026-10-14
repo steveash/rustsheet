@@ -789,6 +789,7 @@ mod power_tests {
         assert_eq!(times(a, b), Ok(1.190_826_962_574_648_4));
         assert_eq!(extended_product(-a, b), -1.190_826_962_574_648_4);
         assert_eq!(extended_product(3.0, 0.5), 1.5);
+        assert_eq!(extended_product(0.0, 5.0), 0.0);
         assert_eq!(extended_product(1e200, 1e200), f64::INFINITY);
     }
 
