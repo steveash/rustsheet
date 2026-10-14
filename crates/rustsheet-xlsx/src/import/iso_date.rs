@@ -59,7 +59,7 @@ mod tests {
         assert_eq!(iso8601_to_serial("12:00:00"), Some(0.5));
         assert_eq!(
             iso8601_to_serial("1990-01-01T12:00:00.5"),
-            Some(32874.500_005_787_035)
+            Some(32_874.500_005_787_035)
         );
     }
 
