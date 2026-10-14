@@ -257,13 +257,26 @@ workbook is read:
 - a sheet-scoped name of a range, `[1]Defines!NR_Local_Range`, is `#BLOCKED!` (ROWS too; ERROR.TYPE
   11), although a sheet-scoped name of one cell reads its cached value; a sheet the cache does not
   hold, `[1]Nope!$A$1:$B$2`, is `#BLOCKED!`.
+A cached empty string and cached text (T-1550; fixtures/external-link-cached-text, excel-graph,
+cache `Uses` A1 the empty string `t="str"` `<v></v>`, B1 18, A2 12, B2 TRUE, A3 the text "8", A4
+"abc", A5 30):
+- COUNTA counts the cached empty string as a value, as it counts a `=""` cell of this workbook:
+  `COUNTA([1]Uses!$A$1)` 1, over `$A$1:$A$5` 5; `LEN([1]Uses!$A$1)` is 0;
+- GCD and LCM read a cached range as a range of this workbook (coercion.md "GCD / LCM /
+  MULTINOMIAL range cells"): numeric text counts as its number (`GCD(…!$A$2:$A$3)` 4, LCM 24),
+  text, a boolean and the empty string are `#VALUE!` (`GCD`/`LCM` of `$A$2:$A$5`, `$A$2:$B$2`,
+  `$A$1:$A$2`), a one-cell `GCD([1]Uses!$A$3)` over "8" is 8, and blanks past the cache read 0
+  (`GCD(…!$A$5:$A$9)` 30, LCM 0);
+- an area taller than the array bound reads its cached cells: `SUM([1]Uses!$A$2:$B$1048576)` 42,
+  COUNT 2, MAX 30, AVERAGEA 8.6.
 A workbook whose formulas reference a sheet with `refreshError="1"` (`[1]'56737'!$A$1:$B$2`) does
 not open in Excel for the web ("unsupportedWorkbook"), so what that reads is a desktop question.
 Engine: a cached area carries its cache (`external_links.rs`); aggregates and RANK read its cells
 as reference cells, several areas as one row of cells. Engine-only bound (not Excel behavior, which
 is unobservable here): a whole column or row is cut to the extent the cache holds, as a whole
-column of this workbook is cut to its used area; any other area keeps its shape and blanks. The
-array bound on cached ranges (an area or a union's cells above 1,048,576) is a DEVIATION: see
+column of this workbook is cut to its used area; an aggregate that skips blanks cuts any other
+area to that extent too, and every other reader keeps its shape and blanks (T-1550). The
+array bound on the rest (an area or a union's cells above 1,048,576) is a DEVIATION: see
 arrays.md "Array results above 1,048,576 cells". SUBTOTAL, AGGREGATE's reference form and RANK
 read the cached cells through `Model::external_reference_cells`, AVERAGEA coerces them as MAXA
 does, and an automatic `@` on a cached range reads the cached cell it intersects
@@ -274,7 +287,7 @@ cached one inside an aggregate's argument (the engine reads the picked cell as a
 the same way at parse time, so ISREF and a rename see them. A sheet-qualified workbook-scoped name
 (`Sheet!GlobalName`), an unknown `Sheet!Nope` (engine: `#NAME?`) and a missing sheet are UNVERIFIED (T-1459).
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
-Tasks: T-1382, T-1459, T-1460, T-1526
+Tasks: T-1382, T-1459, T-1460, T-1526, T-1550
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
@@ -1337,21 +1350,30 @@ With B1:B6 = 1,2,3,1,2,3, each formula on row 2 (on the range's rows, B2 = 2) an
   value branch stays the whole range), while `SUMPRODUCT(B1:B6+0)` is 12 on both rows;
 - the reference functions are unchanged: `ROWS(B1:B6)` 6, `SUBTOTAL(9,B1:B6)` and
   `AGGREGATE(9,6,B1:B6)` 12, `AVERAGEA(B1:D1)` (C1 "x", D1 TRUE) 0.667 on both rows.
+The same holds for the other aggregates (probes/legacy-value-argument-intersection-b, excel-graph,
+2026-10-14, T-1551): over `B1:B6*1`, whose only on-row value is 2, every one gives its row-2 value and `#VALUE!` on row 10:
+MIN, MINA, MAXA, PRODUCT, GEOMEAN, HARMEAN, SMALL, PERCENTILE.INC, QUARTILE.INC, GCD and LCM 2; SUMSQ 4;
+STDEV.P, VAR.P, DEVSQ and AVEDEV 0; STDEV.S, VAR.S, KURT and SKEW `#DIV/0!`; CONCAT and TEXTJOIN (third
+argument) "2"; a parenthesized operation, `SUM((B1:B6*1))`, a comparison,
+`SUM(B1:B6>1)` 1 / `#VALUE!`, and a concatenation, `SUM(B1:B6&"")` 2 / `#VALUE!`, intersect too, and
+`SUMPRODUCT(ABS(IFERROR(B1:B6,100)))` is 2 / 100. The exception is `MODE.SNGL(B1:B6*1)`: 1 on both rows (it
+evaluates the argument as an array). `MAXA`/`MINA(XLOOKUP("a",A1:A6,A1:A6))` over a text cell is 0.
+`FORMULATEXT` of a legacy `SUM(B1:B6+0)` is `=SUM(@B1:B6+0)`. Dynamic `AVERAGEA({1,"a",TRUE})` is 0.5 (we give 0.667; the rule for an array
+constant is open, statistics.md "AVERAGEA over an array constant", T-1555) and `AVERAGEA("1/2/2020",1)` is 21916.5.
 A range of a linked workbook is intersected the same way, reading the cached cell
 (fixtures/external-link-cached-ranges Refs!B38, B44, B56, B62; "Cached values of a linked workbook").
 Evidence: probes/legacy-value-argument-intersection, probes/legacy-type-intersection (excel-graph,
 2026-10-14, T-1526), probes/array-context-legacy-sumproduct (T-0286).
 Engine: `add_implicit_intersection` (parser/static_analysis.rs) adds the automatic `@` at import
 and in `legacy_formula_text`: a scalar argument whose static shape is not a scalar, the arithmetic
-argument of the probed aggregates (`legacy_value_operand`: SUM, AVERAGE, AVERAGEA, MAX, COUNT,
-COUNTA, LARGE, MEDIAN), TYPE's argument (`is_scalar_context`), a range of another workbook,
+argument, parenthesized or not, of the probed aggregates (`legacy_value_operand`: SUM, AVERAGE, AVERAGEA,
+MAX, COUNT, COUNTA, LARGE, MEDIAN and the T-1551 list above), TYPE's argument (`is_scalar_context`), a range of another workbook,
 and under SUMPRODUCT IF's condition and IFERROR's and IFNA's value
 (`for_each_array_context_condition`); `remove_redundant_implicit_intersection` mirrors it so the
-export drops exactly those `@`s. Unprobed (T-1551): the arithmetic
-argument of the other aggregates (MIN, PRODUCT, STDEV, ...; the engine keeps the range whole), a
-parenthesized one (`SUM((B1:B6*1))`, kept whole) and a comparison or `&` one (`SUM(B1:B6>1)`,
-intersected), IFERROR/IFNA nested below another function under SUMPRODUCT (intersected), a nested
-aggregate under SUMPRODUCT, and the other control functions (CHOOSE's index under SUMPRODUCT lifts,
-T-0294).
+export drops exactly those `@`s. Unprobed: the arguments after the first of CONCAT, GCD and LCM and TEXTJOIN's delimiter and ignore-empty (the engine
+intersects every argument of these functions), the arithmetic argument of the compatibility
+aggregates (STDEV, VAR, PERCENTILE, QUARTILE, MODE; the engine keeps the range whole; T-1556), IFERROR/IFNA nested below another
+function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, and the other control functions
+(CHOOSE's index under SUMPRODUCT lifts, T-0294).
 Status: VERIFIED
-Tasks: T-0293, T-1526
+Tasks: T-0293, T-1526, T-1551, T-1555, T-1556

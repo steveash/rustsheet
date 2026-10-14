@@ -278,6 +278,7 @@ C	probes/large-small-k.case.json	35
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
 C	probes/legacy-type-intersection.case.json	17
+C	probes/legacy-value-argument-intersection-b.case.json	64
 C	probes/legacy-value-argument-intersection.case.json	45
 C	probes/let-bind-implicit-index.case.json	10
 C	probes/let-bind-reference-forms.case.json	11
@@ -4883,6 +4884,7 @@ F	probes/info-logic-argument-modes-2.case.json	Calc!B5
 F	probes/info-logic-argument-modes.case.json	Calc!A15
 F	probes/info-logic-argument-modes.case.json	Calc!A19
 F	probes/info-logic-argument-modes.case.json	Calc!B15
+F	probes/legacy-value-argument-intersection-b.case.json	Sheet1!AI2
 F	probes/lookup-argument-modes.case.json	Sheet1!F1
 F	probes/lookup-argument-modes.case.json	Sheet1!F10
 F	probes/lookup-argument-modes.case.json	Sheet1!F11
