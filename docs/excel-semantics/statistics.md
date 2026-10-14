@@ -244,7 +244,8 @@ Not tried:
 Evidence: probes-numeric/t1040-erfc (excel-graph, 2026-10-08), scored against 50-digit mpmath and by the
 T-1187 candidate script (2026-10-11), now the fit lab's `erfc-tail` fit (T-1523,
 tools/src/rustsheet_tools/fitlab/kernels/erfc.py; `uv run rustsheet-fitlab erfc-tail` in tools/ reprints the
-counts above: best 57, 58, 38 and 4, union 174/205). The engine today: 44/205 bit-exact, 203/205 within 4 ulp.
+counts above: best 57, 58, 38 and 4, union 174/205 over the four T-1187 families; the command's last union
+row, 177/205, also counts libm and the engine). The engine today: 44/205 bit-exact, 203/205 within 4 ulp.
 Status: OPEN (no candidate found); T-1186 stays blocked.
 
 ## RANK of a non-reference array

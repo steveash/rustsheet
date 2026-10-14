@@ -52,6 +52,7 @@ def test_parse_arg_literals_and_references() -> None:
     book = _book()
     assert parse_arg("1E-10", "Calc", book) == 1e-10
     assert parse_arg("-.5", "Calc", book) == -0.5
+    assert str(parse_arg("-0", "Calc", book)) == "0.0"  # Excel has no negative zero
     assert parse_arg("true", "Calc", book) is True
     assert parse_arg('"x""y"', "Calc", book) == 'x"y'
     assert parse_arg("$Z$1", "Calc", book) == 4.0

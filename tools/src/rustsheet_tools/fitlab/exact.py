@@ -235,6 +235,7 @@ class X87:
 
     @staticmethod
     def sqrt(a: float) -> float:
+        """Correctly rounded sqrt at 64 bits, then to double."""
         return to_double(sqrt_cr(a, EXTENDED))
 
     @staticmethod
@@ -245,10 +246,14 @@ class X87:
 
     @staticmethod
     def ln(a: float) -> float:
+        """Correctly rounded ln at 64 bits, then to double (idealized: real x87 fyl2x is not
+        correctly rounded)."""
         return to_double(ln_cr(a, EXTENDED))
 
     @staticmethod
     def pow(a: float, b: float) -> float:
+        """Correctly rounded x^y at 64 bits, then to double (idealized, not an x87 instruction
+        sequence)."""
         return to_double(pow_cr(a, b, EXTENDED))
 
 

@@ -44,6 +44,9 @@ def test_round_to_bits_53_is_the_double_rounding_of_cpython() -> None:
 def test_min_exp_gives_subnormals() -> None:
     assert round_to_bits(Fraction(3, 2**1076), 53, DOUBLE_MIN_EXP) == Fraction(1, 2**1074)
     assert round_to_bits(Fraction(1, 2**1076), 53, DOUBLE_MIN_EXP) == 0  # below half the grid step
+    # 2.5 grid steps is a tie that rounds down to the even 2 steps.
+    assert round_to_bits(Fraction(5, 2**1075), 53, DOUBLE_MIN_EXP) == Fraction(2, 2**1074)
+    assert round_to_bits(Fraction(1, 2**1022), 53, DOUBLE_MIN_EXP) == Fraction(1, 2**1022)
 
 
 def test_x87_division_rounds_twice() -> None:
@@ -101,7 +104,7 @@ def test_transcendentals_are_correctly_rounded(value: Fraction, expected: float)
 
 
 def test_exp_beats_libm_on_a_hard_case() -> None:
-    # glibc's exp is off by one ulp here; the decimal-backed value is the nearer double.
+    # A near-halfway case: the decimal-backed value must be the nearer double.
     x = 92.2998891171253
     assert to_double(exp_cr(x)) == 1.2171175476232716e40
 

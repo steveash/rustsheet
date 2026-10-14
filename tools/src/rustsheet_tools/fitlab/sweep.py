@@ -135,7 +135,8 @@ def _sheet_name(raw: str | None, default: str) -> str:
 def parse_arg(text: str, sheet: str, book: Workbook) -> Arg:
     """One argument's value (see the module doc for what is supported)."""
     if _NUMBER.fullmatch(text):
-        return float(text)
+        # Excel has no negative zero: `-0` is 0.
+        return float(text) + 0.0
     if text.upper() in ("TRUE", "FALSE"):
         return text.upper() == "TRUE"
     if len(text) >= 2 and text[0] == text[-1] == '"' and '"' not in text[1:-1].replace('""', ""):
