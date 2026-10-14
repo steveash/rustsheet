@@ -18,6 +18,51 @@ enum Source {
     Values(Vec<Vec<ArrayNode>>),
 }
 
+/// The elements MAP, SCAN and REDUCE hand to their LAMBDA: the cells of a range on one sheet
+/// (as one-cell references, built when read) or the values of anything else.
+pub(super) enum LambdaGrid {
+    Cells {
+        origin: CellReferenceIndex,
+        rows: usize,
+        columns: usize,
+    },
+    Values(Vec<Vec<CalcResult>>),
+}
+
+impl LambdaGrid {
+    pub(super) fn rows(&self) -> usize {
+        match self {
+            LambdaGrid::Cells { rows, .. } => *rows,
+            LambdaGrid::Values(data) => data.len(),
+        }
+    }
+
+    pub(super) fn columns(&self) -> usize {
+        match self {
+            LambdaGrid::Cells { columns, .. } => *columns,
+            LambdaGrid::Values(data) => data.first().map_or(0, Vec::len),
+        }
+    }
+
+    /// The element at 0-based `(row, column)`, which must be inside the grid (callers loop over
+    /// [`LambdaGrid::rows`] and [`LambdaGrid::columns`], so the conversions below cannot fail:
+    /// a grid is at most one sheet).
+    pub(super) fn at(&self, row: usize, column: usize) -> CalcResult {
+        match self {
+            LambdaGrid::Cells { origin, .. } => {
+                let mut position = *origin;
+                position.row += i32::try_from(row).unwrap_or(0);
+                position.column += i32::try_from(column).unwrap_or(0);
+                CalcResult::Range {
+                    left: position,
+                    right: position,
+                }
+            }
+            LambdaGrid::Values(data) => data[row][column].clone(),
+        }
+    }
+}
+
 fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     match result {
         CalcResult::Number(n) => ArrayNode::Number(n),
@@ -188,47 +233,51 @@ impl Model {
     /// The array argument of MAP, SCAN and REDUCE as a grid of LAMBDA arguments: over a range on
     /// one sheet each cell is a one-cell reference (`ISREF(v)` is TRUE, `COUNTA` and `ROW` see
     /// the cell), over anything else its value (probes/lambda-helper-range-slices, excel-graph
-    /// 2026-10-12, T-1442).
+    /// 2026-10-12, T-1442). Over a range the references are built on demand ([`LambdaGrid::at`]),
+    /// not stored per cell (T-1465).
     pub(super) fn lambda_cells(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,
-    ) -> Result<Vec<Vec<CalcResult>>, CalcResult> {
+    ) -> Result<LambdaGrid, CalcResult> {
         Ok(match self.by_slices_source(arg, cell)? {
-            Source::Range(range) => (range.left.row..=range.right.row)
-                .map(|row| {
-                    (range.left.column..=range.right.column)
-                        .map(|column| {
-                            let mut position = range.left;
-                            position.row = row;
-                            position.column = column;
-                            CalcResult::Range {
-                                left: position,
-                                right: position,
-                            }
-                        })
-                        .collect()
-                })
-                .collect(),
-            Source::Values(data) => data
-                .iter()
-                .map(|row| {
-                    row.iter()
-                        .map(|node| array_node_to_calc_result(node, cell))
-                        .collect()
-                })
-                .collect(),
+            Source::Range(range) => LambdaGrid::Cells {
+                origin: range.left,
+                rows: usize::try_from(range.right.row - range.left.row + 1).unwrap_or(0),
+                columns: usize::try_from(range.right.column - range.left.column + 1).unwrap_or(0),
+            },
+            Source::Values(data) => LambdaGrid::Values(
+                data.iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|node| array_node_to_calc_result(node, cell))
+                            .collect()
+                    })
+                    .collect(),
+            ),
         })
     }
 
     /// A LAMBDA's result as a value: a reference it returns (`LAMBDA(v,v)` over a range cell)
-    /// is read, so MAP, SCAN and REDUCE never carry one into their output.
+    /// is read, so MAP, SCAN and REDUCE never carry one into their output. A one-cell reference
+    /// is read directly, without building a one-element array.
     pub(super) fn lambda_result_value(
         &mut self,
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> CalcResult {
         match result {
+            CalcResult::Range { left, right } if left == right => {
+                match self.evaluate_cell(left) {
+                    // Read as `evaluate_range` reads a cell: an error is re-originated here and
+                    // an empty argument is an empty cell.
+                    CalcResult::Error { error, .. } => {
+                        array_node_to_calc_result(&ArrayNode::Error(error), cell)
+                    }
+                    CalcResult::EmptyArg => CalcResult::EmptyCell,
+                    value => value,
+                }
+            }
             CalcResult::Range { .. } => match self.result_to_array(result, cell) {
                 Ok(data) if data.len() == 1 && data[0].len() == 1 => {
                     array_node_to_calc_result(&data[0][0], cell)
