@@ -17,7 +17,8 @@ impl Model {
     /// - **`Node::ReferenceKind` args**: Similar to ranges, conversions are not performed on the evaluated value of the
     ///   referenced cell and errors are propagated.
     /// - **Args evaluating to `CalcResult::Array`**: Only the numbers are multiplied; text and booleans are skipped and
-    ///   the first error element is propagated.
+    ///   the first error element is propagated
+    ///   after any direct scalar error (it ranks like a referenced-cell error).
     /// - **Args evaluating to `CalcResult::Error`**: Errors are propagated.
     pub(crate) fn fn_product(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {

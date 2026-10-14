@@ -38,6 +38,14 @@
     "t": "e",
     "v": "#NUM!"
    },
+   "A18": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A19": {
+    "t": "e",
+    "v": "#N/A"
+   },
    "A2": {
     "t": "e",
     "v": "#DIV/0!"
@@ -82,9 +90,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "7c8c516f7f00c2aab099f988467c96dd892103548a2089c85ebb0c745c3d081f",
+  "input_sha256": "edea6c103e2008e469bbb08780641d31f7055ac8889d70880d9a22fa5bbe9ec3",
   "kind": "excel-graph",
-  "produced_at": "2026-10-14T23:12:57+00:00",
+  "produced_at": "2026-10-14T23:27:23+00:00",
   "version": null
  }
 }

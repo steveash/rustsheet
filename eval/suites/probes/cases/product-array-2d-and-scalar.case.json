@@ -28,7 +28,9 @@
     "A14": "=PRODUCT({1,#N/A},C1)",
     "A15": "=PRODUCT(C1,{1,#N/A})",
     "A16": "=PRODUCT({1,#N/A},C1,#DIV/0!)",
-    "A17": "=PRODUCT(C1,C2,{#N/A})"
+    "A17": "=PRODUCT(C1,C2,{#N/A})",
+    "A18": "=PRODUCT(1/{1,0},#NUM!)",
+    "A19": "=PRODUCT(IF({1,0}=0,#N/A,1),C1)"
    }
   }
  ],
