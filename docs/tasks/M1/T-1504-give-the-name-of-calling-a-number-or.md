@@ -3,7 +3,7 @@ id: T-1504
 title: "Give the #NAME? of calling a number or boolean variable a message"
 milestone: M1
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
