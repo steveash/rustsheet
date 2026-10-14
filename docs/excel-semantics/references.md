@@ -749,7 +749,8 @@ against (evaluation.rs module doc). A rectangle already on record for the formul
 repeating a walk costs nothing (T-1497: `MAX_AREAS` copies of `A:A` walked by a MAP record one), but
 each new reference makes a new one, and nothing else bounds them: `=SUM(MAKEARRAY(1024,1024,
 LAMBDA(r,c,SUM(OFFSET(1:1,r-1,0,c)))))` recorded 1,048,576 (32 bytes each in the list and again in
-the set, about 70 MB; every spill commit scans them all); it is now `#VALUE!` once 65,536 are on
+the set, about 70 MB; every spill commit meets each once, at a cost of its cells plus the
+rectangles, T-1512); it is now `#VALUE!` once 65,536 are on
 record (T-1463, release build: 1.5 s to reach the cap). The error is the formula's, set when its run
 ends, not the argument's: a rectangle that goes unrecorded leaves a read the pass does not know of,
 so no value computed from it, `IFERROR`'s fallback included, may stand. The budget is per formula

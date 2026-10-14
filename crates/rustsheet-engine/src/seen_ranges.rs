@@ -4,7 +4,6 @@ use std::collections::HashSet;
 use std::ops::Deref;
 
 use crate::area_budget::AreaBudget;
-use crate::evaluation::CellKey;
 use crate::expressions::types::CellReferenceIndex;
 
 /// A rectangle read as empty on behalf of `root`, in one go. A function that walks a whole
@@ -21,11 +20,32 @@ pub(crate) struct SeenRange {
 }
 
 impl SeenRange {
-    /// Whether the position `(sheet, row, column)` lies inside the rectangle.
-    pub(crate) fn contains(&self, (sheet, row, column): CellKey) -> bool {
-        sheet == self.sheet
-            && (self.row1..=self.row2).contains(&row)
-            && (self.column1..=self.column2).contains(&column)
+    /// The first cell inside the rectangle, in row-major order, that `anchor` writes when it
+    /// spills over `area` (width, height): every cell of the area but the anchor's own. A spill is
+    /// tested against a rectangle once, by intersecting the two, not cell by cell (T-1512).
+    pub(crate) fn first_cell_written(
+        &self,
+        anchor: CellReferenceIndex,
+        (width, height): (i32, i32),
+    ) -> Option<(i32, i32)> {
+        if self.sheet != anchor.sheet {
+            return None;
+        }
+        let row1 = self.row1.max(anchor.row);
+        let row2 = self.row2.min(anchor.row + height - 1);
+        let column1 = self.column1.max(anchor.column);
+        let column2 = self.column2.min(anchor.column + width - 1);
+        if row1 > row2 || column1 > column2 {
+            None
+        } else if (row1, column1) != (anchor.row, anchor.column) {
+            Some((row1, column1))
+        } else if column1 < column2 {
+            Some((row1, column1 + 1))
+        } else if row1 < row2 {
+            Some((row1 + 1, column1))
+        } else {
+            None
+        }
     }
 }
 

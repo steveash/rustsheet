@@ -1189,12 +1189,8 @@ impl Model {
             return Ok(spill_error("Cannot spill array result"));
         }
 
-        let writes: Vec<CellKey> = (row..row + height)
-            .flat_map(|r| (column..column + width).map(move |c| (sheet, r, c)))
-            .filter(|&(_, r, c)| (r, c) != (row, column))
-            .collect();
         let clears = self.own_spill_cells_outside(anchor, old_area, (width, height))?;
-        if self.spill_contradicts_a_read(anchor, &writes, &clears) {
+        if self.spill_contradicts_a_read(anchor, (width, height), &clears) {
             return Ok(None);
         }
 
@@ -1238,7 +1234,7 @@ impl Model {
         keep_area: (i32, i32),
     ) -> Result<bool, String> {
         let clears = self.own_spill_cells_outside(anchor, old_area, keep_area)?;
-        if self.spill_contradicts_a_read(anchor, &[], &clears) {
+        if self.spill_contradicts_a_read(anchor, (1, 1), &clears) {
             return Ok(false);
         }
         let worksheet = self.workbook.worksheet_mut(anchor.sheet)?;
