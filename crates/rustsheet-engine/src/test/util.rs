@@ -2,10 +2,24 @@
 
 use crate::expressions::types::{Area, CellReferenceIndex};
 use crate::model::Model;
-use crate::types::Cell;
+use crate::types::{Cell, FormulaValue};
 
 pub fn new_empty_model() -> Model {
     Model::new_empty("model", "en", "UTC", "en").unwrap()
+}
+
+/// A union of `leaves` copies of `leaf`, nested as a balanced tree so that its depth, about
+/// three levels per halving, stays far under the parser's `MAX_FORMULA_DEPTH`.
+pub fn balanced_union(leaf: &str, leaves: usize) -> String {
+    if leaves <= 1 {
+        return leaf.to_string();
+    }
+    let half = leaves / 2;
+    format!(
+        "({},{})",
+        balanced_union(leaf, half),
+        balanced_union(leaf, leaves - half)
+    )
 }
 
 impl Model {
@@ -44,6 +58,21 @@ impl Model {
     pub fn _get_text(&self, cell: &str) -> String {
         let CellReferenceIndex { sheet, row, column } = self._parse_reference(cell);
         self._get_text_at(sheet, row, column)
+    }
+    /// The message of the error in formula cell `cell`, which tells the engine's caps apart
+    /// from a plain error of the same kind.
+    pub fn _get_error_message(&self, cell: &str) -> String {
+        match self._get_cell(cell) {
+            Cell::CellFormula {
+                v: FormulaValue::Error { m, .. },
+                ..
+            }
+            | Cell::ArrayFormula {
+                v: FormulaValue::Error { m, .. },
+                ..
+            } => m.clone(),
+            other => format!("not an error: {other:?}"),
+        }
     }
     pub fn _get_cell(&self, cell: &str) -> &Cell {
         let cell_reference = self._parse_reference(cell);

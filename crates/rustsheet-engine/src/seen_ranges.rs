@@ -18,6 +18,11 @@ pub(crate) struct SeenRanges {
 }
 
 impl SeenRanges {
+    /// Whether `range` was recorded already in this pass.
+    pub(crate) fn contains(&self, range: &SeenRange) -> bool {
+        self.members.contains(range)
+    }
+
     /// Records `range` unless it was recorded already in this pass.
     pub(crate) fn push(&mut self, range: SeenRange) {
         if self.members.insert(range) {

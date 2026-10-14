@@ -1004,14 +1004,19 @@ impl Model {
             return;
         }
         if let Some(root) = self.evaluation.root {
-            self.evaluation.seen_ranges.push(SeenRange {
+            let range = SeenRange {
                 root,
                 sheet,
                 row1,
                 column1,
                 row2,
                 column2,
-            });
+            };
+            // Only a new rectangle is paid for; past the formula's budget it goes unrecorded and
+            // the formula is `#VALUE!` (`Model::with_area_budget`).
+            if !self.evaluation.seen_ranges.contains(&range) && self.spend_seen_range() {
+                self.evaluation.seen_ranges.push(range);
+            }
         }
     }
 

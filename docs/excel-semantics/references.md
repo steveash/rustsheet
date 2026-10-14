@@ -644,6 +644,29 @@ Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
 `MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
 Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497
 
+## Seen-range cap
+Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in
+a pass (`MAX_SEEN_RANGES`); a formula that reads more is `#VALUE!` ("Too many distinct ranges read").
+A function walking a whole column or row (and a lookup down a column) visits only the used area and
+records the rest as one rectangle read empty, which every spill commit of the pass is checked
+against (evaluation.rs module doc). A rectangle already on record for the formula's root is free, so
+repeating a walk costs nothing (T-1497: `MAX_AREAS` copies of `A:A` walked by a MAP record one), but
+each new reference makes a new one, and nothing else bounds them: `=SUM(MAKEARRAY(1024,1024,
+LAMBDA(r,c,SUM(OFFSET(1:1,r-1,0,c)))))` recorded 1,048,576 (32 bytes each in the list and again in the set, about 70 MB; every spill commit scans
+them all); it is now `#VALUE!` once 65,536 are on record (T-1463, release build: 1.5 s to reach the
+cap). The error is the formula's, set when its run ends, not the argument's: a rectangle that goes
+unrecorded leaves a read the pass does not know of, so no value computed from it, `IFERROR`'s
+fallback included, may stand. The budget is per formula run like the area budgets ("Union area
+cap"): a cell the formula reads has its own, and its rectangles are paid by the run that records
+them first, so at the cap the result can depend on which formula of a root read a rectangle first.
+Excel's limit, if any, is not known; a formula reading more than 65,536 distinct whole-row or
+whole-column rectangles (`MAP(SEQUENCE(65537),LAMBDA(r,SUM(OFFSET(1:1,r,0))))`) is presumably a
+value there.
+Status: DEVIATION (decision 0014)
+Implemented in: area_budget.rs (`MAX_SEEN_RANGES`, `Model::spend_seen_range`,
+`Model::with_area_budget`); evaluation.rs (`Model::record_seen_empty_range`)
+Tasks: T-1463
+
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence
 probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
