@@ -1,0 +1,38 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1287: PRODUCT error order over a 2D array, and a no-number array combined with a scalar. Also which error wins between array and scalar arguments.",
+ "tags": [
+  "M5",
+  "product",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=PRODUCT({1,#N/A;#DIV/0!,2})",
+    "A2": "=PRODUCT({1,#DIV/0!;#N/A,2})",
+    "A3": "=PRODUCT({\"a\"},3)",
+    "A4": "=PRODUCT(3,{\"a\"})",
+    "A5": "=PRODUCT({TRUE,FALSE},3)",
+    "A6": "=PRODUCT({1,2;3,4})",
+    "A7": "=PRODUCT({1,#N/A;#DIV/0!,2},#NUM!)",
+    "A8": "=PRODUCT(#NUM!,{1,#N/A})",
+    "A9": "=PRODUCT({1,#N/A},#NUM!,#DIV/0!)",
+    "A10": "=PRODUCT(#DIV/0!,#NUM!)",
+    "A11": "=PRODUCT({#N/A},{#DIV/0!})",
+    "A12": "=PRODUCT({#N/A},{1,2},#NUM!)",
+    "A13": "=PRODUCT(#N/A,{#DIV/0!},#NUM!)",
+    "C1": "=#NUM!",
+    "C2": "=#VALUE!",
+    "A14": "=PRODUCT({1,#N/A},C1)",
+    "A15": "=PRODUCT(C1,{1,#N/A})",
+    "A16": "=PRODUCT({1,#N/A},C1,#DIV/0!)",
+    "A17": "=PRODUCT(C1,C2,{#N/A})",
+    "A18": "=PRODUCT(1/{1,0},#NUM!)",
+    "A19": "=PRODUCT(IF({1,0}=0,#N/A,1),C1)"
+   }
+  }
+ ],
+ "expected": {}
+}
