@@ -3,7 +3,7 @@ id: T-0055
 title: "Workers start each task from a fresh branch off origin/main, never a local main"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -33,19 +33,27 @@ Places that sync a local `main` today:
 - anything else `rg -n "checkout main|pull --ff-only|up-to-date .main" .claude docs/process scripts Makefile` finds.
 
 ## Acceptance criteria
-- [ ] Each of those places starts work with
+- [x] Each of those places starts work with
   `git fetch origin main && git checkout -B <work-branch> origin/main`, or an equivalent that
   never checks out, pulls into or resets a local `main`. A new task's branch is created from
   `origin/main` directly (`git checkout -B agent/<lane>/T-XXXX-slug origin/main`). "Sync main
   between tasks" becomes "fetch `origin/main`, then branch from it".
-- [ ] The work-loop skill says, in one line, never to `git reset --hard` or delete a local branch
+- [x] The work-loop skill says, in one line, never to `git reset --hard` or delete a local branch
   to recover from divergence: branch from `origin/main` instead.
-- [ ] Handle shallow clones: if `git merge-base` is needed (decision 0028's
+- [x] Handle shallow clones: if `git merge-base` is needed (decision 0028's
   `--is-ancestor origin/main` check), document `git fetch --unshallow` or a deeper fetch as the
   remedy, not a reset.
-- [ ] Decision record (protected paths: `.claude/`, `docs/process/`). It notes that the owner
+- [x] Decision record (protected paths: `.claude/`, `docs/process/`). It notes that the owner
   must re-apply the three routine prompts from routines.md.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing routines directly (agents never modify routines; the owner re-applies them).
+
+## Outcome
+Work-loop step 1/2 now fetch `origin/main` and cut the task branch from it with `git checkout -B
+… origin/main`, and say never to `git reset --hard` or delete a branch to recover from divergence.
+The steward skill documents `git fetch --unshallow` (or `--deepen`) as the remedy when decision
+0028's `--is-ancestor` check fails in a shallow clone. `agent-workflow.md` and the three prompts in
+`routines.md` no longer sync a local `main`. Decision 0055 records it; the owner must re-apply the
+three routine prompts. No eval delta (process-only).
