@@ -24,7 +24,7 @@ The T-1562 review (decision 0060, 1,086 new cell lines) found that `Mapping::che
 ## Out of scope
 - Changing any line of the mapping.
 
-## Handoff
+## Handoff (resumed)
 Tried: `Mapping::check_cells` (crates/rustsheet-eval/src/probe_milestones.rs) plus `MappingError::UnknownCell`
 and `Rules::check_cells`; `score_milestones` (main.rs) now returns `Result` and calls it, so `run` and `check`
 fail with the line number. Unit test `an_unchecked_cell_names_its_line` passes (`cargo test -p rustsheet_eval
