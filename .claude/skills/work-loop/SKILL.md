@@ -10,7 +10,10 @@ tier you run as (`sonnet` or `opus`; decision 0018). Take only tasks of your tie
 Read `docs/process/agent-workflow.md` once per session if you have not.
 
 ## 0. Sync & resume
-1. `git fetch origin main && git checkout main && git pull --ff-only`.
+1. `git fetch origin main`. Never check out, pull into or reset a local `main`: all work starts
+   from a branch cut from `origin/main` (step 2), so a stale, shallow or diverged local `main`
+   does not matter. Never `git reset --hard` or delete a local branch to recover from divergence;
+   branch from `origin/main` instead (decision 0055).
 2. Resume first: if an open PR or branch `agent/<lane>/*` exists for this lane (check with the
    GitHub tools) and its task is your tier, continue it (go to step 4/6) instead of starting new
    work. One task in flight per lane. A task handed off to `opus` (it has a `## Handoff` section)
@@ -26,7 +29,8 @@ otherwise launch the `planner` agent for the current milestone (docs/milestones.
 again. If still nothing, report "no ready task for <lane>" in your final message and stop.
 
 ## 2. Branch & claim
-`git checkout -b agent/<lane>/T-XXXX-<slug>` (use the task's own `lane:`, e.g. `functions-text`). Set the task's `status: in-progress` in its file,
+`git fetch origin main && git checkout -B agent/<lane>/T-XXXX-<slug> origin/main` (use the
+task's own `lane:`, e.g. `functions-text`). Set the task's `status: in-progress` in its file,
 commit it as the first commit on the branch and **push it at once**: the pushed branch is the claim
 that keeps other workers off this task (`make next-task` skips claimed tasks; decision 0018).
 
@@ -84,12 +88,12 @@ file and its acceptance criteria.
    sleep). Fix failures per the `steward` skill. When CI is green and all reviewers approve:
    **squash-merge**, but only after the `steward` skill's mechanical up-to-date check (decision
    0028: the PR head must contain the current `origin/main`). If it fails, follow the steward
-   remedy: merge `main` in, `make check`, push, and wait for CI on the new head. Once the merge
-   queue is on (decision 0053), enqueue with `enable_pr_auto_merge` (`mergeMethod: SQUASH`)
+   remedy: merge `origin/main` in, `make check`, push, and wait for CI on the new head. Once the
+   merge queue is on (decision 0053), enqueue with `enable_pr_auto_merge` (`mergeMethod: SQUASH`)
    instead of merging, and skip the up-to-date check; the queue does it.
 4. Delete the branch.
-5. Go back to step 1 for the next task while the session budget allows (110 minutes, 10 tasks;
-   decision 0025); the opus tier first does step 6.5.
+5. Go back to step 1 for the next task (fetch `origin/main`, then branch from it) while the
+   session budget allows (110 minutes, 10 tasks; decision 0025); the opus tier first does step 6.5.
 
 ## 6.5 Queue health (opus tier only)
 After the merge, run `make ready-tasks TIER=sonnet`. If it reports fewer than
