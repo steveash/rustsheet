@@ -46,7 +46,7 @@ item order and empty array elements.
 - Only the variants these consumers use exist so far. `ErrorRule::Items` and the PRODUCT/COUNTA
   readings come with T-1476, so that no variant is dead.
 - `rg "let mut reference_error"` now finds only product.rs and mathematical.rs.
-- Duplication went from 6,522 to 6,395 lines (`--update`).
+- Duplication went from 6,522 to 6,369 lines (6,395 from this change; the rest already shrunk on main) (`--update`).
 
 Bench `cargo bench -p rustsheet --bench aggregate` (new; release, median of 5, 1,000,000-row
 column), main vs branch, interleaved runs:
