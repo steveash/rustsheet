@@ -2,9 +2,17 @@
 # never edit by hand. `C<TAB>case<TAB>checked-cells` lists every case; `F<TAB>case<TAB>item` lists
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
+C	fixtures/external-link-cached-ranges.xlsx	82
 C	fixtures/ifs-legacy-range-criteria.xlsx	20
 C	fixtures/rich-error-export-formulas.xlsx	15
 C	fixtures/rich-error-export.xlsx	15
 C	fixtures/shared-string-phonetic-runs.xlsx	3
 C	fixtures/t-d-iso-date-cells.xlsx	8
 C	fixtures/workday-intl-legacy-holidays.xlsx	6
+F	fixtures/external-link-cached-ranges.xlsx	Refs!B38
+F	fixtures/external-link-cached-ranges.xlsx	Refs!B44
+F	fixtures/external-link-cached-ranges.xlsx	Refs!B53
+F	fixtures/external-link-cached-ranges.xlsx	Refs!B56
+F	fixtures/external-link-cached-ranges.xlsx	Refs!B59
+F	fixtures/external-link-cached-ranges.xlsx	Refs!B60
+F	fixtures/external-link-cached-ranges.xlsx	Refs!B62

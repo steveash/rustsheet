@@ -234,6 +234,11 @@ Exact-match counts of the candidates, each scored on all 205 non-zero points. No
   ulp(x^2) relative. Excel stays within 1E-15 up to x = 26, so its exponent is `-fl(x*x)` with nothing added.
 - The union of every configuration above matches 174/205 points (85%). So no single formulation in this family
   reaches 95%, even before a difference between MSVC's and glibc's `exp` is ruled in or out.
+- The x87 hypothesis (T-1524, fit lab `erfc-x87`): the best fraction (`bu_even`, depths 30, 60
+  and 100, both best combinations) with every operation and exp at 64 bits (idealized exp, or the
+  fldl2e/f2xm1/fscale sequence) and one final rounding: at most 44/205. That is the score of a
+  128-bit evaluation (depth 1500) and of the engine. A 64-bit evaluation does not help; the best fit
+  so far is in doubles.
 Earlier negatives (T-1186): the engine's CF in 7 orders, Cody CALERF with and without its x*16 split, and the
 asymptotic series in five orders, all at most 22%.
 Not tried:
@@ -241,9 +246,11 @@ Not tried:
   probes/subnormal-function-boundaries A5 (`ERFC(26.4)`) shows, so it does not fit.
 - A Chebyshev fit such as NR3 `erfccheb`. It adds a term to the exp argument, the same objection.
 - MSVC's own `exp`, which is not available here.
-Evidence: probes-numeric/t1040-erfc (excel-graph, 2026-10-08), scored against 50-digit mpmath and by
-docs/research/t1187-erfc-candidates.py. That script re-implements every candidate above in IEEE double and prints
-the counts (T-1187, 2026-10-11).
+Evidence: probes-numeric/t1040-erfc (excel-graph, 2026-10-08), scored against 50-digit mpmath and by the
+T-1187 candidate script (2026-10-11), now the fit lab's `erfc-tail` fit (T-1523,
+tools/src/rustsheet_tools/fitlab/kernels/erfc.py; `uv run rustsheet-fitlab erfc-tail` in tools/ reprints the
+counts above: best 57, 58, 38 and 4, union 174/205 over the four T-1187 families; the command's last union
+row, 177/205, also counts libm and the engine). The engine today: 44/205 bit-exact, 203/205 within 4 ulp.
 Status: OPEN (no candidate found); T-1186 stays blocked.
 
 ## RANK of a non-reference array
@@ -403,6 +410,21 @@ and the two functions have different domains.
   -1E-300), although GAMMA is defined at the negative non-integers.
 - **Coercion**: `GAMMA("a")` and `GAMMALN("a")` are `#VALUE!`; `GAMMA(TRUE)` = 1, `GAMMA("3")` = 2,
   `GAMMALN(TRUE)` = 0, `GAMMALN("3")` = 0.6931471805599454.
+- **GAMMA(n) for n <= 88 is the downward product in doubles** (T-1524, fit lab `gamma-int`):
+  `(n-1)*(n-2)*...*2`, each product rounded to a double (an Excel `*` gives the same here), matches
+  every n = 1..88 and 92 of the 171 integer cells. From n = 89 on Excel uses something else: it is
+  up to 32 ulps from the downward product and 29 from the correctly rounded factorial (`GAMMA(167)`,
+  t1042-gamma-int-91-171 Calc!A77; all but 3 of the 83 cells are within 11 of the product), and matches the
+  product only at 4 of the 83 cells (n = 117, 120, 122, 124). `GAMMA(101)` = 9.332621544394407e+157:
+  the product is 9 ulps away, the correctly rounded value 7. The upward product `2*3*...` gets 38, correctly
+  rounded 40, libm `tgamma` 38, a 64-bit product (either order) 40, the engine 1.
+- **GAMMALN at integers and GAMMA at half-integers are not explained** (T-1524): the natural log of the
+  downward product (libm or 64-bit log) gets 82 of 171 GAMMALN cells (correctly rounded 80, libm
+  `lgamma` 72, the engine's fdlibm 108). For `GAMMA(m+1/2)` (62 cells) the recurrence from sqrt(pi)
+  gets at most 34 in doubles (upward; 30 starting from Excel's own `GAMMA(0.5)`, which is the
+  correctly rounded sqrt(pi) 1.772453850905516), correctly rounded and any 64-bit recurrence 45, the engine 0.
+  Excel's GAMMA does not keep 64-bit intermediates either: that model only ties the correctly
+  rounded value (numbers.md "x87 precision is per operator, not per kernel").
 Ours: GAMMA is `statrs` Lanczos (not exact at integers) and returns `#NUM!` for `GAMMA(171.5)` and
 `GAMMA(171.6)`; GAMMALN is fdlibm `lgamma` (63 of the 171 integer cells differ).
 Evidence: probes-numeric cases `t1042-gamma-int-1-90`, `t1042-gamma-int-91-171`, `t1042-gamma-half-int`,
@@ -410,7 +432,7 @@ Evidence: probes-numeric cases `t1042-gamma-int-1-90`, `t1042-gamma-int-91-171`,
 second half GAMMALN, in formula order; GAMMA overflow edge: `t1042-gamma-negatives-edges` Calc!A18:A24;
 GAMMALN of x <= 0: Calc!A28:A44 there and A63:A73 of `t1042-gamma-half-int`). Oracle: excel-graph, 2026-10-13.
 Status: VERIFIED (excel-graph)
-Tasks: T-0973 (kernel, including the 171 < x < 171.62 overflow edge)
+Tasks: T-0973 (kernel, including the 171 < x < 171.62 overflow edge), T-1529 (GAMMALN and non-integer GAMMA, time-boxed)
 
 ## Student t sweep: df truncation, df limits, T.INV.2T above 1 (T-1043)
 Oracle sweep of the Student t family over df in {1,2,3,4,5,10,30,100,1000,1E6}, x up to 1E6 and p

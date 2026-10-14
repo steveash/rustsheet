@@ -27,7 +27,7 @@ T-1186 (blocked) established that Excel scales the tail by `exp(-fl(x*x))` (now 
 ## Outcome
 Closed as **not found**, per the first acceptance criterion's fallback. The grid has 206 points with x >= 1 in
 the task text; the oracle sidecar has 209, of which 205 are non-zero, and every candidate was scored on those 205.
-docs/research/t1187-erfc-candidates.py re-implements each candidate in IEEE double:
+docs/research/t1187-erfc-candidates.py (now the fit lab's `erfc-tail` fit, T-1523) re-implements each candidate in IEEE double:
 - bottom-up CF in 5 forms, depths 5 to 1000, with 14 prefactor orders
 - Lentz top-down CF, 2 forms
 - NR incomplete gamma, gcf/gser, with 3 gln variants

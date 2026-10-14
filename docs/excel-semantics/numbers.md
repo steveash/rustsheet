@@ -265,7 +265,7 @@ rounded quotient only when the exact quotient lies within half an extended ulp o
 between two doubles (about 1 division in 4,000 with full-significand operands): the first rounding
 lands on the midpoint, and the second rounds it to the even neighbor.
 `=1/(2-2^-52)` is 0.5, where the correctly rounded quotient is 0.5000000000000001;
-`=1/(1+26955297717044*2^-52)` = 0.994050331987417 (correctly rounded: …4171).
+`=1/(1+26955297717044*2^-52)` = 0.994050331987417 (correctly rounded: 0.9940503319874169).
 The reciprocal inside `^` and POWER is the same division: `x^-1`, `POWER(x,-1)`, `x^-3` (1 over
 the square-and-multiply power), `x^-0.5` (1 over `sqrt`) and `x^-0.3` (1 over `exp(0.3·ln x)`) all
 round twice, so `8^(-1/3)` = 0.5 and `(-8)^(-1/3)` = -0.5 although `8^(1/3)` = 1.9999999999999998.
@@ -283,6 +283,14 @@ Implemented for `*` and PRODUCT by `arithmetic::extended_product` (T-1498, A1-A1
 `+`, `-`, SUM and AVERAGE (each addition of the running total) by `arithmetic::extended_sum` (T-1499,
 A33-A64 pass); SQRT and `^0.5` are still singly rounded. AVERAGEA, SUMIF(S) and the database
 sums accumulate with the plain `+` and are unprobed (T-1516).
+Range edges of `*` and PRODUCT (probes-numeric/double-rounding-range-edges, excel-graph, 2026-10-14,
+T-1513): the second rounding happens at the result's own precision. An exact product just under the
+midpoint between `DBL_MAX` and 2^1024 rounds up to the midpoint in 64 bits and then, tied, to 2^1024:
+`#NUM!` although the singly rounded product is 1.7976931348623157E+308 (3 pairs, one negative; a
+control well under the midpoint stays `DBL_MAX`). An exact product just under the midpoint between
+the largest subnormal and 2^-1022 is the smallest normal 2.2250738585072014E-308 (3 pairs): the
+second rounding ties on the subnormal grid (multiples of 2^-1074), not on 53 bits. Both `*` and
+PRODUCT agree. Implemented in `arithmetic::extended_product`.
 Each of these operations, taken alone, rounds to a double twice. Intermediates do not stay at 64
 bits: in a chained expression every operator's result is rounded (twice) to a double before the next
 operator uses it. probes-numeric/double-rounding-chained (54 cells; operands picked so that keeping
@@ -302,6 +310,66 @@ Implemented in: `arithmetic::extended_quotient`, used by `arithmetic::divide` an
 `arithmetic::power`.
 Status: VERIFIED (excel-graph)
 Tasks: T-0221, T-1496, T-1498, T-1499, T-1500, T-1501
+
+## x87 precision is per operator, not per kernel (T-1524)
+Rule: where a kernel's formulation is fitted, it is evaluated in doubles, each operation behaving
+like the Excel operator of the same name ("Division rounds twice"). The same formulation with
+every intermediate held at 64 bits (x87 registers) and one final rounding scores lower on every
+such sweep: PV, FV, NPER, `^` with integer and non-integer exponents, EXP(n*LN(x)) and GAMMA at
+integers n <= 88 (table). The twice rounding itself is visible inside a kernel only in `^`:
+square-and-multiply with each product rounded twice gives all 42 cells whose base is
+2.23606797749979 (`SQRT(5)^n` and `(0.2^-0.5)^n`, n = 3..255 and -99, plus
+`(SUM(0,(0.2^(-0.5)))^99)` and `POWER(SQRT(5),99)`), and with products rounded once only 2.
+On the other sweeps the data do not separate twice-rounded operations from plain doubles. For
+the kernels whose formulation is still unknown (PMT, IPMT, PPMT, NPV, GAMMALN, GAMMA at
+half-integers, ERFC) the x87 model is unsupported rather than refuted: it only ties the
+correctly rounded value, because holding a kernel at 64 bits makes it almost correctly
+rounded, while Excel's error is wider (up to 3.5 ulps for PMT). Bit-exact counts (fit lab,
+`rustsheet-fitlab <fit>`; "ext" = every intermediate at 64 bits, one final rounding; full tables
+in T-1524's Outcome):
+
+| fit (cells) | doubles, Excel operator model | ext (64-bit intermediates) | correctly rounded | engine |
+|---|---|---|---|---|
+| `annuity-pv` (308) | **308** | 174 | 69 | 107 |
+| `annuity-fv` (308) | **308** | 230 | 53 | 101 |
+| `annuity-nper` (95) | **95** | 6 | 6 | 61 |
+| `exp-ln` EXP(n*LN(1+r)) (154) | **154** | 47 | 154 (LN, EXP each correctly rounded) | 154 |
+| `power-1+r` (1+r)^±n, POWER (462) | **462** | 155-161 (1+r at 64 bits / a double) | 161 | 462 |
+| `power-mantissa` literal bases ^3..255 (76) | **76** | 10-11 | 10 | 76 |
+| `power-sqrt5` SQRT(5)^n (20) | **20** | 1 | 1 | 1 |
+| `power-nonint` (180 of 183 modelled) | **180** | 94 | 93 | 183 |
+| `power-recip` (45) | **45** | 37 | 20 | 45 |
+| `gamma-int` GAMMA(1..171) (171) | **92** (downward product) | 40 | 40 | 1 |
+| `gammaln-int` (171) | 82 | 80 | 80 | 108 |
+| `gamma-half-int` (62) | 34 | 45 | 45 | 0 |
+| `erfc-x87` ERFC tail (205) | 58 (T-1187 fraction) | 44 | 44 (128-bit) | 44 |
+| `annuity-pmt` (308) | 91 (129 with P-1 = expm1) | 132 | 132 | 54 |
+| `annuity-ipmt` / `annuity-ppmt` (308) | 195 / 43 | 218 / 85 | 219 / 94 | 189 / 15 |
+| `annuity-npv` (88) | 27 | 26 | 18 | 21 |
+
+The x87 instruction model (`X87Insn`: fyl2x, frndint, f2xm1 and fscale, each rounded once to 64
+bits) is no better than ext as a whole power: 161, 94 and 37 on `power-1+r`, `power-nonint` and
+`power-recip`. A hybrid that computes the positive power that way and then takes Excel's
+twice-rounded 1/ for a negative exponent beats ext (175, 101 and 43), only because the 1/ is the
+Excel operator, and it stays far below the double model (462, 180 and 45). A 64-bit 1+r (as an x87
+register would hold it) does not help either (155 against 161). Where ext ties correctly rounded
+(PMT, IPMT, PPMT, GAMMA at half-integers), both are accurate; that is no evidence about Excel's
+algorithm. The lead this task started from, "PMT with `(1+r)^n` from the exact 1+r, kept at 64
+bits, 133/308", is this tie: correctly rounded gets 132, and Excel's PMT lies up to 3.5 ulps from
+the exact value, which no model accurate to half an ulp can follow.
+Evidence: the oracle sweeps probes-numeric/m9-fin-pv-fv, m9-fin-pmt, m9-fin-nper-npv and
+m9-fin-power (excel-graph, 2026-10-06, T-0942); power-integer-full-mantissa,
+power-reciprocal-rounding and power-non-integer-sweep (excel-graph, 2026-10-12/13);
+t1042-gamma-int-1-90, -91-171 and -half-int; t1040-erfc. Fits: `tools/src/rustsheet_tools/fitlab/kernels/`
+`annuity.py`, `power.py`, `gamma.py`, `erfc.py` (`erfc-x87`).
+Ours: the engine needs no extended-precision type. It already has the per-operator model
+(`arithmetic::extended_quotient`, `extended_product`, `extended_sum`); the fits' wins are kernel
+formulations that use it. PV/FV, NPER and GAMMA at integers are recorded in financial.md and
+statistics.md, `^` in "Integer exponents beyond 360" below.
+Status: VERIFIED (excel-graph) for the fitted kernels listed; for PMT, IPMT, PPMT, NPV, GAMMALN,
+GAMMA at non-integers and ERFC the x87 model is unsupported (it ties correctly rounded) and the
+kernels stay unexplained (time-boxed, decision 0056).
+Tasks: T-1524, T-0901, T-1495, T-0973, T-0968, T-1528, T-1529
 
 ## Numbers near 1E+307 print with 14 significant digits
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is
@@ -804,17 +872,22 @@ every base except 10 (about 280 cells across `1.0000001`, `0.9999999`, `1.5`, `2
    `(-1E200)^-2`). Evidence: probes-numeric/power-negative-base-range, power-odd-roots A157-A162
    (excel-graph, 2026-10-13).
 
-Unresolved (T-1495): `SQRT(5)^n` (equally `(0.2^-0.5)^n` and `POWER(SQRT(5),n)`) is not
-square-and-multiply. Of 9 full-significand bases probed at 19 exponents 3..255 (pi, e, 1.1, 1/3,
-0.7, SQRT(2), 1.0000001, and 2.23606797749979 written two ways), the rule matches all 133 cells
-of the other 7 bases and 2 of the 38 sqrt(5) cells. `SQRT(5)^99` = 3.9720546451956613E+34
-(square-and-multiply: …6807E+34; correctly rounded: …656E+34); `SQRT(5)^10` = 3125.0000000000023
-(…030; …014). Excel's results track `exp(n·ln b)` with `ln b` the double logarithm (10 of 19
-cells) and drift up to 2 ulps below it by n = 255. Rejected: left-to-right and repeated
-multiplication, every multiplication order of the four squares for n = 99, a 54- to 65-bit
-significand for the loop, the exact decimal 2.23606797749979 raised to n, and `exp`/`log2`/`log10`
-compositions. Evidence: probes-numeric/power-integer-full-mantissa (184 cells; excel-graph,
-2026-10-13, T-0221); gen-m2/fa437879253827be Calc!A23 is `(0.2^-0.5)^99`.
+Resolved by T-1524 (implementation: T-1495): the loop's products are Excel's `*`, rounded to 64 bits and
+then to a double ("Division rounds twice"). With that rounding, square-and-multiply gives all 42
+cells of power-integer-full-mantissa whose base is 2.23606797749979: `SQRT(5)^n` and
+`(0.2^-0.5)^n` for n = 3..255 and -99 (40 cells), A181 `(SUM(0,(0.2^(-0.5)))^99)` and A182
+`POWER(SQRT(5),99)`. `SQRT(5)^99` = 3.9720546451956613E+34 and `SQRT(5)^10` = 3125.0000000000023.
+With products rounded once, which is what the engine does, it gives 2 of the 42 (…6807E+34,
+3125.000000000003). Fit `power-sqrt5` scores the 20 `SQRT(5)^n` cells (20 against 1); the other 22
+were checked outside the lab, which does not parse `0.2^-0.5` or SUM. The double rounding changes no other cell. Both roundings match
+all cells of the 7 other full-significand bases: 76 literal-base cells (fit `power-mantissa`) and
+the 57 `PI()^n`, `EXP(1)^n` and `SQRT(2)^n` cells (checked outside the lab, which does not parse
+function-call bases). They also match the same cells of the 462 `(1+r)^±n` / POWER cells (`power-1+r`)
+and of the large-exponent sweeps (`power-large-int`). Earlier rejected: left-to-right and repeated
+multiplication, every multiplication order for n = 99, a 54- to 65-bit significand for the loop,
+and `exp`/`log2`/`log10` compositions (`exp(n·ln b)` matched 10 of 19). Evidence: probes-numeric/power-integer-full-mantissa (184
+cells; excel-graph, 2026-10-13, T-0221); gen-m2/fa437879253827be Calc!A23 is `(0.2^-0.5)^99`
+(the same base double).
 Non-integer exponents (`10^33.5` = 3.162277660168401E+33, libm 3.162277660168379E+33; `10^-33.5` =
 3.1622776601683576E-34; `10^40.0000001` = 1.0000002302585496E+40) follow "Non-integer exponents: exp(y·ln x)" (T-1319).
 Evidence: probes-numeric/power-large-integer-exponents{,-2,-3,-4}.case.json (oracle: excel-graph,

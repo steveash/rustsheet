@@ -151,7 +151,7 @@ def test_fill_writes_no_sidecar_when_the_canary_fails(
     monkeypatch.setattr(cli, "GOLDEN_BACKENDS", {"echo"})
     monkeypatch.setattr(cli, "_backend", lambda _: EchoBackend())
     entry = {"path": str(case), "sidecar": str(tmp_path / "x.oracle.json")}
-    monkeypatch.setattr(cli, "_suite_cases", lambda _: [entry])
+    monkeypatch.setattr(cli, "suite_cases", lambda _: [entry])
     args = SimpleNamespace(backend="echo", suite="s", force=False, limit=0, include_cached=False)
     assert cli.cmd_fill(args) == 1
     assert not (tmp_path / "x.oracle.json").exists()
