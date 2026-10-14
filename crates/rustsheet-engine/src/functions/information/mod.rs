@@ -15,7 +15,7 @@ use crate::{
     get_all_timezones,
     limits::check_range_size,
     model::Model,
-    reference_operators::{external_area, RefArg},
+    reference_operators::RefArg,
 };
 
 /// Applies `f` to every element of a 2-D array, keeping its shape.
@@ -138,6 +138,25 @@ impl Model {
     /// Whether `node` stands for a reference (ISREF).
     fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
         let node = node.ungrouped();
+        // A reference into another workbook, written or through INDEX, a union or an
+        // intersection (probes/external-ref-no-link-shapes A4, external-ref-no-link-index A28,
+        // A33); one into two workbooks is `#VALUE!`, so not a reference.
+        if let Some(areas) = self.external_reference(node, cell) {
+            return areas.is_ok();
+        }
+        // OFFSET of one is `#VALUE!`, so not a reference (probes/external-ref-no-link-index
+        // A16), where OFFSET otherwise counts as one unevaluated (`kind.returns_reference()`).
+        if let Node::FunctionKind {
+            kind: crate::functions::Function::Offset,
+            args,
+        } = node
+        {
+            if let Some(reference) = args.first() {
+                if self.external_reference(reference, cell).is_some() {
+                    return false;
+                }
+            }
+        }
         match node {
             Node::ReferenceKind { .. } | Node::RangeKind { .. } => true,
             // A range whose corners are on two sheets is `#VALUE!`, so not a reference:
@@ -221,9 +240,6 @@ impl Model {
                 self.evaluate_node_with_reference(node, cell),
                 CalcResult::Range { .. }
             ),
-            Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. } => {
-                external_area(node, cell).is_some()
-            }
             _ => false,
         }
     }

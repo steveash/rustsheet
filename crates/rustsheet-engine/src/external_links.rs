@@ -8,7 +8,7 @@ use crate::{
     calc_result::CalcResult,
     cell::spill_value_to_calc_result,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    reference_operators::external_area,
+    external_reference::external_area,
     types::{DefinedName, SpillValue},
     utils::ParsedReference,
     Model,

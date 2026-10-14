@@ -2,7 +2,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex, utils::quote_name},
     model::Model,
-    reference_operators::{external_area, not_a_reference_array, three_d_needs_one_sheet, RefArg},
+    reference_operators::{not_a_reference_array, three_d_needs_one_sheet, RefArg},
 };
 
 use crate::expressions::utils::number_to_column;
@@ -146,8 +146,13 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        if external_area(&args[0], cell).is_some() {
-            return CalcResult::Number(1.0);
+        // A union of references into another workbook counts its areas (`AREAS((…!A1,…!B2))` is
+        // 2, probes/external-ref-no-link-shapes A15).
+        if let Some(areas) = self.external_reference(&args[0], cell) {
+            return match areas {
+                Ok(areas) => CalcResult::Number(areas.len() as f64),
+                Err(error) => error,
+            };
         }
         let arg = self.evaluate_picked_reference_arg(&args[0], cell);
         if let Some(areas) = arg.single_sheet_areas() {

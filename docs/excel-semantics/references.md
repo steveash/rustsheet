@@ -130,12 +130,39 @@ is FALSE and `COUNTA(…!A1:B2)` 0 (it counts no `#BLOCKED!`). `='[other.xlsx]Sh
 `SUM('[other.xlsx]S1:S2'!A1)` is `#BLOCKED!` and `ISREF('[other.xlsx]S1:S2'!A1)` FALSE; a range
 whose corners are in two workbooks (`ISREF('[other.xlsx]Sheet1'!A1:Calc!B2)`) is FALSE.
 Evidence: probes/external-ref-no-link-shapes Calc!A1:A20 (excel-graph, 2026-10-12, T-1381).
-Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`, and
-`reference_operators::external_area` gives ISREF, ROWS, COLUMNS, ROW, COLUMN and AREAS the written
-shape; the lexer reads the unquoted `[book]Sheet!` prefix (T-1381). A one-cell `[n]Sheet!A1` reads
-the cache (`external_links.rs`, below; T-1382). INDEX, OFFSET, unions, intersections, COUNTA and the
-spill (T-1454) and cached multi-cell `[n]` ranges are not yet implemented. Unprobed: a `[n]` index with no externalLink part, and ROW/COLUMN of a multi-cell
-external area (the engine spills the row or column numbers as for a sheet reference, UNVERIFIED).
+The cell INDEX picks reads as **empty**, not `#BLOCKED!`: `INDEX(…!A1:C4,2,2)` is 0 in a cell,
+`+1` gives 1, `&"x"` gives "x", ISBLANK is TRUE, ISERROR, ISTEXT and ISNUMBER FALSE, and ERROR.TYPE
+`#N/A`; `INDEX(…!A1,1,1)`, the area INDEX picks from a union, and the one cell an intersection
+leaves (`ERROR.TYPE(…!A1 …!A1:B2)`) read empty too. Several cells are `#BLOCKED!` each, spilled:
+`=INDEX(…!A1:C4,2,0)` spills three, `='[other.xlsx]Sheet1'!A1:B2` and `=…!A1:B2*1` four, and
+`ERROR.TYPE(…!A1:A3)` lifts (`#SPILL!` where blocked). Aggregates over any of these are `#BLOCKED!`
+(`SUM(INDEX(…,2,2))`, `SUM(INDEX(…,2,0))`, `SUM((…!A1,…!B2))`, `SUM(…!A1:B3 …!A2:B5)`,
+`SUMPRODUCT(…!A1:B2)`), but COUNTA counts nothing in them, even the written `…!A1` that reads
+`#BLOCKED!` (`COUNTA(…!A1)` 0, `COUNTA(…!A1:B2,1)` 1), COUNT gives 0 and COUNTBLANK `#VALUE!`.
+`OFFSET(…!A1,1,1)` is `#VALUE!` (ISREF FALSE, ERROR.TYPE 3), `OFFSET(…!A1:B2,0,0)` too. A union or
+intersection of an external reference with one on this workbook is `#VALUE!` (`AREAS((…!A1,E1))`,
+`ROWS(…!A1:B3 E1:F3)`); disjoint external areas intersect to `#NULL!`; `ISREF(…!A1:B3 …!A2:B5)` and
+`ISREF(INDEX((…!A1,…!B2),1,1,2))` are TRUE, `ROWS(INDEX((…!A1:B2,…!C3:D5),1,1,2))` 1. IF and LET keep
+the reference too: `ROWS(IF(TRUE,…!A1:B3))` and `LET(r,…!A1:B3,ROWS(r))` are 3, and the cell IF picks
+reads empty (`ERROR.TYPE(IF(TRUE,…!A1))` is `#N/A`), so only a written external reference read
+directly as a value is `#BLOCKED!`.
+Evidence: probes/external-ref-no-link-index Calc!A1:A36, C1:F7 (excel-graph, 2026-10-13, T-1454).
+Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`; the
+lexer reads the unquoted `[book]Sheet!` prefix (T-1381). `Model::external_reference`
+(external_reference.rs) gives the areas of a written external reference, an INDEX into one and a
+union or intersection of them; ISREF, ROWS, COLUMNS, ROW, COLUMN, AREAS, COUNTA, COUNTBLANK, OFFSET,
+INDEX's value, the intersection's value and the aggregates read it (T-1454). Not yet implemented:
+IF and CHOOSE picking an external reference (follow-up task), INDEX with an index array into one
+(`#BLOCKED!`, UNVERIFIED), and cached multi-cell `[n]` ranges (INDEX, unions and the other
+reference paths above read a `[n]` reference as one with no cache). A one-cell `[n]Sheet!A1` reads
+the cache (`external_links.rs`, below; T-1382), in the aggregates, COUNTA and COUNTBLANK too
+(`Model::uncached_external_reference`; COUNTBLANK reads the cached cell itself). UNVERIFIED (not probed, T-1487):
+COUNTBLANK counts a cached "" as blank and a cached error as 0, as for a local cell; COUNTA
+counts an external reference that gives an error instead (`COUNTA((…!A1,E1))`, a disjoint
+intersection, INDEX past the area) as 1, as it does a local error argument; OFFSET and COUNTBLANK
+give their `#VALUE!` before evaluating their other arguments (`OFFSET(…!A1,1/0,1)` is `#VALUE!`). Unprobed: a `[n]` index with no
+externalLink part, and ROW/COLUMN of a multi-cell external area (the engine spills the row or column
+numbers as for a sheet reference, UNVERIFIED).
 Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
 Tasks: T-0124, T-1381, T-1382, T-1454
 
@@ -603,10 +630,17 @@ are walked over the cells that exist only, not every position of the used area: 
 that takes a union skips blank cells, and the cells are met in the same row-major order, so the
 first error cell is the same. The walk pays as it goes from a budget of 16,777,216 steps
 (`MAX_AREA_WALK`, 2^24) per formula evaluation: one step per area walked (so a repeated walk of
-an empty union is paid for too), one per cell handed to the function, one per
-row found (at least one, even with no cell in the area's columns), one per unallocated chunk of
-1,024 rows passed over, and one per 16 row slots tested in allocated chunks
-(`SLOTS_PER_WALK_STEP`). Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
+an empty union is paid for too), one per cell handed to the function, and, for an area over more
+than 1,024 of the sheet's rows, one per search of the sheet's column index (built by the first
+such walk, then kept in step by every write): one per column of the area that holds cells (at
+least one) to find them, then, when there are at most 16 such columns, one per read of up to 64
+of a column's rows, merged in row-major order with a row costing at least a step per four columns
+still being merged (T-1502), and one per column again after a cell the walk hands on writes to
+the sheet (a spill), since the reads are then out of date. Such a walk keeps the columns it found
+at its start; a spill into another column of the area is caught by the area's read-empty record. An area with cells in more columns is walked by rows instead: one
+step per row found (at least one, even with no cell in the area's columns), one per unallocated
+chunk of 1,024 rows passed over, and one per 16 row slots tested in allocated chunks
+(`SLOTS_PER_WALK_STEP`); so is a shorter area, whose row walk is a chunk of slots at most. Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
 operand and LAMBDA call of the formula draws on the same budget, like the pair budget; a single
 range argument is not counted and is walked as before (every position of its used area). Over
 sparse data a union then costs what the data costs: `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
@@ -626,10 +660,11 @@ With data in row 1,048,576 `=SUM((B:B,C:C),...)` with nine union arguments (9*2^
 27. The engine now agrees on all of them (T-1497). MAP over a union
 (`=SUM(MAP((B1:B3,C1:C3),LAMBDA(x,x)))`, `ROWS(...)`) is `#VALUE!` in both. The oracle gives no
 timings, so whether Excel walks only data is not known; a union over filled cells past the budget
-remains a DEVIATION. So does a union over a sheet with many rows filled in other columns: a row is
-found through the sheet's row storage, not per column, and costs a step even when the area's
-columns are blank in it, so `MAP(A1:A10000,LAMBDA(r,SUM((B:B,C:C))))` is `#VALUE!` here when
-another column fills 9,000 rows (Excel: 80000). A per-column index would lift that (T-1502).
+remains a DEVIATION. Rows filled in other columns cost a narrow area nothing, since its rows come
+from the column index (T-1502): `MAP(A1:A10000,LAMBDA(r,SUM((B:B,C:C))))` is 80000 as in Excel
+when another column fills 9,000 rows. An area with cells in more than 16 columns is still walked
+by rows, paying for rows where its columns are blank, so a wide area over a sheet whose rows other
+columns fill can reach the budget before Excel would.
 A union area is recorded as read-empty as one rectangle per formula root, once however often it is
 walked, so repeated walks do not grow the record that each spill is checked against.
 Excel's actual limit, if any, is not known; the probe only shows it is above 2*10^8 walked cells.
@@ -643,8 +678,8 @@ so memory is bounded by the workbook's formula text and each use by the caps abo
 Status: DEVIATION (decision 0014)
 Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
 `Model::count_union_areas`, `Model::intersect_areas`); area_budget.rs (`MAX_AREA_PAIRS`,
-`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
-Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497
+`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`, `Model::for_each_indexed_position`); sheet_data.rs (`SheetData::rows_in_column_between`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
+Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502
 
 ## Seen-range cap
 Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a

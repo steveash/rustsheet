@@ -195,6 +195,7 @@ C	probes/error-precedence-text.case.json	30
 C	probes/error-stored-busy-behaviors.case.json	23
 C	probes/error-stored-constants.case.json	24
 C	probes/eta-reduced-names.case.json	59
+C	probes/external-ref-no-link-index.case.json	54
 C	probes/external-ref-no-link-shapes.case.json	20
 C	probes/external-ref-no-link.case.json	10
 C	probes/fact-large-arguments.case.json	18
@@ -938,14 +939,8 @@ F	probes/eng-argument-modes.case.json	Calc!E9
 F	probes/eta-reduced-names.case.json	Sheet1!E101
 F	probes/eta-reduced-names.case.json	Sheet1!E49
 F	probes/eta-reduced-names.case.json	Sheet1!E93
-F	probes/external-ref-no-link-shapes.case.json	Calc!A15
-F	probes/external-ref-no-link-shapes.case.json	Calc!A16
-F	probes/external-ref-no-link-shapes.case.json	Calc!A17
-F	probes/external-ref-no-link-shapes.case.json	Calc!A18
-F	probes/external-ref-no-link-shapes.case.json	Calc!A19
-F	probes/external-ref-no-link-shapes.case.json	Calc!A3
-F	probes/external-ref-no-link-shapes.case.json	Calc!A4
-F	probes/external-ref-no-link-shapes.case.json	Calc!A5
+F	probes/external-ref-no-link-index.case.json	Calc!A25
+F	probes/external-ref-no-link-index.case.json	Calc!A26
 F	probes/fact-large-arguments.case.json	Sheet1!A1
 F	probes/fact-large-arguments.case.json	Sheet1!A11
 F	probes/fact-large-arguments.case.json	Sheet1!A12

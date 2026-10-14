@@ -60,6 +60,14 @@ fn cell_references_read_the_cache() {
     assert_eq!(eval(&mut model, "=[other.xlsx]Uses!$A$1"), "#BLOCKED!");
     // Still a reference of the written shape (T-1381).
     assert_eq!(eval(&mut model, "=ISREF([1]Uses!$A$1)"), "TRUE");
+    // Aggregates and COUNTA read the cached value too, as a value.
+    assert_eq!(eval(&mut model, "=SUM([1]Defines!$B$2)"), "142");
+    assert_eq!(eval(&mut model, "=SUM(([1]Defines!$B$2))"), "142");
+    assert_eq!(eval(&mut model, "=AVERAGE([1]Defines!$B$2)"), "142");
+    assert_eq!(eval(&mut model, "=COUNT([1]Defines!$B$2)"), "1");
+    assert_eq!(eval(&mut model, "=COUNTA([1]Uses!$A$1)"), "1");
+    assert_eq!(eval(&mut model, "=COUNTBLANK([1]Uses!$Z$9)"), "1");
+    assert_eq!(eval(&mut model, "=COUNTBLANK([1]Uses!$A$1)"), "0");
 }
 
 #[test]

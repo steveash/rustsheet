@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+import functools
 import io
 import json
 import re
@@ -14,8 +16,16 @@ from rustsheet_tools.gen.operators_refs import CATEGORIES, generate_operators_re
 from rustsheet_tools.spec2xlsx import build_xlsx, parse_a1, prefix_bound_names
 
 
-def catalog() -> Catalog:
+@functools.cache
+def _loaded_catalog() -> Catalog:
     return Catalog.load(repo_root() / "eval" / "catalog" / "functions.yaml")
+
+
+def catalog() -> Catalog:
+    # Parsing functions.yaml takes about 0.7 s and the coverage tests call this once per seed, which
+    # made this file most of CI's python job (12 min). Parse once; a deep copy (about 6 ms) keeps each
+    # caller's catalog independent.
+    return copy.deepcopy(_loaded_catalog())
 
 
 def test_generation_is_deterministic() -> None:
