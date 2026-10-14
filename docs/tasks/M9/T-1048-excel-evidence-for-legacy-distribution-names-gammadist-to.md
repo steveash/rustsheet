@@ -28,4 +28,4 @@ Split from T-0966 (one sweep per kernel family), which explains why: Excel's dis
 - Fitting or changing any implementation (the dependent fitting tasks do that).
 
 ## Outcome
-16 probes-numeric cases `t1048-*` (34-102 cells each, 12 of the 16 functions paired with their modern equivalent), all filled by excel-graph with no pending cells. Result: every alias is exact except TDIST for negative x (#NUM! vs T.DIST.RT/2T). Quirks recorded in `docs/excel-semantics/statistics.md` ("Legacy distribution names sweep, second family"). No implementation change; eval baseline unchanged.
+16 probes-numeric cases `t1048-*` (34-102 cells each, each paired with its modern equivalent), all filled by excel-graph with no pending cells. Result: every alias is exact except TDIST tails 1 for negative x (#NUM! vs T.DIST.RT). Quirks recorded in `docs/excel-semantics/statistics.md` ("Legacy distribution names sweep, second family"). No implementation change; eval baseline unchanged.
