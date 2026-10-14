@@ -362,8 +362,8 @@ Tasks: T-1293
 ## FORECAST.ETS family: excel-graph never computes it
 Rule: on excel-graph (Excel for the web) every valid call of FORECAST.ETS, FORECAST.ETS.CONFINT,
 FORECAST.ETS.SEASONALITY and FORECAST.ETS.STAT is `#N/A`, whatever the series: 12, 24 and 36 points (timeline 1..n,
-a period-4 seasonal signal), seasonality omitted/0/1/4, `data_completion`/`aggregation` omitted or set, every
-`statistic_type`. The out-of-range arguments are `#N/A` too (seasonality 5, data_completion 2, aggregation 3,
+a period-4 seasonal signal), seasonality omitted/0/1/4, `statistic_type` 1 and 8 (`data_completion` and
+`aggregation` were only set together with an invalid value, so valid settings are unprobed, T-1553). The out-of-range arguments are `#N/A` too (seasonality 5, data_completion 2, aggregation 3,
 statistic_type 0 and 9, confidence_level 0 and 1, values/timeline of 23 and 24 cells), so the web value does not tell
 a valid call from an invalid one. The only distinguishable result is a text `target_date` (`"x"`), which is `#VALUE!`
 before the `#N/A`. So the web oracle gives no evidence for the algorithm or for most argument validation; it is a
