@@ -3,7 +3,7 @@ id: T-1556
 title: "Probe legacy intersection of the arithmetic argument of the compatibility aggregates (STDEV, VAR, PERCENTILE, QUARTILE, MODE)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -24,3 +24,6 @@ range whole. Same layout as that case; fill with excel-graph; add the ones that 
 
 ## Out of scope
 -
+
+## Outcome
+Probed probes/legacy-value-argument-intersection-c (excel-graph): STDEV(P), VAR(P), STDEVA, STDEVPA, VARA, VARPA, PERCENTILE, QUARTILE, their .EXC forms and PERCENTRANK(.INC) intersect an arithmetic argument in a legacy formula; MODE and MODE.MULT take an array. RANK*/COUNTBLANK are refused by excel-graph on load. The intersecting ones are in `legacy_value_operand`. Eval: 31/33 cells pass; T2/U2 (PERCENTRANK of a single value) are known failures, follow-up T-1558. Regressions 0.
