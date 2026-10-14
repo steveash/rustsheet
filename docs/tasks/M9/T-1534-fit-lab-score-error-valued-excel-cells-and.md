@@ -1,5 +1,5 @@
 ---
-id: T-1532
+id: T-1534
 title: "Fit lab: score error-valued Excel cells and per-iterate traces"
 milestone: M9
 lane: harness
@@ -30,4 +30,4 @@ of a stop-test constant) was done in scratch scripts and is quoted in
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- New solver models (T-1531).
+- New solver models (T-1533).

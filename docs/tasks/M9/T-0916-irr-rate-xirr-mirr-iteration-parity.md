@@ -40,11 +40,11 @@ a negative guess walks only 0, g, (g - 1)/2, ...; no bracket is `#NUM!`. Then wi
 end: m = a + (b - a)/2, replace the end whose XNPV has XNPV(m)'s sign (an exact 0 does not stop), and
 return m once (b - a)/2 < 5e-9 + 1e-8*|m| and |XNPV(m)| < 2e-8*max|value|. The XNPV part fails one
 124-year span (xirr-early-dates A8: Excel returns bisection step 25, the model step 28) and a zero first
-value (A10, A11); T-1531 continues that fit. The walk and bisection caps are unprobed.
+value (A10, A11); T-1533 continues that fit. The walk and bisection caps are unprobed.
 
 **Scope.** The XIRR part can be implemented now. IRR and RATE are not fitted (see
 `docs/excel-semantics/financial.md`, "IRR returns x - 1 ..." and "RATE iterates on the rate itself"); their
-part of this task waits for T-1531.
+part of this task waits for T-1533.
 
 ## Acceptance criteria
 - [ ] At least 100 of the ~170 listed F lines for IRR, RATE, XIRR, MIRR leave eval/baseline/ironcalc-calc.txt with no new ones; the Outcome note lists the remainder.

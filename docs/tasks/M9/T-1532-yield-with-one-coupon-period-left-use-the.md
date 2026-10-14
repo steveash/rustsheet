@@ -1,5 +1,5 @@
 ---
-id: T-1530
+id: T-1532
 title: "YIELD with one coupon period left: use the closed form (bit-exact on probes/solver-iteration-traces Y!A, Y!B)"
 milestone: M9
 lane: functions-financial
@@ -44,4 +44,4 @@ change `compute_price`.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- YIELD with more than one coupon period (its solver is unfitted: T-1531, T-1374).
+- YIELD with more than one coupon period (its solver is unfitted: T-1533, T-1374).

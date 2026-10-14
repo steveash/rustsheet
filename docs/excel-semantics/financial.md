@@ -129,7 +129,7 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   1.03e-8 give 206/208 and B = 1.02e-8 208/208. |XNPV| < 1.5e-8 * sum|value| also fits all 208.
 - The step test has no derivative in it, and the ten-year span (X!C, ten times the derivative) is
   reproduced with the same rule as the one-year span (X!A); the depth per cell was compared outside
-  the lab (T-1532).
+  the lab (T-1534).
 - Out of sample (the literal XIRR cells of five older probes; `xirr-oos`): 8 of 11 numeric cells, and
   8 of 11 `#NUM!` cells. The `#NUM!` misses are input checks recorded elsewhere in this file
   (xirr-mismatched-empties X12, X13, xirr-early-dates A7), which the model does not apply. The numeric
@@ -145,8 +145,8 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
 Ours: Newton's method to 1e-7 (`compute_xirr`, functions/financial/financial_util.rs): 0/208 on the fit
 set (9 of the 72 m9-fin-irr-rate cells pass the harness's tolerance).
 Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test; the XNPV part of the stop
-test is UNVERIFIED beyond the fit set (T-1531)
-Tasks: T-1525, T-0916, T-1531
+test is UNVERIFIED beyond the fit set (T-1533)
+Tasks: T-1525, T-0916, T-1533
 
 ## IRR returns x - 1 and stops after a few Newton-like steps (partly fitted)
 Rule: IRR iterates on x = 1 + r (or on 1/x) and returns x - 1: for all 263 numeric IRR cells of
@@ -156,7 +156,7 @@ m9-fin-irr-rate and solver-iteration-traces, value + 1 is exactly representable
 early: for `{-20,5,5,5,5,5}` with guesses 0.05 to 0.07 and 0.0875 to 0.115 (I!A1:A9, I!A16:A27), Excel's
 error grows as (guess - root)^8, the signature of the third iterate of a quadratic method, with an
 effective constant f''/(2f') between -1.19 and -1.25 (Newton in v has -1.17, Newton in r -2.11; derived
-outside the lab, T-1532). Guesses 0.0725, 0.075, 0.085 and 0.12 return the root's bits
+outside the lab, T-1534). Guesses 0.0725, 0.075, 0.085 and 0.12 return the root's bits
 (0.07930826116052869), as if one more step was taken; 0.1175 (I!A28) is 16 ulp below them. Guesses close
 to the root break the law: 0.0775, 0.08 and 0.0825 (I!A12:A14) give -1.7e-13, +5.9e-15 and +1.6e-12, and
 0.0793 (m9-fin-irr-rate Calc!A187) gives -1.6e-11, so the stop test is not a fixed step tolerance.
@@ -169,7 +169,7 @@ converged): Newton in v = 1/(1+r) converged 74/263 bit-exact (the best), FD Newt
 gets 1/263.
 Ours: Newton in r to 1e-8, with a bisection fallback (`compute_irr`, functions/financial/financial_util.rs).
 Status: UNVERIFIED (the update rule and the stop test)
-Tasks: T-1525, T-0916, T-1531
+Tasks: T-1525, T-0916, T-1533
 
 ## RATE iterates on the rate itself
 Rule: RATE's results are rates, not x - 1: only 7 of the 136 literal RATE cells pass the x - 1 test above
@@ -185,7 +185,7 @@ parsed): Newton in r on the documented f(r) = pv(1+r)^n + pmt(1+r*type)((1+r)^n 
 11/136 bit-exact (4 to 8 steps), FD Newton (h = 1e-8) 7/136; the engine gets 12/136.
 Ours: Newton, up to 50 iterations (`compute_rate`, functions/financial/financial_util.rs).
 Status: UNVERIFIED (the update rule and the stop test)
-Tasks: T-1525, T-0916, T-1531
+Tasks: T-1525, T-0916, T-1533
 
 ## YIELD with one coupon period left is closed form
 Rule: when at most one coupon period is left, Excel evaluates the documented formula
@@ -206,7 +206,7 @@ Where PRICE's E - A and E equal YIELD's (basis 0 on the semiannual bond, bases 1
 about 15 ulp off; elsewhere it solves a different equation: basis 0 annual (Y!B) is about 0.56% off (ratio
 180/179, Y!B1 0.2807210017227244 against 0.2791614406020427), bases 2 and 3 up to 4%.
 Status: VERIFIED (excel-graph)
-Tasks: T-1525, T-1530
+Tasks: T-1525, T-1532
 
 ## RATE: an empty guess is guess 0, not the default 0.1
 Rule: an empty guess argument (`RATE(48,-200,8000,0,1,)`) or a reference to an empty cell behaves as
@@ -404,4 +404,4 @@ union); the engine gets 0/90. With one coupon period left YIELD is closed form (
 left is closed form").
 Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
 Status: UNVERIFIED (the algorithm); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1531
+Tasks: T-1374, T-1493, T-1525, T-1533

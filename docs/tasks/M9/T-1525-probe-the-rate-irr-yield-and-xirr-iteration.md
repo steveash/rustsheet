@@ -51,13 +51,13 @@ Scores are fit-lab fits (`tools/src/rustsheet_tools/fitlab/kernels/solvers.py`; 
 - `rate` (136 literal cells): not fitted. Newton in r 11 (4-8 steps), FD Newton 7, engine 12. Results are
   rates (7/136 pass the x - 1 test).
 - `yield-one-period` (60 cells, bases 0-4): closed form with the basis' DSR and the period E on bases 1-3
-  60/60; E - A for DSR 30; nominal E on bases 2, 3 44; engine 0. Follow-up T-1530 (engine). PRICE's
+  60/60; E - A for DSR 30; nominal E on bases 2, 3 44; engine 0. Follow-up T-1532 (engine). PRICE's
   one-period form uses E - A (40/40 cells, engine already passes).
 - `yield` (90 basis-0 multi-coupon cells): not fitted; best 2/90 (Newton from 0.1; LibreOffice's regula
   falsi), union 5/90, engine 0.
-Outside the lab (T-1532 extends it): the `#NUM!` agreement (a helper plus tests), and the per-iterate
+Outside the lab (T-1534 extends it): the `#NUM!` agreement (a helper plus tests), and the per-iterate
 trace analysis (bisection depth per cell, which candidate iterate equals Excel, the ^8 law and the
 effective constant), done in scratch scripts.
 Not changed: engine code. The XIRR model is in T-0916's Context; T-0916's IRR/RATE part waits for
-T-1531, the follow-up fit (IRR's and RATE's update and stop rule, XIRR's XNPV test on long spans and a
+T-1533, the follow-up fit (IRR's and RATE's update and stop rule, XIRR's XNPV test on long spans and a
 zero first value, multi-period YIELD).

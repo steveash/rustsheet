@@ -16,8 +16,8 @@ The bond, T-bill, depreciation and cumulative-payment functions return Excel's b
 ## Context
 YIELD's solver (T-1525, 2026-10-14): see `docs/excel-semantics/financial.md`, "YIELD stops short of PRICE's root";
 probes/solver-iteration-traces Y!C:E (24 cells) and the basis-0 multi-coupon cells of yield-solver-sweep are scored
-by `uv run rustsheet-fitlab yield` (90 cells, best candidate 2/90 bit-exact); the fit continues in T-1531. YIELD with one
-coupon period left is closed form (T-1530).
+by `uv run rustsheet-fitlab yield` (90 cells, best candidate 2/90 bit-exact); the fit continues in T-1533. YIELD with one
+coupon period left is closed form (T-1532).
 probes/fin-argument-modes (excel-graph, 2026-10-11, T-1084). Base rows that miss:
 - 1 to a few ulps off: CUMIPMT H72, DB H88, DDB H95, DURATION H117, INTRATE H139, MDURATION H163, ODDFPRICE H189,
   PRICE H251, YIELDDISC H352.

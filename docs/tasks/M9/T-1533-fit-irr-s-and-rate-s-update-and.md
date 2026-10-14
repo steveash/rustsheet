@@ -1,5 +1,5 @@
 ---
-id: T-1531
+id: T-1533
 title: "Fit IRR's and RATE's update and stop rule, XIRR's XNPV stop test on long spans and a zero first value, and multi-period YIELD"
 milestone: M9
 lane: research
@@ -32,7 +32,7 @@ lab fits from `tools/`: `uv run rustsheet-fitlab irr`, `rate`, `xirr-oos`, `yiel
   regula falsi).
 Hypotheses not tried: a safeguarded Newton in v with a residual stop; Newton on NPV/x^k or on the
 FV form; Excel's PMT-style f for RATE; secant on PRICE from the coupon rate; an XNPV test scaled by
-the span or the derivative. Per-iterate traces need T-1532.
+the span or the derivative. Per-iterate traces need T-1534.
 
 ## Acceptance criteria
 - [ ] Each solver's candidates and their bit-exact and within-4-ulp counts recorded (decision 0056), as lab fits.
@@ -41,4 +41,4 @@ the span or the derivative. Per-iterate traces need T-1532.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Engine changes (T-0916, T-1530).
+- Engine changes (T-0916, T-1532).
