@@ -3,7 +3,7 @@ id: T-1459
 title: "Sheet-qualified defined names parse: Sheet!LocalName"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
