@@ -1,6 +1,7 @@
 use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -53,10 +54,61 @@ pub(crate) const T_DF_MAX: f64 = 1e10;
 /// normal quantile and the A&S 26.7.5 series instead.
 const T_QUANTILE_SERIES_DF: f64 = 1e5;
 
+/// Probabilities below this take the tail path of [`t_tail_quantile`] instead of `statrs`.
+const T_TAIL_P: f64 = 1e-5;
+
+/// Below this `x = df / (df + t^2)` the incomplete beta `I_x(df/2, 1/2)` equals its leading term and
+/// the first correction to better than 1E-16, so the tail quantile has a closed form.
+const T_TAIL_X: f64 = 1e-8;
+
+/// Below this probability the quantile comes from bisection on the cdf, not `statrs`' `inverse_cdf`,
+/// which hangs at 1E-100 for df = 1000 and panics from about 1E-200 (the sweep test covers df 2 to
+/// 9E4). Above it `statrs` is bit-exact with Excel where x is not tiny (`T_DIST.xlsx` `T.INV(0.9999999,10)`).
+const T_STATRS_MIN_P: f64 = 1e-8;
+
+/// Magnitude `t > 0` with `P(T < -t) = q` for a small `q`, `df < T_QUANTILE_SERIES_DF`; bounded time.
+/// Excel gives finite values down to the smallest p it accepts (probes-numeric `t1531-t-tiny-p`:
+/// `T.INV(1E-300,1)` = -3.183098861837907E299). Where `x` is not tiny `statrs` is bit-exact with
+/// Excel (`T_DIST.xlsx` `T.INV(0.9999999,10)`), so it is kept there.
+fn t_tail_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
+    let a = 0.5 * df;
+    // P(T < -t) = I_x(a, 1/2) / 2 with I_x ~ x^a / (a B(a, 1/2)) * (1 + a / (2 (a + 1)) x).
+    let ln_b = ln_gamma(a) + ln_gamma(0.5) - ln_gamma(a + 0.5);
+    let mut ln_x = ((2.0 * q).ln() + a.ln() + ln_b) / a;
+    if ln_x < T_TAIL_X.ln() {
+        let x = ln_x.exp();
+        ln_x -= (a / (2.0 * (a + 1.0)) * x).ln_1p() / a;
+        let x = ln_x.exp();
+        return df.sqrt() * (-0.5 * ln_x).exp() * (1.0 - x).sqrt();
+    }
+    if q >= T_STATRS_MIN_P {
+        return -dist.inverse_cdf(q);
+    }
+    // x is not small and q is tiny: the quantile is moderate, so bisect on the cdf; -cdf(-t) is
+    // increasing in t and -cdf(-t) >= -q exactly when P(T < -t) <= q.
+    bisect_increasing(|t| -dist.cdf(-t), -q, 64)
+}
+
+/// Quantile `t` with `P(T > t) = q`. For a tiny `q`, `1 - q` rounds to 1, so the tail is asked for
+/// directly (T-1531); otherwise this is `t_quantile(1 - q)` as before.
+pub(crate) fn t_upper_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
+    if q < T_TAIL_P {
+        -t_quantile(dist, df, q)
+    } else {
+        t_quantile(dist, df, 1.0 - q)
+    }
+}
+
 /// Quantile of Student's t with `df` degrees of freedom for `p` in (0,1); the time is bounded for
 /// every df up to [`T_DF_MAX`].
 pub(crate) fn t_quantile(dist: &StudentsT, df: f64, p: f64) -> f64 {
     if df < T_QUANTILE_SERIES_DF {
+        // Below the tail threshold `statrs` is fine; above it its inverse saturates (T.INV(1E-10,1)
+        // gives -8.9E7, Excel -3.18E9) and panics from p about 1E-200 (T-1531).
+        let (q, sign) = if p < 0.5 { (p, -1.0) } else { (1.0 - p, 1.0) };
+        if q < T_TAIL_P {
+            return sign * t_tail_quantile(dist, df, q);
+        }
         return dist.inverse_cdf(p);
     }
     let Ok(normal) = Normal::new(0.0, 1.0) else {
@@ -320,8 +372,7 @@ impl Model {
         };
 
         // Two-sided: F(x) = 1 - p/2
-        let target_cdf = 1.0 - p / 2.0;
-        let x = t_quantile(&dist, df, target_cdf);
+        let x = t_upper_quantile(&dist, df, p / 2.0);
 
         if !x.is_finite() {
             return CalcResult::Error {
@@ -643,6 +694,80 @@ impl Model {
             1 => self.fn_t_dist_rt(&args[0..2], cell),
             2 => self.fn_t_dist_2t(&args[0..2], cell),
             _ => CalcResult::new_error(Error::NUM, cell, "TDIST: tails must be 1 or 2".to_string()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{t_quantile, t_upper_quantile};
+    use statrs::distribution::StudentsT;
+
+    // Excel (probes-numeric t1531-t-tiny-p): the Student-t quantile is finite, never an error, for
+    // a tiny p, and statrs' own inverse_cdf panics there. Expected values are Excel's cached values.
+
+    fn dist(df: f64) -> StudentsT {
+        StudentsT::new(0.0, 1.0, df).expect("valid df")
+    }
+
+    fn assert_close(actual: f64, expected: f64) {
+        assert!(
+            (actual / expected - 1.0).abs() < 1e-11,
+            "actual {actual:e}, expected {expected:e}"
+        );
+    }
+
+    #[test]
+    fn tail_asymptotic_matches_excel() {
+        // x = df / (df + t^2) is tiny: the closed-form branch.
+        assert_close(
+            t_quantile(&dist(1.0), 1.0, 1e-300),
+            -3.183_098_861_837_907e299,
+        );
+        assert_close(t_quantile(&dist(1.0), 1.0, 1e-10), -3_183_098_861.837_906_4);
+        assert_close(
+            t_quantile(&dist(5.0), 5.0, 1e-300),
+            -1.568_392_559_099_332e60,
+        );
+        assert_close(t_quantile(&dist(5.0), 5.0, 1e-50), -15_683_925_590.993_399);
+        // The upper tail is the mirror image (T.INV.2T(1E-300,1) = 2 * 3.18E299).
+        assert_close(
+            t_upper_quantile(&dist(1.0), 1.0, 5e-301),
+            6.366_197_723_675_814e299,
+        );
+        // CONFIDENCE.T(1E-300,1,2) = t / sqrt(2).
+        assert_close(
+            t_upper_quantile(&dist(1.0), 1.0, 5e-301) / 2.0_f64.sqrt(),
+            4.501_581_580_785_53e299,
+        );
+    }
+
+    #[test]
+    fn statrs_branch_is_kept_where_it_matches_excel() {
+        // T_DIST.xlsx `T.INV(0.9999999,10)`: bit-exact with statrs.
+        assert_eq!(
+            t_quantile(&dist(10.0), 10.0, 0.999_999_9),
+            12.492_209_688_254_745
+        );
+    }
+
+    #[test]
+    fn bisection_branch_is_bounded() {
+        // x is not tiny and q < 1E-8: bisection on the cdf (T.INV(1E-10,5), 1 ulp from Excel).
+        assert_close(t_quantile(&dist(5.0), 5.0, 1e-10), -156.825_592_708_894_3);
+        // x is not tiny and q < 1E-100: statrs panics here. Excel gives -79.06351062982456; ours is
+        // wrong (the cdf of statrs saturates), so only the bound is pinned (TODO(T-1542)).
+        let t = t_quantile(&dist(99999.0), 99999.0, 1e-300);
+        assert!(t.is_finite() && t < -30.0 && t > -80.0, "{t}");
+    }
+
+    #[test]
+    fn no_panic_across_df_and_p() {
+        for df in [2.0, 10.0, 100.0, 1e3, 1e4, 9e4] {
+            for q in [1e-100, 1e-50, 1e-10, 1e-9, 1e-8, 1e-7, 1e-6, 1e-150, 1e-300] {
+                let t = t_quantile(&dist(df), df, q);
+                assert!(t.is_finite() && t < 0.0, "df {df} q {q}: {t}");
+            }
         }
     }
 }

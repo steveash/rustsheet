@@ -3,7 +3,7 @@ use statrs::distribution::{ContinuousCDF, Normal, StudentsT};
 use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::statistical::special::{normal_cdf, normal_pdf, standard_normal_pdf};
-use crate::functions::statistical::t_dist::{t_quantile, T_DF_MAX};
+use crate::functions::statistical::t_dist::{t_upper_quantile, T_DF_MAX};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -306,7 +306,7 @@ impl Model {
         };
 
         // Two-sided CI => use 1 - alpha/2
-        let t_crit = t_quantile(&t_dist, df, 1.0 - alpha / 2.0);
+        let t_crit = t_upper_quantile(&t_dist, df, alpha / 2.0);
         if !t_crit.is_finite() {
             return CalcResult::Error {
                 error: Error::NUM,

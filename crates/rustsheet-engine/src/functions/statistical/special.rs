@@ -109,6 +109,35 @@ pub(crate) fn standard_normal_pdf(x: f64) -> f64 {
     (-(x * x) / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt()
 }
 
+/// Smallest `x >= 0` with `f(x) >= target` for a non-decreasing `f`, found by doubling a bracket
+/// (at most `max_doublings` times, else `INFINITY`) and then halving it (at most 200 times, the
+/// loop stops early once the midpoint no longer moves). The time is bounded, unlike `statrs`'
+/// `inverse_cdf`, which hangs or panics for extreme arguments (T-1530, T-1531).
+pub(crate) fn bisect_increasing(f: impl Fn(f64) -> f64, target: f64, max_doublings: u32) -> f64 {
+    let mut hi = 1.0_f64;
+    let mut doublings = 0;
+    while f(hi) < target {
+        hi *= 2.0;
+        doublings += 1;
+        if doublings > max_doublings {
+            return f64::INFINITY;
+        }
+    }
+    let mut lo = 0.0_f64;
+    for _ in 0..200 {
+        let mid = 0.5 * (lo + hi);
+        if mid <= lo || mid >= hi {
+            break;
+        }
+        if f(mid) < target {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    0.5 * (lo + hi)
+}
+
 /// ln|Gamma(x)| from the fdlibm/musl `lgamma` (< 1 ulp, exactly 0 at x = 1 and x = 2).
 ///
 /// Excel's cached GAMMALN values are the correctly rounded ones (T-0926 eval evidence:

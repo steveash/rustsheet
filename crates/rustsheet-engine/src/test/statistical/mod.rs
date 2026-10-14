@@ -22,6 +22,7 @@ mod test_fn_poisson;
 mod test_fn_stdev;
 mod test_fn_t_dist;
 mod test_fn_t_test;
+mod test_fn_t_tiny_p;
 mod test_fn_var;
 mod test_fn_weibull;
 mod test_fn_z_test;
