@@ -28,6 +28,11 @@ of a linked workbook"):
 - B38 `SUM(IFERROR(…*1,100))`, B56 `SUMPRODUCT(IFERROR(…*1,100))` 100 and B44 `SUM(…!$A$2:$A$3+0)`
   `#VALUE!` (engine 123, 123, 6): in a legacy formula Excel implicitly intersects the external range
   as it does a range of this workbook. Check how T-1096's legacy parse handles `WrongRangeKind`.
+- Narrow the array-bound DEVIATION (arrays.md, T-1460 review): aggregates that skip blanks
+  (SUM, COUNT, MAX, AVERAGE, ...) could clip any cached area to the cache extent, so
+  `SUM([1]Uses!$A$2:$B$1048576)` gives Excel's value instead of `#ERROR!`; only blank-sensitive
+  readers (TEXTJOIN, CONCAT) need the full shape. Also probe COUNTA over a cached `t="str"` empty
+  string and GCD/LCM over a cached range holding text.
 
 ## Acceptance criteria
 - [ ] The 7 cells pass; `make eval-baseline` records them.
