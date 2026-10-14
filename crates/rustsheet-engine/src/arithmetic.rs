@@ -780,8 +780,6 @@ mod power_tests {
     use super::{divide, extended_product, extended_quotient, power, times};
     use crate::expressions::token::Error;
 
-    // Excel's doubles where rounding 1/r once gives the next double up
-    // (probes-numeric/power-reciprocal-rounding A4, A8, A49, A55, A61, A71, A72; excel-graph).
     // probes-numeric/double-rounding-ops A1 (excel-graph, T-1496): a full-significand product whose
     // single rounding is a different double.
     #[test]
@@ -794,6 +792,8 @@ mod power_tests {
         assert_eq!(extended_product(1e200, 1e200), f64::INFINITY);
     }
 
+    // Excel's doubles where rounding 1/r once gives the next double up
+    // (probes-numeric/power-reciprocal-rounding A4, A8, A49, A55, A61, A71, A72; excel-graph).
     #[test]
     fn division_rounds_twice() {
         let r = 1.0 + 26_955_297_717_044.0 * f64::EPSILON;
