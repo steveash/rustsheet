@@ -125,7 +125,7 @@ Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 Rule: FIXED prints no minus sign when the number rounds to zero at the requested decimals: `FIXED(-2,-1,TRUE)` = "0"
 (`EVEN(-0.0001)` is -2).
 Evidence: gen-m6/f94b5b8236742618 Calc!A24 (excel-graph, 2026-10-09, T-1239).
-Ours: "-0" (the sign is taken from the unrounded value). Other shapes (`FIXED(-0.4,0)`) are UNVERIFIED.
+Implemented in: `fn_fixed` (T-1257): the sign is dropped when the rounded text has no non-zero digit. Further shapes: `FIXED(-0.004,2)` and `FIXED(-0.4,0)` (probes/dollar-fixed-unichar-edges A49, A50).
 Status: VERIFIED (one cell)
 Tasks: T-1257
 
