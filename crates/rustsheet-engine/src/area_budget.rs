@@ -49,13 +49,13 @@ pub(crate) const MAX_SEEN_RANGES: usize = 1 << 16;
 /// Message of the `#VALUE!` for a formula past [`MAX_SEEN_RANGES`].
 pub(crate) const TOO_MANY_SEEN_RANGES: &str = "Too many distinct ranges read";
 
-/// What is left of one formula evaluation's budgets of area pairs ([`MAX_AREA_PAIRS`]), of
-/// union walk steps ([`MAX_AREA_WALK`]) and of seen-empty rectangles ([`MAX_SEEN_RANGES`]). [`Model::with_area_budget`] gives each formula run a
-/// fresh one, so every argument and operand of the formula draws on the same budget, and its
-/// worst-case work does not grow with the number of arguments. Only that call refills it, so
-/// every entry point that starts a formula evaluation (`run_cell_formula`,
-/// `evaluate_outside_cell`) must go through it; a new one that did not would draw on whatever
-/// budget the model holds.
+/// What is left of one formula evaluation's budgets of area pairs ([`MAX_AREA_PAIRS`]), of union
+/// walk steps ([`MAX_AREA_WALK`]) and of seen-empty rectangles ([`MAX_SEEN_RANGES`]).
+/// [`Model::with_area_budget`] gives each formula run a fresh one, so every argument and operand of
+/// the formula draws on the same budget, and its worst-case work does not grow with the number of
+/// arguments. Only that call refills it, so every entry point that starts a formula evaluation
+/// (`run_cell_formula`, `evaluate_outside_cell`) must go through it; a new one that did not would
+/// draw on whatever budget the model holds.
 #[derive(Clone, Copy)]
 pub(crate) struct AreaBudget {
     pairs: usize,
@@ -64,6 +64,24 @@ pub(crate) struct AreaBudget {
     /// Whether a rectangle went unrecorded for want of [`MAX_SEEN_RANGES`]: the formula's value
     /// may then depend on a read the pass does not know of, so it is not used.
     seen_ranges_exceeded: bool,
+}
+
+impl AreaBudget {
+    /// Takes one rectangle from what is left of the budget of [`MAX_SEEN_RANGES`], or, past it,
+    /// marks the formula's run as exceeded ([`Model::with_area_budget`]) and returns `false`: the
+    /// rectangle must not be recorded.
+    pub(crate) fn spend_seen_range(&mut self) -> bool {
+        match self.seen_ranges.checked_sub(1) {
+            Some(left) => {
+                self.seen_ranges = left;
+                true
+            }
+            None => {
+                self.seen_ranges_exceeded = true;
+                false
+            }
+        }
+    }
 }
 
 impl Default for AreaBudget {
@@ -98,23 +116,6 @@ impl Model {
             return CalcResult::new_error(Error::VALUE, cell, TOO_MANY_SEEN_RANGES.to_string());
         }
         result
-    }
-
-    /// Takes one rectangle from what is left of the formula's budget of [`MAX_SEEN_RANGES`], or,
-    /// past it, marks the formula's run as exceeded ([`Self::with_area_budget`]) and returns
-    /// `false`: the rectangle must not be recorded.
-    pub(crate) fn spend_seen_range(&mut self) -> bool {
-        let budget = &mut self.area_budget;
-        match budget.seen_ranges.checked_sub(1) {
-            Some(left) => {
-                budget.seen_ranges = left;
-                true
-            }
-            None => {
-                budget.seen_ranges_exceeded = true;
-                false
-            }
-        }
     }
 
     /// Takes `steps` from what is left of the formula's budget of [`MAX_AREA_WALK`], or gives

@@ -47,6 +47,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::model::Model;
+use crate::seen_ranges::SeenRange;
 use crate::types::{ArrayKind, Cell};
 
 /// The hasher of the maps the evaluation (and the facade's diff) keep about positions. Their
@@ -145,27 +146,6 @@ pub(crate) enum Seen {
 pub(crate) struct SeenRecord {
     pub(crate) empty: Option<CellReferenceIndex>,
     pub(crate) occupied: Option<CellReferenceIndex>,
-}
-
-/// A rectangle read as empty on behalf of `root`, in one go. A function that walks a whole
-/// column or row visits only the sheet's used area; the rest holds nothing, and the formula
-/// depends on it all the same. That remainder is one record, not one per cell.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub(crate) struct SeenRange {
-    pub(crate) root: CellReferenceIndex,
-    pub(crate) sheet: u32,
-    pub(crate) row1: i32,
-    pub(crate) column1: i32,
-    pub(crate) row2: i32,
-    pub(crate) column2: i32,
-}
-
-impl SeenRange {
-    fn contains(&self, (sheet, row, column): CellKey) -> bool {
-        sheet == self.sheet
-            && (self.row1..=self.row2).contains(&row)
-            && (self.column1..=self.column2).contains(&column)
-    }
 }
 
 /// Why the current pass is abandoned. In every case the pass starts again,
@@ -1012,11 +992,9 @@ impl Model {
                 row2,
                 column2,
             };
-            // Only a new rectangle is paid for; past the formula's budget it goes unrecorded and
-            // the formula is `#VALUE!` (`Model::with_area_budget`).
-            if !self.evaluation.seen_ranges.contains(&range) && self.spend_seen_range() {
-                self.evaluation.seen_ranges.push(range);
-            }
+            self.evaluation
+                .seen_ranges
+                .push(range, &mut self.area_budget);
         }
     }
 
