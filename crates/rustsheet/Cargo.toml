@@ -26,3 +26,7 @@ workspace = true
 [[bench]]
 name = "edit"
 harness = false
+
+[[bench]]
+name = "aggregate"
+harness = false

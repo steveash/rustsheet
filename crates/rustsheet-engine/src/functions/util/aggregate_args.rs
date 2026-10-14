@@ -1,0 +1,519 @@
+//! The one walker over an aggregate function's arguments (SPEC-0009,
+//! docs/specs/SPEC-0009-aggregate-argument-walker.md).
+//!
+//! [`Model::walk_aggregate_args`] reads each argument, sorts it by shape (references, arrays,
+//! direct values), walks ranges and arrays, and applies the error-precedence rule of
+//! docs/excel-semantics/syntax.md "Aggregate error precedence". A consumer states how it differs
+//! from the others as an [`AggregatePolicy`]. The number layer
+//! ([`Model::for_each_aggregate_number`]) adds the coercion of the consumers that fold numbers.
+
+use crate::calc_result::CalcResult;
+use crate::expressions::parser::{ArrayNode, Node};
+use crate::expressions::token::Error;
+use crate::expressions::types::CellReferenceIndex;
+use crate::functions::util::{cell_number, coerced_cell_number};
+use crate::model::Model;
+use crate::reference_operators::RefArg;
+
+/// Where an item the walker hands on came from. The coercion rules depend on it.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum ItemSource {
+    /// A direct value: a literal, a computed scalar, a function's value result.
+    Direct,
+    /// A value a reference node gave without areas (a cached cell of a linked workbook). Today
+    /// that is only ever an array or an error, which the walker handles itself, so no consumer
+    /// sees one yet. The rules for it keep the old dispatches' `ReferenceKind` guards.
+    ReferenceValue,
+    /// A cell of a range, reference, union or 3-D span.
+    ReferencedCell,
+    /// An element of an array value.
+    ArrayElement,
+}
+
+/// Where an error inside an array value ranks.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ArrayErrorRank {
+    /// An array error is a direct error: PRODUCT, MIN, MAX and AVERAGE today (UNVERIFIED, T-1439).
+    Direct,
+    /// An array error ranks with referenced errors: SUM (probes/aggregate-error-precedence C50,
+    /// C53–C55, C61, C77).
+    Referenced,
+}
+
+/// How the walker orders the errors it meets.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ErrorRule {
+    /// A direct error returns at once. A referenced error is held and the leftmost wins, so a
+    /// direct error to its right still beats it.
+    Ranked {
+        /// Where an error inside an array ranks.
+        array_errors: ArrayErrorRank,
+    },
+    /// The first error in argument order returns at once (the A-variants; DEVSQ, AVEDEV, SUMSQ).
+    First,
+}
+
+/// What sets one consumer's argument walk apart (SPEC-0009, "Consumer mapping").
+#[derive(Clone, Copy)]
+pub(crate) struct AggregatePolicy {
+    /// How errors are ordered.
+    pub(crate) errors: ErrorRule,
+    /// DEVSQ, AVEDEV, SUMSQ: an empty argument is not an item (TODO(T-0236)).
+    pub(crate) skip_empty_args: bool,
+}
+
+/// How a direct value (and, under `Cast`, a [`ItemSource::ReferenceValue`]) becomes a number.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DirectNumbers {
+    /// Every direct value through `cast_aggregate_arg_to_number` (SUM).
+    Cast,
+    /// A number, boolean, text (`cast_aggregate_arg_to_number`) or empty argument (0); other
+    /// direct values are skipped (the AVERAGE family).
+    CastScalars,
+    /// A number, boolean or text; text that does not cast is `#VALUE!` and an empty argument is
+    /// skipped (AVERAGEA, MAXA, MINA).
+    CastA,
+}
+
+/// How a referenced cell (and, except under [`DirectNumbers::Cast`], a
+/// [`ItemSource::ReferenceValue`]) becomes a number.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CellNumbers {
+    /// Only numbers count ([`cell_number`]).
+    Numbers,
+    /// Text is 0 and TRUE/FALSE 1/0 ([`coerced_cell_number`]; the A-variants).
+    CoercedA,
+}
+
+/// How an array element becomes a number. Booleans in an array are always skipped.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ArrayNumbers {
+    /// Only numbers count.
+    Numbers,
+    /// Text is 0 (AVERAGEA; statistics.md "AVERAGEA, MAXA and MINA over an array").
+    TextZero,
+}
+
+/// The coercion of a number-folding consumer, by source.
+#[derive(Clone, Copy)]
+pub(crate) struct NumberRules {
+    /// Direct values.
+    pub(crate) direct: DirectNumbers,
+    /// Referenced cells.
+    pub(crate) cells: CellNumbers,
+    /// Array elements.
+    pub(crate) array: ArrayNumbers,
+}
+
+/// Error-precedence state across one call's arguments.
+pub(crate) struct AggregateWalk {
+    policy: AggregatePolicy,
+    held: Option<CalcResult>,
+}
+
+impl AggregateWalk {
+    /// A walk with nothing held yet.
+    pub(crate) fn new(policy: AggregatePolicy) -> Self {
+        AggregateWalk { policy, held: None }
+    }
+
+    /// The held referenced error, if any, once every argument is walked.
+    pub(crate) fn finish(self) -> Result<(), CalcResult> {
+        self.held.map_or(Ok(()), Err)
+    }
+
+    /// A referenced error under `Ranked` is held if nothing is held yet (the leftmost wins);
+    /// under `First` it returns at once.
+    fn referenced_error(&mut self, error: CalcResult) -> Result<(), CalcResult> {
+        match self.policy.errors {
+            ErrorRule::Ranked { .. } => {
+                if self.held.is_none() {
+                    self.held = Some(error);
+                }
+                Ok(())
+            }
+            ErrorRule::First => Err(error),
+        }
+    }
+
+    /// An error inside an array. Its `CalcResult` is built only when it is kept or returned, so
+    /// the later errors of a large array cost nothing once one is held.
+    fn array_error(&mut self, error: Error, cell: CellReferenceIndex) -> Result<(), CalcResult> {
+        let value = || CalcResult::Error {
+            error,
+            origin: cell,
+            message: "Error in array".to_string(),
+        };
+        match self.policy.errors {
+            ErrorRule::Ranked {
+                array_errors: ArrayErrorRank::Referenced,
+            } => {
+                if self.held.is_none() {
+                    self.held = Some(value());
+                }
+                Ok(())
+            }
+            _ => Err(value()),
+        }
+    }
+}
+
+/// An array element as an item value, by value so text is moved, not cloned
+/// ([`crate::functions::util::array_node_to_calc_result`] borrows), or its error.
+fn array_item(node: ArrayNode) -> Result<CalcResult, Error> {
+    Ok(match node {
+        ArrayNode::Number(n) => CalcResult::Number(n),
+        ArrayNode::Boolean(b) => CalcResult::Boolean(b),
+        ArrayNode::String(s) => CalcResult::String(s),
+        ArrayNode::Error(error) => return Err(error),
+        ArrayNode::Empty => CalcResult::EmptyCell,
+    })
+}
+
+impl Model {
+    /// Walks every argument of `args` with `policy`, then returns the held error, if any.
+    #[inline]
+    pub(crate) fn walk_aggregate_args<F>(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        policy: AggregatePolicy,
+        mut visit: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
+    {
+        let mut walk = AggregateWalk::new(policy);
+        for arg in args {
+            self.walk_aggregate_arg(arg, cell, &mut walk, &mut visit)?;
+        }
+        walk.finish()
+    }
+
+    /// One argument of a walk, for a consumer with a step of its own before it (the A-variants'
+    /// linked-workbook cells).
+    ///
+    /// Errors never reach `visit`: they follow `walk`'s [`ErrorRule`]. An `Err` from `visit` is a
+    /// direct error and returns at once, whatever the item's source.
+    #[inline]
+    pub(crate) fn walk_aggregate_arg<F>(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+        walk: &mut AggregateWalk,
+        visit: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
+    {
+        if walk.policy.skip_empty_args && matches!(arg, Node::EmptyArgKind) {
+            return Ok(());
+        }
+        // References (also via IF, INDEX, XLOOKUP, TAKE …) arrive as ranges.
+        match self.evaluate_aggregate_arg(arg, cell) {
+            RefArg::Ranges(areas) => {
+                // Once an error is held, later references are not read at all, as before.
+                if walk.held.is_some() {
+                    return Ok(());
+                }
+                // The first error cell ends the walk of these areas; a visitor error is told
+                // apart so it returns at once.
+                let mut visitor_failed = false;
+                let walked =
+                    self.for_each_cell_or_error_in_areas(
+                        &areas,
+                        cell,
+                        |model, value| match value {
+                            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(()),
+                            error @ CalcResult::Error { .. } => Err(error),
+                            value => {
+                                let result = visit(model, ItemSource::ReferencedCell, value);
+                                visitor_failed = result.is_err();
+                                result
+                            }
+                        },
+                    );
+                match walked {
+                    Ok(()) => Ok(()),
+                    Err(error) if visitor_failed => Err(error),
+                    // An error cell, or the walk budget, ranks as a referenced error.
+                    Err(error) => walk.referenced_error(error),
+                }
+            }
+            RefArg::Value(CalcResult::Array(array)) => {
+                for node in array.into_iter().flatten() {
+                    match array_item(node) {
+                        Ok(value) => visit(self, ItemSource::ArrayElement, value)?,
+                        // Under `Referenced` only the first array or referenced error is held;
+                        // under `Direct` an array error beats a held one.
+                        Err(error) => walk.array_error(error, cell)?,
+                    }
+                }
+                Ok(())
+            }
+            RefArg::Value(error @ CalcResult::Error { .. }) => Err(error),
+            RefArg::Value(value) => {
+                let source = if matches!(arg.ungrouped(), Node::ReferenceKind { .. }) {
+                    ItemSource::ReferenceValue
+                } else {
+                    ItemSource::Direct
+                };
+                visit(self, source, value)
+            }
+        }
+    }
+
+    /// Calls `f` with every number `args` give under `policy` and `rules`.
+    #[inline]
+    pub(crate) fn for_each_aggregate_number<F>(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        policy: AggregatePolicy,
+        rules: NumberRules,
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(f64),
+    {
+        self.walk_aggregate_args(args, cell, policy, |model, source, value| {
+            // The hot path: a number in a referenced cell counts under every rule.
+            if let (ItemSource::ReferencedCell, CalcResult::Number(number)) = (source, &value) {
+                f(*number);
+                return Ok(());
+            }
+            if let Some(number) = model.aggregate_number(rules, source, value, cell)? {
+                f(number);
+            }
+            Ok(())
+        })
+    }
+
+    /// The number one item gives under `rules`, `None` when it is skipped.
+    #[inline]
+    pub(crate) fn aggregate_number(
+        &mut self,
+        rules: NumberRules,
+        source: ItemSource,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Option<f64>, CalcResult> {
+        match source {
+            ItemSource::ReferenceValue if rules.direct == DirectNumbers::Cast => {
+                self.cast_aggregate_arg_to_number(value, cell).map(Some)
+            }
+            ItemSource::ReferencedCell | ItemSource::ReferenceValue => match rules.cells {
+                CellNumbers::Numbers => Ok(cell_number(&value)),
+                // A cell holding a range is not a value (the A-variants' walk said so before).
+                CellNumbers::CoercedA if matches!(value, CalcResult::Range { .. }) => Err(
+                    CalcResult::new_error(Error::ERROR, cell, "Unexpected Range".to_string()),
+                ),
+                CellNumbers::CoercedA => Ok(coerced_cell_number(&value)),
+            },
+            ItemSource::ArrayElement => Ok(match value {
+                CalcResult::Number(n) => Some(n),
+                CalcResult::String(_) if rules.array == ArrayNumbers::TextZero => Some(0.0),
+                _ => None,
+            }),
+            ItemSource::Direct => self.direct_aggregate_number(rules.direct, value, cell),
+        }
+    }
+
+    fn direct_aggregate_number(
+        &mut self,
+        direct: DirectNumbers,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Option<f64>, CalcResult> {
+        match (direct, value) {
+            (DirectNumbers::Cast, value) => {
+                self.cast_aggregate_arg_to_number(value, cell).map(Some)
+            }
+            (_, CalcResult::Number(n)) => Ok(Some(n)),
+            (_, CalcResult::Boolean(b)) => Ok(Some(if b { 1.0 } else { 0.0 })),
+            // An empty argument (`AVERAGE(5,)`) counts as 0 (probes/average-value-args F2, F6,
+            // F9, F15, F17).
+            (DirectNumbers::CastScalars, CalcResult::EmptyArg) => Ok(Some(0.0)),
+            (DirectNumbers::CastScalars, value @ CalcResult::String(_)) => {
+                self.cast_aggregate_arg_to_number(value, cell).map(Some)
+            }
+            (DirectNumbers::CastA, CalcResult::String(text)) => {
+                if let Some(error) = Self::aggregate_text_too_long(&text, cell) {
+                    return Err(error);
+                }
+                match self.cast_number(&text) {
+                    Some(parsed) => Ok(Some(parsed)),
+                    None => Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Argument cannot be cast into number".to_string(),
+                    )),
+                }
+            }
+            // Everything else is ignored.
+            _ => Ok(None),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test::util::new_empty_model;
+
+    const RANKED: AggregatePolicy = AggregatePolicy {
+        errors: ErrorRule::Ranked {
+            array_errors: ArrayErrorRank::Direct,
+        },
+        skip_empty_args: false,
+    };
+
+    /// Z1, where every test formula sits.
+    const Z1: CellReferenceIndex = CellReferenceIndex {
+        sheet: 0,
+        row: 1,
+        column: 26,
+    };
+
+    /// A model with `cells` and `formula` in Z1, and the arguments of Z1's call.
+    fn setup(cells: &[(&str, &str)], formula: &str) -> (Model, Vec<Node>) {
+        let mut model = new_empty_model();
+        for (a1, value) in cells {
+            model._set(a1, value);
+        }
+        model._set("Z1", formula);
+        model.evaluate();
+        // Z1's formula is the sheet's last parsed formula.
+        let args = match model.parsed_formulas[0]
+            .last()
+            .map(|(node, _)| node.as_ref())
+        {
+            Some(Node::FunctionKind { args, .. }) => args.clone(),
+            _ => Vec::new(),
+        };
+        (model, args)
+    }
+
+    /// The items the walker hands on for `formula`'s arguments, or the error it returns.
+    fn items(
+        cells: &[(&str, &str)],
+        formula: &str,
+        policy: AggregatePolicy,
+    ) -> Result<Vec<ItemSource>, String> {
+        let (mut model, args) = setup(cells, formula);
+        let mut seen = Vec::new();
+        let walked = model.walk_aggregate_args(&args, Z1, policy, |_, source, _| {
+            seen.push(source);
+            Ok(())
+        });
+        match walked {
+            Ok(()) => Ok(seen),
+            Err(CalcResult::Error { error, .. }) => Err(error.to_string()),
+            Err(_) => Err("not an error value".to_string()),
+        }
+    }
+
+    fn err(text: &str) -> Result<Vec<ItemSource>, String> {
+        Err(text.to_string())
+    }
+
+    #[test]
+    fn a_direct_error_beats_a_held_referenced_error_either_side() {
+        let cells = [("A1", "=NA()")];
+        assert_eq!(items(&cells, "=SUM(A1,1/0)", RANKED), err("#DIV/0!"));
+        assert_eq!(items(&cells, "=SUM(1/0,A1)", RANKED), err("#DIV/0!"));
+        assert_eq!(items(&cells, "=SUM(A1,2)", RANKED), err("#N/A"));
+    }
+
+    #[test]
+    fn the_leftmost_referenced_error_wins_and_ends_the_reading() {
+        let cells = [("A1", "=NA()"), ("A2", "=1/0"), ("A3", "5"), ("B1", "7")];
+        assert_eq!(items(&cells, "=SUM(A1:A3,A2)", RANKED), err("#N/A"));
+        // After the held error neither A3 nor the later range is handed on.
+        let (mut model, args) = setup(&cells, "=SUM(A1:A3,B1)");
+        let mut count = 0;
+        let walked = model.walk_aggregate_args(&args, Z1, RANKED, |_, _, _| {
+            count += 1;
+            Ok(())
+        });
+        assert!(walked.is_err());
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn array_errors_rank_by_policy() {
+        let cells = [("A1", "=NA()")];
+        let referenced = AggregatePolicy {
+            errors: ErrorRule::Ranked {
+                array_errors: ArrayErrorRank::Referenced,
+            },
+            skip_empty_args: false,
+        };
+        assert_eq!(
+            items(&cells, "=SUM({1,#DIV/0!},A1)", referenced),
+            err("#DIV/0!")
+        );
+        assert_eq!(
+            items(&cells, "=SUM(A1,{1,#DIV/0!})", referenced),
+            err("#N/A")
+        );
+        assert_eq!(
+            items(&cells, "=SUM(A1,{1,#DIV/0!})", RANKED),
+            err("#DIV/0!")
+        );
+    }
+
+    #[test]
+    fn first_returns_the_first_error_and_skip_empty_drops_empty_args() {
+        let cells = [("A1", "=NA()")];
+        let first = AggregatePolicy {
+            errors: ErrorRule::First,
+            skip_empty_args: true,
+        };
+        assert_eq!(items(&cells, "=SUM(A1,1/0)", first), err("#N/A"));
+        assert_eq!(items(&[], "=SUM(5,)", first).map(|v| v.len()), Ok(1));
+        assert_eq!(items(&[], "=SUM(5,)", RANKED).map(|v| v.len()), Ok(2));
+    }
+
+    #[test]
+    fn items_come_in_argument_cell_and_element_order() {
+        // A2 is blank and never handed on; an empty range hands on nothing.
+        let cells = [("A1", "1"), ("A3", "x")];
+        assert_eq!(
+            items(&cells, "=SUM(A1:A3,{2,\"y\"},3,C1:C2)", RANKED),
+            Ok(vec![
+                ItemSource::ReferencedCell,
+                ItemSource::ReferencedCell,
+                ItemSource::ArrayElement,
+                ItemSource::ArrayElement,
+                ItemSource::Direct,
+            ])
+        );
+    }
+
+    #[test]
+    fn a_visitor_error_returns_at_once() {
+        let (mut model, args) = setup(&[("A1", "=NA()")], "=SUM(A1,\"x\")");
+        let rules = NumberRules {
+            direct: DirectNumbers::CastScalars,
+            cells: CellNumbers::Numbers,
+            array: ArrayNumbers::Numbers,
+        };
+        let walked = model.for_each_aggregate_number(&args, Z1, RANKED, rules, |_| {});
+        assert!(matches!(
+            walked,
+            Err(CalcResult::Error {
+                error: Error::VALUE,
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn an_empty_array_element_is_handed_on() {
+        assert_eq!(
+            items(&[("B1", "")], "=SUM(IFERROR(B1:B2,1),{1})", RANKED).map(|v| v.len()),
+            Ok(3)
+        );
+    }
+}

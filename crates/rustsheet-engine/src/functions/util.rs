@@ -14,6 +14,28 @@ use crate::{
     reference_operators::{Picked, RefArg},
 };
 
+pub(crate) mod aggregate_args;
+
+/// The number a referenced cell gives an aggregate: numbers count, booleans, text and empty cells
+/// are skipped (SPEC-0009 `CellNumbers::Numbers`).
+pub(crate) fn cell_number(value: &CalcResult) -> Option<f64> {
+    match value {
+        CalcResult::Number(value) => Some(*value),
+        _ => None,
+    }
+}
+
+/// The number a referenced cell gives the A functions (VARA, AVERAGEA, MAXA, ...): text counts
+/// as 0, TRUE/FALSE as 1/0, empty cells are skipped (SPEC-0009 `CellNumbers::CoercedA`).
+pub(crate) fn coerced_cell_number(value: &CalcResult) -> Option<f64> {
+    match value {
+        CalcResult::Number(value) => Some(*value),
+        CalcResult::String(_) => Some(0.0),
+        CalcResult::Boolean(value) => Some(if *value { 1.0 } else { 0.0 }),
+        _ => None,
+    }
+}
+
 /// Converts a single array element into a scalar [`CalcResult`].
 pub(crate) fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
     match node {
@@ -746,8 +768,7 @@ impl Model {
         F: FnMut(f64),
     {
         self.for_each_cell_in_areas(areas, cell, |_, value| {
-            // Booleans, text and empty cells in a reference are ignored.
-            if let CalcResult::Number(value) = value {
+            if let Some(value) = cell_number(&value) {
                 f(value);
             }
             Ok(())
@@ -767,11 +788,8 @@ impl Model {
         F: FnMut(f64),
     {
         self.for_each_cell_in_areas(areas, cell, |_, value| {
-            match value {
-                CalcResult::Number(value) => f(value),
-                CalcResult::String(_) => f(0.0),
-                CalcResult::Boolean(value) => f(if value { 1.0 } else { 0.0 }),
-                _ => {}
+            if let Some(value) = coerced_cell_number(&value) {
+                f(value);
             }
             Ok(())
         })
