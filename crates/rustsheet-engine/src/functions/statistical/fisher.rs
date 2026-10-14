@@ -1,6 +1,7 @@
 use statrs::distribution::{Continuous, ContinuousCDF, FisherSnedecor};
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::statistical::special::bisect_increasing;
 use crate::functions::statistical::t_dist::sample_var;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -32,30 +33,8 @@ fn f_quantile(dist: &FisherSnedecor, df1: f64, df2: f64, p: f64) -> f64 {
     if p >= 1.0 {
         return f64::INFINITY;
     }
-    let mut hi = 1.0_f64;
-    let mut doublings = 0;
-    while dist.cdf(hi) < p {
-        hi *= 2.0;
-        doublings += 1;
-        // 2^1100 is past the f64 range, so a quantile not bracketed by then is infinite.
-        if doublings > 1100 {
-            return f64::INFINITY;
-        }
-    }
-    let mut lo = 0.0_f64;
-    // 200 halvings exceed the f64 precision; the loop also stops when mid no longer moves.
-    for _ in 0..200 {
-        let mid = 0.5 * (lo + hi);
-        if mid <= lo || mid >= hi {
-            break;
-        }
-        if dist.cdf(mid) < p {
-            lo = mid;
-        } else {
-            hi = mid;
-        }
-    }
-    0.5 * (lo + hi)
+    // 2^1100 is past the f64 range, so a quantile not bracketed by then is infinite.
+    bisect_increasing(|x| dist.cdf(x), p, 1100)
 }
 
 impl Model {
