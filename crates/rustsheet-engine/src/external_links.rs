@@ -5,7 +5,7 @@
 //! data is `#BLOCKED!`").
 
 use crate::{
-    calc_result::CalcResult,
+    calc_result::{CalcResult, Range},
     cast::calc_result_to_array_node,
     cell::spill_value_to_calc_result,
     constants::{LAST_COLUMN, LAST_ROW},
@@ -15,6 +15,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     external_reference::{external_area, external_blocked, ExternalArea},
+    implicit_intersection::implicit_intersection,
     limits::check_array_size,
     types::{DefinedName, SpillValue},
     utils::ParsedReference,
@@ -205,6 +206,41 @@ impl Model {
         }
     }
 
+    /// `@` of a written range of a linked workbook whose cache the workbook holds: the cached
+    /// value of the one cell it implicitly intersects at `cell`, as for a range of this workbook,
+    /// and `#VALUE!` when none (a legacy `=SUM([1]Uses!$A$2:$A$3+0)` in row 44 is `#VALUE!`;
+    /// fixtures/external-link-cached-ranges Refs!B44, T-1526). `None` for any other node, which
+    /// the caller evaluates as usual.
+    pub(crate) fn cached_external_at(
+        &self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        if !matches!(node.ungrouped(), Node::WrongRangeKind { .. }) {
+            return None;
+        }
+        let area = self.cached_external_area(node, cell)?;
+        let sheet = area.cache?;
+        // Intersected in the area's own coordinates, as a range of another sheet is.
+        let corner = |row, column| CellReferenceIndex {
+            sheet: cell.sheet,
+            row,
+            column,
+        };
+        let range = Range {
+            left: corner(area.first_row, area.first_column),
+            right: corner(area.last_row, area.last_column),
+        };
+        Some(match implicit_intersection(&cell, &range) {
+            Some(picked) => self.cached_value(sheet, picked.row, picked.column, cell),
+            None => CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Error with Implicit Intersection".to_string(),
+            ),
+        })
+    }
+
     /// The rows and columns of `sheet` its cached cells span, `None` when it holds none.
     fn cached_extent(&self, sheet: CachedSheet) -> Option<ExternalArea> {
         let book = self.workbook.external_books.get(sheet.book)?;
@@ -265,6 +301,27 @@ impl Model {
             rows = vec![rows.into_iter().flatten().collect()];
         }
         CalcResult::Array(rows)
+    }
+
+    /// The cells of `node`, when it is a reference into a linked workbook
+    /// ([`Model::external_reference`]), as an aggregate reads them
+    /// ([`Model::external_aggregate_value`]) in one row: `SUBTOTAL(9,[1]Uses!$A$1:$B$3)` is 15,
+    /// `RANK(5,…)` 2 (fixtures/external-link-cached-ranges Refs!B59, B71). `Err` holds what it
+    /// gives instead (`#BLOCKED!` with no cache, an operand's error); `None` when `node` is no
+    /// such reference, and then nothing in it was evaluated.
+    pub(crate) fn external_reference_cells(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<Result<Vec<ArrayNode>, CalcResult>> {
+        let areas = match self.external_reference(node, cell)? {
+            Ok(areas) => areas,
+            Err(error) => return Some(Err(error)),
+        };
+        Some(match self.external_aggregate_value(&areas, cell) {
+            CalcResult::Array(rows) => Ok(rows.into_iter().flatten().collect()),
+            other => Err(other),
+        })
     }
 
     /// How many cells of `areas` the cache holds a value for, as COUNTA counts the non-empty
