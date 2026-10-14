@@ -14,6 +14,7 @@ depends_on: [T-0914, T-1005]
 Remaining ulp-level mismatches in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx` after T-0914: ASINH 12, ACOTH 14, ATANH 4, ACOSH 3, COTH ~14, CSCH ~9, COT 17, plus TANH at x = 0.00625, 0.123, 0.604.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 12 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 T-0914 found SINH/COSH/TANH fit exp formulas (see `docs/excel-semantics/numbers.md`). COTH/CSCH did NOT fit the same building blocks: exp-based COTH/CSCH regressed COTH_CSCH_SECH!B10, B47, C54 which libm matches, so Excel's formulation there differs per range. Use `/tmp`-style throwaway fitting over the cached cells (parse the xlsx sheets), try log1p/sqrt based inverse forms, and keep only per-function variants with 0 regressions.
 
 **Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the

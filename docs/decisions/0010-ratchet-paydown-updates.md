@@ -59,5 +59,7 @@
   (`check_duplication.py --update`); financial_bonds.rs 1367 → 1310 lines (the coupon day counts and the 1904
   broken-schedule helpers moved to `financial/dates.rs`), and xlsx import/worksheets.rs, already shrunk on main
   (`check_file_size.py --update`).
+  T-1523: duplicated lines 6587 → 6522 (the oracle CLI's case discovery moved to
+  `snapshot.suite_cases`, shared with the fit lab) (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

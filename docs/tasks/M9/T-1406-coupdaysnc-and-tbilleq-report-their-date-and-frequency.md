@@ -15,6 +15,7 @@ COUPDAYSNC (and the coupon and T-bill functions that share its argument checks, 
 frequency or date order as `#NUM!` before a later argument's error value or non-numeric text, as Excel does.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 15 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 T-1289's gen-m9 suite (excel-graph sidecars, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
 - gen-m9/0c7fc447bc2eebfd Calc!A24 `=COUPDAYSNC(37342,46362,ROUND(Data!$E$4,10),(FLOOR(Data!C3,Data!E$9)+(Data!E11/Data!A9)))`:
   frequency -0.0001 (invalid), basis `#DIV/0!` (E11/A9 = 0.1/0). Excel `#NUM!`, engine `#DIV/0!`.

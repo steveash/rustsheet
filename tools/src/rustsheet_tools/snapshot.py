@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -37,6 +38,52 @@ def _eval_json(*args: str) -> dict[str, Any]:
     out = subprocess.run([str(eval_binary()), *args], check=True, capture_output=True, text=True)
     data: dict[str, Any] = json.loads(out.stdout)
     return data
+
+
+def suite_cases(suite: str) -> list[dict[str, Any]]:
+    """The suite's cases as the harness discovers them (`rustsheet-eval cases`, see main.rs):
+    one entry per case with its `id`, case `path` and oracle `sidecar` path."""
+    out = subprocess.run(
+        [str(eval_binary()), "--root", str(repo_root()), "cases", suite],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    cases: list[dict[str, Any]] = json.loads(out.stdout)
+    return cases
+
+
+_SHOW_FIELD = re.compile(r"^    (formula|expected|actual)\s*: ?(.*)$")
+_SHOW_CELL = re.compile(r"^(\S+)\s+(\S+)$")
+
+
+def parse_show(text: str) -> dict[str, dict[str, str]]:
+    """Parses `rustsheet-eval show --all` output: cell key (`Sheet!A1`) → `verdict`, `formula`,
+    `expected` and `actual`, each exactly as printed (numbers in Rust's shortest round-trip form,
+    which `float()` reads back exactly)."""
+    cells: dict[str, dict[str, str]] = {}
+    current: dict[str, str] | None = None
+    for line in text.splitlines()[1:]:  # the first line is the case summary
+        if field := _SHOW_FIELD.match(line):
+            if current is not None:
+                current[field.group(1)] = field.group(2)
+        elif cell := _SHOW_CELL.match(line):
+            current = cells.setdefault(cell.group(1), {"verdict": cell.group(2)})
+        else:
+            current = None  # e.g. the `message:` line
+    return cells
+
+
+def show_cells(case_id: str) -> dict[str, dict[str, str]]:
+    """The engine's current result for every scored cell of `case_id` (e.g.
+    `probes-numeric/t1040-erfc.case.json`), from `rustsheet-eval show --all` (see `parse_show`)."""
+    out = subprocess.run(
+        [str(eval_binary()), "--root", str(repo_root()), "show", case_id, "--all"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return parse_show(out.stdout)
 
 
 def snapshot(xlsx: Path) -> dict[str, Any]:

@@ -14,6 +14,7 @@ depends_on: []
 `SQRT(5)^n` (and `(0.2^-0.5)^n`, `POWER(SQRT(5),n)`) gives Excel's double for integer n.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 13 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 T-0221 probe probes-numeric/power-integer-full-mantissa (excel-graph, 2026-10-13): right-to-left
 square-and-multiply (numbers.md "Integer exponents") matches every cell of 7 full-significand
 bases (pi, e, 1.1, 1/3, 0.7, SQRT(2), 1.0000001) at 19 exponents 3..255, but only 2 of the 38

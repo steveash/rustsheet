@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 
+from rustsheet_tools import snapshot
 from rustsheet_tools.oracle import cli
 
 
@@ -19,10 +20,10 @@ def test_suite_cases_come_from_the_harness(monkeypatch: pytest.MonkeyPatch, tmp_
         seen.append(cmd)
         return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(listing))
 
-    monkeypatch.setattr(cli, "repo_root", lambda: tmp_path)
-    monkeypatch.setattr(cli, "eval_binary", lambda: Path("rustsheet-eval"))
-    monkeypatch.setattr(cli.subprocess, "run", fake_run)
-    assert cli._suite_cases("s") == listing
+    monkeypatch.setattr(snapshot, "repo_root", lambda: tmp_path)
+    monkeypatch.setattr(snapshot, "eval_binary", lambda: Path("rustsheet-eval"))
+    monkeypatch.setattr(snapshot.subprocess, "run", fake_run)
+    assert snapshot.suite_cases("s") == listing
     assert seen == [["rustsheet-eval", "--root", str(tmp_path), "cases", "s"]]
 
 

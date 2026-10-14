@@ -1,0 +1,256 @@
+"""ERFC: the fit lab's worked example (T-1523), and the home of the T-1187 candidates.
+
+Two fits over the T-1040 sweeps (probes-numeric/t1040-erfc and t1040-erfc-precise, excel-graph):
+
+- `erfc`: every numeric cell of both sweeps (ERFC and ERFC.PRECISE, x in -6..27), scoring the
+  engine against libm `math.erfc` and `1 - math.erf`.
+- `erfc-tail`: the T-1187 grid, ERFC(x) for x >= 1 where Excel is not 0 (205 cells), scoring the
+  continued-fraction, Lentz and Numerical Recipes formulations of the core factor
+  K = sqrt(pi) erfc(x) exp(x^2) that docs/research/t1187-erfc-candidates.py tried (moved here;
+  results in docs/excel-semantics/statistics.md "ERFC core factor"). Each is plain IEEE double
+  (Python floats; `math.exp` is the platform libm, glibc on the agent containers).
+"""
+
+from __future__ import annotations
+
+import math
+import sys
+from collections.abc import Callable
+
+from rustsheet_tools.fitlab.fit import Fit
+from rustsheet_tools.fitlab.score import Candidate, candidate
+from rustsheet_tools.fitlab.sweep import Cell
+
+SQPI = math.sqrt(math.pi)
+ISQPI = 1 / SQPI
+EPS = sys.float_info.epsilon
+FPMIN = sys.float_info.min / EPS
+TINY = 1e-300
+DEPTHS = [*range(5, 80), 100, 150, 200, 300, 500, 1000]
+TOLERANCES = [EPS, 2 * EPS, 3e-16, 5e-16, 1e-16, 1e-15, 1e-14]
+CASES = ["probes-numeric/t1040-erfc"]
+PATTERN = r"^=ERFC(?:\.PRECISE)?\((.*)\)$"
+
+
+# Continued fractions for K = sqrt(pi) * erfc(x) * exp(x^2), evaluated bottom-up to depth n.
+def bu_half(x: float, n: int) -> float:
+    t = x
+    for k in range(n, 0, -1):
+        t = x + (k / 2) / t
+    return 1 / t
+
+
+def bu_half_mul(x: float, n: int) -> float:
+    t = x
+    for k in range(n, 0, -1):
+        t = x + k * 0.5 / t
+    return 1 / t
+
+
+def bu_half_div(x: float, n: int) -> float:
+    t = x
+    for k in range(n, 0, -1):
+        t = x + k / (2 * t)
+    return 1 / t
+
+
+def bu_even(x: float, n: int) -> float:
+    z = 2 * x * x
+    t = z + 1 + 4 * n
+    for k in range(n, 0, -1):
+        t = z + 1 + 4 * (k - 1) - (2 * k - 1) * (2 * k) / t
+    return 2 * x / t
+
+
+def bu_laplace(x: float, n: int) -> float:
+    z = x * x
+    t = z + 0.5 + 2 * n
+    for k in range(n, 0, -1):
+        t = z + 0.5 + 2 * (k - 1) - (2 * k - 1) * k / 2 / t
+    return x / t
+
+
+def _lentz(start: float, a: Callable[[int], float], b: Callable[[int], float], eps: float) -> float:
+    """Modified Lentz, top-down: start + a(1)/(b(1) + a(2)/(b(2) + ...)) to tolerance `eps`."""
+    f = c = start
+    d = 0.0
+    for k in range(1, 5000):
+        d = b(k) + a(k) * d
+        d = 1 / (d or TINY)
+        c = b(k) + a(k) / c
+        c = c or TINY
+        delta = c * d
+        f *= delta
+        if abs(delta - 1) < eps:
+            break
+    return f
+
+
+# The same fractions top-down (modified Lentz) to a tolerance.
+def lentz_half(x: float, eps: float) -> float:
+    return 1 / _lentz(x, lambda k: k / 2, lambda _: x, eps)
+
+
+def lentz_even(x: float, eps: float) -> float:
+    z = 2 * x * x
+    return 2 * x / _lentz(z + 1, lambda k: -(2 * k - 1) * (2 * k), lambda k: z + 1 + 4 * k, eps)
+
+
+Combine = Callable[[float, float], float]
+# e = exp(-x*x), k = the fraction; orders of applying 1/sqrt(pi).
+MUL_FORMS: dict[str, Combine] = {
+    "e*k/SQPI": lambda e, k: e * k / SQPI,
+    "e*k*ISQPI": lambda e, k: e * k * ISQPI,
+    "e*(k*ISQPI)": lambda e, k: e * (k * ISQPI),
+    "e*(k/SQPI)": lambda e, k: e * (k / SQPI),
+    "e/SQPI*k": lambda e, k: e / SQPI * k,
+    "e*ISQPI*k": lambda e, k: e * ISQPI * k,
+    "k/SQPI*e": lambda e, k: k / SQPI * e,
+}
+# big = exp(x*x), divided out instead.
+DIV_FORMS: dict[str, Combine] = {
+    "k/big/SQPI": lambda big, k: k / big / SQPI,
+    "k/(big*SQPI)": lambda big, k: k / (big * SQPI),
+    "k*ISQPI/big": lambda big, k: k * ISQPI / big,
+    "k/SQPI/big": lambda big, k: k / SQPI / big,
+    "(1/big)*k/SQPI": lambda big, k: (1 / big) * k / SQPI,
+    "(1/big)*(k*ISQPI)": lambda big, k: (1 / big) * (k * ISQPI),
+    "k/(SQPI*big)": lambda big, k: k / (SQPI * big),
+}
+
+
+# Numerical Recipes: erfc(x) = Q(1/2, x^2), continued fraction (gcf) or series (gser).
+def gammln_nr2(xx: float) -> float:
+    cof = [
+        76.18009172947146,
+        -86.50532032941677,
+        24.01409824083091,
+        -1.231739572450155,
+        0.1208650973866179e-2,
+        -0.5395239384953e-5,
+    ]
+    y = xx
+    tmp = xx + 5.5
+    tmp -= (xx + 0.5) * math.log(tmp)
+    series = 1.000000000190015
+    for c in cof:
+        y += 1
+        series += c / y
+    return -tmp + math.log(2.5066282746310005 * series / xx)
+
+
+def nr_erfc(x: float, gln: float, eps: float) -> float:
+    a, xx = 0.5, x * x
+    prefactor = math.exp(-xx + a * math.log(xx) - gln)
+    if xx < a + 1:
+        ap, total = a, 1 / a
+        term = total
+        while abs(term) >= abs(total) * eps:
+            ap += 1
+            term *= xx / ap
+            total += term
+        return 1 - total * prefactor
+    b = xx + 1 - a
+    c, d = 1 / FPMIN, 1 / b
+    h = d
+    for i in range(1, 1000):
+        an = -i * (i - a)
+        b += 2
+        d = an * d + b
+        d = d if abs(d) >= FPMIN else FPMIN
+        c = b + an / c
+        c = c if abs(c) >= FPMIN else FPMIN
+        d = 1 / d
+        delta = d * c
+        h *= delta
+        if abs(delta - 1) < eps:
+            break
+    return prefactor * h
+
+
+def _x(fn: Callable[[float], float]) -> Callable[..., float]:
+    """ERFC's one argument as a float (the sweep's literals parse as floats)."""
+
+    def call(x: float | bool | str | list[float | bool | str | None] | None) -> float:
+        if not isinstance(x, float):
+            msg = f"ERFC argument {x!r}"
+            raise TypeError(msg)
+        return fn(x)
+
+    return call
+
+
+def libm_candidates() -> list[Candidate]:
+    return [
+        candidate("math.erfc", _x(math.erfc), "libm"),
+        candidate("1 - math.erf", _x(lambda x: 1 - math.erf(x)), "libm"),
+    ]
+
+
+def _bottom_up(
+    cf: Callable[[float, int], float], n: int, g: Combine, sign: float
+) -> Callable[[float], float]:
+    return lambda x: g(math.exp(sign * x * x), cf(x, n))
+
+
+def _top_down(cf: Callable[[float, float], float], eps: float, g: Combine) -> Callable[[float], float]:
+    return lambda x: g(math.exp(-x * x), cf(x, eps))
+
+
+def _nr(gln: float, eps: float) -> Callable[[float], float]:
+    return lambda x: nr_erfc(x, gln, eps)
+
+
+def t1187_candidates() -> list[Candidate]:
+    """Every T-1187 configuration (about 5,800), grouped in its four families. `sign` -1 is
+    exp(-x*x) (as `-x * x`, exactly), +1 is exp(x*x)."""
+    out = libm_candidates()
+    bottom_up = [bu_half, bu_half_mul, bu_half_div, bu_even, bu_laplace]
+    for family, forms, sign in (
+        ("bottom-up, * exp(-x*x)", MUL_FORMS, -1.0),
+        ("bottom-up, / exp(x*x)", DIV_FORMS, 1.0),
+    ):
+        out += [
+            candidate(f"{cf.__name__} n={n} {label}", _x(_bottom_up(cf, n, g, sign)), family)
+            for cf in bottom_up
+            for n in DEPTHS
+            for label, g in forms.items()
+        ]
+    out += [
+        candidate(f"{cf.__name__} eps={t:.3g} {label}", _x(_top_down(cf, t, g)), "Lentz, * exp(-x*x)")
+        for cf in (lentz_half, lentz_even)
+        for t in TOLERANCES
+        for label, g in MUL_FORMS.items()
+    ]
+    glns = {"exact": 0.5723649429247001, "NR2": gammln_nr2(0.5), "lgamma": math.lgamma(0.5)}
+    out += [
+        candidate(f"nr_erfc gln={name} eps={t:.3g}", _x(_nr(gl, t)), "NR incomplete gamma")
+        for name, gl in glns.items()
+        for t in [*TOLERANCES, 3e-7]
+    ]
+    return out
+
+
+def _tail(cell: Cell) -> bool:
+    """The T-1187 grid: x >= 1 and Excel's value is not 0."""
+    x = cell.args[0] if cell.args else None
+    return isinstance(x, float) and x >= 1 and cell.expected != 0
+
+
+FITS = [
+    Fit(
+        name="erfc",
+        description="ERFC and ERFC.PRECISE over x in -6..27 (T-1040 sweeps): engine vs libm",
+        cases=[*CASES, "probes-numeric/t1040-erfc-precise"],
+        pattern=PATTERN,
+        candidates=libm_candidates,
+    ),
+    Fit(
+        name="erfc-tail",
+        description="ERFC(x), x >= 1, Excel non-zero (the T-1187 grid): the T-1187 core-factor candidates",
+        cases=CASES,
+        pattern=PATTERN,
+        candidates=t1187_candidates,
+        where=_tail,
+    ),
+]

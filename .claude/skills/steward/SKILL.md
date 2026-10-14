@@ -9,7 +9,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   table shows APPROVE from every applicable reviewer, (c) the branch is up to date with `main`.
   Check (c) mechanically right before every merge call (decision 0028): `git fetch origin main
   <branch>`, then `git merge-base --is-ancestor origin/main origin/<branch>`, and pass that same
-  `origin/<branch>` sha as `expectedHeadSha`. If it fails, `main` moved since
+  `origin/<branch>` sha as `expectedHeadSha`. In a shallow clone the check can fail for want of
+  history, not because `main` moved: deepen first (`git fetch --unshallow origin`, or `git fetch
+  --deepen=500 origin main <branch>`), never reset (decision 0055). If it fails, `main` moved since
   the last CI run, and the green CI does not cover the merged result. GitHub's `mergeable_state:
   clean` only means "no textual conflict", and two PRs that each add `T-0129` (or decision `0026`)
   never conflict textually. Merge `origin/main` in, run `make check`, push, and merge only after
@@ -99,5 +101,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
   explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
+- **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision 0056)"
+  is not reopened when its dependencies land, only when a new hypothesis is recorded there.
 - **Stuck**: after 3 failed fix attempts on the same failure, mark the task blocked with details,
   leave the PR as draft, and move on. Do not leave `main` red: if a merge broke `main`, revert first.

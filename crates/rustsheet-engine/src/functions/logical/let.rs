@@ -235,6 +235,9 @@ impl Model {
         if !is_span && !is_picked && !self.is_multi_area(node) {
             // An INDEX that picks one cell stays a reference, `@INDEX(..)` too (probes/let-bind-implicit-index
             // H1:H9, T-1503): `eval_ref_or_index` owns that rule.
+            if let Some(picked) = self.eval_at_picked_reference(node, cell) {
+                return Binding::Value(picked);
+            }
             return Binding::Value(self.eval_ref_or_index(node, cell));
         }
         match self.evaluate_picked_reference_arg(node, cell) {

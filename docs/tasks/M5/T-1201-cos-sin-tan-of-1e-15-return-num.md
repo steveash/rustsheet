@@ -14,6 +14,7 @@ depends_on: []
 COS (and, once probed, SIN/TAN) of a huge argument such as 1E+15 return Excel's `#NUM!`.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 6 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 From T-1192's gen-m5 run (excel-graph oracle): `COS(1E+15)` is `#NUM!` in Excel; the engine computes a number. Failing cells: gen-m5/c2ce66769f6cc566 Calc!A32 and gen-m5/065c0542a4ce3d1c Calc!A26 (the error propagates before other errors). First probe the threshold and SIN/TAN/COT/SEC/CSC behavior with the `excel-probe` skill and record it in docs/excel-semantics/numbers.md.
 
 More cells (T-1239's gen-m6 suite, excel-graph, 2026-10-09): gen-m6/3ee7ffc8d6ab061f Calc!A2
