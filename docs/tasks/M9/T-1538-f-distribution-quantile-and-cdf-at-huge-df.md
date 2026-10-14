@@ -18,6 +18,7 @@ T-1530 bounded the quantile (bisection on the `statrs` cdf, `f_quantile` in `fun
 
 ## Acceptance criteria
 - [ ] `t1530-f-df-cut` cells A1-A14 and A57-A58 pass bit-exact or the residual is recorded as a DEVIATION.
+- [ ] Cells at df 99999, 1E5 and 1E6 with extreme p (1E-12, 1-1E-12) are probed, to justify the bisection switch-over (`F_QUANTILE_BISECT_DF`).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
