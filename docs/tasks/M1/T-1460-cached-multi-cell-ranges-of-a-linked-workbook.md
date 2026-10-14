@@ -44,7 +44,8 @@ hold the cached values: aggregates skip text, booleans and blanks (a one-cell `S
 text is now 0), COUNTA counts cached cells, lookups/INDEX/IS* read the values, and COUNTIF, SUMIF,
 SUMIFS and COUNTBLANK are `#VALUE!` (so `COUNTBLANK` of a cached cell changed from 1 to `#VALUE!`).
 Engine: `ExternalArea` carries its cache (`CachedSheet`); `external_links.rs` reads values for value
-contexts, INDEX and aggregates (clipped to the cached extent only when the area is bigger than the
-cache). references.md and the fixtures README record the findings.
-Eval delta: new case 74/82 passing; 8 new-coverage known failures (TYPE, SUBTOTAL, AGGREGATE, RANK,
-AVERAGEA, legacy implicit intersection) filed as T-1526; 0 regressions elsewhere.
+contexts, INDEX, aggregates and RANK; only a whole column or row is cut to the cached extent
+(engine bound), and a union's cells are capped together. SUBTOTAL returns one `#VALUE!` for now. references.md and the fixtures README record the findings.
+Eval delta: new case 75/82 passing; 7 new-coverage known failures (TYPE, SUBTOTAL, AGGREGATE,
+AVERAGEA, legacy implicit intersection) filed as T-1526; 0 regressions elsewhere. Follow-up
+T-0423 (per-sheet cache index, Phase 2).

@@ -217,6 +217,18 @@ impl Model {
             match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Ranges(ranges) => resolved.push(ranges),
                 RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
+                // A cached range of another workbook reads as an array here; Excel sums it as a
+                // reference (fixtures/external-link-cached-ranges Refs!B59 is 15). Until that is
+                // matched (TODO(T-1526)), it is one `#VALUE!`, not an array that would spill.
+                RefArg::Value(CalcResult::Array(_))
+                    if self.external_reference(arg, cell).is_some() =>
+                {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "SUBTOTAL of a cached external range".to_string(),
+                    ))
+                }
                 RefArg::Value(CalcResult::Array(rows)) => return Err(not_a_reference_array(rows)),
                 RefArg::Value(_) => {
                     return Err(CalcResult::new_error(

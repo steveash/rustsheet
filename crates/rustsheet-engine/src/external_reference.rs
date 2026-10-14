@@ -20,6 +20,11 @@ use crate::{
     },
 };
 
+/// `#BLOCKED!`, what a cell of another workbook reads when the engine holds no cache for it.
+pub(crate) fn external_blocked(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::BLOCKED, cell, "External reference".into())
+}
+
 /// The rows and columns a reference into another workbook covers, absolute and in order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ExternalArea {
@@ -124,10 +129,9 @@ impl ExternalArea {
     /// probes/external-ref-no-link A2, external-ref-no-link-index C1:D5). An area past the
     /// array bound is that bound's error (CLAUDE.md directive 5).
     pub(crate) fn blocked_value(self, cell: CellReferenceIndex) -> CalcResult {
-        let blocked = || CalcResult::new_error(Error::BLOCKED, cell, "External reference".into());
         let (rows, columns) = self.extent();
         if (rows, columns) == (1, 1) {
-            return blocked();
+            return external_blocked(cell);
         }
         if let Some((error, message)) = check_array_size(rows, columns) {
             return CalcResult::new_error(error, cell, message);

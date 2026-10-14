@@ -92,6 +92,11 @@ fn cached_ranges_read_as_references() {
         "15"
     );
     assert_eq!(eval(&mut model, "=SUM([1]Uses!$C$1:$D$4)"), "0");
+    // An area past the cached cells keeps its blanks; only whole columns and rows are cut.
+    assert_eq!(
+        eval(&mut model, "=TEXTJOIN(\"|\",FALSE,[1]Uses!$B$1:$B$5)"),
+        "10|5|||"
+    );
     // An error in the range is the aggregate's error.
     assert_eq!(eval(&mut model, "=SUM([1]Uses!$A$1:$B$3)"), "#DIV/0!");
     // Lookups and INDEX read the cached values.
@@ -218,4 +223,17 @@ fn local_name_does_not_shadow_a_linked_name() {
         .update_defined_name("Missing", None, "Renamed", None, "Sheet1!$A$1")
         .unwrap();
     assert_eq!(model._get_formula("C1"), "=[1]!Missing");
+}
+
+// A sparse cache (A1 and the last row) makes a whole column span the grid: a union of such
+// columns must stay within the array bound, not allocate a column per area (directive 5).
+#[test]
+fn union_of_sparse_whole_columns_is_bounded() {
+    let mut model = linked();
+    model.workbook.external_books[0]
+        .cells
+        .insert((0, 1_048_576, 1), SpillValue::Number(1.0));
+    assert_eq!(eval(&mut model, "=COUNT([1]Uses!$A:$A)"), "1");
+    let columns = ["[1]Uses!$A:$A"; 8].join(",");
+    assert_eq!(eval(&mut model, &format!("=SUM(({columns}))")), "#VALUE!");
 }

@@ -8,12 +8,13 @@ use crate::{
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
     cell::spill_value_to_calc_result,
+    constants::{LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
-    external_reference::{external_area, ExternalArea},
+    external_reference::{external_area, external_blocked, ExternalArea},
     limits::check_array_size,
     types::{DefinedName, SpillValue},
     utils::ParsedReference,
@@ -230,9 +231,8 @@ impl Model {
 
     /// The cells of `areas` an aggregate reads, as reference cells: an array that skips text,
     /// booleans and blanks where SUM, COUNT, AVERAGE, MAX and the like skip them in a range
-    /// (`SUM([1]Uses!$A$1)` over cached text is 0, `SUM([1]Uses!$A$1:$B$3)` 15), and the
-    /// *A functions coerce them as in a range (`AVERAGEA` 3.2;
-    /// fixtures/external-link-cached-ranges). Each area is clipped to the cells its cache
+    /// (`SUM([1]Uses!$A$1)` over cached text is 0, `SUM([1]Uses!$A$1:$B$3)` 15), and MAXA
+    /// coerces them as in a range (10; fixtures/external-link-cached-ranges). Each area is clipped to the cells its cache
     /// holds, as a whole column of this workbook is clipped to the used area, so
     /// `SUM([1]Uses!$B:$B)` reads three rows; several areas are one row of their cells in
     /// formula order. `#BLOCKED!` when the cache does not hold an area's sheet.
@@ -242,15 +242,21 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let mut rows = Vec::new();
+        // The cells of all areas together are one array: a union of many whole columns over a
+        // sparse cache must not add up past the array bound (CLAUDE.md directive 5).
+        let mut total: usize = 0;
         for area in areas {
             let Some(sheet) = area.cache else {
-                return CalcResult::new_error(Error::BLOCKED, cell, "External reference".into());
+                return external_blocked(cell);
             };
             let Some(clipped) = self.clip_to_cache(sheet, *area) else {
                 continue;
             };
+            total = total.saturating_add(cell_count(clipped));
             let (height, width) = clipped.extent();
-            if let Some((error, message)) = check_array_size(height, width) {
+            if let Some((error, message)) =
+                check_array_size(height, width).or_else(|| check_array_size(total, 1))
+            {
                 return CalcResult::new_error(error, cell, message);
             }
             rows.extend(self.cached_rows(sheet, clipped, cell));
@@ -269,9 +275,8 @@ impl Model {
         for area in areas {
             let sheet = area.cache?;
             let book = self.workbook.external_books.get(sheet.book)?;
-            let Some(area) = self.clip_to_cache(sheet, *area) else {
-                continue;
-            };
+            let area = *area;
+            // The smaller of the area and the cache is walked.
             count += if cell_count(area) <= book.cells.len() {
                 area_cells(area)
                     .filter(|&(row, column)| book.cells.contains_key(&(sheet.sheet, row, column)))
@@ -288,12 +293,15 @@ impl Model {
         Some(count)
     }
 
-    /// `area` cut to the cells the cache of `sheet` spans, `None` when they share none. An area
-    /// no bigger than the cache is kept whole, so the cache is scanned only for a bigger one
-    /// (a whole column): the cost stays the smaller of the two.
+    /// `area` as an aggregate reads it: a whole column or row cut to the cells the cache of
+    /// `sheet` spans, as a whole column of this workbook is cut to its used area (engine bound,
+    /// CLAUDE.md directive 5; Excel's own reach is not observable, `SUM([1]Uses!$B:$B)` reads the
+    /// same), `None` when they share none. Any other area keeps its shape, blanks included
+    /// (`TEXTJOIN("|",FALSE,[1]Uses!$A$1:$B$3)` ends in a blank; fixtures/external-link-cached-ranges).
     fn clip_to_cache(&self, sheet: CachedSheet, area: ExternalArea) -> Option<ExternalArea> {
-        let cached = self.workbook.external_books.get(sheet.book)?.cells.len();
-        if cell_count(area) <= cached {
+        let whole_columns = area.first_row == 1 && area.last_row == LAST_ROW;
+        let whole_rows = area.first_column == 1 && area.last_column == LAST_COLUMN;
+        if !whole_columns && !whole_rows {
             return Some(area);
         }
         self.cached_extent(sheet)
@@ -307,7 +315,11 @@ impl Model {
     /// areas; `None` for any other name.
     pub(crate) fn external_name_area(&self, prefixed_name: &str) -> Option<ExternalArea> {
         let (book, rest) = prefixed_name.strip_prefix('[')?.split_once(']')?;
-        let name = rest.strip_prefix('!')?;
+        self.workbook_name_area(book, rest.strip_prefix('!')?)
+    }
+
+    /// [`Model::external_name_area`] of the workbook-scoped name `name` of `[book]`.
+    fn workbook_name_area(&self, book: &str, name: &str) -> Option<ExternalArea> {
         let book_index = external_book_index(book)?;
         let (book, defined_name) = self.cached_name(book, None, name)?;
         let (first, last) = match parse_cached_reference(book, &defined_name.formula, self)? {
@@ -414,7 +426,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Option<CalcResult> {
         if sheet.is_none() {
-            let area = self.external_name_area(&format!("[{book}]!{name}"))?;
+            let area = self.workbook_name_area(book, name)?;
             return Some(self.external_area_value(area, cell));
         }
         let (cached_book, defined_name) = self.cached_name(book, sheet, name)?;

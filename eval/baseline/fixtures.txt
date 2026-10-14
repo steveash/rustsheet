@@ -16,4 +16,3 @@ F	fixtures/external-link-cached-ranges.xlsx	Refs!B56
 F	fixtures/external-link-cached-ranges.xlsx	Refs!B59
 F	fixtures/external-link-cached-ranges.xlsx	Refs!B60
 F	fixtures/external-link-cached-ranges.xlsx	Refs!B62
-F	fixtures/external-link-cached-ranges.xlsx	Refs!B71

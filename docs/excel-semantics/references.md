@@ -221,10 +221,11 @@ workbook is read:
   hold, `[1]Nope!$A$1:$B$2`, is `#BLOCKED!`.
 A workbook whose formulas reference a sheet with `refreshError="1"` (`[1]'56737'!$A$1:$B$2`) does
 not open in Excel for the web ("unsupportedWorkbook"), so what that reads is a desktop question.
-Engine: a cached area carries its cache (`external_links.rs`); aggregates read the cells clipped to
-the extent the cache holds, as a whole column of this workbook is clipped to its used area, and
-several areas as one row of cells. Not yet matched: TYPE (64), SUBTOTAL, AGGREGATE and RANK
-(`#VALUE!`, they take a reference), AVERAGEA (`#N/IMPL!`, no array support) and the legacy implicit
+Engine: a cached area carries its cache (`external_links.rs`); aggregates and RANK read its cells
+as reference cells, several areas as one row of cells. Engine-only bound (not Excel behavior, which
+is unobservable here): a whole column or row is cut to the extent the cache holds, as a whole
+column of this workbook is cut to its used area; any other area keeps its shape and blanks. Not
+yet matched: TYPE (64), SUBTOTAL and AGGREGATE (`#VALUE!`, they take a reference), AVERAGEA (`#N/IMPL!`, no array support) and the legacy implicit
 intersection of an external range (T-1526).
 `Sheet!Name` with no book prefix (poi/56737.xlsx Uses!D2 `=Defines!NR_To_A1`, Excel-cached
 "Test A1") is the name scoped to that sheet of this workbook; `[0]!Name` and `[0]Sheet!Name` resolve
