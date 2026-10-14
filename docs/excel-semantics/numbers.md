@@ -283,6 +283,14 @@ Implemented for `*` and PRODUCT by `arithmetic::extended_product` (T-1498, A1-A1
 `+`, `-`, SUM and AVERAGE (each addition of the running total) by `arithmetic::extended_sum` (T-1499,
 A33-A64 pass); SQRT and `^0.5` are still singly rounded. AVERAGEA, SUMIF(S) and the database
 sums accumulate with the plain `+` and are unprobed (T-1516).
+Range edges of `*` and PRODUCT (probes-numeric/double-rounding-range-edges, excel-graph, 2026-10-14,
+T-1513): the second rounding happens at the result's own precision. An exact product just under the
+midpoint between `DBL_MAX` and 2^1024 rounds up to the midpoint in 64 bits and then, tied, to 2^1024:
+`#NUM!` although the singly rounded product is 1.7976931348623157E+308 (3 pairs, one negative; a
+control well under the midpoint stays `DBL_MAX`). An exact product just under the midpoint between
+the largest subnormal and 2^-1022 is the smallest normal 2.2250738585072014E-308 (3 pairs): the
+second rounding ties on the subnormal grid (multiples of 2^-1074), not on 53 bits. Both `*` and
+PRODUCT agree. Implemented in `arithmetic::extended_product`.
 Each of these operations, taken alone, rounds to a double twice. Intermediates do not stay at 64
 bits: in a chained expression every operator's result is rounded (twice) to a double before the next
 operator uses it. probes-numeric/double-rounding-chained (54 cells; operands picked so that keeping
