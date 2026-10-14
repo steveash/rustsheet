@@ -182,8 +182,9 @@ pub(crate) fn is_span_or_if_of_span(node: &Node) -> bool {
 
 /// Most columns holding cells that a union area may have to be walked through the column index
 /// ([`Model::for_each_indexed_position`]); a wider one is walked by rows. The merge compares the
-/// next row of every column for each row it hands on, so with this few columns a row of it costs
-/// no more than the step it is charged.
+/// next row of every column still being merged for each row it hands on, and a row is charged at
+/// least a step per four of them, so with this few columns the comparisons stay a small part of
+/// a row's cost.
 const MAX_INDEXED_COLUMNS: usize = 16;
 
 /// Fewest rows of the sheet a union area must span to be walked through the column index
