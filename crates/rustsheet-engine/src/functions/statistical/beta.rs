@@ -1,9 +1,38 @@
 use statrs::distribution::{Beta, Continuous, ContinuousCDF};
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
+
+/// Below this probability `statrs`' `Beta::inverse_cdf` panics (checked from 1E-200 for every shape
+/// tried), so the quantile comes from the tail asymptotic or a bisection on the cdf (T-1543).
+const BETA_STATRS_MIN_P: f64 = 1e-100;
+
+/// Below this `x` the incomplete beta `I_x(a, b)` equals its leading term and first correction to
+/// better than 1E-16.
+const BETA_TAIL_X: f64 = 1e-8;
+
+/// Quantile of the standard beta distribution for `p` in (0,1); the time is bounded. Excel gives
+/// finite values down to 1E-300 (probes-numeric `t1543-beta-inv-tiny-p`), `NaN` when the result
+/// underflows (`BETA.INV(1E-300,0.001,0.001)` is `#NUM!`).
+fn beta_quantile(dist: &Beta, a: f64, b: f64, p: f64) -> f64 {
+    if p >= BETA_STATRS_MIN_P {
+        return dist.inverse_cdf(p);
+    }
+    // I_x(a, b) ~ x^a / (a B(a, b)) * (1 + a (1 - b) / (a + 1) x) for a small x.
+    let ln_b = ln_gamma(a) + ln_gamma(b) - ln_gamma(a + b);
+    let mut ln_x = (p.ln() + a.ln() + ln_b) / a;
+    if ln_x < BETA_TAIL_X.ln() {
+        let x = ln_x.exp();
+        ln_x -= (a * (1.0 - b) / (a + 1.0) * x).ln_1p() / a;
+        let x = ln_x.exp();
+        return if x > 0.0 { x } else { f64::NAN };
+    }
+    // x is not small: bisect on the cdf over [0, 1].
+    bisect_increasing(|x| dist.cdf(x), p, 0)
+}
 
 impl Model {
     // BETA.DIST(x, alpha, beta, cumulative, [A], [B])
@@ -199,7 +228,7 @@ impl Model {
             }
         };
 
-        let t = dist.inverse_cdf(p);
+        let t = beta_quantile(&dist, alpha, beta_param, p);
         if t.is_nan() || t.is_infinite() {
             return CalcResult::new_error(
                 Error::NUM,

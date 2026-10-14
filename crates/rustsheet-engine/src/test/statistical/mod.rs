@@ -1,5 +1,6 @@
 mod test_fn_avedev;
 mod test_fn_beta_dist;
+mod test_fn_beta_inv_tiny_p;
 mod test_fn_binom;
 mod test_fn_chisq;
 mod test_fn_chisq_test;
@@ -8,7 +9,6 @@ mod test_fn_covariance;
 mod test_fn_devsq;
 mod test_fn_expon_dist;
 mod test_fn_f;
-mod scratch_sweep;
 mod test_fn_f_df_limit;
 mod test_fn_f_test;
 mod test_fn_fisher;
