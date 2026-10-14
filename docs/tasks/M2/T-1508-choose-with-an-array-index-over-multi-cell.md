@@ -3,7 +3,7 @@ id: T-1508
 title: "CHOOSE with an array index over multi-cell range arms lifts to the broadcast grid"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -23,9 +23,12 @@ docs/excel-semantics/references.md ("COUNTBLANK of a value that is not a referen
 about `CHOOSE({1,2},B1:B6,B1:B6)` in SUMPRODUCT.
 
 ## Acceptance criteria
-- [ ] probes/countblank-array-values H21, I21, H35, I35 pass; the probed standalone shapes pass and are recorded in docs/excel-semantics/lookup.md.
-- [ ] No eval regressions; `make eval-baseline` records the fix.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/countblank-array-values H21, I21, H35, I35 pass; the probed standalone shapes pass and are recorded in docs/excel-semantics/lookup.md.
+- [x] No eval regressions; `make eval-baseline` records the fix.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - CHOOSE with a scalar index (reference results are unchanged).
+
+## Outcome
+CHOOSE over an index array now broadcasts its value arguments like IF over an array condition: each arm is read whole, the result spans the largest extent of the index and every arm (picked or not), ragged positions are `#N/A`, and an index out of range is `#VALUE!`. IF's branch evaluation became `evaluate_if_arg`, which both functions share. New probe probes/choose-array-index-range-arms (66 cells, excel-graph) passes, and the rule is in lookup.md. Eval: probes known failures 5618 → 5611, with 7 fixed: countblank-array-values H21, I21, H35, I35; array-context-legacy-sumproduct H1, H10 (both M0-M2); external-ref-no-link-ifchoose A32. 0 regressions.
