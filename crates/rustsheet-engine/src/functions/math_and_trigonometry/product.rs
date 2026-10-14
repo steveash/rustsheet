@@ -1,4 +1,4 @@
-use crate::arithmetic::flush_subnormal;
+use crate::arithmetic::{extended_product, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
 use crate::reference_operators::RefArg;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
@@ -58,7 +58,7 @@ impl Model {
                     if reference_error.is_none() {
                         if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
                             seen_value = true;
-                            result = flush_subnormal(result * value);
+                            result = flush_subnormal(extended_product(result, value));
                         }) {
                             reference_error = Some(error);
                         }
@@ -76,14 +76,14 @@ impl Model {
                     };
                     for value in values.into_iter().flatten() {
                         seen_value = true;
-                        result = flush_subnormal(result * value);
+                        result = flush_subnormal(extended_product(result, value));
                     }
                 }
                 RefArg::Value(calc_result) => {
                     seen_value = true;
                     let cast_result = self.cast_aggregate_arg_to_number(calc_result, cell);
                     match cast_result {
-                        Ok(f) => result = flush_subnormal(result * f),
+                        Ok(f) => result = flush_subnormal(extended_product(result, f)),
                         Err(s) => return s,
                     }
                 }

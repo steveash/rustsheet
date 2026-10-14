@@ -233,14 +233,9 @@ impl Model {
         // `#REF!` as for OFFSET (probes/let-name-call-forms H7:H9, H11; T-1232).
         let is_picked = matches!(node, Node::FunctionKind { kind, .. } if kind.picks_reference());
         if !is_span && !is_picked && !self.is_multi_area(node) {
-            // An INDEX that picks one cell stays a reference: `eval_ref_or_index` owns that rule.
-            // Its `@INDEX` arm is for the spill anchor operands (T-1247); a binding of `@INDEX(..)`
-            // stays a value as before (no probe says otherwise, T-1223).
-            return Binding::Value(if matches!(node, Node::ImplicitIntersection { .. }) {
-                self.evaluate_node_with_reference(node, cell)
-            } else {
-                self.eval_ref_or_index(node, cell)
-            });
+            // An INDEX that picks one cell stays a reference, `@INDEX(..)` too (probes/let-bind-implicit-index
+            // H1:H9, T-1503): `eval_ref_or_index` owns that rule.
+            return Binding::Value(self.eval_ref_or_index(node, cell));
         }
         match self.evaluate_picked_reference_arg(node, cell) {
             RefArg::Ranges(Ranges::Areas(areas)) => Binding::Areas(areas),
@@ -268,11 +263,7 @@ impl Model {
                     ),
                 }
             }
-            Node::NamedVariableKind { name, id: None } => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("Variable name \"{name}\" not found."),
-            ),
+            Node::NamedVariableKind { name, id: None } => self.unbound_name(name, cell),
             _ => CalcResult::new_error(Error::ERROR, cell, "Not a variable".to_string()),
         }
     }

@@ -292,6 +292,17 @@ pub(crate) fn name_needs_quoting(name: &str) -> bool {
     false
 }
 
+/// A defined name of this workbook without its scope prefix: `Name` for `Name`, `Sheet!Name` and
+/// `[0]Sheet!Name` (the parser keeps the prefix in the node so the formula text round-trips as
+/// typed). A linked workbook's `[1]!Name` is returned whole, so it never finds this workbook's
+/// name of the same spelling.
+pub(crate) fn bare_defined_name(name: &str) -> &str {
+    if name.starts_with('[') && !name.starts_with("[0]") {
+        return name;
+    }
+    name.rsplit_once('!').map_or(name, |(_, bare)| bare)
+}
+
 /// Quotes a string sheet name if it needs to
 /// NOTE: Invalid characters in a sheet name \, /, *, \[, \], :, ?
 pub fn quote_name(name: &str) -> String {

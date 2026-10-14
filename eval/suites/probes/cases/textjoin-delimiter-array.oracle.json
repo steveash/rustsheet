@@ -1,0 +1,38 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "s",
+    "v": "1,2;3"
+   },
+   "A2": {
+    "t": "s",
+    "v": "1,2;3,4;5"
+   },
+   "A3": {
+    "t": "s",
+    "v": "1,2-3"
+   },
+   "A4": {
+    "t": "s",
+    "v": "1-2+3-4"
+   },
+   "A5": {
+    "t": "s",
+    "v": "1-2+3"
+   },
+   "A6": {
+    "t": "s",
+    "v": "12"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "a30059ca16ecc87fb76d22dd938377bc8686e78cb77c7a955e626071a088010a",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-14T00:48:28+00:00",
+  "version": null
+ }
+}

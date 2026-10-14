@@ -698,6 +698,7 @@ impl Model {
             variable_stack: VariableStack::default(),
             last_variable_id: 0,
             lambdas: HashMap::new(),
+            eta_lambdas: HashMap::new(),
             last_lambda_id: 0,
             defined_names_running: Default::default(),
             area_budget: Default::default(),

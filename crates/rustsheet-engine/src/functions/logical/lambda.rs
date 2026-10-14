@@ -6,7 +6,8 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::util::array_node_to_calc_result,
+    functions::{util::array_node_to_calc_result, Function},
+    language::get_default_language,
     model::Model,
 };
 
@@ -91,24 +92,11 @@ impl Model {
         call_args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let (parameters, body) = match lambda_result {
-            CalcResult::Lambda(id) => match self.lambdas.get(&id) {
-                Some(l) => l.clone(),
-                None => {
-                    return CalcResult::new_error(
-                        Error::NAME,
-                        cell,
-                        "Lambda not found in store".to_string(),
-                    )
-                }
-            },
-            other if other.is_error() => return other,
-            _ => return CalcResult::new_error(Error::VALUE, cell, "Expected a LAMBDA".to_string()),
+        let (parameters, body) = match self.lambda_definition(lambda_result, call_args.len(), cell)
+        {
+            Ok(definition) => definition,
+            Err(error) => return error,
         };
-
-        if let Err(e) = check_arg_count(&parameters, call_args.len(), cell) {
-            return e;
-        }
 
         let mut patched_body = body;
         let mut bound_ids: Vec<usize> = Vec::with_capacity(parameters.len());
@@ -146,24 +134,10 @@ impl Model {
         values: Vec<CalcResult>,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let (parameters, body) = match lambda_result {
-            CalcResult::Lambda(id) => match self.lambdas.get(&id) {
-                Some(l) => l.clone(),
-                None => {
-                    return CalcResult::new_error(
-                        Error::NAME,
-                        cell,
-                        "Lambda not found in store".to_string(),
-                    )
-                }
-            },
-            other if other.is_error() => return other,
-            _ => return CalcResult::new_error(Error::VALUE, cell, "Expected a LAMBDA".to_string()),
+        let (parameters, body) = match self.lambda_definition(lambda_result, values.len(), cell) {
+            Ok(definition) => definition,
+            Err(error) => return error,
         };
-
-        if let Err(e) = check_arg_count(&parameters, values.len(), cell) {
-            return e;
-        }
 
         let mut patched_body = body;
         let mut bound_ids: Vec<usize> = Vec::with_capacity(parameters.len());
@@ -191,6 +165,66 @@ impl Model {
         }
 
         result
+    }
+
+    /// The parameters and body of the LAMBDA `lambda_result` when called with `provided`
+    /// arguments, `#VALUE!` for a wrong count or for a value that is not a LAMBDA.
+    fn lambda_definition(
+        &self,
+        lambda_result: CalcResult,
+        provided: usize,
+        cell: CellReferenceIndex,
+    ) -> Result<(Vec<NamedVariable>, Node), CalcResult> {
+        let id = match lambda_result {
+            CalcResult::Lambda(id) => id,
+            other if other.is_error() => return Err(other),
+            _ => {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Expected a LAMBDA".to_string(),
+                ))
+            }
+        };
+        if let Some(kind) = self.eta_lambdas.get(&id) {
+            return Ok(eta_definition(kind.clone(), provided));
+        }
+        let (parameters, body) = match self.lambdas.get(&id) {
+            Some(definition) => definition.clone(),
+            None => {
+                return Err(CalcResult::new_error(
+                    Error::NAME,
+                    cell,
+                    "Lambda not found in store".to_string(),
+                ))
+            }
+        };
+        check_arg_count(&parameters, provided, cell)?;
+        Ok((parameters, body))
+    }
+
+    /// An unbound name: a function passed by name (eta-reduced, stored `_xleta.SUM`, any case,
+    /// `_xlfn.` allowed after the prefix) is a LAMBDA, `#NAME?` for anything else.
+    /// Excel: see docs/excel-semantics/arrays.md "Functions passed by name".
+    pub(crate) fn unbound_name(&mut self, name: &str, cell: CellReferenceIndex) -> CalcResult {
+        let function = name
+            .get(..ETA_PREFIX.len())
+            .filter(|prefix| prefix.eq_ignore_ascii_case(ETA_PREFIX))
+            .and_then(|_| name.get(ETA_PREFIX.len()..))
+            // Stored formulas use the English function names, whatever the UI language.
+            .and_then(|function| get_default_language().functions.lookup_stored(function));
+        match function {
+            Some(kind) => {
+                let id = self.get_next_lambda_id();
+                self.eta_lambdas.insert(id, kind);
+                CalcResult::Lambda(id)
+            }
+            None => CalcResult::new_error(
+                Error::NAME,
+                cell,
+                format!("Variable name \"{name}\" not found."),
+            ),
+        }
     }
 
     pub(crate) fn fn_lambda(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -233,6 +267,31 @@ impl Model {
         self.lambdas.insert(id, (parameters, body));
         CalcResult::Lambda(id)
     }
+}
+
+/// How a function passed by name is stored in a file (docs/excel-semantics/xlsx-storage.md).
+const ETA_PREFIX: &str = "_xleta.";
+
+/// The LAMBDA a function passed by name stands for when called with `provided` arguments: it
+/// takes as many parameters as it is given and passes them all on, so `BYROW(r,SUM)` is
+/// `BYROW(r,LAMBDA(a,SUM(a)))` and `MAKEARRAY(2,2,SUM)` sums row and column
+/// (probes/m7-argument-modes F28:H51, probes/eta-reduced-names, T-1466).
+fn eta_definition(kind: Function, provided: usize) -> (Vec<NamedVariable>, Node) {
+    let parameters: Vec<NamedVariable> = (1..=provided)
+        .map(|i| NamedVariable {
+            name: format!("{ETA_PREFIX}{i}"),
+            id: None,
+            is_optional: false,
+        })
+        .collect();
+    let args = parameters
+        .iter()
+        .map(|parameter| Node::NamedVariableKind {
+            name: parameter.name.clone(),
+            id: None,
+        })
+        .collect();
+    (parameters, Node::FunctionKind { kind, args })
 }
 
 fn check_arg_count(

@@ -994,10 +994,10 @@ pub(crate) fn rename_defined_name_in_node(
     new_name: &str,
 ) {
     match node {
-        // Rename
         Node::DefinedNameKind((n, s, _)) => {
-            if name.to_lowercase() == n.to_lowercase() && *s == scope {
-                *n = new_name.to_string();
+            let prefix_len = n.len() - crate::expressions::utils::bare_defined_name(n).len();
+            if name.to_lowercase() == n[prefix_len..].to_lowercase() && *s == scope {
+                n.replace_range(prefix_len.., new_name); // `Sheet!` stays as typed
             }
         }
         // Go next level

@@ -16,7 +16,7 @@ Implemented in: `format_text` (formatter/format.rs) used by `fn_text` (functions
 Tasks: T-0933
 
 ## Bare letters and digits in a number format
-Rule: on a number, unquoted letters and the digits 1-9 in a format print as literal characters instead of making the
+Rule: on a number, unquoted letters that are not date/time tokens (see "Unquoted ASCII letters in a number format" below, T-1450) and the digits 1-9 in a format print as literal characters instead of making the
 format invalid: `TEXT(PI(),"ü")` = "ü". With a decimal point but no digit placeholder the integer part seems to print
 right before the point: `TEXT(1.005, TEXT(-1,"2.5"))` = "-211.5", consistent with `TEXT(-1,"2.5")` = "-21.5" and
 `TEXT(1.005,"-21.5")` = "-2" & "1" & "1.5" (inferred from the one composite cell). An empty format on a number is not an
@@ -25,8 +25,8 @@ error: `INDIRECT(TEXT(-0.0001,""),..)` is `#REF!`, not `#VALUE!`. Not every lett
 Evidence: gen-m6/2c1a6e93a1974f48 Calc!A15, gen-m6/63012866a9d8b7db Calc!A3, gen-m6/17223361bef5b5cb Calc!A12
 (excel-graph, 2026-10-09, T-1239); gen-m7/6db767d720c5b55a Calc!A30 `TEXT(Data!A3,"ABC")` with A3 = 100 (excel-graph, 2026-10-11, T-1275).
 Ours: `#VALUE!` for all four (the lexer rejects these formats).
-Status: UNVERIFIED (probe pending: which letters are tokens, the integer-before-point rule, the value of `TEXT(x,"")`)
-Tasks: T-1262
+Status: PARTLY VERIFIED: which letters are tokens is answered by "Unquoted ASCII letters in a number format" below (T-1450). Still pending: the integer-before-point rule and the value of `TEXT(x,"")`.
+Tasks: T-1262, T-1450
 
 ## Text and booleans use the format's text section
 Rule: for a text or boolean value, `TEXT` applies the 4th (text) section; `@` stands for the
@@ -263,3 +263,16 @@ Status: VERIFIED (excel-graph, fitted model)
 Tasks: T-1388, T-1393, T-1434, T-1449, T-1450, T-1451, T-1455
 
 TEXT over an array of format codes (T-1451): one result per format, value and formats broadcast together (see text.md). `TEXT(1,{"0",#N/A})` is "1", `#N/A` (-f A54:B54). The error-precedence and lifting rules are verified by probes/text-format-array (T-1458) for error and too-complex format elements; a syntactically invalid format element next to an error value is not probed.
+
+## Unquoted ASCII letters in a number format (T-1450)
+
+Excel prints most ASCII letters that are not format tokens as literals, with no quotes or backslash. Probed as `TEXT(1,"0"&L)` and `TEXT(1,"d"&L)` for every ASCII letter in both cases (probes/text-format-unquoted-letters A1:A104, excel-graph 2026-10-14). This refines "Bare letters and digits in a number format" above: a date token next to a digit placeholder is an error, but with no digit placeholder it is a date token (`TEXT(100,"ABC")` = "A43C"; `TEXT(1,"0B")` is `#VALUE!`).
+
+- **After `0`:** the letters `b d e g h m n s y` and their capitals (`B D E G H M N S Y`) are `#VALUE!` (date/time tokens do not fit next to a digit placeholder; the cause for `n` and `N`, which are not en-US date tokens, is unknown). Every other letter prints as a literal: `TEXT(1,"0a")` is "1a", and likewise `c f i j k l o p q r t u v w x z` and `A C F I J K L O P Q R T U V W X Z`. `TEXT(1,"0x")` is "1x".
+- **After `d`** (a date format), the date tokens keep their meaning. The output is the day "1" followed by the token's value: `db` "143" (b is the two-digit Buddhist year, "43"), `dd` "01", `de` "11900" (e is the year 1900), `dg` "1" (g is the era, empty), `dh` "10", `dm` "11", `ds` "10", `dy` "100" (y is "00"). `dD`, `dG`, `dH`, `dM`, `dS`, `dY` match the lowercase. `dB`, `dE`, `dn` and `dN` are `#VALUE!`. The remaining letters (`a c f i j k l o p q r t u v w x z` and capitals `A C F I J K L O P Q R T U V W X Z`) print as literals ("1a").
+- **Colons** (A105:A111): `TEXT(1,"0\:\:")` is "1::" (escaped colons do not collapse); `TEXT(0.5,"h::mm")` and `"h:::mm"` are "12:00" (a run collapses to one); `"0::"` and `"0:::"` are "1:"; `"0:a:"` is "1:a:" and `"0::a"` is "1:a".
+
+Evidence strength: excel-graph oracle, 111 cells.
+Ours: 75 of the 111 cells fail. 68 are literal letters the lexer (formatter/lexer.rs `next_token`) rejects. The other 7 are the unimplemented date tokens `b`, `e`, `g` (`db`, `de`, `dg`, `dG`), `TEXT(1,"0\:\:")` (we wrongly collapse the escaped colons to "1:"), and `0:a:` / `0::a` (`#VALUE!`). All are covered by T-1262.
+Status: VERIFIED (excel-graph)
+Tasks: T-1262, T-1450

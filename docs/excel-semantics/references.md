@@ -195,10 +195,12 @@ evaluation strips the `[0]` prefix, so ISREF and a rename of the name do not see
 (T-1459). The engine passes a cached cell to a function as a value, not as a reference cell, so
 `SUM([1]Uses!A1)` over cached text is `#VALUE!` where a sheet cell's text would be skipped (T-1460).
 A cached multi-cell range (`[1]Sheet!A1:B2`) stays `#BLOCKED!` (T-1454 covers the uncached shapes).
-`Sheet!Name` with no book prefix (poi/56737.xlsx Uses!D2 `=Defines!NR_To_A1`) does not parse yet
-(T-1459).
+`Sheet!Name` with no book prefix (poi/56737.xlsx Uses!D2 `=Defines!NR_To_A1`, Excel-cached
+"Test A1") is the name scoped to that sheet of this workbook; `[0]!Name` and `[0]Sheet!Name` resolve
+the same way at parse time, so ISREF and a rename see them. A sheet-qualified workbook-scoped name
+(`Sheet!GlobalName`), an unknown `Sheet!Nope` (engine: `#NAME?`) and a missing sheet are UNVERIFIED (T-1459).
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
-Tasks: T-1382
+Tasks: T-1382, T-1459
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
@@ -670,6 +672,36 @@ Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
 `MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
 Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497
 
+## Seen-range cap
+Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a
+pass (`MAX_SEEN_RANGES`); a formula that reads more is `#VALUE!` ("Too many distinct ranges read").
+A function walking a whole column or row (and a lookup down a column, or a SUMIFS-shaped criteria
+range) visits only the used area and records the rest as one rectangle read empty, and every area of
+a union is recorded whole, whatever its size; which every spill commit of the pass is checked
+against (evaluation.rs module doc). A rectangle already on record for the formula's root is free, so
+repeating a walk costs nothing (T-1497: `MAX_AREAS` copies of `A:A` walked by a MAP record one), but
+each new reference makes a new one, and nothing else bounds them: `=SUM(MAKEARRAY(1024,1024,
+LAMBDA(r,c,SUM(OFFSET(1:1,r-1,0,c)))))` recorded 1,048,576 (32 bytes each in the list and again in
+the set, about 70 MB; every spill commit scans them all); it is now `#VALUE!` once 65,536 are on
+record (T-1463, release build: 1.5 s to reach the cap). The error is the formula's, set when its run
+ends, not the argument's: a rectangle that goes unrecorded leaves a read the pass does not know of,
+so no value computed from it, `IFERROR`'s fallback included, may stand. The budget is per formula
+run like the area budgets ("Union area cap"): a cell the formula reads has its own, and its
+rectangles are paid by the run that records them first, so at the cap the result can depend on which
+formula of a root read a rectangle first. Excel's limit, if any, is not known; a formula reading
+more than 65,536 distinct such rectangles, whole rows
+(`MAP(SEQUENCE(65537),LAMBDA(r,SUM(OFFSET(1:1,r,0))))`) or bounded union areas
+(`MAP(SEQUENCE(70000),LAMBDA(r,SUM((OFFSET(A1,r,0),B1))))`), is presumably a value there. A
+rectangle past the cap is dropped, not widened to a covering one: a spill into it does not restart
+the pass, so where that spill would let a re-run stay under the cap, the result depends on the
+order; a covering rectangle would instead risk a false circular reference for the root's other
+anchors.
+Status: DEVIATION (decision 0014)
+Implemented in: area_budget.rs (`MAX_SEEN_RANGES`, `AreaBudget::spend_seen_range`,
+`Model::with_area_budget`); seen_ranges.rs (`SeenRanges::push`); evaluation.rs
+(`Model::record_seen_empty_range`)
+Tasks: T-1463
+
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence
 probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
@@ -1047,6 +1079,29 @@ Evidence: probes/countblank-formula-names A1:A21 and probes/countblank-formula-n
 Status: VERIFIED. Implemented in: `fn_countblank` (functions/statistical/count.rs).
 Tasks: T-1199, T-1207, T-1209
 
+## COUNTBLANK of a value that is not a reference is #VALUE!, one per element of an array
+Rule: an argument that evaluates to a value rather than a reference makes COUNTBLANK `#VALUE!`, as for a name
+(above), and an array value lifts it: the result is an array of that shape holding `#VALUE!` in every slot. D1=10,
+D2 empty, D3=30, D4="x", D5=TRUE: `COUNTBLANK(INDEX(D1:D5,{1,2,3}))` is a 1x3 spill of `#VALUE!` (H131 of
+probes/index-lifted-edge-cases), `INDEX(D1:D5,{2,4})` 1x2, `INDEX(D1:D5,{1;2})` 2x1, `INDEX(D1:D5,{1,2},{1;1})` 2x2,
+and even the 1x1 `INDEX(D1:D5,{2})` (a blank cell) is `#VALUE!`; `CHOOSE({1,2},D1:D2,D3:D4)`, `IF({1,1},D1:D2)` and
+`IF({1,0},D1:D2,D3:D4)` are 2x2 grids of `#VALUE!`; `SUM` of the INDEX result is `#VALUE!` and `ISERROR` of it TRUE per
+element. A scalar value picked by CHOOSE is `#VALUE!` too: `COUNTBLANK(CHOOSE(1,5))` and `COUNTBLANK(CHOOSE(1,""))` (an
+empty string is not a blank here). A workbook holding `COUNTBLANK(SEQUENCE(1,2))` and `COUNTBLANK(TOROW(D1:D3))`, with
+or without `COUNTBLANK(D1:D2+0)`, would not open in Excel for the web (`FileCorruptTryRepair`, as for the literal
+expressions above), so those have no value. An error element stays that error, by the error-argument rule: with
+D6 = `=NA()`, `COUNTBLANK(INDEX(D1:D6,{5,6}))` is `#VALUE!`, `#N/A` and `COUNTBLANK(IF({1,0},NA(),D1))` is `#N/A`,
+`#VALUE!` (H30, H32). RANK's `ref` behaves the same over that CHOOSE: `RANK(10,CHOOSE({1,2},D1:D2,D3:D4))` is a 2x2 of
+`#VALUE!` (H34; statistics.md, "RANK of a non-reference array").
+Evidence: probes/countblank-array-values (excel-graph, 2026-10-13, T-1437); probes/index-lifted-edge-cases H131:J131
+(excel-graph, 2026-10-12, T-1376).
+Status: VERIFIED (excel-graph), except the 1x1 `INDEX(D1:D5,{2})`: the engine treats a 1x1 array index as a scalar
+index, so it counts the picked cell (1) (T-1507). The CHOOSE grids (H20, H34) spill 1x2, not 2x2, because the engine's `CHOOSE({1,2},D1:D2,D3:D4)`
+is itself 1x2 (T-1508).
+Implemented in: `fn_countblank` (functions/statistical/count.rs) and `reference_parameter_static_result`
+(expressions/parser/static_analysis/reference_parameter.rs), shared with RANK.
+Tasks: T-1437
+
 ## `@` operand parentheses: every level is kept; a group that is only part of the operand is kept too
 Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` operand: `=@((A1))` and
 `=@(((A1)))` print as written (value 1), `=@((A1:B1))`, `=@((A1,B2))` and `=@(A1:B2)` print as written (value
@@ -1163,3 +1218,15 @@ the workbook (`FileCorruptTryRepair`) for the written `IF(TRUE,D1)#`, `@IF(TRUE,
 the engine gives the written `(range)#` form the same `#REF!` by inference (both are one `SpillRangeOperator`).
 Evidence strength: excel-graph oracle, 21 cells. Status: VERIFIED (web).
 Tasks: T-1369
+
+### LET / LAMBDA binding of `@INDEX(..)` (T-1503)
+
+`@INDEX(B1:B3,2)` bound by LET or passed to a LAMBDA keeps the reference, like the unprefixed INDEX: ISREF TRUE, ROW 2, value 20, `COUNT(x)` 1, and calling the name is `#REF!` (probes/let-bind-implicit-index H1:H9, excel-graph 2026-10-13).
+Evidence strength: excel-graph oracle, 9 cells. Status: VERIFIED (web).
+Tasks: T-1503
+
+### ISREF of a written `@INDEX(..)` (T-1506)
+
+`=ISREF(@INDEX(B1:B3,2))` is TRUE (probes/let-bind-implicit-index H10, excel-graph 2026-10-13). Fixed by T-1506: `is_reference` has an `ImplicitIntersection(INDEX)` arm. `@XLOOKUP` and `@TAKE` forms are not yet probed.
+Evidence strength: excel-graph oracle, 1 cell. Status: VERIFIED (web).
+Tasks: T-1506

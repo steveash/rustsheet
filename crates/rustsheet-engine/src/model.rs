@@ -189,6 +189,8 @@ pub struct Model {
     pub(crate) last_variable_id: usize,
     /// Lambdas
     pub(crate) lambdas: HashMap<usize, (Vec<NamedVariable>, Node)>,
+    /// Functions passed by name (`_xleta.SUM`), keyed by the same ids as `lambdas`.
+    pub(crate) eta_lambdas: HashMap<usize, crate::functions::Function>,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).
@@ -263,6 +265,7 @@ impl Model {
     }
     pub(crate) fn clear_lambdas(&mut self) {
         self.lambdas.clear();
+        self.eta_lambdas.clear();
         self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(
@@ -353,10 +356,7 @@ impl Model {
             // A defined name that stands for a reference is that reference, to a single cell as
             // well: `MAX(TextCell)` ignores the text in it (upstream MIN_MAX_extras.xlsx A1-A3).
             Node::DefinedNameKind((name, scope, _)) => {
-                match self
-                    .parsed_defined_names
-                    .get(&(*scope, name.to_lowercase()))
-                {
+                match self.parsed_defined_name(name, *scope) {
                     Some(&ParsedDefinedName::CellReference(reference)) => CalcResult::Range {
                         left: reference,
                         right: reference,
@@ -674,8 +674,7 @@ impl Model {
                 if let Some(value) = self.evaluate_external_name(name, cell) {
                     return value;
                 }
-                let key = (*scope, name.to_lowercase());
-                if let Some(parsed_defined_name) = self.parsed_defined_names.get(&key).cloned() {
+                if let Some(parsed_defined_name) = self.parsed_defined_name(name, *scope).cloned() {
                     match parsed_defined_name {
                         ParsedDefinedName::CellReference(reference) => {
                             self.evaluate_cell(reference)
@@ -1527,6 +1526,7 @@ impl Model {
             variable_stack: VariableStack::default(),
             last_variable_id: 0,
             lambdas: HashMap::new(),
+            eta_lambdas: HashMap::new(),
             last_lambda_id: 0,
             defined_names_running: Default::default(),
             area_budget: Default::default(),

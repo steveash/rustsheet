@@ -107,3 +107,68 @@ fn book_zero_is_this_workbook() {
     assert_eq!(eval(&mut model, "=[0]!Nope"), "#NAME?");
     assert_eq!(eval(&mut model, "=[0]Nope!Local"), "#REF!");
 }
+
+// `Sheet!LocalName` is the name scoped to that sheet of this workbook (poi/56737.xlsx Uses!D2,
+// Excel-cached "Test A1"); `Sheet1!A1` is still a reference (T-1459).
+#[test]
+fn sheet_qualified_defined_name() {
+    let mut model = new_empty_model();
+    model.add_sheet("Sheet 2").unwrap();
+    model._set("B1", "7");
+    model
+        .new_defined_name("Local", Some(1), "Sheet1!$B$1")
+        .unwrap();
+    model._set("A1", "=Sheet1!B1");
+    model._set("A2", "='Sheet 2'!Local+1");
+    model._set("A3", "=ISREF('Sheet 2'!Local)");
+    model._set("A4", "=Sheet1!Nope");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "7");
+    assert_eq!(model._get_formula("A2"), "='Sheet 2'!Local+1");
+    assert_eq!(model._get_text("A2"), "8");
+    assert_eq!(model._get_text("A3"), "TRUE");
+    assert_eq!(model._get_text("A4"), "#NAME?");
+    // A rename keeps the prefix as typed.
+    model
+        .update_defined_name("Local", Some(1), "Renamed", Some(1), "Sheet1!$B$1")
+        .unwrap();
+    assert_eq!(model._get_formula("A2"), "='Sheet 2'!Renamed+1");
+}
+
+// `[0]!Name` resolves at parse time like `Name`, so ISREF and a rename see it (T-1459).
+#[test]
+fn book_zero_name_is_resolved_at_parse_time() {
+    let mut model = new_empty_model();
+    model._set("B1", "7");
+    model
+        .new_defined_name("CellName", None, "Sheet1!$B$1")
+        .unwrap();
+    model._set("A1", "=ISREF([0]!CellName)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "TRUE");
+    model
+        .update_defined_name("CellName", None, "Other", None, "Sheet1!$B$1")
+        .unwrap();
+    assert_eq!(model._get_formula("A1"), "=ISREF([0]!Other)");
+}
+
+// A local name never answers for a linked workbook's name of the same spelling (T-1459).
+#[test]
+fn local_name_does_not_shadow_a_linked_name() {
+    let mut model = linked();
+    model._set("A1", "42");
+    model
+        .new_defined_name("NR_Global_B2", None, "Sheet1!$A$1")
+        .unwrap();
+    model
+        .new_defined_name("Missing", None, "Sheet1!$A$1")
+        .unwrap();
+    assert_eq!(eval(&mut model, "=SUM([1]!NR_Global_B2)"), "142");
+    assert_eq!(eval(&mut model, "=ISREF([1]!Missing)"), "FALSE");
+    assert_eq!(eval(&mut model, "=SUM([1]!Missing)"), "#BLOCKED!");
+    model._set("C1", "=[1]!Missing");
+    model
+        .update_defined_name("Missing", None, "Renamed", None, "Sheet1!$A$1")
+        .unwrap();
+    assert_eq!(model._get_formula("C1"), "=[1]!Missing");
+}

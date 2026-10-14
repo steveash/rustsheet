@@ -1,0 +1,31 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1482 TEXTJOIN error elements of an array past the 32,767 limit; empty strings as direct arguments and range cells",
+ "tags": [
+  "probe",
+  "text",
+  "T-1482",
+  "textjoin"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),{\"b\",#N/A})",
+    "A2": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),IF({1,0},\"b\",NA()))",
+    "A3": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),{\"b\",#N/A},NA())",
+    "A4": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),{#N/A})",
+    "A5": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32766),{#N/A})",
+    "A6": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),{\"b\"})",
+    "A7": "=TEXTJOIN(\",\",TRUE,\"a\",\"\",\"c\")",
+    "A8": "=TEXTJOIN(\",\",TRUE,B1:B3)",
+    "A9": "=TEXTJOIN(\",\",FALSE,B1:B3)",
+    "A10": "=TEXTJOIN(\",\",TRUE,\"a\",B2,\"c\")",
+    "B1": "a",
+    "B2": "=\"\"",
+    "B3": "c"
+   }
+  }
+ ],
+ "expected": {}
+}
