@@ -4,7 +4,6 @@ use std::cmp::Ordering;
 use crate::arithmetic::{extended_sum, flush_subnormal};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::number_format::parse_excel_number;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -112,7 +111,10 @@ impl Model {
         F: FnMut(f64),
     {
         for arg in args {
-            match self.evaluate_reference_arg(arg, cell) {
+            // An XLOOKUP or INDEX that picks a cell is that cell: text there counts 0
+            // (`AVERAGEA(XLOOKUP(1,A1:A2,B1:B2),5,7)` over "x" is 4;
+            // probes/subtotal-reference-operands-d H22).
+            match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Value(CalcResult::Number(value)) => {
                     f(value);
                 }
@@ -225,83 +227,13 @@ impl Model {
         }
         let mut count = 0.0;
         let mut sum = 0.0;
-        for arg in args {
-            match self.evaluate_picked_reference_arg(arg, cell) {
-                RefArg::Ranges(areas) => {
-                    if let Err(error) =
-                        self.for_each_cell_in_areas(&areas, cell, |_, value| match value {
-                            CalcResult::String(_) => {
-                                count += 1.0;
-                                Ok(())
-                            }
-                            CalcResult::Number(value) => {
-                                count += 1.0;
-                                sum += value;
-                                Ok(())
-                            }
-                            CalcResult::Boolean(b) => {
-                                count += 1.0;
-                                sum += f64::from(u8::from(b));
-                                Ok(())
-                            }
-                            CalcResult::Range { .. } => Err(CalcResult::new_error(
-                                Error::ERROR,
-                                cell,
-                                "Unexpected Range".to_string(),
-                            )),
-                            CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                                Err(CalcResult::Error {
-                                    error: Error::NIMPL,
-                                    origin: cell,
-                                    message: "Arrays not supported yet".to_string(),
-                                })
-                            }
-                            _ => Ok(()),
-                        })
-                    {
-                        return error;
-                    }
-                }
-                RefArg::Value(CalcResult::Number(value)) => {
-                    count += 1.0;
-                    sum += value;
-                }
-                RefArg::Value(CalcResult::String(s)) => {
-                    if let Node::ReferenceKind { .. } = arg.ungrouped() {
-                        // Do nothing
-                        count += 1.0;
-                    } else if let Some(error) = Self::aggregate_text_too_long(&s, cell) {
-                        return error;
-                    } else if let Some(t) = parse_excel_number(&s) {
-                        sum += t;
-                        count += 1.0;
-                    } else {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Argument cannot be cast into number".to_string(),
-                        };
-                    }
-                }
-                RefArg::Value(CalcResult::Boolean(b)) => {
-                    count += 1.0;
-                    if b {
-                        sum += 1.0;
-                    }
-                }
-                RefArg::Value(error @ CalcResult::Error { .. }) => return error,
-                RefArg::Value(CalcResult::EmptyCell | CalcResult::EmptyArg) => {}
-                // A reference is never a `RefArg::Value` (`RefArg::from`).
-                RefArg::Value(
-                    CalcResult::Array(_) | CalcResult::Lambda(_) | CalcResult::Range { .. },
-                ) => {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Arrays not supported yet".to_string(),
-                    }
-                }
-            };
+        // Coerced as MAXA coerces, a cached range of a linked workbook included
+        // (`AVERAGEA([1]Uses!$A$1:$B$3)` is 3.2; fixtures/external-link-cached-ranges Refs!B53).
+        if let Err(error) = self.for_each_value_a(args, cell, |value| {
+            count += 1.0;
+            sum += value;
+        }) {
+            return error;
         }
         if count == 0.0 {
             return CalcResult::Error {

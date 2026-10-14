@@ -193,6 +193,19 @@ impl Model {
     ) -> CalcResult {
         let mut collected = Collected::default();
         for node in refs {
+            // A cached range of a linked workbook is a reference: `AGGREGATE(9,6,[1]Uses!$A$1:$C$2)`
+            // is 16, its `#N/A` skipped (fixtures/external-link-cached-ranges Refs!B60).
+            if let Some(cells) = self.external_reference_cells(node, cell) {
+                match cells {
+                    Ok(cells) => {
+                        for value in &cells {
+                            collect_value(value_of(value, cell), ignore, &mut collected);
+                        }
+                    }
+                    Err(error) => return error,
+                }
+                continue;
+            }
             let areas = match self.reference_areas(node, cell) {
                 Ok(areas) => areas,
                 Err(error) => return error,

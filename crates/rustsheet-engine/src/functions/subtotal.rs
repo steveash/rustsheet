@@ -1,10 +1,15 @@
 use crate::arithmetic::flush_subnormal;
 use crate::{
-    calc_result::{CalcResult, Range},
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    calc_result::CalcResult,
+    expressions::{
+        parser::{ArrayNode, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
     functions::{
         math_and_trigonometry::SumParts,
         statistical::variance::{variance_result, VarianceKind},
+        util::array_node_to_calc_result,
         Function,
     },
     model::Model,
@@ -21,6 +26,15 @@ use crate::{
 /// If you try to hide rows in a table with filtered rows they will behave as if filtered
 /// // Also subtotals ignore subtotals
 ///
+/// A SUBTOTAL argument after the function number, resolved before any cell is read.
+enum SubtotalArg {
+    /// Areas of this workbook, a union's in formula order.
+    Areas(Ranges),
+    /// The cached cells of a reference into a linked workbook
+    /// ([`Model::external_reference_cells`]); none of them is hidden or a SUBTOTAL there.
+    Cached(Vec<ArrayNode>),
+}
+
 #[derive(PartialEq)]
 enum SubTotalMode {
     Full,
@@ -97,13 +111,13 @@ impl Model {
         })
     }
 
-    /// Calls `f` with the value of every cell of `areas` that SUBTOTAL reads: filtered rows,
+    /// Calls `f` with the value of every cell of `arg` that SUBTOTAL reads: filtered rows,
     /// hidden rows in `SkipHidden` mode and cells holding a SUBTOTAL are skipped unevaluated.
     /// The one position walk behind every SUBTOTAL function number, for a range and a union alike
     /// (the areas are walked as [`Self::for_each_position_in_areas`] orders them).
     fn subtotal_walk_areas<F>(
         &mut self,
-        areas: &[Range],
+        arg: &SubtotalArg,
         cell: CellReferenceIndex,
         mode: &SubTotalMode,
         mut f: F,
@@ -111,6 +125,14 @@ impl Model {
     where
         F: FnMut(CalcResult) -> Result<(), CalcResult>,
     {
+        let areas = match arg {
+            SubtotalArg::Areas(areas) => &**areas,
+            SubtotalArg::Cached(cells) => {
+                return cells
+                    .iter()
+                    .try_for_each(|value| f(array_node_to_calc_result(value, cell)));
+            }
+        };
         if areas.iter().any(|area| area.left.sheet != area.right.sheet) {
             return Err(CalcResult::new_error(
                 Error::VALUE,
@@ -167,7 +189,7 @@ impl Model {
     /// booleans are ignored, an error cell is the result.
     fn subtotal_walk_range(
         &mut self,
-        areas: &[Range],
+        areas: &SubtotalArg,
         cell: CellReferenceIndex,
         mode: &SubTotalMode,
         result: &mut Vec<f64>,
@@ -187,7 +209,7 @@ impl Model {
     /// [`Self::subtotal_walk_areas`] reads them.
     fn subtotal_get_values(
         &mut self,
-        args: &[Ranges],
+        args: &[SubtotalArg],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> Result<Vec<f64>, CalcResult> {
@@ -209,26 +231,20 @@ impl Model {
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-    ) -> Result<Vec<Ranges>, CalcResult> {
+    ) -> Result<Vec<SubtotalArg>, CalcResult> {
         let mut resolved = Vec::with_capacity(args.len());
         for arg in args {
+            // A cached range of a linked workbook is a reference: `SUBTOTAL(9,[1]Uses!$A$1:$B$3)`
+            // is 15 (fixtures/external-link-cached-ranges Refs!B59).
+            if let Some(cells) = self.external_reference_cells(arg, cell) {
+                resolved.push(SubtotalArg::Cached(cells?));
+                continue;
+            }
             // A union walks its areas one after the other, each counted as written
             // (probes/multiarea-subtotal: SUBTOTAL(9,(A1,B2)) = 6, T-1071).
             match self.evaluate_picked_reference_arg(arg, cell) {
-                RefArg::Ranges(ranges) => resolved.push(ranges),
+                RefArg::Ranges(ranges) => resolved.push(SubtotalArg::Areas(ranges)),
                 RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
-                // A cached range of another workbook reads as an array here; Excel sums it as a
-                // reference (fixtures/external-link-cached-ranges Refs!B59 is 15). Until that is
-                // matched (TODO(T-1526)), it is one `#VALUE!`, not an array that would spill.
-                RefArg::Value(CalcResult::Array(_))
-                    if self.external_reference(arg, cell).is_some() =>
-                {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "SUBTOTAL of a cached external range".to_string(),
-                    ))
-                }
                 RefArg::Value(CalcResult::Array(rows)) => return Err(not_a_reference_array(rows)),
                 RefArg::Value(_) => {
                     return Err(CalcResult::new_error(
@@ -298,7 +314,7 @@ impl Model {
 
     fn subtotal_vars(
         &mut self,
-        args: &[Ranges],
+        args: &[SubtotalArg],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -310,7 +326,7 @@ impl Model {
 
     fn subtotal_varp(
         &mut self,
-        args: &[Ranges],
+        args: &[SubtotalArg],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -324,7 +340,7 @@ impl Model {
 
     fn subtotal_stdevs(
         &mut self,
-        args: &[Ranges],
+        args: &[SubtotalArg],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -336,7 +352,7 @@ impl Model {
 
     fn subtotal_stdevp(
         &mut self,
-        args: &[Ranges],
+        args: &[SubtotalArg],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -350,7 +366,7 @@ impl Model {
 
     fn subtotal_counta(
         &mut self,
-        args: &[Ranges],
+        args: &[SubtotalArg],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -362,7 +378,7 @@ impl Model {
 
     fn subtotal_count(
         &mut self,
-        args: &[Ranges],
+        args: &[SubtotalArg],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -376,7 +392,7 @@ impl Model {
     /// `count`. A union is walked area by area like a range.
     fn subtotal_count_with(
         &mut self,
-        args: &[Ranges],
+        args: &[SubtotalArg],
         cell: CellReferenceIndex,
         mode: &SubTotalMode,
         count: &mut u32,
@@ -398,7 +414,7 @@ impl Model {
 
     fn subtotal_average(
         &mut self,
-        args: &[Ranges],
+        args: &[SubtotalArg],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -423,7 +439,7 @@ impl Model {
 
     fn subtotal_sum(
         &mut self,
-        args: &[Ranges],
+        args: &[SubtotalArg],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -442,7 +458,7 @@ impl Model {
 
     fn subtotal_product(
         &mut self,
-        args: &[Ranges],
+        args: &[SubtotalArg],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -459,7 +475,7 @@ impl Model {
 
     fn subtotal_max(
         &mut self,
-        args: &[Ranges],
+        args: &[SubtotalArg],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -479,7 +495,7 @@ impl Model {
 
     fn subtotal_min(
         &mut self,
-        args: &[Ranges],
+        args: &[SubtotalArg],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {

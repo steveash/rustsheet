@@ -364,17 +364,9 @@ impl Model {
         // A cached range of another workbook is a reference: its cached numbers count and its
         // text, booleans and blanks do not (`RANK(5,[1]Uses!$A$1:$B$3)` is 2;
         // fixtures/external-link-cached-ranges Refs!B71).
-        if let Some(areas) = self.external_reference(node, cell) {
-            let values = match areas {
-                Ok(areas) => self.external_aggregate_value(&areas, cell),
-                Err(error) => error,
-            };
-            let CalcResult::Array(rows) = values else {
-                return Err(values);
-            };
-            return rows
+        if let Some(cells) = self.external_reference_cells(node, cell) {
+            return cells?
                 .into_iter()
-                .flatten()
                 .map(|value| match value {
                     ArrayNode::Number(number) => Ok(Some(number)),
                     ArrayNode::Error(error) => Err(CalcResult::new_error(
@@ -430,6 +422,9 @@ impl Model {
                 Some(parsed) => Ok(vec![Some(parsed)]),
                 None => unsupported(Error::VALUE),
             },
+            // An error value is the function's error: a legacy `LARGE(B1:B6*1,1)` off the range's
+            // rows is `#VALUE!` (probes/legacy-value-argument-intersection P10, T-1526).
+            error @ CalcResult::Error { .. } => Err(error),
             _ => unsupported(Error::NIMPL),
         }
     }
