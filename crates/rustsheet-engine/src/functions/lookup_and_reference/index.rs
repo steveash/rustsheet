@@ -207,17 +207,40 @@ impl Model {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        if let Some(picked) = self.external_index(args, cell) {
-            return match picked {
-                Ok(area) => self.external_picked_value(area, cell),
-                Err(error) => error,
-            };
+        match self.external_index_args(args, cell) {
+            None => {}
+            Some(Err(error)) => return error,
+            Some(Ok((areas, IndexArgs::Numbers(numbers)))) => {
+                return match external_index_area(&areas, numbers, args.len() == 2, cell) {
+                    Ok(area) => self.external_picked_value(area, cell),
+                    Err(error) => error,
+                };
+            }
+            // Each element is the scalar INDEX's top-left cell, empty with no cache
+            // (probes/external-ref-no-link-ifchoose H1, I1).
+            Some(Ok((areas, IndexArgs::Lifted { row, col, area }))) => {
+                let two_arg = args.len() == 2;
+                return self.index_lifted(row, col, area, cell, None, |model, numbers| {
+                    match external_index_area(&areas, numbers, two_arg, cell) {
+                        Ok(picked) => model.external_picked_value(picked.top_left(), cell),
+                        Err(error) => error,
+                    }
+                });
+            }
         }
         let two_arg = args.len() == 2;
         let numbers = match self.index_numbers(args, cell) {
             Ok(IndexArgs::Numbers(numbers)) => numbers,
             Ok(IndexArgs::Lifted { row, col, area }) => {
-                return self.index_lifted(&args[0], row, col, area, two_arg, cell)
+                let arg = self.evaluate_reference_arg(&args[0], cell);
+                // An error first argument is every element's result.
+                let arg_error = match &arg {
+                    RefArg::Value(CalcResult::Error { error, .. }) => Some(error.clone()),
+                    _ => None,
+                };
+                return self.index_lifted(row, col, area, cell, arg_error, |model, numbers| {
+                    model.index_select(&arg, numbers, two_arg, cell, IndexForm::TopLeft)
+                });
             }
             Err(error) => return error,
         };
@@ -272,12 +295,32 @@ impl Model {
     /// `ROWS(INDEX((…!A1:B2,…!C3:D5),1,1,2))` 1; probes/external-ref-no-link-shapes A3, A4,
     /// external-ref-no-link-index A21). `None` when `args[0]` is no such reference (nothing is
     /// evaluated then) or the argument count is wrong. An index array that would lift INDEX is
-    /// `#BLOCKED!`, as before this path existed (UNVERIFIED: not probed).
+    /// `#BLOCKED!` here, as a reference; INDEX itself lifts it ([`Self::index_impl`]).
     pub(crate) fn external_index(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> Option<Result<ExternalArea, CalcResult>> {
+        Some(match self.external_index_args(args, cell)? {
+            Ok((areas, IndexArgs::Numbers(numbers))) => {
+                external_index_area(&areas, numbers, args.len() == 2, cell)
+            }
+            Ok((_, IndexArgs::Lifted { .. })) => Err(CalcResult::new_error(
+                Error::BLOCKED,
+                cell,
+                "External reference".into(),
+            )),
+            Err(error) => Err(error),
+        })
+    }
+
+    /// The external areas `args[0]` is and INDEX's evaluated indices, for [`Self::external_index`]
+    /// and the lifted INDEX of [`Self::index_impl`]. `None` as for `external_index`.
+    fn external_index_args(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Option<Result<(Vec<ExternalArea>, IndexArgs), CalcResult>> {
         if !(2..=4).contains(&args.len()) {
             return None;
         }
@@ -285,30 +328,23 @@ impl Model {
             Ok(areas) => areas,
             Err(error) => return Some(Err(error)),
         };
-        let numbers = match self.index_numbers(args, cell) {
-            Ok(IndexArgs::Numbers(numbers)) => numbers,
-            Ok(IndexArgs::Lifted { .. }) => {
-                return Some(Err(CalcResult::new_error(
-                    Error::BLOCKED,
-                    cell,
-                    "External reference".into(),
-                )))
-            }
-            Err(error) => return Some(Err(error)),
-        };
-        Some(external_index_area(&areas, numbers, args.len() == 2, cell))
+        Some(
+            self.index_numbers(args, cell)
+                .map(|numbers| (areas, numbers)),
+        )
     }
 
-    /// The lifted INDEX: one scalar INDEX per broadcast element of the indices, the reference
-    /// evaluated once. An index that is an error makes every element that error.
+    /// The lifted INDEX: `select` is the scalar INDEX of one broadcast element's validated
+    /// indices, the reference evaluated once by the caller. An index that is an error makes every
+    /// element that error, and so does `arg_error`, the first argument's error, after it.
     fn index_lifted(
         &mut self,
-        reference: &Node,
         row: CalcResult,
         col: Option<CalcResult>,
         area: Option<CalcResult>,
-        two_arg: bool,
         cell: CellReferenceIndex,
+        arg_error: Option<Error>,
+        mut select: impl FnMut(&mut Self, IndexNumbers) -> CalcResult,
     ) -> CalcResult {
         let mut operand = |value: Option<CalcResult>, default: f64| match value {
             None => NumberOrArray::Number(default),
@@ -329,12 +365,6 @@ impl Model {
         if let Some((error, message)) = check_array_size(rows, cols) {
             return CalcResult::new_error(error, cell, message);
         }
-        let arg = self.evaluate_reference_arg(reference, cell);
-        // An error first argument is every element's result.
-        let arg_error = match &arg {
-            RefArg::Value(CalcResult::Error { error, .. }) => Some(error.clone()),
-            _ => None,
-        };
         let mut result = Vec::with_capacity(rows);
         for i in 0..rows {
             let mut data_row = Vec::with_capacity(cols);
@@ -349,13 +379,7 @@ impl Model {
                 data_row.push(match (numbers, &arg_error) {
                     (Err(e), _) => ArrayNode::Error(e),
                     (Ok(_), Some(error)) => ArrayNode::Error(error.clone()),
-                    (Ok(numbers), None) => calc_result_to_array_node(self.index_select(
-                        &arg,
-                        numbers,
-                        two_arg,
-                        cell,
-                        IndexForm::TopLeft,
-                    )),
+                    (Ok(numbers), None) => calc_result_to_array_node(select(self, numbers)),
                 });
             }
             result.push(data_row);

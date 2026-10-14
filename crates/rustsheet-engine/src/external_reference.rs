@@ -39,6 +39,15 @@ pub(crate) struct ExternalArea {
 }
 
 impl ExternalArea {
+    /// The area's top-left cell, the value an element of a lifted INDEX keeps.
+    pub(crate) fn top_left(self) -> Self {
+        Self {
+            last_row: self.first_row,
+            last_column: self.first_column,
+            ..self
+        }
+    }
+
     /// `(rows, columns)` of the area.
     pub(crate) fn extent(self) -> (usize, usize) {
         let span = |first: i32, last: i32| usize::try_from(last - first + 1).unwrap_or(0);

@@ -237,3 +237,17 @@ fn union_of_sparse_whole_columns_is_bounded() {
     let columns = ["[1]Uses!$A:$A"; 8].join(",");
     assert_eq!(eval(&mut model, &format!("=SUM(({columns}))")), "#VALUE!");
 }
+
+// A lifted INDEX reads each picked cell from the cache, the top-left cell of a whole row or column
+// (probes/external-ref-no-link-ifchoose H1, I1 for the no-cache case; T-1537).
+#[test]
+fn lifted_index_reads_each_picked_cell_from_the_cache() {
+    let mut model = linked();
+    model._set("C1", "=INDEX([1]Uses!$A$1:$B$2,{1,2},1)");
+    model._set("C2", "=INDEX([1]Uses!$A$1:$B$2,{0,2},1)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "Hello!");
+    assert_eq!(model._get_text("D1"), "TRUE");
+    assert_eq!(model._get_text("C2"), "Hello!");
+    assert_eq!(model._get_text("D2"), "TRUE");
+}
