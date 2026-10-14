@@ -518,6 +518,7 @@ C	probes/text-scalar-edges.case.json	63
 C	probes/text-search-casefold-length.case.json	24
 C	probes/text-surrogate-positions.case.json	68
 C	probes/textjoin-array-arguments.case.json	34
+C	probes/textjoin-array-limit-empty-strings.case.json	11
 C	probes/textjoin-delimiter-array.case.json	6
 C	probes/timevalue-ampm-limits.case.json	44
 C	probes/timevalue-component-limits.case.json	72
