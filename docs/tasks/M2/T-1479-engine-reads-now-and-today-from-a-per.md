@@ -3,7 +3,7 @@ id: T-1479
 title: "Engine reads NOW and TODAY from a per-model clock instead of the thread-local mock_time"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
