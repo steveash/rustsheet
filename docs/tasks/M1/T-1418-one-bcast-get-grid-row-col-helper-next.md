@@ -3,7 +3,7 @@ id: T-1418
 title: "One bcast_get(grid,row,col) helper next to bcast_idx for the repeated broadcast lookups"
 milestone: M1
 lane: quality
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,9 @@ The lookup `grid.get(bcast_idx(len,row)).and_then(|r| r.get(bcast_idx(r.len(),co
 
 ## Out of scope
 -
+
+## Outcome
+Added `bcast_get` in arithmetic.rs; text_arg.rs, if_ifs.rs and offline_errors.rs use it. The sites in
+logical/mod.rs, cast.rs and arithmetic.rs size the column axis from the first row / precomputed dims
+(not the addressed row's length), so they differ on ragged arrays and keep `bcast_idx` to stay
+behavior-neutral. Eval delta: none.

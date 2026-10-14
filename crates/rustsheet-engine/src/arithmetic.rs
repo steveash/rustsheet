@@ -24,6 +24,13 @@ pub(crate) fn bcast_idx(len: usize, i: usize) -> Option<usize> {
     }
 }
 
+/// The element at (`row`, `col`) of `grid` under [`bcast_idx`] broadcasting on each axis, using the
+/// length of the addressed row for the column axis; `None` where either index is out of range.
+pub(crate) fn bcast_get<T>(grid: &[Vec<T>], row: usize, col: usize) -> Option<&T> {
+    let line = grid.get(bcast_idx(grid.len(), row)?)?;
+    line.get(bcast_idx(line.len(), col)?)
+}
+
 /// `x + y`; a sum beyond the double range is `#NUM!` at once, like a product
 /// (probes/arith-overflow Calc!B1:B5, excel-graph).
 pub(crate) fn plus(x: f64, y: f64) -> Result<f64, Error> {

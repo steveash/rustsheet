@@ -1,4 +1,4 @@
-use crate::arithmetic::{bcast_idx, flush_subnormal, MISSING};
+use crate::arithmetic::{bcast_get, flush_subnormal, MISSING};
 use crate::cast::{calc_result_to_array_node, number_text_too_long};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
@@ -69,12 +69,7 @@ impl CriteriaArg {
     fn element(&self, row: usize, column: usize) -> Option<&ArrayNode> {
         match self {
             CriteriaArg::Scalar(_) => None,
-            CriteriaArg::Grid(grid) => Some(
-                bcast_idx(grid.len(), row)
-                    .and_then(|r| grid.get(r))
-                    .and_then(|r| bcast_idx(r.len(), column).and_then(|c| r.get(c)))
-                    .unwrap_or(&MISSING),
-            ),
+            CriteriaArg::Grid(grid) => Some(bcast_get(grid, row, column).unwrap_or(&MISSING)),
         }
     }
 }

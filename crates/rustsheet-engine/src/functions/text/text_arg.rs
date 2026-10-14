@@ -1,7 +1,7 @@
 //! The arguments of the text functions that work element by element.
 
 use crate::{
-    arithmetic::{bcast_idx, MISSING},
+    arithmetic::{bcast_get, MISSING},
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, token::Error},
     functions::{text::util, CellReferenceIndex},
@@ -36,10 +36,7 @@ impl TextArg {
     pub(crate) fn elem(&self, i: usize, j: usize) -> &ArrayNode {
         match self {
             TextArg::Scalar(n) | TextArg::Error(n, _) => n,
-            TextArg::Array(a) => bcast_idx(a.len(), i)
-                .and_then(|ri| a.get(ri))
-                .and_then(|row| bcast_idx(row.len(), j).and_then(|cj| row.get(cj)))
-                .unwrap_or(&MISSING),
+            TextArg::Array(a) => bcast_get(a, i, j).unwrap_or(&MISSING),
         }
     }
 }

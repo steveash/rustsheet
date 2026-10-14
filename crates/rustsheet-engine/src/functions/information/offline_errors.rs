@@ -15,7 +15,7 @@ use crate::{
 };
 
 use super::{map_elements, Lifted};
-use crate::arithmetic::bcast_idx;
+use crate::arithmetic::bcast_get;
 use crate::functions::util::array_node_to_calc_result;
 use crate::limits::check_array_size;
 
@@ -195,10 +195,8 @@ impl Model {
         if let Some((error, message)) = check_array_size(rows, cols) {
             return CalcResult::new_error(error, cell, message);
         }
-        let element = |grid: &[Vec<ArrayNode>], row: usize, col: usize| {
-            let line = grid.get(bcast_idx(grid.len(), row)?)?;
-            line.get(bcast_idx(line.len(), col)?).cloned()
-        };
+        let element =
+            |grid: &[Vec<ArrayNode>], row: usize, col: usize| bcast_get(grid, row, col).cloned();
         CalcResult::Array(
             (0..rows)
                 .map(|row| {
