@@ -3,7 +3,7 @@ id: T-1518
 title: "T.INV(0.9,5E10) hangs the evaluator (nightly fuzz timeout): reject Student-t df at or above Excel's upper limit"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P0
 size: S
 tier: sonnet
@@ -54,3 +54,14 @@ widening this one.
 
 ## Out of scope
 - Student-t accuracy (T-0967, T-0969).
+
+## Outcome
+- Probe `probes-numeric/t1518-t-df-cut` (excel-graph): the cut is exactly 1E10 on the truncated df; above it
+  `T.INV`, `T.INV.2T`, `T.DIST(...,TRUE)`, `T.DIST.RT`, `T.DIST.2T` and `CONFIDENCE.T` (n-1) are `#NUM!`, the pdf stays
+  finite. Guard `T_DF_MAX` added to all of them; recorded in statistics.md.
+- `statrs` `inverse_cdf` is also unbounded in time (and inaccurate) for df >= ~1E7, so above df 1E5 the quantile is now
+  the normal quantile plus Hill's series (`t_quantile`). Excel's value at df 1E10 differs from the exact quantile by
+  ~3E-7, so matching it is a fit left to T-0967.
+- Unit test `test_t_family_df_upper_limit` holds the fuzz input.
+- `m9-t-edges`, `m9-t-nonint-df` and `t1048-tinv` now run to completion; eval baselines unchanged (0 fixed, 0 regressions).
+- `m9-legacy-finv` hangs on an F-distribution huge df instead: follow-up T-1528.
