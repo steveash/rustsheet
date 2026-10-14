@@ -3,7 +3,7 @@ id: T-1465
 title: "MAP/SCAN/REDUCE: build one-cell references on demand and read single cells without an array"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
