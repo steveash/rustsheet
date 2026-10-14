@@ -3,7 +3,7 @@ id: T-0424
 title: "xlsx export: one helper formats theme colours and tints"
 milestone: M11
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0419 changed the tint format at three separate sites (crates/rustsheet-xlsx/sr
 
 ## Out of scope
 -
+
+## Outcome
+Theme colours and tints are formatted once: `get_color_attrs` and `get_color_xml` in export/styles_util.rs. styles.rs, dxfs_styles.rs and conditional_formatting.rs call them; the removed local copies were identical in output. No behavior change; eval delta none.
