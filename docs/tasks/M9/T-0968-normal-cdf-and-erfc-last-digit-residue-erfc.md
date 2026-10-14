@@ -53,7 +53,7 @@ differs too. **Needs an oracle sweep (T-0018):** fit against the T-1040 normal-C
 
 **T-1524 (fit lab `erfc-x87`, 2026-10-14):** the x87 hypothesis is rejected for ERFC. The best T-1187 fraction
 evaluated with 64-bit intermediates and exp (idealized or fldl2e/f2xm1/fscale) gets at most 44/205 tail
-cells, the same as a 128-bit evaluation and the engine, while the same fraction in doubles gets 58. Excel's
+cells, the same as a 128-bit evaluation and the engine, while the same fraction in doubles gets 58.
 A 64-bit evaluation does not help; the best fit so far is in doubles (statistics.md "ERFC core factor").
 
 ## Acceptance criteria
