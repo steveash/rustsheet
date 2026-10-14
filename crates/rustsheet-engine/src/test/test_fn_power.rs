@@ -343,3 +343,23 @@ fn powers_of_minus_ten_keep_the_square_and_multiply_digits() {
     );
     assert_eq!(crate::arithmetic::power(10.0, 33.0), Ok(1e33));
 }
+
+#[test]
+fn reciprocal_square_root_divides_by_the_twice_rounded_root() {
+    // probes-numeric/power-neg-half-rounding A1, A9, A10 (excel-graph, T-1541): the root rounds
+    // twice, as SQRT does, and so does the division; a subnormal radicand too.
+    let x = 1.0 + 314_268_894_768_158.0 * 2f64.powi(-52);
+    assert_eq!(
+        crate::arithmetic::power(x, -0.5),
+        Ok(0.966_835_114_610_424_7)
+    );
+    let subnormal = f64::from_bits(344_225_268_385_227);
+    assert_eq!(
+        crate::arithmetic::extended_sqrt(subnormal),
+        4.123_952_952_442_882e-155
+    );
+    assert_eq!(
+        crate::arithmetic::power(f64::from_bits(318_463_907_410_473), -0.5),
+        Ok(2.521_027_376_716_698e154)
+    );
+}
