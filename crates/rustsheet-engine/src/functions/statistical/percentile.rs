@@ -177,7 +177,7 @@ impl Model {
         }
 
         if n == 1 {
-            // Any numeric significance leaves 1 (probes/percentrank-single-value B9, B14-B19).
+            // One value equal to x ranks 1 (EXC too, not 0.5); any numeric significance leaves 1 (probes/percentrank-single-value B9, B14-B19).
             return CalcResult::Number(1.0);
         }
         let rank = percentrank_inc_impl(&sorted, x);
@@ -245,7 +245,7 @@ impl Model {
         }
 
         if n == 1 {
-            // Any numeric significance leaves 1 (probes/percentrank-single-value B9, B14-B19).
+            // One value equal to x ranks 1 (EXC too, not 0.5); any numeric significance leaves 1 (probes/percentrank-single-value B9, B14-B19).
             return CalcResult::Number(1.0);
         }
         let rank = percentrank_exc_impl(&sorted, x);
@@ -272,11 +272,6 @@ pub(crate) fn percentile_inc_impl(sorted: &[f64], k: f64) -> f64 {
 /// PERCENTRANK.INC: virtual position in sorted array, divided by (n-1).
 pub(crate) fn percentrank_inc_impl(sorted: &[f64], x: f64) -> f64 {
     let n = sorted.len();
-    // A single value equal to x ranks 1 (probes/legacy-value-argument-intersection-c T2, U2);
-    // the caller's range check leaves any other x as #N/A.
-    if n == 1 {
-        return 1.0;
-    }
     // Number of values strictly less than x
     let k = sorted.partition_point(|&v| v < x);
 
@@ -293,10 +288,6 @@ pub(crate) fn percentrank_inc_impl(sorted: &[f64], x: f64) -> f64 {
 /// PERCENTRANK.EXC: rank = (`virtual_position` + 1) / (n + 1).
 pub(crate) fn percentrank_exc_impl(sorted: &[f64], x: f64) -> f64 {
     let n = sorted.len();
-    // One value equal to x ranks 1, not 0.5 (probes/percentrank-single-value B6).
-    if n == 1 {
-        return 1.0;
-    }
     let k = sorted.partition_point(|&v| v < x);
 
     let virtual_pos = if k < n && sorted[k] == x {
