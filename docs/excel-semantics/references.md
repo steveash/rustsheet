@@ -192,7 +192,8 @@ Excel treats the lifted INDEX over an external range as a single-cell reference 
 `INDEX(INDEX(…,{1,2},1),2)` is `#REF!` (Refs!B89:B92). Not implemented: we give `#BLOCKED!`, `#BLOCKED!`, FALSE and
 `#BLOCKED!` for those four (T-1554).
 Not yet implemented: `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3 (a LET body picking one; we give
-`#BLOCKED!`) and `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3 (we give 3 since T-1508, which broadcasts CHOOSE's arms over an index array).
+`#BLOCKED!`). `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3, and the engine matches since T-1508, which broadcasts CHOOSE's
+arms over an index array (external-ref-no-link-ifchoose A32).
 Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external
 reference (`ROW(IF({TRUE,FALSE},…!A1,…!A1))`; the engine gives `#VALUE!`, UNVERIFIED), OFFSET of one
 with an array or two error arguments, a `[n]` index with no

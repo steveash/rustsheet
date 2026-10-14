@@ -552,7 +552,7 @@ With D1=10, D2 empty, D3=30, D4="x", E1:E3 = 11, 12, 31:
 - `CHOOSE({1,2},{1,2,3},{4;5})` is `{1,4,#N/A;1,5,#N/A}`.
 - A range index (`F1:G1` = 1,2) is the same as `{1,2}`.
 - ROWS and COLUMNS of the 2x2 are 2, and `SUM(CHOOSE({1,2},D1:D2,E1:E2))` is 33.
-- `CHOOSE({1,1},D1:D2,D1:E3)` is 3x2: the unpicked arm's 3 rows count, its columns stay within the index's 2.
+- `CHOOSE({1,1},D1:D2,D1:E3)` is 3x2: the unpicked arm's 3 rows count.
 - `CHOOSE({1,2},D1:D2,D3:D4,D1:F3)` is 3x3, with `#N/A` beyond the picked 2x2.
 So `COUNTBLANK(CHOOSE({1,2},D1:D2,D3:D4))` and `RANK(10,CHOOSE(…))` are 2x2 grids of `#VALUE!` (references.md).
 `SUMPRODUCT(CHOOSE({1,2},B1:B6,B1:B6))` is 24 on and off the row (criteria.md).

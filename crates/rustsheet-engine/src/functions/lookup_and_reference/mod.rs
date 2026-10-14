@@ -610,13 +610,8 @@ impl Model {
     /// element CHOOSE gives there (the element's own error; `#VALUE!` for text that is no number
     /// or an index out of range). TRUE is 1, FALSE and an empty element 0.
     fn choose_index_element(&self, index: &ArrayNode, count: usize) -> Result<usize, ArrayNode> {
-        let index_num = match index {
-            ArrayNode::Number(n) => *n,
-            ArrayNode::Boolean(b) => f64::from(u8::from(*b)),
-            ArrayNode::Empty => 0.0,
-            ArrayNode::String(s) => self.cast_number(s).ok_or(ArrayNode::Error(Error::VALUE))?,
-            ArrayNode::Error(e) => return Err(ArrayNode::Error(e.clone())),
-        } as usize;
+        // The cast truncates a fraction and saturates: a negative or NaN index is 0, out of range.
+        let index_num = self.array_node_to_number(index).map_err(ArrayNode::Error)? as usize;
         if index_num < 1 || index_num > count {
             return Err(ArrayNode::Error(Error::VALUE));
         }
