@@ -1233,8 +1233,9 @@ Tasks: T-1282
 ## Trig of a huge angle
 SIN, COS, TAN, COT, SEC and CSC return `#NUM!` when |x| >= 2^27 (134217728); 2^27-1 still gives a
 number, and the cut is the same for negative arguments and for 1E+300. The error is a real error
-(`ISERROR(N(SIN(1E+15)))` is TRUE). Evidence: probes/trig-huge-argument (T-1201). The hyperbolic
-functions are unaffected (COSH(1E+15) is `#NUM!` only through overflow).
+(`ISERROR(N(SIN(1E+15)))` is TRUE). Evidence: probes/trig-huge-argument (T-1201). Only the integers 2^27-1 and 2^27 (and their negatives -2^27, -2^27-1) were probed at the cut; the
+exact cut for fractional arguments in between is unprobed (assumed |x| >= 2^27). COSH(1E+15) is also
+`#NUM!` (probe cell A85).
 Near the cut Excel's trig values differ from a correctly rounded libm in the 10th-12th digit
 (SIN(2^27-1) is -0.9559933287726706 in Excel, -0.9559933287732995 here): Excel's argument
 reduction is not exact for large angles. The 6 `x = 2^27-1` cells of probes/trig-huge-argument are
