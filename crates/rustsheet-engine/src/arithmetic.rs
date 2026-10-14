@@ -115,6 +115,23 @@ pub(crate) fn extended_product(x: f64, y: f64) -> f64 {
     .unwrap_or(plain)
 }
 
+/// Whether `plain = x + y` can differ from the twice-rounded sum. The rounding error `e` of the
+/// addition is found exactly (Knuth's TwoSum); the first rounding to 64 bits can land on a double
+/// midpoint, and so change the result, only when `|e|` is within 2^-8 of half a unit in the last
+/// place of the sum (or of a quarter, below a power of two, where the next lower double is closer).
+/// An exact sum and every other error keep `plain`, so the 128-bit path runs for few additions.
+fn sum_may_round_twice(x: f64, y: f64, plain: f64) -> bool {
+    let virtual_y = plain - x;
+    let error = (x - (plain - virtual_y)) + (y - virtual_y);
+    if error == 0.0 {
+        return false;
+    }
+    // The unit in the last place of `plain`, a power of two (`plain` is normal).
+    let ulp = f64::from_bits(plain.to_bits() & (0x7FF << 52)) * f64::EPSILON;
+    let ratio = error.abs() / ulp;
+    (ratio - 0.5).abs() <= 1.0 / 256.0 || (ratio - 0.25).abs() <= 1.0 / 256.0
+}
+
 /// `x + y` rounded twice, first to a 64-bit significand and then to a double, like
 /// [`extended_quotient`] (docs/excel-semantics/numbers.md "Division rounds twice",
 /// probes-numeric/double-rounding-ops A33-A64, excel-graph). The sum is formed exactly in 128 bits.
@@ -124,7 +141,7 @@ pub(crate) fn extended_product(x: f64, y: f64) -> f64 {
 /// both roundings return the larger operand, which is also the plain sum).
 pub(crate) fn extended_sum(x: f64, y: f64) -> f64 {
     let plain = x + y;
-    if !plain.is_normal() || !x.is_normal() || !y.is_normal() {
+    if !plain.is_normal() || !x.is_normal() || !y.is_normal() || !sum_may_round_twice(x, y, plain) {
         return plain;
     }
     let (x_significand, x_exponent) = significand_and_exponent(x);
