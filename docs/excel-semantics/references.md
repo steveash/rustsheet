@@ -179,16 +179,21 @@ Calc!A1:A6 (excel-graph, 2026-10-14, T-1487).
 Engine: `Model::pick_branch` reads the condition or index of an IF or CHOOSE that may pick an
 external reference once and hands the picked argument to ROWS, COLUMNS, ROW, COLUMN, ISREF, AREAS,
 COUNTA, COUNTBLANK, INDEX and the aggregates; IF's and CHOOSE's value read it as INDEX's (T-1487).
+INDEX with an index array into an external reference lifts per element (`index_lifted` via
+`external_index_args`): each element is the top-left cell of the scalar pick, read with
+`external_picked_value` (`=INDEX(…!A1:C4,{1,2},1)` spills 0, 0; probes/external-ref-no-link-ifchoose
+Calc!H1, I1; T-1537). UNVERIFIED: the same over a cached range (each element the cached cell), a
+whole-row or whole-column element keeping only its top-left cached cell, an out-of-range element
+(a per-element error), and a nested INDEX used as a reference with lifted indices (`#BLOCKED!`).
 Not yet implemented: `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3 (a LET body picking one; we give
-`#BLOCKED!`), `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3 (we give 1), and INDEX with an index array into
-an external reference reads empty cells (`=INDEX(…!A1:C4,{1,2},1)` spills 0, 0; we give `#BLOCKED!`).
+`#BLOCKED!`) and `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3 (we give 1).
 Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external
 reference (`ROW(IF({TRUE,FALSE},…!A1,…!A1))`; the engine gives `#VALUE!`, UNVERIFIED), OFFSET of one
 with an array or two error arguments, a `[n]` index with no
 externalLink part, and ROW/COLUMN of a multi-cell external area (the engine spills the row or column
 numbers as for a sheet reference, UNVERIFIED).
 Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
-Tasks: T-0124, T-1381, T-1382, T-1454, T-1487
+Tasks: T-0124, T-1381, T-1382, T-1454, T-1487, T-1537
 
 ## Cached values of a linked workbook (`[n]Sheet!A1`, `[n]!Name`, `[0]!Name`)
 Rule: in xlsx, Excel writes a reference into another workbook with the 1-based index of its
