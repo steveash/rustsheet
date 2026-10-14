@@ -3,7 +3,7 @@ id: T-1487
 title: "IF and CHOOSE picking a reference into another workbook keep it a reference"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -31,9 +31,21 @@ non-external result for the caller to use. Probe CHOOSE first (excel-probe): `RO
 Rule: docs/excel-semantics/references.md "External reference with no cached data is `#BLOCKED!`".
 
 ## Acceptance criteria
-- [ ] probes/external-ref-no-link-index A25 and A26 leave eval/baseline/probes.txt.
-- [ ] The CHOOSE probe values are recorded in docs/excel-semantics/references.md.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/external-ref-no-link-index A25 and A26 leave eval/baseline/probes.txt.
+- [x] The CHOOSE probe values are recorded in docs/excel-semantics/references.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cached values of `[n]Sheet!ref` (T-1382). Opening other workbooks (directive 5).
+
+## Outcome
+New probe probes/external-ref-no-link-ifchoose (44 cells, excel-graph): an IF or CHOOSE that picks
+an external reference *is* that reference, and the one cell it picks reads empty in a value
+context. `Model::pick_branch` (external_reference.rs) reads the condition or index of an IF or
+CHOOSE that may pick one (judged from its form) once and hands the picked argument to ROWS,
+COLUMNS, ROW, COLUMN, ISREF, AREAS, COUNTA, COUNTBLANK, INDEX and `evaluate_reference_arg`;
+`if_impl`/`choose_impl` share the pick (`if_pick`, `choose_pick`) and read a picked external
+reference as INDEX's value. OFFSET of an external reference reads its numbers before its `#VALUE!` (probe -ifchoose-b).
+Eval: probes known failures 5208 -> 5210 (fixed index A25, A26; new cases 40/44 and 6/6, the 4 failures
+filed as T-1535 LET body, T-1536 CHOOSE over an index array, T-1537 lifted INDEX).
+

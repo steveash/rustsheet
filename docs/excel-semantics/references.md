@@ -151,19 +151,44 @@ Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` inste
 lexer reads the unquoted `[book]Sheet!` prefix (T-1381). `Model::external_reference`
 (external_reference.rs) gives the areas of a written external reference, an INDEX into one and a
 union or intersection of them; ISREF, ROWS, COLUMNS, ROW, COLUMN, AREAS, COUNTA, COUNTBLANK, OFFSET,
-INDEX's value, the intersection's value and the aggregates read it (T-1454). Not yet implemented:
-IF and CHOOSE picking an external reference (follow-up task) and INDEX with an index array into one
-(`#BLOCKED!`, UNVERIFIED). A `[n]` reference the externalLink cache holds, one cell or several,
-reads the cache on all these paths (`external_links.rs`; "Cached values of a linked workbook"
-below, T-1382, T-1460); there COUNTBLANK is `#VALUE!` too, a one-cell `COUNTBLANK([1]Uses!$B$3)`
-included (fixtures/external-link-cached-ranges Refs!B13, B69). UNVERIFIED (not probed, T-1487): COUNTA
-counts an external reference that gives an error instead (`COUNTA((…!A1,E1))`, a disjoint
-intersection, INDEX past the area) as 1, as it does a local error argument; OFFSET and COUNTBLANK
-give their `#VALUE!` before evaluating their other arguments (`OFFSET(…!A1,1/0,1)` is `#VALUE!`). Unprobed: a `[n]` index with no
+INDEX's value, the intersection's value and the aggregates read it (T-1454). A `[n]` reference the
+externalLink cache holds, one cell or several, reads the cache on all these paths
+(`external_links.rs`; "Cached values of a linked workbook" below, T-1382, T-1460); there COUNTBLANK
+is `#VALUE!` too, a one-cell `COUNTBLANK([1]Uses!$B$3)` included
+(fixtures/external-link-cached-ranges Refs!B13, B69).
+IF and CHOOSE that pick an external reference **are** that reference, through nested IFs too:
+`ROWS(CHOOSE(1,…!A1:B3))` 3, `ROWS(IF(TRUE,…!A1))` 1, `COLUMNS(CHOOSE(2,A1,…!A1:C1))` 3,
+`ROW(IF(TRUE,…!B3))` 3, `ROWS(IF(TRUE,IF(FALSE,A1,…!A1:B3)))` 3, `ISREF(IF(TRUE,…!A1))`,
+`ISREF(CHOOSE(1,…!A1:B3))` and `ISREF(IF(TRUE,…!A1:B3,A1))` TRUE, `AREAS(IF(TRUE,(…!A1,…!B2)))` 2,
+`COUNTA(IF(TRUE,…!A1:B2))` and `COUNTA(CHOOSE(1,…!A1))` 0, `COUNTA(IF(TRUE,…!A1),1)` 1,
+`COUNTBLANK(IF(TRUE,…!A1:B2))` `#VALUE!`, and INDEX into one picks from it
+(`ERROR.TYPE(INDEX(IF(TRUE,…!A1:C4),2,2))` `#N/A`, `ROWS(INDEX(IF(TRUE,…!A1:C4),2,0))` 1). The one
+cell they pick reads empty, as INDEX's does: `=IF(TRUE,…!A1)` and `=CHOOSE(1,…!A1)` are 0, `&"x"`
+gives "x", `+1` 1, ISBLANK TRUE, `ERROR.TYPE(CHOOSE(1,…!A1))` `#N/A`; several cells spill
+`#BLOCKED!` (`=IF(TRUE,…!A1:B2)`, `=CHOOSE(1,…!A1:B2)`), and aggregates stay `#BLOCKED!`
+(`SUM(IF(TRUE,…!A1))`, `SUM(CHOOSE(1,…!A1:B2))`, `SUM(IF(TRUE,…!A1:B3,A1))`). An array condition
+lifts IF as usual: `ROWS(IF({TRUE,FALSE},…!A1:B3,…!A1:B3))` is 3, and `ROW(IF(FALSE,…!A1))`
+(FALSE, no reference) `#VALUE!`. COUNTA of the two-area external union `(…!A1,…!E1)` is 0; it
+counts 1 for an argument that gives an error instead of a reference: the union or intersection
+with a local cell (`COUNTA((…!A1,E1))`, `COUNTA(…!A1 E1)`, both `#VALUE!`) and the disjoint
+`…!A1:B3 …!D4:E5` (`#NULL!`). OFFSET reads its numbers before giving its `#VALUE!`:
+`OFFSET(…!A1,1/0,1)`, `OFFSET(…!A1,1,1/0)` and `OFFSET(…!A1,1,1,1,1/0)` are `#DIV/0!`, while
+`OFFSET(…!A1,1,1,0)` (height 0) is still `#VALUE!`.
+Evidence: probes/external-ref-no-link-ifchoose Calc!A1:A34, H1:N2, external-ref-no-link-ifchoose-b
+Calc!A1:A6 (excel-graph, 2026-10-14, T-1487).
+Engine: `Model::pick_branch` reads the condition or index of an IF or CHOOSE that may pick an
+external reference once and hands the picked argument to ROWS, COLUMNS, ROW, COLUMN, ISREF, AREAS,
+COUNTA, COUNTBLANK, INDEX and the aggregates; IF's and CHOOSE's value read it as INDEX's (T-1487).
+Not yet implemented: `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3 (a LET body picking one; we give
+`#BLOCKED!`), `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3 (we give 1), and INDEX with an index array into
+an external reference reads empty cells (`=INDEX(…!A1:C4,{1,2},1)` spills 0, 0; we give `#BLOCKED!`).
+Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external
+reference (`ROW(IF({TRUE,FALSE},…!A1,…!A1))`; the engine gives `#VALUE!`, UNVERIFIED), OFFSET of one
+with an array or two error arguments, a `[n]` index with no
 externalLink part, and ROW/COLUMN of a multi-cell external area (the engine spills the row or column
 numbers as for a sheet reference, UNVERIFIED).
 Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
-Tasks: T-0124, T-1381, T-1382, T-1454
+Tasks: T-0124, T-1381, T-1382, T-1454, T-1487
 
 ## Cached values of a linked workbook (`[n]Sheet!A1`, `[n]!Name`, `[0]!Name`)
 Rule: in xlsx, Excel writes a reference into another workbook with the 1-based index of its
