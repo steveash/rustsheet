@@ -1,7 +1,12 @@
 use super::reference_operators::{at_outside, wrong_range_shape};
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
+use legacy::{
+    add_in_array_context, is_array_context, legacy_context_intersects, legacy_intersects,
+    remove_in_array_context,
+};
 mod aggregate;
+mod legacy;
 mod reference_parameter;
 mod row_column;
 
@@ -121,9 +126,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             }
         }
         Node::Group { .. } if add && at_outside(node) => *node = Node::automatic_at(node.clone()),
-        // A range of another workbook is intersected as one of this workbook is: a legacy
-        // `=SUM([1]Uses!$A$2:$A$3+0)` in row 44 is `#VALUE!`
-        // (fixtures/external-link-cached-ranges Refs!B44, T-1526).
+        // A range of another workbook too (fixtures/external-link-cached-ranges Refs!B44, T-1526).
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } | Node::WrongRangeKind { .. } => {
             if add {
                 *node = Node::automatic_at(node.clone());
@@ -162,28 +165,13 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::TableNameKind(_) => {
             // noop for now
         }
-        Node::FunctionKind { kind, args } if is_array_context(kind) => {
-            for arg in args {
-                for_each_array_context_condition(arg, &mut |condition| {
-                    if !matches!(run_static_analysis_on_node(condition), StaticResult::Scalar) {
-                        add_implicit_intersection(condition, true);
-                    }
-                });
-            }
-        }
+        Node::FunctionKind { kind, args } if is_array_context(kind) => add_in_array_context(args),
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
-                // A scalar argument intersects whatever is not a scalar, `IFERROR(B1:B6*1,100)`
-                // and `IF(A1:A6="a",1,0)` included (probes/legacy-value-argument-intersection I10,
-                // array-context-legacy-sumproduct R10; T-1526).
-                let scalar = matches!(signature.get(index), Some(Signature::Scalar))
-                    || legacy_scalar_arguments(kind);
-                if (scalar && !matches!(run_static_analysis_on_node(arg), StaticResult::Scalar))
-                    || legacy_value_operand(kind, arg)
-                {
+                if legacy_intersects(kind, signature.get(index), arg) {
                     add_implicit_intersection(arg, true);
                 } else {
                     add_implicit_intersection(arg, false);
@@ -279,112 +267,18 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
             });
         }
         Node::FunctionKind { kind, args } if is_array_context(kind) => {
-            for arg in args {
-                for_each_array_context_condition(arg, &mut |condition| {
-                    remove_redundant_implicit_intersection(condition, true);
-                });
-            }
+            remove_in_array_context(args)
         }
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
                 // Scalar arguments are an intersecting context; vector arguments
-                // (ranges/arrays) are not, unless they are arithmetic of an aggregate.
-                let child_add = matches!(signature.get(index), Some(Signature::Scalar))
-                    || legacy_scalar_arguments(kind)
-                    || legacy_value_operand(kind, arg);
+                // (ranges/arrays) are not (`legacy_context_intersects`).
+                let child_add = legacy_context_intersects(kind, signature.get(index), arg);
                 remove_redundant_implicit_intersection(arg, child_add);
             }
         }
     };
-}
-
-/// Legacy formulas evaluate SUMPRODUCT's arguments as arrays, with no implicit intersection inside
-/// (`SUMPRODUCT(SUMIFS(B1:B6,A1:A6,D1:D2))` lifts the criterion where `SUM` intersects it;
-/// probes/ifs-legacy-sumproduct, excel-graph, T-0278), so on export no `@` inside is redundant.
-fn is_array_context(kind: &Function) -> bool {
-    matches!(kind, Function::Sumproduct)
-}
-
-/// Calls `f` on each argument under an array context ([`is_array_context`]) that a legacy formula
-/// still intersects: the condition of IF and the value of IFERROR and IFNA, at any depth through
-/// the operators and functions that keep the array context. `SUMPRODUCT(IF(B1:B6>1,B1:B6,0))`,
-/// `SUMPRODUCT(ABS(IF(B1:B6>1,B1:B6,0)))` and `SUMPRODUCT(IFERROR(B1:B6,100))` are `#VALUE!`,
-/// `#VALUE!` and 100 off the range's rows, while IF's value branches stay arrays
-/// (`SUMPRODUCT(IF(TRUE,B1:B6))` 12; probes/array-context-legacy-sumproduct F10, S10, U10,
-/// legacy-value-argument-intersection J10, K10, L10, N10; T-0293, T-1526). Recursion is bounded
-/// by the parser's depth cap.
-fn for_each_array_context_condition(node: &mut Node, f: &mut impl FnMut(&mut Node)) {
-    match node {
-        Node::FunctionKind {
-            kind: Function::If | Function::Iferror | Function::Ifna,
-            args,
-        } => {
-            let mut args = args.iter_mut();
-            if let Some(condition) = args.next() {
-                f(condition);
-            }
-            for arg in args {
-                for_each_array_context_condition(arg, f);
-            }
-        }
-        Node::FunctionKind { args, .. } => {
-            for arg in args {
-                for_each_array_context_condition(arg, f);
-            }
-        }
-        Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
-            for_each_array_context_condition(child, f);
-        }
-        Node::OpConcatenateKind { .. }
-        | Node::OpSumKind { .. }
-        | Node::OpProductKind { .. }
-        | Node::OpPowerKind { .. }
-        | Node::CompareKind { .. } => {
-            for_each_chain_operand_mut(node, |operand| {
-                for_each_array_context_condition(operand, f);
-            });
-        }
-        _ => {}
-    }
-}
-
-/// Whether a legacy formula intersects the arguments of `kind` as scalar ones although `kind`
-/// takes a range or array there: legacy `TYPE(B1:B6)` is 1 on the range's rows and 16
-/// (`#VALUE!`) off them, where a dynamic one is 64 (probes/legacy-type-intersection,
-/// fixtures/external-link-cached-ranges Refs!B62; T-1526).
-fn legacy_scalar_arguments(kind: &Function) -> bool {
-    matches!(kind, Function::Type)
-}
-
-/// Whether `arg` of `kind` is arithmetic or a comparison that a legacy formula evaluates as a
-/// value, intersecting the ranges in it, although `kind` takes a range there: `SUM(B1:B6+0)`,
-/// `SUM(-B1:B6)`, `MAX(B1:B6*1)` and `LARGE(B1:B6*1,1)` are `#VALUE!` off the range's rows and
-/// `COUNT(B1:B6*1)` 0, while `SUM(B1:B6)` and `SUM((B1:B6))` read the range
-/// (probes/legacy-value-argument-intersection; `[1]Uses!$A$2:$A$3+0` in
-/// fixtures/external-link-cached-ranges Refs!B44; T-1526). Only the aggregates probed so far;
-/// MMULT, INDEX and LOOKUP evaluate such an argument as an array
-/// (probes/array-context-legacy-sumproduct N, P, Q).
-fn legacy_value_operand(kind: &Function, arg: &Node) -> bool {
-    matches!(
-        kind,
-        Function::Sum
-            | Function::Average
-            | Function::Averagea
-            | Function::Max
-            | Function::Count
-            | Function::Counta
-            | Function::Large
-            | Function::Median
-    ) && matches!(
-        arg,
-        Node::UnaryKind { .. }
-            | Node::OpConcatenateKind { .. }
-            | Node::OpSumKind { .. }
-            | Node::OpProductKind { .. }
-            | Node::OpPowerKind { .. }
-            | Node::CompareKind { .. }
-    )
 }
 
 /// The result of the static analysis of a node
