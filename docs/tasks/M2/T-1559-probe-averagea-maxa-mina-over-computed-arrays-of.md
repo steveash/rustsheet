@@ -3,7 +3,7 @@ id: T-1559
 title: "Probe AVERAGEA/MAXA/MINA over computed arrays of a range (FILTER, SORT, IF array conditions)"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
