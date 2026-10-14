@@ -381,8 +381,17 @@ impl Model {
     ) -> Option<ExternalArea> {
         let whole_columns = area.first_row == 1 && area.last_row == LAST_ROW;
         let whole_rows = area.first_column == 1 && area.last_column == LAST_COLUMN;
-        if blanks == CachedBlanks::Kept && !whole_columns && !whole_rows {
-            return Some(area);
+        if !whole_columns && !whole_rows {
+            // Finding the extent walks the book's cache, so only an area larger than the cache
+            // is cut; a smaller one already reads no more cells than the cache holds.
+            let small = self
+                .workbook
+                .external_books
+                .get(sheet.book)
+                .is_none_or(|book| cell_count(area) <= book.cells.len());
+            if blanks == CachedBlanks::Kept || small {
+                return Some(area);
+            }
         }
         self.cached_extent(sheet)
             .and_then(|extent| area.intersect(extent))

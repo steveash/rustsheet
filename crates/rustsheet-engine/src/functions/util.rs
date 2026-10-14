@@ -308,6 +308,17 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> RefArg {
+        self.reference_arg_reading(node, CachedBlanks::Kept, cell)
+    }
+
+    /// [`Self::evaluate_reference_arg`] with a cached area of a linked workbook read as `blanks`
+    /// says ([`Model::external_aggregate_value`]).
+    fn reference_arg_reading(
+        &mut self,
+        node: &Node,
+        blanks: CachedBlanks,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
         // An IF or CHOOSE that may pick a reference into another workbook is the argument it
         // picks (`SUM(IF(TRUE,…!A1))` is `#BLOCKED!`; probes/external-ref-no-link-ifchoose A3).
         let node = match self.pick_branch(node, cell) {
@@ -322,7 +333,7 @@ impl Model {
         // reference functions read [`Model::external_reference`] first.
         if let Some(areas) = self.external_reference(node, cell) {
             return RefArg::Value(match areas {
-                Ok(areas) => self.external_aggregate_value(&areas, CachedBlanks::Kept, cell),
+                Ok(areas) => self.external_aggregate_value(&areas, blanks, cell),
                 Err(error) => error,
             });
         }
@@ -395,6 +406,17 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> RefArg {
+        self.picked_reference_arg_reading(node, CachedBlanks::Kept, cell)
+    }
+
+    /// [`Self::evaluate_picked_reference_arg`] with a cached area of a linked workbook read as
+    /// `blanks` says.
+    fn picked_reference_arg_reading(
+        &mut self,
+        node: &Node,
+        blanks: CachedBlanks,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
         if let Node::FunctionKind { kind, args } = node.ungrouped() {
             if kind.picks_reference() {
                 if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
@@ -402,7 +424,7 @@ impl Model {
                 }
             }
         }
-        self.evaluate_reference_arg(node, cell)
+        self.reference_arg_reading(node, blanks, cell)
     }
 
     /// [`Self::evaluate_picked_reference_arg`] for an aggregate that skips the blanks of a range
@@ -415,21 +437,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> RefArg {
-        let node = match self.pick_branch(node, cell) {
-            Picked::Node(node) => node,
-            Picked::Value(value) => return RefArg::Value(value),
-        };
-        let picks_reference =
-            matches!(node, Node::FunctionKind { kind, .. } if kind.picks_reference());
-        if !picks_reference {
-            if let Some(areas) = self.external_reference(node, cell) {
-                return RefArg::Value(match areas {
-                    Ok(areas) => self.external_aggregate_value(&areas, CachedBlanks::Skipped, cell),
-                    Err(error) => error,
-                });
-            }
-        }
-        self.evaluate_picked_reference_arg(node, cell)
+        self.picked_reference_arg_reading(node, CachedBlanks::Skipped, cell)
     }
 
     /// The bottom-right corner of the range `row1:column1..=row2:column2` once a whole-column
