@@ -44,10 +44,10 @@ impl Model {
             Err(e) => return e,
         };
 
-        let lambda_result = self.evaluate_node_in_context(&args[1], cell);
-        if lambda_result.is_error() {
-            return lambda_result;
-        }
+        let lambda_result = match self.by_slices_lambda(&args[1], cell) {
+            Ok(lambda) => lambda,
+            Err(e) => return e,
+        };
 
         let results = match source {
             Source::Range(range) => (range.left.column..=range.right.column)
@@ -85,10 +85,10 @@ impl Model {
             Err(e) => return e,
         };
 
-        let lambda_result = self.evaluate_node_in_context(&args[1], cell);
-        if lambda_result.is_error() {
-            return lambda_result;
-        }
+        let lambda_result = match self.by_slices_lambda(&args[1], cell) {
+            Ok(lambda) => lambda,
+            Err(e) => return e,
+        };
 
         let results = match source {
             Source::Range(range) => (range.left.row..=range.right.row)
@@ -113,6 +113,24 @@ impl Model {
         };
 
         CalcResult::Array(results)
+    }
+
+    /// The LAMBDA argument of BYROW or BYCOL. Anything else, an error or an unknown name too, is
+    /// `#VALUE!`: `BYCOL(A1:B3,NA())`, `BYCOL(A1:B3,1)` and a bare `BYCOL(A1:B3,COUNTA)` read from
+    /// a file (probes/eta-reduced-names E5:E21, E81, excel-graph 2026-10-14, T-1466).
+    fn by_slices_lambda(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<CalcResult, CalcResult> {
+        match self.evaluate_node_in_context(arg, cell) {
+            lambda @ CalcResult::Lambda(_) => Ok(lambda),
+            _ => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expected a LAMBDA".to_string(),
+            )),
+        }
     }
 
     /// One BYROW or BYCOL call of `lambda` on the row or column `slice`, bound as a reference.

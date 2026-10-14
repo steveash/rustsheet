@@ -258,3 +258,78 @@ fn byrow_over_a_range_above_the_array_bound_is_an_error() {
     assert!(model._get_text("A1").starts_with('#'));
     assert!(model._get_text("A2").starts_with('#'));
 }
+
+#[test]
+fn byrow_bycol_need_a_lambda() {
+    // Anything but a LAMBDA is `#VALUE!`, an error and an unknown name too
+    // (probes/eta-reduced-names E5:E21).
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("D1", "=BYCOL(A1:B3,NA())");
+    model._set("D2", "=BYCOL(A1:B3,1)");
+    model._set("D3", "=BYCOL(A1:B3,COUNTA)");
+    model._set("D4", "=BYROW(A1:B3,_xleta.NONSUCH)");
+    model.evaluate();
+    for cell in ["D1", "D2", "D3", "D4"] {
+        assert_eq!(model._get_text(cell), "#VALUE!", "{cell}");
+    }
+}
+
+#[test]
+fn functions_passed_by_name() {
+    // `_xleta.NAME` takes as many arguments as the helper passes (probes/eta-reduced-names,
+    // probes/m7-argument-modes F28:H51).
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("A3", "z");
+    model._set("B3", "y");
+    model._set("D1", "=BYCOL(A1:B3,_xleta.COUNTA)");
+    model._set("D3", "=BYROW(A1:B3,_xleta.countblank)");
+    model._set("D7", "=MAKEARRAY(2,2,_xleta.POWER)");
+    model._set("D9", "=LET(f,_xleta.SUM,f(1,2))");
+    model._set("D10", "=MAP(A1:A3,_xleta.ISREF)");
+    model._set("D13", "=BYROW({1,2;3,4},_xleta._xlfn.STDEV.S)");
+    model._set("D15", "=SCAN(0,A1:A3,_xleta.COUNTA)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "2");
+    assert_eq!(model._get_text("E1"), "1");
+    assert_eq!(model._get_text("D3"), "1");
+    assert_eq!(model._get_text("D4"), "2");
+    assert_eq!(model._get_text("D5"), "0");
+    assert_eq!(model._get_text("E7"), "1");
+    assert_eq!(model._get_text("E8"), "4");
+    assert_eq!(model._get_text("D9"), "3");
+    assert_eq!(model._get_text("D10"), "TRUE");
+    assert_eq!(model._get_text("D12"), "TRUE");
+    assert_eq!(model._get_text("D13"), "0.707106781");
+    assert_eq!(model._get_text("D15"), "2");
+    assert_eq!(model._get_text("D16"), "1");
+}
+
+#[test]
+fn functions_passed_by_name_with_special_forms_do_not_panic() {
+    // Functions the parser or evaluator treats specially still evaluate to some value.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    let formulas = [
+        "=BYROW(A1:B3,_xleta.LET)",
+        "=MAKEARRAY(2,2,_xleta.LET)",
+        "=BYROW(A1:B3,_xleta.LAMBDA)",
+        "=MAKEARRAY(2,2,_xleta.LAMBDA)",
+        "=MAP(A1:A3,_xleta.SUBTOTAL)",
+        "=MAKEARRAY(2,2,_xleta.SUBTOTAL)",
+        "=BYROW(A1:B3,_xleta.AREAS)",
+        "=MAKEARRAY(2,2,_xleta.OFFSET)",
+        "=MAP(A1:A3,_xleta.NOW)",
+        "=REDUCE(0,A1:A3,_xleta.INDIRECT)",
+        "=_xleta.SUM",
+        "=_xleta.",
+    ];
+    for (row, formula) in formulas.iter().enumerate() {
+        model._set(&format!("D{}", 4 * row + 1), formula);
+    }
+    model.evaluate();
+    for row in 0..formulas.len() {
+        let _ = model._get_text(&format!("D{}", 4 * row + 1));
+    }
+}
