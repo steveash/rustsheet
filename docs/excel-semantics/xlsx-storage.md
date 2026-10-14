@@ -217,7 +217,7 @@ refuses the whole workbook (`unsupportedWorkbook`) when a `t="d"` cell holds unp
 `dateCompatibility="0"` (T-0407, fixtures/strict-date-compatibility-0, Excel for the web): the attribute
 does not switch off the 1900 leap-year bug. `DATE(1900,2,28)` = 59, `DATE(1900,3,1)` = 61, `DATE(1900,2,29)` = 60,
 `TEXT(60,"yyyy-mm-dd")` = `1900-02-29`, `DAY(59)` = 28, `DATEVALUE("1900-01-01")` = 1, and a `t="d"` cell
-`1900-01-01` reads as 1 (a number); this is the same as a Transitional workbook, so the importer's
+`1900-01-01` reads as 1 (a number). The probe package was Transitional (standard namespace) carrying the attribute, not a purl-namespace package. The result is the same as a Transitional workbook, so the importer's
 ignoring the attribute is correct and no follow-up is needed. UNVERIFIED (no probe): a trailing `Z`, fractional
 seconds, `1900-02-29` (serial 60), dates before 1900-01-01 and time-only text; the importer reads the
 first two as `serial + fraction` and leaves the rest empty. Probe run 2026-10-07, Excel for the web.
