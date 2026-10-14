@@ -603,9 +603,12 @@ are walked over the cells that exist only, not every position of the used area: 
 that takes a union skips blank cells, and the cells are met in the same row-major order, so the
 first error cell is the same. The walk pays as it goes from a budget of 16,777,216 steps
 (`MAX_AREA_WALK`, 2^24) per formula evaluation: one step per area walked (so a repeated walk of
-an empty union is paid for too), one per cell handed to the function, one per
-row found (at least one, even with no cell in the area's columns), one per unallocated chunk of
-1,024 rows passed over, and one per 16 row slots tested in allocated chunks
+an empty union is paid for too), one per cell handed to the function, and one per search of the
+sheet's column index: one per column of the area that holds cells (at least one) to find them,
+then, when there are at most 16 such columns, one per read of up to 64 of a column's rows, merged
+in row-major order (T-1502). An area with cells in more columns is walked by rows instead: one
+step per row found (at least one, even with no cell in the area's columns), one per unallocated
+chunk of 1,024 rows passed over, and one per 16 row slots tested in allocated chunks
 (`SLOTS_PER_WALK_STEP`). Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
 operand and LAMBDA call of the formula draws on the same budget, like the pair budget; a single
 range argument is not counted and is walked as before (every position of its used area). Over
@@ -626,10 +629,11 @@ With data in row 1,048,576 `=SUM((B:B,C:C),...)` with nine union arguments (9*2^
 27. The engine now agrees on all of them (T-1497). MAP over a union
 (`=SUM(MAP((B1:B3,C1:C3),LAMBDA(x,x)))`, `ROWS(...)`) is `#VALUE!` in both. The oracle gives no
 timings, so whether Excel walks only data is not known; a union over filled cells past the budget
-remains a DEVIATION. So does a union over a sheet with many rows filled in other columns: a row is
-found through the sheet's row storage, not per column, and costs a step even when the area's
-columns are blank in it, so `MAP(A1:A10000,LAMBDA(r,SUM((B:B,C:C))))` is `#VALUE!` here when
-another column fills 9,000 rows (Excel: 80000). A per-column index would lift that (T-1502).
+remains a DEVIATION. Rows filled in other columns cost a narrow area nothing, since its rows come
+from the column index (T-1502): `MAP(A1:A10000,LAMBDA(r,SUM((B:B,C:C))))` is 80000 as in Excel
+when another column fills 9,000 rows. An area with cells in more than 16 columns is still walked
+by rows, paying for rows where its columns are blank, so a wide area over a sheet whose rows other
+columns fill can reach the budget before Excel would.
 A union area is recorded as read-empty as one rectangle per formula root, once however often it is
 walked, so repeated walks do not grow the record that each spill is checked against.
 Excel's actual limit, if any, is not known; the probe only shows it is above 2*10^8 walked cells.
@@ -643,8 +647,8 @@ so memory is bounded by the workbook's formula text and each use by the caps abo
 Status: DEVIATION (decision 0014)
 Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
 `Model::count_union_areas`, `Model::intersect_areas`); area_budget.rs (`MAX_AREA_PAIRS`,
-`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
-Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497
+`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`, `Model::for_each_indexed_position`); sheet_data.rs (`SheetData::rows_in_column_between`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
+Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502
 
 ## Seen-range cap
 Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a

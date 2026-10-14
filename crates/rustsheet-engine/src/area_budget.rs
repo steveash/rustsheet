@@ -23,9 +23,10 @@ pub(crate) const TOO_MANY_AREA_PAIRS: &str = "Too many areas to intersect";
 /// `MAX_AREAS` copies of `A:A` fit in a short formula, a LET-bound union can be passed again and
 /// again (`SUM(x,x,...)`), and a LAMBDA can walk one per row of a MAP. A union area is walked
 /// over its existing cells only ([`Model::for_each_position_in_area`]), and each step is one area
-/// walked, one cell handed to the caller, one row found, one unallocated chunk of rows passed
-/// over, or [`SLOTS_PER_WALK_STEP`] row slots tested, so the work follows the data visited, not
-/// the size of the areas. Past the bound the argument is `#VALUE!` (DEVIATION, decision 0014:
+/// walked, one cell handed to the caller, one search of the sheet's column index (an area with
+/// cells in few columns walks them through it), one row found, one unallocated chunk of rows
+/// passed over, or [`SLOTS_PER_WALK_STEP`] row slots tested, so the work follows the data
+/// visited, not the size of the areas. Past the bound the argument is `#VALUE!` (DEVIATION, decision 0014:
 /// references.md "Union area cap"). The message keeps its words ([`TOO_MANY_AREA_CELLS`]).
 pub(crate) const MAX_AREA_WALK: u64 = 1 << 24;
 
