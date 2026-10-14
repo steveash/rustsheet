@@ -36,6 +36,7 @@ mod test_fn_day;
 mod test_fn_depreciation;
 mod test_fn_encodeurl;
 mod test_fn_exact;
+mod test_fn_filterxml;
 mod test_fn_financial;
 mod test_fn_financial_simple;
 mod test_fn_formulatext;
