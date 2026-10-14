@@ -1358,8 +1358,8 @@ MAX, COUNT, COUNTA, LARGE, MEDIAN and the T-1551 list above), TYPE's argument (`
 and under SUMPRODUCT IF's condition and IFERROR's and IFNA's value
 (`for_each_array_context_condition`); `remove_redundant_implicit_intersection` mirrors it so the
 export drops exactly those `@`s. Unprobed: the arithmetic argument of the compatibility
-aggregates (STDEV, VAR, PERCENTILE, QUARTILE, MODE; the engine keeps the range whole), IFERROR/IFNA nested below another
+aggregates (STDEV, VAR, PERCENTILE, QUARTILE, MODE; the engine keeps the range whole; T-1556), IFERROR/IFNA nested below another
 function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, and the other control functions
 (CHOOSE's index under SUMPRODUCT lifts, T-0294).
 Status: VERIFIED
-Tasks: T-0293, T-1526, T-1551, T-1555
+Tasks: T-0293, T-1526, T-1551, T-1555, T-1556
