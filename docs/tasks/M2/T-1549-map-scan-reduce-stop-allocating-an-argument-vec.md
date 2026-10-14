@@ -3,7 +3,7 @@ id: T-1549
 title: "MAP/SCAN/REDUCE: stop allocating an argument Vec and cloning the LAMBDA on every element"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
