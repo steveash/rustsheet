@@ -38,3 +38,4 @@ Decision 0060 adds 4 case lines and 1,086 cell lines to eval/milestones/probe-mi
 - `make eval` probes M0-M2: 292 cases / 9,328 cells / 177 known failures before, and
   288 / 8,112 / 171 after. Only the six `trig-huge-argument` failures moved (to M5), and T-1563
   moved to M5 with them. `make eval-check` shows 0 regressions, and no baseline changes.
+- After merging origin/main 5fb38a9e: unchanged (288 / 8,112 / 171). Filed T-1568 (harness, sonnet): the mapping loader rejects a cell line for an unchecked cell.

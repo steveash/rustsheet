@@ -29,7 +29,9 @@
   INDIRECT, LET, LAMBDA, TAKE, DROP, XLOOKUP, TRANSPOSE and CHOOSEROWS nested in a reader. This
   is 0059's first reading, "a function's argument reader is that function's subject", applied
   cell by cell. Number-format codes in TEXT are M10, as in 0058. A reference into another
-  workbook is M8, as in 0058.
+  workbook is M8, as in 0058. A companion cell that only observes another cell's result (the
+  `&""` and `=0` columns of decision 0042, or ERROR.TYPE/ISERROR next to the producing cell) follows
+  that cell.
   - **Case lines (4).** Every checked cell of these cases is flagged:
     - `external-ref-no-link-ifchoose-b` → M8 (the external-reference feature, like its
       siblings in 0058);
@@ -136,3 +138,4 @@
 |---|---|---|---|
 | before (origin/main 5ab38239) | 292 | 9,328 | 177 |
 | after | 288 | 8,112 | 171 |
+| after, merged with origin/main 5fb38a9e (adds T-1508's and T-0409's probes; the sweep flags none of their cells) | 288 | 8,112 | 171 |
