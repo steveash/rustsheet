@@ -3,7 +3,7 @@ id: T-1546
 title: "Probe lifted INDEX over a cached external range (cached, whole-row, out-of-range elements)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
