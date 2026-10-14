@@ -1,0 +1,57 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1513: * (column A) and PRODUCT (column D) of two cells whose exact 106-bit product lies just below a rounding midpoint at a range boundary, so the first (64-bit) rounding lands on the midpoint and the second rounds it away. Rows 1-3 (row 4 negative): exact product within 2^-13 ulp below the midpoint between DBL_MAX and 2^1024 (single rounding: DBL_MAX; double rounding: overflow). Row 5 control: just outside that window, stays DBL_MAX. Rows 6-8: exact product just below (2^53-1)*2^-1075, the midpoint between the largest subnormal and 2^-1022 (single: 2.225073858507201E-308 subnormal; double: the smallest normal 2^-1022).",
+  "tags": [
+    "probe",
+    "numbers",
+    "T-1513"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "B1": "=(75071253*67108864+20324045)*2^460",
+        "C1": "=(119982001*67108864+58898702)*2^459",
+        "A1": "=B1*C1",
+        "D1": "=PRODUCT(B1,C1)",
+        "E1": "=\"overflow\"",
+        "B2": "=(70313027*67108864+14336483)*2^460",
+        "C2": "=(128101428*67108864+58861700)*2^459",
+        "A2": "=B2*C2",
+        "D2": "=PRODUCT(B2,C2)",
+        "E2": "=\"overflow\"",
+        "B3": "=(73740284*67108864+1781609)*2^460",
+        "C3": "=(122147607*67108864+19473530)*2^459",
+        "A3": "=B3*C3",
+        "D3": "=PRODUCT(B3,C3)",
+        "E3": "=\"overflow\"",
+        "B4": "=(70273594*67108864+18273373)*2^460",
+        "C4": "=(128173311*67108864+945772)*2^459",
+        "A4": "=-B4*C4",
+        "D4": "=PRODUCT(-B4,C4)",
+        "E4": "=\"overflow-neg\"",
+        "B5": "=(128013413*67108864+52660317)*2^460",
+        "C5": "=(70361370*67108864+43234876)*2^459",
+        "A5": "=B5*C5",
+        "D5": "=PRODUCT(B5,C5)",
+        "E5": "=\"overflow-control\"",
+        "B6": "=(67169229*67108864+53767835)*2^-564",
+        "C6": "=(134097104*67108864+60434787)*2^-563",
+        "A6": "=B6*C6",
+        "D6": "=PRODUCT(B6,C6)",
+        "E6": "=\"smallest-normal\"",
+        "B7": "=(91631471*67108864+18387300)*2^-564",
+        "C7": "=(98298097*67108864+2341705)*2^-563",
+        "A7": "=B7*C7",
+        "D7": "=PRODUCT(B7,C7)",
+        "E7": "=\"smallest-normal\"",
+        "B8": "=(69664847*67108864+16336820)*2^-564",
+        "C8": "=(129293318*67108864+6428932)*2^-563",
+        "A8": "=B8*C8",
+        "D8": "=PRODUCT(B8,C8)",
+        "E8": "=\"smallest-normal\""
+      }
+    }
+  ],
+  "expected": {}
+}
