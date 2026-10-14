@@ -3,7 +3,7 @@ id: T-1487
 title: "IF and CHOOSE picking a reference into another workbook keep it a reference"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
