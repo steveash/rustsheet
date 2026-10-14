@@ -3,7 +3,7 @@ id: T-0424
 title: "xlsx export: one helper formats theme colours and tints"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
