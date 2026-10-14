@@ -519,6 +519,9 @@ C	probes/text-result-limit.case.json	24
 C	probes/text-scalar-edges.case.json	63
 C	probes/text-search-casefold-length.case.json	24
 C	probes/text-surrogate-positions.case.json	68
+C	probes/textjoin-array-arguments.case.json	34
+C	probes/textjoin-array-limit-empty-strings.case.json	11
+C	probes/textjoin-delimiter-array.case.json	6
 C	probes/timevalue-ampm-limits.case.json	44
 C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
@@ -5680,6 +5683,11 @@ F	probes/text-surrogate-positions.case.json	Sheet1!A29
 F	probes/text-surrogate-positions.case.json	Sheet1!A38
 F	probes/text-surrogate-positions.case.json	Sheet1!A6
 F	probes/text-surrogate-positions.case.json	Sheet1!B10
+F	probes/textjoin-delimiter-array.case.json	Calc!A1
+F	probes/textjoin-delimiter-array.case.json	Calc!A2
+F	probes/textjoin-delimiter-array.case.json	Calc!A3
+F	probes/textjoin-delimiter-array.case.json	Calc!A4
+F	probes/textjoin-delimiter-array.case.json	Calc!A5
 F	probes/volatile-invariant.case.json	Calc!A12
 F	probes/volatile-invariant.case.json	Calc!A13
 F	probes/volatile-invariant.case.json	Calc!A2
