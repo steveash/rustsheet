@@ -39,6 +39,7 @@ C	probes/at-paren-operands.case.json	6
 C	probes/at-power-text.case.json	24
 C	probes/at-signed-operand.case.json	24
 C	probes/average-value-args.case.json	32
+C	probes/averagea-array-constant-elements.case.json	25
 C	probes/base-min-length.case.json	14
 C	probes/bond-one-period-bases.case.json	80
 C	probes/catalog/availability-01.case.json	12
@@ -4885,7 +4886,6 @@ F	probes/info-logic-argument-modes-2.case.json	Calc!B5
 F	probes/info-logic-argument-modes.case.json	Calc!A15
 F	probes/info-logic-argument-modes.case.json	Calc!A19
 F	probes/info-logic-argument-modes.case.json	Calc!B15
-F	probes/legacy-value-argument-intersection-b.case.json	Sheet1!AI2
 F	probes/legacy-value-argument-intersection-c.case.json	Sheet1!T2
 F	probes/legacy-value-argument-intersection-c.case.json	Sheet1!U2
 F	probes/lookup-argument-modes.case.json	Sheet1!F1

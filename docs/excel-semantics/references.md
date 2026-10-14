@@ -1363,8 +1363,9 @@ The compatibility and remaining statistics aggregates intersect too (probes/lega
 PERCENTILE, QUARTILE, PERCENTILE.EXC 2; QUARTILE.EXC `#NUM!`; PERCENTRANK and PERCENTRANK.INC 1 (`PERCENTRANK(B1:B6*1,2)`);
 every one is `#VALUE!` on row 10. MODE and MODE.MULT are 1 on both rows (an array argument, like MODE.SNGL). Excel for the web
 refuses to open a workbook holding `RANK(2,B1:B6*1)` (RANK, RANK.EQ, RANK.AVG take a reference) or `COUNTBLANK(B1:B6*1)`
-(`FileCorruptTryRepair`), so those are unprobed. `FORMULATEXT` of a legacy `SUM(B1:B6+0)` is `=SUM(@B1:B6+0)`. Dynamic `AVERAGEA({1,"a",TRUE})` is 0.5 (we give 0.667; the rule for an array
-constant is open, statistics.md "AVERAGEA over an array constant", T-1555) and `AVERAGEA("1/2/2020",1)` is 21916.5.
+(`FileCorruptTryRepair`), so those are unprobed.
+`FORMULATEXT` of a legacy `SUM(B1:B6+0)` is `=SUM(@B1:B6+0)`. Dynamic `AVERAGEA({1,"a",TRUE})` is 0.5 (an array's booleans are skipped, statistics.md
+"AVERAGEA, MAXA and MINA over an array", T-1555) and `AVERAGEA("1/2/2020",1)` is 21916.5.
 A range of a linked workbook is intersected the same way, reading the cached cell
 (fixtures/external-link-cached-ranges Refs!B38, B44, B56, B62; "Cached values of a linked workbook").
 Evidence: probes/legacy-value-argument-intersection, probes/legacy-type-intersection (excel-graph,
