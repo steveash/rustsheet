@@ -3,7 +3,7 @@ id: T-1048
 title: "Excel evidence for legacy distribution names GAMMADIST to ZTEST"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
