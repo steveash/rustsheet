@@ -3,7 +3,7 @@ id: T-1507
 title: "INDEX with a 1x1 array index is an array, not a reference (COUNTBLANK of it is #VALUE!)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
