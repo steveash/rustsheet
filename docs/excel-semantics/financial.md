@@ -120,8 +120,9 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
 - Fit set: probes/solver-iteration-traces sheet X (155 cells: two-flow roots 0.013 to 0.94 and -0.013 to
   -0.918 at guesses 1, 0.1, -0.5 and 0, one- and ten-year spans, three-flow roots to 2.0) and the 72 XIRR
   cells of probes-numeric/m9-fin-irr-rate. The model is bit-exact on all 208 numeric cells, and it gives
-  no result on all 19 `#NUM!` cells (the lab scores numbers only; `solvers.xirr_error_agreement`, checked by
-  tools/tests/test_fitlab_solvers.py). The engine (Newton) gets 0/208.
+  no result on all 19 `#NUM!` cells (the lab scores error cells since T-1534: `rustsheet-fitlab xirr` shows
+  227/227; checked by tools/tests/test_fitlab_solvers.py). The lab's iterate report finds Excel's value among
+  the model's bisection midpoints at index 21 to 30 (median 25) on all 208 numeric cells. The engine (Newton) gets 0/208.
 - Rejected variants (fit set, numeric cells): the step test alone 195/208, h < 6e-9 81/208,
   h < 1e-8 * |m| 33/208, the XNPV test alone 13/208; m = (a + b) / 2 206/208 and starting `a` at the
   lower end 205/208 (each moves m by an ulp somewhere). The constants are tight: with B = 1e-8,

@@ -3,7 +3,9 @@
 The verdict boundaries are the harness's (crates/rustsheet-eval/src/value.rs `compare_numbers`):
 equal doubles (0.0 == -0.0) are exact, finite pairs within 4 ulp (`ulp_distance`) are `ulp`,
 pairs within 1e-9 relative are `close`, anything else (including a candidate that raises or
-returns a non-number) is a miss.
+returns a non-number) is a miss. A cell whose Excel value is an error is matched by the same error:
+a candidate signals one by raising `ExcelError` (or returning it); the right error is exact, another
+error or a number is a miss (T-1534).
 """
 
 from __future__ import annotations
@@ -33,6 +35,14 @@ def ulp_distance(a: float, b: float) -> int:
     return abs(_ordered(a) - _ordered(b))
 
 
+class ExcelError(ArithmeticError):
+    """A candidate's Excel error result (`#NUM!` unless `code` says otherwise)."""
+
+    def __init__(self, message: str = "", code: str = "#NUM!") -> None:
+        super().__init__(message or code)
+        self.code = code
+
+
 @dataclass(frozen=True)
 class Candidate:
     """A named implementation: `evaluate(cell)` returns the double it computes for the cell.
@@ -44,11 +54,20 @@ class Candidate:
     name: str
     evaluate: Callable[[Cell], float]
     family: str = ""
+    # Optional: the iterates the candidate walks through on the cell, in order (it may stop early
+    # by raising). The score reports which one equals Excel's value.
+    trace: Callable[[Cell], list[float]] | None = None
 
 
-def candidate(name: str, fn: Callable[..., float], family: str = "") -> Candidate:
-    """A candidate that calls `fn(*cell.args)`."""
-    return Candidate(name, lambda cell: fn(*cell.args), family or name)
+def candidate(
+    name: str,
+    fn: Callable[..., float],
+    family: str = "",
+    trace: Callable[..., list[float]] | None = None,
+) -> Candidate:
+    """A candidate that calls `fn(*cell.args)`; `trace`, if given, is called the same way."""
+    traced = None if trace is None else (lambda cell: trace(*cell.args))
+    return Candidate(name, lambda cell: fn(*cell.args), family or name, traced)
 
 
 @dataclass
@@ -57,16 +76,19 @@ class CellResult:
     actual: float | None  # None: the candidate raised or returned a non-number
     ulps: int | None  # None: not comparable (non-finite or no value)
     note: str = ""
+    error: str | None = None  # the Excel error the candidate produced, if it did
+    iterate: int | None = None  # index of the first trace iterate equal to Excel's value
 
     def to_json(self) -> dict[str, Any]:
         return {
             "case": self.cell.case,
             "cell": self.cell.key,
             "formula": self.cell.formula,
-            "expected": self.cell.expected,
-            "actual": self.actual,
+            "expected": self.cell.error if self.cell.error is not None else self.cell.expected,
+            "actual": self.error if self.error is not None else self.actual,
             "ulps": self.ulps,
             "note": self.note,
+            "iterate": self.iterate,
         }
 
 
@@ -82,6 +104,8 @@ class Score:
     close: int = 0  # within 1e-9 relative, ulp included
     errors: int = 0
     exact_keys: set[str] = field(default_factory=set)
+    traced: int = 0  # cells where the candidate exposed iterates
+    iterate_hits: dict[str, int] = field(default_factory=dict)  # "case cell" -> matching iterate
     incomparable: int = 0  # cells with no finite distance (errors, non-finite values)
     largest: int = 0  # the largest finite ulp distance
     results: list[CellResult] = field(default_factory=list)  # the worst cells only (see `score`)
@@ -110,6 +134,8 @@ class Score:
             "within_4_ulp": self.ulp,
             "within_1e-9": self.close,
             "errors": self.errors,
+            "traced": self.traced,
+            "iterate_hits": self.iterate_hits,
             "max_ulps": self.max_ulps,
             "worst": [r.to_json() for r in self.worst(worst)],
         }
@@ -118,17 +144,45 @@ class Score:
 def _measure(cell: Cell, cand: Candidate) -> CellResult:
     try:
         value = cand.evaluate(cell)
+    except ExcelError as e:  # before the ArithmeticError clause: ExcelError is one
+        return _error_result(cell, e.code)
     except (ArithmeticError, ValueError, TypeError, KeyError, IndexError, RecursionError) as e:
         return CellResult(cell, None, None, f"{type(e).__name__}: {e}")
     if isinstance(value, bool) or not isinstance(value, float | int):
         return CellResult(cell, None, None, f"returned {type(value).__name__}")
-    actual = float(value)
+    return _number_result(cell, float(value))
+
+
+def _number_result(cell: Cell, actual: float) -> CellResult:
     expected = cell.expected
+    if cell.error is not None:
+        return CellResult(cell, actual, None, f"number instead of {cell.error}")
     if actual == expected or (math.isnan(actual) and math.isnan(expected)):
         return CellResult(cell, actual, 0)
     if not (math.isfinite(actual) and math.isfinite(expected)):
         return CellResult(cell, actual, None, "non-finite")
     return CellResult(cell, actual, ulp_distance(expected, actual))
+
+
+def _error_result(cell: Cell, code: str) -> CellResult:
+    """The candidate's error against Excel's value: the same error is exact (0 ulp), anything else
+    a miss; an error where Excel has a number is a miss too."""
+    if cell.error is None:
+        return CellResult(cell, None, None, f"returned {code}", code)
+    if code == cell.error:
+        return CellResult(cell, None, 0, "", code)
+    return CellResult(cell, None, None, f"{code} instead of {cell.error}", code)
+
+
+def _iterate(cell: Cell, cand: Candidate) -> int | None:
+    """Index of the first iterate of the candidate's trace that equals Excel's value."""
+    if cand.trace is None or cell.error is not None:
+        return None
+    try:
+        steps = cand.trace(cell)
+    except (ArithmeticError, ValueError, TypeError, KeyError, IndexError, RecursionError):
+        return None
+    return next((i for i, v in enumerate(steps) if v == cell.expected), None)
 
 
 def score(cells: list[Cell], cand: Candidate, keep: int = 10) -> Score:
@@ -137,8 +191,13 @@ def score(cells: list[Cell], cand: Candidate, keep: int = 10) -> Score:
     s = Score(cand.name, cand.family or cand.name, len(cells))
     for cell in cells:
         r = _measure(cell, cand)
+        if cand.trace is not None and cell.error is None:
+            s.traced += 1
+            r.iterate = _iterate(cell, cand)
+            if r.iterate is not None:
+                s.iterate_hits[f"{cell.case} {cell.key}"] = r.iterate
         s.results.append(r)
-        if r.actual is None:
+        if r.actual is None and r.error is None:
             s.errors += 1
         if r.ulps is None:
             s.incomparable += 1
@@ -149,8 +208,9 @@ def score(cells: list[Cell], cand: Candidate, keep: int = 10) -> Score:
             s.exact_keys.add(f"{cell.case} {cell.key}")
         if r.ulps <= ULP_TOLERANCE:
             s.ulp += 1
-        if r.actual is not None and abs(cell.expected - r.actual) <= CLOSE_RELATIVE * max(
-            abs(cell.expected), abs(r.actual)
+        if r.error is not None or (
+            r.actual is not None
+            and abs(cell.expected - r.actual) <= CLOSE_RELATIVE * max(abs(cell.expected), abs(r.actual))
         ):
             s.close += 1
     s.results = s.worst(keep)
@@ -225,8 +285,23 @@ def family_table(rows: list[dict[str, Any]], total: int) -> str:
 def worst_text(s: Score, k: int) -> str:
     lines = [f"worst cells of {s.name}:"]
     for r in s.worst(k):
-        got = "-" if r.actual is None else repr(r.actual)
+        got = r.error or ("-" if r.actual is None else repr(r.actual))
         detail = f"{_ulps_text(r.ulps)} ulp" if r.ulps is not None else r.note
         where = f"{r.cell.case.rsplit('/', 1)[-1].removesuffix('.case.json')} {r.cell.key}"
-        lines.append(f"  {where:<26} {r.cell.formula:<26} excel {r.cell.expected!r}  got {got}  ({detail})")
+        lines.append(
+            f"  {where:<26} {r.cell.formula:<26} excel {r.cell.error or r.cell.expected!r}  got {got}  ({detail})"
+        )
     return "\n".join(lines)
+
+
+def iterate_text(scores: list[Score]) -> str:
+    """Per traced candidate: on how many cells Excel's value is one of its iterates, and the
+    spread of the matching iterate's index (the bisection depth, for a bisection)."""
+    lines = []
+    for s in rank(scores):
+        if not s.traced:
+            continue
+        depths = sorted(s.iterate_hits.values())
+        spread = f", index {depths[0]}..{depths[-1]} (median {depths[len(depths) // 2]})" if depths else ""
+        lines.append(f"  {s.name[:60]:<60} {len(depths):>5}/{s.traced:<5} cells{spread}")
+    return "\n".join(["iterate matches (Excel's value is iterate k of the trace):", *lines]) if lines else ""

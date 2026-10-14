@@ -13,32 +13,28 @@ Sweeps (excel-graph): probes-numeric/m9-fin-irr-rate (T-1009) and probes/solver-
 
 Findings: docs/excel-semantics/financial.md ("XIRR is a bracketing bisection", "IRR returns x - 1",
 "RATE iterates on the rate itself", "YIELD with one coupon period left is closed form"). The lab
-scores only cells whose Excel value is a number; `xirr_error_agreement` checks the `#NUM!` cells
-(tests/test_fitlab_solvers.py).
+scores the `#NUM!` cells of the XIRR fits too (a model with no result is `ExcelError`), and reports
+which bisection iterate equals Excel's value (T-1534).
 """
 
 from __future__ import annotations
 
 import calendar
+import contextlib
 import datetime
 import math
 from collections.abc import Callable
 from functools import partial
-from pathlib import Path
 from typing import NamedTuple
 
 from rustsheet_tools.fitlab.fit import Fit
-from rustsheet_tools.fitlab.score import Candidate, candidate
+from rustsheet_tools.fitlab.score import Candidate, ExcelError, candidate
 from rustsheet_tools.fitlab.sweep import (
     Arg,
     Cell,
     UnparsedError,
-    case_entry,
-    load_workbook,
     numeric_arg,
-    parse_arg,
     serial_date,
-    split_args,
 )
 
 FIT_CASES = ["probes-numeric/m9-fin-irr-rate", "probes/solver-iteration-traces"]
@@ -52,7 +48,7 @@ XIRR_OOS_CASES = [
 YIELD_CASES = ["probes/solver-iteration-traces", "probes/bond-one-period-bases", "probes/yield-solver-sweep"]
 
 
-class NoResultError(ArithmeticError):
+class NoResultError(ExcelError):
     """The model's `#NUM!` (no bracket, no convergence, a power that is not real)."""
 
 
@@ -142,16 +138,20 @@ def xirr_model(
     *,
     from_upper: bool = True,
     half_step: bool = True,
+    trace: list[float] | None = None,
 ) -> float:
     """Bisection on the bracket: `a` starts at the upper end (lower if not `from_upper`), each
     step replaces the end whose XNPV has XNPV(m)'s sign; an exact 0 does not stop it. The midpoint
-    is a + (b - a) / 2 (Excel's), or (a + b) / 2 when not `half_step`."""
+    is a + (b - a) / 2 (Excel's), or (a + b) / 2 when not `half_step`. Each midpoint is appended to
+    `trace`, if given."""
     lo, hi = sorted(xirr_bracket(values, dates, guess))
     a, b = (hi, lo) if from_upper else (lo, hi)
     fa = xnpv(a, values, dates)
     for _ in range(200):  # the bisection cap is not probed
         m = a + (b - a) / 2 if half_step else (a + b) / 2
         fm = xnpv(m, values, dates)
+        if trace is not None:
+            trace.append(m)
         if stop(Probe(m, abs(b - a) / 2, fm, values)):
             return m
         if (fm > 0) == (fa > 0):
@@ -185,26 +185,44 @@ STOPS: dict[str, Stop] = {
 
 
 def _xirr(stop: Stop, *, from_upper: bool = True, half_step: bool = True) -> Callable[..., float]:
-    def call(values: Arg, dates: Arg, guess: Arg = 0.1) -> float:
-        model = partial(xirr_model, from_upper=from_upper, half_step=half_step)
+    def call(values: Arg, dates: Arg, guess: Arg = 0.1, trace: list[float] | None = None) -> float:
+        model = partial(xirr_model, from_upper=from_upper, half_step=half_step, trace=trace)
         return model(floats(values), floats(dates), numeric_arg(guess), stop)
 
     return call
 
 
+def _xirr_trace(call: Callable[..., float]) -> Callable[..., list[float]]:
+    """The midpoints `call` visits; they are kept when it ends without a result."""
+
+    def steps(*args: Arg) -> list[float]:
+        mids: list[float] = []
+        with contextlib.suppress(NoResultError):
+            call(*args, trace=mids)
+        return mids
+
+    return steps
+
+
+def _xirr_candidate(name: str, call: Callable[..., float], family: str) -> Candidate:
+    return candidate(name, call, family, _xirr_trace(call))
+
+
 def xirr_candidates() -> list[Candidate]:
-    out = [candidate(f"bisect, stop {name}", _xirr(stop), "stop rule") for name, stop in STOPS.items()]
+    out = [_xirr_candidate(f"bisect, stop {name}", _xirr(stop), "stop rule") for name, stop in STOPS.items()]
     out += [
-        candidate("bisect fitted, m=(a+b)/2", _xirr(fitted_stop(), half_step=False), "midpoint"),
-        candidate("bisect fitted, a from the lower end", _xirr(fitted_stop(), from_upper=False), "midpoint"),
+        _xirr_candidate("bisect fitted, m=(a+b)/2", _xirr(fitted_stop(), half_step=False), "midpoint"),
+        _xirr_candidate(
+            "bisect fitted, a from the lower end", _xirr(fitted_stop(), from_upper=False), "midpoint"
+        ),
     ]
     # The step test's bound: A in A + 1e-8 |m| (fitted 4.93e-9 <= A <= 5.09e-9), then B at A = 5e-9.
     out += [
-        candidate(f"bisect fitted, A={a:.3g}", _xirr(fitted_stop(a_term=a)), "bound A")
+        _xirr_candidate(f"bisect fitted, A={a:.3g}", _xirr(fitted_stop(a_term=a)), "bound A")
         for a in (4.85e-9, 4.95e-9, 5.05e-9, 5.15e-9)
     ]
     out += [
-        candidate(f"bisect fitted, B={b:.3g}", _xirr(fitted_stop(b_term=b)), "bound B")
+        _xirr_candidate(f"bisect fitted, B={b:.3g}", _xirr(fitted_stop(b_term=b)), "bound B")
         for b in (0.99e-8, 1.02e-8, 1.03e-8)
     ]
     return out
@@ -220,34 +238,6 @@ def _literal_xirr(cell: Cell) -> bool:
         return len(cell.args) == 2 or isinstance(cell.args[2], float)
     except TypeError:
         return False
-
-
-def xirr_error_agreement(case_ids: list[str]) -> tuple[int, list[str]]:
-    """XIRR literal cells whose Excel value is an error: how many the fitted model also leaves
-    without a result, and the ids of those it solves. The lab scores numbers only."""
-    agree, wrong = 0, []
-    for case_id in case_ids:
-        entry = case_entry(case_id)
-        book = load_workbook(Path(entry["path"]), Path(entry["sidecar"]))
-        for sheet, cells in book.sheets.items():
-            for address, raw in cells.items():
-                if not (isinstance(raw, str) and raw.upper().startswith("=XIRR({")):
-                    continue
-                oracle = book.oracle.get(sheet, {}).get(address, {})
-                if oracle.get("t") != "e":
-                    continue
-                try:
-                    args = [parse_arg(a, sheet, book) for a in split_args(raw[6:-1])]
-                    vals, dates = floats(args[0]), floats(args[1])
-                    guess = numeric_arg(args[2]) if len(args) > 2 else 0.1
-                except (UnparsedError, TypeError):
-                    continue
-                try:
-                    xirr_model(vals, dates, guess, fitted_stop())
-                    wrong.append(f"{case_id} {sheet}!{address}")
-                except NoResultError:
-                    agree += 1
-    return agree, wrong
 
 
 # ----------------------------------------------------------------------------- IRR
@@ -662,6 +652,7 @@ FITS = [
         pattern=r"^=XIRR\((.*)\)$",
         candidates=xirr_candidates,
         where=_literal_xirr,
+        errors=True,
     ),
     Fit(
         name="xirr-oos",
@@ -670,6 +661,7 @@ FITS = [
         pattern=r"^=XIRR\((.*)\)$",
         candidates=xirr_candidates,
         where=_literal_xirr,
+        errors=True,
     ),
     Fit(
         name="irr",
