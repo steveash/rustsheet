@@ -116,7 +116,7 @@ pub(crate) fn extended_product(x: f64, y: f64) -> f64 {
 }
 
 /// Whether `plain = x + y` can differ from the twice-rounded sum. The rounding error `e` of the
-/// addition is found exactly (Knuth's TwoSum); the first rounding to 64 bits can land on a double
+/// addition is found exactly (Knuth's `TwoSum`); the first rounding to 64 bits can land on a double
 /// midpoint, and so change the result, only when `|e|` is within 2^-8 of half a unit in the last
 /// place of the sum (or of a quarter, below a power of two, where the next lower double is closer).
 /// An exact sum and every other error keep `plain`, so the 128-bit path runs for few additions.
