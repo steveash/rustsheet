@@ -1,4 +1,7 @@
-use super::{divide, extended_product, extended_quotient, extended_sum, minus, plus, power, times};
+use super::{
+    divide, extended_product, extended_quotient, extended_sqrt, extended_sum, minus, plus, power,
+    times,
+};
 use crate::expressions::token::Error;
 
 // probes-numeric/double-rounding-ops A33 (excel-graph, T-1496): a sum whose single rounding is
@@ -139,4 +142,28 @@ fn non_integer_exponents_use_exp_of_y_ln_x() {
     assert_eq!(power(6.0, 2.5), Ok(88.181_630_740_194_38));
     assert_eq!(power(10.0, 33.5), Ok(3.162_277_660_168_401e33));
     assert_eq!(power(10.0, -33.5), Ok(3.162_277_660_168_357_6e-34));
+}
+
+// The root is exact where it is representable and the plain `sqrt` away from a double midpoint, at
+// odd and even exponents.
+#[test]
+fn extended_sqrt_is_the_plain_root_away_from_midpoints() {
+    for x in [
+        4.0,
+        2.25,
+        1e-300,
+        1e300,
+        0.5,
+        2.0,
+        3.0,
+        123_456.789,
+        1e-5,
+        7e22,
+    ] {
+        assert_eq!(extended_sqrt(x), x.sqrt(), "{x}");
+    }
+    assert_eq!(extended_sqrt(0.0), 0.0);
+    assert!(extended_sqrt(-1.0).is_nan());
+    assert_eq!(extended_sqrt(f64::INFINITY), f64::INFINITY);
+    assert_eq!(extended_sqrt(5e-324), 5e-324_f64.sqrt());
 }

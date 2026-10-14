@@ -281,7 +281,8 @@ product, 8 pairs), `a+b`, `a-b`, `SUM(a,b)` and `AVERAGE(a,b)` (operands whose e
 12-52, so the sum needs more than 64 bits; 8 pairs each), and `SQRT(x)` and `x^0.5` (8 values).
 Implemented for `*` and PRODUCT by `arithmetic::extended_product` (T-1498, A1-A16 pass) and for
 `+`, `-`, SUM and AVERAGE (each addition of the running total) by `arithmetic::extended_sum` (T-1499,
-A33-A64 pass); SQRT and `^0.5` are still singly rounded. AVERAGEA, SUMIF(S) and the database
+A33-A64 pass) and for SQRT and `^0.5` (and the `sqrt` inside `^-0.5`) by `arithmetic::extended_sqrt`
+(T-1500, A65-A80 pass: the 66-bit root is built bit by bit from the exact significand). AVERAGEA, SUMIF(S) and the database
 sums accumulate with the plain `+` and are unprobed (T-1516).
 Range edges of `*` and PRODUCT (probes-numeric/double-rounding-range-edges, excel-graph, 2026-10-14,
 T-1513): the second rounding happens at the result's own precision. An exact product just under the
