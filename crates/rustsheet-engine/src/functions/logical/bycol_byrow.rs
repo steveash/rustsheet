@@ -189,11 +189,7 @@ impl Model {
             left: slice.left,
             right: slice.right,
         };
-        calc_result_to_array_node(self.call_lambda_with_values(
-            lambda.clone(),
-            vec![reference],
-            cell,
-        ))
+        calc_result_to_array_node(self.call_lambda_with_values(lambda, &[reference], cell))
     }
 
     /// The array argument of BYROW or BYCOL. A range on one sheet (also through TAKE, DROP,
@@ -341,8 +337,8 @@ impl Model {
             let mut row = Vec::with_capacity(cols);
             for c in 1..=cols {
                 let cell_result = self.call_lambda_with_values(
-                    lambda_result.clone(),
-                    vec![CalcResult::Number(r as f64), CalcResult::Number(c as f64)],
+                    &lambda_result,
+                    &[CalcResult::Number(r as f64), CalcResult::Number(c as f64)],
                     cell,
                 );
                 row.push(calc_result_to_array_node(cell_result));
