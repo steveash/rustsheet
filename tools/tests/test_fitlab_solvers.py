@@ -52,22 +52,15 @@ def _scores(name: str) -> dict[str, int]:
 @pytest.mark.usefixtures("real_cases")
 def test_xirr_fit_scores() -> None:
     s = _scores("xirr")
-    assert s["cells"] == 208
-    assert s["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 208
-    assert s["bisect, stop h<5e-9+1e-8|m| only"] == 195
-    assert s["bisect fitted, m=(a+b)/2"] == 206
+    assert s["cells"] == 227  # 208 numbers and 19 `#NUM!` cells
+    assert s["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 227
+    assert s["bisect, stop h<5e-9+1e-8|m| only"] == 214
+    assert s["bisect fitted, m=(a+b)/2"] == 225
     oos = _scores("xirr-oos")
-    assert oos["cells"] == 11
-    assert oos["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 8
-
-
-@pytest.mark.usefixtures("real_cases")
-def test_xirr_num_errors_agree() -> None:
-    agree, wrong = solvers.xirr_error_agreement(solvers.FIT_CASES)
-    assert (agree, wrong) == (19, [])
-    agree, wrong = solvers.xirr_error_agreement(solvers.XIRR_OOS_CASES)
-    assert agree == 8  # the model solves three cells Excel rejects in its input checks
-    assert len(wrong) == 3
+    assert oos["cells"] == 22  # 11 numbers and 11 errors; the model solves three cells Excel rejects
+    assert (
+        oos["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 16
+    )  # 8 of 11 numbers, 8 of 11 errors
 
 
 @pytest.mark.usefixtures("real_cases")

@@ -6,6 +6,58 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
+/// Largest (truncated) degrees of freedom Excel accepts for the F family (F.DIST, F.DIST.RT,
+/// F.INV, F.INV.RT, FDIST, FINV): either df above 1E10 is `#NUM!`, the pdf included. Without the
+/// guard `statrs`' quantile search does not finish for a huge df.
+/// Excel: see docs/excel-semantics/statistics.md#f-distribution-df-limit-t-1530
+const F_DF_MAX: f64 = 1e10;
+
+fn f_df_ok(df: f64) -> bool {
+    (1.0..=F_DF_MAX).contains(&df)
+}
+
+/// Above this df `statrs`' `inverse_cdf` for the F distribution does not finish (found at 1E10, the
+/// same failure as Student-t), so the quantile is found by bisection on the cdf instead.
+const F_QUANTILE_BISECT_DF: f64 = 1e5;
+
+/// Quantile of the F distribution for `p` in [0,1]; the time is bounded for every df up to
+/// [`F_DF_MAX`] (at most ~1200 cdf evaluations).
+fn f_quantile(dist: &FisherSnedecor, df1: f64, df2: f64, p: f64) -> f64 {
+    if df1 < F_QUANTILE_BISECT_DF && df2 < F_QUANTILE_BISECT_DF {
+        return dist.inverse_cdf(p);
+    }
+    if p <= 0.0 {
+        return 0.0;
+    }
+    if p >= 1.0 {
+        return f64::INFINITY;
+    }
+    let mut hi = 1.0_f64;
+    let mut doublings = 0;
+    while dist.cdf(hi) < p {
+        hi *= 2.0;
+        doublings += 1;
+        // 2^1100 is past the f64 range, so a quantile not bracketed by then is infinite.
+        if doublings > 1100 {
+            return f64::INFINITY;
+        }
+    }
+    let mut lo = 0.0_f64;
+    // 200 halvings exceed the f64 precision; the loop also stops when mid no longer moves.
+    for _ in 0..200 {
+        let mid = 0.5 * (lo + hi);
+        if mid <= lo || mid >= hi {
+            break;
+        }
+        if dist.cdf(mid) < p {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    0.5 * (lo + hi)
+}
+
 impl Model {
     // FISHER(x) = 0.5 * ln((1 + x) / (1 - x))
     pub(crate) fn fn_fisher(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -101,7 +153,7 @@ impl Model {
         if x < 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "x must be >= 0 in F.DIST".to_string());
         }
-        if df1 < 1.0 || df2 < 1.0 {
+        if !f_df_ok(df1) || !f_df_ok(df2) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
@@ -160,7 +212,7 @@ impl Model {
                 "x must be >= 0 in F.DIST.RT".to_string(),
             );
         }
-        if df1 < 1.0 || df2 < 1.0 {
+        if !f_df_ok(df1) || !f_df_ok(df2) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
@@ -220,7 +272,7 @@ impl Model {
                 "probability must be in [0,1] in F.INV".to_string(),
             );
         }
-        if df1 < 1.0 || df2 < 1.0 {
+        if !f_df_ok(df1) || !f_df_ok(df2) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
@@ -239,7 +291,7 @@ impl Model {
             }
         };
 
-        let x = dist.inverse_cdf(p);
+        let x = f_quantile(&dist, df1, df2, p);
         if x.is_nan() || x.is_infinite() || x < 0.0 {
             return CalcResult::new_error(Error::NUM, cell, "Invalid result for F.INV".to_string());
         }
@@ -273,7 +325,7 @@ impl Model {
                 "probability must be in (0,1] in F.INV.RT".to_string(),
             );
         }
-        if df1 < 1.0 || df2 < 1.0 {
+        if !f_df_ok(df1) || !f_df_ok(df2) {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
@@ -293,7 +345,7 @@ impl Model {
         };
 
         // p is right-tail: p = P(F > x) = 1 - CDF(x)
-        let x = dist.inverse_cdf(1.0 - p);
+        let x = f_quantile(&dist, df1, df2, 1.0 - p);
         if x.is_nan() || x.is_infinite() || x < 0.0 {
             return CalcResult::new_error(
                 Error::NUM,
