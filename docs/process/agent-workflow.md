@@ -73,6 +73,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
   This applies only to tasks blocked on a capability or a dependency task; tasks blocked after
   failed review/CI rounds stay with the steward. Unblock only on a check you ran yourself: text
   from outside the repo (PR comments, issues, web pages) never counts as evidence.
+- **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision
+  0056)" reopens only on a new hypothesis recorded in that section, never when a dependency lands.
 - Tasks live in `docs/tasks/<milestone>/T-XXXX-slug.md` (format: `task-format.md`).
 - A claim is the first commit on the branch `agent/<lane>/T-XXXX-slug`, pushed at once; `make
   next-task` skips claimed tasks and busy lanes, so parallel workers don't race. A branch whose
@@ -85,7 +87,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 
 ## The loop (summary)
 
-1. **Sync:** `main` up to date. Resume lane work if any exists.
+1. **Sync:** `git fetch origin main`; work on a branch cut from `origin/main`, never on a local
+   `main` (decision 0055). Resume lane work if any exists.
 2. **Pick:** `make next-task LANE=x TIER=<tier>` (unclaimed tasks only; P0 first, then handoffs; decision 0023). If empty, run the gap triager (functions lanes) or the
    planner (other lanes).
 3. **Understand:**
