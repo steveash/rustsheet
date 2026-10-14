@@ -3,7 +3,7 @@ id: T-1482
 title: "TEXTJOIN over array literals and function results is #N/IMPL!"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
