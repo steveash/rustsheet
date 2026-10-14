@@ -41,26 +41,31 @@ slightly.
 
 ## Kernels, call sites and owner tasks
 
-Rank by **only this kernel** (cells a kernel fix alone can move), then by dependencies: an
-inverse is fitted after its CDF, and gamma before the incomplete beta/gamma prefactors.
+Ranks follow **only this kernel** (cells a kernel fix alone can move), adjusted for dependencies: an
+inverse is fitted after its CDF, gamma before the incomplete beta/gamma prefactors, and the solvers
+come early because T-1525 probes them first. So the order is not strictly by count. The counts
+overlap across dependent kernels (pow/exp/ln, rank 13, sits under most of the others), so the
+"only" column does not add up across ranks. The function-to-kernel table in the script is
+maintained by hand: a function missing from it lands in "(no numeric kernel)". Per-function counts
+are in `eval/runs/latest/report.json` (`functions[].verdicts`).
 
 | # | kernel | engine call site | owner tasks | notes |
 |---|---|---|---|---|
-| 1 | annuity (1+r)^n | `functions/financial/mod.rs` `compute_payment`, `compute_future_value`, `compute_ipmt`, `compute_ppmt`; NPV/MIRR loops | T-0901, T-1405 | Engine's own closed forms (no library). 952 `close` cells point to a different evaluation order or algebraic form, not rounding. Cheapest high-yield fit; also feeds the RATE solver. |
-| 2 | normal CDF / erfc | `functions/statistical/special.rs` `erfc`, `erfc_cf`, `erf_series`, `normal_cdf` | T-0968, T-1186 | 80% of its misses are ≤ 4 ulp. The fit lab's ERFC example (T-1523) is the starting point; the x87 model (T-1524) is the main hypothesis. |
-| 3 | incomplete beta | `statrs` `beta_reg` via `Beta`, `StudentsT`, `FisherSnedecor`, `Binomial`, `NegativeBinomial` | T-0970, T-0969, T-0927 | 1,084 `close`: statrs' continued fraction differs from Excel's algorithm, not just its rounding. Needs our own kernel, which the inverse-beta rank depends on. |
+| 1 | annuity (1+r)^n | `functions/financial/mod.rs` `compute_payment`, `compute_future_value`, `compute_ipmt`, `compute_ppmt`; NPV and MIRR in the same file | T-0901, T-1405 | Engine's own closed forms (no library). 952 `close` cells point to a different evaluation order or algebraic form, not rounding. Cheapest high-yield fit; also feeds the RATE solver. |
+| 2 | normal CDF / erfc | `functions/statistical/special.rs` `erfc`, `erfc_cf`, `erf_series`, `normal_cdf`; `functions/engineering/bessel.rs` `fn_erfc`, `fn_erf` | T-0968, T-1186 | 80% of its misses are ≤ 4 ulp. The fit lab's ERFC example (T-1523) is the starting point; the x87 model (T-1524) is the main hypothesis. |
+| 3 | incomplete beta | `statrs` `beta_reg`, called from `statistical/beta.rs`, `t_dist.rs`, `fisher.rs`, `binom.rs` | T-0970, T-0969, T-0927 | 1,084 `close`: statrs' continued fraction differs from Excel's algorithm, not just its rounding. Needs our own kernel, which the inverse-beta rank depends on. |
 | 4 | solvers | `functions/financial/financial_util.rs` `compute_rate`, `compute_irr`, `compute_xirr`; YIELD in `financial_bonds.rs` | T-0916 (T-1525 probes first) | 746 `close`: a different iterate or stop. T-1525 fits the trace. RATE also depends on rank 1. |
-| 5 | inverse beta | statrs `inverse_cdf` (bisection or Newton on rank 3) | T-0974, T-0967 | After rank 3. |
-| 6 | trig reduction | `functions/math_and_trigonometry` SIN/COS/TAN family, PI | T-0915, T-1201 | 276 `mismatch` near multiples of pi: argument reduction differs. |
-| 7 | incomplete gamma | statrs `gamma_lr` / `gamma_ur` via `Gamma`, `ChiSquared`, `Poisson` | T-0971 | After rank 9. |
+| 5 | inverse beta | statrs `inverse_cdf` in `statistical/beta.rs`, `t_dist.rs`, `fisher.rs` | T-0974, T-0967 | After rank 3. |
+| 6 | trig reduction | `functions/math_and_trigonometry` (the SIN/COS/TAN family; `fn_pi` in `mathematical.rs`) | T-0915, T-1201 | 276 `mismatch` near multiples of pi: argument reduction differs. |
+| 7 | incomplete gamma | statrs `gamma_lr` / `gamma_ur`, called from `statistical/gamma.rs`, `chisq.rs`, `poisson.rs` | T-0971 | After rank 9. |
 | 8 | gamma / ln gamma | `special.rs` `ln_gamma`; `statrs::function::gamma::gamma` | T-0973 | Prefactor of ranks 3 and 7, so fitting it first may move those too. |
-| 9 | Bessel | `functions/engineering/bessel.rs` | T-0908 | 198 `mismatch` at large arguments. |
-| 10 | inverse gamma | statrs `inverse_cdf` on rank 7 | T-0972 | After rank 7. |
+| 9 | Bessel | `functions/engineering/transcendental/bessel_*.rs` | T-0908 | 198 `mismatch` at large arguments. |
+| 10 | inverse gamma | statrs `inverse_cdf` in `statistical/gamma.rs`, `chisq.rs` | T-0972 | After rank 7. |
 | 11 | normal inverse | statrs `Normal::inverse_cdf` | T-0925 | 97% ≤ 4 ulp; Wichura AS241 is the named candidate. |
 | 12 | hyperbolic | `math_and_trigonometry/hyperbolic.rs` | T-0917 | Mostly ≤ 4 ulp. |
-| 13 | pow / exp / ln / sqrt | `arithmetic` `^`, POWER, GEOMEAN | T-0959, T-1495, the GEOMEAN tasks, T-1524 | Small cell count, but every other kernel calls these primitives. Settle T-1524 before more per-function fits. |
+| 13 | pow / exp / ln / sqrt | `arithmetic` `^`, POWER, GEOMEAN | T-0959, T-1495, the GEOMEAN tasks (T-1076, T-1099, T-1108, T-1113, T-1120, T-1284), T-1524 | Small cell count, but every other kernel calls these primitives. Settle T-1524 before more per-function fits. |
 | 14 | weibull / expon | `statistical/weibull.rs`, `exponential.rs` | T-0978 | |
-| 15 | bond pricing | `financial/financial_bonds.rs`, TBILL*, DB | T-1475, T-1406 | |
+| 15 | bond pricing | `financial/financial_bonds.rs` (its `powf` calls depend on rank 13), TBILL*, DB | T-1475, T-1406 | |
 | 16 | normal PDF | `special.rs` `normal_pdf`, `standard_normal_pdf` | T-0975 | All ≤ 4 ulp. |
 | 17 | hypergeometric / combinatorial | statrs `Hypergeometric`; MULTINOMIAL | T-0977, T-0927 | |
 | 18 | complex | `functions/engineering/complex.rs` | T-0907 | |
