@@ -239,7 +239,8 @@ fn union_of_sparse_whole_columns_is_bounded() {
 }
 
 // A lifted INDEX reads each picked cell from the cache, the top-left cell of a whole row or column
-// (probes/external-ref-no-link-ifchoose H1, I1 for the no-cache case; T-1537).
+// (probes/external-ref-no-link-ifchoose H1, I1 for the no-cache case; T-1537). The cached case is
+// UNVERIFIED until T-1546 probes it.
 #[test]
 fn lifted_index_reads_each_picked_cell_from_the_cache() {
     let mut model = linked();
