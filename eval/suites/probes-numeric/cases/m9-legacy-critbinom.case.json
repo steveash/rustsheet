@@ -1,0 +1,57 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1047 sweep: CRITBINOM vs BINOM.INV, boundary alpha, domain errors, coercion",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-1047",
+  "legacy"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=CRITBINOM(10,0.5,0.5)",
+    "A2": "=BINOM.INV(10,0.5,0.5)",
+    "A3": "=CRITBINOM(10,0.5,0.05)",
+    "A4": "=BINOM.INV(10,0.5,0.05)",
+    "A5": "=CRITBINOM(10,0.5,0.95)",
+    "A6": "=BINOM.INV(10,0.5,0.95)",
+    "A7": "=CRITBINOM(100,0.3,0.01)",
+    "A8": "=BINOM.INV(100,0.3,0.01)",
+    "A9": "=CRITBINOM(100,0.3,0.99)",
+    "A10": "=BINOM.INV(100,0.3,0.99)",
+    "A11": "=CRITBINOM(1000,0.1,0.5)",
+    "A12": "=BINOM.INV(1000,0.1,0.5)",
+    "A13": "=CRITBINOM(20,0.5,0.0)",
+    "A14": "=BINOM.INV(20,0.5,0.0)",
+    "A15": "=CRITBINOM(20,0.5,1)",
+    "A16": "=BINOM.INV(20,0.5,1)",
+    "A17": "=CRITBINOM(5,0.999,0.5)",
+    "A18": "=BINOM.INV(5,0.999,0.5)",
+    "A19": "=CRITBINOM(50,1e-06,0.9)",
+    "A20": "=BINOM.INV(50,1e-06,0.9)",
+    "A21": "=CRITBINOM(0,0.5,0.5)",
+    "A22": "=BINOM.INV(0,0.5,0.5)",
+    "A23": "=CRITBINOM(10,0,0.5)",
+    "A24": "=BINOM.INV(10,0,0.5)",
+    "A25": "=CRITBINOM(10,1,0.5)",
+    "A26": "=BINOM.INV(10,1,0.5)",
+    "A27": "=CRITBINOM(30,0.5,0.5)",
+    "A28": "=BINOM.INV(30,0.5,0.5)",
+    "A29": "=CRITBINOM(10.9,0.5,0.5)",
+    "A30": "=CRITBINOM(-1,0.5,0.5)",
+    "A31": "=CRITBINOM(10,1.5,0.5)",
+    "A32": "=CRITBINOM(10,-0.5,0.5)",
+    "A33": "=CRITBINOM(10,0.5,1.5)",
+    "A34": "=CRITBINOM(10,0.5,-0.1)",
+    "A35": "=CRITBINOM(\"10\",0.5,0.5)",
+    "A36": "=CRITBINOM(10,TRUE,0.5)",
+    "A37": "=CRITBINOM($Z$1,0.5,0.5)",
+    "A38": "=CRITBINOM(10,0.5,$Z$1)"
+   }
+  }
+ ],
+ "expected": {}
+}
