@@ -1313,47 +1313,44 @@ impl Model {
     // $$ v = p\times \left(1+\frac{y}{2}\right)\left(1+d_e\times\frac{y}{365}\right) $$
     // Together with the previous relation of $p$ and $v$ gives us a quadratic equation for $y$.
 
-    // TBILLEQ(settlement, maturity, discount)
-    pub(crate) fn fn_tbilleq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+    /// The checked `(settlement, maturity, rate or price)` of TBILLEQ, TBILLPRICE and TBILLYIELD.
+    fn tbill_arguments(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(f64, f64, f64), CalcResult> {
         if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
+            return Err(CalcResult::new_args_number_error(cell));
         }
-        let settlement = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let maturity = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let discount = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let less_than_one_year = match is_less_than_one_year(
+        let settlement = self.get_number_no_bools(&args[0], cell)?;
+        let maturity = self.get_number_no_bools(&args[1], cell)?;
+        let rate = self.get_number_no_bools(&args[2], cell)?;
+        let less_than_one_year = is_less_than_one_year(
             self.financial_date(settlement),
             self.financial_date(maturity),
-        ) {
-            Ok(f) => f,
-            Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
-        };
+        )
+        .map_err(|_| CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()))?;
         if settlement >= maturity {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "settlement should be < maturity".to_string(),
-            );
+            let message = "settlement should be < maturity".to_string();
+            return Err(CalcResult::new_error(Error::NUM, cell, message));
         }
         if !less_than_one_year {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "maturity <= settlement + year".to_string(),
-            );
+            let message = "maturity <= settlement + year".to_string();
+            return Err(CalcResult::new_error(Error::NUM, cell, message));
         }
-        if discount <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "discount should be >0".to_string());
+        if rate <= 0.0 {
+            let message = "discount should be >0".to_string();
+            return Err(CalcResult::new_error(Error::NUM, cell, message));
         }
+        Ok((settlement, maturity, rate))
+    }
+
+    // TBILLEQ(settlement, maturity, discount)
+    pub(crate) fn fn_tbilleq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (settlement, maturity, discount) = match self.tbill_arguments(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
         let d_m = maturity - settlement;
         let result = if d_m < 183.0 {
             // A zero denominator (price 0) is 0 and a negative one `#NUM!`, not `#DIV/0!`
@@ -1395,45 +1392,10 @@ impl Model {
 
     // TBILLPRICE(settlement, maturity, discount)
     pub(crate) fn fn_tbillprice(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let settlement = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
+        let (settlement, maturity, discount) = match self.tbill_arguments(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
-        let maturity = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let discount = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let less_than_one_year = match is_less_than_one_year(
-            self.financial_date(settlement),
-            self.financial_date(maturity),
-        ) {
-            Ok(f) => f,
-            Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
-        };
-        if settlement >= maturity {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "settlement should be < maturity".to_string(),
-            );
-        }
-        if !less_than_one_year {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "maturity <= settlement + year".to_string(),
-            );
-        }
-        if discount <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "discount should be >0".to_string());
-        }
         // days to maturity
         let d_m = maturity - settlement;
         let result = 100.0 * (1.0 - discount * d_m / 360.0);
@@ -1449,45 +1411,10 @@ impl Model {
 
     // TBILLYIELD(settlement, maturity, pr)
     pub(crate) fn fn_tbillyield(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let settlement = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
+        let (settlement, maturity, pr) = match self.tbill_arguments(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
-        let maturity = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let pr = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let less_than_one_year = match is_less_than_one_year(
-            self.financial_date(settlement),
-            self.financial_date(maturity),
-        ) {
-            Ok(f) => f,
-            Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
-        };
-        if settlement >= maturity {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "settlement should be < maturity".to_string(),
-            );
-        }
-        if !less_than_one_year {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "maturity <= settlement + year".to_string(),
-            );
-        }
-        if pr <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "discount should be >0".to_string());
-        }
         let days = maturity - settlement;
         // Excel's order: `(100 - pr)/pr * (360/days)` (ironcalc-calc TBILLs.xlsx R6:R30, bit-exact;
         // docs/excel-semantics/financial.md "TBILLEQ and TBILLYIELD").
