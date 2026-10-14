@@ -3,7 +3,7 @@ id: T-1506
 title: "ISREF(@INDEX(range,n)) is TRUE in Excel; engine gives FALSE"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
