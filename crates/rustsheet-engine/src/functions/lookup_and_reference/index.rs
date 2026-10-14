@@ -59,12 +59,15 @@ fn index_number(x: f64) -> Option<usize> {
     Some(near_integer_count(x.max(0.0)) as usize)
 }
 
-/// Whether an evaluated index makes INDEX lift: a multi-cell range or a multi-element array.
-/// A single cell or a 1x1 array stays a scalar index.
+/// Whether an evaluated index makes INDEX lift: a multi-cell range or any array. A single cell
+/// stays a scalar index, but a 1x1 array lifts too, so `INDEX(D1:D5,{2})` is a 1x1 array and not
+/// a reference: ISREF FALSE, TYPE 64, `COUNTBLANK` and `AREAS` of it `#VALUE!`
+/// (docs/excel-semantics/lookup.md "INDEX lifts over array and range indices";
+/// probes/index-1x1-array-index, countblank-array-values H1).
 fn lifts(index: &CalcResult) -> bool {
     match index {
         CalcResult::Range { left, right } => left != right,
-        CalcResult::Array(a) => a.len() > 1 || a.first().is_some_and(|r| r.len() > 1),
+        CalcResult::Array(_) => true,
         _ => false,
     }
 }

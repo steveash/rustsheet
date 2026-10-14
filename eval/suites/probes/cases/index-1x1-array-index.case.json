@@ -1,0 +1,50 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1507 probe: what a 1x1 array index ({2}) changes about INDEX's result next to the scalar index 2 (reference or 1x1 array?): ISREF, TYPE, ROWS, AREAS, the range operator, OFFSET, CELL, COUNTA/ISBLANK/SUMIF/COUNTIF of the picked blank or number, {n} in the area argument, and {n} in the row or column of the three-argument form. D1=10, D2 empty, D3=30, D4=\"x\", D5=TRUE.",
+ "tags": [
+  "M6",
+  "lookup",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "D1": 10,
+    "D3": 30,
+    "D4": "x",
+    "D5": true,
+    "H1": "=ISREF(INDEX(D1:D5,{2}))",
+    "H2": "=ISREF(INDEX(D1:D5,2))",
+    "H3": "=TYPE(INDEX(D1:D5,{3}))",
+    "H4": "=TYPE(INDEX(D1:D5,3))",
+    "H5": "=ROWS(INDEX(D1:D5,{2}))",
+    "H6": "=AREAS(INDEX(D1:D5,{2}))",
+    "H7": "=ROWS(INDEX(D1:D5,{2}):D5)",
+    "H8": "=SUM(INDEX(D1:D5,{1}):D3)",
+    "H9": "=SUM(OFFSET(INDEX(D1:D5,{1}),2,0))",
+    "H10": "=CELL(\"address\",INDEX(D1:D5,{3}))",
+    "H11": "=COUNTA(INDEX(D1:D5,{2}))",
+    "H12": "=COUNTA(INDEX(D1:D5,2))",
+    "H13": "=ISBLANK(INDEX(D1:D5,{2}))",
+    "H14": "=ISBLANK(INDEX(D1:D5,2))",
+    "H15": "=SUMIF(INDEX(D1:D5,{3}),30)",
+    "H16": "=COUNTIF(INDEX(D1:D5,{3}),30)",
+    "H17": "=ISREF(INDEX(D1:D5,{2},1))",
+    "H18": "=ISREF(INDEX(D1:D5,2,{1}))",
+    "H19": "=ISREF(INDEX(D1:D5,{2},{1}))",
+    "H20": "=ISREF(INDEX(D1:E5,{2},0))",
+    "H21": "=N(INDEX(D1:D5,{1}))",
+    "H22": "=SUM(INDEX(D1:D5,{4}),INDEX(D1:D5,{1}))",
+    "H23": "=COUNT(INDEX(D1:D5,{5}))",
+    "H24": "=INDEX(D1:D5,{2})&\"|\"",
+    "H25": "=ISREF(INDEX(D1:D5,{2}+0))",
+    "H26": "=ISREF(INDEX(D1:D5,SEQUENCE(1)+1))",
+    "H27": "=ISREF(INDEX((D1:D5,E1:E5),2,1,{1}))",
+    "H28": "=TYPE(INDEX((D1:D5,E1:E5),3,1,{1}))",
+    "H29": "=COUNTA(INDEX(D1:D5,{2,3}))"
+   }
+  }
+ ],
+ "expected": {}
+}
