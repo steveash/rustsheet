@@ -101,6 +101,7 @@ C	probes/colon-hash-value-operands.case.json	6
 C	probes/concatenate-limit-spill.case.json	68
 C	probes/count-direct-text.case.json	13
 C	probes/counta-empty-value.case.json	26
+C	probes/countblank-array-values.case.json	35
 C	probes/countblank-choose-errors.case.json	8
 C	probes/countblank-error-cell-refs.case.json	9
 C	probes/countblank-error-forms-b.case.json	8
@@ -592,6 +593,11 @@ F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11
 F	probes/concatenate-limit-spill.case.json	Sheet1!E8
 F	probes/concatenate-limit-spill.case.json	Sheet1!E9
+F	probes/countblank-array-values.case.json	Sheet1!H1
+F	probes/countblank-array-values.case.json	Sheet1!H21
+F	probes/countblank-array-values.case.json	Sheet1!H35
+F	probes/countblank-array-values.case.json	Sheet1!I21
+F	probes/countblank-array-values.case.json	Sheet1!I35
 F	probes/coupdays-feb-month-end.case.json	S!B20
 F	probes/coupdays-feb-month-end.case.json	S!C20
 F	probes/coupdays-feb-month-end.case.json	S!D20
@@ -4777,9 +4783,6 @@ F	probes/groupby-pivotby.case.json	P!Z97
 F	probes/groupby-pivotby.case.json	P!Z98
 F	probes/groupby-pivotby.case.json	P!Z99
 F	probes/ifna-isformula-edges.case.json	Calc!B12
-F	probes/index-lifted-edge-cases.case.json	Sheet1!H131
-F	probes/index-lifted-edge-cases.case.json	Sheet1!I131
-F	probes/index-lifted-edge-cases.case.json	Sheet1!J131
 F	probes/info-logic-argument-modes-2.case.json	Calc!A1
 F	probes/info-logic-argument-modes-2.case.json	Calc!A2
 F	probes/info-logic-argument-modes-2.case.json	Calc!A3
