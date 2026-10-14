@@ -3,7 +3,7 @@ id: T-1526
 title: "Cached external ranges: TYPE, SUBTOTAL, AGGREGATE, AVERAGEA and legacy implicit intersection"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
