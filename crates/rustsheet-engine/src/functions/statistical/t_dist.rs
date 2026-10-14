@@ -50,7 +50,7 @@ pub(crate) const T_DF_MAX: f64 = 1e10;
 
 /// Above this df `statrs`' `inverse_cdf` is both inaccurate and unbounded in time (seconds at 1E7,
 /// no finish at 1E8), and its cdf is only good to ~1E-6 relative, so the quantile comes from the
-/// normal quantile and Hill's series instead.
+/// normal quantile and the A&S 26.7.5 series instead.
 const T_QUANTILE_SERIES_DF: f64 = 1e5;
 
 /// Quantile of Student's t with `df` degrees of freedom for `p` in (0,1); the time is bounded for
