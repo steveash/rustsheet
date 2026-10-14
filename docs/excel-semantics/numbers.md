@@ -291,7 +291,8 @@ different doubles, Excel gives the twice-rounded one each time (`((1+31426889476
 is 4.123952952442882E-155 (the correctly rounded root is …881E-155), and its `^-0.5` follows the same
 rule. Evidence: probes-numeric/power-neg-half-rounding (40 cells; operands of at most 15 significant
 digits, since a 16-digit literal loses its last digit; excel-graph, 2026-10-14, T-1541). Implemented in
-`arithmetic::non_integer_power` and `extended_sqrt`, which normalizes a subnormal's significand. AVERAGEA, SUMIF(S) and the database
+`arithmetic::non_integer_power` and `extended_sqrt`, which normalizes a subnormal's significand.
+AVERAGEA, SUMIF(S) and the database
 sums accumulate with the plain `+` and are unprobed (T-1516).
 Range edges of `*` and PRODUCT (probes-numeric/double-rounding-range-edges, excel-graph, 2026-10-14,
 T-1513): the second rounding happens at the result's own precision. An exact product just under the

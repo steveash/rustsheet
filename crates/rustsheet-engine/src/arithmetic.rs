@@ -392,8 +392,8 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
 }
 
 /// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)`, a negative exponent as one over
-/// the positive power, and `y` = ±0.5 through [`extended_sqrt`]. This matches all 180 numeric oracle cells over
-/// 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep;
+/// the positive power, and `y` = ±0.5 through [`extended_sqrt`]. This matches all 180 numeric
+/// oracle cells over 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep;
 /// docs/excel-semantics/numbers.md "Non-integer exponents: exp(y·ln x)"). A negative `x` gives NaN.
 fn non_integer_power(x: f64, y: f64) -> f64 {
     // -0 has the logarithm of 0: `-0^0.5` is 0, not `sqrt`'s -0 (gen-m1/6462bf910ef9f28f Calc!A19).
