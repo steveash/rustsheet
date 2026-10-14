@@ -5432,9 +5432,6 @@ F	probes/solver-iteration-traces.case.json	Y!E5
 F	probes/solver-iteration-traces.case.json	Y!E6
 F	probes/solver-iteration-traces.case.json	Y!E7
 F	probes/solver-iteration-traces.case.json	Y!E8
-F	probes/stat-a-computed-arrays.case.json	Sheet1!B13
-F	probes/stat-a-computed-arrays.case.json	Sheet1!B14
-F	probes/stat-a-computed-arrays.case.json	Sheet1!B15
 F	probes/stat-argument-modes.case.json	Sheet1!H101
 F	probes/stat-argument-modes.case.json	Sheet1!H102
 F	probes/stat-argument-modes.case.json	Sheet1!H103
