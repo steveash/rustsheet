@@ -279,6 +279,8 @@ double-rounded value; oracle: excel-graph, 2026-10-13, T-1496): `x/y` with neith
 (8 pairs) and `SUMPRODUCT(x/(y+{0}))` round twice, as do `a*b` and `PRODUCT(a,b)` (the 106-bit
 product, 8 pairs), `a+b`, `a-b`, `SUM(a,b)` and `AVERAGE(a,b)` (operands whose exponents differ by
 12-52, so the sum needs more than 64 bits; 8 pairs each), and `SQRT(x)` and `x^0.5` (8 values).
+Implemented for `*` and PRODUCT by `arithmetic::extended_product` (T-1498, A1-A16 pass);
+`+ - SUM AVERAGE SQRT` are still singly rounded.
 Each of these operations, taken alone, rounds to a double twice. Intermediates do not stay at 64
 bits: in a chained expression every operator's result is rounded (twice) to a double before the next
 operator uses it. probes-numeric/double-rounding-chained (54 cells; operands picked so that keeping
