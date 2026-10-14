@@ -61,23 +61,29 @@ const T_TAIL_P: f64 = 1e-5;
 /// the first correction to better than 1E-16, so the tail quantile has a closed form.
 const T_TAIL_X: f64 = 1e-8;
 
+/// Below this probability `statrs`' `inverse_cdf` panics (checked at 1E-200), so the quantile comes
+/// from bisection on its cdf instead.
+const T_STATRS_PANIC_P: f64 = 1e-100;
+
 /// Magnitude `t > 0` with `P(T < -t) = q` for a small `q`, `df < T_QUANTILE_SERIES_DF`; bounded time.
 /// Excel gives finite values down to the smallest p it accepts (probes-numeric `t1531-t-tiny-p`:
-/// `T.INV(1E-300,1)` = -3.183098861837907E299).
+/// `T.INV(1E-300,1)` = -3.183098861837907E299). Where `x` is not tiny `statrs` is bit-exact with
+/// Excel (T_DIST.xlsx `T.INV(0.9999999,10)`), so it is kept there.
 fn t_tail_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
     let a = 0.5 * df;
     // P(T < -t) = I_x(a, 1/2) / 2 with I_x ~ x^a / (a B(a, 1/2)) * (1 + a / (2 (a + 1)) x).
     let ln_b = ln_gamma(a) + ln_gamma(0.5) - ln_gamma(a + 0.5);
-    let mut ln_x = (2.0 * q).ln() + a.ln() + ln_b;
-    ln_x /= a;
+    let mut ln_x = ((2.0 * q).ln() + a.ln() + ln_b) / a;
     if ln_x < T_TAIL_X.ln() {
         let x = ln_x.exp();
         ln_x -= (a / (2.0 * (a + 1.0)) * x).ln_1p() / a;
         let x = ln_x.exp();
         return df.sqrt() * (-0.5 * ln_x).exp() * (1.0 - x).sqrt();
     }
-    // x is not small: the quantile is moderate, so bisect on the cdf (statrs is only inaccurate
-    // for the quantile search, and panics for p below about 1E-200).
+    if q >= T_STATRS_PANIC_P {
+        return -dist.inverse_cdf(q);
+    }
+    // x is not small and q is tiny: the quantile is moderate, so bisect on the cdf.
     let mut hi = 1.0_f64;
     for _ in 0..64 {
         if dist.cdf(-hi) <= q {
