@@ -1,0 +1,23 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "External-workbook references with no externalLink part: COUNTA of a union or intersection with a local reference, OFFSET's later argument errors, ROW of a value IF gives (T-1487).",
+  "tags": [
+    "M2",
+    "references",
+    "external-reference",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=COUNTA(('[other.xlsx]Sheet1'!A1,E1))",
+        "A2": "=OFFSET('[other.xlsx]Sheet1'!A1,1,1/0)",
+        "A3": "=OFFSET('[other.xlsx]Sheet1'!A1,1,1,0)",
+        "A4": "=ROW(IF(FALSE,'[other.xlsx]Sheet1'!A1))",
+        "A5": "=COUNTA('[other.xlsx]Sheet1'!A1 E1)",
+        "A6": "=OFFSET('[other.xlsx]Sheet1'!A1,1,1,1,1/0)"
+      }
+    }
+  ]
+}

@@ -15,7 +15,7 @@ use crate::{
     get_all_timezones,
     limits::check_range_size,
     model::Model,
-    reference_operators::RefArg,
+    reference_operators::{Picked, RefArg},
 };
 
 /// Applies `f` to every element of a 2-D array, keeping its shape.
@@ -137,7 +137,10 @@ impl Model {
 
     /// Whether `node` stands for a reference (ISREF).
     fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
-        let node = node.ungrouped();
+        // `ISREF(IF(TRUE,…!A1))` is TRUE (probes/external-ref-no-link-ifchoose A9, A10, A31).
+        let Picked::Node(node) = self.pick_branch(node, cell) else {
+            return false;
+        };
         // A reference into another workbook, written or through INDEX, a union or an
         // intersection (probes/external-ref-no-link-shapes A4, external-ref-no-link-index A28,
         // A33); one into two workbooks is `#VALUE!`, so not a reference.

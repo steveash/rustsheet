@@ -13,6 +13,7 @@ From `tools/`:
 uv run rustsheet-fitlab --list                 # shipped fits
 uv run rustsheet-fitlab erfc                   # ERFC + ERFC.PRECISE, engine vs libm (530 cells)
 uv run rustsheet-fitlab erfc-tail --top 10     # the T-1187 grid, about 5,800 candidates (~10 s)
+uv run rustsheet-fitlab xirr                   # T-1525 solvers: also xirr-oos, irr, rate, yield-one-period, yield
 uv run rustsheet-fitlab erfc-tail --only 'bu_even' --worst 10 --no-engine
 uv run rustsheet-fitlab --case probes-numeric/t1040-erfc \
     --pattern '^=ERFC\((.*)\)$' --candidate math:erfc --candidate mymod:my_erfc   # ad hoc
@@ -41,13 +42,14 @@ other than a number, misses that cell and is counted under `err`. It does not st
   is a number are scored. The others are counted as non-numeric.
 - **Cell selection:** a regex over the formula text. Group 1 is the argument list, for example
   `^=GAMMA\.DIST\((.*)\)$`. The arguments are split at top-level commas. The reader handles
-  numeric literals, TRUE/FALSE, string literals, and references (`A1`, `$Z$1`, `Data!B2`,
-  `D1:D10`, which gives a row-major list). A reference to a constant cell gives the case's value.
+  numeric literals, TRUE/FALSE, string literals, array literals of those (`{1,2;3,4}`, a row-major
+  list), `DATE(y,m,d)` with integer literals (its 1900-system serial), and references (`A1`, `$Z$1`,
+  `Data!B2`, `D1:D10`, which gives a row-major list). A reference to a constant cell gives the case's value.
   A reference to a formula cell gives Excel's value from the sidecar. Arithmetic over numeric
   literals (`0.05/12`, `(1+26955297717044*2^-52)`) is evaluated with Excel's operator model
   (`sweep.arithmetic`): each of `+ - * /` rounds to 64 bits, then to a double, and `^` must be an
   exact integer power such as `2^-52`. A non-finite literal or result and nesting deeper than 50
-  are unparsed too. A cell with any other argument, such as a function call, is listed as unparsed.
+  are unparsed too. A cell with any other argument, such as another function call, is listed as unparsed.
 - **Candidate arguments:** `sweep.numeric_arg` turns an argument into a float, or raises
   TypeError (a miss for that candidate) for a bool, text, an empty cell or a range.
 - **Several groups:** a pattern with more than one group gives one argument per group that took

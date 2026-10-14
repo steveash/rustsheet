@@ -137,6 +137,17 @@ pub(crate) enum RefArg {
     Value(CalcResult),
 }
 
+/// What an IF or CHOOSE stands for once its condition or index is read: the argument it picks,
+/// or the value it gives instead ([`Model::if_pick`], [`Model::choose_pick`],
+/// [`Model::pick_branch`]).
+pub(crate) enum Picked<'a> {
+    /// The argument picked, still unevaluated, to read in place of the IF or CHOOSE.
+    Node(&'a Node),
+    /// What it gives when it picks no one argument: an argument-count error, the condition's or
+    /// index's error, IF's FALSE for a missing branch, or its result lifted over an array.
+    Value(CalcResult),
+}
+
 /// What an array stands for where a function takes a reference (SUBTOTAL, AREAS, COUNTBLANK):
 /// `#VALUE!` per element, an element that is an error kept (`SUBTOTAL(9,IF(TRUE,{1,#N/A}))` is
 /// `#VALUE!`, `#N/A`; probes/subtotal-reference-operands, T-1163; probes/countblank-array-values).
@@ -635,11 +646,7 @@ impl Model {
         // Into another workbook, the one area's cells are read at once (`ERROR.TYPE(…!A1
         // …!A1:B2)` is `#N/A`, probes/external-ref-no-link-index A36).
         if let Some(areas) = self.external_intersection(left, right, cell) {
-            return match areas.as_deref() {
-                Ok([area]) => self.external_picked_value(*area, cell),
-                Ok(_) => several_areas(cell),
-                Err(error) => error.clone(),
-            };
+            return self.external_areas_value(areas, cell);
         }
         match self.intersect_to_one_area(left, right, cell) {
             Ok(area) => CalcResult::Range {

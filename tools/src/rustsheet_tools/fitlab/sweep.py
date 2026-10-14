@@ -3,16 +3,18 @@
 A sweep is a case plus its oracle sidecar (Excel's values), both JSON, located through the
 harness's own discovery (`rustsheet-eval cases`, `snapshot.suite_cases`); no xlsx is parsed.
 Cells are selected by a regex over the formula text whose first group is the argument list.
-Arguments are numeric literals, TRUE/FALSE, string literals, references (`A1`, `$Z$1`,
+Arguments are numeric literals, TRUE/FALSE, string literals, array literals of those (`{1,2;3,4}`,
+row-major), `DATE(y,m,d)` with integer literals (a 1900-system serial), references (`A1`, `$Z$1`,
 `Data!B2`, `D1:D10`) to constant cells of the case or to formula cells with an oracle value, and
 arithmetic over numeric literals (`0.05/12`, `1+26955297717044*2^-52`), which is evaluated with
-Excel's operator model (`arithmetic`). A cell whose arguments are anything else (a function
+Excel's operator model (`arithmetic`). A cell whose arguments are anything else (another function
 call) is reported as unparsed. A pattern with one group is an argument list split at top-level
 commas; a pattern with several groups gives one argument per group that took part in the match.
 """
 
 from __future__ import annotations
 
+import datetime
 import json
 import math
 import re
@@ -50,6 +52,8 @@ _MAX_RANGE_CELLS = 1_000_000
 _ARITH = re.compile(rf"\s*(?:(?P<num>{_UNSIGNED})|(?P<op>[-+*/^()]))")
 _MAX_EXACT_EXPONENT = 1100  # beyond the double range either way
 _MAX_NESTING = 50  # parentheses and unary signs: a bound on the parser's recursion (directive 5)
+_DATE = re.compile(r"DATE\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)", re.IGNORECASE)
+EPOCH = datetime.date(1899, 12, 30)  # serial 61 = 1900-03-01 (Excel's phantom 1900-02-29 is 60)
 
 
 class UnparsedError(ValueError):
@@ -265,8 +269,8 @@ def arithmetic(text: str) -> float:
     return result
 
 
-def parse_arg(text: str, sheet: str, book: Workbook) -> Arg:
-    """One argument's value (see the module doc for what is supported)."""
+def _literal(text: str) -> float | bool | str | None:
+    """A number, TRUE/FALSE or string literal, or None when `text` is none of those."""
     if _NUMBER.fullmatch(text):
         # Excel has no negative zero: `-0` is 0.
         return float(text) + 0.0
@@ -274,6 +278,53 @@ def parse_arg(text: str, sheet: str, book: Workbook) -> Arg:
         return text.upper() == "TRUE"
     if len(text) >= 2 and text[0] == text[-1] == '"' and '"' not in text[1:-1].replace('""', ""):
         return text[1:-1].replace('""', '"')
+    return None
+
+
+def _scalar(text: str) -> float | bool | str:
+    """An array item: a literal, else UnparsedError."""
+    literal = _literal(text)
+    if literal is None:
+        msg = f"cannot evaluate literal {text!r}"
+        raise UnparsedError(msg)
+    return literal
+
+
+def _array(text: str) -> list[float | bool | str | None]:
+    """`{a,b;c,d}`: the literals in row-major order."""
+    return [_scalar(item) for item in split_args(text[1:-1].replace(";", ","))]
+
+
+def date_serial(year: int, month: int, day: int) -> float:
+    """DATE(y, m, d) for a real calendar date from 1900-03-01 on (the serial Excel stores)."""
+    try:
+        when = datetime.date(year, month, day)
+    except ValueError:
+        msg = f"DATE({year},{month},{day}) is not a calendar date"
+        raise UnparsedError(msg) from None
+    if when < datetime.date(1900, 3, 1):
+        msg = f"DATE({year},{month},{day}) is before 1900-03-01"
+        raise UnparsedError(msg)
+    return float((when - EPOCH).days)
+
+
+def serial_date(serial: float) -> datetime.date:
+    """The calendar date of a 1900-system serial from 61 (1900-03-01) to 2958465 (9999-12-31);
+    UnparsedError for anything else (a fraction is dropped, as Excel's date functions do)."""
+    if not (math.isfinite(serial) and 61 <= serial < 2958466):
+        msg = f"date serial {serial} is outside 1900-03-01..9999-12-31"
+        raise UnparsedError(msg)
+    return EPOCH + datetime.timedelta(days=int(serial))
+
+
+def parse_arg(text: str, sheet: str, book: Workbook) -> Arg:
+    """One argument's value (see the module doc for what is supported)."""
+    if len(text) >= 2 and text[0] == "{" and text[-1] == "}":
+        return _array(text)
+    if d := _DATE.fullmatch(text):
+        return date_serial(int(d.group(1)), int(d.group(2)), int(d.group(3)))
+    if (literal := _literal(text)) is not None:
+        return literal
     if m := _REF.fullmatch(text):
         name = _sheet_name(m.group("sheet"), sheet)
         (r1, c1), (r2, c2) = parse_a1(m.group("first")), parse_a1(m.group("last") or m.group("first"))

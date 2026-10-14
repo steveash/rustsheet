@@ -2,7 +2,7 @@ use crate::arithmetic::{bcast_idx, flush_subnormal};
 use crate::external_reference::ExternalArea;
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
-use crate::reference_operators::{several_areas_ref, Ranges, RefArg};
+use crate::reference_operators::{several_areas_ref, Picked, Ranges, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -773,6 +773,11 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<(usize, usize), CalcResult> {
+        // `ROWS(IF(TRUE,…!A1:B3))` is 3 (probes/external-ref-no-link-index A25).
+        let node = match self.pick_branch(node, cell) {
+            Picked::Node(node) => node,
+            Picked::Value(value) => return value_extent(value, cell),
+        };
         if let Some(area) = self.one_external_area(node, cell) {
             return area.map(ExternalArea::extent);
         }
@@ -788,20 +793,28 @@ impl Model {
         } else {
             self.evaluate_node_with_reference(node, cell)
         };
-        match result {
-            CalcResult::Range { left, right } => Ok((
-                (right.row - left.row + 1) as usize,
-                (right.column - left.column + 1) as usize,
-            )),
-            CalcResult::Array(array) => Ok((array.len(), array.first().map_or(0, Vec::len))),
-            error @ CalcResult::Error { .. } => Err(error),
-            // Excel: a scalar is 1x1 (probes/rows-columns-args); other kinds stay unprobed.
-            CalcResult::Number(_) | CalcResult::Boolean(_) | CalcResult::String(_) => Ok((1, 1)),
-            _ => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Expected reference or array".to_string(),
-            )),
-        }
+        value_extent(result, cell)
+    }
+}
+
+/// `(rows, columns)` of a ROWS or COLUMNS argument's value, or the result to give instead.
+fn value_extent(
+    result: CalcResult,
+    cell: CellReferenceIndex,
+) -> Result<(usize, usize), CalcResult> {
+    match result {
+        CalcResult::Range { left, right } => Ok((
+            (right.row - left.row + 1) as usize,
+            (right.column - left.column + 1) as usize,
+        )),
+        CalcResult::Array(array) => Ok((array.len(), array.first().map_or(0, Vec::len))),
+        error @ CalcResult::Error { .. } => Err(error),
+        // Excel: a scalar is 1x1 (probes/rows-columns-args); other kinds stay unprobed.
+        CalcResult::Number(_) | CalcResult::Boolean(_) | CalcResult::String(_) => Ok((1, 1)),
+        _ => Err(CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "Expected reference or array".to_string(),
+        )),
     }
 }

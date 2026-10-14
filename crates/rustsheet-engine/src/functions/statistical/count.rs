@@ -3,7 +3,7 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::is_span_or_if_of_span;
-use crate::reference_operators::{not_a_reference_array, RefArg};
+use crate::reference_operators::{not_a_reference_array, Picked, RefArg};
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// COUNTBLANK's `#VALUE!` for an argument that is not a reference.
@@ -93,20 +93,28 @@ impl Model {
             // although `='[other.xlsx]Sheet1'!A1` is `#BLOCKED!` (`COUNTA(…!A1)` is 0,
             // `COUNTA(…!A1:B2,1)` 1; probes/external-ref-no-link-shapes A16,
             // external-ref-no-link-index A8, A10, A12, A23, A30). An error instead of a
-            // reference is a value, counted.
-            if let Some(areas) = self.external_reference(arg, cell) {
-                match areas {
-                    Ok(areas) => {
-                        result += self.external_non_empty_count(&areas).unwrap_or(0) as f64;
+            // reference is a value, counted. So for one IF or CHOOSE picks (`COUNTA(IF(TRUE,
+            // …!A1:B2))` is 0; probes/external-ref-no-link-ifchoose A4, A18, A30).
+            let value = match self.pick_branch(arg, cell) {
+                Picked::Node(arg) => {
+                    if let Some(areas) = self.external_reference(arg, cell) {
+                        match areas {
+                            Ok(areas) => {
+                                result += self.external_non_empty_count(&areas).unwrap_or(0) as f64;
+                            }
+                            Err(_) => result += 1.0,
+                        }
+                        continue;
                     }
-                    Err(_) => result += 1.0,
+                    // A reference, 3-D ones included, arrives as a Range: its non-empty cells
+                    // count. TAKE, DROP, INDEX, OFFSET and the like over a range pick a reference
+                    // too, so `COUNTA(TAKE(B3:B3,1))` of a blank is 0
+                    // (probes/subtotal-reference-operands-c H13).
+                    self.evaluate_picked_reference_arg(arg, cell)
                 }
-                continue;
-            }
-            // A reference, 3-D ones included, arrives as a Range: its non-empty cells count.
-            // TAKE, DROP, INDEX, OFFSET and the like over a range pick a reference too, so
-            // `COUNTA(TAKE(B3:B3,1))` of a blank is 0 (probes/subtotal-reference-operands-c H13).
-            match self.evaluate_picked_reference_arg(arg, cell) {
+                Picked::Value(value) => RefArg::Value(value),
+            };
+            match value {
                 RefArg::Value(CalcResult::EmptyCell) => {}
                 // Excel: an omitted argument and the empty value IFERROR/IFNA give for a blank
                 // cell both count (COUNTA(,) = 2, COUNTA(IFERROR(B1,1)) = 1), unlike a blank
@@ -147,7 +155,12 @@ impl Model {
         for arg in args {
             // COUNTBLANK over the cells of another workbook is `#VALUE!`, cached or not
             // (probes/external-ref-no-link-index A9; `COUNTBLANK([1]Uses!$B$3)`,
-            // fixtures/external-link-cached-ranges), as COUNTIF and SUMIF are.
+            // fixtures/external-link-cached-ranges), as COUNTIF and SUMIF are, and so is one IF
+            // picks (probes/external-ref-no-link-ifchoose A24).
+            let (arg, picked_value) = match self.pick_branch(arg, cell) {
+                Picked::Node(node) => (node, None),
+                Picked::Value(value) => (arg, Some(value)),
+            };
             if let Some(areas) = self.external_reference(arg, cell) {
                 return match areas {
                     Ok(_) => CalcResult::new_error(
@@ -158,7 +171,9 @@ impl Model {
                     Err(error) => error,
                 };
             }
-            let value = if self.is_multi_area(arg) && !is_span_or_if_of_span(arg) {
+            let value = if let Some(value) = picked_value {
+                value
+            } else if self.is_multi_area(arg) && !is_span_or_if_of_span(arg) {
                 // A union is #VALUE! here (probes/multiarea-count H1), and so is a 3-D span bound
                 // by LET (probes/3d-ref-let-bound-span-readers C11); one area is a range.
                 self.evaluate_reference_arg(arg, cell)

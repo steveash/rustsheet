@@ -7,7 +7,6 @@ import math
 import re
 from fractions import Fraction
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -168,23 +167,6 @@ def test_parse_show_reads_the_harness_output() -> None:
         "expected": "0.004677734981047266",
         "actual": "0.004677734981047265",
     }
-
-
-@pytest.fixture
-def real_cases(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Case discovery without the release binary: the listing points at the committed files."""
-
-    def listing(suite: str) -> list[dict[str, Any]]:
-        return [
-            {
-                "id": f"{suite}/{p.name}",
-                "path": str(p),
-                "sidecar": str(p).replace(".case.json", ".oracle.json"),
-            }
-            for p in sorted((repo_root() / "eval" / "suites" / suite / "cases").glob("*.case.json"))
-        ]
-
-    monkeypatch.setattr(sweep, "suite_cases", listing)
 
 
 @pytest.mark.usefixtures("real_cases")

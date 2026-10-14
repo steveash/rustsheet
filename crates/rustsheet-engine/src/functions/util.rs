@@ -10,7 +10,7 @@ use crate::{
     functions::{logical::IfBranchMode, Function},
     model::Model,
     number_format::cmp_excel_precision,
-    reference_operators::RefArg,
+    reference_operators::{Picked, RefArg},
 };
 
 /// Converts a single array element into a scalar [`CalcResult`].
@@ -295,7 +295,12 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> RefArg {
-        let node = node.ungrouped();
+        // An IF or CHOOSE that may pick a reference into another workbook is the argument it
+        // picks (`SUM(IF(TRUE,…!A1))` is `#BLOCKED!`; probes/external-ref-no-link-ifchoose A3).
+        let node = match self.pick_branch(node, cell) {
+            Picked::Node(node) => node,
+            Picked::Value(value) => return RefArg::Value(value),
+        };
         // An aggregate reading cells of another workbook reads what its externalLink cache
         // holds, as reference cells (fixtures/external-link-cached-ranges; T-1460), and is
         // `#BLOCKED!` when there is no cache, however the reference was reached
