@@ -463,7 +463,8 @@ Edge cases (probes/index-lifted-edge-cases, T-1376):
   scalar `INDEX(D1:D5,2)` is 0), `&"x"` makes it "x", `+1` makes 1,
   `=0` and `=""` are TRUE, `SUM(INDEX(D1:D5,{1,2,3}))` is 40, `ISBLANK` of the lifted result is FALSE, TRUE (the elements keep blankness).
 - `COUNTBLANK(INDEX(D1:D5,{1,2,3}))` is a 1x3 spill of `#VALUE!` (one per element) and
-  `COUNTA(INDEX(D1:D5,{1,2,3}))` is 3, counting the blank element; the engine gives 0 and 2 (T-1437, with T-1395).
+  `COUNTA(INDEX(D1:D5,{1,2,3}))` is 3, counting the blank element (references.md, "COUNTBLANK of a value that is not a
+  reference is #VALUE!"; T-1437, T-1395).
 The legacy, implicitly intersected form is T-0294.
 DEVIATION (decision 0014): a lifted INDEX whose broadcast indices exceed 1,048,576 elements is `#ERROR!`, the shared
 array bound (arrays.md, "Array results above 1,048,576 cells are #ERROR!").
