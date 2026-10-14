@@ -421,6 +421,10 @@ other negative prices from 183 days, e.g. `TBILLEQ(1000,1183,2)`, are unprobed: 
 negative yield, UNVERIFIED, T-1540), and so is a price of exactly 0 from 183 days (`TBILLEQ(1000,1200,1.8)`, `TBILLEQ(1000,1360,1)`), but up to 182 days a zero denominator
 gives **0**, not an error: `TBILLEQ(1000,1100,3.6)` is 0 (probes/tbilleq-zero-price, excel-graph,
 2026-10-14). Ours: that 0 is not matched yet (we give `#DIV/0!`; T-1540).
+Equal dates: TBILLEQ, TBILLPRICE and TBILLYIELD all give `#NUM!` when settlement >= maturity, so zero days never
+reaches the division (`TBILLYIELD(45366,45366,98)`, `TBILLEQ(45366,45366,0.05)`, `TBILLPRICE(45366,45366,0.05)`,
+and `TBILLYIELD(45366,45366,100)`, `TBILLEQ(45366,45366,0)`; one day later is a number: probes/tbill-equal-dates,
+excel-graph, 2026-10-14, T-1539).
 Evidence: ironcalc-calc/FINANCIAL/TBILLs.xlsx D2:D31, R2:R31 and L5:L26 (Excel-cached, Microsoft
 Macintosh Excel; all 273 cells bit-exact, T-1475); the same formulation is bit-exact on the excel-graph
 probes fin-argument-modes H313, date-system-1904-financial A29:A30 and -shift A32.

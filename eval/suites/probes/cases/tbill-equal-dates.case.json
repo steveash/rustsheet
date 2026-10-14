@@ -1,0 +1,32 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1539: T-bill functions with settlement equal to maturity (zero days), settlement after maturity, and settlement one day before maturity. Question: which error each of TBILLYIELD, TBILLEQ and TBILLPRICE gives for zero days.",
+ "tags": [
+  "M9",
+  "probe",
+  "financial",
+  "T-1539",
+  "tbilleq",
+  "tbillyield",
+  "tbillprice"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=TBILLYIELD(45366,45366,98)",
+    "A2": "=TBILLEQ(45366,45366,0.05)",
+    "A3": "=TBILLPRICE(45366,45366,0.05)",
+    "B1": "=TBILLYIELD(45367,45366,98)",
+    "B2": "=TBILLEQ(45367,45366,0.05)",
+    "B3": "=TBILLPRICE(45367,45366,0.05)",
+    "C1": "=TBILLYIELD(45366,45367,98)",
+    "C2": "=TBILLEQ(45366,45367,0.05)",
+    "C3": "=TBILLPRICE(45366,45367,0.05)",
+    "D1": "=TBILLYIELD(45366,45366,100)",
+    "D2": "=TBILLEQ(45366,45366,0)"
+   }
+  }
+ ]
+}

@@ -1337,11 +1337,12 @@ impl Model {
             Ok(f) => f,
             Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
         };
-        if settlement > maturity {
+        // Excel: equal dates are #NUM! too (probes/tbill-equal-dates, excel-graph).
+        if settlement >= maturity {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
-                "settlement should be <= maturity".to_string(),
+                "settlement should be < maturity".to_string(),
             );
         }
         if !less_than_one_year {
@@ -1403,11 +1404,12 @@ impl Model {
             Ok(f) => f,
             Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
         };
-        if settlement > maturity {
+        // Excel: equal dates are #NUM! too (probes/tbill-equal-dates, excel-graph).
+        if settlement >= maturity {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
-                "settlement should be <= maturity".to_string(),
+                "settlement should be < maturity".to_string(),
             );
         }
         if !less_than_one_year {
@@ -1457,11 +1459,12 @@ impl Model {
             Ok(f) => f,
             Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
         };
-        if settlement > maturity {
+        // Excel: equal dates are #NUM! too (probes/tbill-equal-dates, excel-graph).
+        if settlement >= maturity {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,
-                "settlement should be <= maturity".to_string(),
+                "settlement should be < maturity".to_string(),
             );
         }
         if !less_than_one_year {
