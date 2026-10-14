@@ -3,7 +3,7 @@ id: T-1460
 title: "Cached multi-cell ranges of a linked workbook: [n]Sheet!A1:B2"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -27,12 +27,24 @@ uncached shapes (INDEX, OFFSET, unions, intersections, COUNTA, spill) and should
 docs/excel-semantics/references.md "Cached values of a linked workbook" lists the gap.
 
 ## Acceptance criteria
-- [ ] Evidence for SUM/COUNT/COUNTA over a cached external range with text and booleans in it.
-- [ ] A one-cell cached reference inside an aggregate reads as a reference cell, not a value
+- [x] Evidence for SUM/COUNT/COUNTA over a cached external range with text and booleans in it.
+- [x] A one-cell cached reference inside an aggregate reads as a reference cell, not a value
       (`SUM([1]Uses!A1)` over cached text; T-1382 passes it as a value).
-- [ ] Engine matches it; unit tests cover a cached range and a cached range name.
-- [ ] references.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] Engine matches it; unit tests cover a cached range and a cached range name.
+- [x] references.md updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Refreshing links or opening the other workbook (directive 5).
+
+## Outcome
+Evidence: new fixture fixtures/external-link-cached-ranges.xlsx (82 legacy formulas over a hand-made
+externalLink cache, excel-graph). A cached range or workbook range name is a reference whose cells
+hold the cached values: aggregates skip text, booleans and blanks (a one-cell `SUM([1]Uses!A1)` over
+text is now 0), COUNTA counts cached cells, lookups/INDEX/IS* read the values, and COUNTIF, SUMIF,
+SUMIFS and COUNTBLANK are `#VALUE!` (so `COUNTBLANK` of a cached cell changed from 1 to `#VALUE!`).
+Engine: `ExternalArea` carries its cache (`CachedSheet`); `external_links.rs` reads values for value
+contexts, INDEX and aggregates (clipped to the cached extent only when the area is bigger than the
+cache). references.md and the fixtures README record the findings.
+Eval delta: new case 74/82 passing; 8 new-coverage known failures (TYPE, SUBTOTAL, AGGREGATE, RANK,
+AVERAGEA, legacy implicit intersection) filed as T-1526; 0 regressions elsewhere.

@@ -135,6 +135,12 @@ impl ExternalArea {
         CalcResult::Array(vec![vec![ArrayNode::Error(Error::BLOCKED); columns]; rows])
     }
 
+    /// Whether the cell (`row`, `column`) is in the area.
+    pub(crate) fn contains(self, row: i32, column: i32) -> bool {
+        (self.first_row..=self.last_row).contains(&row)
+            && (self.first_column..=self.last_column).contains(&column)
+    }
+
     /// The cells this area and `other` share, `None` if none.
     pub(crate) fn intersect(self, other: ExternalArea) -> Option<ExternalArea> {
         let area = ExternalArea {

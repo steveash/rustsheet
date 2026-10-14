@@ -68,6 +68,19 @@ fn external_book_index(book: &str) -> Option<usize> {
     book.parse::<usize>().ok()?.checked_sub(1)
 }
 
+/// How many cells `area` covers.
+fn cell_count(area: ExternalArea) -> usize {
+    let (rows, columns) = area.extent();
+    rows.saturating_mul(columns)
+}
+
+/// The cells of `area`, row by row.
+fn area_cells(area: ExternalArea) -> impl Iterator<Item = (i32, i32)> {
+    (area.first_row..=area.last_row).flat_map(move |row| {
+        (area.first_column..=area.last_column).map(move |column| (row, column))
+    })
+}
+
 /// The reference a defined name of `book` refers to (`='Defines'!$B$2`), its sheet an index in
 /// `book`'s cache; `None` when it is not a reference to one of those sheets.
 fn parse_cached_reference(
@@ -233,10 +246,7 @@ impl Model {
             let Some(sheet) = area.cache else {
                 return CalcResult::new_error(Error::BLOCKED, cell, "External reference".into());
             };
-            let Some(clipped) = self
-                .cached_extent(sheet)
-                .and_then(|extent| area.intersect(extent))
-            else {
+            let Some(clipped) = self.clip_to_cache(sheet, *area) else {
                 continue;
             };
             let (height, width) = clipped.extent();
@@ -259,17 +269,35 @@ impl Model {
         for area in areas {
             let sheet = area.cache?;
             let book = self.workbook.external_books.get(sheet.book)?;
-            count += book
-                .cells
-                .keys()
-                .filter(|&&(index, row, column)| {
-                    index == sheet.sheet
-                        && (area.first_row..=area.last_row).contains(&row)
-                        && (area.first_column..=area.last_column).contains(&column)
-                })
-                .count();
+            let Some(area) = self.clip_to_cache(sheet, *area) else {
+                continue;
+            };
+            count += if cell_count(area) <= book.cells.len() {
+                area_cells(area)
+                    .filter(|&(row, column)| book.cells.contains_key(&(sheet.sheet, row, column)))
+                    .count()
+            } else {
+                book.cells
+                    .keys()
+                    .filter(|&&(index, row, column)| {
+                        index == sheet.sheet && area.contains(row, column)
+                    })
+                    .count()
+            };
         }
         Some(count)
+    }
+
+    /// `area` cut to the cells the cache of `sheet` spans, `None` when they share none. An area
+    /// no bigger than the cache is kept whole, so the cache is scanned only for a bigger one
+    /// (a whole column): the cost stays the smaller of the two.
+    fn clip_to_cache(&self, sheet: CachedSheet, area: ExternalArea) -> Option<ExternalArea> {
+        let cached = self.workbook.external_books.get(sheet.book)?.cells.len();
+        if cell_count(area) <= cached {
+            return Some(area);
+        }
+        self.cached_extent(sheet)
+            .and_then(|extent| area.intersect(extent))
     }
 
     /// The area a workbook-scoped name of a linked workbook, `[1]!Name`, stands for, read from
