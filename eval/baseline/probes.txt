@@ -571,6 +571,7 @@ C	probes/union-operand-quad-minus.case.json	2
 C	probes/union-operand-triple-minus.case.json	2
 C	probes/union-walk-repeated-in-lambda.case.json	15
 C	probes/value-clock-text.case.json	135
+C	probes/valuetotext-error-format.case.json	10
 C	probes/valuetotext-format.case.json	37
 C	probes/variance-digits.case.json	234
 C	probes/variance-fit.case.json	380
