@@ -73,6 +73,7 @@ impl Function {
             Function::Image => "_xlfn.IMAGE".to_string(),
             Function::Stockhistory => "_xlfn.STOCKHISTORY".to_string(),
             Function::Fieldvalue => "_xlfn.FIELDVALUE".to_string(),
+            Function::Filterxml => "_xlfn.FILTERXML".to_string(),
             Function::Rri => "_xlfn.RRI".to_string(),
             Function::Pduration => "_xlfn.PDURATION".to_string(),
             Function::Bitand => "_xlfn.BITAND".to_string(),

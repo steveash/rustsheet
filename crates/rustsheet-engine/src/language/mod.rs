@@ -530,6 +530,7 @@ pub struct Functions {
     pub image: String,
     pub stockhistory: String,
     pub fieldvalue: String,
+    pub filterxml: String,
 }
 
 #[derive(Encode, Decode)]
