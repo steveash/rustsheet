@@ -5,7 +5,6 @@ use std::{ops::Deref, sync::Arc};
 
 use crate::{
     calc_result::{CalcResult, Range},
-    constants::{LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -284,95 +283,14 @@ fn intersect_pair(
     }))
 }
 
-fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
+pub(crate) fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::NULL, cell, "Empty intersection".to_string())
 }
 
 /// Whether a sheet prefix names a sheet of another workbook: `[book]Sheet` (a sheet name cannot
 /// hold `[`). That workbook is never opened (directive 5).
-fn names_other_workbook(sheet_name: Option<&str>) -> bool {
+pub(crate) fn names_other_workbook(sheet_name: Option<&str>) -> bool {
     sheet_name.is_some_and(|name| name.contains('['))
-}
-
-/// The rows and columns a reference into another workbook covers, absolute and in order.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct ExternalArea {
-    pub(crate) first_row: i32,
-    pub(crate) first_column: i32,
-    pub(crate) last_row: i32,
-    pub(crate) last_column: i32,
-}
-
-impl ExternalArea {
-    /// `(rows, columns)` of the area.
-    pub(crate) fn extent(self) -> (usize, usize) {
-        let span = |first: i32, last: i32| usize::try_from(last - first + 1).unwrap_or(0);
-        (
-            span(self.first_row, self.last_row),
-            span(self.first_column, self.last_column),
-        )
-    }
-}
-
-/// The area of `node` when it is a reference on one sheet of another workbook whose data the
-/// engine does not hold: still a reference of the written shape (its cells read `#BLOCKED!`), so
-/// `ISREF('[other.xlsx]Sheet1'!A1)` is TRUE, `ROWS('[other.xlsx]Sheet1'!A1:B3)` 3, `COLUMNS`,
-/// `ROW`, `COLUMN` and `AREAS` read its shape (probes/external-ref-no-link A4, A10;
-/// external-ref-no-link-shapes A1, A2, A6:A10, A13). A 3-D prefix naming another workbook
-/// (`'[other.xlsx]S1:S2'!A1`) is not a reference: ISREF is FALSE (external-ref-no-link-shapes
-/// A12). `None` also for an area off the grid.
-pub(crate) fn external_area(node: &Node, cell: CellReferenceIndex) -> Option<ExternalArea> {
-    let (sheet_name, first, last) = match node.ungrouped() {
-        Node::WrongReferenceKind {
-            sheet_name,
-            absolute_row,
-            absolute_column,
-            row,
-            column,
-        } => {
-            let corner = (*row, *column, *absolute_row, *absolute_column);
-            (sheet_name, corner, corner)
-        }
-        Node::WrongRangeKind {
-            sheet_name,
-            absolute_row1,
-            absolute_column1,
-            row1,
-            column1,
-            absolute_row2,
-            absolute_column2,
-            row2,
-            column2,
-        } => (
-            sheet_name,
-            (*row1, *column1, *absolute_row1, *absolute_column1),
-            (*row2, *column2, *absolute_row2, *absolute_column2),
-        ),
-        _ => return None,
-    };
-    let name = sheet_name.as_deref();
-    if !names_other_workbook(name) || name.is_some_and(|name| name.contains(':')) {
-        return None;
-    }
-    // Relative coordinates are offsets from the formula's cell, as for a reference on a sheet.
-    let absolute = |(row, column, absolute_row, absolute_column): (i32, i32, bool, bool)| {
-        (
-            row + if absolute_row { 0 } else { cell.row },
-            column + if absolute_column { 0 } else { cell.column },
-        )
-    };
-    let ((row1, column1), (row2, column2)) = (absolute(first), absolute(last));
-    let area = ExternalArea {
-        first_row: row1.min(row2),
-        first_column: column1.min(column2),
-        last_row: row1.max(row2),
-        last_column: column1.max(column2),
-    };
-    let on_grid = area.first_row >= 1
-        && area.first_column >= 1
-        && area.last_row <= LAST_ROW
-        && area.last_column <= LAST_COLUMN;
-    on_grid.then_some(area)
 }
 
 impl Model {
@@ -691,6 +609,15 @@ impl Model {
         right: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        // Into another workbook, the one area's cells are read at once (`ERROR.TYPE(…!A1
+        // …!A1:B2)` is `#N/A`, probes/external-ref-no-link-index A36).
+        if let Some(areas) = self.external_intersection(left, right, cell) {
+            return match areas.as_deref() {
+                Ok([area]) => area.picked_value(cell),
+                Ok(_) => several_areas(cell),
+                Err(error) => error.clone(),
+            };
+        }
         match self.intersect_to_one_area(left, right, cell) {
             Ok(area) => CalcResult::Range {
                 left: area.left,
