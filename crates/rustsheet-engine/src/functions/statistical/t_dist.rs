@@ -62,8 +62,9 @@ const T_TAIL_P: f64 = 1e-5;
 const T_TAIL_X: f64 = 1e-8;
 
 /// Below this probability the quantile comes from bisection on the cdf, not `statrs`' `inverse_cdf`,
-/// which panics from about 1E-200 (probed for df 1 to 1E5 only); 1E-100 leaves a wide margin.
-const T_STATRS_PANIC_P: f64 = 1e-100;
+/// which hangs at 1E-100 for df = 1000 and panics from about 1E-200 (the sweep test covers df 2 to
+/// 9E4). Above it `statrs` is bit-exact with Excel where x is not tiny (`T_DIST.xlsx` `T.INV(0.9999999,10)`).
+const T_STATRS_MIN_P: f64 = 1e-8;
 
 /// Magnitude `t > 0` with `P(T < -t) = q` for a small `q`, `df < T_QUANTILE_SERIES_DF`; bounded time.
 /// Excel gives finite values down to the smallest p it accepts (probes-numeric `t1531-t-tiny-p`:
@@ -80,7 +81,7 @@ fn t_tail_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
         let x = ln_x.exp();
         return df.sqrt() * (-0.5 * ln_x).exp() * (1.0 - x).sqrt();
     }
-    if q >= T_STATRS_PANIC_P {
+    if q >= T_STATRS_MIN_P {
         return -dist.inverse_cdf(q);
     }
     // x is not small and q is tiny: the quantile is moderate, so bisect on the cdf; -cdf(-t) is
@@ -762,7 +763,7 @@ mod tests {
     #[test]
     fn no_panic_across_df_and_p() {
         for df in [2.0, 10.0, 100.0, 1e3, 1e4, 9e4] {
-            for q in [1e-100, 1e-50, 1e-10, 1e-6, 1e-150, 1e-300] {
+            for q in [1e-100, 1e-50, 1e-10, 1e-9, 1e-8, 1e-7, 1e-6, 1e-150, 1e-300] {
                 let t = t_quantile(&dist(df), df, q);
                 assert!(t.is_finite() && t < 0.0, "df {df} q {q}: {t}");
             }
