@@ -3,7 +3,7 @@ id: T-1548
 title: "Probe TEXTJOIN with an error, number, boolean or blank delimiter element and the 32,767 limit with cycled delimiters"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
