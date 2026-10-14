@@ -613,7 +613,7 @@ impl Model {
         // …!A1:B2)` is `#N/A`, probes/external-ref-no-link-index A36).
         if let Some(areas) = self.external_intersection(left, right, cell) {
             return match areas.as_deref() {
-                Ok([area]) => area.picked_value(cell),
+                Ok([area]) => self.external_picked_value(*area, cell),
                 Ok(_) => several_areas(cell),
                 Err(error) => error.clone(),
             };

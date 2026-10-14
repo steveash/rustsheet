@@ -188,20 +188,50 @@ Engine: `rustsheet-xlsx` keeps each link's cache in `Workbook::external_books` (
 to a workbook, or whose part is missing or unreadable, is an empty book that keeps its index); the
 lexer reads `[n]!Name` and `[n]Sheet!Name` as one identifier, which the parser keeps as a defined
 name with its prefix, and `external_links.rs` reads the cache. Unprobed, so UNVERIFIED: a cell the
-cache does not hold reads as empty (0); a book, sheet or name the cache does not hold, a name whose
-`refersTo` is not one cell, and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
+cache does not hold reads as empty (0); a book, sheet or name the cache does not hold and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
 uncached reference is; a sheet with `refreshError="1"` is read like any other; `[0]!Missing` is
 `#NAME?` and `[0]Nope!Name` (no such sheet) `#REF!`, as the plain name and a missing sheet are; only
 evaluation strips the `[0]` prefix, so ISREF and a rename of the name do not see through it
-(T-1459). The engine passes a cached cell to a function as a value, not as a reference cell, so
-`SUM([1]Uses!A1)` over cached text is `#VALUE!` where a sheet cell's text would be skipped (T-1460).
-A cached multi-cell range (`[1]Sheet!A1:B2`) stays `#BLOCKED!` (T-1454 covers the uncached shapes).
+(T-1459).
+Cached ranges (T-1460; fixtures/external-link-cached-ranges, excel-graph, cache `Uses` A1 "Hello!",
+B1 10, C1 `#N/A`, A2 5, B2 the text "7", C2 1, A3 TRUE, and a workbook name `NR_Range` =
+`'Uses'!$A$1:$B$3`): a range of a cached sheet, `[1]Uses!$A$1:$B$3`, and a workbook-scoped name of a
+range, `[1]!NR_Range`, are references whose cells hold the cached values, read as a range of this
+workbook is read:
+- aggregates skip text, numeric text, booleans and blanks: SUM 15, COUNT 2, AVERAGE 7.5, MAX 10,
+  MIN 5, PRODUCT 50, MEDIAN 7.5, LARGE 10, SUMPRODUCT 15, `SUM(…,1)` 16, a union 15, `SUM(INDEX(…,0,2))`
+  10; a one-cell reference too, `SUM([1]Uses!$A$1)` over text, `SUM([1]Uses!$A$3)` over TRUE and
+  `SUM`/`COUNT([1]Uses!$B$2)` over "7" are all 0; an error cell is the aggregate's error
+  (`SUM(…!$C$1:$C$2)` `#N/A`); the *A functions coerce as in a range (AVERAGEA 3.2, MAXA 10);
+  COUNTA counts the cells the cache holds (5; 7 over `$A$1:$D$10`; 3 over `$A:$A`); cells and
+  whole columns past what the cache holds read empty (`SUM(…!$E$1:$F$2)` 0, `SUM(…!$B:$B)` 10);
+- the reference readers see a reference: ISREF TRUE, ROWS 3, COLUMNS 2, AREAS 1, TYPE 16, RANK 2,
+  SUBTOTAL(9,…) 15, `AGGREGATE(9,6,…!$A$1:$C$2)` 16 (the error skipped);
+- lookups, INDEX and element-wise functions read the values: VLOOKUP, HLOOKUP, MATCH, XMATCH,
+  XLOOKUP, `INDEX(…,2,2)` "7", `INDEX(…,3,2)` (blank) 0, `SUMPRODUCT(--ISTEXT(…))` 2, ISLOGICAL 1,
+  ISBLANK 1, `CONCAT` "Hello!1057TRUE", `TEXTJOIN("|",FALSE,…)` "Hello!|10|5|7|TRUE|";
+- the functions that need the other workbook open are `#VALUE!`: COUNTIF, SUMIF, SUMIFS (also over
+  `[1]!NR_Range`) and COUNTBLANK, a one-cell `COUNTBLANK([1]Uses!$B$3)` included; OFFSET of one
+  (`SUM(OFFSET([1]Uses!$A$1,0,1,2,1))`) is `#VALUE!`;
+- in a legacy (non-dynamic) formula, arithmetic on the range is implicitly intersected as a range
+  of this workbook is: `SUM(IFERROR(…*1,100))` and even `SUMPRODUCT(IFERROR(…*1,100))` are 100,
+  `SUM(…!$A$2:$A$3+0)` `#VALUE!`;
+- a sheet-scoped name of a range, `[1]Defines!NR_Local_Range`, is `#BLOCKED!` (ROWS too; ERROR.TYPE
+  11), although a sheet-scoped name of one cell reads its cached value; a sheet the cache does not
+  hold, `[1]Nope!$A$1:$B$2`, is `#BLOCKED!`.
+A workbook whose formulas reference a sheet with `refreshError="1"` (`[1]'56737'!$A$1:$B$2`) does
+not open in Excel for the web ("unsupportedWorkbook"), so what that reads is a desktop question.
+Engine: a cached area carries its cache (`external_links.rs`); aggregates read the cells clipped to
+the extent the cache holds, as a whole column of this workbook is clipped to its used area, and
+several areas as one row of cells. Not yet matched: TYPE (64), SUBTOTAL, AGGREGATE and RANK
+(`#VALUE!`, they take a reference), AVERAGEA (`#N/IMPL!`, no array support) and the legacy implicit
+intersection of an external range (T-1526).
 `Sheet!Name` with no book prefix (poi/56737.xlsx Uses!D2 `=Defines!NR_To_A1`, Excel-cached
 "Test A1") is the name scoped to that sheet of this workbook; `[0]!Name` and `[0]Sheet!Name` resolve
 the same way at parse time, so ISREF and a rename see them. A sheet-qualified workbook-scoped name
 (`Sheet!GlobalName`), an unknown `Sheet!Nope` (engine: `#NAME?`) and a missing sheet are UNVERIFIED (T-1459).
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
-Tasks: T-1382, T-1459
+Tasks: T-1382, T-1459, T-1460
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in

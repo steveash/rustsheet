@@ -60,14 +60,57 @@ fn cell_references_read_the_cache() {
     assert_eq!(eval(&mut model, "=[other.xlsx]Uses!$A$1"), "#BLOCKED!");
     // Still a reference of the written shape (T-1381).
     assert_eq!(eval(&mut model, "=ISREF([1]Uses!$A$1)"), "TRUE");
-    // Aggregates and COUNTA read the cached value too, as a value.
+    // Aggregates and COUNTA read the cached cell as a reference cell (T-1460).
     assert_eq!(eval(&mut model, "=SUM([1]Defines!$B$2)"), "142");
     assert_eq!(eval(&mut model, "=SUM(([1]Defines!$B$2))"), "142");
     assert_eq!(eval(&mut model, "=AVERAGE([1]Defines!$B$2)"), "142");
     assert_eq!(eval(&mut model, "=COUNT([1]Defines!$B$2)"), "1");
     assert_eq!(eval(&mut model, "=COUNTA([1]Uses!$A$1)"), "1");
-    assert_eq!(eval(&mut model, "=COUNTBLANK([1]Uses!$Z$9)"), "1");
-    assert_eq!(eval(&mut model, "=COUNTBLANK([1]Uses!$A$1)"), "0");
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$A$1)"), "0");
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$A$2)"), "0");
+    // COUNTBLANK of another workbook is #VALUE!, cached or not.
+    assert_eq!(eval(&mut model, "=COUNTBLANK([1]Uses!$Z$9)"), "#VALUE!");
+    assert_eq!(eval(&mut model, "=COUNTBLANK([1]Uses!$A$1)"), "#VALUE!");
+}
+
+// A range of a cached sheet reads its cached cells as a range of this workbook would
+// (fixtures/external-link-cached-ranges, excel-graph; T-1460).
+#[test]
+fn cached_ranges_read_as_references() {
+    let mut model = linked();
+    model.workbook.external_books[0].cells.extend([
+        ((0, 1, 2), SpillValue::Number(10.0)),
+        ((0, 2, 2), SpillValue::Number(5.0)),
+    ]);
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$A$1:$B$2)"), "15");
+    assert_eq!(eval(&mut model, "=COUNT([1]Uses!$A$1:$B$2)"), "2");
+    assert_eq!(eval(&mut model, "=COUNTA([1]Uses!$A$1:$B$2)"), "4");
+    assert_eq!(eval(&mut model, "=COUNTA([1]Uses!$A$1:$B$9)"), "5");
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$B:$B)"), "15");
+    assert_eq!(
+        eval(&mut model, "=SUM(([1]Uses!$A$1,[1]Uses!$B$1:$B$2))"),
+        "15"
+    );
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$C$1:$D$4)"), "0");
+    // An error in the range is the aggregate's error.
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$A$1:$B$3)"), "#DIV/0!");
+    // Lookups and INDEX read the cached values.
+    assert_eq!(eval(&mut model, "=MATCH(5,[1]Uses!$B$1:$B$2,0)"), "2");
+    assert_eq!(
+        eval(&mut model, "=VLOOKUP(TRUE,[1]Uses!$A$1:$B$2,2,FALSE)"),
+        "5"
+    );
+    assert_eq!(eval(&mut model, "=INDEX([1]Uses!$A$1:$B$2,1,1)"), "Hello!");
+    assert_eq!(
+        eval(&mut model, "=SUMPRODUCT(--ISTEXT([1]Uses!$A$1:$B$2))"),
+        "1"
+    );
+    // Still a reference of the written shape.
+    assert_eq!(eval(&mut model, "=ISREF([1]Uses!$A$1:$B$2)"), "TRUE");
+    assert_eq!(eval(&mut model, "=ROWS([1]Uses!$A$1:$B$3)"), "3");
+    // A sheet the cache does not hold stays #BLOCKED!.
+    assert_eq!(eval(&mut model, "=SUM([1]Nope!$A$1:$B$2)"), "#BLOCKED!");
+    assert_eq!(eval(&mut model, "=COUNTA([1]Nope!$A$1:$B$2)"), "0");
 }
 
 #[test]
@@ -81,8 +124,12 @@ fn defined_names_read_the_cache() {
     assert_eq!(eval(&mut model, "=[1]Defines!NR_Global_B2"), "#BLOCKED!");
     assert_eq!(eval(&mut model, "=[1]!Missing"), "#BLOCKED!");
     assert_eq!(eval(&mut model, "=[3]!NR_Global_B2"), "#BLOCKED!");
-    // Only a name for one cell is read.
-    assert_eq!(eval(&mut model, "=[1]!Span"), "#BLOCKED!");
+    // A workbook name of several cells is that cached range (T-1460).
+    assert_eq!(eval(&mut model, "=SUM([1]!Span)"), "142");
+    assert_eq!(eval(&mut model, "=COUNTA([1]!Span)"), "2");
+    assert_eq!(eval(&mut model, "=ROWS([1]!Span)"), "2");
+    assert_eq!(eval(&mut model, "=ISREF([1]!Span)"), "TRUE");
+    assert_eq!(eval(&mut model, "=INDEX([1]!Span,2,2)"), "142");
     // The formula text keeps the external prefix.
     model._set("C1", "=[1]Defines!NR_To_A1&[1]!NR_Global_B2");
     assert_eq!(

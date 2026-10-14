@@ -87,14 +87,19 @@ impl Model {
         }
         let mut result = 0.0;
         for arg in args {
-            // The cells of another workbook count none, written or reached through INDEX, a
-            // union or an intersection, although `='[other.xlsx]Sheet1'!A1` is `#BLOCKED!`
-            // (`COUNTA(…!A1)` is 0, `COUNTA(…!A1:B2,1)` 1; probes/external-ref-no-link-shapes
-            // A16, external-ref-no-link-index A8, A10, A12, A23, A30). An error instead of a
+            // The cells of another workbook count the cells its externalLink cache holds
+            // (`COUNTA([1]Uses!$A$1:$B$3)` is 5; fixtures/external-link-cached-ranges), and none
+            // without a cache, written or reached through INDEX, a union or an intersection,
+            // although `='[other.xlsx]Sheet1'!A1` is `#BLOCKED!` (`COUNTA(…!A1)` is 0,
+            // `COUNTA(…!A1:B2,1)` 1; probes/external-ref-no-link-shapes A16,
+            // external-ref-no-link-index A8, A10, A12, A23, A30). An error instead of a
             // reference is a value, counted.
-            if let Some(areas) = self.uncached_external_reference(arg, cell) {
-                if areas.is_err() {
-                    result += 1.0;
+            if let Some(areas) = self.external_reference(arg, cell) {
+                match areas {
+                    Ok(areas) => {
+                        result += self.external_non_empty_count(&areas).unwrap_or(0) as f64;
+                    }
+                    Err(_) => result += 1.0,
                 }
                 continue;
             }
@@ -140,19 +145,10 @@ impl Model {
         }
         let mut result = 0.0;
         for arg in args {
-            // A one-cell `[n]Sheet!A1` the externalLink cache holds is that cell, read from the
-            // cache: blank when the cache holds nothing or "" there (T-1382). It reaches here as a
-            // value, which COUNTBLANK would otherwise reject as not a reference (T-1437).
-            if let Some(value) = self.external_reference_value(arg, cell) {
-                return CalcResult::Number(if is_countblank_blank(&value) {
-                    1.0
-                } else {
-                    0.0
-                });
-            }
-            // COUNTBLANK over the cells of another workbook is `#VALUE!`
-            // (probes/external-ref-no-link-index A9); a cached `[n]` cell is its value.
-            if let Some(areas) = self.uncached_external_reference(arg, cell) {
+            // COUNTBLANK over the cells of another workbook is `#VALUE!`, cached or not
+            // (probes/external-ref-no-link-index A9; `COUNTBLANK([1]Uses!$B$3)`,
+            // fixtures/external-link-cached-ranges), as COUNTIF and SUMIF are.
+            if let Some(areas) = self.external_reference(arg, cell) {
                 return match areas {
                     Ok(_) => CalcResult::new_error(
                         Error::VALUE,

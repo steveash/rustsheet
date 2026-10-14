@@ -296,15 +296,15 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> RefArg {
         let node = node.ungrouped();
-        // An aggregate reading cells of another workbook is `#BLOCKED!`, however the reference
-        // was reached (`SUM(INDEX(…!A1:C4,2,2))`, `SUM((…!A1,…!B2))`, `SUMPRODUCT(…!A1:B2)`;
+        // An aggregate reading cells of another workbook reads what its externalLink cache
+        // holds, as reference cells (fixtures/external-link-cached-ranges; T-1460), and is
+        // `#BLOCKED!` when there is no cache, however the reference was reached
+        // (`SUM(INDEX(…!A1:C4,2,2))`, `SUM((…!A1,…!B2))`, `SUMPRODUCT(…!A1:B2)`;
         // probes/external-ref-no-link-index A7, A11, A15, A22, A27). COUNTA, COUNTBLANK and the
         // reference functions read [`Model::external_reference`] first.
-        if let Some(areas) = self.uncached_external_reference(node, cell) {
+        if let Some(areas) = self.external_reference(node, cell) {
             return RefArg::Value(match areas {
-                Ok(_) => {
-                    CalcResult::new_error(Error::BLOCKED, cell, "External reference".to_string())
-                }
+                Ok(areas) => self.external_aggregate_value(&areas, cell),
                 Err(error) => error,
             });
         }

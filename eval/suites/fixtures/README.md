@@ -36,3 +36,14 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   (crates/rustsheet-xlsx/tests/error_cell_export.rs) loads this and `rich-error-export.xlsx`, saves them again and
   requires the same `vm` cells, `xl/metadata.xml`, `xl/richData/*` and content-type overrides, so a change to the
   exporter's parts needs new fixtures and an oracle refill.
+- `external-link-cached-ranges.xlsx` (T-1460): poi/ref-56737.xlsx (Apache-2.0, Excel-written, one
+  `externalReference` to `56737.xlsx`) with its calcChain dropped, docProps replaced (app name
+  `RustSheet fixture`), sheet `Refs` rewritten and `xl/externalLinks/externalLink1.xml` given a
+  bigger cache: sheet `Uses` A1 "Hello!", B1 10, C1 `#N/A`, A2 5, B2 the text "7" (`t="str"`), C2 1,
+  A3 TRUE; `Defines` A1 "Test A1", B2 142; workbook names `NR_Global_B2` (`'Defines'!$B$2`) and
+  `NR_Range` (`'Uses'!$A$1:$B$3`), sheet-scoped (`Defines`) `NR_To_A1` and `NR_Local_Range`
+  (`'Defines'!$A$1:$B$2`). `Refs` holds a label in column A and, in column B, one legacy formula
+  per row (placeholder cached 0) over those cached ranges: aggregates, COUNTA, the reference
+  readers, lookups, COUNTIF/SUMIF/COUNTBLANK, names, whole columns, unions. A formula over the
+  cache's third sheet (`refreshError="1"`) is left out: Excel for the web refuses to open such a
+  workbook.

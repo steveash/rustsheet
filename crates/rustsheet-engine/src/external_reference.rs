@@ -11,6 +11,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    external_links::CachedSheet,
     functions::Function,
     limits::check_array_size,
     model::Model,
@@ -26,6 +27,9 @@ pub(crate) struct ExternalArea {
     pub(crate) first_column: i32,
     pub(crate) last_row: i32,
     pub(crate) last_column: i32,
+    /// The externalLink cache of the sheet the area is on, `None` when the workbook holds none
+    /// (its cells read `#BLOCKED!`).
+    pub(crate) cache: Option<CachedSheet>,
 }
 
 impl ExternalArea {
@@ -92,6 +96,7 @@ pub(crate) fn external_area(node: &Node, cell: CellReferenceIndex) -> Option<Ext
         first_column: column1.min(column2),
         last_row: row1.max(row2),
         last_column: column1.max(column2),
+        cache: None,
     };
     let on_grid = area.first_row >= 1
         && area.first_column >= 1
@@ -131,12 +136,14 @@ impl ExternalArea {
     }
 
     /// The cells this area and `other` share, `None` if none.
-    fn intersect(self, other: ExternalArea) -> Option<ExternalArea> {
+    pub(crate) fn intersect(self, other: ExternalArea) -> Option<ExternalArea> {
         let area = ExternalArea {
             first_row: self.first_row.max(other.first_row),
             first_column: self.first_column.max(other.first_column),
             last_row: self.last_row.min(other.last_row),
             last_column: self.last_column.min(other.last_column),
+            // Areas on two cached sheets share no cached cell.
+            cache: self.cache.filter(|_| self.cache == other.cache),
         };
         (area.first_row <= area.last_row && area.first_column <= area.last_column).then_some(area)
     }
@@ -178,8 +185,11 @@ impl Model {
     ) -> Option<ExternalAreas> {
         let node = node.ungrouped();
         match node {
-            Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. } => {
-                external_area(node, cell).map(|area| Ok(vec![area]))
+            Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. } => self
+                .cached_external_area(node, cell)
+                .map(|area| Ok(vec![area])),
+            Node::DefinedNameKind((name, ..)) => {
+                self.external_name_area(name).map(|area| Ok(vec![area]))
             }
             Node::FunctionKind {
                 kind: Function::Index,
@@ -203,21 +213,6 @@ impl Model {
             }
             _ => None,
         }
-    }
-
-    /// [`Model::external_reference`] for a value reader (the aggregates, COUNTA, COUNTBLANK): a one-cell
-    /// `[n]Sheet!A1` the externalLink cache holds is `None`, a value read from the cache as
-    /// evaluation reads it (`SUM([1]Defines!$B$2)` is the cached 142; T-1382). It stays a
-    /// reference for ISREF and the shape readers.
-    pub(crate) fn uncached_external_reference(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Option<ExternalAreas> {
-        if self.external_reference_value(node, cell).is_some() {
-            return None;
-        }
-        self.external_reference(node, cell)
     }
 
     /// `left right` when either operand is a reference into another workbook
