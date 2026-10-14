@@ -7,18 +7,18 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-1009]
 ---
 
 ## Goal
 Know exactly how Excel's RATE, IRR, YIELD and XIRR iterate (starting point, update rule, stop test, iteration cap, and when #NUM! is returned), so the engine reproduces the same iterate and its last digits.
 
 ## Context
-Owner request 2026-10-14: run the numeric last-digit track alongside M2 (decision 0056). On 2026-10-14 about 9,400 function-cell pairs are near misses: about 3,750 within 4 ulp (rounding and evaluation order) and about 4,600 `numeric_close` (beyond 4 ulp, within 1e-9 relative: a different algorithm, solver stop or series cut-off). 8,508 of them are M9 statistical/financial/engineering functions. Exact rates include PMT 21%, BETA.DIST 20%, GAMMA 11%, RATE 15%, IRR 13%, YIELD 4%, while within-tolerance rates are 92-99%. The `numeric_close` misses in these solvers are far beyond rounding: the engine stops at a different iterate. Documented behavior: RATE and IRR iterate up to 20 times to 0.00001%. Existing sweep: probes-numeric/m9-fin-irr-rate; fit task T-0916.
+Owner request 2026-10-14 (decision 0056); the near-miss figures and their source are in T-1522. The `numeric_close` misses in these solvers are far beyond rounding: the engine stops at a different iterate. Documented behavior: RATE and IRR iterate up to 20 times to 0.00001%. T-1009 already landed a 691-cell IRR/RATE/XIRR sweep (probes-numeric/m9-fin-irr-rate), and financial.md "IRR, RATE and XIRR stop early" records the default guess, early stop and #NUM! findings. This task reuses those cells and only probes what they lack: which update rule, derivative and stop test produce Excel's last digits, plus YIELD, which has no sweep. T-1050: RATE's guess argument cannot be reached today. The engine fix stays in T-0916, which now depends on this task.
 
 ## Acceptance criteria
-- [ ] Oracle probes (excel-probe skill) that separate solver models: guesses at and near the root; inputs needing 1 to 25 iterations; non-converging inputs (where #NUM! appears); a root where Newton and secant iterates differ in the last digits.
-- [ ] The rule for each solver recorded in `docs/excel-semantics/financial.md` with evidence; T-0916 updated with the fitted model, or the solver fixed here if small.
+- [ ] Oracle probes (excel-probe skill), on top of the T-1009 cells, that separate solver models by their last digits: Newton versus secant versus other update rules, the derivative form, the exact stop test and iteration count; YIELD across price, coupon count and basis.
+- [ ] The rule for each solver recorded in `docs/excel-semantics/financial.md` with evidence; T-0916 (and a new YIELD task if needed) gets the fitted model in its Context; no engine change here.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
