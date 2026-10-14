@@ -3,7 +3,7 @@ id: T-1539
 title: "TBILLYIELD with settlement equal to maturity gives Excel's error, not a non-finite number"
 milestone: M2
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
