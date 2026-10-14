@@ -15,6 +15,8 @@ A fit-lab model that reproduces Excel's IRR and RATE bit for bit (update rule, s
 XIRR on the cells T-1525's model misses, and YIELD with more than one coupon left.
 
 ## Context
+Split (2026-10-14): this task fitted IRR and recorded RATE; XIRR's long-span and zero-first-value cells
+and multi-period YIELD moved to T-1583. The IRR notes below are the pre-fit state.
 T-1525 (attempt 1 under decision 0056) fitted XIRR on its fit set and left these open. Run the
 lab fits from `tools/`: `uv run rustsheet-fitlab irr`, `rate`, `xirr-oos`, `yield`
 (`tools/src/rustsheet_tools/fitlab/kernels/solvers.py`). Findings are in

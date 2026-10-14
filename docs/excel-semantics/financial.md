@@ -177,8 +177,8 @@ representable (tools/tests/test_fitlab_solvers.py). Evidence for each part:
   (Excel's documented "20 tries") scores 181.
 Open: 18 of the 74 misses are 1 to 4 ulp off, and most of the rest are within 1e-9 (NPV's evaluation
 order matters: as sum c_i/x^i with x = 1/v the model gets 189, by Horner in v also 189 but on different
-cells, and the two-flow cells prefer Horner), and `{0,0,-100,110}` with guess 1 or 10 (Calc!A174, A175) and `{-100,10,10,10,10,110}` with
-guess 10 (A125) are not reproduced.
+cells, and the two-flow cells prefer Horner), and `{0,0,-100,110}` with guess 1 or 10 (Calc!A174, A175)
+and `{-100,10,10,10,10,110}` with guess 10 (A125) are not reproduced.
 Evidence: probes/solver-iteration-traces I!A1:A29 (guess sweep), I!B (far guesses on `{-1,0,...,0,2}`),
 I!C, I!D (closed-form two- and three-flow roots), probes-numeric/m9-fin-irr-rate (scaled and sign-flipped
 flows, guesses); excel-graph, 2026-10-14. `uv run rustsheet-fitlab irr` (263 cells): the fitted secant
