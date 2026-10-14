@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1270 BAHTTEXT satang carry, negative baht+satang, inner group ending in 1, argument count",
+ "tags": [
+  "M5",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=BAHTTEXT(9.995)",
+    "A2": "=BAHTTEXT(999999.999)",
+    "A3": "=BAHTTEXT(-1234.56)",
+    "A4": "=BAHTTEXT(1000001000000)",
+    "A7": "=BAHTTEXT(99.995)",
+    "A8": "=BAHTTEXT(-9.995)"
+   }
+  }
+ ],
+ "expected": {}
+}
