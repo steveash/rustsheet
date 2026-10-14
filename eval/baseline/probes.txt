@@ -420,6 +420,7 @@ C	probes/percentof-snap-overflow-union.case.json	15
 C	probes/percentrank-single-value.case.json	20
 C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
+C	probes/product-array-2d-and-scalar.case.json	19
 C	probes/product-array-elements.case.json	9
 C	probes/radians-sqrtpi-munit.case.json	94
 C	probes/range-operator-column-letter-before-colon.case.json	1
