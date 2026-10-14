@@ -230,6 +230,8 @@ probes/text-general-ties-below-one.case.json	M10	TEXT "General" format code
 probes/text-general-ties-wide-fixed.case.json	M10	TEXT "General" format code
 probes/text-search-casefold-length.case.json	M5	SEARCH, FIND
 probes/textjoin-delimiter-elements.case.json	M5	TEXTJOIN
+probes/tbilleq-nonpositive-price.case.json	M9	TBILLEQ, TBILLPRICE
+probes/multiarea-3d-union-h8.case.json	M8	AREAS of a union with a 3-D reference
 # Per-cell lines (T-1423): a cell whose subject is not its case's.
 probes/index-lifted-edge-cases.case.json	Sheet1!H131	M9	COUNTBLANK
 probes/index-lifted-edge-cases.case.json	Sheet1!I131	M9	COUNTBLANK
@@ -370,3 +372,7 @@ probes/multiarea-more.case.json	Sheet1!H9	M9	MAXA
 probes/multiarea-more.case.json	Sheet1!H10	M9	GEOMEAN
 probes/multiarea-more.case.json	Sheet1!H11	M9	VAR.S
 probes/multiarea-more.case.json	Sheet1!H12	M9	DEVSQ
+probes/rich-errors-shapes-urls.case.json	Sheet1!A21	M5	ERROR.TYPE over a range
+probes/rich-errors-shapes-urls.case.json	Sheet1!A22	M5	ERROR.TYPE over a range
+probes/rich-errors-shapes-urls.case.json	Sheet1!A23	M5	ERROR.TYPE over a range
+probes/formulatext-written-groups-shapes.case.json	Sheet1!B3	M7	LAMBDA

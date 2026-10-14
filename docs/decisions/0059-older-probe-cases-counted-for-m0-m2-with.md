@@ -19,9 +19,9 @@
     calls consistent:
     - **A function's argument reader is that function's subject.** A case that feeds an M1
       construct (a union, a legacy-intersected operand, an `IF`/`INDEX` reference) to
-      later-milestone functions and asks how each one reads it probes those functions. This is the
-      same call as 0051's `stat-argument-modes` (M9). The construct's own control cells keep the
-      tag.
+      later-milestone functions and asks how each one reads it probes those functions. This is how
+      the `*-argument-modes` cases are tagged (0051 found `stat-argument-modes`' M9 tag right).
+      The construct's own control cells keep the tag.
     - **The coercion grammar is an M1 subject.** A case that checks TIMEVALUE, DATEVALUE or VALUE
       beside `0+text` or `--text` of the same text probes the grammar the coercion shares. This is
       0051's call on `clock-text-*` and `datevalue-comma-spaces`.
@@ -39,15 +39,20 @@
     union); the IMAGE/FIELDVALUE cases `rich-errors-arg-kinds`, `-field`, `-image`,
     `-image-array-error-elements`, `-image-array-options`, `-image-sizing`, `-shapes-urls`.
   - **M7 (1 case):** `isref-reference-lookups` (XLOOKUP, TAKE, DROP, TRIMRANGE; ISREF observes).
-  - **M9 (6 cases):** `averagea-array-constant-elements`; `if-index-ref-args-aggregates`
+  - **M8 (1 case):** `multiarea-3d-union-h8` (AREAS of a union holding a 3-D reference; it calls
+    no M2 function, so the 3-D feature and AREAS decide; its twins `-h1` to `-h7` take the union
+    through SUM, an M2 function, and keep their tag).
+  - **M9 (7 cases):** `tbilleq-nonpositive-price` (TBILLEQ, TBILLPRICE; added by T-1540 with an `M2`
+    tag after the sweep, the same miss as 0058's `tbilleq-zero-price`); `averagea-array-constant-elements`; `if-index-ref-args-aggregates`
     (MAXA, MINA, AVERAGEA, LARGE, RANK; IF and INDEX build the argument);
     `ifs-shape-mismatch` (it calls only AVERAGEIF, AVERAGEIFS, MINIFS and MAXIFS, and the shape
     check it probes is theirs; it has no SUMIFS or COUNTIFS cell, and no criteria-grammar
-    cell, so 0051's "shared criteria engine" keep gives it no M2 subject); `legacy-value-argument-intersection-c` (STDEV … PERCENTRANK; the description also names COUNTBLANK, which no cell calls);
+    cell, so 0051's "shared criteria engine" keep gives it no M2 subject; this also narrows
+    0051's `ifs-*` example to the criteria-grammar cases); `legacy-value-argument-intersection-c` (STDEV … PERCENTRANK; the description also names COUNTBLANK, which no cell calls);
     `multiarea-foreach` and `multiarea-order-stats` (statistical functions over a union).
   - **M10 (2 cases):** `text-general-ties-below-one` and `-wide-fixed` (the `General` format
     code, like 0051's `text-general-exponent-boundary`).
-  - **Cell lines (84):**
+  - **Cell lines (88):**
     - XOR → M5: `and-or-xor-error-order` Logic!A5, A6, A9, A25; `and-or-xor-text-arguments`
       Sheet1!H57:H84.
     - SWITCH → M5: `omitted-arg-compare` Sheet1!D1, D2.
@@ -58,6 +63,8 @@
     - Inside moved cases: `legacy-type-intersection` Sheet1!M2, M10 → M9 (AVERAGEA); its
       legacy control O10 (`=B1:B6*1`) → M2, and so is `legacy-value-argument-intersection-c`
       Sheet1!AG10.
+    - `rich-errors-shapes-urls` Sheet1!A21:A23 → M5: ERROR.TYPE over a range is their subject,
+      not an observer.
     - Inside moved cases, a cell whose own subject is another milestone: PRODUCT →
       M5 in `if-index-ref-args-aggregates` Calc!A28:A36; `rich-errors-image` Sheet1!A3 (SEQUENCE)
       and A6 (FILTER) → M7, and its `=1/0` control A8 → M2.
@@ -74,8 +81,8 @@
   - **Keep their tag (0051's exception: the subject includes an M2 function or an M1 subject):**
     - Operators and formula printing: `at-group-leftmost-shapes` and `at-signed-operand` (`@`;
       OFFSET and INDIRECT build its operand), `colon-hash-value-operands`,
-      `formulatext-written-groups-shapes`, `multiarea-bare-precedence`, and
-      `multiarea-3d-union-h8` (the union operator, like its twins `-h1` to `-h7`).
+      `formulatext-written-groups-shapes` (its LAMBDA call value Sheet1!B3 → M7, like 0058's
+      `written-parens-reference-only` E40, E45), and `multiarea-bare-precedence`.
     - Coercion grammar: the nine flagged `clock-text-*` cases, `date-clock-text-length-limit`, `timevalue-*` (4),
       `date-system-1904-timevalue` and `-timevalue-chrono`, `datevalue-comma-spaces`,
       `typed-currency-percent-input`, `typed-number-tiny` and `typed-paren-number-input`.
@@ -90,8 +97,8 @@
   - T-1558, the open task for the two moved failing cells (PERCENTRANK and PERCENTRANK.INC in
     `legacy-value-argument-intersection-c` T2, U2), moves to M9 with them.
 - **Consequences:** at origin/main 4fbdd96c, `make eval` assigned **175** probe known-failure
-  cells to M0-M2 (319 cases, 10,156 cells). With these lines it assigns **173** (290 cases,
-  9,206 cells): `text-collation-order` 156, `array-context-legacy-sumproduct` 6,
+  cells to M0-M2 (319 cases, 10,156 cells). With these lines, at fbe9b216 (which adds `tbilleq-nonpositive-price`), it assigns **173** (289 cases,
+  9,204 cells): `text-collation-order` 156, `array-context-legacy-sumproduct` 6,
   `text-surrogate-positions` 6, `concatenate-limit-spill` 4, `text-order-nbsp-space` 1, all M2
   subjects (0058). Only T2 and U2 moved; the other moved cells pass today, and a later
   regression in them counts toward their own milestone. No case now counted for M0-M2 has only
