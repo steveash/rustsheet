@@ -25,4 +25,4 @@ T-1506 made `ISREF(@INDEX(range,n))` TRUE (`is_reference` in functions/informati
 -
 
 ## Outcome
-Probe `probes/isref-implicit-xlookup-take` (11 cells, excel-graph). `eval_ref_or_index` and `is_reference` now treat `@XLOOKUP`/`@TAKE` like `@INDEX`. Probe 11/11; the `@INDEX` multi/fail shapes already matched. Quirk recorded in references.md.
+Probe `probes/isref-implicit-xlookup-take` (11 cells, excel-graph). `eval_at_picked_reference` keeps the picked cell of `@XLOOKUP`/`@TAKE` a reference for ISREF and LET binding only; the other `eval_ref_or_index` callers are unchanged and unprobed (follow-up T-1527). Probe 11/11; the `@INDEX` multi/fail shapes already matched. Quirk recorded in references.md.
