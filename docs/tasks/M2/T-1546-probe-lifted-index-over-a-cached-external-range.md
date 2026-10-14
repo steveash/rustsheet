@@ -3,7 +3,7 @@ id: T-1546
 title: "Probe lifted INDEX over a cached external range (cached, whole-row, out-of-range elements)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,9 +22,15 @@ elements (top-left kept), out-of-range elements and a nested INDEX-as-reference 
 fixtures/external-link-cached-ranges.
 
 ## Acceptance criteria
-- [ ] Oracle-backed cases cover the four UNVERIFIED behaviours; the engine passes or the gaps are filed.
-- [ ] references.md drops the UNVERIFIED marks.
-- [ ] `make check` green; reviewers approve.
+- [x] Oracle-backed cases cover the four UNVERIFIED behaviours; the engine passes or the gaps are filed.
+- [x] references.md drops the UNVERIFIED marks.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Extended fixtures/external-link-cached-ranges with Refs!B83:D92 (Excel for the web values). The four behaviours
+(cached elements, whole-row/column elements, out-of-range elements, cached error) match in the engine. Excel
+treats the lifted INDEX as a reference to its first element, so SUM/ROWS/ISREF/nested INDEX over it differ
+from ours (Refs!B89:B92); filed T-1554. Eval delta: 17 new cells, 13 pass, 4 known failures (new coverage).
