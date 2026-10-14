@@ -17,7 +17,9 @@ depends_on: [T-1475]
 Known failure probes/tbilleq-zero-price Calc!A3 (excel-graph). The ≤182-day branch of `fn_tbilleq`
 (crates/rustsheet-engine/src/functions/financial/mod.rs) is `365*rate/(360 - rate*DSM)`; Excel gives 0
 at a zero denominator. Probe a negative denominator first (excel-probe): `TBILLEQ(1000,1100,4)`,
-`TBILLEQ(1000,1182,2)`, and the same with TBILLPRICE, to find the rule (a price ≤ 0 → 0? only = 0?).
+`TBILLEQ(1000,1182,2)`, and the same with TBILLPRICE, to find the rule (a price ≤ 0 → 0? only = 0?). Also probe a negative
+price from 183 days whose square-root argument stays positive, `TBILLEQ(1000,1183,2)` and
+`TBILLEQ(45332,45650,60)` (we give finite negative yields, UNVERIFIED), and match what Excel gives.
 Rule: docs/excel-semantics/financial.md "TBILLEQ and TBILLYIELD".
 
 ## Acceptance criteria
