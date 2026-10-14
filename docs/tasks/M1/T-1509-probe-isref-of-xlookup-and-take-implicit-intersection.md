@@ -3,7 +3,7 @@ id: T-1509
 title: "Probe ISREF of @XLOOKUP and @TAKE (implicit intersection keeps the reference?)"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
