@@ -3,7 +3,7 @@ id: T-1518
 title: "T.INV(0.9,5E10) hangs the evaluator (nightly fuzz timeout): reject Student-t df at or above Excel's upper limit"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: sonnet
