@@ -1,5 +1,5 @@
 ---
-id: T-1509
+id: T-1510
 title: "TEXTJOIN with an array or range delimiter cycles the delimiters"
 milestone: M2
 lane: functions-text
