@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from rustsheet_tools.fitlab.fit import Fit
-from rustsheet_tools.fitlab.kernels import erfc
+from rustsheet_tools.fitlab.kernels import annuity, erfc, gamma, power
 
-MODULES = [erfc]
+MODULES = [erfc, annuity, power, gamma]
 
 
 def registry() -> dict[str, Fit]:

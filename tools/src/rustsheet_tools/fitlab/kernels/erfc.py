@@ -9,6 +9,10 @@ Two fits over the T-1040 sweeps (probes-numeric/t1040-erfc and t1040-erfc-precis
   K = sqrt(pi) erfc(x) exp(x^2) that docs/research/t1187-erfc-candidates.py tried (moved here;
   results in docs/excel-semantics/statistics.md "ERFC core factor"). Each is plain IEEE double
   (Python floats; `math.exp` is the platform libm, glibc on the agent containers).
+- `erfc-x87`: the same grid's best fraction (`bu_even`, the two best combinations) evaluated
+  with every operation at 64 bits and one final rounding to a double (the x87 hypothesis,
+  T-1524), with exp at 64 bits idealized or as the x87 instruction sequence, against the same
+  fraction in doubles and a 128-bit evaluation that stands in for the correctly rounded erfc.
 """
 
 from __future__ import annotations
@@ -16,10 +20,21 @@ from __future__ import annotations
 import math
 import sys
 from collections.abc import Callable
+from fractions import Fraction
 
+from rustsheet_tools.fitlab.exact import (
+    EXTENDED,
+    Rounding,
+    X87Insn,
+    exp_at,
+    pi_cr,
+    rounded_to,
+    sqrt_cr,
+    to_double,
+)
 from rustsheet_tools.fitlab.fit import Fit
 from rustsheet_tools.fitlab.score import Candidate, candidate
-from rustsheet_tools.fitlab.sweep import Cell
+from rustsheet_tools.fitlab.sweep import Arg, Cell, numeric_arg
 
 SQPI = math.sqrt(math.pi)
 ISQPI = 1 / SQPI
@@ -171,11 +186,8 @@ def nr_erfc(x: float, gln: float, eps: float) -> float:
 def _x(fn: Callable[[float], float]) -> Callable[..., float]:
     """ERFC's one argument as a float (the sweep's literals parse as floats)."""
 
-    def call(x: float | bool | str | list[float | bool | str | None] | None) -> float:
-        if not isinstance(x, float):
-            msg = f"ERFC argument {x!r}"
-            raise TypeError(msg)
-        return fn(x)
+    def call(x: Arg) -> float:
+        return fn(numeric_arg(x))
 
     return call
 
@@ -231,6 +243,66 @@ def t1187_candidates() -> list[Candidate]:
     return out
 
 
+X87_DEPTHS = [30, 60, 100]
+_REFERENCE_BITS = 128
+_REFERENCE_DEPTH = 1500  # converged to well beyond 128 bits for x >= 1
+
+
+def bu_even_rounded(x: Fraction, n: int, rnd: Rounding) -> Fraction:
+    """`bu_even` operation for operation, each rounded by `rnd`: `to_double_value` reproduces
+    `bu_even` exactly, `exact_value` gives the exact fraction."""
+    two_x = rnd(2 * x)
+    z = rnd(two_x * x)
+    z1 = rnd(z + 1)
+    t = rnd(z1 + 4 * n)
+    for k in range(n, 0, -1):
+        t = rnd(rnd(z1 + 4 * (k - 1)) - rnd((2 * k - 1) * (2 * k) / t))
+    return rnd(two_x / t)
+
+
+def _erfc_rounded(x: float, n: int, bits: int, exp: Callable[[Fraction], Fraction], divide: bool) -> float:
+    """sqrt(pi)^-1 * K * exp(-x^2) at `bits`: as (1/exp(x*x)) * (K * ISQPI) (`divide`) or as
+    exp(-x*x) * (K * ISQPI), the two best T-1187 combinations."""
+    rnd = rounded_to(bits)
+    v = Fraction(x)
+    isqpi = rnd(1 / sqrt_cr(pi_cr(bits + 8), bits + 8))
+    k = bu_even_rounded(v, n, rnd)
+    square = rnd(v * v)
+    factor = rnd(1 / rnd(exp(square))) if divide else rnd(exp(-square))
+    return to_double(rnd(factor * rnd(k * isqpi)))
+
+
+_EXP64, _EXP_REFERENCE = exp_at(EXTENDED), exp_at(_REFERENCE_BITS)
+
+
+def x87_candidates() -> list[Candidate]:
+    """The `erfc-x87` candidates: the 128-bit reference, then per depth and combination the
+    fraction in doubles and at 64 bits with each exp model."""
+    out = [
+        candidate(
+            f"128-bit bu_even n={_REFERENCE_DEPTH} (reference)",
+            _x(lambda x: _erfc_rounded(x, _REFERENCE_DEPTH, _REFERENCE_BITS, _EXP_REFERENCE, divide=False)),
+            "reference",
+        )
+    ]
+    for n in X87_DEPTHS:
+        for divide, label in ((True, "(1/big)*(k*ISQPI)"), (False, "e*(k*ISQPI)")):
+            sign = 1.0 if divide else -1.0
+            form = DIV_FORMS[label] if divide else MUL_FORMS[label]
+            out.append(
+                candidate(f"double bu_even n={n} {label}", _x(_bottom_up(bu_even, n, form, sign)), "double")
+            )
+            for exp_name, exp in (("exp64", _EXP64), ("x87 insn exp", X87Insn.exp)):
+
+                def evaluate(
+                    x: float, n: int = n, exp: Callable[[Fraction], Fraction] = exp, divide: bool = divide
+                ) -> float:
+                    return _erfc_rounded(x, n, EXTENDED, exp, divide)
+
+                out.append(candidate(f"ext bu_even n={n} {label}, {exp_name}", _x(evaluate), "ext"))
+    return out
+
+
 def _tail(cell: Cell) -> bool:
     """The T-1187 grid: x >= 1 and Excel's value is not 0."""
     x = cell.args[0] if cell.args else None
@@ -251,6 +323,14 @@ FITS = [
         cases=CASES,
         pattern=PATTERN,
         candidates=t1187_candidates,
+        where=_tail,
+    ),
+    Fit(
+        name="erfc-x87",
+        description="ERFC(x), x >= 1, Excel non-zero: the best T-1187 fraction in doubles, at 64 bits, and at 128 bits",
+        cases=CASES,
+        pattern=PATTERN,
+        candidates=x87_candidates,
         where=_tail,
     ),
 ]
