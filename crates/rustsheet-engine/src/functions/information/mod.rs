@@ -186,10 +186,7 @@ impl Model {
             // but not one whose body is a value (`=SUM(...)`, `=total*2`): probes/defined-name-
             // intersection H2, H9 and probes/defined-name-formula-bodies H7, H8, H10, H16.
             Node::DefinedNameKind((name, scope, _)) => {
-                match self.parsed_defined_names.get(&(
-                    *scope,
-                    crate::expressions::utils::bare_defined_name(name).to_lowercase(),
-                )) {
+                match self.parsed_defined_name(name, *scope) {
                     Some(
                         ParsedDefinedName::CellReference(_) | ParsedDefinedName::RangeReference(_),
                     ) => true,
@@ -386,10 +383,7 @@ impl Model {
         match args[0].ungrouped() {
             Node::DefinedNameKind((name, scope, _)) => {
                 // Let's see if it is a defined name
-                if let Some(defined_name) = self.parsed_defined_names.get(&(
-                    *scope,
-                    crate::expressions::utils::bare_defined_name(name).to_lowercase(),
-                )) {
+                if let Some(defined_name) = self.parsed_defined_name(name, *scope) {
                     match defined_name {
                         ParsedDefinedName::CellReference(reference) => {
                             return CalcResult::Number(reference.sheet as f64 + 1.0)

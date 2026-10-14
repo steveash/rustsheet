@@ -143,3 +143,24 @@ fn book_zero_name_is_resolved_at_parse_time() {
         .unwrap();
     assert_eq!(model._get_formula("A1"), "=ISREF([0]!Other)");
 }
+
+// A local name never answers for a linked workbook's name of the same spelling (T-1459).
+#[test]
+fn local_name_does_not_shadow_a_linked_name() {
+    let mut model = linked();
+    model._set("A1", "42");
+    model
+        .new_defined_name("NR_Global_B2", None, "Sheet1!$A$1")
+        .unwrap();
+    model
+        .new_defined_name("Missing", None, "Sheet1!$A$1")
+        .unwrap();
+    assert_eq!(eval(&mut model, "=SUM([1]!NR_Global_B2)"), "142");
+    assert_eq!(eval(&mut model, "=ISREF([1]!Missing)"), "FALSE");
+    assert_eq!(eval(&mut model, "=SUM([1]!Missing)"), "#BLOCKED!");
+    model._set("C1", "=[1]!Missing");
+    model
+        .update_defined_name("Missing", None, "Renamed", None, "Sheet1!$A$1")
+        .unwrap();
+    assert_eq!(model._get_formula("C1"), "=[1]!Missing");
+}

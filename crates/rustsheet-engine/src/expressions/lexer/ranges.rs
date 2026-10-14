@@ -530,9 +530,21 @@ fn name_can_be_defined_name(text: &str) -> bool {
     let letters = upper.chars().take_while(char::is_ascii_alphabetic).count();
     let digits = upper[letters..].chars().all(|c| c.is_ascii_digit());
     let a1_cell = (1..=3).contains(&letters) && digits && letters < upper.len();
-    let r1c1 = upper
-        .chars()
-        .all(|c| matches!(c, 'R' | 'C') || c.is_ascii_digit())
-        && upper.starts_with(['R', 'C']);
+    // R1C1 shapes only: `R`, `C`, `RC`, `R<n>`, `C<n>`, `R<n>C<n>`.
+    let r1c1 = r1c1_shape(&upper);
     !(a1_cell || r1c1)
+}
+
+/// Whether upper-case `text` is `R`, `C`, `RC`, `R<n>`, `C<n>` or `R<n>C<n>` (`<n>` digits).
+fn r1c1_shape(text: &str) -> bool {
+    let digits = |t: &str| {
+        t.trim_start_matches(|c: char| c.is_ascii_digit())
+            .to_string()
+    };
+    if let Some(rest) = text.strip_prefix('R') {
+        let rest = digits(rest);
+        return rest.is_empty() || digits(rest.strip_prefix('C').unwrap_or("x")).is_empty();
+    }
+    text.strip_prefix('C')
+        .is_some_and(|rest| digits(rest).is_empty())
 }
