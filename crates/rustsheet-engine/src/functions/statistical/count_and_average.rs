@@ -8,6 +8,15 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
+/// How AVERAGEA, MAXA and MINA read a text element of an array value.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ArrayText {
+    /// AVERAGEA counts it as 0.
+    Zero,
+    /// MAXA and MINA skip it.
+    Skipped,
+}
+
 impl Model {
     pub(crate) fn for_each_value<F>(
         &mut self,
@@ -101,9 +110,13 @@ impl Model {
         Ok(())
     }
 
+    /// The values AVERAGEA, MAXA and MINA read from `args`: a reference's cells and a direct
+    /// argument coerce text to 0 and booleans to 1/0 (coercion.md "MAXA / MINA"), while an array
+    /// value's elements follow `array_text` (statistics.md "AVERAGEA, MAXA and MINA over an array").
     fn for_each_value_a<F>(
         &mut self,
         args: &[Node],
+        array_text: ArrayText,
         cell: CellReferenceIndex,
         mut f: F,
     ) -> Result<(), CalcResult>
@@ -111,6 +124,27 @@ impl Model {
         F: FnMut(f64),
     {
         for arg in args {
+            // A cached range of a linked workbook is a reference, not an array: its text counts 0
+            // and its booleans 1/0 (`AVERAGEA([1]Uses!$A$1:$B$3)` is 3.2;
+            // fixtures/external-link-cached-ranges Refs!B53).
+            if let Some(cells) = self.external_reference_cells(arg, cell) {
+                for value in cells? {
+                    match value {
+                        ArrayNode::Number(value) => f(value),
+                        ArrayNode::Boolean(b) => f(if b { 1.0 } else { 0.0 }),
+                        ArrayNode::String(_) => f(0.0),
+                        ArrayNode::Error(error) => {
+                            return Err(CalcResult::new_error(
+                                error,
+                                cell,
+                                "Error in external reference".to_string(),
+                            ))
+                        }
+                        ArrayNode::Empty => {}
+                    }
+                }
+                continue;
+            }
             // An XLOOKUP or INDEX that picks a cell is that cell: text there counts 0
             // (`AVERAGEA(XLOOKUP(1,A1:A2,B1:B2),5,7)` over "x" is 4;
             // probes/subtotal-reference-operands-d H22).
@@ -149,11 +183,15 @@ impl Model {
                                 ArrayNode::Number(value) => {
                                     f(value);
                                 }
-                                ArrayNode::Boolean(b) => {
-                                    f(if b { 1.0 } else { 0.0 });
-                                }
+                                // An array element is not a cell: booleans are skipped, and
+                                // text, numeric text included, is 0 for AVERAGEA and skipped by
+                                // MAXA and MINA (`AVERAGEA({1,"a",TRUE})` is 0.5, `MAXA({-1,"a"})`
+                                // -1; probes/averagea-array-constant-elements).
+                                ArrayNode::Boolean(_) => {}
                                 ArrayNode::String(_) => {
-                                    f(0.0);
+                                    if array_text == ArrayText::Zero {
+                                        f(0.0);
+                                    }
                                 }
                                 ArrayNode::Error(error) => {
                                     return Err(CalcResult::Error {
@@ -229,7 +267,7 @@ impl Model {
         let mut sum = 0.0;
         // Coerced as MAXA coerces, a cached range of a linked workbook included
         // (`AVERAGEA([1]Uses!$A$1:$B$3)` is 3.2; fixtures/external-link-cached-ranges Refs!B53).
-        if let Err(error) = self.for_each_value_a(args, cell, |value| {
+        if let Err(error) = self.for_each_value_a(args, ArrayText::Zero, cell, |value| {
             count += 1.0;
             sum += value;
         }) {
@@ -373,7 +411,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut mina: Option<f64> = None;
-        if let Err(e) = self.for_each_value_a(args, cell, |f| {
+        if let Err(e) = self.for_each_value_a(args, ArrayText::Skipped, cell, |f| {
             if let Some(m) = mina {
                 mina = Some(m.min(f));
             } else {
@@ -382,15 +420,9 @@ impl Model {
         }) {
             return e;
         }
-        if let Some(mina) = mina {
-            CalcResult::Number(mina)
-        } else {
-            CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "No numeric values for MINA".to_string(),
-            }
-        }
+        // No value at all is 0, as for MAX (`MINA(Z1:Z3)` over blanks and `MINA({"a"})` are 0;
+        // probes/averagea-array-constant-elements A22:A25).
+        CalcResult::Number(mina.unwrap_or(0.0))
     }
 
     pub(crate) fn fn_maxa(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -398,7 +430,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut maxa: Option<f64> = None;
-        if let Err(e) = self.for_each_value_a(args, cell, |f| {
+        if let Err(e) = self.for_each_value_a(args, ArrayText::Skipped, cell, |f| {
             if let Some(m) = maxa {
                 maxa = Some(m.max(f));
             } else {
@@ -407,15 +439,9 @@ impl Model {
         }) {
             return e;
         }
-        if let Some(maxa) = maxa {
-            CalcResult::Number(maxa)
-        } else {
-            CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "No numeric values for MAXA".to_string(),
-            }
-        }
+        // No value at all is 0, as for MAX (`MAXA(Z1:Z3)` over blanks and `MAXA({"a"})` are 0;
+        // probes/averagea-array-constant-elements A22:A25).
+        CalcResult::Number(maxa.unwrap_or(0.0))
     }
 
     pub(crate) fn fn_skew(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

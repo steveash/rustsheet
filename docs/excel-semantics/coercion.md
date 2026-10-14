@@ -214,10 +214,11 @@ Implemented in: `for_each_value_a` (statistical/count_and_average.rs); covers di
 references only. A defined name pointing to one cell and numeric text in a referenced cell (counted as
 0 by inference) are unprobed. AVERAGEA shares this coercion since T-1526, and the helper reads a
 cell that XLOOKUP or INDEX picks as a reference (`AVERAGEA(XLOOKUP(1,A1:A2,B1:B2),5,7)` over "x" is 4;
-probes/subtotal-reference-operands-d H22). Engine choices with no oracle cell yet (T-1551): the same
-for MAXA/MINA over a picked text cell, an array argument (text 0, booleans 1/0) and direct date or
-currency text (read by `cast_number`).
-Tasks: T-0949, T-1526
+probes/subtotal-reference-operands-d H22). An array argument is not read like a range: see
+statistics.md "AVERAGEA, MAXA and MINA over an array" (T-1555). Engine choices with no oracle cell yet
+(T-1551): the same for MAXA/MINA over a picked text cell, and direct date or currency text (read by
+`cast_number`).
+Tasks: T-0949, T-1526, T-1555
 
 ## "inf", "NaN" and out-of-range number text are text
 Rule: the words "inf", "infinity", "NaN" (any case, any sign) and number text of 1E+308 or more
