@@ -65,7 +65,7 @@ None can be unblocked.
 - `formula_parse` and `xlsx_import` passed.
 
 Open PRs: 10.
-- Under 24 h: #698 (T-1486, draft) and #687 (T-1454). #718 (T-1490) merged during this run (b8c8d932).
+- Under 24 h: #698 (T-1486, draft). #718 (T-1490, b8c8d932) and #687 (T-1454, 75903c6a) merged during this run.
 - Over 24 h:
   - #661 (T-1450) and #644 (T-1396) are superseded: both tasks merged through #725 and #711. I commented that they can be closed.
   - #551 (T-1331) and #314 (T-1100) are superseded (commented on 2026-10-13).
