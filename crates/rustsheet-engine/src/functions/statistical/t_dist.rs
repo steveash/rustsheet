@@ -68,7 +68,7 @@ const T_STATRS_PANIC_P: f64 = 1e-100;
 /// Magnitude `t > 0` with `P(T < -t) = q` for a small `q`, `df < T_QUANTILE_SERIES_DF`; bounded time.
 /// Excel gives finite values down to the smallest p it accepts (probes-numeric `t1531-t-tiny-p`:
 /// `T.INV(1E-300,1)` = -3.183098861837907E299). Where `x` is not tiny `statrs` is bit-exact with
-/// Excel (T_DIST.xlsx `T.INV(0.9999999,10)`), so it is kept there.
+/// Excel (`T_DIST.xlsx` `T.INV(0.9999999,10)`), so it is kept there.
 fn t_tail_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
     let a = 0.5 * df;
     // P(T < -t) = I_x(a, 1/2) / 2 with I_x ~ x^a / (a B(a, 1/2)) * (1 + a / (2 (a + 1)) x).
