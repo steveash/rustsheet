@@ -131,6 +131,17 @@ impl Model {
         }
         let mut result = 0.0;
         for arg in args {
+            // A one-cell `[n]Sheet!A1` the externalLink cache holds is that cell, read from the
+            // cache: blank when the cache holds nothing or "" there (T-1382). It reaches here as a
+            // value, which COUNTBLANK would otherwise reject as not a reference (T-1437).
+            if let Some(value) = self.external_reference_value(arg, cell) {
+                let blank = match value {
+                    CalcResult::EmptyCell | CalcResult::EmptyArg => true,
+                    CalcResult::String(s) => s.is_empty(),
+                    _ => false,
+                };
+                return CalcResult::Number(if blank { 1.0 } else { 0.0 });
+            }
             // COUNTBLANK over the cells of another workbook is `#VALUE!`
             // (probes/external-ref-no-link-index A9); a cached `[n]` cell is its value.
             if let Some(areas) = self.uncached_external_reference(arg, cell) {
