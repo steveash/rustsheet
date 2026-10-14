@@ -3,7 +3,7 @@ id: T-1463
 title: "Bound the seen-range records multi-area walks push during a pass"
 milestone: M1
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
