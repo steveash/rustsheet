@@ -3,7 +3,7 @@ id: T-1473
 title: "Spec: one aggregate-argument walker for SUM, AVERAGE, MIN, MAX, PRODUCT, COUNT and COUNTA"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
