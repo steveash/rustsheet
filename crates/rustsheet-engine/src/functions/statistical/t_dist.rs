@@ -1,4 +1,4 @@
-use statrs::distribution::{Continuous, ContinuousCDF, StudentsT};
+use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
@@ -47,6 +47,33 @@ enum TTestTails {
 /// quantile search does not finish for a huge df (fuzz hang on `T.INV(0.9,5E10)`).
 /// Excel: see docs/excel-semantics/statistics.md#student-t-sweep-df-truncation-df-limits-tinv2t-above-1-t-1043
 pub(crate) const T_DF_MAX: f64 = 1e10;
+
+/// Above this df `statrs`' `inverse_cdf` is both inaccurate and unbounded in time (seconds at 1E7,
+/// no finish at 1E8), and its cdf is only good to ~1E-6 relative, so the quantile comes from the
+/// normal quantile and Hill's series instead.
+const T_QUANTILE_SERIES_DF: f64 = 1e5;
+
+/// Quantile of Student's t with `df` degrees of freedom for `p` in (0,1); the time is bounded for
+/// every df up to [`T_DF_MAX`].
+pub(crate) fn t_quantile(dist: &StudentsT, df: f64, p: f64) -> f64 {
+    if df < T_QUANTILE_SERIES_DF {
+        return dist.inverse_cdf(p);
+    }
+    let Ok(normal) = Normal::new(0.0, 1.0) else {
+        return f64::NAN;
+    };
+    let z = normal.inverse_cdf(p);
+    // Abramowitz & Stegun 26.7.5; the neglected term is O(z^11 / df^5).
+    let (z2, z3) = (z * z, z * z * z);
+    let z5 = z3 * z2;
+    let z7 = z5 * z2;
+    let z9 = z7 * z2;
+    let g1 = (z3 + z) / 4.0;
+    let g2 = (5.0 * z5 + 16.0 * z3 + 3.0 * z) / 96.0;
+    let g3 = (3.0 * z7 + 19.0 * z5 + 17.0 * z3 - 15.0 * z) / 384.0;
+    let g4 = (79.0 * z9 + 776.0 * z7 + 1482.0 * z5 - 1920.0 * z3 - 945.0 * z) / 92160.0;
+    z + g1 / df + g2 / df.powi(2) + g3 / df.powi(3) + g4 / df.powi(4)
+}
 
 impl Model {
     // T.DIST(x, deg_freedom, cumulative)
@@ -244,7 +271,7 @@ impl Model {
             }
         };
 
-        let x = dist.inverse_cdf(p);
+        let x = t_quantile(&dist, df, p);
 
         if !x.is_finite() {
             return CalcResult::Error {
@@ -294,7 +321,7 @@ impl Model {
 
         // Two-sided: F(x) = 1 - p/2
         let target_cdf = 1.0 - p / 2.0;
-        let x = dist.inverse_cdf(target_cdf);
+        let x = t_quantile(&dist, df, target_cdf);
 
         if !x.is_finite() {
             return CalcResult::Error {
