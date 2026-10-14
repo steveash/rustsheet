@@ -133,7 +133,11 @@ impl Model {
         };
         let use_thousands = !no_commas;
         let formatted = format_abs(value.abs(), decimals, use_thousands);
-        let result = if value < 0.0 {
+        // Excel drops the sign when the value rounds to zero: look at the rounded text, not the
+        // value (docs/excel-semantics/text.md "FIXED drops the sign of a value that rounds to
+        // zero"; gen-m6/f94b5b8236742618 A24, probes/dollar-fixed-unichar-edges A49, A50).
+        let rounds_to_zero = !formatted.bytes().any(|b| matches!(b, b'1'..=b'9'));
+        let result = if value < 0.0 && !rounds_to_zero {
             format!("-{formatted}")
         } else {
             formatted
