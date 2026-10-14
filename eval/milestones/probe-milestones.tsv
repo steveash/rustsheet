@@ -197,6 +197,39 @@ probes/xmatch-text-bool-equal-runs.case.json	M6	XLOOKUP, XMATCH
 probes/xmatch-xlookup-blanks.case.json	M6	XLOOKUP, XMATCH
 probes/xnpv-argument-count.case.json	M9	XIRR, XNPV
 probes/yield-solver-sweep.case.json	M9	YIELD
+# Older cases swept by T-1547 (decision 0059).
+probes/averagea-array-constant-elements.case.json	M9	AVERAGEA, MAXA, MINA
+probes/date-huge-month-day.case.json	M6	DATE
+probes/ecma-ceiling.case.json	M5	ECMA.CEILING
+probes/ecma-ceiling-formulatext.case.json	M5	ECMA.CEILING
+probes/if-index-ref-args-aggregates.case.json	M9	MAXA, MINA, AVERAGEA, PRODUCT, LARGE, RANK
+probes/ifs-shape-mismatch.case.json	M9	AVERAGEIF(S), MINIFS, MAXIFS
+probes/isref-reference-lookups.case.json	M7	XLOOKUP, TAKE, DROP, TRIMRANGE
+probes/legacy-type-intersection.case.json	M5	TYPE
+probes/legacy-value-argument-intersection-c.case.json	M9	STDEV, VAR, PERCENTILE, QUARTILE, MODE, PERCENTRANK, COUNTBLANK
+probes/multiarea-cellfn-types.case.json	M6	CELL, COLUMN
+probes/multiarea-foreach.case.json	M9	statistical aggregates over a union
+probes/multiarea-order-stats.case.json	M9	LARGE, SMALL, RANK, FREQUENCY over a union
+probes/multiarea-subtotal-counts-a.case.json	M5	SUBTOTAL over a union
+probes/multiarea-subtotal-counts-b.case.json	M5	SUBTOTAL over a union
+probes/multiarea-subtotal-counts-c.case.json	M5	SUBTOTAL over a union
+probes/multiarea-subtotal-counts-d.case.json	M5	SUBTOTAL over a union
+probes/multiarea-subtotal-counts-e.case.json	M5	SUBTOTAL over a union
+probes/percentof-snap-overflow-union.case.json	M5	PERCENTOF
+probes/rich-errors-arg-kinds.case.json	M6	IMAGE, STOCKHISTORY, FIELDVALUE
+probes/rich-errors-field.case.json	M6	FIELDVALUE
+probes/rich-errors-image.case.json	M6	IMAGE, ARRAYTOTEXT, VALUETOTEXT
+probes/rich-errors-image-array-error-elements.case.json	M6	IMAGE
+probes/rich-errors-image-array-options.case.json	M6	IMAGE
+probes/rich-errors-image-sizing.case.json	M6	IMAGE, FIELDVALUE
+probes/rich-errors-shapes-urls.case.json	M6	IMAGE, STOCKHISTORY, FIELDVALUE
+probes/rich-errors-stockhistory.case.json	M5	STOCKHISTORY
+probes/subnormal-sumsq-sumproduct-edges.case.json	M5	SUMSQ, SUMPRODUCT
+probes/subtotal-variance-one-vs-two-pass.case.json	M5	SUBTOTAL
+probes/text-general-ties-below-one.case.json	M10	TEXT "General" format code
+probes/text-general-ties-wide-fixed.case.json	M10	TEXT "General" format code
+probes/text-search-casefold-length.case.json	M5	SEARCH, FIND
+probes/textjoin-delimiter-elements.case.json	M5	TEXTJOIN
 # Per-cell lines (T-1423): a cell whose subject is not its case's.
 probes/index-lifted-edge-cases.case.json	Sheet1!H131	M9	COUNTBLANK
 probes/index-lifted-edge-cases.case.json	Sheet1!I131	M9	COUNTBLANK
@@ -252,3 +285,70 @@ probes/volatile-invariant.case.json	Calc!D4	M7	RANDARRAY
 probes/volatile-invariant.case.json	Calc!G1	M7	RANDARRAY
 probes/written-parens-reference-only.case.json	Sheet1!E40	M7	LET
 probes/written-parens-reference-only.case.json	Sheet1!E45	M7	LET
+# Per-cell lines of decision 0059 (T-1547).
+probes/legacy-type-intersection.case.json	Sheet1!M2	M9	AVERAGEA
+probes/legacy-type-intersection.case.json	Sheet1!M10	M9	AVERAGEA
+probes/legacy-type-intersection.case.json	Sheet1!O10	M2	legacy intersection control
+probes/legacy-value-argument-intersection-c.case.json	Sheet1!AG10	M2	legacy intersection control
+probes/and-or-xor-error-order.case.json	Logic!A5	M5	XOR
+probes/and-or-xor-error-order.case.json	Logic!A6	M5	XOR
+probes/and-or-xor-error-order.case.json	Logic!A9	M5	XOR
+probes/and-or-xor-error-order.case.json	Logic!A25	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H57	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H58	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H59	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H60	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H61	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H62	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H63	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H64	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H65	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H66	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H67	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H68	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H69	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H70	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H71	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H72	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H73	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H74	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H75	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H76	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H77	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H78	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H79	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H80	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H81	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H82	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H83	M5	XOR
+probes/and-or-xor-text-arguments.case.json	Sheet1!H84	M5	XOR
+probes/isref-function-results.case.json	Sheet1!C5	M6	CHOOSE
+probes/isref-function-results.case.json	Sheet1!C6	M6	CHOOSE
+probes/omitted-arg-compare.case.json	Sheet1!D1	M5	SWITCH
+probes/omitted-arg-compare.case.json	Sheet1!D2	M5	SWITCH
+probes/date-system-1904-clock-text.case.json	S!A8	M6	WORKDAY, NETWORKDAYS
+probes/date-system-1904-clock-text.case.json	S!A9	M6	WORKDAY, NETWORKDAYS
+probes/date-system-1904-clock-text.case.json	S!A10	M6	WORKDAY, NETWORKDAYS
+probes/date-system-1904-clock-text.case.json	S!A11	M6	WORKDAY, NETWORKDAYS
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!A5	M5	CSCH
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!B5	M5	CSCH
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!A6	M9	NORM.S.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!B6	M9	NORM.S.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!A7	M9	NORM.S.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!B7	M9	NORM.S.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!A8	M9	NORM.S.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!B8	M9	NORM.S.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!A9	M9	NORM.S.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!B9	M9	NORM.S.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!A10	M9	NORM.S.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!B10	M9	NORM.S.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!A11	M9	NORM.S.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!B11	M9	NORM.S.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!A12	M9	PHI
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!B12	M9	PHI
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!A13	M9	NORM.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!B13	M9	NORM.DIST
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!A14	M9	ERFC
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!B14	M9	ERFC
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!A15	M9	ERFC.PRECISE
+probes/subnormal-text-and-tail-companions.case.json	Sheet1!B15	M9	ERFC.PRECISE
