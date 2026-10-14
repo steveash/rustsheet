@@ -74,8 +74,8 @@ impl Model {
             let col_start = if i == 0 { start_col } else { 0 };
             for (j, slot) in result_row.iter_mut().enumerate().skip(col_start) {
                 accumulator = self.call_lambda_with_values(
-                    lambda_result.clone(),
-                    vec![accumulator, data.at(i, j)],
+                    &lambda_result,
+                    &[accumulator, data.at(i, j)],
                     cell,
                 );
                 if accumulator.is_error() {

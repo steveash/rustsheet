@@ -3,7 +3,7 @@ id: T-1549
 title: "MAP/SCAN/REDUCE: stop allocating an argument Vec and cloning the LAMBDA on every element"
 milestone: M2
 lane: functions-logic
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Performance review of T-1465 (MINOR): `map_reduce.rs` and `scan.rs` build a `Vec
 
 ## Out of scope
 -
+
+## Outcome
+`call_lambda_with_values` takes the LAMBDA and its arguments by reference (`&CalcResult`, `&[CalcResult]`); MAP reuses one argument buffer, REDUCE, SCAN, BYROW/BYCOL and the (row, column) index loop pass a stack array and no longer clone the LAMBDA per element. `lambda_definition` borrows too. No behavior change; eval delta none; existing lambda unit tests and probes pass.
