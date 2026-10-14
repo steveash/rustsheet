@@ -18,8 +18,8 @@ Oracle-confirmed (excel-graph, 2026-10-04, probes/dates-early-1900): `DATE(1900,
 `WEEKDAY(1)` = 1, `WEEKDAY(60)` = 4, `WEEKNUM(1)` = 1.
 All of these now match (T-0125).
 NOW and TODAY number early-1900 days the same way (T-1479, through DATE's conversion): under a fixed
-clock (SPEC-0008) `TODAY()` is 1 on 1900-01-01, 59 on 1900-02-28 and 61 on 1900-03-01. INFERRED from the
-DATE rule: Excel's clock is the host's, so NOW in early 1900 cannot be probed.
+clock (SPEC-0008) `TODAY()` is 1 on 1900-01-01, 59 on 1900-02-28 and 61 on 1900-03-01. Status of this
+sentence: UNVERIFIED (unprobeable: Excel's clock is the host's), inferred from the DATE rule above.
 EDATE/EOMONTH do month arithmetic on real calendar dates: serial 60 counts as 28 February 1900 (`EDATE(60,0)` = `EOMONTH(60,0)` = 59), `EOMONTH(59,0)` = 59, and results below serial 1 are #NUM! (`EOMONTH(1,-1)`, `EDATE(1,-1)`). `TEXT(DATE(1900,1,0),"d")` = "0"; `DAY(0)` = 0, `MONTH(0)` = 1, `YEAR(0)` = 1900.
 Evidence: probes/dates-early-1900 A17-A25. Oracle: excel-graph, 2026-10-05.
 Early-1900 edges (T-0182, VERIFIED, probes/dates-early-1900-edges, excel-graph 2026-10-06): serial 0 works in

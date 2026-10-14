@@ -21,6 +21,8 @@ pub fn get_metadata_timestamp(model: &Model) -> Option<i64> {
                     model.get_cell_value_by_index(sheet_index, row, 2)
                 {
                     let milliseconds = (serial - UNIX_EPOCH_SERIAL) * MILLISECONDS_PER_DAY;
+                    // The cast saturates (NaN gives 0); `Clock::fixed_unix_millis` range-checks
+                    // the result before any clock uses it.
                     return Some(milliseconds.round() as i64);
                 }
                 return None;

@@ -479,7 +479,6 @@ mod tests {
         assert_eq!(loaded.date_system(), DateSystem::Excel1904);
     }
 
-    /// A workbook built through the engine and round-tripped through xlsx.
     #[test]
     fn options_clock_applies_at_new_and_at_the_load_time_recalc() {
         let opts = WorkbookOptions {
@@ -505,6 +504,7 @@ mod tests {
         assert_eq!(loaded.value("A2").unwrap(), Value::Number(25570.0));
     }
 
+    /// A workbook built through the engine and round-tripped through xlsx.
     fn sample() -> Workbook {
         let mut model = Model::new_empty("w", "en", "UTC", "en").expect("model");
         model.update_cell_with_number(0, 1, 1, 2.5).expect("a1");

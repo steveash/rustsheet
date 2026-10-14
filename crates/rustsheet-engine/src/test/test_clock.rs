@@ -112,6 +112,7 @@ fn now_and_today_at_the_bounds_in_utc() {
 fn now_and_today_at_the_bounds_in_far_timezones() {
     let cases = [
         // UTC+14: the upper bound is 10000-01-01 locally, one day past DATE's last serial.
+        // Excel never returns 2958466; this pins only that there is no panic.
         ("Pacific/Kiritimati", MAX_MS, CellValue::Number(2_958_466.0)),
         // Kiritimati was west of UTC in 1900 (its tzdata LMT is -10:29:20), so 1899-12-31.
         ("Pacific/Kiritimati", MIN_MS, CellValue::Number(0.0)),
