@@ -37,15 +37,15 @@ pub(crate) enum IfBranchMode {
 
 // ── IF array helpers ──────────────────────────────────────────────────────────
 
-/// A branch argument to IF/IFERROR/IFNA: either a scalar (broadcast to all
-/// positions) or a 2-D array (indexed by position with size-1 broadcasting; a
-/// ragged out-of-range position → #N/A). See [`if_arg_at`].
-enum IfArg {
+/// A branch argument to IF/IFERROR/IFNA (and an arm of CHOOSE over an index array): either a
+/// scalar (broadcast to all positions) or a 2-D array (indexed by position with size-1
+/// broadcasting; a ragged out-of-range position → #N/A). See [`if_arg_at`].
+pub(crate) enum IfArg {
     Scalar(ArrayNode),
     Array(Vec<Vec<ArrayNode>>),
 }
 
-fn if_arg_dims(arg: &IfArg) -> (usize, usize) {
+pub(crate) fn if_arg_dims(arg: &IfArg) -> (usize, usize) {
     match arg {
         IfArg::Scalar(_) => (1, 1),
         IfArg::Array(arr) => (arr.len(), arr.first().map_or(0, |r| r.len())),
@@ -56,7 +56,7 @@ fn if_arg_dims(arg: &IfArg) -> (usize, usize) {
 /// size-1 broadcasting rule: a scalar covers every position, a length-1
 /// dimension repeats its only element to cover the whole output extent, and a
 /// ragged mismatch (e.g. length 2 against an extent of 3) yields `#N/A`.
-fn if_arg_at(arg: &IfArg, row: usize, col: usize) -> ArrayNode {
+pub(crate) fn if_arg_at(arg: &IfArg, row: usize, col: usize) -> ArrayNode {
     match arg {
         IfArg::Scalar(node) => node.clone(),
         IfArg::Array(arr) => {
@@ -205,6 +205,22 @@ impl Model {
         Picked::Value(self.if_array(args, cond_array, cell))
     }
 
+    /// Evaluates a branch of IF over an array condition (or an arm of CHOOSE over an index
+    /// array) once, as a scalar or a 2-D array; `Err` is a range that cannot be read.
+    pub(crate) fn evaluate_if_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<IfArg, CalcResult> {
+        Ok(match self.evaluate_node_in_context(node, cell) {
+            CalcResult::Range { left, right } => {
+                IfArg::Array(self.evaluate_range(left, right, cell)?)
+            }
+            CalcResult::Array(a) => IfArg::Array(a),
+            other => IfArg::Scalar(calc_result_to_array_node(other)),
+        })
+    }
+
     /// IF over an array condition: one result per position, the branches broadcast.
     fn if_array(
         &mut self,
@@ -214,26 +230,15 @@ impl Model {
     ) -> CalcResult {
         let has_else = args.len() == 3;
         // Evaluate branches once and normalise each to a scalar or 2-D array.
-        let true_result = self.evaluate_node_in_context(&args[1], cell);
-        let true_arg = match true_result {
-            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
-                Ok(array) => IfArg::Array(array),
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => IfArg::Array(a),
-            other => IfArg::Scalar(calc_result_to_array_node(other)),
+        let true_arg = match self.evaluate_if_arg(&args[1], cell) {
+            Ok(arg) => arg,
+            Err(error) => return error,
         };
-
         let false_arg: Option<IfArg> = if has_else {
-            let r = self.evaluate_node_in_context(&args[2], cell);
-            Some(match r {
-                CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
-                    Ok(array) => IfArg::Array(array),
-                    Err(error) => return error,
-                },
-                CalcResult::Array(a) => IfArg::Array(a),
-                other => IfArg::Scalar(calc_result_to_array_node(other)),
-            })
+            match self.evaluate_if_arg(&args[2], cell) {
+                Ok(arg) => Some(arg),
+                Err(error) => return error,
+            }
         } else {
             None
         };

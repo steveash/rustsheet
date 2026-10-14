@@ -1,9 +1,12 @@
-use crate::cast::{calc_result_to_array_node, NumberOrArray};
+use crate::arithmetic::bcast_get;
+use crate::cast::NumberOrArray;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::logical::{if_arg_at, if_arg_dims};
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
+use crate::limits::check_array_size;
 use crate::reference_operators::{several_areas_ref, Picked, Ranges, RefArg};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -537,9 +540,8 @@ impl Model {
             return Picked::Value(CalcResult::new_args_number_error(cell));
         }
 
-        // The index argument may be a single number or an array/range. In the array
-        // case we broadcast: each index element selects the matching value argument,
-        // collapsed to a single scalar (the result has the shape of the index array).
+        // The index argument may be a single number or an array/range; over an array it lifts
+        // (see `choose_array`).
         match self.get_number_or_array(&args[0], cell) {
             Ok(NumberOrArray::Number(index_num)) => {
                 let index_num = index_num as usize;
@@ -550,52 +552,75 @@ impl Model {
                 Picked::Node(&args[index_num])
             }
             Ok(NumberOrArray::Array(index_array)) => {
-                let result = index_array
-                    .iter()
-                    .map(|row| {
-                        row.iter()
-                            .map(|node| self.choose_element(args, node, cell))
-                            .collect()
-                    })
-                    .collect();
-                Picked::Value(CalcResult::Array(result))
+                Picked::Value(self.choose_array(args, &index_array, cell))
             }
             Err(calc_err) => Picked::Value(calc_err),
         }
     }
 
-    /// Selects the CHOOSE value argument for a single index element and collapses
-    /// it to one array cell. A chosen range is reduced by implicit intersection.
-    fn choose_element(
+    /// CHOOSE over an index array, broadcast like IF over an array condition: every value
+    /// argument is evaluated as a scalar or an array, the result spans the largest extent of the
+    /// index and all of them (an argument no element picks included), and each position takes
+    /// the picked argument's element there under size-1 broadcasting. A ragged position is
+    /// `#N/A`, an index element out of range `#VALUE!`: `CHOOSE({1,2},D1:D2,D3:D4)` is the 2x2
+    /// `{D1,D3;D2,D4}` (probes/choose-array-index-range-arms, docs/excel-semantics/lookup.md).
+    fn choose_array(
         &mut self,
         args: &[Node],
-        index_node: &ArrayNode,
+        index_array: &[Vec<ArrayNode>],
         cell: CellReferenceIndex,
-    ) -> ArrayNode {
-        let index_num = match index_node {
-            ArrayNode::Number(n) => *n,
-            ArrayNode::Boolean(b) => {
-                if *b {
-                    1.0
-                } else {
-                    0.0
-                }
+    ) -> CalcResult {
+        let mut values = Vec::with_capacity(args.len() - 1);
+        for arg in &args[1..] {
+            match self.evaluate_if_arg(arg, cell) {
+                Ok(value) => values.push(value),
+                Err(error) => return error,
             }
-            ArrayNode::Empty => 0.0,
-            ArrayNode::String(s) => match self.cast_number(s) {
-                Some(f) => f,
-                None => return ArrayNode::Error(Error::VALUE),
-            },
-            ArrayNode::Error(e) => return ArrayNode::Error(e.clone()),
-        } as usize;
-
-        if index_num < 1 || index_num > (args.len() - 1) {
-            return ArrayNode::Error(Error::VALUE);
         }
+        let index_rows = index_array.len();
+        let index_cols = index_array.first().map_or(0, Vec::len);
+        let (rows, cols) = values
+            .iter()
+            .map(if_arg_dims)
+            .fold((index_rows, index_cols), |(r, c), (vr, vc)| {
+                (r.max(vr), c.max(vc))
+            });
+        if let Some((error, message)) = check_array_size(rows, cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
+        let mut output = Vec::with_capacity(rows);
+        for row in 0..rows {
+            let mut line = Vec::with_capacity(cols);
+            for col in 0..cols {
+                let node = match bcast_get(index_array, row, col) {
+                    None => ArrayNode::Error(Error::NA),
+                    Some(index) => match self.choose_index_element(index, values.len()) {
+                        Ok(picked) => if_arg_at(&values[picked], row, col),
+                        Err(error) => error,
+                    },
+                };
+                line.push(node);
+            }
+            output.push(line);
+        }
+        CalcResult::Array(output)
+    }
 
-        let result = self.evaluate_node_with_reference(&args[index_num], cell);
-        let value = self.implicit_intersection_to_value(result, cell);
-        calc_result_to_array_node(value)
+    /// The 0-based value argument one CHOOSE index element picks among `count`, or the error
+    /// element CHOOSE gives there (the element's own error; `#VALUE!` for text that is no number
+    /// or an index out of range). TRUE is 1, FALSE and an empty element 0.
+    fn choose_index_element(&self, index: &ArrayNode, count: usize) -> Result<usize, ArrayNode> {
+        let index_num = match index {
+            ArrayNode::Number(n) => *n,
+            ArrayNode::Boolean(b) => f64::from(u8::from(*b)),
+            ArrayNode::Empty => 0.0,
+            ArrayNode::String(s) => self.cast_number(s).ok_or(ArrayNode::Error(Error::VALUE))?,
+            ArrayNode::Error(e) => return Err(ArrayNode::Error(e.clone())),
+        } as usize;
+        if index_num < 1 || index_num > count {
+            return Err(ArrayNode::Error(Error::VALUE));
+        }
+        Ok(index_num - 1)
     }
 
     // COLUMNS(range)
