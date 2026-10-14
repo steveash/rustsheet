@@ -3,7 +3,7 @@ id: T-1550
 title: "Cached external ranges: clip blank-skipping aggregates to the cache, probe COUNTA over a cached empty string and GCD/LCM over cached text"
 milestone: M1
 lane: engine
-status: in-progress
+status: todo
 priority: P3
 size: S
 tier: opus
@@ -33,3 +33,19 @@ over a cached range holding text.
 
 ## Out of scope
 -
+
+## Handoff
+Opus run of 2026-10-14 claimed this, then released it before any code because the session budget ran
+out. It could not delete the claim branch (the remote refuses branch deletes), so this note hands it on.
+- Clipping cannot happen in `external_aggregate_value` unconditionally. `evaluate_reference_arg`
+  (functions/util.rs, the external branch) feeds it to every reader, including shape-sensitive ones:
+  INDEX (index.rs, index_arg.rs), LET, BYCOL/BYROW, FREQUENCY, IF/CHOOSE (logical/mod.rs), and
+  CONCAT/TEXTJOIN (text/concatenate.rs). TEXTJOIN must keep the blanks
+  (`test_external_links.rs` "10|5|||").
+- Suggested shape: give `external_aggregate_value` a "skip blanks" flag (or a sibling) and set it
+  only on the blank-skipping aggregate paths: sum.rs, count.rs, count_and_average.rs, variance.rs,
+  product.rs, mode_functions.rs, and SUBTOTAL/AGGREGATE/RANK via `external_reference_cells`.
+  Then narrow the arrays.md DEVIATION.
+- Probes need a new xlsx fixture with an externalLink part. tools/ has no builder for one, so
+  copy fixtures/cases/external-link-cached-ranges.xlsx, edit its sheet XML and
+  `xl/externalLinks/externalLink1.xml` cache, re-zip it as a new fixture, and fill it with excel-graph.
