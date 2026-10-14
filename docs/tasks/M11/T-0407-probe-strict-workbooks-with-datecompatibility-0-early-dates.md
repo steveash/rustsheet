@@ -3,7 +3,7 @@ id: T-0407
 title: "Probe Strict workbooks with dateCompatibility=0: early dates and t=d serials"
 milestone: M11
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
