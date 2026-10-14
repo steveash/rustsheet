@@ -190,7 +190,7 @@ top-left cached cell (`{0,2},1` is "Hello!", 5; `{1,2},0` is "Hello!", 5), an ou
 Excel treats the lifted INDEX over an external range as a reference to its first element only:
 `SUM(INDEX(…,{1,2},1))` is 0 ("Hello!" is text), `ROWS(…)` is 1, `ISREF(…)` is TRUE and a further
 `INDEX(INDEX(…,{1,2},1),2)` is `#REF!` (Refs!B89:B92). Not implemented: we give `#BLOCKED!`, `#BLOCKED!`, FALSE and
-`#BLOCKED!` for those four (follow-up task, see Tasks).
+`#BLOCKED!` for those four (T-1554).
 Not yet implemented: `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3 (a LET body picking one; we give
 `#BLOCKED!`) and `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3 (we give 1).
 Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external
@@ -199,7 +199,7 @@ with an array or two error arguments, a `[n]` index with no
 externalLink part, and ROW/COLUMN of a multi-cell external area (the engine spills the row or column
 numbers as for a sheet reference, UNVERIFIED).
 Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
-Tasks: T-0124, T-1381, T-1382, T-1454, T-1487, T-1537, T-1546
+Tasks: T-0124, T-1381, T-1382, T-1454, T-1487, T-1537, T-1546, T-1554
 
 ## Cached values of a linked workbook (`[n]Sheet!A1`, `[n]!Name`, `[0]!Name`)
 Rule: in xlsx, Excel writes a reference into another workbook with the 1-based index of its
