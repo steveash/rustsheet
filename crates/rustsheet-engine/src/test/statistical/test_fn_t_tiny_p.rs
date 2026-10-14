@@ -12,6 +12,7 @@ fn t_inv_tiny_p_does_not_panic() {
     model._set("A5", "=CONFIDENCE.T(1E-300,1,2)");
     model._set("A7", "=T.INV(1E-10,1)");
     model.evaluate();
+    for c in ["A1", "A2", "A3", "A4", "A5", "A7"] {
         assert!(
             model._get_text(c).parse::<f64>().is_ok(),
             "{c}: {}",
