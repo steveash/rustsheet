@@ -744,7 +744,6 @@ mod tests {
 
     #[test]
     fn statrs_branch_is_kept_where_it_matches_excel() {
-        assert_close(t_quantile(&dist(5.0), 5.0, 1e-10), -156.825_592_708_894_3);
         // T_DIST.xlsx `T.INV(0.9999999,10)`: bit-exact with statrs.
         assert_eq!(
             t_quantile(&dist(10.0), 10.0, 0.999_999_9),
@@ -754,6 +753,8 @@ mod tests {
 
     #[test]
     fn bisection_branch_is_bounded() {
+        // x is not tiny and q < 1E-8: bisection on the cdf (T.INV(1E-10,5), 1 ulp from Excel).
+        assert_close(t_quantile(&dist(5.0), 5.0, 1e-10), -156.825_592_708_894_3);
         // x is not tiny and q < 1E-100: statrs panics here. Excel gives -79.06351062982456; ours is
         // wrong (the cdf of statrs saturates), so only the bound is pinned (TODO(T-1542)).
         let t = t_quantile(&dist(99999.0), 99999.0, 1e-300);
