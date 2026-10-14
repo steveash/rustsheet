@@ -201,9 +201,7 @@ impl Mapping {
             None => Ok(()),
         }
     }
-}
 
-impl Mapping {
     /// Checks that every cell line names a checked cell of its case, so a typo cannot leave a cell
     /// counted at its case's milestone unnoticed. `expectations` maps a case id to the cells the
     /// case holds an expectation for (the keys of its `expected` and of its oracle sidecar, as

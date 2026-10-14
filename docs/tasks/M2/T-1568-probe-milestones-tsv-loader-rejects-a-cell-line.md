@@ -25,6 +25,8 @@ The T-1562 review (decision 0060, 1,086 new cell lines) found that `Mapping::che
 - Changing any line of the mapping.
 
 ## Handoff (resumed)
+Superseded by the Outcome below: the opus run replaced this design, and line 245 is not blocked.
+
 Tried: `Mapping::check_cells` (crates/rustsheet-eval/src/probe_milestones.rs) plus `MappingError::UnknownCell`
 and `Rules::check_cells`; `score_milestones` (main.rs) now returns `Result` and calls it, so `run` and `check`
 fail with the line number. Unit test `an_unchecked_cell_names_its_line` passes (`cargo test -p rustsheet_eval
@@ -47,7 +49,7 @@ list if Excel's 6.0 is stable for RANDBETWEEN(5.5,5.7), which it is not evidence
   (`probes/volatile-invariant` `Calc!A6`, left out of `check` until T-1318 fixes RANDBETWEEN's bounds) and
   could not check partial runs or cases with skipped volatile cells. The check now follows the Goal's
   definition instead: `load_milestones` (main.rs) gives `Mapping::check_cells` each named case's
-  expectation cells (`runner::expectation_cells`: the keys of `expected` and of the oracle sidecar).
+  expectation cells (`case::expectation_cells`: the keys of `expected` and of the oracle sidecar).
   `Calc!A6` has an oracle value, so the committed mapping passes unchanged and no protected path is touched.
 - `rustsheet-eval run`/`check` fail before running, naming the line (verified by changing line 245 to
   `Calc!A7` locally: "line 245: probes/volatile-invariant.case.json has no checked cell Calc!A7").
