@@ -3,7 +3,7 @@ id: T-1548
 title: "Probe TEXTJOIN with an error, number, boolean or blank delimiter element and the 32,767 limit with cycled delimiters"
 milestone: M2
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1510 implemented cycling (`textjoin_delimiters`, `JoinSize::separator` in func
 
 ## Out of scope
 -
+
+## Outcome
+Probe `textjoin-delimiter-elements` (excel-graph, 2026-10-14): an error delimiter element is returned even when unused, number/boolean elements are text, an empty element is an empty delimiter, and cycled delimiters count by their own size toward the 32,767 limit. The engine already matched all 24 cells; text.md UNVERIFIED notes resolved. Eval: 24 new passing cells, no engine change.
