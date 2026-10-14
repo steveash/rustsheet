@@ -3,7 +3,7 @@ id: T-1470
 title: "Decision record: assign post-decision-0051 probes of M5-M10 subjects to their own milestone in probe-milestones.tsv"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
