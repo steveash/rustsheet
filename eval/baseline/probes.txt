@@ -471,6 +471,7 @@ C	probes/subtotal-variance-one-vs-two-pass.case.json	64
 C	probes/sum-error-precedence.case.json	24
 C	probes/sum-long-text-args.case.json	11
 C	probes/sumif-edge-single-cell.case.json	15
+C	probes/tbill-equal-dates.case.json	11
 C	probes/tbilleq-zero-price.case.json	4
 C	probes/text-argument-modes.case.json	47
 C	probes/text-b-functions-broadcast.case.json	29
