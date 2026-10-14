@@ -3,7 +3,7 @@ id: T-1047
 title: "Excel evidence for legacy distribution names BETADIST to FTEST"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -26,3 +26,6 @@ Split from T-0966 (one sweep per kernel family), which explains why: Excel's dis
 
 ## Out of scope
 - Fitting or changing any implementation (the dependent fitting tasks do that).
+
+## Outcome
+Added 12 probes-numeric cases `m9-legacy-*` (one per function, 33-92 cells) with excel-graph sidecars, none pending. All aliases equal their modern equivalents; quirks recorded in `docs/excel-semantics/statistics.md`.
