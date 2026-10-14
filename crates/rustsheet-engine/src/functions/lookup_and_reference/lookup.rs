@@ -3,7 +3,7 @@
 use crate::cast::calc_result_to_array_node;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::{array_node_to_calc_result, is_at_if};
+use crate::functions::util::{array_node_to_calc_result, is_at_if, is_at_xlookup_take};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -138,8 +138,9 @@ impl Model {
         // The `@` of an IF that picks one cell keeps the reference
         // (`LOOKUP(99,A1:A3,@IF(TRUE,F1))` = `LOOKUP(99,A1:A3,F1)`;
         // probes/at-if-spill-anchor-operand H50, T-1368). Gated to `@IF`: a plain `IF` has no
-        // evidence here, and a scalar result_vector stays `#N/A` (H70).
-        let picked = if is_at_if(node) {
+        // evidence here, and a scalar result_vector stays `#N/A` (H70). `@XLOOKUP`/`@TAKE` keep
+        // the reference too (probes/anchorarray-lookup-implicit-xlookup-take L1, J10, L10, N10).
+        let picked = if is_at_if(node) || is_at_xlookup_take(node) {
             self.spill_anchor_operand(node, cell)
         } else {
             self.eval_ref_or_index(node, cell)

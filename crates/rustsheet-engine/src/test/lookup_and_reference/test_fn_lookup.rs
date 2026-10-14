@@ -246,3 +246,28 @@ fn test_lookup_single_cell_vector_and_scalar_result() {
     assert_eq!(model._get_text("B4"), "5");
     assert_eq!(model._get_text("B5"), "#N/A");
 }
+
+#[test]
+fn test_lookup_result_vector_at_take_keeps_the_reference() {
+    // probes/anchorarray-lookup-implicit-xlookup-take (excel-graph, T-1527): `@TAKE`/`@XLOOKUP`
+    // as result_vector is the one cell they pick, read on past to the right like a plain cell;
+    // an `@` whose intersection fails is `#VALUE!`.
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("A1", "1"),
+        ("A2", "2"),
+        ("A3", "3"),
+        ("F1", "5"),
+        ("F2", "6"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("H1", "7");
+    model._set("B1", "=LOOKUP(1,A1:A3,@TAKE(F1:F3,1))");
+    model._set("B2", "=LOOKUP(3,A1:A3,@TAKE(F1:F3,1))");
+    model._set("B10", "=LOOKUP(3,A1:A3,@TAKE(F1:F3,2))");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "5");
+    assert_eq!(model._get_text("B2"), "7");
+    assert_eq!(model._get_text("B10"), "#VALUE!");
+}

@@ -354,9 +354,9 @@ impl Model {
     }
 
     /// `@XLOOKUP(..)` / `@TAKE(..)`: the one cell they pick stays a reference, `None` for any
-    /// other node. Only ISREF and LET binding use it (probes/isref-implicit-xlookup-take H1, H3,
-    /// H5, H6, excel-graph; T-1509): the spill-anchor and LOOKUP callers of `eval_ref_or_index`
-    /// have no evidence for these forms and keep their value reading.
+    /// other node. ISREF and LET binding (probes/isref-implicit-xlookup-take H1, H3, H5, H6,
+    /// excel-graph; T-1509), the operand of `#`/ANCHORARRAY and LOOKUP's `result_vector`
+    /// (probes/anchorarray-lookup-implicit-xlookup-take H1, L1, J10, L10, N10; T-1527) use it.
     pub(crate) fn eval_at_picked_reference(
         &mut self,
         node: &Node,
@@ -424,6 +424,9 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let node = node.ungrouped();
+        if let Some(picked) = self.eval_at_picked_reference(node, cell) {
+            return picked;
+        }
         match node {
             Node::ImplicitIntersection { child, .. } if is_at_if(node) => {
                 let picked = self

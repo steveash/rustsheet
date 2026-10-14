@@ -1,0 +1,63 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "@XLOOKUP/@TAKE as ANCHORARRAY operand, LOOKUP result_vector and INDEX index argument (T-1527). A1:B3 = 1,2,3 / 10,20,30; F1:F3 = 5,6,7; D1 =SEQUENCE(3).",
+  "tags": [
+    "M1",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "F1": 5,
+        "F2": 6,
+        "F3": 7,
+        "D1": "=SEQUENCE(3)",
+        "H1": "=ANCHORARRAY(@TAKE(D1:D3,1))",
+        "J1": "=ANCHORARRAY(D1)",
+        "L1": "=LOOKUP(99,A1:A3,@TAKE(F1:F3,1))",
+        "N1": "=LOOKUP(2,A1:A3,@XLOOKUP(2,A1:A3,F1:F3))",
+        "P1": "=INDEX(B1:B3,@TAKE(A1:A3,2))",
+        "R1": "=INDEX(B1:B3,@XLOOKUP(3,A1:A3,A1:A3))",
+        "T1": "=INDEX(B1:B3,1,@TAKE(A1:A3,1))",
+        "V1": "=SUM(ANCHORARRAY(@XLOOKUP(1,A1:A3,D1:D3)))",
+        "H10": "=LOOKUP(1,A1:A3,@TAKE(F1:F3,1))",
+        "J10": "=LOOKUP(2,A1:A3,@TAKE(F1:F3,1))",
+        "L10": "=LOOKUP(3,A1:A3,@TAKE(F1:F3,1))",
+        "N10": "=LOOKUP(3,A1:A3,@TAKE(F1:F3,2))",
+        "P10": "=LOOKUP(3,A1:A3,F1)",
+        "R10": "=LOOKUP(3,A1:A3,INDEX(F1:F3,1))",
+        "T10": "=LOOKUP(3,A1:A3,@INDEX(F1:F3,1))",
+        "V10": "=LOOKUP(2,A1:A3,@XLOOKUP(1,A1:A3,F1:F3))",
+        "X10": "=LOOKUP(3,A1:A3,F1:F2)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!J1",
+    "Sheet1!L1",
+    "Sheet1!N1",
+    "Sheet1!P1",
+    "Sheet1!R1",
+    "Sheet1!T1",
+    "Sheet1!V1",
+    "Sheet1!H10",
+    "Sheet1!J10",
+    "Sheet1!L10",
+    "Sheet1!N10",
+    "Sheet1!P10",
+    "Sheet1!R10",
+    "Sheet1!T10",
+    "Sheet1!V10",
+    "Sheet1!X10"
+  ]
+}
