@@ -188,6 +188,8 @@ pub struct Model {
     pub(crate) last_variable_id: usize,
     /// Lambdas
     pub(crate) lambdas: HashMap<usize, (Vec<NamedVariable>, Node)>,
+    /// Functions passed by name (`_xleta.SUM`), keyed by the same ids as `lambdas`.
+    pub(crate) eta_lambdas: HashMap<usize, crate::functions::Function>,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).
@@ -262,6 +264,7 @@ impl Model {
     }
     pub(crate) fn clear_lambdas(&mut self) {
         self.lambdas.clear();
+        self.eta_lambdas.clear();
         self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(
@@ -1525,6 +1528,7 @@ impl Model {
             variable_stack: VariableStack::default(),
             last_variable_id: 0,
             lambdas: HashMap::new(),
+            eta_lambdas: HashMap::new(),
             last_lambda_id: 0,
             defined_names_running: Default::default(),
             area_budget: Default::default(),

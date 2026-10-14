@@ -1,0 +1,57 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1466: eta-reduced function names (_xleta.NAME) as LAMBDA arguments, and what BYCOL does with a bare function name, an error, a number or an unknown name in place of the LAMBDA (re-asks lambda-helper-range-slices E32). A1 x, A3 z, B3 y, A2:B2 and B1 blank; C1:C3 ab, cde, 7. One question per 4 rows in column E.",
+ "tags": [
+  "M2",
+  "probe",
+  "lambda",
+  "byrow",
+  "bycol",
+  "map",
+  "T-1466"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "x",
+    "A3": "z",
+    "B3": "y",
+    "C1": "ab",
+    "C2": "cde",
+    "C3": 7,
+    "E1": "=BYCOL(A1:B3,_xleta.COUNTA)",
+    "E5": "=BYCOL(A1:B3,COUNTA)",
+    "E9": "=BYCOL(A1:B3,NA())",
+    "E13": "=BYCOL(A1:B3,1)",
+    "E17": "=BYCOL(A1:B3,FOONAME)",
+    "E21": "=BYROW(A1:B3,SUM)",
+    "E25": "=BYROW(A1:B3,_xleta.COUNTA)",
+    "E29": "=MAP(A1:A3,_xleta.COUNTA)",
+    "E33": "=MAP(A1:A3,_xleta.ISREF)",
+    "E37": "=MAP(A1:A3,B1:B3,_xleta.SUM)",
+    "E41": "=REDUCE(0,A1:A3,_xleta.SUM)",
+    "E45": "=MAKEARRAY(2,2,_xleta.COUNTA)",
+    "E49": "=BYROW(A1:B3,_xleta.ABS)",
+    "E53": "=MAKEARRAY(2,2,_xleta.ABS)",
+    "E57": "=BYROW(A1:B3,_xleta.NOW)",
+    "E61": "=BYCOL(A1:B3,_xleta.ROWS)",
+    "E65": "=BYCOL(A1:B3,_xleta.COUNTBLANK)",
+    "E69": "=BYROW({1,2;3,4},_xleta.SUM)",
+    "E73": "=_xleta.SUM",
+    "E77": "=LET(f,_xleta.SUM,f(1,2))",
+    "E81": "=BYROW(A1:B3,_xleta.FOONAME)",
+    "E85": "=MAKEARRAY(2,2,_xleta.POWER)",
+    "E89": "=BYROW(C1:C3,_xleta.LEN)",
+    "E93": "=ISERROR(_xleta.SUM)",
+    "E97": "=SCAN(0,A1:A3,_xleta.COUNTA)",
+    "E101": "=BYROW(A1:B3,_xleta.IF)",
+    "E105": "=MAKEARRAY(2,2,_xleta.IF)",
+    "E109": "=BYROW(A1:B3,_xleta.sum)",
+    "E113": "=BYROW(A1:B3,_xleta.STDEV.S)",
+    "E117": "=BYROW(A1:B3,_xleta._xlfn.STDEV.S)"
+   }
+  }
+ ],
+ "expected": {}
+}
