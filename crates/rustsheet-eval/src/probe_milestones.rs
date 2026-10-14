@@ -205,25 +205,23 @@ impl Mapping {
 
 impl Mapping {
     /// Checks that every cell line names a checked cell of its case, so a typo cannot leave a cell
-    /// counted at its case's milestone unnoticed. A case that did not run (a partial run), that
-    /// has no scored cells (it failed to load) or that skipped volatile cells is not checked: the
-    /// results do not say which cells were skipped, and a line may name one (probes/volatile-invariant
-    /// Calc!A6).
+    /// counted at its case's milestone unnoticed. `expectations` maps a case id to the cells the
+    /// case holds an expectation for (the keys of its `expected` and of its oracle sidecar, as
+    /// `Sheet!A1`; `case::expectation_cells`). A case it does not list is not checked here:
+    /// [`Mapping::check_known`] rejects unknown cases.
     ///
     /// # Errors
-    /// The first line, in file order, whose cell the case's results do not contain.
-    pub fn check_cells(&self, results: &[CaseResult]) -> Result<(), MappingError> {
-        let checked: BTreeMap<&str, BTreeSet<String>> = results
-            .iter()
-            .filter(|r| !r.cells.is_empty() && r.skipped_volatile == 0)
-            .map(|r| (r.id.as_str(), r.cells.iter().map(CellResult::key).collect()))
-            .collect();
+    /// The first line, in file order, whose cell its case holds no expectation for.
+    pub fn check_cells(
+        &self,
+        expectations: &BTreeMap<String, BTreeSet<String>>,
+    ) -> Result<(), MappingError> {
         match self
             .cells
             .iter()
             .filter(|((case, cell), _)| {
-                checked
-                    .get(case.as_str())
+                expectations
+                    .get(case)
                     .is_some_and(|cells| !cells.contains(cell))
             })
             .min_by_key(|(_, a)| a.line)
@@ -248,14 +246,6 @@ pub struct Rules {
 }
 
 impl Rules {
-    /// See [`Mapping::check_cells`].
-    ///
-    /// # Errors
-    /// The first cell line that names a cell its case does not check.
-    pub fn check_cells(&self, results: &[CaseResult]) -> Result<(), MappingError> {
-        self.mapping.check_cells(results)
-    }
-
     /// The rules from the frozen lists (only [`FROZEN_M1_LIST`] matters), the mapping file and
     /// the catalog.
     #[must_use]
@@ -531,30 +521,19 @@ mod tests {
             "# c\nprobes/a.case.json\tS!A1\tM9\tx\nprobes/a.case.json\tS!B2\tM9\tx\nprobes/b.case.json\tS!Z9\tM9\tx\n",
         )
         .expect("parse");
-        let a = case(
-            "probes/a.case.json",
-            &[],
-            CaseStatus::Pass,
-            vec![cell("S!A1", "=1", Verdict::Pass)],
-        );
+        let cells = |keys: &[&str]| keys.iter().map(ToString::to_string).collect();
+        let mut expectations =
+            BTreeMap::from([("probes/a.case.json".to_string(), cells(&["S!A1"]))]);
         assert_eq!(
             mapping
-                .check_cells(std::slice::from_ref(&a))
+                .check_cells(&expectations)
                 .expect_err("unchecked")
                 .to_string(),
             format!("{MAPPING_PATH} line 3: probes/a.case.json has no checked cell S!B2")
         );
-        // A case that did not run (probes/b) is not checked.
-        let a = case(
-            "probes/a.case.json",
-            &[],
-            CaseStatus::Pass,
-            vec![
-                cell("S!A1", "=1", Verdict::Pass),
-                cell("S!B2", "=2", Verdict::Pass),
-            ],
-        );
-        assert_eq!(mapping.check_cells(&[a]), Ok(()));
+        // A case the expectations do not list (probes/b) is left to `check_known`.
+        expectations.insert("probes/a.case.json".to_string(), cells(&["S!A1", "S!B2"]));
+        assert_eq!(mapping.check_cells(&expectations), Ok(()));
     }
 
     #[test]

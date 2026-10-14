@@ -17,7 +17,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use clap::{Parser, Subcommand};
 
 use rustsheet_eval::baseline::{self, Baseline};
@@ -236,33 +236,40 @@ struct Milestones {
 }
 
 /// Loads the frozen lists and the probe-milestone mapping, and fails when a line of either names
-/// a case that no suite discovers.
+/// a case that no suite discovers, or a cell line names a cell its case holds no expectation for.
 fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
     let lists = milestone_lists::load_all(root)?;
     let mapping = Mapping::load(root)?;
     if !lists.is_empty() || mapping != Mapping::default() {
-        let mut known = BTreeSet::new();
+        let mut files = BTreeMap::new();
         for suite in Suite::load_all(&root.join("eval/suites"))? {
-            known.extend(suite.cases()?.into_iter().map(|c| c.id));
+            files.extend(suite.cases()?.into_iter().map(|c| (c.id.clone(), c)));
         }
+        let known: BTreeSet<String> = files.keys().cloned().collect();
         milestone_lists::check_known(&lists, &known)?;
         mapping.check_known(&known)?;
+        // A cell line must name a cell its case scores (T-1568).
+        let mut expectations = BTreeMap::new();
+        for (case, _) in mapping.cells.keys() {
+            if let Some(file) = files.get(case) {
+                let cells = rustsheet_eval::case::expectation_cells(file)
+                    .map_err(|e| anyhow!("{case}: {e}"))?;
+                expectations.insert(case.clone(), cells);
+            }
+        }
+        mapping.check_cells(&expectations)?;
     }
     let rules = Rules::new(&lists, mapping, catalog);
     Ok(Milestones { lists, rules })
 }
 
 /// Fills the report's milestone sections from the run's `results`.
-///
-/// # Errors
-/// When a cell line of the probe-milestone mapping names a cell its case does not check.
 fn score_milestones(
     milestones: &Milestones,
     suites: &[Suite],
     results: &[CaseResult],
     report: &mut RunReport,
-) -> Result<()> {
-    milestones.rules.check_cells(results)?;
+) {
     let modes: BTreeMap<String, BaselineMode> = suites
         .iter()
         .map(|s| (s.manifest.name.clone(), s.manifest.baseline))
@@ -277,7 +284,6 @@ fn score_milestones(
         .copied()
         .unwrap_or(BaselineMode::Cells);
     report.probe_milestones = probe_milestones::summarize(&milestones.rules, results, probes_mode);
-    Ok(())
 }
 
 fn print_summary(report: &RunReport) {
@@ -347,7 +353,7 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         &RustSheetEngine.implemented_functions(),
         &catalog,
     );
-    score_milestones(&milestones, &suites, &results, &mut report)?;
+    score_milestones(&milestones, &suites, &results, &mut report);
     print_summary(&report);
     let mut failed = false;
     for suite in &suites {
@@ -504,7 +510,7 @@ fn run() -> Result<ExitCode> {
                 &RustSheetEngine.implemented_functions(),
                 &catalog,
             );
-            score_milestones(&milestones, &suites, &results, &mut report)?;
+            score_milestones(&milestones, &suites, &results, &mut report);
             let out = out.unwrap_or_else(|| root.join("eval/runs/latest"));
             std::fs::create_dir_all(&out)?;
             std::fs::write(
