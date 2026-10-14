@@ -3,7 +3,7 @@ id: T-1502
 title: "Union walks over sheets with many rows filled in other columns: find a union area's rows per column"
 milestone: M1
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
