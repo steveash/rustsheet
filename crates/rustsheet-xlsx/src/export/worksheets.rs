@@ -228,7 +228,14 @@ pub(crate) fn get_worksheet_xml(
         row_style_dict.insert(row.r, row.clone());
     }
 
-    for row_index in worksheet.sheet_data.rows() {
+    // A row with no cells still carries its height / hidden flag / style, so it is written too
+    // (Ported-From: ironcalc@f428b2ebbc57fcf292f3e67027b24e1c866cb7c4).
+    let mut row_indices = worksheet.sheet_data.rows();
+    row_indices.extend(row_style_dict.keys().copied());
+    row_indices.sort_unstable();
+    row_indices.dedup();
+
+    for row_index in row_indices {
         let mut row_data_str: Vec<String> = vec![];
         for (column_index, cell) in worksheet.sheet_data.cells_in_row(row_index) {
             let formula_attribute = |node: &Node, to_formula_string| {
