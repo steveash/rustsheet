@@ -177,3 +177,12 @@ fn extended_sqrt_rounds_twice() {
     assert_ne!(x.sqrt(), extended_sqrt(x));
     assert_eq!(power(x, 0.5), Ok(1.553_658_801_748_407_6));
 }
+
+// probes-numeric/power-neg-half-rounding A9 (excel-graph, T-1541): a subnormal radicand rounds
+// twice too; `f64::from_bits(k)` is k·2^-1074.
+#[test]
+fn extended_sqrt_of_a_subnormal_rounds_twice() {
+    let x = f64::from_bits(344_225_268_385_227);
+    assert_eq!(extended_sqrt(x), 4.123_952_952_442_882e-155);
+    assert_ne!(x.sqrt(), extended_sqrt(x));
+}

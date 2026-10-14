@@ -103,11 +103,12 @@ pub(crate) fn extended_quotient(x: f64, y: f64) -> f64 {
 /// `sqrt(x)` rounded twice, first to a 64-bit significand and then to a double, like
 /// [`extended_quotient`] (docs/excel-semantics/numbers.md "Division rounds twice",
 /// probes-numeric/double-rounding-ops A65-A80, excel-graph). The root is built bit by bit from the
-/// exact significand, so the first rounding sees the true root. A zero, negative, non-normal or
+/// exact significand, so the first rounding sees the true root. A subnormal `x` rounds twice too
+/// (probes-numeric/power-neg-half-rounding A9-A12, B9-B12; T-1541). A zero, negative or
 /// non-finite `x` is the plain `x.sqrt()`.
 pub(crate) fn extended_sqrt(x: f64) -> f64 {
     let plain = x.sqrt();
-    if !x.is_normal() || x < 0.0 {
+    if x <= 0.0 || !x.is_finite() {
         return plain;
     }
     let (significand, mut exponent) = significand_and_exponent(x);
@@ -273,11 +274,18 @@ fn round_extended_to_double(extended: u128, exponent: i32, negative: bool) -> Op
     Some(f64::from_bits(sign | (biased << 52) | fraction))
 }
 
-/// The 53-bit integer significand `m` and exponent `e` of a normal double, `|x| = m·2^e`.
+/// The 53-bit integer significand `m` and exponent `e` of a non-zero finite double,
+/// `|x| = m·2^e`; a subnormal's significand is shifted up to 53 bits.
 fn significand_and_exponent(x: f64) -> (u64, i32) {
     let bits = x.to_bits();
+    let fraction = bits & 0x000F_FFFF_FFFF_FFFF;
     let biased = i32::try_from((bits >> 52) & 0x7FF).unwrap_or(0);
-    ((bits & 0x000F_FFFF_FFFF_FFFF) | (1 << 52), biased - 1075)
+    if biased == 0 {
+        // The top set bit of the fraction moves to bit 52 (a u64 then has 11 leading zeros).
+        let shift = fraction.leading_zeros().saturating_sub(11);
+        return (fraction << shift, -1074 - i32::try_from(shift).unwrap_or(0));
+    }
+    (fraction | (1 << 52), biased - 1075)
 }
 
 /// `value` (non-zero) rounded to nearest, ties to even, to `bits` significant bits: the rounded
@@ -391,8 +399,8 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
 }
 
 /// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)`, a negative exponent as one over
-/// the positive power, and `y` = ±0.5 through `sqrt`. This matches all 180 numeric oracle cells over
-/// 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep;
+/// the positive power, and `y` = ±0.5 through [`extended_sqrt`]. This matches all 180 numeric
+/// oracle cells over 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep;
 /// docs/excel-semantics/numbers.md "Non-integer exponents: exp(y·ln x)"). A negative `x` gives NaN.
 fn non_integer_power(x: f64, y: f64) -> f64 {
     // -0 has the logarithm of 0: `-0^0.5` is 0, not `sqrt`'s -0 (gen-m1/6462bf910ef9f28f Calc!A19).
@@ -400,7 +408,9 @@ fn non_integer_power(x: f64, y: f64) -> f64 {
     if y == 0.5 {
         extended_sqrt(x)
     } else if y == -0.5 {
-        extended_quotient(1.0, x.sqrt())
+        // One over the twice-rounded root, divided like `/`: `x^-0.5`, `POWER(x,-0.5)` and
+        // `1/SQRT(x)` agree (probes-numeric/power-neg-half-rounding, T-1541).
+        extended_quotient(1.0, extended_sqrt(x))
     } else if y > 0.0 {
         (y * x.ln()).exp()
     } else {

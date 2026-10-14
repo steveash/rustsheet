@@ -282,9 +282,17 @@ product, 8 pairs), `a+b`, `a-b`, `SUM(a,b)` and `AVERAGE(a,b)` (operands whose e
 Implemented for `*` and PRODUCT by `arithmetic::extended_product` (T-1498, A1-A16 pass) and for
 `+`, `-`, SUM and AVERAGE (each addition of the running total) by `arithmetic::extended_sum` (T-1499,
 A33-A64 pass) and for SQRT and `^0.5` by
-`arithmetic::extended_sqrt` (T-1500, A65-A80 pass). Unprobed: the `sqrt` inside `x^-0.5` stays the plain
-root (Excel may divide by the 64-bit root without rounding it to a double first), and a subnormal
-radicand takes the plain root. AVERAGEA, SUMIF(S) and the database
+`arithmetic::extended_sqrt` (T-1500, A65-A80 pass). `x^-0.5`, `POWER(x,-0.5)` and `1/SQRT(x)` are the
+same: the root rounded twice (as SQRT), then one over it divided like `/` (rounded twice). Neither the
+correctly rounded root nor the 64-bit root is used: over operands where the three readings give three
+different doubles, Excel gives the twice-rounded one each time (`((1+314268894768158*2^-52))^-0.5` is
+0.9668351146104247, where the plain root gives …245 and the 64-bit root …246). A subnormal radicand
+(kept by `-`, `(x)=0` FALSE) rounds its root twice too: `SQRT((1+344225268385227*2^-52)*2^-1022-2^-1022)`
+is 4.123952952442882E-155 (the correctly rounded root is …881E-155), and its `^-0.5` follows the same
+rule. Evidence: probes-numeric/power-neg-half-rounding (40 cells; operands of at most 15 significant
+digits, since a 16-digit literal loses its last digit; excel-graph, 2026-10-14, T-1541). Implemented in
+`arithmetic::non_integer_power` and `extended_sqrt`, which normalizes a subnormal's significand.
+AVERAGEA, SUMIF(S) and the database
 sums accumulate with the plain `+` and are unprobed (T-1516).
 Range edges of `*` and PRODUCT (probes-numeric/double-rounding-range-edges, excel-graph, 2026-10-14,
 T-1513): the second rounding happens at the result's own precision. An exact product just under the
