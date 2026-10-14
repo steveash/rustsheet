@@ -304,6 +304,41 @@ fn reference_functions_take_a_cached_range() {
     );
 }
 
+// An aggregate that skips blanks reads an area of any shape only where the cache holds cells, so a
+// tall area adds its cached cells instead of tripping the array bound (arrays.md "Array results
+// above 1,048,576 cells"; T-1550). A reader that sees blanks keeps the written shape.
+#[test]
+fn blank_skipping_aggregates_read_a_tall_area_from_the_cache() {
+    let mut model = cached_ranges_fixture();
+    let tall = "[1]Uses!$A$2:$B$1048576";
+    assert_eq!(eval(&mut model, &format!("=SUM({tall})")), "5");
+    assert_eq!(eval(&mut model, &format!("=COUNT({tall})")), "1");
+    assert_eq!(eval(&mut model, &format!("=MAX({tall})")), "5");
+    assert_eq!(eval(&mut model, &format!("=MIN({tall})")), "5");
+    assert_eq!(eval(&mut model, &format!("=AVERAGE({tall})")), "5");
+    // "7" counts 0 and TRUE 1 (Refs!B53's AVERAGEA rule).
+    assert_eq!(eval(&mut model, &format!("=AVERAGEA({tall})")), "2");
+    assert_eq!(eval(&mut model, &format!("=SUM(IF(TRUE,{tall}))")), "5");
+    assert_eq!(eval(&mut model, &format!("=SUBTOTAL(9,{tall})")), "5");
+    assert_eq!(eval(&mut model, &format!("=RANK(5,{tall})")), "1");
+    // An area wholly past the cache reads no cell.
+    let outside = "[1]Uses!$Z$100:$Z$200";
+    assert_eq!(eval(&mut model, &format!("=SUM({outside})")), "0");
+    assert_eq!(eval(&mut model, &format!("=AVERAGE({outside})")), "#DIV/0!");
+    assert_eq!(
+        eval(&mut model, &format!("=AVERAGEA({outside})")),
+        "#DIV/0!"
+    );
+    // The cut changes no position an INDEX picks.
+    assert_eq!(eval(&mut model, &format!("=SUM(INDEX({tall},1,1))")), "5");
+    // Blanks past the cache still count where the reader sees them.
+    assert_eq!(eval(&mut model, "=ROWS(LET(x,[1]Uses!$A$1:$B$9,x))"), "9");
+    assert_eq!(
+        eval(&mut model, "=TEXTJOIN(\"|\",FALSE,[1]Uses!$B$1:$B$5)"),
+        "10|7|||"
+    );
+}
+
 /// `formula` set in `cell` as a legacy (pre-dynamic-array) formula, as xlsx import reads one.
 fn eval_legacy(model: &mut Model, cell: &str, formula: &str) -> String {
     let reference = model._parse_reference(cell);

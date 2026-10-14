@@ -25,7 +25,7 @@ impl Model {
         for arg in args {
             // References (also via IF/INDEX) arrive as a Range; the scalar
             // arms below only see values.
-            match self.evaluate_picked_reference_arg(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 RefArg::Value(CalcResult::Number(value)) => {
                     f(value);
                 }
@@ -114,7 +114,7 @@ impl Model {
             // An XLOOKUP or INDEX that picks a cell is that cell: text there counts 0
             // (`AVERAGEA(XLOOKUP(1,A1:A2,B1:B2),5,7)` over "x" is 4;
             // probes/subtotal-reference-operands-d H22).
-            match self.evaluate_picked_reference_arg(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 RefArg::Value(CalcResult::Number(value)) => {
                     f(value);
                 }
