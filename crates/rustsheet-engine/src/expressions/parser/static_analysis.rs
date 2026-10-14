@@ -1248,6 +1248,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Image => args_signature_scalars(arg_count, 1, 4),
         Function::Stockhistory => args_signature_scalars(arg_count, 2, 9),
         Function::Fieldvalue => args_signature_fieldvalue(arg_count),
+        Function::Filterxml => args_signature_scalars(arg_count, 2, 0),
         Function::Findb => args_signature_scalars(arg_count, 2, 1),
         Function::Fixed => args_signature_scalars(arg_count, 1, 2),
         Function::Leftb => args_signature_scalars(arg_count, 1, 1),
@@ -1759,6 +1760,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Encodeurl => not_implemented(args),
         // All three lift over an array or range `source`/`stock`/`value` (T-1179).
         Function::Image | Function::Stockhistory | Function::Fieldvalue => StaticResult::Unknown,
+        // Never lifts: the whole call is `#VALUE!` (filterxml.rs).
+        Function::Filterxml => StaticResult::Scalar,
         // The *B functions delegate to their non-B counterparts (byte_functions.rs), so they lift
         // over ranges exactly as FIND/LEFT/LEN/... do (T-0271).
         Function::Findb => scalar_arguments(args),
