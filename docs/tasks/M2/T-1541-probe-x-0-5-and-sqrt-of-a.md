@@ -30,6 +30,6 @@ probes-numeric/power-neg-half-rounding (40 cells, excel-graph) separates the hyp
 twice-rounded division (hypothesis 2) on 4 operands where all three differ. A subnormal radicand,
 kept by `-`, also rounds its root twice. `non_integer_power` now uses `extended_sqrt` for -0.5, and
 `significand_and_exponent` normalizes a subnormal so `extended_sqrt` covers it. The case passes 40/40
-(it was 19/40 before; probes-numeric has no baseline). Probe note: a 16-digit integer literal loses
+(20/40 before, by the simulated old paths; probes-numeric has no baseline, so a unit test in test_fn_power.rs guards it). Probe note: a 16-digit integer literal loses
 its last digit in Excel, so the operands have at most 15 digits.
 
