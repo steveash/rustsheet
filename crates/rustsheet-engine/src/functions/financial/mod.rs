@@ -1337,7 +1337,6 @@ impl Model {
             Ok(f) => f,
             Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
         };
-        // Excel: equal dates are #NUM! too (probes/tbill-equal-dates, excel-graph).
         if settlement >= maturity {
             return CalcResult::new_error(
                 Error::NUM,
@@ -1404,7 +1403,6 @@ impl Model {
             Ok(f) => f,
             Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
         };
-        // Excel: equal dates are #NUM! too (probes/tbill-equal-dates, excel-graph).
         if settlement >= maturity {
             return CalcResult::new_error(
                 Error::NUM,
@@ -1459,7 +1457,6 @@ impl Model {
             Ok(f) => f,
             Err(_) => return CalcResult::new_error(Error::NUM, cell, "Invalid date".to_string()),
         };
-        // Excel: equal dates are #NUM! too (probes/tbill-equal-dates, excel-graph).
         if settlement >= maturity {
             return CalcResult::new_error(
                 Error::NUM,
