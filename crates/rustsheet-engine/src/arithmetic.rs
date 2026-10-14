@@ -159,11 +159,13 @@ pub(crate) fn extended_sum(x: f64, y: f64) -> f64 {
     } else {
         (low_magnitude - aligned, low_negative)
     };
-    // Cancellation can leave under 53 bits, which a double holds exactly: the plain sum.
+    // Cancellation can leave fewer than 53 bits (below 2^52), which a double holds exactly: the
+    // plain sum.
     if magnitude >> 52 == 0 {
         return plain;
     }
     let (extended, shift) = round_to_bits(magnitude, 64, false);
+    // A double-rounded value past the range (no probe reaches it) falls back to the plain sum.
     round_extended_to_double(extended, low_exponent + shift, negative).unwrap_or(plain)
 }
 
