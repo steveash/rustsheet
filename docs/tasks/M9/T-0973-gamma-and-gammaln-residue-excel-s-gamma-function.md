@@ -11,9 +11,10 @@ depends_on: []
 ---
 
 ## Goal
-GAMMA returns Excel's values (correctly rounded factorials at positive integers up to 25 (exact up to 23), Excel's last digits elsewhere, finite up to 171.6)
-from one accurate gamma-function routine, and the 18 GAMMALN/GAMMALN.PRECISE cells T-0926 left
-behind are matched by the same kernel or explained.
+GAMMA at positive integers n <= 88 returns Excel's values, which are the downward product
+(n-1)*(n-2)*...*2 in doubles (T-1524), GAMMA is finite up to 171.6, and the n >= 89 integer routine is
+either fitted or recorded as this task's open item. GAMMALN and GAMMA at non-integers are T-1529
+(time-boxed).
 
 ## Context
 Kernel map (T-1522, decision 0056): rank 8 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
@@ -57,21 +58,24 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 **T-1524 (fit lab `gamma-int`, `gammaln-int`, `gamma-half-int`, 2026-10-14):** GAMMA(n) for integers n <= 88 is
 the downward product `(n-1)*(n-2)*...*2` in doubles: it matches all of them, 92/171 integer cells in all
 (engine 1, correctly rounded 40, upward product 38, 64-bit product 40). From n = 89 Excel switches to another
-routine (up to 11 ulps from the factorial). GAMMALN at integers: ln of that product 82/171, correctly rounded
+routine (up to 32 ulps from the downward product and 29 from the factorial, at `GAMMA(167)`,
+t1042-gamma-int-91-171 Calc!A77). GAMMALN at integers: ln of that product 82/171, correctly rounded
 80, engine 108, so GAMMALN is a separate routine. GAMMA(m+1/2): best double recurrence 34/62, correctly
 rounded and 64-bit 45, engine 0. The x87 64-bit-intermediate model only ties correctly rounded, so it is not
 Excel's gamma. Details: statistics.md "GAMMA and GAMMALN sweep (T-1042)".
 
 ## Acceptance criteria
-- [ ] All 16 GAMMA NumericClose lines leave `eval/baseline/ironcalc-calc.txt` (exact integers among
-      them), no new lines in any baseline (GAMMALN lines T-0926 fixed must stay fixed).
-- [ ] GAMMALN/GAMMALN.PRECISE: either the 18 lines leave the baseline, or the PR lists them with the
-      formulations tried and this task's Outcome points at the T-1042 sweep follow-up.
+- [ ] GAMMA(n) for integers 1 <= n <= 88 is the downward product (n-1)*(n-2)*...*2, each product rounded
+      to a double: all 88 such cells of `probes-numeric/t1042-gamma-int-1-90` pass (92 of the 171 integer
+      cells in the two t1042 integer cases at least; the fit lab's `gamma-int` scores this rule 92/171).
+- [ ] GAMMA(n) for integers n >= 89 (83 cells of `t1042-gamma-int-1-90` and `-91-171`): open item.
+      Either a fitted routine passes them, or the PR leaves them in the baseline and lists the
+      candidates tried in statistics.md "GAMMA and GAMMALN sweep (T-1042)".
 - [ ] `GAMMA(171.5)` and `GAMMA(171.6)` are finite (9.483367566824801e+307, 1.5858969096672508e+308) and
-      `GAMMA(171.7)` is `#NUM!` (T-1042, `t1042-gamma-negatives-edges`); the t1042 probe cases improve.
-- [ ] No statrs `gamma::gamma` left in `functions/statistical/gamma.rs` (one gamma-function definition
-      in `special.rs`); unit tests GAMMA(1..=6) exact, GAMMA(0.5), poles are #NUM!.
+      `GAMMA(171.7)` is `#NUM!` (T-1042, `t1042-gamma-negatives-edges`).
+- [ ] No new lines in any `eval/baseline/` file: the GAMMALN lines T-0926 fixed stay fixed, and
+      non-integer GAMMA cells do not regress (their fit is T-1529).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-Incomplete gamma (T-0971); GAMMA.INV (T-0972).
+GAMMALN and GAMMA at non-integers (T-1529, time-boxed); incomplete gamma (T-0971); GAMMA.INV (T-0972).

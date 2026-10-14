@@ -25,7 +25,7 @@ of a non-zero base (#NUM! vs #DIV/0!), the tolerance deciding that an exponent i
 by doubles with Excel's twice-rounded operators (numbers.md "x87 precision is per operator, not per kernel").
 The idealized x87 pow, the fyl2x/f2xm1/fscale sequence and 64-bit exp(y ln x) tie correctly rounded
 (`power-nonint` 94 vs the model's 180). The one change found is T-1495's (twice-rounded products in
-square-and-multiply).
+square-and-multiply). This task's acceptance criteria are unchanged by T-1524.
 
 ## Acceptance criteria
 - [ ] Probe case with oracle values for the three UNVERIFIED points; numbers.md updated.

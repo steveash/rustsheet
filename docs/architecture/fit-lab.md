@@ -46,8 +46,10 @@ other than a number, misses that cell and is counted under `err`. It does not st
   A reference to a formula cell gives Excel's value from the sidecar. Arithmetic over numeric
   literals (`0.05/12`, `(1+26955297717044*2^-52)`) is evaluated with Excel's operator model
   (`sweep.arithmetic`): each of `+ - * /` rounds to 64 bits, then to a double, and `^` must be an
-  exact integer power such as `2^-52`. A cell with any other argument, such as a function call,
-  is listed as unparsed.
+  exact integer power such as `2^-52`. A non-finite literal or result and nesting deeper than 50
+  are unparsed too. A cell with any other argument, such as a function call, is listed as unparsed.
+- **Candidate arguments:** `sweep.numeric_arg` turns an argument into a float, or raises
+  TypeError (a miss for that candidate) for a bool, text, an empty cell or a range.
 - **Several groups:** a pattern with more than one group gives one argument per group that took
   part in the match, unsplit. Alternatives can then pick the arguments out of different forms, for
   example `^=(?:POWER\(1\+([^,]+),(-?\d+)\)|\(1\+([^()]+)\)\^(-?\d+))$` gives (r, n) for both
@@ -117,9 +119,13 @@ Candidates that model Excel's rounding use `Fraction`s:
   `fscale`, each rounded once to 64 bits, composed into `pow`, `exp` (via `fldl2e`) and `ln` (via
   `fldln2`). It is still idealized: real `fyl2x` and `f2xm1` err by about an extended ulp.
 - `square_and_multiply(base, n, rnd)`: right-to-left binary exponentiation with each product
-  rounded by `rnd`. The roundings `to_double_value` (once), `x87_value` (64 bits, then double: an
-  Excel operator) and `extended_value` (kept at 64 bits) also serve kernel models that take a
-  rounding as a parameter (`kernels/annuity.py`, `gamma.py`).
+  rounded by `rnd`, bounded to the x87 exponent range (`check_range`). `kernels/power.py`'s
+  `integer_power` is Excel's `^` on top of it; the annuity fits share it.
+- Roundings (`Rounding`, Fraction to Fraction) for models that take one as a parameter:
+  `to_double_value` (once), `x87_value` (64 bits, then double: an Excel operator), `extended_value`
+  (kept at 64 bits), `exact_value` (none), `rounded_to(bits)`; `ROUNDINGS` names the first three as
+  "double", "x87 op" and "ext", the families every kernel fit uses. `ln_at(bits)` and `exp_at(bits)`
+  are the correctly rounded functions at a fixed precision.
 - `pi_cr(p)`: pi correctly rounded to p bits (Machin's formula).
 
 ## Shipped fits

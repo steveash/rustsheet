@@ -4,8 +4,9 @@
 Rule: with `P = (1+r)^n` by right-to-left square-and-multiply (numbers.md, "Integer exponents"),
 `k = 1+r*type` and `T = pmt*(k*((P-1)/r))`, Excel computes PV = `-(fv+T)/P` and FV = `-(pv*P+T)`
 (integer nper, rate ≠ 0), and NPER = `ln((pmt*k - fv*r)/(pmt*k + pv*r)) / ln(1+r)`, every
-operation and logarithm in doubles (libm `log` of the double `1+r`, not `log1p`). PMT, IPMT,
-PPMT and NPV are still unexplained, and they are not an x87 computation (below).
+operation in doubles and each logarithm a double logarithm of the double `1+r` (libm or correctly
+rounded; the sweep does not separate them), not `log1p`. PMT, IPMT, PPMT and NPV are still
+unexplained; 64-bit intermediates do not explain them either (below).
 Evidence (Excel-cached values, `ironcalc-calc/FINANCIAL/PMT.xlsx`, `PV.xlsx`, `FV.xlsx`):
 - `PMT.xlsx` Sheet1!F36 (rate 0.2, nper 5, pv -200): Excel's `(1+r)^n` behaves as exactly `2.48832`
   (square-and-multiply, or exp/log), not libm `powf` (`2.4883199999999994`). With that value
@@ -28,7 +29,8 @@ Evidence (Excel-cached values, `ironcalc-calc/FINANCIAL/PMT.xlsx`, `PV.xlsx`, `F
   The engine passes 315/616 power, 208/616 PV/FV, 258/924 PMT/IPMT/PPMT and 119/220 NPER/NPV cells.
 - NPER and the x87 test (T-1524, fit lab `annuity-*` fits, same sweeps; numbers.md "x87 precision
   is per operator, not per kernel"): NPER as above matches 95 of 95 numeric cells
-  (m9-fin-nper-npv; the engine 61; `log1p(r)` in the denominator 11; correctly rounded 6). Keeping
+  (m9-fin-nper-npv; with libm or with correctly rounded double logarithms alike; the engine 61;
+  `log1p(r)` in the denominator 11; the correctly rounded NPER 6). Keeping
   the intermediates at 64 bits (x87 registers, 1+r included) breaks the fitted forms: PV 174/308,
   FV 230/308, NPER 6/95. PMT (m9-fin-pmt, 308 cells; Excel lies up to 3.5 ulps from the exact
   value with the rate as a double): correctly rounded and every 64-bit model (P from the exact
@@ -42,7 +44,7 @@ Evidence (Excel-cached values, `ironcalc-calc/FINANCIAL/PMT.xlsx`, `PV.xlsx`, `F
   engine 21; 11 further double orderings (`v*d` with `d /= 1+r`, `pow(1+r,-i)`, `exp(-i*log1p r)`,
   reverse sums, `fsum`) reach at most 27.
 Status: PARTLY VERIFIED (PV/FV/NPER fitted on the sweep; PMT/IPMT/PPMT/NPV open, time-boxed per
-decision 0056 after T-1524's two attempts; T-0901)
+decision 0056 after T-1524's two attempts, in T-1528; implementation of the fitted ones: T-0901)
 Implemented in: n/a (T-0901). Salvaged from draft PR #13 by T-0031.
 
 ## IRR, RATE and XIRR stop early, and the guess and flow scaling change the result

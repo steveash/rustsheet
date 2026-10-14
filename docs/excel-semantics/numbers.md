@@ -312,17 +312,21 @@ Status: VERIFIED (excel-graph)
 Tasks: T-0221, T-1496, T-1498, T-1499, T-1500, T-1501
 
 ## x87 precision is per operator, not per kernel (T-1524)
-Rule: Excel's elementary kernels do not keep their intermediates at 64 bits (x87 registers) and
-round once at the end. Each arithmetic operation inside a kernel behaves like the Excel operator
-of the same name. It rounds to 64 bits, then to a double, before the next operation uses it
-("Division rounds twice"); for most operands that equals plain double arithmetic. Holding a
-kernel's intermediates at 64 bits makes its result about correctly rounded. On every sweep below
-that model either loses to the double model or merely ties the correctly rounded value.
-Correctly rounded scores well short of 100% (132/308 PMT, 40/171 GAMMA at integers), so Excel's
-own error is wider than half an ulp: up to 3.5 ulps for PMT.
-The double-rounded product is visible inside `^`. Square-and-multiply with each product rounded
-twice gives all 20 `SQRT(5)^n` cells (T-1495 below); rounded once, it gives 1. Bit-exact counts per sweep (fit lab, `rustsheet-fitlab <fit>`;
-"ext" = every intermediate at 64 bits, one final rounding; full tables in T-1524's Outcome):
+Rule: where a kernel's formulation is fitted, it is evaluated in doubles, each operation behaving
+like the Excel operator of the same name ("Division rounds twice"). The same formulation with
+every intermediate held at 64 bits (x87 registers) and one final rounding scores lower on every
+such sweep: PV, FV, NPER, `^` with integer and non-integer exponents, EXP(n*LN(x)) and GAMMA at
+integers n <= 88 (table). The twice rounding itself is visible inside a kernel only in `^`:
+square-and-multiply with each product rounded twice gives all 42 cells whose base is
+2.23606797749979 (`SQRT(5)^n` and `(0.2^-0.5)^n`, n = 3..255 and -99, plus
+`(SUM(0,(0.2^(-0.5)))^99)` and `POWER(SQRT(5),99)`), and with products rounded once only 2.
+On the other sweeps the data do not separate twice-rounded operations from plain doubles. For
+the kernels whose formulation is still unknown (PMT, IPMT, PPMT, NPV, GAMMALN, GAMMA at
+half-integers, ERFC) the x87 model is unsupported rather than refuted: it only ties the
+correctly rounded value, because holding a kernel at 64 bits makes it almost correctly
+rounded, while Excel's error is wider (up to 3.5 ulps for PMT). Bit-exact counts (fit lab,
+`rustsheet-fitlab <fit>`; "ext" = every intermediate at 64 bits, one final rounding; full tables
+in T-1524's Outcome):
 
 | fit (cells) | doubles, Excel operator model | ext (64-bit intermediates) | correctly rounded | engine |
 |---|---|---|---|---|
@@ -330,9 +334,9 @@ twice gives all 20 `SQRT(5)^n` cells (T-1495 below); rounded once, it gives 1. B
 | `annuity-fv` (308) | **308** | 230 | 53 | 101 |
 | `annuity-nper` (95) | **95** | 6 | 6 | 61 |
 | `exp-ln` EXP(n*LN(1+r)) (154) | **154** | 47 | 154 (LN, EXP each correctly rounded) | 154 |
-| `power-1+r` (1+r)^±n, POWER (462) | **462** | 155-175 | 161 | 462 |
+| `power-1+r` (1+r)^±n, POWER (462) | **462** | 155-161 (1+r at 64 bits / a double) | 161 | 462 |
 | `power-mantissa` literal bases ^3..255 (76) | **76** | 10-11 | 10 | 76 |
-| `power-sqrt5` SQRT(5)^n (20) | **20** | 0-1 | 1 | 1 |
+| `power-sqrt5` SQRT(5)^n (20) | **20** | 1 | 1 | 1 |
 | `power-nonint` (180 of 183 modelled) | **180** | 94 | 93 | 183 |
 | `power-recip` (45) | **45** | 37 | 20 | 45 |
 | `gamma-int` GAMMA(1..171) (171) | **92** (downward product) | 40 | 40 | 1 |
@@ -343,13 +347,16 @@ twice gives all 20 `SQRT(5)^n` cells (T-1495 below); rounded once, it gives 1. B
 | `annuity-ipmt` / `annuity-ppmt` (308) | 195 / 43 | 218 / 85 | 219 / 94 | 189 / 15 |
 | `annuity-npv` (88) | 27 | 26 | 18 | 21 |
 
-The x87 instruction model scores the same as ext or lower: fyl2x, frndint, f2xm1 and fscale, each
-rounded once to 64 bits (`X87Insn`). So does the 64-bit 1+r of an x87 register. Where the model
-ties correctly rounded (PMT, IPMT, PPMT, GAMMA at half-integers), that is because both are
-accurate, not because they match Excel's algorithm. The lead this task started from, "PMT with
-`(1+r)^n` from the exact 1+r, kept at 64 bits, 133/308" is this tie: correctly rounded gets 132,
-and Excel's PMT lies up to 3.5 ulps from the exact value, which no model accurate to half an ulp
-can follow.
+The x87 instruction model (`X87Insn`: fyl2x, frndint, f2xm1 and fscale, each rounded once to 64
+bits) is no better than ext as a whole power: 161, 94 and 37 on `power-1+r`, `power-nonint` and
+`power-recip`. A hybrid that computes the positive power that way and then takes Excel's
+twice-rounded 1/ for a negative exponent beats ext (175, 101 and 43), only because the 1/ is the
+Excel operator, and it stays far below the double model (462, 180 and 45). A 64-bit 1+r (as an x87
+register would hold it) does not help either (155 against 161). Where ext ties correctly rounded
+(PMT, IPMT, PPMT, GAMMA at half-integers), both are accurate; that is no evidence about Excel's
+algorithm. The lead this task started from, "PMT with `(1+r)^n` from the exact 1+r, kept at 64
+bits, 133/308", is this tie: correctly rounded gets 132, and Excel's PMT lies up to 3.5 ulps from
+the exact value, which no model accurate to half an ulp can follow.
 Evidence: the oracle sweeps probes-numeric/m9-fin-pv-fv, m9-fin-pmt, m9-fin-nper-npv and
 m9-fin-power (excel-graph, 2026-10-06, T-0942); power-integer-full-mantissa,
 power-reciprocal-rounding and power-non-integer-sweep (excel-graph, 2026-10-12/13);
@@ -359,10 +366,10 @@ Ours: the engine needs no extended-precision type. It already has the per-operat
 (`arithmetic::extended_quotient`, `extended_product`, `extended_sum`); the fits' wins are kernel
 formulations that use it. PV/FV, NPER and GAMMA at integers are recorded in financial.md and
 statistics.md, `^` in "Integer exponents beyond 360" below.
-Status: VERIFIED (excel-graph) that 64-bit intermediates are not Excel's model for these kernels;
-PMT, IPMT, PPMT, NPV, GAMMALN, GAMMA at non-integers and ERFC remain unexplained (time-boxed,
-decision 0056).
-Tasks: T-1524, T-0901, T-1495, T-0973, T-0968
+Status: VERIFIED (excel-graph) for the fitted kernels listed; for PMT, IPMT, PPMT, NPV, GAMMALN,
+GAMMA at non-integers and ERFC the x87 model is unsupported (it ties correctly rounded) and the
+kernels stay unexplained (time-boxed, decision 0056).
+Tasks: T-1524, T-0901, T-1495, T-0973, T-0968, T-1528, T-1529
 
 ## Numbers near 1E+307 print with 14 significant digits
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is
@@ -866,10 +873,13 @@ every base except 10 (about 280 cells across `1.0000001`, `0.9999999`, `1.5`, `2
    (excel-graph, 2026-10-13).
 
 Resolved by T-1524 (implementation: T-1495): the loop's products are Excel's `*`, rounded to 64 bits and
-then to a double ("Division rounds twice"). With that rounding, square-and-multiply gives all 20
-`SQRT(5)^n` cells (n = 3..255 and -99; `SQRT(5)^99` = 3.9720546451956613E+34, `SQRT(5)^10` =
-3125.0000000000023), against 1 of 20 with products rounded once (…6807E+34, 3125.000000000003),
-which is what the engine does. The double rounding changes no other cell. Both roundings match
+then to a double ("Division rounds twice"). With that rounding, square-and-multiply gives all 42
+cells of power-integer-full-mantissa whose base is 2.23606797749979: `SQRT(5)^n` and
+`(0.2^-0.5)^n` for n = 3..255 and -99 (40 cells), A181 `(SUM(0,(0.2^(-0.5)))^99)` and A182
+`POWER(SQRT(5),99)`. `SQRT(5)^99` = 3.9720546451956613E+34 and `SQRT(5)^10` = 3125.0000000000023.
+With products rounded once, which is what the engine does, it gives 2 of the 42 (…6807E+34,
+3125.000000000003). Fit `power-sqrt5` scores the 20 `SQRT(5)^n` cells (20 against 1); the other 22
+were checked outside the lab, which does not parse `0.2^-0.5` or SUM. The double rounding changes no other cell. Both roundings match
 all cells of the 7 other full-significand bases: 76 literal-base cells (fit `power-mantissa`) and
 the 57 `PI()^n`, `EXP(1)^n` and `SQRT(2)^n` cells (checked outside the lab, which does not parse
 function-call bases). They also match the same cells of the 462 `(1+r)^±n` / POWER cells (`power-1+r`)
