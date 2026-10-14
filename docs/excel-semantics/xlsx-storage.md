@@ -222,7 +222,8 @@ ignoring the attribute is correct and no follow-up is needed. Probed one form pe
 a workbook with unparsable text; T-0409, fixtures/t-d-*): `1990-01-01T12:00:00Z` = 32874.5 (the `Z`
 is ignored), `1990-01-01T12:00:00.5` = 32874.500005787035 (fractional seconds count), `1900-02-29` = 60,
 time-only `12:00:00` = 0.5, and `1899-12-31` (before 1900-01-01) is a `#VALUE!` cell
-(`ISNUMBER` FALSE). Probe run 2026-10-07 (plain forms), 2026-10-14 (the rest), Excel for the web.
+(`ISNUMBER` FALSE). UNVERIFIED: dates after 9999-12-31, `24:00:00`, non-zero-padded dates (the importer
+maps these to `#VALUE!` too) and a `t="d"` cell with no `<v>` (imported empty). Probe run 2026-10-07 (plain forms), 2026-10-14 (the rest), Excel for the web.
 Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/xml.rs;
 `iso8601_to_serial` in crates/rustsheet-xlsx/src/import/iso_date.rs (shared with the eval snapshot reader)
 Tasks: T-0112, T-0406, T-0407

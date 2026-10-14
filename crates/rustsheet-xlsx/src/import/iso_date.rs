@@ -7,7 +7,7 @@ const SECONDS_PER_DAY: f64 = 86_400.0;
 
 /// The serial Excel gives a `t="d"` cell holding `text` (`YYYY-MM-DD`, optionally followed by
 /// `Thh:mm:ss[.fff]` and a trailing `Z`), or `hh:mm:ss[.fff]` alone (a fraction of a day); `None` if
-/// it is not ISO 8601 or before 1900-01-01.
+/// it is not ISO 8601, before 1900-01-01 or after 9999-12-31 (only the first date bound is probed).
 /// Evidence: fixtures/t-d-iso-date-cells (1990-01-01 = 32874, 1990-01-01T12:00:00 = 32874.5,
 /// 1900-02-28 = 59, 1900-03-01 = 61), t-d-z-suffix, t-d-fractional-seconds, t-d-1900-02-29 (60),
 /// t-d-time-only (0.5); docs/excel-semantics/xlsx-storage.md. A date before 1900-01-01 reads as
