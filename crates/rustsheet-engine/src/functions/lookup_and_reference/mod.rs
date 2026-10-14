@@ -4,7 +4,7 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
-use crate::reference_operators::{several_areas_ref, Ranges, RefArg};
+use crate::reference_operators::{several_areas_ref, Picked, Ranges, RefArg};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
@@ -376,7 +376,15 @@ impl Model {
         if args.is_empty() {
             return CalcResult::Number(if by_row { cell.row } else { cell.column } as f64);
         }
-        let (first, last) = if let Some(area) = self.one_external_area(&args[0], cell) {
+        // `ROW(IF(TRUE,…!B3))` is 3 (probes/external-ref-no-link-ifchoose A25).
+        let reference = match self.pick_branch(&args[0], cell) {
+            Picked::Node(node) => node,
+            Picked::Value(error @ CalcResult::Error { .. }) => return error,
+            Picked::Value(_) => {
+                return CalcResult::new_error(Error::VALUE, cell, "Expected a reference".into())
+            }
+        };
+        let (first, last) = if let Some(area) = self.one_external_area(reference, cell) {
             let area = match area {
                 Ok(area) => area,
                 Err(error) => return error,
@@ -387,7 +395,7 @@ impl Model {
                 (area.first_column, area.last_column)
             }
         } else {
-            match self.reference_ranges(&args[0], cell) {
+            match self.reference_ranges(reference, cell) {
                 // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
                 // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
                 Ok(Ranges::Areas(_)) => return several_areas_ref(cell),
@@ -499,8 +507,30 @@ impl Model {
         cell: CellReferenceIndex,
         as_reference: bool,
     ) -> RefArg {
+        let node = match self.choose_pick(args, cell) {
+            Picked::Node(node) => node,
+            Picked::Value(value) => return RefArg::Value(value),
+        };
+        if as_reference {
+            return self.evaluate_reference_arg(node, cell);
+        }
+        // A reference into another workbook picked reads as the cell INDEX picks: `CHOOSE(1,…!A1)`
+        // is 0 (probes/external-ref-no-link-ifchoose A2, A12).
+        self.external_reference_picked_value(node, cell)
+            .unwrap_or_else(|| self.evaluate_node_with_reference(node, cell))
+            .into()
+    }
+
+    /// What CHOOSE's index picks: with a scalar index the argument it chooses, unevaluated;
+    /// otherwise the value CHOOSE gives (the index's error, `#VALUE!` out of range, or CHOOSE
+    /// over an index array).
+    pub(crate) fn choose_pick<'a>(
+        &mut self,
+        args: &'a [Node],
+        cell: CellReferenceIndex,
+    ) -> Picked<'a> {
         if args.len() < 2 {
-            return RefArg::Value(CalcResult::new_args_number_error(cell));
+            return Picked::Value(CalcResult::new_args_number_error(cell));
         }
 
         // The index argument may be a single number or an array/range. In the array
@@ -511,13 +541,9 @@ impl Model {
                 let index_num = index_num as usize;
                 if index_num < 1 || index_num > (args.len() - 1) {
                     let error = CalcResult::new_error(Error::VALUE, cell, "Invalid index".into());
-                    return RefArg::Value(error);
+                    return Picked::Value(error);
                 }
-                if as_reference {
-                    return self.evaluate_reference_arg(&args[index_num], cell);
-                }
-                self.evaluate_node_with_reference(&args[index_num], cell)
-                    .into()
+                Picked::Node(&args[index_num])
             }
             Ok(NumberOrArray::Array(index_array)) => {
                 let result = index_array
@@ -528,9 +554,9 @@ impl Model {
                             .collect()
                     })
                     .collect();
-                RefArg::Value(CalcResult::Array(result))
+                Picked::Value(CalcResult::Array(result))
             }
-            Err(calc_err) => RefArg::Value(calc_err),
+            Err(calc_err) => Picked::Value(calc_err),
         }
     }
 
@@ -666,15 +692,23 @@ impl Model {
         // OFFSET of a reference into another workbook is `#VALUE!`, not a reference
         // (`ISREF(OFFSET(…!A1,1,1))` is FALSE; probes/external-ref-no-link-shapes A5,
         // external-ref-no-link-index A16, A17, A32).
+        // An error in `rows` comes first: `OFFSET(…!A1,1/0,1)` is `#DIV/0!`
+        // (probes/external-ref-no-link-ifchoose A7); `cols`, `height` and `width` are read the
+        // same way, in order (UNVERIFIED: not probed).
         if let Some(areas) = self.external_reference(&args[0], cell) {
-            return match areas {
-                Ok(_) => CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "OFFSET of an external reference".to_string(),
-                ),
-                Err(error) => error,
-            };
+            if let Err(error) = areas {
+                return error;
+            }
+            for arg in &args[1..] {
+                if let Err(error) = self.get_number(arg, cell) {
+                    return error;
+                }
+            }
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "OFFSET of an external reference".to_string(),
+            );
         }
         let reference = match self.get_reference(&args[0], cell) {
             Ok(c) => c,
