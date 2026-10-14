@@ -1,0 +1,38 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1558: PERCENTRANK, PERCENTRANK.INC and PERCENTRANK.EXC of a one-value array: x equal to, below and above the value, significance, and error precedence (bad x, bad significance) against the one-value #N/A. A1 = 2, A3 is empty.",
+ "tags": [
+  "M2",
+  "probe",
+  "T-1558"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 2,
+    "B1": "=PERCENTRANK.INC(A1,2)",
+    "B2": "=PERCENTRANK.INC(A1,1)",
+    "B3": "=PERCENTRANK.INC(A1,3)",
+    "B4": "=PERCENTRANK(A1,2)",
+    "B5": "=PERCENTRANK(A1,3)",
+    "B6": "=PERCENTRANK.EXC(A1,2)",
+    "B7": "=PERCENTRANK.EXC(A1,1)",
+    "B8": "=PERCENTRANK.INC(A1,2,1)",
+    "B9": "=PERCENTRANK.INC(A1,2,0)",
+    "B10": "=PERCENTRANK.INC(A1,1/0)",
+    "B11": "=PERCENTRANK.INC(A1,\"x\")",
+    "B12": "=PERCENTRANK.INC(A1,3,0)",
+    "B13": "=PERCENTRANK.INC(A3,2)",
+    "B14": "=PERCENTRANK.INC(A1,2,-1)",
+    "B15": "=PERCENTRANK.INC(A1,2,-400)",
+    "B16": "=PERCENTRANK.EXC(A1,2,0)",
+    "B17": "=PERCENTRANK.EXC(A1,2,-1)",
+    "B18": "=PERCENTRANK(A1,2,0)",
+    "B19": "=PERCENTRANK.INC(A1,2,0.5)",
+    "B20": "=PERCENTRANK.INC(A1,2,\"x\")"
+   }
+  }
+ ]
+}

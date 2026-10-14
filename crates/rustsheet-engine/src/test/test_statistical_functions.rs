@@ -151,6 +151,25 @@ fn test_percentrank_inc_exact_match() {
     assert!((v - 0.5).abs() < 0.001);
 }
 
+#[test]
+fn test_percentrank_inc_single_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "2");
+    model._set("B1", "=PERCENTRANK.INC(A1, 2)");
+    model._set("B2", "=PERCENTRANK(A1, 2)");
+    model._set("B3", "=PERCENTRANK.INC(A1, 3)");
+    model._set("B4", "=PERCENTRANK.EXC(A1, 2)");
+    model._set("B5", "=PERCENTRANK.INC(A1, 2, 0)");
+    model._set("B6", "=PERCENTRANK.INC(A1, 2, -400)");
+    model.evaluate();
+    assert_eq!(model._get_text("B4"), "1");
+    assert_eq!(model._get_text("B5"), "1");
+    assert_eq!(model._get_text("B6"), "1");
+    assert_eq!(model._get_text("B1"), "1");
+    assert_eq!(model._get_text("B2"), "1");
+    assert_eq!(model._get_text("B3"), "#N/A");
+}
+
 // ── PERCENTRANK.EXC ──────────────────────────────────────────────────────────
 
 #[test]
