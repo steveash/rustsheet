@@ -3,7 +3,7 @@ id: T-1562
 title: "Cell lines for the later-milestone cells of mixed probe cases counted for M0-M2"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
