@@ -9,7 +9,7 @@ import pytest
 
 from rustsheet_tools.fitlab import fit
 from rustsheet_tools.fitlab.kernels import registry, solvers
-from rustsheet_tools.fitlab.sweep import UnparsedError, Workbook, parse_arg, serial_date
+from rustsheet_tools.fitlab.sweep import Arg, UnparsedError, Workbook, parse_arg, serial_date
 
 
 def test_parse_arg_reads_array_literals_and_dates() -> None:
@@ -103,7 +103,8 @@ def test_iterate_converges_or_reports_no_result() -> None:
 
 def test_floats_rejects_text_bool_and_scalars() -> None:
     assert solvers.floats([1.0, -2.5]) == [1.0, -2.5]
-    for bad in ([1.0, "2"], [True], 3.0, [None]):
+    bads: list[Arg] = [[1.0, "2"], [True], 3.0, [None]]
+    for bad in bads:
         with pytest.raises(TypeError):
             solvers.floats(bad)
 
