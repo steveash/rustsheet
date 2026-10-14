@@ -92,7 +92,7 @@ impl Model {
         call_args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let (parameters, body) = match self.lambda_definition(lambda_result, call_args.len(), cell)
+        let (parameters, body) = match self.lambda_definition(&lambda_result, call_args.len(), cell)
         {
             Ok(definition) => definition,
             Err(error) => return error,
@@ -130,8 +130,8 @@ impl Model {
     /// Optional parameters not covered by `values` receive `EmptyArg`.
     pub(crate) fn call_lambda_with_values(
         &mut self,
-        lambda_result: CalcResult,
-        values: Vec<CalcResult>,
+        lambda_result: &CalcResult,
+        values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let (parameters, body) = match self.lambda_definition(lambda_result, values.len(), cell) {
@@ -171,13 +171,13 @@ impl Model {
     /// arguments, `#VALUE!` for a wrong count or for a value that is not a LAMBDA.
     fn lambda_definition(
         &self,
-        lambda_result: CalcResult,
+        lambda_result: &CalcResult,
         provided: usize,
         cell: CellReferenceIndex,
     ) -> Result<(Vec<NamedVariable>, Node), CalcResult> {
         let id = match lambda_result {
-            CalcResult::Lambda(id) => id,
-            other if other.is_error() => return Err(other),
+            CalcResult::Lambda(id) => *id,
+            other if other.is_error() => return Err(other.clone()),
             _ => {
                 return Err(CalcResult::new_error(
                     Error::VALUE,
