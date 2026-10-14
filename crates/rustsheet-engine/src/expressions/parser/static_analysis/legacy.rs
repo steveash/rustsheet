@@ -120,7 +120,7 @@ fn for_each_array_context_condition(node: &mut Node, f: &mut impl FnMut(&mut Nod
 /// `COUNT(B1:B6*1)` 0, while `SUM(B1:B6)` and `SUM((B1:B6))` read the range
 /// (probes/legacy-value-argument-intersection; `[1]Uses!$A$2:$A$3+0` in
 /// fixtures/external-link-cached-ranges Refs!B44; T-1526), as for the other aggregates in the match
-/// below (probes/legacy-value-argument-intersection-b, T-1551); MODE.SNGL, MMULT, INDEX and LOOKUP
+/// below (probes/legacy-value-argument-intersection-b, T-1551, and -c, T-1556); MODE, MODE.MULT, MODE.SNGL, MMULT, INDEX and LOOKUP
 /// evaluate such an argument as an array (that probe S; probes/array-context-legacy-sumproduct
 /// N, P, Q). docs/excel-semantics/references.md has the result per function.
 fn legacy_value_operand(kind: &Function, arg: &Node) -> bool {
@@ -156,6 +156,20 @@ fn legacy_value_operand(kind: &Function, arg: &Node) -> bool {
             | Function::Lcm
             | Function::Concat
             | Function::Textjoin
+            | Function::Stdev
+            | Function::StDevPCompat
+            | Function::VarCompat
+            | Function::VarPCompat
+            | Function::Stdeva
+            | Function::Stdevpa
+            | Function::VarA
+            | Function::VarpA
+            | Function::PercentileCompat
+            | Function::QuartileCompat
+            | Function::PercentileExc
+            | Function::QuartileExc
+            | Function::PercentrankCompat
+            | Function::PercentrankInc
     ) && is_value_operation(arg)
 }
 
