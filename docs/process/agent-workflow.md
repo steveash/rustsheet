@@ -87,7 +87,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 
 ## The loop (summary)
 
-1. **Sync:** `main` up to date. Resume lane work if any exists.
+1. **Sync:** `git fetch origin main`; work on a branch cut from `origin/main`, never on a local
+   `main` (decision 0055). Resume lane work if any exists.
 2. **Pick:** `make next-task LANE=x TIER=<tier>` (unclaimed tasks only; P0 first, then handoffs; decision 0023). If empty, run the gap triager (functions lanes) or the
    planner (other lanes).
 3. **Understand:**
