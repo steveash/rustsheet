@@ -123,7 +123,8 @@
     (as 0059 moved T-1558).
   - No case file is edited (decision 0043).
 - **Consequences:**
-  - `make eval` M0-M2 counts are in the table below. 1,216 cells leave M0-M2. Of its known
+  - `make eval` M0-M2 counts are in the table below. 1,216 cells leave M0-M2: the 1,086 cell lines, plus the cells of the
+    four case lines (M5 +86, M8 +6, M9 +38). Of its known
     failures only the six `trig-huge-argument` cells (now M5) move. The 171 that stay are
     `text-collation-order` 156, `text-surrogate-positions` 6 (LEN/LEFT/MID cells),
     `array-context-legacy-sumproduct` 4, `concatenate-limit-spill` 4 and
