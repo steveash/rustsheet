@@ -58,7 +58,7 @@ Evidence: probes/text-surrogate-positions A6, A11, A12, A29, A38, B6, B7, B10 (e
 2026-10-09, T-0249).
 Ours: a Rust `String` cannot hold a lone surrogate, so `utf16_slice` drops a pair that straddles
 a cut whole (A6, A11, A12, A29, A38 and B10 stay known failures). A known gap, not a deviation
-(decision 0052): T-1483.
+(decision 0052): SPEC-0010, T-1579, T-1580, T-1581.
 Status: VERIFIED
 Implemented in: `utf16_slice` in functions/text/util.rs
 Tasks: T-0249, T-1483

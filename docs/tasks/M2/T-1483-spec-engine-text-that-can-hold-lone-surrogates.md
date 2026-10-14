@@ -3,7 +3,7 @@ id: T-1483
 title: "Spec: engine text that can hold lone surrogates (decision 0033 reopened)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -32,11 +32,22 @@ a lone surrogate (Excel: UNICODE of a lone high surrogate is `#VALUE!`, of a lon
 code); what the Python bindings return; and the cost on the text-heavy hot paths.
 
 ## Acceptance criteria
-- [ ] docs/specs/SPEC-NNNN-*.md chooses a representation, with the evidence above and the
+- [x] docs/specs/SPEC-NNNN-*.md chooses a representation, with the evidence above and the
       boundaries (parser, xlsx, bindings) it touches.
-- [ ] Implementation tasks (size S/M) are filed with `make new-task`, M2, and together cover all
+- [x] Implementation tasks (size S/M) are filed with `make new-task`, M2, and together cover all
       10 cells.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The implementation itself.
+
+## Outcome
+docs/specs/SPEC-0010-text-with-lone-surrogates.md: engine text becomes `enum Text { Utf8(String),
+Lone(Box<LoneText>) }` (24 bytes like `String`, so `ArrayNode`/`CalcResult` keep their sizes), with
+a lossy `Deref<Target = str>` view for code not yet lone-aware and exact units for the rest;
+boundaries: xlsx writer `_xHHHH_`, `Workbook::text_utf16`, harness rendering, Python
+`surrogatepass`. Tasks filed (M2): T-1575 (type, opus), T-1576 (CalcResult/ArrayNode migration),
+T-1577 (cached values + xlsx writer), T-1578 (API/harness/bindings), T-1579 (MID/REPLACE: A11,
+A12, A29, B10), T-1580 (`&`/truncation: E8, E9, E11, A6), T-1581 (UNICODE/LEFT/RIGHT: A38, E10),
+T-1582 (probe of the unprobed list). New quirk recorded: Excel writes a lone surrogate of a cached
+value as `_xHHHH_` (xlsx-storage.md). Eval delta: none (docs only).

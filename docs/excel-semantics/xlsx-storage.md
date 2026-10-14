@@ -19,6 +19,11 @@ Characters invalid in XML 1.0 (U+0000–U+0008, U+000B, U+000C, U+000E–U+001F)
 cells; a literal `_xHHHH_` look-alike is written `_x005F_xHHHH_`.
 Evidence: `ironcalc-calc/TEXT/CHAR.xlsx` (Excel-cached): `=CHAR(1)` is stored as `_x0001_`.
 Readers must decode (`rustsheet_xlsx::import::decode_xlsx_escapes`); this is not CHAR behavior.
+A lone (unpaired) surrogate in a cached `<v>` is written the same way: the Excel-recalculated
+file of probes/text-surrogate-positions A6 (`LEFT("a😀b",2)&MID("a😀b",3,2)`, excel-graph
+2026-10-09) holds `a😀_xDE00_b`. `decode_xlsx_escapes` cannot decode a surrogate into a `String`
+and keeps the escape literally, so the oracle value is the text `a😀_xDE00_b` (SPEC-0010: the
+harness renders our lone units the same way, T-1578; the writer writes them so, T-1577).
 
 ## Shared-formula members store no text; the master's text applies shifted
 Only the master `<f t="shared" ref=.. si=..>` carries text; members are `<f t="shared" si=../>` and
