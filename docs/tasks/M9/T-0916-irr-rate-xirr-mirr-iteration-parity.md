@@ -47,7 +47,7 @@ value (A10, A11); T-1533 continues that fit. The walk and bisection caps are unp
 part of this task waits for T-1533.
 
 ## Acceptance criteria
-- [ ] At least 100 of the ~170 listed F lines for IRR, RATE, XIRR, MIRR leave eval/baseline/ironcalc-calc.txt with no new ones; the Outcome note lists the remainder.
+- [ ] The listed XIRR and MIRR F lines leave eval/baseline/ironcalc-calc.txt with no new ones (the IRR and RATE lines wait for T-1533's fit); the Outcome note lists the remainder.
 - [ ] Algorithm parameters (guess, tolerance, iteration cap) documented in docs/excel-semantics/numbers.md with evidence cell ids.
 - [ ] Error cases (#NUM! when no convergence) still pass.
 - [ ] XIRR follows the T-1525 model (bracket chain, bisection, stop test); `uv run rustsheet-fitlab xirr` shows the engine at 208/208.

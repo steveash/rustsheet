@@ -23,6 +23,7 @@ import calendar
 import datetime
 import math
 from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 from typing import NamedTuple
 
@@ -36,6 +37,7 @@ from rustsheet_tools.fitlab.sweep import (
     load_workbook,
     numeric_arg,
     parse_arg,
+    serial_date,
     split_args,
 )
 
@@ -64,11 +66,11 @@ def rpow(base: float, exponent: float) -> float:
 
 
 def floats(arg: Arg) -> list[float]:
-    """An array or range argument whose items are all numbers."""
-    if not isinstance(arg, list) or not all(isinstance(x, float) for x in arg):
-        msg = f"not a list of numbers: {arg!r}"
+    """An array or range argument whose items are all numbers; TypeError otherwise."""
+    if not isinstance(arg, list):
+        msg = f"not an array or range: {arg!r}"
         raise TypeError(msg)
-    return [x for x in arg if isinstance(x, float)]
+    return [numeric_arg(x) for x in arg]
 
 
 # ----------------------------------------------------------------------------- XIRR
@@ -139,15 +141,16 @@ def xirr_model(
     stop: Stop,
     *,
     from_upper: bool = True,
-    midpoint: str = "a+(b-a)/2",
+    half_step: bool = True,
 ) -> float:
     """Bisection on the bracket: `a` starts at the upper end (lower if not `from_upper`), each
-    step replaces the end whose XNPV has XNPV(m)'s sign; an exact 0 does not stop it."""
+    step replaces the end whose XNPV has XNPV(m)'s sign; an exact 0 does not stop it. The midpoint
+    is a + (b - a) / 2 (Excel's), or (a + b) / 2 when not `half_step`."""
     lo, hi = sorted(xirr_bracket(values, dates, guess))
     a, b = (hi, lo) if from_upper else (lo, hi)
     fa = xnpv(a, values, dates)
     for _ in range(200):  # the bisection cap is not probed
-        m = a + (b - a) / 2 if midpoint == "a+(b-a)/2" else (a + b) / 2
+        m = a + (b - a) / 2 if half_step else (a + b) / 2
         fm = xnpv(m, values, dates)
         if stop(Probe(m, abs(b - a) / 2, fm, values)):
             return m
@@ -159,6 +162,7 @@ def xirr_model(
 
 
 def h_test(a_term: float = 5e-9, b_term: float = 1e-8) -> Stop:
+    """The step part of the stop test: half-width < a_term + b_term * |m|."""
     return lambda p: p.h < a_term + b_term * abs(p.m)
 
 
@@ -180,9 +184,10 @@ STOPS: dict[str, Stop] = {
 }
 
 
-def _xirr(stop: Stop, **kw: object) -> Callable[..., float]:
+def _xirr(stop: Stop, *, from_upper: bool = True, half_step: bool = True) -> Callable[..., float]:
     def call(values: Arg, dates: Arg, guess: Arg = 0.1) -> float:
-        return xirr_model(floats(values), floats(dates), numeric_arg(guess), stop, **kw)  # type: ignore[arg-type]
+        model = partial(xirr_model, from_upper=from_upper, half_step=half_step)
+        return model(floats(values), floats(dates), numeric_arg(guess), stop)
 
     return call
 
@@ -190,7 +195,7 @@ def _xirr(stop: Stop, **kw: object) -> Callable[..., float]:
 def xirr_candidates() -> list[Candidate]:
     out = [candidate(f"bisect, stop {name}", _xirr(stop), "stop rule") for name, stop in STOPS.items()]
     out += [
-        candidate("bisect fitted, m=(a+b)/2", _xirr(fitted_stop(), midpoint="(a+b)/2"), "midpoint"),
+        candidate("bisect fitted, m=(a+b)/2", _xirr(fitted_stop(), half_step=False), "midpoint"),
         candidate("bisect fitted, a from the lower end", _xirr(fitted_stop(), from_upper=False), "midpoint"),
     ]
     # The step test's bound: A in A + 1e-8 |m| (fitted 4.93e-9 <= A <= 5.09e-9), then B at A = 5e-9.
@@ -271,7 +276,8 @@ def _dnpv_v(values: list[float], v: float) -> float:
 
 
 def iterate(step: Callable[[float], float], start: float, steps: int | None) -> float:
-    """`steps` iterations of `step` from `start`, or (None) until it stops moving (60 at most)."""
+    """`steps` iterations of `step` from `start`, or (`steps` None) until an iterate repeats
+    exactly; NoResultError when an iterate is not finite or 60 steps do not converge."""
     u = start
     for _ in range(steps if steps is not None else 60):
         nxt = step(u)
@@ -289,18 +295,23 @@ IrrMethod = Callable[[list[float], float, int | None], float]
 
 
 def irr_newton_r(values: list[float], g: float, k: int | None) -> float:
+    """Newton on NPV(r) with its analytic derivative, from the guess."""
     return iterate(lambda r: r - _npv_r(values, r) / _dnpv_r(values, r), g, k)
 
 
 def irr_newton_x(values: list[float], g: float, k: int | None) -> float:
+    """Newton on NPV as a function of x = 1 + r; returns x - 1 (Excel's results are x - 1)."""
     return iterate(lambda x: x - _npv_r(values, x - 1) / _dnpv_r(values, x - 1), 1 + g, k) - 1
 
 
 def irr_newton_v(values: list[float], g: float, k: int | None) -> float:
+    """Newton on the polynomial NPV(v), v = 1/(1 + r), by Horner; returns 1/v - 1."""
     return 1 / iterate(lambda v: v - _npv_v(values, v) / _dnpv_v(values, v), 1 / (1 + g), k) - 1
 
 
 def irr_fd_v(h: float) -> IrrMethod:
+    """Newton in v with a forward-difference derivative of step h * v."""
+
     def method(values: list[float], g: float, k: int | None) -> float:
         def step(v: float) -> float:
             f = _npv_v(values, v)
@@ -358,6 +369,7 @@ def rate_f(r: float, annuity: Annuity) -> float:
 
 
 def rate_df(r: float, annuity: Annuity) -> float:
+    """d/dr of `rate_f`, analytic."""
     n, pmt, pv, _, t = annuity
     x, x1 = rpow(1 + r, n), rpow(1 + r, n - 1)
     return pv * n * x1 + pmt * t * (x - 1) / r + pmt * (1 + r * t) * (n * x1 * r - (x - 1)) / (r * r)
@@ -392,12 +404,6 @@ def _literal_rate(cell: Cell) -> bool:
 
 # ----------------------------------------------------------------------------- YIELD
 
-EPOCH = datetime.date(1899, 12, 30)
-
-
-def _date(serial: float) -> datetime.date:
-    return EPOCH + datetime.timedelta(days=int(serial))
-
 
 def _month_end(d: datetime.date) -> bool:
     return d.day == calendar.monthrange(d.year, d.month)[1]
@@ -430,14 +436,23 @@ def schedule(
     settle: datetime.date, maturity: datetime.date, freq: int
 ) -> tuple[datetime.date, datetime.date, int]:
     """(previous coupon, next coupon, coupons left) stepping back from maturity by 12/freq
-    months; a month-end maturity keeps coupons on month ends."""
+    months; a month-end maturity keeps coupons on month ends. UnparsedError for a frequency
+    other than 1, 2 or 4, or more than 4 * 10,000 coupons (Excel's dates end in 9999)."""
+    if freq not in (1, 2, 4):
+        msg = f"frequency {freq}"
+        raise UnparsedError(msg)
     eom = _month_end(maturity)
-    n, ncd = 0, maturity
-    while True:
-        pcd = _add_months(maturity, -12 // freq * (n + 1), eom)
+    ncd = maturity
+    for n in range(4 * 10_000):
+        try:
+            pcd = _add_months(maturity, -12 // freq * (n + 1), eom)
+        except ValueError:
+            break  # before year 1
         if pcd <= settle:
             return pcd, ncd, n + 1
-        ncd, n = pcd, n + 1
+        ncd = pcd
+    msg = f"no coupon schedule from {maturity} back to {settle}"
+    raise UnparsedError(msg)
 
 
 def day_counts(
@@ -473,14 +488,17 @@ def yield_closed(rate: float, pr: float, red: float, freq: int, counts: tuple[fl
 def _bond(args: tuple[Arg, ...]) -> tuple[datetime.date, datetime.date, float, float, float, int, int]:
     s, m, rate, pr, red, freq = (numeric_arg(x) for x in args[:6])
     basis = int(numeric_arg(args[6])) if len(args) > 6 else 0
-    return _date(s), _date(m), rate, pr, red, int(freq), basis
+    return serial_date(s), serial_date(m), rate, pr, red, int(freq), basis
 
 
-def _yield_one(period_e: bool, dsr_mode: str) -> Callable[..., float]:
+def _yield_one(period_e: bool, prices_dsr: bool) -> Callable[..., float]:
+    """The closed form with E as the period on bases 1-3 (`period_e`) and DSR = E - A
+    (`prices_dsr`, PRICE's) instead of the basis' settlement-to-maturity count."""
+
     def call(*args: Arg) -> float:
         settle, maturity, rate, pr, red, freq, basis = _bond(args)
         a, e, dsr, e_minus_a, _ = day_counts(settle, maturity, freq, basis, period_e=period_e)
-        return yield_closed(rate, pr, red, freq, (a, e, dsr if dsr_mode == "DSR" else e_minus_a))
+        return yield_closed(rate, pr, red, freq, (a, e, e_minus_a if prices_dsr else dsr))
 
     return call
 
@@ -488,12 +506,12 @@ def _yield_one(period_e: bool, dsr_mode: str) -> Callable[..., float]:
 def yield_one_candidates() -> list[Candidate]:
     return [
         candidate(
-            "closed form, DSR, E = period on bases 1-3 (fitted)", _yield_one(True, "DSR"), "closed form"
+            "closed form, DSR, E = period on bases 1-3 (fitted)", _yield_one(True, False), "closed form"
         ),
         candidate(
-            "closed form, DSR, E = 360/f, 365/f on bases 2, 3", _yield_one(False, "DSR"), "closed form"
+            "closed form, DSR, E = 360/f, 365/f on bases 2, 3", _yield_one(False, False), "closed form"
         ),
-        candidate("closed form, E - A (PRICE's)", _yield_one(False, "E-A"), "closed form"),
+        candidate("closed form, E - A (PRICE's)", _yield_one(False, True), "closed form"),
     ]
 
 
@@ -501,18 +519,25 @@ def _is_bond(cell: Cell) -> bool:
     return 6 <= len(cell.args) <= 7 and all(isinstance(a, float) for a in cell.args)
 
 
-def _one_period(cell: Cell) -> bool:
+def _coupons_left(cell: Cell) -> tuple[int, int] | None:
+    """(coupons left, basis) of a bond cell, or None when its arguments are not a valid bond."""
     if not _is_bond(cell):
-        return False
-    settle, maturity, _, _, _, freq, _ = _bond(cell.args)
-    return schedule(settle, maturity, freq)[2] == 1
+        return None
+    try:
+        settle, maturity, _, _, _, freq, basis = _bond(cell.args)
+        return schedule(settle, maturity, freq)[2], basis
+    except UnparsedError:
+        return None
+
+
+def _one_period(cell: Cell) -> bool:
+    found = _coupons_left(cell)
+    return found is not None and found[0] == 1
 
 
 def _many_periods_basis0(cell: Cell) -> bool:
-    if not _is_bond(cell):
-        return False
-    settle, maturity, _, _, _, freq, basis = _bond(cell.args)
-    return basis == 0 and schedule(settle, maturity, freq)[2] > 1
+    found = _coupons_left(cell)
+    return found is not None and found[0] > 1 and found[1] == 0
 
 
 Bond = tuple[float, float, int, float, float, float, int]  # rate, redemption, freq, A, E, DSC, N
@@ -527,6 +552,7 @@ def price(y: float, bond: Bond) -> float:
 
 
 def dprice(y: float, bond: Bond) -> float:
+    """d/dy of `price`, analytic."""
     rate, red, freq, _, e, dsc, n = bond
     base = 1 + y / freq
     total = 0.0
@@ -537,39 +563,54 @@ def dprice(y: float, bond: Bond) -> float:
     return total - t * red / rpow(base, t + 1) / freq
 
 
-def _yield_solver(kind: str, start: float, tol: float) -> Callable[..., float]:
+def _bond_price(args: tuple[Arg, ...]) -> tuple[Callable[[float], float], Bond, float]:
+    """The cell's PRICE(y) function on basis 0, its bond tuple and the target price."""
+    settle, maturity, rate, pr, red, freq, _ = _bond(args)
+    a, e, _, dsc, n = day_counts(settle, maturity, freq, 0, period_e=False)
+    bond: Bond = (rate, red, freq, a, e, dsc, n)
+    return partial(price, bond=bond), bond, pr
+
+
+def _newton_yield(start: float, tol: float) -> Callable[..., float]:
+    """Newton on PRICE(y) - pr from `start`, returning the iterate after a step below `tol`."""
+
     def call(*args: Arg) -> float:
-        settle, maturity, rate, pr, red, freq, _ = _bond(args)
-        a, e, _, dsc, n = day_counts(settle, maturity, freq, 0, period_e=False)
-        p: Bond = (rate, red, freq, a, e, dsc, n)
-
-        def f(y: float) -> float:
-            return price(y, p) - pr
-
-        if kind == "newton":
-            y = start
-            for _ in range(100):
-                step = f(y) / dprice(y, p)
-                y -= step
-                if abs(step) < tol:
-                    return y
-            raise NoResultError("Newton did not converge")
-        if kind == "secant":
-            y0, y1 = 0.0, 1.0
-            f0, f1 = f(y0), f(y1)
-            for _ in range(100):
-                y2 = y1 - f1 * (y1 - y0) / (f1 - f0)
-                y0, f0, y1 = y1, f1, y2
-                f1 = f(y1)
-                if abs(y1 - y0) < tol:
-                    return y1
-            raise NoResultError("secant did not converge")
-        return regula_falsi(f, pr)
+        price_of, bond, pr = _bond_price(args)
+        y = start
+        for _ in range(100):
+            step = (price_of(y) - pr) / dprice(y, bond)
+            y -= step
+            if abs(step) < tol:
+                return y
+        raise NoResultError("Newton did not converge")
 
     return call
 
 
-def regula_falsi(f: Callable[[float], float], pr: float) -> float:
+def _secant_yield(tol: float) -> Callable[..., float]:
+    """The secant on PRICE(y) - pr from yields 0 and 1."""
+
+    def call(*args: Arg) -> float:
+        price_of, _, pr = _bond_price(args)
+        y0, y1 = 0.0, 1.0
+        f0, f1 = price_of(y0) - pr, price_of(y1) - pr
+        for _ in range(100):
+            y2 = y1 - f1 * (y1 - y0) / (f1 - f0)
+            y0, f0, y1 = y1, f1, y2
+            f1 = price_of(y1) - pr
+            if abs(y1 - y0) < tol:
+                return y1
+        raise NoResultError("secant did not converge")
+
+    return call
+
+
+def _falsi_yield(*args: Arg) -> float:
+    price_of, _, pr = _bond_price(args)
+    return regula_falsi(price_of, pr)
+
+
+def regula_falsi(price_of: Callable[[float], float], pr: float) -> float:
     """LibreOffice's getYield_ (scaddins analysishelper.cxx): regula falsi from yields 0 and 1,
     doubling the upper yield while the price is not bracketed, to rtl::math::approxEqual."""
 
@@ -577,12 +618,12 @@ def regula_falsi(f: Callable[[float], float], pr: float) -> float:
         return x == y or (abs(x - y) < abs(x) * 2**-48 and abs(x - y) < abs(y) * 2**-48)
 
     y1, y2 = 0.0, 1.0
-    p1, p2 = f(y1) + pr, f(y2) + pr
+    p1, p2 = price_of(y1), price_of(y2)
     y_mid, p_mid = (y2 - y1) * 0.5, 0.0
     for _ in range(100):
         if approx_equal(p_mid, pr):
             break
-        p_mid = f(y_mid) + pr
+        p_mid = price_of(y_mid)
         if approx_equal(pr, p1):
             return y1
         if approx_equal(pr, p2):
@@ -591,7 +632,7 @@ def regula_falsi(f: Callable[[float], float], pr: float) -> float:
             return y_mid
         if pr < p2:
             y2 *= 2
-            p2 = f(y2) + pr
+            p2 = price_of(y2)
             y_mid = (y2 - y1) * 0.5
         else:
             if pr < p_mid:
@@ -604,15 +645,12 @@ def regula_falsi(f: Callable[[float], float], pr: float) -> float:
 
 def yield_candidates() -> list[Candidate]:
     out = [
-        candidate(f"Newton from {s}, |step| < {t:g}", _yield_solver("newton", s, t), "Newton")
+        candidate(f"Newton from {s}, |step| < {t:g}", _newton_yield(s, t), "Newton")
         for s in (0.0, 0.05, 0.1)
         for t in (1e-6, 1e-8, 1e-10, 1e-12)
     ]
-    out += [
-        candidate(f"secant from 0, 1, |step| < {t:g}", _yield_solver("secant", 0, t), "secant")
-        for t in (1e-8, 1e-10)
-    ]
-    out.append(candidate("LibreOffice regula falsi", _yield_solver("falsi", 0, 0), "regula falsi"))
+    out += [candidate(f"secant from 0, 1, |step| < {t:g}", _secant_yield(t), "secant") for t in (1e-8, 1e-10)]
+    out.append(candidate("LibreOffice regula falsi", _falsi_yield, "regula falsi"))
     return out
 
 

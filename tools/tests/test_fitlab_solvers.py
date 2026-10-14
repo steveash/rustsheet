@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import datetime
+import math
 
 import pytest
 
 from rustsheet_tools.fitlab import fit
 from rustsheet_tools.fitlab.kernels import registry, solvers
-from rustsheet_tools.fitlab.sweep import UnparsedError, Workbook, parse_arg
+from rustsheet_tools.fitlab.sweep import UnparsedError, Workbook, parse_arg, serial_date
 
 
 def test_parse_arg_reads_array_literals_and_dates() -> None:
@@ -88,3 +89,38 @@ def test_rate_results_are_rates() -> None:
     cells = fit.run(registry()["rate"], engine=False, only="^$").sweep.cells
     assert len(cells) == 136
     assert sum((1 + c.expected) - 1 == c.expected for c in cells) == 7
+
+
+def test_iterate_converges_or_reports_no_result() -> None:
+    root = solvers.iterate(lambda u: (u + 2 / u) / 2, 1.0, None)  # a fixed point of the step
+    assert abs(root - math.sqrt(2)) <= math.ulp(root) and (root + 2 / root) / 2 == root
+    assert solvers.iterate(lambda u: u / 2, 1.0, 3) == 0.125
+    with pytest.raises(solvers.NoResultError):
+        solvers.iterate(lambda u: u * 1e200, 1.0, None)  # overflows to infinity
+    with pytest.raises(solvers.NoResultError):
+        solvers.iterate(lambda u: -u, 1.0, None)  # oscillates for ever
+
+
+def test_floats_rejects_text_bool_and_scalars() -> None:
+    assert solvers.floats([1.0, -2.5]) == [1.0, -2.5]
+    for bad in ([1.0, "2"], [True], 3.0, [None]):
+        with pytest.raises(TypeError):
+            solvers.floats(bad)
+
+
+def test_regula_falsi_finds_a_price_root() -> None:
+    bond: solvers.Bond = (0.05, 100.0, 2, 61.0, 180.0, 119.0, 21)
+    y = 0.07861731922256075
+    target = solvers.price(y, bond)
+    got = solvers.regula_falsi(lambda r: solvers.price(r, bond), target)
+    assert abs(got - y) < 1e-12
+
+
+def test_schedule_and_serial_bounds() -> None:
+    with pytest.raises(UnparsedError):
+        solvers.schedule(datetime.date(2024, 3, 1), datetime.date(2024, 8, 31), 3)
+    with pytest.raises(UnparsedError):
+        serial_date(math.inf)
+    with pytest.raises(UnparsedError):
+        serial_date(1e12)
+    assert serial_date(45352.0) == datetime.date(2024, 3, 1)

@@ -53,7 +53,7 @@ _ARITH = re.compile(rf"\s*(?:(?P<num>{_UNSIGNED})|(?P<op>[-+*/^()]))")
 _MAX_EXACT_EXPONENT = 1100  # beyond the double range either way
 _MAX_NESTING = 50  # parentheses and unary signs: a bound on the parser's recursion (directive 5)
 _DATE = re.compile(r"DATE\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)", re.IGNORECASE)
-_EPOCH = datetime.date(1899, 12, 30)  # serial 61 = 1900-03-01 (Excel's phantom 1900-02-29 is 60)
+EPOCH = datetime.date(1899, 12, 30)  # serial 61 = 1900-03-01 (Excel's phantom 1900-02-29 is 60)
 
 
 class UnparsedError(ValueError):
@@ -305,7 +305,16 @@ def date_serial(year: int, month: int, day: int) -> float:
     if when < datetime.date(1900, 3, 1):
         msg = f"DATE({year},{month},{day}) is before 1900-03-01"
         raise UnparsedError(msg)
-    return float((when - _EPOCH).days)
+    return float((when - EPOCH).days)
+
+
+def serial_date(serial: float) -> datetime.date:
+    """The calendar date of a 1900-system serial from 61 (1900-03-01) to 2958465 (9999-12-31);
+    UnparsedError for anything else (a fraction is dropped, as Excel's date functions do)."""
+    if not (math.isfinite(serial) and 61 <= serial < 2958466):
+        msg = f"date serial {serial} is outside 1900-03-01..9999-12-31"
+        raise UnparsedError(msg)
+    return EPOCH + datetime.timedelta(days=int(serial))
 
 
 def parse_arg(text: str, sheet: str, book: Workbook) -> Arg:

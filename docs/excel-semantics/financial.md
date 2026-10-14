@@ -128,8 +128,8 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   A = 4.95e-9 gives 191/208, A = 5.05e-9 208/208 and A = 5.15e-9 203/208; with A = 5e-9, B = 9.9e-9 and
   1.03e-8 give 206/208 and B = 1.02e-8 208/208. |XNPV| < 1.5e-8 * sum|value| also fits all 208.
 - The step test has no derivative in it, and the ten-year span (X!C, ten times the derivative) is
-  reproduced with the same rule as the one-year span (X!A); the depth per cell was compared outside
-  the lab (T-1534).
+  reproduced with the same rule as the one-year span (X!A); the depth per cell comes from a scratch
+  analysis, reproducible in the lab after T-1534.
 - Out of sample (the literal XIRR cells of five older probes; `xirr-oos`): 8 of 11 numeric cells, and
   8 of 11 `#NUM!` cells. The `#NUM!` misses are input checks recorded elsewhere in this file
   (xirr-mismatched-empties X12, X13, xirr-early-dates A7), which the model does not apply. The numeric
@@ -155,8 +155,8 @@ m9-fin-irr-rate and solver-iteration-traces, value + 1 is exactly representable
 0.5. The update rule and the stop test are not fitted. The guess sweep shows quadratic convergence stopped
 early: for `{-20,5,5,5,5,5}` with guesses 0.05 to 0.07 and 0.0875 to 0.115 (I!A1:A9, I!A16:A27), Excel's
 error grows as (guess - root)^8, the signature of the third iterate of a quadratic method, with an
-effective constant f''/(2f') between -1.19 and -1.25 (Newton in v has -1.17, Newton in r -2.11; derived
-outside the lab, T-1534). Guesses 0.0725, 0.075, 0.085 and 0.12 return the root's bits
+effective constant f''/(2f') between -1.19 and -1.25 (Newton in v has -1.17, Newton in r -2.11; scratch
+analysis, reproducible in the lab after T-1534). Guesses 0.0725, 0.075, 0.085 and 0.12 return the root's bits
 (0.07930826116052869), as if one more step was taken; 0.1175 (I!A28) is 16 ulp below them. Guesses close
 to the root break the law: 0.0775, 0.08 and 0.0825 (I!A12:A14) give -1.7e-13, +5.9e-15 and +1.6e-12, and
 0.0793 (m9-fin-irr-rate Calc!A187) gives -1.6e-11, so the stop test is not a fixed step tolerance.
