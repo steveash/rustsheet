@@ -44,7 +44,9 @@ impl LambdaGrid {
         }
     }
 
-    /// The element at 0-based `(row, column)`, which must be inside the grid.
+    /// The element at 0-based `(row, column)`, which must be inside the grid (callers loop over
+    /// [`LambdaGrid::rows`] and [`LambdaGrid::columns`], so the conversions below cannot fail:
+    /// a grid is at most one sheet).
     pub(super) fn at(&self, row: usize, column: usize) -> CalcResult {
         match self {
             LambdaGrid::Cells { origin, .. } => {
