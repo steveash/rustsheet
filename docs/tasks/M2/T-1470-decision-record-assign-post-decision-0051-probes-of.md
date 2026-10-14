@@ -3,7 +3,7 @@ id: T-1470
 title: "Decision record: assign post-decision-0051 probes of M5-M10 subjects to their own milestone in probe-milestones.tsv"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -54,15 +54,25 @@ Reproduce the per-case list: `make eval`, then compare eval/runs/latest/report.j
 eval/milestones/ is protected (decision 0044), so the mapping edit needs this decision record (`make new-decision`).
 
 ## Acceptance criteria
-- [ ] A new decision record (amending 0051) lists each case and cell named above with its milestone, or with
+- [x] A new decision record (amending 0051) lists each case and cell named above with its milestone, or with
       the reason it keeps its tag under 0051's exception.
-- [ ] eval/milestones/probe-milestones.tsv has the matching case and cell lines, and `make eval-check` passes.
-- [ ] The decision record states the M0-M2 known-failure count before and after, taken from `make eval`. (See the 2026-10-14 update in Context:
+- [x] eval/milestones/probe-milestones.tsv has the matching case and cell lines, and `make eval-check` passes.
+- [x] The decision record states the M0-M2 known-failure count before and after, taken from `make eval`. (See the 2026-10-14 update in Context:
       the old 196 -> 47 estimate is stale.)
-- [ ] .claude/skills/excel-probe/SKILL.md states that a new probe case is tagged with the milestone of the function
+- [x] .claude/skills/excel-probe/SKILL.md states that a new probe case is tagged with the milestone of the function
       or feature it probes (decision 0051), never with the milestone of the task that wrote it.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing any of the cells (their tasks are listed above).
 - Editing case.json tags (oracle input hashes; decision 0043).
+
+## Outcome
+Decision 0058 applies decision 0051 item 2 to the probes written since 0051. It adds 42 case lines and
+21 cell lines to `eval/milestones/probe-milestones.tsv`: M9 22, M10 12, M8 3, M7 2, M5 3. The cell
+lines are on `volatile-invariant`, `index-lifted-edge-cases` and `written-parens-reference-only`. The
+decision also lists the cases that keep their tag under 0051's exception, with the reason for each.
+The excel-probe skill now says to tag a probe with its subject's milestone. `make eval` probe
+milestone M0-M2 known failures went from 512 to 179 (361 cases / 13,249 cells before, 319 / 10,186
+after). Every cell still counted for M0-M2 is an M2 subject. Eval delta: none (no cell changes
+pass/fail).

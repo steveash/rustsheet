@@ -15,6 +15,10 @@ right: if the answer looks wrong, arbitrary or inconsistent, record it and match
      cached values: `./target/release/rustsheet-eval snapshot <file.xlsx>`.
 2. **Write a probe case** in `eval/suites/probes/cases/<topic>.case.json` (`rustsheet-case/v1`):
    one cell per question, minimal inputs, `"expected": {}`. Group related questions in one file.
+   Give it exactly one milestone tag: the milestone of the function or feature it probes (the
+   highest catalog milestone, `eval/catalog/scope.json`, of the subject functions; 3-D and external
+   references and defined-name bodies are M8, number-format codes M10), `M2` for an M0-M2
+   subject, never the milestone of the task that wrote it (decisions 0051, 0057, 0058).
 3. **Get oracle values**
    - If an Excel backend is available (`cd tools && uv run rustsheet-oracle status`):
      `uv run rustsheet-oracle fill -b excel-graph --suite probes` → commits `*.oracle.json`.
