@@ -127,3 +127,37 @@ fn bounds_at_2_pow_53() {
     assert_eq!(model._get_text("A9"), *"#NUM!");
     assert_eq!(model._get_text("A10"), *"2");
 }
+
+// The type check over every argument wins over a negative number whatever the order
+// (gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m7/4629e931955aa4b8 Calc!A7).
+#[test]
+fn range_text_or_boolean_is_value_even_after_a_negative() {
+    let mut model = new_empty_model();
+    model._set("B1", "TRUE");
+    model._set("B2", "4");
+    model._set("C1", "-0.5");
+    model._set("C2", "6");
+    model._set("C3", "x");
+    model._set("D1", "-1");
+    model._set("D2", "6");
+    model._set("A1", "=GCD(-1,B1:B2)");
+    model._set("A2", "=GCD(C1:C3)");
+    model._set("A3", "=GCD(D1:D2)");
+    // Unprobed paths keep the immediate `#NUM!`.
+    model._set("A4", "=GCD(-1,\"a\")");
+    model._set("A5", "=GCD(-1,NA())");
+    model._set("E1", "-1");
+    model._set("E2", "=NA()");
+    model._set("A6", "=GCD(E1:E2)");
+    model._set("A7", "=GCD(-1,E2:E2)");
+    model._set("A8", "=GCD(E2:E2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+    assert_eq!(model._get_text("A7"), *"#NUM!");
+    assert_eq!(model._get_text("A8"), *"#N/A");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+}

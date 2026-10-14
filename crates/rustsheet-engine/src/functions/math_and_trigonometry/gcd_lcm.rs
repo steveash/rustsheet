@@ -38,6 +38,14 @@ fn lcm_i64(a: i64, b: i64) -> Option<i64> {
     }
 }
 
+fn negative_error(cell: CellReferenceIndex, fn_name: &str) -> CalcResult {
+    CalcResult::new_error(
+        Error::NUM,
+        cell,
+        format!("{fn_name} only accepts non-negative integers"),
+    )
+}
+
 impl Model {
     fn gcd_lcm_impl<F>(
         &mut self,
@@ -56,6 +64,10 @@ impl Model {
         let mut acc: Option<i64> = None;
         let mut saw_number = false;
         let mut has_range = false;
+        // A negative number only sets this flag: the type check over every argument wins over
+        // it whatever the order (gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m7/4629e931955aa4b8
+        // Calc!A7, docs/excel-semantics/coercion.md), so `#NUM!` is returned after the last one.
+        let negative_seen = std::cell::Cell::new(false);
 
         let mut handle_number = |value: f64| -> Option<CalcResult> {
             if !value.is_finite() {
@@ -68,11 +80,8 @@ impl Model {
             let n = value.trunc() as i64;
 
             if value < 0.0 {
-                return Some(CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    format!("{fn_name} only accepts non-negative integers"),
-                ));
+                negative_seen.set(true);
+                return None;
             } else if n > MAX_LCM_GCD {
                 return Some(CalcResult::new_error(
                     Error::NUM,
@@ -98,7 +107,13 @@ impl Model {
         };
 
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            let evaluated = self.evaluate_node_in_context(arg, cell);
+            // Only a text or boolean range cell is evidenced to beat the negative; typed
+            // arguments, errors and array elements after one keep the immediate `#NUM!`.
+            if negative_seen.get() && !matches!(evaluated, CalcResult::Range { .. }) {
+                return negative_error(cell, fn_name);
+            }
+            match evaluated {
                 CalcResult::Number(value) => {
                     if let Some(res) = handle_number(value) {
                         return res;
@@ -133,11 +148,16 @@ impl Model {
                 }
                 CalcResult::Range { left, right } => {
                     has_range = true;
-                    if let Err(error) = self.for_each_cell_in_areas(
+                    if let Err(error) = self.for_each_cell_or_error_in_areas(
                         &[Range { left, right }],
                         cell,
                         |model, value| {
                             let number = match value {
+                                // An error cell after a negative keeps the immediate `#NUM!`.
+                                CalcResult::Error { .. } if negative_seen.get() => {
+                                    return Err(negative_error(cell, fn_name));
+                                }
+                                error @ CalcResult::Error { .. } => return Err(error),
                                 CalcResult::Number(value) => value,
                                 CalcResult::String(s) => model
                                     .cast_to_number(CalcResult::String(s), cell)
@@ -165,6 +185,9 @@ impl Model {
                 CalcResult::Array(array) => {
                     for row in array {
                         for value in row {
+                            if negative_seen.get() {
+                                return negative_error(cell, fn_name);
+                            }
                             match value {
                                 ArrayNode::Number(value) => {
                                     if let Some(res) = handle_number(value) {
@@ -215,6 +238,10 @@ impl Model {
                     // ignore strings / booleans
                 }
             }
+        }
+
+        if negative_seen.get() {
+            return negative_error(cell, fn_name);
         }
 
         if !saw_number && !has_range {

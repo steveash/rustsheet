@@ -99,3 +99,18 @@ fn multinomial_past_170_is_num_at_once() {
         model._get_text("B1")
     );
 }
+
+// gen-m6/2c1a6e93a1974f48 Calc!A35: -2.5 first, a boolean later in the range is still `#VALUE!`.
+#[test]
+fn range_boolean_is_value_even_after_a_negative() {
+    let mut model = new_empty_model();
+    model._set("A1", "-2.5");
+    model._set("A2", "FALSE");
+    model._set("B1", "-2.5");
+    model._set("B2", "3");
+    model._set("C1", "=MULTINOMIAL(A1:A2)");
+    model._set("C2", "=MULTINOMIAL(B1:B2)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"#VALUE!");
+    assert_eq!(model._get_text("C2"), *"#NUM!");
+}

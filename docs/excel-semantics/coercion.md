@@ -294,8 +294,11 @@ SUMX2MY2 family's `array` mode rests on "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing" 
 PERCENTOF's `aggregate` on Microsoft's page and on probes/percentof-snap-overflow-union (T-0416): direct text `"1"` and TRUE count as numbers (`PERCENTOF("1",2)` and `PERCENTOF(TRUE,2)` = 0.5), as in SUM.
 The type check wins over a negative argument whatever the order: `GCD(-1,B1:B11)` with the text "TRUE" in B1 is
 `#VALUE!`, and `MULTINOMIAL(A6:D9)` whose first cell is -2.5 and later cells hold FALSE and text is `#VALUE!`
-(gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m6/2c1a6e93a1974f48 Calc!A35, excel-graph 2026-10-09; the engine gives `#NUM!`,
-T-1261). Typed text after a typed negative (`GCD(-1,"a")`) and LCM are unprobed.
+(gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m6/2c1a6e93a1974f48 Calc!A35, gen-m7/4629e931955aa4b8 Calc!A7, excel-graph; fixed in
+T-1261). Typed text after a typed negative (`GCD(-1,"a")`), LCM are unprobed, as are
+an error value or an array element after a negative; the engine keeps its immediate `#NUM!` for those and defers
+the negative only past text or boolean cells of a range argument (an error cell in a range after a negative is `#NUM!` too).
+LCM shares GCD's code and `MULTINOMIAL(-1,<range with text>)` is inferred from GCD: both need oracle confirmation.
 Evidence: probes/math-argument-modes Sheet1!C1:C56 (excel-graph, 2026-10-08).
 Implemented in: the engine matches every cell except MULTINOMIAL numeric text (C9, C47, C52; T-1190)
 and SERIESSUM with a boolean coefficient cell (C44, engine 11; T-1191).
