@@ -3,7 +3,7 @@ id: T-1513
 title: "Probe double-rounded products at the overflow and smallest-normal boundaries"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
