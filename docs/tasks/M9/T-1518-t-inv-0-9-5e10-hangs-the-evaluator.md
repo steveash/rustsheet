@@ -64,6 +64,6 @@ widening this one.
   ~3E-7, so matching it is a fit left to T-0967.
 - Unit test `test_t_family_df_upper_limit` holds the fuzz input.
 - `m9-t-edges`, `m9-t-nonint-df` and `t1048-tinv` now run to completion; eval baselines unchanged (0 fixed, 0 regressions).
-- `m9-legacy-finv` hangs on an F-distribution huge df instead: follow-up T-1528.
+- `m9-legacy-finv` hangs on an F-distribution huge df instead: follow-up T-1530.
 - `T.TEST` gets no guard: its df comes from the sample sizes, so exceeding 1E10 would need ~1E10 cells, and its cdf is fast at any df.
-- Reviews: security, architecture, quality, performance, Excel fidelity all APPROVE (minor notes only). The performance review found a pre-existing statrs panic at tiny p: T-1529.
+- Reviews: security, architecture, quality, performance, Excel fidelity all APPROVE (minor notes only). The performance review found a pre-existing statrs panic at tiny p: T-1531.
