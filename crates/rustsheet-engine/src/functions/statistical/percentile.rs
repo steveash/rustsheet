@@ -152,7 +152,7 @@ impl Model {
             match self.get_number(&args[2], cell) {
                 Ok(v) => {
                     let s = v.floor() as i32;
-                    if s < 1 {
+                    if s < 1 && sorted.len() > 1 {
                         return CalcResult::new_error(
                             Error::NUM,
                             cell,
@@ -215,7 +215,7 @@ impl Model {
             match self.get_number(&args[2], cell) {
                 Ok(v) => {
                     let s = v.floor() as i32;
-                    if s < 1 {
+                    if s < 1 && sorted.len() > 1 {
                         return CalcResult::new_error(
                             Error::NUM,
                             cell,
@@ -265,7 +265,7 @@ pub(crate) fn percentile_inc_impl(sorted: &[f64], k: f64) -> f64 {
 pub(crate) fn percentrank_inc_impl(sorted: &[f64], x: f64) -> f64 {
     let n = sorted.len();
     // A single value equal to x ranks 1 (probes/legacy-value-argument-intersection-c T2, U2);
-    // the range check in the caller leaves any other x as #N/A.
+    // the caller's range check leaves any other x as #N/A.
     if n == 1 {
         return 1.0;
     }
@@ -285,6 +285,10 @@ pub(crate) fn percentrank_inc_impl(sorted: &[f64], x: f64) -> f64 {
 /// PERCENTRANK.EXC: rank = (`virtual_position` + 1) / (n + 1).
 pub(crate) fn percentrank_exc_impl(sorted: &[f64], x: f64) -> f64 {
     let n = sorted.len();
+    // One value equal to x ranks 1, not 0.5 (probes/percentrank-single-value B6).
+    if n == 1 {
+        return 1.0;
+    }
     let k = sorted.partition_point(|&v| v < x);
 
     let virtual_pos = if k < n && sorted[k] == x {
