@@ -204,7 +204,7 @@ Rule: a workbook saved as "Strict Open XML Spreadsheet" writes `r:id` in the nam
 `t="d"` with ISO 8601 text (`<c r="A4" s="1" t="d"><v>1990-01-01</v></c>`) instead of a serial.
 Strict files also declare `<workbookPr dateCompatibility="0">`, which ECMA-376 ties to the 1900
 date base compatibility (serial 60 and dates before 1900-03-01); the importer ignores the attribute
-and what Excel computes under it is not probed (T-0407).
+and it changes nothing Excel computes (T-0407, below).
 Evidence: poi/SimpleStrict.xlsx, poi/SampleSS.strict.xlsx, poi/sample.strict.xlsx and
 poi/57914.xlsx (Excel-authored): all use the purl namespace for every `<sheet r:id>` and declare
 `dateCompatibility="0"`; SimpleStrict "Sheet Number 2"!A4 is the `t="d"` cell above. Their cached
@@ -213,8 +213,12 @@ Status: VERIFIED for `r:id`. VERIFIED for `t="d"` (T-0406): Excel reads the text
 `1990-01-01` = 32874, `1990-01-01T12:00:00` = 32874.5, `1900-02-28` = 59, `1900-03-01` = 61, and
 `ISNUMBER` of the cell is TRUE (fixtures/t-d-iso-date-cells, Excel for the web). Excel for the web
 refuses the whole workbook (`unsupportedWorkbook`) when a `t="d"` cell holds unparsable text
-(`abc`), so there is no value to match: the importer leaves such a cell empty. UNVERIFIED (probe
-pending, T-0407) for `dateCompatibility="0"`. UNVERIFIED (no probe): a trailing `Z`, fractional
+(`abc`), so there is no value to match: the importer leaves such a cell empty. VERIFIED for
+`dateCompatibility="0"` (T-0407, fixtures/strict-date-compatibility-0, Excel for the web): the attribute
+does not switch off the 1900 leap-year bug. `DATE(1900,2,28)` = 59, `DATE(1900,3,1)` = 61, `DATE(1900,2,29)` = 60,
+`TEXT(60,"yyyy-mm-dd")` = `1900-02-29`, `DAY(59)` = 28, `DATEVALUE("1900-01-01")` = 1, and a `t="d"` cell
+`1900-01-01` reads as 1 (a number). The probe package was Transitional (standard namespace) carrying the attribute, not a purl-namespace package. The result is the same as a Transitional workbook, so the importer's
+ignoring the attribute is correct and no follow-up is needed. UNVERIFIED (no probe): a trailing `Z`, fractional
 seconds, `1900-02-29` (serial 60), dates before 1900-01-01 and time-only text; the importer reads the
 first two as `serial + fraction` and leaves the rest empty. Probe run 2026-10-07, Excel for the web.
 Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/xml.rs;
