@@ -19,6 +19,16 @@ const MOD_MAX_QUOTIENT: f64 = 1.1259E+12;
 /// The largest `min_length` BASE accepts (probes/base-min-length).
 const BASE_MAX_MIN_LENGTH: f64 = 255.0;
 
+/// SIN, COS, TAN, COT, SEC and CSC are `#NUM!` from |x| = 2^27 (SIN(2^27-1) is a number, SIN(2^27)
+/// is `#NUM!`; probes/trig-huge-argument, docs/excel-semantics/numbers.md "Trig of a huge angle").
+fn trig_arg(f: f64) -> Result<f64, Error> {
+    if f.abs() >= 134_217_728.0 {
+        Err(Error::NUM)
+    } else {
+        Ok(f)
+    }
+}
+
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
     ///
@@ -576,9 +586,9 @@ impl Model {
     } else {
         Ok(f64::ln(f))
     });
-    single_number_fn!(fn_sin, |f| Ok(f64::sin(f)));
-    single_number_fn!(fn_cos, |f| Ok(f64::cos(f)));
-    single_number_fn!(fn_tan, |f| Ok(f64::tan(f)));
+    single_number_fn!(fn_sin, |f| trig_arg(f).map(f64::sin));
+    single_number_fn!(fn_cos, |f| trig_arg(f).map(f64::cos));
+    single_number_fn!(fn_tan, |f| trig_arg(f).map(f64::tan));
     single_number_fn!(fn_sinh, |f| Ok(super::hyperbolic::sinh(f)));
     single_number_fn!(fn_cosh, |f| Ok(super::hyperbolic::cosh(f)));
     single_number_fn!(fn_tanh, |f| Ok(super::hyperbolic::tanh(f)));
@@ -640,7 +650,9 @@ impl Model {
     } else {
         Ok(0.5 * (f64::ln((f + 1.0) / (f - 1.0))))
     });
-    single_number_fn!(fn_cot, |f| if f == 0.0 {
+    single_number_fn!(fn_cot, |f| if trig_arg(f).is_err() {
+        Err(Error::NUM)
+    } else if f == 0.0 {
         Err(Error::DIV)
     } else {
         Ok(f64::cos(f) / f64::sin(f))
@@ -653,7 +665,9 @@ impl Model {
     } else {
         Ok(f64::cosh(f) / f64::sinh(f))
     });
-    single_number_fn!(fn_csc, |f| if f == 0.0 {
+    single_number_fn!(fn_csc, |f| if trig_arg(f).is_err() {
+        Err(Error::NUM)
+    } else if f == 0.0 {
         Err(Error::DIV)
     } else {
         Ok(1.0 / f64::sin(f))
@@ -664,7 +678,7 @@ impl Model {
         // Excel: a subnormal CSCH result is a true 0 (CSCH(710), docs/excel-semantics/numbers.md).
         Ok(flush_subnormal(1.0 / f64::sinh(f)))
     });
-    single_number_fn!(fn_sec, |f| Ok(1.0 / f64::cos(f)));
+    single_number_fn!(fn_sec, |f| trig_arg(f).map(|x| 1.0 / f64::cos(x)));
     single_number_fn!(fn_sech, |f| Ok(1.0 / f64::cosh(f)));
     single_number_fn!(fn_exp, |f: f64| Ok(f64::exp(f)));
     single_number_fn!(fn_fact, |x: f64| {
