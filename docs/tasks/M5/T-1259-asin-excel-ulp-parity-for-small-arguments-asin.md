@@ -14,6 +14,7 @@ depends_on: []
 ASIN matches Excel bit-for-bit for small arguments such as -0.0001 without regressing the cached ASIN cells.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 19 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 T-1239's gen-m6 suite (excel-graph sidecars, 2026-10-09): gen-m6/2f6b96385ed3facd Calc!A38 `=ASIN((-0.0001))`: Excel
 -0.00010000000016666668, engine (libm `asin`) -0.00010000000016666667 (NumericUlp). In Python, `atan(x/sqrt(1-x*x))` and
 `atan2(x, sqrt(1-x*x))` both give Excel's value for x = -0.0001, libm `asin` does not. `fn_asin` is

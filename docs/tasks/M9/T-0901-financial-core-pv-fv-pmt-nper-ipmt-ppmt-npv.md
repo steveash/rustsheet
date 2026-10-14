@@ -14,6 +14,7 @@ depends_on: [T-0942]
 Remove ULP-level and close mismatches in the annuity family; they likely share an evaluation-order root cause.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 1 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Gap report: PV 47, NPV 40, PPMT 34, PMT 26, NPER 26, IPMT 21, FV 20 failing cells.
 
 **Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the

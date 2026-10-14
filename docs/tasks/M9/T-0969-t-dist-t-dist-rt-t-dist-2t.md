@@ -15,6 +15,7 @@ T.DIST (cumulative and density), T.DIST.RT, T.DIST.2T and T.TEST return Excel's 
 Student-t CDF kernel that computes the upper tail directly instead of as `1 - CDF`.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 3 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Triage T-0903. Kernel: `statrs::distribution::StudentsT::cdf`, i.e. `0.5 * beta_reg(df/2, 0.5, df/(df+x^2))`
 (statrs' Numerical-Recipes continued fraction, ~1e-14..1e-10 relative error) and `StudentsT::pdf`
 (statrs Lanczos `ln_gamma`). Code: `functions/statistical/t_dist.rs` (`fn_t_dist`, `fn_t_dist_2t`
