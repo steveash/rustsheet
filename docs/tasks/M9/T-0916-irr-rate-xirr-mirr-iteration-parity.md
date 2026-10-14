@@ -30,10 +30,28 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/675763979c1defb6 Calc!A39 `=(42+MIRR(Data!A2:C11,0.5,STDEV.S(Data!C11:C12,Data!D7)))` (reinvest rate 5.8E+14): Excel 636207158862729.4, engine 636207158862728.5.
 - gen-m9/eefcc3989f31de76 Calc!A5 `=IFERROR((RATE(199,-805,61378)/Data!E3),..)` (E3 = -1): Excel -0.011859926889590918, engine -0.011859926889595479.
 
+**XIRR model fitted by T-1525** (from `tools/`: `uv run rustsheet-fitlab xirr`, 208/208 numeric cells of
+probes/solver-iteration-traces X and m9-fin-irr-rate bit-exact, plus 19/19 `#NUM!` via
+`solvers.xirr_error_agreement`; `xirr-oos` 8/11; model `xirr_model` in
+`tools/src/rustsheet_tools/fitlab/kernels/solvers.py`). XIRR is not Newton. With s = guess (1e-5 when the
+guess is 0) and f0 = XNPV(0): for a guess >= 0 walk 0, s, 2s, 4s, ...; the bracket is the first point whose
+XNPV sign differs from f0's, with the point before it; if none and s < 1, walk 0, -s, then p -> (p - 1)/2;
+a negative guess walks only 0, g, (g - 1)/2, ...; no bracket is `#NUM!`. Then with a = upper end, b = lower
+end: m = a + (b - a)/2, replace the end whose XNPV has XNPV(m)'s sign (an exact 0 does not stop), and
+return m once (b - a)/2 < 5e-9 + 1e-8*|m| and |XNPV(m)| < 2e-8*max|value|. The XNPV part fails one
+124-year span (xirr-early-dates A8: Excel returns bisection step 25, the model step 28) and a zero first
+value (A10, A11); T-1531 continues that fit. The walk and bisection caps are unprobed.
+
+**Scope.** The XIRR part can be implemented now. IRR and RATE are not fitted (see
+`docs/excel-semantics/financial.md`, "IRR returns x - 1 ..." and "RATE iterates on the rate itself"); their
+part of this task waits for T-1531.
+
 ## Acceptance criteria
 - [ ] At least 100 of the ~170 listed F lines for IRR, RATE, XIRR, MIRR leave eval/baseline/ironcalc-calc.txt with no new ones; the Outcome note lists the remainder.
 - [ ] Algorithm parameters (guess, tolerance, iteration cap) documented in docs/excel-semantics/numbers.md with evidence cell ids.
 - [ ] Error cases (#NUM! when no convergence) still pass.
+- [ ] XIRR follows the T-1525 model (bracket chain, bisection, stop test); `uv run rustsheet-fitlab xirr` shows the engine at 208/208.
+- [ ] The chain-walk and bisection caps (unprobed; 100 points per walk and 200 bisection steps are enough on all data) are either probed or recorded as a DEVIATION candidate under decision 0052 and directive 5 (a bound the engine needs whatever Excel's cap is).
 - [ ] `make check` green.
 
 ## Out of scope
