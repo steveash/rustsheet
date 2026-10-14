@@ -3,7 +3,7 @@ id: T-1288
 title: "Probe VALUETOTEXT with an error value and an invalid or error format, and a range-reference format"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
