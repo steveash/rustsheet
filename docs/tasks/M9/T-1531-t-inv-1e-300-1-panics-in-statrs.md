@@ -27,6 +27,6 @@ The T-1518 performance review ran statrs 0.18.0 directly: `StudentsT::inverse_cd
 ## Outcome
 - Probed Excel (`probes-numeric/t1531-t-tiny-p`, 105 cells): the Student-t quantile is finite, never an error, for p down to 1E-300; recorded in statistics.md.
 - `statrs` `StudentsT::inverse_cdf` panics from p about 1E-200 and is already wrong for small df well before (`T.INV(1E-10,1)` = -8.9E7, Excel -3.18E9). `t_quantile` now takes a closed-form tail asymptotic where x = df/(df+t^2) < 1E-8, `statrs` where it is bit-exact with Excel, and a bounded bisection otherwise. `t_upper_quantile` serves T.INV.2T and CONFIDENCE.T, whose `1 - p/2` rounds to 1 for a tiny p.
-- Other statrs quantiles that may panic the same way: not listed here; the F quantile was bounded by T-1530. A sweep of the remaining `inverse_cdf` callers (chi-square, gamma, beta, normal) is not done.
+- Other statrs quantiles that may panic the same way: the F quantile was bounded by T-1530; the remaining `inverse_cdf` callers (`normal.rs`, `log_normal.rs`, `chisq.rs`, `gamma.rs`, `beta.rs`) are listed in follow-up T-1543.
 - Eval: `t1531-t-tiny-p` 7 of 105 cells bit-exact (before: the engine panicked); no regression in any gated suite, no baseline change.
 - Follow-up T-1542 (last digit, df >= 99999 at p <= 1E-200, T.INV.2T for p in (1,2)).
