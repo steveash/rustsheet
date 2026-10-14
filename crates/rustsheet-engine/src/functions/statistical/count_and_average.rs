@@ -1,7 +1,7 @@
 use crate::reference_operators::RefArg;
 use std::cmp::Ordering;
 
-use crate::arithmetic::flush_subnormal;
+use crate::arithmetic::{extended_sum, flush_subnormal};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::number_format::parse_excel_number;
@@ -204,7 +204,7 @@ impl Model {
         let mut sum = 0.0;
         if let Err(e) = self.for_each_value(args, cell, |f| {
             count += 1.0;
-            sum += f;
+            sum = extended_sum(sum, f);
         }) {
             return e;
         }
