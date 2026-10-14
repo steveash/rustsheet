@@ -2,8 +2,8 @@ use statrs::distribution::{ContinuousCDF, Normal, StudentsT};
 
 use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::statistical::t_dist::{t_quantile, T_DF_MAX};
 use crate::functions::statistical::special::{normal_cdf, normal_pdf, standard_normal_pdf};
+use crate::functions::statistical::t_dist::{t_quantile, T_DF_MAX};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };

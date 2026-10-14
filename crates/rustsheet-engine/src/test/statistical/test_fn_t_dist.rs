@@ -214,7 +214,12 @@ fn test_t_family_df_upper_limit() {
     model.evaluate();
 
     for i in 1..=over.len() {
-        assert_eq!(model._get_text(&format!("A{i}")), *"#NUM!", "{}", over[i - 1]);
+        assert_eq!(
+            model._get_text(&format!("A{i}")),
+            *"#NUM!",
+            "{}",
+            over[i - 1]
+        );
     }
     // TODO(T-0967): Excel's own values here (1.2815518424115688) are not the exact quantile;
     // only the bounded time and the non-error result are asserted.
