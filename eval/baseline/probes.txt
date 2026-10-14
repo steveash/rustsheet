@@ -39,7 +39,7 @@ C	probes/at-paren-operands.case.json	6
 C	probes/at-power-text.case.json	24
 C	probes/at-signed-operand.case.json	24
 C	probes/average-value-args.case.json	32
-C	probes/averagea-array-constant-elements.case.json	21
+C	probes/averagea-array-constant-elements.case.json	25
 C	probes/base-min-length.case.json	14
 C	probes/bond-one-period-bases.case.json	80
 C	probes/catalog/availability-01.case.json	12

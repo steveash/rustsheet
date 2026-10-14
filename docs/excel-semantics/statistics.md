@@ -606,11 +606,12 @@ counts a text element, numeric text and the empty string included, as 0; MAXA an
 read only the numbers. `AVERAGEA({1,"a",TRUE})` is 0.5, `AVERAGEA({3,TRUE})` and `{3,FALSE}` 3,
 `{3,"a"}`, `{3,"7"}` and `{3,""}` 1.5, `{"a",TRUE}` 0, `{"a"}` 0, `{TRUE}` `#DIV/0!`;
 `MAXA({0.5,TRUE})` is 0.5, `MAXA({-1,"a"})` and `MAXA({-1,"5"})` -1, `MINA({2,TRUE})` and
-`MINA({2,"a"})` 2. An array from IF behaves the same (`AVERAGEA(IF(1,{3,TRUE}))` is 3), while a direct
+`MINA({2,"a"})` 2. With no value read, MAXA and MINA are 0, as MAX is: `MAXA({"a"})`,
+`MINA({TRUE,"b"})`, `MAXA(Z1:Z3)` and `MINA(Z1)` over blanks. An array from IF behaves the same (`AVERAGEA(IF(1,{3,TRUE}))` is 3), while a direct
 boolean argument still counts (`AVERAGEA({3,TRUE},TRUE)` is 2) and direct non-numeric text is
 `#VALUE!` (`AVERAGEA({3,"a"},"a")`). A reference reads text as 0 and booleans as 1/0 (coercion.md
 "MAXA / MINA: single-cell references are read like ranges"), a cached range of a linked workbook too.
-Evidence: probes/averagea-array-constant-elements (21 cells, excel-graph, 2026-10-14);
+Evidence: probes/averagea-array-constant-elements (25 cells, excel-graph, 2026-10-14);
 probes/legacy-value-argument-intersection-b AI2.
 Status: VERIFIED (excel-graph)
 Implemented in: `Model::for_each_value_a` (statistical/count_and_average.rs), `ArrayText`.

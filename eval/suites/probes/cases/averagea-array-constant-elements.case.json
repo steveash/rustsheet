@@ -30,7 +30,11 @@
     "A18": "=AVERAGEA(IF(1,{3,TRUE}))",
     "A19": "=AVERAGEA(--{3,TRUE})",
     "A20": "=AVERAGEA({3,TRUE},TRUE)",
-    "A21": "=AVERAGEA({3,\"a\"},\"a\")"
+    "A21": "=AVERAGEA({3,\"a\"},\"a\")",
+    "A22": "=MAXA({\"a\"})",
+    "A23": "=MINA({TRUE,\"b\"})",
+    "A24": "=MAXA(Z1:Z3)",
+    "A25": "=MINA(Z1)"
    }
   }
  ],
