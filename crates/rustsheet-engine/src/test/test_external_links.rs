@@ -321,6 +321,14 @@ fn blank_skipping_aggregates_read_a_tall_area_from_the_cache() {
     assert_eq!(eval(&mut model, &format!("=SUM(IF(TRUE,{tall}))")), "5");
     assert_eq!(eval(&mut model, &format!("=SUBTOTAL(9,{tall})")), "5");
     assert_eq!(eval(&mut model, &format!("=RANK(5,{tall})")), "1");
+    // An area wholly past the cache reads no cell.
+    let outside = "[1]Uses!$Z$100:$Z$200";
+    assert_eq!(eval(&mut model, &format!("=SUM({outside})")), "0");
+    assert_eq!(eval(&mut model, &format!("=AVERAGE({outside})")), "#DIV/0!");
+    assert_eq!(
+        eval(&mut model, &format!("=AVERAGEA({outside})")),
+        "#DIV/0!"
+    );
     // The cut changes no position an INDEX picks.
     assert_eq!(eval(&mut model, &format!("=SUM(INDEX({tall},1,1))")), "5");
     // Blanks past the cache still count where the reader sees them.
