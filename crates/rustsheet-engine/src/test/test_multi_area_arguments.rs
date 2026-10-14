@@ -225,13 +225,11 @@ fn a_union_walk_costs_its_own_columns_not_the_rows_others_fill() {
     }
     results(
         &mut model,
-        &[
-            (
-                "E6",
-                "=SUM(MAP(A1:A10000,LAMBDA(r,SUM((B:B,C:C)))))",
-                "80000",
-            ),
-        ],
+        &[(
+            "E6",
+            "=SUM(MAP(A1:A10000,LAMBDA(r,SUM((B:B,C:C)))))",
+            "80000",
+        )],
     );
 }
 
@@ -243,7 +241,9 @@ fn an_indexed_union_walk_meets_cells_in_row_major_order() {
     for (cell, value) in [("A2", "=1/0"), ("B1", "=NA()"), ("A3", "4")] {
         model._set(cell, value);
     }
-    for column in ["C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q"] {
+    for column in [
+        "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+    ] {
         model._set(&format!("{column}5"), "1");
     }
     results(

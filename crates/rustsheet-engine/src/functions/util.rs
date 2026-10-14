@@ -180,7 +180,6 @@ pub(crate) fn is_span_or_if_of_span(node: &Node) -> bool {
     }
 }
 
-
 /// Most columns holding cells that a union area may have to be walked through the column index
 /// ([`Model::for_each_indexed_position`]); a wider one is walked by rows. The merge compares the
 /// next row of every column for each row it hands on, so with this few columns a row of it costs
@@ -531,7 +530,11 @@ impl Model {
         self.record_seen_empty_range(sheet, left.row, left.column, right.row, right.column);
         // Finding the area's columns is a search of the index per column found (one when none).
         // The sheet's first union walk builds the index, once: a pass over its cells.
-        let data = &mut self.workbook.worksheet_mut(sheet).map_err(sheet_error)?.sheet_data;
+        let data = &mut self
+            .workbook
+            .worksheet_mut(sheet)
+            .map_err(sheet_error)?
+            .sheet_data;
         data.build_column_index();
         let few = data.columns_between(left.column, right.column, MAX_INDEXED_COLUMNS, columns);
         self.spend_area_walk((columns.len() as u64).max(1), cell)?;
@@ -603,7 +606,11 @@ impl Model {
         let mut version = None;
         let mut from = left.row;
         loop {
-            let data = &self.workbook.worksheet(sheet).map_err(sheet_error)?.sheet_data;
+            let data = &self
+                .workbook
+                .worksheet(sheet)
+                .map_err(sheet_error)?
+                .sheet_data;
             let stale = version != Some(data.layout_version());
             version = Some(data.layout_version());
             let mut reads = 0;

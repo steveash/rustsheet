@@ -338,9 +338,7 @@ impl SheetData {
         };
         let mut from = column1;
         while from <= column2 {
-            let Some(&(column, _)) = index
-                .range((from, i32::MIN)..=(column2, i32::MAX))
-                .next()
+            let Some(&(column, _)) = index.range((from, i32::MIN)..=(column2, i32::MAX)).next()
             else {
                 break;
             };
