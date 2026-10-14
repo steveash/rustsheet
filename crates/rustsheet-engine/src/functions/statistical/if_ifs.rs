@@ -303,8 +303,70 @@ impl Model {
         })
     }
 
+    /// Resolves the criteria ranges of COUNTIFS and the SUMIFS-shaped functions and builds their
+    /// predicates: `args[first + 2k]` is the range of `criteria[k]`.
+    ///
+    /// The ranges are taken by reference (a single-cell range `A1` is a 1x1 range, probes/
+    /// sumif-edge-single-cell F11-F15) and a cross-sheet range or a non-range is `#VALUE!`.
+    /// `shape_error` then checks their shapes. A criterion over 255 characters is `#VALUE!` (from a
+    /// literal, a cell or one element of a range), but only once the ranges and shapes resolved: a
+    /// bad range wins (probes/long-text-args-min-criteria A10-A26, probes/ifs-long-criterion-precedence).
+    fn resolve_ifs_criteria<'c>(
+        &mut self,
+        args: &[Node],
+        first: usize,
+        criteria: &'c [CalcResult],
+        cell: CellReferenceIndex,
+        shape_error: impl FnOnce(&[Range]) -> Option<CalcResult>,
+    ) -> Result<(Vec<Range>, Vec<Criterion<'c>>), CalcResult> {
+        let mut ranges = Vec::with_capacity(criteria.len());
+        for case_index in 0..criteria.len() {
+            let result = self.evaluate_node_with_reference(&args[first + case_index * 2], cell);
+            if result.is_error() {
+                return Err(result);
+            }
+            if let CalcResult::Range { left, right } = result {
+                if left.sheet != right.sheet {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    ));
+                }
+                ranges.push(Range { left, right });
+            } else {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Expected a range".to_string(),
+                ));
+            }
+        }
+        if let Some(error) = shape_error(&ranges) {
+            return Err(error);
+        }
+        if criteria.iter().any(criterion_too_long) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                TOO_LONG.to_string(),
+            ));
+        }
+        let fn_criteria = criteria
+            .iter()
+            .map(|criterion| {
+                build_criteria(
+                    criterion,
+                    self.locale,
+                    &|| self.current_year(),
+                    self.workbook.settings.date_system,
+                )
+            })
+            .collect();
+        Ok((ranges, fn_criteria))
+    }
+
     /// COUNTIFS with the criteria already evaluated (`criteria[k]` is `args[2k + 1]`'s value).
-    // TODO(T-0408): share the range resolution and walk with apply_ifs.
     fn count_ifs(
         &mut self,
         args: &[Node],
@@ -312,46 +374,14 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let case_count = criteria.len();
-        let mut fn_criteria = Vec::new();
-        let ranges = &mut Vec::new();
-        for case_index in 0..case_count {
-            // By reference: a single-cell criteria range (`A1`) is a 1x1 range
-            // (probes/sumif-edge-single-cell F11-F15).
-            let result = self.evaluate_node_with_reference(&args[case_index * 2], cell);
-            if result.is_error() {
-                return result;
-            }
-            if let CalcResult::Range { left, right } = result {
-                if left.sheet != right.sheet {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Ranges are in different sheets".to_string(),
-                    );
-                }
-                ranges.push(Range { left, right });
-            } else {
-                return CalcResult::new_error(Error::VALUE, cell, "Expected a range".to_string());
-            }
-        }
         // Excel: any criteria range shaped unlike the first is #VALUE! (T-0209).
-        if !same_shape(ranges) {
-            return shape_mismatch(cell);
-        }
-        // A criterion over 255 characters is #VALUE! (from a literal, a cell or one element of a
-        // range), but only once the ranges resolved: a bad range wins
-        // (probes/long-text-args-min-criteria A10-A26, probes/ifs-long-criterion-precedence).
-        if criteria.iter().any(criterion_too_long) {
-            return CalcResult::new_error(Error::VALUE, cell, TOO_LONG.to_string());
-        }
-        for criterion in criteria.iter() {
-            fn_criteria.push(build_criteria(
-                criterion,
-                self.locale,
-                &|| self.current_year(),
-                self.workbook.settings.date_system,
-            ));
-        }
+        let (ranges, fn_criteria) =
+            match self.resolve_ifs_criteria(args, 0, criteria, cell, |ranges| {
+                (!same_shape(ranges)).then(|| shape_mismatch(cell))
+            }) {
+                Ok(resolved) => resolved,
+                Err(error) => return error,
+            };
 
         let mut total = 0.0;
         let first_range = &ranges[0];
@@ -485,67 +515,24 @@ impl Model {
             ));
         };
 
-        let case_count = criteria.len();
-        let mut fn_criteria = Vec::new();
-        let ranges = &mut Vec::new();
-        for case_index in 1..=case_count {
-            // By reference, as above (probes/sumif-edge-single-cell F11-F15).
-            let result = self.evaluate_node_with_reference(&args[case_index * 2 - 1], cell);
-            if result.is_error() {
-                return Err(result);
-            }
-            if let CalcResult::Range { left, right } = result {
-                if left.sheet != right.sheet {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Ranges are in different sheets".to_string(),
-                    ));
-                }
-                ranges.push(Range { left, right });
-            } else {
-                return Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Expected a range".to_string(),
-                ));
-            }
-        }
         // Every range shaped like sum_range, else #VALUE! (T-0209; SUMIFS from
         // gen-m2, AVERAGEIFS/MINIFS/MAXIFS from probes/ifs-shape-mismatch). Only
         // SUMIF's single-criterion path opts out: it never errors (T-0214).
-        if strict_shape
-            && (!same_shape(ranges)
-                || ranges.first().map(range_shape) != Some(range_shape(&sum_range)))
-        {
-            return Err(shape_mismatch(cell));
-        }
+        let (ranges, fn_criteria) =
+            self.resolve_ifs_criteria(args, 1, criteria, cell, |ranges| {
+                (strict_shape
+                    && (!same_shape(ranges)
+                        || ranges.first().map(range_shape) != Some(range_shape(&sum_range))))
+                .then(|| shape_mismatch(cell))
+            })?;
         if !strict_shape {
             // SUMIF/AVERAGEIF sum a sum_range resized to the shape of the criteria
             // range from its top-left cell (gen-m2/04cfd82f54dbc2b2 Calc!A344,
             // gen-m2/629e6e8b76fab8b9 Calc!A217; probes/ifs-shape-mismatch F9-F11).
             sum_range = resize_to(&sum_range, &ranges[0]);
         }
-        // A criterion over 255 characters is #VALUE! (from a literal, a cell or one element of a
-        // range), but only once the ranges resolved: a bad range wins
-        // (probes/long-text-args-min-criteria A10-A26, probes/ifs-long-criterion-precedence).
-        if criteria.iter().any(criterion_too_long) {
-            return Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                TOO_LONG.to_string(),
-            ));
-        }
-        for criterion in criteria.iter() {
-            fn_criteria.push(build_criteria(
-                criterion,
-                self.locale,
-                &|| self.current_year(),
-                self.workbook.settings.date_system,
-            ));
-        }
 
-        self.run_ifs(&sum_range, ranges.as_slice(), &fn_criteria, cell, apply)
+        self.run_ifs(&sum_range, &ranges, &fn_criteria, cell, apply)
     }
 
     /// Walks `sum_range` and applies `apply` to every numeric cell whose parallel
