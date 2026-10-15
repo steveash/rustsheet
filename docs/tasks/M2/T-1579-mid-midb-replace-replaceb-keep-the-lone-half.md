@@ -3,7 +3,7 @@ id: T-1579
 title: "MID, MIDB, REPLACE, REPLACEB keep the lone half of a cut surrogate pair (SPEC-0010 step 5)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
