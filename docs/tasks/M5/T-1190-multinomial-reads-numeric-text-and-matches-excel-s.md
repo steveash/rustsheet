@@ -47,7 +47,7 @@ in a range cell (`numeric_text_as_number`).
 New probe probes/multinomial-algorithm-sweep (70 cells, excel-graph 2026-10-15). It covers 26 single
 arguments, argument order, pairs, triples, and COMBIN for comparison.
 Fit scores, bit-exact out of 72 MULTINOMIAL cells across the three probe cases:
-- chosen: 64; the 8 misses are single arguments, each one ulp off
+- chosen: 64 bit-exact, 72 within 4 ulp (all 8 misses are single arguments, each one ulp off; follow-up **T-1600**)
 - `exp(GAMMALN(s+1))` over exact factorials: 17
 - natural-log sums: at most 16
 - `10^x` final step: 30

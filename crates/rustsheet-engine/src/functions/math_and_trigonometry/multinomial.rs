@@ -204,7 +204,9 @@ fn log10_of(k: u64) -> f64 {
 /// `MULTINOMIAL(2,3)` 9.999999999999998, `(170)` 1.0000000000001974, and `(20,150)` differs from
 /// `(150,20)` (docs/excel-semantics/numbers.md "MULTINOMIAL is inexact"; fit on
 /// probes/multinomial-algorithm-sweep, multinomial-large-arguments and math-argument-modes,
-/// T-1190: 64 of 72 cells bit-exact, the rest one ulp off).
+/// T-1190: 64 of 72 cells bit-exact, the rest one ulp off, T-1600). The terms come from a table so
+/// that they do not depend on the platform `log10`; the last step is the platform `exp` (glibc's
+/// gives the fitted values).
 fn multinomial_value(values: &[u64]) -> f64 {
     let sum: u64 = values.iter().sum();
     let mut log = 0.0;
