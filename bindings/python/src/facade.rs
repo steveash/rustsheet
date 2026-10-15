@@ -6,6 +6,7 @@
 //! trivially (nothing was applied).
 
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::{Mutex, MutexGuard};
 
@@ -16,7 +17,8 @@ use pyo3::{create_exception, IntoPyObjectExt};
 
 use rustsheet::{
     resolve_sheet_by_name, ChangeSet, Clock, DateSystem, EditError, ErrorKind, Input, LoadOptions,
-    RefError, SaveOptions, SheetChange, SheetId, Txn, Value, Workbook, WorkbookOptions, XlError,
+    RangeRef, RefError, SaveOptions, SheetChange, SheetId, Txn, Value, Workbook, WorkbookOptions,
+    XlError,
 };
 
 create_exception!(_rustsheet, RustSheetError, PyException);
@@ -439,11 +441,40 @@ impl PyWorkbook {
 
     /// The values of a range as a list of rows.
     fn values<'py>(&self, py: Python<'py>, r: &str) -> PyResult<Bound<'py, PyList>> {
-        let arr = self.read(py, |wb| wb.values(r)).map_err(|e| ref_err(&e))?;
+        let (arr, lone) = self
+            .read(py, |wb| {
+                let arr = wb.values(r)?;
+                // Same cheap guard as `value`: only text showing U+FFFD can hold a lone surrogate.
+                let range = wb.range_ref(r)?;
+                let mut lone = HashMap::new();
+                for row in 0..arr.rows() {
+                    for col in 0..arr.cols() {
+                        if matches!(arr.get(row, col), Some(Value::Text(s)) if s.contains('\u{FFFD}')) {
+                            let at = |origin: u32, offset: usize| {
+                                u32::try_from(offset).ok().and_then(|o| origin.checked_add(o))
+                            };
+                            let (Some(rr), Some(cc)) = (at(range.top, row), at(range.left, col))
+                            else {
+                                continue;
+                            };
+                            let cell = RangeRef::new(range.sheet, rr, cc, rr, cc)?;
+                            if let Some(units) = wb.text_utf16(cell)? {
+                                lone.insert((row, col), units);
+                            }
+                        }
+                    }
+                }
+                Ok((arr, lone))
+            })
+            .map_err(|e: RefError| ref_err(&e))?;
         let rows = PyList::empty(py);
         for row in 0..arr.rows() {
             let out = PyList::empty(py);
             for col in 0..arr.cols() {
+                if let Some(units) = lone.get(&(row, col)) {
+                    out.append(lone_str_to_py(py, units)?)?;
+                    continue;
+                }
                 let v = arr.get(row, col).cloned().unwrap_or(Value::Empty);
                 out.append(value_to_py(py, v)?)?;
             }
