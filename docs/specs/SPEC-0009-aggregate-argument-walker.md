@@ -137,7 +137,7 @@ pub(crate) enum ArgReading {
     Aggregate,
     /// `evaluate_picked_reference_arg`: cached blanks kept (COUNTA).
     PickedKeepingBlanks,
-    /// `evaluate_reference_arg`, a single cell as a one-cell range (PRODUCT).
+    /// (Unused since T-1571: PRODUCT now reads as `Aggregate`.)
     Reference,
 }
 
@@ -279,7 +279,7 @@ The walker and `for_each_aggregate_number` are `#[inline]` and take the policy b
 | DEVSQ, AVEDEV, SUMSQ | Aggregate | First | yes | CastScalars / Numbers / Numbers | — |
 | AVERAGEA, MAXA, MINA | Aggregate, after the `external_reference_cells` step | First | no | CastA / CoercedA / TextZero (AVERAGEA) or Numbers (MAXA, MINA) | — |
 | MIN, MAX | Aggregate | Ranked(Direct) | no | Cast / Numbers / Numbers | NaN start, 0 when none |
-| PRODUCT | Reference | Ranked(Direct) | no | Cast / Numbers / Numbers | `seen_value` (set for an empty argument too) |
+| PRODUCT | Aggregate | Ranked(Direct) | no | Cast / Numbers / Numbers | `seen_value` (set for an empty argument too) |
 | COUNT | Aggregate | Items | no | — (own visitor: counts types) | — |
 | COUNTA | PickedKeepingBlanks, after the `external_reference` count | Items | no | — (own visitor) | — |
 
