@@ -3,7 +3,7 @@ id: T-1049
 title: "Excel evidence for thinly covered modern distribution functions (F.*, CHISQ.*, HYPGEOM.DIST, WEIBULL.DIST, Z.TEST, PHI, T.TEST)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
