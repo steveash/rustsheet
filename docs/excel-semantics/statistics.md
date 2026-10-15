@@ -286,8 +286,16 @@ spills `#VALUE!` x3. A defined name for A1:C1, `A1:B1:C1`, `A1:C1 A1:C1` and `(A
 `RANK(5,IF(A1:C1>0,A1:XFD1))` is `#SPILL!`.
 Ours: matches since T-1303. Static analysis makes a RANK call whose `ref` has an unknown shape a dynamic-array formula, so a
 reference result is 1x1 and an array result spills (before T-1303 such an array reached a scalar cell, a fuzz crash).
+An `@`-prefixed ref (probes/rank-at-if-ref, excel-graph, 2026-10-15, T-1596) is the top-left value of the array, a value and not a
+reference, and ranks like a one-element non-reference array, in one cell with no spill: with A1:B2 = 7,1/5,3,
+`RANK(5,@IF(A1:B2>0,A1:B2))`, `RANK(7,@IF(...))`, `RANK(5,@IF(A1:B2>9,A1:B2))` (FALSE), `RANK(5,@(A1:B2*1))`, `RANK(5,@{3,4})` and
+`RANK("x",@IF(...))` are `#VALUE!`; `RANK(5,@IF(A1:B2>0,A1:ANK))` (ANK an undefined name) is `#NAME?` and `RANK(5,@IF(A1:B2>0,1/0))`
+`#DIV/0!` (the element's error); RANK.EQ and RANK.AVG agree. `@` of a picked reference stays one: `RANK(5,@IF(TRUE,A1:A30))` in row 28
+ranks against blank A28 (`#N/A`), and `RANK(5,@IF(TRUE,A1:B2))` off the range is `#VALUE!`. Ours: matches since T-1596 (before, the
+whole 2x2 reached a cell static analysis took for a scalar, a fuzz crash).
+An `@`-prefixed scalar literal (`RANK(5,@5)`, `@"5"`, `@TRUE`) is `#VALUE!` in our engine by the same rule, unlike the bare literal; UNVERIFIED (not probed).
 Status: VERIFIED (excel-graph); literal arguments UNVERIFIED
-Tasks: T-1152, T-1203, T-1208, T-1215, T-1303
+Tasks: T-1152, T-1203, T-1208, T-1215, T-1303, T-1596
 
 ## Statistical function argument modes
 Rule: every scalar argument of the M9 statistical functions lifts elementwise over an array literal and over a multi-cell

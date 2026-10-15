@@ -311,9 +311,16 @@ impl Model {
                     },
                 }
             }
+            // An array that is not a reference is its top-left value: `SUM(@(A1:B2*1))` and
+            // `SUM(@IF(A1:B2>0,A1:B2))` are A1, and `RANK(5,@IF(A1:B2>0,A1:B2))` is one
+            // `#VALUE!`, not a 2x2 (probes/rank-at-if-ref K1, K4, H1; T-1596).
             Node::ImplicitIntersection { child, .. } => {
-                let operand = self.evaluate_at_operand_reference(child, cell);
-                Self::intersect_reference(operand, cell)
+                match self.evaluate_at_operand_reference(child, cell) {
+                    CalcResult::Array(array) => {
+                        crate::functions::util::top_left_of_array(&array, cell)
+                    }
+                    operand => Self::intersect_reference(operand, cell),
+                }
             }
             Node::SheetSpanKind {
                 first_index,
