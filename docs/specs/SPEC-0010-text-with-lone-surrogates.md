@@ -81,10 +81,14 @@ pub enum Text {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LoneText {
-    units: Box<[u16]>,  // the exact text; holds at least one lone surrogate
+    units: Vec<u16>,    // the exact text; holds at least one lone surrogate
     lossy: String,      // String::from_utf16_lossy(&units): each lone unit as U+FFFD
+    lone_count: usize,  // lone units in `units`, so `push` knows without a scan when a join
+                        // that pairs a lone high with a lone low leaves the text well-formed
 }
 ```
+(As built in T-1575: `units` is a `Vec`, not a boxed slice, so `push` appends in place; the box
+around `LoneText` keeps `Text` at 24 bytes either way.)
 
 Invariant (kept by the constructors, the only way to build a `Text`): `Lone` if and only if the
 units are ill-formed UTF-16. So `Text` has one form per value and derived `PartialEq` is value
