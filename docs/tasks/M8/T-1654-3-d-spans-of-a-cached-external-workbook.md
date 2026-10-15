@@ -21,4 +21,4 @@ Found by T-1609: fixtures/external-link-cached-3d-span Refs!B2:B10 (excel-graph)
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Opening or updating the linked workbook; 3-D spans of this workbook's own sheets.

@@ -40,8 +40,9 @@ suites the milestone exit criteria name that does not exist yet.
 - Opening or updating the linked workbook.
 
 ## Outcome
-Two excel-graph fixtures, 34 probe cells (raw-XML externalLink cases are fixtures, one workbook per
-upload-risk group): fixtures/external-link-cached-lookups (24 cells: lookups over partly cached
+Two excel-graph fixtures with 34 probe cells. They are fixtures rather than spec cases because they need
+hand-built externalLink XML, and the 3-D spans have a workbook of their own so that a refused upload
+could not take the lookup questions down with them: fixtures/external-link-cached-lookups (24 cells: lookups over partly cached
 ranges, name and sheet case, uncached names and sheets, name scopes, all pass in ours) and
 fixtures/external-link-cached-3d-span (10 cells: 3-D spans of cached sheets; 9 fail, ours does not
 parse the span, filed as T-1654). Excel for the web kept the cache on upload. Findings in
