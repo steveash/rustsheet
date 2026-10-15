@@ -3,7 +3,7 @@ id: T-1570
 title: "Probe FILTERXML with an error only in the second argument and with errors in both"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
