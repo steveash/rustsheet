@@ -3,7 +3,7 @@ id: T-0958
 title: "T-0918 code follow-ups: is_finite in rept_element, fold the two R1C1 reference parsers"
 milestone: M9
 lane: quality
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -25,6 +25,9 @@ INDIRECT duplicate logic (CLAUDE.md directive 3).
 
 ## Out of scope
 -
+
+## Outcome
+`rept_element` rejects a NaN or infinite count with `#VALUE!` explicitly (unit test `rept_tests`). The R1C1 parser fold is not a no-behavior-change refactor (the two parsers accept different name shapes; see the handoff below), so it moved to T-1652 (probe first, then fold). Eval unchanged.
 
 ## Handoff (resumed)
 Done on this branch: explicit `is_finite` check in `rept_element` plus a unit test
