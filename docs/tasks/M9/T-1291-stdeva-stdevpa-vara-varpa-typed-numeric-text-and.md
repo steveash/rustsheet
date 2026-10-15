@@ -23,6 +23,7 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/288b99797f58f149 Calc!A7 `=((Data!$C2/STDEVPA("Hello World",Data!C4:C9,Data!C5:C5))>..)`: Excel `#VALUE!` (typed non-numeric text), engine TRUE (STDEVPA 0.8048 ignores the typed "Hello World").
 
 ## Acceptance criteria
+- [ ] Cells D37-D39 of probes/vara-single-ref-picked pass (direct `"x"`, `"2"`, TRUE in VARA); array literals (D40, D41) must stay numbers-only.
 - [ ] The H24, H27, H30, H69, H72, H75 and H78 cells of probes/stat-argument-modes pass.
 - [ ] Any new rule is recorded in docs/excel-semantics/statistics.md with probe evidence.
 - [ ] gen-m9/288b99797f58f149 A7 passes (typed non-numeric text in STDEVPA is `#VALUE!`), with no new failing gen-m9 cell and no new known failures in eval/baseline/.

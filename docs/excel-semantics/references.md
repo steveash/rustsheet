@@ -1396,3 +1396,15 @@ Ours: matches since T-1596 (`evaluate_node_with_reference` in model.rs; before, 
 `SUM(@(A1:B2*1))` was 16).
 Status: VERIFIED (excel-graph)
 Tasks: T-1596
+
+## One-cell ranges and 1x1 arrays are not scalars
+Rule (probes/legacy-one-cell-shape-intersection, excel-graph, 2026-10-15, T-1265; FORMULATEXT of legacy formulas):
+Excel puts the legacy implicit-intersection `@` on a one-cell range written as a range and on a 1x1 array in a scalar
+argument, as on any multi-cell shape: `=ABS(@E1:E1)`, `=ABS(@E1:E1+1)`, `=ABS(@{5})`, `=ABS(@CHOOSE(1,{5}))`,
+`=AGGREGATE(@CHOOSE(1,{9}),0,E1:E6)`, and at the root `=@E1:E1+1` and `=@CHOOSE(1,{5})`. Inside CHOOSE the `@` goes on
+the range operand of an arm's operator, not on the call: `=CHOOSE(1,@E1:E1+1)`, `=CHOOSE(1,@E1:E2+1)`. SUBTOTAL's
+reference argument takes none: `=SUBTOTAL(9,CHOOSE(1,{5}))` is `#VALUE!` with no `@`. So the static analysis counts a
+one-cell range (`StaticResult::Range(0, 0)`) as a 1x1 array when broadcasting, and these formulas are dynamic. Ours
+matches every cell but H3, M3 and P3 (the CHOOSE-arm `@` and `ABS(@{5})`, fix T-1633).
+Status: VERIFIED (excel-graph)
+Tasks: T-1265, T-1633

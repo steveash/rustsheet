@@ -1,0 +1,69 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1265: which legacy (non-dynamic) formulas whose static shape is a single cell or a 1x1 array Excel shows with an implicit-intersection @ (FORMULATEXT, rows 3 and 12), the evidence for the scalar-or-dynamic classification of these shapes. Row 1 formulas: an operator over a one-cell range inside ABS and CHOOSE, CHOOSE of a 1x1 array constant inside ABS, SUBTOTAL and AGGREGATE, and bare forms; R1 (on-row) and R10 (off-row, #VALUE!) prove the formulas stayed legacy. B1:B6 = 1..6, E1:E6 = 3,1,4,1,5,9.",
+  "tags": [
+    "M6",
+    "probe"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "legacy_formulas": [
+        "G1",
+        "H1",
+        "I1",
+        "J1",
+        "K1",
+        "L1",
+        "M1",
+        "N1",
+        "O1",
+        "P1",
+        "Q1",
+        "R1",
+        "R10"
+      ],
+      "cells": {
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "B4": 4,
+        "B5": 5,
+        "B6": 6,
+        "E1": 3,
+        "E2": 1,
+        "E3": 4,
+        "E4": 1,
+        "E5": 5,
+        "E6": 9,
+        "G1": "=ABS(E1:E1+1)",
+        "H1": "=CHOOSE(1,E1:E1+1)",
+        "I1": "=ABS(CHOOSE(1,{5}))",
+        "J1": "=SUBTOTAL(9,CHOOSE(1,{5}))",
+        "K1": "=AGGREGATE(CHOOSE(1,{9}),0,E1:E6)",
+        "L1": "=E1:E1+1",
+        "M1": "=ABS({5})",
+        "N1": "=CHOOSE(1,{5})",
+        "O1": "=ABS(E1:E1)",
+        "P1": "=CHOOSE(1,E1:E2+1)",
+        "Q1": "=ABS(CHOOSE(1,{5,6}))",
+        "R1": "=ABS(B1:B6)",
+        "R10": "=ABS(B1:B6)",
+        "G3": "=FORMULATEXT(G1)",
+        "H3": "=FORMULATEXT(H1)",
+        "I3": "=FORMULATEXT(I1)",
+        "J3": "=FORMULATEXT(J1)",
+        "K3": "=FORMULATEXT(K1)",
+        "L3": "=FORMULATEXT(L1)",
+        "M3": "=FORMULATEXT(M1)",
+        "N3": "=FORMULATEXT(N1)",
+        "O3": "=FORMULATEXT(O1)",
+        "P3": "=FORMULATEXT(P1)",
+        "Q3": "=FORMULATEXT(Q1)",
+        "R3": "=FORMULATEXT(R1)",
+        "R12": "=FORMULATEXT(R10)"
+      }
+    }
+  ]
+}

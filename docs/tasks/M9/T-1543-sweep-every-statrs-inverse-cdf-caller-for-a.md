@@ -3,7 +3,7 @@ id: T-1543
 title: "Sweep every statrs inverse_cdf caller for a panic at a tiny probability (normal, lognormal, chi-square, gamma, beta)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P0
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1531 found that `StudentsT::inverse_cdf` panics from p about 1E-200 and is ina
 
 ## Out of scope
 -
+
+## Outcome
+Sweep (scratch test, removed) of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV, CONFIDENCE.NORM at p from 1E-300 to 1-1E-10 found no panic or slow case; BETA.INV panicked from p 1E-200 and hung at (1E-100,1000,1) and for shapes of 1E8 or more (F.INV panics too: T-1530). BETA.INV now uses `statrs` only for shapes up to 1E5 and p of 1E-15 or more and bounded bisection (`bisect_unit_interval`) otherwise; unit test `test_fn_beta_inv_tiny_probability_is_bounded`. Excel values recorded in docs/excel-semantics/statistics.md and probes-numeric case `t1543-inverse-cdf-tiny-p` (oracle-filled). Eval: no regressions, no baseline change. Tail value mismatches for CHISQ/GAMMA: T-1634.
