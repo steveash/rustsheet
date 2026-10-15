@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "A2": {
+    "t": "b",
+    "v": true
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "3a0d4cefbce25a5298d582933c8714c258c2a1d27dd275c0595726313323dbe7",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-15T22:24:54+00:00",
+  "version": null
+ }
+}

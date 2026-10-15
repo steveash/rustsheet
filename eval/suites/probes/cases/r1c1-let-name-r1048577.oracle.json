@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "n",
+    "v": 10.0
+   },
+   "A2": {
+    "t": "s",
+    "v": "=LET(R1048577,5,R1048577*2)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "a672b46ad2c422b677cf57ae2a414448cc4164b0b4fca861844516baa97d8144",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-15T21:57:03+00:00",
+  "version": null
+ }
+}
