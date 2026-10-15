@@ -3,7 +3,7 @@ id: T-0294
 title: "Legacy INDEX with an array row_num gives the first element; CHOOSE with an array index in SUMPRODUCT lifts (follow-up of T-0286)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
