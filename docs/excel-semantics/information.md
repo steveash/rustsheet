@@ -235,3 +235,19 @@ The oracle appends a canary sheet to every workbook it recalculates, which chang
 and the XLM `GET.WORKBOOK(...)` sheet list. Workbooks that use `GET.WORKBOOK(` (defined names or macro
 sheets) are refused by `embed_canary` for that reason only; this says nothing about what Excel returns
 (T-0014, tools/src/rustsheet_tools/oracle/canary.py).
+
+## SHEET of a reference, a name in text and a non-reference value
+Rule (probes/volatile-and-info-rand-true-false-sheet D1-D28, excel-graph, 2026-10-15, T-1627; sheets S, T, U in order):
+`SHEET()` is the formula's own sheet (1) and `SHEET(ref)` the reference's sheet, for a cell or a range
+(`SHEET(T!A1:B2)` 2, `SHEET(A1:B2)` 1); `SHEET("T")` and `SHEET("t")` are the sheet of that name (2, case-insensitive),
+`SHEET("Nope")`, `SHEET("")`, `SHEET(" T")` and `SHEET("S!A1")` are `#N/A`. A number, a boolean, an error and `ROW(A1)` are
+`#N/A`. A reference returned by OFFSET (1), INDIRECT (2), INDEX (`SHEET(INDEX(T!A1:B2,1,1))` 2), IF (`SHEET(IF(TRUE,U!A1))` 3)
+and a union (`SHEET((T!A1,T!B2))` 2, the first area) all resolve to their sheet. Ours gives `#N/A` for the INDEX and IF
+forms and `#VALUE!` for the union (3 cells; fix T-1631).
+Volatile functions through shape-stable formulas (probes/volatile-now-today-shapes, probes/volatile-and-info-rand-true-false-sheet):
+NOW, TODAY and RAND are numbers (`TYPE` 1, never text or boolean), `NOW()-NOW()` is 0 within one recalculation,
+`INT(NOW())=TODAY()`, `RAND()` is in [0,1) and two calls differ, `TRUE()` and `FALSE()` behave as the literals in
+arithmetic, text, comparison and logical contexts; the engine matches all of them. The eval clock is pinned, so a cell comparing
+NOW or TODAY with a calendar date cannot be scored.
+Status: VERIFIED (excel-graph)
+Tasks: T-1627, T-1631

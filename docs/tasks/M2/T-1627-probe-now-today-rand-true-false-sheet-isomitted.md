@@ -3,7 +3,7 @@ id: T-1627
 title: "Probe NOW, TODAY, RAND, TRUE, FALSE, SHEET, ISOMITTED, TOROW, WRAPCOLS, WRAPROWS to the evidence floor"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -23,11 +23,14 @@ volatile results checked by shape-stable formulas (INT(NOW())=TODAY(), RAND() in
 (`make new-task`); fixing the engine is out of scope.
 
 ## Acceptance criteria
-- [ ] Each listed function has ≥ 20 Excel-evidence cells in the report.
-- [ ] `make eval-baseline` lowers quality/evidence-floor.json by the number of functions lifted
+- [x] Each listed function has ≥ 20 Excel-evidence cells in the report.
+- [x] `make eval-baseline` lowers quality/evidence-floor.json by the number of functions lifted
   over the floor; new failing cells are recorded as new-coverage failures with fix tasks.
-- [ ] Quirks recorded in docs/excel-semantics/.
-- [ ] `make check` green; reviewers approve.
+- [x] Quirks recorded in docs/excel-semantics/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine fixes for the mismatches found (filed as tasks).
+
+## Outcome
+Three probe cases (probes/volatile-now-today-shapes 48 cells, volatile-and-info-rand-true-false-sheet 108, dynamic-array-reshape-and-isomitted 132; excel-graph, 2026-10-15) lift all ten functions over the floor (quality/evidence-floor.json 73 -> 63). 21 new-coverage failures, all WRAPROWS/WRAPCOLS (T-1630) or SHEET (T-1631); NOW, TODAY, RAND, TRUE, FALSE, ISOMITTED and TOROW match. Quirks in arrays.md and information.md.

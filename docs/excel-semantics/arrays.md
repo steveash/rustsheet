@@ -435,3 +435,19 @@ question (decision 0039).
 
 Status: VERIFIED (excel-graph) for all probed combinations; the three Graph-refused SORTBY forms are UNVERIFIED (desktop question).
 Tasks: T-1394, T-1446.
+
+## WRAPROWS and WRAPCOLS: wrap_count 0 or below is #NUM!, above the vector it clamps, a scalar is 1x1
+Rule (probes/dynamic-array-reshape-and-isomitted C20-C46, D20-D46, excel-graph, 2026-10-15, T-1627; B5:H5 is 1..7):
+`WRAPROWS(B5:H5,0,"p")` and `WRAPROWS(B5:H5,-1,"p")` are `#NUM!`, and so are the WRAPCOLS forms. A wrap_count above
+the vector's length does not pad: `WRAPROWS(B5:H5,8,"p")` and `WRAPROWS(B5:H5,100,"p")` are the 1x7 row `1,2,3,4,5,6,7`
+(`WRAPCOLS` the 7x1 column), the same as wrap_count 7. A scalar is a one-element vector: `WRAPROWS(5,2)` is 5
+(`WRAPCOLS(5,2)` too). Ours gives `#VALUE!` for 0 and -1, pads to wrap_count for 8 and 100 (1x8, 1x100) and `#N/A`
+for a scalar (18 cells; fix T-1630). Everything else probed matches: wrap_count 1-7 with a pad, an omitted pad (`#N/A`
+fill), pad_with 0, "" and `#N/A`, a column vector, an inline array, a 2-D range (`#VALUE!`), a text or boolean
+wrap_count (`#VALUE!`) and an error vector.
+TOROW over A1:C3 (1, "x", blank / #N/A, 4, TRUE / 7, 8, 9), ignore 0-3 with scan_by_column FALSE and TRUE, a scalar, inline
+arrays, a bad ignore (4, -1, "a") and an error argument all match ours (probes/dynamic-array-reshape-and-isomitted B20-B49).
+ISOMITTED inside `LAMBDA(x,[y],...)` with the argument omitted, blank (`(1,)`), a blank reference, "" and supplied, and
+outside a LAMBDA, all match ours (A20-A54).
+Status: VERIFIED (excel-graph)
+Tasks: T-1627, T-1630
