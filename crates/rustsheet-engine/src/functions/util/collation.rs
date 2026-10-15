@@ -15,6 +15,11 @@
 //!
 //! Characters outside ASCII and the Latin-1 letters are unprobed: they keep code-point order,
 //! after the letters (control characters before the space), as before T-0220.
+//!
+//! **Lone surrogates** (`cmp_text`): a lone surrogate unit weighs `UNIT_BASE` plus its value and an
+//! astral character weighs its two UTF-16 units, so lone units sort above every BMP character
+//! (U+FFFD included) and a lone high half sorts before a pair it starts, a lone low half after it
+//! (docs/excel-semantics/text.md "Lone surrogates through CODE, comparisons, ...").
 
 use std::cmp::{Ordering, Reverse};
 
@@ -26,19 +31,18 @@ pub(crate) fn cmp_text_excel(left: &str, right: &str) -> Ordering {
         // ASCII has no accents, so the second pass always ties.
         return ascii_primaries(left)
             .cmp(ascii_primaries(right))
-            .then_with(|| {
-                skipped(left.chars().map(Char::Scalar))
-                    .cmp(skipped(right.chars().map(Char::Scalar)))
-            });
+            .then_with(|| skipped(scalars(left)).cmp(skipped(scalars(right))));
     }
-    cmp_chars(
-        left.chars().map(Char::Scalar),
-        right.chars().map(Char::Scalar),
-    )
+    cmp_chars(scalars(left), scalars(right))
+}
+
+/// The characters of well-formed text.
+fn scalars(text: &str) -> impl Iterator<Item = Char> + Clone + '_ {
+    text.chars().map(Char::Scalar)
 }
 
 /// [`cmp_text_excel`] for engine text, a lone surrogate kept as its own unit instead of the
-/// lossy U+FFFD (module docs "Lone surrogates"; probes/text-lone-surrogates A10-A24).
+/// lossy U+FFFD (module docs; probes/text-lone-surrogates A10-A24).
 pub(crate) fn cmp_text(left: &Text, right: &Text) -> Ordering {
     if left.has_lone_surrogate() || right.has_lone_surrogate() {
         cmp_chars(left.chars_lossless(), right.chars_lossless())
