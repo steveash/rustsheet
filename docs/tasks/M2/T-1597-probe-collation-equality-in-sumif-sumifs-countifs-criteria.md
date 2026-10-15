@@ -3,7 +3,7 @@ id: T-1597
 title: "Probe collation equality in SUMIF, SUMIFS and COUNTIFS criteria and in wildcard criteria against expansions (ae, ss)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
