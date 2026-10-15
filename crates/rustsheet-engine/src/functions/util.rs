@@ -17,7 +17,7 @@ use crate::{
 pub(crate) mod aggregate_args;
 pub(crate) mod collation;
 
-use collation::cmp_text_excel;
+use collation::{cmp_text, cmp_text_excel};
 
 /// The number a referenced cell gives an aggregate: numbers count, booleans, text and empty cells
 /// are skipped (SPEC-0009 `CellNumbers::Numbers`).
@@ -105,7 +105,7 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
         (CalcResult::Number(_value1), CalcResult::Boolean(_value2)) => -1,
         (CalcResult::String(value1), CalcResult::String(value2)) => {
             // Case-insensitive, accent- and hyphen-aware (T-0220).
-            match cmp_text_excel(value1, value2) {
+            match cmp_text(value1, value2) {
                 std::cmp::Ordering::Less => -1,
                 std::cmp::Ordering::Equal => 0,
                 std::cmp::Ordering::Greater => 1,

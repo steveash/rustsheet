@@ -141,8 +141,9 @@ fn exact_element(text1: &ArrayNode, text2: &ArrayNode) -> Result<ArrayNode, Erro
             to_precision(*number1, 15) == to_precision(*number2, 15),
         ));
     }
-    let string1 = array_node_to_string(text1)?;
-    let string2 = array_node_to_string(text2)?;
+    let string1 = array_node_to_text(text1)?;
+    let string2 = array_node_to_text(text2)?;
+    // `Text` equality is exact: a lone surrogate never equals U+FFFD (probes/text-lone-surrogates A10-A13).
     Ok(ArrayNode::Boolean(string1 == string2))
 }
 

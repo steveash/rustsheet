@@ -18,17 +18,44 @@
 
 use std::cmp::{Ordering, Reverse};
 
+use crate::text::{Char, Text};
+
 /// Orders two texts the way Excel's `<`/`>`/`=` and the `">"` criteria do (module docs).
 pub(crate) fn cmp_text_excel(left: &str, right: &str) -> Ordering {
     if left.is_ascii() && right.is_ascii() {
         // ASCII has no accents, so the second pass always ties.
         return ascii_primaries(left)
             .cmp(ascii_primaries(right))
-            .then_with(|| skipped(left).cmp(skipped(right)));
+            .then_with(|| {
+                skipped(left.chars().map(Char::Scalar))
+                    .cmp(skipped(right.chars().map(Char::Scalar)))
+            });
     }
-    primaries(left)
-        .cmp(primaries(right))
-        .then_with(|| accents(left).cmp(accents(right)))
+    cmp_chars(
+        left.chars().map(Char::Scalar),
+        right.chars().map(Char::Scalar),
+    )
+}
+
+/// [`cmp_text_excel`] for engine text, a lone surrogate kept as its own unit instead of the
+/// lossy U+FFFD (module docs "Lone surrogates"; probes/text-lone-surrogates A10-A24).
+pub(crate) fn cmp_text(left: &Text, right: &Text) -> Ordering {
+    if left.has_lone_surrogate() || right.has_lone_surrogate() {
+        cmp_chars(left.chars_lossless(), right.chars_lossless())
+    } else {
+        cmp_text_excel(left, right)
+    }
+}
+
+/// The three passes over two character sequences.
+fn cmp_chars<L, R>(left: L, right: R) -> Ordering
+where
+    L: Iterator<Item = Char> + Clone,
+    R: Iterator<Item = Char> + Clone,
+{
+    primaries(left.clone())
+        .cmp(primaries(right.clone()))
+        .then_with(|| accents(left.clone()).cmp(accents(right.clone())))
         .then_with(|| skipped(left).cmp(skipped(right)))
 }
 
@@ -79,6 +106,12 @@ const OTHER_BASE: u32 = 0x100;
 /// Punctuation in Excel's order (probes/text-collation-order ranks 7-36).
 const PUNCTUATION: &str = "!\"#$%&()*,./:;?@[\\]^_`{|}~+<=>";
 
+/// Weight of the first UTF-16 unit of an astral character or of a lone surrogate: above every BMP
+/// character. An astral character weighs its two units, so a lone high surrogate sorts before a
+/// pair starting with it and a lone low one after it (`H<"😀"`, `"😀"<L`, `H<L` TRUE, `L<H` FALSE;
+/// probes/text-lone-surrogates A18-A22). A lone surrogate is above U+FFFD (A23, A24 FALSE).
+const UNIT_BASE: u32 = OTHER_BASE + 0x11_0000;
+
 /// What one case-folded character contributes to each pass.
 #[derive(Clone, Copy)]
 enum Element {
@@ -128,8 +161,11 @@ fn fold(c: char) -> char {
     }
 }
 
-fn element(c: char) -> Element {
-    let c = fold(c);
+fn element(c: Char) -> Element {
+    let c = match c {
+        Char::Scalar(c) => fold(c),
+        Char::Lone(unit) => return single(UNIT_BASE + u32::from(unit)),
+    };
     match c {
         '\'' => Element::Skipped(1),
         '-' => Element::Skipped(2),
@@ -171,36 +207,44 @@ fn element(c: char) -> Element {
             primary: [letter('s'), letter('s')],
             accent: NO_ACCENT,
         },
+        _ if u32::from(c) > 0xFFFF => {
+            let mut units = [0u16; 2];
+            c.encode_utf16(&mut units);
+            Element::Weights {
+                primary: [
+                    UNIT_BASE + u32::from(units[0]),
+                    UNIT_BASE + u32::from(units[1]),
+                ],
+                accent: NO_ACCENT,
+            }
+        }
         _ => single(OTHER_BASE + u32::from(c)),
     }
 }
 
 /// The first pass: letter weights, hyphens and apostrophes skipped.
-fn primaries(text: &str) -> impl Iterator<Item = u32> + '_ {
-    text.chars()
-        .flat_map(|c| match element(c) {
-            Element::Skipped(_) => [0, 0],
-            Element::Weights { primary, .. } => primary,
-        })
-        .filter(|&weight| weight != 0)
+fn primaries(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u32> {
+    text.flat_map(|c| match element(c) {
+        Element::Skipped(_) => [0, 0],
+        Element::Weights { primary, .. } => primary,
+    })
+    .filter(|&weight| weight != 0)
 }
 
 /// The second pass: one accent weight per letter weight of the first pass.
-fn accents(text: &str) -> impl Iterator<Item = u8> + '_ {
-    text.chars()
-        .flat_map(|c| match element(c) {
-            Element::Skipped(_) => [None, None],
-            Element::Weights { primary, accent } => {
-                [Some(accent), (primary[1] != 0).then_some(NO_ACCENT)]
-            }
-        })
-        .flatten()
+fn accents(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u8> {
+    text.flat_map(|c| match element(c) {
+        Element::Skipped(_) => [None, None],
+        Element::Weights { primary, accent } => {
+            [Some(accent), (primary[1] != 0).then_some(NO_ACCENT)]
+        }
+    })
+    .flatten()
 }
 
 /// The third pass: each hyphen or apostrophe as (position, weight), a later position first.
-fn skipped(text: &str) -> impl Iterator<Item = (Reverse<usize>, u8)> + '_ {
-    text.chars()
-        .enumerate()
+fn skipped(text: impl Iterator<Item = Char>) -> impl Iterator<Item = (Reverse<usize>, u8)> {
+    text.enumerate()
         .filter_map(|(position, c)| match element(c) {
             Element::Skipped(weight) => Some((Reverse(position), weight)),
             Element::Weights { .. } => None,
