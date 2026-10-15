@@ -3,7 +3,7 @@ id: T-1584
 title: "Probe RANDBETWEEN and RANDARRAY unprobed edges (boolean via reference, error order, huge span, one omitted bound)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
