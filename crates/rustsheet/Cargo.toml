@@ -31,3 +31,7 @@ harness = false
 [[bench]]
 name = "aggregate"
 harness = false
+
+[[bench]]
+name = "text"
+harness = false
