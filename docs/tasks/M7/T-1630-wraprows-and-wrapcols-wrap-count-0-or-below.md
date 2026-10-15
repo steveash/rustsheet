@@ -21,4 +21,4 @@ Found by T-1627: probes/dynamic-array-reshape-and-isomitted cells C20, C21, C32-
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- TOROW (it matches Excel, T-1627) and the other reshape functions.

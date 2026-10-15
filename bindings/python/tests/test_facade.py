@@ -380,3 +380,13 @@ def test_clock_wrong_type_is_type_error(bad):
     wb = _clock_book()
     with pytest.raises(TypeError):
         wb.clock = bad
+
+
+def test_lone_surrogate_reads_back_exactly(wb):
+    wb.set("A1", rs.Formula('=MID("a😀b",3,1)'))
+    wb.set("A2", "�")
+    wb.set("A3", "x")
+    assert wb.value("A1") == "\ude00"
+    assert wb.values("A1:A3") == [["\ude00"], ["�"], ["x"]]
+    assert wb.values("A2") == [["�"]]
+    assert wb.value("A2") == "�"
