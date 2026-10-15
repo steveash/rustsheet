@@ -3,7 +3,7 @@ id: T-1647
 title: "Probe exact lone-surrogate units through T, REPT and TEXT (T-1587 follow-up)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
