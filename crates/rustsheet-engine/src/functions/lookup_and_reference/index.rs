@@ -193,6 +193,16 @@ impl Model {
         self.index_impl(args, cell, IndexForm::Value)
     }
 
+    /// INDEX in reference context: a single selected cell stays a 1x1 range ([`IndexForm::Reference`]).
+    /// The one definition for every caller that evaluates an INDEX node as a reference.
+    pub(crate) fn index_reference(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.index_impl(args, cell, IndexForm::Reference)
+    }
+
     /// INDEX; [`IndexForm::Reference`] keeps a single selected cell as a 1x1 range, as an
     /// aggregate argument sees it (T-0216; docs/excel-semantics/references.md).
     ///

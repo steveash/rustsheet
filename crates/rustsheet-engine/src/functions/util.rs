@@ -382,11 +382,7 @@ impl Model {
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
-            } => self.index_impl(
-                args,
-                cell,
-                crate::functions::lookup_and_reference::IndexForm::Reference,
-            ),
+            } => self.index_reference(args, cell),
             Node::FunctionKind {
                 kind: Function::Hlookup,
                 args,
