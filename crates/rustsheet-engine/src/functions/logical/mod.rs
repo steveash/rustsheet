@@ -148,7 +148,8 @@ impl Model {
     /// IF; with a scalar condition the chosen branch comes back as `mode` says
     /// (T-0216, T-1026; docs/excel-semantics/references.md). In reference context a union in
     /// the chosen branch stays its areas: `SUM(IF(TRUE,(A1,B2)))` is 6 and
-    /// `IF(TRUE,(A1,B2)) A1` is 1 (probes/multiarea-ifchoose H1:H2).
+    /// `IF(TRUE,(A1,B2)) A1` is 1 (probes/multiarea-ifchoose H1:H2). The condition is evaluated
+    /// once, then the chosen branch once (`read_once` in functions/logical/lambda.rs relies on it).
     pub(crate) fn if_impl(
         &mut self,
         args: &[Node],
@@ -229,6 +230,8 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let has_else = args.len() == 3;
+        // Both branches are read here, so a parameter read once in each is read twice.
+        self.variable_stack.copy_read_once();
         // Evaluate branches once and normalise each to a scalar or 2-D array.
         let true_arg = match self.evaluate_if_arg(&args[1], cell) {
             Ok(arg) => arg,
