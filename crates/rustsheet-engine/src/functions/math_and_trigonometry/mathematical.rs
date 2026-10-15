@@ -31,8 +31,8 @@ fn trig_arg(f: f64) -> Result<f64, Error> {
 
 /// MIN and MAX: a referenced-cell error ranks below a direct scalar error; the leftmost wins
 /// (probes/aggregate-error-precedence C9-C24). A direct LAMBDA's `#VALUE!` ranks with the
-/// referenced errors, and an array error after it does not beat it (probes/aggregate-direct-lambda-
-/// product-min-max D15, D24, T-1604).
+/// referenced errors, as does an array error (every `Ranked` policy: probes/aggregate-direct-lambda-
+/// product-min-max D15, D24, T-1604; probes/aggregate-array-error-vs-ref-error, T-1615).
 const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked,

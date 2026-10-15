@@ -32,7 +32,7 @@ const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
 
 /// AVERAGEA, MAXA and MINA rank errors as the AVERAGE family does: a scalar direct error beats a
 /// referenced one either way and the leftmost referenced error wins (probes/aggregate-picked-
-/// direct-a-variants D20-D27; the array rank is UNVERIFIED). The A rules' visitor errs on a
+/// direct-a-variants D20-D27; the array rank is as AVERAGE's, below). The A rules' visitor errs on a
 /// referenced cell holding a range ("Unexpected Range"), which returns at once, UNVERIFIED. An
 /// array error ranks with the referenced errors, as AVERAGE's does (T-1615).
 const A_ARGS: AggregatePolicy = AVERAGE_ARGS;
