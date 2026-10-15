@@ -59,8 +59,10 @@ Evidence: probes/text-surrogate-positions A6, A11, A12, A29, A38, B6, B7, B10 (e
 Ours: MID and REPLACE slice a `rustsheet_engine::Text` by UTF-16 units (`Text::slice_utf16`), so the
 lone half survives (T-1579). LEFT, RIGHT and UNICODE read the exact units
 (`Text::left_chars`, `Text::right_chars`, `chars_lossless`), so A38, B6 and B7 pass (T-1581).
-`UNICODE` of a lone high surrogate followed by another character
-(`UNICODE(MID("a😀b",2,2))`) is `#VALUE!` here by inference, unprobed. Whether `&` of a lone high and a lone low surrogate
+`UNICODE` of a lone high surrogate followed by another character is `#VALUE!`
+(`UNICODE(MID("😀",1,1)&"x")`), of a lone low one followed by another its code (56832); `UNICODE(MID("a😀b",2,2))`
+is the whole pair (128512), since units 2-3 are the pair; a pair then a lone high one reads the pair
+(probes/text-unicode-lone-surrogate-followed A1-A10, excel-graph, 2026-10-15, T-1635; ours matches all 10). Whether `&` of a lone high and a lone low surrogate
 forms the pair (`EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`) is TRUE: `Text::concat` pairs
 them by UTF-16's rule (probes/text-lone-surrogates, T-1582).
 Status: VERIFIED
