@@ -3,7 +3,7 @@ id: T-1495
 title: "Integer powers: round each square-and-multiply product twice, like Excel's `*`"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -39,15 +39,23 @@ this base match with twice-rounded products (2 with products rounded once); the 
 `SQRT(5)^n` cells (`power-sqrt5`), and the 22 `(0.2^-0.5)^n`, A181 and A182 cells were checked outside it.
 
 ## Acceptance criteria
-- [ ] `square_and_multiply` in crates/rustsheet-engine/src/arithmetic.rs rounds each product with
+- [x] `square_and_multiply` in crates/rustsheet-engine/src/arithmetic.rs rounds each product with
       `extended_product`, and the numbers.md entry's "Implemented in" says so.
-- [ ] All 42 cells of `probes-numeric/power-integer-full-mantissa` whose base is 2.23606797749979 pass:
+- [x] All 42 cells of `probes-numeric/power-integer-full-mantissa` whose base is 2.23606797749979 pass:
       `SQRT(5)^n` (20 cells), `(0.2^-0.5)^n` (20), A181 `(SUM(0,(0.2^(-0.5)))^99)` and A182
       `POWER(SQRT(5),99)`.
-- [ ] gen-m2/fa437879253827be Calc!A23 (`(0.2^-0.5)^99`) leaves `eval/baseline/gen-m2.txt`.
-- [ ] Unchanged elsewhere: the fit lab's `power-mantissa` (76/76), `power-1+r` (462/462) and
+- [x] gen-m2/fa437879253827be Calc!A23 (`(0.2^-0.5)^99`) leaves `eval/baseline/gen-m2.txt`.
+- [x] Unchanged elsewhere: the fit lab's `power-mantissa` (76/76), `power-1+r` (462/462) and
       `power-large-int` (the same cells) scores, and no new lines in any `eval/baseline/` file.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Operations other than integer powers.
+
+## Outcome
+`square_and_multiply` (arithmetic.rs) rounds each product with `extended_product`, like Excel's `*`;
+numbers.md "Integer exponents" says so. probes-numeric/power-integer-full-mantissa 144 -> 184/184
+(all 42 cells with base 2.23606797749979), gen-m2/fa437879253827be Calc!A23 fixed (line removed from
+`eval/baseline/gen-m2.txt`), no other case changed. Fit lab, engine row: `power-sqrt5` 20/20,
+`power-mantissa` 76/76, `power-1+r` 462/462, `power-large-int` 224/224. Unit test
+`square_and_multiply_products_round_twice`.
