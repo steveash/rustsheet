@@ -3,7 +3,7 @@ id: T-1596
 title: "Fuzz: RANK(5,@IF(A1:B2>0,A1:ANK)) reaches a scalar-context cell with a 2x2 array (debug_assert panic)"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
