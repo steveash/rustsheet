@@ -24,13 +24,16 @@ fn munit_dimension(f: f64) -> Result<usize, Error> {
 fn coerce_to_f64(node: &ArrayNode, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
     match node {
         ArrayNode::Number(v) => Ok(*v),
-        ArrayNode::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
-        // Excel: a blank cell anywhere in the matrix is #VALUE! (poi/MatrixFormulaEvalTestData.xlsx).
-        ArrayNode::Empty | ArrayNode::String(_) => Err(CalcResult::new_error(
-            Error::VALUE,
-            cell,
-            "matrix requires numeric values".to_string(),
-        )),
+        // Excel: a blank cell anywhere in the matrix is #VALUE! (poi/MatrixFormulaEvalTestData.xlsx),
+        // and so is a boolean, as a cell, a literal or an element
+        // (probes/matrix-boolean-elements, docs/excel-semantics/arrays.md).
+        ArrayNode::Boolean(_) | ArrayNode::Empty | ArrayNode::String(_) => {
+            Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "matrix requires numeric values".to_string(),
+            ))
+        }
         ArrayNode::Error(e) => Err(CalcResult::new_error(
             e.clone(),
             cell,
