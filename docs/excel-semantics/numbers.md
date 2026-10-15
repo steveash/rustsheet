@@ -309,8 +309,8 @@ total is rounded to a double after every addition (to 64 bits, then to a double,
 engine matches `+` and SUM and misses SUMIF, SUMIFS, DSUM and AVERAGEA by one ulp in all 8 sets (32
 cells; they still use the plain `+`). AVERAGE's division by a small count (3, 5, 7) was not probed: that is reasoning, not oracle evidence. For a
 small odd count n the binary expansion of k/n has no run of 11 equal bits after the cut, so the 64-bit rounding
-never lands on a midpoint and double rounding would equal single rounding. A discriminating divisor needs n above about
-2^10 (an earlier random search at n = 1025 found nothing); T-1619 probes a large count.
+never lands on a midpoint and double rounding would equal single rounding. A discriminating divisor needs n above
+2^11 (an earlier random search at n = 1025 found nothing; T-1619 probed counts 2051-4095, below).
 Range edges of `*` and PRODUCT (probes-numeric/double-rounding-range-edges, excel-graph, 2026-10-14,
 T-1513): the second rounding happens at the result's own precision. An exact product just under the
 midpoint between `DBL_MAX` and 2^1024 rounds up to the midpoint in 64 bits and then, tied, to 2^1024:
