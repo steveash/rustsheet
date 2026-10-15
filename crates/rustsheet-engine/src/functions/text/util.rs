@@ -258,44 +258,72 @@ pub(super) fn substitute_element(
 
 /// SUBSTITUTE over exact UTF-16 units, used when any operand holds a lone surrogate: a lone half
 /// as `old_text` matches inside a pair, unit for unit (probes/text-lone-surrogates A41-A47).
-/// Each unit is one `char` (`one_char_per_unit`, which is reversible), so `str` matching, which
-/// is linear, finds the instances. The result length is checked before it is built (CLAUDE.md
-/// directive 5), as for well-formed text.
+/// Replace-all maps each unit to one `char` (`one_char_per_unit`, reversible) so `str` matching,
+/// which is linear, finds the non-overlapping instances. With an `instance_num` the instances
+/// overlap, as in the well-formed path (`text_sensitive`; unprobed, text.md), and a linear KMP
+/// scan finds the nth. The result length is checked before it is built (CLAUDE.md directive 5).
 fn substitute_units(
     text: &Text,
     old_text: &Text,
     new_text: &Text,
     instance_num: Option<i32>,
 ) -> Result<Text, Error> {
-    let (text, old, new) = (
-        one_char_per_unit(text),
-        one_char_per_unit(old_text),
-        one_char_per_unit(new_text),
-    );
-    let (text_len, old_len, new_len) = (
-        text.chars().count(),
-        old.chars().count(),
-        new.chars().count(),
-    );
+    let units: Vec<u16> = text.units().collect();
+    let old: Vec<u16> = old_text.units().collect();
+    let new: Vec<u16> = new_text.units().collect();
+    let at = instance_num.and_then(|n| nth_overlapping_match(&units, &old, n as usize));
     let replaced = match instance_num {
-        Some(n) => text
-            .match_indices(old.as_str())
-            .nth(n as usize - 1)
-            .map_or(0, |_| 1),
-        None => text.matches(old.as_str()).count(),
+        Some(_) => usize::from(at.is_some()),
+        None => one_char_per_unit(text)
+            .matches(one_char_per_unit(old_text).as_str())
+            .count(),
     };
-    let result_len = (text_len + replaced * new_len).saturating_sub(replaced * old_len);
-    if result_len > MAX_TEXT_UNITS && result_len > text_len {
+    let result_len = (units.len() + replaced * new.len()).saturating_sub(replaced * old.len());
+    if result_len > MAX_TEXT_UNITS && result_len > units.len() {
         return Err(Error::VALUE);
     }
-    let result = match instance_num {
-        Some(n) => match text.match_indices(old.as_str()).nth(n as usize - 1) {
-            Some((at, _)) => format!("{}{}{}", &text[..at], new, &text[at + old.len()..]),
-            None => text,
-        },
-        None => text.replace(old.as_str(), &new),
+    let result = match (instance_num, at) {
+        (Some(_), None) => units,
+        (Some(_), Some(at)) => [&units[..at], &new[..], &units[at + old.len()..]].concat(),
+        (None, _) => unit_chars_to_units(&one_char_per_unit(text).replace(
+            one_char_per_unit(old_text).as_str(),
+            &one_char_per_unit(new_text),
+        )),
     };
-    Ok(Text::from_utf16(unit_chars_to_units(&result)))
+    Ok(Text::from_utf16(result))
+}
+
+/// The start of the `n`th (1-based) possibly overlapping occurrence of `pattern` in `text`,
+/// found by KMP in linear time.
+fn nth_overlapping_match(text: &[u16], pattern: &[u16], n: usize) -> Option<usize> {
+    let mut fail = vec![0usize; pattern.len()];
+    let mut k = 0;
+    for i in 1..pattern.len() {
+        while k > 0 && pattern[i] != pattern[k] {
+            k = fail[k - 1];
+        }
+        if pattern[i] == pattern[k] {
+            k += 1;
+        }
+        fail[i] = k;
+    }
+    let (mut matched, mut found) = (0, 0);
+    for (i, unit) in text.iter().enumerate() {
+        while matched > 0 && *unit != pattern[matched] {
+            matched = fail[matched - 1];
+        }
+        if *unit == pattern[matched] {
+            matched += 1;
+        }
+        if matched == pattern.len() {
+            found += 1;
+            if found == n {
+                return Some(i + 1 - pattern.len());
+            }
+            matched = fail[matched - 1];
+        }
+    }
+    None
 }
 
 #[cfg(test)]
