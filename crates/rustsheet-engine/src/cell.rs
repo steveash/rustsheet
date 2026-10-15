@@ -222,7 +222,7 @@ pub(crate) fn spill_value_to_calc_result(
     match value {
         SpillValue::Number(v) => CalcResult::Number(*v),
         SpillValue::Boolean(v) => CalcResult::Boolean(*v),
-        SpillValue::Text(v) => CalcResult::String(v.clone()),
+        SpillValue::Text(v) => CalcResult::String(v.clone().into()),
         SpillValue::Error(ei) => {
             let message = ei.to_localized_error_string(language);
             CalcResult::new_error(ei.clone(), cell_reference, message)

@@ -165,7 +165,10 @@ impl Model {
         let result: Vec<Vec<ArrayNode>> = rows_of_cols
             .into_iter()
             .map(|row| {
-                let mut arr: Vec<ArrayNode> = row.into_iter().map(ArrayNode::String).collect();
+                let mut arr: Vec<ArrayNode> = row
+                    .into_iter()
+                    .map(|s| ArrayNode::String(s.into()))
+                    .collect();
                 while arr.len() < max_cols {
                     arr.push(pad_node.clone());
                 }
@@ -185,7 +188,7 @@ impl Model {
     ) -> Result<Vec<String>, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
         match result {
-            CalcResult::String(s) => Ok(vec![s]),
+            CalcResult::String(s) => Ok(vec![s.into_lossy_string()]),
             CalcResult::Number(n) => Ok(vec![number_to_text(n)]),
             CalcResult::EmptyArg | CalcResult::EmptyCell => Ok(vec![]),
             CalcResult::Array(arr) => {
@@ -193,7 +196,7 @@ impl Model {
                 for row in arr {
                     for item in row {
                         match item {
-                            ArrayNode::String(s) => delims.push(s),
+                            ArrayNode::String(s) => delims.push(s.into_lossy_string()),
                             ArrayNode::Number(n) => delims.push(number_to_text(n)),
                             ArrayNode::Empty => {}
                             _ => {
@@ -214,7 +217,7 @@ impl Model {
                 for row in range {
                     for item in row {
                         match item {
-                            ArrayNode::String(s) => delims.push(s),
+                            ArrayNode::String(s) => delims.push(s.into_lossy_string()),
                             ArrayNode::Number(n) => delims.push(number_to_text(n)),
                             ArrayNode::Empty => {}
                             _ => {

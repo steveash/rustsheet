@@ -265,3 +265,41 @@ fn reduce_with_an_array_accumulator() {
     assert_eq!(model._get_text("A5"), "");
     assert_eq!(model._get_text("B1"), "501");
 }
+
+#[test]
+fn a_parameter_read_once_is_moved_and_one_read_more_often_is_copied() {
+    // T-1588: a parameter the body reads once, as a VSTACK/HSTACK argument or as the body
+    // itself, is moved into that read; every other read copies it, so each case below still
+    // sees the value on every read.
+    let mut model = new_empty_model();
+    // Read twice: the accumulator doubles each step, 1 -> 2 -> 4 -> 8 rows.
+    model._set(
+        "A1",
+        "=ROWS(REDUCE(0, SEQUENCE(3), LAMBDA(a, x, VSTACK(a, a))))",
+    );
+    // Read once in the text, but inside a nested LAMBDA that MAP calls three times.
+    model._set(
+        "B1",
+        "=SUM(MAP(SEQUENCE(2), LAMBDA(a, SUM(MAP(SEQUENCE(3), LAMBDA(y, a))))))",
+    );
+    // Read once, through groups and nested stacks.
+    model._set(
+        "C1",
+        "=SUM(LAMBDA(a, (VSTACK(HSTACK((a), 1), {2,3})))({5}))",
+    );
+    // Read once as the whole body; and a parameter called twice.
+    model._set("D1", "=SUM(LAMBDA(a, a)({1;2;3}))");
+    model._set(
+        "E1",
+        "=SUM(LAMBDA(f, VSTACK(f(2), f(3)))(LAMBDA(x, x * 3)))",
+    );
+    // Read once by a function that is not a stack, and once more by VSTACK.
+    model._set("F1", "=SUM(LAMBDA(a, VSTACK(a, SUM(a)))({1;2}))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "8");
+    assert_eq!(model._get_text("B1"), "9");
+    assert_eq!(model._get_text("C1"), "11");
+    assert_eq!(model._get_text("D1"), "6");
+    assert_eq!(model._get_text("E1"), "15");
+    assert_eq!(model._get_text("F1"), "6");
+}

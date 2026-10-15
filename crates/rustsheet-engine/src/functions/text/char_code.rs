@@ -97,7 +97,7 @@ impl Model {
             Err(e) => return e,
         };
         match win1252_to_char(n) {
-            Some(c) => CalcResult::String(c.to_string()),
+            Some(c) => CalcResult::String(c.to_string().into()),
             None => CalcResult::new_error(Error::VALUE, cell, "Invalid character code".to_string()),
         }
     }
@@ -142,7 +142,7 @@ impl Model {
             let cp = n as u32;
             let noncharacter = (0xFDD0..=0xFDEF).contains(&cp) || cp & 0xFFFE == 0xFFFE;
             match char::from_u32(cp) {
-                Some(c) if !noncharacter => Ok(ArrayNode::String(c.to_string())),
+                Some(c) if !noncharacter => Ok(ArrayNode::String(c.to_string().into())),
                 _ => Err(Error::NA),
             }
         })

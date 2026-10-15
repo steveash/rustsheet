@@ -129,7 +129,7 @@ impl Model {
             format!("{sheet_prefix}{row_part}{col_part}")
         };
 
-        CalcResult::String(address)
+        CalcResult::String(address.into())
     }
 
     // ── AREAS ─────────────────────────────────────────────────────────────────
