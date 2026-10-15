@@ -3,7 +3,7 @@ id: T-1596
 title: "Fuzz: RANK(5,@IF(A1:B2>0,A1:ANK)) reaches a scalar-context cell with a 2x2 array (debug_assert panic)"
 milestone: M2
 lane: functions-stat
-status: todo
+status: done
 priority: P0
 size: S
 tier: opus
@@ -35,11 +35,21 @@ and evaluation agree. Excel's value: check probes/rank-unknown-shape-ref and
 probes/rank-nonref-*; if they do not cover `@` on the ref, use the excel-probe skill.
 
 ## Acceptance criteria
-- [ ] The reproducer is a unit test (decision 0035) that passes in a debug build.
-- [ ] `RANK`, `RANK.EQ` and `RANK.AVG` with an `@`-prefixed unknown-shape `ref` agree in static
+- [x] The reproducer is a unit test (decision 0035) that passes in a debug build.
+- [x] `RANK`, `RANK.EQ` and `RANK.AVG` with an `@`-prefixed unknown-shape `ref` agree in static
       analysis and evaluation; the value matches excel-graph evidence, or the case is left pending
       and the task blocked.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - AGGREGATE (T-0296); the un-prefixed form (T-1303, done).
+
+## Outcome
+- Root cause: in reference context `@` passed a non-reference array through whole (`intersect_reference` keeps
+  non-ranges), so `RANK(5,@IF(A1:B2>0,A1:B2))` — no unknown shape needed — returned a 2x2 into a cell static analysis
+  took for a scalar. `evaluate_node_with_reference` now takes an array operand's top-left value, and the RANK family
+  ranks that value like a non-reference array: one `#VALUE!` or the element's error.
+- New probe `rank-at-if-ref` (excel-graph, 28 checked cells): RANK/RANK.EQ/RANK.AVG with `@` refs, and `@` of a non-reference
+  array under SUM/COUNT/MAX/LARGE/AVERAGE/COUNTBLANK (top-left value; `SUM(@(A1:B2*1))` was 16, now 7). Recorded in
+  references.md and statistics.md.
+- Eval delta: probes +1 case, all cells pass; known failures 5585 → 5585; regressions 0.
