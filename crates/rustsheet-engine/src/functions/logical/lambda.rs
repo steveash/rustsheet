@@ -28,22 +28,30 @@ struct PreparedLambda {
     lambda_mark: usize,
 }
 
-/// Whether `body` reads variable `id` exactly once per evaluation: one read in the whole tree,
-/// and that read is the body itself or a direct argument of VSTACK or HSTACK below it (through
-/// groups), which evaluate each argument once ([`Model::eval_to_array`]). Anywhere else a
-/// function might evaluate its argument twice, or a nested LAMBDA might read it on each call.
-fn read_once(body: &Node, id: usize) -> bool {
-    let mut reads = 0;
-    let mut once = false;
+/// For each of `ids`, whether `body` reads that variable exactly once per evaluation: one read in
+/// the whole tree, and that read is the body itself or a direct argument of VSTACK or HSTACK below
+/// it (through groups), which evaluate each argument once ([`Model::eval_to_array`]). Anywhere else
+/// a function might evaluate its argument twice, or a nested LAMBDA might read it on each call. One
+/// walk serves every parameter.
+fn read_once(body: &Node, ids: &[usize]) -> Vec<bool> {
+    let mut reads = vec![0usize; ids.len()];
+    let mut once = vec![false; ids.len()];
+    let position = |read: u32| ids.iter().position(|&id| id == read as usize);
     let mut pending = vec![(body, true)];
     let mut children = Vec::new();
     while let Some((node, evaluated_once)) = pending.pop() {
         match node {
-            Node::NamedVariableKind { id: Some(read), .. } if *read as usize == id => {
-                reads += 1;
-                once = evaluated_once;
+            Node::NamedVariableKind { id: Some(read), .. } => {
+                if let Some(i) = position(*read) {
+                    reads[i] += 1;
+                    once[i] = evaluated_once;
+                }
             }
-            Node::NamedFunctionKind { id: Some(read), .. } if *read as usize == id => reads += 1,
+            Node::NamedFunctionKind { id: Some(read), .. } => {
+                if let Some(i) = position(*read) {
+                    reads[i] += 1;
+                }
+            }
             _ => {}
         }
         let passes_once = evaluated_once
@@ -58,7 +66,11 @@ fn read_once(body: &Node, id: usize) -> bool {
         node.push_children(&mut children);
         pending.extend(children.drain(..).map(|child| (child, passes_once)));
     }
-    reads == 1 && once
+    reads
+        .iter()
+        .zip(once)
+        .map(|(&n, once)| n == 1 && once)
+        .collect()
 }
 
 /// `#REF!` for a reference that is called like a function.
@@ -256,10 +268,9 @@ impl Model {
                             raw_id
                         })
                         .collect();
-                    let ids = ids
-                        .into_iter()
-                        .map(|id| (id, read_once(&body, id)))
-                        .collect();
+                    // After every id is patched in: a read is found by its id.
+                    let once = read_once(&body, &ids);
+                    let ids = ids.into_iter().zip(once).collect();
                     (ids, body)
                 });
         PreparedLambda {

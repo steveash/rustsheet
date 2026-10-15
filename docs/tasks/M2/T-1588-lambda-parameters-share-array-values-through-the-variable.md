@@ -31,7 +31,11 @@ cloning it. "Exactly once" is decided when the body is prepared (`read_once`, fu
 one read of the parameter in the whole tree, and that read is the body itself or a direct argument of
 VSTACK or HSTACK (through groups), which evaluate each argument once. Every other read still copies,
 since a function may evaluate an argument twice or a nested LAMBDA may read the parameter on each call.
-The tree walk reuses `Node::push_children`, split out of `contains_function`. Timing (release,
+A taken slot holds an error, so a second read would show rather than read 0. One walk
+serves all parameters. The walk reuses `Node::push_children`, split out of `contains_function`.
+Limit: other shapes still copy on each read, such as `IF(x>0,VSTACK(a,x),a)` (two reads), a
+LET-wrapped body and `SORT(VSTACK(a,x))`. Follow-up T-1593. Duplicated lines went from 6369 to
+6336 (`quality/duplication.json` updated by the script). Timing (release,
 `=ROWS(REDUCE(0,SEQUENCE(3000),LAMBDA(a,x,VSTACK(a,x))))`, best of 5 recalcs): 147.1 ms before,
 29.8 ms after. New test `a_parameter_read_once_is_moved_and_one_read_more_often_is_copied`.
 Eval delta: none.

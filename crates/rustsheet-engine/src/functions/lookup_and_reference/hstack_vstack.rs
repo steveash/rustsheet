@@ -16,6 +16,8 @@ impl Model {
     /// Stacks arrays horizontally (side by side) into one array.
     /// All arrays must have the same number of rows, or shorter ones are padded
     /// with #N/A to match the tallest array.
+    ///
+    /// Each argument is evaluated once (see VSTACK: `read_once` relies on it).
     pub(crate) fn fn_hstack(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
@@ -59,6 +61,9 @@ impl Model {
     /// Stacks arrays vertically (one on top of another) into one array.
     /// All arrays must have the same number of columns, or narrower ones are
     /// padded with #N/A to match the widest array.
+    ///
+    /// Each argument is evaluated once: a LAMBDA parameter read here is moved into the stack, not
+    /// copied (`read_once` in functions/logical/lambda.rs relies on it, as for HSTACK).
     pub(crate) fn fn_vstack(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);

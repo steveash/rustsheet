@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::{
     calc_result::{CalcResult, Range},
-    expressions::types::CellReferenceIndex,
+    expressions::{token::Error, types::CellReferenceIndex},
     reference_operators::{
         several_areas, three_d_needs_one_sheet, too_many_areas, Areas, MAX_AREAS,
     },
@@ -68,12 +68,22 @@ impl VariableStack {
     }
 
     /// What `id` holds where a value is wanted: [`Binding::value`], except that a
-    /// [`Binding::ReadOnce`] value is moved out, leaving `EmptyArg` behind.
+    /// [`Binding::ReadOnce`] value is moved out. What it leaves behind is an error, not a value, so
+    /// that a second read (a broken read-once analysis) shows instead of silently reading 0.
     pub(crate) fn read_value(&mut self, id: usize, cell: CellReferenceIndex) -> Option<CalcResult> {
-        match self.bindings.get_mut(&id)? {
-            Binding::ReadOnce(value) => Some(std::mem::replace(value, CalcResult::EmptyArg)),
-            binding => Some(binding.value(cell)),
+        let binding = self.bindings.get_mut(&id)?;
+        if let Binding::ReadOnce(_) = binding {
+            let read_twice = CalcResult::new_error(
+                Error::ERROR,
+                cell,
+                "A LAMBDA parameter read once was read again".to_string(),
+            );
+            if let Binding::ReadOnce(value) = std::mem::replace(binding, Binding::Value(read_twice))
+            {
+                return Some(value);
+            }
         }
+        Some(binding.value(cell))
     }
 
     /// Binds `id`; a union that would pass [`MAX_HELD_AREAS`] is bound to `#VALUE!` instead.
