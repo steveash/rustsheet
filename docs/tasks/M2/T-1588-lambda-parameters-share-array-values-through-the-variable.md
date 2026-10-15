@@ -35,7 +35,7 @@ A taken slot holds an error, so a second read would show rather than read 0. One
 serves all parameters. The walk reuses `Node::push_children`, split out of `contains_function`.
 Limit: other shapes still copy on each read, such as `IF(x>0,VSTACK(a,x),a)` (two reads), a
 LET-wrapped body and `SORT(VSTACK(a,x))`. Follow-up T-1593. Duplicated lines went from 6369 to
-6336 (`quality/duplication.json` updated by the script). Timing (release,
+6358 with current main (`quality/duplication.json` updated by the script). Timing (release,
 `=ROWS(REDUCE(0,SEQUENCE(3000),LAMBDA(a,x,VSTACK(a,x))))`, best of 5 recalcs): 147.1 ms before,
 29.8 ms after. New test `a_parameter_read_once_is_moved_and_one_read_more_often_is_copied`.
 Eval delta: none.
