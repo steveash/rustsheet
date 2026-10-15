@@ -3,7 +3,7 @@ id: T-1358
 title: "MINVERSE (and MDETERM) of a boolean cell is #VALUE!, not a singular-matrix #NUM!"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
