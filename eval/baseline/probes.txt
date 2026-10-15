@@ -216,6 +216,7 @@ C	probes/external-ref-no-link.case.json	10
 C	probes/fact-large-arguments.case.json	18
 C	probes/fact-product-order-sweep.case.json	420
 C	probes/filter-if-empty-array.case.json	12
+C	probes/filterxml-error-arguments.case.json	6
 C	probes/fin-argument-modes.case.json	386
 C	probes/forecast-ets-longer-series.case.json	42
 C	probes/format-doubled-quotes.case.json	11
@@ -474,6 +475,7 @@ C	probes/round-huge-digits-wrap.case.json	265
 C	probes/round-huge-digits.case.json	216
 C	probes/roundup-wrapped-scaling.case.json	480
 C	probes/rows-columns-args.case.json	14
+C	probes/seriessum-x-zero-error-precedence.case.json	27
 C	probes/seriessum-x-zero.case.json	22
 C	probes/sheet-qualified-both-corners.case.json	9
 C	probes/sheet-qualified-corner-order.case.json	13
