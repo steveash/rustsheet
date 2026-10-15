@@ -94,7 +94,7 @@ fn read_external_book(book: &XmlNode) -> ExternalBook {
 /// like any type this does not know.
 fn cached_value(cell_type: Option<&str>, value: &str) -> SpillValue {
     match cell_type {
-        Some("str") => SpillValue::Text(value.to_string()),
+        Some("str") => SpillValue::Text(value.into()),
         Some("b") => SpillValue::Boolean(value == "1"),
         Some("e") => SpillValue::Error(get_error_by_english_name(value).unwrap_or(Error::ERROR)),
         _ => SpillValue::Number(parse_cell_number(Some(value))),
@@ -119,7 +119,7 @@ mod tests {
         assert_eq!(book.defined_names[1].formula, "='Defines'!$A$1");
         assert_eq!(
             book.cells.get(&(0, 1, 1)),
-            Some(&SpillValue::Text("Hello!".to_string()))
+            Some(&SpillValue::Text("Hello!".into()))
         );
         assert_eq!(book.cells.get(&(0, 1, 2)), None);
         assert_eq!(book.cells.get(&(1, 2, 2)), Some(&SpillValue::Number(142.0)));

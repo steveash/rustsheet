@@ -15,10 +15,10 @@ use crate::Model;
 fn linked() -> Model {
     let mut model = new_empty_model();
     let cells = HashMap::from([
-        ((0, 1, 1), SpillValue::Text("Hello!".to_string())),
+        ((0, 1, 1), SpillValue::Text("Hello!".into())),
         ((0, 2, 1), SpillValue::Boolean(true)),
         ((0, 3, 1), SpillValue::Error(Error::DIV)),
-        ((1, 1, 1), SpillValue::Text("Test A1".to_string())),
+        ((1, 1, 1), SpillValue::Text("Test A1".into())),
         ((1, 2, 2), SpillValue::Number(142.0)),
     ]);
     let name = |name: &str, formula: &str, sheet_id| DefinedName {
@@ -258,11 +258,11 @@ fn lifted_index_reads_each_picked_cell_from_the_cache() {
 fn cached_ranges_fixture() -> Model {
     let mut model = new_empty_model();
     let cells = HashMap::from([
-        ((0, 1, 1), SpillValue::Text("Hello!".to_string())),
+        ((0, 1, 1), SpillValue::Text("Hello!".into())),
         ((0, 1, 2), SpillValue::Number(10.0)),
         ((0, 1, 3), SpillValue::Error(Error::NA)),
         ((0, 2, 1), SpillValue::Number(5.0)),
-        ((0, 2, 2), SpillValue::Text("7".to_string())),
+        ((0, 2, 2), SpillValue::Text("7".into())),
         ((0, 2, 3), SpillValue::Number(1.0)),
         ((0, 3, 1), SpillValue::Boolean(true)),
     ]);
