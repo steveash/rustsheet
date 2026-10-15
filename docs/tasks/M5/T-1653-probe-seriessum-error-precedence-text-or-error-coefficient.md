@@ -3,7 +3,7 @@ id: T-1653
 title: "Probe SERIESSUM error precedence: text or error coefficient on a power <= 0 term with x = 0"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
