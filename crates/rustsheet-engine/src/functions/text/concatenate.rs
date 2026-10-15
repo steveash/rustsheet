@@ -4,13 +4,14 @@ use crate::functions::util::array_node_to_calc_result;
 use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
-    cast::{array_node_to_string, truncate_text, StringOrArray, MAX_TEXT_UNITS},
+    cast::{array_node_to_string, array_node_to_text, StringOrArray, MAX_TEXT_UNITS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
     model::Model,
+    text::Text,
 };
 
 /// Excel: CONCAT and TEXTJOIN text over 32767 characters is #CALC!, not truncated
@@ -176,12 +177,13 @@ impl Model {
         }
         let operand_refs: Vec<&TextArg> = operands.iter().collect();
         broadcast_text(cell, &operand_refs, |i, j| {
-            let mut joined = String::new();
+            let mut joined = Text::default();
             for operand in &operands {
-                joined.push_str(&array_node_to_string(operand.elem(i, j))?);
-                truncate_text(&mut joined);
+                let piece = array_node_to_text(operand.elem(i, j))?;
+                joined.push(&piece);
+                joined.truncate_utf16(MAX_TEXT_UNITS);
             }
-            Ok(ArrayNode::String(joined.into()))
+            Ok(ArrayNode::String(joined))
         })
     }
 
@@ -265,7 +267,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<Vec<String>, CalcResult> {
         match self.get_string_or_array(node, cell)? {
-            StringOrArray::String(text) => Ok(vec![text]),
+            StringOrArray::String(text) => Ok(vec![text.into_lossy_string()]),
             StringOrArray::Array(array) => {
                 let mut delimiters = Vec::new();
                 for element in array.iter().flatten() {

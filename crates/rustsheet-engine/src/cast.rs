@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use crate::arithmetic::{bcast_idx, flush_subnormal};
 use crate::external_reference::ExternalArea;
 use crate::formatter::date_text::CurrentYear;
@@ -13,6 +14,7 @@ use crate::{
     formatter::format::parse_formatted_number,
     limits::{check_array_size, check_range_size},
     model::Model,
+    text::Text,
 };
 
 pub(crate) enum NumberOrArray {
@@ -38,7 +40,7 @@ pub(crate) enum ValueOrArray {
 
 /// A scalar string or a 2-D array, used for element-wise text operations.
 pub(crate) enum StringOrArray {
-    String(String),
+    String(Text),
     Array(Vec<Vec<ArrayNode>>),
 }
 
@@ -60,34 +62,6 @@ pub(crate) fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
 /// allocation a concatenation can make (CLAUDE.md directive 5).
 pub(crate) const MAX_TEXT_UNITS: usize = 32767;
 
-/// Truncates `text` to [`MAX_TEXT_UNITS`] UTF-16 code units, as Excel does for CONCATENATE and
-/// `&` (probes/resource-limits C9, C10; probes/concatenate-limit-spill, excel-graph). A character
-/// that would straddle the limit is dropped whole: Excel keeps its lone high surrogate, which a
-/// Rust `String` cannot hold; TODO(T-1483) keeps it.
-pub(crate) fn truncate_text(text: &mut String) {
-    // UTF-8 never takes fewer bytes than UTF-16 takes code units, so short text skips the scan.
-    if text.len() <= MAX_TEXT_UNITS {
-        return;
-    }
-    let mut units = 0;
-    for (byte, ch) in text.char_indices() {
-        units += ch.len_utf16();
-        if units > MAX_TEXT_UNITS {
-            text.truncate(byte);
-            return;
-        }
-    }
-}
-
-/// Concatenates two strings, truncating the result to the cell text limit.
-pub(crate) fn concat_text(a: &str, b: &str) -> String {
-    let mut joined = String::with_capacity(a.len() + b.len());
-    joined.push_str(a);
-    joined.push_str(b);
-    truncate_text(&mut joined);
-    joined
-}
-
 /// Converts a single array element to a string using the same rules as
 /// [`Model::cast_to_string`]. Errors propagate.
 pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
@@ -101,6 +75,15 @@ pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
         }),
         ArrayNode::Empty => Ok("".to_string()),
         ArrayNode::Error(e) => Err(e.clone()),
+    }
+}
+
+/// An array element as text, a lone surrogate kept exactly (the lossy [`array_node_to_string`]
+/// would lose it); a string element is borrowed, not copied. Errors propagate.
+pub(crate) fn array_node_to_text(node: &ArrayNode) -> Result<Cow<'_, Text>, Error> {
+    match node {
+        ArrayNode::String(s) => Ok(Cow::Borrowed(s)),
+        other => array_node_to_string(other).map(|s| Cow::Owned(Text::from(s))),
     }
 }
 
@@ -450,7 +433,7 @@ impl Model {
                 self.evaluate_range(left, right, cell)?,
             )),
             CalcResult::Array(arr) => Ok(StringOrArray::Array(arr)),
-            other => Ok(StringOrArray::String(self.cast_to_string(other, cell)?)),
+            other => Ok(StringOrArray::String(self.cast_to_text(other, cell)?)),
         }
     }
 
@@ -677,6 +660,18 @@ impl Model {
     ) -> Result<String, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
         self.cast_to_string(result, cell)
+    }
+
+    /// [`Model::cast_to_string`] keeping the exact units of text that holds a lone surrogate.
+    pub(crate) fn cast_to_text(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Text, CalcResult> {
+        match self.dereference(result, cell) {
+            CalcResult::String(s) => Ok(s),
+            other => self.cast_to_string(other, cell).map(Text::from),
+        }
     }
 
     pub(crate) fn cast_to_string(

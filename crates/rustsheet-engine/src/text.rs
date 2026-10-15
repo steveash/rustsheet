@@ -31,8 +31,8 @@ use bitcode::{Decode, Encode};
 /// surrogate are each one unit.
 ///
 /// [`Text::slice_utf16`], [`Text::truncate_utf16`] and [`Text::concat`] supersede the lossy
-/// `utf16_slice`, `truncate_text` and `concat_text`, which drop a cut pair whole; the tasks that
-/// wire `Text` in (T-1579, T-1580) delete them.
+/// `utf16_slice`, which drops a cut pair whole; T-1579 deletes it (`truncate_text` and
+/// `concat_text` went with T-1580).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Text {
     /// Well-formed text.
@@ -165,6 +165,13 @@ impl Text {
     /// [`Text::truncate_utf16`].
     #[must_use]
     pub fn concat(a: &Text, b: &Text) -> Text {
+        if let (Text::Utf8(x), Text::Utf8(y)) = (a, b) {
+            // The hot path (`&` of well-formed text): one allocation of the final size.
+            let mut joined = String::with_capacity(x.len() + y.len());
+            joined.push_str(x);
+            joined.push_str(y);
+            return Text::Utf8(joined);
+        }
         let mut joined = a.clone();
         joined.push(b);
         joined

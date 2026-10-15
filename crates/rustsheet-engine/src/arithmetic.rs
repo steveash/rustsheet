@@ -1,6 +1,9 @@
 use crate::{
     calc_result::CalcResult,
-    cast::{array_node_to_string, concat_text, NumberOrArray, StringOrArray, ValueOrArray},
+    cast::{
+        array_node_to_string, array_node_to_text, NumberOrArray, StringOrArray, ValueOrArray,
+        MAX_TEXT_UNITS,
+    },
     expressions::{
         parser::{left_chain, ArrayNode, Node},
         token::{Error, OpCompare, OpProduct, OpSum},
@@ -9,6 +12,7 @@ use crate::{
     functions::util::compare_values,
     limits::check_array_size,
     model::Model,
+    text::Text,
 };
 
 /// Maps an output index `i` back to the source array index, applying Excel's
@@ -804,15 +808,15 @@ impl Model {
 
         // Concatenates two array elements, propagating errors as error nodes.
         let concat_nodes = |a: &ArrayNode, b: &ArrayNode| -> ArrayNode {
-            match (array_node_to_string(a), array_node_to_string(b)) {
-                (Ok(sa), Ok(sb)) => ArrayNode::String(concat_text(&sa, &sb).into()),
+            match (array_node_to_text(a), array_node_to_text(b)) {
+                (Ok(sa), Ok(sb)) => ArrayNode::String(concat_limited(&sa, &sb)),
                 (Err(e), _) | (_, Err(e)) => ArrayNode::Error(e),
             }
         };
 
         match (l, r) {
             (StringOrArray::String(s1), StringOrArray::String(s2)) => {
-                CalcResult::String(concat_text(&s1, &s2).into())
+                CalcResult::String(concat_limited(&s1, &s2))
             }
             (StringOrArray::String(s1), StringOrArray::Array(a2)) => CalcResult::Array(
                 a2.iter()
@@ -935,3 +939,11 @@ mod power_tests;
 
 #[cfg(test)]
 mod bcast_tests;
+
+/// `a & b`, cut to the cell text limit. Excel keeps the high half of a pair the limit cuts
+/// (probes/concatenate-limit-spill E8, E9, E11; docs/excel-semantics/coercion.md).
+fn concat_limited(a: &Text, b: &Text) -> Text {
+    let mut joined = Text::concat(a, b);
+    joined.truncate_utf16(MAX_TEXT_UNITS);
+    joined
+}
