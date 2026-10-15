@@ -270,6 +270,25 @@ cache `Uses` A1 the empty string `t="str"` `<v></v>`, B1 18, A2 12, B2 TRUE, A3 
   (`GCD(…!$A$5:$A$9)` 30, LCM 0);
 - an area taller than the array bound reads its cached cells: `SUM([1]Uses!$A$2:$B$1048576)` 42,
   COUNT 2, MAX 30, AVERAGEA 8.6.
+Lookups, names and spans over the cache (T-1609; fixtures/external-link-cached-lookups and
+fixtures/external-link-cached-3d-span, excel-graph, 2026-10-15, cache as in T-1460 above):
+- lookups read a partly cached range with its uncached cells blank: `VLOOKUP("hello!",…$A$1:$C$3,2,FALSE)`
+  10 (case-insensitive), `VLOOKUP(5,…$A$1:$D$9,4,FALSE)` 0 (uncached D2), not found `#N/A`,
+  `HLOOKUP(10,…$A$1:$F$4,2,FALSE)` "7", `MATCH(1,…$C$1:$C$5,0)` 2 (past the cached `#N/A`),
+  `MATCH(100,…$B$1:$B$9)` 1, `XLOOKUP` "7" and its default "none", `XMATCH(TRUE,…)` 3,
+  `LOOKUP(10,…$B$1:$B$5,…$A$1:$A$5)` "Hello!", `INDEX(…$A$1:$D$5,5,4)` 0, INDEX/MATCH over
+  `[1]!NR_Range` "7", `MATCH("*o!",…,0)` 1 (wildcards), and `SUMPRODUCT((…$A$1:$A$9="")*1)` 6 (the
+  uncached A4:A9 equal ""); a relative `[1]Uses!A1` reads "Hello!";
+- sheet and name lookups ignore case: `[1]!nr_global_b2` 142, `[1]uses!$B$1` 10, `[1]defines!nr_to_a1`
+  "Test A1";
+- a name the cache does not hold (`[1]!NoSuchName`), a sheet-scoped name read without its sheet
+  (`[1]!NR_To_A1`), a workbook-scoped name read through a sheet (`[1]Uses!NR_Global_B2`) and one
+  cell of a sheet the cache does not hold (`[1]Nope!$A$1`) are `#BLOCKED!` (ERROR.TYPE 11), yet
+  `ISREF([1]Nope!$A$1)` is TRUE;
+- a 3-D span of the cached sheets aggregates over them: `SUM([1]Uses:Defines!$B$2)` 142,
+  `SUM(…!$A$1:$B$2)` 157, COUNT 4, COUNTA 9, MAX 142, the span reversed (`[1]Defines:Uses!`) the
+  same; but `ISREF([1]Uses:Defines!$A$1)` is FALSE, ERROR.TYPE of the bare span 4 (`#REF!`) and
+  ROWS `#VALUE!`. Ours does not parse the span (`#ERROR!`; T-1654).
 A workbook whose formulas reference a sheet with `refreshError="1"` (`[1]'56737'!$A$1:$B$2`) does
 not open in Excel for the web ("unsupportedWorkbook"), so what that reads is a desktop question.
 Engine: a cached area carries its cache (`external_links.rs`); aggregates and RANK read its cells
@@ -288,7 +307,7 @@ cached one inside an aggregate's argument (the engine reads the picked cell as a
 the same way at parse time, so ISREF and a rename see them. A sheet-qualified workbook-scoped name
 (`Sheet!GlobalName`), an unknown `Sheet!Nope` (engine: `#NAME?`) and a missing sheet are UNVERIFIED (T-1459).
 Status: VERIFIED (Excel-cached cells above); the cases listed as unprobed are UNVERIFIED
-Tasks: T-1382, T-1459, T-1460, T-1526, T-1550
+Tasks: T-1382, T-1459, T-1460, T-1526, T-1550, T-1609, T-1654
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in

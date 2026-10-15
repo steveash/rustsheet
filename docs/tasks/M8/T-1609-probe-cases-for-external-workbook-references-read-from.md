@@ -3,7 +3,7 @@ id: T-1609
 title: "Probe cases for external workbook references read from cached externalLink values"
 milestone: M8
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -38,3 +38,12 @@ suites the milestone exit criteria name that does not exist yet.
 
 ## Out of scope
 - Opening or updating the linked workbook.
+
+## Outcome
+Two excel-graph fixtures, 34 probe cells (raw-XML externalLink cases are fixtures, one workbook per
+upload-risk group): fixtures/external-link-cached-lookups (24 cells: lookups over partly cached
+ranges, name and sheet case, uncached names and sheets, name scopes, all pass in ours) and
+fixtures/external-link-cached-3d-span (10 cells: 3-D spans of cached sheets; 9 fail, ours does not
+parse the span, filed as T-1654). Excel for the web kept the cache on upload. Findings in
+references.md "Cached values of a linked workbook". Eval: fixtures +34 cells, 25 pass, 9 new known
+failures (T-1654); 0 regressions.
