@@ -640,6 +640,15 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
+        self.cast_to_number_no_bools(result, cell)
+    }
+
+    /// [`Self::get_number_no_bools`] for an argument that is already evaluated.
+    pub(crate) fn cast_to_number_no_bools(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
         let result = self.dereference(result, cell);
         if matches!(result, CalcResult::Boolean(_)) {
             return Err(CalcResult::new_error(

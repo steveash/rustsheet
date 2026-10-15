@@ -586,7 +586,7 @@ C	probes/variance-underflow.case.json	36
 C	probes/vlookup-array-index-range-lookup.case.json	155
 C	probes/vlookup-array-lookup-value.case.json	35
 C	probes/vlookup-error-arg-lifting-range-lookup.case.json	22
-C	probes/volatile-invariant.case.json	55
+C	probes/volatile-invariant.case.json	56
 C	probes/weeknum-1900-later.case.json	23
 C	probes/weeknum-invalid-type.case.json	8
 C	probes/weeknum-serial-0.case.json	57
@@ -6115,13 +6115,6 @@ F	probes/trig-huge-argument.case.json	Sheet1!A29
 F	probes/trig-huge-argument.case.json	Sheet1!A43
 F	probes/trig-huge-argument.case.json	Sheet1!A57
 F	probes/trig-huge-argument.case.json	Sheet1!A71
-F	probes/volatile-invariant.case.json	Calc!A12
-F	probes/volatile-invariant.case.json	Calc!A13
-F	probes/volatile-invariant.case.json	Calc!A2
-F	probes/volatile-invariant.case.json	Calc!A8
-F	probes/volatile-invariant.case.json	Calc!B10
-F	probes/volatile-invariant.case.json	Calc!B18
-F	probes/volatile-invariant.case.json	Calc!B9
 F	probes/volatile-invariant.case.json	Calc!F1
 F	probes/volatile-invariant.case.json	Calc!F2
 F	probes/volatile-invariant.case.json	Calc!F3
