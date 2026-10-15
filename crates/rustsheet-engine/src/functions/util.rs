@@ -15,6 +15,9 @@ use crate::{
 };
 
 pub(crate) mod aggregate_args;
+pub(crate) mod collation;
+
+use collation::cmp_text_excel;
 
 /// The number a referenced cell gives an aggregate: numbers count, booleans, text and empty cells
 /// are skipped (SPEC-0009 `CellNumbers::Numbers`).
@@ -69,26 +72,6 @@ fn error_sort_rank(e: &Error) -> u8 {
     }
 }
 
-/// Orders two (already case-folded) texts the way Excel's `<`/`>` and `">"` criteria do: by
-/// character, with CHAR(160) right after the space and before every printable character, where code
-/// points would put it after the letters. `" 1" < CHAR(160)&"1" < "0"`, `"1"&CHAR(160) > "1"`
-/// (probes/text-order-nbsp-space, excel-graph, T-0244). Equal texts stay equal: only CHAR(160)
-/// moves. The rest of Excel's collation (`"-1" > "0"`, `"x" >= "ü"`) is T-0220.
-pub(crate) fn cmp_text_excel(left: &str, right: &str) -> std::cmp::Ordering {
-    left.chars()
-        .map(text_order_key)
-        .cmp(right.chars().map(text_order_key))
-}
-
-fn text_order_key(c: char) -> u64 {
-    const SPACE_KEY: u64 = 0x20 * 2;
-    if c == '\u{a0}' {
-        SPACE_KEY + 1
-    } else {
-        u64::from(u32::from(c)) * 2
-    }
-}
-
 // In Excel there are two ways of comparing cell values.
 // The old school comparison valid in formulas like D3 < D4 or HLOOKUP,... cast empty cells into empty strings or 0
 // For the new formulas like XLOOKUP or SORT an empty cell is always larger than anything else.
@@ -121,9 +104,8 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
         (CalcResult::Number(_value1), CalcResult::String(_value2)) => -1,
         (CalcResult::Number(_value1), CalcResult::Boolean(_value2)) => -1,
         (CalcResult::String(value1), CalcResult::String(value2)) => {
-            let value1 = value1.to_uppercase();
-            let value2 = value2.to_uppercase();
-            match cmp_text_excel(&value1, &value2) {
+            // Case-insensitive, accent- and hyphen-aware (T-0220).
+            match cmp_text_excel(value1, value2) {
                 std::cmp::Ordering::Less => -1,
                 std::cmp::Ordering::Equal => 0,
                 std::cmp::Ordering::Greater => 1,
