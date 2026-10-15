@@ -3,7 +3,7 @@ id: T-0958
 title: "T-0918 code follow-ups: is_finite in rept_element, fold the two R1C1 reference parsers"
 milestone: M9
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
