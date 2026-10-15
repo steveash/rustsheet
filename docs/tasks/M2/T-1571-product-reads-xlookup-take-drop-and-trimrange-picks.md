@@ -3,7 +3,7 @@ id: T-1571
 title: "PRODUCT reads an XLOOKUP pick as a reference like SUM"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/aggregate-picked-direct-a-variants D1 (ours: #VALUE!; the TAKE and DROP c
 
 ## Out of scope
 - Cases the probe did not cover.
+
+## Outcome
+PRODUCT reads its arguments with `evaluate_aggregate_arg` (as SUM does), so an XLOOKUP pick is a reference and a text cell is skipped. probes/aggregate-picked-direct-a-variants D1 now passes; probes known failures 5585 -> 5584, no regressions.
