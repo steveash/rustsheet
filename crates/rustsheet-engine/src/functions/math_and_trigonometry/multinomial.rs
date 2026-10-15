@@ -261,14 +261,9 @@ impl Model {
         // only sets this flag and `#NUM!` is returned after the last argument.
         let negative_seen = std::cell::Cell::new(false);
 
-        for arg in args {
+        for (index, arg) in args.iter().enumerate() {
             let evaluated = self.evaluate_node_in_context(arg, cell);
             let evaluated = numeric_text_as_number(self, evaluated);
-            // Only a text or boolean range cell is evidenced to beat the negative; typed
-            // arguments, errors and array elements after one keep the immediate `#NUM!`.
-            if negative_seen.get() && !matches!(evaluated, CalcResult::Range { .. }) {
-                return negative_error(cell);
-            }
             match evaluated {
                 CalcResult::Number(v) => {
                     if v < 0.0 {
@@ -283,31 +278,25 @@ impl Model {
                     if let Err(error) = self.for_each_cell_or_error_in_areas(
                         &[Range { left, right }],
                         cell,
-                        |model, value| {
-                            match numeric_text_as_number(model, value) {
-                                // An error cell after a negative keeps the immediate `#NUM!`.
-                                CalcResult::Error { .. } if negative_seen.get() => {
-                                    Err(negative_error(cell))
-                                }
-                                error @ CalcResult::Error { .. } => Err(error),
-                                CalcResult::Number(v) if v < 0.0 => {
-                                    negative_seen.set(true);
-                                    Ok(())
-                                }
-                                CalcResult::Number(v) => {
-                                    values.push(v.trunc() as u64);
-                                    Ok(())
-                                }
-                                CalcResult::EmptyCell | CalcResult::EmptyArg => {
-                                    values.push(0);
-                                    Ok(())
-                                }
-                                _ => Err(CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "MULTINOMIAL requires numeric values".to_string(),
-                                )),
+                        |model, value| match numeric_text_as_number(model, value) {
+                            error @ CalcResult::Error { .. } => Err(error),
+                            CalcResult::Number(v) if v < 0.0 => {
+                                negative_seen.set(true);
+                                Ok(())
                             }
+                            CalcResult::Number(v) => {
+                                values.push(v.trunc() as u64);
+                                Ok(())
+                            }
+                            CalcResult::EmptyCell | CalcResult::EmptyArg => {
+                                values.push(0);
+                                Ok(())
+                            }
+                            _ => Err(CalcResult::new_error(
+                                Error::VALUE,
+                                cell,
+                                "MULTINOMIAL requires numeric values".to_string(),
+                            )),
                         },
                     ) {
                         return error;
@@ -316,9 +305,6 @@ impl Model {
                 CalcResult::Array(arr) => {
                     for row in arr {
                         for node in row {
-                            if negative_seen.get() {
-                                return negative_error(cell);
-                            }
                             match node {
                                 ArrayNode::Number(v) => {
                                     if v < 0.0 {
@@ -346,7 +332,17 @@ impl Model {
                         }
                     }
                 }
-                CalcResult::EmptyCell | CalcResult::EmptyArg => values.push(0),
+                // Excel: an omitted first argument is `#N/A`, a later one is skipped
+                // (probes/gcd-lcm-multinomial-negative-precedence E51:E71).
+                CalcResult::EmptyArg if index == 0 => {
+                    return CalcResult::new_error(
+                        Error::NA,
+                        cell,
+                        "MULTINOMIAL: empty first argument".to_string(),
+                    )
+                }
+                CalcResult::EmptyArg => {}
+                CalcResult::EmptyCell => values.push(0),
                 err @ CalcResult::Error { .. } => return err,
                 _ => {
                     return CalcResult::new_error(
