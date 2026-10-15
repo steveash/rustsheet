@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1612: CONCATENATE arguments after the 32,767-unit cut change nothing, and an error argument after the cut still wins (T-1580). Cut inside a surrogate pair (the lone high surrogate itself is T-1581's), at a character boundary, after the cut with several arguments, and two errors.",
+  "tags": [
+    "M2",
+    "text",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LEN(CONCATENATE(REPT(\"a\",32766),\"😀\",\"zz\",1))",
+        "A2": "=CONCATENATE(REPT(\"a\",32766),\"😀\",NA())",
+        "A4": "=LEN(CONCATENATE(REPT(\"a\",32767),\"zz\",1,TRUE))",
+        "A5": "=CONCATENATE(REPT(\"a\",32767),\"zz\",NA())",
+        "A6": "=CONCATENATE(REPT(\"a\",32767),1/0,NA())",
+        "A7": "=CONCATENATE(REPT(\"a\",32767),NA(),1/0)",
+        "A8": "=CONCATENATE(NA(),REPT(\"a\",32767),1/0)",
+        "A9": "=RIGHT(CONCATENATE(REPT(\"a\",32767),\"zz\",1),1)",
+        "A10": "=ISERROR(CONCATENATE(REPT(\"a\",32766),\"😀\",NA()))"
+      }
+    }
+  ]
+}

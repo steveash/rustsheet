@@ -187,6 +187,12 @@ Evidence: probes/concatenate-limit-spill E8–E11 (excel-graph, 2026-10-06, T-02
 Ours: `&` and CONCATENATE truncate with `Text::truncate_utf16`, which keeps the high half of a cut
 pair (E8, E9, E11 pass since T-1580). Decision 0033 (drop the pair whole) is superseded by
 decision 0052. E10 (UNICODE of the lone half) waits for T-1581. SPEC-0010.
+Arguments after the cut change nothing but an error still wins (probes/concatenate-after-cut, excel-graph,
+2026-10-15, T-1612; the engine matches all nine cells): `LEN(CONCATENATE(REPT("a",32766),"😀","zz",1))` and
+`LEN(CONCATENATE(REPT("a",32767),"zz",1,TRUE))` are 32767 and the kept text still ends in "a" (A9); an error
+argument after the cut is the result (`#N/A` for `...,"😀",NA())` and `...,"zz",NA())`). Among several errors the
+first argument's wins, wherever the cut falls (`...,1/0,NA())` is `#DIV/0!`, `...,NA(),1/0)` and
+`CONCATENATE(NA(),REPT("a",32767),1/0)` are `#N/A`).
 Status: VERIFIED
 Implemented in: `concat_limited` in arithmetic.rs (`&`), `fn_concatenate` in
 functions/text/concatenate.rs, `Text::truncate_utf16` in text.rs
