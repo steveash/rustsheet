@@ -17,7 +17,7 @@ use crate::{
 pub(crate) mod aggregate_args;
 pub(crate) mod collation;
 
-use collation::{cmp_text, cmp_text_excel};
+use collation::cmp_text;
 
 /// The number a referenced cell gives an aggregate: numbers count, booleans, text and empty cells
 /// are skipped (SPEC-0009 `CellNumbers::Numbers`).
