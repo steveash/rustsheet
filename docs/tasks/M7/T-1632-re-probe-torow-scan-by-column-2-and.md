@@ -1,0 +1,30 @@
+---
+id: T-1632
+title: "Re-probe TOROW scan_by_column 2 and WRAPROWS boolean wrap_count without a spill collision"
+milestone: M7
+lane: research
+status: todo
+priority: P3
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+Excel evidence for `TOROW(A1:C3,0,2)` (a scan_by_column of 2) and `WRAPROWS(B5:H5,TRUE)` that tests the
+function and not the sheet layout.
+
+## Context
+Found in review of T-1627: probes/dynamic-array-reshape-and-isomitted B41 and C44 are `#SPILL!` in Excel
+only because their results run into neighbouring cells (C41/D41, C45), so they say nothing about how
+the functions treat those arguments. Add a new probe case (do not edit the existing one; decision 0043)
+that wraps both forms in TEXTJOIN and ROWS/COLUMNS, fill it with the oracle, and record the result
+in docs/excel-semantics/arrays.md ("WRAPROWS and WRAPCOLS" section).
+
+## Acceptance criteria
+- [ ] A new probe case with excel-graph values for both forms, shape-stable (TEXTJOIN, ROWS, COLUMNS).
+- [ ] The finding recorded in docs/excel-semantics/arrays.md; a fix task filed for any mismatch.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- Engine fixes (filed as tasks).
