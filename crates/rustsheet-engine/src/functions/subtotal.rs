@@ -1,4 +1,4 @@
-use crate::arithmetic::flush_subnormal;
+use crate::arithmetic::{extended_quotient, flush_subnormal};
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -434,7 +434,8 @@ impl Model {
                 message: "Division by 0!".to_string(),
             };
         }
-        CalcResult::finite_number_or_num(flush_subnormal(result / (l as f64)), cell)
+        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1636).
+        CalcResult::finite_number_or_num(flush_subnormal(extended_quotient(result, l as f64)), cell)
     }
 
     fn subtotal_sum(
