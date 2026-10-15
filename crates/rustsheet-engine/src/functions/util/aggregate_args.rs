@@ -30,32 +30,36 @@ pub(crate) enum ItemSource {
     ArrayElement,
 }
 
-/// Where an error inside an array value ranks.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ArrayErrorRank {
-    /// An array error is a direct error: MIN, MAX and AVERAGE today (UNVERIFIED, T-1439).
-    Direct,
-    /// An array error ranks with referenced errors: SUM (probes/aggregate-error-precedence C50,
-    /// C53–C55, C61, C77); PRODUCT does too (probes/product-array-2d-and-scalar A7–A17, T-1287).
-    Referenced,
-}
-
 /// How the walker orders the errors it meets.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ErrorRule {
     /// A direct error returns at once. A referenced error is held and the leftmost wins, so a
-    /// direct error to its right still beats it.
-    Ranked {
-        /// Where an error inside an array ranks.
-        array_errors: ArrayErrorRank,
-    },
+    /// direct error to its right still beats it. An error inside an array ranks with the
+    /// referenced errors (SUM: probes/aggregate-error-precedence C50, C53–C55, C61, C77; PRODUCT:
+    /// probes/product-array-2d-and-scalar A7–A17, T-1287; MIN, MAX, AVERAGE, MEDIAN:
+    /// probes/aggregate-array-error-vs-ref-error, T-1615).
+    Ranked,
     /// The first error in argument order returns at once (DEVSQ, AVEDEV, SUMSQ).
     First,
+    /// Errors are items for the visitor, which counts or ignores them (COUNT ignores them, COUNTA
+    /// counts them; syntax.md). Only a walk-budget error returns.
+    Items,
+}
+
+/// How the walker reads an argument.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ArgReading {
+    /// `evaluate_aggregate_arg`: picked references, cached blanks skipped (SUM, AVERAGE, MIN, …).
+    Aggregate,
+    /// `evaluate_picked_reference_arg`: cached blanks kept (COUNTA).
+    PickedKeepingBlanks,
 }
 
 /// What sets one consumer's argument walk apart (SPEC-0009, "Consumer mapping").
 #[derive(Clone, Copy)]
 pub(crate) struct AggregatePolicy {
+    /// How an argument is read.
+    pub(crate) reading: ArgReading,
     /// How errors are ordered.
     pub(crate) errors: ErrorRule,
     /// DEVSQ, AVEDEV, SUMSQ: an empty argument is not an item (TODO(T-0236)).
@@ -73,6 +77,10 @@ pub(crate) enum DirectNumbers {
     /// A number, boolean or text; text that does not cast is `#VALUE!` and an empty argument is
     /// skipped (AVERAGEA, MAXA, MINA).
     CastA,
+    /// Only a number counts; booleans, text and the rest are skipped (VARA, VARPA, STDEVA and
+    /// STDEVPA, which ignore them "for now"; Excel coerces them, so this is a known failure owned by
+    /// T-1291: probes/stat-argument-modes Sheet1!H69, H72, H75, H78).
+    NumbersOnly,
 }
 
 /// How a referenced cell (and, except under [`DirectNumbers::Cast`], a
@@ -105,6 +113,17 @@ pub(crate) struct NumberRules {
     pub(crate) array: ArrayNumbers,
 }
 
+impl NumberRules {
+    /// SUM's coercion, which MIN, MAX and PRODUCT share (probes/min-max-value-args,
+    /// docs/excel-semantics/coercion.md): every direct value is cast; referenced cells and arrays
+    /// give only their numbers.
+    pub(crate) const SUM_LIKE: NumberRules = NumberRules {
+        direct: DirectNumbers::Cast,
+        cells: CellNumbers::Numbers,
+        array: ArrayNumbers::Numbers,
+    };
+}
+
 /// Error-precedence state across one call's arguments.
 pub(crate) struct AggregateWalk {
     policy: AggregatePolicy,
@@ -126,13 +145,13 @@ impl AggregateWalk {
     /// under `First` it returns at once.
     pub(crate) fn referenced_error(&mut self, error: CalcResult) -> Result<(), CalcResult> {
         match self.policy.errors {
-            ErrorRule::Ranked { .. } => {
+            ErrorRule::Ranked => {
                 if self.held.is_none() {
                     self.held = Some(error);
                 }
                 Ok(())
             }
-            ErrorRule::First => Err(error),
+            ErrorRule::First | ErrorRule::Items => Err(error),
         }
     }
 
@@ -155,15 +174,13 @@ impl AggregateWalk {
             message: "Error in array".to_string(),
         };
         match self.policy.errors {
-            ErrorRule::Ranked {
-                array_errors: ArrayErrorRank::Referenced,
-            } => {
+            ErrorRule::Ranked => {
                 if self.held.is_none() {
                     self.held = Some(value());
                 }
                 Ok(())
             }
-            _ => Err(value()),
+            ErrorRule::First | ErrorRule::Items => Err(value()),
         }
     }
 }
@@ -220,7 +237,30 @@ impl Model {
             return Ok(());
         }
         // References (also via IF, INDEX, XLOOKUP, TAKE …) arrive as ranges.
-        match self.evaluate_aggregate_arg(arg, cell) {
+        let read = match walk.policy.reading {
+            ArgReading::Aggregate => self.evaluate_aggregate_arg(arg, cell),
+            ArgReading::PickedKeepingBlanks => self.evaluate_picked_reference_arg(arg, cell),
+        };
+        let is_reference = matches!(arg.ungrouped(), Node::ReferenceKind { .. });
+        self.walk_aggregate_read(read, is_reference, cell, walk, visit)
+    }
+
+    /// One argument already read, for a consumer that picks its argument itself (COUNTA);
+    /// `is_reference` says the argument is a `Node::ReferenceKind`.
+    #[inline]
+    pub(crate) fn walk_aggregate_read<F>(
+        &mut self,
+        read: RefArg,
+        is_reference: bool,
+        cell: CellReferenceIndex,
+        walk: &mut AggregateWalk,
+        visit: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
+    {
+        let items = walk.policy.errors == ErrorRule::Items;
+        match read {
             RefArg::Ranges(areas) => {
                 // Once an error is held, later references are not read at all, as before.
                 if walk.held.is_some() {
@@ -235,7 +275,7 @@ impl Model {
                         cell,
                         |model, value| match value {
                             CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(()),
-                            error @ CalcResult::Error { .. } => Err(error),
+                            error @ CalcResult::Error { .. } if !items => Err(error),
                             value => {
                                 let result = visit(model, ItemSource::ReferencedCell, value);
                                 visitor_failed = result.is_err();
@@ -254,16 +294,20 @@ impl Model {
                 for node in array.into_iter().flatten() {
                     match array_item(node) {
                         Ok(value) => visit(self, ItemSource::ArrayElement, value)?,
-                        // Under `Referenced` only the first array or referenced error is held;
-                        // under `Direct` an array error beats a held one.
+                        // Only the first array or referenced error is held (`Ranked`).
+                        Err(error) if items => visit(
+                            self,
+                            ItemSource::ArrayElement,
+                            CalcResult::new_error(error, cell, String::new()),
+                        )?,
                         Err(error) => walk.array_error(error, cell)?,
                     }
                 }
                 Ok(())
             }
-            RefArg::Value(error @ CalcResult::Error { .. }) => Err(error),
+            RefArg::Value(error @ CalcResult::Error { .. }) if !items => Err(error),
             RefArg::Value(value) => {
-                let source = if matches!(arg.ungrouped(), Node::ReferenceKind { .. }) {
+                let source = if is_reference {
                     ItemSource::ReferenceValue
                 } else {
                     ItemSource::Direct
@@ -346,6 +390,8 @@ impl Model {
             (DirectNumbers::Cast, value) => {
                 self.cast_aggregate_arg_to_number(value, cell).map(Some)
             }
+            (DirectNumbers::NumbersOnly, CalcResult::Number(n)) => Ok(Some(n)),
+            (DirectNumbers::NumbersOnly, _) => Ok(None),
             (_, CalcResult::Number(n)) => Ok(Some(n)),
             (_, CalcResult::Boolean(b)) => Ok(Some(if b { 1.0 } else { 0.0 })),
             // An empty argument (`AVERAGE(5,)`) counts as 0 (probes/average-value-args F2, F6,
@@ -383,9 +429,8 @@ mod tests {
     use crate::test::util::new_empty_model;
 
     const RANKED: AggregatePolicy = AggregatePolicy {
-        errors: ErrorRule::Ranked {
-            array_errors: ArrayErrorRank::Direct,
-        },
+        reading: ArgReading::Aggregate,
+        errors: ErrorRule::Ranked,
         skip_empty_args: false,
     };
 
@@ -462,32 +507,20 @@ mod tests {
     }
 
     #[test]
-    fn array_errors_rank_by_policy() {
+    fn array_errors_rank_with_referenced_errors_under_ranked() {
         let cells = [("A1", "=NA()")];
-        let referenced = AggregatePolicy {
-            errors: ErrorRule::Ranked {
-                array_errors: ArrayErrorRank::Referenced,
-            },
-            skip_empty_args: false,
-        };
         assert_eq!(
-            items(&cells, "=SUM({1,#DIV/0!},A1)", referenced),
+            items(&cells, "=SUM({1,#DIV/0!},A1)", RANKED),
             err("#DIV/0!")
         );
-        assert_eq!(
-            items(&cells, "=SUM(A1,{1,#DIV/0!})", referenced),
-            err("#N/A")
-        );
-        assert_eq!(
-            items(&cells, "=SUM(A1,{1,#DIV/0!})", RANKED),
-            err("#DIV/0!")
-        );
+        assert_eq!(items(&cells, "=SUM(A1,{1,#DIV/0!})", RANKED), err("#N/A"));
     }
 
     #[test]
     fn first_returns_the_first_error_and_skip_empty_drops_empty_args() {
         let cells = [("A1", "=NA()")];
         let first = AggregatePolicy {
+            reading: ArgReading::Aggregate,
             errors: ErrorRule::First,
             skip_empty_args: true,
         };
@@ -510,6 +543,53 @@ mod tests {
                 ItemSource::Direct,
             ])
         );
+    }
+
+    #[test]
+    fn items_rule_hands_errors_on_as_items() {
+        // COUNT and COUNTA see error cells, direct errors and array errors as items; nothing
+        // is held or returned.
+        let policy = AggregatePolicy {
+            reading: ArgReading::Aggregate,
+            errors: ErrorRule::Items,
+            skip_empty_args: false,
+        };
+        let cells = [("A1", "=NA()"), ("A2", "3")];
+        assert_eq!(
+            items(&cells, "=COUNT(A1:A2,1/0,{#N/A,2})", policy),
+            Ok(vec![
+                ItemSource::ReferencedCell,
+                ItemSource::ReferencedCell,
+                ItemSource::Direct,
+                ItemSource::ArrayElement,
+                ItemSource::ArrayElement,
+            ])
+        );
+    }
+
+    #[test]
+    fn numbers_only_skips_direct_booleans_and_text_but_coerces_cells() {
+        // VARA's rules: a direct boolean and direct text are skipped, an array keeps its numbers,
+        // and a referenced cell coerces (text 0, TRUE 1).
+        let policy = AggregatePolicy {
+            reading: ArgReading::Aggregate,
+            errors: ErrorRule::First,
+            skip_empty_args: false,
+        };
+        let rules = NumberRules {
+            direct: DirectNumbers::NumbersOnly,
+            cells: CellNumbers::CoercedA,
+            array: ArrayNumbers::Numbers,
+        };
+        let (mut model, args) = setup(
+            &[("A1", "x"), ("A2", "TRUE")],
+            "=VARA(5,TRUE,\"7\",{2,\"y\",FALSE},A1:A2)",
+        );
+        let mut seen = Vec::new();
+        let walked =
+            model.for_each_aggregate_number(&args, Z1, policy, rules, |number| seen.push(number));
+        assert!(walked.is_ok());
+        assert_eq!(seen, vec![5.0, 2.0, 0.0, 1.0]);
     }
 
     #[test]

@@ -382,11 +382,7 @@ impl Model {
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
-            } => self.index_impl(
-                args,
-                cell,
-                crate::functions::lookup_and_reference::IndexForm::Reference,
-            ),
+            } => self.index_reference(args, cell),
             Node::FunctionKind {
                 kind: Function::Hlookup,
                 args,
@@ -751,26 +747,6 @@ impl Model {
     {
         self.for_each_cell_in_areas(areas, cell, |_, value| {
             if let Some(value) = cell_number(&value) {
-                f(value);
-            }
-            Ok(())
-        })
-    }
-
-    /// Like [`Self::for_each_number_in_areas`] but with the coercion of the
-    /// *A functions (VARA, STDEVA, ...): text counts as 0, TRUE/FALSE as 1/0,
-    /// empty cells are skipped.
-    pub(crate) fn for_each_coerced_number_in_areas<F>(
-        &mut self,
-        areas: &[Range],
-        cell: CellReferenceIndex,
-        mut f: F,
-    ) -> Result<(), CalcResult>
-    where
-        F: FnMut(f64),
-    {
-        self.for_each_cell_in_areas(areas, cell, |_, value| {
-            if let Some(value) = coerced_cell_number(&value) {
                 f(value);
             }
             Ok(())
