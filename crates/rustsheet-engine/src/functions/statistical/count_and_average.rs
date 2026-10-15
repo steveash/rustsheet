@@ -171,7 +171,8 @@ impl Model {
         // (`AVERAGEA([1]Uses!$A$1:$B$3)` is 3.2; fixtures/external-link-cached-ranges Refs!B53).
         if let Err(error) = self.for_each_value_a(args, ArrayNumbers::TextZero, cell, |value| {
             count += 1.0;
-            sum += value;
+            // Rounds each addition twice like AVERAGE's (probes-numeric/double-rounding-accumulators).
+            sum = extended_sum(sum, value);
         }) {
             return error;
         }
