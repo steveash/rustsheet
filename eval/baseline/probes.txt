@@ -6026,12 +6026,6 @@ F	probes/text-lone-surrogates.case.json	Sheet1!A55
 F	probes/text-lone-surrogates.case.json	Sheet1!A56
 F	probes/text-lone-surrogates.case.json	Sheet1!A57
 F	probes/text-surrogate-positions.case.json	Sheet1!A38
-F	probes/trig-huge-argument.case.json	Sheet1!A1
-F	probes/trig-huge-argument.case.json	Sheet1!A15
-F	probes/trig-huge-argument.case.json	Sheet1!A29
-F	probes/trig-huge-argument.case.json	Sheet1!A43
-F	probes/trig-huge-argument.case.json	Sheet1!A57
-F	probes/trig-huge-argument.case.json	Sheet1!A71
 F	probes/vara-single-ref-picked.case.json	S!D37
 F	probes/vara-single-ref-picked.case.json	S!D38
 F	probes/vara-single-ref-picked.case.json	S!D39

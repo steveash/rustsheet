@@ -1,3 +1,4 @@
+use super::trig::{excel_sin_cos, excel_tan};
 use crate::arithmetic::{divide, extended_sqrt, flush_subnormal, power};
 use crate::cast::NumberOrArray;
 use crate::constants::EXCEL_PRECISION;
@@ -27,32 +28,6 @@ fn trig_arg(f: f64) -> Result<f64, Error> {
     } else {
         Ok(f)
     }
-}
-
-/// `π - π₆₄`, where `π₆₄` is π rounded to a 64-bit significand (the x87 `FLDPI` constant).
-const X87_PI_ERROR: f64 = -5.016_557_612_668_332e-20;
-
-/// How far Excel's argument reduction moves `x`: Excel reduces by multiples of `π₆₄`, not π, so
-/// its SIN(x) is the true sin(x + kδ) with k = round(x/π) and δ = `X87_PI_ERROR`. This reproduces
-/// every `f(2^27-1)` cell bit for bit (SIN(2^27-1) is -0.9559933287726706, libm's
-/// -0.9559933287732995; probes/trig-huge-argument A1-A71, docs/excel-semantics/numbers.md "Trig
-/// of a huge angle"). The shift is below 2.2e-12 for |x| < 2^27, so first-order corrections
-/// (`sin + e·cos`, ...) are exact to the last bit, and small angles keep libm's value.
-fn x87_reduction_shift(x: f64) -> f64 {
-    (x / PI).round() * X87_PI_ERROR
-}
-
-/// Excel's sine and cosine of `x` (see [`x87_reduction_shift`]).
-fn excel_sin_cos(x: f64) -> (f64, f64) {
-    let e = x87_reduction_shift(x);
-    let (sin, cos) = x.sin_cos();
-    (sin + e * cos, cos - e * sin)
-}
-
-/// Excel's tangent of `x`: tan(x + e) = tan x + e·(1 + tan² x) (see [`x87_reduction_shift`]).
-fn excel_tan(x: f64) -> f64 {
-    let t = x.tan();
-    t + x87_reduction_shift(x) * (1.0 + t * t)
 }
 
 /// MIN and MAX: a referenced-cell error ranks below a direct scalar error; the leftmost wins
@@ -589,8 +564,8 @@ impl Model {
     } else if f == 0.0 {
         Err(Error::DIV)
     } else {
-        let (sin, cos) = excel_sin_cos(f);
-        Ok(cos / sin)
+        // 1/TAN, not COS/SIN (probes-numeric/m9-trig-reduction F6-F81).
+        Ok(1.0 / excel_tan(f))
     });
     single_number_fn!(fn_coth, |f: f64| if f == 0.0 {
         Err(Error::DIV)
