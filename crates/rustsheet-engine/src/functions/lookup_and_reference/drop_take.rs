@@ -58,7 +58,8 @@ impl Model {
 
     /// TAKE or DROP; `as_reference` gives the part of a single-sheet range argument as a
     /// reference, as an intersection operand sees it: `=A1:A3 TAKE(A2:B3,1)` is 2
-    /// (probes/intersection-function-operands H11, H12; T-0165).
+    /// (probes/intersection-function-operands H11, H12; T-0165). `array` is evaluated once
+    /// (`read_once` in functions/logical/lambda.rs relies on it).
     pub(crate) fn take_drop_impl(
         &mut self,
         args: &[Node],

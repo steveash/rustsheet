@@ -133,7 +133,8 @@ impl Model {
     }
 
     /// LET; with `as_reference` the body is evaluated in reference context, so a union there
-    /// stays its areas: `SUM(LET(x,(A1,B2),x))` is 6 (probes/multiarea-letbind H8).
+    /// stays its areas: `SUM(LET(x,(A1,B2),x))` is 6 (probes/multiarea-letbind H8). Each value
+    /// and the body are evaluated once (`read_once` in functions/logical/lambda.rs relies on it).
     pub(crate) fn let_impl(
         &mut self,
         args: &[Node],

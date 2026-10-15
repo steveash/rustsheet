@@ -164,6 +164,8 @@ impl Model {
     ///   * `sort_index` – 1-based column/row index to sort by (default 1)
     ///   * `sort_order` – 1 = ascending, -1 = descending (default 1)
     ///   * `by_col`     – FALSE = sort rows, TRUE = sort columns (default FALSE)
+    ///
+    /// `array` is evaluated once (`read_once` in functions/logical/lambda.rs relies on it).
     pub(crate) fn fn_sort(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() || args.len() > 4 {
             return CalcResult::new_args_number_error(cell);
