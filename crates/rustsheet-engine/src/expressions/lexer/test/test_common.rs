@@ -421,6 +421,7 @@ fn test_reference_r1c1_true() {
     // NOTE: This is what google docs does.
     // Excel will not let you enter this formula.
     // Online Excel will let you and will mark the cell as in Error
+    // (Excel does take it as a LET name, T-1658.)
     assert!(matches!(lx.next_token(), Illegal(_)));
     assert_eq!(lx.next_token(), EOF);
 }
