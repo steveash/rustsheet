@@ -3,7 +3,7 @@ id: T-1606
 title: "Suite gen-m8a: defined names (workbook and sheet scope, LAMBDA names) and 3-D references, oracle-filled"
 milestone: M8
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
