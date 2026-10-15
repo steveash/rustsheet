@@ -3,7 +3,7 @@ id: T-1601
 title: "Probe PRODUCT over TRIMRANGE and over a picked error cell with a later direct error"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
