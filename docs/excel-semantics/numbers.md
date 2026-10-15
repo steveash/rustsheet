@@ -1263,12 +1263,15 @@ RANDARRAY errors apply in argument order (`RANDARRAY(0,1,1.5,2.5,TRUE)` gives `#
 Status: VERIFIED. Implemented (T-1318): A2, A6, A8, A12, A13, B9, B10 and B18 pass. The engine still misses the array lift F1:F9 (T-1316).
 
 ## SERIESSUM with x = 0
-Rule (hypothesis): SERIESSUM with x = 0 is `#NUM!` only when a term has power 0 (0^0): `SERIESSUM(0,0,2,{1,2,3})` is `#NUM!`,
-but `SERIESSUM(<blank>,123456789.123,-0.5,123456789.123)` (one term, a positive power) is not `#NUM!` (the IFS around
-it in gen-m7 gives `#VALUE!`, so SERIESSUM was a number or `#VALUE!`).
-Evidence: ironcalc-calc MATH_AND_TRIGONOMETRY/SERIESSUM.xlsx C1, H7 (Excel-cached); gen-m7/d38b52bfa1a9f9e6 Calc!A27 (excel-graph, 2026-10-11, T-1275).
-Ours: `#NUM!` for every x = 0.
-Status: UNVERIFIED (probe pending: negative powers, a blank x)
+Rule: SERIESSUM with x = 0 (a literal 0 or a blank) is `#NUM!` when any term's power `n + i*m` is zero or negative, whatever its
+coefficient (a 0 coefficient too), and 0 when every power is positive: `SERIESSUM(0,1,1,{1,2})` and `SERIESSUM(0,0.5,1,1)` are 0;
+`SERIESSUM(0,0,2,{1,2,3})`, `(0,2,-1,{1,2,3})` (powers 2, 1, 0), `(0,1,-2,{1,2})` (1, -1), `(0,-1,1,1)`, `(0,-0.5,1,{5})`, `(0,0,1,{0})`,
+`(0,1,-1,{5,0})` and `(0,-1,2,{5,6})` are `#NUM!`. With step 0, `(0,3,0,{1,2})` is 0 and `(0,0,0,{1,2})` is `#NUM!`.
+`SERIESSUM(<blank>,123456789.123,-0.5,123456789.123)` is 0 (one positive power), so the IFS around it in gen-m7 goes on.
+Evidence: probes/seriessum-x-zero A1:A22 (excel-graph, 2026-10-15, T-1359); ironcalc-calc MATH_AND_TRIGONOMETRY/SERIESSUM.xlsx C1, H7 (Excel-cached);
+gen-m7/d38b52bfa1a9f9e6 Calc!A27 (excel-graph, 2026-10-11, T-1275).
+Ours: implemented (T-1359) in `fn_seriessum`. Not probed: a text or error coefficient on a term with power <= 0 (which error wins).
+Status: VERIFIED
 Tasks: T-1359
 
 ## ECMA.CEILING
