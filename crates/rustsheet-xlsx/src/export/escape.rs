@@ -4,7 +4,7 @@
 
 //! Contains functions for performing XML special characters escaping.
 
-use rustsheet_engine::text::{Segment, Text};
+use rustsheet_engine::text::{lone_escape, Segment, Text};
 use std::borrow::Cow;
 
 enum Value {
@@ -101,7 +101,7 @@ pub fn escape_text(text: &Text) -> Cow<'_, str> {
     for segment in text.segments() {
         match segment {
             Segment::Str(s) => out.push_str(&escape_xml(s)),
-            Segment::Lone(unit) => out.push_str(&format!("_x{unit:04X}_")),
+            Segment::Lone(unit) => out.push_str(&lone_escape(unit)),
         }
     }
     Cow::Owned(out)
