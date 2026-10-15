@@ -124,3 +124,26 @@ fn test_fn_choose_at_call_intersects_result() {
     // No spill: C3 stays empty.
     assert_eq!(model._get_text("C3"), "");
 }
+
+// A CHOOSE arm intersected to a scalar (`@B1:B6*1`) read by INDEX, MODE and LOOKUP
+// (probes/legacy-choose-arm-aggregate-and-array-constant-at H1, I1, I10, J1, excel-graph, T-1643).
+#[test]
+fn test_fn_choose_scalar_arm_under_index_mode_lookup() {
+    let mut model = new_empty_model();
+    for r in 1..=6 {
+        model._set(&format!("A{r}"), &format!("{r}"));
+    }
+    for (col, row) in [("B", 1), ("B", 10)] {
+        model._set(&format!("{col}{row}"), "=MODE(CHOOSE(1,@A1:A6*1))");
+        model._set(&format!("C{row}"), "=LOOKUP(2,CHOOSE(1,@A1:A6*1))");
+        model._set(&format!("D{row}"), "=INDEX(CHOOSE(1,@A1:A6*1),3)");
+    }
+    model.evaluate();
+    // On the range's rows the arm is the scalar 1; off them its `@` is #VALUE!.
+    assert_eq!(model._get_text("B1"), "#N/A");
+    assert_eq!(model._get_text("C1"), "1");
+    assert_eq!(model._get_text("D1"), "#REF!");
+    assert_eq!(model._get_text("B10"), "#VALUE!");
+    assert_eq!(model._get_text("C10"), "#VALUE!");
+    assert_eq!(model._get_text("D10"), "#VALUE!");
+}

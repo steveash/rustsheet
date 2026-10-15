@@ -3,7 +3,7 @@ id: T-1643
 title: "Legacy CHOOSE operator arm under INDEX, MODE and LOOKUP: @ placement and values"
 milestone: M6
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found by T-1638: probes/legacy-choose-arm-aggregate-and-array-constant-at cells 
 
 ## Out of scope
 -
+
+## Outcome
+H1, H3, I10 and J1 of probes/legacy-choose-arm-aggregate-and-array-constant-at now pass (baseline -4, no regressions). Three small changes: `static_analysis_index` returns Scalar for INDEX over a CHOOSE with arithmetic arms (no `@` on the call); `index_impl` reads a scalar picked by IF or CHOOSE as a one-element array (`#REF!`); MODE propagates the error of a computed (non-reference) argument; LOOKUP reads a scalar lookup_vector as a one-element array. Generalising the INDEX scalar rule fixed 12 more cells but unmasked function-name-forms A4: filed as T-1645.

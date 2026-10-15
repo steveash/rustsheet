@@ -1416,8 +1416,7 @@ In a legacy formula the `@` goes on the range operand of a CHOOSE arm's operator
 and the aggregate then reads the intersected value: off the range's rows (row 10) SUM and MAX are `#VALUE!`, and
 `=MODE(CHOOSE(1,B1:B6*1))` is `#VALUE!`. On the range's rows the arm is a scalar: `=INDEX(CHOOSE(1,B1:B6*1),3)` is `#REF!`
 and `=LOOKUP(2,CHOOSE(1,B1:B6*1))` is 1. A one-element array constant takes an `@` in ROUND (`=ROUND(@{5},0)`) but not
-in TYPE: `=TYPE({5})` shows no `@` and is 64. Ours matches all of these except the INDEX call's extra `@` and `#VALUE!`
-(H1, H3), MODE off-row `#N/A` for `#VALUE!` (I10) and LOOKUP's `#N/A` for 1 (J1), recorded as known failures (T-1643).
+in TYPE: `=TYPE({5})` shows no `@` and is 64. Ours matches all of these (T-1643): INDEX of a CHOOSE whose arms are arithmetic is a value, so the call takes no `@` (`static_analysis_index`), and INDEX reads a scalar picked by IF or CHOOSE as a one-element array (`#REF!` for row 3); a computed argument's error propagates through MODE (a single-cell reference's error is still skipped, unprobed); a scalar LOOKUP lookup_vector is a one-element array (`LOOKUP(2,CHOOSE(1,@B1:B6*1))` is 1). INDEX of any other scalar is still `#VALUE!` (T-1645).
 Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at (excel-graph, 2026-10-15).
 Status: VERIFIED (excel-graph)
-Tasks: T-1638, T-1643
+Tasks: T-1638, T-1643, T-1645

@@ -126,6 +126,17 @@ fn index_window(
 /// `row_eff`/`col_eff` of `0` select every row/column respectively. A selection
 /// that resolves to a single cell is returned as a scalar; otherwise an array, unless `top_left`
 /// asks for its first value only (a lifted element, which must not copy the selection).
+/// Whether `node` is an IF or CHOOSE call, which INDEX reads through to the branch it picks.
+fn picks_a_branch(node: &Node) -> bool {
+    matches!(
+        node.ungrouped(),
+        Node::FunctionKind {
+            kind: crate::functions::Function::If | crate::functions::Function::Choose,
+            ..
+        }
+    )
+}
+
 fn index_from_array(
     arr: &[Vec<ArrayNode>],
     row_eff: usize,
@@ -270,7 +281,22 @@ impl Model {
                         Err(error) => error,
                     };
                 }
-                self.evaluate_reference_arg(reference, cell)
+                match self.evaluate_reference_arg(reference, cell) {
+                    // A scalar picked by IF or CHOOSE is a one-element array: `INDEX(CHOOSE(1,
+                    // @B1:B6*1),3)` is `#REF!` on the range's rows (probes/legacy-choose-arm-
+                    // aggregate-and-array-constant-at H1, T-1643). A scalar anywhere else keeps
+                    // being `#VALUE!` (unprobed).
+                    RefArg::Value(
+                        scalar @ (CalcResult::Number(_)
+                        | CalcResult::String(_)
+                        | CalcResult::Boolean(_)),
+                    ) if picks_a_branch(&args[0]) => {
+                        RefArg::Value(CalcResult::Array(vec![vec![calc_result_to_array_node(
+                            scalar,
+                        )]]))
+                    }
+                    other => other,
+                }
             }
             Picked::Value(value) => RefArg::Value(value),
         };

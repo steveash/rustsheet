@@ -74,7 +74,14 @@ impl Model {
         }
         // Read as a reference so that a single cell is a one-element vector
         // (`LOOKUP(2,C1,D1)`; probes/lookup-vector-edges A1-A4).
-        let value = self.evaluate_node_with_reference(&args[1], cell);
+        let value = match self.evaluate_node_with_reference(&args[1], cell) {
+            // A scalar lookup_vector is a one-element array: `LOOKUP(2,CHOOSE(1,@B1:B6*1))` is 1 on
+            // the range's rows (probes/legacy-choose-arm-aggregate-and-array-constant-at J1, T-1643).
+            scalar @ (CalcResult::Number(_) | CalcResult::String(_) | CalcResult::Boolean(_)) => {
+                CalcResult::Array(vec![vec![crate::cast::calc_result_to_array_node(scalar)]])
+            }
+            other => other,
+        };
         let table = match Self::lookup_table(value, cell) {
             Ok(table) => table,
             Err(error) => return error,

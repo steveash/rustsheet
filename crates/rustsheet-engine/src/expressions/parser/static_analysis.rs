@@ -468,9 +468,20 @@ fn static_analysis_indirect(_args: &[Node]) -> StaticResult {
     StaticResult::Unknown
 }
 
-fn static_analysis_index(_args: &[Node]) -> StaticResult {
-    // INDEX has two forms, but they are indistinguishable at parse time.
-    StaticResult::Unknown
+fn static_analysis_index(args: &[Node]) -> StaticResult {
+    // INDEX has two forms, but they are indistinguishable at parse time, except that INDEX of a
+    // CHOOSE whose arms are all arithmetic reads a value, so the call shows no `@`
+    // (`=INDEX(CHOOSE(1,@B1:B6*1),3)`; probes/legacy-choose-arm-aggregate-and-array-constant-at
+    // H3, T-1643).
+    match args.first().map(Node::ungrouped) {
+        Some(Node::FunctionKind {
+            kind: Function::Choose,
+            args: arms,
+        }) if arms.len() > 1 && arms[1..].iter().all(legacy::is_value_operation) => {
+            StaticResult::Scalar
+        }
+        _ => StaticResult::Unknown,
+    }
 }
 
 #[derive(Clone)]

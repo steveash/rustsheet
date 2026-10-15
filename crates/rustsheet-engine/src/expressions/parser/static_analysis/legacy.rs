@@ -322,7 +322,7 @@ fn legacy_value_operand(kind: &Function, arg: &Node) -> bool {
 /// Whether `node` is arithmetic, concatenation or a comparison, possibly in parentheses:
 /// `SUM((B1:B6*1))` intersects like `SUM(B1:B6*1)`, unlike `SUM((B1:B6))`
 /// (probes/legacy-value-argument-intersection-b Z2, Z10; T-1551).
-fn is_value_operation(node: &Node) -> bool {
+pub(super) fn is_value_operation(node: &Node) -> bool {
     match node {
         Node::Group { child, .. } => is_value_operation(child),
         Node::UnaryKind { .. }
