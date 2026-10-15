@@ -15,7 +15,7 @@ use rustsheet::{Input, Workbook, WorkbookOptions};
 use rustsheet_engine::Text;
 
 const ROWS: u32 = 100_000;
-const RUNS: usize = 5;
+const RUNS: usize = 11;
 /// `CONCATENATE` takes at most 255 arguments; 255 cells of `ARG_LEN` units join to 33,150
 /// units, so every result is truncated to 32,767.
 const ARGS: u32 = 255;
