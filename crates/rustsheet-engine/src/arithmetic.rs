@@ -822,7 +822,7 @@ impl Model {
                 a2.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|n| concat_nodes(&ArrayNode::String(s1.clone().into()), n))
+                            .map(|n| concat_nodes(&ArrayNode::String(s1.clone()), n))
                             .collect()
                     })
                     .collect(),
@@ -831,7 +831,7 @@ impl Model {
                 a1.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|n| concat_nodes(n, &ArrayNode::String(s2.clone().into())))
+                            .map(|n| concat_nodes(n, &ArrayNode::String(s2.clone())))
                             .collect()
                     })
                     .collect(),
