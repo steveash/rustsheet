@@ -420,6 +420,7 @@ impl PyWorkbook {
             .read(py, |wb| {
                 let v = wb.value(r.as_str())?;
                 let units = match &v {
+                    // Cheap guard: a lone surrogate always shows as U+FFFD in the lossy text.
                     Value::Text(s) if s.contains('\u{FFFD}') => wb.text_utf16(r.as_str())?,
                     _ => None,
                 };
