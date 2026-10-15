@@ -63,6 +63,38 @@ Status: VERIFIED
 Implemented in: `utf16_slice` in functions/text/util.rs
 Tasks: T-0249, T-1483
 
+## Lone surrogates through CODE, comparisons, case, search and cleanup functions
+Built with `H = MID("😀",1,1)` (lone high, D83D) and `L = MID("😀",2,1)` (lone low, DE00). Excel text is
+exact UTF-16 units throughout:
+- `&` concatenates unit sequences, so a high followed by a low re-pairs: `EXACT(H&L,"😀")` is TRUE, `LEN(H&L)` is 2,
+  `UNICODE(RIGHT(H&L,1))` is 128512, `LEN(LEFT(H&L,1))` is 2, `REPT(H&L,2)` is "😀😀". Low then high does not
+  (`EXACT(L&H,"😀")` is FALSE, length 2). `MID("a😀b",2,1)&MID("a😀b",3,1)` is "😀".
+- `CODE(H)` and `CODE(L)` are 63 (as for any non-Windows-1252 character). `UNICODE(H)` is `#VALUE!`,
+  `UNICODE(L)` is 56832.
+- A lone surrogate is never equal to U+FFFD: `EXACT(H,UNICHAR(65533))`, `H=UNICHAR(65533)` and the same for L are FALSE.
+  `H=H` and `EXACT(H,H)` are TRUE, `H=L` and `EXACT(H,L)` FALSE.
+- Order: `H<L` TRUE, `L<H` FALSE, `H<"😀"` TRUE, `"😀"<L` TRUE, `H<"a"` FALSE, but `H<UNICHAR(65533)` and
+  `L<UNICHAR(65533)` are both FALSE (so it is not plain code-unit order against U+FFFD).
+- MATCH(…,0) of H or L in `{"x";"😀"}` or `{…;"�"}` is `#N/A` (a lone half never matches a pair or U+FFFD).
+- UPPER, LOWER, PROPER, TRIM and CLEAN keep a lone surrogate unchanged (`EXACT(UPPER(H),H)`, `UNICODE(UPPER(L))` 56832,
+  `LEN(TRIM(" "&H&"  "&L&" "))` 3 (they re-pair after the spaces go), `LEN(CLEAN(L&CHAR(7)&H))` 2); `T(H)`, `H&""`,
+  `TEXT(H,"@")` and `TEXT(L,"General")` keep it (length 1); `REPT(H,3)` has length 3.
+- `VALUE(H)`, `VALUE(L&"1")` and `H+0` are errors.
+- FIND and SEARCH with a lone half as find_text *can* split a pair: `FIND(H,"a😀b")` 2, `FIND(L,"a😀b")` 3,
+  `SEARCH` the same, `FIND(L,H&L)` 2, `FIND("😀",H&L)` 1, `SEARCH(H&"*","a😀b")` matches. A lone half does not match
+  U+FFFD (`FIND(UNICHAR(65533),H)` is `#VALUE!`).
+- SUBSTITUTE cannot split a pair: `LEN(SUBSTITUTE("😀",H,"x"))` and with L are 2 (no match, text unchanged),
+  `SUBSTITUTE("a😀b😀",H,"x")` has length 6; `SUBSTITUTE("😀",H&L,"x")` replaces (length 1); `SUBSTITUTE(H,H,"x")` is "x".
+- A lone high surrogate is cached as `_xD83D_` (like the low one, `_xDE00_`): `H` is `_xD83D_`, `"a"&H` is `a_xD83D_`,
+  `MID("😀a😀",1,1)&MID("😀a😀",2,2)&MID("😀a😀",4,1)` is `😀a_xD83D_`.
+- 32,767 limit: `LEN(REPT("a",32766)&"😀")` is 32767 (high half kept); `REPT("😀",16384)` is `#VALUE!`;
+  CONCAT and TEXTJOIN one unit over (a pair straddling the limit) are `#CALC!`, not truncated (existing entry below).
+Evidence: probes/text-lone-surrogates A1-A81, B1-B6 (excel-graph, 2026-10-15, T-1582).
+Ours: the engine drops a lone half, so nearly every cell above except the plain-ASCII companions fails (the case has
+47 known failures); T-1585 to T-1587 are the follow-ups.
+Status: VERIFIED
+Tasks: T-1582
+
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
 replace-all and for a given instance number alike; exactly 32,767 is fine. The limit applies to the result, not the
