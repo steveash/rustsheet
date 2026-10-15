@@ -3,7 +3,7 @@ id: T-1617
 title: "Probe VARA, VARPA, STDEVA and STDEVPA with direct booleans, direct text, array text and picked cells"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
