@@ -257,8 +257,8 @@ impl Model {
     pub(crate) fn variable_value(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         match node {
             Node::NamedVariableKind { name, id: Some(id) } => {
-                match self.variable_stack.get(*id as usize) {
-                    Some(binding) => binding.value(cell),
+                match self.variable_stack.read_value(*id as usize, cell) {
+                    Some(value) => value,
                     None => CalcResult::new_error(
                         Error::NAME,
                         cell,
