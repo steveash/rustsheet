@@ -165,6 +165,10 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
 /// format leaves the text unchanged (probes/text-format-text-limit A10, A11, A19-A21, A24, A25).
 const MAX_TEXT_FORMAT_CHARS: usize = 255;
 
+/// The Buddhist era counts from 543 BC: serial 100 (1900-04-09) is "43" under `b` and "2443" under
+/// `bbbb` (probes/text-format-bare-literals A41-A46; gen-m7/6db767d720c5b55a A30).
+const BUDDHIST_ERA_OFFSET: i32 = 543;
+
 fn text_too_long() -> Formatted {
     Formatted {
         text: "#VALUE!".to_owned(),
@@ -182,6 +186,16 @@ fn capped_text(text: String) -> Formatted {
         color: None,
         text,
         error: None,
+    }
+}
+
+/// `value` in General, with the locale's decimal separator.
+fn general_text(value: f64, locale: &Locale) -> String {
+    let text = format_general(value);
+    if locale.numbers.symbols.decimal == "." {
+        text
+    } else {
+        text.replace('.', &locale.numbers.symbols.decimal)
     }
 }
 
@@ -214,6 +228,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
     let general = ParsePart::General(GeneralPart {});
     let part;
     match parts.len() {
+        // Excel: an empty format shows nothing but a negative's minus, also for a value that
+        // rounds to zero (`TEXT(-0.0001,"")` = "-", `TEXT(5,"")` = ""; probes/text-format-bare-literals
+        // A32-A35).
+        0 => {
+            return Formatted {
+                text: if value < 0.0 { "-" } else { "" }.to_owned(),
+                color: None,
+                error: None,
+            };
+        }
         // A single text section (`@` in it) does not apply to numbers, which print in General:
         // `TEXT(1,"@""aaa""")` is "1" (probes/text-format-length-limit-i A19:A26, T-1434).
         1 if section_tokens(&parts[0])
@@ -268,17 +292,11 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             color: None,
             error: Some("Problem parsing format string".to_owned()),
         },
-        ParsePart::General(..) => {
-            let mut text = format_general(value);
-            if locale.numbers.symbols.decimal != "." {
-                text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
-            }
-            Formatted {
-                text,
-                color: None,
-                error: None,
-            }
-        }
+        ParsePart::General(..) => Formatted {
+            text: general_text(value, locale),
+            color: None,
+            error: None,
+        },
         ParsePart::Date(p) => {
             // Excel: whether a negative serial formats or is #VALUE! depends on the value's own
             // sign, also when a negative section already dropped it (`TEXT(-1,"d;d")` is #VALUE!
@@ -330,6 +348,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     }
                     TextToken::Digit(_) => {}
                     TextToken::Period => {}
+                    TextToken::General => {}
                     TextToken::Day => {
                         if !date_valid {
                             return invalid_date(value);
@@ -404,6 +423,20 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             return invalid_date(value);
                         }
                         text = format!("{text}{ymd_year}");
+                    }
+                    TextToken::BuddhistYearShort => {
+                        if !date_valid {
+                            return invalid_date(value);
+                        }
+                        let year = ymd_year + BUDDHIST_ERA_OFFSET;
+                        text = format!("{text}{:02}", year % 100);
+                    }
+                    TextToken::BuddhistYear => {
+                        if !date_valid {
+                            return invalid_date(value);
+                        }
+                        let year = ymd_year + BUDDHIST_ERA_OFFSET;
+                        text = format!("{text}{year}");
                     }
                     TextToken::Hour => {
                         let mut hour = hours as i32;
@@ -490,6 +523,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 text = format!("{c}");
             }
             let tokens = &p.tokens;
+            // `General` among literals shows the value itself, with its sign
+            let general_value = value;
             value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
             // p.precision is the number of significant digits _after_ the decimal point
             value = to_precision(
@@ -539,6 +574,12 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // scaling) keeps its sign (poi/NumberFormatTests.xlsx Tests!A95).
             let is_negative = value <= -(10.0_f64.powf(-(p.precision as f64)));
             let mut needs_period = false;
+            // With no integer placeholder no digit carries the minus, so it leads the literals
+            // (`TEXT(-PI(),"x")` = "-x", `TEXT(-5,"2")` = "-2"; probes/text-format-bare-literals A3, A7).
+            let has_general = tokens.iter().any(|t| matches!(t, TextToken::General));
+            if digit_count == 0 && is_negative && !has_general {
+                text = format!("-{text}");
+            }
 
             for token in tokens {
                 match token {
@@ -561,11 +602,17 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     TextToken::Raw => {
                         text = format!("{text}{value}");
                     }
+                    TextToken::General => {
+                        text.push_str(&general_text(general_value, locale));
+                    }
                     TextToken::Period => {
-                        // if !fract_part.is_empty() &&  {
-                        //     text = format!("{text}{decimal_separator}");
-                        // }
-                        needs_period = true;
+                        if p.precision == 0 {
+                            // No decimal placeholder prints it, so it stands on its own: `0.1`
+                            // on 12.3 is "12.1" (probes/text-format-bare-literals A21, A11).
+                            text = format!("{text}{decimal_separator}");
+                        } else {
+                            needs_period = true;
+                        }
                     }
                     TextToken::Digit(digit) => {
                         if digit.number.is_integer() {
@@ -698,6 +745,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     TextToken::MonthLetter => {}
                     TextToken::YearShort => {}
                     TextToken::Year => {}
+                    TextToken::BuddhistYearShort => {}
+                    TextToken::BuddhistYear => {}
                     TextToken::Hour => {}
                     TextToken::HourPadded => {}
                     TextToken::Minute => {}
