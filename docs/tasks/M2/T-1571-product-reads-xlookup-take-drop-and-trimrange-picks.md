@@ -3,7 +3,7 @@ id: T-1571
 title: "PRODUCT reads an XLOOKUP pick as a reference like SUM"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
