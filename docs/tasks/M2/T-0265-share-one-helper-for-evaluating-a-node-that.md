@@ -3,7 +3,7 @@ id: T-0265
 title: "Share one helper for evaluating a node that keeps INDEX/IF references"
 milestone: M2
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
