@@ -57,14 +57,16 @@ surrogate as one character and do not pair a lone high surrogate with a followin
 Evidence: probes/text-surrogate-positions A6, A11, A12, A29, A38, B6, B7, B10 (excel-graph,
 2026-10-09, T-0249).
 Ours: MID and REPLACE slice a `rustsheet_engine::Text` by UTF-16 units (`Text::slice_utf16`), so the
-lone half survives (T-1579). A38 (UNICODE of a lone low surrogate) stays a known failure until T-1581
-moves UNICODE, LEFT and RIGHT off the lossy view. Whether `&` of a lone high and a lone low surrogate
+lone half survives (T-1579). LEFT, RIGHT and UNICODE read the exact units
+(`Text::left_chars`, `Text::right_chars`, `chars_lossless`), so A38, B6 and B7 pass (T-1581).
+`UNICODE` of a lone high surrogate followed by another character
+(`UNICODE(MID("a😀b",2,2))`) is `#VALUE!` here by inference, unprobed. Whether `&` of a lone high and a lone low surrogate
 forms the pair (`EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`) is UNVERIFIED: `Text::concat` pairs
 them by UTF-16's rule until T-1582 probes it.
 Status: VERIFIED
-Implemented in: `mid_element` in functions/text/common.rs, `replace_element` in
-functions/text/string_format.rs
-Tasks: T-0249, T-1483, T-1575, T-1579
+Implemented in: `mid_element`, `left_element`, `right_element` and `fn_unicode` in
+functions/text/common.rs, `replace_element` in functions/text/string_format.rs
+Tasks: T-0249, T-1483, T-1575, T-1579, T-1581
 
 ## Lone surrogates through CODE, comparisons, case, search and cleanup functions
 Built with `H = MID("😀",1,1)` (lone high, D83D) and `L = MID("😀",2,1)` (lone low, DE00). Excel text is
@@ -94,7 +96,7 @@ exact UTF-16 units throughout:
 - 32,767 limit: `LEN(REPT("a",32766)&"😀")` is 32767 (the kept unit is the high half, coercion.md "Truncation inside a surrogate pair"); `REPT("😀",16384)` is `#VALUE!`;
   CONCAT and TEXTJOIN one unit over (a pair straddling the limit) are `#CALC!`, not truncated (existing entry below).
 Evidence: probes/text-lone-surrogates A1-A81, B1-B6 (excel-graph, 2026-10-15, T-1582).
-Ours: the engine drops a lone half, so 47 of the 87 cells fail (comparisons that pass today do so because the dropped half compares as ""); T-1585 to T-1587 are the follow-ups.
+Ours: the engine drops a lone half, so some of the 87 cells still fail (A3, A4 pass since T-1581) (comparisons that pass today do so because the dropped half compares as ""); T-1585 to T-1587 are the follow-ups.
 Status: VERIFIED
 Tasks: T-1582
 
