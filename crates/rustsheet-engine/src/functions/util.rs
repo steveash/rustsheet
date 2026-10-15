@@ -752,26 +752,6 @@ impl Model {
             Ok(())
         })
     }
-
-    /// Like [`Self::for_each_number_in_areas`] but with the coercion of the
-    /// *A functions (VARA, STDEVA, ...): text counts as 0, TRUE/FALSE as 1/0,
-    /// empty cells are skipped.
-    pub(crate) fn for_each_coerced_number_in_areas<F>(
-        &mut self,
-        areas: &[Range],
-        cell: CellReferenceIndex,
-        mut f: F,
-    ) -> Result<(), CalcResult>
-    where
-        F: FnMut(f64),
-    {
-        self.for_each_cell_in_areas(areas, cell, |_, value| {
-            if let Some(value) = coerced_cell_number(&value) {
-                f(value);
-            }
-            Ok(())
-        })
-    }
 }
 
 /// Excel's `MOD`: the exact remainder (`fmod`) shifted into the divisor's sign. Not
