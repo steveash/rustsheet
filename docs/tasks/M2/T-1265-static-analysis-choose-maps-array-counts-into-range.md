@@ -3,7 +3,7 @@ id: T-1265
 title: "Static analysis: CHOOSE maps Array counts into Range extents"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
