@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1649: DAVERAGE accumulation (column A of rows 1-8 is DAVERAGE*4 over the T-1516 operand sets plus a 0 record so the division by 4 is exact; B is the a+b+c control) and DAVERAGE of a normal sum over a count that makes the quotient subnormal (rows 20-24: 2^-1022/2, /4, 2^-1021/2 (exactly 2^-1022, normal), /3, 2*2^-1022/3), vs AVERAGE. Subnormal operands cannot be built: excel-graph reads a stored subnormal as 0. Rows 26-28: subnormal operands built by subtraction (3E-308-2.5E-308 is kept; a stored literal below 2^-1022 reads as 0), with =0 companions (decision 0042).",
+ "description": "T-1649: DAVERAGE accumulation (column A of rows 1-8 is DAVERAGE*4 over the T-1516 operand sets plus a 0 record so the division by 4 is exact; B is the a+b+c control) and DAVERAGE of a normal sum over a count that makes the quotient subnormal (rows 20-24: 2^-1022/2, /4, 2^-1021/2 (exactly 2^-1022, normal), /3, 2*2^-1022/3), vs AVERAGE. Rows 26-28: subnormal operands built by subtraction (3E-308-2.5E-308 is kept; a stored literal below 2^-1022 reads as 0), with =0 companions (decision 0042).",
  "tags": [
   "probe",
   "numbers",
