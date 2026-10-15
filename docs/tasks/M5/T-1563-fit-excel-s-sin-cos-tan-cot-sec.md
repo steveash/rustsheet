@@ -32,3 +32,9 @@ the series in double-double, so the final rounding is the only one. An exact-rat
 672 numeric cells of probes-numeric/m9-trig-reduction and probes/trig-huge-argument matches every
 one (the first WIP model, shift round(x/π)·δ, missed 137 at odd multiples of π/2). Quirk written up
 in docs/excel-semantics/numbers.md "Trig of a huge angle". Eval delta: gate ironcalc-calc −45 and probes −6 known failures, 0 regressions; non-gate probes-numeric 8,756 → 9,175 passing cells (m9-trig-reduction 247 → 666 of 666), no other case changed.
+Cost (release microbenchmark, 2M angles across [-1000, 7.4e5], baseline x86-64): libm sin+cos
+10 ns per call, the first double-double version 321-345 ns, this one 143-160 ns (TAN the same; about 90 ns with
+inline FMA). The five outer Horner steps run in double-double with exact reciprocal constants,
+and the inner ones in doubles; a unit test checks that this equals the full double-double series
+on 200,000 random angles. That is about 0.15 s per million trig cells, accepted as the price of
+bit-exact parity. Follow-up T-1635: a fast path with a rounding test.
