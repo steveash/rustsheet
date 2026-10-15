@@ -58,10 +58,13 @@ Evidence: probes/text-surrogate-positions A6, A11, A12, A29, A38, B6, B7, B10 (e
 2026-10-09, T-0249).
 Ours: a Rust `String` cannot hold a lone surrogate, so `utf16_slice` drops a pair that straddles
 a cut whole (A6, A11, A12, A29, A38 and B10 stay known failures). A known gap, not a deviation
-(decision 0052): SPEC-0010, T-1579, T-1580, T-1581.
+(decision 0052): SPEC-0010, T-1579, T-1580, T-1581. `rustsheet_engine::Text` (T-1575) holds the
+lone half and is what those tasks wire in. Whether `&` of a lone high and a lone low surrogate
+forms the pair (`EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`) is UNVERIFIED: `Text::concat` pairs
+them by UTF-16's rule until T-1582 probes it.
 Status: VERIFIED
 Implemented in: `utf16_slice` in functions/text/util.rs
-Tasks: T-0249, T-1483
+Tasks: T-0249, T-1483, T-1575
 
 ## Lone surrogates through CODE, comparisons, case, search and cleanup functions
 Built with `H = MID("😀",1,1)` (lone high, D83D) and `L = MID("😀",2,1)` (lone low, DE00). Excel text is
