@@ -51,10 +51,10 @@ v0 + 0.001*sign(NPV(v0)), stopping at |dv| < 1e-7 and |NPV| < 1e-7, retried once
 `uv run rustsheet-fitlab irr`): **189/263 bit-exact** (was 74 for the best Newton candidate; the engine 1),
 207 within 4 ulp, 260 within 1e-9. Rejected variants are lab candidates (bit-exact / within 4 ulp): no
 residual test 181/198, residual 1e-6 188/206 and 1e-8 180/199, |dv| < 1e-6 169/183 and 1e-8 146/157, offset
-1e-4 89/99, no retry 187/205, 20-step cap 181/198, NPV by Horner 189/204; Newton in v converged 74/84. The evidence (the guess sweep's error law and signs, the step-test gap
+1e-4 89/99, no retry 187/205, 20-step cap 181/198, 35-step cap 189/207, 1000-step cap 188/206, offset always +1e-3 121/139, NPV by Horner 189/204; Newton in v converged 74/84. The evidence (the guess sweep's error law and signs, the step-test gap
 9.84e-8 / 1.18e-7, the scaled flows, the far-guess retry) is in financial.md "IRR is a secant in v". T-0916
 updated with the model.
-RATE: IRR's secant on f(r) (12 lab variants) scores at most 19/136 bit-exact, 40 within 4 ulp (Newton 11,
+RATE: IRR's secant on f(r) (12 lab variants, each scored by `uv run rustsheet-fitlab rate`) scores at most 19/136 bit-exact, 40 within 4 ulp (Newton 11,
 engine 12) and hits no guess-sweep iterate; recorded in financial.md as tried. XIRR's long-span and zero-first-value
 cells and multi-period YIELD were not attempted; they move to T-1583 (T-1534 traces would help RATE and
 YIELD). RATE stays open: this was its second attempt (T-1525 the first) without a fitted model, but the

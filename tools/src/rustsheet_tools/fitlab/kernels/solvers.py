@@ -334,11 +334,12 @@ def irr_secant_v(
     max_steps: int = 50,
     *,
     retry: bool = True,
+    signed: bool = True,
     trace: list[float] | None = None,
 ) -> IrrMethod:
     """Secant on NPV(v), v = 1/(1 + r), from v0 = 1/(1 + guess) and v1 = v0 + offset * sign(NPV(v0)).
     It stops at the first iterate with |v_(n+1) - v_n| < tol and |NPV(v_(n+1))| < residual (None: no
-    residual test) and returns 1/v - 1. A run that fails (no stop in `max_steps`, a flat secant, v <= 0)
+    residual test) and returns 1/v - 1 (`signed` False: always v0 + offset). A run that fails (no stop in `max_steps`, a flat secant, v <= 0)
     is retried once from the default guess 0.1 when `retry`. `k` (the other methods' step count) is
     ignored. Fitted on probes/solver-iteration-traces I (T-1533): the guess sweep follows the secant's
     error law, signs included; the step test separates the returned iterate from the one before it at
@@ -349,7 +350,7 @@ def irr_secant_v(
         div = X87.div
         u0 = div(1.0, 1 + g)
         f0 = npv(values, u0)
-        u1 = u0 + (offset if f0 > 0 else -offset)
+        u1 = u0 + (offset if f0 > 0 or not signed else -offset)
         f1 = npv(values, u1)
         for _ in range(max_steps):
             if f1 == f0:
@@ -407,6 +408,9 @@ def irr_candidates() -> list[Candidate]:
         "secant in v, v1 = v0 +- 1e-4": irr_secant_v(offset=1e-4),
         "secant in v, no retry": irr_secant_v(retry=False),
         "secant in v, 20 steps": irr_secant_v(max_steps=20),
+        "secant in v, 35 steps": irr_secant_v(max_steps=35),
+        "secant in v, 1000 steps": irr_secant_v(max_steps=1000),
+        "secant in v, v1 = v0 + 1e-3 always": irr_secant_v(signed=False),
     }
     out += [candidate(name, _irr(method, None), "secant in v") for name, method in secants.items()]
     return out

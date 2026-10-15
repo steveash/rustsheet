@@ -163,7 +163,8 @@ representable (tools/tests/test_fitlab_solvers.py). Evidence for each part:
   Fibonacci orders 1, 1, 2, 3, 5, 8). Guesses just above the root give positive errors (I!A13, I!A14:
   +5.9e-15, +1.6e-12), which no quadratic method with f''/(2f') < 0 can produce and the secant's third
   iterate does. The offset is 0.001 in v, toward larger |NPV| (+ for guesses below this root, - above):
-  with +0.001 on both sides the right-hand guesses miss by 3 to 11,410 ulp; with -0.001 they are exact.
+  with +0.001 on both sides the right-hand guesses miss by 3 to 11,410 ulp (121/263 overall); with -0.001
+  they are exact.
 - The step test: over the I sheet the returned iterate's |dv| is at most 9.84e-8 and every earlier one's
   at least 1.18e-7, so the bound is 1e-7 (Excel's documented "0.00001 percent"); 1e-6 scores 169, 1e-8
   146.
