@@ -3,7 +3,7 @@ id: T-1575
 title: "Text type: engine text that can hold lone surrogates (SPEC-0010 step 1)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
