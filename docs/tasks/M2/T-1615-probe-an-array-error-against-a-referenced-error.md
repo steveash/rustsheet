@@ -3,7 +3,7 @@ id: T-1615
 title: "Probe an array error against a referenced error in MIN, MAX, AVERAGE and MEDIAN"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
