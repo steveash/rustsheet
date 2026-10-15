@@ -308,69 +308,61 @@ impl Model {
         CalcResult::Number(result.signum() * result.abs().floor())
     }
 
+    /// Lifts `op` over `N` numeric arguments like [`Model::lift_numbers`], where the arguments
+    /// past `args.len()` take their `defaults` (the optional significance and mode of the
+    /// CEILING/FLOOR family).
+    fn lift_with_defaults<const N: usize>(
+        &mut self,
+        args: &[Node],
+        defaults: [f64; N],
+        cell: CellReferenceIndex,
+        op: impl Fn([f64; N]) -> Result<f64, Error>,
+    ) -> CalcResult {
+        let operands = (0..N)
+            .map(|i| match args.get(i) {
+                Some(arg) => self.get_number_or_array(arg, cell),
+                None => Ok(NumberOrArray::Number(defaults[i])),
+            })
+            .collect();
+        self.lift_number_operands(operands, cell, "Invalid arguments", op)
+    }
+
+    // The CEILING/FLOOR family lifts element-wise over arrays and ranges in every argument
+    // (gen-m7/e5a361112d83d0c3 Calc!A9, gen-m9/89693ab0cafc29df Calc!A14). The ratio gets
+    // Excel's 15-digit precision so that 0.3/0.1 style quotients round the way Excel's do.
     pub(crate) fn fn_floor(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let significance = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if significance == 0.0 {
-            if value == 0.0 {
-                return CalcResult::Number(0.0);
+        self.lift_numbers(args, cell, "Invalid arguments", |[value, significance]| {
+            if significance == 0.0 {
+                // Unlike CEILING, FLOOR divides by zero unless the number is 0 too.
+                return if value == 0.0 {
+                    Ok(0.0)
+                } else {
+                    Err(Error::DIV)
+                };
             }
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Divide by 0".to_string(),
-            };
-        }
-        if significance < 0.0 && value > 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Significance must be positive when value is positive".to_string(),
-            };
-        }
-
-        // Apply Excel precision to the ratio to handle floating-point rounding errors
-        let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-        let result = f64::floor(ratio) * significance;
-        CalcResult::Number(result)
+            if significance < 0.0 && value > 0.0 {
+                return Err(Error::NUM);
+            }
+            Ok(snap_ratio(value, significance).floor() * significance)
+        })
     }
 
     pub(crate) fn fn_ceiling(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let significance = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if significance == 0.0 {
-            // This behaviour is different from FLOOR where division by zero returns an error
-            return CalcResult::Number(0.0);
-        }
-        if significance < 0.0 && value > 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Significance must be positive when value is positive".to_string(),
-            };
-        }
-        // Apply Excel precision fix
-        let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-        let result = f64::ceil(ratio) * significance;
-        CalcResult::Number(result)
+        self.lift_numbers(args, cell, "Invalid arguments", |[value, significance]| {
+            if significance == 0.0 {
+                return Ok(0.0);
+            }
+            if significance < 0.0 && value > 0.0 {
+                return Err(Error::NUM);
+            }
+            Ok(snap_ratio(value, significance).ceil() * significance)
+        })
     }
 
     pub(crate) fn fn_ceiling_math(
@@ -378,44 +370,22 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let arg_count = args.len();
-        if !(1..=3).contains(&arg_count) {
+        if !(1..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let significance = if arg_count > 1 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f.abs(),
-                Err(s) => return s,
+        self.lift_with_defaults(args, [0.0, 1.0, 0.0], cell, |[value, significance, mode]| {
+            let significance = significance.abs();
+            if significance == 0.0 {
+                return Ok(0.0);
             }
-        } else {
-            1.0
-        };
-        let mode = if arg_count > 2 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            0.0
-        };
-        if significance == 0.0 {
-            return CalcResult::Number(0.0);
-        }
-        if value < 0.0 && mode != 0.0 {
-            // Apply Excel precision fix
-            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-            let result = f64::floor(ratio) * significance;
-            CalcResult::Number(result)
-        } else {
-            // Apply Excel precision fix
-            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-            let result = f64::ceil(ratio) * significance;
-            CalcResult::Number(result)
-        }
+            let ratio = snap_ratio(value, significance);
+            let steps = if value < 0.0 && mode != 0.0 {
+                ratio.floor()
+            } else {
+                ratio.ceil()
+            };
+            Ok(steps * significance)
+        })
     }
 
     pub(crate) fn fn_ceiling_precise(
@@ -423,29 +393,16 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let arg_count = args.len();
-        if !(1..=2).contains(&arg_count) {
+        if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let significance = if arg_count > 1 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f.abs(),
-                Err(s) => return s,
+        self.lift_with_defaults(args, [0.0, 1.0], cell, |[value, significance]| {
+            let significance = significance.abs();
+            if significance == 0.0 {
+                return Ok(0.0);
             }
-        } else {
-            1.0
-        };
-        if significance == 0.0 {
-            return CalcResult::Number(0.0);
-        }
-        // Apply Excel precision fix
-        let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-        let result = f64::ceil(ratio) * significance;
-        CalcResult::Number(result)
+            Ok(snap_ratio(value, significance).ceil() * significance)
+        })
     }
 
     pub(crate) fn fn_iso_ceiling(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -454,45 +411,22 @@ impl Model {
     }
 
     pub(crate) fn fn_floor_math(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(1..=3).contains(&arg_count) {
+        if !(1..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let significance = if arg_count > 1 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
+        self.lift_with_defaults(args, [0.0, 1.0, 0.0], cell, |[value, significance, mode]| {
+            let significance = significance.abs();
+            if significance == 0.0 {
+                return Ok(0.0);
             }
-        } else {
-            1.0
-        };
-        let mode = if arg_count > 2 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            0.0
-        };
-        if significance == 0.0 {
-            return CalcResult::Number(0.0);
-        }
-        let significance = significance.abs();
-        if value < 0.0 && mode != 0.0 {
-            // Apply Excel precision to handle floating-point rounding errors
-            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-            let result = f64::ceil(ratio) * significance;
-            CalcResult::Number(result)
-        } else {
-            // Apply Excel precision to handle floating-point rounding errors
-            let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-            let result = f64::floor(ratio) * significance;
-            CalcResult::Number(result)
-        }
+            let ratio = snap_ratio(value, significance);
+            let steps = if value < 0.0 && mode != 0.0 {
+                ratio.ceil()
+            } else {
+                ratio.floor()
+            };
+            Ok(steps * significance)
+        })
     }
 
     pub(crate) fn fn_floor_precise(
@@ -500,30 +434,16 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let arg_count = args.len();
-        if !(1..=2).contains(&arg_count) {
+        if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let significance = if arg_count > 1 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f.abs(),
-                Err(s) => return s,
+        self.lift_with_defaults(args, [0.0, 1.0], cell, |[value, significance]| {
+            let significance = significance.abs();
+            if significance == 0.0 {
+                return Ok(0.0);
             }
-        } else {
-            1.0
-        };
-        if significance == 0.0 {
-            return CalcResult::Number(0.0);
-        }
-
-        // Apply Excel precision to handle floating-point rounding errors
-        let ratio = to_excel_precision(value / significance, EXCEL_PRECISION);
-        let result = f64::floor(ratio) * significance;
-        CalcResult::Number(result)
+            Ok(snap_ratio(value, significance).floor() * significance)
+        })
     }
 
     pub(crate) fn fn_mround(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -531,49 +451,43 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-
-        let value = self.evaluate_node_in_context(&args[0], cell);
-
-        let multiple = self.evaluate_node_in_context(&args[1], cell);
-
-        // if either is empty => #N/A
-        if matches!(value, CalcResult::EmptyArg) || matches!(multiple, CalcResult::EmptyArg) {
-            return CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Bad argument for MROUND".to_string(),
-            };
+        let values: Vec<CalcResult> = args
+            .iter()
+            .map(|arg| self.evaluate_node_in_context(arg, cell))
+            .collect();
+        // A missing argument is #N/A and a boolean #VALUE!, unlike most numeric functions;
+        // every missing argument is checked before any boolean (the order MROUND always had here).
+        if values.iter().any(|v| matches!(v, CalcResult::EmptyArg)) {
+            return CalcResult::new_error(Error::NA, cell, "Bad argument for MROUND".to_string());
         }
-
-        // Booleans are not cast
-        if matches!(value, CalcResult::Boolean(_)) {
+        if values.iter().any(|v| matches!(v, CalcResult::Boolean(_))) {
             return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
         }
-
-        if matches!(multiple, CalcResult::Boolean(_)) {
-            return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
-        }
-
-        let value = match self.cast_to_number(value, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let multiple = match self.cast_to_number(multiple, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if multiple == 0.0 {
-            return CalcResult::Number(0.0);
-        }
-        if (value > 0.0 && multiple < 0.0) || (value < 0.0 && multiple > 0.0) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "number and multiple must have the same sign".to_string(),
-            };
-        }
-        let result = (value / multiple).round() * multiple;
-        CalcResult::Number(result)
+        let operands = values
+            .into_iter()
+            .map(|value| match self.number_or_array(value, cell) {
+                // Booleans are not cast in a scalar MROUND, so not in an array one either
+                // (INFERRED, arrays.md "CEILING/FLOOR family and MROUND lift over arrays").
+                Ok(NumberOrArray::Array(mut rows)) => {
+                    for node in rows.iter_mut().flatten() {
+                        if matches!(node, ArrayNode::Boolean(_)) {
+                            *node = ArrayNode::Error(Error::VALUE);
+                        }
+                    }
+                    Ok(NumberOrArray::Array(rows))
+                }
+                other => other,
+            })
+            .collect();
+        self.lift_number_operands(operands, cell, "Invalid arguments", |[value, multiple]| {
+            if multiple == 0.0 {
+                return Ok(0.0);
+            }
+            if (value > 0.0 && multiple < 0.0) || (value < 0.0 && multiple > 0.0) {
+                return Err(Error::NUM);
+            }
+            Ok((value / multiple).round() * multiple)
+        })
     }
 
     single_number_fn!(fn_log10, |f| if f <= 0.0 {
@@ -922,4 +836,10 @@ impl Model {
         }
         CalcResult::Number(result)
     }
+}
+
+/// `value / significance` with Excel's precision applied, so floating-point noise does not
+/// push an exact multiple over a step boundary.
+fn snap_ratio(value: f64, significance: f64) -> f64 {
+    to_excel_precision(value / significance, EXCEL_PRECISION)
 }
