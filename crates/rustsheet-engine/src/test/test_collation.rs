@@ -74,3 +74,23 @@ fn case_and_expansions_are_equal() {
 fn unprobed_characters_keep_code_point_order_after_letters() {
     assert_increasing(&["\u{1}", " ", "z", "þ", "α", "😀"]);
 }
+
+#[test]
+fn ascii_fast_path_agrees_with_the_general_path() {
+    // A shared non-ASCII first character forces the general path without changing any pass:
+    // equal letter and accent weights, and every hyphen/apostrophe position shifts by one.
+    let samples = [
+        "", "'", "-", " ", "!", "+", "0", "9", "a", "A", "a-b", "a'b", "ab", "co-op", "coop", "~",
+        "-1", "'1", "1", "z", "Z_", "a\u{1}",
+    ];
+    for left in samples {
+        for right in samples {
+            let prefixed = |s: &str| format!("\u{3b1}{s}");
+            assert_eq!(
+                cmp_text_excel(left, right),
+                cmp_text_excel(&prefixed(left), &prefixed(right)),
+                "{left:?} vs {right:?}"
+            );
+        }
+    }
+}
