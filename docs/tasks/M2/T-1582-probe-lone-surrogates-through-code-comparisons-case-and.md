@@ -3,7 +3,7 @@ id: T-1582
 title: "Probe lone surrogates through CODE, comparisons, case and search functions (SPEC-0010 step 8)"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -24,3 +24,6 @@ docs/specs/SPEC-0010-text-with-lone-surrogates.md "Unprobed". Build lone surroga
 
 ## Out of scope
 - Implementing the findings.
+
+## Outcome
+Added probes/text-lone-surrogates (87 cells, excel-graph values). Findings in docs/excel-semantics/text.md; the CONCAT/TEXTJOIN limit rows already agreed with the existing `#CALC!` entry. Divergences filed as T-1585, T-1586, T-1587. Eval: new case, 40/87 cells pass, 47 recorded as known failures.

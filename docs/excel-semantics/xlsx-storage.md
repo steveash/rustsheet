@@ -24,9 +24,9 @@ file of probes/text-surrogate-positions A6 (`LEFT("a😀b",2)&MID("a😀b",3,2)`
 2026-10-09) holds `a😀_xDE00_b`. `decode_xlsx_escapes` cannot decode a surrogate into a `String`
 and keeps the escape literally, so the oracle value is the text `a😀_xDE00_b` (SPEC-0010: the
 harness renders our lone units the same way, T-1578; the writer writes them so, T-1577).
-Observed for a lone low surrogate only; a lone high one written as `_xD83D_` is UNVERIFIED
-(T-1582).
-Status: VERIFIED (control characters; lone low surrogate)
+A lone high surrogate is written the same way, as `_xD83D_`: probes/text-lone-surrogates B1
+(`MID("😀",1,1)`), B3 (`a_xD83D_`) and B6 (`😀a_xD83D_`) (excel-graph, 2026-10-15, T-1582).
+Status: VERIFIED (control characters; lone low and lone high surrogates)
 
 ## Shared-formula members store no text; the master's text applies shifted
 Only the master `<f t="shared" ref=.. si=..>` carries text; members are `<f t="shared" si=../>` and

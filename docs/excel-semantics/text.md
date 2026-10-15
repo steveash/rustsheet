@@ -66,6 +66,38 @@ Status: VERIFIED
 Implemented in: `utf16_slice` in functions/text/util.rs
 Tasks: T-0249, T-1483, T-1575
 
+## Lone surrogates through CODE, comparisons, case, search and cleanup functions
+Built with `H = MID("😀",1,1)` (lone high, D83D) and `L = MID("😀",2,1)` (lone low, DE00). Excel text is
+exact UTF-16 units throughout:
+- `&` concatenates unit sequences, so a high followed by a low re-pairs: `EXACT(H&L,"😀")` is TRUE, `LEN(H&L)` is 2,
+  `UNICODE(RIGHT(H&L,1))` is 128512, `LEN(LEFT(H&L,1))` is 2, `REPT(H&L,2)` is "😀😀". Low then high does not
+  (`EXACT(L&H,"😀")` is FALSE, length 2). `MID("a😀b",2,1)&MID("a😀b",3,1)` is "😀".
+- `CODE(H)` and `CODE(L)` are 63 (as for any non-Windows-1252 character). `UNICODE(H)` is `#VALUE!`,
+  `UNICODE(L)` is 56832.
+- A lone surrogate is never equal to U+FFFD: `EXACT(H,UNICHAR(65533))`, `H=UNICHAR(65533)` and the same for L are FALSE.
+  `H=H` and `EXACT(H,H)` are TRUE, `H=L` and `EXACT(H,L)` FALSE.
+- Order: `H<L` TRUE, `L<H` FALSE, `H<"😀"` TRUE, `"😀"<L` TRUE, `H<"a"` FALSE, but `H<UNICHAR(65533)` and
+  `L<UNICHAR(65533)` are both FALSE (so it is not plain code-unit order against U+FFFD).
+- MATCH(…,0) of H or L in `{"x";"😀"}` or `{…;"�"}` is `#N/A` (a lone half never matches a pair or U+FFFD).
+- UPPER, LOWER, PROPER, TRIM and CLEAN keep a lone surrogate unchanged (`EXACT(UPPER(H),H)`, `UNICODE(UPPER(L))` 56832,
+  `LEN(TRIM(" "&H&"  "&L&" "))` 3 (H, one inner space, L: TRIM keeps a single space, nothing re-pairs), `LEN(CLEAN(L&CHAR(7)&H))` 2); `T(H)`, `H&""`,
+  `TEXT(H,"@")` and `TEXT(L,"General")` keep it (length 1); `REPT(H,3)` has length 3.
+- `VALUE(H)`, `VALUE(L&"1")` and `H+0` are errors.
+- FIND and SEARCH with a lone half as find_text *can* split a pair: `FIND(H,"a😀b")` 2, `FIND(L,"a😀b")` 3,
+  `SEARCH` the same, `FIND(L,H&L)` 2, `FIND("😀",H&L)` 1, `SEARCH(H&"*","a😀b")` matches. A lone half does not match
+  U+FFFD (`FIND(UNICHAR(65533),H)` and `SEARCH(UNICHAR(65533),L)` are `#VALUE!`).
+- SUBSTITUTE with a lone half as old_text matches inside a pair, like FIND: `UNICODE(SUBSTITUTE("😀",H,"x"))` is 120
+  (the result is "x" then the lone low half, `LEN` 2), `LEN(SUBSTITUTE("😀",L,"x"))` is 2, `LEN(SUBSTITUTE("a😀b😀",H,"x"))` is 6
+  (one unit for one unit); `SUBSTITUTE("😀",H&L,"x")` replaces the whole pair (`LEN` 1); `LEN(SUBSTITUTE(H,H,"x"))` is 1.
+- A lone high surrogate is cached as `_xD83D_` (like the low one, `_xDE00_`): `H` is `_xD83D_`, `"a"&H` is `a_xD83D_`,
+  `MID("😀a😀",1,1)&MID("😀a😀",2,2)&MID("😀a😀",4,1)` is `😀a_xD83D_`.
+- 32,767 limit: `LEN(REPT("a",32766)&"😀")` is 32767 (the kept unit is the high half, coercion.md "Truncation inside a surrogate pair"); `REPT("😀",16384)` is `#VALUE!`;
+  CONCAT and TEXTJOIN one unit over (a pair straddling the limit) are `#CALC!`, not truncated (existing entry below).
+Evidence: probes/text-lone-surrogates A1-A81, B1-B6 (excel-graph, 2026-10-15, T-1582).
+Ours: the engine drops a lone half, so 47 of the 87 cells fail (comparisons that pass today do so because the dropped half compares as ""); T-1585 to T-1587 are the follow-ups.
+Status: VERIFIED
+Tasks: T-1582
+
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
 replace-all and for a given instance number alike; exactly 32,767 is fine. The limit applies to the result, not the
@@ -188,7 +220,7 @@ T-1248 (excel-graph, 2026-10-13; probes/text-modes-dbcs-phonetic-b, text-modes-d
 Generated cells (gen-m9, excel-graph, 2026-10-12, T-1289): ASC lifts over a range (`ASC(INDEX(A6:D8,0,3))` is
 `#SPILL!`, gen-m9/65faaeb48419087d Calc!A5; ours `#VALUE!`, T-1411), and TEXT lifts over its format argument
 (`TEXT(E7,FILTER(B1:E12,..))` and `TEXT(x,UNIQUE(D9:D12)&..)` are `#SPILL!`, gen-m9/89693ab0cafc29df A36 and
-95efb37a9874f82e A16; ours `#N/IMPL!` for an array format and `#VALUE!` for a range, T-1410).
+95efb37a9874f82e A16; ours matches, T-1410 and T-1458).
 Ours: matches except range lift. DBCS returns its text unchanged and PHONETIC of any reference is `#N/A` (T-1213); DBCS and ASC do not lift over a range yet, which Excel does (T-1488); the T-1248 findings are above. CODE and VALUETOTEXT
 lift over ranges (T-1212). VALUETOTEXT's format (probes/valuetotext-format, excel-graph, T-1229): 1 quotes text and doubles embedded quotes (`"a""b"`; empty text is `""`), while a blank cell is empty, numbers, booleans and errors print as in format 0 (an error spells out, `#N/A`). The format is coerced to a number like any argument (`"1"`, TRUE and a blank cell work; other text is `#VALUE!`); a value in `[0, 2)` is truncated (`1.9` is 1, `1E-20` is 0), and anything else, `2`, `2.5`, `-0.5`, `-1`, is `#VALUE!`; an error format is returned as it is when the value is plain text; an error value with an invalid format wins as `#VALUE!` (`VALUETOTEXT(#N/A,2)`, `(#N/A,-1)` and `(#N/A,"x")` are `#VALUE!`), but with an error format the format's error wins (`VALUETOTEXT(#N/A,#DIV/0!)` and `VALUETOTEXT(5,#DIV/0!)` are `#DIV/0!`); an error value with a valid format prints as text (`VALUETOTEXT(#N/A,0)` and `(#N/A,1)` are "#N/A"). A one-cell range reference as the format works like a number (`VALUETOTEXT(A1,B1)` and `(A1,B1:B1)` with B1 = 1 give the quoted text `"ab"`), and a 2-cell range gives `#SPILL!` when its spill is blocked (it is an array result; the lifted values are UNVERIFIED) (probes/valuetotext-error-format, excel-graph, 2026-10-14, T-1288). The format lifts over arrays like the value (`VALUETOTEXT(A1:A2,{0,1})` is 2x2, `VALUETOTEXT(A1,{0,1})` 1x2). Ours: matches.
 Status: VERIFIED (excel-graph)
