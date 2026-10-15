@@ -3,7 +3,7 @@ id: T-1190
 title: "MULTINOMIAL reads numeric text and matches Excel's inexact result (9.999999999999998 for 2,3)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
