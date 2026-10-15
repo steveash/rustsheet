@@ -329,6 +329,7 @@ fn rept_and_text_keep_lone_units() {
         "TRUE"
     );
     assert_eq!(eval_text(&format!("=LEN(REPT({h},3))")), "3");
+    assert_eq!(eval_text(&format!("=UNICODE(T({l}))")), "56832");
     assert_eq!(eval_text(&format!("=UNICODE(TEXT({l},\"@\"))")), "56832");
     assert_eq!(
         eval_text(&format!("=EXACT(TEXT({h},\"@@\"),{h}&{h})")),

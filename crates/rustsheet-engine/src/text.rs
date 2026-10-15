@@ -202,8 +202,8 @@ impl Text {
 
     /// `a` followed by `b`, as unit sequences: a lone high surrogate at the end of `a` and a lone
     /// low one at the start of `b` become the pair (UTF-16's rule, probed:
-    /// `EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")` is TRUE, probes/text-lone-surrogates). Not truncated: callers apply
-    /// [`Text::truncate_utf16`].
+    /// `EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")` is TRUE, probes/text-lone-surrogates). Not
+    /// truncated: callers apply [`Text::truncate_utf16`].
     #[must_use]
     pub fn concat(a: &Text, b: &Text) -> Text {
         if let (Text::Utf8(x), Text::Utf8(y)) = (a, b) {

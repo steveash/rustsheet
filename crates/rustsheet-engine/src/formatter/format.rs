@@ -158,23 +158,27 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
     capped_text(out)
 }
 
+/// The private-use characters [`format_text_value_exact`] picks its stand-in from.
+const STAND_IN_RANGE: std::ops::RangeInclusive<char> = '\u{E000}'..='\u{F8FF}';
+
 /// [`format_text_value`] for exact text: a lone surrogate in `text` is kept where `@` prints it
 /// (probes/text-lone-surrogates, TEXT(H,"@") has length 1). The format runs on a one-character
 /// stand-in for the text, a private-use character the format does not hold, so the 255-character
 /// limit and every other rule are the well-formed path's; the stand-ins in the result are then
 /// replaced by the exact text. `Err` is the formatter's error message.
-pub fn format_text_value_exact(text: &Text, format: &str) -> Result<Text, String> {
+pub(crate) fn format_text_value_exact(text: &Text, format: &str) -> Result<Text, String> {
     if !text.has_lone_surrogate() {
         let f = format_text_value(text, format);
         return f.error.map_or(Ok(Text::from(f.text)), Err);
     }
     let in_format: BTreeSet<char> = format
         .chars()
-        .filter(|c| ('\u{E000}'..='\u{F8FF}').contains(c))
+        .filter(|c| STAND_IN_RANGE.contains(c))
         .collect();
     // The format holds at most one private-use character per character, so one of the first
     // `in_format.len() + 1` is free; the range holds 6,400.
-    let stand_in = ('\u{E000}'..='\u{F8FF}')
+    let stand_in = STAND_IN_RANGE
+        .clone()
         .find(|c| !in_format.contains(c))
         .ok_or_else(|| "No free stand-in character".to_owned())?;
     let f = format_text_value(stand_in.encode_utf8(&mut [0; 4]), format);
@@ -186,7 +190,7 @@ pub fn format_text_value_exact(text: &Text, format: &str) -> Result<Text, String
     let copies = f.text.matches(stand_in).count();
     let chars = f.text.chars().count() - copies + copies.saturating_mul(text.chars().count());
     if chars > MAX_TEXT_FORMAT_CHARS {
-        return Err(text_too_long().error.unwrap_or_default());
+        return Err(TEXT_TOO_LONG.to_owned());
     }
     let mut out = Text::from("");
     let mut parts = f.text.split(stand_in);
@@ -208,11 +212,13 @@ const MAX_TEXT_FORMAT_CHARS: usize = 255;
 /// `bbbb` (probes/text-format-bare-literals A41-A46; gen-m7/6db767d720c5b55a A30).
 const BUDDHIST_ERA_OFFSET: i32 = 543;
 
+const TEXT_TOO_LONG: &str = "TEXT result over 255 characters";
+
 fn text_too_long() -> Formatted {
     Formatted {
         text: "#VALUE!".to_owned(),
         color: None,
-        error: Some("TEXT result over 255 characters".to_owned()),
+        error: Some(TEXT_TOO_LONG.to_owned()),
     }
 }
 
