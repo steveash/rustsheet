@@ -336,6 +336,22 @@ impl Text {
         Text::from_utf16(units)
     }
 
+    /// `TRIM`: leading and trailing spaces removed and each inner run of spaces collapsed to one.
+    /// Only U+0020 is a space; a lone surrogate is kept and is not (probes/text-lone-surrogates A36, A37).
+    #[must_use]
+    pub fn trim_spaces(&self) -> Text {
+        if !self.has_lone_surrogate() {
+            let words: Vec<&str> = self.split(' ').filter(|w| !w.is_empty()).collect();
+            return Text::Utf8(words.join(" "));
+        }
+        let units: Vec<u16> = self.units().collect();
+        let words: Vec<&[u16]> = units
+            .split(|&u| u == 0x20)
+            .filter(|w| !w.is_empty())
+            .collect();
+        Text::from_utf16(words.join(&0x20u16))
+    }
+
     /// The text as runs of well-formed text and lone units, in order.
     pub fn segments(&self) -> Segments<'_> {
         match self {

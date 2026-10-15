@@ -388,23 +388,7 @@ impl Model {
         // or more spaces to a single space. It must NOT touch tab (0x09),
         // non-breaking space (0xA0), or any other Unicode whitespace, so we
         // deliberately split on ' ' rather than using `str::trim`.
-        self.apply_text_unary_text(args, cell, |text| {
-            if !text.has_lone_surrogate() {
-                return Text::Utf8(
-                    text.split(' ')
-                        .filter(|w| !w.is_empty())
-                        .collect::<Vec<_>>()
-                        .join(" "),
-                );
-            }
-            // A lone surrogate is kept and is no space (probes/text-lone-surrogates A36, A37).
-            let units: Vec<u16> = text.units().collect();
-            let words: Vec<&[u16]> = units
-                .split(|&u| u == 0x20)
-                .filter(|w| !w.is_empty())
-                .collect();
-            Text::from_utf16(words.join(&0x20u16))
-        })
+        self.apply_text_unary_text(args, cell, Text::trim_spaces)
     }
 
     pub(crate) fn fn_lower(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
