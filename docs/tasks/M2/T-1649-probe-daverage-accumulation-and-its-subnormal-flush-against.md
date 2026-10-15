@@ -3,7 +3,7 @@ id: T-1649
 title: "Probe DAVERAGE accumulation and its subnormal flush against Excel"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
