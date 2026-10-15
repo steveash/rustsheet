@@ -4,9 +4,8 @@
 use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
 use crate::external_reference::ExternalArea;
 use crate::functions::util::{
-    array_node_to_calc_result, near_integer_count, NEAR_INTEGER_TOLERANCE,
+    array_node_to_calc_result, near_integer_count, picks_a_branch, NEAR_INTEGER_TOLERANCE,
 };
-use crate::functions::Function;
 use crate::limits::check_array_size;
 use crate::reference_operators::{three_d_needs_one_sheet, Picked, RefArg};
 use crate::{
@@ -121,17 +120,6 @@ fn index_window(
     let (first_row, last_row) = span(row_eff, num_rows);
     let (first_col, last_col) = span(col_eff, num_cols);
     Some((first_row, last_row, first_col, last_col))
-}
-
-/// Whether `node` is an IF or CHOOSE call, which INDEX reads through to the branch it picks.
-fn picks_a_branch(node: &Node) -> bool {
-    matches!(
-        node.ungrouped(),
-        Node::FunctionKind {
-            kind: Function::If | Function::Choose,
-            ..
-        }
-    )
 }
 
 /// Extracts the requested cell, row, column or whole array from `arr`.
