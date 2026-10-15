@@ -73,6 +73,8 @@ fn is_date_time_letter(token: &Token) -> bool {
             | Token::MonthLetter
             | Token::YearShort
             | Token::Year
+            | Token::BuddhistYearShort
+            | Token::BuddhistYear
             | Token::Hour
             | Token::HourPadded
             | Token::Second
@@ -97,6 +99,8 @@ fn is_number_or_date(token: &Token) -> bool {
                 | Token::ElapsedMinutePadded
                 | Token::ElapsedSecondPadded
                 | Token::AMPM
+                | Token::Era
+                | Token::Calendar(_)
         )
 }
 
@@ -189,8 +193,11 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
             Token::Period if run == Run::Digits => (Run::Digits, DECIMAL_POINT_COST),
             Token::Literal(':') if run == Run::Colon => continue,
             Token::Literal(':') => (Run::Colon, LITERAL_COST),
-            Token::Literal('$') => (Run::Literal, DOLLAR_COST),
-            Token::Literal(_) | Token::Currency(_) => (Run::Literal, LITERAL_COST),
+            Token::Literal('$') | Token::Escaped('$') => (Run::Literal, DOLLAR_COST),
+            // An escaped colon does not join a colon run: it prints (`0\:\:` is "1::").
+            Token::Literal(_) | Token::Escaped(_) | Token::Currency(_) => {
+                (Run::Literal, LITERAL_COST)
+            }
             Token::Text(text) => (Run::Literal, QUOTED_CHAR_COST * text.chars().count()),
             Token::AMPM => (Run::None, AMPM_COST),
             _ => (Run::None, TOKEN_COST),

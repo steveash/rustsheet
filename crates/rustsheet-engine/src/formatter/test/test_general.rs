@@ -343,3 +343,66 @@ fn single_text_section_prints_a_number_in_general() {
     assert_eq!(format_number(1.0, "@\"aaa\"", &ctx).text, "1");
     assert_eq!(format_number(1.5, "@", &ctx).text, "1.5");
 }
+
+/// Bare letters and digits 1-9 are literals, a point with no placeholder before it shows the
+/// integer part, and an empty format shows only a minus (probes/text-format-bare-literals, T-1262).
+#[test]
+fn bare_letters_digits_and_empty_format() {
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        (std::f64::consts::PI, "x", "x"),
+        (-std::f64::consts::PI, "x", "-x"),
+        (1.0, "0a0", "0a1"),
+        (1234.0, "0x00", "12x34"),
+        (-1.0, "2.5", "-21.5"),
+        (1.005, "-21.5", "-211.5"),
+        (12.3, ".", "12."),
+        (0.0, ".", "."),
+        (12.3, "0.1", "12.1"),
+        (12.3, "1.0", "112.3"),
+        (5.0, "", ""),
+        (-0.0001, "", "-"),
+        (5.0, "General x", "5 x"),
+        (5.0, "x General", "x 5"),
+        (1.0, "0\\:\\:", "1::"),
+        (1.0, "0::a", "1:a"),
+    ];
+    for (value, format, expected) in cases {
+        assert_eq!(
+            format_number(value, format, &ctx).text,
+            expected,
+            "{format}"
+        );
+    }
+}
+
+/// `b` is the Buddhist-era year, `e` the year, `g` the (empty) era and `B1`/`B2` print nothing;
+/// a lone closing `B` and `B2` before a date token are errors (probes/text-format-bare-literals).
+#[test]
+fn buddhist_year_era_and_calendar_tokens() {
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        ("ABC", "A43C"),
+        ("bb", "43"),
+        ("bbbb", "2443"),
+        ("e", "1900"),
+        ("e+", "1900+"),
+        ("g", ""),
+        ("B1", ""),
+        ("B2", ""),
+        ("x d", "x 9"),
+    ];
+    for (format, expected) in cases {
+        assert_eq!(
+            format_number(100.0, format, &ctx).text,
+            expected,
+            "{format}"
+        );
+    }
+    for format in ["B", "dB", "a.b", "n", "E", "B2d", "0 General"] {
+        assert!(
+            format_number(100.0, format, &ctx).error.is_some(),
+            "{format}"
+        );
+    }
+}
