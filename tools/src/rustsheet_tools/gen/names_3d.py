@@ -8,7 +8,8 @@ inside names, LAMBDAs and 3-D ranges. Each case (one per category) differs in it
 its probes. Known behavior: docs/excel-semantics/references.md; complements the hand probes of
 T-0043, T-0158, T-1459, T-1015 and T-1139 (and leaves non-ASCII names to T-1431).
 
-No sheet name looks like a cell address (`S1` would need quotes). Probes sit in column K of `Calc` (and `Other`, for scope), rows 1 to `PER_CATEGORY`. 3-D spans and
+No sheet name looks like a cell address (`S1` would need quotes). Probes sit in column K of
+`Calc` (and `Other`, for scope), rows 1 to `PER_CATEGORY`. 3-D spans and
 named ranges stay inside A1:F12, so a span over `Calc` never covers a probe (no circularity), and
 the relative names (defined relative to A1, as xlsx stores them) read the Jan columns K and L,
 which hold one number per probe row. Every probe yields one value (a spill would hit the next
@@ -32,55 +33,62 @@ ORDER = ["Jan", "Feb", "Gap", "Mar", "Calc", "Apr", "My Data", "Other"]
 SPAN_SHEETS = ["Jan", "Feb", "Gap", "Mar", "Calc", "Apr", "My Data"]
 DATA_SHEETS = ["Jan", "Feb", "Mar", "Apr", "My Data"]
 
+# One `name formula` per line (a `Sheet!name` is sheet scoped); `#` lines are comments.
+_NAMES_TEXT = """
+# Constants.
+k_num =42
+k_neg =-1.5
+k_text ="abc"
+k_bool =TRUE
+k_err =#N/A
+k_arr ={1,2,3}
+# Ranges, absolute.
+r_cell =Jan!$A$1
+r_block =Jan!$A$1:$C$4
+r_col =Feb!$B$1:$B$12
+r_row =Mar!$A$2:$F$2
+r_union =(Jan!$A$1,Jan!$C$3)
+r_quoted ='My Data'!$A$1:$B$3
+# Ranges, relative to A1 (the stored form): read from Calc!K<i> they point at Jan near row i.
+rel_same =Jan!A1
+rel_right =Jan!B1
+rel_down =Jan!A2
+rel_col_abs =Jan!$A1
+rel_row_abs =Jan!A$1
+# Formulas and names inside names.
+f_total =SUM(Jan!$A$1:$C$4)
+f_twice =f_total*2
+f_chain =f_twice+r_cell
+f_text =k_text&"-"&k_num
+f_count =COUNTA(r_block)
+f_rel_sum =rel_same+rel_right
+# LAMBDAs.
+dbl =LAMBDA(x,x*2)
+add =LAMBDA(a,b,a+b)
+fact =LAMBDA(n,IF(n<=1,1,n*fact(n-1)))
+sumsq =LAMBDA(r,SUMSQ(r))
+twice_of =LAMBDA(f,x,f(f(x)))
+# The same name in both scopes, and sheet-only names.
+loc =10
+Calc!loc =20
+Jan!loc =30
+Jan!only1 =5
+Calc!here =Calc!$A$1
+Other!here =Other!$A$1
+# 3-D ranges.
+span3 =Jan:Mar!$A$1:$B$2
+# Quoted on one side only (valid: 'Jan:My Data'!): Excel reads it as #NAME? (references.md).
+span_all =Jan:'My Data'!$A$1
+span_calc =Mar:Apr!$A$1:$C$3
+# Errors.
+bad_ref =#REF!
+bad_sheet_ref =Jan!#REF!
+to_undefined =nosuch_name+1
+"""
 NAMES: dict[str, str] = {
-    # Constants.
-    "k_num": "=42",
-    "k_neg": "=-1.5",
-    "k_text": '="abc"',
-    "k_bool": "=TRUE",
-    "k_err": "=#N/A",
-    "k_arr": "={1,2,3}",
-    # Ranges, absolute.
-    "r_cell": "=Jan!$A$1",
-    "r_block": "=Jan!$A$1:$C$4",
-    "r_col": "=Feb!$B$1:$B$12",
-    "r_row": "=Mar!$A$2:$F$2",
-    "r_union": "=(Jan!$A$1,Jan!$C$3)",
-    "r_quoted": "='My Data'!$A$1:$B$3",
-    # Ranges, relative to A1 (the stored form): read from Calc!K<i> they point at Jan near row i.
-    "rel_same": "=Jan!A1",
-    "rel_right": "=Jan!B1",
-    "rel_down": "=Jan!A2",
-    "rel_col_abs": "=Jan!$A1",
-    "rel_row_abs": "=Jan!A$1",
-    # Formulas and names inside names.
-    "f_total": "=SUM(Jan!$A$1:$C$4)",
-    "f_twice": "=f_total*2",
-    "f_chain": "=f_twice+r_cell",
-    "f_text": '=k_text&"-"&k_num',
-    "f_count": "=COUNTA(r_block)",
-    "f_rel_sum": "=rel_same+rel_right",
-    # LAMBDAs.
-    "dbl": "=LAMBDA(x,x*2)",
-    "add": "=LAMBDA(a,b,a+b)",
-    "fact": "=LAMBDA(n,IF(n<=1,1,n*fact(n-1)))",
-    "sumsq": "=LAMBDA(r,SUMSQ(r))",
-    "twice_of": "=LAMBDA(f,x,f(f(x)))",
-    # The same name in both scopes, and sheet-only names.
-    "loc": "=10",
-    "Calc!loc": "=20",
-    "Jan!loc": "=30",
-    "Jan!only1": "=5",
-    "Calc!here": "=Calc!$A$1",
-    "Other!here": "=Other!$A$1",
-    # 3-D ranges.
-    "span3": "=Jan:Mar!$A$1:$B$2",
-    "span_all": "=Jan:'My Data'!$A$1",
-    "span_calc": "=Mar:Apr!$A$1:$C$3",
-    # Errors.
-    "bad_ref": "=#REF!",
-    "bad_sheet_ref": "=Jan!#REF!",
-    "to_undefined": "=nosuch_name+1",
+    name: formula
+    for name, formula in (line.split(" ", 1) for line in _NAMES_TEXT.strip().splitlines())
+    if not name.startswith("#")
 }
 
 NUMBERS = ["0", "1", "2", "3", "0.5", "1.5", "10", "-2", "100", "0.25", "7"]
