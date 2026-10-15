@@ -11,6 +11,7 @@
 
 mod diff;
 
+use rustsheet_engine::clock::Clock;
 use rustsheet_engine::types::{Cell, Link, Worksheet};
 use rustsheet_engine::Model;
 
@@ -162,6 +163,8 @@ enum Undo {
         row: i32,
         hidden: bool,
     },
+    /// The clock as it was before `set_clock`.
+    Clock(Clock),
 }
 
 /// The write-only handle passed to [`Workbook::edit`].
@@ -484,6 +487,18 @@ impl Txn<'_> {
         Ok(())
     }
 
+    /// Sets the workbook clock (SPEC-0008): NOW, TODAY and year-less date text read it, and
+    /// `to_xlsx_bytes` stamps `dcterms:modified` from it. The usual recalculation after the closure
+    /// applies it, even when `clock` equals the current one. Undone with the transaction.
+    ///
+    /// # Errors
+    /// Never fails today; the `Result` keeps the op uniform with the other `Txn` methods.
+    pub fn set_clock(&mut self, clock: Clock) -> Result<(), EditError> {
+        self.undo.push(Undo::Clock(self.model.clock()));
+        self.model.set_clock(clock);
+        Ok(())
+    }
+
     /// Gives one cell the number format `format` (Excel format code, e.g. `"[h]:mm"`), keeping
     /// its value and the rest of its style. It changes no value; the cell displays through it
     /// (`Workbook::formatted`). Undone with the transaction like a `set`.
@@ -645,6 +660,7 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
                     debug_assert!(undone.is_ok(), "undo of set_row_hidden failed: {undone:?}");
                 }
             }
+            Undo::Clock(clock) => model.set_clock(clock),
         }
     }
     if re_evaluate {
@@ -653,6 +669,22 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
 }
 
 impl Workbook {
+    /// The workbook's clock.
+    #[must_use]
+    pub fn clock(&self) -> Clock {
+        self.model.clock()
+    }
+
+    /// One-op [`Workbook::edit`]: sets the clock, recalculates once and reports the values that
+    /// changed (SPEC-0008).
+    ///
+    /// # Errors
+    /// As [`Txn::set_clock`].
+    pub fn set_clock(&mut self, clock: Clock) -> Result<ChangeSet, EditError> {
+        self.edit(|tx| tx.set_clock(clock))
+            .map(|((), changes)| changes)
+    }
+
     /// Turns the per-edit value diff on (default) or off. Off makes `edit`/`set` return a
     /// [`ChangeSet`] with empty `values`, for bulk loads that do not need the diff.
     pub fn set_track_changes(&mut self, on: bool) {

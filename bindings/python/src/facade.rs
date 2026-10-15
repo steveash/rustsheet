@@ -9,13 +9,13 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::sync::{Mutex, MutexGuard};
 
-use pyo3::exceptions::{PyException, PyTypeError};
+use pyo3::exceptions::{PyException, PyTypeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyBool, PyDict, PyList};
+use pyo3::types::{PyBool, PyDict, PyInt, PyList};
 use pyo3::{create_exception, IntoPyObjectExt};
 
 use rustsheet::{
-    resolve_sheet_by_name, ChangeSet, DateSystem, EditError, ErrorKind, Input, LoadOptions,
+    resolve_sheet_by_name, ChangeSet, Clock, DateSystem, EditError, ErrorKind, Input, LoadOptions,
     RefError, SaveOptions, SheetChange, SheetId, Txn, Value, Workbook, WorkbookOptions, XlError,
 };
 
@@ -215,9 +215,31 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-fn load_options(recalc: bool) -> LoadOptions {
+/// Converts the Python `clock` argument: `None` is the system clock, an `int` is a fixed instant
+/// in ms since the Unix epoch (SPEC-0008). A `bool` or any other type is a `TypeError`; an
+/// instant outside Excel's calendar is a `ValueError`.
+fn py_to_clock(obj: &Bound<'_, PyAny>) -> PyResult<Clock> {
+    if obj.is_none() {
+        return Ok(Clock::system());
+    }
+    if obj.is_instance_of::<PyBool>() || !obj.is_instance_of::<PyInt>() {
+        return Err(PyTypeError::new_err(
+            "clock must be an int (ms since the Unix epoch) or None",
+        ));
+    }
+    let ms = obj.extract::<i64>().map_err(|_| {
+        PyValueError::new_err("clock instant is outside 1900-01-01..=9999-12-31 UTC")
+    })?;
+    Clock::fixed_unix_millis(ms).map_err(|e| PyValueError::new_err(e.to_string()))
+}
+
+fn load_options(recalc: bool, clock: Clock) -> LoadOptions {
     LoadOptions {
         recalc,
+        workbook: WorkbookOptions {
+            clock,
+            ..WorkbookOptions::default()
+        },
         ..LoadOptions::default()
     }
 }
@@ -273,8 +295,9 @@ fn sheet_names(wb: &Workbook) -> Vec<(SheetId, String)> {
 impl PyWorkbook {
     /// Creates an empty workbook with one sheet; `date_system` is `"1900"` (default) or `"1904"`.
     #[new]
-    #[pyo3(signature = (date_system="1900"))]
-    fn py_new(date_system: &str) -> PyResult<Self> {
+    #[pyo3(signature = (date_system="1900", clock=None))]
+    fn py_new(date_system: &str, clock: Option<&Bound<'_, PyAny>>) -> PyResult<Self> {
+        let clock = clock.map_or(Ok(Clock::system()), py_to_clock)?;
         let date_system = match date_system {
             "1900" => DateSystem::Excel1900,
             "1904" => DateSystem::Excel1904,
@@ -286,6 +309,7 @@ impl PyWorkbook {
         };
         let wb = Workbook::new(&WorkbookOptions {
             date_system,
+            clock,
             ..WorkbookOptions::default()
         })
         .map_err(|e| PyLoadError::new_err(e.to_string()))?;
@@ -301,22 +325,47 @@ impl PyWorkbook {
         }
     }
 
+    /// The fixed clock in ms since the Unix epoch (UTC), `None` for the system clock. Setting it
+    /// is one edit: NOW, TODAY and year-less date text recalculate and `changes` reports them.
+    #[getter]
+    fn clock(&self) -> Option<i64> {
+        lock(&self.wb).clock().fixed()
+    }
+
+    #[setter]
+    fn set_clock(&self, py: Python<'_>, clock: &Bound<'_, PyAny>) -> PyResult<()> {
+        let clock = py_to_clock(clock)?;
+        self.run_edit(py, vec![Op::Clock(clock)])
+    }
+
     /// Opens an xlsx file (the GIL is released while loading).
     #[staticmethod]
-    #[pyo3(signature = (path, recalc=true))]
-    fn open(py: Python<'_>, path: &str, recalc: bool) -> PyResult<Self> {
+    #[pyo3(signature = (path, recalc=true, clock=None))]
+    fn open(
+        py: Python<'_>,
+        path: &str,
+        recalc: bool,
+        clock: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<Self> {
+        let options = load_options(recalc, clock.map_or(Ok(Clock::system()), py_to_clock)?);
         let wb = py
-            .detach(|| Workbook::open(path, &load_options(recalc)))
+            .detach(|| Workbook::open(path, &options))
             .map_err(|e| PyLoadError::new_err(e.to_string()))?;
         Ok(Self::wrap(wb))
     }
 
     /// Loads a workbook from xlsx bytes (the GIL is released while loading).
     #[staticmethod]
-    #[pyo3(signature = (data, recalc=true))]
-    fn from_bytes(py: Python<'_>, data: &[u8], recalc: bool) -> PyResult<Self> {
+    #[pyo3(signature = (data, recalc=true, clock=None))]
+    fn from_bytes(
+        py: Python<'_>,
+        data: &[u8],
+        recalc: bool,
+        clock: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<Self> {
+        let options = load_options(recalc, clock.map_or(Ok(Clock::system()), py_to_clock)?);
         let wb = py
-            .detach(|| Workbook::from_xlsx_bytes(data, &load_options(recalc)))
+            .detach(|| Workbook::from_xlsx_bytes(data, &options))
             .map_err(|e| PyLoadError::new_err(e.to_string()))?;
         Ok(Self::wrap(wb))
     }
@@ -437,6 +486,7 @@ enum Op {
     AddSheet(String),
     RenameSheet(String, String),
     DeleteSheet(String),
+    Clock(Clock),
 }
 
 /// Buffers edits and applies them as one atomic `Workbook::edit` when the `with` block exits
@@ -477,6 +527,7 @@ fn apply(
     for op in ops {
         match op {
             Op::Set(r, input) => txn.set(r.as_str(), input)?,
+            Op::Clock(clock) => txn.set_clock(clock)?,
             Op::AddSheet(name) => {
                 let id = txn.add_sheet(&name)?;
                 sheets.push((id, name));
