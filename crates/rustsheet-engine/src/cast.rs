@@ -57,6 +57,22 @@ pub(crate) fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
+/// A scalar value as a one-element array, any other result unchanged: Excel reads a scalar where
+/// LOOKUP or INDEX takes a range or an array as that array (`LOOKUP(2,A1:A2,5)` is 5, probes/
+/// lookup-vector-edges A5-A8; `INDEX(CHOOSE(1,@B1:B6*1),3)` is `#REF!`, probes/legacy-choose-arm-
+/// aggregate-and-array-constant-at H1).
+pub(crate) fn scalar_as_array(result: CalcResult) -> CalcResult {
+    match result {
+        scalar @ (CalcResult::Number(_)
+        | CalcResult::String(_)
+        | CalcResult::Boolean(_)
+        | CalcResult::EmptyCell) => {
+            CalcResult::Array(vec![vec![calc_result_to_array_node(scalar)]])
+        }
+        other => other,
+    }
+}
+
 /// Longest text a cell can hold, in UTF-16 code units: an emoji (a surrogate pair) counts two
 /// (docs/excel-semantics/coercion.md "Text longer than 32,767 characters"). Also bounds the
 /// allocation a concatenation can make (CLAUDE.md directive 5).
