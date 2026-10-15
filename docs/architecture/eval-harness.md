@@ -129,8 +129,9 @@ Only `pass` counts as passing. Case statuses:
   functions. This is the hill-climbing to-do list. Function counts follow the catalog's `scope`
   (decision 0027), read from the generated `eval/catalog/scope.json` (decision 0040): `scope: out`
   functions leave the function tables and get their own section with their reason; the evidence
-  section lists in-scope catalog functions with no Excel evidence and the `oracle: none` ones that
-  need another evidence source. Suite cell counts and baselines still cover every checked cell.
+  section lists in-scope catalog functions with no Excel evidence, the `oracle: none` ones that
+  need another evidence source, and, by catalog category, the ones below the evidence floor
+  (fewer than 20 Excel cells; T-0056, decision 0062). Suite cell counts and baselines still cover every checked cell.
 - `report.json`: the same data, machine-readable.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
 
@@ -171,6 +172,7 @@ The rows are exit measures; `eval-check` is the gate.
 ## CLI
 ```
 rustsheet-eval suites | fetch [--suite S] | run [--suite S] [--filter X] | check | update-baseline [--allow-regressions]
+               | evidence-floor [--update [--allow-increase]]
                | show <case-id> [--all] | snapshot <file.xlsx>
 ```
 `snapshot` is the **only** xlsx value parser in the repo. Python tools call it.

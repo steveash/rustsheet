@@ -5,6 +5,7 @@
 //! rustsheet-eval run [--suite S] [--filter X]   # run + write eval/runs/latest/{report.json,report.md}
 //! rustsheet-eval check                          # gate: fail on any baseline regression
 //! rustsheet-eval update-baseline                # ratchet baselines up (refuses regressions)
+//! rustsheet-eval evidence-floor [--update]      # ratchet functions below the evidence floor
 //! rustsheet-eval show <case-id> [--all]         # per-cell detail for one case
 //! rustsheet-eval snapshot <file.xlsx>           # dump stored formulas/values as JSON
 //! rustsheet-eval cases <suite>                  # cases + sidecar paths as JSON (for tools)
@@ -25,6 +26,7 @@ use rustsheet_eval::calibrate::compare_snapshots;
 use rustsheet_eval::catalog::Catalog;
 use rustsheet_eval::deviations;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
+use rustsheet_eval::evidence_floor::{self, Lock, EVIDENCE_FLOOR, LOCK_PATH};
 use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::milestone_lists::{self, MilestoneList};
 use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
@@ -92,6 +94,17 @@ enum Cmd {
         /// Permit removing previously passing items (requires PR justification).
         #[arg(long)]
         allow_regressions: bool,
+    },
+    /// Fail if more in-scope functions are below the evidence floor than
+    /// quality/evidence-floor.json allows, or if the lock is stale (T-0056, decision 0062).
+    /// Counts the vendored suites only, so a fetched external suite cannot move it.
+    EvidenceFloor {
+        /// Record a lower count in the lock.
+        #[arg(long)]
+        update: bool,
+        /// With --update, also record a higher count (needs a decision record).
+        #[arg(long)]
+        allow_increase: bool,
     },
     /// Show every scored cell of one case.
     Show {
@@ -405,6 +418,67 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
     })
 }
 
+fn cmd_evidence_floor(root: &Path, update: bool, allow_increase: bool) -> Result<ExitCode> {
+    let sel = Selection {
+        suites: Suite::load_all(&root.join("eval/suites"))?
+            .into_iter()
+            .filter(|s| s.manifest.fetch.is_none())
+            .map(|s| s.manifest.name)
+            .collect(),
+        filter: None,
+        timeout: 60,
+    };
+    let suites = select(root, &sel, false)?;
+    let catalog = Catalog::load(root)?;
+    let results = execute(&suites, &sel);
+    let report = RunReport::build(
+        RustSheetEngine.name(),
+        &results,
+        &RustSheetEngine.implemented_functions(),
+        &catalog,
+    );
+    let count = report.below_floor.len();
+    let lock = Lock::read(root)?;
+    let verdict = evidence_floor::judge(lock, count);
+    println!(
+        "evidence floor: {count} in-scope functions with fewer than {EVIDENCE_FLOOR} Excel cells (lock {} at floor {})",
+        lock.below_floor, lock.floor
+    );
+    let new_lock = Lock {
+        floor: EVIDENCE_FLOOR,
+        below_floor: count,
+    };
+    let ok = match (verdict, update) {
+        (evidence_floor::Verdict::Unchanged, _) => true,
+        (evidence_floor::Verdict::Regressed, true) if !allow_increase => {
+            println!("  refusing to record an increase without --allow-increase (needs a decision record)");
+            false
+        }
+        (_, true) => {
+            new_lock.write(root)?;
+            println!("  updated {LOCK_PATH}: commit it");
+            true
+        }
+        (evidence_floor::Verdict::Improved, false) => {
+            println!("  fewer functions are below the floor: run `make eval-baseline` and commit {LOCK_PATH}");
+            false
+        }
+        (evidence_floor::Verdict::Regressed, false) => {
+            println!("  REGRESSION: more functions are below the floor than {LOCK_PATH} allows; the report's \"Below the evidence floor\" list names them");
+            false
+        }
+        (evidence_floor::Verdict::FloorChanged, false) => {
+            println!("  {LOCK_PATH} was taken at another floor: rerun with --update --allow-increase under a decision record");
+            false
+        }
+    };
+    Ok(if ok {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
+}
+
 fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
     let suite_name = case_id.split('/').next().unwrap_or_default().to_string();
     let sel = Selection {
@@ -527,6 +601,10 @@ fn run() -> Result<ExitCode> {
             sel,
             allow_regressions,
         } => cmd_check(&root, &sel, Some(allow_regressions)),
+        Cmd::EvidenceFloor {
+            update,
+            allow_increase,
+        } => cmd_evidence_floor(&root, update, allow_increase),
         Cmd::Show { case_id, all } => cmd_show(&root, &case_id, all),
         Cmd::Cases { suite } => cmd_cases(&root, &suite),
         Cmd::Snapshot { .. } | Cmd::Compare { .. } => unreachable!("handled above"),
