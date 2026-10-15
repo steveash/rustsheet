@@ -3,7 +3,7 @@ id: T-1648
 title: "Probe the final division of DAVERAGE for double rounding"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1636 showed AVERAGEA, AVERAGEIF(S) and SUBTOTAL(1/101) double-round the final 
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes-numeric/daverage-large-count-division` (6 cells, excel-graph): Excel double-rounds DAVERAGE's final division; ours divided once (all 6 cells 1 ulp off). `fn_daverage` now uses `extended_quotient`. numbers.md updated. Eval: 6 newly passing probe cells, 0 regressions (probes-numeric is not a gated suite).
