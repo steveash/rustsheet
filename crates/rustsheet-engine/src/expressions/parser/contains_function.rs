@@ -1,4 +1,4 @@
-//! Searching a formula tree for calls of given functions.
+//! Walking a formula tree: the children of a node, and searching for calls of given functions.
 
 use super::{chain, Node};
 use crate::functions::Function;
@@ -11,36 +11,43 @@ impl Node {
     pub(crate) fn contains_function(&self, kinds: &[Function]) -> bool {
         let mut pending = vec![self];
         while let Some(node) = pending.pop() {
-            match node {
-                Node::FunctionKind { kind, args } => {
-                    if kinds.contains(kind) {
-                        return true;
-                    }
-                    pending.extend(args);
+            if let Node::FunctionKind { kind, .. } = node {
+                if kinds.contains(kind) {
+                    return true;
                 }
-                Node::SheetSpanKind {
-                    reference: child, ..
-                }
-                | Node::ImplicitIntersection { child, .. }
-                | Node::SpillRangeOperator { child }
-                | Node::Group { child, .. }
-                | Node::UnaryKind { right: child, .. }
-                | Node::LambdaDefKind { body: child, .. } => pending.push(child),
-                Node::OpRangeKind { left, right }
-                | Node::OpIntersectKind { left, right, .. }
-                | Node::OpUnionKind { left, right, .. } => pending.extend([&**left, &**right]),
-                Node::LambdaCallKind { lambda, args } => {
-                    pending.push(lambda);
-                    pending.extend(args);
-                }
-                Node::NamedFunctionKind { args, .. } => pending.extend(args),
-                _ => {
-                    if let Some((left, right)) = chain::value_operands(node) {
-                        pending.extend([left, right]);
-                    }
+            }
+            node.push_children(&mut pending);
+        }
+        false
+    }
+
+    /// Pushes the nodes directly under this one, the operands of every operator and the arguments
+    /// of every call, LAMBDA bodies included, for the explicit-stack walks over a formula tree.
+    pub(crate) fn push_children<'a>(&'a self, pending: &mut Vec<&'a Node>) {
+        match self {
+            Node::FunctionKind { args, .. } | Node::NamedFunctionKind { args, .. } => {
+                pending.extend(args);
+            }
+            Node::SheetSpanKind {
+                reference: child, ..
+            }
+            | Node::ImplicitIntersection { child, .. }
+            | Node::SpillRangeOperator { child }
+            | Node::Group { child, .. }
+            | Node::UnaryKind { right: child, .. }
+            | Node::LambdaDefKind { body: child, .. } => pending.push(child),
+            Node::OpRangeKind { left, right }
+            | Node::OpIntersectKind { left, right, .. }
+            | Node::OpUnionKind { left, right, .. } => pending.extend([&**left, &**right]),
+            Node::LambdaCallKind { lambda, args } => {
+                pending.push(lambda);
+                pending.extend(args);
+            }
+            _ => {
+                if let Some((left, right)) = chain::value_operands(self) {
+                    pending.extend([left, right]);
                 }
             }
         }
-        false
     }
 }

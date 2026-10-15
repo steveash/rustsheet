@@ -18,6 +18,10 @@ use crate::{
 #[derive(Clone)]
 pub(crate) enum Binding {
     Value(CalcResult),
+    /// A LAMBDA parameter's value that the body reads exactly once per call
+    /// (`Model::call_prepared`): that read takes the value instead of copying it, so an array
+    /// accumulator handed through REDUCE is not deep-copied on each step (T-1588).
+    ReadOnce(CalcResult),
     Areas(Areas),
     /// A range whose corners sit on two sheets: an aggregate reads it like the written span
     /// (`LET(x,Data1:Data3!A1,SUM(x))` is 111, probes/3d-ref-let-bound-span C1:C3).
@@ -28,7 +32,7 @@ impl Binding {
     /// The binding where a value or a single reference is needed.
     pub(crate) fn value(&self, cell: CellReferenceIndex) -> CalcResult {
         match self {
-            Binding::Value(value) => value.clone(),
+            Binding::Value(value) | Binding::ReadOnce(value) => value.clone(),
             Binding::Areas(_) => several_areas(cell),
             Binding::Span(_) => three_d_needs_one_sheet(cell),
         }
@@ -37,7 +41,7 @@ impl Binding {
     /// How many areas the binding holds: those of a union, none for a value or a span.
     pub(crate) fn held_areas(&self) -> usize {
         match self {
-            Binding::Value(_) | Binding::Span(_) => 0,
+            Binding::Value(_) | Binding::ReadOnce(_) | Binding::Span(_) => 0,
             Binding::Areas(areas) => areas.len(),
         }
     }
@@ -61,6 +65,15 @@ pub(crate) struct VariableStack {
 impl VariableStack {
     pub(crate) fn get(&self, id: usize) -> Option<&Binding> {
         self.bindings.get(&id)
+    }
+
+    /// What `id` holds where a value is wanted: [`Binding::value`], except that a
+    /// [`Binding::ReadOnce`] value is moved out, leaving `EmptyArg` behind.
+    pub(crate) fn read_value(&mut self, id: usize, cell: CellReferenceIndex) -> Option<CalcResult> {
+        match self.bindings.get_mut(&id)? {
+            Binding::ReadOnce(value) => Some(std::mem::replace(value, CalcResult::EmptyArg)),
+            binding => Some(binding.value(cell)),
+        }
     }
 
     /// Binds `id`; a union that would pass [`MAX_HELD_AREAS`] is bound to `#VALUE!` instead.

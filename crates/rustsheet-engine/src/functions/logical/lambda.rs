@@ -21,11 +21,44 @@ pub(crate) struct LambdaCaller {
     prepared: Option<PreparedLambda>,
 }
 
-/// A LAMBDA's parameter ids and patched body, or the error calling it gives, and the
-/// `last_lambda_id` when it was patched.
+/// A LAMBDA's parameters (each id, and whether the body reads it once: [`read_once`]) and
+/// patched body, or the error calling it gives, and the `last_lambda_id` when it was patched.
 struct PreparedLambda {
-    definition: Result<(Vec<usize>, Node), CalcResult>,
+    definition: Result<(Vec<(usize, bool)>, Node), CalcResult>,
     lambda_mark: usize,
+}
+
+/// Whether `body` reads variable `id` exactly once per evaluation: one read in the whole tree,
+/// and that read is the body itself or a direct argument of VSTACK or HSTACK below it (through
+/// groups), which evaluate each argument once ([`Model::eval_to_array`]). Anywhere else a
+/// function might evaluate its argument twice, or a nested LAMBDA might read it on each call.
+fn read_once(body: &Node, id: usize) -> bool {
+    let mut reads = 0;
+    let mut once = false;
+    let mut pending = vec![(body, true)];
+    let mut children = Vec::new();
+    while let Some((node, evaluated_once)) = pending.pop() {
+        match node {
+            Node::NamedVariableKind { id: Some(read), .. } if *read as usize == id => {
+                reads += 1;
+                once = evaluated_once;
+            }
+            Node::NamedFunctionKind { id: Some(read), .. } if *read as usize == id => reads += 1,
+            _ => {}
+        }
+        let passes_once = evaluated_once
+            && matches!(
+                node,
+                Node::Group { .. }
+                    | Node::FunctionKind {
+                        kind: Function::Vstack | Function::Hstack,
+                        ..
+                    }
+            );
+        node.push_children(&mut children);
+        pending.extend(children.drain(..).map(|child| (child, passes_once)));
+    }
+    reads == 1 && once
 }
 
 /// `#REF!` for a reference that is called like a function.
@@ -185,13 +218,16 @@ impl Model {
         };
         let result = match &prepared.definition {
             Ok((ids, body)) => {
-                for (i, raw_id) in ids.iter().enumerate() {
-                    let binding = bind(self, i);
-                    self.variable_stack.insert(*raw_id, binding, cell);
+                for (i, &(raw_id, once)) in ids.iter().enumerate() {
+                    let binding = match bind(self, i) {
+                        Binding::Value(value) if once => Binding::ReadOnce(value),
+                        binding => binding,
+                    };
+                    self.variable_stack.insert(raw_id, binding, cell);
                 }
                 let result = self.evaluate_node_in_context(body, cell);
-                for raw_id in ids {
-                    self.variable_stack.remove(*raw_id);
+                for &(raw_id, _) in ids {
+                    self.variable_stack.remove(raw_id);
                 }
                 result
             }
@@ -212,13 +248,17 @@ impl Model {
         let definition =
             self.lambda_definition(lambda_result, provided, cell)
                 .map(|(parameters, mut body)| {
-                    let ids = parameters
+                    let ids: Vec<usize> = parameters
                         .iter()
                         .map(|param| {
                             let raw_id = self.get_next_variable_id();
                             assign_variable_ids(&mut body, &param.name, raw_id as u32);
                             raw_id
                         })
+                        .collect();
+                    let ids = ids
+                        .into_iter()
+                        .map(|id| (id, read_once(&body, id)))
                         .collect();
                     (ids, body)
                 });
