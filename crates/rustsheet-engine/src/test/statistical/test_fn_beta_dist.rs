@@ -77,7 +77,8 @@ fn test_fn_beta_inv_tiny_probability_is_bounded() {
     model._set("A4", "=BETA.INV(1E-300,1E5,1E5)");
     model._set("A5", "=BETA.INV(1E-100,0.5,100)");
     model.evaluate();
-    // Excel (probes-numeric t1543-inverse-cdf-tiny-p) agrees at A1-A4 and A5 to 6 digits.
+    // Excel (probes-numeric t1543-inverse-cdf-tiny-p) agrees to 6 digits at A2-A5; at A1 it gives
+    // 6.988271195E-61 (an Excel quirk, see statistics.md).
     assert_eq!(model._get_text("A1"), "6.98827E-61");
     assert_eq!(model._get_text("A2"), "1E-200");
     assert_eq!(model._get_text("A3"), "0.794328235");
