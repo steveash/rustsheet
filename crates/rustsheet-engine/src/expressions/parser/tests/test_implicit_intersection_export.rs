@@ -339,3 +339,49 @@ fn legacy_value_arguments_intersect_and_export_unchanged() {
         ),
     ]);
 }
+
+// A legacy formula reads an array constant in INDEX's indices as its first element, under
+// SUMPRODUCT and in arithmetic too, while a function call there keeps its own rules and INDEX's
+// first argument keeps SUMPRODUCT's array context; the `@`s
+// are automatic, so the export drops them (probes/legacy-index-array-index, T-0294).
+#[test]
+fn legacy_index_array_indices_intersect_and_export_unchanged() {
+    check(&[
+        (
+            "SUMPRODUCT(INDEX(B1:B6,{1;2;3}))",
+            "SUMPRODUCT(INDEX(B1:B6,@{1;2;3}))",
+            "SUMPRODUCT(INDEX(B1:B6,{1;2;3}))",
+        ),
+        (
+            "SUM(INDEX(B1:B6,{2;3}+0))",
+            "SUM(INDEX(B1:B6,@{2;3}+0))",
+            "SUM(INDEX(B1:B6,{2;3}+0))",
+        ),
+        (
+            "SUMPRODUCT(INDEX(B1:B6,C1:C3))",
+            "SUMPRODUCT(INDEX(B1:B6,@C1:C3))",
+            "SUMPRODUCT(INDEX(B1:B6,C1:C3))",
+        ),
+        (
+            "SUMPRODUCT(INDEX((B1:B6,B1:B6),1,1,{2;1}))",
+            "SUMPRODUCT(INDEX((B1:B6,B1:B6),1,1,@{2;1}))",
+            "SUMPRODUCT(INDEX((B1:B6,B1:B6),1,1,{2;1}))",
+        ),
+        (
+            "SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))",
+            "SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))",
+            "SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))",
+        ),
+        // INDEX's first argument keeps SUMPRODUCT's array context
+        (
+            "SUMPRODUCT(INDEX(ABS(B1:B6),0))",
+            "SUMPRODUCT(INDEX(ABS(B1:B6),0))",
+            "SUMPRODUCT(INDEX(ABS(B1:B6),0))",
+        ),
+        (
+            "SUMPRODUCT(INDEX(IF(B1:B6>1,B1:B6,0),{1;2}))",
+            "SUMPRODUCT(INDEX(IF(@B1:B6>1,B1:B6,0),@{1;2}))",
+            "SUMPRODUCT(INDEX(IF(B1:B6>1,B1:B6,0),{1;2}))",
+        ),
+    ]);
+}
