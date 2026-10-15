@@ -1,0 +1,297 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FORMULATEXT quoting of sheets named like an R1C1 reference: dots, column bounds and out-of-range prefixes (T-1652)",
+  "tags": [
+    "M6",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "R1.5",
+      "cells": {
+        "A1": 1
+      }
+    },
+    {
+      "name": "R1.A",
+      "cells": {
+        "A1": 2
+      }
+    },
+    {
+      "name": "R1C1.",
+      "cells": {
+        "A1": 3
+      }
+    },
+    {
+      "name": "RC1.",
+      "cells": {
+        "A1": 4
+      }
+    },
+    {
+      "name": "C1.",
+      "cells": {
+        "A1": 5
+      }
+    },
+    {
+      "name": "C1.5",
+      "cells": {
+        "A1": 6
+      }
+    },
+    {
+      "name": "R1C.",
+      "cells": {
+        "A1": 7
+      }
+    },
+    {
+      "name": "RC.",
+      "cells": {
+        "A1": 8
+      }
+    },
+    {
+      "name": "R1.C1",
+      "cells": {
+        "A1": 9
+      }
+    },
+    {
+      "name": "A1.",
+      "cells": {
+        "A1": 10
+      }
+    },
+    {
+      "name": "A1.5",
+      "cells": {
+        "A1": 11
+      }
+    },
+    {
+      "name": "R.1",
+      "cells": {
+        "A1": 12
+      }
+    },
+    {
+      "name": "RC.1",
+      "cells": {
+        "A1": 13
+      }
+    },
+    {
+      "name": "R1C2147483647",
+      "cells": {
+        "A1": 14
+      }
+    },
+    {
+      "name": "R1C2147483648",
+      "cells": {
+        "A1": 15
+      }
+    },
+    {
+      "name": "R1C4294967296",
+      "cells": {
+        "A1": 16
+      }
+    },
+    {
+      "name": "R1C99999999999",
+      "cells": {
+        "A1": 17
+      }
+    },
+    {
+      "name": "RC2147483648",
+      "cells": {
+        "A1": 18
+      }
+    },
+    {
+      "name": "R1C1000000",
+      "cells": {
+        "A1": 19
+      }
+    },
+    {
+      "name": "R1C16385D",
+      "cells": {
+        "A1": 20
+      }
+    },
+    {
+      "name": "R0D",
+      "cells": {
+        "A1": 21
+      }
+    },
+    {
+      "name": "R1048577D",
+      "cells": {
+        "A1": 22
+      }
+    },
+    {
+      "name": "R1048576D",
+      "cells": {
+        "A1": 23
+      }
+    },
+    {
+      "name": "R0_",
+      "cells": {
+        "A1": 24
+      }
+    },
+    {
+      "name": "C0D",
+      "cells": {
+        "A1": 25
+      }
+    },
+    {
+      "name": "R1C0D",
+      "cells": {
+        "A1": 26
+      }
+    },
+    {
+      "name": "R0C1D",
+      "cells": {
+        "A1": 27
+      }
+    },
+    {
+      "name": "R0001D",
+      "cells": {
+        "A1": 28
+      }
+    },
+    {
+      "name": "R1CD",
+      "cells": {
+        "A1": 29
+      }
+    },
+    {
+      "name": "R1C_",
+      "cells": {
+        "A1": 30
+      }
+    },
+    {
+      "name": "RC1R",
+      "cells": {
+        "A1": 31
+      }
+    },
+    {
+      "name": "C1C",
+      "cells": {
+        "A1": 32
+      }
+    },
+    {
+      "name": "R1C1C1",
+      "cells": {
+        "A1": 33
+      }
+    },
+    {
+      "name": "R2C3.4",
+      "cells": {
+        "A1": 34
+      }
+    },
+    {
+      "name": "R2.3C",
+      "cells": {
+        "A1": 35
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "='R1.5'!A1",
+        "B1": "=FORMULATEXT(A1)",
+        "A2": "='R1.A'!A1",
+        "B2": "=FORMULATEXT(A2)",
+        "A3": "='R1C1.'!A1",
+        "B3": "=FORMULATEXT(A3)",
+        "A4": "='RC1.'!A1",
+        "B4": "=FORMULATEXT(A4)",
+        "A5": "='C1.'!A1",
+        "B5": "=FORMULATEXT(A5)",
+        "A6": "='C1.5'!A1",
+        "B6": "=FORMULATEXT(A6)",
+        "A7": "='R1C.'!A1",
+        "B7": "=FORMULATEXT(A7)",
+        "A8": "='RC.'!A1",
+        "B8": "=FORMULATEXT(A8)",
+        "A9": "='R1.C1'!A1",
+        "B9": "=FORMULATEXT(A9)",
+        "A10": "='A1.'!A1",
+        "B10": "=FORMULATEXT(A10)",
+        "A11": "='A1.5'!A1",
+        "B11": "=FORMULATEXT(A11)",
+        "A12": "='R.1'!A1",
+        "B12": "=FORMULATEXT(A12)",
+        "A13": "='RC.1'!A1",
+        "B13": "=FORMULATEXT(A13)",
+        "A14": "='R1C2147483647'!A1",
+        "B14": "=FORMULATEXT(A14)",
+        "A15": "='R1C2147483648'!A1",
+        "B15": "=FORMULATEXT(A15)",
+        "A16": "='R1C4294967296'!A1",
+        "B16": "=FORMULATEXT(A16)",
+        "A17": "='R1C99999999999'!A1",
+        "B17": "=FORMULATEXT(A17)",
+        "A18": "='RC2147483648'!A1",
+        "B18": "=FORMULATEXT(A18)",
+        "A19": "='R1C1000000'!A1",
+        "B19": "=FORMULATEXT(A19)",
+        "A20": "='R1C16385D'!A1",
+        "B20": "=FORMULATEXT(A20)",
+        "A21": "='R0D'!A1",
+        "B21": "=FORMULATEXT(A21)",
+        "A22": "='R1048577D'!A1",
+        "B22": "=FORMULATEXT(A22)",
+        "A23": "='R1048576D'!A1",
+        "B23": "=FORMULATEXT(A23)",
+        "A24": "='R0_'!A1",
+        "B24": "=FORMULATEXT(A24)",
+        "A25": "='C0D'!A1",
+        "B25": "=FORMULATEXT(A25)",
+        "A26": "='R1C0D'!A1",
+        "B26": "=FORMULATEXT(A26)",
+        "A27": "='R0C1D'!A1",
+        "B27": "=FORMULATEXT(A27)",
+        "A28": "='R0001D'!A1",
+        "B28": "=FORMULATEXT(A28)",
+        "A29": "='R1CD'!A1",
+        "B29": "=FORMULATEXT(A29)",
+        "A30": "='R1C_'!A1",
+        "B30": "=FORMULATEXT(A30)",
+        "A31": "='RC1R'!A1",
+        "B31": "=FORMULATEXT(A31)",
+        "A32": "='C1C'!A1",
+        "B32": "=FORMULATEXT(A32)",
+        "A33": "='R1C1C1'!A1",
+        "B33": "=FORMULATEXT(A33)",
+        "A34": "='R2C3.4'!A1",
+        "B34": "=FORMULATEXT(A34)",
+        "A35": "='R2.3C'!A1",
+        "B35": "=FORMULATEXT(A35)"
+      }
+    }
+  ],
+  "expected": {}
+}

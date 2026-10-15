@@ -1483,3 +1483,49 @@ Inferred, unprobed (T-1645, T-1651): every IF pick (only CHOOSE is probed), INDE
 Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at (excel-graph, 2026-10-15).
 Status: VERIFIED (excel-graph)
 Tasks: T-1638, T-1643, T-1645, T-1651
+
+## R1C1-shaped sheet and defined names
+Rule (case-insensitive; odd, Excel is right): Excel quotes a sheet name in formula text, and refuses it
+as a defined name, when the name is an R1C1 reference or starts with one, by this test (and also
+when it is an A1 reference, which is a separate test: `R1`, `C3`, `RC99999`, `C16385` are A1 cells):
+- `R`, `C` and `RC` on their own are quoted (`'RC'!A1`, `'r'!A1`); a letter after them ends the
+  test: `RCR`, `RCD`, `RCC`, `CR`, `RD` are not quoted (`=RCR!A1`).
+- `R<row>` with row 1..1048576 followed by `C` is quoted whatever follows, even an out-of-range or
+  missing column: `R1C`, `R12C`, `R1C1`, `R1C0D`, `R1C16385`, `R1C99999999999`, `R1CD`, `R1C_`, `R1C1.`.
+- Otherwise `R<row>`, `C<column>` (1..16384) or `RC<column>` is quoted when nothing or anything but
+  a dot follows: `R1_`, `R1R`, `R1D`, `R1048576D`, `R0001D`, `C1D`, `C1R1`, `C16384D`, `RC1D`.
+  Out of range it is not: `R0`, `C0`, `R0C1`, `R0C0`, `R1048577`, `R1048577C1`, `R0D`, `C16385D`,
+  `RC16385D`, `RC2147483648`. A dot after the number is not quoted by this test (`R1.`, `R1.5`,
+  `R1.A`, `C1.5`, `RC1.`, `R2.3C`), nor a dot before it (`R.1`, `RC.1`).
+- A1 has no prefix rule (`A1B`, `A1_`, `A1.5` are not quoted), but a Lotus-style range is quoted:
+  an A1 cell, one or more dots, an A1 cell, then nothing or a dot and anything (`A1.B2`, `A1..B2`,
+  `A1...B2`, `B2.A1`, `XFD1.A1`, `Z9.Z9`, `A1.B2.C3`, and so `R1.C1`, `R1.R1`, `C1.C1`, `RC1.C1`,
+  `R1.C16385`, `R1.C1.5`); not `A1.B2D`, `A1.B`, `A.B2`, `A0.B1`, `A1.XFE1`, `R1.R1048577`, `R1.C0`,
+  `R1.C1D`, `R1.RC`, `RC.C1`. In a formula the dots are the range operator: `SUM(A1.B2)`,
+  `ROWS(A1..B2)` and `SUM(B2.A1)` are `SUM(A1:B2)` (7), `ROWS(A1:B2)` (2) and `SUM(A1:B2)` in
+  FORMULATEXT (probes/lotus-dot-range; ours: T-1659).
+Defined names: a workbook defining any name the R1C1 test quotes is rejected by Graph (`createSession`
+501 `unsupportedWorkbook`): probed `RC`, `rc`, `R1C`, `R12C`, `R1C1`, `C1D`, `R1C1D`, `R1C16385`,
+`R1_`, `R1R`, `R1D`, `C1R1`, `RC1D`, `R1048576D`, `R1CD`, `R1C1.`. `RCR`, `RCD`, `CR`, `R1.5` and
+`C1.5` work (7). A Lotus-shaped name loads, but a use reads the range: with `R1.C1`, `R1..C1` and
+`C1.C1` defined, `=R1.C1*1` is `#SPILL!` and `=C1.C1*1` 0, ISREF TRUE (ours reads the name: T-1659).
+A name spelled like an out-of-range R1C1 reference (`R0`, `C0`, `R0C1`, `r0c1`, `R1048577`,
+`R1048577C1`) loads but every use is `#NAME?` (`=R0*1`, `SUM(R0)`, and `ISREF(INDIRECT("R0"))` is
+FALSE; FORMULATEXT keeps `=R0*1`). Ours defines it and reads 7 (T-1657). Table names are not probed;
+ours applies the defined-name rule to them.
+LET and LAMBDA names are not tested at all: `LET(n,5,n*2)` is 10 for `RC`, `R1C`, `R1C1`, `r1c1`,
+`R5C7`, `R12C`, `R0C1`, `R0`, `R1048577`, `R1_`, `R1.C1`, `R1C1D`, `C1D`, `RCR` and `C`. Ours keeps
+refusing an uppercase `R<n>C<m>` (`R1C1`, `R5C7`, `R0C1`): formulas are stored in R1C1 form, where
+that spelling reads back as a cell reference after a reload (T-1658).
+A bare `RC`, `R1C1D`, `R0C1` or `RCR` token in a cell formula of an uploaded file makes Graph reject
+the workbook (so it is unprobed).
+Unprobed: brackets cannot occur in sheet or defined names, so `R[1]C` forms are not covered;
+lowercase Lotus-shaped names (`a1.b2`); non-ASCII digits.
+Evidence: probes/r1c1-shaped-sheet-names, -lower, -2, -3, -4, -5, -lower-2 (FORMULATEXT of
+`='<name>'!A1`), r1c1-name-* and r1c1-name-use-* (defined names; the rejected names have no case),
+r1c1-let-name-*, lotus-dot-range (excel-graph, 2026-10-15).
+Implemented in: `is_r1c1_shaped` and `is_dotted_a1_range` (expressions/utils/mod.rs), used by
+`name_needs_quoting` (both) and `is_valid_identifier` (the R1C1 test); `is_valid_a1_identifier`
+(LET, LAMBDA and the lexer) refuses only `R<n>C<m>` (`is_r1c1_cell_text`).
+Status: VERIFIED (excel-graph), except T-1657, T-1658 and T-1659.
+Tasks: T-1652

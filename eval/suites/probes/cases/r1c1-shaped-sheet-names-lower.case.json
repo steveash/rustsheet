@@ -1,0 +1,105 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FORMULATEXT quoting of references to sheets with R1C1-shaped names, lower and mixed case (T-1652)",
+  "tags": [
+    "M6",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "rc",
+      "cells": {
+        "A1": 1
+      }
+    },
+    {
+      "name": "r1",
+      "cells": {
+        "A1": 2
+      }
+    },
+    {
+      "name": "r1c",
+      "cells": {
+        "A1": 3
+      }
+    },
+    {
+      "name": "r1c1",
+      "cells": {
+        "A1": 4
+      }
+    },
+    {
+      "name": "r12c",
+      "cells": {
+        "A1": 5
+      }
+    },
+    {
+      "name": "r",
+      "cells": {
+        "A1": 6
+      }
+    },
+    {
+      "name": "c",
+      "cells": {
+        "A1": 7
+      }
+    },
+    {
+      "name": "r3",
+      "cells": {
+        "A1": 8
+      }
+    },
+    {
+      "name": "c3",
+      "cells": {
+        "A1": 9
+      }
+    },
+    {
+      "name": "Rc1",
+      "cells": {
+        "A1": 10
+      }
+    },
+    {
+      "name": "c1r1",
+      "cells": {
+        "A1": 11
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "='rc'!A1",
+        "B1": "=FORMULATEXT(A1)",
+        "A2": "='r1'!A1",
+        "B2": "=FORMULATEXT(A2)",
+        "A3": "='r1c'!A1",
+        "B3": "=FORMULATEXT(A3)",
+        "A4": "='r1c1'!A1",
+        "B4": "=FORMULATEXT(A4)",
+        "A5": "='r12c'!A1",
+        "B5": "=FORMULATEXT(A5)",
+        "A6": "='r'!A1",
+        "B6": "=FORMULATEXT(A6)",
+        "A7": "='c'!A1",
+        "B7": "=FORMULATEXT(A7)",
+        "A8": "='r3'!A1",
+        "B8": "=FORMULATEXT(A8)",
+        "A9": "='c3'!A1",
+        "B9": "=FORMULATEXT(A9)",
+        "A10": "='Rc1'!A1",
+        "B10": "=FORMULATEXT(A10)",
+        "A11": "='c1r1'!A1",
+        "B11": "=FORMULATEXT(A11)"
+      }
+    }
+  ],
+  "expected": {}
+}

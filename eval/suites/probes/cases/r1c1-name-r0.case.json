@@ -1,0 +1,23 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Is the R1C1-shaped string R0 a valid defined name? One name per case: Graph rejects a workbook with an invalid name (T-1652)",
+  "tags": [
+    "M8",
+    "names",
+    "probe"
+  ],
+  "names": {
+    "R0": "=Sheet1!$B$1"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": 7,
+        "A1": "=R0*1",
+        "A2": "=ISREF(R0)"
+      }
+    }
+  ],
+  "expected": {}
+}

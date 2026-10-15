@@ -89,8 +89,8 @@ fn is_valid_r1c1_identifier(name: &str, next_char: Option<char>) -> bool {
     if !utils::is_valid_a1_identifier(name) {
         return false;
     }
-    // `is_valid_identifier` differs from `is_valid_a1_identifier` only for "R"/"C".
-    // For those, only reject when they start a (malformed) reference, i.e. `R[`.
+    // `is_valid_identifier` also refuses the R1C1-shaped names ("R", "C", "RC", "R1C1D").
+    // Only reject those when they start a (malformed) reference, i.e. `R[`.
     utils::is_valid_identifier(name) || next_char != Some('[')
 }
 
