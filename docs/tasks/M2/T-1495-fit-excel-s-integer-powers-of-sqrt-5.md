@@ -3,7 +3,7 @@ id: T-1495
 title: "Integer powers: round each square-and-multiply product twice, like Excel's `*`"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
