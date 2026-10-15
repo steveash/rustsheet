@@ -37,4 +37,4 @@ Cost (release microbenchmark, 2M angles across [-1000, 7.4e5], baseline x86-64):
 inline FMA). The five outer Horner steps run in double-double with exact reciprocal constants,
 and the inner ones in doubles; a unit test checks that this equals the full double-double series
 on 200,000 random angles. That is about 0.15 s per million trig cells, accepted as the price of
-bit-exact parity. Follow-up T-1635: a fast path with a rounding test.
+bit-exact parity. Follow-up T-1637: a fast path with a rounding test.
