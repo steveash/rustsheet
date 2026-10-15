@@ -207,7 +207,7 @@ fn formula_value_to_cell_value(v: &FormulaValue, language: &Language) -> CellVal
         FormulaValue::Unevaluated => CellValue::String("#ERROR!".to_string()),
         FormulaValue::Boolean(b) => CellValue::Boolean(*b),
         FormulaValue::Number(n) => CellValue::Number(*n),
-        FormulaValue::Text(s) => CellValue::String(s.clone()),
+        FormulaValue::Text(s) => CellValue::String(s.clone().into_lossy_string()),
         FormulaValue::Error { ei, .. } => CellValue::String(ei.to_localized_error_string(language)),
     }
 }
@@ -222,7 +222,7 @@ pub(crate) fn spill_value_to_calc_result(
     match value {
         SpillValue::Number(v) => CalcResult::Number(*v),
         SpillValue::Boolean(v) => CalcResult::Boolean(*v),
-        SpillValue::Text(v) => CalcResult::String(v.clone().into()),
+        SpillValue::Text(v) => CalcResult::String(v.clone()),
         SpillValue::Error(ei) => {
             let message = ei.to_localized_error_string(language);
             CalcResult::new_error(ei.clone(), cell_reference, message)
@@ -234,7 +234,7 @@ fn spill_value_to_cell_value(v: &SpillValue, language: &Language) -> CellValue {
     match v {
         SpillValue::Boolean(b) => CellValue::Boolean(*b),
         SpillValue::Number(n) => CellValue::Number(*n),
-        SpillValue::Text(s) => CellValue::String(s.clone()),
+        SpillValue::Text(s) => CellValue::String(s.clone().into_lossy_string()),
         SpillValue::Error(ei) => CellValue::String(ei.to_localized_error_string(language)),
     }
 }

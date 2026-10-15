@@ -278,7 +278,7 @@ impl<'a> CellView<'a> {
             Cell::SpillCell { v, .. } => match v {
                 SpillValue::Boolean(b) => Self::Bool(*b),
                 SpillValue::Number(n) => Self::Number(*n),
-                SpillValue::Text(s) => Self::Text(s.as_str()),
+                SpillValue::Text(s) => Self::Text(s),
                 SpillValue::Error(ei) => Self::Error(ErrorKind::from_engine(ei), None),
             },
         }
@@ -292,7 +292,7 @@ impl<'a> CellView<'a> {
             }
             FormulaValue::Boolean(b) => Self::Bool(*b),
             FormulaValue::Number(n) => Self::Number(*n),
-            FormulaValue::Text(s) => Self::Text(s.as_str()),
+            FormulaValue::Text(s) => Self::Text(s),
             FormulaValue::Error { ei, m, .. } => Self::Error(
                 ErrorKind::from_engine(ei),
                 (!m.is_empty()).then_some(m.as_str()),

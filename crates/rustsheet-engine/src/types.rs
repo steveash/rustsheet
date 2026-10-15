@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
 pub use crate::external_links::ExternalBook;
-use crate::{cf_types::ConditionalFormatting, expressions::token::Error};
+use crate::{cf_types::ConditionalFormatting, expressions::token::Error, text::Text};
 
 fn default_as_false() -> bool {
     false
@@ -349,7 +349,7 @@ pub enum FormulaValue {
     Unevaluated,
     Boolean(bool),
     Number(f64),
-    Text(String),
+    Text(Text),
     Error {
         ei: Error,
         // Origin cell reference, e.g. "Sheet3!C4"
@@ -364,7 +364,7 @@ pub enum FormulaValue {
 pub enum SpillValue {
     Boolean(bool),
     Number(f64),
-    Text(String),
+    Text(Text),
     Error(Error),
 }
 

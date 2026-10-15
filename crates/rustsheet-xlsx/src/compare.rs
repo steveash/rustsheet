@@ -153,7 +153,7 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
                     // text instead of the correct t="e". Treat them as equivalent.
                     (FormulaValue::Text(s), FormulaValue::Error { ei, .. })
                     | (FormulaValue::Error { ei, .. }, FormulaValue::Text(s)) => {
-                        s != &format!("{ei}")
+                        **s != *format!("{ei}")
                     }
                     _ => true,
                 };

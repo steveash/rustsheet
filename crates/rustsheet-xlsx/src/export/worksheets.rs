@@ -40,7 +40,11 @@ use rustsheet_engine::{
 
 use crate::export::conditional_formatting::get_conditional_formatting_xml;
 
-use super::{escape::escape_xml, rich_errors::vm_attribute, xml_constants::XML_DECLARATION};
+use super::{
+    escape::{escape_text, escape_xml},
+    rich_errors::vm_attribute,
+    xml_constants::XML_DECLARATION,
+};
 
 /// The literal an error cell is written with. Excel's stored form ([`Error::stored_literal`]),
 /// except the kinds Excel rejects as stored literals, which are saved as `#VALUE!`:
@@ -365,7 +369,7 @@ pub(crate) fn get_worksheet_xml(
                     let formula =
                         formula_attribute(&parsed_formulas[*f as usize].0, to_excel_string);
                     let style = get_cell_style_attribute(*s);
-                    let escaped_v = escape_xml(v);
+                    let escaped_v = escape_text(v);
                     row_data_str.push(format!(
                         "<c r=\"{cell_name}\" t=\"str\"{style}><f>{formula}</f><v>{escaped_v}</v></c>"
                     ));
@@ -398,7 +402,7 @@ pub(crate) fn get_worksheet_xml(
                     //   <v>Hello world!</v>
                     // </c>
                     let style = get_cell_style_attribute(*s);
-                    let escaped_v = escape_xml(v);
+                    let escaped_v = escape_text(v);
                     row_data_str.push(format!(
                         "<c r=\"{cell_name}\" t=\"str\"{style}><v>{escaped_v}</v></c>"
                     ));
@@ -498,7 +502,7 @@ pub(crate) fn get_worksheet_xml(
                         Some(range) => range,
                         None => continue,
                     };
-                    let escaped_v = escape_xml(v);
+                    let escaped_v = escape_text(v);
                     let cm = if matches!(kind, ArrayKind::Dynamic) {
                         r#" cm="1""#
                     } else {
