@@ -48,7 +48,7 @@ Tests: `reads_through_once_positions_count_once` and `reads_more_than_once_or_el
 Timing (release, `=ROWS(REDUCE(0,SEQUENCE(3000),LAMBDA(a,x,<body>)))`, best of 5 recalcs, before → after):
 - `IF(x>0,VSTACK(a,x),a)`: 158.0 ms → 28.7 ms
 - `SORT(VSTACK(a,x))`: 2288.9 ms → 2151.6 ms. The copy is gone, but SORT's own work dominates:
-  it converts both keys to a `CalcResult` on every comparison and clones each row. Filed **T-1595** (perf).
+  it converts both keys to a `CalcResult` on every comparison and clones each row. Filed **T-1599** (perf).
 - `LET(y,x*2,VSTACK(a,y))`: 156.7 ms → 31.6 ms
 - `VSTACK(a,x)` for reference: 31.2 ms → 29.4 ms
 Eval delta: none (0 regressions, 0 fixes in every gated suite).
