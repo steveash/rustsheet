@@ -6,6 +6,7 @@ use crate::{
 
 use super::criteria::{build_criteria_with, CriteriaFlavor};
 use super::statistical::variance::{variance_result, VarianceKind};
+use crate::arithmetic::extended_quotient;
 
 impl Model {
     // =DAVERAGE(database, field, criteria)
@@ -67,7 +68,8 @@ impl Model {
             };
         }
 
-        CalcResult::Number(sum / count as f64)
+        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1648).
+        CalcResult::Number(extended_quotient(sum, count as f64))
     }
 
     // =DCOUNT(database, field, criteria)
