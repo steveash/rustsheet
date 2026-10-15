@@ -3,7 +3,7 @@ id: T-1609
 title: "Probe cases for external workbook references read from cached externalLink values"
 milestone: M8
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
