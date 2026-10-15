@@ -387,12 +387,17 @@ impl Model {
             }
             CalcResult::Array(s) => Ok(NumberOrArray::Array(s)),
             error @ CalcResult::Error { .. } => Err(error),
-            CalcResult::Lambda(_) => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "LAMBDA cannot be used as a number".to_string(),
-            )),
+            CalcResult::Lambda(_) => Err(Self::lambda_as_number_error(cell)),
         }
+    }
+
+    /// `#VALUE!` for a LAMBDA value used where a number is read.
+    pub(crate) fn lambda_as_number_error(cell: CellReferenceIndex) -> CalcResult {
+        CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "LAMBDA cannot be used as a number".to_string(),
+        )
     }
 
     /// Like `get_number_or_array` but preserves the full `CalcResult` type (no coercion to f64).
@@ -596,11 +601,7 @@ impl Model {
         // A direct LAMBDA value is #VALUE! (ERROR.TYPE 3) for SUM, PRODUCT, MIN, MAX, AVERAGE and
         // MEDIAN (probes/aggregate-picked-direct-a-variants D7-D12, excel-graph 2026-10-14).
         if matches!(result, CalcResult::Lambda(_)) {
-            return Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "LAMBDA cannot be used as a number".to_string(),
-            ));
+            return Err(Self::lambda_as_number_error(cell));
         }
         self.cast_to_number(result, cell)
     }
