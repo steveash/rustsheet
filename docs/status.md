@@ -28,7 +28,7 @@ CI on `main` is green: every CI run on `main` since the last snapshot passed, th
 Where M2's exit stands:
 - gen-m2 has 1 cell left (was 6): `fa437879253827be` Calc!A23, `(0.2^-0.5)^99`, covered by T-1495 (engine). T-0220 (collation) merged.
 - M0–M2 probes: 292 cases, 8,589 cells, 8,415 bit-exact, 4 deviations, 170 known failures (was 518; T-1470 moved the wrongly tagged cases to their own milestones). Every failing cell has an open task:
-  - `text-collation-unprobed` (89) and `text-collation-lookups` (11): T-1594 (engine, claimed).
+  - `text-collation-unprobed` (89) and `text-collation-lookups` (11): T-1594 (engine). It merged during this run as #820 (178420d9), after these numbers were taken.
   - `text-lone-surrogates` (47), `text-surrogate-positions` (6), `concatenate-limit-spill` (4): the SPEC-0010 rollout, T-1579, T-1580, T-1581, T-1585, T-1586 and T-1587.
   - `aggregate-picked-direct-a-variants` (9): T-1571, T-1572, T-1573 (engine).
   - `array-context-legacy-sumproduct` (4): T-0294 (engine).
@@ -96,7 +96,6 @@ Spot-audit: none this run (not yet due). The last audit, 2026-10-09 (steward PR 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M2.
 - engine holds most of M2's remaining failures:
   - T-1495 (the last gen-m2 cell);
-  - T-1594 (collation, 100 probe cells);
   - T-1571–T-1573 (aggregate variants);
   - T-1580 (concatenation truncation);
   - T-0294 (legacy SUMPRODUCT).
