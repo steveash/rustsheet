@@ -3,7 +3,7 @@ id: T-1633
 title: "Legacy import: @ on an operator over a range inside CHOOSE and on an array constant in a scalar argument"
 milestone: M6
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -29,3 +29,9 @@ crates/rustsheet-engine/src/expressions/parser/static_analysis{.rs,/legacy.rs}.
 
 ## Out of scope
 - The scalar-or-dynamic classification of these shapes (T-1265).
+
+## Outcome
+CHOOSE's value arms that are operations (`CHOOSE(1,E1:E2+1)`) now take the `@` on their range operand
+instead of on the call, and a one-element array constant in a scalar argument (`ABS({5})`) takes an `@`
+(`legacy.rs`: `legacy_value_operand`, `add_scalar_array_at`). Larger array constants stay unprobed.
+Eval delta: probes known failures 5514 -> 5511 (H3, M3, P3), 0 regressions.
