@@ -3,7 +3,7 @@ id: T-1567
 title: "Move VARA, VARPA, STDEVA and STDEVPA onto the shared aggregate-argument walker"
 milestone: M2
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
