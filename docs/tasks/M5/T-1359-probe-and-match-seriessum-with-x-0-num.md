@@ -3,7 +3,7 @@ id: T-1359
 title: "Probe and match SERIESSUM with x = 0: #NUM! only for a zero or negative power"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
