@@ -663,8 +663,14 @@ impl Model {
                 CalcResult::String(format!("[{workbook_name}.xlsx]{worksheet_name}"))
             }
             "ROW" => CalcResult::Number(reference.row as f64),
+            // Like "contents", "type" reads the reference's address on the formula's own sheet
+            // (`CELL("type",Data!A7)` is "b" when Calc!A7 is blank although Data!A7 is text;
+            // probes/info-cell-legacy-range J1:K3, excel-graph, T-1433).
             "TYPE" => {
-                let cell_type = match self.evaluate_cell(reference) {
+                let cell_type = match self.evaluate_cell(CellReferenceIndex {
+                    sheet: cell.sheet,
+                    ..reference
+                }) {
                     CalcResult::EmptyCell => "b",
                     CalcResult::String(_) => "l",
                     CalcResult::Number(_) => "v",
