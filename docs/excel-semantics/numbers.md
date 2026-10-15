@@ -906,7 +906,7 @@ then to a double ("Division rounds twice"). With that rounding, square-and-multi
 cells of power-integer-full-mantissa whose base is 2.23606797749979: `SQRT(5)^n` and
 `(0.2^-0.5)^n` for n = 3..255 and -99 (40 cells), A181 `(SUM(0,(0.2^(-0.5)))^99)` and A182
 `POWER(SQRT(5),99)`. `SQRT(5)^99` = 3.9720546451956613E+34 and `SQRT(5)^10` = 3125.0000000000023.
-With products rounded once, which is what the engine does, it gives 2 of the 42 (…6807E+34,
+With products rounded once (the engine before T-1495) it gives 2 of the 42 (…6807E+34,
 3125.000000000003). Fit `power-sqrt5` scores the 20 `SQRT(5)^n` cells (20 against 1); the other 22
 were checked outside the lab, which does not parse `0.2^-0.5` or SUM. The double rounding changes no other cell. Both roundings match
 all cells of the 7 other full-significand bases: 76 literal-base cells (fit `power-mantissa`) and
@@ -921,10 +921,11 @@ Non-integer exponents (`10^33.5` = 3.162277660168401E+33, libm 3.162277660168379
 3.1622776601683576E-34; `10^40.0000001` = 1.0000002302585496E+40) follow "Non-integer exponents: exp(y·ln x)" (T-1319).
 Evidence: probes-numeric/power-large-integer-exponents{,-2,-3,-4}.case.json (oracle: excel-graph,
 2026-10-11, T-1311; the non-integer cells are A54-A56 of -4).
-Implemented in: `power` and `integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
+Implemented in: `power` and `integer_power` in crates/rustsheet-engine/src/arithmetic.rs;
+`square_and_multiply` rounds each product with `extended_product` (T-1495).
 Status: VERIFIED (the 2^32 - 1 threshold is bracketed by 4294967294 and 4294967295 exactly; the base-10
 rule is sampled at about 20 exponents in 23..=308 and inferred between them)
-Tasks: T-1311
+Tasks: T-1311, T-1495
 
 ## ROUND family with huge num_digits
 Rule (inconsistent; Excel is right): with an enormous num_digits ROUND/ROUNDDOWN return the number
