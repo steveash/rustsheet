@@ -139,6 +139,7 @@ impl AggregateWalk {
     /// The `#VALUE!` of a direct LAMBDA ranks with the referenced errors: it is held when nothing
     /// is held yet, so a later direct error beats it and an earlier or later referenced error does
     /// not (probes/aggregate-direct-lambda-average-family D14-D31, excel-graph 2026-10-15, T-1602).
+    /// This holds under `ErrorRule::First` too (DEVSQ, AVEDEV, SUMSQ), whatever `policy.errors` says.
     fn lambda_error(&mut self, error: CalcResult) {
         if self.held.is_none() {
             self.held = Some(error);
@@ -351,8 +352,8 @@ impl Model {
             // F9, F15, F17).
             (DirectNumbers::CastScalars, CalcResult::EmptyArg) => Ok(Some(0.0)),
             // A direct LAMBDA is #VALUE!, not skipped, for AVERAGE and MEDIAN (probes/
-            // aggregate-picked-direct-a-variants D11, D12). The whole `CastScalars` family shares
-            // this rule unprobed (docs/excel-semantics/syntax.md).
+            // aggregate-picked-direct-a-variants D11, D12), and so is the rest of the family
+            // (probes/aggregate-direct-lambda-average-family D1-D12; docs/excel-semantics/syntax.md).
             (
                 DirectNumbers::CastScalars,
                 value @ (CalcResult::String(_) | CalcResult::Lambda(_)),
