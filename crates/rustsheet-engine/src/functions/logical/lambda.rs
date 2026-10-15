@@ -165,10 +165,10 @@ impl Model {
     }
 
     /// Binds parameter `i` to `bind(i)` and evaluates the patched body. The body is reused while
-    /// no LAMBDA has been created since it was patched (`last_lambda_id` only grows during an
-    /// evaluation; `clear_lambdas` resets it between evaluations, when no caller is alive): a LAMBDA made by the body
+    /// no LAMBDA has been created since it was patched: a LAMBDA made by the body
     /// (`LAMBDA(x,LAMBDA(y,x+y))`) holds the parameter ids, so the next call patches a fresh copy
-    /// with fresh ids, as every call did before T-1560.
+    /// with fresh ids, as every call did before T-1560. (`last_lambda_id` only grows during an
+    /// evaluation; `clear_lambdas` resets it between evaluations, when no caller is alive.)
     fn call_prepared(
         &mut self,
         caller: &mut LambdaCaller,

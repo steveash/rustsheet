@@ -161,7 +161,7 @@ struct Aggregate<'a> { rows: &'a [usize], relative: &'a [usize] }
    totals (depth 2) need groups ordered by their key prefix. The lexicographic sort already gives
    that order, so the subtotal rows are inserted in one linear pass, not by any quadratic search.
 3. **Aggregation**: for each (group, value column, function) build a column array of the
-   group's values in source order and call the function value: `call_lambda_with_values` for a
+   group's values in source order and call the function value: a `LambdaCaller` (`Model::lambda_caller`, T-1560) for a
    LAMBDA, or the T-1466 eta-call path (`eta_definition`, lambda.rs) for a name. Any array result becomes `#VALUE!`, a 1x1 array included: never unwrap it
    (G!J121 is `#VALUE!` for the one-record groups too). A function array (`HSTACK`/`VSTACK` of function values) is a list of functions plus
    an orientation. Two-parameter functions (PERCENTOF) also get the relative set's values:
