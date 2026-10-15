@@ -3,7 +3,7 @@ id: T-1578
 title: "Workbook::text_utf16, harness rendering and Python bindings for lone surrogates (SPEC-0010 step 4)"
 milestone: M2
 lane: api
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
