@@ -292,6 +292,14 @@ is 4.123952952442882E-155 (the correctly rounded root is …881E-155), and its `
 rule. Evidence: probes-numeric/power-neg-half-rounding (40 cells; operands of at most 15 significant
 digits, since a 16-digit literal loses its last digit; excel-graph, 2026-10-14, T-1541). Implemented in
 `arithmetic::non_integer_power` and `extended_sqrt`, which normalizes a subnormal's significand.
+AVERAGE's final division of the sum by the count rounds twice too, like `/`
+(probes-numeric/average-large-count-division, 24 cells: one 15-digit value S and n-1 zeros, n = 2051,
+2999, 4095, S picked by exact simulation so that once- and twice-rounded S/n differ; every cell is the
+twice-rounded value; oracle: excel-graph, 2026-10-15, T-1619). For a 53-bit sum no count n <= 2048 can
+discriminate (the remainder fraction cannot come within half an extended ulp of a midpoint), so the
+count of 1025-2048 the task guessed is moot; counts 3001, 3333, 4001 gave no pick in our search.
+Implemented in `fn_average` with `arithmetic::extended_quotient`; AVERAGEA's and AVERAGEIF's divisions
+are UNVERIFIED (not probed).
 Accumulators beyond SUM and AVERAGE (probes-numeric/double-rounding-accumulators, 56 cells; 8 operand
 sets a, b, c of at most 15 significant digits picked by exact simulation so that a+b is the same under
 single and double rounding but (a+b)+c is not; oracle: excel-graph, 2026-10-15, T-1516): `a+b+c`,
@@ -301,8 +309,8 @@ total is rounded to a double after every addition (to 64 bits, then to a double,
 engine matches `+` and SUM and misses SUMIF, SUMIFS, DSUM and AVERAGEA by one ulp in all 8 sets (32
 cells; they still use the plain `+`). AVERAGE's division by a small count (3, 5, 7) was not probed: that is reasoning, not oracle evidence. For a
 small odd count n the binary expansion of k/n has no run of 11 equal bits after the cut, so the 64-bit rounding
-never lands on a midpoint and double rounding would equal single rounding. A discriminating divisor needs n above about
-2^10 (an earlier random search at n = 1025 found nothing); T-1619 probes a large count.
+never lands on a midpoint and double rounding would equal single rounding. A discriminating divisor needs n above
+2^11 (an earlier random search at n = 1025 found nothing; T-1619 probed counts 2051-4095, below).
 Range edges of `*` and PRODUCT (probes-numeric/double-rounding-range-edges, excel-graph, 2026-10-14,
 T-1513): the second rounding happens at the result's own precision. An exact product just under the
 midpoint between `DBL_MAX` and 2^1024 rounds up to the midpoint in 64 bits and then, tied, to 2^1024:
