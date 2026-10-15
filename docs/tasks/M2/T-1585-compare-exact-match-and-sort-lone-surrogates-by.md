@@ -3,7 +3,7 @@ id: T-1585
 title: "Compare, EXACT, MATCH and sort lone surrogates by code unit (not as U+FFFD)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
