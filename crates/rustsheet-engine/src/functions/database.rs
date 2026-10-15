@@ -1,4 +1,4 @@
-use crate::arithmetic::extended_sum;
+use crate::arithmetic::{extended_sum, flush_subnormal};
 use crate::{
     arithmetic::extended_quotient,
     calc_result::CalcResult,
@@ -71,8 +71,9 @@ impl Model {
             };
         }
 
-        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1648).
-        CalcResult::Number(extended_quotient(sum, count as f64))
+        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1648), and a subnormal
+        // quotient is 0 as for AVERAGE (probes-numeric/daverage-accumulation A20:A24, T-1649).
+        CalcResult::Number(flush_subnormal(extended_quotient(sum, count as f64)))
     }
 
     // =DCOUNT(database, field, criteria)
