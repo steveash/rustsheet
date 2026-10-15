@@ -3,7 +3,7 @@ id: T-1655
 title: "Probe GCD/LCM/MULTINOMIAL: array-literal text or TRUE after a negative, error order, and 2^53 overflow against a later error"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
