@@ -354,6 +354,11 @@ impl Model {
         arrays_are_value_errors: bool,
     ) -> Result<Vec<Option<f64>>, CalcResult> {
         let by_reference = matches!(node.ungrouped(), Node::ReferenceKind { .. });
+        // The `@` of a non-reference array is its top-left value, which the RANK family takes as
+        // it takes the whole array: `#VALUE!`, or the element's error, in one cell
+        // (`RANK(5,@IF(A1:B2>0,A1:B2))`, `RANK(5,@{3,4})`; probes/rank-at-if-ref H1, H31, K28).
+        let at_value = arrays_are_value_errors
+            && matches!(node.ungrouped(), Node::ImplicitIntersection { .. });
         let unsupported = |error: Error| {
             Err(CalcResult::Error {
                 error,
@@ -409,6 +414,15 @@ impl Model {
                     })
             }
             CalcResult::Range { left, right } => self.values_from_range(left, right),
+            CalcResult::Boolean(_)
+            | CalcResult::Number(_)
+            | CalcResult::String(_)
+            | CalcResult::EmptyCell
+            | CalcResult::EmptyArg
+                if at_value =>
+            {
+                unsupported(Error::VALUE)
+            }
             // A cell holding a scalar is a reference the function cannot rank (#NUM!); the same
             // scalar typed in place is a one-element list.
             CalcResult::Boolean(_) | CalcResult::Number(_) | CalcResult::String(_)

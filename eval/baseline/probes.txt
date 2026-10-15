@@ -431,6 +431,7 @@ C	probes/range-operator-column-letter-before-colon.case.json	1
 C	probes/range-operator-unnamed-operands.case.json	10
 C	probes/range-right-operand-errors.case.json	4
 C	probes/rank-absent-number.case.json	15
+C	probes/rank-at-if-ref.case.json	28
 C	probes/rank-nonref-06.case.json	1
 C	probes/rank-nonref-07.case.json	1
 C	probes/rank-nonref-08.case.json	1

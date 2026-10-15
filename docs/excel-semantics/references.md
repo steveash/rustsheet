@@ -1384,3 +1384,15 @@ function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, an
 (CHOOSE's index under SUMPRODUCT lifts, T-0294).
 Status: VERIFIED
 Tasks: T-0293, T-1526, T-1551, T-1555, T-1556
+
+## `@` of a non-reference array as a function argument is its top-left value
+Rule (probes/rank-at-if-ref, excel-graph, 2026-10-15, T-1596): where an argument takes a reference (aggregates, RANK's `ref`,
+COUNTBLANK's `range`), `@` of an array that is not a reference is the array's top-left value, a plain value, never the whole array.
+With A1:B2 = 7,1/5,3: `SUM(@(A1:B2*1))`, `SUM(@IF(A1:B2>0,A1:B2))`, `MAX(@(A1:B2*1))` and `LARGE(@(A1:B2*1),1)` are 7,
+`COUNT(@IF(A1:B2>0,A1:B2))` is 1, `AVERAGE(@IF(A1:B2>0,A1:B2*2))` is 14 and `SUM(@{3,4})` is 3. `@` of an IF that picks a
+reference still intersects it: `SUM(@IF(TRUE,A1:B2))` off the range rows and columns is `#VALUE!`. `COUNTBLANK(@IF(A1:B2>0,A1:B2))`
+is `#VALUE!` (a value is not a reference). For RANK see statistics.md, "RANK of a non-reference array".
+Ours: matches since T-1596 (`evaluate_node_with_reference` in model.rs; before, the whole array reached the function, so
+`SUM(@(A1:B2*1))` was 16).
+Status: VERIFIED (excel-graph)
+Tasks: T-1596
