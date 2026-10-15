@@ -123,8 +123,26 @@ pub(crate) fn bisect_increasing(f: impl Fn(f64) -> f64, target: f64, max_doublin
             return f64::INFINITY;
         }
     }
-    let mut lo = 0.0_f64;
-    for _ in 0..200 {
+    halve_increasing(&f, target, 0.0, hi, 200)
+}
+
+/// Smallest `x` in [0, 1] with `f(x) >= target` for a non-decreasing `f` with `f(1) >= target`,
+/// halving down to the smallest subnormal (at most 1100 steps), so a quantile as small as 1E-300
+/// keeps its digits where [`bisect_increasing`]'s 200 steps stop near 1E-60. The time is bounded,
+/// unlike `statrs`' `inverse_cdf` (T-1543).
+pub(crate) fn bisect_unit_interval(f: impl Fn(f64) -> f64, target: f64) -> f64 {
+    halve_increasing(&f, target, 0.0, 1.0, 1100)
+}
+
+/// Halves `[lo, hi]` (at most `steps` times) around the point where `f` reaches `target`.
+fn halve_increasing(
+    f: &impl Fn(f64) -> f64,
+    target: f64,
+    mut lo: f64,
+    mut hi: f64,
+    steps: u32,
+) -> f64 {
+    for _ in 0..steps {
         let mid = 0.5 * (lo + hi);
         if mid <= lo || mid >= hi {
             break;
