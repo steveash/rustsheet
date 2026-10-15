@@ -65,7 +65,7 @@ Probed (T-1582, probes/text-lone-surrogates, excel-graph 2026-10-15; docs/excel-
 - CODE of a lone surrogate is 63; `UNICODE(H)` is `#VALUE!`, `UNICODE(L)` 56832.
 - A lone surrogate never equals U+FFFD (`EXACT`, `=`); order is by unit value with a lone unit above
   every BMP character (T-1585).
-- UPPER, LOWER, PROPER, TRIM and CLEAN keep a lone surrogate unchanged. T, REPT and TEXT (`@`) keep its length (T-1587); that they keep the exact unit, not U+FFFD, is a hand expectation, unprobed.
+- UPPER, LOWER, PROPER, TRIM and CLEAN keep a lone surrogate unchanged. T, REPT and TEXT (`@`) keep its length (T-1587); they keep the exact unit, not U+FFFD, and `REPT(L&H,2)` re-pairs (VERIFIED, probes/text-lone-surrogates A82-A86, T-1647).
 - FIND, SEARCH and SUBSTITUTE with a lone half as find_text can split a pair (T-1586).
 - A lone high surrogate is cached as `_xD83D_`, like the low one.
 Still unprobed: exact units through T, REPT and TEXT (`EXACT(T(H),H)`, `EXACT(REPT(L&H,2),L&H&L&H)`, `UNICODE(MID(TEXT(L,"x@y"),2,1))`, the 255-character TEXT limit with lone text), a lone surrogate beside a wildcard or in COUNTIF-style criteria (T-1642), PROPER word
