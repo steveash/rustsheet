@@ -3,7 +3,7 @@ id: T-1602
 title: "Probe a direct LAMBDA in the AVERAGE family and its error precedence"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
