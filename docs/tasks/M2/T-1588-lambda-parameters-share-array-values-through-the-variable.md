@@ -3,7 +3,7 @@ id: T-1588
 title: "LAMBDA parameters: share array values through the variable stack instead of cloning on each read"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
