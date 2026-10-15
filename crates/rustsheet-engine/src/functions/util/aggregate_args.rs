@@ -33,7 +33,7 @@ pub(crate) enum ItemSource {
 /// Where an error inside an array value ranks.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ArrayErrorRank {
-    /// An array error is a direct error: MIN, MAX and AVERAGE today (UNVERIFIED, T-1439).
+    /// An array error is a direct error: AVERAGE today (UNVERIFIED, T-1439).
     Direct,
     /// An array error ranks with referenced errors: SUM (probes/aggregate-error-precedence C50,
     /// C53–C55, C61, C77); PRODUCT does too (probes/product-array-2d-and-scalar A7–A17, T-1287).

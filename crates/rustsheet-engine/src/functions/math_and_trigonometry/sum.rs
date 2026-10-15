@@ -320,7 +320,7 @@ impl Model {
         }
         let mut sum = SumParts::default();
         self.for_each_aggregate_number(args, cell, SUM_ARGS, NumberRules::SUM_LIKE, |value| {
-            sum.add(value)
+            sum.add(value);
         })?;
         Ok(sum)
     }
