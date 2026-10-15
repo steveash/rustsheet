@@ -595,6 +595,7 @@ C	probes/union-walk-repeated-in-lambda.case.json	15
 C	probes/value-clock-text.case.json	135
 C	probes/valuetotext-error-format.case.json	10
 C	probes/valuetotext-format.case.json	37
+C	probes/vara-single-ref-picked.case.json	41
 C	probes/variance-digits.case.json	234
 C	probes/variance-fit.case.json	380
 C	probes/variance-rel.case.json	120
@@ -6031,6 +6032,9 @@ F	probes/trig-huge-argument.case.json	Sheet1!A29
 F	probes/trig-huge-argument.case.json	Sheet1!A43
 F	probes/trig-huge-argument.case.json	Sheet1!A57
 F	probes/trig-huge-argument.case.json	Sheet1!A71
+F	probes/vara-single-ref-picked.case.json	S!D37
+F	probes/vara-single-ref-picked.case.json	S!D38
+F	probes/vara-single-ref-picked.case.json	S!D39
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D18
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D19
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D26
