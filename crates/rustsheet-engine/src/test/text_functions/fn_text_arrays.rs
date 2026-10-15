@@ -407,6 +407,8 @@ fn text_error_value_with_an_array_of_formats() {
     assert_eq!(row(&model, 2, 2), ["1", "#N/A"]);
 }
 
+/// One result per format, following the format array's orientation (probes/text-format-array A20
+/// and A24, excel-graph, T-1458).
 #[test]
 fn text_over_a_column_array_and_a_range_of_formats() {
     let mut model = new_empty_model();
