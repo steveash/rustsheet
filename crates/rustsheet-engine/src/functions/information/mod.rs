@@ -573,7 +573,7 @@ impl Model {
         // An array info_type lifts: one result per element (CELL({"row","col"},B2) spills 2, 2;
         // probes/info-logic-argument-modes A27:B27, excel-graph).
         let info_type = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::String(s) => s,
+            CalcResult::String(s) => s.into_lossy_string(),
             CalcResult::Array(types) => {
                 let lifted = types
                     .iter()
@@ -630,7 +630,7 @@ impl Model {
                     };
                     addresses.push(format!("${}${}", column, area.row));
                 }
-                CalcResult::String(addresses.join(", "))
+                CalcResult::String(addresses.join(", ").into())
             }
             "COL" => CalcResult::Number(reference.column as f64),
             "COLOR" | "FORMAT" | "PARENTHESES" | "PREFIX" | "PROTECT" | "WIDTH" => {
@@ -660,7 +660,7 @@ impl Model {
                         }
                     }
                 };
-                CalcResult::String(format!("[{workbook_name}.xlsx]{worksheet_name}"))
+                CalcResult::String(format!("[{workbook_name}.xlsx]{worksheet_name}").into())
             }
             "ROW" => CalcResult::Number(reference.row as f64),
             // Like "contents", "type" reads the reference's address on the formula's own sheet
@@ -680,7 +680,7 @@ impl Model {
                     CalcResult::EmptyArg => "v",
                     CalcResult::Array(_) | CalcResult::Lambda(_) => "v",
                 };
-                CalcResult::String(cell_type.to_string())
+                CalcResult::String(cell_type.to_string().into())
             }
             _ => CalcResult::Error {
                 error: Error::VALUE,
@@ -714,16 +714,16 @@ impl Model {
             "NUMFILE" => CalcResult::Number(self.workbook.worksheets.len() as f64),
 
             // At the moment we always do automatic recalc
-            "RECALC" => CalcResult::String("Automatic".to_string()),
-            "RELEASE" => CalcResult::String(release.to_string()),
-            "SYSTEM" => CalcResult::String(get_system()),
-            "TIMEZONE" => CalcResult::String(self.get_timezone()),
+            "RECALC" => CalcResult::String(("Automatic".to_string()).into()),
+            "RELEASE" => CalcResult::String(release.to_string().into()),
+            "SYSTEM" => CalcResult::String(get_system().into()),
+            "TIMEZONE" => CalcResult::String(self.get_timezone().into()),
             "TIMEZONES" => {
                 let mut tzs = get_all_timezones();
                 tzs.sort();
                 let list: Vec<Vec<ArrayNode>> = tzs
                     .into_iter()
-                    .map(|name| vec![ArrayNode::String(name.to_string())])
+                    .map(|name| vec![ArrayNode::String(name.to_string().into())])
                     .collect();
                 CalcResult::Array(list)
             }

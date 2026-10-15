@@ -132,13 +132,13 @@ fn linear_search(
     match match_mode {
         MatchMode::Regex => {
             let pattern = match lookup_value {
-                CalcResult::String(s) => s.as_str(),
+                CalcResult::String(s) => &**s,
                 _ => return None,
             };
             let re = Regex::new(pattern).ok()?;
             candidates.into_iter().find(|&idx| {
                 let text = match array.get(idx) {
-                    CalcResult::String(s) => s.clone(),
+                    CalcResult::String(s) => s.to_string(),
                     CalcResult::Number(n) => number_to_text(*n),
                     CalcResult::Boolean(b) => b.to_string(),
                     _ => return false,

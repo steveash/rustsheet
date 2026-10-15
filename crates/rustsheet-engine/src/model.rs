@@ -90,7 +90,7 @@ fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
             m: String::new(),
         },
         ArrayNode::Number(n) => FormulaValue::Number(n),
-        ArrayNode::String(s) => FormulaValue::Text(s),
+        ArrayNode::String(s) => FormulaValue::Text(s.into_lossy_string()),
         ArrayNode::Error(ei) => FormulaValue::Error {
             ei,
             o: String::new(),
@@ -537,7 +537,7 @@ impl Model {
             | OpConcatenateKind { .. }
             | CompareKind { .. } => self.evaluate_operator_chain(node, cell),
             NumberKind(value) => CalcResult::Number(*value),
-            StringKind(value) => CalcResult::String(value.replace(r#""""#, r#"""#)),
+            StringKind(value) => CalcResult::String(value.replace(r#""""#, r#"""#).into()),
             BooleanKind(value) => CalcResult::Boolean(*value),
             ReferenceKind {
                 sheet_name: _,
@@ -965,7 +965,7 @@ impl Model {
                 }
                 FormulaValue::Number(*value)
             }
-            CalcResult::String(value) => FormulaValue::Text(value.clone()),
+            CalcResult::String(value) => FormulaValue::Text(value.to_string()),
             CalcResult::Boolean(value) => FormulaValue::Boolean(*value),
             CalcResult::Error {
                 error,
@@ -1306,7 +1306,7 @@ impl Model {
             }
             SharedString { si, .. } => {
                 if let Some(s) = self.workbook.shared_strings.get(*si as usize) {
-                    CalcResult::String(s.clone())
+                    CalcResult::String(s.clone().into())
                 } else {
                     let message = "Invalid shared string".to_string();
                     CalcResult::new_error(Error::ERROR, cell_reference, message)
@@ -1347,7 +1347,7 @@ impl Model {
             | ArrayFormula {
                 v: FormulaValue::Text(v),
                 ..
-            } => CalcResult::String(v.clone()),
+            } => CalcResult::String(v.clone().into()),
             CellFormula {
                 v: FormulaValue::Error { ei, o, m },
                 ..

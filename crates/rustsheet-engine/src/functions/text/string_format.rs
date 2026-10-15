@@ -107,7 +107,7 @@ impl Model {
         } else {
             format!("${formatted}")
         };
-        CalcResult::String(result)
+        CalcResult::String(result.into())
     }
 
     /// FIXED(number, [decimals], [`no_commas`]) — Formats a number as text with fixed decimal places.
@@ -142,7 +142,7 @@ impl Model {
         } else {
             formatted
         };
-        CalcResult::String(result)
+        CalcResult::String(result.into())
     }
 
     /// NUMBERVALUE(text, [`decimal_separator`], [`group_separator`])
@@ -299,7 +299,7 @@ fn replace_element(
     let mut result = utf16_slice(&old_text, 0, start);
     result.push_str(&new_text);
     result.push_str(&utf16_slice(&old_text, end, len));
-    Ok(ArrayNode::String(result))
+    Ok(ArrayNode::String(result.into()))
 }
 
 fn proper_case(s: &str) -> String {

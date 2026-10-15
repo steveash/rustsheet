@@ -183,7 +183,7 @@ impl Model {
             buf = padded;
         }
 
-        CalcResult::String(buf)
+        CalcResult::String(buf.into())
     }
 
     pub(crate) fn fn_sumsq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
