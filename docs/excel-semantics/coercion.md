@@ -94,6 +94,24 @@ cedilla are placed by Windows' sort-key order, UNVERIFIED. (3) Hyphens and apost
 weight), a later position first, apostrophe before hyphen. Characters outside ASCII and the Latin-1
 letters (`þ`, `ð`, `œ`, Greek, symbols such as `§`) are UNVERIFIED: they keep code-point order after
 the letters.
+### Collation equality in lookups and criteria; unprobed characters (T-1590)
+Evidence: probes/text-collation-lookups (93 cells) and probes/text-collation-unprobed (90 strings ranked by
+`SUMPRODUCT(--(range<x))`), excel-graph 2026-10-15. Status: VERIFIED.
+- Equality by collation (`"æ"="ae"`, `"ß"="ss"` TRUE; `"a-b"="ab"`, `"a"="á"`, `"ø"="o"`, `"co-op"="coop"` FALSE) applies in
+  **XMATCH, XLOOKUP, SWITCH** (`XMATCH("ae","æ",0)` = 1, `SWITCH("ae","æ",...)` hits) and in **COUNTIF**'s text criteria (below).
+  It does **not** apply in **MATCH(...,0)** and **VLOOKUP(...,FALSE)**: both give `#N/A` for `"ae"` against `"æ"` and `"ss"` against `"ß"`.
+  (The engine already agrees on every lookup cell; the old "inferred: exact-match lookups treat æ and ae as equal" held for XMATCH, XLOOKUP and SWITCH only.)
+- COUNTIF over {"æ","ae","a-e"}: criteria `"ae"`, `"=ae"`, `"æ"` count 2 (æ and ae); `"<>ae"` and `"<>æ"` 1 (a-e); `"<ae"` 0; `"<=ae"` and `"<=æ"` 2;
+  `">ae"` 1; `">=ae"` 3; `"a-e"` 1; `"<>a-e"` 2. So the criteria use the same collation for `=`, `<>` and the ordered operators (see criteria.md).
+- Order of the characters not probed in T-1469 (lowest first, `=` marks equal; whole table in the oracle sidecar): empty, CHAR(1), CHAR(31), CHAR(127),
+  `–` `—` (en and em dash behave like a hyphen: ignored, tiebreak only: `"a'b" < "a-b" < "a–b" < "a—b"`, all after `"ab"`),
+  CHAR(160), CHAR(9), CHAR(10), CHAR(13) (these three sort above CHAR(160), not below the space), then
+  `! ~ ¡ ¦ ¨ ¯ ´ ¸ ¿`, `‘ ’ “ ”` (`’` is an ordinary punctuation mark, not ignored: `"a’b" < "ab"`), `¢ £ ¤ ¥ €`, `+ ±`, `« »`, `× ÷`, `§ © ¬ ® ° µ`, `… •`,
+  `0`, `¼ ½ ¾`, `¹ ² ³`, `9`, then letters: `a=A < ª < á < ä < ã < å`, `c < ç`, `d < đ < ð`, `i < ı < ij=ĳ`, `l < ł`, `n < ñ`, `o < º < ö < ø < œ`,
+  `s`, `t < þ`, `u`, `z`, `α < β < ω`. Notes: `ĳ` equals `ij` (an expansion like `æ`/`ß`); `œ` is not `oe` (it sorts after `ø`);
+  `ã` sorts after `ä`; `ç`, `đ`, `ð`, `ł`, `ñ`, `þ` are all ordinary tiebreak accents after the plain letter, not separate letters.
+  Position of the digit-like symbols: between `0` and `9`, observed only (1 to 8 were not probed with them).
+- The engine's code-point fallback gets 89 of these 270 cells wrong (tilde/cedilla/stroke accent order, `ĳ`, `œ`, `þ`, Greek, the symbols and control characters): see the engine follow-up task.
 Tasks: T-0220, T-0244, T-1469
 
 ## Double unary minus coerces to a number
