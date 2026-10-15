@@ -217,3 +217,11 @@ Implemented in: `ValueOperator::Equal`/`NotEqual` in `crates/rustsheet-engine/sr
 Tasks: T-1033
 
 Exception: an error-valued criterion that is a stored `#BUSY!` (e.g. `COUNTIF(A1:A2,A1)`) matches nothing, not even `#BUSY!` cells, unlike a `#N/A` criterion (probes/error-stored-busy-behaviors C15, T-1314). COUNTIFS, SUMIF, SUMIFS, AVERAGEIF and DCOUNTA agree (probes/aggregate-error-precedence C79-C92, T-1334): a stored `#BUSY!` criterion matches nothing (`COUNTIFS(A1:A2,A1)` 0, `COUNTIFS(A1:A2,"<>"&A1)` 0 (the concatenation passes the error on, so it is the same criterion as C82), `DCOUNTA(...,J1:J2)` 0) while a stored `#N/A` criterion matches the `#N/A` cell (`COUNTIFS(A1:A2,A2)` 1, `DCOUNTA(...,K1:K2)` 1); `AVERAGEIF` with nothing matched is `#DIV/0!` (C86). Limitation: the SUMIF/SUMIFS cells (C79-C81, C87, C88) have a text or empty sum cell aligned with the error rows, so they give 0 either way and only show that no error propagates; the COUNTIFS and DCOUNTA cells are the real evidence.
+
+### COUNTIF text criteria use the collation for equality (T-1590)
+Rule: a text criterion `"ae"`, `"=ae"` or `"<>ae"` compares with Excel's text collation, the same one as `<`/`>`: over {"æ","ae","a-e"}
+`COUNTIF(r,"ae")` and `COUNTIF(r,"=ae")` are 2 (æ equals ae), `COUNTIF(r,"<>ae")` is 1; a criterion `"æ"` also counts 2; `"a-e"` counts 1
+(a hyphen is not ignored in equality). The ordered operators agree (`"<=ae"` 2, `">=ae"` 3, `">ae"` 1, `"<ae"` 0).
+Evidence: probes/text-collation-lookups Calc!F1:H2, K1:K12 (oracle: excel-graph, 2026-10-15). Status: VERIFIED
+Not implemented: the engine's `=` and `<>` text criteria compare lowercased code points, so `COUNTIF(r,"ae")` misses `æ` (11 cells of probes/text-collation-lookups fail: F1:H2 and K1, K2, K3, K8, K9).
+Tasks: T-1590
