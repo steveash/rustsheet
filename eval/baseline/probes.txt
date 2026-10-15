@@ -707,7 +707,6 @@ F	probes/bond-one-period-bases.case.json	Y!J4
 F	probes/catalog/availability-17.case.json	Sheet1!A3
 F	probes/catalog/availability-17.case.json	Sheet1!A4
 F	probes/catalog/availability-30.case.json	Sheet1!A3
-F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/coupdays-feb-month-end.case.json	S!B20
 F	probes/coupdays-feb-month-end.case.json	S!C20
 F	probes/coupdays-feb-month-end.case.json	S!D20
@@ -6010,9 +6009,7 @@ F	probes/text-lone-surrogates.case.json	Sheet1!A18
 F	probes/text-lone-surrogates.case.json	Sheet1!A22
 F	probes/text-lone-surrogates.case.json	Sheet1!A27
 F	probes/text-lone-surrogates.case.json	Sheet1!A28
-F	probes/text-lone-surrogates.case.json	Sheet1!A3
 F	probes/text-lone-surrogates.case.json	Sheet1!A30
-F	probes/text-lone-surrogates.case.json	Sheet1!A4
 F	probes/text-lone-surrogates.case.json	Sheet1!A43
 F	probes/text-lone-surrogates.case.json	Sheet1!A48
 F	probes/text-lone-surrogates.case.json	Sheet1!A49
@@ -6022,13 +6019,6 @@ F	probes/text-lone-surrogates.case.json	Sheet1!A53
 F	probes/text-lone-surrogates.case.json	Sheet1!A55
 F	probes/text-lone-surrogates.case.json	Sheet1!A56
 F	probes/text-lone-surrogates.case.json	Sheet1!A57
-F	probes/text-surrogate-positions.case.json	Sheet1!A38
-F	probes/trig-huge-argument.case.json	Sheet1!A1
-F	probes/trig-huge-argument.case.json	Sheet1!A15
-F	probes/trig-huge-argument.case.json	Sheet1!A29
-F	probes/trig-huge-argument.case.json	Sheet1!A43
-F	probes/trig-huge-argument.case.json	Sheet1!A57
-F	probes/trig-huge-argument.case.json	Sheet1!A71
 F	probes/vara-single-ref-picked.case.json	S!D37
 F	probes/vara-single-ref-picked.case.json	S!D38
 F	probes/vara-single-ref-picked.case.json	S!D39

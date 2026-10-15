@@ -13,3 +13,4 @@ mod seriessum;
 mod sum;
 pub(crate) use sum::SumParts;
 mod sumproduct;
+mod trig;

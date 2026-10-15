@@ -1,3 +1,4 @@
+use super::trig::{excel_sin_cos, excel_tan};
 use crate::arithmetic::{divide, extended_sqrt, flush_subnormal, power};
 use crate::cast::NumberOrArray;
 use crate::constants::EXCEL_PRECISION;
@@ -486,9 +487,9 @@ impl Model {
     } else {
         Ok(f64::ln(f))
     });
-    single_number_fn!(fn_sin, |f| trig_arg(f).map(f64::sin));
-    single_number_fn!(fn_cos, |f| trig_arg(f).map(f64::cos));
-    single_number_fn!(fn_tan, |f| trig_arg(f).map(f64::tan));
+    single_number_fn!(fn_sin, |f| trig_arg(f).map(|x| excel_sin_cos(x).0));
+    single_number_fn!(fn_cos, |f| trig_arg(f).map(|x| excel_sin_cos(x).1));
+    single_number_fn!(fn_tan, |f| trig_arg(f).map(excel_tan));
     single_number_fn!(fn_sinh, |f| Ok(super::hyperbolic::sinh(f)));
     single_number_fn!(fn_cosh, |f| Ok(super::hyperbolic::cosh(f)));
     single_number_fn!(fn_tanh, |f| Ok(super::hyperbolic::tanh(f)));
@@ -563,7 +564,8 @@ impl Model {
     } else if f == 0.0 {
         Err(Error::DIV)
     } else {
-        Ok(f64::cos(f) / f64::sin(f))
+        // 1/TAN, not COS/SIN (probes-numeric/m9-trig-reduction F6-F81).
+        Ok(1.0 / excel_tan(f))
     });
     single_number_fn!(fn_coth, |f: f64| if f == 0.0 {
         Err(Error::DIV)
@@ -578,7 +580,7 @@ impl Model {
     } else if f == 0.0 {
         Err(Error::DIV)
     } else {
-        Ok(1.0 / f64::sin(f))
+        Ok(1.0 / excel_sin_cos(f).0)
     });
     single_number_fn!(fn_csch, |f| if f == 0.0 {
         Err(Error::DIV)
@@ -586,7 +588,7 @@ impl Model {
         // Excel: a subnormal CSCH result is a true 0 (CSCH(710), docs/excel-semantics/numbers.md).
         Ok(flush_subnormal(1.0 / f64::sinh(f)))
     });
-    single_number_fn!(fn_sec, |f| trig_arg(f).map(|x| 1.0 / f64::cos(x)));
+    single_number_fn!(fn_sec, |f| trig_arg(f).map(|x| 1.0 / excel_sin_cos(x).1));
     single_number_fn!(fn_sech, |f| Ok(1.0 / f64::cosh(f)));
     single_number_fn!(fn_exp, |f: f64| Ok(f64::exp(f)));
     single_number_fn!(fn_fact, |x: f64| {
