@@ -303,3 +303,62 @@ fn a_parameter_read_once_is_moved_and_one_read_more_often_is_copied() {
     assert_eq!(model._get_text("E1"), "15");
     assert_eq!(model._get_text("F1"), "6");
 }
+
+#[test]
+fn a_parameter_read_once_through_if_let_sort_take_drop_is_moved_and_one_read_twice_is_copied() {
+    // T-1593: IF (its condition, and one read in each exclusive branch), LET (values and body)
+    // and the array of SORT, TAKE and DROP read a parameter once; each case below that reads it
+    // a second time still sees the value on every read.
+    let mut model = new_empty_model();
+    // IF: a read in each branch; a read in the condition and a branch; a branch and outside.
+    model._set(
+        "A1",
+        "=ROWS(REDUCE(0, SEQUENCE(5), LAMBDA(a, x, IF(x > 2, VSTACK(a, x), a))))",
+    );
+    model._set("A2", "=SUM(LAMBDA(a, IF(SUM(a) > 0, a, 0))({1;2}))");
+    model._set("A3", "=SUM(LAMBDA(a, VSTACK(IF(TRUE, a, 0), a))({1;2}))");
+    // IF over an array condition evaluates both branches, each reading the parameter.
+    model._set(
+        "A4",
+        "=SUM(LAMBDA(a, IF({TRUE,FALSE}, a, VSTACK(a)))({1;2}))",
+    );
+    model._set(
+        "A5",
+        "=SUM(LAMBDA(a, IF({TRUE,FALSE}, VSTACK(a, 1), IF(TRUE, VSTACK(a, 0), 0)))({1;2}))",
+    );
+    // LET: the body; a value; a value and the body.
+    model._set(
+        "B1",
+        "=ROWS(REDUCE(0, SEQUENCE(4), LAMBDA(a, x, LET(y, x * 2, VSTACK(a, y)))))",
+    );
+    model._set("B2", "=SUM(LAMBDA(a, LET(b, a, SUM(b) + 1))({1;2}))");
+    model._set("B3", "=SUM(LAMBDA(a, LET(b, a, VSTACK(a, b)))({1;2}))");
+    // SORT, TAKE and DROP: the array once; the array and another argument.
+    model._set(
+        "C1",
+        "=INDEX(REDUCE(0, SEQUENCE(4), LAMBDA(a, x, SORT(VSTACK(a, x), 1, -1))), 1)",
+    );
+    model._set(
+        "C2",
+        "=INDEX(LAMBDA(a, SORT(a, COLUMNS(a)))({3,1;2,4}), 1, 1)",
+    );
+    model._set("C3", "=SUM(LAMBDA(a, TAKE(a, 1))({1;2}))");
+    model._set("C4", "=SUM(LAMBDA(a, TAKE(a, ROWS(a) - 1))({1;2;3}))");
+    model._set("C5", "=SUM(LAMBDA(a, DROP(a, 1))({1;2;3}))");
+    model._set("C6", "=SUM(LAMBDA(a, DROP(a, ROWS(a) - 1))({1;2;3}))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "4");
+    assert_eq!(model._get_text("A2"), "3");
+    assert_eq!(model._get_text("A3"), "6");
+    assert_eq!(model._get_text("A4"), "6");
+    assert_eq!(model._get_text("A5"), "7");
+    assert_eq!(model._get_text("B1"), "5");
+    assert_eq!(model._get_text("B2"), "4");
+    assert_eq!(model._get_text("B3"), "6");
+    assert_eq!(model._get_text("C1"), "4");
+    assert_eq!(model._get_text("C2"), "3");
+    assert_eq!(model._get_text("C3"), "1");
+    assert_eq!(model._get_text("C4"), "3");
+    assert_eq!(model._get_text("C5"), "5");
+    assert_eq!(model._get_text("C6"), "3");
+}

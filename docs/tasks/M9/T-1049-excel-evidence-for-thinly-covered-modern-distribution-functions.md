@@ -3,7 +3,7 @@ id: T-1049
 title: "Excel evidence for thinly covered modern distribution functions (F.*, CHISQ.*, HYPGEOM.DIST, WEIBULL.DIST, Z.TEST, PHI, T.TEST)"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -26,3 +26,8 @@ Split from T-0966 (one sweep per kernel family), which explains why: Excel's dis
 
 ## Out of scope
 - Fitting or changing any implementation (the dependent fitting tasks do that).
+
+## Outcome
+Added 15 probe cases `eval/suites/probes-numeric/cases/t1049-*` (one per function; 27-65 cells each,
+HYPGEOM.DIST 61) with excel-graph sidecars, none pending. Quirks recorded in
+`docs/excel-semantics/statistics.md` (T-1049). No implementation changed.
