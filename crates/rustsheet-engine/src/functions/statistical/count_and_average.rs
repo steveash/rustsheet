@@ -29,12 +29,11 @@ const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
     skip_empty_args: true,
 };
 
-/// AVERAGEA, MAXA and MINA: the first error returns at once (their error order is unprobed,
-/// T-1566). The A rules' visitor errs on a referenced cell holding a range ("Unexpected Range").
-const A_ARGS: AggregatePolicy = AggregatePolicy {
-    errors: ErrorRule::First,
-    skip_empty_args: false,
-};
+/// AVERAGEA, MAXA and MINA rank errors as the AVERAGE family does: a scalar direct error beats a
+/// referenced one either way and the leftmost referenced error wins (probes/aggregate-picked-
+/// direct-a-variants D20-D27; the array rank is UNVERIFIED). The A rules' visitor errs on a
+/// referenced cell holding a range ("Unexpected Range"), which returns at once.
+const A_ARGS: AggregatePolicy = AVERAGE_ARGS;
 
 /// The AVERAGE family's coercion: a direct number, boolean, text or empty argument counts, and
 /// only numbers in references and arrays (coercion.md "AVERAGE, MEDIAN, GEOMEAN, …";
