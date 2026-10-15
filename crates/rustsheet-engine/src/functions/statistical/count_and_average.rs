@@ -1,6 +1,6 @@
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, AggregateWalk, ArrayErrorRank, ArrayNumbers, CellNumbers, DirectNumbers,
-    ErrorRule, ItemSource, NumberRules,
+    AggregatePolicy, AggregateWalk, ArgReading, ArrayErrorRank, ArrayNumbers, CellNumbers,
+    DirectNumbers, ErrorRule, ItemSource, NumberRules,
 };
 use std::cmp::Ordering;
 
@@ -16,6 +16,7 @@ use crate::{
 /// (docs/excel-semantics/syntax.md "Aggregate error precedence"; probes/aggregate-error-precedence
 /// C25-C31; the array rank is UNVERIFIED, T-1439).
 const AVERAGE_ARGS: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked {
         array_errors: ArrayErrorRank::Direct,
     },
@@ -25,6 +26,7 @@ const AVERAGE_ARGS: AggregatePolicy = AggregatePolicy {
 /// DEVSQ, AVEDEV and SUMSQ: an empty argument is skipped and the first error returns at once,
 /// as when each argument was walked on its own (TODO(T-0236); T-1439).
 const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::Aggregate,
     errors: ErrorRule::First,
     skip_empty_args: true,
 };

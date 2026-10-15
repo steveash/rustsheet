@@ -287,6 +287,16 @@ The walker and `for_each_aggregate_number` are `#[inline]` and take the policy b
 and its error is returned at once (`?`). One argument has only one shape, so this is the same
 as `First`.
 
+### As built (T-1476)
+- MIN and MAX use `ArrayErrorRank::DirectUnlessLambdaHeld`: as `Direct`, but a held direct LAMBDA's
+  `#VALUE!` is not beaten by an array error after it (probes/aggregate-direct-lambda-product-min-max
+  D15, D24; TODO(T-1615)). The walk keeps a `lambda_held` flag for it.
+- `ArgReading` has two variants, `Aggregate` and `PickedKeepingBlanks`; `Reference` was not needed.
+- `ErrorRule::Items` hands error cells, direct errors and array errors to the visitor.
+- `walk_aggregate_read` walks an argument the consumer already read: COUNTA picks its argument
+  (`pick_branch`) first, so a condition is evaluated once.
+- SUM, MIN, MAX and PRODUCT share `NumberRules::SUM_LIKE`.
+
 ## Alternatives considered
 - **A trait per consumer** (`trait AggregateConsumer { fn number(..); fn error(..) }`). It is
   more ceremony than a closure plus a `const` policy, and makes the hot loop dynamic unless

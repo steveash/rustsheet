@@ -1,7 +1,9 @@
 use crate::calc_result::Range;
-use crate::expressions::parser::ArrayNode;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::util::aggregate_args::{
+    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, ItemSource,
+};
 use crate::functions::util::is_span_or_if_of_span;
 use crate::reference_operators::{not_a_reference_array, Picked, RefArg};
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
@@ -24,59 +26,52 @@ fn is_countblank_blank(value: &CalcResult) -> bool {
     }
 }
 
+/// COUNT: errors are ignored (syntax.md), so the walker hands them on as items.
+const COUNT_ARGS: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::Aggregate,
+    errors: ErrorRule::Items,
+    skip_empty_args: false,
+};
+
+/// COUNTA counts errors; it reads a picked reference keeping the cached blanks of a linked
+/// workbook.
+const COUNTA_ARGS: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::PickedKeepingBlanks,
+    errors: ErrorRule::Items,
+    skip_empty_args: false,
+};
+
 impl Model {
     pub(crate) fn fn_count(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
         let mut result = 0.0;
-        for arg in args {
-            // References (also via IF/INDEX) arrive as a Range; the scalar
-            // arms below only see values.
-            match self.evaluate_aggregate_arg(arg, cell) {
-                RefArg::Value(CalcResult::Number(_)) => {
-                    result += 1.0;
-                }
-                RefArg::Value(CalcResult::Boolean(_))
-                    if !matches!(arg.ungrouped(), Node::ReferenceKind { .. }) =>
-                {
-                    result += 1.0;
-                }
-                // COUNT(5,) is 2 (probes/average-value-args F16).
-                RefArg::Value(CalcResult::EmptyArg) => result += 1.0,
-                // Direct text counts when it coerces to a number as SUM's does, clock, date,
-                // currency and percent text included (probes/count-direct-text; T-0252). Only
-                // number-ness matters, so the 15-digit cut cannot change the answer
-                // (docs/excel-semantics/numbers.md "15-digit literal parsing").
-                RefArg::Value(CalcResult::String(s))
-                    if !matches!(arg.ungrouped(), Node::ReferenceKind { .. })
-                        && self.cast_number(&s).is_some_and(f64::is_finite) =>
-                {
-                    result += 1.0;
-                }
-                RefArg::Ranges(areas) => {
-                    if let Err(error) =
-                        self.for_each_cell_or_error_in_areas(&areas, cell, |_, value| {
-                            if let CalcResult::Number(_) = value {
-                                result += 1.0;
-                            }
-                            Ok(())
-                        })
-                    {
-                        return error;
+        if let Err(error) =
+            self.walk_aggregate_args(args, cell, COUNT_ARGS, |model, source, value| {
+                let counts = match (source, &value) {
+                    // Only the numbers of a reference or an array count (probes/average-value-args
+                    // F32).
+                    (_, CalcResult::Number(_)) => true,
+                    // COUNT(5,) is 2 (probes/average-value-args F16).
+                    (ItemSource::Direct | ItemSource::ReferenceValue, CalcResult::EmptyArg) => true,
+                    (ItemSource::Direct, CalcResult::Boolean(_)) => true,
+                    // Direct text counts when it coerces to a number as SUM's does, clock, date,
+                    // currency and percent text included (probes/count-direct-text; T-0252). Only
+                    // number-ness matters, so the 15-digit cut cannot change the answer
+                    // (docs/excel-semantics/numbers.md "15-digit literal parsing").
+                    (ItemSource::Direct, CalcResult::String(text)) => {
+                        model.cast_number(text).is_some_and(f64::is_finite)
                     }
+                    _ => false,
+                };
+                if counts {
+                    result += 1.0;
                 }
-                // Only an array's numbers count (probes/average-value-args F32).
-                RefArg::Value(CalcResult::Array(array)) => {
-                    let numbers = array.iter().flatten();
-                    result += numbers
-                        .filter(|v| matches!(v, ArrayNode::Number(_)))
-                        .count() as f64;
-                }
-                RefArg::Value(_) => {
-                    // Ignore everything else
-                }
-            };
+                Ok(())
+            })
+        {
+            return error;
         }
         CalcResult::Number(result)
     }
@@ -85,7 +80,27 @@ impl Model {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
+        // The cells of another workbook, counted from the externalLink cache.
+        let mut external = 0.0;
         let mut result = 0.0;
+        let mut walk = AggregateWalk::new(COUNTA_ARGS);
+        let mut visit = |_: &mut Self, source: ItemSource, value: CalcResult| {
+            let counts = match (source, &value) {
+                // Excel: an omitted argument and the empty value IFERROR/IFNA give for a blank
+                // cell both count (COUNTA(,) = 2, COUNTA(IFERROR(B1,1)) = 1), unlike a blank
+                // reference; see docs/excel-semantics/logic.md "IFERROR / IFNA of a blank cell is
+                // an empty value".
+                (ItemSource::Direct | ItemSource::ReferenceValue, CalcResult::EmptyCell) => false,
+                // Every element of an array value counts, the empty values IFERROR gives for blank
+                // cells included: `COUNTA(IFERROR(B1:B2,1))` with B1 blank is 2
+                // (probes/counta-empty-value D18). The walker never hands on a blank cell.
+                _ => true,
+            };
+            if counts {
+                result += 1.0;
+            }
+            Ok(())
+        };
         for arg in args {
             // The cells of another workbook count the cells its externalLink cache holds
             // (`COUNTA([1]Uses!$A$1:$B$3)` is 5; fixtures/external-link-cached-ranges), and none
@@ -95,14 +110,15 @@ impl Model {
             // external-ref-no-link-index A8, A10, A12, A23, A30). An error instead of a
             // reference is a value, counted. So for one IF or CHOOSE picks (`COUNTA(IF(TRUE,
             // …!A1:B2))` is 0; probes/external-ref-no-link-ifchoose A4, A18, A30).
-            let value = match self.pick_branch(arg, cell) {
+            match self.pick_branch(arg, cell) {
                 Picked::Node(arg) => {
                     if let Some(areas) = self.external_reference(arg, cell) {
                         match areas {
                             Ok(areas) => {
-                                result += self.external_non_empty_count(&areas).unwrap_or(0) as f64;
+                                external +=
+                                    self.external_non_empty_count(&areas).unwrap_or(0) as f64;
                             }
-                            Err(_) => result += 1.0,
+                            Err(_) => external += 1.0,
                         }
                         continue;
                     }
@@ -110,40 +126,21 @@ impl Model {
                     // count. TAKE, DROP, INDEX, OFFSET and the like over a range pick a reference
                     // too, so `COUNTA(TAKE(B3:B3,1))` of a blank is 0
                     // (probes/subtotal-reference-operands-c H13).
-                    self.evaluate_picked_reference_arg(arg, cell)
+                    if let Err(error) = self.walk_aggregate_arg(arg, cell, &mut walk, &mut visit) {
+                        return error;
+                    }
                 }
-                Picked::Value(value) => RefArg::Value(value),
-            };
-            match value {
-                RefArg::Value(CalcResult::EmptyCell) => {}
-                // Excel: an omitted argument and the empty value IFERROR/IFNA give for a blank
-                // cell both count (COUNTA(,) = 2, COUNTA(IFERROR(B1,1)) = 1), unlike a blank
-                // reference; see docs/excel-semantics/logic.md "IFERROR / IFNA of a blank cell is an empty value".
-                RefArg::Value(CalcResult::EmptyArg) => result += 1.0,
-                RefArg::Ranges(areas) => {
+                Picked::Value(value) => {
+                    let read = RefArg::Value(value);
                     if let Err(error) =
-                        self.for_each_cell_or_error_in_areas(&areas, cell, |_, value| {
-                            if !matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg) {
-                                result += 1.0;
-                            }
-                            Ok(())
-                        })
+                        self.walk_aggregate_read(read, false, cell, &mut walk, &mut visit)
                     {
                         return error;
                     }
                 }
-                // Every element of an array value counts, the empty values IFERROR gives for
-                // blank cells included: `COUNTA(IFERROR(B1:B2,1))` with B1 blank is 2
-                // (probes/counta-empty-value D18).
-                RefArg::Value(CalcResult::Array(a)) => {
-                    result += a.iter().map(Vec::len).sum::<usize>() as f64;
-                }
-                RefArg::Value(_) => {
-                    result += 1.0;
-                }
-            };
+            }
         }
-        CalcResult::Number(result)
+        CalcResult::Number(result + external)
     }
 
     pub(crate) fn fn_countblank(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
