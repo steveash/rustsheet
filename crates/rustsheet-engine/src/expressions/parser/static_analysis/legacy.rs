@@ -334,3 +334,19 @@ fn is_value_operation(node: &Node) -> bool {
         _ => false,
     }
 }
+
+/// Whether a legacy formula leaves the `@` off the call `kind(args)` although it may return a
+/// range: INDEX of a CHOOSE whose arms are all arithmetic reads a value, so `=INDEX(CHOOSE(1,
+/// B1:B6*1),3)` shows as `=INDEX(CHOOSE(1,@B1:B6*1),3)` (probes/legacy-choose-arm-aggregate-and-
+/// array-constant-at H3, excel-graph, T-1643). Only the `@` placement changes: a dynamic formula
+/// of that shape still spills.
+pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool {
+    matches!(kind, Function::Index)
+        && matches!(
+            args.first().map(Node::ungrouped),
+            Some(Node::FunctionKind {
+                kind: Function::Choose,
+                args: arms,
+            }) if arms.len() > 1 && arms[1..].iter().all(is_value_operation)
+        )
+}
