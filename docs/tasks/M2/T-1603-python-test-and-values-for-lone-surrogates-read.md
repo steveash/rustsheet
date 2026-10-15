@@ -3,7 +3,7 @@ id: T-1603
 title: "Python test and values() for lone surrogates read back as str (after T-1579)"
 milestone: M2
 lane: api
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
