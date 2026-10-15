@@ -18,7 +18,7 @@ probes/legacy-index-array-index L1, L10 (excel-graph, T-0294): `SUMPRODUCT(INDEX
 (the classic way to feed an array to legacy INDEX); the engine is `#N/IMPL!` because `fn_n`
 (crates/rustsheet-engine/src/functions/information/mod.rs) rejects an array argument. A range keeps its top-left cell
 (probes/info-logic-argument-modes A6:A7), so only arrays lift. Probe first (excel-probe skill): `N({1,"a",TRUE})`
-spilled, `SUM(N({1,2}))`, `N(IF(1,{2;3}))` dynamic and legacy, `N(B1:B3*1)`. Semantics: docs/excel-semantics/criteria.md
+spilled, `SUM(N({1,2}))`, `N(IF(1,{2;3}))` dynamic and legacy, `N(B1:B3*1)`; also legacy `SUMPRODUCT(INDEX(B1:B6,ROW(B1:B2)))` and `SUMPRODUCT(INDEX(ABS(B1:B6),0))` with FORMULATEXT, on and off the row (left unprobed by T-0294). Semantics: docs/excel-semantics/criteria.md
 (the INDEX passage under "Beyond *IF(S)").
 
 ## Acceptance criteria
