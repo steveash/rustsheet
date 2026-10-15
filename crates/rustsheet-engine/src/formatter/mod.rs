@@ -5,6 +5,7 @@ mod elapsed;
 pub mod format;
 mod general;
 pub mod lexer;
+mod parse_formatted;
 pub mod parser;
 
 pub(crate) use complexity::exceeds_complexity_limit;
