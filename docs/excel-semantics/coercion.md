@@ -338,7 +338,7 @@ T-1261). A negative's `#NUM!` loses to every other error, whatever the position 
 and MULTINOMIAL alike: typed text (`GCD(-1,"a")`, `GCD("a",-1)`), a typed TRUE, a typed error (`GCD(-1,NA())`, `GCD(NA(),-1)`), a text,
 TRUE or error cell of a range before or after it, and an array-literal element (`GCD(-1,{4,#N/A})`, `GCD(-1,{4,"a"})`, `GCD(-1,{4,TRUE})`) are
 `#VALUE!` or the error itself; only with no other error is the answer `#NUM!`. Array-literal text or TRUE elements are probed for GCD only
-(LCM and MULTINOMIAL share the code and are inferred), as is `GCD(1E+16,"a")`, whose "Argument too large" `#NUM!` the engine still returns at once.
+(LCM and MULTINOMIAL share the code and are inferred). `GCD(1E+16,"a")` is unprobed (T-1655): the engine still returns the "Argument too large" `#NUM!` at once.
 An omitted argument: the first one is `#N/A` (`GCD(,4)`, `GCD(,-1)`, `GCD(,)`, `MULTINOMIAL(,4)`), a later one is skipped, not read as 0
 (`LCM(4,)` and `LCM(2,4,)` are 4, `GCD(4,)` 4, `GCD(4,,-1)` and `GCD(-1,,4)` `#NUM!`). Order among two different non-negative errors is unprobed.
 Evidence: probes/gcd-lcm-multinomial-negative-precedence E1:E71 (excel-graph, 2026-10-15, T-1574); engine fixed in T-1574.
