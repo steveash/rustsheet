@@ -2,7 +2,7 @@
 
 use crate::{
     calc_result::CalcResult,
-    cast::array_node_to_string,
+    cast::array_node_to_text,
     cast::number_text_too_long,
     cast::MAX_TEXT_UNITS,
     expressions::{
@@ -15,7 +15,6 @@ use crate::{
 };
 
 use super::text_arg::broadcast_text;
-use super::util::utf16_slice;
 use crate::functions::util::near_integer_count;
 
 fn format_thousands(n: u64) -> String {
@@ -274,10 +273,10 @@ fn replace_element(
 ) -> Result<ArrayNode, Error> {
     // Every argument is coerced before the range checks: an error argument beats a start or length
     // failure (docs/excel-semantics/arrays.md, probes/error-arg-vs-range-check, T-1056).
-    let old_text = array_node_to_string(old_text)?;
+    let old_text = array_node_to_text(old_text)?;
     let start_num = start_num?;
     let num_chars = num_chars?;
-    let new_text = array_node_to_string(new_text)?;
+    let new_text = array_node_to_text(new_text)?;
     // Excel: both numbers count as whole like LEFT's (near an integer they round up, so
     // `REPLACE(t,1-2E-7,1,"z")` starts at 1) and either one above 32,767 is #VALUE!, even
     // past the end of a short text (probes/text-count-argument-bounds J, K, U, F22, F24).
@@ -292,14 +291,15 @@ fn replace_element(
 
     // Excel: positions count UTF-16 code units, so `REPLACE("a😀b",2,2,"x")` is "axb"
     // (probes/text-surrogate-positions A27-A31).
-    let len = old_text.encode_utf16().count();
+    let len = old_text.len_utf16();
     // start_num is 1-indexed; clamp to valid range
     let start = (start_num as usize).saturating_sub(1).min(len);
     let end = start.saturating_add(num_chars as usize).min(len);
-    let mut result = utf16_slice(&old_text, 0, start);
-    result.push_str(&new_text);
-    result.push_str(&utf16_slice(&old_text, end, len));
-    Ok(ArrayNode::String(result.into()))
+    // The lone half of a pair either bound cuts is kept (probes/text-surrogate-positions A29).
+    let mut result = old_text.slice_utf16(0, start);
+    result.push(&new_text);
+    result.push(&old_text.slice_utf16(end, len));
+    Ok(ArrayNode::String(result))
 }
 
 fn proper_case(s: &str) -> String {
