@@ -389,7 +389,7 @@ pub(super) fn get_cell_from_excel(
 
                 if let Some(anchor) = anchor_cell {
                     Cell::SpillCell {
-                        v: SpillValue::Text(s),
+                        v: SpillValue::Text(s.into()),
                         s: cell_style,
                         a: anchor,
                     }
@@ -467,9 +467,9 @@ pub(super) fn get_cell_from_excel(
             }
             "str" => {
                 // In Excel and in IronCalc all strings in cells result of a formula are *not* shared strings.
-                make_cell(FormulaValue::Text(decode_xlsx_escapes(
-                    cell_value.unwrap_or(""),
-                )))
+                make_cell(FormulaValue::Text(
+                    decode_xlsx_escapes(cell_value.unwrap_or("")).into(),
+                ))
             }
             "d" => match cell_value.and_then(iso8601_to_serial) {
                 Some(v) => make_cell(FormulaValue::Number(v)),
@@ -478,7 +478,7 @@ pub(super) fn get_cell_from_excel(
             "inlineStr" => {
                 // NB: This is untested, I don't know of any engine that uses inline strings in formulas
                 make_cell(FormulaValue::Text(
-                    rich_text_inline.unwrap_or("".to_string()),
+                    rich_text_inline.unwrap_or("".to_string()).into(),
                 ))
             }
             _ => {

@@ -90,7 +90,7 @@ fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
             m: String::new(),
         },
         ArrayNode::Number(n) => FormulaValue::Number(n),
-        ArrayNode::String(s) => FormulaValue::Text(s.into_lossy_string()),
+        ArrayNode::String(s) => FormulaValue::Text(s),
         ArrayNode::Error(ei) => FormulaValue::Error {
             ei,
             o: String::new(),
@@ -965,7 +965,7 @@ impl Model {
                 }
                 FormulaValue::Number(*value)
             }
-            CalcResult::String(value) => FormulaValue::Text((**value).to_owned()),
+            CalcResult::String(value) => FormulaValue::Text(value.clone()),
             CalcResult::Boolean(value) => FormulaValue::Boolean(*value),
             CalcResult::Error {
                 error,
@@ -1347,7 +1347,7 @@ impl Model {
             | ArrayFormula {
                 v: FormulaValue::Text(v),
                 ..
-            } => CalcResult::String(v.clone().into()),
+            } => CalcResult::String(v.clone()),
             CellFormula {
                 v: FormulaValue::Error { ei, o, m },
                 ..
@@ -2361,7 +2361,7 @@ impl Model {
                             Cell::SpillCell {
                                 s: new_style_index_spill,
                                 a: (row, column),
-                                v: SpillValue::Text(String::new()),
+                                v: SpillValue::Text(crate::Text::default()),
                             },
                         )?;
                     }

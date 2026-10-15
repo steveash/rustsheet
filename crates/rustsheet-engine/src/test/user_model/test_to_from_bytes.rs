@@ -62,3 +62,48 @@ fn formulatext_english() {
         Ok("=SUM(1,2,3)".to_string())
     );
 }
+
+/// Bytes of `A1: ="ab"` saved before cached text became `Text` (T-1577, SPEC-0010 step 3): the
+/// stored format changed, and an older save must be an `Err`, never a panic.
+const BYTES_BEFORE_TEXT_TYPE: [&str; 16] = [
+    "0000010241310000065368656574310101ff0400040200000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000104010504000400030261",
+    "62060106010104226162220401000200000400040001040004010401040a0f04",
+    "01040104010401010000000100000000040c0205496e74657204020002080100",
+    "0000000000000104000400040004000101010101010104000400040004000400",
+    "000000000000000001066e6f726d616c0400040000056d6f64656c0355544302",
+    "656e000f49726f6e43616c63205368656574730731302e303030300d49726f6e",
+    "43616c6320557365720d49726f6e43616c63205573657214323032322d31312d",
+    "30385431313a31333a32385a14323032322d31312d30385431313a31333a3238",
+    "5a000104000400042003045802064f6666696365072330303030303007234646",
+    "4646464607233434353436410723453745364536072334343732433407234544",
+    "3744333107234135413541350723464643303030072335423942443507233730",
+    "414434370723303536334331072339353446373200",
+];
+
+#[test]
+fn bytes_from_before_the_text_type_are_an_error() {
+    let hex: String = BYTES_BEFORE_TEXT_TYPE.concat();
+    let bytes: Vec<u8> = (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+        .collect();
+    assert!(UserModel::from_bytes(&bytes, "en").is_err());
+}
+
+#[test]
+fn cached_lone_surrogate_survives_bitcode() {
+    use crate::types::{FormulaValue, SpillValue};
+    use crate::Text;
+    // No function produces a lone surrogate yet (T-1579), so encode the cached values directly.
+    let lone = Text::from_utf16(vec![0xDE00, 0x62]);
+    let formula: FormulaValue =
+        bitcode::decode(&bitcode::encode(&FormulaValue::Text(lone.clone()))).unwrap();
+    assert_eq!(formula, FormulaValue::Text(lone.clone()));
+    let spill: SpillValue =
+        bitcode::decode(&bitcode::encode(&SpillValue::Text(lone.clone()))).unwrap();
+    assert_eq!(spill, SpillValue::Text(lone));
+}
