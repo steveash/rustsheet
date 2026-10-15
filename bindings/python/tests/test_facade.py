@@ -320,3 +320,63 @@ def test_date_system_defaults_to_1900_and_round_trips_1904():
     assert rs.Workbook.from_bytes(wb.to_xlsx_bytes()).date_system == "1904"
     with pytest.raises(TypeError):
         rs.Workbook(date_system="1999")
+
+
+DAY_MS = 86_400_000
+
+
+def _clock_book(clock=0):
+    wb = rs.Workbook(clock=clock)
+    wb.set("Sheet1!A1", rs.Formula("=NOW()"))
+    wb.set("Sheet1!B1", rs.Formula("=TODAY()"))
+    wb.set("Sheet1!A2", rs.Formula("=A1+1"))
+    return wb
+
+
+def test_fixed_clock_drives_now_and_today_and_survives_reload():
+    wb = _clock_book()
+    assert wb.clock == 0
+    assert wb["Sheet1!A1"] == 25569.0
+    assert wb["Sheet1!B1"] == 25569.0
+    loaded = rs.Workbook.from_bytes(wb.to_xlsx_bytes(), clock=DAY_MS)
+    assert loaded["Sheet1!A1"] == 25570.0
+    assert loaded.clock == DAY_MS
+
+
+def test_setting_the_clock_is_one_edit_with_changes():
+    wb = _clock_book()
+    wb.clock = DAY_MS
+    assert wb["Sheet1!A1"] == 25570.0
+    assert wb["Sheet1!B1"] == 25570.0
+    assert wb["Sheet1!A2"] == 25571.0
+    assert wb.changes is not None
+    assert {c["ref"] for c in wb.changes["values"]} == {"Sheet1!A1", "Sheet1!A2", "Sheet1!B1"}
+    assert wb.changes["inputs"] == []
+    wb.clock = DAY_MS
+    assert wb.changes["values"] == []
+
+
+def test_clock_none_restores_the_system_clock():
+    wb = _clock_book()
+    wb.clock = None
+    assert wb.clock is None
+    assert wb["Sheet1!A1"] > 45000.0  # the real now, long after 2023
+
+
+@pytest.mark.parametrize("bad", [-2_208_988_800_001, 253_402_300_800_000, 2**70])
+def test_clock_out_of_range_is_value_error(bad):
+    with pytest.raises(ValueError):
+        rs.Workbook(clock=bad)
+    wb = _clock_book()
+    with pytest.raises(ValueError):
+        wb.clock = bad
+    assert wb.clock == 0
+
+
+@pytest.mark.parametrize("bad", [True, 1.5, "0"])
+def test_clock_wrong_type_is_type_error(bad):
+    with pytest.raises(TypeError):
+        rs.Workbook(clock=bad)
+    wb = _clock_book()
+    with pytest.raises(TypeError):
+        wb.clock = bad
