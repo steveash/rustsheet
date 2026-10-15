@@ -106,6 +106,7 @@ C	probes/clock-text-oddities5.case.json	40
 C	probes/clock-text-oddities6.case.json	35
 C	probes/clock-text-oddities7.case.json	12
 C	probes/colon-hash-value-operands.case.json	6
+C	probes/concatenate-after-cut.case.json	9
 C	probes/concatenate-limit-spill.case.json	68
 C	probes/count-direct-text.case.json	13
 C	probes/counta-empty-value.case.json	26
