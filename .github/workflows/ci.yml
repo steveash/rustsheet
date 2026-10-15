@@ -89,6 +89,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.97
       - uses: Swatinem/rust-cache@v2
       - run: make eval-check
+      - run: make evidence-floor
       # Decision 0054: the report reruns every suite (about 2.5 min). PRs and merge groups only need it
       # to debug a failed gate; main keeps one per merge.
       - name: Full report (informational)

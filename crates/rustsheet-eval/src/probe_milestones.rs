@@ -603,6 +603,7 @@ mod tests {
             ]
             .map(|(name, milestone)| CatalogFunction {
                 name: name.into(),
+                category: "math".into(),
                 milestone: milestone.into(),
                 scope: Scope::In,
                 reason: None,
