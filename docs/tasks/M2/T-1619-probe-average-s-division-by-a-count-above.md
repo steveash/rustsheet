@@ -3,7 +3,7 @@ id: T-1619
 title: "Probe AVERAGE's division by a count above 1024 for double rounding"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Left over from T-1516 (docs/excel-semantics/numbers.md, "Division rounds twice")
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes-numeric/average-large-count-division (24 cells, excel-graph) shows AVERAGE's division rounds twice; the engine rounded once. `fn_average` now divides with `extended_quotient`. No count n <= 2048 can discriminate, so the 1025-2048 range in the Context is moot. Recorded in docs/excel-semantics/numbers.md. Eval: 24 new cells, all passing after the fix; no regressions. AVERAGEA/AVERAGEIF division left unverified.
