@@ -3,7 +3,7 @@ id: T-1306
 title: "Probe and match CODE and UNICHAR edge code points: characters outside Windows-1252, surrogates and out-of-range values"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -44,3 +44,6 @@ unless the probe shows a CHAR mismatch.
 ## Out of scope
 - LEN/MID/UNICODE counting of astral characters (T-0249).
 - ASC, DBCS, JIS (T-1248, T-1081).
+
+## Outcome
+Probes `probes/text-code-unichar-edges` (30 cells) and `probes/text-code-c1-controls` (22 cells), both excel-graph, cover every input in the task. One mismatch: `CODE` of a C1 control character (`CODE(UNICHAR(128..159))`) is the code point itself in Excel, we returned 63 for the slots 1252 fills with another character. Fixed in `char_to_win1252`. Everything else already matched. CODE and UNICHAR were already above 25 Excel cells in report.md (34 and 77) before these probes, now more. text.md "CLEAN and CODE scalar edges" records the rules.

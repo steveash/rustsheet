@@ -279,11 +279,17 @@ Tasks: T-1451
 
 ## CLEAN and CODE scalar edges
 Rule: CLEAN removes code points 0-31 and the C1 controls U+0080-U+009F (128-159; including the Windows-1252
-holes 129, 141, 143, 144, 157; CHAR(128..159) strings were not probed), and no other probed code point: DEL (127), NBSP (160) and U+200B stay. CODE of a character
+holes 129, 141, 143, 144, 157; CHAR(128..159) strings were not probed by that case; CODE of them is in the next entry), and no other probed code point: DEL (127), NBSP (160) and U+200B stay. CODE of a character
 outside Windows-1252 is 63 (the code of "?"), not `#VALUE!`: `CODE(UNICHAR(256))`, `CODE(UNICHAR(960))` and
 `CODE(UNICHAR(128512))` are 63; `CODE("€")` is 128 and `CODE("é")` is 233. `CODE("")` is `#VALUE!`; `CODE(TRUE)`
-is 84.
-Evidence: probes/text-scalar-edges A32-A39, A40-A50, A51-A62 (excel-graph, T-1280).
+is 84. The C1 controls are the exception to the 63: `CODE(UNICHAR(n))` for n = 128-159 is n itself, even where 1252 puts another
+character in that slot (`CODE(UNICHAR(159))` is 159, not 63, though 1252's 159 is Ÿ; `CODE(UNICHAR(150))` is 150), while the real 1252
+characters come back as their 1252 code (`CODE("€")` 128, `CODE(UNICHAR(8218))` 130, `CODE(UNICHAR(376))` 159, `CODE(UNICHAR(338))` 140). Also
+`CODE(" ")` is 32 and `CODE("€abc")` 128. `UNICHAR(65535)` and so `CODE(UNICHAR(65535))` are `#N/A`, as is UNICHAR of a surrogate
+(55296, 57343); UNICHAR of 0, -1 or 1E+10 is `#VALUE!`; `UNICHAR(65.9)` is "A"; `UNICODE(UNICHAR(65535))` is `#N/A` and
+`UNICODE(UNICHAR(128512))` 128512.
+Evidence: probes/text-scalar-edges A32-A39, A40-A50, A51-A62 (excel-graph, T-1280); probes/text-code-unichar-edges, text-code-c1-controls
+(excel-graph, 2026-10-14, T-1306). Implemented in `char_to_win1252` (functions/text/char_code.rs).
 Also verified there, all matching the engine: EXACT is case-sensitive, compares numbers by their text
 (`EXACT(0.1+0.2,"0.3")` TRUE) and does not normalise Unicode (composed vs decomposed é is FALSE); REPLACE
 truncates fractional counts, appends when start_num is past the end, and is `#VALUE!` for start_num 0 or a
