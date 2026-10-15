@@ -463,6 +463,16 @@ impl Model {
                         "Expecting number".to_string(),
                     );
                 }
+                // Excel: an Analysis ToolPak function gives one #VALUE!, no spill, for a multi-cell
+                // range in either argument, numbers-only too, while an array constant lifts
+                // (probes/ceiling-floor-mround-array-lift A21, A43:A49, A55; compare ISEVEN).
+                CalcResult::Range { left, right } if left != right => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Expecting a single value".to_string(),
+                    );
+                }
                 CalcResult::Error { .. } => break,
                 CalcResult::String(text) if self.cast_number(text).is_none() => break,
                 _ => {}
@@ -472,7 +482,7 @@ impl Model {
             .into_iter()
             .map(|value| match self.number_or_array(value, cell) {
                 // Booleans are not cast in a scalar MROUND, so not in an array one either
-                // (INFERRED, arrays.md "CEILING/FLOOR family and MROUND lift over arrays").
+                // (probes/ceiling-floor-mround-array-lift A19:A20).
                 Ok(NumberOrArray::Array(mut rows)) => {
                     for node in rows.iter_mut().flatten() {
                         if matches!(node, ArrayNode::Boolean(_)) {

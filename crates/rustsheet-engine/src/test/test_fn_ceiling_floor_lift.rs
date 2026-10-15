@@ -62,4 +62,16 @@ fn mround_keeps_its_scalar_rules() {
     assert_eq!(model._get_text("D1"), *"#N/A");
     assert_eq!(model._get_text("B1"), *"#VALUE!");
     assert_eq!(model._get_text("C1"), *"3");
+    // A multi-cell range is one #VALUE! with no spill; an array constant lifts
+    // (probes/ceiling-floor-mround-array-lift A43:A50).
+    model._set("M1", "3.2");
+    model._set("N1", "4.7");
+    model._set("A5", "=MROUND(M1:N1,1)");
+    model._set("A6", "=COLUMNS(MROUND({1.2,2.6},1))");
+    model._set("A7", "=MROUND(1,M1:N1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
+    assert_eq!(model._get_text("B5"), *"");
+    assert_eq!(model._get_text("A6"), *"2");
+    assert_eq!(model._get_text("A7"), *"#VALUE!");
 }
