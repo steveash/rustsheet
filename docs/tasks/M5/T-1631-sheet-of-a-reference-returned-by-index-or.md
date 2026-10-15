@@ -21,4 +21,4 @@ Found by T-1627: probes/volatile-and-info-rand-true-false-sheet D18 (`SHEET(INDE
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- The other SHEET forms probed by T-1627 (they match Excel) and SHEETS.
