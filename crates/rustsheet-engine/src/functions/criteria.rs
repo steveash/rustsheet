@@ -12,6 +12,7 @@ use crate::{
     functions::util::collation::cmp_text_excel,
     locale::Locale,
     number_format::{cmp_excel_precision, parse_excel_number, parse_finite_number},
+    text::Text,
     types::DateSystem,
 };
 
@@ -450,6 +451,17 @@ pub(crate) fn build_criteria_with<'a>(
 }
 
 /// Matcher for an Excel wildcard text pattern (`*`, `?`, `~` escapes), as used by
+/// [`wildcard_text_matcher`] for engine text. A lone surrogate never matches a pair or U+FFFD, so
+/// a pattern holding one matches only the identical text (probes/text-lone-surrogates A25-A28;
+/// a wildcard next to a lone half is unprobed).
+pub(crate) fn wildcard_text_matcher_for(pattern: &Text) -> Box<dyn Fn(&CalcResult) -> bool> {
+    if !pattern.has_lone_surrogate() {
+        return wildcard_text_matcher(pattern);
+    }
+    let pattern = pattern.clone();
+    Box::new(move |x| matches!(x, CalcResult::String(s) if *s == pattern))
+}
+
 /// MATCH/XMATCH/XLOOKUP in wildcard mode. Matches whole text values
 /// case-insensitively; anything that is not text never matches. An
 /// untranslatable pattern matches nothing.
