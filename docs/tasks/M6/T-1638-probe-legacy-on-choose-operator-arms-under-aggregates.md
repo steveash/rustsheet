@@ -3,7 +3,7 @@ id: T-1638
 title: "Probe legacy @ on CHOOSE operator arms under aggregates and on array constants in other scalar functions"
 milestone: M6
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1633 added `Function::Choose` to `legacy_value_operand` (arms intersect in eve
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/legacy-choose-arm-aggregate-and-array-constant-at (27 cells, excel-graph): 23 pass. SUM/MAX over a CHOOSE operator arm, `ROUND({5},0)` and the `@` placement match. `TYPE({5})` takes no `@` (ours added one; fixed in `legacy.rs`, the `@` now only goes on `Signature::Scalar` arguments). INDEX/MODE/LOOKUP over a CHOOSE arm differ (H1, H3, I10, J1): recorded in references.md and filed as T-1643.
