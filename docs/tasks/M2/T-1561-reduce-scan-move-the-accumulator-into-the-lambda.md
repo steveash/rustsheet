@@ -3,7 +3,7 @@ id: T-1561
 title: "REDUCE/SCAN: move the accumulator into the LAMBDA instead of deep-copying it each step"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
