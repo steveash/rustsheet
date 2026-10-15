@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -47,4 +48,26 @@ fn huge_arguments_are_num_without_looping() {
     }
     assert_eq!(model._get_text("B1"), *"7.2574E+306");
     assert_eq!(model._get_text("B2"), *"8.1544E+307");
+}
+
+#[test]
+fn large_factorials_round_like_excel() {
+    // Excel multiplies from n down: probes/fact-product-order-sweep A43, A171, B246, B247, B249
+    // (the ascending product is off by up to ten ulps; T-1249).
+    let mut model = new_empty_model();
+    model._set("A1", "=FACT(42)");
+    model._set("A2", "=FACT(170)");
+    model._set("A3", "=FACTDOUBLE(297)");
+    model._set("A4", "=FACTDOUBLE(298)");
+    model._set("A5", "=FACTDOUBLE(300)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A1"), 1.405_006_117_752_880_1e51_f64.to_bits());
+    assert_eq!(bits("A2"), 7.257_415_615_308_004e306_f64.to_bits());
+    assert_eq!(bits("A3"), 1.255_275_622_599_305_7e304_f64.to_bits());
+    assert_eq!(bits("A4"), 2.718_138_023_126_864e305_f64.to_bits());
+    assert_eq!(bits("A5"), 8.154_414_069_380_598e307_f64.to_bits());
 }

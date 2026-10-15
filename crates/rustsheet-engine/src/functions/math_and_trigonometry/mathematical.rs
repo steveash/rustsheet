@@ -600,17 +600,7 @@ impl Model {
         if x < 0.0 {
             return Err(Error::NUM);
         }
-        let mut acc = 1.0;
-        let mut k = 2.0;
-        while k <= x {
-            acc *= k;
-            // Excel: #NUM! at overflow, which also bounds the loop (numbers.md "FACT and FACTDOUBLE").
-            if !acc.is_finite() {
-                return Err(Error::NUM);
-            }
-            k += 1.0;
-        }
-        Ok(acc)
+        descending_product(x, 1.0)
     });
     single_number_fn!(fn_factdouble, |x: f64| {
         let x = x.floor();
@@ -620,16 +610,7 @@ impl Model {
         if x < 0.0 {
             return Ok(1.0);
         }
-        let mut acc = 1.0;
-        let mut k = if x % 2.0 == 0.0 { 2.0 } else { 1.0 };
-        while k <= x {
-            acc *= k;
-            if !acc.is_finite() {
-                return Err(Error::NUM);
-            }
-            k += 2.0;
-        }
-        Ok(acc)
+        descending_product(x, 2.0)
     });
     single_number_fn!(fn_sign, |f| {
         if f == 0.0 {
@@ -842,4 +823,23 @@ impl Model {
 /// push an exact multiple over a step boundary.
 fn snap_ratio(value: f64, significance: f64) -> f64 {
     to_excel_precision(value / significance, EXCEL_PRECISION)
+}
+
+/// `n * (n - step) * (n - 2 step) * ...` down to 1 or 2, multiplied from `n` down, which is the
+/// order Excel's FACT (`step` 1) and FACTDOUBLE (`step` 2) round in: `FACT(170)` is
+/// 7.257415615308004e306 where the ascending product gives ...7994e306 (probes/fact-product-order-sweep,
+/// 420 cells bit-exact; docs/excel-semantics/numbers.md "FACT and FACTDOUBLE"). `#NUM!` once the
+/// product overflows (`FACT(171)`, `FACTDOUBLE(301)`); the first factors are the largest, so a huge
+/// `n` overflows within a few steps and the loop stays bounded (directive 5).
+fn descending_product(n: f64, step: f64) -> Result<f64, Error> {
+    let mut acc = 1.0;
+    let mut k = n;
+    while k > 1.0 {
+        acc *= k;
+        if !acc.is_finite() {
+            return Err(Error::NUM);
+        }
+        k -= step;
+    }
+    Ok(acc)
 }
