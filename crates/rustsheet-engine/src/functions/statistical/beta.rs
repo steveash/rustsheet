@@ -1,9 +1,27 @@
 use statrs::distribution::{Beta, Continuous, ContinuousCDF};
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::statistical::special::bisect_unit_interval;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
+
+/// `statrs`' `inverse_cdf` panics from p about 1E-200, does not finish for BETA.INV(1E-100,1000,1)
+/// nor for a shape of 1E8 or more, and for the rest of the sweep (T-1543, 9x9 shapes up to 1E15 by
+/// 8 probabilities) is bounded and last-digit exact for shapes up to 1E5 and p of 1E-15 or more.
+/// Outside that range the quantile comes from bisection on the cdf (at most 1100 evaluations).
+const BETA_QUANTILE_STATRS_SHAPE_MAX: f64 = 1e5;
+const BETA_QUANTILE_STATRS_P_MIN: f64 = 1e-15;
+
+fn beta_quantile(dist: &Beta, alpha: f64, beta: f64, p: f64) -> f64 {
+    if alpha <= BETA_QUANTILE_STATRS_SHAPE_MAX
+        && beta <= BETA_QUANTILE_STATRS_SHAPE_MAX
+        && p >= BETA_QUANTILE_STATRS_P_MIN
+    {
+        return dist.inverse_cdf(p);
+    }
+    bisect_unit_interval(|x| dist.cdf(x), p)
+}
 
 impl Model {
     // BETA.DIST(x, alpha, beta, cumulative, [A], [B])
@@ -199,7 +217,7 @@ impl Model {
             }
         };
 
-        let t = dist.inverse_cdf(p);
+        let t = beta_quantile(&dist, alpha, beta_param, p);
         if t.is_nan() || t.is_infinite() {
             return CalcResult::new_error(
                 Error::NUM,

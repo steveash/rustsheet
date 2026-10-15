@@ -65,3 +65,22 @@ fn arguments() {
     assert_eq!(model._get_text("B6"), *"0.5");
     assert_eq!(model._get_text("B7"), *"#ERROR!");
 }
+
+// T-1543: `statrs`' Beta inverse_cdf panics from p about 1E-200 and does not finish for
+// BETA.INV(1E-100,1000,1); the quantile is found by bounded bisection on the cdf.
+#[test]
+fn test_fn_beta_inv_tiny_probability_is_bounded() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BETA.INV(1E-300,5,2)");
+    model._set("A2", "=BETA.INV(1E-200,1,1)");
+    model._set("A3", "=BETA.INV(1E-100,1000,1)");
+    model._set("A4", "=BETA.INV(1E-300,1E5,1E5)");
+    model._set("A5", "=BETA.INV(1E-100,0.5,100)");
+    model.evaluate();
+    // Excel (probes-numeric t1543-inverse-cdf-tiny-p) agrees at A1-A4 and A5 to 6 digits.
+    assert_eq!(model._get_text("A1"), "6.98827E-61");
+    assert_eq!(model._get_text("A2"), "1E-200");
+    assert_eq!(model._get_text("A3"), "0.794328235");
+    assert_eq!(model._get_text("A4"), "0.458650995");
+    assert_eq!(model._get_text("A5"), "7.8736E-203");
+}
