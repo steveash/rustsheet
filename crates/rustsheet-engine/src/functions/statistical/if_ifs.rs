@@ -1,4 +1,4 @@
-use crate::arithmetic::{bcast_get, flush_subnormal, MISSING};
+use crate::arithmetic::{bcast_get, extended_quotient, flush_subnormal, MISSING};
 use crate::cast::{calc_result_to_array_node, number_text_too_long};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
@@ -661,7 +661,9 @@ impl Model {
                     message: "division by 0".to_string(),
                 };
             }
-            CalcResult::Number(flush_subnormal(total / count))
+            // The division rounds twice like AVERAGE's (docs/excel-semantics/numbers.md "Division
+            // rounds twice"; probes-numeric/average-family-large-count-division, T-1636).
+            CalcResult::Number(flush_subnormal(extended_quotient(total, count)))
         })
     }
 

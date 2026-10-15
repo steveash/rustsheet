@@ -182,7 +182,8 @@ impl Model {
                 message: "Division by Zero".to_string(),
             };
         }
-        CalcResult::Number(flush_subnormal(sum / count))
+        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1636).
+        CalcResult::Number(flush_subnormal(extended_quotient(sum, count)))
     }
 
     pub(crate) fn fn_avedev(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
