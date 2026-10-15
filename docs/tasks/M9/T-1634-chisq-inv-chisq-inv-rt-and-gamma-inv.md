@@ -1,5 +1,5 @@
 ---
-id: T-1633
+id: T-1634
 title: "CHISQ.INV, CHISQ.INV.RT and GAMMA.INV tails: match Excel at tiny and near-1 probability (T-1543 probe)"
 milestone: M9
 lane: functions-stat
