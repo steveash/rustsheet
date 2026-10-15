@@ -24,4 +24,4 @@ Found by T-1516: Excel double-rounds every addition in these accumulators (docs/
 -
 
 ## Outcome
-SUMIF, SUMIFS (`sum_ifs`), DSUM and AVERAGEA now add with `extended_sum` like SUM and AVERAGE. probes-numeric/double-rounding-accumulators: 104/104 cells pass (the 32 failing cells fixed). `probes-numeric` has no baseline file, so no baseline change. Not changed (unprobed): AVERAGEIFS, DAVERAGE and AVEDEV still add with plain `+=`.
+SUMIF, SUMIFS (`sum_ifs`), DSUM and AVERAGEA now add with `extended_sum` like SUM and AVERAGE. probes-numeric/double-rounding-accumulators: 104/104 cells pass (the 32 failing cells fixed). `probes-numeric` has no baseline file, so no baseline change. Not changed (unprobed): AVERAGEIFS, DAVERAGE and AVEDEV still add with plain `+=`; probe follow-up T-1650.
