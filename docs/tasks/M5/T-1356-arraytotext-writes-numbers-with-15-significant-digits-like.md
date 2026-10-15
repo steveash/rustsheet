@@ -3,7 +3,7 @@ id: T-1356
 title: "ARRAYTOTEXT writes numbers with 15 significant digits like VALUETOTEXT and concatenation"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
