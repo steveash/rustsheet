@@ -31,6 +31,32 @@ fn trig_arg(f: f64) -> Result<f64, Error> {
     }
 }
 
+/// `π - π₆₄`, where `π₆₄` is π rounded to a 64-bit significand (the x87 `FLDPI` constant).
+const X87_PI_ERROR: f64 = -5.016_557_612_668_332e-20;
+
+/// How far Excel's argument reduction moves `x`: Excel reduces by multiples of `π₆₄`, not π, so
+/// its SIN(x) is the true sin(x + kδ) with k = round(x/π) and δ = `X87_PI_ERROR`. This reproduces
+/// every `f(2^27-1)` cell bit for bit (SIN(2^27-1) is -0.9559933287726706, libm's
+/// -0.9559933287732995; probes/trig-huge-argument A1-A71, docs/excel-semantics/numbers.md "Trig
+/// of a huge angle"). The shift is below 2.2e-12 for |x| < 2^27, so first-order corrections
+/// (`sin + e·cos`, ...) are exact to the last bit, and small angles keep libm's value.
+fn x87_reduction_shift(x: f64) -> f64 {
+    (x / PI).round() * X87_PI_ERROR
+}
+
+/// Excel's sine and cosine of `x` (see [`x87_reduction_shift`]).
+fn excel_sin_cos(x: f64) -> (f64, f64) {
+    let e = x87_reduction_shift(x);
+    let (sin, cos) = x.sin_cos();
+    (sin + e * cos, cos - e * sin)
+}
+
+/// Excel's tangent of `x`: tan(x + e) = tan x + e·(1 + tan² x) (see [`x87_reduction_shift`]).
+fn excel_tan(x: f64) -> f64 {
+    let t = x.tan();
+    t + x87_reduction_shift(x) * (1.0 + t * t)
+}
+
 /// MIN and MAX: a referenced-cell error ranks below a direct scalar error; the leftmost wins
 /// (probes/aggregate-error-precedence C9-C24). A direct LAMBDA's `#VALUE!` ranks with the
 /// referenced errors, and an array error after it does not beat it (probes/aggregate-direct-lambda-
@@ -490,9 +516,9 @@ impl Model {
     } else {
         Ok(f64::ln(f))
     });
-    single_number_fn!(fn_sin, |f| trig_arg(f).map(f64::sin));
-    single_number_fn!(fn_cos, |f| trig_arg(f).map(f64::cos));
-    single_number_fn!(fn_tan, |f| trig_arg(f).map(f64::tan));
+    single_number_fn!(fn_sin, |f| trig_arg(f).map(|x| excel_sin_cos(x).0));
+    single_number_fn!(fn_cos, |f| trig_arg(f).map(|x| excel_sin_cos(x).1));
+    single_number_fn!(fn_tan, |f| trig_arg(f).map(excel_tan));
     single_number_fn!(fn_sinh, |f| Ok(super::hyperbolic::sinh(f)));
     single_number_fn!(fn_cosh, |f| Ok(super::hyperbolic::cosh(f)));
     single_number_fn!(fn_tanh, |f| Ok(super::hyperbolic::tanh(f)));
@@ -559,7 +585,8 @@ impl Model {
     } else if f == 0.0 {
         Err(Error::DIV)
     } else {
-        Ok(f64::cos(f) / f64::sin(f))
+        let (sin, cos) = excel_sin_cos(f);
+        Ok(cos / sin)
     });
     single_number_fn!(fn_coth, |f: f64| if f == 0.0 {
         Err(Error::DIV)
@@ -574,7 +601,7 @@ impl Model {
     } else if f == 0.0 {
         Err(Error::DIV)
     } else {
-        Ok(1.0 / f64::sin(f))
+        Ok(1.0 / excel_sin_cos(f).0)
     });
     single_number_fn!(fn_csch, |f| if f == 0.0 {
         Err(Error::DIV)
@@ -582,7 +609,7 @@ impl Model {
         // Excel: a subnormal CSCH result is a true 0 (CSCH(710), docs/excel-semantics/numbers.md).
         Ok(flush_subnormal(1.0 / f64::sinh(f)))
     });
-    single_number_fn!(fn_sec, |f| trig_arg(f).map(|x| 1.0 / f64::cos(x)));
+    single_number_fn!(fn_sec, |f| trig_arg(f).map(|x| 1.0 / excel_sin_cos(x).1));
     single_number_fn!(fn_sech, |f| Ok(1.0 / f64::cosh(f)));
     single_number_fn!(fn_exp, |f: f64| Ok(f64::exp(f)));
     single_number_fn!(fn_fact, |x: f64| {
