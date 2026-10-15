@@ -293,6 +293,18 @@ fn reference_functions_take_a_cached_range() {
     );
     assert_eq!(eval(&mut model, "=AVERAGEA([1]Uses!$A$1:$B$3)"), "3.2");
     assert_eq!(eval(&mut model, "=AVERAGEA([1]!NR_Range)"), "3.2");
+    // A cached error ranks as a referenced error: a scalar direct error beats it either side
+    // (T-1573; UNVERIFIED, mirrors probes/aggregate-picked-direct-a-variants D20-D23).
+    let cached_na = "[1]Uses!$C$1:$C$2";
+    assert_eq!(eval(&mut model, &format!("=MAXA({cached_na})")), "#N/A");
+    assert_eq!(
+        eval(&mut model, &format!("=MAXA({cached_na},1/0)")),
+        "#DIV/0!"
+    );
+    assert_eq!(
+        eval(&mut model, &format!("=MAXA(1/0,{cached_na})")),
+        "#DIV/0!"
+    );
     // A sheet the cache does not hold stays #BLOCKED!.
     assert_eq!(
         eval(&mut model, "=SUBTOTAL(9,[1]Nope!$A$1:$B$3)"),
