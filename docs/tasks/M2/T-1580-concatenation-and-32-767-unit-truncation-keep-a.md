@@ -3,7 +3,7 @@ id: T-1580
 title: "Concatenation and 32,767-unit truncation keep a lone high surrogate (SPEC-0010 step 6)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
