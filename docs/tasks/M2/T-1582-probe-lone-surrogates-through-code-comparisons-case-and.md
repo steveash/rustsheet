@@ -3,7 +3,7 @@ id: T-1582
 title: "Probe lone surrogates through CODE, comparisons, case and search functions (SPEC-0010 step 8)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
