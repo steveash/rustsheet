@@ -3,7 +3,7 @@ id: T-0220
 title: "Text comparison uses Excel collation, not code-point order (2+ gen-m2 known failures)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
