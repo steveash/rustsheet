@@ -615,14 +615,8 @@ C	probes/xmatch-text-bool-equal-runs.case.json	134
 C	probes/xmatch-xlookup-blanks.case.json	69
 C	probes/xnpv-argument-count.case.json	3
 C	probes/yield-solver-sweep.case.json	66
-F	probes/aggregate-picked-direct-a-variants.case.json	S!D10
-F	probes/aggregate-picked-direct-a-variants.case.json	S!D11
-F	probes/aggregate-picked-direct-a-variants.case.json	S!D12
 F	probes/aggregate-picked-direct-a-variants.case.json	S!D20
 F	probes/aggregate-picked-direct-a-variants.case.json	S!D22
-F	probes/aggregate-picked-direct-a-variants.case.json	S!D7
-F	probes/aggregate-picked-direct-a-variants.case.json	S!D8
-F	probes/aggregate-picked-direct-a-variants.case.json	S!D9
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!G1
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!G10
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T1

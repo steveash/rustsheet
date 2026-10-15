@@ -67,8 +67,8 @@ pub(crate) struct AggregatePolicy {
 pub(crate) enum DirectNumbers {
     /// Every direct value through `cast_aggregate_arg_to_number` (SUM).
     Cast,
-    /// A number, boolean, text (`cast_aggregate_arg_to_number`) or empty argument (0); other
-    /// direct values are skipped (the AVERAGE family).
+    /// A number, boolean, text (`cast_aggregate_arg_to_number`) or empty argument (0); a LAMBDA
+    /// is `#VALUE!`; other direct values are skipped (the AVERAGE family).
     CastScalars,
     /// A number, boolean or text; text that does not cast is `#VALUE!` and an empty argument is
     /// skipped (AVERAGEA, MAXA, MINA).
@@ -334,9 +334,13 @@ impl Model {
             // An empty argument (`AVERAGE(5,)`) counts as 0 (probes/average-value-args F2, F6,
             // F9, F15, F17).
             (DirectNumbers::CastScalars, CalcResult::EmptyArg) => Ok(Some(0.0)),
-            (DirectNumbers::CastScalars, value @ CalcResult::String(_)) => {
-                self.cast_aggregate_arg_to_number(value, cell).map(Some)
-            }
+            // A direct LAMBDA is #VALUE!, not skipped, for AVERAGE and MEDIAN (probes/
+            // aggregate-picked-direct-a-variants D11, D12). The whole `CastScalars` family shares
+            // this rule unprobed (docs/excel-semantics/syntax.md).
+            (
+                DirectNumbers::CastScalars,
+                value @ (CalcResult::String(_) | CalcResult::Lambda(_)),
+            ) => self.cast_aggregate_arg_to_number(value, cell).map(Some),
             (DirectNumbers::CastA, CalcResult::String(text)) => {
                 if let Some(error) = Self::aggregate_text_too_long(&text, cell) {
                     return Err(error);
