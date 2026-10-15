@@ -1,6 +1,7 @@
 use super::elapsed::{elapsed_text, ElapsedUnit};
 use super::general::format_general;
-use crate::{locale::Locale, number_format::to_precision, types::DateSystem};
+use crate::{locale::Locale, number_format::to_precision, text::Text, types::DateSystem};
+use std::collections::BTreeSet;
 
 pub(crate) use super::parse_formatted::parse_formatted_number;
 use super::{
@@ -155,6 +156,48 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
         }
     }
     capped_text(out)
+}
+
+/// [`format_text_value`] for exact text: a lone surrogate in `text` is kept where `@` prints it
+/// (probes/text-lone-surrogates, TEXT(H,"@") has length 1). The format runs on a one-character
+/// stand-in for the text, a private-use character the format does not hold, so the 255-character
+/// limit and every other rule are the well-formed path's; the stand-ins in the result are then
+/// replaced by the exact text. `Err` is the formatter's error message.
+pub fn format_text_value_exact(text: &Text, format: &str) -> Result<Text, String> {
+    if !text.has_lone_surrogate() {
+        let f = format_text_value(text, format);
+        return f.error.map_or(Ok(Text::from(f.text)), Err);
+    }
+    let in_format: BTreeSet<char> = format
+        .chars()
+        .filter(|c| ('\u{E000}'..='\u{F8FF}').contains(c))
+        .collect();
+    // The format holds at most one private-use character per character, so one of the first
+    // `in_format.len() + 1` is free; the range holds 6,400.
+    let stand_in = ('\u{E000}'..='\u{F8FF}')
+        .find(|c| !in_format.contains(c))
+        .ok_or_else(|| "No free stand-in character".to_owned())?;
+    let f = format_text_value(stand_in.encode_utf8(&mut [0; 4]), format);
+    if let Some(error) = f.error {
+        return Err(error);
+    }
+    // The stand-in counted as one character, so the limit is checked again on the real length
+    // (this also bounds the result).
+    let copies = f.text.matches(stand_in).count();
+    let chars = f.text.chars().count() - copies + copies.saturating_mul(text.chars().count());
+    if chars > MAX_TEXT_FORMAT_CHARS {
+        return Err(text_too_long().error.unwrap_or_default());
+    }
+    let mut out = Text::from("");
+    let mut parts = f.text.split(stand_in);
+    if let Some(first) = parts.next() {
+        out.push(&Text::from(first));
+    }
+    for part in parts {
+        out.push(text);
+        out.push(&Text::from(part));
+    }
+    Ok(out)
 }
 
 /// Excel: TEXT of a text value is `#VALUE!` once the result is over 255 characters, also when the

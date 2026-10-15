@@ -61,8 +61,8 @@ lone half survives (T-1579). LEFT, RIGHT and UNICODE read the exact units
 (`Text::left_chars`, `Text::right_chars`, `chars_lossless`), so A38, B6 and B7 pass (T-1581).
 `UNICODE` of a lone high surrogate followed by another character
 (`UNICODE(MID("a😀b",2,2))`) is `#VALUE!` here by inference, unprobed. Whether `&` of a lone high and a lone low surrogate
-forms the pair (`EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`) is UNVERIFIED: `Text::concat` pairs
-them by UTF-16's rule until T-1582 probes it.
+forms the pair (`EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`) is TRUE: `Text::concat` pairs
+them by UTF-16's rule (probes/text-lone-surrogates, T-1582).
 Status: VERIFIED
 Implemented in: `mid_element`, `left_element`, `right_element` and `fn_unicode` in
 functions/text/common.rs, `replace_element` in functions/text/string_format.rs
@@ -96,9 +96,9 @@ exact UTF-16 units throughout:
 - 32,767 limit: `LEN(REPT("a",32766)&"😀")` is 32767 (the kept unit is the high half, coercion.md "Truncation inside a surrogate pair"); `REPT("😀",16384)` is `#VALUE!`;
   CONCAT and TEXTJOIN one unit over (a pair straddling the limit) are `#CALC!`, not truncated (existing entry below).
 Evidence: probes/text-lone-surrogates A1-A81, B1-B6 (excel-graph, 2026-10-15, T-1582).
-Ours: comparisons, EXACT and exact-mode MATCH read lone units exactly (T-1585): `cmp_text` in functions/util/collation.rs weighs a lone unit (and each unit of an astral character) above every BMP character, by unit value, which gives H<L, H<"😀"<L, and both H and L above U+FFFD (`H<UNICHAR(65533)` FALSE); `wildcard_text_matcher_for` (criteria.rs) matches a lone-half pattern by `cmp_text` equality, case-insensitive (a wildcard beside a lone half is read literally, and COUNTIF-style criteria with a lone half are lossy: both unprobed, T-1642). UPPER, LOWER, PROPER, TRIM and CLEAN keep lone units (`Text::map_runs`; a lone unit breaks a word for PROPER, unprobed). FIND, SEARCH and SUBSTITUTE read lone units exactly (T-1586: `find_element` in functions/text/position.rs maps each unit, a lone one included, to one character; `substitute_units` in functions/text/util.rs matches unit for unit, so a lone half splits a pair; with an `instance_num` instances overlap, as in the well-formed path, `SUBSTITUTE("aaa","aa","x",2)` is "ax": unprobed by Excel, an inherited engine choice). CODE and VALUE already behaved as probed. REPT, T and TEXT remain T-1587.
+Ours: comparisons, EXACT and exact-mode MATCH read lone units exactly (T-1585): `cmp_text` in functions/util/collation.rs weighs a lone unit (and each unit of an astral character) above every BMP character, by unit value, which gives H<L, H<"😀"<L, and both H and L above U+FFFD (`H<UNICHAR(65533)` FALSE); `wildcard_text_matcher_for` (criteria.rs) matches a lone-half pattern by `cmp_text` equality, case-insensitive (a wildcard beside a lone half is read literally, and COUNTIF-style criteria with a lone half are lossy: both unprobed, T-1642). UPPER, LOWER, PROPER, TRIM and CLEAN keep lone units (`Text::map_runs`; a lone unit breaks a word for PROPER, unprobed). FIND, SEARCH and SUBSTITUTE read lone units exactly (T-1586: `find_element` in functions/text/position.rs maps each unit, a lone one included, to one character; `substitute_units` in functions/text/util.rs matches unit for unit, so a lone half splits a pair; with an `instance_num` instances overlap, as in the well-formed path, `SUBSTITUTE("aaa","aa","x",2)` is "ax": unprobed by Excel, an inherited engine choice). CODE and VALUE already behaved as probed. REPT repeats the exact units (`Text::repeat`; `REPT(L&H,2)` re-pairs at the join like `&`), TEXT prints the exact text where `@` is (`format_text_value_exact` in formatter/format.rs formats a one-character private-use stand-in the format does not hold, so the 255-character limit and every format rule stay the well-formed path's, then swaps the exact text in; the limit is re-checked on the real length), and T returns its argument unchanged (T-1587).
 Status: VERIFIED
-Tasks: T-1582, T-1585, T-1586
+Tasks: T-1582, T-1585, T-1586, T-1587
 
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for

@@ -201,8 +201,8 @@ impl Text {
     }
 
     /// `a` followed by `b`, as unit sequences: a lone high surrogate at the end of `a` and a lone
-    /// low one at the start of `b` become the pair (UTF-16's rule; a hand expectation until
-    /// T-1582 probes `EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`). Not truncated: callers apply
+    /// low one at the start of `b` become the pair (UTF-16's rule, probed:
+    /// `EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")` is TRUE, probes/text-lone-surrogates). Not truncated: callers apply
     /// [`Text::truncate_utf16`].
     #[must_use]
     pub fn concat(a: &Text, b: &Text) -> Text {
@@ -314,6 +314,23 @@ impl Text {
                     return true;
                 }
                 false
+            }
+        }
+    }
+
+    /// The text repeated `times` times, as REPT does: a lone high unit at the end of one copy
+    /// pairs with a lone low unit at the start of the next, as in `&`. The caller bounds
+    /// `times * len_utf16()` (REPT: 32,767 units, decision 0014).
+    #[must_use]
+    pub fn repeat(&self, times: usize) -> Text {
+        match self {
+            Text::Utf8(s) => Text::Utf8(s.repeat(times)),
+            Text::Lone(lone) => {
+                let mut units = Vec::with_capacity(lone.units.len().saturating_mul(times));
+                for _ in 0..times {
+                    units.extend_from_slice(&lone.units);
+                }
+                Text::from_utf16(units)
             }
         }
     }
