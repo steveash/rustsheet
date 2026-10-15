@@ -3,7 +3,7 @@ id: T-1629
 title: "Probe an array error against a referenced or direct error in GEOMEAN, HARMEAN, SKEW, KURT, VAR, STDEV, AVERAGEA, MAXA and MINA"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
