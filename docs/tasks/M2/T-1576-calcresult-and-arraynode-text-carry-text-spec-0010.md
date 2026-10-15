@@ -3,7 +3,7 @@ id: T-1576
 title: "CalcResult and ArrayNode text carry Text (SPEC-0010 step 2)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: sonnet
