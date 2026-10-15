@@ -3,7 +3,7 @@ id: T-1636
 title: "Probe the final division of AVERAGEA, AVERAGEIF and AVERAGEIFS for double rounding"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
