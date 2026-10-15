@@ -450,8 +450,8 @@ fn cmd_evidence_floor(root: &Path, update: bool, allow_increase: bool) -> Result
     };
     let ok = match (verdict, update) {
         (evidence_floor::Verdict::Unchanged, _) => true,
-        (evidence_floor::Verdict::Regressed, true) if !allow_increase => {
-            println!("  refusing to record an increase without --allow-increase (needs a decision record)");
+        (_, true) if !evidence_floor::may_record(verdict, allow_increase) => {
+            println!("  refusing to record an increase or a new floor without --allow-increase (needs a decision record)");
             false
         }
         (_, true) => {

@@ -23,6 +23,7 @@ pub const LOCK_PATH: &str = "quality/evidence-floor.json";
 /// An in-scope, oracle-evaluable catalog function with fewer than [`EVIDENCE_FLOOR`] Excel cells.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BelowFloor {
+    /// Upper-case Excel name.
     pub name: String,
     /// The catalog's functional family (`math`, `text`, ...).
     pub category: String,
@@ -152,6 +153,16 @@ pub fn judge(lock: Lock, count: usize) -> Verdict {
     }
 }
 
+/// Whether `--update` may write the lock for `verdict`: a drop always, a rise or a lock taken at
+/// another floor only with `allow_increase` (decision 0062).
+#[must_use]
+pub fn may_record(verdict: Verdict, allow_increase: bool) -> bool {
+    match verdict {
+        Verdict::Unchanged | Verdict::Improved => true,
+        Verdict::Regressed | Verdict::FloorChanged => allow_increase,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -235,6 +246,17 @@ mod tests {
             below_floor: 10,
         };
         assert_eq!(judge(other, 10), Verdict::FloorChanged);
+    }
+
+    #[test]
+    fn update_records_a_rise_or_a_new_floor_only_when_allowed() {
+        for verdict in [Verdict::Unchanged, Verdict::Improved] {
+            assert!(may_record(verdict, false));
+        }
+        for verdict in [Verdict::Regressed, Verdict::FloorChanged] {
+            assert!(!may_record(verdict, false));
+            assert!(may_record(verdict, true));
+        }
     }
 
     #[test]
