@@ -92,7 +92,8 @@ pub(crate) enum DirectNumbers {
     /// skipped (AVERAGEA, MAXA, MINA).
     CastA,
     /// Only a number counts; booleans, text and the rest are skipped (VARA, VARPA, STDEVA and
-    /// STDEVPA, which ignore them "for now": no Excel evidence yet).
+    /// STDEVPA, which ignore them "for now"; Excel coerces them, so this is a known failure fixed by
+    /// T-1617: probes/stat-argument-modes Sheet1!H69, H72, H75, H78).
     NumbersOnly,
 }
 

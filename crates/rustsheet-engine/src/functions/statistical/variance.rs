@@ -17,7 +17,8 @@ const VARA_ARGS: AggregatePolicy = AggregatePolicy {
 };
 
 /// A referenced cell coerces (text 0, booleans 1/0); a direct value or an array element counts
-/// only when it is a number ("A semantics to be added": no Excel evidence for them yet).
+/// only when it is a number ("A semantics to be added"). Excel coerces a direct "2" and TRUE
+/// (probes/stat-argument-modes Sheet1!H69, H72, H75, H78, known failures), which T-1617 fixes.
 const VARA_NUMBERS: NumberRules = NumberRules {
     direct: DirectNumbers::NumbersOnly,
     cells: CellNumbers::CoercedA,

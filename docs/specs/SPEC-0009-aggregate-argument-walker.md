@@ -245,7 +245,8 @@ pub(crate) enum DirectNumbers {
     /// empty argument is skipped (AVERAGEA, MAXA, MINA, as `for_each_value_a` does today).
     CastA,
     /// Only a direct number counts; booleans, text and the rest are skipped (VARA, VARPA, STDEVA,
-    /// STDEVPA, as before T-1567; unprobed, T-1617).
+    /// STDEVPA, as before T-1567; Excel coerces a direct "2" and TRUE, probes/stat-argument-modes
+    /// H69, H72, H75, H78 are known failures fixed by T-1617).
     NumbersOnly,
 }
 pub(crate) enum CellNumbers { Numbers, CoercedA }   // `ReferenceValue` items follow it, except under `Cast`
@@ -264,8 +265,7 @@ impl Model {
 ```
 `for_each_value`, `for_each_value_skip_empty` and `for_each_value_a` become thin wrappers or
 calls with a named policy, and are removed once their callers move. `for_each_number_in_areas`
-and `for_each_coerced_number_in_areas` stay (the latter was deleted in T-1567).
-Their other callers (NPV, the D-functions, …) are
+stays (`for_each_coerced_number_in_areas` was deleted in T-1567). Its other callers (NPV, the D-functions, …) are
 outside this spec. "Numbers of a reference" must keep one definition. T-1474 extracts the
 per-cell rules of these two helpers into two free functions in util.rs,
 `cell_number(&CalcResult) -> Option<f64>` (numbers only) and
@@ -281,7 +281,7 @@ The walker and `for_each_aggregate_number` are `#[inline]` and take the policy b
 | SUM | Aggregate | Ranked(Referenced) | no | Cast / Numbers / Numbers | `SumParts` |
 | AVERAGE, GEOMEAN, HARMEAN, MEDIAN, SKEW, SKEW.P, KURT, VAR.*, STDEV.* | Aggregate | Ranked(Direct) | no | CastScalars / Numbers / Numbers | — |
 | DEVSQ, AVEDEV, SUMSQ | Aggregate | First | yes | CastScalars / Numbers / Numbers | — |
-| VARA, VARPA, STDEVA, STDEVPA | Aggregate | First | no | NumbersOnly / CoercedA / Numbers (unprobed, T-1617) | — |
+| VARA, VARPA, STDEVA, STDEVPA | Aggregate | First | no | NumbersOnly / CoercedA / Numbers (direct values: known failures, T-1617) | — |
 | AVERAGEA, MAXA, MINA | Aggregate, after the `external_reference_cells` step | Ranked(Direct) | no | CastA / CoercedA / TextZero (AVERAGEA) or Numbers (MAXA, MINA) | — |
 | MIN, MAX | Aggregate | Ranked(Direct) | no | Cast / Numbers / Numbers | NaN start, 0 when none |
 | PRODUCT | Aggregate | Ranked(Direct) | no | Cast / Numbers / Numbers | `seen_value` (set for an empty argument too) |
