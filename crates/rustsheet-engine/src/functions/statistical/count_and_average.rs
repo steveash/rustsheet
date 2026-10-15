@@ -182,6 +182,7 @@ impl Model {
                 message: "Division by Zero".to_string(),
             };
         }
+        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1636).
         CalcResult::Number(flush_subnormal(extended_quotient(sum, count)))
     }
 

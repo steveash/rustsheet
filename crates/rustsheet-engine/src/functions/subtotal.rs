@@ -434,6 +434,7 @@ impl Model {
                 message: "Division by 0!".to_string(),
             };
         }
+        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1636).
         CalcResult::finite_number_or_num(flush_subnormal(extended_quotient(result, l as f64)), cell)
     }
 
