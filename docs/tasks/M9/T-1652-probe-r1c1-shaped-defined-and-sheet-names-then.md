@@ -3,7 +3,7 @@ id: T-1652
 title: "Probe R1C1-shaped defined and sheet names, then fold parse_reference_r1c1 into parse_r1c1_reference"
 milestone: M9
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
