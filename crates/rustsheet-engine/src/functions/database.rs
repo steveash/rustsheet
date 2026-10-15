@@ -1,3 +1,4 @@
+use crate::arithmetic::extended_sum;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
@@ -237,7 +238,8 @@ impl Model {
                 });
                 if let CalcResult::Number(n) = v {
                     if n.is_finite() {
-                        sum += n;
+                        // Each addition rounds twice like SUM's (probes-numeric/double-rounding-accumulators).
+                        sum = extended_sum(sum, n);
                     }
                 }
             }
