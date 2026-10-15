@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::util::picks_a_branch;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -29,9 +30,13 @@ impl Model {
                     }
                 },
                 CalcResult::Number(n) => values.push(n),
-                // Only a union's `#VALUE!` is probed (H17, H18); other errors keep being skipped.
+                // A union's `#VALUE!` (H17, H18) and the error of a branch picked by IF or CHOOSE
+                // propagate (`MODE(CHOOSE(1,B1:B6*1))` off the range's rows is `#VALUE!`, probes/
+                // legacy-choose-arm-aggregate-and-array-constant-at I10, T-1643); other errors keep
+                // being skipped (unprobed, T-1651).
                 error @ CalcResult::Error { .. }
-                    if matches!(arg.ungrouped(), Node::OpUnionKind { .. }) =>
+                    if matches!(arg.ungrouped(), Node::OpUnionKind { .. })
+                        || picks_a_branch(arg) =>
                 {
                     return Err(error)
                 }
