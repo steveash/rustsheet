@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "How Excel loads a defined name R0C1 whose cell use is #NAME?: INDIRECT, SUM and FORMULATEXT of the use (T-1652)",
+  "tags": [
+    "M8",
+    "names",
+    "probe"
+  ],
+  "names": {
+    "R0C1": "=Sheet1!$B$1"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": 7,
+        "A1": "=R0C1*1",
+        "A2": "=ISREF(INDIRECT(\"R0C1\"))",
+        "A3": "=FORMULATEXT(A1)",
+        "A4": "=SUM(R0C1)"
+      }
+    }
+  ],
+  "expected": {}
+}
