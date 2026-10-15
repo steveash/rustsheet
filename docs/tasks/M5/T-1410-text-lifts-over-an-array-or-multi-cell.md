@@ -3,7 +3,7 @@ id: T-1410
 title: "TEXT lifts over an array or multi-cell range format_text"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
