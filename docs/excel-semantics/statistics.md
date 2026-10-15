@@ -297,6 +297,13 @@ An `@`-prefixed scalar literal (`RANK(5,@5)`, `@"5"`, `@TRUE`) is `#VALUE!` in o
 Status: VERIFIED (excel-graph); literal arguments UNVERIFIED
 Tasks: T-1152, T-1203, T-1208, T-1215, T-1303, T-1596
 
+## VARA family: single-cell reference arguments
+Rule: ours reads a single-cell reference argument of VARA, VARPA, STDEVA and STDEVPA (`VARA(A1)`, `(A1)`, `Sheet1!A1`, a LET-bound or IF/INDEX/XLOOKUP/TAKE-picked cell) like a one-cell range, so text there counts 0 and TRUE counts 1; before T-1567 a single reference skipped them, which disagreed with `A1:A1`.
+Evidence: none from Excel for the single-reference forms (the engine's `A1:A1` reading and AVERAGEA's rules only). Direct `"2"` and TRUE are a separate gap: Excel coerces them (probes/stat-argument-modes Sheet1!H69, H72, H75, H78, known failures, T-1291).
+Ours: single references coerce; direct values and array elements still count only numbers.
+Status: UNVERIFIED (probe pending, T-1617)
+Tasks: T-1567, T-1617, T-1291
+
 ## Statistical function argument modes
 Rule: every scalar argument of the M9 statistical functions lifts elementwise over an array literal and over a multi-cell
 range (all 302 lift cells are 2: 210 `ROWS(F(..{v;v}..))` and 92 `ROWS(F(..G1:G2..))`): distribution parameters including
