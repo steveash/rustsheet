@@ -3,7 +3,7 @@ id: T-1433
 title: "Probe legacy CELL(row/col/address/type, A1:A5) with the formula row inside the range (follow-up of T-1230)"
 milestone: M5
 lane: functions-logic
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1230 gave CELL's `reference` argument a vector signature (`args_signature_cell
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/info-cell-legacy-range (40 cells, excel-graph): legacy twins equal dynamic ones for row/col/address/type with the formula row or column inside or outside the range (no intersection, as T-1230 assumed), and `CELL("type", Data!ref)` reads the formula's own sheet like "contents" (our engine read Data's: fixed in `cell_info`). Cross-sheet "address" embeds the oracle file name and is left out of the case (documented). Eval: new case, 40/40 pass, 0 regressions.
