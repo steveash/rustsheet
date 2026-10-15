@@ -39,6 +39,15 @@ def test_xirr_model_on_a_known_root() -> None:
         solvers.xirr_model([-1000.0, 1100.0], [45000.0, 45365.0], -0.5, solvers.fitted_stop())
 
 
+def test_xirr_first_value_sign_with_a_zero_first_value() -> None:
+    # T-1583: a zero first value replaces the upper end every step, so the bracket [0, 0.1] is bisected
+    # down to 0.1 / 2^25 (xirr-early-dates A10), where the first-value-blind rule converges to 0.1.
+    values, dates = [0.0, -1000.0, 1100.0], [45000.0, 45000.0, 45365.0]
+    got = solvers.xirr_model(values, dates, 0.1, solvers.span_stop(), first_value_sign=True)
+    assert got == 0.1 / 2**25
+    assert solvers.xirr_model(values, dates, 0.1, solvers.h_test()) == 3355443 / 2**25
+
+
 def test_rpow_rejects_a_complex_power() -> None:
     with pytest.raises(solvers.NoResultError):
         solvers.rpow(-0.5, 0.5)
@@ -56,11 +65,15 @@ def test_xirr_fit_scores() -> None:
     assert s["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 227
     assert s["bisect, stop h<5e-9+1e-8|m| only"] == 214
     assert s["bisect fitted, m=(a+b)/2"] == 225
+    assert s["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 227
     oos = _scores("xirr-oos")
     assert oos["cells"] == 22  # 11 numbers and 11 errors; the model solves three cells Excel rejects
     assert (
         oos["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 16
     )  # 8 of 11 numbers, 8 of 11 errors
+    # T-1583: all 11 numbers, and 10 of 11 errors (two by non-convergence, not Excel's input check)
+    assert oos["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 21
+    assert oos["bisect, first-value sign, fitted stop"] == 18
 
 
 @pytest.mark.usefixtures("real_cases")

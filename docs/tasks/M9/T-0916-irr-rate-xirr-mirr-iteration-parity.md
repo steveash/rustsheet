@@ -38,9 +38,14 @@ guess is 0) and f0 = XNPV(0): for a guess >= 0 walk 0, s, 2s, 4s, ...; the brack
 XNPV sign differs from f0's, with the point before it; if none and s < 1, walk 0, -s, then p -> (p - 1)/2;
 a negative guess walks only 0, g, (g - 1)/2, ...; no bracket is `#NUM!`. Then with a = upper end, b = lower
 end: m = a + (b - a)/2, replace the end whose XNPV has XNPV(m)'s sign (an exact 0 does not stop), and
-return m once (b - a)/2 < 5e-9 + 1e-8*|m| and |XNPV(m)| < 2e-8*max|value|. The XNPV part fails one
-124-year span (xirr-early-dates A8: Excel returns bisection step 25, the model step 28) and a zero first
-value (A10, A11); T-1533 continues that fit. The walk and bisection caps are unprobed.
+return m once (b - a)/2 < 5e-9 + 1e-8*|m| and |XNPV(m)| < 2e-8*max|value|.
+**Refined by T-1583** (`xirr-oos` 21/22, fit set still 227/227): replace the upper end when
+XNPV(m) * values[0] >= 0, else the lower end (the same choice on every fitted cell; with a zero first
+value it replaces the upper end every step, giving Excel's 0.1/2^25 on xirr-early-dates A10, A11 and
+xirr-mismatched-empties X3, X4), and scale the XNPV bound by max(1, years from the first date to the
+latest), with no XNPV bound when the first value is 0 (`span_stop`, candidate "bisect, first-value sign,
+span-scaled |f| bound (T-1583)"). The span scaling rests on one long-span cell (A8, 124 years); the
+exact form is open (T-1591 probes it). The walk and bisection caps are unprobed.
 
 **IRR model fitted by T-1533** (`uv run rustsheet-fitlab irr`, 189/263 bit-exact, 207 within 4 ulp;
 `irr_secant_v` in `tools/src/rustsheet_tools/fitlab/kernels/solvers.py`; financial.md "IRR is a secant in
