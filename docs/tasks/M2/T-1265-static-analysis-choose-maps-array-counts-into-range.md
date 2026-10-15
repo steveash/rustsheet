@@ -3,7 +3,7 @@ id: T-1265
 title: "Static analysis: CHOOSE maps Array counts into Range extents"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -24,9 +24,18 @@ placement at the `Range(_, _)` matches, AGGREGATE, SUBTOTAL/AREAS) and either co
 switch `Range` to counts, with tests showing no export or spill change (or the evidence for one).
 
 ## Acceptance criteria
-- [ ] One documented convention for `StaticResult::Range`, used by every producer.
-- [ ] Unit tests for `AGGREGATE(CHOOSE(1,A1:B2),0,E1:E6)` and a legacy CHOOSE import keep Excel's results.
-- [ ] `make check` green; reviewers approve.
+- [x] One documented convention for `StaticResult::Range`, used by every producer.
+- [x] Unit tests for `AGGREGATE(CHOOSE(1,A1:B2),0,E1:E6)` and a legacy CHOOSE import keep Excel's results.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Tracking shapes of names and tables.
+
+## Outcome
+`StaticResult::Range` holds extents (rows - 1, columns - 1) everywhere and `Array` holds counts; `StaticResult::counts`
+converts. Operators and `broadcast_static_result` now turn a range into its counts (a single cell still reads as a scalar
+when broadcasting), and CHOOSE turns its arms' counts back into extents (`CHOOSE(1,{1,2})` is `Range(0, 1)`, was
+`Range(1, 2)`). Only scalar-versus-not is read outside the parser (`Model::set_cell_with_formula`), and the legacy `@`
+placement matches on `Range(_, _)`, so no export or spill result changes: eval check is unchanged (0 fixed, 0 regressions
+in every gated suite). New unit tests: `choose_of_a_range_function_num_spills_like_the_range` (AGGREGATE over a 2x2 and a
+1x1 CHOOSE arm) and `legacy_choose_of_ranges_is_intersected_and_exports_unchanged`.
