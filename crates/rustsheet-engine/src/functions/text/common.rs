@@ -141,8 +141,9 @@ fn exact_element(text1: &ArrayNode, text2: &ArrayNode) -> Result<ArrayNode, Erro
             to_precision(*number1, 15) == to_precision(*number2, 15),
         ));
     }
-    let string1 = array_node_to_string(text1)?;
-    let string2 = array_node_to_string(text2)?;
+    let string1 = array_node_to_text(text1)?;
+    let string2 = array_node_to_text(text2)?;
+    // `Text` equality is exact: a lone surrogate never equals U+FFFD (probes/text-lone-surrogates A10-A13).
     Ok(ArrayNode::Boolean(string1 == string2))
 }
 
@@ -387,12 +388,7 @@ impl Model {
         // or more spaces to a single space. It must NOT touch tab (0x09),
         // non-breaking space (0xA0), or any other Unicode whitespace, so we
         // deliberately split on ' ' rather than using `str::trim`.
-        self.apply_text_unary(args, cell, |s| {
-            s.split(' ')
-                .filter(|w| !w.is_empty())
-                .collect::<Vec<_>>()
-                .join(" ")
-        })
+        self.apply_text_unary_text(args, cell, Text::trim_spaces)
     }
 
     pub(crate) fn fn_lower(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -409,19 +405,28 @@ impl Model {
         cell: CellReferenceIndex,
         f: impl Fn(&str) -> String,
     ) -> CalcResult {
+        self.apply_text_unary_text(args, cell, |text| text.map_runs(&f))
+    }
+
+    /// [`Model::apply_text_unary`] for a transform that reads the exact text, so it can keep a
+    /// lone surrogate.
+    pub(crate) fn apply_text_unary_text(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        f: impl Fn(&Text) -> Text,
+    ) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
         match self.get_string_or_array(&args[0], cell) {
-            Ok(crate::cast::StringOrArray::String(s)) => CalcResult::String(f(&s).into()),
+            Ok(crate::cast::StringOrArray::String(s)) => CalcResult::String(f(&s)),
             Ok(crate::cast::StringOrArray::Array(arr)) => CalcResult::Array(
                 arr.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|n| match crate::cast::array_node_to_string(n) {
-                                Ok(s) => {
-                                    crate::expressions::parser::ArrayNode::String(f(&s).into())
-                                }
+                            .map(|n| match crate::cast::array_node_to_text(n) {
+                                Ok(s) => crate::expressions::parser::ArrayNode::String(f(&s)),
                                 Err(e) => crate::expressions::parser::ArrayNode::Error(e),
                             })
                             .collect()

@@ -13,7 +13,7 @@ use crate::{
     utils::ParsedReference,
 };
 
-use super::criteria::wildcard_text_matcher;
+use super::criteria::wildcard_text_matcher_for;
 use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
 use lookup_table::{LookupTable, SearchVector};
@@ -48,7 +48,7 @@ fn lookup_index(
     if is_sorted {
         search_vector.approximate_search(lookup_value, false)
     } else if let CalcResult::String(s) = lookup_value {
-        search_vector.position(wildcard_text_matcher(s))
+        search_vector.position(wildcard_text_matcher_for(s))
     } else {
         search_vector.exact_position(lookup_value)
     }
