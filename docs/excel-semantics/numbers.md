@@ -1292,10 +1292,20 @@ number, and the cut is the same for negative arguments and for 1E+300. The error
 (`ISERROR(N(SIN(1E+15)))` is TRUE). Evidence: probes/trig-huge-argument (T-1201). Only the integers 2^27-1 and 2^27 (and their negatives -2^27, -2^27-1) were probed at the cut; the
 exact cut for fractional arguments in between is unprobed (assumed |x| >= 2^27). COSH(1E+15) is also
 `#NUM!` (probe cell A85).
-Near the cut Excel's trig values differ from a correctly rounded libm in the 10th-12th digit
-(SIN(2^27-1) is -0.9559933287726706 in Excel, -0.9559933287732995 here): Excel's argument
-reduction is not exact for large angles. The 6 `x = 2^27-1` cells of probes/trig-huge-argument are
-known failures until the fit task lands.
+Excel reduces every trig argument by multiples of `π₆₄/2`, where `π₆₄` is π rounded to a 64-bit
+significand (the x87 `FLDPI` constant `0xC90FDAA22168C235·2^-62`, π₆₄ − π ≈ 5.0166e-20), and
+then rounds the true sine, cosine or tangent of that remainder once. So SIN(x) is the correctly
+rounded sin(x + n·δ/2), n = round(2x/π), δ = π − π₆₄. Visible consequences: SIN(PI()) is
+1.22514845490862E-16 (libm: 1.2246467991473532E-16), COS(PI()/2) is 6.1257422745431E-17 (the
+dropped tail of π₆₄/2), TAN(PI()/2) is 1.6324552277619072E+16 (IEEE: 1.633123935319537E+16), and
+near the cut the 10th-12th digit moves (SIN(2^27-1) is -0.9559933287726706, libm
+-0.9559933287732995). SEC, CSC and COT are 1 divided by the *rounded* COS, SIN and TAN: COT is
+1/TAN, not COS/SIN (COS/SIN misses 17 cells of m9-trig-reduction by 1 ulp, e.g. F6 COT(PI()+1E-06)
+= 999999.9999824036), and SEC/CSC from the unrounded cosine/sine miss 5. This model reproduces all
+672 numeric cells of probes-numeric/m9-trig-reduction and probes/trig-huge-argument bit for bit
+(T-1563). Reducing by π₆₄ itself (shift round(x/π)·δ) misses 137 of them, at the odd multiples of
+π/2. Whether the final division of SEC/CSC/COT rounds once or twice (x87 extended) is not
+distinguished by any probed cell.
 
 ## Out-of-domain ACOS/ASIN/ACOSH/ATANH are `#NUM!` at once, even nested (T-1202)
 

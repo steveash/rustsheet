@@ -94,8 +94,9 @@ fn test_fn_tan_pi2() {
     model._set("A1", "=TAN(PI()/2)");
     model.evaluate();
 
-    // This is consistent with IEEE 754 but inconsistent with Excel
-    assert_eq!(model._get_text("A1"), *"1.63312E+16");
+    // Excel reduces by the x87 64-bit pi: 1.6324552277619072E+16, not IEEE's 1.633123935319537E+16
+    // (probes-numeric/m9-trig-reduction C82, T-1563).
+    assert_eq!(model._get_text("A1"), *"1.63246E+16");
 }
 
 #[test]
