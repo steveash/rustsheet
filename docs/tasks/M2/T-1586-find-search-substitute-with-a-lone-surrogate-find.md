@@ -3,7 +3,7 @@ id: T-1586
 title: "FIND, SEARCH, SUBSTITUTE with a lone-surrogate find_text (they split pairs) and CODE/VALUE of lone surrogates match Excel"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
