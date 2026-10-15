@@ -120,11 +120,9 @@ impl SeenRanges {
     ) -> Vec<((i32, i32), CellReferenceIndex)> {
         let first_row = anchor.row;
         let last_row = anchor.row.saturating_add(area.1.max(1) - 1);
-        let levels: Vec<u32> = (0..32)
-            .filter(|level| self.levels & (1 << level) != 0)
-            .collect();
+        let levels = || (0..32).filter(|level| self.levels & (1 << level) != 0);
         let bands_over = |level: u32| (first_row >> level).saturating_sub(1)..=(last_row >> level);
-        let probes = levels.iter().fold(0_u64, |probes, &level| {
+        let probes = levels().fold(0_u64, |probes, level| {
             let bands = bands_over(level);
             probes + u64::from(bands.end().abs_diff(*bands.start())) + 1
         });
@@ -139,7 +137,7 @@ impl SeenRanges {
         if probes >= self.ranges.len() as u64 {
             (0..self.ranges.len()).for_each(&mut meet);
         } else {
-            for &level in &levels {
+            for level in levels() {
                 for index in bands_over(level) {
                     let band = Band {
                         sheet: anchor.sheet,
