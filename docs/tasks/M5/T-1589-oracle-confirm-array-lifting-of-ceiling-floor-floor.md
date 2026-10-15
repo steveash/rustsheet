@@ -3,7 +3,7 @@ id: T-1589
 title: "Oracle-confirm array lifting of CEILING, FLOOR, FLOOR.MATH/PRECISE, CEILING.PRECISE and MROUND (incl. boolean elements)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,7 @@ T-1357 lifted these by the general rule (arrays.md "CEILING/FLOOR family and MRO
 
 ## Out of scope
 -
+
+## Outcome
+New case `probes/ceiling-floor-mround-array-lift` (78 cells, excel-graph): every function with an array in each argument, boolean elements, and MROUND error/missing/boolean precedence. The lift and the boolean-element rules already matched; MROUND's argument checks were wrong: Excel judges them left to right (`MROUND(1/0,TRUE)` is `#DIV/0!`, `MROUND(TRUE,)` is `#VALUE!`), the engine checked every missing argument before any boolean or error. Fixed in `mathematical.rs`; arrays.md is VERIFIED. Eval delta: 0 fixed, 1 new case passing 78/78, 0 regressions.
+Review round: the fidelity reviewer found MROUND over a multi-cell range is one `#VALUE!` with no spill (Analysis ToolPak, like ISEVEN), not a lift; probed with numeric ranges (A43:A55) and fixed. Follow-up: the spec-case harness scores only cells present in the oracle sidecar, so an extra spilled cell is never flagged.
