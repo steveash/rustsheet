@@ -105,3 +105,50 @@ fn left_right_unicode_read_lone_surrogates_exactly() {
     assert_eq!(model._get_text("A5"), "56832");
     assert_eq!(model._get_text("A6"), "1");
 }
+
+#[test]
+fn lone_surrogates_compare_by_code_unit() {
+    // probes/text-lone-surrogates A10-A28 (excel-graph): a lone half is never U+FFFD, H<L, and
+    // H<U+FFFD, L<U+FFFD are FALSE.
+    let h = "MID(\"😀\",1,1)";
+    let l = "MID(\"😀\",2,1)";
+    let cases = [
+        (format!("=EXACT({h},UNICHAR(65533))"), "FALSE"),
+        (format!("=EXACT({h},{l})"), "FALSE"),
+        (format!("=EXACT({h},{h})"), "TRUE"),
+        (format!("={h}=UNICHAR(65533)"), "FALSE"),
+        (format!("={h}={l}"), "FALSE"),
+        (format!("={h}<{l}"), "TRUE"),
+        (format!("={l}<{h}"), "FALSE"),
+        (format!("={h}<\"a\""), "FALSE"),
+        (format!("={h}<\"😀\""), "TRUE"),
+        (format!("=\"😀\"<{l}"), "TRUE"),
+        (format!("={h}<UNICHAR(65533)"), "FALSE"),
+        (format!("={l}<UNICHAR(65533)"), "FALSE"),
+        (
+            format!("=MATCH({h},{{\"x\";\"😀\";\"\u{fffd}\"}},0)"),
+            "#N/A",
+        ),
+        (format!("=MATCH({l},{{\"x\";\"\u{fffd}\"}},0)"), "#N/A"),
+        (format!("=EXACT(UPPER({h}),{h})"), "TRUE"),
+        (format!("=LEN(TRIM(\" \"&{h}&\"  \"&{l}&\" \"))"), "3"),
+        (format!("=LEN(CLEAN({l}&CHAR(7)&{h}))"), "2"),
+    ];
+    for (formula, expected) in cases {
+        let mut model = new_empty_model();
+        model._set("A1", &formula);
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), expected, "{formula}");
+    }
+}
+
+#[test]
+fn match_of_a_lone_half_pattern_ignores_case() {
+    // A lone-half pattern compares like `=`, case-insensitively (T-1585 review).
+    let mut model = new_empty_model();
+    model._set("B1", "x");
+    model._set("B2", "=\"a\"&MID(\"😀\",1,1)");
+    model._set("A1", "=MATCH(\"A\"&MID(\"😀\",1,1),B1:B2,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2");
+}

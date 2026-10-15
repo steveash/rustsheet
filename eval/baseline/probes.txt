@@ -6004,17 +6004,6 @@ F	probes/text-format-length-limit-f.case.json	Sheet1!A42
 F	probes/text-format-length-limit-j.case.json	Sheet1!A43
 F	probes/text-format-length-limit-l.case.json	Sheet1!A40
 F	probes/text-format-length-limit-m.case.json	Sheet1!A22
-F	probes/text-lone-surrogates.case.json	Sheet1!A10
-F	probes/text-lone-surrogates.case.json	Sheet1!A11
-F	probes/text-lone-surrogates.case.json	Sheet1!A12
-F	probes/text-lone-surrogates.case.json	Sheet1!A14
-F	probes/text-lone-surrogates.case.json	Sheet1!A15
-F	probes/text-lone-surrogates.case.json	Sheet1!A16
-F	probes/text-lone-surrogates.case.json	Sheet1!A18
-F	probes/text-lone-surrogates.case.json	Sheet1!A22
-F	probes/text-lone-surrogates.case.json	Sheet1!A27
-F	probes/text-lone-surrogates.case.json	Sheet1!A28
-F	probes/text-lone-surrogates.case.json	Sheet1!A30
 F	probes/text-lone-surrogates.case.json	Sheet1!A43
 F	probes/text-lone-surrogates.case.json	Sheet1!A48
 F	probes/text-lone-surrogates.case.json	Sheet1!A49

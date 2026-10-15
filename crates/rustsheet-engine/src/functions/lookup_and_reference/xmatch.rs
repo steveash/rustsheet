@@ -11,7 +11,7 @@ use crate::{
 
 use super::lookup_table::SearchVector;
 use crate::functions::{
-    binary_search::binary_search, criteria::wildcard_text_matcher, util::compare_values,
+    binary_search::binary_search, criteria::wildcard_text_matcher_for, util::compare_values,
 };
 
 #[derive(PartialEq)]
@@ -101,7 +101,7 @@ pub(crate) fn linear_scan<'a>(
         MatchMode::Wildcard => {
             let matches: Box<dyn Fn(&CalcResult) -> bool> =
                 if let CalcResult::String(s) = lookup_value {
-                    wildcard_text_matcher(s)
+                    wildcard_text_matcher_for(s)
                 } else {
                     Box::new(move |x| compare_values(x, lookup_value) == 0)
                 };

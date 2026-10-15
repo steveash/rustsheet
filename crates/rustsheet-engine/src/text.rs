@@ -318,6 +318,40 @@ impl Text {
         }
     }
 
+    /// The text with `f` applied to each run of well-formed text and every lone unit kept, as
+    /// UPPER, LOWER, PROPER and CLEAN do (probes/text-lone-surrogates A31-A39). A lone unit is
+    /// no letter or space, so `f` never needs to see across it: it breaks a word, so `PROPER("a"&L&"b")` capitalizes the `b` (unprobed).
+    #[must_use]
+    pub fn map_runs(&self, f: impl Fn(&str) -> String) -> Text {
+        if !self.has_lone_surrogate() {
+            return Text::Utf8(f(self));
+        }
+        let mut units = Vec::new();
+        for segment in self.segments() {
+            match segment {
+                Segment::Str(s) => units.extend(f(s).encode_utf16()),
+                Segment::Lone(unit) => units.push(unit),
+            }
+        }
+        Text::from_utf16(units)
+    }
+
+    /// `TRIM`: leading and trailing spaces removed and each inner run of spaces collapsed to one.
+    /// Only U+0020 is a space; a lone surrogate is kept and is not (probes/text-lone-surrogates A36, A37).
+    #[must_use]
+    pub fn trim_spaces(&self) -> Text {
+        if !self.has_lone_surrogate() {
+            let words: Vec<&str> = self.split(' ').filter(|w| !w.is_empty()).collect();
+            return Text::Utf8(words.join(" "));
+        }
+        let units: Vec<u16> = self.units().collect();
+        let words: Vec<&[u16]> = units
+            .split(|&u| u == 0x20)
+            .filter(|w| !w.is_empty())
+            .collect();
+        Text::from_utf16(words.join(&0x20u16))
+    }
+
     /// The text as runs of well-formed text and lone units, in order.
     pub fn segments(&self) -> Segments<'_> {
         match self {
