@@ -1,0 +1,26 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A1.B2 with dots in a cell formula is the range A1:B2 (Lotus-style), T-1652",
+  "tags": [
+    "M2",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B2": 2,
+        "B1": 4,
+        "D1": "=SUM(A1.B2)",
+        "D2": "=FORMULATEXT(D1)",
+        "D3": "=ROWS(A1..B2)",
+        "D4": "=FORMULATEXT(D3)",
+        "D5": "=SUM(B2.A1)",
+        "D6": "=FORMULATEXT(D5)"
+      }
+    }
+  ],
+  "expected": {}
+}

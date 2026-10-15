@@ -160,14 +160,6 @@ fn r1c1_shaped_names() {
         "RC1R",
         "RC16384D",
         "rC1",
-        "R1.C1",
-        "R1..C1",
-        "R1.R1",
-        "C1.R1",
-        "RC1.C1",
-        "R1.C1.5",
-        "R1.C1.",
-        "R1.C16385",
     ] {
         assert!(is_r1c1_shaped(name), "{name}");
     }
@@ -224,6 +216,52 @@ fn r1c1_shaped_names() {
         "Data",
     ] {
         assert!(!is_r1c1_shaped(name), "{name}");
+    }
+}
+
+// probes/r1c1-shaped-sheet-names-4, -5 (excel-graph, T-1652): Lotus-style ranges are quoted.
+#[test]
+fn dotted_a1_ranges_are_quoted() {
+    for name in [
+        "R1.C1",
+        "R1..C1",
+        "R1.R1",
+        "C1.R1",
+        "RC1.C1",
+        "C1.C1",
+        "R1.C1.5",
+        "R1.C1.",
+        "R1.C16385",
+        "A1.B2",
+        "A1..B2",
+        "B2.A1",
+        "XFD1.A1",
+        "R1.R1048576",
+        "A1.B2.C3",
+        "AA1.B1",
+        "Z9.Z9",
+        "A1...B2",
+    ] {
+        assert!(!is_r1c1_shaped(name) && name_needs_quoting(name), "{name}");
+    }
+    for name in [
+        "A1.XFE1",
+        "A1.R1048577",
+        "R1.R1048577",
+        "A1.B2D",
+        "A1.B",
+        "A.B2",
+        "RC.C1",
+        "R.C1",
+        "A0.B1",
+        "R1.C1D",
+        "R1.RC",
+        "R1.C0",
+        "A1.5",
+        "R1.",
+        "X.R1",
+    ] {
+        assert!(!name_needs_quoting(name), "{name}");
     }
 }
 
@@ -286,8 +324,13 @@ fn test_a1_identifier_allows_r_and_c() {
     assert!(is_valid_a1_identifier("C"));
     assert!(is_valid_a1_identifier("c"));
     // And R1C1 references: `LET(R1C1,5,R1C1*2)` is 10 (probes/r1c1-let-name-*, T-1652).
-    for name in ["R1C1", "R5C7", "R12C", "R0C1", "RC", "R1C1D"] {
+    for name in ["R12C", "RC", "R1C", "R1C1D", "r1c1", "R0"] {
         assert!(is_valid_a1_identifier(name), "{name}");
+    }
+    // Except an uppercase R<n>C<m>, which the R1C1 storage would read back as a reference
+    // (TODO(T-1658)).
+    for name in ["R1C1", "R5C7", "R0C1", "R1048577C1"] {
+        assert!(!is_valid_a1_identifier(name), "{name}");
     }
     // All other is_valid_identifier rules still apply.
     assert!(!is_valid_a1_identifier("A23"));

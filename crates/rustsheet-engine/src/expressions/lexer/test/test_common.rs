@@ -418,10 +418,11 @@ fn test_reference_r1c1() {
 #[test]
 fn test_reference_r1c1_true() {
     let mut lx = new_lexer("R1C1", true);
-    // An identifier in A1 mode: it is a valid LET name (`LET(R1C1,5,R1C1*2)` is 10,
-    // probes/r1c1-let-name-r1c1, T-1652). As a defined name it is refused, so a bare
-    // `=R1C1` is #NAME?; Graph rejects a workbook holding one, so that has no oracle value.
-    assert_eq!(lx.next_token(), Ident("R1C1".to_string()));
+    // NOTE: This is what google docs does.
+    // Excel will not let you enter this formula.
+    // Online Excel will let you and will mark the cell as in Error
+    // (Excel does take it as a LET name, T-1658.)
+    assert!(matches!(lx.next_token(), Illegal(_)));
     assert_eq!(lx.next_token(), EOF);
 }
 

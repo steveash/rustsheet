@@ -1,0 +1,23 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Is R1D, a sheet name Excel quotes or not as R1C1-shaped, a valid defined name? One per case (T-1652)",
+  "tags": [
+    "M8",
+    "names",
+    "probe"
+  ],
+  "names": {
+    "R1D": "=Sheet1!$B$1"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": 7,
+        "A1": "=R1D*1",
+        "A2": "=ISREF(R1D)"
+      }
+    }
+  ],
+  "expected": {}
+}

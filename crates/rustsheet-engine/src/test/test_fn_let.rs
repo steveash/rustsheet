@@ -148,22 +148,40 @@ fn test_let_binds_index_reference_and_at_index_reference() {
     assert_eq!(model._get_text("A2"), "TRUE");
 }
 
-// probes/r1c1-let-name-* (excel-graph, T-1652): LET takes names Excel reads as R1C1 references.
+// probes/r1c1-let-name-* (excel-graph, T-1652): LET takes names Excel reads as R1C1 references,
+// and they survive a reload (formulas are kept in R1C1 form).
 #[test]
 fn let_names_may_be_r1c1_shaped() {
     let mut model = new_empty_model();
-    for (cell, name) in [
-        ("A1", "R1C1"),
-        ("A2", "R5C7"),
-        ("A3", "R12C"),
-        ("A4", "R0C1"),
-        ("A5", "RC"),
-    ] {
-        model._set(cell, &format!("=LET({name},5,{name}*2)"));
+    let names = ["R12C", "RC", "R1C", "R1C1D", "C1D", "R1.C1", "r1c1", "R0"];
+    for (row, name) in names.iter().enumerate() {
+        model._set(
+            &format!("A{}", row + 1),
+            &format!("=LET({name},5,{name}*2)"),
+        );
     }
     model.evaluate();
-    for cell in ["A1", "A2", "A3", "A4", "A5"] {
-        assert_eq!(model._get_text(cell), "10", "{cell}");
+    let mut reloaded = crate::Model::from_bytes(&model.to_bytes(), "en").unwrap();
+    reloaded.evaluate();
+    for (row, name) in names.iter().enumerate() {
+        let cell = format!("A{}", row + 1);
+        assert_eq!(model._get_text(&cell), "10", "{name}");
+        assert_eq!(reloaded._get_text(&cell), "10", "{name}");
+        assert_eq!(
+            reloaded._get_formula(&cell),
+            format!("=LET({name},5,{name}*2)")
+        );
     }
-    assert_eq!(model._get_formula("A1"), "=LET(R1C1,5,R1C1*2)");
+}
+
+// Excel takes `LET(R1C1,5,R1C1*2)` (10), but the R1C1 form the engine stores formulas in would
+// read an uppercase `R<n>C<m>` back as a cell reference, so it stays refused (TODO(T-1658)).
+#[test]
+fn let_names_spelled_like_r1c1_cells_are_refused() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LET(R1C1,5,R1C1*2)");
+    model._set("A2", "=LET(R0C1,5,R0C1*2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+    assert_eq!(model._get_text("A2"), "#ERROR!");
 }
