@@ -26,4 +26,4 @@ T-1255 propagates the first error left to right; only the first-argument case is
 ## Outcome
 Probe `probes/filterxml-error-arguments` filled from excel-graph: second-argument errors propagate and
 the first error wins left to right, exactly as the engine already did. No engine change; web.md and the
-test comments now cite the oracle. Eval delta: none (probe cases carry no expected cells).
+test comments now cite the oracle. Eval delta: 6 new oracle-checked cells, all pass; no known failures added.

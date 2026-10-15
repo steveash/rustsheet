@@ -12,8 +12,8 @@ fn fn_filterxml_args_number() {
     assert_eq!(model._get_text("A2"), *"#ERROR!");
 }
 
-// docs/excel-semantics/web.md: `#VALUE!` for a valid call; A2..A4 are oracle-backed
-// (probes/filterxml-error-arguments, T-1570).
+// docs/excel-semantics/web.md: `#VALUE!` for a valid call; A2 is backed by
+// gen-m6/abcfd9979f316267 A9, A3 and A4 by probes/filterxml-error-arguments (T-1570).
 #[test]
 fn fn_filterxml_value_and_error_precedence() {
     let mut model = new_empty_model();
