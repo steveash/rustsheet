@@ -3,7 +3,7 @@ id: T-1617
 title: "Probe VARA, VARPA, STDEVA and STDEVPA with direct booleans, direct text, array text and picked cells"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ VARA, VARPA, STDEVA and STDEVPA match Excel for single-cell reference and picked
 
 ## Out of scope
 -
+
+## Outcome
+Probed (probes/vara-single-ref-picked, 41 cells, excel-graph): a single-cell reference and a cell picked by IF/INDEX/XLOOKUP coerce (text 0, boolean 1/0) exactly as the engine's `CellNumbers::CoercedA` already does, and array literals count only numbers (`ArrayNumbers::Numbers`), so no code change was needed. The three direct-form cells (`"x"`, `"2"`, `TRUE`) fail and are baselined; T-1291 owns them. Recorded in docs/excel-semantics/coercion.md. Eval: 38 new passing cells, 3 new known failures (direct forms, T-1291).

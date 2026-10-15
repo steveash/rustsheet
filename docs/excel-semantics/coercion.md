@@ -343,3 +343,15 @@ Implemented in: the engine matches every cell except MULTINOMIAL numeric text (C
 and SERIESSUM with a boolean coefficient cell (C44, engine 11; T-1191).
 Status: VERIFIED
 Tasks: T-1082, T-1190, T-1191, T-1261
+
+## VARA, VARPA, STDEVA, STDEVPA: single cells and picked cells coerce, arrays count only numbers
+Rule: a cell read through a single-cell reference (`B1`) or picked by IF, INDEX or XLOOKUP coerces like a
+range cell: text counts as 0 and a boolean as 1/0 (A1:A3 = 1, 2, 4; B1 = "x", B2 = TRUE: `VARA(A1:A3,B1)` →
+2.9166..., `VARA(A1:A3,B2)` → 2, `VARPA` 2.1875 / 1.5, `STDEVA` 1.7078... / 1.4142..., `STDEVPA` 1.4790... / 1.2247...),
+identical to the two-cell range `B1:B2` form. An array literal contributes only its numbers (`VARA({1,2,4,"x"})`
+and `VARA({1,2,4,TRUE})` → 2.3333...). A direct `"2"` and `TRUE` coerce (1.5833..., 2) and a direct non-numeric
+text is `#VALUE!` (owned by T-1291).
+Evidence: probes/vara-single-ref-picked (41 cells; oracle: excel-graph, 2026-10-15, T-1617).
+Status: VERIFIED
+Implemented in: `VARA_NUMBERS` (functions/statistical/variance.rs), except the direct forms (T-1291).
+Tasks: T-1617
