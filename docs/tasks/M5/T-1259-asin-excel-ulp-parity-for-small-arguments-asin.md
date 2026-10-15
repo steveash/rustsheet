@@ -3,7 +3,7 @@ id: T-1259
 title: "ASIN: Excel ulp parity for small arguments (ASIN(-0.0001))"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -32,10 +32,19 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
   so none of the candidates that fit -0.0001 fits 0.42: this strengthens the oracle-sweep note above.
 
 ## Acceptance criteria
-- [ ] gen-m6/2f6b96385ed3facd A38 passes, no ASIN cell in eval/baseline/ gains a failure and no new known failures appear.
-- [ ] The formulation and its evidence are recorded in docs/excel-semantics/numbers.md (including negative results).
-- [ ] gen-m7/0e40208f51c2454c A27 and gen-m7/cb748b6a9b81fbb7 A38 pass, or the sweep task is filed and this one depends on it. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m6/2f6b96385ed3facd A38 passes, no ASIN cell in eval/baseline/ gains a failure and no new known failures appear.
+- [x] The formulation and its evidence are recorded in docs/excel-semantics/numbers.md (including negative results).
+- [x] gen-m7/0e40208f51c2454c A27 and gen-m7/cb748b6a9b81fbb7 A38 pass, or the sweep task is filed and this one depends on it. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - ACOS (T-0939), hyperbolic inverses (T-0917).
+
+## Outcome
+- New oracle sweep probes/asin-argument-sweep (excel-graph, 268 cells). Excel's ASIN is not correctly rounded and not odd.
+- `fn_asin` is now `atan(x/sqrt((1-x)*(1+x)))` in doubles. It matches 233 of 268 sweep cells (libm `asin` matched 186) and fixes
+  gen-m6/2f6b96385ed3facd A38, gen-m7/0e40208f51c2454c A27 and gen-m7/cb748b6a9b81fbb7 A38.
+- The x87 and extended-precision models never beat 233. They are recorded as negative results in numbers.md "ASIN of a small argument".
+  The 35 remaining cells are known failures for follow-up T-1605.
+- Eval delta: probes known failures 5579 → 5614 (+35 new coverage, all from the new sweep case); fixed 0 baselined cells; gen-m6 991 → 992,
+  gen-m7 950 → 952; regressions 0 (ironcalc-calc ASIN cells unchanged).

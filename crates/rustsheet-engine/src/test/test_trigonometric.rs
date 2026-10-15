@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -123,4 +124,28 @@ fn out_of_domain_inverse_functions_nested_are_num() {
     for cell in ["A1", "A2", "A3", "A4", "A5"] {
         assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
     }
+}
+
+#[test]
+fn asin_rounds_like_excel() {
+    // probes/asin-argument-sweep, gen-m6/2f6b96385ed3facd A38, gen-m7/cb748b6a9b81fbb7 A38 (T-1259):
+    // libm `asin` is one ulp off on each of these.
+    let mut model = new_empty_model();
+    model._set("A1", "=ASIN(-0.0001)");
+    model._set("A2", "=ASIN(0.42)");
+    model._set("A3", "=ASIN(-0.96)");
+    model._set("A4", "=ASIN(1)");
+    model._set("A5", "=ASIN(-1)");
+    model._set("A6", "=ASIN(1.0000001)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A1"), (-0.000_100_000_000_166_666_68_f64).to_bits());
+    assert_eq!(bits("A2"), 0.433_445_320_069_885_9_f64.to_bits());
+    assert_eq!(bits("A3"), (-1.287_002_217_586_568_5_f64).to_bits());
+    assert_eq!(bits("A4"), std::f64::consts::FRAC_PI_2.to_bits());
+    assert_eq!(bits("A5"), (-std::f64::consts::FRAC_PI_2).to_bits());
+    assert_eq!(model._get_text("A6"), *"#NUM!");
 }
