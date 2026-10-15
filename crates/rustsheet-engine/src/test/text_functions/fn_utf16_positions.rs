@@ -130,8 +130,6 @@ fn lone_surrogates_compare_by_code_unit() {
             "#N/A",
         ),
         (format!("=MATCH({l},{{\"x\";\"\u{fffd}\"}},0)"), "#N/A"),
-        // A lone-half pattern matches case-insensitively, like `=` (T-1585 review).
-        (format!("=MATCH(\"A\"&{h},{{\"x\";\"a\"&{h}}},0)"), "2"),
         (format!("=EXACT(UPPER({h}),{h})"), "TRUE"),
         (format!("=LEN(TRIM(\" \"&{h}&\"  \"&{l}&\" \"))"), "3"),
         (format!("=LEN(CLEAN({l}&CHAR(7)&{h}))"), "2"),
@@ -142,4 +140,15 @@ fn lone_surrogates_compare_by_code_unit() {
         model.evaluate();
         assert_eq!(model._get_text("A1"), expected, "{formula}");
     }
+}
+
+#[test]
+fn match_of_a_lone_half_pattern_ignores_case() {
+    // A lone-half pattern compares like `=`, case-insensitively (T-1585 review).
+    let mut model = new_empty_model();
+    model._set("B1", "x");
+    model._set("B2", "=\"a\"&MID(\"😀\",1,1)");
+    model._set("A1", "=MATCH(\"A\"&MID(\"😀\",1,1),B1:B2,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2");
 }
