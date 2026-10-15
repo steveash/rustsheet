@@ -1,0 +1,23 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Control for the r1c1-name cases: a plain defined name (T-1652)",
+  "tags": [
+    "M8",
+    "names",
+    "probe"
+  ],
+  "names": {
+    "okname": "=Sheet1!$B$1"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": 7,
+        "A1": "=okname*1",
+        "A2": "=ISREF(okname)"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Is the R1C1 reference R5C7 a valid LET name? One per case (T-1652)",
+  "tags": [
+    "M2",
+    "names",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LET(R5C7,5,R5C7*2)",
+        "A2": "=FORMULATEXT(A1)"
+      }
+    }
+  ],
+  "expected": {}
+}

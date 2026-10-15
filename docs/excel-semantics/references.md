@@ -1448,3 +1448,39 @@ Inferred, unprobed (T-1645, T-1651): every IF pick (only CHOOSE is probed), INDE
 Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at (excel-graph, 2026-10-15).
 Status: VERIFIED (excel-graph)
 Tasks: T-1638, T-1643, T-1645, T-1651
+
+## R1C1-shaped sheet and defined names
+Rule (case-insensitive; odd, Excel is right): Excel quotes a sheet name in formula text, and refuses it
+as a defined name, when the name is an R1C1 reference or starts with one, by this test (and also
+when it is an A1 reference, which is a separate test: `R1`, `C3`, `RC99999`, `C16385` are A1 cells):
+- `R`, `C` and `RC` on their own are quoted (`'RC'!A1`, `'r'!A1`); a letter after them ends the
+  test: `RCR`, `RCD`, `RCC`, `CR`, `RD` are not quoted (`=RCR!A1`).
+- `R<row>` with row 1..1048576 followed by `C` is quoted whatever follows, even an out-of-range or
+  missing column: `R1C`, `R12C`, `R1C1`, `R1C0D`, `R1C16385`, `R1C99999999999`, `R1CD`, `R1C_`, `R1C1.`.
+- Otherwise `R<row>`, `C<column>` (1..16384) or `RC<column>` is quoted when nothing or anything but
+  a dot follows: `R1_`, `R1R`, `R1D`, `R1048576D`, `R0001D`, `C1D`, `C1R1`, `C16384D`, `RC1D`.
+  Out of range it is not: `R0`, `C0`, `R0C1`, `R0C0`, `R1048577`, `R1048577C1`, `R0D`, `C16385D`,
+  `RC16385D`, `RC2147483648`.
+- After the number, one or more dots then `R` or `C`, a nonzero number (no upper bound seen:
+  `R1.C16385`) and nothing or a dot is quoted (`R1.C1`, `R1..C1`, `R1.R1`, `C1.C1`, `RC1.C1`,
+  `R1.C1.5`); anything else after a dot is not (`R1.`, `R1.5`, `R1.A`, `C1.5`, `RC1.`, `R1.C1D`,
+  `R1.C0`, `R1.RC`, `R1.D.C1`, `R2.3C`). A dot before the first number is not quoted either (`R.1`, `RC.1`).
+- A1 has no such prefix rule: `A1B`, `A1_`, `A1.5` are not quoted.
+Defined names: a workbook defining any name the test above quotes (`RC`, `rc`, `R1C`, `R12C`, `R1C1`,
+`C1D`, `R1C1D`, `R1C16385`) is rejected by Graph (`createSession` 501 `unsupportedWorkbook`), while
+`RCR`, `RCD` and `CR` work (7). A name spelled like an out-of-range R1C1 reference (`R0`, `C0`,
+`R0C1`, `r0c1`, `R1048577`, `R1048577C1`) loads but every use is `#NAME?` (`=R0*1`, `SUM(R0)`, and
+`ISREF(INDIRECT("R0"))` is FALSE; FORMULATEXT keeps `=R0*1`). Ours defines it and reads 7 (T-1657).
+LET and LAMBDA names are not tested at all: `LET(n,5,n*2)` is 10 for `RC`, `R1C`, `R1C1`, `r1c1`,
+`R5C7`, `R12C`, `R0C1`, `R0`, `R1048577`, `R1_`, `R1.C1`, `R1C1D`, `C1D`, `RCR` and `C`.
+A bare `RC`, `R1C1D`, `R0C1` or `RCR` token in a cell formula of an uploaded file makes Graph reject
+the workbook (so it is unprobed).
+Unprobed: brackets cannot occur in sheet or defined names, so `R[1]C` forms are not covered;
+`R1.R1048577` (the dotted number's upper bound); non-ASCII digits.
+Evidence: probes/r1c1-shaped-sheet-names, -lower, -2, -3, -4, -lower-2 (FORMULATEXT of `='<name>'!A1`),
+r1c1-name-* and r1c1-name-use-* (defined names; the rejected names have no case),
+r1c1-let-name-* (excel-graph, 2026-10-15).
+Implemented in: `is_r1c1_shaped` (expressions/utils/mod.rs), used by `name_needs_quoting` and
+`is_valid_identifier`; `is_valid_a1_identifier` (LET, LAMBDA and the lexer) does not test R1C1 shape.
+Status: VERIFIED (excel-graph), except the #NAME? defined names (T-1657).
+Tasks: T-1652

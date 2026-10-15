@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Is the R1C1-shaped string C1D a valid LET name? One per case: an invalid formula may make Graph reject the workbook (T-1652)",
+  "tags": [
+    "M2",
+    "names",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LET(C1D,5,C1D*2)",
+        "A2": "=FORMULATEXT(A1)"
+      }
+    }
+  ],
+  "expected": {}
+}
