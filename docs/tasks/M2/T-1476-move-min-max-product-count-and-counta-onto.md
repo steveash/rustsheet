@@ -3,7 +3,7 @@ id: T-1476
 title: "Move MIN, MAX, PRODUCT, COUNT and COUNTA onto the shared aggregate-argument walker"
 milestone: M2
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
