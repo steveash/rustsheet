@@ -322,7 +322,7 @@ fn legacy_value_operand(kind: &Function, arg: &Node) -> bool {
 /// Whether `node` is arithmetic, concatenation or a comparison, possibly in parentheses:
 /// `SUM((B1:B6*1))` intersects like `SUM(B1:B6*1)`, unlike `SUM((B1:B6))`
 /// (probes/legacy-value-argument-intersection-b Z2, Z10; T-1551).
-pub(super) fn is_value_operation(node: &Node) -> bool {
+fn is_value_operation(node: &Node) -> bool {
     match node {
         Node::Group { child, .. } => is_value_operation(child),
         Node::UnaryKind { .. }
@@ -332,5 +332,20 @@ pub(super) fn is_value_operation(node: &Node) -> bool {
         | Node::OpPowerKind { .. }
         | Node::CompareKind { .. } => true,
         _ => false,
+    }
+}
+
+/// INDEX's static result.
+pub(super) fn static_analysis_index(args: &[Node]) -> StaticResult {
+    // INDEX has two forms, but they are indistinguishable at parse time, except that INDEX of a
+    // CHOOSE whose arms are all arithmetic reads a value, so the call shows no `@`
+    // (`=INDEX(CHOOSE(1,@B1:B6*1),3)`; probes/legacy-choose-arm-aggregate-and-array-constant-at
+    // H3, T-1643).
+    match args.first().map(Node::ungrouped) {
+        Some(Node::FunctionKind {
+            kind: Function::Choose,
+            args: arms,
+        }) if arms.len() > 1 && arms[1..].iter().all(is_value_operation) => StaticResult::Scalar,
+        _ => StaticResult::Unknown,
     }
 }

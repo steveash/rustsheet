@@ -468,22 +468,6 @@ fn static_analysis_indirect(_args: &[Node]) -> StaticResult {
     StaticResult::Unknown
 }
 
-fn static_analysis_index(args: &[Node]) -> StaticResult {
-    // INDEX has two forms, but they are indistinguishable at parse time, except that INDEX of a
-    // CHOOSE whose arms are all arithmetic reads a value, so the call shows no `@`
-    // (`=INDEX(CHOOSE(1,@B1:B6*1),3)`; probes/legacy-choose-arm-aggregate-and-array-constant-at
-    // H3, T-1643).
-    match args.first().map(Node::ungrouped) {
-        Some(Node::FunctionKind {
-            kind: Function::Choose,
-            args: arms,
-        }) if arms.len() > 1 && arms[1..].iter().all(legacy::is_value_operation) => {
-            StaticResult::Scalar
-        }
-        _ => StaticResult::Unknown,
-    }
-}
-
 #[derive(Clone)]
 enum Signature {
     Scalar,
@@ -1709,7 +1693,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Hlookup => aggregate::lookup_static_result(args), // T-0270, T-1269
         Function::Hstack => StaticResult::Unknown,
         Function::Hyperlink => StaticResult::Scalar,
-        Function::Index => static_analysis_index(args),
+        Function::Index => legacy::static_analysis_index(args),
         Function::Indirect => static_analysis_indirect(args),
         Function::Lookup => not_implemented(args),
         Function::Match => not_implemented(args),
