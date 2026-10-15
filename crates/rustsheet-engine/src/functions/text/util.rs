@@ -38,6 +38,21 @@ fn unit_chars(units: impl Iterator<Item = u16>) -> String {
         .collect()
 }
 
+/// The inverse of [`one_char_per_unit`]: the UTF-16 units of a string it produced.
+fn unit_chars_to_units(text: &str) -> Vec<u16> {
+    text.chars()
+        .map(|c| {
+            let code = u32::from(c);
+            let code = if (0xF0000..0xF0800).contains(&code) {
+                code - 0xF0000 + 0xD800
+            } else {
+                code
+            };
+            code as u16
+        })
+        .collect()
+}
+
 pub(crate) enum Case {
     Sensitive,
     Insensitive,
@@ -242,45 +257,45 @@ pub(super) fn substitute_element(
 }
 
 /// SUBSTITUTE over exact UTF-16 units, used when any operand holds a lone surrogate: a lone half
-/// as `old_text` matches inside a pair, unit for unit (probes/text-lone-surrogates A41-A47). The
-/// result length is checked before it is built (CLAUDE.md directive 5), as for well-formed text.
+/// as `old_text` matches inside a pair, unit for unit (probes/text-lone-surrogates A41-A47).
+/// Each unit is one `char` (`one_char_per_unit`, which is reversible), so `str` matching, which
+/// is linear, finds the instances. The result length is checked before it is built (CLAUDE.md
+/// directive 5), as for well-formed text.
 fn substitute_units(
     text: &Text,
     old_text: &Text,
     new_text: &Text,
     instance_num: Option<i32>,
 ) -> Result<Text, Error> {
-    let units: Vec<u16> = text.units().collect();
-    let old: Vec<u16> = old_text.units().collect();
-    let new: Vec<u16> = new_text.units().collect();
-    let mut matches = Vec::new();
-    let mut at = 0;
-    while at + old.len() <= units.len() {
-        if units[at..at + old.len()] == old[..] {
-            matches.push(at);
-            at += old.len();
-        } else {
-            at += 1;
-        }
-    }
-    let replaced: Vec<usize> = match instance_num {
-        Some(n) => matches.get(n as usize - 1).copied().into_iter().collect(),
-        None => matches,
+    let (text, old, new) = (
+        one_char_per_unit(text),
+        one_char_per_unit(old_text),
+        one_char_per_unit(new_text),
+    );
+    let (text_len, old_len, new_len) = (
+        text.chars().count(),
+        old.chars().count(),
+        new.chars().count(),
+    );
+    let replaced = match instance_num {
+        Some(n) => text
+            .match_indices(old.as_str())
+            .nth(n as usize - 1)
+            .map_or(0, |_| 1),
+        None => text.matches(old.as_str()).count(),
     };
-    let result_len =
-        (units.len() + replaced.len() * new.len()).saturating_sub(replaced.len() * old.len());
-    if result_len > MAX_TEXT_UNITS && result_len > units.len() {
+    let result_len = (text_len + replaced * new_len).saturating_sub(replaced * old_len);
+    if result_len > MAX_TEXT_UNITS && result_len > text_len {
         return Err(Error::VALUE);
     }
-    let mut result = Vec::with_capacity(result_len);
-    let mut from = 0;
-    for &start in &replaced {
-        result.extend_from_slice(&units[from..start]);
-        result.extend_from_slice(&new);
-        from = start + old.len();
-    }
-    result.extend_from_slice(&units[from..]);
-    Ok(Text::from_utf16(result))
+    let result = match instance_num {
+        Some(n) => match text.match_indices(old.as_str()).nth(n as usize - 1) {
+            Some((at, _)) => format!("{}{}{}", &text[..at], new, &text[at + old.len()..]),
+            None => text,
+        },
+        None => text.replace(old.as_str(), &new),
+    };
+    Ok(Text::from_utf16(unit_chars_to_units(&result)))
 }
 
 #[cfg(test)]

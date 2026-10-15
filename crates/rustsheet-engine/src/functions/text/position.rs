@@ -32,18 +32,24 @@ pub(super) fn find_element(
     // (probes/text-surrogate-positions A14-A26, B11-B15).
     // A lone surrogate stays its own unit (probes/text-lone-surrogates A48-A57), also in SEARCH's
     // case folding, which only touches the well-formed runs.
-    fn unit_chars(text: &Text, is_search: bool) -> Cow<'_, str> {
+    fn search_units(text: &Text, is_search: bool) -> Cow<'_, str> {
         let plain: &str = text;
         match (text.has_lone_surrogate(), is_search) {
             (false, false) => one_char_per_utf16_unit(plain),
-            (false, true) => Cow::Owned(one_char_per_utf16_unit(&fold_case(plain)).into_owned()),
+            (false, true) => {
+                let folded = fold_case(plain);
+                match one_char_per_utf16_unit(&folded) {
+                    Cow::Borrowed(_) => Cow::Owned(folded),
+                    Cow::Owned(units) => Cow::Owned(units),
+                }
+            }
             (true, false) => Cow::Owned(one_char_per_unit(text)),
             (true, true) => Cow::Owned(one_char_per_unit(&text.map_runs(fold_case))),
         }
     }
     let (find_text, within_text) = (
-        unit_chars(&find_text, is_search),
-        unit_chars(&within_text, is_search),
+        search_units(&find_text, is_search),
+        search_units(&within_text, is_search),
     );
     let length = within_text.chars().count();
     // Excel: FIND accepts a start one past the end, where only "" is found (`FIND("","abc",4)` is

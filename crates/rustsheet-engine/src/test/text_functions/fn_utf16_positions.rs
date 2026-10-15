@@ -174,6 +174,12 @@ fn find_search_substitute_split_pairs_with_a_lone_half() {
         (format!("=LEN(SUBSTITUTE(\"a😀b😀\",{h},\"x\"))"), "6"),
         (format!("=LEN(SUBSTITUTE(\"😀\",{h}&{l},\"x\"))"), "1"),
         (format!("=LEN(SUBSTITUTE({h},{h},\"x\"))"), "1"),
+        // The result limit applies to the lone-surrogate path too (text.md "SUBSTITUTE result longer").
+        (format!("=SUBSTITUTE(REPT(\"a\",32766)&{h},{h},\"xx\")"), "#VALUE!"),
+        (format!("=LEN(SUBSTITUTE(REPT(\"a\",32766)&{h},{h},\"x\"))"), "32767"),
+        // A long near-miss pattern stays linear.
+        (format!("=SUBSTITUTE(REPT(\"a\",16000)&{l},REPT(\"a\",8000)&\"b\",\"x\")=REPT(\"a\",16000)&{l}"), "TRUE"),
+        (format!("=LEN(SUBSTITUTE(\"a\"&{h}&\"b\"&{h},{h},\"-\",2))"), "4"),
     ];
     for (formula, expected) in cases {
         let mut model = new_empty_model();
