@@ -37,21 +37,14 @@ impl Model {
         if matches!(first, CalcResult::EmptyArg) && matches!(second, CalcResult::EmptyArg) {
             return CalcResult::new_error(Error::NA, cell, "bottom and top omitted".to_string());
         }
-        let mut bounds = [0.0; 2];
-        for (slot, v) in bounds.iter_mut().zip([first, second]) {
-            if matches!(v, CalcResult::Boolean(_)) {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "booleans are not numbers here".to_string(),
-                );
-            }
-            match self.cast_to_number(v, cell) {
-                Ok(f) => *slot = f,
-                Err(e) => return e,
-            }
-        }
-        let [bottom, top] = bounds;
+        let bottom = match self.cast_to_number_no_bools(first, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        let top = match self.cast_to_number_no_bools(second, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
         if bottom > top {
             return CalcResult::Error {
                 error: Error::NUM,

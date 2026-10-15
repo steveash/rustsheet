@@ -249,3 +249,24 @@ fn test_randbetween_argument_checks() {
     assert_eq!(model._get_text("A5"), "#N/A");
     assert_eq!(model._get_text("A6"), "-5");
 }
+
+#[test]
+fn test_randbetween_draws_stay_in_range() {
+    let mut model = new_empty_model();
+    model._set("A1", "=RANDBETWEEN(3,3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3");
+    let mut low = i32::MAX;
+    let mut high = i32::MIN;
+    for i in 0..200 {
+        let cell = format!("B{}", i + 1);
+        model._set(&cell, "=RANDBETWEEN(2,4)");
+    }
+    model.evaluate();
+    for i in 0..200 {
+        let v: i32 = model._get_text(&format!("B{}", i + 1)).parse().unwrap();
+        low = low.min(v);
+        high = high.max(v);
+    }
+    assert!((2..=4).contains(&low) && (2..=4).contains(&high));
+}
