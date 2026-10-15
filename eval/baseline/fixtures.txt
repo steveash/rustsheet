@@ -2,6 +2,8 @@
 # never edit by hand. `C<TAB>case<TAB>checked-cells` lists every case; `F<TAB>case<TAB>item` lists
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
+C	fixtures/external-link-cached-3d-span.xlsx	10
+C	fixtures/external-link-cached-lookups.xlsx	24
 C	fixtures/external-link-cached-ranges.xlsx	99
 C	fixtures/external-link-cached-text.xlsx	19
 C	fixtures/ifs-legacy-range-criteria.xlsx	20
@@ -16,3 +18,12 @@ C	fixtures/t-d-pre-1900.xlsx	2
 C	fixtures/t-d-time-only.xlsx	2
 C	fixtures/t-d-z-suffix.xlsx	2
 C	fixtures/workday-intl-legacy-holidays.xlsx	6
+F	fixtures/external-link-cached-3d-span.xlsx	Refs!B10
+F	fixtures/external-link-cached-3d-span.xlsx	Refs!B2
+F	fixtures/external-link-cached-3d-span.xlsx	Refs!B3
+F	fixtures/external-link-cached-3d-span.xlsx	Refs!B4
+F	fixtures/external-link-cached-3d-span.xlsx	Refs!B5
+F	fixtures/external-link-cached-3d-span.xlsx	Refs!B6
+F	fixtures/external-link-cached-3d-span.xlsx	Refs!B7
+F	fixtures/external-link-cached-3d-span.xlsx	Refs!B8
+F	fixtures/external-link-cached-3d-span.xlsx	Refs!B9
