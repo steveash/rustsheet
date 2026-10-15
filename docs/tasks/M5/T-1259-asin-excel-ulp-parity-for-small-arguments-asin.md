@@ -3,7 +3,7 @@ id: T-1259
 title: "ASIN: Excel ulp parity for small arguments (ASIN(-0.0001))"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
