@@ -24,9 +24,6 @@ impl Model {
             Ok(v) => v,
             Err(e) => return e,
         };
-        if x == 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "SERIESSUM: x=0".to_string());
-        }
         let n = match self.get_number_no_bools(&args[1], cell) {
             Ok(v) => v,
             Err(e) => return e,
@@ -71,6 +68,15 @@ impl Model {
                     }
                 };
                 let exponent = n + (i as f64) * m;
+                // Excel: with x = 0 a term whose power is zero or negative is #NUM! whatever its
+                // coefficient (docs/excel-semantics/numbers.md "SERIESSUM with x = 0").
+                if x == 0.0 && exponent <= 0.0 {
+                    return CalcResult::new_error(
+                        Error::NUM,
+                        cell,
+                        "SERIESSUM: x=0 with a power of zero or less".to_string(),
+                    );
+                }
                 sum += coeff * x.powf(exponent);
                 i += 1;
             }
