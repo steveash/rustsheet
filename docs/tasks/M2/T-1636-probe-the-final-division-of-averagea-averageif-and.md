@@ -3,7 +3,7 @@ id: T-1636
 title: "Probe the final division of AVERAGEA, AVERAGEIF and AVERAGEIFS for double rounding"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1619 showed AVERAGE's final division rounds twice (probes-numeric/average-larg
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes-numeric/average-family-large-count-division` (36 cells, excel-graph): Excel double-rounds the final division in AVERAGEA, AVERAGEIF(S), SUBTOTAL(1/101); AGGREGATE(1) already matched via AVERAGE. Changed the three divisions to `extended_quotient`. numbers.md updated. Eval: +36 passing probe cells, 0 regressions.
