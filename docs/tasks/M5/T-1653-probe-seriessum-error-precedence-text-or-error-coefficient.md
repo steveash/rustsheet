@@ -3,7 +3,7 @@ id: T-1653
 title: "Probe SERIESSUM error precedence: text or error coefficient on a power <= 0 term with x = 0"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ T-1359 made x = 0 `#NUM!` only for a power <= 0, but `fn_seriessum` reads each c
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/seriessum-x-zero-error-precedence (27 cells, excel-graph): the engine already matched all of them (coefficients are
+read in order, the first problem wins; range coefficients differ for error cells). No engine change; numbers.md records the rule.
+Eval delta: probes +27 passing cells, no known-failure change.
