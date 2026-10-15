@@ -3,7 +3,7 @@ id: T-1265
 title: "Static analysis: CHOOSE maps Array counts into Range extents"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -31,23 +31,21 @@ switch `Range` to counts, with tests showing no export or spill change (or the e
 ## Out of scope
 - Tracking shapes of names and tables.
 
-## Open review finding (excel-fidelity, round 1, REQUEST_CHANGES)
-The branch's convention change flips the scalar/dynamic classification (`Model::set_cell_with_formula`, xlsx `cm="1"
-t="array"`) for some 1x1 shapes, with cell values unchanged:
-- `=ABS(CHOOSE(1,{5}))`, `=SUBTOTAL(9,CHOOSE(1,{5}))`, `=AGGREGATE(CHOOSE(1,{9}),0,E1:E6)`: dynamic on main, plain here
-  (a 1x1 array arm now gives `Range(0, 0)`, which broadcasting and AGGREGATE read as a single cell);
-- `=ABS(E1:E1+1)`, `=CHOOSE(1,E1:E1+1)`: plain on main, dynamic here (an operator over a single cell now gives
-  `Array(1, 1)`, was `Array(0, 0)`);
-- an empty `ArrayKind` is now non-scalar in `broadcast_static_result` (probably unreachable).
-Next step: probe Excel's saved `cm` flag for these five formulas (excel-probe) and match it, or keep main's
-classification for these shapes; then pin it with export/`is_dynamic` tests (the AGGREGATE test added here passes on
-main too). Until then the Outcome below overstates "no export change".
+## Review finding (excel-fidelity, round 1), resolved
+The convention change flipped the scalar/dynamic classification of some 1x1 shapes (`=ABS(CHOOSE(1,{5}))`,
+`=AGGREGATE(CHOOSE(1,{9}),0,E1:E6)` dynamic on main, plain on the first branch head; `=ABS(E1:E1+1)` the reverse).
+Probed (probes/legacy-one-cell-shape-intersection, excel-graph): Excel puts the legacy `@` on every one of these shapes,
+`ABS(@E1:E1)` included, so a one-cell range is a 1x1 array, not a scalar, when broadcasting. `broadcast_static_result`
+and AGGREGATE's `function_num`/options no longer skip `Range(0, 0)`, so all five formulas are dynamic (the safe direction:
+the debug assert fires only when a scalar-classified formula evaluates to an array). `=SUBTOTAL(9,CHOOSE(1,{5}))` stays
+dynamic as on main (a 1x1 array argument lifts to a 1x1 `#VALUE!`). The empty-`ArrayKind` case is unreachable (the parser
+rejects `{}`).
 
 ## Outcome
 `StaticResult::Range` holds extents (rows - 1, columns - 1) everywhere and `Array` holds counts; `StaticResult::counts`
-converts. Operators and `broadcast_static_result` now turn a range into its counts (a single cell still reads as a scalar
-when broadcasting), and CHOOSE turns its arms' counts back into extents (`CHOOSE(1,{1,2})` is `Range(0, 1)`, was
-`Range(1, 2)`). Only scalar-versus-not is read outside the parser (`Model::set_cell_with_formula`), and the legacy `@`
-placement matches on `Range(_, _)`, so no export or spill result changes: eval check is unchanged (0 fixed, 0 regressions
-in every gated suite). New unit tests: `choose_of_a_range_function_num_spills_like_the_range` (AGGREGATE over a 2x2 and a
-1x1 CHOOSE arm) and `legacy_choose_of_ranges_is_intersected_and_exports_unchanged`.
+converts. Operators and `broadcast_static_result` turn a range into its counts, a one-cell range included, and CHOOSE turns
+its arms' counts back into extents (`CHOOSE(1,{1,2})` is `Range(0, 1)`, was `Range(1, 2)`). Classification changes against
+main, all toward Excel's legacy `@` (probes/legacy-one-cell-shape-intersection): `=ABS(E1:E1+1)`, `=ABS(E1:E1)` and other
+one-cell ranges in a broadcast argument are now dynamic. Eval: new probe case (26 cells, 23 pass; H3, M3 and P3 are legacy
+`@` placements main also misses, fix T-1633); 0 regressions. Unit tests: `one_cell_shapes_are_not_scalar`,
+`choose_of_a_range_function_num_spills_like_the_range`, `legacy_choose_of_ranges_is_intersected_and_exports_unchanged`.

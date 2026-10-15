@@ -400,15 +400,17 @@ fn scalar_arguments(args: &[Node]) -> StaticResult {
     broadcast_static_result(args)
 }
 
-/// The shape of broadcasting `args` element-wise: scalar if all are (a single cell counts as one),
-/// else an array of the largest counts.
+/// The shape of broadcasting `args` element-wise: scalar if all are, else an array of the largest
+/// counts. A one-cell range (`E1:E1`, or CHOOSE of a 1x1 array) is a 1x1 array, not a scalar:
+/// Excel puts a legacy `@` on it as on any range, `=ABS(@E1:E1)`, `=ABS(@CHOOSE(1,{5}))` and
+/// `=ABS(@E1:E1+1)` (probes/legacy-one-cell-shape-intersection, T-1265).
 fn broadcast_static_result<'a>(args: impl IntoIterator<Item = &'a Node>) -> StaticResult {
     let mut shape: Option<(i32, i32)> = None;
     for arg in args {
         match run_static_analysis_on_node(arg) {
-            StaticResult::Scalar | StaticResult::Range(0, 0) => {}
+            StaticResult::Scalar => {}
             StaticResult::Unknown => return StaticResult::Unknown,
-            // An array or a multi-cell range (`counts` is never `None` here).
+            // An array or a range (`counts` is never `None` here).
             other => {
                 let (a, b) = other.counts().unwrap_or((1, 1));
                 let (n, m) = shape.unwrap_or((0, 0));

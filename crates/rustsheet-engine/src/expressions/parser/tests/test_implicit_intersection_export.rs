@@ -355,6 +355,35 @@ fn legacy_choose_of_ranges_is_intersected_and_exports_unchanged() {
     ]);
 }
 
+// A one-cell range and a 1x1 array are not scalars: Excel shows the legacy `=ABS(@E1:E1+1)`,
+// `=ABS(@CHOOSE(1,{5}))`, `=AGGREGATE(@CHOOSE(1,{9}),0,E1:E6)`, `=CHOOSE(1,@E1:E1+1)` and
+// `=ABS(@E1:E1)`, so these are dynamic formulas; CHOOSE of a single cell stays a scalar
+// (probes/legacy-one-cell-shape-intersection, T-1265).
+#[test]
+fn one_cell_shapes_are_not_scalar() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    let mut parser = new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    for (formula, scalar) in [
+        ("ABS(E1:E1+1)", false),
+        ("ABS(CHOOSE(1,{5}))", false),
+        ("AGGREGATE(CHOOSE(1,{9}),0,E1:E6)", false),
+        ("CHOOSE(1,E1:E1+1)", false),
+        ("ABS(E1:E1)", false),
+        ("ABS({5})", false),
+        ("AGGREGATE(CHOOSE(1,G1),0,E1:E6)", true),
+        ("ABS(E1+1)", true),
+    ] {
+        let node = parser.parse(formula, &cell_reference);
+        let result = run_static_analysis_on_node(&node);
+        assert_eq!(matches!(result, StaticResult::Scalar), scalar, "{formula}");
+    }
+}
+
 // A legacy formula reads an array constant in INDEX's indices as its first element, under
 // SUMPRODUCT and in arithmetic too, while a function call there keeps its own rules and INDEX's
 // first argument keeps SUMPRODUCT's array context; the `@`s
