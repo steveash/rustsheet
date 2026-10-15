@@ -49,3 +49,14 @@ fn ceiling_math_error_number_is_broadcast_over_an_array_mode() {
     assert_eq!(model._get_text("A2"), *"#DIV/0!");
     assert_eq!(model._get_text("B1"), *"#DIV/0!");
 }
+
+#[test]
+fn mround_keeps_its_scalar_rules() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MROUND(TRUE,)");
+    model._set("B1", "=MROUND({TRUE,2.6},1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("B1"), *"#VALUE!");
+    assert_eq!(model._get_text("C1"), *"3");
+}

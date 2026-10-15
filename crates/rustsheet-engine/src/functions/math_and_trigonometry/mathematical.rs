@@ -451,22 +451,34 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let mut operands = Vec::with_capacity(2);
-        for arg in args {
-            let value = self.evaluate_node_in_context(arg, cell);
-            // A missing argument is #N/A and a boolean #VALUE!, unlike most numeric functions.
-            if matches!(value, CalcResult::EmptyArg) {
-                return CalcResult::new_error(
-                    Error::NA,
-                    cell,
-                    "Bad argument for MROUND".to_string(),
-                );
-            }
-            if matches!(value, CalcResult::Boolean(_)) {
-                return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
-            }
-            operands.push(self.number_or_array(value, cell));
+        let values: Vec<CalcResult> = args
+            .iter()
+            .map(|arg| self.evaluate_node_in_context(arg, cell))
+            .collect();
+        // A missing argument is #N/A and a boolean #VALUE!, unlike most numeric functions;
+        // every missing argument is checked before any boolean (the order MROUND always had here).
+        if values.iter().any(|v| matches!(v, CalcResult::EmptyArg)) {
+            return CalcResult::new_error(Error::NA, cell, "Bad argument for MROUND".to_string());
         }
+        if values.iter().any(|v| matches!(v, CalcResult::Boolean(_))) {
+            return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
+        }
+        let operands = values
+            .into_iter()
+            .map(|value| match self.number_or_array(value, cell) {
+                // Booleans are not cast in a scalar MROUND, so not in an array one either
+                // (INFERRED, arrays.md "CEILING/FLOOR family and MROUND lift over arrays").
+                Ok(NumberOrArray::Array(mut rows)) => {
+                    for node in rows.iter_mut().flatten() {
+                        if matches!(node, ArrayNode::Boolean(_)) {
+                            *node = ArrayNode::Error(Error::VALUE);
+                        }
+                    }
+                    Ok(NumberOrArray::Array(rows))
+                }
+                other => other,
+            })
+            .collect();
         self.lift_number_operands(operands, cell, "Invalid arguments", |[value, multiple]| {
             if multiple == 0.0 {
                 return Ok(0.0);
