@@ -149,28 +149,49 @@ Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test; 
 test is UNVERIFIED beyond the fit set (T-1533)
 Tasks: T-1525, T-0916, T-1533
 
-## IRR returns x - 1 and stops after a few Newton-like steps (partly fitted)
-Rule: IRR iterates on x = 1 + r (or on 1/x) and returns x - 1: for all 263 numeric IRR cells of
-m9-fin-irr-rate and solver-iteration-traces, value + 1 is exactly representable
-(tools/tests/test_fitlab_solvers.py), which a value computed as a rate would fail for most rates below
-0.5. The update rule and the stop test are not fitted. The guess sweep shows quadratic convergence stopped
-early: for `{-20,5,5,5,5,5}` with guesses 0.05 to 0.07 and 0.0875 to 0.115 (I!A1:A9, I!A16:A27), Excel's
-error grows as (guess - root)^8, the signature of the third iterate of a quadratic method, with an
-effective constant f''/(2f') between -1.19 and -1.25 (Newton in v has -1.17, Newton in r -2.11; scratch
-analysis, reproducible in the lab after T-1534). Guesses 0.0725, 0.075, 0.085 and 0.12 return the root's bits
-(0.07930826116052869), as if one more step was taken; 0.1175 (I!A28) is 16 ulp below them. Guesses close
-to the root break the law: 0.0775, 0.08 and 0.0825 (I!A12:A14) give -1.7e-13, +5.9e-15 and +1.6e-12, and
-0.0793 (m9-fin-irr-rate Calc!A187) gives -1.6e-11, so the stop test is not a fixed step tolerance.
-Two-flow roots come back as the nearest x or one to three ulp off (`IRR({-1,7})` is 5.999999999999997).
-Evidence: probes/solver-iteration-traces I!A1:A29 (guess sweep), I!B (far guesses on
-`{-1,0,...,0,2}`), I!C, I!D (closed-form two- and three-flow roots); excel-graph, 2026-10-14, T-1525.
-`uv run rustsheet-fitlab irr` (263 cells) scores value-returning candidates (k = 1 to 8 steps, or
-converged): Newton in v = 1/(1+r) converged 74/263 bit-exact (the best), FD Newton in v (h = 1e-4v, 1e-6v,
-1e-8v) 73 to 74, Newton in x = 1 + r 47 (8 steps), Newton in r 5; the union of all is 96/263. The engine
-gets 1/263.
-Ours: Newton in r to 1e-8, with a bisection fallback (`compute_irr`, functions/financial/financial_util.rs).
-Status: UNVERIFIED (the update rule and the stop test)
-Tasks: T-1525, T-0916, T-1533
+## IRR is a secant in v = 1/(1 + r) from v0 and v0 +- 0.001 (fitted, 189/263 bit-exact)
+Rule: IRR runs the secant method on NPV as a function of v = 1/(1 + r):
+- start: v0 = 1/(1 + guess) (guess 0.1 when omitted) and v1 = v0 + 0.001 when NPV(v0) > 0, else v0 - 0.001;
+- step: v2 = v0 - NPV(v0)(v1 - v0)/(NPV(v1) - NPV(v0)), then shift (v0, v1) <- (v1, v2);
+- stop: at the first v2 with |v2 - v1| < 1e-7 and |NPV(v2)| < 1e-7, returning 1/v2 - 1;
+- a run that does not stop is retried once from guess 0.1. (The 18 `#NUM!` cells of the sweeps are all
+  flows without a sign change; they are not scored.)
+So the result is x - 1 with x = 1/v a double: for all 263 numeric IRR cells, value + 1 is exactly
+representable (tools/tests/test_fitlab_solvers.py). Evidence for each part:
+- The secant's error law, signs included: on `{-20,5,5,5,5,5}` the guesses 0.05 to 0.07 and 0.0875 to 0.115
+  (I!A1:A9, I!A16:A27) return the fourth secant iterate, whose error grows as (guess - root)^8 (the
+  Fibonacci orders 1, 1, 2, 3, 5, 8). Guesses just above the root give positive errors (I!A13, I!A14:
+  +5.9e-15, +1.6e-12), which no quadratic method with f''/(2f') < 0 can produce and the secant's third
+  iterate does. The offset is 0.001 in v, toward larger |NPV| (+ for guesses below this root, - above):
+  with +0.001 on both sides the right-hand guesses miss by 3 to 11,410 ulp (121/263 overall); with -0.001
+  they are exact.
+- The step test: over the I sheet the returned iterate's |dv| is at most 9.84e-8 and every earlier one's
+  at least 1.18e-7, so the bound is 1e-7 (Excel's documented "0.00001 percent"); 1e-6 scores 169, 1e-8
+  146.
+- The residual test makes IRR scale-dependent: `{-20,5,5,5,5,5}` gives 0.07930826116039724 and
+  `{-20000000,5000000,...}` the converged root (m9-fin-irr-rate Calc!A1, A3). Without it 181/263, with
+  1e-6 188, with 1e-8 180.
+- The retry: guesses 0.7, 2, 3, 5 on `{-1,0,...,0,2}` (I!B13:B16) and 1, 10 (Calc!A134, A135, A159, A160)
+  return exactly Excel's guess-0.1 value; from those guesses the secant creeps on a flat NPV and does not
+  stop. Without the retry 187/263. (The model misses these cells by 1 ulp, as it misses the guess-0.1
+  cells themselves, Calc!A132 and A157: the last-bit question below.)
+- The step cap is at least 35 (the most steps an exact cell takes, I!B1) and below 1000 on this data
+  (caps 35 to 100 score 189, 1000 scores 188: a slow run must fail and retry); 50 is used. A cap of 20
+  (Excel's documented "20 tries") scores 181.
+Open: 18 of the 74 misses are 1 to 4 ulp off, and most of the rest are within 1e-9 (NPV's evaluation
+order matters: as sum c_i/x^i with x = 1/v the model gets 189, by Horner in v also 189 but on different
+cells, and the two-flow cells prefer Horner), and `{0,0,-100,110}` with guess -0.5 (Calc!A173, 3 ulp)
+and guess 10 (A175, where the model converges to another root, 6348552.78) are not reproduced.
+Evidence: probes/solver-iteration-traces I!A1:A29 (guess sweep), I!B (far guesses on `{-1,0,...,0,2}`),
+I!C, I!D (closed-form two- and three-flow roots), probes-numeric/m9-fin-irr-rate (scaled and sign-flipped
+flows, guesses); excel-graph, 2026-10-14. `uv run rustsheet-fitlab irr` (263 cells): the fitted secant
+189/263 bit-exact, 207 within 4 ulp, 260 within 1e-9; the best Newton candidate (in v, converged) 74; the
+engine 1.
+Ours: Newton in r to 1e-8, with a bisection fallback (`compute_irr`, functions/financial/financial_util.rs);
+T-0916 implements the secant.
+Status: VERIFIED for the method (secant in v, offset, both stop tests, retry; 189/263 bit-exact); UNVERIFIED
+for the last bit (NPV's evaluation order), the step cap, and flows with leading zeros (A173, A175)
+Tasks: T-1525, T-1533, T-0916
 
 ## RATE iterates on the rate itself
 Rule: RATE's results are rates, not x - 1: only 7 of the 136 literal RATE cells pass the x - 1 test above
@@ -184,6 +205,12 @@ RATE(48,-200,8000,0,1)), R!D:F (annuities with type 0/1 and fv); excel-graph, 20
 `uv run rustsheet-fitlab rate` (136 literal cells; the 277 nested `RATE(n,PMT(...),...)` cells are not
 parsed): Newton in r on the documented f(r) = pv(1+r)^n + pmt(1+r*type)((1+r)^n - 1)/r + fv gives at most
 11/136 bit-exact (4 to 8 steps), FD Newton (h = 1e-8) 7/136; the engine gets 12/136.
+T-1533 tried IRR's secant on RATE's documented f(r) (lab `rate`, family "secant": second point
+r0 + 0.001, -0.001 or 0.0001 times the sign of f(r0); stop |dr| < 1e-7 or 1e-10, with and without
+|f| < 1e-7): at most 19/136 bit-exact (-0.001, |dr| < 1e-7, |f| < 1e-7), 40 within 4 ulp. Excel's
+errors on the guess sweep R!C1:C31 are not smooth in the guess (C8 -1.8e-13, C9 +2.6e-16, C11
++1.6e-13), unlike IRR's; between 0.019 and 0.028 they are positive and grow as about (guess - root)^26
+(a secant's order 21 or 34; scratch analysis against a 60-digit root, not a lab fit, until T-1534's traces).
 Ours: Newton, up to 50 iterations (`compute_rate`, functions/financial/financial_util.rs).
 Status: UNVERIFIED (the update rule and the stop test)
 Tasks: T-1525, T-0916, T-1533
