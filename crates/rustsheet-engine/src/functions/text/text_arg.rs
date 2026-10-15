@@ -79,7 +79,7 @@ pub(crate) fn broadcast_text(
             Ok(ArrayNode::String(s)) => CalcResult::String(s),
             Ok(ArrayNode::Number(n)) => CalcResult::Number(n),
             Ok(ArrayNode::Boolean(b)) => CalcResult::Boolean(b),
-            Ok(ArrayNode::Empty) => CalcResult::String(String::new()),
+            Ok(ArrayNode::Empty) => CalcResult::String(String::new().into()),
             Ok(ArrayNode::Error(e)) | Err(e) => CalcResult::new_error(e, cell, String::new()),
         };
     }

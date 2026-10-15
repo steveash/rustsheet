@@ -40,7 +40,9 @@ fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, 
         return Err(Error::VALUE);
     }
     let num_chars = near_integer_count(num) as usize;
-    Ok(ArrayNode::String(s.chars().take(num_chars).collect()))
+    Ok(ArrayNode::String(
+        s.chars().take(num_chars).collect::<String>().into(),
+    ))
 }
 
 /// Computes a single RIGHT result from one element of each argument.
@@ -52,7 +54,9 @@ fn right_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode,
     }
     let num_chars = near_integer_count(num) as usize;
     let skip = s.chars().count().saturating_sub(num_chars);
-    Ok(ArrayNode::String(s.chars().skip(skip).collect()))
+    Ok(ArrayNode::String(
+        s.chars().skip(skip).collect::<String>().into(),
+    ))
 }
 
 /// MID's `start_num` and `num_chars` must be below 2^31 (they are read as 32-bit integers).
@@ -79,7 +83,7 @@ fn mid_element(
     // (probes/text-surrogate-positions A9-A13).
     let first = (start.floor() as usize).saturating_sub(1);
     let end = first.saturating_add(length.floor() as usize);
-    Ok(ArrayNode::String(utf16_slice(&s, first, end)))
+    Ok(ArrayNode::String(utf16_slice(&s, first, end).into()))
 }
 
 /// Computes a single LEN result.
@@ -99,7 +103,7 @@ fn rept_element(text: &ArrayNode, number_times: Result<f64, Error>) -> Result<Ar
     if number_times < 0.0 || units * number_times > MAX_TEXT_UNITS as f64 {
         return Err(Error::VALUE);
     }
-    Ok(ArrayNode::String(text.repeat(number_times as usize)))
+    Ok(ArrayNode::String(text.repeat(number_times as usize).into()))
 }
 
 /// Computes a single SUBSTITUTE result from one element of each argument.
@@ -124,14 +128,14 @@ fn substitute_element(
         None => None,
     };
     if old_text.is_empty() {
-        return Ok(ArrayNode::String(text));
+        return Ok(ArrayNode::String(text.into()));
     }
     if substitute_exceeds_limit(&text, &old_text, &new_text, instance_num) {
         return Err(Error::VALUE);
     }
     Ok(ArrayNode::String(match instance_num {
-        Some(n) => substitute(&text, &old_text, &new_text, n),
-        None => text.replace(&old_text, &new_text),
+        Some(n) => substitute(&text, &old_text, &new_text, n).into(),
+        None => text.replace(&old_text, &new_text).into(),
     }))
 }
 
@@ -150,7 +154,7 @@ fn exact_element(text1: &ArrayNode, text2: &ArrayNode) -> Result<ArrayNode, Erro
 
 /// A formatted TEXT result as an array element: its text, or `#VALUE!` for a bad format.
 fn formatted_node(d: Formatted) -> ArrayNode {
-    d.error.map_or(ArrayNode::String(d.text), |_| {
+    d.error.map_or(ArrayNode::String(d.text.into()), |_| {
         ArrayNode::Error(Error::VALUE)
     })
 }
@@ -310,7 +314,7 @@ impl Model {
                         message: "Invalid format code".to_string(),
                     };
                 }
-                CalcResult::String(d.text)
+                CalcResult::String(d.text.into())
             }
         }
     }
@@ -415,13 +419,15 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         match self.get_string_or_array(&args[0], cell) {
-            Ok(crate::cast::StringOrArray::String(s)) => CalcResult::String(f(&s)),
+            Ok(crate::cast::StringOrArray::String(s)) => CalcResult::String(f(&s).into()),
             Ok(crate::cast::StringOrArray::Array(arr)) => CalcResult::Array(
                 arr.iter()
                     .map(|row| {
                         row.iter()
                             .map(|n| match crate::cast::array_node_to_string(n) {
-                                Ok(s) => crate::expressions::parser::ArrayNode::String(f(&s)),
+                                Ok(s) => {
+                                    crate::expressions::parser::ArrayNode::String(f(&s).into())
+                                }
                                 Err(e) => crate::expressions::parser::ArrayNode::Error(e),
                             })
                             .collect()
@@ -436,7 +442,7 @@ impl Model {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
                 CalcResult::Number(v) => number_to_text(v),
-                CalcResult::String(v) => v,
+                CalcResult::String(v) => v.into_lossy_string(),
                 CalcResult::Boolean(b) => {
                     if b {
                         "TRUE".to_string()
@@ -683,19 +689,19 @@ impl Model {
             };
         };
         match text_after(&text, &delimiter, instance_num, match_mode) {
-            Some(s) => CalcResult::String(s),
+            Some(s) => CalcResult::String(s.into()),
             None => {
                 if match_end == 1.0 {
                     if instance_num == 1 {
-                        return CalcResult::String("".to_string());
+                        return CalcResult::String("".into());
                     } else if instance_num == -1 {
-                        return CalcResult::String(text);
+                        return CalcResult::String(text.into());
                     }
                 }
                 if arg_count == 6 {
                     // An empty cell is converted to empty string (not 0)
                     match self.evaluate_node_in_context(&args[5], cell) {
-                        CalcResult::EmptyCell => CalcResult::String("".to_string()),
+                        CalcResult::EmptyCell => CalcResult::String("".into()),
                         result => result,
                     }
                 } else {
@@ -788,19 +794,19 @@ impl Model {
             };
         };
         match text_before(&text, &delimiter, instance_num, match_mode) {
-            Some(s) => CalcResult::String(s),
+            Some(s) => CalcResult::String(s.into()),
             None => {
                 if match_end == 1.0 {
                     if instance_num == -1 {
-                        return CalcResult::String("".to_string());
+                        return CalcResult::String("".into());
                     } else if instance_num == 1 {
-                        return CalcResult::String(text);
+                        return CalcResult::String(text.into());
                     }
                 }
                 if arg_count == 6 {
                     // An empty cell is converted to empty string (not 0)
                     match self.evaluate_node_in_context(&args[5], cell) {
-                        CalcResult::EmptyCell => CalcResult::String("".to_string()),
+                        CalcResult::EmptyCell => CalcResult::String("".into()),
                         result => result,
                     }
                 } else {
@@ -923,7 +929,7 @@ impl Model {
         match result {
             CalcResult::String(_) => result,
             error @ CalcResult::Error { .. } => error,
-            _ => CalcResult::String("".to_string()),
+            _ => CalcResult::String("".into()),
         }
     }
 
@@ -952,7 +958,9 @@ impl Model {
             let strict = format
                 .as_ref()
                 .map_or(Ok(false), |f| self.valuetotext_format(f.elem(i, j)))?;
-            Ok(ArrayNode::String(value_to_text(text.elem(i, j), strict)))
+            Ok(ArrayNode::String(
+                value_to_text(text.elem(i, j), strict).into(),
+            ))
         };
         // A scalar error text prints as text, which `broadcast_text` would return as the error.
         let scalar_format = format.as_ref().is_none_or(|f| f.dims() == (1, 1));

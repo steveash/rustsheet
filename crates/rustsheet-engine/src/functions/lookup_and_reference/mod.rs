@@ -327,14 +327,14 @@ impl Model {
             match result {
                 CalcResult::Range { .. } | CalcResult::Array(_) => {
                     match self.cast_to_string(result, cell) {
-                        Ok(s) => CalcResult::String(s),
+                        Ok(s) => CalcResult::String(s.into()),
                         Err(error) => error,
                     }
                 }
                 other => other,
             }
         } else {
-            CalcResult::String(location.clone())
+            CalcResult::String(location.clone().into())
         };
         // A cell displaying an error is not clickable: no link is attached
         if matches!(display, CalcResult::Error { .. }) {
@@ -837,7 +837,7 @@ impl Model {
                 };
             }
             if let Ok(Some(f)) = self.get_english_cell_formula(left.sheet, left.row, left.column) {
-                CalcResult::String(f)
+                CalcResult::String(f.into())
             } else {
                 CalcResult::Error {
                     error: Error::NA,

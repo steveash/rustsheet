@@ -34,24 +34,22 @@ impl Model {
             },
             CalcResult::Array(a) => a,
             CalcResult::Number(n) => {
-                return CalcResult::String(format_array_value(&ArrayNode::Number(n), strict));
+                return CalcResult::String(
+                    format_array_value(&ArrayNode::Number(n), strict).into(),
+                );
             }
             CalcResult::String(s) => {
                 return CalcResult::String(if strict {
-                    format!("\"{}\"", s.replace('"', "\"\""))
+                    format!("\"{}\"", s.replace('"', "\"\"")).into()
                 } else {
                     s
                 });
             }
             CalcResult::Boolean(b) => {
-                return CalcResult::String(if b {
-                    "TRUE".to_string()
-                } else {
-                    "FALSE".to_string()
-                });
+                return CalcResult::String(if b { "TRUE".into() } else { "FALSE".into() });
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => {
-                return CalcResult::String(String::new());
+                return CalcResult::String(String::new().into());
             }
             error @ CalcResult::Error { .. } => return error,
             CalcResult::Lambda(_) => {
@@ -83,7 +81,7 @@ impl Model {
                 .collect();
             elements.join(", ")
         };
-        CalcResult::String(result)
+        CalcResult::String(result.into())
     }
 }
 
@@ -107,7 +105,7 @@ fn format_array_value(node: &ArrayNode, strict: bool) -> String {
             if strict {
                 format!("\"{}\"", s.replace('"', "\"\""))
             } else {
-                s.clone()
+                (**s).to_owned()
             }
         }
         ArrayNode::Error(e) => format!("{e}"),

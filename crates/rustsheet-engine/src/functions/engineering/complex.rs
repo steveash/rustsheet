@@ -232,7 +232,7 @@ impl Model {
         };
 
         let complex = Complex { x, y, suffix };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
 
     pub(crate) fn fn_imabs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -279,7 +279,7 @@ impl Model {
             Err(error) => return error,
         };
         let complex = Complex { x, y: -y, suffix };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
     pub(crate) fn fn_imcos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
@@ -299,7 +299,7 @@ impl Model {
             y: -x.sin() * y.sinh(),
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
     pub(crate) fn fn_imcosh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
@@ -319,7 +319,7 @@ impl Model {
             y: x.sinh() * y.sin(),
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
     pub(crate) fn fn_imcot(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
@@ -340,14 +340,14 @@ impl Model {
                 y: -1.0 / y.tanh(),
                 suffix,
             };
-            return CalcResult::String(complex.to_string());
+            return CalcResult::String(complex.to_string().into());
         } else if y == 0.0 {
             let complex = Complex {
                 x: 1.0 / x.tan(),
                 y: 0.0,
                 suffix,
             };
-            return CalcResult::String(complex.to_string());
+            return CalcResult::String(complex.to_string().into());
         }
 
         let x_cot = 1.0 / x.tan();
@@ -362,7 +362,7 @@ impl Model {
         }
 
         let complex = Complex { x, y, suffix };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
 
     pub(crate) fn fn_imcsc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -390,7 +390,7 @@ impl Model {
             y: -x_cos * y_sinh / t,
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
 
     pub(crate) fn fn_imcsch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -418,7 +418,7 @@ impl Model {
             y: -x_cosh * y_sin / t,
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
 
     pub(crate) fn fn_imdiv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -445,7 +445,7 @@ impl Model {
             y: (-x1 * y2 + y1 * x2) / t,
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
 
     pub(crate) fn fn_imexp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -462,7 +462,7 @@ impl Model {
             y: x.exp() * y.sin(),
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
     pub(crate) fn fn_imln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
@@ -481,7 +481,7 @@ impl Model {
             y: a,
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
     pub(crate) fn fn_imlog10(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
@@ -500,7 +500,7 @@ impl Model {
             y: a * f64::log10(f64::exp(1.0)),
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
     pub(crate) fn fn_imlog2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
@@ -519,7 +519,7 @@ impl Model {
             y: a * f64::log2(f64::exp(1.0)),
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
 
     // IMPOWER(imnumber, power)
@@ -565,7 +565,7 @@ impl Model {
         }
 
         let complex = Complex { x, y, suffix };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
 
     pub(crate) fn fn_improduct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -591,7 +591,7 @@ impl Model {
             y: x1 * y2 + y1 * x2,
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
     pub(crate) fn fn_imreal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
@@ -624,7 +624,7 @@ impl Model {
             y: x_sin * y_sinh / t,
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
     pub(crate) fn fn_imsech(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
@@ -647,7 +647,7 @@ impl Model {
             y: -x_sinh * y_sin / t,
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
     pub(crate) fn fn_imsin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
@@ -663,7 +663,7 @@ impl Model {
             y: x.cos() * y.sinh(),
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
     pub(crate) fn fn_imsinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
@@ -679,7 +679,7 @@ impl Model {
             y: x.cosh() * y.sin(),
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
     pub(crate) fn fn_imsqrt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
@@ -698,7 +698,7 @@ impl Model {
             y: r * f64::sin(a / 2.0),
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
     pub(crate) fn fn_imsub(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
@@ -720,7 +720,7 @@ impl Model {
             y: y1 - y2,
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
 
     pub(crate) fn fn_imsum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -743,7 +743,7 @@ impl Model {
             y: y1 + y2,
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
 
     pub(crate) fn fn_imtan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -765,7 +765,7 @@ impl Model {
             y: (y_tanh + x_tan * x_tan * y_tanh) / t,
             suffix,
         };
-        CalcResult::String(complex.to_string())
+        CalcResult::String(complex.to_string().into())
     }
 }
 

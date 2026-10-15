@@ -156,7 +156,7 @@ impl Model {
         };
         broadcast_text(cell, &[&number], |i, j| {
             let v = self.array_node_to_number(number.elem(i, j))?;
-            Ok(ArrayNode::String(baht_text(v)))
+            Ok(ArrayNode::String(baht_text(v).into()))
         })
     }
 }
