@@ -167,6 +167,13 @@ Implemented in: `array_of_errors` and `MISSING` (crates/rustsheet-engine/src/ari
 `TextArg::Error` (crates/rustsheet-engine/src/functions/text/text_arg.rs), `fn_date`, `fn_weekday`.
 Tasks: T-0129, T-0994, T-1022, T-1056
 
+## CEILING/FLOOR family and MROUND lift over arrays
+Rule: ISO.CEILING, CEILING, CEILING.MATH, CEILING.PRECISE, FLOOR, FLOOR.MATH, FLOOR.PRECISE and MROUND lift element-wise over an array or multi-cell range in every argument. An error in `number` still broadcasts over an array in another argument (`CEILING.MATH(<error>,sig,{9x1 mode})` is a 9x1 array, `#SPILL!` where it cannot spill).
+Evidence: gen-m7/e5a361112d83d0c3 Calc!A9 (ISO.CEILING, excel-graph 2026-10-11); gen-m9/89693ab0cafc29df Calc!A14 (CEILING.MATH, excel-graph 2026-10-12). Only these two are evidenced; the others follow the general lift rule.
+Status: VERIFIED (ISO.CEILING, CEILING.MATH), INFERRED (the rest)
+Implemented in: functions/math_and_trigonometry/mathematical.rs (`lift_with_defaults`, `lift_numbers`)
+Tasks: T-1357
+
 ## ROUND, ROUNDUP, ROUNDDOWN and TRUNC lift over arrays
 Rule: `ROUNDDOWN(array, num_digits)` returns an array, element-wise, with either argument an array; an error in either argument broadcasts (`ROUND(A1:B1,1/0)` and `ROUND(1/0,A1:B1)` are `#DIV/0!`).
 Evidence: gen-m2/893302d6c5b99e2e Calc!A313; probes/round-concat-array-lift (excel-graph, 2026-10-05).
