@@ -1,4 +1,5 @@
 use crate::{
+    arithmetic::extended_quotient,
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     Model,
@@ -6,7 +7,6 @@ use crate::{
 
 use super::criteria::{build_criteria_with, CriteriaFlavor};
 use super::statistical::variance::{variance_result, VarianceKind};
-use crate::arithmetic::extended_quotient;
 
 impl Model {
     // =DAVERAGE(database, field, criteria)
