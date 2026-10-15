@@ -1,6 +1,6 @@
 ---
 id: T-1516
-title: "Probe double rounding in AVERAGEA, SUMIF, database sums and AVERAGE division by counts above 2"
+title: "Probe double rounding in AVERAGEA, SUMIF and database sums (AVERAGE count division moved to T-1619)"
 milestone: M2
 lane: research
 status: done
