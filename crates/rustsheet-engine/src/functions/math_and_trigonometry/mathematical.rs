@@ -506,7 +506,15 @@ impl Model {
     single_number_fn!(fn_sinh, |f| Ok(super::hyperbolic::sinh(f)));
     single_number_fn!(fn_cosh, |f| Ok(super::hyperbolic::cosh(f)));
     single_number_fn!(fn_tanh, |f| Ok(super::hyperbolic::tanh(f)));
-    single_number_fn!(fn_asin, |f| Ok(f64::asin(f)));
+    // Excel's ASIN is not libm's: `atan(x / sqrt((1 - x) * (1 + x)))` in doubles gives 233 of the 268
+    // cells of probes/asin-argument-sweep (libm `asin` 186), `ASIN(-0.0001)` and `ASIN(0.42)` among
+    // them. Excel's is not even odd (`ASIN(0.09)` and `ASIN(-0.09)` differ in the last digit), so no
+    // formulation found yet fits every cell (docs/excel-semantics/numbers.md "ASIN of a small
+    // argument"). At ±1 the quotient is ±inf and atan gives ±π/2; outside [-1, 1] the square root is
+    // NaN, which is `#NUM!`.
+    single_number_fn!(fn_asin, |f: f64| Ok(f64::atan(
+        f / ((1.0 - f) * (1.0 + f)).sqrt()
+    )));
     single_number_fn!(fn_acos, |f| Ok(f64::acos(f)));
     single_number_fn!(fn_atan, |f| Ok(f64::atan(f)));
     single_number_fn!(fn_asinh, |f| Ok(f64::asinh(f)));

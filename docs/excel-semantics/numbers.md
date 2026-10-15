@@ -1167,14 +1167,22 @@ Status: VERIFIED for the observed cells; the exact threshold and TAN are UNVERIF
 Tasks: T-1192, T-1201, T-1202
 
 ## ASIN of a small argument
-Rule: `ASIN(-0.0001)` is -0.00010000000016666668 in Excel; libm `asin` gives -0.00010000000016666667 (one ulp off),
-while `atan(x/sqrt(1-x*x))` reproduces Excel. Which formulation Excel uses over the whole domain is unknown.
-Evidence: gen-m6/2f6b96385ed3facd Calc!A38 (excel-graph, 2026-10-09, T-1239); gen-m7/0e40208f51c2454c Calc!A27 (same value)
-and gen-m7/cb748b6a9b81fbb7 Calc!A38 `ASIN(0.42)` = 0.4334453200698859 (excel-graph, 2026-10-11, T-1275), where libm `asin` and both `atan2(x,sqrt(1-x*x))`
-forms give 0.43344532006988595 and `atan(x/sqrt(1-x*x))` 0.433445320069886: no candidate fits both cells.
-Ours: libm `asin`, one ulp off.
-Status: VERIFIED for the cell; formulation UNVERIFIED
-Tasks: T-1259
+Rule: Excel's ASIN is not libm's `asin` and not correctly rounded. `ASIN(-0.0001)` is -0.00010000000016666668 (libm, correctly
+rounded: ...667) and `ASIN(0.42)` is 0.4334453200698859 (libm ...8595). The closest formulation found is `atan(x/sqrt((1-x)*(1+x)))` in
+doubles (glibc `atan`), which matches 233 of the 268 cells of probes/asin-argument-sweep (excel-graph, 2026-10-15, T-1259: every 0.01 in
+-0.99..0.99, ±10^-1..10^-15, small multiples, near ±1). libm `asin` matches 186, `atan(x/sqrt(1-x*x))` 217, `atan2(x,sqrt(1-x*x))` 174,
+`2*atan(x/(1+sqrt(1-x*x)))` 156 and `π/2-acos(x)` 67.
+Negative results (T-1259, fit-lab exact arithmetic): computing `1-x*x` or `(1-x)(1+x)`, the sqrt and the quotient in x87 extended
+precision, or rounding the atan to 64 bits then to a double, never beats 233. A correctly rounded atan of an extended quotient gives 185-186
+(libm's count).
+Excel's ASIN is not odd: 31 ± pairs in the sweep differ in the last digit (`ASIN(0.09)` = 0.09012194501459526,
+`ASIN(-0.09)` = -0.09012194501459525). 26 of the 35 misses are negative arguments, and `ASIN(±1E-13)` is ±1E-13 exactly.
+Evidence: probes/asin-argument-sweep; gen-m6/2f6b96385ed3facd Calc!A38 (excel-graph, 2026-10-09, T-1239); gen-m7/0e40208f51c2454c
+Calc!A27 and gen-m7/cb748b6a9b81fbb7 Calc!A38 (excel-graph, 2026-10-11, T-1275).
+Ours: `atan(x/sqrt((1-x)*(1+x)))` since T-1259 (`fn_asin`, mathematical.rs). The gen-m6/gen-m7 cells pass; 35 sweep cells are known
+failures (T-1603). The result depends on the platform `atan` (glibc fits).
+Status: VERIFIED (excel-graph); formulation PARTIAL
+Tasks: T-1259, T-1603
 
 ## MULTINOMIAL of a huge argument
 Rule: MULTINOMIAL is `#NUM!` once its arguments add up to more than 170, where `sum!` overflows a double. That holds
