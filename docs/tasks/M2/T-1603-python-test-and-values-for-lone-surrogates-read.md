@@ -3,7 +3,7 @@ id: T-1603
 title: "Python test and values() for lone surrogates read back as str (after T-1579)"
 milestone: M2
 lane: api
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,3 +24,6 @@ T-1578 made `Workbook.value` build the `str` from `text_utf16` (bindings/python/
 
 ## Out of scope
 -
+
+## Outcome
+`Workbook.values` now routes text cells showing U+FFFD through `text_utf16` (same guard as `value`), so lone surrogates read back exactly; a genuine U+FFFD stays U+FFFD. Python test added in `test_facade.py`. Eval delta: none (bindings only).
