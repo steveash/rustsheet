@@ -440,6 +440,7 @@ C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-2d-and-scalar.case.json	21
 C	probes/product-array-elements.case.json	9
 C	probes/radians-sqrtpi-munit.case.json	94
+C	probes/randbetween-huge-span.case.json	23
 C	probes/range-operator-column-letter-before-colon.case.json	1
 C	probes/range-operator-unnamed-operands.case.json	10
 C	probes/range-right-operand-errors.case.json	4
@@ -614,7 +615,7 @@ C	probes/vlookup-array-index-range-lookup.case.json	155
 C	probes/vlookup-array-lookup-value.case.json	35
 C	probes/vlookup-error-arg-lifting-range-lookup.case.json	22
 C	probes/volatile-and-info-rand-true-false-sheet.case.json	108
-C	probes/volatile-invariant.case.json	56
+C	probes/volatile-invariant.case.json	60
 C	probes/volatile-now-today-shapes.case.json	48
 C	probes/weeknum-1900-later.case.json	23
 C	probes/weeknum-invalid-type.case.json	8

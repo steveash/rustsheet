@@ -3,7 +3,7 @@ id: T-1584
 title: "Probe RANDBETWEEN and RANDARRAY unprobed edges (boolean via reference, error order, huge span, one omitted bound)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1318 left these unprobed (docs/excel-semantics/numbers.md "RANDBETWEEN and RAN
 
 ## Out of scope
 -
+
+## Outcome
+Probed on excel-graph: boolean via reference `#VALUE!`, RANDARRAY error order, omitted `RANDBETWEEN` bound is `#N/A` (engine read 0), overflowing span `#NUM!` for RANDBETWEEN and a finite draw for RANDARRAY. New case `probes/randbetween-huge-span` (the 1E308 literal made excel-graph reject volatile-invariant). Engine fixed in `random.rs`; documented in `docs/excel-semantics/numbers.md`. Eval delta: no known failures added or removed (new cases pass; baseline ratcheted for the new coverage).
