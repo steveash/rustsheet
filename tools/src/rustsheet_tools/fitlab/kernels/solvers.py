@@ -194,6 +194,12 @@ def span_stop(c_term: float = 2e-8) -> Stop:
     )
 
 
+def zero_first_value_stop() -> Stop:
+    """The fitted rule, or the step test alone when the first value is 0 (T-1583, rejected: 20/22)."""
+    fitted, h_ok = fitted_stop(), h_test()
+    return lambda p: fitted(p) or (p.values[0] == 0 and h_ok(p))
+
+
 STOPS: dict[str, Stop] = {
     "h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)": fitted_stop(),
     "h<5e-9+1e-8|m| & |f|<1.5e-8*sum|v|": lambda p: (
@@ -259,7 +265,7 @@ def xirr_candidates() -> list[Candidate]:
         _xirr_candidate("bisect, span-scaled |f| bound", _xirr(span_stop()), "T-1583"),
         _xirr_candidate(
             "bisect, first-value sign, |f| bound skipped when values[0] = 0",
-            _xirr(lambda p: fitted_stop()(p) or (p.values[0] == 0 and h_test()(p)), first_value_sign=True),
+            _xirr(zero_first_value_stop(), first_value_sign=True),
             "T-1583",
         ),
     ]
@@ -759,7 +765,7 @@ def _newton_yield_residual(start: Callable[[Bond, float], float], tol: float) ->
 YIELD_STARTS: dict[str, Callable[[Bond, float], float]] = {
     "0": lambda _bond, _pr: 0.0,
     "the coupon rate": lambda bond, _pr: bond[0],
-    "the current yield rate * 100 / pr": lambda bond, pr: bond[0] * 100 / pr,
+    "the current yield (rate * 100 / pr)": lambda bond, pr: bond[0] * 100 / pr,
 }
 
 

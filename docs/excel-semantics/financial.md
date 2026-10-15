@@ -162,11 +162,12 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   tests are written to pass on NaN, but nothing probes that.
 - Unprobed: the cap on the chain walk (up to 17 doublings, X!F15, and 4 halvings are seen; day serials
   1..6, which need about 770 halvings, are `#NUM!`), the bisection cap, the order when both chains have
-  a root, and a guess at or below -1.
+  a root, a guess at or below -1, and which end an exact XNPV(m) = 0 replaces (the first-value rule
+  replaces the upper end, the XNPV(upper end) rule only when XNPV(upper end) <= 0; no cell tells them apart).
 Ours: Newton's method to 1e-7 (`compute_xirr`, functions/financial/financial_util.rs): 0/208 on the fit
 set (9 of the 72 m9-fin-irr-rate cells pass the harness's tolerance).
 Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test; the XNPV part of the stop
-test is UNVERIFIED beyond the fit set (T-1533)
+test is UNVERIFIED beyond the fit set (T-1533; refined by T-1583, the span factor UNVERIFIED until T-1591)
 Tasks: T-1525, T-0916, T-1533, T-1583, T-1591
 
 ## IRR is a secant in v = 1/(1 + r) from v0 and v0 +- 0.001 (fitted, 189/263 bit-exact)
