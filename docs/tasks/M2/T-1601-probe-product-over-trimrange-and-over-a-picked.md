@@ -17,7 +17,7 @@ Oracle evidence for PRODUCT over a TRIMRANGE pick and over a picked error cell f
 T-1571 made PRODUCT read picks like SUM (evaluate_aggregate_arg); these two cases follow SUM's rule without PRODUCT oracle values (docs/excel-semantics/syntax.md, UNVERIFIED). Use the excel-probe skill.
 
 ## Acceptance criteria
-- [ ] A probe case with oracle values covers both; SPEC-0009 PRODUCT row and syntax.md updated, and ours fixed if it differs.
+- [ ] A probe case with oracle values covers both and a picked boolean/blank cell; SPEC-0009 PRODUCT row and syntax.md updated, and ours fixed if it differs.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
