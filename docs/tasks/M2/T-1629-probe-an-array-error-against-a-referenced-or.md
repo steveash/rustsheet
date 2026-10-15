@@ -3,7 +3,7 @@ id: T-1629
 title: "Probe an array error against a referenced or direct error in GEOMEAN, HARMEAN, SKEW, KURT, VAR, STDEV, AVERAGEA, MAXA and MINA"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1615 probed SUM, MIN, MAX, AVERAGE and MEDIAN (probes/aggregate-array-error-vs
 
 ## Out of scope
 -
+
+## Outcome
+Probe `aggregate-array-error-vs-ref-error-average-family` (87 cells, excel-graph): the nine functions rank like SUM in all eight shapes; a direct LAMBDA is `#VALUE!` in AVERAGEA, MAXA, MINA (ours skipped it; fixed in `direct_aggregate_number`). syntax.md updated. Eval: probes +87 cells, all pass.

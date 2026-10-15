@@ -404,6 +404,12 @@ impl Model {
                 DirectNumbers::CastScalars,
                 value @ (CalcResult::String(_) | CalcResult::Lambda(_)),
             ) => self.cast_aggregate_arg_to_number(value, cell).map(Some),
+            // The A variants too: AVERAGEA, MAXA and MINA give #VALUE! for a direct LAMBDA, ranked
+            // with the referenced errors (probes/aggregate-array-error-vs-ref-error-average-family
+            // D73-D87, excel-graph 2026-10-15, T-1629).
+            (DirectNumbers::CastA, value @ CalcResult::Lambda(_)) => {
+                self.cast_aggregate_arg_to_number(value, cell).map(Some)
+            }
             (DirectNumbers::CastA, CalcResult::String(text)) => {
                 if let Some(error) = Self::aggregate_text_too_long(&text, cell) {
                     return Err(error);
