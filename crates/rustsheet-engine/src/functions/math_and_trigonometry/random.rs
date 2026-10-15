@@ -26,7 +26,7 @@ impl Model {
 
     /// `=RANDBETWEEN(bottom, top)`. Excel compares the raw bounds, draws a whole number from
     /// `CEILING(bottom)` to `FLOOR(top)` (`CEILING(bottom)` when that range is empty), rejects
-    /// booleans and treats `RANDBETWEEN(,)` as `#N/A` (docs/excel-semantics/numbers.md
+    /// booleans and treats an omitted bound (`RANDBETWEEN(,5)`, `(5,)`, `(,)`) as `#N/A` (docs/excel-semantics/numbers.md
     /// "RANDBETWEEN and RANDARRAY argument checks", probes/volatile-invariant).
     pub(crate) fn fn_randbetween(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
@@ -34,8 +34,8 @@ impl Model {
         }
         let first = self.evaluate_node_in_context(&args[0], cell);
         let second = self.evaluate_node_in_context(&args[1], cell);
-        if matches!(first, CalcResult::EmptyArg) && matches!(second, CalcResult::EmptyArg) {
-            return CalcResult::new_error(Error::NA, cell, "bottom and top omitted".to_string());
+        if matches!(first, CalcResult::EmptyArg) || matches!(second, CalcResult::EmptyArg) {
+            return CalcResult::new_error(Error::NA, cell, "bottom or top omitted".to_string());
         }
         let bottom = match self.cast_to_number_no_bools(first, cell) {
             Ok(f) => f,
@@ -50,6 +50,14 @@ impl Model {
                 error: Error::NUM,
                 origin: cell,
                 message: format!("{bottom}>{top}"),
+            };
+        }
+        // Excel: a span that overflows a double is `#NUM!` (probes/randbetween-huge-span A1:A2).
+        if !(top - bottom).is_finite() {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: format!("{bottom}..{top} overflows"),
             };
         }
         let low = bottom.ceil();
@@ -194,11 +202,16 @@ impl Model {
         for _ in 0..rows {
             let mut row = Vec::with_capacity(columns);
             for _ in 0..columns {
-                let val = if whole_number {
-                    let span = max - min + 1.0;
-                    min + (random() * span).floor()
+                let r = random();
+                let span = max - min + 1.0;
+                // Excel: a span that overflows a double still draws a finite value in range
+                // (probes/randbetween-huge-span B2:B3, B14:B15), so interpolate instead.
+                let val = if !span.is_finite() {
+                    min * (1.0 - r) + max * r
+                } else if whole_number {
+                    min + (r * span).floor()
                 } else {
-                    min + random() * (max - min)
+                    min + r * (max - min)
                 };
                 row.push(ArrayNode::Number(val));
             }
