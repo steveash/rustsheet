@@ -3,7 +3,7 @@ id: T-1573
 title: "MAXA, MINA and AVERAGEA rank a scalar direct error above a referenced one, leftmost referenced error first"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
