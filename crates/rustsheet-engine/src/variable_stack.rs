@@ -86,6 +86,18 @@ impl VariableStack {
         Some(binding.value(cell))
     }
 
+    /// Turns every [`Binding::ReadOnce`] into a copied [`Binding::Value`]. IF over an array
+    /// condition evaluates both branches, where `read_once` (functions/logical/lambda.rs) counts
+    /// a read in each as one, since a scalar condition evaluates only one (T-1593).
+    pub(crate) fn copy_read_once(&mut self) {
+        for binding in self.bindings.values_mut() {
+            if let Binding::ReadOnce(value) = binding {
+                let value = std::mem::replace(value, CalcResult::EmptyArg);
+                *binding = Binding::Value(value);
+            }
+        }
+    }
+
     /// Binds `id`; a union that would pass [`MAX_HELD_AREAS`] is bound to `#VALUE!` instead.
     pub(crate) fn insert(&mut self, id: usize, binding: Binding, cell: CellReferenceIndex) {
         let held = self.held_areas + binding.held_areas();
