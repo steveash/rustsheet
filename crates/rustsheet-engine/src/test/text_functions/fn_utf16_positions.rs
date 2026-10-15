@@ -49,16 +49,23 @@ fn left_and_right_count_code_points() {
 }
 
 #[test]
-fn split_pair_is_dropped_whole() {
-    // Excel keeps the lone surrogate; a Rust String cannot hold one yet (T-1483).
+fn split_pair_keeps_the_lone_half() {
+    // Excel keeps the lone surrogate a cut leaves (probes/text-surrogate-positions A11, A12, A29);
+    // `_get_text` shows it through the lossy view as U+FFFD, LEN counts it as one unit.
     let mut model = new_empty_model();
     model._set("A1", "=MID(\"a😀b\",3,2)");
     model._set("A2", "=MID(\"a😀b\",2,1)");
     model._set("A3", "=REPLACE(\"a😀b\",3,1,\"x\")");
+    model._set("B1", "=LEN(A1)");
+    model._set("B2", "=LEN(A2)");
+    model._set("B3", "=LEN(A3)");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), "b");
-    assert_eq!(model._get_text("A2"), "");
-    assert_eq!(model._get_text("A3"), "axb");
+    assert_eq!(model._get_text("A1"), "\u{FFFD}b");
+    assert_eq!(model._get_text("A2"), "\u{FFFD}");
+    assert_eq!(model._get_text("A3"), "a\u{FFFD}xb");
+    assert_eq!(model._get_text("B1"), "2");
+    assert_eq!(model._get_text("B2"), "1");
+    assert_eq!(model._get_text("B3"), "4");
 }
 
 #[test]

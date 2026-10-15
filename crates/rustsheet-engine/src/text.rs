@@ -30,9 +30,9 @@ use bitcode::{Decode, Encode};
 /// positions counted in UTF-16 units are the same in both views, since U+FFFD and a lone
 /// surrogate are each one unit.
 ///
-/// [`Text::slice_utf16`], [`Text::truncate_utf16`] and [`Text::concat`] supersede the lossy
-/// `utf16_slice`, which drops a cut pair whole; T-1579 deletes it (`truncate_text` and
-/// `concat_text` went with T-1580).
+/// [`Text::slice_utf16`], [`Text::truncate_utf16`] and [`Text::concat`] keep the lone half of a
+/// cut pair, as Excel does; they replaced the lossy `utf16_slice`, `truncate_text` and
+/// `concat_text` helpers (T-1579, T-1580).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Text {
     /// Well-formed text.
