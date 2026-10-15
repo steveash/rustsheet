@@ -2,6 +2,7 @@
 
 use std::io::{Cursor, Read};
 use std::path::Path;
+use std::sync::Arc;
 
 use rustsheet_engine::clock::Clock;
 use rustsheet_engine::types::DateSystem;
@@ -13,7 +14,7 @@ use crate::error::{LoadError, RefError, SaveError};
 use crate::refs::{
     parse_cell, parse_range, resolve_sheet_by_name, CellRef, RangeRef, SheetId, Target,
 };
-use crate::value::{Array, Value};
+use crate::value::{lone_text, Array, Value};
 
 /// Options for [`Workbook::new`] and the limits shared by all reads.
 #[derive(Clone, Debug)]
@@ -352,6 +353,29 @@ impl Workbook {
         }))
     }
 
+    /// The exact UTF-16 code units of a text value that holds a lone surrogate.
+    ///
+    /// Excel text is a sequence of UTF-16 units and keeps an unpaired surrogate when a cut
+    /// splits a pair, which a Rust `str` cannot hold: [`Value::Text`] is the lossy view (each
+    /// lone unit as U+FFFD). This returns `Some` exactly when the value of the cell (the top-left
+    /// cell of a range) is text holding a lone surrogate, and `None` for every other value.
+    ///
+    /// # Errors
+    /// [`RefError`] when the target does not resolve.
+    pub fn text_utf16<'a>(&self, r: impl Into<Target<'a>>) -> Result<Option<Arc<[u16]>>, RefError> {
+        let (range, sheet, _, _) = self.top_left(r)?;
+        let (row, col) = engine_rc(range.top, range.left).ok_or(RefError::OutOfBounds)?;
+        let ws = self
+            .model
+            .workbook
+            .worksheet(sheet)
+            .map_err(|_| RefError::UnknownSheet(sheet.to_string()))?;
+        Ok(ws
+            .cell(row, col)
+            .and_then(lone_text)
+            .map(|t| t.units().collect()))
+    }
+
     /// The value of a cell, or of the top-left cell of a range.
     ///
     /// # Errors
@@ -463,6 +487,35 @@ mod tests {
     use super::*;
     use crate::value::{ErrorKind, XlError};
     use crate::Input;
+
+    #[test]
+    fn text_utf16_is_some_only_for_text_holding_a_lone_surrogate() {
+        use rustsheet_engine::types::{Cell, FormulaValue};
+        use rustsheet_engine::Text;
+        let mut wb = Workbook::new(&WorkbookOptions::default()).expect("new");
+        wb.set("A1", Input::Formula("=\"a\"".into())).expect("a1");
+        wb.set("A2", Input::Formula("=1".into())).expect("a2");
+        // No engine function produces a lone surrogate yet (T-1579): plant the cached value.
+        let lone = Text::from_utf16(vec![0x61, 0xDE00, 0x62]);
+        let sheet = wb.model.workbook.worksheet_mut(0).expect("sheet");
+        sheet.sheet_data.set_cell(
+            3,
+            1,
+            Cell::CellFormula {
+                f: 0,
+                s: 0,
+                v: FormulaValue::Text(lone),
+            },
+        );
+        assert_eq!(wb.text_utf16("A1").unwrap(), None);
+        assert_eq!(wb.text_utf16("A2").unwrap(), None);
+        assert_eq!(wb.text_utf16("A4").unwrap(), None);
+        assert_eq!(
+            wb.text_utf16("A3").unwrap().as_deref(),
+            Some(&[0x61, 0xDE00, 0x62][..])
+        );
+        assert_eq!(wb.value("A3").unwrap(), Value::from("a\u{FFFD}b"));
+    }
 
     #[test]
     fn date_system_is_chosen_at_new_and_survives_a_round_trip() {

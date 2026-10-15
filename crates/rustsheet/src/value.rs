@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use rustsheet_engine::expressions::token::Error as EngineError;
 use rustsheet_engine::types::{Cell, FormulaValue, SpillValue};
+use rustsheet_engine::Text;
 
 /// The kind of an Excel error value (`#DIV/0!`, `#N/A`, ...).
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -244,6 +245,27 @@ impl Value {
     pub(crate) fn from_cell(cell: &Cell, shared_strings: &[String]) -> Self {
         CellView::of(cell, shared_strings).to_value()
     }
+}
+
+/// The engine text of a formula or spill cell that holds a lone surrogate, if it does. Shared
+/// strings are `String`s and cannot hold one.
+pub(crate) fn lone_text(cell: &Cell) -> Option<&Text> {
+    let (Cell::CellFormula {
+        v: FormulaValue::Text(text),
+        ..
+    }
+    | Cell::ArrayFormula {
+        v: FormulaValue::Text(text),
+        ..
+    }
+    | Cell::SpillCell {
+        v: SpillValue::Text(text),
+        ..
+    }) = cell
+    else {
+        return None;
+    };
+    text.has_lone_surrogate().then_some(text)
 }
 
 /// A cell's value borrowed from the engine, so unchanged cells can be compared without
