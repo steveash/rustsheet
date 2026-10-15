@@ -780,7 +780,10 @@ YIELD_STARTS: dict[str, Callable[[Bond, float], float]] = {
 def newton_back_chain(cell_args: tuple[Arg, ...], y: float, steps: int) -> list[float]:
     """Excel's YIELD value `y` and up to `steps` earlier analytic-Newton iterates on PRICE(y) - pr:
     each x < y with x - (PRICE(x) - pr)/PRICE'(x) = y, found by bisection on [y - 0.5, y]
-    (T-1592). Precision falls with each step back (Newton's error squares going forward)."""
+    (T-1592). The bisection assumes the Newton map increases on that bracket, which holds near the
+    root because PRICE is convex and decreasing in the yield; a step stops early when the bracket's low
+    end already maps above `y`. Precision falls with each step back (Newton's error squares going
+    forward)."""
     price_of, bond, pr = _bond_price(cell_args)
 
     def newton(x: float) -> float:

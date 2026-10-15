@@ -159,3 +159,10 @@ def test_yield_back_chain_shares_a_frequency_independent_iterate() -> None:
     a1, f1 = (solvers.newton_back_chain(by_key[k].args, by_key[k].expected, 1)[1] for k in ("S!A1", "S!F1"))
     assert abs(a1 - 0.0552344627) < 1e-10
     assert abs(a1 - f1) < 1e-10
+    # Two and three steps back: S!E10 (redemption 100.5), and the three frequencies of Y!C2:E2.
+    assert abs(solvers.newton_back_chain(by_key["S!E10"].args, by_key["S!E10"].expected, 2)[2] - a1) < 1e-8
+    traces = {c.key: c for c in cells if c.case.endswith("solver-iteration-traces.case.json")}
+    starts = [
+        solvers.newton_back_chain(traces[k].args, traces[k].expected, 3)[3] for k in ("Y!C2", "Y!D2", "Y!E2")
+    ]
+    assert max(starts) - min(starts) < 1e-6
