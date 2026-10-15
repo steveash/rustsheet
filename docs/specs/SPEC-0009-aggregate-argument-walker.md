@@ -45,8 +45,8 @@ Non-goals:
   array with their own rules (`collect_mode_values` etc.). They can move later if their rules
   fit the policy. This spec does not require it.
 - VARA/VARPA/STDEVA/STDEVPA (`variance_of_values_a`). They are out of T-1474's and T-1476's
-  scope and move onto the A-rules below in **T-1567**. Until then they are the one remaining
-  dispatch, and they hold no `reference_error` of their own.
+  scope. **T-1567** moved them onto the walker with `DirectNumbers::NumbersOnly` (below), which keeps
+  their old rules for direct values and arrays; probing those rules is **T-1617**.
 - Settling T-0236 (empty arguments of DEVSQ/AVEDEV/SUMSQ) or T-1439 (array and referenced error
   order for the `for_each_value` family). The walker has a knob for each. The probes set it.
 
@@ -244,6 +244,9 @@ pub(crate) enum DirectNumbers {
     /// As `CastScalars`, but text that does not cast is `#VALUE!` via `cast_number` and an
     /// empty argument is skipped (AVERAGEA, MAXA, MINA, as `for_each_value_a` does today).
     CastA,
+    /// Only a direct number counts; booleans, text and the rest are skipped (VARA, VARPA, STDEVA,
+    /// STDEVPA, as before T-1567; unprobed, T-1617).
+    NumbersOnly,
 }
 pub(crate) enum CellNumbers { Numbers, CoercedA }   // `ReferenceValue` items follow it, except under `Cast`
 pub(crate) enum ArrayNumbers { Numbers, TextZero }  // array booleans are always skipped
@@ -261,7 +264,8 @@ impl Model {
 ```
 `for_each_value`, `for_each_value_skip_empty` and `for_each_value_a` become thin wrappers or
 calls with a named policy, and are removed once their callers move. `for_each_number_in_areas`
-and `for_each_coerced_number_in_areas` stay (the latter was deleted in T-1567 when its last caller moved). Their other callers (NPV, the D-functions, …) are
+and `for_each_coerced_number_in_areas` stay (the latter was deleted in T-1567).
+Their other callers (NPV, the D-functions, …) are
 outside this spec. "Numbers of a reference" must keep one definition. T-1474 extracts the
 per-cell rules of these two helpers into two free functions in util.rs,
 `cell_number(&CalcResult) -> Option<f64>` (numbers only) and
@@ -277,6 +281,7 @@ The walker and `for_each_aggregate_number` are `#[inline]` and take the policy b
 | SUM | Aggregate | Ranked(Referenced) | no | Cast / Numbers / Numbers | `SumParts` |
 | AVERAGE, GEOMEAN, HARMEAN, MEDIAN, SKEW, SKEW.P, KURT, VAR.*, STDEV.* | Aggregate | Ranked(Direct) | no | CastScalars / Numbers / Numbers | — |
 | DEVSQ, AVEDEV, SUMSQ | Aggregate | First | yes | CastScalars / Numbers / Numbers | — |
+| VARA, VARPA, STDEVA, STDEVPA | Aggregate | First | no | NumbersOnly / CoercedA / Numbers (unprobed, T-1617) | — |
 | AVERAGEA, MAXA, MINA | Aggregate, after the `external_reference_cells` step | Ranked(Direct) | no | CastA / CoercedA / TextZero (AVERAGEA) or Numbers (MAXA, MINA) | — |
 | MIN, MAX | Aggregate | Ranked(Direct) | no | Cast / Numbers / Numbers | NaN start, 0 when none |
 | PRODUCT | Aggregate | Ranked(Direct) | no | Cast / Numbers / Numbers | `seen_value` (set for an empty argument too) |

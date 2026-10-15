@@ -611,6 +611,31 @@ mod tests {
     }
 
     #[test]
+    fn numbers_only_skips_direct_booleans_and_text_but_coerces_cells() {
+        // VARA's rules: a direct boolean and direct text are skipped, an array keeps its numbers,
+        // and a referenced cell coerces (text 0, TRUE 1).
+        let policy = AggregatePolicy {
+            reading: ArgReading::Aggregate,
+            errors: ErrorRule::First,
+            skip_empty_args: false,
+        };
+        let rules = NumberRules {
+            direct: DirectNumbers::NumbersOnly,
+            cells: CellNumbers::CoercedA,
+            array: ArrayNumbers::Numbers,
+        };
+        let (mut model, args) = setup(
+            &[("A1", "x"), ("A2", "TRUE")],
+            "=VARA(5,TRUE,\"7\",{2,\"y\",FALSE},A1:A2)",
+        );
+        let mut seen = Vec::new();
+        let walked =
+            model.for_each_aggregate_number(&args, Z1, policy, rules, |number| seen.push(number));
+        assert!(walked.is_ok());
+        assert_eq!(seen, vec![5.0, 2.0, 0.0, 1.0]);
+    }
+
+    #[test]
     fn a_visitor_error_returns_at_once() {
         let (mut model, args) = setup(&[("A1", "=NA()")], "=SUM(A1,\"x\")");
         let rules = NumberRules {
