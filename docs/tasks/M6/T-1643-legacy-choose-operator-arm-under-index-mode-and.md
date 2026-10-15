@@ -3,7 +3,7 @@ id: T-1643
 title: "Legacy CHOOSE operator arm under INDEX, MODE and LOOKUP: @ placement and values"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
