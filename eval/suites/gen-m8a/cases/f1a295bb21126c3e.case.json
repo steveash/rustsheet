@@ -569,18 +569,18 @@
  "names": {
   "Calc!here": "=Calc!$A$1",
   "Calc!loc": "=20",
+  "Jan!loc": "=30",
+  "Jan!only1": "=5",
   "Other!here": "=Other!$A$1",
-  "S1!loc": "=30",
-  "S1!only1": "=5",
   "add": "=LAMBDA(a,b,a+b)",
   "bad_ref": "=#REF!",
-  "bad_sheet_ref": "=S1!#REF!",
+  "bad_sheet_ref": "=Jan!#REF!",
   "dbl": "=LAMBDA(x,x*2)",
   "f_chain": "=f_twice+r_cell",
   "f_count": "=COUNTA(r_block)",
   "f_rel_sum": "=rel_same+rel_right",
   "f_text": "=k_text&\"-\"&k_num",
-  "f_total": "=SUM(S1!$A$1:$C$4)",
+  "f_total": "=SUM(Jan!$A$1:$C$4)",
   "f_twice": "=f_total*2",
   "fact": "=LAMBDA(n,IF(n<=1,1,n*fact(n-1)))",
   "k_arr": "={1,2,3}",
@@ -590,20 +590,20 @@
   "k_num": "=42",
   "k_text": "=\"abc\"",
   "loc": "=10",
-  "r_block": "=S1!$A$1:$C$4",
-  "r_cell": "=S1!$A$1",
-  "r_col": "=S2!$B$1:$B$12",
-  "r_quoted": "='My S5'!$A$1:$B$3",
-  "r_row": "=S3!$A$2:$F$2",
-  "r_union": "=(S1!$A$1,S1!$C$3)",
-  "rel_col_abs": "=S1!$A1",
-  "rel_down": "=S1!A2",
-  "rel_right": "=S1!B1",
-  "rel_row_abs": "=S1!A$1",
-  "rel_same": "=S1!A1",
-  "span3": "=S1:S3!$A$1:$B$2",
-  "span_all": "=S1:'My S5'!$A$1",
-  "span_calc": "=S3:S4!$A$1:$C$3",
+  "r_block": "=Jan!$A$1:$C$4",
+  "r_cell": "=Jan!$A$1",
+  "r_col": "=Feb!$B$1:$B$12",
+  "r_quoted": "='My Data'!$A$1:$B$3",
+  "r_row": "=Mar!$A$2:$F$2",
+  "r_union": "=(Jan!$A$1,Jan!$C$3)",
+  "rel_col_abs": "=Jan!$A1",
+  "rel_down": "=Jan!A2",
+  "rel_right": "=Jan!B1",
+  "rel_row_abs": "=Jan!A$1",
+  "rel_same": "=Jan!A1",
+  "span3": "=Jan:Mar!$A$1:$B$2",
+  "span_all": "=Jan:'My Data'!$A$1",
+  "span_calc": "=Mar:Apr!$A$1:$C$3",
   "sumsq": "=LAMBDA(r,SUMSQ(r))",
   "to_undefined": "=nosuch_name+1",
   "twice_of": "=LAMBDA(f,x,f(f(x)))"
@@ -1519,7 +1519,7 @@
     "L98": 3,
     "L99": 0.5
    },
-   "name": "S1"
+   "name": "Jan"
   },
   {
    "cells": {
@@ -1587,11 +1587,11 @@
     "F8": -1,
     "F9": -4
    },
-   "name": "S2"
+   "name": "Feb"
   },
   {
    "cells": {},
-   "name": "Blank"
+   "name": "Gap"
   },
   {
    "cells": {
@@ -1690,7 +1690,7 @@
      "v": "#N/A"
     }
    },
-   "name": "S3"
+   "name": "Mar"
   },
   {
    "cells": {
@@ -2142,7 +2142,7 @@
     "F8": -4,
     "F9": 10
    },
-   "name": "S4"
+   "name": "Apr"
   },
   {
    "cells": {
@@ -2223,7 +2223,7 @@
     "F7": -1,
     "F8": 2
    },
-   "name": "My S5"
+   "name": "My Data"
   },
   {
    "cells": {
