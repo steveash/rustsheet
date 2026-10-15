@@ -24,4 +24,4 @@ T-1571 made PRODUCT read picks like SUM (evaluate_aggregate_arg); these two case
 -
 
 ## Outcome
-Probe `probes/aggregate-product-trimrange-picks` (15 cells, excel-graph): PRODUCT matches SUM for TRIMRANGE picks, picked boolean/blank cells and picked-error ranking; ours already agrees, so no code change. SPEC-0009 and syntax.md updated. Eval: new probe passes 15/15, no baseline change.
+Probe `probes/aggregate-product-trimrange-picks` (15 cells, excel-graph): PRODUCT matches SUM for TRIMRANGE picks, picked boolean/blank cells and picked-error ranking; ours already agrees, so no code change. SPEC-0009 and syntax.md updated. Eval: new probe passes 15/15; the baseline registers the new case (one generated C line), no F lines.
