@@ -297,12 +297,12 @@ sets a, b, c of at most 15 significant digits picked by exact simulation so that
 single and double rounding but (a+b)+c is not; oracle: excel-graph, 2026-10-15, T-1516): `a+b+c`,
 `SUM(range)`, `SUM(a,b,c)`, `SUMIF`, `SUMIFS`, `DSUM` and `AVERAGEA(range)*4` (a text cell counts as 0, so
 the division is exact) all give the value whose second addition was rounded twice, in every set: the
-running total is carried at 64 bits across additions of three terms, each addition rounded twice. The
+total is rounded to a double after every addition (to 64 bits, then to a double, as `extended_sum` does); it is not carried at 64 bits between additions. Sets 4, 5 and 7 (Data!A17:A19, A21:A23, A29:A31) tell the two apart, and the oracle matches the per-addition rounding in all of them. The
 engine matches `+` and SUM and misses SUMIF, SUMIFS, DSUM and AVERAGEA by one ulp in all 8 sets (32
-cells; they still use the plain `+`). AVERAGE's division by a count above 2 cannot be probed: for a small
-odd count n the binary expansion of k/n has no run of 11 zero bits after the cut, so the 64-bit rounding
-never lands on a midpoint and double rounding equals single rounding (a search at n = 1025 found
-nothing); only a divisor of a few thousand could discriminate, so do not spend time on small counts.
+cells; they still use the plain `+`). AVERAGE's division by a small count (3, 5, 7) was not probed: that is reasoning, not oracle evidence. For a
+small odd count n the binary expansion of k/n has no run of 11 equal bits after the cut, so the 64-bit rounding
+never lands on a midpoint and double rounding would equal single rounding. A discriminating divisor needs n above about
+2^10 (an earlier random search at n = 1025 found nothing); T-1619 probes a large count.
 Range edges of `*` and PRODUCT (probes-numeric/double-rounding-range-edges, excel-graph, 2026-10-14,
 T-1513): the second rounding happens at the result's own precision. An exact product just under the
 midpoint between `DBL_MAX` and 2^1024 rounds up to the midpoint in 64 bits and then, tied, to 2^1024:
