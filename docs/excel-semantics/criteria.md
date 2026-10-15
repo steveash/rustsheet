@@ -62,7 +62,7 @@ collation", T-0244).
 Evidence: probes/criteria-padded-text C1–C14 over A1:A6 = "1", "1 ", " 1", CHAR(160)&"1",
 "1"&CHAR(160), 1 → 4,4,4,4,4,5,5,1,1,1,1,1,4,5. Oracle: excel-graph, 2026-10-05 (T-0242).
 Status: VERIFIED
-Implemented in: functions::criteria::result_is_equal_to_number; C13 ordering in functions::util::cmp_text_excel (T-0244)
+Implemented in: functions::criteria::result_is_equal_to_number; C13 ordering in functions::util::collation::cmp_text_excel (T-0244, T-0220)
 Tasks: T-0242
 
 ## "=" matches blank cells, not an empty-string cell

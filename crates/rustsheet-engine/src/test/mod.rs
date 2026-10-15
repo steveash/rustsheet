@@ -129,6 +129,7 @@ mod test_aggregate;
 mod test_arrays;
 mod test_arrays_and_errors;
 mod test_cell_info_n_sheets;
+mod test_collation;
 mod test_combin_combina;
 mod test_cycle_reference;
 mod test_datetime_format;

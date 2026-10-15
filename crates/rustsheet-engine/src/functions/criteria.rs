@@ -9,7 +9,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::token::{is_english_error_string, Error},
     formatter::date_text::{parse_date, CurrentYear},
-    functions::util::cmp_text_excel,
+    functions::util::collation::cmp_text_excel,
     locale::Locale,
     number_format::{cmp_excel_precision, parse_excel_number, parse_finite_number},
     types::DateSystem,
