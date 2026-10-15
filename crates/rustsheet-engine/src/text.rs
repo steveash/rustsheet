@@ -74,6 +74,12 @@ pub enum Segment<'a> {
     Lone(u16),
 }
 
+/// The `_xHHHH_` escape (upper-case hex) Excel writes for a lone surrogate unit; the xlsx writer
+/// and the eval harness render lone units with it (SPEC-0010).
+pub fn lone_escape(unit: u16) -> String {
+    format!("_x{unit:04X}_")
+}
+
 const HIGH_SURROGATES: std::ops::RangeInclusive<u16> = 0xD800..=0xDBFF;
 const LOW_SURROGATES: std::ops::RangeInclusive<u16> = 0xDC00..=0xDFFF;
 
