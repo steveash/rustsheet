@@ -3,7 +3,7 @@ id: T-1318
 title: "RANDBETWEEN and RANDARRAY argument checks match Excel (bottom>top on raw values, booleans, omitted args, fractional bounds with whole_number)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
