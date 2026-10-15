@@ -233,6 +233,11 @@ fn py_to_clock(obj: &Bound<'_, PyAny>) -> PyResult<Clock> {
     Clock::fixed_unix_millis(ms).map_err(|e| PyValueError::new_err(e.to_string()))
 }
 
+/// [`py_to_clock`] for an optional argument; an omitted one is the system clock.
+fn opt_clock(obj: Option<&Bound<'_, PyAny>>) -> PyResult<Clock> {
+    obj.map_or(Ok(Clock::system()), py_to_clock)
+}
+
 fn load_options(recalc: bool, clock: Clock) -> LoadOptions {
     LoadOptions {
         recalc,
@@ -297,7 +302,7 @@ impl PyWorkbook {
     #[new]
     #[pyo3(signature = (date_system="1900", clock=None))]
     fn py_new(date_system: &str, clock: Option<&Bound<'_, PyAny>>) -> PyResult<Self> {
-        let clock = clock.map_or(Ok(Clock::system()), py_to_clock)?;
+        let clock = opt_clock(clock)?;
         let date_system = match date_system {
             "1900" => DateSystem::Excel1900,
             "1904" => DateSystem::Excel1904,
@@ -347,7 +352,7 @@ impl PyWorkbook {
         recalc: bool,
         clock: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
-        let options = load_options(recalc, clock.map_or(Ok(Clock::system()), py_to_clock)?);
+        let options = load_options(recalc, opt_clock(clock)?);
         let wb = py
             .detach(|| Workbook::open(path, &options))
             .map_err(|e| PyLoadError::new_err(e.to_string()))?;
@@ -363,7 +368,7 @@ impl PyWorkbook {
         recalc: bool,
         clock: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
-        let options = load_options(recalc, clock.map_or(Ok(Clock::system()), py_to_clock)?);
+        let options = load_options(recalc, opt_clock(clock)?);
         let wb = py
             .detach(|| Workbook::from_xlsx_bytes(data, &options))
             .map_err(|e| PyLoadError::new_err(e.to_string()))?;
