@@ -138,7 +138,7 @@ fn linear_search(
             let re = Regex::new(pattern).ok()?;
             candidates.into_iter().find(|&idx| {
                 let text = match array.get(idx) {
-                    CalcResult::String(s) => s.to_string(),
+                    CalcResult::String(s) => (**s).to_owned(),
                     CalcResult::Number(n) => number_to_text(*n),
                     CalcResult::Boolean(b) => b.to_string(),
                     _ => return false,

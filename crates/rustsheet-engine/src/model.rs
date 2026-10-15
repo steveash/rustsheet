@@ -965,7 +965,7 @@ impl Model {
                 }
                 FormulaValue::Number(*value)
             }
-            CalcResult::String(value) => FormulaValue::Text(value.to_string()),
+            CalcResult::String(value) => FormulaValue::Text((**value).to_owned()),
             CalcResult::Boolean(value) => FormulaValue::Boolean(*value),
             CalcResult::Error {
                 error,

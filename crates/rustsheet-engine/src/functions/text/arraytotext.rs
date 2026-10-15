@@ -46,11 +46,7 @@ impl Model {
                 });
             }
             CalcResult::Boolean(b) => {
-                return CalcResult::String(if b {
-                    ("TRUE".to_string()).into()
-                } else {
-                    ("FALSE".to_string()).into()
-                });
+                return CalcResult::String(if b { "TRUE".into() } else { "FALSE".into() });
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => {
                 return CalcResult::String(String::new().into());
@@ -109,7 +105,7 @@ fn format_array_value(node: &ArrayNode, strict: bool) -> String {
             if strict {
                 format!("\"{}\"", s.replace('"', "\"\""))
             } else {
-                s.to_string()
+                (**s).to_owned()
             }
         }
         ArrayNode::Error(e) => format!("{e}"),

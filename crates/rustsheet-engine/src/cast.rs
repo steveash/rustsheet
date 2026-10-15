@@ -93,7 +93,7 @@ pub(crate) fn concat_text(a: &str, b: &str) -> String {
 pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
     match node {
         ArrayNode::Number(f) => Ok(number_to_text(*f)),
-        ArrayNode::String(s) => Ok(s.to_string()),
+        ArrayNode::String(s) => Ok((**s).to_owned()),
         ArrayNode::Boolean(b) => Ok(if *b {
             "TRUE".to_string()
         } else {

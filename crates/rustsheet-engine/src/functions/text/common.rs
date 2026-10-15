@@ -693,7 +693,7 @@ impl Model {
             None => {
                 if match_end == 1.0 {
                     if instance_num == 1 {
-                        return CalcResult::String(("".to_string()).into());
+                        return CalcResult::String("".into());
                     } else if instance_num == -1 {
                         return CalcResult::String(text.into());
                     }
@@ -701,7 +701,7 @@ impl Model {
                 if arg_count == 6 {
                     // An empty cell is converted to empty string (not 0)
                     match self.evaluate_node_in_context(&args[5], cell) {
-                        CalcResult::EmptyCell => CalcResult::String(("".to_string()).into()),
+                        CalcResult::EmptyCell => CalcResult::String("".into()),
                         result => result,
                     }
                 } else {
@@ -798,7 +798,7 @@ impl Model {
             None => {
                 if match_end == 1.0 {
                     if instance_num == -1 {
-                        return CalcResult::String(("".to_string()).into());
+                        return CalcResult::String("".into());
                     } else if instance_num == 1 {
                         return CalcResult::String(text.into());
                     }
@@ -806,7 +806,7 @@ impl Model {
                 if arg_count == 6 {
                     // An empty cell is converted to empty string (not 0)
                     match self.evaluate_node_in_context(&args[5], cell) {
-                        CalcResult::EmptyCell => CalcResult::String(("".to_string()).into()),
+                        CalcResult::EmptyCell => CalcResult::String("".into()),
                         result => result,
                     }
                 } else {
@@ -929,7 +929,7 @@ impl Model {
         match result {
             CalcResult::String(_) => result,
             error @ CalcResult::Error { .. } => error,
-            _ => CalcResult::String(("".to_string()).into()),
+            _ => CalcResult::String("".into()),
         }
     }
 

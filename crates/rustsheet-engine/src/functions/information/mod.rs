@@ -714,7 +714,7 @@ impl Model {
             "NUMFILE" => CalcResult::Number(self.workbook.worksheets.len() as f64),
 
             // At the moment we always do automatic recalc
-            "RECALC" => CalcResult::String(("Automatic".to_string()).into()),
+            "RECALC" => CalcResult::String("Automatic".into()),
             "RELEASE" => CalcResult::String(release.to_string().into()),
             "SYSTEM" => CalcResult::String(get_system().into()),
             "TIMEZONE" => CalcResult::String(self.get_timezone().into()),
