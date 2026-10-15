@@ -46,6 +46,9 @@ impl Model {
         // A referenced-cell error ranks below a direct scalar error; the leftmost wins
         // (probes/aggregate-error-precedence C9-C24).
         let mut reference_error = None;
+        // Whether `reference_error` is a direct LAMBDA's #VALUE!, which an array error after it
+        // does not beat (probes/aggregate-direct-lambda-product-min-max D15, D24, T-1604).
+        let mut lambda_held = false;
         for arg in args {
             match self.evaluate_aggregate_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
@@ -61,6 +64,7 @@ impl Model {
                     for node in array.into_iter().flatten() {
                         match node {
                             ArrayNode::Number(value) => result = pick(value, result),
+                            ArrayNode::Error(_) if lambda_held => break,
                             ArrayNode::Error(error) => {
                                 return CalcResult::new_error(error, cell, String::new())
                             }
@@ -69,10 +73,22 @@ impl Model {
                         }
                     }
                 }
-                RefArg::Value(value) => match self.cast_aggregate_arg_to_number(value, cell) {
-                    Ok(value) => result = pick(value, result),
-                    Err(error) => return error,
-                },
+                RefArg::Value(value) => {
+                    let is_lambda = matches!(value, CalcResult::Lambda(_));
+                    match self.cast_aggregate_arg_to_number(value, cell) {
+                        Ok(value) => result = pick(value, result),
+                        // A direct LAMBDA's #VALUE! ranks with the referenced errors, so a later
+                        // direct error beats it (probes/aggregate-direct-lambda-product-min-max,
+                        // T-1604; the shared walker does the same, `AggregateWalk::lambda_error`).
+                        Err(error) if is_lambda => {
+                            if reference_error.is_none() {
+                                reference_error = Some(error);
+                                lambda_held = true;
+                            }
+                        }
+                        Err(error) => return error,
+                    }
+                }
             }
         }
         if let Some(error) = reference_error {

@@ -1,0 +1,72 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "A direct LAMBDA in PRODUCT, MIN, MAX and SUM: its #VALUE! rank against a direct #N/A, a referenced error (A5 #N/A, A6 #VALUE!, A7:A8 #DIV/0! then #NUM!) and an array-constant error {1,#N/A}, before and after the LAMBDA (T-1604). Each D cell is ERROR.TYPE of the error, else the value.",
+ "tags": [
+  "M2",
+  "aggregates",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A5": {
+     "t": "e",
+     "v": "#N/A",
+     "stored": true
+    },
+    "A6": {
+     "t": "e",
+     "v": "#VALUE!",
+     "stored": true
+    },
+    "A7": {
+     "t": "e",
+     "v": "#DIV/0!",
+     "stored": true
+    },
+    "A8": {
+     "t": "e",
+     "v": "#NUM!",
+     "stored": true
+    },
+    "D1": "=IF(ISERROR(PRODUCT(LAMBDA(x,x),#N/A)),ERROR.TYPE(PRODUCT(LAMBDA(x,x),#N/A)),PRODUCT(LAMBDA(x,x),#N/A))",
+    "D2": "=IF(ISERROR(PRODUCT(#N/A,LAMBDA(x,x))),ERROR.TYPE(PRODUCT(#N/A,LAMBDA(x,x))),PRODUCT(#N/A,LAMBDA(x,x)))",
+    "D3": "=IF(ISERROR(PRODUCT(A5,LAMBDA(x,x))),ERROR.TYPE(PRODUCT(A5,LAMBDA(x,x))),PRODUCT(A5,LAMBDA(x,x)))",
+    "D4": "=IF(ISERROR(PRODUCT(LAMBDA(x,x),A5)),ERROR.TYPE(PRODUCT(LAMBDA(x,x),A5)),PRODUCT(LAMBDA(x,x),A5))",
+    "D5": "=IF(ISERROR(PRODUCT(A6,LAMBDA(x,x),A5)),ERROR.TYPE(PRODUCT(A6,LAMBDA(x,x),A5)),PRODUCT(A6,LAMBDA(x,x),A5))",
+    "D6": "=IF(ISERROR(PRODUCT(LAMBDA(x,x),{1,#N/A})),ERROR.TYPE(PRODUCT(LAMBDA(x,x),{1,#N/A})),PRODUCT(LAMBDA(x,x),{1,#N/A}))",
+    "D7": "=IF(ISERROR(PRODUCT({1,#N/A},LAMBDA(x,x))),ERROR.TYPE(PRODUCT({1,#N/A},LAMBDA(x,x))),PRODUCT({1,#N/A},LAMBDA(x,x)))",
+    "D8": "=IF(ISERROR(PRODUCT(LAMBDA(x,x),A7:A8)),ERROR.TYPE(PRODUCT(LAMBDA(x,x),A7:A8)),PRODUCT(LAMBDA(x,x),A7:A8))",
+    "D9": "=IF(ISERROR(PRODUCT(A7:A8,LAMBDA(x,x))),ERROR.TYPE(PRODUCT(A7:A8,LAMBDA(x,x))),PRODUCT(A7:A8,LAMBDA(x,x)))",
+    "D10": "=IF(ISERROR(MIN(LAMBDA(x,x),#N/A)),ERROR.TYPE(MIN(LAMBDA(x,x),#N/A)),MIN(LAMBDA(x,x),#N/A))",
+    "D11": "=IF(ISERROR(MIN(#N/A,LAMBDA(x,x))),ERROR.TYPE(MIN(#N/A,LAMBDA(x,x))),MIN(#N/A,LAMBDA(x,x)))",
+    "D12": "=IF(ISERROR(MIN(A5,LAMBDA(x,x))),ERROR.TYPE(MIN(A5,LAMBDA(x,x))),MIN(A5,LAMBDA(x,x)))",
+    "D13": "=IF(ISERROR(MIN(LAMBDA(x,x),A5)),ERROR.TYPE(MIN(LAMBDA(x,x),A5)),MIN(LAMBDA(x,x),A5))",
+    "D14": "=IF(ISERROR(MIN(A6,LAMBDA(x,x),A5)),ERROR.TYPE(MIN(A6,LAMBDA(x,x),A5)),MIN(A6,LAMBDA(x,x),A5))",
+    "D15": "=IF(ISERROR(MIN(LAMBDA(x,x),{1,#N/A})),ERROR.TYPE(MIN(LAMBDA(x,x),{1,#N/A})),MIN(LAMBDA(x,x),{1,#N/A}))",
+    "D16": "=IF(ISERROR(MIN({1,#N/A},LAMBDA(x,x))),ERROR.TYPE(MIN({1,#N/A},LAMBDA(x,x))),MIN({1,#N/A},LAMBDA(x,x)))",
+    "D17": "=IF(ISERROR(MIN(LAMBDA(x,x),A7:A8)),ERROR.TYPE(MIN(LAMBDA(x,x),A7:A8)),MIN(LAMBDA(x,x),A7:A8))",
+    "D18": "=IF(ISERROR(MIN(A7:A8,LAMBDA(x,x))),ERROR.TYPE(MIN(A7:A8,LAMBDA(x,x))),MIN(A7:A8,LAMBDA(x,x)))",
+    "D19": "=IF(ISERROR(MAX(LAMBDA(x,x),#N/A)),ERROR.TYPE(MAX(LAMBDA(x,x),#N/A)),MAX(LAMBDA(x,x),#N/A))",
+    "D20": "=IF(ISERROR(MAX(#N/A,LAMBDA(x,x))),ERROR.TYPE(MAX(#N/A,LAMBDA(x,x))),MAX(#N/A,LAMBDA(x,x)))",
+    "D21": "=IF(ISERROR(MAX(A5,LAMBDA(x,x))),ERROR.TYPE(MAX(A5,LAMBDA(x,x))),MAX(A5,LAMBDA(x,x)))",
+    "D22": "=IF(ISERROR(MAX(LAMBDA(x,x),A5)),ERROR.TYPE(MAX(LAMBDA(x,x),A5)),MAX(LAMBDA(x,x),A5))",
+    "D23": "=IF(ISERROR(MAX(A6,LAMBDA(x,x),A5)),ERROR.TYPE(MAX(A6,LAMBDA(x,x),A5)),MAX(A6,LAMBDA(x,x),A5))",
+    "D24": "=IF(ISERROR(MAX(LAMBDA(x,x),{1,#N/A})),ERROR.TYPE(MAX(LAMBDA(x,x),{1,#N/A})),MAX(LAMBDA(x,x),{1,#N/A}))",
+    "D25": "=IF(ISERROR(MAX({1,#N/A},LAMBDA(x,x))),ERROR.TYPE(MAX({1,#N/A},LAMBDA(x,x))),MAX({1,#N/A},LAMBDA(x,x)))",
+    "D26": "=IF(ISERROR(MAX(LAMBDA(x,x),A7:A8)),ERROR.TYPE(MAX(LAMBDA(x,x),A7:A8)),MAX(LAMBDA(x,x),A7:A8))",
+    "D27": "=IF(ISERROR(MAX(A7:A8,LAMBDA(x,x))),ERROR.TYPE(MAX(A7:A8,LAMBDA(x,x))),MAX(A7:A8,LAMBDA(x,x)))",
+    "D28": "=IF(ISERROR(SUM(LAMBDA(x,x),#N/A)),ERROR.TYPE(SUM(LAMBDA(x,x),#N/A)),SUM(LAMBDA(x,x),#N/A))",
+    "D29": "=IF(ISERROR(SUM(#N/A,LAMBDA(x,x))),ERROR.TYPE(SUM(#N/A,LAMBDA(x,x))),SUM(#N/A,LAMBDA(x,x)))",
+    "D30": "=IF(ISERROR(SUM(A5,LAMBDA(x,x))),ERROR.TYPE(SUM(A5,LAMBDA(x,x))),SUM(A5,LAMBDA(x,x)))",
+    "D31": "=IF(ISERROR(SUM(LAMBDA(x,x),A5)),ERROR.TYPE(SUM(LAMBDA(x,x),A5)),SUM(LAMBDA(x,x),A5))",
+    "D32": "=IF(ISERROR(SUM(A6,LAMBDA(x,x),A5)),ERROR.TYPE(SUM(A6,LAMBDA(x,x),A5)),SUM(A6,LAMBDA(x,x),A5))",
+    "D33": "=IF(ISERROR(SUM(LAMBDA(x,x),{1,#N/A})),ERROR.TYPE(SUM(LAMBDA(x,x),{1,#N/A})),SUM(LAMBDA(x,x),{1,#N/A}))",
+    "D34": "=IF(ISERROR(SUM({1,#N/A},LAMBDA(x,x))),ERROR.TYPE(SUM({1,#N/A},LAMBDA(x,x))),SUM({1,#N/A},LAMBDA(x,x)))",
+    "D35": "=IF(ISERROR(SUM(LAMBDA(x,x),A7:A8)),ERROR.TYPE(SUM(LAMBDA(x,x),A7:A8)),SUM(LAMBDA(x,x),A7:A8))",
+    "D36": "=IF(ISERROR(SUM(A7:A8,LAMBDA(x,x))),ERROR.TYPE(SUM(A7:A8,LAMBDA(x,x))),SUM(A7:A8,LAMBDA(x,x)))"
+   }
+  }
+ ]
+}

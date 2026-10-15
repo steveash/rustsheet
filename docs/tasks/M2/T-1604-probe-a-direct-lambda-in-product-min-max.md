@@ -3,7 +3,7 @@ id: T-1604
 title: "Probe a direct LAMBDA in PRODUCT, MIN, MAX and before an array error"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1602 (probes/aggregate-direct-lambda-average-family) showed the LAMBDA's #VALU
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/aggregate-direct-lambda-product-min-max (36 cells, excel-graph) shows PRODUCT, MIN and MAX rank a direct LAMBDA's #VALUE! like SUM. Ours returned it at once (6 cells wrong in PRODUCT/MIN/MAX plus 2 array-error cells in MIN/MAX); `fold_min_max` and `fn_product` now hold it. Eval: probe 36/36, 0 regressions.
