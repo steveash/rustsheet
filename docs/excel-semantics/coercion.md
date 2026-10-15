@@ -101,7 +101,7 @@ Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-colla
   It does **not** apply in **MATCH(...,0)** and **VLOOKUP(...,FALSE)**: both give `#N/A` for `"ae"` against `"æ"` and `"ss"` against `"ß"`.
   (The engine already agrees on every lookup cell; the old "inferred: exact-match lookups treat æ and ae as equal" held for XMATCH, XLOOKUP and SWITCH only.)
 - COUNTIF over {"æ","ae","a-e"}: criteria `"ae"`, `"=ae"`, `"æ"` count 2 (æ and ae); `"<>ae"` and `"<>æ"` 1 (a-e); `"<ae"` 0; `"<=ae"` and `"<=æ"` 2;
-  `">ae"` 1; `">=ae"` 3; `"a-e"` 1; `"<>a-e"` 2. So the criteria use the same collation for `=`, `<>` and the ordered operators (see criteria.md).
+  `">ae"` 1; `">=ae"` 3; `"a-e"` 1; `"<>a-e"` 2. So the criteria use the same collation for `=`, `<>` and the ordered operators (see criteria.md). SUMIF, SUMIFS and COUNTIFS agree with COUNTIF (T-1597, criteria.md); wildcard `?`/`*` do not expand.
 - Order of the characters not probed in T-1469 (lowest first, `=` marks equal; whole table in the oracle sidecar): empty, CHAR(1), CHAR(31), CHAR(127),
   `–` `—` (en and em dash behave like a hyphen: ignored, tiebreak only: `"a'b" < "a-b" < "a–b" < "a—b"`, all after `"ab"`),
   CHAR(160), CHAR(9), CHAR(10), CHAR(13) (these three sort above CHAR(160), not below the space), then
