@@ -3,7 +3,7 @@ id: T-1543
 title: "Sweep every statrs inverse_cdf caller for a panic at a tiny probability (normal, lognormal, chi-square, gamma, beta)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: sonnet
