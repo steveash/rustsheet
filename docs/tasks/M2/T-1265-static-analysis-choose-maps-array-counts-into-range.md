@@ -3,7 +3,7 @@ id: T-1265
 title: "Static analysis: CHOOSE maps Array counts into Range extents"
 milestone: M2
 lane: engine
-status: done
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -30,6 +30,18 @@ switch `Range` to counts, with tests showing no export or spill change (or the e
 
 ## Out of scope
 - Tracking shapes of names and tables.
+
+## Open review finding (excel-fidelity, round 1, REQUEST_CHANGES)
+The branch's convention change flips the scalar/dynamic classification (`Model::set_cell_with_formula`, xlsx `cm="1"
+t="array"`) for some 1x1 shapes, with cell values unchanged:
+- `=ABS(CHOOSE(1,{5}))`, `=SUBTOTAL(9,CHOOSE(1,{5}))`, `=AGGREGATE(CHOOSE(1,{9}),0,E1:E6)`: dynamic on main, plain here
+  (a 1x1 array arm now gives `Range(0, 0)`, which broadcasting and AGGREGATE read as a single cell);
+- `=ABS(E1:E1+1)`, `=CHOOSE(1,E1:E1+1)`: plain on main, dynamic here (an operator over a single cell now gives
+  `Array(1, 1)`, was `Array(0, 0)`);
+- an empty `ArrayKind` is now non-scalar in `broadcast_static_result` (probably unreachable).
+Next step: probe Excel's saved `cm` flag for these five formulas (excel-probe) and match it, or keep main's
+classification for these shapes; then pin it with export/`is_dynamic` tests (the AGGREGATE test added here passes on
+main too). Until then the Outcome below overstates "no export change".
 
 ## Outcome
 `StaticResult::Range` holds extents (rows - 1, columns - 1) everywhere and `Array` holds counts; `StaticResult::counts`
