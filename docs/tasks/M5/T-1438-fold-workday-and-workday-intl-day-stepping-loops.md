@@ -3,7 +3,7 @@ id: T-1438
 title: "Fold WORKDAY and WORKDAY.INTL day-stepping loops into one helper"
 milestone: M5
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
