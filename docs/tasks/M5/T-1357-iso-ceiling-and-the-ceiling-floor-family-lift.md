@@ -3,7 +3,7 @@ id: T-1357
 title: "ISO.CEILING and the CEILING/FLOOR family lift over an array argument (#N/IMPL! today)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
