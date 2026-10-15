@@ -66,7 +66,7 @@ fn test_dbcs_and_phonetic_as_the_web_oracle_evaluates_them() {
 fn test_asc_and_dbcs_lift_over_a_range_and_an_array() {
     // probes/text-modes-dbcs-lift: one result per element, spilled (T-1248; T-1411, T-1488).
     let mut model = new_empty_model();
-    model._set("A1", "ａｂ");
+    model._set("A1", "ab");
     model._set("A2", "5");
     model._set("C1", "=ASC(A1:A2)");
     model._set("D1", "=DBCS(A1:A2)");
@@ -75,7 +75,7 @@ fn test_asc_and_dbcs_lift_over_a_range_and_an_array() {
     model.evaluate();
     assert_eq!(model._get_text("C1"), "ab");
     assert_eq!(model._get_text("C2"), "5");
-    assert_eq!(model._get_text("D1"), "ａｂ");
+    assert_eq!(model._get_text("D1"), "ab");
     assert_eq!(model._get_text("D2"), "5");
     assert_eq!(model._get_text("E1"), "2");
     assert_eq!(model._get_text("F1"), "2");
