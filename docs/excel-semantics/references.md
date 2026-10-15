@@ -1405,6 +1405,7 @@ argument, as on any multi-cell shape: `=ABS(@E1:E1)`, `=ABS(@E1:E1+1)`, `=ABS(@{
 the range operand of an arm's operator, not on the call: `=CHOOSE(1,@E1:E1+1)`, `=CHOOSE(1,@E1:E2+1)`. SUBTOTAL's
 reference argument takes none: `=SUBTOTAL(9,CHOOSE(1,{5}))` is `#VALUE!` with no `@`. So the static analysis counts a
 one-cell range (`StaticResult::Range(0, 0)`) as a 1x1 array when broadcasting, and these formulas are dynamic. Ours
-matches every cell but H3, M3 and P3 (the CHOOSE-arm `@` and `ABS(@{5})`, fix T-1633).
+matches every cell (the CHOOSE-arm `@` and `ABS(@{5})` are in `legacy.rs`, T-1633; larger array constants in a scalar
+argument are unprobed).
 Status: VERIFIED (excel-graph)
 Tasks: T-1265, T-1633
