@@ -648,8 +648,8 @@ Rule (all from excel-graph sweeps `probes-numeric/t1049-*`; none implemented by 
     `#DIV/0!` only for an empty range or a zero expected value; a negative expected value is `#NUM!`.
     Text or TRUE in the actual array returns exactly the all-numeric result (`chisqtest` A34/A35 = A29).
   - T.TEST: type 1 (paired) with unequal sizes is `#N/A`; types 2 and 3 accept unequal sizes;
-    tails outside {1,2} or type outside {1,2,3} is `#NUM!`; `#DIV/0!` for one point per side or zero
-    variance; a text cell in a range is skipped (type 1 still returns a value, `ttest` D5).
+    tails outside {1,2} or type outside {1,2,3} is `#NUM!`; `#DIV/0!` for one point per side, zero variance in both
+    samples (types 2/3) or in the paired differences (type 1); type 3 with one constant sample still returns a value; a text cell in a range is skipped (type 1 still returns a value, `ttest` D5).
 Evidence: `probes-numeric/t1049-{fdist,fdistrt,finv,finvrt,ftest,chisqdist,chisqdistrt,chisqinv,
 chisqinvrt,chisqtest,hypgeomdist,weibulldist,ztest,phi,ttest}` and their `*.oracle.json`
 (`hypgeomdist` has 61 cells for the T-0977 fit).
