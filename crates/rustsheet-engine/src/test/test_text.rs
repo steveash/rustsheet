@@ -306,3 +306,59 @@ fn decode_rejects_bad_bytes_without_panicking() {
         }
     }
 }
+
+/// Evaluates `formula` in A1 and returns its text.
+fn eval_text(formula: &str) -> String {
+    let mut model = crate::test::util::new_empty_model();
+    model._set("A1", formula);
+    model.evaluate();
+    model._get_text("A1")
+}
+
+#[test]
+fn rept_and_text_keep_lone_units() {
+    // Hand expectations (UTF-16 model; the oracle cells A62-A80 read lengths only), with H = MID("😀",1,1), L = MID("😀",2,1): REPT
+    // repeats the units, TEXT puts them where the format has `@`; a lone unit is never U+FFFD.
+    let l = "MID(\"😀\",2,1)";
+    let h = "MID(\"😀\",1,1)";
+    assert_eq!(eval_text(&format!("=UNICODE(REPT({l},2))")), "56832");
+    assert_eq!(eval_text(&format!("=EXACT(REPT({l},2),{l}&{l})")), "TRUE");
+    // Repeating "low, high" re-pairs at each join, as `&` does.
+    assert_eq!(
+        eval_text(&format!("=EXACT(REPT({l}&{h},2),{l}&{h}&{l}&{h})")),
+        "TRUE"
+    );
+    assert_eq!(eval_text(&format!("=LEN(REPT({h},3))")), "3");
+    assert_eq!(eval_text(&format!("=UNICODE(T({l}))")), "56832");
+    assert_eq!(eval_text(&format!("=UNICODE(TEXT({l},\"@\"))")), "56832");
+    assert_eq!(
+        eval_text(&format!("=EXACT(TEXT({h},\"@@\"),{h}&{h})")),
+        "TRUE"
+    );
+    assert_eq!(
+        eval_text(&format!("=UNICODE(MID(TEXT({l},\"x@y\"),2,1))")),
+        "56832"
+    );
+    // A format holding U+E000 cannot confuse the lone unit with a literal.
+    assert_eq!(
+        eval_text(&format!(
+            "=UNICODE(RIGHT(TEXT({l},\"@\"\"\u{e000}\"\"\"),1))"
+        )),
+        "57344"
+    );
+    assert_eq!(
+        eval_text(&format!(
+            "=UNICODE(LEFT(TEXT({l},\"@\"\"\u{e000}\"\"\"),1))"
+        )),
+        "56832"
+    );
+    // The 255-character limit sees the real text, not the one-character stand-in.
+    assert_eq!(
+        eval_text(&format!("=TEXT({h}&REPT(\"a\",127),\"@@\")")),
+        "#VALUE!"
+    );
+    assert_eq!(
+        eval_text(&format!("=LEN(TEXT({h}&REPT(\"a\",126),\"@@\"))")),
+        "254"
+    );
+}
