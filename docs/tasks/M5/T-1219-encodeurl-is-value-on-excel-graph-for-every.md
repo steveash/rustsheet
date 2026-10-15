@@ -3,7 +3,7 @@ id: T-1219
 title: "ENCODEURL is #VALUE! on excel-graph for every argument"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
