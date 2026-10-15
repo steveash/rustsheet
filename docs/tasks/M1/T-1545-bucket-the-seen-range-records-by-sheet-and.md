@@ -3,7 +3,7 @@ id: T-1545
 title: "Bucket the seen-range records by sheet and row band"
 milestone: M1
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
