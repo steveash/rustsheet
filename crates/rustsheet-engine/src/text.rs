@@ -185,6 +185,7 @@ impl Text {
         }
     }
 
+    /// The text made of `chars`, each lone surrogate kept as its own unit.
     fn from_chars(chars: impl Iterator<Item = Char>) -> Text {
         let mut units = Vec::new();
         for c in chars {
