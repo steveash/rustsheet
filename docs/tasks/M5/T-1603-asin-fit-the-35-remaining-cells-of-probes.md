@@ -23,7 +23,10 @@ division, a correctly rounded atan of the quotient, and an x87 double rounding; 
 Ideas not yet tried:
 - a polynomial or table kernel that is not sign-symmetric (e.g. Excel computing `-x` paths through `acos`, or `π/2 - 2 asin(sqrt((1-x)/2))` near ±1);
 - the fit lab's x87 model (T-1524) for FPATAN with its own rounding;
-- ACOS evidence (T-0939) for a shared kernel.
+- ACOS evidence (T-0939) for a shared kernel;
+- `ASIN(±1E-13)` is ±1E-13 exactly (libm too), but the T-1259 formula gives ±1.0000000000000002E-13, so try a tiny-|x| shortcut;
+- `libm::atan` (the `libm` crate is already an engine dependency) in place of the platform `atan`, so the result does not
+  depend on glibc; keep it if it also scores 233 (T-1259 review).
 
 ## Acceptance criteria
 - [ ] probes/asin-argument-sweep loses known failures with no regression in any ASIN cell (ironcalc-calc, gen-m6, gen-m7), or numbers.md records why the residue stays.
