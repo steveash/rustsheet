@@ -3,7 +3,7 @@ id: T-1552
 title: "Export: write a dynamic formula with cm when a legacy reading would intersect it"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
