@@ -189,10 +189,8 @@ pair (E8, E9, E11 pass since T-1580). Decision 0033 (drop the pair whole) is sup
 decision 0052. E10 (UNICODE of the lone half) waits for T-1581. SPEC-0010.
 Arguments after the cut change nothing but an error still wins (probes/concatenate-after-cut, excel-graph,
 2026-10-15, T-1612; the engine matches all nine cells): `LEN(CONCATENATE(REPT("a",32766),"😀","zz",1))` and
-`LEN(CONCATENATE(REPT("a",32767),"zz",1,TRUE))` are 32767 and the kept text still ends in "a" (A9); an error
-argument after the cut is the result (`#N/A` for `...,"😀",NA())` and `...,"zz",NA())`). Among several errors the
-first argument's wins, wherever the cut falls (`...,1/0,NA())` is `#DIV/0!`, `...,NA(),1/0)` and
-`CONCATENATE(NA(),REPT("a",32767),1/0)` are `#N/A`).
+`LEN(CONCATENATE(REPT("a",32767),"zz",1,TRUE))` are 32767 (A1, A4), and at a character boundary the kept text still ends in "a" (A9); an error
+argument after the cut is the result (`#N/A` for `...,"😀",NA())` and `...,"zz",NA())`). Among several errors the first argument's wins, wherever the cut falls: `...,1/0,NA())` is `#DIV/0!` (A6), while `...,NA(),1/0)` and `CONCATENATE(NA(),REPT("a",32767),1/0)` are `#N/A` (A7, A8). `ISERROR` of the first error case is TRUE (A10).
 Status: VERIFIED
 Implemented in: `concat_limited` in arithmetic.rs (`&`), `fn_concatenate` in
 functions/text/concatenate.rs, `Text::truncate_utf16` in text.rs
