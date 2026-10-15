@@ -28,4 +28,4 @@ Legacy formulas put an automatic `@` on the array constants in INDEX's `row_num`
 under SUMPRODUCT and inside arithmetic), as Excel shows in FORMULATEXT; the export drops it again
 (`add_index_array_at` / `remove_index_array_at`, static_analysis/legacy.rs). New probe probes/legacy-index-array-index
 (30 cells, excel-graph) passes except L1/L10 (`N` over an array, follow-up T-1616). array-context-legacy-sumproduct
-G1, G10, T1, T10 pass. Eval delta: see the PR.
+G1, G10, T1, T10 pass. Eval: probes known failures 5568 -> 5566 (fixed 4, new-coverage failures 2 = L1/L10, regressions 0, 1 new case); fixtures 4 -> 0 (external-link-cached-ranges Refs!B89:B92, legacy `INDEX(..,{1,2},1)`); other gated suites unchanged.

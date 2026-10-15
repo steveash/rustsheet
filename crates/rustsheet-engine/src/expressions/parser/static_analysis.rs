@@ -273,9 +273,9 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
+                remove_index_array_at(kind, index, arg);
                 // Scalar arguments are an intersecting context; vector arguments
                 // (ranges/arrays) are not (`legacy_context_intersects`).
-                remove_index_array_at(kind, index, arg);
                 let child_add = legacy_context_intersects(kind, signature.get(index), arg);
                 remove_redundant_implicit_intersection(arg, child_add);
             }
