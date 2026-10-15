@@ -40,7 +40,7 @@ probes/concatenate-limit-spill E7, E13, G97.
 Backend: excel-graph only; excel-desktop not used.
 Status: VERIFIED
 Implemented in: `len_element`, `mid_element`, `find_element` in functions/text/common.rs and
-`replace_element` in functions/text/string_format.rs, through `utf16_slice` and
+`replace_element` in functions/text/string_format.rs, through `Text::slice_utf16` and
 `one_char_per_utf16_unit` in functions/text/util.rs; `left_element`/`right_element` count chars.
 Tasks: T-0249
 
@@ -56,15 +56,15 @@ surrogate as one character and do not pair a lone high surrogate with a followin
 (`LEN(RIGHT(MID("a😀b",2,1)&"x",1))` is 1).
 Evidence: probes/text-surrogate-positions A6, A11, A12, A29, A38, B6, B7, B10 (excel-graph,
 2026-10-09, T-0249).
-Ours: a Rust `String` cannot hold a lone surrogate, so `utf16_slice` drops a pair that straddles
-a cut whole (A6, A11, A12, A29, A38 and B10 stay known failures). A known gap, not a deviation
-(decision 0052): SPEC-0010, T-1579, T-1580, T-1581. `rustsheet_engine::Text` (T-1575) holds the
-lone half and is what those tasks wire in. Whether `&` of a lone high and a lone low surrogate
+Ours: MID and REPLACE slice a `rustsheet_engine::Text` by UTF-16 units (`Text::slice_utf16`), so the
+lone half survives (T-1579). A38 (UNICODE of a lone low surrogate) stays a known failure until T-1581
+moves UNICODE, LEFT and RIGHT off the lossy view. Whether `&` of a lone high and a lone low surrogate
 forms the pair (`EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`) is UNVERIFIED: `Text::concat` pairs
 them by UTF-16's rule until T-1582 probes it.
 Status: VERIFIED
-Implemented in: `utf16_slice` in functions/text/util.rs
-Tasks: T-0249, T-1483, T-1575
+Implemented in: `mid_element` in functions/text/common.rs, `replace_element` in
+functions/text/string_format.rs
+Tasks: T-0249, T-1483, T-1575, T-1579
 
 ## Lone surrogates through CODE, comparisons, case, search and cleanup functions
 Built with `H = MID("😀",1,1)` (lone high, D83D) and `L = MID("😀",2,1)` (lone low, DE00). Excel text is
