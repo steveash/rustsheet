@@ -4,9 +4,7 @@ use crate::constants::EXCEL_PRECISION;
 use crate::decimal_round::{round_decimal, RoundMode};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ArrayErrorRank, ErrorRule, NumberRules,
-};
+use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
 use crate::number_format::to_excel_precision;
 use crate::single_number_fn;
 use crate::{
@@ -37,9 +35,7 @@ fn trig_arg(f: f64) -> Result<f64, Error> {
 /// product-min-max D15, D24, T-1604).
 const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
-    errors: ErrorRule::Ranked {
-        array_errors: ArrayErrorRank::DirectUnlessLambdaHeld,
-    },
+    errors: ErrorRule::Ranked,
     skip_empty_args: false,
 };
 

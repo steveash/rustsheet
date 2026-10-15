@@ -1,0 +1,61 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1615: an error inside an array constant {1,#N/A} against a referenced error (A5 #N/A, A6 #VALUE!, A7:A8 #DIV/0! then #NUM!) and a direct LAMBDA, before and after it, in SUM (control), MIN, MAX, AVERAGE and MEDIAN. Each D cell is ERROR.TYPE of the error, else the value.",
+  "tags": [
+    "M2",
+    "aggregates",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A5": {
+          "t": "e",
+          "v": "#N/A",
+          "stored": true
+        },
+        "A6": {
+          "t": "e",
+          "v": "#VALUE!",
+          "stored": true
+        },
+        "A7": {
+          "t": "e",
+          "v": "#DIV/0!",
+          "stored": true
+        },
+        "A8": {
+          "t": "e",
+          "v": "#NUM!",
+          "stored": true
+        },
+        "D1": "=IF(ISERROR(SUM(A6,{1,#N/A})),ERROR.TYPE(SUM(A6,{1,#N/A})),SUM(A6,{1,#N/A}))",
+        "D2": "=IF(ISERROR(SUM({1,#N/A},A6)),ERROR.TYPE(SUM({1,#N/A},A6)),SUM({1,#N/A},A6))",
+        "D3": "=IF(ISERROR(SUM(A7:A8,{1,#N/A})),ERROR.TYPE(SUM(A7:A8,{1,#N/A})),SUM(A7:A8,{1,#N/A}))",
+        "D4": "=IF(ISERROR(SUM({1,#N/A},A7:A8)),ERROR.TYPE(SUM({1,#N/A},A7:A8)),SUM({1,#N/A},A7:A8))",
+        "D5": "=IF(ISERROR(SUM(LAMBDA(x,x),{1,#N/A})),ERROR.TYPE(SUM(LAMBDA(x,x),{1,#N/A})),SUM(LAMBDA(x,x),{1,#N/A}))",
+        "D6": "=IF(ISERROR(MIN(A6,{1,#N/A})),ERROR.TYPE(MIN(A6,{1,#N/A})),MIN(A6,{1,#N/A}))",
+        "D7": "=IF(ISERROR(MIN({1,#N/A},A6)),ERROR.TYPE(MIN({1,#N/A},A6)),MIN({1,#N/A},A6))",
+        "D8": "=IF(ISERROR(MIN(A7:A8,{1,#N/A})),ERROR.TYPE(MIN(A7:A8,{1,#N/A})),MIN(A7:A8,{1,#N/A}))",
+        "D9": "=IF(ISERROR(MIN({1,#N/A},A7:A8)),ERROR.TYPE(MIN({1,#N/A},A7:A8)),MIN({1,#N/A},A7:A8))",
+        "D10": "=IF(ISERROR(MIN(LAMBDA(x,x),{1,#N/A})),ERROR.TYPE(MIN(LAMBDA(x,x),{1,#N/A})),MIN(LAMBDA(x,x),{1,#N/A}))",
+        "D11": "=IF(ISERROR(MAX(A6,{1,#N/A})),ERROR.TYPE(MAX(A6,{1,#N/A})),MAX(A6,{1,#N/A}))",
+        "D12": "=IF(ISERROR(MAX({1,#N/A},A6)),ERROR.TYPE(MAX({1,#N/A},A6)),MAX({1,#N/A},A6))",
+        "D13": "=IF(ISERROR(MAX(A7:A8,{1,#N/A})),ERROR.TYPE(MAX(A7:A8,{1,#N/A})),MAX(A7:A8,{1,#N/A}))",
+        "D14": "=IF(ISERROR(MAX({1,#N/A},A7:A8)),ERROR.TYPE(MAX({1,#N/A},A7:A8)),MAX({1,#N/A},A7:A8))",
+        "D15": "=IF(ISERROR(MAX(LAMBDA(x,x),{1,#N/A})),ERROR.TYPE(MAX(LAMBDA(x,x),{1,#N/A})),MAX(LAMBDA(x,x),{1,#N/A}))",
+        "D16": "=IF(ISERROR(AVERAGE(A6,{1,#N/A})),ERROR.TYPE(AVERAGE(A6,{1,#N/A})),AVERAGE(A6,{1,#N/A}))",
+        "D17": "=IF(ISERROR(AVERAGE({1,#N/A},A6)),ERROR.TYPE(AVERAGE({1,#N/A},A6)),AVERAGE({1,#N/A},A6))",
+        "D18": "=IF(ISERROR(AVERAGE(A7:A8,{1,#N/A})),ERROR.TYPE(AVERAGE(A7:A8,{1,#N/A})),AVERAGE(A7:A8,{1,#N/A}))",
+        "D19": "=IF(ISERROR(AVERAGE({1,#N/A},A7:A8)),ERROR.TYPE(AVERAGE({1,#N/A},A7:A8)),AVERAGE({1,#N/A},A7:A8))",
+        "D20": "=IF(ISERROR(AVERAGE(LAMBDA(x,x),{1,#N/A})),ERROR.TYPE(AVERAGE(LAMBDA(x,x),{1,#N/A})),AVERAGE(LAMBDA(x,x),{1,#N/A}))",
+        "D21": "=IF(ISERROR(MEDIAN(A6,{1,#N/A})),ERROR.TYPE(MEDIAN(A6,{1,#N/A})),MEDIAN(A6,{1,#N/A}))",
+        "D22": "=IF(ISERROR(MEDIAN({1,#N/A},A6)),ERROR.TYPE(MEDIAN({1,#N/A},A6)),MEDIAN({1,#N/A},A6))",
+        "D23": "=IF(ISERROR(MEDIAN(A7:A8,{1,#N/A})),ERROR.TYPE(MEDIAN(A7:A8,{1,#N/A})),MEDIAN(A7:A8,{1,#N/A}))",
+        "D24": "=IF(ISERROR(MEDIAN({1,#N/A},A7:A8)),ERROR.TYPE(MEDIAN({1,#N/A},A7:A8)),MEDIAN({1,#N/A},A7:A8))",
+        "D25": "=IF(ISERROR(MEDIAN(LAMBDA(x,x),{1,#N/A})),ERROR.TYPE(MEDIAN(LAMBDA(x,x),{1,#N/A})),MEDIAN(LAMBDA(x,x),{1,#N/A}))"
+      }
+    }
+  ]
+}

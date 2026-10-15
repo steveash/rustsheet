@@ -13,6 +13,7 @@ C	probes/3d-ref-span-missing-ends.case.json	12
 C	probes/3d-ref-values.case.json	10
 C	probes/aggregate-args.case.json	53
 C	probes/aggregate-array-args.case.json	48
+C	probes/aggregate-array-error-vs-ref-error.case.json	25
 C	probes/aggregate-direct-lambda-average-family.case.json	31
 C	probes/aggregate-direct-lambda-product-min-max.case.json	36
 C	probes/aggregate-error-precedence.case.json	92
