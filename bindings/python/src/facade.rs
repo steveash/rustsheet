@@ -130,6 +130,44 @@ fn lone_str_to_py(py: Python<'_>, units: &[u16]) -> PyResult<Py<PyAny>> {
         .unbind())
 }
 
+/// Cheap guard: a lone surrogate always shows as U+FFFD in the lossy text.
+fn may_hold_lone_surrogate(text: &str) -> bool {
+    text.contains('\u{FFFD}')
+}
+
+/// Exact UTF-16 units of lone-surrogate cells, keyed by (row, column) offset in a range.
+type LoneCells = HashMap<(usize, usize), std::sync::Arc<[u16]>>;
+
+/// The exact UTF-16 units of every lone-surrogate text cell of `arr`, the values of range `r`,
+/// keyed by (row, column) offset in the range.
+fn lone_cells(wb: &Workbook, r: &str, arr: &rustsheet::Array) -> Result<LoneCells, RefError> {
+    let range = wb.range_ref(r)?;
+    let mut lone = HashMap::new();
+    for row in 0..arr.rows() {
+        for col in 0..arr.cols() {
+            let Some(Value::Text(s)) = arr.get(row, col) else {
+                continue;
+            };
+            if !may_hold_lone_surrogate(s) {
+                continue;
+            }
+            let at = |origin: u32, offset: usize| {
+                u32::try_from(offset)
+                    .ok()
+                    .and_then(|o| origin.checked_add(o))
+            };
+            let (Some(rr), Some(cc)) = (at(range.top, row), at(range.left, col)) else {
+                continue;
+            };
+            let cell = RangeRef::new(range.sheet, rr, cc, rr, cc)?;
+            if let Some(units) = wb.text_utf16(cell)? {
+                lone.insert((row, col), units);
+            }
+        }
+    }
+    Ok(lone)
+}
+
 fn value_to_py(py: Python<'_>, value: Value) -> PyResult<Py<PyAny>> {
     match value {
         Value::Empty => Ok(py.None()),
@@ -423,7 +461,7 @@ impl PyWorkbook {
                 let v = wb.value(r.as_str())?;
                 let units = match &v {
                     // Cheap guard: a lone surrogate always shows as U+FFFD in the lossy text.
-                    Value::Text(s) if s.contains('\u{FFFD}') => wb.text_utf16(r.as_str())?,
+                    Value::Text(s) if may_hold_lone_surrogate(s) => wb.text_utf16(r.as_str())?,
                     _ => None,
                 };
                 Ok((v, units))
@@ -444,26 +482,7 @@ impl PyWorkbook {
         let (arr, lone) = self
             .read(py, |wb| {
                 let arr = wb.values(r)?;
-                // Same cheap guard as `value`: only text showing U+FFFD can hold a lone surrogate.
-                let range = wb.range_ref(r)?;
-                let mut lone = HashMap::new();
-                for row in 0..arr.rows() {
-                    for col in 0..arr.cols() {
-                        if matches!(arr.get(row, col), Some(Value::Text(s)) if s.contains('\u{FFFD}')) {
-                            let at = |origin: u32, offset: usize| {
-                                u32::try_from(offset).ok().and_then(|o| origin.checked_add(o))
-                            };
-                            let (Some(rr), Some(cc)) = (at(range.top, row), at(range.left, col))
-                            else {
-                                continue;
-                            };
-                            let cell = RangeRef::new(range.sheet, rr, cc, rr, cc)?;
-                            if let Some(units) = wb.text_utf16(cell)? {
-                                lone.insert((row, col), units);
-                            }
-                        }
-                    }
-                }
+                let lone = lone_cells(wb, r, &arr)?;
                 Ok((arr, lone))
             })
             .map_err(|e: RefError| ref_err(&e))?;

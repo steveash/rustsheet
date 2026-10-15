@@ -389,3 +389,4 @@ def test_lone_surrogate_reads_back_exactly(wb):
     assert wb.value("A1") == "\ude00"
     assert wb.values("A1:A3") == [["\ude00"], ["�"], ["x"]]
     assert wb.values("A2") == [["�"]]
+    assert wb.value("A2") == "�"
