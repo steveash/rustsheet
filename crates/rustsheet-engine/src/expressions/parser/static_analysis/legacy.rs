@@ -21,10 +21,13 @@ pub(super) fn is_array_context(kind: &Function) -> bool {
 /// ([`is_array_context`]).
 pub(super) fn add_in_array_context(args: &mut [Node]) {
     for arg in args {
-        for_each_array_context_condition(arg, &mut |condition| {
-            if !matches!(run_static_analysis_on_node(condition), StaticResult::Scalar) {
-                add_implicit_intersection(condition, true);
+        for_each_array_context_condition(arg, &mut |node, place| match place {
+            Place::Condition => {
+                if !matches!(run_static_analysis_on_node(node), StaticResult::Scalar) {
+                    add_implicit_intersection(node, true);
+                }
             }
+            Place::Index => add_implicit_intersection(node, false),
         });
     }
 }
@@ -33,9 +36,73 @@ pub(super) fn add_in_array_context(args: &mut [Node]) {
 /// arguments of an array-context function is meaningful and kept.
 pub(super) fn remove_in_array_context(args: &mut [Node]) {
     for arg in args {
-        for_each_array_context_condition(arg, &mut |condition| {
-            remove_redundant_implicit_intersection(condition, true);
+        for_each_array_context_condition(arg, &mut |node, place| {
+            remove_redundant_implicit_intersection(node, place == Place::Condition);
         });
+    }
+}
+
+/// Where [`for_each_array_context_condition`] found a node a legacy formula intersects inside an
+/// array context.
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum Place {
+    /// The condition of IF or the value of IFERROR and IFNA, intersected as a whole.
+    Condition,
+    /// An INDEX call, whose indices intersect as outside the array context
+    /// ([`add_index_array_at`]).
+    Index,
+}
+
+/// Whether `index` is one of INDEX's `row_num`, `column_num` or `area_num`.
+fn is_index_number(kind: &Function, index: usize) -> bool {
+    matches!(kind, Function::Index) && index > 0
+}
+
+/// A legacy formula reads an array constant in INDEX's `row_num`, `column_num` or `area_num` as
+/// its first element, also inside SUMPRODUCT and inside arithmetic, and Excel shows that `@`:
+/// `SUMPRODUCT(INDEX(B1:B6,{1;2;3}))` is 1 and `=SUM(INDEX(B1:B6,{2;3}))` shows as
+/// `=SUM(INDEX(B1:B6,@{2;3}))`, `{2;3}+0` as `@{2;3}+0` (probes/array-context-legacy-sumproduct
+/// G, T; probes/legacy-index-array-index, excel-graph, T-0294). A function call keeps its own
+/// rules: `INDEX(B1:B6,N(IF(1,{2;3})))` is no `@`. Ranges there intersect through
+/// [`legacy_intersects`] like any scalar argument.
+pub(super) fn add_index_array_at(kind: &Function, index: usize, arg: &mut Node) {
+    if is_index_number(kind, index) {
+        for_each_value_operand(arg, &mut |operand| {
+            if matches!(operand, Node::ArrayKind(_)) {
+                *operand = Node::automatic_at(operand.clone());
+            }
+        });
+    }
+}
+
+/// Drops the `@`s [`add_index_array_at`] adds again on import.
+pub(super) fn remove_index_array_at(kind: &Function, index: usize, arg: &mut Node) {
+    if is_index_number(kind, index) {
+        for_each_value_operand(arg, &mut |operand| {
+            if let Node::ImplicitIntersection { child, .. } = operand {
+                if matches!(child.as_ref(), Node::ArrayKind(_)) {
+                    *operand = child.as_ref().clone();
+                }
+            }
+        });
+    }
+}
+
+/// Calls `f` on `node`, or on each operand of the operators, parentheses and signs it is made
+/// of, at any depth (bounded by the parser's depth cap).
+fn for_each_value_operand(node: &mut Node, f: &mut impl FnMut(&mut Node)) {
+    match node {
+        Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
+            for_each_value_operand(child, f);
+        }
+        Node::OpConcatenateKind { .. }
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. } => {
+            for_each_chain_operand_mut(node, |operand| for_each_value_operand(operand, f));
+        }
+        _ => f(node),
     }
 }
 
@@ -77,17 +144,22 @@ fn is_scalar_context(kind: &Function, signature: Option<&Signature>) -> bool {
 /// `SUMPRODUCT(ABS(IF(B1:B6>1,B1:B6,0)))` and `SUMPRODUCT(IFERROR(B1:B6,100))` are `#VALUE!`,
 /// `#VALUE!` and 100 off the range's rows, while IF's value branches stay arrays
 /// (`SUMPRODUCT(IF(TRUE,B1:B6))` 12; probes/array-context-legacy-sumproduct F10, S10, U10,
-/// legacy-value-argument-intersection J10, K10, L10, N10; T-0293, T-1526). Recursion is bounded
-/// by the parser's depth cap.
-fn for_each_array_context_condition(node: &mut Node, f: &mut impl FnMut(&mut Node)) {
+/// legacy-value-argument-intersection J10, K10, L10, N10; T-0293, T-1526), and on each INDEX
+/// call, whose indices still intersect ([`add_index_array_at`]). Recursion is bounded by the
+/// parser's depth cap.
+fn for_each_array_context_condition(node: &mut Node, f: &mut impl FnMut(&mut Node, Place)) {
     match node {
+        Node::FunctionKind {
+            kind: Function::Index,
+            ..
+        } => f(node, Place::Index),
         Node::FunctionKind {
             kind: Function::If | Function::Iferror | Function::Ifna,
             args,
         } => {
             let mut args = args.iter_mut();
             if let Some(condition) = args.next() {
-                f(condition);
+                f(condition, Place::Condition);
             }
             for arg in args {
                 for_each_array_context_condition(arg, f);

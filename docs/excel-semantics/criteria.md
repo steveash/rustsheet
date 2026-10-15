@@ -150,8 +150,16 @@ SUMPRODUCT: `SUMPRODUCT(IF(B1:B6>1,B1:B6,0))` is 0 on row 1 and `#VALUE!` on row
 their arithmetic as arrays without SUMPRODUCT: `LOOKUP(2,1/(B1:B6>1),B1:B6)` 3, `SUM(MMULT(B1:B6*1,{1}))` 12,
 `INDEX(B1:B6*1,2)` 2, on and off the row. An array `row_num` in legacy INDEX gives its first element only:
 `SUMPRODUCT(INDEX(B1:B6,{1;2;3}))` and `SUMPRODUCT(INDEX(B1:B6*1,{1;2;3}))` are 1. The engine matches the IF condition since T-1526 (references.md "Legacy formulas intersect the ranges in value
-arguments", which also covers IFERROR and IFNA under SUMPRODUCT); it differs on INDEX with an array row
-(`#N/IMPL!`): T-0294. CHOOSE with an array index matches since T-1508 (lookup.md, "CHOOSE over an index array
+arguments", which also covers IFERROR and IFNA under SUMPRODUCT) and INDEX's indices since T-0294: legacy INDEX puts an
+automatic `@` on every array constant in its `row_num`, `column_num` and `area_num`, also under SUMPRODUCT and inside
+arithmetic, and FORMULATEXT shows it: `=SUM(INDEX(B1:B6,{2;3}))` is 2 and shows as `=SUM(INDEX(B1:B6,@{2;3}))`,
+`SUMPRODUCT(INDEX(B1:B6,{2;3},1))` 2, `INDEX(B1:B6,2,{1,1})` 2, `INDEX((B1:B6,B1:B6),1,1,{2;1})` 1, `INDEX(B1:B6,{2;3}+0)`
+shows `@{2;3}+0`, and a legacy cell `=INDEX(B1:B6,{3;2})` shows `=@INDEX(B1:B6,@{3;2})`; a range index intersects
+(`SUMPRODUCT(INDEX(B1:B6,C1:C3))` is B2 on row 1 and `#VALUE!` off-row, shown `@C1:C3`), while a function call is left
+alone: `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` is 5 with no `@` (the classic trick; the engine is `#N/IMPL!`
+there because N does not take an array yet, T-1616). Evidence: probes/legacy-index-array-index (excel-graph,
+2026-10-15, T-0294); fixtures/external-link-cached-ranges Refs!B89:B92 (`SUM`, `ROWS`, `ISREF` and `INDEX` of a legacy
+`INDEX([1]Uses!$A$1:$B$3,{1,2},1)`, Excel-cached). Implemented in `add_index_array_at` (expressions/parser/static_analysis/legacy.rs). CHOOSE with an array index matches since T-1508 (lookup.md, "CHOOSE over an index array
 broadcasts its value arguments").
 Dynamic edge cases (probes/ifs-array-criteria-edges, oracle excel-graph 2026-10-07): a SUMIFS or COUNTIFS whose ranges
 differ in shape with an array criterion is an array of `#VALUE!` (1x2 for `{"a","b"}`), not one scalar `#VALUE!`;
