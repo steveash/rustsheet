@@ -134,7 +134,7 @@ pub struct CellInfo { pub value: Value, pub formula: Option<String>, pub number_
 violations return `LoadError::Options`. Loading never resolves external-link targets or part
 names against the filesystem. T-0102 adds a zip-bomb test.
 
-Zip limits are enforced on the bytes actually inflated (declared sizes are only a fast reject); the defaults are 256 MiB and 5,000 entries. `open` refuses files larger than `max_uncompressed_bytes`. Cargo feature (harness only): `metadata_clock` adds `Workbook::pin_clock_from_metadata`, which pins the per-workbook `Clock` (SPEC-0008; `WorkbookOptions.clock` landed with T-1479, `Workbook::set_clock` and `Txn::set_clock` come with T-1480). In v0 `values()` does a per-cell lookup over the rectangle (O(area), bounded by `max_read_cells`) and sheet lookups scan the sheet list (no cached id-to-index map yet).
+Zip limits are enforced on the bytes actually inflated (declared sizes are only a fast reject); the defaults are 256 MiB and 5,000 entries. `open` refuses files larger than `max_uncompressed_bytes`. Cargo feature (harness only): `metadata_clock` adds `Workbook::pin_clock_from_metadata`, which pins the per-workbook `Clock` (SPEC-0008; `WorkbookOptions.clock` landed with T-1479, `Workbook::clock`, `Workbook::set_clock` and `Txn::set_clock` landed with T-1480, with the Python `clock` keyword and property). In v0 `values()` does a per-cell lookup over the rectangle (O(area), bounded by `max_read_cells`) and sheet lookups scan the sheet list (no cached id-to-index map yet).
 
 Reads never mutate. `open`/`from_xlsx_bytes` recalculate once when `opts.recalc`. Loading and
 saving are the only I/O; formula evaluation performs none (CLAUDE.md prime directive 5).
