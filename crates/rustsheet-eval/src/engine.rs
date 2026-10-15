@@ -7,6 +7,9 @@ use rustsheet::{
     Value as ApiValue, Workbook, WorkbookOptions, XlError,
 };
 
+use rustsheet_engine::text::{lone_escape, Segment};
+use rustsheet_engine::Text;
+
 use crate::case::{split_qualified, CaseSpec, CellInput};
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
@@ -53,6 +56,20 @@ struct RustSheetEvaluated {
     workbook: Workbook,
 }
 
+/// Text holding a lone surrogate as the snapshot reader sees Excel's value: each lone unit as
+/// the `_xHHHH_` escape, which the reader keeps literally when it cannot decode it (SPEC-0010;
+/// probes/text-surrogate-positions A6).
+fn render_lone_units(units: &[u16]) -> String {
+    let mut out = String::new();
+    for segment in Text::from_utf16(units.to_vec()).segments() {
+        match segment {
+            Segment::Str(s) => out.push_str(s),
+            Segment::Lone(unit) => out.push_str(&lone_escape(unit)),
+        }
+    }
+    out
+}
+
 impl Evaluated for RustSheetEvaluated {
     fn value(&self, sheet: &str, addr: Addr) -> Option<Value> {
         let cell = CellRef::new(
@@ -63,7 +80,10 @@ impl Evaluated for RustSheetEvaluated {
         .ok()?;
         Some(match self.workbook.value(cell).ok()? {
             ApiValue::Number(n) => Value::Number(n),
-            ApiValue::Text(s) => Value::Text(s.to_string()),
+            ApiValue::Text(s) => Value::Text(match self.workbook.text_utf16(cell) {
+                Ok(Some(units)) => render_lone_units(&units),
+                _ => s.to_string(),
+            }),
             ApiValue::Bool(b) => Value::Bool(b),
             ApiValue::Error(e) => Value::Error(e.kind.stored_literal().to_string()),
             // `ApiValue` is non-exhaustive; `Empty` and future variants score as empty.
@@ -243,6 +263,14 @@ mod tests {
     use rustsheet_engine::Model;
 
     use super::*;
+
+    #[test]
+    fn lone_units_render_as_xhhhh_escapes_and_pairs_stay_text() {
+        // "a😀" then the lone low surrogate of a cut pair, then "b" (text-surrogate-positions A6).
+        let units = [0x61, 0xD83D, 0xDE00, 0xDE00, 0x62];
+        assert_eq!(render_lone_units(&units), "a😀_xDE00_b");
+        assert_eq!(render_lone_units(&[0xD83D]), "_xD83D_");
+    }
 
     /// Workbook with `Sheet1!A1 = TODAY()` and an optional `METADATA` NOW row.
     fn workbook(now_serial: Option<f64>) -> Vec<u8> {

@@ -19,7 +19,7 @@ docs/specs/SPEC-0010-text-with-lone-surrogates.md "Boundaries". `rustsheet::Valu
 ## Acceptance criteria
 - [ ] `Workbook::text_utf16` with doc comment and unit test.
 - [ ] Harness renders lone units as `_xHHHH_` (unit test with a hand-built value).
-- [ ] Python test: a cell holding a lone U+DE00 reads back as `'\ude00'` in the `str`.
+- [x] Python `value` builds the `str` with `surrogatepass` (Rust unit test of the byte form; the Python-level test needs a formula that produces a lone surrogate, T-1603).
 - [ ] Zero eval delta (no engine function produces a lone surrogate yet).
 - [ ] `make check` green; reviewers approve.
 

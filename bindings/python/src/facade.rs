@@ -11,7 +11,7 @@ use std::sync::{Mutex, MutexGuard};
 
 use pyo3::exceptions::{PyException, PyTypeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyBool, PyDict, PyInt, PyList};
+use pyo3::types::{PyBool, PyBytes, PyDict, PyInt, PyList};
 use pyo3::{create_exception, IntoPyObjectExt};
 
 use rustsheet::{
@@ -113,6 +113,19 @@ impl PyFormula {
     fn __repr__(&self) -> String {
         format!("Formula({:?})", self.text)
     }
+}
+
+/// The little-endian UTF-16 bytes of `units`, which Python decodes with `surrogatepass`.
+fn utf16_le_bytes(units: &[u16]) -> Vec<u8> {
+    units.iter().flat_map(|u| u.to_le_bytes()).collect()
+}
+
+/// A Python `str` holding exactly `units`, lone surrogates included (`str` can, `String` cannot).
+fn lone_str_to_py(py: Python<'_>, units: &[u16]) -> PyResult<Py<PyAny>> {
+    let bytes = PyBytes::new(py, &utf16_le_bytes(units));
+    Ok(bytes
+        .call_method1("decode", ("utf-16-le", "surrogatepass"))?
+        .unbind())
 }
 
 fn value_to_py(py: Python<'_>, value: Value) -> PyResult<Py<PyAny>> {
@@ -402,8 +415,21 @@ impl PyWorkbook {
 
     /// The value of a cell (the top-left cell of a range), e.g. `wb.value("Sheet1!A1")`.
     fn value(&self, py: Python<'_>, r: &str) -> PyResult<Py<PyAny>> {
-        let v = self.read(py, |wb| wb.value(r)).map_err(|e| ref_err(&e))?;
-        value_to_py(py, v)
+        let r = r.to_owned();
+        let (v, units) = self
+            .read(py, |wb| {
+                let v = wb.value(r.as_str())?;
+                let units = match &v {
+                    Value::Text(s) if s.contains('\u{FFFD}') => wb.text_utf16(r.as_str())?,
+                    _ => None,
+                };
+                Ok((v, units))
+            })
+            .map_err(|e: RefError| ref_err(&e))?;
+        match units {
+            Some(units) => lone_str_to_py(py, &units),
+            None => value_to_py(py, v),
+        }
     }
 
     fn __getitem__(&self, py: Python<'_>, r: &str) -> PyResult<Py<PyAny>> {
@@ -622,4 +648,14 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("LoadError", py.get_type::<PyLoadError>())?;
     m.add("SaveError", py.get_type::<PySaveError>())?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::utf16_le_bytes;
+
+    #[test]
+    fn lone_units_become_little_endian_bytes() {
+        assert_eq!(utf16_le_bytes(&[0x61, 0xDE00]), [0x61, 0x00, 0x00, 0xDE]);
+    }
 }
