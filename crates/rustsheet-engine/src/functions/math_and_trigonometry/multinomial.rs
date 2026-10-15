@@ -188,7 +188,8 @@ const LOG10_OF: [f64; 170] = [
     2.230448921378274,
 ];
 
-/// `log10(k)` for 1 <= k <= 170.
+/// `log10(k)` for 1 <= k <= 170; the caller caps the sum at 170 first (`fn_multinomial`), so any
+/// other k is never asked for.
 fn log10_of(k: u64) -> f64 {
     usize::try_from(k)
         .ok()
