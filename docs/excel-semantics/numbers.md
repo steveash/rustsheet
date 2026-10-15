@@ -308,7 +308,7 @@ the division is exact) all give the value whose second addition was rounded twic
 total is rounded to a double after every addition (to 64 bits, then to a double, as `extended_sum` does); it is not carried at 64 bits between additions. Sets 4, 5 and 7 (numbered from 0; Data!A17:A19, A21:A23, A29:A31) tell the two apart, and the oracle matches the per-addition rounding in all of them. SUMIF,
 SUMIFS, DSUM and AVERAGEA used the plain `+` and missed by one ulp in all 8 sets (32 cells); they add
 with `extended_sum` since T-1618 and all 104 cells pass. AVERAGEIFS, DAVERAGE and AVEDEV still use the plain `+`
-(unprobed). AVERAGE's division by a small count (3, 5, 7) was not probed: that is reasoning, not oracle evidence. For a
+(unprobed, T-1650). AVERAGE's division by a small count (3, 5, 7) was not probed: that is reasoning, not oracle evidence. For a
 small odd count n the binary expansion of k/n has no run of 11 equal bits after the cut, so the 64-bit rounding
 never lands on a midpoint and double rounding would equal single rounding. A discriminating divisor needs n above
 2^11 (an earlier random search at n = 1025 found nothing; T-1619 probed counts 2051-4095, below).
