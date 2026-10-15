@@ -25,7 +25,7 @@ Split from T-0958 (CLAUDE.md directive 3). `parse_reference_r1c1` (crates/rustsh
 -
 
 ## Outcome
-Probed 52 cases on excel-graph (sheet-name quoting via FORMULATEXT for about 160 names, defined
+Probed 44 cases on excel-graph (sheet-name quoting via FORMULATEXT for about 160 names, defined
 names one per case, LET names, Lotus dotted ranges); recorded in references.md "R1C1-shaped sheet
 and defined names". Excel's test is neither old parser's: it is a case-insensitive prefix test
 (`R1CD`, `R1_`, `C1R1` quoted; `RCR`, `R0`, `R1.5` not), plus a separate Lotus-range test (`A1.B2`,
@@ -34,6 +34,6 @@ and defined names". Excel's test is neither old parser's: it is a case-insensiti
 `ParsedReference::parse_r1c1_reference` (INDIRECT's reader): it has a different grammar (prefixes,
 no brackets, no column bound after `R<n>C`), so do not try to fold them again. LET/LAMBDA names skip
 the shape test, as in Excel, except uppercase `R<n>C<m>`, which the R1C1 storage would read back as a
-reference (T-1658). Eval: 0 regressions; probes +52 cases, 44 new-coverage failures, all tracked:
+reference (T-1658). Eval: 0 regressions; probes +44 cases, 36 new-coverage failures, all tracked:
 T-1657 (out-of-range R1C1 defined names are #NAME? in Excel), T-1658 (LET `R1C1` names), T-1659
 (Lotus dotted ranges in formulas).
