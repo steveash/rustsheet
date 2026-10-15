@@ -3,7 +3,7 @@ id: T-1488
 title: "ASC and DBCS lift over a range (spill per element, #SPILL! when blocked); follow-up of T-1248"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Probes/text-modes-dbcs-lift (excel-graph, T-1248): `DBCS(A3:A5)` over 5, a half-
 
 ## Out of scope
 - ASC over INDEX(..) results (T-1411).
+
+## Outcome
+Done together with T-1411 (same code: `fn_asc` and `fn_dbcs` use `apply_text_unary`); see T-1411's Outcome.

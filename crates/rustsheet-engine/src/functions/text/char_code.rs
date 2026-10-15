@@ -159,29 +159,17 @@ impl Model {
     }
 
     /// ASC(text) — For non-DBCS locales, returns text unchanged.
-    /// Full-width to half-width conversion is only meaningful in DBCS locales.
+    /// Full-width to half-width conversion is only meaningful in DBCS locales. Lifts over a
+    /// range or array, one result per element (probes/text-modes-dbcs-lift, T-1248; T-1411).
     pub(crate) fn fn_asc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let s = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(e) => return e,
-        };
-        CalcResult::String(asc_convert(&s))
+        self.apply_text_unary(args, cell, asc_convert)
     }
 
     /// DBCS(text) — text unchanged: en-US Excel for the web does not widen it
-    /// (probes/text-modes-dbcs C3, `DBCS("abc")` = "abc"; T-1213). Only ASCII is probed, and
-    /// so is only a scalar argument: like ASC it does not lift over a range until a probe shows how.
+    /// (probes/text-modes-dbcs C3, `DBCS("abc")` = "abc"; T-1213), and lifts over a range or
+    /// array like ASC (probes/text-modes-dbcs-lift, T-1248; T-1488).
     pub(crate) fn fn_dbcs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        match self.get_string(&args[0], cell) {
-            Ok(s) => CalcResult::String(s),
-            Err(e) => e,
-        }
+        self.apply_text_unary(args, cell, str::to_owned)
     }
 
     /// PHONETIC(reference) — `#N/A` for a text cell, a number cell and a range alike, as

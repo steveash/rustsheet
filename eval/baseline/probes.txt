@@ -5987,13 +5987,6 @@ F	probes/text-lone-surrogates.case.json	Sheet1!B3
 F	probes/text-lone-surrogates.case.json	Sheet1!B4
 F	probes/text-lone-surrogates.case.json	Sheet1!B5
 F	probes/text-lone-surrogates.case.json	Sheet1!B6
-F	probes/text-modes-dbcs-lift.case.json	Sheet1!G2
-F	probes/text-modes-dbcs-lift.case.json	Sheet1!I1
-F	probes/text-modes-dbcs-lift.case.json	Sheet1!I2
-F	probes/text-modes-dbcs-lift.case.json	Sheet1!I3
-F	probes/text-modes-dbcs-lift.case.json	Sheet1!M2
-F	probes/text-modes-dbcs-lift.case.json	Sheet1!O2
-F	probes/text-modes-dbcs-phonetic-b.case.json	Sheet1!C8
 F	probes/text-surrogate-positions.case.json	Sheet1!A11
 F	probes/text-surrogate-positions.case.json	Sheet1!A12
 F	probes/text-surrogate-positions.case.json	Sheet1!A29

@@ -3,7 +3,7 @@ id: T-1411
 title: "ASC lifts over a multi-cell range (#VALUE! today)"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -29,3 +29,6 @@ array; ASC was only probed on one cell. DBCS also gives `#VALUE!` for a range in
 
 ## Out of scope
 -
+
+## Outcome
+`fn_asc` and `fn_dbcs` now go through `apply_text_unary` (the CLEAN lift), and ASC/DBCS static analysis uses `scalar_arguments`, so both lift over a range or array and spill. gen-m9/65faaeb48419087d A5 passes (`#SPILL!`), probes/text-modes-dbcs-lift (10/10), text-modes-dbcs-phonetic-b (30/30) and text-modes-dbcs (3/3) pass. T-1488 asked for the same change and is closed by this PR. Unit test `test_asc_and_dbcs_lift_over_a_range_and_an_array`.
