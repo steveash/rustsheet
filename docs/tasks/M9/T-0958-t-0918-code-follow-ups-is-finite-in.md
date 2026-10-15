@@ -26,7 +26,7 @@ INDIRECT duplicate logic (CLAUDE.md directive 3).
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Done on this branch: explicit `is_finite` check in `rept_element` plus a unit test
 (`rept_tests` in functions/text/common.rs).
 
