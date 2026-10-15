@@ -23,7 +23,7 @@ probes/trig-huge-argument A1, A15, A29, A43, A57, A71 (`f(2^27-1)`): Excel diffe
 ## Out of scope
 -
 
-## Notes (in flight, 2026-10-15)
+## Notes (in flight, 2026-10-15; resumed 15:20)
 - Model found: Excel reduces by π₆₄ (π rounded to a 64-bit significand, x87 FLDPI), so its
   f(x) is the true f(x + kδ), k = round(x/π), δ = π − π₆₄ = -5.016557612668332e-20. With
   results correctly rounded from that, all 6 `f(2^27-1)` cells match bit for bit (checked with
