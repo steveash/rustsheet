@@ -70,7 +70,7 @@ pair whose operand is text (a criterion operand like `" 0"` is numeric, criteria
 a hyphen is skipped, `"-1" > "0"` is TRUE (Data!A17 vs C3; implemented by T-0220).
 Implemented in: `functions::util::collation::cmp_text_excel` (T-0220: the three passes below), used by
 `compare_values` (operators including `=`, SWITCH, SORT, XMATCH, XLOOKUP) and the ordered text criteria (`<`, `<=`, `>`, `>=`) in
-functions/criteria.rs. Not yet: the `=`/`<>` text criteria (T-1594). MATCH(...,0) and VLOOKUP(...,FALSE) do not use the collation
+functions/criteria.rs. The `=`/`<>` text criteria use it too (T-1594). MATCH(...,0) and VLOOKUP(...,FALSE) do not use the collation
 (T-1590, below). Inferred, not probed: SORT orders texts the same way; control characters sort below the space (see T-1590 for CHAR(9), 10, 13).
 Full order (T-1469, VERIFIED, probes/text-collation-order, 146 strings ranked by
 `SUMPRODUCT(--(range<x))`, excel-graph 2026-10-13). `=`, `<` and `>` ignore case completely (`"a"<"A"` and `"a">"A"` are both FALSE) but not accents; `<`/`>` order, lowest first:
@@ -111,8 +111,8 @@ Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-colla
   `ç`, `đ`, `ð`, `ł`, `ñ`, `þ` were probed as single characters only: they sort right after their base letter (`þ` after `t`), and whether each
   is a tiebreak accent or a separate letter (or an expansion such as `þ`=`th`) is UNVERIFIED, observed positions only.
   Position of the digit-like symbols: between `0` and `9`, observed only (1 to 8 were not probed with them).
-- The engine's code-point fallback gets 89 of these 270 cells wrong (tilde/cedilla/stroke accent order, `ĳ`, `œ`, `þ`, Greek, the symbols and control characters): see the engine follow-up task.
-Tasks: T-0220, T-0244, T-1469, T-1590, T-1594
+- The engine's code-point fallback gets 89 of these 270 cells wrong (tilde/cedilla/stroke accent order, `ĳ`, `œ`, `þ`, Greek, the symbols and control characters): see T-1595.
+Tasks: T-0220, T-0244, T-1469, T-1590, T-1594, T-1595
 
 ## Double unary minus coerces to a number
 Rule: `--x` is not a no-op. Each unary minus coerces its operand to a number: `--FALSE` = 0,
