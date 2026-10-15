@@ -298,10 +298,10 @@ Status: VERIFIED (excel-graph); literal arguments UNVERIFIED
 Tasks: T-1152, T-1203, T-1208, T-1215, T-1303, T-1596
 
 ## VARA family: single-cell reference arguments
-Rule: ours reads a single-cell reference argument of VARA, VARPA, STDEVA and STDEVPA (`VARA(A1)`, `(A1)`, `Sheet1!A1`, a LET-bound or IF/INDEX/XLOOKUP/TAKE-picked cell) like a one-cell range, so text there counts 0 and TRUE counts 1; before T-1567 a single reference skipped them, which disagreed with `A1:A1`.
-Evidence: none from Excel for the single-reference forms (the engine's `A1:A1` reading and AVERAGEA's rules only). Direct `"2"` and TRUE are a separate gap: Excel coerces them (probes/stat-argument-modes Sheet1!H69, H72, H75, H78, known failures, T-1291).
-Ours: single references coerce; direct values and array elements still count only numbers.
-Status: UNVERIFIED (probe pending, T-1617)
+Rule: a single-cell reference argument of VARA, VARPA, STDEVA and STDEVPA, also one picked by IF, INDEX or XLOOKUP, coerces like a cell inside a range: text counts 0 and TRUE counts 1 (A1:A3 = 1, 2, 4; B1 = "x": `VARA(A1:A3,B1)` → 2.9166..., B2 = TRUE → 2). An array literal counts only its numbers (`VARA({1,2,4,"x"})` and `VARA({1,2,4,TRUE})` → 2.3333...). A direct `"2"` and TRUE coerce (1.5833..., 2) and a direct non-numeric text is `#VALUE!` (S!D37-D39 are known failures, T-1291).
+Evidence: probes/vara-single-ref-picked (41 cells; oracle: excel-graph, 2026-10-15, T-1617); probes/stat-argument-modes Sheet1!H69, H72, H75, H78 (direct forms).
+Ours: matches except the direct forms. Forms `(A1)`, `Sheet1!A1`, LET-bound and TAKE-picked cells were not probed: UNVERIFIED.
+Status: VERIFIED (plain reference, IF/INDEX/XLOOKUP-picked, array literals); other forms UNVERIFIED
 Tasks: T-1567, T-1617, T-1291
 
 ## Statistical function argument modes
