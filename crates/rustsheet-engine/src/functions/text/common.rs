@@ -13,7 +13,7 @@ use crate::{
     },
     formatter::{
         exceeds_complexity_limit,
-        format::{format_text, format_text_value, FormatContext, Formatted},
+        format::{format_text, format_text_value_exact, FormatContext, Formatted},
     },
     functions::{
         text::{
@@ -90,15 +90,16 @@ fn len_element(text: &ArrayNode) -> Result<ArrayNode, Error> {
 
 /// Computes a single REPT result from one element of each argument.
 fn rept_element(text: &ArrayNode, number_times: Result<f64, Error>) -> Result<ArrayNode, Error> {
-    let text = array_node_to_string(text)?;
+    let text = array_node_to_text(text)?;
     let number_times = number_times?.floor();
     // Excel's cell text limit, counted in UTF-16 code units (probes/concatenate-limit-spill E12);
     // it also bounds the allocation (CLAUDE.md directive 5).
-    let units = text.encode_utf16().count() as f64;
+    let units = text.len_utf16() as f64;
     if number_times < 0.0 || units * number_times > MAX_TEXT_UNITS as f64 {
         return Err(Error::VALUE);
     }
-    Ok(ArrayNode::String(text.repeat(number_times as usize).into()))
+    // Repeats the exact units, so a lone surrogate survives (probes/text-lone-surrogates B1-B6).
+    Ok(ArrayNode::String(text.repeat(number_times as usize)))
 }
 
 /// Computes a single EXACT result from one element of each argument.
@@ -130,8 +131,10 @@ fn text_node(value: Option<f64>, format: &str, ctx: &FormatContext) -> ArrayNode
 /// The TEXT array element for a text or boolean value: the format's text section applied to its
 /// text ("TRUE"/"FALSE" for a boolean).
 fn text_value_node(value: &ArrayNode, format: &str) -> ArrayNode {
-    match array_node_to_string(value) {
-        Ok(text) => formatted_node(format_text_value(&text, format)),
+    match array_node_to_text(value) {
+        // The exact text, so a lone surrogate lands where `@` is (probes/text-lone-surrogates).
+        Ok(text) => format_text_value_exact(&text, format)
+            .map_or(ArrayNode::Error(Error::VALUE), ArrayNode::String),
         Err(error) => ArrayNode::Error(error),
     }
 }
