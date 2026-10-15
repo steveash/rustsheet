@@ -274,3 +274,92 @@ fn a_rectangle_is_met_at_the_first_cell_the_spill_writes_in_it() {
         None
     );
 }
+
+// T-1545: a small spill's commit check visits only the rectangles in rows near it, so many
+// spilling anchors cost about anchors + rectangles, not their product. A1 and B1 put 100,000
+// whole-row rectangles on record (rows 200,001 to 300,000); then 1,000 anchors in column D each
+// spill two cells far above them. Testing every anchor against every rectangle is 10^8 tests.
+#[test]
+fn many_small_spills_skip_the_rectangles_far_from_them() {
+    use std::time::{Duration, Instant};
+    let rows =
+        |from: usize| format!("=MAP(SEQUENCE(50000,1,{from}),LAMBDA(r,SUM(OFFSET(1:1,r,0))))");
+    let mut model = new_empty_model();
+    model._set("A1", &rows(200_000));
+    model._set("B1", &rows(250_000));
+    for anchor in 0..1000 {
+        model._set(&format!("D{}", 2 * anchor + 1), "=SEQUENCE(2)");
+    }
+    let start = Instant::now();
+    model.evaluate();
+    let elapsed = start.elapsed();
+    assert!(elapsed < Duration::from_secs(20), "{elapsed:?}");
+    assert_eq!(model._get_text("D2000"), "2");
+    assert_eq!(model.evaluation.seen_ranges.len(), 100_000);
+    assert_eq!(restarts(&model), 0);
+}
+
+// T-1545: the lookup by row band finds the same rectangles, in the same order, as testing every
+// rectangle on record: 100,000 one-row rectangles and a few tall ones, met by 1,000 small spills
+// among them and one spill over all of them (which tests every rectangle instead).
+#[test]
+fn a_spill_meets_the_same_rectangles_as_a_full_scan() {
+    use crate::area_budget::AreaBudget;
+    use crate::expressions::types::CellReferenceIndex;
+    use crate::seen_ranges::{SeenRange, SeenRanges};
+    let cell = |row, column| CellReferenceIndex {
+        sheet: 0,
+        row,
+        column,
+    };
+    let mut ranges = SeenRanges::default();
+    let mut budget = AreaBudget::default();
+    for row in 1..=100_000 {
+        let range = SeenRange {
+            root: cell(row, 1),
+            sheet: 0,
+            row1: row + 1_000,
+            column1: 1,
+            row2: row + 1_000,
+            column2: 16_384,
+        };
+        ranges.push(range, &mut budget);
+        if row % 25_000 == 0 {
+            budget = AreaBudget::default();
+        }
+    }
+    for (row1, row2) in [(1, 1_048_576), (500, 1_500), (3, 3)] {
+        let root = cell(row1, 2);
+        let range = SeenRange {
+            root,
+            sheet: 0,
+            row1,
+            column1: 2,
+            row2,
+            column2: 2,
+        };
+        ranges.push(range, &mut budget);
+    }
+    let full_scan = |anchor, area| {
+        let mut met: Vec<((i32, i32), CellReferenceIndex)> = ranges
+            .iter()
+            .filter_map(|range| Some((range.first_cell_written(anchor, area)?, range.root)))
+            .collect();
+        met.sort_by_key(|(cell, _)| *cell);
+        met
+    };
+    let mut spills: Vec<(CellReferenceIndex, (i32, i32))> =
+        (0..1_000).map(|n| (cell(2 * n + 1, 2), (2, 2))).collect();
+    spills.push((cell(990, 1), (3, 50)));
+    spills.push((cell(1, 1), (3, 200_000)));
+    for (anchor, area) in spills {
+        assert_eq!(
+            ranges.written_by_spill(anchor, area),
+            full_scan(anchor, area)
+        );
+    }
+    assert_eq!(
+        ranges.written_by_spill(cell(1, 1), (3, 200_000)).len(),
+        100_003
+    );
+}
