@@ -29,6 +29,10 @@ use bitcode::{Decode, Encode};
 /// `Deref<Target = str>` is the **lossy view**: each lone unit reads as U+FFFD. Lengths and
 /// positions counted in UTF-16 units are the same in both views, since U+FFFD and a lone
 /// surrogate are each one unit.
+///
+/// [`Text::slice_utf16`], [`Text::truncate_utf16`] and [`Text::concat`] supersede the lossy
+/// `utf16_slice`, `truncate_text` and `concat_text`, which drop a cut pair whole; the tasks that
+/// wire `Text` in (T-1579, T-1580) delete them.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Text {
     /// Well-formed text.
@@ -104,6 +108,8 @@ impl Text {
     /// The length in UTF-16 code units, the unit Excel's `LEN` counts.
     pub fn len_utf16(&self) -> usize {
         match self {
+            // Bulk ASCII check first: one unit per byte.
+            Text::Utf8(s) if s.is_ascii() => s.len(),
             Text::Utf8(s) => s.chars().map(char::len_utf16).sum(),
             Text::Lone(lone) => lone.units.len(),
         }
@@ -458,15 +464,24 @@ impl<'a> Iterator for Segments<'a> {
 /// What a [`Text`] is serialized as: `Lone` as its units only, so decoding untrusted bytes
 /// (`Model::from_bytes`) rebuilds it through [`Text::from_utf16`] and can never produce a
 /// non-normalized `Text` or a lossy view that disagrees with its units.
-#[derive(Encode, Decode)]
+#[derive(Decode)]
 enum TextRepr {
     Utf8(String),
     Lone(Vec<u16>),
 }
 
+/// [`TextRepr`] for encoding, borrowing well-formed text so the common case copies nothing
+/// first; same variants and field encodings (`&str` as `String`), so the same bytes. bitcode has
+/// no `Encode` for `&[u16]`, so the rare `Lone` units are copied.
+#[derive(Encode)]
+enum TextReprRef<'a> {
+    Utf8(&'a str),
+    Lone(Vec<u16>),
+}
+
 // bitcode 0.6 has no `#[bitcode(with = ...)]`; the coder traits its derive uses are
 // `bitcode::__private` (the version is pinned by Cargo.lock). The encoder converts each `Text`
-// to a `TextRepr`, the decoder converts back through `Text::from_utf16`.
+// to a `TextReprRef`, the decoder converts back through `Text::from_utf16`.
 
 impl Encode for Text {
     type Encoder = TextEncoder;
@@ -479,7 +494,7 @@ impl<'a> Decode<'a> for Text {
 /// The bitcode encoder of [`Text`] (implementation detail of its `Encode`).
 #[doc(hidden)]
 #[derive(Default)]
-pub struct TextEncoder(<TextRepr as Encode>::Encoder);
+pub struct TextEncoder(<TextReprRef<'static> as Encode>::Encoder);
 
 impl Buffer for TextEncoder {
     fn collect_into(&mut self, out: &mut Vec<u8>) {
@@ -494,8 +509,8 @@ impl Buffer for TextEncoder {
 impl Encoder<Text> for TextEncoder {
     fn encode(&mut self, t: &Text) {
         let repr = match t {
-            Text::Utf8(s) => TextRepr::Utf8(s.clone()),
-            Text::Lone(lone) => TextRepr::Lone(lone.units.clone()),
+            Text::Utf8(s) => TextReprRef::Utf8(s),
+            Text::Lone(lone) => TextReprRef::Lone(lone.units.clone()),
         };
         self.0.encode(&repr);
     }

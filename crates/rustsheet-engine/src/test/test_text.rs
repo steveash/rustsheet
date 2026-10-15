@@ -276,6 +276,13 @@ fn decode_normalizes_crafted_bytes() {
     assert_eq!(&*text, "a\u{FFFD}");
     let bytes = bitcode::encode(&CraftedText::Utf8("x".to_string()));
     assert_eq!(bitcode::decode::<Text>(&bytes).unwrap(), Text::from("x"));
+    // The encoder writes exactly that shape.
+    assert_eq!(bitcode::encode(&Text::from("x")), bytes);
+    let lone = vec![u16::from(b'a'), LOW];
+    assert_eq!(
+        bitcode::encode(&Text::from_utf16(lone.clone())),
+        bitcode::encode(&CraftedText::Lone(lone))
+    );
 }
 
 #[test]

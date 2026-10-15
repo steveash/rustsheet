@@ -47,8 +47,16 @@ bitcode round trip, normalization), the probe cells' shapes (A11, A12, B10, E8-E
 lone low → the pair, 100,000 pushes after a lone unit, crafted/truncated/random bytes → normalized
 `Text` or `Err`, `size_of::<Text>() == size_of::<String>()` and a 24-byte `ArrayNode`-shaped enum.
 
-Bench baseline (`cargo bench -p rustsheet --bench text`, release, median of 11, three runs on the
-shared CI-class container; spread is ±15% run to run, so T-1576/T-1580 should compare several
-runs): `A1&"x"` over 100,000 rows 24-26 ms; `MID(A1,2,3)` 23-29 ms; `LEFT(A1,2)` 34-52 ms;
-1,000 × `CONCATENATE` of 255 × 130-unit cells (truncated to 32,767) 73-78 ms; `Text::push` of
-1,000 such lists starting with a lone unit 55-56 ms. Eval delta: none (not wired).
+Bench baseline (`cargo bench -p rustsheet --bench text`, release, 11 runs, three invocations on
+the shared container; the bench prints the fastest run and the median, and the fastest is the
+steadier figure to compare, within ~1% across invocations except LEFT at ~±4%): `A1&"x"` over
+100,000 rows min 24.3-24.4 ms (median 25-26); `MID(A1,2,3)` min 21.9-22.6 ms (median 22-24);
+`LEFT(A1,2)` min 26.9-29.4 ms (median 28-31); 1,000 × `CONCATENATE` of 255 × 130-unit cells
+(truncated to 32,767) min 72.9-73.4 ms (median 73-77); `Text::push` of 1,000 such lists starting
+with a lone unit min 54.0-54.6 ms. Eval delta: none (not wired).
+
+Review follow-through: the encoder borrows well-formed text (no per-value copy on `to_bytes`),
+`len_utf16` has an ASCII fast path, SPEC-0010's `LoneText` sketch matches the built layout, and
+text.md records the lone-high + lone-low pairing as UNVERIFIED (T-1582). `utf16_slice`,
+`truncate_text` and `concat_text` stay until T-1579/T-1580 replace them, which those tasks
+already list.

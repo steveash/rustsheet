@@ -5,7 +5,7 @@
 //! `Text::push` of a `CONCATENATE`-like argument list that starts with a lone surrogate.
 //! `cargo bench -p rustsheet --bench text`
 //!
-//! One warm-up run, then `RUNS` measured runs; each figure is the median.
+//! One warm-up run, then `RUNS` measured runs; each case prints the fastest and the median.
 
 use std::error::Error;
 use std::io::Write;
@@ -58,8 +58,9 @@ fn concatenate_workbook() -> Result<Workbook, Box<dyn Error>> {
     Ok(wb)
 }
 
-/// The median time of `run`, after one warm-up run.
-fn median(mut run: impl FnMut()) -> Duration {
+/// The fastest and the median time of `run`, after one warm-up run. Compare the fastest across
+/// builds: on a shared machine it is far steadier than the median.
+fn timings(mut run: impl FnMut()) -> (Duration, Duration) {
     run();
     let mut v: Vec<Duration> = (0..RUNS)
         .map(|_| {
@@ -69,7 +70,7 @@ fn median(mut run: impl FnMut()) -> Duration {
         })
         .collect();
     v.sort();
-    v[v.len() / 2]
+    (v[0], v[v.len() / 2])
 }
 
 /// `CONCATENATE_CELLS` argument lists built with `Text::push`, each a lone low surrogate followed
@@ -98,23 +99,23 @@ fn main() -> Result<(), Box<dyn Error>> {
     ];
     for (name, formula) in cases {
         let mut wb = column_workbook(formula)?;
-        let time = median(|| wb.recalculate());
+        let (min, median) = timings(|| wb.recalculate());
         writeln!(
             out,
-            "{name}: rows={ROWS} runs={RUNS} (median) recalc={time:?}"
+            "{name}: rows={ROWS} runs={RUNS} min={min:?} median={median:?}"
         )?;
     }
     let mut wb = concatenate_workbook()?;
-    let time = median(|| wb.recalculate());
+    let (min, median) = timings(|| wb.recalculate());
     writeln!(
         out,
-        "CONCATENATE({ARGS} x {ARG_LEN} units): cells={CONCATENATE_CELLS} runs={RUNS} (median) recalc={time:?}"
+        "CONCATENATE({ARGS} x {ARG_LEN} units): cells={CONCATENATE_CELLS} runs={RUNS} min={min:?} median={median:?}"
     )?;
     let mut units = 0;
-    let time = median(|| units = push_lone_first());
+    let (min, median) = timings(|| units = push_lone_first());
     writeln!(
         out,
-        "Text::push, lone first ({ARGS} x {ARG_LEN} units): lists={CONCATENATE_CELLS} runs={RUNS} (median) time={time:?} units={units}"
+        "Text::push, lone first ({ARGS} x {ARG_LEN} units): lists={CONCATENATE_CELLS} runs={RUNS} min={min:?} median={median:?} units={units}"
     )?;
     Ok(())
 }
