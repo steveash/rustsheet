@@ -3,7 +3,7 @@ id: T-1438
 title: "Fold WORKDAY and WORKDAY.INTL day-stepping loops into one helper"
 milestone: M5
 lane: functions-date
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,6 @@ WORKDAY is WORKDAY.INTL with the default Saturday-Sunday mask (`DEFAULT_WEEKEND`
 
 ## Out of scope
 - Any behavior change, including array lifting of the start date (T-1236).
+
+## Outcome
+`fn_workday` and `fn_workday_intl` share `Model::step_workdays` (bounds, weekend and holiday skipping, 1904-epoch #NUM!) and `workday_start_and_days`. No behavior change; eval 0 fixed, 0 regressions. Duplicated lines stay at main's 6360; the ratchet baseline (6369) was not updated here because `check_duplication.py --update` was denied in this session, so the steward can run it.
