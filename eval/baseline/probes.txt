@@ -504,6 +504,7 @@ C	probes/text-bahttext-wide.case.json	49
 C	probes/text-bahttext-wide2.case.json	33
 C	probes/text-code-c1-controls.case.json	22
 C	probes/text-code-unichar-edges.case.json	30
+C	probes/text-collation-ifs.case.json	56
 C	probes/text-collation-lookups.case.json	93
 C	probes/text-collation-order.case.json	486
 C	probes/text-collation-unprobed.case.json	270
