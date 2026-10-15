@@ -77,17 +77,18 @@ exact UTF-16 units throughout:
   `L<UNICHAR(65533)` are both FALSE (so it is not plain code-unit order against U+FFFD).
 - MATCH(…,0) of H or L in `{"x";"😀"}` or `{…;"�"}` is `#N/A` (a lone half never matches a pair or U+FFFD).
 - UPPER, LOWER, PROPER, TRIM and CLEAN keep a lone surrogate unchanged (`EXACT(UPPER(H),H)`, `UNICODE(UPPER(L))` 56832,
-  `LEN(TRIM(" "&H&"  "&L&" "))` 3 (they re-pair after the spaces go), `LEN(CLEAN(L&CHAR(7)&H))` 2); `T(H)`, `H&""`,
+  `LEN(TRIM(" "&H&"  "&L&" "))` 3 (H, one inner space, L: TRIM keeps a single space, nothing re-pairs), `LEN(CLEAN(L&CHAR(7)&H))` 2); `T(H)`, `H&""`,
   `TEXT(H,"@")` and `TEXT(L,"General")` keep it (length 1); `REPT(H,3)` has length 3.
 - `VALUE(H)`, `VALUE(L&"1")` and `H+0` are errors.
 - FIND and SEARCH with a lone half as find_text *can* split a pair: `FIND(H,"a😀b")` 2, `FIND(L,"a😀b")` 3,
   `SEARCH` the same, `FIND(L,H&L)` 2, `FIND("😀",H&L)` 1, `SEARCH(H&"*","a😀b")` matches. A lone half does not match
-  U+FFFD (`FIND(UNICHAR(65533),H)` is `#VALUE!`).
-- SUBSTITUTE cannot split a pair: `LEN(SUBSTITUTE("😀",H,"x"))` and with L are 2 (no match, text unchanged),
-  `SUBSTITUTE("a😀b😀",H,"x")` has length 6; `SUBSTITUTE("😀",H&L,"x")` replaces (length 1); `SUBSTITUTE(H,H,"x")` is "x".
+  U+FFFD (`FIND(UNICHAR(65533),H)` and `SEARCH(UNICHAR(65533),L)` are `#VALUE!`).
+- SUBSTITUTE with a lone half as old_text matches inside a pair, like FIND: `UNICODE(SUBSTITUTE("😀",H,"x"))` is 120
+  (the result is "x" then the lone low half, `LEN` 2), `LEN(SUBSTITUTE("😀",L,"x"))` is 2, `LEN(SUBSTITUTE("a😀b😀",H,"x"))` is 6
+  (one unit for one unit); `SUBSTITUTE("😀",H&L,"x")` replaces the whole pair (`LEN` 1); `LEN(SUBSTITUTE(H,H,"x"))` is 1.
 - A lone high surrogate is cached as `_xD83D_` (like the low one, `_xDE00_`): `H` is `_xD83D_`, `"a"&H` is `a_xD83D_`,
   `MID("😀a😀",1,1)&MID("😀a😀",2,2)&MID("😀a😀",4,1)` is `😀a_xD83D_`.
-- 32,767 limit: `LEN(REPT("a",32766)&"😀")` is 32767 (high half kept); `REPT("😀",16384)` is `#VALUE!`;
+- 32,767 limit: `LEN(REPT("a",32766)&"😀")` is 32767 (the kept unit is the high half, coercion.md "Truncation inside a surrogate pair"); `REPT("😀",16384)` is `#VALUE!`;
   CONCAT and TEXTJOIN one unit over (a pair straddling the limit) are `#CALC!`, not truncated (existing entry below).
 Evidence: probes/text-lone-surrogates A1-A81, B1-B6 (excel-graph, 2026-10-15, T-1582).
 Ours: the engine drops a lone half, so nearly every cell above except the plain-ASCII companions fails (the case has
