@@ -152,3 +152,33 @@ fn match_of_a_lone_half_pattern_ignores_case() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "2");
 }
+
+#[test]
+fn find_search_substitute_split_pairs_with_a_lone_half() {
+    // probes/text-lone-surrogates A43-A57 (excel-graph): a lone half as find_text or old_text
+    // matches inside a pair, and never matches U+FFFD.
+    let h = "MID(\"😀\",1,1)";
+    let l = "MID(\"😀\",2,1)";
+    let cases = [
+        (format!("=FIND({h},\"a😀b\")"), "2"),
+        (format!("=FIND({l},\"a😀b\")"), "3"),
+        (format!("=SEARCH({h},\"a😀b\")"), "2"),
+        (format!("=SEARCH({l},\"a😀b\")"), "3"),
+        (format!("=FIND({l},{h}&{l})"), "2"),
+        (format!("=FIND(\"😀\",{h}&{l})"), "1"),
+        (format!("=FIND(UNICHAR(65533),{h})"), "#VALUE!"),
+        (format!("=SEARCH(UNICHAR(65533),{l})"), "#VALUE!"),
+        (format!("=ISNUMBER(SEARCH({h}&\"*\",\"a😀b\"))"), "TRUE"),
+        (format!("=UNICODE(SUBSTITUTE(\"😀\",{h},\"x\"))"), "120"),
+        (format!("=LEN(SUBSTITUTE(\"😀\",{l},\"x\"))"), "2"),
+        (format!("=LEN(SUBSTITUTE(\"a😀b😀\",{h},\"x\"))"), "6"),
+        (format!("=LEN(SUBSTITUTE(\"😀\",{h}&{l},\"x\"))"), "1"),
+        (format!("=LEN(SUBSTITUTE({h},{h},\"x\"))"), "1"),
+    ];
+    for (formula, expected) in cases {
+        let mut model = new_empty_model();
+        model._set("A1", &formula);
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), expected, "{formula}");
+    }
+}

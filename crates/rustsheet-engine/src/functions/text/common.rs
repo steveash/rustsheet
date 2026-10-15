@@ -1,4 +1,5 @@
 use super::text_arg::{broadcast_text, TextArg};
+use super::util::substitute_element;
 use crate::cast::number_text_too_long;
 use crate::number_format::number_to_text;
 use crate::{
@@ -17,7 +18,7 @@ use crate::{
     functions::{
         text::{
             position::find_element,
-            util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
+            util::{text_after, text_before, Case},
         },
         util::{array_node_to_calc_result, near_integer_count},
     },
@@ -98,39 +99,6 @@ fn rept_element(text: &ArrayNode, number_times: Result<f64, Error>) -> Result<Ar
         return Err(Error::VALUE);
     }
     Ok(ArrayNode::String(text.repeat(number_times as usize).into()))
-}
-
-/// Computes a single SUBSTITUTE result from one element of each argument.
-/// Without an `instance_num` every instance is replaced.
-fn substitute_element(
-    text: &ArrayNode,
-    old_text: &ArrayNode,
-    new_text: &ArrayNode,
-    instance_num: Option<Result<f64, Error>>,
-) -> Result<ArrayNode, Error> {
-    let text = array_node_to_string(text)?;
-    let old_text = array_node_to_string(old_text)?;
-    let new_text = array_node_to_string(new_text)?;
-    let instance_num = match instance_num {
-        Some(n) => {
-            let n = n?.floor();
-            if n < 1.0 {
-                return Err(Error::VALUE);
-            }
-            Some(n.min(i32::MAX as f64) as i32)
-        }
-        None => None,
-    };
-    if old_text.is_empty() {
-        return Ok(ArrayNode::String(text.into()));
-    }
-    if substitute_exceeds_limit(&text, &old_text, &new_text, instance_num) {
-        return Err(Error::VALUE);
-    }
-    Ok(ArrayNode::String(match instance_num {
-        Some(n) => substitute(&text, &old_text, &new_text, n).into(),
-        None => text.replace(&old_text, &new_text).into(),
-    }))
 }
 
 /// Computes a single EXACT result from one element of each argument.

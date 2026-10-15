@@ -1,6 +1,10 @@
 use std::borrow::Cow;
 
-use crate::cast::MAX_TEXT_UNITS;
+use crate::{
+    cast::{array_node_to_text, MAX_TEXT_UNITS},
+    expressions::{parser::ArrayNode, token::Error},
+    text::Text,
+};
 
 /// `text` with each UTF-16 code unit as one `char`, so that `char` positions (and a regex `.`)
 /// are the code-unit positions FIND and SEARCH count in (`SEARCH("?b","😀b")` is 2,
@@ -11,19 +15,27 @@ pub(crate) fn one_char_per_utf16_unit(text: &str) -> Cow<'_, str> {
     if text.chars().all(|ch| ch.len_utf16() == 1) {
         return Cow::Borrowed(text);
     }
-    Cow::Owned(
-        text.encode_utf16()
-            .map(|unit| {
-                let code = u32::from(unit);
-                let code = if (0xD800..=0xDFFF).contains(&code) {
-                    0xF0000 + (code - 0xD800)
-                } else {
-                    code
-                };
-                char::from_u32(code).unwrap_or(char::REPLACEMENT_CHARACTER)
-            })
-            .collect(),
-    )
+    Cow::Owned(unit_chars(text.encode_utf16()))
+}
+
+/// [`one_char_per_utf16_unit`] for engine text, a lone surrogate unit kept as its own character
+/// (probes/text-lone-surrogates A48-A57).
+pub(crate) fn one_char_per_unit(text: &Text) -> String {
+    unit_chars(text.units())
+}
+
+fn unit_chars(units: impl Iterator<Item = u16>) -> String {
+    units
+        .map(|unit| {
+            let code = u32::from(unit);
+            let code = if (0xD800..=0xDFFF).contains(&code) {
+                0xF0000 + (code - 0xD800)
+            } else {
+                code
+            };
+            char::from_u32(code).unwrap_or(char::REPLACEMENT_CHARACTER)
+        })
+        .collect()
 }
 
 pub(crate) enum Case {
@@ -282,4 +294,85 @@ mod tests {
         assert!((0..2048).all(|_| within_text_budget(&mut total, 32768)));
         assert!(!within_text_budget(&mut total, 1));
     }
+}
+
+/// Computes a single SUBSTITUTE result from one element of each argument.
+/// Without an `instance_num` every instance is replaced.
+pub(super) fn substitute_element(
+    text: &ArrayNode,
+    old_text: &ArrayNode,
+    new_text: &ArrayNode,
+    instance_num: Option<Result<f64, Error>>,
+) -> Result<ArrayNode, Error> {
+    let text = array_node_to_text(text)?;
+    let old_text = array_node_to_text(old_text)?;
+    let new_text = array_node_to_text(new_text)?;
+    let instance_num = match instance_num {
+        Some(n) => {
+            let n = n?.floor();
+            if n < 1.0 {
+                return Err(Error::VALUE);
+            }
+            Some(n.min(i32::MAX as f64) as i32)
+        }
+        None => None,
+    };
+    if old_text.is_empty() {
+        return Ok(ArrayNode::String(text.into_owned()));
+    }
+    if text.has_lone_surrogate() || old_text.has_lone_surrogate() || new_text.has_lone_surrogate() {
+        return substitute_units(&text, &old_text, &new_text, instance_num).map(ArrayNode::String);
+    }
+    if substitute_exceeds_limit(&text, &old_text, &new_text, instance_num) {
+        return Err(Error::VALUE);
+    }
+    Ok(ArrayNode::String(match instance_num {
+        Some(n) => substitute(&text, &old_text, &new_text, n).into(),
+        None => {
+            let (text, old_text, new_text): (&str, &str, &str) = (&text, &old_text, &new_text);
+            text.replace(old_text, new_text).into()
+        }
+    }))
+}
+
+/// SUBSTITUTE over exact UTF-16 units, used when any operand holds a lone surrogate: a lone half
+/// as `old_text` matches inside a pair, unit for unit (probes/text-lone-surrogates A41-A47). The
+/// result length is checked before it is built (CLAUDE.md directive 5), as for well-formed text.
+fn substitute_units(
+    text: &Text,
+    old_text: &Text,
+    new_text: &Text,
+    instance_num: Option<i32>,
+) -> Result<Text, Error> {
+    let units: Vec<u16> = text.units().collect();
+    let old: Vec<u16> = old_text.units().collect();
+    let new: Vec<u16> = new_text.units().collect();
+    let mut matches = Vec::new();
+    let mut at = 0;
+    while at + old.len() <= units.len() {
+        if units[at..at + old.len()] == old[..] {
+            matches.push(at);
+            at += old.len();
+        } else {
+            at += 1;
+        }
+    }
+    let replaced: Vec<usize> = match instance_num {
+        Some(n) => matches.get(n as usize - 1).copied().into_iter().collect(),
+        None => matches,
+    };
+    let result_len =
+        (units.len() + replaced.len() * new.len()).saturating_sub(replaced.len() * old.len());
+    if result_len > MAX_TEXT_UNITS && result_len > units.len() {
+        return Err(Error::VALUE);
+    }
+    let mut result = Vec::with_capacity(result_len);
+    let mut from = 0;
+    for &start in &replaced {
+        result.extend_from_slice(&units[from..start]);
+        result.extend_from_slice(&new);
+        from = start + old.len();
+    }
+    result.extend_from_slice(&units[from..]);
+    Ok(Text::from_utf16(result))
 }
