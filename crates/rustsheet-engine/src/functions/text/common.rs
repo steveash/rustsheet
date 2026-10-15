@@ -1,4 +1,5 @@
 use super::text_arg::{broadcast_text, TextArg};
+use super::util::substitute_element;
 use crate::cast::number_text_too_long;
 use crate::number_format::number_to_text;
 use crate::{
@@ -12,12 +13,12 @@ use crate::{
     },
     formatter::{
         exceeds_complexity_limit,
-        format::{format_text, format_text_value, FormatContext, Formatted},
+        format::{format_text, format_text_value_exact, FormatContext, Formatted},
     },
     functions::{
         text::{
             position::find_element,
-            util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
+            util::{text_after, text_before, Case},
         },
         util::{array_node_to_calc_result, near_integer_count},
     },
@@ -89,48 +90,20 @@ fn len_element(text: &ArrayNode) -> Result<ArrayNode, Error> {
 
 /// Computes a single REPT result from one element of each argument.
 fn rept_element(text: &ArrayNode, number_times: Result<f64, Error>) -> Result<ArrayNode, Error> {
-    let text = array_node_to_string(text)?;
+    let text = array_node_to_text(text)?;
     let number_times = number_times?.floor();
     // Excel's cell text limit, counted in UTF-16 code units (probes/concatenate-limit-spill E12);
     // it also bounds the allocation (CLAUDE.md directive 5).
-    let units = text.encode_utf16().count() as f64;
-    if number_times < 0.0 || units * number_times > MAX_TEXT_UNITS as f64 {
+    let units = text.len_utf16() as f64;
+    // A NaN or infinite count is #VALUE! on its own, not by way of the limit below.
+    if !number_times.is_finite()
+        || number_times < 0.0
+        || units * number_times > MAX_TEXT_UNITS as f64
+    {
         return Err(Error::VALUE);
     }
-    Ok(ArrayNode::String(text.repeat(number_times as usize).into()))
-}
-
-/// Computes a single SUBSTITUTE result from one element of each argument.
-/// Without an `instance_num` every instance is replaced.
-fn substitute_element(
-    text: &ArrayNode,
-    old_text: &ArrayNode,
-    new_text: &ArrayNode,
-    instance_num: Option<Result<f64, Error>>,
-) -> Result<ArrayNode, Error> {
-    let text = array_node_to_string(text)?;
-    let old_text = array_node_to_string(old_text)?;
-    let new_text = array_node_to_string(new_text)?;
-    let instance_num = match instance_num {
-        Some(n) => {
-            let n = n?.floor();
-            if n < 1.0 {
-                return Err(Error::VALUE);
-            }
-            Some(n.min(i32::MAX as f64) as i32)
-        }
-        None => None,
-    };
-    if old_text.is_empty() {
-        return Ok(ArrayNode::String(text.into()));
-    }
-    if substitute_exceeds_limit(&text, &old_text, &new_text, instance_num) {
-        return Err(Error::VALUE);
-    }
-    Ok(ArrayNode::String(match instance_num {
-        Some(n) => substitute(&text, &old_text, &new_text, n).into(),
-        None => text.replace(&old_text, &new_text).into(),
-    }))
+    // Repeats the exact units, so a lone surrogate survives (probes/text-lone-surrogates B1-B6).
+    Ok(ArrayNode::String(text.repeat(number_times as usize)))
 }
 
 /// Computes a single EXACT result from one element of each argument.
@@ -141,8 +114,9 @@ fn exact_element(text1: &ArrayNode, text2: &ArrayNode) -> Result<ArrayNode, Erro
             to_precision(*number1, 15) == to_precision(*number2, 15),
         ));
     }
-    let string1 = array_node_to_string(text1)?;
-    let string2 = array_node_to_string(text2)?;
+    let string1 = array_node_to_text(text1)?;
+    let string2 = array_node_to_text(text2)?;
+    // `Text` equality is exact: a lone surrogate never equals U+FFFD (probes/text-lone-surrogates A10-A13).
     Ok(ArrayNode::Boolean(string1 == string2))
 }
 
@@ -161,8 +135,10 @@ fn text_node(value: Option<f64>, format: &str, ctx: &FormatContext) -> ArrayNode
 /// The TEXT array element for a text or boolean value: the format's text section applied to its
 /// text ("TRUE"/"FALSE" for a boolean).
 fn text_value_node(value: &ArrayNode, format: &str) -> ArrayNode {
-    match array_node_to_string(value) {
-        Ok(text) => formatted_node(format_text_value(&text, format)),
+    match array_node_to_text(value) {
+        // The exact text, so a lone surrogate lands where `@` is (probes/text-lone-surrogates).
+        Ok(text) => format_text_value_exact(&text, format)
+            .map_or(ArrayNode::Error(Error::VALUE), ArrayNode::String),
         Err(error) => ArrayNode::Error(error),
     }
 }
@@ -387,12 +363,7 @@ impl Model {
         // or more spaces to a single space. It must NOT touch tab (0x09),
         // non-breaking space (0xA0), or any other Unicode whitespace, so we
         // deliberately split on ' ' rather than using `str::trim`.
-        self.apply_text_unary(args, cell, |s| {
-            s.split(' ')
-                .filter(|w| !w.is_empty())
-                .collect::<Vec<_>>()
-                .join(" ")
-        })
+        self.apply_text_unary_text(args, cell, Text::trim_spaces)
     }
 
     pub(crate) fn fn_lower(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -409,19 +380,28 @@ impl Model {
         cell: CellReferenceIndex,
         f: impl Fn(&str) -> String,
     ) -> CalcResult {
+        self.apply_text_unary_text(args, cell, |text| text.map_runs(&f))
+    }
+
+    /// [`Model::apply_text_unary`] for a transform that reads the exact text, so it can keep a
+    /// lone surrogate.
+    pub(crate) fn apply_text_unary_text(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        f: impl Fn(&Text) -> Text,
+    ) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
         match self.get_string_or_array(&args[0], cell) {
-            Ok(crate::cast::StringOrArray::String(s)) => CalcResult::String(f(&s).into()),
+            Ok(crate::cast::StringOrArray::String(s)) => CalcResult::String(f(&s)),
             Ok(crate::cast::StringOrArray::Array(arr)) => CalcResult::Array(
                 arr.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|n| match crate::cast::array_node_to_string(n) {
-                                Ok(s) => {
-                                    crate::expressions::parser::ArrayNode::String(f(&s).into())
-                                }
+                            .map(|n| match crate::cast::array_node_to_text(n) {
+                                Ok(s) => crate::expressions::parser::ArrayNode::String(f(&s)),
                                 Err(e) => crate::expressions::parser::ArrayNode::Error(e),
                             })
                             .collect()
@@ -991,5 +971,22 @@ fn value_to_text(node: &ArrayNode, strict: bool) -> String {
         ArrayNode::Error(e) => e.to_string(),
         ArrayNode::String(s) if strict => format!("\"{}\"", s.replace('"', "\"\"")),
         other => array_node_to_string(other).unwrap_or_default(),
+    }
+}
+
+#[cfg(test)]
+mod rept_tests {
+    use super::*;
+
+    #[test]
+    fn rept_element_rejects_non_finite_counts() {
+        let text = ArrayNode::String("a".into());
+        for count in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(rept_element(&text, Ok(count)), Err(Error::VALUE));
+        }
+        assert_eq!(
+            rept_element(&text, Ok(2.0)),
+            Ok(ArrayNode::String("aa".into()))
+        );
     }
 }

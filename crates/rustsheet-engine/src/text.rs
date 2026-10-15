@@ -201,9 +201,9 @@ impl Text {
     }
 
     /// `a` followed by `b`, as unit sequences: a lone high surrogate at the end of `a` and a lone
-    /// low one at the start of `b` become the pair (UTF-16's rule; a hand expectation until
-    /// T-1582 probes `EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`). Not truncated: callers apply
-    /// [`Text::truncate_utf16`].
+    /// low one at the start of `b` become the pair (UTF-16's rule, probed:
+    /// `EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")` is TRUE, probes/text-lone-surrogates). Not
+    /// truncated: callers apply [`Text::truncate_utf16`].
     #[must_use]
     pub fn concat(a: &Text, b: &Text) -> Text {
         if let (Text::Utf8(x), Text::Utf8(y)) = (a, b) {
@@ -316,6 +316,57 @@ impl Text {
                 false
             }
         }
+    }
+
+    /// The text repeated `times` times, as REPT does: a lone high unit at the end of one copy
+    /// pairs with a lone low unit at the start of the next, as in `&`. The caller bounds
+    /// `times * len_utf16()` (REPT: 32,767 units, decision 0014).
+    #[must_use]
+    pub fn repeat(&self, times: usize) -> Text {
+        match self {
+            Text::Utf8(s) => Text::Utf8(s.repeat(times)),
+            Text::Lone(lone) => {
+                let mut units = Vec::with_capacity(lone.units.len().saturating_mul(times));
+                for _ in 0..times {
+                    units.extend_from_slice(&lone.units);
+                }
+                Text::from_utf16(units)
+            }
+        }
+    }
+
+    /// The text with `f` applied to each run of well-formed text and every lone unit kept, as
+    /// UPPER, LOWER, PROPER and CLEAN do (probes/text-lone-surrogates A31-A39). A lone unit is
+    /// no letter or space, so `f` never needs to see across it: it breaks a word, so `PROPER("a"&L&"b")` capitalizes the `b` (unprobed).
+    #[must_use]
+    pub fn map_runs(&self, f: impl Fn(&str) -> String) -> Text {
+        if !self.has_lone_surrogate() {
+            return Text::Utf8(f(self));
+        }
+        let mut units = Vec::new();
+        for segment in self.segments() {
+            match segment {
+                Segment::Str(s) => units.extend(f(s).encode_utf16()),
+                Segment::Lone(unit) => units.push(unit),
+            }
+        }
+        Text::from_utf16(units)
+    }
+
+    /// `TRIM`: leading and trailing spaces removed and each inner run of spaces collapsed to one.
+    /// Only U+0020 is a space; a lone surrogate is kept and is not (probes/text-lone-surrogates A36, A37).
+    #[must_use]
+    pub fn trim_spaces(&self) -> Text {
+        if !self.has_lone_surrogate() {
+            let words: Vec<&str> = self.split(' ').filter(|w| !w.is_empty()).collect();
+            return Text::Utf8(words.join(" "));
+        }
+        let units: Vec<u16> = self.units().collect();
+        let words: Vec<&[u16]> = units
+            .split(|&u| u == 0x20)
+            .filter(|w| !w.is_empty())
+            .collect();
+        Text::from_utf16(words.join(&0x20u16))
     }
 
     /// The text as runs of well-formed text and lone units, in order.

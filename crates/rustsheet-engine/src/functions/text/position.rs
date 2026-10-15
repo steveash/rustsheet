@@ -1,10 +1,16 @@
 //! FIND and SEARCH positions, counted in UTF-16 code units (docs/excel-semantics/text.md "Text
 //! positions count UTF-16 code units, except in LEFT and RIGHT").
 
+use std::borrow::Cow;
+
 use crate::{
-    cast::array_node_to_string,
+    cast::array_node_to_text,
     expressions::{parser::ArrayNode, token::Error},
-    functions::{criteria::from_wildcard_to_regex, text::util::one_char_per_utf16_unit},
+    functions::{
+        criteria::from_wildcard_to_regex,
+        text::util::{one_char_per_unit, one_char_per_utf16_unit},
+    },
+    text::Text,
 };
 
 /// Computes a single FIND or SEARCH result from one element of each argument.
@@ -15,8 +21,8 @@ pub(super) fn find_element(
     start_num: Result<f64, Error>,
     is_search: bool,
 ) -> Result<ArrayNode, Error> {
-    let find_text = array_node_to_string(find_text)?;
-    let within_text = array_node_to_string(within_text)?;
+    let find_text = array_node_to_text(find_text)?;
+    let within_text = array_node_to_text(within_text)?;
     let start_num = start_num?.floor();
     if start_num < 1.0 {
         return Err(Error::VALUE);
@@ -24,14 +30,27 @@ pub(super) fn find_element(
     let start_num = start_num as usize;
     // Excel: positions count UTF-16 code units, and `?` matches one unit
     // (probes/text-surrogate-positions A14-A26, B11-B15).
-    let (find_text, within_text) = if is_search {
-        // SEARCH is case insensitive
-        (fold_case(&find_text), fold_case(&within_text))
-    } else {
-        (find_text, within_text)
-    };
-    let find_text = one_char_per_utf16_unit(&find_text);
-    let within_text = one_char_per_utf16_unit(&within_text);
+    // A lone surrogate stays its own unit (probes/text-lone-surrogates A48-A57), also in SEARCH's
+    // case folding, which only touches the well-formed runs.
+    fn search_units(text: &Text, is_search: bool) -> Cow<'_, str> {
+        let plain: &str = text;
+        match (text.has_lone_surrogate(), is_search) {
+            (false, false) => one_char_per_utf16_unit(plain),
+            (false, true) => {
+                let folded = fold_case(plain);
+                match one_char_per_utf16_unit(&folded) {
+                    Cow::Borrowed(_) => Cow::Owned(folded),
+                    Cow::Owned(units) => Cow::Owned(units),
+                }
+            }
+            (true, false) => Cow::Owned(one_char_per_unit(text)),
+            (true, true) => Cow::Owned(one_char_per_unit(&text.map_runs(fold_case))),
+        }
+    }
+    let (find_text, within_text) = (
+        search_units(&find_text, is_search),
+        search_units(&within_text, is_search),
+    );
     let length = within_text.chars().count();
     // Excel: FIND accepts a start one past the end, where only "" is found (`FIND("","abc",4)` is
     // 4); SEARCH does not (`SEARCH("","abc",4)` is #VALUE!; probes/text-surrogate-positions C1-C9).

@@ -58,12 +58,18 @@ Non-goals (follow-ups once the probe task below has evidence):
   cannot decode (`decode_xlsx_escapes` in rustsheet-xlsx import/shared_strings.rs) literally, so
   the oracle value is the 13-character text `a😀_xDE00_b`.
 
-Unprobed (probe task below): CODE of a lone surrogate (CODE of other non-Windows-1252 characters
-is 63, text.md); whether `&` of a lone high and a lone low surrogate forms the pair (UTF-16 says
-yes: `EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`); `=`/`<`/EXACT/MATCH/sort order with lone
-surrogates; UPPER/LOWER/PROPER/TRIM/CLEAN; SUBSTITUTE, FIND and SEARCH with a lone half as
-find_text (they can split a pair); VALUE; TEXTJOIN and CONCAT truncation; xlsx constants holding
-`_xD83D_`.
+Probed (T-1582, probes/text-lone-surrogates, excel-graph 2026-10-15; docs/excel-semantics/text.md
+"Lone surrogates through CODE, comparisons, case, search and cleanup functions"):
+- `&` of a lone high and a lone low surrogate forms the pair (`EXACT(H&L,"😀")` is TRUE); low then
+  high does not. (REPT re-pairing at each join: A86, T-1647.)
+- CODE of a lone surrogate is 63; `UNICODE(H)` is `#VALUE!`, `UNICODE(L)` 56832.
+- A lone surrogate never equals U+FFFD (`EXACT`, `=`); order is by unit value with a lone unit above
+  every BMP character (T-1585).
+- UPPER, LOWER, PROPER, TRIM and CLEAN keep a lone surrogate unchanged. T, REPT and TEXT (`@`) keep its length (T-1587); they keep the exact unit, not U+FFFD, and `REPT(L&H,2)` re-pairs (VERIFIED, probes/text-lone-surrogates A82-A88, A97-A101, T-1647).
+- FIND, SEARCH and SUBSTITUTE with a lone half as find_text can split a pair (T-1586).
+- A lone high surrogate is cached as `_xD83D_`, like the low one.
+Still unprobed: a lone surrogate beside a wildcard or in COUNTIF-style criteria (T-1642), PROPER word
+breaks at a lone unit, xlsx constants holding `_xD83D_`.
 
 ## Design
 
@@ -120,8 +126,7 @@ API (engine-internal callers, plus the boundaries):
   incrementally and freezes them into `LoneText` once, so a lone early argument stays linear too), and `truncate_utf16(&mut self, max)` (keeps a cut pair's high
   half). Replace `concat_text` and `truncate_text` in cast.rs. Concatenation is of unit
   sequences, so a lone high followed by a lone low surrogate becomes the pair (UTF-16's own rule;
-  a hand expectation, `EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`, provisional until T-1582 probes
-  it; T-1580 revisits it if T-1582 disagrees).
+  verified by T-1582: `EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")` is TRUE).
 - `segments()`: iterator of `Segment::Str(&str) | Segment::Lone(u16)` for the boundary writers.
 - `into_lossy_string(self) -> String` for consumers that need an owned `String`.
 
@@ -145,7 +150,7 @@ work on the unit slice and are rare. Allocation bounds are unchanged: every resu
   still written `_x005F_xHHHH_` (xlsx-storage.md). One public, documented helper in
   export/escape.rs formats the escape; the harness reuses it. Only a lone low unit has been
   observed in an Excel file (A6); a lone high one is assumed to be written the same way
-  (UNVERIFIED, T-1582).
+  (verified by T-1582: A-cells `_xD83D_`).
 - **Public API** (crates/rustsheet): `Value::Text(Arc<str>)` stays and holds the lossy view, so no
   consumer silently drops a text value. New accessor
   `Workbook::text_utf16(r) -> Result<Option<Arc<[u16]>>, RefError>`: `Some(units)` exactly when the

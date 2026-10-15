@@ -67,5 +67,7 @@
   (`check_duplication.py --update`).
   T-1627: functions below the evidence floor 73 → 63 (NOW, TODAY, RAND, TRUE, FALSE, SHEET, ISOMITTED,
   TOROW, WRAPCOLS and WRAPROWS probed to ≥ 20 Excel cells; decision 0062) (`make eval-baseline`).
+  T-1629: functions below the evidence floor 63 → 60 (SKEW, KURT and HARMEAN reach ≥ 20 Excel cells through
+  the AVERAGE-family array-error probe; decision 0062) (`make eval-baseline`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

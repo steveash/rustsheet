@@ -298,16 +298,17 @@ AVERAGE's final division of the sum by the count rounds twice too, like `/`
 twice-rounded value; oracle: excel-graph, 2026-10-15, T-1619). For a 53-bit sum no count n <= 2048 can
 discriminate (the remainder fraction cannot come within half an extended ulp of a midpoint), so the
 count of 1025-2048 the task guessed is moot; counts 3001, 3333, 4001 gave no pick in our search.
-Implemented in `fn_average` with `arithmetic::extended_quotient`; AVERAGEA's and AVERAGEIF's divisions
-are UNVERIFIED (not probed).
+Implemented in `fn_average`, `fn_averagea`, the AVERAGEIFS closure and `subtotal_average` with `arithmetic::extended_quotient`.
+The same holds for AVERAGEA, AVERAGEIF, AVERAGEIFS, SUBTOTAL(1) and SUBTOTAL(101) (AGGREGATE(1) routes through AVERAGE): probes-numeric/average-family-large-count-division, 36 cells (the T-1619 columns at n = 2051, 2999, 4095, two each; excel-graph, 2026-10-15, T-1636): Excel gives the twice-rounded quotient for all of them. Ours divided once in AVERAGEA, AVERAGEIF(S) and SUBTOTAL (30 of 36 cells off by 1 ulp); fixed in T-1636. DAVERAGE rounds twice too (probes-numeric/daverage-large-count-division, 6 cells, the same columns with a header row and criterion `>=0`; excel-graph, 2026-10-15, T-1648: all 6 are the twice-rounded value). Ours divided once; fixed with `extended_quotient` in `fn_daverage`.
 Accumulators beyond SUM and AVERAGE (probes-numeric/double-rounding-accumulators, 56 cells; 8 operand
 sets a, b, c of at most 15 significant digits picked by exact simulation so that a+b is the same under
 single and double rounding but (a+b)+c is not; oracle: excel-graph, 2026-10-15, T-1516): `a+b+c`,
 `SUM(range)`, `SUM(a,b,c)`, `SUMIF`, `SUMIFS`, `DSUM` and `AVERAGEA(range)*4` (a text cell counts as 0, so
 the division is exact) all give the value whose second addition was rounded twice, in every set: the
-total is rounded to a double after every addition (to 64 bits, then to a double, as `extended_sum` does); it is not carried at 64 bits between additions. Sets 4, 5 and 7 (numbered from 0; Data!A17:A19, A21:A23, A29:A31) tell the two apart, and the oracle matches the per-addition rounding in all of them. The
-engine matches `+` and SUM and misses SUMIF, SUMIFS, DSUM and AVERAGEA by one ulp in all 8 sets (32
-cells; they still use the plain `+`). AVERAGE's division by a small count (3, 5, 7) was not probed: that is reasoning, not oracle evidence. For a
+total is rounded to a double after every addition (to 64 bits, then to a double, as `extended_sum` does); it is not carried at 64 bits between additions. Sets 4, 5 and 7 (numbered from 0; Data!A17:A19, A21:A23, A29:A31) tell the two apart, and the oracle matches the per-addition rounding in all of them. SUMIF,
+SUMIFS, DSUM and AVERAGEA used the plain `+` and missed by one ulp in all 8 sets (32 cells); they add
+with `extended_sum` since T-1618 and all 104 cells pass. AVERAGEIFS, DAVERAGE and AVEDEV still use the plain `+`
+(unprobed, T-1650). AVERAGE's division by a small count (3, 5, 7) was not probed: that is reasoning, not oracle evidence. For a
 small odd count n the binary expansion of k/n has no run of 11 equal bits after the cut, so the 64-bit rounding
 never lands on a midpoint and double rounding would equal single rounding. A discriminating divisor needs n above
 2^11 (an earlier random search at n = 1025 found nothing; T-1619 probed counts 2051-4095, below).
@@ -905,7 +906,7 @@ then to a double ("Division rounds twice"). With that rounding, square-and-multi
 cells of power-integer-full-mantissa whose base is 2.23606797749979: `SQRT(5)^n` and
 `(0.2^-0.5)^n` for n = 3..255 and -99 (40 cells), A181 `(SUM(0,(0.2^(-0.5)))^99)` and A182
 `POWER(SQRT(5),99)`. `SQRT(5)^99` = 3.9720546451956613E+34 and `SQRT(5)^10` = 3125.0000000000023.
-With products rounded once, which is what the engine does, it gives 2 of the 42 (…6807E+34,
+With products rounded once (the engine before T-1495) it gives 2 of the 42 (…6807E+34,
 3125.000000000003). Fit `power-sqrt5` scores the 20 `SQRT(5)^n` cells (20 against 1); the other 22
 were checked outside the lab, which does not parse `0.2^-0.5` or SUM. The double rounding changes no other cell. Both roundings match
 all cells of the 7 other full-significand bases: 76 literal-base cells (fit `power-mantissa`) and
@@ -920,10 +921,11 @@ Non-integer exponents (`10^33.5` = 3.162277660168401E+33, libm 3.162277660168379
 3.1622776601683576E-34; `10^40.0000001` = 1.0000002302585496E+40) follow "Non-integer exponents: exp(y·ln x)" (T-1319).
 Evidence: probes-numeric/power-large-integer-exponents{,-2,-3,-4}.case.json (oracle: excel-graph,
 2026-10-11, T-1311; the non-integer cells are A54-A56 of -4).
-Implemented in: `power` and `integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
+Implemented in: `power` and `integer_power` in crates/rustsheet-engine/src/arithmetic.rs;
+`square_and_multiply` rounds each product with `extended_product` (T-1495).
 Status: VERIFIED (the 2^32 - 1 threshold is bracketed by 4294967294 and 4294967295 exactly; the base-10
 rule is sampled at about 20 exponents in 23..=308 and inferred between them)
-Tasks: T-1311
+Tasks: T-1311, T-1495
 
 ## ROUND family with huge num_digits
 Rule (inconsistent; Excel is right): with an enormous num_digits ROUND/ROUNDDOWN return the number
@@ -1243,7 +1245,7 @@ Rule: RANDBETWEEN compares the raw `bottom` and `top` (`bottom > top` is `#NUM!`
 `CEILING(bottom)` when `FLOOR(top)` is below it: `RANDBETWEEN(5.5,5.7)` and `RANDBETWEEN(5.5,6.2)`
 are always 6, `RANDBETWEEN(-5.5,-5.2)` always -5. It rejects booleans (`RANDBETWEEN(TRUE,TRUE)` is
 `#VALUE!`), reads number text (`"5"`), lifts over an array argument (one draw per element), and
-both arguments omitted (`RANDBETWEEN(,)`) is `#N/A`, not 0. RANDARRAY truncates `rows` and
+either bound omitted (`RANDBETWEEN(,)`, `(,5)`, `(5,)`) is `#N/A`, not 0, and a span `top - bottom` that overflows a double is `#NUM!` (error precedence with an omitted bound next to an error argument is unprobed). RANDARRAY truncates `rows` and
 `columns` (`1.9` → 1), gives `#CALC!` for 0 rows and `#VALUE!` for a negative count, `min > max`
 or a non-boolean `whole_number` text; with `whole_number` TRUE a fractional `min` or `max` is
 `#VALUE!` (`RANDARRAY(1,1,1.5,2.5,TRUE)`, `RANDARRAY(1,1,1,2.5,TRUE)`), while without it `min = max` returns that value
@@ -1256,19 +1258,26 @@ F1:F9, G1 (excel-graph, 2026-10-10). Every cell was filled twice with identical 
 F1:F9 take MIN/MAX/ROWS over 1000 draws in one cell, which is what shows the RANDBETWEEN range
 rule (F8:F9: `RANDBETWEEN(5.2,7.9)` spans 6 to 7, not ROUND's 5 to 8); the spill members D2, E1,
 E2 and D5 were not compared between fills, but their min equals their max; B15 and G1 have an occupied neighbour, so a 2-row or 2-column result would be `#SPILL!`.
-Engine, Excel unprobed (T-1584): a boolean reached through a reference (`RANDBETWEEN(H1,...)` with H1 TRUE) is rejected like the literal;
-RANDARRAY errors apply in argument order (`RANDARRAY(0,1,1.5,2.5,TRUE)` gives `#CALC!`); `RANDBETWEEN(-1E308,1E308)` and
-`RANDARRAY(1,1,-1E308,1E308,TRUE)` overflow the span to infinity in the engine (RANDBETWEEN then always gives 1E308); `RANDBETWEEN(,5)` and `RANDBETWEEN(5,)` read the omitted bound as 0.
-Status: VERIFIED. Implemented (T-1318): A2, A6, A8, A12, A13, B9, B10 and B18 pass. The engine still misses the array lift F1:F9 (T-1316).
+T-1584 (excel-graph, 2026-10-15): a boolean reached through a reference is rejected like the literal (`RANDBETWEEN(J1,2)`, J1 TRUE, is `#VALUE!`: probes/volatile-invariant Calc!I1); RANDARRAY errors apply in argument order (`RANDARRAY(0,1,1.5,2.5,TRUE)` is `#CALC!`, I2); an omitted bound on either side is `#N/A`, not 0 (`RANDBETWEEN(,5)` and `RANDBETWEEN(5,)`, I5:I6, like `RANDBETWEEN(,)`). A RANDBETWEEN whose span `top - bottom` overflows a double is `#NUM!` (`RANDBETWEEN(-9*10^307,9*10^307)`, `RANDBETWEEN(-(10^308),10^308)`), while a span of 1E308 or equal bounds at +-1E308 return a value (probes/randbetween-huge-span A1:A7). RANDARRAY has no such error: with a span that overflows (`-(10^308)` to `10^308`, whole or not) it returns a finite number inside the bounds (B2:B3, B14:B15), and equal bounds at +-1E308 return that bound. `-10^308` is presumably `(-10)^308` (unary minus binds tighter than `^`), positive and a hair above 1E308, which is consistent with `RANDARRAY(1,1,-10^308,10^308)` `min > max`: `#VALUE!` (B12) and `RANDBETWEEN(-10^308,10^308)` is `#NUM!` (A8). A literal `1E308` pair in the volatile-invariant workbook made excel-graph refuse the file ("unsupportedWorkbook"), so those probes use `10^308`.
+Status: VERIFIED. Implemented (T-1318, T-1584): A2, A6, A8, A12, A13, B9, B10, B18, I1:I6 and randbetween-huge-span pass. The engine still misses the array lift F1:F9 (T-1316).
 
 ## SERIESSUM with x = 0
-Rule (hypothesis): SERIESSUM with x = 0 is `#NUM!` only when a term has power 0 (0^0): `SERIESSUM(0,0,2,{1,2,3})` is `#NUM!`,
-but `SERIESSUM(<blank>,123456789.123,-0.5,123456789.123)` (one term, a positive power) is not `#NUM!` (the IFS around
-it in gen-m7 gives `#VALUE!`, so SERIESSUM was a number or `#VALUE!`).
-Evidence: ironcalc-calc MATH_AND_TRIGONOMETRY/SERIESSUM.xlsx C1, H7 (Excel-cached); gen-m7/d38b52bfa1a9f9e6 Calc!A27 (excel-graph, 2026-10-11, T-1275).
-Ours: `#NUM!` for every x = 0.
-Status: UNVERIFIED (probe pending: negative powers, a blank x)
-Tasks: T-1359
+Rule: SERIESSUM with x = 0 (a literal 0 or a blank) is `#NUM!` when any term's power `n + i*m` is zero or negative, whatever its
+coefficient (a 0 coefficient too), and 0 when every power is positive: `SERIESSUM(0,1,1,{1,2})` and `SERIESSUM(0,0.5,1,1)` are 0;
+`SERIESSUM(0,0,2,{1,2,3})`, `(0,2,-1,{1,2,3})` (powers 2, 1, 0), `(0,1,-2,{1,2})` (1, -1), `(0,-1,1,1)`, `(0,-0.5,1,{5})`, `(0,0,1,{0})`,
+`(0,1,-1,{5,0})` and `(0,-1,2,{5,6})` are `#NUM!`. With step 0, `(0,3,0,{1,2})` is 0 and `(0,0,0,{1,2})` is `#NUM!`.
+`SERIESSUM(<blank>,123456789.123,-0.5,123456789.123)` is 0 (one positive power), so the IFS around it in gen-m7 goes on.
+Evidence: probes/seriessum-x-zero A1:A22 (excel-graph, 2026-10-15, T-1359); ironcalc-calc MATH_AND_TRIGONOMETRY/SERIESSUM.xlsx C1, H7 (Excel-cached);
+gen-m7/d38b52bfa1a9f9e6 Calc!A27 (excel-graph, 2026-10-11, T-1275).
+Ours: implemented (T-1359) in `fn_seriessum`.
+Precedence (probes/seriessum-x-zero-error-precedence E1:E27, excel-graph, 2026-10-15, T-1653; the engine matched every cell before T-1653): the coefficients are read left
+to right and the first problem wins, so with x = 0 a bad-power term before a text or error coefficient gives `#NUM!` (`(0,0,1,{4,"a"})`), but a text or error coefficient
+before or on the bad-power term gives `#VALUE!` or the error (`(0,0,1,{"a"})`, `(0,1,-1,{4,"a"})`, `(0,1,-1,{"a",4})`, `(0,1,-1,{4,#N/A})`, `(0,-1,1,{#N/A})`), the same as for x = 2
+(`(2,0,1,{"a"})`). Between two bad coefficients the left one wins (`{#N/A,"a"}` is `#N/A`, `{"a",#N/A}` is `#VALUE!`, `{#DIV/0!,#N/A}` is `#DIV/0!`). A text or error `x`, `n` or `m`
+(`SERIESSUM(0,"a",1,{1})`, `(0,NA(),1,{1})`, `(0,0,"a",{1})`, `("a",0,1,{1})`) gives `#VALUE!` or the error, with no `#NUM!`. A referenced range of coefficients is not read in order: a text or
+error cell in it is `#VALUE!` even after a bad-power term or with every power positive, unlike the array form (`(0,0,1,B1:B2)` with B1 = 4, B2 = "a" is `#VALUE!` where `(0,0,1,{4,"a"})` is `#NUM!`; `(0,1,1,C1:C2)` with C2 = #N/A is `#VALUE!`), except that a leading error cell is its own error (`(0,1,-1,D1:D2)` with D1 = #N/A is `#N/A`). Other cell orderings in a range (text before an error, a middle error) are unprobed.
+Status: VERIFIED
+Tasks: T-1359, T-1653
 
 ## ECMA.CEILING
 Rule: `ECMA.CEILING(number, significance)` is a real Excel function with exactly the two-argument `CEILING` semantics (rounds away from zero for negative `number` with negative `significance`; `#NUM!` when `number` is positive and `significance` negative; zero significance gives 0; number text `"2.5"` and `TRUE` are read as numbers; text significance is `#VALUE!`). It is stored in a file as `_xlfn.ECMA.CEILING`, and `FORMULATEXT` prints it as `=ECMA.CEILING(2.5,2)` (no prefix). Written bare (`ECMA.CEILING(...)`) in a file, Graph rejects the whole workbook (`createSession` 501 `unsupportedWorkbook`); the one-argument form `_xlfn.ECMA.CEILING(2.5)` is rejected the same way (arity is exactly 2, like CEILING).

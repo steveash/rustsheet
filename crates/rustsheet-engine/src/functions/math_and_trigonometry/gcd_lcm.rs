@@ -106,13 +106,8 @@ impl Model {
             None
         };
 
-        for arg in args {
+        for (index, arg) in args.iter().enumerate() {
             let evaluated = self.evaluate_node_in_context(arg, cell);
-            // Only a text or boolean range cell is evidenced to beat the negative; typed
-            // arguments, errors and array elements after one keep the immediate `#NUM!`.
-            if negative_seen.get() && !matches!(evaluated, CalcResult::Range { .. }) {
-                return negative_error(cell, fn_name);
-            }
             match evaluated {
                 CalcResult::Number(value) => {
                     if let Some(res) = handle_number(value) {
@@ -139,13 +134,17 @@ impl Model {
                         message: "Booleans not allowed in GCD".to_string(),
                     };
                 }
-                CalcResult::EmptyArg => {
+                // Excel: an omitted first argument is `#N/A` (even next to a negative); a later
+                // one is skipped, not read as 0: `LCM(4,)` is 4, not 0
+                // (probes/gcd-lcm-multinomial-negative-precedence E39:E71).
+                CalcResult::EmptyArg if index == 0 => {
                     return CalcResult::Error {
                         error: Error::NA,
                         origin: cell,
-                        message: "Empty argument".to_string(),
+                        message: "Empty first argument".to_string(),
                     };
                 }
+                CalcResult::EmptyArg => {}
                 CalcResult::Range { left, right } => {
                     has_range = true;
                     if let Err(error) = self.for_each_cell_or_error_in_areas(
@@ -153,10 +152,6 @@ impl Model {
                         cell,
                         |model, value| {
                             let number = match value {
-                                // An error cell after a negative keeps the immediate `#NUM!`.
-                                CalcResult::Error { .. } if negative_seen.get() => {
-                                    return Err(negative_error(cell, fn_name));
-                                }
                                 error @ CalcResult::Error { .. } => return Err(error),
                                 CalcResult::Number(value) => value,
                                 CalcResult::String(s) => model
@@ -185,9 +180,6 @@ impl Model {
                 CalcResult::Array(array) => {
                     for row in array {
                         for value in row {
-                            if negative_seen.get() {
-                                return negative_error(cell, fn_name);
-                            }
                             match value {
                                 ArrayNode::Number(value) => {
                                     if let Some(res) = handle_number(value) {

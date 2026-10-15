@@ -106,16 +106,18 @@ fn is_one_element_array(node: &Node) -> bool {
 
 /// A legacy formula shows an `@` on a one-element array constant in a scalar argument:
 /// `=ABS({5})` is shown as `=ABS(@{5})` (probes/legacy-one-cell-shape-intersection M3, excel-graph,
-/// T-1633). Larger array constants are unprobed and left alone.
-fn add_scalar_array_at(kind: &Function, signature: Option<&Signature>, arg: &mut Node) {
-    if is_scalar_context(kind, signature) && is_one_element_array(arg) {
+/// T-1633). Larger array constants are unprobed and left alone. TYPE reads its argument whole and
+/// shows none: `=TYPE({5})` stays `=TYPE({5})` (probes/legacy-choose-arm-aggregate-and-array-constant-at
+/// L3, excel-graph, T-1638).
+fn add_scalar_array_at(signature: Option<&Signature>, arg: &mut Node) {
+    if matches!(signature, Some(Signature::Scalar)) && is_one_element_array(arg) {
         *arg = Node::automatic_at(arg.clone());
     }
 }
 
 /// Drops the `@` [`add_scalar_array_at`] adds again on import.
-fn remove_scalar_array_at(kind: &Function, signature: Option<&Signature>, arg: &mut Node) {
-    if is_scalar_context(kind, signature) {
+fn remove_scalar_array_at(signature: Option<&Signature>, arg: &mut Node) {
+    if matches!(signature, Some(Signature::Scalar)) {
         if let Node::ImplicitIntersection { child, .. } = arg {
             if is_one_element_array(child) {
                 *arg = child.as_ref().clone();
@@ -132,7 +134,7 @@ pub(super) fn add_array_at(
     arg: &mut Node,
 ) {
     add_index_array_at(kind, index, arg);
-    add_scalar_array_at(kind, signature, arg);
+    add_scalar_array_at(signature, arg);
 }
 
 /// Drops the `@`s [`add_array_at`] adds again on import.
@@ -143,7 +145,7 @@ pub(super) fn remove_array_at(
     arg: &mut Node,
 ) {
     remove_index_array_at(kind, index, arg);
-    remove_scalar_array_at(kind, signature, arg);
+    remove_scalar_array_at(signature, arg);
 }
 
 /// Calls `f` on `node`, or on each operand of the operators, parentheses and signs it is made
@@ -331,4 +333,20 @@ fn is_value_operation(node: &Node) -> bool {
         | Node::CompareKind { .. } => true,
         _ => false,
     }
+}
+
+/// Whether a legacy formula leaves the `@` off the call `kind(args)` although it may return a
+/// range: INDEX of a CHOOSE whose arms are all arithmetic reads a value, so `=INDEX(CHOOSE(1,
+/// B1:B6*1),3)` shows as `=INDEX(CHOOSE(1,@B1:B6*1),3)` (probes/legacy-choose-arm-aggregate-and-
+/// array-constant-at H3, excel-graph, T-1643). Only the `@` placement changes: a dynamic formula
+/// of that shape still spills.
+pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool {
+    matches!(kind, Function::Index)
+        && matches!(
+            args.first().map(Node::ungrouped),
+            Some(Node::FunctionKind {
+                kind: Function::Choose,
+                args: arms,
+            }) if arms.len() > 1 && arms[1..].iter().all(is_value_operation)
+        )
 }

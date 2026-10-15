@@ -13,6 +13,7 @@ C	probes/3d-ref-span-missing-ends.case.json	12
 C	probes/3d-ref-values.case.json	10
 C	probes/aggregate-args.case.json	53
 C	probes/aggregate-array-args.case.json	48
+C	probes/aggregate-array-error-vs-ref-error-average-family.case.json	87
 C	probes/aggregate-array-error-vs-ref-error.case.json	40
 C	probes/aggregate-direct-lambda-average-family.case.json	31
 C	probes/aggregate-direct-lambda-product-min-max.case.json	36
@@ -215,6 +216,7 @@ C	probes/external-ref-no-link.case.json	10
 C	probes/fact-large-arguments.case.json	18
 C	probes/fact-product-order-sweep.case.json	420
 C	probes/filter-if-empty-array.case.json	12
+C	probes/filterxml-error-arguments.case.json	6
 C	probes/fin-argument-modes.case.json	386
 C	probes/forecast-ets-longer-series.case.json	42
 C	probes/format-doubled-quotes.case.json	11
@@ -222,6 +224,7 @@ C	probes/formula-length-nonbmp-33pieces.case.json	1
 C	probes/formula-length-nonbmp-8192u.case.json	1
 C	probes/formulatext-written-groups-shapes.case.json	12
 C	probes/gcd-lcm-bounds.case.json	38
+C	probes/gcd-lcm-multinomial-negative-precedence.case.json	71
 C	probes/geomean-exponent-sum-2.case.json	34
 C	probes/geomean-exponent-sum.case.json	28
 C	probes/geomean-in-range-many.case.json	72
@@ -289,6 +292,7 @@ C	probes/lambda-param-call.case.json	6
 C	probes/large-small-k.case.json	35
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
+C	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	27
 C	probes/legacy-index-array-index.case.json	30
 C	probes/legacy-one-cell-shape-intersection.case.json	26
 C	probes/legacy-type-intersection.case.json	17
@@ -436,6 +440,7 @@ C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-2d-and-scalar.case.json	21
 C	probes/product-array-elements.case.json	9
 C	probes/radians-sqrtpi-munit.case.json	94
+C	probes/randbetween-huge-span.case.json	23
 C	probes/range-operator-column-letter-before-colon.case.json	1
 C	probes/range-operator-unnamed-operands.case.json	10
 C	probes/range-right-operand-errors.case.json	4
@@ -471,6 +476,8 @@ C	probes/round-huge-digits-wrap.case.json	265
 C	probes/round-huge-digits.case.json	216
 C	probes/roundup-wrapped-scaling.case.json	480
 C	probes/rows-columns-args.case.json	14
+C	probes/seriessum-x-zero-error-precedence.case.json	27
+C	probes/seriessum-x-zero.case.json	22
 C	probes/sheet-qualified-both-corners.case.json	9
 C	probes/sheet-qualified-corner-order.case.json	13
 C	probes/sheet-qualified-ref-error-forms.case.json	10
@@ -542,7 +549,7 @@ C	probes/text-format-unquoted-letters.case.json	111
 C	probes/text-general-exponent-boundary.case.json	10
 C	probes/text-general-ties-below-one.case.json	19
 C	probes/text-general-ties-wide-fixed.case.json	24
-C	probes/text-lone-surrogates.case.json	87
+C	probes/text-lone-surrogates.case.json	107
 C	probes/text-modes-bahttext.case.json	2
 C	probes/text-modes-bytes.case.json	8
 C	probes/text-modes-dbcs-lift.case.json	10
@@ -566,6 +573,7 @@ C	probes/text-result-limit.case.json	24
 C	probes/text-scalar-edges.case.json	63
 C	probes/text-search-casefold-length.case.json	24
 C	probes/text-surrogate-positions.case.json	68
+C	probes/text-unicode-lone-surrogate-followed.case.json	10
 C	probes/textjoin-array-arguments.case.json	34
 C	probes/textjoin-array-limit-empty-strings.case.json	11
 C	probes/textjoin-delimiter-array.case.json	6
@@ -607,7 +615,7 @@ C	probes/vlookup-array-index-range-lookup.case.json	155
 C	probes/vlookup-array-lookup-value.case.json	35
 C	probes/vlookup-error-arg-lifting-range-lookup.case.json	22
 C	probes/volatile-and-info-rand-true-false-sheet.case.json	108
-C	probes/volatile-invariant.case.json	56
+C	probes/volatile-invariant.case.json	60
 C	probes/volatile-now-today-shapes.case.json	48
 C	probes/weeknum-1900-later.case.json	23
 C	probes/weeknum-invalid-type.case.json	8
@@ -5999,26 +6007,12 @@ F	probes/text-format-length-limit-f.case.json	Sheet1!A42
 F	probes/text-format-length-limit-j.case.json	Sheet1!A43
 F	probes/text-format-length-limit-l.case.json	Sheet1!A40
 F	probes/text-format-length-limit-m.case.json	Sheet1!A22
-F	probes/text-lone-surrogates.case.json	Sheet1!A10
-F	probes/text-lone-surrogates.case.json	Sheet1!A11
-F	probes/text-lone-surrogates.case.json	Sheet1!A12
-F	probes/text-lone-surrogates.case.json	Sheet1!A14
-F	probes/text-lone-surrogates.case.json	Sheet1!A15
-F	probes/text-lone-surrogates.case.json	Sheet1!A16
-F	probes/text-lone-surrogates.case.json	Sheet1!A18
-F	probes/text-lone-surrogates.case.json	Sheet1!A22
-F	probes/text-lone-surrogates.case.json	Sheet1!A27
-F	probes/text-lone-surrogates.case.json	Sheet1!A28
-F	probes/text-lone-surrogates.case.json	Sheet1!A30
-F	probes/text-lone-surrogates.case.json	Sheet1!A43
-F	probes/text-lone-surrogates.case.json	Sheet1!A48
-F	probes/text-lone-surrogates.case.json	Sheet1!A49
-F	probes/text-lone-surrogates.case.json	Sheet1!A50
-F	probes/text-lone-surrogates.case.json	Sheet1!A51
-F	probes/text-lone-surrogates.case.json	Sheet1!A53
-F	probes/text-lone-surrogates.case.json	Sheet1!A55
-F	probes/text-lone-surrogates.case.json	Sheet1!A56
-F	probes/text-lone-surrogates.case.json	Sheet1!A57
+F	probes/text-lone-surrogates.case.json	Sheet1!A85
+F	probes/text-lone-surrogates.case.json	Sheet1!A89
+F	probes/text-lone-surrogates.case.json	Sheet1!A90
+F	probes/text-lone-surrogates.case.json	Sheet1!A91
+F	probes/text-lone-surrogates.case.json	Sheet1!A92
+F	probes/text-lone-surrogates.case.json	Sheet1!A94
 F	probes/vara-single-ref-picked.case.json	S!D37
 F	probes/vara-single-ref-picked.case.json	S!D38
 F	probes/vara-single-ref-picked.case.json	S!D39

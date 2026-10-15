@@ -1,4 +1,6 @@
+use crate::arithmetic::extended_sum;
 use crate::{
+    arithmetic::extended_quotient,
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     Model,
@@ -67,7 +69,8 @@ impl Model {
             };
         }
 
-        CalcResult::Number(sum / count as f64)
+        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1648).
+        CalcResult::Number(extended_quotient(sum, count as f64))
     }
 
     // =DCOUNT(database, field, criteria)
@@ -237,7 +240,8 @@ impl Model {
                 });
                 if let CalcResult::Number(n) = v {
                     if n.is_finite() {
-                        sum += n;
+                        // Each addition rounds twice like SUM's (probes-numeric/double-rounding-accumulators).
+                        sum = extended_sum(sum, n);
                     }
                 }
             }

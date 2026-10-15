@@ -3,7 +3,7 @@ id: T-1574
 title: "Probe GCD/LCM/MULTINOMIAL precedence of a negative against typed text, errors and LCM ranges"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,3 +24,9 @@ T-1261 defers a negative's `#NUM!` only past text or boolean cells of a range ar
 
 ## Out of scope
 - MULTINOMIAL's inexact values (T-1190).
+
+## Outcome
+Probe probes/gcd-lcm-multinomial-negative-precedence (71 cells, excel-graph): a negative's `#NUM!` loses to every other error
+in any position; an omitted first argument is `#N/A`, later omitted arguments are skipped (`LCM(4,)` = 4). GCD, LCM and MULTINOMIAL
+now match all 71 cells (removed the immediate-`#NUM!` carve-outs; empty-argument handling by position). coercion.md updated.
+Eval delta: probes +71 passing cells, no new known failures.

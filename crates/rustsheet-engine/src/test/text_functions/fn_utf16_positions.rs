@@ -105,3 +105,89 @@ fn left_right_unicode_read_lone_surrogates_exactly() {
     assert_eq!(model._get_text("A5"), "56832");
     assert_eq!(model._get_text("A6"), "1");
 }
+
+#[test]
+fn lone_surrogates_compare_by_code_unit() {
+    // probes/text-lone-surrogates A10-A28 (excel-graph): a lone half is never U+FFFD, H<L, and
+    // H<U+FFFD, L<U+FFFD are FALSE.
+    let h = "MID(\"😀\",1,1)";
+    let l = "MID(\"😀\",2,1)";
+    let cases = [
+        (format!("=EXACT({h},UNICHAR(65533))"), "FALSE"),
+        (format!("=EXACT({h},{l})"), "FALSE"),
+        (format!("=EXACT({h},{h})"), "TRUE"),
+        (format!("={h}=UNICHAR(65533)"), "FALSE"),
+        (format!("={h}={l}"), "FALSE"),
+        (format!("={h}<{l}"), "TRUE"),
+        (format!("={l}<{h}"), "FALSE"),
+        (format!("={h}<\"a\""), "FALSE"),
+        (format!("={h}<\"😀\""), "TRUE"),
+        (format!("=\"😀\"<{l}"), "TRUE"),
+        (format!("={h}<UNICHAR(65533)"), "FALSE"),
+        (format!("={l}<UNICHAR(65533)"), "FALSE"),
+        (
+            format!("=MATCH({h},{{\"x\";\"😀\";\"\u{fffd}\"}},0)"),
+            "#N/A",
+        ),
+        (format!("=MATCH({l},{{\"x\";\"\u{fffd}\"}},0)"), "#N/A"),
+        (format!("=EXACT(UPPER({h}),{h})"), "TRUE"),
+        (format!("=LEN(TRIM(\" \"&{h}&\"  \"&{l}&\" \"))"), "3"),
+        (format!("=LEN(CLEAN({l}&CHAR(7)&{h}))"), "2"),
+    ];
+    for (formula, expected) in cases {
+        let mut model = new_empty_model();
+        model._set("A1", &formula);
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), expected, "{formula}");
+    }
+}
+
+#[test]
+fn match_of_a_lone_half_pattern_ignores_case() {
+    // A lone-half pattern compares like `=`, case-insensitively (T-1585 review).
+    let mut model = new_empty_model();
+    model._set("B1", "x");
+    model._set("B2", "=\"a\"&MID(\"😀\",1,1)");
+    model._set("A1", "=MATCH(\"A\"&MID(\"😀\",1,1),B1:B2,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2");
+}
+
+#[test]
+fn find_search_substitute_split_pairs_with_a_lone_half() {
+    // probes/text-lone-surrogates A43-A57 (excel-graph): a lone half as find_text or old_text
+    // matches inside a pair, and never matches U+FFFD.
+    let h = "MID(\"😀\",1,1)";
+    let l = "MID(\"😀\",2,1)";
+    let cases = [
+        (format!("=FIND({h},\"a😀b\")"), "2"),
+        (format!("=FIND({l},\"a😀b\")"), "3"),
+        (format!("=SEARCH({h},\"a😀b\")"), "2"),
+        (format!("=SEARCH({l},\"a😀b\")"), "3"),
+        (format!("=FIND({l},{h}&{l})"), "2"),
+        (format!("=FIND(\"😀\",{h}&{l})"), "1"),
+        (format!("=FIND(UNICHAR(65533),{h})"), "#VALUE!"),
+        (format!("=SEARCH(UNICHAR(65533),{l})"), "#VALUE!"),
+        (format!("=ISNUMBER(SEARCH({h}&\"*\",\"a😀b\"))"), "TRUE"),
+        (format!("=UNICODE(SUBSTITUTE(\"😀\",{h},\"x\"))"), "120"),
+        (format!("=LEN(SUBSTITUTE(\"😀\",{l},\"x\"))"), "2"),
+        (format!("=LEN(SUBSTITUTE(\"a😀b😀\",{h},\"x\"))"), "6"),
+        (format!("=LEN(SUBSTITUTE(\"😀\",{h}&{l},\"x\"))"), "1"),
+        (format!("=LEN(SUBSTITUTE({h},{h},\"x\"))"), "1"),
+        // The result limit applies to the lone-surrogate path too (text.md "SUBSTITUTE result longer").
+        (format!("=SUBSTITUTE(REPT(\"a\",32766)&{h},{h},\"xx\")"), "#VALUE!"),
+        (format!("=LEN(SUBSTITUTE(REPT(\"a\",32766)&{h},{h},\"x\"))"), "32767"),
+        // A long near-miss pattern stays linear.
+        (format!("=SUBSTITUTE(REPT(\"a\",16000)&{l},REPT(\"a\",8000)&\"b\",\"x\")=REPT(\"a\",16000)&{l}"), "TRUE"),
+        (format!("=LEN(SUBSTITUTE(\"a\"&{h}&\"b\"&{h},{h},\"-\",2))"), "4"),
+        // Instances overlap, as in the well-formed path: the 2nd "aa" of "aaa" starts at 2.
+        (format!("=SUBSTITUTE(\"aaa\"&{h},\"aa\",\"x\",2)=\"ax\"&{h}"), "TRUE"),
+        ("=SUBSTITUTE(\"aaa\",\"aa\",\"x\",2)".to_string(), "ax"),
+    ];
+    for (formula, expected) in cases {
+        let mut model = new_empty_model();
+        model._set("A1", &formula);
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), expected, "{formula}");
+    }
+}

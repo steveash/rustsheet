@@ -59,10 +59,13 @@ Evidence: probes/text-surrogate-positions A6, A11, A12, A29, A38, B6, B7, B10 (e
 Ours: MID and REPLACE slice a `rustsheet_engine::Text` by UTF-16 units (`Text::slice_utf16`), so the
 lone half survives (T-1579). LEFT, RIGHT and UNICODE read the exact units
 (`Text::left_chars`, `Text::right_chars`, `chars_lossless`), so A38, B6 and B7 pass (T-1581).
-`UNICODE` of a lone high surrogate followed by another character
-(`UNICODE(MID("a😀b",2,2))`) is `#VALUE!` here by inference, unprobed. Whether `&` of a lone high and a lone low surrogate
-forms the pair (`EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`) is UNVERIFIED: `Text::concat` pairs
-them by UTF-16's rule until T-1582 probes it.
+`UNICODE` of a lone high surrogate followed by another character is `#VALUE!`
+(`UNICODE(MID("😀",1,1)&"x")`); of a lone low one followed by another it is its code (56832). Note that
+`UNICODE(MID("a😀b",2,2))` is not a lone unit: units 2-3 are the whole pair (128512). A pair followed by
+a lone high one reads the pair, and `CODE` of a pair is 63 (probes/text-unicode-lone-surrogate-followed
+A1-A10, excel-graph, 2026-10-15, T-1635; ours matches all 10). Whether `&` of a lone high and a lone low surrogate
+forms the pair (`EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`) is TRUE: `Text::concat` pairs
+them by UTF-16's rule (probes/text-lone-surrogates, T-1582).
 Status: VERIFIED
 Implemented in: `mid_element`, `left_element`, `right_element` and `fn_unicode` in
 functions/text/common.rs, `replace_element` in functions/text/string_format.rs
@@ -82,8 +85,8 @@ exact UTF-16 units throughout:
   `L<UNICHAR(65533)` are both FALSE (so it is not plain code-unit order against U+FFFD).
 - MATCH(…,0) of H or L in `{"x";"😀"}` or `{…;"�"}` is `#N/A` (a lone half never matches a pair or U+FFFD).
 - UPPER, LOWER, PROPER, TRIM and CLEAN keep a lone surrogate unchanged (`EXACT(UPPER(H),H)`, `UNICODE(UPPER(L))` 56832,
-  `LEN(TRIM(" "&H&"  "&L&" "))` 3 (H, one inner space, L: TRIM keeps a single space, nothing re-pairs), `LEN(CLEAN(L&CHAR(7)&H))` 2); `T(H)`, `H&""`,
-  `TEXT(H,"@")` and `TEXT(L,"General")` keep it (length 1); `REPT(H,3)` has length 3.
+  `LEN(TRIM(" "&H&"  "&L&" "))` 3 (H, one inner space, L: TRIM keeps a single space, nothing re-pairs), `LEN(CLEAN(L&CHAR(7)&H))` 2); `H&""` keeps it too, and `LEN(T(H))`,
+  `LEN(TEXT(H,"@"))`, `LEN(TEXT(L,"General"))` are 1 and `LEN(REPT(H,3))` is 3. T, TEXT and REPT keep the *exact* unit, not U+FFFD, and `REPT(L&H,2)` re-pairs at the join: `EXACT(T(H),H)`, `EXACT(REPT(H,2),H&H)`, `EXACT(TEXT(H,"@"),H)` and `EXACT(REPT(L&H,2),L&H&L&H)` are TRUE, and `UNICODE(MID(TEXT(L,"""x""@""y"""),2,1))` is 56832 while the same with H is `#VALUE!` (VERIFIED, probes/text-lone-surrogates A82-A84, A86, A97-A101, excel-graph, 2026-10-15, T-1647). The 255-character limit limits the doubled `@@` output length (254 ok, 256 not; whether it counts UTF-16 units or code points is unprobed, H is one of each): `LEN(TEXT(H&REPT("a",126),"@@"))` is 254 and with 127 `a` it is `#VALUE!` (A87, A88). Note `TEXT(text,"x@y")` is `#VALUE!` for the text values probed ("😀", H, L; A85, A89-A92, A94), even though `"x"@"y"` works; the cause is inferred to be `y` (a date token) next to `@`, unprobed alone, see T-1656. The engine returns "x" followed by the text with the `y` dropped (A93 passes only by accident) (T-1656); `TEXT(L,"@x")` is 2 units and `ISERROR(TEXT(L,"@@"))` is FALSE (A95, A96).
 - `VALUE(H)`, `VALUE(L&"1")` and `H+0` are errors.
 - FIND and SEARCH with a lone half as find_text *can* split a pair: `FIND(H,"a😀b")` 2, `FIND(L,"a😀b")` 3,
   `SEARCH` the same, `FIND(L,H&L)` 2, `FIND("😀",H&L)` 1, `SEARCH(H&"*","a😀b")` matches. A lone half does not match
@@ -96,9 +99,9 @@ exact UTF-16 units throughout:
 - 32,767 limit: `LEN(REPT("a",32766)&"😀")` is 32767 (the kept unit is the high half, coercion.md "Truncation inside a surrogate pair"); `REPT("😀",16384)` is `#VALUE!`;
   CONCAT and TEXTJOIN one unit over (a pair straddling the limit) are `#CALC!`, not truncated (existing entry below).
 Evidence: probes/text-lone-surrogates A1-A81, B1-B6 (excel-graph, 2026-10-15, T-1582).
-Ours: the engine drops a lone half, so some of the 87 cells still fail (A3, A4 pass since T-1581) (comparisons that pass today do so because the dropped half compares as ""); T-1585 to T-1587 are the follow-ups.
+Ours: comparisons, EXACT and exact-mode MATCH read lone units exactly (T-1585): `cmp_text` in functions/util/collation.rs weighs a lone unit (and each unit of an astral character) above every BMP character, by unit value, which gives H<L, H<"😀"<L, and both H and L above U+FFFD (`H<UNICHAR(65533)` FALSE); `wildcard_text_matcher_for` (criteria.rs) matches a lone-half pattern by `cmp_text` equality, case-insensitive (a wildcard beside a lone half is read literally, and COUNTIF-style criteria with a lone half are lossy: both unprobed, T-1642). UPPER, LOWER, PROPER, TRIM and CLEAN keep lone units (`Text::map_runs`; a lone unit breaks a word for PROPER, unprobed). FIND, SEARCH and SUBSTITUTE read lone units exactly (T-1586: `find_element` in functions/text/position.rs maps each unit, a lone one included, to one character; `substitute_units` in functions/text/util.rs matches unit for unit, so a lone half splits a pair; with an `instance_num` instances overlap, as in the well-formed path, `SUBSTITUTE("aaa","aa","x",2)` is "ax": unprobed by Excel, an inherited engine choice). CODE and VALUE already behaved as probed. REPT repeats the exact units (`Text::repeat`; `REPT(L&H,2)` re-pairs at the join like `&`), TEXT prints the exact text where `@` is (`format_text_value_exact` in formatter/format.rs formats a one-character private-use stand-in the format does not hold, so the 255-character limit and every format rule stay the well-formed path's, then swaps the exact text in; the limit is re-checked on the real length), and T returns its argument unchanged (T-1587; exactness VERIFIED, T-1647).
 Status: VERIFIED
-Tasks: T-1582
+Tasks: T-1582, T-1585, T-1586, T-1587, T-1647 (probe follow-up)
 
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for

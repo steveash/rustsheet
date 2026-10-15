@@ -62,3 +62,10 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   "8", A4 "abc", A5 30. It probes COUNTA over the cached empty string, GCD/LCM over cached text,
   booleans, the empty string and blanks, and SUM/COUNT/MAX/AVERAGEA over an area taller than the
   array bound.
+- `external-link-cached-lookups.xlsx`, `external-link-cached-3d-span.xlsx` (T-1609):
+  `external-link-cached-ranges.xlsx` with only sheet `Refs` rewritten (one legacy formula per row in
+  column B, placeholder cached 0, label in column A; built by replacing `xl/worksheets/sheet1.xml`).
+  The first probes lookups over partly cached ranges (VLOOKUP, HLOOKUP, MATCH, XLOOKUP, XMATCH,
+  LOOKUP, INDEX), the case of sheet and name lookups, and names, sheets and scopes the cache does not
+  hold. The second probes 3-D spans of the cached sheets (`[1]Uses:Defines!$B$2`); it is a workbook of
+  its own so that a span Excel for the web refused could not take the other questions down with it.

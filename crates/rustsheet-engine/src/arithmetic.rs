@@ -457,15 +457,18 @@ fn integer_power(x: f64, y: f64) -> Option<Result<f64, Error>> {
 }
 
 /// `x^n` for a non-negative integer `n` <= 2^53 by scanning the bits of `n` from the low end.
+/// Each product is rounded twice, like the operator `*` ([`extended_product`]): with products
+/// rounded once the loop misses 18 of the 20 `SQRT(5)^n` cells (numbers.md "Integer exponents
+/// beyond 360", T-1524 fit lab `power-sqrt5`).
 fn square_and_multiply(x: f64, n: f64) -> f64 {
     let mut remaining = n;
     let mut base = x;
     let mut result = 1.0_f64;
     while remaining >= 1.0 {
         if remaining % 2.0 == 1.0 {
-            result *= base;
+            result = extended_product(result, base);
         }
-        base *= base;
+        base = extended_product(base, base);
         remaining = (remaining / 2.0).floor();
     }
     result

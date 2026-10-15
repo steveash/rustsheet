@@ -124,3 +124,45 @@ fn test_fn_choose_at_call_intersects_result() {
     // No spill: C3 stays empty.
     assert_eq!(model._get_text("C3"), "");
 }
+
+// A CHOOSE arm intersected to a scalar (`@B1:B6*1`) read by INDEX, MODE and LOOKUP
+// (probes/legacy-choose-arm-aggregate-and-array-constant-at H1, I1, I10, J1, excel-graph, T-1643).
+#[test]
+fn test_fn_choose_scalar_arm_under_index_mode_lookup() {
+    let mut model = new_empty_model();
+    for r in 1..=6 {
+        model._set(&format!("A{r}"), &format!("{r}"));
+    }
+    for row in [1, 10] {
+        model._set(&format!("B{row}"), "=MODE(CHOOSE(1,@A1:A6*1))");
+        model._set(&format!("C{row}"), "=LOOKUP(2,CHOOSE(1,@A1:A6*1))");
+        model._set(&format!("D{row}"), "=INDEX(CHOOSE(1,@A1:A6*1),3)");
+    }
+    model.evaluate();
+    // On the range's rows the arm is the scalar 1; off them its `@` is #VALUE!.
+    assert_eq!(model._get_text("B1"), "#N/A");
+    assert_eq!(model._get_text("C1"), "1");
+    assert_eq!(model._get_text("D1"), "#REF!");
+    assert_eq!(model._get_text("B10"), "#VALUE!");
+    assert_eq!(model._get_text("C10"), "#VALUE!");
+    assert_eq!(model._get_text("D10"), "#VALUE!");
+}
+
+// A dynamic INDEX of a CHOOSE with arithmetic arms keeps spilling: only a legacy formula leaves
+// the `@` off the call (T-1643). MODE still skips a direct error that no IF or CHOOSE picked.
+#[test]
+fn test_fn_choose_arithmetic_arm_under_dynamic_index_spills() {
+    let mut model = new_empty_model();
+    for r in 1..=3 {
+        model._set(&format!("A{r}"), &format!("{r}"));
+    }
+    model._set("C1", "=INDEX(CHOOSE(1,A1:A3*1),0)");
+    model._set("D1", "=INDEX(CHOOSE({1,2},A1:A3*1,A1:A3*2),0,2)");
+    model._set("E1", "=MODE(1/0,1,1)");
+    model._set("E2", "=LOOKUP(2,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("C3"), "3");
+    assert_eq!(model._get_text("D3"), "6");
+    assert_eq!(model._get_text("E1"), "1");
+    assert_eq!(model._get_text("E2"), "#N/A");
+}
