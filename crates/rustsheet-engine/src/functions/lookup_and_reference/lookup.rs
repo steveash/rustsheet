@@ -1,6 +1,6 @@
 //! LOOKUP (both forms) and the vector reading MATCH shares with it.
 
-use crate::cast::calc_result_to_array_node;
+use crate::cast::scalar_as_array;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::{array_node_to_calc_result, is_at_if, is_at_xlookup_take};
@@ -74,14 +74,9 @@ impl Model {
         }
         // Read as a reference so that a single cell is a one-element vector
         // (`LOOKUP(2,C1,D1)`; probes/lookup-vector-edges A1-A4).
-        let value = match self.evaluate_node_with_reference(&args[1], cell) {
-            // A scalar lookup_vector is a one-element array: `LOOKUP(2,CHOOSE(1,@B1:B6*1))` is 1 on
-            // the range's rows (probes/legacy-choose-arm-aggregate-and-array-constant-at J1, T-1643).
-            scalar @ (CalcResult::Number(_) | CalcResult::String(_) | CalcResult::Boolean(_)) => {
-                CalcResult::Array(vec![vec![crate::cast::calc_result_to_array_node(scalar)]])
-            }
-            other => other,
-        };
+        // A scalar lookup_vector is a one-element array: `LOOKUP(2,CHOOSE(1,@B1:B6*1))` is 1 on the
+        // range's rows (probes/legacy-choose-arm-aggregate-and-array-constant-at J1, T-1643).
+        let value = scalar_as_array(self.evaluate_node_with_reference(&args[1], cell));
         let table = match Self::lookup_table(value, cell) {
             Ok(table) => table,
             Err(error) => return error,
@@ -152,17 +147,9 @@ impl Model {
         } else {
             self.eval_ref_or_index(node, cell)
         };
-        let value = match picked {
-            // A scalar is a one-element array: `LOOKUP(2,A1:A2,5)` is 5, and 5 is not read past
-            // (probes/lookup-vector-edges A5-A8).
-            scalar @ (CalcResult::Number(_)
-            | CalcResult::String(_)
-            | CalcResult::Boolean(_)
-            | CalcResult::EmptyCell) => {
-                CalcResult::Array(vec![vec![calc_result_to_array_node(scalar)]])
-            }
-            other => other,
-        };
+        // A scalar result_vector is a one-element array and is not read past
+        // (`LOOKUP(2,A1:A2,5)` is 5; probes/lookup-vector-edges A5-A8).
+        let value = scalar_as_array(picked);
         let table = match Self::lookup_table(value, cell) {
             Ok(table) => table,
             Err(error) => return error,

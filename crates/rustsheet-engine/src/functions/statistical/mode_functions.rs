@@ -29,10 +29,10 @@ impl Model {
                     }
                 },
                 CalcResult::Number(n) => values.push(n),
-                // A union's `#VALUE!` (H17, H18) and the error of a computed argument
-                // (`MODE(CHOOSE(1,B1:B6*1))` off the range's rows is `#VALUE!`, probes/legacy-choose-arm-aggregate-and-array-constant-at
-                // I10, T-1643) propagate; the error of a single-cell reference keeps being skipped
-                // (unprobed).
+                // A union's `#VALUE!` (H17, H18) and the error of a computed argument propagate
+                // (`MODE(CHOOSE(1,B1:B6*1))` off the range's rows is `#VALUE!`, probes/
+                // legacy-choose-arm-aggregate-and-array-constant-at I10, T-1643); the error of a
+                // single-cell reference keeps being skipped (unprobed).
                 error @ CalcResult::Error { .. }
                     if !matches!(arg.ungrouped(), Node::ReferenceKind { .. }) =>
                 {

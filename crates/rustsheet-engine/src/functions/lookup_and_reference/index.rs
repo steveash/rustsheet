@@ -1,11 +1,12 @@
 //! INDEX: one cell, row, column or area of a reference or an array, lifted element-wise over
 //! array indices (docs/excel-semantics/lookup.md).
 
-use crate::cast::{calc_result_to_array_node, NumberOrArray};
+use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
 use crate::external_reference::ExternalArea;
 use crate::functions::util::{
     array_node_to_calc_result, near_integer_count, NEAR_INTEGER_TOLERANCE,
 };
+use crate::functions::Function;
 use crate::limits::check_array_size;
 use crate::reference_operators::{three_d_needs_one_sheet, Picked, RefArg};
 use crate::{
@@ -122,21 +123,21 @@ fn index_window(
     Some((first_row, last_row, first_col, last_col))
 }
 
-/// Extracts the requested cell, row, column or whole array from `arr`.
-/// `row_eff`/`col_eff` of `0` select every row/column respectively. A selection
-/// that resolves to a single cell is returned as a scalar; otherwise an array, unless `top_left`
-/// asks for its first value only (a lifted element, which must not copy the selection).
 /// Whether `node` is an IF or CHOOSE call, which INDEX reads through to the branch it picks.
 fn picks_a_branch(node: &Node) -> bool {
     matches!(
         node.ungrouped(),
         Node::FunctionKind {
-            kind: crate::functions::Function::If | crate::functions::Function::Choose,
+            kind: Function::If | Function::Choose,
             ..
         }
     )
 }
 
+/// Extracts the requested cell, row, column or whole array from `arr`.
+/// `row_eff`/`col_eff` of `0` select every row/column respectively. A selection
+/// that resolves to a single cell is returned as a scalar; otherwise an array, unless `top_left`
+/// asks for its first value only (a lifted element, which must not copy the selection).
 fn index_from_array(
     arr: &[Vec<ArrayNode>],
     row_eff: usize,
@@ -285,15 +286,9 @@ impl Model {
                     // A scalar picked by IF or CHOOSE is a one-element array: `INDEX(CHOOSE(1,
                     // @B1:B6*1),3)` is `#REF!` on the range's rows (probes/legacy-choose-arm-
                     // aggregate-and-array-constant-at H1, T-1643). A scalar anywhere else keeps
-                    // being `#VALUE!` (unprobed).
-                    RefArg::Value(
-                        scalar @ (CalcResult::Number(_)
-                        | CalcResult::String(_)
-                        | CalcResult::Boolean(_)),
-                    ) if picks_a_branch(&args[0]) => {
-                        RefArg::Value(CalcResult::Array(vec![vec![calc_result_to_array_node(
-                            scalar,
-                        )]]))
+                    // being `#VALUE!` (unprobed, T-1645).
+                    RefArg::Value(scalar) if picks_a_branch(&args[0]) => {
+                        RefArg::Value(scalar_as_array(scalar))
                     }
                     other => other,
                 }
