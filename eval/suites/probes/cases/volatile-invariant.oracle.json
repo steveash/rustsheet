@@ -225,14 +225,30 @@
    "G1": {
     "t": "n",
     "v": 3.0
+   },
+   "I1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "I2": {
+    "t": "e",
+    "v": "#CALC!"
+   },
+   "I5": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "I6": {
+    "t": "e",
+    "v": "#N/A"
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "d99028287dc9f98df6f0658e85e8be9e657228ea1ea290e8a75666c0d7edd46a",
+  "input_sha256": "736657d9004e02cc1478c32f6063c00bb5aaf4a3813b2c8f464d23ebb26aadc0",
   "kind": "excel-graph",
-  "produced_at": "2026-10-10T10:21:47+00:00",
+  "produced_at": "2026-10-15T22:22:39+00:00",
   "version": null
  }
 }

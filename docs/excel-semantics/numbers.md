@@ -1245,7 +1245,7 @@ Rule: RANDBETWEEN compares the raw `bottom` and `top` (`bottom > top` is `#NUM!`
 `CEILING(bottom)` when `FLOOR(top)` is below it: `RANDBETWEEN(5.5,5.7)` and `RANDBETWEEN(5.5,6.2)`
 are always 6, `RANDBETWEEN(-5.5,-5.2)` always -5. It rejects booleans (`RANDBETWEEN(TRUE,TRUE)` is
 `#VALUE!`), reads number text (`"5"`), lifts over an array argument (one draw per element), and
-both arguments omitted (`RANDBETWEEN(,)`) is `#N/A`, not 0. RANDARRAY truncates `rows` and
+either bound omitted (`RANDBETWEEN(,)`, `(,5)`, `(5,)`) is `#N/A`, not 0, and a span `top - bottom` that overflows a double is `#NUM!` (error precedence with an omitted bound next to an error argument is unprobed). RANDARRAY truncates `rows` and
 `columns` (`1.9` → 1), gives `#CALC!` for 0 rows and `#VALUE!` for a negative count, `min > max`
 or a non-boolean `whole_number` text; with `whole_number` TRUE a fractional `min` or `max` is
 `#VALUE!` (`RANDARRAY(1,1,1.5,2.5,TRUE)`, `RANDARRAY(1,1,1,2.5,TRUE)`), while without it `min = max` returns that value
@@ -1258,10 +1258,8 @@ F1:F9, G1 (excel-graph, 2026-10-10). Every cell was filled twice with identical 
 F1:F9 take MIN/MAX/ROWS over 1000 draws in one cell, which is what shows the RANDBETWEEN range
 rule (F8:F9: `RANDBETWEEN(5.2,7.9)` spans 6 to 7, not ROUND's 5 to 8); the spill members D2, E1,
 E2 and D5 were not compared between fills, but their min equals their max; B15 and G1 have an occupied neighbour, so a 2-row or 2-column result would be `#SPILL!`.
-Engine, Excel unprobed (T-1584): a boolean reached through a reference (`RANDBETWEEN(H1,...)` with H1 TRUE) is rejected like the literal;
-RANDARRAY errors apply in argument order (`RANDARRAY(0,1,1.5,2.5,TRUE)` gives `#CALC!`); `RANDBETWEEN(-1E308,1E308)` and
-`RANDARRAY(1,1,-1E308,1E308,TRUE)` overflow the span to infinity in the engine (RANDBETWEEN then always gives 1E308); `RANDBETWEEN(,5)` and `RANDBETWEEN(5,)` read the omitted bound as 0.
-Status: VERIFIED. Implemented (T-1318): A2, A6, A8, A12, A13, B9, B10 and B18 pass. The engine still misses the array lift F1:F9 (T-1316).
+T-1584 (excel-graph, 2026-10-15): a boolean reached through a reference is rejected like the literal (`RANDBETWEEN(J1,2)`, J1 TRUE, is `#VALUE!`: probes/volatile-invariant Calc!I1); RANDARRAY errors apply in argument order (`RANDARRAY(0,1,1.5,2.5,TRUE)` is `#CALC!`, I2); an omitted bound on either side is `#N/A`, not 0 (`RANDBETWEEN(,5)` and `RANDBETWEEN(5,)`, I5:I6, like `RANDBETWEEN(,)`). A RANDBETWEEN whose span `top - bottom` overflows a double is `#NUM!` (`RANDBETWEEN(-9*10^307,9*10^307)`, `RANDBETWEEN(-(10^308),10^308)`), while a span of 1E308 or equal bounds at +-1E308 return a value (probes/randbetween-huge-span A1:A7). RANDARRAY has no such error: with a span that overflows (`-(10^308)` to `10^308`, whole or not) it returns a finite number inside the bounds (B2:B3, B14:B15), and equal bounds at +-1E308 return that bound. `-10^308` is presumably `(-10)^308` (unary minus binds tighter than `^`), positive and a hair above 1E308, which is consistent with `RANDARRAY(1,1,-10^308,10^308)` `min > max`: `#VALUE!` (B12) and `RANDBETWEEN(-10^308,10^308)` is `#NUM!` (A8). A literal `1E308` pair in the volatile-invariant workbook made excel-graph refuse the file ("unsupportedWorkbook"), so those probes use `10^308`.
+Status: VERIFIED. Implemented (T-1318, T-1584): A2, A6, A8, A12, A13, B9, B10, B18, I1:I6 and randbetween-huge-span pass. The engine still misses the array lift F1:F9 (T-1316).
 
 ## SERIESSUM with x = 0
 Rule: SERIESSUM with x = 0 (a literal 0 or a blank) is `#NUM!` when any term's power `n + i*m` is zero or negative, whatever its
