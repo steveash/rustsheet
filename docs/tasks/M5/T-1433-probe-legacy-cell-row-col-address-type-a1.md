@@ -3,7 +3,7 @@ id: T-1433
 title: "Probe legacy CELL(row/col/address/type, A1:A5) with the formula row inside the range (follow-up of T-1230)"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
