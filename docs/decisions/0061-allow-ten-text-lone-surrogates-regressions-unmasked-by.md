@@ -5,9 +5,10 @@
   splits a surrogate pair, as Excel does (docs/excel-semantics/text.md "MID and REPLACE positions
   inside a surrogate pair keep the lone half"; probes/text-surrogate-positions, excel-graph). That
   fixes 39 probe cells (5 in text-surrogate-positions, 34 in text-lone-surrogates). Ten cells of
-  `probes/text-lone-surrogates` passed before only by accident: MID of half a pair used to return `""`, and the functions that consume it gave Excel's answer
-  for the empty string by coincidence. MID now returns the lone half, which these consumers still
-  read through the lossy U+FFFD view, so they now disagree with Excel:
+  `probes/text-lone-surrogates` passed before only by accident: MID of half a pair used to return
+  `""`, and the functions that consume it gave Excel's answer for the empty string by coincidence.
+  MID now returns the lone half, which these consumers still read through the lossy U+FFFD view, so
+  they now disagree with Excel:
   - Sheet1!A3 (`UNICODE` of a lone high surrogate): owner T-1581.
   - Sheet1!A10, A11 (`EXACT`), A14, A15 (`=`), A27, A28 (`MATCH`): owner T-1585.
   - Sheet1!A55, A56, A57 (`FIND`/`SEARCH`): owner T-1586.

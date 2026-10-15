@@ -25,13 +25,6 @@ docs/specs/SPEC-0010-text-with-lone-surrogates.md; docs/excel-semantics/text.md 
 ## Out of scope
 - `&`/truncation (T-1580), UNICODE/LEFT/RIGHT (T-1581).
 
-## Handoff (resumed)
-- Implemented on this branch: `mid_element` (functions/text/common.rs) and `replace_element` (string_format.rs) now read their text with `array_node_to_text` and use `Text::slice_utf16` / `Text::push`; `utf16_slice` is deleted from functions/text/util.rs. `cargo clippy -p rustsheet_engine --all-targets` is clean.
-- Result: probes/text-surrogate-positions now 67/68 (only A38 left, which T-1581 owns); `make eval-baseline` fixes 39 cells in probes.
-- Blocker: `make eval-baseline` refuses with 10 regressions, all in probes/text-lone-surrogates.case.json: A3, A10, A11, A14, A15, A27, A28, A55, A56, A57. They passed only by accident, because MID of half a pair used to return "" and now returns a lone half that UNICODE (A3), EXACT (A10, A11), `=` (A14, A15), MATCH (A27, A28) and FIND/SEARCH (A55-A57) still read through the lossy U+FFFD view. Their owners are T-1581 (UNICODE), T-1585 (compare/EXACT/MATCH) and T-1586 (FIND/SEARCH/SUBSTITUTE).
-- Next: write a decision record (`make new-decision`, modelled on decisions 0034 and 0037, "allow regressions unmasked by ...") naming those 10 cells and their owner tasks, run `make eval-baseline --allow-regressions` through the documented route in docs/architecture/eval-harness.md, then update text.md ("Ours" line, known-gap note for A11, A12, A29, B10), and run the text bench (`crates/rustsheet/benches/text.rs`) before/after for the Outcome. Alternative: land T-1581/T-1585/T-1586 first, which avoids the record.
-- I did not run `make check`, the bench, or the reviewers.
-
 ## Outcome
 MID/MIDB (`mid_element`) and REPLACE/REPLACEB (`replace_element`) slice a `Text` by UTF-16 units
 (`Text::slice_utf16`), keeping the lone half of a cut pair; `utf16_slice` is deleted. Eval: probes
