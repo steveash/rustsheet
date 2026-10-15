@@ -3,7 +3,7 @@ id: T-1581
 title: "UNICODE, LEFT and RIGHT read lone surrogates exactly (SPEC-0010 step 7)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
