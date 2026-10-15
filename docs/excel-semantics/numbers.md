@@ -1202,8 +1202,9 @@ F1:F9, G1 (excel-graph, 2026-10-10). Every cell was filled twice with identical 
 F1:F9 take MIN/MAX/ROWS over 1000 draws in one cell, which is what shows the RANDBETWEEN range
 rule (F8:F9: `RANDBETWEEN(5.2,7.9)` spans 6 to 7, not ROUND's 5 to 8); the spill members D2, E1,
 E2 and D5 were not compared between fills, but their min equals their max; B15 and G1 have an occupied neighbour, so a 2-row or 2-column result would be `#SPILL!`.
-Unprobed: a boolean reached through a reference (`RANDBETWEEN(H1,...)` with H1 TRUE) is rejected like the literal; the order of RANDARRAY errors when several apply
-(`RANDARRAY(0,1,1.5,2.5,TRUE)`) follows argument order; `RANDBETWEEN(-1E308,1E308)` overflows the span in the engine and always gives 1E308 (a directive-5 safe result, not Excel's).
+Engine, Excel unprobed (T-1584): a boolean reached through a reference (`RANDBETWEEN(H1,...)` with H1 TRUE) is rejected like the literal;
+RANDARRAY errors apply in argument order (`RANDARRAY(0,1,1.5,2.5,TRUE)` gives `#CALC!`); `RANDBETWEEN(-1E308,1E308)` and
+`RANDARRAY(1,1,-1E308,1E308,TRUE)` overflow the span to infinity in the engine (RANDBETWEEN then always gives 1E308); `RANDBETWEEN(,5)` and `RANDBETWEEN(5,)` read the omitted bound as 0.
 Status: VERIFIED. Implemented (T-1318): A2, A6, A8, A12, A13, B9, B10 and B18 pass. The engine still misses the array lift F1:F9 (T-1316).
 
 ## SERIESSUM with x = 0
