@@ -14,6 +14,7 @@ C	probes/3d-ref-values.case.json	10
 C	probes/aggregate-args.case.json	53
 C	probes/aggregate-array-args.case.json	48
 C	probes/aggregate-direct-lambda-average-family.case.json	31
+C	probes/aggregate-direct-lambda-product-min-max.case.json	36
 C	probes/aggregate-error-precedence.case.json	92
 C	probes/aggregate-grid.case.json	217
 C	probes/aggregate-overflow.case.json	178

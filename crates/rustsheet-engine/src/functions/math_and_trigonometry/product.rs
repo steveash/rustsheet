@@ -90,9 +90,18 @@ impl Model {
                 }
                 RefArg::Value(calc_result) => {
                     seen_value = true;
+                    let is_lambda = matches!(calc_result, CalcResult::Lambda(_));
                     let cast_result = self.cast_aggregate_arg_to_number(calc_result, cell);
                     match cast_result {
                         Ok(f) => result = flush_subnormal(extended_product(result, f)),
+                        // A direct LAMBDA's #VALUE! ranks with the referenced errors: a later
+                        // direct error beats it (probes/aggregate-direct-lambda-product-min-max,
+                        // T-1604).
+                        Err(error) if is_lambda => {
+                            if deferred_error.is_none() {
+                                deferred_error = Some(error);
+                            }
+                        }
                         Err(s) => return s,
                     }
                 }
