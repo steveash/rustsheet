@@ -174,7 +174,7 @@ Evidence: probes/resource-limits C9–C11; probes/concatenate-limit-spill E1–E
 UTF-16 code units", T-0249).
 Backend: excel-graph only; excel-desktop not used.
 Status: VERIFIED
-Implemented in: `truncate_text`/`concat_text` in cast.rs, shared by CONCATENATE and `&` (T-0240);
+Implemented in: `Text::concat`/`Text::truncate_utf16` (text.rs), shared by CONCATENATE and `&` (T-0240, T-1580);
 REPT's limit in `rept_element` (functions/text/common.rs); both count UTF-16 units (T-0233).
 CONCAT/TEXTJOIN give `#CALC!` (probes/text-result-limit C8-C9, not implemented).
 Tasks: T-0240, T-0233, T-0249
@@ -184,12 +184,13 @@ Rule: when the 32,767-unit limit falls inside a surrogate pair, Excel keeps the 
 `LEN(CONCATENATE(REPT("a",32766),"😀"))` and `LEN(REPT("😀",16383)&"😀")` are 32767, and
 `UNICODE(RIGHT(CONCATENATE(REPT("a",32766),"😀"),1))` is `#VALUE!` (UNICODE of a lone surrogate).
 Evidence: probes/concatenate-limit-spill E8–E11 (excel-graph, 2026-10-06, T-0233).
-Ours: a Rust `String` cannot hold a lone surrogate, so `truncate_text` drops the straddling pair
-whole (32,766 units; E8–E11 stay known failures). A known gap, not a deviation (decision
-0052): SPEC-0010, T-1580, T-1581.
+Ours: `&` and CONCATENATE truncate with `Text::truncate_utf16`, which keeps the high half of a cut
+pair (E8, E9, E11 pass since T-1580). Decision 0033 (drop the pair whole) is superseded by
+decision 0052. E10 (UNICODE of the lone half) waits for T-1581. SPEC-0010.
 Status: VERIFIED
-Implemented in: `truncate_text` in cast.rs
-Tasks: T-0233, T-1483
+Implemented in: `concat_limited` in arithmetic.rs (`&`), `fn_concatenate` in
+functions/text/concatenate.rs, `Text::truncate_utf16` in text.rs
+Tasks: T-0233, T-1483, T-1580
 
 ## SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing
 Rule: the two arrays are paired element by element in row-major order and need only the same
