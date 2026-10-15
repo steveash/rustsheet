@@ -75,12 +75,14 @@ def floats(arg: Arg) -> list[float]:
 
 
 class Probe(NamedTuple):
-    """One bisection step: the midpoint, the half-width (= |m - previous m|), XNPV(m), the values."""
+    """One bisection step: the midpoint, the half-width (= |m - previous m|), XNPV(m), the values
+    and their dates."""
 
     m: float
     h: float
     f: float
     values: list[float]
+    dates: list[float]
 
 
 Stop = Callable[[Probe], bool]
@@ -140,12 +142,15 @@ def xirr_model(
     *,
     from_upper: bool = True,
     half_step: bool = True,
+    first_value_sign: bool = False,
     trace: list[float] | None = None,
 ) -> float:
     """Bisection on the bracket: `a` starts at the upper end (lower if not `from_upper`), each
-    step replaces the end whose XNPV has XNPV(m)'s sign; an exact 0 does not stop it. The midpoint
-    is a + (b - a) / 2 (Excel's), or (a + b) / 2 when not `half_step`. Each midpoint is appended to
-    `trace`, if given."""
+    step replaces the end whose XNPV has XNPV(m)'s sign; an exact 0 does not stop it. With
+    `first_value_sign`, the upper end is replaced when XNPV(m) * values[0] >= 0 instead (T-1583):
+    the same end whenever XNPV at the upper end has the first value's sign and is not 0, and the
+    upper end every step when the first value is 0. The midpoint is a + (b - a) / 2 (Excel's), or
+    (a + b) / 2 when not `half_step`. Each midpoint is appended to `trace`, if given."""
     lo, hi = sorted(xirr_bracket(values, dates, guess))
     a, b = (hi, lo) if from_upper else (lo, hi)
     fa = xnpv(a, values, dates)
@@ -154,9 +159,10 @@ def xirr_model(
         fm = xnpv(m, values, dates)
         if trace is not None:
             trace.append(m)
-        if stop(Probe(m, abs(b - a) / 2, fm, values)):
+        if stop(Probe(m, abs(b - a) / 2, fm, values, dates)):
             return m
-        if (fm > 0) == (fa > 0):
+        replace_a = (fm * values[0] >= 0) == from_upper if first_value_sign else (fm > 0) == (fa > 0)
+        if replace_a:
             a, fa = m, fm
         else:
             b = m
@@ -174,6 +180,20 @@ def fitted_stop(a_term: float = 5e-9, b_term: float = 1e-8, c_term: float = 2e-8
     return lambda p: h_ok(p) and abs(p.f) < c_term * max(map(abs, p.values))
 
 
+def span_years(p: Probe) -> float:
+    """The years from the first date to the latest one, at least 1."""
+    return max(1.0, (max(p.dates) - p.dates[0]) / 365)
+
+
+def span_stop(c_term: float = 2e-8) -> Stop:
+    """The T-1583 candidate: the fitted rule with the XNPV bound scaled by max(1, span in years),
+    and no XNPV bound when the first value is 0."""
+    h_ok = h_test()
+    return lambda p: (
+        h_ok(p) and (p.values[0] == 0 or abs(p.f) < c_term * max(map(abs, p.values)) * span_years(p))
+    )
+
+
 STOPS: dict[str, Stop] = {
     "h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)": fitted_stop(),
     "h<5e-9+1e-8|m| & |f|<1.5e-8*sum|v|": lambda p: (
@@ -186,9 +206,17 @@ STOPS: dict[str, Stop] = {
 }
 
 
-def _xirr(stop: Stop, *, from_upper: bool = True, half_step: bool = True) -> Callable[..., float]:
+def _xirr(
+    stop: Stop, *, from_upper: bool = True, half_step: bool = True, first_value_sign: bool = False
+) -> Callable[..., float]:
     def call(values: Arg, dates: Arg, guess: Arg = 0.1, trace: list[float] | None = None) -> float:
-        model = partial(xirr_model, from_upper=from_upper, half_step=half_step, trace=trace)
+        model = partial(
+            xirr_model,
+            from_upper=from_upper,
+            half_step=half_step,
+            first_value_sign=first_value_sign,
+            trace=trace,
+        )
         return model(floats(values), floats(dates), numeric_arg(guess), stop)
 
     return call
@@ -216,6 +244,23 @@ def xirr_candidates() -> list[Candidate]:
         _xirr_candidate("bisect fitted, m=(a+b)/2", _xirr(fitted_stop(), half_step=False), "midpoint"),
         _xirr_candidate(
             "bisect fitted, a from the lower end", _xirr(fitted_stop(), from_upper=False), "midpoint"
+        ),
+    ]
+    # T-1583: the end replaced by the first value's sign, and the XNPV bound scaled by the span.
+    out += [
+        _xirr_candidate(
+            "bisect, first-value sign, span-scaled |f| bound (T-1583)",
+            _xirr(span_stop(), first_value_sign=True),
+            "T-1583",
+        ),
+        _xirr_candidate(
+            "bisect, first-value sign, fitted stop", _xirr(fitted_stop(), first_value_sign=True), "T-1583"
+        ),
+        _xirr_candidate("bisect, span-scaled |f| bound", _xirr(span_stop()), "T-1583"),
+        _xirr_candidate(
+            "bisect, first-value sign, |f| bound skipped when values[0] = 0",
+            _xirr(lambda p: fitted_stop()(p) or (p.values[0] == 0 and h_test()(p)), first_value_sign=True),
+            "T-1583",
         ),
     ]
     # The step test's bound: A in A + 1e-8 |m| (fitted 4.93e-9 <= A <= 5.09e-9), then B at A = 5e-9.
@@ -693,6 +738,31 @@ def _newton_yield(start: float, tol: float) -> Callable[..., float]:
     return call
 
 
+def _newton_yield_residual(start: Callable[[Bond, float], float], tol: float) -> Callable[..., float]:
+    """Newton on PRICE(y) - pr from `start(bond, pr)`, returning the first iterate whose |PRICE - pr|
+    is below `tol`, without the step it would take next (T-1583: Excel's values stop below the root
+    with a residual up to 5e-8)."""
+
+    def call(*args: Arg) -> float:
+        price_of, bond, pr = _bond_price(args)
+        y = start(bond, pr)
+        for _ in range(100):
+            residual = price_of(y) - pr
+            if abs(residual) < tol:
+                return y
+            y -= residual / dprice(y, bond)
+        raise NoResultError("Newton did not converge")
+
+    return call
+
+
+YIELD_STARTS: dict[str, Callable[[Bond, float], float]] = {
+    "0": lambda _bond, _pr: 0.0,
+    "the coupon rate": lambda bond, _pr: bond[0],
+    "the current yield rate * 100 / pr": lambda bond, pr: bond[0] * 100 / pr,
+}
+
+
 def _secant_yield(tol: float) -> Callable[..., float]:
     """The secant on PRICE(y) - pr from yields 0 and 1."""
 
@@ -757,6 +827,13 @@ def yield_candidates() -> list[Candidate]:
     ]
     out += [candidate(f"secant from 0, 1, |step| < {t:g}", _secant_yield(t), "secant") for t in (1e-8, 1e-10)]
     out.append(candidate("LibreOffice regula falsi", _falsi_yield, "regula falsi"))
+    out += [
+        candidate(
+            f"Newton from {name}, |PRICE - pr| < {t:g}", _newton_yield_residual(start, t), "Newton, residual"
+        )
+        for name, start in YIELD_STARTS.items()
+        for t in (1e-7, 5e-8, 1e-8)
+    ]
     return out
 
 

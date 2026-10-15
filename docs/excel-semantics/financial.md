@@ -140,6 +140,26 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   is not normalised by max|value| alone. The step test alone gets A8 but misses
   xirr-xnpv-whole-column-nogaps A4 (8/11, and 13 fitted cells); the sum|value| variant misses A4 too
   (7/11).
+- Refinement (T-1583, `xirr-oos` 21/22 bit-exact or `#NUM!`-agreeing, fit set still 227/227; candidate
+  "bisect, first-value sign, span-scaled |f| bound (T-1583)"): (1) the end replaced is chosen by the
+  first value's sign: the upper end when XNPV(m) * values[0] >= 0, else the lower end. That is the same
+  end as the XNPV(upper end) rule on every fitted cell, but with a zero first value it replaces the upper
+  end every step, so the result is bracket-lower-end + (0.1 - 0) / 2^25 = 0.1/2^25 = 2.9802322387695314e-09,
+  Excel's value on xirr-early-dates A10, A11 (and on xirr-mismatched-empties X3, X4, which the lab does not read);
+  the XNPV-at-the-end rule converges to 0.1 instead. (2) The XNPV bound scales with the span:
+  |XNPV(m)| < 2e-8 * max|value| * max(1, (latest date - first date)/365), and there is no XNPV bound
+  when the first value is 0. Every fitted cell is consistent: on the 217 numeric cells (fit set and `xirr-oos`) other than the zero-first-value
+  pair, the unscaled bound must lie in (1.93e-8, 2.05e-8] times max|value|, and A8 (124 years, stopped at
+  1.1e-7 * max|value|) needs a span factor; the scaled bound fits all. The feasible-interval check also
+  rejects |XNPV| / sum|value|, / |values[0]|, / the discounted sum of |value|, the Newton step
+  |XNPV/XNPV'| and the XNPV change between steps as the normaliser. Rejected counts on `xirr-oos`:
+  first-value sign with the fitted stop 18/22, the span-scaled bound without the first-value sign 17/22,
+  the first-value sign with the XNPV bound skipped only for a zero first value 20/22. Two of the 21 are
+  coincidences: the model reaches `#NUM!` on xirr-mismatched-empties X12, X13 (no date later than the
+  first) by never stopping (the bisection walks away from the root), not by Excel's input check. The span
+  factor's form rests on A8 alone; T-1591 probes it. Why a zero first value drops the XNPV bound is open:
+  normalising XNPV by the first value (0/0, NaN) would explain both the end choice and the stop if the
+  tests are written to pass on NaN, but nothing probes that.
 - Unprobed: the cap on the chain walk (up to 17 doublings, X!F15, and 4 halvings are seen; day serials
   1..6, which need about 770 halvings, are `#NUM!`), the bisection cap, the order when both chains have
   a root, and a guess at or below -1.
@@ -147,7 +167,7 @@ Ours: Newton's method to 1e-7 (`compute_xirr`, functions/financial/financial_uti
 set (9 of the 72 m9-fin-irr-rate cells pass the harness's tolerance).
 Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test; the XNPV part of the stop
 test is UNVERIFIED beyond the fit set (T-1533)
-Tasks: T-1525, T-0916, T-1533
+Tasks: T-1525, T-0916, T-1533, T-1583, T-1591
 
 ## IRR is a secant in v = 1/(1 + r) from v0 and v0 +- 0.001 (fitted, 189/263 bit-exact)
 Rule: IRR runs the secant method on NPV as a function of v = 1/(1 + r):
@@ -430,9 +450,19 @@ cells with more than one coupon left: Newton on PRICE from 0, the coupon rate or
 1e-12), the secant from 0 and 1, and LibreOffice's regula falsi reach at most 2/90 bit-exact (5/90 for their
 union); the engine gets 0/90. With one coupon period left YIELD is closed form (see "YIELD with one coupon period
 left is closed form").
+T-1583: on all 90 cells Excel's value is either PRICE's root (|PRICE(y) - pr| below 1e-11, 45 cells) or
+below it (45 cells) with a residual from 1e-11 up to 5e-8 (yield-solver-sweep S!F1 2.1e-8, solver-iteration-traces
+Y!D5 5.0e-8), which is what Newton on the convex, decreasing PRICE from below would leave if it stopped on a
+residual test of about 5e-8 to 1e-7 and returned the iterate without its last step (a returned post-step
+Newton iterate would be at the root). Stepping analytic Newton backwards from the below-root values gives a
+shared earlier iterate that does not depend on frequency or redemption: 0.0552344627 for both S!A1
+(frequency 2) and S!F1 (frequency 1), within 2e-9 of it for S!E10 (redemption 100.5), and about 0.133352 for
+Y!C2, D2 and E2 (price 50, frequencies 2, 4 and 1). It is not 0, 0.1, the coupon rate, the current yield,
+(C + (100 - P)/n)/((100 + P)/2) or an annual-coupon IRR. Newton with that residual stop from 0, the coupon rate
+or the current yield (lab family "Newton, residual") reaches at most 3/90 bit-exact. T-1592 fits the start.
 Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
 Status: UNVERIFIED (the algorithm); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1533
+Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592
 
 ## TBILLEQ and TBILLYIELD
 Rule: Excel's TBILLYIELD is `(100 - pr)/pr * (360/DSM)`, evaluated in that order; the textbook
