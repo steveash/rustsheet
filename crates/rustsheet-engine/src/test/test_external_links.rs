@@ -315,6 +315,7 @@ fn blank_skipping_aggregates_read_a_tall_area_from_the_cache() {
     assert_eq!(eval(&mut model, &format!("=COUNT({tall})")), "1");
     assert_eq!(eval(&mut model, &format!("=MAX({tall})")), "5");
     assert_eq!(eval(&mut model, &format!("=MIN({tall})")), "5");
+    assert_eq!(eval(&mut model, &format!("=PRODUCT({tall})")), "5");
     assert_eq!(eval(&mut model, &format!("=AVERAGE({tall})")), "5");
     // "7" counts 0 and TRUE 1 (Refs!B53's AVERAGEA rule).
     assert_eq!(eval(&mut model, &format!("=AVERAGEA({tall})")), "2");
