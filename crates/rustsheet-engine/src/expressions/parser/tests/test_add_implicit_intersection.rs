@@ -72,6 +72,8 @@ fn simple_test() {
         ("CHOOSE(1,A1:A1+1)", "CHOOSE(1,@A1:A1+1)"),
         // A one-element array constant in a scalar argument (T-1633).
         ("ABS({5})", "ABS(@{5})"),
+        // TYPE reads an array whole (T-1638).
+        ("TYPE({5})", "TYPE({5})"),
         // INDIRECT takes one text and gives a reference
         ("INDIRECT(A1:A10)", "@INDIRECT(@A1:A10)"),
         ("INDIRECT(A1:A10,FALSE)", "@INDIRECT(@A1:A10,FALSE)"),

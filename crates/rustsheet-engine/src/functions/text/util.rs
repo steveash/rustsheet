@@ -1,6 +1,10 @@
 use std::borrow::Cow;
 
-use crate::cast::MAX_TEXT_UNITS;
+use crate::{
+    cast::{array_node_to_text, MAX_TEXT_UNITS},
+    expressions::{parser::ArrayNode, token::Error},
+    text::Text,
+};
 
 /// `text` with each UTF-16 code unit as one `char`, so that `char` positions (and a regex `.`)
 /// are the code-unit positions FIND and SEARCH count in (`SEARCH("?b","😀b")` is 2,
@@ -11,19 +15,42 @@ pub(crate) fn one_char_per_utf16_unit(text: &str) -> Cow<'_, str> {
     if text.chars().all(|ch| ch.len_utf16() == 1) {
         return Cow::Borrowed(text);
     }
-    Cow::Owned(
-        text.encode_utf16()
-            .map(|unit| {
-                let code = u32::from(unit);
-                let code = if (0xD800..=0xDFFF).contains(&code) {
-                    0xF0000 + (code - 0xD800)
-                } else {
-                    code
-                };
-                char::from_u32(code).unwrap_or(char::REPLACEMENT_CHARACTER)
-            })
-            .collect(),
-    )
+    Cow::Owned(unit_chars(text.encode_utf16()))
+}
+
+/// [`one_char_per_utf16_unit`] for engine text, a lone surrogate unit kept as its own character
+/// (probes/text-lone-surrogates A48-A57).
+pub(crate) fn one_char_per_unit(text: &Text) -> String {
+    unit_chars(text.units())
+}
+
+fn unit_chars(units: impl Iterator<Item = u16>) -> String {
+    units
+        .map(|unit| {
+            let code = u32::from(unit);
+            let code = if (0xD800..=0xDFFF).contains(&code) {
+                0xF0000 + (code - 0xD800)
+            } else {
+                code
+            };
+            char::from_u32(code).unwrap_or(char::REPLACEMENT_CHARACTER)
+        })
+        .collect()
+}
+
+/// The inverse of [`one_char_per_unit`]: the UTF-16 units of a string it produced.
+fn unit_chars_to_units(text: &str) -> Vec<u16> {
+    text.chars()
+        .map(|c| {
+            let code = u32::from(c);
+            let code = if (0xF0000..0xF0800).contains(&code) {
+                code - 0xF0000 + 0xD800
+            } else {
+                code
+            };
+            code as u16
+        })
+        .collect()
 }
 
 pub(crate) enum Case {
@@ -188,6 +215,115 @@ const MAX_BROADCAST_TEXT_BYTES: usize = 64 * 1024 * 1024;
 pub(crate) fn within_text_budget(total: &mut usize, len: usize) -> bool {
     *total = total.saturating_add(len);
     *total <= MAX_BROADCAST_TEXT_BYTES
+}
+
+/// Computes a single SUBSTITUTE result from one element of each argument.
+/// Without an `instance_num` every instance is replaced.
+pub(super) fn substitute_element(
+    text: &ArrayNode,
+    old_text: &ArrayNode,
+    new_text: &ArrayNode,
+    instance_num: Option<Result<f64, Error>>,
+) -> Result<ArrayNode, Error> {
+    let text = array_node_to_text(text)?;
+    let old_text = array_node_to_text(old_text)?;
+    let new_text = array_node_to_text(new_text)?;
+    let instance_num = match instance_num {
+        Some(n) => {
+            let n = n?.floor();
+            if n < 1.0 {
+                return Err(Error::VALUE);
+            }
+            Some(n.min(i32::MAX as f64) as i32)
+        }
+        None => None,
+    };
+    if old_text.is_empty() {
+        return Ok(ArrayNode::String(text.into_owned()));
+    }
+    if text.has_lone_surrogate() || old_text.has_lone_surrogate() || new_text.has_lone_surrogate() {
+        return substitute_units(&text, &old_text, &new_text, instance_num).map(ArrayNode::String);
+    }
+    if substitute_exceeds_limit(&text, &old_text, &new_text, instance_num) {
+        return Err(Error::VALUE);
+    }
+    Ok(ArrayNode::String(match instance_num {
+        Some(n) => substitute(&text, &old_text, &new_text, n).into(),
+        None => {
+            let (text, old_text, new_text): (&str, &str, &str) = (&text, &old_text, &new_text);
+            text.replace(old_text, new_text).into()
+        }
+    }))
+}
+
+/// SUBSTITUTE over exact UTF-16 units, used when any operand holds a lone surrogate: a lone half
+/// as `old_text` matches inside a pair, unit for unit (probes/text-lone-surrogates A41-A47).
+/// Replace-all maps each unit to one `char` (`one_char_per_unit`, reversible) so `str` matching,
+/// which is linear, finds the non-overlapping instances. With an `instance_num` the instances
+/// overlap, as in the well-formed path (`text_sensitive`; unprobed, text.md), and a linear KMP
+/// scan finds the nth. The result length is checked before it is built (CLAUDE.md directive 5).
+fn substitute_units(
+    text: &Text,
+    old_text: &Text,
+    new_text: &Text,
+    instance_num: Option<i32>,
+) -> Result<Text, Error> {
+    let units: Vec<u16> = text.units().collect();
+    let old: Vec<u16> = old_text.units().collect();
+    let new: Vec<u16> = new_text.units().collect();
+    let at = instance_num.and_then(|n| nth_overlapping_match(&units, &old, n as usize));
+    let replaced = match instance_num {
+        Some(_) => usize::from(at.is_some()),
+        None => one_char_per_unit(text)
+            .matches(one_char_per_unit(old_text).as_str())
+            .count(),
+    };
+    let result_len = (units.len() + replaced * new.len()).saturating_sub(replaced * old.len());
+    if result_len > MAX_TEXT_UNITS && result_len > units.len() {
+        return Err(Error::VALUE);
+    }
+    let result = match (instance_num, at) {
+        (Some(_), None) => units,
+        (Some(_), Some(at)) => [&units[..at], &new[..], &units[at + old.len()..]].concat(),
+        (None, _) => unit_chars_to_units(&one_char_per_unit(text).replace(
+            one_char_per_unit(old_text).as_str(),
+            &one_char_per_unit(new_text),
+        )),
+    };
+    Ok(Text::from_utf16(result))
+}
+
+/// The start of the `n`th (1-based) possibly overlapping occurrence of `pattern` in `text`,
+/// found by KMP in linear time.
+fn nth_overlapping_match(text: &[u16], pattern: &[u16], n: usize) -> Option<usize> {
+    let mut fail = vec![0usize; pattern.len()];
+    let mut k = 0;
+    for i in 1..pattern.len() {
+        while k > 0 && pattern[i] != pattern[k] {
+            k = fail[k - 1];
+        }
+        if pattern[i] == pattern[k] {
+            k += 1;
+        }
+        fail[i] = k;
+    }
+    let (mut matched, mut found) = (0, 0);
+    for (i, unit) in text.iter().enumerate() {
+        while matched > 0 && *unit != pattern[matched] {
+            matched = fail[matched - 1];
+        }
+        if *unit == pattern[matched] {
+            matched += 1;
+        }
+        if matched == pattern.len() {
+            found += 1;
+            if found == n {
+                return Some(i + 1 - pattern.len());
+            }
+            matched = fail[matched - 1];
+        }
+    }
+    None
 }
 
 #[cfg(test)]
