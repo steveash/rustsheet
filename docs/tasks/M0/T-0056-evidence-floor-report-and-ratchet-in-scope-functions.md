@@ -3,7 +3,7 @@ id: T-0056
 title: "Evidence floor: report and ratchet in-scope functions with fewer than 20 oracle cells, and file probe batches for them"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -23,14 +23,23 @@ suites the milestone exit criteria name that does not exist yet.
 - The report already has per-function evidence (`report.json` `evidence`, T-0020/T-0051).
 
 ## Acceptance criteria
-- [ ] The report lists in-scope functions below the floor (20 oracle or Excel-cached cells),
+- [x] The report lists in-scope functions below the floor (20 oracle or Excel-cached cells),
   grouped by category.
-- [ ] `quality/` gains a ratchet on that count, changed only through its update tooling, so it
+- [x] `quality/` gains a ratchet on that count, changed only through its update tooling, so it
   can only go down. This touches a protected path, so it needs a decision record.
-- [ ] The listed functions are split into probe tasks of ≤ 10 functions each (research lane,
+- [x] The listed functions are split into probe tasks of ≤ 10 functions each (research lane,
   sonnet tier where no numeric fitting is involved). Each asks for cases covering every
   parameter mode and the catalog's edge pools.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Writing the probes themselves (the filed batch tasks do that).
+
+## Outcome
+`rustsheet-eval evidence-floor` (`make evidence-floor`, in `make check` and CI's eval job) counts
+in-scope, oracle-evaluable catalog functions with fewer than 20 Excel cells over the vendored
+suites and ratchets the count in `quality/evidence-floor.json` (decision 0062); `make
+eval-baseline` records drops. The report's evidence section gains "Below the evidence floor",
+grouped by catalog category (the catalog view now carries `category`); the old 25-cell
+threshold became the single 20-cell `EVIDENCE_FLOOR`. Count on main: 73. Probe batches filed:
+T-1620..T-1628 (research, sonnet, ≤ 10 functions each). Eval delta: none (harness only).
