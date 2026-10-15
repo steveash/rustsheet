@@ -67,6 +67,11 @@ fn simple_test() {
             "SUM(CHOOSE(2,A1:A10,B1:B10))",
         ),
         ("CHOOSE(2,A1,B1)", "CHOOSE(2,A1,B1)"),
+        // An operator arm gets the `@` on its range operand, not on the call (T-1633).
+        ("CHOOSE(1,A1:A2+1)", "CHOOSE(1,@A1:A2+1)"),
+        ("CHOOSE(1,A1:A1+1)", "CHOOSE(1,@A1:A1+1)"),
+        // A one-element array constant in a scalar argument (T-1633).
+        ("ABS({5})", "ABS(@{5})"),
         // INDIRECT takes one text and gives a reference
         ("INDIRECT(A1:A10)", "@INDIRECT(@A1:A10)"),
         ("INDIRECT(A1:A10,FALSE)", "@INDIRECT(@A1:A10,FALSE)"),

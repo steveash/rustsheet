@@ -99,6 +99,53 @@ pub(super) fn remove_index_array_at(kind: &Function, index: usize, arg: &mut Nod
     }
 }
 
+/// Whether `node` is an array constant of one element, `{5}`.
+fn is_one_element_array(node: &Node) -> bool {
+    matches!(node, Node::ArrayKind(rows) if rows.len() == 1 && rows[0].len() == 1)
+}
+
+/// A legacy formula shows an `@` on a one-element array constant in a scalar argument:
+/// `=ABS({5})` is shown as `=ABS(@{5})` (probes/legacy-one-cell-shape-intersection M3, excel-graph,
+/// T-1633). Larger array constants are unprobed and left alone.
+fn add_scalar_array_at(kind: &Function, signature: Option<&Signature>, arg: &mut Node) {
+    if is_scalar_context(kind, signature) && is_one_element_array(arg) {
+        *arg = Node::automatic_at(arg.clone());
+    }
+}
+
+/// Drops the `@` [`add_scalar_array_at`] adds again on import.
+fn remove_scalar_array_at(kind: &Function, signature: Option<&Signature>, arg: &mut Node) {
+    if is_scalar_context(kind, signature) {
+        if let Node::ImplicitIntersection { child, .. } = arg {
+            if is_one_element_array(child) {
+                *arg = child.as_ref().clone();
+            }
+        }
+    }
+}
+
+/// The `@`s a legacy formula puts on the array constants of argument `index` of `kind`.
+pub(super) fn add_array_at(
+    kind: &Function,
+    signature: Option<&Signature>,
+    index: usize,
+    arg: &mut Node,
+) {
+    add_index_array_at(kind, index, arg);
+    add_scalar_array_at(kind, signature, arg);
+}
+
+/// Drops the `@`s [`add_array_at`] adds again on import.
+pub(super) fn remove_array_at(
+    kind: &Function,
+    signature: Option<&Signature>,
+    index: usize,
+    arg: &mut Node,
+) {
+    remove_index_array_at(kind, index, arg);
+    remove_scalar_array_at(kind, signature, arg);
+}
+
 /// Calls `f` on `node`, or on each operand of the operators, parentheses and signs it is made
 /// of, at any depth (bounded by the parser's depth cap).
 fn for_each_value_operand(node: &mut Node, f: &mut impl FnMut(&mut Node)) {
@@ -263,6 +310,10 @@ fn legacy_value_operand(kind: &Function, arg: &Node) -> bool {
             | Function::QuartileExc
             | Function::PercentrankCompat
             | Function::PercentrankInc
+            // CHOOSE's value arms: `CHOOSE(1,E1:E2+1)` shows `CHOOSE(1,@E1:E2+1)`, the `@` on the
+            // arm's range operand rather than on the call (probes/legacy-one-cell-shape-intersection
+            // H3, P3, excel-graph, T-1633).
+            | Function::Choose
     ) && is_value_operation(arg)
 }
 
