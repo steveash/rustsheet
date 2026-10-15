@@ -4,7 +4,7 @@ use crate::number_format::number_to_text;
 use crate::{
     arithmetic::{array_of_errors, own_error},
     calc_result::CalcResult,
-    cast::{array_node_to_string, calc_result_to_array_node, MAX_TEXT_UNITS},
+    cast::{array_node_to_string, array_node_to_text, calc_result_to_array_node, MAX_TEXT_UNITS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -17,9 +17,7 @@ use crate::{
     functions::{
         text::{
             position::find_element,
-            util::{
-                substitute, substitute_exceeds_limit, text_after, text_before, utf16_slice, Case,
-            },
+            util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
         },
         util::{array_node_to_calc_result, near_integer_count},
     },
@@ -68,7 +66,7 @@ fn mid_element(
     start: Result<f64, Error>,
     length: Result<f64, Error>,
 ) -> Result<ArrayNode, Error> {
-    let s = array_node_to_string(text)?;
+    let s = array_node_to_text(text)?;
     let start = start?;
     let length = length?;
     // Excel: MID truncates both numbers exactly (`MID(t,1,1-1E-15)` is "") and either one
@@ -83,7 +81,7 @@ fn mid_element(
     // (probes/text-surrogate-positions A9-A13).
     let first = (start.floor() as usize).saturating_sub(1);
     let end = first.saturating_add(length.floor() as usize);
-    Ok(ArrayNode::String(utf16_slice(&s, first, end).into()))
+    Ok(ArrayNode::String(s.slice_utf16(first, end)))
 }
 
 /// Computes a single LEN result.
