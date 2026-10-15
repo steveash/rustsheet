@@ -159,6 +159,47 @@ impl Text {
         }
     }
 
+    /// The first `n` characters, a lone surrogate counting as one character and kept (`LEFT`;
+    /// probes/text-surrogate-positions B6).
+    #[must_use]
+    pub fn left_chars(&self, n: usize) -> Text {
+        match self {
+            Text::Utf8(s) => Text::Utf8(s.chars().take(n).collect()),
+            Text::Lone(_) => Self::from_chars(self.chars_lossless().take(n)),
+        }
+    }
+
+    /// The last `n` characters, a lone surrogate counting as one character and kept (`RIGHT`;
+    /// probes/text-surrogate-positions B7).
+    #[must_use]
+    pub fn right_chars(&self, n: usize) -> Text {
+        match self {
+            Text::Utf8(s) => {
+                let skip = s.chars().count().saturating_sub(n);
+                Text::Utf8(s.chars().skip(skip).collect())
+            }
+            Text::Lone(_) => {
+                let skip = self.chars_lossless().count().saturating_sub(n);
+                Self::from_chars(self.chars_lossless().skip(skip))
+            }
+        }
+    }
+
+    /// The text made of `chars`, each lone surrogate kept as its own unit.
+    fn from_chars(chars: impl Iterator<Item = Char>) -> Text {
+        let mut units = Vec::new();
+        for c in chars {
+            match c {
+                Char::Scalar(ch) => {
+                    let mut buf = [0u16; 2];
+                    units.extend_from_slice(ch.encode_utf16(&mut buf));
+                }
+                Char::Lone(u) => units.push(u),
+            }
+        }
+        Text::from_utf16(units)
+    }
+
     /// `a` followed by `b`, as unit sequences: a lone high surrogate at the end of `a` and a lone
     /// low one at the start of `b` become the pair (UTF-16's rule; a hand expectation until
     /// T-1582 probes `EXACT(MID("😀",1,1)&MID("😀",2,1),"😀")`). Not truncated: callers apply

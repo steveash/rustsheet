@@ -85,3 +85,23 @@ fn find_start_one_past_the_end() {
     assert_eq!(model._get_text("A5"), "#VALUE!");
     assert_eq!(model._get_text("A6"), "4");
 }
+
+#[test]
+fn left_right_unicode_read_lone_surrogates_exactly() {
+    // probes/text-surrogate-positions A38, B6, B7; probes/text-lone-surrogates A3, A4: LEFT and
+    // RIGHT keep a lone surrogate as one character, UNICODE of a lone high one is #VALUE!.
+    let mut model = new_empty_model();
+    model._set("A1", "=UNICODE(LEFT(MID(\"a😀b\",3,2),1))");
+    model._set("A2", "=UNICODE(RIGHT(MID(\"a😀b\",3,2),2))");
+    model._set("A3", "=LEN(LEFT(MID(\"a😀b\",3,2),1))");
+    model._set("A4", "=UNICODE(MID(\"😀\",1,1))");
+    model._set("A5", "=UNICODE(MID(\"😀\",2,1))");
+    model._set("A6", "=LEN(RIGHT(MID(\"a😀b\",2,1),1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "56832");
+    assert_eq!(model._get_text("A2"), "56832");
+    assert_eq!(model._get_text("A3"), "1");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "56832");
+    assert_eq!(model._get_text("A6"), "1");
+}

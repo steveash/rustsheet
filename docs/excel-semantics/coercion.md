@@ -186,7 +186,7 @@ Rule: when the 32,767-unit limit falls inside a surrogate pair, Excel keeps the 
 Evidence: probes/concatenate-limit-spill E8–E11 (excel-graph, 2026-10-06, T-0233).
 Ours: `&` and CONCATENATE truncate with `Text::truncate_utf16`, which keeps the high half of a cut
 pair (E8, E9, E11 pass since T-1580). Decision 0033 (drop the pair whole) is superseded by
-decision 0052. E10 (UNICODE of the lone half) waits for T-1581. SPEC-0010.
+decision 0052. E10 (UNICODE of the lone half) passes since T-1581. SPEC-0010.
 Arguments after the cut change nothing but an error still wins (probes/concatenate-after-cut, excel-graph,
 2026-10-15, T-1612; the engine matches all nine cells): `LEN(CONCATENATE(REPT("a",32766),"😀","zz",1))` and
 `LEN(CONCATENATE(REPT("a",32767),"zz",1,TRUE))` are 32767 (A1, A4), and at a character boundary the kept text still ends in "a" (A9); an error
