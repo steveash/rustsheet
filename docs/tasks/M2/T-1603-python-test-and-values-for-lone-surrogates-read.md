@@ -18,6 +18,7 @@ T-1578 made `Workbook.value` build the `str` from `text_utf16` (bindings/python/
 
 ## Acceptance criteria
 - [ ] Python test: `=MID("a😀b",3,1)` reads back as `'\ude00'` through `value` and `values`.
+- [ ] A cell holding a genuine U+FFFD still reads back as U+FFFD (not routed through `text_utf16`).
 - [ ] `values()` returns the exact `str` for lone-surrogate cells.
 - [ ] `make check` green; reviewers approve.
 
