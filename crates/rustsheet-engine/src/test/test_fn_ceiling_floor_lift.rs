@@ -55,8 +55,11 @@ fn mround_keeps_its_scalar_rules() {
     let mut model = new_empty_model();
     model._set("A1", "=MROUND(TRUE,)");
     model._set("B1", "=MROUND({TRUE,2.6},1)");
+    model._set("D1", "=MROUND(,TRUE)");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"#N/A");
+    // Arguments are judged left to right (probes/ceiling-floor-mround-array-lift A27:A28).
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("D1"), *"#N/A");
     assert_eq!(model._get_text("B1"), *"#VALUE!");
     assert_eq!(model._get_text("C1"), *"3");
 }

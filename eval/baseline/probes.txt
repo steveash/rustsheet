@@ -94,6 +94,7 @@ C	probes/catalog/availability-42.case.json	11
 C	probes/catalog/function-name-forms-2.case.json	3
 C	probes/catalog/function-name-forms.case.json	5
 C	probes/catalog/normsdist-stored-form.case.json	4
+C	probes/ceiling-floor-mround-array-lift.case.json	65
 C	probes/ceiling-xlfn-prefix.case.json	4
 C	probes/choose-array-index-range-arms.case.json	66
 C	probes/clock-text-length-limit.case.json	16
