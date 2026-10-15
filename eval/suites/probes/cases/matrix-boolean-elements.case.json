@@ -1,0 +1,59 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "MDETERM/MINVERSE/MMULT of boolean cells, values and matrix elements (T-1358)",
+  "tags": [
+    "M5",
+    "probe",
+    "mdeterm",
+    "minverse",
+    "mmult"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": true,
+        "A2": false,
+        "B1": 1,
+        "B2": 2,
+        "C1": 3,
+        "C2": 4,
+        "D1": true,
+        "D2": 2,
+        "E1": 3,
+        "E2": 4,
+        "G1": "=MDETERM(A1)",
+        "G2": "=MDETERM(A2)",
+        "G3": "=MINVERSE(A1)",
+        "G4": "=MINVERSE(A2)",
+        "G5": "=MDETERM(TRUE)",
+        "G6": "=MINVERSE(TRUE)",
+        "G7": "=MINVERSE(FALSE)",
+        "G8": "=MDETERM(D1:E2)",
+        "G9": "=SUM(MINVERSE(D1:E2))",
+        "G10": "=SUM(MMULT(D1:E2,B1:C2))",
+        "G11": "=SUM(MMULT(A1,B1))",
+        "G12": "=MDETERM({TRUE,2;3,4})",
+        "G13": "=SUM(MINVERSE({TRUE,2;3,4}))",
+        "G14": "=MDETERM(B1:C2)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!G1",
+    "Sheet1!G2",
+    "Sheet1!G3",
+    "Sheet1!G4",
+    "Sheet1!G5",
+    "Sheet1!G6",
+    "Sheet1!G7",
+    "Sheet1!G8",
+    "Sheet1!G9",
+    "Sheet1!G10",
+    "Sheet1!G11",
+    "Sheet1!G12",
+    "Sheet1!G13",
+    "Sheet1!G14"
+  ]
+}
