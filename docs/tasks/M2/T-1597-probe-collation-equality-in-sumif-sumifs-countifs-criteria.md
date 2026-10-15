@@ -3,7 +3,7 @@ id: T-1597
 title: "Probe collation equality in SUMIF, SUMIFS and COUNTIFS criteria and in wildcard criteria against expansions (ae, ss)"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -26,3 +26,6 @@ M2 scope includes "criteria and wildcard grammar shared by the *IF(S) family" (d
 - Engine changes (T-1594 and any follow-ups do them).
 - AVERAGEIF(S), MAXIFS, MINIFS and the D-functions (catalog milestone M9; probe them in an M9 case if needed).
 - Characters not already ranked in probes/text-collation-order or probes/text-collation-unprobed.
+
+## Outcome
+Added probes/text-collation-ifs (56 excel-graph cells: SUMIF, SUMIFS, COUNTIFS, COUNTIF with collation and wildcard criteria). The engine on main already passes every cell, so no mismatch and no follow-up. Findings in docs/excel-semantics/criteria.md (T-1597). Eval: new case, 56 cells passing.

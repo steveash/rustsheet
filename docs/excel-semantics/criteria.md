@@ -223,5 +223,13 @@ Rule: a text criterion `"ae"`, `"=ae"` or `"<>ae"` compares with Excel's text co
 `COUNTIF(r,"ae")` and `COUNTIF(r,"=ae")` are 2 (æ equals ae), `COUNTIF(r,"<>ae")` is 1; a criterion `"æ"` also counts 2; `"a-e"` counts 1
 (a hyphen is not ignored in equality). The ordered operators agree (`"<=ae"` 2, `">=ae"` 3, `">ae"` 1, `"<ae"` 0).
 Evidence: probes/text-collation-lookups Calc!F1:H2, K1:K12 (oracle: excel-graph, 2026-10-15). Status: VERIFIED
-Implemented in: `result_is_equal_to_string`, `result_is_not_equal_to_string` (functions/criteria.rs), through `cmp_text_excel` (T-1594). The same code serves SUMIF/AVERAGEIF/*IFS and the D-functions' explicit `=`/`<>` criteria; only COUNTIF is probed.
-Tasks: T-1590, T-1594
+Implemented in: `result_is_equal_to_string`, `result_is_not_equal_to_string` (functions/criteria.rs), through `cmp_text_excel` (T-1594). The same code serves SUMIF/AVERAGEIF/*IFS and the D-functions' explicit `=`/`<>` criteria; SUMIF, SUMIFS and COUNTIFS are probed too (T-1597); AVERAGEIF(S), MAXIFS, MINIFS and the D-functions are not.
+Tasks: T-1590, T-1594, T-1597
+
+SUMIF, SUMIFS and COUNTIFS agree with COUNTIF cell for cell (T-1597): over {æ, ae, a-e, ß, ss, straße, aex, æx}, `"ae"`, `"=ae"` and `"æ"` match æ and ae (2 rows), `"<>ae"` the other 6; `"ss"` matches ß and ss (2 rows, not straße) and `"<>ß"` excludes both (6 rows). Evidence: probes/text-collation-ifs Calc!A1:D6 (excel-graph, 2026-10-15). Status: VERIFIED
+
+### Wildcard criteria do not use the collation: no expansions (T-1597)
+Rule: `?` and `*` in a text criterion match by character, case-insensitively, with no ae/æ or ss/ß expansion, unlike the equality operators above. Over {æ, ae, a-e, ß, ss, straße, aex, æx}: `"a?"` matches only ae (not æ), `"a*"` matches ae, a-e and aex (not æ), `"?"` matches æ and ß (one character each, not ss), `"??"` matches ae, ss and æx, `"*ss*"` matches only ss (not ß or straße), `"s?"` matches only ss, `"æ*"` matches æ and æx (not aex), `"*e"` matches ae, a-e and straße. COUNTIF, SUMIF, SUMIFS and COUNTIFS agree.
+Evidence: probes/text-collation-ifs Calc!A7:D14 (excel-graph, 2026-10-15). Status: VERIFIED
+Implemented in: `wildcard_text_matcher` (functions/criteria.rs); the engine already passes all 56 cells of the case.
+Tasks: T-1597
