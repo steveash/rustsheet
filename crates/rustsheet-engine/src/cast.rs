@@ -593,6 +593,15 @@ impl Model {
                 return Err(error);
             }
         }
+        // A direct LAMBDA value is #VALUE! (ERROR.TYPE 3) for SUM, PRODUCT, MIN, MAX, AVERAGE and
+        // MEDIAN (probes/aggregate-picked-direct-a-variants D7-D12, excel-graph 2026-10-14).
+        if matches!(result, CalcResult::Lambda(_)) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "LAMBDA cannot be used as a number".to_string(),
+            ));
+        }
         self.cast_to_number(result, cell)
     }
 
