@@ -24,4 +24,6 @@ T-1604 (probes/aggregate-direct-lambda-product-min-max D15, D24) showed `MIN(LAM
 -
 
 ## Outcome
-probes/aggregate-array-error-vs-ref-error (40 cells, excel-graph, 2026-10-15): in SUM, MIN, MAX, AVERAGE and MEDIAN an array error ranks with the referenced errors by position. Ours returned it at once after a referenced error in MIN, MAX, AVERAGE and MEDIAN (10 of 25 cells); a direct error beats an array error either way (D26-D40, ours already matched); fixed by removing `ArrayErrorRank` and `lambda_held` so the walker holds array errors for every `Ranked` policy. Eval: probes +1 case, 40/40 pass, 0 regressions.
+probes/aggregate-array-error-vs-ref-error (40 cells, excel-graph, 2026-10-15): in SUM, MIN, MAX, AVERAGE and MEDIAN an array error ranks with the referenced errors by position. Ours returned it at once after a referenced error in MIN, MAX, AVERAGE and MEDIAN after a referenced error or a direct LAMBDA (10 of 25 cells); a direct error beats an array error either way (D26-D40, ours already matched); fixed by removing `ArrayErrorRank` and `lambda_held` so the walker holds array errors for every `Ranked` policy. Eval: probes +1 case, 40/40 pass, 0 regressions.
+
+Follow-up: T-1629 probes the rest of the AVERAGE family, which shares the walker.
