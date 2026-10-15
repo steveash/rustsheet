@@ -3,7 +3,7 @@ id: T-1583
 title: "Fit XIRR's XNPV stop test on long spans and a zero first value, and multi-period YIELD"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
