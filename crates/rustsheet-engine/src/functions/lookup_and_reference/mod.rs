@@ -24,7 +24,6 @@ mod drop_take;
 mod expand;
 mod hstack_vstack;
 mod index;
-pub(crate) use index::IndexForm;
 mod index_arg;
 mod lookup;
 mod lookup_each;
@@ -68,7 +67,7 @@ impl Model {
     ) -> Option<CalcResult> {
         Some(match kind {
             // `INDEX(A1:A2,2) A1:A2` intersects the cell INDEX picks (T-0235).
-            Function::Index => self.index_impl(args, cell, IndexForm::Reference),
+            Function::Index => self.index_reference(args, cell),
             Function::Xlookup => self.xlookup_impl(args, cell, true),
             Function::Take => self.take_drop_impl(args, cell, drop_take::Edge::Take, true),
             Function::Drop => self.take_drop_impl(args, cell, drop_take::Edge::Drop, true),
