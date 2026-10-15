@@ -3,7 +3,7 @@ id: T-1633
 title: "Legacy import: @ on an operator over a range inside CHOOSE and on an array constant in a scalar argument"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
