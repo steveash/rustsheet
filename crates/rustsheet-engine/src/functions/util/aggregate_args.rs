@@ -33,11 +33,15 @@ pub(crate) enum ItemSource {
 /// Where an error inside an array value ranks.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ArrayErrorRank {
-    /// An array error is a direct error: MIN, MAX and AVERAGE today (UNVERIFIED, T-1439).
+    /// An array error is a direct error: AVERAGE today (UNVERIFIED, T-1439).
     Direct,
     /// An array error ranks with referenced errors: SUM (probes/aggregate-error-precedence C50,
     /// C53–C55, C61, C77); PRODUCT does too (probes/product-array-2d-and-scalar A7–A17, T-1287).
     Referenced,
+    /// As `Direct`, but a held direct LAMBDA's `#VALUE!` is not beaten by it: MIN and MAX
+    /// (probes/aggregate-direct-lambda-product-min-max D15, D24, T-1604). How an array error ranks
+    /// against a held referenced error is unprobed: TODO(T-1615).
+    DirectUnlessLambdaHeld,
 }
 
 /// How the walker orders the errors it meets.
@@ -51,11 +55,25 @@ pub(crate) enum ErrorRule {
     },
     /// The first error in argument order returns at once (DEVSQ, AVEDEV, SUMSQ).
     First,
+    /// Errors are items for the visitor, which counts or ignores them (COUNT ignores them, COUNTA
+    /// counts them; syntax.md). Only a walk-budget error returns.
+    Items,
+}
+
+/// How the walker reads an argument.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ArgReading {
+    /// `evaluate_aggregate_arg`: picked references, cached blanks skipped (SUM, AVERAGE, MIN, …).
+    Aggregate,
+    /// `evaluate_picked_reference_arg`: cached blanks kept (COUNTA).
+    PickedKeepingBlanks,
 }
 
 /// What sets one consumer's argument walk apart (SPEC-0009, "Consumer mapping").
 #[derive(Clone, Copy)]
 pub(crate) struct AggregatePolicy {
+    /// How an argument is read.
+    pub(crate) reading: ArgReading,
     /// How errors are ordered.
     pub(crate) errors: ErrorRule,
     /// DEVSQ, AVEDEV, SUMSQ: an empty argument is not an item (TODO(T-0236)).
@@ -105,16 +123,33 @@ pub(crate) struct NumberRules {
     pub(crate) array: ArrayNumbers,
 }
 
+impl NumberRules {
+    /// SUM's coercion, which MIN, MAX and PRODUCT share (probes/min-max-value-args,
+    /// docs/excel-semantics/coercion.md): every direct value is cast; referenced cells and arrays
+    /// give only their numbers.
+    pub(crate) const SUM_LIKE: NumberRules = NumberRules {
+        direct: DirectNumbers::Cast,
+        cells: CellNumbers::Numbers,
+        array: ArrayNumbers::Numbers,
+    };
+}
+
 /// Error-precedence state across one call's arguments.
 pub(crate) struct AggregateWalk {
     policy: AggregatePolicy,
     held: Option<CalcResult>,
+    /// Whether `held` is a direct LAMBDA's `#VALUE!`.
+    lambda_held: bool,
 }
 
 impl AggregateWalk {
     /// A walk with nothing held yet.
     pub(crate) fn new(policy: AggregatePolicy) -> Self {
-        AggregateWalk { policy, held: None }
+        AggregateWalk {
+            policy,
+            held: None,
+            lambda_held: false,
+        }
     }
 
     /// The held referenced error, if any, once every argument is walked.
@@ -132,7 +167,7 @@ impl AggregateWalk {
                 }
                 Ok(())
             }
-            ErrorRule::First => Err(error),
+            ErrorRule::First | ErrorRule::Items => Err(error),
         }
     }
 
@@ -143,6 +178,7 @@ impl AggregateWalk {
     fn lambda_error(&mut self, error: CalcResult) {
         if self.held.is_none() {
             self.held = Some(error);
+            self.lambda_held = true;
         }
     }
 
@@ -163,6 +199,10 @@ impl AggregateWalk {
                 }
                 Ok(())
             }
+            // MIN and MAX: the held LAMBDA error stands, the array error is dropped.
+            ErrorRule::Ranked {
+                array_errors: ArrayErrorRank::DirectUnlessLambdaHeld,
+            } if self.lambda_held => Ok(()),
             _ => Err(value()),
         }
     }
@@ -220,7 +260,30 @@ impl Model {
             return Ok(());
         }
         // References (also via IF, INDEX, XLOOKUP, TAKE …) arrive as ranges.
-        match self.evaluate_aggregate_arg(arg, cell) {
+        let read = match walk.policy.reading {
+            ArgReading::Aggregate => self.evaluate_aggregate_arg(arg, cell),
+            ArgReading::PickedKeepingBlanks => self.evaluate_picked_reference_arg(arg, cell),
+        };
+        let is_reference = matches!(arg.ungrouped(), Node::ReferenceKind { .. });
+        self.walk_aggregate_read(read, is_reference, cell, walk, visit)
+    }
+
+    /// One argument already read, for a consumer that picks its argument itself (COUNTA);
+    /// `is_reference` says the argument is a `Node::ReferenceKind`.
+    #[inline]
+    pub(crate) fn walk_aggregate_read<F>(
+        &mut self,
+        read: RefArg,
+        is_reference: bool,
+        cell: CellReferenceIndex,
+        walk: &mut AggregateWalk,
+        visit: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
+    {
+        let items = walk.policy.errors == ErrorRule::Items;
+        match read {
             RefArg::Ranges(areas) => {
                 // Once an error is held, later references are not read at all, as before.
                 if walk.held.is_some() {
@@ -235,7 +298,7 @@ impl Model {
                         cell,
                         |model, value| match value {
                             CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(()),
-                            error @ CalcResult::Error { .. } => Err(error),
+                            error @ CalcResult::Error { .. } if !items => Err(error),
                             value => {
                                 let result = visit(model, ItemSource::ReferencedCell, value);
                                 visitor_failed = result.is_err();
@@ -256,14 +319,19 @@ impl Model {
                         Ok(value) => visit(self, ItemSource::ArrayElement, value)?,
                         // Under `Referenced` only the first array or referenced error is held;
                         // under `Direct` an array error beats a held one.
+                        Err(error) if items => visit(
+                            self,
+                            ItemSource::ArrayElement,
+                            CalcResult::new_error(error, cell, String::new()),
+                        )?,
                         Err(error) => walk.array_error(error, cell)?,
                     }
                 }
                 Ok(())
             }
-            RefArg::Value(error @ CalcResult::Error { .. }) => Err(error),
+            RefArg::Value(error @ CalcResult::Error { .. }) if !items => Err(error),
             RefArg::Value(value) => {
-                let source = if matches!(arg.ungrouped(), Node::ReferenceKind { .. }) {
+                let source = if is_reference {
                     ItemSource::ReferenceValue
                 } else {
                     ItemSource::Direct
@@ -383,6 +451,7 @@ mod tests {
     use crate::test::util::new_empty_model;
 
     const RANKED: AggregatePolicy = AggregatePolicy {
+        reading: ArgReading::Aggregate,
         errors: ErrorRule::Ranked {
             array_errors: ArrayErrorRank::Direct,
         },
@@ -465,6 +534,7 @@ mod tests {
     fn array_errors_rank_by_policy() {
         let cells = [("A1", "=NA()")];
         let referenced = AggregatePolicy {
+            reading: ArgReading::Aggregate,
             errors: ErrorRule::Ranked {
                 array_errors: ArrayErrorRank::Referenced,
             },
@@ -488,6 +558,7 @@ mod tests {
     fn first_returns_the_first_error_and_skip_empty_drops_empty_args() {
         let cells = [("A1", "=NA()")];
         let first = AggregatePolicy {
+            reading: ArgReading::Aggregate,
             errors: ErrorRule::First,
             skip_empty_args: true,
         };
@@ -508,6 +579,28 @@ mod tests {
                 ItemSource::ArrayElement,
                 ItemSource::ArrayElement,
                 ItemSource::Direct,
+            ])
+        );
+    }
+
+    #[test]
+    fn items_rule_hands_errors_on_as_items() {
+        // COUNT and COUNTA see error cells, direct errors and array errors as items; nothing
+        // is held or returned.
+        let policy = AggregatePolicy {
+            reading: ArgReading::Aggregate,
+            errors: ErrorRule::Items,
+            skip_empty_args: false,
+        };
+        let cells = [("A1", "=NA()"), ("A2", "3")];
+        assert_eq!(
+            items(&cells, "=COUNT(A1:A2,1/0,{#N/A,2})", policy),
+            Ok(vec![
+                ItemSource::ReferencedCell,
+                ItemSource::ReferencedCell,
+                ItemSource::Direct,
+                ItemSource::ArrayElement,
+                ItemSource::ArrayElement,
             ])
         );
     }
