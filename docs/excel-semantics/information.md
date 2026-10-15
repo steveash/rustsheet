@@ -248,6 +248,7 @@ Volatile functions through shape-stable formulas (probes/volatile-now-today-shap
 NOW, TODAY and RAND are numbers (`TYPE` 1, never text or boolean), `NOW()-NOW()` is 0 within one recalculation,
 `INT(NOW())=TODAY()`, `RAND()` is in [0,1) and two calls differ, `TRUE()` and `FALSE()` behave as the literals in
 arithmetic, text, comparison and logical contexts; the engine matches all of them. The eval clock is pinned, so a cell comparing
-NOW or TODAY with a calendar date cannot be scored.
+NOW or TODAY with a threshold the real clock could cross (`NOW()>45000`) cannot be scored; `NOW()>0` and `YEAR(TODAY())>=1900`
+can never change and are.
 Status: VERIFIED (excel-graph)
 Tasks: T-1627, T-1631
