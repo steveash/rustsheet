@@ -96,9 +96,9 @@ exact UTF-16 units throughout:
 - 32,767 limit: `LEN(REPT("a",32766)&"😀")` is 32767 (the kept unit is the high half, coercion.md "Truncation inside a surrogate pair"); `REPT("😀",16384)` is `#VALUE!`;
   CONCAT and TEXTJOIN one unit over (a pair straddling the limit) are `#CALC!`, not truncated (existing entry below).
 Evidence: probes/text-lone-surrogates A1-A81, B1-B6 (excel-graph, 2026-10-15, T-1582).
-Ours: the engine drops a lone half, so some of the 87 cells still fail (A3, A4 pass since T-1581) (comparisons that pass today do so because the dropped half compares as ""); T-1585 to T-1587 are the follow-ups.
+Ours: comparisons, EXACT and exact-mode MATCH read lone units exactly (T-1585): `cmp_text` in functions/util/collation.rs weighs a lone unit (and each unit of an astral character) above every BMP character, by unit value, which gives H<L, H<"😀"<L and both below U+FFFD FALSE; `wildcard_text_matcher_for` (criteria.rs) matches a lone-half pattern only to identical text (a wildcard beside a lone half, and COUNTIF-style criteria with a lone half, are unprobed). UPPER, LOWER, PROPER, TRIM and CLEAN keep lone units (`Text::map_runs`). FIND, SEARCH, SUBSTITUTE, CODE, VALUE, REPT, T and TEXT remain T-1586 and T-1587.
 Status: VERIFIED
-Tasks: T-1582
+Tasks: T-1582, T-1585
 
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for

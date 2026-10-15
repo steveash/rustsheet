@@ -3,7 +3,7 @@ id: T-1585
 title: "Compare, EXACT, MATCH and sort lone surrogates by code unit (not as U+FFFD)"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/text-lone-surrogates A10-A28 and docs/excel-semantics/text.md "Lone surro
 
 ## Out of scope
 -
+
+## Outcome
+EXACT, `=`/`<` (via `compare_values`, so sorting and lookups too) and exact-mode MATCH/XMATCH read lone surrogates exactly; UPPER, LOWER, PROPER, TRIM and CLEAN keep them (needed so probes A31-A39 did not regress). Eval: probes/text-lone-surrogates A10-A12, A14-A16, A18, A22, A27, A28, A30 now pass (see eval/baseline diff). Remaining cells belong to T-1586/T-1587.
