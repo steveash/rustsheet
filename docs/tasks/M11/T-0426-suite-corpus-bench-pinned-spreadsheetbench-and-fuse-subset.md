@@ -34,7 +34,8 @@ suites the milestone exit criteria name that does not exist yet.
 - [ ] Fetch config pins the sources and sha256s. `rustsheet-eval fetch --suite corpus-bench`
   downloads and verifies the subset, and license and attribution are recorded in the suite.
 - [ ] The suite runs crash-only, with no expectations yet. Any panic, timeout or import error is
-  filed as a task, and `make eval` wall time stays within the CI budget (or the suite is excluded
+  recorded in the baseline as a known failure through `make eval-baseline` (new coverage, so
+  `make check` stays green) and filed as a task, and `make eval` wall time stays within the CI budget (or the suite is excluded
   from CI and run by the steward).
 - [ ] `make check` green; reviewers approve.
 

@@ -26,6 +26,9 @@ suites the milestone exit criteria name that does not exist yet.
   LAMBDA-bodied names are written, and extend the builder if it can't write them.
 - Existing evidence and quirks: docs/excel-semantics/references.md and the 3-D aggregate work
   (T-0122). Open probe task T-1431 covers non-ASCII names; don't duplicate it.
+  Existing probes the generator should complement, not repeat: T-0043 (defined-name case spec),
+  T-0158 (formula-bodied names), T-1459 (sheet-qualified names), T-1015 and T-1139 (3-D span
+  edge cases).
 - Model the suite on gen-m7 (T-1275): suite.toml with `gate = false`, `milestone = ["M8"]`,
   sidecars from `rustsheet-oracle fill -b excel-graph`.
 
