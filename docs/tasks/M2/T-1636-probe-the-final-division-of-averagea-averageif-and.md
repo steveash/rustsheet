@@ -24,4 +24,4 @@ T-1619 showed AVERAGE's final division rounds twice (probes-numeric/average-larg
 -
 
 ## Outcome
-Probe `probes-numeric/average-family-large-count-division` (36 cells, excel-graph): Excel double-rounds the final division in AVERAGEA, AVERAGEIF(S), SUBTOTAL(1/101); AGGREGATE(1) already matched via AVERAGE. Changed the three divisions to `extended_quotient`. numbers.md updated. Eval: +36 passing probe cells, 0 regressions.
+Probe `probes-numeric/average-family-large-count-division` (36 cells, excel-graph): Excel double-rounds the final division in AVERAGEA, AVERAGEIF(S), SUBTOTAL(1/101); AGGREGATE(1) already matched via AVERAGE. Changed the three divisions to `extended_quotient`. numbers.md updated. Eval: 36 new probe cells (30 newly fixed, the 6 AGGREGATE(1) cells already passed), 0 regressions; probes-numeric is not a gated suite. Follow-up: T-1648 (DAVERAGE).
