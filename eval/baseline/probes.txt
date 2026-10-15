@@ -224,6 +224,7 @@ C	probes/formula-length-nonbmp-33pieces.case.json	1
 C	probes/formula-length-nonbmp-8192u.case.json	1
 C	probes/formulatext-written-groups-shapes.case.json	12
 C	probes/gcd-lcm-bounds.case.json	38
+C	probes/gcd-lcm-multinomial-negative-precedence.case.json	71
 C	probes/geomean-exponent-sum-2.case.json	34
 C	probes/geomean-exponent-sum.case.json	28
 C	probes/geomean-in-range-many.case.json	72
