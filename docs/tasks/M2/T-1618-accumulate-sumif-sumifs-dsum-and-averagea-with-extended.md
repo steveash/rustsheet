@@ -3,7 +3,7 @@ id: T-1618
 title: "Accumulate SUMIF, SUMIFS, DSUM and AVERAGEA with extended_sum (they round once, Excel twice)"
 milestone: M2
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
