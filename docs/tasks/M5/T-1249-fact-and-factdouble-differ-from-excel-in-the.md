@@ -3,7 +3,7 @@ id: T-1249
 title: "FACT and FACTDOUBLE differ from Excel in the last digits for large n (FACT(170), FACTDOUBLE(297..300))"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
