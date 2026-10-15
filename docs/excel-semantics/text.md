@@ -91,8 +91,7 @@ exact UTF-16 units throughout:
 - 32,767 limit: `LEN(REPT("a",32766)&"😀")` is 32767 (the kept unit is the high half, coercion.md "Truncation inside a surrogate pair"); `REPT("😀",16384)` is `#VALUE!`;
   CONCAT and TEXTJOIN one unit over (a pair straddling the limit) are `#CALC!`, not truncated (existing entry below).
 Evidence: probes/text-lone-surrogates A1-A81, B1-B6 (excel-graph, 2026-10-15, T-1582).
-Ours: the engine drops a lone half, so nearly every cell above except the plain-ASCII companions fails (the case has
-47 known failures); T-1585 to T-1587 are the follow-ups.
+Ours: the engine drops a lone half, so 47 of the 87 cells fail (comparisons that pass today do so because the dropped half compares as ""); T-1585 to T-1587 are the follow-ups.
 Status: VERIFIED
 Tasks: T-1582
 
