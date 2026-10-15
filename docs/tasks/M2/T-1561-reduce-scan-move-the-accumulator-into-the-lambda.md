@@ -14,7 +14,7 @@ depends_on: []
 REDUCE and SCAN move the accumulator into the LAMBDA each step instead of deep-copying it, with unchanged results.
 
 ## Context
-Performance review of T-1549 (MINOR): `call_lambda_with_values` takes `&[CalcResult]` and clones each value into the variable stack, so with an array accumulator (`REDUCE(,r,LAMBDA(a,x,VSTACK(a,x)))`) each step copies the whole accumulator, O(n*|acc|). Add a by-value variant, or take `&mut [CalcResult]` and `std::mem::take` the values, for the REDUCE/SCAN path.
+Performance review of T-1549 (MINOR): `call_lambda_caller` (was `call_lambda_with_values`, T-1560) takes `&[CalcResult]` and clones each value into the variable stack, so with an array accumulator (`REDUCE(,r,LAMBDA(a,x,VSTACK(a,x)))`) each step copies the whole accumulator, O(n*|acc|). Add a by-value variant, or take `&mut [CalcResult]` and `std::mem::take` the values, for the REDUCE/SCAN path.
 
 ## Acceptance criteria
 - [ ] REDUCE and SCAN do not clone the accumulator per step; lambda unit tests and probes stay passing; `make check` green; reviewers approve.
