@@ -533,8 +533,7 @@ impl Lexer {
                         self.position += 4;
                         Token::AMPM
                     } else if self.peek_char() == Some('/') {
-                        // `A/P` is not implemented
-                        self.set_error("Unexpected character after 'A'");
+                        self.set_error("A/P is not supported");
                         Token::ILLEGAL
                     } else {
                         // Excel: an unquoted `a` that is not AM/PM prints as itself
@@ -568,45 +567,12 @@ impl Lexer {
                     self.consume_run('e');
                     Token::Year
                 }
-                'c'
-                | 'f'
-                | 'i'
-                | 'j'
-                | 'k'
-                | 'l'
-                | 'o'
-                | 'p'
-                | 'q'
-                | 'r'
-                | 't'
-                | 'u'
-                | 'v'
-                | 'w'
-                | 'x'
-                | 'z'
-                | 'C'
-                | 'F'
-                | 'I'
-                | 'J'
-                | 'K'
-                | 'L'
-                | 'O'
-                | 'P'
-                | 'Q'
-                | 'R'
-                | 'T'
-                | 'U'
-                | 'V'
-                | 'W'
-                | 'X'
-                | 'Z'
-                | '1'..='9' => Token::Literal(x),
-                // Excel prints the letters that are no format token, and the digits 1-9, as they
-                // are (`TEXT(1,"0x")` = "1x", `TEXT(PI(),"ü")` = "ü", `TEXT(5,"2")` = "2";
-                // probes/text-format-unquoted-letters, probes/text-format-bare-literals A1-A7).
-                _ if !x.is_ascii() && x.is_alphabetic() => Token::Literal(x),
                 'g' | 'G' => {
-                    if self.chars[self.position..].starts_with(&['e', 'n', 'e', 'r', 'a', 'l']) {
+                    if self
+                        .chars
+                        .get(self.position..)
+                        .is_some_and(|rest| rest.starts_with(&['e', 'n', 'e', 'r', 'a', 'l']))
+                    {
                         self.position += 6;
                         return Token::General;
                     }
@@ -616,6 +582,17 @@ impl Lexer {
                     self.consume_run('g');
                     Token::Era
                 }
+                // Excel: `n`/`N` are invalid (cause unknown, not an en-US date token;
+                // probes/text-format-unquoted-letters A14, A40).
+                'n' | 'N' => {
+                    self.set_error("Unexpected character: n");
+                    Token::ILLEGAL
+                }
+                // Excel prints every other letter (the format-token letters have their own arms
+                // above) and the digits 1-9 as they are: `TEXT(1,"0x")` = "1x", `TEXT(PI(),"ü")` =
+                // "ü", `TEXT(5,"2")` = "2" (probes/text-format-unquoted-letters,
+                // probes/text-format-bare-literals A1-A7).
+                _ if x.is_alphabetic() || ('1'..='9').contains(&x) => Token::Literal(x),
                 _ => {
                     self.set_error(&format!("Unexpected character: {x}"));
                     Token::ILLEGAL

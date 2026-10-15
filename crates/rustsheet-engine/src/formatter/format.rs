@@ -412,31 +412,24 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         let months_letter = &locale.dates.months_letter[month - 1];
                         text = format!("{text}{months_letter}");
                     }
-                    TextToken::YearShort => {
+                    TextToken::YearShort
+                    | TextToken::Year
+                    | TextToken::BuddhistYearShort
+                    | TextToken::BuddhistYear => {
                         if !date_valid {
                             return invalid_date(value);
                         }
-                        text = format!("{text}{:02}", ymd_year % 100);
-                    }
-                    TextToken::Year => {
-                        if !date_valid {
-                            return invalid_date(value);
+                        let year = match token {
+                            TextToken::BuddhistYearShort | TextToken::BuddhistYear => {
+                                ymd_year + BUDDHIST_ERA_OFFSET
+                            }
+                            _ => ymd_year,
+                        };
+                        if matches!(token, TextToken::YearShort | TextToken::BuddhistYearShort) {
+                            text = format!("{text}{:02}", year % 100);
+                        } else {
+                            text = format!("{text}{year}");
                         }
-                        text = format!("{text}{ymd_year}");
-                    }
-                    TextToken::BuddhistYearShort => {
-                        if !date_valid {
-                            return invalid_date(value);
-                        }
-                        let year = ymd_year + BUDDHIST_ERA_OFFSET;
-                        text = format!("{text}{:02}", year % 100);
-                    }
-                    TextToken::BuddhistYear => {
-                        if !date_valid {
-                            return invalid_date(value);
-                        }
-                        let year = ymd_year + BUDDHIST_ERA_OFFSET;
-                        text = format!("{text}{year}");
                     }
                     TextToken::Hour => {
                         let mut hour = hours as i32;

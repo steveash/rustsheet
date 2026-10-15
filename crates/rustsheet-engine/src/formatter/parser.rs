@@ -187,7 +187,7 @@ impl Parser {
                     }
                     // Excel: literals around `General` print around the value (`TEXT(5,"General x")`
                     // = "5 x", `TEXT(5,"x General")` = "x 5"; probes/text-format-bare-literals
-                    // A75, A76). Next to placeholders or date tokens it stays an error (unprobed).
+                    // A75, A76). TODO(T-1614): next to placeholders or date tokens it stays an error (unprobed).
                     tokens.push(TextToken::General);
                 }
                 Token::Comma => {
@@ -358,7 +358,7 @@ impl Parser {
                 Token::Era | Token::Calendar('1') => {
                     is_date = true;
                 }
-                // `B2` (Hijri) is not implemented: the section is an error once a date or time
+                // TODO(T-1613): `B2` (Hijri) is not implemented: the section is an error once a date or time
                 // token would print a Hijri date (`TEXT(100,"B2")` alone is "").
                 Token::Calendar(_) => {
                     is_date = true;

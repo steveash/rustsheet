@@ -3,7 +3,7 @@ id: T-1262
 title: "TEXT: bare letters and digits 1-9 in a number format are literals, and an empty format is empty text (3 gen-m6 cells)"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -39,12 +39,22 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
 More evidence (T-1450, probes/text-format-unquoted-letters, excel-graph 2026-10-14): which letters are literals is now probed for every ASCII letter after `0` and after `d`; the table is in number-formats.md "Unquoted ASCII letters in a number format". Of its 111 cells 75 fail today: 68 literal letters, plus the unimplemented `b`/`e`/`g` date tokens (`db`, `de`, `dg`, `dG`), `TEXT(1,"0\:\:")` (we collapse the escaped colons, Excel prints "1::") and `0:a:` / `0::a`. Make them pass too, or split what does not fit into a new task. Check with `./target/release/rustsheet-eval show probes/text-format-unquoted-letters.case.json`.
 
 ## Acceptance criteria
-- [ ] An excel-graph probe case covers the formats above and passes; number-formats.md records the rule (VERIFIED).
-- [ ] gen-m6/2c1a6e93a1974f48 A15, gen-m6/63012866a9d8b7db A3 and gen-m6/17223361bef5b5cb A12 pass in
+- [x] An excel-graph probe case covers the formats above and passes; number-formats.md records the rule (VERIFIED).
+- [x] gen-m6/2c1a6e93a1974f48 A15, gen-m6/63012866a9d8b7db A3 and gen-m6/17223361bef5b5cb A12 pass in
       `./target/release/rustsheet-eval show <case>`, with no new failing gen-m6 cell and no new known failures in eval/baseline/.
-- [ ] Every cell of probes/text-format-unquoted-letters passes.
-- [ ] gen-m7/6db767d720c5b55a A30 passes. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
-- [ ] `make check` green; reviewers approve.
+- [x] Every cell of probes/text-format-unquoted-letters passes.
+- [x] gen-m7/6db767d720c5b55a A30 passes. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other TEXT format families already tasked (T-0953 £/¥/|, T-0982 fractions, T-1129 sign of values rounding to zero).
+
+## Outcome
+The number-format lexer prints unquoted letters that are no format token, non-ASCII letters and the digits 1-9 as literals;
+`b`/`bb`/`bbb+` are the Buddhist-era year, lowercase `e` the year, `g` the (empty) era, `B1`/`B2` calendar prefixes, and a
+lone closing `B`, `n`/`N` stay errors. A point with no placeholder before it shows the integer part (implicit `#`), a point
+with no decimal placeholder still prints, a literal-only section shows a negative's minus, `General` may stand among
+literals, an empty format is "" (or "-" for a negative), and escaped colons no longer collapse. New probe
+probes/text-format-bare-literals (76 cells, excel-graph) passes, as do all 111 cells of probes/text-format-unquoted-letters.
+Eval: probes known failures 5572 -> 5487 (85 fixed, 0 regressions); poi unchanged; gen-m6/gen-m7 +4 cells (the four target
+cells), no case lost a cell. Follow-ups: T-1613 (Hijri `B2` with date tokens), T-1614 (`General` beside placeholders).
