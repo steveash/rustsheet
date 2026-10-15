@@ -3,7 +3,7 @@ id: T-1594
 title: "COUNTIF text criteria equality and unprobed characters use Excel collation"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
