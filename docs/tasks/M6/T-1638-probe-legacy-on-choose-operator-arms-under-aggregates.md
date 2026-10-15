@@ -3,7 +3,7 @@ id: T-1638
 title: "Probe legacy @ on CHOOSE operator arms under aggregates and on array constants in other scalar functions"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
