@@ -613,3 +613,38 @@ probes/legacy-value-argument-intersection-b AI2, AJ2.
 Status: VERIFIED (excel-graph)
 Implemented in: `Model::for_each_value_a` (statistical/count_and_average.rs), `ArrayText`.
 Tasks: T-1551, T-1555, T-1559
+
+## Thin distribution functions: argument coercion, truncation and error edges (T-1049)
+Rule (all from excel-graph sweeps `probes-numeric/t1049-*`; none implemented by this task):
+- **Truncation:** HYPGEOM.DIST truncates all four counts toward zero (`HYPGEOM.DIST(1.9,4,8,20,TRUE)`
+  = `(1,4,8,20)`, and `(0.9,...)` = `(0,...)`; `hypgeomdist`), and a negative fraction (-0.5) is
+  `#NUM!`. T.TEST truncates `tails` and `type` (`T.TEST(...,1.9,2.9)` = tails 1, type 2; `ttest`).
+  F.DIST truncates df (`F.DIST(1,3.9,7.9,TRUE)` = df 3, 7; `fdist`) but `F.DIST(1,1.5,7,TRUE)` is the
+  df=1 value 0.649..., not an error.
+- **Coercion:** a blank cell is 0 for every scalar argument (`F.DIST(Z99,3,7,TRUE)` = 0, `PHI(Z99)` =
+  0.3989..., a blank cumulative flag is FALSE); TRUE is 1; a numeric text ("2") is accepted and non-numeric
+  text is `#VALUE!`. The cumulative flag is any number (nonzero = TRUE, `...,2)` = cumulative), "TRUE" text
+  is TRUE, other text `#VALUE!`. `PHI("")` is `#VALUE!` but `PHI(Z99)` is fine; `PHI({0,1,2})` is the first
+  element. `PHI(1E300)` and `PHI(-1E300)` are `#NUM!`, while `PHI(38.5)` underflows to 0.
+- **Density at 0:** `F.DIST(0,1,7,FALSE)` and `CHISQ.DIST(0,1,FALSE)` are `#NUM!` (the density is
+  infinite), the df=2 value is 1 (F) and 0.5 (CHISQ), higher df give 0; `WEIBULL.DIST(0,0.5,3,FALSE)`
+  is 0, not `#NUM!`. `F.DIST.RT(0,...)` and `CHISQ.DIST.RT(0,...)` are 1.
+- **Boundary probabilities:** `CHISQ.INV(0,3)`, `F.INV(0,3,7)` are 0 and p = 1 is `#NUM!`; the RT inverses
+  are the mirror (`p=1` -> 0, `p=0` -> `#NUM!`). TRUE as p is 1 (`CHISQ.INV(TRUE,3)` = `#NUM!`).
+  `CHISQ.INV(0.5,1E10)` = 9999999999.333334 (no df limit here, unlike T.INV; see T-1530 for F).
+- **HYPGEOM.DIST domain:** `#NUM!` for N <= 0 (even `(0,4,8,0)`), for n > N, M > N, sample_s above
+  min(n,M) is not an error but 0 / 1 (`(5,4,8,20)` = 0 density, 1 cumulative), and N = 1E10 is `#NUM!` while N =
+  2E9 works. `(0,0,0,1,FALSE)` = 1. Zero n or M gives density 1 at s = 0 and 0 above.
+- **Test functions:** F.TEST / Z.TEST / CHISQ.TEST / T.TEST give `#DIV/0!` for fewer than two usable
+  points or zero variance (constant data, scalars, an empty range); text and booleans inside array constants are
+  skipped in F.TEST and Z.TEST (`{1,2,"a"}` behaves as two values); CHISQ.TEST with a text or TRUE in
+  the actual array is not an error (`chisqtest`; how the pair is treated is not established), Z.TEST with a single
+  point and sigma omitted is `#DIV/0!`, with sigma given it works. Mismatched shapes: CHISQ.TEST and T.TEST
+  paired (type 1) are `#N/A`; T.TEST types 2 and 3 accept unequal sizes; F.TEST accepts unequal sizes.
+  T.TEST tails outside {1,2} or type outside {1,2,3} are `#NUM!`; CHISQ.TEST with a negative expected
+  value is `#NUM!` and with an expected zero `#DIV/0!`.
+Evidence: `probes-numeric/t1049-{fdist,fdistrt,finv,finvrt,ftest,chisqdist,chisqdistrt,chisqinv,
+chisqinvrt,chisqtest,hypgeomdist,weibulldist,ztest,phi,ttest}` and their `*.oracle.json`
+(`hypgeomdist` has 61 cells for the T-0977 fit).
+Status: VERIFIED (excel-graph observation)
+Tasks: T-1049
