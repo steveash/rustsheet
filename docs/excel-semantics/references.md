@@ -1409,3 +1409,15 @@ matches every cell (the CHOOSE-arm `@` and `ABS(@{5})` are in `legacy.rs`, T-163
 argument are unprobed).
 Status: VERIFIED (excel-graph)
 Tasks: T-1265, T-1633
+
+## Legacy `@` on CHOOSE operator arms under aggregates, and on array constants in other scalar functions
+In a legacy formula the `@` goes on the range operand of a CHOOSE arm's operator wherever the CHOOSE sits:
+`=SUM(CHOOSE(1,@E1:E2+1))`, `=MAX(CHOOSE(1,@B1:B6+0))`, `=INDEX(CHOOSE(1,@B1:B6*1),3)` (no `@` on the INDEX call),
+and the aggregate then reads the intersected value: off the range's rows (row 10) SUM and MAX are `#VALUE!`, and
+`=MODE(CHOOSE(1,B1:B6*1))` is `#VALUE!`. On the range's rows the arm is a scalar: `=INDEX(CHOOSE(1,B1:B6*1),3)` is `#REF!`
+and `=LOOKUP(2,CHOOSE(1,B1:B6*1))` is 1. A one-element array constant takes an `@` in ROUND (`=ROUND(@{5},0)`) but not
+in TYPE: `=TYPE({5})` shows no `@` and is 64. Ours matches all of these except the INDEX call's extra `@` and `#VALUE!`
+(H1, H3), MODE off-row `#N/A` for `#VALUE!` (I10) and LOOKUP's `#N/A` for 1 (J1), recorded as known failures (T-1643).
+Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at (excel-graph, 2026-10-15).
+Status: VERIFIED (excel-graph)
+Tasks: T-1638, T-1643

@@ -289,6 +289,7 @@ C	probes/lambda-param-call.case.json	6
 C	probes/large-small-k.case.json	35
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
+C	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	27
 C	probes/legacy-index-array-index.case.json	30
 C	probes/legacy-one-cell-shape-intersection.case.json	26
 C	probes/legacy-type-intersection.case.json	17
@@ -4948,6 +4949,10 @@ F	probes/info-logic-argument-modes-2.case.json	Calc!B5
 F	probes/info-logic-argument-modes.case.json	Calc!A15
 F	probes/info-logic-argument-modes.case.json	Calc!A19
 F	probes/info-logic-argument-modes.case.json	Calc!B15
+F	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	Sheet1!H1
+F	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	Sheet1!H3
+F	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	Sheet1!I10
+F	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	Sheet1!J1
 F	probes/legacy-index-array-index.case.json	Sheet1!L1
 F	probes/legacy-index-array-index.case.json	Sheet1!L10
 F	probes/lookup-argument-modes.case.json	Sheet1!F1

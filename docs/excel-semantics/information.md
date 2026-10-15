@@ -187,7 +187,8 @@ Rule: how the other M5 information functions take a range, an array and a direct
   `ISFORMULA(A3:B3)` over a formula and a constant spills TRUE, FALSE. `ERROR.TYPE(1)` is `#N/A`.
 - TYPE takes a range or an array whole: `TYPE(A2:C2)` and `TYPE({1,2})` are 64, with no spill. `TYPE` of one number cell is 1. In a legacy
   formula TYPE's range is implicitly intersected instead: 1 on its rows, 16 off them (references.md "Legacy
-  formulas intersect the ranges in value arguments", probes/legacy-type-intersection, T-1526).
+  formulas intersect the ranges in value arguments", probes/legacy-type-intersection, T-1526). An array constant is not intersected: `=TYPE({5})` is 64 with no `@`
+  (references.md "Legacy `@` on CHOOSE operator arms", T-1638).
 - N gives the top-left cell of a range, with no lift and no implicit intersection: `N(A2:C2)` is 2 (A2) and
   `N(B2:C2)` from a row and column outside the range is 3 (B2). `N("5")` and `N` of a text cell are 0, and `N(TRUE)` is 1.
 - ISREF takes any value: a range is TRUE (no spill), while `ISREF(1)` and `ISREF(A1:A2+0)` are FALSE.
