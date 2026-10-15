@@ -32,7 +32,8 @@ const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
 /// AVERAGEA, MAXA and MINA rank errors as the AVERAGE family does: a scalar direct error beats a
 /// referenced one either way and the leftmost referenced error wins (probes/aggregate-picked-
 /// direct-a-variants D20-D27; the array rank is UNVERIFIED). The A rules' visitor errs on a
-/// referenced cell holding a range ("Unexpected Range"), which returns at once.
+/// referenced cell holding a range ("Unexpected Range"), which returns at once, UNVERIFIED. An
+/// array error still returns at once (`ArrayErrorRank::Direct`, T-1439), as before.
 const A_ARGS: AggregatePolicy = AVERAGE_ARGS;
 
 /// The AVERAGE family's coercion: a direct number, boolean, text or empty argument counts, and
@@ -107,12 +108,15 @@ impl Model {
             if let Some(cells) = self.external_reference_cells(arg, cell) {
                 for value in cells? {
                     let value = match value {
+                        // A cached error ranks as a referenced error (UNVERIFIED; the walker
+                        // holds the leftmost and a scalar direct error still beats it).
                         ArrayNode::Error(error) => {
-                            return Err(CalcResult::new_error(
+                            walk.referenced_error(CalcResult::new_error(
                                 error,
                                 cell,
                                 "Error in external reference".to_string(),
-                            ))
+                            ))?;
+                            break;
                         }
                         ArrayNode::Empty => continue,
                         ArrayNode::Number(value) => CalcResult::Number(value),
