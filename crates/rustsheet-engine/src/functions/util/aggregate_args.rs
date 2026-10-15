@@ -91,6 +91,9 @@ pub(crate) enum DirectNumbers {
     /// A number, boolean or text; text that does not cast is `#VALUE!` and an empty argument is
     /// skipped (AVERAGEA, MAXA, MINA).
     CastA,
+    /// Only a number counts; booleans, text and the rest are skipped (VARA, VARPA, STDEVA and
+    /// STDEVPA, which ignore them "for now": no Excel evidence yet).
+    NumbersOnly,
 }
 
 /// How a referenced cell (and, except under [`DirectNumbers::Cast`], a
@@ -414,6 +417,8 @@ impl Model {
             (DirectNumbers::Cast, value) => {
                 self.cast_aggregate_arg_to_number(value, cell).map(Some)
             }
+            (DirectNumbers::NumbersOnly, CalcResult::Number(n)) => Ok(Some(n)),
+            (DirectNumbers::NumbersOnly, _) => Ok(None),
             (_, CalcResult::Number(n)) => Ok(Some(n)),
             (_, CalcResult::Boolean(b)) => Ok(Some(if b { 1.0 } else { 0.0 })),
             // An empty argument (`AVERAGE(5,)`) counts as 0 (probes/average-value-args F2, F6,

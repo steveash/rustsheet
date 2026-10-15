@@ -261,7 +261,7 @@ impl Model {
 ```
 `for_each_value`, `for_each_value_skip_empty` and `for_each_value_a` become thin wrappers or
 calls with a named policy, and are removed once their callers move. `for_each_number_in_areas`
-and `for_each_coerced_number_in_areas` stay. Their other callers (NPV, the D-functions, …) are
+and `for_each_coerced_number_in_areas` stay (the latter was deleted in T-1567 when its last caller moved). Their other callers (NPV, the D-functions, …) are
 outside this spec. "Numbers of a reference" must keep one definition. T-1474 extracts the
 per-cell rules of these two helpers into two free functions in util.rs,
 `cell_number(&CalcResult) -> Option<f64>` (numbers only) and
