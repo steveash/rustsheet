@@ -3,7 +3,7 @@ id: T-1601
 title: "Probe PRODUCT over TRIMRANGE and over a picked error cell with a later direct error"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1571 made PRODUCT read picks like SUM (evaluate_aggregate_arg); these two case
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/aggregate-product-trimrange-picks` (15 cells, excel-graph): PRODUCT matches SUM for TRIMRANGE picks, picked boolean/blank cells and picked-error ranking; ours already agrees, so no code change. SPEC-0009 and syntax.md updated. Eval: new probe passes 15/15, no baseline change.
