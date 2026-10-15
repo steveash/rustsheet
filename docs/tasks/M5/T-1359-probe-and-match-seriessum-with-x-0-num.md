@@ -3,7 +3,7 @@ id: T-1359
 title: "Probe and match SERIESSUM with x = 0: #NUM! only for a zero or negative power"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,3 +31,8 @@ Code: `fn_seriessum` in crates/rustsheet-engine/src/functions/math_and_trigonome
 
 ## Out of scope
 -
+
+## Outcome
+`fn_seriessum` no longer returns `#NUM!` for every x = 0: it is `#NUM!` only when a term's power is <= 0
+(any coefficient), else 0. Probe probes/seriessum-x-zero (22 cells, excel-graph) all pass; numbers.md entry VERIFIED.
+Eval delta: probes +22 passing cells, no known-failure change. gen-m7 is not in the local suite set; its A27 follows from A9.
