@@ -24,27 +24,47 @@ impl Model {
         CalcResult::Number(random())
     }
 
-    // TODO: Add tests for RANDBETWEEN
+    /// `=RANDBETWEEN(bottom, top)`. Excel compares the raw bounds, draws a whole number from
+    /// `CEILING(bottom)` to `FLOOR(top)` (`CEILING(bottom)` when that range is empty), rejects
+    /// booleans and treats `RANDBETWEEN(,)` as `#N/A` (docs/excel-semantics/numbers.md
+    /// "RANDBETWEEN and RANDARRAY argument checks", probes/volatile-invariant).
     pub(crate) fn fn_randbetween(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        let y = match self.get_number(&args[1], cell) {
-            Ok(f) => f.ceil() + 1.0,
-            Err(s) => return s,
-        };
-        if x > y {
+        let first = self.evaluate_node_in_context(&args[0], cell);
+        let second = self.evaluate_node_in_context(&args[1], cell);
+        if matches!(first, CalcResult::EmptyArg) && matches!(second, CalcResult::EmptyArg) {
+            return CalcResult::new_error(Error::NA, cell, "bottom and top omitted".to_string());
+        }
+        let mut bounds = [0.0; 2];
+        for (slot, v) in bounds.iter_mut().zip([first, second]) {
+            if matches!(v, CalcResult::Boolean(_)) {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "booleans are not numbers here".to_string(),
+                );
+            }
+            match self.cast_to_number(v, cell) {
+                Ok(f) => *slot = f,
+                Err(e) => return e,
+            }
+        }
+        let [bottom, top] = bounds;
+        if bottom > top {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
-                message: format!("{x}>{y}"),
+                message: format!("{bottom}>{top}"),
             };
         }
-        CalcResult::Number((x + random() * (y - x)).floor())
+        let low = bottom.ceil();
+        let high = top.floor();
+        if high < low {
+            return CalcResult::Number(low);
+        }
+        CalcResult::Number((low + random() * (high - low + 1.0)).floor().min(high))
     }
 
     /// `=RANDARRAY([rows], [cols], [min], [max], [whole_number])`
@@ -168,15 +188,22 @@ impl Model {
             false
         };
 
+        // Excel: a fractional bound with whole_number TRUE is #VALUE! (RANDARRAY(1,1,1.5,2.5,TRUE)).
+        if whole_number && (min.fract() != 0.0 || max.fract() != 0.0) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "min and max must be whole numbers".to_string(),
+            );
+        }
+
         let mut result = Vec::with_capacity(rows);
         for _ in 0..rows {
             let mut row = Vec::with_capacity(columns);
             for _ in 0..columns {
                 let val = if whole_number {
-                    let min_int = min.floor();
-                    let max_int = max.floor();
-                    let span = max_int - min_int + 1.0;
-                    min_int + (random() * span).floor()
+                    let span = max - min + 1.0;
+                    min + (random() * span).floor()
                 } else {
                     min + random() * (max - min)
                 };

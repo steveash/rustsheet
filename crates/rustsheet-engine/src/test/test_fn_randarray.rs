@@ -217,3 +217,35 @@ fn test_randarray_negative_cols_returns_value() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#VALUE!");
 }
+
+#[test]
+fn test_randarray_whole_number_rejects_fractional_bounds() {
+    // Excel: probes/volatile-invariant Calc!B9, B10, B18.
+    let mut model = new_empty_model();
+    model._set("A1", "=RANDARRAY(1,1,1.5,1.5,TRUE)");
+    model._set("A2", "=RANDARRAY(1,1,1,2.5,TRUE)");
+    model._set("A3", "=RANDARRAY(1,1,1.5,2.5)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_ne!(model._get_text("A3"), "#VALUE!");
+}
+
+#[test]
+fn test_randbetween_argument_checks() {
+    // Excel: probes/volatile-invariant Calc!A2, A6, A8, A12, A13.
+    let mut model = new_empty_model();
+    model._set("A1", "=RANDBETWEEN(2,1)");
+    model._set("A2", "=RANDBETWEEN(5,4.5)");
+    model._set("A3", "=RANDBETWEEN(5.5,5.7)");
+    model._set("A4", "=RANDBETWEEN(TRUE,TRUE)");
+    model._set("A5", "=RANDBETWEEN(,)");
+    model._set("A6", "=RANDBETWEEN(-5.5,-5.2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+    assert_eq!(model._get_text("A3"), "6");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "#N/A");
+    assert_eq!(model._get_text("A6"), "-5");
+}

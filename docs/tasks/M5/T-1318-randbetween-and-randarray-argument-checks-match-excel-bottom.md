@@ -3,7 +3,7 @@ id: T-1318
 title: "RANDBETWEEN and RANDARRAY argument checks match Excel (bottom>top on raw values, booleans, omitted args, fractional bounds with whole_number)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,8 +32,13 @@ docs/excel-semantics/numbers.md "RANDBETWEEN and RANDARRAY argument checks". Fai
 Code: crates/rustsheet-engine/src/functions/math_and_trigonometry/random.rs.
 
 ## Acceptance criteria
-- [ ] The 8 cells above pass (A6 added to the case's `check`) and the other cells of probes/volatile-invariant still pass; baseline updated.
-- [ ] `make check` green; reviewers approve.
+- [x] The 8 cells above pass (A6 added to the case's `check`) and the other cells of probes/volatile-invariant still pass; baseline updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The random distribution itself and the RNG.
+
+## Outcome
+RANDBETWEEN compares the raw bounds, draws from CEILING(bottom)..FLOOR(top) (CEILING(bottom) when empty), rejects booleans and gives
+#N/A for `RANDBETWEEN(,)`; RANDARRAY gives #VALUE! for a fractional bound with whole_number TRUE. Calc!A6 is now in the case's `check`.
+Eval delta: probes 7 fixed (A2, A8, A12, A13, B9, B10, B18), A6 newly covered and passing, 0 regressions. Array lift F1:F9 stays with T-1316.

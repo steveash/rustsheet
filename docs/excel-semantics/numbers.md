@@ -1202,8 +1202,7 @@ F1:F9, G1 (excel-graph, 2026-10-10). Every cell was filled twice with identical 
 F1:F9 take MIN/MAX/ROWS over 1000 draws in one cell, which is what shows the RANDBETWEEN range
 rule (F8:F9: `RANDBETWEEN(5.2,7.9)` spans 6 to 7, not ROUND's 5 to 8); the spill members D2, E1,
 E2 and D5 were not compared between fills, but their min equals their max; B15 and G1 have an occupied neighbour, so a 2-row or 2-column result would be `#SPILL!`.
-Status: VERIFIED. The engine misses A2, A6, A8, A12, A13, B9, B10 (T-1318; A6 is unchecked until
-then, because the engine's draw for it is random), B18, and the array lift F1:F9 (T-1316).
+Status: VERIFIED. Implemented (T-1318): A2, A6, A8, A12, A13, B9, B10 and B18 pass. The engine still misses the array lift F1:F9 (T-1316).
 
 ## SERIESSUM with x = 0
 Rule (hypothesis): SERIESSUM with x = 0 is `#NUM!` only when a term has power 0 (0^0): `SERIESSUM(0,0,2,{1,2,3})` is `#NUM!`,
