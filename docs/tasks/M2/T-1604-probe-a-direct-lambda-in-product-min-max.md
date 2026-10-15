@@ -3,7 +3,7 @@ id: T-1604
 title: "Probe a direct LAMBDA in PRODUCT, MIN, MAX and before an array error"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
