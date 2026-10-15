@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use crate::arithmetic::{bcast_idx, flush_subnormal};
 use crate::external_reference::ExternalArea;
 use crate::formatter::date_text::CurrentYear;
@@ -16,6 +15,7 @@ use crate::{
     model::Model,
     text::Text,
 };
+use std::borrow::Cow;
 
 pub(crate) enum NumberOrArray {
     Number(f64),

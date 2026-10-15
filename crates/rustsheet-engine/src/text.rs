@@ -237,14 +237,14 @@ impl Text {
 
     /// Truncates the text to at most `max` UTF-16 units. A surrogate pair cut by the limit keeps
     /// its high half, as Excel's 32,767-unit truncation does (probes/concatenate-limit-spill E8,
-    /// E9, E10, E11).
-    pub fn truncate_utf16(&mut self, max: usize) {
+    /// E9, E10, E11). Returns whether anything was cut.
+    pub fn truncate_utf16(&mut self, max: usize) -> bool {
         match self {
             Text::Utf8(s) => {
                 // UTF-8 never takes fewer bytes than UTF-16 takes units, so short text skips the
                 // scan.
                 if s.len() <= max {
-                    return;
+                    return false;
                 }
                 let mut units = 0;
                 for (byte, ch) in s.char_indices() {
@@ -259,17 +259,20 @@ impl Text {
                         } else {
                             s.truncate(byte);
                         }
-                        return;
+                        return true;
                     }
                     units = next;
                 }
+                false
             }
             Text::Lone(lone) => {
                 if lone.units.len() > max {
                     let mut units = std::mem::take(&mut lone.units);
                     units.truncate(max);
                     *self = Text::from_utf16(units);
+                    return true;
                 }
+                false
             }
         }
     }

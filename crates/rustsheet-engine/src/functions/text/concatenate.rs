@@ -178,10 +178,15 @@ impl Model {
         let operand_refs: Vec<&TextArg> = operands.iter().collect();
         broadcast_text(cell, &operand_refs, |i, j| {
             let mut joined = Text::default();
+            // Once the limit has cut the text, the later arguments are still read (an error
+            // argument wins) but cannot change it, so they are not appended and re-cut.
+            let mut at_limit = false;
             for operand in &operands {
                 let piece = array_node_to_text(operand.elem(i, j))?;
-                joined.push(&piece);
-                joined.truncate_utf16(MAX_TEXT_UNITS);
+                if !at_limit {
+                    joined.push(&piece);
+                    at_limit = joined.truncate_utf16(MAX_TEXT_UNITS);
+                }
             }
             Ok(ArrayNode::String(joined))
         })
