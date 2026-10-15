@@ -327,6 +327,7 @@ C	probes/match-fractional-match-type.case.json	8
 C	probes/match-type-nested-passthrough.case.json	17
 C	probes/match-type-text-passthrough.case.json	9
 C	probes/math-argument-modes.case.json	56
+C	probes/matrix-boolean-elements.case.json	14
 C	probes/min-max-reference-forms.case.json	25
 C	probes/min-max-value-args.case.json	16
 C	probes/mod-array-lift.case.json	25

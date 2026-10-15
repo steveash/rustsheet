@@ -239,15 +239,16 @@ Implemented in: crates/rustsheet/src/edit.rs (`MAX_FOOTPRINT_CELLS`)
 ## MDETERM / MINVERSE: a blank cell in the matrix is #VALUE!
 Rule: MDETERM and MINVERSE return `#VALUE!` when any cell of the matrix range is blank (MMULT
 does the same); a blank does not count as 0. `MDETERM` of a single numeric cell is that number. A boolean is not a
-number either: `MINVERSE(E1)` with E1 = FALSE is `#VALUE!` (gen-m7/7c48e2456500644f Calc!A19
-`MAX(MOD(MINVERSE(Data!E1),(0.1/42)))` (excel-graph, 2026-10-11, T-1275); ours `#NUM!`, reading FALSE as a singular 0, and `MDETERM(E1)` 0;
-MDETERM of a boolean and a boolean inside a larger matrix are UNVERIFIED, T-1358).
+number either: MDETERM, MINVERSE and MMULT give `#VALUE!` for a boolean cell (`MINVERSE(E1)`, E1 = FALSE;
+gen-m7/7c48e2456500644f Calc!A19, T-1275), a boolean value (`MDETERM(TRUE)`, `MINVERSE(FALSE)`), and a boolean
+element of a larger matrix (`MDETERM({TRUE,2;3,4})`, `MMULT(D1:E2,...)` with D1 = TRUE)
+(probes/matrix-boolean-elements G1-G13, excel-graph 2026-10-15, T-1358).
 Evidence: poi/MatrixFormulaEvalTestData.xlsx (Excel-cached, Excel 16) Sheet1!H10 `MDETERM(B10:D12)`
 and H30 `MDETERM(B30:D32)` (all blank / only B30 = 1) are `#VALUE!`; H14:J16 `MINVERSE(B14:D16)` and
 H34:J36 `MINVERSE(B34:D36)` are `#VALUE!` in every cell; H50 `MDETERM(B50)` = 1.
 Implemented in: `coerce_to_f64` (crates/rustsheet-engine/src/functions/math_and_trigonometry/matrix.rs, T-0943)
-Status: VERIFIED (Excel-cached)
-Tasks: T-0943
+Status: VERIFIED (Excel-cached; the boolean rule excel-graph)
+Tasks: T-0943, T-1358
 
 ## Legacy (CSE) array formula over a larger range
 Rule: a legacy array formula entered over a range larger than its result fills the range: a 1x1
