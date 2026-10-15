@@ -3,7 +3,7 @@ id: T-1619
 title: "Probe AVERAGE's division by a count above 1024 for double rounding"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
