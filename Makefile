@@ -31,15 +31,19 @@ build: ## Release build of the eval harness
 	$(CARGO) build --release -p rustsheet_eval
 
 # ---------------------------------------------------------------- Eval (Excel compatibility)
-.PHONY: eval eval-check eval-baseline eval-show
+.PHONY: eval eval-check eval-baseline eval-show evidence-floor
 eval: build ## Run all suites; writes eval/runs/latest/report.{md,json}
 	$(EVAL_GUARDED) run
 
 eval-check: build ## Gate: fail on any regression vs eval/baseline (CI)
 	$(EVAL_GUARDED) check
 
-eval-baseline: build ## Ratchet eval/baseline after fixes (refuses regressions)
+eval-baseline: build ## Ratchet eval/baseline and quality/evidence-floor.json after fixes (refuses regressions)
 	$(EVAL_GUARDED) update-baseline
+	$(EVAL) evidence-floor --update
+
+evidence-floor: build ## Gate: no more in-scope functions below the evidence floor (T-0056, CI)
+	$(EVAL) evidence-floor
 
 eval-show: build ## Show one case: make eval-show CASE=ironcalc-calc/FINANCIAL/IRR.xlsx
 	$(EVAL) show $(CASE)
@@ -80,7 +84,7 @@ governance: ## Protected-path changes need a decision record
 
 # ---------------------------------------------------------------- Aggregates
 .PHONY: check ci
-check: fmt-check clippy test eval-check py-check py-bindings hygiene typos ## Everything an agent must pass before a PR (typos too: CI fails on it)
+check: fmt-check clippy test eval-check evidence-floor py-check py-bindings hygiene typos ## Everything an agent must pass before a PR (typos too: CI fails on it)
 
 ci: check deny machete
 

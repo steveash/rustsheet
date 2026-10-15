@@ -39,6 +39,9 @@ pub enum OracleSupport {
 pub struct CatalogFunction {
     /// Upper-case Excel name, e.g. `XLOOKUP`.
     pub name: String,
+    /// Functional family (`math`, `text`, `lookup`, ...), which groups the evidence-floor list
+    /// (T-0056).
+    pub category: String,
     /// First milestone in which the function is in scope for the gate.
     pub milestone: String,
     /// Whether the function counts towards parity.
@@ -162,9 +165,9 @@ mod tests {
 
     #[test]
     fn unknown_fields_and_values_are_rejected() {
-        let bad_scope = r#"{"functions": [{"name": "A", "milestone": "M2", "scope": "maybe"}]}"#;
+        let bad_scope = r#"{"functions": [{"name": "A", "category": "math", "milestone": "M2", "scope": "maybe"}]}"#;
         assert!(Catalog::parse(bad_scope).is_err());
-        let extra = r#"{"functions": [{"name": "A", "milestone": "M2", "scope": "in", "x": 1}]}"#;
+        let extra = r#"{"functions": [{"name": "A", "category": "math", "milestone": "M2", "scope": "in", "x": 1}]}"#;
         assert!(Catalog::parse(extra).is_err());
     }
 }
