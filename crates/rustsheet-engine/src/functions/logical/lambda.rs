@@ -14,6 +14,20 @@ use crate::{
 use super::r#let::assign_variable_ids;
 use crate::variable_stack::Binding;
 
+/// One LAMBDA called repeatedly with the same number of arguments (`Model::lambda_caller`).
+pub(crate) struct LambdaCaller {
+    lambda: CalcResult,
+    provided: usize,
+    prepared: Option<PreparedLambda>,
+}
+
+/// A LAMBDA's parameter ids and patched body, or the error calling it gives, and the
+/// `last_lambda_id` when it was patched.
+struct PreparedLambda {
+    definition: Result<(Vec<usize>, Node), CalcResult>,
+    lambda_mark: usize,
+}
+
 /// `#REF!` for a reference that is called like a function.
 fn reference_called(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::REF, cell, "A reference cannot be called".to_string())
@@ -101,79 +115,113 @@ impl Model {
         call_args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let (parameters, body) = match self.lambda_definition(&lambda_result, call_args.len(), cell)
-        {
-            Ok(definition) => definition,
-            Err(error) => return error,
-        };
-
-        let mut patched_body = body;
-        let mut bound_ids: Vec<usize> = Vec::with_capacity(parameters.len());
-
-        for param in &parameters {
-            let raw_id = self.get_next_variable_id();
-            assign_variable_ids(&mut patched_body, &param.name, raw_id as u32);
-            bound_ids.push(raw_id);
-        }
-
-        for (i, raw_id) in bound_ids.iter().enumerate() {
-            // A reference is passed as a reference, a single cell too, so that
-            // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
-            let binding = match call_args.get(i) {
-                Some(arg) => self.bind_argument(arg, cell),
-                None => Binding::Value(CalcResult::EmptyArg),
-            };
-            self.variable_stack.insert(*raw_id, binding, cell);
-        }
-
-        let result = self.evaluate_node_in_context(&patched_body, cell);
-
-        for raw_id in bound_ids {
-            self.variable_stack.remove(raw_id);
-        }
-
-        result
+        // A reference is passed as a reference, a single cell too, so that
+        // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
+        let mut caller = self.lambda_caller(&lambda_result, call_args.len());
+        self.call_lambda_caller_with_nodes(&mut caller, call_args, cell)
     }
 
-    /// Like `call_lambda` but accepts already-evaluated `CalcResult` values instead of `Node`s.
-    /// Optional parameters not covered by `values` receive `EmptyArg`.
-    pub(crate) fn call_lambda_with_values(
-        &mut self,
+    /// A caller for `lambda_result` with `provided` arguments per call, for the LAMBDA helpers
+    /// (MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY) that call one LAMBDA once per element: the
+    /// definition is looked up and its body cloned and patched with variable ids on the first
+    /// call, then reused (T-1560).
+    pub(crate) fn lambda_caller(
+        &self,
         lambda_result: &CalcResult,
+        provided: usize,
+    ) -> LambdaCaller {
+        LambdaCaller {
+            lambda: lambda_result.clone(),
+            provided,
+            prepared: None,
+        }
+    }
+
+    /// One call of `caller` with `values` (`provided` of them; optional parameters not covered
+    /// receive `EmptyArg`).
+    pub(crate) fn call_lambda_caller(
+        &mut self,
+        caller: &mut LambdaCaller,
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let (parameters, body) = match self.lambda_definition(lambda_result, values.len(), cell) {
-            Ok(definition) => definition,
-            Err(error) => return error,
+        self.call_prepared(caller, cell, |_, i| {
+            Binding::Value(values.get(i).cloned().unwrap_or(CalcResult::EmptyArg))
+        })
+    }
+
+    /// One call of `caller` with argument nodes evaluated in the calling cell, as `call_lambda`
+    /// binds them.
+    pub(crate) fn call_lambda_caller_with_nodes(
+        &mut self,
+        caller: &mut LambdaCaller,
+        call_args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.call_prepared(caller, cell, |model, i| match call_args.get(i) {
+            Some(arg) => model.bind_argument(arg, cell),
+            None => Binding::Value(CalcResult::EmptyArg),
+        })
+    }
+
+    /// Binds parameter `i` to `bind(i)` and evaluates the patched body. The body is reused while
+    /// no LAMBDA has been created since it was patched: a LAMBDA made by the body
+    /// (`LAMBDA(x,LAMBDA(y,x+y))`) holds the parameter ids, so the next call patches a fresh copy
+    /// with fresh ids, as every call did before T-1560. (`last_lambda_id` only grows during an
+    /// evaluation; `clear_lambdas` resets it between evaluations, when no caller is alive.)
+    fn call_prepared(
+        &mut self,
+        caller: &mut LambdaCaller,
+        cell: CellReferenceIndex,
+        mut bind: impl FnMut(&mut Self, usize) -> Binding,
+    ) -> CalcResult {
+        let prepared = match caller.prepared.take() {
+            Some(prepared) if prepared.lambda_mark == self.last_lambda_id => prepared,
+            _ => self.prepare_lambda(&caller.lambda, caller.provided, cell),
         };
-
-        let mut patched_body = body;
-        let mut bound_ids: Vec<usize> = Vec::with_capacity(parameters.len());
-
-        for param in &parameters {
-            let raw_id = self.get_next_variable_id();
-            assign_variable_ids(&mut patched_body, &param.name, raw_id as u32);
-            bound_ids.push(raw_id);
-        }
-
-        for (i, raw_id) in bound_ids.iter().enumerate() {
-            let val = if i < values.len() {
-                values[i].clone()
-            } else {
-                CalcResult::EmptyArg
-            };
-            self.variable_stack
-                .insert(*raw_id, Binding::Value(val), cell);
-        }
-
-        let result = self.evaluate_node_in_context(&patched_body, cell);
-
-        for raw_id in bound_ids {
-            self.variable_stack.remove(raw_id);
-        }
-
+        let result = match &prepared.definition {
+            Ok((ids, body)) => {
+                for (i, raw_id) in ids.iter().enumerate() {
+                    let binding = bind(self, i);
+                    self.variable_stack.insert(*raw_id, binding, cell);
+                }
+                let result = self.evaluate_node_in_context(body, cell);
+                for raw_id in ids {
+                    self.variable_stack.remove(*raw_id);
+                }
+                result
+            }
+            Err(error) => error.clone(),
+        };
+        caller.prepared = Some(prepared);
         result
+    }
+
+    /// The definition of `lambda_result` for `provided` arguments with its body patched with
+    /// fresh variable ids, one per parameter (or the error a call gives).
+    fn prepare_lambda(
+        &mut self,
+        lambda_result: &CalcResult,
+        provided: usize,
+        cell: CellReferenceIndex,
+    ) -> PreparedLambda {
+        let definition =
+            self.lambda_definition(lambda_result, provided, cell)
+                .map(|(parameters, mut body)| {
+                    let ids = parameters
+                        .iter()
+                        .map(|param| {
+                            let raw_id = self.get_next_variable_id();
+                            assign_variable_ids(&mut body, &param.name, raw_id as u32);
+                            raw_id
+                        })
+                        .collect();
+                    (ids, body)
+                });
+        PreparedLambda {
+            definition,
+            lambda_mark: self.last_lambda_id,
+        }
     }
 
     /// The parameters and body of the LAMBDA `lambda_result` when called with `provided`
