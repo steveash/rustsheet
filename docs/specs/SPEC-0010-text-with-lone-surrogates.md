@@ -61,14 +61,14 @@ Non-goals (follow-ups once the probe task below has evidence):
 Probed (T-1582, probes/text-lone-surrogates, excel-graph 2026-10-15; docs/excel-semantics/text.md
 "Lone surrogates through CODE, comparisons, case, search and cleanup functions"):
 - `&` of a lone high and a lone low surrogate forms the pair (`EXACT(H&L,"😀")` is TRUE); low then
-  high does not. REPT re-pairs at each join the same way.
+  high does not. (REPT re-pairing at each join is a hand expectation, unprobed.)
 - CODE of a lone surrogate is 63; `UNICODE(H)` is `#VALUE!`, `UNICODE(L)` 56832.
 - A lone surrogate never equals U+FFFD (`EXACT`, `=`); order is by unit value with a lone unit above
   every BMP character (T-1585).
-- UPPER, LOWER, PROPER, TRIM, CLEAN, T, REPT and TEXT (`@`) keep a lone surrogate unchanged (T-1587).
+- UPPER, LOWER, PROPER, TRIM and CLEAN keep a lone surrogate unchanged. T, REPT and TEXT (`@`) keep its length (T-1587); that they keep the exact unit, not U+FFFD, is a hand expectation, unprobed.
 - FIND, SEARCH and SUBSTITUTE with a lone half as find_text can split a pair (T-1586).
 - A lone high surrogate is cached as `_xD83D_`, like the low one.
-Still unprobed: a lone surrogate beside a wildcard or in COUNTIF-style criteria (T-1642), PROPER word
+Still unprobed: exact units through T, REPT and TEXT (`EXACT(T(H),H)`, `EXACT(REPT(L&H,2),L&H&L&H)`, `UNICODE(MID(TEXT(L,"x@y"),2,1))`, the 255-character TEXT limit with lone text), a lone surrogate beside a wildcard or in COUNTIF-style criteria (T-1642), PROPER word
 breaks at a lone unit, xlsx constants holding `_xD83D_`.
 
 ## Design

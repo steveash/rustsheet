@@ -317,7 +317,7 @@ fn eval_text(formula: &str) -> String {
 
 #[test]
 fn rept_and_text_keep_lone_units() {
-    // probes/text-lone-surrogates A62-A80, B1-B6 with H = MID("😀",1,1), L = MID("😀",2,1): REPT
+    // Hand expectations (UTF-16 model; the oracle cells A62-A80 read lengths only), with H = MID("😀",1,1), L = MID("😀",2,1): REPT
     // repeats the units, TEXT puts them where the format has `@`; a lone unit is never U+FFFD.
     let l = "MID(\"😀\",2,1)";
     let h = "MID(\"😀\",1,1)";
