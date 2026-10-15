@@ -95,7 +95,11 @@ fn rept_element(text: &ArrayNode, number_times: Result<f64, Error>) -> Result<Ar
     // Excel's cell text limit, counted in UTF-16 code units (probes/concatenate-limit-spill E12);
     // it also bounds the allocation (CLAUDE.md directive 5).
     let units = text.len_utf16() as f64;
-    if number_times < 0.0 || units * number_times > MAX_TEXT_UNITS as f64 {
+    // A NaN or infinite count is #VALUE! on its own, not by way of the limit below.
+    if !number_times.is_finite()
+        || number_times < 0.0
+        || units * number_times > MAX_TEXT_UNITS as f64
+    {
         return Err(Error::VALUE);
     }
     // Repeats the exact units, so a lone surrogate survives (probes/text-lone-surrogates B1-B6).
@@ -967,5 +971,22 @@ fn value_to_text(node: &ArrayNode, strict: bool) -> String {
         ArrayNode::Error(e) => e.to_string(),
         ArrayNode::String(s) if strict => format!("\"{}\"", s.replace('"', "\"\"")),
         other => array_node_to_string(other).unwrap_or_default(),
+    }
+}
+
+#[cfg(test)]
+mod rept_tests {
+    use super::*;
+
+    #[test]
+    fn rept_element_rejects_non_finite_counts() {
+        let text = ArrayNode::String("a".into());
+        for count in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(rept_element(&text, Ok(count)), Err(Error::VALUE));
+        }
+        assert_eq!(
+            rept_element(&text, Ok(2.0)),
+            Ok(ArrayNode::String("aa".into()))
+        );
     }
 }
