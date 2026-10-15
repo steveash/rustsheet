@@ -3,7 +3,7 @@ id: T-0056
 title: "Evidence floor: report and ratchet in-scope functions with fewer than 20 oracle cells, and file probe batches for them"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
