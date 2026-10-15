@@ -318,6 +318,24 @@ impl Text {
         }
     }
 
+    /// The text with `f` applied to each run of well-formed text and every lone unit kept, as
+    /// UPPER, LOWER, PROPER and CLEAN do (probes/text-lone-surrogates A31-A39). A lone unit is
+    /// no letter or space, so `f` never needs to see across it.
+    #[must_use]
+    pub fn map_runs(&self, f: impl Fn(&str) -> String) -> Text {
+        if !self.has_lone_surrogate() {
+            return Text::Utf8(f(self));
+        }
+        let mut units = Vec::new();
+        for segment in self.segments() {
+            match segment {
+                Segment::Str(s) => units.extend(f(s).encode_utf16()),
+                Segment::Lone(unit) => units.push(unit),
+            }
+        }
+        Text::from_utf16(units)
+    }
+
     /// The text as runs of well-formed text and lone units, in order.
     pub fn segments(&self) -> Segments<'_> {
         match self {

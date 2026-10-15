@@ -388,11 +388,22 @@ impl Model {
         // or more spaces to a single space. It must NOT touch tab (0x09),
         // non-breaking space (0xA0), or any other Unicode whitespace, so we
         // deliberately split on ' ' rather than using `str::trim`.
-        self.apply_text_unary(args, cell, |s| {
-            s.split(' ')
+        self.apply_text_unary_text(args, cell, |text| {
+            if !text.has_lone_surrogate() {
+                return Text::Utf8(
+                    text.split(' ')
+                        .filter(|w| !w.is_empty())
+                        .collect::<Vec<_>>()
+                        .join(" "),
+                );
+            }
+            // A lone surrogate is kept and is no space (probes/text-lone-surrogates A36, A37).
+            let units: Vec<u16> = text.units().collect();
+            let words: Vec<&[u16]> = units
+                .split(|&u| u == 0x20)
                 .filter(|w| !w.is_empty())
-                .collect::<Vec<_>>()
-                .join(" ")
+                .collect();
+            Text::from_utf16(words.join(&0x20u16))
         })
     }
 
@@ -410,19 +421,28 @@ impl Model {
         cell: CellReferenceIndex,
         f: impl Fn(&str) -> String,
     ) -> CalcResult {
+        self.apply_text_unary_text(args, cell, |text| text.map_runs(&f))
+    }
+
+    /// [`Model::apply_text_unary`] for a transform that reads the exact text, so it can keep a
+    /// lone surrogate.
+    pub(crate) fn apply_text_unary_text(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        f: impl Fn(&Text) -> Text,
+    ) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
         match self.get_string_or_array(&args[0], cell) {
-            Ok(crate::cast::StringOrArray::String(s)) => CalcResult::String(f(&s).into()),
+            Ok(crate::cast::StringOrArray::String(s)) => CalcResult::String(f(&s)),
             Ok(crate::cast::StringOrArray::Array(arr)) => CalcResult::Array(
                 arr.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|n| match crate::cast::array_node_to_string(n) {
-                                Ok(s) => {
-                                    crate::expressions::parser::ArrayNode::String(f(&s).into())
-                                }
+                            .map(|n| match crate::cast::array_node_to_text(n) {
+                                Ok(s) => crate::expressions::parser::ArrayNode::String(f(&s)),
                                 Err(e) => crate::expressions::parser::ArrayNode::Error(e),
                             })
                             .collect()
