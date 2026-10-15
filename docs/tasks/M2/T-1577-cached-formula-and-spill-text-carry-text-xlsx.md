@@ -3,7 +3,7 @@ id: T-1577
 title: "Cached formula and spill text carry Text; xlsx writer escapes lone units (SPEC-0010 step 3)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
