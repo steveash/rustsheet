@@ -1180,9 +1180,9 @@ Excel's ASIN is not odd: 31 ± pairs in the sweep differ in the last digit (`ASI
 Evidence: probes/asin-argument-sweep; gen-m6/2f6b96385ed3facd Calc!A38 (excel-graph, 2026-10-09, T-1239); gen-m7/0e40208f51c2454c
 Calc!A27 and gen-m7/cb748b6a9b81fbb7 Calc!A38 (excel-graph, 2026-10-11, T-1275).
 Ours: `atan(x/sqrt((1-x)*(1+x)))` since T-1259 (`fn_asin`, mathematical.rs). The gen-m6/gen-m7 cells pass; 35 sweep cells are known
-failures (T-1603). The result depends on the platform `atan` (glibc fits).
+failures (T-1605). The result depends on the platform `atan` (glibc fits).
 Status: VERIFIED (excel-graph); formulation PARTIAL
-Tasks: T-1259, T-1603
+Tasks: T-1259, T-1605
 
 ## MULTINOMIAL of a huge argument
 Rule: MULTINOMIAL is `#NUM!` once its arguments add up to more than 170, where `sum!` overflows a double. That holds

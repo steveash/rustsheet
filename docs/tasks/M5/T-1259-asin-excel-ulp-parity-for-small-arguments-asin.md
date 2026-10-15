@@ -45,6 +45,6 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
 - `fn_asin` is now `atan(x/sqrt((1-x)*(1+x)))` in doubles. It matches 233 of 268 sweep cells (libm `asin` matched 186) and fixes
   gen-m6/2f6b96385ed3facd A38, gen-m7/0e40208f51c2454c A27 and gen-m7/cb748b6a9b81fbb7 A38.
 - The x87 and extended-precision models never beat 233. They are recorded as negative results in numbers.md "ASIN of a small argument".
-  The 35 remaining cells are known failures for follow-up T-1603.
+  The 35 remaining cells are known failures for follow-up T-1605.
 - Eval delta: probes known failures 5579 → 5614 (+35 new coverage, all from the new sweep case); fixed 0 baselined cells; gen-m6 991 → 992,
   gen-m7 950 → 952; regressions 0 (ironcalc-calc ASIN cells unchanged).
