@@ -3,7 +3,7 @@ id: T-1410
 title: "TEXT lifts over an array or multi-cell range format_text"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ VALUETOTEXT already lifts its format (T-1229): reuse that lifting. Code: `fn_tex
 
 ## Out of scope
 -
+
+## Outcome
+No engine change needed: `fn_text` already lifts over an array or range of formats (landed earlier with the format-length-limit work), and gen-m9/89693ab0cafc29df A36 and gen-m9/95efb37a9874f82e A16 already pass (`#SPILL!`). Added the unit test `text_over_a_column_array_and_a_range_of_formats` (`ROWS(TEXT(1,{"0";"0.0"}))` = 2; a two-cell format range spills two results). Eval delta: none.
