@@ -157,7 +157,7 @@ Rule: when the 32,767-unit limit falls inside a surrogate pair, Excel keeps the 
 Evidence: probes/concatenate-limit-spill E8–E11 (excel-graph, 2026-10-06, T-0233).
 Ours: a Rust `String` cannot hold a lone surrogate, so `truncate_text` drops the straddling pair
 whole (32,766 units; E8–E11 stay known failures). A known gap, not a deviation (decision
-0052): T-1483.
+0052): SPEC-0010, T-1580, T-1581.
 Status: VERIFIED
 Implemented in: `truncate_text` in cast.rs
 Tasks: T-0233, T-1483

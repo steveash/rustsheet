@@ -6,8 +6,9 @@ Sweeps (excel-graph): probes-numeric/m9-fin-irr-rate (T-1009) and probes/solver-
 
 - `xirr`, `xirr-oos`: the fitted bracket-and-bisection model and its rejected variants (stop rule,
   midpoint order, the bound on the step test).
-- `irr`, `rate`: value-returning Newton candidates (k steps, or to convergence, in r, x = 1 + r and
-  v = 1/(1 + r)); none is Excel's method.
+- `irr`: the fitted secant in v = 1/(1 + r) (`irr_secant_v`, T-1533) and its rejected variants, and the
+  value-returning Newton candidates (k steps, or to convergence, in r, x = 1 + r and v).
+- `rate`: Newton candidates in r and IRR's secant applied to r (T-1533); none is Excel's method.
 - `yield-one-period`: the documented closed form with each day-count choice.
 - `yield`: basis-0 bonds with more than one coupon left: Newton, secant and regula falsi on PRICE.
 
@@ -27,6 +28,7 @@ from collections.abc import Callable
 from functools import partial
 from typing import NamedTuple
 
+from rustsheet_tools.fitlab.exact import X87
 from rustsheet_tools.fitlab.fit import Fit
 from rustsheet_tools.fitlab.score import Candidate, ExcelError, candidate
 from rustsheet_tools.fitlab.sweep import (
@@ -312,6 +314,69 @@ def irr_fd_v(h: float) -> IrrMethod:
     return method
 
 
+def _npv_v_over_x(values: list[float], v: float) -> float:
+    """NPV(v) as the sum of c_i / x^i with x = 1/v (x87-rounded divisions, numbers.md)."""
+    x = X87.div(1.0, v)
+    total = 0.0
+    for i, c in enumerate(values):
+        total += X87.div(c, rpow(x, i))
+    return total
+
+
+NpvV = Callable[[list[float], float], float]
+
+
+def irr_secant_v(
+    npv: NpvV = _npv_v_over_x,
+    offset: float = 1e-3,
+    tol: float = 1e-7,
+    residual: float | None = 1e-7,
+    max_steps: int = 50,
+    *,
+    retry: bool = True,
+    signed: bool = True,
+    trace: list[float] | None = None,
+) -> IrrMethod:
+    """Secant on NPV(v), v = 1/(1 + r), from v0 = 1/(1 + guess) and v1 = v0 + offset * sign(NPV(v0)).
+    It stops at the first iterate with |v_(n+1) - v_n| < tol and |NPV(v_(n+1))| < residual (None: no
+    residual test) and returns 1/v - 1 (`signed` False: always v0 + offset). A run that fails (no stop in `max_steps`, a flat secant, v <= 0)
+    is retried once from the default guess 0.1 when `retry`. `k` (the other methods' step count) is
+    ignored. Fitted on probes/solver-iteration-traces I (T-1533): the guess sweep follows the secant's
+    error law, signs included; the step test separates the returned iterate from the one before it at
+    1e-7 (the documented 0.00001 percent); the residual test is what makes IRR scale-dependent
+    ({-20,5,...} and {-20000000,5000000,...} differ); far guesses return the guess-0.1 value."""
+
+    def run(values: list[float], g: float) -> float:
+        div = X87.div
+        u0 = div(1.0, 1 + g)
+        f0 = npv(values, u0)
+        u1 = u0 + (offset if f0 > 0 or not signed else -offset)
+        f1 = npv(values, u1)
+        for _ in range(max_steps):
+            if f1 == f0:
+                raise NoResultError("flat secant")
+            u2 = u0 - div(f0 * (u1 - u0), f1 - f0)
+            if not math.isfinite(u2) or u2 <= 0:
+                raise NoResultError("iterate is not a discount factor")
+            f2 = npv(values, u2)
+            if trace is not None:
+                trace.append(div(1.0, u2) - 1)
+            if abs(u2 - u1) < tol and (residual is None or abs(f2) < residual):
+                return div(1.0, u2) - 1
+            u0, f0, u1, f1 = u1, f1, u2, f2
+        raise NoResultError(f"no convergence in {max_steps} steps")
+
+    def method(values: list[float], g: float, k: int | None) -> float:  # noqa: ARG001 - IrrMethod's step count
+        try:
+            return run(values, g)
+        except (NoResultError, ZeroDivisionError, OverflowError):
+            if not retry or g == 0.1:
+                raise
+            return run(values, 0.1)
+
+    return method
+
+
 def _irr(method: IrrMethod, k: int | None) -> Callable[..., float]:
     def call(values: Arg, guess: Arg = 0.1) -> float:
         return method(floats(values), numeric_arg(guess), k)
@@ -332,6 +397,22 @@ def irr_candidates() -> list[Candidate]:
     for name, method in methods.items():
         out += [candidate(f"{name}, {k} steps", _irr(method, k), name) for k in range(1, 9)]
         out.append(candidate(f"{name}, converged", _irr(method, None), name))
+    secants: dict[str, IrrMethod] = {
+        "secant in v, fitted": irr_secant_v(),
+        "secant in v, fitted, NPV by Horner": irr_secant_v(_npv_v),
+        "secant in v, no residual test": irr_secant_v(residual=None),
+        "secant in v, residual 1e-6": irr_secant_v(residual=1e-6),
+        "secant in v, residual 1e-8": irr_secant_v(residual=1e-8),
+        "secant in v, |dv| < 1e-6": irr_secant_v(tol=1e-6),
+        "secant in v, |dv| < 1e-8": irr_secant_v(tol=1e-8),
+        "secant in v, v1 = v0 +- 1e-4": irr_secant_v(offset=1e-4),
+        "secant in v, no retry": irr_secant_v(retry=False),
+        "secant in v, 20 steps": irr_secant_v(max_steps=20),
+        "secant in v, 35 steps": irr_secant_v(max_steps=35),
+        "secant in v, 1000 steps": irr_secant_v(max_steps=1000),
+        "secant in v, v1 = v0 + 1e-3 always": irr_secant_v(signed=False),
+    }
+    out += [candidate(name, _irr(method, None), "secant in v") for name, method in secants.items()]
     return out
 
 
@@ -380,8 +461,43 @@ def _rate(k: int | None, fd: float | None) -> Callable[..., float]:
     return call
 
 
+def _rate_secant(offset: float, tol: float, residual: float | None) -> Callable[..., float]:
+    """IRR's secant (T-1533) on `rate_f` in r: r1 = r0 + offset * sign(f(r0)), stop when |dr| < tol and
+    |f| < residual (None: no residual test), up to 100 steps. Rejected: at most 19/136."""
+
+    def call(*args: Arg) -> float:
+        full = [numeric_arg(x) for x in args] + [0.0, 0.0, 0.1][len(args) - 3 :]
+        a: Annuity = (full[0], full[1], full[2], full[3], full[4])
+        u0 = full[5]
+        f0 = rate_f(u0, a)
+        u1 = u0 + (offset if f0 > 0 else -offset)
+        f1 = rate_f(u1, a)
+        for _ in range(100):
+            if f1 == f0:
+                raise NoResultError("flat secant")
+            u2 = u0 - X87.div(f0 * (u1 - u0), f1 - f0)
+            if not math.isfinite(u2) or u2 <= -1:
+                raise NoResultError("iterate is not a rate")
+            f2 = rate_f(u2, a)
+            if abs(u2 - u1) < tol and (residual is None or abs(f2) < residual):
+                return u2
+            u0, f0, u1, f1 = u1, f1, u2, f2
+        raise NoResultError("no convergence in 100 steps")
+
+    return call
+
+
 def rate_candidates() -> list[Candidate]:
-    out = []
+    out = [
+        candidate(
+            f"secant in r, r1 = r0 {o:+g}*sign f, |dr| < {t:g}, |f| < {res}",
+            _rate_secant(o, t, res),
+            "secant",
+        )
+        for o in (1e-3, -1e-3, 1e-4)
+        for t in (1e-7, 1e-10)
+        for res in (None, 1e-7)
+    ]
     for label, fd in (("Newton in r", None), ("FD Newton in r, h=1e-8", 1e-8)):
         out += [candidate(f"{label}, {k} steps", _rate(k, fd), label) for k in range(1, 9)]
         out.append(candidate(f"{label}, converged", _rate(None, fd), label))
@@ -665,7 +781,7 @@ FITS = [
     ),
     Fit(
         name="irr",
-        description="IRR fit set: Newton k-step and converged candidates in r, x and v (none fits)",
+        description="IRR fit set: the fitted secant in v (T-1533) and its variants, Newton candidates in r, x and v",
         cases=FIT_CASES,
         pattern=r"^=IRR\((.*)\)$",
         candidates=irr_candidates,
@@ -673,7 +789,7 @@ FITS = [
     ),
     Fit(
         name="rate",
-        description="RATE literal cells of the fit set: Newton k-step and converged candidates (none fits)",
+        description="RATE literal cells of the fit set: Newton and secant candidates in r (none fits)",
         cases=FIT_CASES,
         pattern=r"^=RATE\((.*)\)$",
         candidates=rate_candidates,

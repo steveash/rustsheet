@@ -1,0 +1,27 @@
+---
+id: T-1578
+title: "Workbook::text_utf16, harness rendering and Python bindings for lone surrogates (SPEC-0010 step 4)"
+milestone: M2
+lane: api
+status: todo
+priority: P1
+size: S
+tier: sonnet
+depends_on: [T-1577]
+---
+
+## Goal
+A lone surrogate in a cell value reaches the public API, the eval harness and Python exactly.
+
+## Context
+docs/specs/SPEC-0010-text-with-lone-surrogates.md "Boundaries". `rustsheet::Value::Text(Arc<str>)` stays the lossy view; add `Workbook::text_utf16(r) -> Result<Option<Arc<[u16]>>, RefError>` (`Some` exactly when the value is text holding a lone surrogate). The harness (crates/rustsheet-eval/src/engine.rs) renders such text with the T-1577 helper's `_xHHHH_` form, matching the snapshot reader, which keeps an undecodable `_xDE00_` literally. The Python facade (bindings/python/src/facade.rs) builds the `str` from the units with `surrogatepass` when the lossy text contains U+FFFD and `text_utf16` is `Some`.
+
+## Acceptance criteria
+- [ ] `Workbook::text_utf16` with doc comment and unit test.
+- [ ] Harness renders lone units as `_xHHHH_` (unit test with a hand-built value).
+- [ ] Python test: a cell holding a lone U+DE00 reads back as `'\ude00'` in the `str`.
+- [ ] Zero eval delta (no engine function produces a lone surrogate yet).
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- Python or Rust *inputs* holding lone surrogates.
