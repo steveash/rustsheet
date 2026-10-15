@@ -298,8 +298,8 @@ AVERAGE's final division of the sum by the count rounds twice too, like `/`
 twice-rounded value; oracle: excel-graph, 2026-10-15, T-1619). For a 53-bit sum no count n <= 2048 can
 discriminate (the remainder fraction cannot come within half an extended ulp of a midpoint), so the
 count of 1025-2048 the task guessed is moot; counts 3001, 3333, 4001 gave no pick in our search.
-Implemented in `fn_average` with `arithmetic::extended_quotient`; AVERAGEA's and AVERAGEIF's divisions
-are UNVERIFIED (not probed).
+Implemented in `fn_average`, `fn_averagea`, the AVERAGEIFS closure and `subtotal_average` with `arithmetic::extended_quotient`.
+The same holds for AVERAGEA, AVERAGEIF, AVERAGEIFS, SUBTOTAL(1) and SUBTOTAL(101) (AGGREGATE(1) routes through AVERAGE): probes-numeric/average-family-large-count-division, 36 cells (the T-1619 columns at n = 2051, 2999, 4095, two each; excel-graph, 2026-10-15, T-1636): Excel gives the twice-rounded quotient for all of them. Ours divided once in AVERAGEA, AVERAGEIF(S) and SUBTOTAL (30 of 36 cells off by 1 ulp); fixed in T-1636. DAVERAGE rounds twice too (probes-numeric/daverage-large-count-division, 6 cells, the same columns with a header row and criterion `>=0`; excel-graph, 2026-10-15, T-1648: all 6 are the twice-rounded value). Ours divided once; fixed with `extended_quotient` in `fn_daverage`.
 Accumulators beyond SUM and AVERAGE (probes-numeric/double-rounding-accumulators, 56 cells; 8 operand
 sets a, b, c of at most 15 significant digits picked by exact simulation so that a+b is the same under
 single and double rounding but (a+b)+c is not; oracle: excel-graph, 2026-10-15, T-1516): `a+b+c`,
