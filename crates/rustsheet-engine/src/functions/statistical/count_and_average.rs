@@ -1,6 +1,6 @@
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, AggregateWalk, ArgReading, ArrayErrorRank, ArrayNumbers, CellNumbers,
-    DirectNumbers, ErrorRule, ItemSource, NumberRules,
+    AggregatePolicy, AggregateWalk, ArgReading, ArrayNumbers, CellNumbers, DirectNumbers,
+    ErrorRule, ItemSource, NumberRules,
 };
 use std::cmp::Ordering;
 
@@ -12,14 +12,13 @@ use crate::{
 };
 
 /// The AVERAGE family: a referenced error ranks below a direct scalar error whichever comes
-/// first, the leftmost reference error wins, and an array error returns at once
+/// first, and the leftmost of the referenced and array errors wins
 /// (docs/excel-semantics/syntax.md "Aggregate error precedence"; probes/aggregate-error-precedence
-/// C25-C31; the array rank is UNVERIFIED, T-1439).
+/// C25-C31; probes/aggregate-array-error-vs-ref-error for AVERAGE and MEDIAN, T-1615; the rest
+/// of the family is the same walker, UNVERIFIED).
 const AVERAGE_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
-    errors: ErrorRule::Ranked {
-        array_errors: ArrayErrorRank::Direct,
-    },
+    errors: ErrorRule::Ranked,
     skip_empty_args: false,
 };
 
@@ -33,9 +32,9 @@ const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
 
 /// AVERAGEA, MAXA and MINA rank errors as the AVERAGE family does: a scalar direct error beats a
 /// referenced one either way and the leftmost referenced error wins (probes/aggregate-picked-
-/// direct-a-variants D20-D27; the array rank is UNVERIFIED). The A rules' visitor errs on a
+/// direct-a-variants D20-D27; the array rank is as AVERAGE's, below, UNVERIFIED for these: T-1629). The A rules' visitor errs on a
 /// referenced cell holding a range ("Unexpected Range"), which returns at once, UNVERIFIED. An
-/// array error still returns at once (`ArrayErrorRank::Direct`, T-1439), as before.
+/// array error ranks with the referenced errors, as AVERAGE's does (T-1615).
 const A_ARGS: AggregatePolicy = AVERAGE_ARGS;
 
 /// The AVERAGE family's coercion: a direct number, boolean, text or empty argument counts, and

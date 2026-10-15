@@ -1,7 +1,5 @@
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ArrayErrorRank, ErrorRule, NumberRules,
-};
+use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
 
 use crate::{
     arithmetic::{extended_sum, snap_near_zero},
@@ -279,9 +277,7 @@ impl SumParts {
 /// C50, C53, C61, C77).
 const SUM_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
-    errors: ErrorRule::Ranked {
-        array_errors: ArrayErrorRank::Referenced,
-    },
+    errors: ErrorRule::Ranked,
     skip_empty_args: false,
 };
 
