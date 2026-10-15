@@ -29,6 +29,6 @@ Performance review of T-1549 (MINOR): `call_lambda_caller` (was `call_lambda_wit
 from a slice. REDUCE and SCAN pass `[accumulator, element]`, so the accumulator is moved into
 the LAMBDA each step; MAP drains its reused argument buffer; BYROW/BYCOL/MAKEARRAY pass arrays.
 Reading the parameter in the body still copies it once per step (the variable stack hands out
-clones), which is out of scope here. Timing (release, `=ROWS(REDUCE(0,SEQUENCE(3000),
+clones); follow-up T-1588. SCAN also still clones the accumulator once per step for its output slot (the slot and the next step each need a value; cheap for the scalar accumulators SCAN's slots hold). Timing (release, `=ROWS(REDUCE(0,SEQUENCE(3000),
 LAMBDA(a,x,VSTACK(a,x))))`, fastest of 5 recalcs): 269 ms before, 147 ms after. New test
 `reduce_with_an_array_accumulator`. Eval delta: none.
