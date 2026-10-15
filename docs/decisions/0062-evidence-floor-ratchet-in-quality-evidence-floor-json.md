@@ -23,6 +23,7 @@
   - The catalog view `eval/catalog/scope.json` gains each function's `category`, which groups
     the report's "Below the evidence floor" list.
 - **Consequences:** A PR that removes Excel-evidence cells or brings a function into scope
-  without probes fails CI. Probe PRs run `make eval-baseline` and commit the lower lock. The 73
+  without probes fails CI. Probe PRs run `make eval-baseline` and commit the lower lock, logging the drop as a
+  paydown line in decision 0010 (the decision record `check_governance.py` asks for). The 73
   functions are filed as research-lane probe batches T-1620..T-1628 (≤ 10 functions each).
   `make check` runs the vendored suites a second time (about 15 s locally).
