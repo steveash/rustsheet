@@ -182,7 +182,7 @@ fn find_search_substitute_split_pairs_with_a_lone_half() {
         (format!("=LEN(SUBSTITUTE(\"a\"&{h}&\"b\"&{h},{h},\"-\",2))"), "4"),
         // Instances overlap, as in the well-formed path: the 2nd "aa" of "aaa" starts at 2.
         (format!("=SUBSTITUTE(\"aaa\"&{h},\"aa\",\"x\",2)=\"ax\"&{h}"), "TRUE"),
-        (format!("=SUBSTITUTE(\"aaa\",\"aa\",\"x\",2)"), "ax"),
+        ("=SUBSTITUTE(\"aaa\",\"aa\",\"x\",2)".to_string(), "ax"),
     ];
     for (formula, expected) in cases {
         let mut model = new_empty_model();
