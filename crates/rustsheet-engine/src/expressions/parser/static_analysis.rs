@@ -327,6 +327,7 @@ fn static_analysis_op_results(lhs: StaticResult, rhs: StaticResult) -> StaticRes
         (StaticResult::Scalar, StaticResult::Scalar) => StaticResult::Scalar,
         (_, StaticResult::Unknown) | (StaticResult::Unknown, _) => StaticResult::Unknown,
         (lhs, rhs) => {
+            // A scalar operand counts as 1x1.
             let (a1, b1) = lhs.counts().unwrap_or((1, 1));
             let (a2, b2) = rhs.counts().unwrap_or((1, 1));
             StaticResult::Array(a1.max(a2), b1.max(b2))
@@ -337,7 +338,7 @@ fn static_analysis_op_results(lhs: StaticResult, rhs: StaticResult) -> StaticRes
 // Returns:
 //  * Scalar if we can proof the result of the evaluation is a scalar
 //  * Array(a, b) if we know it will be an a x b array.
-//  * Range(a, b) if we know it will be a a x b range.
+//  * Range(a, b) if we know it will be an (a + 1) x (b + 1) range (extents, see StaticResult).
 //  * Unknown if we cannot guaranty either
 pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
     match node {
@@ -407,6 +408,7 @@ fn broadcast_static_result<'a>(args: impl IntoIterator<Item = &'a Node>) -> Stat
         match run_static_analysis_on_node(arg) {
             StaticResult::Scalar | StaticResult::Range(0, 0) => {}
             StaticResult::Unknown => return StaticResult::Unknown,
+            // An array or a multi-cell range (`counts` is never `None` here).
             other => {
                 let (a, b) = other.counts().unwrap_or((1, 1));
                 let (n, m) = shape.unwrap_or((0, 0));
