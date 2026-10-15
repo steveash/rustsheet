@@ -138,15 +138,18 @@ impl Model {
     }
 
     /// One call of `caller` with `values` (`provided` of them; optional parameters not covered
-    /// receive `EmptyArg`).
+    /// receive `EmptyArg`). The values are moved into the parameters, not copied, so REDUCE and
+    /// SCAN hand their accumulator (possibly a large array) to each step without a deep copy.
     pub(crate) fn call_lambda_caller(
         &mut self,
         caller: &mut LambdaCaller,
-        values: &[CalcResult],
+        values: impl IntoIterator<Item = CalcResult>,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.call_prepared(caller, cell, |_, i| {
-            Binding::Value(values.get(i).cloned().unwrap_or(CalcResult::EmptyArg))
+        // `call_prepared` binds the parameters in order, so the i-th call takes the i-th value.
+        let mut values = values.into_iter();
+        self.call_prepared(caller, cell, |_, _| {
+            Binding::Value(values.next().unwrap_or(CalcResult::EmptyArg))
         })
     }
 
@@ -164,11 +167,12 @@ impl Model {
         })
     }
 
-    /// Binds parameter `i` to `bind(i)` and evaluates the patched body. The body is reused while
-    /// no LAMBDA has been created since it was patched: a LAMBDA made by the body
-    /// (`LAMBDA(x,LAMBDA(y,x+y))`) holds the parameter ids, so the next call patches a fresh copy
-    /// with fresh ids, as every call did before T-1560. (`last_lambda_id` only grows during an
-    /// evaluation; `clear_lambdas` resets it between evaluations, when no caller is alive.)
+    /// Binds parameter `i` to `bind(i)`, once for each `i` in order (`call_lambda_caller` relies
+    /// on that), and evaluates the patched body. The body is reused while no LAMBDA has been
+    /// created since it was patched: a LAMBDA made by the body (`LAMBDA(x,LAMBDA(y,x+y))`) holds
+    /// the parameter ids, so the next call patches a fresh copy with fresh ids, as every call did
+    /// before T-1560. (`last_lambda_id` only grows during an evaluation; `clear_lambdas` resets
+    /// it between evaluations, when no caller is alive.)
     fn call_prepared(
         &mut self,
         caller: &mut LambdaCaller,

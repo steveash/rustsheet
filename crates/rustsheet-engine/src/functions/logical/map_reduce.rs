@@ -68,7 +68,7 @@ impl Model {
             for (j, slot) in result_row.iter_mut().enumerate() {
                 values.clear();
                 values.extend(arrays.iter().map(|arr| arr.at(i, j)));
-                let cell_result = self.call_lambda_caller(&mut caller, &values, cell);
+                let cell_result = self.call_lambda_caller(&mut caller, values.drain(..), cell);
                 let cell_result = self.lambda_result_value(cell_result, cell);
                 *slot = calc_result_to_array_node(cell_result);
             }
@@ -124,7 +124,7 @@ impl Model {
         for index in start..count {
             accumulator = self.call_lambda_caller(
                 &mut caller,
-                &[accumulator, data.at(index / columns, index % columns)],
+                [accumulator, data.at(index / columns, index % columns)],
                 cell,
             );
             if accumulator.is_error() {

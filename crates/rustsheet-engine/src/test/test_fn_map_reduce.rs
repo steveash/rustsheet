@@ -244,3 +244,24 @@ fn map_wrong_lambda_arity_is_value_in_every_element() {
     assert_eq!(model._get_text("B1"), "#VALUE!");
     assert_eq!(model._get_text("B2"), "#VALUE!");
 }
+
+#[test]
+fn reduce_with_an_array_accumulator() {
+    // Each step moves the growing accumulator into the LAMBDA (T-1561).
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=REDUCE(0, SEQUENCE(3), LAMBDA(a, x, VSTACK(a, x * 10)))",
+    );
+    model._set(
+        "B1",
+        "=ROWS(REDUCE(0, SEQUENCE(500), LAMBDA(a, x, VSTACK(a, x))))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0");
+    assert_eq!(model._get_text("A2"), "10");
+    assert_eq!(model._get_text("A3"), "20");
+    assert_eq!(model._get_text("A4"), "30");
+    assert_eq!(model._get_text("A5"), "");
+    assert_eq!(model._get_text("B1"), "501");
+}
