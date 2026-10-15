@@ -3,7 +3,7 @@ id: T-1570
 title: "Probe FILTERXML with an error only in the second argument and with errors in both"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ T-1255 propagates the first error left to right; only the first-argument case is
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/filterxml-error-arguments` filled from excel-graph: second-argument errors propagate and
+the first error wins left to right, exactly as the engine already did. No engine change; web.md and the
+test comments now cite the oracle. Eval delta: none (probe cases carry no expected cells).

@@ -216,6 +216,7 @@ C	probes/external-ref-no-link.case.json	10
 C	probes/fact-large-arguments.case.json	18
 C	probes/fact-product-order-sweep.case.json	420
 C	probes/filter-if-empty-array.case.json	12
+C	probes/filterxml-error-arguments.case.json	6
 C	probes/fin-argument-modes.case.json	386
 C	probes/forecast-ets-longer-series.case.json	42
 C	probes/format-doubled-quotes.case.json	11

@@ -9,9 +9,10 @@ results on Mac; what desktop Excel on Windows returns is not yet measured.
 Evidence: probes/catalog/function-name-forms A7 (ERROR.TYPE 3 = #VALUE!); probes/catalog/availability-14
 A7 (`FILTERXML($Z$1,$Z$1)` is recognised, not #NAME?) (oracle: excel-graph, 2026-10-07, T-0040).
 Quirk: an error in the first argument propagates instead of the `#VALUE!` (gen-m6/abcfd9979f316267 A9
-`FILTERXML(D4&NA(),..)` is `#N/A`; gen-m7/4629e931955aa4b8 A34 gives DROP's `#CALC!`). UNPROBED: an error only in the
-second argument, and which error wins when both are errors (ours: left to right, first wins; no oracle cell separates
-these from a plain `#VALUE!`; probe filed as a task).
+`FILTERXML(D4&NA(),..)` is `#N/A`; gen-m7/4629e931955aa4b8 A34 gives DROP's `#CALC!`). An error only in the second argument propagates too
+(`FILTERXML("x",NA())` is `#N/A`), and with errors in both the first argument wins, left to right
+(`FILTERXML(1/0,NA())` is `#DIV/0!`, `FILTERXML(NA(),1/0)` is `#N/A`).
+Evidence: probes/filterxml-error-arguments A1:A6 (oracle: excel-graph, 2026-10-15, T-1570).
 Whether an array argument lifts is unprobed; ours gives one scalar `#VALUE!`.
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 Implemented in: crates/rustsheet-engine/src/functions/text/filterxml.rs (T-1255, decision 0039); no XML is parsed.

@@ -1,0 +1,23 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FILTERXML with an error only in the second argument, and with errors in both (T-1570, follow-up of T-1255)",
+  "tags": [
+    "M5",
+    "web",
+    "filterxml",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=FILTERXML(\"x\",NA())",
+        "A2": "=FILTERXML(1/0,NA())",
+        "A3": "=FILTERXML(NA(),1/0)",
+        "A4": "=ERROR.TYPE(FILTERXML(\"x\",NA()))",
+        "A5": "=ERROR.TYPE(FILTERXML(1/0,NA()))",
+        "A6": "=ERROR.TYPE(FILTERXML(NA(),1/0))"
+      }
+    }
+  ]
+}
