@@ -27,8 +27,10 @@ use itertools::Itertools;
 use rustsheet_engine::{
     expressions::{
         parser::{
-            static_analysis::StaticResult,
-            stringify::{to_excel_array_formula_string, to_excel_string},
+            static_analysis::{
+                add_implicit_intersection, remove_redundant_implicit_intersection, StaticResult,
+            },
+            stringify::{to_excel_array_formula_string, to_excel_string, to_rc_format},
             Node,
         },
         token::Error,
@@ -192,6 +194,20 @@ fn get_formula_attribute(
     escape_xml(formula).to_string()
 }
 
+/// Whether reading the stored text of `node` as a legacy formula would change it: a plain `<f>` is
+/// read by Excel and by the import with [`add_implicit_intersection`], which can add an `@` the
+/// formula does not have (`=SUM(B1:B6+0)` would become `=SUM(@B1:B6+0)`). Such a formula is
+/// saved as a one-cell dynamic array instead, as Excel saves it (T-1552).
+///
+/// The text a plain `<f>` holds ([`remove_redundant_implicit_intersection`]) is read back and
+/// compared with `node` in RC form, which does not print the `automatic` flag of an `@`.
+fn legacy_reading_intersects(node: &Node) -> bool {
+    let mut legacy = node.clone();
+    remove_redundant_implicit_intersection(&mut legacy, true);
+    add_implicit_intersection(&mut legacy, true);
+    to_rc_format(&legacy) != to_rc_format(node)
+}
+
 pub(crate) fn get_worksheet_xml(
     worksheet: &Worksheet,
     parsed_formulas: &[(std::sync::Arc<Node>, StaticResult)],
@@ -239,6 +255,11 @@ pub(crate) fn get_worksheet_xml(
     row_indices.sort_unstable();
     row_indices.dedup();
 
+    // Per shared formula, whether a legacy reading of it would add an `@` (T-1552).
+    let legacy_reading: Vec<bool> = parsed_formulas
+        .iter()
+        .map(|(node, _)| legacy_reading_intersects(node))
+        .collect();
     for row_index in row_indices {
         let mut row_data_str: Vec<String> = vec![];
         for (column_index, cell) in worksheet.sheet_data.cells_in_row(row_index) {
@@ -253,6 +274,22 @@ pub(crate) fn get_worksheet_xml(
             };
             let column_name = number_to_column(column_index).unwrap();
             let cell_name = format!("{column_name}{row_index}");
+            // The `cm` attribute and `<f>` element of a cell's (non-array) formula. One a legacy
+            // reading would intersect is saved as a one-cell dynamic array, as Excel saves it
+            // (calc_tests/LOOKUP_AND_REFERENCE/ROW_COLUM.xlsx sheet6 F3 `SUM(ROW(C2:C4))`, T-1552).
+            let plain_formula = |f: i32| {
+                let node = &parsed_formulas[f as usize].0;
+                if legacy_reading[f as usize] {
+                    let formula = formula_attribute(node, to_excel_array_formula_string);
+                    (
+                        r#" cm="1""#,
+                        format!(r#"<f t="array" ref="{cell_name}">{formula}</f>"#),
+                    )
+                } else {
+                    let formula = formula_attribute(node, to_excel_string);
+                    ("", format!("<f>{formula}</f>"))
+                }
+            };
             match cell {
                 Cell::EmptyCell { s } => {
                     // they only hold the style
@@ -333,11 +370,10 @@ pub(crate) fn get_worksheet_xml(
                     //   <v>1</v>
                     // </c>
                     let style = get_cell_style_attribute(*s);
-                    let formula =
-                        formula_attribute(&parsed_formulas[*f as usize].0, to_excel_string);
+                    let (cm, formula) = plain_formula(*f);
                     let b = i32::from(*v);
                     row_data_str.push(format!(
-                        "<c r=\"{cell_name}\" t=\"b\"{style}><f>{formula}</f><v>{b}</v></c>"
+                        "<c r=\"{cell_name}\" t=\"b\"{style}{cm}>{formula}<v>{b}</v></c>"
                     ));
                 }
                 Cell::CellFormula {
@@ -350,11 +386,10 @@ pub(crate) fn get_worksheet_xml(
                     //   <f>A5+C3</f>
                     //   <v>123</v>
                     // </c>
-                    let formula =
-                        formula_attribute(&parsed_formulas[*f as usize].0, to_excel_string);
+                    let (cm, formula) = plain_formula(*f);
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
-                        "<c r=\"{cell_name}\"{style}><f>{formula}</f><v>{v}</v></c>"
+                        "<c r=\"{cell_name}\"{style}{cm}>{formula}<v>{v}</v></c>"
                     ));
                 }
                 Cell::CellFormula {
@@ -366,12 +401,11 @@ pub(crate) fn get_worksheet_xml(
                     //   <f>CONCATENATE(A1, A2)</f>
                     //   <v>Hello world!</v>
                     // </c>
-                    let formula =
-                        formula_attribute(&parsed_formulas[*f as usize].0, to_excel_string);
+                    let (cm, formula) = plain_formula(*f);
                     let style = get_cell_style_attribute(*s);
                     let escaped_v = escape_text(v);
                     row_data_str.push(format!(
-                        "<c r=\"{cell_name}\" t=\"str\"{style}><f>{formula}</f><v>{escaped_v}</v></c>"
+                        "<c r=\"{cell_name}\" t=\"str\"{style}{cm}>{formula}<v>{escaped_v}</v></c>"
                     ));
                 }
                 Cell::CellFormula {
@@ -383,11 +417,10 @@ pub(crate) fn get_worksheet_xml(
                     //   <f>A1/A3<f/>
                     //   <v>#DIV/0!</v>
                     // </c>
-                    let formula =
-                        formula_attribute(&parsed_formulas[*f as usize].0, to_excel_string);
+                    let (cm, formula) = plain_formula(*f);
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
-                        "<c r=\"{cell_name}\" t=\"e\"{style}{vm}><f>{formula}</f><v>{ei}</v></c>",
+                        "<c r=\"{cell_name}\" t=\"e\"{style}{cm}{vm}>{formula}<v>{ei}</v></c>",
                         ei = exported_error_literal(ei),
                         vm = vm_attribute(ei)
                     ));
