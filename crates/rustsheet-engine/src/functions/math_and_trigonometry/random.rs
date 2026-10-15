@@ -26,7 +26,8 @@ impl Model {
 
     /// `=RANDBETWEEN(bottom, top)`. Excel compares the raw bounds, draws a whole number from
     /// `CEILING(bottom)` to `FLOOR(top)` (`CEILING(bottom)` when that range is empty), rejects
-    /// booleans and treats an omitted bound (`RANDBETWEEN(,5)`, `(5,)`, `(,)`) as `#N/A` (docs/excel-semantics/numbers.md
+    /// booleans and treats an omitted bound (`RANDBETWEEN(,5)`, `(5,)`, `(,)`)
+    /// as `#N/A` (docs/excel-semantics/numbers.md
     /// "RANDBETWEEN and RANDARRAY argument checks", probes/volatile-invariant).
     pub(crate) fn fn_randbetween(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
@@ -205,7 +206,8 @@ impl Model {
                 let r = random();
                 let span = max - min + 1.0;
                 // Excel: a span that overflows a double still draws a finite value in range
-                // (probes/randbetween-huge-span B2:B3, B14:B15), so interpolate instead.
+                // (probes/randbetween-huge-span B2:B3, B14:B15), so interpolate instead. Whether such a
+                // value is a whole number with `whole_number` TRUE is unprobed at this scale.
                 let val = if !span.is_finite() {
                     min * (1.0 - r) + max * r
                 } else if whole_number {
