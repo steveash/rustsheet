@@ -460,7 +460,18 @@ shared earlier iterate that does not depend on frequency or redemption: 0.055234
 (frequency 2) and S!F1 (frequency 1), within 2e-9 of it for S!E10 (redemption 100.5), and about 0.133352 for
 Y!C2, D2 and E2 (price 50, frequencies 2, 4 and 1). It is not 0, 0.1, the coupon rate, the current yield,
 (C + (100 - P)/n)/((100 + P)/2) or an annual-coupon IRR. Newton with that residual stop from 0, the coupon rate
-or the current yield (lab family "Newton, residual") reaches at most 3/90 bit-exact. T-1592 fits the start.
+or the current yield (lab family "Newton, residual") reaches at most 3/90 bit-exact.
+T-1592 (lab `newton_back_chain`): the shared iterate is 0.05523446268 for S!A1 and 0.05523446267 for S!F1,
+the same to 1.1e-11 although the two bonds have different frequencies and coupon counts, and about 1.4e-6 below
+S!A1's root. S!E10 (redemption 100.5, root 0.05628) reaches 0.0552344604 two steps back; three steps back,
+Y!C2, D2 and E2 (price 50) reach 0.1333515 to 0.1333516, and Y!C3 and E3 (price 60) reach 0.1122589 and 0.1122579. So the start looks
+like an iterate of an earlier phase that ends close to the redemption-100 root, not a closed form of the inputs.
+Rejected as that start: Newton with the residual stop from the approximate yield
+(C + (red - P)/T)/((red + P)/2), T = coupons left / f, 1/90 bit-exact and 1/90 within 4 ulp (lab fit). Rejected
+analytically, not as lab fits (so with no per-cell counts): solving for the T that makes each
+of these families give the shared iterates of S!A1 (4.33 years), Y!C2:E2 (price 50) and Y!C3, E3 (price 60,
+both 10.33 years) gives no consistent T: annual or semi-annual annuities over a continuous T, continuous
+compounding, and the approximate yield over (red + P)/2, P or (red + 2P)/3.
 Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
 Status: UNVERIFIED (the algorithm); the values are excel-graph
 Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592

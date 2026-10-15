@@ -762,11 +762,49 @@ def _newton_yield_residual(start: Callable[[Bond, float], float], tol: float) ->
     return call
 
 
+def _approximate_yield(bond: Bond, pr: float) -> float:
+    """The textbook approximate yield (C + (red - P)/T) / ((red + P)/2), T = coupons left / f."""
+    rate, red, freq, _, _, _, n = bond
+    years = n / freq
+    return (100 * rate + (red - pr) / years) / ((red + pr) / 2)
+
+
 YIELD_STARTS: dict[str, Callable[[Bond, float], float]] = {
     "0": lambda _bond, _pr: 0.0,
     "the coupon rate": lambda bond, _pr: bond[0],
     "the current yield (rate * 100 / pr)": lambda bond, pr: bond[0] * 100 / pr,
+    "the approximate yield (T-1592)": _approximate_yield,
 }
+
+
+def newton_back_chain(cell_args: tuple[Arg, ...], y: float, steps: int) -> list[float]:
+    """Excel's YIELD value `y` and up to `steps` earlier analytic-Newton iterates on PRICE(y) - pr:
+    each x < y with x - (PRICE(x) - pr)/PRICE'(x) = y, found by bisection on [y - 0.5, y]
+    (T-1592). The bisection assumes the Newton map increases on that bracket, which holds near the
+    root because PRICE is convex and decreasing in the yield; a step stops early when the bracket's low
+    end already maps above `y`. Precision falls with each step back (Newton's error squares going
+    forward)."""
+    price_of, bond, pr = _bond_price(cell_args)
+
+    def newton(x: float) -> float:
+        return x - (price_of(x) - pr) / dprice(x, bond)
+
+    chain = [y]
+    for _ in range(steps):
+        lo, hi = y - 0.5, y
+        if newton(lo) > y:
+            break
+        for _ in range(200):
+            mid = (lo + hi) / 2
+            if mid in (lo, hi):
+                break
+            if newton(mid) < y:
+                lo = mid
+            else:
+                hi = mid
+        y = lo
+        chain.append(y)
+    return chain
 
 
 def _secant_yield(tol: float) -> Callable[..., float]:
