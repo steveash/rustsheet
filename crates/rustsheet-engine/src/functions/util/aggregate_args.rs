@@ -399,15 +399,14 @@ impl Model {
             (DirectNumbers::CastScalars, CalcResult::EmptyArg) => Ok(Some(0.0)),
             // A direct LAMBDA is #VALUE!, not skipped, for AVERAGE and MEDIAN (probes/
             // aggregate-picked-direct-a-variants D11, D12), and so is the rest of the family
-            // (probes/aggregate-direct-lambda-average-family D1-D12; docs/excel-semantics/syntax.md).
+            // (probes/aggregate-direct-lambda-average-family D1-D12; docs/excel-semantics/syntax.md)
+            // and the A variants AVERAGEA, MAXA and MINA, ranked with the referenced errors
+            // (probes/aggregate-array-error-vs-ref-error-average-family D73-D87, T-1629).
             (
                 DirectNumbers::CastScalars,
                 value @ (CalcResult::String(_) | CalcResult::Lambda(_)),
-            ) => self.cast_aggregate_arg_to_number(value, cell).map(Some),
-            // The A variants too: AVERAGEA, MAXA and MINA give #VALUE! for a direct LAMBDA, ranked
-            // with the referenced errors (probes/aggregate-array-error-vs-ref-error-average-family
-            // D73-D87, excel-graph 2026-10-15, T-1629).
-            (DirectNumbers::CastA, value @ CalcResult::Lambda(_)) => {
+            )
+            | (DirectNumbers::CastA, value @ CalcResult::Lambda(_)) => {
                 self.cast_aggregate_arg_to_number(value, cell).map(Some)
             }
             (DirectNumbers::CastA, CalcResult::String(text)) => {
