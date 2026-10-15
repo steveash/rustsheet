@@ -482,3 +482,22 @@ fn text_order_puts_nbsp_right_after_space() {
     assert_eq!(model._get_text("C5"), *"TRUE");
     assert_eq!(model._get_text("C6"), *"FALSE");
 }
+
+/// T-1594: text `=` and `<>` criteria use the collation of `=` (probes/text-collation-lookups K1-K12):
+/// `"ae"` matches "æ", `"a-e"` is not "ae".
+#[test]
+fn test_text_equality_criteria_use_collation() {
+    let text = |s: &str| CalcResult::String(s.into());
+    for criterion in ["ae", "=ae", "æ", "AE"] {
+        let c = text(criterion);
+        let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
+        assert!(fn_criteria(&text("æ")), "{criterion}");
+        assert!(fn_criteria(&text("ae")), "{criterion}");
+        assert!(!fn_criteria(&text("a-e")), "{criterion}");
+    }
+    let c = text("<>ae");
+    let not_ae = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
+    assert!(!not_ae(&text("æ")));
+    assert!(!not_ae(&text("ae")));
+    assert!(not_ae(&text("a-e")));
+}
