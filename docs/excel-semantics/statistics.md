@@ -293,6 +293,7 @@ reference, and ranks like a one-element non-reference array, in one cell with no
 `#DIV/0!` (the element's error); RANK.EQ and RANK.AVG agree. `@` of a picked reference stays one: `RANK(5,@IF(TRUE,A1:A30))` in row 28
 ranks against blank A28 (`#N/A`), and `RANK(5,@IF(TRUE,A1:B2))` off the range is `#VALUE!`. Ours: matches since T-1596 (before, the
 whole 2x2 reached a cell static analysis took for a scalar, a fuzz crash).
+An `@`-prefixed scalar literal (`RANK(5,@5)`, `@"5"`, `@TRUE`) is `#VALUE!` in our engine by the same rule, unlike the bare literal; UNVERIFIED (not probed).
 Status: VERIFIED (excel-graph); literal arguments UNVERIFIED
 Tasks: T-1152, T-1203, T-1208, T-1215, T-1303, T-1596
 

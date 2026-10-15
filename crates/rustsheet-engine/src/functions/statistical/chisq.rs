@@ -414,7 +414,13 @@ impl Model {
                     })
             }
             CalcResult::Range { left, right } => self.values_from_range(left, right),
-            CalcResult::Boolean(_) | CalcResult::Number(_) | CalcResult::String(_) if at_value => {
+            CalcResult::Boolean(_)
+            | CalcResult::Number(_)
+            | CalcResult::String(_)
+            | CalcResult::EmptyCell
+            | CalcResult::EmptyArg
+                if at_value =>
+            {
                 unsupported(Error::VALUE)
             }
             // A cell holding a scalar is a reference the function cannot rank (#NUM!); the same
