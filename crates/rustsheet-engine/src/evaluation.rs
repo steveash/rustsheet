@@ -1036,7 +1036,8 @@ impl Model {
     /// The readers are listed in the order of the writes that contradict them,
     /// cell records first, then rectangles; the rectangles are each met once,
     /// at their first cell written, so the check costs the cells plus the
-    /// rectangles, not their product (T-1512).
+    /// rectangles, not their product (T-1512); only the rectangles filed in row bands over the
+    /// spill are met at all (T-1545).
     pub(crate) fn spill_contradicts_a_read(
         &mut self,
         anchor: CellReferenceIndex,
@@ -1050,17 +1051,11 @@ impl Model {
         let (width, height) = area;
         let seen = &self.evaluation.seen;
         // An area of one cell writes nothing: the clear-only check skips the rectangles.
-        let mut by_ranges: Vec<((i32, i32), CellReferenceIndex)> = if width <= 1 && height <= 1 {
+        let by_ranges = if width <= 1 && height <= 1 {
             Vec::new()
         } else {
-            self.evaluation
-                .seen_ranges
-                .iter()
-                .filter_map(|range| Some((range.first_cell_written(anchor, area)?, range.root)))
-                .collect()
+            self.evaluation.seen_ranges.written_by_spill(anchor, area)
         };
-        // Stable: rectangles first written at the same cell keep the order they were read in.
-        by_ranges.sort_by_key(|(cell, _)| *cell);
         let contradicted_by_writes: Vec<CellReferenceIndex> = (row..row + height)
             .flat_map(|r| (column..column + width).map(move |c| (sheet, r, c)))
             .filter(|&(_, r, c)| (r, c) != (row, column))
