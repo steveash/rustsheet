@@ -1,17 +1,13 @@
 use crate::arithmetic::{extended_product, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ArrayErrorRank, ErrorRule, NumberRules,
-};
+use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// PRODUCT: a referenced-cell or in-array error ranks below a direct scalar error; the leftmost
 /// wins (probes/aggregate-error-precedence C1-C8, probes/product-array-2d-and-scalar A8-A17).
 const PRODUCT_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
-    errors: ErrorRule::Ranked {
-        array_errors: ArrayErrorRank::Referenced,
-    },
+    errors: ErrorRule::Ranked,
     skip_empty_args: false,
 };
 

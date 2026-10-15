@@ -13,6 +13,7 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
 | Lint debt | `scripts/check_lint_debt.py` | per-crate `LINT-DEBT` allow-lists (inherited from the fork) may only shrink; locked in `quality/lint-debt.json` |
 | Rust tests | `make test` | all pass |
 | **Excel compatibility** | `make eval-check` | no regressions against `eval/baseline/*.txt` (known failures); baseline must be up to date |
+| Evidence floor | `make evidence-floor` | in-scope, oracle-evaluable functions with fewer than 20 Excel-evidence cells may not increase; `quality/evidence-floor.json` (decision 0062) |
 | Python tools | `make py-check` | ruff, mypy `--strict`, pytest |
 | Python bindings | `make py-bindings` | maturin build + pytest |
 | Duplication | `scripts/check_duplication.py` | duplicated lines (10-line normalized windows) may not increase; `quality/duplication.json` |
@@ -43,6 +44,12 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
   - Changing the file is a protected change (`scripts/check_governance.py` asks for a decision
     record): the DEVIATION entry lands in the same PR, and the
     Excel-fidelity reviewer confirms the limit is a directive-5 limit.
+- **Evidence floor** (`quality/evidence-floor.json`, decision 0062): `rustsheet-eval
+  evidence-floor` runs the vendored suites (fetched external suites do not count) and counts the
+  in-scope catalog functions the oracle can evaluate with fewer than 20 Excel-evidence cells. It
+  fails when the count rises and when it falls without the lock being updated; `make
+  eval-baseline` records a drop. Recording a rise needs `--update --allow-increase` and a
+  decision record (for example, when the catalog brings functions into scope).
 - **Lint debt / duplication / oversized files:** the scripts fail on increases. When you reduce
   them, run the script with `--update` and commit the JSON in the same PR.
 

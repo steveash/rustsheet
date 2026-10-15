@@ -8,6 +8,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
+use crate::evidence_floor::{self, below_floor, BelowFloor, EVIDENCE_FLOOR};
 use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
 use crate::probe_milestones::{self, MilestoneRow};
@@ -103,9 +104,6 @@ pub struct FunctionStat {
     pub passed: usize,
     pub verdicts: BTreeMap<Verdict, usize>,
 }
-
-/// Below this many Excel-evidence cells a function's pass rate says little (T-0020).
-pub const EVIDENCE_THRESHOLD: usize = 25;
 
 /// Scored cells with Excel-sourced expectations that call one function.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -214,6 +212,10 @@ pub struct RunReport {
     /// must come from another source.
     #[serde(default)]
     pub needs_other_evidence: Vec<String>,
+    /// In-scope catalog functions the oracle can evaluate with fewer than [`EVIDENCE_FLOOR`]
+    /// Excel cells, by category (T-0056).
+    #[serde(default)]
+    pub below_floor: Vec<BelowFloor>,
     /// Out-of-scope catalog functions, kept out of every parity count above.
     #[serde(default)]
     pub out_of_scope: Vec<OutOfScope>,
@@ -314,6 +316,7 @@ impl RunReport {
             })
             .collect();
         let lists = CatalogLists::build(catalog, implemented, &evidence, &out);
+        let below_floor = below_floor(catalog, &evidence);
         let mut evidence: Vec<FunctionEvidence> = evidence.into_values().collect();
         evidence.sort_by(|a, b| a.cells.cmp(&b.cells).then_with(|| a.name.cmp(&b.name)));
         RunReport {
@@ -326,6 +329,7 @@ impl RunReport {
             unevidenced: lists.unevidenced,
             catalog_unevidenced: lists.catalog_unevidenced,
             needs_other_evidence: lists.needs_other_evidence,
+            below_floor,
             out_of_scope: lists.out_of_scope,
             milestone_lists: Vec::new(),
             probe_milestones: Vec::new(),
@@ -339,10 +343,10 @@ impl RunReport {
         let thin = self
             .evidence
             .iter()
-            .filter(|f| f.cells < EVIDENCE_THRESHOLD)
+            .filter(|f| f.cells < EVIDENCE_FLOOR)
             .count();
         format!(
-            "Excel evidence: {} functions with ≥{EVIDENCE_THRESHOLD} oracle/cached cells, {thin} with fewer, {} implemented with none, {} in-scope catalog functions with none",
+            "Excel evidence: {} functions with ≥{EVIDENCE_FLOOR} oracle/cached cells, {thin} with fewer, {} implemented with none, {} in-scope catalog functions with none",
             self.evidence.len() - thin,
             self.unevidenced.len(),
             self.catalog_unevidenced.len()
@@ -372,18 +376,16 @@ impl RunReport {
                 let _ = writeln!(md, "{title} ({}): {}\n", names.len(), names.join(", "));
             }
         }
+        evidence_floor::write_markdown(md, &self.below_floor);
+        let _ = writeln!(md);
         let _ = writeln!(
             md,
-            "| function | Excel cells | suites | below {EVIDENCE_THRESHOLD} |"
+            "| function | Excel cells | suites | below {EVIDENCE_FLOOR} |"
         );
         let _ = writeln!(md, "|---|---|---|---|");
         for f in &self.evidence {
             let suites: Vec<&str> = f.suites.iter().map(String::as_str).collect();
-            let flag = if f.cells < EVIDENCE_THRESHOLD {
-                "yes"
-            } else {
-                ""
-            };
+            let flag = if f.cells < EVIDENCE_FLOOR { "yes" } else { "" };
             let _ = writeln!(
                 md,
                 "| {} | {} | {} | {flag} |",
@@ -766,7 +768,7 @@ mod tests {
         );
         assert_eq!(report.unevidenced, ["IF", "TRIM"]);
         let md = report.to_markdown(1);
-        assert!(md.contains("Excel evidence: 0 functions with ≥25 oracle/cached cells, 3 with fewer, 2 implemented with none, 0 in-scope catalog functions with none"));
+        assert!(md.contains("Excel evidence: 0 functions with ≥20 oracle/cached cells, 3 with fewer, 2 implemented with none, 0 in-scope catalog functions with none"));
         assert!(md.contains("Implemented, no Excel evidence (2): IF, TRIM"));
         assert!(md.contains("| SUM | 2 | probes | yes |"));
     }
@@ -776,6 +778,7 @@ mod tests {
         use crate::catalog::{CatalogFunction, OracleSupport, Scope};
         let entry = |name: &str, scope, reason: Option<&str>, oracle| CatalogFunction {
             name: name.into(),
+            category: "math".into(),
             milestone: "M5".into(),
             scope,
             reason: reason.map(String::from),
