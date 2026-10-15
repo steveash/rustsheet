@@ -3,7 +3,7 @@ id: T-1581
 title: "UNICODE, LEFT and RIGHT read lone surrogates exactly (SPEC-0010 step 7)"
 milestone: M2
 lane: functions-text
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -25,3 +25,13 @@ docs/specs/SPEC-0010-text-with-lone-surrogates.md; docs/excel-semantics/text.md 
 
 ## Out of scope
 - CODE of a lone surrogate (unprobed; T-1582).
+
+## Outcome
+`Text::left_chars` / `Text::right_chars` (text.rs) back LEFT and RIGHT; the `Utf8` arms are the
+previous `chars().take/skip` code, the `Lone` arm walks `chars_lossless` and rebuilds through
+`from_utf16`. `fn_unicode` reads `chars_lossless().next()`: a lone high surrogate is `#VALUE!`, a
+lone low one its code. Eval: probes/text-lone-surrogates A3, A4, probes/text-surrogate-positions
+A38 and probes/concatenate-limit-spill E10 left `eval/baseline/probes.txt` (4 fewer known
+failures); B6, B7 still pass; no regressions. Bench (release, `benches/text.rs`, min of 11):
+LEFT(A1,2) 27.59 ms before, 25.66 ms after; `&`, MID, CONCATENATE and `Text::push` within noise
+(24.9/23.3, 22.5/22.5, 43.3/40.8, 56.8/53.7 ms before/after).

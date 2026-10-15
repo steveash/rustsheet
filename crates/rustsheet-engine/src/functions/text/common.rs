@@ -23,6 +23,7 @@ use crate::{
     },
     model::Model,
     number_format::to_precision,
+    text::{Char, Text},
 };
 
 /// Computes a single LEFT result from one element of each argument.
@@ -30,7 +31,7 @@ use crate::{
 // count UTF-16 code units: `LEFT("a😀b",3)` is "a😀b" (docs/excel-semantics/text.md "Text
 // positions count UTF-16 code units", probes/text-surrogate-positions A3, B1-B5).
 fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
-    let s = array_node_to_string(text)?;
+    let s = array_node_to_text(text)?;
     let num = num?;
     // Excel: any non-negative count works, however large (`LEFT("abc",1E+100)` is "abc"), and
     // -1E-300 is already #VALUE! (probes/text-count-argument-bounds F14, N18).
@@ -38,23 +39,18 @@ fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, 
         return Err(Error::VALUE);
     }
     let num_chars = near_integer_count(num) as usize;
-    Ok(ArrayNode::String(
-        s.chars().take(num_chars).collect::<String>().into(),
-    ))
+    Ok(ArrayNode::String(s.left_chars(num_chars)))
 }
 
 /// Computes a single RIGHT result from one element of each argument.
 fn right_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
-    let s = array_node_to_string(text)?;
+    let s = array_node_to_text(text)?;
     let num = num?;
     if num < 0.0 {
         return Err(Error::VALUE);
     }
     let num_chars = near_integer_count(num) as usize;
-    let skip = s.chars().count().saturating_sub(num_chars);
-    Ok(ArrayNode::String(
-        s.chars().skip(skip).collect::<String>().into(),
-    ))
+    Ok(ArrayNode::String(s.right_chars(num_chars)))
 }
 
 /// MID's `start_num` and `num_chars` must be below 2^31 (they are read as 32-bit integers).
@@ -439,15 +435,9 @@ impl Model {
     pub(crate) fn fn_unicode(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => number_to_text(v),
-                CalcResult::String(v) => v.into_lossy_string(),
-                CalcResult::Boolean(b) => {
-                    if b {
-                        "TRUE".to_string()
-                    } else {
-                        "FALSE".to_string()
-                    }
-                }
+                CalcResult::Number(v) => Text::from(number_to_text(v)),
+                CalcResult::String(v) => v,
+                CalcResult::Boolean(b) => Text::from(if b { "TRUE" } else { "FALSE" }),
                 error @ CalcResult::Error { .. } => return error,
                 CalcResult::Range { .. } => {
                     // Implicit Intersection not implemented
@@ -473,10 +463,19 @@ impl Model {
                 }
             };
 
-            match s.chars().next() {
-                Some(c) => {
-                    let unicode_number = c as u32;
-                    return CalcResult::Number(unicode_number as f64);
+            // Excel: a lone high surrogate is #VALUE!, a lone low one gives its code
+            // (probes/text-lone-surrogates A3, A4; text-surrogate-positions A38).
+            match s.chars_lossless().next() {
+                Some(Char::Scalar(c)) => return CalcResult::Number(f64::from(c as u32)),
+                Some(Char::Lone(u)) if !(0xD800..0xDC00).contains(&u) => {
+                    return CalcResult::Number(f64::from(u));
+                }
+                Some(Char::Lone(_)) => {
+                    return CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Lone high surrogate".to_string(),
+                    };
                 }
                 None => {
                     return CalcResult::Error {
