@@ -1,0 +1,63 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1617: VARA/VARPA/STDEVA/STDEVPA over a single-cell reference (text, boolean) and cells picked by IF/INDEX/XLOOKUP, plus direct and array forms for comparison.",
+ "tags": [
+  "M2",
+  "statistical",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": 1,
+    "A2": 2,
+    "A3": 4,
+    "B1": "x",
+    "B2": true,
+    "B3": 5,
+    "D1": "=VARA(A1:A3,B1)",
+    "D2": "=VARA(A1:A3,B2)",
+    "D3": "=VARA(A1:A3,IF(TRUE,B1))",
+    "D4": "=VARA(A1:A3,IF(TRUE,B2))",
+    "D5": "=VARA(A1:A3,INDEX(B1:B3,1))",
+    "D6": "=VARA(A1:A3,INDEX(B1:B3,2))",
+    "D7": "=VARA(A1:A3,XLOOKUP(1,A1:A3,B1:B3))",
+    "D8": "=VARA(A1:A3,XLOOKUP(2,A1:A3,B1:B3))",
+    "D9": "=VARA(A1:A3,B1:B2)",
+    "D10": "=VARPA(A1:A3,B1)",
+    "D11": "=VARPA(A1:A3,B2)",
+    "D12": "=VARPA(A1:A3,IF(TRUE,B1))",
+    "D13": "=VARPA(A1:A3,IF(TRUE,B2))",
+    "D14": "=VARPA(A1:A3,INDEX(B1:B3,1))",
+    "D15": "=VARPA(A1:A3,INDEX(B1:B3,2))",
+    "D16": "=VARPA(A1:A3,XLOOKUP(1,A1:A3,B1:B3))",
+    "D17": "=VARPA(A1:A3,XLOOKUP(2,A1:A3,B1:B3))",
+    "D18": "=VARPA(A1:A3,B1:B2)",
+    "D19": "=STDEVA(A1:A3,B1)",
+    "D20": "=STDEVA(A1:A3,B2)",
+    "D21": "=STDEVA(A1:A3,IF(TRUE,B1))",
+    "D22": "=STDEVA(A1:A3,IF(TRUE,B2))",
+    "D23": "=STDEVA(A1:A3,INDEX(B1:B3,1))",
+    "D24": "=STDEVA(A1:A3,INDEX(B1:B3,2))",
+    "D25": "=STDEVA(A1:A3,XLOOKUP(1,A1:A3,B1:B3))",
+    "D26": "=STDEVA(A1:A3,XLOOKUP(2,A1:A3,B1:B3))",
+    "D27": "=STDEVA(A1:A3,B1:B2)",
+    "D28": "=STDEVPA(A1:A3,B1)",
+    "D29": "=STDEVPA(A1:A3,B2)",
+    "D30": "=STDEVPA(A1:A3,IF(TRUE,B1))",
+    "D31": "=STDEVPA(A1:A3,IF(TRUE,B2))",
+    "D32": "=STDEVPA(A1:A3,INDEX(B1:B3,1))",
+    "D33": "=STDEVPA(A1:A3,INDEX(B1:B3,2))",
+    "D34": "=STDEVPA(A1:A3,XLOOKUP(1,A1:A3,B1:B3))",
+    "D35": "=STDEVPA(A1:A3,XLOOKUP(2,A1:A3,B1:B3))",
+    "D36": "=STDEVPA(A1:A3,B1:B2)",
+    "D37": "=VARA(A1:A3,\"x\")",
+    "D38": "=VARA(A1:A3,\"2\")",
+    "D39": "=VARA(A1:A3,TRUE)",
+    "D40": "=VARA({1,2,4,\"x\"})",
+    "D41": "=VARA({1,2,4,TRUE})"
+   }
+  }
+ ]
+}

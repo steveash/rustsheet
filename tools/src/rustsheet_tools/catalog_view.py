@@ -16,14 +16,14 @@ from rustsheet_tools.gen.generator import Catalog
 REPO = Path(__file__).resolve().parents[3]
 CATALOG = REPO / "eval" / "catalog" / "functions.yaml"
 VIEW = CATALOG.with_name("scope.json")
-FIELDS = ("milestone", "scope", "reason", "oracle")
+FIELDS = ("category", "milestone", "scope", "reason", "oracle")
 
 
 def render(catalog: Path = CATALOG) -> str:
     """The view of `catalog` as JSON text: one entry per function, sorted by name.
 
     `scope` is always present (an entry without it is in scope); `reason` and `oracle` only
-    when the catalog sets them."""
+    when the catalog sets them. `category` groups the evidence-floor report (T-0056)."""
     rows: list[str] = []
     for entry in sorted(Catalog.load(catalog).functions, key=lambda f: str(f["name"])):
         row: dict[str, Any] = {"name": entry["name"]}

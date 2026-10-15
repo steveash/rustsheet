@@ -65,5 +65,7 @@
   walker, `functions/util/aggregate_args.rs`; the rest already shrunk on main) (`check_duplication.py --update`).
   T-1476: duplicated lines 6369 → 6360 (MIN, MAX, PRODUCT, COUNT and COUNTA moved onto the same walker)
   (`check_duplication.py --update`).
+  T-1627: functions below the evidence floor 73 → 63 (NOW, TODAY, RAND, TRUE, FALSE, SHEET, ISOMITTED,
+  TOROW, WRAPCOLS and WRAPROWS probed to ≥ 20 Excel cells; decision 0062) (`make eval-baseline`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

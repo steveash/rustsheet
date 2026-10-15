@@ -4,9 +4,7 @@ use crate::constants::EXCEL_PRECISION;
 use crate::decimal_round::{round_decimal, RoundMode};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ArrayErrorRank, ErrorRule, NumberRules,
-};
+use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
 use crate::number_format::to_excel_precision;
 use crate::single_number_fn;
 use crate::{
@@ -59,13 +57,11 @@ fn excel_tan(x: f64) -> f64 {
 
 /// MIN and MAX: a referenced-cell error ranks below a direct scalar error; the leftmost wins
 /// (probes/aggregate-error-precedence C9-C24). A direct LAMBDA's `#VALUE!` ranks with the
-/// referenced errors, and an array error after it does not beat it (probes/aggregate-direct-lambda-
-/// product-min-max D15, D24, T-1604).
+/// referenced errors, as does an array error (every `Ranked` policy: probes/aggregate-direct-lambda-
+/// product-min-max D15, D24, T-1604; probes/aggregate-array-error-vs-ref-error, T-1615).
 const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
-    errors: ErrorRule::Ranked {
-        array_errors: ArrayErrorRank::DirectUnlessLambdaHeld,
-    },
+    errors: ErrorRule::Ranked,
     skip_empty_args: false,
 };
 
@@ -522,7 +518,15 @@ impl Model {
     single_number_fn!(fn_sinh, |f| Ok(super::hyperbolic::sinh(f)));
     single_number_fn!(fn_cosh, |f| Ok(super::hyperbolic::cosh(f)));
     single_number_fn!(fn_tanh, |f| Ok(super::hyperbolic::tanh(f)));
-    single_number_fn!(fn_asin, |f| Ok(f64::asin(f)));
+    // Excel's ASIN is not libm's: `atan(x / sqrt((1 - x) * (1 + x)))` in doubles gives 233 of the 268
+    // cells of probes/asin-argument-sweep (libm `asin` 186), `ASIN(-0.0001)` and `ASIN(0.42)` among
+    // them. Excel's is not even odd (`ASIN(0.09)` and `ASIN(-0.09)` differ in the last digit), so no
+    // formulation found yet fits every cell (docs/excel-semantics/numbers.md "ASIN of a small
+    // argument"). At ±1 the quotient is ±inf and atan gives ±π/2; outside [-1, 1] the square root is
+    // NaN, which is `#NUM!`.
+    single_number_fn!(fn_asin, |f: f64| Ok(f64::atan(
+        f / ((1.0 - f) * (1.0 + f)).sqrt()
+    )));
     single_number_fn!(fn_acos, |f| Ok(f64::acos(f)));
     single_number_fn!(fn_atan, |f| Ok(f64::atan(f)));
     single_number_fn!(fn_asinh, |f| Ok(f64::asinh(f)));

@@ -30,29 +30,15 @@ pub(crate) enum ItemSource {
     ArrayElement,
 }
 
-/// Where an error inside an array value ranks.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ArrayErrorRank {
-    /// An array error is a direct error: AVERAGE today (UNVERIFIED, T-1439).
-    Direct,
-    /// An array error ranks with referenced errors: SUM (probes/aggregate-error-precedence C50,
-    /// C53–C55, C61, C77); PRODUCT does too (probes/product-array-2d-and-scalar A7–A17, T-1287).
-    Referenced,
-    /// As `Direct`, but a held direct LAMBDA's `#VALUE!` is not beaten by it: MIN and MAX
-    /// (probes/aggregate-direct-lambda-product-min-max D15, D24, T-1604). How an array error ranks
-    /// against a held referenced error is unprobed: TODO(T-1615).
-    DirectUnlessLambdaHeld,
-}
-
 /// How the walker orders the errors it meets.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ErrorRule {
     /// A direct error returns at once. A referenced error is held and the leftmost wins, so a
-    /// direct error to its right still beats it.
-    Ranked {
-        /// Where an error inside an array ranks.
-        array_errors: ArrayErrorRank,
-    },
+    /// direct error to its right still beats it. An error inside an array ranks with the
+    /// referenced errors (SUM: probes/aggregate-error-precedence C50, C53–C55, C61, C77; PRODUCT:
+    /// probes/product-array-2d-and-scalar A7–A17, T-1287; MIN, MAX, AVERAGE, MEDIAN:
+    /// probes/aggregate-array-error-vs-ref-error, T-1615).
+    Ranked,
     /// The first error in argument order returns at once (DEVSQ, AVEDEV, SUMSQ).
     First,
     /// Errors are items for the visitor, which counts or ignores them (COUNT ignores them, COUNTA
@@ -142,18 +128,12 @@ impl NumberRules {
 pub(crate) struct AggregateWalk {
     policy: AggregatePolicy,
     held: Option<CalcResult>,
-    /// Whether `held` is a direct LAMBDA's `#VALUE!`.
-    lambda_held: bool,
 }
 
 impl AggregateWalk {
     /// A walk with nothing held yet.
     pub(crate) fn new(policy: AggregatePolicy) -> Self {
-        AggregateWalk {
-            policy,
-            held: None,
-            lambda_held: false,
-        }
+        AggregateWalk { policy, held: None }
     }
 
     /// The held referenced error, if any, once every argument is walked.
@@ -165,7 +145,7 @@ impl AggregateWalk {
     /// under `First` it returns at once.
     pub(crate) fn referenced_error(&mut self, error: CalcResult) -> Result<(), CalcResult> {
         match self.policy.errors {
-            ErrorRule::Ranked { .. } => {
+            ErrorRule::Ranked => {
                 if self.held.is_none() {
                     self.held = Some(error);
                 }
@@ -182,7 +162,6 @@ impl AggregateWalk {
     fn lambda_error(&mut self, error: CalcResult) {
         if self.held.is_none() {
             self.held = Some(error);
-            self.lambda_held = true;
         }
     }
 
@@ -195,19 +174,13 @@ impl AggregateWalk {
             message: "Error in array".to_string(),
         };
         match self.policy.errors {
-            ErrorRule::Ranked {
-                array_errors: ArrayErrorRank::Referenced,
-            } => {
+            ErrorRule::Ranked => {
                 if self.held.is_none() {
                     self.held = Some(value());
                 }
                 Ok(())
             }
-            // MIN and MAX: the held LAMBDA error stands, the array error is dropped.
-            ErrorRule::Ranked {
-                array_errors: ArrayErrorRank::DirectUnlessLambdaHeld,
-            } if self.lambda_held => Ok(()),
-            _ => Err(value()),
+            ErrorRule::First | ErrorRule::Items => Err(value()),
         }
     }
 }
@@ -321,8 +294,7 @@ impl Model {
                 for node in array.into_iter().flatten() {
                     match array_item(node) {
                         Ok(value) => visit(self, ItemSource::ArrayElement, value)?,
-                        // Under `Referenced` only the first array or referenced error is held;
-                        // under `Direct` an array error beats a held one.
+                        // Only the first array or referenced error is held (`Ranked`).
                         Err(error) if items => visit(
                             self,
                             ItemSource::ArrayElement,
@@ -458,9 +430,7 @@ mod tests {
 
     const RANKED: AggregatePolicy = AggregatePolicy {
         reading: ArgReading::Aggregate,
-        errors: ErrorRule::Ranked {
-            array_errors: ArrayErrorRank::Direct,
-        },
+        errors: ErrorRule::Ranked,
         skip_empty_args: false,
     };
 
@@ -537,27 +507,13 @@ mod tests {
     }
 
     #[test]
-    fn array_errors_rank_by_policy() {
+    fn array_errors_rank_with_referenced_errors_under_ranked() {
         let cells = [("A1", "=NA()")];
-        let referenced = AggregatePolicy {
-            reading: ArgReading::Aggregate,
-            errors: ErrorRule::Ranked {
-                array_errors: ArrayErrorRank::Referenced,
-            },
-            skip_empty_args: false,
-        };
         assert_eq!(
-            items(&cells, "=SUM({1,#DIV/0!},A1)", referenced),
+            items(&cells, "=SUM({1,#DIV/0!},A1)", RANKED),
             err("#DIV/0!")
         );
-        assert_eq!(
-            items(&cells, "=SUM(A1,{1,#DIV/0!})", referenced),
-            err("#N/A")
-        );
-        assert_eq!(
-            items(&cells, "=SUM(A1,{1,#DIV/0!})", RANKED),
-            err("#DIV/0!")
-        );
+        assert_eq!(items(&cells, "=SUM(A1,{1,#DIV/0!})", RANKED), err("#N/A"));
     }
 
     #[test]

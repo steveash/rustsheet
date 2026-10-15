@@ -75,9 +75,8 @@ Shared rules, all VERIFIED:
     an error literal, a computed scalar such as `1/0` or `A2*1`, or uncoercible direct text.
   - Among direct errors, the leftmost wins.
   - Among referenced-cell errors, the leftmost wins.
-  - SUM only: an error inside an array ranks with the referenced errors (C50, C53–C55, C61, C77).
-    For PRODUCT, MIN, MAX and AVERAGE today the first array error is returned at once. This is
-    UNVERIFIED (T-1439).
+  - An error inside an array ranks with the referenced errors (SUM: C50, C53–C55, C61, C77;
+    PRODUCT (probes/product-array-2d-and-scalar A7–A17, T-1287); MIN, MAX, AVERAGE and MEDIAN: probes/aggregate-array-error-vs-ref-error, T-1615).
 
 Per-consumer differences that must be kept. Each has its evidence or is marked as current
 behavior with no evidence:
@@ -143,13 +142,14 @@ pub(crate) enum ArgReading {
 
 pub(crate) enum ErrorRule {
     /// Direct errors return at once; referenced errors are held, the leftmost wins.
-    Ranked { array_errors: ArrayErrorRank },
+    Ranked, // was `Ranked { array_errors: ArrayErrorRank }`; removed in T-1615 (see "As built")
     /// The first error in argument order returns at once (A-variants, DEVSQ/AVEDEV/SUMSQ).
     First,
     /// Errors are items for the visitor (COUNT ignores them, COUNTA counts them).
     Items,
 }
 
+// Removed in T-1615 (see "As built").
 pub(crate) enum ArrayErrorRank {
     /// An array error is a direct error (today's PRODUCT, MIN, MAX, AVERAGE; T-1439).
     Direct,
@@ -209,7 +209,7 @@ Rules the walker enforces:
    `Ranked`, a later argument's areas are not read at all once an error is held, as every copy
    does today. An `Err` from the area walk itself (the walk budget) ranks like an error cell.
 3. Errors, under `Ranked` and `First`, never reach the visitor:
-   - A direct error, and under `Ranked { array_errors: Direct }` or `First` an array error, is
+   - A direct error, and under `First` an array error, is
      returned at once.
    - Under `First`, a referenced error is also returned at once.
    - Under `Ranked`, a referenced error, and an array error under `Referenced`, is held if
@@ -278,13 +278,13 @@ The walker and `for_each_aggregate_number` are `#[inline]` and take the policy b
 ### Consumer mapping
 | Consumer | reading | errors | skip empty | number rules | own state kept |
 |---|---|---|---|---|---|
-| SUM | Aggregate | Ranked(Referenced) | no | Cast / Numbers / Numbers | `SumParts` |
-| AVERAGE, GEOMEAN, HARMEAN, MEDIAN, SKEW, SKEW.P, KURT, VAR.*, STDEV.* | Aggregate | Ranked(Direct) | no | CastScalars / Numbers / Numbers | — |
+| SUM | Aggregate | Ranked | no | Cast / Numbers / Numbers | `SumParts` |
+| AVERAGE, GEOMEAN, HARMEAN, MEDIAN, SKEW, SKEW.P, KURT, VAR.*, STDEV.* | Aggregate | Ranked | no | CastScalars / Numbers / Numbers | — |
 | DEVSQ, AVEDEV, SUMSQ | Aggregate | First | yes | CastScalars / Numbers / Numbers | — |
 | VARA, VARPA, STDEVA, STDEVPA | Aggregate | First | no | NumbersOnly / CoercedA / Numbers (direct values: known failures, T-1291; single references: T-1617) | — |
-| AVERAGEA, MAXA, MINA | Aggregate, after the `external_reference_cells` step | Ranked(Direct) | no | CastA / CoercedA / TextZero (AVERAGEA) or Numbers (MAXA, MINA) | — |
-| MIN, MAX | Aggregate | Ranked(Direct) | no | Cast / Numbers / Numbers | NaN start, 0 when none |
-| PRODUCT | Aggregate | Ranked(Direct) | no | Cast / Numbers / Numbers | `seen_value` (set for an empty argument too) |
+| AVERAGEA, MAXA, MINA | Aggregate, after the `external_reference_cells` step | Ranked | no | CastA / CoercedA / TextZero (AVERAGEA) or Numbers (MAXA, MINA) | — |
+| MIN, MAX | Aggregate | Ranked | no | Cast / Numbers / Numbers | NaN start, 0 when none |
+| PRODUCT | Aggregate | Ranked | no | Cast / Numbers / Numbers | `seen_value` (set for an empty argument too) |
 | COUNT | Aggregate | Items | no | — (own visitor: counts types) | — |
 | COUNTA | PickedKeepingBlanks, after the `external_reference` count | Items | no | — (own visitor) | — |
 
@@ -293,9 +293,9 @@ and its error is returned at once (`?`). One argument has only one shape, so thi
 as `First`.
 
 ### As built (T-1476)
-- MIN and MAX use `ArrayErrorRank::DirectUnlessLambdaHeld`: as `Direct`, but a held direct LAMBDA's
-  `#VALUE!` is not beaten by an array error after it (probes/aggregate-direct-lambda-product-min-max
-  D15, D24; TODO(T-1615)). The walk keeps a `lambda_held` flag for it.
+- T-1615 removed `ArrayErrorRank` (and the `lambda_held` flag it needed): every `Ranked` policy holds
+  an array error like a referenced one, since Excel ranks it that way for SUM, MIN, MAX, AVERAGE
+  and MEDIAN (probes/aggregate-array-error-vs-ref-error). The design above shows the earlier shape.
 - `ArgReading` has two variants, `Aggregate` and `PickedKeepingBlanks`; `Reference` was not needed.
 - `ErrorRule::Items` hands error cells, direct errors and array errors to the visitor.
 - `walk_aggregate_read` walks an argument the consumer already read: COUNTA picks its argument
