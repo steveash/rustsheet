@@ -26,6 +26,6 @@ impl Model {
                 _ => result.push_str(&format!("%{byte:02X}")),
             }
         }
-        CalcResult::String(result)
+        CalcResult::String(result.into())
     }
 }

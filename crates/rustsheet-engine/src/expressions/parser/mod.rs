@@ -40,6 +40,7 @@ use crate::language::Language;
 use crate::locale::get_default_locale;
 use crate::locale::get_locale;
 use crate::locale::Locale;
+use crate::text::Text;
 use crate::types::Table;
 
 use super::lexer;
@@ -120,7 +121,7 @@ pub(crate) struct Reference<'a> {
 pub enum ArrayNode {
     Boolean(bool),
     Number(f64),
-    String(String),
+    String(Text),
     Error(token::Error),
     /// An empty (blank) cell from a range reference.
     Empty,

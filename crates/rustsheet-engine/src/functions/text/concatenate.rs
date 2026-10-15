@@ -93,7 +93,7 @@ impl JoinSize {
             // An empty string is skipped like an empty cell with ignore_empty
             // (probes/textjoin-array-limit-empty-strings A7-A10).
             CalcResult::String(text) if ignore_empty && text.is_empty() => {}
-            CalcResult::String(text) => values.push(text),
+            CalcResult::String(text) => values.push(text.into_lossy_string()),
             CalcResult::Boolean(b) => values.push(if b { "TRUE" } else { "FALSE" }.to_string()),
             CalcResult::EmptyCell if !ignore_empty => values.push(String::new()),
             CalcResult::Error { .. } if *over_limit || self.exceeds_with_separator(values) => {
@@ -181,7 +181,7 @@ impl Model {
                 joined.push_str(&array_node_to_string(operand.elem(i, j))?);
                 truncate_text(&mut joined);
             }
-            Ok(ArrayNode::String(joined))
+            Ok(ArrayNode::String(joined.into()))
         })
     }
 
@@ -253,7 +253,7 @@ impl Model {
         if result.units > MAX_TEXT_UNITS {
             return text_limit_error(cell);
         }
-        CalcResult::String(result.text)
+        CalcResult::String(result.text.into())
     }
 
     /// TEXTJOIN's delimiter: a scalar, or the elements of an array or range in row-major order,
@@ -394,7 +394,7 @@ impl Model {
                 }
                 error @ CalcResult::Error { .. } => return error,
                 CalcResult::String(value) if ignore_empty && value.is_empty() => {}
-                CalcResult::String(value) => values.push(value),
+                CalcResult::String(value) => values.push(value.into_lossy_string()),
                 CalcResult::Boolean(value) => {
                     if value {
                         values.push("TRUE".to_string());
@@ -442,6 +442,6 @@ impl Model {
             }
             joined.push_str(value);
         }
-        CalcResult::String(joined)
+        CalcResult::String(joined.into())
     }
 }

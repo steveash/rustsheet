@@ -74,7 +74,7 @@ impl Model {
             Err(message) => return CalcResult::new_error(Error::NUM, cell, message),
         };
         if value < 0 {
-            CalcResult::String(format!("{:0width$X}", HEX_MAX + value, width = 9))
+            CalcResult::String(format!("{:0width$X}", HEX_MAX + value, width = 9).into())
         } else {
             let result = format!("{value:X}");
             if let Some(places) = places {
@@ -85,9 +85,11 @@ impl Model {
                         "Not enough places".to_string(),
                     );
                 }
-                return CalcResult::String(format!("{:0width$X}", value, width = places as usize));
+                return CalcResult::String(
+                    format!("{:0width$X}", value, width = places as usize).into(),
+                );
             }
-            CalcResult::String(result)
+            CalcResult::String(result.into())
         }
     }
 
@@ -118,7 +120,7 @@ impl Model {
             }
         }
         if value < 0 {
-            CalcResult::String(format!("{:0width$o}", OCT_MAX + value, width = 9))
+            CalcResult::String(format!("{:0width$o}", OCT_MAX + value, width = 9).into())
         } else {
             let result = format!("{value:o}");
             if let Some(places) = places {
@@ -129,9 +131,11 @@ impl Model {
                         "Not enough places".to_string(),
                     );
                 }
-                return CalcResult::String(format!("{:0width$o}", value, width = places as usize));
+                return CalcResult::String(
+                    format!("{:0width$o}", value, width = places as usize).into(),
+                );
             }
-            CalcResult::String(result)
+            CalcResult::String(result.into())
         }
     }
 
@@ -169,9 +173,9 @@ impl Model {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
             }
             let result = format!("{:0width$b}", value, width = places as usize);
-            return CalcResult::String(result);
+            return CalcResult::String(result.into());
         }
-        CalcResult::String(result)
+        CalcResult::String(result.into())
     }
 
     pub(crate) fn fn_dec2hex(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -208,9 +212,9 @@ impl Model {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
             }
             let result = format!("{:0width$X}", value, width = places as usize);
-            return CalcResult::String(result);
+            return CalcResult::String(result.into());
         }
-        CalcResult::String(result)
+        CalcResult::String(result.into())
     }
 
     pub(crate) fn fn_dec2oct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -248,9 +252,9 @@ impl Model {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
             }
             let result = format!("{:0width$o}", value, width = places as usize);
-            return CalcResult::String(result);
+            return CalcResult::String(result.into());
         }
-        CalcResult::String(result)
+        CalcResult::String(result.into())
     }
 
     // HEX2BIN(number, [places])
@@ -307,9 +311,9 @@ impl Model {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
             }
             let result = format!("{:0width$b}", value, width = places as usize);
-            return CalcResult::String(result);
+            return CalcResult::String(result.into());
         }
-        CalcResult::String(result)
+        CalcResult::String(result.into())
     }
 
     // HEX2DEC(number)
@@ -397,9 +401,9 @@ impl Model {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
             }
             let result = format!("{:0width$o}", value, width = places as usize);
-            return CalcResult::String(result);
+            return CalcResult::String(result.into());
         }
-        CalcResult::String(result)
+        CalcResult::String(result.into())
     }
 
     pub(crate) fn fn_oct2bin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -452,9 +456,9 @@ impl Model {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
             }
             let result = format!("{:0width$b}", value, width = places as usize);
-            return CalcResult::String(result);
+            return CalcResult::String(result.into());
         }
-        CalcResult::String(result)
+        CalcResult::String(result.into())
     }
 
     pub(crate) fn fn_oct2dec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -538,8 +542,8 @@ impl Model {
                 return CalcResult::new_error(Error::NUM, cell, "Out of bounds".to_string());
             }
             let result = format!("{:0width$X}", value, width = places as usize);
-            return CalcResult::String(result);
+            return CalcResult::String(result.into());
         }
-        CalcResult::String(result)
+        CalcResult::String(result.into())
     }
 }

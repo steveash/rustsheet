@@ -44,7 +44,7 @@ impl Parser {
         match self.parse_enclosed_expr() {
             Node::BooleanKind(s) => Ok(ArrayNode::Boolean(s)),
             Node::NumberKind(s) => Ok(ArrayNode::Number(s)),
-            Node::StringKind(s) => Ok(ArrayNode::String(s)),
+            Node::StringKind(s) => Ok(ArrayNode::String(s.into())),
             Node::ErrorKind(kind) => Ok(ArrayNode::Error(kind)),
             error @ Node::ParseErrorKind { .. } => Err(error),
             _ => Err(self.invalid_array_value()),

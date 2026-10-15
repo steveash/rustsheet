@@ -805,20 +805,20 @@ impl Model {
         // Concatenates two array elements, propagating errors as error nodes.
         let concat_nodes = |a: &ArrayNode, b: &ArrayNode| -> ArrayNode {
             match (array_node_to_string(a), array_node_to_string(b)) {
-                (Ok(sa), Ok(sb)) => ArrayNode::String(concat_text(&sa, &sb)),
+                (Ok(sa), Ok(sb)) => ArrayNode::String(concat_text(&sa, &sb).into()),
                 (Err(e), _) | (_, Err(e)) => ArrayNode::Error(e),
             }
         };
 
         match (l, r) {
             (StringOrArray::String(s1), StringOrArray::String(s2)) => {
-                CalcResult::String(concat_text(&s1, &s2))
+                CalcResult::String(concat_text(&s1, &s2).into())
             }
             (StringOrArray::String(s1), StringOrArray::Array(a2)) => CalcResult::Array(
                 a2.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|n| concat_nodes(&ArrayNode::String(s1.clone()), n))
+                            .map(|n| concat_nodes(&ArrayNode::String(s1.clone().into()), n))
                             .collect()
                     })
                     .collect(),
@@ -827,7 +827,7 @@ impl Model {
                 a1.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|n| concat_nodes(n, &ArrayNode::String(s2.clone())))
+                            .map(|n| concat_nodes(n, &ArrayNode::String(s2.clone().into())))
                             .collect()
                     })
                     .collect(),

@@ -215,7 +215,7 @@ impl Model {
         };
 
         if number == 0.0 {
-            return CalcResult::String(String::new());
+            return CalcResult::String(String::new().into());
         }
         if !(0.0..=3999.0).contains(&number) {
             return CalcResult::Error {
@@ -262,7 +262,7 @@ impl Model {
                 }
             }
         };
-        CalcResult::String(roman_numeral)
+        CalcResult::String(roman_numeral.into())
     }
 
     pub(crate) fn fn_arabic(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

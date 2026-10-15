@@ -58,7 +58,7 @@ impl Model {
         if return_all {
             let row: Vec<ArrayNode> = re
                 .find_iter(&text)
-                .map(|m| ArrayNode::String(m.as_str().to_string()))
+                .map(|m| ArrayNode::String(m.as_str().to_string().into()))
                 .collect();
             if row.is_empty() {
                 return CalcResult::new_error(Error::NA, cell, "No match found".to_string());
@@ -75,7 +75,7 @@ impl Model {
                     } else {
                         caps.get(0).map_or("", |m| m.as_str())
                     };
-                    CalcResult::String(matched.to_string())
+                    CalcResult::String(matched.to_string().into())
                 }
             }
         }
@@ -115,7 +115,11 @@ impl Model {
                 )
             }
         };
-        CalcResult::String(re.replace_all(&text, replacement.as_str()).into_owned())
+        CalcResult::String(
+            re.replace_all(&text, replacement.as_str())
+                .into_owned()
+                .into(),
+        )
     }
 
     /// REGEXTEST(text, `regular_expression`)

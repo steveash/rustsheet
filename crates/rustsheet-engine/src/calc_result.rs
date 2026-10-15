@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 
 use crate::expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex};
 use crate::number_format::cmp_excel_precision;
+use crate::text::Text;
 
 #[derive(Clone)]
 pub struct Range {
@@ -11,7 +12,7 @@ pub struct Range {
 
 #[derive(Clone)]
 pub(crate) enum CalcResult {
-    String(String),
+    String(Text),
     Number(f64),
     Boolean(bool),
     Error {

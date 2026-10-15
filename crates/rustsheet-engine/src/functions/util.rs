@@ -122,10 +122,10 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
             -1
         }
         (CalcResult::EmptyCell, CalcResult::String(_value2)) => {
-            compare_values(&CalcResult::String("".to_string()), right)
+            compare_values(&CalcResult::String("".into()), right)
         }
         (CalcResult::String(_value1), CalcResult::EmptyCell) => {
-            compare_values(left, &CalcResult::String("".to_string()))
+            compare_values(left, &CalcResult::String("".into()))
         }
         (CalcResult::EmptyCell, CalcResult::Number(_value2)) => {
             compare_values(&CalcResult::Number(0.0), right)
