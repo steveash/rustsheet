@@ -1,0 +1,63 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SERIESSUM with x = 0 (T-1359): which powers give #NUM! (0^0, negative powers) and which give 0.",
+  "tags": [
+    "M5",
+    "probe",
+    "math"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=SERIESSUM(0,1,1,{1,2})",
+        "A2": "=SERIESSUM(0,2,-1,{1,2,3})",
+        "A3": "=SERIESSUM(0,1,-2,{1,2})",
+        "A4": "=SERIESSUM(0,0.5,1,1)",
+        "A5": "=SERIESSUM(0,-1,1,1)",
+        "A6": "=SERIESSUM(B1,1,1,{1,2})",
+        "A7": "=SERIESSUM(0,0,2,{1,2,3})",
+        "A8": "=SERIESSUM(0,0,1,1)",
+        "A9": "=SERIESSUM(B1,123456789.123,-0.5,123456789.123)",
+        "A10": "=SERIESSUM(0,3,0,{1,2})",
+        "A11": "=SERIESSUM(0,0,0,{1,2})",
+        "A12": "=SERIESSUM(0,1,1,{0,0})",
+        "A13": "=SERIESSUM(0,-1,1,{0,5})",
+        "A14": "=SERIESSUM(0,2,-1,{0,5,7})",
+        "A15": "=SERIESSUM(0,-1,1,{0})",
+        "A16": "=SERIESSUM(0,0,1,{0})",
+        "A17": "=SERIESSUM(0,-0.5,1,{5})",
+        "A18": "=SERIESSUM(0,1,-1,{5,0})",
+        "A19": "=SERIESSUM(0,1,-1,{0,5})",
+        "A20": "=SERIESSUM(0,0,1,{5,0})",
+        "A21": "=SERIESSUM(0,1,-1,{5,6,7})",
+        "A22": "=SERIESSUM(0,-1,2,{5,6})"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8",
+    "Sheet1!A9",
+    "Sheet1!A10",
+    "Sheet1!A11",
+    "Sheet1!A12",
+    "Sheet1!A13",
+    "Sheet1!A14",
+    "Sheet1!A15",
+    "Sheet1!A16",
+    "Sheet1!A17",
+    "Sheet1!A18",
+    "Sheet1!A19",
+    "Sheet1!A20",
+    "Sheet1!A21",
+    "Sheet1!A22"
+  ]
+}
