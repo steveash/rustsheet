@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1649: DAVERAGE accumulation (column A of rows 1-8 is DAVERAGE*4 over the T-1516 operand sets plus a 0 record so the division by 4 is exact; B is the a+b+c control) and DAVERAGE of a normal sum over a count that makes the quotient subnormal (rows 20-24: 2^-1022/2, /4, 2^-1021/2 (exactly 2^-1022, normal), /3, 2*2^-1022/3), vs AVERAGE. Subnormal operands cannot be built: excel-graph reads a stored subnormal as 0.",
+ "description": "T-1649: DAVERAGE accumulation (column A of rows 1-8 is DAVERAGE*4 over the T-1516 operand sets plus a 0 record so the division by 4 is exact; B is the a+b+c control) and DAVERAGE of a normal sum over a count that makes the quotient subnormal (rows 20-24: 2^-1022/2, /4, 2^-1021/2 (exactly 2^-1022, normal), /3, 2*2^-1022/3), vs AVERAGE. Subnormal operands cannot be built: excel-graph reads a stored subnormal as 0. Rows 26-28: subnormal operands built by subtraction (3E-308-2.5E-308 is kept; a stored literal below 2^-1022 reads as 0), with =0 companions (decision 0042).",
  "tags": [
   "probe",
   "numbers",
@@ -40,7 +40,20 @@
     "C23": "=DAVERAGE(Db!C54:C57,\"w\",Db!$M$1:$M$2)=0",
     "A24": "=DAVERAGE(Db!C62:C65,\"w\",Db!$M$1:$M$2)",
     "B24": "=AVERAGE(Db!C63:C65)",
-    "C24": "=DAVERAGE(Db!C62:C65,\"w\",Db!$M$1:$M$2)=0"
+    "C24": "=DAVERAGE(Db!C62:C65,\"w\",Db!$M$1:$M$2)=0",
+    "A26": "=DAVERAGE(Db!C70:C71,\"w\",Db!$M$1:$M$2)",
+    "B26": "=AVERAGE(Db!C71:C71)",
+    "C26": "=DAVERAGE(Db!C70:C71,\"w\",Db!$M$1:$M$2)=0",
+    "D26": "=AVERAGE(Db!C71:C71)=0",
+    "A27": "=DAVERAGE(Db!C78:C80,\"w\",Db!$M$1:$M$2)",
+    "B27": "=AVERAGE(Db!C79:C80)",
+    "C27": "=DAVERAGE(Db!C78:C80,\"w\",Db!$M$1:$M$2)=0",
+    "D27": "=AVERAGE(Db!C79:C80)=0",
+    "A28": "=DAVERAGE(Db!C86:C89,\"w\",Db!$M$1:$M$2)",
+    "B28": "=AVERAGE(Db!C87:C89)",
+    "C28": "=DAVERAGE(Db!C86:C89,\"w\",Db!$M$1:$M$2)=0",
+    "D28": "=AVERAGE(Db!C87:C89)=0",
+    "E26": "=(3E-308-2.5E-308)=0"
    }
   },
   {
@@ -145,7 +158,16 @@
     "C62": "w",
     "C63": "=2^-1022",
     "C64": "=2^-1022",
-    "C65": 0
+    "C65": 0,
+    "C70": "w",
+    "C71": "=3E-308-2.5E-308",
+    "C78": "w",
+    "C79": "=3E-308",
+    "C80": "=0-2.9E-308",
+    "C86": "w",
+    "C87": "=3E-308-2.5E-308",
+    "C88": "=3E-308-2.5E-308",
+    "C89": "=3E-308-2.5E-308"
    }
   }
  ],

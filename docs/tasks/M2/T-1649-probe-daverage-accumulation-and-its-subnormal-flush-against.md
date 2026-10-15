@@ -24,4 +24,4 @@ DAVERAGE accumulates its sum and handles a subnormal result the way Excel does, 
 -
 
 ## Outcome
-Added probes-numeric/daverage-accumulation (excel-graph, 85 cells). DAVERAGE accumulates with per-addition double rounding (the engine missed by one ulp in all 8 operand sets) and flushes a subnormal quotient to 0 like AVERAGE (the engine kept it). `fn_daverage` now uses `extended_sum` and `flush_subnormal`. Subnormal operands cannot be probed on excel-graph (stored subnormals read as 0), so the subnormal rows use normal sums over larger counts. numbers.md updated.
+Added probes-numeric/daverage-accumulation (excel-graph, 104 cells). DAVERAGE accumulates with per-addition double rounding (the engine missed by one ulp in all 8 operand sets) and flushes a subnormal quotient to 0 like AVERAGE (the engine kept it). `fn_daverage` now uses `extended_sum` and `flush_subnormal`. Rows A20:A24 use normal sums over larger counts and rows A26:A28 use kept subnormal operands built by subtraction (with the decision 0042 companion); both give 0. numbers.md updated.
