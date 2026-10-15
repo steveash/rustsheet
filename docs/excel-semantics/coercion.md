@@ -67,10 +67,12 @@ then digits and letters: `" 1" < CHAR(160)&"1" < "0" < "1" < "1"&CHAR(160)`, `" 
 `"a b" < "a"&CHAR(160)&"b" < "ab"`, `CHAR(160)&CHAR(160)&"1" < CHAR(160)&"0"`; CHAR(160) is never
 equal to a space or ignored (`CHAR(160)&"1"="1"` is FALSE). `>` and COUNTIF's `">"` agree on every
 pair whose operand is text (a criterion operand like `" 0"` is numeric, criteria.md). In passing:
-a hyphen is skipped, `"-1" > "0"` is TRUE (Data!A17 vs C3, still FALSE in the engine; T-0220).
-Implemented in: `functions::util::cmp_text_excel`, used by `compare_values` (operators, sort,
-lookups) and the text criteria in functions/criteria.rs. Inferred, not probed: SORT and approximate lookups
-place CHAR(160) the same way (they share `compare_values`), and control characters below the space.
+a hyphen is skipped, `"-1" > "0"` is TRUE (Data!A17 vs C3; implemented by T-0220).
+Implemented in: `functions::util::collation::cmp_text_excel` (T-0220: the three passes below), used by
+`compare_values` (operators including `=`, SWITCH, SORT, lookups) and the text criteria in
+functions/criteria.rs. Inferred, not probed: SORT and lookups order texts the same way (they share
+`compare_values`); control characters sort below the space; exact-match lookups treat `"æ"` and
+`"ae"` as equal, as `=` does.
 Full order (T-1469, VERIFIED, probes/text-collation-order, 146 strings ranked by
 `SUMPRODUCT(--(range<x))`, excel-graph 2026-10-13). `=`, `<` and `>` ignore case completely (`"a"<"A"` and `"a">"A"` are both FALSE) but not accents; `<`/`>` order, lowest first:
 1. The empty string, then a lone `'`, `''`, `-`, `--`, then space, `  `, then the punctuation
@@ -82,7 +84,16 @@ Full order (T-1469, VERIFIED, probes/text-collation-order, 146 strings ranked by
    `"a" < "á" < "à"="À" < "â" < "ä" < "å" < "aa"`; `"é"="É"` sits after `"E"` and before `"F"`; `"résumé" > "resume"`.
 4. Expansions and multi-letter folds: `"æ"="ae"` and `"ß"="ss"` are equal (`=` TRUE); `"ø" > "o"` but `"ø"` sorts after `"ö"` and before `"P"`
    (observed position only; whether it is a separate letter or a heavier accent of `o` is not probed); `"ÿ"` sorts after `"Y"` and before `"Z"`.
-Ranks for every string are in the oracle sidecar (Calc!A, ties in Calc!B). Fitting the key is T-0220's.
+Ranks for every string are in the oracle sidecar (Calc!A, ties in Calc!B).
+Fitted key (T-0220; all 486 probe cells and the gen-m2 cells above pass): compare in three passes,
+case folded throughout. (1) Letter weights: control characters, space, CHAR(160), the punctuation
+in the order above, digits, letters; an accented Latin-1 letter weighs as its base letter, `æ` as
+`a e`, `ß` as `s s`; hyphen and apostrophe weigh nothing. (2) Accents, letter by letter: none <
+acute < grave < circumflex < diaeresis < ring, then tilde, cedilla and stroke (`ø`). Tilde and
+cedilla are placed by Windows' sort-key order, UNVERIFIED. (3) Hyphens and apostrophes as (position,
+weight), a later position first, apostrophe before hyphen. Characters outside ASCII and the Latin-1
+letters (`þ`, `ð`, `œ`, Greek, symbols such as `§`) are UNVERIFIED: they keep code-point order after
+the letters.
 Tasks: T-0220, T-0244, T-1469
 
 ## Double unary minus coerces to a number
