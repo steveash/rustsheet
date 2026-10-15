@@ -115,38 +115,10 @@ impl Model {
         call_args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let (parameters, body) = match self.lambda_definition(&lambda_result, call_args.len(), cell)
-        {
-            Ok(definition) => definition,
-            Err(error) => return error,
-        };
-
-        let mut patched_body = body;
-        let mut bound_ids: Vec<usize> = Vec::with_capacity(parameters.len());
-
-        for param in &parameters {
-            let raw_id = self.get_next_variable_id();
-            assign_variable_ids(&mut patched_body, &param.name, raw_id as u32);
-            bound_ids.push(raw_id);
-        }
-
-        for (i, raw_id) in bound_ids.iter().enumerate() {
-            // A reference is passed as a reference, a single cell too, so that
-            // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
-            let binding = match call_args.get(i) {
-                Some(arg) => self.bind_argument(arg, cell),
-                None => Binding::Value(CalcResult::EmptyArg),
-            };
-            self.variable_stack.insert(*raw_id, binding, cell);
-        }
-
-        let result = self.evaluate_node_in_context(&patched_body, cell);
-
-        for raw_id in bound_ids {
-            self.variable_stack.remove(raw_id);
-        }
-
-        result
+        // A reference is passed as a reference, a single cell too, so that
+        // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
+        let mut caller = self.lambda_caller(&lambda_result, call_args.len());
+        self.call_lambda_caller_with_nodes(&mut caller, call_args, cell)
     }
 
     /// A caller for `lambda_result` with `provided` arguments per call, for the LAMBDA helpers
@@ -193,7 +165,8 @@ impl Model {
     }
 
     /// Binds parameter `i` to `bind(i)` and evaluates the patched body. The body is reused while
-    /// no LAMBDA has been created since it was patched: a LAMBDA made by the body
+    /// no LAMBDA has been created since it was patched (`last_lambda_id` only grows during an
+    /// evaluation; `clear_lambdas` resets it between evaluations, when no caller is alive): a LAMBDA made by the body
     /// (`LAMBDA(x,LAMBDA(y,x+y))`) holds the parameter ids, so the next call patches a fresh copy
     /// with fresh ids, as every call did before T-1560.
     fn call_prepared(

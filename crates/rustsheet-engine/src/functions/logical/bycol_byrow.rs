@@ -81,21 +81,10 @@ impl Model {
     /// Applies a LAMBDA to each column of `array`, returning a 1-row array of results.
     /// The lambda receives each column of a range as a reference, of an array as an N×1 array.
     pub(crate) fn fn_bycol(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let source = match self.by_slices_source(&args[0], cell) {
-            Ok(source) => source,
+        let (source, mut caller) = match self.by_slices_args(args, cell) {
+            Ok(inputs) => inputs,
             Err(e) => return e,
         };
-
-        let lambda_result = match self.by_slices_lambda(&args[1], cell) {
-            Ok(lambda) => lambda,
-            Err(e) => return e,
-        };
-
-        let mut caller = self.lambda_caller(&lambda_result, 1);
         let results = match source {
             Source::Range(range) => (range.left.column..=range.right.column)
                 .map(|column| {
@@ -126,21 +115,10 @@ impl Model {
     /// Applies a LAMBDA to each row of `array`, returning a 1-column array of results.
     /// The lambda receives each row of a range as a reference, of an array as a 1×M array.
     pub(crate) fn fn_byrow(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let source = match self.by_slices_source(&args[0], cell) {
-            Ok(source) => source,
+        let (source, mut caller) = match self.by_slices_args(args, cell) {
+            Ok(inputs) => inputs,
             Err(e) => return e,
         };
-
-        let lambda_result = match self.by_slices_lambda(&args[1], cell) {
-            Ok(lambda) => lambda,
-            Err(e) => return e,
-        };
-
-        let mut caller = self.lambda_caller(&lambda_result, 1);
         let results = match source {
             Source::Range(range) => (range.left.row..=range.right.row)
                 .map(|row| {
@@ -182,6 +160,21 @@ impl Model {
                 "Expected a LAMBDA".to_string(),
             )),
         }
+    }
+
+    /// The array and the one-argument LAMBDA caller of a BYROW or BYCOL call, in that order of
+    /// errors (the argument count first).
+    fn by_slices_args(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(Source, LambdaCaller), CalcResult> {
+        if args.len() != 2 {
+            return Err(CalcResult::new_args_number_error(cell));
+        }
+        let source = self.by_slices_source(&args[0], cell)?;
+        let lambda_result = self.by_slices_lambda(&args[1], cell)?;
+        Ok((source, self.lambda_caller(&lambda_result, 1)))
     }
 
     /// One BYROW or BYCOL call of `lambda` on the row or column `slice`, bound as a reference.

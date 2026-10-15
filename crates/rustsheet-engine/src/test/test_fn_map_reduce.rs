@@ -210,6 +210,31 @@ fn map_inner_lambda_sees_each_element() {
 }
 
 #[test]
+fn by_slices_and_makearray_inner_lambda_sees_each_call() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set("B1", "=BYROW(A1:A3, LAMBDA(r, LAMBDA(y, SUM(r) + y)(10)))");
+    model._set("C1", "=BYCOL({1,2,3}, LAMBDA(c, LAMBDA(y, SUM(c) * y)(2)))");
+    model._set(
+        "C3",
+        "=MAKEARRAY(2, 2, LAMBDA(i, j, LAMBDA(k, i * 10 + j + k)(0)))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "11");
+    assert_eq!(model._get_text("B2"), "12");
+    assert_eq!(model._get_text("B3"), "13");
+    assert_eq!(model._get_text("C1"), "2");
+    assert_eq!(model._get_text("D1"), "4");
+    assert_eq!(model._get_text("E1"), "6");
+    assert_eq!(model._get_text("C3"), "11");
+    assert_eq!(model._get_text("D3"), "12");
+    assert_eq!(model._get_text("C4"), "21");
+    assert_eq!(model._get_text("D4"), "22");
+}
+
+#[test]
 fn map_wrong_lambda_arity_is_value_in_every_element() {
     let mut model = new_empty_model();
     model._set("A1", "1");

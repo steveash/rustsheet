@@ -18,7 +18,6 @@ Performance review of T-1549 (MINOR): `lambda_definition` clones the parameter V
 
 ## Acceptance criteria
 - [x] Per-element AST clone and id patching are gone from the five helpers; lambda unit tests and probes stay passing; `make check` green; reviewers approve.
-- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -30,7 +29,11 @@ variable ids once, then each element only binds its values. A body that creates 
 the parameter ids) makes the next call patch a fresh copy with fresh ids, as every call did before, so
 closures behave as before (checked against the old code: `MAP(..,LAMBDA(x,LAMBDA(y,x+y)(10)))`,
 REDUCE/SCAN with LAMBDA accumulators). BYROW/BYCOL over arrays (node arguments) use the same caller.
-`call_lambda_with_values` is gone (no callers left).
+`call_lambda_with_values` is gone (no callers left), and `call_lambda` is a one-call `LambdaCaller`.
+Tests cover a closure body in MAP, REDUCE, SCAN, BYROW, BYCOL and MAKEARRAY. `make check` (eval gate and
+duplication ratchet included) green.
 Measurement (release, one `evaluate` of `SUM(MAP(SEQUENCE(2^20),LAMBDA(x,IF(x>2,x*2+1,LET(t,x,t-1)))))`,
 `REDUCE(0,SEQUENCE(2^20),LAMBDA(a,v,a+MOD(v,7)))` and `SUM(BYROW(SEQUENCE(262144,2),LAMBDA(r,SUM(r)*2)))`):
-2.13 s / 2.08 s before, 1.18 s / 1.41 s after, same results. Eval delta: none.
+total for the three cells, two runs each: 2.13 s and 2.08 s before, 1.18 s and 1.41 s after, same
+results. A body that creates any LAMBDA (a defined-name LAMBDA call too) still re-patches per element:
+T-0425. Eval delta: none.
