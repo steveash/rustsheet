@@ -130,6 +130,8 @@ fn lone_surrogates_compare_by_code_unit() {
             "#N/A",
         ),
         (format!("=MATCH({l},{{\"x\";\"\u{fffd}\"}},0)"), "#N/A"),
+        // A lone-half pattern matches case-insensitively, like `=` (T-1585 review).
+        (format!("=MATCH(\"A\"&{h},{{\"x\";\"a\"&{h}}},0)"), "2"),
         (format!("=EXACT(UPPER({h}),{h})"), "TRUE"),
         (format!("=LEN(TRIM(\" \"&{h}&\"  \"&{l}&\" \"))"), "3"),
         (format!("=LEN(CLEAN({l}&CHAR(7)&{h}))"), "2"),

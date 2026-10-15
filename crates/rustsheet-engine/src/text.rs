@@ -320,7 +320,7 @@ impl Text {
 
     /// The text with `f` applied to each run of well-formed text and every lone unit kept, as
     /// UPPER, LOWER, PROPER and CLEAN do (probes/text-lone-surrogates A31-A39). A lone unit is
-    /// no letter or space, so `f` never needs to see across it.
+    /// no letter or space, so `f` never needs to see across it: it breaks a word, so `PROPER("a"&L&"b")` capitalizes the `b` (unprobed).
     #[must_use]
     pub fn map_runs(&self, f: impl Fn(&str) -> String) -> Text {
         if !self.has_lone_surrogate() {

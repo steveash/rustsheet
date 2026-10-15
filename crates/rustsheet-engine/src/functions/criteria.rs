@@ -9,7 +9,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::token::{is_english_error_string, Error},
     formatter::date_text::{parse_date, CurrentYear},
-    functions::util::collation::cmp_text_excel,
+    functions::util::collation::{cmp_text, cmp_text_excel},
     locale::Locale,
     number_format::{cmp_excel_precision, parse_excel_number, parse_finite_number},
     text::Text,
@@ -450,15 +450,17 @@ pub(crate) fn build_criteria_with<'a>(
     }
 }
 
-/// [`wildcard_text_matcher`] for engine text. A lone surrogate never matches a pair or U+FFFD, so
-/// a pattern holding one matches only the identical text (probes/text-lone-surrogates A25-A28;
-/// a wildcard next to a lone half is unprobed). Any other pattern goes to [`wildcard_text_matcher`].
+/// [`wildcard_text_matcher`] for engine text. A lone surrogate never matches a pair or U+FFFD
+/// (probes/text-lone-surrogates A25-A28), so a pattern holding one is compared with the text
+/// order (`cmp_text`, case-insensitive like `=`). Wildcards beside a lone half are unprobed: such
+/// a pattern is read literally, a known gap (docs/excel-semantics/text.md, T-1642). Any other
+/// pattern goes to [`wildcard_text_matcher`].
 pub(crate) fn wildcard_text_matcher_for(pattern: &Text) -> Box<dyn Fn(&CalcResult) -> bool> {
     if !pattern.has_lone_surrogate() {
         return wildcard_text_matcher(pattern);
     }
     let pattern = pattern.clone();
-    Box::new(move |x| matches!(x, CalcResult::String(s) if *s == pattern))
+    Box::new(move |x| matches!(x, CalcResult::String(s) if cmp_text(s, &pattern).is_eq()))
 }
 
 /// Matcher for an Excel wildcard text pattern (`*`, `?`, `~` escapes), as used by
