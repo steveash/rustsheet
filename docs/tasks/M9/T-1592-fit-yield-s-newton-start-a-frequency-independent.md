@@ -3,7 +3,7 @@ id: T-1592
 title: "Fit YIELD's Newton start: a frequency-independent first iterate"
 milestone: M9
 lane: research
-status: in-progress
+status: blocked
 priority: P2
 size: M
 tier: opus
@@ -27,7 +27,7 @@ solver-iteration-traces Y!C2:E2 (price 50, ten years). The approximate-yield for
 rate, 0, 0.1 and the current yield do not give these values.
 
 ## Acceptance criteria
-- [ ] A backward-iterate report in the lab (or a test) that reproduces the starting values above.
+- [x] A backward-iterate report in the lab (or a test) that reproduces the starting values above.
 - [ ] Start formulas and stop rules tried, each with its bit-exact and within-4-ulp counts as lab fits
   (decision 0056); a model that raises the bit-exact count, or the task set `blocked` with the candidates
   tried. Findings in financial.md.
@@ -35,3 +35,19 @@ rate, 0, 0.1 and the current yield do not give these values.
 
 ## Out of scope
 - Engine changes (T-1532).
+
+## Blocked because
+No start formula fits, so the model cannot be raised from 3/90 with the evidence at hand. The lab now has
+`newton_back_chain` (solvers.py). A test pins the shared one-step-back iterate of S!A1 and S!F1:
+0.05523446268, equal to 1.1e-11 across frequencies 2 and 1. Candidates tried, with counts in financial.md
+"YIELD stops short of PRICE's root":
+- Newton with the residual stop from the approximate yield: 1/90.
+- Six closed-form families fitted for a span T: none consistent.
+
+The iterate sits about 1.4e-6 below the redemption-100 root and moves by only about 2e-9 at redemption
+100.5 (S!E10). That points to an earlier solver phase, not a closed form. Unblocking needs per-iterate
+evidence: Excel cells whose YIELD is forced to stop after k iterations do not exist. Two routes:
+- A sweep that moves only redemption (100 to 101 in 0.05 steps) and only the frequency at fixed dates,
+  to map how the shared iterate depends on each.
+- Or the same back-chain analysis on PRICE's inverse with other day-count bases (probe cells with
+  basis 1 to 4 and more than one coupon).
