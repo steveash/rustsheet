@@ -223,5 +223,5 @@ Rule: a text criterion `"ae"`, `"=ae"` or `"<>ae"` compares with Excel's text co
 `COUNTIF(r,"ae")` and `COUNTIF(r,"=ae")` are 2 (æ equals ae), `COUNTIF(r,"<>ae")` is 1; a criterion `"æ"` also counts 2; `"a-e"` counts 1
 (a hyphen is not ignored in equality). The ordered operators agree (`"<=ae"` 2, `">=ae"` 3, `">ae"` 1, `"<ae"` 0).
 Evidence: probes/text-collation-lookups Calc!F1:H2, K1:K12 (oracle: excel-graph, 2026-10-15). Status: VERIFIED
-Implemented in: `result_is_equal_to_string`, `result_is_not_equal_to_string` (functions/criteria.rs), through `cmp_text_excel` (T-1594).
+Implemented in: `result_is_equal_to_string`, `result_is_not_equal_to_string` (functions/criteria.rs), through `cmp_text_excel` (T-1594). The same code serves SUMIF/AVERAGEIF/*IFS and the D-functions' explicit `=`/`<>` criteria; only COUNTIF is probed.
 Tasks: T-1590, T-1594
