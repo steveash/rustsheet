@@ -1,8 +1,7 @@
 use crate::arithmetic::{extended_product, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ArrayErrorRank, ArrayNumbers, CellNumbers, DirectNumbers,
-    ErrorRule, NumberRules,
+    AggregatePolicy, ArgReading, ArrayErrorRank, ErrorRule, NumberRules,
 };
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
@@ -14,13 +13,6 @@ const PRODUCT_ARGS: AggregatePolicy = AggregatePolicy {
         array_errors: ArrayErrorRank::Referenced,
     },
     skip_empty_args: false,
-};
-
-/// PRODUCT's coercion is SUM's: direct values are cast, references and arrays give only numbers.
-const PRODUCT_NUMBERS: NumberRules = NumberRules {
-    direct: DirectNumbers::Cast,
-    cells: CellNumbers::Numbers,
-    array: ArrayNumbers::Numbers,
 };
 
 impl Model {
@@ -48,12 +40,16 @@ impl Model {
         let mut seen_value = false;
         // An empty argument counts as seen (`PRODUCT(,)` is 0 like `PRODUCT(0)`; the walker hands
         // it on as a direct value that casts to 0).
-        if let Err(error) =
-            self.for_each_aggregate_number(args, cell, PRODUCT_ARGS, PRODUCT_NUMBERS, |value| {
+        if let Err(error) = self.for_each_aggregate_number(
+            args,
+            cell,
+            PRODUCT_ARGS,
+            NumberRules::SUM_LIKE,
+            |value| {
                 seen_value = true;
                 result = flush_subnormal(extended_product(result, value));
-            })
-        {
+            },
+        ) {
             return error;
         }
         if !seen_value {

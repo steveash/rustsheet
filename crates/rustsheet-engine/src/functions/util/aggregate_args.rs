@@ -123,6 +123,17 @@ pub(crate) struct NumberRules {
     pub(crate) array: ArrayNumbers,
 }
 
+impl NumberRules {
+    /// SUM's coercion, which MIN, MAX and PRODUCT share (probes/min-max-value-args,
+    /// docs/excel-semantics/coercion.md): every direct value is cast; referenced cells and arrays
+    /// give only their numbers.
+    pub(crate) const SUM_LIKE: NumberRules = NumberRules {
+        direct: DirectNumbers::Cast,
+        cells: CellNumbers::Numbers,
+        array: ArrayNumbers::Numbers,
+    };
+}
+
 /// Error-precedence state across one call's arguments.
 pub(crate) struct AggregateWalk {
     policy: AggregatePolicy,

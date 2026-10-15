@@ -1,7 +1,6 @@
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ArrayErrorRank, ArrayNumbers, CellNumbers, DirectNumbers,
-    ErrorRule, NumberRules,
+    AggregatePolicy, ArgReading, ArrayErrorRank, ErrorRule, NumberRules,
 };
 
 use crate::{
@@ -286,15 +285,6 @@ const SUM_ARGS: AggregatePolicy = AggregatePolicy {
     skip_empty_args: false,
 };
 
-/// SUM's coercion: every direct value (and a value a reference node gives without areas) is
-/// cast; referenced cells and arrays give only their numbers (a reference, also via IF/INDEX, is
-/// a one-cell range: text is skipped).
-const SUM_NUMBERS: NumberRules = NumberRules {
-    direct: DirectNumbers::Cast,
-    cells: CellNumbers::Numbers,
-    array: ArrayNumbers::Numbers,
-};
-
 impl Model {
     /// SUM(number1, [number2], ...)
     ///
@@ -329,7 +319,9 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         }
         let mut sum = SumParts::default();
-        self.for_each_aggregate_number(args, cell, SUM_ARGS, SUM_NUMBERS, |value| sum.add(value))?;
+        self.for_each_aggregate_number(args, cell, SUM_ARGS, NumberRules::SUM_LIKE, |value| {
+            sum.add(value)
+        })?;
         Ok(sum)
     }
 }

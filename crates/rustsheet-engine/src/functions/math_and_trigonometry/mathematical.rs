@@ -5,8 +5,7 @@ use crate::decimal_round::{round_decimal, RoundMode};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ArrayErrorRank, ArrayNumbers, CellNumbers, DirectNumbers,
-    ErrorRule, NumberRules,
+    AggregatePolicy, ArgReading, ArrayErrorRank, ErrorRule, NumberRules,
 };
 use crate::number_format::to_excel_precision;
 use crate::single_number_fn;
@@ -44,13 +43,6 @@ const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     skip_empty_args: false,
 };
 
-/// MIN and MAX coerce like SUM (probes/min-max-value-args).
-const MIN_MAX_NUMBERS: NumberRules = NumberRules {
-    direct: DirectNumbers::Cast,
-    cells: CellNumbers::Numbers,
-    array: ArrayNumbers::Numbers,
-};
-
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
     ///
@@ -65,11 +57,15 @@ impl Model {
         pick: fn(f64, f64) -> f64,
     ) -> CalcResult {
         let mut result = f64::NAN;
-        if let Err(error) =
-            self.for_each_aggregate_number(args, cell, MIN_MAX_ARGS, MIN_MAX_NUMBERS, |value| {
+        if let Err(error) = self.for_each_aggregate_number(
+            args,
+            cell,
+            MIN_MAX_ARGS,
+            NumberRules::SUM_LIKE,
+            |value| {
                 result = pick(value, result);
-            })
-        {
+            },
+        ) {
             return error;
         }
         if result.is_nan() || result.is_infinite() {
