@@ -24,4 +24,4 @@ T-1587 implemented this from the UTF-16 model; existing cells (probes/text-lone-
 -
 
 ## Outcome
-Added A82-A101 to probes/text-lone-surrogates with excel-graph values. T, REPT and TEXT(`@`) keep the exact lone unit and REPT re-pairs at the join; the 255-limit cells fit (254 ok, 256 `#VALUE!`). The task's `x@y` format is `#VALUE!` even for "😀" (y is a date token), so quoted-format cells A97-A101 carry the lone-surrogate evidence. Divergence filed as T-1656. text.md and SPEC-0010 UNVERIFIED markers resolved.
+Added A82-A101 to probes/text-lone-surrogates with excel-graph values. T, REPT and TEXT(`@`) keep the exact lone unit and REPT re-pairs at the join; the 255-limit cells fit (254 units ok, 256 units (127 `a`) `#VALUE!`). The task's `x@y` format is `#VALUE!` even for "😀" (y is a date token), so quoted-format cells A97-A101 carry the lone-surrogate evidence. Divergence filed as T-1656. text.md and SPEC-0010 UNVERIFIED markers resolved.
