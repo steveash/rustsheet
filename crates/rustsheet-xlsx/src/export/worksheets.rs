@@ -278,8 +278,9 @@ pub(crate) fn get_worksheet_xml(
             // reading would intersect is saved as a one-cell dynamic array, as Excel saves it
             // (calc_tests/LOOKUP_AND_REFERENCE/ROW_COLUM.xlsx sheet6 F3 `SUM(ROW(C2:C4))`, T-1552).
             let plain_formula = |f: i32| {
-                let node = &parsed_formulas[f as usize].0;
-                if legacy_reading[f as usize] {
+                let index = usize::try_from(f).ok()?;
+                let node = &parsed_formulas.get(index)?.0;
+                Some(if *legacy_reading.get(index)? {
                     let formula = formula_attribute(node, to_excel_array_formula_string);
                     (
                         r#" cm="1""#,
@@ -288,7 +289,7 @@ pub(crate) fn get_worksheet_xml(
                 } else {
                     let formula = formula_attribute(node, to_excel_string);
                     ("", format!("<f>{formula}</f>"))
-                }
+                })
             };
             match cell {
                 Cell::EmptyCell { s } => {
@@ -370,7 +371,9 @@ pub(crate) fn get_worksheet_xml(
                     //   <v>1</v>
                     // </c>
                     let style = get_cell_style_attribute(*s);
-                    let (cm, formula) = plain_formula(*f);
+                    let Some((cm, formula)) = plain_formula(*f) else {
+                        continue;
+                    };
                     let b = i32::from(*v);
                     row_data_str.push(format!(
                         "<c r=\"{cell_name}\" t=\"b\"{style}{cm}>{formula}<v>{b}</v></c>"
@@ -386,7 +389,9 @@ pub(crate) fn get_worksheet_xml(
                     //   <f>A5+C3</f>
                     //   <v>123</v>
                     // </c>
-                    let (cm, formula) = plain_formula(*f);
+                    let Some((cm, formula)) = plain_formula(*f) else {
+                        continue;
+                    };
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
                         "<c r=\"{cell_name}\"{style}{cm}>{formula}<v>{v}</v></c>"
@@ -401,7 +406,9 @@ pub(crate) fn get_worksheet_xml(
                     //   <f>CONCATENATE(A1, A2)</f>
                     //   <v>Hello world!</v>
                     // </c>
-                    let (cm, formula) = plain_formula(*f);
+                    let Some((cm, formula)) = plain_formula(*f) else {
+                        continue;
+                    };
                     let style = get_cell_style_attribute(*s);
                     let escaped_v = escape_text(v);
                     row_data_str.push(format!(
@@ -417,7 +424,9 @@ pub(crate) fn get_worksheet_xml(
                     //   <f>A1/A3<f/>
                     //   <v>#DIV/0!</v>
                     // </c>
-                    let (cm, formula) = plain_formula(*f);
+                    let Some((cm, formula)) = plain_formula(*f) else {
+                        continue;
+                    };
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
                         "<c r=\"{cell_name}\" t=\"e\"{style}{cm}{vm}>{formula}<v>{ei}</v></c>",
