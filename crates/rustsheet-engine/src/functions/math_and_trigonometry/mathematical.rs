@@ -4,8 +4,11 @@ use crate::constants::EXCEL_PRECISION;
 use crate::decimal_round::{round_decimal, RoundMode};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::util::aggregate_args::{
+    AggregatePolicy, ArgReading, ArrayErrorRank, ArrayNumbers, CellNumbers, DirectNumbers,
+    ErrorRule, NumberRules,
+};
 use crate::number_format::to_excel_precision;
-use crate::reference_operators::RefArg;
 use crate::single_number_fn;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -29,6 +32,25 @@ fn trig_arg(f: f64) -> Result<f64, Error> {
     }
 }
 
+/// MIN and MAX: a referenced-cell error ranks below a direct scalar error; the leftmost wins
+/// (probes/aggregate-error-precedence C9-C24). A direct LAMBDA's `#VALUE!` ranks with the
+/// referenced errors, and an array error after it does not beat it (probes/aggregate-direct-lambda-
+/// product-min-max D15, D24, T-1604).
+const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::Aggregate,
+    errors: ErrorRule::Ranked {
+        array_errors: ArrayErrorRank::DirectUnlessLambdaHeld,
+    },
+    skip_empty_args: false,
+};
+
+/// MIN and MAX coerce like SUM (probes/min-max-value-args).
+const MIN_MAX_NUMBERS: NumberRules = NumberRules {
+    direct: DirectNumbers::Cast,
+    cells: CellNumbers::Numbers,
+    array: ArrayNumbers::Numbers,
+};
+
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
     ///
@@ -43,56 +65,11 @@ impl Model {
         pick: fn(f64, f64) -> f64,
     ) -> CalcResult {
         let mut result = f64::NAN;
-        // A referenced-cell error ranks below a direct scalar error; the leftmost wins
-        // (probes/aggregate-error-precedence C9-C24).
-        let mut reference_error = None;
-        // Whether `reference_error` is a direct LAMBDA's #VALUE!, which an array error after it
-        // does not beat (probes/aggregate-direct-lambda-product-min-max D15, D24, T-1604). How an
-        // array error ranks against a held referenced error is unprobed: TODO(T-1615).
-        let mut lambda_held = false;
-        for arg in args {
-            match self.evaluate_aggregate_arg(arg, cell) {
-                RefArg::Ranges(areas) => {
-                    if reference_error.is_none() {
-                        if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
-                            result = pick(value, result);
-                        }) {
-                            reference_error = Some(error);
-                        }
-                    }
-                }
-                RefArg::Value(CalcResult::Array(array)) => {
-                    for node in array.into_iter().flatten() {
-                        match node {
-                            ArrayNode::Number(value) => result = pick(value, result),
-                            ArrayNode::Error(_) if lambda_held => break,
-                            ArrayNode::Error(error) => {
-                                return CalcResult::new_error(error, cell, String::new())
-                            }
-                            // Booleans and text in an array are ignored.
-                            _ => {}
-                        }
-                    }
-                }
-                RefArg::Value(value) => {
-                    let is_lambda = matches!(value, CalcResult::Lambda(_));
-                    match self.cast_aggregate_arg_to_number(value, cell) {
-                        Ok(value) => result = pick(value, result),
-                        // A direct LAMBDA's #VALUE! ranks with the referenced errors, so a later
-                        // direct error beats it (probes/aggregate-direct-lambda-product-min-max,
-                        // T-1604; `AggregateWalk::lambda_error` holds it the same way).
-                        Err(error) if is_lambda => {
-                            if reference_error.is_none() {
-                                reference_error = Some(error);
-                                lambda_held = true;
-                            }
-                        }
-                        Err(error) => return error,
-                    }
-                }
-            }
-        }
-        if let Some(error) = reference_error {
+        if let Err(error) =
+            self.for_each_aggregate_number(args, cell, MIN_MAX_ARGS, MIN_MAX_NUMBERS, |value| {
+                result = pick(value, result);
+            })
+        {
             return error;
         }
         if result.is_nan() || result.is_infinite() {

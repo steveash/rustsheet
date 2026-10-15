@@ -3,7 +3,7 @@ id: T-1476
 title: "Move MIN, MAX, PRODUCT, COUNT and COUNTA onto the shared aggregate-argument walker"
 milestone: M2
 lane: quality
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,10 +31,13 @@ T-1474 built only the parts its consumers use. This task adds the rest of SPEC-0
 stay as named-policy entry points.
 
 ## Acceptance criteria
-- [ ] MIN, MAX, PRODUCT, COUNT and COUNTA call the walker. `rg "let mut reference_error" crates/rustsheet-engine/src/functions` finds only the walker.
-- [ ] `make eval`: 0 regressions and 0 fixes in every suite.
-- [ ] scripts/check_duplication.py does not rise; record any drop with `--update` per decision 0010.
-- [ ] `make check` green; reviewers approve.
+- [x] MIN, MAX, PRODUCT, COUNT and COUNTA call the walker. `rg "let mut reference_error" crates/rustsheet-engine/src/functions` finds only the walker.
+- [x] `make eval`: 0 regressions and 0 fixes in every suite.
+- [x] scripts/check_duplication.py does not rise; record any drop with `--update` per decision 0010.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - MINA/MAXA and the other A-variants unless the spec lists them; behavior changes of any kind.
+
+## Outcome
+MIN, MAX, PRODUCT, COUNT and COUNTA now call the shared walker; `rg "let mut reference_error"` finds nothing under `functions/`. Added `ArgReading` (with `PickedKeepingBlanks` for COUNTA), `ErrorRule::Items` (COUNT, COUNTA), `ArrayErrorRank::DirectUnlessLambdaHeld` (MIN, MAX keep their held-LAMBDA rule, TODO(T-1615)) and `walk_aggregate_read` (COUNTA picks its argument first). `ArgReading::Reference` was not needed (PRODUCT reads as `Aggregate` since T-1571). Eval delta: 0 fixed, 0 regressions; duplicated lines 6369 -> 6360 (baseline updated). No benchmark was run: the hot path (a range of numbers) is the walker SUM already uses.

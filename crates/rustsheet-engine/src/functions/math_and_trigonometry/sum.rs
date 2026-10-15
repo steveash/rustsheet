@@ -1,7 +1,7 @@
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArrayErrorRank, ArrayNumbers, CellNumbers, DirectNumbers, ErrorRule,
-    NumberRules,
+    AggregatePolicy, ArgReading, ArrayErrorRank, ArrayNumbers, CellNumbers, DirectNumbers,
+    ErrorRule, NumberRules,
 };
 
 use crate::{
@@ -279,6 +279,7 @@ impl SumParts {
 /// "Aggregate error precedence", probes/sum-error-precedence; arrays: probes/aggregate-error-precedence
 /// C50, C53, C61, C77).
 const SUM_ARGS: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked {
         array_errors: ArrayErrorRank::Referenced,
     },
