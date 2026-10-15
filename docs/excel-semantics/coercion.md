@@ -339,7 +339,7 @@ and MULTINOMIAL alike: typed text (`GCD(-1,"a")`, `GCD("a",-1)`), a typed TRUE, 
 TRUE or error cell of a range before or after it, and an array-literal element (`GCD(-1,{4,#N/A})`, `GCD(-1,{4,"a"})`, `GCD(-1,{4,TRUE})`) are
 `#VALUE!` or the error itself; only with no other error is the answer `#NUM!`. Array-literal text or TRUE elements next to a negative are the same in LCM and MULTINOMIAL
 (`LCM(-1,{4,"a"})`, `LCM({4,TRUE},-1)`, `MULTINOMIAL(-1,{4,#N/A})`: probes/gcd-lcm-multinomial-error-order A43:A52, T-1655). An argument above 2^53 is
-`#NUM!` the same deferred way, a loser to every other error in either order, in GCD, LCM and MULTINOMIAL: `GCD(10^16,"a")` and `GCD("a",10^16)` are `#VALUE!`,
+`#NUM!` the same deferred way, a loser to every other error in either order, in GCD, LCM and MULTINOMIAL (typed text, `NA()` and a negative are probed; the range-cell and array-element forms, and LCM's "result too large" `#NUM!`, are inferred, T-1661): `GCD(10^16,"a")` and `GCD("a",10^16)` are `#VALUE!`,
 `GCD(10^16,NA())` and `GCD(NA(),10^16)` `#N/A` (A9:A12, A23:A26, A37:A40), and `GCD(10^16,-1)` / `GCD(-1,10^16)` are `#NUM!` (A13:A14); the engine used to return the
 "Argument too large" `#NUM!` at once for GCD and LCM.
 An omitted argument: the first one is `#N/A` (`GCD(,4)`, `GCD(,-1)`, `GCD(,)`, `MULTINOMIAL(,4)`), a later one is skipped, not read as 0
