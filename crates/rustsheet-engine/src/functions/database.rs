@@ -53,7 +53,9 @@ impl Model {
                 });
                 if let CalcResult::Number(n) = v {
                     if n.is_finite() {
-                        sum += n;
+                        // Rounds the total to a double after every addition, like SUM (numbers.md
+                        // "Accumulators beyond SUM and AVERAGE", probes-numeric/daverage-accumulation).
+                        sum = extended_sum(sum, n);
                         count += 1;
                     }
                 }

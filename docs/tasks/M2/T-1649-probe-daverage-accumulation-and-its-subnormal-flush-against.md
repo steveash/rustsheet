@@ -3,7 +3,7 @@ id: T-1649
 title: "Probe DAVERAGE accumulation and its subnormal flush against Excel"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ DAVERAGE accumulates its sum and handles a subnormal result the way Excel does, 
 
 ## Out of scope
 -
+
+## Outcome
+Added probes-numeric/daverage-accumulation (excel-graph). DAVERAGE accumulates with per-addition double rounding: the engine missed by one ulp in all 8 operand sets; `fn_daverage` now uses `extended_sum`. The subnormal quotient rows already matched Excel (0 for subnormal averages, 2^-1022 kept), so no `flush_subnormal` was added. numbers.md updated.
