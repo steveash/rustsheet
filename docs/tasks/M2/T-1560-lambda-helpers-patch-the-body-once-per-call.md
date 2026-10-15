@@ -3,7 +3,7 @@ id: T-1560
 title: "LAMBDA helpers: patch the body once per call of MAP/SCAN/REDUCE/BYROW/BYCOL, not per element"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
