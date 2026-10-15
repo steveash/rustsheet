@@ -62,6 +62,7 @@ Edges (probes/lookup-vector-edges, excel-graph, 2026-10-07, T-0269):
 - A single-cell lookup_vector is a one-element vector: `LOOKUP(2,C1,D1)` and `LOOKUP(3,C1,D1)` with C1 = 2 are D1, `LOOKUP(0,C1,D1)` is `#N/A`.
 - A scalar result_vector is a one-element array: `LOOKUP(2,A1:A2,5)` is 5 (match at position 1) and `LOOKUP(99,A1:A2,5)` (position 2) is `#N/A`,
   as is `"x"`; unlike a one-cell range it is not read past.
+- In the array form a scalar picked by CHOOSE is a one-element array: legacy `=LOOKUP(2,CHOOSE(1,B1:B6*1))` is 1 on the range's rows (references.md "Legacy `@` on CHOOSE operator arms under aggregates", T-1643; other scalar lookup_vectors unprobed, T-1651).
 - Reading past the sheet's last row or column gives a blank, 0, not `#N/A`: `LOOKUP(99,A1:A3,F1048575:F1048576)` and
   `LOOKUP(99,A5:B5,XFD5)` are 0, while a position still on the sheet reads its cell (`LOOKUP(3,A1:A3,F1048575:F1048576)` is F1048576's 12,
   `LOOKUP(99,A5:B5,XFC5:XFD5)` is XFD5).

@@ -1,10 +1,10 @@
 //! INDEX: one cell, row, column or area of a reference or an array, lifted element-wise over
 //! array indices (docs/excel-semantics/lookup.md).
 
-use crate::cast::{calc_result_to_array_node, NumberOrArray};
+use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
 use crate::external_reference::ExternalArea;
 use crate::functions::util::{
-    array_node_to_calc_result, near_integer_count, NEAR_INTEGER_TOLERANCE,
+    array_node_to_calc_result, near_integer_count, picks_a_branch, NEAR_INTEGER_TOLERANCE,
 };
 use crate::limits::check_array_size;
 use crate::reference_operators::{three_d_needs_one_sheet, Picked, RefArg};
@@ -270,7 +270,16 @@ impl Model {
                         Err(error) => error,
                     };
                 }
-                self.evaluate_reference_arg(reference, cell)
+                match self.evaluate_reference_arg(reference, cell) {
+                    // A scalar picked by IF or CHOOSE is a one-element array: `INDEX(CHOOSE(1,
+                    // @B1:B6*1),3)` is `#REF!` on the range's rows (probes/legacy-choose-arm-
+                    // aggregate-and-array-constant-at H1, T-1643). A scalar anywhere else keeps
+                    // being `#VALUE!` (unprobed, T-1645).
+                    RefArg::Value(scalar) if picks_a_branch(&args[0]) => {
+                        RefArg::Value(scalar_as_array(scalar))
+                    }
+                    other => other,
+                }
             }
             Picked::Value(value) => RefArg::Value(value),
         };

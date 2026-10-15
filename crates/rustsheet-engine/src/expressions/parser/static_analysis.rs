@@ -2,8 +2,8 @@ use super::reference_operators::{at_outside, wrong_range_shape};
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
 use legacy::{
-    add_array_at, add_in_array_context, is_array_context, legacy_context_intersects,
-    legacy_intersects, remove_array_at, remove_in_array_context,
+    add_array_at, add_in_array_context, is_array_context, legacy_call_reads_a_value,
+    legacy_context_intersects, legacy_intersects, remove_array_at, remove_in_array_context,
 };
 mod aggregate;
 mod legacy;
@@ -182,6 +182,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             let new_function = matches!(kind, Function::Let | Function::Lambda);
             if !new_function
                 && add
+                && !legacy_call_reads_a_value(kind, args)
                 && matches!(
                     run_static_analysis_on_node(node),
                     StaticResult::Range(_, _) | StaticResult::Unknown
@@ -465,11 +466,6 @@ fn static_analysis_offset(args: &[Node]) -> StaticResult {
 
 fn static_analysis_indirect(_args: &[Node]) -> StaticResult {
     // We will always insert the @, but we don't need to do that in every scenario`
-    StaticResult::Unknown
-}
-
-fn static_analysis_index(_args: &[Node]) -> StaticResult {
-    // INDEX has two forms, but they are indistinguishable at parse time.
     StaticResult::Unknown
 }
 
@@ -1698,7 +1694,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Hlookup => aggregate::lookup_static_result(args), // T-0270, T-1269
         Function::Hstack => StaticResult::Unknown,
         Function::Hyperlink => StaticResult::Scalar,
-        Function::Index => static_analysis_index(args),
+        // INDEX has two forms, but they are indistinguishable at parse time.
+        Function::Index => StaticResult::Unknown,
         Function::Indirect => static_analysis_indirect(args),
         Function::Lookup => not_implemented(args),
         Function::Match => not_implemented(args),
