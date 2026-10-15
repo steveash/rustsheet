@@ -2,8 +2,8 @@ use super::reference_operators::{at_outside, wrong_range_shape};
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
 use legacy::{
-    add_in_array_context, add_index_array_at, is_array_context, legacy_context_intersects,
-    legacy_intersects, remove_in_array_context, remove_index_array_at,
+    add_array_at, add_in_array_context, is_array_context, legacy_context_intersects,
+    legacy_intersects, remove_array_at, remove_in_array_context,
 };
 mod aggregate;
 mod legacy;
@@ -169,7 +169,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
-                add_index_array_at(kind, index, arg);
+                add_array_at(kind, signature.get(index), index, arg);
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
                 if legacy_intersects(kind, signature.get(index), arg) {
@@ -273,7 +273,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
-                remove_index_array_at(kind, index, arg);
+                remove_array_at(kind, signature.get(index), index, arg);
                 // Scalar arguments are an intersecting context; vector arguments
                 // (ranges/arrays) are not (`legacy_context_intersects`).
                 let child_add = legacy_context_intersects(kind, signature.get(index), arg);

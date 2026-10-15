@@ -4,7 +4,7 @@ use crate::functions::util::aggregate_args::{
 };
 use std::cmp::Ordering;
 
-use crate::arithmetic::{extended_sum, flush_subnormal};
+use crate::arithmetic::{extended_quotient, extended_sum, flush_subnormal};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
@@ -156,7 +156,9 @@ impl Model {
                 message: "Division by Zero".to_string(),
             };
         }
-        CalcResult::finite_number_or_num(flush_subnormal(sum / count), cell)
+        // The division rounds twice like the operator `/` (probes-numeric/average-large-count-division,
+        // 24 cells at n = 2051..4095; docs/excel-semantics/numbers.md "Division rounds twice").
+        CalcResult::finite_number_or_num(flush_subnormal(extended_quotient(sum, count)), cell)
     }
 
     pub(crate) fn fn_averagea(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
