@@ -1,4 +1,5 @@
 use crate::{
+    arithmetic::extended_quotient,
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     Model,
@@ -67,7 +68,8 @@ impl Model {
             };
         }
 
-        CalcResult::Number(sum / count as f64)
+        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1648).
+        CalcResult::Number(extended_quotient(sum, count as f64))
     }
 
     // =DCOUNT(database, field, criteria)
