@@ -1,3 +1,4 @@
+use super::lambda::LambdaCaller;
 use crate::functions::util::array_node_to_calc_result;
 use crate::{
     calc_result::{CalcResult, Range},
@@ -94,20 +95,24 @@ impl Model {
             Err(e) => return e,
         };
 
+        let mut caller = self.lambda_caller(&lambda_result, 1);
         let results = match source {
             Source::Range(range) => (range.left.column..=range.right.column)
                 .map(|column| {
                     let mut slice = range.clone();
                     slice.left.column = column;
                     slice.right.column = column;
-                    self.call_lambda_on_slice(&lambda_result, slice, cell)
+                    self.call_lambda_on_slice(&mut caller, slice, cell)
                 })
                 .collect(),
             Source::Values(data) => (0..data[0].len())
                 .map(|j| {
                     let column = data.iter().map(|row| vec![row[j].clone()]).collect();
-                    let result =
-                        self.call_lambda(lambda_result.clone(), &[Node::ArrayKind(column)], cell);
+                    let result = self.call_lambda_caller_with_nodes(
+                        &mut caller,
+                        &[Node::ArrayKind(column)],
+                        cell,
+                    );
                     calc_result_to_array_node(result)
                 })
                 .collect(),
@@ -135,20 +140,21 @@ impl Model {
             Err(e) => return e,
         };
 
+        let mut caller = self.lambda_caller(&lambda_result, 1);
         let results = match source {
             Source::Range(range) => (range.left.row..=range.right.row)
                 .map(|row| {
                     let mut slice = range.clone();
                     slice.left.row = row;
                     slice.right.row = row;
-                    vec![self.call_lambda_on_slice(&lambda_result, slice, cell)]
+                    vec![self.call_lambda_on_slice(&mut caller, slice, cell)]
                 })
                 .collect(),
             Source::Values(data) => data
                 .into_iter()
                 .map(|row| {
-                    let result = self.call_lambda(
-                        lambda_result.clone(),
+                    let result = self.call_lambda_caller_with_nodes(
+                        &mut caller,
                         &[Node::ArrayKind(vec![row])],
                         cell,
                     );
@@ -181,7 +187,7 @@ impl Model {
     /// One BYROW or BYCOL call of `lambda` on the row or column `slice`, bound as a reference.
     fn call_lambda_on_slice(
         &mut self,
-        lambda: &CalcResult,
+        caller: &mut LambdaCaller,
         slice: Range,
         cell: CellReferenceIndex,
     ) -> ArrayNode {
@@ -189,7 +195,7 @@ impl Model {
             left: slice.left,
             right: slice.right,
         };
-        calc_result_to_array_node(self.call_lambda_with_values(lambda, &[reference], cell))
+        calc_result_to_array_node(self.call_lambda_caller(caller, &[reference], cell))
     }
 
     /// The array argument of BYROW or BYCOL. A range on one sheet (also through TAKE, DROP,
@@ -332,12 +338,13 @@ impl Model {
             return lambda_result;
         }
 
+        let mut caller = self.lambda_caller(&lambda_result, 2);
         let mut result = Vec::with_capacity(rows);
         for r in 1..=rows {
             let mut row = Vec::with_capacity(cols);
             for c in 1..=cols {
-                let cell_result = self.call_lambda_with_values(
-                    &lambda_result,
+                let cell_result = self.call_lambda_caller(
+                    &mut caller,
                     &[CalcResult::Number(r as f64), CalcResult::Number(c as f64)],
                     cell,
                 );
