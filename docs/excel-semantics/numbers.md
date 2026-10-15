@@ -1121,11 +1121,35 @@ load through `Txn::set_row_hidden` and `Txn::add_table`.
 Rule: Excel's MULTINOMIAL is not the exact factorial ratio, even when every factorial is exact in a
 double: `MULTINOMIAL(2,3)` = 9.999999999999998 (exact 10), `MULTINOMIAL(4,6)` = 209.99999999999977
 (exact 210), and over a range holding 4, "2" (numeric text), 6 it is 13859.99999999998 (exact 13860). Non-integers truncate first
-(`MULTINOMIAL(2.5,3)` = `MULTINOMIAL(2,3)`). Excel's algorithm is not identified (T-1190).
-Evidence: probes/math-argument-modes Sheet1!C9, C35, C47, C49:C53 (excel-graph, 2026-10-08).
-Ours: the exact ratio (10, 210, 13860).
-Status: VERIFIED
+(`MULTINOMIAL(2.5,3)` = `MULTINOMIAL(2,3)`). A single argument is not 1 either: `(4)` 0.9999999999999998,
+`(6)` 0.9999999999999982, `(50)` 1.000000000000018, `(170)` 1.0000000000001974. Argument order matters from
+large sums on: `(20,150)` 5.221123511164219e+25 but `(150,20)` 5.221123511166111e+25, `(10,20,30)`
+3.553261127085186e+24 but `(30,20,10)` 3.5532611270850594e+24; `(2,3)` = `(3,2)` and `(1,169)` = `(169,1)`.
+The algorithm (fit, T-1190): one double running sum adds `log10(k)` (correctly rounded) for k = 1..sum, then
+subtracts `log10(k)` for k = 1..n for each argument, last argument first, and the result is `exp(sum * ln 10)`.
+That reproduces 64 of the 72 probed cells bit-exactly. The other 8 are single arguments (and the same
+ones padded with zeros), each one ulp off in either direction: `(5)` 0.9999999999999996 (fit 0.9999999999999994),
+`(8)`, `(10)`, `(30)`, `(40)`, `(140)`, `(0,5)`, `(5,0)`. Rejected candidates (scores out of 72): `exp(GAMMALN(s+1))`
+over exact factorials (Excel's own GAMMALN values, at most 17), natural-log sums (at most 16), `10^x` in place of
+`exp(x * ln 10)` (30), the arguments in their given order (60), glibc `log10` in place of a correctly rounded one
+(57), `ln(k)/ln 10` or `ln(k)*log10(e)` terms (at most 33), and x87 80-bit terms or accumulator (at most 54).
+No single one-ulp change to a `log10(k)` term fits more cells.
+Evidence: probes/math-argument-modes Sheet1!C9, C35, C47, C49:C53 (excel-graph, 2026-10-08);
+probes/multinomial-large-arguments A1:A20 (2026-10-09); probes/multinomial-algorithm-sweep A1:A60 (excel-graph, 2026-10-15).
+Ours: the fitted algorithm (`multinomial_value`, functions/math_and_trigonometry/multinomial.rs); the 8 cells above are one ulp off.
+Status: VERIFIED (values); algorithm a fit, 64/72 bit-exact
 Tasks: T-1082, T-1190
+
+## COMBIN is inexact
+Rule: Excel's COMBIN is not the exact binomial coefficient either, and its rounding differs from MULTINOMIAL's:
+`COMBIN(10,4)` = 209.99999999999997 where `MULTINOMIAL(4,6)` = 209.99999999999977 (exact 210 for both);
+`COMBIN(40,20)` 137846528819.99997, `COMBIN(100,50)` 1.0089134454556413e+29, `COMBIN(170,20)` 5.221123511163077e+25,
+`COMBIN(170,70)` 6.491922168400297e+48 and `COMBIN(170,85)` 9.144841845131565e+49. `COMBIN(5,2)` 10, `COMBIN(10,5)` 252,
+`COMBIN(170,1)` and `COMBIN(170,169)` 170 are exact. Excel's algorithm is not identified.
+Evidence: probes/multinomial-algorithm-sweep B1:B10 (excel-graph, 2026-10-15, T-1190).
+Ours: the exact value (7 of the 10 cells fail).
+Status: VERIFIED (values); algorithm UNVERIFIED
+Tasks: T-1598
 
 ## Huge arguments of trig functions
 Rule: `COS(1E+15)` is `#NUM!` in Excel (the argument is too large to reduce). Errors from a left operand win over a
@@ -1157,7 +1181,7 @@ Rule: MULTINOMIAL is `#NUM!` once its arguments add up to more than 170, where `
 even when the ratio is small: `MULTINOMIAL(171)`, `(170,1)`, `(86,86)`, `(100,100)`, `(1000)`, `(2^31)`, `(2^53)`,
 `(1E+15)`, `(1E+15,0)`, `(1E+15,1)`, `(3,1E+15)` and `(1E+300)` are all `#NUM!`. Sums up to 170 have values:
 `(170)` 1.0000000000001974, `(169,1)` 170.0000000000337, `(85,85)` 9.144841845133712e+49, `(150,20)` 5.221123511166111e+25, `(100,70)` 6.491922168402309e+48. `(100,100)` is `#NUM!` though its exact value (about 9e58) fits a double, so the limit is on the sum. `(0)` and `(0,0)` are 1.
-The non-integer values are the inexactness in "MULTINOMIAL is inexact" (T-1190).
+The non-integer values are the inexactness in "MULTINOMIAL is inexact" (fitted by T-1190).
 Evidence: probes/multinomial-large-arguments A1:A20 (excel-graph, 2026-10-09, T-1197); gen-m5/21b9ae9affd6b38c Calc!A25.
 Status: VERIFIED (excel-graph)
 Implemented in: `fn_multinomial` (functions/math_and_trigonometry/multinomial.rs) checks the saturating sum against 170
