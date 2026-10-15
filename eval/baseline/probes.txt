@@ -208,6 +208,7 @@ C	probes/external-ref-no-link-index.case.json	54
 C	probes/external-ref-no-link-shapes.case.json	20
 C	probes/external-ref-no-link.case.json	10
 C	probes/fact-large-arguments.case.json	18
+C	probes/fact-product-order-sweep.case.json	420
 C	probes/filter-if-empty-array.case.json	12
 C	probes/fin-argument-modes.case.json	386
 C	probes/forecast-ets-longer-series.case.json	42
@@ -1032,11 +1033,6 @@ F	probes/eta-reduced-names.case.json	Sheet1!E101
 F	probes/eta-reduced-names.case.json	Sheet1!E49
 F	probes/eta-reduced-names.case.json	Sheet1!E93
 F	probes/external-ref-no-link-ifchoose.case.json	Calc!A26
-F	probes/fact-large-arguments.case.json	Sheet1!A1
-F	probes/fact-large-arguments.case.json	Sheet1!A11
-F	probes/fact-large-arguments.case.json	Sheet1!A12
-F	probes/fact-large-arguments.case.json	Sheet1!A6
-F	probes/fact-large-arguments.case.json	Sheet1!A9
 F	probes/fin-argument-modes.case.json	Sheet1!H10
 F	probes/fin-argument-modes.case.json	Sheet1!H100
 F	probes/fin-argument-modes.case.json	Sheet1!H101

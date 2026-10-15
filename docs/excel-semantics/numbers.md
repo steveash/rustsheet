@@ -1198,10 +1198,15 @@ Tasks: T-1197
 
 ## FACT and FACTDOUBLE of a huge argument
 Rule: FACT is `#NUM!` once n! overflows a double and FACTDOUBLE once n!! does: `FACT(170)` 7.257415615308004e+306 (`FACT(170.9)` the same, the argument is floored), `FACT(171)`, `(2^53)`, `(1E+15)`, `(1E+300)` `#NUM!`. `FACTDOUBLE(297)` 1.2552756225993057e+304, `(298)` 2.718138023126864e+305, `(300)` 8.154414069380598e+307, `(301)`, `(2^53)`, `(1E+15)`, `(1E+300)` `#NUM!`. Negative: `FACT(-0.5)` and `FACT(-1)` `#NUM!`; `FACTDOUBLE(-1)` is 1, `FACTDOUBLE(-1.5)` and `(-2)` `#NUM!`.
-Evidence: probes/fact-large-arguments A1:A18 (excel-graph, 2026-10-09, T-1233).
+Evidence: probes/fact-large-arguments A1:A18 (excel-graph, 2026-10-09, T-1233); probes/fact-product-order-sweep (rounding, T-1249).
 Status: VERIFIED (excel-graph)
 Implemented in: `fn_fact`, `fn_factdouble` (functions/math_and_trigonometry/mathematical.rs) stop at the first infinite product, so the work is bounded (directive 5).
-Ours: the overflow boundary and the `#NUM!` results match; the last digits of `FACT(170)`, `FACT(170.9)` and `FACTDOUBLE(297, 298, 300)` do not yet (T-1249).
+Rounding: Excel multiplies from n down (`n*(n-1)*...*2`, and `n*(n-2)*...` for FACTDOUBLE), one double running product, so its last digits
+differ from both the ascending product and the correctly rounded value: `FACT(42)` is 1.4050061177528801e51 (correctly rounded 1.40500611775288e51,
+ascending ...8798e51), `FACT(170)` 7.257415615308004e306 (ascending ...7994e306). The descending product matches all 420 cells of
+probes/fact-product-order-sweep (FACT 0..170, and FACTDOUBLE for every n in 0..300 where the three candidates disagree; excel-graph, 2026-10-15,
+T-1249); the ascending product matches 64 and the correctly rounded value 76. `DEGREES(FACT(42))` = 8.05009207373008e52 follows with no change to DEGREES.
+Ours: matches since T-1249 (`descending_product`, mathematical.rs).
 Tasks: T-1233, T-1249
 
 ## BASE min_length is at most 255
