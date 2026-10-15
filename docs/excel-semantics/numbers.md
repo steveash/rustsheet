@@ -292,8 +292,17 @@ is 4.123952952442882E-155 (the correctly rounded root is …881E-155), and its `
 rule. Evidence: probes-numeric/power-neg-half-rounding (40 cells; operands of at most 15 significant
 digits, since a 16-digit literal loses its last digit; excel-graph, 2026-10-14, T-1541). Implemented in
 `arithmetic::non_integer_power` and `extended_sqrt`, which normalizes a subnormal's significand.
-AVERAGEA, SUMIF(S) and the database
-sums accumulate with the plain `+` and are unprobed (T-1516).
+Accumulators beyond SUM and AVERAGE (probes-numeric/double-rounding-accumulators, 56 cells; 8 operand
+sets a, b, c of at most 15 significant digits picked by exact simulation so that a+b is the same under
+single and double rounding but (a+b)+c is not; oracle: excel-graph, 2026-10-15, T-1516): `a+b+c`,
+`SUM(range)`, `SUM(a,b,c)`, `SUMIF`, `SUMIFS`, `DSUM` and `AVERAGEA(range)*4` (a text cell counts as 0, so
+the division is exact) all give the value whose second addition was rounded twice, in every set: the
+running total is carried at 64 bits across additions of three terms, each addition rounded twice. The
+engine matches `+` and SUM and misses SUMIF, SUMIFS, DSUM and AVERAGEA by one ulp in all 8 sets (32
+cells; they still use the plain `+`). AVERAGE's division by a count above 2 cannot be probed: for a small
+odd count n the binary expansion of k/n has no run of 11 zero bits after the cut, so the 64-bit rounding
+never lands on a midpoint and double rounding equals single rounding (a search at n = 1025 found
+nothing); only a divisor of a few thousand could discriminate, so do not spend time on small counts.
 Range edges of `*` and PRODUCT (probes-numeric/double-rounding-range-edges, excel-graph, 2026-10-14,
 T-1513): the second rounding happens at the result's own precision. An exact product just under the
 midpoint between `DBL_MAX` and 2^1024 rounds up to the midpoint in 64 bits and then, tied, to 2^1024:
