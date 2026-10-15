@@ -115,6 +115,15 @@ fn integer_exponents_use_square_and_multiply() {
     assert_eq!(power(-2.0, 3.0), Ok(-8.0));
 }
 
+// probes-numeric/power-integer-full-mantissa (excel-graph, T-1524): with products rounded once the
+// loop gives ...6807E+34 and 3125.000000000003.
+#[test]
+fn square_and_multiply_products_round_twice() {
+    let sqrt_5 = 2.236_067_977_499_79;
+    assert_eq!(power(sqrt_5, 99.0), Ok(3.972_054_645_195_661_3e34));
+    assert_eq!(power(sqrt_5, 10.0), Ok(3_125.000_000_000_002_3));
+}
+
 #[test]
 fn special_cases_keep_the_general_path() {
     assert_eq!(power(0.0, -1.0), Err(Error::DIV));

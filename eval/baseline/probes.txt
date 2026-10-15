@@ -549,7 +549,7 @@ C	probes/text-format-unquoted-letters.case.json	111
 C	probes/text-general-exponent-boundary.case.json	10
 C	probes/text-general-ties-below-one.case.json	19
 C	probes/text-general-ties-wide-fixed.case.json	24
-C	probes/text-lone-surrogates.case.json	87
+C	probes/text-lone-surrogates.case.json	107
 C	probes/text-modes-bahttext.case.json	2
 C	probes/text-modes-bytes.case.json	8
 C	probes/text-modes-dbcs-lift.case.json	10
@@ -6007,6 +6007,12 @@ F	probes/text-format-length-limit-f.case.json	Sheet1!A42
 F	probes/text-format-length-limit-j.case.json	Sheet1!A43
 F	probes/text-format-length-limit-l.case.json	Sheet1!A40
 F	probes/text-format-length-limit-m.case.json	Sheet1!A22
+F	probes/text-lone-surrogates.case.json	Sheet1!A85
+F	probes/text-lone-surrogates.case.json	Sheet1!A89
+F	probes/text-lone-surrogates.case.json	Sheet1!A90
+F	probes/text-lone-surrogates.case.json	Sheet1!A91
+F	probes/text-lone-surrogates.case.json	Sheet1!A92
+F	probes/text-lone-surrogates.case.json	Sheet1!A94
 F	probes/vara-single-ref-picked.case.json	S!D37
 F	probes/vara-single-ref-picked.case.json	S!D38
 F	probes/vara-single-ref-picked.case.json	S!D39
