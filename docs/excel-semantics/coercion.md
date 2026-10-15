@@ -174,7 +174,7 @@ Evidence: probes/resource-limits C9–C11; probes/concatenate-limit-spill E1–E
 UTF-16 code units", T-0249).
 Backend: excel-graph only; excel-desktop not used.
 Status: VERIFIED
-Implemented in: `truncate_text`/`concat_text` in cast.rs, shared by CONCATENATE and `&` (T-0240);
+Implemented in: `Text::concat`/`Text::truncate_utf16` (text.rs), shared by CONCATENATE and `&` (T-0240, T-1580);
 REPT's limit in `rept_element` (functions/text/common.rs); both count UTF-16 units (T-0233).
 CONCAT/TEXTJOIN give `#CALC!` (probes/text-result-limit C8-C9, not implemented).
 Tasks: T-0240, T-0233, T-0249
@@ -184,12 +184,17 @@ Rule: when the 32,767-unit limit falls inside a surrogate pair, Excel keeps the 
 `LEN(CONCATENATE(REPT("a",32766),"😀"))` and `LEN(REPT("😀",16383)&"😀")` are 32767, and
 `UNICODE(RIGHT(CONCATENATE(REPT("a",32766),"😀"),1))` is `#VALUE!` (UNICODE of a lone surrogate).
 Evidence: probes/concatenate-limit-spill E8–E11 (excel-graph, 2026-10-06, T-0233).
-Ours: a Rust `String` cannot hold a lone surrogate, so `truncate_text` drops the straddling pair
-whole (32,766 units; E8–E11 stay known failures). A known gap, not a deviation (decision
-0052): SPEC-0010, T-1580, T-1581.
+Ours: `&` and CONCATENATE truncate with `Text::truncate_utf16`, which keeps the high half of a cut
+pair (E8, E9, E11 pass since T-1580). Decision 0033 (drop the pair whole) is superseded by
+decision 0052. E10 (UNICODE of the lone half) waits for T-1581. SPEC-0010.
+Arguments after the cut change nothing but an error still wins (probes/concatenate-after-cut, excel-graph,
+2026-10-15, T-1612; the engine matches all nine cells): `LEN(CONCATENATE(REPT("a",32766),"😀","zz",1))` and
+`LEN(CONCATENATE(REPT("a",32767),"zz",1,TRUE))` are 32767 (A1, A4), and at a character boundary the kept text still ends in "a" (A9); an error
+argument after the cut is the result (`#N/A` for `...,"😀",NA())` and `...,"zz",NA())`). Among several errors the first argument's wins, wherever the cut falls: `...,1/0,NA())` is `#DIV/0!` (A6), while `...,NA(),1/0)` and `CONCATENATE(NA(),REPT("a",32767),1/0)` are `#N/A` (A7, A8). `ISERROR` of the first error case is TRUE (A10).
 Status: VERIFIED
-Implemented in: `truncate_text` in cast.rs
-Tasks: T-0233, T-1483
+Implemented in: `concat_limited` in arithmetic.rs (`&`), `fn_concatenate` in
+functions/text/concatenate.rs, `Text::truncate_utf16` in text.rs
+Tasks: T-0233, T-1483, T-1580
 
 ## SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing
 Rule: the two arrays are paired element by element in row-major order and need only the same

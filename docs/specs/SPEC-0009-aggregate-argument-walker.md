@@ -45,8 +45,8 @@ Non-goals:
   array with their own rules (`collect_mode_values` etc.). They can move later if their rules
   fit the policy. This spec does not require it.
 - VARA/VARPA/STDEVA/STDEVPA (`variance_of_values_a`). They are out of T-1474's and T-1476's
-  scope and move onto the A-rules below in **T-1567**. Until then they are the one remaining
-  dispatch, and they hold no `reference_error` of their own.
+  scope. **T-1567** moved them onto the walker with `DirectNumbers::NumbersOnly` (below), which keeps
+  their old rules for direct values and arrays; probing those rules is **T-1617**.
 - Settling T-0236 (empty arguments of DEVSQ/AVEDEV/SUMSQ) or T-1439 (array and referenced error
   order for the `for_each_value` family). The walker has a knob for each. The probes set it.
 
@@ -75,9 +75,8 @@ Shared rules, all VERIFIED:
     an error literal, a computed scalar such as `1/0` or `A2*1`, or uncoercible direct text.
   - Among direct errors, the leftmost wins.
   - Among referenced-cell errors, the leftmost wins.
-  - SUM only: an error inside an array ranks with the referenced errors (C50, C53–C55, C61, C77).
-    For PRODUCT, MIN, MAX and AVERAGE today the first array error is returned at once. This is
-    UNVERIFIED (T-1439).
+  - An error inside an array ranks with the referenced errors (SUM: C50, C53–C55, C61, C77;
+    PRODUCT (probes/product-array-2d-and-scalar A7–A17, T-1287); MIN, MAX, AVERAGE and MEDIAN: probes/aggregate-array-error-vs-ref-error, T-1615).
 
 Per-consumer differences that must be kept. Each has its evidence or is marked as current
 behavior with no evidence:
@@ -86,7 +85,7 @@ behavior with no evidence:
 |---|---|---|
 | SUM | tracks its last addition for near-zero snapping (`SumParts`) | numbers.md "Near-zero snapping", probes/near-zero-sum-forms |
 | SUM, MIN, MAX, PRODUCT | every direct value goes through `cast_aggregate_arg_to_number`, so a direct blank value is 0 and a direct LAMBDA or range value is an error | direct LAMBDA: Excel `#VALUE!`, ours agrees (probes/aggregate-picked-direct-a-variants D7-D10; T-1572). A `LET` blank is a referenced blank and skipped (D14-D19, ours agrees); a truly direct blank value and a direct range value are unprobed |
-| `for_each_value` family, COUNT | only a direct number, boolean, text or empty argument counts; other direct values are skipped | Excel: COUNT skips a direct LAMBDA, but AVERAGE and MEDIAN give `#VALUE!` for it (probes/aggregate-picked-direct-a-variants D11-D13); ours agrees for AVERAGE and MEDIAN (T-1572); the rest of the family (GEOMEAN, HARMEAN, VAR, STDEV, SKEW, KURT, DEVSQ, AVEDEV, SUMSQ; T-1602) shares `CastScalars` and so gives `#VALUE!` too, unprobed |
+| `for_each_value` family, COUNT | only a direct number, boolean, text or empty argument counts; other direct values are skipped | Excel: COUNT skips a direct LAMBDA, but AVERAGE and MEDIAN give `#VALUE!` for it (probes/aggregate-picked-direct-a-variants D11-D13); ours agrees for AVERAGE and MEDIAN (T-1572); the rest of the family (GEOMEAN, HARMEAN, VAR, STDEV, SKEW, KURT, DEVSQ, AVEDEV, SUMSQ) gives `#VALUE!` too, and the LAMBDA's `#VALUE!` ranks with the referenced errors (a later direct error beats it, the leftmost of it and a referenced error wins; probes/aggregate-direct-lambda-average-family, T-1602; `AggregateWalk::lambda_error`; PRODUCT, MIN and MAX, which do not use the walker, hold it the same way: probes/aggregate-direct-lambda-product-min-max, T-1604) |
 | `for_each_value` family, COUNT | a value that a reference node gives without areas (a cached cell of a linked workbook) is read like a referenced cell, and its text and booleans are skipped | current behavior (the `ReferenceKind` guards) |
 | DEVSQ, AVEDEV, SUMSQ | an empty argument is skipped, and each argument's first error is returned at once | current behavior, TODO(T-0236); T-1439 |
 | AVERAGEA, MAXA, MINA | referenced cells and single-cell references coerce (text 0, TRUE/FALSE 1/0), array text is 0 for AVERAGEA and skipped by MAXA/MINA, array booleans are skipped; a cached range of a linked workbook is read through `external_reference_cells`; Excel: scalar direct error beats a referenced one, leftmost referenced error wins (probes/aggregate-picked-direct-a-variants D20-D27); ours agrees (T-1573; a cached linked-workbook error ranks as a referenced error and "Unexpected Range" returns at once, both UNVERIFIED); coercion.md "MAXA / MINA"; statistics.md "AVERAGEA, MAXA and MINA over an array" (probes/averagea-array-constant-elements); fixtures/external-link-cached-ranges Refs!B53; error order: probes/aggregate-picked-direct-a-variants |
@@ -143,13 +142,14 @@ pub(crate) enum ArgReading {
 
 pub(crate) enum ErrorRule {
     /// Direct errors return at once; referenced errors are held, the leftmost wins.
-    Ranked { array_errors: ArrayErrorRank },
+    Ranked, // was `Ranked { array_errors: ArrayErrorRank }`; removed in T-1615 (see "As built")
     /// The first error in argument order returns at once (A-variants, DEVSQ/AVEDEV/SUMSQ).
     First,
     /// Errors are items for the visitor (COUNT ignores them, COUNTA counts them).
     Items,
 }
 
+// Removed in T-1615 (see "As built").
 pub(crate) enum ArrayErrorRank {
     /// An array error is a direct error (today's PRODUCT, MIN, MAX, AVERAGE; T-1439).
     Direct,
@@ -209,7 +209,7 @@ Rules the walker enforces:
    `Ranked`, a later argument's areas are not read at all once an error is held, as every copy
    does today. An `Err` from the area walk itself (the walk budget) ranks like an error cell.
 3. Errors, under `Ranked` and `First`, never reach the visitor:
-   - A direct error, and under `Ranked { array_errors: Direct }` or `First` an array error, is
+   - A direct error, and under `First` an array error, is
      returned at once.
    - Under `First`, a referenced error is also returned at once.
    - Under `Ranked`, a referenced error, and an array error under `Referenced`, is held if
@@ -244,6 +244,10 @@ pub(crate) enum DirectNumbers {
     /// As `CastScalars`, but text that does not cast is `#VALUE!` via `cast_number` and an
     /// empty argument is skipped (AVERAGEA, MAXA, MINA, as `for_each_value_a` does today).
     CastA,
+    /// Only a direct number counts; booleans, text and the rest are skipped (VARA, VARPA, STDEVA,
+    /// STDEVPA, as before T-1567; Excel coerces a direct "2" and TRUE, probes/stat-argument-modes
+    /// H69, H72, H75, H78 are known failures owned by T-1291).
+    NumbersOnly,
 }
 pub(crate) enum CellNumbers { Numbers, CoercedA }   // `ReferenceValue` items follow it, except under `Cast`
 pub(crate) enum ArrayNumbers { Numbers, TextZero }  // array booleans are always skipped
@@ -261,7 +265,7 @@ impl Model {
 ```
 `for_each_value`, `for_each_value_skip_empty` and `for_each_value_a` become thin wrappers or
 calls with a named policy, and are removed once their callers move. `for_each_number_in_areas`
-and `for_each_coerced_number_in_areas` stay. Their other callers (NPV, the D-functions, …) are
+stays (`for_each_coerced_number_in_areas` was deleted in T-1567). Its other callers (NPV, the D-functions, …) are
 outside this spec. "Numbers of a reference" must keep one definition. T-1474 extracts the
 per-cell rules of these two helpers into two free functions in util.rs,
 `cell_number(&CalcResult) -> Option<f64>` (numbers only) and
@@ -274,18 +278,29 @@ The walker and `for_each_aggregate_number` are `#[inline]` and take the policy b
 ### Consumer mapping
 | Consumer | reading | errors | skip empty | number rules | own state kept |
 |---|---|---|---|---|---|
-| SUM | Aggregate | Ranked(Referenced) | no | Cast / Numbers / Numbers | `SumParts` |
-| AVERAGE, GEOMEAN, HARMEAN, MEDIAN, SKEW, SKEW.P, KURT, VAR.*, STDEV.* | Aggregate | Ranked(Direct) | no | CastScalars / Numbers / Numbers | — |
+| SUM | Aggregate | Ranked | no | Cast / Numbers / Numbers | `SumParts` |
+| AVERAGE, GEOMEAN, HARMEAN, MEDIAN, SKEW, SKEW.P, KURT, VAR.*, STDEV.* | Aggregate | Ranked | no | CastScalars / Numbers / Numbers | — |
 | DEVSQ, AVEDEV, SUMSQ | Aggregate | First | yes | CastScalars / Numbers / Numbers | — |
-| AVERAGEA, MAXA, MINA | Aggregate, after the `external_reference_cells` step | Ranked(Direct) | no | CastA / CoercedA / TextZero (AVERAGEA) or Numbers (MAXA, MINA) | — |
-| MIN, MAX | Aggregate | Ranked(Direct) | no | Cast / Numbers / Numbers | NaN start, 0 when none |
-| PRODUCT | Aggregate | Ranked(Direct) | no | Cast / Numbers / Numbers | `seen_value` (set for an empty argument too) |
+| VARA, VARPA, STDEVA, STDEVPA | Aggregate | First | no | NumbersOnly / CoercedA / Numbers (direct values: known failures, T-1291; single references: T-1617) | — |
+| AVERAGEA, MAXA, MINA | Aggregate, after the `external_reference_cells` step | Ranked | no | CastA / CoercedA / TextZero (AVERAGEA) or Numbers (MAXA, MINA) | — |
+| MIN, MAX | Aggregate | Ranked | no | Cast / Numbers / Numbers | NaN start, 0 when none |
+| PRODUCT | Aggregate | Ranked | no | Cast / Numbers / Numbers | `seen_value` (set for an empty argument too) |
 | COUNT | Aggregate | Items | no | — (own visitor: counts types) | — |
 | COUNTA | PickedKeepingBlanks, after the `external_reference` count | Items | no | — (own visitor) | — |
 
 `First` is today's behavior for DEVSQ/AVEDEV/SUMSQ. Today each argument is walked on its own,
 and its error is returned at once (`?`). One argument has only one shape, so this is the same
 as `First`.
+
+### As built (T-1476)
+- T-1615 removed `ArrayErrorRank` (and the `lambda_held` flag it needed): every `Ranked` policy holds
+  an array error like a referenced one, since Excel ranks it that way for SUM, MIN, MAX, AVERAGE
+  and MEDIAN (probes/aggregate-array-error-vs-ref-error). The design above shows the earlier shape.
+- `ArgReading` has two variants, `Aggregate` and `PickedKeepingBlanks`; `Reference` was not needed.
+- `ErrorRule::Items` hands error cells, direct errors and array errors to the visitor.
+- `walk_aggregate_read` walks an argument the consumer already read: COUNTA picks its argument
+  (`pick_branch`) first, so a condition is evaluated once.
+- SUM, MIN, MAX and PRODUCT share `NumberRules::SUM_LIKE`.
 
 ## Alternatives considered
 - **A trait per consumer** (`trait AggregateConsumer { fn number(..); fn error(..) }`). It is

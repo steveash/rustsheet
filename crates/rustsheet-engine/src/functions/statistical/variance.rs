@@ -1,9 +1,28 @@
 use crate::arithmetic::flush_subnormal;
-use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::reference_operators::RefArg;
+use crate::functions::util::aggregate_args::{
+    AggregatePolicy, ArgReading, ArrayNumbers, CellNumbers, DirectNumbers, ErrorRule, NumberRules,
+};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
+};
+
+/// VARA, VARPA, STDEVA and STDEVPA return the first error in argument order at once, as before
+/// they moved onto the walker (an error in a range, an array or a direct argument; the order is
+/// UNVERIFIED, T-1439).
+const VARA_ARGS: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::Aggregate,
+    errors: ErrorRule::First,
+    skip_empty_args: false,
+};
+
+/// A referenced cell coerces (text 0, booleans 1/0); a direct value or an array element counts
+/// only when it is a number ("A semantics to be added"). Excel coerces a direct "2" and TRUE
+/// (probes/stat-argument-modes Sheet1!H69, H72, H75, H78, known failures), which T-1291 fixes.
+const VARA_NUMBERS: NumberRules = NumberRules {
+    direct: DirectNumbers::NumbersOnly,
+    cells: CellNumbers::CoercedA,
+    array: ArrayNumbers::Numbers,
 };
 
 /// Which divisor a variance uses: `n` (VAR.P family) or `n - 1` (VAR.S family).
@@ -76,8 +95,9 @@ impl Model {
         variance_result(&values, kind, std_dev, name, cell)
     }
 
-    /// VARA / VARPA / STDEVA / STDEVPA: like `variance_of_values`, but a range argument
-    /// coerces its cells (`for_each_coerced_number_in_areas`).
+    /// VARA / VARPA / STDEVA / STDEVPA: like `variance_of_values`, but the cells of a reference
+    /// coerce (text 0, booleans 1/0) while direct values and array elements count only as numbers
+    /// (SPEC-0009's walker with [`VARA_ARGS`] and [`VARA_NUMBERS`]).
     pub(crate) fn variance_of_values_a(
         &mut self,
         args: &[Node],
@@ -90,53 +110,12 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut values = Vec::new();
-        for arg in args {
-            // A union is its areas, each coerced like a range (probes/multiarea-foreach H8, H9,
-            // H13, H14).
-            let reference = match arg.ungrouped() {
-                Node::OpUnionKind { .. } => self.evaluate_reference_arg(arg, cell),
-                // Single references and ranges keep their old path (unprobed otherwise).
-                _ => RefArg::from(self.evaluate_node_in_context(arg, cell)),
-            };
-            let result = match reference {
-                RefArg::Ranges(areas) => {
-                    if let Err(error) =
-                        self.for_each_coerced_number_in_areas(&areas, cell, |value| {
-                            values.push(value);
-                        })
-                    {
-                        return error;
-                    }
-                    continue;
-                }
-                RefArg::Value(result) => result,
-            };
-            match result {
-                CalcResult::Number(value) => values.push(value),
-                CalcResult::Array(array) => {
-                    for row in array {
-                        for value in row {
-                            match value {
-                                ArrayNode::Number(value) => values.push(value),
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: "Error in array".to_string(),
-                                    }
-                                }
-                                _ => {
-                                    // ignore non-numeric for now (A semantics to be added)
-                                }
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // ignore non-numeric for now (A semantics to be added)
-                }
-            }
+        if let Err(error) =
+            self.for_each_aggregate_number(args, cell, VARA_ARGS, VARA_NUMBERS, |value| {
+                values.push(value);
+            })
+        {
+            return error;
         }
         variance_result(&values, kind, std_dev, name, cell)
     }

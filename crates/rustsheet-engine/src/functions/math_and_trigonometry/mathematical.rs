@@ -4,8 +4,8 @@ use crate::constants::EXCEL_PRECISION;
 use crate::decimal_round::{round_decimal, RoundMode};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
 use crate::number_format::to_excel_precision;
-use crate::reference_operators::RefArg;
 use crate::single_number_fn;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -29,6 +29,16 @@ fn trig_arg(f: f64) -> Result<f64, Error> {
     }
 }
 
+/// MIN and MAX: a referenced-cell error ranks below a direct scalar error; the leftmost wins
+/// (probes/aggregate-error-precedence C9-C24). A direct LAMBDA's `#VALUE!` ranks with the
+/// referenced errors, as does an array error (every `Ranked` policy: probes/aggregate-direct-lambda-
+/// product-min-max D15, D24, T-1604; probes/aggregate-array-error-vs-ref-error, T-1615).
+const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::Aggregate,
+    errors: ErrorRule::Ranked,
+    skip_empty_args: false,
+};
+
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
     ///
@@ -43,39 +53,15 @@ impl Model {
         pick: fn(f64, f64) -> f64,
     ) -> CalcResult {
         let mut result = f64::NAN;
-        // A referenced-cell error ranks below a direct scalar error; the leftmost wins
-        // (probes/aggregate-error-precedence C9-C24).
-        let mut reference_error = None;
-        for arg in args {
-            match self.evaluate_aggregate_arg(arg, cell) {
-                RefArg::Ranges(areas) => {
-                    if reference_error.is_none() {
-                        if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
-                            result = pick(value, result);
-                        }) {
-                            reference_error = Some(error);
-                        }
-                    }
-                }
-                RefArg::Value(CalcResult::Array(array)) => {
-                    for node in array.into_iter().flatten() {
-                        match node {
-                            ArrayNode::Number(value) => result = pick(value, result),
-                            ArrayNode::Error(error) => {
-                                return CalcResult::new_error(error, cell, String::new())
-                            }
-                            // Booleans and text in an array are ignored.
-                            _ => {}
-                        }
-                    }
-                }
-                RefArg::Value(value) => match self.cast_aggregate_arg_to_number(value, cell) {
-                    Ok(value) => result = pick(value, result),
-                    Err(error) => return error,
-                },
-            }
-        }
-        if let Some(error) = reference_error {
+        if let Err(error) = self.for_each_aggregate_number(
+            args,
+            cell,
+            MIN_MAX_ARGS,
+            NumberRules::SUM_LIKE,
+            |value| {
+                result = pick(value, result);
+            },
+        ) {
             return error;
         }
         if result.is_nan() || result.is_infinite() {

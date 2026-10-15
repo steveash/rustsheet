@@ -16,7 +16,3 @@ C	fixtures/t-d-pre-1900.xlsx	2
 C	fixtures/t-d-time-only.xlsx	2
 C	fixtures/t-d-z-suffix.xlsx	2
 C	fixtures/workday-intl-legacy-holidays.xlsx	6
-F	fixtures/external-link-cached-ranges.xlsx	Refs!B89
-F	fixtures/external-link-cached-ranges.xlsx	Refs!B90
-F	fixtures/external-link-cached-ranges.xlsx	Refs!B91
-F	fixtures/external-link-cached-ranges.xlsx	Refs!B92

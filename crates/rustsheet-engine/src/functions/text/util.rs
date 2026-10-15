@@ -2,26 +2,6 @@ use std::borrow::Cow;
 
 use crate::cast::MAX_TEXT_UNITS;
 
-/// The characters of `text` that lie wholly within the UTF-16 code units `start..end`, the unit
-/// MID and REPLACE count positions in (docs/excel-semantics/text.md "Text positions count UTF-16
-/// code units"). A surrogate pair straddling either bound is dropped whole: Excel keeps its lone
-/// half, which a Rust `String` cannot hold; TODO(T-1483) keeps it.
-pub(crate) fn utf16_slice(text: &str, start: usize, end: usize) -> String {
-    let mut slice = String::new();
-    let mut unit = 0;
-    for ch in text.chars() {
-        if unit >= end {
-            break;
-        }
-        let next = unit + ch.len_utf16();
-        if unit >= start && next <= end {
-            slice.push(ch);
-        }
-        unit = next;
-    }
-    slice
-}
-
 /// `text` with each UTF-16 code unit as one `char`, so that `char` positions (and a regex `.`)
 /// are the code-unit positions FIND and SEARCH count in (`SEARCH("?b","😀b")` is 2,
 /// probes/text-surrogate-positions A22). A surrogate unit `u` becomes the private-use character
