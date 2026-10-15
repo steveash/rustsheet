@@ -3,7 +3,7 @@ id: T-1627
 title: "Probe NOW, TODAY, RAND, TRUE, FALSE, SHEET, ISOMITTED, TOROW, WRAPCOLS, WRAPROWS to the evidence floor"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
