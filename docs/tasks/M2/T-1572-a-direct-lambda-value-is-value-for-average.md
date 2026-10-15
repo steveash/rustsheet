@@ -3,7 +3,7 @@ id: T-1572
 title: "A direct LAMBDA value is #VALUE! for AVERAGE, MEDIAN, SUM, PRODUCT, MIN and MAX (COUNT skips it)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
