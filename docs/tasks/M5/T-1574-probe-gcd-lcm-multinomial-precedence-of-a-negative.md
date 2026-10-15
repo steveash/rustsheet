@@ -3,7 +3,7 @@ id: T-1574
 title: "Probe GCD/LCM/MULTINOMIAL precedence of a negative against typed text, errors and LCM ranges"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
