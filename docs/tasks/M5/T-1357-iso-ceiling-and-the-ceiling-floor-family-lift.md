@@ -3,7 +3,7 @@ id: T-1357
 title: "ISO.CEILING and the CEILING/FLOOR family lift over an array argument (#N/IMPL! today)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -26,10 +26,13 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/89693ab0cafc29df Calc!A14 `=CEILING.MATH((RANK(Data!C4,Data!A5:C12,0)-(Data!C11-7)),Data!C3,(INDEX(Data!D4:D12,Data!D12,1)^AVERAGE(..)))` (mode is a 9x1 array): Excel `#SPILL!` (it lifts even though number is an error: RANK of the TRUE cell C4), engine `#VALUE!`.
 
 ## Acceptance criteria
-- [ ] gen-m7/e5a361112d83d0c3 A9 passes in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
-- [ ] Unit tests: each listed function with an array in its first and its second argument.
-- [ ] gen-m9/89693ab0cafc29df A14 passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m7/e5a361112d83d0c3 A9 passes in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
+- [x] Unit tests: each listed function with an array in its first and its second argument.
+- [x] gen-m9/89693ab0cafc29df A14 passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+CEILING, FLOOR, CEILING.MATH/PRECISE, FLOOR.MATH/PRECISE, ISO.CEILING and MROUND now run on `lift_numbers` / `lift_number_operands` (new `lift_with_defaults` for the optional arguments), with the kernels as pure closures. gen-m7/e5a361112d83d0c3 A9 and gen-m9/89693ab0cafc29df A14 pass; baseline delta 0 (those suites are not baselined). Unit tests in `test/test_fn_ceiling_floor_lift.rs`; quirk entry in arrays.md.
