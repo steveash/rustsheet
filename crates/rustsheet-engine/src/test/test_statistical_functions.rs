@@ -462,3 +462,50 @@ fn nested_countblank_of_an_error_reads_each_argument_once() {
     assert_eq!(model._get_text("A1"), *"#N/A");
     assert_eq!(model._get_text("B2"), *"0");
 }
+
+#[test]
+fn rank_of_at_prefixed_non_reference_array_is_one_cell() {
+    // The formula_eval fuzz reproducer (T-1596): `@` of the 2x2 IF is its top-left value, so
+    // RANK returns one cell instead of a 2x2 array static analysis took for a scalar (a debug
+    // assertion). Excel: probes/rank-at-if-ref. In the fuzz model A1:B2 is empty, so every test
+    // is FALSE, the undefined name is never picked, and RANK of FALSE is #VALUE!
+    // (probes/rank-unknown-shape-ref); with numbers there it is #NAME? (below).
+    let mut model = new_empty_model();
+    model._set("C3", "=RANK(5,@IF(A1:B2>0,A1:ANK))");
+    model.evaluate();
+    assert_eq!(model._get_text("C3"), *"#VALUE!");
+    assert_eq!(model._get_text("D3"), *"");
+
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "7"), ("B1", "1"), ("A2", "5"), ("B2", "3")] {
+        model._set(cell, value);
+    }
+    model._set("H1", "=RANK(5,@IF(A1:B2>0,A1:B2))");
+    model._set("H4", "=RANK.EQ(5,@IF(A1:B2>0,A1:B2))");
+    model._set("H7", "=RANK.AVG(5,@IF(A1:B2>0,A1:B2))");
+    model._set("C3", "=RANK(5,@IF(A1:B2>0,A1:ANK))");
+    model._set("H19", "=RANK.EQ(5,@IF(A1:B2>0,A1:ANK))");
+    model._set("H22", "=RANK.AVG(5,@IF(A1:B2>0,A1:ANK))");
+    model._set("H28", "=RANK(5,@IF(TRUE,A1:A30))");
+    model._set("H31", "=RANK(5,@IF(A1:B2>0,1/0))");
+    model._set("K1", "=SUM(@(A1:B2*1))");
+    model._set("K7", "=COUNT(@IF(A1:B2>0,A1:B2))");
+    model._set("K25", "=SUM(@{3,4})");
+    model.evaluate();
+
+    for cell in ["H1", "H4", "H7"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!");
+    }
+    for cell in ["C3", "H19", "H22"] {
+        assert_eq!(model._get_text(cell), *"#NAME?");
+    }
+    for cell in ["D3", "C4", "I1", "H2", "I4", "I7", "I19", "I22"] {
+        assert_eq!(model._get_text(cell), *"");
+    }
+    // A picked reference is still one: A28 is blank, so 5 is absent.
+    assert_eq!(model._get_text("H28"), *"#N/A");
+    assert_eq!(model._get_text("H31"), *"#DIV/0!");
+    assert_eq!(model._get_text("K1"), *"7");
+    assert_eq!(model._get_text("K7"), *"1");
+    assert_eq!(model._get_text("K25"), *"3");
+}
