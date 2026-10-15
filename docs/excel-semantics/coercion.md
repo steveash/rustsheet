@@ -69,10 +69,9 @@ equal to a space or ignored (`CHAR(160)&"1"="1"` is FALSE). `>` and COUNTIF's `"
 pair whose operand is text (a criterion operand like `" 0"` is numeric, criteria.md). In passing:
 a hyphen is skipped, `"-1" > "0"` is TRUE (Data!A17 vs C3; implemented by T-0220).
 Implemented in: `functions::util::collation::cmp_text_excel` (T-0220: the three passes below), used by
-`compare_values` (operators including `=`, SWITCH, SORT, lookups) and the text criteria in
-functions/criteria.rs. Inferred, not probed: SORT and lookups order texts the same way (they share
-`compare_values`); control characters sort below the space; exact-match lookups treat `"æ"` and
-`"ae"` as equal, as `=` does.
+`compare_values` (operators including `=`, SWITCH, SORT, XMATCH, XLOOKUP) and the ordered text criteria (`<`, `<=`, `>`, `>=`) in
+functions/criteria.rs. Not yet: the `=`/`<>` text criteria (T-1594). MATCH(...,0) and VLOOKUP(...,FALSE) do not use the collation
+(T-1590, below). Inferred, not probed: SORT orders texts the same way; control characters sort below the space (see T-1590 for CHAR(9), 10, 13).
 Full order (T-1469, VERIFIED, probes/text-collation-order, 146 strings ranked by
 `SUMPRODUCT(--(range<x))`, excel-graph 2026-10-13). `=`, `<` and `>` ignore case completely (`"a"<"A"` and `"a">"A"` are both FALSE) but not accents; `<`/`>` order, lowest first:
 1. The empty string, then a lone `'`, `''`, `-`, `--`, then space, `  `, then the punctuation
@@ -95,7 +94,7 @@ weight), a later position first, apostrophe before hyphen. Characters outside AS
 letters (`þ`, `ð`, `œ`, Greek, symbols such as `§`) are UNVERIFIED: they keep code-point order after
 the letters.
 ### Collation equality in lookups and criteria; unprobed characters (T-1590)
-Evidence: probes/text-collation-lookups (93 cells) and probes/text-collation-unprobed (90 strings ranked by
+Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-collation-unprobed (90 strings ranked by
 `SUMPRODUCT(--(range<x))`), excel-graph 2026-10-15. Status: VERIFIED.
 - Equality by collation (`"æ"="ae"`, `"ß"="ss"` TRUE; `"a-b"="ab"`, `"a"="á"`, `"ø"="o"`, `"co-op"="coop"` FALSE) applies in
   **XMATCH, XLOOKUP, SWITCH** (`XMATCH("ae","æ",0)` = 1, `SWITCH("ae","æ",...)` hits) and in **COUNTIF**'s text criteria (below).
@@ -108,11 +107,12 @@ Evidence: probes/text-collation-lookups (93 cells) and probes/text-collation-unp
   CHAR(160), CHAR(9), CHAR(10), CHAR(13) (these three sort above CHAR(160), not below the space), then
   `! ~ ¡ ¦ ¨ ¯ ´ ¸ ¿`, `‘ ’ “ ”` (`’` is an ordinary punctuation mark, not ignored: `"a’b" < "ab"`), `¢ £ ¤ ¥ €`, `+ ±`, `« »`, `× ÷`, `§ © ¬ ® ° µ`, `… •`,
   `0`, `¼ ½ ¾`, `¹ ² ³`, `9`, then letters: `a=A < ª < á < ä < ã < å`, `c < ç`, `d < đ < ð`, `i < ı < ij=ĳ`, `l < ł`, `n < ñ`, `o < º < ö < ø < œ`,
-  `s`, `t < þ`, `u`, `z`, `α < β < ω`. Notes: `ĳ` equals `ij` (an expansion like `æ`/`ß`); `œ` is not `oe` (it sorts after `ø`);
-  `ã` sorts after `ä`; `ç`, `đ`, `ð`, `ł`, `ñ`, `þ` are all ordinary tiebreak accents after the plain letter, not separate letters.
+  `s`, `t < þ`, `u`, `z`, `α < β < ω`. Notes: `ĳ` equals `ij` (an expansion like `æ`/`ß`). `œ` sits between `ø` and `s`; whether it equals `oe` is not probed. `ã` sorts after `ä`.
+  `ç`, `đ`, `ð`, `ł`, `ñ`, `þ` were probed as single characters only: they sort right after their base letter (`þ` after `t`), and whether each
+  is a tiebreak accent or a separate letter (or an expansion such as `þ`=`th`) is UNVERIFIED, observed positions only.
   Position of the digit-like symbols: between `0` and `9`, observed only (1 to 8 were not probed with them).
 - The engine's code-point fallback gets 89 of these 270 cells wrong (tilde/cedilla/stroke accent order, `ĳ`, `œ`, `þ`, Greek, the symbols and control characters): see the engine follow-up task.
-Tasks: T-0220, T-0244, T-1469
+Tasks: T-0220, T-0244, T-1469, T-1590, T-1594
 
 ## Double unary minus coerces to a number
 Rule: `--x` is not a no-op. Each unary minus coerces its operand to a number: `--FALSE` = 0,

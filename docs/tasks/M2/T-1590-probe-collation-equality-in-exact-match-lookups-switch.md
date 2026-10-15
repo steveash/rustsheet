@@ -19,7 +19,7 @@ T-0220 reviews (Excel fidelity, MINOR): `compare_values` now uses `functions::ut
 ## Acceptance criteria
 - [x] A probe case (oracle-filled) covering `MATCH(...,0)`, `XLOOKUP`, `VLOOKUP(...,FALSE)` and `SWITCH` with æ/ae, ß/ss, a-b/ab, a/á; `COUNTIF` with `"ae"`, `"<>ae"`, `"<=ae"` over {"æ","ae","a-e"}; and the unprobed characters above ranked as in probes/text-collation-order.
 - [x] Findings in docs/excel-semantics/coercion.md and criteria.md; engine follow-up tasks filed for mismatches.
-- [x] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve (after round 2).
 
 ## Out of scope
 -
