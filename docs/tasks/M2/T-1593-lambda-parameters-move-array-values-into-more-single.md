@@ -3,7 +3,7 @@ id: T-1593
 title: "LAMBDA parameters: move array values into more single-evaluation reads (IF branches, LET, SORT)"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
