@@ -40,8 +40,8 @@ probes/concatenate-limit-spill E7, E13, G97.
 Backend: excel-graph only; excel-desktop not used.
 Status: VERIFIED
 Implemented in: `len_element`, `mid_element`, `find_element` in functions/text/common.rs and
-`replace_element` in functions/text/string_format.rs, through `Text::slice_utf16` and
-`one_char_per_utf16_unit` in functions/text/util.rs; `left_element`/`right_element` count chars.
+`replace_element` in functions/text/string_format.rs, through `Text::slice_utf16` (text.rs) and
+`one_char_per_utf16_unit` (functions/text/util.rs); `left_element`/`right_element` count chars.
 Tasks: T-0249
 
 ## MID and REPLACE positions inside a surrogate pair keep the lone half
