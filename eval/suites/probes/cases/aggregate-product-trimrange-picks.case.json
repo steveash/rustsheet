@@ -1,0 +1,42 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "PRODUCT vs SUM over TRIMRANGE picks, picked boolean/blank cells and a picked error cell followed or preceded by a direct error (T-1601). Each D cell is ERROR.TYPE of the error, else the value.",
+ "tags": [
+  "M2",
+  "aggregates",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": 3,
+    "A2": 4,
+    "B1": false,
+    "B2": 5,
+    "C1": "x",
+    "C2": 5,
+    "E1": {
+     "t": "e",
+     "v": "#N/A",
+     "stored": true
+    },
+    "D1": "=IF(ISERROR(PRODUCT(TRIMRANGE(A1:A4),2)),ERROR.TYPE(PRODUCT(TRIMRANGE(A1:A4),2)),PRODUCT(TRIMRANGE(A1:A4),2))",
+    "D2": "=IF(ISERROR(SUM(TRIMRANGE(A1:A4),2)),ERROR.TYPE(SUM(TRIMRANGE(A1:A4),2)),SUM(TRIMRANGE(A1:A4),2))",
+    "D3": "=IF(ISERROR(PRODUCT(TRIMRANGE(C1:C4),2)),ERROR.TYPE(PRODUCT(TRIMRANGE(C1:C4),2)),PRODUCT(TRIMRANGE(C1:C4),2))",
+    "D4": "=IF(ISERROR(SUM(TRIMRANGE(C1:C4),2)),ERROR.TYPE(SUM(TRIMRANGE(C1:C4),2)),SUM(TRIMRANGE(C1:C4),2))",
+    "D5": "=IF(ISERROR(PRODUCT(TAKE(B1:B2,1),5)),ERROR.TYPE(PRODUCT(TAKE(B1:B2,1),5)),PRODUCT(TAKE(B1:B2,1),5))",
+    "D6": "=IF(ISERROR(SUM(TAKE(B1:B2,1),5)),ERROR.TYPE(SUM(TAKE(B1:B2,1),5)),SUM(TAKE(B1:B2,1),5))",
+    "D7": "=IF(ISERROR(PRODUCT(TAKE(A3:A4,1),5)),ERROR.TYPE(PRODUCT(TAKE(A3:A4,1),5)),PRODUCT(TAKE(A3:A4,1),5))",
+    "D8": "=IF(ISERROR(SUM(TAKE(A3:A4,1),5)),ERROR.TYPE(SUM(TAKE(A3:A4,1),5)),SUM(TAKE(A3:A4,1),5))",
+    "D9": "=IF(ISERROR(PRODUCT(TAKE(E1:E2,1),#DIV/0!)),ERROR.TYPE(PRODUCT(TAKE(E1:E2,1),#DIV/0!)),PRODUCT(TAKE(E1:E2,1),#DIV/0!))",
+    "D10": "=IF(ISERROR(SUM(TAKE(E1:E2,1),#DIV/0!)),ERROR.TYPE(SUM(TAKE(E1:E2,1),#DIV/0!)),SUM(TAKE(E1:E2,1),#DIV/0!))",
+    "D11": "=IF(ISERROR(PRODUCT(#DIV/0!,TAKE(E1:E2,1))),ERROR.TYPE(PRODUCT(#DIV/0!,TAKE(E1:E2,1))),PRODUCT(#DIV/0!,TAKE(E1:E2,1)))",
+    "D12": "=IF(ISERROR(SUM(#DIV/0!,TAKE(E1:E2,1))),ERROR.TYPE(SUM(#DIV/0!,TAKE(E1:E2,1))),SUM(#DIV/0!,TAKE(E1:E2,1)))",
+    "D13": "=IF(ISERROR(PRODUCT(TAKE(E1:E2,1),2)),ERROR.TYPE(PRODUCT(TAKE(E1:E2,1),2)),PRODUCT(TAKE(E1:E2,1),2))",
+    "D14": "=IF(ISERROR(PRODUCT(TRIMRANGE(E1:E4),#DIV/0!)),ERROR.TYPE(PRODUCT(TRIMRANGE(E1:E4),#DIV/0!)),PRODUCT(TRIMRANGE(E1:E4),#DIV/0!))",
+    "D15": "=IF(ISERROR(SUM(TRIMRANGE(E1:E4),#DIV/0!)),ERROR.TYPE(SUM(TRIMRANGE(E1:E4),#DIV/0!)),SUM(TRIMRANGE(E1:E4),#DIV/0!))"
+   }
+  }
+ ]
+}

@@ -49,7 +49,7 @@ pub(crate) enum ErrorRule {
         /// Where an error inside an array ranks.
         array_errors: ArrayErrorRank,
     },
-    /// The first error in argument order returns at once (the A-variants; DEVSQ, AVEDEV, SUMSQ).
+    /// The first error in argument order returns at once (DEVSQ, AVEDEV, SUMSQ).
     First,
 }
 
@@ -124,7 +124,7 @@ impl AggregateWalk {
 
     /// A referenced error under `Ranked` is held if nothing is held yet (the leftmost wins);
     /// under `First` it returns at once.
-    fn referenced_error(&mut self, error: CalcResult) -> Result<(), CalcResult> {
+    pub(crate) fn referenced_error(&mut self, error: CalcResult) -> Result<(), CalcResult> {
         match self.policy.errors {
             ErrorRule::Ranked { .. } => {
                 if self.held.is_none() {
