@@ -21,7 +21,7 @@ Tasks: T-0933, T-1262
 
 ## Bare letters and digits in a number format
 Rule: on a number, unquoted letters that are not format tokens (see "Unquoted ASCII letters in a number format"
-below, T-1450), non-ASCII letters and the digits 1-9 print as literal characters: `TEXT(PI(),"ü")` = "ü",
+below, T-1450), non-ASCII letters (only `ü` is probed; the engine treats every non-ASCII letter so, inferred) and the digits 1-9 print as literal characters: `TEXT(PI(),"ü")` = "ü",
 `TEXT(PI(),"x")` = "x", `TEXT(5,"2")` = "2", `TEXT(1.5,"9")` = "9", `TEXT(5,"1/2")` = "1/2", `TEXT(5,"3;4")` = "3",
 `TEXT(-5,"3;4")` = "4". Among digit placeholders they sit where they are and the digits fill around them
 (`TEXT(1,"0a0")` = "0a1", `TEXT(1234,"0x00")` = "12x34", `TEXT(12.3,"0x.0")` = "12x.3").
@@ -41,8 +41,9 @@ Calc!A15, gen-m6/63012866a9d8b7db Calc!A3 (excel-graph, 2026-10-09, T-1239).
 Status: VERIFIED
 Implemented in: `Lexer::next_token` (formatter/lexer.rs), `Parser::parse_part` (formatter/parser.rs, the implicit `#`
 before a point and `General` among literals), `format_number` (formatter/format.rs). Unprobed: `General` next to digit
-placeholders or date tokens, or twice (the engine says `#VALUE!`), and a negative's minus for a value that rounds to
-zero under a literal-only format.
+placeholders or date tokens, or twice (the engine says `#VALUE!`; T-1614), a negative's minus for a value that rounds to
+zero under a literal-only format or `.` (`TEXT(-0.4,"x")` is "x" and `TEXT(-0.5,".")` "1." here; T-1129), and a lowercase
+scientific `0.0e+0` (always the year token here, so `#VALUE!` as before).
 Tasks: T-1262, T-1450
 
 ## Buddhist-era year, era and calendar tokens
@@ -281,13 +282,13 @@ Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens lon
 - **Text section with a number:** a single section holding `@` does not apply to a number, which prints in General: `TEXT(1,"@"&""""&REPT("a",118)&"""")` is "1" (probes/text-format-length-limit-i A19:A26).
 - **Fourth section:** a fourth section holding a number or date token is `#VALUE!` whatever the value: `TEXT(1,"0;0;0;0")`, `"0;0;0;d"`, `"d;0;0;0"`, `"0;d;0;0"`, `"0;0;d;0"`, `TEXT(-1,"d;d;d;d")`, `TEXT(0,..)`, `TEXT("x",..)`. `"d;d"` and `"d;d;d"` give "1". This explains `"d;d;d;d"`. Only `d` and `0` are probed there; the engine extends the rule to every digit, date, time, elapsed, AM/PM and `E+` token (inferred).
 - **Error precedence:** an error value wins over a too-complex code: `TEXT(NA(),REPT("dm",17))` is `#N/A`, `TEXT(1/0,"0;;;;")` `#DIV/0!`. Over an array, each element is `#VALUE!` except an error element, which keeps its error (`TEXT({1,#N/A},REPT("dm",17))` is `#VALUE!`, `#N/A`). An error inside an array of formats is that element's result (`TEXT(1,{"0",#N/A})` is "1", `#N/A`).
-- **Colon runs:** consecutive colons print as one, whatever the run's length: `TEXT(1,"d"&REPT(":",n))` is "1:" for n from 2 to 85, and `"0"&REPT(":",n)` is "1:" for n from 2 to 84. A colon run broken by anything else prints in full: `"0:a:"` gives "1:a:", `"0::a"` "1:a", `"0: :"` "1: :", `d:"":` "1::". This is a formatter rule, not a cost rule. Only unquoted colons after `0` and `d` are probed; the engine also collapses escaped `\:` runs and `h::mm` (unprobed, T-1450).
+- **Colon runs:** consecutive colons print as one, whatever the run's length: `TEXT(1,"d"&REPT(":",n))` is "1:" for n from 2 to 85, and `"0"&REPT(":",n)` is "1:" for n from 2 to 84. A colon run broken by anything else prints in full: `"0:a:"` gives "1:a:", `"0::a"` "1:a", `"0: :"` "1: :", `d:"":` "1::". This is a formatter rule, not a cost rule. Escaped colons do not join a run (`TEXT(1,"0\:\:")` = "1::") and `h::mm` is "12:00" (probes/text-format-unquoted-letters A105:A111, T-1450; implemented T-1262).
 
 Evidence: probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b (T-1388), text-format-length-limit-c, -d, -e (T-1393), -f, -g, -h, -i (T-1434), -j (T-1449), -k (T-1455), -l, -m (T-1481), all excel-graph.
 Not explained or not implemented (known failures):
-- Probe round l/m cells outside the `@` fit (T-1486): `@_` + 123 to 125 quoted characters (`_"` takes the opening quote as its pad character) is `#VALUE!` in Excel and we differ (l A13:A15); `"0"` + 118 quoted + `[Red]0`, a color after quoted text, works in Excel and we reject it (l A40); a quoted `a` then ` @ ` + 121 quoted fails in Excel and we accept it (m A22). Unfitted.
+- Probe round l/m cells outside the `@` fit (T-1486): `@_` + 123 to 125 quoted characters is `#VALUE!` in Excel (l A13:A15; now matched since T-1262: `_"` takes the opening quote as its pad character, so the letters are unquoted literals and the closing `"` opens a string that never ends, an invalid format at any length, not a complexity limit); `"0"` + 118 quoted + `[Red]0`, a color after quoted text, works in Excel and we reject it (l A40); a quoted `a` then ` @ ` + 121 quoted fails in Excel and we accept it (m A22). Unfitted.
 - `TEXT(1,"[>5]0"&REPT(" ",79))` is "1" (also with 40 spaces): an unmatched single condition prints General, dropping the padding. So is `"[>55555]0"` plus 79 spaces (-j A43). We do not apply conditions yet (see "Conditional sections", T-0936).
-- `TEXT(1,"0:a:")` is "1:a:" and an escaped backslash followed by an unquoted `x` prints "\x": Excel accepts these letters unquoted, our lexer rejects them (-g A42, A43; -i A100:A104). T-1450.
+- `TEXT(1,"0:a:")` is "1:a:" and an escaped backslash followed by an unquoted `x` prints "\x": Excel accepts these letters unquoted (-g A42, A43; -i A100:A104). T-1450; implemented T-1262.
 
 Cell display with a long format could not be probed: excel-graph rejects such workbooks (createSession 501 unsupportedWorkbook). The colon-run and text-section rules live in the shared formatter, so they apply to cell display too; they are probed through TEXT only.
 Ours: `formatter/complexity.rs` (`exceeds_complexity_limit`), applied by TEXT only; colon runs in `formatter/parser.rs`; the text section with a number in `format_number` (formatter/format.rs).
