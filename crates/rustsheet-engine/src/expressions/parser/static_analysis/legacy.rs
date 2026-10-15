@@ -335,12 +335,6 @@ fn is_value_operation(node: &Node) -> bool {
     }
 }
 
-/// INDEX's static result.
-pub(super) fn static_analysis_index(_args: &[Node]) -> StaticResult {
-    // INDEX has two forms, but they are indistinguishable at parse time.
-    StaticResult::Unknown
-}
-
 /// Whether a legacy formula leaves the `@` off the call `kind(args)` although it may return a
 /// range: INDEX of a CHOOSE whose arms are all arithmetic reads a value, so `=INDEX(CHOOSE(1,
 /// B1:B6*1),3)` shows as `=INDEX(CHOOSE(1,@B1:B6*1),3)` (probes/legacy-choose-arm-aggregate-and-

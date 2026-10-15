@@ -133,8 +133,8 @@ fn test_fn_choose_scalar_arm_under_index_mode_lookup() {
     for r in 1..=6 {
         model._set(&format!("A{r}"), &format!("{r}"));
     }
-    for (col, row) in [("B", 1), ("B", 10)] {
-        model._set(&format!("{col}{row}"), "=MODE(CHOOSE(1,@A1:A6*1))");
+    for row in [1, 10] {
+        model._set(&format!("B{row}"), "=MODE(CHOOSE(1,@A1:A6*1))");
         model._set(&format!("C{row}"), "=LOOKUP(2,CHOOSE(1,@A1:A6*1))");
         model._set(&format!("D{row}"), "=INDEX(CHOOSE(1,@A1:A6*1),3)");
     }

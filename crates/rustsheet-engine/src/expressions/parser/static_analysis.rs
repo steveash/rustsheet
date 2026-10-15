@@ -1694,7 +1694,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Hlookup => aggregate::lookup_static_result(args), // T-0270, T-1269
         Function::Hstack => StaticResult::Unknown,
         Function::Hyperlink => StaticResult::Scalar,
-        Function::Index => legacy::static_analysis_index(args),
+        // INDEX has two forms, but they are indistinguishable at parse time.
+        Function::Index => StaticResult::Unknown,
         Function::Indirect => static_analysis_indirect(args),
         Function::Lookup => not_implemented(args),
         Function::Match => not_implemented(args),
