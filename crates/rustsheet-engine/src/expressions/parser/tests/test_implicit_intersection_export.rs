@@ -339,3 +339,18 @@ fn legacy_value_arguments_intersect_and_export_unchanged() {
         ),
     ]);
 }
+
+// A legacy CHOOSE with range arms is reference-shaped, so the import wraps the call in `@` (Excel
+// upgrades `=CHOOSE(2,A1:A10,B1:B10)` to `=@CHOOSE(...)`), with Range extents from its arms' counts
+// (T-1265).
+#[test]
+fn legacy_choose_of_ranges_is_intersected_and_exports_unchanged() {
+    check(&[
+        (
+            "CHOOSE(2,A1:A10,B1:B10)",
+            "@CHOOSE(2,A1:A10,B1:B10)",
+            "CHOOSE(2,A1:A10,B1:B10)",
+        ),
+        ("CHOOSE(1,A1,B1)", "CHOOSE(1,A1,B1)", "CHOOSE(1,A1,B1)"),
+    ]);
+}

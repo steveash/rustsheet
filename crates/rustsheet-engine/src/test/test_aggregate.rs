@@ -88,3 +88,34 @@ fn range_function_num_grid_spills_and_off_grid_names() {
     assert_eq!(model._get_text("A6"), *"3.833333333");
     assert_eq!(model._get_text("B6"), *"#VALUE!");
 }
+
+#[test]
+fn choose_of_a_range_function_num_spills_like_the_range() {
+    // CHOOSE's static shape is a range's extents, not its counts, so a 2x2 CHOOSE arm spills
+    // 2x2 like the range itself and a 1x1 one stays in its cell (T-1265).
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("E1", "3"),
+        ("E2", "1"),
+        ("E3", "4"),
+        ("E4", "1"),
+        ("E5", "5"),
+        ("E6", "9"),
+        ("G1", "9"),
+        ("H1", "4"),
+        ("G2", "1"),
+        ("H2", "14"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("A1", "=AGGREGATE(CHOOSE(1,G1:H2),0,E1:E6)");
+    model._set("A4", "=AGGREGATE(CHOOSE(1,G1),0,E1:E6)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"23");
+    assert_eq!(model._get_text("B1"), *"9");
+    assert_eq!(model._get_text("A2"), *"3.833333333");
+    assert_eq!(model._get_text("B2"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"23");
+    assert_eq!(model._get_text("B4"), *"");
+}

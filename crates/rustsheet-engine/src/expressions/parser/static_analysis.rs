@@ -285,14 +285,26 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
 pub enum StaticResult {
     // The result of the evaluation is a single value (number, string, boolean, error)
     Scalar,
-    // The result of the evaluation is an array with dimensions (rows, columns)
+    // The result of the evaluation is an array of (rows, columns), counts: `{1,2}` is Array(1, 2)
     Array(i32, i32),
-    // The result is a range of (rows - 1, columns - 1): a single cell is Range(0, 0) (Array holds counts)
+    // The result is a range of (rows - 1, columns - 1), extents: a single cell is Range(0, 0) and
+    // A1:B2 is Range(1, 1). Every producer keeps this; `StaticResult::counts` converts (T-1265).
     Range(i32, i32),
     // The result of the evaluation is unknown, we cannot guaranty it is a scalar, an array or a range
     Unknown,
     // TODO: What if one of the dimensions is known?
     // what if the dimensions are unknown but bounded?
+}
+
+impl StaticResult {
+    /// The (rows, columns) count of an array or range result; `None` for a scalar or unknown one.
+    fn counts(&self) -> Option<(i32, i32)> {
+        match self {
+            StaticResult::Array(rows, columns) => Some((*rows, *columns)),
+            StaticResult::Range(rows, columns) => Some((rows + 1, columns + 1)),
+            StaticResult::Scalar | StaticResult::Unknown => None,
+        }
+    }
 }
 
 /// The shape of a chain of value operators, broadcast link by link in a loop (T-0128).
@@ -307,23 +319,16 @@ fn static_analysis_operator_chain(node: &Node) -> StaticResult {
     result
 }
 
+/// An operator over a range gives an array of the range's counts.
 fn static_analysis_op_results(lhs: StaticResult, rhs: StaticResult) -> StaticResult {
     match (lhs, rhs) {
         (StaticResult::Scalar, StaticResult::Scalar) => StaticResult::Scalar,
-        (StaticResult::Scalar, StaticResult::Array(a, b) | StaticResult::Range(a, b)) => {
-            StaticResult::Array(a, b)
+        (_, StaticResult::Unknown) | (StaticResult::Unknown, _) => StaticResult::Unknown,
+        (lhs, rhs) => {
+            let (a1, b1) = lhs.counts().unwrap_or((1, 1));
+            let (a2, b2) = rhs.counts().unwrap_or((1, 1));
+            StaticResult::Array(a1.max(a2), b1.max(b2))
         }
-
-        (StaticResult::Array(a, b) | StaticResult::Range(a, b), StaticResult::Scalar) => {
-            StaticResult::Array(a, b)
-        }
-        (
-            StaticResult::Array(a1, b1) | StaticResult::Range(a1, b1),
-            StaticResult::Array(a2, b2) | StaticResult::Range(a2, b2),
-        ) => StaticResult::Array(a1.max(a2), b1.max(b2)),
-
-        (_, StaticResult::Unknown) => StaticResult::Unknown,
-        (StaticResult::Unknown, _) => StaticResult::Unknown,
     }
 }
 
@@ -392,26 +397,25 @@ fn scalar_arguments(args: &[Node]) -> StaticResult {
     broadcast_static_result(args)
 }
 
-/// The shape of broadcasting `args` element-wise: scalar if all are, else the largest extent.
+/// The shape of broadcasting `args` element-wise: scalar if all are (a single cell counts as one),
+/// else an array of the largest counts.
 fn broadcast_static_result<'a>(args: impl IntoIterator<Item = &'a Node>) -> StaticResult {
-    let mut n = 0;
-    let mut m = 0;
+    let mut shape: Option<(i32, i32)> = None;
     for arg in args {
         match run_static_analysis_on_node(arg) {
-            StaticResult::Scalar => {
-                // noop
-            }
-            StaticResult::Array(a, b) | StaticResult::Range(a, b) => {
-                n = n.max(a);
-                m = m.max(b);
-            }
+            StaticResult::Scalar | StaticResult::Range(0, 0) => {}
             StaticResult::Unknown => return StaticResult::Unknown,
+            other => {
+                let (a, b) = other.counts().unwrap_or((1, 1));
+                let (n, m) = shape.unwrap_or((0, 0));
+                shape = Some((n.max(a), m.max(b)));
+            }
         }
     }
-    if n == 0 && m == 0 {
-        return StaticResult::Scalar;
+    match shape {
+        Some((n, m)) => StaticResult::Array(n, m),
+        None => StaticResult::Scalar,
     }
-    StaticResult::Array(n, m)
 }
 
 // We only care if the function can return a range or not
@@ -1634,8 +1638,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         // CHOOSE is a reference function: with a range arm the call itself is
         // reference-shaped, so legacy import wraps the whole CALL in `@`
         // (Excel upgrades `=CHOOSE(2,A1:A10,B1:B10)` to `=@CHOOSE(...)`).
+        // Its arms' counts become the extents of that range shape.
         Function::Choose => match scalar_arguments(args) {
-            StaticResult::Array(n, m) => StaticResult::Range(n, m),
+            StaticResult::Array(n, m) => StaticResult::Range(n - 1, m - 1),
             other => other,
         },
         Function::Column => row_column::static_analysis_row_column(args, false),
