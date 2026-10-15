@@ -467,8 +467,9 @@ fn nested_countblank_of_an_error_reads_each_argument_once() {
 fn rank_of_at_prefixed_non_reference_array_is_one_cell() {
     // The formula_eval fuzz reproducer (T-1596): `@` of the 2x2 IF is its top-left value, so
     // RANK returns one cell instead of a 2x2 array static analysis took for a scalar (a debug
-    // assertion). Excel: probes/rank-at-if-ref. With A1:B2 empty every test is FALSE, and RANK
-    // of that value is #VALUE! (probes/rank-unknown-shape-ref).
+    // assertion). Excel: probes/rank-at-if-ref. In the fuzz model A1:B2 is empty, so every test
+    // is FALSE, the undefined name is never picked, and RANK of FALSE is #VALUE!
+    // (probes/rank-unknown-shape-ref); with numbers there it is #NAME? (below).
     let mut model = new_empty_model();
     model._set("C3", "=RANK(5,@IF(A1:B2>0,A1:ANK))");
     model.evaluate();
