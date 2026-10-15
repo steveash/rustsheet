@@ -3,7 +3,7 @@ id: T-1589
 title: "Oracle-confirm array lifting of CEILING, FLOOR, FLOOR.MATH/PRECISE, CEILING.PRECISE and MROUND (incl. boolean elements)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1357 lifted these by the general rule (arrays.md "CEILING/FLOOR family and MRO
 
 ## Out of scope
 -
+
+## Outcome
+New case `probes/ceiling-floor-mround-array-lift` (65 cells, excel-graph): every function with an array in each argument, boolean elements, and MROUND error/missing/boolean precedence. The lift and the boolean-element rules already matched; MROUND's argument checks were wrong: Excel judges them left to right (`MROUND(1/0,TRUE)` is `#DIV/0!`, `MROUND(TRUE,)` is `#VALUE!`), the engine checked every missing argument before any boolean or error. Fixed in `mathematical.rs`; arrays.md is VERIFIED. Eval delta: 0 fixed, 1 new case passing 65/65, 0 regressions.

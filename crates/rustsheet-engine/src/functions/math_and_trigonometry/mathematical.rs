@@ -442,13 +442,31 @@ impl Model {
             .iter()
             .map(|arg| self.evaluate_node_in_context(arg, cell))
             .collect();
-        // A missing argument is #N/A and a boolean #VALUE!, unlike most numeric functions;
-        // every missing argument is checked before any boolean (the order MROUND always had here).
-        if values.iter().any(|v| matches!(v, CalcResult::EmptyArg)) {
-            return CalcResult::new_error(Error::NA, cell, "Bad argument for MROUND".to_string());
-        }
-        if values.iter().any(|v| matches!(v, CalcResult::Boolean(_))) {
-            return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
+        // Excel: the arguments are judged left to right. A missing one is #N/A and a boolean
+        // #VALUE!, unlike most numeric functions; the first error or non-numeric text ends the
+        // scan, so it wins over a missing or boolean argument after it (`MROUND(1/0,TRUE)` is
+        // #DIV/0!, `MROUND("x",)` #VALUE!, `MROUND(TRUE,)` #VALUE! but `MROUND(,TRUE)` #N/A:
+        // probes/ceiling-floor-mround-array-lift A23, A27:A42, docs/excel-semantics/arrays.md).
+        for value in &values {
+            match value {
+                CalcResult::EmptyArg => {
+                    return CalcResult::new_error(
+                        Error::NA,
+                        cell,
+                        "Bad argument for MROUND".to_string(),
+                    );
+                }
+                CalcResult::Boolean(_) => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Expecting number".to_string(),
+                    );
+                }
+                CalcResult::Error { .. } => break,
+                CalcResult::String(text) if self.cast_number(text).is_none() => break,
+                _ => {}
+            }
         }
         let operands = values
             .into_iter()
