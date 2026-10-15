@@ -163,12 +163,9 @@ pub(crate) fn result_matches_regex(calc_result: &CalcResult, reg: &regex::Regex)
 
 fn result_is_equal_to_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => {
-            if target == s.to_lowercase() {
-                return true;
-            }
-            false
-        }
+        // Excel: `COUNTIF(r,"ae")` counts "æ" and `"a-b"` does not equal "ab" (the collation of
+        // `=`, docs/excel-semantics/criteria.md "COUNTIF text criteria use the collation").
+        CalcResult::String(s) => cmp_text_excel(s, target).is_eq(),
         CalcResult::EmptyCell => target.is_empty(),
         _ => false,
     }
@@ -186,7 +183,7 @@ fn result_starts_with_string(calc_result: &CalcResult, target: &str) -> bool {
 // errors and blanks (same as the number/bool variants above).
 fn result_is_not_equal_to_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => target != s.to_lowercase(),
+        CalcResult::String(s) => cmp_text_excel(s, target).is_ne(),
         _ => true,
     }
 }
