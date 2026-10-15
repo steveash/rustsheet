@@ -3,7 +3,7 @@ id: T-1587
 title: "UPPER, LOWER, PROPER, TRIM, CLEAN, REPT, T, TEXT keep lone surrogates; update SPEC-0010 with T-1582 findings"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
