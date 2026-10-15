@@ -55,7 +55,7 @@ impl Model {
                 },
                 _ => arg,
             };
-            match self.evaluate_reference_arg(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
                     if deferred_error.is_none() {
                         if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {

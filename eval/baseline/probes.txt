@@ -613,7 +613,6 @@ C	probes/xmatch-text-bool-equal-runs.case.json	134
 C	probes/xmatch-xlookup-blanks.case.json	69
 C	probes/xnpv-argument-count.case.json	3
 C	probes/yield-solver-sweep.case.json	66
-F	probes/aggregate-picked-direct-a-variants.case.json	S!D1
 F	probes/aggregate-picked-direct-a-variants.case.json	S!D10
 F	probes/aggregate-picked-direct-a-variants.case.json	S!D11
 F	probes/aggregate-picked-direct-a-variants.case.json	S!D12
