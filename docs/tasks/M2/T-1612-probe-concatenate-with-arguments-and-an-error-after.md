@@ -3,7 +3,7 @@ id: T-1612
 title: "Probe CONCATENATE with arguments and an error after the 32,767-unit cut"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
