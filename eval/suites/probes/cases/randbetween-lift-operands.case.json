@@ -31,7 +31,10 @@
         "F2": 4,
         "B2": "=COUNT(RANDBETWEEN(D1:D3,10))",
         "B3": "=COUNT(RANDBETWEEN(10,D1:D3))",
-        "B4": "=COUNT(RANDBETWEEN(E1:E3,10))"
+        "B4": "=COUNT(RANDBETWEEN(E1:E3,10))",
+        "B6": "=ROWS(RANDBETWEEN(SEQUENCE(3),NA()))",
+        "B7": "=ROWS(RANDBETWEEN(SEQUENCE(3),TRUE))",
+        "B8": "=COUNT(RANDBETWEEN(SEQUENCE(3),\"x\"))"
       }
     }
   ],
@@ -50,6 +53,9 @@
     "Calc!A9",
     "Calc!B2",
     "Calc!B3",
-    "Calc!B4"
+    "Calc!B4",
+    "Calc!B6",
+    "Calc!B7",
+    "Calc!B8"
   ]
 }

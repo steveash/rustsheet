@@ -61,14 +61,26 @@
    "B4": {
     "t": "n",
     "v": 0.0
+   },
+   "B6": {
+    "t": "n",
+    "v": 3.0
+   },
+   "B7": {
+    "t": "n",
+    "v": 3.0
+   },
+   "B8": {
+    "t": "n",
+    "v": 0.0
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "01b5e9cc8c91e13920f5d97e51a2fa4a7a1f5a427a0fb0457b0e7d55b193d1b0",
+  "input_sha256": "792d544ab4103aa08860300d078631446711a4479a2f7e4e632f2dc259070f55",
   "kind": "excel-graph",
-  "produced_at": "2026-10-16T02:58:14+00:00",
+  "produced_at": "2026-10-16T03:23:56+00:00",
   "version": null
  }
 }

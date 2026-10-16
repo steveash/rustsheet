@@ -494,7 +494,7 @@ C	probes/r1c1-shaped-sheet-names-lower.case.json	22
 C	probes/r1c1-shaped-sheet-names.case.json	54
 C	probes/radians-sqrtpi-munit.case.json	94
 C	probes/randbetween-huge-span.case.json	23
-C	probes/randbetween-lift-operands.case.json	15
+C	probes/randbetween-lift-operands.case.json	18
 C	probes/range-operator-column-letter-before-colon.case.json	1
 C	probes/range-operator-unnamed-operands.case.json	10
 C	probes/range-right-operand-errors.case.json	4
