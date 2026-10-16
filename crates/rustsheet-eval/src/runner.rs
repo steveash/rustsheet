@@ -19,6 +19,7 @@ use crate::cellref::Addr;
 use crate::deviations::{self, Outcome};
 use crate::engine::{Engine, Evaluated};
 use crate::overrides;
+use crate::spill_extent::SpillExtent;
 use crate::suite::{CaseFile, Suite, SuiteKind};
 use crate::value::{compare, Value, Verdict};
 use crate::volatile::{pinned_clock_serial, scorable_cells, volatile_cells, FormulaCell};
@@ -147,6 +148,7 @@ enum Prepared {
 struct PreparedCase {
     input: Prepared,
     expectations: Vec<Expectation>,
+    extent: Option<SpillExtent>,
     expected_source: String,
     skipped_volatile: usize,
     tags: Vec<String>,
@@ -239,7 +241,11 @@ pub fn run_case(
                     Prepared::Xlsx { bytes } => engine.evaluate_xlsx(bytes),
                     Prepared::Spec { spec } => engine.evaluate_spec(spec),
                 }?;
-                Ok::<_, String>(score(evaluated.as_ref(), &prepared.expectations))
+                let mut cells = score(evaluated.as_ref(), &prepared.expectations);
+                let scored = cells.len();
+                let extent = prepared.extent.iter();
+                cells.extend(extent.flat_map(|e| e.unexpected_cells(evaluated.as_ref())));
+                Ok::<_, String>((cells, scored))
             }));
             let _ = tx.send(outcome);
         });
@@ -267,8 +273,9 @@ pub fn run_case(
             result.status = CaseStatus::EngineError;
             result.message = Some(e);
         }
-        Ok(Ok(Ok(cells))) => {
-            result.checked = cells.len();
+        Ok(Ok(Ok((cells, scored)))) => {
+            // Spill-extent cells (after `scored`) all fail but stay out of `checked` (decision 0063).
+            result.checked = scored;
             result.passed = cells.iter().filter(|c| c.verdict.is_pass()).count();
             result.deviations = cells
                 .iter()
@@ -276,7 +283,7 @@ pub fn run_case(
                 .count();
             result.status = if result.checked == 0 {
                 CaseStatus::Pending
-            } else if result.passed + result.deviations == result.checked {
+            } else if result.passed + result.deviations == cells.len() {
                 CaseStatus::Pass
             } else {
                 CaseStatus::Fail
@@ -399,6 +406,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
         return Ok(PreparedCase {
             input: Prepared::Xlsx { bytes },
             expectations: Vec::new(),
+            extent: None,
             expected_source: "none".into(),
             skipped_volatile: 0,
             tags: Vec::new(),
@@ -427,6 +435,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
     Ok(PreparedCase {
         input: Prepared::Xlsx { bytes },
         expectations,
+        extent: None,
         expected_source: source,
         skipped_volatile,
         tags: Vec::new(),
@@ -583,6 +592,8 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         });
     }
     Ok(PreparedCase {
+        extent: oracle_is_excel
+            .then(|| SpillExtent::new(&spec, &expected, &oracle_cells, &formulas)),
         tags: spec.tags.clone(),
         input: Prepared::Spec {
             spec: Box::new(spec),
@@ -606,6 +617,9 @@ mod tests {
     impl Evaluated for NoValues {
         fn value(&self, _: &str, _: Addr) -> Option<Value> {
             None
+        }
+        fn stored_cells(&self, _: &str) -> Vec<Addr> {
+            Vec::new()
         }
     }
 
