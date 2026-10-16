@@ -85,9 +85,10 @@ Evidence: probes/text-format-text-limit A1-A25 (excel-graph, 2026-10-08, T-0935)
 Status: VERIFIED
 Implemented in: `format_text_value` (formatter/format.rs), `MAX_TEXT_FORMAT_CHARS`, checked as the
 result grows so a format of many `@` cannot allocate a huge string (CLAUDE.md directive 5).
-Unprobed (T-0935 follow-up): a text value with a 1-3 section format and no lone `@` section (the
-engine returns the text unchanged), `0;@`-style formats, `_x`/`*x` in the text section (one space
-here), digit or date tokens in the text section (dropped here), and a General 4th section.
+Unprobed (T-0935 follow-up): a text value with a 1-3 section format and no `@` section (the
+engine returns the text unchanged) and a General 4th section. `0;@`-style formats, `_x`/`*x` and
+digit or date tokens beside `@` are now probed: see "TEXT of a text value: `@` with other tokens in
+one section" (T-1656).
 Tasks: T-0935
 
 ## A doubled quote in a format literal is not an escape
@@ -312,8 +313,9 @@ Tasks: T-1262, T-1450
 
 ## TEXT of a text value: `@` with other tokens in one section (T-1656)
 
-Rule: for a text value, a format whose section holds `@` is `#VALUE!` when the same section also holds a date or number token, whichever side of the `@` it sits on: `y yy yyyy m mm mmm d dd ddd h hh s ss b bb e ee g gg ggg`, `[h] [m] [s]`, `0 # ? . /`, `E+0`, `General`, `%` and a condition such as `[>5]`. These are literals, not errors: `a`, `,`, space, `\y`, `"y"`, `*-`, `_x`, `[Red]`, `[$-409]` (`TEXT("abc","x@\y")` is "xabcy"; `"x@_x"` prints a space for the spacer). `A/P` and `AM/PM` give a stray first letter or two: `TEXT("abc","x@A/P")` is "xabcA" and `"x@AM/PM"` "xabcAM" (`"A/P@"` "Aabc", `"AM/PM@"` "AMabc"). `@@` prints the text twice. A second section does not rescue it: `"x@y;z"` and `"x@y;z;w;@@"` are `#VALUE!`; this conflicts at first sight with the 4th-section rule above ("other tokens print as literals", poi TextFormatTests), so how the sections interact is unprobed.
-Evidence: probes/text-at-with-tokens (89 cells, excel-graph, 2026-10-16, T-1656).
-Ours: not implemented; `format_text_value` (formatter/format.rs) prints those tokens as nothing or literals (16 of 89 cells pass).
+Rule: a format whose section holds `@` is `#VALUE!` (for a text value, and for numbers too: see Sections below) when the same section also holds a date or number token, whichever side of the `@` it sits on: `y yy yyyy m mm mmm d dd ddd h hh s ss b bb e ee g gg ggg`, `[h] [m] [s]`, `0 # ? . /`, `E+0`, `General`, `%` and a condition such as `[>5]`. These are literals, not errors: `a`, `,`, space, `\y`, `"y"`, `*-`, `_x`, `[Red]`, `[$-409]` (`TEXT("abc","x@\y")` is "xabcy"; `"x@_x"` prints a space for the spacer). `A/P` and `AM/PM` give a stray first letter or two: `TEXT("abc","x@A/P")` is "xabcA" and `"x@AM/PM"` "xabcAM" (`"A/P@"` "Aabc", `"AM/PM@"` "AMabc"). `@@` prints the text twice. A fill `*x` prints nothing in the text section (`"x@*-"` is "xabc") while `_x` leaves a space.
+Sections (probes/text-at-token-sections, 96 cells: text, 1, -1 and 0 on each format): `@` may stand only in the last section, and a format that breaks either rule is `#VALUE!` for every value, numbers included. `"@;0"`, `"x@;0"`, `"[Red]x@;0"` and `"x@\y;0;0;@"` are `#VALUE!`; `"x@y;0"`, `"0;x@y"`, `"0;0;x@y"`, `"x@y;0;0;@"`, `"0;0;x@y;@"` and `"0;x@0"` are `#VALUE!` because one section holds `@` beside a token. A last section with `@` is the text section whatever the count: `TEXT("abc","0;x@")` and `"0;0;x@"` are "xabc", and numbers use the sections before it (`TEXT(-1,"0;x@")` is "-1", `TEXT(-1,"0;0;x@")` "1", `TEXT(0,"0;0;x@")` "0"). `"0;0;0;y"` stays `#VALUE!` (4th-section rule) and `"0;0;0;x@\y"` gives "xabcy". This reconciles the poi 4th-section entry: literals in a text section print, but a number or date token beside `@` invalidates the format.
+Evidence: probes/text-at-with-tokens (89 cells), probes/text-at-token-sections (96 cells) (excel-graph, 2026-10-16, T-1656).
+Implemented in: `exceeds_complexity_limit` (formatter/complexity.rs, both placement rules, checked by TEXT before formatting); `format_text_value` and `format_number` (formatter/format.rs: a trailing `@` section, `*x`, `AM/PM` as "AM"). Ours fails only `A/P` (A22, B22, sections A20) and `[$-409]` (A35): the lexer rejects both (T-1702).
 Status: VERIFIED (excel-graph)
 Tasks: T-1656
