@@ -3,7 +3,7 @@ id: T-1651
 title: "Probe MODE with a direct error argument and LOOKUP with a scalar lookup_vector"
 milestone: M6
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
