@@ -24,4 +24,4 @@ T-1650 showed AVEDEV's mean sum rounds twice, but its operand sets cannot discri
 -
 
 ## Outcome
-Probe `double-rounding-avedev-deviations` (8 symmetric operand sets, 56 cells, excel-graph): AVEDEV's sum of absolute deviations rounds twice per addition. `fn_avedev` now accumulates the deviations with `extended_sum` (3 of 8 AVEDEV cells were one ulp off, now 0). The SUMPRODUCT control cells show the engine's SUMPRODUCT misses the same way; filed as T-1676.
+Probe `double-rounding-avedev-deviations` (8 symmetric operand sets, 56 cells, excel-graph): AVEDEV's sum of absolute deviations rounds twice per addition. `fn_avedev` now accumulates the deviations with `extended_sum` (all 8 AVEDEV cells were one or two ulps off, now 0). The SUMPRODUCT control cells show the engine's SUMPRODUCT misses the same way; filed as T-1676.
