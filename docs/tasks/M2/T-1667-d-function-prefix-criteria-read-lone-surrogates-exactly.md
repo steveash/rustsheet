@@ -24,4 +24,4 @@ T-1642 made COUNTIF-style criteria and wildcards read lone units exactly (docs/e
 -
 
 ## Outcome
-Probe `probes/d-function-prefix-lone-surrogates` (excel-graph) shows Excel reads the D-function prefix unit by unit, a lone half never U+FFFD. `result_starts_with_units` (functions/criteria.rs) now compares lower-cased UTF-16 units. Documented in criteria.md and text.md. Eval: probes +20 cells passing, no regressions.
+Probe `probes/d-function-prefix-lone-surrogates` (excel-graph) shows Excel reads the D-function prefix unit by unit, a lone half never U+FFFD. `result_starts_with_units` (functions/criteria.rs) now compares lower-cased UTF-16 units. Documented in criteria.md and text.md. Eval: new probe case, 35/35 cells pass; no regressions.
