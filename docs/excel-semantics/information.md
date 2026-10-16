@@ -253,7 +253,6 @@ boolean ranks above every number: `TRUE()>5` is TRUE, `FALSE()<5` FALSE, B26/C26
 `VALUE(TRUE())` is `#VALUE!`, B28); the engine matches all of them. The eval clock is pinned, so a cell comparing
 NOW or TODAY with a threshold the real clock could cross (`NOW()>45000`) cannot be scored; `NOW()>0` and `YEAR(TODAY())>=1900`
 can never change and are.
-Status: VERIFIED (excel-graph)
-Tasks: T-1627, T-1631
-
 A legacy (non-dynamic) formula does not implicitly intersect SHEET's single reference argument: `SHEET(Table1[])` gives the table's sheet (1..4 for Table1..Table4 on four sheets; Excel-cached values in crates/rustsheet-xlsx/tests/calc_test_no_export/tables.xlsx sheet9 A5:A8; T-1674).
+Status: VERIFIED (excel-graph)
+Tasks: T-1627, T-1631, T-1674
