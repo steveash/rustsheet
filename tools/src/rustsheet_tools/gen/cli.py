@@ -2,6 +2,7 @@
 
   rustsheet-gen --milestone M2 --count 25 --seed 1 --suite gen-m2
   rustsheet-gen --policy operators-refs --seed 0          # suite gen-m1 (M1, no functions)
+  rustsheet-gen --policy names-3d --seed 0                # suite gen-m8a (M8 names, 3-D refs)
 
 Creates eval/suites/<suite>/suite.toml if missing (non-gating until oracle sidecars exist).
 """
@@ -14,6 +15,7 @@ from typing import Any
 
 from rustsheet_tools import repo_root
 from rustsheet_tools.gen.generator import Catalog, generate_case, write_case
+from rustsheet_tools.gen.names_3d import generate_names_3d
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
 from rustsheet_tools.gen.operators_refs import generate_operators_refs
 
@@ -52,12 +54,13 @@ def main() -> None:
     ap.add_argument("--suite", default=None, help="suite name (default gen-<milestone>)")
     ap.add_argument(
         "--policy",
-        choices=["random", "numeric-rules", "operators-refs"],
+        choices=["random", "numeric-rules", "operators-refs", "names-3d"],
         default="random",
         help=(
             "numeric-rules: dense floating-point probe batches (suite probes-numeric); "
             "operators-refs: M1 operators and references only, no functions (suite gen-m1, T-0117); "
-            "both ignore --milestone/--count/--formulas/--depth"
+            "names-3d: M8 defined names and 3-D references (suite gen-m8a, T-1606); "
+            "all three ignore --milestone/--count/--formulas/--depth"
         ),
     )
     ap.add_argument("--catalog", type=Path, default=None)
@@ -80,6 +83,15 @@ def main() -> None:
             "M1 operator and reference probes from rustsheet-gen --policy operators-refs; expectations from the Excel oracle",
             "M1",
             generate_operators_refs(args.seed),
+        )
+        return
+    if args.policy == "names-3d":
+        write_suite(
+            root,
+            args.suite or "gen-m8a",
+            "M8 defined-name and 3-D reference probes from rustsheet-gen --policy names-3d; expectations from the Excel oracle",
+            "M8",
+            generate_names_3d(args.seed),
         )
         return
     catalog = Catalog.load(args.catalog or root / "eval" / "catalog" / "functions.yaml")
