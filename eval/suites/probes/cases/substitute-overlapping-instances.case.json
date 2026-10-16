@@ -1,0 +1,39 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SUBSTITUTE with instance_num when matches of old_text overlap (aaa/aa, aaaa/aa, aaaaa/aaa, abab), case-sensitivity, out-of-range and fractional instance_num, empty new/old text (T-1644).",
+  "tags": [
+    "M2",
+    "text",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=SUBSTITUTE(\"aaa\",\"aa\",\"x\",1)",
+        "A2": "=SUBSTITUTE(\"aaa\",\"aa\",\"x\",2)",
+        "A3": "=SUBSTITUTE(\"aaa\",\"aa\",\"x\",3)",
+        "A4": "=SUBSTITUTE(\"aaa\",\"aa\",\"x\")",
+        "A5": "=SUBSTITUTE(\"aaaa\",\"aa\",\"x\",2)",
+        "A6": "=SUBSTITUTE(\"aaaa\",\"aa\",\"x\",3)",
+        "A7": "=SUBSTITUTE(\"aaaa\",\"aa\",\"x\")",
+        "A8": "=SUBSTITUTE(\"aaaaa\",\"aaa\",\"x\",2)",
+        "A9": "=SUBSTITUTE(\"aaaaa\",\"aaa\",\"x\",3)",
+        "A10": "=SUBSTITUTE(\"abab\",\"bab\",\"x\",1)",
+        "A11": "=SUBSTITUTE(\"ababab\",\"abab\",\"x\",2)",
+        "A12": "=SUBSTITUTE(\"ababab\",\"abab\",\"x\",3)",
+        "A13": "=SUBSTITUTE(\"AaA\",\"aa\",\"x\",2)",
+        "A14": "=SUBSTITUTE(\"aaa\",\"aa\",\"x\",4)",
+        "A15": "=SUBSTITUTE(\"aaa\",\"aa\",\"x\",0)",
+        "A16": "=SUBSTITUTE(\"aaa\",\"aa\",\"x\",-1)",
+        "A17": "=SUBSTITUTE(\"aaa\",\"aa\",\"x\",1.9)",
+        "A18": "=SUBSTITUTE(\"abcabc\",\"bc\",\"x\",2)",
+        "A19": "=SUBSTITUTE(\"xxxx\",\"xx\",\"\",2)",
+        "A20": "=SUBSTITUTE(\"aaa\",\"aa\",\"aa\",2)",
+        "A21": "=SUBSTITUTE(\"aaa\",\"\",\"x\",1)",
+        "A22": "=SUBSTITUTE(\"aaa\",\"aa\",\"x\",{1,2,3})"
+      }
+    }
+  ],
+  "expected": {}
+}

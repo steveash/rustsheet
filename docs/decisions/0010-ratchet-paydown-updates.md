@@ -88,5 +88,10 @@
   cells through the three *-evidence-floor probes; decision 0062) (`make eval-baseline`).
   T-1651: functions below the evidence floor 53 → 52 (one more function reaches ≥ 20 Excel cells through
   the MODE/LOOKUP direct-argument probe, probes/mode-direct-error-lookup-scalar-vector; decision 0062) (`make eval-baseline`).
+  T-1620: functions below the evidence floor 52 → 42 (FORECAST, FORECAST.LINEAR, CORREL, PEARSON, RSQ, SLOPE,
+  COVAR, STEYX, INTERCEPT and TREND reach ≥ 20 Excel cells through the four regression-* probes; decision 0062)
+  (`make eval-baseline`).
+  T-1621: functions below the evidence floor 42 → 39 (LINEST, LOGEST and GROWTH reach ≥ 20 Excel cells through
+  probes/linest-modes, logest-modes and growth-modes; decision 0062) (`make eval-baseline`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
