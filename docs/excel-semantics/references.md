@@ -1570,7 +1570,7 @@ one word needs its own brackets after `@` (`Sales[@[Unit Price]]`) (escaped d86e
 in the engine already).
 Status: VERIFIED (excel-graph)
 Implemented in: escapes, case-insensitive names and the two contiguous specifier pairs (Headers+Data, Data+Totals) in expressions/lexer/structured_references.rs and parser/operands.rs (T-1673); other orders are unprobed, the
-bare name is T-1674. Case-insensitive `#This Row` is unprobed (assumed like the other specifiers); no model-level test yet for the HeadersData/DataTotals areas with a totals row (needs T-1671).
+bare name and `Table[]` are the data area (T-1674). Case-insensitive `#This Row` is unprobed (assumed like the other specifiers); no model-level test yet for the HeadersData/DataTotals areas with a totals row (needs T-1671).
 Tasks: T-1607, T-1673, T-1674
 
 ## Structured references: the `@` shorthand

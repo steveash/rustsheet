@@ -721,7 +721,6 @@ fn stringify(
             }
             format!("{{{matrix_string}}}")
         }
-        TableNameKind(value) => value.to_string(),
         DefinedNameKind((name, ..)) => name.to_string(),
         NamedVariableKind { name, id: _ } => name.to_string(),
         UnaryKind { kind, right } => {
@@ -969,7 +968,6 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::ParseErrorKind { .. } => {}
         Node::ArrayKind(_) => {}
         Node::DefinedNameKind(_) => {}
-        Node::TableNameKind(_) => {}
         Node::NamedVariableKind { .. } => {}
         Node::EmptyArgKind => {}
         Node::LambdaDefKind {
@@ -1052,7 +1050,6 @@ pub(crate) fn rename_defined_name_in_node(
         Node::SheetSpanKind { .. } => {}
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
-        Node::TableNameKind(_) => {}
         Node::NamedVariableKind { .. } => {}
         Node::LambdaDefKind {
             parameters: _,
