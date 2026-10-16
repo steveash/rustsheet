@@ -3,7 +3,7 @@ id: T-1595
 title: "cmp_text_excel orders the T-1590 probed characters (controls, dashes, symbols, non-Latin-1 letters)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
