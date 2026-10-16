@@ -175,8 +175,8 @@ fn is_dotted_a1_range(name: &str) -> bool {
 }
 
 /// Whether `name` is `R<digits>C<digits>` in uppercase, which the R1C1 lexer reads as a cell
-/// reference whatever the numbers (`R0C1` is `#REF!`). Formulas are stored in R1C1 form, so an
-/// identifier spelled like that would come back as a reference after a reload.
+/// reference when both numbers are in range. Formulas are stored in R1C1 form, so an identifier
+/// spelled like that would come back as a reference after a reload.
 fn is_r1c1_cell_text(name: &str) -> bool {
     let text = name.as_bytes();
     let mut position = 1;
@@ -264,7 +264,8 @@ pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
 pub fn is_valid_a1_identifier(name: &str) -> bool {
     // Excel takes `LET(R1C1,5,R1C1*2)` (10, probes/r1c1-let-name-r1c1), but the engine's R1C1
     // storage would turn the name into a cell reference on reload (TODO(T-1658)).
-    is_identifier_text(name) && !is_r1c1_cell_text(name)
+    // An out-of-range `R0C1` stays a name in R1C1 form too (the lexer reads it so; T-1657).
+    is_identifier_text(name) && (!is_r1c1_cell_text(name) || is_out_of_range_r1c1_name(name))
 }
 
 /// The rules every name follows: its characters, and not `TRUE`, `FALSE` or an A1 cell.

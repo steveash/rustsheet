@@ -324,12 +324,22 @@ fn test_a1_identifier_allows_r_and_c() {
     assert!(is_valid_a1_identifier("C"));
     assert!(is_valid_a1_identifier("c"));
     // And R1C1 references: `LET(R1C1,5,R1C1*2)` is 10 (probes/r1c1-let-name-*, T-1652).
-    for name in ["R12C", "RC", "R1C", "R1C1D", "r1c1", "R0"] {
+    // An out-of-range `R0C1` too: the R1C1 lexer reads it as a name (T-1657).
+    for name in [
+        "R12C",
+        "RC",
+        "R1C",
+        "R1C1D",
+        "r1c1",
+        "R0",
+        "R0C1",
+        "R1048577C1",
+    ] {
         assert!(is_valid_a1_identifier(name), "{name}");
     }
-    // Except an uppercase R<n>C<m>, which the R1C1 storage would read back as a reference
-    // (TODO(T-1658)).
-    for name in ["R1C1", "R5C7", "R0C1", "R1048577C1"] {
+    // Except an in-range uppercase R<n>C<m>, which the R1C1 storage would read back as a
+    // reference (TODO(T-1658)).
+    for name in ["R1C1", "R5C7", "R1048576C16384"] {
         assert!(!is_valid_a1_identifier(name), "{name}");
     }
     // All other is_valid_identifier rules still apply.

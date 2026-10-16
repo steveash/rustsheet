@@ -5266,25 +5266,11 @@ F	probes/negative-date-sections-1904.case.json	S!A21
 F	probes/negative-date-sections-1904.case.json	S!A22
 F	probes/negative-date-sections-1904.case.json	S!A23
 F	probes/negative-date-sections-1904.case.json	S!A9
-F	probes/r1c1-let-name-r0c1.case.json	Sheet1!A1
 F	probes/r1c1-let-name-r1c1.case.json	Sheet1!A1
 F	probes/r1c1-let-name-r5c7.case.json	Sheet1!A1
 F	probes/r1c1-name-c1-c1-dot.case.json	Sheet1!A1
-F	probes/r1c1-name-r0c1.case.json	Sheet1!A1
-F	probes/r1c1-name-r0c1.case.json	Sheet1!A2
 F	probes/r1c1-name-r1-dot-c1.case.json	Sheet1!A1
 F	probes/r1c1-name-r1-dotdot-c1.case.json	Sheet1!A1
-F	probes/r1c1-name-r1048577c1.case.json	Sheet1!A1
-F	probes/r1c1-name-r1048577c1.case.json	Sheet1!A2
-F	probes/r1c1-name-use-r0c1.case.json	Sheet1!A1
-F	probes/r1c1-name-use-r0c1.case.json	Sheet1!A4
-<<<<<<< HEAD
-F	probes/radians-sqrtpi-munit.case.json	Sheet1!B80
-=======
-F	probes/r1c1-name-use-r1048577.case.json	Sheet1!A1
-F	probes/r1c1-name-use-r1048577.case.json	Sheet1!A2
-F	probes/r1c1-name-use-r1048577.case.json	Sheet1!A4
->>>>>>> origin/main
 F	probes/rate-empty-arguments.case.json	Sheet1!A1
 F	probes/rate-empty-arguments.case.json	Sheet1!A10
 F	probes/rate-empty-arguments.case.json	Sheet1!A2

@@ -492,6 +492,14 @@ impl Lexer {
                                                 );
                                             }
                                         }
+                                        // An uppercase `R0C1` or `R1048577C1` is no cell but a
+                                        // name Excel never resolves (`#NAME?`, T-1657); reading it
+                                        // so keeps it a name after a reload from R1C1 storage.
+                                        if right.is_none()
+                                            && utils::is_out_of_range_r1c1_name(&name)
+                                        {
+                                            return TokenType::Ident(name);
+                                        }
                                         if let Some(right) = right {
                                             return TokenType::Range {
                                                 sheet: None,
