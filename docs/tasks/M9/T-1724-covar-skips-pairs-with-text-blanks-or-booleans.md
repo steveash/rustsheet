@@ -19,7 +19,6 @@ Found by T-1620 (probes/regression-pairs-a/-b, regression-pairs-b column L; exce
 ## Acceptance criteria
 - [ ] The mismatching non-ULP COVAR cells of probes/regression-pairs-b pass and the baseline shrinks.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Probing further inputs (file a probe task instead).

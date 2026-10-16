@@ -26,7 +26,6 @@ Group the work by cause; record the rules in docs/excel-semantics/statistics.md.
 ## Acceptance criteria
 - [ ] The mismatching non-ULP cells of probes/regression-trend pass (or the remaining ones are listed in an Outcome note) and the baseline shrinks.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Probing further inputs (file a probe task instead).

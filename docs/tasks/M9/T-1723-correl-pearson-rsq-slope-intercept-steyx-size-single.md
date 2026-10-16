@@ -24,7 +24,6 @@ Record any new quirk in docs/excel-semantics/statistics.md.
 ## Acceptance criteria
 - [ ] The mismatching non-ULP cells of probes/regression-pairs-a and -b for these six functions pass and leave eval/baseline/probes.txt smaller.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Probing further inputs (file a probe task instead).

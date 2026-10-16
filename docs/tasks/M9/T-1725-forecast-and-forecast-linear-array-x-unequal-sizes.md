@@ -23,7 +23,6 @@ Found by T-1620 (probes/regression-forecast, FORECAST in column L, FORECAST.LINE
 ## Acceptance criteria
 - [ ] The mismatching non-ULP cells of probes/regression-forecast pass and the baseline shrinks.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Probing further inputs (file a probe task instead).
