@@ -3,7 +3,7 @@ id: T-1729
 title: "T over an array lifts element-wise in a dynamic formula"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -30,7 +30,7 @@ with excel-probe before generalizing. information.md "T over an array lifts elem
 ## Out of scope
 - The legacy `=T(IF(...))` `#VALUE!` (T-1713).
 
-## Handoff
+## Handoff (resumed)
 Tried (committed on this branch): `fn_t` (functions/text/common.rs) lifts `CalcResult::Array` element-wise
 (text and error elements kept, others ""), `static_analysis.rs` result-shape arm `Function::T` changed from
 `not_implemented(args)` to `scalar_arguments(args)` (as N), unit test `t_lifts_over_an_array` in
