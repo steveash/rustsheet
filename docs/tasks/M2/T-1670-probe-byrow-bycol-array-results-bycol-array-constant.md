@@ -1,5 +1,5 @@
 ---
-id: T-1669
+id: T-1670
 title: "Probe BYROW/BYCOL array results: BYCOL, array-constant source, 1x1 array"
 milestone: M2
 lane: research

@@ -339,7 +339,7 @@ fn functions_passed_by_name_with_special_forms_do_not_panic() {
 
 // A LAMBDA that returns several values makes the whole BYROW or BYCOL one `#CALC!` cell with
 // nothing spilled (probes/eta-reduced-names E49, T-1664). The BYROW range case has Excel evidence;
-// the BYCOL and array-constant cases are hand expectations awaiting T-1669.
+// the BYCOL and array-constant cases are hand expectations awaiting T-1670.
 #[test]
 fn byrow_bycol_array_result_is_one_calc_error() {
     let mut model = new_empty_model();
