@@ -355,3 +355,15 @@ fn byrow_bycol_array_result_is_one_calc_error() {
         assert_eq!(model._get_text(below), "");
     }
 }
+
+// A 1x1 array result is unprobed in Excel: it keeps the earlier `#VALUE!` per slice (T-1664).
+#[test]
+fn byrow_one_by_one_array_result_is_unchanged() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("C1", "=BYROW(A1:A2, LAMBDA(r, {7}))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert_eq!(model._get_text("C2"), "#VALUE!");
+}

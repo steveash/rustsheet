@@ -75,6 +75,13 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
+/// Whether a LAMBDA's result makes BYROW or BYCOL give one `#CALC!` cell: several values, but not
+/// a 1x1 array, whose Excel behavior is unprobed (it stays `#VALUE!` as before, T-1664).
+fn is_calc_result(result: &CalcResult) -> bool {
+    result.is_multi_value()
+        && !matches!(result, CalcResult::Array(a) if a.len() == 1 && a[0].len() == 1)
+}
+
 impl Model {
     /// `=BYCOL(array, lambda)`
     ///
@@ -102,7 +109,7 @@ impl Model {
                         &[Node::ArrayKind(column)],
                         cell,
                     );
-                    (!result.is_multi_value()).then(|| calc_result_to_array_node(result))
+                    (!is_calc_result(&result)).then(|| calc_result_to_array_node(result))
                 })
                 .collect::<Option<Vec<_>>>(),
         };
@@ -140,7 +147,7 @@ impl Model {
                         &[Node::ArrayKind(vec![row])],
                         cell,
                     );
-                    (!result.is_multi_value()).then(|| vec![calc_result_to_array_node(result)])
+                    (!is_calc_result(&result)).then(|| vec![calc_result_to_array_node(result)])
                 })
                 .collect::<Option<Vec<_>>>(),
         };
@@ -202,7 +209,7 @@ impl Model {
             right: slice.right,
         };
         let result = self.call_lambda_caller(caller, [reference], cell);
-        (!result.is_multi_value()).then(|| calc_result_to_array_node(result))
+        (!is_calc_result(&result)).then(|| calc_result_to_array_node(result))
     }
 
     /// The array argument of BYROW or BYCOL. A range on one sheet (also through TAKE, DROP,
