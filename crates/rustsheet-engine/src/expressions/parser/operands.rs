@@ -423,7 +423,14 @@ impl Parser {
             }
         };
         // table-name => table
-        let table = match self.tables.get(&table_name) {
+        // Table names match ignoring case (gen-m8b names-case 5b5c0e20e82153bb).
+        let table_name_lower = table_name.to_lowercase();
+        let table = match self
+            .tables
+            .iter()
+            .find(|(name, _)| name.to_lowercase() == table_name_lower)
+            .map(|(_, t)| t)
+        {
             Some(t) => t,
             None => {
                 let message = format!(
@@ -505,6 +512,15 @@ impl Parser {
                 row_start = data_start;
             }
             Some(token::TableSpecifier::All) => {
+                if totals_row_count != 0 {
+                    row_end = totals_row;
+                }
+            }
+            // [#Headers],[#Data]: header row through the last data row (row_end already excludes totals).
+            Some(token::TableSpecifier::HeadersData) => {}
+            // [#Data],[#Totals]: data rows plus the totals row when there is one.
+            Some(token::TableSpecifier::DataTotals) => {
+                row_start = data_start;
                 if totals_row_count != 0 {
                     row_end = totals_row;
                 }

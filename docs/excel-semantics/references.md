@@ -1565,8 +1565,8 @@ in a column name must be escaped: `Stock[C'#]`, `Sales[it''s]`, `Wide[Rate '[%']
 one word needs its own brackets after `@` (`Sales[@[Unit Price]]`) (escaped d86ef297e840325f, 386/400 pass
 in the engine already).
 Status: VERIFIED (excel-graph)
-Implemented in: escapes (expressions/lexer/structured_references.rs); case-insensitive names and several
-specifiers are T-1673, the bare name T-1674.
+Implemented in: escapes, case-insensitive names and the two contiguous specifier pairs (Headers+Data, Data+Totals) in expressions/lexer/structured_references.rs and parser/operands.rs (T-1673); other orders are unprobed, the
+bare name is T-1674.
 Tasks: T-1607, T-1673, T-1674
 
 ## Structured references: the `@` shorthand

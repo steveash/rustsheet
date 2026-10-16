@@ -316,6 +316,10 @@ pub enum TableSpecifier {
     Headers,
     ThisRow,
     Totals,
+    /// `[[#Headers],[#Data]]`: everything above the totals row.
+    HeadersData,
+    /// `[[#Data],[#Totals]]`: everything below the header row.
+    DataTotals,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]

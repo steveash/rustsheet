@@ -17,33 +17,39 @@ use crate::expressions::token::{TableReference, TableSpecifier};
 use super::Result;
 use super::{Lexer, LexerError};
 
+/// The two contiguous item-specifier pairs Excel accepts together (gen-m8b specials e804cf2f8af00680).
+fn combine_specifiers(
+    first: Option<TableSpecifier>,
+    second: Option<TableSpecifier>,
+) -> Option<TableSpecifier> {
+    match (first?, second?) {
+        (TableSpecifier::Headers, TableSpecifier::Data) => Some(TableSpecifier::HeadersData),
+        (TableSpecifier::Data, TableSpecifier::Totals) => Some(TableSpecifier::DataTotals),
+        _ => None,
+    }
+}
+
 impl Lexer {
     fn consume_table_specifier(&mut self) -> Result<Option<TableSpecifier>> {
         if self.peek_char() == Some('#') {
             // It's a specifier
-            // TODO(TD): There are better ways of doing this :)
             let rest_of_formula: String = self.chars[self.position..self.len].iter().collect();
-            let specifier = if rest_of_formula.starts_with("#This Row]") {
-                self.position += "#This Row]".len();
-                TableSpecifier::ThisRow
-            } else if rest_of_formula.starts_with("#All]") {
-                self.position += "#All]".len();
-                TableSpecifier::All
-            } else if rest_of_formula.starts_with("#Data]") {
-                self.position += "#Data]".len();
-                TableSpecifier::Data
-            } else if rest_of_formula.starts_with("#Headers]") {
-                self.position += "#Headers]".len();
-                TableSpecifier::Headers
-            } else if rest_of_formula.starts_with("#Totals]") {
-                self.position += "#Totals]".len();
-                TableSpecifier::Totals
-            } else {
-                return Err(LexerError {
-                    position: self.position,
-                    message: "Invalid structured reference".to_string(),
-                });
-            };
+            // Item specifiers match ignoring case (gen-m8b names-case 5b5c0e20e82153bb).
+            let rest_lower = rest_of_formula.to_lowercase();
+            let (name, specifier) = [
+                ("#this row]", TableSpecifier::ThisRow),
+                ("#all]", TableSpecifier::All),
+                ("#data]", TableSpecifier::Data),
+                ("#headers]", TableSpecifier::Headers),
+                ("#totals]", TableSpecifier::Totals),
+            ]
+            .into_iter()
+            .find(|(name, _)| rest_lower.starts_with(name))
+            .ok_or_else(|| LexerError {
+                position: self.position,
+                message: "Invalid structured reference".to_string(),
+            })?;
+            self.position += name.chars().count();
             Ok(Some(specifier))
         } else {
             Ok(None)
@@ -190,13 +196,27 @@ impl Lexer {
             });
         }
         self.expect(TokenType::LeftBracket)?;
-        let specifier = self.consume_table_specifier()?;
+        let mut specifier = self.consume_table_specifier()?;
         if specifier.is_some() {
-            let peek_token = self.peek_token();
-            if peek_token == TokenType::Comma {
+            if self.peek_token() == TokenType::Comma {
                 self.advance_token();
                 self.expect(TokenType::LeftBracket)?;
-            } else if peek_token == TokenType::RightBracket {
+                // A second item specifier: [[#Headers],[#Data],...] or [[#Data],[#Totals],...]
+                if self.peek_char() == Some('#') {
+                    let position = self.position;
+                    let second = self.consume_table_specifier()?;
+                    specifier = Some(combine_specifiers(specifier, second).ok_or(LexerError {
+                        position,
+                        message: "Invalid structured reference".to_string(),
+                    })?);
+                    if self.peek_token() == TokenType::Comma {
+                        self.advance_token();
+                        self.expect(TokenType::LeftBracket)?;
+                    }
+                }
+            }
+            if self.peek_token() == TokenType::RightBracket {
+                self.expect(TokenType::RightBracket)?;
                 return Ok(TokenType::StructuredReference {
                     table_name: table_name.to_string(),
                     specifier,

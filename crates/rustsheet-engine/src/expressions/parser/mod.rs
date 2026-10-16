@@ -98,7 +98,7 @@ pub(crate) fn parse_range(formula: &str) -> Result<(i32, i32, i32, i32), String>
 
 fn get_table_column_by_name(table_column_name: &str, table: &Table) -> Option<i32> {
     for (index, table_column) in table.columns.iter().enumerate() {
-        if table_column.name == table_column_name {
+        if table_column.name.to_lowercase() == table_column_name.to_lowercase() {
             return Some(index as i32);
         }
     }
