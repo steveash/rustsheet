@@ -321,7 +321,7 @@ A "TRUE"/"FALSE" text cell is skipped as well, also when a function picks it: wi
 `TAKE(A1:A2,1)` and `OFFSET(A1,0,0)` are all `#VALUE!` (picked cells are references; evidence:
 probes/and-or-xor-picked-text, 70 cells, excel-graph, T-1685). A direct LAMBDA is `#VALUE!` in AND, OR and XOR
 (`AND(LAMBDA(x,x),TRUE)`, `AND(LAMBDA(x,x))`), but a direct error beats it in either order (`AND(LAMBDA(x,x),1/0)`,
-`AND(1/0,LAMBDA(x,x))` are `#DIV/0!`); ours returned `#N/IMPL!` and skipped it, fixed in T-1685. A 3-D reference (`AND(Sheet1:Sheet2!B1)`) is read as a reference, not `#VALUE!` (K1-K9).
+`AND(1/0,LAMBDA(x,x))` are `#DIV/0!`); an error cell ranks by position: before the LAMBDA it wins (`AND(A3,LAMBDA(x,x))` is `#N/A`, A3 = `#N/A`), after it it does not (`AND(LAMBDA(x,x),A3)` is `#VALUE!`; J5/J6, J11/J12, J17/J18; unlike the AVERAGE family, syntax.md T-1602); ours returned `#N/IMPL!` and skipped it, fixed in T-1685. A 3-D reference (`AND(Sheet1:Sheet2!B1)`) is read as a reference, not `#VALUE!` (K1-K9).
 When nothing but skipped text is left, the result is `#VALUE!` (`AND("1")`, `AND("")`, `OR("","")`). An
 error argument wins (`AND("1",#N/A)` = `#N/A`). OR and XOR behave the same.
 CONFLICTING (decision 0030 2: Excel 15 is below AppVersion 16; decision 0039: the web value is the Phase 1-3

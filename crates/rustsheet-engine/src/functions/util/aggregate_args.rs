@@ -156,7 +156,8 @@ impl AggregateWalk {
     /// The `#VALUE!` of a direct LAMBDA ranks with the referenced errors: it is held when nothing
     /// is held yet, so a later direct error beats it and an earlier or later referenced error does
     /// not (probes/aggregate-direct-lambda-average-family D14-D31, excel-graph 2026-10-15, T-1602).
-    /// This holds under `ErrorRule::First` too, whatever `policy.errors` says.
+    /// Under `ErrorRule::First` an error cell read before the LAMBDA returns at once and wins,
+    /// while one after it is never read (probes/and-or-xor-picked-text J5/J6, T-1685).
     fn lambda_error(&mut self, error: CalcResult) {
         if self.held.is_none() {
             self.held = Some(error);
