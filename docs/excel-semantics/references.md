@@ -1511,12 +1511,15 @@ Defined names: a workbook defining any name the R1C1 test quotes is rejected by 
 `C1.C1` defined, `=R1.C1*1` is `#SPILL!` and `=C1.C1*1` 0, ISREF TRUE (ours reads the name: T-1659).
 A name spelled like an out-of-range R1C1 reference (`R0`, `C0`, `R0C1`, `r0c1`, `R1048577`,
 `R1048577C1`) loads but every use is `#NAME?` (`=R0*1`, `SUM(R0)`, and `ISREF(INDIRECT("R0"))` is
-FALSE; FORMULATEXT keeps `=R0*1`). Ours defines it and reads 7 (T-1657). Table names are not probed;
+FALSE; FORMULATEXT keeps `=R0*1`). Ours matches (T-1657): the parser does not resolve it, and
+the R1C1 lexer reads an out-of-range uppercase `R0C1` as a name, so it survives the R1C1 storage.
+Table names are not probed;
 ours applies the defined-name rule to them.
 LET and LAMBDA names are not tested at all: `LET(n,5,n*2)` is 10 for `RC`, `R1C`, `R1C1`, `r1c1`,
 `R5C7`, `R12C`, `R0C1`, `R0`, `R1048577`, `R1_`, `R1.C1`, `R1C1D`, `C1D`, `RCR` and `C`. Ours keeps
-refusing an uppercase `R<n>C<m>` (`R1C1`, `R5C7`, `R0C1`): formulas are stored in R1C1 form, where
-that spelling reads back as a cell reference after a reload (T-1658).
+refusing an in-range uppercase `R<n>C<m>` (`R1C1`, `R5C7`): formulas are stored in R1C1 form, where
+that spelling reads back as a cell reference after a reload (T-1658). An out-of-range one (`R0C1`)
+is a name in R1C1 form too, so `LET(R0C1,5,R0C1*2)` is 10 (T-1657).
 A bare `RC`, `R1C1D`, `R0C1` or `RCR` token in a cell formula of an uploaded file makes Graph reject
 the workbook (so it is unprobed).
 Unprobed: brackets cannot occur in sheet or defined names, so `R[1]C` forms are not covered;
@@ -1526,8 +1529,9 @@ Evidence: probes/r1c1-shaped-sheet-names, -lower, -2, -3, -4, -5, -lower-2 (FORM
 r1c1-let-name-*, lotus-dot-range (excel-graph, 2026-10-15).
 Implemented in: `is_r1c1_shaped` and `is_dotted_a1_range` (expressions/utils/mod.rs), used by
 `name_needs_quoting` (both) and `is_valid_identifier` (the R1C1 test); `is_valid_a1_identifier`
-(LET, LAMBDA and the lexer) refuses only `R<n>C<m>` (`is_r1c1_cell_text`).
-Status: VERIFIED (excel-graph), except T-1657, T-1658 and T-1659.
+(LET, LAMBDA and the lexer) refuses only an in-range `R<n>C<m>` (`is_r1c1_cell_text`);
+`is_out_of_range_r1c1_name` (names never resolved: `name_operand`, INDIRECT, the R1C1 lexer).
+Status: VERIFIED (excel-graph), except T-1658 and T-1659.
 Tasks: T-1652
 
 ## Structured references: this row, totals and ranges
