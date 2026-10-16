@@ -1511,8 +1511,9 @@ Defined names: a workbook defining any name the R1C1 test quotes is rejected by 
 `C1.C1` defined, `=R1.C1*1` is `#SPILL!` and `=C1.C1*1` 0, ISREF TRUE (ours reads the name: T-1659).
 A name spelled like an out-of-range R1C1 reference (`R0`, `C0`, `R0C1`, `r0c1`, `R1048577`,
 `R1048577C1`) loads but every use is `#NAME?` (`=R0*1`, `SUM(R0)`, and `ISREF(INDIRECT("R0"))` is
-FALSE; FORMULATEXT keeps `=R0*1`). Ours matches (T-1657): the parser does not resolve it, and the
-R1C1 lexer reads an out-of-range uppercase `R0C1` as a name, so it survives the R1C1 storage. Table names are not probed;
+FALSE; FORMULATEXT keeps `=R0*1`). Ours matches (T-1657): the parser does not resolve it, and
+the R1C1 lexer reads an out-of-range uppercase `R0C1` as a name, so it survives the R1C1 storage.
+Table names are not probed;
 ours applies the defined-name rule to them.
 LET and LAMBDA names are not tested at all: `LET(n,5,n*2)` is 10 for `RC`, `R1C`, `R1C1`, `r1c1`,
 `R5C7`, `R12C`, `R0C1`, `R0`, `R1048577`, `R1_`, `R1.C1`, `R1C1D`, `C1D`, `RCR` and `C`. Ours keeps
