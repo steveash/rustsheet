@@ -1,7 +1,7 @@
 ---
 id: T-1656
 title: "TEXT of text with a format holding @ and a date token (x@y) is #VALUE!"
-milestone: M10
+milestone: M2
 lane: functions-text
 status: todo
 priority: P2
