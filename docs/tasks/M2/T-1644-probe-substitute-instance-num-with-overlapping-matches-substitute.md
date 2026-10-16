@@ -3,7 +3,7 @@ id: T-1644
 title: "Probe SUBSTITUTE instance_num with overlapping matches (SUBSTITUTE(aaa,aa,x,2))"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
