@@ -169,9 +169,11 @@ fn sheet_qualified_name_falls_back_to_workbook_name() {
     model._set("A2", "=ISERROR(Sheet2!loc)");
     model._set("A3", "=Sheet1!loc");
     model._set("A4", "=IFERROR(Sheet2!only1,\"x\")");
+    model._set("A5", "=Sheet2!LOC");
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"10");
     assert_eq!(model._get_text("A2"), *"FALSE");
     assert_eq!(model._get_text("A3"), *"30");
     assert_eq!(model._get_text("A4"), *"x");
+    assert_eq!(model._get_text("A5"), *"10");
 }
