@@ -1,5 +1,5 @@
 ---
-id: T-1701
+id: T-1706
 title: "GROUPBY/PIVOTBY: pass every eta name its minimum argument count (two-argument functions beyond the probed list)"
 milestone: M7
 lane: functions-lookup
@@ -25,7 +25,7 @@ sync, and replace the list. Probe a few unlisted two-argument functions (e.g. CO
 three-argument one (e.g. SUBSTITUTE) to confirm. Docs: docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
 
 ## Acceptance criteria
-- [ ] `eta_arity` covers every implemented function from the catalog's minimum arity; the TODO(T-1701) is gone.
+- [ ] `eta_arity` covers every implemented function from the catalog's minimum arity; the TODO(T-1706) is gone.
 - [ ] A probe of unlisted two- and three-argument functions passes.
 - [ ] `make check` green; reviewers approve.
 

@@ -1,5 +1,5 @@
 ---
-id: T-1702
+id: T-1707
 title: "CORREL, PEARSON, RSQ: arrays of different sizes are #N/A, and the last digit of their results"
 milestone: M9
 lane: functions-stat

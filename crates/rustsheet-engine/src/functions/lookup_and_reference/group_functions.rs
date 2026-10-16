@@ -124,7 +124,7 @@ pub(crate) fn is_function_array(arg: &Node) -> bool {
 /// group, the sizes differ; about 1 in the total), and IF, ROUND, SUMIF (`#VALUE!` per cell: an
 /// array result); none: NOW, TEXTJOIN, XLOOKUP (probes/groupby-pivotby-functions G!A421,
 /// -functions2 G!A281-A501). Other functions whose minimum is not 1 are unprobed and get one.
-// TODO(T-1701): every function's minimum argument count (eval/catalog/excel-functions.tsv).
+// TODO(T-1706): every function's minimum argument count (eval/catalog/excel-functions.tsv).
 fn eta_arity(kind: &Function) -> Option<usize> {
     match kind {
         Function::Percentof

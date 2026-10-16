@@ -39,7 +39,7 @@ labels; anything else `#VALUE!`), paired with the value columns (n over 1, 1 ove
 `#VALUE!`) and laid out by GROUPBY and PIVOTBY through `Functions::shape`. Each function is called through the existing
 `Model::lambda_caller` path (T-1560/T-1466) with its arity: an eta name its probed minimum argument count (two for
 PERCENTOF, CORREL, PEARSON, RSQ, COVARIANCE.P, IF, ROUND, SUMIF; `#VALUE!` for NOW, TEXTJOIN, XLOOKUP; one otherwise,
-follow-up T-1701), a LAMBDA one or two by its required parameters. The caller reads the body in reference context
+follow-up T-1706), a LAMBDA one or two by its required parameters. The caller reads the body in reference context
 (`LambdaCaller::keeping_references`), so a reference result is `#VALUE!` (groupby-lambda-forms G!K193:K198).
 Two-argument functions get the relative set (`Aggregate { rows, relative }`; GROUPBY: every kept row). PERCENTOF passed by
 name sums each relative set once per value column (`percent_of`, extracted from the PERCENTOF function, O(N)); a
@@ -53,7 +53,7 @@ follow-up).
 Eval delta: probes/groupby-pivotby +138 cells (G!S121:U128, G!AB121:AD132, G!T97:T102, P!A121:I128),
 probes/groupby-lambda-forms +6 (G!K193:K198, now 491/491); new cases groupby-pivotby-functions 1092/3017,
 -functions2 1543/1672, -functions3 308/700 passing, the rest PIVOTBY two-argument/relative_to (T-1327) and
-CORREL/PEARSON/RSQ over different sizes (T-1702). No regressions (measured on main after T-1324, whose subtotal paths
+CORREL/PEARSON/RSQ over different sizes (T-1707). No regressions (measured on main after T-1324, whose subtotal paths
 `line_row` and `grid_row` carry the function arrays too; PIVOTBY column subtotals with several output columns stay
-`#N/IMPL!` with T-1700). Follow-ups: T-1701 (every eta name's
-minimum argument count), T-1702 (CORREL/PEARSON/RSQ).
+`#N/IMPL!` with T-1700). Follow-ups: T-1706 (every eta name's
+minimum argument count), T-1707 (CORREL/PEARSON/RSQ).

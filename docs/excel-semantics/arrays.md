@@ -455,9 +455,9 @@ same Data sheet, excel-graph, 2026-10-16; "functions", "functions2", "functions3
 Unprobed (T-1325): mismatched heights inside a function array (the engine pads with `#N/A`, so the result is `#N/A`); which of
 several error elements wins (the engine: the first evaluated); a labelled row of several functions with detected headers (the
 engine does not show them); a LAMBDA without parameters (the engine: `#VALUE!`); other functions passed by name whose minimum
-argument count is not 1 (the engine gives them one argument, T-1701). CORREL, PEARSON and RSQ over arrays of different sizes
+argument count is not 1 (the engine gives them one argument, T-1706). CORREL, PEARSON and RSQ over arrays of different sizes
 are `#N/A` per group in Excel, `#VALUE!` here, and their total rows differ in the last digit (functions G!B421, functions2
-G!B281, G!B301): a CORREL/PEARSON/RSQ gap, T-1702.
+G!B281, G!B301): a CORREL/PEARSON/RSQ gap, T-1707.
 Ours: GROUPBY (T-1322, functions/lookup_and_reference/groupby.rs): the shared `Grouping` core (hash grouping on
 `cell_key` with -0 as 0, sorting with `sort_key_cmp` and numbers compared exactly), a LAMBDA or eta-name function called
 once per group and value column through one `LambdaCaller`, field_headers and auto-detect, total_depth 0/±1, `""`
