@@ -1553,7 +1553,7 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
   `Stock` at E1:E2 with nothing below the header has `ROWS(Stock[[#Data],[Cost]:[Cost]])` = 1 and `#All` 2, and
   its `#Totals` is `#REF!` (column-range 44cecbb1ecd5b2da K180, K23, K185).
 Status: VERIFIED (excel-graph)
-Implemented in: partly; the `@` shorthand is T-1672, rows outside the table and reversed ranges T-1675,
+Implemented in: partly; the `@` shorthand is implemented (T-1672), rows outside the table and reversed ranges T-1675,
 totals rows from the eval adapter T-1671.
 Tasks: T-1607, T-1671, T-1672, T-1675
 
@@ -1572,3 +1572,10 @@ Status: VERIFIED (excel-graph)
 Implemented in: escapes (expressions/lexer/structured_references.rs); case-insensitive names and several
 specifiers are T-1673, the bare name T-1674.
 Tasks: T-1607, T-1673, T-1674
+
+## Structured references: the `@` shorthand
+Rule: `T[@]`, `T[@Col]`, `T[@[Col]]` and `T[@[A]:[B]]` are the UI spelling of `#This Row` and evaluate identically to the long form; `'@` inside a column name is a literal `@`.
+Evidence: gen-m8b in-table 19fdc25163755713 and this-row e1bf5aa0ffb4ed87 (excel-graph).
+Status: VERIFIED for evaluation; UNVERIFIED for FORMULATEXT (RustSheet shows the lowered `=$A$2`; Excel's output unprobed) and for rejecting unbracketed multi-word `T[@Unit Price]` / unterminated `T[@Qty`.
+Implemented in: `Lexer::consume_this_row_shorthand`.
+Tasks: T-1672, T-1683
