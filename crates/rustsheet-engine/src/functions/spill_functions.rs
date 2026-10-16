@@ -17,7 +17,7 @@ use super::util::compare_values;
 /// Compare two sort keys following Excel's rules:
 ///   Numbers < Strings < Booleans < Errors < Empty cells
 /// Empty cells always sort last regardless of ascending/descending.
-fn sort_key_cmp(
+pub(crate) fn sort_key_cmp(
     a: &ArrayNode,
     b: &ArrayNode,
     ascending: bool,
@@ -57,7 +57,7 @@ fn array_node_is_truthy(node: &ArrayNode) -> bool {
 /// Numbers use bit-level identity (`f64::to_bits`), which is exact for all
 /// values that actually appear in spreadsheet cells.
 #[derive(Hash, Eq, PartialEq)]
-enum CellKey {
+pub(crate) enum CellKey {
     Number(u64),
     Boolean(bool),
     Str(String),
@@ -65,7 +65,7 @@ enum CellKey {
     Empty,
 }
 
-fn cell_key(node: &ArrayNode) -> CellKey {
+pub(crate) fn cell_key(node: &ArrayNode) -> CellKey {
     match node {
         ArrayNode::Number(n) => CellKey::Number(n.to_bits()),
         ArrayNode::Boolean(b) => CellKey::Boolean(*b),
