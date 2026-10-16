@@ -64,7 +64,11 @@ Input conventions:
   autoFilter a values filter on its first column that keeps exactly the visible data rows (those
   cells must be literal text or whole numbers, and no value may be both kept and hidden), so Excel
   reads the hidden rows as filtered. The engine adapter loads both through `Txn::add_table` and
-  `Txn::set_row_hidden`.
+  `Txn::set_row_hidden`. With `"totals_row": true` the last row of `ref` is the table's totals row; its
+  cells must be labels or formulas, which spec2xlsx writes with the totals-row metadata Excel needs. The
+  facade cannot add a totals row yet, so the adapter registers the table without that row (T-1671).
+  Formulas use structured references as typed (`Sales[@Qty]`, a bare `Sales`); spec2xlsx stores their
+  file form (`Sales[[#This Row],[Qty]]`, `Sales[]`; T-1607). References must name their table.
 - Optional top-level `"date_system": 1904` (default 1900) writes `<workbookPr date1904="1"/>`, and
   optional per-sheet `"number_formats": {"B1": "[h]:mm"}` gives cells (blank ones included) a number
   format (T-1268; an `entered` cell cannot have one, Excel picks its format). The engine adapter

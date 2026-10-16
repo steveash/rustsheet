@@ -27,7 +27,10 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     first row of `ref` and its cells must be literal text. With `"filter": true` the table's autoFilter
     gets a values filter on its first column that keeps exactly the visible data rows, so the hidden rows
     inside the table are the rows the filter hides; that column's data cells must be literal numbers or
-    text, and no value may be both kept and hidden. The engine adapter loads both.
+    text, and no value may be both kept and hidden. The engine adapter loads both. With
+    `"totals_row": true` the last row of `ref` is the totals row: its cells (labels or formulas) are
+    written with the table's totals metadata (T-1607). Structured references are stored in their file
+    form: a bare table name as `Sales[]`, `@` as `#This Row` (`table_refs_to_file_form`).
   * `"date_system": 1904` at the top level writes `<workbookPr date1904="1"/>` (1900, the default,
     writes nothing), and a sheet's `"number_formats": {"A1": "[h]:mm"}` gives those cells that number
     format, blank cells included; an `entered` cell cannot have one (T-1268). The engine adapter
@@ -113,6 +116,31 @@ def _skip_literal(formula: str, i: int) -> int:
     return i
 
 
+def _opens_table_ref(formula: str, i: int) -> bool:
+    """Whether the `[` at `i` opens a table's bracket group (`Sales[`): it follows a name directly.
+    A LAMBDA's optional parameter `[y]` never does."""
+    return formula[i] == "[" and i > 0 and (formula[i - 1].isalnum() or formula[i - 1] in "_.")
+
+
+def _skip_brackets(formula: str, i: int) -> int:
+    """Index just past the structured-reference bracket group whose `[` is at `i`. Inside it `'`
+    escapes the next character (`Sales[C'#]`, `Sales[it''s]`), so it is no quote."""
+    depth = 0
+    while i < len(formula):
+        ch = formula[i]
+        if ch == "'":
+            i += 2
+            continue
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return i
+
+
 def _call_args(formula: str, open_idx: int) -> tuple[list[str], int]:
     """Top-level argument texts of the call whose `(` is at `open_idx`, and the index of its `)`."""
     args: list[str] = []
@@ -121,6 +149,9 @@ def _call_args(formula: str, open_idx: int) -> tuple[list[str], int]:
         ch = formula[i]
         if ch in "\"'":
             i = _skip_literal(formula, i)
+            continue
+        if _opens_table_ref(formula, i):
+            i = _skip_brackets(formula, i)
             continue
         if ch in "({":
             depth += 1
@@ -137,12 +168,13 @@ def _call_args(formula: str, open_idx: int) -> tuple[list[str], int]:
 
 
 def _words(formula: str) -> Iterator[tuple[bool, str, int]]:
-    """Splits a formula into `(is_name, text, start)` pieces; literals and punctuation are not names."""
+    """Splits a formula into `(is_name, text, start)` pieces; literals, a table's bracket groups
+    (`[[#This Row],[A]]` after `Sales`) and punctuation are not names."""
     i = 0
     while i < len(formula):
         ch = formula[i]
-        if ch in "\"'":
-            end = _skip_literal(formula, i)
+        if ch in "\"'" or _opens_table_ref(formula, i):
+            end = _skip_literal(formula, i) if ch in "\"'" else _skip_brackets(formula, i)
             yield False, formula[i:end], i
             i = end
             continue
@@ -233,6 +265,29 @@ def prefix_future_functions(formula: str) -> str:
     return "".join(out)
 
 
+def table_refs_to_file_form(formula: str, tables: frozenset[str]) -> str:
+    """Writes structured references in their file form (T-1607): a bare table name `Sales` as
+    `Sales[]` and `@` as `#This Row` (`Sales[@A]` → `Sales[[#This Row],[A]]`, `Sales[@]` →
+    `Sales[#This Row]`). `tables` holds the workbook's table names, upper-cased. Excel for the web
+    refuses a file holding a bare table name as corrupt and reads a stored `@` as `#REF!`
+    (docs/excel-semantics/xlsx-storage.md, "Structured references in the file"). References must
+    name their table: an unqualified `[@A]` is left as is."""
+    out: list[str] = []
+    for is_name, word, i in _words(formula):
+        end = i + len(word)
+        if is_name and word.upper() in tables and formula[end : end + 1] not in ("[", "(", "!"):
+            out.append(f"{word}[]")
+        elif word.startswith("[@") and _opens_table_ref(formula, i):
+            inner = word[2:-1]
+            if not inner:
+                out.append("[#This Row]")
+            else:
+                out.append(f"[[#This Row],{inner if inner.startswith('[') else f'[{inner}]'}]")
+        else:
+            out.append(word)
+    return "".join(out)
+
+
 def anchor_spill_refs(formula: str) -> str:
     """Rewrites spill references outside string literals to `_xlfn.ANCHORARRAY(ref)`."""
     out: list[str] = []
@@ -273,6 +328,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     )
     wb.set_properties({"created": _FIXED_CREATED})
     patches = _Patches()
+    tables = frozenset(str(t["name"]).upper() for sheet in spec["sheets"] for t in sheet.get("tables", ()))
     entered: list[tuple[str, str, str]] = []  # (sheet name, cell ref, text as typed)
     for number, sheet in enumerate(spec["sheets"], start=1):
         ws = wb.add_worksheet(sheet["name"])
@@ -280,21 +336,24 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
         for row in sorted(hidden):
             ws.set_row(row - 1, None, None, {"hidden": True})
         for table in sheet.get("tables", ()):
-            patches.filters.append(_add_table(ws, sheet, table, hidden))
+            patches.filters.append(_add_table(ws, sheet, table, hidden, tables))
         formats = _number_formats(wb, sheet)
         legacy = _listed_formula_cells(sheet, "legacy_formulas")
         bare = _listed_formula_cells(sheet, "bare_function_names")
         if both := legacy & bare:
             msg = f"cells both legacy_formulas and bare_function_names: {sorted(both)}"
             raise ValueError(msg)
+        totals_cells = _totals_cells(sheet)
         for a1, raw in sheet["cells"].items():
             row, col = parse_a1(a1)
+            if a1 in totals_cells:
+                continue  # written with its table (`_totals_column`)
             if a1 in bare:
-                text = _formula_text(raw, prefix_functions=False)
+                text = _formula_text(raw, tables, prefix_functions=False)
                 ws.write_dynamic_array_formula(row, col, row, col, text, formats.get(a1))
                 continue
             if a1 in legacy:
-                ws.write_formula(row, col, _formula_text(raw), formats.get(a1))
+                ws.write_formula(row, col, _formula_text(raw, tables), formats.get(a1))
                 continue
             if isinstance(raw, dict) and raw.get("t") == "e" and raw.get("stored"):
                 # A placeholder formula cell with an error result; `_store_errors` swaps it for the constant.
@@ -309,9 +368,9 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
                     (sheet["name"], xlsxwriter.utility.xl_rowcol_to_cell(row, col), str(raw["entered"]))
                 )
                 continue
-            if (cell_number := _write(ws, row, col, raw, formats.get(a1))) is not None and _is_lossy(
-                cell_number
-            ):
+            if (
+                cell_number := _write(ws, row, col, raw, formats.get(a1), tables=tables)
+            ) is not None and _is_lossy(cell_number):
                 patches.lossy.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), cell_number))
         for a1, fmt in formats.items():
             if a1 not in sheet["cells"]:
@@ -320,7 +379,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
             (number, _add_data_table(ws, sheet, t)) for t in sheet.get("data_tables", ())
         )
     for name, formula in spec.get("names", {}).items():
-        wb.define_name(name, _formula_text(formula))
+        wb.define_name(name, _formula_text(formula, tables))
     for n, entry in enumerate(entered, start=1):
         value = json.dumps(entry, ensure_ascii=False)
         if len(value) > 255:  # Excel's custom-property limit; fail here, not at the oracle
@@ -406,10 +465,18 @@ def _filter_value(raw: Any, a1: str) -> str:
     raise ValueError(msg)
 
 
-def _add_table(ws: Any, sheet: dict[str, Any], table: dict[str, Any], hidden: set[int]) -> tuple[str, str]:
-    """Adds a spec table; returns its name and, when it is filtered, the `<autoFilter>` element to patch in."""
+def _add_table(
+    ws: Any, sheet: dict[str, Any], table: dict[str, Any], hidden: set[int], tables: frozenset[str]
+) -> tuple[str, str]:
+    """Adds a spec table; returns its name and, when it is filtered, the `<autoFilter>` element to patch in.
+    With `"totals_row": true` the last row of `ref` is the table's totals row, written by
+    `_totals_column`."""
     name, ref = str(table["name"]), str(table["ref"])
     r1, c1, r2, c2 = _range(ref)
+    totals = bool(table.get("totals_row"))
+    if totals and r2 - r1 < 2:
+        msg = f"table {name} at {ref} needs a header row, a data row and the totals row"
+        raise ValueError(msg)
     cells = sheet["cells"]
     cell = xlsxwriter.utility.xl_rowcol_to_cell
     headers = [cells.get(cell(r1, c)) for c in range(c1, c2 + 1)]
@@ -417,23 +484,54 @@ def _add_table(ws: Any, sheet: dict[str, Any], table: dict[str, Any], hidden: se
         msg = f"table {name} header row {ref} must be literal text: {headers!r}"
         raise ValueError(msg)
     # XlsxWriter warns and returns a negative code (-1, -2, ...) instead of raising.
-    if ws.add_table(r1, c1, r2, c2, {"name": name, "columns": [{"header": h} for h in headers]}):
+    columns: list[dict[str, Any]] = [{"header": h} for h in headers]
+    if totals:
+        for options_column, c in zip(columns, range(c1, c2 + 1), strict=True):
+            options_column.update(_totals_column(cells.get(cell(r2, c)), cell(r2, c), tables))
+    options = {"name": name, "columns": columns, "total_row": totals}
+    if ws.add_table(r1, c1, r2, c2, options):
         msg = f"XlsxWriter rejected table {name} at {ref} (see its warning)"
         raise ValueError(msg)
     if not table.get("filter"):
         return name, ""
     kept: set[str] = set()
     dropped: set[str] = set()
-    for row in range(r1 + 1, r2 + 1):
+    last_data = r2 - 1 if totals else r2
+    for row in range(r1 + 1, last_data + 1):
         a1 = cell(row, c1)
         (dropped if row + 1 in hidden else kept).add(_filter_value(cells.get(a1), a1))
     if kept & dropped:
         msg = f"table {name}: values {sorted(kept & dropped)} are both kept and hidden by the filter"
         raise ValueError(msg)
     values = "".join(f'<filter val="{escape(v, {chr(34): "&quot;"})}"/>' for v in sorted(kept))
-    ref_abs = f"{cell(r1, c1)}:{cell(r2, c2)}"
+    ref_abs = f"{cell(r1, c1)}:{cell(last_data, c2)}"
     column = f'<filterColumn colId="0"><filters>{values}</filters></filterColumn>'
     return name, f'<autoFilter ref="{ref_abs}">{column}</autoFilter>'
+
+
+def _totals_column(raw: Any, a1: str, tables: frozenset[str]) -> dict[str, str]:
+    """XlsxWriter's options for one totals-row cell: a label as `totalsRowLabel`, a formula as a
+    `custom` `totalsRowFunction` with its `totalsRowFormula` (XlsxWriter writes the cell itself, as a
+    plain `<f>`). Excel for the web refuses a totals row whose cells lack that metadata as corrupt
+    (T-1607, docs/excel-semantics/xlsx-storage.md)."""
+    if raw is None:
+        return {}
+    if isinstance(raw, str) and raw.startswith("="):
+        return {"total_function": _formula_text(raw, tables)}
+    if isinstance(raw, str) and raw:
+        return {"total_string": raw}
+    msg = f"totals row cell {a1} must be a formula or literal text, not {raw!r}"
+    raise ValueError(msg)
+
+
+def _totals_cells(sheet: dict[str, Any]) -> set[str]:
+    """The cells of the sheet's totals rows, which `_add_table` writes."""
+    found: set[str] = set()
+    for table in sheet.get("tables", ()):
+        if table.get("totals_row"):
+            _, c1, r2, c2 = _range(str(table["ref"]))
+            found.update(xlsxwriter.utility.xl_rowcol_to_cell(r2, c) for c in range(c1, c2 + 1))
+    return found
 
 
 def _add_data_table(ws: Any, sheet: dict[str, Any], table: dict[str, Any]) -> tuple[str, str]:
@@ -628,16 +726,17 @@ def _listed_formula_cells(sheet: dict[str, Any], key: str) -> set[str]:
     return listed
 
 
-def _formula_text(raw: str, *, prefix_functions: bool = True) -> str:
-    """The formula as written to the file: spill refs anchored, bound names and (unless
-    `prefix_functions` is false, for `bare_function_names` cells) future functions prefixed."""
-    text = prefix_bound_names(anchor_spill_refs(raw))
+def _formula_text(raw: str, tables: frozenset[str], *, prefix_functions: bool = True) -> str:
+    """The formula as written to the file: structured references (to `tables`, upper-cased) in
+    file form, spill refs anchored, bound names and (unless `prefix_functions` is false, for
+    `bare_function_names` cells) future functions prefixed."""
+    text = prefix_bound_names(anchor_spill_refs(table_refs_to_file_form(raw, tables)))
     return prefix_future_functions(text) if prefix_functions else text
 
 
-def _write(ws: Any, row: int, col: int, raw: Any, fmt: Any = None) -> float | None:
-    """Writes one spec cell (with number format `fmt`, if any); returns the number when it went
-    through `write_number`, else None."""
+def _write(ws: Any, row: int, col: int, raw: Any, fmt: Any = None, *, tables: frozenset[str]) -> float | None:
+    """Writes one spec cell (with number format `fmt`, if any; formulas may name `tables`); returns
+    the number when it went through `write_number`, else None."""
     if isinstance(raw, bool):
         ws.write_boolean(row, col, raw, fmt)
     elif isinstance(raw, int | float):
@@ -645,7 +744,7 @@ def _write(ws: Any, row: int, col: int, raw: Any, fmt: Any = None) -> float | No
         return float(raw)
     elif isinstance(raw, str):
         if raw.startswith("="):
-            ws.write_dynamic_array_formula(row, col, row, col, _formula_text(raw), fmt)
+            ws.write_dynamic_array_formula(row, col, row, col, _formula_text(raw, tables), fmt)
         elif raw == "":
             ws.write_formula(row, col, '=""', fmt)
         else:
