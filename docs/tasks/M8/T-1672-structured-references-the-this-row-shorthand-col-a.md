@@ -3,7 +3,7 @@ id: T-1672
 title: "Structured references: the @ this-row shorthand ([@Col], [@[A]:[B]], [@])"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
