@@ -318,7 +318,7 @@ impl Model {
         }
         let row_depth = effective_depth(row_depth, row_depth_given, &row_sort, row_fields);
         let col_depth = effective_depth(col_depth, col_depth_given, &col_sort, col_fields);
-        // TODO(T-1699): column subtotals over several value columns. Excel shows most of their
+        // TODO(T-1700): column subtotals over several value columns. Excel shows most of their
         // cells as "", like the Total columns, but fills a few with other columns' subtotals
         // (probes/groupby-subtotals G!A781), a layout not yet understood.
         if subtotal_levels(col_depth) > 0 && value_columns > 1 {

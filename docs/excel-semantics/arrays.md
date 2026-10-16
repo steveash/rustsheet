@@ -432,7 +432,7 @@ checked while grouping and before any call; the grid with `""` cells, totals 0/Â
 several values, shown and generated headers, key and value sorts with the quirks above, and GROUPBY's argument readers
 (`evaluate_options`, `sort_order`, `filter_rows`: their rules hold for PIVOTBY too, P!A1321-A1601 below);
 `Grouping::sort_by_aggregate` takes whether parents sort by their aggregate (rows, GROUPBY) or keep their key order
-(PIVOTBY columns). `#N/IMPL!`: column subtotals over several value columns (T-1699), function arrays and PERCENTOF
+(PIVOTBY columns). `#N/IMPL!`: column subtotals over several value columns (T-1700), function arrays and PERCENTOF
 (T-1325, T-1327), relative_to (T-1327).
 Unprobed (PIVOTBY): an error header cell in a joined column name (the engine: that error); a joined column name longer
 than a cell holds (the engine: `#VALUE!`, after the 32,767-character cell limit in coercion.md "Text longer than 32,767
@@ -466,7 +466,7 @@ size in column Z and the ERROR.TYPE of its first cell in AA, excel-graph, 2026-1
   col_total_depth 0 keeps the key order (above) but its omitted row depth still shows the subtotals (S!A1021). Three
   row fields with depth 2 or 3 as GROUPBY (S!A1051, S!A1291). Row subtotals with two values leave both Total columns
   `""` (S!A751).
-- Quirk, not implemented (T-1699): column subtotals over several value columns are not the subtotals. In
+- Quirk, not implemented (T-1700): column subtotals over several value columns are not the subtotals. In
   `PIVOTBY(A2:A11,B2:C11,D2:E11,SUM,,,,2)` (S!A781) the Apple and Pear subtotal columns and both Grand Total columns are
   `""`, while Banana (one child) shows Banana's Units in its Sales-subtotal column and every row's Units total in its
   Units-subtotal column; -2 is the same (S!A1141); with Year over Product (S!A1171) only the first of those two columns
@@ -481,7 +481,7 @@ engine: every level by its aggregate with subtotals), an error value before an a
 the keys or values themselves (the engine: one error), and a lifted field_relationship over a 2-D array (the engine:
 per element, as the row and column probed).
 Status: VERIFIED (web)
-Tasks: T-1276, T-1328, T-1322, T-1323, T-1326, T-1324, T-1699
+Tasks: T-1276, T-1328, T-1322, T-1323, T-1326, T-1324, T-1700
 
 ## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!
 Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:

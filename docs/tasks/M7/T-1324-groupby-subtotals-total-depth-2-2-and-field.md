@@ -56,7 +56,7 @@ relationship sorted by a value sorts flat (`ParentOrder::Flat`); an array field_
 (`lifted_groupby`, at most three GROUPBY runs whatever the array; `lifted_error` for an earlier error value).
 PIVOTBY: row and column subtotals (`Slot::Subtotal`, `Model::grid_row` shared by group, subtotal and Total rows), labels
 per axis, column parents by value with subtotals; column subtotals over several value columns stay `#N/IMPL!` (Excel's
-cells there are not subtotals: follow-up T-1699).
+cells there are not subtotals: follow-up T-1700).
 Directive 5: the subtotal rows and columns are counted after the key sort and checked with `check_array_size` before any
 LAMBDA call (`subtotal_rows_count_toward_the_output_size`).
 Evidence: new probe probes/groupby-subtotals (49 questions, excel-graph); quirks in docs/excel-semantics/arrays.md
@@ -65,4 +65,4 @@ Eval delta (probes): 1,181 known failures fixed, none regressed: groupby-pivotby
 G!S169, P!A97, P!M97; the rest is function arrays, PERCENTOF and relative_to, T-1325/T-1327), groupby-pivotby-followup
 150 -> 0, groupby-pivotby-followup2 365 -> 0, pivotby-followup 331 -> 21 (P!A681, relative_to, T-1327). New case
 groupby-subtotals: 3,386 cells, 2,921 pass; its 465 known failures are the multi-value column subtotals (G!A781,
-G!A1141, G!A1171, G!Z1201/AA1201; T-1699). Probes known failures 3,277 -> 2,561.
+G!A1141, G!A1171, G!Z1201/AA1201; T-1700). Probes known failures 3,277 -> 2,561.

@@ -238,7 +238,7 @@ fn filter_and_argument_errors() {
             "#VALUE!",
         ),
         ("G8", "=PIVOTBY(A2:A11,C2:C11,D2:D11,NA())", "#N/A"),
-        // Deferred: column subtotals over several values (T-1699), relative_to (T-1327),
+        // Deferred: column subtotals over several values (T-1700), relative_to (T-1327),
         // function arrays (T-1325). 3 over two row fields is #VALUE! (probes/pivotby-followup
         // P!A381).
         (

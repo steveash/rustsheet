@@ -1,5 +1,5 @@
 ---
-id: T-1699
+id: T-1700
 title: "PIVOTBY column subtotals over several value columns"
 milestone: M7
 lane: functions-lookup
@@ -24,7 +24,7 @@ row's Units total (East 9, North 6, South 9, West 23, blank 8, Total 55). G!A114
 columns; G!A1171 (Year over Product: 2025 has the one child Banana) shows only the first (2025's Units in the Sales
 subtotal column), the Units subtotal column `""`. G!Z1201 (three values) is 8x28 (its spill was blocked: probe its
 cells). Row subtotals over several values work (G!A751). docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY"
-(T-1324 follow-up) records all of it. Code: `Model::pivotby_args` returns `#N/IMPL!` (`TODO(T-1699)`); slots and
+(T-1324 follow-up) records all of it. Code: `Model::pivotby_args` returns `#N/IMPL!` (`TODO(T-1700)`); slots and
 cells are in pivotby.rs (`Slot::Subtotal`, `Model::grid_row`).
 
 ## Acceptance criteria
