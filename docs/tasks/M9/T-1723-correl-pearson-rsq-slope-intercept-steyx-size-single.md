@@ -22,6 +22,8 @@ Found by T-1620 (probes/regression-pairs-a, regression-pairs-b; `./target/releas
 Overlap: T-1292 (unequal sizes with text) and T-1707 (CORREL, PEARSON, RSQ unequal sizes and the last digit) cover part of the size and ULP cells; take those first or fold them in, and close whichever is then redundant. What is new here: the single-point and scalar `#DIV/0!` cases, the text scalar `#N/A`, SLOPE, INTERCEPT and STEYX on all-number size mismatches, and large-offset data.
 Record any new quirk in docs/excel-semantics/statistics.md.
 
+Overlaps T-1401 (scalar or single cell as a one-value array: the `#DIV/0!` single-point cases) as well as T-1292 and T-1707. The exact formula for r and r² on large-offset data is open (a two-pass sum of squares about the means reproduces Excel's bits for SLOPE, INTERCEPT, STEYX and FORECAST, not CORREL). Also covers STEYX `#DIV/0!` with two points, zero-variance known_y (SLOPE 0, STEYX 0, INTERCEPT the mean, correlations `#DIV/0!`) and RSQ above 1 (`RSQ(J1:J6,B1:B6)` 1.0000000000000004). STEYX large-offset: Excel 0.822308017832176, ours 0.8223080178319075.
+
 ## Acceptance criteria
 - [ ] The mismatching non-ULP cells of probes/regression-pairs-a and -b for these six functions pass and leave eval/baseline/probes.txt smaller.
 - [ ] `make check` green; reviewers approve.

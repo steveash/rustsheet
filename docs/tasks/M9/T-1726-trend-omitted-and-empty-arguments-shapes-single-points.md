@@ -23,6 +23,8 @@ Found by T-1620 (probes/regression-trend, ROWS/COLUMNS/SUM/INDEX of each TREND c
 - 2-D known_y (`TREND(A1:B3,H1:I3)`): 3x2 result, first 3.6666666665000003 (`#REF!`).
 Group the work by cause; record the rules in docs/excel-semantics/statistics.md.
 
+Overlaps T-1402 (single-value known_y, `#REF!` before `#VALUE!`). Also: an error cell in new_x is `#VALUE!` for that element only (`TREND(A1:A6,B1:B6,F1:F2)` keeps 2 rows, first 3.3428571428571425), unequal sizes are `#REF!`, zero-variance x returns the mean.
+
 ## Acceptance criteria
 - [ ] The mismatching non-ULP cells of probes/regression-trend pass (or the remaining ones are listed in an Outcome note) and the baseline shrinks.
 - [ ] `make check` green; reviewers approve.

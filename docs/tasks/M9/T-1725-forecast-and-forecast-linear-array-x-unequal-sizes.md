@@ -20,6 +20,8 @@ Found by T-1620 (probes/regression-forecast, FORECAST in column L, FORECAST.LINE
 - large offset: `FORECAST(7,A1:A6,I1:I6)` is -7285714278.784956, ours `#DIV/0!`.
 - ULP: `FORECAST(0,A1:A6,B1:B6)` 1.7999999999999998, ours 1.8.
 
+Overlaps T-1290 (FORECAST x lifting over an array or range: the `{7,8}` spill and the range `#SPILL!`) and T-1401 (unequal sizes); do those first or fold them in. FORECAST x: TRUE is 1, "7" is 7, "" is `#VALUE!`.
+
 ## Acceptance criteria
 - [ ] The mismatching non-ULP cells of probes/regression-forecast pass and the baseline shrinks.
 - [ ] `make check` green; reviewers approve.
