@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "E1": {
+    "t": "b",
+    "v": true
+   },
+   "E2": {
+    "t": "s",
+    "v": "=LAMBDA([A1.B2],ISOMITTED(A1.B2))()"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "bdf5ffd277f1a22a53fc28b4157435bd4e99aef678aa60d9339196ce20786592",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T20:05:46+00:00",
+  "version": null
+ }
+}

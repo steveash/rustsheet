@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "E1": {
+    "t": "n",
+    "v": 18.0
+   },
+   "E2": {
+    "t": "s",
+    "v": "=LAMBDA(x,LAMBDA(A1.B2,A1.B2+x)(1)+SUM(A1:B2))(2)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "8111dac166ec2107039ad8bae1e8927569b02d6ea5046e51b3e8434dffe9ccc4",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T20:05:36+00:00",
+  "version": null
+ }
+}

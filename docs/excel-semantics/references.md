@@ -1574,12 +1574,30 @@ when it is an A1 reference, which is a separate test: `R1`, `C3`, `RC99999`, `C1
   `R1.C16385`, `R1.C1.5`); not `A1.B2D`, `A1.B`, `A.B2`, `A0.B1`, `A1.XFE1`, `R1.R1048577`, `R1.C0`,
   `R1.C1D`, `R1.RC`, `RC.C1`. In a formula the dots are the range operator: `SUM(A1.B2)`,
   `ROWS(A1..B2)` and `SUM(B2.A1)` are `SUM(A1:B2)` (7), `ROWS(A1:B2)` (2) and `SUM(A1:B2)` in
-  FORMULATEXT (probes/lotus-dot-range; ours: T-1659).
+  FORMULATEXT (probes/lotus-dot-range). The probed forms (probes/lotus-dot-range-*, T-1659): `$`
+  cells (`$A$1.B2`, `A$1..$B$2`, `A1.$B$2`), a sheet prefix on the first cell (`Data!A1.B2`,
+  `'Data'!B2..A1` is `Data!A1:B2`), lowercase (`a1.b2` prints `A1:B2`), whitespace around the
+  dots (`A1 . B2` prints `A1:B2`; whitespace on one side only, `A1 .B2`, `A1. B2`, and `A1 .5` are unprobed, and ours reads the first two as the range too), ISREF (TRUE), an intersection (`A1.B2 B1:B3`) and a colon after
+  it (`ROWS(A1.B2:C3)` is `A1:B2:C3`, 3) all read the range. Names, kept as typed and `#NAME?`:
+  whole columns (`A.B`, `A..B`), `A1.5`, an off-grid second cell (`A1.XFE1`), `A1.B2D`, a name
+  as the second part (`A1.foo` with `foo` defined) and a call (`A1.INDEX(B2:B2,1)`, `#NAME?`).
+  Excel rejects the file (Graph `FileCorruptTryRepair`) for `ROWS(1..2)`, `A1.B2.C3`, `A1.B2.x`,
+  `Data!A1.Data!B2` and `ROWS(A1:B2.C3)`; ours reads the first two as names. A LET or LAMBDA
+  name spelled so is the variable in its call and the range outside it (probes/lotus-dot-name-*,
+  r1c1-let-name-r1-c1): `LET(R1.C1,5,R1.C1*2)` 10, `LAMBDA(A1.B2,A1.B2*2)(4)` 8,
+  `LAMBDA([A1.B2],ISOMITTED(A1.B2))()` TRUE, `LET(A1.B2,5,A1.B2)+SUM(A1.B2)` 20 (printed
+  `...+SUM(A1:B2)`), `LAMBDA(x,LAMBDA(A1.B2,A1.B2+x)(1)+SUM(A1.B2))(2)` 18, and
+  `LET(a1.b2,5,A1.B2*2)` 10, which FORMULATEXT prints `=LET(a1.b2,5,a1.b2*2)`: the uses take the
+  declaration's spelling (ours keeps them as typed, T-1720). These files hold every use inside
+  the call as `_xlpm.A1.B2` (spec2xlsx `prefix_bound_names` prefixes the whole call), so a use
+  before its binding (`LET(x,SUM(A1.B2),A1.B2,x,...)`, `#NAME?` with `SUM(_xlpm.A1.B2)` in
+  FORMULATEXT) shows only how Excel reads that prefixed file; it has no case, and ours reads the
+  unprefixed use as the range.
 Defined names: a workbook defining any name the R1C1 test quotes is rejected by Graph (`createSession`
 501 `unsupportedWorkbook`): probed `RC`, `rc`, `R1C`, `R12C`, `R1C1`, `C1D`, `R1C1D`, `R1C16385`,
 `R1_`, `R1R`, `R1D`, `C1R1`, `RC1D`, `R1048576D`, `R1CD`, `R1C1.`. `RCR`, `RCD`, `CR`, `R1.5` and
 `C1.5` work (7). A Lotus-shaped name loads, but a use reads the range: with `R1.C1`, `R1..C1` and
-`C1.C1` defined, `=R1.C1*1` is `#SPILL!` and `=C1.C1*1` 0, ISREF TRUE (ours reads the name: T-1659).
+`C1.C1` defined, `=R1.C1*1` is `#SPILL!` and `=C1.C1*1` 0, ISREF TRUE (ours matches: T-1659).
 A name spelled like an out-of-range R1C1 reference (`R0`, `C0`, `R0C1`, `r0c1`, `R1048577`,
 `R1048577C1`) loads but every use is `#NAME?` (`=R0*1`, `SUM(R0)`, and `ISREF(INDIRECT("R0"))` is
 FALSE; FORMULATEXT keeps `=R0*1`). Ours matches (T-1657): the parser does not resolve it, and
@@ -1597,17 +1615,21 @@ puts on every LET and LAMBDA name and the parser drops. An out-of-range one (`R0
 A bare `RC`, `R1C1D`, `R0C1` or `RCR` token in a cell formula of an uploaded file makes Graph reject
 the workbook (so it is unprobed).
 Unprobed: brackets cannot occur in sheet or defined names, so `R[1]C` forms are not covered;
-lowercase Lotus-shaped names (`a1.b2`); non-ASCII digits.
+lowercase Lotus-shaped defined names (`a1.b2`; in a formula `a1.b2` is the range); non-ASCII digits.
 Evidence: probes/r1c1-shaped-sheet-names, -lower, -2, -3, -4, -5, -lower-2 (FORMULATEXT of
 `='<name>'!A1`), r1c1-name-* and r1c1-name-use-* (defined names; the rejected names have no case),
-r1c1-let-name-*, lotus-dot-range (excel-graph, 2026-10-15).
+r1c1-let-name-*, lotus-dot-range (excel-graph, 2026-10-15), lotus-dot-range-*, lotus-dot-name-* (2026-10-16).
 Implemented in: `is_r1c1_shaped` and `is_dotted_a1_range` (expressions/utils/mod.rs), used by
 `name_needs_quoting` (both) and `is_valid_identifier` (the R1C1 test); `is_valid_a1_identifier`
 (LET, LAMBDA and the lexer) takes them all; `reads_as_r1c1_cell` (`variable_text`,
 parser/stringify/bound_variables.rs) picks the names the R1C1 storage escapes;
 `is_out_of_range_r1c1_name` (names never resolved: `name_operand`, INDIRECT, the R1C1 lexer).
-Status: VERIFIED (excel-graph), except T-1659.
-Tasks: T-1652
+Dotted ranges in formulas: `consume_dotted_corner` (lexer/ranges.rs; the forms with `$` or
+whitespace) and `parse_dotted_a1_range` through `dotted_range_operand` (parser/operands.rs; an
+identifier such as `A1.B2`, unless an enclosing LET or LAMBDA binds it: `bind_dotted_name`).
+Ours still prints the unknown call `A1.INDEX(...)` in lowercase (T-1719).
+Status: VERIFIED (excel-graph)
+Tasks: T-1652, T-1659
 
 ## Structured references: this row, totals and ranges
 Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
