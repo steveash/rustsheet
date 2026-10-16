@@ -199,7 +199,7 @@ impl Model {
         #[inline]
         fn accumulate(values: &mut Vec<f64>, sum: &mut f64, count: &mut u64, value: f64) {
             values.push(value);
-            *sum += value;
+            *sum = extended_sum(*sum, value);
             *count += 1;
         }
 
@@ -223,7 +223,7 @@ impl Model {
 
         let mut sum_abs_dev = 0.0;
         for v in &values {
-            sum_abs_dev += (v - mean).abs();
+            sum_abs_dev = extended_sum(sum_abs_dev, (v - mean).abs());
         }
 
         CalcResult::Number(sum_abs_dev / n)

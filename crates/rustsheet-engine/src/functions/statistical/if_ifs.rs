@@ -651,7 +651,7 @@ impl Model {
             let mut total = 0.0;
             let mut count = 0.0;
             let average = |value: f64| {
-                total += value;
+                total = extended_sum(total, value);
                 count += 1.0;
             };
             if let Err(e) = model.apply_ifs(args, criteria, cell, strict_shape, average) {
