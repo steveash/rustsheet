@@ -1139,16 +1139,6 @@ impl_function_lookup! {
 }
 
 impl Function {
-    /// XLOOKUP, TAKE, DROP and TRIMRANGE: over a range they evaluate to the cells they pick, so
-    /// SUBTOTAL, AREAS and a LET or LAMBDA binding read a reference
-    /// (`Model::evaluate_picked_reference_arg`, probes/subtotal-reference-operands-b H12,
-    /// H15:H17; probes/let-name-uncalled-picked-refs). The one list of these calls.
-    pub(crate) fn picks_reference(&self) -> bool {
-        matches!(
-            self,
-            Function::Xlookup | Function::Take | Function::Drop | Function::Trimrange
-        )
-    }
     pub fn to_localized_name(&self, language: &Language) -> String {
         let functions = &language.functions;
         match self {
