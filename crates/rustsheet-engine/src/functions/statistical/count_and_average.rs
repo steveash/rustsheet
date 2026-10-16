@@ -15,18 +15,19 @@ use crate::{
 /// first, and the leftmost of the referenced and array errors wins
 /// (docs/excel-semantics/syntax.md "Aggregate error precedence"; probes/aggregate-error-precedence
 /// C25-C31; probes/aggregate-array-error-vs-ref-error for AVERAGE and MEDIAN, T-1615; the rest
-/// of the family is the same walker, UNVERIFIED).
+/// of the family: probes/aggregate-error-precedence-stat-family, T-1439).
 const AVERAGE_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
 };
 
-/// DEVSQ, AVEDEV and SUMSQ: an empty argument is skipped and the first error returns at once,
-/// as when each argument was walked on its own (TODO(T-0236); T-1439).
+/// DEVSQ, AVEDEV and SUMSQ: an empty argument is skipped (TODO(T-0236)), and errors rank as in
+/// the AVERAGE family: a direct error beats a referenced or array error whichever comes first
+/// (probes/aggregate-error-precedence-stat-family rows 10-12, T-1439).
 const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
-    errors: ErrorRule::First,
+    errors: ErrorRule::Ranked,
     skip_empty_args: true,
 };
 
@@ -61,9 +62,9 @@ impl Model {
         self.for_each_aggregate_number(args, cell, AVERAGE_ARGS, AVERAGE_NUMBERS, f)
     }
 
-    /// `for_each_value` that skips empty arguments (`DEVSQ(1, )`) instead of counting them as 0,
-    /// and returns the first error at once. DEVSQ, AVEDEV and SUMSQ ignored them before they
-    /// moved onto `for_each_value` and there is no Excel evidence either way yet. TODO(T-0236):
+    /// `for_each_value` that skips empty arguments (`DEVSQ(1, )`) instead of counting them as 0;
+    /// errors rank as in `for_each_value` (T-1439). DEVSQ, AVEDEV and SUMSQ ignored them before they
+    /// moved onto `for_each_value`; for the empty-argument skip there is no Excel evidence either way yet. TODO(T-0236):
     /// probe empty arguments and fold this into `for_each_value`.
     pub(crate) fn for_each_value_skip_empty<F>(
         &mut self,
