@@ -86,5 +86,7 @@
   (`check_duplication.py --update`).
   T-1628: functions below the evidence floor 56 → 53 (GETPIVOTDATA, ENCODEURL and FILTERXML reach ≥ 20 Excel
   cells through the three *-evidence-floor probes; decision 0062) (`make eval-baseline`).
+  T-1651: functions below the evidence floor 53 → 52 (one more function reaches ≥ 20 Excel cells through
+  the MODE/LOOKUP direct-argument probe, probes/mode-direct-error-lookup-scalar-vector; decision 0062) (`make eval-baseline`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
