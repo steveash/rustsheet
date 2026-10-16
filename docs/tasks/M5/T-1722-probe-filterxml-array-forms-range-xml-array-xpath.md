@@ -3,7 +3,7 @@ id: T-1722
 title: "Probe FILTERXML array forms: range xml, array xpath, error elements"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
