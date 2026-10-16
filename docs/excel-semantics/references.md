@@ -1543,10 +1543,11 @@ probed shapes: a legacy INDEX over a CHOOSE whose arms are all arithmetic takes 
 (`legacy_call_reads_a_value`; a dynamic `=INDEX(CHOOSE(1,B1:B6*1),0)` still spills); LOOKUP (array and vector forms) reads
 any scalar lookup_vector as a one-element array, picked by IF or CHOOSE or written directly (`LOOKUP(2,1)` is 1, `LOOKUP("b","a")` is "a", `LOOKUP(2,1,5)` is 5, `LOOKUP(2,{1})` is 1, `LOOKUP(2,IF(TRUE,1))` is 1: probes/mode-direct-error-lookup-scalar-vector B1-B5, T-1651); INDEX reads a scalar IF or CHOOSE picked as a one-element array, `INDEX(IF(TRUE,5),1)` is 5 (B6); MODE propagates the error of an argument IF or CHOOSE picked, and every other argument error too (direct, referenced or named: probes/mode-typed-arguments A30-A33, probes/mode-error-and-computed-arguments A1-A6, A11-A13, T-1291).
 `MODE(IF(TRUE,1/0),1,1)` and direct errors in MODE, MODE.SNGL and MODE.MULT (`1/0`, `NA()`, `#DIV/0!`, a cell, a name) all propagate the error (probes/mode-direct-error-lookup-scalar-vector A1-A16, T-1651).
-Inferred, unprobed (T-1645, T-1709): INDEX of a scalar other than an IF or CHOOSE pick stays `#VALUE!`; a boolean or empty scalar lookup_vector in LOOKUP is read as a one-element array like the probed number and text ones.
-Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at (excel-graph, 2026-10-15).
+Inferred, unprobed (T-1645): INDEX of a scalar other than an IF or CHOOSE pick stays `#VALUE!`.
+LOOKUP with a boolean or empty scalar lookup_vector (T-1709; its own evidence is probes/lookup-bool-empty-scalar-vector, 10 cells, excel-graph 2026-10-16): a boolean scalar is a one-element array like the number and text ones: `LOOKUP(TRUE,TRUE)` is TRUE, `LOOKUP(TRUE,TRUE,5)` 5, `LOOKUP(TRUE,TRUE,"r")` "r", `LOOKUP(FALSE,FALSE)` FALSE, and `LOOKUP(FALSE,TRUE)` and `LOOKUP(1,TRUE)` are #N/A (reasons unprobed: probably FALSE sorting before TRUE in the approximate search, and a boolean not matching a number). An empty lookup_vector (`IF(TRUE,Z99)`, which may be the reference Z99 rather than a scalar, or `Z99` itself, Z99 empty) gives #N/A for lookup values 0, "" and 1 (`LOOKUP(0,IF(TRUE,Z99))`, `LOOKUP("",IF(TRUE,Z99),5)`, `LOOKUP(1,IF(TRUE,Z99),5)`, `LOOKUP(0,Z99)`). Ours already matched all 10 cells (`scalar_as_array` in cast.rs); no code change.
+Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at, probes/lookup-bool-empty-scalar-vector (excel-graph, 2026-10-15).
 Status: VERIFIED (excel-graph)
-Tasks: T-1638, T-1643, T-1645, T-1651
+Tasks: T-1638, T-1643, T-1645, T-1651, T-1709
 
 ## R1C1-shaped sheet and defined names
 Rule (case-insensitive; odd, Excel is right): Excel quotes a sheet name in formula text, and refuses it

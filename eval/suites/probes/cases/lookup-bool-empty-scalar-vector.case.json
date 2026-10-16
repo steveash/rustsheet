@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "LOOKUP with a boolean or empty scalar lookup_vector (T-1709).",
+ "tags": [
+  "M6",
+  "lookup",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=LOOKUP(TRUE,TRUE)",
+    "A2": "=LOOKUP(TRUE,TRUE,5)",
+    "A3": "=LOOKUP(FALSE,TRUE)",
+    "A4": "=LOOKUP(0,IF(TRUE,Z99))",
+    "A5": "=LOOKUP(\"\",IF(TRUE,Z99),5)",
+    "A6": "=LOOKUP(1,TRUE)",
+    "A7": "=LOOKUP(1,IF(TRUE,Z99),5)",
+    "A8": "=LOOKUP(TRUE,TRUE,\"r\")",
+    "A9": "=LOOKUP(FALSE,FALSE)",
+    "A10": "=LOOKUP(0,Z99)"
+   }
+  }
+ ]
+}
