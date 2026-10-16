@@ -3,10 +3,10 @@ id: T-1651
 title: "Probe MODE with a direct error argument and LOOKUP with a scalar lookup_vector"
 milestone: M6
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -24,3 +24,6 @@ T-1291 answered the MODE half (probes/mode-typed-arguments A30-A33, probes/mode-
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/mode-direct-error-lookup-scalar-vector` filled from excel-graph: every MODE/MODE.SNGL/MODE.MULT error argument propagates (ours already did); LOOKUP (array and vector forms) reads any scalar lookup_vector as a one-element array, so the IF/CHOOSE narrowing in `fn_lookup` was dropped. references.md and lookup.md updated. The evidence-floor lock fell 53 → 52 (logged in decision 0010). Eval: 0 regressions, +1 probe case (23 cells, all pass).
