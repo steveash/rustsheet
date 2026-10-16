@@ -10,9 +10,9 @@ Rule: the excel-graph oracle calculates each workbook three times: on load (`ful
 at the explicit `calculate` `FullRebuild`, and at the scratch-sheet edit that makes Excel save
 (tools/src/rustsheet_tools/oracle/backends.py). Iterative calculation resumes from the previous
 values each time, so an oracle value of a cycle that has not converged shows 3 × iterateCount
-iterations. A single desktop recalculation would show iterateCount. To score these cells, Phase 2
-needs the harness to run the same three calculations, or an oracle mode that calculates once
-(T-0429). The engine itself should still calculate once per recalculation.
+iterations. A single desktop recalculation would show iterateCount. To score these cells, the eval
+adapter runs the same three calculations for a case with `calculation.iterate` (T-0429). The
+engine itself still calculates once per recalculation.
 Evidence: probes/circular-iteration-on (`=A1+1` is 300 with iterateCount 100) and
 probes/circular-iteration-limits (`=A1+1` is 15 with iterateCount 5); excel-graph, 2026-10-16,
 T-0428.
@@ -63,17 +63,31 @@ Rule: the delta stop ends the iterations of the whole workbook, not of each cycl
     (1.9921875), B1 16 - 2^-4 (15.9375);
   - with iterateDelta 0.001, after 17: A1 2 - 2^-16, B1 16 - 2^-13;
   - without the stop, the three calculations would run 300 iterations.
-UNVERIFIED: the exact stopping test. The leading candidate fits both counts: stop at the first
-iteration whose largest change over every recalculated cell is below the delta, counting C1 =
-A1+B1, which reads the cycles but is outside them (its change at iteration n is 9 * 2^(1-n)), and
-then run one iteration in each of the two later calculations. At 0.5 that stops at n = 6 (0.28;
-n = 5 gives 0.5625), so 6 + 2 = 8. At 0.001 it stops at n = 15 (0.00055; n = 14 gives 0.0011), so
-15 + 2 = 17. The cycle cells alone would give 8 and 16. A probe that calculates once (T-0429), or
-one with no reader cell, would confirm it.
+- **The stopping test** (T-0429): a calculation stops at the first iteration whose largest change
+  over every recalculated cell is strictly below the delta. Cells outside the cycles that read them
+  count too. Each later calculation then runs one more iteration (each one's first change is
+  already below the delta). Three probes check it:
+  - With C1 = A1+B1 outside the cycles (change 9 * 2^(1-n) at iteration n), 0.5 stops at n = 6
+    (0.28; n = 5 gives 0.5625), so 6 + 2 = 8 iterations in all. 0.001 stops at n = 15 (0.00055),
+    so 15 + 2 = 17.
+  - Without C1 (probes/circular-iteration-delta-no-reader), 0.001 stops at n = 14 (B1's change
+    8 * 2^(1-n) is 0.00098; n = 13 gives 0.0020): 14 + 2 = 16 in all, A1 2 - 2^-15 and
+    B1 16 - 2^-12. The reader cell is what made the earlier count 17.
+  - Strictly below: the lone cycle `=A1/2+1` with iterateDelta 0.25
+    (probes/circular-iteration-delta-boundary) changes by 1, 1/2, 1/4, 1/8. It stops at n = 4,
+    not at n = 3 where the change equals the delta: 4 + 2 = 6 in all, A1 2 - 2^-5 (1.96875). This reading
+    rests on the one-more-iteration-per-later-calculation model, which the 8 and 17 counts back
+    independently (`<=` would give 5, A1 1.9375).
+- **Scoring:** the eval adapter runs an iterative case's three oracle calculations
+  (`calculations` in crates/rustsheet-eval/src/engine.rs). It does not use one oracle
+  calculation, because excel-graph saves only after an edit, and the edit itself calculates
+  (T-0429). The engine still calculates once per recalculation.
 Evidence: probes/circular-iteration-limits, probes/circular-iteration-delta,
-probes/circular-iteration-delta-small (excel-graph, 2026-10-16, T-0428).
+probes/circular-iteration-delta-small (excel-graph, 2026-10-16, T-0428);
+probes/circular-iteration-delta-no-reader, probes/circular-iteration-delta-boundary (excel-graph,
+2026-10-16, T-0429).
 Ours: every cell is an error.
-Status: VERIFIED (excel-graph) except the UNVERIFIED stopping test
+Status: VERIFIED (excel-graph)
 Tasks: T-0428, T-0401, T-0429
 
 ## Data tables (TABLE()) are recalculated, and FORMULATEXT shows `{=TABLE(row,column)}`
