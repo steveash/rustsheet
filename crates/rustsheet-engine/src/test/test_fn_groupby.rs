@@ -710,3 +710,59 @@ fn value_sort_over_many_groups_and_two_keys_is_bounded() {
     assert_eq!(model._get_text("A1"), "20000");
     assert_eq!(model._get_text("B1"), "#ERROR!");
 }
+
+#[test]
+fn filter_elements_beside_headers_are_ignored_and_text_must_be_true_or_false() {
+    // probes/groupby-sort-filter-args2: text, "" or an error beside the header row is ignored
+    // (B1, B5, B29-B30) but not beside a record (B31); "true"/"True" count (B6-B7), "1" does
+    // not (B8-B9); {#N/A} is #VALUE! as a filter and a sort_order (B11-B12); a one-cell
+    // reference to an error is that error, before total_depth 3 (B16-B18).
+    let mut model = records();
+    model._set("Z5", "=1/0");
+    let cases = [
+        ("1,,,IF(ROW(C1:C11)=1,NA(),C1:C11=2023)", "35"),
+        ("1,,,IF(ROW(C1:C11)=1,\"x\",C1:C11=2023)", "35"),
+        ("1,,,IF(ROW(C1:C11)=1,\"\",C1:C11=2023)", "35"),
+        ("1,,,IF(ROW(C1:C11)=3,NA(),C1:C11=2023)", "#VALUE!"),
+        ("1,,,IF(ROW(C1:C11)=1,NA(),C1:C11=1999)", "#VALUE!"),
+        ("0,,,IF(ROW(C1:C11)=1,NA(),C1:C11=2023)", "#VALUE!"),
+        (",,,IF(C1:C11=2023,\"true\",\"false\")", "35"),
+        (",,,IF(C1:C11=2023,\"True\",\"False\")", "35"),
+        (",,,IF(C1:C11=2023,\"1\",\"0\")", "#VALUE!"),
+        (",,,\"1\"", "#VALUE!"),
+        (",,,{#N/A}", "#VALUE!"),
+        (",,{#N/A}", "#VALUE!"),
+        (",,Z5", "#DIV/0!"),
+        (",,,Z5", "#DIV/0!"),
+        (",3,Z5", "#DIV/0!"),
+    ];
+    for (i, (args, _)) in cases.iter().enumerate() {
+        model._set(
+            &format!("H{}", i + 1),
+            &format!("=INDEX(GROUPBY(A1:A11,D1:D11,_xleta.SUM,{args}),ROWS(GROUPBY(A1:A11,D1:D11,_xleta.SUM,{args})),2)"),
+        );
+    }
+    model.evaluate();
+    let expected: Vec<&str> = cases.iter().map(|(_, total)| *total).collect();
+    assert_eq!(column(&model, "H", 1, cases.len()), expected);
+}
+
+#[test]
+fn value_sort_parents_use_the_function_of_all_their_rows() {
+    // probes/groupby-sort-filter-args2 B22 (AVERAGE: East 15 < West 18.125) and B24
+    // (100-SUM: West 27.5 < East 55, where the sum of the children would put East first).
+    let mut model = records();
+    model._set("H1", "=GROUPBY(A2:B11,D2:D11,_xleta.AVERAGE,,0,3)");
+    model._set("L1", "=GROUPBY(A2:B11,D2:D11,LAMBDA(x,100-SUM(x)),,0,3)");
+    model.evaluate();
+    assert_eq!(
+        column(&model, "H", 1, 8),
+        ["South", "North", "0", "East", "East", "West", "West", "West"]
+    );
+    assert_eq!(column(&model, "I", 6, 8), ["Banana", "Apple", "Pear"]);
+    assert_eq!(
+        column(&model, "L", 1, 8),
+        ["West", "West", "West", "East", "East", "0", "North", "South"]
+    );
+    assert_eq!(column(&model, "N", 1, 3), ["60", "80", "87.5"]);
+}

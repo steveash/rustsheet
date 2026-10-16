@@ -263,6 +263,7 @@ C	probes/groupby-pivotby-followup2.case.json	607
 C	probes/groupby-pivotby-followup3.case.json	499
 C	probes/groupby-pivotby.case.json	1432
 C	probes/groupby-sort-filter-args.case.json	84
+C	probes/groupby-sort-filter-args2.case.json	38
 C	probes/if-index-ref-args-aggregates.case.json	54
 C	probes/iferror-blank-value.case.json	23
 C	probes/ifna-isformula-edges.case.json	40

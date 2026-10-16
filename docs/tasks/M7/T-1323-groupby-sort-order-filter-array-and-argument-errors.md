@@ -46,7 +46,11 @@ sort_order are `#VALUE!`; arrays mixing key and value columns are `#VALUE!`; val
 both directions; filter elements count like conditions (numbers, blanks, "TRUE"/"FALSE" text), other text and error
 elements are `#VALUE!`; with headers the filter may cover the header row or only the records; error values win over
 invalid arguments, first in argument order. Recorded in docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY" and
-SPEC-0006.
+SPEC-0006. Review follow-up probe probes/groupby-sort-filter-args2 (37 questions, excel-graph): the filter element
+beside a header row is ignored whatever it holds (now implemented), "true"/"True" count, "1" does not, `{#N/A}` is
+`#VALUE!` in sort_order and filter_array, a one-cell error reference is that error, three-key value sorts are
+hierarchical, parents rank by the function of all their rows (AVERAGE, `100-SUM`), booleans sort between text and errors
+(all already matched).
 Eval delta (passing cells): probes/groupby-pivotby 360 -> 433 (+73), groupby-pivotby-followup 289 -> 716 (+427),
 followup2 162 -> 239 (+77), followup3 407 -> 472 (+65), groupby-blank-values 100 -> 110 (+10, now Pass),
 groupby-sort-filter-args 84/84 (new), gen-m9/3ec66461400faf2f Calc!A17 passes (gen-m9 is not gated). Still failing in

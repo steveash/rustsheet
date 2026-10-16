@@ -104,8 +104,10 @@ impl Grouping {
     /// (probes/groupby-pivotby-followup2 G!A261; groupby-sort-filter-args B21-B22 descending).
     /// Equal values keep the ascending key order in both directions (groupby-sort-filter-args
     /// B32-B33, B27-B28), and the blank key is not pinned last (G!J145, G!S145). Values compare like
-    /// key cells: numbers < text < booleans < errors, errors last ascending and first descending
-    /// (B34-B37).
+    /// key cells: numbers < text < FALSE < TRUE < errors, errors last ascending and first
+    /// descending (B34-B37; groupby-sort-filter-args2 B27-B28, B37). A parent's value is the
+    /// function of all its rows, not of its children's values (AVERAGE and `100-SUM(x)` over two
+    /// keys, args2 B22-B25), at every level (three keys, args2 B19-B21).
     ///
     /// Work: one `aggregate` call per group and per parent, at most groups x key fields, which the
     /// output size bounds; each level's parent rows are gathered once (O(rows log rows) per level).
@@ -355,7 +357,9 @@ impl Model {
     /// column order, so `{2,-1}` and `{-1,2}` are Region descending then Product ascending (G!AB145,
     /// probes/groupby-pivotby-followup G!A341-A541). An array may name a value column only as its
     /// one element (`{-3}`, B21); a value column next to a key column or a second value column is
-    /// `#VALUE!` (B16-B20, B29-B30), and so is any element that is not a whole number (B23-B25).
+    /// `#VALUE!` (B16-B20, B29-B30), and so is any element that is not a whole number (B23-B25),
+    /// `{#N/A}` included (groupby-sort-filter-args2 B11, B13). A one-cell reference to an error
+    /// is that error, ahead of other invalid arguments (args2 B16, B18).
     pub(crate) fn sort_order(
         &mut self,
         arg: Option<CalcResult>,
@@ -411,11 +415,12 @@ impl Model {
     /// records when `first` rows are headers (groupby-sort-filter-args B56-B59), or one value that
     /// keeps or drops every row (TRUE, 2; FALSE, 0, `{FALSE}`: followup3 G!A25-A85, B55). Each
     /// element counts like a condition: a number is TRUE unless 0, a blank is FALSE, text must be
-    /// "TRUE" or "FALSE" (B42, B44, B52). Anything else is `#VALUE!`: another height (G!AB217), a
-    /// row or several columns (B48-B50), other text, `""`, an error element even on a dropped row
-    /// (B43-B46, B53-B54), and a filter that keeps no record, `#VALUE!` rather than FILTER's
-    /// `#CALC!` (G!A241, followup3 G!A1-A109). (Whether the element beside a header row is
-    /// checked is unprobed; it is, like any element.)
+    /// "TRUE" or "FALSE" in any case (B42, B44, B52; groupby-sort-filter-args2 B6-B7, B10).
+    /// Anything else is `#VALUE!`: another height (G!AB217), a row or several columns (B48-B50),
+    /// other text, numeric text "1" included, `""`, an error element even on a dropped row
+    /// (B43-B46, B53-B54; args2 B8-B9, B31-B35), a 1x1 array holding an error (args2 B12, B14),
+    /// and a filter that keeps no record, `#VALUE!` rather than FILTER's `#CALC!` (G!A241,
+    /// followup3 G!A1-A109). A one-cell reference to an error is that error (args2 B17).
     pub(crate) fn filter_rows(
         &mut self,
         filter: Option<CalcResult>,
@@ -433,8 +438,16 @@ impl Model {
                 if array.iter().any(|row| row.len() != 1) {
                     return Err(invalid("filter_array must be one column"));
                 }
+                // A filter as tall as the fields has elements beside the header rows, which
+                // are never read: text, `""` or an error there is ignored
+                // (groupby-sort-filter-args2 B1, B3, B5, B29-B30).
+                let beside_headers = if array.len() == height { first } else { 0 };
                 let mut keep = Vec::with_capacity(array.len());
-                for node in array.iter().flatten() {
+                for (index, node) in array.iter().flatten().enumerate() {
+                    if index < beside_headers {
+                        keep.push(false);
+                        continue;
+                    }
                     // An error element is an Err here too: #VALUE!, not the error (B45).
                     let condition = array_node_to_calc_result(node, cell);
                     match self.cast_to_bool(condition, cell) {

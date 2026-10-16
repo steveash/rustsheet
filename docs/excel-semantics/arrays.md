@@ -368,13 +368,24 @@ filter_array: each element counts like a condition, a number is TRUE unless 0, a
 counts (B42, B44, B52); other text, `""`, any error element (even on a row the filter drops) are `#VALUE!` and not the
 error (B43, B45-B46, B53); a scalar keeps or drops everything (2 keeps, `"x"` is `#VALUE!`, `NA()` is `#N/A`: B47, B54-B55);
 a row of 10, a 10x2 array, a longer one and an all-blank range are `#VALUE!` (B48-B51). With a header row the filter
-may be as tall as the fields (the header's element is ignored, even FALSE) or as tall as the records, aligned with them
-(B56-B59); field_headers 3 still shows the headers.
+may be as tall as the fields (the header's element is ignored, whatever it holds: args2 B1-B5, B29-B30 below) or as tall as the
+records, aligned with them (B56-B59); field_headers 3 still shows the headers.
 Error precedence: every error value among the arguments wins over any invalid argument, before or after it (sort_order
 `NA()` beats total_depth 3, a short filter, an all-FALSE filter, a short values range and the function 5), and among
 error values the first argument wins (field_headers or total_depth `1/0` before sort_order `NA()`, sort_order before
 filter_array before field_relationship): B61-B78. field_relationship: 3, -1, 0.5 are `#VALUE!`, `NA()` `#N/A`, and the
 text "1" counts as 1 (with one total row, the default layout): B79-B83.
+Review follow-up (probes/groupby-sort-filter-args2, 37 questions in column B, excel-graph, 2026-10-16; "args2 Bn"
+below): the filter element beside a header row is never read, so text, `""` or an error there is ignored (args2 B1, B3,
+B5, B29-B30), while an error beside a record is `#VALUE!` (B31-B35). A filter `VSTACK(NA(),Data!C2:C11=2023)` is `#N/A`
+(B2, B4; `1/0` gives `#DIV/0!`), and B36 (`ROWS(VSTACK(NA(),Data!C2:C11))&...`, one `#N/A`) points to VSTACK returning the
+scalar error rather than an array (only that summary probed; the engine's VSTACK does the same). "true"/"True" count like "TRUE" (B6-B7, B10); numeric text
+"1" does not (B8-B9: `#VALUE!`). `{#N/A}` and `IF({TRUE},NA())` are `#VALUE!` as sort_order and as filter_array
+(B11-B14), while a one-cell reference to `=1/0` is `#DIV/0!` in either place, also before total_depth 3 (B16-B18). A
+value sort over three keys is hierarchical at every level (B19-B21), and a parent's value is the function of all its
+rows, not of its children's values: AVERAGE ranks East (15) before West (18.125) and `LAMBDA(x,100-SUM(x))` West (27.5)
+before East (55), where the sum, the mean or the largest child would disagree (B22-B26). Boolean aggregates sort
+numbers < text < FALSE < TRUE < errors, reversed descending (B27-B28, B37).
 Ours: GROUPBY (T-1322, functions/lookup_and_reference/groupby.rs): the shared `Grouping` core (hash grouping on
 `cell_key` with -0 as 0, sorting with `sort_key_cmp` and numbers compared exactly), a LAMBDA or eta-name function called
 once per group and value column through one `LambdaCaller`, field_headers and auto-detect, total_depth 0/±1, `""`
