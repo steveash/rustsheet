@@ -103,6 +103,7 @@ pub(super) fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
 /// the R1C1 lexer would read back as a cell gets the `_xlpm.` prefix the parser drops, as on
 /// xlsx import: Excel takes `LET(R1C1,5,R1C1*2)` (10, probes/r1c1-let-name-r1c1, T-1658).
 pub(super) fn variable_text(name: &str, context: Option<&CellReferenceRC>) -> String {
+    // No `context` is the R1C1 storage form (`to_rc_format`); a context is A1 output.
     if context.is_none() && reads_as_r1c1_cell(name) {
         format!("_xlpm.{name}")
     } else {

@@ -1582,9 +1582,9 @@ ours applies the defined-name rule to them.
 LET and LAMBDA names are not tested at all: `LET(n,5,n*2)` is 10 for `RC`, `R1C`, `R1C1`, `r1c1`,
 `R5C7`, `R12C`, `R0C1`, `R0`, `R1048577`, `R1_`, `R1.C1`, `R1C1D`, `C1D`, `RCR` and `C`, and
 FORMULATEXT keeps the name as typed. Ours matches, and takes LAMBDA parameters spelled so too
-(unprobed; T-1658). Formulas are stored in R1C1 form, where an in-range uppercase `R<n>C<m>` reads back as a cell, so such a name
-is stored as `_xlpm.R1C1`, the prefix Excel's own xlsx form puts on every LET and LAMBDA name and
-the parser drops. An out-of-range one (`R0C1`) is a name in R1C1 form already (T-1657). Unprobed:
+(unprobed; T-1658). Formulas are stored in R1C1 form, where an in-range uppercase `R<n>C<m>`
+reads back as a cell, so such a name is stored as `_xlpm.R1C1`, the prefix Excel's own xlsx form
+puts on every LET and LAMBDA name and the parser drops. An out-of-range one (`R0C1`) is a name in R1C1 form already (T-1657). Unprobed:
 a bare `=R1C1` outside a LET in A1 mode; ours reads it as a name (`#NAME?`), as it does `=r1c1`.
 A bare `RC`, `R1C1D`, `R0C1` or `RCR` token in a cell formula of an uploaded file makes Graph reject
 the workbook (so it is unprobed).
