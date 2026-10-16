@@ -48,6 +48,7 @@ use super::token;
 use super::token::OpUnary;
 use super::token::TokenType;
 use super::types::*;
+use super::utils::is_unusable_r1c1_name;
 
 use sheet_span::with_sheet_span;
 use token::OpCompare;
@@ -528,7 +529,12 @@ impl Parser {
     //  * None: If there is no defined name by that name
     //  * Some((Some(index), formula)): If there is a defined name local to that sheet
     //  * Some(None): If there is a global defined name
+    // A name spelled like an out-of-range R1C1 reference is never found: its uses are `#NAME?`
+    // ([`is_unusable_r1c1_name`]).
     fn get_defined_name(&self, name: &str, sheet: u32) -> Option<(Option<u32>, String)> {
+        if is_unusable_r1c1_name(name) {
+            return None;
+        }
         for (df_name, df_scope, df_formula) in &self.defined_names {
             if name.to_lowercase() == df_name.to_lowercase() && df_scope == &Some(sheet) {
                 return Some((*df_scope, df_formula.to_owned()));

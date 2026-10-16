@@ -128,6 +128,32 @@ pub(crate) fn is_r1c1_shaped(name: &str) -> bool {
     text.get(position) != Some(&b'.')
 }
 
+/// Whether `name` is spelled `R<n>`, `C<n>` or `R<n>C<m>` (any case, nothing after the digits).
+/// [`is_valid_identifier`] refuses the in-range ones, so a defined name of this shape has a number
+/// out of range (`R0`, `C0`, `R0C1`, `R1048577`). Excel loads such a name, but every use of it, in a
+/// formula or through INDIRECT, is `#NAME?` (docs/excel-semantics/references.md "R1C1-shaped sheet
+/// and defined names"; probes/r1c1-name-r0, r1c1-name-use-r0; excel-graph, T-1652, T-1657). LET and
+/// LAMBDA names of this shape bind as usual (probes/r1c1-let-name-r0).
+pub(crate) fn is_unusable_r1c1_name(name: &str) -> bool {
+    let text = name.as_bytes();
+    let is_letter = |position: usize, letter: u8| {
+        text.get(position)
+            .is_some_and(|c| c.eq_ignore_ascii_case(&letter))
+    };
+    let mut position = 1;
+    let starts_with_row = is_letter(0, b'R');
+    if !(starts_with_row || is_letter(0, b'C')) || leading_number(text, &mut position).is_none() {
+        return false;
+    }
+    if starts_with_row && is_letter(position, b'C') {
+        position += 1;
+        if leading_number(text, &mut position).is_none() {
+            return false;
+        }
+    }
+    position == text.len()
+}
+
 /// Whether `name` starts with a Lotus-style range: an A1 cell, one or more dots and an A1 cell,
 /// then nothing or a dot and anything (`A1.B2`, `A1..B2`, `R1.C1`, `A1.B2.C3`; not `A1.B2D`,
 /// `A1.XFE1`, `A0.B1`). Excel reads `SUM(A1.B2)` as `SUM(A1:B2)`, and quotes a sheet with such a
