@@ -9,8 +9,8 @@ use std::collections::HashMap;
 
 use std::borrow::Cow;
 
-use super::group_functions::Relative;
 use crate::{
+    calc_result::CalcResult,
     expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
     functions::spill_functions::{cell_key, sort_key_cmp, CellKey},
     functions::util::collation::cmp_text,
@@ -26,6 +26,51 @@ pub(crate) enum SortOrder {
     /// By the aggregate of value column `column` (0-based among the value columns), with
     /// [`Grouping::sort_by_aggregate`].
     Value { column: usize, ascending: bool },
+}
+
+/// `#VALUE!` for an invalid GROUPBY or PIVOTBY argument.
+pub(crate) fn value_error(cell: CellReferenceIndex, message: &str) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, message.to_string())
+}
+
+/// A cell of a 2-D array, blank when outside it (arrays from `eval_to_array` are rectangular, so
+/// this only guards against a panic).
+pub(crate) fn at(data: &[Vec<ArrayNode>], row: usize, column: usize) -> ArrayNode {
+    data.get(row)
+        .and_then(|cells| cells.get(column))
+        .cloned()
+        .unwrap_or(ArrayNode::Empty)
+}
+
+/// A relative set: the source rows a two-argument function gets as its second argument (all rows
+/// for GROUPBY, the `relative_to` set for PIVOTBY). `id` names a set that is built once and shared,
+/// so PERCENTOF sums it once; `None` for a set made for one call.
+#[derive(Clone, Copy)]
+pub(crate) struct Relative<'a> {
+    pub(crate) id: Option<SetId>,
+    pub(crate) rows: &'a [usize],
+}
+
+/// The axis of a grid: PIVOTBY's rows (and GROUPBY's groups) or its columns.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum Axis {
+    Rows,
+    Columns,
+}
+
+/// Which shared set a [`Relative`] is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum SetId {
+    /// All (kept) records.
+    All,
+    /// Set `n` of PIVOTBY's relative sets (`RelativeSets`).
+    Pivot(usize),
+    /// Parent `group` at sort level `level` of `axis` ([`Grouping::sort_by_aggregate`]).
+    Parent {
+        axis: Axis,
+        level: usize,
+        group: usize,
+    },
 }
 
 /// A key as its group shows it: the blank key as the number 0 (G!A1, PIVOTBY's column keys too:
@@ -172,15 +217,15 @@ impl Grouping {
     /// keys, args2 B22-B25), at every level (three keys, args2 B19-B21).
     ///
     /// `aggregate` also gets the group one level up as a relative set (PIVOTBY's `relative_to` 4 sorts
-    /// rows by it: `RelativeTo::of_sort`); `None` at the top level and when the parents are not
-    /// gathered (not [`ParentOrder::ByValue`]).
+    /// rows by it, 3 columns: `RelativeTo::of_sort`); `None` at the top level. The parents' rows
+    /// are gathered for that whatever the order (O(rows log rows) per level).
     ///
     /// Work: one `aggregate` call per group and per parent, at most groups x key fields, which the
     /// output size bounds; each level's parent rows are gathered once (O(rows log rows) per level).
     pub(crate) fn sort_by_aggregate(
         &mut self,
         ascending: bool,
-        order: ParentOrder,
+        (order, axis): (ParentOrder, Axis),
         cell: CellReferenceIndex,
         mut aggregate: impl FnMut(&[usize], Option<Relative<'_>>) -> ArrayNode,
     ) -> Aggregates {
@@ -194,7 +239,7 @@ impl Grouping {
         // appearance, so equal parent values keep key order), with the parents' aggregates.
         let mut levels: Vec<(Vec<usize>, Vec<ArrayNode>)> = Vec::new();
         let mut previous = vec![0; self.groups.len()];
-        // The rows of the previous level's parents (gathered when the parents sort by value).
+        // The rows of the previous level's parents, handed to `aggregate` as the group one level up.
         let mut previous_rows: Vec<Vec<usize>> = Vec::new();
         for level in 0..fields.saturating_sub(1) {
             let mut index: HashMap<(usize, &CellKey), usize> = HashMap::new();
@@ -209,8 +254,7 @@ impl Grouping {
                     above.push(*parent);
                     parent_rows.len() - 1
                 });
-                // Parent rows are only gathered when the parents sort by their aggregate.
-                if let Some(rows) = parent_rows.get_mut(id).filter(|_| parents_by_value) {
+                if let Some(rows) = parent_rows.get_mut(id) {
                     rows.extend_from_slice(&group.rows);
                 }
                 parents.push(id);
@@ -219,13 +263,13 @@ impl Grouping {
                 .iter_mut()
                 .zip(&above)
                 .map(|(rows, &parent)| {
+                    rows.sort_unstable();
                     if !parents_by_value {
                         return ArrayNode::Empty;
                     }
-                    rows.sort_unstable();
-                    let up = level.checked_sub(1).and_then(|level| {
-                        parent_set(parents_by_value, level, &previous_rows, parent)
-                    });
+                    let up = level
+                        .checked_sub(1)
+                        .and_then(|level| parent_set(axis, level, &previous_rows, parent));
                     aggregate(rows, up)
                 })
                 .collect();
@@ -240,7 +284,7 @@ impl Grouping {
             .map(|(group, &parent)| {
                 let up = fields
                     .checked_sub(2)
-                    .and_then(|level| parent_set(parents_by_value, level, &previous_rows, parent));
+                    .and_then(|level| parent_set(axis, level, &previous_rows, parent));
                 aggregate(&group.rows, up)
             })
             .collect();
@@ -291,16 +335,11 @@ impl Grouping {
     }
 }
 
-/// Parent `parent` of sort level `level` as a relative set ([`Grouping::sort_by_aggregate`]),
-/// when the parents' rows were gathered.
-fn parent_set(
-    gathered: bool,
-    level: usize,
-    rows: &[Vec<usize>],
-    parent: usize,
-) -> Option<Relative<'_>> {
-    rows.get(parent).filter(|_| gathered).map(|rows| Relative {
-        id: Some((2 + level, parent)),
+/// Parent `group` of sort level `level` of `axis` as a relative set
+/// ([`Grouping::sort_by_aggregate`]).
+fn parent_set(axis: Axis, level: usize, rows: &[Vec<usize>], group: usize) -> Option<Relative<'_>> {
+    rows.get(group).map(|rows| Relative {
+        id: Some(SetId::Parent { axis, level, group }),
         rows,
     })
 }
@@ -567,7 +606,7 @@ pub(crate) fn subtotal_levels(depth: isize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::{Grouping, Line, ParentOrder};
+    use super::{Axis, Grouping, Line, ParentOrder};
     use crate::expressions::{parser::ArrayNode, types::CellReferenceIndex};
 
     const CELL: CellReferenceIndex = CellReferenceIndex {
@@ -660,7 +699,8 @@ mod tests {
         let mut grouping = Grouping::new(&keys, 0..keys.len(), |_| None)
             .unwrap_or(Grouping { groups: Vec::new() });
         let mut calls = 0;
-        let sums = grouping.sort_by_aggregate(true, ParentOrder::ByValue, CELL, |rows, _| {
+        let order = (ParentOrder::ByValue, Axis::Rows);
+        let sums = grouping.sort_by_aggregate(true, order, CELL, |rows, _| {
             calls += 1;
             ArrayNode::Number(rows.iter().map(|&row| values[row]).sum())
         });

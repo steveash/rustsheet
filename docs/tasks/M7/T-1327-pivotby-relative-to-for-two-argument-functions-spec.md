@@ -38,10 +38,9 @@ pair of key-prefix levels (`Grouping::prefix_ids`; the level pairs are counted a
 PIVOTBY's grid cells, subtotal rows and columns, Total row and Total column look theirs up and pass it through T-1325's
 `Aggregate { rows, relative }`. PERCENTOF passed by name sums each set once (O(N)); a two-parameter LAMBDA is charged
 against the visit cap (DEVIATION entry extended, test `two_parameter_lambdas_are_charged_against_the_visit_cap` in
-test_fn_pivotby.rs). Value sorts by a two-argument function use `RelativeTo::of_sort`: rows by their Total cell's set,
-with the parent group handed down by `Grouping::sort_by_aggregate` (its closure now also gets the group one level up),
-columns by their own records (probed, functions3 P!A151), and the Total row then does not reuse a column sort value
-that differs. An array relative_to is lifted per element (`Model::lifted_relative_to`: `""` or the element's error, no
+test_fn_pivotby.rs). Value sorts by a two-argument function use `RelativeTo::of_sort`: rows and columns alike by their
+Total cell's set, with the parent group handed down by `Grouping::sort_by_aggregate` (its closure now also gets the
+group one level up, tagged with its axis), probed in probes/groupby-pivotby-functions4 (new, 14 questions). An array relative_to is lifted per element (`Model::lifted_relative_to`: `""` or the element's error, no
 function call); the signature.rs TODO is resolved. The two-level parent totals and the subtotal lines' sets are probed
 (probes/groupby-pivotby-functions P!A101-A441, -functions3) and recorded in arrays.md (T-1327 follow-up), with the
 unprobed choices.
@@ -50,3 +49,12 @@ P!A73:E79; the case now passes 1432/1432), probes/pivotby-followup +21 (P!A681:A
 groupby-pivotby-functions 1092 -> 3011/3017, -functions2 1543 -> 1646/1672, -functions3 308 -> 700/700. No regressions.
 Still failing in those cases: CORREL/PEARSON/RSQ over arrays of different sizes (functions G!B421:B426, functions2
 G!B281:B286, G!B301:B306, P!A121 block; T-1707).
+Review fixes: functions3 P!A151 was a key sort (two column fields, -2 is Year), so column value sorts were probed anew
+(probes/groupby-pivotby-functions4 P!A1-A201): columns sort by their Total row cell's set like rows (3 ties at the
+parent's total), so the "own records" branch and the Total-row reuse exception are gone; `{1}` and one-cell references
+as relative_to are probed (P!A221-A261). `RelativeSets::new` counts the level pairs and refuses past 2^24 set entries
+(`MAX_SET_ENTRIES`) before building any prefix table; the DEVIATION entry names this second refusal and test
+`relative_sets_are_capped_before_they_are_built` triggers it. Set ids are `SetId { All, Pivot, Parent { axis, level,
+group } }` (grouping.rs, beside `Relative`, so the grouping core imports nothing from group_functions.rs), the sort
+axis is `Axis` instead of a bool, and the relative_to parsing is `Model::relative_to_arg` in relative_to.rs.
+functions4: 622/622.

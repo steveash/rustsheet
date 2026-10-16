@@ -937,6 +937,42 @@ fn a_reference_result_is_value_error() {
 }
 
 #[test]
+fn a_function_array_is_size_checked_before_it_is_stacked() {
+    // Directive 5: VSTACK pads a row of 16384 under a column of 1048575 to 2^34 cells, HSTACK a
+    // column of 1048576 beside a row of 16383; the stacked size is refused before any padding.
+    let mut model = region_sales();
+    model._set(
+        "D1",
+        "=GROUPBY(A2:A11,B2:B11,VSTACK(SEQUENCE(1048575),SEQUENCE(1,16384)))",
+    );
+    model._set(
+        "E1",
+        "=GROUPBY(A2:A11,B2:B11,HSTACK(SEQUENCE(1048576),SEQUENCE(1,16383)))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#ERROR!");
+    assert_eq!(model._get_text("E1"), "#ERROR!");
+}
+
+#[test]
+fn one_parameter_calls_are_charged_against_the_visit_cap_too() {
+    // Every call is charged the cells it is given: one group of 1048575 records and its total
+    // row cost 2^21 cells per function, so 10 functions compute and 100 (2E8 cells) are #ERROR!.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=549755289600=INDEX(GROUPBY(SEQUENCE(1048575,,1,0),SEQUENCE(1048575),HSTACK(_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM)),3,11)",
+    );
+    model._set(
+        "B1",
+        "=GROUPBY(SEQUENCE(1048575,,1,0),SEQUENCE(1048575),HSTACK(_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "TRUE");
+    assert_eq!(model._get_text("B1"), "#ERROR!");
+}
+
+#[test]
 fn two_parameter_lambdas_are_charged_against_the_visit_cap() {
     // SPEC-0006 Design step 3, DEVIATION (docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY"):
     // 20000 groups each given all 20000 rows visit 4E8 cells, past the cap, so the result is

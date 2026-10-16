@@ -8,15 +8,12 @@ use std::collections::{BTreeSet, HashMap};
 use crate::{
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
-    expressions::{parser::ArrayNode, types::CellReferenceIndex},
-    functions::statistical::too_many_visits,
+    expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
     functions::util::array_node_to_calc_result,
     model::Model,
 };
 
-use super::group_functions::{Relative, ALL_ROWS};
-use super::groupby::value_error;
-use super::grouping::{empty_text, Grouping, Line};
+use super::grouping::{empty_text, value_error, Axis, Grouping, Line, Relative, SetId};
 
 /// Which records of an axis a cell's relative set keeps: all, those of the cell's own row or
 /// column item (a group, a subtotal or the Total), or those of that item's parent, its key prefix
@@ -48,36 +45,35 @@ impl RelativeTo {
         }
     }
 
-    /// The relative set of a group's value in a value sort (the group's Total column cell for
-    /// rows, Total row cell for columns), given its `rows`, the group one level up, `up` (`None`
-    /// for the top level), and all `records`. Rows sort as that cell shows: their own rows, all
-    /// records, or the group one level up, all records at the top (with `relative_to` 4 the Region
-    /// parents tie at the grand total and keep their key order: probes/groupby-pivotby-functions3
-    /// P!A91; 1: P!A121). Columns sort by their own records with `relative_to` 3 too, not by the
-    /// parent total their Total row cell shows (Apple 2024 before Apple 2023 descending, 49
-    /// against 15, where both show 64: functions3 P!A151); with 1 and 2, all records (unprobed).
+    /// The relative set of a group's value in a value sort: the set of its Total cell (the
+    /// Total column for rows, the Total row for columns), given its `rows`, the group one level
+    /// up, `up` (`None` at the top level), and all `records`: its own rows, all records, or the
+    /// group one level up, all records at the top. With `relative_to` 4 over two row fields the
+    /// Region parents tie at the grand total and keep their key order (probes/groupby-pivotby-
+    /// functions3 P!A91; 1: P!A121); with 3 over two column fields the years tie at their
+    /// product's total (Apple 2023 before Apple 2024 descending, both 64), while 0 and 4 sort them
+    /// by their own records (49 before 15), 1 and 2 tie at the grand total, with and without
+    /// column subtotals and over one column field (probes/groupby-pivotby-functions4 P!A1-A201).
     pub(crate) fn of_sort<'a>(
         self,
-        rows_axis: bool,
+        axis: Axis,
         rows: &'a [usize],
         up: Option<Relative<'a>>,
         records: &'a [usize],
     ) -> Relative<'a> {
         let all = Relative {
-            id: Some(ALL_ROWS),
+            id: Some(SetId::All),
             rows: records,
         };
-        match (if rows_axis { self.rows } else { self.columns }, rows_axis) {
-            (Select::All, _) => all,
-            (Select::Parent, true) => up.unwrap_or(all),
-            (Select::Item | Select::Parent, _) => Relative { id: None, rows },
+        let select = match axis {
+            Axis::Rows => self.rows,
+            Axis::Columns => self.columns,
+        };
+        match select {
+            Select::All => all,
+            Select::Parent => up.unwrap_or(all),
+            Select::Item => Relative { id: None, rows },
         }
-    }
-
-    /// Whether a column's value sort gives the value its Total row cell shows, so the cell can
-    /// reuse it: not when the columns select their parent (see [`RelativeTo::of_sort`]).
-    pub(crate) fn column_sort_is_total(self) -> bool {
-        self.columns != Select::Parent
     }
 }
 
@@ -103,6 +99,23 @@ impl Model {
             _ => return Err(value_error(cell, "relative_to must be 0, 1, 2, 3 or 4")),
         };
         Ok(RelativeTo { rows, columns })
+    }
+
+    /// The evaluated `relative_to` argument: 0 to 4 ([`Model::relative_to`]), checked whatever
+    /// the function (P!A581), or an array, whose elements are returned to be lifted
+    /// ([`Model::lifted_relative_to`]; probes/pivotby-followup P!A681).
+    pub(crate) fn relative_to_arg(
+        &mut self,
+        arg: Option<CalcResult>,
+        cell: CellReferenceIndex,
+    ) -> Result<(RelativeTo, Option<Elements>), CalcResult> {
+        match arg {
+            Some(array @ (CalcResult::Array(_) | CalcResult::Range { .. })) => Ok((
+                RelativeTo::column_total(),
+                Some(self.result_to_array(array, cell)?),
+            )),
+            other => Ok((self.relative_to(other, cell)?, None)),
+        }
     }
 
     /// An array `relative_to`, lifted per element as Excel lifts it (`{0;1}` is a 2x1 array,
@@ -133,6 +146,9 @@ impl Model {
     }
 }
 
+/// The elements of an array `relative_to`, to be lifted ([`Model::lifted_relative_to`]).
+pub(crate) type Elements = Vec<Vec<ArrayNode>>;
+
 /// A row or column item of the grid: a group or subtotal line, or the Total (`None`).
 pub(crate) type Item = Option<Line>;
 
@@ -141,7 +157,7 @@ type Class = (usize, usize);
 
 /// One axis of the grid for the relative sets: its groups' key prefixes at each level the sets
 /// use, and each record's group.
-struct Axis {
+struct AxisSets {
     select: Select,
     fields: usize,
     group_of: Vec<usize>,
@@ -149,38 +165,32 @@ struct Axis {
     prefixes: HashMap<usize, Vec<usize>>,
 }
 
-impl Axis {
-    fn new(select: Select, grouping: &Grouping, height: usize, items: &[Line]) -> Self {
-        let fields = grouping.fields();
-        let mut axis = Axis {
-            select,
-            fields,
-            group_of: grouping.group_of(height),
-            prefixes: HashMap::new(),
-        };
+impl AxisSets {
+    /// The levels an axis' items select, counted before anything is built.
+    fn levels(select: Select, fields: usize, items: &[Line]) -> BTreeSet<usize> {
         let mut levels = BTreeSet::new();
-        levels.insert(axis.level(None));
+        levels.insert(level(select, fields, None));
         for &line in items {
-            levels.insert(axis.level(Some(line)));
+            levels.insert(level(select, fields, Some(line)));
         }
-        for level in levels {
-            axis.prefixes.insert(level, grouping.prefix_ids(level));
+        levels
+    }
+
+    fn new(select: Select, grouping: &Grouping, height: usize, levels: &BTreeSet<usize>) -> Self {
+        AxisSets {
+            select,
+            fields: grouping.fields(),
+            group_of: grouping.group_of(height),
+            prefixes: levels
+                .iter()
+                .map(|&level| (level, grouping.prefix_ids(level)))
+                .collect(),
         }
-        axis
     }
 
     /// The level of the prefix an item selects: 0 for all records.
     fn level(&self, item: Item) -> usize {
-        let level = match item {
-            None => 0,
-            Some(Line::Group(_)) => self.fields,
-            Some(Line::Subtotal { level, .. }) => level,
-        };
-        match self.select {
-            Select::All => 0,
-            Select::Item => level,
-            Select::Parent => level.saturating_sub(1),
-        }
+        level(self.select, self.fields, item)
     }
 
     /// The class (level, prefix id) of the records an item selects.
@@ -202,28 +212,46 @@ impl Axis {
             .copied()
             .unwrap_or(0)
     }
+}
 
-    /// The levels the sets use.
-    fn levels(&self) -> Vec<usize> {
-        self.prefixes.keys().copied().collect()
+/// The level of the key prefix a selection keeps of an item over `fields` key fields: 0 for all
+/// records, the item's own for `Item`, one field shorter for `Parent`.
+fn level(select: Select, fields: usize, item: Item) -> usize {
+    let level = match item {
+        None => 0,
+        Some(Line::Group(_)) => fields,
+        Some(Line::Subtotal { level, .. }) => level,
+    };
+    match select {
+        Select::All => 0,
+        Select::Item => level,
+        Select::Parent => level.saturating_sub(1),
     }
 }
+
+/// Most record entries the relative sets of one PIVOTBY call may hold (each record once per pair
+/// of key-prefix levels the cells use): 2^24, 128 MiB of indices, so that many key fields with
+/// subtotals at every level cannot fill memory (directive 5). Excel has no such limit:
+/// DEVIATION, docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY: two-parameter LAMBDAs and the
+/// cell-visit cap".
+const MAX_SET_ENTRIES: u64 = 1 << 24;
 
 /// The relative sets of one PIVOTBY call, each built once and shared by its cells: for each pair
 /// of levels the cells use (a row level, a column level), the records bucketed by their row and
 /// column prefixes at those levels, in source order.
 pub(crate) struct RelativeSets {
-    rows: Axis,
-    cols: Axis,
+    rows: AxisSets,
+    cols: AxisSets,
     index: HashMap<(Class, Class), usize>,
     sets: Vec<Vec<usize>>,
 }
 
 impl RelativeSets {
     /// The sets of `records` (in source order) for the grid of `rows` and `cols` with the row and
-    /// column lines `row_lines` and `col_lines`. Each level pair costs one pass over the records;
-    /// past the cell-visit cap (`too_many_visits`, directive 5) the whole result is that error,
-    /// before any call (only many key fields with subtotals at many levels get there).
+    /// column lines `row_lines` and `col_lines`. Each level pair holds every record once; past
+    /// [`MAX_SET_ENTRIES`] the whole result is `#ERROR!`, checked from the level counts before any
+    /// set, prefix table or call is made (only many key fields with subtotals at many levels get
+    /// there).
     pub(crate) fn new(
         relative_to: RelativeTo,
         (rows, cols): (&Grouping, &Grouping),
@@ -231,18 +259,23 @@ impl RelativeSets {
         records: &[usize],
         cell: CellReferenceIndex,
     ) -> Result<Self, CalcResult> {
+        let row_levels = AxisSets::levels(relative_to.rows, rows.fields(), row_lines);
+        let col_levels = AxisSets::levels(relative_to.columns, cols.fields(), col_lines);
+        let pairs = (row_levels.len() as u64).saturating_mul(col_levels.len() as u64);
+        if pairs.saturating_mul(records.len() as u64) > MAX_SET_ENTRIES {
+            return Err(CalcResult::new_error(
+                Error::ERROR,
+                cell,
+                "Too many relative set entries".to_string(),
+            ));
+        }
         let height = records.iter().max().map_or(0, |&row| row + 1);
         let mut sets = RelativeSets {
-            rows: Axis::new(relative_to.rows, rows, height, row_lines),
-            cols: Axis::new(relative_to.columns, cols, height, col_lines),
+            rows: AxisSets::new(relative_to.rows, rows, height, &row_levels),
+            cols: AxisSets::new(relative_to.columns, cols, height, &col_levels),
             index: HashMap::new(),
             sets: Vec::new(),
         };
-        let (row_levels, col_levels) = (sets.rows.levels(), sets.cols.levels());
-        let pairs = (row_levels.len() * col_levels.len()) as u64;
-        if let Some(error) = too_many_visits(pairs.saturating_mul(records.len() as u64), cell) {
-            return Err(error);
-        }
         for &row_level in &row_levels {
             for &col_level in &col_levels {
                 for &record in records {
@@ -271,13 +304,10 @@ impl RelativeSets {
         let key = (self.rows.class(row), self.cols.class(col));
         let at = self.index.get(&key).copied();
         Relative {
-            id: at.map(|at| (SETS, at)),
+            id: at.map(SetId::Pivot),
             rows: at
                 .and_then(|at| self.sets.get(at))
                 .map_or(&[][..], Vec::as_slice),
         }
     }
 }
-
-/// The first part of the ids of [`RelativeSets`]' sets (`Relative::id`).
-const SETS: usize = 1;

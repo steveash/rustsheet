@@ -4,14 +4,14 @@
 //! docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY", evidence probes/groupby-pivotby sheet P,
 //! its follow-ups (T-1328) and probes/pivotby-followup (excel-graph, 2026-10-16, T-1326).
 
-use super::group_functions::{Aggregate, Functions, Relative, Shape};
+use super::group_functions::{Aggregate, Functions, Shape};
 use super::groupby::{
-    at, grand_total_label, key_names, not_implemented, total_label_cells, value_error, value_name,
+    grand_total_label, key_names, not_implemented, total_label_cells, value_name,
     values_have_header, width, FieldHeaders,
 };
 use super::grouping::{
-    effective_depth, empty_text, shown_key, subtotal_levels, Aggregates, Grouping, Line,
-    ParentOrder, SortOrder,
+    at, effective_depth, empty_text, shown_key, subtotal_levels, value_error, Aggregates, Axis,
+    Grouping, Line, ParentOrder, Relative, SortOrder,
 };
 use super::relative_to::{Item, RelativeSets, RelativeTo};
 use crate::{
@@ -105,7 +105,7 @@ impl Model {
             functions,
             &mut rows,
             &pivot,
-            (row_sort, ParentOrder::ByValue, true),
+            (row_sort, ParentOrder::ByValue, Axis::Rows),
             cell,
         );
         // The column parents sort by their own aggregate only with subtotals (probes/pivotby-
@@ -117,11 +117,11 @@ impl Model {
             ParentOrder::ByKey
         };
         let col_sort = &pivot.col_sort;
-        let mut col_totals = self.sort_pivot_groups(
+        let col_totals = self.sort_pivot_groups(
             functions,
             &mut cols,
             &pivot,
-            (col_sort, col_parents, false),
+            (col_sort, col_parents, Axis::Columns),
             cell,
         );
 
@@ -129,9 +129,6 @@ impl Model {
         let row_lines = rows.lines(subtotal_levels(pivot.row_depth), pivot.row_depth < 0);
         // The sets name groups by index, so they are built once the groups are sorted.
         let sets = if functions.needs_relative() {
-            if !pivot.relative_to.column_sort_is_total() {
-                col_totals = None;
-            }
             let lines = (&row_lines[..], &col_lines[..]);
             let sets = RelativeSets::new(
                 pivot.relative_to,
@@ -356,15 +353,7 @@ impl Model {
         // row may be left out of the filter, and keeping no record is #VALUE! (P!A281,
         // P!A1481-A1601, probes/groupby-pivotby-followup G!A881, -followup3 G!A133).
         let records = self.filter_rows(filter, height, first, cell)?;
-        // relative_to: 0 to 4 ([`Model::relative_to`]), checked whatever the function (P!A581),
-        // or an array lifted per element (probes/pivotby-followup P!A681).
-        let (relative_to, lifted) = match relative_to {
-            Some(array @ (CalcResult::Array(_) | CalcResult::Range { .. })) => (
-                RelativeTo::column_total(),
-                Some(self.result_to_array(array, cell)?),
-            ),
-            other => (self.relative_to(other, cell)?, None),
-        };
+        let (relative_to, lifted) = self.relative_to_arg(relative_to, cell)?;
         let row_depth = effective_depth(row_depth, row_depth_given, &row_sort, row_fields);
         let col_depth = effective_depth(col_depth, col_depth_given, &col_sort, col_fields);
         // TODO(T-1700): column subtotals over several value columns. Excel shows most of their
@@ -409,7 +398,7 @@ impl Model {
         functions: &mut Functions,
         grouping: &mut Grouping,
         pivot: &Pivot,
-        (order, parents, rows_axis): (&SortOrder, ParentOrder, bool),
+        (order, parents, axis): (&SortOrder, ParentOrder, Axis),
         cell: CellReferenceIndex,
     ) -> Option<(usize, Aggregates)> {
         let values = &pivot.values;
@@ -417,10 +406,8 @@ impl Model {
             return None;
         };
         let pair = functions.pair_at(0, column);
-        let totals = grouping.sort_by_aggregate(ascending, parents, cell, |rows, up| {
-            let relative = pivot
-                .relative_to
-                .of_sort(rows_axis, rows, up, &pivot.records);
+        let totals = grouping.sort_by_aggregate(ascending, (parents, axis), cell, |rows, up| {
+            let relative = pivot.relative_to.of_sort(axis, rows, up, &pivot.records);
             let at = Aggregate { rows, relative };
             self.aggregate(functions, pair, values, at, cell)
         });

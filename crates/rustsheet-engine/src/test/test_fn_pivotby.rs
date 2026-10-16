@@ -464,8 +464,7 @@ fn parent_totals_over_two_fields() {
 #[test]
 fn value_sorts_by_a_two_argument_function() {
     // probes/groupby-pivotby-functions3 P!A91: rows sort by their Total cell, 4 the parent's:
-    // the Region parents tie at the grand total and keep their key order. P!A151: columns sort
-    // by their own records with 3 (Apple 2024 before Apple 2023, descending).
+    // the Region parents tie at the grand total and keep their key order.
     let grid = pivot(
         &format!("=PIVOTBY(A2:B11,C2:C11,D2:D11,{SET},,1,3,,,,4)"),
         10,
@@ -476,8 +475,24 @@ fn value_sorts_by_a_two_argument_function() {
         keys,
         ["East", "East", "North", "South", "West", "West", "West", "0", "Total"]
     );
+    // probes/groupby-pivotby-functions4 P!A1, P!A21: columns sort by their Total row cell too: 3
+    // ties the years at their product's total (2023 before 2024), 0 by their own records.
     let grid = pivot(
-        &format!("=PIVOTBY(A2:A11,B2:C11,D2:D11,{SET},,,,1,-2,,3)"),
+        &format!("=PIVOTBY(A2:A11,B2:C11,D2:D11,{SET},,,,1,-3,,3)"),
+        2,
+        7,
+    );
+    assert_eq!(grid[1], ["", "2023", "2024", "2025", "2023", "2024", ""]);
+    assert_eq!(
+        pivot(
+            &format!("=PIVOTBY(A2:A11,B2:C11,D2:D11,{SET},,,,1,-3,,3)"),
+            8,
+            7
+        )[7],
+        ["Total", "64", "64", "9.5", "57", "57", "130.5"]
+    );
+    let grid = pivot(
+        &format!("=PIVOTBY(A2:A11,B2:C11,D2:D11,{SET},,,,1,-3,,0)"),
         2,
         7,
     );
@@ -513,4 +528,25 @@ fn two_parameter_lambdas_are_charged_against_the_visit_cap() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("B1"), "1");
+}
+
+#[test]
+fn relative_sets_are_capped_before_they_are_built() {
+    // DEVIATION (docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY: two-parameter LAMBDAs and
+    // the cell-visit cap"): 16 row and 16 column fields at depth 16 with relative_to 3 use 17 x 16
+    // level pairs, 272 x 65535 set entries, past 2^24: #ERROR! before any set is built; depth 2
+    // uses 3 x 2 and computes.
+    let mut model = new_empty_model();
+    let fields = "SEQUENCE(65535,16,1,0)";
+    model._set(
+        "A1",
+        &format!("=PIVOTBY({fields},{fields},SEQUENCE(65535),{SET},,16,,16,,,3)"),
+    );
+    model._set(
+        "B1",
+        &format!("=ISERROR(PIVOTBY({fields},{fields},SEQUENCE(65535),{SET},,2,,2,,,3))"),
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+    assert_eq!(model._get_text("B1"), "FALSE");
 }

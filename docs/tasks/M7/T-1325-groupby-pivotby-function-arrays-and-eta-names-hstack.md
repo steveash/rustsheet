@@ -57,3 +57,9 @@ CORREL/PEARSON/RSQ over different sizes (T-1707). No regressions (measured on ma
 `line_row` and `grid_row` carry the function arrays too; PIVOTBY column subtotals with several output columns stay
 `#N/IMPL!` with T-1700). Follow-ups: T-1706 (every eta name's
 minimum argument count), T-1707 (CORREL/PEARSON/RSQ).
+Review fixes: a function array's stacked size is checked with `check_array_size` from its parts' dimensions before it is
+padded or copied (test `a_function_array_is_size_checked_before_it_is_stacked`); every call kind, not only two-parameter
+LAMBDAs, is charged against the visit cap before its arguments are built (test
+`one_parameter_calls_are_charged_against_the_visit_cap_too`); `too_many_visits` and its constant live in limits.rs; `at`,
+`value_error` and `Relative` moved to grouping.rs so groupby.rs and group_functions.rs no longer import each other; the
+CORREL/PEARSON/RSQ quirk is recorded in docs/excel-semantics/statistics.md (T-1707).

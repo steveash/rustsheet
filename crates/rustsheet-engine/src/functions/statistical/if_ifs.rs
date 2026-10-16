@@ -4,7 +4,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
 use crate::functions::util::array_node_to_calc_result;
-use crate::limits::check_array_size;
+use crate::limits::{check_array_size, too_many_visits};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::{ArrayNode, Node},
@@ -74,20 +74,6 @@ impl CriteriaArg {
     }
 }
 
-/// Most cells all the per-element walks of one lifted *IF(S) call may visit, so a crafted formula
-/// (`COUNTIFS(A:A,SEQUENCE(1048576))` over a filled column) cannot run for hours (CLAUDE.md
-/// directive 5). Excel has no such limit: DEVIATION, docs/excel-semantics/criteria.md
-/// ("*IF(S) lift array criteria").
-const MAX_LIFTED_CELL_VISITS: u64 = 1 << 27;
-
-/// `#ERROR!` when `visits` cells are more than one call may visit ([`MAX_LIFTED_CELL_VISITS`]):
-/// the lifted *IF(S) and AGGREGATE calls, and the two-parameter LAMBDAs GROUPBY and PIVOTBY call
-/// with a whole relative set (SPEC-0006 Design step 3). Excel has no such limit: DEVIATION.
-pub(crate) fn too_many_visits(visits: u64, cell: CellReferenceIndex) -> Option<CalcResult> {
-    (visits > MAX_LIFTED_CELL_VISITS)
-        .then(|| CalcResult::new_error(Error::ERROR, cell, "Too many cells to visit".to_string()))
-}
-
 /// Elements [`Model::lift_criteria`] computes: one per run of equal consecutive criteria, in
 /// row-major order (the rest reuse the previous result).
 fn count_walks(args: &[CriteriaArg], rows: usize, columns: usize) -> u64 {
@@ -140,7 +126,7 @@ impl Model {
     ///
     /// `walked` is the range every element walks (the value range, or COUNTIFS's first criteria
     /// range): the call is `#ERROR!` when its used cells times the criteria count times the
-    /// elements to compute exceed [`MAX_LIFTED_CELL_VISITS`].
+    /// elements to compute exceed `limits::MAX_LIFTED_CELL_VISITS`.
     ///
     fn lift_criteria(
         &mut self,
