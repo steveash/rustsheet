@@ -250,7 +250,13 @@ Evidence: probes/external-ref-no-link-let Calc!A1:A20, external-ref-no-link-ifch
 (excel-graph, 2026-10-16, T-1535). Engine: `Model::pick_reference` reads such a LET with its names
 bound (`let_scope`) when every argument its body may pick names another workbook; a LET whose body
 may pick any other argument (a reference into this workbook, a value: `IF(c,…!A1:B3,"x")`) is read
-as before, and INDEX over such a LET reads it as INDEX over the IF does; both unprobed (T-1710).
+as before. Probed since (T-1710, probes/external-ref-no-link-let-index, excel-graph 2026-10-16):
+INDEX over such a LET is INDEX over the reference it picks (`ERROR.TYPE(INDEX(LET(c,TRUE,IF(c,…!A1:C4)),2,2))`
+`#N/A`, `ROWS(INDEX(…,2,0))` 1; ours matches), and a LET body that may also pick another argument is
+still read with its names bound and the IF's pick made: `ROWS(LET(c,TRUE,IF(c,…!A1:B3,"x")))` and
+`ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))` are 3, `ISREF(LET(c,TRUE,IF(c,…!A1,D1)))` TRUE and
+`COUNTA(LET(c,TRUE,IF(c,…!A1:B2,1)))` 0; ours gives `#BLOCKED!`, FALSE and 1 (T-1721). OFFSET over
+such a LET is not a reference: `ISREF(OFFSET(LET(c,TRUE,…!A1),1,1))` is FALSE (ours TRUE; T-1721), as OFFSET over the bare external reference is (external-ref-no-link-index A16, A17): the miss is that ours does not unwrap the LET first.
 `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3, and the engine matches since T-1508, which broadcasts CHOOSE's
 arms over an index array (external-ref-no-link-ifchoose A32).
 Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external
