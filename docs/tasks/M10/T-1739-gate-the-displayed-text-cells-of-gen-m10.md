@@ -3,7 +3,7 @@ id: T-1739
 title: "Gate the displayed-text cells of gen-m10 with a text baseline"
 milestone: M10
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
