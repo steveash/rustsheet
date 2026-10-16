@@ -3,7 +3,7 @@ id: T-0428
 title: "Oracle probe cases for circular references, iterative calculation and TABLE() data tables (cases only, Phase 2 implements)"
 milestone: M11
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
