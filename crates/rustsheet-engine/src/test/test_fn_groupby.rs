@@ -314,8 +314,20 @@ fn argument_corners_are_value_errors() {
     model._set("D2", "=GROUPBY(A2:A11,B2:B11,5)");
     model._set("D3", "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),,0.5)");
     model._set("D4", "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),2.5)");
+    // Function arrays wait for T-1325 (G!S121, G!AB121).
+    model._set(
+        "D5",
+        "=GROUPBY(A2:A11,B2:B11,HSTACK(_xleta.SUM,_xleta.MAX))",
+    );
+    model._set(
+        "D6",
+        "=GROUPBY(A2:A11,B2:B11,VSTACK(_xleta.SUM,_xleta.MAX))",
+    );
+    model._set("D7", "=GROUPBY(A2:A11,B2:B11,_xleta.SUM)");
     model.evaluate();
     assert_eq!(column(&model, "D", 1, 4), vec!["#VALUE!"; 4]);
+    assert_eq!(column(&model, "D", 5, 6), vec!["#N/IMPL!"; 2]);
+    assert_eq!(model._get_text("E7"), "45");
 }
 
 #[test]

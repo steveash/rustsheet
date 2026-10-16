@@ -195,7 +195,8 @@ with A1 = -2, A2 = 3, `ROWS(ABS(A:A))` = `ROWS(A:A+0)` = 1048576, `SUM(ABS(A:A))
 Only a dimension past the grid is `#VALUE!` (`SEQUENCE(1048577)`).
 RustSheet returns `#ERROR!` (not even an Excel error value) for any array above 1,048,576 cells
 (one whole column): SEQUENCE, RANDARRAY, MAKEARRAY/BYROW/BYCOL results, matrix results, an *IF(S)
-criteria grid (broadcast criteria included), the broadcast result of `lift_numbers` (ROUND family, MOD, DATE), a lifted INDEX's broadcast indices (T-1260), the broadcast of a binary operator over two arrays
+criteria grid (broadcast criteria included), a GROUPBY result (groups x columns, checked while grouping, before any
+LAMBDA call; T-1322), the broadcast result of `lift_numbers` (ROUND family, MOD, DATE), a lifted INDEX's broadcast indices (T-1260), the broadcast of a binary operator over two arrays
 (arithmetic, `&` and comparisons: a whole column against a whole row, `=D:D+4:4`, would be 2^34
 cells, and even a whole column against two columns, `SUM(A1:A1048576*B1:C1)`, is 2^21; T-1420), the broadcast of IF, IFERROR and IFNA (`=IF(D:D,4:4)`, `=IFERROR(D:D,4:4)`; T-1448), and every range lifted into an array (`Model::evaluate_range`: scalar functions
 over a range, operators, IF/IFERROR, TEXT, IS*, NOT, a bare range spilled from a cell), checked
@@ -348,12 +349,15 @@ two-parameter LAMBDA (each cell, not the whole result). `field_headers` 2 over t
 Total. A header row over no records (`GROUPBY(A1,D1,f,1)`), a non-function (`5`) and fractional options (`total_depth`
 0.5, `field_headers` 2.5) are `#VALUE!` (ERROR.TYPE 3). An empty-text key (`=""`) is its own group, separate from the blank
 key: it shows `""`, sorts as text (before "a"; after it descending), and the blank key stays last.
+Unprobed: whether one row of text values with no rows below is a header (the engine takes it as data), and where
+error keys sort against text, booleans and the blank key (the engine uses `sort_key_cmp`'s order: after booleans,
+before blank).
 Ours: GROUPBY (T-1322, functions/lookup_and_reference/groupby.rs): the shared `Grouping` core (hash grouping on
 `cell_key` with -0 as 0, sorting with `sort_key_cmp` and numbers compared exactly), a LAMBDA or eta-name function called
 once per group and value column through one `LambdaCaller`, field_headers and auto-detect, total_depth 0/±1, `""`
 fillers, several value columns, the output size checked with `check_array_size` before any call. Not yet: sort_order,
-filter_array (T-1323), total_depth ±2 and field_relationship (T-1324; `#N/IMPL!` until then), function arrays and
-PERCENTOF's relative set (T-1325), a one-cell reference result (`#VALUE!` in Excel, its value here: T-1325), PIVOTBY
+filter_array (T-1323), total_depth ±2 and field_relationship (T-1324), function arrays (T-1325; all
+`#N/IMPL!` until then), PERCENTOF's relative set (T-1325; called with one argument today), a one-cell reference result (`#VALUE!` in Excel, its value here: T-1325), PIVOTBY
 (T-1326, T-1327).
 Status: VERIFIED (web)
 Tasks: T-1276, T-1328, T-1322

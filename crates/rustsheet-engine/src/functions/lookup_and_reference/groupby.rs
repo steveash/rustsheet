@@ -16,6 +16,8 @@ use crate::{
     },
     functions::logical::LambdaCaller,
     functions::spill_functions::{cell_key, sort_key_cmp, CellKey},
+    functions::util::collation::cmp_text,
+    functions::Function,
     limits::check_array_size,
     model::Model,
 };
@@ -36,8 +38,14 @@ impl Grouping {
     /// Groups `rows` (indices into `keys`, one key tuple per row) like UNIQUE: text is
     /// case-insensitive and numbers compare exactly ([`group_key`]). The key is built once per row
     /// and looked up in a hash map, so grouping is O(rows x key fields). The groups are in order
-    /// of first appearance until [`Grouping::sort_by_keys`].
-    pub(crate) fn new(keys: &[Vec<ArrayNode>], rows: impl IntoIterator<Item = usize>) -> Self {
+    /// of first appearance until [`Grouping::sort_by_keys`]. `limit(n)` is the error `n` groups
+    /// would give (the output size check, SPEC-0006 step 6); grouping stops at the first group
+    /// that does not fit, so no more groups are built than the output can hold.
+    pub(crate) fn new(
+        keys: &[Vec<ArrayNode>],
+        rows: impl IntoIterator<Item = usize>,
+        limit: impl Fn(usize) -> Option<(Error, String)>,
+    ) -> Result<Self, (Error, String)> {
         let mut index: HashMap<Vec<CellKey>, usize> = HashMap::new();
         let mut groups: Vec<Group> = Vec::new();
         for row in rows {
@@ -51,6 +59,9 @@ impl Grouping {
                     }
                 }
                 Entry::Vacant(entry) => {
+                    if let Some(error) = limit(groups.len() + 1) {
+                        return Err(error);
+                    }
                     entry.insert(groups.len());
                     groups.push(Group {
                         keys: tuple.iter().map(positive_zero).collect(),
@@ -59,14 +70,15 @@ impl Grouping {
                 }
             }
         }
-        Grouping { groups }
+        Ok(Grouping { groups })
     }
 
     /// Sorts the groups by their keys, field by field, `ascending[i]` for field `i` (ascending
     /// when missing). Mixed types sort numbers < text < FALSE < TRUE (G!A193) and the blank key
     /// sorts last in both directions (G!A1, G!A145): that is `sort_key_cmp`. Numbers compare
     /// exactly, not to 15 digits: 0.3 sorts before 0.1+0.2 (probes/groupby-pivotby-followup
-    /// G!A761), matching the exact `cell_key` grouping.
+    /// G!A761), matching the exact `cell_key` grouping. (Errors against text, booleans and the
+    /// blank key: unprobed, SPEC-0006.)
     pub(crate) fn sort_by_keys(&mut self, ascending: &[bool], cell: CellReferenceIndex) {
         self.groups.sort_by(|a, b| {
             a.keys
@@ -100,18 +112,19 @@ fn positive_zero(node: &ArrayNode) -> ArrayNode {
     }
 }
 
-/// [`sort_key_cmp`] with numbers compared exactly (see [`Grouping::sort_by_keys`]).
+/// [`sort_key_cmp`] with numbers compared exactly (see [`Grouping::sort_by_keys`]), and text
+/// compared in place with the comparator `sort_key_cmp` reaches (`cmp_text`, through
+/// `compare_values`) instead of converting and cloning both strings on every comparison.
 fn key_cmp(a: &ArrayNode, b: &ArrayNode, ascending: bool, cell: CellReferenceIndex) -> Ordering {
-    match (a, b) {
-        (ArrayNode::Number(x), ArrayNode::Number(y)) => {
-            let ordering = x.total_cmp(y);
-            if ascending {
-                ordering
-            } else {
-                ordering.reverse()
-            }
-        }
-        _ => sort_key_cmp(a, b, ascending, cell),
+    let ordering = match (a, b) {
+        (ArrayNode::Number(x), ArrayNode::Number(y)) => x.total_cmp(y),
+        (ArrayNode::String(x), ArrayNode::String(y)) => cmp_text(x, y),
+        _ => return sort_key_cmp(a, b, ascending, cell),
+    };
+    if ascending {
+        ordering
+    } else {
+        ordering.reverse()
     }
 }
 
@@ -159,6 +172,15 @@ fn value_error(cell: CellReferenceIndex, message: &str) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, message.to_string())
 }
 
+/// `#N/IMPL!` for a GROUPBY feature a later SPEC-0006 step adds.
+fn not_implemented(cell: CellReferenceIndex, feature: &str) -> CalcResult {
+    CalcResult::new_error(
+        Error::NIMPL,
+        cell,
+        format!("{feature} are not implemented yet"),
+    )
+}
+
 /// An optional argument, `None` when it is missing or omitted (`GROUPBY(k,v,f,,0)`).
 fn given(arg: Option<&Node>) -> Option<&Node> {
     arg.filter(|node| !matches!(node, Node::EmptyArgKind))
@@ -193,22 +215,36 @@ impl Model {
         }
         let keys = self.eval_to_array(&args[0], cell)?;
         let values = self.eval_to_array(&args[1], cell)?;
+        // TODO(T-1325): function arrays (`HSTACK(SUM,AVERAGE)`, G!S121) are not implemented
+        // rather than a wrong #VALUE!. PERCENTOF (G!S97) still runs with one argument: its keys
+        // column already matches Excel.
+        if matches!(
+            args[2].ungrouped(),
+            Node::FunctionKind {
+                kind: Function::Hstack | Function::Vstack,
+                ..
+            }
+        ) {
+            return Err(not_implemented(cell, "GROUPBY function arrays"));
+        }
         let function = self.evaluate_node_in_context(&args[2], cell);
         let headers = self.field_headers(args.get(3), cell)?;
         let key_columns = keys.first().map_or(0, Vec::len);
         let total_depth = self.total_depth(args.get(4), key_columns, cell)?;
         // TODO(T-1323): sort_order and filter_array; TODO(T-1324): field_relationship.
         if args.iter().skip(5).any(|arg| given(Some(arg)).is_some()) {
-            return Err(CalcResult::new_error(
-                Error::NIMPL,
+            return Err(not_implemented(
                 cell,
-                "GROUPBY sort_order, filter_array and field_relationship are not implemented yet"
-                    .to_string(),
+                "GROUPBY sort_order, filter_array and field_relationship",
             ));
         }
-        match function {
+        match &function {
             CalcResult::Lambda(_) => {}
-            error @ CalcResult::Error { .. } => return Err(error),
+            CalcResult::Array(_) | CalcResult::Range { .. } => {
+                return Err(not_implemented(cell, "GROUPBY function arrays"));
+            }
+            CalcResult::Error { .. } => return Err(function),
+            // A scalar is #VALUE! (probes/groupby-lambda-forms G!A217).
             _ => return Err(value_error(cell, "GROUPBY expects a function")),
         }
         // Values of another height than the keys are #VALUE! (G!AB193, followup G!A1-A41).
@@ -230,17 +266,17 @@ impl Model {
             // A header row and no records: probes/groupby-lambda-forms G!S193 (ERROR.TYPE 3).
             return Err(value_error(cell, "GROUPBY has no records"));
         }
-        let mut grouping = Grouping::new(&keys, first..keys.len());
-        grouping.sort_by_keys(&[], cell);
-
         let value_columns = values.first().map_or(0, Vec::len);
         let shows_header = matches!(headers, FieldHeaders::Generated | FieldHeaders::Shown);
-        let rows =
-            grouping.groups.len() + usize::from(shows_header) + usize::from(total_depth != 0);
-        // The output size is checked before any LAMBDA call or allocation (SPEC-0006 step 6).
-        if let Some((error, message)) = check_array_size(rows, key_columns + value_columns) {
-            return Err(CalcResult::new_error(error, cell, message));
-        }
+        let extra_rows = usize::from(shows_header) + usize::from(total_depth != 0);
+        // The output size is checked while grouping, before the sort, any LAMBDA call or the
+        // output allocation (SPEC-0006 step 6).
+        let limit =
+            |groups: usize| check_array_size(groups + extra_rows, key_columns + value_columns);
+        let mut grouping = Grouping::new(&keys, first..keys.len(), limit)
+            .map_err(|(error, message)| CalcResult::new_error(error, cell, message))?;
+        grouping.sort_by_keys(&[], cell);
+        let rows = grouping.groups.len() + extra_rows;
 
         let mut caller = self.lambda_caller(&function, 1);
         let mut output = Vec::with_capacity(rows);
@@ -310,12 +346,10 @@ impl Model {
             0.0 => Ok(0),
             1.0 => Ok(1),
             -1.0 => Ok(-1),
-            depth if depth.abs() == 2.0 && key_columns > 1 => Err(CalcResult::new_error(
-                Error::NIMPL,
-                cell,
-                // TODO(T-1324): subtotals.
-                "GROUPBY subtotals are not implemented yet".to_string(),
-            )),
+            // TODO(T-1324): subtotals.
+            depth if depth.abs() == 2.0 && key_columns > 1 => {
+                Err(not_implemented(cell, "GROUPBY subtotals"))
+            }
             _ => Err(value_error(cell, "total_depth is out of range")),
         }
     }
@@ -403,7 +437,8 @@ mod tests {
     /// The first key of each group and its rows, after sorting with `ascending`.
     fn sorted(keys: &[ArrayNode], ascending: bool) -> Vec<(ArrayNode, Vec<usize>)> {
         let keys: Vec<Vec<ArrayNode>> = keys.iter().map(|key| vec![key.clone()]).collect();
-        let mut grouping = Grouping::new(&keys, 0..keys.len());
+        let mut grouping = Grouping::new(&keys, 0..keys.len(), |_| None)
+            .unwrap_or(Grouping { groups: Vec::new() });
         grouping.sort_by_keys(&[ascending], CELL);
         grouping
             .groups
@@ -458,7 +493,8 @@ mod tests {
             vec![text("b"), ArrayNode::Number(1.0)],
             vec![text("a"), ArrayNode::Number(3.0)],
         ];
-        let mut grouping = Grouping::new(&keys, 0..keys.len());
+        let mut grouping = Grouping::new(&keys, 0..keys.len(), |_| None)
+            .unwrap_or(Grouping { groups: Vec::new() });
         grouping.sort_by_keys(&[true, false], CELL);
         let rows: Vec<Vec<usize>> = grouping.groups.into_iter().map(|g| g.rows).collect();
         assert_eq!(rows, [vec![1, 3], vec![0], vec![2]]);
