@@ -18,7 +18,7 @@ The engine counts overlapping instances (`text_sensitive`, `nth_overlapping_matc
 
 ## Acceptance criteria
 - [x] A probe case with oracle values covers overlapping instances (also with instance_num 1 and 3, and negative cases); the engine matches or the quirk is implemented.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
