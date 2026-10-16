@@ -3,7 +3,7 @@ id: T-1682
 title: "Probe INDIRECT of defined-name text: values, a1=FALSE, sheet-qualified, scope and formula-valued names"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
