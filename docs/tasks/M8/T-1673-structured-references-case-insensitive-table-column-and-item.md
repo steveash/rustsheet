@@ -3,7 +3,7 @@ id: T-1673
 title: "Structured references: case-insensitive table, column and item names, and multiple item specifiers"
 milestone: M8
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: sonnet
@@ -24,10 +24,13 @@ Structured references match table names, column names and item specifiers (`#All
   docs/excel-semantics/references.md "Structured references: names and item specifiers".
 
 ## Acceptance criteria
-- [ ] Table, column and specifier names resolve ignoring case; `[[#Headers],[#Data],...]` and
+- [x] Table, column and specifier names resolve ignoring case; `[[#Headers],[#Data],...]` and
   `[[#Data],[#Totals],...]` combinations parse and give the right area (unit tests).
-- [ ] gen-m8b names-case and specials cells failing only on these pass; `make eval-baseline`.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m8b names-case and specials cells failing only on these pass; `make eval-baseline`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The `@` shorthand (T-1672); totals rows from the eval adapter (T-1671).
+
+## Outcome
+Table names (parser lookup), column names and item specifiers now match ignoring case; `[[#Headers],[#Data],...]` and `[[#Data],[#Totals],...]` lex to new `TableSpecifier::HeadersData` / `DataTotals`, resolved in `structured_reference_operand`. Other combinations (e.g. `[#Totals],[#Headers]`) stay a parse error: no oracle evidence for them. Also a `[[#Totals]]` left its closing `]` unconsumed; now consumed. gen-m8b is ungated (no baseline change): names-case 5b5c0e20e82153bb 32 -> 376 of 400 cells, specials e804cf2f8af00680 -> 285 of 400, whole suite 2384 -> 2742 of 3368. Remaining failures are `#Totals` from the eval adapter (T-1671) and rows outside the table (T-1675). `make check` green. Unprobed: other specifier orders/triples (e.g. `[#Data],[#Headers]`, all three).

@@ -221,6 +221,12 @@ impl Model {
             Node::FunctionKind { kind, args } => {
                 match self.evaluate_reference_form(kind, args, cell) {
                     Some(result) => matches!(result, CalcResult::Range { .. }),
+                    // INDIRECT of text that is no reference is `#REF!`, not a reference:
+                    // `ISREF(INDIRECT("R0"))` is FALSE (probes/r1c1-name-use-r0, excel-graph; T-1657).
+                    None if matches!(kind, crate::functions::Function::Indirect) => matches!(
+                        self.evaluate_node_with_reference(node, cell),
+                        CalcResult::Range { .. }
+                    ),
                     None => kind.returns_reference(),
                 }
             }

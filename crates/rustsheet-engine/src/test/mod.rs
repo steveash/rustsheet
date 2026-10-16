@@ -144,6 +144,7 @@ mod test_fn_ceiling_floor_lift;
 mod test_fn_datevalue_timevalue;
 mod test_fn_drop_take;
 mod test_fn_fv;
+mod test_fn_groupby;
 mod test_fn_isomitted;
 mod test_fn_isref;
 mod test_fn_lambda;
