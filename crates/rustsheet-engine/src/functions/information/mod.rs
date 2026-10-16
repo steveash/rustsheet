@@ -221,6 +221,12 @@ impl Model {
             Node::FunctionKind { kind, args } => {
                 match self.evaluate_reference_form(kind, args, cell) {
                     Some(result) => matches!(result, CalcResult::Range { .. }),
+                    // INDIRECT of text that is no reference is `#REF!`, not a reference:
+                    // `ISREF(INDIRECT("R0"))` is FALSE (probes/r1c1-name-use-r0, excel-graph; T-1657).
+                    None if matches!(kind, crate::functions::Function::Indirect) => matches!(
+                        self.evaluate_node_with_reference(node, cell),
+                        CalcResult::Range { .. }
+                    ),
                     None => kind.returns_reference(),
                 }
             }
@@ -458,18 +464,6 @@ impl Model {
                         origin: cell,
                         message: "Invalid name".to_string(),
                     };
-                }
-            }
-            Node::TableNameKind(name) => {
-                // Now let's see if it is a table
-                for (table_name, table) in &self.workbook.tables {
-                    if table_name == name {
-                        if let Some(sheet_index) = self.get_sheet_index_by_name(&table.sheet_name) {
-                            return CalcResult::Number(sheet_index as f64 + 1.0);
-                        } else {
-                            break;
-                        }
-                    }
                 }
             }
             Node::NamedVariableKind { name, id: _ } => {

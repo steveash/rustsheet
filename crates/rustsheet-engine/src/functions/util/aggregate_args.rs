@@ -37,9 +37,11 @@ pub(crate) enum ErrorRule {
     /// direct error to its right still beats it. An error inside an array ranks with the
     /// referenced errors (SUM: probes/aggregate-error-precedence C50, C53–C55, C61, C77; PRODUCT:
     /// probes/product-array-2d-and-scalar A7–A17, T-1287; MIN, MAX, AVERAGE, MEDIAN:
-    /// probes/aggregate-array-error-vs-ref-error, T-1615).
+    /// probes/aggregate-array-error-vs-ref-error, T-1615; the AVERAGE family and DEVSQ, AVEDEV,
+    /// SUMSQ: probes/aggregate-error-precedence-stat-family, T-1439).
     Ranked,
-    /// The first error in argument order returns at once (DEVSQ, AVEDEV, SUMSQ).
+    /// The first error in argument order returns at once (VARA and its siblings, UNVERIFIED: T-1696;
+    /// AND, OR, XOR).
     First,
     /// Errors are items for the visitor, which counts or ignores them (COUNT ignores them, COUNTA
     /// counts them; syntax.md). Only a walk-budget error returns.
@@ -53,6 +55,9 @@ pub(crate) enum ArgReading {
     Aggregate,
     /// `evaluate_picked_reference_arg`: cached blanks kept (COUNTA).
     PickedKeepingBlanks,
+    /// `evaluate_node_in_context`, no reference picking (AND, OR, XOR; T-1677). A range across
+    /// two sheets is `#VALUE!` and a direct LAMBDA `#N/IMPL`, both direct errors.
+    InContext,
 }
 
 /// What sets one consumer's argument walk apart (SPEC-0009, "Consumer mapping").
@@ -154,7 +159,7 @@ impl AggregateWalk {
     /// The `#VALUE!` of a direct LAMBDA ranks with the referenced errors: it is held when nothing
     /// is held yet, so a later direct error beats it and an earlier or later referenced error does
     /// not (probes/aggregate-direct-lambda-average-family D14-D31, excel-graph 2026-10-15, T-1602).
-    /// This holds under `ErrorRule::First` too (DEVSQ, AVEDEV, SUMSQ), whatever `policy.errors` says.
+    /// This holds under `ErrorRule::First` too, whatever `policy.errors` says.
     fn lambda_error(&mut self, error: CalcResult) {
         if self.held.is_none() {
             self.held = Some(error);
@@ -236,9 +241,30 @@ impl Model {
         let read = match walk.policy.reading {
             ArgReading::Aggregate => self.evaluate_aggregate_arg(arg, cell),
             ArgReading::PickedKeepingBlanks => self.evaluate_picked_reference_arg(arg, cell),
+            ArgReading::InContext => self.evaluate_in_context_arg(arg, cell),
         };
         let is_reference = matches!(arg.ungrouped(), Node::ReferenceKind { .. });
         self.walk_aggregate_read(read, is_reference, cell, walk, visit)
+    }
+
+    /// [`ArgReading::InContext`]: the argument as `evaluate_node_in_context` gives it.
+    fn evaluate_in_context_arg(&mut self, arg: &Node, cell: CellReferenceIndex) -> RefArg {
+        match self.evaluate_node_in_context(arg, cell) {
+            CalcResult::Range { left, right } if left.sheet != right.sheet => {
+                RefArg::Value(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Ranges are in different sheets".to_string(),
+                ))
+            }
+            // An error here returns at once, where the walker would hold a LAMBDA's error.
+            CalcResult::Lambda(_) => RefArg::Value(CalcResult::new_error(
+                Error::NIMPL,
+                cell,
+                "Lambdas not supported".to_string(),
+            )),
+            value => RefArg::from(value),
+        }
     }
 
     /// One argument already read, for a consumer that picks its argument itself (COUNTA);

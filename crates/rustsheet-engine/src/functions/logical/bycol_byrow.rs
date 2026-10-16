@@ -64,6 +64,16 @@ impl LambdaGrid {
     }
 }
 
+/// `Ok` when an evaluated function argument is a LAMBDA (an eta name evaluates to one), else `Err`
+/// with what it evaluated to: the check BYROW, BYCOL, GROUPBY and PIVOTBY share, each mapping
+/// anything else to its own error.
+pub(crate) fn as_lambda(value: CalcResult) -> Result<CalcResult, CalcResult> {
+    match value {
+        lambda @ CalcResult::Lambda(_) => Ok(lambda),
+        other => Err(other),
+    }
+}
+
 fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     match result {
         CalcResult::Number(n) => ArrayNode::Number(n),
@@ -71,12 +81,16 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
         CalcResult::String(s) => ArrayNode::String(s),
         CalcResult::Error { error, .. } => ArrayNode::Error(error),
         CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
+        // A 1x1 array is its one value (probes/byrow-bycol-array-results, excel-graph 2026-10-16).
+        CalcResult::Array(mut rows) if rows.len() == 1 && rows[0].len() == 1 => {
+            rows.remove(0).remove(0)
+        }
         _ => ArrayNode::Error(Error::VALUE),
     }
 }
 
 /// Whether a LAMBDA's result makes BYROW or BYCOL give one `#CALC!` cell: several values, but not
-/// a 1x1 array, whose Excel behavior is unprobed (it stays `#VALUE!` as before, T-1664).
+/// a 1x1 array, which counts as its one value (T-1670).
 fn makes_calc_error(result: &CalcResult) -> bool {
     result.is_multi_value()
         && !matches!(result, CalcResult::Array(a) if a.len() == 1 && a[0].len() == 1)
@@ -172,14 +186,8 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<CalcResult, CalcResult> {
-        match self.evaluate_node_in_context(arg, cell) {
-            lambda @ CalcResult::Lambda(_) => Ok(lambda),
-            _ => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Expected a LAMBDA".to_string(),
-            )),
-        }
+        as_lambda(self.evaluate_node_in_context(arg, cell))
+            .map_err(|_| CalcResult::new_error(Error::VALUE, cell, "Expected a LAMBDA".to_string()))
     }
 
     /// The array and the one-argument LAMBDA caller of a BYROW or BYCOL call, in that order of
@@ -368,5 +376,27 @@ impl Model {
         }
 
         CalcResult::Array(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::as_lambda;
+    use crate::calc_result::CalcResult;
+
+    #[test]
+    fn as_lambda_passes_anything_else_through_unchanged() {
+        assert!(matches!(
+            as_lambda(CalcResult::Lambda(7)),
+            Ok(CalcResult::Lambda(7))
+        ));
+        assert!(matches!(
+            as_lambda(CalcResult::Number(5.0)),
+            Err(CalcResult::Number(n)) if n == 5.0
+        ));
+        assert!(matches!(
+            as_lambda(CalcResult::Array(Vec::new())),
+            Err(CalcResult::Array(rows)) if rows.is_empty()
+        ));
     }
 }

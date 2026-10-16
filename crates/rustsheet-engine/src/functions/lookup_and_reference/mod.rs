@@ -1,8 +1,10 @@
 use crate::arithmetic::bcast_get;
 use crate::cast::NumberOrArray;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::expressions::utils::is_out_of_range_r1c1_name;
 use crate::functions::logical::{if_arg_at, if_arg_dims};
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
@@ -22,12 +24,14 @@ mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
 mod expand;
+mod groupby;
 mod hstack_vstack;
 mod index;
 mod index_arg;
 mod lookup;
 mod lookup_each;
 pub(crate) mod lookup_table;
+mod pivotby;
 mod tocol_torow;
 mod transpose;
 mod trimrange;
@@ -668,11 +672,37 @@ impl Model {
                 right: reference,
             },
             Ok(ParsedReference::Range(left, right)) => CalcResult::Range { left, right },
-            Err(message) => CalcResult::Error {
-                error: Error::REF,
-                origin: cell,
-                message,
+            Err(message) => match self.indirect_defined_name(&ref_text, cell.sheet, a1) {
+                Some(found) => found,
+                None => CalcResult::Error {
+                    error: Error::REF,
+                    origin: cell,
+                    message,
+                },
             },
+        }
+    }
+
+    /// INDIRECT of the text of a defined name that stands for a reference (`INDIRECT("RCR")`,
+    /// `ISREF` TRUE; probes/r1c1-name-use-rcr, excel-graph). A name spelled like an out-of-range
+    /// R1C1 reference is never resolved (T-1657).
+    fn indirect_defined_name(&self, text: &str, sheet: u32, a1: bool) -> Option<CalcResult> {
+        if !a1 || is_out_of_range_r1c1_name(text) {
+            return None;
+        }
+        let found = self
+            .parsed_defined_name(text, Some(sheet))
+            .or_else(|| self.parsed_defined_name(text, None));
+        match found? {
+            ParsedDefinedName::CellReference(reference) => Some(CalcResult::Range {
+                left: *reference,
+                right: *reference,
+            }),
+            ParsedDefinedName::RangeReference(range) => Some(CalcResult::Range {
+                left: range.left,
+                right: range.right,
+            }),
+            _ => None,
         }
     }
 

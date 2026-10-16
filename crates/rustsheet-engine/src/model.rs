@@ -687,11 +687,6 @@ impl Model {
                     )
                 }
             }
-            TableNameKind(s) => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("table name \"{s}\" not supported."),
-            ),
             // A variable bound to a single cell is that cell's value where a value is wanted, and
             // the reference itself where a reference is wanted (`evaluate_node_with_reference`).
             NamedVariableKind { .. } => match self.variable_value(node, cell) {

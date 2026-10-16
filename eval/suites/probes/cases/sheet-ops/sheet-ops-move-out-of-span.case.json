@@ -1,0 +1,51 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Moving a sheet out of a 3-D span drops it from the span. (T-1608)",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SUM(Jan:Mar!A1)",
+        "A2": "=COUNT(Jan:Mar!A1)",
+        "A3": "=SUM(INDIRECT(\"Jan:Mar!A1\"))",
+        "B1": "=FORMULATEXT(A1)",
+        "B2": "=FORMULATEXT(A2)",
+        "B3": "=FORMULATEXT(A3)"
+      }
+    },
+    {
+      "name": "Jan",
+      "cells": {
+        "A1": 10,
+        "B1": "Jan"
+      }
+    },
+    {
+      "name": "Feb",
+      "cells": {
+        "A1": 20,
+        "B1": "Feb"
+      }
+    },
+    {
+      "name": "Mar",
+      "cells": {
+        "A1": 30,
+        "B1": "Mar"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "move",
+      "sheet": "Feb",
+      "to": 3
+    }
+  ]
+}

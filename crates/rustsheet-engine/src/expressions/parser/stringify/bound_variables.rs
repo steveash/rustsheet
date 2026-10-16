@@ -92,7 +92,6 @@ pub(super) fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         | Node::WrongRangeKind { .. }
         | Node::ArrayKind(_)
         | Node::DefinedNameKind(_)
-        | Node::TableNameKind(_)
         | Node::ErrorKind(_)
         | Node::ParseErrorKind { .. }
         | Node::EmptyArgKind => {}

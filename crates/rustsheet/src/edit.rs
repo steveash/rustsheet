@@ -107,6 +107,15 @@ pub enum SheetChange {
         /// The new name.
         to: String,
     },
+    /// A sheet was moved in the tab order.
+    Moved {
+        /// The sheet.
+        id: SheetId,
+        /// Its 0-based position before the move.
+        from: u32,
+        /// Its 0-based position after the move.
+        to: u32,
+    },
     /// A sheet was deleted.
     Deleted {
         /// The sheet.
@@ -149,6 +158,11 @@ enum Undo {
     DeletedSheet {
         index: u32,
         sheet: Box<Worksheet>,
+    },
+    /// A sheet moved by `move_sheet`, with its position before the move.
+    Moved {
+        sheet_id: u32,
+        index: u32,
     },
     /// A defined name added by `define_name` (`sheet_id: None`) or `define_sheet_name`.
     DefinedName {
@@ -379,6 +393,32 @@ impl Txn<'_> {
             id,
             from: old_name,
             to: new_name.to_string(),
+        });
+        Ok(())
+    }
+
+    /// Moves a sheet to the 0-based `position` in the tab order. References keep naming the sheet,
+    /// so a 3-D span (`Sheet1:Sheet3!A1`) covers the sheets between its two ends in the new order.
+    ///
+    /// # Errors
+    /// [`EditError::Ref`] for an unknown sheet or a position past the last sheet.
+    pub fn move_sheet(&mut self, id: SheetId, position: u32) -> Result<(), EditError> {
+        let index = sheet_index(self.model, id)?;
+        if usize::try_from(position).map_or(true, |p| p >= self.model.workbook.worksheets.len()) {
+            return Err(RefError::OutOfBounds.into());
+        }
+        self.model
+            .move_sheet(index, position)
+            .map_err(|m| EditError::from_engine_message(m, None))?;
+        self.sheet_op = true;
+        self.undo.push(Undo::Moved {
+            sheet_id: id.get(),
+            index,
+        });
+        self.sheets.push(SheetChange::Moved {
+            id,
+            from: index,
+            to: position,
         });
         Ok(())
     }
@@ -618,6 +658,17 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
                 {
                     let undone = model.delete_sheet(u32::try_from(index).unwrap_or(u32::MAX));
                     debug_assert!(undone.is_ok(), "undo of add_sheet failed: {undone:?}");
+                }
+            }
+            Undo::Moved { sheet_id, index } => {
+                if let Some(now) = model
+                    .workbook
+                    .worksheets
+                    .iter()
+                    .position(|w| w.get_sheet_id() == sheet_id)
+                {
+                    let undone = model.move_sheet(u32::try_from(now).unwrap_or(u32::MAX), index);
+                    debug_assert!(undone.is_ok(), "undo of move_sheet failed: {undone:?}");
                 }
             }
             Undo::Renamed { sheet_id, old_name } => {

@@ -15,7 +15,7 @@ depends_on: [T-0122, T-1074]
 
 ## Context
 T-0122 added `Node::SheetSpanKind` (crates/rustsheet-engine/src/expressions/parser/mod.rs). Today
-(docs/excel-semantics/references.md "3-D references when sheets or cells change", UNVERIFIED):
+(docs/excel-semantics/references.md "3-D references when sheets move or are renamed", UNVERIFIED):
 renaming an end sheet renames it in the formula; moving a sheet re-resolves the span by name;
 deleting an end sheet makes the reference `#REF!`; row and column edits do not shift the span
 (stringify passes `DisplaceData::None` to the inner reference). Excel's behavior is not probed and

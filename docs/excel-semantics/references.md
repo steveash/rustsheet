@@ -82,14 +82,54 @@ COUNTBLANK of an error argument: `fn_countblank` (functions/statistical/count.rs
 through `evaluate_picked_reference_arg`, so a reference stays a range and only an error value is returned.
 Tasks: T-0122, T-0197, T-1026, T-1064, T-1139, T-1158, T-1170, T-1181
 
-## 3-D references when sheets or cells change (unprobed)
-Rule (engine, not Excel evidence): renaming an end sheet renames it in the formula, and moving a
-sheet re-resolves the span by name. Deleting an end sheet makes the reference `#REF!`, and inserting
-or deleting rows or columns does not shift the span. Excel's own rules for these edits are not probed.
-The excel-graph oracle only recalculates an uploaded workbook and cannot delete a sheet, so a span that lost an end sheet
-cannot be probed there (T-1181); the M14 desktop oracle question is T-1310.
-Status: UNVERIFIED
-Tasks: T-0198
+## 3-D references when sheets move or are renamed
+Rule (excel-graph, replayed sheet edits, T-1608):
+- Renaming an end sheet renames it in the formula: `=SUM(Jan:Mar!A1)` becomes `=SUM(Jan:Last!A1)`.
+  When the new name needs quotes, the whole span prefix is quoted: `=SUM('First One:Mar'!A1)`.
+  Evidence: probes/sheet-ops/sheet-ops-rename-span-end, sheet-ops-rename-span-start (B1, B2).
+- Moving a middle sheet out of the span drops it, and moving a sheet between the ends adds it.
+  This includes a sheet just added there, which is empty. Evidence: sheet-ops-move-out-of-span,
+  sheet-ops-move-into-span and sheet-ops-add-into-span.
+- **Moving an end sheet past the other end shrinks the span to the sheets still between them.**
+  Excel rewrites the formula: with Calc, Jan, Feb, Mar, moving Mar to position 1 gives
+  `=SUM(Jan:Feb!A1)` (30), and moving Jan to position 3 gives `=SUM(Feb:Mar!A1)` (50). The span is
+  not re-resolved by name. Evidence: sheet-ops-move-span-end-first, sheet-ops-move-span-start-last.
+  The engine keeps `Jan:Mar` (40): T-1691.
+- Moving the sheet that holds the formula changes nothing (sheet-ops-move-formula-sheet).
+Unprobed: deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
+cannot delete a sheet (T-1181), and the M14 desktop question is T-1310. The engine makes a span
+that lost an end sheet `#REF!` and does not shift a span for row or column edits.
+Status: VERIFIED (Excel for the web) for renames and moves; UNVERIFIED for deletes
+Tasks: T-1691, T-0198
+
+## A sheet rename rewrites references, names and FORMULATEXT, but not INDIRECT text
+Rule (excel-graph, T-1608):
+- Renaming a sheet rewrites every reference to it, and FORMULATEXT shows the new name. This
+  covers cell, range, whole-column and whole-row references, and the formula's own sheet.
+- The new name is quoted when it needs quotes: `'My Data'!A1`, `'2024'!A1`, and `'AB12'!A1` for a
+  name that looks like a cell. Renaming a quoted name to a plain one drops the quotes.
+- A case-only rename (`Data` to `DATA`) shows the new case.
+- Workbook-scoped names follow the sheet.
+- INDIRECT text keeps the name it was written with. `INDIRECT("Inputs!A1")` reaches the renamed
+  sheet, and `INDIRECT("data!A2")` still resolves after a case-only rename. INDIRECT text naming
+  the old name names a missing sheet. That is `#REF!` in desktop Excel, and Excel for the web
+  differs (lookup.md, "INDIRECT to a sheet that does not exist is #REF!"), so the sheet-op probes
+  do not score those cells.
+- Sheets renamed in a chain, or swapped through a scratch name, keep their references: each
+  formula follows its sheet, not the name.
+Evidence: probes/sheet-ops/sheet-ops-rename-cell-refs, -needs-quotes, -digits, -cell-like,
+-from-quoted, -case-only, -defined-names, -twice, -swap, -formula-sheet-self, -indirect-text.
+A sheet-qualified sheet-scoped name (`=Data!Local`) also keeps working after the rename (3, and
+`#SPILL!` for the bare two-cell name), which the engine does not: T-1693
+(sheet-ops-rename-sheet-scoped-name).
+Status: VERIFIED (Excel for the web)
+Tasks: T-1693
+
+## INDIRECT does not take 3-D text
+Rule (excel-graph): INDIRECT of span text is `#REF!`. `SUM(INDIRECT("Jan:Mar!A1"))` is `#REF!`,
+while `SUM(Jan:Mar!A1)` written in the formula sums the span.
+Evidence: probes/sheet-ops/sheet-ops-move-out-of-span A3 (the engine matches).
+Status: VERIFIED (Excel for the web)
 
 ## Undefined names may contain backslashes
 Rule: an undefined name such as `HSI\10_1\1460_1\1470_1___val` parses as a name and evaluates
@@ -1510,12 +1550,15 @@ Defined names: a workbook defining any name the R1C1 test quotes is rejected by 
 `C1.C1` defined, `=R1.C1*1` is `#SPILL!` and `=C1.C1*1` 0, ISREF TRUE (ours reads the name: T-1659).
 A name spelled like an out-of-range R1C1 reference (`R0`, `C0`, `R0C1`, `r0c1`, `R1048577`,
 `R1048577C1`) loads but every use is `#NAME?` (`=R0*1`, `SUM(R0)`, and `ISREF(INDIRECT("R0"))` is
-FALSE; FORMULATEXT keeps `=R0*1`). Ours defines it and reads 7 (T-1657). Table names are not probed;
+FALSE; FORMULATEXT keeps `=R0*1`). Ours matches (T-1657): the parser does not resolve it, and
+the R1C1 lexer reads an out-of-range uppercase `R0C1` as a name, so it survives the R1C1 storage.
+Table names are not probed;
 ours applies the defined-name rule to them.
 LET and LAMBDA names are not tested at all: `LET(n,5,n*2)` is 10 for `RC`, `R1C`, `R1C1`, `r1c1`,
 `R5C7`, `R12C`, `R0C1`, `R0`, `R1048577`, `R1_`, `R1.C1`, `R1C1D`, `C1D`, `RCR` and `C`. Ours keeps
-refusing an uppercase `R<n>C<m>` (`R1C1`, `R5C7`, `R0C1`): formulas are stored in R1C1 form, where
-that spelling reads back as a cell reference after a reload (T-1658).
+refusing an in-range uppercase `R<n>C<m>` (`R1C1`, `R5C7`): formulas are stored in R1C1 form, where
+that spelling reads back as a cell reference after a reload (T-1658). An out-of-range one (`R0C1`)
+is a name in R1C1 form too, so `LET(R0C1,5,R0C1*2)` is 10 (T-1657).
 A bare `RC`, `R1C1D`, `R0C1` or `RCR` token in a cell formula of an uploaded file makes Graph reject
 the workbook (so it is unprobed).
 Unprobed: brackets cannot occur in sheet or defined names, so `R[1]C` forms are not covered;
@@ -1525,8 +1568,9 @@ Evidence: probes/r1c1-shaped-sheet-names, -lower, -2, -3, -4, -5, -lower-2 (FORM
 r1c1-let-name-*, lotus-dot-range (excel-graph, 2026-10-15).
 Implemented in: `is_r1c1_shaped` and `is_dotted_a1_range` (expressions/utils/mod.rs), used by
 `name_needs_quoting` (both) and `is_valid_identifier` (the R1C1 test); `is_valid_a1_identifier`
-(LET, LAMBDA and the lexer) refuses only `R<n>C<m>` (`is_r1c1_cell_text`).
-Status: VERIFIED (excel-graph), except T-1657, T-1658 and T-1659.
+(LET, LAMBDA and the lexer) refuses only an in-range `R<n>C<m>` (`is_r1c1_cell_text`);
+`is_out_of_range_r1c1_name` (names never resolved: `name_operand`, INDIRECT, the R1C1 lexer).
+Status: VERIFIED (excel-graph), except T-1658 and T-1659.
 Tasks: T-1652
 
 ## Structured references: this row, totals and ranges
@@ -1548,7 +1592,7 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
   `Stock` at E1:E2 with nothing below the header has `ROWS(Stock[[#Data],[Cost]:[Cost]])` = 1 and `#All` 2, and
   its `#Totals` is `#REF!` (column-range 44cecbb1ecd5b2da K180, K23, K185).
 Status: VERIFIED (excel-graph)
-Implemented in: partly; the `@` shorthand is T-1672, rows outside the table and reversed ranges T-1675,
+Implemented in: partly; the `@` shorthand is implemented (T-1672), rows outside the table and reversed ranges T-1675,
 totals rows from the eval adapter T-1671.
 Tasks: T-1607, T-1671, T-1672, T-1675
 
@@ -1564,6 +1608,13 @@ in a column name must be escaped: `Stock[C'#]`, `Sales[it''s]`, `Wide[Rate '[%']
 one word needs its own brackets after `@` (`Sales[@[Unit Price]]`) (escaped d86ef297e840325f, 386/400 pass
 in the engine already).
 Status: VERIFIED (excel-graph)
-Implemented in: escapes (expressions/lexer/structured_references.rs); case-insensitive names and several
-specifiers are T-1673, the bare name T-1674.
+Implemented in: escapes, case-insensitive names and the two contiguous specifier pairs (Headers+Data, Data+Totals) in expressions/lexer/structured_references.rs and parser/operands.rs (T-1673); other orders are unprobed, the
+bare name and `Table[]` are the data area (T-1674). Case-insensitive `#This Row` is unprobed (assumed like the other specifiers); no model-level test yet for the HeadersData/DataTotals areas with a totals row (needs T-1671).
 Tasks: T-1607, T-1673, T-1674
+
+## Structured references: the `@` shorthand
+Rule: `T[@]`, `T[@Col]`, `T[@[Col]]` and `T[@[A]:[B]]` are the UI spelling of `#This Row` and evaluate identically to the long form; `'@` inside a column name is a literal `@`.
+Evidence: gen-m8b in-table 19fdc25163755713 and this-row e1bf5aa0ffb4ed87 (excel-graph).
+Status: VERIFIED for evaluation; UNVERIFIED for FORMULATEXT (RustSheet shows the lowered `=$A$2`; Excel's output unprobed) and for rejecting unbracketed multi-word `T[@Unit Price]` / unterminated `T[@Qty`.
+Implemented in: `Lexer::consume_this_row_shorthand`.
+Tasks: T-1672, T-1683

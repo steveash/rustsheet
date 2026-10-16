@@ -6,6 +6,7 @@
 //              "#Data"     |
 //              "#Headers"  |
 //              "#Totals"
+// this_row_shorthand -> "[@]" | "[@" column_name "]" | "[@" "[" column_name "]" "]" | "[@" range_reference "]"
 // table_reference -> column_reference | range_reference
 // column reference -> column_name | "["column_name"]"
 // range_reference -> column_reference":"column_reference
@@ -16,33 +17,43 @@ use crate::expressions::token::{TableReference, TableSpecifier};
 use super::Result;
 use super::{Lexer, LexerError};
 
+/// The two contiguous item-specifier pairs Excel accepts together (gen-m8b specials e804cf2f8af00680).
+fn combine_specifiers(
+    first: Option<TableSpecifier>,
+    second: Option<TableSpecifier>,
+) -> Option<TableSpecifier> {
+    match (first?, second?) {
+        (TableSpecifier::Headers, TableSpecifier::Data) => Some(TableSpecifier::HeadersData),
+        (TableSpecifier::Data, TableSpecifier::Totals) => Some(TableSpecifier::DataTotals),
+        _ => None,
+    }
+}
+
 impl Lexer {
     fn consume_table_specifier(&mut self) -> Result<Option<TableSpecifier>> {
         if self.peek_char() == Some('#') {
             // It's a specifier
-            // TODO(TD): There are better ways of doing this :)
-            let rest_of_formula: String = self.chars[self.position..self.len].iter().collect();
-            let specifier = if rest_of_formula.starts_with("#This Row]") {
-                self.position += "#This Row]".len();
-                TableSpecifier::ThisRow
-            } else if rest_of_formula.starts_with("#All]") {
-                self.position += "#All]".len();
-                TableSpecifier::All
-            } else if rest_of_formula.starts_with("#Data]") {
-                self.position += "#Data]".len();
-                TableSpecifier::Data
-            } else if rest_of_formula.starts_with("#Headers]") {
-                self.position += "#Headers]".len();
-                TableSpecifier::Headers
-            } else if rest_of_formula.starts_with("#Totals]") {
-                self.position += "#Totals]".len();
-                TableSpecifier::Totals
-            } else {
-                return Err(LexerError {
-                    position: self.position,
-                    message: "Invalid structured reference".to_string(),
-                });
-            };
+            // The longest specifier name is "#this row]" (10 chars).
+            let rest_of_formula: String = self.chars
+                [self.position..self.len.min(self.position + 10)]
+                .iter()
+                .collect();
+            // Item specifiers match ignoring case (gen-m8b names-case 5b5c0e20e82153bb).
+            let rest_lower = rest_of_formula.to_lowercase();
+            let (name, specifier) = [
+                ("#this row]", TableSpecifier::ThisRow),
+                ("#all]", TableSpecifier::All),
+                ("#data]", TableSpecifier::Data),
+                ("#headers]", TableSpecifier::Headers),
+                ("#totals]", TableSpecifier::Totals),
+            ]
+            .into_iter()
+            .find(|(name, _)| rest_lower.starts_with(name))
+            .ok_or_else(|| LexerError {
+                position: self.position,
+                message: "Invalid structured reference".to_string(),
+            })?;
+            self.position += name.chars().count();
             Ok(Some(specifier))
         } else {
             Ok(None)
@@ -58,6 +69,12 @@ impl Lexer {
             ')'
         };
 
+        self.consume_escaped_until(end_char)
+    }
+
+    /// Reads a column name up to the unescaped `end_char` (consumed when it is `]`),
+    /// unescaping the `'` sequences.
+    fn consume_escaped_until(&mut self, end_char: char) -> Result<String> {
         let mut position = self.position;
         while position < self.len {
             let next_char = self.chars[position];
@@ -88,6 +105,39 @@ impl Lexer {
             .replace("'#", "#")
             .replace("'@", "@")
             .replace("''", "'"))
+    }
+
+    /// The `@` shorthand for `#This Row`: `T[@]`, `T[@Col]`, `T[@[Col]]` and `T[@[A]:[B]]`
+    /// lex like their `[#This Row]` forms (Excel only shows `@` in the UI).
+    fn consume_this_row_shorthand(&mut self, table_name: &str) -> Result<TokenType> {
+        self.position += 1; // '@'
+        let specifier = Some(TableSpecifier::ThisRow);
+        let table_reference = match self.peek_char() {
+            Some(']') => {
+                self.position += 1;
+                None
+            }
+            Some('[') => {
+                let left = self.consume_column_reference()?;
+                let reference = if self.peek_char() == Some(':') {
+                    self.position += 1;
+                    let right = self.consume_column_reference()?;
+                    TableReference::RangeReference((left, right))
+                } else {
+                    TableReference::ColumnReference(left)
+                };
+                self.expect(TokenType::RightBracket)?;
+                Some(reference)
+            }
+            _ => Some(TableReference::ColumnReference(
+                self.consume_escaped_until(']')?,
+            )),
+        };
+        Ok(TokenType::StructuredReference {
+            table_name: table_name.to_string(),
+            specifier,
+            table_reference,
+        })
     }
 
     /// Possibilities:
@@ -122,6 +172,9 @@ impl Lexer {
             self.expect(TokenType::RightBracket)?;
             return Ok(TokenType::Ident(table_name.to_string()));
         }
+        if peek_char == Some('@') {
+            return self.consume_this_row_shorthand(table_name);
+        }
         if peek_char == Some('#') {
             // Expecting MyTable[#Totals]
             if let Some(specifier) = self.consume_table_specifier()? {
@@ -147,13 +200,27 @@ impl Lexer {
             });
         }
         self.expect(TokenType::LeftBracket)?;
-        let specifier = self.consume_table_specifier()?;
+        let mut specifier = self.consume_table_specifier()?;
         if specifier.is_some() {
-            let peek_token = self.peek_token();
-            if peek_token == TokenType::Comma {
+            if self.peek_token() == TokenType::Comma {
                 self.advance_token();
                 self.expect(TokenType::LeftBracket)?;
-            } else if peek_token == TokenType::RightBracket {
+                // A second item specifier: [[#Headers],[#Data],...] or [[#Data],[#Totals],...]
+                if self.peek_char() == Some('#') {
+                    let position = self.position;
+                    let second = self.consume_table_specifier()?;
+                    specifier = Some(combine_specifiers(specifier, second).ok_or(LexerError {
+                        position,
+                        message: "Invalid structured reference".to_string(),
+                    })?);
+                    if self.peek_token() == TokenType::Comma {
+                        self.advance_token();
+                        self.expect(TokenType::LeftBracket)?;
+                    }
+                }
+            }
+            if self.peek_token() == TokenType::RightBracket {
+                self.expect(TokenType::RightBracket)?;
                 return Ok(TokenType::StructuredReference {
                     table_name: table_name.to_string(),
                     specifier,
