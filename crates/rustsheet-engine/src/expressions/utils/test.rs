@@ -336,3 +336,25 @@ fn test_a1_identifier_allows_r_and_c() {
     assert!(!is_valid_a1_identifier("A23"));
     assert!(!is_valid_a1_identifier("true"));
 }
+
+// probes/r1c1-name-r0 and siblings (excel-graph, T-1657): defined names Excel never resolves.
+#[test]
+fn out_of_range_r1c1_names() {
+    for name in [
+        "R0",
+        "C0",
+        "R0C1",
+        "r0c1",
+        "R1048577",
+        "R1048577C1",
+        "c16385",
+        "R1C0",
+    ] {
+        assert!(is_out_of_range_r1c1_name(name), "{name}");
+    }
+    for name in [
+        "R1", "C1", "R1C1", "RC", "R", "C", "R1C", "RCR", "CR", "R0D", "R0C1D", "okname", "",
+    ] {
+        assert!(!is_out_of_range_r1c1_name(name), "{name}");
+    }
+}

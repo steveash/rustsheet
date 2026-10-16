@@ -5,7 +5,7 @@
 
 use super::super::token::{self, TableReference, TokenType};
 use super::super::types::ParsedReference;
-use super::super::utils::number_to_column;
+use super::super::utils::{is_out_of_range_r1c1_name, number_to_column};
 use super::reference_operators::is_reference_operand;
 use super::*;
 
@@ -269,8 +269,11 @@ impl Parser {
         };
 
         // Could be a defined name or a table
-        if let Some((scope, formula)) = self.get_defined_name(&name, context_sheet_index) {
-            return Node::DefinedNameKind((name, scope, formula));
+        // Excel defines such a name but never resolves it (T-1657).
+        if !is_out_of_range_r1c1_name(&name) {
+            if let Some((scope, formula)) = self.get_defined_name(&name, context_sheet_index) {
+                return Node::DefinedNameKind((name, scope, formula));
+            }
         }
         let name_lower = name.to_lowercase();
         for table_name in self.tables.keys() {

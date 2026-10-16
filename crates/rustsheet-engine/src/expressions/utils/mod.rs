@@ -128,6 +128,38 @@ pub(crate) fn is_r1c1_shaped(name: &str) -> bool {
     text.get(position) != Some(&b'.')
 }
 
+/// Whether `name` is exactly `R<n>`, `C<n>` or `R<n>C<n>` (any case) with a number out of range
+/// (`R0`, `C0`, `R0C1`, `R1048577`, `R1048577C1`). Graph loads a defined name spelled so, but every
+/// use is `#NAME?`: docs/excel-semantics/references.md "R1C1-shaped sheet and defined names"
+/// (probes/r1c1-name-r0 and siblings, r1c1-name-use-*; excel-graph, T-1657). `LET` names are
+/// not affected (probes/r1c1-let-name-r0).
+pub(crate) fn is_out_of_range_r1c1_name(name: &str) -> bool {
+    let text = name.as_bytes();
+    let mut position = 1;
+    let (row, column) = if text.first().is_some_and(|c| c.eq_ignore_ascii_case(&b'R')) {
+        let Some(row) = leading_number(text, &mut position) else {
+            return false;
+        };
+        if position == text.len() {
+            (Some(row), None)
+        } else if text[position].eq_ignore_ascii_case(&b'C') {
+            position += 1;
+            (Some(row), leading_number(text, &mut position))
+        } else {
+            return false;
+        }
+    } else if text.first().is_some_and(|c| c.eq_ignore_ascii_case(&b'C')) {
+        (None, leading_number(text, &mut position))
+    } else {
+        return false;
+    };
+    // A bare `R1C`, `C` or trailing text is not this shape.
+    if position != text.len() || (row.is_none() && column.is_none()) {
+        return false;
+    }
+    row.is_some_and(|r| !is_valid_row(r)) || column.is_some_and(|c| !is_valid_column_number(c))
+}
+
 /// Whether `name` starts with a Lotus-style range: an A1 cell, one or more dots and an A1 cell,
 /// then nothing or a dot and anything (`A1.B2`, `A1..B2`, `R1.C1`, `A1.B2.C3`; not `A1.B2D`,
 /// `A1.XFE1`, `A0.B1`). Excel reads `SUM(A1.B2)` as `SUM(A1:B2)`, and quotes a sheet with such a
