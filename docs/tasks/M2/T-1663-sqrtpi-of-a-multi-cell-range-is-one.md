@@ -3,7 +3,7 @@ id: T-1663
 title: "SQRTPI of a multi-cell range is one #VALUE!, not a spill"
 milestone: M2
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
