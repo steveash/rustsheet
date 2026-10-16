@@ -549,6 +549,14 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let value = self.evaluate_node_in_context(&args[0], cell);
+        // A range of several cells is one `#VALUE!`, never a spill, whatever it holds (numbers,
+        // text or blanks); an array constant still lifts (probes/sqrtpi-range-operands,
+        // radians-sqrtpi-munit A80; docs/excel-semantics/numbers.md "RADIANS, SQRTPI and MUNIT").
+        if let CalcResult::Range { left, right } = &value {
+            if left != right {
+                return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
+            }
+        }
         if matches!(value, CalcResult::Boolean(_)) {
             return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
         }

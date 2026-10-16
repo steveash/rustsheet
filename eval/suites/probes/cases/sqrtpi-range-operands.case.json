@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SQRTPI of multi-cell ranges: numbers, a boolean, text, blanks, vertical and 2-D, to see when Excel spills and when it gives one #VALUE! (T-1663).",
+  "tags": [
+    "M5",
+    "math",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "H1": 4,
+        "I1": 9,
+        "H2": true,
+        "I2": 9,
+        "H3": "x",
+        "I3": 4,
+        "H4": 4,
+        "H5": 9,
+        "A1": "=SQRTPI(H1:I1)",
+        "A3": "=SQRTPI(H2:I2)",
+        "A5": "=SQRTPI(H3:I3)",
+        "A7": "=SQRTPI(H4:H5)",
+        "A10": "=SQRTPI(H6:I6)",
+        "A12": "=SQRTPI(H1:I2)",
+        "A15": "=SQRTPI({4,TRUE})",
+        "A17": "=SQRTPI({4,9})"
+      }
+    }
+  ],
+  "expected": {}
+}
