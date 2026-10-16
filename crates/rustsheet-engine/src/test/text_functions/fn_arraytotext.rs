@@ -38,14 +38,15 @@ fn test_arraytotext_numbers_match_valuetotext() {
             model._set("A2", &format!("=VALUETOTEXT({value}, {format})"));
             model._set("A3", &format!("=ARRAYTOTEXT({{{literal}}}, {format})"));
             model.evaluate();
-            assert_eq!(model._get_text("A1"), expected);
-            assert_eq!(model._get_text("A1"), model._get_text("A2"));
-            let braces = if format == 1 {
+            // Strict form braces even a scalar (probes/arraytotext-number-text A4).
+            let braced = if format == 1 {
                 format!("{{{expected}}}")
             } else {
                 expected.to_string()
             };
-            assert_eq!(model._get_text("A3"), braces);
+            assert_eq!(model._get_text("A1"), braced);
+            assert_eq!(model._get_text("A2"), expected);
+            assert_eq!(model._get_text("A3"), braced);
         }
     }
     let mut model = new_empty_model();

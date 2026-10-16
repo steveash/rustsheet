@@ -34,20 +34,16 @@ impl Model {
                 Err(error) => return error,
             },
             CalcResult::Array(a) => a,
+            // Excel: a scalar is a one-element array, so strict form braces it
+            // (docs/excel-semantics/text.md#arraytotext-number-text, probes/arraytotext-number-text).
             CalcResult::Number(n) => {
-                return CalcResult::String(
-                    format_array_value(&ArrayNode::Number(n), strict).into(),
-                );
+                return scalar_text(&ArrayNode::Number(n), strict);
             }
             CalcResult::String(s) => {
-                return CalcResult::String(if strict {
-                    format!("\"{}\"", s.replace('"', "\"\"")).into()
-                } else {
-                    s
-                });
+                return scalar_text(&ArrayNode::String(s), strict);
             }
             CalcResult::Boolean(b) => {
-                return CalcResult::String(if b { "TRUE".into() } else { "FALSE".into() });
+                return scalar_text(&ArrayNode::Boolean(b), strict);
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => {
                 return CalcResult::String(String::new().into());
@@ -84,6 +80,11 @@ impl Model {
         };
         CalcResult::String(result.into())
     }
+}
+
+fn scalar_text(node: &ArrayNode, strict: bool) -> CalcResult {
+    let text = format_array_value(node, strict);
+    CalcResult::String(if strict { format!("{{{text}}}") } else { text }.into())
 }
 
 fn format_array_value(node: &ArrayNode, strict: bool) -> String {
