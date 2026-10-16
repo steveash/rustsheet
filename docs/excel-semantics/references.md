@@ -217,8 +217,8 @@ with a local cell (`COUNTA((…!A1,E1))`, `COUNTA(…!A1 E1)`, both `#VALUE!`) a
 Evidence: probes/external-ref-no-link-ifchoose Calc!A1:A34, H1:N2, external-ref-no-link-ifchoose-b
 Calc!A1:A6 (excel-graph, 2026-10-14, T-1487).
 Engine: `Model::pick_branch` reads the condition or index of an IF or CHOOSE that may pick an
-external reference once, and `Model::pick_reference` hands the picked argument to ROWS, COLUMNS, ROW, COLUMN, ISREF, AREAS,
-COUNTA, COUNTBLANK, INDEX and the aggregates; IF's and CHOOSE's value read it as INDEX's (T-1487).
+external reference once, and `Model::pick_reference` hands the picked argument to ROWS,
+COLUMNS, ROW, COLUMN, ISREF, AREAS, COUNTA, COUNTBLANK, INDEX and the aggregates; IF's and CHOOSE's value read it as INDEX's (T-1487).
 INDEX with an index array into an external reference lifts per element (`index_lifted` via
 `external_index_args`): each element is the top-left cell of the scalar pick, read with
 `external_picked_value` (`=INDEX(…!A1:C4,{1,2},1)` spills 0, 0; probes/external-ref-no-link-ifchoose
@@ -245,7 +245,8 @@ condition error is that error (`ROWS(LET(c,1/0,IF(c,…!A1:B3)))` `#DIV/0!`).
 Evidence: probes/external-ref-no-link-let Calc!A1:A20, external-ref-no-link-ifchoose A26
 (excel-graph, 2026-10-16, T-1535). Engine: `Model::pick_reference` reads such a LET with its names
 bound (`let_scope`) when every argument its body may pick names another workbook; a LET whose body
-may also pick a reference into this workbook is read as before (unprobed).
+may pick any other argument (a reference into this workbook, a value: `IF(c,…!A1:B3,"x")`) is read
+as before, and INDEX over such a LET reads it as INDEX over the IF does; both unprobed (T-1710).
 `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3, and the engine matches since T-1508, which broadcasts CHOOSE's
 arms over an index array (external-ref-no-link-ifchoose A32).
 Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external

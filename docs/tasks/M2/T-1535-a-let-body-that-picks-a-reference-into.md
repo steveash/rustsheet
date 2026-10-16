@@ -39,5 +39,6 @@ reference into another workbook for every reader (ROWS, COLUMNS, ROW, COLUMN, IS
 COUNTA, COUNTBLANK, SUM, value contexts). `Model::pick_reference` (external_reference.rs) folds
 `pick_branch` and `external_reference` together and reads a LET whose body picks only external
 references with its names bound (`let_scope`, split out of `let_impl`); the eight readers that paired
-`pick_branch` with `external_reference` now call it. Eval: probes known failures 2285 → 2284
+`pick_branch` with `external_reference` now call it (OFFSET's and INDEX's own reads of their first
+argument still call `external_reference` directly). Eval: probes known failures 2285 → 2284
 (external-ref-no-link-ifchoose A26 fixed), +1 case (20/20), 0 regressions. references.md updated.

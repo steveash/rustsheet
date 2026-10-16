@@ -2,8 +2,7 @@
 //! array indices (docs/excel-semantics/lookup.md).
 
 use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
-use crate::external_reference::ExternalArea;
-use crate::external_reference::PickedReference;
+use crate::external_reference::{ExternalArea, PickedReference};
 use crate::functions::util::{
     array_node_to_calc_result, near_integer_count, picks_a_branch, NEAR_INTEGER_TOLERANCE,
 };
