@@ -1,0 +1,40 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "s",
+    "v": "L"
+   },
+   "A2": {
+    "t": "s",
+    "v": "R"
+   },
+   "A3": {
+    "t": "s",
+    "v": "R"
+   },
+   "B1": {
+    "t": "s",
+    "v": "=Right!A1"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=Left!A1"
+   },
+   "B3": {
+    "t": "s",
+    "v": "=INDIRECT(\"Left!A1\")"
+   }
+  },
+  "Left": {},
+  "Right": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "65e85036fdb9d29826c8c0c453cf7f2684892142159328426a2d4e02fd06b6b5",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T10:01:11+00:00",
+  "version": null
+ }
+}

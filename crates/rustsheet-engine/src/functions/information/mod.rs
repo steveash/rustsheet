@@ -466,18 +466,6 @@ impl Model {
                     };
                 }
             }
-            Node::TableNameKind(name) => {
-                // Now let's see if it is a table
-                for (table_name, table) in &self.workbook.tables {
-                    if table_name == name {
-                        if let Some(sheet_index) = self.get_sheet_index_by_name(&table.sheet_name) {
-                            return CalcResult::Number(sheet_index as f64 + 1.0);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
             Node::NamedVariableKind { name, id: _ } => {
                 return CalcResult::Error {
                     error: Error::NAME,

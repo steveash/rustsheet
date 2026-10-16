@@ -43,9 +43,23 @@ Evidence (Excel-cached values, `ironcalc-calc/FINANCIAL/PMT.xlsx`, `PV.xlsx`, `F
   (88 cells): best 27 (a running factor `d *= 1+r`, or Horner), 64-bit 26, correctly rounded 18,
   engine 21; 11 further double orderings (`v*d` with `d /= 1+r`, `pow(1+r,-i)`, `exp(-i*log1p r)`,
   reverse sums, `fsum`) reach at most 27.
-Status: PARTLY VERIFIED (PV/FV/NPER fitted on the sweep; PMT/IPMT/PPMT/NPV open, time-boxed per
-decision 0056 after T-1524's two attempts, in T-1528; implementation of the fitted ones: T-0901)
-Implemented in: n/a (T-0901). Salvaged from draft PR #13 by T-0031.
+- Implementation check (T-0901): NPER's final division is Excel's `/`, rounded twice. With a
+  plain double division the engine misses one cell, `NPER(0.2,-1000,-1000,20000)` (m9-fin-nper-npv
+  A9, 7.8274691195894075), so the sweep does separate the two after all. Five PV and three NPER
+  cells of `ironcalc-calc/FINANCIAL/PMT.xlsx` take their pmt from PMT cells; given Excel's cached
+  PMT values as inputs, the fitted formulas reproduce all eight cached results (decision 0064).
+- PMT with `P-1 = expm1(n*log1p(r))` (`-(pv*P+fv)/((P-1)/r*k)`, 120/308 bit-exact on the sweep)
+  fixes 30 Excel-cached cells but regresses 22 others (PMT.xlsx, IPMT_PPMT.xlsx,
+  CUMPRINC_CUMIPMT.xlsx), and IPMT's recurrence on the fitted FV regresses 4 more. Both stay with
+  T-1528: Excel's PMT is not the accurate value.
+- Extrapolated, not yet probed (T-1684): non-integer nper (where `^` is exp(y·ln x)), NPER with
+  pmt = 0 (the general formula, not `-fv/pv`) or pv/fv = 0, and rates within a few ulps of -1 (`1+r`
+  by Excel's `+`). The sweeps have integer nper and non-zero pmt only.
+Status: PARTLY VERIFIED (PV/FV/NPER fitted on the sweep and implemented, for integer nper and pmt ≠ 0; PMT/IPMT/PPMT/NPV open, time-boxed per
+decision 0056 after T-1524's two attempts, in T-1528)
+Implemented in: `annuity_power`, `annuity_factor`, `compute_future_value` (`FutureValueForm::Fitted`),
+`fn_pv` and `fn_nper` (crates/rustsheet-engine/src/functions/financial/mod.rs, T-0901). Salvaged from
+draft PR #13 by T-0031.
 
 ## IRR, RATE and XIRR stop early, and the guess and flow scaling change the result
 Rule: Excel's iterative solvers (IRR, RATE, XIRR) return an un-converged iterate, not the root

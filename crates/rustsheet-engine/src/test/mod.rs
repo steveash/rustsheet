@@ -138,6 +138,7 @@ mod test_even_odd;
 mod test_exp_sign;
 mod test_extend;
 mod test_floor;
+mod test_fn_annuity_fits;
 mod test_fn_bycol_byrow;
 mod test_fn_ceiling_floor_lift;
 mod test_fn_datevalue_timevalue;

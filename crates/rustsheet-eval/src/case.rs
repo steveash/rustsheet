@@ -163,6 +163,19 @@ pub struct CalculationSpec {
     pub iterate_delta: Option<f64>,
 }
 
+/// A sheet edit made after a case loads and before it is recalculated (T-1608): spec2xlsx records
+/// it for the oracle backend, which replays it in Excel, and the engine adapter applies it through
+/// the edit API. `{"op":"add","sheet":"New"}` appends a sheet, `{"op":"rename","sheet":"Data",
+/// "to":"Inputs"}` renames one, `{"op":"move","sheet":"Data","to":0}` moves one to a 0-based
+/// position.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "op", rename_all = "lowercase", deny_unknown_fields)]
+pub enum SheetOp {
+    Add { sheet: String },
+    Rename { sheet: String, to: String },
+    Move { sheet: String, to: u32 },
+}
+
 /// A self-contained workbook test case.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CaseSpec {
@@ -179,6 +192,10 @@ pub struct CaseSpec {
     /// Calculation settings such as iterative calculation; Excel's defaults when absent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calculation: Option<CalculationSpec>,
+    /// Sheet edits applied in order after the workbook loads, before recalculation (T-1608).
+    /// Cell keys in `expected` and `check` use the sheet names after the edits.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sheet_ops: Vec<SheetOp>,
     /// Workbook-scoped defined names: name → formula (e.g. `"=Sheet1!$A$1:$B$2"`).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub names: BTreeMap<String, String>,

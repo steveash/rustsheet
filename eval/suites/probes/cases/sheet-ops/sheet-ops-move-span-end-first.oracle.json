@@ -1,0 +1,33 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "n",
+    "v": 30.0
+   },
+   "A2": {
+    "t": "n",
+    "v": 2.0
+   },
+   "B1": {
+    "t": "s",
+    "v": "=SUM(Jan:Feb!A1)"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=COUNT(Jan:Feb!A1)"
+   }
+  },
+  "Feb": {},
+  "Jan": {},
+  "Mar": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "5f4e389851f0226ef7409ba445ed11151a9102588e24b9612f6ce3f216d06901",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T10:03:04+00:00",
+  "version": null
+ }
+}

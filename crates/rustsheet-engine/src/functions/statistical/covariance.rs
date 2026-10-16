@@ -13,62 +13,17 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let values1_opts = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => match self.values_from_array(a) {
-                Ok(v) => v,
-                Err(error) => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        format!("Error in first array: {error:?}"),
-                    );
-                }
-            },
-            _ => {
+        let (values1_opts, values2_opts) = match self.paired_samples(args, cell) {
+            Ok(paired) if paired.same_size => (paired.first, paired.second),
+            Ok(_) => {
                 return CalcResult::new_error(
-                    Error::VALUE,
+                    Error::NA,
                     cell,
-                    "First argument must be a range or array".to_string(),
-                );
+                    "COVARIANCE requires arrays of the same size".to_string(),
+                )
             }
+            Err(error) => return error,
         };
-
-        let values2_opts = match self.evaluate_node_in_context(&args[1], cell) {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => match self.values_from_array(a) {
-                Ok(v) => v,
-                Err(error) => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        format!("Error in second array: {error:?}"),
-                    );
-                }
-            },
-            _ => {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Second argument must be a range or array".to_string(),
-                );
-            }
-        };
-
-        // Same number of cells
-        if values1_opts.len() != values2_opts.len() {
-            return CalcResult::new_error(
-                Error::NA,
-                cell,
-                "COVARIANCE.P requires arrays of the same size".to_string(),
-            );
-        }
 
         // Count numeric data points in each array (ignoring text/booleans/empty)
         let count1 = values1_opts.iter().filter(|v| v.is_some()).count();
@@ -142,62 +97,17 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let values1_opts = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => match self.values_from_array(a) {
-                Ok(v) => v,
-                Err(error) => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        format!("Error in first array: {error:?}"),
-                    );
-                }
-            },
-            _ => {
+        let (values1_opts, values2_opts) = match self.paired_samples(args, cell) {
+            Ok(paired) if paired.same_size => (paired.first, paired.second),
+            Ok(_) => {
                 return CalcResult::new_error(
-                    Error::VALUE,
+                    Error::NA,
                     cell,
-                    "First argument must be a range or array".to_string(),
-                );
+                    "COVARIANCE requires arrays of the same size".to_string(),
+                )
             }
+            Err(error) => return error,
         };
-
-        let values2_opts = match self.evaluate_node_in_context(&args[1], cell) {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => match self.values_from_array(a) {
-                Ok(v) => v,
-                Err(error) => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        format!("Error in second array: {error:?}"),
-                    );
-                }
-            },
-            _ => {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Second argument must be a range or array".to_string(),
-                );
-            }
-        };
-
-        // Same number of cells
-        if values1_opts.len() != values2_opts.len() {
-            return CalcResult::new_error(
-                Error::NA,
-                cell,
-                "COVARIANCE.S requires arrays of the same size".to_string(),
-            );
-        }
 
         // Count numeric data points in each array (ignoring text/booleans/empty)
         let count1 = values1_opts.iter().filter(|v| v.is_some()).count();
