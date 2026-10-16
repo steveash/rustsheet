@@ -3,7 +3,7 @@ id: T-1608
 title: "Oracle edit replay for sheet add, rename and move, with a probe suite for reference rewriting"
 milestone: M8
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
