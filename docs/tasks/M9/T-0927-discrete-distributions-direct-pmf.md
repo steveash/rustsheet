@@ -15,6 +15,7 @@ Discrete distributions match Excel's cached values by evaluating the pmf (and CD
 
 ## Context
 Kernel map (T-1522, decision 0056): rank 3 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
+Related fit: T-1744 (incomplete beta) may help BINOM.DIST cumulative, but this task does not wait for it.
 Oracle-free: Excel's values are exact where the maths is exact, ours carry ~1e-14 relative error from the regularised-incomplete-function route.
 - `ironcalc-calc/STATISTICAL/BINOM.xlsx` `BINOM.DIST!E2` `=BINOM.DIST(7,8,0.7,TRUE)` expected 0.94235199 (exact decimal), actual 0.9423519899999973; `E5` expected 0.0546875 actual 0.05468750000000168; `NEGBINOM.DIST!E4` expected 0.02800000000000001 actual 0.027999999999999938. Counts: BINOM.DIST 41, NEGBINOM.DIST 42, BINOM.DIST.RANGE 28 (111 baseline lines in the file).
 - `ironcalc-calc/STATISTICAL/POISSON.xlsx` `POISSON.DIST!D2` expected 0.12465201948308113 actual 0.12465201948308068; 32 cells.
