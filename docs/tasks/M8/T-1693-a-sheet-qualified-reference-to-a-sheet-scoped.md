@@ -3,7 +3,7 @@ id: T-1693
 title: "A sheet-qualified reference to a sheet-scoped name (Data!Local) evaluates, and follows a sheet rename"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
