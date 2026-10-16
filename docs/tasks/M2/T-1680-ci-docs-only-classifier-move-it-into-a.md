@@ -3,7 +3,7 @@ id: T-1680
 title: "CI docs-only classifier: move it into a tested script and guard new docs/ readers"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
