@@ -19,6 +19,7 @@ use crate::cellref::Addr;
 use crate::deviations::{self, Outcome};
 use crate::engine::{Engine, Evaluated};
 use crate::overrides;
+use crate::spill_extent::SpillExtent;
 use crate::suite::{CaseFile, Suite, SuiteKind};
 use crate::value::{compare, Value, Verdict};
 use crate::volatile::{pinned_clock_serial, scorable_cells, volatile_cells, FormulaCell};
@@ -147,83 +148,10 @@ enum Prepared {
 struct PreparedCase {
     input: Prepared,
     expectations: Vec<Expectation>,
-    /// For a spec case with an Excel sidecar: the cells the engine may fill (T-1660).
     extent: Option<SpillExtent>,
     expected_source: String,
     skipped_volatile: usize,
     tags: Vec<String>,
-}
-
-/// The spill-extent check of a spec case whose sidecar is Excel evidence (T-1660). The oracle
-/// records every cell Excel's formulas fill, spill members included (`formula_values` in
-/// `tools/src/rustsheet_tools/snapshot.py`), so a cell the engine fills that is neither an input
-/// nor recorded is one Excel left empty: it is scored as a mismatch against empty, and a spill
-/// wider than Excel's cannot pass unseen (probes/ceiling-floor-mround-array-lift B21).
-struct SpillExtent {
-    /// The case's sheets, by spec name.
-    sheets: Vec<String>,
-    /// `cell_key`s of the input cells and of every expectation (oracle or hand).
-    known: HashSet<String>,
-    /// Formula cells without a decoded oracle value: Excel's extent of their spill is unknown.
-    pending: Vec<(String, Addr)>,
-}
-
-/// The largest rectangle checked when deciding whether a filled cell may belong to a pending
-/// formula's spill; a larger one is given the benefit of the doubt.
-const MAX_SHADOW_CELLS: u64 = 1 << 16;
-
-impl SpillExtent {
-    /// A failing [`CellResult`] for every filled cell outside [`Self::known`].
-    fn unexpected_cells(&self, evaluated: &dyn Evaluated) -> Vec<CellResult> {
-        let mut cells = Vec::new();
-        for sheet in &self.sheets {
-            let stored = evaluated.stored_cells(sheet);
-            let stored_set: HashSet<Addr> = stored.iter().copied().collect();
-            for addr in stored {
-                if self.known.contains(&cell_key(sheet, addr))
-                    || self.in_pending_spill(sheet, addr, &stored_set)
-                {
-                    continue;
-                }
-                if let Some(actual) = evaluated.value(sheet, addr) {
-                    if !compare(&Value::Empty, &actual).is_pass() {
-                        cells.push(unexpected(sheet, addr, actual));
-                    }
-                }
-            }
-        }
-        cells
-    }
-
-    /// Whether `addr` may be a spill member of a pending formula: one up and to the left of it
-    /// with every cell of the rectangle between them filled, as a spill fills it.
-    fn in_pending_spill(&self, sheet: &str, addr: Addr, stored: &HashSet<Addr>) -> bool {
-        self.pending.iter().any(|(pending_sheet, anchor)| {
-            if pending_sheet != sheet || anchor.row > addr.row || anchor.col > addr.col {
-                return false;
-            }
-            let area = u64::from(addr.row - anchor.row + 1) * u64::from(addr.col - anchor.col + 1);
-            area > MAX_SHADOW_CELLS
-                || (anchor.row..=addr.row).all(|row| {
-                    (anchor.col..=addr.col).all(|col| stored.contains(&Addr { row, col }))
-                })
-        })
-    }
-}
-
-/// A cell Excel left empty that the engine filled with `actual`.
-fn unexpected(sheet: &str, addr: Addr, actual: Value) -> CellResult {
-    CellResult {
-        sheet: sheet.to_string(),
-        cell: addr.to_string(),
-        formula: None,
-        verdict: compare(&Value::Empty, &actual),
-        expected: Value::Empty,
-        actual,
-        from_excel: true,
-        listed_deviation: false,
-        graph_subnormal: false,
-    }
 }
 
 /// Runs all cases of the given suites in parallel.
@@ -315,9 +243,8 @@ pub fn run_case(
                 }?;
                 let mut cells = score(evaluated.as_ref(), &prepared.expectations);
                 let scored = cells.len();
-                if let Some(extent) = &prepared.extent {
-                    cells.extend(extent.unexpected_cells(evaluated.as_ref()));
-                }
+                let extent = prepared.extent.iter();
+                cells.extend(extent.flat_map(|e| e.unexpected_cells(evaluated.as_ref())));
                 Ok::<_, String>((cells, scored))
             }));
             let _ = tx.send(outcome);
@@ -347,19 +274,16 @@ pub fn run_case(
             result.message = Some(e);
         }
         Ok(Ok(Ok((cells, scored)))) => {
-            // Spill-extent cells (after `scored`) all fail and stay out of `checked`: the
-            // baseline keys a case's regressions on an unchanged checked count, so an engine
-            // that starts spilling further must not look like new coverage (T-1660).
-            let scored_cells = cells.get(..scored).unwrap_or_default();
+            // Spill-extent cells (after `scored`) all fail but stay out of `checked` (decision 0063).
             result.checked = scored;
-            result.passed = scored_cells.iter().filter(|c| c.verdict.is_pass()).count();
-            result.deviations = scored_cells
+            result.passed = cells.iter().filter(|c| c.verdict.is_pass()).count();
+            result.deviations = cells
                 .iter()
                 .filter(|c| c.verdict == Verdict::Deviation)
                 .count();
             result.status = if result.checked == 0 {
                 CaseStatus::Pending
-            } else if result.passed + result.deviations == result.checked && cells.len() == scored {
+            } else if result.passed + result.deviations == cells.len() {
                 CaseStatus::Pass
             } else {
                 CaseStatus::Fail
@@ -566,36 +490,6 @@ fn spec_volatile_cells(
     Ok(volatile_cells(formulas, &[], false, &invariant))
 }
 
-/// The spill-extent check of a spec case whose sidecar is Excel evidence (T-1660).
-fn spill_extent(
-    spec: &CaseSpec,
-    expected: &BTreeMap<String, Value>,
-    oracle_cells: &BTreeSet<String>,
-    formulas: &[FormulaCell],
-) -> SpillExtent {
-    SpillExtent {
-        sheets: spec.sheets.iter().map(|s| s.name.clone()).collect(),
-        known: spec
-            .sheets
-            .iter()
-            .flat_map(|s| {
-                s.cells
-                    .keys()
-                    .filter_map(|a1| Some(cell_key(&s.name, Addr::parse(a1)?)))
-            })
-            .chain(expected.keys().cloned())
-            .collect(),
-        pending: formulas
-            .iter()
-            .filter(|(sheet, addr, _)| {
-                let key = cell_key(sheet, *addr);
-                !oracle_cells.contains(&key) || expected.get(&key).is_some_and(is_undecoded)
-            })
-            .map(|(sheet, addr, _)| (sheet.clone(), *addr))
-            .collect(),
-    }
-}
-
 fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     let text = std::fs::read_to_string(&case.path).map_err(|e| e.to_string())?;
     let spec: CaseSpec = serde_json::from_str(&text).map_err(|e| e.to_string())?;
@@ -669,7 +563,6 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         })
         .map(|(_, _, formula)| formula.clone())
         .collect();
-    let extent = oracle_is_excel.then(|| spill_extent(&spec, &expected, &oracle_cells, &formulas));
     let mut expectations = Vec::new();
     let mut skipped_volatile = 0;
     for q in wanted {
@@ -699,12 +592,13 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         });
     }
     Ok(PreparedCase {
+        extent: oracle_is_excel
+            .then(|| SpillExtent::new(&spec, &expected, &oracle_cells, &formulas)),
         tags: spec.tags.clone(),
         input: Prepared::Spec {
             spec: Box::new(spec),
         },
         expectations,
-        extent,
         expected_source: source,
         skipped_volatile,
     })
@@ -723,6 +617,9 @@ mod tests {
     impl Evaluated for NoValues {
         fn value(&self, _: &str, _: Addr) -> Option<Value> {
             None
+        }
+        fn stored_cells(&self, _: &str) -> Vec<Addr> {
+            Vec::new()
         }
     }
 
@@ -994,84 +891,6 @@ mod tests {
             ]
         );
         assert_eq!(prepared.expected_source, "excel-graph");
-    }
-
-    /// A spill result: `S!A1` = `{1,2,3}` over A1:C1 and the input `S!A2`.
-    struct Spilled;
-    impl Evaluated for Spilled {
-        fn value(&self, sheet: &str, addr: Addr) -> Option<Value> {
-            (sheet == "S").then(|| match (addr.row, addr.col) {
-                (1, col @ 1..=3) => Value::Number(f64::from(col)),
-                (2, 1) => Value::Text("x".into()),
-                _ => Value::Empty,
-            })
-        }
-        fn stored_cells(&self, sheet: &str) -> Vec<Addr> {
-            let cells = [(1, 1), (1, 2), (1, 3), (2, 1)];
-            cells
-                .into_iter()
-                .filter(|_| sheet == "S")
-                .map(|(row, col)| Addr { row, col })
-                .collect()
-        }
-    }
-
-    /// Prepares a spec case `=SEQUENCE(1,3)` in S!A1 beside the input S!A2, with `oracle` cells.
-    fn prepare_spilled(name: &str, oracle: Option<&str>) -> PreparedCase {
-        let dir = std::env::temp_dir().join(format!("rs-runner-{}-{name}", std::process::id()));
-        std::fs::create_dir_all(&dir).expect("mkdir");
-        let path = dir.join("a.case.json");
-        let case = format!(
-            r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{"A1":"=SEQUENCE(1,3)","A2":"x"}}}}]}}"#
-        );
-        std::fs::write(&path, case).expect("write case");
-        if let Some(cells) = oracle {
-            let oracle = format!(
-                r#"{{"format":"{ORACLE_FORMAT}","source":{{"kind":"excel-graph","application":"x"}},"sheets":{{"S":{{{cells}}}}}}}"#
-            );
-            std::fs::write(dir.join("a.oracle.json"), oracle).expect("write oracle");
-        }
-        let prepared = prepare_spec(&CaseFile {
-            id: "t/a".into(),
-            sidecar: oracle_sidecar(&path),
-            path,
-        });
-        let _ = std::fs::remove_dir_all(&dir);
-        prepared.expect("prepare")
-    }
-
-    /// T-1660: a cell the engine fills that Excel's sidecar does not record is a mismatch against
-    /// empty; inputs and recorded cells are not checked twice.
-    #[test]
-    fn spill_wider_than_excel_fails_the_extra_cells() {
-        let one = r#""A1":{"t":"n","v":1}"#;
-        let extent = prepare_spilled("extent-narrow", Some(one))
-            .extent
-            .expect("excel sidecar");
-        let extra: Vec<(String, Value, Verdict)> = extent
-            .unexpected_cells(&Spilled)
-            .into_iter()
-            .map(|c| (c.key(), c.actual, c.verdict))
-            .collect();
-        assert_eq!(
-            extra,
-            vec![
-                ("S!B1".into(), Value::Number(2.0), Verdict::TypeMismatch),
-                ("S!C1".into(), Value::Number(3.0), Verdict::TypeMismatch),
-            ]
-        );
-        let all = r#""A1":{"t":"n","v":1},"B1":{"t":"n","v":2},"C1":{"t":"n","v":3}"#;
-        let extent = prepare_spilled("extent-same", Some(all))
-            .extent
-            .expect("excel sidecar");
-        assert!(extent.unexpected_cells(&Spilled).is_empty());
-        // A1 left pending: its spill extent in Excel is unknown, so its members are not checked.
-        let extent = prepare_spilled("extent-pending", Some(r#""A2":{"t":"s","v":"x"}"#))
-            .extent
-            .expect("excel sidecar");
-        assert!(extent.unexpected_cells(&Spilled).is_empty());
-        // Without Excel evidence there is nothing to check against.
-        assert!(prepare_spilled("extent-none", None).extent.is_none());
     }
 
     /// A rich error without an evidence-backed mapping (`#UNDECODED!`, `xlsx_snapshot.rs`) is

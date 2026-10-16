@@ -19,10 +19,8 @@ pub trait Evaluated {
     /// Returns `None` if the sheet does not exist.
     fn value(&self, sheet: &str, addr: Addr) -> Option<Value>;
     /// Every stored cell of `sheet` (spill members included); empty for an unknown sheet. The
-    /// spill-extent check reads it (T-1660).
-    fn stored_cells(&self, _sheet: &str) -> Vec<Addr> {
-        Vec::new()
-    }
+    /// spill-extent check reads it (T-1660), so an empty list turns that check off.
+    fn stored_cells(&self, sheet: &str) -> Vec<Addr>;
 }
 
 pub trait Engine: Sync {

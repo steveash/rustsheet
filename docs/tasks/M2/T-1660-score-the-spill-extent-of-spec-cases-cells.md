@@ -28,6 +28,6 @@ Every spec case with an Excel sidecar now gets a spill-extent check (`SpillExten
 - probes/eta-reduced-names Sheet1!E50, E51, E102, E103: BYROW whose function returns an array is one `#CALC!` in Excel, but the engine spills. Follow-up T-1664.
 - probes/radians-sqrtpi-munit Sheet1!B80: `SQRTPI(D1:E1)` is one `#VALUE!` in Excel, but the engine spills. Follow-up T-1663.
 
-probes/ceiling-floor-mround-array-lift (the case that prompted this task) already agrees on main. The ungated suites also show extent mismatches: gen-m7/93976dd9a3578ed9 Calc!B10:C10 (`#NAME?`) and gen-m9/b5352ebdb9c5f1a1 Calc!A41.
+probes/ceiling-floor-mround-array-lift (the case that prompted this task) already agrees on main. The ungated suites also show extent mismatches. gen-m7/93976dd9a3578ed9 Calc!B10:C10 is `#NAME?` because GROUPBY is unimplemented (T-1322). gen-m9/b5352ebdb9c5f1a1 Calc!A41 comes from `ISBLANK(LEN(BYROW(..,LAMBDA(v,v))))`, which is the same one-cell BYROW `#CALC!` (added to T-1664).
 
 Eval: probes known failures 5563 → 5568. All 5 are extent cells; no cell that passed before now fails.
