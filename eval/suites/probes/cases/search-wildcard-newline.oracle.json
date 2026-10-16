@@ -70,9 +70,33 @@
     "t": "n",
     "v": 3.0
    },
+   "A25": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A26": {
+    "t": "n",
+    "v": 2.0
+   },
+   "A27": {
+    "t": "n",
+    "v": 2.0
+   },
+   "A28": {
+    "t": "n",
+    "v": 2.0
+   },
+   "A29": {
+    "t": "n",
+    "v": 3.0
+   },
    "A3": {
     "t": "n",
     "v": 2.0
+   },
+   "A30": {
+    "t": "n",
+    "v": 3.0
    },
    "A4": {
     "t": "n",
@@ -102,9 +126,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "c286e9cb475327c1b55316ca28bdb35498aa185711db1881d98a0bbc7eda038c",
+  "input_sha256": "95fcc21bf2403dc3d295d0ea40f2f8a51315f6b80d173afaf0da8f1c802da9a7",
   "kind": "excel-graph",
-  "produced_at": "2026-10-16T05:06:03+00:00",
+  "produced_at": "2026-10-16T05:28:11+00:00",
   "version": null
  }
 }

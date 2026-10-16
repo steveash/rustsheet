@@ -47,7 +47,7 @@ Data!A1:A5 = "a"&CHAR(10)&"b", CHAR(10), "ab", "a"&CHAR(13)&"b", "a"&CHAR(10) (S
 Evidence: probes/criteria-wildcard-newline (excel-graph, 2026-10-16, T-1642).
 Status: VERIFIED
 SEARCH agrees (probes/search-wildcard-newline, excel-graph 2026-10-16, T-1666): `SEARCH("a?b","x"&"a"&CHAR(10)&"b")` 2,
-`SEARCH("a*b","a"&CHAR(10)&"b")` 1, `SEARCH("?",CHAR(10))` and `SEARCH("?",CHAR(13))` 1, `SEARCH("*"&CHAR(10)&"*","ab"&CHAR(10)&"c")` 1;
+`SEARCH("a*b","a"&CHAR(10)&"b")` 1, `SEARCH("?",CHAR(10))` and `SEARCH("?",CHAR(13))` 1, `SEARCH("a?b","xa"&CHAR(13)&"b")` and `SEARCH("a*b","xa"&CHAR(13)&"yb")` 2, `SEARCH("?b","xa"&CHAR(13)&"b")` 3, `SEARCH("*b","xxb",2)` 2 and `,3)` 3, `SEARCH("*"&CHAR(10)&"*","ab"&CHAR(10)&"c")` 1;
 over "😀b": `"?b"` 2, `"??b"` 1, `"???b"` #VALUE!, `"*b"` 1; `SEARCH("?","😀")` and `SEARCH("??","😀")` 1, `"???"` #VALUE!;
 `SEARCH("a?b","😀a😀b",2)` #VALUE! (the pair is two units); `SEARCH("*","")` and `SEARCH("?","")` #VALUE!.
 Status: VERIFIED

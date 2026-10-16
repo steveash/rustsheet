@@ -25,4 +25,4 @@ T-1642 moved criteria and wildcard MATCH/XMATCH to `WildcardPattern` (functions/
 -
 
 ## Outcome
-Probe `search-wildcard-newline` (24 cells, excel-graph): SEARCH wildcards match line breaks and UTF-16 units exactly like criteria. Added `WildcardPattern::find_from` (unanchored, linear in text length times longest segment), SEARCH uses it, and `from_wildcard_to_regex` is removed. The probe went from 19/24 to 24/24.
+Probe `search-wildcard-newline` (30 cells, excel-graph): SEARCH wildcards match line breaks and UTF-16 units exactly like criteria. Added `WildcardPattern::find_from` (unanchored, O(text length times longest segment)), SEARCH uses it, and `from_wildcard_to_regex` is removed. The probe went from 19/24 to 24/24 on the first 24 cells; the 6 later cells (CR, leading `*` with a start offset) pass too.
