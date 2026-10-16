@@ -37,6 +37,7 @@ C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
 C	probes/array-context-legacy-sumproduct.case.json	31
+C	probes/arraytotext-number-text.case.json	15
 C	probes/asin-argument-sweep.case.json	268
 C	probes/at-group-leftmost-shapes.case.json	20
 C	probes/at-group-not-whole-operand.case.json	10
@@ -196,6 +197,7 @@ C	probes/displayed-text-formats.case.json	10
 C	probes/dollar-fixed-unichar-edges.case.json	76
 C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/dynamic-array-reshape-and-isomitted.case.json	132
+C	probes/dynamic-array-reshape-reprobe.case.json	20
 C	probes/ecma-ceiling-formulatext.case.json	2
 C	probes/ecma-ceiling.case.json	12
 C	probes/edate-serial-0-months.case.json	12
@@ -230,6 +232,7 @@ C	probes/eta-reduced-names.case.json	59
 C	probes/external-ref-no-link-ifchoose-b.case.json	6
 C	probes/external-ref-no-link-ifchoose.case.json	44
 C	probes/external-ref-no-link-index.case.json	54
+C	probes/external-ref-no-link-let-index.case.json	7
 C	probes/external-ref-no-link-let.case.json	20
 C	probes/external-ref-no-link-shapes.case.json	20
 C	probes/external-ref-no-link.case.json	10
@@ -483,6 +486,8 @@ C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-2d-and-scalar.case.json	21
 C	probes/product-array-elements.case.json	9
+C	probes/r1c1-bare-lambda-one.case.json	2
+C	probes/r1c1-bare-lambda-opt.case.json	2
 C	probes/r1c1-let-name-c.case.json	2
 C	probes/r1c1-let-name-c1d.case.json	2
 C	probes/r1c1-let-name-okname.case.json	2
@@ -617,6 +622,7 @@ C	probes/tbill-equal-dates.case.json	11
 C	probes/tbilleq-nonpositive-price.case.json	9
 C	probes/tbilleq-zero-price.case.json	4
 C	probes/text-ap-locale-bracket.case.json	28
+C	probes/text-ap-locale-inferences.case.json	81
 C	probes/text-argument-modes.case.json	47
 C	probes/text-at-token-sections.case.json	96
 C	probes/text-at-with-tokens.case.json	89
@@ -734,6 +740,7 @@ C	probes/vlookup-error-arg-lifting-range-lookup.case.json	22
 C	probes/volatile-and-info-rand-true-false-sheet.case.json	108
 C	probes/volatile-invariant.case.json	60
 C	probes/volatile-now-today-shapes.case.json	48
+C	probes/vstack-scalar-error.case.json	40
 C	probes/weeknum-1900-later.case.json	23
 C	probes/weeknum-invalid-type.case.json	8
 C	probes/weeknum-serial-0.case.json	57
@@ -754,6 +761,8 @@ C	probes/xmatch-text-bool-equal-runs.case.json	134
 C	probes/xmatch-xlookup-blanks.case.json	69
 C	probes/xnpv-argument-count.case.json	3
 C	probes/yield-solver-sweep.case.json	66
+F	probes/arraytotext-number-text.case.json	Sheet1!A14
+F	probes/arraytotext-number-text.case.json	Sheet1!A15
 F	probes/asin-argument-sweep.case.json	Sheet1!B10
 F	probes/asin-argument-sweep.case.json	Sheet1!B109
 F	probes/asin-argument-sweep.case.json	Sheet1!B11
@@ -1229,6 +1238,11 @@ F	probes/eta-reduced-names.case.json	Sheet1!E101
 F	probes/eta-reduced-names.case.json	Sheet1!E102
 F	probes/eta-reduced-names.case.json	Sheet1!E103
 F	probes/eta-reduced-names.case.json	Sheet1!E93
+F	probes/external-ref-no-link-let-index.case.json	Calc!A3
+F	probes/external-ref-no-link-let-index.case.json	Calc!A4
+F	probes/external-ref-no-link-let-index.case.json	Calc!A5
+F	probes/external-ref-no-link-let-index.case.json	Calc!A6
+F	probes/external-ref-no-link-let-index.case.json	Calc!A7
 F	probes/filterxml-evidence-floor.case.json	Sheet1!D28
 F	probes/fin-argument-modes.case.json	Sheet1!H10
 F	probes/fin-argument-modes.case.json	Sheet1!H100
@@ -2403,8 +2417,6 @@ F	probes/negative-date-sections-1904.case.json	S!A21
 F	probes/negative-date-sections-1904.case.json	S!A22
 F	probes/negative-date-sections-1904.case.json	S!A23
 F	probes/negative-date-sections-1904.case.json	S!A9
-F	probes/r1c1-let-name-r1c1.case.json	Sheet1!A1
-F	probes/r1c1-let-name-r5c7.case.json	Sheet1!A1
 F	probes/r1c1-name-c1-c1-dot.case.json	Sheet1!A1
 F	probes/r1c1-name-r1-dot-c1.case.json	Sheet1!A1
 F	probes/r1c1-name-r1-dotdot-c1.case.json	Sheet1!A1
@@ -2961,6 +2973,10 @@ F	probes/stat-argument-modes.case.json	Sheet1!H98
 F	probes/stat-argument-modes.case.json	Sheet1!H99
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
+F	probes/text-ap-locale-inferences.case.json	Sheet1!A6
+F	probes/text-ap-locale-inferences.case.json	Sheet1!A7
+F	probes/text-ap-locale-inferences.case.json	Sheet1!A8
+F	probes/text-ap-locale-inferences.case.json	Sheet1!A9
 F	probes/text-format-length-limit-d.case.json	S!A31
 F	probes/text-format-length-limit-f.case.json	Sheet1!A41
 F	probes/text-format-length-limit-f.case.json	Sheet1!A42

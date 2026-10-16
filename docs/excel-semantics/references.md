@@ -250,7 +250,13 @@ Evidence: probes/external-ref-no-link-let Calc!A1:A20, external-ref-no-link-ifch
 (excel-graph, 2026-10-16, T-1535). Engine: `Model::pick_reference` reads such a LET with its names
 bound (`let_scope`) when every argument its body may pick names another workbook; a LET whose body
 may pick any other argument (a reference into this workbook, a value: `IF(c,…!A1:B3,"x")`) is read
-as before, and INDEX over such a LET reads it as INDEX over the IF does; both unprobed (T-1710).
+as before. Probed since (T-1710, probes/external-ref-no-link-let-index, excel-graph 2026-10-16):
+INDEX over such a LET is INDEX over the reference it picks (`ERROR.TYPE(INDEX(LET(c,TRUE,IF(c,…!A1:C4)),2,2))`
+`#N/A`, `ROWS(INDEX(…,2,0))` 1; ours matches), and a LET body that may also pick another argument is
+still read with its names bound and the IF's pick made: `ROWS(LET(c,TRUE,IF(c,…!A1:B3,"x")))` and
+`ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))` are 3, `ISREF(LET(c,TRUE,IF(c,…!A1,D1)))` TRUE and
+`COUNTA(LET(c,TRUE,IF(c,…!A1:B2,1)))` 0; ours gives `#BLOCKED!`, FALSE and 1 (T-1721). OFFSET over
+such a LET is not a reference: `ISREF(OFFSET(LET(c,TRUE,…!A1),1,1))` is FALSE (ours TRUE; T-1721), as OFFSET over the bare external reference is (external-ref-no-link-index A16, A17): the miss is that ours does not unwrap the LET first.
 `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3, and the engine matches since T-1508, which broadcasts CHOOSE's
 arms over an index array (external-ref-no-link-ifchoose A32).
 Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external
@@ -284,7 +290,7 @@ to a workbook, or whose part is missing or unreadable, is an empty book that kee
 lexer reads `[n]!Name` and `[n]Sheet!Name` as one identifier, which the parser keeps as a defined
 name with its prefix, and `external_links.rs` reads the cache. A cell the cache does not hold reads
 as empty: `=[1]Uses!$B$3` is 0, `SUM` and `COUNTA` of `[1]Uses!$E$1:$F$2` are 0
-(fixtures/external-link-cached-ranges Refs!B24, B55, B77). Unprobed, so UNVERIFIED: a book, sheet or name the cache does not hold and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
+(fixtures/external-link-cached-ranges Refs!B24, B55, B77). A name or sheet the cache does not hold is `#BLOCKED!` (probed: fixtures/external-link-cached-lookups Refs!B18-B20, T-1609; see "a name the cache does not hold" below). Unprobed, so UNVERIFIED: a book index with no link part and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
 uncached reference is; a sheet with `refreshError="1"` is read like any other; `[0]!Missing` is
 `#NAME?` and `[0]Nope!Name` (no such sheet) `#REF!`, as the plain name and a missing sheet are; only
 evaluation strips the `[0]` prefix, so ISREF and a rename of the name do not see through it
@@ -347,8 +353,8 @@ the web keeps the cache on upload):
   cell of a sheet the cache does not hold (`[1]Nope!$A$1`) are `#BLOCKED!` (`ERROR.TYPE([1]!NoSuchName)` 11), yet
   `ISREF([1]Nope!$A$1)` is TRUE;
 - a 3-D span of the cached sheets aggregates over them: `SUM([1]Uses:Defines!$B$2)` 142,
-  `SUM(…!$A$1:$B$2)` 157, COUNT 4, COUNTA 9, MAX 142, the span reversed (`[1]Defines:Uses!`) the
-  same; but `ISREF([1]Uses:Defines!$A$1)` is FALSE, ERROR.TYPE of the bare span 4 (`#REF!`) and
+  `SUM(…!$A$1:$B$2)` 157, COUNT 4, COUNTA 9, MAX 142, and `SUM([1]Defines:Uses!$B$2)` for the span reversed 142
+  (fixtures/external-link-cached-3d-span Refs!B9; the other aggregates reversed are unprobed); but `ISREF([1]Uses:Defines!$A$1)` is FALSE, ERROR.TYPE of the bare span 4 (`#REF!`) and
   ROWS `#VALUE!`, as for a span of this workbook ("3-D references outside the aggregates"), while
   without a link `SUM('[other.xlsx]S1:S2'!A1)` is `#BLOCKED!` (T-1381). Ours does not parse the span
   (`#ERROR!`; T-1654).
@@ -1597,10 +1603,13 @@ the R1C1 lexer reads an out-of-range uppercase `R0C1` as a name, so it survives 
 Table names are not probed;
 ours applies the defined-name rule to them.
 LET and LAMBDA names are not tested at all: `LET(n,5,n*2)` is 10 for `RC`, `R1C`, `R1C1`, `r1c1`,
-`R5C7`, `R12C`, `R0C1`, `R0`, `R1048577`, `R1_`, `R1.C1`, `R1C1D`, `C1D`, `RCR` and `C`. Ours keeps
-refusing an in-range uppercase `R<n>C<m>` (`R1C1`, `R5C7`): formulas are stored in R1C1 form, where
-that spelling reads back as a cell reference after a reload (T-1658). An out-of-range one (`R0C1`)
-is a name in R1C1 form too, so `LET(R0C1,5,R0C1*2)` is 10 (T-1657).
+`R5C7`, `R12C`, `R0C1`, `R0`, `R1048577`, `R1_`, `R1.C1`, `R1C1D`, `C1D`, `RCR` and `C`, and
+FORMULATEXT keeps the name as typed. Ours matches, and takes LAMBDA parameters spelled so too
+(`LAMBDA(R1C1,R1C1*2)(5)` is 10 and `LAMBDA(R5C7,[R1C1],R5C7*2+ISOMITTED(R1C1))(5)` is 11, FORMULATEXT keeps the text; probes/r1c1-bare-lambda-one and
+-lambda-opt, excel-graph 2026-10-16, T-1715; ours matches). Formulas are stored in R1C1 form, where an in-range uppercase `R<n>C<m>`
+reads back as a cell, so such a name is stored as `_xlpm.R1C1`, the prefix Excel's own xlsx form
+puts on every LET and LAMBDA name and the parser drops. An out-of-range one (`R0C1`) is a name in R1C1 form already (T-1657). A bare `=R1C1`,
+`=R5C7*1` or `=SUM(R5C7)` outside a LET in A1 mode is rejected by Graph too (`createSession` 501 `unsupportedWorkbook`, T-1715), so it is unprobed; ours reads it as a name (`#NAME?`), as it does `=r1c1`.
 A bare `RC`, `R1C1D`, `R0C1` or `RCR` token in a cell formula of an uploaded file makes Graph reject
 the workbook (so it is unprobed).
 Unprobed: brackets cannot occur in sheet or defined names, so `R[1]C` forms are not covered;
@@ -1610,9 +1619,10 @@ Evidence: probes/r1c1-shaped-sheet-names, -lower, -2, -3, -4, -5, -lower-2 (FORM
 r1c1-let-name-*, lotus-dot-range (excel-graph, 2026-10-15).
 Implemented in: `is_r1c1_shaped` and `is_dotted_a1_range` (expressions/utils/mod.rs), used by
 `name_needs_quoting` (both) and `is_valid_identifier` (the R1C1 test); `is_valid_a1_identifier`
-(LET, LAMBDA and the lexer) refuses only an in-range `R<n>C<m>` (`is_r1c1_cell_text`);
+(LET, LAMBDA and the lexer) takes them all; `reads_as_r1c1_cell` (`variable_text`,
+parser/stringify/bound_variables.rs) picks the names the R1C1 storage escapes;
 `is_out_of_range_r1c1_name` (names never resolved: `name_operand`, INDIRECT, the R1C1 lexer).
-Status: VERIFIED (excel-graph), except T-1658 and T-1659.
+Status: VERIFIED (excel-graph), except T-1659.
 Tasks: T-1652
 
 ## Structured references: this row, totals and ranges

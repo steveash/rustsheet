@@ -4,6 +4,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
+    number_format::number_to_text,
 };
 
 impl Model {
@@ -33,20 +34,16 @@ impl Model {
                 Err(error) => return error,
             },
             CalcResult::Array(a) => a,
+            // Excel: a scalar is a one-element array, so strict form braces it
+            // (docs/excel-semantics/text.md#arraytotext-number-text, probes/arraytotext-number-text).
             CalcResult::Number(n) => {
-                return CalcResult::String(
-                    format_array_value(&ArrayNode::Number(n), strict).into(),
-                );
+                return scalar_text(&ArrayNode::Number(n), strict);
             }
             CalcResult::String(s) => {
-                return CalcResult::String(if strict {
-                    format!("\"{}\"", s.replace('"', "\"\"")).into()
-                } else {
-                    s
-                });
+                return scalar_text(&ArrayNode::String(s), strict);
             }
             CalcResult::Boolean(b) => {
-                return CalcResult::String(if b { "TRUE".into() } else { "FALSE".into() });
+                return scalar_text(&ArrayNode::Boolean(b), strict);
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => {
                 return CalcResult::String(String::new().into());
@@ -85,15 +82,16 @@ impl Model {
     }
 }
 
+fn scalar_text(node: &ArrayNode, strict: bool) -> CalcResult {
+    let text = format_array_value(node, strict);
+    CalcResult::String(if strict { format!("{{{text}}}") } else { text }.into())
+}
+
 fn format_array_value(node: &ArrayNode, strict: bool) -> String {
     match node {
-        ArrayNode::Number(n) => {
-            if *n == n.floor() && n.abs() < 1e15 {
-                format!("{}", *n as i64)
-            } else {
-                format!("{n}")
-            }
-        }
+        // Excel: General text, 15 significant digits, the text `&` and VALUETOTEXT give
+        // (docs/excel-semantics/text.md#arraytotext-number-text).
+        ArrayNode::Number(n) => number_to_text(*n),
         ArrayNode::Boolean(b) => {
             if *b {
                 "TRUE".to_string()
