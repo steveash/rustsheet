@@ -3,7 +3,7 @@ id: T-1702
 title: "Number-format lexer reads A/P and a locale-only [$-409] bracket"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -29,10 +29,13 @@ Ours gives "abc", "abc", "abc" and `#VALUE!`. In a text section, `AM/PM` already
 For numbers and dates, what `A/P` prints (A or P, and whether the case follows the code) and what `[$-409]0` and `[$-409]d` give are unprobed. Probe them before changing number output.
 
 ## Acceptance criteria
-- [ ] Probe cells for `A/P` (`a/p`, too) in date formats and for `[$-409]` on numbers and dates, with oracle values. The engine matches them.
-- [ ] The four cells above pass, with no new known failures.
-- [ ] number-formats.md is updated.
-- [ ] `make check` green; reviewers approve.
+- [x] Probe cells for `A/P` (`a/p`, too) in date formats and for `[$-409]` on numbers and dates, with oracle values. The engine matches them.
+- [x] The four cells above pass, with no new known failures.
+- [x] number-formats.md is updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other LCIDs and BCP-47 tags in `[$-...]`.
+
+## Outcome
+The lexer reads `A/P` (`Token::AP`, each half printed as typed; the text section prints the morning letter) and a locale-only `[$-409]` (`Token::Locale`, prints nothing). New probe `probes/text-ap-locale-bracket` (28 cells, excel-graph) passes in full, as do the four cells above. Eval delta: probes known failures fixed 4 (text-at-with-tokens A22, B22, A35; text-at-token-sections A20 and its companions), new probe cells all pass. Quirks recorded in number-formats.md.

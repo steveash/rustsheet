@@ -106,7 +106,6 @@ fn is_number_or_date(token: &Token) -> bool {
                 | Token::ElapsedMinutePadded
                 | Token::ElapsedSecondPadded
                 | Token::AMPM
-                | Token::AP(..)
                 | Token::Era
                 | Token::Calendar(_)
         )
@@ -115,9 +114,9 @@ fn is_number_or_date(token: &Token) -> bool {
 /// Whether `token` makes a section holding `@` invalid (probes/text-at-with-tokens A1-A43,
 /// B1-B43): the date and time letters, the elapsed tokens, the era and calendar tokens, the digit
 /// placeholders, `.`, `/`, `E+`, `General`, `%` and a condition. Unlike [`is_number_or_date`] it
-/// leaves out `AM/PM`; the calendar tokens (`B1`, `B2`) are inferred from the other date tokens.
+/// leaves out `AM/PM`, and `A/P` is not in it at all (a fourth section may hold `A/P`, probes/text-at-token-sections A20); the calendar tokens (`B1`, `B2`) are inferred from the other date tokens.
 fn conflicts_with_text(token: &Token) -> bool {
-    (is_number_or_date(token) && !matches!(token, Token::AMPM | Token::AP(..)))
+    (is_number_or_date(token) && !matches!(token, Token::AMPM))
         || matches!(
             token,
             Token::Period
