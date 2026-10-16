@@ -71,6 +71,8 @@
   the AVERAGE-family array-error probe; decision 0062) (`make eval-baseline`).
   T-1665: functions below the evidence floor 60 → 59 (one more function (among AVEDEV, ABS, SUMPRODUCT and SUM) reaches ≥ 20 Excel cells through the
   AVEDEV deviation-sum probe, probes-numeric/double-rounding-avedev-deviations; decision 0062) (`make eval-baseline`).
+  T-1439: functions below the evidence floor 59 → 58 (one more function reaches ≥ 20 Excel cells through
+  the statistical-family error-precedence probe, probes/aggregate-error-precedence-stat-family; decision 0062) (`make eval-baseline`).
   T-1326: static_analysis.rs 2147 → 1669 lines (the `args_signature_*` helpers moved to
   `static_analysis/signature.rs`); the same run lowered the locks other merged work had already paid down
   (evaluation.rs 1101 → 1096, stringify.rs 1070 → 1067, date_and_time.rs 1134 → 1131, financial_bonds.rs 1310 → 1212,
