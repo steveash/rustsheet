@@ -1627,7 +1627,7 @@ parser/stringify/bound_variables.rs) picks the names the R1C1 storage escapes;
 Dotted ranges in formulas: `consume_dotted_corner` (lexer/ranges.rs; the forms with `$` or
 whitespace) and `parse_dotted_a1_range` through `dotted_range_operand` (parser/operands.rs; an
 identifier such as `A1.B2`, unless an enclosing LET or LAMBDA binds it: `bind_dotted_name`).
-Ours still prints the unknown call `A1.INDEX(...)` in lowercase (T-1719).
+Ours still prints the unknown call `A1.INDEX(...)` in lowercase (T-1719; spelling rule in "Unknown function call names").
 Status: VERIFIED (excel-graph)
 Tasks: T-1652, T-1659
 
@@ -1676,3 +1676,18 @@ Evidence: gen-m8b in-table 19fdc25163755713 and this-row e1bf5aa0ffb4ed87 (excel
 Status: VERIFIED for evaluation; UNVERIFIED for FORMULATEXT (RustSheet shows the lowered `=$A$2`; Excel's output unprobed) and for rejecting unbracketed multi-word `T[@Unit Price]` / unterminated `T[@Qty`.
 Implemented in: `Lexer::consume_this_row_shorthand`.
 Tasks: T-1672, T-1683
+
+## Unknown function call names: spelling in FORMULATEXT
+Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`
+and FORMULATEXT prints the name with the spelling of the *first* occurrence of that name (compared
+case-insensitively) in the workbook, not the spelling typed in that cell, and not lowercased: with
+`=foo(1)` in A1, `=Foo(1)` and `=FOO(1)` in A2/A3 all print `=foo(1)`; `=my_Fn(1,2)+sum(3)` in A4
+prints `=my_Fn(1,2)+SUM(3)` and a later `=My_Fn(1)` / `=MY_FN(1)` print `=my_Fn(1)`; `=Bar(1)`, then
+`=BAR(1)` / `=bAr(1)` print `=Bar(1)`; `=my.fn(1)` then `=My.Fn(1)` prints `=my.fn(1)`;
+`=A1.INDEX(1)` then `=a1.Index(1)` prints `=A1.INDEX(1)`. A name never seen before keeps its typed
+spelling (`x1y`, `Xyz2`, `_Foo`, `Foo_`), except `=Ab1(1)` (cell-reference-shaped name), which prints
+`=AB1(1)`. "First" is in cell order of the probe (row-major, A before B); whether it is load order or
+edit order is unprobed.
+Evidence: probes/unknown-function-name-spelling.
+Status: VERIFIED (excel-graph)
+Tasks: T-1719

@@ -3,10 +3,10 @@ id: T-1719
 title: "An unknown function call keeps the spelling of its name in the formula text"
 milestone: M2
 lane: engine
-status: in-progress
+status: todo
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -23,3 +23,14 @@ Found by T-1659: probes/lotus-dot-range-func-second E2 (excel-graph) fails on th
 
 ## Out of scope
 -
+
+## Handoff
+Probed (probes/unknown-function-name-spelling, oracle filled, rule in docs/excel-semantics/references.md
+"Unknown function call names"). The task premise ("keeps the spelling as typed") is wrong: Excel
+interns the spelling of an unknown call name workbook-wide, first occurrence wins, case-insensitively
+(`=foo(1)` then `=Foo(1)` prints `=foo(1)`); cell-ref-shaped `Ab1` prints `AB1`. So the fix needs a
+workbook-level spelling registry (like defined-name case), persisted so a reload keeps it; the R1C1
+storage currently lowercases (`stringify.rs` LambdaCallKind). That is a design question beyond a
+sonnet task. Next: decide where the registry lives (Model, filled in cell order on load/set), update
+the stringify to look it up, make probes/lotus-dot-range-func-second and the new probe pass, and
+check whether first = load order or edit order (probe by editing).
