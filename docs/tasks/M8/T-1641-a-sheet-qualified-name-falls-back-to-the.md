@@ -3,7 +3,7 @@ id: T-1641
 title: "A sheet-qualified name falls back to the workbook-scoped name when the sheet has no local one (Feb!loc)"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,10 @@ gen-m8a (T-1606) names-scope c238d93c128fd5ee and names-errors 6322c0f2638aa11b:
 
 ## Out of scope
 -
+
+## Outcome
+`prefixed_name_operand` (parser/operands.rs) now falls back to the workbook-scoped name when a
+sheet-qualified name has no local definition; with neither, it stays `#NAME?`. Unit test
+`sheet_qualified_name_falls_back_to_workbook_name`. gen-m8a cases c238d93c128fd5ee and
+6322c0f2638aa11b no longer appear in the failure report; no baseline change (gen-m8a is not
+baselined), no regressions.

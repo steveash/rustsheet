@@ -225,12 +225,21 @@ impl Parser {
             Some(self.get_sheet_index_by_name(&sheet)?)
         };
         let bare_lower = bare.to_lowercase();
-        let formula = self
-            .defined_names
-            .iter()
-            .find(|(n, s, _)| *s == scope && n.to_lowercase() == bare_lower)
-            .map(|(.., formula)| formula.clone())
-            .unwrap_or_default();
+        let find = |scope: Option<u32>| {
+            self.defined_names
+                .iter()
+                .find(|(n, s, _)| *s == scope && n.to_lowercase() == bare_lower)
+                .map(|(.., formula)| formula.clone())
+        };
+        // A sheet with no local definition reads the workbook-scoped name (docs/excel-semantics/
+        // references.md "A sheet-qualified name falls back to the workbook name"; `Feb!loc`).
+        let (scope, formula) = match find(scope) {
+            Some(formula) => (scope, formula),
+            None => match scope.and_then(|_| find(None)) {
+                Some(formula) => (None, formula),
+                None => (scope, String::new()),
+            },
+        };
         Some(Node::DefinedNameKind((name.to_string(), scope, formula)))
     }
 

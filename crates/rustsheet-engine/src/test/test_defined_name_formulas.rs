@@ -155,3 +155,23 @@ fn isref_false_for_cross_sheet_corner_range() {
     assert_eq!(model._get_text("A1"), *"FALSE");
     assert_eq!(model._get_text("A2"), *"TRUE");
 }
+
+// `Sheet2!loc`, where Sheet2 has no local `loc`, is the workbook-scoped `loc`; with neither it is
+// #NAME? (gen-m8a names-scope c238d93c128fd5ee, names-errors 6322c0f2638aa11b).
+#[test]
+fn sheet_qualified_name_falls_back_to_workbook_name() {
+    let mut model = new_empty_model();
+    model.add_sheet("Sheet2").unwrap();
+    model.define_name("loc", None, "10").unwrap();
+    model.define_name("loc", Some(0), "30").unwrap();
+    model.define_name("only1", Some(0), "5").unwrap();
+    model._set("A1", "=Sheet2!loc");
+    model._set("A2", "=ISERROR(Sheet2!loc)");
+    model._set("A3", "=Sheet1!loc");
+    model._set("A4", "=IFERROR(Sheet2!only1,\"x\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"10");
+    assert_eq!(model._get_text("A2"), *"FALSE");
+    assert_eq!(model._get_text("A3"), *"30");
+    assert_eq!(model._get_text("A4"), *"x");
+}
