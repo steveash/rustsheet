@@ -1,0 +1,30 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Iterative calculation with iterateCount 5 and iterateDelta 0.5: the count limit, with cycles that keep changing by more than the delta next to cycles whose own change drops below it (T-0428).",
+  "tags": [
+    "M3",
+    "circular",
+    "iteration",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=A1+1",
+        "B1": "=B1/2+1",
+        "C1": "=C1/2+8",
+        "D1": "=D1+0.1",
+        "E1": "=E1+0.5",
+        "F1": "=F1+0.6",
+        "G1": "=A1*2"
+      }
+    }
+  ],
+  "expected": {},
+  "calculation": {
+    "iterate": true,
+    "iterate_count": 5,
+    "iterate_delta": 0.5
+  }
+}
