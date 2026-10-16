@@ -23,11 +23,11 @@ GETPIVOTDATA needs a pivot table in an xlsx fixture (field/item pairs, grand tot
 (`make new-task`); fixing the engine is out of scope.
 
 ## Acceptance criteria
-- [ ] Each listed function has ≥ 20 Excel-evidence cells in the report.
-- [ ] `make eval-baseline` lowers quality/evidence-floor.json by the number of functions lifted
+- [x] Each listed function has ≥ 20 Excel-evidence cells in the report.
+- [x] `make eval-baseline` lowers quality/evidence-floor.json by the number of functions lifted
   over the floor; new failing cells are recorded as new-coverage failures with fix tasks.
-- [ ] Quirks recorded in docs/excel-semantics/.
-- [ ] `make check` green; reviewers approve.
+- [x] Quirks recorded in docs/excel-semantics/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine fixes for the mismatches found (filed as tasks).
