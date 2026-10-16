@@ -1,0 +1,23 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "VARA, VARPA, STDEVA, STDEVPA (and VAR, AVERAGEA for comparison) with a direct LAMBDA argument (T-1291).",
+  "tags": [
+    "M9",
+    "stat",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=VARA(LAMBDA(x,x),1,2)",
+        "A2": "=VARPA(LAMBDA(x,x),1,2)",
+        "A3": "=STDEVA(LAMBDA(x,x),1,2)",
+        "A4": "=STDEVPA(LAMBDA(x,x),1,2)",
+        "A5": "=VAR(LAMBDA(x,x),1,2)",
+        "A6": "=AVERAGEA(LAMBDA(x,x),1,2)"
+      }
+    }
+  ],
+  "expected": {}
+}
