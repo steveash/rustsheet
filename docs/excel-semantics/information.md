@@ -267,6 +267,19 @@ Legacy: `SUM(N({1,2}))` is 3 and `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` 5, bu
 `=N(IF(1,{2;3}))` is `#VALUE!` (not the top-left 2), though FORMULATEXT shows it with no `@`, and legacy
 `=N(B1:B3*1)` off the rows `#VALUE!`.
 Evidence: probes/n-array-lift (excel-graph, 2026-10-16, T-1616).
-Not implemented: the legacy cell `=N(IF(1,{2;3}))` gives 2, 3 spilled in ours instead of `#VALUE!` (S!D4:D5, T-1713).
+Not implemented: the legacy cell `=N(IF(1,{2;3}))` gives 2, 3 spilled in ours instead of `#VALUE!` (S!D4:D5,
+T-1713, which needs the legacy marker of spec T-1727). T, CHOOSE, INDEX and IFS arguments and nested uses
+(`=ABS(N(IF(1,{2;3})))`) behave the same, while N of an array constant or of TRANSPOSE gets an `@` (2):
+references.md "Legacy formulas put `@` on array-valued calls and array constants" and "Legacy N and T over a
+reference-returning call" (probes/legacy-array-result, probes/legacy-n-t-reference-args).
 Status: VERIFIED (excel-graph)
-Tasks: T-1616, T-1713
+Tasks: T-1616, T-1713, T-1727
+
+## T over an array lifts element-wise (T-1713)
+Rule: in a dynamic formula, T of an array value lifts element-wise like N: `=T(IF(1,{"a";"b"}))` spills "a", "b".
+T of a multi-cell range does not lift (one "", text.md "Text function argument modes"). Error and number elements
+are unprobed.
+Evidence: probes/legacy-array-result S!G1:G2 (excel-graph, 2026-10-16).
+Not implemented: ours gives one "" with no spill (T-1729).
+Status: VERIFIED (excel-graph)
+Tasks: T-1729

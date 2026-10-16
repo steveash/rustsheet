@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "E1": {
+    "t": "n",
+    "v": 8.0
+   },
+   "E2": {
+    "t": "s",
+    "v": "=LAMBDA(A1.B2,A1.B2*2)(4)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "045ae88be6a3738f6f0513279c2a59137410d2c79c3130ce0f68b5a74ef72c33",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T20:05:56+00:00",
+  "version": null
+ }
+}

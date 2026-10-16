@@ -27,9 +27,10 @@ from typing import Any, Protocol
 from urllib.parse import quote
 
 import requests
+from xlsxwriter.utility import xl_rowcol_to_cell
 
 from rustsheet_tools.oracle.package import PackageError, patch_workbook
-from rustsheet_tools.spec2xlsx import entered_cells, sheet_ops, text_cells
+from rustsheet_tools.spec2xlsx import entered_cells, parse_a1, sheet_ops, text_cells
 
 
 class OracleError(RuntimeError):
@@ -371,20 +372,52 @@ class GraphBackend:
         self, item_url: str, sid: dict[str, str], cells: list[tuple[str, str]]
     ) -> dict[str, dict[str, str]]:
         """Each cell's displayed text (`Range.text`, which does not depend on the column width) in the
-        session that recalculated it, before the scratch edit (T-1610, decision 0068)."""
+        session that recalculated it, before the scratch edit (T-1610, decision 0068). The cells of a
+        sheet are read in one request for their bounding block when it is small enough
+        ([`text_blocks`]), so a suite of thousands of text cells costs one request per sheet (T-1611)."""
         texts: dict[str, dict[str, str]] = {}
-        for sheet, a1 in cells:
+        for sheet, block, wanted in text_blocks(cells):
             sheet_ref = quote(sheet.replace("'", "''"), safe="")
             rng = self._call(
                 "GET",
-                f"{item_url}/workbook/worksheets('{sheet_ref}')/range(address='{quote(a1, safe='')}')?$select=text",
+                f"{item_url}/workbook/worksheets('{sheet_ref}')/range(address='{quote(block, safe='')}')?$select=text",
                 headers=sid,
             ).json()
-            text = rng.get("text")
-            if not (isinstance(text, list) and text and isinstance(text[0], list) and text[0]):
-                raise OracleError(f"no text for {sheet}!{a1}")
-            texts.setdefault(sheet, {})[a1] = str(text[0][0])
+            rows = rng.get("text")
+            for a1, (row, col) in wanted.items():
+                text = rows[row][col] if _has_cell(rows, row, col) else None
+                if text is None:
+                    raise OracleError(f"no text for {sheet}!{a1}")
+                texts.setdefault(sheet, {})[a1] = str(text)
         return texts
+
+
+MAX_TEXT_BLOCK = 20_000  # cells in one `Range.text` read: well under Graph's response limits
+
+
+def text_blocks(cells: list[tuple[str, str]]) -> list[tuple[str, str, dict[str, tuple[int, int]]]]:
+    """The `(sheet, block, {a1: (row, col) in block})` reads that cover `cells`: one per sheet for the
+    bounding block of its cells when that has at most [`MAX_TEXT_BLOCK`] cells and at most four
+    unlisted cells per listed one, else one per cell (a sparse list would read a mostly empty block)."""
+    by_sheet: dict[str, dict[str, tuple[int, int]]] = {}
+    for sheet, a1 in cells:
+        by_sheet.setdefault(sheet, {})[a1] = parse_a1(a1)
+    reads: list[tuple[str, str, dict[str, tuple[int, int]]]] = []
+    for sheet, at in by_sheet.items():
+        top, left = min(r for r, _ in at.values()), min(c for _, c in at.values())
+        bottom, right = max(r for r, _ in at.values()), max(c for _, c in at.values())
+        area = (bottom - top + 1) * (right - left + 1)
+        if len(at) > 1 and area <= MAX_TEXT_BLOCK and area <= 5 * len(at):
+            block = f"{xl_rowcol_to_cell(top, left)}:{xl_rowcol_to_cell(bottom, right)}"
+            reads.append((sheet, block, {a1: (r - top, c - left) for a1, (r, c) in at.items()}))
+        else:
+            reads.extend((sheet, a1, {a1: (0, 0)}) for a1 in at)
+    return reads
+
+
+def _has_cell(rows: Any, row: int, col: int) -> bool:
+    """Whether Graph's `text` matrix `rows` has a cell at (row, col)."""
+    return isinstance(rows, list) and row < len(rows) and isinstance(rows[row], list) and col < len(rows[row])
 
 
 # --------------------------------------------------------------------------- Windows COM

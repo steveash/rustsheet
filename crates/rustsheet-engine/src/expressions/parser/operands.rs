@@ -5,7 +5,7 @@
 
 use super::super::token::{self, TableReference, TokenType};
 use super::super::types::ParsedReference;
-use super::super::utils::{is_out_of_range_r1c1_name, number_to_column};
+use super::super::utils::{is_out_of_range_r1c1_name, number_to_column, parse_dotted_a1_range};
 use super::reference_operators::is_reference_operand;
 use super::*;
 
@@ -254,6 +254,9 @@ impl Parser {
         if name.starts_with('[') {
             return Node::DefinedNameKind((name, None, String::new()));
         }
+        if let Some(node) = self.dotted_range_operand(&name) {
+            return node;
+        }
         let context = &self.context;
 
         let context_sheet_index = match self.get_sheet_index_by_name(&context.sheet) {
@@ -286,6 +289,41 @@ impl Parser {
         // xlpm: Excel Lambda Parameter
         let name = name.trim_start_matches("_xlpm.").to_string();
         Node::NamedVariableKind { name, id: None }
+    }
+
+    /// The range a name spelled like a Lotus-style range is (`A1.B2` is `A1:B2`; see
+    /// `utils::parse_dotted_a1_range`), in A1 mode and unless an enclosing LET or LAMBDA binds
+    /// it. Stored formulas (R1C1 mode) already print such a range as a range.
+    fn dotted_range_operand(&mut self, name: &str) -> Option<Node> {
+        if !self.lexer.is_a1_mode()
+            || self
+                .dotted_bound_names
+                .iter()
+                .any(|bound| bound.eq_ignore_ascii_case(name))
+        {
+            return None;
+        }
+        let (left, right) = parse_dotted_a1_range(name)?;
+        Some(self.range_operand(None, left, right))
+    }
+
+    /// `node`, parsed from the argument starting at `token`, where a LET or LAMBDA expects a
+    /// name: a name spelled like a Lotus-style range was read as the range while unbound, so it
+    /// becomes the variable again, and stays one for the rest of the call (Excel:
+    /// `LET(R1.C1,5,R1.C1*2)` is 10, probes/r1c1-let-name-r1-c1, T-1659).
+    pub(super) fn bind_dotted_name(&mut self, token: &TokenType, node: Node) -> Node {
+        match (token, &node) {
+            (TokenType::Ident(name), Node::RangeKind { .. } | Node::WrongRangeKind { .. })
+                if self.lexer.is_a1_mode() && parse_dotted_a1_range(name).is_some() =>
+            {
+                self.dotted_bound_names.push(name.clone());
+                Node::NamedVariableKind {
+                    name: name.clone(),
+                    id: None,
+                }
+            }
+            _ => node,
+        }
     }
 
     /// A call by name, `SUM(...)` or `_xlfn.LAMBDA(...)(...)`, after its `(`.

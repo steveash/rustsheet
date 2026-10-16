@@ -27,3 +27,27 @@ fn fn_filterxml_value_and_error_precedence() {
     assert_eq!(model._get_text("A3"), *"#DIV/0!");
     assert_eq!(model._get_text("A4"), *"#N/A");
 }
+
+// probes/filterxml-evidence-floor D28 (T-1704): an array argument gives `#VALUE!` per element.
+#[test]
+fn fn_filterxml_array_xml_lifts() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=FILTERXML({"<a>1</a>";"<a>2</a>"},"//a")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+}
+
+// Errors pass through per element, and a scalar error next to an array broadcasts
+// (probes/filterxml-array-forms A5:A6, D5:D6, D9:D10).
+#[test]
+fn fn_filterxml_array_error_elements() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=FILTERXML({"<a>1</a>";#N/A},"//a")"#);
+    model._set("B1", r#"=FILTERXML(NA(),{"//a";"//b"})"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+    assert_eq!(model._get_text("B1"), *"#N/A");
+    assert_eq!(model._get_text("B2"), *"#N/A");
+}

@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Data": {},
+  "Sheet1": {
+   "E1": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "E2": {
+    "t": "s",
+    "v": "=SUM(A1.XFE1)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "d94972ced24174fabdae919c114036206abef4a1b82cc6a67e34c6744f2b7eaa",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T19:28:01+00:00",
+  "version": null
+ }
+}

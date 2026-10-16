@@ -15,6 +15,7 @@ from rustsheet_tools import repo_root
 from rustsheet_tools.gen.generator import NAME_POOL, Catalog, generate_case
 from rustsheet_tools.gen.names_3d import CATEGORIES as NAMES_3D_CATEGORIES
 from rustsheet_tools.gen.names_3d import SPAN_SHEETS, generate_names_3d
+from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM, generate_number_formats
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
 from rustsheet_tools.gen.operators_refs import CATEGORIES, generate_operators_refs
 from rustsheet_tools.gen.tables import CATEGORIES as TABLES_CATEGORIES
@@ -85,6 +86,23 @@ M2_ADDED = [
     "RIGHT", "MID", "TRIM", "UPPER", "LOWER", "CONCAT", "YEAR", "MONTH", "DAY",
 ]  # fmt: skip
 VALID_MODES = {"value", "aggregate", "aggregate_a", "range", "criteria", "array", "any", "lambda", "name"}
+
+
+def test_number_formats_policy_lists_ten_thousand_text_cells_and_every_format() -> None:
+    specs = generate_number_formats(0)
+    assert specs == generate_number_formats(0)
+    used = set()
+    texts = 0
+    for spec in specs:
+        grid = spec["sheets"][0]
+        assert set(spec["text"]) == {f"F!{a1}" for a1 in grid["cells"]}
+        texts += len(spec["text"])
+        used |= {grid["number_formats"].get(a1, "General") for a1 in grid["cells"]}
+        assert all(f.startswith("=TEXT(") for f in spec["sheets"][1]["cells"].values())
+        build_xlsx(spec)
+    assert texts >= 10_000
+    assert used == set(BUILTIN) | set(CUSTOM)
+    assert not any("e+" in code or "e-" in code for code in used)  # excel-graph refuses them
 
 
 def test_catalog_schema() -> None:
