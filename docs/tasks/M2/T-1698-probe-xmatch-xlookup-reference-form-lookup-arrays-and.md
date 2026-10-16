@@ -3,7 +3,7 @@ id: T-1698
 title: "Probe XMATCH/XLOOKUP reference-form lookup arrays and thorn case"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
