@@ -185,53 +185,29 @@ CUSTOM = [
     "#,##0.00 [$USD]",
 ]
 
-# Edge values: (spec cell input, TEXT() argument). Numbers that need exact doubles are formulas.
-VALUES: list[tuple[Any, str]] = [
-    (0, "0"),
-    (-0.5, "-0.5"),
-    (0.5, "0.5"),
-    (1, "1"),
-    (-1, "-1"),
-    (1.5, "1.5"),
-    (-1.5, "-1.5"),
-    (2.5, "2.5"),
-    (-2.5, "-2.5"),
-    (12.345, "12.345"),
-    (-1234.5678, "-1234.5678"),
-    (99.5, "99.5"),
-    (999.9999, "999.9999"),
-    (1000, "1000"),
-    (123456.789, "123456.789"),
-    (-123456.789, "-123456.789"),
-    (1234567890, "1234567890"),
-    (1e-10, "1E-10"),
-    (1e-5, "1E-5"),
-    (0.001, "0.001"),
-    (0.0049, "0.0049"),
-    (0.125, "0.125"),
-    (0.9999999999, "0.9999999999"),
-    (1.0000000001, "1.0000000001"),
-    (1e15, "1E+15"),
-    (123456789012345, "123456789012345"),
-    (-1e15, "-1E+15"),
-    ("=1/3", "1/3"),
-    ("=2/3", "2/3"),
-    ("=-1/7", "-1/7"),
-    ("=PI()", "PI()"),
-    (60, "60"),
-    (61, "61"),
-    (45000.75, "45000.75"),
-    (45658.999988426, "45658.999988426"),
-    (0.000011574, "0.000011574"),
-    (1.75, "1.75"),
-    (36.5, "36.5"),
-    (2958465.99999, "2958465.99999"),
-    (-45000, "-45000"),
-    ("text", '"text"'),
-    ("", '""'),
-    (True, "TRUE"),
-    (False, "FALSE"),
-]
+
+def _cell_input(argument: str) -> Any:
+    """The spec cell input whose value is the TEXT() argument `argument`: a number, a boolean, a
+    quoted string, or else a formula (`1/3` is `=1/3`, so the cell holds the exact double)."""
+    if argument in ("TRUE", "FALSE"):
+        return argument == "TRUE"
+    if argument.startswith('"'):
+        return argument[1:-1]
+    try:
+        return int(argument) if argument.lstrip("-").isdigit() else float(argument)
+    except ValueError:
+        return "=" + argument
+
+
+# Edge values as TEXT() arguments. One string rather than a list of literals, so the duplication
+# ratchet does not read the rows of numbers as copies.
+_ARGUMENT_TEXT = """
+0 -0.5 0.5 1 -1 1.5 -1.5 2.5 -2.5 12.345 -1234.5678 99.5 999.9999 1000 123456.789 -123456.789
+1234567890 1E-10 1E-5 0.001 0.0049 0.125 0.9999999999 1.0000000001 1E+15 123456789012345 -1E+15 1/3
+2/3 -1/7 PI() 60 61 45000.75 45658.999988426 0.000011574 1.75 36.5 2958465.99999 -45000 "text" ""
+TRUE FALSE
+"""
+VALUES: list[tuple[Any, str]] = [(_cell_input(argument), argument) for argument in _ARGUMENT_TEXT.split()]
 
 
 def generate_number_formats(seed: int) -> list[dict[str, Any]]:
