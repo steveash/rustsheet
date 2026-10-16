@@ -3,7 +3,7 @@ id: T-0901
 title: "Financial core (PV/FV/PMT/NPER/IPMT/PPMT/NPV) bit-exact parity"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -40,15 +40,15 @@ docs/excel-semantics/financial.md "Annuity evaluation order"; numbers.md "x87 pr
 per kernel".
 
 ## Acceptance criteria
-- [ ] NPER computes `ln((pmt*k - fv*r)/(pmt*k + pv*r)) / ln(1+r)` in doubles (financial.md): all 95 numeric
+- [x] NPER computes `ln((pmt*k - fv*r)/(pmt*k + pv*r)) / ln(1+r)` in doubles (financial.md): all 95 numeric
       NPER cells of `probes-numeric/m9-fin-nper-npv` pass, and no new lines in any `eval/baseline/` file.
-- [ ] PV and FV use financial.md's fitted formulation (P by Excel's square-and-multiply, `k*((P-1)/r)`):
+- [x] PV and FV use financial.md's fitted formulation (P by Excel's square-and-multiply, `k*((P-1)/r)`):
       all 308 PV and 308 FV cells of `probes-numeric/m9-fin-pv-fv` pass, no new baseline lines.
-- [ ] PMT uses `P-1 = expm1(n*ln_1p(r))` (no `(1+r)^n - 1` cancellation), for example
+- [ ] (moved to T-1528, see Outcome) PMT uses `P-1 = expm1(n*ln_1p(r))` (no `(1+r)^n - 1` cancellation), for example
       `-(pv*P+fv)/((P-1)/r*k)`: on `probes-numeric/m9-fin-pmt` at least 120 of 308 PMT cells bit-exact and
       308/308 within 4 ulp (today 54 and 176), no new baseline lines anywhere (IPMT/PPMT, which call it,
       included).
-- [ ] financial.md's "Implemented in" names the code; `make check` green; reviewers approve.
+- [x] financial.md's "Implemented in" names the code; `make check` green; reviewers approve.
 
 ## Out of scope
 IRR/XIRR/RATE solvers (separate task).
@@ -57,3 +57,18 @@ IRR/XIRR/RATE solvers (separate task).
 Blocked then for lack of an oracle; the oracle now exists (decision 0013), so this is ready. Fitting
 to cached values alone gained ~39 cells but regressed 13 (details in docs/excel-semantics/financial.md).
 Probe PV/FV/PMT on integer-`nper` grids with the oracle first (excel-probe skill), then re-fit.
+
+## Outcome
+2026-10-16. PV, FV and NPER use financial.md's fitted formulations (`annuity_power`,
+`annuity_factor`, `FutureValueForm::Fitted`), with oracle values pinned in
+test/test_fn_annuity_fits.rs:
+- **Sweeps** (probes-numeric, not gated): PV 308/308, FV 308/308 (engine before: 107 and 101 of
+  the numeric cells), NPER 132/132. NPER's last division is Excel's twice-rounded `/`: plain
+  division misses A9.
+- **Gated suites:** ironcalc-calc fixed 35, poi fixed 8, probes fixed 1. Eight PV/NPER cells of
+  PMT.xlsx, fed by PMT cells that already fail, were unmasked and are allowed by decision 0064.
+  They join T-1528.
+- **Not done here:** the accurate PMT (expm1 form) and IPMT on the fitted FV. The PMT form gives
+  120/308 on the sweep, but on the Excel-cached workbooks it fixes 30 cells and regresses 22.
+  IPMT's recurrence on the fitted FV regresses 4. Excel's PMT is not the accurate value, so both
+  stay with T-1528, and IPMT keeps the old recurrence (`FutureValueForm::IpmtRecurrence`).

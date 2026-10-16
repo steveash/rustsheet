@@ -278,7 +278,9 @@ impl Parser {
         let name_lower = name.to_lowercase();
         for table_name in self.tables.keys() {
             if table_name.to_lowercase() == name_lower {
-                return Node::TableNameKind(name);
+                // A bare table name is its data area, like `Table[]` (gen-m8b specials
+                // e804cf2f8af00680 K116, lookups 27252667210b1d03).
+                return self.structured_reference_operand(name, None, None);
             }
         }
         // xlpm: Excel Lambda Parameter

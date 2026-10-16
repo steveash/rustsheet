@@ -47,8 +47,7 @@ fn is_read_reference(arg: &Node) -> bool {
         | Node::OpRangeKind { .. }
         | Node::OpIntersectKind { .. }
         | Node::OpUnionKind { .. }
-        | Node::SheetSpanKind { .. }
-        | Node::TableNameKind(_) => true,
+        | Node::SheetSpanKind { .. } => true,
         // Over a literal or computed array they pick values, not cells, and spill like any array
         // (`SUBTOTAL(9,TAKE({1,2;3,4},1))`, probes/subtotal-reference-operands-c H1, T-1206;
         // `SUBTOTAL(9,TAKE(SEQUENCE(4),2))` is two `#VALUE!`, probes/subtotal-reference-operands-d

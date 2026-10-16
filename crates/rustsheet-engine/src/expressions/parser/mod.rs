@@ -269,7 +269,6 @@ pub enum Node {
     },
     ArrayKind(Vec<Vec<ArrayNode>>),
     DefinedNameKind(DefinedNameS),
-    TableNameKind(String),
     NamedVariableKind {
         name: String,
         id: Option<u32>,
