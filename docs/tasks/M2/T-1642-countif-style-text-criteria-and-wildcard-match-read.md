@@ -34,5 +34,6 @@ T-1585 made `compare_values`, EXACT and exact MATCH lone-surrogate-exact, but th
 ## Outcome
 - Text criteria (`=`, `<>`, `<`, `>`, `<=`, `>=`) take their operand as `Text` and compare with `cmp_text`, so a lone half is its own unit (never U+FFFD).
 - `WildcardPattern` (functions/criteria.rs) replaces the regex translation for criteria and MATCH/XMATCH/XLOOKUP wildcard mode: `?` is one UTF-16 unit, `*` any run, matched over lower-cased units. That also fixes line breaks, which the regex's `.` skipped. A second probe (probes/criteria-wildcard-newline, 17 cells) shows Excel matches them.
-- Eval: probes/criteria-lone-surrogates 18/48 → 48/48; probes/criteria-wildcard-newline 17/17 new.
-- Follow-up: T-1666 (SEARCH still uses the regex wildcard translation).
+- A third probe (probes/criteria-wildcard-tilde, 16 cells) confirms the inherited `~` rules inside wildcard patterns and wildcard-mode lookups (`~x` is `x`, trailing `~` dropped); the engine already matched.
+- Eval: probes/criteria-lone-surrogates 18/48 → 48/48; probes/criteria-wildcard-newline 17/17 and probes/criteria-wildcard-tilde 16/16 new.
+- Follow-ups: T-1666 (SEARCH still uses the regex wildcard translation), T-1667 (D-function prefix criteria are lossy).

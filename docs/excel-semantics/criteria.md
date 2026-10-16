@@ -22,11 +22,22 @@ Before any other character, `~` is a literal tilde: `"a~c"` matches "a~c", and a
 is literal (`"abc~"` matches "abc~", not "abc"). `~~` is **not** an escape for one tilde: `"~~"`
 does not match the text "~" and `"a~~c"` does not match "a~c". Matching, with or without
 wildcards, is case-insensitive (`"ABC"` → abc and ABC; `"A?C"`, `"*C"` → 5).
-Verified with COUNTIF only; MATCH/XLOOKUP wildcard mode and D-functions are unprobed for `~~`.
+Verified with COUNTIF only, for patterns without `*`/`?`; inside wildcard patterns and in MATCH/XMATCH see "Tildes inside wildcard patterns and wildcard-mode lookups" below. D-functions are unprobed for `~~`.
 Evidence: probes/criteria-gaps C4–C14 over 10, abc, TRUE, #N/A, blank, ABC, abc~, a*c, a?c, a~c,
 *, ~: 1, 1, 1, 0, 0, 1, 2, 5, 10, 5, 1; probes/criteria-grammar C8. Oracle: excel-graph, 2026-10-05 (T-0011).
 Status: VERIFIED
 Implemented in: functions::criteria::wildcard_text_matcher
+
+## Tildes inside wildcard patterns and wildcard-mode lookups
+Rule: once a criterion holds `*` or `?`, or always for a MATCH(..,0)/XMATCH(..,2) text lookup value, `~` makes the next
+character literal whatever it is: `~x` reads as `x`, `~~` as one `~`, `~*`/`~?` as `*`/`?`; a trailing `~` is dropped.
+This differs from the plain-text criterion rule above, where `~` before a non-wildcard and a trailing `~` stay literal.
+Over Data!A1:A8 = a~c, ac, abc~, abc, ~, a~~c, a~b, a~bx (SUMIF weights 1..128): `"a~c*"` 2 (ac), `"~~*"` 16 (~),
+`"abc~*"` 0, `"*~"` 255, `"a~~c*"` 1, `"*~c"` 43, `"a~?*"` 0, `"a~b?"` 8 (abc); `MATCH("a~c",..,0)` 2,
+`MATCH("abc~",..,0)` 4, `MATCH("~~",..,0)` 5, `MATCH("a~~c",..,0)` 1, `MATCH("~",..,0)` #N/A; `XMATCH("a~c",..,2)` 2.
+Evidence: probes/criteria-wildcard-tilde (excel-graph, 2026-10-16, T-1642).
+Status: VERIFIED
+Implemented in: `WildcardPattern::new` (functions/criteria.rs)
 
 ## Wildcards match line breaks
 Rule: `?` matches one CHAR(10) or CHAR(13) and `*` spans them, in criteria and in wildcard MATCH/XMATCH alike. Over

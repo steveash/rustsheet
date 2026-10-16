@@ -484,9 +484,9 @@ const QUESTION: u16 = b'?' as u16;
 /// (docs/excel-semantics/text.md "Lone surrogates", criteria paragraph;
 /// probes/criteria-lone-surrogates A9-A16, A25-A28, A33-A43). `?` and `*` match line breaks too
 /// (probes/criteria-wildcard-newline). `~` makes the next unit literal (`~*`, `~?`, `~~`, and
-/// `~x` reads as `x`); a trailing `~` is dropped (docs/excel-semantics/criteria.md "Wildcard
-/// escapes, case and trailing tilde"; the last two are the pre-T-1642 regex translation's
-/// choices, unprobed with a wildcard in the pattern).
+/// `~x` reads as `x`) and a trailing `~` is dropped, unlike a criterion without wildcards
+/// (docs/excel-semantics/criteria.md "Tildes inside wildcard patterns and wildcard-mode lookups";
+/// probes/criteria-wildcard-tilde).
 pub(crate) struct WildcardPattern {
     tokens: Vec<WildcardToken>,
 }
