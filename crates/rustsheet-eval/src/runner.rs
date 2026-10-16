@@ -314,10 +314,11 @@ pub fn run_case(
                     Prepared::Spec { spec } => engine.evaluate_spec(spec),
                 }?;
                 let mut cells = score(evaluated.as_ref(), &prepared.expectations);
+                let scored = cells.len();
                 if let Some(extent) = &prepared.extent {
                     cells.extend(extent.unexpected_cells(evaluated.as_ref()));
                 }
-                Ok::<_, String>(cells)
+                Ok::<_, String>((cells, scored))
             }));
             let _ = tx.send(outcome);
         });
@@ -345,16 +346,20 @@ pub fn run_case(
             result.status = CaseStatus::EngineError;
             result.message = Some(e);
         }
-        Ok(Ok(Ok(cells))) => {
-            result.checked = cells.len();
-            result.passed = cells.iter().filter(|c| c.verdict.is_pass()).count();
-            result.deviations = cells
+        Ok(Ok(Ok((cells, scored)))) => {
+            // Spill-extent cells (after `scored`) all fail and stay out of `checked`: the
+            // baseline keys a case's regressions on an unchanged checked count, so an engine
+            // that starts spilling further must not look like new coverage (T-1660).
+            let scored_cells = cells.get(..scored).unwrap_or_default();
+            result.checked = scored;
+            result.passed = scored_cells.iter().filter(|c| c.verdict.is_pass()).count();
+            result.deviations = scored_cells
                 .iter()
                 .filter(|c| c.verdict == Verdict::Deviation)
                 .count();
             result.status = if result.checked == 0 {
                 CaseStatus::Pending
-            } else if result.passed + result.deviations == result.checked {
+            } else if result.passed + result.deviations == result.checked && cells.len() == scored {
                 CaseStatus::Pass
             } else {
                 CaseStatus::Fail
