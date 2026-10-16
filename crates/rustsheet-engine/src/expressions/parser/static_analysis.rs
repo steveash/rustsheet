@@ -1295,8 +1295,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Encodeurl => scalar_arguments(args),
         // All three lift over an array or range `source`/`stock`/`value` (T-1179).
         Function::Image | Function::Stockhistory | Function::Fieldvalue => StaticResult::Unknown,
-        // Never lifts: the whole call is `#VALUE!` (filterxml.rs).
-        Function::Filterxml => StaticResult::Scalar,
+        // Lifts over array arguments, `#VALUE!` per element (filterxml.rs).
+        Function::Filterxml => scalar_arguments(args),
         // The *B functions delegate to their non-B counterparts (byte_functions.rs), so they lift
         // over ranges exactly as FIND/LEFT/LEN/... do (T-0271).
         Function::Findb => scalar_arguments(args),

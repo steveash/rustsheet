@@ -41,6 +41,36 @@ impl Lexer {
         None
     }
 
+    /// After a cell, the dots and second cell of a Lotus-style range: `$A$1.B2`, `A1..$B$2`,
+    /// `Data!A1.B2`, `A1 . B2` are the range `A1:B2` to Excel (probes/lotus-dot-range-forms,
+    /// -space, -dollar-mid, excel-graph, T-1659). One or more dots, with optional whitespace
+    /// around the run, then a cell that no more of a name, a call, a dot or a sheet follows.
+    /// `None`, with the position unchanged, when that is not what follows. (A dotted range with
+    /// neither `$` nor whitespace lexes as one identifier, which the parser reads as the range
+    /// unless a LET or LAMBDA binds that name: `utils::parse_dotted_a1_range`.)
+    fn consume_dotted_corner(&mut self) -> Option<ParsedReference> {
+        let start = self.position;
+        self.consume_whitespace();
+        let dots = self.position;
+        while self.peek_char() == Some('.') {
+            self.position += 1;
+        }
+        let corner = if self.position > dots {
+            self.consume_whitespace();
+            self.consume_reference_a1().ok().filter(|_| {
+                !self.peek_char().is_some_and(|c| {
+                    c.is_alphanumeric() || matches!(c, '.' | '_' | '(' | '$' | '!' | '[' | '\\')
+                })
+            })
+        } else {
+            None
+        };
+        if corner.is_none() {
+            self.position = start;
+        }
+        corner
+    }
+
     /// Consumes a reference in A1 style like:
     /// AS23, $AS23, AS$23, $AS$23, R12
     /// Or returns an error
@@ -252,6 +282,12 @@ impl Lexer {
         let mut position = self.position;
         match self.consume_reference_a1() {
             Ok(cell) => {
+                if let Some(cell2) = self.consume_dotted_corner() {
+                    return Ok(ParsedRange {
+                        left: cell,
+                        right: Some(cell2),
+                    });
+                }
                 // `Data!B8:Data!E12`: when the second corner carries a sheet prefix the token ends at
                 // the first corner. The colon is lexed as the range operator and the parser joins
                 // the two references (references.md "Range corners may both carry the sheet prefix").
