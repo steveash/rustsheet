@@ -1,0 +1,30 @@
+---
+id: T-1696
+title: "Probe the error precedence of VARA, VARPA, STDEVA and STDEVPA (direct vs referenced and array errors)"
+milestone: M2
+lane: functions-stat
+status: todo
+priority: P3
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+The error order of VARA, VARPA, STDEVA and STDEVPA has excel-graph evidence, and the engine matches it.
+
+## Context
+Found in T-1439 review. `VARA_ARGS` (`functions/statistical/variance.rs`) uses
+`ErrorRule::First`: the first error in argument order returns at once. The SUM, AVERAGE and
+DEVSQ families use `Ranked` instead, where a direct error beats referenced and array errors
+(probes/aggregate-error-precedence-stat-family, T-1439). Probe the same eight shapes with the
+same data as that case, for the four A-variance functions. If they rank like the rest, switch
+`VARA_ARGS` to `Ranked`. docs/excel-semantics/syntax.md, "Aggregate error precedence".
+
+## Acceptance criteria
+- [ ] A probe case (4 functions × 8 shapes) is oracle-filled, and the engine matches it.
+- [ ] The UNVERIFIED note on VARA in syntax.md is resolved.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- Typed numeric text (T-1291).
