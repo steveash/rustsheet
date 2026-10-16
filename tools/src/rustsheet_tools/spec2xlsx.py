@@ -77,7 +77,7 @@ from xml.sax.saxutils import escape, unescape
 import xlsxwriter
 
 from rustsheet_tools.oracle.package import patch_parts, read_parts
-from rustsheet_tools.pivot import PivotParts, pivot_tables, rels_part
+from rustsheet_tools.pivot import PivotParts, pivot_tables, relationships_xml
 
 # XlsxWriter stamps docProps/core.xml with the wall clock; a fixed instant keeps identical specs
 # byte-identical so `input_sha256` (sidecars, eval/.cache/oracle) is stable across runs (T-0015).
@@ -392,14 +392,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
             (number, _add_data_table(ws, sheet, t)) for t in sheet.get("data_tables", ())
         )
 
-    def write_pivot_cell(number: int, row: int, col: int, value: str | float) -> None:
-        # Through `_write`, so a pivot's aggregates keep every digit (`_store_numbers`).
-        if (
-            cell_number := _write(worksheets[number - 1], row, col, value, tables=tables)
-        ) is not None and _is_lossy(cell_number):
-            patches.lossy.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), cell_number))
-
-    patches.pivots = pivot_tables(spec, write_pivot_cell)
+    patches.pivots = pivot_tables(spec, _pivot_cell_writer(worksheets, patches, tables))
     for name, formula in spec.get("names", {}).items():
         wb.define_name(name, _formula_text(formula, tables))
     for n, entry in enumerate(entered, start=1):
@@ -607,6 +600,19 @@ def _write_data_tables(xlsx: bytes, tables: list[tuple[int, tuple[str, str]]]) -
     return _patch_sheets(xlsx, [(number, patch(ref, formula)) for number, (ref, formula) in tables])
 
 
+def _pivot_cell_writer(
+    worksheets: list[Any], patches: _Patches, tables: frozenset[str]
+) -> Callable[[int, int, int, str | float], None]:
+    """Writes a rendered pivot cell through `_write`, so a pivot's aggregates keep every digit (`_store_numbers`)."""
+
+    def write(number: int, row: int, col: int, value: str | float) -> None:
+        cell_number = _write(worksheets[number - 1], row, col, value, tables=tables)
+        if cell_number is not None and _is_lossy(cell_number):
+            patches.lossy.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), cell_number))
+
+    return write
+
+
 def _write_pivots(xlsx: bytes, pivots: PivotParts) -> bytes:
     """Adds the pivot parts and links them from the workbook, its sheets and the content types (T-1705)."""
     if not pivots.parts:
@@ -644,7 +650,7 @@ def _write_pivots(xlsx: bytes, pivots: PivotParts) -> bytes:
         if part in existing:
             patches.append((part, insert("</Relationships>", rels)))
         else:
-            added[part] = rels_part(*rels)
+            added[part] = relationships_xml(*rels)
     return patch_parts(xlsx, patches, added)
 
 

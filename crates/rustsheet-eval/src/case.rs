@@ -157,15 +157,20 @@ pub struct DataTableSpec {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PivotTableSpec {
+    /// The pivot's name (`PivotTable1`).
     pub name: String,
     /// A1 range with the field names in its first row, optionally sheet-qualified (`Data!A1:C7`).
     pub source: String,
     /// Top-left cell of the rendered pivot.
     pub location: String,
+    /// The row field (a text column of the source).
     pub row: String,
+    /// The column field (another text column), if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub column: Option<String>,
+    /// The data field (a number column).
     pub value: String,
+    /// `sum` (when absent), `count`, `average`, `max` or `min`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub function: Option<String>,
 }

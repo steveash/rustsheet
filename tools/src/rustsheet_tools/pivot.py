@@ -87,7 +87,7 @@ def _source(spec: dict[str, Any], own_sheet: str, source: str) -> tuple[str, str
             if (
                 isinstance(raw, bool)
                 or not isinstance(raw, str | int | float)
-                or raw in ("",)
+                or raw == ""
                 or (isinstance(raw, str) and raw.startswith("="))
             ):
                 msg = f"pivot source cell {sheet_name}!{a1} must be a literal text or number: {raw!r}"
@@ -292,10 +292,9 @@ class _Pivot:
         )
 
 
-def rels_part(*relationships: str) -> bytes:
+def relationships_xml(*relationships: str) -> bytes:
     """A relationships part holding `relationships`."""
-    body = "".join(relationships)
-    return f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="{_PACKAGE_REL_NS}">{body}</Relationships>'.encode()
+    return _xml(f'<Relationships xmlns="{_PACKAGE_REL_NS}">{"".join(relationships)}</Relationships>')
 
 
 def _relationship(rid: str, kind: str, target: str) -> str:
@@ -331,10 +330,10 @@ def pivot_tables(spec: dict[str, Any], write: Callable[[int, int, int, Cell], No
             out.parts[definition] = _xml(pivot.cache_definition())
             out.parts[records] = _xml(pivot.cache_records())
             out.parts[table] = _xml(pivot.table_definition(n))
-            out.parts[f"xl/pivotCache/_rels/pivotCacheDefinition{n}.xml.rels"] = rels_part(
+            out.parts[f"xl/pivotCache/_rels/pivotCacheDefinition{n}.xml.rels"] = relationships_xml(
                 _relationship("rId1", "pivotCacheRecords", f"pivotCacheRecords{n}.xml")
             )
-            out.parts[f"xl/pivotTables/_rels/pivotTable{n}.xml.rels"] = rels_part(
+            out.parts[f"xl/pivotTables/_rels/pivotTable{n}.xml.rels"] = relationships_xml(
                 _relationship("rId1", "pivotCacheDefinition", f"../pivotCache/pivotCacheDefinition{n}.xml")
             )
             out.workbook_caches.append(f'<pivotCache cacheId="{n}" r:id="rIdPivotCache{n}"/>')
