@@ -26,3 +26,21 @@ describes percent-encoding (`"a%20b%26c"`), which desktop Excel may do. An error
 Evidence: probes/info-logic-argument-modes-2 A1:A6, B5; probes/info-logic-argument-modes A15:B15 (oracle: excel-graph, 2026-10-09, T-1088).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081). Implemented in: crates/rustsheet-engine/src/functions/text/encodeurl.rs (T-1219).
 Tasks: T-1088, T-1219
+
+## Evidence floor probes (T-1628)
+Rule: on excel-graph every ENCODEURL cell probed is `#VALUE!` whatever the text (reserved characters, non-ASCII,
+a surrogate pair, `""`, numbers, booleans, a date, a cell reference, a range and an array literal, which spill as
+`#VALUE!`), including `ENCODEURL(ENCODEURL("a b"))` and `LEN(ENCODEURL("a b"))`; an error argument propagates
+(`ERROR.TYPE(ENCODEURL(1/0))` is 2). Every FILTERXML cell probed is `#VALUE!` too: well-formed and malformed XML,
+no-match XPath, several matches, attributes, `count()`/`string()`, numeric text, a non-text argument and an array argument.
+Evidence: probes/encodeurl-evidence-floor, probes/filterxml-evidence-floor (oracle: excel-graph, 2026-10-16, T-1628).
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081). The web results say nothing about desktop
+percent-encoding or XPath behavior.
+
+## GETPIVOTDATA without a pivot table (T-1628)
+Rule: with no pivot table in the workbook, `GETPIVOTDATA(data_field, pivot_table, ...)` is `#REF!` for every
+reference probed (a cell outside any pivot, a range, another sheet, `OFFSET`/`INDIRECT` results, extra field/item pairs, an
+odd number of pairs, a numeric or boolean `data_field`); an error in `data_field` or `pivot_table` propagates as it came
+(`NA()` is `#N/A`, `1/0` is `#DIV/0!`, and the first one wins left to right). `ERROR.TYPE(GETPIVOTDATA("Sales",A1))` is 4.
+Evidence: probes/getpivotdata-evidence-floor (oracle: excel-graph, 2026-10-16, T-1628).
+Not probed: a real pivot (field/item pairs, grand totals, missing items): the case builder cannot write pivot tables.
