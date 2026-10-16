@@ -3,7 +3,7 @@ id: T-1702
 title: "Number-format lexer reads A/P and a locale-only [$-409] bracket"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
