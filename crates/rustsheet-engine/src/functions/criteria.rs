@@ -342,10 +342,8 @@ pub(crate) fn build_criteria_with<'a>(
                 } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
                     Box::new(move |x| result_is_less_or_equal_than_number(x, f))
                 } else {
-                    {
-                        let target = operand_text(s, "<=");
-                        Box::new(move |x| result_is_less_or_equal_than_string(x, &target))
-                    }
+                    let target = operand_text(s, "<=");
+                    Box::new(move |x| result_is_less_or_equal_than_string(x, &target))
                 }
             } else if let Some(v) = s.strip_prefix(">=") {
                 if let Some(f) = parse_criterion_number(v) {
@@ -357,10 +355,8 @@ pub(crate) fn build_criteria_with<'a>(
                 } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
                     Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
                 } else {
-                    {
-                        let target = operand_text(s, ">=");
-                        Box::new(move |x| result_is_greater_or_equal_than_string(x, &target))
-                    }
+                    let target = operand_text(s, ">=");
+                    Box::new(move |x| result_is_greater_or_equal_than_string(x, &target))
                 }
             } else if let Some(v) = s.strip_prefix("<>") {
                 // Same for both flavors: `<>ab` is an exact not-equal, never a prefix test.
@@ -378,10 +374,8 @@ pub(crate) fn build_criteria_with<'a>(
                 } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
                     Box::new(move |x| result_is_not_equal_to_number(x, f))
                 } else {
-                    {
-                        let target = operand_text(s, "<>");
-                        Box::new(move |x| result_is_not_equal_to_string(x, &target))
-                    }
+                    let target = operand_text(s, "<>");
+                    Box::new(move |x| result_is_not_equal_to_string(x, &target))
                 }
             } else if let Some(v) = s.strip_prefix('<') {
                 if let Some(f) = parse_criterion_number(v) {
@@ -393,10 +387,8 @@ pub(crate) fn build_criteria_with<'a>(
                 } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
                     Box::new(move |x| result_is_less_than_number(x, f))
                 } else {
-                    {
-                        let target = operand_text(s, "<");
-                        Box::new(move |x| result_is_less_than_string(x, &target))
-                    }
+                    let target = operand_text(s, "<");
+                    Box::new(move |x| result_is_less_than_string(x, &target))
                 }
             } else if let Some(v) = s.strip_prefix('>') {
                 if let Some(f) = parse_criterion_number(v) {
@@ -408,10 +400,8 @@ pub(crate) fn build_criteria_with<'a>(
                 } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
                     Box::new(move |x| result_is_greater_than_number(x, f))
                 } else {
-                    {
-                        let target = operand_text(s, ">");
-                        Box::new(move |x| result_is_greater_than_string(x, &target))
-                    }
+                    let target = operand_text(s, ">");
+                    Box::new(move |x| result_is_greater_than_string(x, &target))
                 }
             } else {
                 let explicit_equals = s.starts_with('=');
@@ -437,10 +427,8 @@ pub(crate) fn build_criteria_with<'a>(
                 } else if flavor == CriteriaFlavor::Database && !explicit_equals {
                     Box::new(move |x| result_starts_with_string(x, &v.to_lowercase()))
                 } else {
-                    {
-                        let target = operand_text(s, if explicit_equals { "=" } else { "" });
-                        Box::new(move |x| result_is_equal_to_string(x, &target))
-                    }
+                    let target = operand_text(s, if explicit_equals { "=" } else { "" });
+                    Box::new(move |x| result_is_equal_to_string(x, &target))
                 }
             }
         }
@@ -506,11 +494,8 @@ pub(crate) struct WildcardPattern {
 impl WildcardPattern {
     /// Compiles `pattern`.
     pub(crate) fn new(pattern: &Text) -> WildcardPattern {
-        let mut units = pattern
-            .map_runs(str::to_lowercase)
-            .units()
-            .collect::<Vec<_>>()
-            .into_iter();
+        let lowered = pattern.map_runs(str::to_lowercase);
+        let mut units = lowered.units();
         let mut tokens = Vec::new();
         while let Some(unit) = units.next() {
             let token = match unit {
