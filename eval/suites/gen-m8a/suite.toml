@@ -1,0 +1,10 @@
+name = "gen-m8a"
+description = "M8 defined-name and 3-D reference probes from rustsheet-gen --policy names-3d; expectations from the Excel oracle"
+kind = "spec"
+root = "cases"
+include = ["**/*.case.json"]
+license = "Apache-2.0"
+origin = "generated"
+gate = false
+baseline = "cells"
+milestone = ["M8"]
