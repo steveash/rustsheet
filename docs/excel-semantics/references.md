@@ -227,10 +227,14 @@ Calc!H1, I1; T-1537). Over a cached range the same lift gives the cached cell pe
 top-left cached cell (`{0,2},1` is "Hello!", 5; `{1,2},0` is "Hello!", 5), an out-of-range element is a per-element `#REF!`
 (`{1,4},1` is "Hello!", #REF!) and a cached `#N/A` stays that element (`INDEX(…A1:C3,1,{1,2,3})` is "Hello!", 10, #N/A)
 (fixtures/external-link-cached-ranges Refs!B83:D88, excel-graph, 2026-10-14, T-1546; the engine matches).
-Excel treats the lifted INDEX over an external range as a single-cell reference (its first element, which in these probes is also the range's top-left cell; `{2,1}` would tell them apart, UNVERIFIED):
-`SUM(INDEX(…,{1,2},1))` is 0 ("Hello!" is text), `ROWS(…)` is 1, `ISREF(…)` is TRUE and a further
-`INDEX(INDEX(…,{1,2},1),2)` is `#REF!` (Refs!B89:B92). Not implemented: we give `#BLOCKED!`, `#BLOCKED!`, FALSE and
-`#BLOCKED!` for those four (T-1554).
+In a legacy (non-array) formula, an INDEX with an index array over an external range is a single-cell
+reference to its *first element*, not to the range's top-left cell. `SUM(INDEX(…,{1,2},1))` is 0 ("Hello!" is text), `ROWS(…)` is 1, `ISREF(…)` is TRUE and a further
+`INDEX(INDEX(…,{1,2},1),2)` is `#REF!` (Refs!B89:B92). With `{2,1}` the two candidates differ, and the first element
+(A2, 5) wins: `SUM(INDEX([1]Uses!$A$1:$B$3,{2,1},1))` is 5, `INDEX(INDEX(…,{2,1},1),1)` 5, `…&""` "5",
+`COUNTA(…)` 1, `ROWS(…)` 1, `ISREF(…)` TRUE, `INDEX(INDEX(…,{2,1},1),2)` `#REF!`; across a row
+`SUM(INDEX(…,1,{2,1}))` is 10 (B1) and `COLUMN(INDEX(…,1,{2,1}))` 2. Entered as a two-cell array formula (B10:C10), the
+same INDEX gives one result per element: 5, "Hello!" (fixtures/external-link-cached-index-array Refs!B1:B10, C10, excel-graph,
+2026-10-16, T-1554). The engine matches all of these.
 A LET is transparent here too: a LET whose body is (or IF, CHOOSE or a nested LET picks) a
 reference into another workbook is that reference. `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3,
 `ROWS(LET(c,TRUE,…!A1:B3))` 3, `ROWS(LET(c,TRUE,LET(d,1,CHOOSE(d,…!A1:B4))))` 4,
@@ -1536,9 +1540,10 @@ and the aggregate then reads the intersected value: off the range's rows (row 10
 and `=LOOKUP(2,CHOOSE(1,B1:B6*1))` is 1. A one-element array constant takes an `@` in ROUND (`=ROUND(@{5},0)`) but not
 in TYPE: `=TYPE({5})` shows no `@` and is 64. Ours matches all of these (T-1643). The rules ours applies stop at the
 probed shapes: a legacy INDEX over a CHOOSE whose arms are all arithmetic takes no `@` on the call
-(`legacy_call_reads_a_value`; a dynamic `=INDEX(CHOOSE(1,B1:B6*1),0)` still spills); INDEX and LOOKUP's array form read
-a scalar picked by IF or CHOOSE as a one-element array; MODE propagates the error of an argument IF or CHOOSE picked, and every other argument error too (direct, referenced or named: probes/mode-typed-arguments A30-A33, probes/mode-error-and-computed-arguments A1-A6, A11-A13, T-1291).
-Inferred, unprobed (T-1645, T-1651): every IF pick (only CHOOSE is probed), INDEX of any other scalar stays `#VALUE!`, and any other scalar LOOKUP lookup_vector keeps its reading.
+(`legacy_call_reads_a_value`; a dynamic `=INDEX(CHOOSE(1,B1:B6*1),0)` still spills); LOOKUP (array and vector forms) reads
+any scalar lookup_vector as a one-element array, picked by IF or CHOOSE or written directly (`LOOKUP(2,1)` is 1, `LOOKUP("b","a")` is "a", `LOOKUP(2,1,5)` is 5, `LOOKUP(2,{1})` is 1, `LOOKUP(2,IF(TRUE,1))` is 1: probes/mode-direct-error-lookup-scalar-vector B1-B5, T-1651); INDEX reads a scalar IF or CHOOSE picked as a one-element array, `INDEX(IF(TRUE,5),1)` is 5 (B6); MODE propagates the error of an argument IF or CHOOSE picked, and every other argument error too (direct, referenced or named: probes/mode-typed-arguments A30-A33, probes/mode-error-and-computed-arguments A1-A6, A11-A13, T-1291).
+`MODE(IF(TRUE,1/0),1,1)` and direct errors in MODE, MODE.SNGL and MODE.MULT (`1/0`, `NA()`, `#DIV/0!`, a cell, a name) all propagate the error (probes/mode-direct-error-lookup-scalar-vector A1-A16, T-1651).
+Inferred, unprobed (T-1645, T-1709): INDEX of a scalar other than an IF or CHOOSE pick stays `#VALUE!`; a boolean or empty scalar lookup_vector in LOOKUP is read as a one-element array like the probed number and text ones.
 Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at (excel-graph, 2026-10-15).
 Status: VERIFIED (excel-graph)
 Tasks: T-1638, T-1643, T-1645, T-1651

@@ -21,6 +21,11 @@ pub trait Evaluated {
     /// Every stored cell of `sheet` (spill members included); empty for an unknown sheet. The
     /// spill-extent check reads it (T-1660), so an empty list turns that check off.
     fn stored_cells(&self, sheet: &str) -> Vec<Addr>;
+    /// The cell's text as displayed under its number format (T-1610); `None` if the sheet does
+    /// not exist or the engine cannot format the cell.
+    fn text(&self, _sheet: &str, _addr: Addr) -> Option<String> {
+        None
+    }
 }
 
 pub trait Engine: Sync {
@@ -73,14 +78,21 @@ fn render_lone_units(units: &[u16]) -> String {
     out
 }
 
-impl Evaluated for RustSheetEvaluated {
-    fn value(&self, sheet: &str, addr: Addr) -> Option<Value> {
-        let cell = CellRef::new(
+impl RustSheetEvaluated {
+    /// The facade cell at `addr` (1-based) on `sheet`, `None` for an unknown sheet.
+    fn cell(&self, sheet: &str, addr: Addr) -> Option<CellRef> {
+        CellRef::new(
             self.workbook.sheet_id(sheet).ok()?,
             addr.row.checked_sub(1)?,
             addr.col.checked_sub(1)?,
         )
-        .ok()?;
+        .ok()
+    }
+}
+
+impl Evaluated for RustSheetEvaluated {
+    fn value(&self, sheet: &str, addr: Addr) -> Option<Value> {
+        let cell = self.cell(sheet, addr)?;
         Some(match self.workbook.value(cell).ok()? {
             ApiValue::Number(n) => Value::Number(n),
             ApiValue::Text(s) => Value::Text(match self.workbook.text_utf16(cell) {
@@ -92,6 +104,10 @@ impl Evaluated for RustSheetEvaluated {
             // `ApiValue` is non-exhaustive; `Empty` and future variants score as empty.
             _ => Value::Empty,
         })
+    }
+
+    fn text(&self, sheet: &str, addr: Addr) -> Option<String> {
+        self.workbook.formatted(self.cell(sheet, addr)?).ok()
     }
 
     fn stored_cells(&self, sheet: &str) -> Vec<Addr> {

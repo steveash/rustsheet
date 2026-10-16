@@ -120,6 +120,11 @@ pub struct SheetSpec {
     /// (T-1268). spec2xlsx writes it as the cell's `numFmt`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub number_formats: BTreeMap<String, String>,
+    /// Column letter → width in characters, written by spec2xlsx (T-1610). The engine adapter
+    /// ignores it: excel-graph's displayed text does not depend on the width
+    /// (probes/displayed-text-formats B1:B3; docs/excel-semantics/number-formats.md).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub column_widths: BTreeMap<String, f64>,
 }
 
 /// A table in a spec sheet. spec2xlsx gives a filtered table a values filter that keeps exactly
@@ -242,6 +247,11 @@ pub struct CaseSpec {
     /// of skipped as volatile (T-1283); every listed cell must be a volatile formula cell.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub invariant: Vec<String>,
+    /// Cells (`Sheet!A1`) whose displayed text (Excel's `Range.Text`) is scored beside their value
+    /// (T-1610, decision 0068): spec2xlsx records them for the oracle backend, which reads the text
+    /// into the sidecar's `text`, and the eval compares it with the engine's formatted text.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub text: Vec<String>,
 }
 
 /// Provenance of oracle values.
@@ -279,6 +289,9 @@ pub struct OracleFile {
     pub format: String,
     pub source: OracleSource,
     pub sheets: BTreeMap<String, BTreeMap<String, Value>>,
+    /// Displayed text of the cells a case lists in `text`: sheet → A1 → text (T-1610).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub text: BTreeMap<String, BTreeMap<String, String>>,
 }
 
 /// Splits `Sheet!A1` / `'My Sheet'!A1` into (sheet, cell).

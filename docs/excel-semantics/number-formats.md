@@ -329,3 +329,23 @@ Status: VERIFIED (excel-graph)
 Tasks: T-1702
 
 Inferred, not probed (T-1702): `[$-...]` with any other or malformed tag (`[$-zzz]`, `[$-]`, `[$-40C]`) lexes as a silent locale; `"0;0;0;x@AM/PM"` and `"0;0;0;A/P"` (no `@`) in a fourth section follow the `AM/PM` rule; the length-limit costs of `A/P` (as `AM/PM`) and `[$-409]` (as a literal); cell display of `A/P` (shared `format_number` path, only TEXT probed).
+
+## Displayed text (`Range.text`) of a formatted cell (T-1610)
+Rule: excel-graph's `Range.text` is the cell's value under its number format, and it does not
+depend on the column width. At width 4 a General `12345678` stays "12345678" and `=1/3` stays
+"0.333333333" (the 11-character General rule of `TEXT(x,"General")`, not a width-fitted
+shortening), and text is not cut ("long text"). A number a date format cannot show (a negative date
+serial) is 255 `#` characters, not a width-sized `####`. The other probed cells:
+General `1.5` "1.5", `1234567890123` "1.23457E+12", `1E-10` "1E-10"; `0.00` on PI() "3.14";
+`#,##0.00` on -1234.5 "-1,234.50"; `0%`/`0.0%` on 0.256 "26%"/"25.6%"; `yyyy-mm-dd` on 45000
+"2023-03-15"; `m/d/yyyy h:mm` on 45000.75 "3/15/2023 18:00"; `0.00;(0.00)` on -5 "(5.00)";
+`0.00;-0.00;"zero"` on 0 "zero"; `dddd` on DATE(2024,2,29) "Thursday"; `# ?/?` on 12.5 "12 1/2";
+`0.00E+00` on 123456789 "1.23E+08"; `[h]:mm:ss` on 0.5 "12:00:00"; `$#,##0.00` "$3.00"; TRUE
+"TRUE"; `#DIV/0!` "#DIV/0!"; an empty reference "0"; `TEXT(1234.5,"#,##0")` "1,235".
+Evidence: probes/displayed-text-formats S!A1:A24, B1:B4 (excel-graph `text`, 2026-10-16, T-1610).
+Desktop `.Text` does depend on the width (`####` when a number does not fit), unprobed here: the
+excel-graph text is what the M10 suite scores (decision 0068).
+Not implemented (T-1711): ours gives " 1/2" for `# ?/?` on 12.5, "1,234" for
+`TEXT(1234.5,"#,##0")` (a value failure too) and `#VALUE!` for the negative date.
+Status: VERIFIED (Excel for the web)
+Tasks: T-1610, T-1711

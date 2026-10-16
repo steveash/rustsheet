@@ -31,6 +31,16 @@ fn map_elements(
         .collect()
 }
 
+/// N of one array element: a number stays, TRUE is 1, text, FALSE and blanks are 0, an error stays.
+fn n_of(value: &ArrayNode) -> ArrayNode {
+    match value {
+        ArrayNode::Number(n) => ArrayNode::Number(*n),
+        ArrayNode::Boolean(b) => ArrayNode::Number(f64::from(u8::from(*b))),
+        ArrayNode::String(_) | ArrayNode::Empty => ArrayNode::Number(0.0),
+        ArrayNode::Error(error) => ArrayNode::Error(error.clone()),
+    }
+}
+
 /// An argument that lifts: a multi-cell range or an array gives its values, anything else
 /// (a one-cell range included) a single value.
 pub(crate) enum Lifted {
@@ -511,16 +521,14 @@ impl Model {
         let value = match argument {
             CalcResult::Number(n) => n,
             CalcResult::String(_) => 0.0,
-            CalcResult::Boolean(f) => {
-                if f {
-                    1.0
-                } else {
-                    0.0
-                }
-            }
+            CalcResult::Boolean(f) => f64::from(u8::from(f)),
             CalcResult::EmptyCell | CalcResult::EmptyArg => 0.0,
             error @ CalcResult::Error { .. } => return error,
-            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+            // An array lifts element-wise, an error element kept: `N({1,#N/A})` spills 1, #N/A,
+            // `N(IF(1,{2;3}))` 2, 3, and legacy `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` is 5
+            // (probes/n-array-lift, legacy-index-array-index L1, L10; T-1616).
+            CalcResult::Array(values) => return CalcResult::Array(map_elements(&values, n_of)),
+            CalcResult::Range { .. } | CalcResult::Lambda(_) => {
                 return CalcResult::Error {
                     error: Error::NIMPL,
                     origin: cell,

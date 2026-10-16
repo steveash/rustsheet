@@ -13,6 +13,7 @@ use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
 use crate::probe_milestones::{self, MilestoneRow};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
+use crate::text_expect;
 use crate::value::Verdict;
 
 static FUNCTION_CALL: LazyLock<Regex> = LazyLock::new(|| {
@@ -55,6 +56,13 @@ pub struct SuiteSummary {
     /// Total wall time of the suite's cases (informational; never part of the gate).
     #[serde(default)]
     pub millis: u64,
+    /// Cells whose displayed text was scored, and those that matched (T-1610; never part of the
+    /// gate).
+    #[serde(default)]
+    pub text_cells: usize,
+    /// Scored text cells whose text matched Excel's.
+    #[serde(default)]
+    pub text_passed: usize,
 }
 
 /// Number of slowest cases kept in the report.
@@ -260,6 +268,8 @@ impl RunReport {
             s.cells_passed += r.passed;
             s.deviations += r.deviations;
             s.millis += r.millis;
+            s.text_cells += r.text.len();
+            s.text_passed += r.text.iter().filter(|t| t.pass).count();
             for c in &r.cells {
                 *s.verdicts.entry(c.verdict).or_default() += 1;
                 if c.listed_deviation && c.verdict.is_pass() {
@@ -312,6 +322,7 @@ impl RunReport {
             .map(|r| {
                 let mut r = r.clone();
                 r.cells.retain(|c| c.verdict.is_failure());
+                r.text.retain(|t| !t.pass);
                 r
             })
             .collect();
@@ -489,6 +500,7 @@ impl RunReport {
             self.engine
         );
         self.write_suites_table(&mut md);
+        text_expect::write_markdown(&self.suites, &self.cases, &mut md);
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
         probe_milestones::write_markdown(&self.probe_milestones, &mut md);
         function_scope::write_markdown(self.function_scope.as_ref(), &mut md);
@@ -638,6 +650,7 @@ mod tests {
             millis,
             tags: Vec::new(),
             cells: Vec::new(),
+            text: Vec::new(),
         }
     }
 
