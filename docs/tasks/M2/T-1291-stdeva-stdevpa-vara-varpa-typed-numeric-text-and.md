@@ -3,10 +3,10 @@ id: T-1291
 title: "STDEVA/STDEVPA/VARA/VARPA typed numeric text and MODE typed text and boolean arguments match Excel"
 milestone: M2
 lane: functions-stat
-status: done
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -34,3 +34,6 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Outcome
 STDEVA, STDEVPA, VARA and VARPA read direct arguments like the other A-variants (`DirectNumbers::CastA`: a typed "2" is 2, TRUE is 1, text that is no number is `#VALUE!`); `NumbersOnly` is gone. MODE, MODE.SNGL and MODE.MULT skip typed text and booleans (new probe probes/mode-typed-arguments, excel-graph), which supersedes the old "text is `#VALUE!`" rule in coercion.md (the POI cells came from a blank reference or error argument). Eval: probes 10 fixed, mode-typed-arguments 29 cells passing (stat-argument-modes H24, H27, H30, H69, H72, H75, H78; vara-single-ref-picked D37-D39), gen-m9/288b99797f58f149 A7 passes, 1 new passing case, 0 regressions. MODE also propagates a direct error and gives `#VALUE!` for an empty argument (probe A22, A27, A30-A33).
+
+## Handoff
+The implementation, probe (probes/mode-typed-arguments, 33 cells, excel-graph), baseline, docs, decision-0010 ratchet lines and `make check` (green on the previous head) are done and pushed on this branch; no PR is open yet. Reviewers: security, architecture and quality (round 1) approved or only had doc findings; the quality reviewer requested changes twice, both times for stale documentation (coercion.md MODE entry; SPEC-0009 and T-1617 still naming the removed `DirectNumbers::NumbersOnly`), all fixed in the head commit. The Excel-fidelity reviewer's verdict had not arrived when this run ran out of its time budget. Next: run `make check`, re-run the quality and Excel-fidelity reviewers on the head, open the PR (title `T-1291: ...`, eval delta: probes 10 fixed, new probe passing, 0 regressions, gen-m9/288b99797f58f149 A7 passes), set `status: done` and the tier back, merge per the steward policy.
