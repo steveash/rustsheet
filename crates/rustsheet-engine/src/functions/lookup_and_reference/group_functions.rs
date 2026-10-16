@@ -16,15 +16,13 @@ use crate::{
     },
     functions::logical::{as_lambda, FunctionValue, LambdaCaller},
     functions::math_and_trigonometry::percent_of,
-    functions::statistical::too_many_visits,
     functions::Function,
     language::get_default_language,
-    limits::check_array_size,
+    limits::{check_array_size, too_many_visits},
     model::Model,
 };
 
-use super::groupby::{at, value_error};
-use super::grouping::empty_text;
+use super::grouping::{at, empty_text, value_error, Relative};
 
 /// What one aggregate cell is computed from: the rows of its group (or grid cell) and its
 /// relative set, the second argument of a two-argument function (SPEC-0006 `Aggregate`).
@@ -32,15 +30,6 @@ use super::grouping::empty_text;
 pub(crate) struct Aggregate<'a> {
     pub(crate) rows: &'a [usize],
     pub(crate) relative: Relative<'a>,
-}
-
-/// A relative set: the source rows a two-argument function gets as its second argument (all rows
-/// for GROUPBY, the `relative_to` set for PIVOTBY). `id` names a set that is built once and shared,
-/// so PERCENTOF sums it once; `None` for a set made for one call.
-#[derive(Clone, Copy)]
-pub(crate) struct Relative<'a> {
-    pub(crate) id: Option<usize>,
-    pub(crate) rows: &'a [usize],
 }
 
 /// How a function is called: with the group's values, with the relative set's values too, or,
@@ -88,7 +77,8 @@ pub(crate) struct Functions {
     layout: Layout,
     /// (function, value column) of each output value, in output order ([`Functions::pair_with`]).
     pairs: Vec<(usize, usize)>,
-    /// The cells the two-parameter LAMBDA calls have been given, charged before each call.
+    /// The cells the calls have been given (the cell's rows, and the relative set where one is
+    /// passed or summed), charged before each call.
     visits: u64,
     /// The cap error once the charges passed the cap: the result is that error.
     refused: Option<CalcResult>,
@@ -121,7 +111,8 @@ pub(crate) fn is_function_array(arg: &Node) -> bool {
 /// How many arguments GROUPBY and PIVOTBY pass to a function passed by name: its minimum argument
 /// count when that is 1 or 2, `None` (the whole result `#VALUE!`) otherwise. Two arguments, the
 /// values and the relative set: PERCENTOF (G!S97), CORREL, PEARSON, RSQ, COVARIANCE.P (`#N/A` per
-/// group, the sizes differ; about 1 in the total), and IF, ROUND, SUMIF (`#VALUE!` per cell: an
+/// group, as the sizes differ; in the total, the same array twice: about 1 for CORREL, PEARSON
+/// and RSQ, the variance 161.7225 for COVARIANCE.P, functions2 G!B326), and IF, ROUND, SUMIF (`#VALUE!` per cell: an
 /// array result); none: NOW, TEXTJOIN, XLOOKUP (probes/groupby-pivotby-functions G!A421,
 /// -functions2 G!A281-A501). Other functions whose minimum is not 1 are unprobed and get one.
 // TODO(T-1706): every function's minimum argument count (eval/catalog/excel-functions.tsv).
@@ -308,6 +299,23 @@ impl Model {
         for arg in args {
             parts.push(self.function_grid(arg, cell)?);
         }
+        // The stacked size is checked before anything is padded or copied (directive 5):
+        // `VSTACK(SEQUENCE(1048576),SEQUENCE(1,16384))` would pad to 2^34 cells.
+        let mut dims = parts
+            .iter()
+            .map(|part| (part.len(), part.first().map_or(0, Vec::len)));
+        let (height, width) = match kind {
+            Function::Transpose => dims.next_back().map_or((0, 0), |(h, w)| (w, h)),
+            Function::Hstack => dims.fold((0usize, 0usize), |(h, w), (ph, pw)| {
+                (h.max(ph), w.saturating_add(pw))
+            }),
+            _ => dims.fold((0usize, 0usize), |(h, w), (ph, pw)| {
+                (h.saturating_add(ph), w.max(pw))
+            }),
+        };
+        if let Some((error, message)) = check_array_size(height, width) {
+            return Err(CalcResult::new_error(error, cell, message));
+        }
         let grid = match kind {
             Function::Transpose => transpose(parts.pop().unwrap_or_default()),
             Function::Hstack => {
@@ -343,11 +351,6 @@ impl Model {
                     .collect()
             }
         };
-        let height = grid.len();
-        let width = grid.first().map_or(0, Vec::len);
-        if let Some((error, message)) = check_array_size(height, width) {
-            return Err(CalcResult::new_error(error, cell, message));
-        }
         Ok(grid)
     }
 
@@ -498,8 +501,9 @@ impl Model {
     /// or INDEX (`LAMBDA(x,Data!D2)`: groupby-lambda-forms G!J193; G!A541-A581): each cell on its
     /// own, not the whole result.
     ///
-    /// A two-parameter LAMBDA call is charged the cells it is given before it is made; past
-    /// the cap the call is not made and the whole result is the cap error ([`Functions::refused`];
+    /// Every call is charged the cells it is given (the cell's rows, and the relative set a
+    /// two-parameter LAMBDA gets or PERCENTOF sums) before anything is built; past the cap no
+    /// further call is made and the whole result is the cap error ([`Functions::refused`];
     /// directive 5, DEVIATION in arrays.md).
     pub(crate) fn aggregate(
         &mut self,
@@ -512,6 +516,28 @@ impl Model {
         let Some(&(function, column)) = functions.pairs.get(pair) else {
             return ArrayNode::Error(Error::VALUE);
         };
+        if functions.refused.is_some() {
+            return ArrayNode::Error(Error::ERROR);
+        }
+        let relative = cell_rows.relative;
+        let (rows, all) = (cell_rows.rows.len() as u64, relative.rows.len() as u64);
+        let cost = match functions.list.get(function).map(|f| &f.call) {
+            Some(Call::One) => rows,
+            Some(Call::Two) => rows.saturating_add(all),
+            Some(Call::PercentOf { totals, .. }) => {
+                let cached = relative
+                    .id
+                    .is_some_and(|id| totals.contains_key(&(id, column)));
+                rows.saturating_add(if cached { 0 } else { all })
+            }
+            None => return ArrayNode::Error(Error::VALUE),
+        };
+        let visits = functions.visits.saturating_add(cost);
+        if let Some(error) = too_many_visits(visits, cell) {
+            functions.refused = Some(error);
+            return ArrayNode::Error(Error::ERROR);
+        }
+        functions.visits = visits;
         let column_of = |rows: &[usize]| {
             CalcResult::Array(
                 rows.iter()
@@ -523,17 +549,9 @@ impl Model {
         let Some(aggregator) = functions.list.get_mut(function) else {
             return ArrayNode::Error(Error::VALUE);
         };
-        let relative = cell_rows.relative;
         let result = match &mut aggregator.call {
             Call::One => self.call_lambda_caller(&mut aggregator.caller, [input], cell),
             Call::Two => {
-                let cost = (cell_rows.rows.len() + relative.rows.len()) as u64;
-                let visits = functions.visits.saturating_add(cost);
-                if let Some(error) = too_many_visits(visits, cell) {
-                    functions.refused.get_or_insert(error);
-                    return ArrayNode::Error(Error::ERROR);
-                }
-                functions.visits = visits;
                 let all = column_of(relative.rows);
                 self.call_lambda_caller(&mut aggregator.caller, [input, all], cell)
             }

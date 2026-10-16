@@ -1,3 +1,4 @@
+use crate::calc_result::CalcResult;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
@@ -46,4 +47,18 @@ pub fn check_range_size(
     let rows = usize::try_from(right.row - left.row + 1).unwrap_or(0);
     let columns = usize::try_from(right.column - left.column + 1).unwrap_or(0);
     check_array_size(rows, columns)
+}
+
+/// Most cells all the per-element walks of one lifted *IF(S) call may visit, so a crafted formula
+/// (`COUNTIFS(A:A,SEQUENCE(1048576))` over a filled column) cannot run for hours (CLAUDE.md
+/// directive 5). Excel has no such limit: DEVIATION, docs/excel-semantics/criteria.md
+/// ("*IF(S) lift array criteria").
+pub(crate) const MAX_LIFTED_CELL_VISITS: u64 = 1 << 27;
+
+/// `#ERROR!` when `visits` cells are more than one call may visit ([`MAX_LIFTED_CELL_VISITS`]):
+/// the lifted *IF(S) and AGGREGATE calls, and the two-parameter LAMBDAs GROUPBY and PIVOTBY call
+/// with a whole relative set (SPEC-0006 Design step 3). Excel has no such limit: DEVIATION.
+pub(crate) fn too_many_visits(visits: u64, cell: CellReferenceIndex) -> Option<CalcResult> {
+    (visits > MAX_LIFTED_CELL_VISITS)
+        .then(|| CalcResult::new_error(Error::ERROR, cell, "Too many cells to visit".to_string()))
 }

@@ -4,14 +4,14 @@
 //! docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY", evidence probes/groupby-pivotby sheet P,
 //! its follow-ups (T-1328) and probes/pivotby-followup (excel-graph, 2026-10-16, T-1326).
 
-use super::group_functions::{Aggregate, Functions, Relative, Shape};
+use super::group_functions::{Aggregate, Functions, Shape};
 use super::groupby::{
-    at, grand_total_label, key_names, not_implemented, total_label_cells, value_error, value_name,
+    grand_total_label, key_names, not_implemented, total_label_cells, value_name,
     values_have_header, width, FieldHeaders,
 };
 use super::grouping::{
-    effective_depth, empty_text, shown_key, subtotal_levels, Aggregates, Grouping, Line,
-    ParentOrder, SortOrder,
+    at, effective_depth, empty_text, shown_key, subtotal_levels, value_error, Aggregates, Grouping,
+    Line, ParentOrder, Relative, SortOrder,
 };
 use crate::{
     calc_result::CalcResult,

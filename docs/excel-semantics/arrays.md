@@ -533,16 +533,19 @@ Tasks: T-1276, T-1328, T-1322, T-1323, T-1326, T-1324, T-1700, T-1325
 
 ## GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap
 Rule: Excel calls a two-parameter LAMBDA in GROUPBY or PIVOTBY once per aggregate cell with the cell's values and its whole
-relative set, so N records in G groups cost about G x N cells, without limit. RustSheet charges each such call the cells it
-is given (the cell's rows plus the relative set) before making it, against the 2^27-cell cap of the lifted *IF(S) calls
-(`too_many_visits`, criteria.md); once the charges would pass it, no further call is made and the whole result is `#ERROR!`.
+relative set, so N records in G groups cost about G x N cells, without limit. RustSheet charges every call the cells it
+is given (the cell's rows, plus the relative set a two-parameter LAMBDA gets or PERCENTOF sums) before building its
+arguments, against the 2^27-cell cap of the lifted *IF(S) calls (`too_many_visits`, criteria.md); once the charges would
+pass it, no further call is made and the whole result is `#ERROR!`. One-parameter calls rarely get there (each record is
+given once per output column and subtotal level): `GROUPBY` over 1048575 records with 100 functions is `#ERROR!`, with 10
+it computes (unit test `one_parameter_calls_are_charged_against_the_visit_cap_too`).
 Example: `GROUPBY(SEQUENCE(20000),SEQUENCE(20000),LAMBDA(x,y,ROWS(y)))` (20000 groups x 20000 rows) is `#ERROR!`, while
 PERCENTOF passed by name, summed once per relative set (O(N)), and one-parameter LAMBDAs compute it (unit test
 `two_parameter_lambdas_are_charged_against_the_visit_cap`).
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5), SPEC-0006 Design step 3.
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::aggregate`),
-crates/rustsheet-engine/src/functions/statistical/if_ifs.rs (`too_many_visits`)
+crates/rustsheet-engine/src/limits.rs (`too_many_visits`, `MAX_LIFTED_CELL_VISITS`)
 Tasks: T-1325
 
 ## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!

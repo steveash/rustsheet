@@ -4,9 +4,10 @@
 //! Excel: docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY", evidence probes/groupby-pivotby
 //! sheet G (excel-graph, T-1276) and its follow-ups (T-1328).
 
-use super::group_functions::{Aggregate, Element, Functions, Relative};
+use super::group_functions::{Aggregate, Element, Functions};
 use super::grouping::{
-    effective_depth, empty_text, subtotal_levels, Grouping, ParentOrder, SortOrder,
+    at, effective_depth, empty_text, subtotal_levels, value_error, Grouping, ParentOrder, Relative,
+    SortOrder,
 };
 use crate::{
     calc_result::CalcResult,
@@ -95,11 +96,6 @@ pub(crate) fn values_have_header(values: &[Vec<ArrayNode>]) -> Option<bool> {
     }
 }
 
-/// `#VALUE!` for an invalid GROUPBY or PIVOTBY argument.
-pub(crate) fn value_error(cell: CellReferenceIndex, message: &str) -> CalcResult {
-    CalcResult::new_error(Error::VALUE, cell, message.to_string())
-}
-
 /// `#N/IMPL!` for a GROUPBY or PIVOTBY feature a later SPEC-0006 step adds.
 pub(crate) fn not_implemented(cell: CellReferenceIndex, feature: &str) -> CalcResult {
     CalcResult::new_error(
@@ -112,15 +108,6 @@ pub(crate) fn not_implemented(cell: CellReferenceIndex, feature: &str) -> CalcRe
 /// An optional argument, `None` when it is missing or omitted (`GROUPBY(k,v,f,,0)`).
 fn given(arg: &Node) -> Option<&Node> {
     Some(arg).filter(|node| !matches!(node, Node::EmptyArgKind))
-}
-
-/// A cell of a 2-D array, blank when outside it (arrays from `eval_to_array` are rectangular, so
-/// this only guards against a panic).
-pub(crate) fn at(data: &[Vec<ArrayNode>], row: usize, column: usize) -> ArrayNode {
-    data.get(row)
-        .and_then(|cells| cells.get(column))
-        .cloned()
-        .unwrap_or(ArrayNode::Empty)
 }
 
 impl Model {

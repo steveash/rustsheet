@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use std::borrow::Cow;
 
 use crate::{
+    calc_result::CalcResult,
     expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
     functions::spill_functions::{cell_key, sort_key_cmp, CellKey},
     functions::util::collation::cmp_text,
@@ -25,6 +26,29 @@ pub(crate) enum SortOrder {
     /// By the aggregate of value column `column` (0-based among the value columns), with
     /// [`Grouping::sort_by_aggregate`].
     Value { column: usize, ascending: bool },
+}
+
+/// `#VALUE!` for an invalid GROUPBY or PIVOTBY argument.
+pub(crate) fn value_error(cell: CellReferenceIndex, message: &str) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, message.to_string())
+}
+
+/// A cell of a 2-D array, blank when outside it (arrays from `eval_to_array` are rectangular, so
+/// this only guards against a panic).
+pub(crate) fn at(data: &[Vec<ArrayNode>], row: usize, column: usize) -> ArrayNode {
+    data.get(row)
+        .and_then(|cells| cells.get(column))
+        .cloned()
+        .unwrap_or(ArrayNode::Empty)
+}
+
+/// A relative set: the source rows a two-argument function gets as its second argument (all rows
+/// for GROUPBY, the `relative_to` set for PIVOTBY). `id` names a set that is built once and shared,
+/// so PERCENTOF sums it once; `None` for a set made for one call.
+#[derive(Clone, Copy)]
+pub(crate) struct Relative<'a> {
+    pub(crate) id: Option<usize>,
+    pub(crate) rows: &'a [usize],
 }
 
 /// A key as its group shows it: the blank key as the number 0 (G!A1, PIVOTBY's column keys too:
