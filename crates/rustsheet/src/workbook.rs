@@ -480,6 +480,27 @@ impl Workbook {
         )
         .map(Some)
     }
+
+    /// Every stored cell of `sheet` (values, formulas and spill members), by row and within a
+    /// row by column. Cheap for a sparse sheet whatever its [`Self::used_range`].
+    ///
+    /// # Errors
+    /// [`RefError::UnknownSheet`] when `sheet` does not exist.
+    pub fn stored_cells(&self, sheet: SheetId) -> Result<Vec<CellRef>, RefError> {
+        let index = self.sheet_index(sheet)?;
+        let ws = self
+            .model
+            .workbook
+            .worksheet(index)
+            .map_err(|_| RefError::UnknownSheet(sheet.get().to_string()))?;
+        ws.sheet_data
+            .cells()
+            .map(|(row, col, _)| {
+                let to_u32 = |v: i32| u32::try_from(v - 1).map_err(|_| RefError::OutOfBounds);
+                CellRef::new(sheet, to_u32(row)?, to_u32(col)?)
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -629,6 +650,23 @@ mod tests {
         let empty = Workbook::new(&WorkbookOptions::default()).unwrap();
         let id = empty.sheets()[0].id;
         assert_eq!(empty.used_range(id).unwrap(), None);
+    }
+
+    #[test]
+    fn stored_cells_list_spill_members_sparsely() {
+        let mut wb = Workbook::new(&WorkbookOptions::default()).unwrap();
+        let id = wb.sheets()[0].id;
+        wb.set("B2", Input::Formula("=SEQUENCE(1,2)".into()))
+            .unwrap();
+        wb.set("XFD1048576", Input::Formula("=1".into())).unwrap();
+        wb.recalculate();
+        let cells: Vec<(u32, u32)> = wb
+            .stored_cells(id)
+            .unwrap()
+            .into_iter()
+            .map(|c| (c.row, c.col))
+            .collect();
+        assert_eq!(cells, vec![(1, 1), (1, 2), (1_048_575, 16_383)]);
     }
 
     #[test]
