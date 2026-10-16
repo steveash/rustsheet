@@ -3,7 +3,7 @@ id: T-1620
 title: "Probe the regression functions FORECAST, FORECAST.LINEAR, CORREL, PEARSON, RSQ, SLOPE, COVAR, STEYX, INTERCEPT, TREND to the evidence floor"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
