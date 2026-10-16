@@ -735,25 +735,6 @@ mod tests {
             &[0x61, 0xD800],
             &[0xDC00, 0xD800],
         ];
-        let errors = [
-            Error::REF,
-            Error::NAME,
-            Error::VALUE,
-            Error::DIV,
-            Error::NA,
-            Error::NUM,
-            Error::ERROR,
-            Error::NIMPL,
-            Error::SPILL,
-            Error::CALC,
-            Error::CIRC,
-            Error::NULL,
-            Error::GETTINGDATA,
-            Error::CONNECT,
-            Error::BLOCKED,
-            Error::FIELD,
-            Error::BUSY,
-        ];
         numbers
             .into_iter()
             .map(ArrayNode::Number)
@@ -764,7 +745,7 @@ mod tests {
                     .map(|u| ArrayNode::String(Text::from_utf16(u.to_vec()))),
             )
             .chain([ArrayNode::Boolean(false), ArrayNode::Boolean(true)])
-            .chain(errors.into_iter().map(ArrayNode::Error))
+            .chain(Error::ALL.into_iter().map(ArrayNode::Error))
             .chain([ArrayNode::Empty])
             .collect()
     }

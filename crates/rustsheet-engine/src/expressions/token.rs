@@ -127,6 +127,29 @@ impl fmt::Display for Error {
     }
 }
 impl Error {
+    /// Every kind, in declaration order; the first twelve are `error_index`'s order. For tests
+    /// that must cover each kind.
+    #[cfg(test)]
+    pub(crate) const ALL: [Error; 17] = [
+        Error::REF,
+        Error::NAME,
+        Error::VALUE,
+        Error::DIV,
+        Error::NA,
+        Error::NUM,
+        Error::ERROR,
+        Error::NIMPL,
+        Error::SPILL,
+        Error::CALC,
+        Error::CIRC,
+        Error::NULL,
+        Error::GETTINGDATA,
+        Error::CONNECT,
+        Error::BLOCKED,
+        Error::FIELD,
+        Error::BUSY,
+    ];
+
     /// The en-US literal of this error, as `Display` writes it.
     fn english_literal(&self) -> &'static str {
         match self {
