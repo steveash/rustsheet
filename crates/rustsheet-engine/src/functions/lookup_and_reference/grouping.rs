@@ -501,6 +501,7 @@ pub(crate) fn subtotal_levels(depth: isize) -> usize {
 mod tests {
     use super::{Grouping, Line, ParentOrder};
     use crate::expressions::{parser::ArrayNode, types::CellReferenceIndex};
+    use std::cmp::Ordering;
 
     const CELL: CellReferenceIndex = CellReferenceIndex {
         sheet: 0,
@@ -690,5 +691,144 @@ mod tests {
             grouping.subtotal_label_cells(1, 3, 3),
             [text("b"), text(""), text("")]
         );
+    }
+
+    /// Every kind of key cell a sort meets: each `ArrayNode` variant, numbers at the edges of the
+    /// 15-digit comparison (-0/+0, subnormals, 0.1+0.2 against 0.3, infinities, NaN), texts that
+    /// differ only in case, accents, expansions (`æ`, `ß`), skipped characters, the ASCII fast
+    /// path against the general one and lone surrogates, and every error kind.
+    fn sort_pool() -> Vec<ArrayNode> {
+        use crate::{expressions::token::Error, text::Text};
+        let numbers = [
+            f64::NEG_INFINITY,
+            -f64::MAX,
+            -1.0,
+            -1e-300,
+            -5e-324,
+            -0.0,
+            0.0,
+            5e-324,
+            1e-300,
+            0.1 + 0.2,
+            0.3,
+            0.999_999_999_999_999_9,
+            1.0,
+            1.0 + f64::EPSILON,
+            1.000_000_000_000_001,
+            123_456_789_012_345.6,
+            123_456_789_012_345.7,
+            f64::MAX,
+            f64::INFINITY,
+            f64::NAN,
+            -f64::NAN,
+        ];
+        let texts = [
+            "", " ", "\u{a0}", "\t", "\n", "\u{1}", "a", "A", "b", "B", "z", "ä", "Ä", "á", "à",
+            "ã", "å", "ª", "ae", "AE", "æ", "Æ", "ss", "SS", "ß", "th", "þ", "o", "ö", "ø", "d",
+            "đ", "ð", "i", "I", "ı", "İ", "ab", "a'b", "a-b", "a–b", "a—b", "-a", "'a", "a-", "1",
+            "-1", "'1", "10", "½", "¹", "~", "+", "€", "<", "😀", "\u{fffd}", "a\u{a0}b",
+        ];
+        let units: [&[u16]; 5] = [
+            &[0xD83D],
+            &[0xDE00],
+            &[0xD83D, 0xDE00],
+            &[0x61, 0xD800],
+            &[0xDC00, 0xD800],
+        ];
+        let errors = [
+            Error::REF,
+            Error::NAME,
+            Error::VALUE,
+            Error::DIV,
+            Error::NA,
+            Error::NUM,
+            Error::ERROR,
+            Error::NIMPL,
+            Error::SPILL,
+            Error::CALC,
+            Error::CIRC,
+            Error::NULL,
+            Error::GETTINGDATA,
+            Error::CONNECT,
+            Error::BLOCKED,
+            Error::FIELD,
+            Error::BUSY,
+        ];
+        numbers
+            .into_iter()
+            .map(ArrayNode::Number)
+            .chain(texts.into_iter().map(text))
+            .chain(
+                units
+                    .into_iter()
+                    .map(|u| ArrayNode::String(Text::from_utf16(u.to_vec()))),
+            )
+            .chain([ArrayNode::Boolean(false), ArrayNode::Boolean(true)])
+            .chain(errors.into_iter().map(ArrayNode::Error))
+            .chain([ArrayNode::Empty])
+            .collect()
+    }
+
+    /// Checks that `cmp` is a total order on `pool`: reflexive, antisymmetric and transitive
+    /// (`slice::sort_by` may panic otherwise, since Rust 1.81). Exhaustive over all triples, on
+    /// a precomputed table.
+    fn assert_total_order(
+        pool: &[ArrayNode],
+        name: &str,
+        cmp: impl Fn(&ArrayNode, &ArrayNode) -> Ordering,
+    ) {
+        let n = pool.len();
+        let table: Vec<Vec<Ordering>> = pool
+            .iter()
+            .map(|a| pool.iter().map(|b| cmp(a, b)).collect())
+            .collect();
+        for i in 0..n {
+            assert_eq!(
+                table[i][i],
+                Ordering::Equal,
+                "{name}: {:?} not equal to itself",
+                pool[i]
+            );
+            for j in 0..n {
+                assert_eq!(
+                    table[i][j],
+                    table[j][i].reverse(),
+                    "{name}: not antisymmetric on {:?}, {:?}",
+                    pool[i],
+                    pool[j]
+                );
+                for k in 0..n {
+                    let (ij, jk) = (table[i][j], table[j][k]);
+                    // a <= b <= c implies a <= c, strictly when either step is strict.
+                    let implied = match (ij, jk) {
+                        (Ordering::Equal, step) | (step, Ordering::Equal) => Some(step),
+                        (x, y) if x == y => Some(x),
+                        _ => None,
+                    };
+                    if let Some(implied) = implied {
+                        assert_eq!(
+                            table[i][k], implied,
+                            "{name}: not transitive on {:?}, {:?}, {:?}",
+                            pool[i], pool[j], pool[k]
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sort_comparators_are_total_orders_on_mixed_types() {
+        use crate::functions::spill_functions::sort_key_cmp;
+        let pool = sort_pool();
+        for ascending in [true, false] {
+            // SORT, SORTBY and UNIQUE (through `compare_values`), and GROUPBY/PIVOTBY.
+            assert_total_order(&pool, "sort_key_cmp", |a, b| {
+                sort_key_cmp(a, b, ascending, CELL)
+            });
+            assert_total_order(&pool, "key_cmp", |a, b| {
+                super::key_cmp(a, b, ascending, CELL)
+            });
+        }
     }
 }
