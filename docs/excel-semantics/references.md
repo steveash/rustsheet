@@ -1463,7 +1463,7 @@ are read as absolute (from Calc!K1 `=rel_same+1` is Jan!A1+1, not Jan!K1+1); eve
   `Calc!loc` = 20 and `Jan!loc` = 30, `Feb!loc` and `Other!loc` (sheets with no local `loc`) are
   10, and `ISERROR(Feb!loc)` is FALSE; `only1` and `Other!only1` (defined only as `Jan!only1`) are
   `#NAME?` from Calc (ERROR.TYPE 5, IFERROR its fallback).
-  Cases c238d93c128fd5ee, 6322c0f2638aa11b; engine follow-up T-1641.
+  Cases c238d93c128fd5ee, 6322c0f2638aa11b; fixed by T-1641.
 - A sheet named like a cell address (`S1`) makes Excel Online refuse the whole workbook when a
   formula or name refers to it unquoted (`createSession` 501 `unsupportedWorkbook`), so the
   generator avoids such names.
