@@ -3,7 +3,7 @@ id: T-0429
 title: "Score iterative-calculation probes against one calculation: oracle single-calc mode or a harness recalc count"
 milestone: M3
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
