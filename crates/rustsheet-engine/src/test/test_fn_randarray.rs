@@ -270,3 +270,18 @@ fn test_randbetween_draws_stay_in_range() {
     }
     assert!((2..=4).contains(&low) && (2..=4).contains(&high));
 }
+
+#[test]
+fn test_randbetween_lifts_over_array_bounds() {
+    // Excel: probes/volatile-invariant Calc!F5 (T-1316): one draw per element of the broadcast shape.
+    let mut model = new_empty_model();
+    model._set("A1", "=ROWS(RANDBETWEEN(SEQUENCE(1000,1,5.5,0),5.7))");
+    model._set("A2", "=MIN(RANDBETWEEN(SEQUENCE(50,1,5.5,0),5.7))");
+    model._set("A3", "=MAX(RANDBETWEEN(SEQUENCE(50,1,5.5,0),5.7))");
+    model._set("A4", "=SUM(RANDBETWEEN({3,3},{3;3}))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1000");
+    assert_eq!(model._get_text("A2"), "6");
+    assert_eq!(model._get_text("A3"), "6");
+    assert_eq!(model._get_text("A4"), "12");
+}

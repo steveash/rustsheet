@@ -3,7 +3,7 @@ id: T-1316
 title: "RANDBETWEEN lifts over array arguments (one draw per element)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -29,3 +29,6 @@ array-lift helper other math functions use (search before writing one).
 
 ## Out of scope
 - The RNG and the distribution.
+
+## Outcome
+RANDBETWEEN lifts over array/range bounds (one draw per element, broadcast shape) through `lift_number_operands`; a scalar bound still rejects booleans. Unit test added; probes/volatile-invariant F1:F9 now pass.
