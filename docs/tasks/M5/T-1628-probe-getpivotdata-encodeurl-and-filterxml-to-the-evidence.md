@@ -3,7 +3,7 @@ id: T-1628
 title: "Probe GETPIVOTDATA, ENCODEURL and FILTERXML to the evidence floor"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
