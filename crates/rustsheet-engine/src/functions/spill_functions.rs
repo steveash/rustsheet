@@ -17,6 +17,11 @@ use super::util::compare_values;
 /// Compare two sort keys following Excel's rules:
 ///   Numbers < Strings < Booleans < Errors < Empty cells
 /// Empty cells always sort last regardless of ascending/descending.
+///
+/// It is a total order, so `sort_by` cannot panic: grouping.rs tests it with GROUPBY's `key_cmp`
+/// (`sort_comparators_are_total_orders_on_mixed_types`, T-1694). The blank check must stay here:
+/// `compare_values` alone coerces a blank to 0, "" or FALSE, which is not transitive (-0 = blank =
+/// "" but -0 < "").
 pub(crate) fn sort_key_cmp(
     a: &ArrayNode,
     b: &ArrayNode,
