@@ -711,3 +711,5 @@ that ours misses today (fix tasks T-1723 to T-1726):
   error cells in a range are `#VALUE!`; array constants work (`TREND({2,4,5},{1,2,3})` first 2.1666666666666665); a 2-D
   known_y gives a 2-D result.
 Several results differ from ours only in the last digit (`FORECAST(0,A1:A6,B1:B6)` 1.7999999999999998, ours 1.8).
+Status: VERIFIED (excel-graph 2026-10-16); ours differs.
+Tasks: T-1620, T-1723, T-1724, T-1725, T-1726

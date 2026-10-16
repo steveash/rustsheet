@@ -19,6 +19,7 @@ Found by T-1620 (probes/regression-pairs-a, regression-pairs-b; `./target/releas
 - a single point or scalar pair (`CORREL(5,5)`, `CORREL(A1,B1)`) is `#DIV/0!` in Excel, `#VALUE!` in ours.
 - data with a large offset (`I1:I6` = 10000000001, 10000000002, ...): CORREL(I1:I6,B1:B6) is 0.9402561526801988 in Excel, `#DIV/0!` in ours (ours loses the variance to cancellation; STEYX gives 0.8223080178319075 against 0.822308017832176); compute the sums of squares about the means.
 - last-digit differences (`CORREL(A1:A6,C1:C6)` 0.9999999999999998 in Excel, 1.0 in ours; INTERCEPT, STEYX, SLOPE similar): match Excel's accumulation order if the probes pin one down.
+Overlap: T-1292 (unequal sizes with text) and T-1707 (CORREL, PEARSON, RSQ unequal sizes and the last digit) cover part of the size and ULP cells; take those first or fold them in, and close whichever is then redundant. What is new here: the single-point and scalar `#DIV/0!` cases, the text scalar `#N/A`, SLOPE, INTERCEPT and STEYX on all-number size mismatches, and large-offset data.
 Record any new quirk in docs/excel-semantics/statistics.md.
 
 ## Acceptance criteria
