@@ -484,6 +484,8 @@ C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-2d-and-scalar.case.json	21
 C	probes/product-array-elements.case.json	9
+C	probes/r1c1-bare-lambda-one.case.json	2
+C	probes/r1c1-bare-lambda-opt.case.json	2
 C	probes/r1c1-let-name-c.case.json	2
 C	probes/r1c1-let-name-c1d.case.json	2
 C	probes/r1c1-let-name-okname.case.json	2
