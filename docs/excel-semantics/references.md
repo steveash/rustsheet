@@ -1478,7 +1478,8 @@ Rule: a legacy (non-array) formula reads an array-valued call or array constant 
 position, and at the top level, through an implicit `@` that FORMULATEXT shows: `=IF(1,{2;3})` is
 `=@IF(1,{2;3})` (2), `=ABS(IF(1,{-2;3}))` `=ABS(@IF(1,{-2;3}))` (2), `=LEN(IF(1,{"ab";"c"}))` 2,
 `=N({2;3})` `=N(@{2;3})` (2), `=ABS({-2;3})` 2, `=ISNUMBER(IF(1,{2;3}))` TRUE, `=-IF(1,{2;3})`
-`=-@IF(1,{2;3})` (-2), `=N(TRANSPOSE({2,3}))` `=N(@TRANSPOSE({2,3}))` (2). Each dynamic twin spills.
+`=-@IF(1,{2;3})` (-2), `=N(TRANSPOSE({2,3}))` `=N(@TRANSPOSE({2,3}))` (2). Each dynamic twin spills
+(`=N(IF(1,{2,3}))` is `#SPILL!` there, its spill range blocked).
 Exception: N and T over `IF(...)` get no `@`, and the legacy cell is `#VALUE!` (`=N(IF(1,{2;3}))`,
 `=N(IF(1,{2,3}))`, `=T(IF(1,{"a";"b"}))`), while `=N(IF(1,2))` is 2. N and T take a reference or a
 value, and IF can return a reference: CHOOSE, INDEX and IFS behave the same, see "Legacy N and T over
@@ -1507,7 +1508,7 @@ cells, as a dynamic formula would.
 Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16).
 Not implemented: the text is identical to the dynamic formula's, which spills, so the `#VALUE!`
 needs the engine to remember that a formula is legacy (spec T-1727, then T-1713); ours adds an `@`
-on the calls (top-left value) and on ranges (`#VALUE!` off their rows, T-1728); the IFERROR `@`, the
+on the calls (N gives the top-left value, T "") and on ranges (`#VALUE!` off their rows, T-1728); the IFERROR `@`, the
 SWITCH spill and the `@IF` are T-1717's.
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1717, T-1727, T-1728

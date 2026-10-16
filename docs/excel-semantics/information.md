@@ -274,3 +274,12 @@ references.md "Legacy formulas put `@` on array-valued calls and array constants
 reference-returning call" (probes/legacy-array-result, probes/legacy-n-t-reference-args).
 Status: VERIFIED (excel-graph)
 Tasks: T-1616, T-1713, T-1727
+
+## T over an array lifts element-wise (T-1713)
+Rule: in a dynamic formula, T of an array value lifts element-wise like N: `=T(IF(1,{"a";"b"}))` spills "a", "b".
+T of a multi-cell range does not lift (one "", text.md "Text function argument modes"). Error and number elements
+are unprobed.
+Evidence: probes/legacy-array-result S!G1:G2 (excel-graph, 2026-10-16).
+Not implemented: ours gives one "" with no spill (T-1729).
+Status: VERIFIED (excel-graph)
+Tasks: T-1729
