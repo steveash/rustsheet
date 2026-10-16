@@ -1593,7 +1593,7 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
   `Stock` at E1:E2 with nothing below the header has `ROWS(Stock[[#Data],[Cost]:[Cost]])` = 1 and `#All` 2, and
   its `#Totals` is `#REF!` (column-range 44cecbb1ecd5b2da K180, K23, K185).
 Status: VERIFIED (excel-graph)
-Implemented in: partly; the `@` shorthand is implemented (T-1672), rows outside the table and reversed ranges (T-1675, `parse_table_reference` in operands.rs),
+Implemented in: partly; the `@` shorthand is implemented (T-1672), rows outside the table and reversed ranges (T-1675, `structured_reference_operand` in operands.rs),
 totals rows from the eval adapter T-1671.
 Tasks: T-1607, T-1671, T-1672, T-1675
 
