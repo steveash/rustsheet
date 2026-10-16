@@ -229,6 +229,7 @@ C	probes/eta-reduced-names.case.json	59
 C	probes/external-ref-no-link-ifchoose-b.case.json	6
 C	probes/external-ref-no-link-ifchoose.case.json	44
 C	probes/external-ref-no-link-index.case.json	54
+C	probes/external-ref-no-link-let.case.json	20
 C	probes/external-ref-no-link-shapes.case.json	20
 C	probes/external-ref-no-link.case.json	10
 C	probes/fact-large-arguments.case.json	18
@@ -387,6 +388,7 @@ C	probes/mod-quotient-threshold2.case.json	36
 C	probes/mod-quotient-threshold3.case.json	19
 C	probes/mod-quotient-threshold4.case.json	30
 C	probes/mod-quotient-threshold5.case.json	16
+C	probes/mode-direct-error-lookup-scalar-vector.case.json	23
 C	probes/mode-error-and-computed-arguments.case.json	18
 C	probes/mode-typed-arguments.case.json	33
 C	probes/mode-typed-text-no-mode.case.json	16
@@ -1223,7 +1225,6 @@ F	probes/eta-reduced-names.case.json	Sheet1!E101
 F	probes/eta-reduced-names.case.json	Sheet1!E102
 F	probes/eta-reduced-names.case.json	Sheet1!E103
 F	probes/eta-reduced-names.case.json	Sheet1!E93
-F	probes/external-ref-no-link-ifchoose.case.json	Calc!A26
 F	probes/filterxml-evidence-floor.case.json	Sheet1!D28
 F	probes/fin-argument-modes.case.json	Sheet1!H10
 F	probes/fin-argument-modes.case.json	Sheet1!H100

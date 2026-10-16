@@ -198,8 +198,59 @@ fn may_be_external(node: &Node) -> bool {
         Node::OpUnionKind { left, right, .. } | Node::OpIntersectKind { left, right, .. } => {
             may_be_external(left) || may_be_external(right)
         }
+        // A LET whose body picks only such references stands for the one it picks
+        // (`ROWS(IF(TRUE,LET(c,1,…!A1:B3)))` is 3; probes/external-ref-no-link-let A13).
+        Node::FunctionKind {
+            kind: Function::Let,
+            args,
+        } => let_picks_external(args),
         node => may_pick_external(node),
     }
+}
+
+/// Whether `node` can only stand for a reference into another workbook or a value an IF or
+/// CHOOSE gives in its place, never a reference into this workbook: every argument IF or CHOOSE
+/// may pick is such a reference ([`may_be_external`]). Only such a LET body is read while its
+/// names are bound ([`Model::pick_reference`]), so a LET that may pick a reference into this
+/// workbook stays the reference it evaluates to. Bounded by the parser's depth cap.
+fn picks_only_external(node: &Node) -> bool {
+    match node.ungrouped() {
+        Node::FunctionKind {
+            kind: Function::If | Function::Choose,
+            args,
+        } => args.len() > 1 && args.iter().skip(1).all(picks_only_external),
+        node => may_be_external(node),
+    }
+}
+
+/// Whether a LET with arguments `args` has a body that picks only references into another
+/// workbook ([`picks_only_external`]).
+fn let_picks_external(args: &[Node]) -> bool {
+    args.last().is_some_and(picks_only_external)
+}
+
+/// What a reference argument stands for once IF, CHOOSE and LET have picked it
+/// ([`Model::pick_reference`]).
+pub(crate) enum PickedReference<'a> {
+    /// The areas of a reference into another workbook, or the result it gives instead
+    /// ([`Model::external_reference`]).
+    External(ExternalAreas),
+    /// Any other argument picked, still unevaluated.
+    Node(&'a Node),
+    /// The value an IF, CHOOSE or LET gives in place of a reference ([`Picked::Value`]).
+    Value(CalcResult),
+}
+
+/// The one area of a reference into another workbook, as ROWS, COLUMNS, ROW and COLUMN read
+/// it: several are `#REF!`, as for a union (probes/multiarea-count H2, multiarea-cellfn H3).
+pub(crate) fn one_external_area(
+    areas: ExternalAreas,
+    cell: CellReferenceIndex,
+) -> Result<ExternalArea, CalcResult> {
+    areas.and_then(|areas| match areas[..] {
+        [area] => Ok(area),
+        _ => Err(several_areas_ref(cell)),
+    })
 }
 
 /// The areas a reference into another workbook stands for, or the result it gives instead
@@ -355,20 +406,46 @@ impl Model {
         }))
     }
 
-    /// [`Model::external_reference`] where one area is read: several are `#REF!`, as ROWS,
-    /// COLUMNS, ROW and COLUMN give for a union (probes/multiarea-count H2, multiarea-cellfn H3).
-    pub(crate) fn one_external_area(
+    /// `node` once IF, CHOOSE ([`Model::pick_branch`]) and LET have picked the argument it
+    /// stands for, with a reference into another workbook read as its areas
+    /// ([`Model::external_reference`]). A LET whose body picks only such references
+    /// ([`picks_only_external`]) is read while its names are bound, so it is the reference its
+    /// body picks: `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3, `ISREF` TRUE, `COUNTA` 0
+    /// (probes/external-ref-no-link-ifchoose A26, external-ref-no-link-let). Each condition,
+    /// index and LET value is read once. Bounded by the parser's depth cap.
+    pub(crate) fn pick_reference<'a>(
         &mut self,
-        node: &Node,
+        node: &'a Node,
         cell: CellReferenceIndex,
-    ) -> Option<Result<ExternalArea, CalcResult>> {
-        Some(
-            self.external_reference(node, cell)?
-                .and_then(|areas| match areas[..] {
-                    [area] => Ok(area),
-                    _ => Err(several_areas_ref(cell)),
-                }),
-        )
+    ) -> PickedReference<'a> {
+        let node = match self.pick_branch(node, cell) {
+            Picked::Node(node) => node,
+            Picked::Value(value) => return PickedReference::Value(value),
+        };
+        if let Node::FunctionKind {
+            kind: Function::Let,
+            args,
+        } = node
+        {
+            if let_picks_external(args) {
+                let picked = self.let_scope(args, cell, |model, body| {
+                    match model.pick_reference(body, cell) {
+                        PickedReference::External(areas) => PickedReference::External(areas),
+                        PickedReference::Value(value) => PickedReference::Value(value),
+                        // A form that names another workbook but is no reference of it (an
+                        // area off the grid, an external name with no area): its value.
+                        PickedReference::Node(body) => {
+                            PickedReference::Value(model.evaluate_node_with_reference(body, cell))
+                        }
+                    }
+                });
+                return picked.unwrap_or_else(PickedReference::Value);
+            }
+        }
+        match self.external_reference(node, cell) {
+            Some(areas) => PickedReference::External(areas),
+            None => PickedReference::Node(node),
+        }
     }
 
     /// The areas of both operands of a union or intersection when either is a reference into

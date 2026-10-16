@@ -1,8 +1,8 @@
 use crate::arithmetic::{bcast_idx, flush_subnormal};
-use crate::external_reference::ExternalArea;
+use crate::external_reference::{one_external_area, ExternalArea, PickedReference};
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
-use crate::reference_operators::{several_areas_ref, Picked, Ranges, RefArg};
+use crate::reference_operators::{several_areas_ref, Ranges, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -804,13 +804,14 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<(usize, usize), CalcResult> {
         // `ROWS(IF(TRUE,…!A1:B3))` is 3 (probes/external-ref-no-link-index A25).
-        let node = match self.pick_branch(node, cell) {
-            Picked::Node(node) => node,
-            Picked::Value(value) => return value_extent(value, cell),
+        // `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` too (probes/external-ref-no-link-ifchoose A26).
+        let node = match self.pick_reference(node, cell) {
+            PickedReference::Node(node) => node,
+            PickedReference::Value(value) => return value_extent(value, cell),
+            PickedReference::External(areas) => {
+                return one_external_area(areas, cell).map(ExternalArea::extent)
+            }
         };
-        if let Some(area) = self.one_external_area(node, cell) {
-            return area.map(ExternalArea::extent);
-        }
         // ROWS/COLUMNS of a reference of several areas is #REF!, not the #VALUE! of a value
         // context (probes/multiarea-count H2, H3; SPEC-0004 row 5).
         let result = if self.is_multi_area(node) {

@@ -2,12 +2,12 @@
 //! array indices (docs/excel-semantics/lookup.md).
 
 use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
-use crate::external_reference::ExternalArea;
+use crate::external_reference::{ExternalArea, PickedReference};
 use crate::functions::util::{
     array_node_to_calc_result, near_integer_count, picks_a_branch, NEAR_INTEGER_TOLERANCE,
 };
 use crate::limits::check_array_size;
-use crate::reference_operators::{three_d_needs_one_sheet, Picked, RefArg};
+use crate::reference_operators::{three_d_needs_one_sheet, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::{ArrayNode, Node},
@@ -247,16 +247,16 @@ impl Model {
         // that reference (`ERROR.TYPE(INDEX(IF(TRUE,…!A1:C4),2,2))` is `#N/A`;
         // probes/external-ref-no-link-ifchoose A22, A23). The pick reads the condition once,
         // after the indices, as the reference is read otherwise.
-        let arg = match self.pick_branch(&args[0], cell) {
-            Picked::Node(reference) => {
-                if let Some(areas) = self.external_reference(reference, cell) {
-                    return match areas
-                        .and_then(|areas| external_index_area(&areas, numbers, two_arg, cell))
-                    {
-                        Ok(area) => self.external_picked_value(area, cell),
-                        Err(error) => error,
-                    };
-                }
+        let arg = match self.pick_reference(&args[0], cell) {
+            PickedReference::External(areas) => {
+                return match areas
+                    .and_then(|areas| external_index_area(&areas, numbers, two_arg, cell))
+                {
+                    Ok(area) => self.external_picked_value(area, cell),
+                    Err(error) => error,
+                };
+            }
+            PickedReference::Node(reference) => {
                 match self.evaluate_reference_arg(reference, cell) {
                     // A scalar picked by IF or CHOOSE is a one-element array: `INDEX(CHOOSE(1,
                     // @B1:B6*1),3)` is `#REF!` on the range's rows (probes/legacy-choose-arm-
@@ -268,7 +268,7 @@ impl Model {
                     other => other,
                 }
             }
-            Picked::Value(value) => RefArg::Value(value),
+            PickedReference::Value(value) => RefArg::Value(value),
         };
         self.index_select(&arg, numbers, two_arg, cell, form)
     }

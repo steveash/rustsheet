@@ -1,0 +1,43 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "MODE with direct, referenced and named error arguments; LOOKUP with a scalar or array-constant lookup_vector; IF-picked MODE and INDEX arguments (T-1651).",
+  "tags": [
+    "M9",
+    "stat",
+    "probe"
+  ],
+  "names": {
+    "nm": "=1/0"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "K1": "=1/0",
+        "A1": "=MODE(1/0,1,1)",
+        "A2": "=MODE(NA(),1,1)",
+        "A3": "=MODE(#DIV/0!,\"1\")",
+        "A4": "=MODE(K1)",
+        "A5": "=MODE(nm)",
+        "A6": "=MODE.SNGL(1/0,1,1)",
+        "A7": "=MODE.SNGL(NA(),1,1)",
+        "A8": "=MODE.SNGL(#DIV/0!,\"1\")",
+        "A9": "=MODE.SNGL(K1)",
+        "A10": "=MODE.SNGL(nm)",
+        "A11": "=SUM(MODE.MULT(1/0,1,1))",
+        "A12": "=SUM(MODE.MULT(NA(),1,1))",
+        "A13": "=SUM(MODE.MULT(#DIV/0!,\"1\"))",
+        "A14": "=SUM(MODE.MULT(K1))",
+        "A15": "=SUM(MODE.MULT(nm))",
+        "A16": "=MODE(IF(TRUE,1/0),1,1)",
+        "B1": "=LOOKUP(2,1)",
+        "B2": "=LOOKUP(\"b\",\"a\")",
+        "B3": "=LOOKUP(2,1,5)",
+        "B4": "=LOOKUP(2,IF(TRUE,1))",
+        "B5": "=LOOKUP(2,{1})",
+        "B6": "=INDEX(IF(TRUE,5),1)"
+      }
+    }
+  ],
+  "expected": {}
+}
