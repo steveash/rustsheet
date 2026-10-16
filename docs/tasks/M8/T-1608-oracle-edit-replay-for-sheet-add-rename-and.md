@@ -64,14 +64,16 @@ suites the milestone exit criteria name that does not exist yet.
     move.
   - Engine adapter: ops apply in order; unknown ops and an unknown sheet are refused.
   - API: `move_sheet`, including rollback and out of bounds.
-- **Probes:** 24 oracle-filled cases in `eval/suites/probes/cases/sheet-ops/` (M8). They cover
+- **Probes:** 22 oracle-filled cases in `eval/suites/probes/cases/sheet-ops/` (M8). They cover
   renames (quoting, case-only, chains, swaps, defined names, sheet-scoped names, INDIRECT text,
-  FORMULATEXT), adds and moves into, out of and across 3-D spans, plus two INDIRECT controls.
-  - 16 pass. The other 8 are baselined, with their failing cells filed:
+  FORMULATEXT), and adds and moves into, out of and across 3-D spans.
+  - INDIRECT cells that name a missing sheet are not scored (`check` lists). Excel for the web
+    gives a reference to an empty cell there, and desktop Excel gives `#REF!`. That is a known
+    divergence: lookup.md, oracle.md "Known divergences", decision 0039.
+  - 19 cases pass. The other 3 are baselined, with their failing cells filed:
     - T-1691: moving a span's end sheet past its other end shrinks the span.
-    - T-1692: INDIRECT text naming a missing sheet is 0 and ISREF TRUE in excel-graph.
     - T-1693: a sheet-qualified sheet-scoped name gives `#NAME?`.
-  - New semantics entries in docs/excel-semantics/references.md.
+  - New semantics entries are in docs/excel-semantics/references.md, and lookup.md gains a note.
 - **No decision record:** the schema change is one optional field, and other suites ignore it.
-- **Eval delta:** probes +24 cases (106 cells checked), +21 known-failure cells, all filed;
+- **Eval delta:** probes +22 cases (91 cells checked), +8 known-failure cells, all filed (T-1691, T-1693);
   0 regressions.

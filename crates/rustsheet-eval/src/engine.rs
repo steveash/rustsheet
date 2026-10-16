@@ -246,7 +246,7 @@ impl Engine for RustSheetEngine {
 /// left.
 fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), String> {
     for op in ops {
-        let id = |workbook: &Workbook, sheet: &str| {
+        let sheet_id_of = |workbook: &Workbook, sheet: &str| {
             workbook
                 .sheet_id(sheet)
                 .map_err(|e| format!("sheet op on {sheet}: {e}"))
@@ -254,11 +254,11 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
         let done = match op {
             SheetOp::Add { sheet } => workbook.edit(|tx| tx.add_sheet(sheet).map(|_| ())),
             SheetOp::Rename { sheet, to } => {
-                let id = id(workbook, sheet)?;
+                let id = sheet_id_of(workbook, sheet)?;
                 workbook.edit(|tx| tx.rename_sheet(id, to))
             }
             SheetOp::Move { sheet, to } => {
-                let id = id(workbook, sheet)?;
+                let id = sheet_id_of(workbook, sheet)?;
                 workbook.edit(|tx| tx.move_sheet(id, *to))
             }
         };

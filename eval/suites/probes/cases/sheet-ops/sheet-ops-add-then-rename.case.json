@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "A sheet added, then renamed: INDIRECT finds it by its new name only. (T-1608)",
+  "description": "A sheet added, then renamed: INDIRECT finds it by its new name. The cell naming the old, now missing, name is not scored (missing-sheet INDIRECT is a known web/desktop divergence, lookup.md). (T-1608)",
   "tags": [
     "M8",
     "sheet-ops",
@@ -34,5 +34,8 @@
       "sheet": "New",
       "to": "Other"
     }
+  ],
+  "check": [
+    "Calc!A1"
   ]
 }

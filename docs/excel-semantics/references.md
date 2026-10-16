@@ -85,8 +85,8 @@ Tasks: T-0122, T-0197, T-1026, T-1064, T-1139, T-1158, T-1170, T-1181
 ## 3-D references when sheets move or are renamed
 Rule (excel-graph, replayed sheet edits, T-1608):
 - Renaming an end sheet renames it in the formula: `=SUM(Jan:Mar!A1)` becomes `=SUM(Jan:Last!A1)`.
-  A new name that needs quotes is quoted, and only that end is quoted: `=SUM('First One':Mar!A1)`.
-  Evidence: probes/sheet-ops/sheet-ops-rename-span-end, sheet-ops-rename-span-start.
+  When the new name needs quotes, the whole span prefix is quoted: `=SUM('First One:Mar'!A1)`.
+  Evidence: probes/sheet-ops/sheet-ops-rename-span-end, sheet-ops-rename-span-start (B1, B2).
 - Moving a middle sheet out of the span drops it, and moving a sheet between the ends adds it.
   This includes a sheet just added there, which is empty. Evidence: sheet-ops-move-out-of-span,
   sheet-ops-move-into-span and sheet-ops-add-into-span.
@@ -99,8 +99,6 @@ Rule (excel-graph, replayed sheet edits, T-1608):
 Unprobed: deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
 cannot delete a sheet (T-1181), and the M14 desktop question is T-1310. The engine makes a span
 that lost an end sheet `#REF!` and does not shift a span for row or column edits.
-A probe pitfall: sheets named like cells (`S1:S3!A1`) are read as the range from cell S1 to
-`'S3'!A1`, so span probes use names such as Jan and Mar.
 Status: VERIFIED (Excel for the web) for renames and moves; UNVERIFIED for deletes
 Tasks: T-1691, T-0198
 
@@ -112,9 +110,11 @@ Rule (excel-graph, T-1608):
   name that looks like a cell. Renaming a quoted name to a plain one drops the quotes.
 - A case-only rename (`Data` to `DATA`) shows the new case.
 - Workbook-scoped names follow the sheet.
-- INDIRECT text keeps the name it was written with: `INDIRECT("Data!A1")` no longer reaches the
-  renamed sheet (see "INDIRECT text naming a missing sheet"), and `INDIRECT("data!A2")` after a
-  case-only rename still resolves.
+- INDIRECT text keeps the name it was written with. `INDIRECT("Inputs!A1")` reaches the renamed
+  sheet, and `INDIRECT("data!A2")` still resolves after a case-only rename. INDIRECT text naming
+  the old name names a missing sheet. That is `#REF!` in desktop Excel, and Excel for the web
+  differs (lookup.md, "INDIRECT to a sheet that does not exist is #REF!"), so the sheet-op probes
+  do not score those cells.
 - Sheets renamed in a chain, or swapped through a scratch name, keep their references: each
   formula follows its sheet, not the name.
 Evidence: probes/sheet-ops/sheet-ops-rename-cell-refs, -needs-quotes, -digits, -cell-like,
@@ -125,18 +125,11 @@ A sheet-qualified sheet-scoped name (`=Data!Local`) also keeps working after the
 Status: VERIFIED (Excel for the web)
 Tasks: T-1693
 
-## INDIRECT text naming a missing sheet
-Rule (excel-graph): INDIRECT of text that names a sheet the workbook does not have is a reference,
-not `#REF!`. `INDIRECT("Nope!A1")` is 0 and `ISREF(...)` is TRUE. `ISERROR(INDIRECT("'No
-Sheet'!A1"))` is FALSE, and `IFERROR(INDIRECT("Nope!A1:A2"),"err")` is not "err". This holds with
-no sheet edits at all (probes/sheet-ops/sheet-ops-indirect-missing-sheet-control) and after a sheet
-add (-after-add). It also holds after the named sheet was renamed away (-rename-indirect-text) or
-was added and then renamed (-add-then-rename). Adding a sheet with the named name makes the text
-resolve to it (-add-resolves-indirect, 0 from the empty sheet). Desktop Excel is believed to give
-`#REF!`, which is unverified (decision 0039: the web is the oracle of record). The engine gives
-`#REF!`.
+## INDIRECT does not take 3-D text
+Rule (excel-graph): INDIRECT of span text is `#REF!`. `SUM(INDIRECT("Jan:Mar!A1"))` is `#REF!`,
+while `SUM(Jan:Mar!A1)` written in the formula sums the span.
+Evidence: probes/sheet-ops/sheet-ops-move-out-of-span A3 (the engine matches).
 Status: VERIFIED (Excel for the web)
-Tasks: T-1692
 
 ## Undefined names may contain backslashes
 Rule: an undefined name such as `HSI\10_1\1460_1\1470_1___val` parses as a name and evaluates

@@ -76,7 +76,8 @@ Input conventions:
   `Txn::set_number_format`. Number formats change only what a cell displays, which excel-graph
   cannot report (it reads cached values), so they are for cases that formulas read through.
 - Optional `"names": {"rate": "=Sheet1!$B$1"}` declares workbook-scoped defined names (any
-  formula Excel accepts as a name body, e.g. an intersection; sheet-scoped names are not supported).
+  formula Excel accepts as a name body, e.g. an intersection). A key `Sheet1!name` is a name scoped
+  to that sheet.
 - Optional `"sheet_ops"` lists sheet edits made after the workbook loads and before it is
   recalculated (T-1608): `{"op":"add","sheet":"New"}` appends a sheet, `{"op":"rename",
   "sheet":"Data","to":"Inputs"}` renames one (formulas that refer to it are rewritten), and
