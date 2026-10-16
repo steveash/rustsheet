@@ -350,6 +350,22 @@ pub(crate) fn bare_defined_name(name: &str) -> &str {
     name.rsplit_once('!').map_or(name, |(_, bare)| bare)
 }
 
+/// Points the sheet prefix of a qualified defined name (`Data!Local`) at `new_sheet` when the
+/// name is scoped to the renamed sheet (`scope == Some(renamed)`). A name with no prefix, and a
+/// linked workbook's `[1]!Name`, are left as they are. A workbook name read through a sheet
+/// prefix has no scope here: no Excel evidence yet for rewriting it.
+pub(crate) fn rename_defined_name_sheet(
+    name: &mut String,
+    scope: Option<u32>,
+    renamed: u32,
+    new_sheet: &str,
+) {
+    let bare = bare_defined_name(name);
+    if scope == Some(renamed) && bare.len() < name.len() && !name.starts_with('[') {
+        *name = format!("{}!{bare}", quote_name(new_sheet));
+    }
+}
+
 /// Quotes a string sheet name if it needs to
 /// NOTE: Invalid characters in a sheet name \, /, *, \[, \], :, ?
 pub fn quote_name(name: &str) -> String {
