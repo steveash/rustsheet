@@ -111,7 +111,12 @@ Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-colla
   `ç`, `đ`, `ð`, `ł`, `ñ`, `þ` were probed as single characters only: they sort right after their base letter (`þ` after `t`), and whether each
   is a tiebreak accent or a separate letter (or an expansion such as `þ`=`th`) is UNVERIFIED, observed positions only.
   Position of the digit-like symbols: between `0` and `9`, observed only (1 to 8 were not probed with them).
-- The engine's code-point fallback gets 89 of these 270 cells wrong (tilde/cedilla/stroke accent order, `ĳ`, `œ`, `þ`, Greek, the symbols and control characters): see T-1595.
+- Fitted in `cmp_text_excel` (T-1595; all 270 cells pass), with these choices where the probe is single-character only (each UNVERIFIED):
+  control characters other than CHAR(9)/CHAR(10)/CHAR(13) are skipped like the hyphen (tiebreak weight below the apostrophe, by code point), so
+  `"a"&CHAR(1)&"b"` sorts just after `"ab"`; CHAR(11) and CHAR(12) sit with CHAR(9)-CHAR(13) above CHAR(160); the en and em dash are skipped
+  everywhere, also alone (`"" < "–"` by tiebreak, below CHAR(160)); the Latin-1 marks, quotes and currency signs go between `~` and `+`, the
+  symbols `± « » × ÷ § © ¬ ® ° µ … •` after `>`; `¼ ½ ¾` between `0` and `1` (by value), `¹ ² ³` as `1 2 3` with a tiebreak accent;
+  `ª º`, `đ ł` (stroke, like `ø`) and `ð ı þ` are tiebreak accents on `a o d l i t`, not letters of their own; `œ` = `oe` like `æ`.
 Tasks: T-0220, T-0244, T-1469, T-1590, T-1594, T-1595
 
 ## Double unary minus coerces to a number
