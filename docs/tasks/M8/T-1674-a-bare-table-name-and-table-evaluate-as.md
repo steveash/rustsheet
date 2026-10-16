@@ -3,7 +3,7 @@ id: T-1674
 title: "A bare table name and Table[] evaluate as the table's data area"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
