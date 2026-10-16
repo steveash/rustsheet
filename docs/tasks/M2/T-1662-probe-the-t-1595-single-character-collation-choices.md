@@ -3,7 +3,7 @@ id: T-1662
 title: "Probe the T-1595 single-character collation choices in longer texts and lookups"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1595 fitted `cmp_text_excel` (functions/util/collation.rs) to probes/text-coll
 
 ## Out of scope
 -
+
+## Outcome
+Probe `text-collation-longer` (107 cells) filled by excel-graph. All T-1595 choices VERIFIED except `þ`, which Excel collates as `th`; recorded in coercion.md. Engine passes 105 of 114 scored cells (incl. Data); the 9 misses (þ comparisons, XLOOKUP `œ`, three single-cell XMATCH) are filed as T-1669.

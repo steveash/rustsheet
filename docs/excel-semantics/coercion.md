@@ -107,7 +107,7 @@ Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-colla
   CHAR(160), CHAR(9), CHAR(10), CHAR(13) (these three sort above CHAR(160), not below the space), then
   `! ~ ¡ ¦ ¨ ¯ ´ ¸ ¿`, `‘ ’ “ ”` (`’` is an ordinary punctuation mark, not ignored: `"a’b" < "ab"`), `¢ £ ¤ ¥ €`, `+ ±`, `« »`, `× ÷`, `§ © ¬ ® ° µ`, `… •`,
   `0`, `¼ ½ ¾`, `¹ ² ³`, `9`, then letters: `a=A < ª < á < ä < ã < å`, `c < ç`, `d < đ < ð`, `i < ı < ij=ĳ`, `l < ł`, `n < ñ`, `o < º < ö < ø < œ`,
-  `s`, `t < þ`, `u`, `z`, `α < β < ω`. Notes: `ĳ` equals `ij` (an expansion like `æ`/`ß`). `œ` sits between `ø` and `s`; whether it equals `oe` is not probed. `ã` sorts after `ä`.
+  `s`, `t < þ`, `u`, `z`, `α < β < ω`. Notes: `ĳ` equals `ij` (an expansion like `æ`/`ß`). `œ` sits between `ø` and `s`; it equals `oe` (T-1662). `ã` sorts after `ä`.
   `ç`, `đ`, `ð`, `ł`, `ñ`, `þ` and the digit-like symbols were probed as single characters only (the symbols against `0` and `9` only); the choices made for them are in the next bullet.
 - Fitted in `cmp_text_excel` (T-1595; all 270 cells pass), with these choices where the probe is single-character only (each UNVERIFIED):
   control characters other than CHAR(9)/CHAR(10)/CHAR(13) are skipped like the hyphen (tiebreak weight below the apostrophe, by code point), so
@@ -115,7 +115,14 @@ Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-colla
   everywhere, also alone (`"" < "–"` by tiebreak, below CHAR(160)); the Latin-1 marks, quotes and currency signs go between `~` and `+`, the
   symbols `± « » × ÷ § © ¬ ® ° µ … •` after `>`; `¼ ½ ¾` between `0` and `1` (by value), `¹ ² ³` as `1 2 3` with a tiebreak accent;
   `ª º`, `đ ł` (stroke, like `ø`) and `ð ı þ` are tiebreak accents on `a o d l i t`, not letters of their own; `œ` = `oe` like `æ`.
-Tasks: T-0220, T-0244, T-1469, T-1590, T-1594, T-1595
+- Multi-character and lookup check of those choices (T-1662; probes/text-collation-longer, 107 cells, excel-graph 2026-10-16). VERIFIED as fitted:
+  `œ` = `oe` (also `Œ` = `OE`; XMATCH, XLOOKUP and COUNTIF equal, MATCH(...,0) `#N/A`); `"a"&CHAR(1)&"b"` sorts after `"ab"` and `"a b"` and before `"a'b"`, CHAR(1) above `""` and below `"'"`
+  (and `COUNTIF` of `"ab"` over {CHAR(1)-text, "ab"} is 1, XMATCH `#N/A`); CHAR(11) and CHAR(12) above CHAR(160) and CHAR(9), below CHAR(13), CHAR(11) < CHAR(12);
+  every one of `± « » × ÷ § © ¬ ® ° µ … •` sorts above each of `<` `=` `>`; `¼ ½ ¾` between `0` and `1` (`¾` < `2`); `¹ ² ³` above `1 2 3` but below the next
+  letter position (`"¹"` > `"1"`, `"¹a"` < `"1b"`, `"¹b"` > `"1a"`; XMATCH of `"1"` against `¹` `#N/A`); `ç đ ð ł ñ ı` are accents on `c d d l n i` (`"ða"` < `"db"`, > `"da"`).
+  CORRECTED: `þ` is an expansion equal to `th`, not an accent on `t` (`"þ"="th"`, `"þa"="tha"` TRUE, `"þa"` > `"tb"`, `XMATCH("th","þ",0)` = 1); the engine still
+  treats it as an accent (T-1669, which also covers the XLOOKUP `œ` and single-cell XMATCH engine mismatches in this case).
+Tasks: T-0220, T-0244, T-1469, T-1590, T-1594, T-1595, T-1662, T-1669
 
 ## Double unary minus coerces to a number
 Rule: `--x` is not a no-op. Each unary minus coerces its operand to a number: `--FALSE` = 0,
