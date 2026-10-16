@@ -56,15 +56,20 @@ pub(crate) fn compute_npv(rate: f64, values: &[f64]) -> Result<f64, (Error, Stri
 /// NPV at the discount factor `v` = 1/(1 + r), as IRR's search evaluates it: the sum of
 /// `c_i/x^i` with `x = 1/v`, each division Excel's twice-rounded `/` and `x^i` libm's `pow`
 /// (financial.md "IRR is a secant in v = 1/(1 + r)"; fit lab `irr`, `_npv_v_over_x`).
-fn irr_npv(values: &[f64], v: f64) -> f64 {
+/// `None` when a power overflows or underflows to 0: as in the lab model, that ends the run.
+fn irr_npv(values: &[f64], v: f64) -> Option<f64> {
     let x = extended_quotient(1.0, v);
     let mut total = 0.0;
     let mut exponent = 0.0;
     for &c in values {
-        total += extended_quotient(c, x.powf(exponent));
+        let power = x.powf(exponent);
+        if !power.is_finite() || power == 0.0 {
+            return None;
+        }
+        total += extended_quotient(c, power);
         exponent += 1.0;
     }
-    total
+    total.is_finite().then_some(total)
 }
 
 /// One run of IRR's secant from `guess`, or `None` when it fails (a flat secant, an iterate that
@@ -72,9 +77,9 @@ fn irr_npv(values: &[f64], v: f64) -> f64 {
 fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
     const MAX_STEPS: usize = 50;
     let mut v0 = extended_quotient(1.0, 1.0 + guess);
-    let mut f0 = irr_npv(values, v0);
+    let mut f0 = irr_npv(values, v0)?;
     let mut v1 = v0 + if f0 > 0.0 { 1e-3 } else { -1e-3 };
-    let mut f1 = irr_npv(values, v1);
+    let mut f1 = irr_npv(values, v1)?;
     for _ in 0..MAX_STEPS {
         if f1 == f0 {
             return None;
@@ -83,7 +88,7 @@ fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
         if !v2.is_finite() || v2 <= 0.0 {
             return None;
         }
-        let f2 = irr_npv(values, v2);
+        let f2 = irr_npv(values, v2)?;
         if (v2 - v1).abs() < 1e-7 && f2.abs() < 1e-7 {
             return Some(extended_quotient(1.0, v2) - 1.0);
         }
@@ -98,7 +103,9 @@ fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
 /// 189 of the 263 cells of the fit set (probes/solver-iteration-traces sheet I,
 /// probes-numeric/m9-fin-irr-rate), 207 within 4 ulp (fit lab `irr`, `irr_secant_v`, T-1533).
 /// Not Excel facts, kept from the fit: the v <= 0 guard, no retry when the guess is already 0.1,
-/// and `#NUM!` for flows without a sign change.
+/// and `#NUM!` for flows without a sign change. Where both runs fail, [`irr_fallback`] runs the
+/// earlier Newton/bisection solver (unverified, T-1686). The 50-step cap is a directive-5 bound
+/// (financial.md "The IRR and XIRR solver caps").
 pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, String)> {
     if guess <= -1.0 {
         return Err((Error::VALUE, "Rate initial guess must be > -1".to_string()));
@@ -218,19 +225,31 @@ pub(crate) fn compute_xnpv(
 }
 
 /// XNPV at a trial rate of XIRR's search, or `None` where it has no value (`1+rate <= 0`, or the
-/// sum overflows): such a point ends a bracket walk without a bracket.
+/// sum overflows, or a power overflows or underflows): such a point ends a bracket walk.
 fn xirr_xnpv(rate: f64, values: &[f64], dates: &[f64]) -> Option<f64> {
-    if 1.0 + rate <= 0.0 {
+    let base = 1.0 + rate;
+    if base <= 0.0 {
         return None;
     }
-    compute_xnpv(rate, values, dates).ok()
+    let d0 = dates[0];
+    let mut total = 0.0;
+    for (&value, &date) in values.iter().zip(dates) {
+        // As in the lab model, a power that overflows or underflows to 0 has no value (rather
+        // than adding value/inf = 0): `XIRR({-1,1E+20,1},{45000,45365,63615},0.1)` is `#NUM!`.
+        let power = base.powf((date - d0) / 365.0);
+        if !power.is_finite() || power == 0.0 {
+            return None;
+        }
+        total += value / power;
+    }
+    total.is_finite().then_some(total)
 }
 
 /// The bracket XIRR bisects: the first point of a trial chain whose XNPV sign differs from
 /// XNPV(0)'s, with the point before it. With `s` the guess (1e-5 for a guess of 0) the chain is
 /// 0, s, 2s, 4s, ... for a guess >= 0, then, when that finds nothing and `s` < 1, 0, -s and
 /// p → (p - 1)/2 toward -1; a negative guess walks only 0, g, (g - 1)/2, ...
-/// (docs/excel-semantics/financial.md "XIRR is a bisection"; fit lab `xirr`, T-1525).
+/// (docs/excel-semantics/financial.md "XIRR is a bracketing bisection, not Newton"; fit lab `xirr`, T-1525).
 /// Excel's cap on the walk is unprobed: 100 points per walk is enough on every oracle cell.
 fn xirr_bracket(values: &[f64], dates: &[f64], guess: f64) -> Option<(f64, f64)> {
     const WALK_CAP: usize = 100;

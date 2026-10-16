@@ -1,6 +1,6 @@
 ---
 id: T-1686
-title: "Probe or record as DEVIATION the XIRR walk and bisection caps and the IRR step cap"
+title: "Probe Excel's IRR/XIRR caps, the IRR fallback path and overflowing trial rates"
 milestone: M9
 lane: research
 status: todo
@@ -11,8 +11,9 @@ depends_on: []
 ---
 
 ## Goal
-The engine's solver caps either match a probed Excel cap or are recorded as `DEVIATION` entries
-(directive 5, decision 0052), not left as "DEVIATION candidate".
+Oracle evidence replaces the engine choices T-0916 made where Excel was never probed. Those choices are
+the solver caps (now `DEVIATION` entries, financial.md "The IRR and XIRR solver caps"), IRR's fallback,
+and trial rates whose power overflows.
 
 ## Context
 T-0916 ported the fitted XIRR and IRR models (financial.md "XIRR is a bracketing bisection", "IRR is a
@@ -29,9 +30,14 @@ engine falls back to the old Newton/bisection solver. Excel returns -0.673736675
 T-0916 reviewers asked for the entries, since every directive-5 bound gets one (decision 0014).
 
 ## Acceptance criteria
-- [ ] Either probe cases (excel-probe skill) that hit each cap give Excel's value and the engine matches
-  it, or financial.md records each cap as `Status: DEVIATION` with the engine's pinned behaviour
-  (decision 0052), plus an `eval/suites/<suite>/deviations` entry where a probe cell exists.
+- [ ] Probe cases (excel-probe skill) cover these groups:
+  - flows where IRR's secant does not stop, including `IRR({-400,1,1,1,1,1})`: what does Excel return,
+    a value or `#NUM!`?
+  - cap-reaching XIRR walks and bisections;
+  - overflowing trial rates: `XIRR({-1,1E+20,1},{45000,45365,63615},0.1)` (engine `#NUM!`) and
+    `IRR({-1,0.5,0.5,0.5,0.5,0.5,0.5,0.5},1E+60)`.
+- [ ] The engine follows the evidence. Caps that stay engine-only keep their DEVIATION entry, with an
+  `eval/suites/<suite>/deviations` line where a probe cell exists (decision 0036).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

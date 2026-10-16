@@ -62,7 +62,7 @@ from non-convergence rather than an up-front check (both give `#NUM!` on all 18 
 on the rate itself"); its part of this task waits for a new hypothesis.
 
 ## Acceptance criteria
-- [ ] (XIRR done; MIRR and RATE remain, see Outcome) The listed XIRR and MIRR F lines leave eval/baseline/ironcalc-calc.txt with no new ones (the RATE lines wait for a RATE fit; IRR lines leave where the T-1533 model is exact); the Outcome note lists the remainder.
+- [x] (XIRR done; MIRR moved to T-1687; RATE waits for a fit) The listed XIRR and MIRR F lines leave eval/baseline/ironcalc-calc.txt with no new ones (the RATE lines wait for a RATE fit; IRR lines leave where the T-1533 model is exact); the Outcome note lists the remainder.
 - [x] Algorithm parameters (guess, tolerance, iteration cap) documented in docs/excel-semantics/financial.md (the solver entries live there, not numbers.md) with evidence cell ids.
 - [x] Error cases (#NUM! when no convergence) still pass.
 - [x] IRR follows the T-1533 secant model; `uv run rustsheet-fitlab irr` shows the engine at the fitted candidate's 189/263.
@@ -89,10 +89,11 @@ pinned in test/test_fn_irr_xirr_fits.rs.
   (decision 0065: IRR.xlsx General!L42, fin-argument-modes H374/H375).
 - **Parameters:** documented in financial.md "XIRR is a bracketing bisection" and "IRR is a secant
   in v", with evidence cell ids. That file, not numbers.md, is where the solver entries live.
-  The walk cap (100) and bisection cap (200) are recorded as a DEVIATION candidate
-  (directive 5, decision 0052).
+  The XIRR walk and bisection caps and the IRR caps are `DEVIATION` entries (financial.md "The IRR
+  and XIRR solver caps", decision 0014). Where both secant runs fail, IRR falls back to the earlier
+  solver; that, the caps and overflowing trial rates are probed by T-1686.
 - **Remainder:**
   - RATE is not fitted (financial.md "RATE iterates on the rate itself"), so its F lines stay.
-  - MIRR is untouched; its F lines stay (formulation fit still open).
+  - MIRR is untouched; its F lines move to T-1687.
   - IRR's 74 unfitted fit-set cells and the 3 decision-0065 cells need NPV's exact evaluation
     order.

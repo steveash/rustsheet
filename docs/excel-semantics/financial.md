@@ -95,10 +95,11 @@ labels in the case's `hypotheses`):
   `#NUM!` for every guess.
 - MIRR: 32 of 35 cells already match the engine. `MIRR({-5,4},fr,rr)` is -0.19999999999999996 for
   every rate pair.
-Engine today: 96 of 691 cells pass (IRR 19/216, RATE 36/368, XIRR 9/72, MIRR 32/35). RATE rejects
-its sixth argument (guess) with `#ERROR!` (T-1050).
-Status: VERIFIED (observations). XIRR's iteration is fitted (next section, T-1525); IRR's and RATE's
-update rule and stopping test are UNVERIFIED (T-0916; partial findings below)
+Engine today (after T-0916): 312 of 691 cells pass (IRR 161/216, RATE 47/368, XIRR 72/72, MIRR 32/35;
+before: 96, with IRR 19 and XIRR 9).
+Status: VERIFIED (observations). XIRR's and IRR's iterations are fitted (next two sections, T-1525,
+T-1533) and implemented (T-0916); RATE's update rule and stopping test are UNVERIFIED (partial findings
+below); MIRR's last digits are T-1687
 Implemented in: XIRR and IRR in functions/financial/financial_util.rs (T-0916, next two sections); RATE n/a
 
 ## XIRR is a bracketing bisection, not Newton
@@ -166,8 +167,8 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   replaces the upper end, the XNPV(upper end) rule only when XNPV(upper end) <= 0; no cell tells them apart).
 Ours: this model, T-1583's form (`xirr_bracket`, `compute_xirr`, functions/financial/financial_util.rs,
 T-0916): 227/227 on the fit set and 22/22 on `xirr-oos` (the Newton code it replaced: 9 and 11). The walk
-cap (100 points) and bisection cap (200 steps) are engine bounds, enough on every oracle cell: a
-DEVIATION candidate under directive 5 and decision 0052 until Excel's caps are probed (see above).
+cap (100 points) and bisection cap (200 steps) are engine bounds (DEVIATION, "The IRR and XIRR solver
+caps" below). A trial rate where a power overflows or underflows to 0 has no XNPV, as in the lab model.
 Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test; the XNPV part of the stop
 test is UNVERIFIED beyond the fit set (T-1533; refined by T-1583, the span factor UNVERIFIED until T-1591)
 Tasks: T-1525, T-0916, T-1533, T-1583, T-1591
@@ -220,6 +221,21 @@ where the fitted secant does not stop, and raising its step cap does not explain
 Status: VERIFIED for the method (secant in v, offset, both stop tests, retry; 189/263 bit-exact); UNVERIFIED
 for the last bit (NPV's evaluation order), the step cap, and flows with leading zeros (A173, A175)
 Tasks: T-1525, T-1533, T-0916
+
+## The IRR and XIRR solver caps
+Rule: Excel's caps on its IRR secant, XIRR's bracket walk and XIRR's bisection are unknown: no probe
+reaches them. The engine bounds each loop itself, so an untrusted workbook cannot make one cell iterate
+without end (CLAUDE.md directive 5). XIRR walks at most 100 points per chain and bisects at most 200
+steps. IRR's secant takes at most 50 steps per run, with one retry from 0.1, and then the earlier
+Newton/bisection solver at most 50 Newton steps per start and 50 bisection steps. A run that reaches its
+cap gives `#NUM!` (or, for IRR, moves on to the next stage). Every oracle cell of the fit sets finishes
+well inside the caps.
+Evidence: none for Excel; this is a resource limit, not an Excel observation. Probing Excel's caps, the
+fallback path and overflowing trial rates is T-1686.
+Status: DEVIATION (decision 0014)
+Implemented in: `xirr_bracket` (`WALK_CAP`), `compute_xirr` (`BISECTION_CAP`), `irr_secant` (`MAX_STEPS`),
+`irr_fallback` and `irr_newton_raphson` (functions/financial/financial_util.rs)
+Tasks: T-0916, T-1686
 
 ## RATE iterates on the rate itself
 Rule: RATE's results are rates, not x - 1: only 7 of the 136 literal RATE cells pass the x - 1 test above
