@@ -131,3 +131,13 @@ fn table_this_row_at_shorthand_matches_long_form() {
         assert_eq!(a.next_token(), EOF, "{short}");
     }
 }
+
+#[test]
+fn table_this_row_at_shorthand_unterminated_does_not_panic() {
+    for formula in ["t[@", "t[@abc", "t[@a'", "t[@[a", "t[@[a]:", "t[@[a]"] {
+        let mut lx = new_lexer(formula);
+        for _ in 0..4 {
+            let _ = lx.next_token();
+        }
+    }
+}
