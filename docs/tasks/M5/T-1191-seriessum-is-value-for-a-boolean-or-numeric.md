@@ -29,4 +29,4 @@ docs/excel-semantics/coercion.md "GCD / LCM / MULTINOMIAL range cells" (SERIESSU
 - Typed boolean coefficients (`SERIESSUM(1,0,1,TRUE)`): probe first if touched.
 
 ## Outcome
-Probed typed/array/cell forms (probes/seriessum-boolean-coefficients, 14 cells, excel-graph): a boolean coefficient is `#VALUE!` everywhere; a single text value or one-cell reference is read as a number. seriessum.rs now matches; math-argument-modes C44 passes (56/56), new probe 14/14.
+Probed typed/array/cell forms (probes/seriessum-boolean-coefficients, 18 cells, excel-graph): a boolean coefficient is `#VALUE!` everywhere; a single text value or one-cell reference is read as a number. seriessum.rs now matches; math-argument-modes C44 passes (56/56), new probe 18/18.

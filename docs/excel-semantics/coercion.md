@@ -313,8 +313,9 @@ cell reads as 0 (`LCM(F1:F3)` with 4, blank, 6 is 0). Typed, numeric text is a n
 (`GCD("8",4)` = 4, `MULTINOMIAL("2",3)`) but a boolean is `#VALUE!` (`GCD(TRUE,4)`,
 `MULTINOMIAL(TRUE,3)`; typed LCM arguments are unprobed), whereas
 `FACT(TRUE)` = 1 and `COMBIN("5",2)` = 10. SERIESSUM's coefficient range is stricter still: text,
-boolean and numeric-text cells are all `#VALUE!` (a blank reads as 0), while a typed numeric-text
-`x` is accepted (`SERIESSUM("1",0,1,{1,2})` = 3). A boolean coefficient is `#VALUE!` in every form (a cell, typed `TRUE`/`FALSE`, an array-literal element, `(B1:B3)`); a single coefficient value is read as a number, so typed `"5"` and a one-cell text reference are 5 (`SERIESSUM(1,0,1,B4)`), while text in an array literal is `#VALUE!` (probes/seriessum-boolean-coefficients A1:A14, excel-graph, 2026-10-16, T-1191). SUMPRODUCT is the opposite: anything that is not a
+boolean and numeric-text cells of a multi-cell range are all `#VALUE!` (a blank reads as 0), while a typed numeric-text
+`x` is accepted (`SERIESSUM("1",0,1,{1,2})` = 3). 
+A boolean coefficient is `#VALUE!` in every form (a cell, typed `TRUE`/`FALSE`, an array-literal element, `(B1:B3)`); a single coefficient value is read as a number, so typed `"5"` and a one-cell text reference are 5 (`SERIESSUM(1,0,1,B4)` and `B4:B4`; non-numeric single text such as `"abc"` or `""` is `#VALUE!`), while text in an array literal is `#VALUE!` (probes/seriessum-boolean-coefficients A1:A18, excel-graph, 2026-10-16, T-1191). SUMPRODUCT is the opposite: anything that is not a
 number counts as 0, a typed scalar too (`SUMPRODUCT("2")` = 0, `SUMPRODUCT(TRUE)` = 0,
 `SUMPRODUCT("2",3)` = 0, `SUMPRODUCT(3)` = 3), and text in a range is 0 (`SUMPRODUCT(A1:A6)` = 10).
 PRODUCT and SUMSQ skip text and booleans in ranges and coerce typed ones (`PRODUCT(TRUE,3)` = 3).

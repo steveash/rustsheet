@@ -26,6 +26,22 @@
     "t": "n",
     "v": 5.0
    },
+   "A15": {
+    "t": "n",
+    "v": 5.0
+   },
+   "A16": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A17": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A18": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A2": {
     "t": "e",
     "v": "#VALUE!"
@@ -62,9 +78,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "00ca4ee4cf93163a564e367d95d9427db1af6f89f3bdb6740318580ac94ba3ce",
+  "input_sha256": "44893374b1e612298e8b84fe2a494f2c485e4cf9fb71e79ac37c79f5eb391d7b",
   "kind": "excel-graph",
-  "produced_at": "2026-10-16T01:08:09+00:00",
+  "produced_at": "2026-10-16T01:26:21+00:00",
   "version": null
  }
 }

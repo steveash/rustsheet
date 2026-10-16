@@ -67,17 +67,10 @@ impl Model {
             for node in row {
                 let coeff = match node {
                     ArrayNode::Number(v) => *v,
+                    ArrayNode::Empty => 0.0,
                     // Excel: a boolean coefficient is `#VALUE!` in every form (cell, typed, array
                     // literal); probes/seriessum-boolean-coefficients, math-argument-modes C44.
-                    ArrayNode::Boolean(_) => {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "SERIESSUM: coefficients must be numeric".to_string(),
-                        )
-                    }
-                    ArrayNode::Empty => 0.0,
-                    ArrayNode::String(_) => {
+                    ArrayNode::Boolean(_) | ArrayNode::String(_) => {
                         return CalcResult::new_error(
                             Error::VALUE,
                             cell,
