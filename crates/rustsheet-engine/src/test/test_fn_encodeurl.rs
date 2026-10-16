@@ -29,6 +29,9 @@ fn fn_encodeurl_is_value_error_on_the_web() {
     model._set("D2", "c");
     model._set("C5", "=ENCODEURL(D1:D2)");
     model._set("A6", "=ENCODEURL(1/0)");
+    model._set("G1", "x");
+    model._set("H1", "=1/0");
+    model._set("E5", "=ENCODEURL(G1:H1)");
     model._set("A7", r#"=CODE(ENCODEURL("a"))"#);
 
     model.evaluate();
@@ -37,4 +40,6 @@ fn fn_encodeurl_is_value_error_on_the_web() {
         assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
     }
     assert_eq!(model._get_text("A6"), *"#DIV/0!");
+    assert_eq!(model._get_text("E5"), *"#VALUE!");
+    assert_eq!(model._get_text("F5"), *"#DIV/0!");
 }

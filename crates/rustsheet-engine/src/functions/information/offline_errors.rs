@@ -101,7 +101,7 @@ fn image_error(source: &ArrayNode, valid: bool) -> Error {
 }
 
 /// An array of `error` with the shape of `values` (an element that is already an error stays).
-fn error_array(values: &[Vec<ArrayNode>], error: &Error) -> CalcResult {
+pub(crate) fn error_array(values: &[Vec<ArrayNode>], error: &Error) -> CalcResult {
     CalcResult::Array(map_elements(values, |v| match v {
         ArrayNode::Error(_) => v.clone(),
         _ => ArrayNode::Error(error.clone()),

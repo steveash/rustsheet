@@ -1,11 +1,7 @@
 use crate::{
     calc_result::CalcResult,
-    cast::StringOrArray,
-    expressions::{
-        parser::{ArrayNode, Node},
-        token::Error,
-        types::CellReferenceIndex,
-    },
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    functions::information::{error_array, Lifted},
     model::Model,
 };
 
@@ -20,23 +16,11 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.get_string_or_array(&args[0], cell) {
-            Ok(StringOrArray::String(_)) => {
-                CalcResult::new_error(Error::VALUE, cell, String::new())
-            }
-            Ok(StringOrArray::Array(arr)) => CalcResult::Array(
-                arr.iter()
-                    .map(|row| {
-                        row.iter()
-                            .map(|n| match n {
-                                ArrayNode::Error(e) => ArrayNode::Error(e.clone()),
-                                _ => ArrayNode::Error(Error::VALUE),
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            ),
-            Err(e) => e,
+        match self.lifted_arg(&args[0], cell) {
+            Ok(Lifted::Scalar(error @ CalcResult::Error { .. })) => error,
+            Ok(Lifted::Scalar(_)) => CalcResult::new_error(Error::VALUE, cell, String::new()),
+            Ok(Lifted::Array(values)) => error_array(&values, &Error::VALUE),
+            Err(error) => error,
         }
     }
 }
