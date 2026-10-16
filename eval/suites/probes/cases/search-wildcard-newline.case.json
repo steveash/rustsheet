@@ -1,0 +1,41 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "SEARCH wildcards over line breaks (CHAR(10), CHAR(13)) and surrogate pairs (UTF-16 units); T-1666.",
+ "tags": [
+  "M2",
+  "probe",
+  "T-1666"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=SEARCH(\"a?b\",\"x\"&\"a\"&CHAR(10)&\"b\")",
+    "A2": "=SEARCH(\"a*b\",\"a\"&CHAR(10)&\"b\")",
+    "A3": "=SEARCH(\"a*b\",\"xa\"&CHAR(10)&\"yb\")",
+    "A4": "=SEARCH(\"?b\",\"😀b\")",
+    "A5": "=SEARCH(\"??b\",\"😀b\")",
+    "A6": "=SEARCH(\"???b\",\"😀b\")",
+    "A7": "=SEARCH(\"b\",\"😀b\")",
+    "A8": "=SEARCH(\"*b\",\"😀b\")",
+    "A9": "=SEARCH(\"?\",\"😀\")",
+    "A10": "=SEARCH(\"??\",\"😀\")",
+    "A11": "=SEARCH(\"???\",\"😀\")",
+    "A12": "=SEARCH(\"?\",CHAR(10))",
+    "A13": "=SEARCH(\"?\",\"a\"&CHAR(13))",
+    "A14": "=SEARCH(\"a?\",\"xa\"&CHAR(10))",
+    "A15": "=SEARCH(\"*\"&CHAR(10)&\"*\",\"ab\"&CHAR(10)&\"c\")",
+    "A16": "=SEARCH(\"a\"&CHAR(10)&\"?\",\"a\"&CHAR(10)&\"b\")",
+    "A17": "=SEARCH(\"~?\",\"a?b\")",
+    "A18": "=SEARCH(\"~*b\",\"a*b\")",
+    "A19": "=SEARCH(\"b*\",\"ab\"&CHAR(10)&\"c\")",
+    "A20": "=SEARCH(\"*\",\"\")",
+    "A21": "=SEARCH(\"?\",\"\")",
+    "A22": "=SEARCH(\"a?b\",\"😀a😀b\",2)",
+    "A23": "=SEARCH(\"?b\",\"😀b\",2)",
+    "A24": "=SEARCH(\"b\",\"😀b\",3)"
+   }
+  }
+ ],
+ "expected": {}
+}

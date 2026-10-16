@@ -191,3 +191,24 @@ fn find_search_substitute_split_pairs_with_a_lone_half() {
         assert_eq!(model._get_text("A1"), expected, "{formula}");
     }
 }
+
+// SEARCH wildcards run over units and match line breaks (probes/search-wildcard-newline).
+#[test]
+fn search_wildcards_match_line_breaks_and_find_leftmost_start() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SEARCH(\"a?b\",\"xa\"&CHAR(10)&\"b\")");
+    model._set("A2", "=SEARCH(\"a*b\",\"xa\"&CHAR(10)&\"yb\")");
+    model._set("A3", "=SEARCH(\"?\",CHAR(13))");
+    model._set("A4", "=SEARCH(\"a*c*e\",\"ab ace ace\")");
+    model._set("A5", "=SEARCH(\"a*c*z\",\"ab ace ace\")");
+    model._set("A6", "=SEARCH(\"*b\",\"😀b\")");
+    model._set("A7", "=SEARCH(\"a?b\",\"😀a😀b\",2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2");
+    assert_eq!(model._get_text("A2"), "2");
+    assert_eq!(model._get_text("A3"), "1");
+    assert_eq!(model._get_text("A4"), "1");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A6"), "1");
+    assert_eq!(model._get_text("A7"), "#VALUE!");
+}
