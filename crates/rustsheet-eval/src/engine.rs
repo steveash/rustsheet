@@ -10,7 +10,7 @@ use rustsheet::{
 use rustsheet_engine::text::{lone_escape, Segment};
 use rustsheet_engine::Text;
 
-use crate::case::{split_qualified, CaseSpec, CellInput};
+use crate::case::{split_qualified, CaseSpec, CellInput, SheetOp};
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
 
@@ -232,12 +232,39 @@ impl Engine for RustSheetEngine {
                 Ok(())
             })
             .map_err(|e| e.to_string())?;
+        apply_sheet_ops(&mut workbook, &spec.sheet_ops)?;
         // The edit calculated once; an iterative case gets the oracle's other calculations.
         for _ in 1..calculations(spec) {
             workbook.recalculate();
         }
         Ok(Box::new(RustSheetEvaluated { workbook }))
     }
+}
+
+/// Makes a case's sheet edits after it is built, as the oracle backend replays them in Excel after
+/// the workbook loads (T-1608). Each op is its own edit, so it sees the names the ops before it
+/// left.
+fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), String> {
+    for op in ops {
+        let sheet_id_of = |workbook: &Workbook, sheet: &str| {
+            workbook
+                .sheet_id(sheet)
+                .map_err(|e| format!("sheet op on {sheet}: {e}"))
+        };
+        let done = match op {
+            SheetOp::Add { sheet } => workbook.edit(|tx| tx.add_sheet(sheet).map(|_| ())),
+            SheetOp::Rename { sheet, to } => {
+                let id = sheet_id_of(workbook, sheet)?;
+                workbook.edit(|tx| tx.rename_sheet(id, to))
+            }
+            SheetOp::Move { sheet, to } => {
+                let id = sheet_id_of(workbook, sheet)?;
+                workbook.edit(|tx| tx.move_sheet(id, *to))
+            }
+        };
+        done.map_err(|e| format!("sheet op {op:?}: {e}"))?;
+    }
+    Ok(())
 }
 
 /// How many times excel-graph calculates a case workbook: on load (`fullCalcOnLoad`), at the
@@ -352,6 +379,47 @@ mod tests {
 
     fn spec(json: &str) -> CaseSpec {
         serde_json::from_str(json).expect("spec")
+    }
+
+    #[test]
+    fn spec_sheet_ops_apply_in_order_after_the_build() {
+        // probes/sheet-ops (T-1608): references follow the renamed sheet, the moved sheet keeps
+        // them, and an added sheet is empty.
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1",
+                "sheets":[{"name":"Calc","cells":{"A1":"=Data!A1","A2":"=FORMULATEXT(A1)",
+                                                 "A3":"=SHEET(Inputs!A1)","A4":"=COUNTA(New!A1:B2)"}},
+                          {"name":"Data","cells":{"A1":5}}],
+                "sheet_ops":[{"op":"rename","sheet":"Data","to":"Inputs"},
+                             {"op":"move","sheet":"Inputs","to":0},
+                             {"op":"add","sheet":"New"}]}"#,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let calc = |row| evaluated.value("Calc", Addr { row, col: 1 });
+        assert_eq!(calc(1), Some(Value::Number(5.0)));
+        assert_eq!(calc(2), Some(Value::Text("=Inputs!A1".into())));
+        assert_eq!(calc(3), Some(Value::Number(1.0)));
+        assert_eq!(
+            evaluated.value("New", Addr { row: 1, col: 1 }),
+            Some(Value::Empty)
+        );
+    }
+
+    #[test]
+    fn unknown_or_malformed_sheet_ops_are_refused() {
+        for ops in [
+            r#"[{"op":"delete","sheet":"Data"}]"#,
+            r#"[{"op":"move","sheet":"Data","to":-1}]"#,
+            r#"[{"op":"add","sheet":"New","to":1}]"#,
+        ] {
+            let json = format!(r#"{{"format":"rustsheet-case/v1","sheets":[],"sheet_ops":{ops}}}"#);
+            assert!(serde_json::from_str::<CaseSpec>(&json).is_err(), "{ops}");
+        }
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"Calc","cells":{}}],
+                "sheet_ops":[{"op":"rename","sheet":"Nope","to":"X"}]}"#,
+        );
+        assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
     }
 
     #[test]

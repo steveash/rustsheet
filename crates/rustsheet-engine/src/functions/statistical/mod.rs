@@ -19,6 +19,7 @@ mod linest;
 mod log_normal;
 mod mode_functions;
 mod normal;
+pub(super) mod paired;
 mod pearson;
 mod percentile;
 mod permut;

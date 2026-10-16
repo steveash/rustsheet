@@ -3,7 +3,7 @@ id: T-1669
 title: "Collate þ as th (expansion) and fix œ=oe in XLOOKUP, XMATCH single-cell"
 milestone: M2
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -17,9 +17,13 @@ The engine matches Excel on every failing cell of probes/text-collation-longer (
 Oracle (excel-graph, 2026-10-16) shows `þ` = `th` (an expansion like `æ`/`ß`: `"þ"="th"`, `"þ"&"a"` = `"t"&"h"&"a"`, `"þa">"tb"`, `XMATCH("th",þ,0)` = 1), but `cmp_text_excel` (functions/util/collation.rs) treats `þ` as a tiebreak accent on `t` (Calc!A74-A76). Also `XLOOKUP("oe",Data!B1,Data!B1,"nf",0)` must return `œ` (engine #N/A, Calc!A102), and `XMATCH("th",Data!C1,0)`, `XMATCH("1",Data!D1,0)`, `XMATCH("ab",Data!A1,0)` return #VALUE! in the engine where Excel gives 1, #N/A, #N/A (A104, A105, A107; find out why a single-cell lookup_array of a text-formula cell errors). Run `rustsheet-eval run --suite probes --filter text-collation-longer`.
 
 ## Acceptance criteria
-- [ ] Calc!A74-A76, A96, A97, A102, A104, A105, A107 of probes/text-collation-longer pass; baseline updated.
-- [ ] coercion.md notes `þ` = `th` implemented.
-- [ ] `make check` green; reviewers approve.
+- [x] Calc!A74-A76, A96, A97, A102, A104, A105, A107 of probes/text-collation-longer pass; baseline updated.
+- [x] coercion.md notes `þ` = `th` implemented.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+`þ` is now the expansion `th` in `cmp_text_excel`; a single-cell reference as XMATCH `lookup_array` or XLOOKUP `lookup_array`/`return_array` is a one-cell vector (`evaluate_node_with_reference`). probes/text-collation-longer 114/114 pass (9 cells fixed). Documented in coercion.md.
+- Follow-ups: T-1698 (probe reference-form lookup arrays, capital Thorn).

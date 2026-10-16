@@ -154,3 +154,70 @@ fn huge_header_or_totals_row_counts_are_ref_error_not_an_overflow() {
         }
     }
 }
+
+#[test]
+fn bare_table_name_and_empty_brackets_are_the_data_area() {
+    let worksheets = vec!["Sheet One".to_string()];
+    let tables = create_test_table("tblIncome", &["Jan", "Feb"], "A1", 3);
+    let mut parser = new_parser(worksheets, vec![], tables);
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 9,
+        column: 9,
+    };
+    // Header row excluded (gen-m8b specials e804cf2f8af00680 K29, K116).
+    let bare = parser.parse("ROWS(tblIncome)", &cell_reference);
+    let expected = to_english_localized_string(
+        &parser.parse("ROWS(tblIncome[])", &cell_reference),
+        &cell_reference,
+    );
+    assert_eq!(
+        to_english_localized_string(&bare, &cell_reference),
+        expected
+    );
+    assert_eq!(expected, "ROWS($A$2:$C$3)");
+    // Names match ignoring case.
+    let t = parser.parse("ROWS(TBLINCOME)", &cell_reference);
+    assert_eq!(to_english_localized_string(&t, &cell_reference), expected);
+}
+
+#[test]
+fn this_row_outside_the_data_rows_is_value_error() {
+    let worksheets = vec!["Sheet One".to_string()];
+    let tables = create_test_table("tblIncome", &["Jan", "Feb"], "A1", 3);
+    let mut parser = new_parser(worksheets, vec![], tables);
+    // Data rows are 2 and 3; the header row, and rows above and below, are #VALUE! (gen-m8b
+    // this-row e1bf5aa0ffb4ed87).
+    for (row, expected) in [(1, "#VALUE!"), (4, "#VALUE!"), (9, "#VALUE!"), (3, "$A$3")] {
+        let cell_reference = CellReferenceRC {
+            sheet: "Sheet One".to_string(),
+            row,
+            column: 9,
+        };
+        let t = parser.parse("tblIncome[[#This Row],[Jan]]", &cell_reference);
+        assert_eq!(to_english_localized_string(&t, &cell_reference), expected);
+    }
+}
+
+#[test]
+fn reversed_column_range_is_the_same_area() {
+    let worksheets = vec!["Sheet One".to_string()];
+    let tables = create_test_table("tblIncome", &["Jan", "Feb", "Mar"], "A1", 3);
+    let mut parser = new_parser(worksheets, vec![], tables);
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 9,
+        column: 9,
+    };
+    // column-range 44cecbb1ecd5b2da K143: COLUMNS(Sales[[2024]:[a.b]]) is 2 either way round.
+    let forward = parser.parse("tblIncome[[Jan]:[Mar]]", &cell_reference);
+    let reversed = parser.parse("tblIncome[[Mar]:[Jan]]", &cell_reference);
+    assert_eq!(
+        to_english_localized_string(&reversed, &cell_reference),
+        to_english_localized_string(&forward, &cell_reference)
+    );
+    assert_eq!(
+        to_english_localized_string(&reversed, &cell_reference),
+        "$A$2:$C$3"
+    );
+}

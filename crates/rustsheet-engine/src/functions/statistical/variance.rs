@@ -9,7 +9,7 @@ use crate::{
 
 /// VARA, VARPA, STDEVA and STDEVPA return the first error in argument order at once, as before
 /// they moved onto the walker (an error in a range, an array or a direct argument; the order is
-/// UNVERIFIED, T-1439).
+/// UNVERIFIED, T-1696; VAR and STDEV rank errors as SUM does, T-1439).
 const VARA_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::First,

@@ -10,8 +10,26 @@ Status: VERIFIED (Excel-cached values)
 Implemented in: the engine already returns #REF! (those cells pass).
 Oracle caveat: **Excel for the web disagrees.** Through the Graph oracle the same formulas give
 a reference to an empty cell (`INDIRECT(...)` = 0, `ISREF(...)` = TRUE, `ROW(...)` = 3), probed
-2026-10-04. Never take oracle values as evidence for references to missing sheets
+2026-10-04. The web gives the same after a sheet edit: a sheet renamed away, or a name added and
+then renamed (T-1608, the unscored cells of probes/sheet-ops/sheet-ops-rename-indirect-text,
+-add-then-rename and -add-resolves-indirect). Never take oracle values as evidence for references to missing sheets
 (docs/architecture/oracle.md, "Known divergences"; desktop wins per decision 0030).
+
+## INDIRECT resolves a defined name that holds a reference
+Rule: `INDIRECT("<name>")` of a defined name whose body is a cell or range reference is that
+reference: `ISREF(INDIRECT("RCR"))` is TRUE with `RCR` = `Sheet1!$B$1`. Text that is neither a
+reference nor such a name is `#REF!`, so `ISREF(INDIRECT("R0"))` is FALSE, also when `R0` is a
+defined name, since a name spelled like an out-of-range R1C1 reference is never resolved
+(references.md "R1C1-shaped sheet and defined names").
+Unprobed (hand, T-1682): the value read through the name; `a1` FALSE (ours: `#REF!`); sheet-qualified
+text (`"Sheet1!nm"`, ours: `#REF!`); a sheet-scoped name shadowing a workbook one (ours: sheet
+first); formula-valued or dynamic names (ours: `#REF!`).
+Evidence: probes/r1c1-name-use-rcr A2, r1c1-name-use-r0, -c0, -r0c1, -r1048577 A2 (excel-graph,
+2026-10-15).
+Implemented in: `indirect_defined_name` (functions/lookup_and_reference/mod.rs); ISREF evaluates
+an INDIRECT argument (functions/information/mod.rs).
+Status: VERIFIED (excel-graph) for ISREF; the unprobed choices UNVERIFIED (probe pending, T-1682)
+Tasks: T-1657, T-1682
 
 ## INDIRECT's a1 argument is coerced like a boolean; text must be TRUE/FALSE
 Rule: `a1` is coerced like a logical argument: a nonzero number is TRUE (`INDIRECT("H2",2)` and

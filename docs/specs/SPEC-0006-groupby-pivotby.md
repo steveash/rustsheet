@@ -58,6 +58,10 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
   totals (G!A49). `2` adds a subtotal after each first-level group, with the key and a blank
   second key, and the grand total is then labeled "Grand Total" (G!J49). Negative values put
   totals above their group (G!S49 for `-2`, G!AB49 for `-1`, the last labeled "Total").
+  T-1324 (probes/groupby-subtotals): `n` subtotals the first n - 1 key fields and may not exceed
+  the number of keys; with the depth omitted, a value sort over n keys shows every level's
+  subtotals; a table relationship sorted by a value sorts every group by its own value. Details
+  in docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
 - **Filler cells** (the blank key columns of total rows, the corner above the key columns) are
   empty text `""`, not empty cells (oracle `t:"s"`, G!AC33). Only the blank-key group shows 0.
 - **sort_order**: an integer column index, 1-based over keys then values. Negative means
@@ -69,10 +73,18 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
   Product desc), `{2,1}` equals `{1,2}` (both asc); a one-element array is accepted (`{1}`, `{2}`: both asc);
   `{1,-1}` (a column twice), `{0,1}` are `#VALUE!` (PIVOTBY's row_sort_order 0 was `#VALUE!` too, but in a formula with other changed arguments: confounded); `{1,2,3}` over two keys is
   `#VALUE!` (followup G!A341-A541, followup2 G!A181-A241; T-1328; probed under the default hierarchy relationship only).
+  T-1323 (probes/groupby-sort-filter-args B1-B40): fractions, 0, text, TRUE and a blank cell are `#VALUE!`; an array may
+  be a column; it names a value column only as its one element (`{-3}`), mixing key and value columns is `#VALUE!`; equal
+  values keep the ascending key order in both directions; values sort like keys (numbers < text, errors last ascending).
 - **filter_array**: a Boolean column as tall as the data. FALSE rows are dropped before grouping,
   so groups with no rows vanish and totals cover only kept rows (G!A169). A height mismatch is
   `#VALUE!` (G!AB217). All FALSE is `#VALUE!`, not `#CALC!` (ERROR.TYPE 3, unlike FILTER's 14), also as a scalar `FALSE`, `0` or `{FALSE}`, with two key
   fields, and for PIVOTBY; a scalar `TRUE` filters nothing (followup3 G!A1-A133; G!A241).
+  T-1323 (probes/groupby-sort-filter-args B42-B60): numbers count (0 drops), blanks drop, the text "TRUE"/"FALSE" counts;
+  other text, an error element, a row or a 2-column filter are `#VALUE!`; with a header row the filter may be as tall as
+  the fields or as the records.
+- **Argument errors** (T-1323, B61-B83): an error value in any argument wins over every invalid argument, and the first
+  in argument order wins among error values.
 - **field_relationship**: `0` (hierarchy, the default) gives the same result as omitted
   (G!S169). `2` is `#VALUE!` (G!J241). `1` (table) with total_depth 2 or -2 is `#VALUE!` (ERROR.TYPE 3; followup G!A181, G!A261); with total_depth 1 or omitted it
   equals 0 (T-1328; probed with default sorting only). An array in argument 8 is lifted per element (a 10x1 column of group results, `{FALSE}` 1x1, a numeric column 10x1 `#VALUE!`, scalar FALSE/0 act as 0; followup G!A861-A981, followup2 G!A1-A161).

@@ -1,0 +1,36 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Renaming a quoted sheet name to a plain one. (T-1608)",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "='My Data'!A1",
+        "A2": "=SUM('My Data'!A1:A2)",
+        "B1": "=FORMULATEXT(A1)",
+        "B2": "=FORMULATEXT(A2)"
+      }
+    },
+    {
+      "name": "My Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": "x"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "rename",
+      "sheet": "My Data",
+      "to": "Plain"
+    }
+  ]
+}

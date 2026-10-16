@@ -223,7 +223,8 @@ impl Model {
         // Materialise `lookup_array` into a one-dimensional vector of values.
         // It may be a range reference or an in-formula array constant `{…}`;
         // either way it must be a single row or single column.
-        let array: SearchVector = match self.evaluate_node_in_context(&args[1], cell) {
+        // A single-cell reference is a one-cell vector (probes/text-collation-longer A104-A107).
+        let array: SearchVector = match self.evaluate_node_with_reference(&args[1], cell) {
             CalcResult::Range { left, right } => {
                 let is_col_vec = left.column == right.column;
                 let is_row_vec = left.row == right.row;

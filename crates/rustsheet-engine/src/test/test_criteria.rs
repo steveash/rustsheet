@@ -551,3 +551,38 @@ fn test_text_equality_criteria_use_collation() {
     assert!(!not_ae(&text("ae")));
     assert!(not_ae(&text("a-e")));
 }
+
+/// T-1667: the D-function prefix match reads a lone surrogate as its own unit
+/// (probes/d-function-prefix-lone-surrogates A1-A7): `H` matches H, "😀" and H&"a" but not U+FFFD.
+#[test]
+fn test_database_prefix_criteria_keep_lone_surrogates() {
+    let high = Text::from_utf16(vec![0xD83D]);
+    let low = Text::from_utf16(vec![0xDE00]);
+    let text = |t: &Text| CalcResult::String(t.clone());
+    let pair = Text::from("😀");
+    let high_a = Text::from_utf16(vec![0xD83D, u16::from(b'a')]);
+    let a_low = Text::from_utf16(vec![u16::from(b'a'), 0xDE00]);
+    let criterion = text(&high);
+    let prefix = build_criteria_with(
+        &criterion,
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+        CriteriaFlavor::Database,
+    );
+    assert!(prefix(&text(&high)));
+    assert!(prefix(&text(&pair)));
+    assert!(prefix(&text(&high_a)));
+    assert!(!prefix(&text(&low)));
+    assert!(!prefix(&text(&Text::from("\u{fffd}"))));
+    assert!(!prefix(&text(&a_low)));
+    let criterion = text(&Text::from("a"));
+    let prefix_a = build_criteria_with(
+        &criterion,
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+        CriteriaFlavor::Database,
+    );
+    assert!(prefix_a(&text(&a_low)));
+}

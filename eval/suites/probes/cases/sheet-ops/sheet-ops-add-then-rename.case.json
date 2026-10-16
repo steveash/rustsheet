@@ -1,0 +1,41 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A sheet added, then renamed: INDIRECT finds it by its new name. The cell naming the old, now missing, name is not scored (missing-sheet INDIRECT is a known web/desktop divergence, lookup.md). (T-1608)",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=INDIRECT(\"Other!A1\")",
+        "A2": "=IFERROR(INDIRECT(\"New!A1\"),\"gone\")"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": "x"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "add",
+      "sheet": "New"
+    },
+    {
+      "op": "rename",
+      "sheet": "New",
+      "to": "Other"
+    }
+  ],
+  "check": [
+    "Calc!A1"
+  ]
+}

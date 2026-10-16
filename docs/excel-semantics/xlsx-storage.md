@@ -118,8 +118,8 @@ exporter never writes `_xleta.` (T-1089).
 Comparison (T-0412): the exporter's arms were checked against XlsxWriter 3.2.9's future-function list; every
 name there that has an engine function already has an arm. XlsxWriter also prefixes ANCHORARRAY (the `#`
 operator), SINGLE (the `@` operator, handled by the parser), FILTERXML, QUERYSTRING and WEBSERVICE; the engine
-has no Function variant for the last three or for GROUPBY/PIVOTBY (not on XlsxWriter's list), so nothing is
-exported for them. PERCENTOF has an arm since T-0416. The case builder (which reads these arms) now prefixes it, and a
+has no Function variant for the last three, so nothing is
+exported for them. GROUPBY and PIVOTBY (not on XlsxWriter's list) have `_xlfn.` arms since T-1322 and T-1326. PERCENTOF has an arm since T-0416. The case builder (which reads these arms) now prefixes it, and a
 sheet's `bare_function_names` list keeps a cell's names as typed, so function-name-forms A1 still
 stores the bare form (refilled 2026-10-13: still `#NAME?`). The gen-m5/m6/m7 cases that call PERCENTOF
 were refilled with the prefixed form. Two existing arms

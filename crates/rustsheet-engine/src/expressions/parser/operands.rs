@@ -5,7 +5,7 @@
 
 use super::super::token::{self, TableReference, TokenType};
 use super::super::types::ParsedReference;
-use super::super::utils::number_to_column;
+use super::super::utils::{is_out_of_range_r1c1_name, number_to_column};
 use super::reference_operators::is_reference_operand;
 use super::*;
 
@@ -268,14 +268,19 @@ impl Parser {
             }
         };
 
-        // Could be a defined name or a table
-        if let Some((scope, formula)) = self.get_defined_name(&name, context_sheet_index) {
-            return Node::DefinedNameKind((name, scope, formula));
+        // Could be a defined name or a table. A name spelled like an out-of-range R1C1 reference
+        // is defined but never resolved (T-1657).
+        if !is_out_of_range_r1c1_name(&name) {
+            if let Some((scope, formula)) = self.get_defined_name(&name, context_sheet_index) {
+                return Node::DefinedNameKind((name, scope, formula));
+            }
         }
         let name_lower = name.to_lowercase();
         for table_name in self.tables.keys() {
             if table_name.to_lowercase() == name_lower {
-                return Node::TableNameKind(name);
+                // A bare table name is its data area, like `Table[]` (gen-m8b specials
+                // e804cf2f8af00680 K116, lookups 27252667210b1d03).
+                return self.structured_reference_operand(name, None, None);
             }
         }
         // xlpm: Excel Lambda Parameter
@@ -423,7 +428,15 @@ impl Parser {
             }
         };
         // table-name => table
-        let table = match self.tables.get(&table_name) {
+        // Table names match ignoring case (gen-m8b names-case 5b5c0e20e82153bb).
+        // An exact hit is deterministic; the case-folded scan covers the rest.
+        let table_name_lower = table_name.to_lowercase();
+        let table = match self.tables.get(&table_name).or_else(|| {
+            self.tables
+                .iter()
+                .find(|(name, _)| name.to_lowercase() == table_name_lower)
+                .map(|(_, t)| t)
+        }) {
             Some(t) => t,
             None => {
                 let message = format!(
@@ -486,6 +499,11 @@ impl Parser {
 
         match specifier {
             Some(token::TableSpecifier::ThisRow) => {
+                // Off the data rows (header, totals, above, below) it is #VALUE!
+                // (docs/excel-semantics/references.md, gen-m8b this-row e1bf5aa0ffb4ed87).
+                if context.row < data_start || context.row > data_end {
+                    return Node::ErrorKind(token::Error::VALUE);
+                }
                 row_start = context.row;
                 row_end = context.row;
             }
@@ -505,6 +523,15 @@ impl Parser {
                 row_start = data_start;
             }
             Some(token::TableSpecifier::All) => {
+                if totals_row_count != 0 {
+                    row_end = totals_row;
+                }
+            }
+            // [#Headers],[#Data]: header row through the last data row (row_end already excludes totals).
+            Some(token::TableSpecifier::HeadersData) => {}
+            // [#Data],[#Totals]: data rows plus the totals row when there is one.
+            Some(token::TableSpecifier::DataTotals) => {
+                row_start = data_start;
                 if totals_row_count != 0 {
                     row_end = totals_row;
                 }
@@ -586,17 +613,19 @@ impl Parser {
                         };
                     }
                 };
+                // The same area whichever column is written first (references.md, column-range
+                // 44cecbb1ecd5b2da K143).
                 Node::RangeKind {
                     sheet_name,
                     sheet_index: table_sheet_index,
                     absolute_row1: true,
                     absolute_column1: true,
                     row1: row_start,
-                    column1: left_column_index,
+                    column1: left_column_index.min(right_column_index),
                     absolute_row2: true,
                     absolute_column2: true,
                     row2: row_end,
-                    column2: right_column_index,
+                    column2: left_column_index.max(right_column_index),
                 }
             }
         }
