@@ -63,7 +63,9 @@ impl Model {
             let operands = [first, second]
                 .into_iter()
                 .map(|v| match v {
-                    CalcResult::Range { .. } | CalcResult::Array(_) => self.number_or_array(v, cell),
+                    CalcResult::Range { .. } | CalcResult::Array(_) => {
+                        self.number_or_array(v, cell)
+                    }
                     scalar => self
                         .cast_to_number_no_bools(scalar, cell)
                         .map(NumberOrArray::Number),
