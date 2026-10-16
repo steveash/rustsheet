@@ -3,7 +3,7 @@ id: T-1622
 title: "Probe MODE, MODE.MULT, MODE.SNGL, QUARTILE*, PERCENTILE, PERCENTRANK, AVEDEV and DEVSQ to the evidence floor"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
