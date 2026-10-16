@@ -368,7 +368,7 @@ C	probes/mod-quotient-threshold2.case.json	36
 C	probes/mod-quotient-threshold3.case.json	19
 C	probes/mod-quotient-threshold4.case.json	30
 C	probes/mod-quotient-threshold5.case.json	16
-C	probes/mode-typed-arguments.case.json	29
+C	probes/mode-typed-arguments.case.json	33
 C	probes/multiarea-3d-ref.case.json	2
 C	probes/multiarea-3d-union-h1.case.json	1
 C	probes/multiarea-3d-union-h2.case.json	1
