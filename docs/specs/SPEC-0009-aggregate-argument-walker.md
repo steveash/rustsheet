@@ -284,7 +284,7 @@ The walker and `for_each_aggregate_number` are `#[inline]` and take the policy b
 | PRODUCT | Aggregate | Ranked | no | Cast / Numbers / Numbers | `seen_value` (set for an empty argument too) |
 | COUNT | Aggregate | Items | no | — (own visitor: counts types) | — |
 | COUNTA | PickedKeepingBlanks, after the `external_reference` count | Items | no | — (own visitor) | — |
-| AND, OR, XOR | InContext | First | no | — (own visitor: boolean, number, direct text TRUE/FALSE; an empty argument is FALSE only first) | the running `Option<bool>` |
+| AND, OR, XOR | Aggregate | First | no | — (own visitor: boolean, number, direct text TRUE/FALSE; an empty argument is FALSE only first) | the running `Option<bool>` |
 
 `First` was the original behavior for DEVSQ/AVEDEV/SUMSQ: each argument was walked on its own and
 its error was returned at once (`?`). T-1439 probed them (probes/aggregate-error-precedence-stat-family)
@@ -295,17 +295,15 @@ and moved them to `Ranked`, since Excel ranks their errors as SUM does.
   an array error like a referenced one, since Excel ranks it that way for SUM, MIN, MAX, AVERAGE
   and MEDIAN (probes/aggregate-array-error-vs-ref-error). The design above shows the earlier shape.
 - `ArgReading` has two variants, `Aggregate` and `PickedKeepingBlanks`; `Reference` was not needed
-  (T-1677 added `InContext`, below).
+  (T-1677 added `InContext`, T-1685 removed it, below).
 - `ErrorRule::Items` hands error cells, direct errors and array errors to the visitor.
 - `walk_aggregate_read` walks an argument the consumer already read: COUNTA picks its argument
   (`pick_branch`) first, so a condition is evaluated once.
 - SUM, MIN, MAX and PRODUCT share `NumberRules::SUM_LIKE`.
 - T-1677 moved AND, OR and XOR onto the walker with a third reading, `ArgReading::InContext`
-  (`evaluate_node_in_context`, no reference picking), so no result changed: under `Aggregate`, a
-  text "TRUE" cell picked by IF, INDEX, XLOOKUP or LET would become a referenced cell and stop
-  counting (unprobed; T-1685). The reading turns a range across two sheets into `#VALUE!` and a
-  direct LAMBDA into `#N/IMPL!`, direct errors that return at once as before (the walker would hold
-  a LAMBDA's error).
+  (no reference picking); T-1685 probed it (probes/and-or-xor-picked-text): Excel treats a text
+  "TRUE" cell picked by IF, INDEX, XLOOKUP, LET, CHOOSE, TAKE or OFFSET as a referenced cell, so the
+  logical functions use `Aggregate` and `InContext` was removed.
 
 ## Alternatives considered
 - **A trait per consumer** (`trait AggregateConsumer { fn number(..); fn error(..) }`). It is
