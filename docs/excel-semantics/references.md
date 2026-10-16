@@ -217,8 +217,8 @@ with a local cell (`COUNTA((…!A1,E1))`, `COUNTA(…!A1 E1)`, both `#VALUE!`) a
 Evidence: probes/external-ref-no-link-ifchoose Calc!A1:A34, H1:N2, external-ref-no-link-ifchoose-b
 Calc!A1:A6 (excel-graph, 2026-10-14, T-1487).
 Engine: `Model::pick_branch` reads the condition or index of an IF or CHOOSE that may pick an
-external reference once and hands the picked argument to ROWS, COLUMNS, ROW, COLUMN, ISREF, AREAS,
-COUNTA, COUNTBLANK, INDEX and the aggregates; IF's and CHOOSE's value read it as INDEX's (T-1487).
+external reference once, and `Model::pick_reference` hands the picked argument to ROWS,
+COLUMNS, ROW, COLUMN, ISREF, AREAS, COUNTA, COUNTBLANK, INDEX and the aggregates; IF's and CHOOSE's value read it as INDEX's (T-1487).
 INDEX with an index array into an external reference lifts per element (`index_lifted` via
 `external_index_args`): each element is the top-left cell of the scalar pick, read with
 `external_picked_value` (`=INDEX(…!A1:C4,{1,2},1)` spills 0, 0; probes/external-ref-no-link-ifchoose
@@ -231,8 +231,23 @@ Excel treats the lifted INDEX over an external range as a single-cell reference 
 `SUM(INDEX(…,{1,2},1))` is 0 ("Hello!" is text), `ROWS(…)` is 1, `ISREF(…)` is TRUE and a further
 `INDEX(INDEX(…,{1,2},1),2)` is `#REF!` (Refs!B89:B92). Not implemented: we give `#BLOCKED!`, `#BLOCKED!`, FALSE and
 `#BLOCKED!` for those four (T-1554).
-Not yet implemented: `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3 (a LET body picking one; we give
-`#BLOCKED!`). `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3, and the engine matches since T-1508, which broadcasts CHOOSE's
+A LET is transparent here too: a LET whose body is (or IF, CHOOSE or a nested LET picks) a
+reference into another workbook is that reference. `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3,
+`ROWS(LET(c,TRUE,…!A1:B3))` 3, `ROWS(LET(c,TRUE,LET(d,1,CHOOSE(d,…!A1:B4))))` 4,
+`ROWS(IF(TRUE,LET(c,1,…!A1:B3)))` 3, `ROWS(LET(c,TRUE,d,2,IF(c,INDEX(…!A1:C4,d,0))))` 1,
+`COLUMNS(LET(c,1,CHOOSE(c,…!A1:C1)))` 3, `ROW(LET(c,TRUE,IF(c,…!B3)))` 3, `COLUMN(…C2…)` 3,
+`ISREF(LET(c,TRUE,IF(c,…!A1)))` and `ISREF(LET(c,TRUE,…!A1))` TRUE,
+`AREAS(LET(c,TRUE,IF(c,(…!A1,…!B2))))` 2, `COUNTA(LET(c,TRUE,IF(c,…!A1:B2)))` 0,
+`COUNTBLANK(…)` `#VALUE!`, `SUM(LET(c,TRUE,IF(c,…!A1)))` `#BLOCKED!`; its one cell reads empty
+(`=LET(c,TRUE,IF(c,…!A1))` 0, `&"x"` "x", ISBLANK TRUE, ERROR.TYPE `#N/A`). When the IF picks no
+reference, LET gives IF's value: `ROWS(LET(c,FALSE,IF(c,…!A1:B3)))` is 1, `ISREF(…)` FALSE, and a
+condition error is that error (`ROWS(LET(c,1/0,IF(c,…!A1:B3)))` `#DIV/0!`).
+Evidence: probes/external-ref-no-link-let Calc!A1:A20, external-ref-no-link-ifchoose A26
+(excel-graph, 2026-10-16, T-1535). Engine: `Model::pick_reference` reads such a LET with its names
+bound (`let_scope`) when every argument its body may pick names another workbook; a LET whose body
+may pick any other argument (a reference into this workbook, a value: `IF(c,…!A1:B3,"x")`) is read
+as before, and INDEX over such a LET reads it as INDEX over the IF does; both unprobed (T-1710).
+`ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3, and the engine matches since T-1508, which broadcasts CHOOSE's
 arms over an index array (external-ref-no-link-ifchoose A32).
 Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external
 reference (`ROW(IF({TRUE,FALSE},…!A1,…!A1))`; the engine gives `#VALUE!`, UNVERIFIED), OFFSET of one
@@ -240,7 +255,7 @@ with an array or two error arguments, a `[n]` index with no
 externalLink part, and ROW/COLUMN of a multi-cell external area (the engine spills the row or column
 numbers as for a sheet reference, UNVERIFIED).
 Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
-Tasks: T-0124, T-1381, T-1382, T-1454, T-1487, T-1537, T-1546, T-1554
+Tasks: T-0124, T-1381, T-1382, T-1454, T-1487, T-1535, T-1537, T-1546, T-1554
 
 ## Cached values of a linked workbook (`[n]Sheet!A1`, `[n]!Name`, `[0]!Name`)
 Rule: in xlsx, Excel writes a reference into another workbook with the 1-based index of its

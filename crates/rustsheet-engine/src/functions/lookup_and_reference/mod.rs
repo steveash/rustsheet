@@ -5,6 +5,7 @@ use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::expressions::utils::is_out_of_range_r1c1_name;
+use crate::external_reference::{one_external_area, PickedReference};
 use crate::functions::logical::{if_arg_at, if_arg_dims};
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
@@ -386,50 +387,42 @@ impl Model {
             return CalcResult::Number(if by_row { cell.row } else { cell.column } as f64);
         }
         // `ROW(IF(TRUE,…!B3))` is 3 (probes/external-ref-no-link-ifchoose A25).
-        let reference = match self.pick_branch(&args[0], cell) {
-            Picked::Node(node) => node,
-            Picked::Value(error @ CalcResult::Error { .. }) => return error,
+        let reference = match self.pick_reference(&args[0], cell) {
+            PickedReference::Node(node) => node,
+            PickedReference::External(areas) => {
+                let area = match one_external_area(areas, cell) {
+                    Ok(area) => area,
+                    Err(error) => return error,
+                };
+                let (first, last) = if by_row {
+                    (area.first_row, area.last_row)
+                } else {
+                    (area.first_column, area.last_column)
+                };
+                return row_or_column_numbers(first, last, by_row, first_only);
+            }
+            PickedReference::Value(error @ CalcResult::Error { .. }) => return error,
             // A value an IF or CHOOSE gives here is no reference: `ROW(IF(FALSE,…!A1))` is
             // `#VALUE!` (probes/external-ref-no-link-ifchoose-b A4).
-            Picked::Value(_) => {
+            PickedReference::Value(_) => {
                 return CalcResult::new_error(Error::VALUE, cell, "Expected a reference".into())
             }
         };
-        let (first, last) = if let Some(area) = self.one_external_area(reference, cell) {
-            let area = match area {
-                Ok(area) => area,
-                Err(error) => return error,
-            };
-            if by_row {
-                (area.first_row, area.last_row)
-            } else {
-                (area.first_column, area.last_column)
+        let (first, last) = match self.reference_ranges(reference, cell) {
+            // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
+            // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
+            Ok(Ranges::Areas(_)) => return several_areas_ref(cell),
+            Ok(Ranges::One(range)) => {
+                let (a, b) = if by_row {
+                    (range.left.row, range.right.row)
+                } else {
+                    (range.left.column, range.right.column)
+                };
+                (a.min(b), a.max(b))
             }
-        } else {
-            match self.reference_ranges(reference, cell) {
-                // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
-                // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
-                Ok(Ranges::Areas(_)) => return several_areas_ref(cell),
-                Ok(Ranges::One(range)) => {
-                    let (a, b) = if by_row {
-                        (range.left.row, range.right.row)
-                    } else {
-                        (range.left.column, range.right.column)
-                    };
-                    (a.min(b), a.max(b))
-                }
-                Err(s) => return s,
-            }
+            Err(s) => return s,
         };
-        if first == last || first_only {
-            return CalcResult::Number(first as f64);
-        }
-        let numbers = (first..=last).map(|n| ArrayNode::Number(n as f64));
-        CalcResult::Array(if by_row {
-            numbers.map(|n| vec![n]).collect()
-        } else {
-            vec![numbers.collect()]
-        })
+        row_or_column_numbers(first, last, by_row, first_only)
     }
 
     /// The reference an explicit `@` reads. `@` of a span over several sheets is `#REF!`, not
@@ -901,4 +894,18 @@ impl Model {
             }
         }
     }
+}
+
+/// ROW's numbers `first..=last` down a column (`by_row`) or COLUMN's across a row; one number
+/// when they are one or with `first_only` (implicit intersection keeps the first).
+fn row_or_column_numbers(first: i32, last: i32, by_row: bool, first_only: bool) -> CalcResult {
+    if first == last || first_only {
+        return CalcResult::Number(f64::from(first));
+    }
+    let numbers = (first..=last).map(|n| ArrayNode::Number(f64::from(n)));
+    CalcResult::Array(if by_row {
+        numbers.map(|n| vec![n]).collect()
+    } else {
+        vec![numbers.collect()]
+    })
 }

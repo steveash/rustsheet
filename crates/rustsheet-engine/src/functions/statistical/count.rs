@@ -1,11 +1,12 @@
 use crate::calc_result::Range;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
+use crate::external_reference::PickedReference;
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, ItemSource,
 };
 use crate::functions::util::is_span_or_if_of_span;
-use crate::reference_operators::{not_a_reference_array, Picked, RefArg};
+use crate::reference_operators::{not_a_reference_array, RefArg};
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// COUNTBLANK's `#VALUE!` for an argument that is not a reference.
@@ -110,18 +111,14 @@ impl Model {
             // external-ref-no-link-index A8, A10, A12, A23, A30). An error instead of a
             // reference is a value, counted. So for one IF or CHOOSE picks (`COUNTA(IF(TRUE,
             // …!A1:B2))` is 0; probes/external-ref-no-link-ifchoose A4, A18, A30).
-            match self.pick_branch(arg, cell) {
-                Picked::Node(arg) => {
-                    if let Some(areas) = self.external_reference(arg, cell) {
-                        match areas {
-                            Ok(areas) => {
-                                external +=
-                                    self.external_non_empty_count(&areas).unwrap_or(0) as f64;
-                            }
-                            Err(_) => external += 1.0,
-                        }
-                        continue;
+            match self.pick_reference(arg, cell) {
+                PickedReference::External(areas) => match areas {
+                    Ok(areas) => {
+                        external += self.external_non_empty_count(&areas).unwrap_or(0) as f64;
                     }
+                    Err(_) => external += 1.0,
+                },
+                PickedReference::Node(arg) => {
                     // A reference, 3-D ones included, arrives as a Range: its non-empty cells
                     // count. TAKE, DROP, INDEX, OFFSET and the like over a range pick a reference
                     // too, so `COUNTA(TAKE(B3:B3,1))` of a blank is 0
@@ -130,7 +127,7 @@ impl Model {
                         return error;
                     }
                 }
-                Picked::Value(value) => {
+                PickedReference::Value(value) => {
                     let read = RefArg::Value(value);
                     if let Err(error) =
                         self.walk_aggregate_read(read, false, cell, &mut walk, &mut visit)
@@ -154,20 +151,20 @@ impl Model {
             // (probes/external-ref-no-link-index A9; `COUNTBLANK([1]Uses!$B$3)`,
             // fixtures/external-link-cached-ranges), as COUNTIF and SUMIF are, and so is one IF
             // picks (probes/external-ref-no-link-ifchoose A24).
-            let (arg, picked_value) = match self.pick_branch(arg, cell) {
-                Picked::Node(node) => (node, None),
-                Picked::Value(value) => (arg, Some(value)),
+            let (arg, picked_value) = match self.pick_reference(arg, cell) {
+                PickedReference::Node(node) => (node, None),
+                PickedReference::Value(value) => (arg, Some(value)),
+                PickedReference::External(areas) => {
+                    return match areas {
+                        Ok(_) => CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "COUNTBLANK of an external reference".to_string(),
+                        ),
+                        Err(error) => error,
+                    };
+                }
             };
-            if let Some(areas) = self.external_reference(arg, cell) {
-                return match areas {
-                    Ok(_) => CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "COUNTBLANK of an external reference".to_string(),
-                    ),
-                    Err(error) => error,
-                };
-            }
             let value = if let Some(value) = picked_value {
                 value
             } else if self.is_multi_area(arg) && !is_span_or_if_of_span(arg) {

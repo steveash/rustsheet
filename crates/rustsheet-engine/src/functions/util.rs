@@ -1,3 +1,4 @@
+use crate::external_reference::PickedReference;
 use crate::{
     area_budget::SLOTS_PER_WALK_STEP,
     calc_result::{CalcResult, Range},
@@ -11,7 +12,7 @@ use crate::{
     functions::{logical::IfBranchMode, Function},
     model::Model,
     number_format::cmp_excel_precision,
-    reference_operators::{Picked, RefArg},
+    reference_operators::RefArg,
 };
 
 pub(crate) mod aggregate_args;
@@ -336,22 +337,22 @@ impl Model {
     ) -> RefArg {
         // An IF or CHOOSE that may pick a reference into another workbook is the argument it
         // picks (`SUM(IF(TRUE,…!A1))` is `#BLOCKED!`; probes/external-ref-no-link-ifchoose A3).
-        let node = match self.pick_branch(node, cell) {
-            Picked::Node(node) => node,
-            Picked::Value(value) => return RefArg::Value(value),
-        };
         // An aggregate reading cells of another workbook reads what its externalLink cache
         // holds, as reference cells (fixtures/external-link-cached-ranges; T-1460), and is
         // `#BLOCKED!` when there is no cache, however the reference was reached
         // (`SUM(INDEX(…!A1:C4,2,2))`, `SUM((…!A1,…!B2))`, `SUMPRODUCT(…!A1:B2)`;
         // probes/external-ref-no-link-index A7, A11, A15, A22, A27). COUNTA, COUNTBLANK and the
-        // reference functions read [`Model::external_reference`] first.
-        if let Some(areas) = self.external_reference(node, cell) {
-            return RefArg::Value(match areas {
-                Ok(areas) => self.external_aggregate_value(&areas, blanks, cell),
-                Err(error) => error,
-            });
-        }
+        // reference functions read [`Model::pick_reference`] first.
+        let node = match self.pick_reference(node, cell) {
+            PickedReference::Node(node) => node,
+            PickedReference::Value(value) => return RefArg::Value(value),
+            PickedReference::External(areas) => {
+                return RefArg::Value(match areas {
+                    Ok(areas) => self.external_aggregate_value(&areas, blanks, cell),
+                    Err(error) => error,
+                })
+            }
+        };
         let result = match node {
             Node::OpUnionKind { .. } | Node::OpIntersectKind { .. } if self.is_multi_area(node) => {
                 return match self.reference_ranges(node, cell) {
