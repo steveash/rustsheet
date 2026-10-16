@@ -3,7 +3,7 @@ id: T-1676
 title: "SUMPRODUCT accumulates with a twice-rounded running total (T-1665 probe)"
 milestone: M2
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
