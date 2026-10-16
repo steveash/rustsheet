@@ -3,7 +3,7 @@ id: T-1704
 title: "FILTERXML with an array xml argument: Excel for the web gives #VALUE! per element (probes/filterxml-evidence-floor D28)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
