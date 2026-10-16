@@ -101,7 +101,15 @@ exact UTF-16 units throughout:
 Evidence: probes/text-lone-surrogates A1-A81, B1-B6 (excel-graph, 2026-10-15, T-1582).
 Ours: comparisons, EXACT and exact-mode MATCH read lone units exactly (T-1585): `cmp_text` in functions/util/collation.rs weighs a lone unit (and each unit of an astral character) above every BMP character, by unit value, which gives H<L, H<"😀"<L, and both H and L above U+FFFD (`H<UNICHAR(65533)` FALSE); `wildcard_text_matcher_for` (criteria.rs) matches a lone-half pattern by `cmp_text` equality, case-insensitive (a wildcard beside a lone half is read literally, and COUNTIF-style criteria with a lone half are lossy: both unprobed, T-1642). UPPER, LOWER, PROPER, TRIM and CLEAN keep lone units (`Text::map_runs`; a lone unit breaks a word for PROPER, unprobed). FIND, SEARCH and SUBSTITUTE read lone units exactly (T-1586: `find_element` in functions/text/position.rs maps each unit, a lone one included, to one character; `substitute_units` in functions/text/util.rs matches unit for unit, so a lone half splits a pair; with an `instance_num` instances overlap, as in the well-formed path, `SUBSTITUTE("aaa","aa","x",2)` is "ax": unprobed by Excel, an inherited engine choice). CODE and VALUE already behaved as probed. REPT repeats the exact units (`Text::repeat`; `REPT(L&H,2)` re-pairs at the join like `&`), TEXT prints the exact text where `@` is (`format_text_value_exact` in formatter/format.rs formats a one-character private-use stand-in the format does not hold, so the 255-character limit and every format rule stay the well-formed path's, then swaps the exact text in; the limit is re-checked on the real length), and T returns its argument unchanged (T-1587; exactness VERIFIED, T-1647).
 Status: VERIFIED
-Tasks: T-1582, T-1585, T-1586, T-1587, T-1647 (probe follow-up)
+**Criteria and wildcards (VERIFIED, probes/criteria-lone-surrogates, excel-graph 2026-10-16, T-1642).** Excel's criteria (SUMIF, COUNTIFS) and wildcard MATCH/XMATCH read lone units exactly, unit by unit. Data: H, L, "😀", U+FFFD, "x", H&"a", "a"&L, "a".
+- A lone-half criterion (`H`, `"="&H`) matches H only. It does not match U+FFFD or the other half. `"<>"&H` matches everything else.
+- `"<"&H` matches U+FFFD, "x", "a"&L and "a". `">"&H` matches L, "😀" and H&"a". `"<"&L` matches all but L, and `">"&L` matches nothing. This is the `cmp_text` unit order.
+- `?` is one UTF-16 unit: `"?"` matches H, L, U+FFFD, "x" and "a". `"??"` matches "😀", H&"a" and "a"&L. So a pair counts as two `?`.
+- `H&"*"` matches H, "😀" and H&"a"; `"*"&L` matches L, "😀" and "a"&L. A wildcard splits a pair. `H&"?"` matches "😀" and H&"a".
+- `"~"&H` matches nothing: a tilde before a non-wildcard is read literally.
+- MATCH(..,0) and XMATCH(..,2) agree: `MATCH("??",..)` is 3 and `MATCH(H&"?",..)` is 3.
+Ours: 30 of 48 cells fail (lossy `&str` criteria and the regex wildcard matcher): T-1642.
+Tasks: T-1582, T-1585, T-1586, T-1587, T-1647 (probe follow-up), T-1642
 
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
