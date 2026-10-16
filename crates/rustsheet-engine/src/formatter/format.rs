@@ -147,6 +147,8 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
             // probes/text-at-with-tokens A23, A37, A38, B37, B38, T-1656).
             TextToken::Ghost(_) => out.push(' '),
             TextToken::AMPM => out.push_str("AM"),
+            // `A/P` prints its morning letter (probes/text-ap-locale-bracket A21-A23).
+            TextToken::AP(am, _) => out.push(*am),
             TextToken::Raw => out.push_str(text),
             _ => {}
         }
@@ -521,6 +523,9 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         let ampm = if hours < 12.0 { "AM" } else { "PM" };
                         text = format!("{text}{ampm}");
                     }
+                    TextToken::AP(am, pm) => {
+                        text.push(if hours < 12.0 { *am } else { *pm });
+                    }
                     TextToken::Minute => {
                         let minute = minutes as i32;
                         text = format!("{text}{minute}");
@@ -802,7 +807,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     TextToken::MinutePadded => {}
                     TextToken::Second => {}
                     TextToken::SecondPadded => {}
-                    TextToken::AMPM => {}
+                    TextToken::AMPM | TextToken::AP(..) => {}
                     TextToken::ElapsedHour => {}
                     TextToken::ElapsedHourPadded => {}
                     TextToken::ElapsedMinute => {}

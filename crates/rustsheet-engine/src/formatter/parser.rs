@@ -44,6 +44,7 @@ pub enum TextToken {
     ElapsedSecond,
     ElapsedSecondPadded,
     AMPM,
+    AP(char, char),
 }
 pub struct NumberPart {
     pub color: Option<i32>,
@@ -389,6 +390,12 @@ impl Parser {
                     use_ampm = true;
                     tokens.push(TextToken::AMPM);
                 }
+                Token::AP(am, pm) => {
+                    is_date = true;
+                    use_ampm = true;
+                    tokens.push(TextToken::AP(am, pm));
+                }
+                Token::Locale => {}
                 Token::Scientific => {
                     if !is_scientific {
                         index = 0;
