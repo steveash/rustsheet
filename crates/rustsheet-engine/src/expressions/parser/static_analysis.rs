@@ -162,9 +162,6 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 });
             }
         }
-        Node::TableNameKind(_) => {
-            // noop for now
-        }
         Node::FunctionKind { kind, args } if is_array_context(kind) => add_in_array_context(args),
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
@@ -233,7 +230,6 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::OpUnionKind { .. }
         | Node::DefinedNameKind(_)
         | Node::NamedVariableKind { .. }
-        | Node::TableNameKind(_)
         | Node::LambdaDefKind { .. }
         | Node::LambdaCallKind { .. } => {}
         Node::ImplicitIntersection { child, .. } => {
@@ -386,8 +382,8 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         | Node::OpPowerKind { .. }
         | Node::CompareKind { .. } => static_analysis_operator_chain(node),
 
-        // Defined names and tables: their shape is not tracked.
-        Node::DefinedNameKind(_) | Node::TableNameKind(_) => StaticResult::Unknown,
+        // Defined names: their shape is not tracked.
+        Node::DefinedNameKind(_) => StaticResult::Unknown,
         Node::NamedVariableKind { .. } | Node::ImplicitIntersection { .. } => StaticResult::Scalar,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::SpillRangeOperator { .. } => StaticResult::Unknown,
@@ -1033,6 +1029,10 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Isref => args_signature_one_vector(arg_count),
         Function::Istext => args_signature_scalars(arg_count, 1, 0),
         Function::Na => args_signature_scalars(arg_count, 0, 0),
+        // A reference argument (a range, a table's data area: `SHEET(Table1[])`) gives its sheet's
+        // number and is not implicitly intersected (probes/info-logic-argument-modes A12; legacy formulas:
+        // calc_test_no_export/tables.xlsx sheet9 A5:A8).
+        Function::Sheet if arg_count == 1 => args_signature_one_vector(arg_count),
         Function::Sheet => args_signature_scalars(arg_count, 0, 1),
         Function::Type => args_signature_one_vector(arg_count),
         Function::Address => args_signature_address(arg_count),
