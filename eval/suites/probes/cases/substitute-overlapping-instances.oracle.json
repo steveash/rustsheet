@@ -1,0 +1,110 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A1": {
+    "t": "s",
+    "v": "xa"
+   },
+   "A10": {
+    "t": "s",
+    "v": "ax"
+   },
+   "A11": {
+    "t": "s",
+    "v": "abx"
+   },
+   "A12": {
+    "t": "s",
+    "v": "ababab"
+   },
+   "A13": {
+    "t": "s",
+    "v": "AaA"
+   },
+   "A14": {
+    "t": "s",
+    "v": "aaa"
+   },
+   "A15": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A16": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A17": {
+    "t": "s",
+    "v": "xa"
+   },
+   "A18": {
+    "t": "s",
+    "v": "abcax"
+   },
+   "A19": {
+    "t": "s",
+    "v": "xx"
+   },
+   "A2": {
+    "t": "s",
+    "v": "ax"
+   },
+   "A20": {
+    "t": "s",
+    "v": "aaa"
+   },
+   "A21": {
+    "t": "s",
+    "v": "aaa"
+   },
+   "A22": {
+    "t": "s",
+    "v": "xa"
+   },
+   "A3": {
+    "t": "s",
+    "v": "aaa"
+   },
+   "A4": {
+    "t": "s",
+    "v": "xa"
+   },
+   "A5": {
+    "t": "s",
+    "v": "axa"
+   },
+   "A6": {
+    "t": "s",
+    "v": "aax"
+   },
+   "A7": {
+    "t": "s",
+    "v": "xx"
+   },
+   "A8": {
+    "t": "s",
+    "v": "axa"
+   },
+   "A9": {
+    "t": "s",
+    "v": "aax"
+   },
+   "B22": {
+    "t": "s",
+    "v": "ax"
+   },
+   "C22": {
+    "t": "s",
+    "v": "aaa"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "659b16ed7ffcae812a627759dc5f4a61301affdefec79e25c838cf39eb87228f",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T22:25:41+00:00",
+  "version": null
+ }
+}

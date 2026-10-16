@@ -38,8 +38,8 @@ fn fn_filterxml_array_xml_lifts() {
     assert_eq!(model._get_text("A2"), *"#VALUE!");
 }
 
-// Unprobed (hand-written from the generic lifting rule; follow-up probe filed): errors pass
-// through per element, and a scalar error next to an array broadcasts.
+// Errors pass through per element, and a scalar error next to an array broadcasts
+// (probes/filterxml-array-forms A5:A6, D5:D6, D9:D10).
 #[test]
 fn fn_filterxml_array_error_elements() {
     let mut model = new_empty_model();

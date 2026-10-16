@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 import requests
 
-from rustsheet_tools.oracle.backends import GRAPH, GraphBackend, LibreOfficeBackend, OracleError
+from rustsheet_tools.oracle.backends import GRAPH, GraphBackend, LibreOfficeBackend, OracleError, text_blocks
 from rustsheet_tools.spec2xlsx import build_xlsx
 
 VARS = ("TENANT_ID", "CLIENT_ID", "CLIENT_SECRET", "DRIVE_ID", "USER", "SITE", "MSAL_CACHE_B64")
@@ -199,13 +199,13 @@ def test_recalc_reads_the_text_of_listed_cells_after_calculating(
     graph: GraphBackend, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake = FakeGraph()
-    texts = {"A1": "1.50", "B2": "####"}
+    blocks = {"A1:B2": [["1.50", ""], ["", "####"]]}
 
     def call(method: str, url: str, **kw: Any) -> Any:
         response = fake(method, url, **kw)
         if url.endswith("?$select=text"):
-            a1 = url.split("address='")[1].split("'", maxsplit=1)[0]
-            return SimpleNamespace(json=lambda: {"text": [[texts[a1]]]})
+            block = url.split("address='")[1].split("'", maxsplit=1)[0].replace("%3A", ":")
+            return SimpleNamespace(json=lambda: {"text": blocks[block]})
         return response
 
     monkeypatch.setattr(graph, "_call", call)
@@ -216,11 +216,27 @@ def test_recalc_reads_the_text_of_listed_cells_after_calculating(
     _, info = graph.recalc(build_xlsx(spec))
     assert info.texts == {"It's": {"A1": "1.50", "B2": "####"}}
     i = fake.calls.index("POST /workbook/application/calculate")
-    assert fake.calls[i + 1 : i + 3] == [
-        "GET /workbook/worksheets('It%27%27s')/range(address='A1')?$select=text",
-        "GET /workbook/worksheets('It%27%27s')/range(address='B2')?$select=text",
+    assert fake.calls[i + 1] == "GET /workbook/worksheets('It%27%27s')/range(address='A1%3AB2')?$select=text"
+    assert fake.calls[i + 2] == "POST /workbook/worksheets/add"
+
+
+def test_text_blocks_read_a_dense_sheet_at_once_and_sparse_cells_one_by_one() -> None:
+    dense = [("S", f"{c}{r}") for c in "ABC" for r in range(1, 4)]
+    assert text_blocks(dense) == [
+        ("S", "A1:C3", {f"{c}{r}": (r - 1, "ABC".index(c)) for c in "ABC" for r in range(1, 4)})
     ]
-    assert fake.calls[i + 3] == "POST /workbook/worksheets/add"
+    sparse = [("T", "A1"), ("T", "Z100")]
+    assert text_blocks(sparse) == [("T", "A1", {"A1": (0, 0)}), ("T", "Z100", {"Z100": (0, 0)})]
+    assert text_blocks([("U", "C5")]) == [("U", "C5", {"C5": (0, 0)})]
+
+
+def test_a_missing_text_cell_is_refused(graph: GraphBackend, monkeypatch: pytest.MonkeyPatch) -> None:
+    def call(*_: Any, **__: Any) -> Any:
+        return SimpleNamespace(json=lambda: {"text": [["1"]]})
+
+    monkeypatch.setattr(graph, "_call", call)
+    with pytest.raises(OracleError, match="no text for S!B1"):
+        graph._read_texts("item", {}, [("S", "A1"), ("S", "B1")])
 
 
 def test_a_malformed_text_cell_is_refused() -> None:
