@@ -20,6 +20,7 @@ FORMULATEXT of a formula with a structured reference shows what Excel shows, and
 ## Acceptance criteria
 - [ ] Probe Excel FORMULATEXT for `T[@Qty]`, `T[[#This Row],[Qty]]`, `T[Qty]`; record in docs/excel-semantics/references.md.
 - [ ] Implement the probed behavior; unterminated references give a lexer error.
+- [ ] Probe whether Excel rejects the unbracketed multi-word `T[@Unit Price]` (the lexer accepts it now); reject if so.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
