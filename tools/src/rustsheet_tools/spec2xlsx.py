@@ -57,6 +57,11 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     A sheet may list formula cells in `"bare_function_names": ["A1", ...]`; those keep their function
     names as typed (no `_xlfn.` added), to probe how a bare newer name loads (T-0416). The engine
     adapter ignores the list.
+  * `"text": ["Sheet1!A1", ...]` at the top level lists cells whose displayed text is scored (T-1610,
+    decision 0068): the docProps custom properties `rustsheet.text.<n>` hold each as JSON `[sheet, a1]`,
+    and the oracle backend reads the cell's text after recalculating. A sheet's
+    `"column_widths": {"B": 4}` sets those columns' widths in characters (desktop `.Text` depends on the
+    width; excel-graph's `text` does not).
 """
 
 from __future__ import annotations
@@ -85,6 +90,7 @@ _FIXED_CREATED = datetime(2000, 1, 1)
 
 ENTERED_PROPERTY = "rustsheet.entered"
 SHEET_OP_PROPERTY = "rustsheet.sheetop"
+TEXT_PROPERTY = "rustsheet.text"
 SHEET_OPS = ("add", "rename", "move")
 
 _A1 = re.compile(r"^\$?([A-Za-z]{1,3})\$?(\d+)$")
@@ -351,6 +357,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
         for table in sheet.get("tables", ()):
             patches.filters.append(_add_table(ws, sheet, table, hidden, tables))
         formats = _number_formats(wb, sheet)
+        _set_column_widths(ws, sheet)
         legacy = _listed_formula_cells(sheet, "legacy_formulas")
         bare = _listed_formula_cells(sheet, "bare_function_names")
         if both := legacy & bare:
@@ -395,12 +402,29 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     patches.pivots = pivot_tables(spec, _pivot_cell_writer(worksheets, patches, tables))
     for name, formula in spec.get("names", {}).items():
         wb.define_name(name, _formula_text(formula, tables))
+    _record_backend_steps(wb, spec, entered)
+    wb.close()
+    return _patch_package(buf.getvalue(), spec, patches)
+
+
+def _set_column_widths(ws: Any, sheet: dict[str, Any]) -> None:
+    """Applies a sheet's `column_widths` (column letter -> width in characters; T-1610)."""
+    for column, width in sheet.get("column_widths", {}).items():
+        _, col = xlsxwriter.utility.xl_cell_to_rowcol(f"{column}1")
+        ws.set_column(col, col, float(width))
+
+
+def _record_backend_steps(
+    wb: xlsxwriter.Workbook, spec: dict[str, Any], entered: list[tuple[str, str, str]]
+) -> None:
+    """Records what an oracle backend does beyond recalculating, as custom properties: typed entries,
+    sheet edits and the cells whose displayed text it reads."""
     for n, entry in enumerate(entered, start=1):
         _set_json_property(wb, f"{ENTERED_PROPERTY}.{n}", entry, f"entered cell {entry[0]}!{entry[1]}")
     for n, op in enumerate(spec.get("sheet_ops", ()), start=1):
         _set_json_property(wb, f"{SHEET_OP_PROPERTY}.{n}", list(sheet_op(op)), f"sheet op {n}")
-    wb.close()
-    return _patch_package(buf.getvalue(), spec, patches)
+    for n, key in enumerate(spec.get("text", ()), start=1):
+        _set_json_property(wb, f"{TEXT_PROPERTY}.{n}", list(_text_cell(key)), f"text cell {key}")
 
 
 @dataclass
@@ -753,6 +777,29 @@ def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
         return [(str(s), str(a1), str(t)) for s, a1, t in _json_properties(xlsx, ENTERED_PROPERTY)]
     except (TypeError, ValueError) as e:
         msg = f"malformed {ENTERED_PROPERTY} property: {e}"
+        raise ValueError(msg) from e
+
+
+def _text_cell(key: str) -> tuple[str, str]:
+    """`Sheet!A1` or `'It''s'!A1` as `(sheet, A1)`; raises ValueError for anything else."""
+    sheet, sep, a1 = str(key).rpartition("!")
+    if not sep or not re.fullmatch(r"\$?[A-Z]{1,3}\$?[1-9][0-9]*", a1):
+        msg = f"text cell {key!r} must be Sheet!A1"
+        raise ValueError(msg)
+    if sheet.startswith("'") and sheet.endswith("'") and len(sheet) > 1:
+        sheet = sheet[1:-1].replace("''", "'")
+    return sheet, a1.replace("$", "")
+
+
+def text_cells(xlsx: bytes) -> list[tuple[str, str]]:
+    """The `(sheet, a1)` cells whose displayed text `build_xlsx` recorded in `xlsx` (T-1610).
+
+    Raises ValueError when the package or the property is malformed (xlsx inputs are untrusted).
+    """
+    try:
+        return [_text_cell(f"{s}!{a1}") for s, a1 in _json_properties(xlsx, TEXT_PROPERTY)]
+    except (TypeError, ValueError) as e:
+        msg = f"malformed {TEXT_PROPERTY} property: {e}"
         raise ValueError(msg) from e
 
 

@@ -192,6 +192,7 @@ C	probes/decimal-unreadable.case.json	84
 C	probes/defined-name-formula-bodies.case.json	17
 C	probes/defined-name-grouped-reference.case.json	13
 C	probes/defined-name-intersection.case.json	10
+C	probes/displayed-text-formats.case.json	10
 C	probes/dollar-fixed-unichar-edges.case.json	76
 C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/dynamic-array-reshape-and-isomitted.case.json	132
@@ -1080,6 +1081,7 @@ F	probes/db-argument-modes.case.json	Calc!F21
 F	probes/db-argument-modes.case.json	Calc!F23
 F	probes/db-argument-modes.case.json	Calc!K12
 F	probes/db-argument-modes.case.json	Calc!K13
+F	probes/displayed-text-formats.case.json	S!A21
 F	probes/dynamic-array-reshape-and-isomitted.case.json	S!C20
 F	probes/dynamic-array-reshape-and-isomitted.case.json	S!C21
 F	probes/dynamic-array-reshape-and-isomitted.case.json	S!C32
