@@ -71,5 +71,7 @@
   the AVERAGE-family array-error probe; decision 0062) (`make eval-baseline`).
   T-1665: functions below the evidence floor 60 → 59 (one more function (among AVEDEV, ABS, SUMPRODUCT and SUM) reaches ≥ 20 Excel cells through the
   AVEDEV deviation-sum probe, probes-numeric/double-rounding-avedev-deviations; decision 0062) (`make eval-baseline`).
+  T-1626: functions below the evidence floor 59 → 49 (SEARCHB, FINDB, REPLACEB, RIGHTB, LENB, ASC, JIS, PHONETIC,
+  REGEXREPLACE and REGEXTEST probed to ≥ 20 Excel cells; decision 0062) (`make eval-baseline`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
