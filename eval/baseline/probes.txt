@@ -196,6 +196,7 @@ C	probes/displayed-text-formats.case.json	10
 C	probes/dollar-fixed-unichar-edges.case.json	76
 C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/dynamic-array-reshape-and-isomitted.case.json	132
+C	probes/dynamic-array-reshape-reprobe.case.json	20
 C	probes/ecma-ceiling-formulatext.case.json	2
 C	probes/ecma-ceiling.case.json	12
 C	probes/edate-serial-0-months.case.json	12

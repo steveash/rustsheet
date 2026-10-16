@@ -3,7 +3,7 @@ id: T-1632
 title: "Re-probe TOROW scan_by_column 2 and boolean ignore, WRAPROWS boolean wrap_count and ISOMITTED of a blank reference"
 milestone: M7
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -25,9 +25,12 @@ boolean selects), `COLUMNS(TOROW(A1:C1,1))` (ignore 1 dropping a blank, C1 blank
 `LAMBDA(x,[y],ISOMITTED(y))(1,C1)` with C1 blank (a reference to a blank cell).
 
 ## Acceptance criteria
-- [ ] A new probe case with excel-graph values for every form above, shape-stable (TEXTJOIN, ROWS, COLUMNS).
-- [ ] The finding recorded in docs/excel-semantics/arrays.md; a fix task filed for any mismatch.
-- [ ] `make check` green; reviewers approve.
+- [x] A new probe case with excel-graph values for every form above, shape-stable (TEXTJOIN, ROWS, COLUMNS).
+- [x] The finding recorded in docs/excel-semantics/arrays.md; a fix task filed for any mismatch.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine fixes (filed as tasks).
+
+## Outcome
+New probe `probes/dynamic-array-reshape-reprobe` (excel-graph filled): all 20 cells already match ours, so no fix task. Findings in docs/excel-semantics/arrays.md (TRUE ignore is mode 1, scan_by_column 2 is truthy, WRAPROWS TRUE is 7x1, ISOMITTED of a blank reference is FALSE). Eval delta: +20 passing probe cells, no regressions.
