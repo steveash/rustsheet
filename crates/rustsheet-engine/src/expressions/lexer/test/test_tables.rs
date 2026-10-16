@@ -141,3 +141,40 @@ fn table_this_row_at_shorthand_unterminated_does_not_panic() {
         }
     }
 }
+
+#[test]
+fn table_specifiers_ignore_case_and_combine() {
+    let mut lx = new_lexer("tbl[[#HEADERS],[#Data],[Note]]");
+    assert_eq!(
+        lx.next_token(),
+        StructuredReference {
+            table_name: "tbl".to_string(),
+            specifier: Some(TableSpecifier::HeadersData),
+            table_reference: Some(TableReference::ColumnReference("Note".to_string()))
+        }
+    );
+    assert_eq!(lx.next_token(), EOF);
+    let mut lx = new_lexer("tbl[[#data],[#totals]]");
+    assert_eq!(
+        lx.next_token(),
+        StructuredReference {
+            table_name: "tbl".to_string(),
+            specifier: Some(TableSpecifier::DataTotals),
+            table_reference: None
+        }
+    );
+    assert_eq!(lx.next_token(), EOF);
+    let mut lx = new_lexer("tbl[#all]");
+    assert_eq!(
+        lx.next_token(),
+        StructuredReference {
+            table_name: "tbl".to_string(),
+            specifier: Some(TableSpecifier::All),
+            table_reference: None
+        }
+    );
+    assert!(matches!(
+        new_lexer("tbl[[#Totals],[#Headers]]").next_token(),
+        Illegal(_)
+    ));
+}
