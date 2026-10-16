@@ -56,7 +56,7 @@ fn array_node_is_truthy(node: &ArrayNode) -> bool {
 /// Strings are uppercased (matching case-insensitive `array_nodes_equal`).
 /// Numbers use bit-level identity (`f64::to_bits`), which is exact for all
 /// values that actually appear in spreadsheet cells.
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Clone, Hash, Eq, PartialEq)]
 pub(crate) enum CellKey {
     Number(u64),
     Boolean(bool),
