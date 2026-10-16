@@ -199,7 +199,7 @@ impl Model {
         #[inline]
         fn accumulate(values: &mut Vec<f64>, sum: &mut f64, count: &mut u64, value: f64) {
             values.push(value);
-            *sum += value;
+            *sum = extended_sum(*sum, value);
             *count += 1;
         }
 
