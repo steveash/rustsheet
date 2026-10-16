@@ -105,6 +105,10 @@ JSON numbers are written shortest-round-trip, so they are exact.
 `{format, source{kind, application, version, produced_at, input_sha256}, sheets{Sheet:{A1:value}}}`.
 `input_sha256` hashes the `spec2xlsx` output, which is deterministic since T-0015 (creation time pinned in `docProps/core.xml`). Sidecars filled before T-0015 carry hashes of non-reproducible bytes: treat them as legacy; they refresh on the next fill, and values do not depend on the hash.
 Oracle values override hand expectations. `libreoffice` results are never written as sidecars.
+A sidecar may also hold `text{Sheet:{A1:"shown text"}}`: Excel's displayed text of the cells a spec
+case lists in `"text": ["Sheet!A1", ...]` (T-1610, decision 0068). spec2xlsx records those cells in
+the `rustsheet.text.<n>` custom properties, and the excel-graph backend reads each one's
+`Range.text` after the recalculation, in the same session.
 Tools never re-derive case discovery: `rustsheet-eval cases <suite>` prints each case's path,
 sidecar path, formula-cell count and whether the suite trusts its cached values.
 
@@ -131,6 +135,11 @@ does not flow through it to its dependents. Rules:
 | `error_mismatch` | different error kinds |
 | `unsupported` | engine returned `#NAME?`/`#N/IMPL` where Excel did not |
 | `type_mismatch` | different value types |
+
+Displayed text is scored apart from values (`text_expect.rs`): each listed cell with a sidecar
+text passes when the engine's `Workbook::formatted` text is the same string. Text verdicts never
+change a case's status, `checked`/`passed`, the baselines or the gate; the report's "Displayed text"
+section shows each suite's text pass rate and every failing text cell.
 
 Only `pass` counts as passing. Case statuses:
 - `pass` / `fail`

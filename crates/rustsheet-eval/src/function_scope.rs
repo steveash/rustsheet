@@ -157,6 +157,7 @@ mod tests {
             millis: 0,
             tags: Vec::new(),
             cells,
+            text: Vec::new(),
         }
     }
 
