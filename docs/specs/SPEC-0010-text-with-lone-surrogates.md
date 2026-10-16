@@ -68,8 +68,8 @@ Probed (T-1582, probes/text-lone-surrogates, excel-graph 2026-10-15; docs/excel-
 - UPPER, LOWER, PROPER, TRIM and CLEAN keep a lone surrogate unchanged. T, REPT and TEXT (`@`) keep its length (T-1587); they keep the exact unit, not U+FFFD, and `REPT(L&H,2)` re-pairs (VERIFIED, probes/text-lone-surrogates A82-A88, A97-A101, T-1647).
 - FIND, SEARCH and SUBSTITUTE with a lone half as find_text can split a pair (T-1586).
 - A lone high surrogate is cached as `_xD83D_`, like the low one.
-Still unprobed: a lone surrogate beside a wildcard or in COUNTIF-style criteria (T-1642), PROPER word
-breaks at a lone unit, xlsx constants holding `_xD83D_`.
+- COUNTIF-style criteria and wildcard MATCH/XMATCH read lone units exactly; `?` is one unit (VERIFIED, probes/criteria-lone-surrogates, T-1642).
+Still unprobed: PROPER word breaks at a lone unit, xlsx constants holding `_xD83D_`.
 
 ## Design
 
