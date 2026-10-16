@@ -69,8 +69,9 @@ fn extract_zip_capped(archive: &Path, dest: &Path, limit: u64) -> Result<()> {
     for i in 0..zip.len() {
         let mut entry = zip.by_index(i)?;
         // `enclosed_name` rejects absolute paths and `..` (zip-slip).
-        let Some(rel) = entry.enclosed_name().map(Path::to_path_buf) else {
-            bail!("unsafe path in archive: {}", entry.name());
+        let name = entry.name()?.into_owned();
+        let Some(rel) = entry.enclosed_name() else {
+            bail!("unsafe path in archive: {name}");
         };
         let out = dest.join(rel);
         if entry.is_dir() {
@@ -84,10 +85,7 @@ fn extract_zip_capped(archive: &Path, dest: &Path, limit: u64) -> Result<()> {
                 &mut fs::File::create(&out)?,
             )?;
             if copied > limit {
-                bail!(
-                    "archive entry {} exceeds the {limit}-byte decompressed size limit",
-                    entry.name()
-                );
+                bail!("archive entry {name} exceeds the {limit}-byte decompressed size limit");
             }
         }
     }
@@ -220,7 +218,7 @@ mod tests {
     fn write_zip(path: &Path, files: &[(&str, &str)]) {
         let mut zip = zip::ZipWriter::new(fs::File::create(path).expect("create"));
         for (name, body) in files {
-            zip.start_file(*name, zip::write::FileOptions::default())
+            zip.start_file(*name, zip::write::SimpleFileOptions::default())
                 .expect("start");
             zip.write_all(body.as_bytes()).expect("write");
         }

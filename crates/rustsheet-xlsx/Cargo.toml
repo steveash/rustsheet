@@ -10,7 +10,7 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-zip = { version = "0.6.6", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.3", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 quick-xml = "0.42"
 thiserror = "1.0"
 rustsheet_engine = { path = "../rustsheet-engine" }
