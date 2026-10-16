@@ -27,4 +27,4 @@ Found by the 2026-10-16 steward spot-audit of PR #871 (T-1609). The opus archite
 - New probes; implementation of 3-D external spans (T-1654).
 
 ## Outcome
-references.md: the UNVERIFIED sentence now lists only the `[other.xlsx]` file-name book (and the refreshError sheets, already in the same sentence) and points to Refs!B18-B20 for uncached names and sheets; the reversed-span claim names only the probed SUM cell (Refs!B9). Docs only; no eval change.
+references.md: the UNVERIFIED sentence now lists the uncached book index and the `[other.xlsx]` file-name book (and the refreshError sheets, already in the same sentence) and points to Refs!B18-B20 for uncached names and sheets; the reversed-span claim names only the probed SUM cell (Refs!B9). Docs only; no eval change.

@@ -284,7 +284,7 @@ to a workbook, or whose part is missing or unreadable, is an empty book that kee
 lexer reads `[n]!Name` and `[n]Sheet!Name` as one identifier, which the parser keeps as a defined
 name with its prefix, and `external_links.rs` reads the cache. A cell the cache does not hold reads
 as empty: `=[1]Uses!$B$3` is 0, `SUM` and `COUNTA` of `[1]Uses!$E$1:$F$2` are 0
-(fixtures/external-link-cached-ranges Refs!B24, B55, B77). A name or sheet the cache does not hold is `#BLOCKED!` (probed: fixtures/external-link-cached-lookups Refs!B18-B20, T-1609; see "a name the cache does not hold" below). Unprobed, so UNVERIFIED: a book written by file name (`[other.xlsx]`) is `#BLOCKED!` as an
+(fixtures/external-link-cached-ranges Refs!B24, B55, B77). A name or sheet the cache does not hold is `#BLOCKED!` (probed: fixtures/external-link-cached-lookups Refs!B18-B20, T-1609; see "a name the cache does not hold" below). Unprobed, so UNVERIFIED: a book index with no link part and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
 uncached reference is; a sheet with `refreshError="1"` is read like any other; `[0]!Missing` is
 `#NAME?` and `[0]Nope!Name` (no such sheet) `#REF!`, as the plain name and a missing sheet are; only
 evaluation strips the `[0]` prefix, so ISREF and a rename of the name do not see through it
