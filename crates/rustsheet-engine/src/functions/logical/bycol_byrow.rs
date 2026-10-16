@@ -75,6 +75,17 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
+/// True when a LAMBDA's result is more than one value (an array, or a reference to several
+/// cells): BYROW and BYCOL then give one `#CALC!` cell instead of a spill (probes/
+/// eta-reduced-names E49 and E101: `BYROW(A1:B3,_xleta.ABS)`, T-1664).
+fn is_multi_value(result: &CalcResult) -> bool {
+    match result {
+        CalcResult::Array(_) => true,
+        CalcResult::Range { left, right } => left != right,
+        _ => false,
+    }
+}
+
 impl Model {
     /// `=BYCOL(array, lambda)`
     ///
@@ -93,7 +104,7 @@ impl Model {
                     slice.right.column = column;
                     self.call_lambda_on_slice(&mut caller, slice, cell)
                 })
-                .collect(),
+                .collect::<Option<Vec<_>>>(),
             Source::Values(data) => (0..data[0].len())
                 .map(|j| {
                     let column = data.iter().map(|row| vec![row[j].clone()]).collect();
@@ -102,12 +113,15 @@ impl Model {
                         &[Node::ArrayKind(column)],
                         cell,
                     );
-                    calc_result_to_array_node(result)
+                    (!is_multi_value(&result)).then(|| calc_result_to_array_node(result))
                 })
-                .collect(),
+                .collect::<Option<Vec<_>>>(),
         };
 
-        CalcResult::Array(vec![results])
+        match results {
+            Some(results) => CalcResult::Array(vec![results]),
+            None => Self::by_slices_calc_error(cell),
+        }
     }
 
     /// `=BYROW(array, lambda)`
@@ -125,9 +139,10 @@ impl Model {
                     let mut slice = range.clone();
                     slice.left.row = row;
                     slice.right.row = row;
-                    vec![self.call_lambda_on_slice(&mut caller, slice, cell)]
+                    self.call_lambda_on_slice(&mut caller, slice, cell)
+                        .map(|node| vec![node])
                 })
-                .collect(),
+                .collect::<Option<Vec<_>>>(),
             Source::Values(data) => data
                 .into_iter()
                 .map(|row| {
@@ -136,12 +151,23 @@ impl Model {
                         &[Node::ArrayKind(vec![row])],
                         cell,
                     );
-                    vec![calc_result_to_array_node(result)]
+                    (!is_multi_value(&result)).then(|| vec![calc_result_to_array_node(result)])
                 })
-                .collect(),
+                .collect::<Option<Vec<_>>>(),
         };
 
-        CalcResult::Array(results)
+        match results {
+            Some(results) => CalcResult::Array(results),
+            None => Self::by_slices_calc_error(cell),
+        }
+    }
+
+    fn by_slices_calc_error(cell: CellReferenceIndex) -> CalcResult {
+        CalcResult::new_error(
+            Error::CALC,
+            cell,
+            "a LAMBDA returned an array".to_string(),
+        )
     }
 
     /// The LAMBDA argument of BYROW or BYCOL. Anything else, an error or an unknown name too, is
@@ -183,12 +209,13 @@ impl Model {
         caller: &mut LambdaCaller,
         slice: Range,
         cell: CellReferenceIndex,
-    ) -> ArrayNode {
+    ) -> Option<ArrayNode> {
         let reference = CalcResult::Range {
             left: slice.left,
             right: slice.right,
         };
-        calc_result_to_array_node(self.call_lambda_caller(caller, [reference], cell))
+        let result = self.call_lambda_caller(caller, [reference], cell);
+        (!is_multi_value(&result)).then(|| calc_result_to_array_node(result))
     }
 
     /// The array argument of BYROW or BYCOL. A range on one sheet (also through TAKE, DROP,
