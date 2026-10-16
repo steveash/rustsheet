@@ -255,3 +255,28 @@ maps these to `#VALUE!` too) and a `t="d"` cell with no `<v>` (imported empty). 
 Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/xml.rs;
 `iso8601_to_serial` in crates/rustsheet-xlsx/src/import/iso_date.rs (shared with the eval snapshot reader)
 Tasks: T-0112, T-0406, T-0407
+
+## Structured references in the file
+Rule (excel-graph uploads of spec2xlsx files, 2026-10-16, T-1607): the file form of a structured reference
+differs from what a user types, and Excel for the web refuses or misreads the typed forms.
+- A bare table name is stored as `Sales[]`. A stored bare `Sales` (`=ROWS(Sales)`, as a dynamic-array or a
+  legacy formula) makes the upload fail as corrupt (`createSession` 501 `FileCorruptTryRepair` /
+  `unsupportedWorkbook`); `ROWS(Sales[])` loads and gives the row count.
+- `@` is stored as `#This Row`: `Sales[[#This Row],[A]]`, `Sales[[#This Row],[A]:[B]]`, `Sales[#This Row]`.
+  A stored `Sales[@A]` loads but evaluates to `#REF!`.
+- The escape `'` goes before the special character: `Sales[C'#]` loads; `Sales['C#]` (a quote first) is
+  refused as corrupt.
+- A totals row needs its metadata: a `<tableColumn>` with `totalsRowLabel` for a label cell, or
+  `totalsRowFunction="custom"` and `<totalsRowFormula>` for a formula cell (written as a plain `<f>`). A table
+  with `totalsRowCount="1"` whose totals cells lack it (a label and a dynamic-array SUBTOTAL) is refused as
+  corrupt; with it the file loads and `Sales[[#Totals],[Val]]` reads the totals cell.
+- Table names that look like cell addresses (`T1`) are rejected by XlsxWriter; a header that is a number in
+  text (`2024`) is fine.
+Evidence: the corrupt-file refusals are upload errors, not cell values (throwaway probes during T-1607, not
+kept; to re-run one, a sheet with table `Sales` at A1:D4 or A1:B4 and one formula: `=ROWS(Sales)` stored bare,
+`=SUM(Sales['C#])` with header `C#`, or a totals row A4 "Total", B4 `=SUBTOTAL(109,Sales[Val])` without metadata); the forms that load are what gen-m8b's 3,368 filled cells use. tools/tests/test_spec2xlsx_tables.py
+pins each written form.
+Status: VERIFIED (web)
+Implemented in: tools/src/rustsheet_tools/spec2xlsx.py (`table_refs_to_file_form`, `_totals_column`); the engine
+reads `[#This Row]`; `Table[]` is T-1674.
+Tasks: T-1607

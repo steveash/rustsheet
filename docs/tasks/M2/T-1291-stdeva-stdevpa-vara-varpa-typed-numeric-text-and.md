@@ -1,7 +1,7 @@
 ---
 id: T-1291
 title: "STDEVA/STDEVPA/VARA/VARPA typed numeric text and MODE typed text and boolean arguments match Excel"
-milestone: M9
+milestone: M2
 lane: functions-stat
 status: todo
 priority: P2

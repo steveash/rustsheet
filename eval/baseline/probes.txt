@@ -544,6 +544,7 @@ C	probes/sheet-qualified-corner-order.case.json	13
 C	probes/sheet-qualified-ref-error-forms.case.json	10
 C	probes/solver-iteration-traces.case.json	353
 C	probes/sort-omitted-args.case.json	75
+C	probes/sqrtpi-range-operands.case.json	10
 C	probes/stat-a-computed-arrays.case.json	18
 C	probes/stat-argument-modes.case.json	573
 C	probes/subnormal-flush-edges.case.json	50
@@ -5296,7 +5297,6 @@ F	probes/r1c1-name-use-r0c1.case.json	Sheet1!A4
 F	probes/r1c1-name-use-r1048577.case.json	Sheet1!A1
 F	probes/r1c1-name-use-r1048577.case.json	Sheet1!A2
 F	probes/r1c1-name-use-r1048577.case.json	Sheet1!A4
-F	probes/radians-sqrtpi-munit.case.json	Sheet1!B80
 F	probes/rate-empty-arguments.case.json	Sheet1!A1
 F	probes/rate-empty-arguments.case.json	Sheet1!A10
 F	probes/rate-empty-arguments.case.json	Sheet1!A2
