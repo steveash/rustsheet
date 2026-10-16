@@ -3,7 +3,7 @@ id: T-1554
 title: "INDEX with an index array over an external range is a reference to its first element (SUM, ROWS, ISREF, nested INDEX)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
