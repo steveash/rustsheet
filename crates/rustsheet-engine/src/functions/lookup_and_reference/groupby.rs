@@ -15,7 +15,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::logical::LambdaCaller,
+    functions::logical::{as_lambda, LambdaCaller},
     functions::spill_functions::{cell_key, sort_key_cmp, CellKey},
     functions::util::{array_node_to_calc_result, collation::cmp_text},
     functions::Function,
@@ -102,6 +102,8 @@ impl Grouping {
     /// With several key fields the sort is hierarchical: the parents (key prefixes) are ordered
     /// by the aggregate of all their rows, and the children by their own value inside each parent
     /// (probes/groupby-pivotby-followup2 G!A261; groupby-sort-filter-args B21-B22 descending).
+    /// Without `parents_by_value` the parents keep their key order and only the last level sorts
+    /// by value, as PIVOTBY's columns do (probes/pivotby-followup P!A1141, P!A1161).
     /// Equal values keep the ascending key order in both directions (groupby-sort-filter-args
     /// B32-B33, B27-B28), and the blank key is not pinned last (G!J145, G!S145). Values compare like
     /// key cells: numbers < text < FALSE < TRUE < errors, errors last ascending and first
@@ -114,6 +116,7 @@ impl Grouping {
     pub(crate) fn sort_by_aggregate(
         &mut self,
         ascending: bool,
+        parents_by_value: bool,
         cell: CellReferenceIndex,
         mut aggregate: impl FnMut(&[usize]) -> ArrayNode,
     ) -> Vec<ArrayNode> {
@@ -133,7 +136,8 @@ impl Grouping {
                     parent_rows.push(Vec::new());
                     parent_rows.len() - 1
                 });
-                if let Some(rows) = parent_rows.get_mut(id) {
+                // Parent rows are only gathered when the parents sort by their aggregate.
+                if let Some(rows) = parent_rows.get_mut(id).filter(|_| parents_by_value) {
                     rows.extend_from_slice(&group.rows);
                 }
                 parents.push(id);
@@ -141,6 +145,9 @@ impl Grouping {
             let values = parent_rows
                 .iter_mut()
                 .map(|rows| {
+                    if !parents_by_value {
+                        return ArrayNode::Empty;
+                    }
                     rows.sort_unstable();
                     aggregate(rows)
                 })
@@ -160,6 +167,9 @@ impl Grouping {
                 let (x, y) = (parents.get(a), parents.get(b));
                 if x != y {
                     let (x, y) = (x.copied().unwrap_or(0), y.copied().unwrap_or(0));
+                    if !parents_by_value {
+                        return x.cmp(&y);
+                    }
                     return compare_aggregates(values.get(x), values.get(y), ascending, cell)
                         .then(x.cmp(&y));
                 }
@@ -253,7 +263,7 @@ enum Relationship {
 /// The `field_headers` argument of GROUPBY (and PIVOTBY): whether the first row of the fields
 /// and values holds headers, and which header row the result shows (G!J1, S1, AB1, A25, J25).
 #[derive(Clone, Copy, PartialEq)]
-enum FieldHeaders {
+pub(crate) enum FieldHeaders {
     /// Omitted: detected from the values ([`values_have_header`]), never shown.
     Detect,
     /// 0: no headers.
@@ -271,7 +281,7 @@ enum FieldHeaders {
 /// them text is a header, text over all-text rows is data, and text over rows that mix text with
 /// other values is `#VALUE!` (`None`); anything but text is data (probes/groupby-pivotby-followup3
 /// G!A145-A421, -followup2 G!A341-A521). One row of text alone is data (unprobed).
-fn values_have_header(values: &[Vec<ArrayNode>]) -> Option<bool> {
+pub(crate) fn values_have_header(values: &[Vec<ArrayNode>]) -> Option<bool> {
     let is_text = |row: &Vec<ArrayNode>| matches!(row.first(), Some(ArrayNode::String(_)));
     let Some((first, below)) = values.split_first() else {
         return Some(false);
@@ -289,18 +299,56 @@ fn values_have_header(values: &[Vec<ArrayNode>]) -> Option<bool> {
     }
 }
 
-/// `#VALUE!` for an invalid GROUPBY argument.
-fn value_error(cell: CellReferenceIndex, message: &str) -> CalcResult {
+/// `#VALUE!` for an invalid GROUPBY or PIVOTBY argument.
+pub(crate) fn value_error(cell: CellReferenceIndex, message: &str) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, message.to_string())
 }
 
-/// `#N/IMPL!` for a GROUPBY feature a later SPEC-0006 step adds.
-fn not_implemented(cell: CellReferenceIndex, feature: &str) -> CalcResult {
+/// `#N/IMPL!` for a GROUPBY or PIVOTBY feature a later SPEC-0006 step adds.
+pub(crate) fn not_implemented(cell: CellReferenceIndex, feature: &str) -> CalcResult {
     CalcResult::new_error(
         Error::NIMPL,
         cell,
         format!("{feature} are not implemented yet"),
     )
+}
+
+/// Whether the `function` argument is an array of functions (`HSTACK(SUM,AVERAGE)`, G!S121).
+// TODO(T-1325): function arrays.
+pub(crate) fn is_function_array(arg: &Node) -> bool {
+    matches!(
+        arg.ungrouped(),
+        Node::FunctionKind {
+            kind: Function::Hstack | Function::Vstack,
+            ..
+        }
+    )
+}
+
+/// The evaluated `function` argument of GROUPBY or PIVOTBY (`name`), with whether it is an array
+/// of functions (T-1325): a LAMBDA or an eta name ([`as_lambda`], the check BYROW and BYCOL
+/// share), an array or range; anything else is `#VALUE!` (`5`: probes/groupby-lambda-forms
+/// G!A217, probes/pivotby-followup P!A761). Error values are reported before this
+/// ([`Model::evaluate_options`]).
+pub(crate) fn function_argument(
+    function: CalcResult,
+    name: &str,
+    cell: CellReferenceIndex,
+) -> Result<(CalcResult, bool), CalcResult> {
+    match as_lambda(function) {
+        Ok(lambda) => Ok((lambda, false)),
+        Err(array @ (CalcResult::Array(_) | CalcResult::Range { .. })) => Ok((array, true)),
+        Err(_) => Err(value_error(cell, &format!("{name} expects a function"))),
+    }
+}
+
+/// A key as its group shows it: the blank key as the number 0 (G!A1, PIVOTBY's column keys too:
+/// probes/groupby-pivotby-followup G!A821), every other key as first spelled.
+pub(crate) fn shown_key(key: &ArrayNode) -> ArrayNode {
+    match key {
+        ArrayNode::Empty => ArrayNode::Number(0.0),
+        other => other.clone(),
+    }
 }
 
 /// An optional argument, `None` when it is missing or omitted (`GROUPBY(k,v,f,,0)`).
@@ -310,7 +358,7 @@ fn given(arg: &Node) -> Option<&Node> {
 
 /// A cell of a 2-D array, blank when outside it (arrays from `eval_to_array` are rectangular, so
 /// this only guards against a panic).
-fn at(data: &[Vec<ArrayNode>], row: usize, column: usize) -> ArrayNode {
+pub(crate) fn at(data: &[Vec<ArrayNode>], row: usize, column: usize) -> ArrayNode {
     data.get(row)
         .and_then(|cells| cells.get(column))
         .cloned()
@@ -526,14 +574,8 @@ impl Model {
         // TODO(T-1325): function arrays (`HSTACK(SUM,AVERAGE)`, G!S121) are not implemented
         // rather than a wrong #VALUE!. PERCENTOF (G!S97) still runs with one argument: its keys
         // column already matches Excel.
-        if matches!(
-            args[2].ungrouped(),
-            Node::FunctionKind {
-                kind: Function::Hstack | Function::Vstack,
-                ..
-            }
-        ) {
-            return Err(not_implemented(cell, "GROUPBY function arrays"));
+        if is_function_array(&args[2]) {
+            return Err(function_arrays_error(cell, "GROUPBY"));
         }
         // Every error value first, in argument order; then the validation (B61-B78).
         let mut options = self.evaluate_options(&args[2..], cell)?.into_iter();
@@ -544,14 +586,10 @@ impl Model {
         let filter = options.next().flatten();
         let relationship = options.next().flatten();
 
-        let function_array = match &function {
-            CalcResult::Lambda(_) => false,
-            CalcResult::Array(_) | CalcResult::Range { .. } => true,
-            // A scalar is #VALUE! (probes/groupby-lambda-forms G!A217).
-            _ => return Err(value_error(cell, "GROUPBY expects a function")),
-        };
+        let (function, function_array) = function_argument(function, "GROUPBY", cell)?;
         let headers = self.field_headers(field_headers, cell)?;
-        let key_columns = keys.first().map_or(0, Vec::len);
+        let key_columns = width(&keys);
+        let depth_given = total_depth.is_some();
         let total_depth = self.total_depth(total_depth, key_columns, cell)?;
         // Values of another height than the keys are #VALUE! (G!AB193, followup G!A1-A41).
         if keys.len() != values.len() || key_columns == 0 {
@@ -560,7 +598,7 @@ impl Model {
                 "row_fields and values must have the same height",
             ));
         }
-        let value_columns = values.first().map_or(0, Vec::len);
+        let value_columns = width(&values);
         let sort = self.sort_order(sort_order, key_columns, value_columns, cell)?;
         let header_row = match headers {
             FieldHeaders::Detect => values_have_header(&values).ok_or_else(|| {
@@ -581,10 +619,13 @@ impl Model {
             return Err(value_error(cell, "field_relationship 1 has no subtotals"));
         }
         if function_array {
-            return Err(not_implemented(cell, "GROUPBY function arrays"));
+            return Err(function_arrays_error(cell, "GROUPBY"));
         }
         // TODO(T-1324): subtotals.
         if total_depth.abs() == 2 {
+            return Err(not_implemented(cell, "GROUPBY subtotals"));
+        }
+        if value_sort_shows_subtotals(&sort, key_columns, depth_given) {
             return Err(not_implemented(cell, "GROUPBY subtotals"));
         }
         // With one total row (or none) and keys sorted, a table gives the hierarchy's layout
@@ -611,7 +652,7 @@ impl Model {
                 None
             }
             SortOrder::Value { column, ascending } => {
-                let by = grouping.sort_by_aggregate(ascending, cell, |group_rows| {
+                let by = grouping.sort_by_aggregate(ascending, true, cell, |group_rows| {
                     self.aggregate(&mut caller, &values, column, group_rows, cell)
                 });
                 Some((column, by))
@@ -627,15 +668,7 @@ impl Model {
             output.push(row);
         }
         for (index, group) in grouping.groups.iter().enumerate() {
-            // The blank key shows as the number 0 (G!A1); every other key as first spelled.
-            let mut row: Vec<ArrayNode> = group
-                .keys
-                .iter()
-                .map(|key| match key {
-                    ArrayNode::Empty => ArrayNode::Number(0.0),
-                    other => other.clone(),
-                })
-                .collect();
+            let mut row: Vec<ArrayNode> = group.keys.iter().map(shown_key).collect();
             for column in 0..value_columns {
                 let value = match &sorted {
                     Some((by_column, by)) if *by_column == column => {
@@ -656,7 +689,7 @@ impl Model {
 
     /// The `field_headers` argument: omitted, or 0 to 3; anything else is `#VALUE!` (4: G!A217),
     /// a fraction too (2.5: probes/groupby-lambda-forms G!S241).
-    fn field_headers(
+    pub(crate) fn field_headers(
         &mut self,
         arg: Option<CalcResult>,
         cell: CellReferenceIndex,
@@ -677,7 +710,7 @@ impl Model {
     /// grand total on top (G!A49, G!AB49). 3 and -3 are `#VALUE!`, and so is ±2 with one key field
     /// (probes/groupby-pivotby-followup G!A101-A161), and so is a fraction (0.5:
     /// probes/groupby-lambda-forms G!J241).
-    fn total_depth(
+    pub(crate) fn total_depth(
         &mut self,
         arg: Option<CalcResult>,
         key_columns: usize,
@@ -709,9 +742,8 @@ impl Model {
         key_columns: usize,
         cell: CellReferenceIndex,
     ) -> Vec<ArrayNode> {
-        let mut row = vec![ArrayNode::String("Total".into())];
-        row.extend((1..key_columns).map(|_| ArrayNode::String("".into())));
-        for column in 0..values.first().map_or(0, Vec::len) {
+        let mut row = total_label_cells(key_columns);
+        for column in 0..width(values) {
             row.push(self.aggregate(caller, values, column, rows, cell));
         }
         row
@@ -726,7 +758,7 @@ impl Model {
     /// Excel also gives `#VALUE!` for a body that is a one-cell reference (`LAMBDA(x,D2)`,
     /// groupby-lambda-forms G!J193), but a LAMBDA call here returns that cell's value.
     // TODO(T-1325): a reference result is #VALUE! (needs the LAMBDA call to keep references).
-    fn aggregate(
+    pub(crate) fn aggregate(
         &mut self,
         caller: &mut LambdaCaller,
         values: &[Vec<ArrayNode>],
@@ -742,25 +774,83 @@ impl Model {
     }
 }
 
-/// The header row GROUPBY shows: the fields' and values' own first row (3, G!J25), or
-/// "Row Field n" and "Value n" (2, G!A25; numbered per column, unprobed beyond one).
+/// The header row GROUPBY shows: the key field names, then the value field names
+/// ([`key_names`], [`value_name`]; G!J25, G!A25).
 fn header_cells(
     headers: FieldHeaders,
     keys: &[Vec<ArrayNode>],
     values: &[Vec<ArrayNode>],
 ) -> Vec<ArrayNode> {
-    let key_columns = keys.first().map_or(0, Vec::len);
-    let value_columns = values.first().map_or(0, Vec::len);
-    if headers == FieldHeaders::Shown {
-        return (0..key_columns)
-            .map(|column| at(keys, 0, column))
-            .chain((0..value_columns).map(|column| at(values, 0, column)))
-            .collect();
-    }
-    (1..=key_columns)
-        .map(|n| ArrayNode::String(format!("Row Field {n}").into()))
-        .chain((1..=value_columns).map(|n| ArrayNode::String(format!("Value {n}").into())))
+    let mut row = key_names(headers, keys);
+    row.extend((0..width(values)).map(|column| value_name(headers, values, column)));
+    row
+}
+
+/// The number of columns of a (rectangular) array.
+pub(crate) fn width(data: &[Vec<ArrayNode>]) -> usize {
+    data.first().map_or(0, Vec::len)
+}
+
+/// Empty text, the filler of total rows, corners and empty PIVOTBY cells (not a blank: G!AC33).
+pub(crate) fn empty_text() -> ArrayNode {
+    ArrayNode::String("".into())
+}
+
+/// The "Total" label of a total row or column.
+pub(crate) fn total_label() -> ArrayNode {
+    ArrayNode::String("Total".into())
+}
+
+/// The key cells of a total row: "Total", then `""` under the other key fields (G!AC33, P!A97).
+pub(crate) fn total_label_cells(key_columns: usize) -> Vec<ArrayNode> {
+    let mut cells = vec![total_label()];
+    cells.extend((1..key_columns).map(|_| empty_text()));
+    cells
+}
+
+/// The names of the key fields in a shown header: their own first row (3, G!J25), or
+/// "Row Field n" (2, G!A25; probes/groupby-lambda-forms, probes/pivotby-followup P!A81).
+pub(crate) fn key_names(headers: FieldHeaders, keys: &[Vec<ArrayNode>]) -> Vec<ArrayNode> {
+    (0..width(keys))
+        .map(|column| {
+            if headers == FieldHeaders::Shown {
+                at(keys, 0, column)
+            } else {
+                ArrayNode::String(format!("Row Field {}", column + 1).into())
+            }
+        })
         .collect()
+}
+
+/// The name of value column `column` in a shown header: its own first row (3), or "Value n" (2).
+pub(crate) fn value_name(
+    headers: FieldHeaders,
+    values: &[Vec<ArrayNode>],
+    column: usize,
+) -> ArrayNode {
+    if headers == FieldHeaders::Shown {
+        at(values, 0, column)
+    } else {
+        ArrayNode::String(format!("Value {}", column + 1).into())
+    }
+}
+
+/// `#N/IMPL!` for an array of functions (`HSTACK(SUM,AVERAGE)`) in GROUPBY or PIVOTBY (`name`).
+// TODO(T-1325): function arrays.
+pub(crate) fn function_arrays_error(cell: CellReferenceIndex, name: &str) -> CalcResult {
+    not_implemented(cell, &format!("{name} function arrays"))
+}
+
+/// Whether a value sort over several fields with the total depth omitted would show subtotals,
+/// as depth 2 does (GROUPBY: probes/pivotby-followup P!A921, unlike explicit 0, followup2
+/// G!A261; PIVOTBY rows P!A201, P!A901, columns P!A941; an explicit 0 or 1: P!A861, P!A1141).
+// TODO(T-1324): subtotals.
+pub(crate) fn value_sort_shows_subtotals(
+    sort: &SortOrder,
+    fields: usize,
+    depth_given: bool,
+) -> bool {
+    matches!(sort, SortOrder::Value { .. }) && fields > 1 && !depth_given
 }
 
 #[cfg(test)]
@@ -858,7 +948,7 @@ mod tests {
         let mut grouping = Grouping::new(&keys, 0..keys.len(), |_| None)
             .unwrap_or(Grouping { groups: Vec::new() });
         let mut calls = 0;
-        let sums = grouping.sort_by_aggregate(true, CELL, |rows| {
+        let sums = grouping.sort_by_aggregate(true, true, CELL, |rows| {
             calls += 1;
             ArrayNode::Number(rows.iter().map(|&row| values[row]).sum())
         });
