@@ -754,6 +754,18 @@ fn args_signature_bycol_byrow(arg_count: usize) -> Vec<Signature> {
     vec![Signature::Vector, Signature::Scalar]
 }
 
+/// GROUPBY: every argument is a vector except `field_headers` and `total_depth`, the two integer
+/// options (SPEC-0006 step 7; `sort_order` may be an array such as `{2,-1}`).
+fn args_signature_groupby(arg_count: usize) -> Vec<Signature> {
+    if !(3..=8).contains(&arg_count) {
+        return vec![Signature::Error; arg_count];
+    }
+    let mut result = vec![Signature::Vector; arg_count];
+    // `arg_count` is 3 to 8 here, so the range is in bounds.
+    result[3..arg_count.min(5)].fill(Signature::Scalar);
+    result
+}
+
 fn args_signature_map(arg_count: usize) -> Vec<Signature> {
     if arg_count < 2 {
         return vec![Signature::Error; arg_count];
@@ -1061,8 +1073,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
                 vec![Signature::Error; arg_count]
             }
         }
-        Function::Bycol => args_signature_bycol_byrow(arg_count),
-        Function::Byrow => args_signature_bycol_byrow(arg_count),
+        Function::Bycol | Function::Byrow => args_signature_bycol_byrow(arg_count),
+        Function::Groupby => args_signature_groupby(arg_count),
         Function::Map => args_signature_map(arg_count),
         Function::Reduce => args_signature_reduce(arg_count),
         Function::Scan => args_signature_scan(arg_count),
@@ -1709,22 +1721,13 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Xlookup => StaticResult::Unknown,
         Function::Xmatch => not_implemented(args),
         Function::Trimrange => StaticResult::Unknown,
-        Function::Sort => StaticResult::Unknown,
-        Function::Sortby => StaticResult::Unknown,
-        Function::Unique => StaticResult::Unknown,
-        Function::Filter => StaticResult::Unknown,
-        Function::Take => StaticResult::Unknown,
-        Function::Drop => StaticResult::Unknown,
-        Function::Tocol => StaticResult::Unknown,
-        Function::Torow => StaticResult::Unknown,
-        Function::Transpose => StaticResult::Unknown,
+        Function::Sort | Function::Sortby | Function::Unique => StaticResult::Unknown,
+        Function::Filter | Function::Take | Function::Drop => StaticResult::Unknown,
+        Function::Tocol | Function::Torow | Function::Transpose => StaticResult::Unknown,
         Function::Mmult => StaticResult::Unknown,
-        Function::Bycol => StaticResult::Unknown,
-        Function::Byrow => StaticResult::Unknown,
-        Function::Map => StaticResult::Unknown,
-        Function::Reduce => StaticResult::Unknown,
-        Function::Scan => StaticResult::Unknown,
-        Function::Makearray => StaticResult::Unknown,
+        Function::Bycol | Function::Byrow | Function::Groupby => StaticResult::Unknown,
+        Function::Map | Function::Reduce => StaticResult::Unknown,
+        Function::Scan | Function::Makearray => StaticResult::Unknown,
         Function::Sequence => StaticResult::Unknown,
         Function::Randarray => StaticResult::Unknown,
         Function::Textsplit => StaticResult::Unknown,

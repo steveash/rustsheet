@@ -53,6 +53,9 @@ pub(crate) enum ArgReading {
     Aggregate,
     /// `evaluate_picked_reference_arg`: cached blanks kept (COUNTA).
     PickedKeepingBlanks,
+    /// `evaluate_node_in_context`, no reference picking (AND, OR, XOR; T-1677). A range across
+    /// two sheets is `#VALUE!` and a direct LAMBDA `#N/IMPL`, both direct errors.
+    InContext,
 }
 
 /// What sets one consumer's argument walk apart (SPEC-0009, "Consumer mapping").
@@ -240,9 +243,30 @@ impl Model {
         let read = match walk.policy.reading {
             ArgReading::Aggregate => self.evaluate_aggregate_arg(arg, cell),
             ArgReading::PickedKeepingBlanks => self.evaluate_picked_reference_arg(arg, cell),
+            ArgReading::InContext => self.evaluate_in_context_arg(arg, cell),
         };
         let is_reference = matches!(arg.ungrouped(), Node::ReferenceKind { .. });
         self.walk_aggregate_read(read, is_reference, cell, walk, visit)
+    }
+
+    /// [`ArgReading::InContext`]: the argument as `evaluate_node_in_context` gives it.
+    fn evaluate_in_context_arg(&mut self, arg: &Node, cell: CellReferenceIndex) -> RefArg {
+        match self.evaluate_node_in_context(arg, cell) {
+            CalcResult::Range { left, right } if left.sheet != right.sheet => {
+                RefArg::Value(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Ranges are in different sheets".to_string(),
+                ))
+            }
+            // An error here returns at once, where the walker would hold a LAMBDA's error.
+            CalcResult::Lambda(_) => RefArg::Value(CalcResult::new_error(
+                Error::NIMPL,
+                cell,
+                "Lambdas not supported".to_string(),
+            )),
+            value => RefArg::from(value),
+        }
     }
 
     /// One argument already read, for a consumer that picks its argument itself (COUNTA);
