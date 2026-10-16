@@ -3,7 +3,7 @@ id: T-1607
 title: "Suite gen-m8b: tables and structured references, oracle-filled"
 milestone: M8
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
