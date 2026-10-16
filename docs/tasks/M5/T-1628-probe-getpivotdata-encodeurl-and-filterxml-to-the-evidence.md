@@ -3,7 +3,7 @@ id: T-1628
 title: "Probe GETPIVOTDATA, ENCODEURL and FILTERXML to the evidence floor"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ GETPIVOTDATA needs a pivot table in an xlsx fixture (field/item pairs, grand tot
 
 ## Out of scope
 - Engine fixes for the mismatches found (filed as tasks).
+
+## Outcome
+Three probe cases (encodeurl/filterxml/getpivotdata `-evidence-floor`) filled from excel-graph. Report cells: GETPIVOTDATA 24, ENCODEURL 38, FILTERXML 46, so all three clear the floor (evidence-floor lock 58 -> 55). ENCODEURL and FILTERXML are `#VALUE!` on the web throughout; GETPIVOTDATA without a pivot is `#REF!`. GETPIVOTDATA is not yet implemented, so its 21 new cells and one FILTERXML cell are new-coverage failures. A real pivot is not probed (builder cannot write pivots). Quirks in docs/excel-semantics/web.md. Follow-ups: T-1703, T-1704, T-1705.
