@@ -174,10 +174,11 @@ fn is_dotted_a1_range(name: &str) -> bool {
     parse_reference_a1(first).is_some() && parse_reference_a1(second).is_some()
 }
 
-/// Whether `name` is `R<digits>C<digits>` in uppercase, which the R1C1 lexer reads as a cell
-/// reference when both numbers are in range. Formulas are stored in R1C1 form, so an identifier
-/// spelled like that would come back as a reference after a reload.
-fn is_r1c1_cell_text(name: &str) -> bool {
+/// Whether the R1C1 lexer reads `name` as a cell reference: `R<digits>C<digits>` in uppercase,
+/// both numbers in range (an out-of-range `R0C1` is a name there, T-1657). Formulas are stored
+/// in R1C1 form, so a LET or LAMBDA name spelled like that is stored with the `_xlpm.` prefix
+/// the parser drops (T-1658).
+pub(crate) fn reads_as_r1c1_cell(name: &str) -> bool {
     let text = name.as_bytes();
     let mut position = 1;
     text.first() == Some(&b'R')
@@ -188,6 +189,7 @@ fn is_r1c1_cell_text(name: &str) -> bool {
             leading_number(text, &mut position).is_some()
         }
         && position == text.len()
+        && !is_out_of_range_r1c1_name(name)
 }
 
 /// The decimal digits at `position`, which is left after them, or `None` if there are none. A
@@ -259,13 +261,12 @@ pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
 
 /// Returns true if `name` is a valid identifier in an A1-mode formula expression.
 /// Unlike `is_valid_identifier`, it permits the R1C1-shaped names ("R", "C", "RC",
-/// "R12C", "R1C1D") that are valid as LAMBDA parameters or LET variables but not as
-/// defined names (`is_r1c1_shaped`). An uppercase `R<n>C<m>` is refused, though.
+/// "R12C", "R1C1", "R0C1") that are valid as LAMBDA parameters or LET variables but not as
+/// defined names (`is_r1c1_shaped`): Excel takes `LET(R1C1,5,R1C1*2)` (10,
+/// probes/r1c1-let-name-r1c1). The R1C1 storage form escapes the ones it would read back as
+/// a cell ([`reads_as_r1c1_cell`]).
 pub fn is_valid_a1_identifier(name: &str) -> bool {
-    // Excel takes `LET(R1C1,5,R1C1*2)` (10, probes/r1c1-let-name-r1c1), but the engine's R1C1
-    // storage would turn the name into a cell reference on reload (TODO(T-1658)).
-    // An out-of-range `R0C1` stays a name in R1C1 form too (the lexer reads it so; T-1657).
-    is_identifier_text(name) && (!is_r1c1_cell_text(name) || is_out_of_range_r1c1_name(name))
+    is_identifier_text(name)
 }
 
 /// The rules every name follows: its characters, and not `TRUE`, `FALSE` or an A1 cell.

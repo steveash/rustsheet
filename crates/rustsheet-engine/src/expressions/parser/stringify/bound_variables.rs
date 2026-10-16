@@ -1,6 +1,7 @@
-//! Export-time renaming of LAMBDA/LET bound names to Excel's `_xlpm.` form.
+//! The `_xlpm.` form of LAMBDA/LET bound names: Excel's, on export, and the R1C1 storage form's.
 
 use super::super::{for_each_chain_operand_mut, Node};
+use crate::expressions::{types::CellReferenceRC, utils::reads_as_r1c1_cell};
 use crate::functions::logical::same_variable;
 use crate::functions::Function;
 
@@ -95,5 +96,16 @@ pub(super) fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         | Node::ErrorKind(_)
         | Node::ParseErrorKind { .. }
         | Node::EmptyArgKind => {}
+    }
+}
+
+/// A LET or LAMBDA name (or any unresolved name). In the R1C1 storage form (no `context`), one
+/// the R1C1 lexer would read back as a cell gets the `_xlpm.` prefix the parser drops, as on
+/// xlsx import: Excel takes `LET(R1C1,5,R1C1*2)` (10, probes/r1c1-let-name-r1c1, T-1658).
+pub(super) fn variable_text(name: &str, context: Option<&CellReferenceRC>) -> String {
+    if context.is_none() && reads_as_r1c1_cell(name) {
+        format!("_xlpm.{name}")
+    } else {
+        name.to_string()
     }
 }

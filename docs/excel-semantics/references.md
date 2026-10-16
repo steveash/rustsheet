@@ -1580,10 +1580,12 @@ the R1C1 lexer reads an out-of-range uppercase `R0C1` as a name, so it survives 
 Table names are not probed;
 ours applies the defined-name rule to them.
 LET and LAMBDA names are not tested at all: `LET(n,5,n*2)` is 10 for `RC`, `R1C`, `R1C1`, `r1c1`,
-`R5C7`, `R12C`, `R0C1`, `R0`, `R1048577`, `R1_`, `R1.C1`, `R1C1D`, `C1D`, `RCR` and `C`. Ours keeps
-refusing an in-range uppercase `R<n>C<m>` (`R1C1`, `R5C7`): formulas are stored in R1C1 form, where
-that spelling reads back as a cell reference after a reload (T-1658). An out-of-range one (`R0C1`)
-is a name in R1C1 form too, so `LET(R0C1,5,R0C1*2)` is 10 (T-1657).
+`R5C7`, `R12C`, `R0C1`, `R0`, `R1048577`, `R1_`, `R1.C1`, `R1C1D`, `C1D`, `RCR` and `C`, and
+FORMULATEXT keeps the name as typed. Ours matches, and takes LAMBDA parameters spelled so too
+(unprobed; T-1658). Formulas are stored in R1C1 form, where an in-range uppercase `R<n>C<m>` reads back as a cell, so such a name
+is stored as `_xlpm.R1C1`, the prefix Excel's own xlsx form puts on every LET and LAMBDA name and
+the parser drops. An out-of-range one (`R0C1`) is a name in R1C1 form already (T-1657). Unprobed:
+a bare `=R1C1` outside a LET in A1 mode; ours reads it as a name (`#NAME?`), as it does `=r1c1`.
 A bare `RC`, `R1C1D`, `R0C1` or `RCR` token in a cell formula of an uploaded file makes Graph reject
 the workbook (so it is unprobed).
 Unprobed: brackets cannot occur in sheet or defined names, so `R[1]C` forms are not covered;
@@ -1593,9 +1595,10 @@ Evidence: probes/r1c1-shaped-sheet-names, -lower, -2, -3, -4, -5, -lower-2 (FORM
 r1c1-let-name-*, lotus-dot-range (excel-graph, 2026-10-15).
 Implemented in: `is_r1c1_shaped` and `is_dotted_a1_range` (expressions/utils/mod.rs), used by
 `name_needs_quoting` (both) and `is_valid_identifier` (the R1C1 test); `is_valid_a1_identifier`
-(LET, LAMBDA and the lexer) refuses only an in-range `R<n>C<m>` (`is_r1c1_cell_text`);
+(LET, LAMBDA and the lexer) takes them all; `reads_as_r1c1_cell` (`variable_text`,
+parser/stringify/bound_variables.rs) picks the names the R1C1 storage escapes;
 `is_out_of_range_r1c1_name` (names never resolved: `name_operand`, INDIRECT, the R1C1 lexer).
-Status: VERIFIED (excel-graph), except T-1658 and T-1659.
+Status: VERIFIED (excel-graph), except T-1659.
 Tasks: T-1652
 
 ## Structured references: this row, totals and ranges
