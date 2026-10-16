@@ -1,6 +1,6 @@
 ---
 id: T-1742
-title: "LOGEST: match Excel on the logest-modes probe (spill shape, flags, collinear x, ULP-level numerics)"
+title: "LOGEST: match Excel on the logest-modes probe (spill shape, flags, multi-column x, ULP-level numerics)"
 milestone: M9
 lane: functions-stat
 status: todo
