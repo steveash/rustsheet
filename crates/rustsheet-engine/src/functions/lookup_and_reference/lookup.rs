@@ -75,15 +75,11 @@ impl Model {
         // Read as a reference so that a single cell is a one-element vector
         // (`LOOKUP(2,C1,D1)`; probes/lookup-vector-edges A1-A4).
         let value = self.evaluate_node_with_reference(&args[1], cell);
-        // A scalar in the array form is a one-element array, however it is written or picked:
-        // `LOOKUP(2,1)` is 1, `LOOKUP("b","a")` is "a", `LOOKUP(2,IF(TRUE,1))` and
+        // A scalar lookup_vector or array is a one-element array, however it is written or picked:
+        // `LOOKUP(2,1)` is 1, `LOOKUP("b","a")` is "a", `LOOKUP(2,1,5)` is 5, `LOOKUP(2,IF(TRUE,1))` and
         // `LOOKUP(2,{1})` are 1 (probes/mode-direct-error-lookup-scalar-vector B1-B5, T-1651;
         // `LOOKUP(2,CHOOSE(1,@B1:B6*1))`: probes/legacy-choose-arm-aggregate-and-array-constant-at J1).
-        let value = if args.len() == 2 {
-            scalar_as_array(value)
-        } else {
-            value
-        };
+        let value = scalar_as_array(value);
         let table = match Self::lookup_table(value, cell) {
             Ok(table) => table,
             Err(error) => return error,
