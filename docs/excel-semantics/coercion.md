@@ -337,13 +337,18 @@ The type check wins over a negative argument whatever the order: `GCD(-1,B1:B11)
 T-1261). A negative's `#NUM!` loses to every other error, whatever the position and kind of the other argument, in GCD, LCM
 and MULTINOMIAL alike: typed text (`GCD(-1,"a")`, `GCD("a",-1)`), a typed TRUE, a typed error (`GCD(-1,NA())`, `GCD(NA(),-1)`), a text,
 TRUE or error cell of a range before or after it, and an array-literal element (`GCD(-1,{4,#N/A})`, `GCD(-1,{4,"a"})`, `GCD(-1,{4,TRUE})`) are
-`#VALUE!` or the error itself; only with no other error is the answer `#NUM!`. Array-literal text or TRUE elements are probed for GCD only
-(LCM and MULTINOMIAL share the code and are inferred). `GCD(1E+16,"a")` is unprobed (T-1655): the engine still returns the "Argument too large" `#NUM!` at once.
+`#VALUE!` or the error itself; only with no other error is the answer `#NUM!`. Array-literal text or TRUE elements next to a negative are the same in LCM and MULTINOMIAL
+(`LCM(-1,{4,"a"})`, `LCM({4,TRUE},-1)`, `MULTINOMIAL(-1,{4,#N/A})`: probes/gcd-lcm-multinomial-error-order A43:A52, T-1655). An argument above 2^53 is
+`#NUM!` the same deferred way, a loser to every other error in either order, in GCD, LCM and MULTINOMIAL (typed text, `NA()` and a negative are probed; the range-cell and array-element forms, and LCM's "result too large" `#NUM!`, are inferred, T-1661): `GCD(10^16,"a")` and `GCD("a",10^16)` are `#VALUE!`,
+`GCD(10^16,NA())` and `GCD(NA(),10^16)` `#N/A` (A9:A12, A23:A26, A37:A40), and `GCD(10^16,-1)` / `GCD(-1,10^16)` are `#NUM!` (A13:A14); the engine used to return the
+"Argument too large" `#NUM!` at once for GCD and LCM.
 An omitted argument: the first one is `#N/A` (`GCD(,4)`, `GCD(,-1)`, `GCD(,)`, `MULTINOMIAL(,4)`), a later one is skipped, not read as 0
-(`LCM(4,)` and `LCM(2,4,)` are 4, `GCD(4,)` 4, `GCD(4,,-1)` and `GCD(-1,,4)` `#NUM!`). Order among two different non-negative errors is unprobed.
-Evidence: probes/gcd-lcm-multinomial-negative-precedence E1:E71 (excel-graph, 2026-10-15, T-1574); engine fixed in T-1574.
+(`LCM(4,)` and `LCM(2,4,)` are 4, `GCD(4,)` 4, `GCD(4,,-1)` and `GCD(-1,,4)` `#NUM!`). Two different non-negative errors are judged left to right, the first argument's winning: `GCD("a",NA())` is `#VALUE!`,
+`GCD(NA(),"a")` `#N/A`, `GCD(1/0,NA())` `#DIV/0!`, `GCD(NA(),1/0)` `#N/A`, and an omitted first argument is `#N/A` ahead of any later error (`GCD(,"a")`, `GCD(,NA())`) while a later omitted one is
+skipped, so the earlier error shows (`GCD("a",)` is `#VALUE!`, `GCD(NA(),)` `#N/A`); LCM and MULTINOMIAL alike (A1:A8, A15:A22, A29:A36).
+Evidence: probes/gcd-lcm-multinomial-negative-precedence E1:E71 (excel-graph, 2026-10-15, T-1574); engine fixed in T-1574. probes/gcd-lcm-multinomial-error-order A1:A52 (excel-graph, 2026-10-15, T-1655); GCD and LCM fixed in T-1655.
 Evidence: probes/math-argument-modes Sheet1!C1:C56 (excel-graph, 2026-10-08).
 Implemented in: the engine matches every cell except MULTINOMIAL numeric text (C9, C47, C52; T-1190)
 and SERIESSUM with a boolean coefficient cell (C44, engine 11; T-1191).
 Status: VERIFIED
-Tasks: T-1082, T-1190, T-1191, T-1261, T-1574
+Tasks: T-1082, T-1190, T-1191, T-1261, T-1574, T-1655
