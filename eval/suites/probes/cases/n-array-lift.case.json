@@ -1,0 +1,50 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "N over an array or array-valued expression, dynamic and legacy (spilled, under SUM/SUMPRODUCT/INDEX), and the legacy SUMPRODUCT(INDEX(...)) forms T-0294 left unprobed, on and off the range's rows (T-1616).",
+  "tags": [
+    "M2",
+    "information",
+    "arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "B4": 4,
+        "B5": 5,
+        "B6": 6,
+        "A1": "=N({1,\"a\",TRUE})",
+        "A3": "=SUM(N({1,2}))",
+        "A4": "=N(IF(1,{2;3}))",
+        "D4": "=N(IF(1,{2;3}))",
+        "A7": "=N(B1:B3*1)",
+        "D7": "=N(B1:B3*1)",
+        "A10": "=SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))",
+        "A11": "=SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))",
+        "A12": "=SUMPRODUCT(INDEX(B1:B6,ROW(B1:B2)))",
+        "D2": "=SUMPRODUCT(INDEX(B1:B6,ROW(B1:B2)))",
+        "A13": "=SUMPRODUCT(INDEX(ABS(B1:B6),0))",
+        "D3": "=SUMPRODUCT(INDEX(ABS(B1:B6),0))",
+        "A14": "=N({1,#N/A})",
+        "A16": "=N({\"\",FALSE})",
+        "A18": "=SUM(N({1,2}))",
+        "A19": "=ROWS(N({1;2;3}))",
+        "A20": "=N(N({4,5}))"
+      },
+      "legacy_formulas": [
+        "D4",
+        "D7",
+        "A10",
+        "A12",
+        "D2",
+        "A13",
+        "D3",
+        "A18"
+      ]
+    }
+  ]
+}
