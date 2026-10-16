@@ -3,7 +3,7 @@ id: T-1191
 title: "SERIESSUM is #VALUE! for a boolean or numeric-text cell in the coefficient range"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
