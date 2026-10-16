@@ -3,7 +3,7 @@ id: T-1677
 title: "Move AND, OR and XOR onto the shared aggregate-argument walker"
 milestone: M2
 lane: quality
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -40,20 +40,31 @@ Behavior to keep (all of it must stay as today; this is a refactor, not a fix):
 NOT (`fn_not`) is a single-argument element-wise lift, not an aggregate; it stays as is.
 
 ## Acceptance criteria
-- [ ] `fn_and`, `fn_or` and `fn_xor` call `walk_aggregate_args` (or `walk_aggregate_arg`) with a `const` policy;
+- [x] `fn_and`, `fn_or` and `fn_xor` call `walk_aggregate_args` (or `walk_aggregate_arg`) with a `const` policy;
       `logical_nary` no longer matches `CalcResult::Range` or `CalcResult::Array` itself
       (`rg "CalcResult::Range|CalcResult::Array" crates/rustsheet-engine/src/functions/logical/and_or_xor_not.rs`
       finds only `fn_not`).
-- [ ] SPEC-0009 "Consumer mapping" has a row for AND, OR, XOR (reading, errors, skip empty, visitor).
-- [ ] Unit tests in the engine for: direct "true" text vs a referenced "TRUE" cell, an empty argument, an error
+- [x] SPEC-0009 "Consumer mapping" has a row for AND, OR, XOR (reading, errors, skip empty, visitor).
+- [x] Unit tests in the engine for: direct "true" text vs a referenced "TRUE" cell, an empty argument, an error
       after a decisive FALSE, and a whole-column argument on an empty sheet.
-- [ ] `make eval`: 0 regressions and 0 fixes in every suite; probes/and-or-xor-error-order and
+- [x] `make eval`: 0 regressions and 0 fixes in every suite; probes/and-or-xor-error-order and
       probes/and-or-xor-text-arguments pass bit-exact.
-- [ ] `scripts/check_duplication.py` does not rise (record a drop with `--update`, decision 0010).
-- [ ] `make check` green; reviewers approve.
+- [x] `scripts/check_duplication.py` does not rise (record a drop with `--update`, decision 0010).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - NOT, IF, IFS, SWITCH and other logical functions.
 - MODE, GCD/LCM, MULTINOMIAL, SUBTOTAL and AGGREGATE argument handling (later-milestone functions; SUBTOTAL and
   AGGREGATE read references only).
 - Any behavior change, including the unprobed reading differences above (file probe tasks instead).
+
+## Outcome
+`logical_nary` (AND, OR, XOR) now reads through `walk_aggregate_args` with a `const` policy
+(`LOGICAL_ARGS`: new `ArgReading::InContext`, `ErrorRule::First`, empty arguments kept) and a boolean
+visitor keyed on `ItemSource`; it no longer matches ranges or arrays itself. `InContext` keeps today's
+`evaluate_node_in_context` reading, since `Aggregate` would read a text "TRUE" cell picked by IF,
+INDEX, XLOOKUP or LET as referenced and stop counting it (unprobed: T-1685). SPEC-0009 has the
+consumer row and a bullet in its "As built" list. New engine test covers direct vs referenced text, empty
+arguments, errors after a decisive value, a whole column on an empty sheet and a direct LAMBDA; it
+passes on the old code too. Eval: 0 fixed, 0 regressions in every suite. Duplication 6328 (no rise;
+the drop from 6360 is main's, not recorded here).
