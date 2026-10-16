@@ -368,6 +368,7 @@ C	probes/mod-quotient-threshold2.case.json	36
 C	probes/mod-quotient-threshold3.case.json	19
 C	probes/mod-quotient-threshold4.case.json	30
 C	probes/mod-quotient-threshold5.case.json	16
+C	probes/mode-typed-arguments.case.json	20
 C	probes/multiarea-3d-ref.case.json	2
 C	probes/multiarea-3d-union-h1.case.json	1
 C	probes/multiarea-3d-union-h2.case.json	1
@@ -5767,7 +5768,6 @@ F	probes/stat-argument-modes.case.json	Sheet1!H236
 F	probes/stat-argument-modes.case.json	Sheet1!H237
 F	probes/stat-argument-modes.case.json	Sheet1!H238
 F	probes/stat-argument-modes.case.json	Sheet1!H239
-F	probes/stat-argument-modes.case.json	Sheet1!H24
 F	probes/stat-argument-modes.case.json	Sheet1!H240
 F	probes/stat-argument-modes.case.json	Sheet1!H241
 F	probes/stat-argument-modes.case.json	Sheet1!H242
@@ -5792,7 +5792,6 @@ F	probes/stat-argument-modes.case.json	Sheet1!H266
 F	probes/stat-argument-modes.case.json	Sheet1!H267
 F	probes/stat-argument-modes.case.json	Sheet1!H268
 F	probes/stat-argument-modes.case.json	Sheet1!H269
-F	probes/stat-argument-modes.case.json	Sheet1!H27
 F	probes/stat-argument-modes.case.json	Sheet1!H270
 F	probes/stat-argument-modes.case.json	Sheet1!H271
 F	probes/stat-argument-modes.case.json	Sheet1!H272
@@ -5819,7 +5818,6 @@ F	probes/stat-argument-modes.case.json	Sheet1!H295
 F	probes/stat-argument-modes.case.json	Sheet1!H296
 F	probes/stat-argument-modes.case.json	Sheet1!H297
 F	probes/stat-argument-modes.case.json	Sheet1!H298
-F	probes/stat-argument-modes.case.json	Sheet1!H30
 F	probes/stat-argument-modes.case.json	Sheet1!H300
 F	probes/stat-argument-modes.case.json	Sheet1!H301
 F	probes/stat-argument-modes.case.json	Sheet1!H302
@@ -6029,10 +6027,6 @@ F	probes/stat-argument-modes.case.json	Sheet1!H570
 F	probes/stat-argument-modes.case.json	Sheet1!H571
 F	probes/stat-argument-modes.case.json	Sheet1!H572
 F	probes/stat-argument-modes.case.json	Sheet1!H573
-F	probes/stat-argument-modes.case.json	Sheet1!H69
-F	probes/stat-argument-modes.case.json	Sheet1!H72
-F	probes/stat-argument-modes.case.json	Sheet1!H75
-F	probes/stat-argument-modes.case.json	Sheet1!H78
 F	probes/stat-argument-modes.case.json	Sheet1!H8
 F	probes/stat-argument-modes.case.json	Sheet1!H85
 F	probes/stat-argument-modes.case.json	Sheet1!H86
@@ -6072,9 +6066,6 @@ F	probes/text-lone-surrogates.case.json	Sheet1!A90
 F	probes/text-lone-surrogates.case.json	Sheet1!A91
 F	probes/text-lone-surrogates.case.json	Sheet1!A92
 F	probes/text-lone-surrogates.case.json	Sheet1!A94
-F	probes/vara-single-ref-picked.case.json	S!D37
-F	probes/vara-single-ref-picked.case.json	S!D38
-F	probes/vara-single-ref-picked.case.json	S!D39
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D18
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D19
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D26

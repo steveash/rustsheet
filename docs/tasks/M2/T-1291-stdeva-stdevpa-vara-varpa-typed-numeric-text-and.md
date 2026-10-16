@@ -3,7 +3,7 @@ id: T-1291
 title: "STDEVA/STDEVPA/VARA/VARPA typed numeric text and MODE typed text and boolean arguments match Excel"
 milestone: M2
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 -
+
+## Outcome
+STDEVA, STDEVPA, VARA and VARPA read direct arguments like the other A-variants (`DirectNumbers::CastA`: a typed "2" is 2, TRUE is 1, text that is no number is `#VALUE!`); `NumbersOnly` is gone. MODE, MODE.SNGL and MODE.MULT skip typed text and booleans (new probe probes/mode-typed-arguments, excel-graph), which supersedes the old "text is `#VALUE!`" rule in coercion.md (the POI cells came from a blank reference or error argument). Eval: probes 10 fixed (stat-argument-modes H24, H27, H30, H69, H72, H75, H78; vara-single-ref-picked D37-D39), gen-m9/288b99797f58f149 A7 passes, 1 new passing case, 0 regressions.
