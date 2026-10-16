@@ -1,0 +1,67 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "What-if data tables (TABLE()): one-variable column and row tables, a two-variable table, a table whose formula reads another formula, and cells that read the table's results (T-0428).",
+  "tags": [
+    "M11",
+    "data-table",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "B3": "=A1*10+B1",
+        "A4": 1,
+        "A5": 2,
+        "A6": 3,
+        "D7": 1,
+        "E7": 2,
+        "F7": 3,
+        "C8": "=A1*10+B1",
+        "A10": "=A1*10+B1",
+        "B10": 100,
+        "C10": 200,
+        "D10": 300,
+        "A11": 1,
+        "A12": 2,
+        "B14": "=B3*2",
+        "A15": 5,
+        "A16": 6,
+        "H1": "=SUM(B4:B6)",
+        "H2": "=B5",
+        "H3": "=INDEX(B4:B6,3)",
+        "H4": "=SUM(D8:F8)",
+        "H5": "=E8",
+        "H6": "=SUM(B11:D12)",
+        "H7": "=C12",
+        "H8": "=B3",
+        "H9": "=SUM(B15:B16)",
+        "H10": "=COUNT(B4:B6)",
+        "H11": "=ISFORMULA(B5)",
+        "H12": "=FORMULATEXT(B4)"
+      },
+      "data_tables": [
+        {
+          "ref": "B4:B6",
+          "column_input": "A1"
+        },
+        {
+          "ref": "D8:F8",
+          "row_input": "A1"
+        },
+        {
+          "ref": "B11:D12",
+          "row_input": "B1",
+          "column_input": "A1"
+        },
+        {
+          "ref": "B15:B16",
+          "column_input": "A1"
+        }
+      ]
+    }
+  ],
+  "expected": {}
+}

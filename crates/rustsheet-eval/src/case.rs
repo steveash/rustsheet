@@ -107,6 +107,10 @@ pub struct SheetSpec {
     /// Tables (`ListObject`s) on the sheet, header row first (T-1036).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tables: Vec<TableSpec>,
+    /// What-if data tables (`TABLE()`), written by spec2xlsx as `<f t="dataTable">` (T-0428). The
+    /// engine adapter ignores them until Phase 2 implements data tables.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub data_tables: Vec<DataTableSpec>,
     /// A1 address → number format code (`"[h]:mm"`), applied to that cell whatever it holds
     /// (T-1268). spec2xlsx writes it as the cell's `numFmt`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -125,6 +129,34 @@ pub struct TableSpec {
     pub filter: bool,
 }
 
+/// A what-if data table in a spec sheet: `ref` holds its result cells; `row_input` alone is a
+/// one-variable row table, `column_input` alone a column table, both a two-variable table.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DataTableSpec {
+    /// A1 range of the result cells (`B4:B6`).
+    #[serde(rename = "ref")]
+    pub range: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row_input: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub column_input: Option<String>,
+}
+
+/// A workbook's calculation settings (`<calcPr>`), written by spec2xlsx (T-0428). The engine
+/// adapter ignores them until Phase 2 implements iterative calculation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CalculationSpec {
+    /// Iterative calculation on (`iterate="1"`).
+    #[serde(default)]
+    pub iterate: bool,
+    /// Maximum iterations per calculation (`iterateCount`; Excel's default is 100).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub iterate_count: Option<u32>,
+    /// Maximum change between iterations (`iterateDelta`; Excel's default is 0.001).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub iterate_delta: Option<f64>,
+}
+
 /// A self-contained workbook test case.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CaseSpec {
@@ -138,6 +170,9 @@ pub struct CaseSpec {
     /// SPEC-0005, T-1268). Any other value is refused when the case is built.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub date_system: Option<u16>,
+    /// Calculation settings such as iterative calculation; Excel's defaults when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calculation: Option<CalculationSpec>,
     /// Workbook-scoped defined names: name → formula (e.g. `"=Sheet1!$A$1:$B$2"`).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub names: BTreeMap<String, String>,
