@@ -20,5 +20,7 @@ Found by T-1626 (probes/t1626-asc, excel-graph): `ASC` of full-width letters, di
 - [ ] probes/t1626-asc passes all cells; `make eval-baseline` shrinks the known failures.
 - [ ] `make check` green; reviewers approve.
 
+Observed on Excel for the web only; desktop confirmation is T-1081.
+
 ## Out of scope
 - JIS (a #NAME? on the web).
