@@ -63,10 +63,13 @@ Rule: the delta stop ends the iterations of the whole workbook, not of each cycl
     (1.9921875), B1 16 - 2^-4 (15.9375);
   - with iterateDelta 0.001, after 17: A1 2 - 2^-16, B1 16 - 2^-13;
   - without the stop, the three calculations would run 300 iterations.
-UNVERIFIED: the exact stopping test. Stopping at the first iteration whose largest change is below
-the delta, then one iteration in each of the two later calculations, gives 8 at 0.5 but 16, not
-17, at 0.001. Reading "below" as "at most" fits neither count. A probe that calculates once
-(T-0429) would separate the calculations.
+UNVERIFIED: the exact stopping test. The leading candidate fits both counts: stop at the first
+iteration whose largest change over every recalculated cell is below the delta, counting C1 =
+A1+B1, which reads the cycles but is outside them (its change at iteration n is 9 * 2^(1-n)), and
+then run one iteration in each of the two later calculations. At 0.5 that stops at n = 6 (0.28;
+n = 5 gives 0.5625), so 6 + 2 = 8. At 0.001 it stops at n = 15 (0.00055; n = 14 gives 0.0011), so
+15 + 2 = 17. The cycle cells alone would give 8 and 16. A probe that calculates once (T-0429), or
+one with no reader cell, would confirm it.
 Evidence: probes/circular-iteration-limits, probes/circular-iteration-delta,
 probes/circular-iteration-delta-small (excel-graph, 2026-10-16, T-0428).
 Ours: every cell is an error.
