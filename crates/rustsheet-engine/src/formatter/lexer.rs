@@ -401,7 +401,8 @@ impl Lexer {
                             //           [$$-40C] (=1036 for fr-FR)
                             self.read_next_char();
                             // Excel: `[$-409]` has a locale and no symbol and prints nothing
-                            // (probes/text-ap-locale-bracket A11-A20; number-formats.md).
+                            // (probes/text-ap-locale-bracket A11-A20; number-formats.md). Only 409 is
+                            // probed; other LCIDs are read the same way by inference (T-1702).
                             if self.peek_char() == Some('-') {
                                 self.read_next_char();
                                 while let Some(c) = self.read_next_char() {
