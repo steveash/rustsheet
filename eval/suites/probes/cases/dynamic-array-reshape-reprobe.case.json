@@ -1,0 +1,58 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1632: shape-stable re-probe of TOROW scan_by_column 2, WRAPROWS boolean wrap_count, TOROW boolean ignore, and ISOMITTED of a blank reference (T-1627 cells B41/C44 were #SPILL! from layout).",
+ "tags": [
+  "M7",
+  "probe",
+  "evidence-floor"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": 1,
+    "B1": "x",
+    "A2": {
+     "t": "e",
+     "v": "#N/A",
+     "stored": true
+    },
+    "B2": 4,
+    "C2": true,
+    "A3": 7,
+    "B3": 8,
+    "C3": 9,
+    "B5": 1,
+    "A5": 1,
+    "C5": 2,
+    "A6": 2,
+    "D5": 3,
+    "A7": 3,
+    "E5": 4,
+    "A8": 4,
+    "F5": 5,
+    "A9": 5,
+    "G5": 6,
+    "A10": 6,
+    "H5": 7,
+    "A11": 7,
+    "A20": "=TEXTJOIN(\"|\",FALSE,TOROW(A1:C3,0,2))",
+    "A21": "=ROWS(TOROW(A1:C3,0,2))",
+    "A22": "=COLUMNS(TOROW(A1:C3,0,2))",
+    "B20": "=TEXTJOIN(\"|\",FALSE,WRAPROWS(B5:H5,TRUE))",
+    "B21": "=ROWS(WRAPROWS(B5:H5,TRUE))",
+    "B22": "=COLUMNS(WRAPROWS(B5:H5,TRUE))",
+    "C20": "=COLUMNS(TOROW(A1:C3,TRUE))",
+    "C21": "=ROWS(TOROW(A1:C3,TRUE))",
+    "C22": "=TEXTJOIN(\"|\",FALSE,TOROW(A1:C3,TRUE))",
+    "C23": "=COLUMNS(TOROW(A1:C3,FALSE))",
+    "C24": "=COLUMNS(TOROW(A1:C3,1))",
+    "D20": "=COLUMNS(TOROW(A1:C1,1))",
+    "D21": "=TEXTJOIN(\"|\",FALSE,TOROW(A1:C1,1))",
+    "D22": "=COLUMNS(TOROW(A1:C1,0))",
+    "E20": "=LAMBDA(x,[y],ISOMITTED(y))(1,C1)",
+    "E21": "=LAMBDA(x,[y],IF(ISOMITTED(y),\"omitted\",\"given\"))(1,C1)"
+   }
+  }
+ ]
+}
