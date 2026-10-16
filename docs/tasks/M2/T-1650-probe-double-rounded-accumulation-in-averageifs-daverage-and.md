@@ -3,7 +3,7 @@ id: T-1650
 title: "Probe double-rounded accumulation in AVERAGEIFS, DAVERAGE and AVEDEV (T-1618 follow-up)"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1618 moved SUMIF, SUMIFS, DSUM and AVERAGEA onto `extended_sum`; AVERAGEIFS (`
 
 ## Out of scope
 -
+
+## Outcome
+Probed probes-numeric/double-rounding-averageifs (56 cells, excel-graph): Excel rounds each addition twice in AVERAGEIFS, AVERAGEIF and AVEDEV (mean sum and deviation sum). Engine now uses `extended_sum`; all 56 cells pass. DAVERAGE was already covered by T-1649. Recorded in numbers.md.
