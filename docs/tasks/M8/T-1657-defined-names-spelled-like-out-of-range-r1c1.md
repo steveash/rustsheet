@@ -3,7 +3,7 @@ id: T-1657
 title: "Defined names spelled like out-of-range R1C1 references (R0, C0, R0C1, R1048577) are #NAME? on every use"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
