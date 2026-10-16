@@ -711,8 +711,8 @@ mod tests {
         let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
         for i in 0..src.len() {
             let mut entry = src.by_index(i).unwrap();
-            let name = entry.name().to_string();
-            zip.start_file(&name, zip::write::FileOptions::default())
+            let name = entry.name().unwrap().into_owned();
+            zip.start_file(&name, zip::write::SimpleFileOptions::default())
                 .unwrap();
             if name == "xl/sharedStrings.xml" {
                 zip.write_all(&vec![0u8; len]).unwrap();
@@ -746,9 +746,12 @@ mod tests {
             }
             at += 4;
         }
+        // zip 9 stops inflating an entry at its declared size and reports the overrun itself
+        // ("File is larger than its declared uncompressed size"), so the lie is a format error
+        // before the inflated-bytes budget is reached (T-1668).
         assert!(matches!(
             Workbook::from_xlsx_bytes(&lying, &opts),
-            Err(LoadError::Options(_))
+            Err(LoadError::Format(_))
         ));
     }
 
