@@ -149,7 +149,8 @@ fn test_let_binds_index_reference_and_at_index_reference() {
 }
 
 // probes/r1c1-let-name-* (excel-graph, T-1652): LET takes names Excel reads as R1C1 references,
-// and they survive a reload (formulas are kept in R1C1 form).
+// and they survive a reload (formulas are kept in R1C1 form, where an uppercase `R1C1` is
+// stored as `_xlpm.R1C1`, T-1658).
 #[test]
 fn let_names_may_be_r1c1_shaped() {
     let mut model = new_empty_model();
@@ -161,6 +162,11 @@ fn let_names_may_be_r1c1_shaped() {
         "C1D",
         "R1.C1",
         "r1c1",
+        "R1C1",
+        "R5C7",
+        "R1048576C16384",
+        "R1c1",
+        "r1C1",
         "R0",
         "R0C1",
         "R1048577C1",
@@ -185,13 +191,22 @@ fn let_names_may_be_r1c1_shaped() {
     }
 }
 
-// Excel takes `LET(R1C1,5,R1C1*2)` (10), but the R1C1 form the engine stores formulas in would
-// read an in-range uppercase `R<n>C<m>` back as a cell reference, so it stays refused
-// (TODO(T-1658)).
+// A LAMBDA parameter spelled like an R1C1 cell is a name too, through a reload (T-1658), and the
+// stored form is R1C1 with the escaped name.
 #[test]
-fn let_names_spelled_like_r1c1_cells_are_refused() {
+fn lambda_parameters_spelled_like_r1c1_cells_survive_a_reload() {
     let mut model = new_empty_model();
-    model._set("A1", "=LET(R1C1,5,R1C1*2)");
+    model._set("A1", "=LAMBDA(R5C7,[R1C1],R5C7*2+ISOMITTED(R1C1))(5)");
+    model._set("A2", "=LET(R1C1,LAMBDA(R2C2,R2C2+1),R1C1(9))");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), "#ERROR!");
+    let mut reloaded = crate::Model::from_bytes(&model.to_bytes(), "en").unwrap();
+    reloaded.evaluate();
+    for m in [&model, &reloaded] {
+        assert_eq!(m._get_text("A1"), "11");
+        assert_eq!(m._get_text("A2"), "10");
+    }
+    assert_eq!(
+        reloaded._get_formula("A1"),
+        "=LAMBDA(R5C7,[R1C1],R5C7*2+ISOMITTED(R1C1))(5)"
+    );
 }

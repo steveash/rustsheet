@@ -153,6 +153,43 @@ fn test_formulas() {
     fs::remove_file(temp_file_name).unwrap();
 }
 
+/// The text of the part `name` of the xlsx file `path`.
+fn part_text(path: &str, name: &str) -> String {
+    let file = fs::File::open(path).unwrap();
+    let mut archive = zip::ZipArchive::new(file).unwrap();
+    let mut text = String::new();
+    std::io::Read::read_to_string(&mut archive.by_name(name).unwrap(), &mut text).unwrap();
+    text
+}
+
+// Excel takes `LET(R1C1,5,R1C1*2)` (10, probes/r1c1-let-name-r1c1) and writes the name as
+// `_xlpm.R1C1`; the import reads it as a name, not the cell R1C1 (T-1658).
+#[test]
+fn test_let_name_spelled_like_an_r1c1_cell_round_trips() {
+    let mut model = new_empty_model();
+    model
+        .set_user_input(0, 1, 1, "=LET(R1C1,5,R1C1*2)".to_string())
+        .unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_let_r1c1_name.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+
+    let sheet_xml = part_text(temp_file_name, "xl/worksheets/sheet1.xml");
+    assert!(
+        sheet_xml.contains("_xlfn.LET(_xlpm.R1C1,5,_xlpm.R1C1*2)"),
+        "{sheet_xml}"
+    );
+
+    let mut model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "10");
+    assert_eq!(
+        model.get_cell_formula(0, 1, 1).unwrap(),
+        Some("=LET(R1C1,5,R1C1*2)".to_string())
+    );
+}
+
 #[test]
 fn test_array_formulas_keep_implicit_intersection() {
     // The `@` of an array formula is not put back when the file is read, so it
@@ -362,15 +399,7 @@ fn test_defined_name_lambda_exports_excel_prefixes() {
 
     // The workbook part must store the formula in Excel's form: future
     // functions prefixed with `_xlfn.` and lambda/let variables with `_xlpm.`.
-    let file = fs::File::open(temp_file_name).unwrap();
-    let mut archive = zip::ZipArchive::new(file).unwrap();
-    let mut workbook_xml = String::new();
-    std::io::Read::read_to_string(
-        &mut archive.by_name("xl/workbook.xml").unwrap(),
-        &mut workbook_xml,
-    )
-    .unwrap();
-    drop(archive);
+    let workbook_xml = part_text(temp_file_name, "xl/workbook.xml");
     assert!(
         workbook_xml.contains(
             "_xlfn.LAMBDA(_xlpm.mo,_xlfn.LET(_xlpm.anchor,DATE(cal_year,_xlpm.mo,1),_xlpm.anchor+1))"
@@ -463,15 +492,7 @@ fn test_sheet_local_print_area_round_trips_with_xlnm_prefix() {
     let temp_file_name = "temp_file_test_sheet_local_print_area.xlsx";
     save_to_xlsx(&model, temp_file_name).unwrap();
 
-    let file = fs::File::open(temp_file_name).unwrap();
-    let mut archive = zip::ZipArchive::new(file).unwrap();
-    let mut workbook_xml = String::new();
-    std::io::Read::read_to_string(
-        &mut archive.by_name("xl/workbook.xml").unwrap(),
-        &mut workbook_xml,
-    )
-    .unwrap();
-    drop(archive);
+    let workbook_xml = part_text(temp_file_name, "xl/workbook.xml");
     assert!(
         workbook_xml.contains(
             "<definedName name=\"_xlnm.Print_Area\" localSheetId=\"0\">Sheet1!$A$1,Sheet1!$B$2</definedName>"
