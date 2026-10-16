@@ -3,7 +3,7 @@ id: T-1642
 title: "COUNTIF-style text criteria and wildcard MATCH read lone surrogates exactly (probe first)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -23,7 +23,7 @@ T-1585 made `compare_values`, EXACT and exact MATCH lone-surrogate-exact, but th
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 - Done: probe probes/criteria-lone-surrogates (43 Calc formulas, excel-graph sidecar). Excel's rules are recorded in docs/excel-semantics/text.md under "Lone surrogates through CODE, ...", in the "Criteria and wildcards" paragraph. The baseline has the case's 30 failing cells as new coverage.
 - To do: make the engine match those cells.
   - The criteria matchers in functions/criteria.rs (`result_is_*_string`) take `&str` targets and `cmp_text_excel`. They should keep the criterion as `Text` and compare cells with `cmp_text`, as exact MATCH already does since T-1585.
