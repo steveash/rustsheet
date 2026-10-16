@@ -3,7 +3,7 @@ id: T-1696
 title: "Probe the error precedence of VARA, VARPA, STDEVA and STDEVPA (direct vs referenced and array errors)"
 milestone: M2
 lane: functions-stat
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ same data as that case, for the four A-variance functions. If they rank like the
 
 ## Out of scope
 - Typed numeric text (T-1291).
+
+## Outcome
+Probe `probes/aggregate-error-precedence-a-variants` filled from excel-graph (72 cells): VARA, VARPA, STDEVA and STDEVPA rank errors like SUM, and `fn(A7:A8,#N/A)` is `#N/A` for SUM, AVERAGE, MEDIAN and DEVSQ. `VARA_ARGS` switched from `First` to `Ranked` (12 cells fixed); syntax.md updated.
