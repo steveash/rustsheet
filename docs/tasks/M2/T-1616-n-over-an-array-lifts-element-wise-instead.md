@@ -33,5 +33,5 @@ spilled, `SUM(N({1,2}))`, `N(IF(1,{2;3}))` dynamic and legacy, `N(B1:B3*1)`; als
 excel-graph) covers the dynamic and legacy forms, plus the T-0294 leftovers (legacy `SUMPRODUCT(INDEX(B1:B6,ROW(B1:B2)))`
 is 1 and `SUMPRODUCT(INDEX(ABS(B1:B6),0))` 21, on and off the rows). probes/legacy-index-array-index L1 and L10 pass.
 The probe passes 21 of 23 cells: a legacy cell `=N(IF(1,{2;3}))` is `#VALUE!` in Excel and spills in ours (S!D4:D5), a
-new-coverage known failure filed as T-1713. Eval: probes known failures -2 (L1, L10) +2 new coverage (D4:D5),
-0 regressions. information.md and criteria.md updated.
+new-coverage known failure filed as T-1713. Eval: probes known failures 2284 → 2283 (fixed legacy-index-array-index L1, L10 and index-1x1-array-index H21;
++2 new coverage D4:D5), 0 regressions. information.md and criteria.md updated.
