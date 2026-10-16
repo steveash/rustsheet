@@ -33,6 +33,7 @@ use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
+use rustsheet_eval::text_expect;
 use rustsheet_eval::xlsx_snapshot::{read_snapshot, WorkbookSnapshot};
 
 #[derive(Parser)]
@@ -508,6 +509,9 @@ fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
             c.actual
         );
     }
+    let mut text = String::new();
+    text_expect::write_case(&r.text, all, &mut text);
+    print!("{text}");
     Ok(ExitCode::SUCCESS)
 }
 

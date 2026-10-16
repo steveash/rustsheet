@@ -3,7 +3,7 @@ id: T-1712
 title: "rustsheet-eval show prints a case's displayed-text verdicts"
 milestone: M10
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1610 added `CaseResult.text` (crates/rustsheet-eval/src/text_expect.rs, decisi
 
 ## Out of scope
 -
+
+## Outcome
+`show` now prints `text: N/M passed` and each failing displayed-text cell (Excel text, ours; all cells with `--all`) via `text_expect::write_case`, with a unit test. No eval delta.

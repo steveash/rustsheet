@@ -132,6 +132,27 @@ pub(crate) fn write_markdown(suites: &[SuiteSummary], cases: &[CaseResult], md: 
     }
 }
 
+/// The `show` command's displayed-text lines for one case: the pass count, then each failing text
+/// cell (every cell with `all`). Nothing when the case scored no text.
+pub fn write_case(text: &[TextResult], all: bool, out: &mut String) {
+    if text.is_empty() {
+        return;
+    }
+    let passed = text.iter().filter(|t| t.pass).count();
+    let _ = writeln!(out, "text: {passed}/{} passed", text.len());
+    for t in text.iter().filter(|t| all || !t.pass) {
+        let ours = t.actual.as_deref().unwrap_or("(none)");
+        let _ = writeln!(
+            out,
+            "{}!{:<14} {}\n    Excel text: {}\n    our text  : {ours}",
+            t.sheet,
+            t.cell,
+            if t.pass { "Pass" } else { "Fail" },
+            t.expected
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -172,6 +193,29 @@ mod tests {
         let verdicts: Vec<_> = results.iter().map(|r| (r.cell.as_str(), r.pass)).collect();
         assert_eq!(verdicts, [("A1", true), ("B2", false), ("A1", false)]);
         assert_eq!(results[2].actual, None);
+    }
+
+    #[test]
+    fn show_lists_the_failing_text_cells_and_the_pass_count() {
+        let results = score(
+            &Fake,
+            &[expectation("S", "A1", "tA1"), expectation("S", "B2", "x")],
+        );
+        let mut out = String::new();
+        write_case(&results, false, &mut out);
+        assert!(out.starts_with("text: 1/2 passed\n"), "{out}");
+        assert!(
+            out.contains("S!B2") && out.contains("Excel text: x"),
+            "{out}"
+        );
+        assert!(out.contains("our text  : tB2"), "{out}");
+        assert!(!out.contains("S!A1"), "{out}");
+        let mut all = String::new();
+        write_case(&results, true, &mut all);
+        assert!(all.contains("S!A1"), "{all}");
+        let mut none = String::new();
+        write_case(&[], true, &mut none);
+        assert!(none.is_empty());
     }
 
     #[test]
