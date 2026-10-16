@@ -1,0 +1,30 @@
+---
+id: T-1723
+title: "CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX: size, single-point and text-argument errors and large-offset data as Excel (T-1620 probes)"
+milestone: M9
+lane: functions-stat
+status: todo
+priority: P2
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+CORREL, PEARSON, RSQ, SLOPE, INTERCEPT and STEYX return Excel's errors for mismatched sizes, a single point and a text argument, and stay accurate on data with a large offset.
+
+## Context
+Found by T-1620 (probes/regression-pairs-a, regression-pairs-b; `./target/release/rustsheet-eval show probes/regression-pairs-a.case.json`, excel-graph 2026-10-16). Differences, same for all six unless noted:
+- unequal sizes with all numbers (`CORREL(A1:A5,B1:B6)`, `CORREL({2,4,5},{1,2})`) and a text scalar argument (`CORREL(A1:A6,"a")`) are `#N/A` in Excel, `#VALUE!` in ours (T-1292 covers the text-in-range variant).
+- a single point or scalar pair (`CORREL(5,5)`, `CORREL(A1,B1)`) is `#DIV/0!` in Excel, `#VALUE!` in ours.
+- data with a large offset (`I1:I6` = 10000000001, 10000000002, ...): CORREL(I1:I6,B1:B6) is 0.9402561526801988 in Excel, `#DIV/0!` in ours (ours loses the variance to cancellation; STEYX gives 0.8223080178319075 against 0.822308017832176); compute the sums of squares about the means.
+- last-digit differences (`CORREL(A1:A6,C1:C6)` 0.9999999999999998 in Excel, 1.0 in ours; INTERCEPT, STEYX, SLOPE similar): match Excel's accumulation order if the probes pin one down.
+Record any new quirk in docs/excel-semantics/statistics.md.
+
+## Acceptance criteria
+- [ ] The mismatching non-ULP cells of probes/regression-pairs-a and -b for these six functions pass and leave eval/baseline/probes.txt smaller.
+- [ ] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+-

@@ -693,3 +693,21 @@ excel-graph, 2026-10-16, T-1325. The plain `CORREL({1;2},{1;2;3})` is unprobed.
 Ours: `#VALUE!` for different sizes, and exactly 1 for the same array twice.
 Status: VERIFIED (web)
 Tasks: T-1707
+
+## Regression and pairing functions: probed edge cases (T-1620)
+Evidence: probes/regression-pairs-a (CORREL, PEARSON, RSQ, SLOPE), regression-pairs-b (COVAR, STEYX, INTERCEPT),
+regression-forecast (FORECAST, FORECAST.LINEAR), regression-trend (TREND), excel-graph 2026-10-16. Excel's answers
+that ours misses today (fix tasks T-1723 to T-1726):
+- Unequal sizes of all numbers (`CORREL(A1:A5,B1:B6)`, `{2,4,5}` against `{1,2}`) and a text scalar (`CORREL(A1:A6,"a")`)
+  are `#N/A`; a single point or scalar pair (`CORREL(5,5)`, `CORREL(A1,B1)`) is `#DIV/0!` (`COVAR(5,5)` is 0). Same for
+  PEARSON, RSQ, SLOPE, INTERCEPT, STEYX and FORECAST (`FORECAST(7,A1:A5,B1:B6)` `#N/A`).
+- COVAR skips a pair when either cell of a range is text, blank or boolean (`COVAR(D1:D6,B1:B6)` with D2 blank 2.52).
+- Data with a large offset (10000000001...) keeps its variance: `CORREL(I1:I6,B1:B6)` 0.9402561526801988,
+  `FORECAST(7,A1:A6,I1:I6)` -7285714278.784956 (ours: `#DIV/0!`).
+- FORECAST and FORECAST.LINEAR spill one forecast per element of an array x (`{7,8}`: 7.2 and 7.9714285714285715); a
+  range x that collides is `#SPILL!`.
+- TREND: an empty known_x or new_x argument is the default (`TREND(A1:A6,B1:B6,,FALSE)` fits the known x's, 6 rows); a single
+  point gives the point (`TREND(5)` 5); zero-variance x gives the mean (`TREND(A1:A6,G1:G6)` first 4.5); text, blank or
+  error cells in a range are `#VALUE!`; array constants work (`TREND({2,4,5},{1,2,3})` first 2.1666666666666665); a 2-D
+  known_y gives a 2-D result.
+Several results differ from ours only in the last digit (`FORECAST(0,A1:A6,B1:B6)` 1.7999999999999998, ours 1.8).
