@@ -39,7 +39,8 @@ pub(crate) enum ErrorRule {
     /// probes/product-array-2d-and-scalar A7–A17, T-1287; MIN, MAX, AVERAGE, MEDIAN:
     /// probes/aggregate-array-error-vs-ref-error, T-1615).
     Ranked,
-    /// The first error in argument order returns at once (DEVSQ, AVEDEV, SUMSQ).
+    /// The first error in argument order returns at once (VARA and its siblings, UNVERIFIED; AND, OR,
+    /// XOR).
     First,
     /// Errors are items for the visitor, which counts or ignores them (COUNT ignores them, COUNTA
     /// counts them; syntax.md). Only a walk-budget error returns.
@@ -161,7 +162,7 @@ impl AggregateWalk {
     /// The `#VALUE!` of a direct LAMBDA ranks with the referenced errors: it is held when nothing
     /// is held yet, so a later direct error beats it and an earlier or later referenced error does
     /// not (probes/aggregate-direct-lambda-average-family D14-D31, excel-graph 2026-10-15, T-1602).
-    /// This holds under `ErrorRule::First` too (DEVSQ, AVEDEV, SUMSQ), whatever `policy.errors` says.
+    /// This holds under `ErrorRule::First` too, whatever `policy.errors` says.
     fn lambda_error(&mut self, error: CalcResult) {
         if self.held.is_none() {
             self.held = Some(error);
