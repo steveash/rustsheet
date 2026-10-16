@@ -120,7 +120,7 @@ Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-colla
   (and `COUNTIF` of `"ab"` over {CHAR(1)-text, "ab"} is 1, XMATCH `#N/A`); CHAR(11) and CHAR(12) above CHAR(160) and CHAR(9), below CHAR(13), CHAR(11) < CHAR(12);
   every one of `± « » × ÷ § © ¬ ® ° µ … •` sorts above each of `<` `=` `>`; `¼ ½ ¾` between `0` and `1` (`¾` < `2`); `¹ ² ³` above `1 2 3` but below the next
   letter position (`"¹"` > `"1"`, `"¹a"` < `"1b"`, `"¹b"` > `"1a"`; XMATCH of `"1"` against `¹` `#N/A`); `ç đ ð ł ñ ı` are accents on `c d d l n i` (`"ða"` < `"db"`, > `"da"`).
-  CORRECTED: `þ` is an expansion equal to `th`, not an accent on `t` (`"þ"="th"`, `"þa"="tha"` TRUE, `"þa"` > `"tb"`, `XMATCH("th","þ",0)` = 1); the engine still
+  CORRECTED: `þ` is an expansion equal to `th`, not an accent on `t` (`"þ"="th"`, `"þ"&"a"` = `"t"&"h"&"a"` TRUE, `"þa"` > `"tb"`, `XMATCH("th","þ",0)` = 1); the engine still
   treats it as an accent (T-1669, which also covers the XLOOKUP `œ` and single-cell XMATCH engine mismatches in this case).
 Tasks: T-0220, T-0244, T-1469, T-1590, T-1594, T-1595, T-1662, T-1669
 
