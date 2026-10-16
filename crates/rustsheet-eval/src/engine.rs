@@ -18,6 +18,11 @@ use crate::value::Value;
 pub trait Evaluated {
     /// Returns `None` if the sheet does not exist.
     fn value(&self, sheet: &str, addr: Addr) -> Option<Value>;
+    /// Every stored cell of `sheet` (spill members included); empty for an unknown sheet. The
+    /// spill-extent check reads it (T-1660).
+    fn stored_cells(&self, _sheet: &str) -> Vec<Addr> {
+        Vec::new()
+    }
 }
 
 pub trait Engine: Sync {
@@ -89,6 +94,19 @@ impl Evaluated for RustSheetEvaluated {
             // `ApiValue` is non-exhaustive; `Empty` and future variants score as empty.
             _ => Value::Empty,
         })
+    }
+
+    fn stored_cells(&self, sheet: &str) -> Vec<Addr> {
+        let cells = (self.workbook.sheet_id(sheet))
+            .and_then(|id| self.workbook.stored_cells(id))
+            .unwrap_or_default();
+        cells
+            .into_iter()
+            .map(|cell| Addr {
+                row: cell.row + 1,
+                col: cell.col + 1,
+            })
+            .collect()
     }
 }
 
