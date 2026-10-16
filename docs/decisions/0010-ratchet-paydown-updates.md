@@ -71,11 +71,6 @@
   the AVERAGE-family array-error probe; decision 0062) (`make eval-baseline`).
   T-1665: functions below the evidence floor 60 → 59 (one more function (among AVEDEV, ABS, SUMPRODUCT and SUM) reaches ≥ 20 Excel cells through the
   AVEDEV deviation-sum probe, probes-numeric/double-rounding-avedev-deviations; decision 0062) (`make eval-baseline`).
-<<<<<<< HEAD
-  T-1291: functions below the evidence floor 59 → 57 (two more functions reach ≥ 20 Excel cells through the
-  mode-typed-arguments probe; decision 0062) (`make eval-baseline`); duplicated lines 6360 → 6328 (VARA family and
-  MODE argument walks simplified) (`check_duplication.py --update`).
-=======
   T-1439: functions below the evidence floor 59 → 58 (one more function reaches ≥ 20 Excel cells through
   the statistical-family error-precedence probe, probes/aggregate-error-precedence-stat-family; decision 0062) (`make eval-baseline`).
   T-1326: static_analysis.rs 2147 → 1669 lines (the `args_signature_*` helpers moved to
@@ -85,6 +80,9 @@
   xlsx import/worksheets.rs, now under 1000 lines (`check_file_size.py --update`); duplicated lines 6360 → 6328
   (already lower on the branch before T-1326's fix commit; PIVOTBY reuses GROUPBY's header-name, total-row and width
   helpers instead of copying them) (`check_duplication.py --update`).
->>>>>>> origin/main
+  T-1291: functions below the evidence floor 58 → 56 (two more functions reach ≥ 20 Excel cells through the
+  mode-typed-arguments, mode-typed-text-no-mode and vara-direct-lambda probes; decision 0062) (`make eval-baseline`);
+  duplicated lines 6328 → 6155 (paid down by other merged work already on main; T-1291 itself adds none)
+  (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
