@@ -437,7 +437,7 @@ C	probes/multiarea-xname.case.json	3
 C	probes/multiarea-xsheet.case.json	2
 C	probes/multinomial-algorithm-sweep.case.json	70
 C	probes/multinomial-large-arguments.case.json	20
-C	probes/n-array-lift.case.json	23
+C	probes/n-array-lift.case.json	31
 C	probes/name-body-length-1000.case.json	1
 C	probes/name-body-length-255.case.json	1
 C	probes/name-body-length-256.case.json	1
