@@ -1,0 +1,37 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "MODE, MODE.SNGL and MODE.MULT with typed (direct) text and boolean arguments: which are skipped, coerced or errors (T-1291).",
+  "tags": [
+    "M5",
+    "stat",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=MODE(1,\"1\",1)",
+        "A2": "=MODE(1,TRUE,1)",
+        "A3": "=MODE(1,\"1\",TRUE,1)",
+        "A4": "=MODE(TRUE,TRUE,5)",
+        "A5": "=MODE(2,\"x\",2)",
+        "A6": "=MODE(\"2\",\"2\",5)",
+        "A7": "=MODE(1,\"2\",4,TRUE)",
+        "A8": "=MODE(1,2,2,\"x\")",
+        "A9": "=MODE(1,2,2,TRUE)",
+        "A10": "=MODE(1,1,TRUE)",
+        "A11": "=MODE(FALSE,FALSE,5)",
+        "A12": "=MODE.SNGL(1,TRUE,1)",
+        "A13": "=MODE.SNGL(1,\"1\",1)",
+        "A14": "=MODE.SNGL(1,2,2,\"x\")",
+        "A15": "=MODE.SNGL(1,1,TRUE)",
+        "A16": "=SUM(MODE.MULT(1,\"1\",1))",
+        "A17": "=SUM(MODE.MULT(1,2,2,\"x\"))",
+        "A18": "=SUM(MODE.MULT(1,1,TRUE))",
+        "A19": "=MODE.SNGL(1,TRUE,2,2)",
+        "A20": "=MODE(5,TRUE,TRUE)"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -40,16 +40,10 @@ impl Model {
                 {
                     return Err(error)
                 }
-                // Excel: a text value or a blank single-cell reference is #VALUE!, while
-                // text/blanks inside ranges are skipped (coercion.md, MODE; T-0947). A
-                // single-cell reference to text is unprobed, so it keeps being skipped.
-                CalcResult::String(_) if !matches!(arg.ungrouped(), Node::ReferenceKind { .. }) => {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "MODE: text argument".to_string(),
-                    ));
-                }
+                // Excel: typed (direct) text, even numeric text, and booleans are skipped, not
+                // coerced and not `#VALUE!` (probes/mode-typed-arguments A1-A20, T-1291), and
+                // text inside ranges is skipped too. A blank single-cell reference is `#VALUE!`
+                // (coercion.md, MODE; T-0947).
                 CalcResult::EmptyCell if matches!(arg.ungrouped(), Node::ReferenceKind { .. }) => {
                     return Err(CalcResult::new_error(
                         Error::VALUE,
