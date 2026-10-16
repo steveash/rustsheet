@@ -3,7 +3,7 @@ id: T-1675
 title: "Structured references: reversed column ranges and #This Row outside the table's rows"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
