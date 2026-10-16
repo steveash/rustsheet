@@ -36,5 +36,6 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 ENCODEURL now follows the excel-graph golden (decision 0039 rule 4): `#VALUE!` for every argument,
 lifted element-wise over a range or array (static_analysis marks it `scalar_arguments`); an error
 argument propagates (unprobed). Recorded in docs/excel-semantics/web.md; desktop confirmation stays
-T-1081. Eval: probes known failures 5523 -> 5514 (9 fixed, 0 regressions). The gen-m9 cell
-(fcf11f2ec6f7a59d A7) is not in the local suite set; covered by a unit test of the same shape.
+T-1081. Eval: probes known failures 5523 -> 5514 (9 fixed, 0 regressions). gen-m9/fcf11f2ec6f7a59d passes 40/40
+against its excel-graph golden (gen-m9 is outside the gated `check` set); a unit test covers the same shape.
+Error-argument propagation is unprobed (see web.md).
