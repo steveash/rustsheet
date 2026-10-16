@@ -3,7 +3,7 @@ id: T-0916
 title: "IRR/RATE/XIRR/MIRR: match Excel's iteration and termination behavior"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -62,16 +62,37 @@ from non-convergence rather than an up-front check (both give `#NUM!` on all 18 
 on the rate itself"); its part of this task waits for a new hypothesis.
 
 ## Acceptance criteria
-- [ ] The listed XIRR and MIRR F lines leave eval/baseline/ironcalc-calc.txt with no new ones (the RATE lines wait for a RATE fit; IRR lines leave where the T-1533 model is exact); the Outcome note lists the remainder.
-- [ ] Algorithm parameters (guess, tolerance, iteration cap) documented in docs/excel-semantics/numbers.md with evidence cell ids.
-- [ ] Error cases (#NUM! when no convergence) still pass.
-- [ ] IRR follows the T-1533 secant model; `uv run rustsheet-fitlab irr` shows the engine at the fitted candidate's 189/263.
-- [ ] XIRR follows the T-1525 model (bracket chain, bisection, stop test); `uv run rustsheet-fitlab xirr` shows the engine at 208/208.
-- [ ] The chain-walk and bisection caps (unprobed; 100 points per walk and 200 bisection steps are enough on all data) are either probed or recorded as a DEVIATION candidate under decision 0052 and directive 5 (a bound the engine needs whatever Excel's cap is).
-- [ ] `make check` green.
+- [ ] (XIRR done; MIRR and RATE remain, see Outcome) The listed XIRR and MIRR F lines leave eval/baseline/ironcalc-calc.txt with no new ones (the RATE lines wait for a RATE fit; IRR lines leave where the T-1533 model is exact); the Outcome note lists the remainder.
+- [x] Algorithm parameters (guess, tolerance, iteration cap) documented in docs/excel-semantics/numbers.md with evidence cell ids.
+- [x] Error cases (#NUM! when no convergence) still pass.
+- [x] IRR follows the T-1533 secant model; `uv run rustsheet-fitlab irr` shows the engine at the fitted candidate's 189/263.
+- [x] XIRR follows the T-1525 model (bracket chain, bisection, stop test); `uv run rustsheet-fitlab xirr` shows the engine at 208/208.
+- [x] The chain-walk and bisection caps (unprobed; 100 points per walk and 200 bisection steps are enough on all data) are either probed or recorded as a DEVIATION candidate under decision 0052 and directive 5 (a bound the engine needs whatever Excel's cap is).
+- [x] `make check` green.
 
 ## Out of scope
 PV/FV/PMT/NPER/IPMT/PPMT/NPV (T-0901), bond PRICE/YIELD families, CUMIPMT/CUMPRINC.
 
 ## Findings (attempt 1, no oracle)
 IRR.xlsx General!L2 (`IRR(-20,5,5,5,5,5)`, expected 0.07930826116039724): Excel's value is 1.3e-13 below the true root, and its own NPV residual there is 6.4e-12, so Excel stops un-converged. It is not any Newton iterate (from guess 0.1 the iterates are 0.0793082611540 then ...6052853), not a Newton iterate in 1/(1+r), and not a secant iterate for starts g*1.1, g±0.1, g+1e-3/1e-4/1e-5, 0. With guess 17 Excel still reaches 0.07930826116414913, where plain Newton diverges, so Excel uses a safeguarded method. Needs oracle probes with intermediate-iteration evidence before further fitting.
+
+## Outcome
+2026-10-16. XIRR and IRR follow the fitted models (`xirr_bracket`/`compute_xirr`,
+`irr_npv`/`irr_secant`/`compute_irr` in functions/financial/financial_util.rs). Oracle values are
+pinned in test/test_fn_irr_xirr_fits.rs.
+- **Fit lab, engine row:**
+  - `xirr`: 227/227 (was 9);
+  - `xirr-oos`: 22/22 (was 11; the lab model gets 21);
+  - `irr`: 189/263 bit-exact and 207 within 4 ulp, the lab model's own counts (was 1).
+- **Gated suites:** 298 cells fixed (ironcalc-calc 70, including every XIRR/XNPV line; probes 228;
+  poi unchanged). Three IRR cells the old Newton code matched by chance are known failures now
+  (decision 0065: IRR.xlsx General!L42, fin-argument-modes H374/H375).
+- **Parameters:** documented in financial.md "XIRR is a bracketing bisection" and "IRR is a secant
+  in v", with evidence cell ids. That file, not numbers.md, is where the solver entries live.
+  The walk cap (100) and bisection cap (200) are recorded as a DEVIATION candidate
+  (directive 5, decision 0052).
+- **Remainder:**
+  - RATE is not fitted (financial.md "RATE iterates on the rate itself"), so its F lines stay.
+  - MIRR is untouched; its F lines stay (formulation fit still open).
+  - IRR's 74 unfitted fit-set cells and the 3 decision-0065 cells need NPV's exact evaluation
+    order.

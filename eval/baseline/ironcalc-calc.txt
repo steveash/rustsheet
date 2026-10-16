@@ -415,72 +415,29 @@ F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J30
 F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J31
 F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J4
 F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J6
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!A21
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!A22
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!A23
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!B21
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!B22
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!B23
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!N1
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!N2
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!P1
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!Q1
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!Q2
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!R1
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!R2
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L10
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L11
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L12
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L13
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L16
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L17
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L18
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L19
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L2
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L20
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L21
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L22
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L23
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L24
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L25
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L26
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L27
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L28
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L29
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L3
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L30
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L31
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L32
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L33
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L34
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L35
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L36
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L37
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L38
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L39
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L4
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L40
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L41
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L43
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L44
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L45
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L46
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L47
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L48
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L49
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L5
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L50
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L51
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L52
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L53
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L54
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L55
+F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L42
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L56
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L57
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L58
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L6
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L8
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L9
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M10
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M11
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M12
@@ -496,11 +453,7 @@ F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M5
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M6
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M8
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M9
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!N2
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!N4
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!N8
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!N9
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!D2
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!D3
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!D4
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!D5
@@ -508,12 +461,7 @@ F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E2
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E3
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E4
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E5
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Two Values!C2
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Two Values!C4
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Two Values!C5
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Two Values!C6
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Two Values!C7
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Two Values!C8
 F	ironcalc-calc/FINANCIAL/ISPMT.xlsx	Sheet1!E2
 F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!N10
 F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!N11
@@ -809,23 +757,6 @@ F	ironcalc-calc/FINANCIAL/RATE.xlsx	Sheet1!G8
 F	ironcalc-calc/FINANCIAL/RATE.xlsx	Sheet1!G9
 F	ironcalc-calc/FINANCIAL/RRI.xlsx	Sheet1!D12
 F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!Q21
-F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!R12
-F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!R13
-F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!R14
-F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!R15
-F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!R16
-F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!R17
-F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!R18
-F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!R19
-F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!R2
-F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!R20
-F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!R21
-F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!R4
-F	ironcalc-calc/FINANCIAL/XIRR.xlsx	Sheet1!R5
-F	ironcalc-calc/FINANCIAL/XNPV.xlsx	Sheet1!R12
-F	ironcalc-calc/FINANCIAL/XNPV.xlsx	Sheet1!R2
-F	ironcalc-calc/FINANCIAL/XNPV.xlsx	Sheet1!R4
-F	ironcalc-calc/FINANCIAL/XNPV.xlsx	Sheet1!R5
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!C11
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!C4
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!E4

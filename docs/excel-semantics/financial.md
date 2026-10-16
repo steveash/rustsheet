@@ -99,7 +99,7 @@ Engine today: 96 of 691 cells pass (IRR 19/216, RATE 36/368, XIRR 9/72, MIRR 32/
 its sixth argument (guess) with `#ERROR!` (T-1050).
 Status: VERIFIED (observations). XIRR's iteration is fitted (next section, T-1525); IRR's and RATE's
 update rule and stopping test are UNVERIFIED (T-0916; partial findings below)
-Implemented in: n/a (T-0916)
+Implemented in: XIRR and IRR in functions/financial/financial_util.rs (T-0916, next two sections); RATE n/a
 
 ## XIRR is a bracketing bisection, not Newton
 Rule: XIRR finds a sign change of XNPV on a chain of trial rates, then bisects it. The chain starts at
@@ -164,8 +164,10 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   1..6, which need about 770 halvings, are `#NUM!`), the bisection cap, the order when both chains have
   a root, a guess at or below -1, and which end an exact XNPV(m) = 0 replaces (the first-value rule
   replaces the upper end, the XNPV(upper end) rule only when XNPV(upper end) <= 0; no cell tells them apart).
-Ours: Newton's method to 1e-7 (`compute_xirr`, functions/financial/financial_util.rs): 0/208 on the fit
-set (9 of the 72 m9-fin-irr-rate cells pass the harness's tolerance).
+Ours: this model, T-1583's form (`xirr_bracket`, `compute_xirr`, functions/financial/financial_util.rs,
+T-0916): 227/227 on the fit set and 22/22 on `xirr-oos` (the Newton code it replaced: 9 and 11). The walk
+cap (100 points) and bisection cap (200 steps) are engine bounds, enough on every oracle cell: a
+DEVIATION candidate under directive 5 and decision 0052 until Excel's caps are probed (see above).
 Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test; the XNPV part of the stop
 test is UNVERIFIED beyond the fit set (T-1533; refined by T-1583, the span factor UNVERIFIED until T-1591)
 Tasks: T-1525, T-0916, T-1533, T-1583, T-1591
@@ -208,8 +210,9 @@ I!C, I!D (closed-form two- and three-flow roots), probes-numeric/m9-fin-irr-rate
 flows, guesses); excel-graph, 2026-10-14. `uv run rustsheet-fitlab irr` (263 cells): the fitted secant
 189/263 bit-exact, 207 within 4 ulp, 260 within 1e-9; the best Newton candidate (in v, converged) 74; the
 engine 1.
-Ours: Newton in r to 1e-8, with a bisection fallback (`compute_irr`, functions/financial/financial_util.rs);
-T-0916 implements the secant.
+Ours: this secant (`irr_npv`, `irr_secant`, `compute_irr`, functions/financial/financial_util.rs, T-0916):
+189/263 bit-exact and 207 within 4 ulp on the fit set, the same cells as the lab model (the Newton code it
+replaced: 1). Three gated cells the Newton code matched by chance are known failures now (decision 0065).
 Status: VERIFIED for the method (secant in v, offset, both stop tests, retry; 189/263 bit-exact); UNVERIFIED
 for the last bit (NPV's evaluation order), the step cap, and flows with leading zeros (A173, A175)
 Tasks: T-1525, T-1533, T-0916
