@@ -3,7 +3,7 @@ id: T-0916
 title: "IRR/RATE/XIRR/MIRR: match Excel's iteration and termination behavior"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
