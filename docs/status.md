@@ -70,7 +70,7 @@ Blocked: 24 (= last run, the same tasks). None can be unblocked.
 - I reproduced it on a18a7329 with a release facade test: `memory allocation of 3019898896 bytes failed`.
 - `PERCENTILE.INC(SE:RCH,…)` and `QUARTILE(SE:RCH,…)` abort the same way. MEDIAN and SUM do not.
 - Root cause: `values_from_range` (`statistical/chisq.rs`) allocates one entry per cell of a whole-column range, unclipped.
-- Filed **T-1676** (functions-stat, P0, opus).
+- Filed **T-1681** (functions-stat, P0, opus).
 - `formula_parse` and `xlsx_import` passed.
 
 Open PRs: 5, the same as at the end of the last run, apart from #819 (merged).
@@ -121,7 +121,7 @@ Spot-audit 2026-10-16 (last was 2026-10-09). 408 task PRs merged since then. A s
 - quality: T-1677 closes "one implementation of aggregate-argument iteration". T-1678 is an audit follow-up.
 - research: T-1670 and T-1665 (M2 probes).
 - harness: T-1680 (audit follow-up).
-- The other 20 failing cells are reached through `functions`: T-1669, T-1656, T-1291 and T-1616. So is the P0 T-1676.
+- The other 20 failing cells are reached through `functions`: T-1669, T-1656, T-1291 and T-1616. So is the P0 T-1681.
 - api has no M2 work. perf stays out: Phase 2.)
 
 ## Needs owner
