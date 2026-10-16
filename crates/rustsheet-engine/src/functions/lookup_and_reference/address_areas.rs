@@ -1,8 +1,9 @@
+use crate::external_reference::PickedReference;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex, utils::quote_name},
     model::Model,
-    reference_operators::{not_a_reference_array, three_d_needs_one_sheet, Picked, RefArg},
+    reference_operators::{not_a_reference_array, three_d_needs_one_sheet, RefArg},
 };
 
 use crate::expressions::utils::number_to_column;
@@ -150,17 +151,15 @@ impl Model {
         // 2, probes/external-ref-no-link-shapes A15).
         // So does one IF picks (`AREAS(IF(TRUE,(…!A1,…!B2)))` is 2,
         // probes/external-ref-no-link-ifchoose A17).
-        let arg = match self.pick_branch(&args[0], cell) {
-            Picked::Node(node) => {
-                if let Some(areas) = self.external_reference(node, cell) {
-                    return match areas {
-                        Ok(areas) => CalcResult::Number(areas.len() as f64),
-                        Err(error) => error,
-                    };
-                }
-                self.evaluate_picked_reference_arg(node, cell)
+        let arg = match self.pick_reference(&args[0], cell) {
+            PickedReference::External(areas) => {
+                return match areas {
+                    Ok(areas) => CalcResult::Number(areas.len() as f64),
+                    Err(error) => error,
+                };
             }
-            Picked::Value(value) => RefArg::Value(value),
+            PickedReference::Node(node) => self.evaluate_picked_reference_arg(node, cell),
+            PickedReference::Value(value) => RefArg::Value(value),
         };
         if let Some(areas) = arg.single_sheet_areas() {
             return CalcResult::Number(areas.len() as f64);
