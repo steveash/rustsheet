@@ -3,7 +3,7 @@ id: T-1712
 title: "rustsheet-eval show prints a case's displayed-text verdicts"
 milestone: M10
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
