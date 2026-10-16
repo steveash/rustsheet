@@ -111,6 +111,11 @@ pub struct SheetSpec {
     /// engine adapter ignores them until Phase 2 implements data tables.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub data_tables: Vec<DataTableSpec>,
+    /// Pivot tables, written by spec2xlsx with their rendered cells, cache and definition
+    /// (`tools/src/rustsheet_tools/pivot.py`, T-1705). The engine has no pivot tables, so the
+    /// adapter ignores them: a case scores only the GETPIVOTDATA formulas that read them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pivot_tables: Vec<PivotTableSpec>,
     /// A1 address → number format code (`"[h]:mm"`), applied to that cell whatever it holds
     /// (T-1268). spec2xlsx writes it as the cell's `numFmt`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -145,6 +150,24 @@ pub struct DataTableSpec {
     pub row_input: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub column_input: Option<String>,
+}
+
+/// A pivot table in a spec sheet (T-1705): `row` (and optionally `column`) are text fields of the
+/// `source` range's header row, `value` a number field aggregated by `function` (`sum` when absent).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PivotTableSpec {
+    pub name: String,
+    /// A1 range with the field names in its first row, optionally sheet-qualified (`Data!A1:C7`).
+    pub source: String,
+    /// Top-left cell of the rendered pivot.
+    pub location: String,
+    pub row: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub column: Option<String>,
+    pub value: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub function: Option<String>,
 }
 
 /// A workbook's calculation settings (`<calcPr>`), written by spec2xlsx (T-0428). The engine

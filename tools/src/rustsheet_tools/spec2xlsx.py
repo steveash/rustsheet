@@ -48,6 +48,9 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     `<f t="dataTable">`; `row_input` alone is a one-variable row table, both inputs a two-variable
     table. `ref` must not overlap the sheet's `cells`. The engine adapter ignores both (Phase 2,
     T-0428).
+  * A sheet's `"pivot_tables": [{"name": "Pv", "source": "Data!A1:C7", "location": "E3", "row": "Region",
+    "column": "Product", "value": "Sales", "function": "sum"}]` writes pivot tables, rendered cells
+    included (rustsheet_tools/pivot.py, T-1705). The engine adapter ignores them.
   * Future functions get their `_xlfn.` prefixes from the builder's own table (the engine exporter's
     list plus `_BUILDER_ONLY_PREFIXES`), never from XlsxWriter's `use_future_functions`, which skips a
     whole formula once any call in it is prefixed (T-0052); LET/LAMBDA names are written as `_xlpm.x`.
@@ -74,6 +77,7 @@ from xml.sax.saxutils import escape, unescape
 import xlsxwriter
 
 from rustsheet_tools.oracle.package import patch_parts, read_parts
+from rustsheet_tools.pivot import PivotParts, pivot_tables, rels_part
 
 # XlsxWriter stamps docProps/core.xml with the wall clock; a fixed instant keeps identical specs
 # byte-identical so `input_sha256` (sidecars, eval/.cache/oracle) is stable across runs (T-0015).
@@ -337,8 +341,10 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     patches = _Patches()
     tables = frozenset(str(t["name"]).upper() for sheet in spec["sheets"] for t in sheet.get("tables", ()))
     entered: list[tuple[str, str, str]] = []  # (sheet name, cell ref, text as typed)
+    worksheets = []
     for number, sheet in enumerate(spec["sheets"], start=1):
         ws = wb.add_worksheet(sheet["name"])
+        worksheets.append(ws)
         hidden = _hidden_rows(sheet)
         for row in sorted(hidden):
             ws.set_row(row - 1, None, None, {"hidden": True})
@@ -385,6 +391,15 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
         patches.data_tables.extend(
             (number, _add_data_table(ws, sheet, t)) for t in sheet.get("data_tables", ())
         )
+
+    def write_pivot_cell(number: int, row: int, col: int, value: str | float) -> None:
+        # Through `_write`, so a pivot's aggregates keep every digit (`_store_numbers`).
+        if (
+            cell_number := _write(worksheets[number - 1], row, col, value, tables=tables)
+        ) is not None and _is_lossy(cell_number):
+            patches.lossy.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), cell_number))
+
+    patches.pivots = pivot_tables(spec, write_pivot_cell)
     for name, formula in spec.get("names", {}).items():
         wb.define_name(name, _formula_text(formula, tables))
     for n, entry in enumerate(entered, start=1):
@@ -406,6 +421,7 @@ class _Patches:
     filters: list[tuple[str, str]] = field(default_factory=list)
     # (sheet number, (top-left cell, `<f>`)), T-0428
     data_tables: list[tuple[int, tuple[str, str]]] = field(default_factory=list)
+    pivots: PivotParts = field(default_factory=PivotParts)  # T-1705
 
 
 def _patch_package(xlsx: bytes, spec: dict[str, Any], patches: _Patches) -> bytes:
@@ -414,6 +430,7 @@ def _patch_package(xlsx: bytes, spec: dict[str, Any], patches: _Patches) -> byte
     xlsx = _filter_tables(xlsx, patches.filters) if any(el for _, el in patches.filters) else xlsx
     # Data tables and calculation settings are no-ops when the spec has none (T-0428).
     xlsx = _write_calculation(_write_data_tables(xlsx, patches.data_tables), spec.get("calculation"))
+    xlsx = _write_pivots(xlsx, patches.pivots)
     return _store_numbers(xlsx, patches.lossy) if patches.lossy else xlsx
 
 
@@ -588,6 +605,47 @@ def _write_data_tables(xlsx: bytes, tables: list[tuple[int, tuple[str, str]]]) -
         return apply
 
     return _patch_sheets(xlsx, [(number, patch(ref, formula)) for number, (ref, formula) in tables])
+
+
+def _write_pivots(xlsx: bytes, pivots: PivotParts) -> bytes:
+    """Adds the pivot parts and links them from the workbook, its sheets and the content types (T-1705)."""
+    if not pivots.parts:
+        return xlsx
+
+    def insert(before: str, elements: list[str]) -> Callable[[str], str]:
+        def apply(text: str) -> str:
+            if text.count(before) != 1:
+                msg = f"cannot place pivot parts: {before} not found once"
+                raise ValueError(msg)
+            return text.replace(before, "".join(elements) + before)
+
+        return apply
+
+    def after_calc_pr(text: str) -> str:
+        text, count = re.subn(
+            r"(<calcPr\b[^>]*/>)",
+            lambda m: m.group(1) + f"<pivotCaches>{''.join(pivots.workbook_caches)}</pivotCaches>",
+            text,
+        )
+        if count != 1:
+            msg = "cannot place pivot caches: no <calcPr/> in the workbook"
+            raise ValueError(msg)
+        return text
+
+    existing = set(read_parts(xlsx))
+    added = dict(pivots.parts)
+    patches: list[tuple[str, Callable[[str], str]]] = [
+        ("xl/workbook.xml", after_calc_pr),
+        ("xl/_rels/workbook.xml.rels", insert("</Relationships>", pivots.workbook_rels)),
+        ("[Content_Types].xml", insert("</Types>", pivots.content_types)),
+    ]
+    for number, rels in pivots.sheet_rels.items():
+        part = f"xl/worksheets/_rels/sheet{number}.xml.rels"
+        if part in existing:
+            patches.append((part, insert("</Relationships>", rels)))
+        else:
+            added[part] = rels_part(*rels)
+    return patch_parts(xlsx, patches, added)
 
 
 def _write_calculation(xlsx: bytes, calculation: dict[str, Any] | None) -> bytes:

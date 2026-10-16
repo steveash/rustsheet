@@ -46,4 +46,29 @@ propagates as it came (`pivot_table` `NA()` is `#N/A`, `1/0` is `#DIV/0!`; `data
 reference to an existing second sheet are unprobed.
 Evidence: probes/getpivotdata-evidence-floor (oracle: excel-graph, 2026-10-16, T-1628).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081).
-Not probed: a real pivot (field/item pairs, grand totals, missing items): the case builder cannot write pivot tables (T-1705).
+A real pivot: see the next section (T-1705).
+
+## GETPIVOTDATA against a pivot table (T-1705)
+Rule: against a compact-form pivot (one row field, an optional column field, one data field), GETPIVOTDATA
+returns the value of the pivot cell the field/item pairs pick, including subtotal and grand-total cells:
+- `data_field` is the source field name (`"Sales"`) or the data field's caption (`"Sum of Sales"`), matched
+  without regard to case (`"sales"`). Padding is not trimmed: `" Sales "` is `#REF!`. A caption of another
+  aggregate (`"Sum of Sales"` on an Average pivot) and an unknown field (`"Profit"`) are `#REF!`. A blank cell
+  as `data_field` gives the grand total (one data field; `""` with no pivot is `#REF!`, see above).
+- No pairs give the grand total, one pair a row or column total, two pairs their intersection in either
+  order. Field and item names ignore case (`"region","east"`; `"Product","a","Region","EAST"`). An item may
+  be a reference to a label cell (`A5`).
+- `#REF!`: an item not in the field (`"North"`, `" East"`), a field not in the pivot (`"Market"`, or a
+  source field the pivot does not show), the same field twice with different items, and a field with no
+  item (an odd argument count).
+- An intersection that has no source rows (shown blank) is **0**, not `#REF!` (West/C).
+- `pivot_table` may be any cell of the pivot (`$C$6`, inside the data area) or a range covering it
+  (`$A$3:$E$7`); a cell outside every pivot (`$H$30`, or the source data `Data!$A$1`) is `#REF!`.
+- An array of items lifts: `"Region",{"East";"West"}` spills 22, 27 and `"Product",{"A","B","C"}` spills
+  34, 12, 3.
+Evidence: probes/getpivotdata-real-pivot (oracle: excel-graph, 2026-10-16, T-1705). The pivots are written
+by the case builder (`pivot_tables`, tools/src/rustsheet_tools/pivot.py); excel-graph rendered them cell for
+cell as the builder does (a one-off check of the label, value, blank and grand-total cells, not committed).
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081). Not probed: several data fields (the
+`Values` field), two row fields and their subtotals, filters, hidden items, dates and numbers as items, and
+pivots in tabular or outline form.
