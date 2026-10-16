@@ -120,9 +120,9 @@ impl Model {
 }
 
 /// How AND, OR and XOR read their arguments (SPEC-0009 "Consumer mapping"): as
-/// `evaluate_node_in_context` gives them, first error wins, an empty argument is an item.
+/// `evaluate_aggregate_arg` gives them (picked cells are references), first error wins, an empty argument is an item.
 const LOGICAL_ARGS: AggregatePolicy = AggregatePolicy {
-    reading: ArgReading::InContext,
+    reading: ArgReading::Aggregate,
     errors: ErrorRule::First,
     skip_empty_args: false,
 };

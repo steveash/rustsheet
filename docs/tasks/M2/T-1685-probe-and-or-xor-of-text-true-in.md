@@ -3,7 +3,7 @@ id: T-1685
 title: "Probe AND/OR/XOR of text TRUE in a cell picked by IF, INDEX, XLOOKUP, CHOOSE, LET, TAKE or OFFSET"
 milestone: M2
 lane: functions-logic
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -35,3 +35,6 @@ functions/logical/and_or_xor_not.rs.
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/and-or-xor-picked-text (42 cells) filled by excel-graph: Excel skips a text TRUE/FALSE cell for every pick, so ours was wrong for IF, INDEX, XLOOKUP and LET. AND/OR/XOR now use `ArgReading::Aggregate`; `InContext` removed. Rule recorded in coercion.md and SPEC-0009.
