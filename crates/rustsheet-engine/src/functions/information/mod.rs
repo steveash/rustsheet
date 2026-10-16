@@ -1,5 +1,6 @@
 mod isomitted;
 mod offline_errors;
+pub(crate) use offline_errors::error_array;
 
 use crate::{
     calc_result::{CalcResult, Range},
@@ -31,7 +32,7 @@ fn map_elements(
 
 /// An argument that lifts: a multi-cell range or an array gives its values, anything else
 /// (a one-cell range included) a single value.
-enum Lifted {
+pub(crate) enum Lifted {
     Scalar(CalcResult),
     Array(Vec<Vec<ArrayNode>>),
 }
@@ -84,7 +85,11 @@ impl Model {
     }
 
     /// Evaluates an argument that lifts over a multi-cell range or array.
-    fn lifted_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<Lifted, CalcResult> {
+    pub(crate) fn lifted_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Lifted, CalcResult> {
         match self.evaluate_node_in_context(node, cell) {
             CalcResult::Range { left, right } if left == right => {
                 Ok(Lifted::Scalar(self.evaluate_cell(left)))

@@ -4993,16 +4993,7 @@ F	probes/groupby-pivotby.case.json	P!Z98
 F	probes/groupby-pivotby.case.json	P!Z99
 F	probes/ifna-isformula-edges.case.json	Calc!B12
 F	probes/index-1x1-array-index.case.json	Sheet1!H21
-F	probes/info-logic-argument-modes-2.case.json	Calc!A1
-F	probes/info-logic-argument-modes-2.case.json	Calc!A2
-F	probes/info-logic-argument-modes-2.case.json	Calc!A3
-F	probes/info-logic-argument-modes-2.case.json	Calc!A4
-F	probes/info-logic-argument-modes-2.case.json	Calc!A5
-F	probes/info-logic-argument-modes-2.case.json	Calc!A6
-F	probes/info-logic-argument-modes-2.case.json	Calc!B5
-F	probes/info-logic-argument-modes.case.json	Calc!A15
 F	probes/info-logic-argument-modes.case.json	Calc!A19
-F	probes/info-logic-argument-modes.case.json	Calc!B15
 F	probes/legacy-index-array-index.case.json	Sheet1!L1
 F	probes/legacy-index-array-index.case.json	Sheet1!L10
 F	probes/lookup-argument-modes.case.json	Sheet1!F1
