@@ -45,3 +45,5 @@ dynamic from a legacy cell. `make eval-baseline` refuses the regressions; I did 
 Next: either land the T-1727 legacy marker first (T-1713) so legacy T/N cells give `#VALUE!`, or decide with a
 decision record how to baseline G11/S11 (protected path, hence opus). The number/error element rule is still INFERRED:
 probe `T({"a",1,#N/A})` with excel-probe and update information.md.
+Also: CI `hygiene` fails because functions/text/common.rs is now 1008 lines (limit 1000, check_file_size.py). Put the array lift
+in a helper in another text module (or move fn_t out) rather than growing common.rs.
