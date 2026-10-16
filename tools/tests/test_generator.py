@@ -11,6 +11,8 @@ from pathlib import Path
 
 from rustsheet_tools import repo_root
 from rustsheet_tools.gen.generator import NAME_POOL, Catalog, generate_case
+from rustsheet_tools.gen.names_3d import CATEGORIES as NAMES_3D_CATEGORIES
+from rustsheet_tools.gen.names_3d import SPAN_SHEETS, generate_names_3d
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
 from rustsheet_tools.gen.operators_refs import CATEGORIES, generate_operators_refs
 from rustsheet_tools.spec2xlsx import build_xlsx, parse_a1, prefix_bound_names
@@ -491,3 +493,35 @@ def test_operators_refs_is_bounded_and_locale_free() -> None:
         if tag.startswith("chain/"):
             row = int(cell[1:])
             assert all(int(n) < row for n in re.findall(r"(?<![!\w$])\$?A\$?(\d+)", _strip_quoted(f))), f
+
+
+def test_names_3d_is_deterministic_and_distinct_per_sheet() -> None:
+    dump = json.dumps(generate_names_3d(3), sort_keys=True)
+    assert dump == json.dumps(generate_names_3d(3), sort_keys=True)
+    assert dump != json.dumps(generate_names_3d(4), sort_keys=True)
+    cases = generate_names_3d(0)
+    assert {c["tags"][-1] for c in cases} == set(NAMES_3D_CATEGORIES)
+    total = 0
+    for c in cases:
+        assert set(c["hypotheses"]) == set(c["check"])
+        assert c["expected"] == {}
+        assert [s["name"] for s in c["sheets"]][:7] == SPAN_SHEETS
+        for sheet in c["sheets"]:
+            probes = [v for a1, v in sheet["cells"].items() if f"{sheet['name']}!{a1}" in c["hypotheses"]]
+            assert len(probes) == len(set(probes)), sheet["name"]  # a repeat is the same probe again
+            total += len(probes)
+        assert build_xlsx(c)[:2] == b"PK"
+    # T-1606: gen-m8a has >= 3,000 oracle cells.
+    assert total >= 3000
+
+
+def test_names_3d_spans_and_named_ranges_never_cover_a_probe() -> None:
+    """3-D spans include `Calc`, so a span reaching column K would make probes circular."""
+    for c in generate_names_3d(0):
+        texts = [
+            *c["names"].values(),
+            *(c["sheets"][4]["cells"][a1.split("!")[1]] for a1 in c["check"] if a1.startswith("Calc!")),
+        ]
+        for text in texts:
+            for col in re.findall(r"![$]?([A-Z]+)[$]?\d", _strip_quoted(str(text))):
+                assert len(col) == 1 and col <= "F", text
