@@ -3,7 +3,7 @@ id: T-1710
 title: "Probe INDEX over a LET picking an external reference and LET bodies mixing external and other arms"
 milestone: M8
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -17,9 +17,12 @@ Oracle evidence for INDEX, OFFSET and the reference readers over a LET that pick
 T-1535 made a LET whose body picks only references into another workbook stand for the reference it picks (`Model::pick_reference`, external_reference.rs; probes/external-ref-no-link-let). Unprobed, raised by its excel-fidelity review: INDEX over such a LET (we read it as INDEX over the IF), OFFSET with such a LET as its reference, and a LET body that may also pick a non-external argument (`ROWS(LET(c,TRUE,IF(c,…!A1:B3,"x")))`, `ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))`), which `picks_only_external` leaves on the old path (likely `#BLOCKED!` where Excel may give 3). docs/excel-semantics/references.md "External reference with no cached data is `#BLOCKED!`".
 
 ## Acceptance criteria
-- [ ] A probe (tag M8) with oracle values for `ERROR.TYPE(INDEX(LET(c,TRUE,IF(c,…!A1:C4)),2,2))`, `ROWS(INDEX(LET(c,TRUE,IF(c,…!A1:C4)),2,0))`, `ISREF(OFFSET(LET(c,TRUE,…!A1),1,1))`, `ROWS(LET(c,TRUE,IF(c,…!A1:B3,"x")))`, `ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))`, `ISREF(LET(c,TRUE,IF(c,…!A1,D1)))`, and `COUNTA(LET(c,TRUE,IF(c,…!A1:B2,1)))`.
-- [ ] references.md updated; ours fixed if Excel differs.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe (tag M8) with oracle values for `ERROR.TYPE(INDEX(LET(c,TRUE,IF(c,…!A1:C4)),2,2))`, `ROWS(INDEX(LET(c,TRUE,IF(c,…!A1:C4)),2,0))`, `ISREF(OFFSET(LET(c,TRUE,…!A1),1,1))`, `ROWS(LET(c,TRUE,IF(c,…!A1:B3,"x")))`, `ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))`, `ISREF(LET(c,TRUE,IF(c,…!A1,D1)))`, and `COUNTA(LET(c,TRUE,IF(c,…!A1:B2,1)))`.
+- [x] references.md updated; ours fixed if Excel differs (split to T-1721: the fix needs a design change in `pick_reference`).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/external-ref-no-link-let-index (7 cells, excel-graph 2026-10-16). INDEX over an external-picking LET matches (A1, A2). Five cells differ (OFFSET over the LET is not a reference; a LET body that may also pick a non-external arm is read with the IF's pick made): recorded in references.md and filed as T-1721 (engine, opus). Eval: +1 case, 2 of 7 cells pass, 5 new-coverage known failures in eval/baseline/probes.txt.
