@@ -327,3 +327,5 @@ Evidence: probes/text-ap-locale-bracket (28 cells), probes/text-at-with-tokens A
 Implemented in: `Token::AP` and `Token::Locale` (formatter/lexer.rs), `TextToken::AP` (parser.rs, format.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1702
+
+Inferred, not probed (T-1702): `[$-...]` with any other or malformed tag (`[$-zzz]`, `[$-]`, `[$-40C]`) lexes as a silent locale; `"0;0;0;x@AM/PM"` and `"0;0;0;A/P"` (no `@`) in a fourth section follow the `AM/PM` rule; the length-limit costs of `A/P` (as `AM/PM`) and `[$-409]` (as a literal); cell display of `A/P` (shared `format_number` path, only TEXT probed).
