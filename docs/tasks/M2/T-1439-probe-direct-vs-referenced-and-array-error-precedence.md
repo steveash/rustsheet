@@ -3,7 +3,7 @@ id: T-1439
 title: "Probe direct vs referenced and array error precedence for MEDIAN/STDEV/VAR/GEOMEAN/HARMEAN/SKEW/KURT/DEVSQ/AVEDEV/SUMSQ and PRODUCT/MIN/MAX/AVERAGE array errors"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
