@@ -43,10 +43,14 @@ suites the milestone exit criteria name that does not exist yet.
 - Implementing iteration or data tables (Phase 2).
 
 ## Outcome
-Four oracle-filled probe cases (52 cells, excel-graph, 2026-10-16, canary-checked by `fill`):
+Six oracle-filled probe cases with 58 cells (excel-graph, 2026-10-16, canary-checked by `fill`).
+The "≥ 15 probe cases" criterion is met as cells, one question each, grouped by workbook setting,
+because the calculation settings are per workbook:
 - probes/circular-iteration-off (M3, 13 cells);
 - probes/circular-iteration-on (M3, 12 cells: iterateCount 100, iterateDelta 0.001);
 - probes/circular-iteration-limits (M3, 7 cells: iterateCount 5, iterateDelta 0.5);
+- probes/circular-iteration-delta and -delta-small (M3, 3 cells each: only convergent cycles,
+  iterateDelta 0.5 and 0.001);
 - probes/data-tables (M11, 20 cells: one-variable column and row tables, a two-variable table, a
   chained table, and reads of the results).
 spec2xlsx now takes a top-level `"calculation"` (written on `<calcPr>`) and a per-sheet
@@ -56,6 +60,8 @@ Findings are in the new docs/excel-semantics/recalc.md:
 - the oracle calculates each workbook 3 times, and iteration resumes from the previous values;
 - without iteration, cycle cells and their readers are 0;
 - sweeps run in place, in sheet order;
-- iterateDelta did not stop early;
+- iterateDelta stops the whole workbook, not a single cycle (the exact stopping test is
+  UNVERIFIED);
 - data tables are recalculated, and FORMULATEXT shows `{=TABLE(,A1)}`.
-Eval delta: probes 4 new cases, +44 new-coverage known failures, 8 cells pass, 0 regressions.
+Follow-up T-0429 lets these cells be scored against an engine that calculates once.
+Eval delta: probes 6 new cases, +50 new-coverage known failures, 8 cells pass, 0 regressions.

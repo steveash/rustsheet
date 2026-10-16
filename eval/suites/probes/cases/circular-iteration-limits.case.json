@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "Iterative calculation with iterateCount 5 and iterateDelta 0.5: the count limit, the delta stop and a change equal to the delta (T-0428).",
+  "description": "Iterative calculation with iterateCount 5 and iterateDelta 0.5: the count limit, with cycles that keep changing by more than the delta next to cycles whose own change drops below it (T-0428).",
   "tags": [
     "M3",
     "circular",

@@ -1,0 +1,26 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "The convergent cycles of circular-iteration-delta with iterateDelta 0.001 (T-0428 review).",
+  "tags": [
+    "M3",
+    "circular",
+    "iteration",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=A1/2+1",
+        "B1": "=B1/2+8",
+        "C1": "=A1+B1"
+      }
+    }
+  ],
+  "calculation": {
+    "iterate": true,
+    "iterate_count": 100,
+    "iterate_delta": 0.001
+  },
+  "expected": {}
+}

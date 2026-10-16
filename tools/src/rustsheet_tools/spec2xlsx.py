@@ -439,31 +439,34 @@ def _add_table(ws: Any, sheet: dict[str, Any], table: dict[str, Any], hidden: se
 def _add_data_table(ws: Any, sheet: dict[str, Any], table: dict[str, Any]) -> tuple[str, str]:
     """Writes a data table's placeholder cells; returns its top-left cell and the `<f>` it gets.
 
-    Excel stores a one-variable column table as `<f t="dataTable" ref=… dt2D="0" dtr="0" r1=input>`,
+    excel-graph reads a one-variable column table written as `<f t="dataTable" ref=… dt2D="0" dtr="0" r1=input>`,
     a row table with `dtr="1"`, and a two-variable table with `dt2D="1" dtr="1" r1=row r2=column`.
     """
     first, _, last = table["ref"].partition(":")
     (r1, c1), (r2, c2) = parse_a1(first), parse_a1(last or first)
+    # The normalized range, so nothing but a range reaches the attribute.
+    ref = f"{xlsxwriter.utility.xl_rowcol_to_cell(r1, c1)}:{xlsxwriter.utility.xl_rowcol_to_cell(r2, c2)}"
     row_input, column_input = table.get("row_input"), table.get("column_input")
-    for a1 in (row_input, column_input):
-        if a1 is not None:
-            parse_a1(a1)
+    row_input, column_input = (
+        None if a1 is None else xlsxwriter.utility.xl_rowcol_to_cell(*parse_a1(a1))
+        for a1 in (row_input, column_input)
+    )
     if row_input and column_input:
         inputs = f'dt2D="1" dtr="1" r1="{row_input}" r2="{column_input}"'
     elif row_input or column_input:
         inputs = f'dt2D="0" dtr="{1 if row_input else 0}" r1="{row_input or column_input}"'
     else:
-        msg = f"data table {table['ref']} needs a row_input or a column_input"
+        msg = f"data table {ref} needs a row_input or a column_input"
         raise ValueError(msg)
     for row in range(r1, r2 + 1):
         for col in range(c1, c2 + 1):
             a1 = xlsxwriter.utility.xl_rowcol_to_cell(row, col)
             if a1 in sheet["cells"]:
-                msg = f"data table {table['ref']} overlaps cell {a1}"
+                msg = f"data table {ref} overlaps cell {a1}"
                 raise ValueError(msg)
             ws.write_number(row, col, 0)
     top_left = xlsxwriter.utility.xl_rowcol_to_cell(r1, c1)
-    return top_left, f'<f t="dataTable" ref="{table["ref"]}" {inputs}/>'
+    return top_left, f'<f t="dataTable" ref="{ref}" {inputs}/>'
 
 
 def _write_data_tables(xlsx: bytes, tables: list[tuple[int, tuple[str, str]]]) -> bytes:
@@ -489,8 +492,22 @@ def _write_calculation(xlsx: bytes, calculation: dict[str, Any] | None) -> bytes
     if calculation is None:
         return xlsx
     unknown = set(calculation) - {"iterate", "iterate_count", "iterate_delta"}
-    if unknown or not isinstance(calculation.get("iterate", False), bool):
-        msg = f"calculation takes a boolean iterate, iterate_count and iterate_delta: {calculation!r}"
+    count, delta = calculation.get("iterate_count", 1), calculation.get("iterate_delta", 0.0)
+    if (
+        unknown
+        or not isinstance(calculation.get("iterate", False), bool)
+        or not isinstance(count, int)
+        or isinstance(count, bool)
+        or count < 1
+        or not isinstance(delta, int | float)
+        or isinstance(delta, bool)
+        or not math.isfinite(delta)
+        or delta < 0
+    ):
+        msg = (
+            "calculation takes a boolean iterate, a positive integer iterate_count and a finite "
+            f"iterate_delta >= 0: {calculation!r}"
+        )
         raise ValueError(msg)
     attributes = ""
     if calculation.get("iterate"):

@@ -97,6 +97,8 @@ C	probes/catalog/normsdist-stored-form.case.json	4
 C	probes/ceiling-floor-mround-array-lift.case.json	78
 C	probes/ceiling-xlfn-prefix.case.json	4
 C	probes/choose-array-index-range-arms.case.json	66
+C	probes/circular-iteration-delta-small.case.json	3
+C	probes/circular-iteration-delta.case.json	3
 C	probes/circular-iteration-limits.case.json	7
 C	probes/circular-iteration-off.case.json	13
 C	probes/circular-iteration-on.case.json	12
@@ -765,6 +767,12 @@ F	probes/bond-one-period-bases.case.json	Y!J4
 F	probes/catalog/availability-17.case.json	Sheet1!A3
 F	probes/catalog/availability-17.case.json	Sheet1!A4
 F	probes/catalog/availability-30.case.json	Sheet1!A3
+F	probes/circular-iteration-delta-small.case.json	S!A1
+F	probes/circular-iteration-delta-small.case.json	S!B1
+F	probes/circular-iteration-delta-small.case.json	S!C1
+F	probes/circular-iteration-delta.case.json	S!A1
+F	probes/circular-iteration-delta.case.json	S!B1
+F	probes/circular-iteration-delta.case.json	S!C1
 F	probes/circular-iteration-limits.case.json	S!A1
 F	probes/circular-iteration-limits.case.json	S!B1
 F	probes/circular-iteration-limits.case.json	S!C1

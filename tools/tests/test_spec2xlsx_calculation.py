@@ -25,9 +25,13 @@ def test_no_calculation_leaves_calc_pr_alone() -> None:
     assert "iterate" not in _parts({})["xl/workbook.xml"]
 
 
-def test_unknown_calculation_settings_are_refused() -> None:
+@pytest.mark.parametrize(
+    "calculation",
+    [{"iterations": 3}, {"iterate_count": 0}, {"iterate_count": 2.5}, {"iterate_delta": float("nan")}],
+)
+def test_bad_calculation_settings_are_refused(calculation: dict[str, object]) -> None:
     with pytest.raises(ValueError, match="calculation"):
-        _parts({"calculation": {"iterations": 3}})
+        _parts({"calculation": calculation})
 
 
 def _sheet(tables: list[dict[str, str]]) -> str:

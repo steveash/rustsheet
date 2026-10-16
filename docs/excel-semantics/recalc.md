@@ -10,13 +10,14 @@ Rule: the excel-graph oracle calculates each workbook three times: on load (`ful
 at the explicit `calculate` `FullRebuild`, and at the scratch-sheet edit that makes Excel save
 (tools/src/rustsheet_tools/oracle/backends.py). Iterative calculation resumes from the previous
 values each time, so an oracle value of a cycle that has not converged shows 3 × iterateCount
-iterations. A single desktop recalculation would show iterateCount. Phase 2 must reproduce the
-oracle's three calculations to score these cells.
+iterations. A single desktop recalculation would show iterateCount. To score these cells, Phase 2
+needs the harness to run the same three calculations, or an oracle mode that calculates once
+(T-0429). The engine itself should still calculate once per recalculation.
 Evidence: probes/circular-iteration-on (`=A1+1` is 300 with iterateCount 100) and
 probes/circular-iteration-limits (`=A1+1` is 15 with iterateCount 5); excel-graph, 2026-10-16,
 T-0428.
 Status: VERIFIED (excel-graph)
-Tasks: T-0428, T-0401
+Tasks: T-0428, T-0401, T-0429
 
 ## A circular reference without iteration is 0, and so is every cell that reads it
 Rule: with iterative calculation off, every cell of a cycle is 0, with no error value: a
@@ -44,19 +45,33 @@ Evidence: probes/circular-iteration-on (iterate, iterateCount 100, iterateDelta 
 excel-graph, 2026-10-16, T-0428).
 Ours: every cell is an error.
 Status: VERIFIED (excel-graph)
-Tasks: T-0428, T-0401
+Tasks: T-0428, T-0401, T-0429
 
-## iterateDelta does not stop the iterations early
-Rule: with iterateCount 5 and iterateDelta 0.5, every cycle ran its 5 iterations in each of the
-three calculations (15 in all), even when every change was below the delta. `=D1+0.1` is 1.5
-(1.5000000000000002), `=E1+0.5` 7.5, `=F1+0.6` 9 (8.999999999999998), `=B1/2+1` is 2 - 2^-14
-(1.99993896484375) and `=C1/2+8` is 16 - 2^-11 (15.99951171875). Excel's documentation says the
-iteration stops once no value changes by more than the delta. Excel for the web does not do this
-here. Desktop Excel is unprobed (M14).
-Evidence: probes/circular-iteration-limits (excel-graph, 2026-10-16, T-0428).
+## iterateDelta stops the iterations for the whole workbook, not per cycle
+Rule: the delta stop ends the iterations of the whole workbook, not of each cycle on its own.
+- **Some cell still changes by more than the delta.** With iterateCount 5 and iterateDelta 0.5,
+  `=A1+1` changes by 1 and `=F1+0.6` by 0.6 on every iteration. So every cycle runs its 5
+  iterations in each of the three calculations (15 in all), including cycles whose own change is
+  already below the delta:
+  - `=D1+0.1` is 1.5 (1.5000000000000002);
+  - `=E1+0.5` is 7.5;
+  - `=F1+0.6` is 9 (8.999999999999998);
+  - `=B1/2+1` is 2 - 2^-14 (1.99993896484375);
+  - `=C1/2+8` is 16 - 2^-11 (15.99951171875).
+- **Every cycle converges.** With iterateCount 100, the cycles `=A1/2+1` and `=B1/2+8` stop early:
+  - with iterateDelta 0.5, after 8 iterations in all over the three calculations: A1 2 - 2^-7
+    (1.9921875), B1 16 - 2^-4 (15.9375);
+  - with iterateDelta 0.001, after 17: A1 2 - 2^-16, B1 16 - 2^-13;
+  - without the stop, the three calculations would run 300 iterations.
+UNVERIFIED: the exact stopping test. Stopping at the first iteration whose largest change is below
+the delta, then one iteration in each of the two later calculations, gives 8 at 0.5 but 16, not
+17, at 0.001. Reading "below" as "at most" fits neither count. A probe that calculates once
+(T-0429) would separate the calculations.
+Evidence: probes/circular-iteration-limits, probes/circular-iteration-delta,
+probes/circular-iteration-delta-small (excel-graph, 2026-10-16, T-0428).
 Ours: every cell is an error.
-Status: VERIFIED (excel-graph)
-Tasks: T-0428, T-0401
+Status: VERIFIED (excel-graph) except the UNVERIFIED stopping test
+Tasks: T-0428, T-0401, T-0429
 
 ## Data tables (TABLE()) are recalculated, and FORMULATEXT shows `{=TABLE(row,column)}`
 Rule: excel-graph recalculates a what-if data table stored as `<f t="dataTable" ref=… dt2D=…
@@ -73,8 +88,9 @@ The input cell keeps its value outside the table (`=B3` is 12). Every result cel
 formula: `ISFORMULA` of a non-anchor result cell is TRUE, and `COUNT` of the results is 3.
 `FORMULATEXT` of a result cell is the array-formula text `{=TABLE(,A1)}`: TABLE's first argument
 is the row input and its second the column input, so the column table leaves the first empty.
-Storage: a one-variable column table is `dt2D="0" dtr="0" r1=<input>`, a row table `dtr="1"`,
-and a two-variable table `dt2D="1" dtr="1" r1=<row input> r2=<column input>`.
+Storage: excel-graph reads a one-variable column table written as `dt2D="0" dtr="0" r1=<input>`,
+a row table as `dtr="1"`, and a two-variable table as `dt2D="1" dtr="1" r1=<row input> r2=<column
+input>`. These are the forms spec2xlsx writes. No Excel-authored file in the repo has a data table.
 Evidence: probes/data-tables (excel-graph, 2026-10-16, T-0428).
 Ours: the result cells are blank (the import has no data tables), so the reads are 0 or wrong.
 The table formulas themselves already match.
