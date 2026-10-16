@@ -1,0 +1,37 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A LET whose body picks a reference into another workbook with no externalLink part (IF, CHOOSE, INDEX, written, nested LET): what ROWS, COLUMNS, ROW, COLUMN, ISREF, AREAS, COUNTA, COUNTBLANK, ERROR.TYPE, ISBLANK, SUM and value contexts read (T-1535).",
+  "tags": [
+    "M8",
+    "references",
+    "external-reference",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ISREF(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1)))",
+        "A2": "=COUNTA(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1:B2)))",
+        "A3": "=ERROR.TYPE(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1)))",
+        "A4": "=COLUMNS(LET(c,1,CHOOSE(c,'[other.xlsx]Sheet1'!A1:C1)))",
+        "A5": "=ROW(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!B3)))",
+        "A6": "=COLUMN(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!C2)))",
+        "A7": "=AREAS(LET(c,TRUE,IF(c,('[other.xlsx]Sheet1'!A1,'[other.xlsx]Sheet1'!B2))))",
+        "A8": "=SUM(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1)))",
+        "A9": "=ROWS(LET(c,TRUE,'[other.xlsx]Sheet1'!A1:B3))",
+        "A10": "=ISREF(LET(c,TRUE,'[other.xlsx]Sheet1'!A1))",
+        "A11": "=LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1))",
+        "A12": "=LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1))&\"x\"",
+        "A13": "=ROWS(IF(TRUE,LET(c,1,'[other.xlsx]Sheet1'!A1:B3)))",
+        "A14": "=ROWS(LET(c,FALSE,IF(c,'[other.xlsx]Sheet1'!A1:B3)))",
+        "A15": "=ISBLANK(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1)))",
+        "A16": "=COUNTBLANK(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1:B2)))",
+        "A17": "=ROWS(LET(c,TRUE,d,2,IF(c,INDEX('[other.xlsx]Sheet1'!A1:C4,d,0))))",
+        "A18": "=ROWS(LET(c,TRUE,LET(d,1,CHOOSE(d,'[other.xlsx]Sheet1'!A1:B4))))",
+        "A19": "=ISREF(LET(c,FALSE,IF(c,'[other.xlsx]Sheet1'!A1)))",
+        "A20": "=ROWS(LET(c,1/0,IF(c,'[other.xlsx]Sheet1'!A1:B3)))"
+      }
+    }
+  ]
+}
