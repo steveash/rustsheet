@@ -10,7 +10,7 @@ use rustsheet::{
 use rustsheet_engine::text::{lone_escape, Segment};
 use rustsheet_engine::Text;
 
-use crate::case::{split_qualified, CaseSpec, CellInput};
+use crate::case::{split_qualified, CaseSpec, CellInput, SheetOp};
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
 
@@ -232,12 +232,39 @@ impl Engine for RustSheetEngine {
                 Ok(())
             })
             .map_err(|e| e.to_string())?;
+        apply_sheet_ops(&mut workbook, &spec.sheet_ops)?;
         // The edit calculated once; an iterative case gets the oracle's other calculations.
         for _ in 1..calculations(spec) {
             workbook.recalculate();
         }
         Ok(Box::new(RustSheetEvaluated { workbook }))
     }
+}
+
+/// Makes a case's sheet edits after it is built, as the oracle backend replays them in Excel after
+/// the workbook loads (T-1608). Each op is its own edit, so it sees the names the ops before it
+/// left.
+fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), String> {
+    for op in ops {
+        let id = |workbook: &Workbook, sheet: &str| {
+            workbook
+                .sheet_id(sheet)
+                .map_err(|e| format!("sheet op on {sheet}: {e}"))
+        };
+        let done = match op {
+            SheetOp::Add { sheet } => workbook.edit(|tx| tx.add_sheet(sheet).map(|_| ())),
+            SheetOp::Rename { sheet, to } => {
+                let id = id(workbook, sheet)?;
+                workbook.edit(|tx| tx.rename_sheet(id, to))
+            }
+            SheetOp::Move { sheet, to } => {
+                let id = id(workbook, sheet)?;
+                workbook.edit(|tx| tx.move_sheet(id, *to))
+            }
+        };
+        done.map_err(|e| format!("sheet op {op:?}: {e}"))?;
+    }
+    Ok(())
 }
 
 /// How many times excel-graph calculates a case workbook: on load (`fullCalcOnLoad`), at the

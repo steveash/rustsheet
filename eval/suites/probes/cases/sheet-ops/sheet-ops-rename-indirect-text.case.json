@@ -1,0 +1,37 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "INDIRECT text keeps the old sheet name after a rename. (T-1608)",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=INDIRECT(\"Data!A1\")",
+        "A2": "=INDIRECT(\"Inputs!A1\")",
+        "A3": "=ISREF(INDIRECT(\"Data!A1\"))",
+        "A4": "=IFERROR(INDIRECT(\"'Data'!A2\"),\"gone\")",
+        "A5": "=SUM(INDIRECT(\"Inputs!A1:A2\"))"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": "x"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "rename",
+      "sheet": "Data",
+      "to": "Inputs"
+    }
+  ]
+}

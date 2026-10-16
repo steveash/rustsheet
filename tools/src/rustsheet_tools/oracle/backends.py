@@ -29,7 +29,7 @@ from urllib.parse import quote
 import requests
 
 from rustsheet_tools.oracle.package import PackageError, patch_workbook
-from rustsheet_tools.spec2xlsx import entered_cells
+from rustsheet_tools.spec2xlsx import entered_cells, sheet_ops
 
 
 class OracleError(RuntimeError):
@@ -75,6 +75,14 @@ def typed_entries(xlsx: bytes) -> list[tuple[str, str, str]]:
     """The cells a backend must enter as typed text before recalculating (spec2xlsx, T-0280)."""
     try:
         return entered_cells(xlsx)
+    except ValueError as e:
+        raise OracleError(str(e)) from e
+
+
+def recorded_sheet_ops(xlsx: bytes) -> list[tuple[str, str, str | int | None]]:
+    """The sheet edits a backend must replay after load, before recalculating (spec2xlsx, T-1608)."""
+    try:
+        return sheet_ops(xlsx)
     except ValueError as e:
         raise OracleError(str(e)) from e
 
@@ -244,6 +252,35 @@ class GraphBackend:
             return resp
         raise OracleError(f"{method} {self._redact(url)}: retries exhausted")
 
+    def _replay_sheet_ops(
+        self, item_url: str, sid: dict[str, str], ops: list[tuple[str, str, str | int | None]]
+    ) -> None:
+        """Makes the spec's sheet edits in the session (T-1608). The canary sheet stays last: an
+        added sheet goes just before it, and a move may not reach its position."""
+        # canary.py imports this module, so its sheet name is read here, at call time.
+        from rustsheet_tools.oracle.canary import SHEET as CANARY_SHEET  # noqa: PLC0415
+
+        sheets = f"{item_url}/workbook/worksheets"
+
+        def ref(name: str) -> str:
+            escaped = quote(name.replace("'", "''"), safe="")
+            return f"{sheets}('{escaped}')"
+
+        def canary_position() -> int:
+            return int(self._call("GET", ref(CANARY_SHEET), headers=sid).json()["position"])
+
+        for op, sheet, to in ops:
+            if op == "add":
+                self._call("POST", f"{sheets}/add", json={"name": sheet}, headers=sid)
+                self._call("PATCH", ref(sheet), json={"position": canary_position()}, headers=sid)
+            elif op == "rename":
+                self._call("PATCH", ref(sheet), json={"name": to}, headers=sid)
+            elif op == "move":
+                if not isinstance(to, int) or to >= canary_position():
+                    raise OracleError(f"sheet op move {sheet!r} to {to}: past the last sheet")
+                self._call("PATCH", ref(sheet), json={"position": to}, headers=sid)
+            print(f"SHEET OP {op} {sheet!r} {to!r}", file=sys.stderr)
+
     def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:
         import hashlib  # noqa: PLC0415
 
@@ -273,6 +310,7 @@ class GraphBackend:
                     f"numberFormat={rng.get('numberFormat')}",
                     file=sys.stderr,
                 )
+            self._replay_sheet_ops(item_url, sid, recorded_sheet_ops(xlsx))
             # Load, this rebuild and the scratch edit below are three calculations; the eval
             # adapter repeats them for iterative cases (`ORACLE_CALCULATIONS` in
             # crates/rustsheet-eval/src/engine.rs, T-0429): keep the two in step.
@@ -332,6 +370,9 @@ class ExcelDesktopBackend:
     def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:
         import win32com.client  # noqa: PLC0415
 
+        if recorded_sheet_ops(xlsx):
+            raise OracleError("excel-desktop cannot replay sheet edits yet (spec `sheet_ops`, T-1608)")
+
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "in.xlsx"
             dst = Path(tmp) / "out.xlsx"
@@ -378,6 +419,8 @@ class LibreOfficeBackend:
     def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:
         if typed_entries(xlsx):
             raise OracleError("libreoffice cannot enter typed cell input (spec `entered` cells)")
+        if recorded_sheet_ops(xlsx):
+            raise OracleError("libreoffice cannot replay sheet edits (spec `sheet_ops`)")
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "in.xlsx"
             outdir = Path(tmp) / "out"

@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Workbook and sheet-scoped names follow a renamed sheet. (T-1608)",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SUM(Total)",
+        "A2": "=First",
+        "A3": "=SUM(INDIRECT(\"Total\"))",
+        "A4": "=ROWS(Total)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": "x"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "rename",
+      "sheet": "Data",
+      "to": "Inputs"
+    }
+  ],
+  "names": {
+    "Total": "=Data!$A$1:$A$2",
+    "First": "=Data!$A$1"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Renaming a sheet rewrites references to it, FORMULATEXT shows the new name. (T-1608)",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=Data!A1",
+        "A2": "=SUM(Data!A1:A2)",
+        "A3": "=Data!A:A",
+        "A4": "=SUM(Data!1:2)",
+        "A5": "=COUNTA(Data!$A$1:$A$3)",
+        "B1": "=FORMULATEXT(A1)",
+        "B2": "=FORMULATEXT(A2)",
+        "B3": "=FORMULATEXT(A3)",
+        "B4": "=FORMULATEXT(A4)",
+        "B5": "=FORMULATEXT(A5)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": "x"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "rename",
+      "sheet": "Data",
+      "to": "Inputs"
+    }
+  ]
+}
