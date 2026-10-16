@@ -73,5 +73,12 @@
   AVEDEV deviation-sum probe, probes-numeric/double-rounding-avedev-deviations; decision 0062) (`make eval-baseline`).
   T-1439: functions below the evidence floor 59 → 58 (one more function reaches ≥ 20 Excel cells through
   the statistical-family error-precedence probe, probes/aggregate-error-precedence-stat-family; decision 0062) (`make eval-baseline`).
+  T-1326: static_analysis.rs 2147 → 1669 lines (the `args_signature_*` helpers moved to
+  `static_analysis/signature.rs`); the same run lowered the locks other merged work had already paid down
+  (evaluation.rs 1101 → 1096, stringify.rs 1070 → 1067, date_and_time.rs 1134 → 1131, financial_bonds.rs 1310 → 1212,
+  financial/mod.rs 2303 → 2290, functions/mod.rs 2182 → 2180, model.rs 3499 → 3462) and dropped
+  xlsx import/worksheets.rs, now under 1000 lines (`check_file_size.py --update`); duplicated lines 6360 → 6328
+  (already lower on the branch before T-1326's fix commit; PIVOTBY reuses GROUPBY's header-name, total-row and width
+  helpers instead of copying them) (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
