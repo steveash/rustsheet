@@ -190,6 +190,39 @@ fn sheet_ops_apply_and_roll_back() {
 }
 
 #[test]
+fn move_sheet_reorders_reports_and_rolls_back() {
+    let mut wb = book();
+    let first = wb.sheets()[0].id;
+    let (data, _) = wb.edit(|tx| tx.add_sheet("Data")).unwrap();
+    let names = |wb: &Workbook| {
+        wb.sheets()
+            .iter()
+            .map(|s| s.name.clone())
+            .collect::<Vec<_>>()
+    };
+    let ((), changes) = wb.edit(|tx| tx.move_sheet(data, 0)).unwrap();
+    assert_eq!(names(&wb), ["Data", "Sheet1"]);
+    assert_eq!(
+        changes.sheets,
+        [SheetChange::Moved {
+            id: data,
+            from: 1,
+            to: 0
+        }]
+    );
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.move_sheet(first, 0)?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(names(&wb), ["Data", "Sheet1"]);
+    assert!(matches!(
+        wb.edit(|tx| tx.move_sheet(data, 2)),
+        Err(EditError::Ref(RefError::OutOfBounds))
+    ));
+}
+
+#[test]
 fn defined_names_apply_and_roll_back() {
     let mut wb = book();
     let ((), changes) = wb

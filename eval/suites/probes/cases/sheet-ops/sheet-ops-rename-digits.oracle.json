@@ -1,0 +1,31 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "2024": {},
+  "Calc": {
+   "A1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A2": {
+    "t": "n",
+    "v": 3.0
+   },
+   "B1": {
+    "t": "s",
+    "v": "='2024'!A1"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=SUM('2024'!A1:A2)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "8cd6e79c54ef41f2a6bf49334744f5a6cfcbd691b29918ba36c425e6f5ae1814",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T09:59:37+00:00",
+  "version": null
+ }
+}

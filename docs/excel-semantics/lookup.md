@@ -10,7 +10,9 @@ Status: VERIFIED (Excel-cached values)
 Implemented in: the engine already returns #REF! (those cells pass).
 Oracle caveat: **Excel for the web disagrees.** Through the Graph oracle the same formulas give
 a reference to an empty cell (`INDIRECT(...)` = 0, `ISREF(...)` = TRUE, `ROW(...)` = 3), probed
-2026-10-04. Never take oracle values as evidence for references to missing sheets
+2026-10-04. The web gives the same after a sheet edit: a sheet renamed away, or a name added and
+then renamed (T-1608, the unscored cells of probes/sheet-ops/sheet-ops-rename-indirect-text,
+-add-then-rename and -add-resolves-indirect). Never take oracle values as evidence for references to missing sheets
 (docs/architecture/oracle.md, "Known divergences"; desktop wins per decision 0030).
 
 ## INDIRECT resolves a defined name that holds a reference

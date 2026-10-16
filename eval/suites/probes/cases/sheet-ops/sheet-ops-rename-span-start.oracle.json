@@ -1,0 +1,33 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "n",
+    "v": 60.0
+   },
+   "A2": {
+    "t": "n",
+    "v": 30.0
+   },
+   "B1": {
+    "t": "s",
+    "v": "=SUM('First One:Mar'!A1)"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=MAX('First One:Mar'!A1)"
+   }
+  },
+  "Feb": {},
+  "First One": {},
+  "Mar": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "8d29bcfc6695683da76f4f00b085471dbb1aca912d64df34b348979c5c189f57",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T10:03:37+00:00",
+  "version": null
+ }
+}
