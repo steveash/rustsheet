@@ -1522,8 +1522,8 @@ and `=LOOKUP(2,CHOOSE(1,B1:B6*1))` is 1. A one-element array constant takes an `
 in TYPE: `=TYPE({5})` shows no `@` and is 64. Ours matches all of these (T-1643). The rules ours applies stop at the
 probed shapes: a legacy INDEX over a CHOOSE whose arms are all arithmetic takes no `@` on the call
 (`legacy_call_reads_a_value`; a dynamic `=INDEX(CHOOSE(1,B1:B6*1),0)` still spills); INDEX and LOOKUP's array form read
-a scalar picked by IF or CHOOSE as a one-element array; MODE propagates the error of an argument IF or CHOOSE picked, and every other argument error too (direct, referenced or named: probes/mode-typed-arguments A30-A33, probes/mode-error-and-computed-arguments A1-A6, A11-A13, T-1291).
-Inferred, unprobed (T-1645, T-1651): every IF pick (only CHOOSE is probed), INDEX of any other scalar stays `#VALUE!`, and any other scalar LOOKUP lookup_vector keeps its reading.
+any scalar as a one-element array, picked by IF or CHOOSE or written directly (`LOOKUP(2,1)` is 1, `LOOKUP("b","a")` is "a", `LOOKUP(2,1,5)` is 5, `LOOKUP(2,{1})` is 1, `LOOKUP(2,IF(TRUE,1))` is 1: probes/mode-direct-error-lookup-scalar-vector B1-B5, T-1651); `INDEX(IF(TRUE,5),1)` is 5 (B6); MODE propagates the error of an argument IF or CHOOSE picked, and every other argument error too (direct, referenced or named: probes/mode-typed-arguments A30-A33, probes/mode-error-and-computed-arguments A1-A6, A11-A13, T-1291).
+Inferred, unprobed (T-1645): INDEX of a scalar other than an IF or CHOOSE pick stays `#VALUE!`. `MODE(IF(TRUE,1/0),1,1)` and direct errors in MODE, MODE.SNGL and MODE.MULT (`1/0`, `NA()`, `#DIV/0!`, a cell, a name) all propagate the error (probes/mode-direct-error-lookup-scalar-vector A1-A16, T-1651).
 Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at (excel-graph, 2026-10-15).
 Status: VERIFIED (excel-graph)
 Tasks: T-1638, T-1643, T-1645, T-1651
