@@ -273,7 +273,8 @@ differs from what a user types, and Excel for the web refuses or misreads the ty
 - Table names that look like cell addresses (`T1`) are rejected by XlsxWriter; a header that is a number in
   text (`2024`) is fine.
 Evidence: the corrupt-file refusals are upload errors, not cell values (throwaway probes during T-1607, not
-kept); the forms that load are what gen-m8b's 3,368 filled cells use. tools/tests/test_spec2xlsx_tables.py
+kept; to re-run one, a sheet with table `Sales` at A1:D4 or A1:B4 and one formula: `=ROWS(Sales)` stored bare,
+`=SUM(Sales['C#])` with header `C#`, or a totals row A4 "Total", B4 `=SUBTOTAL(109,Sales[Val])` without metadata); the forms that load are what gen-m8b's 3,368 filled cells use. tools/tests/test_spec2xlsx_tables.py
 pins each written form.
 Status: VERIFIED (web)
 Implemented in: tools/src/rustsheet_tools/spec2xlsx.py (`table_refs_to_file_form`, `_totals_column`); the engine

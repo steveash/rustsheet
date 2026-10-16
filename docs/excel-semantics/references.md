@@ -1545,7 +1545,9 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
   (totals 9cb2e511e5e01db0).
 - A column range is the same area whichever column is written first: `Sales[[2024]:[a.b]]`, with the
   columns in the order Price, a.b, 2024, has `COLUMNS` 2 (column-range 44cecbb1ecd5b2da K143).
-- An empty table (no data typed) still has one blank data row: `ROWS(Tiny[#Data])` = 1.
+- A table with no data is written (as Excel keeps it) with one blank data row; it reads as one row:
+  `Stock` at E1:E2 with nothing below the header has `ROWS(Stock[[#Data],[Cost]:[Cost]])` = 1 and `#All` 2, and
+  its `#Totals` is `#REF!` (column-range 44cecbb1ecd5b2da K180, K23, K185).
 Status: VERIFIED (excel-graph)
 Implemented in: partly; the `@` shorthand is T-1672, rows outside the table and reversed ranges T-1675,
 totals rows from the eval adapter T-1671.
