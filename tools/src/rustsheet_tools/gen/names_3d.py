@@ -19,12 +19,13 @@ probe). Nothing volatile. Expectations stay empty until `rustsheet-oracle fill`.
 from __future__ import annotations
 
 import random
+from functools import partial
 from typing import Any
 
+from rustsheet_tools.gen.common import SeededDraws, draw_unseen
 from rustsheet_tools.gen.generator import col_letter
 
 PER_CATEGORY = 280
-REDRAWS = 200  # attempts to find a formula not yet in the case before accepting a repeat
 PROBE_COL = "K"
 DATA_ROWS = 12
 DATA_COLS = 6
@@ -106,17 +107,10 @@ DATA_POOL += [{"t": "e", "v": "#N/A"}]
 Rect = tuple[int, int, int, int]  # c0, r0, c1, r1 (0-based columns, 1-based rows)
 
 
-class _Gen:
+class _Gen(SeededDraws):
     """Seeded draws of operands over the workbook above."""
 
-    def __init__(self, rng: random.Random) -> None:
-        self.rng = rng
-
-    def pick(self, items: list[str]) -> str:
-        return self.rng.choice(items)
-
-    def num(self) -> str:
-        return self.pick(NUMBERS)
+    numbers = NUMBERS
 
     def rect(self) -> str:
         c0, c1 = sorted(self.rng.choices(range(DATA_COLS), k=2))
@@ -311,17 +305,9 @@ def _data_cells(rng: random.Random, sheet: str) -> dict[str, Any]:
 
 
 def _probes(g: _Gen, draw: Any, count: int, seen: set[str]) -> list[str]:
-    """Up to `count` distinct formulas; a draw that keeps repeating is dropped (it is the same
-    probe again)."""
-    formulas = []
-    for _ in range(count):
-        for _ in range(REDRAWS):
-            formula = "=" + draw(g)
-            if formula not in seen:
-                seen.add(formula)
-                formulas.append(formula)
-                break
-    return formulas
+    """Up to `count` distinct formulas; a draw that keeps repeating is dropped."""
+    drawn = (draw_unseen(partial(draw, g), seen) for _ in range(count))
+    return [formula for formula in drawn if formula is not None]
 
 
 def generate_names_3d(seed: int, per_category: int = PER_CATEGORY) -> list[dict[str, Any]]:

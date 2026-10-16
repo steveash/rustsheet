@@ -186,7 +186,7 @@ impl Engine for RustSheetEngine {
                         if formulas {
                             for table in &sheet.tables {
                                 tx.add_table(
-                                    table_range(id, &table.range)?,
+                                    table_range(id, &table.range, table.totals_row)?,
                                     &table.name,
                                     table.filter,
                                 )?;
@@ -258,15 +258,17 @@ fn calculations(spec: &CaseSpec) -> usize {
     }
 }
 
-/// A spec table's `A1:B9` range on sheet `id`.
-fn table_range(id: SheetId, a1: &str) -> Result<RangeRef, rustsheet::EditError> {
+/// A spec table's `A1:B9` range on sheet `id`, without its last row when that is a totals row
+/// (`TableSpec::totals_row`).
+fn table_range(id: SheetId, a1: &str, totals_row: bool) -> Result<RangeRef, rustsheet::EditError> {
     let (first, last) = parse_range(a1)
         .ok_or_else(|| rustsheet::EditError::Engine(format!("bad table ref {a1}")))?;
+    let bottom = (last.row - 1).saturating_sub(u32::from(totals_row));
     Ok(RangeRef::new(
         id,
         first.row - 1,
         first.col - 1,
-        last.row - 1,
+        bottom,
         last.col - 1,
     )?)
 }
@@ -484,6 +486,26 @@ mod tests {
         assert_eq!(at(1), Some(Value::Number(5.0)));
         assert_eq!(at(2), Some(Value::Number(5.0)));
         assert_eq!(at(3), Some(Value::Number(7.0)));
+    }
+
+    #[test]
+    fn spec_totals_row_is_left_out_of_the_table() {
+        // Until the facade takes totals rows (T-1671) the adapter registers the table without
+        // its last row, so data references are right and the totals formula is not circular.
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
+                "A1":"Key","B1":"Val","A2":"a","B2":1,"A3":"b","B3":2,"A4":"Total",
+                "B4":"=SUBTOTAL(109,Data[Val])","D1":"=ROWS(Data[#All])"},
+                "tables":[{"name":"Data","ref":"A1:B4","totals_row":true}]}]}"#,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        // B4 sums the two data rows; `#All` has no totals row (Excel: 4 rows).
+        for (row, col) in [(4, 2), (1, 4)] {
+            assert_eq!(
+                evaluated.value("S", Addr { row, col }),
+                Some(Value::Number(3.0))
+            );
+        }
     }
 
     #[test]
