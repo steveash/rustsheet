@@ -20,7 +20,10 @@ Excel writes `=@IF(1,{2;3})` (2), `=ABS(@IF(1,{-2;3}))` (2), `=LEN(@IF(1,{"ab";"
 `=N(@TRANSPOSE({2,3}))` (2). Ours adds no `@` there (`add_implicit_intersection`,
 expressions/parser/static_analysis.rs, and legacy.rs), so the legacy cells spill (row 11 filled) and
 FORMULATEXT lacks the `@`. Exceptions to keep: N and T over `IF(...)` get no `@` (T-1713), and
-SUM/SUMPRODUCT arguments are not intersected (probes/n-array-lift A3, A10). Check which other
+SUM/SUMPRODUCT arguments are not intersected (probes/n-array-lift A3, A10). probes/legacy-n-t-reference-args
+(T-1713) adds: under N, IFERROR gets the `@` (`=N(@IFERROR({2;3},0))`, D20) but SWITCH gets none and
+the legacy cell spills 2, 3 (M10:M11, M20); `=IF(1,N(IF(1,{2;3})))` is `=@IF(...)` (P20, 2, no spill);
+N/T over IF, CHOOSE, INDEX, IFS and ranges are T-1727/T-1713 and T-1728, not this task's. Check which other
 calls Excel leaves without `@` (reference-returning ones such as IF, CHOOSE, INDEX, OFFSET) before
 generalizing; probe if needed. The xlsx import uses the same rewrite, so a plain `<f>` changes too:
 run the full eval (ironcalc-calc, poi) for regressions. docs/excel-semantics/references.md
