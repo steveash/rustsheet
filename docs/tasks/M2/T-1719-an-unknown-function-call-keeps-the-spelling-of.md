@@ -34,3 +34,24 @@ storage currently lowercases (`stringify.rs` LambdaCallKind). That is a design q
 sonnet task. Next: decide where the registry lives (Model, filled in cell order on load/set), update
 the stringify to look it up, make probes/lotus-dot-range-func-second and the new probe pass, and
 check whether first = load order or edit order (probe by editing).
+
+## Progress (2026-10-16, opus, in flight)
+Design read of the code (no code changed yet):
+- `=foo(1)` parses as `LambdaCallKind { lambda: NamedVariableKind }` (operands.rs falls back to
+  `NamedVariableKind`, lambda.rs `parse_call` wraps it), and stringify.rs prints that callee with
+  `name.to_lowercase()` in every mode, A1 and R1C1 storage alike. That lowercasing is the whole
+  current failure (probes/unknown-function-name-spelling B4:B18, lotus-dot-range-func-second E2).
+- The parser assigns no binding ids (`NamedVariableKind.id` is never `Some`); bound vs free is only
+  known by walking LET/LAMBDA scopes, as `prefix_bound_variables` (stringify/bound_variables.rs) does
+  for `_xlpm.`. A LET/LAMBDA-bound callee (`LET(f,LAMBDA(x,x),F(1))`) must not take a workbook
+  spelling: reuse that walker's scoping (extend it to report free callee names) rather than a copy.
+- Proposed shape: a `Model`-level map lowercase name → first spelling, filled when a cell formula is
+  parsed into the model (load in cell order, then each edit), and applied to the free callee names of
+  the parsed node, so the node itself carries the canonical spelling. Then print the callee as stored
+  (drop `to_lowercase`) in both A1 and R1C1: the storage keeps the spelling and a reload rebuilds the
+  map in the same order. Check first why the lowercase was there ("distinguish from real function
+  calls in R1C1"): a stored `FOO(1)` must still read back as an unknown call, not `NamedFunctionKind`.
+- Separate quirk in the same probe: `=Ab1(1)` (a cell-shaped callee) is `#REF!` in Excel and prints
+  `=AB1(1)`; ours `#NAME?` (A8). Likely a call of the reference AB1; file it apart if it does not fall
+  out of the fix.
+- Unprobed: load order vs edit order for "first" (the handoff's last point).
