@@ -3,7 +3,7 @@ id: T-1535
 title: "A LET body that picks a reference into another workbook keeps it a reference"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -26,9 +26,18 @@ COLUMNS, ROW, COLUMN, ISREF, AREAS, COUNTA). Probe the other readers first (exce
 Rule: docs/excel-semantics/references.md "External reference with no cached data is `#BLOCKED!`".
 
 ## Acceptance criteria
-- [ ] probes/external-ref-no-link-ifchoose A26 leaves eval/baseline/probes.txt.
-- [ ] The new probe values are recorded in docs/excel-semantics/references.md.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/external-ref-no-link-ifchoose A26 leaves eval/baseline/probes.txt.
+- [x] The new probe values are recorded in docs/excel-semantics/references.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Opening other workbooks (directive 5).
+
+## Outcome
+Probe `probes/external-ref-no-link-let` (20 cells, excel-graph): a LET is transparent to a
+reference into another workbook for every reader (ROWS, COLUMNS, ROW, COLUMN, ISREF, AREAS,
+COUNTA, COUNTBLANK, SUM, value contexts). `Model::pick_reference` (external_reference.rs) folds
+`pick_branch` and `external_reference` together and reads a LET whose body picks only external
+references with its names bound (`let_scope`, split out of `let_impl`); the eight readers that paired
+`pick_branch` with `external_reference` now call it. Eval: probes known failures 2285 → 2284
+(external-ref-no-link-ifchoose A26 fixed), +1 case (20/20), 0 regressions. references.md updated.
