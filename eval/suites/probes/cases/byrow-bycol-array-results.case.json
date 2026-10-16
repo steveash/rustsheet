@@ -1,0 +1,44 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "BYROW/BYCOL when the LAMBDA returns an array: ranges vs array constants, 1x1 arrays, mixed scalar/array rows (T-1670).",
+  "tags": [
+    "M2",
+    "lambda",
+    "arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=BYCOL(Data!A1:B3,LAMBDA(c,c))",
+        "E1": "=BYCOL(Data!A1:B3,LAMBDA(c,{7}))",
+        "I1": "=BYCOL(Data!A1:B3,LAMBDA(c,SEQUENCE(1)))",
+        "M1": "=BYCOL(Data!A1:B3,LAMBDA(c,{1,2}))",
+        "Q1": "=BYROW({1;2;3},LAMBDA(r,r))",
+        "U1": "=BYROW({1;2;3},LAMBDA(r,{7}))",
+        "Y1": "=BYROW({1;2;3},LAMBDA(r,{7,8}))",
+        "AC1": "=BYCOL({1,2,3},LAMBDA(c,c))",
+        "AG1": "=BYCOL({1,2,3},LAMBDA(c,{7;8}))",
+        "AK1": "=BYROW(Data!A1:B3,LAMBDA(r,SEQUENCE(1)))",
+        "AO1": "=BYROW(Data!A1:B3,LAMBDA(r,{7}))",
+        "AS1": "=BYROW(Data!A1:B3,LAMBDA(r,IF(SUM(r)>5,r,0)))",
+        "AW1": "=BYROW(Data!A1:B3,LAMBDA(r,IF(SUM(r)>5,SEQUENCE(1),0)))",
+        "BA1": "=BYROW({1,2;3,4;5,6},LAMBDA(r,IF(SUM(r)>5,r,0)))",
+        "BE1": "=BYROW(Data!A1:B3,LAMBDA(r,SEQUENCE(2,1)))",
+        "BI1": "=BYROW(Data!A1:B3,LAMBDA(r,SEQUENCE(1,1,5)))"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4,
+        "A3": 5,
+        "B3": 6
+      }
+    }
+  ]
+}

@@ -71,12 +71,16 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
         CalcResult::String(s) => ArrayNode::String(s),
         CalcResult::Error { error, .. } => ArrayNode::Error(error),
         CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
+        // A 1x1 array is its one value (probes/byrow-bycol-array-results, excel-graph 2026-10-16).
+        CalcResult::Array(mut rows) if rows.len() == 1 && rows[0].len() == 1 => {
+            rows.remove(0).remove(0)
+        }
         _ => ArrayNode::Error(Error::VALUE),
     }
 }
 
 /// Whether a LAMBDA's result makes BYROW or BYCOL give one `#CALC!` cell: several values, but not
-/// a 1x1 array, whose Excel behavior is unprobed (it stays `#VALUE!` as before, T-1664).
+/// a 1x1 array, which counts as its one value (T-1670).
 fn makes_calc_error(result: &CalcResult) -> bool {
     result.is_multi_value()
         && !matches!(result, CalcResult::Array(a) if a.len() == 1 && a[0].len() == 1)
