@@ -2,6 +2,7 @@ mod isomitted;
 mod offline_errors;
 pub(crate) use offline_errors::error_array;
 
+use crate::external_reference::PickedReference;
 use crate::{
     calc_result::{CalcResult, Range},
     cast::calc_result_to_array_node,
@@ -16,7 +17,7 @@ use crate::{
     get_all_timezones,
     limits::check_range_size,
     model::Model,
-    reference_operators::{Picked, RefArg},
+    reference_operators::RefArg,
 };
 
 /// Applies `f` to every element of a 2-D array, keeping its shape.
@@ -143,15 +144,15 @@ impl Model {
     /// Whether `node` stands for a reference (ISREF).
     fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
         // `ISREF(IF(TRUE,…!A1))` is TRUE (probes/external-ref-no-link-ifchoose A9, A10, A31).
-        let Picked::Node(node) = self.pick_branch(node, cell) else {
-            return false;
+        // A reference into another workbook, written or through INDEX, a union, an
+        // intersection or LET (probes/external-ref-no-link-shapes A4, external-ref-no-link-index
+        // A28, A33, external-ref-no-link-let A1, A10); one into two workbooks is `#VALUE!`, so
+        // not a reference.
+        let node = match self.pick_reference(node, cell) {
+            PickedReference::Node(node) => node,
+            PickedReference::External(areas) => return areas.is_ok(),
+            PickedReference::Value(_) => return false,
         };
-        // A reference into another workbook, written or through INDEX, a union or an
-        // intersection (probes/external-ref-no-link-shapes A4, external-ref-no-link-index A28,
-        // A33); one into two workbooks is `#VALUE!`, so not a reference.
-        if let Some(areas) = self.external_reference(node, cell) {
-            return areas.is_ok();
-        }
         // OFFSET of one is `#VALUE!`, so not a reference (probes/external-ref-no-link-index
         // A16), where OFFSET otherwise counts as one unevaluated (`kind.returns_reference()`).
         if let Node::FunctionKind {

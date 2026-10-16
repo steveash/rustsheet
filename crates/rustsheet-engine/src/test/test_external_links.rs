@@ -398,3 +398,28 @@ fn legacy_formula_intersects_a_cached_range() {
     // The same formula typed today (dynamic) reads the whole range.
     assert_eq!(eval(&mut model, "=SUM([1]Uses!$A$1:$A$3+0)"), "#VALUE!");
 }
+
+/// A LET whose body picks a reference into another workbook is that reference, its names bound
+/// while it is read (probes/external-ref-no-link-let, external-ref-no-link-ifchoose A26; T-1535).
+#[test]
+fn let_body_picking_an_external_reference_is_that_reference() {
+    let mut model = new_empty_model();
+    let ext = "'[other.xlsx]Sheet1'!";
+    for (formula, expected) in [
+        (format!("=ROWS(LET(c,TRUE,IF(c,{ext}A1:B3)))"), "3"),
+        (
+            format!("=ROWS(LET(c,TRUE,LET(d,1,CHOOSE(d,{ext}A1:B4))))"),
+            "4",
+        ),
+        (format!("=ROWS(IF(TRUE,LET(c,1,{ext}A1:B3)))"), "3"),
+        (format!("=ROW(LET(c,TRUE,IF(c,{ext}B3)))"), "3"),
+        (format!("=ISREF(LET(c,TRUE,IF(c,{ext}A1)))"), "TRUE"),
+        (format!("=COUNTA(LET(c,TRUE,IF(c,{ext}A1:B2)))"), "0"),
+        (format!("=ROWS(LET(c,FALSE,IF(c,{ext}A1:B3)))"), "1"),
+        (format!("=ROWS(LET(c,1/0,IF(c,{ext}A1:B3)))"), "#DIV/0!"),
+        // A body that may pick a reference into this workbook is read as before.
+        (format!("=ROWS(LET(c,FALSE,IF(c,{ext}A1:B3,D1:D2)))"), "2"),
+    ] {
+        assert_eq!(eval(&mut model, &formula), expected, "{formula}");
+    }
+}
