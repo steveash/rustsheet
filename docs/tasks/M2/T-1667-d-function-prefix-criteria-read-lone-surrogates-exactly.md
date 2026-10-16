@@ -3,7 +3,7 @@ id: T-1667
 title: "D-function prefix criteria read lone surrogates exactly (probe first)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
