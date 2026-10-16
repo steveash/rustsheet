@@ -203,8 +203,12 @@ fn expansion(first: char, second: char) -> Element {
     }
 }
 
-/// The primary weight of a punctuation mark or symbol of [`PUNCTUATION`].
+/// The primary weight of a punctuation mark or symbol of [`PUNCTUATION`]. Every mark is at or
+/// below `€`, so text in other scripts skips the scan.
 fn punctuation(c: char) -> Option<u32> {
+    if c > '€' {
+        return None;
+    }
     PUNCTUATION
         .iter()
         .position(|&mark| mark == c)

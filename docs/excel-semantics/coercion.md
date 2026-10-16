@@ -108,9 +108,7 @@ Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-colla
   `! ~ ¡ ¦ ¨ ¯ ´ ¸ ¿`, `‘ ’ “ ”` (`’` is an ordinary punctuation mark, not ignored: `"a’b" < "ab"`), `¢ £ ¤ ¥ €`, `+ ±`, `« »`, `× ÷`, `§ © ¬ ® ° µ`, `… •`,
   `0`, `¼ ½ ¾`, `¹ ² ³`, `9`, then letters: `a=A < ª < á < ä < ã < å`, `c < ç`, `d < đ < ð`, `i < ı < ij=ĳ`, `l < ł`, `n < ñ`, `o < º < ö < ø < œ`,
   `s`, `t < þ`, `u`, `z`, `α < β < ω`. Notes: `ĳ` equals `ij` (an expansion like `æ`/`ß`). `œ` sits between `ø` and `s`; whether it equals `oe` is not probed. `ã` sorts after `ä`.
-  `ç`, `đ`, `ð`, `ł`, `ñ`, `þ` were probed as single characters only: they sort right after their base letter (`þ` after `t`), and whether each
-  is a tiebreak accent or a separate letter (or an expansion such as `þ`=`th`) is UNVERIFIED, observed positions only.
-  Position of the digit-like symbols: between `0` and `9`, observed only (1 to 8 were not probed with them).
+  `ç`, `đ`, `ð`, `ł`, `ñ`, `þ` and the digit-like symbols were probed as single characters only (the symbols against `0` and `9` only); the choices made for them are in the next bullet.
 - Fitted in `cmp_text_excel` (T-1595; all 270 cells pass), with these choices where the probe is single-character only (each UNVERIFIED):
   control characters other than CHAR(9)/CHAR(10)/CHAR(13) are skipped like the hyphen (tiebreak weight below the apostrophe, by code point), so
   `"a"&CHAR(1)&"b"` sorts just after `"ab"`; CHAR(11) and CHAR(12) sit with CHAR(9)-CHAR(13) above CHAR(160); the en and em dash are skipped
