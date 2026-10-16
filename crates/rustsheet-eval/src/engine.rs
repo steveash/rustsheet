@@ -499,14 +499,13 @@ mod tests {
                 "tables":[{"name":"Data","ref":"A1:B4","totals_row":true}]}]}"#,
         );
         let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
-        assert_eq!(
-            evaluated.value("S", Addr { row: 4, col: 2 }),
-            Some(Value::Number(3.0))
-        );
-        assert_eq!(
-            evaluated.value("S", Addr { row: 1, col: 4 }),
-            Some(Value::Number(3.0))
-        );
+        // B4 sums the two data rows; `#All` has no totals row (Excel: 4 rows).
+        for (row, col) in [(4, 2), (1, 4)] {
+            assert_eq!(
+                evaluated.value("S", Addr { row, col }),
+                Some(Value::Number(3.0))
+            );
+        }
     }
 
     #[test]

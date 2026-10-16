@@ -18,7 +18,7 @@ evaluate as the table's data area, as in Excel, instead of `#NAME?`.
 - `consume_structured_reference` (`crates/rustsheet-engine/src/expressions/lexer/structured_references.rs`) turns `Sales[]` into `TokenType::Ident("Sales")`, and a
   bare identifier is looked up only among defined names, so both are `#NAME?`.
 - Evidence: gen-m8b lookups (27252667210b1d03: VLOOKUP/INDEX over a bare table, about 125 cells)
-  and specials (ebfc45ef9c421827 K4 `ROWS(Sales[])` = 10, K10 `ROWS(Sales)` = 10).
+  and specials (e804cf2f8af00680 K29 `ROWS(Sales[])` = 10, K116 `ROWS(Sales)` = 10).
 - Tables and defined names share one namespace (`Model::add_table`).
 
 ## Acceptance criteria

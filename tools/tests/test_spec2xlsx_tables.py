@@ -131,7 +131,10 @@ def test_a_value_both_kept_and_hidden_is_rejected() -> None:
         ("=SUM(Data[C'#])+Data[[#This Row],[it''s]]", "SUM(Data[C'#])+Data[[#This Row],[it''s]]"),
         ('="Data"&Data[[#Totals],[Val]]', '"Data"&Data[[#Totals],[Val]]'),
         ("=SUM(Data[x'@y])", "SUM(Data[x'@y])"),
-        ("=LET(x,SUM(Data['[a]),x+Data[@Val])", "_xlfn.LET(_xlpm.x,SUM(Data['[a]),_xlpm.x+Data[[#This Row],[Val]])"),
+        (
+            "=LET(x,SUM(Data['[a]),x+Data[@Val])",
+            "_xlfn.LET(_xlpm.x,SUM(Data['[a]),_xlpm.x+Data[[#This Row],[Val]])",
+        ),
     ],
 )
 def test_structured_references_are_stored_in_file_form(formula: str, stored: str) -> None:
@@ -140,7 +143,9 @@ def test_structured_references_are_stored_in_file_form(formula: str, stored: str
 
 
 def test_a_name_that_is_not_a_table_is_left_alone() -> None:
-    sheet = _parts({"cells": {**_CELLS, "D3": "=ROWS(Other)+Data2"}, "tables": [{"name": "Data", "ref": "A1:B4"}]})
+    sheet = _parts(
+        {"cells": {**_CELLS, "D3": "=ROWS(Other)+Data2"}, "tables": [{"name": "Data", "ref": "A1:B4"}]}
+    )
     assert _stored(sheet["xl/worksheets/sheet1.xml"], "D3") == "ROWS(Other)+Data2"
 
 
@@ -161,9 +166,15 @@ def test_totals_row_is_the_last_row_of_the_table() -> None:
 def test_filtered_table_with_a_totals_row_filters_only_its_data() -> None:
     cells = {**_CELLS, "A5": "Total"}
     table = _parts(
-        {"cells": cells, "hidden_rows": [3], "tables": [{"name": "Data", "ref": "A1:B5", "filter": True, "totals_row": True}]}
+        {
+            "cells": cells,
+            "hidden_rows": [3],
+            "tables": [{"name": "Data", "ref": "A1:B5", "filter": True, "totals_row": True}],
+        }
     )["xl/tables/table1.xml"]
-    assert '<autoFilter ref="A1:B4"><filterColumn colId="0"><filters><filter val="a"/><filter val="c"/>' in table
+    assert (
+        '<autoFilter ref="A1:B4"><filterColumn colId="0"><filters><filter val="a"/><filter val="c"/>' in table
+    )
 
 
 def test_totals_row_needs_a_data_row() -> None:

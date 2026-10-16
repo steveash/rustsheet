@@ -1542,7 +1542,7 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
 - `Table[#Totals]` and `Table[[#Totals],[Col]]` of a table without a totals row are `#REF!`
   (names-case 5b5c0e20e82153bb K100 `ROWS(Stock[#totals])`; also the throwaway T-1607 probe
   `SUM(Sales[[#Totals],[A]])`). With one, they are the totals row; `#All` counts it, `#Data` does not
-  (totals 5e3fe0197495acac).
+  (totals 9cb2e511e5e01db0).
 - A column range is the same area whichever column is written first: `Sales[[2024]:[a.b]]`, with the
   columns in the order Price, a.b, 2024, has `COLUMNS` 2 (column-range 44cecbb1ecd5b2da K143).
 - An empty table (no data typed) still has one blank data row: `ROWS(Tiny[#Data])` = 1.
@@ -1556,8 +1556,8 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607): table names, column names and t
 `#All`, `#Data`, `#Headers`, `#Totals` match ignoring case: `SUM(SALES[key])`, `ROWS(stock[#all])` and
 `Tiny[[#HEADERS],[Cost]]` compute (names-case 5b5c0e20e82153bb). Several item specifiers combine:
 `ROWS(Sales[[#Headers],[#Data],[Note]])` = 11 and `ROWS(Sales[[#Data],[#Totals]])` = 10 for a table of 10
-data rows without totals (specials ebfc45ef9c421827 K74, K59). A bare table name and `Sales[]` are the data
-rows: `ROWS(Sales)` = `ROWS(Sales[])` = 10 (K10, K4), and VLOOKUP, MATCH and INDEX take the bare name
+data rows without totals (specials e804cf2f8af00680 K76, K19). A bare table name and `Sales[]` are the data
+rows: `ROWS(Sales)` = `ROWS(Sales[])` = 10 (K116, K29), and VLOOKUP, MATCH and INDEX take the bare name
 (lookups 27252667210b1d03). Inside the brackets `'` escapes the next character, and `[`, `]`, `#`, `'` and `@`
 in a column name must be escaped: `Stock[C'#]`, `Sales[it''s]`, `Wide[Rate '[%']]`; a column name that is not
 one word needs its own brackets after `@` (`Sales[@[Unit Price]]`) (escaped d86ef297e840325f, 386/400 pass

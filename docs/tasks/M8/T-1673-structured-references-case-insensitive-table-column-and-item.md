@@ -19,7 +19,7 @@ Structured references match table names, column names and item specifiers (`#All
 - `consume_table_specifier` in `crates/rustsheet-engine/src/expressions/lexer/structured_references.rs` matches the specifiers case-sensitively and takes only one;
   column and table names are looked up case-sensitively. Each miss is a parse error (`#ERROR!`).
 - Evidence: gen-m8b names-case (5b5c0e20e82153bb, 32/400 pass: `SALES[qty]`, `stock[#all]`,
-  `Tiny[[#HEADERS],[Cost]]` all compute in Excel) and specials (ebfc45ef9c421827:
+  `Tiny[[#HEADERS],[Cost]]` all compute in Excel) and specials (e804cf2f8af00680:
   `ROWS(Sales[[#Headers],[#Data],[Note]])` = 11, `ROWS(Sales[[#Data],[#Totals]])` = 10).
   docs/excel-semantics/references.md "Structured references: names and item specifiers".
 

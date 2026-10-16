@@ -368,9 +368,9 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
                     (sheet["name"], xlsxwriter.utility.xl_rowcol_to_cell(row, col), str(raw["entered"]))
                 )
                 continue
-            if (cell_number := _write(ws, row, col, raw, tables, formats.get(a1))) is not None and _is_lossy(
-                cell_number
-            ):
+            if (
+                cell_number := _write(ws, row, col, raw, formats.get(a1), tables=tables)
+            ) is not None and _is_lossy(cell_number):
                 patches.lossy.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), cell_number))
         for a1, fmt in formats.items():
             if a1 not in sheet["cells"]:
@@ -486,8 +486,8 @@ def _add_table(
     # XlsxWriter warns and returns a negative code (-1, -2, ...) instead of raising.
     columns: list[dict[str, Any]] = [{"header": h} for h in headers]
     if totals:
-        for column, c in zip(columns, range(c1, c2 + 1), strict=True):
-            column.update(_totals_column(cells.get(cell(r2, c)), cell(r2, c), tables))
+        for options_column, c in zip(columns, range(c1, c2 + 1), strict=True):
+            options_column.update(_totals_column(cells.get(cell(r2, c)), cell(r2, c), tables))
     options = {"name": name, "columns": columns, "total_row": totals}
     if ws.add_table(r1, c1, r2, c2, options):
         msg = f"XlsxWriter rejected table {name} at {ref} (see its warning)"
@@ -734,7 +734,7 @@ def _formula_text(raw: str, tables: frozenset[str], *, prefix_functions: bool = 
     return prefix_future_functions(text) if prefix_functions else text
 
 
-def _write(ws: Any, row: int, col: int, raw: Any, tables: frozenset[str], fmt: Any = None) -> float | None:
+def _write(ws: Any, row: int, col: int, raw: Any, fmt: Any = None, *, tables: frozenset[str]) -> float | None:
     """Writes one spec cell (with number format `fmt`, if any; formulas may name `tables`); returns
     the number when it went through `write_number`, else None."""
     if isinstance(raw, bool):

@@ -570,8 +570,14 @@ def test_tables_probes_never_read_their_own_formula_column() -> None:
 
 @pytest.mark.parametrize(
     ("header", "escaped", "at"),
-    [("Qty", "Qty", "@Qty"), ("C#", "C'#", "@[C'#]"), ("it's", "it''s", "@[it''s]"), ("[x]", "'[x']", "@['[x']]")]
-    + [("x@y", "x'@y", "@[x'@y]"), ("Unit Price", "Unit Price", "@[Unit Price]")],
+    [
+        ("Qty", "Qty", "@Qty"),
+        ("C#", "C'#", "@[C'#]"),
+        ("it's", "it''s", "@[it''s]"),
+        ("[x]", "'[x']", "@['[x']]"),
+        ("x@y", "x'@y", "@[x'@y]"),
+        ("Unit Price", "Unit Price", "@[Unit Price]"),
+    ],
 )
 def test_table_columns_are_escaped(header: str, escaped: str, at: str) -> None:
     assert escape_column(header) == escaped

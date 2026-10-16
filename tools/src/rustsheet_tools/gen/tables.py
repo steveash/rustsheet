@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import random
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -142,25 +143,33 @@ def _column(g: _Gen) -> str:
     )
 
 
+# `{t}` the table, `{c}` one of its columns, `{agg}` an aggregate, `{special}` an item specifier.
+SPECIAL_FORMS = [
+    "{agg}({t}[{special}])",
+    "{shape}({t})",
+    "ROWS({t}[])",
+    "INDEX({t}[{special}],{i},{j})",
+    "INDEX({t},{i},{j})",
+    "{t}[[#Headers],[{c}]]",
+    "{t}[[#Totals],[{c}]]",
+    "{agg}({t}[[{special}],[{c}]])",
+    "ROWS({t}[[#Headers],[#Data],[{c}]])",
+    "ROWS({t}[[#Data],[#Totals]])",
+    "ISREF({t}[{special}])",
+    'IFERROR(ROWS({t}[{special}]),"e")',
+]
+
+
 def _specials(g: _Gen) -> str:
     t = g.table()
-    special = g.pick(SPECIALS)
-    i, j = g.rng.randint(1, 23), g.rng.randint(1, 5)
-    return g.pick(
-        [
-            f"{g.pick(AGG)}({t.name}[{special}])",
-            f"{g.pick(['ROWS', 'COLUMNS', 'COUNTA'])}({t.name})",
-            f"ROWS({t.name}[])",
-            f"INDEX({t.name}[{special}],{i},{j})",
-            f"INDEX({t.name},{i},{j})",
-            f"{t.name}[[#Headers],[{g.column(t)}]]",
-            f"{t.name}[[#Totals],[{g.column(t)}]]",
-            f"{g.pick(AGG)}({t.name}[[{special}],[{g.column(t)}]])",
-            f"ROWS({t.name}[[#Headers],[#Data],[{g.column(t)}]])",
-            f"ROWS({t.name}[[#Data],[#Totals]])",
-            f"ISREF({t.name}[{special}])",
-            f'IFERROR(ROWS({t.name}[{special}]),"e")',
-        ]
+    return g.pick(SPECIAL_FORMS).format(
+        t=t.name,
+        c=g.column(t),
+        agg=g.pick(AGG),
+        special=g.pick(SPECIALS),
+        shape=g.pick(["ROWS", "COLUMNS", "COUNTA"]),
+        i=g.rng.randint(1, 23),
+        j=g.rng.randint(1, 5),
     )
 
 
@@ -230,21 +239,23 @@ def _escaped(g: _Gen) -> str:
     )
 
 
+TOTALS_FORMS = [
+    "{t}[[#Totals],[{c}]]",
+    "SUM({t}[#Totals])",
+    "COUNTA({t}[#Totals])",
+    "ROWS({t}[[#Data],[#Totals]])",
+    "ROWS({t}[#All])",
+    "ISERROR({t}[[#Totals],[{c}]])",
+    "SUBTOTAL({code},{t}[{c}])",
+    "SUBTOTAL({code},{t}[#All])",
+    "{agg}({t}[[#Totals],{span}])",
+]
+
+
 def _totals(g: _Gen) -> str:
     t = g.table()
-    c = g.column(t)
-    return g.pick(
-        [
-            f"{t.name}[[#Totals],[{c}]]",
-            f"SUM({t.name}[#Totals])",
-            f"COUNTA({t.name}[#Totals])",
-            f"ROWS({t.name}[[#Data],[#Totals]])",
-            f"ROWS({t.name}[#All])",
-            f"ISERROR({t.name}[[#Totals],[{c}]])",
-            f"SUBTOTAL({g.rng.choice(SUBTOTAL_CODES)},{t.name}[{c}])",
-            f"SUBTOTAL({g.rng.choice(SUBTOTAL_CODES)},{t.name}[#All])",
-            f"{g.pick(AGG[:6])}({t.name}[[#Totals],{g.col_span(t)}])",
-        ]
+    return g.pick(TOTALS_FORMS).format(
+        t=t.name, c=g.column(t), code=g.rng.choice(SUBTOTAL_CODES), agg=g.pick(AGG[:6]), span=g.col_span(t)
     )
 
 
@@ -359,7 +370,7 @@ def _probe_cells(category: str, tables: list[Table], count: int) -> list[tuple[s
     return [("Calc", f"{PROBE_COL}{r}", None) for r in range(1, count + 1)]
 
 
-def _probe(g: _Gen, draw: Any, seen: set[tuple[str, str]], scope: str) -> str | None:
+def _probe(g: _Gen, draw: Callable[[_Gen], str], seen: set[tuple[str, str]], scope: str) -> str | None:
     """A formula not yet in `seen` for `scope` (both added to it), or None when the draws keep
     repeating."""
     for _ in range(REDRAWS):

@@ -17,9 +17,9 @@ from typing import Any
 from rustsheet_tools import repo_root
 from rustsheet_tools.gen.generator import Catalog, generate_case, write_case
 from rustsheet_tools.gen.names_3d import generate_names_3d
-from rustsheet_tools.gen.tables import generate_tables
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
 from rustsheet_tools.gen.operators_refs import generate_operators_refs
+from rustsheet_tools.gen.tables import generate_tables
 
 SUITE_TOML = """name = "{name}"
 description = "{description}"
