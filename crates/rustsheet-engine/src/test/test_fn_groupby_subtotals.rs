@@ -516,3 +516,62 @@ fn pivot_column_subtotals() {
         ],
     );
 }
+
+/// The spill at G1 of the records, `height` rows by `width` columns, as texts.
+fn texts(formula: &str, height: usize, width: u8) -> Vec<Vec<String>> {
+    let mut model = records();
+    model._set("G1", formula);
+    model.evaluate();
+    let last = char::from(b'G' + width - 1);
+    (1..=height).map(|r| row(&model, r, 'G', last)).collect()
+}
+
+/// Whether the numbers `values` never increase.
+fn descending(values: &[&String]) -> bool {
+    let numbers: Vec<f64> = values.iter().map(|v| v.parse().unwrap()).collect();
+    numbers.len() > 1 && numbers.windows(2).all(|pair| pair[0] >= pair[1])
+}
+
+#[test]
+fn subtotals_show_the_aggregates_a_value_sort_ordered_them_by() {
+    // A volatile function gives another value on every call, so a subtotal recomputed for display
+    // would not follow the order: the subtotals reuse the parents' values the sort computed, in
+    // GROUPBY, in PIVOTBY's Total column, and in its Total row under the column subtotals
+    // (descending, the order of probes/groupby-subtotals G!A181, G!A931, G!A991).
+    let rand = "LAMBDA(x,RAND())";
+    let is_subtotal =
+        |row: &Vec<String>| row[1].is_empty() && !row[0].is_empty() && row[0] != "Grand Total";
+    let grid = texts(&format!("=GROUPBY(A2:B11,D2:D11,{rand},,-2,-3)"), 14, 3);
+    let subtotals: Vec<&String> = grid
+        .iter()
+        .filter(|r| is_subtotal(r))
+        .map(|r| &r[2])
+        .collect();
+    assert_eq!(subtotals.len(), 5);
+    assert!(descending(&subtotals), "{grid:?}");
+    let grid = texts(
+        &format!("=PIVOTBY(A2:B11,C2:C11,D2:D11,{rand},,-2,-3)"),
+        15,
+        6,
+    );
+    let subtotals: Vec<&String> = grid
+        .iter()
+        .filter(|r| is_subtotal(r))
+        .map(|r| &r[5])
+        .collect();
+    assert_eq!(subtotals.len(), 5);
+    assert!(descending(&subtotals), "{grid:?}");
+    // Columns: the subtotal columns have a key over "" (the Grand Total column too, first with
+    // -2); their Total row cells are row 8.
+    let grid = texts(
+        &format!("=PIVOTBY(A2:A11,B2:C11,D2:D11,{rand},,,,-2,-3)"),
+        8,
+        10,
+    );
+    let subtotals: Vec<&String> = (1..10)
+        .filter(|&c| grid[1][c].is_empty() && grid[0][c] != "Grand Total")
+        .map(|c| &grid[7][c])
+        .collect();
+    assert_eq!(subtotals.len(), 3);
+    assert!(descending(&subtotals), "{grid:?}");
+}

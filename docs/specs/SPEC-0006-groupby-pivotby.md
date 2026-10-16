@@ -58,9 +58,10 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
   totals (G!A49). `2` adds a subtotal after each first-level group, with the key and a blank
   second key, and the grand total is then labeled "Grand Total" (G!J49). Negative values put
   totals above their group (G!S49 for `-2`, G!AB49 for `-1`, the last labeled "Total").
-  T-1324 (probes/groupby-subtotals): `n` subtotals the first n - 1 key fields and may not exceed the number of keys;
-  with the depth omitted, a value sort over n keys shows every level's subtotals; a table relationship sorted by a value
-  sorts every group by its own value. Details in docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
+  T-1324 (probes/groupby-subtotals): `n` subtotals the first n - 1 key fields and may not exceed
+  the number of keys; with the depth omitted, a value sort over n keys shows every level's
+  subtotals; a table relationship sorted by a value sorts every group by its own value. Details
+  in docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
 - **Filler cells** (the blank key columns of total rows, the corner above the key columns) are
   empty text `""`, not empty cells (oracle `t:"s"`, G!AC33). Only the blank-key group shows 0.
 - **sort_order**: an integer column index, 1-based over keys then values. Negative means

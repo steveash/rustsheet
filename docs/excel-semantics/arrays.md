@@ -439,47 +439,49 @@ than a cell holds (the engine: `#VALUE!`, after the 32,767-character cell limit 
 characters"); value sorts over three or more fields (rows: every level by its aggregate; columns: the last); and
 col_total_depth -1 with a row value sort (the engine sorts, as with 1: the Total column exists).
 T-1324 follow-up (probes/groupby-subtotals, 49 questions over the same Data sheet at G!A1, A31, ..., A1441, each with its
-size in column Z and the ERROR.TYPE of its first cell in AA, excel-graph, 2026-10-16; "S!An" below):
-- Depth: n shows the subtotals of the first n - 1 key fields, so 2 over three keys subtotals only the first (S!A1, S!A31)
-  and 3 both (S!A61, S!A91), and |n| may not exceed the key fields (3 over two keys, ±2 over one: `#VALUE!` as above;
-  four keys take 4, S!Z1231, but not 5, S!AA1261). Positive: each subtotal right after its groups, the deepest first;
-  negative: right before them, the shallowest first, with "Grand Total" on top (S!A91). A subtotal row shows its keys,
+size in column Z and the ERROR.TYPE of its first cell in AA, excel-graph, 2026-10-16; "G!An" below is that case's sheet G):
+- Depth: n shows the subtotals of the first n - 1 key fields, so 2 over three keys subtotals only the first (G!A1, G!A31)
+  and 3 both (G!A61, G!A91), and |n| may not exceed the key fields (3 over two keys, ±2 over one: `#VALUE!` as above;
+  four keys take 4, G!Z1231, but not 5, G!AA1261). Positive: each subtotal right after its groups, the deepest first;
+  negative: right before them, the shallowest first, with "Grand Total" on top (G!A91). A subtotal row shows its keys,
   then `""`; its function gets all its groups' rows in source order (`LAMBDA(x,ARRAYTOTEXT(x))`: East "10, 30, 5",
-  S!A331). Shown headers stay first (S!A301).
-- Sorts: a key sort orders the groups as without subtotals, the blank key last (S!A241, S!A271); a value sort is
-  hierarchical, parents by their aggregate (S!A151, S!A181, S!A361, S!A1411). With the depth omitted, a value sort over
-  n fields shows the subtotals of every level, as depth n (three keys: S!A121, PIVOTBY rows S!A1321), and an explicit
-  depth is kept (S!A151: 2; followup2 G!A261: 0).
+  G!A331). Shown headers stay first (G!A301).
+- Sorts: a key sort orders the groups as without subtotals, the blank key last (G!A241, G!A271); a value sort is
+  hierarchical, parents by their aggregate (G!A151, G!A181, G!A361, G!A1411). With the depth omitted, a value sort over
+  n fields shows the subtotals of every level, as depth n (three keys: G!A121, PIVOTBY rows G!A1321), and an explicit
+  depth is kept (G!A151: 2; followup2 G!A261: 0).
 - Table (field_relationship 1) sorted by a value: every group by its own value, ignoring the parents ("South, Banana
   -3; North, Pear 7; 0, Apple 9; West, Banana 12.5; East, Apple 15 ..."), and no subtotals, the depth omitted included
-  (S!A391-A481, three keys S!A1381).
+  (G!A391-A481, three keys G!A1381).
 - Array field_relationship: lifted per element, the top-left cell of each element's GROUPBY or its error: an invalid
-  sort_order is `#VALUE!` per element (S!A511), an error element its error (S!A541), a row array gives a row (S!A571),
-  field_headers 3 the header cell (S!A601), 1 with depth 2 `#VALUE!` beside 0's "East" (S!A631), and an error value in
-  an earlier argument fills every element (`NA()` as sort_order: two `#N/A`, S!A1351).
-- PIVOTBY: each axis has its own depth and label: row subtotals end in a "Grand Total" row (P!A97, S!A661 for -2) while
+  sort_order is `#VALUE!` per element (G!A511), an error element its error (G!A541), a row array gives a row (G!A571),
+  field_headers 3 the header cell (G!A601), 1 with depth 2 `#VALUE!` beside 0's "East" (G!A631), and an error value in
+  an earlier argument fills every element (`NA()` as sort_order: two `#N/A`, G!A1351).
+- PIVOTBY: each axis has its own depth and label: row subtotals end in a "Grand Total" row (P!A97, G!A661 for -2) while
   the Total column stays "Total", and column subtotals put the parent's key over `""` and a "Grand Total" column
-  (P!M97, S!A691 for -2, which puts it first) while the Total row stays "Total"; both at once fill the subtotal
-  crossings (S!A721). Shown headers put the column field names over the first group column, never over a subtotal or
-  total column, and the value name under every column (S!A841, S!A871). Column parents sort by their aggregate when
-  there are column subtotals (S!A961, S!A991; P!A941), keeping the key order otherwise (P!A1141). A row value sort with
-  col_total_depth 0 keeps the key order (above) but its omitted row depth still shows the subtotals (S!A1021). Three
-  row fields with depth 2 or 3 as GROUPBY (S!A1051, S!A1291). Row subtotals with two values leave both Total columns
-  `""` (S!A751).
+  (P!M97, G!A691 for -2, which puts it first) while the Total row stays "Total"; both at once fill the subtotal
+  crossings (G!A721). Shown headers put the column field names over the first group column, never over a subtotal or
+  total column, and the value name under every column (G!A841, G!A871). Column parents sort by their aggregate when
+  there are column subtotals (G!A961, G!A991; P!A941), keeping the key order otherwise (P!A1141). A row value sort with
+  col_total_depth 0 keeps the key order (above) but its omitted row depth still shows the subtotals (G!A1021). Three
+  row fields with depth 2 or 3 as GROUPBY (G!A1051, G!A1291). Row subtotals with two values leave both Total columns
+  `""` (G!A751).
 - Quirk, not implemented (T-1700): column subtotals over several value columns are not the subtotals. In
-  `PIVOTBY(A2:A11,B2:C11,D2:E11,SUM,,,,2)` (S!A781) the Apple and Pear subtotal columns and both Grand Total columns are
+  `PIVOTBY(A2:A11,B2:C11,D2:E11,SUM,,,,2)` (G!A781) the Apple and Pear subtotal columns and both Grand Total columns are
   `""`, while Banana (one child) shows Banana's Units in its Sales-subtotal column and every row's Units total in its
-  Units-subtotal column; -2 is the same (S!A1141); with Year over Product (S!A1171) only the first of those two columns
+  Units-subtotal column; -2 is the same (G!A1141); with Year over Product (G!A1171) only the first of those two columns
   is filled. The engine gives `#N/IMPL!`.
 Ours (T-1324): `Grouping::lines` lays the groups out with their subtotals in one pass over the sorted groups (a prefix
 change between neighbours opens or closes a subtotal), `effective_depth` adds the omitted depth of a value sort,
-`ParentOrder` picks hierarchical, key-order or flat parents, `Model::lifted_groupby` runs GROUPBY at most three times (0,
+`ParentOrder` picks hierarchical, key-order or flat parents, the value sort's `Aggregates` (each group's and
+parent's) are shown for the groups, subtotals and PIVOTBY Total cells instead of calling the function again, `Model::lifted_groupby` runs GROUPBY at most three times (0,
 1, invalid) for any array; the subtotal rows and columns are counted in key order and size checked with
 `check_array_size` before any call (a value sort keeps each parent's groups together, so it cannot add subtotals).
 Unprobed (T-1324): a depth of 3 or more over three PIVOTBY column fields and value sorts over three column fields (the
 engine: every level by its aggregate with subtotals), an error value before an array field_relationship that comes from
-the keys or values themselves (the engine: one error), and a lifted field_relationship over a 2-D array (the engine:
-per element, as the row and column probed).
+the keys or values themselves (the engine: one error), a lifted field_relationship over a 2-D array (the engine:
+per element, as the row and column probed), and a 1x1 array field_relationship such as `{0}` or `{1}` (the engine lifts it
+to one cell, as `{FALSE}` is in followup G!A921).
 Status: VERIFIED (web)
 Tasks: T-1276, T-1328, T-1322, T-1323, T-1326, T-1324, T-1700
 

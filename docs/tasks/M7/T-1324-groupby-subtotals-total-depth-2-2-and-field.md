@@ -52,7 +52,8 @@ after the groups for a positive depth (deepest first), before them for a negativ
 GROUPBY: `Model::groupby` was split into `groupby_inputs` (evaluation, `GroupbyInputs`), `groupby_args` (the checks,
 `GroupbyArgs`) and `groupby` (layout). total_depth n is valid up to the number of keys (probed: 3 over three keys, 4 over
 four, not 5); "Grand Total" with subtotals; a value sort with the depth omitted shows every level's subtotals; a table
-relationship sorted by a value sorts flat (`ParentOrder::Flat`); an array field_relationship is lifted per element
+relationship sorted by a value sorts flat (`ParentOrder::Flat`); a value sort's group and parent aggregates (`Aggregates`) are reused for the
+groups, subtotals and PIVOTBY Total cells instead of being recomputed; an array field_relationship is lifted per element
 (`lifted_groupby`, at most three GROUPBY runs whatever the array; `lifted_error` for an earlier error value).
 PIVOTBY: row and column subtotals (`Slot::Subtotal`, `Model::grid_row` shared by group, subtotal and Total rows), labels
 per axis, column parents by value with subtotals; column subtotals over several value columns stay `#N/IMPL!` (Excel's
@@ -61,8 +62,8 @@ Directive 5: the subtotal rows and columns are counted after the key sort and ch
 LAMBDA call (`subtotal_rows_count_toward_the_output_size`).
 Evidence: new probe probes/groupby-subtotals (49 questions, excel-graph); quirks in docs/excel-semantics/arrays.md
 "GROUPBY and PIVOTBY" (T-1324 follow-up). field_relationship 1 with subtotals stays `#VALUE!` (T-1328's evidence).
-Eval delta (probes): 1,181 known failures fixed, none regressed: groupby-pivotby 669 -> 313 (G!J49, G!S49, G!A73,
+Eval delta (probes): 1,181 known failures fixed (+465 new-case failures, T-1700), none regressed: groupby-pivotby 669 -> 313 (G!J49, G!S49, G!A73,
 G!S169, P!A97, P!M97; the rest is function arrays, PERCENTOF and relative_to, T-1325/T-1327), groupby-pivotby-followup
 150 -> 0, groupby-pivotby-followup2 365 -> 0, pivotby-followup 331 -> 21 (P!A681, relative_to, T-1327). New case
 groupby-subtotals: 3,386 cells, 2,921 pass; its 465 known failures are the multi-value column subtotals (G!A781,
-G!A1141, G!A1171, G!Z1201/AA1201; T-1700). Probes known failures 3,277 -> 2,561.
+G!A1141, G!A1171, G!Z1201/AA1201; T-1700). Probes known failures 3,268 -> 2,552 on current main.

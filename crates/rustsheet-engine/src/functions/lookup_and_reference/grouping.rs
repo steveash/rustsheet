@@ -7,18 +7,48 @@ use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
-use super::groupby::{empty_text, shown_key, SortOrder};
+use std::borrow::Cow;
+
 use crate::{
     expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
     functions::spill_functions::{cell_key, sort_key_cmp, CellKey},
     functions::util::collation::cmp_text,
 };
 
+/// How the groups are ordered: GROUPBY's `sort_order` (PIVOTBY's `row_sort_order` and
+/// `col_sort_order` too), read by `Model::sort_order`.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum SortOrder {
+    /// By the key fields, `ascending[i]` for field `i`; fields not named ascend
+    /// ([`Grouping::sort_by_keys`]).
+    Keys(Vec<bool>),
+    /// By the aggregate of value column `column` (0-based among the value columns), with
+    /// [`Grouping::sort_by_aggregate`].
+    Value { column: usize, ascending: bool },
+}
+
+/// A key as its group shows it: the blank key as the number 0 (G!A1, PIVOTBY's column keys too:
+/// probes/groupby-pivotby-followup G!A821), every other key as first spelled.
+pub(crate) fn shown_key(key: &ArrayNode) -> ArrayNode {
+    match key {
+        ArrayNode::Empty => ArrayNode::Number(0.0),
+        other => other.clone(),
+    }
+}
+
+/// Empty text, the filler of total rows, corners and empty PIVOTBY cells (not a blank: G!AC33).
+pub(crate) fn empty_text() -> ArrayNode {
+    ArrayNode::String("".into())
+}
+
 /// One group: its key tuple as first met in the source (the first spelling, `East` for `East`
 /// and `east`, G!A1) and the indices of its source rows, in source order.
 pub(crate) struct Group {
     pub(crate) keys: Vec<ArrayNode>,
     pub(crate) rows: Vec<usize>,
+    /// The keys as they group ([`group_key`]), built once by [`Grouping::new`] so that comparing
+    /// key prefixes later converts no text.
+    cells: Vec<CellKey>,
 }
 
 /// Rows grouped by a key tuple: the unit GROUPBY lays out as rows and PIVOTBY as a grid.
@@ -44,7 +74,8 @@ impl Grouping {
             let Some(tuple) = keys.get(row) else {
                 continue;
             };
-            match index.entry(tuple.iter().map(group_key).collect()) {
+            let cells: Vec<CellKey> = tuple.iter().map(group_key).collect();
+            match index.entry(cells.clone()) {
                 Entry::Occupied(entry) => {
                     if let Some(group) = groups.get_mut(*entry.get()) {
                         group.rows.push(row);
@@ -58,6 +89,7 @@ impl Grouping {
                     groups.push(Group {
                         keys: tuple.iter().map(positive_zero).collect(),
                         rows: vec![row],
+                        cells,
                     });
                 }
             }
@@ -86,9 +118,10 @@ impl Grouping {
     }
 
     /// Sorts the groups by an aggregate (GROUPBY's `sort_order` naming a value column; PIVOTBY's
-    /// sort by a total), and returns each group's aggregate in the new order so the caller shows
-    /// the values it sorted by instead of calling the function again. `aggregate` gets source rows
-    /// in source order.
+    /// sort by a total), and returns the aggregates it sorted by, each group's and (when the
+    /// parents sort by value) each parent's, so the caller shows them, subtotals included, instead
+    /// of calling the function again: no duplicate calls, and a volatile function shows the values
+    /// the order follows. `aggregate` gets source rows in source order.
     ///
     /// With several key fields the sort is hierarchical: the parents (key prefixes) are ordered
     /// by the aggregate of all their rows, and the children by their own value inside each parent
@@ -112,7 +145,7 @@ impl Grouping {
         order: ParentOrder,
         cell: CellReferenceIndex,
         mut aggregate: impl FnMut(&[usize]) -> ArrayNode,
-    ) -> Vec<ArrayNode> {
+    ) -> Aggregates {
         self.sort_by_keys(&[], cell);
         let fields = match order {
             ParentOrder::Flat => 1,
@@ -124,11 +157,11 @@ impl Grouping {
         let mut levels: Vec<(Vec<usize>, Vec<ArrayNode>)> = Vec::new();
         let mut previous = vec![0; self.groups.len()];
         for level in 0..fields.saturating_sub(1) {
-            let mut index: HashMap<(usize, CellKey), usize> = HashMap::new();
+            let mut index: HashMap<(usize, &CellKey), usize> = HashMap::new();
             let mut parent_rows: Vec<Vec<usize>> = Vec::new();
             let mut parents = Vec::with_capacity(self.groups.len());
             for (group, parent) in self.groups.iter().zip(&previous) {
-                let key = group.keys.get(level).map_or(CellKey::Empty, group_key);
+                let key = group.cells.get(level).unwrap_or(&CellKey::Empty);
                 let id = *index.entry((*parent, key)).or_insert_with(|| {
                     parent_rows.push(Vec::new());
                     parent_rows.len() - 1
@@ -181,10 +214,26 @@ impl Grouping {
             .iter()
             .filter_map(|&at| groups.get_mut(at).and_then(Option::take))
             .collect();
-        order
-            .iter()
-            .map(|&at| leaves.get(at).cloned().unwrap_or(ArrayNode::Empty))
-            .collect()
+        let in_order = |values: &[usize]| -> Vec<usize> {
+            order
+                .iter()
+                .map(|&at| values.get(at).copied().unwrap_or(0))
+                .collect()
+        };
+        Aggregates {
+            leaves: order
+                .iter()
+                .map(|&at| leaves.get(at).cloned().unwrap_or(ArrayNode::Empty))
+                .collect(),
+            parents: if parents_by_value {
+                levels
+                    .iter()
+                    .map(|(parents, values)| (in_order(parents), values.clone()))
+                    .collect()
+            } else {
+                Vec::new()
+            },
+        }
     }
 }
 
@@ -262,7 +311,51 @@ pub(crate) enum Line {
     },
 }
 
+/// The aggregates a value sort ordered the groups by ([`Grouping::sort_by_aggregate`]).
+pub(crate) struct Aggregates {
+    /// Each group's, in the sorted order.
+    leaves: Vec<ArrayNode>,
+    /// Per level l (the first l + 1 keys), each group's parent (in the sorted order) and each
+    /// parent's aggregate; empty unless the parents sort by value.
+    parents: Vec<(Vec<usize>, Vec<ArrayNode>)>,
+}
+
+impl Aggregates {
+    /// The aggregate of a group or subtotal line, when the sort computed it: a subtotal of the
+    /// first `level` keys is the aggregate of the parent at that level.
+    pub(crate) fn of_line(&self, line: Line) -> Option<&ArrayNode> {
+        match line {
+            Line::Group(index) => self.leaves.get(index),
+            Line::Subtotal { level, start, .. } => {
+                let (parents, values) = self.parents.get(level.checked_sub(1)?)?;
+                values.get(*parents.get(start)?)
+            }
+        }
+    }
+}
+
 impl Grouping {
+    /// The key cells and the source rows (in source order) of a group or subtotal line: a
+    /// group's keys as shown, or a subtotal's ([`Grouping::subtotal_label_cells`]) over all its
+    /// groups' rows ([`Grouping::rows_of`]). `None` for a group that does not exist.
+    pub(crate) fn line_parts(
+        &self,
+        line: Line,
+        key_columns: usize,
+    ) -> Option<(Vec<ArrayNode>, Cow<'_, [usize]>)> {
+        match line {
+            Line::Group(index) => {
+                let group = self.groups.get(index)?;
+                let label = group.keys.iter().map(shown_key).collect();
+                Some((label, Cow::Borrowed(&group.rows[..])))
+            }
+            Line::Subtotal { level, start, end } => Some((
+                self.subtotal_label_cells(level, start, key_columns),
+                Cow::Owned(self.rows_of(start, end)),
+            )),
+        }
+    }
+
     /// The groups in their order with the subtotals of the first `levels` key fields (a total
     /// depth of ±(`levels` + 1)): after the groups they cover, the deepest first, or before them
     /// (`before`, a negative depth), the shallowest first. Depth 2 over three keys subtotals only
@@ -341,11 +434,11 @@ impl Grouping {
             return 0;
         };
         previous
-            .keys
+            .cells
             .iter()
-            .zip(&group.keys)
-            .position(|(a, b)| group_key(a) != group_key(b))
-            .unwrap_or(group.keys.len())
+            .zip(&group.cells)
+            .position(|(a, b)| a != b)
+            .unwrap_or(group.cells.len())
     }
 
     /// The source rows of the groups `start..end`, in source order: a subtotal's function gets
@@ -503,10 +596,28 @@ mod tests {
             calls += 1;
             ArrayNode::Number(rows.iter().map(|&row| values[row]).sum())
         });
-        let rows: Vec<Vec<usize>> = grouping.groups.into_iter().map(|g| g.rows).collect();
+        let leaves: Vec<_> = (0..4)
+            .map(|i| sums.of_line(Line::Group(i)).cloned())
+            .collect();
+        let rows: Vec<Vec<usize>> = grouping.groups.iter().map(|g| g.rows.clone()).collect();
         assert_eq!(rows, [vec![0], vec![2], vec![3], vec![1]]);
-        assert_eq!(sums, [1.0, 3.0, 2.0, 2.0].map(ArrayNode::Number).to_vec());
-        // One call per group and one per parent.
+        assert_eq!(
+            leaves,
+            [1.0, 3.0, 2.0, 2.0].map(|n| Some(ArrayNode::Number(n)))
+        );
+        // One call per group and one per parent, and the subtotal lines get the parents' sums
+        // without another call.
+        assert_eq!(calls, 6);
+        let subtotals: Vec<_> = grouping
+            .lines(1, false)
+            .into_iter()
+            .filter(|line| matches!(line, Line::Subtotal { .. }))
+            .map(|line| sums.of_line(line).cloned())
+            .collect();
+        assert_eq!(
+            subtotals,
+            [Some(ArrayNode::Number(4.0)), Some(ArrayNode::Number(4.0))]
+        );
         assert_eq!(calls, 6);
     }
 

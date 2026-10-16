@@ -4,7 +4,9 @@
 //! Excel: docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY", evidence probes/groupby-pivotby
 //! sheet G (excel-graph, T-1276) and its follow-ups (T-1328).
 
-use super::grouping::{effective_depth, subtotal_levels, Grouping, Line, ParentOrder};
+use super::grouping::{
+    effective_depth, empty_text, subtotal_levels, Grouping, ParentOrder, SortOrder,
+};
 use crate::{
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
@@ -19,18 +21,6 @@ use crate::{
     limits::check_array_size,
     model::Model,
 };
-
-/// How the groups are ordered: GROUPBY's `sort_order` (PIVOTBY's `row_sort_order` and
-/// `col_sort_order` too), read by [`Model::sort_order`].
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) enum SortOrder {
-    /// By the key fields, `ascending[i]` for field `i`; fields not named ascend
-    /// ([`Grouping::sort_by_keys`]).
-    Keys(Vec<bool>),
-    /// By the aggregate of value column `column` (0-based among the value columns), with
-    /// [`Grouping::sort_by_aggregate`].
-    Value { column: usize, ascending: bool },
-}
 
 /// The GROUPBY arguments as evaluated, before any is checked: kept apart so that an array
 /// `field_relationship` can be lifted over them ([`Model::lifted_groupby`]).
@@ -145,15 +135,6 @@ pub(crate) fn function_argument(
         Ok(lambda) => Ok((lambda, false)),
         Err(array @ (CalcResult::Array(_) | CalcResult::Range { .. })) => Ok((array, true)),
         Err(_) => Err(value_error(cell, &format!("{name} expects a function"))),
-    }
-}
-
-/// A key as its group shows it: the blank key as the number 0 (G!A1, PIVOTBY's column keys too:
-/// probes/groupby-pivotby-followup G!A821), every other key as first spelled.
-pub(crate) fn shown_key(key: &ArrayNode) -> ArrayNode {
-    match key {
-        ArrayNode::Empty => ArrayNode::Number(0.0),
-        other => other.clone(),
     }
 }
 
@@ -559,8 +540,9 @@ impl Model {
         })
     }
 
-    /// GROUPBY's output: the header row, the groups with their subtotals in key or value order,
-    /// and the total row.
+    /// GROUPBY's output: the header row, the total row on top (negative depth), the groups with
+    /// their subtotals in key or value order, and the total row at the bottom. The headers and the
+    /// total stay in place whatever the sort (B38-B39).
     fn groupby(
         &mut self,
         inputs: &GroupbyInputs,
@@ -568,8 +550,8 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
         let (keys, values) = (&inputs.keys, &inputs.values);
-        let (key_columns, value_columns) = (width(keys), width(values));
-        let columns = key_columns + value_columns;
+        let key_columns = width(keys);
+        let columns = key_columns + width(values);
         let shows_header = matches!(args.headers, FieldHeaders::Generated | FieldHeaders::Shown);
         let extra_rows = usize::from(shows_header) + usize::from(args.depth != 0);
         let to_error = |(error, message)| CalcResult::new_error(error, cell, message);
@@ -589,14 +571,17 @@ impl Model {
         }
 
         let mut caller = self.lambda_caller(&args.function, 1);
-        // A value sort keeps the values it sorted by, so that column is not computed twice.
+        // A value sort keeps the values it sorted by, groups' and subtotals', so that column is
+        // not computed twice.
         let sorted = match args.sort {
             SortOrder::Keys(_) => None,
             SortOrder::Value { column, ascending } => {
                 let by = grouping.sort_by_aggregate(ascending, args.order, cell, |group_rows| {
                     self.aggregate(&mut caller, values, column, group_rows, cell)
                 });
+                let checked = lines.len();
                 lines = grouping.lines(levels, before);
+                debug_assert!(lines.len() <= checked, "a value sort added subtotals");
                 Some((column, by))
             }
         };
@@ -604,45 +589,24 @@ impl Model {
         if shows_header {
             output.push(header_cells(args.headers, keys, values));
         }
-        // The headers and the total stay in place whatever the sort (B38-B39).
-        if args.depth < 0 {
-            let row = self.total_row(&mut caller, values, &args.rows, key_columns, levels, cell);
-            output.push(row);
+        let mut total = (args.depth != 0).then(|| {
+            let label = total_label_cells(key_columns, levels);
+            self.line_row(&mut caller, values, label, &args.rows, None, cell)
+        });
+        if before {
+            output.extend(total.take());
         }
         for line in lines {
-            let (mut row, rows) = match line {
-                Line::Group(index) => {
-                    let Some(group) = grouping.groups.get(index) else {
-                        continue;
-                    };
-                    let mut row: Vec<ArrayNode> = group.keys.iter().map(shown_key).collect();
-                    for column in 0..value_columns {
-                        let value = match &sorted {
-                            Some((by_column, by)) if *by_column == column => {
-                                by.get(index).cloned().unwrap_or(ArrayNode::Empty)
-                            }
-                            _ => self.aggregate(&mut caller, values, column, &group.rows, cell),
-                        };
-                        row.push(value);
-                    }
-                    output.push(row);
-                    continue;
-                }
-                // A subtotal is the function of all its groups' rows (G!J49, G!A73).
-                Line::Subtotal { level, start, end } => (
-                    grouping.subtotal_label_cells(level, start, key_columns),
-                    grouping.rows_of(start, end),
-                ),
+            // A subtotal is the function of all its groups' rows (G!J49, G!A73).
+            let Some((label, rows)) = grouping.line_parts(line, key_columns) else {
+                continue;
             };
-            for column in 0..value_columns {
-                row.push(self.aggregate(&mut caller, values, column, &rows, cell));
-            }
-            output.push(row);
+            let known = sorted
+                .as_ref()
+                .and_then(|(column, by)| Some((*column, by.of_line(line)?)));
+            output.push(self.line_row(&mut caller, values, label, &rows, known, cell));
         }
-        if args.depth > 0 {
-            let row = self.total_row(&mut caller, values, &args.rows, key_columns, levels, cell);
-            output.push(row);
-        }
+        output.extend(total);
         Ok(output)
     }
 
@@ -688,24 +652,27 @@ impl Model {
         Ok(depth as isize)
     }
 
-    /// The total row: "Total" ("Grand Total" with subtotal `levels`), `""` under the other key
-    /// fields (empty text, not blank cells: G!AC33), then the function of every value of each
-    /// column in source order, not of the group results (AVERAGE's total is 13.05 = 130.5/10,
-    /// G!S73).
-    fn total_row(
+    /// One GROUPBY row: `label` (the key cells), then the function of each value column over
+    /// `rows`, except for the column `known` names, whose value a value sort already computed. The
+    /// total row is "Total" ("Grand Total" with subtotals), `""` under the other key fields (empty
+    /// text, not blank cells: G!AC33), then the function of every value of each column in source
+    /// order, not of the group results (AVERAGE's total is 13.05 = 130.5/10, G!S73).
+    fn line_row(
         &mut self,
         caller: &mut LambdaCaller,
         values: &[Vec<ArrayNode>],
+        mut label: Vec<ArrayNode>,
         rows: &[usize],
-        key_columns: usize,
-        levels: usize,
+        known: Option<(usize, &ArrayNode)>,
         cell: CellReferenceIndex,
     ) -> Vec<ArrayNode> {
-        let mut row = total_label_cells(key_columns, levels);
         for column in 0..width(values) {
-            row.push(self.aggregate(caller, values, column, rows, cell));
+            label.push(match known {
+                Some((by_column, value)) if by_column == column => value.clone(),
+                _ => self.aggregate(caller, values, column, rows, cell),
+            });
         }
-        row
+        label
     }
 
     /// The function of the values of `column` in `rows`, passed as one column array in source
@@ -748,11 +715,6 @@ fn header_cells(
 /// The number of columns of a (rectangular) array.
 pub(crate) fn width(data: &[Vec<ArrayNode>]) -> usize {
     data.first().map_or(0, Vec::len)
-}
-
-/// Empty text, the filler of total rows, corners and empty PIVOTBY cells (not a blank: G!AC33).
-pub(crate) fn empty_text() -> ArrayNode {
-    ArrayNode::String("".into())
 }
 
 /// The "Total" label of a total row or column.

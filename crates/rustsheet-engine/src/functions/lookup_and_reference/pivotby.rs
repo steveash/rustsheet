@@ -4,14 +4,15 @@
 //! docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY", evidence probes/groupby-pivotby sheet P,
 //! its follow-ups (T-1328) and probes/pivotby-followup (excel-graph, 2026-10-16, T-1326).
 
-use std::borrow::Cow;
-
 use super::groupby::{
-    at, empty_text, function_argument, function_arrays_error, grand_total_label, is_function_array,
-    key_names, not_implemented, shown_key, total_label_cells, value_error, value_name,
-    values_have_header, width, FieldHeaders, SortOrder,
+    at, function_argument, function_arrays_error, grand_total_label, is_function_array, key_names,
+    not_implemented, total_label_cells, value_error, value_name, values_have_header, width,
+    FieldHeaders,
 };
-use super::grouping::{effective_depth, subtotal_levels, Grouping, Line, ParentOrder};
+use super::grouping::{
+    effective_depth, empty_text, shown_key, subtotal_levels, Aggregates, Grouping, Line,
+    ParentOrder, SortOrder,
+};
 use crate::{
     calc_result::CalcResult,
     cast::{array_node_to_string, MAX_TEXT_UNITS},
@@ -160,23 +161,12 @@ impl Model {
             output.extend(total.take());
         }
         for line in lines {
-            let (label, records, group) = match line {
-                Line::Group(index) => {
-                    let Some(group) = rows.groups.get(index) else {
-                        continue;
-                    };
-                    let label = group.keys.iter().map(shown_key).collect();
-                    (label, Cow::Borrowed(&group.rows[..]), Some(index))
-                }
-                // A subtotal row is the function of all its groups' records (P!A97).
-                Line::Subtotal { level, start, end } => (
-                    rows.subtotal_label_cells(level, start, row_fields),
-                    Cow::Owned(rows.rows_of(start, end)),
-                    None,
-                ),
+            // A subtotal row is the function of all its groups' records (P!A97).
+            let Some((label, records)) = rows.line_parts(line, row_fields) else {
+                continue;
             };
             let values = &pivot.values;
-            let reuse = |slot| group.and_then(|index| totals.group_row_cell(index, slot, values));
+            let reuse = |slot| totals.line_total_cell(line, slot, values);
             output.push(self.grid_row(caller, &mut grid, label, &records, reuse, cell));
         }
         output.extend(total);
@@ -360,7 +350,7 @@ impl Model {
         order: &SortOrder,
         parents: ParentOrder,
         cell: CellReferenceIndex,
-    ) -> Option<(usize, Vec<ArrayNode>)> {
+    ) -> Option<(usize, Aggregates)> {
         let SortOrder::Value { column, ascending } = *order else {
             return None;
         };
@@ -392,45 +382,49 @@ impl Model {
 }
 
 /// The aggregates value sorts computed, reused instead of calling the function again (GROUPBY
-/// does the same): per row group for the Total column, per column group for the Total row.
+/// does the same): per row group and row subtotal for the Total column, per column group and
+/// column subtotal for the Total row.
 struct Totals {
-    rows: Option<(usize, Vec<ArrayNode>)>,
-    cols: Option<(usize, Vec<ArrayNode>)>,
+    rows: Option<(usize, Aggregates)>,
+    cols: Option<(usize, Aggregates)>,
 }
 
 impl Totals {
-    /// A group row's Total cell: the row group's aggregate, with one value column (several have
-    /// `""` Total columns, P!Y97).
-    fn group_row_cell(
+    /// The Total cell of a row group or row subtotal `line`: its aggregate, with one value column
+    /// (several have `""` Total columns, P!Y97).
+    fn line_total_cell(
         &self,
-        group: usize,
+        line: Line,
         slot: Slot,
         values: &[Vec<ArrayNode>],
     ) -> Option<ArrayNode> {
         match slot {
             Slot::Total { value } if width(values) == 1 => {
-                Self::get(self.rows.as_ref(), group, value)
+                Self::get(self.rows.as_ref(), line, value)
             }
             _ => None,
         }
     }
 
-    /// A Total row cell under a column group: that group's aggregate.
+    /// A Total row cell under a column group or column subtotal: its aggregate.
     fn total_row_cell(&self, slot: Slot) -> Option<ArrayNode> {
-        match slot {
-            Slot::Group { group, value } => Self::get(self.cols.as_ref(), group, value),
-            _ => None,
-        }
+        let (line, value) = match slot {
+            Slot::Group { group, value } => (Line::Group(group), value),
+            Slot::Subtotal {
+                level,
+                start,
+                end,
+                value,
+            } => (Line::Subtotal { level, start, end }, value),
+            Slot::Total { .. } => return None,
+        };
+        Self::get(self.cols.as_ref(), line, value)
     }
 
-    fn get(
-        sorted: Option<&(usize, Vec<ArrayNode>)>,
-        group: usize,
-        value: usize,
-    ) -> Option<ArrayNode> {
+    fn get(sorted: Option<&(usize, Aggregates)>, line: Line, value: usize) -> Option<ArrayNode> {
         sorted
             .filter(|(column, _)| *column == value)
-            .and_then(|(_, totals)| totals.get(group).cloned())
+            .and_then(|(_, aggregates)| aggregates.of_line(line).cloned())
     }
 }
 
