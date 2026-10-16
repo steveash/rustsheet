@@ -29,7 +29,19 @@
         "A17": "=SUM(MODE.MULT(1,2,2,\"x\"))",
         "A18": "=SUM(MODE.MULT(1,1,TRUE))",
         "A19": "=MODE.SNGL(1,TRUE,2,2)",
-        "A20": "=MODE(5,TRUE,TRUE)"
+        "A20": "=MODE(5,TRUE,TRUE)",
+        "K1": 2,
+        "K2": "text",
+        "K4": 2,
+        "A21": "=MODE(K1,\"1\",2,3)",
+        "A22": "=MODE(1,\"1\",#DIV/0!,2,3)",
+        "A23": "=MODE(K1,2,K3)",
+        "A24": "=MODE(K1:K4,2)",
+        "A25": "=MODE(K1,K2,\"1\",2)",
+        "A26": "=MODE(K1,K2,2)",
+        "A27": "=MODE(1,1,)",
+        "A28": "=MODE(K2,K2,5)",
+        "A29": "=MODE(2,K2,2)"
       }
     }
   ],

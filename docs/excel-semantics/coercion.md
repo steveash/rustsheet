@@ -237,7 +237,7 @@ Open: an empty argument (`DEVSQ(1,)`) is ignored by DEVSQ/AVEDEV/SUMSQ but count
 Tasks: T-0945
 
 ## MODE: a blank single-cell reference is #VALUE!; typed text and booleans are skipped
-Rule: SUPERSEDED for typed text: a typed text argument, even numeric text, is skipped, not `#VALUE!` (`MODE(2,"x",2)` is 2; probes/mode-typed-arguments, excel-graph 2026-10-16, T-1291, statistics.md "Statistical function argument modes"); the POI `#VALUE!` cells below come from their blank single-cell reference or error argument. A single-cell reference to a blank cell is `#VALUE!`: `MODE(B9,2,D7)` with B9 = 2 and D7 blank is `#VALUE!`
+Rule: SUPERSEDED for typed text: a typed text argument, even numeric text, is skipped, not `#VALUE!` (`MODE(2,"x",2)` is 2; probes/mode-typed-arguments, excel-graph 2026-10-16, T-1291, statistics.md "Statistical function argument modes"); the POI `#VALUE!` cells below come from a blank single-cell reference, an empty argument or an error argument; a direct error propagates as itself (`MODE(1,"1",#DIV/0!,2,3)` is `#DIV/0!`) and a reference to a text cell is skipped (probes/mode-typed-arguments A21-A29). A single-cell reference to a blank cell is `#VALUE!`: `MODE(B9,2,D7)` with B9 = 2 and D7 blank is `#VALUE!`
 although 2 appears twice. Blanks and text inside a multi-cell range are ignored
 (`MODE(C16:E16,-1.1)` = -1.1 with D16 blank). Also
 `MODE("1",1,#DIV/0!,2,3)` is `#VALUE!` (whether argument order matters is unprobed). An error picked by CHOOSE propagates: legacy `=MODE(CHOOSE(1,B1:B6*1))` off the range's rows is `#VALUE!` (references.md "Legacy `@` on CHOOSE operator arms under aggregates"; other direct errors unprobed, T-1651). Not isolated yet: a single-cell reference to text on its own.

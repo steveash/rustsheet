@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::picks_a_branch;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -30,16 +29,12 @@ impl Model {
                     }
                 },
                 CalcResult::Number(n) => values.push(n),
-                // A union's `#VALUE!` (H17, H18) and the error of a branch picked by IF or CHOOSE
-                // propagate (`MODE(CHOOSE(1,B1:B6*1))` off the range's rows is `#VALUE!`, probes/
-                // legacy-choose-arm-aggregate-and-array-constant-at I10, T-1643); other errors keep
-                // being skipped (unprobed, T-1651).
-                error @ CalcResult::Error { .. }
-                    if matches!(arg.ungrouped(), Node::OpUnionKind { .. })
-                        || picks_a_branch(arg) =>
-                {
-                    return Err(error)
-                }
+                // A direct error propagates as itself: `MODE(1,"1",#DIV/0!,2,3)` is `#DIV/0!`
+                // (probes/mode-typed-arguments A22, T-1291), as do a union's `#VALUE!` (H17, H18) and
+                // the error of a branch picked by IF or CHOOSE (`MODE(CHOOSE(1,B1:B6*1))` off the
+                // range's rows is `#VALUE!`, probes/legacy-choose-arm-aggregate-and-array-constant-at
+                // I10, T-1643).
+                error @ CalcResult::Error { .. } => return Err(error),
                 // Excel: typed (direct) text, even numeric text, and booleans are skipped, not
                 // coerced and not `#VALUE!` (probes/mode-typed-arguments A1-A20, T-1291), and
                 // text inside ranges is skipped too. A blank single-cell reference is `#VALUE!`
@@ -49,6 +44,14 @@ impl Model {
                         Error::VALUE,
                         cell,
                         "MODE: blank cell reference".to_string(),
+                    ));
+                }
+                // An empty argument is `#VALUE!` too: `MODE(1,1,)` (probes/mode-typed-arguments A27).
+                CalcResult::EmptyArg => {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "MODE: empty argument".to_string(),
                     ));
                 }
                 _ => {}
