@@ -3,7 +3,7 @@ id: T-1694
 title: "Prove the mixed-type sort comparator is a total order (sort_key_cmp, key_cmp) so sort_by cannot panic"
 milestone: M7
 lane: quality
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
