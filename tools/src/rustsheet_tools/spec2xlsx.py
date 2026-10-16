@@ -32,6 +32,13 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     writes nothing), and a sheet's `"number_formats": {"A1": "[h]:mm"}` gives those cells that number
     format, blank cells included; an `entered` cell cannot have one (T-1268). The engine adapter
     applies both.
+  * `"calculation": {"iterate": true, "iterate_count": 100, "iterate_delta": 0.001}` at the top level
+    writes those attributes on `<calcPr>` (iterative calculation; counts and deltas default to
+    Excel's 100 and 0.001). A sheet's `"data_tables": [{"ref": "B4:B6", "column_input": "A1"}]`
+    writes a what-if data table: the cells of `ref` are placeholders (0) and its top-left cell gets
+    `<f t="dataTable">`; `row_input` alone is a one-variable row table, both inputs a two-variable
+    table. `ref` must not overlap the sheet's `cells`. The engine adapter ignores both (Phase 2,
+    T-0428).
   * Future functions get their `_xlfn.` prefixes from the builder's own table (the engine exporter's
     list plus `_BUILDER_ONLY_PREFIXES`), never from XlsxWriter's `use_future_functions`, which skips a
     whole formula once any call in it is prefixed (T-0052); LET/LAMBDA names are written as `_xlpm.x`.
@@ -49,6 +56,7 @@ import json
 import math
 import re
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -264,18 +272,15 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
         },
     )
     wb.set_properties({"created": _FIXED_CREATED})
-    stored: list[tuple[int, str, str]] = []  # (sheet number, cell ref, error name)
+    patches = _Patches()
     entered: list[tuple[str, str, str]] = []  # (sheet name, cell ref, text as typed)
-    # numbers XlsxWriter would round: (sheet number, cell ref, value)
-    lossy: list[tuple[int, str, float]] = []
-    filters: list[tuple[str, str]] = []  # (table name, `<autoFilter>` element or "") in add order
     for number, sheet in enumerate(spec["sheets"], start=1):
         ws = wb.add_worksheet(sheet["name"])
         hidden = _hidden_rows(sheet)
         for row in sorted(hidden):
             ws.set_row(row - 1, None, None, {"hidden": True})
         for table in sheet.get("tables", ()):
-            filters.append(_add_table(ws, sheet, table, hidden))
+            patches.filters.append(_add_table(ws, sheet, table, hidden))
         formats = _number_formats(wb, sheet)
         legacy = _listed_formula_cells(sheet, "legacy_formulas")
         bare = _listed_formula_cells(sheet, "bare_function_names")
@@ -294,7 +299,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
             if isinstance(raw, dict) and raw.get("t") == "e" and raw.get("stored"):
                 # A placeholder formula cell with an error result; `_store_errors` swaps it for the constant.
                 ws.write_formula(row, col, "=0", formats.get(a1), "#N/A")
-                stored.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), str(raw["v"])))
+                patches.stored.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), str(raw["v"])))
                 continue
             if isinstance(raw, dict) and "entered" in raw:
                 if a1 in formats:
@@ -307,10 +312,13 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
             if (cell_number := _write(ws, row, col, raw, formats.get(a1))) is not None and _is_lossy(
                 cell_number
             ):
-                lossy.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), cell_number))
+                patches.lossy.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), cell_number))
         for a1, fmt in formats.items():
             if a1 not in sheet["cells"]:
                 ws.write_blank(*parse_a1(a1), None, fmt)
+        patches.data_tables.extend(
+            (number, _add_data_table(ws, sheet, t)) for t in sheet.get("data_tables", ())
+        )
     for name, formula in spec.get("names", {}).items():
         wb.define_name(name, _formula_text(formula))
     for n, entry in enumerate(entered, start=1):
@@ -320,9 +328,29 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
             raise ValueError(msg)
         wb.set_custom_property(f"{ENTERED_PROPERTY}.{n}", value)
     wb.close()
-    xlsx = _store_errors(buf.getvalue(), stored) if stored else buf.getvalue()
-    xlsx = _filter_tables(xlsx, filters) if any(el for _, el in filters) else xlsx
-    return _store_numbers(xlsx, lossy) if lossy else xlsx
+    return _patch_package(buf.getvalue(), spec, patches)
+
+
+@dataclass
+class _Patches:
+    """What `build_xlsx` writes into the package after XlsxWriter, which has no API for it."""
+
+    stored: list[tuple[int, str, str]] = field(default_factory=list)  # (sheet number, cell ref, error name)
+    # numbers XlsxWriter would round: (sheet number, cell ref, value)
+    lossy: list[tuple[int, str, float]] = field(default_factory=list)
+    # (table name, `<autoFilter>` element or "") in add order
+    filters: list[tuple[str, str]] = field(default_factory=list)
+    # (sheet number, (top-left cell, `<f>`)), T-0428
+    data_tables: list[tuple[int, tuple[str, str]]] = field(default_factory=list)
+
+
+def _patch_package(xlsx: bytes, spec: dict[str, Any], patches: _Patches) -> bytes:
+    """Writes what XlsxWriter cannot into the package `build_xlsx` wrote."""
+    xlsx = _store_errors(xlsx, patches.stored) if patches.stored else xlsx
+    xlsx = _filter_tables(xlsx, patches.filters) if any(el for _, el in patches.filters) else xlsx
+    # Data tables and calculation settings are no-ops when the spec has none (T-0428).
+    xlsx = _write_calculation(_write_data_tables(xlsx, patches.data_tables), spec.get("calculation"))
+    return _store_numbers(xlsx, patches.lossy) if patches.lossy else xlsx
 
 
 def _date_1904(spec: dict[str, Any]) -> bool:
@@ -406,6 +434,97 @@ def _add_table(ws: Any, sheet: dict[str, Any], table: dict[str, Any], hidden: se
     ref_abs = f"{cell(r1, c1)}:{cell(r2, c2)}"
     column = f'<filterColumn colId="0"><filters>{values}</filters></filterColumn>'
     return name, f'<autoFilter ref="{ref_abs}">{column}</autoFilter>'
+
+
+def _add_data_table(ws: Any, sheet: dict[str, Any], table: dict[str, Any]) -> tuple[str, str]:
+    """Writes a data table's placeholder cells; returns its top-left cell and the `<f>` it gets.
+
+    excel-graph reads a one-variable column table written as `<f t="dataTable" ref=… dt2D="0" dtr="0" r1=input>`,
+    a row table with `dtr="1"`, and a two-variable table with `dt2D="1" dtr="1" r1=row r2=column`.
+    """
+    first, _, last = table["ref"].partition(":")
+    (r1, c1), (r2, c2) = parse_a1(first), parse_a1(last or first)
+    # The normalized range, so nothing but a range reaches the attribute.
+    ref = f"{xlsxwriter.utility.xl_rowcol_to_cell(r1, c1)}:{xlsxwriter.utility.xl_rowcol_to_cell(r2, c2)}"
+    row_input, column_input = table.get("row_input"), table.get("column_input")
+    row_input, column_input = (
+        None if a1 is None else xlsxwriter.utility.xl_rowcol_to_cell(*parse_a1(a1))
+        for a1 in (row_input, column_input)
+    )
+    if row_input and column_input:
+        inputs = f'dt2D="1" dtr="1" r1="{row_input}" r2="{column_input}"'
+    elif row_input or column_input:
+        inputs = f'dt2D="0" dtr="{1 if row_input else 0}" r1="{row_input or column_input}"'
+    else:
+        msg = f"data table {ref} needs a row_input or a column_input"
+        raise ValueError(msg)
+    for row in range(r1, r2 + 1):
+        for col in range(c1, c2 + 1):
+            a1 = xlsxwriter.utility.xl_rowcol_to_cell(row, col)
+            if a1 in sheet["cells"]:
+                msg = f"data table {ref} overlaps cell {a1}"
+                raise ValueError(msg)
+            ws.write_number(row, col, 0)
+    top_left = xlsxwriter.utility.xl_rowcol_to_cell(r1, c1)
+    return top_left, f'<f t="dataTable" ref="{ref}" {inputs}/>'
+
+
+def _write_data_tables(xlsx: bytes, tables: list[tuple[int, tuple[str, str]]]) -> bytes:
+    """Puts each data table's `<f t="dataTable">` into its top-left placeholder cell."""
+    if not tables:
+        return xlsx
+
+    def patch(ref: str, formula: str) -> Callable[[str], str]:
+        def apply(text: str) -> str:
+            text, count = re.subn(rf'(<c r="{ref}"[^>]*>)', lambda m: m.group(1) + formula, text, count=1)
+            if count != 1:
+                msg = f"data table cell {ref} not found"
+                raise ValueError(msg)
+            return text
+
+        return apply
+
+    return _patch_sheets(xlsx, [(number, patch(ref, formula)) for number, (ref, formula) in tables])
+
+
+def _write_calculation(xlsx: bytes, calculation: dict[str, Any] | None) -> bytes:
+    """Writes the spec's iterative-calculation settings on `<calcPr>`."""
+    if calculation is None:
+        return xlsx
+    unknown = set(calculation) - {"iterate", "iterate_count", "iterate_delta"}
+    count, delta = calculation.get("iterate_count", 1), calculation.get("iterate_delta", 0.0)
+    if (
+        unknown
+        or not isinstance(calculation.get("iterate", False), bool)
+        or not isinstance(count, int)
+        or isinstance(count, bool)
+        or count < 1
+        or not isinstance(delta, int | float)
+        or isinstance(delta, bool)
+        or not math.isfinite(delta)
+        or delta < 0
+    ):
+        msg = (
+            "calculation takes a boolean iterate, a positive integer iterate_count and a finite "
+            f"iterate_delta >= 0: {calculation!r}"
+        )
+        raise ValueError(msg)
+    attributes = ""
+    if calculation.get("iterate"):
+        attributes += ' iterate="1"'
+    if "iterate_count" in calculation:
+        attributes += f' iterateCount="{int(calculation["iterate_count"])}"'
+    if "iterate_delta" in calculation:
+        attributes += f' iterateDelta="{float(calculation["iterate_delta"])!r}"'
+
+    def apply(text: str) -> str:
+        text, count = re.subn(r"<calcPr", lambda _: "<calcPr" + attributes, text, count=1)
+        if count != 1:
+            msg = "workbook.xml has no <calcPr>"
+            raise ValueError(msg)
+        return text
+
+    return patch_parts(xlsx, [("xl/workbook.xml", apply)])
 
 
 def _filter_tables(xlsx: bytes, filters: list[tuple[str, str]]) -> bytes:
