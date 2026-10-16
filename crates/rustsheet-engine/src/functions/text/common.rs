@@ -906,6 +906,22 @@ impl Model {
         match result {
             CalcResult::String(_) => result,
             error @ CalcResult::Error { .. } => error,
+            // An array value lifts element-wise, text kept and anything else "" (an error element
+            // is unprobed; kept like the scalar error): `T(IF(1,{"a";"b"}))` spills "a", "b"
+            // (probes/legacy-array-result S!G1:G2, T-1729). A range stays one "".
+            CalcResult::Array(values) => CalcResult::Array(
+                values
+                    .iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|value| match value {
+                                ArrayNode::String(_) | ArrayNode::Error(_) => value.clone(),
+                                _ => ArrayNode::String("".into()),
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            ),
             _ => CalcResult::String("".into()),
         }
     }

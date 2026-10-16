@@ -277,9 +277,9 @@ Tasks: T-1616, T-1713, T-1727
 
 ## T over an array lifts element-wise (T-1713)
 Rule: in a dynamic formula, T of an array value lifts element-wise like N: `=T(IF(1,{"a";"b"}))` spills "a", "b".
-T of a multi-cell range does not lift (one "", text.md "Text function argument modes"). Error and number elements
-are unprobed.
+T of a multi-cell range does not lift (one "", text.md "Text function argument modes"). Number elements
+give "" and error elements are kept, both INFERRED (only the text elements are probed; filed as a follow-up probe).
 Evidence: probes/legacy-array-result S!G1:G2 (excel-graph, 2026-10-16).
-Not implemented: ours gives one "" with no spill (T-1729).
-Status: VERIFIED (excel-graph)
-Tasks: T-1729
+Implemented in fn_t (T-1729).
+Status: VERIFIED (excel-graph) for text elements; number and error elements INFERRED
+Tasks: T-1713, T-1729

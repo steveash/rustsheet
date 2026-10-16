@@ -98,3 +98,22 @@ fn n_lifts_over_an_array() {
     assert_eq!(model._get_text("B2"), *"#N/A");
     assert_eq!(model._get_text("A3"), *"5");
 }
+
+/// T lifts over an array value, text kept and anything else "" (probes/legacy-array-result
+/// S!G1:G2; T-1729); a multi-cell range stays one "" (probes/text-argument-modes F9).
+#[test]
+fn t_lifts_over_an_array() {
+    let mut model = new_empty_model();
+    model._set("A1", "=T(IF(1,{\"a\";\"b\"}))");
+    model._set("C1", "=T(IF(1,{\"a\",1}))");
+    model._set("E1", "=T(G1:G2)");
+    model._set("G1", "x");
+    model._set("G2", "y");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"a");
+    assert_eq!(model._get_text("A2"), *"b");
+    assert_eq!(model._get_text("C1"), *"a");
+    assert_eq!(model._get_text("D1"), *"");
+    assert_eq!(model._get_text("E1"), *"");
+    assert_eq!(model._get_text("E2"), *"");
+}

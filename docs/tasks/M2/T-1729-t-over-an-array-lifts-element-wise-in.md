@@ -3,10 +3,10 @@ id: T-1729
 title: "T over an array lifts element-wise in a dynamic formula"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: todo
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -29,3 +29,19 @@ with excel-probe before generalizing. information.md "T over an array lifts elem
 
 ## Out of scope
 - The legacy `=T(IF(...))` `#VALUE!` (T-1713).
+
+## Handoff
+Tried (committed on this branch): `fn_t` (functions/text/common.rs) lifts `CalcResult::Array` element-wise
+(text and error elements kept, others ""), `static_analysis.rs` result-shape arm `Function::T` changed from
+`not_implemented(args)` to `scalar_arguments(args)` (as N), unit test `t_lifts_over_an_array` in
+test_cell_info_n_sheets.rs, information.md updated. Unit tests pass; the change fixes probes/legacy-array-result
+S!G1:G2 (dynamic).
+
+Failed: `rustsheet-eval check` reports two REGRESSIONS, probes/legacy-array-result S!G11 and
+probes/legacy-n-t-reference-args S!S11: those are legacy (non-dynamic) `=T(IF(1,{...}))` cells whose spill rows must stay
+empty (Excel gives `#VALUE!`, T-1713), and ours now spills into them, exactly as N does in the baselined
+legacy-n-t-reference-args G10:G11. The engine has no legacy-formula marker (spec T-1727), so fn_t cannot tell a
+dynamic from a legacy cell. `make eval-baseline` refuses the regressions; I did not touch eval/baseline.
+Next: either land the T-1727 legacy marker first (T-1713) so legacy T/N cells give `#VALUE!`, or decide with a
+decision record how to baseline G11/S11 (protected path, hence opus). The number/error element rule is still INFERRED:
+probe `T({"a",1,#N/A})` with excel-probe and update information.md.
