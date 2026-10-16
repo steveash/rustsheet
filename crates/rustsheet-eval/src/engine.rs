@@ -382,6 +382,47 @@ mod tests {
     }
 
     #[test]
+    fn spec_sheet_ops_apply_in_order_after_the_build() {
+        // probes/sheet-ops (T-1608): references follow the renamed sheet, the moved sheet keeps
+        // them, and an added sheet is empty.
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1",
+                "sheets":[{"name":"Calc","cells":{"A1":"=Data!A1","A2":"=FORMULATEXT(A1)",
+                                                 "A3":"=SHEET(Inputs!A1)","A4":"=COUNTA(New!A1:B2)"}},
+                          {"name":"Data","cells":{"A1":5}}],
+                "sheet_ops":[{"op":"rename","sheet":"Data","to":"Inputs"},
+                             {"op":"move","sheet":"Inputs","to":0},
+                             {"op":"add","sheet":"New"}]}"#,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let calc = |row| evaluated.value("Calc", Addr { row, col: 1 });
+        assert_eq!(calc(1), Some(Value::Number(5.0)));
+        assert_eq!(calc(2), Some(Value::Text("=Inputs!A1".into())));
+        assert_eq!(calc(3), Some(Value::Number(1.0)));
+        assert_eq!(
+            evaluated.value("New", Addr { row: 1, col: 1 }),
+            Some(Value::Empty)
+        );
+    }
+
+    #[test]
+    fn unknown_or_malformed_sheet_ops_are_refused() {
+        for ops in [
+            r#"[{"op":"delete","sheet":"Data"}]"#,
+            r#"[{"op":"move","sheet":"Data","to":-1}]"#,
+            r#"[{"op":"add","sheet":"New","to":1}]"#,
+        ] {
+            let json = format!(r#"{{"format":"rustsheet-case/v1","sheets":[],"sheet_ops":{ops}}}"#);
+            assert!(serde_json::from_str::<CaseSpec>(&json).is_err(), "{ops}");
+        }
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"Calc","cells":{}}],
+                "sheet_ops":[{"op":"rename","sheet":"Nope","to":"X"}]}"#,
+        );
+        assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
+    }
+
+    #[test]
     fn spec_names_are_defined_before_cells() {
         let spec = spec(
             r#"{"format":"rustsheet-case/v1","names":{"src":"=Data!$A$1"},

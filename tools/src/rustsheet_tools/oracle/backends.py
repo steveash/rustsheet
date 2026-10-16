@@ -266,19 +266,26 @@ class GraphBackend:
             escaped = quote(name.replace("'", "''"), safe="")
             return f"{sheets}('{escaped}')"
 
-        def canary_position() -> int:
-            return int(self._call("GET", ref(CANARY_SHEET), headers=sid).json()["position"])
+        def position(name: str) -> int:
+            return int(self._call("GET", ref(name), headers=sid).json()["position"])
+
+        def move(name: str, to: int) -> None:
+            # Graph has been seen to answer a position PATCH without moving the sheet (T-1608), so
+            # the move is read back: a replay that did not happen must not become an oracle value.
+            self._call("PATCH", ref(name), json={"position": to}, headers=sid)
+            if position(name) != to:
+                raise OracleError(f"sheet op move {name!r} to {to}: Excel left it at {position(name)}")
 
         for op, sheet, to in ops:
             if op == "add":
                 self._call("POST", f"{sheets}/add", json={"name": sheet}, headers=sid)
-                self._call("PATCH", ref(sheet), json={"position": canary_position()}, headers=sid)
+                move(sheet, position(CANARY_SHEET))
             elif op == "rename":
                 self._call("PATCH", ref(sheet), json={"name": to}, headers=sid)
             elif op == "move":
-                if not isinstance(to, int) or to >= canary_position():
+                if not isinstance(to, int) or to >= position(CANARY_SHEET):
                     raise OracleError(f"sheet op move {sheet!r} to {to}: past the last sheet")
-                self._call("PATCH", ref(sheet), json={"position": to}, headers=sid)
+                move(sheet, to)
             print(f"SHEET OP {op} {sheet!r} {to!r}", file=sys.stderr)
 
     def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:

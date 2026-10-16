@@ -17,7 +17,7 @@ deleted, and when an end sheet is moved outside or inside the span, with the eng
 ## Context
 T-1181 could not probe this: the excel-graph oracle only recalculates an uploaded workbook and has no sheet-delete or
 sheet-move operation. The engine's current behavior (an end-sheet delete makes the reference `#REF!`) is recorded as
-UNVERIFIED in docs/excel-semantics/references.md, "3-D references when sheets or cells change (unprobed)".
+UNVERIFIED in docs/excel-semantics/references.md, "3-D references when sheets move or are renamed".
 
 ## Acceptance criteria
 - [ ] Desktop-oracle (or Excel-authored workbook) evidence for the delete and move forms, recorded in references.md.

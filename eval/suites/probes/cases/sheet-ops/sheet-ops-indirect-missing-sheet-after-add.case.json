@@ -1,0 +1,34 @@
+{
+  "format": "rustsheet-case/v1",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=INDIRECT(\"Nope!A1\")",
+        "A2": "=ISREF(INDIRECT(\"Nope!A1\"))",
+        "A3": "=ISERROR(INDIRECT(\"'No Sheet'!A1\"))",
+        "A4": "=IFERROR(INDIRECT(\"Nope!A1:A2\"),\"err\")",
+        "A5": "=INDIRECT(\"Data!A1\")"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 7
+      }
+    }
+  ],
+  "description": "INDIRECT text naming a sheet that does not exist, after an unrelated sheet add (T-1608).",
+  "sheet_ops": [
+    {
+      "op": "add",
+      "sheet": "Extra"
+    }
+  ]
+}
