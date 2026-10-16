@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FILTERXML array forms beyond a first-argument array literal: range xml, array xpath, error elements, scalar error next to an array, lambda first argument (T-1722, follow-up of T-1704)",
+  "tags": [
+    "M5",
+    "web",
+    "filterxml",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "Z1": "<a>1</a>",
+        "Z2": "<a>2</a>",
+        "A1": "=FILTERXML(Z1:Z2,\"//a\")",
+        "D1": "=FILTERXML(\"<a/>\",{\"//a\",\"//b\"})",
+        "A5": "=FILTERXML({\"x\";#N/A},\"//a\")",
+        "D5": "=FILTERXML(NA(),{\"//a\";\"//b\"})",
+        "A9": "=FILTERXML(LAMBDA(x,x),NA())",
+        "D9": "=FILTERXML({\"<a/>\";\"<b/>\"},NA())"
+      }
+    }
+  ]
+}
