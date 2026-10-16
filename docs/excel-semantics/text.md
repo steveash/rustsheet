@@ -303,8 +303,8 @@ Tasks: T-1412
 Rule: ARRAYTOTEXT writes a number as General text with 15 significant digits, like VALUETOTEXT and `&`:
 `ARRAYTOTEXT(YEARFRAC(1911,31142))` is "80.0277777777778".
 Evidence: gen-m7/d38b52bfa1a9f9e6 Calc!A2 (excel-graph, 2026-10-11, T-1275).
-Ours: Rust's shortest round-trip text ("80.02777777777777"; `ARRAYTOTEXT(1/3)` "0.3333333333333333", `ARRAYTOTEXT({1E+20})`
-"100000000000000000000").
+Also probed (probes/arraytotext-number-text, 15 cells, excel-graph, 2026-10-16): `ARRAYTOTEXT(-0.0000001234567890123)` is "-1.234567890123E-07"; the array `{0.3333333333333333,1E+20}` is "0.333333333333333, 1E+20" (format 0) and "{0.333333333333333,1E+20}" (format 1). **A scalar is a one-element array in strict form**: `ARRAYTOTEXT(1/3,1)` is "{0.333333333333333}", `ARRAYTOTEXT("abc",1)` "{""abc""}" and `ARRAYTOTEXT(TRUE,1)` "{TRUE}"; format 0 gives the bare text; `ARRAYTOTEXT(#N/A,1)` is `#N/A`. **A reference to one empty cell is `#VALUE!`** in both formats (the engine gives ""; T-1718).
+Implemented (T-1356): `format_array_value` uses `number_to_text`, the helper VALUETOTEXT and `&` use; `ARRAYTOTEXT(1/3)` is "0.333333333333333" and `ARRAYTOTEXT({1E+20})` "1E+20".
 Status: VERIFIED (web)
 Tasks: T-1356
 

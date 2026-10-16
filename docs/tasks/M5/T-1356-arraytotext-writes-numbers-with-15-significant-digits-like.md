@@ -3,7 +3,7 @@ id: T-1356
 title: "ARRAYTOTEXT writes numbers with 15 significant digits like VALUETOTEXT and concatenation"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,9 +22,12 @@ crates/rustsheet-engine/src/functions/text/arraytotext.rs uses Rust's shortest `
 concatenation use; do not write another.
 
 ## Acceptance criteria
-- [ ] gen-m7/d38b52bfa1a9f9e6 A2 passes in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
-- [ ] Unit tests: ARRAYTOTEXT of 1/3, 1E+20 and an array of both, in format 0 and 1, equal VALUETOTEXT's text.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m7/d38b52bfa1a9f9e6 A2 passes in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
+- [x] Unit tests: ARRAYTOTEXT of 1/3, 1E+20 and an array of both, in format 0 and 1, equal VALUETOTEXT's text.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+ARRAYTOTEXT writes numbers with `number_to_text` (the VALUETOTEXT/`&` helper) instead of Rust shortest text; unit test covers 1/3, 1E+20 and both together in formats 0 and 1. A new probe (probes/arraytotext-number-text, 15 cells) also showed a scalar is braced in strict form (fixed here) and an empty-cell reference is #VALUE! (T-1718, 2 cells baselined). gen-m7/d38b52bfa1a9f9e6 A2 passes.
