@@ -166,7 +166,8 @@ const RING: u8 = 7;
 const CEDILLA: u8 = 8;
 const SUPERSCRIPT: u8 = 9;
 const STROKE: u8 = 10;
-/// `ð`, `ı`: probed as single characters only, each right after its base letter; kept a tiebreak accent, like `ø`, rather than a letter of its own.
+/// `ð`, `ı`: probed as single characters only, each right after its base letter; kept a
+/// tiebreak accent, like `ø`, rather than a letter of its own.
 const VARIANT: u8 = 11;
 
 /// Third-pass weights of the skipped characters: control characters below the apostrophe (none
