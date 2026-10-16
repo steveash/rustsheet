@@ -21,14 +21,19 @@ reference: `ISREF(INDIRECT("RCR"))` is TRUE with `RCR` = `Sheet1!$B$1`. Text tha
 reference nor such a name is `#REF!`, so `ISREF(INDIRECT("R0"))` is FALSE, also when `R0` is a
 defined name, since a name spelled like an out-of-range R1C1 reference is never resolved
 (references.md "R1C1-shaped sheet and defined names").
-Unprobed (hand, T-1682): the value read through the name; `a1` FALSE (ours: `#REF!`); sheet-qualified
-text (`"Sheet1!nm"`, ours: `#REF!`); a sheet-scoped name shadowing a workbook one (ours: sheet
-first); formula-valued or dynamic names (ours: `#REF!`).
-Evidence: probes/r1c1-name-use-rcr A2, r1c1-name-use-r0, -c0, -r0c1, -r1048577 A2 (excel-graph,
-2026-10-15).
+The value is read through the name (`SUM(INDIRECT("nm"))` is 7, a range name sums and `ROWS` counts it, `ISREF` is TRUE).
+`a1` FALSE and TRUE both resolve a name (`INDIRECT("nm",FALSE)` is 7). Name text is case-insensitive
+(`"NM"`, `"mixedcase"`) and trailing spaces are ignored (`"nm "` resolves) but a leading space is `#REF!`.
+A `Sheet!name` prefix picks the name scoped to that sheet (`INDIRECT("Sheet2!nm")` reads Sheet2's own `nm`
+though a workbook `nm` exists), and a prefix on a workbook-scoped name falls back to it (`"Sheet1!nm"`, `"Sheet2!gl"`);
+an unprefixed name is read sheet scope first. A name whose body is a formula is `#REF!` and `ISREF` FALSE:
+`OFFSET(...)`, `Sheet1!$B$1+1`, a constant `=5` and a text constant `="B1"`. A multi-cell name spills as a range
+(`INDIRECT("rng")` in a cell with occupied cells below is `#SPILL!`).
+Evidence: probes/r1c1-name-use-rcr A2, r1c1-name-use-r0, -c0, -r0c1, -r1048577 A2, probes/indirect-defined-name-text
+A1:A30 (excel-graph, 2026-10-15 and 2026-10-16, T-1682).
 Implemented in: `indirect_defined_name` (functions/lookup_and_reference/mod.rs); ISREF evaluates
 an INDIRECT argument (functions/information/mod.rs).
-Status: VERIFIED (excel-graph) for ISREF; the unprobed choices UNVERIFIED (probe pending, T-1682)
+Status: VERIFIED (excel-graph)
 Tasks: T-1657, T-1682
 
 ## INDIRECT's a1 argument is coerced like a boolean; text must be TRUE/FALSE
