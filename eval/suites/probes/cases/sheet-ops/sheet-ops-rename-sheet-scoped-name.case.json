@@ -1,0 +1,37 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A sheet-scoped name is read through its renamed sheet. (T-1608)",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=Data!Local",
+        "A2": "=SUM(Data!Local)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": "x"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "rename",
+      "sheet": "Data",
+      "to": "Inputs"
+    }
+  ],
+  "names": {
+    "Data!Local": "=Data!$A$1:$A$2"
+  }
+}

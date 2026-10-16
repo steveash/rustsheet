@@ -1,0 +1,31 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A2": {
+    "t": "n",
+    "v": 3.0
+   },
+   "B1": {
+    "t": "s",
+    "v": "=Plain!A1"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=SUM(Plain!A1:A2)"
+   }
+  },
+  "Plain": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "10fd28be393f168e80c3f8cddda6e3632be7165426838e5e95382bcc18bf2034",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T10:00:00+00:00",
+  "version": null
+ }
+}
