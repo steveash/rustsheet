@@ -80,6 +80,14 @@ impl CriteriaArg {
 /// ("*IF(S) lift array criteria").
 const MAX_LIFTED_CELL_VISITS: u64 = 1 << 27;
 
+/// `#ERROR!` when `visits` cells are more than one call may visit ([`MAX_LIFTED_CELL_VISITS`]):
+/// the lifted *IF(S) and AGGREGATE calls, and the two-parameter LAMBDAs GROUPBY and PIVOTBY call
+/// with a whole relative set (SPEC-0006 Design step 3). Excel has no such limit: DEVIATION.
+pub(crate) fn too_many_visits(visits: u64, cell: CellReferenceIndex) -> Option<CalcResult> {
+    (visits > MAX_LIFTED_CELL_VISITS)
+        .then(|| CalcResult::new_error(Error::ERROR, cell, "Too many cells to visit".to_string()))
+}
+
 /// Elements [`Model::lift_criteria`] computes: one per run of equal consecutive criteria, in
 /// row-major order (the rest reuse the previous result).
 fn count_walks(args: &[CriteriaArg], rows: usize, columns: usize) -> u64 {
@@ -197,12 +205,8 @@ impl Model {
         let visits = walk_cost(self)
             .saturating_mul(criteria_count)
             .saturating_mul(walks);
-        if visits > MAX_LIFTED_CELL_VISITS {
-            return CalcResult::new_error(
-                Error::ERROR,
-                cell,
-                "Too many cells to visit for array criteria".to_string(),
-            );
+        if let Some(error) = too_many_visits(visits, cell) {
+            return error;
         }
         // Consecutive equal criteria (the blank tail of a whole-column criteria range) reuse
         // the previous result instead of walking the ranges again.

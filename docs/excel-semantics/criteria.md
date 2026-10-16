@@ -210,6 +210,8 @@ over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walki
 use the same cap, at elements x evaluated cells of the searched column or row (lookup.md, T-0270; unit test
 `lifted_lookup_over_an_array_table_hits_the_visit_cap`).
 AGGREGATE's array function_num, options and k lift through the same code and cap (numbers.md "AGGREGATE", T-1038).
+GROUPBY and PIVOTBY charge their two-parameter LAMBDA calls against the same cap (arrays.md "GROUPBY and PIVOTBY:
+two-parameter LAMBDAs and the cell-visit cap", T-1325).
 Implemented in: `Model::lift_criteria` / `lift_ifs` (crates/rustsheet-engine/src/functions/statistical/if_ifs.rs),
 `criteria_static_result` (expressions/parser/static_analysis.rs)
 Tasks: T-0207, T-0263, T-0278

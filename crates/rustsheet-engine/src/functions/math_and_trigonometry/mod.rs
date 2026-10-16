@@ -3,6 +3,7 @@ mod decimal_text;
 mod gcd_lcm;
 mod hyperbolic;
 mod mathematical;
+pub(crate) use mathematical::percent_of;
 mod matrix;
 mod mmult;
 mod multinomial;

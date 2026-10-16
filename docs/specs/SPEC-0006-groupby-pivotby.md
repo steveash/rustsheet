@@ -233,7 +233,8 @@ Ordered; each is S/M. The grouping core lands with GROUPBY; PIVOTBY reuses it.
    argument errors.
 3. GROUPBY subtotals (opus, M): total_depth ±2 with "Grand Total", field_relationship.
 4. Function arrays (sonnet, S; after T-1466): eta names, HSTACK/VSTACK of functions, and the
-   PERCENTOF relative set in GROUPBY.
+   PERCENTOF relative set in GROUPBY. DONE (T-1325): labels, pairing with value columns, arities and the
+   reference result are in docs/excel-semantics/arrays.md (probes/groupby-pivotby-functions*).
 5. PIVOTBY (opus, M): the grid on the shared core, totals and subtotals on both axes, sort
    orders, filter, headers, several values and functions.
 6. PIVOTBY relative_to (opus, S): the reference sets 0-4 for two-argument functions.

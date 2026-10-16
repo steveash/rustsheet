@@ -15,6 +15,7 @@ mod gauss;
 mod geomean;
 mod hypegeom;
 mod if_ifs;
+pub(crate) use if_ifs::too_many_visits;
 mod linest;
 mod log_normal;
 mod mode_functions;

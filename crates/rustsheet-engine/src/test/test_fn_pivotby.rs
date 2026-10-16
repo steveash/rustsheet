@@ -238,9 +238,8 @@ fn filter_and_argument_errors() {
             "#VALUE!",
         ),
         ("G8", "=PIVOTBY(A2:A11,C2:C11,D2:D11,NA())", "#N/A"),
-        // Deferred: column subtotals over several values (T-1700), relative_to (T-1327),
-        // function arrays (T-1325). 3 over two row fields is #VALUE! (probes/pivotby-followup
-        // P!A381).
+        // Deferred: column subtotals over several values (T-1700), relative_to and two-argument
+        // functions (T-1327). 3 over two row fields is #VALUE! (probes/pivotby-followup P!A381).
         (
             "G9",
             "=PIVOTBY(A2:A11,B2:C11,D2:E11,LAMBDA(x,SUM(x)),,,,2)",
@@ -258,7 +257,7 @@ fn filter_and_argument_errors() {
         ),
         (
             "G12",
-            "=PIVOTBY(A2:A11,C2:C11,D2:D11,HSTACK(SUM,MAX))",
+            "=PIVOTBY(A2:A11,C2:C11,D2:D11,_xleta.PERCENTOF)",
             "#N/IMPL!",
         ),
         // probes/pivotby-followup P!A1401-A1461: an error option beats an invalid one before or
@@ -321,4 +320,71 @@ fn cross_product_is_size_checked_before_any_call() {
     // grouping stops at the first group past it.
     assert_eq!(model._get_text("B1"), "#ERROR!");
     assert_eq!(model._get_text("C1"), "62x42 1830");
+}
+
+#[test]
+fn a_row_of_functions_interleaves_per_column_group() {
+    // probes/groupby-pivotby P!A121: a row of function names under the column keys, the Total
+    // columns filled.
+    let grid = pivot(
+        "=PIVOTBY(A2:A11,C2:C11,D2:D11,HSTACK(_xleta.SUM,_xleta.MAX))",
+        8,
+        9,
+    );
+    assert_eq!(
+        grid[0],
+        ["", "2023", "2023", "2024", "2024", "2025", "2025", "Total", "Total"]
+    );
+    assert_eq!(
+        grid[1],
+        ["", "SUM", "MAX", "SUM", "MAX", "SUM", "MAX", "SUM", "MAX"]
+    );
+    assert_eq!(
+        grid[2],
+        ["East", "15", "10", "30", "30", "", "", "45", "30"]
+    );
+    assert_eq!(
+        grid[7],
+        ["Total", "35", "20", "86", "40", "9.5", "12.5", "130.5", "40"]
+    );
+    // probes/groupby-pivotby-functions2 P!A1: two functions over two value columns pair up, and
+    // the Total columns are filled.
+    let grid = pivot(
+        "=PIVOTBY(A2:A11,C2:C11,D2:E11,HSTACK(_xleta.SUM,_xleta.MAX))",
+        3,
+        9,
+    );
+    assert_eq!(grid[2], ["East", "15", "5", "30", "3", "", "", "45", "5"]);
+    // probes/groupby-pivotby-functions P!A621: shown headers, the labels after the column keys.
+    let grid = pivot(
+        "=PIVOTBY(A1:A11,C1:C11,D1:D11,HSTACK(_xleta.SUM,_xleta.MAX),3)",
+        4,
+        3,
+    );
+    assert_eq!(grid[0], ["", "Year", ""]);
+    assert_eq!(grid[2], ["", "SUM", "MAX"]);
+    assert_eq!(grid[3], ["Region", "Sales", "Sales"]);
+}
+
+#[test]
+fn a_column_of_functions_repeats_each_row_group() {
+    // probes/groupby-pivotby-functions P!A601, functions2 P!A41 and P!A61.
+    let grid = pivot(
+        "=PIVOTBY(A2:A11,C2:C11,D2:D11,VSTACK(_xleta.SUM,_xleta.MAX))",
+        13,
+        6,
+    );
+    assert_eq!(grid[0], ["", "", "2023", "2024", "2025", "Total"]);
+    assert_eq!(grid[1], ["East", "SUM", "15", "30", "", "45"]);
+    assert_eq!(grid[2], ["East", "MAX", "10", "30", "", "30"]);
+    assert_eq!(grid[12], ["Total", "MAX", "20", "40", "12.5", "40"]);
+    let grid = pivot(
+        "=PIVOTBY(A1:A11,C1:C11,D1:D11,VSTACK(_xleta.SUM,_xleta.MAX),3,-1,,0)",
+        5,
+        5,
+    );
+    assert_eq!(grid[0], ["", "", "Year", "", ""]);
+    assert_eq!(grid[2], ["Region", "", "Sales", "Sales", "Sales"]);
+    assert_eq!(grid[3], ["Total", "SUM", "35", "86", "9.5"]);
+    assert_eq!(grid[4], ["Total", "MAX", "20", "40", "12.5"]);
 }

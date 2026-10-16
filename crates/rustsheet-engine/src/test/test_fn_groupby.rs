@@ -314,19 +314,9 @@ fn argument_corners_are_value_errors() {
     model._set("D2", "=GROUPBY(A2:A11,B2:B11,5)");
     model._set("D3", "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),,0.5)");
     model._set("D4", "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),2.5)");
-    // Function arrays wait for T-1325 (G!S121, G!AB121).
-    model._set(
-        "D5",
-        "=GROUPBY(A2:A11,B2:B11,HSTACK(_xleta.SUM,_xleta.MAX))",
-    );
-    model._set(
-        "D6",
-        "=GROUPBY(A2:A11,B2:B11,VSTACK(_xleta.SUM,_xleta.MAX))",
-    );
     model._set("D7", "=GROUPBY(A2:A11,B2:B11,_xleta.SUM)");
     model.evaluate();
     assert_eq!(column(&model, "D", 1, 4), vec!["#VALUE!"; 4]);
-    assert_eq!(column(&model, "D", 5, 6), vec!["#N/IMPL!"; 2]);
     assert_eq!(model._get_text("E7"), "45");
 }
 
@@ -765,4 +755,213 @@ fn value_sort_parents_use_the_function_of_all_their_rows() {
         ["West", "West", "West", "East", "East", "0", "North", "South"]
     );
     assert_eq!(column(&model, "N", 1, 3), ["60", "80", "87.5"]);
+}
+
+/// The texts of `formula`'s result in D1 of the Region/Sales records, `height` rows by `width`
+/// columns, with Units in C (1 to 10).
+fn grouped(formula: &str, height: usize, width: u8) -> Vec<Vec<String>> {
+    let mut model = region_sales();
+    model._set("C1", "Units");
+    for row in 2..=11 {
+        model._set(&format!("C{row}"), &(row - 1).to_string());
+    }
+    model._set("D1", formula);
+    model.evaluate();
+    let last = char::from(b'D' + width - 1);
+    (1..=height).map(|r| row(&model, r, 'D', last)).collect()
+}
+
+#[test]
+fn a_row_of_functions_adds_columns_under_their_names() {
+    // probes/groupby-pivotby G!S121: a row of function names above the shown headers.
+    let grid = grouped(
+        "=GROUPBY(A1:A11,B1:B11,HSTACK(_xleta.SUM,_xleta.AVERAGE),3)",
+        8,
+        3,
+    );
+    assert_eq!(grid[0], ["", "SUM", "AVERAGE"]);
+    assert_eq!(grid[1], ["Region", "Sales", "Sales"]);
+    assert_eq!(grid[2], ["East", "45", "15"]);
+    assert_eq!(grid[7], ["Total", "130.5", "13.05"]);
+    // probes/groupby-pivotby-functions G!A1 (names without headers), G!A181 (a LAMBDA is
+    // "CUSTOM"), functions2 G!A641 (detected headers are shown with a row of functions).
+    let grid = grouped(
+        "=GROUPBY(A2:A11,B2:B11,HSTACK(_xleta.SUM,LAMBDA(x,ROWS(x))))",
+        2,
+        3,
+    );
+    assert_eq!(grid, [["", "SUM", "CUSTOM"], ["East", "45", "3"]]);
+    let grid = grouped(
+        "=GROUPBY(A1:A11,B1:B11,HSTACK(_xleta.SUM,_xleta.MAX))",
+        3,
+        3,
+    );
+    assert_eq!(grid[1], ["Region", "Sales", "Sales"]);
+    assert_eq!(grid[2], ["East", "45", "30"]);
+    // One function in HSTACK is that function (G!A601).
+    let grid = grouped("=GROUPBY(A2:A11,B2:B11,HSTACK(_xleta.SUM))", 1, 2);
+    assert_eq!(grid[0], ["East", "45"]);
+}
+
+#[test]
+fn a_column_of_functions_repeats_each_group_after_a_label_column() {
+    // probes/groupby-pivotby G!AB121; functions G!A61 (shown headers: "" over the labels).
+    let grid = grouped(
+        "=GROUPBY(A2:A11,B2:B11,VSTACK(_xleta.SUM,_xleta.MAX))",
+        12,
+        3,
+    );
+    assert_eq!(grid[0], ["East", "SUM", "45"]);
+    assert_eq!(grid[1], ["East", "MAX", "30"]);
+    assert_eq!(grid[10], ["Total", "SUM", "130.5"]);
+    assert_eq!(grid[11], ["Total", "MAX", "40"]);
+    let grid = grouped(
+        "=GROUPBY(A1:A11,B1:B11,VSTACK(_xleta.SUM,_xleta.MAX),3,-1)",
+        3,
+        3,
+    );
+    assert_eq!(grid[0], ["Region", "", "Sales"]);
+    assert_eq!(grid[1], ["Total", "SUM", "130.5"]);
+    assert_eq!(grid[2], ["Total", "MAX", "40"]);
+}
+
+#[test]
+fn labels_beside_or_below_the_functions() {
+    // functions G!A221, functions2 G!A121 and G!A161: values next to a column of functions label
+    // its rows, values below a row of functions label its columns.
+    let grid = grouped("=GROUPBY(A2:A11,B2:B11,HSTACK(_xleta.SUM,\"s\"))", 1, 3);
+    assert_eq!(grid[0], ["East", "s", "45"]);
+    let grid = grouped("=GROUPBY(A2:A11,B2:B11,VSTACK(_xleta.SUM,5))", 2, 2);
+    assert_eq!(grid, [["", "5"], ["East", "45"]]);
+}
+
+#[test]
+fn functions_pair_with_value_columns() {
+    // functions G!A41, G!A81: two functions over two value columns pair up; functions2
+    // G!A1-A61: other counts are #VALUE!.
+    let grid = grouped(
+        "=GROUPBY(A2:A11,B2:C11,HSTACK(_xleta.SUM,_xleta.MAX))",
+        2,
+        3,
+    );
+    assert_eq!(grid, [["", "SUM", "MAX"], ["East", "45", "5"]]);
+    let grid = grouped(
+        "=GROUPBY(A2:A11,B2:C11,VSTACK(_xleta.SUM,_xleta.MAX))",
+        2,
+        3,
+    );
+    assert_eq!(grid, [["East", "SUM", "45"], ["East", "MAX", "5"]]);
+    let grid = grouped(
+        "=GROUPBY(A2:A11,B2:C11,HSTACK(_xleta.SUM,_xleta.MAX,_xleta.MIN))",
+        1,
+        1,
+    );
+    assert_eq!(grid[0], ["#VALUE!"]);
+}
+
+#[test]
+fn invalid_function_arrays() {
+    // functions G!A201 (2-D), G!A261 (an array constant), G!A781 (an error element), functions2
+    // G!A101 (a value first), G!A381 and G!A421 (functions that take three or no arguments).
+    let mut model = region_sales();
+    let cases = [
+        (
+            "D1",
+            "=GROUPBY(A2:A11,B2:B11,HSTACK(VSTACK(_xleta.SUM,_xleta.MAX),VSTACK(_xleta.MIN,_xleta.COUNT)))",
+            "#VALUE!",
+        ),
+        ("D2", "=GROUPBY(A2:A11,B2:B11,{1,2})", "#VALUE!"),
+        ("D3", "=GROUPBY(A2:A11,B2:B11,HSTACK(_xleta.SUM,NA()))", "#N/A"),
+        ("D4", "=GROUPBY(A2:A11,B2:B11,HSTACK(5,_xleta.SUM))", "#VALUE!"),
+        ("D5", "=GROUPBY(A2:A11,B2:B11,_xleta.TEXTJOIN)", "#VALUE!"),
+        ("D6", "=GROUPBY(A2:A11,B2:B11,_xleta.NOW)", "#VALUE!"),
+        ("D7", "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,y,z,1))", "#VALUE!"),
+    ];
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cases {
+        assert_eq!(model._get_text(cell), expected, "{formula}");
+    }
+}
+
+#[test]
+fn value_sorts_name_output_columns() {
+    // functions2 G!A221 (3 is the second function of a row), G!A201 (2 is the first function of
+    // a column of them).
+    let grid = grouped(
+        "=GROUPBY(A2:A11,B2:B11,HSTACK(_xleta.SUM,LAMBDA(x,-SUM(x))),,,3)",
+        2,
+        3,
+    );
+    assert_eq!(grid[1], ["West", "72.5", "-72.5"]);
+    let grid = grouped(
+        "=GROUPBY(A2:A11,B2:B11,VSTACK(LAMBDA(x,-SUM(x)),_xleta.SUM),,,2)",
+        2,
+        3,
+    );
+    assert_eq!(grid, [["West", "CUSTOM", "-72.5"], ["West", "SUM", "72.5"]]);
+}
+
+#[test]
+fn two_argument_functions_get_all_rows() {
+    // probes/groupby-pivotby G!S97: PERCENTOF is each group's share and 1 in the total;
+    // functions G!A301-A321 (the relative set is every kept row), G!A381 (an optional second
+    // parameter is not passed).
+    let grid = grouped("=GROUPBY(A2:A11,B2:B11,_xleta.PERCENTOF)", 6, 2);
+    assert_eq!(grid[1], ["North", "0.053639847"]);
+    assert_eq!(grid[5], ["Total", "1"]);
+    let grid = grouped("=GROUPBY(A2:A11,B2:B11,LAMBDA(x,y,ROWS(y)))", 6, 2);
+    assert_eq!(grid[0], ["East", "10"]);
+    assert_eq!(grid[5], ["Total", "10"]);
+    let grid = grouped(
+        "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,y,SUM(y)),,,,B2:B11>5)",
+        1,
+        2,
+    );
+    assert_eq!(grid[0], ["East", "128.5"]);
+    let grid = grouped("=GROUPBY(A2:A11,B2:B11,LAMBDA(x,[y],ISOMITTED(y)))", 1, 2);
+    assert_eq!(grid[0], ["East", "TRUE"]);
+}
+
+#[test]
+fn a_reference_result_is_value_error() {
+    // probes/groupby-lambda-forms G!J193; functions G!A561, G!A581 (picked by IF, from INDEX).
+    let grid = grouped("=GROUPBY(A2:A11,B2:B11,LAMBDA(x,B2))", 1, 2);
+    assert_eq!(grid[0], ["East", "#VALUE!"]);
+    let grid = grouped("=GROUPBY(A2:A11,B2:B11,LAMBDA(x,IF(TRUE,B2)))", 1, 2);
+    assert_eq!(grid[0], ["East", "#VALUE!"]);
+    let grid = grouped("=GROUPBY(A2:A11,B2:B11,LAMBDA(x,INDEX(B2:B3,1)))", 1, 2);
+    assert_eq!(grid[0], ["East", "#VALUE!"]);
+}
+
+#[test]
+fn two_parameter_lambdas_are_charged_against_the_visit_cap() {
+    // SPEC-0006 Design step 3, DEVIATION (docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY"):
+    // 20000 groups each given all 20000 rows visit 4E8 cells, past the cap, so the result is
+    // #ERROR!, while the built-in PERCENTOF sums the relative set once (O(N)) and a one-parameter
+    // LAMBDA visits each row once.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=GROUPBY(SEQUENCE(20000),SEQUENCE(20000),LAMBDA(x,y,ROWS(y)))",
+    );
+    model._set(
+        "B1",
+        "=INDEX(GROUPBY(SEQUENCE(20000),SEQUENCE(20000),_xleta.PERCENTOF),20001,2)",
+    );
+    model._set(
+        "C1",
+        "=INDEX(GROUPBY(SEQUENCE(20000),SEQUENCE(20000),LAMBDA(x,ROWS(x))),20001,2)",
+    );
+    model._set(
+        "D1",
+        "=INDEX(GROUPBY(SEQUENCE(2000),SEQUENCE(2000),LAMBDA(x,y,ROWS(y))),2001,2)",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+    assert_eq!(model._get_text("B1"), "1");
+    assert_eq!(model._get_text("C1"), "20000");
+    assert_eq!(model._get_text("D1"), "2000");
 }

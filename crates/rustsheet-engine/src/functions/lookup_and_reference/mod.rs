@@ -24,6 +24,7 @@ mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
 mod expand;
+mod group_functions;
 mod groupby;
 mod grouping;
 mod hstack_vstack;

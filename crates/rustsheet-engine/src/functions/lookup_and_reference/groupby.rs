@@ -4,6 +4,7 @@
 //! Excel: docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY", evidence probes/groupby-pivotby
 //! sheet G (excel-graph, T-1276) and its follow-ups (T-1328).
 
+use super::group_functions::{Aggregate, Element, Functions, Relative};
 use super::grouping::{
     effective_depth, empty_text, subtotal_levels, Grouping, ParentOrder, SortOrder,
 };
@@ -15,9 +16,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::logical::{as_lambda, LambdaCaller},
     functions::util::array_node_to_calc_result,
-    functions::Function,
     limits::check_array_size,
     model::Model,
 };
@@ -27,15 +26,16 @@ use crate::{
 struct GroupbyInputs {
     keys: Vec<Vec<ArrayNode>>,
     values: Vec<Vec<ArrayNode>>,
-    /// `function`, `field_headers`, `total_depth`, `sort_order` and `filter_array`, `None` when
-    /// omitted.
+    /// The `function` argument as [`Model::function_elements`] reads it.
+    function: Vec<Vec<Element>>,
+    /// `field_headers`, `total_depth`, `sort_order` and `filter_array`, `None` when omitted.
     options: Vec<Option<CalcResult>>,
     relationship: Option<CalcResult>,
 }
 
 /// The GROUPBY options after the checks ([`Model::groupby_args`]).
 struct GroupbyArgs {
-    function: CalcResult,
+    functions: Functions,
     headers: FieldHeaders,
     /// The total depth laid out ([`effective_depth`]): 0 none, ±1 the grand total below or
     /// above, ±n with the subtotals of the first n - 1 key fields.
@@ -107,35 +107,6 @@ pub(crate) fn not_implemented(cell: CellReferenceIndex, feature: &str) -> CalcRe
         cell,
         format!("{feature} are not implemented yet"),
     )
-}
-
-/// Whether the `function` argument is an array of functions (`HSTACK(SUM,AVERAGE)`, G!S121).
-// TODO(T-1325): function arrays.
-pub(crate) fn is_function_array(arg: &Node) -> bool {
-    matches!(
-        arg.ungrouped(),
-        Node::FunctionKind {
-            kind: Function::Hstack | Function::Vstack,
-            ..
-        }
-    )
-}
-
-/// The evaluated `function` argument of GROUPBY or PIVOTBY (`name`), with whether it is an array
-/// of functions (T-1325): a LAMBDA or an eta name ([`as_lambda`], the check BYROW and BYCOL
-/// share), an array or range; anything else is `#VALUE!` (`5`: probes/groupby-lambda-forms
-/// G!A217, probes/pivotby-followup P!A761). Error values are reported before this
-/// ([`Model::evaluate_options`]).
-pub(crate) fn function_argument(
-    function: CalcResult,
-    name: &str,
-    cell: CellReferenceIndex,
-) -> Result<(CalcResult, bool), CalcResult> {
-    match as_lambda(function) {
-        Ok(lambda) => Ok((lambda, false)),
-        Err(array @ (CalcResult::Array(_) | CalcResult::Range { .. })) => Ok((array, true)),
-        Err(_) => Err(value_error(cell, &format!("{name} expects a function"))),
-    }
 }
 
 /// An optional argument, `None` when it is missing or omitted (`GROUPBY(k,v,f,,0)`).
@@ -364,21 +335,19 @@ impl Model {
         }
         let keys = self.eval_to_array(&args[0], cell)?;
         let values = self.eval_to_array(&args[1], cell)?;
-        // TODO(T-1325): function arrays (`HSTACK(SUM,AVERAGE)`, G!S121) are not implemented
-        // rather than a wrong #VALUE!. PERCENTOF (G!S97) still runs with one argument: its keys
-        // column already matches Excel.
-        if is_function_array(&args[2]) {
-            return Err(function_arrays_error(cell, "GROUPBY"));
-        }
-        let mut options = match self.evaluate_options(&args[2..], cell) {
+        let options = self
+            .function_elements(&args[2], cell)
+            .and_then(|function| Ok((function, self.evaluate_options(&args[3..], cell)?)));
+        let (function, mut options) = match options {
             Ok(options) => options,
             Err(error) => return Err(self.lifted_error(args.get(7), error, cell)),
         };
-        options.resize(6, None);
+        options.resize(5, None);
         let relationship = options.pop().flatten();
         Ok(GroupbyInputs {
             keys,
             values,
+            function,
             options,
             relationship,
         })
@@ -468,7 +437,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
         let args = self.groupby_args(inputs, relationship, cell)?;
-        self.groupby(inputs, &args, cell)
+        self.groupby(inputs, args, cell)
     }
 
     /// Checks the GROUPBY options in Excel's order (each check's evidence is beside it).
@@ -480,13 +449,12 @@ impl Model {
     ) -> Result<GroupbyArgs, CalcResult> {
         let (keys, values) = (&inputs.keys, &inputs.values);
         let mut options = inputs.options.iter().cloned();
-        let function = options.next().flatten().unwrap_or(CalcResult::EmptyArg);
         let field_headers = options.next().flatten();
         let total_depth = options.next().flatten();
         let sort_order = options.next().flatten();
         let filter = options.next().flatten();
 
-        let (function, function_array) = function_argument(function, "GROUPBY", cell)?;
+        let mut functions = self.function_argument(&inputs.function, "GROUPBY", cell)?;
         let headers = self.field_headers(field_headers, cell)?;
         let key_columns = width(keys);
         let depth_given = total_depth.is_some();
@@ -498,13 +466,22 @@ impl Model {
                 "row_fields and values must have the same height",
             ));
         }
-        let sort = self.sort_order(sort_order, key_columns, width(values), cell)?;
+        functions.pair_with(width(values), cell)?;
+        // A sort_order past the keys names an output value column (one per function of a row of
+        // functions: functions2 G!A221; the first function's of a column of them: G!A201, G!A261).
+        let sort = self.sort_order(sort_order, key_columns, functions.shape().columns, cell)?;
         let header_row = match headers {
             FieldHeaders::Detect => values_have_header(values).ok_or_else(|| {
                 value_error(cell, "GROUPBY cannot tell whether there are headers")
             })?,
             FieldHeaders::No | FieldHeaders::Generated => false,
             FieldHeaders::Hidden | FieldHeaders::Shown => true,
+        };
+        let headers = match headers {
+            FieldHeaders::Detect if header_row && functions.shows_detected_headers() => {
+                FieldHeaders::Shown
+            }
+            other => other,
         };
         let first = usize::from(header_row);
         if first >= keys.len() {
@@ -517,9 +494,6 @@ impl Model {
         if relationship == Relationship::Table && subtotal_levels(total_depth) > 0 {
             return Err(value_error(cell, "field_relationship 1 has no subtotals"));
         }
-        if function_array {
-            return Err(function_arrays_error(cell, "GROUPBY"));
-        }
         let (depth, order) = match relationship {
             // A table keeps the hierarchy's layout sorted by keys (followup G!A221, G!A241), and
             // sorted by a value it orders every group by its own value, with no subtotals even
@@ -531,7 +505,7 @@ impl Model {
             ),
         };
         Ok(GroupbyArgs {
-            function,
+            functions,
             headers,
             depth,
             sort,
@@ -546,18 +520,23 @@ impl Model {
     fn groupby(
         &mut self,
         inputs: &GroupbyInputs,
-        args: &GroupbyArgs,
+        mut args: GroupbyArgs,
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
         let (keys, values) = (&inputs.keys, &inputs.values);
         let key_columns = width(keys);
-        let columns = key_columns + width(values);
+        let shape = args.functions.shape();
+        let per_line = shape.rows_per_group;
+        let columns = key_columns + usize::from(shape.label_column) + shape.columns;
         let shows_header = matches!(args.headers, FieldHeaders::Generated | FieldHeaders::Shown);
-        let extra_rows = usize::from(shows_header) + usize::from(args.depth != 0);
+        let extra_rows = usize::from(shape.label_row)
+            + usize::from(shows_header)
+            + usize::from(args.depth != 0) * per_line;
+        let tall = |lines: usize| lines.saturating_mul(per_line).saturating_add(extra_rows);
         let to_error = |(error, message)| CalcResult::new_error(error, cell, message);
         // The output size is checked while grouping, before the sort, any LAMBDA call or the
         // output allocation (SPEC-0006 step 6).
-        let limit = |groups: usize| check_array_size(groups + extra_rows, columns);
+        let limit = |groups: usize| check_array_size(tall(groups), columns);
         let mut grouping =
             Grouping::new(keys, args.rows.iter().copied(), limit).map_err(to_error)?;
         // The subtotal rows count too, still before any call (CLAUDE.md directive 5): counted in
@@ -566,18 +545,29 @@ impl Model {
         let (levels, before) = (subtotal_levels(args.depth), args.depth < 0);
         grouping.sort_by_key_order(&args.sort, cell);
         let mut lines = grouping.lines(levels, before);
-        if let Some(error) = check_array_size(lines.len() + extra_rows, columns) {
+        if let Some(error) = check_array_size(tall(lines.len()), columns) {
             return Err(to_error(error));
         }
 
-        let mut caller = self.lambda_caller(&args.function, 1);
+        // A two-argument function gets all (kept) rows as its relative set: PERCENTOF is each
+        // group's share of the total, and 1 in the total row (G!S97, functions G!A301-A321).
+        let functions = &mut args.functions;
+        let all = Relative {
+            id: Some(0),
+            rows: &args.rows,
+        };
         // A value sort keeps the values it sorted by, groups' and subtotals', so that column is
         // not computed twice.
         let sorted = match args.sort {
             SortOrder::Keys(_) => None,
             SortOrder::Value { column, ascending } => {
+                let pair = functions.pair_at(0, column);
                 let by = grouping.sort_by_aggregate(ascending, args.order, cell, |group_rows| {
-                    self.aggregate(&mut caller, values, column, group_rows, cell)
+                    let at = Aggregate {
+                        rows: group_rows,
+                        relative: all,
+                    };
+                    self.aggregate(functions, pair, values, at, cell)
                 });
                 let checked = lines.len();
                 lines = grouping.lines(levels, before);
@@ -585,16 +575,21 @@ impl Model {
                 Some((column, by))
             }
         };
-        let mut output = Vec::with_capacity(lines.len() + extra_rows);
+        let mut output = Vec::with_capacity(tall(lines.len()));
+        if shape.label_row {
+            let mut row = vec![empty_text(); key_columns];
+            row.extend(functions.label_cells(0..shape.columns));
+            output.push(row);
+        }
         if shows_header {
-            output.push(header_cells(args.headers, keys, values));
+            output.push(header_cells(args.headers, keys, values, functions));
         }
         let mut total = (args.depth != 0).then(|| {
             let label = total_label_cells(key_columns, levels);
-            self.line_row(&mut caller, values, label, &args.rows, None, cell)
+            self.line_row(functions, values, label, (&args.rows, all), None, cell)
         });
         if before {
-            output.extend(total.take());
+            output.extend(total.take().into_iter().flatten());
         }
         for line in lines {
             // A subtotal is the function of all its groups' rows (G!J49, G!A73).
@@ -604,9 +599,13 @@ impl Model {
             let known = sorted
                 .as_ref()
                 .and_then(|(column, by)| Some((*column, by.of_line(line)?)));
-            output.push(self.line_row(&mut caller, values, label, &rows, known, cell));
+            let row = self.line_row(functions, values, label, (&rows, all), known, cell);
+            output.extend(row);
         }
-        output.extend(total);
+        output.extend(total.into_iter().flatten());
+        if let Some(error) = functions.refused() {
+            return Err(error);
+        }
         Ok(output)
     }
 
@@ -652,63 +651,53 @@ impl Model {
         Ok(depth as isize)
     }
 
-    /// One GROUPBY row: `label` (the key cells), then the function of each value column over
-    /// `rows`, except for the column `known` names, whose value a value sort already computed. The
-    /// total row is "Total" ("Grand Total" with subtotals), `""` under the other key fields (empty
-    /// text, not blank cells: G!AC33), then the function of every value of each column in source
-    /// order, not of the group results (AVERAGE's total is 13.05 = 130.5/10, G!S73).
+    /// The GROUPBY rows of one line: `label` (the key cells), then the function of each output
+    /// value column over `rows` (with `relative` for two-argument functions), except for the
+    /// column `known` names, whose value a value sort already computed; one row per function when
+    /// the functions are laid out as rows (G!AB121). The total row is "Total" ("Grand Total" with
+    /// subtotals), `""` under the other key fields (empty text, not blank cells: G!AC33), then the
+    /// function of every value of each column in source order, not of the group results
+    /// (AVERAGE's total is 13.05 = 130.5/10, G!S73).
     fn line_row(
         &mut self,
-        caller: &mut LambdaCaller,
+        functions: &mut Functions,
         values: &[Vec<ArrayNode>],
-        mut label: Vec<ArrayNode>,
-        rows: &[usize],
+        label: Vec<ArrayNode>,
+        (rows, relative): (&[usize], Relative<'_>),
         known: Option<(usize, &ArrayNode)>,
         cell: CellReferenceIndex,
-    ) -> Vec<ArrayNode> {
-        for column in 0..width(values) {
-            label.push(match known {
-                Some((by_column, value)) if by_column == column => value.clone(),
-                _ => self.aggregate(caller, values, column, rows, cell),
-            });
-        }
-        label
-    }
-
-    /// The function of the values of `column` in `rows`, passed as one column array in source
-    /// order (ARRAYTOTEXT gives "Apple, Pear, Apple", G!AB97), as values, not a reference (ISREF is
-    /// FALSE), with blank cells as blanks (ISBLANK is TRUE, COUNTA counts them:
-    /// probes/groupby-lambda-forms G!S217, G!A241, probes/groupby-blank-values). An array result is
-    /// `#VALUE!`, a 1x1 array too (G!J121, one-record groups included). So is a LAMBDA of another
-    /// arity (groupby-lambda-forms G!J217): each call fails on its own, not the whole GROUPBY.
-    /// Excel also gives `#VALUE!` for a body that is a one-cell reference (`LAMBDA(x,D2)`,
-    /// groupby-lambda-forms G!J193), but a LAMBDA call here returns that cell's value.
-    // TODO(T-1325): a reference result is #VALUE! (needs the LAMBDA call to keep references).
-    pub(crate) fn aggregate(
-        &mut self,
-        caller: &mut LambdaCaller,
-        values: &[Vec<ArrayNode>],
-        column: usize,
-        rows: &[usize],
-        cell: CellReferenceIndex,
-    ) -> ArrayNode {
-        let input = rows
-            .iter()
-            .map(|&row| vec![at(values, row, column)])
-            .collect();
-        calc_result_to_array_node(self.call_lambda_caller(caller, [CalcResult::Array(input)], cell))
+    ) -> Vec<Vec<ArrayNode>> {
+        let at = Aggregate { rows, relative };
+        let reuse = known.map(|(column, value)| (column, Some(value)));
+        self.value_rows(functions, values, at, reuse, cell)
+            .into_iter()
+            .map(|cells| {
+                let mut row = label.clone();
+                row.extend(cells);
+                row
+            })
+            .collect()
     }
 }
 
-/// The header row GROUPBY shows: the key field names, then the value field names
-/// ([`key_names`], [`value_name`]; G!J25, G!A25).
+/// The header row GROUPBY shows: the key field names, `""` over a label column, then the value
+/// field name of each output column ([`key_names`], [`value_name`]; G!J25, G!A25; functions
+/// G!A61, G!A41).
 fn header_cells(
     headers: FieldHeaders,
     keys: &[Vec<ArrayNode>],
     values: &[Vec<ArrayNode>],
+    functions: &Functions,
 ) -> Vec<ArrayNode> {
+    let shape = functions.shape();
     let mut row = key_names(headers, keys);
-    row.extend((0..width(values)).map(|column| value_name(headers, values, column)));
+    if shape.label_column {
+        row.push(empty_text());
+    }
+    row.extend(
+        (0..shape.columns)
+            .map(|column| value_name(headers, values, functions.value_column(column))),
+    );
     row
 }
 
@@ -765,10 +754,4 @@ pub(crate) fn value_name(
     } else {
         ArrayNode::String(format!("Value {}", column + 1).into())
     }
-}
-
-/// `#N/IMPL!` for an array of functions (`HSTACK(SUM,AVERAGE)`) in GROUPBY or PIVOTBY (`name`).
-// TODO(T-1325): function arrays.
-pub(crate) fn function_arrays_error(cell: CellReferenceIndex, name: &str) -> CalcResult {
-    not_implemented(cell, &format!("{name} function arrays"))
 }

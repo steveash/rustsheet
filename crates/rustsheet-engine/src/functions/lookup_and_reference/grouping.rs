@@ -97,6 +97,20 @@ impl Grouping {
         Ok(Grouping { groups })
     }
 
+    /// For each of `height` source rows, the index of its group (`usize::MAX` for rows in no
+    /// group: headers and filtered rows).
+    pub(crate) fn group_of(&self, height: usize) -> Vec<usize> {
+        let mut group_of = vec![usize::MAX; height];
+        for (index, group) in self.groups.iter().enumerate() {
+            for &row in &group.rows {
+                if let Some(entry) = group_of.get_mut(row) {
+                    *entry = index;
+                }
+            }
+        }
+        group_of
+    }
+
     /// Sorts the groups by their keys, field by field, `ascending[i]` for field `i` (ascending
     /// when missing). Mixed types sort numbers < text < FALSE < TRUE (G!A193) and the blank key
     /// sorts last in both directions (G!A1, G!A145): that is `sort_key_cmp`. Numbers compare
