@@ -1,5 +1,5 @@
 ---
-id: T-1684
+id: T-1691
 title: "ASC returns its text unchanged in en-US (full-width ASCII, ideographic space and punctuation are not narrowed)"
 milestone: M5
 lane: functions-text
