@@ -3,7 +3,7 @@ id: T-1678
 title: "Keep the picked-argument index of XLOOKUP, TAKE, DROP and TRIMRANGE next to Function::picks_reference"
 milestone: M2
 lane: quality
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -26,3 +26,6 @@ Found by the 2026-10-16 steward spot-audit of PR #500 (T-1252). The opus archite
 
 ## Out of scope
 - Adding new picking functions (CHOOSEROWS and others need probes first).
+
+## Outcome
+`Function::picked_reference_arg` (functions/util.rs) is the one list of reference-picking calls and the argument each picks from (XLOOKUP 2, TAKE/DROP/TRIMRANGE 0); `picks_reference` is `.is_some()` and `aggregate.rs` reads the index from it. The methods moved out of the oversized `functions/mod.rs`, which shrank 2182 -> 2172 lines (`quality/oversized-files.json` updated with the script). Pure refactor: every eval suite 0 fixed, 0 regressions.
