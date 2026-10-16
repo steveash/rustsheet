@@ -80,5 +80,9 @@
   xlsx import/worksheets.rs, now under 1000 lines (`check_file_size.py --update`); duplicated lines 6360 → 6328
   (already lower on the branch before T-1326's fix commit; PIVOTBY reuses GROUPBY's header-name, total-row and width
   helpers instead of copying them) (`check_duplication.py --update`).
+  T-1291: functions below the evidence floor 58 → 56 (two more functions reach ≥ 20 Excel cells through the
+  mode-typed-arguments, mode-typed-text-no-mode and vara-direct-lambda probes; decision 0062) (`make eval-baseline`);
+  duplicated lines 6328 → 6155 (paid down by other merged work already on main; T-1291 itself adds none)
+  (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
