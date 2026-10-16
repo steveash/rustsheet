@@ -2639,8 +2639,6 @@ F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B2
 F	probes/sheet-ops/sheet-ops-move-span-start-last.case.json	Calc!A1
 F	probes/sheet-ops/sheet-ops-move-span-start-last.case.json	Calc!B1
 F	probes/sheet-ops/sheet-ops-move-span-start-last.case.json	Calc!B2
-F	probes/sheet-ops/sheet-ops-rename-sheet-scoped-name.case.json	Calc!A1
-F	probes/sheet-ops/sheet-ops-rename-sheet-scoped-name.case.json	Calc!A2
 F	probes/solver-iteration-traces.case.json	I!A17
 F	probes/solver-iteration-traces.case.json	I!A22
 F	probes/solver-iteration-traces.case.json	I!A24

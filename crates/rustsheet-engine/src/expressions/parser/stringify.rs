@@ -4,7 +4,7 @@ use super::reference_operators::{
     union_text,
 };
 use super::{
-    super::utils::{name_needs_quoting, quote_name},
+    super::utils::{name_needs_quoting, quote_name, rename_defined_name_sheet},
     for_each_chain_operand_mut, left_chain,
     move_formula::{moved_reference_text, MoveContext},
     value_operands, ArrayNode, Node, Reference,
@@ -961,15 +961,15 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         }
 
         // Do nothing
-        Node::BooleanKind(_) => {}
-        Node::NumberKind(_) => {}
-        Node::StringKind(_) => {}
-        Node::ErrorKind(_) => {}
-        Node::ParseErrorKind { .. } => {}
-        Node::ArrayKind(_) => {}
-        Node::DefinedNameKind(_) => {}
-        Node::NamedVariableKind { .. } => {}
-        Node::EmptyArgKind => {}
+        Node::BooleanKind(_)
+        | Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::ErrorKind(_)
+        | Node::ParseErrorKind { .. }
+        | Node::ArrayKind(_)
+        | Node::NamedVariableKind { .. }
+        | Node::EmptyArgKind => {}
+        Node::DefinedNameKind((n, s, _)) => rename_defined_name_sheet(n, *s, sheet_index, new_name),
         Node::LambdaDefKind {
             parameters: _,
             body,
