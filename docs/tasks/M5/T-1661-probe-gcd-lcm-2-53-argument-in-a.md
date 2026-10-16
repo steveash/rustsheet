@@ -3,7 +3,7 @@ id: T-1661
 title: "Probe GCD/LCM: 2^53 argument in a range cell or array literal against a later error, and LCM result overflow against a later error"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
