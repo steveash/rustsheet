@@ -3,7 +3,7 @@ id: T-1729
 title: "T over an array lifts element-wise in a dynamic formula"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
