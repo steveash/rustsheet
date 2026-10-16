@@ -3,7 +3,7 @@ id: T-1655
 title: "Probe GCD/LCM/MULTINOMIAL: array-literal text or TRUE after a negative, error order, and 2^53 overflow against a later error"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1574 left unprobed (docs/excel-semantics/coercion.md, GCD / LCM / MULTINOMIAL 
 
 ## Out of scope
 -
+
+## Outcome
+New case `probes/gcd-lcm-multinomial-error-order` (52 cells, excel-graph): two different non-negative errors, omitted arguments against errors, an argument above 2^53 against errors and a negative, and array-literal text or TRUE next to a negative for LCM and MULTINOMIAL. Everything matched except GCD and LCM returning the 2^53 `#NUM!` at once; in Excel it loses to any other error in either order, like a negative's. Fixed in `gcd_lcm.rs`; MULTINOMIAL already matched. coercion.md updated. Eval delta: 0 fixed, 1 new case passing 52/52, 0 regressions.

@@ -68,6 +68,10 @@ impl Model {
         // it whatever the order (gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m7/4629e931955aa4b8
         // Calc!A7, docs/excel-semantics/coercion.md), so `#NUM!` is returned after the last one.
         let negative_seen = std::cell::Cell::new(false);
+        // An argument above 2^53 is `#NUM!` the same deferred way: any other error, before or
+        // after it, wins (`GCD(10^16,"a")` is #VALUE!, `GCD(10^16,NA())` #N/A, GCD, LCM:
+        // probes/gcd-lcm-multinomial-error-order A9:A12, A23:A26).
+        let too_large_seen = std::cell::Cell::new(false);
 
         let mut handle_number = |value: f64| -> Option<CalcResult> {
             if !value.is_finite() {
@@ -83,11 +87,8 @@ impl Model {
                 negative_seen.set(true);
                 return None;
             } else if n > MAX_LCM_GCD {
-                return Some(CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Argument too large".to_string(),
-                ));
+                too_large_seen.set(true);
+                return None;
             }
             saw_number = true;
             acc = Some(match acc {
@@ -232,6 +233,9 @@ impl Model {
             }
         }
 
+        if too_large_seen.get() {
+            return CalcResult::new_error(Error::NUM, cell, "Argument too large".to_string());
+        }
         if negative_seen.get() {
             return negative_error(cell, fn_name);
         }
