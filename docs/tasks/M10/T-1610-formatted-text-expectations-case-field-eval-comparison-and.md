@@ -3,7 +3,7 @@ id: T-1610
 title: "Formatted-text expectations: case field, eval comparison and oracle read of Excel's range text"
 milestone: M10
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
