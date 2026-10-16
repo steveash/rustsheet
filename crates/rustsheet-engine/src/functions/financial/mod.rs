@@ -75,9 +75,10 @@ fn compute_payment(
 enum FutureValueForm {
     /// FV itself: financial.md's fitted `-(pv*P + pmt*(k*((P-1)/r)))`.
     Fitted,
-    /// IPMT's FV recurrence keeps the earlier `powf` form until T-1528 fits IPMT: the fitted form
-    /// alone regresses 4 Excel-cached IPMT/CUMIPMT cells (ironcalc-calc IPMT_PPMT.xlsx H4, H31,
-    /// G24 and CUMPRINC_CUMIPMT.xlsx G9), because IPMT's own last digits are still unexplained.
+    /// IPMT's FV recurrence keeps the earlier `powf` form: the fitted form alone regresses 4
+    /// Excel-cached IPMT/CUMIPMT cells (ironcalc-calc `IPMT_PPMT.xlsx` H4, H31, G24 and
+    /// `CUMPRINC_CUMIPMT.xlsx` G9), because IPMT's own last digits are still unexplained.
+    // TODO(T-1528): fold `IpmtRecurrence` into `Fitted` once IPMT is fitted.
     IpmtRecurrence,
 }
 
@@ -619,8 +620,7 @@ impl Model {
         let k = if period_start { 1.0 + rate } else { 1.0 };
         let payment_k = payment * k;
         let ratio = (payment_k - future_value * rate) / (payment_k + present_value * rate);
-        // `!(ratio > 0.0)` also catches a NaN ratio
-        if !(ratio > 0.0) || !ratio.is_finite() {
+        if ratio.is_nan() || ratio <= 0.0 || ratio.is_infinite() {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,

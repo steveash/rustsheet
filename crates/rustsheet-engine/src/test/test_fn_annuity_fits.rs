@@ -1,4 +1,7 @@
-#![allow(clippy::unwrap_used, clippy::panic)]
+#![allow(
+    clippy::panic,
+    reason = "a test fails by panicking on a non-number result"
+)]
 
 //! PV, FV and NPER as fitted against the excel-graph sweeps (T-0901, fit lab `annuity-*`,
 //! docs/excel-semantics/financial.md "Annuity evaluation order"). Each value below is the oracle's,
