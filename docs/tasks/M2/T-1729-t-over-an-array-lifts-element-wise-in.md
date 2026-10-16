@@ -26,7 +26,7 @@ with excel-probe before generalizing. information.md "T over an array lifts elem
 - [x] probes/legacy-array-result S!G1:G2 leave eval/baseline/probes.txt; probes/text-argument-modes F9 still passes; no regressions
   (except the two legacy spill rows of decision 0069).
 - [x] information.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The legacy `=T(IF(...))` `#VALUE!` (T-1713).
