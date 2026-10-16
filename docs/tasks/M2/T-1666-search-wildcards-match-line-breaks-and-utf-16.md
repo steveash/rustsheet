@@ -3,7 +3,7 @@ id: T-1666
 title: "SEARCH wildcards match line breaks and UTF-16 units like criteria (probe first)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
