@@ -213,6 +213,10 @@ engine 1.
 Ours: this secant (`irr_npv`, `irr_secant`, `compute_irr`, functions/financial/financial_util.rs, T-0916):
 189/263 bit-exact and 207 within 4 ulp on the fit set, the same cells as the lab model (the Newton code it
 replaced: 1). Three gated cells the Newton code matched by chance are known failures now (decision 0065).
+Where both secant runs fail the engine falls back to the earlier Newton/bisection solver (not an Excel
+fact). Excel returns `IRR({-400,1,1,1,1,1})` = -0.6737366751808405 (ironcalc-calc IRR.xlsx General!L17),
+where the fitted secant does not stop, and raising its step cap does not explain it (1,000 steps give
+-0.6737366751808431). Probing it is T-1686.
 Status: VERIFIED for the method (secant in v, offset, both stop tests, retry; 189/263 bit-exact); UNVERIFIED
 for the last bit (NPV's evaluation order), the step cap, and flows with leading zeros (A173, A175)
 Tasks: T-1525, T-1533, T-0916

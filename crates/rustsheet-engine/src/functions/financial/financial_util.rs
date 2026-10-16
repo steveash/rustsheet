@@ -114,9 +114,86 @@ pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, Str
     } else {
         first.or_else(|| irr_secant(values, 0.1))
     };
-    result
-        .filter(|r| r.is_finite())
-        .ok_or_else(|| (Error::NUM, "Failed to converge".to_string()))
+    match result.filter(|r| r.is_finite()) {
+        Some(r) => Ok(r),
+        // Not an Excel fact: Excel returns a value where the fitted secant does not stop, e.g.
+        // `IRR({-400,1,1,1,1,1})` = -0.6737366751808405 (ironcalc-calc IRR.xlsx General!L17), which
+        // no step cap explains. Until that path is probed (T-1686), the earlier Newton and
+        // bisection solver keeps a near value there instead of `#NUM!`.
+        None => irr_fallback(values, guess),
+    }
+}
+
+/// The solver IRR used before T-0916 (Newton's method from the guess, then a bisection on
+/// [-0.99999, 100], then Newton from 200 and from -2). It only runs where the fitted secant fails.
+fn irr_fallback(values: &[f64], guess: f64) -> Result<f64, (Error, String)> {
+    if let Ok(f) = irr_newton_raphson(values, guess) {
+        return Ok(f);
+    };
+    let max_iterations = 50;
+    let eps = 1e-10;
+    let x1 = -0.99999;
+    let x2 = 100.0;
+    let f1 = compute_npv(x1, values)?;
+    let f2 = compute_npv(x2, values)?;
+    if f1 * f2 > 0.0 {
+        // The root is not within the limits or there are two roots
+        if let Ok(f) = irr_newton_raphson(values, 200.0) {
+            return Ok(f);
+        };
+        if let Ok(f) = irr_newton_raphson(values, -2.0) {
+            return Ok(f);
+        };
+        return Err((Error::NUM, "Failed to converge".to_string()));
+    }
+    let (mut rtb, mut dx) = if f1 < 0.0 {
+        (x1, x2 - x1)
+    } else {
+        (x2, x1 - x2)
+    };
+    for _ in 1..max_iterations {
+        dx *= 0.5;
+        let x_mid = rtb + dx;
+        let f_mid = compute_npv(x_mid, values)?;
+        if f_mid <= 0.0 {
+            rtb = x_mid;
+        }
+        if f_mid.abs() < eps || dx.abs() < eps {
+            return Ok(x_mid);
+        }
+    }
+    Err((Error::NUM, "Failed to converge".to_string()))
+}
+
+fn npv_prime(rate: f64, values: &[f64]) -> Result<f64, (Error, String)> {
+    let mut npv = 0.0;
+    for (i, item) in values.iter().enumerate() {
+        npv += -item * (i as f64 + 1.0) / (1.0 + rate).powi(i as i32 + 2);
+    }
+    if npv.is_infinite() || npv.is_nan() {
+        return Err((Error::NUM, "NaN".to_string()));
+    }
+    Ok(npv)
+}
+
+fn irr_newton_raphson(values: &[f64], guess: f64) -> Result<f64, (Error, String)> {
+    let mut irr = guess;
+    let max_iterations = 50;
+    let eps = 1e-8;
+    for _ in 1..=max_iterations {
+        let f = compute_npv(irr, values)?;
+        let f_prime = npv_prime(irr, values)?;
+        let new_irr = irr - f / f_prime;
+        if (new_irr - irr).abs() < eps {
+            // A rate <= -1 is a root of the NPV polynomial but not a real IRR
+            if new_irr <= -1.0 {
+                return Err((Error::NUM, "converged to invalid rate".to_string()));
+            }
+            return Ok(new_irr);
+        }
+        irr = new_irr;
+    }
+    Err((Error::NUM, "Failed to converge".to_string()))
 }
 
 /// XNPV: the sum of `value_i / (1 + rate)^((date_i - date_0)/365)`, days counted from the first date;

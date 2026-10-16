@@ -22,7 +22,10 @@ bounds its loops itself:
 - the XIRR bisection, 200 steps;
 - the IRR secant, 50 steps, with one retry from 0.1.
 
-They are enough on every oracle cell. financial.md calls the XIRR caps a DEVIATION candidate. The
+They are enough on every oracle cell. One more open path: where both IRR secant runs fail, the
+engine falls back to the old Newton/bisection solver. Excel returns -0.6737366751808405 for
+`IRR({-400,1,1,1,1,1})` (IRR.xlsx General!L17), and no step cap reproduces that (1,000 steps give
+...431). Probe what Excel does there, too. financial.md calls the XIRR caps a DEVIATION candidate. The
 T-0916 reviewers asked for the entries, since every directive-5 bound gets one (decision 0014).
 
 ## Acceptance criteria
