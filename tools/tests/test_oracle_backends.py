@@ -193,3 +193,36 @@ def test_libreoffice_refuses_typed_cells() -> None:
     xlsx = build_xlsx({"sheets": [{"name": "S", "cells": {"A1": {"entered": "(1)"}}}]})
     with pytest.raises(OracleError, match="typed cell input"):
         LibreOfficeBackend().recalc(xlsx)
+
+
+def test_recalc_reads_the_text_of_listed_cells_after_calculating(
+    graph: GraphBackend, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = FakeGraph()
+    texts = {"A1": "1.50", "B2": "####"}
+
+    def call(method: str, url: str, **kw: Any) -> Any:
+        response = fake(method, url, **kw)
+        if url.endswith("?$select=text"):
+            a1 = url.split("address='")[1].split("'", maxsplit=1)[0]
+            return SimpleNamespace(json=lambda: {"text": [[texts[a1]]]})
+        return response
+
+    monkeypatch.setattr(graph, "_call", call)
+    spec = {
+        "sheets": [{"name": "It's", "cells": {"A1": 1.5, "B2": 12345678}, "column_widths": {"B": 2}}],
+        "text": ["'It''s'!A1", "It's!$B$2"],
+    }
+    _, info = graph.recalc(build_xlsx(spec))
+    assert info.texts == {"It's": {"A1": "1.50", "B2": "####"}}
+    i = fake.calls.index("POST /workbook/application/calculate")
+    assert fake.calls[i + 1 : i + 3] == [
+        "GET /workbook/worksheets('It%27%27s')/range(address='A1')?$select=text",
+        "GET /workbook/worksheets('It%27%27s')/range(address='B2')?$select=text",
+    ]
+    assert fake.calls[i + 3] == "POST /workbook/worksheets/add"
+
+
+def test_a_malformed_text_cell_is_refused() -> None:
+    with pytest.raises(ValueError, match="must be Sheet!A1"):
+        build_xlsx({"sheets": [{"name": "S", "cells": {"A1": 1}}], "text": ["A1"]})

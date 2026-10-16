@@ -21,7 +21,7 @@ import sys
 import tempfile
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import quote
@@ -29,7 +29,7 @@ from urllib.parse import quote
 import requests
 
 from rustsheet_tools.oracle.package import PackageError, patch_workbook
-from rustsheet_tools.spec2xlsx import entered_cells, sheet_ops
+from rustsheet_tools.spec2xlsx import entered_cells, sheet_ops, text_cells
 
 
 class OracleError(RuntimeError):
@@ -41,6 +41,8 @@ class OracleInfo:
     kind: str
     application: str
     version: str | None = None
+    # Displayed text of the cells the workbook lists for it (`text_cells`): sheet -> A1 -> text.
+    texts: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 class Backend(Protocol):
@@ -75,6 +77,14 @@ def typed_entries(xlsx: bytes) -> list[tuple[str, str, str]]:
     """The cells a backend must enter as typed text before recalculating (spec2xlsx, T-0280)."""
     try:
         return entered_cells(xlsx)
+    except ValueError as e:
+        raise OracleError(str(e)) from e
+
+
+def recorded_text_cells(xlsx: bytes) -> list[tuple[str, str]]:
+    """The cells whose displayed text a backend must read after recalculating (spec2xlsx, T-1610)."""
+    try:
+        return text_cells(xlsx)
     except ValueError as e:
         raise OracleError(str(e)) from e
 
@@ -327,6 +337,7 @@ class GraphBackend:
                 json={"calculationType": "FullRebuild"},
                 headers=sid,
             )
+            texts = self._read_texts(item_url, sid, recorded_text_cells(xlsx))
             # Excel only persists a session that *edited* the workbook: after a bare recalculation
             # of a file last saved by current Excel, closeSession saves nothing and the download is
             # the upload, cached values and all (observed 2026-10-04 on ironcalc's arithmetic.xlsx;
@@ -354,7 +365,26 @@ class GraphBackend:
         finally:
             with contextlib.suppress(OracleError):
                 self._call("DELETE", item_url)
-        return content, OracleInfo(kind=self.name, application="Excel for the web (Graph)")
+        return content, OracleInfo(kind=self.name, application="Excel for the web (Graph)", texts=texts)
+
+    def _read_texts(
+        self, item_url: str, sid: dict[str, str], cells: list[tuple[str, str]]
+    ) -> dict[str, dict[str, str]]:
+        """Each cell's displayed text (`Range.text`, which does not depend on the column width) in the
+        session that recalculated it, before the scratch edit (T-1610, decision 0068)."""
+        texts: dict[str, dict[str, str]] = {}
+        for sheet, a1 in cells:
+            sheet_ref = quote(sheet.replace("'", "''"), safe="")
+            rng = self._call(
+                "GET",
+                f"{item_url}/workbook/worksheets('{sheet_ref}')/range(address='{quote(a1, safe='')}')?$select=text",
+                headers=sid,
+            ).json()
+            text = rng.get("text")
+            if not (isinstance(text, list) and text and isinstance(text[0], list) and text[0]):
+                raise OracleError(f"no text for {sheet}!{a1}")
+            texts.setdefault(sheet, {})[a1] = str(text[0][0])
+        return texts
 
 
 # --------------------------------------------------------------------------- Windows COM
