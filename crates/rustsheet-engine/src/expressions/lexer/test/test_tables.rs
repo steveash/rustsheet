@@ -113,3 +113,31 @@ fn external_book_names_are_identifiers() {
     let mut lx = new_lexer("[1]!");
     assert_eq!(lx.next_token(), LeftBracket);
 }
+
+#[test]
+fn table_this_row_at_shorthand_matches_long_form() {
+    for (short, long) in [
+        ("t[@Qty]", "t[[#This Row],[Qty]]"),
+        ("t[@[Unit Price]]", "t[[#This Row],[Unit Price]]"),
+        ("t[@[A]:[B]]", "t[[#This Row],[A]:[B]]"),
+        ("t[@]", "t[#This Row]"),
+        ("t[@a'@b]", "t[[#This Row],[a@b]]"),
+    ] {
+        let mut a = new_lexer(short);
+        let mut b = new_lexer(long);
+        let ta = a.next_token();
+        assert_eq!(ta, b.next_token(), "{short}");
+        assert!(matches!(ta, StructuredReference { .. }), "{short}");
+        assert_eq!(a.next_token(), EOF, "{short}");
+    }
+}
+
+#[test]
+fn table_this_row_at_shorthand_unterminated_does_not_panic() {
+    for formula in ["t[@", "t[@abc", "t[@a'", "t[@[a", "t[@[a]:", "t[@[a]"] {
+        let mut lx = new_lexer(formula);
+        for _ in 0..4 {
+            let _ = lx.next_token();
+        }
+    }
+}
