@@ -523,7 +523,7 @@ C	probes/round-huge-digits-wrap.case.json	265
 C	probes/round-huge-digits.case.json	216
 C	probes/roundup-wrapped-scaling.case.json	480
 C	probes/rows-columns-args.case.json	14
-C	probes/seriessum-boolean-coefficients.case.json	14
+C	probes/seriessum-boolean-coefficients.case.json	18
 C	probes/seriessum-x-zero-error-precedence.case.json	27
 C	probes/seriessum-x-zero.case.json	22
 C	probes/sheet-qualified-both-corners.case.json	9
