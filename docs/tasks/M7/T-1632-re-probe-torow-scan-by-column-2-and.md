@@ -3,7 +3,7 @@ id: T-1632
 title: "Re-probe TOROW scan_by_column 2 and boolean ignore, WRAPROWS boolean wrap_count and ISOMITTED of a blank reference"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
