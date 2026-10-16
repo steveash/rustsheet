@@ -309,3 +309,11 @@ Evidence strength: excel-graph oracle, 111 cells.
 Implemented (T-1262): all 111 cells pass; escaped colons are `Token::Escaped` and do not join a colon run.
 Status: VERIFIED (excel-graph)
 Tasks: T-1262, T-1450
+
+## TEXT of a text value: `@` with other tokens in one section (T-1656)
+
+Rule: for a text value, a format whose section holds `@` is `#VALUE!` when the same section also holds a date or number token, whichever side of the `@` it sits on: `y yy yyyy m mm mmm d dd ddd h hh s ss b bb e ee g gg ggg`, `[h] [m] [s]`, `0 # ? . /`, `E+0`, `General`, `%` and a condition such as `[>5]`. These are literals, not errors: `a`, `,`, space, `\y`, `"y"`, `*-`, `_x`, `[Red]`, `[$-409]` (`TEXT("abc","x@\y")` is "xabcy"; `"x@_x"` prints a space for the spacer). `A/P` and `AM/PM` give a stray first letter or two: `TEXT("abc","x@A/P")` is "xabcA" and `"x@AM/PM"` "xabcAM" (`"A/P@"` "Aabc", `"AM/PM@"` "AMabc"). `@@` prints the text twice. A second section does not rescue it: `"x@y;z"` and `"x@y;z;w;@@"` are `#VALUE!`; this conflicts at first sight with the 4th-section rule above ("other tokens print as literals", poi TextFormatTests), so how the sections interact is unprobed.
+Evidence: probes/text-at-with-tokens (89 cells, excel-graph, 2026-10-16, T-1656).
+Ours: not implemented; `format_text_value` (formatter/format.rs) prints those tokens as nothing or literals (16 of 89 cells pass).
+Status: VERIFIED (excel-graph)
+Tasks: T-1656
