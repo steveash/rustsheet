@@ -17,6 +17,7 @@ C	probes/aggregate-array-error-vs-ref-error-average-family.case.json	87
 C	probes/aggregate-array-error-vs-ref-error.case.json	40
 C	probes/aggregate-direct-lambda-average-family.case.json	31
 C	probes/aggregate-direct-lambda-product-min-max.case.json	36
+C	probes/aggregate-error-precedence-a-variants.case.json	76
 C	probes/aggregate-error-precedence-stat-family.case.json	132
 C	probes/aggregate-error-precedence.case.json	92
 C	probes/aggregate-grid.case.json	217

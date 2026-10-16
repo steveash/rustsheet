@@ -7,12 +7,12 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-/// VARA, VARPA, STDEVA and STDEVPA return the first error in argument order at once, as before
-/// they moved onto the walker (an error in a range, an array or a direct argument; the order is
-/// UNVERIFIED, T-1696; VAR and STDEV rank errors as SUM does, T-1439).
+/// VARA, VARPA, STDEVA and STDEVPA rank errors as SUM does: a direct error beats referenced and
+/// array ones, otherwise the leftmost wins (probes/aggregate-error-precedence-a-variants, 36
+/// cells, excel-graph, T-1696; VAR and STDEV: T-1439).
 const VARA_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
-    errors: ErrorRule::First,
+    errors: ErrorRule::Ranked,
     skip_empty_args: false,
 };
 
