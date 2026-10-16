@@ -33,7 +33,11 @@ impl Lexer {
     fn consume_table_specifier(&mut self) -> Result<Option<TableSpecifier>> {
         if self.peek_char() == Some('#') {
             // It's a specifier
-            let rest_of_formula: String = self.chars[self.position..self.len].iter().collect();
+            // The longest specifier name is "#this row]" (10 chars).
+            let rest_of_formula: String = self.chars
+                [self.position..self.len.min(self.position + 10)]
+                .iter()
+                .collect();
             // Item specifiers match ignoring case (gen-m8b names-case 5b5c0e20e82153bb).
             let rest_lower = rest_of_formula.to_lowercase();
             let (name, specifier) = [
