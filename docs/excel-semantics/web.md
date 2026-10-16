@@ -14,7 +14,7 @@ An error only in the second argument propagates too
 (`FILTERXML("x",NA())` is `#N/A`), and with errors in both the first argument wins, left to right
 (`FILTERXML(1/0,NA())` is `#DIV/0!`, `FILTERXML(NA(),1/0)` is `#N/A`).
 Evidence: probes/filterxml-error-arguments A1:A6 (oracle: excel-graph, 2026-10-15, T-1570).
-Whether an array argument lifts is unprobed; ours gives one scalar `#VALUE!`.
+An array argument lifts: `FILTERXML({"<a>1</a>";"<a>2</a>"},"//a")` spills two `#VALUE!` (probes/filterxml-evidence-floor D27:D28, T-1704).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 Implemented in: crates/rustsheet-engine/src/functions/text/filterxml.rs (T-1255, decision 0039); no XML is parsed.
 

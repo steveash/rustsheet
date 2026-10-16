@@ -27,3 +27,13 @@ fn fn_filterxml_value_and_error_precedence() {
     assert_eq!(model._get_text("A3"), *"#DIV/0!");
     assert_eq!(model._get_text("A4"), *"#N/A");
 }
+
+// probes/filterxml-evidence-floor D28 (T-1704): an array argument gives `#VALUE!` per element.
+#[test]
+fn fn_filterxml_array_xml_lifts() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=FILTERXML({"<a>1</a>";"<a>2</a>"},"//a")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+}
