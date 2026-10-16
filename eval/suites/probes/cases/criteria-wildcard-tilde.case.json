@@ -1,0 +1,54 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1642: a tilde before a non-wildcard, a doubled tilde and a trailing tilde inside wildcard patterns (SUMIF over powers of two; Data!A1:A8 = a~c, ac, abc~, abc, ~, a~~c, a~b, a~bx), and in MATCH(..,0) / XMATCH(..,2) lookup values without wildcards.",
+  "tags": [
+    "M2",
+    "probe",
+    "text",
+    "criteria"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SUMIF(Data!$A$1:$A$8,\"a~c*\",Data!$B$1:$B$8)",
+        "A2": "=SUMIF(Data!$A$1:$A$8,\"~~*\",Data!$B$1:$B$8)",
+        "A3": "=SUMIF(Data!$A$1:$A$8,\"abc~*\",Data!$B$1:$B$8)",
+        "A4": "=SUMIF(Data!$A$1:$A$8,\"*~\",Data!$B$1:$B$8)",
+        "A5": "=SUMIF(Data!$A$1:$A$8,\"a~~c*\",Data!$B$1:$B$8)",
+        "A6": "=SUMIF(Data!$A$1:$A$8,\"*~c\",Data!$B$1:$B$8)",
+        "A7": "=SUMIF(Data!$A$1:$A$8,\"a~?*\",Data!$B$1:$B$8)",
+        "A8": "=SUMIF(Data!$A$1:$A$8,\"a~\"&\"b?\",Data!$B$1:$B$8)",
+        "A9": "=IFERROR(MATCH(\"a~c\",Data!$A$1:$A$8,0),0)",
+        "A10": "=IFERROR(MATCH(\"ac\",Data!$A$1:$A$8,0),0)",
+        "A11": "=IFERROR(MATCH(\"abc~\",Data!$A$1:$A$8,0),0)",
+        "A12": "=IFERROR(MATCH(\"~~\",Data!$A$1:$A$8,0),0)",
+        "A13": "=IFERROR(MATCH(\"a~~c\",Data!$A$1:$A$8,0),0)",
+        "A14": "=IFERROR(MATCH(\"~\",Data!$A$1:$A$8,0),0)",
+        "A15": "=IFERROR(XMATCH(\"a~c\",Data!$A$1:$A$8,2),0)",
+        "A16": "=IFERROR(XMATCH(\"abc~\",Data!$A$1:$A$8,2),0)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": "a~c",
+        "A2": "ac",
+        "A3": "abc~",
+        "A4": "abc",
+        "A5": "~",
+        "A6": "a~~c",
+        "A7": "a~b",
+        "A8": "a~bx",
+        "B1": 1,
+        "B2": 2,
+        "B3": 4,
+        "B4": 8,
+        "B5": 16,
+        "B6": 32,
+        "B7": 64,
+        "B8": 128
+      }
+    }
+  ]
+}
