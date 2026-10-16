@@ -159,6 +159,26 @@ Status: VERIFIED (web)
 Implemented in: expressions/parser/stringify.rs (`Group`, T-1340; `_xlfn.SINGLE((x))`, T-1343).
 Tasks: T-1244, T-1340, T-1343, T-1398
 
+## A one-cell dynamic formula is stored as a one-cell array with `cm="1"`
+Rule: a dynamic-array formula whose result is one cell is stored like a spilling one, with the
+anchor alone as the range: `<c r="F3" cm="1"><f t="array" ref="F3">SUM(ROW(C2:C4))</f>`. A plain
+`<f>` is a legacy formula, which Excel and our import intersect ("Legacy formulas intersect the
+ranges in value arguments", references.md), so `SUM(B1:B6+0)` stored plain would read back as
+`SUM(@B1:B6+0)`: `#VALUE!` off the range's rows instead of 12.
+Evidence: Excel-authored workbooks in crates/rustsheet-xlsx/tests/calc_tests:
+LOOKUP_AND_REFERENCE/ROW_COLUM.xlsx sheet6 F3 `SUM(ROW(C2:C4))` and sheet7 A1
+`MAX((C1:C20<>"")*ROW(C1:C20))`, MATCH_LOOKUP_arrays.xlsx D9, simple_arrays.xlsx A1
+`SUM({1,2,3}+{4,5,6})`. Excel also writes `cm` where no `@` is at stake (the array constants of
+simple_arrays A1).
+Ours: a formula typed with a one-cell result is a plain formula cell. The export writes it as a
+one-cell dynamic array exactly when reading its stored text as legacy would add an `@`
+(`legacy_reading_intersects`, T-1552), with every `@` it has kept as `_xlfn.SINGLE`; otherwise it
+writes a plain `<f>`. Re-exporting the 274 Excel-authored and fixture workbooks under
+crates/rustsheet-xlsx/tests and eval/suites adds no array formula (2026-10-15).
+Status: VERIFIED (Excel-authored files)
+Implemented in: crates/rustsheet-xlsx/src/export/worksheets.rs (`plain_formula`, T-1552).
+Tasks: T-1552
+
 ## LAMBDA optional parameters are stored `_xlop.`
 Rule: Excel stores an optional LAMBDA parameter `[y]` as `_xlop.y`, brackets dropped, and every use of
 it as `_xlpm.y` like any other parameter: `=LAMBDA(x,[y],ISOMITTED(y))(1)` is saved as
