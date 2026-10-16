@@ -3,7 +3,7 @@ id: T-1675
 title: "Structured references: reversed column ranges and #This Row outside the table's rows"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,9 +24,12 @@ column range written right to left (`Sales[[C]:[A]]`) is the same area as `Sales
 - docs/excel-semantics/references.md "Structured references: this row, totals and ranges".
 
 ## Acceptance criteria
-- [ ] Both rules hold (unit tests), with no unsigned wrap or panic for any column order.
-- [ ] The gen-m8b cells failing only on these pass; `make eval-baseline`.
-- [ ] `make check` green; reviewers approve.
+- [x] Both rules hold (unit tests), with no unsigned wrap or panic for any column order.
+- [x] The gen-m8b cells failing only on these pass; `make eval-baseline`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The `@` shorthand (T-1672).
+
+## Outcome
+`#This Row` off the table's data rows is `#VALUE!` and a column range is normalised to min/max column in `parse_table_reference` (operands.rs); the stored columns are indexes into the table, so no unsigned wrap remains. Unit tests in `parser/tests/test_tables.rs`. gen-m8b this-row e1bf5aa0ffb4ed87 passes 400/400; column-range K143 and escaped K256 now pass. gen-m8b is not a gated suite, so no baseline file changed; the remaining cells in those two cases are totals-row cells (T-1671).
