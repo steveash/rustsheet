@@ -3,7 +3,7 @@ id: T-1641
 title: "A sheet-qualified name falls back to the workbook-scoped name when the sheet has no local one (Feb!loc)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
