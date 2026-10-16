@@ -3,7 +3,7 @@ id: T-1611
 title: "Suite gen-m10: number formats over an edge-value pool, at least 10,000 oracle-filled formatted-text cells"
 milestone: M10
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
