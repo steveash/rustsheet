@@ -3,7 +3,7 @@ id: T-1664
 title: "BYROW whose function returns an array is one #CALC! cell, not a spill"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
