@@ -231,7 +231,7 @@ def test_text_blocks_read_a_dense_sheet_at_once_and_sparse_cells_one_by_one() ->
 
 
 def test_a_missing_text_cell_is_refused(graph: GraphBackend, monkeypatch: pytest.MonkeyPatch) -> None:
-    def call(method: str, url: str, **kw: Any) -> Any:
+    def call(*_: Any, **__: Any) -> Any:
         return SimpleNamespace(json=lambda: {"text": [["1"]]})
 
     monkeypatch.setattr(graph, "_call", call)
