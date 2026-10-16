@@ -1,0 +1,45 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FILTERXML argument modes, XPath shapes, evidence floor (T-1628)",
+  "tags": [
+    "M5",
+    "web",
+    "filterxml",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "//a",
+        "D1": "=FILTERXML(\"<a>1</a>\",\"//a\")",
+        "D2": "=FILTERXML(\"<a><b>1</b><b>2</b></a>\",\"//b\")",
+        "D3": "=FILTERXML(\"<a>x</a>\",\"//a\")",
+        "D4": "=FILTERXML(\"<a>1</a>\",\"//c\")",
+        "D5": "=FILTERXML(\"<a>1</a>\",\"//\")",
+        "D6": "=FILTERXML(\"<a>\",\" //a\")",
+        "D7": "=FILTERXML(\"\",\"//a\")",
+        "D8": "=FILTERXML(\"not xml\",\"//a\")",
+        "D9": "=FILTERXML(\"<a>1</a>\",\"\")",
+        "D10": "=FILTERXML(\"<a b=\"\"2\"\"/>\",\"//a/@b\")",
+        "D11": "=FILTERXML(\"<a><b>1</b><b>2</b></a>\",\"//b[1]\")",
+        "D12": "=FILTERXML(\"<a><b>1</b><b>2</b></a>\",\"count(//b)\")",
+        "D13": "=FILTERXML(\"<a>1</a>\",\"string(//a)\")",
+        "D14": "=FILTERXML(\"<a>1</a>\",\"//a/text()\")",
+        "D15": "=FILTERXML(\"<a>1</a>\",1)",
+        "D16": "=FILTERXML(1,\"//a\")",
+        "D17": "=FILTERXML(TRUE,\"//a\")",
+        "D18": "=FILTERXML(\"<a>1</a>\",\"//a[\u201d\")",
+        "D19": "=FILTERXML(\"<a>1</a><b>2</b>\",\"//a\")",
+        "D20": "=FILTERXML(\"<?xml version=\"\"1.0\"\"?><a>3</a>\",\"//a\")",
+        "D21": "=FILTERXML(\"<a>1</a>\",\"//a\"&\"|//b\")",
+        "D22": "=FILTERXML(\"<a xmlns=\"\"u\"\">1</a>\",\"//a\")",
+        "D23": "=FILTERXML(\"<a>&lt;</a>\",\"//a\")",
+        "D24": "=FILTERXML(\"<a><![CDATA[z]]></a>\",\"//a\")",
+        "D25": "=FILTERXML(\"<a>  </a>\",\"//a\")",
+        "D26": "=FILTERXML(\"<a>1</a>\",A1)",
+        "D27": "=FILTERXML({\"<a>1</a>\";\"<a>2</a>\"},\"//a\")"
+      }
+    }
+  ]
+}

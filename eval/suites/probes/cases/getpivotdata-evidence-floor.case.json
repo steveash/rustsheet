@@ -1,0 +1,45 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "GETPIVOTDATA with no pivot table in the workbook: argument shapes and references outside a pivot, evidence floor (T-1628)",
+  "tags": [
+    "M6",
+    "lookup",
+    "getpivotdata",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "Region",
+        "A2": "East",
+        "A3": 10,
+        "B1": "Sales",
+        "B2": 5,
+        "D2": "=GETPIVOTDATA(\"Sales\",\"Region\",\"East\")",
+        "D4": "=GETPIVOTDATA(\"Sales\",A1)",
+        "D5": "=GETPIVOTDATA(\"Sales\",A1,\"Region\",\"East\")",
+        "D6": "=GETPIVOTDATA(\"Sales\",A1:A3)",
+        "D8": "=GETPIVOTDATA(\"Sales\",1)",
+        "D9": "=GETPIVOTDATA(\"\",A1)",
+        "D10": "=GETPIVOTDATA(\"Sales\",A1,\"Region\")",
+        "D12": "=GETPIVOTDATA(\"Sales\",B1)",
+        "D13": "=GETPIVOTDATA(\"Sales\",A5)",
+        "D14": "=GETPIVOTDATA(\"Sales\",A1,\"Region\",\"East\",\"Year\",2020)",
+        "D15": "=GETPIVOTDATA(\"Sales\",Sheet2!A1)",
+        "D16": "=GETPIVOTDATA(\"Sales\",NA())",
+        "D17": "=GETPIVOTDATA(NA(),A1)",
+        "D18": "=GETPIVOTDATA(\"Sales\",1/0)",
+        "D19": "=GETPIVOTDATA(\"Sales\",A1,1,2)",
+        "D22": "=GETPIVOTDATA(\"Sales\",A1&\"\")",
+        "D23": "=GETPIVOTDATA(\"Sales\",\"A1\")",
+        "D24": "=GETPIVOTDATA(\"Sales\",INDIRECT(\"A1\"))",
+        "D25": "=GETPIVOTDATA(\"Sales\",OFFSET(A1,1,1))",
+        "D26": "=GETPIVOTDATA(\"Sales\",A1:B3,\"Region\",\"East\")",
+        "F1": "=ERROR.TYPE(GETPIVOTDATA(\"Sales\",A1))",
+        "F2": "=IFERROR(GETPIVOTDATA(\"Sales\",A1),\"err\")",
+        "F3": "=ISREF(GETPIVOTDATA(\"Sales\",A1))"
+      }
+    }
+  ]
+}

@@ -675,7 +675,7 @@ impl Model {
                 right: reference,
             },
             Ok(ParsedReference::Range(left, right)) => CalcResult::Range { left, right },
-            Err(message) => match self.indirect_defined_name(&ref_text, cell.sheet, a1) {
+            Err(message) => match self.indirect_defined_name(&ref_text, cell.sheet) {
                 Some(found) => found,
                 None => CalcResult::Error {
                     error: Error::REF,
@@ -689,12 +689,28 @@ impl Model {
     /// INDIRECT of the text of a defined name that stands for a reference (`INDIRECT("RCR")`,
     /// `ISREF` TRUE; probes/r1c1-name-use-rcr, excel-graph). A name spelled like an out-of-range
     /// R1C1 reference is never resolved (T-1657).
-    fn indirect_defined_name(&self, text: &str, sheet: u32, a1: bool) -> Option<CalcResult> {
-        if !a1 || is_out_of_range_r1c1_name(text) {
+    ///
+    /// Excel: see docs/excel-semantics/lookup.md "INDIRECT resolves a defined name that holds a
+    /// reference": `a1` FALSE still resolves a name, trailing (not leading) spaces are ignored, and
+    /// a `Sheet!name` prefix picks the name scoped to that sheet, else the workbook name
+    /// (probes/indirect-defined-name-text A5, A8, A22; T-1682).
+    fn indirect_defined_name(&self, text: &str, sheet: u32) -> Option<CalcResult> {
+        let text = text.trim_end_matches(' ');
+        if is_out_of_range_r1c1_name(text) {
             return None;
         }
+        let scope = match text.rsplit_once('!') {
+            Some((prefix, _)) => {
+                let prefix = prefix
+                    .strip_prefix('\'')
+                    .and_then(|p| p.strip_suffix('\''))
+                    .unwrap_or(prefix);
+                self.get_sheet_index_by_name(prefix)?
+            }
+            None => sheet,
+        };
         let found = self
-            .parsed_defined_name(text, Some(sheet))
+            .parsed_defined_name(text, Some(scope))
             .or_else(|| self.parsed_defined_name(text, None));
         match found? {
             ParsedDefinedName::CellReference(reference) => Some(CalcResult::Range {
