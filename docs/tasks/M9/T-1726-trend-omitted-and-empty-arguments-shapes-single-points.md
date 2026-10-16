@@ -25,6 +25,8 @@ Group the work by cause; record the rules in docs/excel-semantics/statistics.md.
 
 Overlaps T-1402 (single-value known_y, `#REF!` before `#VALUE!`). Also: an error cell in new_x is `#VALUE!` for that element only (`TREND(A1:A6,B1:B6,F1:F2)` keeps 2 rows, first 3.3428571428571425), unequal sizes are `#REF!`, zero-variance x returns the mean.
 
+Also: a blank new_x makes the whole result `#VALUE!` (ours 2 rows of numbers, trend L39) and a row-shaped new_x gives a row result (`TREND(A1:A6,B1:B6,{7,8})` 1x2, SUM 15.17142857142857; ours 1 column).
+
 ## Acceptance criteria
 - [ ] The mismatching non-ULP cells of probes/regression-trend pass (or the remaining ones are listed in an Outcome note) and the baseline shrinks.
 - [ ] `make check` green; reviewers approve.
