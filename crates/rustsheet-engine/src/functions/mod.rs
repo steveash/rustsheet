@@ -1139,24 +1139,6 @@ impl_function_lookup! {
 }
 
 impl Function {
-    /// XLOOKUP, TAKE, DROP and TRIMRANGE: over a range they evaluate to the cells they pick, so
-    /// SUBTOTAL, AREAS and a LET or LAMBDA binding read a reference
-    /// (`Model::evaluate_picked_reference_arg`, probes/subtotal-reference-operands-b H12,
-    /// H15:H17; probes/let-name-uncalled-picked-refs). The one list of these calls, with the
-    /// index of the argument each picks from: XLOOKUP's `return_array` (2), the array (0) of
-    /// the others.
-    pub(crate) fn picked_reference_arg(&self) -> Option<usize> {
-        match self {
-            Function::Xlookup => Some(2),
-            Function::Take | Function::Drop | Function::Trimrange => Some(0),
-            _ => None,
-        }
-    }
-
-    /// Whether the call is one of [`Function::picked_reference_arg`]'s.
-    pub(crate) fn picks_reference(&self) -> bool {
-        self.picked_reference_arg().is_some()
-    }
     pub fn to_localized_name(&self, language: &Language) -> String {
         let functions = &language.functions;
         match self {
