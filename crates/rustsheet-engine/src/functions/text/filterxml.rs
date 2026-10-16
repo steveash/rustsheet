@@ -14,10 +14,10 @@ impl Model {
     // Excel for the web (the excel-graph golden, decision 0039) gives `#VALUE!` for every valid
     // call (docs/excel-semantics/web.md "FILTERXML is `#VALUE!` in Excel for the web"). The
     // first argument's error propagates (gen-m6/abcfd9979f316267 A9 is `#N/A`,
-    // gen-m7/4629e931955aa4b8 A34 is DROP's `#CALC!`). An error only in the second argument, and
-    // the winner when both err, are unprobed: we go left to right, first error wins, element by
-    // element when an argument is an array (unprobed). An array
-    // argument lifts, element by element (T-1704). No XML is parsed.
+    // gen-m7/4629e931955aa4b8 A34 is DROP's `#CALC!`); with errors in both, the first wins left to
+    // right (probes/filterxml-error-arguments A1:A6). An array argument lifts, `#VALUE!` per
+    // element: a first-argument array literal is probed (probes/filterxml-evidence-floor
+    // D27:D28, T-1704); the other array forms are inferred (T-1722). No XML is parsed.
     pub(crate) fn fn_filterxml(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
