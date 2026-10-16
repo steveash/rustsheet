@@ -6,6 +6,7 @@
 //              "#Data"     |
 //              "#Headers"  |
 //              "#Totals"
+// this_row_shorthand -> "[@]" | "[@" column_name "]" | "[@" "[" column_name "]" "]" | "[@" range_reference "]"
 // table_reference -> column_reference | range_reference
 // column reference -> column_name | "["column_name"]"
 // range_reference -> column_reference":"column_reference
@@ -58,6 +59,12 @@ impl Lexer {
             ')'
         };
 
+        self.consume_escaped_until(end_char)
+    }
+
+    /// Reads a column name up to the unescaped `end_char` (consumed when it is `]`),
+    /// unescaping the `'` sequences.
+    fn consume_escaped_until(&mut self, end_char: char) -> Result<String> {
         let mut position = self.position;
         while position < self.len {
             let next_char = self.chars[position];
@@ -88,6 +95,39 @@ impl Lexer {
             .replace("'#", "#")
             .replace("'@", "@")
             .replace("''", "'"))
+    }
+
+    /// The `@` shorthand for `#This Row`: `T[@]`, `T[@Col]`, `T[@[Col]]` and `T[@[A]:[B]]`
+    /// lex like their `[#This Row]` forms (Excel only shows `@` in the UI).
+    fn consume_this_row_shorthand(&mut self, table_name: &str) -> Result<TokenType> {
+        self.position += 1; // '@'
+        let specifier = Some(TableSpecifier::ThisRow);
+        let table_reference = match self.peek_char() {
+            Some(']') => {
+                self.position += 1;
+                None
+            }
+            Some('[') => {
+                let left = self.consume_column_reference()?;
+                let reference = if self.peek_char() == Some(':') {
+                    self.position += 1;
+                    let right = self.consume_column_reference()?;
+                    TableReference::RangeReference((left, right))
+                } else {
+                    TableReference::ColumnReference(left)
+                };
+                self.expect(TokenType::RightBracket)?;
+                Some(reference)
+            }
+            _ => Some(TableReference::ColumnReference(
+                self.consume_escaped_until(']')?,
+            )),
+        };
+        Ok(TokenType::StructuredReference {
+            table_name: table_name.to_string(),
+            specifier,
+            table_reference,
+        })
     }
 
     /// Possibilities:
@@ -121,6 +161,9 @@ impl Lexer {
             // This is just a reference to the full table
             self.expect(TokenType::RightBracket)?;
             return Ok(TokenType::Ident(table_name.to_string()));
+        }
+        if peek_char == Some('@') {
+            return self.consume_this_row_shorthand(table_name);
         }
         if peek_char == Some('#') {
             // Expecting MyTable[#Totals]
