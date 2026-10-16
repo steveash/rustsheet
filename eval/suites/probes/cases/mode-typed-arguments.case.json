@@ -2,7 +2,7 @@
   "format": "rustsheet-case/v1",
   "description": "MODE, MODE.SNGL and MODE.MULT with typed (direct) text and boolean arguments: which are skipped, coerced or errors (T-1291).",
   "tags": [
-    "M5",
+    "M9",
     "stat",
     "probe"
   ],

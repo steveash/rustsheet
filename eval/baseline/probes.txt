@@ -376,6 +376,7 @@ C	probes/mod-quotient-threshold3.case.json	19
 C	probes/mod-quotient-threshold4.case.json	30
 C	probes/mod-quotient-threshold5.case.json	16
 C	probes/mode-typed-arguments.case.json	33
+C	probes/mode-typed-text-no-mode.case.json	16
 C	probes/multiarea-3d-ref.case.json	2
 C	probes/multiarea-3d-union-h1.case.json	1
 C	probes/multiarea-3d-union-h2.case.json	1
@@ -696,6 +697,7 @@ C	probes/union-walk-repeated-in-lambda.case.json	15
 C	probes/value-clock-text.case.json	135
 C	probes/valuetotext-error-format.case.json	10
 C	probes/valuetotext-format.case.json	37
+C	probes/vara-direct-lambda.case.json	6
 C	probes/vara-single-ref-picked.case.json	41
 C	probes/variance-digits.case.json	234
 C	probes/variance-fit.case.json	380

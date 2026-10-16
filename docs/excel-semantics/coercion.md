@@ -246,11 +246,18 @@ is `#VALUE!` although 2 appears twice, and so is `MODE(1,1,)`. Blanks and text i
 are ignored (`MODE(C16:E16,-1.1)` = -1.1 with D16 blank). An error picked by CHOOSE propagates: legacy
 `=MODE(CHOOSE(1,B1:B6*1))` off the range's rows is `#VALUE!` (references.md "Legacy `@` on CHOOSE
 operator arms under aggregates"). An error in a referenced cell or a name is unprobed (T-1651).
-Evidence: probes/mode-typed-arguments A1-A33 (excel-graph, 2026-10-16, T-1291). The POI cells
-poi/FormulaEvalTestData_Copy.xlsx EverythingTests!G936, H936, K936, M936 (`#VALUE!`) and D936, F936, I936,
-J936, L936 were first read as "typed text is `#VALUE!`"; the probe shows their `#VALUE!` comes from a blank
-single-cell reference, an empty argument or an error argument.
-Status: VERIFIED (excel-graph)
+Typed text with no repeated number is `#N/A`, wherever it stands (`MODE(1,"1",2,3)`, `MODE("1",2,3)`,
+`MODE(1,2,3,"x")`, `MODE(1.1,K3,"1",1)` with K3 = text "1.1"), and a direct error after typed text still wins
+(`MODE("1",1,#DIV/0!,2,3)` is `#DIV/0!`).
+Evidence: probes/mode-typed-arguments A1-A33 and probes/mode-typed-text-no-mode A1-A16 (excel-graph,
+2026-10-16, T-1291).
+CONFLICTING (decision 0030 2: Excel 15 is below AppVersion 16; decision 0039: the web value is the Phase 1-3
+target; decision 0067): poi/FormulaEvalTestData_Copy.xlsx (Excel 15) caches `#VALUE!` for EverythingTests!G936
+`MODE(C9,E16,"1",B8)`, H936 `MODE(B8,"1",2,3)` and K936 `MODE("1",1,#DIV/0!,2,3)`, where Microsoft 365 gives
+`#N/A`, `#N/A` and `#DIV/0!` on the same inputs (probes/mode-typed-text-no-mode A3, A4, A2). The engine follows
+M365, and the three cells are known failures until a 16.x desktop value decides (T-1075, M14). M936
+`MODE(B9,2,D7)` (`#VALUE!`, blank single-cell reference) and D936, F936, I936, J936, L936 agree with M365.
+Status: VERIFIED (excel-graph); CONFLICTING with the Excel 15 cached G936, H936, K936
 Implemented in: `collect_mode_values` (mode_functions.rs); MODE.SNGL/MODE.MULT share it (typed text and
 booleans and direct errors verified for all three, T-1291).
 Tasks: T-0947, T-1291
