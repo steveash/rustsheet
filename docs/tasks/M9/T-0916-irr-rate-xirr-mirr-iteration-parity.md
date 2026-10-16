@@ -63,7 +63,7 @@ on the rate itself"); its part of this task waits for a new hypothesis.
 
 ## Acceptance criteria
 - [ ] (XIRR done; MIRR and RATE remain, see Outcome) The listed XIRR and MIRR F lines leave eval/baseline/ironcalc-calc.txt with no new ones (the RATE lines wait for a RATE fit; IRR lines leave where the T-1533 model is exact); the Outcome note lists the remainder.
-- [x] Algorithm parameters (guess, tolerance, iteration cap) documented in docs/excel-semantics/numbers.md with evidence cell ids.
+- [x] Algorithm parameters (guess, tolerance, iteration cap) documented in docs/excel-semantics/financial.md (the solver entries live there, not numbers.md) with evidence cell ids.
 - [x] Error cases (#NUM! when no convergence) still pass.
 - [x] IRR follows the T-1533 secant model; `uv run rustsheet-fitlab irr` shows the engine at the fitted candidate's 189/263.
 - [x] XIRR follows the T-1525 model (bracket chain, bisection, stop test); `uv run rustsheet-fitlab xirr` shows the engine at 208/208.

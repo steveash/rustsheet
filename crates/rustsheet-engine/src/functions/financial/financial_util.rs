@@ -54,7 +54,7 @@ pub(crate) fn compute_npv(rate: f64, values: &[f64]) -> Result<f64, (Error, Stri
 }
 
 /// NPV at the discount factor `v` = 1/(1 + r), as IRR's search evaluates it: the sum of
-/// c_i/x^i with x = 1/v, each division Excel's twice-rounded `/` and x^i libm's `pow`
+/// `c_i/x^i` with `x = 1/v`, each division Excel's twice-rounded `/` and `x^i` libm's `pow`
 /// (financial.md "IRR is a secant in v = 1/(1 + r)"; fit lab `irr`, `_npv_v_over_x`).
 fn irr_npv(values: &[f64], v: f64) -> f64 {
     let x = extended_quotient(1.0, v);
@@ -107,12 +107,20 @@ pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, Str
     if values.iter().all(|&x| x >= 0.0) || values.iter().all(|&x| x <= 0.0) {
         return Err((Error::NUM, "Failed to converge".to_string()));
     }
-    irr_secant(values, guess)
-        .or_else(|| (guess != 0.1).then(|| irr_secant(values, 0.1)).flatten())
+    let first = irr_secant(values, guess);
+    // A failed run is retried once from the default guess 0.1, unless that was the guess
+    let result = if guess == 0.1 {
+        first
+    } else {
+        first.or_else(|| irr_secant(values, 0.1))
+    };
+    result
         .filter(|r| r.is_finite())
         .ok_or_else(|| (Error::NUM, "Failed to converge".to_string()))
 }
 
+/// XNPV: the sum of `value_i / (1 + rate)^((date_i - date_0)/365)`, days counted from the first date;
+/// `#NUM!` when the sum is not finite.
 pub(crate) fn compute_xnpv(
     rate: f64,
     values: &[f64],
