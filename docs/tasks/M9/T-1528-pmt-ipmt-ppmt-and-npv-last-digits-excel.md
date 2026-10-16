@@ -26,6 +26,12 @@ double), so its formulation loses accuracy somewhere a half-ulp-accurate model d
 `functions/financial/mod.rs` `compute_payment`, `compute_ipmt`, `compute_ppmt`;
 `financial_util.rs` `compute_npv`.
 
+**From T-0901 (2026-10-16):** eight PV/NPER cells of `ironcalc-calc/FINANCIAL/PMT.xlsx` (I16, I32,
+I34, J12, J32, J35, K12, M12) are baselined failures because their PMT inputs fail (decision 0064):
+they must pass once PMT matches. The accurate PMT (`-(pv*P+fv)/((P-1)/r*k)`, P-1 by expm1) fixes 30
+Excel-cached cells and regresses 22, and IPMT's recurrence on the fitted FV regresses 4, so neither
+shipped. IPMT still uses `FutureValueForm::IpmtRecurrence`.
+
 ## Acceptance criteria
 - [ ] A PMT formulation matches >= 99.9% of m9-fin-pmt PMT cells bit for bit (today's best: 132/308).
 - [ ] IPMT and PPMT built on it match >= 99.9% of their m9-fin-pmt cells (best: 219/308, 94/308).

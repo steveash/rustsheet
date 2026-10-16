@@ -1,4 +1,5 @@
 use crate::{
+    arithmetic::{extended_quotient, extended_sum, power},
     calc_result::{CalcResult, Range},
     constants::{LAST_COLUMN, LAST_ROW, MAXIMUM_DATE_SERIAL_NUMBER, MINIMUM_DATE_SERIAL_NUMBER},
     expressions::{
@@ -20,6 +21,21 @@ use financial_util::{compute_irr, compute_npv, compute_rate, compute_xirr, compu
 
 // See:
 // https://github.com/apache/openoffice/blob/c014b5f2b55cff8d4b0c952d5c16d62ecde09ca1/main/scaddins/source/analysis/financial.cxx
+
+/// `P = (1+r)^n` as Excel's PV and FV compute it: `1+r` with Excel's `+` and the power with its `^`
+/// (right-to-left square-and-multiply for an integer `n`). With [`annuity_factor`] this matches all
+/// 308 PV and 308 FV cells of probes-numeric/m9-fin-pv-fv (docs/excel-semantics/financial.md
+/// "Annuity evaluation order"; fit lab `annuity-pv`, `annuity-fv`, T-1524).
+fn annuity_power(rate: f64, nper: f64) -> Result<f64, (Error, String)> {
+    power(extended_sum(1.0, rate), nper).map_err(|error| (error, "Invalid result".to_string()))
+}
+
+/// The annuity factor `k*((P-1)/r)`, `k = 1+r*type`, evaluated in doubles in exactly this
+/// parenthesization: `(pmt*k)*((P-1)/r)` instead misses 38 of the 308 PV cells (financial.md).
+fn annuity_factor(rate: f64, p: f64, period_start: bool) -> f64 {
+    let k = if period_start { 1.0 + rate } else { 1.0 };
+    k * ((p - 1.0) / rate)
+}
 
 fn compute_payment(
     rate: f64,
@@ -54,12 +70,24 @@ fn compute_payment(
     Ok(result)
 }
 
+/// Which formulation [`compute_future_value`] uses.
+#[derive(Clone, Copy)]
+enum FutureValueForm {
+    /// FV itself: financial.md's fitted `-(pv*P + pmt*(k*((P-1)/r)))`.
+    Fitted,
+    /// IPMT's FV recurrence keeps the earlier `powf` form until T-1528 fits IPMT: the fitted form
+    /// alone regresses 4 Excel-cached IPMT/CUMIPMT cells (ironcalc-calc IPMT_PPMT.xlsx H4, H31,
+    /// G24 and CUMPRINC_CUMIPMT.xlsx G9), because IPMT's own last digits are still unexplained.
+    IpmtRecurrence,
+}
+
 fn compute_future_value(
     rate: f64,
     nper: f64,
     pmt: f64,
     pv: f64,
     period_start: bool,
+    form: FutureValueForm,
 ) -> Result<f64, (Error, String)> {
     if rate == 0.0 {
         return Ok(-pv - pmt * nper);
@@ -68,12 +96,20 @@ fn compute_future_value(
         return Err((Error::DIV, "Divide by zero".to_string()));
     }
 
-    let rate_nper = (1.0 + rate).powf(nper);
-    let fv = if period_start {
-        // type = 1
-        -pv * rate_nper - pmt * (1.0 + rate) * (rate_nper - 1.0) / rate
-    } else {
-        -pv * rate_nper - pmt * (rate_nper - 1.0) / rate
+    let fv = match form {
+        // FV = -(pv*P + pmt*(k*((P-1)/r))), every operation in doubles (financial.md)
+        FutureValueForm::Fitted => {
+            let p = annuity_power(rate, nper)?;
+            -(pv * p + pmt * annuity_factor(rate, p, period_start))
+        }
+        FutureValueForm::IpmtRecurrence => {
+            let rate_nper = (1.0 + rate).powf(nper);
+            if period_start {
+                -pv * rate_nper - pmt * (1.0 + rate) * (rate_nper - 1.0) / rate
+            } else {
+                -pv * rate_nper - pmt * (rate_nper - 1.0) / rate
+            }
+        }
     };
     if fv.is_nan() {
         return Err((Error::NUM, "Invalid result".to_string()));
@@ -121,7 +157,14 @@ fn compute_ipmt(
             period - 1.0
         };
         let c = if period_start { -payment } else { 0.0 };
-        let fv = compute_future_value(rate, p, payment, present_value, period_start)?;
+        let fv = compute_future_value(
+            rate,
+            p,
+            payment,
+            present_value,
+            period_start,
+            FutureValueForm::IpmtRecurrence,
+        )?;
         Ok((fv + c) * rate)
     }
 }
@@ -436,13 +479,18 @@ impl Model {
                 message: "Rate must be != -1".to_string(),
             };
         };
-        let rate_nper = (1.0 + rate).powf(period_count);
-        let result = if period_start {
-            // type = 1
-            -(future_value * rate + payment * (1.0 + rate) * (rate_nper - 1.0)) / (rate * rate_nper)
-        } else {
-            (-future_value * rate - payment * (rate_nper - 1.0)) / (rate * rate_nper)
+        // PV = -(fv + pmt*(k*((P-1)/r)))/P, every operation in doubles (financial.md)
+        let p = match annuity_power(rate, period_count) {
+            Ok(p) => p,
+            Err((error, message)) => {
+                return CalcResult::Error {
+                    error,
+                    origin: cell,
+                    message,
+                }
+            }
         };
+        let result = -(future_value + payment * annuity_factor(rate, p, period_start)) / p;
         if result.is_nan() || result.is_infinite() {
             return CalcResult::Error {
                 error: Error::NUM,
@@ -565,31 +613,29 @@ impl Model {
                 message: "Rate must be > -1".to_string(),
             };
         };
-        let rate_nper = if period_start {
-            // type = 1
-            if payment != 0.0 {
-                let term = payment * (1.0 + rate) / rate;
-                (1.0 - future_value / term) / (1.0 + present_value / term)
-            } else {
-                -future_value / present_value
-            }
-        } else {
-            // type = 0
-            if payment != 0.0 {
-                let term = payment / rate;
-                (1.0 - future_value / term) / (1.0 + present_value / term)
-            } else {
-                -future_value / present_value
-            }
-        };
-        if rate_nper <= 0.0 {
+        // NPER = ln((pmt*k - fv*r)/(pmt*k + pv*r)) / ln(1+r), with plain logarithms of
+        // the double 1+r, not log1p: all 95 numeric cells of probes-numeric/m9-fin-nper-npv, where
+        // log1p gives 11 (financial.md "Annuity evaluation order"; fit lab `annuity-nper`, T-1524).
+        let k = if period_start { 1.0 + rate } else { 1.0 };
+        let payment_k = payment * k;
+        let ratio = (payment_k - future_value * rate) / (payment_k + present_value * rate);
+        // `!(ratio > 0.0)` also catches a NaN ratio
+        if !(ratio > 0.0) || !ratio.is_finite() {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
                 message: "Cannot compute.".to_string(),
             };
         }
-        let result = rate_nper.ln() / (1.0 + rate).ln();
+        // The final division is Excel's `/`, rounded twice (A9 `NPER(0.2,-1000,-1000,20000)`)
+        let result = extended_quotient(ratio.ln(), (1.0 + rate).ln());
+        if !result.is_finite() {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Cannot compute.".to_string(),
+            };
+        }
         CalcResult::Number(result)
     }
 
@@ -631,7 +677,7 @@ impl Model {
             // at the end of the period
             false
         };
-        match compute_future_value(rate, nper, pmt, pv, period_start) {
+        match compute_future_value(rate, nper, pmt, pv, period_start, FutureValueForm::Fitted) {
             Ok(f) => CalcResult::Number(f),
             Err(error) => CalcResult::Error {
                 error: error.0,
