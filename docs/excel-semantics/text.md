@@ -214,7 +214,8 @@ Rule: the M5 text functions take scalar arguments that lift over a range or arra
 probes/text-argument-modes F1:F26: LEN, CODE, EXACT, VALUETOTEXT, REPT, FIND), with four exceptions: TEXTJOIN's text
 arguments and ARRAYTOTEXT's array take a range whole, PHONETIC's argument must be a reference, and T does not lift:
 `T(A1:A3)` in a dynamic-array formula is one "" with no spill although A2 = "ab" (F9; see references.md "T of a
-multi-cell range is not intersected"). TEXTJOIN turns numbers and booleans in a range into their text
+multi-cell range is not intersected"; T of an array value does lift, information.md "T over an array lifts
+element-wise"). TEXTJOIN turns numbers and booleans in a range into their text
 (`TEXTJOIN("-",TRUE,A1:A6)` over 5, "ab", TRUE, blank, "x", "2" is "5-ab-TRUE-x-2"; with ignore_empty FALSE the blank
 adds a delimiter); ARRAYTOTEXT gives "5, ab, TRUE, , x, 2" and, with format 1, `{5;"ab";TRUE;;"x";"2"}`. A boolean read
 from a cell (A3 = TRUE; literal TRUE arguments are unprobed) is its text where the function wants text (`CODE(A3)` = 84,

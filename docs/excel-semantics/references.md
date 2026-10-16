@@ -1473,6 +1473,46 @@ function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, an
 Status: VERIFIED
 Tasks: T-0293, T-1526, T-1551, T-1555, T-1556
 
+## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
+Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value
+position, and at the top level, through an implicit `@` that FORMULATEXT shows: `=IF(1,{2;3})` is
+`=@IF(1,{2;3})` (2), `=ABS(IF(1,{-2;3}))` `=ABS(@IF(1,{-2;3}))` (2), `=LEN(IF(1,{"ab";"c"}))` 2,
+`=N({2;3})` `=N(@{2;3})` (2), `=ABS({-2;3})` 2, `=ISNUMBER(IF(1,{2;3}))` TRUE, `=-IF(1,{2;3})`
+`=-@IF(1,{2;3})` (-2), `=N(TRANSPOSE({2,3}))` `=N(@TRANSPOSE({2,3}))` (2). Each dynamic twin spills
+(`=N(IF(1,{2,3}))` is `#SPILL!` there, its spill range blocked).
+Exception: N and T over `IF(...)` get no `@`, and the legacy cell is `#VALUE!` (`=N(IF(1,{2;3}))`,
+`=N(IF(1,{2,3}))`, `=T(IF(1,{"a";"b"}))`), while `=N(IF(1,2))` is 2. N and T take a reference or a
+value, and IF can return a reference: CHOOSE, INDEX and IFS behave the same, see "Legacy N and T over
+a reference-returning call" below.
+Evidence: probes/legacy-array-result (excel-graph, 2026-10-16), probes/n-array-lift D4.
+Not implemented: ours adds no `@` there, so these legacy cells spill (T-1717), and the N/T
+exception is T-1713.
+Status: VERIFIED (excel-graph)
+Tasks: T-1713, T-1717
+
+## Legacy N and T over a reference-returning call (T-1713)
+Rule: in a legacy (non-array) formula, N and T read their argument as a reference: no `@` goes on it,
+on a range in it, or on an IF, CHOOSE, INDEX, IFS or OFFSET call in it (FORMULATEXT shows none). A
+reference result is read as N/T of a reference, its top-left cell: with Z1:Z2 = 7, 8, `=N(Z1:Z2)`,
+`=N(OFFSET(Z1:Z2,0,0))` and `=N(IF(1,Z1:Z2))` are 7 off the range's rows. An array result is
+`#VALUE!`, whatever its size and also nested in a scalar position: `=N(IF(1,{2;3}))`,
+`=N(CHOOSE(1,{2;3}))`, `=N(INDEX({2;3},0,1))`, `=N(IFS(1,{2;3}))`, `=N(IF(1,{2;3},{4;5}))`,
+`=N(IF({1;0},2,3))`, `=N(IF(1,{2}))`, `=N(IF(1,{2,3;4,5}))`, `=N(IF(1,{"x";3}))`,
+`=T(CHOOSE(1,{"a";"b"}))`, `=T(IF(1,{2;3}))`, `=ABS(N(IF(1,{2;3})))`, `=N(IF(1,{2;3}))+0` and
+`=N(IF(1,{2;3}))&""` are all `#VALUE!` with no spill. In an array context the array lifts instead:
+`=SUM(N(IF(1,{2;3})))` is 5, and under an `@`-ed IF it is intersected: `=IF(1,N(IF(1,{2;3})))` is
+shown `=@IF(1,N(IF(1,{2;3})))` and is 2.
+Exceptions: IFERROR gets the `@` (`=N(IFERROR({2;3},0))` is `=N(@IFERROR({2;3},0))`, 2), and SWITCH
+gets none and the legacy cell spills: `=N(SWITCH(1,1,{2;3}))` shows no `@` and gives 2, 3 in two
+cells, as a dynamic formula would.
+Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16).
+Not implemented: the text is identical to the dynamic formula's, which spills, so the `#VALUE!`
+needs the engine to remember that a formula is legacy (spec T-1727, then T-1713); ours adds an `@`
+on the calls (N gives the top-left value, T "") and on ranges (`#VALUE!` off their rows, T-1728); the IFERROR `@`, the
+SWITCH spill and the `@IF` are T-1717's.
+Status: VERIFIED (excel-graph)
+Tasks: T-1713, T-1717, T-1727, T-1728
+
 ## `@` of a non-reference array as a function argument is its top-left value
 Rule (probes/rank-at-if-ref, excel-graph, 2026-10-15, T-1596): where an argument takes a reference (aggregates, RANK's `ref`,
 COUNTBLANK's `range`), `@` of an array that is not a reference is the array's top-left value, a plain value, never the whole array.
