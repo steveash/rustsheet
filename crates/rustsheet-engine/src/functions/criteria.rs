@@ -2,9 +2,6 @@
 //! criteria strings (operators, wildcards, `~` escapes, number/date/bool/error
 //! literals) and wildcard text patterns used by MATCH/XMATCH/XLOOKUP and D-functions.
 
-#[cfg(target_arch = "wasm32")]
-use regex_lite as regex;
-
 use crate::{
     calc_result::CalcResult,
     expressions::token::{is_english_error_string, Error},
@@ -35,40 +32,6 @@ fn parse_date_criterion(
     date_system
         .serial_from_1900_serial(i64::from(serial))
         .map(|serial| serial as f64)
-}
-
-/// We convert an Excel wildcard into a Rust (Perl family) regex
-pub(crate) fn from_wildcard_to_regex(
-    wildcard: &str,
-    exact: bool,
-) -> Result<regex::Regex, regex::Error> {
-    // 1. Escape all
-    let reg = &regex::escape(wildcard);
-
-    // 2. We convert the escaped '?' into '.' (matches a single character)
-    let reg = &reg.replace("\\?", ".");
-    // 3. We convert the escaped '*' into '.*' (matches anything)
-    let reg = &reg.replace("\\*", ".*");
-
-    // 4. We send '\\~\\~' to '??' that is an unescaped regular expression, therefore cannot be in reg
-    let reg = &reg.replace("\\~\\~", "??");
-
-    // 5. If the escaped and converted '*' is preceded by '~' then it's a raw '*'
-    let reg = &reg.replace("\\~.*", "\\*");
-    // 6. If the escaped and converted '.' is preceded by '~' then it's a raw '?'
-    let reg = &reg.replace("\\~.", "\\?");
-    // '~' is used in Excel to escape any other character.
-    //    So ~x goes to x (whatever x is)
-    // 7. Remove all the others '\\~d' --> 'd'
-    let reg = &reg.replace("\\~", "");
-    // 8. Put back the '\\~\\~'  as '\\~'
-    let reg = &reg.replace("??", "\\~");
-
-    // And we have a valid Perl regex! (As Kim Kardashian said before me: "I know, right?")
-    if exact {
-        return regex::Regex::new(&format!("^{reg}$"));
-    }
-    regex::Regex::new(reg)
 }
 
 // Excel: criteria equality compares the 15-digit values, so 1+2^-52 matches 1 but 1E-17 never matches 0
@@ -494,8 +457,13 @@ pub(crate) struct WildcardPattern {
 impl WildcardPattern {
     /// Compiles `pattern`.
     pub(crate) fn new(pattern: &Text) -> WildcardPattern {
-        let lowered = pattern.map_runs(str::to_lowercase);
-        let mut units = lowered.units();
+        Self::from_units(pattern.map_runs(str::to_lowercase).units())
+    }
+
+    /// Compiles a pattern whose units the caller has already case-folded (SEARCH folds with its
+    /// own rules, see `fold_case` in functions/text/position.rs).
+    pub(crate) fn from_units(units: impl Iterator<Item = u16>) -> WildcardPattern {
+        let mut units = units;
         let mut tokens = Vec::new();
         while let Some(unit) = units.next() {
             let token = match unit {
@@ -529,6 +497,25 @@ impl WildcardPattern {
                 self.matches_units(&units, |unit| unit)
             }
         }
+    }
+
+    /// The first unit index at or after `from` where the pattern matches a prefix of `text[index..]`
+    /// (SEARCH: the match need not reach the end). `text` is case-folded like the pattern.
+    ///
+    /// The pattern is split at its `*`s into fixed segments (units and `?`). The first segment is
+    /// scanned for; the later ones then each take their leftmost position, which is the greedy
+    /// choice. A later start can only push those positions right, so if the greedy chain fails
+    /// for the first start where the first segment fits, it fails for every later start.
+    pub(crate) fn find_from(&self, text: &[u16], from: usize) -> Option<usize> {
+        let mut segments = self.tokens.split(|token| *token == WildcardToken::AnyRun);
+        let first = segments.next().unwrap_or(&[]);
+        let start = (from..=text.len()).find(|&at| segment_matches_at(first, text, at))?;
+        let mut position = start + first.len();
+        for segment in segments.filter(|segment| !segment.is_empty()) {
+            let at = (position..=text.len()).find(|&at| segment_matches_at(segment, text, at))?;
+            position = at + segment.len();
+        }
+        Some(start)
     }
 
     /// Glob matching with backtracking to the last `*` only, which suffices because `*` matches
@@ -570,4 +557,15 @@ impl WildcardPattern {
             .get(next_token..)
             .is_some_and(|rest| rest.iter().all(|token| *token == WildcardToken::AnyRun))
     }
+}
+
+/// Whether the `?`/unit tokens of `segment` (no `*`) match `text` starting at `at`.
+fn segment_matches_at(segment: &[WildcardToken], text: &[u16], at: usize) -> bool {
+    text.get(at..at + segment.len()).is_some_and(|window| {
+        segment.iter().zip(window).all(|(token, unit)| match token {
+            WildcardToken::Unit(literal) => literal == unit,
+            WildcardToken::AnyUnit => true,
+            WildcardToken::AnyRun => false,
+        })
+    })
 }

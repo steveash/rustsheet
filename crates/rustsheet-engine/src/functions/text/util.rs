@@ -39,7 +39,7 @@ fn unit_chars(units: impl Iterator<Item = u16>) -> String {
 }
 
 /// The inverse of [`one_char_per_unit`]: the UTF-16 units of a string it produced.
-fn unit_chars_to_units(text: &str) -> Vec<u16> {
+pub(crate) fn unit_chars_to_units(text: &str) -> Vec<u16> {
     text.chars()
         .map(|c| {
             let code = u32::from(c);
