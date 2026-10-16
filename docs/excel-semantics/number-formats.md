@@ -364,8 +364,15 @@ seconds, fractions, scientific, scaling commas, percent) over 44 edge values, 10
 TEXT() with the same codes. Points the earlier probes did not show:
 - A `*x` fill adds nothing to the text: `_("$"* #,##0.00_);...` on 36.5 is " $36.50 ", `*.0.00` and
   `0.00*-` on PI() "3.14"; `_x` still adds one space (`_(* #,##0_)` on 1000 " 1,000 ").
-- A date or clock format over a serial it cannot show (negative, or 1234567890 past 9999-12-31,
-  also `[h]:mm` and `h:mm`) is 255 `#`; 787 such cells.
+- A date or clock format over a serial it cannot show (negative, or 1234567890 past 9999-12-31) is
+  255 `#`; 787 such cells. An elapsed code with a clock or fraction token joins them (`[h]:mm`,
+  `[m]:ss`, `[ss].00`, `[h]:mm:ss.0` on any negative, even -0.5, and on 1234567890), but a bare
+  elapsed code does not: `[s]` on -1.5 is "-129600" and on 1E15 "86400000000000000000" (see
+  "Elapsed-time tokens"). TEXT() on the same codes is `#VALUE!` exactly where the display is 255 `#`;
+  every other paired TEXT() result equals the displayed text.
+- A fraction whose numerator overflows is 255 `#` too: `?/100` on 1000, 999.9999 and 1234567890
+  (numerator 100000 and up; 99.5 is "9950/100"), `?/?` on 123456789012345 and 1E15 while 1234567890
+  is "1234567890/1". The threshold is unprobed (T-1740).
 - Clock and date fields come from the serial rounded to the shown second: 0.9999999999 is "0:00"
   under `h:mm`, "24:00:00" under `[h]:mm:ss`, "1900-01-01" under `yyyy-mm-dd`, "Sunday" under `dddd`.
 - `mm:ss` with no hour is minutes: 123456.789 is "56:10".
@@ -383,9 +390,9 @@ TEXT() with the same codes. Points the earlier probes did not show:
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
 text" section lists every cell ours gets wrong.
 Not implemented: ours passes 6,961 of 10,400 text cells (66.9%). Fill characters (T-1735),
-out-of-range dates (T-1731), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
+out-of-range dates (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
 the text section on text and booleans (T-1736), `[$USD]`/`[Cyan]` (T-1737), `?.??`/`#%` (T-1738),
 scientific (T-1730), fractions and round-half (T-1711, T-0982), the sign of -0.5 (T-1129),
 fractional seconds (T-0981, T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
 Status: VERIFIED (Excel for the web)
-Tasks: T-1611, T-1711, T-1730 to T-1738
+Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740
