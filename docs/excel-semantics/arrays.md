@@ -378,6 +378,19 @@ Ours: BYROW and BYCOL pass references since T-1395 (`by_slices_source`, bycol_by
 Status: VERIFIED (excel-graph)
 Tasks: T-1395, T-1442
 
+## BYROW and BYCOL: a LAMBDA result that is an array
+Rule: if the LAMBDA returns a 1x1 array (`{7}`, `SEQUENCE(1)`, a one-element array slice) BYROW and BYCOL use its one
+value; if it returns anything bigger than one cell for any slice (a row or column slice, `{7,8}`, `{7;8}`,
+`SEQUENCE(2,1)`) the whole call is one `#CALC!` cell. This holds for a range source, an array-constant source and a mix of
+scalar and array results (`BYROW(A1:B3,LAMBDA(r,IF(SUM(r)>5,r,0)))` is `#CALC!`; with `SEQUENCE(1)` in place of `r` it is
+0, 1, 1). Over `{1;2;3}` or `{1,2,3}` a slice is one cell, so `BYROW({1;2;3},LAMBDA(r,r))` is 1, 2, 3 and
+`BYCOL({1,2,3},LAMBDA(c,c))` 1, 2, 3, while `LAMBDA(r,{7,8})` is `#CALC!`. Over A1:B3 (1, 2; 3, 4; 5, 6) `BYCOL(..,LAMBDA(c,c))`
+is `#CALC!`, `LAMBDA(c,{7})` 7, 7 and `LAMBDA(c,SEQUENCE(1))` 1, 1.
+Evidence: probes/byrow-bycol-array-results (excel-graph, 2026-10-16, T-1670).
+Ours: bycol_byrow.rs `calc_result_to_array_node` unwraps a 1x1 array; `makes_calc_error` leaves it alone (T-1670).
+Status: VERIFIED (excel-graph)
+Tasks: T-1664, T-1670
+
 ## Functions passed by name (`_xleta.`)
 Rule: a function passed by name, stored `_xleta.NAME` (any case, `_xleta._xlfn.STDEV.S` and `_xleta.STDEV.S` alike), is a
 LAMBDA that takes as many arguments as it is given and passes them on: with A1 x, A3 z, B3 y, `BYCOL(A1:B3,_xleta.COUNTA)`
@@ -387,7 +400,7 @@ arguments), `MAKEARRAY(2,2,_xleta.POWER)` 1, 1; 2, 4, `MAKEARRAY(2,2,_xleta.IF)`
 `LET(f,_xleta.SUM,f(1,2))` 3. On its own it is a value like an uncalled LAMBDA: `=_xleta.SUM` is `#CALC!` and
 `ISERROR(_xleta.SUM)` FALSE. A function whose result is an array for a row is `#CALC!` in BYROW (`_xleta.ABS`,
 `_xleta.IF` with one argument); that `#CALC!` is one cell, not a spill of errors (probes/eta-reduced-names E49 and E101, nothing
-below them in the sidecar; T-1660 spill-extent check; ours is one `#CALC!` since T-1664: `CalcResult::is_multi_value`, bycol_byrow.rs; a mixed call where only some rows return an array is unprobed, ours is one `#CALC!`; BYROW only: BYCOL, an array-constant source and a 1x1 array result (ours stays `#VALUE!`) are unprobed, T-1670). BYROW and BYCOL refuse anything but a LAMBDA with `#VALUE!`, whatever it is: an error
+below them in the sidecar; T-1660 spill-extent check; ours is one `#CALC!` since T-1664: `CalcResult::is_multi_value`, bycol_byrow.rs; mixed calls, BYCOL, array-constant sources and 1x1 array results are in "BYROW and BYCOL: a LAMBDA result that is an array" above, T-1670). BYROW and BYCOL refuse anything but a LAMBDA with `#VALUE!`, whatever it is: an error
 (`BYCOL(A1:B3,NA())`), a number (`BYCOL(A1:B3,1)`), an unknown `_xleta.` name, and a bare function name read from a file
 (`BYCOL(A1:B3,COUNTA)`, `BYROW(A1:B3,SUM)`: unknown names, xlsx-storage.md). `MAKEARRAY(2,2,_xleta.ABS)` (too many
 arguments) and `BYROW(A1:B3,_xleta.NOW)` give an error excel-graph cannot decode (left pending).
