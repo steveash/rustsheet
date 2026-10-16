@@ -38,9 +38,12 @@ Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081). The web r
 percent-encoding or XPath behavior.
 
 ## GETPIVOTDATA without a pivot table (T-1628)
-Rule: with no pivot table in the workbook, `GETPIVOTDATA(data_field, pivot_table, ...)` is `#REF!` for every
-reference probed (a cell outside any pivot, a range, another sheet, `OFFSET`/`INDIRECT` results, extra field/item pairs, an
-odd number of pairs, a numeric or boolean `data_field`); an error in `data_field` or `pivot_table` propagates as it came
-(`NA()` is `#N/A`, `1/0` is `#DIV/0!`, and the first one wins left to right). `ERROR.TYPE(GETPIVOTDATA("Sales",A1))` is 4.
+Rule: with no pivot table in the workbook, `GETPIVOTDATA("Sales",ref,...)` is `#REF!` for every reference probed
+(a cell outside any pivot, a range, `OFFSET`/`INDIRECT` results, extra field/item pairs, an odd number of
+pairs, `""` as data_field, a numeric pivot_table or numeric item). An error in either of the first two arguments
+propagates as it came (`pivot_table` `NA()` is `#N/A`, `1/0` is `#DIV/0!`; `data_field` `NA()` is `#N/A`).
+`ERROR.TYPE(GETPIVOTDATA("Sales",A1))` is 4. Which error wins when both are errors, a boolean data_field and a
+reference to an existing second sheet are unprobed.
 Evidence: probes/getpivotdata-evidence-floor (oracle: excel-graph, 2026-10-16, T-1628).
-Not probed: a real pivot (field/item pairs, grand totals, missing items): the case builder cannot write pivot tables.
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081).
+Not probed: a real pivot (field/item pairs, grand totals, missing items): the case builder cannot write pivot tables (T-1705).
