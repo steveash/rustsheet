@@ -148,6 +148,9 @@ Excel for the web returns `#VALUE!` for `TEXT` with a lowercase-`e` scientific f
 (see below).
 Evidence: poi/NumberFormatApproxTests.xlsx Tests!A2:A39, A42 onward (oracle: excel-graph
 2026-10-04; workbook cached values).
+Also: Excel for the web refuses a whole workbook whose cell `numFmt` is `0.00e+00` (createSession
+501 `FileCorruptTryRepair`/`unsupportedWorkbook`; the same workbook with the other gen-m10 codes
+loads), so the M10 generator does not use lowercase exponents (T-1611).
 Status: CONFLICTING (web vs desktop; excel-desktop probe pending)
 Tasks: T-1075 (Phase 4; decision 0039)
 
@@ -353,3 +356,36 @@ Not implemented (T-1711): ours gives " 1/2" for `# ?/?` on 12.5, "1,234" for
 `TEXT(1234.5,"#,##0")` (a value failure too) and `#VALUE!` for the negative date.
 Status: VERIFIED (Excel for the web)
 Tasks: T-1610, T-1711
+
+## Displayed text over an edge-value pool (T-1611)
+Rule: suite gen-m10 records Excel's displayed text (`Range.text`) of 135 format codes (every built-in,
+custom codes with 1-4 sections, conditions, colors, literals, `*`/`_`, `@`, elapsed and fractional
+seconds, fractions, scientific, scaling commas, percent) over 44 edge values, 10,400 cells, plus
+TEXT() with the same codes. Points the earlier probes did not show:
+- A `*x` fill adds nothing to the text: `_("$"* #,##0.00_);...` on 36.5 is " $36.50 ", `*.0.00` and
+  `0.00*-` on PI() "3.14"; `_x` still adds one space (`_(* #,##0_)` on 1000 " 1,000 ").
+- A date or clock format over a serial it cannot show (negative, or 1234567890 past 9999-12-31,
+  also `[h]:mm` and `h:mm`) is 255 `#`; 787 such cells.
+- Clock and date fields come from the serial rounded to the shown second: 0.9999999999 is "0:00"
+  under `h:mm`, "24:00:00" under `[h]:mm:ss`, "1900-01-01" under `yyyy-mm-dd`, "Sunday" under `dddd`.
+- `mm:ss` with no hour is minutes: 123456.789 is "56:10".
+- The text section formats booleans as well as text: `"pre "@` on TRUE is "pre TRUE", `;;;` shows
+  nothing, `0.0;[Red]-0.0;0.0;"<"@">"` on an empty string "<>".
+- A minus goes before a leading literal: `"x"General` on -1.5 is "-x1.5". A value that rounds to
+  nothing shows no minus: `#,` on -0.5 "", `0.0,,` on -1234.5678 "0.0"; `#,` on 1.5 is "" and on
+  1000 "1".
+- `?.??` keeps the point on an integer ("1000.  "); `#%` on 0.0049 is "%".
+- Two conditions: `[<0]"neg";[>0]"pos";"zero"` on 1 is "pos"; `[=0]"nil";General` on PI() is
+  "3.141592654"; `[<=-1]0;[<1]0.0000;0.0` on -1.5 "2"; `[>=1]0.00;0.000` on -0.5 "-0.500".
+- `[$USD]` is currency text ("-1.50 USD") and `[Cyan]` a color.
+- Engineering and padded mantissas: `##0.0E+0` on 123456.789 is "123.5E+3", `00.0E+0` on 36.5
+  "36.5E+0", `0.000E-00` on 1.5 "1.500E00".
+Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
+text" section lists every cell ours gets wrong.
+Not implemented: ours passes 6,961 of 10,400 text cells (66.9%). Fill characters (T-1735),
+out-of-range dates (T-1731), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
+the text section on text and booleans (T-1736), `[$USD]`/`[Cyan]` (T-1737), `?.??`/`#%` (T-1738),
+scientific (T-1730), fractions and round-half (T-1711, T-0982), the sign of -0.5 (T-1129),
+fractional seconds (T-0981, T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
+Status: VERIFIED (Excel for the web)
+Tasks: T-1611, T-1711, T-1730 to T-1738
