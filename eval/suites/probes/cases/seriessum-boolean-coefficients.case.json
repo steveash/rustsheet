@@ -1,0 +1,35 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SERIESSUM coefficient argument: boolean cell, typed boolean, array-literal boolean and derived arrays (T-1191).",
+  "tags": [
+    "M5",
+    "math",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": 4,
+        "B2": true,
+        "B3": 6,
+        "B4": "5",
+        "A1": "=SERIESSUM(1,0,1,TRUE)",
+        "A2": "=SERIESSUM(1,0,1,FALSE)",
+        "A3": "=SERIESSUM(1,0,1,{4,TRUE,6})",
+        "A4": "=SERIESSUM(1,0,1,{4,FALSE})",
+        "A5": "=SERIESSUM(1,0,1,B1:B3)",
+        "A6": "=SERIESSUM(1,0,1,B2)",
+        "A7": "=SERIESSUM(1,0,1,B2:B2)",
+        "A8": "=SERIESSUM(1,0,1,{4,\"5\"})",
+        "A9": "=SERIESSUM(1,0,1,\"5\")",
+        "A10": "=SERIESSUM(1,0,1,B4)",
+        "A11": "=SERIESSUM(1,0,1,B1:B1)",
+        "A12": "=SERIESSUM(1,0,1,(B1:B3))",
+        "A13": "=SERIESSUM(1,0,1,IF(TRUE,B1:B3))",
+        "A14": "=SERIESSUM(1,0,1,B1:B2*1)"
+      }
+    }
+  ],
+  "expected": {}
+}
