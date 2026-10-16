@@ -15,7 +15,7 @@ use crate::expressions::token::OpUnary;
 use crate::language::{get_language, Language};
 use crate::locale::{get_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
-use bound_variables::prefix_bound_variables;
+use bound_variables::{prefix_bound_variables, variable_text};
 
 pub enum DisplaceData {
     Column {
@@ -722,7 +722,7 @@ fn stringify(
             format!("{{{matrix_string}}}")
         }
         DefinedNameKind((name, ..)) => name.to_string(),
-        NamedVariableKind { name, id: _ } => name.to_string(),
+        NamedVariableKind { name, id: _ } => variable_text(name, context),
         UnaryKind { kind, right } => {
             let operand = wrap(sub(right), binding(right) < binding(node));
             match kind {
@@ -757,9 +757,9 @@ fn stringify(
                             format!("_xlpm.{}", p.name)
                         }
                     } else if p.is_optional {
-                        format!("[{}]", p.name)
+                        format!("[{}]", variable_text(&p.name, context))
                     } else {
-                        p.name.clone()
+                        variable_text(&p.name, context)
                     }
                 })
                 .collect();
