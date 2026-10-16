@@ -19,8 +19,9 @@ A fraction format whose numerator Excel cannot show displays 255 `#`, as Excel's
 shows). `?/?` and `??/??`: 255 `#` on 1E15 and -1E15, and `?/?` on 123456789012345, yet `?/?` on 1234567890
 is "1234567890/1". Mixed fractions with a whole part (`# ?/?`, `# ??/??`) show 1234567890 as "1234567890    ".
 The threshold is unknown: probe numerators around 1E5 (fixed denominator) and 1E10..1E15 (`?/?`) with
-excel-probe before implementing. Ours prints digits (`?/100` on 1000 "10/100"). TEXT() on these is `#VALUE!`
-where the display is `#` (number-formats.md "Displayed text over an edge-value pool"). The other fraction
+excel-probe before implementing. Ours prints digits (`?/100` on 1000 "10/100"). TEXT() on an overflowing
+fraction is unprobed (no gen-m10 TEXT() cell overflows; date and clock codes give `#VALUE!` where the display is
+`#`): add `TEXT(1000,"?/100")` to the probe. The other fraction
 failures (wrong digits) are T-1711 and T-0982.
 Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "Displayed text" section, which lists each failing text cell (Excel vs ours). Text cells are scored apart from values and are not baselined (decision 0068); the TEXT() cells on sheet T that use the same codes are value known failures in eval/baseline/gen-m10.txt. Formatter: crates/rustsheet-engine/src/formatter/ (shared by `Workbook::formatted` and TEXT). docs/excel-semantics/number-formats.md.
 
