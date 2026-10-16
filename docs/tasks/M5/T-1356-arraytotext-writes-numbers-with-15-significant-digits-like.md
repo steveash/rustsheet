@@ -3,7 +3,7 @@ id: T-1356
 title: "ARRAYTOTEXT writes numbers with 15 significant digits like VALUETOTEXT and concatenation"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,3 +28,6 @@ concatenation use; do not write another.
 
 ## Out of scope
 -
+
+## Outcome
+ARRAYTOTEXT writes numbers with `number_to_text` (the VALUETOTEXT/`&` helper) instead of Rust shortest text; unit test covers 1/3, 1E+20 and both together in formats 0 and 1.

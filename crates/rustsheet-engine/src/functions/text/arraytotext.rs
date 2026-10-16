@@ -4,6 +4,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
+    number_format::number_to_text,
 };
 
 impl Model {
@@ -87,13 +88,9 @@ impl Model {
 
 fn format_array_value(node: &ArrayNode, strict: bool) -> String {
     match node {
-        ArrayNode::Number(n) => {
-            if *n == n.floor() && n.abs() < 1e15 {
-                format!("{}", *n as i64)
-            } else {
-                format!("{n}")
-            }
-        }
+        // Excel: General text, 15 significant digits, the text `&` and VALUETOTEXT give
+        // (docs/excel-semantics/text.md#arraytotext-number-text).
+        ArrayNode::Number(n) => number_to_text(*n),
         ArrayNode::Boolean(b) => {
             if *b {
                 "TRUE".to_string()
