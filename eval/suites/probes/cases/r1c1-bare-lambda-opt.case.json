@@ -1,0 +1,19 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1715: =LAMBDA(R5C7,[R1C1],R5C7*2+ISOMITTED(R1C1))(5) in an A1 workbook, outside any LET, with FORMULATEXT.",
+ "tags": [
+  "M2",
+  "names",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=LAMBDA(R5C7,[R1C1],R5C7*2+ISOMITTED(R1C1))(5)",
+    "A2": "=FORMULATEXT(A1)"
+   }
+  }
+ ],
+ "expected": {}
+}
