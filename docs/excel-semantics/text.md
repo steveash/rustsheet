@@ -108,8 +108,8 @@ Status: VERIFIED
 - `H&"*"` matches H, "😀" and H&"a"; `"*"&L` matches L, "😀" and "a"&L. A wildcard splits a pair. `H&"?"` matches "😀" and H&"a".
 - `"~"&H` matches nothing: a tilde before a non-wildcard is read literally.
 - MATCH(..,0) and XMATCH(..,2) agree: `MATCH("??",..)` is 3 and `MATCH(H&"?",..)` is 3.
-Ours: all 48 cells pass (T-1642). The text criteria (`result_is_*_string` in functions/criteria.rs) take the operand as `Text` and compare with `cmp_text`; `WildcardPattern` (same file) matches `?`, `*` and `~` over lower-cased UTF-16 units, for COUNTIF-style criteria and for MATCH/XMATCH/XLOOKUP's `wildcard_text_matcher`. D-function prefix matching (`result_starts_with_string`) is still lossy (unprobed, T-1667). Exact-mode MATCH with a lone-half lookup value now goes through `WildcardPattern` like any other text, so it matches unit for unit with no collation (as MATCH(..,0) does for well-formed text, coercion.md); the lone-half cells A31 and A32 agree.
-Tasks: T-1582, T-1585, T-1586, T-1587, T-1647 (probe follow-up), T-1642
+Ours: all 48 cells pass (T-1642). The text criteria (`result_is_*_string` in functions/criteria.rs) take the operand as `Text` and compare with `cmp_text`; `WildcardPattern` (same file) matches `?`, `*` and `~` over lower-cased UTF-16 units, for COUNTIF-style criteria and for MATCH/XMATCH/XLOOKUP's `wildcard_text_matcher`. D-function prefix matching (`result_starts_with_units`) compares lower-cased UTF-16 units and agrees with Excel (probes/d-function-prefix-lone-surrogates, criteria.md "D-function plain-text equality matches by prefix", T-1667). Exact-mode MATCH with a lone-half lookup value now goes through `WildcardPattern` like any other text, so it matches unit for unit with no collation (as MATCH(..,0) does for well-formed text, coercion.md); the lone-half cells A31 and A32 agree.
+Tasks: T-1582, T-1585, T-1586, T-1587, T-1647 (probe follow-up), T-1642, T-1667
 
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
