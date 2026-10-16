@@ -37,4 +37,4 @@ functions/logical/and_or_xor_not.rs.
 -
 
 ## Outcome
-Probe probes/and-or-xor-picked-text (42 cells) filled by excel-graph: Excel skips a text TRUE/FALSE cell for every pick, so ours was wrong for IF, INDEX, XLOOKUP and LET. AND/OR/XOR now use `ArgReading::Aggregate`; `InContext` removed. Rule recorded in coercion.md and SPEC-0009.
+Probe probes/and-or-xor-picked-text (61 cells) filled by excel-graph: Excel skips a text TRUE/FALSE cell for every pick, so ours was wrong for IF, INDEX, XLOOKUP and LET. AND/OR/XOR now use `ArgReading::Aggregate`; `InContext` removed. Rule recorded in coercion.md and SPEC-0009.

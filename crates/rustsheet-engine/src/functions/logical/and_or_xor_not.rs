@@ -97,6 +97,15 @@ impl Model {
                 text @ CalcResult::String(_) if source == ItemSource::Direct => {
                     model.cast_to_bool(text, cell).ok()
                 }
+                // A direct LAMBDA is `#VALUE!`, held like a referenced error by the walker
+                // (probes/and-or-xor-picked-text J1-J18, excel-graph, T-1685).
+                CalcResult::Lambda(_) => {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Lambdas not supported".to_string(),
+                    ));
+                }
                 // Empty values and the rest of the text are skipped.
                 _ => None,
             };

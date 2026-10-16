@@ -382,7 +382,7 @@ fn logical_walker_keeps_text_empty_and_error_rules() {
     model._set("B10", "=OR(TRUE,{1,#N/A},1/0)");
     // A whole column on an empty sheet has no logical value.
     model._set("B11", "=OR(Sheet2!C:C)");
-    // Current behavior, not Excel evidence: a direct LAMBDA is unprobed for AND/OR/XOR.
+    // A direct LAMBDA is `#VALUE!`, held so a direct error beats it (probes/and-or-xor-picked-text).
     model._set("B13", "=AND(LAMBDA(x,x),1/0)");
     model._set("B14", "=XOR(A1:A2)");
     model.evaluate();
@@ -398,6 +398,6 @@ fn logical_walker_keeps_text_empty_and_error_rules() {
     assert_eq!(model._get_text("B9"), "#DIV/0!");
     assert_eq!(model._get_text("B10"), "#N/A");
     assert_eq!(model._get_text("B11"), "#VALUE!");
-    assert_eq!(model._get_text("B13"), "#N/IMPL!");
+    assert_eq!(model._get_text("B13"), "#DIV/0!");
     assert_eq!(model._get_text("B14"), "#VALUE!");
 }

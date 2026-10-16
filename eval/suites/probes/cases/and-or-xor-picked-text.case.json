@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-1685: AND/OR/XOR of a text TRUE/FALSE cell (A1/A2) or boolean control (B1/B2) picked by IF, INDEX, XLOOKUP, CHOOSE, LET, TAKE or OFFSET.",
+  "description": "T-1685: AND/OR/XOR of a text TRUE/FALSE cell (A1/A2) or boolean control (B1/B2) picked by IF, INDEX, XLOOKUP, CHOOSE, LET, TAKE or OFFSET. Plus a direct LAMBDA next to a direct error, a logical and an error cell (A3 #N/A).",
   "tags": [
     "M2",
     "logical",
@@ -56,7 +56,26 @@
         "H39": "=XOR(TAKE(A1:A2,1))",
         "H40": "=XOR(TAKE(B1:B2,1))",
         "H41": "=XOR(OFFSET(A1,0,0))",
-        "H42": "=XOR(OFFSET(B1,0,0))"
+        "H42": "=XOR(OFFSET(B1,0,0))",
+        "J1": "=AND(LAMBDA(x,x),1/0)",
+        "J2": "=AND(1/0,LAMBDA(x,x))",
+        "J3": "=AND(LAMBDA(x,x),TRUE)",
+        "J4": "=AND(LAMBDA(x,x))",
+        "J5": "=AND(A3,LAMBDA(x,x))",
+        "J6": "=AND(LAMBDA(x,x),A3)",
+        "J7": "=OR(LAMBDA(x,x),1/0)",
+        "J8": "=OR(1/0,LAMBDA(x,x))",
+        "J9": "=OR(LAMBDA(x,x),TRUE)",
+        "J10": "=OR(LAMBDA(x,x))",
+        "J11": "=OR(A3,LAMBDA(x,x))",
+        "J12": "=OR(LAMBDA(x,x),A3)",
+        "J13": "=XOR(LAMBDA(x,x),1/0)",
+        "J14": "=XOR(1/0,LAMBDA(x,x))",
+        "J15": "=XOR(LAMBDA(x,x),TRUE)",
+        "J16": "=XOR(LAMBDA(x,x))",
+        "J17": "=XOR(A3,LAMBDA(x,x))",
+        "J18": "=XOR(LAMBDA(x,x),A3)",
+        "A3": "=NA()"
       }
     }
   ],
