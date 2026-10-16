@@ -3,7 +3,7 @@ id: T-1659
 title: "Lotus-style dotted ranges: SUM(A1.B2) and ROWS(A1..B2) read A1:B2"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
