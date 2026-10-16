@@ -71,8 +71,28 @@ fn case_and_expansions_are_equal() {
 }
 
 #[test]
-fn unprobed_characters_keep_code_point_order_after_letters() {
-    assert_increasing(&["\u{1}", " ", "z", "þ", "α", "😀"]);
+fn other_characters_keep_code_point_order_after_letters() {
+    assert_increasing(&["\u{1}", " ", "z", "α", "β", "ω", "😀"]);
+}
+
+/// probes/text-collation-unprobed (T-1590, excel-graph): the whole observed order, lowest first.
+#[test]
+fn t1590_probed_characters() {
+    assert_increasing(&[
+        "", "\u{1}", "\u{1f}", "\u{7f}", "–", "—", "\u{a0}", "\t", "\n", "\r", "!", "~", "¡", "¦",
+        "¨", "¯", "´", "¸", "¿", "‘", "’", "“", "”", "¢", "£", "¤", "¥", "€", "+", "±", "«", "»",
+        "×", "÷", "§", "©", "¬", "®", "°", "µ", "…", "•", "0", "¼", "½", "¾", "¹", "²", "³", "9",
+        "a", "ª", "á", "ä", "ã", "å", "a’b", "ab", "a'b", "a-b", "a–b", "a—b", "c", "ç", "d", "đ",
+        "ð", "i", "ı", "ij", "l", "ł", "n", "ñ", "o", "º", "ö", "ø", "œ", "s", "t", "þ", "u", "z",
+        "α", "β", "ω",
+    ]);
+    for (left, right) in [("ĳ", "ij"), ("Ĳ", "ij"), ("Z", "z")] {
+        assert_eq!(
+            cmp_text_excel(left, right),
+            Ordering::Equal,
+            "{left:?} = {right:?}"
+        );
+    }
 }
 
 #[test]
@@ -81,7 +101,7 @@ fn ascii_fast_path_agrees_with_the_general_path() {
     // equal letter and accent weights, and every hyphen/apostrophe position shifts by one.
     let samples = [
         "", "'", "-", " ", "!", "+", "0", "9", "a", "A", "a-b", "a'b", "ab", "co-op", "coop", "~",
-        "-1", "'1", "1", "z", "Z_", "a\u{1}",
+        "-1", "'1", "1", "z", "Z_", "a\u{1}", "\u{7f}", "\t", "a\r",
     ];
     for left in samples {
         for right in samples {
