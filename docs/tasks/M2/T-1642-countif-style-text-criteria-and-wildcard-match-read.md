@@ -3,7 +3,7 @@ id: T-1642
 title: "COUNTIF-style text criteria and wildcard MATCH read lone surrogates exactly (probe first)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
