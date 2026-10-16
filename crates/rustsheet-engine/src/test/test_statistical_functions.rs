@@ -23,7 +23,9 @@ fn test_frequency_basic() {
     assert_eq!(model._get_text("C3"), "1");
 }
 
-// Evidence: poi FormulaEvalTestData_Copy.xlsx EverythingTests row 936 (T-0947).
+// Evidence: probes/mode-typed-arguments A21-A29 (excel-graph, 2026-10-16, T-1291), which supersedes
+// the inference from poi EverythingTests row 936 (T-0947): typed and referenced text is skipped, a
+// direct error propagates, and a blank single-cell reference or an empty argument is `#VALUE!`.
 #[test]
 fn test_mode_text_and_blank_reference_arguments() {
     let mut model = new_empty_model();
@@ -36,15 +38,19 @@ fn test_mode_text_and_blank_reference_arguments() {
     model._set("B4", "=MODE(A1:A4,2)");
     model._set("B5", "=MODE(A1,A2,\"1\",2)");
     model._set("B6", "=MODE(1,1,)");
+    model._set("B7", "=MODE(1,2,2,TRUE)");
+    model._set("B8", "=MODE(\"2\",\"2\",5)");
     model.evaluate();
-    assert_eq!(model._get_text("B5"), "#VALUE!");
-    // An empty argument is unprobed and must keep its old behaviour.
-    assert_eq!(model._get_text("B6"), "1");
-    assert_eq!(model._get_text("B1"), "#VALUE!");
-    assert_eq!(model._get_text("B2"), "#VALUE!");
+    assert_eq!(model._get_text("B1"), "2");
+    assert_eq!(model._get_text("B2"), "#DIV/0!");
     assert_eq!(model._get_text("B3"), "#VALUE!");
     // Text and blanks inside a range are ignored.
     assert_eq!(model._get_text("B4"), "2");
+    assert_eq!(model._get_text("B5"), "2");
+    assert_eq!(model._get_text("B6"), "#VALUE!");
+    // Typed booleans and numeric text are skipped, not read as numbers (A9, A6).
+    assert_eq!(model._get_text("B7"), "2");
+    assert_eq!(model._get_text("B8"), "#N/A");
 }
 
 // ── MODE.SNGL ────────────────────────────────────────────────────────────────
