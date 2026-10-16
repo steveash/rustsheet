@@ -223,6 +223,7 @@ fn spill_behaviour() {
 
     // Reference to cell with non-empty range
     model._set("X12", "1");
+    model._set("B12", "=X12:Z12");
     model._set("A12", "=OR(B12)");
 
     model.evaluate();
