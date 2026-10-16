@@ -15,57 +15,26 @@ fn fn_encodeurl_args_number() {
     assert_eq!(model._get_text("A2"), *"#ERROR!");
 }
 
+// docs/excel-semantics/web.md: `#VALUE!` for every argument, lifted over an array
+// (probes/info-logic-argument-modes-2 A1:A6, B5; gen-m9/fcf11f2ec6f7a59d A7).
 #[test]
-fn fn_encodeurl() {
+fn fn_encodeurl_is_value_error_on_the_web() {
     let mut model = new_empty_model();
 
-    model._set(
-        "A1",
-        r#"=ENCODEURL("http://contoso.sharepoint.com/Finance/Profit and Loss Statement.xlsx")"#,
-    );
-    model._set("A2", r#"=ENCODEURL("AZaz09-._~")"#);
-    model._set("A3", r#"=ENCODEURL("a b+c&d=e?f/g:h")"#);
-    model._set("A4", r#"=ENCODEURL("")"#);
+    model._set("A1", r#"=ENCODEURL("a b&c")"#);
+    model._set("A2", r#"=ENCODEURL("abc")"#);
+    model._set("A3", "=ENCODEURL(1)");
+    model._set("A4", "=ENCODEURL(TRUE)");
+    model._set("D1", "a b");
+    model._set("D2", "c");
+    model._set("C5", "=ENCODEURL(D1:D2)");
+    model._set("A6", "=ENCODEURL(1/0)");
+    model._set("A7", r#"=CODE(ENCODEURL("a"))"#);
 
     model.evaluate();
 
-    assert_eq!(
-        model._get_text("A1"),
-        *"http%3A%2F%2Fcontoso.sharepoint.com%2FFinance%2FProfit%20and%20Loss%20Statement.xlsx"
-    );
-    // Unreserved characters are not encoded
-    assert_eq!(model._get_text("A2"), *"AZaz09-._~");
-    assert_eq!(model._get_text("A3"), *"a%20b%2Bc%26d%3De%3Ff%2Fg%3Ah");
-    assert_eq!(model._get_text("A4"), *"");
-}
-
-#[test]
-fn fn_encodeurl_utf8() {
-    let mut model = new_empty_model();
-
-    // Non-ASCII characters are encoded byte by byte in UTF-8
-    model._set("A1", r#"=ENCODEURL("ü")"#);
-    model._set("A2", r#"=ENCODEURL("€")"#);
-    model._set("A3", r#"=ENCODEURL("日本")"#);
-
-    model.evaluate();
-
-    assert_eq!(model._get_text("A1"), *"%C3%BC");
-    assert_eq!(model._get_text("A2"), *"%E2%82%AC");
-    assert_eq!(model._get_text("A3"), *"%E6%97%A5%E6%9C%AC");
-}
-
-#[test]
-fn fn_encodeurl_casts_arguments() {
-    let mut model = new_empty_model();
-
-    model._set("A1", "=ENCODEURL(12.5)");
-    model._set("A2", "=ENCODEURL(TRUE)");
-    model._set("A3", "=ENCODEURL(1/0)");
-
-    model.evaluate();
-
-    assert_eq!(model._get_text("A1"), *"12.5");
-    assert_eq!(model._get_text("A2"), *"TRUE");
-    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+    for cell in ["A1", "A2", "A3", "A4", "C5", "C6", "A7"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
+    }
+    assert_eq!(model._get_text("A6"), *"#DIV/0!");
 }
