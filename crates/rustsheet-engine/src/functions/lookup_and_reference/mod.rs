@@ -25,6 +25,7 @@ mod choosecols_chooserows;
 mod drop_take;
 mod expand;
 mod groupby;
+mod grouping;
 mod hstack_vstack;
 mod index;
 mod index_arg;

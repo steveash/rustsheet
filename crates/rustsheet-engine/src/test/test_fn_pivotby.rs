@@ -9,7 +9,7 @@ use crate::Model;
 
 /// The Region/Product/Year/Sales/Units records of probes/groupby-pivotby's Data sheet (A1:E11,
 /// row 1 headers; A9 is blank and A6 is a lowercase `east`).
-fn records() -> Model {
+pub(super) fn records() -> Model {
     let mut model = new_empty_model();
     let rows = [
         ["Region", "Product", "Year", "Sales", "Units"],
@@ -37,7 +37,7 @@ fn records() -> Model {
 const SUM: &str = "LAMBDA(x,SUM(x))";
 
 /// The texts of row `row`, columns `first..=last` (letters).
-fn row(model: &Model, row: usize, first: char, last: char) -> Vec<String> {
+pub(super) fn row(model: &Model, row: usize, first: char, last: char) -> Vec<String> {
     (first..=last)
         .map(|column| model._get_text(&format!("{column}{row}")))
         .collect()
@@ -238,16 +238,18 @@ fn filter_and_argument_errors() {
             "#VALUE!",
         ),
         ("G8", "=PIVOTBY(A2:A11,C2:C11,D2:D11,NA())", "#N/A"),
-        // Deferred: subtotals (T-1324), relative_to (T-1327), function arrays (T-1325).
+        // Deferred: column subtotals over several values (T-1699), relative_to (T-1327),
+        // function arrays (T-1325). 3 over two row fields is #VALUE! (probes/pivotby-followup
+        // P!A381).
         (
             "G9",
-            "=PIVOTBY(A2:B11,C2:C11,D2:D11,LAMBDA(x,SUM(x)),,2)",
+            "=PIVOTBY(A2:A11,B2:C11,D2:E11,LAMBDA(x,SUM(x)),,,,2)",
             "#N/IMPL!",
         ),
         (
             "G10",
-            "=PIVOTBY(A2:B11,C2:C11,D2:D11,LAMBDA(x,SUM(x)),,,3)",
-            "#N/IMPL!",
+            "=PIVOTBY(A2:B11,C2:C11,D2:D11,LAMBDA(x,SUM(x)),,3)",
+            "#VALUE!",
         ),
         (
             "G11",
