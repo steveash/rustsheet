@@ -29,7 +29,7 @@
 //! probes/text-at-token-sections, excel-graph, T-1656), and they are checked here too:
 //! - a section holding `@` that is not the last section (`"@;0"`, `"x@;0"`; `"0;x@"` is fine);
 //! - `@` in the same section as a number or date token ([`conflicts_with_text`]): `"x@y"`, `"0@"`,
-//!   `"x@%"`, `"x@[>5]"`, `"x@y;0;0;@"`. `AM/PM` and `A/P` do not conflict (`"x@AM/PM"` is "xabcAM"; the lexer still rejects `A/P`, T-1702).
+//!   `"x@%"`, `"x@[>5]"`, `"x@y;0;0;@"`. `AM/PM` and `A/P` do not conflict (`"x@AM/PM"` is "xabcAM").
 //!
 
 use super::lexer::{Lexer, Token};
@@ -115,6 +115,7 @@ fn is_number_or_date(token: &Token) -> bool {
 /// B1-B43): the date and time letters, the elapsed tokens, the era and calendar tokens, the digit
 /// placeholders, `.`, `/`, `E+`, `General`, `%` and a condition. Unlike [`is_number_or_date`] it
 /// leaves out `AM/PM`; the calendar tokens (`B1`, `B2`) are inferred from the other date tokens.
+/// `A/P` is in neither list: a fourth section may hold it (probes/text-at-token-sections A20).
 fn conflicts_with_text(token: &Token) -> bool {
     (is_number_or_date(token) && !matches!(token, Token::AMPM))
         || matches!(
@@ -227,11 +228,11 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
             Token::Literal(':') => (Run::Colon, LITERAL_COST),
             Token::Literal('$') | Token::Escaped('$') => (Run::Literal, DOLLAR_COST),
             // An escaped colon does not join a colon run: it prints (`0\:\:` is "1::").
-            Token::Literal(_) | Token::Escaped(_) | Token::Currency(_) => {
+            Token::Literal(_) | Token::Escaped(_) | Token::Currency(_) | Token::Locale => {
                 (Run::Literal, LITERAL_COST)
             }
             Token::Text(text) => (Run::Literal, QUOTED_CHAR_COST * text.chars().count()),
-            Token::AMPM => (Run::None, AMPM_COST),
+            Token::AMPM | Token::AP(..) => (Run::None, AMPM_COST),
             _ => (Run::None, TOKEN_COST),
         };
         let counts_as_element = !matches!(token, Token::Color(_) | Token::Condition(..));
