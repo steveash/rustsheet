@@ -3,7 +3,7 @@ id: T-1663
 title: "SQRTPI of a multi-cell range is one #VALUE!, not a spill"
 milestone: M2
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found by the T-1660 spill-extent check: probes/radians-sqrtpi-munit A80 `=SQRTPI
 
 ## Out of scope
 -
+
+## Outcome
+`fn_sqrtpi` returns one `#VALUE!` for any multi-cell range operand; array constants still lift. New probe probes/sqrtpi-range-operands (excel-graph) shows every multi-cell range (numbers, boolean, text, blanks, vertical, 2-D) is one `#VALUE!`, recorded in numbers.md. Eval: radians-sqrtpi-munit B80 now passes, baseline shrank, new probe passes, no regressions.
