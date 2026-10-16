@@ -2,6 +2,7 @@
 # never edit by hand. `C<TAB>case<TAB>checked-cells` lists every case; `F<TAB>case<TAB>item` lists
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
+# `TC` and `TF` lines do the same for displayed text (decision 0070).
 C	probes/3d-ref-aggregates.case.json	20
 C	probes/3d-ref-choose-let.case.json	6
 C	probes/3d-ref-functions.case.json	22
@@ -3737,3 +3738,7 @@ F	probes/yield-solver-sweep.case.json	S!F3
 F	probes/yield-solver-sweep.case.json	S!F4
 F	probes/yield-solver-sweep.case.json	S!F5
 F	probes/yield-solver-sweep.case.json	S!F6
+TC	probes/displayed-text-formats.case.json	28
+TF	probes/displayed-text-formats.case.json	S!A17
+TF	probes/displayed-text-formats.case.json	S!A21
+TF	probes/displayed-text-formats.case.json	S!B4
