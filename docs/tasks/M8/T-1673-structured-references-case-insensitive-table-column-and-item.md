@@ -3,7 +3,7 @@ id: T-1673
 title: "Structured references: case-insensitive table, column and item names, and multiple item specifiers"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: sonnet
