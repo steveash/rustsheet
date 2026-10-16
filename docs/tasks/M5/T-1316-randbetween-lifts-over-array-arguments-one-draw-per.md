@@ -31,4 +31,4 @@ array-lift helper other math functions use (search before writing one).
 - The RNG and the distribution.
 
 ## Outcome
-RANDBETWEEN lifts over array/range bounds (one draw per element, broadcast shape) through `lift_number_operands`; a scalar bound still rejects booleans. Unit test added; probes/volatile-invariant F1:F9 now pass.
+RANDBETWEEN lifts over array/range bounds (one draw per element, broadcast shape) through `lift_number_operands`; a scalar bound still rejects booleans. Unit tests added; probes/volatile-invariant F1:F9 now pass. Reviewer follow-up probed probes/randbetween-lift-operands (15 cells): boolean elements and multi-cell range bounds are `#VALUE!`, so only array values lift.

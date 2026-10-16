@@ -54,18 +54,42 @@ impl Model {
         if matches!(first, CalcResult::EmptyArg) || matches!(second, CalcResult::EmptyArg) {
             return CalcResult::new_error(Error::NA, cell, "bottom or top omitted".to_string());
         }
-        // Excel lifts over an array or range bound, one draw per element (probes/volatile-invariant
-        // F1:F9, T-1316); a scalar bound keeps the boolean check.
+        // Excel: a multi-cell range bound is `#VALUE!` (no lift, no implicit intersection:
+        // probes/randbetween-lift-operands A7:A11, B2:B4, T-1316); a single-cell reference is a
+        // scalar.
+        for bound in [&first, &second] {
+            if matches!(bound, CalcResult::Range { left, right } if left != right) {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "RANDBETWEEN bound is a range".to_string(),
+                );
+            }
+        }
+        // An array bound lifts, one draw per element (probes/volatile-invariant F1:F9); a boolean
+        // element is `#VALUE!` like a scalar boolean (probes/randbetween-lift-operands A1:A3, A12).
         if [&first, &second]
             .iter()
-            .any(|v| matches!(v, CalcResult::Range { .. } | CalcResult::Array(_)))
+            .any(|v| matches!(v, CalcResult::Array(_)))
         {
             let operands = [first, second]
                 .into_iter()
                 .map(|v| match v {
-                    CalcResult::Range { .. } | CalcResult::Array(_) => {
-                        self.number_or_array(v, cell)
-                    }
+                    CalcResult::Array(rows) => self.number_or_array(
+                        CalcResult::Array(
+                            rows.into_iter()
+                                .map(|row| {
+                                    row.into_iter()
+                                        .map(|node| match node {
+                                            ArrayNode::Boolean(_) => ArrayNode::Error(Error::VALUE),
+                                            other => other,
+                                        })
+                                        .collect()
+                                })
+                                .collect(),
+                        ),
+                        cell,
+                    ),
                     scalar => self
                         .cast_to_number_no_bools(scalar, cell)
                         .map(NumberOrArray::Number),
