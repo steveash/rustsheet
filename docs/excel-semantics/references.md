@@ -284,7 +284,7 @@ to a workbook, or whose part is missing or unreadable, is an empty book that kee
 lexer reads `[n]!Name` and `[n]Sheet!Name` as one identifier, which the parser keeps as a defined
 name with its prefix, and `external_links.rs` reads the cache. A cell the cache does not hold reads
 as empty: `=[1]Uses!$B$3` is 0, `SUM` and `COUNTA` of `[1]Uses!$E$1:$F$2` are 0
-(fixtures/external-link-cached-ranges Refs!B24, B55, B77). Unprobed, so UNVERIFIED: a book, sheet or name the cache does not hold and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
+(fixtures/external-link-cached-ranges Refs!B24, B55, B77). A name or sheet the cache does not hold is `#BLOCKED!` (probed: fixtures/external-link-cached-lookups Refs!B18-B20, T-1609; see "a name the cache does not hold" below). Unprobed, so UNVERIFIED: a book index with no link part and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
 uncached reference is; a sheet with `refreshError="1"` is read like any other; `[0]!Missing` is
 `#NAME?` and `[0]Nope!Name` (no such sheet) `#REF!`, as the plain name and a missing sheet are; only
 evaluation strips the `[0]` prefix, so ISREF and a rename of the name do not see through it
@@ -347,8 +347,8 @@ the web keeps the cache on upload):
   cell of a sheet the cache does not hold (`[1]Nope!$A$1`) are `#BLOCKED!` (`ERROR.TYPE([1]!NoSuchName)` 11), yet
   `ISREF([1]Nope!$A$1)` is TRUE;
 - a 3-D span of the cached sheets aggregates over them: `SUM([1]Uses:Defines!$B$2)` 142,
-  `SUM(…!$A$1:$B$2)` 157, COUNT 4, COUNTA 9, MAX 142, the span reversed (`[1]Defines:Uses!`) the
-  same; but `ISREF([1]Uses:Defines!$A$1)` is FALSE, ERROR.TYPE of the bare span 4 (`#REF!`) and
+  `SUM(…!$A$1:$B$2)` 157, COUNT 4, COUNTA 9, MAX 142, and `SUM([1]Defines:Uses!$B$2)` for the span reversed 142
+  (fixtures/external-link-cached-3d-span Refs!B9; the other aggregates reversed are unprobed); but `ISREF([1]Uses:Defines!$A$1)` is FALSE, ERROR.TYPE of the bare span 4 (`#REF!`) and
   ROWS `#VALUE!`, as for a span of this workbook ("3-D references outside the aggregates"), while
   without a link `SUM('[other.xlsx]S1:S2'!A1)` is `#BLOCKED!` (T-1381). Ours does not parse the span
   (`#ERROR!`; T-1654).
