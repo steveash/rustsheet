@@ -33,10 +33,33 @@ impl Model {
             Err(e) => return e,
         };
 
-        let coeffs = match self.eval_to_array(&args[3], cell) {
+        let result = self.evaluate_node_in_context(&args[3], cell);
+        // Excel: a single value (typed text, or a one-cell reference) is read as a number, so
+        // `SERIESSUM(1,0,1,"5")` and a one-cell text reference are 5; text inside an array
+        // literal or a multi-cell range is `#VALUE!` (probes/seriessum-boolean-coefficients A8:A11).
+        let is_single = match &result {
+            CalcResult::String(_) => true,
+            CalcResult::Range { left, right } => left == right,
+            _ => false,
+        };
+        let mut coeffs = match self.result_to_array(result, cell) {
             Ok(a) => a,
             Err(e) => return e,
         };
+        if is_single {
+            if let Some(ArrayNode::String(text)) = coeffs.first().and_then(|row| row.first()) {
+                match self.cast_to_number(CalcResult::String(text.clone()), cell) {
+                    Ok(v) => coeffs = vec![vec![ArrayNode::Number(v)]],
+                    Err(_) => {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "SERIESSUM: coefficients must be numeric".to_string(),
+                        )
+                    }
+                }
+            }
+        }
 
         let mut sum = 0.0f64;
         let mut i = 0u64;
@@ -44,15 +67,10 @@ impl Model {
             for node in row {
                 let coeff = match node {
                     ArrayNode::Number(v) => *v,
-                    ArrayNode::Boolean(b) => {
-                        if *b {
-                            1.0
-                        } else {
-                            0.0
-                        }
-                    }
                     ArrayNode::Empty => 0.0,
-                    ArrayNode::String(_) => {
+                    // Excel: a boolean coefficient is `#VALUE!` in every form (cell, typed, array
+                    // literal); probes/seriessum-boolean-coefficients, math-argument-modes C44.
+                    ArrayNode::Boolean(_) | ArrayNode::String(_) => {
                         return CalcResult::new_error(
                             Error::VALUE,
                             cell,
