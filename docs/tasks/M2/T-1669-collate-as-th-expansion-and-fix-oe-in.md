@@ -26,3 +26,4 @@ Oracle (excel-graph, 2026-10-16) shows `þ` = `th` (an expansion like `æ`/`ß`:
 
 ## Outcome
 `þ` is now the expansion `th` in `cmp_text_excel`; a single-cell reference as XMATCH `lookup_array` or XLOOKUP `lookup_array`/`return_array` is a one-cell vector (`evaluate_node_with_reference`). probes/text-collation-longer 114/114 pass (9 cells fixed). Documented in coercion.md.
+- Follow-ups: T-1698 (probe reference-form lookup arrays, capital Thorn).
