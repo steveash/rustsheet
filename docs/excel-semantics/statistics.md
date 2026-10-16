@@ -683,3 +683,13 @@ chisqinvrt,chisqtest,hypgeomdist,weibulldist,ztest,phi,ttest}` and their `*.orac
 (`hypgeomdist` has 61 cells for the T-0977 fit).
 Status: VERIFIED (excel-graph observation)
 Tasks: T-1049
+
+## CORREL, PEARSON and RSQ over arrays of different sizes, and their last digit
+Rule: CORREL, PEARSON and RSQ of two arrays of different sizes are `#N/A`, and of the same 10-value array twice not exactly
+1: CORREL and PEARSON give 1.0000000000000002 and RSQ 0.9999999999999998 (COVARIANCE.P of it is 161.7225, exact).
+Evidence: GROUPBY passing these functions by name gives each group's values and all values
+(probes/groupby-pivotby-functions G!B421:B426, -functions2 G!B281:B286, G!B301:B306, G!B326; PIVOTBY functions2 P!A121),
+excel-graph, 2026-10-16, T-1325. The plain `CORREL({1;2},{1;2;3})` is unprobed.
+Ours: `#VALUE!` for different sizes, and exactly 1 for the same array twice.
+Status: VERIFIED (web)
+Tasks: T-1707

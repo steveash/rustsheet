@@ -806,20 +806,8 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let part = match self.fn_sum(&args[0..1], cell) {
-            CalcResult::Number(v) => v,
-            other => return other,
-        };
-        let total = match self.fn_sum(&args[1..2], cell) {
-            CalcResult::Number(v) => v,
-            other => return other,
-        };
-        // Divided like the operator `/`: a zero (or subnormal) total is #DIV/0! and an overflowing
-        // quotient #NUM! (the latter two UNVERIFIED for PERCENTOF).
-        match divide(part, total) {
-            Ok(ratio) => CalcResult::Number(ratio),
-            Err(error) => CalcResult::new_error(error, cell, "Invalid division".to_string()),
-        }
+        let part = self.fn_sum(&args[0..1], cell);
+        percent_of(part, || self.fn_sum(&args[1..2], cell), cell)
     }
 
     pub(crate) fn fn_combina(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -848,6 +836,29 @@ impl Model {
             result *= (n + t) / (t + 1.0);
         }
         CalcResult::Number(result)
+    }
+}
+
+/// PERCENTOF from the SUM of its subset, `part`, and the SUM of all, `total`, computed only when
+/// `part` is a number (the first error wins). GROUPBY and PIVOTBY call it with a total they sum
+/// once per relative set (SPEC-0006 Design step 3).
+pub(crate) fn percent_of(
+    part: CalcResult,
+    total: impl FnOnce() -> CalcResult,
+    cell: CellReferenceIndex,
+) -> CalcResult {
+    let CalcResult::Number(part) = part else {
+        return part;
+    };
+    let total = match total() {
+        CalcResult::Number(v) => v,
+        other => return other,
+    };
+    // Divided like the operator `/`: a zero (or subnormal) total is #DIV/0! and an overflowing
+    // quotient #NUM! (the latter two UNVERIFIED for PERCENTOF).
+    match divide(part, total) {
+        Ok(ratio) => CalcResult::Number(ratio),
+        Err(error) => CalcResult::new_error(error, cell, "Invalid division".to_string()),
     }
 }
 
