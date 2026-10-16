@@ -232,6 +232,7 @@ C	probes/eta-reduced-names.case.json	59
 C	probes/external-ref-no-link-ifchoose-b.case.json	6
 C	probes/external-ref-no-link-ifchoose.case.json	44
 C	probes/external-ref-no-link-index.case.json	54
+C	probes/external-ref-no-link-let-index.case.json	7
 C	probes/external-ref-no-link-let.case.json	20
 C	probes/external-ref-no-link-shapes.case.json	20
 C	probes/external-ref-no-link.case.json	10
@@ -738,6 +739,7 @@ C	probes/vlookup-error-arg-lifting-range-lookup.case.json	22
 C	probes/volatile-and-info-rand-true-false-sheet.case.json	108
 C	probes/volatile-invariant.case.json	60
 C	probes/volatile-now-today-shapes.case.json	48
+C	probes/vstack-scalar-error.case.json	40
 C	probes/weeknum-1900-later.case.json	23
 C	probes/weeknum-invalid-type.case.json	8
 C	probes/weeknum-serial-0.case.json	57
@@ -1235,6 +1237,11 @@ F	probes/eta-reduced-names.case.json	Sheet1!E101
 F	probes/eta-reduced-names.case.json	Sheet1!E102
 F	probes/eta-reduced-names.case.json	Sheet1!E103
 F	probes/eta-reduced-names.case.json	Sheet1!E93
+F	probes/external-ref-no-link-let-index.case.json	Calc!A3
+F	probes/external-ref-no-link-let-index.case.json	Calc!A4
+F	probes/external-ref-no-link-let-index.case.json	Calc!A5
+F	probes/external-ref-no-link-let-index.case.json	Calc!A6
+F	probes/external-ref-no-link-let-index.case.json	Calc!A7
 F	probes/fin-argument-modes.case.json	Sheet1!H10
 F	probes/fin-argument-modes.case.json	Sheet1!H100
 F	probes/fin-argument-modes.case.json	Sheet1!H101
