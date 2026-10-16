@@ -3,7 +3,7 @@ id: T-1607
 title: "Suite gen-m8b: tables and structured references, oracle-filled"
 milestone: M8
 lane: harness
-status: in-progress
+status: todo
 priority: P1
 size: M
 tier: opus
@@ -38,3 +38,14 @@ suites the milestone exit criteria name that does not exist yet.
 
 ## Out of scope
 - Engine fixes (file them). Table resizing and other edits.
+
+## Handoff
+- Done (no code yet): checked excel-graph against spec2xlsx tables with structured references, using throwaway probes on table `Sales` (A1:D4, columns A B C D, 3 data rows).
+  - Keeps and computes these on upload: `=SUM(Sales[A])` 6; `=Sales[[#Headers],[B]]` "B"; `=ROWS(Sales[#All])` 4; `=SUM(Sales[[A]:[B]])` 66; `=COUNTA(Sales[#Data])` 12; `=FORMULATEXT(..)` of `=SUM(Sales[A])` gives "=SUM(Sales[A])".
+  - Name tables like `Sales`, not `T1`: XlsxWriter rejects a table name that looks like a cell address.
+- Blockers in spec2xlsx (tools), to fix before the generator:
+  - `=ROWS(Sales)` (a bare table name) makes excel-graph refuse the whole file (createSession 501 "FileCorruptTryRepair / unsupportedWorkbook"). spec2xlsx writes it as a dynamic-array formula (`<f t="array" ref=..>`, `cm="1"`). Find out why its array classifier picks this formula.
+  - `Sales[@A]*2` inside the table is also written as an array formula, and `@` is not translated to the file form `Sales[[#This Row],[A]]`. excel-graph returns `#REF!`. That is a writer artifact, not Excel behavior.
+  - A case that also had an escaped column (header `C#`, `=SUM(Sales['C#])`) and `=COLUMNS(Sales[#Headers])` still failed upload. Bisect those two next (one formula per case; `rustsheet-oracle fill` takes about a minute).
+- Next: fix the spec2xlsx structured-reference writing above, with tests in tools. Then write the generator policy (tools/src/rustsheet_tools/gen/, as names_3d.py does for gen-m8a) and the suite.
+- Pause reason: session time budget (opus worker, 2026-10-16). No attempt failed.
