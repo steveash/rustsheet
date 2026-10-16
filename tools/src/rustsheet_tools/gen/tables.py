@@ -23,14 +23,15 @@ from __future__ import annotations
 
 import random
 import re
-from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 from typing import Any
 
 from xlsxwriter.utility import xl_col_to_name
 
+from rustsheet_tools.gen.common import SeededDraws, draw_unseen
+
 PER_CATEGORY = 400
-REDRAWS = 200  # attempts to find a formula not yet in the case before accepting a repeat
 PROBE_COL = "K"
 THIS_ROW_FIRST_COL = 26  # AA: right of the four tables (at most 5 + 5 + 2 + 5 columns and 3 gaps)
 THIS_ROW_ROWS = 24  # one past the lowest table row (top 2 + header + 20 rows + totals)
@@ -87,21 +88,17 @@ class Table:
         return f"{xl_col_to_name(self.col)}{self.top}:{last}{self.bottom}"
 
 
-class _Gen:
+class _Gen(SeededDraws):
     """Seeded draws of structured references over the case's tables."""
 
+    numbers = NUMBERS
+
     def __init__(self, rng: random.Random, tables: list[Table], data_columns: dict[str, list[str]]) -> None:
-        self.rng = rng
+        super().__init__(rng)
         self.tables = tables
         # The columns a probe may read (the `in-table` formula column is left out: no cycles).
         self.data_columns = data_columns
         self.home: Table | None = None  # the table an `in-table` probe sits in
-
-    def pick(self, items: list[str]) -> str:
-        return self.rng.choice(items)
-
-    def num(self) -> str:
-        return self.pick(NUMBERS)
 
     def table(self, names: list[str] | None = None) -> Table:
         return self.rng.choice([t for t in self.tables if names is None or t.name in names])
@@ -370,17 +367,6 @@ def _probe_cells(category: str, tables: list[Table], count: int) -> list[tuple[s
     return [("Calc", f"{PROBE_COL}{r}", None) for r in range(1, count + 1)]
 
 
-def _probe(g: _Gen, draw: Callable[[_Gen], str], seen: set[tuple[str, str]], scope: str) -> str | None:
-    """A formula not yet in `seen` for `scope` (both added to it), or None when the draws keep
-    repeating."""
-    for _ in range(REDRAWS):
-        formula = "=" + draw(g)
-        if (scope, formula) not in seen:
-            seen.add((scope, formula))
-            return formula
-    return None
-
-
 def generate_tables(seed: int, per_category: int = PER_CATEGORY) -> list[dict[str, Any]]:
     """Return one `rustsheet-case/v1` spec per category, up to `per_category` probes each."""
     cases: list[dict[str, Any]] = []
@@ -393,11 +379,11 @@ def generate_tables(seed: int, per_category: int = PER_CATEGORY) -> list[dict[st
             sheets["Data"].update(_table_cells(rng, t, data_columns[t.name]))
         g = _Gen(rng, tables, data_columns)
         hypotheses: dict[str, str] = {}
-        seen: set[tuple[str, str]] = set()
+        seen: dict[str, set[str]] = {}  # formulas drawn, per row for ROW_SCOPED categories
         for sheet, a1, home in _probe_cells(category, tables, per_category):
             g.home = home
             scope = a1.lstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZ") if category in ROW_SCOPED else ""
-            if (formula := _probe(g, draw, seen, scope)) is not None:
+            if (formula := draw_unseen(partial(draw, g), seen.setdefault(scope, set()))) is not None:
                 sheets[sheet][a1] = formula
                 hypotheses[f"{sheet}!{a1}"] = category
         if category == "totals":

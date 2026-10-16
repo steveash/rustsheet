@@ -470,7 +470,7 @@ def _add_table(
 ) -> tuple[str, str]:
     """Adds a spec table; returns its name and, when it is filtered, the `<autoFilter>` element to patch in.
     With `"totals_row": true` the last row of `ref` is the table's totals row, written by
-    `_totals_columns`."""
+    `_totals_column`."""
     name, ref = str(table["name"]), str(table["ref"])
     r1, c1, r2, c2 = _range(ref)
     totals = bool(table.get("totals_row"))
