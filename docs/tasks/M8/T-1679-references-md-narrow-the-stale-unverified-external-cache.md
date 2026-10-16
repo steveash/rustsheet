@@ -3,7 +3,7 @@ id: T-1679
 title: "references.md: narrow the stale UNVERIFIED external-cache sentence and the reversed-span claim (T-1609 audit)"
 milestone: M8
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -19,9 +19,12 @@ Found by the 2026-10-16 steward spot-audit of PR #871 (T-1609). The opus archite
 - The T-1609 bullet says the reversed span `[1]Defines:Uses!` gives "the same". Only `SUM([1]Defines:Uses!$B$2)` = 142 was probed (fixtures/external-link-cached-3d-span Refs!B9).
 
 ## Acceptance criteria
-- [ ] The UNVERIFIED sentence lists only what is still unprobed: the `[other.xlsx]` file-name book form and `refreshError="1"` sheets. It points to the T-1609 cells for uncached names and sheets.
-- [ ] The reversed-span sentence names only the probed SUM cell.
-- [ ] `make check` green; reviewers approve.
+- [x] The UNVERIFIED sentence lists only what is still unprobed: the `[other.xlsx]` file-name book form and `refreshError="1"` sheets. It points to the T-1609 cells for uncached names and sheets.
+- [x] The reversed-span sentence names only the probed SUM cell.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - New probes; implementation of 3-D external spans (T-1654).
+
+## Outcome
+references.md: the UNVERIFIED sentence now lists the uncached book index and the `[other.xlsx]` file-name book (and the refreshError sheets, already in the same sentence) and points to Refs!B18-B20 for uncached names and sheets; the reversed-span claim names only the probed SUM cell (Refs!B9). Docs only; no eval change.
