@@ -1,0 +1,55 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1626 RIGHTB evidence-floor probe",
+ "tags": [
+  "M5",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "abcabc",
+    "A2": "日本語テキスト",
+    "A3": "ｱｲｳｶﾞ",
+    "A4": "😀a😀",
+    "A5": "ＡＢＣ１２３",
+    "A6": "abc",
+    "A7": 7,
+    "A8": "",
+    "A9": "Ａ",
+    "A10": "カタカナ",
+    "C1": "=RIGHTB(A1)",
+    "C2": "=RIGHTB(A1,0)",
+    "C3": "=RIGHTB(A1,1)",
+    "C4": "=RIGHTB(A1,3)",
+    "C5": "=RIGHTB(A1,6)",
+    "C6": "=RIGHTB(A1,7)",
+    "C7": "=RIGHTB(A1,100)",
+    "C8": "=RIGHTB(A1,-1)",
+    "C9": "=RIGHTB(A1,2.9)",
+    "C10": "=RIGHTB(A1,\"2\")",
+    "C11": "=RIGHTB(A1,\"x\")",
+    "C12": "=RIGHTB(A1,TRUE)",
+    "C13": "=RIGHTB(A2,1)",
+    "C14": "=RIGHTB(A2,2)",
+    "C15": "=RIGHTB(A2,3)",
+    "C16": "=RIGHTB(A2,4)",
+    "C17": "=RIGHTB(A4,1)",
+    "C18": "=RIGHTB(A4,2)",
+    "C19": "=RIGHTB(A4,3)",
+    "C20": "=RIGHTB(A4,5)",
+    "C21": "=RIGHTB(A3,1)",
+    "C22": "=RIGHTB(A3,2)",
+    "C23": "=RIGHTB(A3,3)",
+    "C24": "=RIGHTB(A7,1)",
+    "C25": "=RIGHTB(A8,1)",
+    "C26": "=RIGHTB(A5,2)",
+    "C27": "=RIGHTB(A5,3)",
+    "C28": "=RIGHTB(A10,5)"
+   }
+  }
+ ],
+ "expected": {}
+}

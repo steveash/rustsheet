@@ -3,7 +3,7 @@ id: T-1626
 title: "Probe the byte and East-Asian text functions SEARCHB, FINDB, REPLACEB, RIGHTB, LENB, ASC, JIS, PHONETIC, REGEXREPLACE, REGEXTEST to the evidence floor"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -31,3 +31,10 @@ en-US byte functions on double-width text and surrogate pairs, start/num_bytes a
 
 ## Out of scope
 - Engine fixes for the mismatches found (filed as tasks).
+
+## Outcome
+Added probes t1626-{searchb,findb,replaceb,rightb,lenb,asc,jis-0..3,phonetic,regextest,regexreplace}
+(excel-graph); all ten functions are over the floor (lock 59 -> 49). New-coverage failures: ASC
+(T-1684) and REGEXTEST/REGEXREPLACE (T-1360, T-1685). Byte functions, JIS (#NAME?) and PHONETIC
+(#N/A) already match. Invalid-pattern and `$3` cells stay pending (error type undecoded). Quirks in
+docs/excel-semantics/text.md.
