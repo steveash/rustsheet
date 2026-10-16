@@ -3,7 +3,7 @@ id: T-1719
 title: "An unknown function call keeps the spelling of its name in the formula text"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
