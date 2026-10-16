@@ -3,7 +3,7 @@ id: T-1696
 title: "Probe the error precedence of VARA, VARPA, STDEVA and STDEVPA (direct vs referenced and array errors)"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
