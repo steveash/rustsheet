@@ -59,19 +59,6 @@ fn index_number(x: f64) -> Option<usize> {
     Some(near_integer_count(x.max(0.0)) as usize)
 }
 
-/// Whether an evaluated index makes INDEX lift: a multi-cell range or any array. A single cell
-/// stays a scalar index, but a 1x1 array lifts too, so `INDEX(D1:D5,{2})` is a 1x1 array and not
-/// a reference: ISREF FALSE, TYPE 64, `COUNTBLANK` and `AREAS` of it `#VALUE!`
-/// (docs/excel-semantics/lookup.md "INDEX lifts over array and range indices";
-/// probes/index-1x1-array-index, countblank-array-values H1).
-fn lifts(index: &CalcResult) -> bool {
-    match index {
-        CalcResult::Range { left, right } => left != right,
-        CalcResult::Array(_) => true,
-        _ => false,
-    }
-}
-
 /// Resolves the effective (row, column) indices for INDEX, where `0` means "the
 /// whole row/column" (used to spill an entire row, column or array).
 ///
@@ -299,7 +286,13 @@ impl Model {
         });
         let col = args.get(2).map(|a| self.evaluate_node_in_context(a, cell));
         let area = args.get(3).map(|a| self.evaluate_node_in_context(a, cell));
-        if lifts(&row) || col.as_ref().is_some_and(lifts) || area.as_ref().is_some_and(lifts) {
+        // A multi-cell range or any array index lifts, a 1x1 array too: `INDEX(D1:D5,{2})` is a
+        // 1x1 array, not a reference (docs/excel-semantics/lookup.md "INDEX lifts over array and
+        // range indices"; probes/index-1x1-array-index, countblank-array-values H1).
+        if row.is_multi_value()
+            || col.as_ref().is_some_and(CalcResult::is_multi_value)
+            || area.as_ref().is_some_and(CalcResult::is_multi_value)
+        {
             return Ok(IndexArgs::Lifted { row, col, area });
         }
         let area = area.map_or(Ok(1.0), |a| self.cast_to_number(a, cell));

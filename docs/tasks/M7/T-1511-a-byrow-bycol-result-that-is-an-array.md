@@ -22,6 +22,9 @@ Left over from T-1466 and T-1273 (docs/excel-semantics/arrays.md "Functions pass
 - Unprobed (T-1466 fidelity review): BYCOL/BYROW with `1/0` or `{1,2}` as the function, `MAKEARRAY(2,2,_xleta.ABS)` and `BYROW(A1:B3,_xleta.NOW)` (excel-graph cannot decode them; try `ERROR.TYPE(..)`), special forms passed by name (`_xleta.LET`, `_xleta.LAMBDA`, `_xleta.SUBTOTAL`, `_xleta.OFFSET`) and `LET(f,_xleta.SUM,f())`: probe them and match.
 Code: `fn_byrow`/`fn_bycol` and `calc_result_to_array_node` (bycol_byrow.rs), `call_lambda` (lambda.rs), ROWS/COLUMNS/INDEX on `CalcResult::Lambda`.
 
+## Update (T-1664)
+BYROW/BYCOL over a range now give one `#CALC!` for a multi-value result: m7-argument-modes F45:H45, eta-reduced-names E49 and gen-m9 4df1b22d3ed63f58 A35 pass. Still open here: E101-E103 (one-argument `_xleta.IF` gives `#ERROR!`, never an array), E93, F44:H44, gen-m9/95efb37a9874f82e A19 (`#SPILL!`, probably FISHERINV/RADIANS not lifting over a range) and gen-m7/44ef4f5638e25bcd A7.
+
 ## Acceptance criteria
 - [ ] probes/m7-argument-modes F44:H45 and probes/eta-reduced-names E49, E93, E101 pass, or the ones that cannot have their own task.
 - [ ] gen-m9/4df1b22d3ed63f58 A35, gen-m9/95efb37a9874f82e A19 and gen-m7/44ef4f5638e25bcd A7 pass, or are explained in the Outcome.

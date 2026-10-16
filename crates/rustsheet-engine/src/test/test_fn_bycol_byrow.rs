@@ -336,3 +336,35 @@ fn functions_passed_by_name_with_special_forms_do_not_panic() {
     assert_eq!(model._get_text("D41"), "#CALC!");
     assert_eq!(model._get_text("D45"), "#NAME?");
 }
+
+// A LAMBDA that returns several values makes the whole BYROW or BYCOL one `#CALC!` cell with
+// nothing spilled (probes/eta-reduced-names E49, T-1664). The BYROW range case has Excel evidence;
+// the BYCOL and array-constant cases are hand expectations awaiting T-1670.
+#[test]
+fn byrow_bycol_array_result_is_one_calc_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("A2", "3");
+    model._set("B2", "4");
+    model._set("D1", "=BYROW(A1:B2, LAMBDA(r, r))");
+    model._set("F1", "=BYCOL(A1:B2, LAMBDA(c, c))");
+    model._set("H1", "=BYROW({1,2;3,4}, LAMBDA(r, r))");
+    model.evaluate();
+    for (at, below) in [("D1", "D2"), ("F1", "G1"), ("H1", "H2")] {
+        assert_eq!(model._get_text(at), "#CALC!");
+        assert_eq!(model._get_text(below), "");
+    }
+}
+
+// A 1x1 array result is unprobed in Excel: it keeps the earlier `#VALUE!` per slice (T-1664).
+#[test]
+fn byrow_one_by_one_array_result_is_unchanged() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("C1", "=BYROW(A1:A2, LAMBDA(r, {7}))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert_eq!(model._get_text("C2"), "#VALUE!");
+}
