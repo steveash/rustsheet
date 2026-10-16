@@ -57,6 +57,19 @@ T-1524 made two attempts (2026-10-14) and no candidate rose above the correctly 
 - NPV (88): v/P with each power source, Horner from the last value, a running factor d *= 1+r; plus
   v*d with d /= 1+r, v*pow(1+r,-i), v/exp(i log1p r), v/exp(i log(1+r)), reverse sums and fsum: at most
   27 (correctly rounded 18).
+Attempt 3 (2026-10-16, owner-directed, after T-0901 shipped PV/FV/NPER; scratch fits, same sweeps):
+- PMT (308): new power sources were Excel's general `^` path, P = exp(n·ln(1+r)) (the product an Excel
+  operator, and plain), and the discount form 1/P (Excel's `1/`). They were crossed with the earlier 4
+  shapes plus 6 new ones (`-(pv+fv/P)*r/(k*(1-1/P))`, `-(pv+fv/P)/(k*((1-1/P)/r))`, PV's own factor
+  `-(pv+fv/P)/((k*((P-1)/r))/P)`, and reorderings of `(pv*r*P+fv*r)/((1-P)*k)`), each in doubles and
+  with Excel's twice-rounded operators. Best: 87, below the correctly rounded 132. The exp(n·ln) source
+  is not in the top 15.
+- NPV (88): each term multiplied by Excel's `(1+r)^-i` (the twice-rounded 1/P of square-and-multiply),
+  with plain or Excel `*`, and terms by exp(i·ln(1+r)) with Excel's `*` and `/`, each summed in doubles,
+  with Excel's `+` or at 64 bits. Best: 25 (`v/exp(i ln)` summed at 64 bits), below 27.
+- Also found by T-0901 (financial.md): the accurate `expm1` PMT fixes 30 Excel-cached cells and breaks
+  22, and IPMT's recurrence on the fitted FV breaks 4, so Excel's PMT is not the accurate value.
+Still blocked: none of the three attempts raised the bit-exact count.
 Reopens on a new hypothesis recorded here, for example: Excel's documented PMT formula evaluated in a
 specific compiled order, a different power routine for PMT than for PV/FV, NPV accumulated in a
 different order or with a different discount factor, or new oracle evidence (a probe with r chosen
