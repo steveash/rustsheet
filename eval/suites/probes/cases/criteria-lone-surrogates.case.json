@@ -1,0 +1,81 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1642: lone surrogates (H = high, L = low half of U+1F600, built with MID) in COUNTIF-style criteria (=, <>, <, >, wildcards ? and *, ~) as the criterion and in the range; SUMIF over powers of two names the matched set (Data!A1:A8 = H, L, U+1F600, U+FFFD, x, H&a, a&L, a). Wildcard MATCH and XMATCH(..,2) against the same range.",
+ "tags": [
+  "M2",
+  "probe",
+  "text",
+  "criteria"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=SUMIF(Data!$A$1:$A$8,MID(\"\ud83d\ude00\",1,1),Data!$B$1:$B$8)",
+    "A2": "=SUMIF(Data!$A$1:$A$8,MID(\"\ud83d\ude00\",2,1),Data!$B$1:$B$8)",
+    "A3": "=SUMIF(Data!$A$1:$A$8,\"=\"&MID(\"\ud83d\ude00\",1,1),Data!$B$1:$B$8)",
+    "A4": "=SUMIF(Data!$A$1:$A$8,\"<>\"&MID(\"\ud83d\ude00\",1,1),Data!$B$1:$B$8)",
+    "A5": "=SUMIF(Data!$A$1:$A$8,\"<\"&MID(\"\ud83d\ude00\",1,1),Data!$B$1:$B$8)",
+    "A6": "=SUMIF(Data!$A$1:$A$8,\">\"&MID(\"\ud83d\ude00\",1,1),Data!$B$1:$B$8)",
+    "A7": "=SUMIF(Data!$A$1:$A$8,\"<\"&MID(\"\ud83d\ude00\",2,1),Data!$B$1:$B$8)",
+    "A8": "=SUMIF(Data!$A$1:$A$8,\">\"&MID(\"\ud83d\ude00\",2,1),Data!$B$1:$B$8)",
+    "A9": "=SUMIF(Data!$A$1:$A$8,\"?\",Data!$B$1:$B$8)",
+    "A10": "=SUMIF(Data!$A$1:$A$8,\"??\",Data!$B$1:$B$8)",
+    "A11": "=SUMIF(Data!$A$1:$A$8,\"???\",Data!$B$1:$B$8)",
+    "A12": "=SUMIF(Data!$A$1:$A$8,MID(\"\ud83d\ude00\",1,1)&\"*\",Data!$B$1:$B$8)",
+    "A13": "=SUMIF(Data!$A$1:$A$8,\"*\"&MID(\"\ud83d\ude00\",2,1),Data!$B$1:$B$8)",
+    "A14": "=SUMIF(Data!$A$1:$A$8,\"*\",Data!$B$1:$B$8)",
+    "A15": "=SUMIF(Data!$A$1:$A$8,MID(\"\ud83d\ude00\",1,1)&\"?\",Data!$B$1:$B$8)",
+    "A16": "=SUMIF(Data!$A$1:$A$8,\"?\"&MID(\"\ud83d\ude00\",2,1),Data!$B$1:$B$8)",
+    "A17": "=SUMIF(Data!$A$1:$A$8,\"~\"&MID(\"\ud83d\ude00\",1,1),Data!$B$1:$B$8)",
+    "A18": "=SUMIF(Data!$A$1:$A$8,\"=\"&MID(\"\ud83d\ude00\",2,1),Data!$B$1:$B$8)",
+    "A19": "=SUMIF(Data!$A$1:$A$8,\"<>\"&MID(\"\ud83d\ude00\",2,1),Data!$B$1:$B$8)",
+    "A20": "=SUMIF(Data!$A$1:$A$8,UNICHAR(65533),Data!$B$1:$B$8)",
+    "A21": "=SUMIF(Data!$A$1:$A$8,\"\ud83d\ude00\",Data!$B$1:$B$8)",
+    "A22": "=SUMIF(Data!$A$1:$A$8,\"?\"&\"a\",Data!$B$1:$B$8)",
+    "A23": "=SUMIF(Data!$A$1:$A$8,\"a\"&\"?\",Data!$B$1:$B$8)",
+    "A24": "=COUNTIFS(Data!$A$1:$A$8,MID(\"\ud83d\ude00\",1,1))",
+    "A25": "=COUNTIFS(Data!$A$1:$A$8,\"?\")",
+    "A26": "=COUNTIFS(Data!$A$1:$A$8,MID(\"\ud83d\ude00\",1,1)&\"*\")",
+    "A27": "=COUNTIFS(Data!$A$1:$A$8,\"*\"&MID(\"\ud83d\ude00\",2,1))",
+    "A28": "=COUNTIFS(Data!$A$1:$A$8,\"??\")",
+    "A29": "=COUNTIFS(Data!$A$1:$A$8,\"\ud83d\ude00\")",
+    "A30": "=COUNTIFS(Data!$A$1:$A$8,MID(\"\ud83d\ude00\",2,1))",
+    "A31": "=IFERROR(MATCH(MID(\"\ud83d\ude00\",1,1),Data!$A$1:$A$8,0),0)",
+    "A32": "=IFERROR(MATCH(MID(\"\ud83d\ude00\",2,1),Data!$A$1:$A$8,0),0)",
+    "A33": "=IFERROR(MATCH(MID(\"\ud83d\ude00\",1,1)&\"*\",Data!$A$1:$A$8,0),0)",
+    "A34": "=IFERROR(MATCH(\"*\"&MID(\"\ud83d\ude00\",2,1),Data!$A$1:$A$8,0),0)",
+    "A35": "=IFERROR(MATCH(\"?\",Data!$A$1:$A$8,0),0)",
+    "A36": "=IFERROR(MATCH(\"??\",Data!$A$1:$A$8,0),0)",
+    "A37": "=IFERROR(MATCH(MID(\"\ud83d\ude00\",1,1)&\"?\",Data!$A$1:$A$8,0),0)",
+    "A38": "=IFERROR(MATCH(\"?\"&MID(\"\ud83d\ude00\",2,1),Data!$A$1:$A$8,0),0)",
+    "A39": "=IFERROR(MATCH(\"?a\",Data!$A$1:$A$8,0),0)",
+    "A40": "=IFERROR(MATCH(\"a?\",Data!$A$1:$A$8,0),0)",
+    "A41": "=IFERROR(XMATCH(MID(\"\ud83d\ude00\",1,1)&\"*\",Data!$A$1:$A$8,2),0)",
+    "A42": "=IFERROR(XMATCH(\"?\",Data!$A$1:$A$8,2),0)",
+    "A43": "=IFERROR(XMATCH(\"*\"&MID(\"\ud83d\ude00\",2,1),Data!$A$1:$A$8,2),0)"
+   }
+  },
+  {
+   "name": "Data",
+   "cells": {
+    "A1": "=MID(\"\ud83d\ude00\",1,1)",
+    "A2": "=MID(\"\ud83d\ude00\",2,1)",
+    "A3": "\ud83d\ude00",
+    "A4": "=UNICHAR(65533)",
+    "A5": "x",
+    "A6": "=MID(\"\ud83d\ude00\",1,1)&\"a\"",
+    "A7": "=\"a\"&MID(\"\ud83d\ude00\",2,1)",
+    "A8": "a",
+    "B1": 1,
+    "B2": 2,
+    "B3": 4,
+    "B4": 8,
+    "B5": 16,
+    "B6": 32,
+    "B7": 64,
+    "B8": 128
+   }
+  }
+ ]
+}

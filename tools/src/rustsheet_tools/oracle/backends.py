@@ -273,6 +273,9 @@ class GraphBackend:
                     f"numberFormat={rng.get('numberFormat')}",
                     file=sys.stderr,
                 )
+            # Load, this rebuild and the scratch edit below are three calculations; the eval
+            # adapter repeats them for iterative cases (`ORACLE_CALCULATIONS` in
+            # crates/rustsheet-eval/src/engine.rs, T-0429): keep the two in step.
             self._call(
                 "POST",
                 f"{item_url}/workbook/application/calculate",

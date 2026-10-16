@@ -1,0 +1,24 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "One convergent cycle =A1/2+1 (changes 1, 1/2, 1/4, ...) with iterateDelta 0.25: does a change equal to the delta stop the iterations, or only a smaller one (T-0429)?",
+  "tags": [
+    "M3",
+    "circular",
+    "iteration",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=A1/2+1"
+      }
+    }
+  ],
+  "calculation": {
+    "iterate": true,
+    "iterate_count": 100,
+    "iterate_delta": 0.25
+  },
+  "expected": {}
+}
