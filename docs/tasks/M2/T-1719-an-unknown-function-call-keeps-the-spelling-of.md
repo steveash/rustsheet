@@ -3,7 +3,7 @@ id: T-1719
 title: "An unknown function call keeps the spelling of its name in the formula text"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -24,7 +24,7 @@ Found by T-1659: probes/lotus-dot-range-func-second E2 (excel-graph) fails on th
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Probed (probes/unknown-function-name-spelling, oracle filled, rule in docs/excel-semantics/references.md
 "Unknown function call names"). The task premise ("keeps the spelling as typed") is wrong: Excel
 interns the spelling of an unknown call name workbook-wide, first occurrence wins, case-insensitively
