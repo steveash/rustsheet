@@ -24,6 +24,9 @@ same data as that case, for the four A-variance functions. If they rank like the
 ## Acceptance criteria
 - [ ] A probe case (4 functions × 8 shapes) is oracle-filled, and the engine matches it.
 - [ ] The UNVERIFIED note on VARA in syntax.md is resolved.
+- [ ] The same case adds `fn(A7:A8,#N/A)` for SUM, AVERAGE, MEDIAN and DEVSQ too. T-1439's
+      `fn(A7:A8,#DIV/0!)` cannot tell "a direct error wins" from "the range's first error wins",
+      because A7 is `#DIV/0!` already.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

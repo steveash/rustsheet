@@ -37,10 +37,11 @@ pub(crate) enum ErrorRule {
     /// direct error to its right still beats it. An error inside an array ranks with the
     /// referenced errors (SUM: probes/aggregate-error-precedence C50, C53–C55, C61, C77; PRODUCT:
     /// probes/product-array-2d-and-scalar A7–A17, T-1287; MIN, MAX, AVERAGE, MEDIAN:
-    /// probes/aggregate-array-error-vs-ref-error, T-1615).
+    /// probes/aggregate-array-error-vs-ref-error, T-1615; the AVERAGE family and DEVSQ, AVEDEV,
+    /// SUMSQ: probes/aggregate-error-precedence-stat-family, T-1439).
     Ranked,
-    /// The first error in argument order returns at once (VARA and its siblings, UNVERIFIED; AND, OR,
-    /// XOR).
+    /// The first error in argument order returns at once (VARA and its siblings, UNVERIFIED: T-1696;
+    /// AND, OR, XOR).
     First,
     /// Errors are items for the visitor, which counts or ignores them (COUNT ignores them, COUNTA
     /// counts them; syntax.md). Only a walk-budget error returns.
