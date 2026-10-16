@@ -351,3 +351,418 @@ fn generated_headers_over_two_keys_and_shown_headers_above_a_top_total() {
     assert_eq!(column(&model, "E", 20, 22), ["Region", "Total", "East"]);
     assert_eq!(column(&model, "F", 20, 22), ["Sales", "130.5", "45"]);
 }
+
+/// probes/groupby-pivotby's Data!A1:E11 (Region, Product, Year, Sales, Units; A9 is blank).
+fn records() -> Model {
+    let mut model = new_empty_model();
+    let rows = [
+        ["Region", "Product", "Year", "Sales", "Units"],
+        ["East", "Apple", "2023", "10", "1"],
+        ["West", "Pear", "2023", "20", "2"],
+        ["East", "Pear", "2024", "30", "3"],
+        ["West", "Apple", "2024", "40", "4"],
+        ["east", "Apple", "2023", "5", "5"],
+        ["North", "Pear", "2024", "7", "6"],
+        ["West", "Apple", "2023", "0", "7"],
+        ["", "Apple", "2024", "9", "8"],
+        ["South", "Banana", "2025", "-3", "9"],
+        ["West", "Banana", "2025", "12.5", "10"],
+    ];
+    for (i, row) in rows.iter().enumerate() {
+        for (cell, column) in row.iter().zip(["A", "B", "C", "D", "E"]) {
+            if !cell.is_empty() {
+                model._set(&format!("{column}{}", i + 1), cell);
+            }
+        }
+    }
+    model
+}
+
+/// The texts of row `row`, columns `first..=last` (letters).
+fn row(model: &Model, row: usize, first: char, last: char) -> Vec<String> {
+    (first..=last)
+        .map(|column| model._get_text(&format!("{column}{row}")))
+        .collect()
+}
+
+#[test]
+fn sort_order_by_keys_and_by_value_columns() {
+    let mut model = records();
+    // -1: keys descending, blank and Total last (G!A145); 2 / -2: by the value, the blank key not
+    // pinned (G!J145, G!S145).
+    model._set("H1", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,-1)");
+    model._set("J1", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,2)");
+    model._set("L1", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,-2)");
+    // {2,-1}: Region descending, then Product ascending, whatever the array order (G!AB145,
+    // probes/groupby-pivotby-followup G!A341-A501); a vertical array too (groupby-sort-filter-args B15).
+    model._set("N1", "=GROUPBY(A2:B11,D2:D11,_xleta.SUM,,,{2,-1})");
+    model._set("R1", "=GROUPBY(A2:B11,D2:D11,_xleta.SUM,,0,{2;-1})");
+    model.evaluate();
+    assert_eq!(
+        column(&model, "H", 1, 6),
+        ["West", "South", "North", "East", "0", "Total"]
+    );
+    assert_eq!(
+        column(&model, "J", 1, 6),
+        ["South", "North", "0", "East", "West", "Total"]
+    );
+    assert_eq!(
+        column(&model, "K", 1, 6),
+        ["-3", "7", "9", "45", "72.5", "130.5"]
+    );
+    assert_eq!(
+        column(&model, "L", 1, 6),
+        ["West", "East", "0", "North", "South", "Total"]
+    );
+    let regions = [
+        "West", "West", "West", "South", "North", "East", "East", "0",
+    ];
+    let products = [
+        "Apple", "Banana", "Pear", "Banana", "Pear", "Apple", "Pear", "Apple",
+    ];
+    assert_eq!(column(&model, "N", 1, 9)[..8], regions);
+    assert_eq!(column(&model, "O", 1, 8), products);
+    assert_eq!(row(&model, 9, 'N', 'P'), ["Total", "", "130.5"]);
+    assert_eq!(column(&model, "R", 1, 8), regions);
+    assert_eq!(column(&model, "S", 1, 8), products);
+}
+
+#[test]
+fn value_sort_over_two_keys_orders_parents_by_their_aggregate() {
+    // probes/groupby-pivotby-followup2 G!A261 (3), groupby-sort-filter-args B21-B22 ({-3}, -3).
+    let mut model = records();
+    model._set("H1", "=GROUPBY(A2:B11,D2:D11,_xleta.SUM,,0,3)");
+    model._set("L1", "=GROUPBY(A2:B11,D2:D11,_xleta.SUM,,0,{-3})");
+    model.evaluate();
+    assert_eq!(
+        column(&model, "H", 1, 8),
+        ["South", "North", "0", "East", "East", "West", "West", "West"]
+    );
+    assert_eq!(
+        column(&model, "J", 1, 8),
+        ["-3", "7", "9", "15", "30", "12.5", "20", "40"]
+    );
+    assert_eq!(
+        column(&model, "L", 1, 8),
+        ["West", "West", "West", "East", "East", "0", "North", "South"]
+    );
+    assert_eq!(
+        column(&model, "N", 1, 8),
+        ["40", "20", "12.5", "30", "15", "9", "7", "-3"]
+    );
+}
+
+#[test]
+fn value_sort_ties_keep_key_order_and_mixed_values_sort_like_sort() {
+    // probes/groupby-sort-filter-args B27-B28 (the second value column), B32-B33 (COUNT ties
+    // stay in ascending key order both ways), B35 (numbers before text), B36-B37 (an error last
+    // ascending, first descending), B38-B39 (headers and a top total stay in place).
+    let mut model = records();
+    model._set("H1", "=GROUPBY(A2:A11,D2:E11,_xleta.SUM,,0,3)");
+    model._set("K1", "=GROUPBY(A2:A11,D2:D11,_xleta.COUNT,,0,2)");
+    model._set("M1", "=GROUPBY(A2:A11,D2:D11,_xleta.COUNT,,0,-2)");
+    model._set(
+        "O1",
+        r#"=GROUPBY(A2:A11,D2:D11,LAMBDA(x,IF(SUM(x)>20,"t",SUM(x))),,0,2)"#,
+    );
+    model._set(
+        "Q1",
+        "=GROUPBY(A2:A11,IF(A2:A11=\"West\",NA(),E2:E11),_xleta.SUM,,0,-2)",
+    );
+    model._set("S1", "=GROUPBY(A1:A11,D1:D11,_xleta.SUM,3,,-2)");
+    model._set("U1", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,-1,2)");
+    model.evaluate();
+    assert_eq!(
+        column(&model, "H", 1, 5),
+        ["North", "0", "East", "South", "West"]
+    );
+    assert_eq!(
+        column(&model, "K", 1, 5),
+        ["North", "South", "0", "East", "West"]
+    );
+    assert_eq!(
+        column(&model, "M", 1, 5),
+        ["West", "East", "North", "South", "0"]
+    );
+    assert_eq!(
+        column(&model, "O", 1, 5),
+        ["South", "North", "0", "East", "West"]
+    );
+    assert_eq!(column(&model, "Q", 1, 2), ["West", "East"]);
+    assert_eq!(model._get_text("R1"), "#N/A");
+    assert_eq!(column(&model, "S", 1, 3), ["Region", "West", "East"]);
+    assert_eq!(model._get_text("S7"), "Total");
+    assert_eq!(column(&model, "U", 1, 3), ["Total", "South", "North"]);
+}
+
+#[test]
+fn invalid_sort_orders_are_value_errors() {
+    // G!S217 (past the last column), probes/groupby-pivotby-followup G!A461/A541 ({1,-1}, {0,1}),
+    // groupby-sort-filter-args B1-B31: 0, -3, fractions, text, TRUE, a blank cell, key and value
+    // columns mixed, two value columns, an error or text element. NA() itself is #N/A (B12).
+    let mut model = records();
+    let orders = [
+        "3", "0", "-3", "1.5", "-0.5", "\"2\"", "TRUE", "Z1", "\"\"", "{1,-1}", "{0,1}",
+    ];
+    for (i, order) in orders.iter().enumerate() {
+        model._set(
+            &format!("H{}", i + 1),
+            &format!("=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,{order})"),
+        );
+    }
+    let two_keys = [
+        "{1,3}",
+        "{3,1}",
+        "{-2,-3}",
+        "{1.5,2}",
+        "{1,#N/A}",
+        "{1,\"2\"}",
+        "{1,2,3}",
+    ];
+    for (i, order) in two_keys.iter().enumerate() {
+        model._set(
+            &format!("I{}", i + 1),
+            &format!("=GROUPBY(A2:B11,D2:D11,_xleta.SUM,,,{order})"),
+        );
+    }
+    model._set("J1", "=GROUPBY(A2:A11,D2:E11,_xleta.SUM,,,{2,3})");
+    model._set("J2", "=GROUPBY(A2:A11,D2:E11,_xleta.SUM,,,4)");
+    model._set("J3", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,NA())");
+    model.evaluate();
+    assert_eq!(
+        column(&model, "H", 1, orders.len()),
+        vec!["#VALUE!"; orders.len()]
+    );
+    assert_eq!(
+        column(&model, "I", 1, two_keys.len()),
+        vec!["#VALUE!"; two_keys.len()]
+    );
+    assert_eq!(column(&model, "J", 1, 3), ["#VALUE!", "#VALUE!", "#N/A"]);
+}
+
+#[test]
+fn filter_array_drops_rows_before_grouping() {
+    let mut model = records();
+    // G!A169: groups without kept rows vanish and the total covers the kept rows.
+    model._set("H1", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,,C2:C11=2023)");
+    // groupby-sort-filter-args B42 (numbers: 0 drops), B44 ("TRUE"/"FALSE" text), B52 (blank drops),
+    // B55 and followup3 G!A85 (a scalar keeps or drops every row).
+    model._set("J1", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,,C2:C11-2023)");
+    model._set(
+        "L1",
+        r#"=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,,IF(C2:C11=2023,"TRUE","FALSE"))"#,
+    );
+    model._set(
+        "N1",
+        "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,,IF(C2:C11=2023,TRUE,Z2:Z11))",
+    );
+    model._set("P1", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,,2)");
+    // With headers the filter may cover the header row or only the records (B56-B59).
+    model._set("R1", "=GROUPBY(A1:A11,D1:D11,_xleta.SUM,1,,,C1:C11=2023)");
+    model._set("T1", "=GROUPBY(A1:A11,D1:D11,_xleta.SUM,1,,,C2:C11=2023)");
+    model._set("V1", "=GROUPBY(A1:A11,D1:D11,_xleta.SUM,3,,,C1:C11<>2024)");
+    // B60: filtered, then sorted by value.
+    model._set("X1", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,-2,C2:C11<>2023)");
+    model.evaluate();
+    assert_eq!(column(&model, "H", 1, 3), ["East", "West", "Total"]);
+    assert_eq!(column(&model, "I", 1, 3), ["15", "20", "35"]);
+    assert_eq!(
+        column(&model, "K", 1, 6),
+        ["30", "7", "-3", "52.5", "9", "95.5"]
+    );
+    assert_eq!(column(&model, "M", 1, 3), ["15", "20", "35"]);
+    assert_eq!(column(&model, "O", 1, 3), ["15", "20", "35"]);
+    assert_eq!(model._get_text("Q6"), "130.5");
+    assert_eq!(column(&model, "S", 1, 3), ["15", "20", "35"]);
+    assert_eq!(column(&model, "U", 1, 3), ["15", "20", "35"]);
+    assert_eq!(
+        column(&model, "V", 1, 5),
+        ["Region", "East", "South", "West", "Total"]
+    );
+    assert_eq!(
+        column(&model, "W", 1, 5),
+        ["Sales", "15", "-3", "32.5", "44.5"]
+    );
+    assert_eq!(column(&model, "X", 1, 3), ["West", "East", "0"]);
+    assert_eq!(column(&model, "Y", 1, 3), ["52.5", "30", "9"]);
+}
+
+#[test]
+fn invalid_filters_are_value_errors() {
+    // G!AB217 (shorter), G!A241 and followup3 G!A1-A109 (all FALSE, scalar FALSE, 0, {FALSE}, two
+    // keys), groupby-sort-filter-args B43-B54: text, an error element (also on a dropped row), a
+    // row, two columns, longer, all blank, "", a text scalar. A scalar NA() is #N/A (B47).
+    let mut model = records();
+    let filters = [
+        "C2:C10=2023",
+        "C2:C11=1999",
+        "FALSE",
+        "0",
+        "{FALSE}",
+        "B2:B11",
+        "IF(C2:C11=2024,NA(),TRUE)",
+        "IF(C2:C11=2024,NA(),C2:C11=2023)",
+        "TRANSPOSE(C2:C11=2023)",
+        "C2:D11>2023",
+        "C2:C12=2023",
+        "Z2:Z11",
+        "IF(C2:C11=2023,TRUE,\"\")",
+        "\"x\"",
+    ];
+    for (i, filter) in filters.iter().enumerate() {
+        model._set(
+            &format!("H{}", i + 1),
+            &format!("=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,,{filter})"),
+        );
+    }
+    model._set("I1", "=GROUPBY(A2:B11,D2:D11,_xleta.SUM,,,,C2:C11=1999)");
+    model._set("I2", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,,NA())");
+    model._set("I3", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,0,,,C1:C11=2023)");
+    model.evaluate();
+    assert_eq!(
+        column(&model, "H", 1, filters.len()),
+        vec!["#VALUE!"; filters.len()]
+    );
+    assert_eq!(column(&model, "I", 1, 3), ["#VALUE!", "#N/A", "#VALUE!"]);
+}
+
+#[test]
+fn error_values_of_arguments_come_first_in_argument_order() {
+    // groupby-sort-filter-args B61-B78: an error value in any argument wins over an invalid other
+    // argument, earlier or later, and the first error in argument order wins.
+    let mut model = records();
+    let cases = [
+        ("_xleta.SUM,,,NA(),C2:C10=2023", "#N/A"),
+        ("_xleta.SUM,,,9,NA()", "#N/A"),
+        ("_xleta.SUM,,,NA(),1/0", "#N/A"),
+        ("_xleta.SUM,1/0,,NA()", "#DIV/0!"),
+        ("_xleta.SUM,,1/0,NA()", "#DIV/0!"),
+        ("_xleta.SUM,,3,NA()", "#N/A"),
+        ("_xleta.SUM,4,,,NA()", "#N/A"),
+        ("5,,,NA()", "#N/A"),
+        ("NA(),,,1/0", "#N/A"),
+        ("_xleta.SUM,,,NA(),C2:C11=1999", "#N/A"),
+        ("_xleta.SUM,,,,C2:C10=2023,NA()", "#N/A"),
+        ("_xleta.SUM,,,NA(),,1/0", "#N/A"),
+        ("_xleta.SUM,,,9,C2:C10=2023", "#VALUE!"),
+    ];
+    for (i, (args, _)) in cases.iter().enumerate() {
+        model._set(
+            &format!("H{}", i + 1),
+            &format!("=GROUPBY(A2:A11,D2:D11,{args})"),
+        );
+    }
+    model._set("I1", "=GROUPBY(A2:A11,D2:D10,_xleta.SUM,,,NA())");
+    model._set("I2", "=GROUPBY(A2:A11,D2:D10,_xleta.SUM,,,,NA())");
+    model.evaluate();
+    let expected: Vec<&str> = cases.iter().map(|(_, error)| *error).collect();
+    assert_eq!(column(&model, "H", 1, cases.len()), expected);
+    assert_eq!(column(&model, "I", 1, 2), ["#N/A", "#N/A"]);
+}
+
+#[test]
+fn field_relationship_scalars() {
+    // G!J241 (2), groupby-sort-filter-args B79-B83 (3, -1, 0.5 are #VALUE!, NA() is #N/A, "1"
+    // with one total is the default layout), followup G!A941/A961 (FALSE and 0 act as 0).
+    let mut model = records();
+    let invalid = ["2", "3", "-1", "0.5"];
+    for (i, relationship) in invalid.iter().enumerate() {
+        model._set(
+            &format!("H{}", i + 1),
+            &format!("=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,,,{relationship})"),
+        );
+    }
+    model._set("H5", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,,,NA())");
+    model._set("J1", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,,,\"1\")");
+    model._set("L1", "=GROUPBY(A2:A11,D2:D11,_xleta.SUM,,,,,FALSE)");
+    model._set("N1", "=GROUPBY(A2:B11,D2:D11,_xleta.SUM,,,,,0)");
+    model.evaluate();
+    assert_eq!(
+        column(&model, "H", 1, 5),
+        ["#VALUE!", "#VALUE!", "#VALUE!", "#VALUE!", "#N/A"]
+    );
+    assert_eq!(
+        column(&model, "K", 1, 6),
+        ["45", "7", "-3", "72.5", "9", "130.5"]
+    );
+    assert_eq!(
+        column(&model, "M", 1, 6),
+        ["45", "7", "-3", "72.5", "9", "130.5"]
+    );
+    assert_eq!(row(&model, 1, 'N', 'P'), ["East", "Apple", "15"]);
+}
+
+#[test]
+fn value_sort_over_many_groups_and_two_keys_is_bounded() {
+    // CLAUDE.md directive 5: a value sort over 20,000 two-key groups makes one call per group and
+    // parent (no quadratic search) and keeps the output size check.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=INDEX(GROUPBY(HSTACK(MOD(SEQUENCE(20000),100),SEQUENCE(20000)),SEQUENCE(20000),LAMBDA(x,SUM(x)),,0,-3),1,2)",
+    );
+    model._set(
+        "B1",
+        "=GROUPBY(SEQUENCE(1000000),SEQUENCE(1000000),LAMBDA(x,SUM(x)),,,-2)",
+    );
+    model.evaluate();
+    // Parent 0 (100, 200, ..., 20000) has the largest sum; its largest child is 20000.
+    assert_eq!(model._get_text("A1"), "20000");
+    assert_eq!(model._get_text("B1"), "#ERROR!");
+}
+
+#[test]
+fn filter_elements_beside_headers_are_ignored_and_text_must_be_true_or_false() {
+    // probes/groupby-sort-filter-args2: text, "" or an error beside the header row is ignored
+    // (B1, B5, B29-B30) but not beside a record (B31); "true"/"True" count (B6-B7), "1" does
+    // not (B8-B9); {#N/A} is #VALUE! as a filter and a sort_order (B11-B12); a one-cell
+    // reference to an error is that error, before total_depth 3 (B16-B18).
+    let mut model = records();
+    model._set("Z5", "=1/0");
+    let cases = [
+        ("1,,,IF(ROW(C1:C11)=1,NA(),C1:C11=2023)", "35"),
+        ("1,,,IF(ROW(C1:C11)=1,\"x\",C1:C11=2023)", "35"),
+        ("1,,,IF(ROW(C1:C11)=1,\"\",C1:C11=2023)", "35"),
+        ("1,,,IF(ROW(C1:C11)=3,NA(),C1:C11=2023)", "#VALUE!"),
+        ("1,,,IF(ROW(C1:C11)=1,NA(),C1:C11=1999)", "#VALUE!"),
+        ("0,,,IF(ROW(C1:C11)=1,NA(),C1:C11=2023)", "#VALUE!"),
+        (",,,IF(C1:C11=2023,\"true\",\"false\")", "35"),
+        (",,,IF(C1:C11=2023,\"True\",\"False\")", "35"),
+        (",,,IF(C1:C11=2023,\"1\",\"0\")", "#VALUE!"),
+        (",,,\"1\"", "#VALUE!"),
+        (",,,{#N/A}", "#VALUE!"),
+        (",,{#N/A}", "#VALUE!"),
+        (",,Z5", "#DIV/0!"),
+        (",,,Z5", "#DIV/0!"),
+        (",3,Z5", "#DIV/0!"),
+    ];
+    for (i, (args, _)) in cases.iter().enumerate() {
+        model._set(
+            &format!("H{}", i + 1),
+            &format!("=INDEX(GROUPBY(A1:A11,D1:D11,_xleta.SUM,{args}),ROWS(GROUPBY(A1:A11,D1:D11,_xleta.SUM,{args})),2)"),
+        );
+    }
+    model.evaluate();
+    let expected: Vec<&str> = cases.iter().map(|(_, total)| *total).collect();
+    assert_eq!(column(&model, "H", 1, cases.len()), expected);
+}
+
+#[test]
+fn value_sort_parents_use_the_function_of_all_their_rows() {
+    // probes/groupby-sort-filter-args2 B22 (AVERAGE: East 15 < West 18.125) and B24
+    // (100-SUM: West 27.5 < East 55, where the sum of the children would put East first).
+    let mut model = records();
+    model._set("H1", "=GROUPBY(A2:B11,D2:D11,_xleta.AVERAGE,,0,3)");
+    model._set("L1", "=GROUPBY(A2:B11,D2:D11,LAMBDA(x,100-SUM(x)),,0,3)");
+    model.evaluate();
+    assert_eq!(
+        column(&model, "H", 1, 8),
+        ["South", "North", "0", "East", "East", "West", "West", "West"]
+    );
+    assert_eq!(column(&model, "I", 6, 8), ["Banana", "Apple", "Pear"]);
+    assert_eq!(
+        column(&model, "L", 1, 8),
+        ["West", "West", "West", "East", "East", "0", "North", "South"]
+    );
+    assert_eq!(column(&model, "N", 1, 3), ["60", "80", "87.5"]);
+}
