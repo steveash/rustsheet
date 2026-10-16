@@ -82,10 +82,6 @@ pub(crate) enum DirectNumbers {
     /// A number, boolean or text; text that does not cast is `#VALUE!` and an empty argument is
     /// skipped (AVERAGEA, MAXA, MINA).
     CastA,
-    /// Only a number counts; booleans, text and the rest are skipped (VARA, VARPA, STDEVA and
-    /// STDEVPA, which ignore them "for now"; Excel coerces them, so this is a known failure owned by
-    /// T-1291: probes/stat-argument-modes Sheet1!H69, H72, H75, H78).
-    NumbersOnly,
 }
 
 /// How a referenced cell (and, except under [`DirectNumbers::Cast`], a
@@ -416,8 +412,6 @@ impl Model {
             (DirectNumbers::Cast, value) => {
                 self.cast_aggregate_arg_to_number(value, cell).map(Some)
             }
-            (DirectNumbers::NumbersOnly, CalcResult::Number(n)) => Ok(Some(n)),
-            (DirectNumbers::NumbersOnly, _) => Ok(None),
             (_, CalcResult::Number(n)) => Ok(Some(n)),
             (_, CalcResult::Boolean(b)) => Ok(Some(if b { 1.0 } else { 0.0 })),
             // An empty argument (`AVERAGE(5,)`) counts as 0 (probes/average-value-args F2, F6,
@@ -599,16 +593,16 @@ mod tests {
     }
 
     #[test]
-    fn numbers_only_skips_direct_booleans_and_text_but_coerces_cells() {
-        // VARA's rules: a direct boolean and direct text are skipped, an array keeps its numbers,
-        // and a referenced cell coerces (text 0, TRUE 1).
+    fn vara_casts_direct_values_keeps_array_numbers_and_coerces_cells() {
+        // VARA's rules: a direct boolean and numeric text cast (TRUE 1, "7" 7), an array keeps
+        // its numbers, and a referenced cell coerces (text 0, TRUE 1).
         let policy = AggregatePolicy {
             reading: ArgReading::Aggregate,
             errors: ErrorRule::First,
             skip_empty_args: false,
         };
         let rules = NumberRules {
-            direct: DirectNumbers::NumbersOnly,
+            direct: DirectNumbers::CastA,
             cells: CellNumbers::CoercedA,
             array: ArrayNumbers::Numbers,
         };
@@ -620,7 +614,7 @@ mod tests {
         let walked =
             model.for_each_aggregate_number(&args, Z1, policy, rules, |number| seen.push(number));
         assert!(walked.is_ok());
-        assert_eq!(seen, vec![5.0, 2.0, 0.0, 1.0]);
+        assert_eq!(seen, vec![5.0, 1.0, 7.0, 2.0, 0.0, 1.0]);
     }
 
     #[test]

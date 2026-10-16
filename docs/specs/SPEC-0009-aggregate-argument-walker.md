@@ -45,8 +45,9 @@ Non-goals:
   array with their own rules (`collect_mode_values` etc.). They can move later if their rules
   fit the policy. This spec does not require it.
 - VARA/VARPA/STDEVA/STDEVPA (`variance_of_values_a`). They are out of T-1474's and T-1476's
-  scope. **T-1567** moved them onto the walker with `DirectNumbers::NumbersOnly` (below), which keeps
-  their old rules for direct values and arrays; probing those rules is **T-1617**.
+  scope. **T-1567** moved them onto the walker with the old direct-value rules; **T-1291** switched their direct
+  values to `DirectNumbers::CastA` (a typed "2" is 2, TRUE is 1, other text `#VALUE!`; arrays keep their
+  numbers). Probing the single-reference and picked-cell forms is **T-1617**.
 - Settling T-0236 (empty arguments of DEVSQ/AVEDEV/SUMSQ) or T-1439 (array and referenced error
   order for the `for_each_value` family). The walker has a knob for each. The probes set it.
 
@@ -244,10 +245,6 @@ pub(crate) enum DirectNumbers {
     /// As `CastScalars`, but text that does not cast is `#VALUE!` via `cast_number` and an
     /// empty argument is skipped (AVERAGEA, MAXA, MINA, as `for_each_value_a` does today).
     CastA,
-    /// Only a direct number counts; booleans, text and the rest are skipped (VARA, VARPA, STDEVA,
-    /// STDEVPA, as before T-1567; Excel coerces a direct "2" and TRUE, probes/stat-argument-modes
-    /// H69, H72, H75, H78 are known failures owned by T-1291).
-    NumbersOnly,
 }
 pub(crate) enum CellNumbers { Numbers, CoercedA }   // `ReferenceValue` items follow it, except under `Cast`
 pub(crate) enum ArrayNumbers { Numbers, TextZero }  // array booleans are always skipped
@@ -281,7 +278,7 @@ The walker and `for_each_aggregate_number` are `#[inline]` and take the policy b
 | SUM | Aggregate | Ranked | no | Cast / Numbers / Numbers | `SumParts` |
 | AVERAGE, GEOMEAN, HARMEAN, MEDIAN, SKEW, SKEW.P, KURT, VAR.*, STDEV.* | Aggregate | Ranked | no | CastScalars / Numbers / Numbers | — |
 | DEVSQ, AVEDEV, SUMSQ | Aggregate | Ranked (T-1439) | yes | CastScalars / Numbers / Numbers | — |
-| VARA, VARPA, STDEVA, STDEVPA | Aggregate | First | no | NumbersOnly / CoercedA / Numbers (direct values: known failures, T-1291; single references: T-1617) | — |
+| VARA, VARPA, STDEVA, STDEVPA | Aggregate | First | no | CastA / CoercedA / Numbers (single references: T-1617) | — |
 | AVERAGEA, MAXA, MINA | Aggregate, after the `external_reference_cells` step | Ranked | no | CastA / CoercedA / TextZero (AVERAGEA) or Numbers (MAXA, MINA) | — |
 | MIN, MAX | Aggregate | Ranked | no | Cast / Numbers / Numbers | NaN start, 0 when none |
 | PRODUCT | Aggregate | Ranked | no | Cast / Numbers / Numbers | `seen_value` (set for an empty argument too) |
