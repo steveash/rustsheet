@@ -3,7 +3,7 @@ id: T-1669
 title: "Collate þ as th (expansion) and fix œ=oe in XLOOKUP, XMATCH single-cell"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
