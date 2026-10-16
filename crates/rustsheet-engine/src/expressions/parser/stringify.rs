@@ -4,7 +4,7 @@ use super::reference_operators::{
     union_text,
 };
 use super::{
-    super::utils::{name_needs_quoting, quote_name},
+    super::utils::{name_needs_quoting, quote_name, rename_defined_name_sheet},
     for_each_chain_operand_mut, left_chain,
     move_formula::{moved_reference_text, MoveContext},
     value_operands, ArrayNode, Node, Reference,
@@ -961,26 +961,15 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         }
 
         // Do nothing
-        Node::BooleanKind(_) => {}
-        Node::NumberKind(_) => {}
-        Node::StringKind(_) => {}
-        Node::ErrorKind(_) => {}
-        Node::ParseErrorKind { .. } => {}
-        Node::ArrayKind(_) => {}
-        // `Data!Local` names the sheet that scopes `Local`, so the prefix follows the rename. A
-        // workbook-scoped name read through a sheet prefix carries no scope here and keeps its
-        // prefix (no Excel evidence yet for rewriting it).
-        Node::DefinedNameKind((name, scope, _)) => {
-            if *scope == Some(sheet_index) && !name.starts_with('[') {
-                let bare_len = crate::expressions::utils::bare_defined_name(name).len();
-                if bare_len < name.len() {
-                    let bare = name[name.len() - bare_len..].to_owned();
-                    *name = format!("{}!{bare}", crate::expressions::utils::quote_name(new_name));
-                }
-            }
-        }
-        Node::NamedVariableKind { .. } => {}
-        Node::EmptyArgKind => {}
+        Node::BooleanKind(_)
+        | Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::ErrorKind(_)
+        | Node::ParseErrorKind { .. }
+        | Node::ArrayKind(_)
+        | Node::NamedVariableKind { .. }
+        | Node::EmptyArgKind => {}
+        Node::DefinedNameKind((n, s, _)) => rename_defined_name_sheet(n, *s, sheet_index, new_name),
         Node::LambdaDefKind {
             parameters: _,
             body,
