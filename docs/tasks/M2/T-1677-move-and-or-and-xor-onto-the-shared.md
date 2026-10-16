@@ -3,7 +3,7 @@ id: T-1677
 title: "Move AND, OR and XOR onto the shared aggregate-argument walker"
 milestone: M2
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
