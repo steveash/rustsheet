@@ -14,7 +14,7 @@ rustsheet_xlsx = { path = "../rustsheet-xlsx" }
 thiserror = "1"
 
 [dev-dependencies]
-zip = { version = "0.6.6", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.3", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [features]
 # Lets the eval harness pin the workbook clock to IronCalc's METADATA `NOW` convention

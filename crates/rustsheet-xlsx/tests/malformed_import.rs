@@ -20,7 +20,7 @@ fn parts() -> Result<Vec<(String, String)>, Box<dyn Error>> {
         let mut file = src.by_index(i)?;
         let mut content = String::new();
         file.read_to_string(&mut content)?;
-        parts.push((file.name().to_string(), content));
+        parts.push((file.name()?.into_owned(), content));
     }
     Ok(parts)
 }
@@ -28,7 +28,7 @@ fn parts() -> Result<Vec<(String, String)>, Box<dyn Error>> {
 fn zip_of(parts: &[(String, String)]) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
     for (name, content) in parts {
-        out.start_file(name, zip::write::FileOptions::default())?;
+        out.start_file(name, zip::write::SimpleFileOptions::default())?;
         out.write_all(content.as_bytes())?;
     }
     Ok(out.finish()?.into_inner())

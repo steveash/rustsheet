@@ -140,7 +140,7 @@ struct Zip {
 impl Zip {
     fn new(bytes: &[u8]) -> Result<Self, SnapshotError> {
         let archive = zip::ZipArchive::new(Cursor::new(bytes.to_vec()))?;
-        let names = PartNames::new(archive.file_names());
+        let names = PartNames::from_archive(&archive)?;
         Ok(Zip { archive, names })
     }
 }
@@ -701,7 +701,7 @@ mod tests {
 
     fn zip_with(name: &str, body: &[u8]) -> Zip {
         let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
-        w.start_file(name, zip::write::FileOptions::default())
+        w.start_file(name, zip::write::SimpleFileOptions::default())
             .unwrap();
         w.write_all(body).unwrap();
         let bytes = w.finish().unwrap().into_inner();

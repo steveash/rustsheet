@@ -95,6 +95,15 @@ impl PartNames {
         PartNames { entries }
     }
 
+    /// Indexes the entry names of `archive`'s directory. Fails when an entry name is neither
+    /// UTF-8 nor CP437 (zip 9 decodes names on demand).
+    pub fn from_archive<R: Read + Seek>(
+        archive: &zip::ZipArchive<R>,
+    ) -> Result<Self, zip::result::ZipError> {
+        let entries = archive.file_names().collect::<Result<Vec<_>, _>>()?;
+        Ok(PartNames::new(entries.iter().map(AsRef::as_ref)))
+    }
+
     /// The zip entry that holds the part `name` (such as `xl/workbook.xml`), if any. An entry
     /// named exactly `name` wins; among other equivalent entries (a package OPC calls invalid)
     /// the first in byte order is taken, so the choice is deterministic.
@@ -139,7 +148,7 @@ impl<R: Read + Seek> Package<R> {
             });
         }
         let remaining = Cell::new(limits.max_uncompressed_bytes);
-        let names = PartNames::new(archive.file_names());
+        let names = PartNames::from_archive(&archive)?;
         Ok(Package {
             archive,
             names,
@@ -159,7 +168,7 @@ impl<R: Read + Seek> Package<R> {
     }
 
     /// Opens the part `name` for reading.
-    pub(crate) fn open(&mut self, name: &str) -> Result<BufReader<Part<'_>>, XlsxError> {
+    pub(crate) fn open(&mut self, name: &str) -> Result<BufReader<Part<'_, R>>, XlsxError> {
         let entry = self
             .names
             .entry(name)
@@ -180,7 +189,7 @@ impl<R: Read + Seek> Package<R> {
     pub(crate) fn open_optional(
         &mut self,
         name: &str,
-    ) -> Result<Option<BufReader<Part<'_>>>, XlsxError> {
+    ) -> Result<Option<BufReader<Part<'_, R>>>, XlsxError> {
         if self.names.entry(name).is_none() {
             return Ok(None);
         }
@@ -219,13 +228,13 @@ pub(crate) fn part_folder_and_rels(part: &str) -> (&str, String) {
 }
 
 /// One part being inflated, charged against its package's budget.
-pub(crate) struct Part<'a> {
-    file: zip::read::ZipFile<'a>,
+pub(crate) struct Part<'a, R: Read> {
+    file: zip::read::ZipFile<'a, R>,
     remaining: &'a Cell<u64>,
     exceeded: &'a Cell<bool>,
 }
 
-impl Read for Part<'_> {
+impl<R: Read> Read for Part<'_, R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let remaining = self.remaining.get();
         // Ask for one byte past the budget so an overrun is distinguishable from an exact fit.
@@ -251,7 +260,7 @@ mod tests {
     fn zip_of(parts: &[(&str, &[u8])]) -> Vec<u8> {
         let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
         for (name, content) in parts {
-            zip.start_file(*name, zip::write::FileOptions::default())
+            zip.start_file(*name, zip::write::SimpleFileOptions::default())
                 .unwrap();
             zip.write_all(content).unwrap();
         }
