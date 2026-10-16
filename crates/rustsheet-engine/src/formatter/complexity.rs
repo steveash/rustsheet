@@ -24,6 +24,13 @@
 //! - a section holding both a condition and quoted text pays 3 more (`"[>5]0"` + 116 quoted works,
 //!   118 fails, while `"[>5]0"` + 79 spaces works).
 //!
+//! TEXT also rejects two placements of `@`, for any value (docs/excel-semantics/number-formats.md,
+//! "TEXT of a text value: `@` with other tokens in one section"; probes/text-at-with-tokens,
+//! probes/text-at-token-sections, excel-graph, T-1656), and they are checked here too:
+//! - a section holding `@` that is not the last section (`"@;0"`, `"x@;0"`; `"0;x@"` is fine);
+//! - `@` in the same section as a number or date token ([`conflicts_with_text`]): `"x@y"`, `"0@"`,
+//!   `"x@%"`, `"x@[>5]"`, `"x@y;0;0;@"`. `AM/PM` and `A/P` do not conflict (`"x@A/P"` is "xabcA").
+//!
 
 use super::lexer::{Lexer, Token};
 
@@ -104,6 +111,22 @@ fn is_number_or_date(token: &Token) -> bool {
         )
 }
 
+/// Whether `token` makes a section holding `@` invalid (probes/text-at-with-tokens A1-A43,
+/// B1-B43): the date and time letters, the elapsed tokens, the era and calendar tokens, the digit
+/// placeholders, `.`, `/`, `E+`, `General`, `%` and a condition. Unlike [`is_number_or_date`] it
+/// leaves out `AM/PM`; the calendar tokens (`B1`, `B2`) are inferred from the other date tokens.
+fn conflicts_with_text(token: &Token) -> bool {
+    (is_number_or_date(token) && !matches!(token, Token::AMPM))
+        || matches!(
+            token,
+            Token::Period
+                | Token::Literal('/')
+                | Token::General
+                | Token::Percent
+                | Token::Condition(..)
+        )
+}
+
 /// Whether `token` costs nothing in a section whose closing literal run holds quoted text: the
 /// date and time letters and `@` (probed: `d`, `dd`, `m`, `mm`, `h`, `yyyy`, `@`; seconds and day or
 /// month names are inferred). Elapsed tokens, `AM/PM` and `%` keep their cost (`"[h]"` + 125 quoted
@@ -158,9 +181,17 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
     // Costs are summed before the end-of-section refunds, so the limit is checked per section.
     let mut cost = 0;
     let mut run = Run::None;
+    // Whether the current section holds `@`, and whether it holds a token that conflicts with it.
+    let mut has_text = false;
+    let mut has_conflict = false;
     loop {
         let token = lexer.next_token();
         if sections == MAX_SECTIONS && is_number_or_date(&token) {
+            return true;
+        }
+        has_text |= matches!(token, Token::Raw);
+        has_conflict |= conflicts_with_text(&token);
+        if has_text && (has_conflict || token == Token::Separator) {
             return true;
         }
         let (next_run, token_cost) = match &token {
@@ -175,6 +206,7 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
                 sections += 1;
                 section = Section::default();
                 run = Run::None;
+                has_conflict = false;
                 if sections > MAX_SECTIONS {
                     return true;
                 }
@@ -375,6 +407,27 @@ mod tests {
         ];
         for code in too_complex {
             assert!(exceeds_complexity_limit(&code), "{code}");
+        }
+    }
+
+    /// `@` outside the last section or beside a number or date token (probes/text-at-with-tokens,
+    /// probes/text-at-token-sections, T-1656).
+    #[test]
+    fn text_token_placement() {
+        let ok = [
+            "x@", "@@", "0;x@", "0;0;x@", "0;0;0;x@", "0;@", "x@a", "x@A/P", "x@AM/PM", "A/P@",
+            "x@[Red]", "x@[$-409]", "x@*-", "x@_x", "x@\\y", "x@\"y\"", "x@,", "x@ ", "0;0;0;x@\\y",
+        ];
+        for code in ok {
+            assert!(!exceeds_complexity_limit(code), "{code}");
+        }
+        let invalid = [
+            "x@y", "y@", "x@mmm", "x@h", "x@s", "x@b", "x@e", "x@g", "x@[h]", "x@[s]", "x@0", "#@",
+            "x@?", "x@.", "x@/", "x@E+0", "x@General", "x@%", "x@[>5]", "[>5]@", "x@y;z", "x@;0",
+            "@;0", "[Red]x@;0", "x@\\y;0;0;@", "x@y;0;0;@", "0;x@y;0;@", "0;0;x@y;@", "0;x@0",
+        ];
+        for code in invalid {
+            assert!(exceeds_complexity_limit(code), "{code}");
         }
     }
 }
