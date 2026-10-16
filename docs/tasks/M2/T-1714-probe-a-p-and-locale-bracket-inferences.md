@@ -3,7 +3,7 @@ id: T-1714
 title: "Probe A/P and locale bracket inferences"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1702 lexes any `[$-...]` as a silent locale and treats `A/P` unlike `AM/PM` in
 
 ## Out of scope
 -
+
+## Outcome
+Probed all seven inferences (two new probe cases, 89 cells). The engine now accepts `AM/PM` in a fourth section and fits the `AM/PM`, `A/P` and `[$-409]` length costs. Locale tags also localize month and day names, which the engine does not do: filed T-1716 (5 cells stay in the baseline). Eval: +84 cells passing, 5 new known failures.
