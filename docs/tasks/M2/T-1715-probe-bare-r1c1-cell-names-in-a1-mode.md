@@ -3,7 +3,7 @@ id: T-1715
 title: "Probe bare R1C1-cell names in A1 mode and as LAMBDA parameters"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
