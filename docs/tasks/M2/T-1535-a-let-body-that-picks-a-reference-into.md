@@ -3,7 +3,7 @@ id: T-1535
 title: "A LET body that picks a reference into another workbook keeps it a reference"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
