@@ -3,7 +3,7 @@ id: T-1705
 title: "Case builder: write pivot table fixtures so GETPIVOTDATA can be probed against a real pivot"
 milestone: M6
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
