@@ -29,7 +29,7 @@
 //! probes/text-at-token-sections, excel-graph, T-1656), and they are checked here too:
 //! - a section holding `@` that is not the last section (`"@;0"`, `"x@;0"`; `"0;x@"` is fine);
 //! - `@` in the same section as a number or date token ([`conflicts_with_text`]): `"x@y"`, `"0@"`,
-//!   `"x@%"`, `"x@[>5]"`, `"x@y;0;0;@"`. `AM/PM` and `A/P` do not conflict (`"x@A/P"` is "xabcA").
+//!   `"x@%"`, `"x@[>5]"`, `"x@y;0;0;@"`. `AM/PM` and `A/P` do not conflict (`"x@AM/PM"` is "xabcAM"; the lexer still rejects `A/P`, T-1702).
 //!
 
 use super::lexer::{Lexer, Token};
@@ -415,16 +415,59 @@ mod tests {
     #[test]
     fn text_token_placement() {
         let ok = [
-            "x@", "@@", "0;x@", "0;0;x@", "0;0;0;x@", "0;@", "x@a", "x@A/P", "x@AM/PM", "A/P@",
-            "x@[Red]", "x@[$-409]", "x@*-", "x@_x", "x@\\y", "x@\"y\"", "x@,", "x@ ", "0;0;0;x@\\y",
+            "x@",
+            "@@",
+            "0;x@",
+            "0;0;x@",
+            "0;0;0;x@",
+            "0;@",
+            "x@a",
+            "x@A/P",
+            "x@AM/PM",
+            "A/P@",
+            "x@[Red]",
+            "x@[$-409]",
+            "x@*-",
+            "x@_x",
+            "x@\\y",
+            "x@\"y\"",
+            "x@,",
+            "x@ ",
+            "0;0;0;x@\\y",
         ];
         for code in ok {
             assert!(!exceeds_complexity_limit(code), "{code}");
         }
         let invalid = [
-            "x@y", "y@", "x@mmm", "x@h", "x@s", "x@b", "x@e", "x@g", "x@[h]", "x@[s]", "x@0", "#@",
-            "x@?", "x@.", "x@/", "x@E+0", "x@General", "x@%", "x@[>5]", "[>5]@", "x@y;z", "x@;0",
-            "@;0", "[Red]x@;0", "x@\\y;0;0;@", "x@y;0;0;@", "0;x@y;0;@", "0;0;x@y;@", "0;x@0",
+            "x@y",
+            "y@",
+            "x@mmm",
+            "x@h",
+            "x@s",
+            "x@b",
+            "x@e",
+            "x@g",
+            "x@[h]",
+            "x@[s]",
+            "x@0",
+            "#@",
+            "x@?",
+            "x@.",
+            "x@/",
+            "x@E+0",
+            "x@General",
+            "x@%",
+            "x@[>5]",
+            "[>5]@",
+            "x@y;z",
+            "x@;0",
+            "@;0",
+            "[Red]x@;0",
+            "x@\\y;0;0;@",
+            "x@y;0;0;@",
+            "0;x@y;0;@",
+            "0;0;x@y;@",
+            "0;x@0",
         ];
         for code in invalid {
             assert!(exceeds_complexity_limit(code), "{code}");
