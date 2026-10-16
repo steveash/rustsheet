@@ -39,7 +39,7 @@ suites the milestone exit criteria name that does not exist yet.
 ## Out of scope
 - Engine fixes (file them). Table resizing and other edits.
 
-## Handoff
+## Handoff (resumed)
 - Done (no code yet): checked excel-graph against spec2xlsx tables with structured references, using throwaway probes on table `Sales` (A1:D4, columns A B C D, 3 data rows).
   - Keeps and computes these on upload: `=SUM(Sales[A])` 6; `=Sales[[#Headers],[B]]` "B"; `=ROWS(Sales[#All])` 4; `=SUM(Sales[[A]:[B]])` 66; `=COUNTA(Sales[#Data])` 12; `=FORMULATEXT(..)` of `=SUM(Sales[A])` gives "=SUM(Sales[A])".
   - Name tables like `Sales`, not `T1`: XlsxWriter rejects a table name that looks like a cell address.
