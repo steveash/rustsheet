@@ -64,6 +64,16 @@ impl LambdaGrid {
     }
 }
 
+/// `Ok` when an evaluated function argument is a LAMBDA (an eta name evaluates to one), else `Err`
+/// with what it evaluated to: the check BYROW, BYCOL, GROUPBY and PIVOTBY share, each mapping
+/// anything else to its own error.
+pub(crate) fn as_lambda(value: CalcResult) -> Result<CalcResult, CalcResult> {
+    match value {
+        lambda @ CalcResult::Lambda(_) => Ok(lambda),
+        other => Err(other),
+    }
+}
+
 fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     match result {
         CalcResult::Number(n) => ArrayNode::Number(n),
@@ -176,14 +186,8 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<CalcResult, CalcResult> {
-        match self.evaluate_node_in_context(arg, cell) {
-            lambda @ CalcResult::Lambda(_) => Ok(lambda),
-            _ => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Expected a LAMBDA".to_string(),
-            )),
-        }
+        as_lambda(self.evaluate_node_in_context(arg, cell))
+            .map_err(|_| CalcResult::new_error(Error::VALUE, cell, "Expected a LAMBDA".to_string()))
     }
 
     /// The array and the one-argument LAMBDA caller of a BYROW or BYCOL call, in that order of

@@ -31,6 +31,7 @@ mod index_arg;
 mod lookup;
 mod lookup_each;
 pub(crate) mod lookup_table;
+mod pivotby;
 mod tocol_torow;
 mod transpose;
 mod trimrange;
