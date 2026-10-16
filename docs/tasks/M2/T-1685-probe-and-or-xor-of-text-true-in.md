@@ -1,5 +1,5 @@
 ---
-id: T-1683
+id: T-1685
 title: "Probe AND/OR/XOR of text TRUE in a cell picked by IF, INDEX, XLOOKUP, CHOOSE, LET, TAKE or OFFSET"
 milestone: M2
 lane: functions-logic

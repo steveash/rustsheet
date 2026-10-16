@@ -306,7 +306,7 @@ as `First`.
 - T-1677 moved AND, OR and XOR onto the walker with a third reading, `ArgReading::InContext`
   (`evaluate_node_in_context`, no reference picking), so no result changed: under `Aggregate`, a
   text "TRUE" cell picked by IF, INDEX, XLOOKUP or LET would become a referenced cell and stop
-  counting (unprobed; T-1683). The reading turns a range across two sheets into `#VALUE!` and a
+  counting (unprobed; T-1685). The reading turns a range across two sheets into `#VALUE!` and a
   direct LAMBDA into `#N/IMPL!`, direct errors that return at once as before (the walker would hold
   a LAMBDA's error).
 

@@ -63,7 +63,7 @@ NOT (`fn_not`) is a single-argument element-wise lift, not an aggregate; it stay
 (`LOGICAL_ARGS`: new `ArgReading::InContext`, `ErrorRule::First`, empty arguments kept) and a boolean
 visitor keyed on `ItemSource`; it no longer matches ranges or arrays itself. `InContext` keeps today's
 `evaluate_node_in_context` reading, since `Aggregate` would read a text "TRUE" cell picked by IF,
-INDEX, XLOOKUP or LET as referenced and stop counting it (unprobed: T-1683). SPEC-0009 has the
+INDEX, XLOOKUP or LET as referenced and stop counting it (unprobed: T-1685). SPEC-0009 has the
 consumer row and a bullet in its "As built" list. New engine test covers direct vs referenced text, empty
 arguments, errors after a decisive value, a whole column on an empty sheet and a direct LAMBDA; it
 passes on the old code too. Eval: 0 fixed, 0 regressions in every suite. Duplication 6328 (no rise;
