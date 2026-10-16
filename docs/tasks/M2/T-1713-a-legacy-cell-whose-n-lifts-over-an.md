@@ -3,7 +3,7 @@ id: T-1713
 title: "A legacy cell whose N lifts over an array is #VALUE!"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
