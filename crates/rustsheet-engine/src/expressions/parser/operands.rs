@@ -499,6 +499,11 @@ impl Parser {
 
         match specifier {
             Some(token::TableSpecifier::ThisRow) => {
+                // Off the data rows (header, totals, above, below) it is #VALUE!
+                // (docs/excel-semantics/references.md, gen-m8b this-row e1bf5aa0ffb4ed87).
+                if context.row < data_start || context.row > data_end {
+                    return Node::ErrorKind(token::Error::VALUE);
+                }
                 row_start = context.row;
                 row_end = context.row;
             }
@@ -608,17 +613,19 @@ impl Parser {
                         };
                     }
                 };
+                // The same area whichever column is written first (references.md, column-range
+                // 44cecbb1ecd5b2da K143).
                 Node::RangeKind {
                     sheet_name,
                     sheet_index: table_sheet_index,
                     absolute_row1: true,
                     absolute_column1: true,
                     row1: row_start,
-                    column1: left_column_index,
+                    column1: left_column_index.min(right_column_index),
                     absolute_row2: true,
                     absolute_column2: true,
                     row2: row_end,
-                    column2: right_column_index,
+                    column2: left_column_index.max(right_column_index),
                 }
             }
         }

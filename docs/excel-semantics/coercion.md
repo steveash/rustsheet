@@ -114,14 +114,14 @@ Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-colla
   `"a"&CHAR(1)&"b"` sorts just after `"ab"`; CHAR(11) and CHAR(12) sit with CHAR(9)-CHAR(13) above CHAR(160); the en and em dash are skipped
   everywhere, also alone (`"" < "–"` by tiebreak, below CHAR(160)); the Latin-1 marks, quotes and currency signs go between `~` and `+`, the
   symbols `± « » × ÷ § © ¬ ® ° µ … •` after `>`; `¼ ½ ¾` between `0` and `1` (by value), `¹ ² ³` as `1 2 3` with a tiebreak accent;
-  `ª º`, `đ ł` (stroke, like `ø`) and `ð ı þ` are tiebreak accents on `a o d l i t`, not letters of their own; `œ` = `oe` like `æ`.
+  `ª º`, `đ ł` (stroke, like `ø`) and `ð ı` are tiebreak accents on `a o d l i` (`þ` is the expansion `th`, below), not letters of their own; `œ` = `oe` like `æ`.
 - Multi-character and lookup check of those choices (T-1662; probes/text-collation-longer, 107 cells, excel-graph 2026-10-16). VERIFIED as fitted:
   `œ` = `oe` (also `Œ` = `OE`; XMATCH, XLOOKUP and COUNTIF equal, MATCH(...,0) `#N/A`); `"a"&CHAR(1)&"b"` sorts after `"ab"` and `"a b"` and before `"a'b"`, CHAR(1) above `""` and below `"'"`
   (and `COUNTIF` of `"ab"` over {CHAR(1)-text, "ab"} is 1, XMATCH `#N/A`); CHAR(11) and CHAR(12) above CHAR(160) and CHAR(9), below CHAR(13), CHAR(11) < CHAR(12);
   every one of `± « » × ÷ § © ¬ ® ° µ … •` sorts above each of `<` `=` `>`; `¼ ½ ¾` between `0` and `1` (`¾` < `2`); `¹ ² ³` above `1 2 3` but below the next
   letter position (`"¹"` > `"1"`, `"¹a"` < `"1b"`, `"¹b"` > `"1a"`; XMATCH of `"1"` against `¹` `#N/A`); `ç đ ð ł ñ ı` are accents on `c d d l n i` (`"ða"` < `"db"`, > `"da"`).
-  CORRECTED: `þ` is an expansion equal to `th`, not an accent on `t` (`"þ"="th"`, `"þ"&"a"` = `"t"&"h"&"a"` TRUE, `"þa"` > `"tb"`, `XMATCH("th","þ",0)` = 1); the engine still
-  treats it as an accent (T-1669, which also covers the XLOOKUP `œ` and single-cell XMATCH engine mismatches in this case).
+  CORRECTED: `þ` is an expansion equal to `th`, not an accent on `t` (`"þ"="th"`, `"þ"&"a"` = `"t"&"h"&"a"` TRUE, `"þa"` > `"tb"`, `XMATCH("th","þ",0)` = 1). Implemented (T-1669): `cmp_text_excel` makes `þ` an `expansion('t','h')`.
+  A single-cell reference as XMATCH `lookup_array` or XLOOKUP `lookup_array`/`return_array` is a one-cell vector, not `#VALUE!`/`#N/A` (probes/text-collation-longer A96, A97, A102, A104, A105, A107).
 Tasks: T-0220, T-0244, T-1469, T-1590, T-1594, T-1595, T-1662, T-1669
 
 ## Double unary minus coerces to a number

@@ -15,7 +15,7 @@
 //! 2. **Accents**, letter by letter: none, the ordinal indicators `ª º`, acute, grave,
 //!    circumflex, diaeresis, tilde, ring (`"a" < "ª" < "á" < "à" < "â" < "ä" < "ã" < "å"`), then
 //!    the stroke (`"ö" < "ø"`, `"d" < "đ"`, `"l" < "ł"`) and last the letter variants
-//!    `ð ı þ` (`"đ" < "ð"`, `"t" < "þ" < "u"`).
+//!    `ð ı` (`"đ" < "ð"`). `þ` is not an accent: it is the letters `th`.
 //! 3. **Skipped characters**: by position, a later one first, then control characters (by code
 //!    point) before apostrophe, hyphen, en dash, em dash (`"ab" < "a'b" < "a-b" < "a–b" <
 //!    "a—b"`, `"a" < "a'" < "a-" < "'a" < "-a"`, `"1" < "'1" < "-1"`, `"" < CHAR(1) < "–"`).
@@ -166,8 +166,8 @@ const RING: u8 = 7;
 const CEDILLA: u8 = 8;
 const SUPERSCRIPT: u8 = 9;
 const STROKE: u8 = 10;
-/// `ð`, `ı`, `þ`: probed as single characters only, each right after its base letter (`þ` after
-/// `t`); kept a tiebreak accent, like `ø`, rather than a letter of its own.
+/// `ð`, `ı`: probed as single characters only, each right after its base letter; kept a
+/// tiebreak accent, like `ø`, rather than a letter of its own.
 const VARIANT: u8 = 11;
 
 /// Third-pass weights of the skipped characters: control characters below the apostrophe (none
@@ -270,7 +270,8 @@ fn element(c: Char) -> Element {
         'ð' => accented('d', VARIANT),
         'ı' => accented('i', VARIANT),
         'ł' => accented('l', STROKE),
-        'þ' => accented('t', VARIANT),
+        // Excel: þ is the expansion `th` (probes/text-collation-longer Calc!A74-A76).
+        'þ' => expansion('t', 'h'),
         'é' => accented('e', ACUTE),
         'è' => accented('e', GRAVE),
         'ê' => accented('e', CIRCUMFLEX),
