@@ -30,6 +30,7 @@ C	probes/anchorarray-at-operand.case.json	2
 C	probes/anchorarray-if-operands.case.json	21
 C	probes/anchorarray-lookup-implicit-xlookup-take.case.json	17
 C	probes/and-or-xor-error-order.case.json	37
+C	probes/and-or-xor-picked-text.case.json	70
 C	probes/and-or-xor-text-arguments.case.json	84
 C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
