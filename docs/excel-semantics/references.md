@@ -1467,6 +1467,22 @@ function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, an
 Status: VERIFIED
 Tasks: T-0293, T-1526, T-1551, T-1555, T-1556
 
+## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
+Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value
+position, and at the top level, through an implicit `@` that FORMULATEXT shows: `=IF(1,{2;3})` is
+`=@IF(1,{2;3})` (2), `=ABS(IF(1,{-2;3}))` `=ABS(@IF(1,{-2;3}))` (2), `=LEN(IF(1,{"ab";"c"}))` 2,
+`=N({2;3})` `=N(@{2;3})` (2), `=ABS({-2;3})` 2, `=ISNUMBER(IF(1,{2;3}))` TRUE, `=-IF(1,{2;3})`
+`=-@IF(1,{2;3})` (-2), `=N(TRANSPOSE({2,3}))` `=N(@TRANSPOSE({2,3}))` (2). Each dynamic twin spills.
+Exception: N and T over `IF(...)` get no `@`, and the legacy cell is `#VALUE!` (`=N(IF(1,{2;3}))`,
+`=N(IF(1,{2,3}))`, `=T(IF(1,{"a";"b"}))`), while `=N(IF(1,2))` is 2. N and T take a reference or a
+value, and IF can return a reference: a hypothesis for why no `@` is added, UNVERIFIED for other
+reference-returning calls (CHOOSE, INDEX, OFFSET).
+Evidence: probes/legacy-array-result (excel-graph, 2026-10-16), probes/n-array-lift D4.
+Not implemented: ours adds no `@` there, so these legacy cells spill (T-1717), and the N/T
+exception is T-1713.
+Status: VERIFIED (excel-graph)
+Tasks: T-1713, T-1717
+
 ## `@` of a non-reference array as a function argument is its top-left value
 Rule (probes/rank-at-if-ref, excel-graph, 2026-10-15, T-1596): where an argument takes a reference (aggregates, RANK's `ref`,
 COUNTBLANK's `range`), `@` of an array that is not a reference is the array's top-left value, a plain value, never the whole array.

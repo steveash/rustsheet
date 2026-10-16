@@ -23,3 +23,13 @@ probes/n-array-lift S!D4:D5 (excel-graph, T-1616). T-1616 made N lift over an ar
 
 ## Out of scope
 -
+
+## Progress (2026-10-16, in flight)
+- Probe probes/legacy-array-result (excel-graph) answers "do other scalar-argument functions behave
+  the same": no. ABS, LEN, ISNUMBER, negation and a top-level IF get an `@` in a legacy cell (top-left
+  value), and so do N of an array constant and of TRANSPOSE. Only N and T over `IF(...)` get no `@`
+  and are `#VALUE!` (A10, G10, I10). Recorded in references.md "Legacy formulas put `@` on
+  array-valued calls and array constants". The general `@` is filed as T-1717 (engine, opus).
+- Next: decide whether T-1713 lands before or with T-1717. A narrow fix needs the legacy evaluation
+  of N/T to see an array argument that is not `@`-ed and give `#VALUE!`; check whether CHOOSE,
+  INDEX or OFFSET arguments behave like IF (probe) before choosing the rule.
