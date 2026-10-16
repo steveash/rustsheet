@@ -38,6 +38,8 @@ fn test_mode_text_and_blank_reference_arguments() {
     model._set("B4", "=MODE(A1:A4,2)");
     model._set("B5", "=MODE(A1,A2,\"1\",2)");
     model._set("B6", "=MODE(1,1,)");
+    model._set("B7", "=MODE(1,2,2,TRUE)");
+    model._set("B8", "=MODE(\"2\",\"2\",5)");
     model.evaluate();
     assert_eq!(model._get_text("B1"), "2");
     assert_eq!(model._get_text("B2"), "#DIV/0!");
@@ -46,6 +48,9 @@ fn test_mode_text_and_blank_reference_arguments() {
     assert_eq!(model._get_text("B4"), "2");
     assert_eq!(model._get_text("B5"), "2");
     assert_eq!(model._get_text("B6"), "#VALUE!");
+    // Typed booleans and numeric text are skipped, not read as numbers (A9, A6).
+    assert_eq!(model._get_text("B7"), "2");
+    assert_eq!(model._get_text("B8"), "#N/A");
 }
 
 // ── MODE.SNGL ────────────────────────────────────────────────────────────────

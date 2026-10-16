@@ -71,5 +71,8 @@
   the AVERAGE-family array-error probe; decision 0062) (`make eval-baseline`).
   T-1665: functions below the evidence floor 60 → 59 (one more function (among AVEDEV, ABS, SUMPRODUCT and SUM) reaches ≥ 20 Excel cells through the
   AVEDEV deviation-sum probe, probes-numeric/double-rounding-avedev-deviations; decision 0062) (`make eval-baseline`).
+  T-1291: functions below the evidence floor 59 → 57 (two more functions reach ≥ 20 Excel cells through the
+  mode-typed-arguments probe; decision 0062) (`make eval-baseline`); duplicated lines 6360 → 6328 (VARA family and
+  MODE argument walks simplified) (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

@@ -237,15 +237,23 @@ Open: an empty argument (`DEVSQ(1,)`) is ignored by DEVSQ/AVEDEV/SUMSQ but count
 Tasks: T-0945
 
 ## MODE: a blank single-cell reference is #VALUE!; typed text and booleans are skipped
-Rule: SUPERSEDED for typed text: a typed text argument, even numeric text, is skipped, not `#VALUE!` (`MODE(2,"x",2)` is 2; probes/mode-typed-arguments, excel-graph 2026-10-16, T-1291, statistics.md "Statistical function argument modes"); the POI `#VALUE!` cells below come from a blank single-cell reference, an empty argument or an error argument; a direct error propagates as itself (`MODE(1,"1",#DIV/0!,2,3)` is `#DIV/0!`) and a reference to a text cell is skipped (probes/mode-typed-arguments A21-A29). A single-cell reference to a blank cell is `#VALUE!`: `MODE(B9,2,D7)` with B9 = 2 and D7 blank is `#VALUE!`
-although 2 appears twice. Blanks and text inside a multi-cell range are ignored
-(`MODE(C16:E16,-1.1)` = -1.1 with D16 blank). Also
-`MODE("1",1,#DIV/0!,2,3)` is `#VALUE!` (whether argument order matters is unprobed). An error picked by CHOOSE propagates: legacy `=MODE(CHOOSE(1,B1:B6*1))` off the range's rows is `#VALUE!` (references.md "Legacy `@` on CHOOSE operator arms under aggregates"; other direct errors unprobed, T-1651). Not isolated yet: a single-cell reference to text on its own.
-Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!G936, H936,
-K936, M936 (`#VALUE!`); D936, F936, I936, J936, L936.
-Status: VERIFIED (Excel-cached)
-Implemented in: `collect_mode_values` (mode_functions.rs); MODE.SNGL/MODE.MULT share it (verified for typed text and booleans, T-1291).
-Tasks: T-0947
+Rule: MODE, MODE.SNGL and MODE.MULT skip typed (direct) text, numeric text included, and typed booleans
+(`MODE(2,"x",2)` is 2, `MODE(1,"1",1)` 1, `MODE("2","2",5)` and `MODE(TRUE,TRUE,5)` `#N/A`), and a
+reference to a text cell (`MODE(K1,K2,"1",2)` is 2). A direct error propagates as itself
+(`MODE(1,"1",#DIV/0!,2,3)`, `MODE(1/0,1,1)` are `#DIV/0!`, `MODE(NA(),1,1)` `#N/A`). A single-cell
+reference to a blank cell and an empty argument are `#VALUE!`: `MODE(B9,2,D7)` with B9 = 2 and D7 blank
+is `#VALUE!` although 2 appears twice, and so is `MODE(1,1,)`. Blanks and text inside a multi-cell range
+are ignored (`MODE(C16:E16,-1.1)` = -1.1 with D16 blank). An error picked by CHOOSE propagates: legacy
+`=MODE(CHOOSE(1,B1:B6*1))` off the range's rows is `#VALUE!` (references.md "Legacy `@` on CHOOSE
+operator arms under aggregates"). An error in a referenced cell or a name is unprobed (T-1651).
+Evidence: probes/mode-typed-arguments A1-A33 (excel-graph, 2026-10-16, T-1291). The POI cells
+poi/FormulaEvalTestData_Copy.xlsx EverythingTests!G936, H936, K936, M936 (`#VALUE!`) and D936, F936, I936,
+J936, L936 were first read as "typed text is `#VALUE!`"; the probe shows their `#VALUE!` comes from a blank
+single-cell reference, an empty argument or an error argument.
+Status: VERIFIED (excel-graph)
+Implemented in: `collect_mode_values` (mode_functions.rs); MODE.SNGL/MODE.MULT share it (typed text and
+booleans and direct errors verified for all three, T-1291).
+Tasks: T-0947, T-1291
 
 ## MAXA / MINA: single-cell references are read like ranges
 Rule: a single-cell reference argument to text counts as 0 and to a boolean as 1/0, as in a range:
