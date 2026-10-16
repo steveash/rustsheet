@@ -94,6 +94,22 @@
     "t": "n",
     "v": 1.0
    },
+   "A30": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "A31": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "A32": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "A33": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
    "A4": {
     "t": "e",
     "v": "#N/A"
@@ -122,9 +138,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "8458d4fb192ff013d76e278701d5c4b09b9474674c4e87307b37213de47e92b1",
+  "input_sha256": "7d77d5e8f37716af86b8bcf367182e8446cb7a9dd23b02500c0a1783e832e29b",
   "kind": "excel-graph",
-  "produced_at": "2026-10-16T07:31:36+00:00",
+  "produced_at": "2026-10-16T07:42:31+00:00",
   "version": null
  }
 }
