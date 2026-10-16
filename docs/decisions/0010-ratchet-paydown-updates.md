@@ -84,5 +84,7 @@
   mode-typed-arguments, mode-typed-text-no-mode and vara-direct-lambda probes; decision 0062) (`make eval-baseline`);
   duplicated lines 6328 → 6155 (paid down by other merged work already on main; T-1291 itself adds none)
   (`check_duplication.py --update`).
+  T-1628: functions below the evidence floor 56 → 53 (GETPIVOTDATA, ENCODEURL and FILTERXML reach ≥ 20 Excel
+  cells through the three *-evidence-floor probes; decision 0062) (`make eval-baseline`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
