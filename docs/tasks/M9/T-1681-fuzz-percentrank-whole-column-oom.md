@@ -3,7 +3,7 @@ id: T-1681
 title: "Fuzz: PERCENTRANK.INC over SE:RCH aborts with a 3 GB allocation: bound values_from_range on whole-column ranges"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
