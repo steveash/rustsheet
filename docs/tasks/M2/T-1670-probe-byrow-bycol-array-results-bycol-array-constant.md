@@ -3,7 +3,7 @@ id: T-1670
 title: "Probe BYROW/BYCOL array results: BYCOL, array-constant source, 1x1 array"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
