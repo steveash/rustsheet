@@ -37,7 +37,7 @@ suites the milestone exit criteria name that does not exist yet.
 - [x] `eval/suites/gen-m10` is committed with ≥ 10,000 oracle-filled text cells, canary-verified,
   `milestone = ["M10"]`, with its baseline. Every failing group has a filed or cited task.
 - [x] Quirks recorded in docs/excel-semantics/number-formats.md.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the format engine (file tasks).
@@ -54,4 +54,5 @@ Ours shows 6,961 of the 10,400 texts (66.9%). Every failing code is cited in num
 "Displayed text over an edge-value pool": new tasks T-1730 to T-1738, and existing T-1711, T-0982,
 T-1129, T-0981, T-0934, T-0980 and T-1614. Excel for the web refuses a workbook with a lowercase
 `0.00e+00` format, so the pool leaves it out.
+Gating the text cells is T-1739.
 Eval: gen-m10 +20 cases (117 new-coverage value failures), 0 regressions elsewhere.
