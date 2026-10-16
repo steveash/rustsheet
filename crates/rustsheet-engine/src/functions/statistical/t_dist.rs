@@ -385,22 +385,6 @@ impl Model {
         CalcResult::Number(x.abs())
     }
 
-    /// The numbers of one T.TEST sample, in full.
-    fn t_test_sample(
-        &mut self,
-        arg: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<Vec<f64>, CalcResult> {
-        let values = match self.evaluate_node_in_context(arg, cell) {
-            CalcResult::Range { left, right } => self.values_from_range(left, right)?,
-            CalcResult::Array(array) => self
-                .values_from_array(array)
-                .map_err(|error| CalcResult::new_error(Error::VALUE, cell, format!("{error:?}")))?,
-            _ => Vec::new(),
-        };
-        Ok(values.into_iter().flatten().collect())
-    }
-
     // T.TEST(array1, array2, tails, type)
     pub(crate) fn fn_t_test(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 4 {
@@ -449,30 +433,23 @@ impl Model {
         };
 
         let (values1, values2): (Vec<f64>, Vec<f64>) = if matches!(test_type, TTestType::Paired) {
-            samples
+            // The pairs zipping the samples makes; a pair with a non-number side is skipped.
+            let pairs = samples
                 .first
                 .into_iter()
                 .zip(samples.second)
-                .filter_map(|(o1, o2)| match (o1, o2) {
+                .take(samples.paired);
+            pairs
+                .filter_map(|pair| match pair {
                     (Some(v1), Some(v2)) => Some((v1, v2)),
-                    _ => None, // skip if either is None
+                    _ => None,
                 })
                 .unzip()
-        } else if samples.same_size {
+        } else {
             // keep only numeric entries, ignore non-numeric (Option::None)
             let v1: Vec<f64> = samples.first.into_iter().flatten().collect();
             let v2: Vec<f64> = samples.second.into_iter().flatten().collect();
             (v1, v2)
-        } else {
-            // The pairing left out the longer sample's tail; read both again in full (their
-            // errors were found above, so none is met here).
-            match (
-                self.t_test_sample(&args[0], cell),
-                self.t_test_sample(&args[1], cell),
-            ) {
-                (Ok(v1), Ok(v2)) => (v1, v2),
-                (Err(error), _) | (_, Err(error)) => return error,
-            }
         };
 
         let n1 = values1.len();

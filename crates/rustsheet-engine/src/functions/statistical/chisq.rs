@@ -260,10 +260,11 @@ impl Model {
     }
 
     /// The values of a range, row-major, for a caller that keeps the numbers: a number is `Some`,
-    /// text, booleans and blanks are `None`, and the first error cell is the `Err`. The range is
-    /// walked over each sheet's used area only (a whole column of an almost empty sheet is a few
-    /// entries, T-1681), so the list is not one entry per cell: callers that pair two lists by
-    /// position use [`Self::paired_values`] instead.
+    /// text and booleans are `None`, blank cells give no entry, and the first error cell is the
+    /// `Err`. The range is walked over each sheet's used area, so a whole column of an almost
+    /// empty sheet, or one stretched by a far cell, costs time as in SUM but no memory (T-1681).
+    /// Entries are not one per cell: callers that pair two lists by position use
+    /// [`Self::paired_values`] instead.
     pub(crate) fn values_from_range(
         &mut self,
         left: CellReferenceIndex,
@@ -272,13 +273,11 @@ impl Model {
         self.values_from_areas(&[Range { left, right }], left)
     }
 
-    /// One entry per cell of `areas`, in formula order: a number is `Some`, text, booleans and
-    /// blanks are `None`, and the first error cell is the `Err`. One area is walked over its
-    /// sheets' used area; the areas of a multi-area reference give no entry for a blank cell, as a
-    /// union is walked over its existing cells only (T-1497). So callers must not pair entries by
-    /// position (none does: they keep the numbers). Areas are counted as
-    /// written, so an overlap counts twice (docs/excel-semantics/references.md "Multi-area
-    /// references in functions"; probes/multiarea-rank, multiarea-cond).
+    /// One entry per non-blank cell of `areas`, in formula order: a number is `Some`, text and
+    /// booleans are `None`, and the first error cell is the `Err`. Blank cells give no entry, so
+    /// callers must not pair entries by position (none does: they keep the numbers). Areas are
+    /// counted as written, so an overlap counts twice (docs/excel-semantics/references.md
+    /// "Multi-area references in functions"; probes/multiarea-rank, multiarea-cond).
     pub(crate) fn values_from_areas(
         &mut self,
         areas: &[Range],
@@ -291,6 +290,7 @@ impl Model {
                 Ok(())
             }
             error @ CalcResult::Error { .. } => Err(error),
+            CalcResult::EmptyCell => Ok(()),
             _ => {
                 values.push(None);
                 Ok(())

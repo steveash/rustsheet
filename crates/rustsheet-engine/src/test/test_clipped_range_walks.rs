@@ -230,7 +230,8 @@ fn paired_functions_over_whole_columns() {
 }
 
 // CHISQ.TEST's degrees of freedom count every cell of the ranges, blank or not, so a whole column
-// is not its used area; the blank pairs past it add nothing to the statistic.
+// is not its used area; the blank pairs past it add nothing to the statistic. The expectation is
+// the engine's behavior before T-1681, derived by hand, not oracle evidence (probe: T-1689).
 #[test]
 fn chisq_test_over_whole_columns_counts_every_cell() {
     // One numeric pair, (2, 1): the statistic is 1.
@@ -312,4 +313,52 @@ fn same_as(formula: &str, expected: &str) {
         model._get_text("Sheet2!E2"),
         "{formula}"
     );
+}
+
+// One far cell stretches the used area to the whole width of the ranges and 5,000 rows;
+// the lists hold the sheet's few non-blank cells, not a slot per cell of that area (T-1681
+// review: a crafted workbook must not turn a used-area walk into an allocation per cell).
+#[test]
+fn a_far_cell_does_not_stretch_the_lists() {
+    let mut model = sample();
+    model._set("CV5000", "x");
+    for (formula, expected) in [
+        ("SUMXMY2(A:CV,B:CW)", "SUMXMY2(A1:C3,B1:D3)"),
+        ("SUMXMY2(1:5000,1:5000)", "SUMXMY2(A1:C3,A1:C3)"),
+        ("COVARIANCE.P(A:CV,A:CV)", "COVARIANCE.P(A1:C3,A1:C3)"),
+        ("PEARSON(A:CV,B:CW)", "PEARSON(A1:C3,B1:D3)"),
+        ("T.TEST(A:CV,B:CW,2,1)", "T.TEST(A1:C3,B1:D3,2,1)"),
+        ("PERCENTILE.INC(A:CV,0.5)", "PERCENTILE.INC(A1:C3,0.5)"),
+    ] {
+        model._set("Sheet2!E1", &format!("={}", qualify(formula)));
+        model._set("Sheet2!E2", &format!("={}", qualify(expected)));
+        let start = Instant::now();
+        model.evaluate();
+        assert!(
+            start.elapsed() < Duration::from_secs(20),
+            "{formula} was not bounded"
+        );
+        assert_eq!(
+            model._get_text("Sheet2!E1"),
+            model._get_text("Sheet2!E2"),
+            "{formula}"
+        );
+    }
+}
+
+/// `formula` with every range argument read from Sheet1.
+fn qualify(formula: &str) -> String {
+    let (name, args) = formula.split_once('(').unwrap();
+    let args: Vec<String> = args
+        .trim_end_matches(')')
+        .split(',')
+        .map(|arg| {
+            if arg.contains(':') {
+                format!("Sheet1!{arg}")
+            } else {
+                arg.to_string()
+            }
+        })
+        .collect();
+    format!("{name}({})", args.join(","))
 }

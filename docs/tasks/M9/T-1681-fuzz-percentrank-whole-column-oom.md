@@ -59,27 +59,34 @@ exists, write a probe case (`excel-probe` skill).
 - Performance work on bounded ranges beyond removing the per-cell allocation (perf lane).
 
 ## Outcome
-- `values_from_range` now walks the used area (the clipping walk SUM and MEDIAN use), so the
-  order statistics (PERCENTILE, PERCENTRANK, QUARTILE, RANK), MODE, FREQUENCY, PROB, Z.TEST and
-  F.TEST hold one entry per used-area cell, not per cell of the range.
+- Memory is now proportional to the non-blank cells, never to the cells of a range or of its used
+  area. A far cell can stretch the used area, so a whole column is walked over that area, which
+  costs time as SUM does, but a blank cell gets no entry.
+- `values_from_range` (via `values_from_areas`) skips blank cells. Its callers keep only the
+  numbers: the order statistics (PERCENTILE, PERCENTRANK, QUARTILE, RANK), MODE, FREQUENCY,
+  PROB, Z.TEST, F.TEST and unpaired T.TEST.
 - Callers that pair two lists by position use one new helper, `paired_values`
   (`functions/statistical/paired.rs`). These are SUMXMY2, SUMX2MY2 and SUMX2PY2; PEARSON, RSQ,
   CORREL, SLOPE, INTERCEPT, STEYX and FORECAST through `fn_get_two_matrices`; COVARIANCE.P and
-  COVARIANCE.S; and paired T.TEST.
-  - The helper sizes each argument from its shape, so a size mismatch is still `#N/A`.
-  - Both lists stop where the data of both arguments stops: past the used area every pair is
-    blank, and every paired caller skips a pair with a blank side.
-  - It reads every used cell, so an error past the paired positions still comes first. The first
-    argument's errors come before the second's.
-  - CHISQ.TEST takes its "two data points" check from the shape, not the list length.
+  COVARIANCE.S; and T.TEST.
+  - Each argument becomes (row-major position, value) entries for its non-blank cells.
+  - The two are merge-joined into aligned lists that leave out the positions blank on both sides,
+    which every paired caller treats as no data.
+  - Sizes come from the shapes, so a mismatch is still `#N/A`, after every cell error.
+  - The first argument is read in full before the second, so its errors come first.
+  - `paired` counts the pairs that zipping full lists made, for paired T.TEST on unequal sizes.
+    Unpaired T.TEST reads each argument once.
+  - CHISQ.TEST takes its "two data points" check from the shape.
 - Shape arithmetic is `i64`, because 16,384 × 1,048,576 overflows `i32`.
 - The duplicated per-argument code of COVARIANCE.P/S, T.TEST and `fn_get_two_matrices` is gone.
   Duplicated lines went from 6,328 to 6,155, and the ratchet can tighten.
-- Evidence: no Excel behavior changes, and no new behavior is claimed. Each whole-column result
-  equals the result over the used area, which these functions already returned with full lists.
-  That is because blank cells in a range are ignored, as for SUM over whole columns (T-0048,
-  `test_clipped_range_walks`). The new tests check that equivalence for every caller kind. They
-  also cover the fuzz reproducer, `PERCENTRANK.INC(SE:RCH,"İİx",2)`, with a time bound.
-  CHISQ.TEST keeps counting every cell of a whole column in its degrees of freedom, as before;
-  that is unprobed.
+- Evidence: no Excel behavior changes, and no new behavior is claimed. Each whole-column or
+  whole-row result equals the result over the used area, which these functions already returned
+  with full lists, because blank cells in a range are ignored (as SUM over whole columns, T-0048).
+  The new tests in `test_clipped_range_walks` check that equivalence for every caller kind. They
+  also check a far cell (`CV5000`), whole rows, a size mismatch, a late error, and the fuzz
+  reproducer `PERCENTRANK.INC(SE:RCH,"İİx",2)`, with time bounds.
+- CHISQ.TEST's degrees of freedom over a whole column count every cell, as before. That is
+  unprobed; T-1689 probes it.
+- Messages: COVARIANCE.P and COVARIANCE.S share one size-mismatch message. The error is the same.
 - Eval delta: 0 fixed, 0 regressions in every gated suite.

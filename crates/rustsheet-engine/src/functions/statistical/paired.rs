@@ -1,11 +1,10 @@
 //! The two arguments of a function that pairs values by position: SUMXMY2 and its siblings,
 //! COVARIANCE, CHISQ.TEST, PEARSON, CORREL, the regression family and paired T.TEST.
 //!
-//! A whole-column range of an almost empty sheet has millions of cells, so the lists must not
-//! hold one entry per cell (T-1681, directive 5). Past the used area every cell is blank, and
-//! every paired caller treats a pair with a blank side as no data, so the lists stop where the
-//! data of both arguments stops: they are the same length, and pairing them by position gives the
-//! result the full lists gave.
+//! A whole-column range has a million cells per column, and an untrusted workbook can put one cell
+//! far away to stretch the used area, so the lists must not hold an entry per cell (T-1681,
+//! directive 5). They hold an entry for each position where either argument has a non-blank
+//! cell: a position blank in both is a pair every paired caller treats as no data.
 
 use crate::calc_result::{CalcResult, Range};
 use crate::expressions::parser::{ArrayNode, Node};
@@ -15,7 +14,7 @@ use crate::model::Model;
 
 /// One argument of a paired function, as evaluated and not yet flattened.
 pub(crate) enum PairedArg {
-    /// A reference: walked here, only as far as its sheet's used area.
+    /// A reference: walked here, over its sheet's used area.
     Range(Range),
     /// An array value: flattened here, so its error comes after the first argument's.
     Array(Vec<Vec<ArrayNode>>),
@@ -25,22 +24,21 @@ pub(crate) enum PairedArg {
     Error(CalcResult),
 }
 
-/// The flattened arguments of a paired function, row-major: a number is `Some`, anything else
-/// `None`. Both lists have the same length, and every position left out is blank in at least one
-/// argument (or both, when the sizes match).
+/// The flattened arguments of a paired function, aligned by row-major position: a number is
+/// `Some`, anything else `None`. Positions blank in both arguments are left out, so the lists
+/// hold every number of both arguments and have the same length.
 pub(crate) struct PairedValues {
     pub(crate) first: Vec<Option<f64>>,
     pub(crate) second: Vec<Option<f64>>,
-    /// Whether the arguments have the same number of cells. When they do not, the lists pair the
-    /// positions the shorter argument has, as zipping full lists would.
+    /// Whether the arguments have the same number of cells.
     pub(crate) same_size: bool,
+    /// How many leading entries are at positions both arguments have (all of them when the
+    /// sizes match): the pairs that zipping the full lists would make.
+    pub(crate) paired: usize,
 }
 
-/// How far an argument reaches: its cells, and the row-major prefix of them that can hold data.
-struct Extent {
-    cells: u64,
-    data: u64,
-}
+/// The non-blank entries of one argument: (row-major position, value), in position order.
+type Sparse = Vec<(u64, Option<f64>)>;
 
 impl Model {
     /// The two samples of COVARIANCE.P, COVARIANCE.S or T.TEST (`args[0]` and `args[1]`, which
@@ -77,8 +75,7 @@ impl Model {
 
     /// Flattens `first` and `second` for a function that pairs them by position. The first
     /// argument is read before the second, so its first error is the one returned; an array's
-    /// error is mapped by `array_error` (argument index, element error). Every cell of a range's
-    /// used area is read, so an error past the paired positions still surfaces.
+    /// error is mapped by `array_error` (argument index, element error).
     pub(crate) fn paired_values(
         &mut self,
         first: PairedArg,
@@ -86,124 +83,89 @@ impl Model {
         cell: CellReferenceIndex,
         array_error: impl Fn(usize, Error) -> CalcResult,
     ) -> Result<PairedValues, CalcResult> {
-        let mut args = [first, second];
-        let mut extents = [Extent { cells: 0, data: 0 }, Extent { cells: 0, data: 0 }];
-        for (arg, extent) in args.iter_mut().zip(&mut extents) {
-            *extent = self.paired_extent(arg, cell)?;
-        }
-        let same_size = extents[0].cells == extents[1].cells;
-        let paired = extents[0].cells.min(extents[1].cells);
-        let keep = paired.min(extents[0].data.max(extents[1].data));
-        let [first, second] = args;
-        let first = self.paired_list(first, keep, cell, |error| array_error(0, error))?;
-        let second = self.paired_list(second, keep, cell, |error| array_error(1, error))?;
-        Ok(PairedValues {
-            first,
-            second,
-            same_size,
-        })
-    }
-
-    fn paired_extent(
-        &mut self,
-        arg: &mut PairedArg,
-        cell: CellReferenceIndex,
-    ) -> Result<Extent, CalcResult> {
-        let count = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
-        Ok(match arg {
-            PairedArg::Range(Range { left, right }) if left.sheet == right.sheet => {
-                let span = |from: i32, to: i32| u64::try_from(to - from + 1).unwrap_or(0);
-                let (last_row, _) = self
-                    .used_area_corner(left.sheet, left.row, left.column, right.row, right.column)
-                    .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-                let columns = span(left.column, right.column);
-                Extent {
-                    cells: span(left.row, right.row) * columns,
-                    data: span(left.row, last_row) * columns,
-                }
-            }
-            // A 3-D reference is walked sheet by sheet over each sheet's used area, so its list
-            // is all it has (T-0196); it is read now, to know its size.
-            PairedArg::Range(Range { left, right }) => {
-                let values = self.values_from_range(*left, *right)?;
-                let n = count(values.len());
-                *arg = PairedArg::Values(values);
-                Extent { cells: n, data: n }
-            }
-            PairedArg::Array(array) => {
-                let n = count(array.iter().map(Vec::len).sum());
-                Extent { cells: n, data: n }
-            }
-            PairedArg::Values(values) => {
-                let n = count(values.len());
-                Extent { cells: n, data: n }
-            }
-            PairedArg::Error(_) => Extent { cells: 0, data: 0 },
-        })
-    }
-
-    /// The first `keep` positions of `arg`, row-major.
-    fn paired_list(
-        &mut self,
-        arg: PairedArg,
-        keep: u64,
-        cell: CellReferenceIndex,
-        array_error: impl Fn(Error) -> CalcResult,
-    ) -> Result<Vec<Option<f64>>, CalcResult> {
-        let keep = usize::try_from(keep).unwrap_or(usize::MAX);
-        let mut values = match arg {
-            PairedArg::Range(Range { left, right }) => {
-                return self.range_prefix(left, right, keep, cell);
-            }
-            PairedArg::Array(array) => self.values_from_array(array).map_err(array_error)?,
-            PairedArg::Values(values) => values,
-            PairedArg::Error(error) => return Err(error),
+        let (first_cells, first) = self.sparse_values(first, cell, |e| array_error(0, e))?;
+        let (second_cells, second) = self.sparse_values(second, cell, |e| array_error(1, e))?;
+        let shared = first_cells.min(second_cells);
+        // Merge the two position lists; a position missing from one side is blank there.
+        let mut values = PairedValues {
+            first: Vec::new(),
+            second: Vec::new(),
+            same_size: first_cells == second_cells,
+            paired: 0,
         };
-        values.truncate(keep);
+        let (mut a, mut b) = (first.into_iter().peekable(), second.into_iter().peekable());
+        loop {
+            let (position, x, y) = match (a.peek(), b.peek()) {
+                (None, None) => break,
+                (Some(&(i, x)), Some(&(j, _))) if i < j => {
+                    a.next();
+                    (i, x, None)
+                }
+                (Some(&(i, x)), Some(&(j, y))) if i == j => {
+                    a.next();
+                    b.next();
+                    (i, x, y)
+                }
+                (_, Some(&(j, y))) => {
+                    b.next();
+                    (j, None, y)
+                }
+                (Some(&(i, x)), None) => {
+                    a.next();
+                    (i, x, None)
+                }
+            };
+            if position < shared {
+                values.paired += 1;
+            }
+            values.first.push(x);
+            values.second.push(y);
+        }
         Ok(values)
     }
 
-    /// The first `keep` cells of a single-sheet range, row-major. Cells past the used area are
-    /// blank and not read; every cell inside it is, so its first error is found.
-    fn range_prefix(
+    /// The number of cells of `arg` and its non-blank entries. A range is walked over its
+    /// sheet's used area, so a blank costs time, as in SUM, but no memory.
+    fn sparse_values(
         &mut self,
-        left: CellReferenceIndex,
-        right: CellReferenceIndex,
-        keep: usize,
+        arg: PairedArg,
         cell: CellReferenceIndex,
-    ) -> Result<Vec<Option<f64>>, CalcResult> {
-        // The rows and columns past the used area are recorded as read empty (dynamic arrays).
-        let (last_row, last_column) = self
-            .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
-            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-        let mut values = Vec::with_capacity(keep);
-        // Two exits: once `keep` entries are held, a row below the used area ends the walk, and a
-        // column right of it ends its row; until then those blank cells are pushed unread.
-        for row in left.row..=right.row {
-            if row > last_row && values.len() >= keep {
-                break;
-            }
-            for column in left.column..=right.column {
-                let value = if row > last_row || column > last_column {
-                    None
-                } else {
-                    match self.evaluate_cell(CellReferenceIndex {
-                        sheet: left.sheet,
-                        row,
-                        column,
-                    }) {
+        array_error: impl Fn(Error) -> CalcResult,
+    ) -> Result<(u64, Sparse), CalcResult> {
+        let dense = |values: Vec<Option<f64>>| {
+            let cells = u64::try_from(values.len()).unwrap_or(u64::MAX);
+            (cells, (0..).zip(values).collect())
+        };
+        match arg {
+            PairedArg::Range(Range { left, right }) if left.sheet == right.sheet => {
+                let span = |from: i32, to: i32| u64::try_from(to - from + 1).unwrap_or(0);
+                let width = span(left.column, right.column);
+                let mut entries = Vec::new();
+                self.for_each_position_in_areas(&[Range { left, right }], cell, |model, at| {
+                    let value = match model.evaluate_cell(at) {
+                        CalcResult::EmptyCell => return Ok(()),
                         CalcResult::Number(v) => Some(v),
                         error @ CalcResult::Error { .. } => return Err(error),
                         _ => None,
-                    }
-                };
-                if values.len() < keep {
-                    values.push(value);
-                } else if row > last_row || column > last_column {
-                    break;
-                }
+                    };
+                    let offset = |from: i32, to: i32| u64::try_from(to - from).unwrap_or(0);
+                    let position =
+                        offset(left.row, at.row) * width + offset(left.column, at.column);
+                    entries.push((position, value));
+                    Ok(())
+                })?;
+                Ok((span(left.row, right.row) * width, entries))
             }
+            // A 3-D reference is walked sheet by sheet over each sheet's existing cells (T-0196):
+            // its list is all it has, so positions count in that list.
+            PairedArg::Range(Range { left, right }) => {
+                Ok(dense(self.values_from_range(left, right)?))
+            }
+            PairedArg::Array(array) => {
+                Ok(dense(self.values_from_array(array).map_err(array_error)?))
+            }
+            PairedArg::Values(values) => Ok(dense(values)),
+            PairedArg::Error(error) => Err(error),
         }
-        Ok(values)
     }
 }
