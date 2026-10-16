@@ -3,7 +3,7 @@ id: T-1616
 title: "N over an array lifts element-wise instead of #N/IMPL!"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
