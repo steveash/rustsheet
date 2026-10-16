@@ -22,6 +22,10 @@
   - *A `cached_overrides` line per cell (decision 0032).* That would score the cells against
     the web value, but 0032 limits overrides to non-en-US evidence, and an Excel-version
     conflict stays CONFLICTING until a 16.x desktop value decides (0030 rule 2).
+  - *An excel-graph sidecar for the workbook with the three cells left `CONFLICT`-pending (decision
+    0039 rule 4).* A sidecar replaces the cached values of the whole 1,000-plus-cell workbook, and a
+    fill drops every web-vs-desktop disagreement in it unscored; known failures keep the three cells
+    visible and every other cached cell scored, as for J136 `AND("1",1)`.
 - **Decision:** run `rustsheet-eval update-baseline --allow-regressions` once in the T-1291 PR,
   for exactly these three poi cells. They are CONFLICTING (Excel 15 cached vs Microsoft 365 web)
   and stay known failures until 16.x desktop evidence decides (T-1075, M14).

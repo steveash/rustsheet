@@ -245,11 +245,11 @@ reference to a blank cell and an empty argument are `#VALUE!`: `MODE(B9,2,D7)` w
 is `#VALUE!` although 2 appears twice, and so is `MODE(1,1,)`. Blanks and text inside a multi-cell range
 are ignored (`MODE(C16:E16,-1.1)` = -1.1 with D16 blank). An error picked by CHOOSE propagates: legacy
 `=MODE(CHOOSE(1,B1:B6*1))` off the range's rows is `#VALUE!` (references.md "Legacy `@` on CHOOSE
-operator arms under aggregates"). An error in a referenced cell or a name is unprobed (T-1651).
+operator arms under aggregates"). An error in a single-cell reference, a range or a name propagates too (`MODE(K1,1,1)` with K1 = `=1/0` and `MODE(nmerr,1,1)` are `#DIV/0!`, MODE.SNGL and MODE.MULT alike), and computed text or booleans are skipped like typed ones (`MODE(1,1,"a"&"")`, `MODE(1,1,1=1)`, `MODE(1,1,"1"&"")`, a name holding text are 1; probes/mode-error-and-computed-arguments A1-A15, excel-graph, 2026-10-16, T-1291).
 Typed text with no repeated number is `#N/A`, wherever it stands (`MODE(1,"1",2,3)`, `MODE("1",2,3)`,
 `MODE(1,2,3,"x")`, `MODE(1.1,K3,"1",1)` with K3 = text "1.1"), and a direct error after typed text still wins
 (`MODE("1",1,#DIV/0!,2,3)` is `#DIV/0!`).
-Evidence: probes/mode-typed-arguments A1-A33 and probes/mode-typed-text-no-mode A1-A16 (excel-graph,
+Evidence: probes/mode-typed-arguments A1-A33, probes/mode-typed-text-no-mode A1-A16 and probes/mode-error-and-computed-arguments A1-A15 (excel-graph,
 2026-10-16, T-1291).
 CONFLICTING (decision 0030 2: Excel 15 is below AppVersion 16; decision 0039: the web value is the Phase 1-3
 target; decision 0067): poi/FormulaEvalTestData_Copy.xlsx (Excel 15) caches `#VALUE!` for EverythingTests!G936
@@ -259,7 +259,7 @@ M365, and the three cells are known failures until a 16.x desktop value decides 
 `MODE(B9,2,D7)` (`#VALUE!`, blank single-cell reference) and D936, F936, I936, J936, L936 agree with M365.
 Status: VERIFIED (excel-graph); CONFLICTING with the Excel 15 cached G936, H936, K936
 Implemented in: `collect_mode_values` (mode_functions.rs); MODE.SNGL/MODE.MULT share it (typed text and
-booleans and direct errors verified for all three, T-1291).
+booleans and direct, referenced and named errors verified for all three, T-1291).
 Tasks: T-0947, T-1291
 
 ## MAXA / MINA: single-cell references are read like ranges

@@ -30,7 +30,8 @@ impl Model {
                 },
                 CalcResult::Number(n) => values.push(n),
                 // A direct error propagates as itself: `MODE(1,"1",#DIV/0!,2,3)` is `#DIV/0!`
-                // (probes/mode-typed-arguments A22, T-1291), as do a union's `#VALUE!` (H17, H18) and
+                // (probes/mode-typed-arguments A22, T-1291), as do an error cell, range or name
+                // (`MODE(K1,1,1)`, K1 = `=1/0`: probes/mode-error-and-computed-arguments A1-A6), a union's `#VALUE!` (H17, H18) and
                 // the error of a branch picked by IF or CHOOSE (`MODE(CHOOSE(1,B1:B6*1))` off the
                 // range's rows is `#VALUE!`, probes/legacy-choose-arm-aggregate-and-array-constant-at
                 // I10, T-1643).

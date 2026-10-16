@@ -375,6 +375,7 @@ C	probes/mod-quotient-threshold2.case.json	36
 C	probes/mod-quotient-threshold3.case.json	19
 C	probes/mod-quotient-threshold4.case.json	30
 C	probes/mod-quotient-threshold5.case.json	16
+C	probes/mode-error-and-computed-arguments.case.json	18
 C	probes/mode-typed-arguments.case.json	33
 C	probes/mode-typed-text-no-mode.case.json	16
 C	probes/multiarea-3d-ref.case.json	2

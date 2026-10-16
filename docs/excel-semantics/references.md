@@ -1517,8 +1517,8 @@ and `=LOOKUP(2,CHOOSE(1,B1:B6*1))` is 1. A one-element array constant takes an `
 in TYPE: `=TYPE({5})` shows no `@` and is 64. Ours matches all of these (T-1643). The rules ours applies stop at the
 probed shapes: a legacy INDEX over a CHOOSE whose arms are all arithmetic takes no `@` on the call
 (`legacy_call_reads_a_value`; a dynamic `=INDEX(CHOOSE(1,B1:B6*1),0)` still spills); INDEX and LOOKUP's array form read
-a scalar picked by IF or CHOOSE as a one-element array; MODE propagates the error of an argument IF or CHOOSE picked.
-Inferred, unprobed (T-1645, T-1651): every IF pick (only CHOOSE is probed), INDEX of any other scalar stays `#VALUE!`, MODE propagates every direct error (`MODE(1/0,1,1)` is `#DIV/0!`, `MODE(NA(),1,1)` `#N/A`: probes/mode-typed-arguments A30-A33, T-1291; the error in a referenced cell or name is still unprobed, T-1651), and any other scalar LOOKUP lookup_vector keeps its reading.
+a scalar picked by IF or CHOOSE as a one-element array; MODE propagates the error of an argument IF or CHOOSE picked, and every other argument error too (direct, referenced or named: probes/mode-typed-arguments A30-A33, probes/mode-error-and-computed-arguments A1-A6, A11-A13, T-1291).
+Inferred, unprobed (T-1645, T-1651): every IF pick (only CHOOSE is probed), INDEX of any other scalar stays `#VALUE!`, and any other scalar LOOKUP lookup_vector keeps its reading.
 Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at (excel-graph, 2026-10-15).
 Status: VERIFIED (excel-graph)
 Tasks: T-1638, T-1643, T-1645, T-1651
