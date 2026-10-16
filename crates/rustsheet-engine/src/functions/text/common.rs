@@ -897,35 +897,6 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_t(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // FIXME: Implicit intersection
-        let result = self.evaluate_node_in_context(&args[0], cell);
-        match result {
-            CalcResult::String(_) => result,
-            error @ CalcResult::Error { .. } => error,
-            // An array value lifts element-wise, text kept and anything else "" (an error element
-            // is unprobed; kept like the scalar error): `T(IF(1,{"a";"b"}))` spills "a", "b"
-            // (probes/legacy-array-result S!G1:G2, T-1729). A range stays one "".
-            CalcResult::Array(values) => CalcResult::Array(
-                values
-                    .iter()
-                    .map(|row| {
-                        row.iter()
-                            .map(|value| match value {
-                                ArrayNode::String(_) | ArrayNode::Error(_) => value.clone(),
-                                _ => ArrayNode::String("".into()),
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            ),
-            _ => CalcResult::String("".into()),
-        }
-    }
-
     // VALUETOTEXT(value, [format]) lifts over a range or array like LEN
     // (probes/text-argument-modes F17:F19); an error element is spelled out.
     pub(crate) fn fn_valuetotext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

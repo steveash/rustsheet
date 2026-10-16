@@ -644,6 +644,7 @@ C	probes/subtotal-variance-one-vs-two-pass.case.json	64
 C	probes/sum-error-precedence.case.json	24
 C	probes/sum-long-text-args.case.json	11
 C	probes/sumif-edge-single-cell.case.json	15
+C	probes/t-array-lift.case.json	22
 C	probes/tbill-equal-dates.case.json	11
 C	probes/tbilleq-nonpositive-price.case.json	9
 C	probes/tbilleq-zero-price.case.json	4
@@ -2331,9 +2332,8 @@ F	probes/legacy-array-result.case.json	S!E11
 F	probes/legacy-array-result.case.json	S!E20
 F	probes/legacy-array-result.case.json	S!F11
 F	probes/legacy-array-result.case.json	S!F20
-F	probes/legacy-array-result.case.json	S!G1
 F	probes/legacy-array-result.case.json	S!G10
-F	probes/legacy-array-result.case.json	S!G2
+F	probes/legacy-array-result.case.json	S!G11
 F	probes/legacy-array-result.case.json	S!H11
 F	probes/legacy-array-result.case.json	S!H20
 F	probes/legacy-array-result.case.json	S!I10
@@ -2373,6 +2373,7 @@ F	probes/legacy-n-t-reference-args.case.json	S!Q20
 F	probes/legacy-n-t-reference-args.case.json	S!R10
 F	probes/legacy-n-t-reference-args.case.json	S!R11
 F	probes/legacy-n-t-reference-args.case.json	S!S10
+F	probes/legacy-n-t-reference-args.case.json	S!S11
 F	probes/legacy-n-t-reference-args.case.json	S!T10
 F	probes/legacy-n-t-reference-args.case.json	S!T11
 F	probes/linest-modes.case.json	Sheet1!K1
@@ -3639,6 +3640,7 @@ F	probes/stat-argument-modes.case.json	Sheet1!H98
 F	probes/stat-argument-modes.case.json	Sheet1!H99
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
+F	probes/t-array-lift.case.json	S!E7
 F	probes/text-ap-locale-inferences.case.json	Sheet1!A6
 F	probes/text-ap-locale-inferences.case.json	Sheet1!A7
 F	probes/text-ap-locale-inferences.case.json	Sheet1!A8

@@ -3,7 +3,7 @@ id: T-1729
 title: "T over an array lifts element-wise in a dynamic formula"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -23,8 +23,9 @@ one T-over-array cell is probed: add an error element and a number element (`T({
 with excel-probe before generalizing. information.md "T over an array lifts element-wise".
 
 ## Acceptance criteria
-- [ ] probes/legacy-array-result S!G1:G2 leave eval/baseline/probes.txt; probes/text-argument-modes F9 still passes; no regressions.
-- [ ] information.md updated.
+- [x] probes/legacy-array-result S!G1:G2 leave eval/baseline/probes.txt; probes/text-argument-modes F9 still passes; no regressions
+  (except the two legacy spill rows of decision 0069).
+- [x] information.md updated.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -47,3 +48,16 @@ decision record how to baseline G11/S11 (protected path, hence opus). The number
 probe `T({"a",1,#N/A})` with excel-probe and update information.md.
 Also: CI `hygiene` fails because functions/text/common.rs is now 1008 lines (limit 1000, check_file_size.py). Put the array lift
 in a helper in another text module (or move fn_t out) rather than growing common.rs.
+
+## Outcome
+- `fn_t` moved to its own module (functions/text/t_function.rs, keeping common.rs under the
+  1000-line limit) and lifts over an array with N's `map_elements`: text and error elements kept,
+  numbers and booleans "". The static analysis gives T scalar arguments, as N.
+- New probe probes/t-array-lift (excel-graph) settles the element rule (was INFERRED) and shows that
+  a dynamic `T(range)` reads the top-left cell (S!E7 "x"; ours ""): recorded in references.md and
+  added to T-0985, which owns it.
+- Decision 0069: the legacy spill rows probes/legacy-array-result S!G11 and
+  probes/legacy-n-t-reference-args S!S11 passed only because T never spilled; they are baselined
+  under T-1713 (G11 added to its acceptance list), as N's G11:I11 already are.
+- Eval: probes/legacy-array-result S!G1:G2 fixed; t-array-lift 21 of 22 cells pass; 2 decision-0069
+  lines added.
