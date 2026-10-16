@@ -26,3 +26,24 @@ describes percent-encoding (`"a%20b%26c"`), which desktop Excel may do. An error
 Evidence: probes/info-logic-argument-modes-2 A1:A6, B5; probes/info-logic-argument-modes A15:B15 (oracle: excel-graph, 2026-10-09, T-1088).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081). Implemented in: crates/rustsheet-engine/src/functions/text/encodeurl.rs (T-1219).
 Tasks: T-1088, T-1219
+
+## Evidence floor probes (T-1628)
+Rule: on excel-graph every ENCODEURL cell probed is `#VALUE!` whatever the text (reserved characters, non-ASCII,
+a surrogate pair, `""`, numbers, booleans, a date, a cell reference, a range and an array literal, which spill as
+`#VALUE!`), including `ENCODEURL(ENCODEURL("a b"))` and `LEN(ENCODEURL("a b"))`; an error argument propagates
+(`ERROR.TYPE(ENCODEURL(1/0))` is 2). Every FILTERXML cell probed is `#VALUE!` too: well-formed and malformed XML,
+no-match XPath, several matches, attributes, `count()`/`string()`, numeric text, a non-text argument and an array argument.
+Evidence: probes/encodeurl-evidence-floor, probes/filterxml-evidence-floor (oracle: excel-graph, 2026-10-16, T-1628).
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081). The web results say nothing about desktop
+percent-encoding or XPath behavior.
+
+## GETPIVOTDATA without a pivot table (T-1628)
+Rule: with no pivot table in the workbook, `GETPIVOTDATA("Sales",ref,...)` is `#REF!` for every reference probed
+(a cell outside any pivot, a range, `OFFSET`/`INDIRECT` results, extra field/item pairs, an odd number of
+pairs, `""` as data_field, a numeric pivot_table or numeric item). An error in either of the first two arguments
+propagates as it came (`pivot_table` `NA()` is `#N/A`, `1/0` is `#DIV/0!`; `data_field` `NA()` is `#N/A`).
+`ERROR.TYPE(GETPIVOTDATA("Sales",A1))` is 4. Which error wins when both are errors, a boolean data_field and a
+reference to an existing second sheet are unprobed.
+Evidence: probes/getpivotdata-evidence-floor (oracle: excel-graph, 2026-10-16, T-1628).
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081).
+Not probed: a real pivot (field/item pairs, grand totals, missing items): the case builder cannot write pivot tables (T-1705).

@@ -1,0 +1,71 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "INDIRECT of defined-name text: value, a1 FALSE, sheet-qualified, scope shadowing, formula-valued and dynamic names, case (T-1682)",
+  "tags": [
+    "M8",
+    "names",
+    "probe"
+  ],
+  "names": {
+    "nm": "=Sheet1!$B$1",
+    "rng": "=Sheet1!$B$1:$B$3",
+    "Sheet2!nm": "=Sheet2!$A$1",
+    "off": "=OFFSET(Sheet1!$B$1,1,0)",
+    "plus": "=Sheet1!$B$1+1",
+    "k": "=5",
+    "txt": "=\"B1\"",
+    "MixedCase": "=Sheet1!$B$2",
+    "Sheet1!loc": "=Sheet1!$B$3",
+    "gl": "=Sheet2!$A$1"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=SUM(INDIRECT(\"nm\"))",
+        "A2": "=INDIRECT(\"nm\")",
+        "A3": "=SUM(INDIRECT(\"rng\"))",
+        "A4": "=ROWS(INDIRECT(\"rng\"))",
+        "A5": "=INDIRECT(\"nm\",FALSE)",
+        "A6": "=INDIRECT(\"nm\",TRUE)",
+        "A7": "=INDIRECT(\"Sheet1!nm\")",
+        "A8": "=INDIRECT(\"Sheet2!nm\")",
+        "A9": "=INDIRECT(\"Sheet2!gl\")",
+        "A10": "=INDIRECT(\"loc\")",
+        "A11": "=INDIRECT(\"Sheet1!loc\")",
+        "A12": "=INDIRECT(\"off\")",
+        "A13": "=ISREF(INDIRECT(\"off\"))",
+        "A14": "=INDIRECT(\"plus\")",
+        "A15": "=ISREF(INDIRECT(\"plus\"))",
+        "A16": "=INDIRECT(\"k\")",
+        "A17": "=INDIRECT(\"txt\")",
+        "A18": "=INDIRECT(\"NM\")",
+        "A19": "=INDIRECT(\"mixedcase\")",
+        "A20": "=INDIRECT(\"MIXEDCASE\")",
+        "A21": "=INDIRECT(\" nm\")",
+        "A22": "=INDIRECT(\"nm \")",
+        "A23": "=INDIRECT(\"nope\")",
+        "A24": "=ISREF(INDIRECT(\"rng\"))",
+        "A25": "=INDIRECT(\"rng\")",
+        "A26": "=INDIRECT(\"gl\")",
+        "A27": "=SUM(INDIRECT(\"gl\"))",
+        "A28": "=ISREF(INDIRECT(\"nm\"))",
+        "A29": "=ISREF(INDIRECT(\"Sheet1!nm\"))",
+        "A30": "=ADDRESS(ROW(INDIRECT(\"nm\")),COLUMN(INDIRECT(\"nm\")))",
+        "B1": 7,
+        "B2": 8,
+        "B3": 9
+      }
+    },
+    {
+      "name": "Sheet2",
+      "cells": {
+        "A1": "s2a1",
+        "B1": "s2b1",
+        "C1": "=INDIRECT(\"nm\")",
+        "C2": "=INDIRECT(\"gl\")"
+      }
+    }
+  ],
+  "expected": {}
+}
