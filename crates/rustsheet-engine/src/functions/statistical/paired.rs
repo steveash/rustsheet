@@ -177,6 +177,8 @@ impl Model {
             .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
             .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
         let mut values = Vec::with_capacity(keep);
+        // Two exits: once `keep` entries are held, a row below the used area ends the walk, and a
+        // column right of it ends its row; until then those blank cells are pushed unread.
         for row in left.row..=right.row {
             if row > last_row && values.len() >= keep {
                 break;
