@@ -261,10 +261,12 @@ Tasks: T-1627, T-1631, T-1674
 Rule: N of an array or array-valued expression is an array of N of each element (number kept, TRUE 1, text,
 FALSE and blanks 0, an error element kept); a range still gives its top-left cell (probes/info-logic-argument-modes
 A6:A7). Dynamic: `N(IF(1,{2;3}))` spills 2, 3, `N(B1:B3*1)` 1, 2, 3, `N({1,#N/A})` 1, `#N/A`, `N({"",FALSE})` 0, 0,
-`N(N({4,5}))` 4, 5, `SUM(N({1,2}))` 3, `ROWS(N({1;2;3}))` 3; `N({1,"a",TRUE})` with data in its spill range is `#SPILL!`.
+`N(N({4,5}))` 4, 5, `SUM(N({1,2}))` 3, `ROWS(N({1;2;3}))` 3, `N({1,"a",TRUE})` 1, 0, 1 (`#SPILL!` with data in its
+spill range), `SUM(N({1,"a",TRUE}))` 2 dynamic and legacy.
 Legacy: `SUM(N({1,2}))` is 3 and `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` 5, but a legacy cell
-`=N(IF(1,{2;3}))` is `#VALUE!` (not the top-left 2) and legacy `=N(B1:B3*1)` off the rows `#VALUE!`.
+`=N(IF(1,{2;3}))` is `#VALUE!` (not the top-left 2), though FORMULATEXT shows it with no `@`, and legacy
+`=N(B1:B3*1)` off the rows `#VALUE!`.
 Evidence: probes/n-array-lift (excel-graph, 2026-10-16, T-1616).
 Not implemented: the legacy cell `=N(IF(1,{2;3}))` gives 2, 3 spilled in ours instead of `#VALUE!` (S!D4:D5, T-1713).
-Status: VERIFIED (Excel for the web)
+Status: VERIFIED (excel-graph)
 Tasks: T-1616, T-1713

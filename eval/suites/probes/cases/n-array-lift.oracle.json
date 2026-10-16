@@ -42,6 +42,26 @@
     "t": "n",
     "v": 4.0
    },
+   "A22": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A23": {
+    "t": "n",
+    "v": 2.0
+   },
+   "A24": {
+    "t": "s",
+    "v": "=SUMPRODUCT(INDEX(B1:B6,@ROW(B1:B2)))"
+   },
+   "A25": {
+    "t": "s",
+    "v": "=SUMPRODUCT(INDEX(ABS(B1:B6),0))"
+   },
+   "A26": {
+    "t": "s",
+    "v": "=N(IF(1,{2;3}))"
+   },
    "A3": {
     "t": "n",
     "v": 3.0
@@ -78,9 +98,21 @@
     "t": "n",
     "v": 5.0
    },
+   "B22": {
+    "t": "n",
+    "v": 0.0
+   },
+   "C22": {
+    "t": "n",
+    "v": 1.0
+   },
    "D2": {
     "t": "n",
     "v": 1.0
+   },
+   "D23": {
+    "t": "n",
+    "v": 2.0
    },
    "D3": {
     "t": "n",
@@ -98,9 +130,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "d892014cb38472eb85d6e3d19a2833421ddad1f6bc544caf8cc1d67919360684",
+  "input_sha256": "2ba8f02ffd51b2a03841845d77daa3ea2f34b6c4882051c44070963f902752c8",
   "kind": "excel-graph",
-  "produced_at": "2026-10-16T16:31:01+00:00",
+  "produced_at": "2026-10-16T16:41:56+00:00",
   "version": null
  }
 }

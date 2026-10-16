@@ -190,8 +190,9 @@ shows `@{2;3}+0`, and a legacy cell `=INDEX(B1:B6,{3;2})` shows `=@INDEX(B1:B6,@
 probed gets none: `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` is 5 with no `@` (the classic trick; the engine matches
 since T-1616, N lifting over an array). An array-returning call is intersected like a scalar argument:
 legacy `SUMPRODUCT(INDEX(B1:B6,ROW(B1:B2)))` is 1 (B1) on and off the range's rows, and a function in INDEX's first
-argument keeps SUMPRODUCT's array context: legacy `SUMPRODUCT(INDEX(ABS(B1:B6),0))` is 21 on and off them
-(probes/n-array-lift A12, D2, A13, D3). Evidence: probes/legacy-index-array-index (excel-graph, 2026-10-15, T-0294);
+argument keeps SUMPRODUCT's array context: legacy `SUMPRODUCT(INDEX(ABS(B1:B6),0))` is 21 on and off them;
+FORMULATEXT shows them as `=SUMPRODUCT(INDEX(B1:B6,@ROW(B1:B2)))` and `=SUMPRODUCT(INDEX(ABS(B1:B6),0))`
+(probes/n-array-lift A12, D2, A13, D3, A24, A25). Evidence: probes/legacy-index-array-index (excel-graph, 2026-10-15, T-0294);
 fixtures/external-link-cached-ranges Refs!B89:B92 (`SUM`, `ROWS`, `ISREF` and `INDEX` of a legacy
 `INDEX([1]Uses!$A$1:$B$3,{1,2},1)`, Excel-cached). Implemented in `add_index_array_at` (expressions/parser/static_analysis/legacy.rs).
 
