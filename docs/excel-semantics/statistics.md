@@ -693,3 +693,15 @@ excel-graph, 2026-10-16, T-1325. The plain `CORREL({1;2},{1;2;3})` is unprobed.
 Ours: `#VALUE!` for different sizes, and exactly 1 for the same array twice.
 Status: VERIFIED (web)
 Tasks: T-1707
+
+## LINEST, LOGEST, GROWTH: probe findings
+Rule (excel-graph, 2026-10-16, T-1621; spilled cells are evidence too):
+- `const` and `stats` omitted, empty (`LINEST(y,x,,TRUE)`) or any nonzero number behave as TRUE; text for either is `#VALUE!`. `known_x's` omitted is 1,2,3,..; a single-cell known_y's/known_x's gives a 1x2 `{0, y}` (LINEST, slope 0) and, with stats, a zero-filled block.
+- Unequal lengths of y and x (one column each), a row-vector y with a column-vector x, a scalar x with a range y, and a 1-D transposed y with a multi-column x are `#REF!`; a text cell in x or y is `#VALUE!` (a range holding "a"), and so is `x&""` (an array of text). LOGEST of a non-positive or zero y is `#NUM!`.
+- Collinear x columns (LINEST(y,A:E) with E = 2A) still return numbers, not an error: the stats come out ~1e-16 noise (1.43e-16, 8.3e-17).
+- Dynamic arrays: GROWTH with `new_x's` omitted or equal to known_x's returns an array of y's size (it spills; `#SPILL!` when blocked); `GROWTH(y,x,new,FALSE)` with const FALSE and no new_x's spills too; with a scalar new_x it is a scalar. The shape of the result follows new_x's, not known_x's.
+Evidence: probes/linest-modes, logest-modes, growth-modes.
+Ours: spills of GROWTH collapse to the first cell, the LINEST stats block is short or `#N/A`, many last-digit differences (T-1741, T-1742, T-1743).
+FORECAST.ETS.SEASONALITY/STAT/CONFINT could not be lifted: excel-graph is `#N/A` for every valid call (section above), so cases would be junk evidence; the three stay below the floor until desktop values exist (T-1553).
+Status: VERIFIED (excel-graph)
+Tasks: T-1621, T-1741, T-1742, T-1743
