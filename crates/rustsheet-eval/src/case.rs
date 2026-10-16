@@ -143,7 +143,8 @@ pub struct DataTableSpec {
 }
 
 /// A workbook's calculation settings (`<calcPr>`), written by spec2xlsx (T-0428). The engine
-/// adapter ignores them until Phase 2 implements iterative calculation.
+/// adapter runs an iterative case's three oracle calculations (T-0429) but does not pass the
+/// settings on until Phase 2 implements iterative calculation (T-0401).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CalculationSpec {
     /// Iterative calculation on (`iterate="1"`).
