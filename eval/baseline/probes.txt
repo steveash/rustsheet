@@ -577,6 +577,7 @@ C	probes/text-bahttext-wide2.case.json	33
 C	probes/text-code-c1-controls.case.json	22
 C	probes/text-code-unichar-edges.case.json	30
 C	probes/text-collation-ifs.case.json	56
+C	probes/text-collation-longer.case.json	114
 C	probes/text-collation-lookups.case.json	93
 C	probes/text-collation-order.case.json	486
 C	probes/text-collation-unprobed.case.json	270
@@ -6047,6 +6048,15 @@ F	probes/stat-argument-modes.case.json	Sheet1!H98
 F	probes/stat-argument-modes.case.json	Sheet1!H99
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
+F	probes/text-collation-longer.case.json	Calc!A102
+F	probes/text-collation-longer.case.json	Calc!A104
+F	probes/text-collation-longer.case.json	Calc!A105
+F	probes/text-collation-longer.case.json	Calc!A107
+F	probes/text-collation-longer.case.json	Calc!A74
+F	probes/text-collation-longer.case.json	Calc!A75
+F	probes/text-collation-longer.case.json	Calc!A76
+F	probes/text-collation-longer.case.json	Calc!A96
+F	probes/text-collation-longer.case.json	Calc!A97
 F	probes/text-format-length-limit-d.case.json	S!A31
 F	probes/text-format-length-limit-f.case.json	Sheet1!A41
 F	probes/text-format-length-limit-f.case.json	Sheet1!A42
