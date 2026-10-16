@@ -586,3 +586,9 @@ Status: VERIFIED (excel-graph)
 Implemented in: `choose_array` (functions/lookup_and_reference/mod.rs), using IF's `evaluate_if_arg`/`if_arg_at`
 (functions/logical/mod.rs).
 Tasks: T-1508
+
+## XMATCH/XLOOKUP reference-form lookup and return arrays; capital Thorn
+A single-cell reference is a one-cell vector for XMATCH `lookup_array` and XLOOKUP `lookup_array`/`return_array`: `XMATCH(5,A1)` is 1, `XMATCH(5,one)` (single-cell defined name) is 1, `LET(r,A1,XMATCH(5,r))` is 1 and `XLOOKUP(5,A1,B3)` returns B3's value. A blank single-cell `return_array` yields 0 (`XLOOKUP(5,one,B2)` is 0). `XMATCH(10,@A1:A3)` is `#N/A` (on row 1 the `@` yields the scalar 5, not a vector containing 10) and `XLOOKUP(5,A1,@B1:B3)` is `#VALUE!` (a scalar `return_array`). A 3-D span `Sheet1:Sheet3!A1` as lookup_array or return_array is `#VALUE!` (not `#REF!`). `"Þ"="TH"` is TRUE and `"Þ"<"TI"` is TRUE (Thorn collates as TH), so `XMATCH("Þ",D1:D3)` is 1, `XMATCH("TI",D1:D3,1)` is 3.
+Evidence: probes/xmatch-xlookup-reference-forms H1-H16, probes/xmatch-xlookup-3d-lookup-array H1-H3 (excel-graph, 2026-10-16, T-1698).
+Status: VERIFIED (excel-graph); the engine already matches every cell.
+Tasks: T-1698

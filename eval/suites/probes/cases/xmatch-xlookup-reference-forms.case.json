@@ -1,0 +1,46 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "XMATCH/XLOOKUP lookup_array/return_array as single-cell reference, @-intersected range, LET-bound reference, single-cell defined name, blank/number return cell, and capital Thorn collation (T-1698).",
+ "tags": [
+  "M2",
+  "lookup",
+  "probe"
+ ],
+ "names": {
+  "one": "=Sheet1!$A$1"
+ },
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 5,
+    "A2": 10,
+    "A3": 20,
+    "B1": 7,
+    "B3": "x",
+    "D1": "\u00de",
+    "D2": "TH",
+    "D3": "TI",
+    "F1": 5,
+    "G1": "=LET(r,A1,XMATCH(5,r))",
+    "H1": "=XMATCH(10,@A1:A3)",
+    "H2": "=XMATCH(5,A1)",
+    "H3": "=XMATCH(5,one)",
+    "H4": "=XLOOKUP(5,one,B1)",
+    "H5": "=XLOOKUP(5,one,B2)",
+    "H6": "=XLOOKUP(5,one,A1)",
+    "H7": "=XLOOKUP(5,A1,@B1:B3)",
+    "H8": "=LET(r,A1,XLOOKUP(5,r,r))",
+    "H9": "=D1=\"TH\"",
+    "H10": "=D1<\"TI\"",
+    "H11": "=XMATCH(\"TH\",D1:D3)",
+    "H12": "=XMATCH(\"\u00de\",D1:D3)",
+    "H13": "=XMATCH(\"TI\",D1:D3,1)",
+    "H14": "=XMATCH(\"\u00de\",D2:D3,-1)",
+    "H15": "=XLOOKUP(5,A1,B3)",
+    "H16": "=XLOOKUP(5,A1,one)"
+   }
+  }
+ ],
+ "expected": {}
+}

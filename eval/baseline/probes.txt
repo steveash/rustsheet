@@ -744,7 +744,9 @@ C	probes/xlookup-omitted-lookup-value.case.json	41
 C	probes/xlookup-row-column-picks.case.json	45
 C	probes/xmatch-blank-extensions.case.json	43
 C	probes/xmatch-text-bool-equal-runs.case.json	134
+C	probes/xmatch-xlookup-3d-lookup-array.case.json	3
 C	probes/xmatch-xlookup-blanks.case.json	69
+C	probes/xmatch-xlookup-reference-forms.case.json	17
 C	probes/xnpv-argument-count.case.json	3
 C	probes/yield-solver-sweep.case.json	66
 F	probes/asin-argument-sweep.case.json	Sheet1!B10
