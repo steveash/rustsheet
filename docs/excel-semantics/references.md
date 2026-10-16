@@ -228,8 +228,7 @@ top-left cached cell (`{0,2},1` is "Hello!", 5; `{1,2},0` is "Hello!", 5), an ou
 (`{1,4},1` is "Hello!", #REF!) and a cached `#N/A` stays that element (`INDEX(…A1:C3,1,{1,2,3})` is "Hello!", 10, #N/A)
 (fixtures/external-link-cached-ranges Refs!B83:D88, excel-graph, 2026-10-14, T-1546; the engine matches).
 In a legacy (non-array) formula, an INDEX with an index array over an external range is a single-cell
-reference to its *first element*, not to the range's top-left cell: the legacy formula reads the index array's
-first element. `SUM(INDEX(…,{1,2},1))` is 0 ("Hello!" is text), `ROWS(…)` is 1, `ISREF(…)` is TRUE and a further
+reference to its *first element*, not to the range's top-left cell. `SUM(INDEX(…,{1,2},1))` is 0 ("Hello!" is text), `ROWS(…)` is 1, `ISREF(…)` is TRUE and a further
 `INDEX(INDEX(…,{1,2},1),2)` is `#REF!` (Refs!B89:B92). With `{2,1}` the two candidates differ, and the first element
 (A2, 5) wins: `SUM(INDEX([1]Uses!$A$1:$B$3,{2,1},1))` is 5, `INDEX(INDEX(…,{2,1},1),1)` 5, `…&""` "5",
 `COUNTA(…)` 1, `ROWS(…)` 1, `ISREF(…)` TRUE, `INDEX(INDEX(…,{2,1},1),2)` `#REF!`; across a row
