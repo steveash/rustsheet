@@ -3,7 +3,7 @@ id: T-1660
 title: "Score the spill extent of spec cases: cells absent from the oracle sidecar must be empty in the engine"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
