@@ -1585,7 +1585,7 @@ FORMULATEXT keeps the name as typed. Ours matches, and takes LAMBDA parameters s
 (unprobed; T-1658). Formulas are stored in R1C1 form, where an in-range uppercase `R<n>C<m>`
 reads back as a cell, so such a name is stored as `_xlpm.R1C1`, the prefix Excel's own xlsx form
 puts on every LET and LAMBDA name and the parser drops. An out-of-range one (`R0C1`) is a name in R1C1 form already (T-1657). Unprobed:
-a bare `=R1C1` outside a LET in A1 mode; ours reads it as a name (`#NAME?`), as it does `=r1c1`.
+a bare `=R1C1` outside a LET in A1 mode; ours reads it as a name (`#NAME?`), as it does `=r1c1` (T-1715).
 A bare `RC`, `R1C1D`, `R0C1` or `RCR` token in a cell formula of an uploaded file makes Graph reject
 the workbook (so it is unprobed).
 Unprobed: brackets cannot occur in sheet or defined names, so `R[1]C` forms are not covered;
