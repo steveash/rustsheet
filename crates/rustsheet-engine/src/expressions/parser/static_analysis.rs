@@ -1018,7 +1018,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Istext => args_signature_scalars(arg_count, 1, 0),
         Function::Na => args_signature_scalars(arg_count, 0, 0),
         // A reference argument (a range, a table's data area: `SHEET(Table1[])`) gives its sheet's
-        // number and is not implicitly intersected (probes/info-logic-argument-modes A12).
+        // number and is not implicitly intersected (probes/info-logic-argument-modes A12; legacy formulas:
+        // calc_test_no_export/tables.xlsx sheet9 A5:A8).
         Function::Sheet if arg_count == 1 => args_signature_one_vector(arg_count),
         Function::Sheet => args_signature_scalars(arg_count, 0, 1),
         Function::Type => args_signature_one_vector(arg_count),

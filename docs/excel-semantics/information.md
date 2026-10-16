@@ -255,3 +255,5 @@ NOW or TODAY with a threshold the real clock could cross (`NOW()>45000`) cannot 
 can never change and are.
 Status: VERIFIED (excel-graph)
 Tasks: T-1627, T-1631
+
+A legacy (non-dynamic) formula does not implicitly intersect SHEET's single reference argument: `SHEET(Table1[])` gives the table's sheet (1..4 for Table1..Table4 on four sheets; Excel-cached values in crates/rustsheet-xlsx/tests/calc_test_no_export/tables.xlsx sheet9 A5:A8; T-1674).
