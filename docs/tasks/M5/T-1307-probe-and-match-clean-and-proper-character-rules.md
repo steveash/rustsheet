@@ -3,7 +3,7 @@ id: T-1307
 title: "Probe and match CLEAN and PROPER character rules: non-printing characters above 31, letters after digits and apostrophes, non-ASCII letters"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
