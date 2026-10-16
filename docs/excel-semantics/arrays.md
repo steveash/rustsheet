@@ -417,6 +417,47 @@ value sort over three keys is hierarchical at every level (B19-B21), and a paren
 rows, not of its children's values: AVERAGE ranks East (15) before West (18.125) and `LAMBDA(x,100-SUM(x))` West (27.5)
 before East (55), where the sum, the mean or the largest child would disagree (B22-B26). Boolean aggregates sort
 numbers < text < FALSE < TRUE < errors, reversed descending (B27-B28, B37).
+T-1325 follow-up (probes/groupby-pivotby-functions, -functions2, -functions3: 97 GROUPBY and PIVOTBY questions over the
+same Data sheet, excel-graph, 2026-10-16; "functions", "functions2", "functions3" below):
+- Function arrays: a row of functions (`HSTACK(SUM,MAX)`, also `VSTACK(HSTACK(..))`) adds a value column per function under a
+  row of labels (`""` over the keys), with or without shown headers (functions G!A1, G!A21; under PIVOTBY's column keys, above
+  the shown field names: P!A121, functions P!A621); a column of them (`VSTACK(SUM,MAX)`, also `TRANSPOSE(HSTACK(..))`) repeats
+  every group row and total row once per function after a label column, which shown headers head with `""` (functions G!A61,
+  G!A101, functions2 G!A681, P!A21-A61; PIVOTBY P!A601). One function in HSTACK is that function, no label row (G!A601); nested
+  HSTACKs flatten (functions2 G!A581). Labels are the function names as written ("SUM", "STDEV.S", "PERCENTOF") and "CUSTOM"
+  for a LAMBDA (functions G!A181, G!A521, G!A721). Custom labels: values beside a column of functions label its rows
+  (`HSTACK(SUM,"a")` or `HSTACK(SUM,5)` is a label column of "a" or 5 before the values, a third element `HSTACK(SUM,5,MAX)`
+  ignored: functions G!A221, functions2 G!A121-A181, also in PIVOTBY: P!A101), values below a row of functions label its
+  columns (`VSTACK(SUM,5)`: a label row of 5; functions2 G!A161). `#VALUE!` (ERROR.TYPE 3): a 2-D array of functions, an array
+  constant `{1,2}`, a value before the function (`HSTACK(5,SUM)`) (functions G!A201, G!A261, functions2 G!A101); an error element
+  is that error (`HSTACK(SUM,NA())`, `VSTACK(SUM,NA())`: `#N/A`, G!A781, functions2 G!A701).
+- Functions and value columns pair up: n functions over one value column, one function over n, or n over n with function i
+  on column i (`HSTACK(SUM,MAX)` over Sales and Units is SUM of Sales next to MAX of Units, and `VSTACK` gives the same pairs as
+  rows; PIVOTBY too, with its Total columns filled: functions G!A41, G!A81, functions2 P!A1, P!A21); 3 over 2 and 2 over 3 are
+  `#VALUE!` (functions2 G!A1-A61). PIVOTBY's Total columns are `""` only for one function over several value columns (P!Y97,
+  functions P!A701).
+- Detected headers (`field_headers` omitted) are shown, as 3 shows them, with a row of two or more functions (GROUPBY and
+  PIVOTBY: functions2 G!A641, functions3 P!A1), not with a column of them, a labelled one, or `field_headers` 1 (functions3
+  G!A1-A81, P!A31).
+- sort_order past the keys counts the output value columns: 3 is the second function of a row (functions G!A141, functions2
+  G!A221, PIVOTBY P!A181); a column of functions sorts by its first function (functions2 G!A201, G!A261, P!A201, P!A221), each
+  group's rows staying in function order.
+- Arguments: a function passed by name gets its minimum argument count: one (SUM, MEDIAN, SUMPRODUCT, ABS, STDEV.S), two
+  (PERCENTOF, CORREL, PEARSON, RSQ, COVARIANCE.P, and IF, ROUND, SUMIF, whose array results are `#VALUE!` per cell); none or
+  three or more (NOW, TEXTJOIN, XLOOKUP) make the whole result `#VALUE!` (functions G!A421, functions2 G!A281-A501). A LAMBDA gets
+  one argument when it needs at most one (`LAMBDA([x],1)`; `LAMBDA(x,[y],ISOMITTED(y))` is TRUE: an optional parameter is not
+  passed) and two when it needs two; three is `#VALUE!` for the whole result (functions G!A381, G!A401, functions2 G!A601).
+- The second argument is the relative set's values, as an array (ISREF FALSE) in source order without the header row: in
+  GROUPBY every kept row, for every group and the total (`LAMBDA(x,y,ROWS(y))` is 10, 4 with a filter keeping 4; functions
+  G!A301-A361, G!A441, G!A681). So `LAMBDA(x,y,SUM(x)/SUM(y))` equals PERCENTOF (G!A281), also sorted by it (G!A661).
+- A LAMBDA whose result is a reference, written (`Data!D2`, `Data!D2:D3`), picked by IF or returned by INDEX, is `#VALUE!` in
+  every cell (functions G!A541-A581; PIVOTBY P!A841).
+Unprobed (T-1325): mismatched heights inside a function array (the engine pads with `#N/A`, so the result is `#N/A`); which of
+several error elements wins (the engine: the first evaluated); a labelled row of several functions with detected headers (the
+engine does not show them); a LAMBDA without parameters (the engine: `#VALUE!`); other functions passed by name whose minimum
+argument count is not 1 (the engine gives them one argument, T-1706). CORREL, PEARSON and RSQ over arrays of different sizes
+are `#N/A` per group in Excel, `#VALUE!` here, and their total rows differ in the last digit (functions G!B421, functions2
+G!B281, G!B301): a CORREL/PEARSON/RSQ gap, T-1707.
 Ours: GROUPBY (T-1322, functions/lookup_and_reference/groupby.rs): the shared `Grouping` core (hash grouping on
 `cell_key` with -0 as 0, sorting with `sort_key_cmp` and numbers compared exactly), a LAMBDA or eta-name function called
 once per group and value column through one `LambdaCaller`, field_headers and auto-detect, total_depth 0/±1, `""`
@@ -425,15 +466,20 @@ sort_order (`Model::sort_order` into a `SortOrder`; `Grouping::sort_by_keys`, an
 column, hierarchical over the key prefixes with one call per group and parent), filter_array (`Model::filter_rows`), the
 error values first in argument order (`Model::evaluate_options`), and scalar field_relationship 0/1 (1 is `#VALUE!` with
 total_depth ±2, and the default layout otherwise). Since T-1324: subtotals (grouping.rs), the table sorted by a value and
-an array field_relationship (below). Not yet: function arrays (T-1325; all
-`#N/IMPL!` until then), PERCENTOF's relative set (T-1325; called with one argument today), a one-cell reference result (`#VALUE!` in Excel, its value here: T-1325).
+an array field_relationship (below). Since T-1325 (functions/lookup_and_reference/group_functions.rs): the function
+argument is read as a grid of functions and labels (`Model::function_elements`, `Model::function_argument`), paired with
+the value columns (`Functions::pair_with`) and laid out as columns or rows (`Functions::shape`); each function is called
+through `Model::lambda_caller` with one or two arguments, its body read in reference context so a reference result is
+`#VALUE!` (`LambdaCaller::keeping_references`); PERCENTOF passed by name sums each relative set once and divides
+(`percent_of`, shared with the PERCENTOF function), and a two-parameter LAMBDA is charged against the cell-visit cap (see
+"GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap").
 PIVOTBY (T-1326, functions/lookup_and_reference/pivotby.rs): two `Grouping`s of the same records (rows, columns), both size
 checked while grouping and before any call; the grid with `""` cells, totals 0/±1 on both axes, the Total columns `""` with
 several values, shown and generated headers, key and value sorts with the quirks above, and GROUPBY's argument readers
 (`evaluate_options`, `sort_order`, `filter_rows`: their rules hold for PIVOTBY too, P!A1321-A1601 below);
 `Grouping::sort_by_aggregate` takes whether parents sort by their aggregate (rows, GROUPBY) or keep their key order
-(PIVOTBY columns). `#N/IMPL!`: column subtotals over several value columns (T-1700), function arrays and PERCENTOF
-(T-1325, T-1327), relative_to (T-1327).
+(PIVOTBY columns). `#N/IMPL!`: column subtotals over several value columns (T-1700), two-argument functions and
+relative_to (T-1327). Function arrays since T-1325, as in GROUPBY.
 Unprobed (PIVOTBY): an error header cell in a joined column name (the engine: that error); a joined column name longer
 than a cell holds (the engine: `#VALUE!`, after the 32,767-character cell limit in coercion.md "Text longer than 32,767
 characters"); value sorts over three or more fields (rows: every level by its aggregate; columns: the last); and
@@ -483,7 +529,24 @@ the keys or values themselves (the engine: one error), a lifted field_relationsh
 per element, as the row and column probed), and a 1x1 array field_relationship such as `{0}` or `{1}` (the engine lifts it
 to one cell, as `{FALSE}` is in followup G!A921).
 Status: VERIFIED (web)
-Tasks: T-1276, T-1328, T-1322, T-1323, T-1326, T-1324, T-1700
+Tasks: T-1276, T-1328, T-1322, T-1323, T-1326, T-1324, T-1700, T-1325
+
+## GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap
+Rule: Excel calls a two-parameter LAMBDA in GROUPBY or PIVOTBY once per aggregate cell with the cell's values and its whole
+relative set, so N records in G groups cost about G x N cells, without limit. RustSheet charges every call the cells it
+is given (the cell's rows, plus the relative set a two-parameter LAMBDA gets or PERCENTOF sums) before building its
+arguments, against the 2^27-cell cap of the lifted *IF(S) calls (`too_many_visits`, criteria.md); once the charges would
+pass it, no further call is made and the whole result is `#ERROR!`. One-parameter calls rarely get there (each record is
+given once per output column and subtotal level): `GROUPBY` over 1048575 records with 100 functions is `#ERROR!`, with 10
+it computes (unit test `one_parameter_calls_are_charged_against_the_visit_cap_too`).
+Example: `GROUPBY(SEQUENCE(20000),SEQUENCE(20000),LAMBDA(x,y,ROWS(y)))` (20000 groups x 20000 rows) is `#ERROR!`, while
+PERCENTOF passed by name, summed once per relative set (O(N)), and one-parameter LAMBDAs compute it (unit test
+`two_parameter_lambdas_are_charged_against_the_visit_cap`).
+Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5), SPEC-0006 Design step 3.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::aggregate`),
+crates/rustsheet-engine/src/limits.rs (`too_many_visits`, `MAX_LIFTED_CELL_VISITS`)
+Tasks: T-1325
 
 ## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!
 Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:
@@ -553,7 +616,7 @@ few arguments (`LET(f,_xleta.SUM,f())`): the engine gives whatever the function 
 Evidence: probes/eta-reduced-names (30 questions, excel-graph, 2026-10-14, T-1466); probes/m7-argument-modes F28:H51.
 Ours: an unbound `_xleta.` name of a known function evaluates to a LAMBDA whose definition is made per call
 (`Model::unbound_name`, `eta_definition`, lambda.rs); BYROW and BYCOL take only a LAMBDA (`by_slices_lambda`). Not yet:
-`ISERROR(_xleta.SUM)` is TRUE, and `_xleta.IF` with one argument is `#ERROR!` where Excel gives `#CALC!` (T-1511). GROUPBY and PIVOTBY call an eta name through the same path (T-1322, T-1326), and share the "is it a LAMBDA" check with BYROW and BYCOL (`as_lambda`, bycol_byrow.rs).
+`ISERROR(_xleta.SUM)` is TRUE, and `_xleta.IF` with one argument is `#ERROR!` where Excel gives `#CALC!` (T-1511). GROUPBY and PIVOTBY call an eta name through the same path (T-1322, T-1326), with its minimum argument count (two for PERCENTOF and CORREL: "GROUPBY and PIVOTBY", T-1325), and share the "is it a LAMBDA" check with BYROW and BYCOL (`as_lambda`, bycol_byrow.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1466
 

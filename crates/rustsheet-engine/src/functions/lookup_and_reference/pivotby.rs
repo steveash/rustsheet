@@ -4,14 +4,14 @@
 //! docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY", evidence probes/groupby-pivotby sheet P,
 //! its follow-ups (T-1328) and probes/pivotby-followup (excel-graph, 2026-10-16, T-1326).
 
+use super::group_functions::{Aggregate, Functions, Shape};
 use super::groupby::{
-    at, function_argument, function_arrays_error, grand_total_label, is_function_array, key_names,
-    not_implemented, total_label_cells, value_error, value_name, values_have_header, width,
-    FieldHeaders,
+    grand_total_label, key_names, not_implemented, total_label_cells, value_name,
+    values_have_header, width, FieldHeaders,
 };
 use super::grouping::{
-    effective_depth, empty_text, shown_key, subtotal_levels, Aggregates, Grouping, Line,
-    ParentOrder, SortOrder,
+    at, effective_depth, empty_text, shown_key, subtotal_levels, value_error, Aggregates, Grouping,
+    Line, ParentOrder, Relative, SortOrder,
 };
 use crate::{
     calc_result::CalcResult,
@@ -21,14 +21,13 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::{logical::LambdaCaller, Function},
     limits::check_array_size,
     model::Model,
 };
 
-/// One column of the PIVOTBY grid right of the row keys: value column `value` of column group
-/// `group`, of the subtotal of the column groups `start..end` (which share their first `level`
-/// keys), or the total of value column `value`.
+/// One column of the PIVOTBY grid right of the row keys (and the label column): output value
+/// column `value` ([`Functions::shape`]) of column group `group`, of the subtotal of the column
+/// groups `start..end` (which share their first `level` keys), or the total of it.
 #[derive(Clone, Copy)]
 enum Slot {
     Group {
@@ -59,7 +58,16 @@ struct Pivot {
     col_sort: SortOrder,
     /// The record rows (indices into the three arrays), headers and filtered rows left out.
     records: Vec<usize>,
+    /// The output shape of the functions.
+    shape: Shape,
 }
+
+/// The relative set of a call that has none: PIVOTBY's one-argument functions.
+// TODO(T-1327): the relative_to sets.
+const NO_RELATIVE: Relative<'static> = Relative {
+    id: None,
+    rows: &[],
+};
 
 impl Model {
     /// `=PIVOTBY(row_fields, col_fields, values, function, [field_headers], [row_total_depth],
@@ -76,9 +84,9 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
-        let (pivot, function) = self.pivotby_args(args, cell)?;
+        let (pivot, mut functions) = self.pivotby_args(args, cell)?;
         let (mut rows, mut cols, height) = pivot_groupings(&pivot, cell)?;
-        let mut caller = self.lambda_caller(&function, 1);
+        let functions = &mut functions;
         // Rows sort by a value only when there is a Total column: with col_total_depth 0 they keep
         // the key order (probes/pivotby-followup P!A781, P!A1221; with it, P!M121, P!A801).
         // Columns sort by a value with or without the Total row (P!A821, P!A841).
@@ -89,7 +97,7 @@ impl Model {
         };
         let values = &pivot.values;
         let row_totals = self.sort_pivot_groups(
-            &mut caller,
+            functions,
             &mut rows,
             values,
             row_sort,
@@ -106,27 +114,31 @@ impl Model {
         };
         let col_sort = &pivot.col_sort;
         let col_totals =
-            self.sort_pivot_groups(&mut caller, &mut cols, values, col_sort, col_parents, cell);
+            self.sort_pivot_groups(functions, &mut cols, values, col_sort, col_parents, cell);
 
         let col_lines = cols.lines(col_levels, pivot.col_depth < 0);
-        let slots = slots(&col_lines, width(values), pivot.col_depth);
+        let slots = slots(&col_lines, pivot.shape.columns, pivot.col_depth);
         let mut output = Vec::with_capacity(height);
-        output.extend(header_rows(&pivot, &cols, &slots));
+        output.extend(header_rows(&pivot, functions, &cols, &slots));
         let totals = Totals {
             rows: row_totals,
             cols: col_totals,
         };
-        let grid = self.grid_rows(&mut caller, &pivot, (&rows, &cols), &slots, &totals, cell);
+        let grid = self.grid_rows(functions, &pivot, (&rows, &cols), &slots, &totals, cell);
         output.extend(grid);
+        if let Some(error) = functions.refused() {
+            return Err(error);
+        }
         Ok(output)
     }
 
     /// The row groups' rows with their subtotals, and the Total row (before them for
     /// `row_total_depth` -1, after them for 1, none for 0: P!A1, P!Y1, probes/pivotby-followup
-    /// P!A101; "Grand Total" with subtotals, P!A97, probes/groupby-subtotals G!A661).
+    /// P!A101; "Grand Total" with subtotals, P!A97, probes/groupby-subtotals G!A661), each
+    /// repeated per function when the functions are laid out as rows (functions2 P!A21, P!A61).
     fn grid_rows(
         &mut self,
-        caller: &mut LambdaCaller,
+        functions: &mut Functions,
         pivot: &Pivot,
         (rows, cols): (&Grouping, &Grouping),
         slots: &[Slot],
@@ -136,14 +148,7 @@ impl Model {
         let levels = subtotal_levels(pivot.row_depth);
         let lines = rows.lines(levels, pivot.row_depth < 0);
         let row_fields = width(&pivot.row_keys);
-        let mut column_of = vec![usize::MAX; pivot.values.len()];
-        for (index, group) in cols.groups.iter().enumerate() {
-            for &row in &group.rows {
-                if let Some(entry) = column_of.get_mut(row) {
-                    *entry = index;
-                }
-            }
-        }
+        let column_of = cols.group_of(pivot.values.len());
         let mut grid = Grid {
             values: &pivot.values,
             slots,
@@ -151,40 +156,41 @@ impl Model {
             buckets: vec![Vec::new(); cols.groups.len()],
             merged: Vec::new(),
         };
-        let mut output = Vec::with_capacity(lines.len() + 1);
+        let mut output = Vec::with_capacity((lines.len() + 1) * pivot.shape.rows_per_group);
+        let blank = functions.blank_totals(width(&pivot.values));
         let mut total = (pivot.row_depth != 0).then(|| {
             let label = total_label_cells(row_fields, levels);
             let reuse = |slot| totals.total_row_cell(slot);
-            self.grid_row(caller, &mut grid, label, &pivot.records, reuse, cell)
+            self.grid_row(functions, &mut grid, label, &pivot.records, reuse, cell)
         });
         if pivot.row_depth < 0 {
-            output.extend(total.take());
+            output.extend(total.take().into_iter().flatten());
         }
         for line in lines {
             // A subtotal row is the function of all its groups' records (P!A97).
             let Some((label, records)) = rows.line_parts(line, row_fields) else {
                 continue;
             };
-            let values = &pivot.values;
-            let reuse = |slot| totals.line_total_cell(line, slot, values);
-            output.push(self.grid_row(caller, &mut grid, label, &records, reuse, cell));
+            let reuse = |slot| totals.line_total_cell(line, slot, blank);
+            output.extend(self.grid_row(functions, &mut grid, label, &records, reuse, cell));
         }
-        output.extend(total);
+        output.extend(total.into_iter().flatten());
         output
     }
 
-    /// One grid row: `label` (the row keys), then the cell of each slot over `records` (the row's
-    /// records, in source order), or the value `reuse` has for it (an aggregate a value sort
-    /// computed).
+    /// One grid line's rows: `label` (the row keys) and the label of the function (functions as
+    /// rows, one row each), then the cell of each slot over `records` (the line's records, in
+    /// source order), or, in the first row, the value `reuse` has for it (an aggregate a value
+    /// sort computed).
     fn grid_row(
         &mut self,
-        caller: &mut LambdaCaller,
+        functions: &mut Functions,
         grid: &mut Grid<'_>,
-        mut row: Vec<ArrayNode>,
+        label: Vec<ArrayNode>,
         records: &[usize],
         reuse: impl Fn(Slot) -> Option<ArrayNode>,
         cell: CellReferenceIndex,
-    ) -> Vec<ArrayNode> {
+    ) -> Vec<Vec<ArrayNode>> {
         for bucket in &mut grid.buckets {
             bucket.clear();
         }
@@ -194,53 +200,64 @@ impl Model {
                 bucket.push(record);
             }
         }
-        for &slot in grid.slots {
-            if let Some(value) = reuse(slot) {
-                row.push(value);
-                continue;
+        let shape = functions.shape();
+        let mut output = Vec::with_capacity(shape.rows_per_group);
+        for sub_row in 0..shape.rows_per_group {
+            let mut row = label.clone();
+            if shape.label_column {
+                row.push(functions.label(functions.pair_at(sub_row, 0)));
             }
-            let cell_rows: &[usize] = match slot {
-                Slot::Group { group, .. } => grid.buckets.get(group).map_or(&[][..], Vec::as_slice),
-                // A subtotal column's records are its groups', in source order
-                // (`LAMBDA(x,ARRAYTOTEXT(x))`, probes/groupby-subtotals G!A1081).
-                Slot::Subtotal { start, end, .. } => {
-                    grid.merged.clear();
-                    for bucket in grid.buckets.get(start..end).unwrap_or_default() {
-                        grid.merged.extend_from_slice(bucket);
-                    }
-                    grid.merged.sort_unstable();
-                    &grid.merged
+            for &slot in grid.slots {
+                if let Some(value) = reuse(slot).filter(|_| sub_row == 0) {
+                    row.push(value);
+                    continue;
                 }
-                Slot::Total { .. } => records,
-            };
-            row.push(self.pivot_cell(caller, grid.values, slot, cell_rows, cell));
+                let cell_rows: &[usize] = match slot {
+                    Slot::Group { group, .. } => {
+                        grid.buckets.get(group).map_or(&[][..], Vec::as_slice)
+                    }
+                    // A subtotal column's records are its groups', in source order
+                    // (`LAMBDA(x,ARRAYTOTEXT(x))`, probes/groupby-subtotals G!A1081).
+                    Slot::Subtotal { start, end, .. } => {
+                        grid.merged.clear();
+                        for bucket in grid.buckets.get(start..end).unwrap_or_default() {
+                            grid.merged.extend_from_slice(bucket);
+                        }
+                        grid.merged.sort_unstable();
+                        &grid.merged
+                    }
+                    Slot::Total { .. } => records,
+                };
+                let at = Aggregate {
+                    rows: cell_rows,
+                    relative: NO_RELATIVE,
+                };
+                row.push(self.pivot_cell(functions, grid.values, slot, sub_row, at, cell));
+            }
+            output.push(row);
         }
-        row
+        output
     }
 
-    /// Evaluates and checks the PIVOTBY arguments. Function arrays (T-1325), `relative_to`
+    /// Evaluates and checks the PIVOTBY arguments. Two-argument functions and `relative_to`
     /// (T-1327) and column subtotals over several value columns are `#N/IMPL!`, never a wrong
     /// value.
     fn pivotby_args(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-    ) -> Result<(Pivot, CalcResult), CalcResult> {
+    ) -> Result<(Pivot, Functions), CalcResult> {
         if !(4..=11).contains(&args.len()) {
             return Err(CalcResult::new_args_number_error(cell));
         }
         let row_keys = self.eval_to_array(&args[0], cell)?;
         let col_keys = self.eval_to_array(&args[1], cell)?;
         let values = self.eval_to_array(&args[2], cell)?;
-        // Function arrays (`HSTACK(SUM,MAX)`, P!A121) are T-1325's.
-        if is_function_array(&args[3]) {
-            return Err(function_arrays_error(cell, "PIVOTBY"));
-        }
         // Every error value first, in argument order, then the validation, as in GROUPBY: an error
         // option beats an invalid one before or after it and a non-function
         // (probes/pivotby-followup P!A1401-A1461, P!A1261, P!A1281).
-        let mut options = self.evaluate_options(&args[3..], cell)?.into_iter();
-        let function = options.next().flatten().unwrap_or(CalcResult::EmptyArg);
+        let function = self.function_elements(&args[3], cell)?;
+        let mut options = self.evaluate_options(&args[4..], cell)?.into_iter();
         let field_headers = options.next().flatten();
         let row_depth = options.next().flatten();
         let row_sort = options.next().flatten();
@@ -251,7 +268,7 @@ impl Model {
         let row_depth_given = row_depth.is_some();
         let col_depth_given = col_depth.is_some();
 
-        let (function, function_array) = function_argument(function, "PIVOTBY", cell)?;
+        let mut functions = self.function_argument(&function, "PIVOTBY", cell)?;
         let headers = self.field_headers(field_headers, cell)?;
         let (row_fields, col_fields, value_columns) =
             (width(&row_keys), width(&col_keys), width(&values));
@@ -272,9 +289,12 @@ impl Model {
                 "row_fields, col_fields and values must have the same height",
             ));
         }
-        // GROUPBY's sort_order rules hold on both axes (P!A141, P!A161, P!A721, P!A1001, P!A1321-A1381).
-        let row_sort = self.sort_order(row_sort, row_fields, value_columns, cell)?;
-        let col_sort = self.sort_order(col_sort, col_fields, value_columns, cell)?;
+        functions.pair_with(value_columns, cell)?;
+        let shape = functions.shape();
+        // GROUPBY's sort_order rules hold on both axes (P!A141, P!A161, P!A721, P!A1001, P!A1321-A1381),
+        // over the output value columns (functions2 P!A181-A221).
+        let row_sort = self.sort_order(row_sort, row_fields, shape.columns, cell)?;
+        let col_sort = self.sort_order(col_sort, col_fields, shape.columns, cell)?;
         let header_row = match headers {
             // Only the values decide, as in GROUPBY (probes/pivotby-followup P!A1, P!A1021).
             FieldHeaders::Detect => values_have_header(&values).ok_or_else(|| {
@@ -282,6 +302,12 @@ impl Model {
             })?,
             FieldHeaders::No | FieldHeaders::Generated => false,
             FieldHeaders::Hidden | FieldHeaders::Shown => true,
+        };
+        let headers = match headers {
+            FieldHeaders::Detect if header_row && functions.shows_detected_headers() => {
+                FieldHeaders::Shown
+            }
+            other => other,
         };
         let first = usize::from(header_row);
         if first >= height {
@@ -291,27 +317,22 @@ impl Model {
         // row may be left out of the filter, and keeping no record is #VALUE! (P!A281,
         // P!A1481-A1601, probes/groupby-pivotby-followup G!A881, -followup3 G!A133).
         let records = self.filter_rows(filter, height, first, cell)?;
-        if function_array {
-            return Err(function_arrays_error(cell, "PIVOTBY"));
-        }
         // TODO(T-1327): relative_to. An array there is lifted per element in Excel
         // (probes/pivotby-followup P!A681).
         if relative_to.is_some() {
             return Err(not_implemented(cell, "PIVOTBY relative_to"));
         }
-        // TODO(T-1327): PERCENTOF gets each cell's values and its relative set (the column total
-        // when relative_to is omitted: P!Y25); called with one argument it would be wrong.
-        if matches!(&function, CalcResult::Lambda(id)
-            if self.eta_lambdas.get(id) == Some(&Function::Percentof))
-        {
-            return Err(not_implemented(cell, "PIVOTBY with PERCENTOF"));
+        // TODO(T-1327): PERCENTOF and the other two-argument functions get each cell's values and
+        // its relative set (the column total when relative_to is omitted: P!Y25).
+        if functions.needs_relative() {
+            return Err(not_implemented(cell, "PIVOTBY with two-argument functions"));
         }
         let row_depth = effective_depth(row_depth, row_depth_given, &row_sort, row_fields);
         let col_depth = effective_depth(col_depth, col_depth_given, &col_sort, col_fields);
         // TODO(T-1700): column subtotals over several value columns. Excel shows most of their
         // cells as "", like the Total columns, but fills a few with other columns' subtotals
         // (probes/groupby-subtotals G!A781), a layout not yet understood.
-        if subtotal_levels(col_depth) > 0 && value_columns > 1 {
+        if subtotal_levels(col_depth) > 0 && (value_columns > 1 || shape.columns > 1) {
             return Err(not_implemented(
                 cell,
                 "PIVOTBY column subtotals over several value columns",
@@ -327,8 +348,9 @@ impl Model {
             row_sort,
             col_sort,
             records,
+            shape,
         };
-        Ok((pivot, function))
+        Ok((pivot, functions))
     }
 
     /// Sorts the row or column groups of a pivot by `order`. A key order is already applied
@@ -344,7 +366,7 @@ impl Model {
     /// never grid cells, which are row x column intersections.
     fn sort_pivot_groups(
         &mut self,
-        caller: &mut LambdaCaller,
+        functions: &mut Functions,
         grouping: &mut Grouping,
         values: &[Vec<ArrayNode>],
         order: &SortOrder,
@@ -354,28 +376,36 @@ impl Model {
         let SortOrder::Value { column, ascending } = *order else {
             return None;
         };
+        let pair = functions.pair_at(0, column);
         let totals = grouping.sort_by_aggregate(ascending, parents, cell, |rows| {
-            self.aggregate(caller, values, column, rows, cell)
+            let at = Aggregate {
+                rows,
+                relative: NO_RELATIVE,
+            };
+            self.aggregate(functions, pair, values, at, cell)
         });
         Some((column, totals))
     }
 
-    /// One grid cell: `""` when no record falls in it (P!A1, East/2025), the function of the
-    /// records otherwise (0 when they sum to 0, P!A97). A total column with several value columns
-    /// is `""` in every row, the Total row too (P!Y97, probes/groupby-pivotby-followup G!A281).
+    /// One grid cell in row `sub_row` of its line: `""` when no record falls in it (P!A1,
+    /// East/2025), the function of the records otherwise (0 when they sum to 0, P!A97). A total
+    /// column of one function over several value columns is `""` in every row, the Total row too
+    /// (P!Y97, probes/groupby-pivotby-followup G!A281).
     fn pivot_cell(
         &mut self,
-        caller: &mut LambdaCaller,
+        functions: &mut Functions,
         values: &[Vec<ArrayNode>],
         slot: Slot,
-        rows: &[usize],
+        sub_row: usize,
+        at: Aggregate<'_>,
         cell: CellReferenceIndex,
     ) -> ArrayNode {
         match slot {
-            Slot::Total { .. } if width(values) > 1 => empty_text(),
-            _ if rows.is_empty() => empty_text(),
+            Slot::Total { .. } if functions.blank_totals(width(values)) => empty_text(),
+            _ if at.rows.is_empty() => empty_text(),
             Slot::Group { value, .. } | Slot::Subtotal { value, .. } | Slot::Total { value } => {
-                self.aggregate(caller, values, value, rows, cell)
+                let pair = functions.pair_at(sub_row, value);
+                self.aggregate(functions, pair, values, at, cell)
             }
         }
     }
@@ -390,18 +420,11 @@ struct Totals {
 }
 
 impl Totals {
-    /// The Total cell of a row group or row subtotal `line`: its aggregate, with one value column
-    /// (several have `""` Total columns, P!Y97).
-    fn line_total_cell(
-        &self,
-        line: Line,
-        slot: Slot,
-        values: &[Vec<ArrayNode>],
-    ) -> Option<ArrayNode> {
+    /// The Total cell of a row group or row subtotal `line`: its aggregate, unless the Total
+    /// columns are `blank` (one function over several value columns, P!Y97).
+    fn line_total_cell(&self, line: Line, slot: Slot, blank: bool) -> Option<ArrayNode> {
         match slot {
-            Slot::Total { value } if width(values) == 1 => {
-                Self::get(self.rows.as_ref(), line, value)
-            }
+            Slot::Total { value } if !blank => Self::get(self.rows.as_ref(), line, value),
             _ => None,
         }
     }
@@ -438,9 +461,12 @@ fn pivot_groupings(
     pivot: &Pivot,
     cell: CellReferenceIndex,
 ) -> Result<(Grouping, Grouping, usize), CalcResult> {
-    let row_fields = width(&pivot.row_keys);
-    let value_columns = width(&pivot.values);
-    let extra_rows = header_height(pivot) + usize::from(pivot.row_depth != 0);
+    // The keys and the label column, left of the grid.
+    let row_fields = width(&pivot.row_keys) + usize::from(pivot.shape.label_column);
+    let value_columns = pivot.shape.columns;
+    let per_line = pivot.shape.rows_per_group;
+    let extra_rows = header_height(pivot) + usize::from(pivot.row_depth != 0) * per_line;
+    let tall = |lines: usize| lines.saturating_mul(per_line).saturating_add(extra_rows);
     let total_columns = if pivot.col_depth == 0 {
         0
     } else {
@@ -450,10 +476,10 @@ fn pivot_groupings(
     let min_width = row_fields
         .saturating_add(value_columns)
         .saturating_add(total_columns);
-    let row_limit = |groups: usize| check_array_size(groups.saturating_add(extra_rows), min_width);
+    let row_limit = |groups: usize| check_array_size(tall(groups), min_width);
     let mut rows = Grouping::new(&pivot.row_keys, pivot.records.iter().copied(), row_limit)
         .map_err(to_error)?;
-    let height = rows.groups.len().saturating_add(extra_rows);
+    let height = tall(rows.groups.len());
     let grid_width = |groups: usize| {
         groups
             .saturating_mul(value_columns)
@@ -465,10 +491,7 @@ fn pivot_groupings(
         .map_err(to_error)?;
     rows.sort_by_key_order(&pivot.row_sort, cell);
     cols.sort_by_key_order(&pivot.col_sort, cell);
-    let height = rows
-        .lines(subtotal_levels(pivot.row_depth), false)
-        .len()
-        .saturating_add(extra_rows);
+    let height = tall(rows.lines(subtotal_levels(pivot.row_depth), false).len());
     let col_lines = cols.lines(subtotal_levels(pivot.col_depth), false).len();
     if let Some(error) = check_array_size(height, grid_width(col_lines)) {
         return Err(to_error(error));
@@ -482,22 +505,36 @@ fn shows_header(pivot: &Pivot) -> bool {
 }
 
 /// The number of header rows: the column field names (shown headers only), one row per column
-/// key field, then the row field and value names (shown headers only) (P!M1, P!A1).
+/// key field, the function labels (functions laid out as columns), then the row field and value
+/// names (shown headers only) (P!M1, P!A1, P!A121).
 fn header_height(pivot: &Pivot) -> usize {
-    width(&pivot.col_keys) + 2 * usize::from(shows_header(pivot))
+    width(&pivot.col_keys)
+        + usize::from(pivot.shape.label_row)
+        + 2 * usize::from(shows_header(pivot))
+}
+
+/// The `""` cells of a header row left of the grid: under the row keys and the label column.
+fn header_corner(pivot: &Pivot) -> Vec<ArrayNode> {
+    vec![empty_text(); width(&pivot.row_keys) + usize::from(pivot.shape.label_column)]
 }
 
 /// The header rows: [`column_names_row`], the column keys (blank as 0; a subtotal column shows
 /// its keys over `""`; "Total", or "Grand Total" with subtotals, over the total columns, `""`
-/// below it: P!A1, P!M97, probes/groupby-subtotals G!A691) and [`value_names_row`].
-fn header_rows(pivot: &Pivot, cols: &Grouping, slots: &[Slot]) -> Vec<Vec<ArrayNode>> {
+/// below it: P!A1, P!M97, probes/groupby-subtotals G!A691), the function labels of each column
+/// (P!A121; with shown headers after the keys, functions P!A621) and [`value_names_row`].
+fn header_rows(
+    pivot: &Pivot,
+    functions: &Functions,
+    cols: &Grouping,
+    slots: &[Slot],
+) -> Vec<Vec<ArrayNode>> {
     let mut output = Vec::with_capacity(header_height(pivot));
     let levels = subtotal_levels(pivot.col_depth);
     if shows_header(pivot) {
         output.push(column_names_row(pivot, slots));
     }
     for field in 0..width(&pivot.col_keys) {
-        let mut row = vec![empty_text(); width(&pivot.row_keys)];
+        let mut row = header_corner(pivot);
         row.extend(slots.iter().map(|slot| {
             match *slot {
                 Slot::Group { group, .. } => cols
@@ -516,10 +553,21 @@ fn header_rows(pivot: &Pivot, cols: &Grouping, slots: &[Slot]) -> Vec<Vec<ArrayN
         }));
         output.push(row);
     }
+    if pivot.shape.label_row {
+        let mut row = header_corner(pivot);
+        row.extend(functions.label_cells(slots.iter().map(|slot| slot_value(*slot))));
+        output.push(row);
+    }
     if shows_header(pivot) {
-        output.push(value_names_row(pivot, slots));
+        output.push(value_names_row(pivot, functions, slots));
     }
     output
+}
+
+/// The output value column of a slot.
+fn slot_value(slot: Slot) -> usize {
+    let (Slot::Group { value, .. } | Slot::Subtotal { value, .. } | Slot::Total { value }) = slot;
+    value
 }
 
 /// The grid columns right of the row keys: the value columns of each column group and subtotal
@@ -559,7 +607,7 @@ fn column_names_row(pivot: &Pivot, slots: &[Slot]) -> Vec<ArrayNode> {
             (1..=col_fields).map(|n| ArrayNode::String(format!("Column Field {n}").into())),
         )
     };
-    let mut row = vec![empty_text(); width(&pivot.row_keys)];
+    let mut row = header_corner(pivot);
     let mut name = Some(name);
     for slot in slots {
         row.push(match slot {
@@ -594,13 +642,16 @@ fn joined_names(names: impl Iterator<Item = ArrayNode>) -> ArrayNode {
 /// The last header row of shown headers: the row field names, then the value field name of each
 /// grid column, subtotal and total columns included (P!M1, probes/pivotby-followup P!A521,
 /// groupby-subtotals G!A841); generated names
-/// are "Row Field n" and "Value n" (P!A21, P!A81). The naming rule is GROUPBY's.
-fn value_names_row(pivot: &Pivot, slots: &[Slot]) -> Vec<ArrayNode> {
+/// are "Row Field n" and "Value n" (P!A21, P!A81), `""` over a label column (functions2 P!A41).
+/// The naming rule is GROUPBY's.
+fn value_names_row(pivot: &Pivot, functions: &Functions, slots: &[Slot]) -> Vec<ArrayNode> {
     let mut row = key_names(pivot.headers, &pivot.row_keys);
+    if pivot.shape.label_column {
+        row.push(empty_text());
+    }
     row.extend(slots.iter().map(|slot| {
-        let (Slot::Group { value, .. } | Slot::Subtotal { value, .. } | Slot::Total { value }) =
-            *slot;
-        value_name(pivot.headers, &pivot.values, value)
+        let column = functions.value_column(slot_value(*slot));
+        value_name(pivot.headers, &pivot.values, column)
     }));
     row
 }

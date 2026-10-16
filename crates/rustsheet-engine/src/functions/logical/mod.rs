@@ -7,7 +7,7 @@ mod scan;
 mod switch;
 
 pub(crate) use bycol_byrow::as_lambda;
-pub(crate) use lambda::LambdaCaller;
+pub(crate) use lambda::{FunctionValue, LambdaCaller};
 pub(crate) use r#let::{has_duplicate_parameter, same_variable};
 
 use crate::{
