@@ -1,0 +1,168 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Data": {
+   "G5": {
+    "t": "e",
+    "v": "#DIV/0!"
+   }
+  },
+  "G": {
+   "B1": {
+    "t": "s",
+    "v": "3x2:East|15|West|20|Total|35"
+   },
+   "B10": {
+    "t": "s",
+    "v": "6x2:East|45|North|7|South|-3|West|72.5|0|9|Total|130.5"
+   },
+   "B11": {
+    "t": "s",
+    "v": "E3"
+   },
+   "B12": {
+    "t": "s",
+    "v": "E3"
+   },
+   "B13": {
+    "t": "s",
+    "v": "E3"
+   },
+   "B14": {
+    "t": "s",
+    "v": "E3"
+   },
+   "B15": {
+    "t": "s",
+    "v": "6x2:South|-3|North|7|0|9|East|45|West|72.5|Total|130.5"
+   },
+   "B16": {
+    "t": "s",
+    "v": "E2"
+   },
+   "B17": {
+    "t": "s",
+    "v": "E2"
+   },
+   "B18": {
+    "t": "s",
+    "v": "E2"
+   },
+   "B19": {
+    "t": "s",
+    "v": "9x4:South|Banana|2025|-3|North|Pear|2024|7|0|Apple|2024|9|East|Apple|2023|15|East|Pear|2024|30|West|Banana|2025|12.5|West|Pear|2023|20|West|Apple|2023|0|West|Apple|2024|40"
+   },
+   "B2": {
+    "t": "s",
+    "v": "E7"
+   },
+   "B20": {
+    "t": "s",
+    "v": "9x4:West|Apple|2024|40|West|Apple|2023|0|West|Pear|2023|20|West|Banana|2025|12.5|East|Pear|2024|30|East|Apple|2023|15|0|Apple|2024|9|North|Pear|2024|7|South|Banana|2025|-3"
+   },
+   "B21": {
+    "t": "s",
+    "v": "9x4:North|Pear|2024|1|South|Banana|2025|1|0|Apple|2024|1|East|Pear|2024|1|East|Apple|2023|2|West|Banana|2025|1|West|Pear|2023|1|West|Apple|2023|1|West|Apple|2024|1"
+   },
+   "B22": {
+    "t": "s",
+    "v": "8x3:South|Banana|-3|North|Pear|7|0|Apple|9|East|Apple|7.5|East|Pear|30|West|Banana|12.5|West|Apple|20|West|Pear|20"
+   },
+   "B23": {
+    "t": "s",
+    "v": "8x3:West|Apple|20|West|Pear|20|West|Banana|12.5|East|Pear|30|East|Apple|7.5|0|Apple|9|North|Pear|7|South|Banana|-3"
+   },
+   "B24": {
+    "t": "s",
+    "v": "8x3:West|Apple|60|West|Pear|80|West|Banana|87.5|East|Pear|70|East|Apple|85|0|Apple|91|North|Pear|93|South|Banana|103"
+   },
+   "B25": {
+    "t": "s",
+    "v": "8x3:South|Banana|103|North|Pear|93|0|Apple|91|East|Apple|85|East|Pear|70|West|Banana|87.5|West|Pear|80|West|Apple|60"
+   },
+   "B26": {
+    "t": "s",
+    "v": "8x3:South|Banana|-3|North|Pear|7|0|Apple|9|East|Apple|10|East|Pear|30|West|Banana|12.5|West|Pear|20|West|Apple|40"
+   },
+   "B27": {
+    "t": "s",
+    "v": "5x2:North|7|South|t|East|FALSE|West|TRUE|0|#"
+   },
+   "B28": {
+    "t": "s",
+    "v": "5x2:0|#|West|TRUE|East|FALSE|South|t|North|7"
+   },
+   "B29": {
+    "t": "s",
+    "v": "3x2:East|15|West|20|Total|35"
+   },
+   "B3": {
+    "t": "s",
+    "v": "4x2:Region|Sales|East|15|West|20|Total|35"
+   },
+   "B30": {
+    "t": "s",
+    "v": "3x2:East|15|West|20|Total|35"
+   },
+   "B31": {
+    "t": "s",
+    "v": "E3"
+   },
+   "B32": {
+    "t": "s",
+    "v": "E3"
+   },
+   "B33": {
+    "t": "s",
+    "v": "E3"
+   },
+   "B34": {
+    "t": "s",
+    "v": "E3"
+   },
+   "B35": {
+    "t": "s",
+    "v": "E3"
+   },
+   "B36": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B37": {
+    "t": "s",
+    "v": "5x2:South|-3|North|7|0|9|East|FALSE|West|TRUE"
+   },
+   "B4": {
+    "t": "s",
+    "v": "E2"
+   },
+   "B5": {
+    "t": "s",
+    "v": "3x2:East|15|West|20|Total|35"
+   },
+   "B6": {
+    "t": "s",
+    "v": "3x2:East|15|West|20|Total|35"
+   },
+   "B7": {
+    "t": "s",
+    "v": "3x2:East|15|West|20|Total|35"
+   },
+   "B8": {
+    "t": "s",
+    "v": "E3"
+   },
+   "B9": {
+    "t": "s",
+    "v": "E3"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "f3885a5e34e258df5873e4a29c9e666c6dd202356c432390a6ec49fb35d5c233",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T09:58:23+00:00",
+  "version": null
+ }
+}
