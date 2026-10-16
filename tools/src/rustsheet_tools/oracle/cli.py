@@ -150,6 +150,8 @@ def cmd_fill(args: argparse.Namespace) -> int:
             },
             "sheets": values,
         }
+        if info.texts:  # displayed text of the cells the case lists in `text` (T-1610)
+            oracle["text"] = info.texts
         _drop_undecoded(case, values)
         if spec:
             _report_hand_disagreements(case, spec, values)
