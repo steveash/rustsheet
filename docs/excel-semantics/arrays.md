@@ -324,8 +324,9 @@ field_headers: omitted auto-detects headers without showing them; 0 none, 1 yes/
 4 is `#VALUE!`. A LAMBDA returning an array gives `#VALUE!` per cell. `HSTACK(SUM,AVERAGE)` adds columns
 and a header row of function names; `VSTACK(SUM,MAX)` repeats each group row per function with a
 name column. PIVOTBY relative_to: 0 column total, 1 row total, 2 grand total; with one field per axis 3
-equals 1 and 4 equals 0. Out-of-range sort_order, a filter of another height, an all-FALSE filter and
-field_relationship 2 are `#VALUE!`.
+equals 1 and 4 equals 0. Out-of-range, fractional or non-numeric sort_order, a filter of another height or shape, an all-FALSE filter, a filter
+element that is an error or text other than "TRUE"/"FALSE" and field_relationship 2 are `#VALUE!`; an error value in any
+argument wins over them (first in argument order).
 T-1328 follow-up (probes/groupby-pivotby-followup, -followup2, -followup3; spills paired with ROWS/ISERROR/ERROR.TYPE so
 excel-graph's undecodable errors are still answered): values of another height than the keys, total_depth 3 or -3 (and 2 with a
 single key) and field_relationship 1 with total_depth ±2 are all `#VALUE!`; the all-FALSE filter is `#VALUE!` (never `#CALC!`),
@@ -352,15 +353,52 @@ key: it shows `""`, sorts as text (before "a"; after it descending), and the bla
 Unprobed: whether one row of text values with no rows below is a header (the engine takes it as data), and where
 error keys sort against text, booleans and the blank key (the engine uses `sort_key_cmp`'s order: after booleans,
 before blank).
+T-1323 follow-up (probes/groupby-sort-filter-args, 83 questions summarised in one cell each, excel-graph, 2026-10-16;
+B<n> is question n). sort_order: a scalar must be a whole number from 1 to the last column, negative for descending;
+0, -3 past the columns, 1.5, 1.9, 2.5, -1.5, 0.5, -0.5, the text "2", TRUE, a blank cell and `""` are all `#VALUE!` (no
+truncation and no coercion, B1-B14), `NA()` is `#N/A` (B12). An array may be a column (`{2;-1}`, B15); it names key
+columns only, or a value column as its one element (`{-3}` = -3, B21-B22); a key column next to a value column (`{1,3}`,
+`{3,1}`, `{2,3}`, `{-1,3}`, `{-2,-3}`), two value columns (`{2,3}`, `{3,-2}` over two values), a fraction, an error or
+text element (`{1.5,2}`, `{1,#N/A}`, `{1,"2"}`) are `#VALUE!` (B16-B30). Sorting by a value: equal values keep the
+ascending key order in both directions (COUNT ties North, South, blank ascending and descending, B32-B33; East before
+South at 9 Units, B27-B28); text sorts as text (`"t-3"` < `"t45"` < `"t7"`, B34), numbers before text (B35), an error
+value last ascending and first descending (B36-B37); with two keys -3 orders parents by their sum descending and the
+children descending inside each (B22). The header row and a top Total stay in place (B38-B40).
+filter_array: each element counts like a condition, a number is TRUE unless 0, a blank is FALSE, the text "TRUE"/"FALSE"
+counts (B42, B44, B52); other text, `""`, any error element (even on a row the filter drops) are `#VALUE!` and not the
+error (B43, B45-B46, B53); a scalar keeps or drops everything (2 keeps, `"x"` is `#VALUE!`, `NA()` is `#N/A`: B47, B54-B55);
+a row of 10, a 10x2 array, a longer one and an all-blank range are `#VALUE!` (B48-B51). With a header row the filter
+may be as tall as the fields (the header's element is ignored, whatever it holds: args2 B1-B5, B29-B30 below) or as tall as the
+records, aligned with them (B56-B59); field_headers 3 still shows the headers.
+Error precedence: every error value among the arguments wins over any invalid argument, before or after it (sort_order
+`NA()` beats total_depth 3, a short filter, an all-FALSE filter, a short values range and the function 5), and among
+error values the first argument wins (field_headers or total_depth `1/0` before sort_order `NA()`, sort_order before
+filter_array before field_relationship): B61-B78. field_relationship: 3, -1, 0.5 are `#VALUE!`, `NA()` `#N/A`, and the
+text "1" counts as 1 (with one total row, the default layout): B79-B83.
+Review follow-up (probes/groupby-sort-filter-args2, 37 questions in column B, excel-graph, 2026-10-16; "args2 Bn"
+below): the filter element beside a header row is never read, so text, `""` or an error there is ignored (args2 B1, B3,
+B5, B29-B30), while an error beside a record is `#VALUE!` (B31-B35). A filter `VSTACK(NA(),Data!C2:C11=2023)` is `#N/A`
+(B2, B4; `1/0` gives `#DIV/0!`), and B36 (`ROWS(VSTACK(NA(),Data!C2:C11))&...`, one `#N/A`) points to VSTACK returning the
+scalar error rather than an array (only that summary probed; the engine's VSTACK does the same). "true"/"True" count like "TRUE" (B6-B7, B10); numeric text
+"1" does not (B8-B9: `#VALUE!`). `{#N/A}` and `IF({TRUE},NA())` are `#VALUE!` as sort_order and as filter_array
+(B11-B14), while a one-cell reference to `=1/0` is `#DIV/0!` in either place, also before total_depth 3 (B16-B18). A
+value sort over three keys is hierarchical at every level (B19-B21), and a parent's value is the function of all its
+rows, not of its children's values: AVERAGE ranks East (15) before West (18.125) and `LAMBDA(x,100-SUM(x))` West (27.5)
+before East (55), where the sum, the mean or the largest child would disagree (B22-B26). Boolean aggregates sort
+numbers < text < FALSE < TRUE < errors, reversed descending (B27-B28, B37).
 Ours: GROUPBY (T-1322, functions/lookup_and_reference/groupby.rs): the shared `Grouping` core (hash grouping on
 `cell_key` with -0 as 0, sorting with `sort_key_cmp` and numbers compared exactly), a LAMBDA or eta-name function called
 once per group and value column through one `LambdaCaller`, field_headers and auto-detect, total_depth 0/±1, `""`
-fillers, several value columns, the output size checked with `check_array_size` before any call. Not yet: sort_order,
-filter_array (T-1323), total_depth ±2 and field_relationship (T-1324), function arrays (T-1325; all
+fillers, several value columns, the output size checked with `check_array_size` before any call. Since T-1323:
+sort_order (`Model::sort_order` into a `SortOrder`; `Grouping::sort_by_keys`, and `Grouping::sort_by_aggregate` for a value
+column, hierarchical over the key prefixes with one call per group and parent), filter_array (`Model::filter_rows`), the
+error values first in argument order (`Model::evaluate_options`), and scalar field_relationship 0/1 (1 is `#VALUE!` with
+total_depth ±2, and the default layout otherwise, except sorted by a value: `#N/IMPL!`). Not yet: total_depth ±2 and an
+array field_relationship (T-1324), function arrays (T-1325; all
 `#N/IMPL!` until then), PERCENTOF's relative set (T-1325; called with one argument today), a one-cell reference result (`#VALUE!` in Excel, its value here: T-1325), PIVOTBY
 (T-1326, T-1327).
 Status: VERIFIED (web)
-Tasks: T-1276, T-1328, T-1322
+Tasks: T-1276, T-1328, T-1322, T-1323
 
 ## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!
 Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:
