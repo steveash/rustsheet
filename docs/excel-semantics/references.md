@@ -227,10 +227,14 @@ Calc!H1, I1; T-1537). Over a cached range the same lift gives the cached cell pe
 top-left cached cell (`{0,2},1` is "Hello!", 5; `{1,2},0` is "Hello!", 5), an out-of-range element is a per-element `#REF!`
 (`{1,4},1` is "Hello!", #REF!) and a cached `#N/A` stays that element (`INDEX(…A1:C3,1,{1,2,3})` is "Hello!", 10, #N/A)
 (fixtures/external-link-cached-ranges Refs!B83:D88, excel-graph, 2026-10-14, T-1546; the engine matches).
-Excel treats the lifted INDEX over an external range as a single-cell reference (its first element, which in these probes is also the range's top-left cell; `{2,1}` would tell them apart, UNVERIFIED):
-`SUM(INDEX(…,{1,2},1))` is 0 ("Hello!" is text), `ROWS(…)` is 1, `ISREF(…)` is TRUE and a further
-`INDEX(INDEX(…,{1,2},1),2)` is `#REF!` (Refs!B89:B92). Not implemented: we give `#BLOCKED!`, `#BLOCKED!`, FALSE and
-`#BLOCKED!` for those four (T-1554).
+In a legacy (non-array) formula, an INDEX with an index array over an external range is a single-cell
+reference to its *first element*, not to the range's top-left cell. `SUM(INDEX(…,{1,2},1))` is 0 ("Hello!" is text), `ROWS(…)` is 1, `ISREF(…)` is TRUE and a further
+`INDEX(INDEX(…,{1,2},1),2)` is `#REF!` (Refs!B89:B92). With `{2,1}` the two candidates differ, and the first element
+(A2, 5) wins: `SUM(INDEX([1]Uses!$A$1:$B$3,{2,1},1))` is 5, `INDEX(INDEX(…,{2,1},1),1)` 5, `…&""` "5",
+`COUNTA(…)` 1, `ROWS(…)` 1, `ISREF(…)` TRUE, `INDEX(INDEX(…,{2,1},1),2)` `#REF!`; across a row
+`SUM(INDEX(…,1,{2,1}))` is 10 (B1) and `COLUMN(INDEX(…,1,{2,1}))` 2. Entered as a two-cell array formula (B10:C10), the
+same INDEX gives one result per element: 5, "Hello!" (fixtures/external-link-cached-index-array Refs!B1:B10, C10, excel-graph,
+2026-10-16, T-1554). The engine matches all of these.
 A LET is transparent here too: a LET whose body is (or IF, CHOOSE or a nested LET picks) a
 reference into another workbook is that reference. `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3,
 `ROWS(LET(c,TRUE,…!A1:B3))` 3, `ROWS(LET(c,TRUE,LET(d,1,CHOOSE(d,…!A1:B4))))` 4,
