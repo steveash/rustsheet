@@ -31,6 +31,8 @@ and the parser turns it into the range unless an enclosing LET/LAMBDA binds it
 (`dotted_range_operand`, `bind_dotted_name`); forms with `$` or whitespace are read by the lexer
 (`consume_dotted_corner`). Probed 16 more forms (probes/lotus-dot-range-*, 11 cases filled; 5
 forms make Graph reject the file and have no case), recorded in references.md.
-Eval: probes known failures 2282 -> 2274 (9 cells fixed: lotus-dot-range D1-D6 and the three
-r1c1-name dotted A1 cells; 11 new cases, 34 of 35 cells pass). The one new failure,
-lotus-dot-range-func-second E2 (ours lowercases the unknown call `A1.INDEX`), is T-1719.
+Eval: probes known failures 2282 -> 2275 (9 cells fixed: lotus-dot-range D1-D6 and the three
+r1c1-name dotted A1 cells; 16 new cases, lotus-dot-range-* and lotus-dot-name-*, 44 of 46 cells
+pass). The two new failures are new coverage: lotus-dot-range-func-second E2 (ours lowercases the
+unknown call `A1.INDEX`, T-1719) and lotus-dot-name-let-lower E2 (Excel prints a LET name's uses
+in the declaration's spelling, T-1720).

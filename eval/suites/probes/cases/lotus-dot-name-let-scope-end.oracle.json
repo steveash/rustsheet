@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "E1": {
+    "t": "n",
+    "v": 20.0
+   },
+   "E2": {
+    "t": "s",
+    "v": "=LET(A1.B2,5,A1.B2)+SUM(A1:B2)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "495a9105f66e8090da2c501c734ee41808685f447c1181ab70dd10d10fe950c7",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T20:06:26+00:00",
+  "version": null
+ }
+}

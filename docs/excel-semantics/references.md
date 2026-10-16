@@ -1577,7 +1577,16 @@ when it is an A1 reference, which is a separate test: `R1`, `C3`, `RC99999`, `C1
   as the second part (`A1.foo` with `foo` defined) and a call (`A1.INDEX(B2:B2,1)`, `#NAME?`).
   Excel rejects the file (Graph `FileCorruptTryRepair`) for `ROWS(1..2)`, `A1.B2.C3`, `A1.B2.x`,
   `Data!A1.Data!B2` and `ROWS(A1:B2.C3)`; ours reads the first two as names. A LET or LAMBDA
-  name spelled so is the variable in its scope (`LET(R1.C1,5,R1.C1*2)` is 10, below).
+  name spelled so is the variable in its call and the range outside it (probes/lotus-dot-name-*,
+  r1c1-let-name-r1-c1): `LET(R1.C1,5,R1.C1*2)` 10, `LAMBDA(A1.B2,A1.B2*2)(4)` 8,
+  `LAMBDA([A1.B2],ISOMITTED(A1.B2))()` TRUE, `LET(A1.B2,5,A1.B2)+SUM(A1.B2)` 20 (printed
+  `...+SUM(A1:B2)`), `LAMBDA(x,LAMBDA(A1.B2,A1.B2+x)(1)+SUM(A1.B2))(2)` 18, and
+  `LET(a1.b2,5,A1.B2*2)` 10, which FORMULATEXT prints `=LET(a1.b2,5,a1.b2*2)`: the uses take the
+  declaration's spelling (ours keeps them as typed, T-1720). These files hold every use inside
+  the call as `_xlpm.A1.B2` (spec2xlsx `prefix_bound_names` prefixes the whole call), so a use
+  before its binding (`LET(x,SUM(A1.B2),A1.B2,x,...)`, `#NAME?` with `SUM(_xlpm.A1.B2)` in
+  FORMULATEXT) shows only how Excel reads that prefixed file; it has no case, and ours reads the
+  unprefixed use as the range.
 Defined names: a workbook defining any name the R1C1 test quotes is rejected by Graph (`createSession`
 501 `unsupportedWorkbook`): probed `RC`, `rc`, `R1C`, `R12C`, `R1C1`, `C1D`, `R1C1D`, `R1C16385`,
 `R1_`, `R1R`, `R1D`, `C1R1`, `RC1D`, `R1048576D`, `R1CD`, `R1C1.`. `RCR`, `RCD`, `CR`, `R1.5` and
@@ -1599,10 +1608,10 @@ a bare `=R1C1` outside a LET in A1 mode; ours reads it as a name (`#NAME?`), as 
 A bare `RC`, `R1C1D`, `R0C1` or `RCR` token in a cell formula of an uploaded file makes Graph reject
 the workbook (so it is unprobed).
 Unprobed: brackets cannot occur in sheet or defined names, so `R[1]C` forms are not covered;
-lowercase Lotus-shaped names (`a1.b2`); non-ASCII digits.
+lowercase Lotus-shaped defined names (`a1.b2`; in a formula `a1.b2` is the range); non-ASCII digits.
 Evidence: probes/r1c1-shaped-sheet-names, -lower, -2, -3, -4, -5, -lower-2 (FORMULATEXT of
 `='<name>'!A1`), r1c1-name-* and r1c1-name-use-* (defined names; the rejected names have no case),
-r1c1-let-name-*, lotus-dot-range (excel-graph, 2026-10-15), lotus-dot-range-* (2026-10-16).
+r1c1-let-name-*, lotus-dot-range (excel-graph, 2026-10-15), lotus-dot-range-*, lotus-dot-name-* (2026-10-16).
 Implemented in: `is_r1c1_shaped` and `is_dotted_a1_range` (expressions/utils/mod.rs), used by
 `name_needs_quoting` (both) and `is_valid_identifier` (the R1C1 test); `is_valid_a1_identifier`
 (LET, LAMBDA and the lexer) takes them all; `reads_as_r1c1_cell` (`variable_text`,

@@ -98,7 +98,7 @@ fn a_dotted_range_shadows_a_defined_name() {
     assert_eq!(model._get_text("A4"), "TRUE");
 }
 
-// probes/r1c1-let-name-r1-c1: a LET or LAMBDA binding the name makes it the variable within the
+// probes/r1c1-let-name-r1-c1, lotus-dot-name-*: a LET or LAMBDA binding the name makes it the variable within the
 // call; outside it the name is the range again (printed with `:`; the formulas below are written
 // as Excel prints them).
 #[test]
@@ -109,6 +109,7 @@ fn let_and_lambda_names_spelled_like_dotted_ranges_are_variables_in_scope() {
         ("=LET(a1.b2,5,A1.B2*2)", "10"),
         ("=LET(x,1,SUM(A1:B2))", "15"),
         ("=LET(A1.B2,5,A1.B2)+SUM(A1:B2)", "20"),
+        // Unprobed as typed (the probe file prefixed the first use; references.md).
         ("=LET(x,SUM(A1:B2),A1.B2,x,A1.B2+1)", "16"),
         ("=LAMBDA(A1.B2,A1.B2*2)(4)", "8"),
         ("=LAMBDA([A1.B2],ISOMITTED(A1.B2))()", "TRUE"),
