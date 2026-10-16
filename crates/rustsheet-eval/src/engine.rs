@@ -232,7 +232,29 @@ impl Engine for RustSheetEngine {
                 Ok(())
             })
             .map_err(|e| e.to_string())?;
+        // The edit calculated once; an iterative case gets the oracle's other calculations.
+        for _ in 1..calculations(spec) {
+            workbook.recalculate();
+        }
         Ok(Box::new(RustSheetEvaluated { workbook }))
+    }
+}
+
+/// How many times excel-graph calculates a case workbook: on load (`fullCalcOnLoad`), at the
+/// `FullRebuild` and at the scratch-sheet edit (tools/src/rustsheet_tools/oracle/backends.py).
+/// Iterative calculation resumes from the previous values each time, so its oracle values hold
+/// three calculations' worth of iterations (docs/excel-semantics/recalc.md "How excel-graph
+/// calculates a probe workbook"; probes/circular-iteration-on, T-0428).
+const ORACLE_CALCULATIONS: usize = 3;
+
+/// The calculations the adapter runs for `spec` so that its values compare with the oracle's:
+/// [`ORACLE_CALCULATIONS`] for an iterative case, one otherwise. Without iteration every
+/// calculation gives the same values, so the extra ones would only cost time (T-0429).
+fn calculations(spec: &CaseSpec) -> usize {
+    if spec.calculation.as_ref().is_some_and(|c| c.iterate) {
+        ORACLE_CALCULATIONS
+    } else {
+        1
     }
 }
 
@@ -410,6 +432,19 @@ mod tests {
                 "sheets":[{"name":"Sheet1","cells":{}}]}"#,
         );
         assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
+    }
+
+    #[test]
+    fn iterative_cases_run_the_oracle_calculations() {
+        let parse = |json: &str| serde_json::from_str::<CaseSpec>(json).expect("spec");
+        let plain = parse(r#"{"format":"rustsheet-case/v1","sheets":[]}"#);
+        assert_eq!(calculations(&plain), 1);
+        let off =
+            parse(r#"{"format":"rustsheet-case/v1","sheets":[],"calculation":{"iterate":false}}"#);
+        assert_eq!(calculations(&off), 1);
+        let on =
+            parse(r#"{"format":"rustsheet-case/v1","sheets":[],"calculation":{"iterate":true}}"#);
+        assert_eq!(calculations(&on), ORACLE_CALCULATIONS);
     }
 
     #[test]

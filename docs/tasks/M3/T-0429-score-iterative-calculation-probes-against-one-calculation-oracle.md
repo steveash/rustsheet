@@ -3,7 +3,7 @@ id: T-0429
 title: "Score iterative-calculation probes against one calculation: oracle single-calc mode or a harness recalc count"
 milestone: M3
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -26,11 +26,18 @@ Either way the engine must not fake extra recalculations. The single-calculation
 pin down the UNVERIFIED delta stopping test in recalc.md.
 
 ## Acceptance criteria
-- [ ] The iteration probes have expected values for one calculation (re-filled), or the
+- [x] The iteration probes have expected values for one calculation (re-filled), or the
       harness runs the oracle's number of recalculations for them; the choice is recorded in
       recalc.md.
-- [ ] recalc.md's UNVERIFIED delta stopping test is settled or narrowed with the new evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] recalc.md's UNVERIFIED delta stopping test is settled or narrowed with the new evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing iterative calculation (T-0401, Phase 2).
+
+## Outcome
+- Harness: `calculations` in crates/rustsheet-eval/src/engine.rs runs a case with `calculation.iterate` three times, the oracle's count (load, `FullRebuild`, scratch edit). Other cases still calculate once. A single-calculation oracle mode was not pursued: excel-graph saves only after an edit, which itself calculates.
+- Evidence: two new probes settle the delta stopping test in recalc.md (now VERIFIED). A calculation stops at the first iteration whose largest change over all recalculated cells, readers outside the cycle included, is strictly below the delta.
+  - probes/circular-iteration-delta-no-reader: 16 iterations, against 17 with the reader.
+  - probes/circular-iteration-delta-boundary: 6 iterations, not 5.
+- Eval: 3 new cells, failing as new coverage (no iterative calculation yet, T-0401). No other change.
