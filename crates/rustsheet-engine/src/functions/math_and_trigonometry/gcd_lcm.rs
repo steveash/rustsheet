@@ -245,11 +245,7 @@ impl Model {
             return CalcResult::new_error(Error::NUM, cell, "Argument too large".to_string());
         }
         if result_too_large.get() {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                format!("{fn_name} result too large"),
-            );
+            return CalcResult::new_error(Error::NUM, cell, format!("{fn_name} result too large"));
         }
         if negative_seen.get() {
             return negative_error(cell, fn_name);
