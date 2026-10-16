@@ -69,6 +69,7 @@ Attempt 3 (2026-10-16, owner-directed, after T-0901 shipped PV/FV/NPER; scratch 
   with Excel's `+` or at 64 bits. Best: 25 (`v/exp(i ln)` summed at 64 bits), below 27.
 - Also found by T-0901 (financial.md): the accurate `expm1` PMT fixes 30 Excel-cached cells and breaks
   22, and IPMT's recurrence on the fitted FV breaks 4, so Excel's PMT is not the accurate value.
+- IPMT and PPMT were not re-fitted: they derive from PMT, so no PMT form means no new IPMT/PPMT form.
 Still blocked: none of the three attempts raised the bit-exact count.
 Reopens on a new hypothesis recorded here, for example: Excel's documented PMT formula evaluated in a
 specific compiled order, a different power routine for PMT than for PV/FV, NPV accumulated in a
