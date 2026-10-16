@@ -6,6 +6,7 @@
 //              "#Data"     |
 //              "#Headers"  |
 //              "#Totals"
+// this_row_shorthand -> "[@]" | "[@" column_name "]" | "[@" "[" column_name "]" "]" | "[@" range_reference "]"
 // table_reference -> column_reference | range_reference
 // column reference -> column_name | "["column_name"]"
 // range_reference -> column_reference":"column_reference

@@ -1568,3 +1568,8 @@ Status: VERIFIED (excel-graph)
 Implemented in: escapes (expressions/lexer/structured_references.rs); case-insensitive names and several
 specifiers are T-1673, the bare name T-1674.
 Tasks: T-1607, T-1673, T-1674
+
+## Structured references: the `@` shorthand
+`T[@]`, `T[@Col]`, `T[@[Col]]` and `T[@[A]:[B]]` are the UI spelling of `#This Row` and evaluate identically
+(T-1672; gen-m8b cases 19fdc25163755713 and e1bf5aa0ffb4ed87). `'@` inside a column name is a literal `@`.
+Whether FORMULATEXT echoes the `@` spelling is unprobed.

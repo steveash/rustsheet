@@ -25,7 +25,7 @@ Formulas using Excel's `@` shorthand for `#This Row` parse and evaluate like the
 
 ## Acceptance criteria
 - [x] `[@Col]`, `[@[Col]]`, `[@[A]:[B]]` and `[@]` lex to the same tokens as their `#This Row` forms
-  (lexer unit tests); FORMULATEXT shows the `@` form as typed.
+  (lexer unit tests); FORMULATEXT showing the `@` form as typed is NOT covered here (the lexer drops the spelling; unverified).
 - [x] gen-m8b in-table and this-row cells that only failed on the `@` syntax pass; `make eval-baseline`.
 - [x] `make check` green; reviewers approve.
 
@@ -33,4 +33,4 @@ Formulas using Excel's `@` shorthand for `#This Row` parse and evaluate like the
 - Case-insensitive names (T-1673), rows outside the table (T-1675).
 
 ## Outcome
-Lexer now accepts `[@]`, `[@Col]`, `[@[Col]]` and `[@[A]:[B]]` (`consume_this_row_shorthand`), producing the same tokens as the `#This Row` forms; unit test compares each against its long form. gen-m8b is ungated (no baseline file), so no baseline change: in-table 19fdc25163755713 failing cells 137 -> 5, this-row e1bf5aa0ffb4ed87 341 -> 6 (remaining are rows outside the table / name cases, T-1673/T-1675). `make check` green.
+Lexer now accepts `[@]`, `[@Col]`, `[@[Col]]` and `[@[A]:[B]]` (`consume_this_row_shorthand`), producing the same tokens as the `#This Row` forms; unit test compares each against its long form. gen-m8b is ungated (no baseline file), so no baseline change: in-table 19fdc25163755713 failing cells 137 -> 5, this-row e1bf5aa0ffb4ed87 341 -> 6 (remaining are rows outside the table / name cases, T-1673/T-1675). `make check` green. FORMULATEXT of the `@` form was not tested or implemented.
