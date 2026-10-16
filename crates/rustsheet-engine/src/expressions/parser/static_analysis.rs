@@ -1766,7 +1766,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Phonetic => not_implemented(args),
         Function::Arraytotext => not_implemented(args),
         Function::Dollar => not_implemented(args),
-        Function::Encodeurl => not_implemented(args),
+        Function::Encodeurl => scalar_arguments(args),
         // All three lift over an array or range `source`/`stock`/`value` (T-1179).
         Function::Image | Function::Stockhistory | Function::Fieldvalue => StaticResult::Unknown,
         // Never lifts: the whole call is `#VALUE!` (filterxml.rs).

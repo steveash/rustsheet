@@ -21,8 +21,8 @@ Implemented in: crates/rustsheet-engine/src/functions/text/filterxml.rs (T-1255,
 ## ENCODEURL is `#VALUE!` in Excel for the web
 Rule: in Excel for the web, ENCODEURL is `#VALUE!` for every argument probed: `"a b&c"`, `"abc"`, a text cell, `1`
 and `TRUE`. It lifts over an array or a range, and each element is `#VALUE!` (`ENCODEURL({"a b","c"})` spills two). As with
-FILTERXML, the function seems not to work on the web. The engine percent-encodes (`"a%20b%26c"`), as Microsoft's page
-describes.
+FILTERXML, the function seems not to work on the web. The engine follows the golden (decision 0039 rule 4) and encodes nothing; Microsoft's page
+describes percent-encoding (`"a%20b%26c"`), which desktop Excel may do. An error argument propagates as it came (unprobed).
 Evidence: probes/info-logic-argument-modes-2 A1:A6, B5; probes/info-logic-argument-modes A15:B15 (oracle: excel-graph, 2026-10-09, T-1088).
-Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081). Engine gap: T-1219.
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081). Implemented in: crates/rustsheet-engine/src/functions/text/encodeurl.rs (T-1219).
 Tasks: T-1088, T-1219
