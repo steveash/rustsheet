@@ -391,52 +391,9 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let values1_opts = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => match self.values_from_array(a) {
-                Ok(v) => v,
-                Err(error) => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        format!("Error in first array: {error:?}"),
-                    );
-                }
-            },
-            _ => {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "First argument must be a range or array".to_string(),
-                );
-            }
-        };
-
-        let values2_opts = match self.evaluate_node_in_context(&args[1], cell) {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => match self.values_from_array(a) {
-                Ok(v) => v,
-                Err(error) => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        format!("Error in second array: {error:?}"),
-                    );
-                }
-            },
-            _ => {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Second argument must be a range or array".to_string(),
-                );
-            }
+        let samples = match self.paired_samples(args, cell) {
+            Ok(samples) => samples,
+            Err(error) => return error,
         };
 
         let tails = match self.get_number(&args[2], cell) {
@@ -476,18 +433,22 @@ impl Model {
         };
 
         let (values1, values2): (Vec<f64>, Vec<f64>) = if matches!(test_type, TTestType::Paired) {
-            values1_opts
+            // The pairs zipping the samples makes; a pair with a non-number side is skipped.
+            let pairs = samples
+                .first
                 .into_iter()
-                .zip(values2_opts)
-                .filter_map(|(o1, o2)| match (o1, o2) {
+                .zip(samples.second)
+                .take(samples.paired);
+            pairs
+                .filter_map(|pair| match pair {
                     (Some(v1), Some(v2)) => Some((v1, v2)),
-                    _ => None, // skip if either is None
+                    _ => None,
                 })
                 .unzip()
         } else {
             // keep only numeric entries, ignore non-numeric (Option::None)
-            let v1: Vec<f64> = values1_opts.into_iter().flatten().collect();
-            let v2: Vec<f64> = values2_opts.into_iter().flatten().collect();
+            let v1: Vec<f64> = samples.first.into_iter().flatten().collect();
+            let v2: Vec<f64> = samples.second.into_iter().flatten().collect();
             (v1, v2)
         };
 

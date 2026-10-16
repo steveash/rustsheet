@@ -82,14 +82,54 @@ COUNTBLANK of an error argument: `fn_countblank` (functions/statistical/count.rs
 through `evaluate_picked_reference_arg`, so a reference stays a range and only an error value is returned.
 Tasks: T-0122, T-0197, T-1026, T-1064, T-1139, T-1158, T-1170, T-1181
 
-## 3-D references when sheets or cells change (unprobed)
-Rule (engine, not Excel evidence): renaming an end sheet renames it in the formula, and moving a
-sheet re-resolves the span by name. Deleting an end sheet makes the reference `#REF!`, and inserting
-or deleting rows or columns does not shift the span. Excel's own rules for these edits are not probed.
-The excel-graph oracle only recalculates an uploaded workbook and cannot delete a sheet, so a span that lost an end sheet
-cannot be probed there (T-1181); the M14 desktop oracle question is T-1310.
-Status: UNVERIFIED
-Tasks: T-0198
+## 3-D references when sheets move or are renamed
+Rule (excel-graph, replayed sheet edits, T-1608):
+- Renaming an end sheet renames it in the formula: `=SUM(Jan:Mar!A1)` becomes `=SUM(Jan:Last!A1)`.
+  When the new name needs quotes, the whole span prefix is quoted: `=SUM('First One:Mar'!A1)`.
+  Evidence: probes/sheet-ops/sheet-ops-rename-span-end, sheet-ops-rename-span-start (B1, B2).
+- Moving a middle sheet out of the span drops it, and moving a sheet between the ends adds it.
+  This includes a sheet just added there, which is empty. Evidence: sheet-ops-move-out-of-span,
+  sheet-ops-move-into-span and sheet-ops-add-into-span.
+- **Moving an end sheet past the other end shrinks the span to the sheets still between them.**
+  Excel rewrites the formula: with Calc, Jan, Feb, Mar, moving Mar to position 1 gives
+  `=SUM(Jan:Feb!A1)` (30), and moving Jan to position 3 gives `=SUM(Feb:Mar!A1)` (50). The span is
+  not re-resolved by name. Evidence: sheet-ops-move-span-end-first, sheet-ops-move-span-start-last.
+  The engine keeps `Jan:Mar` (40): T-1691.
+- Moving the sheet that holds the formula changes nothing (sheet-ops-move-formula-sheet).
+Unprobed: deleting an end sheet and inserting or deleting rows or columns. The excel-graph backend
+cannot delete a sheet (T-1181), and the M14 desktop question is T-1310. The engine makes a span
+that lost an end sheet `#REF!` and does not shift a span for row or column edits.
+Status: VERIFIED (Excel for the web) for renames and moves; UNVERIFIED for deletes
+Tasks: T-1691, T-0198
+
+## A sheet rename rewrites references, names and FORMULATEXT, but not INDIRECT text
+Rule (excel-graph, T-1608):
+- Renaming a sheet rewrites every reference to it, and FORMULATEXT shows the new name. This
+  covers cell, range, whole-column and whole-row references, and the formula's own sheet.
+- The new name is quoted when it needs quotes: `'My Data'!A1`, `'2024'!A1`, and `'AB12'!A1` for a
+  name that looks like a cell. Renaming a quoted name to a plain one drops the quotes.
+- A case-only rename (`Data` to `DATA`) shows the new case.
+- Workbook-scoped names follow the sheet.
+- INDIRECT text keeps the name it was written with. `INDIRECT("Inputs!A1")` reaches the renamed
+  sheet, and `INDIRECT("data!A2")` still resolves after a case-only rename. INDIRECT text naming
+  the old name names a missing sheet. That is `#REF!` in desktop Excel, and Excel for the web
+  differs (lookup.md, "INDIRECT to a sheet that does not exist is #REF!"), so the sheet-op probes
+  do not score those cells.
+- Sheets renamed in a chain, or swapped through a scratch name, keep their references: each
+  formula follows its sheet, not the name.
+Evidence: probes/sheet-ops/sheet-ops-rename-cell-refs, -needs-quotes, -digits, -cell-like,
+-from-quoted, -case-only, -defined-names, -twice, -swap, -formula-sheet-self, -indirect-text.
+A sheet-qualified sheet-scoped name (`=Data!Local`) also keeps working after the rename (3, and
+`#SPILL!` for the bare two-cell name), which the engine does not: T-1693
+(sheet-ops-rename-sheet-scoped-name).
+Status: VERIFIED (Excel for the web)
+Tasks: T-1693
+
+## INDIRECT does not take 3-D text
+Rule (excel-graph): INDIRECT of span text is `#REF!`. `SUM(INDIRECT("Jan:Mar!A1"))` is `#REF!`,
+while `SUM(Jan:Mar!A1)` written in the formula sums the span.
+Evidence: probes/sheet-ops/sheet-ops-move-out-of-span A3 (the engine matches).
+Status: VERIFIED (Excel for the web)
 
 ## Undefined names may contain backslashes
 Rule: an undefined name such as `HSI\10_1\1460_1\1470_1___val` parses as a name and evaluates
