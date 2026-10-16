@@ -123,13 +123,22 @@
     "v": "s2a1"
    }
   },
-  "Sheet2": {}
+  "Sheet2": {
+   "C1": {
+    "t": "s",
+    "v": "s2a1"
+   },
+   "C2": {
+    "t": "s",
+    "v": "s2a1"
+   }
+  }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "4aa1dab71cf9d0ab85433d523f779b329fbf3325a772c6bad49e1fddf099d968",
+  "input_sha256": "bf2c62d1fb6a9d34d27317642d9da6989587bbae04718fa821a5bdc0d6440dee",
   "kind": "excel-graph",
-  "produced_at": "2026-10-16T13:19:50+00:00",
+  "produced_at": "2026-10-16T13:35:52+00:00",
   "version": null
  }
 }

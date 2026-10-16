@@ -34,4 +34,4 @@ group, fill it with the oracle, and fix what differs.
 -
 
 ## Outcome
-probes/indirect-defined-name-text (30 oracle cells, excel-graph). Three differed and are fixed in `indirect_defined_name`: `a1` FALSE now resolves a name, trailing spaces in the text are ignored, and a `Sheet!name` prefix picks that sheet's scoped name. Formula-valued names stay `#REF!` as before. Eval: +30 passing cells, 0 regressions. lookup.md entry VERIFIED.
+probes/indirect-defined-name-text (32 oracle cells, excel-graph). Three differed and are fixed in `indirect_defined_name`: `a1` FALSE now resolves a name, trailing spaces in the text are ignored, and a `Sheet!name` prefix picks that sheet's scoped name. Formula-valued names stay `#REF!` as before. Eval: +30 passing cells, 0 regressions. lookup.md entry VERIFIED.

@@ -30,7 +30,7 @@ an unprefixed name is read sheet scope first. A name whose body is a formula is 
 `OFFSET(...)`, `Sheet1!$B$1+1`, a constant `=5` and a text constant `="B1"`. A multi-cell name spills as a range
 (`INDIRECT("rng")` in a cell with occupied cells below is `#SPILL!`).
 Evidence: probes/r1c1-name-use-rcr A2, r1c1-name-use-r0, -c0, -r0c1, -r1048577 A2, probes/indirect-defined-name-text
-A1:A30 (excel-graph, 2026-10-15 and 2026-10-16, T-1682).
+A1:A30, Sheet2!C1:C2 (an unprefixed name text on Sheet2 reads Sheet2's own `nm`, not the workbook one; excel-graph, 2026-10-15 and 2026-10-16, T-1682).
 Implemented in: `indirect_defined_name` (functions/lookup_and_reference/mod.rs); ISREF evaluates
 an INDIRECT argument (functions/information/mod.rs).
 Status: VERIFIED (excel-graph)
