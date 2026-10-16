@@ -3,7 +3,7 @@ id: T-1693
 title: "A sheet-qualified reference to a sheet-scoped name (Data!Local) evaluates, and follows a sheet rename"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,3 +31,11 @@ names.
 
 ## Out of scope
 - Workbook-scoped names (already pass).
+
+## Outcome
+`=Data!Local` already evaluated; the bug was rename rewriting. `rename_sheet_in_node` skipped
+`DefinedNameKind`, so the `Data!` prefix of a sheet-scoped name stayed after the rename. It now
+follows the rename (`stringify.rs`). Unit tests in `test_sheet_scoped_name_qualified.rs`; probes
+baseline 3268 -> 3266 known failures (the two cells of `sheet-ops-rename-sheet-scoped-name`).
+Not covered: a workbook-scoped name read through a sheet prefix (`Feb!loc`) keeps its prefix
+after that sheet is renamed; no Excel evidence yet for what Excel does.

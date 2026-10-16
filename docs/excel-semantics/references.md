@@ -1504,6 +1504,11 @@ are read as absolute (from Calc!K1 `=rel_same+1` is Jan!A1+1, not Jan!K1+1); eve
   10, and `ISERROR(Feb!loc)` is FALSE; `only1` and `Other!only1` (defined only as `Jan!only1`) are
   `#NAME?` from Calc (ERROR.TYPE 5, IFERROR its fallback).
   Cases c238d93c128fd5ee, 6322c0f2638aa11b; fixed by T-1641.
+- **A sheet-qualified sheet-scoped name follows a rename of its sheet.** With `Data!Local` =
+  `=Data!$A$1:$A$2` and Calc `=Data!Local` (`#SPILL!`) and `=SUM(Data!Local)` (3), renaming Data to
+  Inputs keeps both values (probe `sheet-ops-rename-sheet-scoped-name`, excel-graph; T-1693). Open:
+  whether a workbook name read through a renamed sheet's prefix (`Feb!loc`) is rewritten; the engine
+  keeps the prefix as typed.
 - A sheet named like a cell address (`S1`) makes Excel Online refuse the whole workbook when a
   formula or name refers to it unquoted (`createSession` 501 `unsupportedWorkbook`), so the
   generator avoids such names.
