@@ -25,4 +25,4 @@ T-1702 lexes any `[$-...]` as a silent locale and treats `A/P` unlike `AM/PM` in
 -
 
 ## Outcome
-Probed all seven inferences (two new probe cases, 89 cells). The engine now accepts `AM/PM` in a fourth section and fits the `AM/PM`, `A/P` and `[$-409]` length costs. Locale tags also localize month and day names, which the engine does not do: filed T-1716 (5 cells stay in the baseline). Eval: +84 cells passing, 5 new known failures.
+Probed all seven inferences (two new probe cases, 89 cells). The engine now accepts `AM/PM` in a fourth section and fits the `AM/PM`, `A/P` and `[$-409]` length costs. Locale tags also localize month and day names, which the engine does not do: filed T-1716 (4 value cells stay in the baseline, plus 1 displayed-text cell, which is scored but never baselined). Eval: +84 cells passing, 5 new known failures.

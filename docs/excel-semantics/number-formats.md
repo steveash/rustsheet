@@ -270,7 +270,7 @@ Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens lon
   - 5 per placeholder run, plus 2 per `.` in it (`"0000000000"` costs 5; `0.0` costs 7);
   - 3 per unquoted or escaped literal character; `$` costs 1; a run of colons costs 3 once (see "Colon runs");
   - 2 per quoted character;
-  - 2 per other token (`d`, `mm`, `%`, `@`, `[h]`, ...); `AM/PM` costs 11 and `A/P` 8 (see "`A/P` letters and a locale-only `[$-409]`", T-1714);
+  - 2 per other token (`d`, `mm`, `%`, `@`, `[h]`, ...); `AM/PM` costs 11 to 13 and `A/P` 8 to 10 (the engine uses 11 and 8; see "`A/P` letters and a locale-only `[$-409]`", T-1714);
   - 2 per color (`"[Red]0"` + 120 quoted works, 122 fails; `"[Red]"` + 124 quoted works, 125 fails);
   - 6 to 8 per condition (`"[>5]0"` plus 79 spaces works, 80 fails; the engine uses 7), 3 more in a section that also holds quoted text (`"[>5]0"` + 116 quoted works and 118 fails on 7 and on 1; `"[>5]"` + 120 quoted works, 122 fails);
   - 0 per `;`.
@@ -330,8 +330,8 @@ Tasks: T-1702, T-1714
 
 T-1714 probed the inferences (probes/text-ap-locale-inferences, 81 cells; probes/displayed-text-ap-locale, 8 cells; excel-graph, 2026-10-16):
 - **A locale tag is not silent.** `[$-zzz]0`, `[$-]0` and `[$-40C]0`/`0.00` print as without the tag, but `[$-40C]mmmm` on 45000 is "mars", `[$-407]mmmm` "März", `[$-40C]dddd` "mercredi", and `[$-F800]dddd` the system long date "Wednesday, March 15, 2023". The engine still prints English names (T-1716).
-- **`AM/PM` may stand in a fourth section**, with or without `@`: `TEXT(5,"0;0;0;x@AM/PM")` is "5", `TEXT("abc","0;0;0;x@AM/PM")` "xabcAM", `TEXT(0.75,"0;0;0;AM/PM")` "1". `"0;0;0;0"` stays `#VALUE!`. `A/P` there behaves the same. Implemented: `exceeds_complexity_limit` exempts `AM/PM`.
-- **Length-limit costs** (text, 0.75 or 5 as the value): `AM/PM` + 79 spaces works and 80 fails, `AM/PM` + 120 quoted works and 121 fails; `A/P` + 80 spaces works and 81 fails, `A/P` + 122 quoted works and 123 fails; `[$-409]` + 118 quoted works and 119 fails, `[$-409]` + 78 spaces works and 79 fails. The engine fits them with `AM/PM` 11, `A/P` 8, both refunded 2 before a closing quoted run, and `[$-409]` (any locale tag) 14. The earlier "`AM/PM` costs at least 3" fit was wrong.
+- **`AM/PM` may stand in a fourth section**, with or without `@`: `TEXT(5,"0;0;0;x@AM/PM")` is "5", `TEXT("abc","0;0;0;x@AM/PM")` "xabcAM", `TEXT(0.75,"0;0;0;AM/PM")` "1". `"0;0;0;0"` stays `#VALUE!`. `A/P` there: `TEXT(5,"0;0;0;A/P")` is "5", but `TEXT("abc","0;0;0;A/P")` is "A" (a text value prints the morning letter alone without `@`; A13:A14) and `"0;0;0;x@A/P"` gives "xabcA" (A15). `AM/PM` with a text value and no `@` was not probed. Implemented: `exceeds_complexity_limit` exempts `AM/PM`.
+- **Length-limit costs** (text, 0.75 or 5 as the value): `AM/PM` + 79 spaces works and 80 fails, `AM/PM` + 120 quoted works and 121 fails; `A/P` + 80 spaces works and 81 fails, `A/P` + 122 quoted works and 123 fails; `[$-409]` + 118 quoted works and 119 fails, `[$-409]` + 78 spaces works and 79 fails. The probes pin `AM/PM` to 11 to 13 and `A/P` to 8 to 10 (the engine uses 11 and 8, both refunded 2 before a closing quoted run) and `[$-409]` to 14. The cost of other tags is inferred from `[$-409]` (7 characters at 2), not probed. The earlier "`AM/PM` costs at least 3" fit was wrong.
 - **Cell display of `A/P`** equals TEXT's (`h A/P`, `h a/p`, `A/P`, `h:mm a/P` on cells; probes/displayed-text-ap-locale A1:A4).
 
 ## Displayed text (`Range.text`) of a formatted cell (T-1610)

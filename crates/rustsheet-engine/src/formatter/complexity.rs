@@ -113,7 +113,6 @@ fn is_number_or_date(token: &Token) -> bool {
                 | Token::ElapsedHourPadded
                 | Token::ElapsedMinutePadded
                 | Token::ElapsedSecondPadded
-                | Token::AMPM
                 | Token::Era
                 | Token::Calendar(_)
         )
@@ -121,11 +120,11 @@ fn is_number_or_date(token: &Token) -> bool {
 
 /// Whether `token` makes a section holding `@` invalid (probes/text-at-with-tokens A1-A43,
 /// B1-B43): the date and time letters, the elapsed tokens, the era and calendar tokens, the digit
-/// placeholders, `.`, `/`, `E+`, `General`, `%` and a condition. Unlike [`is_number_or_date`] it
-/// leaves out `AM/PM`; the calendar tokens (`B1`, `B2`) are inferred from the other date tokens.
+/// placeholders, `.`, `/`, `E+`, `General`, `%` and a condition. Like [`is_number_or_date`], which leaves out
+/// `AM/PM` (a fourth section may hold it); the calendar tokens (`B1`, `B2`) are inferred from the other date tokens.
 /// `A/P` is in neither list: a fourth section may hold it (probes/text-at-token-sections A20).
 fn conflicts_with_text(token: &Token) -> bool {
-    (is_number_or_date(token) && !matches!(token, Token::AMPM))
+    is_number_or_date(token)
         || matches!(
             token,
             Token::Period
@@ -195,8 +194,9 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
     let mut has_conflict = false;
     loop {
         let token = lexer.next_token();
-        // `AM/PM` may stand in a fourth section (probes/text-ap-locale-inferences A11, A12, A16).
-        if sections == MAX_SECTIONS && is_number_or_date(&token) && token != Token::AMPM {
+        // `AM/PM` is not in the list: it may stand in a fourth section (probes/text-ap-locale-inferences
+        // A11, A12, A16).
+        if sections == MAX_SECTIONS && is_number_or_date(&token) {
             return true;
         }
         has_text |= matches!(token, Token::Raw);
@@ -485,6 +485,7 @@ mod tests {
             assert!(exceeds_complexity_limit(code), "{code}");
         }
     }
+
     /// probes/text-ap-locale-inferences (excel-graph, T-1714).
     #[test]
     fn am_pm_a_p_and_locale_costs() {
@@ -496,6 +497,7 @@ mod tests {
             format!("[$-409]{}", quoted(118)),
             format!("[$-409]{}", " ".repeat(78)),
             "0;0;0;AM/PM".to_string(),
+            "0;0;0;A/P".to_string(),
             "0;0;0;x@AM/PM".to_string(),
         ];
         for code in ok {
