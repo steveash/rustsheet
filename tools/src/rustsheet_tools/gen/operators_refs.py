@@ -28,6 +28,7 @@ import re
 from collections.abc import Callable
 from typing import Any
 
+from rustsheet_tools.gen.common import SeededDraws
 from rustsheet_tools.gen.generator import col_letter
 from rustsheet_tools.gen.numeric_rules import CMP_OPS
 
@@ -51,14 +52,8 @@ DATA_POOL += [{"t": "e", "v": "#N/A"}, {"t": "e", "v": "#DIV/0!"}, None, None]
 Rect = tuple[int, int, int, int]  # c0, r0, c1, r1 (0-based columns, 1-based rows)
 
 
-class _Gen:
-    """Random operands over the three data sheets; `pick` keeps the seeded stream in one place."""
-
-    def __init__(self, rng: random.Random) -> None:
-        self.rng = rng
-
-    def pick(self, items: list[str]) -> str:
-        return self.rng.choice(items)
+class _Gen(SeededDraws):
+    """Random operands over the three data sheets."""
 
     def cell(self, sheet: str = "Data", dollars: bool = True) -> str:
         c, r = self.rng.randrange(DATA_COLS), self.rng.randint(1, DATA_ROWS)

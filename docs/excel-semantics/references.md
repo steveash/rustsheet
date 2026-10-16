@@ -1529,3 +1529,42 @@ Implemented in: `is_r1c1_shaped` and `is_dotted_a1_range` (expressions/utils/mod
 (LET, LAMBDA and the lexer) refuses only `R<n>C<m>` (`is_r1c1_cell_text`).
 Status: VERIFIED (excel-graph), except T-1657, T-1658 and T-1659.
 Tasks: T-1652
+
+## Structured references: this row, totals and ranges
+Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
+- `Sales[[#This Row],[Qty]]` (typed `Sales[@Qty]`) in a cell outside the table reads the table's cell on the
+  formula's own row, like an implicit intersection, from any column (`@Sales[Qty]` too). On a row that is not one of the table's data rows (the header row, the totals row,
+  above or below the table) it is `#VALUE!`: this-row e1bf5aa0ffb4ed87, `Sales` at A2:C16, Data!AA11 gives
+  the row-11 value (`#N/A`), Data!AE19, AF17 and AH22 give `#VALUE!`; a cell in the header row (Data!AA1
+  for `Tiny` at J1:K2) is `#VALUE!` too.
+- Inside the table (a formula column) `[@Col]` reads the same row; `Sales[Col]` there is the whole column
+  (in-table 19fdc25163755713).
+- `Table[#Totals]` and `Table[[#Totals],[Col]]` of a table without a totals row are `#REF!`
+  (names-case 5b5c0e20e82153bb K100 `ROWS(Stock[#totals])`; also the throwaway T-1607 probe
+  `SUM(Sales[[#Totals],[A]])`). With one, they are the totals row; `#All` counts it, `#Data` does not
+  (totals 9cb2e511e5e01db0).
+- A column range is the same area whichever column is written first: `Sales[[2024]:[a.b]]`, with the
+  columns in the order Price, a.b, 2024, has `COLUMNS` 2 (column-range 44cecbb1ecd5b2da K143).
+- A table with no data is written (as Excel keeps it) with one blank data row; it reads as one row:
+  `Stock` at E1:E2 with nothing below the header has `ROWS(Stock[[#Data],[Cost]:[Cost]])` = 1 and `#All` 2, and
+  its `#Totals` is `#REF!` (column-range 44cecbb1ecd5b2da K180, K23, K185).
+Status: VERIFIED (excel-graph)
+Implemented in: partly; the `@` shorthand is T-1672, rows outside the table and reversed ranges T-1675,
+totals rows from the eval adapter T-1671.
+Tasks: T-1607, T-1671, T-1672, T-1675
+
+## Structured references: names and item specifiers
+Rule (gen-m8b, excel-graph, 2026-10-16, T-1607): table names, column names and the item specifiers
+`#All`, `#Data`, `#Headers`, `#Totals` match ignoring case: `SUM(SALES[key])`, `ROWS(stock[#all])` and
+`Tiny[[#HEADERS],[Cost]]` compute (names-case 5b5c0e20e82153bb). Several item specifiers combine:
+`ROWS(Sales[[#Headers],[#Data],[Note]])` = 11 and `ROWS(Sales[[#Data],[#Totals]])` = 10 for a table of 10
+data rows without totals (specials e804cf2f8af00680 K76, K19). A bare table name and `Sales[]` are the data
+rows: `ROWS(Sales)` = `ROWS(Sales[])` = 10 (K116, K29), and VLOOKUP, MATCH and INDEX take the bare name
+(lookups 27252667210b1d03). Inside the brackets `'` escapes the next character, and `[`, `]`, `#`, `'` and `@`
+in a column name must be escaped: `Stock[C'#]`, `Sales[it''s]`, `Wide[Rate '[%']]`; a column name that is not
+one word needs its own brackets after `@` (`Sales[@[Unit Price]]`) (escaped d86ef297e840325f, 386/400 pass
+in the engine already).
+Status: VERIFIED (excel-graph)
+Implemented in: escapes (expressions/lexer/structured_references.rs); case-insensitive names and several
+specifiers are T-1673, the bare name T-1674.
+Tasks: T-1607, T-1673, T-1674

@@ -127,6 +127,11 @@ pub struct TableSpec {
     pub range: String,
     #[serde(default)]
     pub filter: bool,
+    /// The last row of `range` is the table's totals row (T-1607). The facade cannot add one yet
+    /// (TODO(T-1671)), so the engine adapter registers the table without it: data references read
+    /// right, `#Totals` and `#All` do not.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub totals_row: bool,
 }
 
 /// A what-if data table in a spec sheet: `ref` holds its result cells; `row_input` alone is a

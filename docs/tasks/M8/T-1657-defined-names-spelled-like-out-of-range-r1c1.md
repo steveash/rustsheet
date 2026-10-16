@@ -3,7 +3,7 @@ id: T-1657
 title: "Defined names spelled like out-of-range R1C1 references (R0, C0, R0C1, R1048577) are #NAME? on every use"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -23,7 +23,7 @@ Found by T-1652 (docs/excel-semantics/references.md "R1C1-shaped sheet and defin
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Done on this branch (eval baseline shrank by 18 lines; `make check` NOT yet run):
 - `is_out_of_range_r1c1_name` (expressions/utils/mod.rs) + skip in `name_operand` (parser/operands.rs): lowercase and non-`R<n>C<m>` shapes (`R0`, `C0`, `R1048577`, `r0c1`) now give `#NAME?`.
 - `ISREF(INDIRECT(non-reference text))` is FALSE (information/mod.rs); INDIRECT now resolves names that are references (`indirect_defined_name`, lookup_and_reference/mod.rs) so `INDIRECT("RCR")` stays TRUE.
