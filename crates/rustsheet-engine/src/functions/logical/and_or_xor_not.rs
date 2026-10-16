@@ -97,8 +97,8 @@ impl Model {
                 text @ CalcResult::String(_) if source == ItemSource::Direct => {
                     model.cast_to_bool(text, cell).ok()
                 }
-                // A direct LAMBDA is `#VALUE!`, held like a referenced error by the walker
-                // (probes/and-or-xor-picked-text J1-J18, excel-graph, T-1685).
+                // A direct LAMBDA is `#VALUE!`; the walker holds this error, so a direct error
+                // beats it in either order (probes/and-or-xor-picked-text J1-J18, T-1685).
                 CalcResult::Lambda(_) => {
                     return Err(CalcResult::new_error(
                         Error::VALUE,
@@ -129,7 +129,8 @@ impl Model {
 }
 
 /// How AND, OR and XOR read their arguments (SPEC-0009 "Consumer mapping"): as
-/// `evaluate_aggregate_arg` gives them (picked cells are references), first error wins, an empty argument is an item.
+/// `evaluate_aggregate_arg` gives them (picked cells are references), first error wins, an
+/// empty argument is an item.
 const LOGICAL_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::First,

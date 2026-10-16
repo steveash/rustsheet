@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-1685: AND/OR/XOR of a text TRUE/FALSE cell (A1/A2) or boolean control (B1/B2) picked by IF, INDEX, XLOOKUP, CHOOSE, LET, TAKE or OFFSET. Plus a direct LAMBDA next to a direct error, a logical and an error cell (A3 #N/A).",
+  "description": "T-1685: AND/OR/XOR of a text TRUE/FALSE cell (A1/A2) or boolean control (B1/B2) picked by IF, INDEX, XLOOKUP, CHOOSE, LET, TAKE or OFFSET. Plus a direct LAMBDA next to a direct error, a logical and an error cell (A3 #N/A). Plus 3-D references (Sheet1:Sheet2).",
   "tags": [
     "M2",
     "logical",
@@ -75,7 +75,23 @@
         "J16": "=XOR(LAMBDA(x,x))",
         "J17": "=XOR(A3,LAMBDA(x,x))",
         "J18": "=XOR(LAMBDA(x,x),A3)",
-        "A3": "=NA()"
+        "A3": "=NA()",
+        "K1": "=AND(Sheet1:Sheet2!B1)",
+        "K2": "=AND(Sheet1:Sheet2!B1:B2)",
+        "K3": "=AND(Sheet1:Sheet2!A1)",
+        "K4": "=OR(Sheet1:Sheet2!B1)",
+        "K5": "=OR(Sheet1:Sheet2!B1:B2)",
+        "K6": "=OR(Sheet1:Sheet2!A1)",
+        "K7": "=XOR(Sheet1:Sheet2!B1)",
+        "K8": "=XOR(Sheet1:Sheet2!B1:B2)",
+        "K9": "=XOR(Sheet1:Sheet2!A1)"
+      }
+    },
+    {
+      "name": "Sheet2",
+      "cells": {
+        "A1": true,
+        "A2": false
       }
     }
   ],

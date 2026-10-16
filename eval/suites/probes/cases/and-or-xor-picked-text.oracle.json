@@ -245,14 +245,51 @@
    "J9": {
     "t": "e",
     "v": "#VALUE!"
+   },
+   "K1": {
+    "t": "b",
+    "v": true
+   },
+   "K2": {
+    "t": "b",
+    "v": false
+   },
+   "K3": {
+    "t": "b",
+    "v": true
+   },
+   "K4": {
+    "t": "b",
+    "v": true
+   },
+   "K5": {
+    "t": "b",
+    "v": true
+   },
+   "K6": {
+    "t": "b",
+    "v": true
+   },
+   "K7": {
+    "t": "b",
+    "v": true
+   },
+   "K8": {
+    "t": "b",
+    "v": true
+   },
+   "K9": {
+    "t": "b",
+    "v": true
    }
-  }
+  },
+  "Sheet2": {}
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "506020e04710d78f511fa2045ecad58e89c4c03f09add22cd968a3c30001d467",
+  "input_sha256": "547cc3148bf8c78d9f177effd9109b1156773f28adea80488d28e42780a0e86f",
   "kind": "excel-graph",
-  "produced_at": "2026-10-16T14:40:22+00:00",
+  "produced_at": "2026-10-16T14:58:21+00:00",
   "version": null
  }
 }

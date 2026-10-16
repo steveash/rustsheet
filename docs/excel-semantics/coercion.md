@@ -319,9 +319,9 @@ case-insensitively (`OR("true",FALSE)` = TRUE; computed and array "TRUE" text ar
 A "TRUE"/"FALSE" text cell is skipped as well, also when a function picks it: with A1 = "TRUE" and A2 = "FALSE",
 `AND`, `OR` and `XOR` of `IF(TRUE,A1)`, `INDEX(A1:A2,1)`, `XLOOKUP(1,{1},A1:A1)`, `CHOOSE(1,A1)`, `LET(x,A1,x)`,
 `TAKE(A1:A2,1)` and `OFFSET(A1,0,0)` are all `#VALUE!` (picked cells are references; evidence:
-probes/and-or-xor-picked-text, 61 cells, excel-graph, T-1685). A direct LAMBDA is `#VALUE!` in AND, OR and XOR
+probes/and-or-xor-picked-text, 70 cells, excel-graph, T-1685). A direct LAMBDA is `#VALUE!` in AND, OR and XOR
 (`AND(LAMBDA(x,x),TRUE)`, `AND(LAMBDA(x,x))`), but a direct error beats it in either order (`AND(LAMBDA(x,x),1/0)`,
-`AND(1/0,LAMBDA(x,x))` are `#DIV/0!`); ours returned `#N/IMPL!` and skipped it, fixed in T-1685.
+`AND(1/0,LAMBDA(x,x))` are `#DIV/0!`); ours returned `#N/IMPL!` and skipped it, fixed in T-1685. A 3-D reference (`AND(Sheet1:Sheet2!B1)`) is read as a reference, not `#VALUE!` (K1-K9).
 When nothing but skipped text is left, the result is `#VALUE!` (`AND("1")`, `AND("")`, `OR("","")`). An
 error argument wins (`AND("1",#N/A)` = `#N/A`). OR and XOR behave the same.
 CONFLICTING (decision 0030 2: Excel 15 is below AppVersion 16; decision 0039: the web value is the Phase 1-3
