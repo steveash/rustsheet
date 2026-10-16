@@ -190,6 +190,9 @@ fn dotted_a1_corners(name: &str) -> Option<(ParsedReference, ParsedReference, bo
 /// range, -forms, r1c1-name-r1-dot-c1, excel-graph, T-1659), while text after the second cell
 /// leaves a name (`A1.B2.C3` makes Excel reject the file; ours reads `#NAME?`).
 pub(crate) fn parse_dotted_a1_range(name: &str) -> Option<(ParsedReference, ParsedReference)> {
+    if !name.contains('.') {
+        return None;
+    }
     match dotted_a1_corners(&name.to_ascii_uppercase())? {
         (left, right, false) => Some((left, right)),
         (_, _, true) => None,

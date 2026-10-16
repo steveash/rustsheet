@@ -73,12 +73,14 @@ impl Parser {
     /// One argument of a call; `binds_name` when it is in a LET name position (odd, and a
     /// separator follows it, so it is not the body).
     fn parse_argument(&mut self, binds_name: bool) -> Node {
-        let token = self.lexer.peek_token();
+        let token = binds_name.then(|| self.lexer.peek_token());
         let node = self.parse_enclosed_expr();
-        if binds_name && self.lexer.peek_token() == self.get_argument_separator_token() {
-            return self.bind_dotted_name(&token, node);
+        match token {
+            Some(token) if self.lexer.peek_token() == self.get_argument_separator_token() => {
+                self.bind_dotted_name(&token, node)
+            }
+            _ => node,
         }
-        node
     }
 
     fn parse_function_args_in_scope(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {
