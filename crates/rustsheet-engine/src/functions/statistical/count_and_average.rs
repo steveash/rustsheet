@@ -221,9 +221,11 @@ impl Model {
         let n = count as f64;
         let mean = sum / n;
 
+        // Excel: the sum of absolute deviations rounds twice per addition like the mean's sum
+        // (probes-numeric/double-rounding-avedev-deviations, docs/excel-semantics/numbers.md).
         let mut sum_abs_dev = 0.0;
         for v in &values {
-            sum_abs_dev += (v - mean).abs();
+            sum_abs_dev = extended_sum(sum_abs_dev, (v - mean).abs());
         }
 
         CalcResult::Number(sum_abs_dev / n)

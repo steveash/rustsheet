@@ -534,6 +534,7 @@ C	probes/round-huge-digits-wrap.case.json	265
 C	probes/round-huge-digits.case.json	216
 C	probes/roundup-wrapped-scaling.case.json	480
 C	probes/rows-columns-args.case.json	14
+C	probes/search-wildcard-newline.case.json	30
 C	probes/seriessum-boolean-coefficients.case.json	18
 C	probes/seriessum-x-zero-error-precedence.case.json	27
 C	probes/seriessum-x-zero.case.json	22
@@ -1174,9 +1175,6 @@ F	probes/eng-argument-modes.case.json	Calc!E9
 F	probes/eta-reduced-names.case.json	Sheet1!E101
 F	probes/eta-reduced-names.case.json	Sheet1!E102
 F	probes/eta-reduced-names.case.json	Sheet1!E103
-F	probes/eta-reduced-names.case.json	Sheet1!E49
-F	probes/eta-reduced-names.case.json	Sheet1!E50
-F	probes/eta-reduced-names.case.json	Sheet1!E51
 F	probes/eta-reduced-names.case.json	Sheet1!E93
 F	probes/external-ref-no-link-ifchoose.case.json	Calc!A26
 F	probes/fin-argument-modes.case.json	Sheet1!H10
@@ -5168,7 +5166,6 @@ F	probes/m7-argument-modes.case.json	Sheet1!F34
 F	probes/m7-argument-modes.case.json	Sheet1!F35
 F	probes/m7-argument-modes.case.json	Sheet1!F4
 F	probes/m7-argument-modes.case.json	Sheet1!F44
-F	probes/m7-argument-modes.case.json	Sheet1!F45
 F	probes/m7-argument-modes.case.json	Sheet1!F5
 F	probes/m7-argument-modes.case.json	Sheet1!F6
 F	probes/m7-argument-modes.case.json	Sheet1!F7
@@ -5196,7 +5193,6 @@ F	probes/m7-argument-modes.case.json	Sheet1!G35
 F	probes/m7-argument-modes.case.json	Sheet1!G4
 F	probes/m7-argument-modes.case.json	Sheet1!G42
 F	probes/m7-argument-modes.case.json	Sheet1!G44
-F	probes/m7-argument-modes.case.json	Sheet1!G45
 F	probes/m7-argument-modes.case.json	Sheet1!G5
 F	probes/m7-argument-modes.case.json	Sheet1!G6
 F	probes/m7-argument-modes.case.json	Sheet1!G7
@@ -5225,7 +5221,6 @@ F	probes/m7-argument-modes.case.json	Sheet1!H35
 F	probes/m7-argument-modes.case.json	Sheet1!H39
 F	probes/m7-argument-modes.case.json	Sheet1!H4
 F	probes/m7-argument-modes.case.json	Sheet1!H44
-F	probes/m7-argument-modes.case.json	Sheet1!H45
 F	probes/m7-argument-modes.case.json	Sheet1!H46
 F	probes/m7-argument-modes.case.json	Sheet1!H5
 F	probes/m7-argument-modes.case.json	Sheet1!H55
