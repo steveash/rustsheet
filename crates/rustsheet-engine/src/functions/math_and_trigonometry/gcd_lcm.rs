@@ -72,6 +72,7 @@ impl Model {
         // after it, wins (`GCD(10^16,"a")` is #VALUE!, `GCD(10^16,NA())` #N/A, GCD, LCM:
         // probes/gcd-lcm-multinomial-error-order A9:A12, A23:A26).
         let too_large_seen = std::cell::Cell::new(false);
+        let result_too_large = std::cell::Cell::new(false);
 
         let mut handle_number = |value: f64| -> Option<CalcResult> {
             if !value.is_finite() {
@@ -91,15 +92,22 @@ impl Model {
                 return None;
             }
             saw_number = true;
+            // An LCM result above 2^53 is `#NUM!` the same deferred way: a later error wins
+            // (`LCM(2^26+1,2^27+1,"a")` is #VALUE!, `...,NA())` #N/A), and a later 0 makes the
+            // result 0 (`LCM(2^26+1,2^27+1,0)`) (probes/gcd-lcm-overflow-ranges A43:A56).
+            if result_too_large.get() {
+                if n == 0 {
+                    result_too_large.set(false);
+                    acc = Some(0);
+                }
+                return None;
+            }
             acc = Some(match acc {
                 Some(cur) => match combine(cur, n) {
                     Some(v) => v,
                     None => {
-                        return Some(CalcResult::new_error(
-                            Error::NUM,
-                            cell,
-                            format!("{fn_name} result too large"),
-                        ));
+                        result_too_large.set(true);
+                        return None;
                     }
                 },
                 None => n,
@@ -235,6 +243,13 @@ impl Model {
 
         if too_large_seen.get() {
             return CalcResult::new_error(Error::NUM, cell, "Argument too large".to_string());
+        }
+        if result_too_large.get() {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                format!("{fn_name} result too large"),
+            );
         }
         if negative_seen.get() {
             return negative_error(cell, fn_name);
