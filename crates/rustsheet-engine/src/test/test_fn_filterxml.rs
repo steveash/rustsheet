@@ -37,3 +37,17 @@ fn fn_filterxml_array_xml_lifts() {
     assert_eq!(model._get_text("A1"), *"#VALUE!");
     assert_eq!(model._get_text("A2"), *"#VALUE!");
 }
+
+// Unprobed (hand-written from the generic lifting rule; follow-up probe filed): errors pass
+// through per element, and a scalar error next to an array broadcasts.
+#[test]
+fn fn_filterxml_array_error_elements() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=FILTERXML({"<a>1</a>";#N/A},"//a")"#);
+    model._set("B1", r#"=FILTERXML(NA(),{"//a";"//b"})"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+    assert_eq!(model._get_text("B1"), *"#N/A");
+    assert_eq!(model._get_text("B2"), *"#N/A");
+}
