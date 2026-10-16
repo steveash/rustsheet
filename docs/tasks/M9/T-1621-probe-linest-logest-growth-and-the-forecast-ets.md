@@ -3,7 +3,7 @@ id: T-1621
 title: "Probe LINEST, LOGEST, GROWTH and the FORECAST.ETS family to the evidence floor"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
