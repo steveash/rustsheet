@@ -22,6 +22,12 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     value at 255 characters) hold it as JSON `[sheet, a1, text]`; oracle backends write
     the text into the cell as a user types it (Graph `values`), so Excel picks value and number
     format. The engine adapter enters the same text through its user-input parser.
+  * `"sheet_ops": [{"op": "rename", "sheet": "Data", "to": "Inputs"}, {"op": "add", "sheet": "New"},
+    {"op": "move", "sheet": "Inputs", "to": 0}]` at the top level are sheet edits made after the
+    workbook loads and before it is recalculated (T-1608): `add` appends a sheet, `rename` renames
+    one (Excel rewrites the formulas that refer to it), `move` puts one at a 0-based position. The
+    docProps custom properties `rustsheet.sheetop.<n>` hold them as JSON, n from 1 in order, and the
+    oracle backend replays them in Excel; the engine adapter applies them through its edit API.
   * A sheet may list `"hidden_rows": [3, 5]` (1-based rows written with `hidden="1"`) and
     `"tables": [{"name": "T1", "ref": "A1:B6", "filter": true}]` (T-1036). A table's header row is the
     first row of `ref` and its cells must be literal text. With `"filter": true` the table's autoFilter
@@ -74,7 +80,8 @@ from rustsheet_tools.oracle.package import patch_parts, read_parts
 _FIXED_CREATED = datetime(2000, 1, 1)
 
 ENTERED_PROPERTY = "rustsheet.entered"
-_ENTERED_XML = re.compile(rf'name="{re.escape(ENTERED_PROPERTY)}\.(\d+)"><vt:lpwstr>(.*?)</vt:lpwstr>', re.S)
+SHEET_OP_PROPERTY = "rustsheet.sheetop"
+SHEET_OPS = ("add", "rename", "move")
 
 _A1 = re.compile(r"^\$?([A-Za-z]{1,3})\$?(\d+)$")
 
@@ -381,11 +388,9 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     for name, formula in spec.get("names", {}).items():
         wb.define_name(name, _formula_text(formula, tables))
     for n, entry in enumerate(entered, start=1):
-        value = json.dumps(entry, ensure_ascii=False)
-        if len(value) > 255:  # Excel's custom-property limit; fail here, not at the oracle
-            msg = f"entered cell {entry[0]}!{entry[1]} is too long for a custom property ({len(value)} > 255)"
-            raise ValueError(msg)
-        wb.set_custom_property(f"{ENTERED_PROPERTY}.{n}", value)
+        _set_json_property(wb, f"{ENTERED_PROPERTY}.{n}", entry, f"entered cell {entry[0]}!{entry[1]}")
+    for n, op in enumerate(spec.get("sheet_ops", ()), start=1):
+        _set_json_property(wb, f"{SHEET_OP_PROPERTY}.{n}", list(sheet_op(op)), f"sheet op {n}")
     wb.close()
     return _patch_package(buf.getvalue(), spec, patches)
 
@@ -645,10 +650,18 @@ def _filter_tables(xlsx: bytes, filters: list[tuple[str, str]]) -> bytes:
     )
 
 
-def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
-    """The `(sheet, a1, text)` typed entries `build_xlsx` recorded in `xlsx`, in spec order.
+def _set_json_property(wb: xlsxwriter.Workbook, name: str, value: object, what: str) -> None:
+    text = json.dumps(value, ensure_ascii=False)
+    if len(text) > 255:  # Excel's custom-property limit; fail here, not at the oracle
+        msg = f"{what} is too long for a custom property ({len(text)} > 255)"
+        raise ValueError(msg)
+    wb.set_custom_property(name, text)
 
-    Raises ValueError when the package or the property is malformed (xlsx inputs are untrusted).
+
+def _json_properties(xlsx: bytes, prefix: str) -> list[Any]:
+    """The JSON values of the custom properties `<prefix>.<n>` in `xlsx`, in order of n.
+
+    Raises ValueError when the package or a property is malformed (xlsx inputs are untrusted).
     """
     try:
         parts = read_parts(xlsx)
@@ -656,14 +669,57 @@ def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
             return []
         custom = parts["docProps/custom.xml"].decode("utf-8")
         # A regex, not an XML parser: the part is untrusted, and only XlsxWriter's own layout matters.
+        pattern = re.compile(rf'name="{re.escape(prefix)}\.(\d+)"><vt:lpwstr>(.*?)</vt:lpwstr>', re.S)
         found = sorted(
             (int(n), json.loads(unescape(v, {"&quot;": '"', "&apos;": "'"})))
-            for n, v in _ENTERED_XML.findall(custom)
+            for n, v in pattern.findall(custom)
         )
-        return [(str(s), str(a1), str(t)) for _, (s, a1, t) in found]
-    except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as e:
+        return [value for _, value in found]
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as e:
+        msg = f"malformed {prefix} property: {e}"
+        raise ValueError(msg) from e
+
+
+def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
+    """The `(sheet, a1, text)` typed entries `build_xlsx` recorded in `xlsx`, in spec order.
+
+    Raises ValueError when the package or the property is malformed (xlsx inputs are untrusted).
+    """
+    try:
+        return [(str(s), str(a1), str(t)) for s, a1, t in _json_properties(xlsx, ENTERED_PROPERTY)]
+    except (TypeError, ValueError) as e:
         msg = f"malformed {ENTERED_PROPERTY} property: {e}"
         raise ValueError(msg) from e
+
+
+def sheet_op(op: Any) -> tuple[str, str, str | int | None]:
+    """A spec's sheet op as `(op, sheet, to)`: `to` is the new name of a rename, the 0-based
+    position of a move and None for an add. Raises ValueError for an unknown or malformed op."""
+    if isinstance(op, (list, tuple)) and len(op) == 3:
+        op = {"op": op[0], "sheet": op[1], **({} if op[2] is None else {"to": op[2]})}
+    if not isinstance(op, dict) or op.get("op") not in SHEET_OPS or not isinstance(op.get("sheet"), str):
+        msg = f"unknown sheet op {op!r}: expected op {'/'.join(SHEET_OPS)} with a sheet name"
+        raise ValueError(msg)
+    kind, sheet, to = op["op"], op["sheet"], op.get("to")
+    if set(op) - {"op", "sheet", "to"}:
+        msg = f"sheet op {op!r} has unknown keys"
+        raise ValueError(msg)
+    if kind == "add" and to is None:
+        return kind, sheet, None
+    if kind == "rename" and isinstance(to, str) and to:
+        return kind, sheet, to
+    if kind == "move" and isinstance(to, int) and not isinstance(to, bool) and to >= 0:
+        return kind, sheet, to
+    msg = f"sheet op {op!r}: `to` must be absent for add, a name for rename, a position >= 0 for move"
+    raise ValueError(msg)
+
+
+def sheet_ops(xlsx: bytes) -> list[tuple[str, str, str | int | None]]:
+    """The `(op, sheet, to)` sheet edits `build_xlsx` recorded in `xlsx`, in spec order (T-1608).
+
+    Raises ValueError when the package or a property is malformed or an op is unknown.
+    """
+    return [sheet_op(op) for op in _json_properties(xlsx, SHEET_OP_PROPERTY)]
 
 
 def _patch_sheets(xlsx: bytes, patches: list[tuple[int, Callable[[str], str]]]) -> bytes:

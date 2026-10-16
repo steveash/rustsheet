@@ -1,0 +1,55 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A2": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A3": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "A4": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A5": {
+    "t": "n",
+    "v": 3.0
+   },
+   "B1": {
+    "t": "s",
+    "v": "=Inputs!A1"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=SUM(Inputs!A1:A2)"
+   },
+   "B3": {
+    "t": "s",
+    "v": "=Inputs!A:A"
+   },
+   "B4": {
+    "t": "s",
+    "v": "=SUM(Inputs!1:2)"
+   },
+   "B5": {
+    "t": "s",
+    "v": "=COUNTA(Inputs!$A$1:$A$3)"
+   }
+  },
+  "Inputs": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "77ce1832887729a0f799e25e50ca5a4b09042c529d74ad0a05981f06efe605d5",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T09:59:15+00:00",
+  "version": null
+ }
+}
