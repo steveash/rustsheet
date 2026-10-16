@@ -305,7 +305,8 @@ pub(super) fn args_signature_groupby(arg_count: usize) -> Vec<Signature> {
 
 /// PIVOTBY: every argument is a vector except `field_headers`, `row_total_depth` and
 /// `col_total_depth`, the integer options (SPEC-0006 step 7; the sort orders may be arrays such as
-/// `{2,-1}`, and an array `relative_to` is lifted per element: probes/pivotby-followup P!A681).
+/// `{2,-1}`). `relative_to` is a vector too, so nothing intersects it.
+// TODO(T-1327): Excel lifts an array `relative_to` per element (probes/pivotby-followup P!A681).
 pub(super) fn args_signature_pivotby(arg_count: usize) -> Vec<Signature> {
     if !(4..=11).contains(&arg_count) {
         return vec![Signature::Error; arg_count];

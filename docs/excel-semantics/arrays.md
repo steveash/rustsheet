@@ -434,8 +434,10 @@ several values, shown and generated headers, key and value sorts with the quirks
 `Grouping::sort_by_aggregate` takes whether parents sort by their aggregate (rows, GROUPBY) or keep their key order
 (PIVOTBY columns). `#N/IMPL!`: depth ±2 and the value sorts that imply it (T-1324), function arrays and PERCENTOF (T-1325,
 T-1327), relative_to (T-1327).
-Unprobed (PIVOTBY): an error header cell in a joined column name (the engine: that error), value sorts over three or more
-fields (rows: every level by its aggregate; columns: the last). GROUPBY and PIVOTBY with a value sort over two fields and the depth omitted
+Unprobed (PIVOTBY): an error header cell in a joined column name (the engine: that error); a joined column name longer
+than a cell holds (the engine: `#VALUE!`, after the 32,767-character cell limit in coercion.md "Text longer than 32,767
+characters"); value sorts over three or more fields (rows: every level by its aggregate; columns: the last); and
+col_total_depth -1 with a row value sort (the engine sorts, as with 1: the Total column exists). GROUPBY and PIVOTBY with a value sort over two fields and the depth omitted
 (subtotals in Excel, P!A921) are `#N/IMPL!` until T-1324.
 Status: VERIFIED (web)
 Tasks: T-1276, T-1328, T-1322, T-1323, T-1326

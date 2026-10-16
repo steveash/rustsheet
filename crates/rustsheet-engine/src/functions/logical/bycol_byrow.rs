@@ -378,3 +378,25 @@ impl Model {
         CalcResult::Array(result)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::as_lambda;
+    use crate::calc_result::CalcResult;
+
+    #[test]
+    fn as_lambda_passes_anything_else_through_unchanged() {
+        assert!(matches!(
+            as_lambda(CalcResult::Lambda(7)),
+            Ok(CalcResult::Lambda(7))
+        ));
+        assert!(matches!(
+            as_lambda(CalcResult::Number(5.0)),
+            Err(CalcResult::Number(n)) if n == 5.0
+        ));
+        assert!(matches!(
+            as_lambda(CalcResult::Array(Vec::new())),
+            Err(CalcResult::Array(rows)) if rows.is_empty()
+        ));
+    }
+}

@@ -37,7 +37,7 @@ That changes SORT/UNIQUE, so it needs their evidence first.
   (P!A1, M1, Y1, A25, M25, M73, Y73, Y97, M121 pass; P!A97 and P!M97 are subtotals and moved to T-1324, P!A121 to T-1325.)
 - [x] A PIVOTBY cross-product of two high-cardinality fields is size-checked before allocation (SPEC-0006 Design step 6).
 - [x] gen-m9/696af2c8cee2f57e A13, 7db7ae6cbab32f22 A38 and b5352ebdb9c5f1a1 A30 pass (or move to the SPEC-0006 step that covers them), with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] `make check` green; reviewers approve. (`make check` green; review pending.)
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -54,13 +54,15 @@ quirks (rows sort by value only with a Total column; column parents keep their k
 errors. Built on T-1323's readers, not copies: `Model::evaluate_options` (error values first), `Model::sort_order`,
 `Model::filter_rows` and `Grouping::sort_by_aggregate`, which gained `parents_by_value` (false for PIVOTBY's columns).
 `as_lambda` (bycol_byrow.rs) is the "is it a LAMBDA" check BYROW/BYCOL, GROUPBY and PIVOTBY share (through
-`function_argument` in groupby.rs); `is_function_array`, `shown_key` are shared too. GROUPBY now gives `#N/IMPL!` for a
+`function_argument` in groupby.rs); `is_function_array`, `shown_key`, `width`, `empty_text`, `total_label_cells`,
+`key_names`/`value_name`, `function_arrays_error` and `value_sort_shows_subtotals` are shared too. A value sort's aggregates
+are reused for the Total column (rows, one value column) and the Total row (columns) instead of calling the function again. GROUPBY now gives `#N/IMPL!` for a
 value sort over two keys with total_depth omitted (Excel shows subtotals there, pivotby-followup P!A921; T-1324).
-static_analysis.rs: the `args_signature_*` helpers moved to static_analysis/signature.rs (lock updated by the script).
+static_analysis.rs: the `args_signature_*` helpers moved to static_analysis/signature.rs (2147 -> 1669 lines; ratchets updated by the scripts, decision 0010).
 New probe probes/pivotby-followup (63 PIVOTBY questions, excel-graph 2026-10-16), recorded in docs/excel-semantics/arrays.md
 "T-1326 follow-up"; P!A1321-A1601 confirm that T-1323's sort_order, error-precedence and filter rules (header-height
 filter included) hold for PIVOTBY.
-Eval (on main + T-1323): probes known failures 3744 -> 3496 (579 fixed, 0 regressions; +331 new-coverage failures, all
+Eval (on current main): probes known failures 3517 -> 3269 (579 fixed, 0 regressions; +331 new-coverage failures, all
 deferred cells of the new case): groupby-pivotby 330, -followup 215, -followup2 3, -followup3 27, m7-argument-modes 3
 (F35:H35), catalog/availability-30 1. Non-gate: gen-m7 964/994, gen-m9 925/998 (all 8 PIVOTBY cells pass, among them
 gen-m9 696af2c8cee2f57e A13, 7db7ae6cbab32f22 A38, b5352ebdb9c5f1a1 A30, gen-m7 bcad709c30cfdf64 A13, bf889c3917eb54c5 A12).
