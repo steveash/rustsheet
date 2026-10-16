@@ -109,6 +109,7 @@ C	probes/circular-iteration-delta.case.json	3
 C	probes/circular-iteration-limits.case.json	7
 C	probes/circular-iteration-off.case.json	13
 C	probes/circular-iteration-on.case.json	12
+C	probes/clean-proper-chars.case.json	88
 C	probes/clock-text-length-limit.case.json	16
 C	probes/clock-text-long-fraction.case.json	33
 C	probes/clock-text-long-fraction2.case.json	51
