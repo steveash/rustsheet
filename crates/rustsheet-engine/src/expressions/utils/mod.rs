@@ -166,12 +166,34 @@ pub(crate) fn is_out_of_range_r1c1_name(name: &str) -> bool {
 /// name (docs/excel-semantics/references.md "R1C1-shaped sheet and defined names",
 /// probes/r1c1-shaped-sheet-names-4, -5, lotus-dot-range; excel-graph, T-1652).
 fn is_dotted_a1_range(name: &str) -> bool {
-    let Some((first, rest)) = name.split_once('.') else {
-        return false;
-    };
+    dotted_a1_corners(name).is_some()
+}
+
+/// The two cells of the Lotus-style range `name` starts with ([`is_dotted_a1_range`]) and
+/// whether more text follows the second one (`.C3` in `A1.B2.C3`).
+fn dotted_a1_corners(name: &str) -> Option<(ParsedReference, ParsedReference, bool)> {
+    let (first, rest) = name.split_once('.')?;
     let rest = rest.trim_start_matches('.');
-    let second = rest.split('.').next().unwrap_or(rest);
-    parse_reference_a1(first).is_some() && parse_reference_a1(second).is_some()
+    let (second, more) = rest
+        .split_once('.')
+        .map_or((rest, false), |(s, _)| (s, true));
+    Some((
+        parse_reference_a1(first)?,
+        parse_reference_a1(second)?,
+        more,
+    ))
+}
+
+/// The corners of `name` when all of it is a Lotus-style range, in any case: `A1.B2`, `a1..b2`,
+/// `R1.C1` (the range `C1:R1`). Excel reads such a name in a formula as the range, even over a
+/// defined name spelled so (`SUM(A1.B2)` is `SUM(A1:B2)`, `=R1.C1*1` spills; probes/lotus-dot-
+/// range, -forms, r1c1-name-r1-dot-c1, excel-graph, T-1659), while text after the second cell
+/// leaves a name (`A1.B2.C3` makes Excel reject the file; ours reads `#NAME?`).
+pub(crate) fn parse_dotted_a1_range(name: &str) -> Option<(ParsedReference, ParsedReference)> {
+    match dotted_a1_corners(&name.to_ascii_uppercase())? {
+        (left, right, false) => Some((left, right)),
+        (_, _, true) => None,
+    }
 }
 
 /// Whether the R1C1 lexer reads `name` as a cell reference: `R<digits>C<digits>` in uppercase,

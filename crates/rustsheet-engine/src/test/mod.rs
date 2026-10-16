@@ -73,6 +73,7 @@ mod test_intersection_operator;
 mod test_inverted_ranges;
 mod test_issue_623;
 mod test_lifted_range_bound;
+mod test_lotus_dot_ranges;
 mod test_math;
 mod test_merged_cells;
 mod test_metadata;
