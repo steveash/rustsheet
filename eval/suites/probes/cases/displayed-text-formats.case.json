@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "Displayed text (Range.Text) under General and common number formats, and at a narrow column width (#### and General shortening): the first formatted-text probe (T-1610).",
+  "description": "Displayed text (Range.Text) under General and common number formats, and whether a narrow column width (column B, width 4) changes it: the first formatted-text probe (T-1610).",
   "tags": [
     "M10",
     "number-format",

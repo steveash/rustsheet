@@ -325,7 +325,7 @@ Rule: excel-graph's `Range.text` is the cell's value under its number format, an
 depend on the column width. At width 4 a General `12345678` stays "12345678" and `=1/3` stays
 "0.333333333" (the 11-character General rule of `TEXT(x,"General")`, not a width-fitted
 shortening), and text is not cut ("long text"). A number a date format cannot show (a negative date
-serial) is 255 `#` characters, not a width-sized `####`. Other cells read as `TEXT` would give them:
+serial) is 255 `#` characters, not a width-sized `####`. The other probed cells:
 General `1.5` "1.5", `1234567890123` "1.23457E+12", `1E-10` "1E-10"; `0.00` on PI() "3.14";
 `#,##0.00` on -1234.5 "-1,234.50"; `0%`/`0.0%` on 0.256 "26%"/"25.6%"; `yyyy-mm-dd` on 45000
 "2023-03-15"; `m/d/yyyy h:mm` on 45000.75 "3/15/2023 18:00"; `0.00;(0.00)` on -5 "(5.00)";
