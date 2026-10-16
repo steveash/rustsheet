@@ -13,6 +13,7 @@ use super::grouping::{
     effective_depth, empty_text, shown_key, subtotal_levels, Aggregates, Grouping, Line,
     ParentOrder, SortOrder,
 };
+use super::relative_to::{Item, RelativeSets, RelativeTo};
 use crate::{
     calc_result::CalcResult,
     cast::{array_node_to_string, MAX_TEXT_UNITS},
@@ -60,10 +61,12 @@ struct Pivot {
     records: Vec<usize>,
     /// The output shape of the functions.
     shape: Shape,
+    /// The `relative_to` argument, or its elements when it is an array (lifted).
+    relative_to: RelativeTo,
+    lifted: Option<Vec<Vec<ArrayNode>>>,
 }
 
 /// The relative set of a call that has none: PIVOTBY's one-argument functions.
-// TODO(T-1327): the relative_to sets.
 const NO_RELATIVE: Relative<'static> = Relative {
     id: None,
     rows: &[],
@@ -84,8 +87,11 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
-        let (pivot, mut functions) = self.pivotby_args(args, cell)?;
+        let (mut pivot, mut functions) = self.pivotby_args(args, cell)?;
         let (mut rows, mut cols, height) = pivot_groupings(&pivot, cell)?;
+        if let Some(elements) = pivot.lifted.take() {
+            return Ok(self.lifted_relative_to(elements, cell));
+        }
         let functions = &mut functions;
         // Rows sort by a value only when there is a Total column: with col_total_depth 0 they keep
         // the key order (probes/pivotby-followup P!A781, P!A1221; with it, P!M121, P!A801).
@@ -95,13 +101,11 @@ impl Model {
             SortOrder::Value { .. } if pivot.col_depth == 0 => &key_order,
             ref order => order,
         };
-        let values = &pivot.values;
         let row_totals = self.sort_pivot_groups(
             functions,
             &mut rows,
-            values,
-            row_sort,
-            ParentOrder::ByValue,
+            &pivot,
+            (row_sort, ParentOrder::ByValue, true),
             cell,
         );
         // The column parents sort by their own aggregate only with subtotals (probes/pivotby-
@@ -113,10 +117,33 @@ impl Model {
             ParentOrder::ByKey
         };
         let col_sort = &pivot.col_sort;
-        let col_totals =
-            self.sort_pivot_groups(functions, &mut cols, values, col_sort, col_parents, cell);
+        let mut col_totals = self.sort_pivot_groups(
+            functions,
+            &mut cols,
+            &pivot,
+            (col_sort, col_parents, false),
+            cell,
+        );
 
         let col_lines = cols.lines(col_levels, pivot.col_depth < 0);
+        let row_lines = rows.lines(subtotal_levels(pivot.row_depth), pivot.row_depth < 0);
+        // The sets name groups by index, so they are built once the groups are sorted.
+        let sets = if functions.needs_relative() {
+            if !pivot.relative_to.column_sort_is_total() {
+                col_totals = None;
+            }
+            let lines = (&row_lines[..], &col_lines[..]);
+            let sets = RelativeSets::new(
+                pivot.relative_to,
+                (&rows, &cols),
+                lines,
+                &pivot.records,
+                cell,
+            )?;
+            Some(sets)
+        } else {
+            None
+        };
         let slots = slots(&col_lines, pivot.shape.columns, pivot.col_depth);
         let mut output = Vec::with_capacity(height);
         output.extend(header_rows(&pivot, functions, &cols, &slots));
@@ -124,7 +151,15 @@ impl Model {
             rows: row_totals,
             cols: col_totals,
         };
-        let grid = self.grid_rows(functions, &pivot, (&rows, &cols), &slots, &totals, cell);
+        let lines = (&rows, &cols, &row_lines[..]);
+        let grid = self.grid_rows(
+            functions,
+            &pivot,
+            lines,
+            (&slots, sets.as_ref()),
+            &totals,
+            cell,
+        );
         output.extend(grid);
         if let Some(error) = functions.refused() {
             return Err(error);
@@ -140,13 +175,12 @@ impl Model {
         &mut self,
         functions: &mut Functions,
         pivot: &Pivot,
-        (rows, cols): (&Grouping, &Grouping),
-        slots: &[Slot],
+        (rows, cols, lines): (&Grouping, &Grouping, &[Line]),
+        (slots, sets): (&[Slot], Option<&RelativeSets>),
         totals: &Totals,
         cell: CellReferenceIndex,
     ) -> Vec<Vec<ArrayNode>> {
         let levels = subtotal_levels(pivot.row_depth);
-        let lines = rows.lines(levels, pivot.row_depth < 0);
         let row_fields = width(&pivot.row_keys);
         let column_of = cols.group_of(pivot.values.len());
         let mut grid = Grid {
@@ -155,6 +189,8 @@ impl Model {
             column_of,
             buckets: vec![Vec::new(); cols.groups.len()],
             merged: Vec::new(),
+            sets,
+            row: None,
         };
         let mut output = Vec::with_capacity((lines.len() + 1) * pivot.shape.rows_per_group);
         let blank = functions.blank_totals(width(&pivot.values));
@@ -166,11 +202,12 @@ impl Model {
         if pivot.row_depth < 0 {
             output.extend(total.take().into_iter().flatten());
         }
-        for line in lines {
+        for &line in lines {
             // A subtotal row is the function of all its groups' records (P!A97).
             let Some((label, records)) = rows.line_parts(line, row_fields) else {
                 continue;
             };
+            grid.row = Some(line);
             let reuse = |slot| totals.line_total_cell(line, slot, blank);
             output.extend(self.grid_row(functions, &mut grid, label, &records, reuse, cell));
         }
@@ -228,9 +265,12 @@ impl Model {
                     }
                     Slot::Total { .. } => records,
                 };
+                let relative = grid
+                    .sets
+                    .map_or(NO_RELATIVE, |sets| sets.of_cell(grid.row, slot_item(slot)));
                 let at = Aggregate {
                     rows: cell_rows,
-                    relative: NO_RELATIVE,
+                    relative,
                 };
                 row.push(self.pivot_cell(functions, grid.values, slot, sub_row, at, cell));
             }
@@ -239,9 +279,8 @@ impl Model {
         output
     }
 
-    /// Evaluates and checks the PIVOTBY arguments. Two-argument functions and `relative_to`
-    /// (T-1327) and column subtotals over several value columns are `#N/IMPL!`, never a wrong
-    /// value.
+    /// Evaluates and checks the PIVOTBY arguments. Column subtotals over several value columns are
+    /// `#N/IMPL!`, never a wrong value.
     fn pivotby_args(
         &mut self,
         args: &[Node],
@@ -317,16 +356,15 @@ impl Model {
         // row may be left out of the filter, and keeping no record is #VALUE! (P!A281,
         // P!A1481-A1601, probes/groupby-pivotby-followup G!A881, -followup3 G!A133).
         let records = self.filter_rows(filter, height, first, cell)?;
-        // TODO(T-1327): relative_to. An array there is lifted per element in Excel
-        // (probes/pivotby-followup P!A681).
-        if relative_to.is_some() {
-            return Err(not_implemented(cell, "PIVOTBY relative_to"));
-        }
-        // TODO(T-1327): PERCENTOF and the other two-argument functions get each cell's values and
-        // its relative set (the column total when relative_to is omitted: P!Y25).
-        if functions.needs_relative() {
-            return Err(not_implemented(cell, "PIVOTBY with two-argument functions"));
-        }
+        // relative_to: 0 to 4 ([`Model::relative_to`]), checked whatever the function (P!A581),
+        // or an array lifted per element (probes/pivotby-followup P!A681).
+        let (relative_to, lifted) = match relative_to {
+            Some(array @ (CalcResult::Array(_) | CalcResult::Range { .. })) => (
+                RelativeTo::column_total(),
+                Some(self.result_to_array(array, cell)?),
+            ),
+            other => (self.relative_to(other, cell)?, None),
+        };
         let row_depth = effective_depth(row_depth, row_depth_given, &row_sort, row_fields);
         let col_depth = effective_depth(col_depth, col_depth_given, &col_sort, col_fields);
         // TODO(T-1700): column subtotals over several value columns. Excel shows most of their
@@ -349,6 +387,8 @@ impl Model {
             col_sort,
             records,
             shape,
+            relative_to,
+            lifted,
         };
         Ok((pivot, functions))
     }
@@ -368,20 +408,20 @@ impl Model {
         &mut self,
         functions: &mut Functions,
         grouping: &mut Grouping,
-        values: &[Vec<ArrayNode>],
-        order: &SortOrder,
-        parents: ParentOrder,
+        pivot: &Pivot,
+        (order, parents, rows_axis): (&SortOrder, ParentOrder, bool),
         cell: CellReferenceIndex,
     ) -> Option<(usize, Aggregates)> {
+        let values = &pivot.values;
         let SortOrder::Value { column, ascending } = *order else {
             return None;
         };
         let pair = functions.pair_at(0, column);
-        let totals = grouping.sort_by_aggregate(ascending, parents, cell, |rows| {
-            let at = Aggregate {
-                rows,
-                relative: NO_RELATIVE,
-            };
+        let totals = grouping.sort_by_aggregate(ascending, parents, cell, |rows, up| {
+            let relative = pivot
+                .relative_to
+                .of_sort(rows_axis, rows, up, &pivot.records);
+            let at = Aggregate { rows, relative };
             self.aggregate(functions, pair, values, at, cell)
         });
         Some((column, totals))
@@ -664,4 +704,19 @@ struct Grid<'a> {
     column_of: Vec<usize>,
     buckets: Vec<Vec<usize>>,
     merged: Vec<usize>,
+    /// The relative sets, when a function takes them, and the row item being laid out (`None`
+    /// for the Total row).
+    sets: Option<&'a RelativeSets>,
+    row: Item,
+}
+
+/// The column item of a slot ([`RelativeSets::of_cell`]).
+fn slot_item(slot: Slot) -> Item {
+    match slot {
+        Slot::Group { group, .. } => Some(Line::Group(group)),
+        Slot::Subtotal {
+            level, start, end, ..
+        } => Some(Line::Subtotal { level, start, end }),
+        Slot::Total { .. } => None,
+    }
 }

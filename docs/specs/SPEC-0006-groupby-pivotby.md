@@ -237,7 +237,9 @@ Ordered; each is S/M. The grouping core lands with GROUPBY; PIVOTBY reuses it.
    reference result are in docs/excel-semantics/arrays.md (probes/groupby-pivotby-functions*).
 5. PIVOTBY (opus, M): the grid on the shared core, totals and subtotals on both axes, sort
    orders, filter, headers, several values and functions.
-6. PIVOTBY relative_to (opus, S): the reference sets 0-4 for two-argument functions.
+6. PIVOTBY relative_to (opus, S): the reference sets 0-4 for two-argument functions. DONE (T-1327): a row selection
+   crossed with a column selection, parents one key field up, probed over two fields per axis and with subtotals
+   (docs/excel-semantics/arrays.md, probes/groupby-pivotby-functions*).
 7. DONE (T-1328) Probe follow-up (sonnet, S; research): the undecoded cells (G!AB193, G!J217),
    field_relationship 1 with subtotals (G!J169), the two-values PIVOTBY Totals (P!Y97), the
    multi-key sort array, the header auto-detect rule, errors as keys, and whether all-FALSE

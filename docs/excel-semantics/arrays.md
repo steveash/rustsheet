@@ -458,6 +458,32 @@ engine does not show them); a LAMBDA without parameters (the engine: `#VALUE!`);
 argument count is not 1 (the engine gives them one argument, T-1706). CORREL, PEARSON and RSQ over arrays of different sizes
 are `#N/A` per group in Excel, `#VALUE!` here, and their total rows differ in the last digit (functions G!B421, functions2
 G!B281, G!B301): a CORREL/PEARSON/RSQ gap, T-1707.
+T-1327 follow-up (PIVOTBY relative_to; probes/groupby-pivotby-functions P!A1-A841 show each cell's set with
+`LAMBDA(x,y,SUM(y))`, and -functions3 P!A61-A181):
+- A cell's relative set is a row selection crossed with a column selection, each all records, the cell's own row (column)
+  item, or that item's parent, the item with its last key field dropped (a single field's parent, and a Total's, is all):
+  0 is all rows x the cell's column, 1 the cell's row x all columns, 2 all x all, 3 the cell's row x its column's parent,
+  4 its row's parent x its column. So with one field per axis 3 equals 1 and 4 equals 0 (P!A1-A81). Two row fields with 4:
+  East/Apple in 2023 gets East in 2023 (15), its Total cell East (45), the Total row the column (P!A181); two column fields
+  with 3: the row under the column's parent (Apple: 15, 64 in the Total row, P!A261); both with 4: West/Apple in
+  Apple/2023 is 0 (P!A321). With subtotals (depth 2) a subtotal row or column is the item of its key prefix, whose
+  parent is one field shorter: with 4 a row subtotal East gets the column (35, 86) and 130.5 in the Total column, with 3 a
+  column subtotal Apple gets the row (P!A341-A441). A cell without records stays `""` without a call (P!A1). Three row
+  fields with 4 (functions3 P!A61) agree with "one field up" but do not separate it from the top field (unprobed).
+- PERCENTOF and the two-parameter LAMBDAs get it (P!Y25-A73 in the anchor case; HSTACK(SUM,PERCENTOF) and VSTACK: functions
+  P!A641, functions2 P!A81); with several value columns each column has its own set and the Total columns stay `""` (P!A701,
+  functions3 P!A181); a filter shrinks every set (P!A661). One-argument functions ignore it (P!A561).
+- relative_to is read as a number (`"1"` and TRUE are 1); 5, -1 and 0.5 are `#VALUE!`, also with SUM (P!A461-A581). An array is
+  lifted: each element is the PIVOTBY's top-left cell, the `""` corner, or `#VALUE!` for an invalid element (`{0;1}` is
+  `""`,`""`; `{5;1}` `#VALUE!`,`""`; ROWS x COLUMNS of an element 1x1: P!A721, P!A741, AB1).
+- Value sorts by a two-argument function: rows sort by their Total column cell's value, so with 4 over two row fields the
+  parents tie at the grand total and keep their key order while the children tie at their parent's total (functions3
+  P!A91); with 1 by their own rows (P!A121). Columns sort by their own records even with 3, not by the parent total their
+  Total row cell shows (Apple 2024 before Apple 2023 descending, 49 against 15, both showing 64: functions3 P!A151).
+Unprobed (T-1327): parents over three or more fields (the engine: one field up); column sorts with relative_to 1 or 2 (the
+engine: all records) and a parent group's set in a three-level row sort (the engine: the group one level up); an error
+element in an array relative_to (the engine: that error) and an array relative_to with another invalid argument (the
+engine: the other argument's error, whole).
 Ours: GROUPBY (T-1322, functions/lookup_and_reference/groupby.rs): the shared `Grouping` core (hash grouping on
 `cell_key` with -0 as 0, sorting with `sort_key_cmp` and numbers compared exactly), a LAMBDA or eta-name function called
 once per group and value column through one `LambdaCaller`, field_headers and auto-detect, total_depth 0/Â±1, `""`
@@ -478,8 +504,12 @@ checked while grouping and before any call; the grid with `""` cells, totals 0/Â
 several values, shown and generated headers, key and value sorts with the quirks above, and GROUPBY's argument readers
 (`evaluate_options`, `sort_order`, `filter_rows`: their rules hold for PIVOTBY too, P!A1321-A1601 below);
 `Grouping::sort_by_aggregate` takes whether parents sort by their aggregate (rows, GROUPBY) or keep their key order
-(PIVOTBY columns). `#N/IMPL!`: column subtotals over several value columns (T-1700), two-argument functions and
-relative_to (T-1327). Function arrays since T-1325, as in GROUPBY.
+(PIVOTBY columns). `#N/IMPL!`: column subtotals over several value columns (T-1700). Function arrays since T-1325, as in
+GROUPBY. Since T-1327 (functions/lookup_and_reference/relative_to.rs): `Model::relative_to` reads the argument into a row
+and a column selection, `RelativeSets` builds every set the grid uses once, after the sorts, in one pass over the records
+per pair of key-prefix levels (groups, subtotals and totals alike; `Grouping::prefix_ids`), the grid cells, subtotal
+lines included, look theirs up, value sorts take `RelativeTo::of_sort` (the parent group from
+`Grouping::sort_by_aggregate`), and an array is lifted by `Model::lifted_relative_to` without any call.
 Unprobed (PIVOTBY): an error header cell in a joined column name (the engine: that error); a joined column name longer
 than a cell holds (the engine: `#VALUE!`, after the 32,767-character cell limit in coercion.md "Text longer than 32,767
 characters"); value sorts over three or more fields (rows: every level by its aggregate; columns: the last); and
@@ -529,7 +559,7 @@ the keys or values themselves (the engine: one error), a lifted field_relationsh
 per element, as the row and column probed), and a 1x1 array field_relationship such as `{0}` or `{1}` (the engine lifts it
 to one cell, as `{FALSE}` is in followup G!A921).
 Status: VERIFIED (web)
-Tasks: T-1276, T-1328, T-1322, T-1323, T-1326, T-1324, T-1700, T-1325
+Tasks: T-1276, T-1328, T-1322, T-1323, T-1326, T-1324, T-1700, T-1325, T-1327
 
 ## GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap
 Rule: Excel calls a two-parameter LAMBDA in GROUPBY or PIVOTBY once per aggregate cell with the cell's values and its whole
@@ -538,12 +568,13 @@ is given (the cell's rows plus the relative set) before making it, against the 2
 (`too_many_visits`, criteria.md); once the charges would pass it, no further call is made and the whole result is `#ERROR!`.
 Example: `GROUPBY(SEQUENCE(20000),SEQUENCE(20000),LAMBDA(x,y,ROWS(y)))` (20000 groups x 20000 rows) is `#ERROR!`, while
 PERCENTOF passed by name, summed once per relative set (O(N)), and one-parameter LAMBDAs compute it (unit test
-`two_parameter_lambdas_are_charged_against_the_visit_cap`).
+`two_parameter_lambdas_are_charged_against_the_visit_cap`, in test_fn_groupby.rs and, for 20000 PIVOTBY rows in one
+column, test_fn_pivotby.rs).
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5), SPEC-0006 Design step 3.
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::aggregate`),
 crates/rustsheet-engine/src/functions/statistical/if_ifs.rs (`too_many_visits`)
-Tasks: T-1325
+Tasks: T-1325, T-1327
 
 ## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!
 Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:

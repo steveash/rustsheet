@@ -36,12 +36,17 @@ pub(crate) struct Aggregate<'a> {
 
 /// A relative set: the source rows a two-argument function gets as its second argument (all rows
 /// for GROUPBY, the `relative_to` set for PIVOTBY). `id` names a set that is built once and shared,
-/// so PERCENTOF sums it once; `None` for a set made for one call.
+/// so PERCENTOF sums it once; `None` for a set made for one call. Ids are pairs so their makers
+/// cannot collide: [`ALL_ROWS`], (1, n) for PIVOTBY's relative sets, (2 + level, n) for the
+/// parent groups of a value sort ([`super::grouping::Grouping::sort_by_aggregate`]).
 #[derive(Clone, Copy)]
 pub(crate) struct Relative<'a> {
-    pub(crate) id: Option<usize>,
+    pub(crate) id: Option<(usize, usize)>,
     pub(crate) rows: &'a [usize],
 }
+
+/// The id of the set of all (kept) rows.
+pub(crate) const ALL_ROWS: (usize, usize) = (0, 0);
 
 /// How a function is called: with the group's values, with the relative set's values too, or,
 /// for the built-in PERCENTOF, as the SUM of the group over the SUM of the relative set, the
@@ -51,7 +56,7 @@ enum Call {
     Two,
     PercentOf {
         sum: Box<LambdaCaller>,
-        totals: HashMap<(usize, usize), CalcResult>,
+        totals: HashMap<((usize, usize), usize), CalcResult>,
     },
 }
 

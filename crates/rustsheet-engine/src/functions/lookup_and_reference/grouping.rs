@@ -9,6 +9,7 @@ use std::collections::HashMap;
 
 use std::borrow::Cow;
 
+use super::group_functions::Relative;
 use crate::{
     expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
     functions::spill_functions::{cell_key, sort_key_cmp, CellKey},
@@ -97,6 +98,25 @@ impl Grouping {
         Ok(Grouping { groups })
     }
 
+    /// The number of key fields.
+    pub(crate) fn fields(&self) -> usize {
+        self.groups.first().map_or(0, |group| group.keys.len())
+    }
+
+    /// For each group, the id of its first `level` keys (groups sharing them share the id; all
+    /// 0 for level 0): the key prefixes of PIVOTBY's relative sets.
+    pub(crate) fn prefix_ids(&self, level: usize) -> Vec<usize> {
+        let mut index: HashMap<&[CellKey], usize> = HashMap::new();
+        self.groups
+            .iter()
+            .map(|group| {
+                let prefix = group.cells.get(..level).unwrap_or(group.cells.as_slice());
+                let next = index.len();
+                *index.entry(prefix).or_insert(next)
+            })
+            .collect()
+    }
+
     /// For each of `height` source rows, the index of its group (`usize::MAX` for rows in no
     /// group: headers and filtered rows).
     pub(crate) fn group_of(&self, height: usize) -> Vec<usize> {
@@ -151,6 +171,10 @@ impl Grouping {
     /// function of all its rows, not of its children's values (AVERAGE and `100-SUM(x)` over two
     /// keys, args2 B22-B25), at every level (three keys, args2 B19-B21).
     ///
+    /// `aggregate` also gets the group one level up as a relative set (PIVOTBY's `relative_to` 4 sorts
+    /// rows by it: `RelativeTo::of_sort`); `None` at the top level and when the parents are not
+    /// gathered (not [`ParentOrder::ByValue`]).
+    ///
     /// Work: one `aggregate` call per group and per parent, at most groups x key fields, which the
     /// output size bounds; each level's parent rows are gathered once (O(rows log rows) per level).
     pub(crate) fn sort_by_aggregate(
@@ -158,7 +182,7 @@ impl Grouping {
         ascending: bool,
         order: ParentOrder,
         cell: CellReferenceIndex,
-        mut aggregate: impl FnMut(&[usize]) -> ArrayNode,
+        mut aggregate: impl FnMut(&[usize], Option<Relative<'_>>) -> ArrayNode,
     ) -> Aggregates {
         self.sort_by_keys(&[], cell);
         let fields = match order {
@@ -170,14 +194,19 @@ impl Grouping {
         // appearance, so equal parent values keep key order), with the parents' aggregates.
         let mut levels: Vec<(Vec<usize>, Vec<ArrayNode>)> = Vec::new();
         let mut previous = vec![0; self.groups.len()];
+        // The rows of the previous level's parents (gathered when the parents sort by value).
+        let mut previous_rows: Vec<Vec<usize>> = Vec::new();
         for level in 0..fields.saturating_sub(1) {
             let mut index: HashMap<(usize, &CellKey), usize> = HashMap::new();
             let mut parent_rows: Vec<Vec<usize>> = Vec::new();
+            // The previous level's parent of each parent.
+            let mut above: Vec<usize> = Vec::new();
             let mut parents = Vec::with_capacity(self.groups.len());
             for (group, parent) in self.groups.iter().zip(&previous) {
                 let key = group.cells.get(level).unwrap_or(&CellKey::Empty);
                 let id = *index.entry((*parent, key)).or_insert_with(|| {
                     parent_rows.push(Vec::new());
+                    above.push(*parent);
                     parent_rows.len() - 1
                 });
                 // Parent rows are only gathered when the parents sort by their aggregate.
@@ -188,21 +217,32 @@ impl Grouping {
             }
             let values = parent_rows
                 .iter_mut()
-                .map(|rows| {
+                .zip(&above)
+                .map(|(rows, &parent)| {
                     if !parents_by_value {
                         return ArrayNode::Empty;
                     }
                     rows.sort_unstable();
-                    aggregate(rows)
+                    let up = level.checked_sub(1).and_then(|level| {
+                        parent_set(parents_by_value, level, &previous_rows, parent)
+                    });
+                    aggregate(rows, up)
                 })
                 .collect();
             previous.clone_from(&parents);
+            previous_rows = parent_rows;
             levels.push((parents, values));
         }
         let leaves: Vec<ArrayNode> = self
             .groups
             .iter()
-            .map(|group| aggregate(&group.rows))
+            .zip(&previous)
+            .map(|(group, &parent)| {
+                let up = fields
+                    .checked_sub(2)
+                    .and_then(|level| parent_set(parents_by_value, level, &previous_rows, parent));
+                aggregate(&group.rows, up)
+            })
             .collect();
         let mut order: Vec<usize> = (0..self.groups.len()).collect();
         // A stable sort: groups that compare equal stay in key order.
@@ -249,6 +289,20 @@ impl Grouping {
             },
         }
     }
+}
+
+/// Parent `parent` of sort level `level` as a relative set ([`Grouping::sort_by_aggregate`]),
+/// when the parents' rows were gathered.
+fn parent_set(
+    gathered: bool,
+    level: usize,
+    rows: &[Vec<usize>],
+    parent: usize,
+) -> Option<Relative<'_>> {
+    rows.get(parent).filter(|_| gathered).map(|rows| Relative {
+        id: Some((2 + level, parent)),
+        rows,
+    })
 }
 
 /// [`key_cmp`] for two aggregates that may be missing (they never are: the indices come from
@@ -606,7 +660,7 @@ mod tests {
         let mut grouping = Grouping::new(&keys, 0..keys.len(), |_| None)
             .unwrap_or(Grouping { groups: Vec::new() });
         let mut calls = 0;
-        let sums = grouping.sort_by_aggregate(true, ParentOrder::ByValue, CELL, |rows| {
+        let sums = grouping.sort_by_aggregate(true, ParentOrder::ByValue, CELL, |rows, _| {
             calls += 1;
             ArrayNode::Number(rows.iter().map(|&row| values[row]).sum())
         });
