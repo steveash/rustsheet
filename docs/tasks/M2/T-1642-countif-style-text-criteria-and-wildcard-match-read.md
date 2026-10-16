@@ -3,7 +3,7 @@ id: T-1642
 title: "COUNTIF-style text criteria and wildcard MATCH read lone surrogates exactly (probe first)"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -18,7 +18,7 @@ T-1585 made `compare_values`, EXACT and exact MATCH lone-surrogate-exact, but th
 
 ## Acceptance criteria
 - [x] A probe case records Excel's COUNTIF/SUMIF and wildcard-MATCH results for a lone half; the engine matches it.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -30,3 +30,9 @@ T-1585 made `compare_values`, EXACT and exact MATCH lone-surrogate-exact, but th
   - The wildcard path (`from_wildcard_to_regex`, `wildcard_text_matcher[_for]`) runs a regex over lossy strings. It needs a matcher over UTF-16 units (`Text::chars_lossless` or the units) in which `?` is one unit and `*` is any run. Keep case-insensitivity and `~` escaping; `"~"&H` matches nothing.
   - Then check MATCH(..,0) and XMATCH(..,2), which share the wildcard matcher.
 - Pause reason: session time budget (opus worker, 2026-10-16). No attempt failed.
+
+## Outcome
+- Text criteria (`=`, `<>`, `<`, `>`, `<=`, `>=`) take their operand as `Text` and compare with `cmp_text`, so a lone half is its own unit (never U+FFFD).
+- `WildcardPattern` (functions/criteria.rs) replaces the regex translation for criteria and MATCH/XMATCH/XLOOKUP wildcard mode: `?` is one UTF-16 unit, `*` any run, matched over lower-cased units. That also fixes line breaks, which the regex's `.` skipped. A second probe (probes/criteria-wildcard-newline, 17 cells) shows Excel matches them.
+- Eval: probes/criteria-lone-surrogates 18/48 → 48/48; probes/criteria-wildcard-newline 17/17 new.
+- Follow-up: T-1666 (SEARCH still uses the regex wildcard translation).

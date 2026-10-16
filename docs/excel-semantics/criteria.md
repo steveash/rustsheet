@@ -28,6 +28,17 @@ Evidence: probes/criteria-gaps C4–C14 over 10, abc, TRUE, #N/A, blank, ABC, ab
 Status: VERIFIED
 Implemented in: functions::criteria::wildcard_text_matcher
 
+## Wildcards match line breaks
+Rule: `?` matches one CHAR(10) or CHAR(13) and `*` spans them, in criteria and in wildcard MATCH/XMATCH alike. Over
+Data!A1:A5 = "a"&CHAR(10)&"b", CHAR(10), "ab", "a"&CHAR(13)&"b", "a"&CHAR(10) (SUMIF weights 1, 2, 4, 8, 16):
+`"a*"` 29, `"?"` 2, `"a?b"` 9, `"*b"` 13, `"*"` 31, `"a*b"` 13, `"???"` 9, `"*"&CHAR(10)&"*"` 19,
+`"a"&CHAR(10)&"*"` 17; `MATCH("a?b",..,0)` 1, `MATCH("?",..,0)` 2, `XMATCH("a*b",..,2)` 1, `COUNTIFS(..,"a*")` 4.
+Evidence: probes/criteria-wildcard-newline (excel-graph, 2026-10-16, T-1642).
+Status: VERIFIED
+Implemented in: `WildcardPattern` (functions/criteria.rs), which matches any unit for `?`/`*`. The regex translation it
+replaced used `.`, which skips `\n`. SEARCH still uses that regex (`from_wildcard_to_regex`); its line-break behavior is
+unprobed (T-1666).
+
 ## D-function plain-text equality matches by prefix
 Rule: in DSUM/DCOUNT/DGET/... a plain text criterion (no operator, no wildcard) matches cells that *start with* it ("ab" matches "abc"); every other part of the grammar is shared with COUNTIF.
 An explicit leading `=` (`"=ab"`) turns the prefix match into an exact match (probes/criteria-operands D18).
