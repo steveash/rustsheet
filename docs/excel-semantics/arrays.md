@@ -387,7 +387,7 @@ arguments), `MAKEARRAY(2,2,_xleta.POWER)` 1, 1; 2, 4, `MAKEARRAY(2,2,_xleta.IF)`
 `LET(f,_xleta.SUM,f(1,2))` 3. On its own it is a value like an uncalled LAMBDA: `=_xleta.SUM` is `#CALC!` and
 `ISERROR(_xleta.SUM)` FALSE. A function whose result is an array for a row is `#CALC!` in BYROW (`_xleta.ABS`,
 `_xleta.IF` with one argument); that `#CALC!` is one cell, not a spill of errors (probes/eta-reduced-names E49 and E101, nothing
-below them in the sidecar; T-1660 spill-extent check; we spill: T-1664). BYROW and BYCOL refuse anything but a LAMBDA with `#VALUE!`, whatever it is: an error
+below them in the sidecar; T-1660 spill-extent check; ours is one `#CALC!` since T-1664: `is_multi_value`, bycol_byrow.rs; BYCOL and a LAMBDA returning a multi-cell reference or array do the same). BYROW and BYCOL refuse anything but a LAMBDA with `#VALUE!`, whatever it is: an error
 (`BYCOL(A1:B3,NA())`), a number (`BYCOL(A1:B3,1)`), an unknown `_xleta.` name, and a bare function name read from a file
 (`BYCOL(A1:B3,COUNTA)`, `BYROW(A1:B3,SUM)`: unknown names, xlsx-storage.md). `MAKEARRAY(2,2,_xleta.ABS)` (too many
 arguments) and `BYROW(A1:B3,_xleta.NOW)` give an error excel-graph cannot decode (left pending).
@@ -397,8 +397,7 @@ few arguments (`LET(f,_xleta.SUM,f())`): the engine gives whatever the function 
 Evidence: probes/eta-reduced-names (30 questions, excel-graph, 2026-10-14, T-1466); probes/m7-argument-modes F28:H51.
 Ours: an unbound `_xleta.` name of a known function evaluates to a LAMBDA whose definition is made per call
 (`Model::unbound_name`, `eta_definition`, lambda.rs); BYROW and BYCOL take only a LAMBDA (`by_slices_lambda`). Not yet:
-`ISERROR(_xleta.SUM)` is TRUE, and a BYROW row result is not `#CALC!` (`_xleta.ABS` is `#VALUE!`, a one-argument IF
-`#ERROR!`): T-1511. GROUPBY and PIVOTBY do not exist yet.
+`ISERROR(_xleta.SUM)` is TRUE, and `_xleta.IF` with one argument is `#ERROR!` where Excel gives `#CALC!` (T-1511). GROUPBY and PIVOTBY do not exist yet.
 Status: VERIFIED (excel-graph)
 Tasks: T-1466
 

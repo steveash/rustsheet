@@ -163,11 +163,7 @@ impl Model {
     }
 
     fn by_slices_calc_error(cell: CellReferenceIndex) -> CalcResult {
-        CalcResult::new_error(
-            Error::CALC,
-            cell,
-            "a LAMBDA returned an array".to_string(),
-        )
+        CalcResult::new_error(Error::CALC, cell, "a LAMBDA returned an array".to_string())
     }
 
     /// The LAMBDA argument of BYROW or BYCOL. Anything else, an error or an unknown name too, is
