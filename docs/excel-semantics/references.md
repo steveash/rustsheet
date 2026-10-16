@@ -256,7 +256,7 @@ INDEX over such a LET is INDEX over the reference it picks (`ERROR.TYPE(INDEX(LE
 still read with its names bound and the IF's pick made: `ROWS(LET(c,TRUE,IF(c,…!A1:B3,"x")))` and
 `ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))` are 3, `ISREF(LET(c,TRUE,IF(c,…!A1,D1)))` TRUE and
 `COUNTA(LET(c,TRUE,IF(c,…!A1:B2,1)))` 0; ours gives `#BLOCKED!`, FALSE and 1 (T-1721). OFFSET over
-such a LET is not a reference: `ISREF(OFFSET(LET(c,TRUE,…!A1),1,1))` is FALSE (ours TRUE; T-1721).
+such a LET is not a reference: `ISREF(OFFSET(LET(c,TRUE,…!A1),1,1))` is FALSE (ours TRUE; T-1721), as OFFSET over the bare external reference is (external-ref-no-link-index A16, A17): the miss is that ours does not unwrap the LET first.
 `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3, and the engine matches since T-1508, which broadcasts CHOOSE's
 arms over an index array (external-ref-no-link-ifchoose A32).
 Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external
