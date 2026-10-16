@@ -3,9 +3,7 @@
 use crate::cast::scalar_as_array;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::{
-    array_node_to_calc_result, is_at_if, is_at_xlookup_take,
-};
+use crate::functions::util::{array_node_to_calc_result, is_at_if, is_at_xlookup_take};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -81,7 +79,11 @@ impl Model {
         // `LOOKUP(2,1)` is 1, `LOOKUP("b","a")` is "a", `LOOKUP(2,IF(TRUE,1))` and
         // `LOOKUP(2,{1})` are 1 (probes/mode-direct-error-lookup-scalar-vector B1-B5, T-1651;
         // `LOOKUP(2,CHOOSE(1,@B1:B6*1))`: probes/legacy-choose-arm-aggregate-and-array-constant-at J1).
-        let value = if args.len() == 2 { scalar_as_array(value) } else { value };
+        let value = if args.len() == 2 {
+            scalar_as_array(value)
+        } else {
+            value
+        };
         let table = match Self::lookup_table(value, cell) {
             Ok(table) => table,
             Err(error) => return error,
