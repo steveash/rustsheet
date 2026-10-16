@@ -33,4 +33,4 @@ boolean selects), `COLUMNS(TOROW(A1:C1,1))` (ignore 1 dropping a blank, C1 blank
 - Engine fixes (filed as tasks).
 
 ## Outcome
-New probe `probes/dynamic-array-reshape-reprobe` (excel-graph filled): all 16 cells already match ours, so no fix task. Findings in docs/excel-semantics/arrays.md (TRUE ignore is mode 1, scan_by_column 2 is truthy, WRAPROWS TRUE is 7x1, ISOMITTED of a blank reference is FALSE). Eval delta: +16 passing probe cells, no regressions.
+New probe `probes/dynamic-array-reshape-reprobe` (excel-graph filled): all 20 cells already match ours, so no fix task. Findings in docs/excel-semantics/arrays.md (TRUE ignore is mode 1, scan_by_column 2 is truthy, WRAPROWS TRUE is 7x1, ISOMITTED of a blank reference is FALSE). Eval delta: +20 passing probe cells, no regressions.

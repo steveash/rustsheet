@@ -65,14 +65,30 @@
    "E21": {
     "t": "s",
     "v": "given"
+   },
+   "F20": {
+    "t": "s",
+    "v": "1|x|4|TRUE|7|8|9"
+   },
+   "F21": {
+    "t": "s",
+    "v": "1|7|x|4|8|TRUE|9"
+   },
+   "F22": {
+    "t": "s",
+    "v": "1|7|x|4|8|TRUE|9"
+   },
+   "F23": {
+    "t": "s",
+    "v": "1|7|x|4|8|TRUE|9"
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "9f0735cb233e75d7cd0c2c6276c56f04881632874a40f880511b4894609fbcb0",
+  "input_sha256": "b6c3d17a48b0950886e450c63205d0dbf6db7b9c3c395f8ae63ce44e00281765",
   "kind": "excel-graph",
-  "produced_at": "2026-10-16T18:25:36+00:00",
+  "produced_at": "2026-10-16T18:52:00+00:00",
   "version": null
  }
 }

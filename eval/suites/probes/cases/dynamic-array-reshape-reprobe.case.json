@@ -51,7 +51,11 @@
     "D21": "=TEXTJOIN(\"|\",FALSE,TOROW(A1:C1,1))",
     "D22": "=COLUMNS(TOROW(A1:C1,0))",
     "E20": "=LAMBDA(x,[y],ISOMITTED(y))(1,C1)",
-    "E21": "=LAMBDA(x,[y],IF(ISOMITTED(y),\"omitted\",\"given\"))(1,C1)"
+    "E21": "=LAMBDA(x,[y],IF(ISOMITTED(y),\"omitted\",\"given\"))(1,C1)",
+    "F20": "=TEXTJOIN(\"|\",FALSE,TOROW(A1:C3,3,0))",
+    "F21": "=TEXTJOIN(\"|\",FALSE,TOROW(A1:C3,3,1))",
+    "F22": "=TEXTJOIN(\"|\",FALSE,TOROW(A1:C3,3,2))",
+    "F23": "=TEXTJOIN(\"|\",FALSE,TOROW(A1:C3,3,TRUE))"
    }
   }
  ]

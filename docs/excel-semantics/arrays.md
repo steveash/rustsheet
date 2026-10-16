@@ -711,8 +711,8 @@ TOROW over A1:C3 (1, "x", blank / #N/A, 4, TRUE / 7, 8, 9), ignore 0-3 with scan
 arrays, a bad ignore (4, -1, "a") and an error argument all match ours (probes/dynamic-array-reshape-and-isomitted B20-B49). Ignore 1 keeps
 errors (B22/B23 are `#N/A`) and keeps an empty string `""` (`COLUMNS(TOROW({1,"",3},1))` is 3, B48); a boolean ignore is
 accepted (`TOROW({1,2,3},TRUE)` is 1,2,3, B46). TRUE selects ignore mode 1, dropping blanks: `COLUMNS(TOROW(A1:C3,TRUE))` is 8 (9 cells less blank C1), the same as `TOROW(A1:C3,1)`, and FALSE keeps all 9 (probes/dynamic-array-reshape-reprobe C20-C24).
-`TOROW(A1:C1,1)` drops the blank C1 (2 columns, `1|x`, D20-D21; ignore 0 keeps 3, D22). A scan_by_column of 2 is truthy, not an error:
-`TOROW(A1:C3,0,2)` is 1x9 (A21-A22). (Each TEXTJOIN over A1:C3 is `#N/A` because A2 is `#N/A`; the shapes carry the evidence.) Ours matches in all 16 cells.
+`TOROW(A1:C1,1)` drops the blank C1 (2 columns, `1|x`, D20-D21; ignore 0 keeps 3, D22). A scan_by_column of 2 is not an error (`TOROW(A1:C3,0,2)` is 1x9, A21-A22) and is truthy: with ignore 3 (blanks and errors dropped) scan 0 gives `1|x|4|TRUE|7|8|9` but scan 1, 2 and TRUE all give the column order `1|7|x|4|8|TRUE|9` (F20-F23).
+TEXTJOIN over A1:C3 with ignore 0, 1 is `#N/A` because A2 is `#N/A`, so those cells show no value; the shapes decide. `COLUMNS(...)=8` alone cannot tell ignore mode 1 from 2 (one blank, one error); TRUE is mode 1 because the error is kept (C22 `#N/A`). Ours matches in all 20 cells.
 ISOMITTED inside `LAMBDA(x,[y],...)` matches ours in every probed form (A20-A49): an omitted argument is TRUE, an empty slot
 (`(1,)`, A24-A25) counts as omitted and so does a required parameter left empty (`(,2)`, A34), while `""` (A26-A27) and a reference to a
 filled cell (A28-A31) count as supplied (FALSE), and so is a reference to a blank cell: `LAMBDA(x,[y],ISOMITTED(y))(1,C1)` with C1 blank is FALSE (probes/dynamic-array-reshape-reprobe E20-E21); outside a LAMBDA `ISOMITTED(5)`, `ISOMITTED(A1)` and `ISOMITTED(#N/A)` are FALSE (A43-A45).
