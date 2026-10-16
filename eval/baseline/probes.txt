@@ -1194,7 +1194,11 @@ F	probes/eng-argument-modes.case.json	Calc!E50
 F	probes/eng-argument-modes.case.json	Calc!E8
 F	probes/eng-argument-modes.case.json	Calc!E9
 F	probes/eta-reduced-names.case.json	Sheet1!E101
+F	probes/eta-reduced-names.case.json	Sheet1!E102
+F	probes/eta-reduced-names.case.json	Sheet1!E103
 F	probes/eta-reduced-names.case.json	Sheet1!E49
+F	probes/eta-reduced-names.case.json	Sheet1!E50
+F	probes/eta-reduced-names.case.json	Sheet1!E51
 F	probes/eta-reduced-names.case.json	Sheet1!E93
 F	probes/external-ref-no-link-ifchoose.case.json	Calc!A26
 F	probes/fin-argument-modes.case.json	Sheet1!H10
@@ -5318,6 +5322,7 @@ F	probes/r1c1-name-use-r0c1.case.json	Sheet1!A4
 F	probes/r1c1-name-use-r1048577.case.json	Sheet1!A1
 F	probes/r1c1-name-use-r1048577.case.json	Sheet1!A2
 F	probes/r1c1-name-use-r1048577.case.json	Sheet1!A4
+F	probes/radians-sqrtpi-munit.case.json	Sheet1!B80
 F	probes/rate-empty-arguments.case.json	Sheet1!A1
 F	probes/rate-empty-arguments.case.json	Sheet1!A10
 F	probes/rate-empty-arguments.case.json	Sheet1!A2
