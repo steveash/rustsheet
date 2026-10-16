@@ -3,7 +3,7 @@ id: T-1658
 title: "LET and LAMBDA names spelled like an R1C1 cell (R1C1, R5C7, R0C1) survive the R1C1 storage round-trip"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
