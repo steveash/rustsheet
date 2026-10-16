@@ -75,17 +75,6 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
-/// True when a LAMBDA's result is more than one value (an array, or a reference to several
-/// cells): BYROW and BYCOL then give one `#CALC!` cell instead of a spill (probes/
-/// eta-reduced-names E49 and E101: `BYROW(A1:B3,_xleta.ABS)`, T-1664).
-fn is_multi_value(result: &CalcResult) -> bool {
-    match result {
-        CalcResult::Array(_) => true,
-        CalcResult::Range { left, right } => left != right,
-        _ => false,
-    }
-}
-
 impl Model {
     /// `=BYCOL(array, lambda)`
     ///
@@ -113,7 +102,7 @@ impl Model {
                         &[Node::ArrayKind(column)],
                         cell,
                     );
-                    (!is_multi_value(&result)).then(|| calc_result_to_array_node(result))
+                    (!result.is_multi_value()).then(|| calc_result_to_array_node(result))
                 })
                 .collect::<Option<Vec<_>>>(),
         };
@@ -151,7 +140,7 @@ impl Model {
                         &[Node::ArrayKind(vec![row])],
                         cell,
                     );
-                    (!is_multi_value(&result)).then(|| vec![calc_result_to_array_node(result)])
+                    (!result.is_multi_value()).then(|| vec![calc_result_to_array_node(result)])
                 })
                 .collect::<Option<Vec<_>>>(),
         };
@@ -162,6 +151,8 @@ impl Model {
         }
     }
 
+    /// The one `#CALC!` cell BYROW and BYCOL give when the LAMBDA returned an array or a
+    /// multi-cell reference for any slice (probes/eta-reduced-names E49 and E101, T-1664).
     fn by_slices_calc_error(cell: CellReferenceIndex) -> CalcResult {
         CalcResult::new_error(Error::CALC, cell, "a LAMBDA returned an array".to_string())
     }
@@ -211,7 +202,7 @@ impl Model {
             right: slice.right,
         };
         let result = self.call_lambda_caller(caller, [reference], cell);
-        (!is_multi_value(&result)).then(|| calc_result_to_array_node(result))
+        (!result.is_multi_value()).then(|| calc_result_to_array_node(result))
     }
 
     /// The array argument of BYROW or BYCOL. A range on one sheet (also through TAKE, DROP,

@@ -24,4 +24,4 @@ Found by the T-1660 spill-extent check: in probes/eta-reduced-names, E49 `=BYROW
 -
 
 ## Outcome
-BYROW and BYCOL give one `#CALC!` cell, nothing spilled, when the function returns an array or multi-cell reference (`is_multi_value`). Eval: probes known failures 5479 -> 5473 (6 fixed), no regressions. Unit test `byrow_bycol_array_result_is_one_calc_error`.
+BYROW and BYCOL give one `#CALC!` cell, nothing spilled, when the function returns an array or multi-cell reference (`CalcResult::is_multi_value`). Eval: probes known failures 5479 -> 5473 (6 fixed), no regressions. Unit test `byrow_bycol_array_result_is_one_calc_error`.
