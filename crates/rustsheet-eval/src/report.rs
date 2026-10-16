@@ -60,6 +60,7 @@ pub struct SuiteSummary {
     /// gate).
     #[serde(default)]
     pub text_cells: usize,
+    /// Scored text cells whose text matched Excel's.
     #[serde(default)]
     pub text_passed: usize,
 }

@@ -200,4 +200,47 @@ mod tests {
         );
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    fn report_lists_the_text_pass_rate_and_failing_cells() {
+        let mut md = String::new();
+        write_markdown(&[SuiteSummary::default()], &[], &mut md);
+        assert_eq!(md, "");
+        let suite = SuiteSummary {
+            name: "probes".into(),
+            text_cells: 4,
+            text_passed: 3,
+            ..SuiteSummary::default()
+        };
+        let case: CaseResult = serde_json::from_value(serde_json::json!({
+            "id": "probes/t.case.json", "suite": "probes", "status": "fail",
+            "expected_source": "excel-graph", "checked": 0, "passed": 0,
+            "skipped_volatile": 0, "millis": 0, "cells": [],
+            "text": [{"sheet": "S", "cell": "A2", "expected": "12 1/2", "actual": " 1/2",
+                      "pass": false}]
+        }))
+        .unwrap_or_else(|e| panic!("{e}"));
+        write_markdown(&[suite], &[case], &mut md);
+        assert!(md.contains("| probes | 4 | 3 | 75.00 |"), "{md}");
+        assert!(
+            md.contains("| probes/t.case.json | S!A2 | `12 1/2` | ` 1/2` |"),
+            "{md}"
+        );
+    }
+
+    #[test]
+    fn a_malformed_text_cell_is_an_error() {
+        let case = CaseFile {
+            id: "t.case.json".into(),
+            path: "t.case.json".into(),
+            sidecar: "missing.oracle.json".into(),
+        };
+        let spec: CaseSpec =
+            serde_json::from_str(r#"{"format":"rustsheet-case/v1","sheets":[],"text":["A1"]}"#)
+                .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            expectations(&spec, &case),
+            Err("bad text cell key A1".to_string())
+        );
+    }
 }

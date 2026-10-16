@@ -783,12 +783,12 @@ def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
 def _text_cell(key: str) -> tuple[str, str]:
     """`Sheet!A1` or `'It''s'!A1` as `(sheet, A1)`; raises ValueError for anything else."""
     sheet, sep, a1 = str(key).rpartition("!")
-    if not sep or not re.fullmatch(r"\$?[A-Z]{1,3}\$?[1-9][0-9]*", a1):
+    if not sep or not _A1.match(a1):
         msg = f"text cell {key!r} must be Sheet!A1"
         raise ValueError(msg)
     if sheet.startswith("'") and sheet.endswith("'") and len(sheet) > 1:
         sheet = sheet[1:-1].replace("''", "'")
-    return sheet, a1.replace("$", "")
+    return sheet, a1.replace("$", "").upper()
 
 
 def text_cells(xlsx: bytes) -> list[tuple[str, str]]:

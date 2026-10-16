@@ -370,7 +370,7 @@ class GraphBackend:
     def _read_texts(
         self, item_url: str, sid: dict[str, str], cells: list[tuple[str, str]]
     ) -> dict[str, dict[str, str]]:
-        """Each cell's displayed text (`Range.text`, what `.Text` shows at the column's width) in the
+        """Each cell's displayed text (`Range.text`, which does not depend on the column width) in the
         session that recalculated it, before the scratch edit (T-1610, decision 0068)."""
         texts: dict[str, dict[str, str]] = {}
         for sheet, a1 in cells:

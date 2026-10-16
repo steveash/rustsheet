@@ -22,4 +22,4 @@ T-1610's first displayed-text probe (probes/displayed-text-formats, excel-graph 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Column width: excel-graph's displayed text does not depend on it (decision 0068).
