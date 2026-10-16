@@ -2383,8 +2383,6 @@ F	probes/negative-date-sections-1904.case.json	S!A21
 F	probes/negative-date-sections-1904.case.json	S!A22
 F	probes/negative-date-sections-1904.case.json	S!A23
 F	probes/negative-date-sections-1904.case.json	S!A9
-F	probes/r1c1-let-name-r1c1.case.json	Sheet1!A1
-F	probes/r1c1-let-name-r5c7.case.json	Sheet1!A1
 F	probes/r1c1-name-c1-c1-dot.case.json	Sheet1!A1
 F	probes/r1c1-name-r1-dot-c1.case.json	Sheet1!A1
 F	probes/r1c1-name-r1-dotdot-c1.case.json	Sheet1!A1

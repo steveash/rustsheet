@@ -334,13 +334,11 @@ fn test_a1_identifier_allows_r_and_c() {
         "R0",
         "R0C1",
         "R1048577C1",
+        "R1C1",
+        "R5C7",
+        "R1048576C16384",
     ] {
         assert!(is_valid_a1_identifier(name), "{name}");
-    }
-    // Except an in-range uppercase R<n>C<m>, which the R1C1 storage would read back as a
-    // reference (TODO(T-1658)).
-    for name in ["R1C1", "R5C7", "R1048576C16384"] {
-        assert!(!is_valid_a1_identifier(name), "{name}");
     }
     // All other is_valid_identifier rules still apply.
     assert!(!is_valid_a1_identifier("A23"));
@@ -366,5 +364,25 @@ fn out_of_range_r1c1_names() {
         "R1", "C1", "R1C1", "RC", "R", "C", "R1C", "RCR", "CR", "R0D", "R0C1D", "okname", "",
     ] {
         assert!(!is_out_of_range_r1c1_name(name), "{name}");
+    }
+}
+
+// The LET and LAMBDA names the R1C1 storage escapes as `_xlpm.<name>` (T-1658).
+#[test]
+fn names_read_as_r1c1_cells() {
+    for name in ["R1C1", "R5C7", "R1048576C16384"] {
+        assert!(reads_as_r1c1_cell(name), "{name}");
+    }
+    for name in [
+        "r1c1",
+        "R1c1",
+        "R0C1",
+        "R1048577C1",
+        "R1C",
+        "RC",
+        "R1C1D",
+        "R1",
+    ] {
+        assert!(!reads_as_r1c1_cell(name), "{name}");
     }
 }
