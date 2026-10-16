@@ -3,7 +3,7 @@ id: T-1650
 title: "Probe double-rounded accumulation in AVERAGEIFS, DAVERAGE and AVEDEV (T-1618 follow-up)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
