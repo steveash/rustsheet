@@ -31,6 +31,16 @@ pub(crate) enum CalcResult {
 }
 
 impl CalcResult {
+    /// Whether this is more than one value: any array (a 1x1 one too) or a reference to several
+    /// cells. A single-cell reference is a scalar.
+    pub(crate) fn is_multi_value(&self) -> bool {
+        match self {
+            CalcResult::Range { left, right } => left != right,
+            CalcResult::Array(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn new_error(error: Error, origin: CellReferenceIndex, message: String) -> CalcResult {
         CalcResult::Error {
             error,
