@@ -22,13 +22,16 @@ env:
 jobs:
   # Decision 0049: a PR that touches only docs skips the rust, eval and python jobs. A skipped job
   # reports success to required checks, so this job decides safely: anything it cannot
-  # classify, every push to main and every merge-queue group (decision 0053) runs everything. docs/excel-semantics/ is code-relevant (the eval
-  # harness reads its DEVIATION anchors), so it never counts as docs-only.
+  # classify, every push to main and every merge-queue group (decision 0053) runs everything.
+  # The rules live in scripts/ci_changes.py (tested by make hygiene); decision 0066 runs the copy
+  # from the PR's base commit, so a PR cannot change how its own files are classified.
   changes:
     name: changes (docs-only?)
     runs-on: ubuntu-latest
     outputs:
-      code: ${{ steps.diff.outputs.code }}
+      # The heavy jobs run unless this is exactly 'false': a failed or skipped classification step
+      # gives 'true', and a job that never ran leaves it empty.
+      run_heavy: ${{ steps.diff.outcome == 'success' && steps.diff.outputs.code || 'true' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,36 +41,25 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ "$EVENT" != "pull_request" ] || [ -z "$BASE" ]; then
-            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
-          fi
+          code=true
+          : > "$RUNNER_TEMP/changed"
           # --no-renames lists both sides of a rename, so moving code into docs/ still counts as
-          # code; -z keeps unusual file names intact.
-          if ! git diff -z --no-renames --name-only "$BASE" HEAD > "$RUNNER_TEMP/changed"; then
-            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
+          # code; -z keeps unusual file names intact. Every failure leaves code=true.
+          if [ "$EVENT" = "pull_request" ] && [ -n "$BASE" ] \
+            && git show "$BASE:scripts/ci_changes.py" > "$RUNNER_TEMP/ci_changes.py" \
+            && git diff -z --no-renames --name-only "$BASE" HEAD > "$RUNNER_TEMP/changed" \
+            && out=$(python3 -I "$RUNNER_TEMP/ci_changes.py" < "$RUNNER_TEMP/changed") \
+            && [ "$out" = "code=false" ]; then
+            code=false
           fi
-          code=false
-          n=0
-          while IFS= read -r -d '' f; do
-            n=$((n + 1))
-            case "$f" in
-              # Paths read at build or test time count as code (decision 0049): add new ones here.
-              docs/excel-semantics/*) code=true ;;
-              docs/*|.claude/*) ;;
-              */*) code=true ;;
-              *.md) ;;
-              *) code=true ;;
-            esac
-          done < "$RUNNER_TEMP/changed"
-          if [ "$n" -eq 0 ]; then code=true; fi
           # File names are attacker-controlled: never echo them raw (workflow-command injection).
-          echo "changed files: $n, code=$code"
+          echo "changed files: $(tr -cd '\0' < "$RUNNER_TEMP/changed" | wc -c), code=$code"
           echo "code=$code" >> "$GITHUB_OUTPUT"
 
   rust:
     name: rust (fmt, clippy, test)
     needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
+    if: ${{ !cancelled() && needs.changes.outputs.run_heavy != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -82,7 +74,7 @@ jobs:
   eval:
     name: eval (Excel-compatibility gate)
     needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
+    if: ${{ !cancelled() && needs.changes.outputs.run_heavy != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -105,7 +97,7 @@ jobs:
   python:
     name: python (tools + bindings)
     needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
+    if: ${{ !cancelled() && needs.changes.outputs.run_heavy != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
