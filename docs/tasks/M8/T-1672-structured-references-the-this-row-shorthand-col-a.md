@@ -3,7 +3,7 @@ id: T-1672
 title: "Structured references: the @ this-row shorthand ([@Col], [@[A]:[B]], [@])"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,10 +24,13 @@ Formulas using Excel's `@` shorthand for `#This Row` parse and evaluate like the
 - An escaped `'@` inside a column name is a literal `@` (already unescaped by `consume_column_reference`).
 
 ## Acceptance criteria
-- [ ] `[@Col]`, `[@[Col]]`, `[@[A]:[B]]` and `[@]` lex to the same tokens as their `#This Row` forms
+- [x] `[@Col]`, `[@[Col]]`, `[@[A]:[B]]` and `[@]` lex to the same tokens as their `#This Row` forms
   (lexer unit tests); FORMULATEXT shows the `@` form as typed.
-- [ ] gen-m8b in-table and this-row cells that only failed on the `@` syntax pass; `make eval-baseline`.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m8b in-table and this-row cells that only failed on the `@` syntax pass; `make eval-baseline`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Case-insensitive names (T-1673), rows outside the table (T-1675).
+
+## Outcome
+Lexer now accepts `[@]`, `[@Col]`, `[@[Col]]` and `[@[A]:[B]]` (`consume_this_row_shorthand`), producing the same tokens as the `#This Row` forms; unit test compares each against its long form. gen-m8b is ungated (no baseline file), so no baseline change: in-table 19fdc25163755713 failing cells 137 -> 5, this-row e1bf5aa0ffb4ed87 341 -> 6 (remaining are rows outside the table / name cases, T-1673/T-1675). `make check` green.
