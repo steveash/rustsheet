@@ -9,7 +9,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::token::{is_english_error_string, Error},
     formatter::date_text::{parse_date, CurrentYear},
-    functions::util::collation::{cmp_text, cmp_text_excel},
+    functions::util::collation::cmp_text,
     locale::Locale,
     number_format::{cmp_excel_precision, parse_excel_number, parse_finite_number},
     text::Text,
@@ -153,25 +153,21 @@ fn result_is_not_equal_to_bool(calc_result: &CalcResult, target: bool) -> bool {
 // STRINGS ///
 //*********///
 
-// Note that strings are case insensitive. `target` must always be lower case.
+// Text criteria compare with `cmp_text`, which ignores case and reads a lone surrogate as its own
+// unit (docs/excel-semantics/text.md "Lone surrogates", criteria paragraph;
+// probes/criteria-lone-surrogates A1-A8, A18-A21).
 
-pub(crate) fn result_matches_regex(calc_result: &CalcResult, reg: &regex::Regex) -> bool {
-    match calc_result {
-        CalcResult::String(s) => reg.is_match(&s.to_lowercase()),
-        _ => false,
-    }
-}
-
-fn result_is_equal_to_string(calc_result: &CalcResult, target: &str) -> bool {
+fn result_is_equal_to_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
         // Excel: `COUNTIF(r,"ae")` counts "æ" and `"a-b"` does not equal "ab" (the collation of
         // `=`, docs/excel-semantics/criteria.md "COUNTIF text criteria use the collation").
-        CalcResult::String(s) => cmp_text_excel(s, target).is_eq(),
+        CalcResult::String(s) => cmp_text(s, target).is_eq(),
         CalcResult::EmptyCell => target.is_empty(),
         _ => false,
     }
 }
 
+// `target` must be lower case.
 fn result_starts_with_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
         CalcResult::String(s) => s.to_lowercase().starts_with(target),
@@ -182,39 +178,39 @@ fn result_starts_with_string(calc_result: &CalcResult, target: &str) -> bool {
 
 // `<>text` matches every cell that is not that text, including numbers, booleans,
 // errors and blanks (same as the number/bool variants above).
-fn result_is_not_equal_to_string(calc_result: &CalcResult, target: &str) -> bool {
+fn result_is_not_equal_to_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text_excel(s, target).is_ne(),
+        CalcResult::String(s) => cmp_text(s, target).is_ne(),
         _ => true,
     }
 }
 
-fn result_is_less_than_string(calc_result: &CalcResult, target: &str) -> bool {
+fn result_is_less_than_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text_excel(s, target).is_lt(),
+        CalcResult::String(s) => cmp_text(s, target).is_lt(),
         _ => false,
     }
 }
 
 // Text `<=` / `>=` criteria compare the cell with the operand (probes/date-text-dotted-criteria
 // E10-E13: "10.1.2026" and "10.3.2026" are `<="10.3.2026"`, not `<="1.3.2026"`).
-fn result_is_less_or_equal_than_string(calc_result: &CalcResult, target: &str) -> bool {
+fn result_is_less_or_equal_than_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text_excel(s, target).is_le(),
+        CalcResult::String(s) => cmp_text(s, target).is_le(),
         _ => false,
     }
 }
 
-fn result_is_greater_than_string(calc_result: &CalcResult, target: &str) -> bool {
+fn result_is_greater_than_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text_excel(s, target).is_gt(),
+        CalcResult::String(s) => cmp_text(s, target).is_gt(),
         _ => false,
     }
 }
 
-fn result_is_greater_or_equal_than_string(calc_result: &CalcResult, target: &str) -> bool {
+fn result_is_greater_or_equal_than_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text_excel(s, target).is_ge(),
+        CalcResult::String(s) => cmp_text(s, target).is_ge(),
         _ => false,
     }
 }
@@ -346,7 +342,8 @@ pub(crate) fn build_criteria_with<'a>(
                 } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
                     Box::new(move |x| result_is_less_or_equal_than_number(x, f))
                 } else {
-                    Box::new(move |x| result_is_less_or_equal_than_string(x, &v.to_lowercase()))
+                    let target = operand_text(s, "<=");
+                    Box::new(move |x| result_is_less_or_equal_than_string(x, &target))
                 }
             } else if let Some(v) = s.strip_prefix(">=") {
                 if let Some(f) = parse_criterion_number(v) {
@@ -358,7 +355,8 @@ pub(crate) fn build_criteria_with<'a>(
                 } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
                     Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
                 } else {
-                    Box::new(move |x| result_is_greater_or_equal_than_string(x, &v.to_lowercase()))
+                    let target = operand_text(s, ">=");
+                    Box::new(move |x| result_is_greater_or_equal_than_string(x, &target))
                 }
             } else if let Some(v) = s.strip_prefix("<>") {
                 // Same for both flavors: `<>ab` is an exact not-equal, never a prefix test.
@@ -369,17 +367,15 @@ pub(crate) fn build_criteria_with<'a>(
                 } else if is_english_error_string(v) {
                     Box::new(move |x| result_is_not_equal_to_error(x, v))
                 } else if v.contains('*') || v.contains('?') {
-                    if let Ok(reg) = from_wildcard_to_regex(&v.to_lowercase(), true) {
-                        Box::new(move |x| !result_matches_regex(x, &reg))
-                    } else {
-                        Box::new(move |_| false)
-                    }
+                    let pattern = WildcardPattern::new(&operand_text(s, "<>"));
+                    Box::new(move |x| !pattern.matches_result(x))
                 } else if v.is_empty() {
                     Box::new(result_is_not_equal_to_empty)
                 } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
                     Box::new(move |x| result_is_not_equal_to_number(x, f))
                 } else {
-                    Box::new(move |x| result_is_not_equal_to_string(x, &v.to_lowercase()))
+                    let target = operand_text(s, "<>");
+                    Box::new(move |x| result_is_not_equal_to_string(x, &target))
                 }
             } else if let Some(v) = s.strip_prefix('<') {
                 if let Some(f) = parse_criterion_number(v) {
@@ -391,7 +387,8 @@ pub(crate) fn build_criteria_with<'a>(
                 } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
                     Box::new(move |x| result_is_less_than_number(x, f))
                 } else {
-                    Box::new(move |x| result_is_less_than_string(x, &v.to_lowercase()))
+                    let target = operand_text(s, "<");
+                    Box::new(move |x| result_is_less_than_string(x, &target))
                 }
             } else if let Some(v) = s.strip_prefix('>') {
                 if let Some(f) = parse_criterion_number(v) {
@@ -403,7 +400,8 @@ pub(crate) fn build_criteria_with<'a>(
                 } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
                     Box::new(move |x| result_is_greater_than_number(x, f))
                 } else {
-                    Box::new(move |x| result_is_greater_than_string(x, &v.to_lowercase()))
+                    let target = operand_text(s, ">");
+                    Box::new(move |x| result_is_greater_than_string(x, &target))
                 }
             } else {
                 let explicit_equals = s.starts_with('=');
@@ -415,11 +413,11 @@ pub(crate) fn build_criteria_with<'a>(
                 } else if is_english_error_string(v) {
                     Box::new(move |x| result_is_equal_to_error(x, v))
                 } else if v.contains('*') || v.contains('?') {
-                    if let Ok(reg) = from_wildcard_to_regex(&v.to_lowercase(), true) {
-                        Box::new(move |x| result_matches_regex(x, &reg))
-                    } else {
-                        Box::new(move |_| false)
-                    }
+                    let pattern = WildcardPattern::new(&operand_text(
+                        s,
+                        if explicit_equals { "=" } else { "" },
+                    ));
+                    Box::new(move |x| pattern.matches_result(x))
                 } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
                     Box::new(move |x| result_is_equal_to_number(x, f))
                 } else if flavor == CriteriaFlavor::Standard && explicit_equals && v.is_empty() {
@@ -429,7 +427,8 @@ pub(crate) fn build_criteria_with<'a>(
                 } else if flavor == CriteriaFlavor::Database && !explicit_equals {
                     Box::new(move |x| result_starts_with_string(x, &v.to_lowercase()))
                 } else {
-                    Box::new(move |x| result_is_equal_to_string(x, &v.to_lowercase()))
+                    let target = operand_text(s, if explicit_equals { "=" } else { "" });
+                    Box::new(move |x| result_is_equal_to_string(x, &target))
                 }
             }
         }
@@ -450,26 +449,125 @@ pub(crate) fn build_criteria_with<'a>(
     }
 }
 
-/// [`wildcard_text_matcher`] for engine text. A lone surrogate never matches a pair or U+FFFD
-/// (probes/text-lone-surrogates A25-A28), so a pattern holding one is compared with the text
-/// order (`cmp_text`, case-insensitive like `=`). Wildcards beside a lone half are unprobed: such
-/// a pattern is read literally, a known gap (docs/excel-semantics/text.md, T-1642). Any other
-/// pattern goes to [`wildcard_text_matcher`].
-pub(crate) fn wildcard_text_matcher_for(pattern: &Text) -> Box<dyn Fn(&CalcResult) -> bool> {
-    if !pattern.has_lone_surrogate() {
-        return wildcard_text_matcher(pattern);
-    }
-    let pattern = pattern.clone();
-    Box::new(move |x| matches!(x, CalcResult::String(s) if cmp_text(s, &pattern).is_eq()))
+/// Matcher for an Excel wildcard text pattern (`*`, `?`, `~` escapes), as used by
+/// MATCH/XMATCH/XLOOKUP in wildcard mode: [`WildcardPattern`] over text values; anything that is
+/// not text never matches.
+pub(crate) fn wildcard_text_matcher(pattern: &Text) -> Box<dyn Fn(&CalcResult) -> bool> {
+    let pattern = WildcardPattern::new(pattern);
+    Box::new(move |x| pattern.matches_result(x))
 }
 
-/// Matcher for an Excel wildcard text pattern (`*`, `?`, `~` escapes), as used by
-/// MATCH/XMATCH/XLOOKUP in wildcard mode. Matches whole text values
-/// case-insensitively; anything that is not text never matches. An
-/// untranslatable pattern matches nothing.
-pub(crate) fn wildcard_text_matcher(pattern: &str) -> Box<dyn Fn(&CalcResult) -> bool> {
-    match from_wildcard_to_regex(&pattern.to_lowercase(), true) {
-        Ok(reg) => Box::new(move |x| result_matches_regex(x, &reg)),
-        Err(_) => Box::new(|_| false),
+/// The criterion text after its operator `prefix`, lone surrogates kept. The operators are
+/// ASCII, so the prefix's byte length is its length in UTF-16 units.
+fn operand_text(criterion: &Text, prefix: &str) -> Text {
+    criterion.slice_utf16(prefix.len(), criterion.len_utf16())
+}
+
+/// One element of a [`WildcardPattern`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum WildcardToken {
+    /// A literal UTF-16 unit, lower-cased.
+    Unit(u16),
+    /// `?`: any one UTF-16 unit.
+    AnyUnit,
+    /// `*`: any run of units, the empty run included.
+    AnyRun,
+}
+
+const TILDE: u16 = b'~' as u16;
+const STAR: u16 = b'*' as u16;
+const QUESTION: u16 = b'?' as u16;
+
+/// An Excel wildcard pattern, matched against whole texts, case-insensitively, UTF-16 unit by
+/// unit. Excel: `?` is one unit, so a surrogate pair takes `??` and a wildcard splits a pair
+/// (`H&"*"` matches "😀"); a lone surrogate is a unit of its own, never U+FFFD
+/// (docs/excel-semantics/text.md "Lone surrogates", criteria paragraph;
+/// probes/criteria-lone-surrogates A9-A16, A25-A28, A33-A43). `?` and `*` match line breaks too
+/// (probes/criteria-wildcard-newline). `~` makes the next unit literal (`~*`, `~?`, `~~`, and
+/// `~x` reads as `x`) and a trailing `~` is dropped, unlike a criterion without wildcards
+/// (docs/excel-semantics/criteria.md "Tildes inside wildcard patterns and wildcard-mode lookups";
+/// probes/criteria-wildcard-tilde).
+pub(crate) struct WildcardPattern {
+    tokens: Vec<WildcardToken>,
+}
+
+impl WildcardPattern {
+    /// Compiles `pattern`.
+    pub(crate) fn new(pattern: &Text) -> WildcardPattern {
+        let lowered = pattern.map_runs(str::to_lowercase);
+        let mut units = lowered.units();
+        let mut tokens = Vec::new();
+        while let Some(unit) = units.next() {
+            let token = match unit {
+                STAR => WildcardToken::AnyRun,
+                QUESTION => WildcardToken::AnyUnit,
+                TILDE => match units.next() {
+                    Some(next) => WildcardToken::Unit(next),
+                    None => break,
+                },
+                _ => WildcardToken::Unit(unit),
+            };
+            tokens.push(token);
+        }
+        WildcardPattern { tokens }
+    }
+
+    /// Whether `value` is text the pattern matches.
+    pub(crate) fn matches_result(&self, value: &CalcResult) -> bool {
+        matches!(value, CalcResult::String(s) if self.matches(s))
+    }
+
+    /// Whether the whole of `text` matches, ignoring case.
+    pub(crate) fn matches(&self, text: &Text) -> bool {
+        match text {
+            // The hot path: ASCII text is its own units, lower-cased byte by byte without a copy.
+            Text::Utf8(s) if s.is_ascii() => {
+                self.matches_units(s.as_bytes(), |byte| u16::from(byte.to_ascii_lowercase()))
+            }
+            _ => {
+                let units: Vec<u16> = text.map_runs(str::to_lowercase).units().collect();
+                self.matches_units(&units, |unit| unit)
+            }
+        }
+    }
+
+    /// Glob matching with backtracking to the last `*` only, which suffices because `*` matches
+    /// any run: on a mismatch the last `*` takes one more unit. At most `text.len()` restarts,
+    /// each of at most `tokens.len()` steps.
+    fn matches_units<T: Copy>(&self, text: &[T], unit: impl Fn(T) -> u16) -> bool {
+        let tokens = &self.tokens;
+        let mut next_token = 0;
+        let mut next_unit = 0;
+        // The token after the last `*` seen, and the text position that `*` now runs to.
+        let mut last_star: Option<(usize, usize)> = None;
+        while let Some(&current) = text.get(next_unit) {
+            match tokens.get(next_token) {
+                Some(WildcardToken::AnyRun) => {
+                    next_token += 1;
+                    last_star = Some((next_token, next_unit));
+                    continue;
+                }
+                Some(WildcardToken::AnyUnit) => {
+                    next_token += 1;
+                    next_unit += 1;
+                    continue;
+                }
+                Some(WildcardToken::Unit(literal)) if *literal == unit(current) => {
+                    next_token += 1;
+                    next_unit += 1;
+                    continue;
+                }
+                _ => {}
+            }
+            let Some((after_star, star_end)) = last_star else {
+                return false;
+            };
+            next_token = after_star;
+            next_unit = star_end + 1;
+            last_star = Some((after_star, next_unit));
+        }
+        tokens
+            .get(next_token..)
+            .is_some_and(|rest| rest.iter().all(|token| *token == WildcardToken::AnyRun))
     }
 }

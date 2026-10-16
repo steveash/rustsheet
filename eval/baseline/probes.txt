@@ -131,9 +131,12 @@ C	probes/coupdays-feb-month-end.case.json	296
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
 C	probes/criteria-ifs-bare-equals.case.json	12
+C	probes/criteria-lone-surrogates.case.json	48
 C	probes/criteria-operands.case.json	25
 C	probes/criteria-padded-operand.case.json	18
 C	probes/criteria-padded-text.case.json	14
+C	probes/criteria-wildcard-newline.case.json	17
+C	probes/criteria-wildcard-tilde.case.json	16
 C	probes/data-tables.case.json	20
 C	probes/date-argument-modes.case.json	168
 C	probes/date-clock-text-length-limit.case.json	36
