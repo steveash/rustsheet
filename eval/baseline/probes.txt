@@ -6060,15 +6060,6 @@ F	probes/vara-single-ref-picked.case.json	S!D39
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D18
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D19
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D26
-F	probes/volatile-invariant.case.json	Calc!F1
-F	probes/volatile-invariant.case.json	Calc!F2
-F	probes/volatile-invariant.case.json	Calc!F3
-F	probes/volatile-invariant.case.json	Calc!F4
-F	probes/volatile-invariant.case.json	Calc!F5
-F	probes/volatile-invariant.case.json	Calc!F6
-F	probes/volatile-invariant.case.json	Calc!F7
-F	probes/volatile-invariant.case.json	Calc!F8
-F	probes/volatile-invariant.case.json	Calc!F9
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4
 F	probes/weeknum-stale-return-type.case.json	Type1!A1
