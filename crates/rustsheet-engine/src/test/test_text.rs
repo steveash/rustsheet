@@ -335,8 +335,10 @@ fn rept_and_text_keep_lone_units() {
         eval_text(&format!("=EXACT(TEXT({h},\"@@\"),{h}&{h})")),
         "TRUE"
     );
+    // `\y`, not `y`: a date token beside `@` makes the format `#VALUE!`
+    // (probes/text-at-with-tokens A1, A39, T-1656).
     assert_eq!(
-        eval_text(&format!("=UNICODE(MID(TEXT({l},\"x@y\"),2,1))")),
+        eval_text(&format!("=UNICODE(MID(TEXT({l},\"x@\\y\"),2,1))")),
         "56832"
     );
     // A format holding U+E000 cannot confuse the lone unit with a literal.
