@@ -3,7 +3,7 @@ id: T-1626
 title: "Probe the byte and East-Asian text functions SEARCHB, FINDB, REPLACEB, RIGHTB, LENB, ASC, JIS, PHONETIC, REGEXREPLACE, REGEXTEST to the evidence floor"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
