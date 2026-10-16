@@ -145,6 +145,7 @@ mod test_fn_datevalue_timevalue;
 mod test_fn_drop_take;
 mod test_fn_fv;
 mod test_fn_groupby;
+mod test_fn_groupby_subtotals;
 mod test_fn_irr_xirr_fits;
 mod test_fn_isomitted;
 mod test_fn_isref;
