@@ -3,7 +3,7 @@ id: T-1678
 title: "Keep the picked-argument index of XLOOKUP, TAKE, DROP and TRIMRANGE next to Function::picks_reference"
 milestone: M2
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
