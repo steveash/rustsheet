@@ -19,6 +19,26 @@ pub(crate) struct LambdaCaller {
     lambda: CalcResult,
     provided: usize,
     prepared: Option<PreparedLambda>,
+    /// Whether a call returns a reference the body gives as one (`LambdaCaller::keeping_references`).
+    references: bool,
+}
+
+impl LambdaCaller {
+    /// This caller with the body read in reference context: a body that is a reference, also
+    /// one picked by IF or returned by INDEX, comes back as a `CalcResult::Range` instead of the
+    /// cell's value, so GROUPBY and PIVOTBY can make it `#VALUE!` as Excel does
+    /// (probes/groupby-lambda-forms G!J193, probes/groupby-pivotby-functions G!A541-A581).
+    pub(crate) fn keeping_references(mut self) -> Self {
+        self.references = true;
+        self
+    }
+}
+
+/// What a function value is, for the callers that choose how many arguments to pass (GROUPBY
+/// and PIVOTBY): a function passed by name, or a LAMBDA with its required and total parameters.
+pub(crate) enum FunctionValue {
+    Eta(Function),
+    Lambda { required: usize, total: usize },
 }
 
 /// A LAMBDA's parameters (each id, and whether the body reads it once: [`read_once`]) and
@@ -231,7 +251,24 @@ impl Model {
             lambda: lambda_result.clone(),
             provided,
             prepared: None,
+            references: false,
         }
+    }
+
+    /// What the LAMBDA `lambda_result` is ([`FunctionValue`]); `None` for anything else.
+    pub(crate) fn function_value(&self, lambda_result: &CalcResult) -> Option<FunctionValue> {
+        let CalcResult::Lambda(id) = lambda_result else {
+            return None;
+        };
+        if let Some(kind) = self.eta_lambdas.get(id) {
+            return Some(FunctionValue::Eta(kind.clone()));
+        }
+        self.lambdas
+            .get(id)
+            .map(|(parameters, _)| FunctionValue::Lambda {
+                required: parameters.iter().filter(|p| !p.is_optional).count(),
+                total: parameters.len(),
+            })
     }
 
     /// One call of `caller` with `values` (`provided` of them; optional parameters not covered
@@ -289,7 +326,12 @@ impl Model {
                     };
                     self.variable_stack.insert(raw_id, binding, cell);
                 }
-                let result = self.evaluate_node_in_context(body, cell);
+                let result = if caller.references {
+                    self.evaluate_reference_arg(body, cell)
+                        .into_single_area(cell)
+                } else {
+                    self.evaluate_node_in_context(body, cell)
+                };
                 for &(raw_id, _) in ids {
                     self.variable_stack.remove(raw_id);
                 }
@@ -378,17 +420,20 @@ impl Model {
             // Stored formulas use the English function names, whatever the UI language.
             .and_then(|function| get_default_language().functions.lookup_stored(function));
         match function {
-            Some(kind) => {
-                let id = self.get_next_lambda_id();
-                self.eta_lambdas.insert(id, kind);
-                CalcResult::Lambda(id)
-            }
+            Some(kind) => self.eta_lambda(kind),
             None => CalcResult::new_error(
                 Error::NAME,
                 cell,
                 format!("Variable name \"{name}\" not found."),
             ),
         }
+    }
+
+    /// The function `kind` passed by name, as a LAMBDA value (what `_xleta.NAME` evaluates to).
+    pub(crate) fn eta_lambda(&mut self, kind: Function) -> CalcResult {
+        let id = self.get_next_lambda_id();
+        self.eta_lambdas.insert(id, kind);
+        CalcResult::Lambda(id)
     }
 
     pub(crate) fn fn_lambda(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

@@ -14,3 +14,4 @@ mod sum;
 pub(crate) use sum::SumParts;
 mod sumproduct;
 mod trig;
+pub(crate) use mathematical::percent_of;
