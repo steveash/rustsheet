@@ -3,7 +3,7 @@ id: T-1651
 title: "Probe MODE with a direct error argument and LOOKUP with a scalar lookup_vector"
 milestone: M6
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -28,6 +28,6 @@ T-1291 answered the MODE half (probes/mode-typed-arguments A30-A33, probes/mode-
 ## Outcome
 Probe `probes/mode-direct-error-lookup-scalar-vector` filled from excel-graph: every MODE/MODE.SNGL/MODE.MULT error argument propagates (ours already did); LOOKUP (array and vector forms) reads any scalar lookup_vector as a one-element array, so the IF/CHOOSE narrowing in `fn_lookup` was dropped. references.md and lookup.md updated.
 
-## Handoff
+## Handoff (resumed)
 Work is complete and all four reviewers (security, architecture, quality, excel-fidelity) APPROVE on PR #935; `make check` passed locally. The only red CI check is `hygiene` -> `scripts/check_governance.py`: "protected paths changed without a decision record: quality/evidence-floor.json". The new probe `probes/mode-direct-error-lookup-scalar-vector` lifts a function over the 20-cell evidence floor, so `rustsheet-eval evidence-floor` fails with "fewer functions are below the floor: run `make eval-baseline` and commit quality/evidence-floor.json" unless the lock goes 53 -> 52. The lock change is tool-generated (already on the branch), not hand-edited. A sonnet run may not add a decision record for a protected path (work-loop 5b), so next step: `make new-decision TITLE="..."` (or confirm an existing decision such as the evidence-floor ratchet already covers generated lock decreases), commit it, push, wait for CI green, then squash-merge once the branch is up to date with origin/main. Set status: done with the Outcome note once merged (flip status back from todo, tier back is not needed).
 Note: probes/union-walk-repeated-in-lambda.case.json takes ~61s here against the 60s per-case default timeout, so local `make eval-baseline` records a `!Timeout` for it; regenerate with `rustsheet-eval update-baseline --timeout 180` (already done on the branch) instead of baselining the timeout.
