@@ -3,7 +3,7 @@ id: T-1662
 title: "Probe the T-1595 single-character collation choices in longer texts and lookups"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
