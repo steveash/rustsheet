@@ -34,6 +34,7 @@ mod lookup;
 mod lookup_each;
 pub(crate) mod lookup_table;
 mod pivotby;
+mod relative_to;
 mod tocol_torow;
 mod transpose;
 mod trimrange;

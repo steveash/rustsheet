@@ -22,7 +22,7 @@ use crate::{
     model::Model,
 };
 
-use super::grouping::{at, empty_text, value_error, Relative};
+use super::grouping::{at, empty_text, value_error, Relative, SetId};
 
 /// What one aggregate cell is computed from: the rows of its group (or grid cell) and its
 /// relative set, the second argument of a two-argument function (SPEC-0006 `Aggregate`).
@@ -40,7 +40,7 @@ enum Call {
     Two,
     PercentOf {
         sum: Box<LambdaCaller>,
-        totals: HashMap<(usize, usize), CalcResult>,
+        totals: HashMap<(SetId, usize), CalcResult>,
     },
 }
 

@@ -238,8 +238,8 @@ fn filter_and_argument_errors() {
             "#VALUE!",
         ),
         ("G8", "=PIVOTBY(A2:A11,C2:C11,D2:D11,NA())", "#N/A"),
-        // Deferred: column subtotals over several values (T-1700), relative_to and two-argument
-        // functions (T-1327). 3 over two row fields is #VALUE! (probes/pivotby-followup P!A381).
+        // Deferred: column subtotals over several values (T-1700). 3 over two row fields is
+        // #VALUE! (probes/pivotby-followup P!A381).
         (
             "G9",
             "=PIVOTBY(A2:A11,B2:C11,D2:E11,LAMBDA(x,SUM(x)),,,,2)",
@@ -250,15 +250,17 @@ fn filter_and_argument_errors() {
             "=PIVOTBY(A2:B11,C2:C11,D2:D11,LAMBDA(x,SUM(x)),,3)",
             "#VALUE!",
         ),
+        // A one-argument function ignores a valid relative_to and refuses an invalid one
+        // (probes/groupby-pivotby-functions P!A561, P!A581).
         (
             "G11",
-            "=PIVOTBY(A2:A11,C2:C11,D2:D11,LAMBDA(x,SUM(x)),,,,,,,1)",
-            "#N/IMPL!",
+            "=INDEX(PIVOTBY(A2:A11,C2:C11,D2:D11,LAMBDA(x,SUM(x)),,,,,,,1),2,2)",
+            "15",
         ),
         (
             "G12",
-            "=PIVOTBY(A2:A11,C2:C11,D2:D11,_xleta.PERCENTOF)",
-            "#N/IMPL!",
+            "=PIVOTBY(A2:A11,C2:C11,D2:D11,LAMBDA(x,SUM(x)),,,,,,,5)",
+            "#VALUE!",
         ),
         // probes/pivotby-followup P!A1401-A1461: an error option beats an invalid one before or
         // after it and a non-function; P!A1481, P!A1341: an error in the filter and a key next to
@@ -387,4 +389,164 @@ fn a_column_of_functions_repeats_each_row_group() {
     assert_eq!(grid[2], ["Region", "", "Sales", "Sales", "Sales"]);
     assert_eq!(grid[3], ["Total", "SUM", "35", "86", "9.5"]);
     assert_eq!(grid[4], ["Total", "MAX", "20", "40", "12.5"]);
+}
+
+const SET: &str = "LAMBDA(x,y,SUM(y))";
+
+#[test]
+fn relative_to_gives_percentof_its_reference_set() {
+    // probes/groupby-pivotby P!Y25 (omitted: the column total), P!A49 (1: the row total), P!M49
+    // (2: the grand total), P!Y49 and P!A73 (3 and 4 with one field per axis: 1's and 0's).
+    let percentof = |relative_to: &str| {
+        pivot(
+            &format!("=PIVOTBY(A2:A11,C2:C11,D2:D11,_xleta.PERCENTOF,,,,,,,{relative_to})"),
+            7,
+            5,
+        )
+    };
+    let column = percentof("");
+    assert_eq!(
+        column[1],
+        ["East", "0.428571429", "0.348837209", "", "0.344827586"]
+    );
+    assert_eq!(column[6], ["Total", "1", "1", "1", "1"]);
+    let row = percentof("1");
+    assert_eq!(row[1], ["East", "0.333333333", "0.666666667", "", "1"]);
+    assert_eq!(
+        row[6],
+        ["Total", "0.268199234", "0.659003831", "0.072796935", "1"]
+    );
+    let grand = percentof("2");
+    assert_eq!(
+        grand[1],
+        ["East", "0.114942529", "0.229885057", "", "0.344827586"]
+    );
+    assert_eq!(percentof("3"), row);
+    assert_eq!(percentof("4"), column);
+    // "1" and TRUE read as 1; 5, -1 and 0.5 are #VALUE! (functions P!A461-A541).
+    assert_eq!(percentof("\"1\""), row);
+    assert_eq!(percentof("TRUE"), row);
+    for invalid in ["5", "-1", "0.5"] {
+        assert_eq!(percentof(invalid)[0][0], "#VALUE!", "{invalid}");
+    }
+}
+
+#[test]
+fn parent_totals_over_two_fields() {
+    // probes/groupby-pivotby-functions P!A181: with two row fields, 4 is the cell's column under
+    // its parent row (East/Apple in 2023 is East's 15, its Total cell East's 45); the Total row
+    // is the column's.
+    let grid = pivot(
+        &format!("=PIVOTBY(A2:B11,C2:C11,D2:D11,{SET},,1,,,,,4)"),
+        10,
+        6,
+    );
+    assert_eq!(grid[1], ["East", "Apple", "15", "", "", "45"]);
+    assert_eq!(grid[5], ["West", "Apple", "20", "40", "", "72.5"]);
+    assert_eq!(grid[9], ["Total", "", "35", "86", "9.5", "130.5"]);
+    // P!A261: with two column fields, 3 is the cell's row under its parent column.
+    let grid = pivot(
+        &format!("=PIVOTBY(A2:A11,B2:C11,D2:D11,{SET},,,,1,,,3)"),
+        8,
+        7,
+    );
+    assert_eq!(grid[2], ["East", "15", "", "", "", "30", "45"]);
+    assert_eq!(grid[7], ["Total", "64", "64", "9.5", "57", "57", "130.5"]);
+    // P!A321: both: West/Apple in Apple 2023 is the West records of Apple 2023, 0.
+    let grid = pivot(
+        &format!("=PIVOTBY(A2:B11,B2:C11,D2:D11,{SET},,1,,1,,,4)"),
+        7,
+        8,
+    );
+    assert_eq!(grid[6], ["West", "Apple", "0", "40", "", "", "", "72.5"]);
+}
+
+#[test]
+fn value_sorts_by_a_two_argument_function() {
+    // probes/groupby-pivotby-functions3 P!A91: rows sort by their Total cell, 4 the parent's:
+    // the Region parents tie at the grand total and keep their key order.
+    let grid = pivot(
+        &format!("=PIVOTBY(A2:B11,C2:C11,D2:D11,{SET},,1,3,,,,4)"),
+        10,
+        2,
+    );
+    let keys: Vec<&str> = grid.iter().skip(1).map(|row| row[0].as_str()).collect();
+    assert_eq!(
+        keys,
+        ["East", "East", "North", "South", "West", "West", "West", "0", "Total"]
+    );
+    // probes/groupby-pivotby-functions4 P!A1, P!A21: columns sort by their Total row cell too: 3
+    // ties the years at their product's total (2023 before 2024), 0 by their own records.
+    let grid = pivot(
+        &format!("=PIVOTBY(A2:A11,B2:C11,D2:D11,{SET},,,,1,-3,,3)"),
+        2,
+        7,
+    );
+    assert_eq!(grid[1], ["", "2023", "2024", "2025", "2023", "2024", ""]);
+    assert_eq!(
+        pivot(
+            &format!("=PIVOTBY(A2:A11,B2:C11,D2:D11,{SET},,,,1,-3,,3)"),
+            8,
+            7
+        )[7],
+        ["Total", "64", "64", "9.5", "57", "57", "130.5"]
+    );
+    let grid = pivot(
+        &format!("=PIVOTBY(A2:A11,B2:C11,D2:D11,{SET},,,,1,-3,,0)"),
+        2,
+        7,
+    );
+    assert_eq!(grid[1], ["", "2024", "2023", "2025", "2024", "2023", ""]);
+}
+
+#[test]
+fn an_array_relative_to_is_lifted_per_element() {
+    // probes/pivotby-followup P!A681, probes/groupby-pivotby-functions P!A721, P!A741: each
+    // element is the top-left `""` of its PIVOTBY, or the element's error.
+    let grid = pivot(
+        "=PIVOTBY(A2:A11,C2:C11,D2:D11,_xleta.PERCENTOF,,,,,,,{5;1})",
+        3,
+        2,
+    );
+    assert_eq!(grid, [["#VALUE!", ""], ["", ""], ["", ""]]);
+}
+
+#[test]
+fn two_parameter_lambdas_are_charged_against_the_visit_cap() {
+    // DEVIATION (docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY: two-parameter LAMBDAs and
+    // the cell-visit cap"): 20000 row groups in one column, each cell given the 20000-record
+    // column, visit 4E8 cells; the built-in PERCENTOF sums each relative set once.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=PIVOTBY(SEQUENCE(20000),SEQUENCE(20000,,0,0),SEQUENCE(20000),LAMBDA(x,y,ROWS(y)))",
+    );
+    model._set(
+        "B1",
+        "=INDEX(PIVOTBY(SEQUENCE(20000),SEQUENCE(20000,,0,0),SEQUENCE(20000),_xleta.PERCENTOF),20002,2)",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+    assert_eq!(model._get_text("B1"), "1");
+}
+
+#[test]
+fn relative_sets_are_capped_before_they_are_built() {
+    // DEVIATION (docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY: two-parameter LAMBDAs and
+    // the cell-visit cap"): 16 row and 16 column fields at depth 16 with relative_to 3 use 17 x 16
+    // level pairs, 272 x 65535 set entries, past 2^24: #ERROR! before any set is built; depth 2
+    // uses 3 x 2 and computes.
+    let mut model = new_empty_model();
+    let fields = "SEQUENCE(65535,16,1,0)";
+    model._set(
+        "A1",
+        &format!("=PIVOTBY({fields},{fields},SEQUENCE(65535),{SET},,16,,16,,,3)"),
+    );
+    model._set(
+        "B1",
+        &format!("=ISERROR(PIVOTBY({fields},{fields},SEQUENCE(65535),{SET},,2,,2,,,3))"),
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+    assert_eq!(model._get_text("B1"), "FALSE");
 }

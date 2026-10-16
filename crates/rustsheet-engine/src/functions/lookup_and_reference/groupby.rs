@@ -6,8 +6,8 @@
 
 use super::group_functions::{Aggregate, Element, Functions};
 use super::grouping::{
-    at, effective_depth, empty_text, subtotal_levels, value_error, Grouping, ParentOrder, Relative,
-    SortOrder,
+    at, effective_depth, empty_text, subtotal_levels, value_error, Axis, Grouping, ParentOrder,
+    Relative, SetId, SortOrder,
 };
 use crate::{
     calc_result::CalcResult,
@@ -540,7 +540,7 @@ impl Model {
         // group's share of the total, and 1 in the total row (G!S97, functions G!A301-A321).
         let functions = &mut args.functions;
         let all = Relative {
-            id: Some(0),
+            id: Some(SetId::All),
             rows: &args.rows,
         };
         // A value sort keeps the values it sorted by, groups' and subtotals', so that column is
@@ -549,13 +549,18 @@ impl Model {
             SortOrder::Keys(_) => None,
             SortOrder::Value { column, ascending } => {
                 let pair = functions.pair_at(0, column);
-                let by = grouping.sort_by_aggregate(ascending, args.order, cell, |group_rows| {
-                    let at = Aggregate {
-                        rows: group_rows,
-                        relative: all,
-                    };
-                    self.aggregate(functions, pair, values, at, cell)
-                });
+                let by = grouping.sort_by_aggregate(
+                    ascending,
+                    (args.order, Axis::Rows),
+                    cell,
+                    |group_rows, _| {
+                        let at = Aggregate {
+                            rows: group_rows,
+                            relative: all,
+                        };
+                        self.aggregate(functions, pair, values, at, cell)
+                    },
+                );
                 let checked = lines.len();
                 lines = grouping.lines(levels, before);
                 debug_assert!(lines.len() <= checked, "a value sort added subtotals");
