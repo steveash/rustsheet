@@ -241,7 +241,7 @@ impl Engine for RustSheetEngine {
 }
 
 /// How many times excel-graph calculates a case workbook: on load (`fullCalcOnLoad`), at the
-/// `FullRebuild` and at the scratch-sheet edit (tools/src/rustsheet_tools/oracle/backends.py).
+/// `FullRebuild` and at the scratch-sheet edit (`tools/src/rustsheet_tools/oracle/backends.py`).
 /// Iterative calculation resumes from the previous values each time, so its oracle values hold
 /// three calculations' worth of iterations (docs/excel-semantics/recalc.md "How excel-graph
 /// calculates a probe workbook"; probes/circular-iteration-on, T-0428).

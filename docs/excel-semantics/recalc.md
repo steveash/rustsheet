@@ -75,7 +75,9 @@ Rule: the delta stop ends the iterations of the whole workbook, not of each cycl
     B1 16 - 2^-12. The reader cell is what made the earlier count 17.
   - Strictly below: the lone cycle `=A1/2+1` with iterateDelta 0.25
     (probes/circular-iteration-delta-boundary) changes by 1, 1/2, 1/4, 1/8. It stops at n = 4,
-    not at n = 3 where the change equals the delta: 4 + 2 = 6 in all, A1 2 - 2^-5 (1.96875).
+    not at n = 3 where the change equals the delta: 4 + 2 = 6 in all, A1 2 - 2^-5 (1.96875). This reading
+    rests on the one-more-iteration-per-later-calculation model, which the 8 and 17 counts back
+    independently (`<=` would give 5, A1 1.9375).
 - **Scoring:** the eval adapter runs an iterative case's three oracle calculations
   (`calculations` in crates/rustsheet-eval/src/engine.rs). It does not use one oracle
   calculation, because excel-graph saves only after an edit, and the edit itself calculates
