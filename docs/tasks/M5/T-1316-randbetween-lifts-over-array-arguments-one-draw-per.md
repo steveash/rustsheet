@@ -3,7 +3,7 @@ id: T-1316
 title: "RANDBETWEEN lifts over array arguments (one draw per element)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
