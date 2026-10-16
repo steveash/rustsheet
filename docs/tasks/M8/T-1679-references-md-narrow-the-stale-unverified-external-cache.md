@@ -3,7 +3,7 @@ id: T-1679
 title: "references.md: narrow the stale UNVERIFIED external-cache sentence and the reversed-span claim (T-1609 audit)"
 milestone: M8
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
