@@ -115,7 +115,10 @@ impl Model {
                 // The list keeps the workbook's spelling of each called name, as a typed formula
                 // stores it (`shared_formula_index`); the sheets are read in order, and each list
                 // in the order its formulas were first met.
-                if self.call_name_spellings.apply(&mut t, &self.workbook.defined_names) {
+                if self
+                    .call_name_spellings
+                    .apply(&mut t, &self.workbook.defined_names)
+                {
                     *formula = to_rc_format(&t);
                 }
                 let static_result = run_static_analysis_on_node(&t);
