@@ -100,7 +100,8 @@ impl SuiteSummary {
 
     /// Rate of the same scored cells that are bit-exact or within 1e-9 relative (`NumericUlp`,
     /// `NumericClose`): the comparator xlsx-corpus-bench's leaderboard uses, reported beside our
-    /// bit-exact score so corpus-bench can be read against it (T-0427).
+    /// bit-exact score so corpus-bench can be read against it (T-0427). Near misses are counted over
+    /// all cells, so a stale `deviations` line that is now a near miss counts too; `rate` caps it.
     #[must_use]
     pub fn cell_close_rate(&self) -> f64 {
         let near = |k| self.verdicts.get(&k).copied().unwrap_or(0);

@@ -329,8 +329,9 @@ evidence is the corpus-bench sidecars, recalculated by excel-graph 2026-10-17, T
 - `"July1"` (month name then day): `DATE(F2,MONTH(D2&1),E2)` with D2 = `"July"` is a July date
   (corpus-bench/1726 `July-KPIs!J12` = 45483, J13 = 45504), so `MONTH("July1")` = 7.
 - `"January0"` .. `"December0"` (month name then `0`, presumably the year 2000 as `"Jul-0"` is):
-  `MONTH(E$4&0)` with E4 = `"January"` feeds a SUMPRODUCT month filter (corpus-bench/55392
-  `Monthly Expenses Summary!G6` = 35000, E6 = 0, not the `IFERROR` fallback `""`).
+  `MONTH(E$4&0)` with E4 = `"January"` feeds a SUMPRODUCT month filter and does not error
+  (corpus-bench/55392 `Monthly Expenses Summary!E6` = 0, not the `IFERROR` fallback `""`); G6, the
+  same formula over the G4 month, is 35000, so a glued month matches the data.
 - `"1JUN2021"` (day, abbreviated month, 4-digit year): `DATEVALUE("1"&B1&B2)` with B1 = `"JUN"`,
   B2 = 2021 is 44348 (2021-06-01; corpus-bench/CF_18814 `attendance-Dec!E1`).
 Unprobed: which numbers count as day or year in the glued forms (`"July10"`, `"July45"`,
