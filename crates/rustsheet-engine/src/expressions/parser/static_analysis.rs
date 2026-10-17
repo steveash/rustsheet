@@ -209,6 +209,7 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
             // There are some function that will never add an automatic II:
             let new_function = matches!(kind, Function::Let | Function::Lambda);
             if !new_function
+                && (add || arrays)
                 && !legacy_call_reads_a_value(kind, args)
                 && match static_analysis_on_function(kind, args) {
                     StaticResult::Range(_, _) | StaticResult::Unknown => add,
