@@ -624,6 +624,7 @@ C	probes/scalar-lift-open-c.case.json	10
 C	probes/scalar-lift-open-c2.case.json	1
 C	probes/scalar-lift-open-c3.case.json	1
 C	probes/scalar-lift-open-d.case.json	31
+C	probes/scalar-lift-open-e.case.json	22
 C	probes/scalar-lift-shapes-b.case.json	26
 C	probes/scalar-lift-shapes-c.case.json	18
 C	probes/scalar-lift-shapes.case.json	67
@@ -5584,8 +5585,6 @@ F	probes/unknown-function-name-reach.case.json	Sheet1!B16
 F	probes/unknown-function-name-reach.case.json	Sheet1!B20
 F	probes/unknown-function-name-reach.case.json	Sheet1!B21
 F	probes/unknown-function-name-reach.case.json	Sheet1!B9
-F	probes/unknown-function-name-spelling.case.json	Sheet1!A8
-F	probes/unknown-function-name-spelling.case.json	Sheet1!B8
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D18
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D19
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D26

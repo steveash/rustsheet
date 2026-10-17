@@ -3,10 +3,10 @@ id: T-1758
 title: "A call of a cell-shaped name is a call of that cell"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -23,3 +23,6 @@ Found by T-1719: probes/unknown-function-name-spelling A8 (`#REF!`, ours `#NAME?
 
 ## Out of scope
 -
+
+## Outcome
+`parse_named_call` turns a callee spelled like an in-range A1 cell, and no function, into a `LambdaCallKind` of that cell (`#REF!`); `callee_operand` prints a bare cell callee unparenthesized (`AB1(1)`). Probe cells unknown-function-name-spelling A8/B8 now pass; unit test added. Edge shapes (past XFD, `$`, R1C1) remain unprobed and are noted in references.md. Resumed by opus: the rule is A1 grammar only (`is_a1_mode`), so the raw A1 text of a formula that did not parse is no longer read as R1C1 offsets (regression test `unparsed_cell_shaped_call_keeps_its_text_after_a_sheet_rename`). Re-parsing raw text in R1C1 already rewrites R1C1-shaped text on main (`=R[1]C[1]+1` becomes `=B9+1` after a rename), and the stored call form adds `=R[1]C[1](1)` to that class: root cause filed as T-1805 (P2). Edge-shape probes: T-1806. Eval delta: probes +2 cells (A8, B8), 0 regressions.
