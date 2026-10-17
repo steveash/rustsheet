@@ -3,7 +3,7 @@ id: T-1347
 title: "TEXTSPLIT of empty text is #VALUE! (gen-m7 3a62e0950c1074fd A5)"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
