@@ -3,7 +3,7 @@ id: T-1242
 title: "INDEX of a single value or a 1x1 array returns that value"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,3 +25,8 @@ probes/lookup-argument-modes (excel-graph, 2026-10-09, T-1238): `INDEX(LOOKUP(2,
 
 ## Out of scope
 -
+
+## Outcome
+H18, H19, H24, H28, H30, H31 and H39 already pass on `main`. Added probe `probes/index-scalar-indexes`
+(23 cells, excel-graph) for INDEX of a scalar or 1x1 array with other indexes; the engine matched every
+cell. Rules in lookup.md "INDEX of a scalar or a 1x1 array". No engine change.
