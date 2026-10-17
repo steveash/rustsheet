@@ -78,4 +78,3 @@ fn unparsed_cell_shaped_call_keeps_its_text_after_a_sheet_rename() {
     // Not `=AC9(1)`. The dropped space is older than T-1758 (main prints the same; T-1805).
     assert_eq!(model._get_formula("A8"), "=Ab1(1)");
 }
-
