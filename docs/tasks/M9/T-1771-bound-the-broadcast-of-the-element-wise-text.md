@@ -3,7 +3,7 @@ id: T-1771
 title: "Bound the broadcast of the element-wise text functions by the shared array limit (LEFT(A:A,1:1) allocates 2^34 cells)"
 milestone: M9
 lane: functions-text
-status: todo
+status: done
 priority: P0
 size: S
 tier: sonnet
@@ -20,10 +20,13 @@ Found while writing SPEC-0011 (T-1767). `broadcast_text` (crates/rustsheet-engin
 The bound is the existing DEVIATION (docs/excel-semantics/arrays.md "Array results above 1,048,576 cells"), which lists the broadcasts it covers. Add the text functions there.
 
 ## Acceptance criteria
-- [ ] `broadcast_text` returns `check_array_size`'s error (`#ERROR!` above 2^20 cells, `#VALUE!` past the grid) before it allocates or computes any element.
-- [ ] A unit test shows `=ROWS(LEFT(A1:A2000,COLUMN(A1:ALL1)))` and `=ROWS(FIND("a",A1:A2000,COLUMN(A1:ALL1)))` are `#ERROR!`. A test with whole-column and whole-row operands (`=ROWS(LEFT(A:A,1:1))`) returns at once.
-- [ ] arrays.md's DEVIATION entry lists the text broadcast. No eval cell changes (`make eval`: 0 fixes, 0 regressions).
+- [x] `broadcast_text` returns `check_array_size`'s error (`#ERROR!` above 2^20 cells, `#VALUE!` past the grid) before it allocates or computes any element.
+- [x] A unit test shows `=ROWS(LEFT(A1:A2000,COLUMN(A1:ALL1)))` and `=ROWS(FIND("a",A1:A2000,COLUMN(A1:ALL1)))` are `#ERROR!`. A test with whole-column and whole-row operands (`=ROWS(LEFT(A:A,1:1))`) returns at once.
+- [x] arrays.md's DEVIATION entry lists the text broadcast. No eval cell changes (`make eval`: 0 fixes, 0 regressions).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Moving the text functions onto the SPEC-0011 driver (T-1775).
+
+## Outcome
+`broadcast_text` (functions/text/text_arg.rs) calls `limits::check_array_size` on the broadcast shape before it allocates or computes any element, the check `broadcast_arrays` (`&`) and `lift_numbers` (ROUND) already use; no new helper. Every element-wise text caller (LEFT, RIGHT, MID, FIND/SEARCH, LEN, REPT, EXACT, CONCATENATE, TEXT, SUBSTITUTE, REPLACE, PROPER, CHAR/UNICHAR, CODE, BAHTTEXT, FILTERXML, DATEVALUE/TIMEVALUE) gets the bound. Tests: test/text_functions/broadcast_bound.rs (`ROWS(LEFT|FIND|MID|CONCATENATE|REPT(A1:A2000,COLUMN(A1:ALL1)))` are `#ERROR!`; `=ROWS(LEFT(A:A,1:1))`, `=ROWS(FIND("a",A:A,1:1))` and `=LEFT(A:A,1:1)` return `#ERROR!` at once; a 2x3 broadcast and `ROWS(LEN(A:A))` are unchanged) and functions/text/text_arg/tests.rs (`compute` is never called above the limit). arrays.md's DEVIATION lists the text broadcast. Eval: 0 fixes, 0 regressions. Other unbounded results found by the same search, outside this helper: HSTACK/VSTACK padding (T-1780) and TEXTSPLIT padding (T-1781).
