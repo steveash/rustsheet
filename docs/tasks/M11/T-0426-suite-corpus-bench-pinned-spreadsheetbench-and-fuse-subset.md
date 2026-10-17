@@ -47,10 +47,9 @@ suites the milestone exit criteria name that does not exist yet.
   dataset tarball pinned by commit (49b73a9) and sha256, fetched with the existing archive fetcher
   (`rustsheet-eval fetch --suite corpus-bench`, verified: 912 files). Sampling rule: the first
   test case's input of each of the 912 instructions (`**/1_*_input.xlsx`), documented with how to
-  grow it; the FUSE half (9.4 GB) is left for later.
+  grow it; the FUSE half (9.4 GB) is T-0431.
 - Crash-only (`use_cached_values = false`: SpreadsheetBench caches are LibreOffice/win32com, not
   Excel). First run: 907 pending (no expectations), 5 timeouts at 60 s, no panics or import errors;
   the 5 are known failures in eval/baseline/corpus-bench.txt (new coverage) and filed as T-0430.
 - CI does not fetch external suites, so CI wall time is unchanged; a fetched run of the subset
   takes 2m17s on 8 cores (the steward or a local run covers it).
-
