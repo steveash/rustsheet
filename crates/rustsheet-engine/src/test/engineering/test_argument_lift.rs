@@ -11,29 +11,30 @@ use crate::test::util::new_empty_model;
 #[test]
 fn every_argument_lifts_over_an_array() {
     let mut model = new_empty_model();
+    // Every call has two rows: the lifted argument is a two-row array.
     let cases = [
-        ("BESSELI({2.5;2.5},1)", "2"),
-        ("BESSELJ(2.5,{1;2})", "2"),
-        ("BESSELK(2.5,{1;1})", "2"),
-        ("BESSELY({2.5;2.5},1)", "2"),
-        ("BIN2DEC({101;101})", "2"),
-        ("BIN2HEX(101,{8;4})", "2"),
-        ("DEC2BIN(9,{8;8})", "2"),
-        ("HEX2OCT({\"1F\";\"1F\"},8)", "2"),
-        ("OCT2HEX(17,{8;4})", "2"),
-        ("COMPLEX(3,4,{\"j\";\"i\"})", "2"),
-        ("CONVERT(2.5,\"m\",{\"ft\";\"in\"})", "2"),
-        ("DELTA(5,{5;2})", "2"),
-        ("GESTEP({5;5},4)", "2"),
-        ("ERF(0.5,{1.5;1})", "2"),
-        ("ERFC.PRECISE({0.75;0.75})", "2"),
-        ("IMABS({\"3+4i\";\"1\"})", "2"),
-        ("IMSUB(\"3+4i\",{\"1-2i\";\"1\"})", "2"),
-        ("IMPOWER(\"3+4i\",{2;3})", "2"),
-        ("BITAND(13,{25;2})", "2"),
-        ("BITRSHIFT({13;13},2)", "2"),
+        "BESSELI({2.5;2.5},1)",
+        "BESSELJ(2.5,{1;2})",
+        "BESSELK(2.5,{1;1})",
+        "BESSELY({2.5;2.5},1)",
+        "BIN2DEC({101;101})",
+        "BIN2HEX(101,{8;4})",
+        "DEC2BIN(9,{8;8})",
+        "HEX2OCT({\"1F\";\"1F\"},8)",
+        "OCT2HEX(17,{8;4})",
+        "COMPLEX(3,4,{\"j\";\"i\"})",
+        "CONVERT(2.5,\"m\",{\"ft\";\"in\"})",
+        "DELTA(5,{5;2})",
+        "GESTEP({5;5},4)",
+        "ERF(0.5,{1.5;1})",
+        "ERFC.PRECISE({0.75;0.75})",
+        "IMABS({\"3+4i\";\"1\"})",
+        "IMSUB(\"3+4i\",{\"1-2i\";\"1\"})",
+        "IMPOWER(\"3+4i\",{2;3})",
+        "BITAND(13,{25;2})",
+        "BITRSHIFT({13;13},2)",
     ];
-    for (row, (formula, _)) in cases.iter().enumerate() {
+    for (row, formula) in cases.iter().enumerate() {
         model._set(&format!("A{}", row + 1), &format!("=ROWS({formula})"));
     }
     model._set("C1", "=INDEX(BIN2HEX(101,{8;4}),2)");
@@ -43,10 +44,10 @@ fn every_argument_lifts_over_an_array() {
     model._set("C5", "=INDEX(IMSUB(\"3+4i\",{\"1-2i\";\"1\"}),2)");
     model._set("C6", "=INDEX(CONVERT(1,{\"m\";\"x\"},\"ft\"),2)");
     model.evaluate();
-    for (row, (formula, expected)) in cases.iter().enumerate() {
+    for (row, formula) in cases.iter().enumerate() {
         assert_eq!(
             model._get_text(&format!("A{}", row + 1)),
-            *expected,
+            *"2",
             "ROWS({formula})"
         );
     }

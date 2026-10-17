@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::functions::lift::{num_error, value_error};
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -188,16 +189,6 @@ type ComplexParts = (f64, f64, Suffix);
 
 /// One complex function of a parsed number (IMABS … IMTAN).
 type ComplexFn = fn(ComplexParts, CellReferenceIndex) -> CalcResult;
-
-/// A `#NUM!` element: its message is empty, so a failing element allocates nothing.
-fn num_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::NUM, cell, String::new())
-}
-
-/// The `#VALUE!` of two numbers with different suffixes, or of an invalid COMPLEX suffix.
-fn value_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::VALUE, cell, String::new())
-}
 
 /// The text result of a complex function.
 fn complex_result(x: f64, y: f64, suffix: Suffix) -> CalcResult {

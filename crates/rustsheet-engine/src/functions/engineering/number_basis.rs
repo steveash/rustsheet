@@ -3,9 +3,10 @@
 //! E24:E26, E52:E54, probes/scalar-lift-shapes H9, probes/eng-later-argument-lift H4:H11): each
 //! kernel is the scalar function of one element, and builds its own errors with empty messages.
 
+use crate::functions::lift::num_error;
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{parser::Node, types::CellReferenceIndex},
     functions::Function,
     model::Model,
 };
@@ -32,11 +33,6 @@ fn from_binary_to_decimal(value: f64) -> Result<i64, ()> {
         return Ok(result - 1024);
     };
     Ok(result)
-}
-
-/// A `#NUM!` element: its message is empty, so a failing element allocates nothing.
-fn num_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::NUM, cell, String::new())
 }
 
 /// The number and the optional `places` of one conversion element.

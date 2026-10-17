@@ -4,20 +4,16 @@
 //! "Engineering function argument modes"): each kernel below is the scalar function of one
 //! element, and builds its own errors with empty messages.
 
+use crate::functions::lift::num_error;
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{parser::Node, types::CellReferenceIndex},
     functions::Function,
     model::Model,
 };
 
 // 2^48-1
 const MAX: f64 = 281474976710655.0;
-
-/// A `#NUM!` element: its message is empty, so a failing element allocates nothing.
-fn num_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::NUM, cell, String::new())
-}
 
 /// The bitwise operation of BITAND, BITOR and BITXOR.
 #[derive(Clone, Copy)]

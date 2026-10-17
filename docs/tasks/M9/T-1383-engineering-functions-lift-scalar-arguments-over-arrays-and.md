@@ -37,7 +37,7 @@ Only the first argument was probed over a range. Probe the later arguments (BIT*
 ## Acceptance criteria
 - [x] probes/eng-argument-modes columns B:E leave eval/baseline/probes.txt, except the IMSUM and IMPRODUCT
       cells (T-1384), with no new F lines. probes/scalar-lift-shapes H7-H10 pass.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IMSUM and IMPRODUCT (T-1384). Last-digit precision of IM* (T-0907).

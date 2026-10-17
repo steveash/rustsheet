@@ -110,7 +110,8 @@ const DATA_THEN_1_OF_2: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift, Lif
 /// One required argument that lifts over an array and a range: the IS* type tests, ERROR.TYPE
 /// and ENCODEURL.
 const LIFT_1: ArgKinds = ArgKinds::fixed(1, &[Lift], Constant);
-/// ISEVEN and ISODD: one argument, lifted over arrays only.
+/// One argument, lifted over arrays only: ISEVEN, ISODD and the one-argument Analysis `ToolPak`
+/// functions (BIN2DEC, HEX2DEC, OCT2DEC, ERF.PRECISE, ERFC, ERFC.PRECISE, the one-argument IM*).
 const ARRAYS_1: ArgKinds = ArgKinds::fixed(1, &[LiftArrays], Constant);
 /// `ADDRESS(row_num, column_num, [abs_num], [a1], [sheet_text])`: every argument lifts.
 const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Constant);
@@ -118,9 +119,6 @@ const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Co
 const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
 
 // --- Engineering (T-1383) -------------------------------------------------------------------
-/// One required Analysis `ToolPak` argument: BIN2DEC, HEX2DEC, OCT2DEC, ERF.PRECISE, ERFC,
-/// ERFC.PRECISE and the one-argument IM* functions.
-const ATP_1: ArgKinds = ArgKinds::fixed(1, &[LiftArrays], Constant);
 /// Three required Analysis `ToolPak` arguments: `CONVERT(number, from_unit, to_unit)`.
 const ATP_3: ArgKinds = ArgKinds::fixed(3, &[LiftArrays, LiftArrays, LiftArrays], Constant);
 /// Two worksheet arguments that lift over an array and a range: BITAND, BITOR, BITXOR,
@@ -329,7 +327,7 @@ impl Function {
             | Function::Imsin
             | Function::Imsinh
             | Function::Imsqrt
-            | Function::Imtan => Some(&ATP_1),
+            | Function::Imtan => Some(&ARRAYS_1),
             // `[places]`, `[number2]`, `[step]`, `[upper_limit]`: one required, one optional.
             Function::Bin2hex
             | Function::Bin2oct
