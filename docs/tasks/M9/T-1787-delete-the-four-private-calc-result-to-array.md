@@ -30,7 +30,7 @@ BYROW/BYCOL/MAKEARRAY 1x1-array unwrap stays visible as `lambda_result_to_array_
 bycol_byrow.rs (probes/byrow-bycol-array-results). Eval: 0 fixes, 0 regressions. Duplication
 6155 -> 6111 (`--update`).
 
-## Handoff
+## Handoff (resumed)
 Code is complete and all four reviewers approved (security, architecture, quality, excel-fidelity);
 `make check` and eval gate were green locally (0 fixes, 0 regressions). CI `hygiene` fails in
 `scripts/check_governance.py`: `quality/duplication.json` (written by `check_duplication.py
