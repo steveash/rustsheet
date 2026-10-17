@@ -3,7 +3,7 @@ id: T-1253
 title: "WEEKDAY: a serial in [0,1) is a Saturday and return_type 0 is #NUM! (2 gen-m6 cells)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
