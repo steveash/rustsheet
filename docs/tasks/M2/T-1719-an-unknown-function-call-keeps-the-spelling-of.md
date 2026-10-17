@@ -55,3 +55,5 @@ Design read of the code (no code changed yet):
   `=AB1(1)`; ours `#NAME?` (A8). Likely a call of the reference AB1; file it apart if it does not fall
   out of the fix.
 - Unprobed: load order vs edit order for "first" (the handoff's last point).
+
+(Resumed again 2026-10-17 by an opus run after 2h idle.)
