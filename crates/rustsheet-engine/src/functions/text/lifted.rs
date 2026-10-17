@@ -20,10 +20,15 @@ use crate::{
     number_format::number_to_text,
 };
 
-/// Bytes of delimiter comparison counted as one cell visit: a position is compared with a
-/// delimiter by `starts_with` (a `memcmp`), about 25 ps a byte in a release build against a few
-/// nanoseconds a visit (T-1272 performance review).
-const BYTES_PER_VISIT: u64 = 64;
+/// Bytes of delimiter comparison counted as one cell visit when a position is compared with a
+/// delimiter by `starts_with` (a `memcmp`, TEXTBEFORE and TEXTAFTER): about 25 ps a byte in a
+/// release build against a few nanoseconds a visit (T-1272 performance review).
+pub(super) const COMPARED_BYTES_PER_VISIT: u64 = 64;
+
+/// The same when a delimiter is searched for from each piece (TEXTSPLIT's `memmem` finders): a
+/// delimiter that matches at every position is verified at about 200 ps a byte (T-1272
+/// performance review: `TEXTSPLIT(REPT("a",32767)&SEQUENCE(16),HSTACK("a",REPT("a",16000)))`).
+pub(super) const SEARCHED_BYTES_PER_VISIT: u64 = 8;
 
 impl Model {
     /// A one-cell reference as the value of its cell, any other value as it is.
@@ -70,7 +75,8 @@ impl Model {
     /// arguments"), so it need not build the rest.
     ///
     /// An element compares each position of its text with the delimiters of byte lengths
-    /// `scanned` (one pass when empty) and reads its other operands once. The work is the sum
+    /// `scanned` (one pass when empty), `bytes_per_visit` bytes of them costing one visit, and
+    /// reads its other operands once. The work is the sum
     /// over the operands' elements, each counted as often as the broadcast repeats it, so one
     /// long cell in a mostly blank column costs its own length once. The call is `#ERROR!` when
     /// the work exceeds `limits::MAX_LIFTED_CELL_VISITS` (DEVIATION, decision 0014: Excel has no
@@ -80,10 +86,13 @@ impl Model {
         operands: Vec<CalcResult>,
         cell: CellReferenceIndex,
         scanned: &[usize],
+        bytes_per_visit: u64,
         mut element: impl FnMut(&mut Model, &[CalcResult], bool) -> CalcResult,
     ) -> CalcResult {
         let lifts = operands.iter().any(LiftedArg::is_grid);
-        if let Some(error) = too_many_visits(text_call_cost(&operands, scanned), cell) {
+        if let Some(error) =
+            too_many_visits(text_call_cost(&operands, scanned, bytes_per_visit), cell)
+        {
             return error;
         }
         self.lift_values(
@@ -144,12 +153,12 @@ fn operand_dims(operand: &CalcResult) -> (usize, usize) {
 /// length plus 1 (a non-string 1), times how often the broadcast repeats it (a dimension of 1
 /// stretches over the output's); the text operand's length is further multiplied by the
 /// delimiter comparisons at each position ([`ScanCost`]). Saturating.
-fn text_call_cost(operands: &[CalcResult], scanned: &[usize]) -> u64 {
+fn text_call_cost(operands: &[CalcResult], scanned: &[usize], bytes_per_visit: u64) -> u64 {
     let (rows, columns) = operands
         .iter()
         .map(operand_dims)
         .fold((1, 1), |acc, d| (acc.0.max(d.0), acc.1.max(d.1)));
-    let scan = ScanCost::new(scanned);
+    let scan = ScanCost::new(scanned, bytes_per_visit);
     operands
         .iter()
         .enumerate()
@@ -199,16 +208,17 @@ fn operand_work(
 }
 
 /// The delimiter comparisons at one position of a text: each delimiter costs 1 plus the bytes
-/// it compares (at most the text's length) over [`BYTES_PER_VISIT`]; at least 1 (one pass).
+/// it compares (at most the text's length) over `bytes_per_visit`; at least 1 (one pass).
 struct ScanCost {
     /// The delimiter lengths, ascending.
     lengths: Vec<usize>,
     /// `prefix[i]` is the sum of the `i` shortest lengths.
     prefix: Vec<u64>,
+    bytes_per_visit: u64,
 }
 
 impl ScanCost {
-    fn new(scanned: &[usize]) -> Self {
+    fn new(scanned: &[usize], bytes_per_visit: u64) -> Self {
         let mut lengths = scanned.to_vec();
         lengths.sort_unstable();
         let mut prefix = Vec::with_capacity(lengths.len() + 1);
@@ -217,7 +227,11 @@ impl ScanCost {
             let last = prefix.last().copied().unwrap_or(0);
             prefix.push(last.saturating_add(to_u64(len)));
         }
-        ScanCost { lengths, prefix }
+        ScanCost {
+            lengths,
+            prefix,
+            bytes_per_visit: bytes_per_visit.max(1),
+        }
     }
 
     /// The cost at each position of a text of `text_len` bytes, in logarithmic time.
@@ -230,7 +244,7 @@ impl ScanCost {
             .unwrap_or(0)
             .saturating_add(to_u64(self.lengths.len() - shorter).saturating_mul(to_u64(text_len)));
         to_u64(self.lengths.len())
-            .saturating_add(compared / BYTES_PER_VISIT)
+            .saturating_add(compared / self.bytes_per_visit)
             .max(1)
     }
 }

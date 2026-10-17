@@ -283,7 +283,7 @@ The delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are one list, not lifted: 
 {",";"-"})` is "b", "d", "f". VERIFIED: probes/m7-argument-modes F13-K13 (excel-graph, 2026-10-09; T-1083), and gen-m7 cells
 whose lifted result is `#SPILL!` because its spill range is occupied (gen-m7/93976dd9a3578ed9 Calc!A11, 59cc50701f4937c9 A24).
 A lifted element whose call returns an array keeps its first value: TEXTSPLIT, probes/m7-argument-modes F13:H13.
-UNVERIFIED (T-1272 guesses, nothing probed; T-1816 probes them): when two delimiters of a list match at the same
+UNVERIFIED (T-1272 guesses, nothing probed; T-1824 probes them): when two delimiters of a list match at the same
 position, the first in list order sets the match length; every entry longer than the text gives the single-delimiter
 error (`#VALUE!` with more than two arguments, `#N/A` with two); an error inside a delimiter array is `#VALUE!`; a
 boolean inside a TEXTBEFORE/TEXTAFTER delimiter array is `#VALUE!` (as TEXTSPLIT's already was), although a boolean in a
@@ -292,12 +292,12 @@ only; if_not_found, pad_with, match_end and return_all lift like the other scala
 when the delimiter is found; REGEXEXTRACT's return_all keeps the first value of a lifted element. A 1x1 array lifts too, so
 `COLUMNS(TEXTSPLIT({"a,b"},","))`, `COLUMNS(TEXTSPLIT(FILTER(A1:A2,A1:A2="a,b"),","))` and
 `COLUMNS(REGEXEXTRACT({"a1b2"},"[0-9]",1))` are 1 (2 before T-1272), by analogy with `COLUMNS(XLOOKUP({2},A1:A4,C1:E4))`
-= 1 (lookup.md); a common pattern, so T-1816 probes it first.
+= 1 (lookup.md); a common pattern, so T-1824 probes it first.
 Ours: all of this since T-1272. The work caps are the next entry's. A multi-cell range as the TEXTBEFORE/TEXTAFTER
 delimiter is still read as one text, as before T-1272 (gen-m7/851eb2099ae3f805 Calc!A25 is `#VALUE!`); its list rule is
 T-1361's.
-Status: VERIFIED (excel-graph) for the cited cells; UNVERIFIED (probe pending, T-1816) for the rest
-Tasks: T-1272, T-1816 (probe the guesses), T-1361 (delimiter ranges)
+Status: VERIFIED (excel-graph) for the cited cells; UNVERIFIED (probe pending, T-1824) for the rest
+Tasks: T-1272, T-1824 (probe the guesses), T-1361 (delimiter ranges)
 
 ## Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped
 Rule: Excel computes these calls whatever their size.
@@ -306,15 +306,24 @@ every operand, each element's length plus 1, times how often the broadcast repea
 multiplied, per position, by the delimiter count plus the delimiter bytes compared there (each delimiter at most the
 text's length) over 64. A call that does not lift is capped the same way (`TEXTBEFORE(REPT("a",32767),SEQUENCE(10000))`,
 `TEXTBEFORE(REPT("a",32767),REPT("a",16383)&"b"&SEQUENCE(512))`); one long cell in a blank column costs its own length
-once (`ROWS(TEXTBEFORE(A1:A100000,","))` is 100000). A REGEX* call compiles each pattern under the smallest of the size
-limits 64 KiB, 1 MiB and 10 MiB (the regex crate's default, so every pattern that compiled before T-1272 still does) it
-fits, keeps up to 32 MiB of those limits compiled (least recently used evicted), and may spend 256 MiB of limits on
-compiling, too-big attempts included (4,096 small patterns, 256 medium or 25 of the largest, about 2 s); a call past
-that is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`).
+once (`ROWS(TEXTBEFORE(A1:A100000,","))` is 100000). TEXTSPLIT searches each delimiter again from
+each piece, so its delimiter bytes count 8 to a visit rather than 64
+(`ROWS(TEXTSPLIT(REPT("a",32767)&SEQUENCE(16),HSTACK("a",REPT("a",16000))))` is `#ERROR!`). A REGEX* call compiles each
+distinct pattern once, under the smallest of the size limits 64 KiB, 256 KiB, 1 MiB, 4 MiB and 10 MiB (the regex
+crate's default, so every pattern that compiled before T-1272 still does) it fits; it may spend 128 MiB of limits on
+compiling, too-big attempts included, and hold 64 MiB of them (1,024 small patterns or 6 of the largest; none is
+evicted, so patterns that cycle compile once), and each search is charged its text's bytes times its pattern's limit
+(at least 256 KiB), 2^42 a call (about 440,000 bytes with the largest patterns, 17 million with small ones; a
+REGEXREPLACE searches twice, once to size its result). A call past any of these is `#ERROR!`
+(`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`, `SUM(--REGEXTEST(REPT("a",3000)&SEQUENCE(4000),"\w{200}b"))`,
+`ROWS(REGEXREPLACE(REPT("a",32767)&SEQUENCE(1000),"","b"))`). A REGEXREPLACE result over 32,767 UTF-16 units is
+`#VALUE!`, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`), as SUBSTITUTE's
+is (UNVERIFIED for REGEXREPLACE; T-1817 probes it); a lifted REGEXREPLACE whose results pass the text broadcast cap
+(64 MiB, first entry) is one `#VALUE!`.
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
 Status: DEVIATION (decision 0014)
 Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
-(functions/text/regex_functions.rs)
+and `Replacement` (functions/text/regex_functions.rs), `SplitList` (functions/text/textsplit.rs)
 Tasks: T-1272
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges

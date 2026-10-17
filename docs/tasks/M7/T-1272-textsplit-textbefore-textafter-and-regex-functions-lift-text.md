@@ -3,7 +3,7 @@ id: T-1272
 title: "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX functions lift text over a range and scalar arguments over an array"
 milestone: M7
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -31,19 +31,26 @@ Delimiter ranges (a multi-cell range with blanks, numbers or booleans as the del
 ## Out of scope
 -
 
-## Outcome (draft; not merged)
+## Outcome
 TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEXTEST/EXTRACT/REPLACE lift their text and scalar arguments over ranges and
 arrays; the delimiters stay lists (TEXTBEFORE/AFTER take a delimiter array as a list; a delimiter range is still one
 text until T-1361). `lift_text_call` calls `lift_values` directly; moving onto `lift_call` is T-1775.
 - Bounds (DEVIATION, text.md "Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped"): the work is every
   operand element's length x its broadcast repeats, the text's further x the delimiter comparisons per position
-  (delimiter count + compared bytes / 64), capped at 2^27 lifted or not. REGEX patterns compile under the smallest of
-  64 KiB / 1 MiB / 10 MiB size limits they fit, with a per-call compile budget (256 MiB of limits) and an LRU cache
-  bounded at 32 MiB of limits.
+  (delimiter count + compared bytes / 64, / 8 for TEXTSPLIT's re-searches), capped at 2^27 lifted or not. REGEX
+  patterns compile once each under the smallest of five size limits they fit (64 KiB .. 10 MiB), within a per-call
+  compile budget (128 MiB of limits) and a held cap (64 MiB, no eviction); every search is charged text bytes x size
+  limit against 2^42 a call; a REGEXREPLACE result is sized before it is built (over 32,767 units `#VALUE!`, UNVERIFIED,
+  T-1817 probes it).
+- Performance review fixes (fifth run, release timings): `\w{200}b` over 4,000 x 3,000 bytes 38.5 s -> `#ERROR!` at
+  1.1 s; TEXTSPLIT with a 16,000-byte delimiter matching everywhere 19 s -> `#ERROR!` at once (2 cells: 0.2 s, one
+  `memchr::memmem::Finder` per delimiter per call); 5 cycling `\w{200}` patterns `#ERROR!` at 2.3 s -> 100 values at
+  0.6 s; `ROWS(REGEXREPLACE(REPT("a",32767)&SEQUENCE(1000),"","b"))` `#ERROR!` at 1.0 s. New direct dependencies
+  `memchr` and `regex-automata` (both already in the tree through `regex`).
 - Performance review fixes (fourth run): delimiter lists folded once per call and borrowed per element; TEXTSPLIT's
   split searches each delimiter forward once instead of per piece; a lifted TEXTSPLIT/REGEXEXTRACT element computes only
   its first value (this absorbs T-1814).
-- Unverified guesses are listed in text.md and the tests pinning them say so; T-1816 probes them.
+- Unverified guesses are listed in text.md and the tests pinning them say so; T-1824 probes them.
 - Eval: probes known failures -30 (rows 13, 15-22, 55 and K11:K13 of probes/m7-argument-modes), 0 regressions; gen-m7
   59cc50701f4937c9 A24, 93976dd9a3578ed9 A11, 9ff3afcacd3bd0fc A35 and 6db767d720c5b55a A28 now pass, no other
   gen-suite cell changed (checked against main's binary). Duplication 6111 -> 5925.
@@ -52,7 +59,8 @@ text until T-1361). `lift_text_call` calls `lift_values` directly; moving onto `
   1,400 lines, much of it moving TEXTBEFORE/TEXTAFTER/TEXTSPLIT out of text/common.rs). Still to consolidate: the
   one-cell-range collapse (`collapse_single_cell`) inlined in several lift callers, and `lift_text_call` itself, both
   for T-1775.
-  Follow-ups: T-1816 (probe the guesses), T-1817 (REGEXREPLACE result bound); T-1814 done here.
+  Follow-ups: T-1824 (probe the guesses), T-1817 (probe REGEXREPLACE past 32,767; the bound is done here); T-1814 done
+  here.
 
 ## Handoff (resumed)
 Fourth opus run (2026-10-17, budget out). Branch merged with main; `make check` green. PR #1016 (draft). This run fixed
@@ -61,7 +69,7 @@ first-value-only lifted elements; absorbs T-1814), the quality review's two MAJO
 shared with the lift driver) and the governance gate (decision 0010 entry). Review round on 877196fa: security,
 architecture and quality APPROVE (quality after the shared-helper fix); excel-fidelity's MAJOR (a 1x1 array now lifts:
 `COLUMNS(TEXTSPLIT({"a,b"},","))` 2 → 1) is recorded UNVERIFIED in text.md, pinned by
-`fn_textsplit::one_by_one_array_lifts` and listed first in T-1816, so re-run excel-fidelity to confirm that suffices.
+`fn_textsplit::one_by_one_array_lifts` and listed first in T-1824, so re-run excel-fidelity to confirm that suffices.
 Performance REQUEST_CHANGES, still open (measured with a release harness):
 1. BLOCKING: regex search cost is not counted. `=SUM(--REGEXTEST(REPT("a",3000)&SEQUENCE(4000),"\w{200}b"))` takes
    38.5 s at about 9% of the cap (the lazy DFA gives up on big Unicode classes). Fix: in `PatternCache::get`'s caller,

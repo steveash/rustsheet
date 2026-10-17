@@ -1,4 +1,7 @@
-use super::util::{text_after, text_before, Case, Delimiters};
+use super::{
+    lifted::COMPARED_BYTES_PER_VISIT,
+    util::{text_after, text_before, Case, Delimiters},
+};
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
@@ -46,9 +49,15 @@ impl Model {
         let scanned: Vec<usize> = delimiters
             .as_ref()
             .map_or(vec![], |d| d.exact().iter().map(String::len).collect());
-        self.lift_text_call(operands, cell, &scanned, |model, values, _| {
-            model.text_around_element(values, arg_count, &delimiters, side, cell)
-        })
+        self.lift_text_call(
+            operands,
+            cell,
+            &scanned,
+            COMPARED_BYTES_PER_VISIT,
+            |model, values, _| {
+                model.text_around_element(values, arg_count, &delimiters, side, cell)
+            },
+        )
     }
 
     /// The delimiter list of TEXTBEFORE and TEXTAFTER: a scalar is read as text (a blank is the
@@ -91,7 +100,7 @@ impl Model {
         };
         // With no delimiter shorter than the text a match is impossible. UNVERIFIED for a list
         // (text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar
-        // arguments", T-1816): every entry longer than the text.
+        // arguments", T-1824): every entry longer than the text.
         let exact = delimiters.exact();
         if !exact.is_empty() && exact.iter().all(|d| d.len() > text.len()) {
             // With more than two arguments this is `#VALUE!`, with two `#N/A`, whatever their values.

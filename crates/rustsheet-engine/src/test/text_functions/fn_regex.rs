@@ -175,10 +175,9 @@ fn test_regexreplace_wrong_arg_count() {
     assert_eq!(model._get_text("A2"), "#ERROR!");
 }
 
-// T-1272 performance review: a call compiles each pattern it has pushed out of its cache again,
-// within a compile budget; past the budget it is `#ERROR!` (DEVIATION, decision 0014). 600
-// distinct small patterns cycle through a cache of 512; 5,000 distinct ones are past the 4,096
-// small compiles the budget allows.
+// T-1272 performance review: a call compiles each distinct pattern once, keeps it and never
+// evicts, so 600 patterns that cycle compile 600 times; 5,000 distinct ones are past the 1,024
+// small patterns a call may hold, `#ERROR!` (DEVIATION, decision 0014).
 #[test]
 fn regex_compiles_are_cached_and_budgeted() {
     let mut model = new_empty_model();
@@ -208,4 +207,61 @@ fn lifted_regexextract_return_all_keeps_the_first_match() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"1");
     assert_eq!(model._get_text("A2"), *"#N/A");
+}
+
+// T-1272 performance review: patterns too big for the smaller size limits that cycle through a
+// lifted call compile once each instead of thrashing a cache.
+#[test]
+fn cycling_patterns_compile_once() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=SUM(--REGEXTEST(\"abcdefghijklmnop\",\"\\w{\"&(2+MOD(SEQUENCE(400),15))&\"}\"))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"400");
+}
+
+// T-1817 (folded into T-1272): REGEXREPLACE knows its result length before it builds it. Over
+// 32,767 characters it is `#VALUE!` as SUBSTITUTE is (UNVERIFIED for REGEXREPLACE); an empty
+// pattern over 32,767 characters with a 10-character replacement is refused without building
+// its 360,000 characters.
+#[test]
+fn regexreplace_result_is_bounded_before_it_is_built() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=LEN(REGEXREPLACE(REPT(\"a\",32767),\"\",\"bbbbbbbbbb\"))",
+    );
+    model._set("A2", "=LEN(REGEXREPLACE(REPT(\"a\",32767),\"a\",\"bb\"))");
+    model._set("A3", "=LEN(REGEXREPLACE(REPT(\"a\",16383),\"a\",\"bb\"))");
+    model._set(
+        "A4",
+        "=LEN(REGEXREPLACE(REPT(\"ab\",16000),\"(a)(b)\",\"$2$1$1\"))",
+    );
+    model._set(
+        "A5",
+        "=LEN(REGEXREPLACE(REPT(\"ab\",10000),\"(a)(b)\",\"$2$1$1\"))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"32766");
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
+    assert_eq!(model._get_text("A5"), *"30000");
+}
+
+// The replacement keeps the regex crate's syntax: `$$` is a dollar, `${name}` and `$name` a
+// named group, `$1a` the (absent) group named `1a`, and a lone `$` itself.
+#[test]
+fn regexreplace_replacement_syntax() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=REGEXREPLACE(\"ab\",\"(?P<x>a)(b)\",\"[${x}|$2|$$|$1a|$]\")",
+    );
+    model._set("A2", "=REGEXREPLACE(\"ab\",\"(?P<x>a)\",\"$x$x\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"[a|b|$||$]");
+    assert_eq!(model._get_text("A2"), *"aab");
 }

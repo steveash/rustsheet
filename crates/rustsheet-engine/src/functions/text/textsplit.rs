@@ -1,5 +1,10 @@
+use std::borrow::Cow;
+
+use memchr::memmem::Finder;
+
 use super::{
     casefold::{char_offsets, fold_for_split},
+    lifted::SEARCHED_BYTES_PER_VISIT,
     util::{Case, Delimiters},
 };
 use crate::{
@@ -46,18 +51,24 @@ impl Model {
             .into_iter()
             .flatten()
             .flatten()
-            .flat_map(|d| d.exact().iter().map(String::len))
+            .flat_map(|d| d.list.exact().iter().map(String::len))
             .collect();
-        self.lift_text_call(operands, cell, &scanned, |model, values, first_only| {
-            model.textsplit_element(
-                values,
-                arg_count,
-                col_delimiters.as_ref(),
-                row_delimiters.as_ref(),
-                first_only,
-                cell,
-            )
-        })
+        self.lift_text_call(
+            operands,
+            cell,
+            &scanned,
+            SEARCHED_BYTES_PER_VISIT,
+            |model, values, first_only| {
+                model.textsplit_element(
+                    values,
+                    arg_count,
+                    col_delimiters.as_ref(),
+                    row_delimiters.as_ref(),
+                    first_only,
+                    cell,
+                )
+            },
+        )
     }
 
     /// A TEXTSPLIT delimiter list, folded once per call; `skip_empty` drops its empty strings.
@@ -66,12 +77,15 @@ impl Model {
         list: CalcResult,
         skip_empty: bool,
         cell: CellReferenceIndex,
-    ) -> Result<Delimiters, CalcResult> {
+    ) -> Result<SplitList, CalcResult> {
         let mut exact = self.delimiter_list(list, cell)?;
         if skip_empty {
             exact.retain(|d| !d.is_empty());
         }
-        Ok(Delimiters::folded_with(exact, fold_for_split))
+        Ok(SplitList::new(Delimiters::folded_with(
+            exact,
+            fold_for_split,
+        )))
     }
 
     /// One TEXTSPLIT call on the values of the lifted arguments; `first_only` returns only the
@@ -80,8 +94,8 @@ impl Model {
         &mut self,
         values: &[CalcResult],
         arg_count: usize,
-        col_delimiters: Option<&Result<Delimiters, CalcResult>>,
-        row_delimiters: Option<&Result<Delimiters, CalcResult>>,
+        col_delimiters: Option<&Result<SplitList, CalcResult>>,
+        row_delimiters: Option<&Result<SplitList, CalcResult>>,
         first_only: bool,
         cell: CellReferenceIndex,
     ) -> CalcResult {
@@ -89,7 +103,7 @@ impl Model {
             Ok(s) => s,
             Err(e) => return e,
         };
-        let no_delimiters = Delimiters::new(vec![]);
+        let no_delimiters = SplitList::new(Delimiters::new(vec![]));
         let col_delims = match col_delimiters {
             Some(Ok(d)) => d,
             Some(Err(e)) => return e.clone(),
@@ -98,7 +112,7 @@ impl Model {
 
         // An explicit empty string "" as a delimiter is invalid.
         // An omitted col_delimiter (empty vec) is allowed when row_delimiter is provided.
-        if col_delims.exact().iter().any(String::is_empty) {
+        if col_delims.list.exact().iter().any(String::is_empty) {
             return CalcResult::new_error(
                 Error::VALUE,
                 cell,
@@ -112,7 +126,7 @@ impl Model {
             None => &no_delimiters,
         };
 
-        if col_delims.exact().is_empty() && row_delims.exact().is_empty() {
+        if col_delims.list.exact().is_empty() && row_delims.list.exact().is_empty() {
             return CalcResult::new_error(
                 Error::VALUE,
                 cell,
@@ -158,9 +172,9 @@ impl Model {
         // textsplit-casefold-length), so char positions in `cmp_text` are char positions in
         // `text`; `split_by_any` converts them to byte offsets of the original (T-1794).
         let (cmp_text, case) = if case_insensitive {
-            (fold_for_split(&text), Case::Insensitive)
+            (Cow::Owned(fold_for_split(&text)), Case::Insensitive)
         } else {
-            (text.clone(), Case::Sensitive)
+            (Cow::Borrowed(text.as_str()), Case::Sensitive)
         };
         let cmp_col_delims = col_delims.for_case(case);
         let cmp_row_delims = row_delims.for_case(case);
@@ -246,21 +260,51 @@ impl Model {
     }
 }
 
-/// Split `original` by the first (earliest) occurrence of any non-empty delimiter
-/// in `cmp_delims`, using `cmp` (a parallel, char-for-char comparison string, e.g. case-folded)
+/// A TEXTSPLIT delimiter list with one substring searcher per non-empty delimiter and case,
+/// built once per call: `str::find` builds a searcher per piece, which costs as much as the
+/// delimiter is long each time (T-1272 performance review).
+struct SplitList {
+    list: Delimiters,
+    exact: Vec<Finder<'static>>,
+    folded: Vec<Finder<'static>>,
+}
+
+impl SplitList {
+    fn new(list: Delimiters) -> Self {
+        let finders = |case| {
+            list.for_case(case)
+                .iter()
+                .filter(|d| !d.is_empty())
+                .map(|d| Finder::new(d.as_bytes()).into_owned())
+                .collect()
+        };
+        let exact = finders(Case::Sensitive);
+        let folded = finders(Case::Insensitive);
+        SplitList {
+            list,
+            exact,
+            folded,
+        }
+    }
+
+    /// The searchers a text is matched with under `case`, in list order.
+    fn for_case(&self, case: Case) -> &[Finder<'static>] {
+        match case {
+            Case::Sensitive => &self.exact,
+            Case::Insensitive => &self.folded,
+        }
+    }
+}
+
+/// Split `original` by the first (earliest) occurrence of any of the delimiters `delims`
+/// searches for, using `cmp` (a parallel, char-for-char comparison string, e.g. case-folded)
 /// to locate match positions.
 ///
 /// `cmp` and `original` have the same number of chars but not necessarily the same byte layout
 /// (U+212A is 3 bytes, its fold `k` is 1), so a match is converted to a char index in `cmp` and
 /// then to a byte offset in `original`. If the two ever disagree the original is returned whole
 /// rather than sliced out of range.
-fn split_by_any<'a>(original: &'a str, cmp: &str, cmp_delims: &[String]) -> Vec<&'a str> {
-    let delims: Vec<&str> = cmp_delims
-        .iter()
-        .map(String::as_str)
-        .filter(|s| !s.is_empty())
-        .collect();
-
+fn split_by_any<'a>(original: &'a str, cmp: &str, delims: &[Finder<'_>]) -> Vec<&'a str> {
     if delims.is_empty() {
         return vec![original];
     }
@@ -292,22 +336,23 @@ fn split_by_any<'a>(original: &'a str, cmp: &str, cmp_delims: &[String]) -> Vec<
     // The next match of each delimiter at or after `pos`, searched again only once `pos` has
     // passed it, so each delimiter's searches move forward through `cmp` instead of rescanning
     // the rest of it for every piece (T-1272 performance review).
-    let mut next: Vec<Option<usize>> = delims.iter().map(|d| cmp.find(d)).collect();
+    let mut next: Vec<Option<usize>> = delims.iter().map(|d| d.find(cmp.as_bytes())).collect();
 
     loop {
         // Find the earliest match among all delimiters (the first in list order on a tie).
-        for (found, d) in next.iter_mut().zip(&delims) {
+        for (found, d) in next.iter_mut().zip(delims) {
             if found.is_some_and(|start| start < pos) {
                 *found = cmp
+                    .as_bytes()
                     .get(pos..)
-                    .and_then(|rest| rest.find(d))
+                    .and_then(|rest| d.find(rest))
                     .map(|i| pos + i);
             }
         }
         let best = next
             .iter()
-            .zip(&delims)
-            .filter_map(|(found, d)| found.map(|start| (start, start + d.len())))
+            .zip(delims)
+            .filter_map(|(found, d)| found.map(|start| (start, start + d.needle().len())))
             .min_by_key(|(p, _)| *p);
 
         let matched = best
