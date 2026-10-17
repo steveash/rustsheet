@@ -378,7 +378,8 @@ fn test_weekday_function() {
 
     // Error cases
     assert_eq!(model._get_text("A7"), *"#ERROR!");
-    assert_eq!(model._get_text("A8"), *"#VALUE!");
+    // Excel: return_type 0 is #NUM! (probes/weekday-serial-zero A1)
+    assert_eq!(model._get_text("A8"), *"#NUM!");
     assert_eq!(model._get_text("A9"), *"#NUM!");
 }
 

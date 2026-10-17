@@ -3,7 +3,7 @@ id: T-1253
 title: "WEEKDAY: a serial in [0,1) is a Saturday and return_type 0 is #NUM! (2 gen-m6 cells)"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -35,3 +35,9 @@ by T-1239's triage in docs/excel-semantics/dates.md "WEEKDAY of serial 0 and ret
 
 ## Out of scope
 - Lifting WEEKDAY over ranges and arrays (T-1235).
+
+## Outcome
+`fn_weekday` reads a 1900-system serial in [0, 1) as Saturday (stand-in 1899-12-30) and return_type 0
+(also -1, -0.0001, 0.5 after truncation) is `#NUM!`. New probe `probes/weekday-serial-zero` (18 cells,
+excel-graph); unit tests in test_weekday_return_types.rs. gen-m6/ec7b2cc2fb9f0354 A33 and
+gen-m6/5cc04d6f42b23b51 A27 are checked below.

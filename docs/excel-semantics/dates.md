@@ -366,7 +366,8 @@ the size-mismatch `#VALUE!`, which is unprobed) and
 `VLOOKUP(WORKDAY(28131,-16,<blank>*1),C2:D5,1,XLOOKUP(..))` is `#VALUE!` (so a holiday of 0 is accepted).
 Evidence: gen-m6/ec7b2cc2fb9f0354 Calc!A33, gen-m6/5cc04d6f42b23b51 Calc!A27, gen-m6/63012866a9d8b7db Calc!A39,
 gen-m6/6b2aa08e3b916da5 Calc!A35 (excel-graph, 2026-10-09, T-1239).
-Ours: `WEEKDAY(0.16)`, `NETWORKDAYS(0,7872)` and `WORKDAY(28131,-16,0)` are `#NUM!`; `WEEKDAY(31330,0)` is `#VALUE!`.
+Probed directly (probes/weekday-serial-zero A1:A18, excel-graph, 2026-10-17, T-1253): `WEEKDAY(0)`, `(0.5)`, `(0.9999)` are 7, `WEEKDAY(0.5,2)` 6, `(0.5,3)` 5, `(0,11)` 6, `(0,17)` 7, `WEEKDAY(1)` 1, `WEEKDAY(-0.5)` `#NUM!`; return_type 0, -1, -0.0001, 0.5 and 0.9999 (truncated to 0 or -0) and 10 or 18 and 4 are all `#NUM!`, never `#VALUE!`.
+Ours: WEEKDAY implemented (T-1253); `NETWORKDAYS(0,7872)` and `WORKDAY(28131,-16,0)` are `#NUM!` (T-1254).
 More serial-0 cells (gen-m9, excel-graph, 2026-10-12, T-1289): `YEARFRAC(33752,0)` is 92.41111111111 (from
 `(0.3+YEARFRAC(33752,Data!$C12))^SUM(-0.0001)` = 0.9995471537332011 with C12 = 0), which is basis 0 counted from
 1900-01-00: (92*360 + 4*30 + 28)/360 (gen-m9/a2e51f48717af2a1 Calc!A32; ours `#NUM!`, T-1409).
