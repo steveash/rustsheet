@@ -368,3 +368,27 @@ fn byrow_one_by_one_array_result_is_its_value() {
     assert_eq!(model._get_text("C1"), "7");
     assert_eq!(model._get_text("C2"), "7");
 }
+
+// ── a single value is a 1x1 array (T-1350) ────────────────────────────────────
+
+// Oracle-backed: A1, A2, A7 (gen-m7/93976dd9a3578ed9 A31, gen-m9/65faaeb48419087d A23) and A3 in its
+// `_xleta.PRODUCT` form (gen-m7/59cc50701f4937c9 A4). A4-A6 are inferred, not yet oracle-checked.
+#[test]
+fn byrow_bycol_of_a_single_value_call_the_lambda_once() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BYROW(7,LAMBDA(z,z))");
+    model._set("A2", "=BYCOL(7,LAMBDA(z,z))");
+    model._set("A3", "=BYROW(\"\",LAMBDA(r,PRODUCT(r)))");
+    model._set("A4", "=BYROW({7},LAMBDA(z,z))");
+    model._set("A5", "=BYCOL({7},LAMBDA(z,z))");
+    model._set("A6", "=BYROW(\"x\",LAMBDA(z,z&\"!\"))");
+    model._set("A7", "=\"ü\"&BYROW(COUNT(1,2),LAMBDA(z,z))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "7");
+    assert_eq!(model._get_text("A2"), "7");
+    assert_eq!(model._get_text("A3"), "0");
+    assert_eq!(model._get_text("A4"), "7");
+    assert_eq!(model._get_text("A5"), "7");
+    assert_eq!(model._get_text("A6"), "x!");
+    assert_eq!(model._get_text("A7"), "ü2");
+}
