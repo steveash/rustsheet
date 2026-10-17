@@ -16,7 +16,20 @@ use super::stringify::bound_variables::{walk_names, NameSite};
 use super::Node;
 use crate::types::DefinedName;
 
-/// Upper-cased name (ß folds with SS, T-1762) → the spelling every call or value use of it prints with.
+/// The registry key of a name: upper-cased, except that dotless ı, long ſ and the micro sign µ keep
+/// their own key. Excel folds ß/SS, ς/σ/Σ, ﬁ/FI and ǆ/Ǆ but not ı/I, ſ/S or µ/μ/Μ
+/// (probes/unknown-function-name-folds, T-1818).
+fn spelling_key(name: &str) -> String {
+    name.chars()
+        .flat_map(|c| {
+            let keep = matches!(c, 'ı' | 'ſ' | '\u{b5}');
+            let (own, upper) = (keep.then_some(c), (!keep).then(|| c.to_uppercase()));
+            own.into_iter().chain(upper.into_iter().flatten())
+        })
+        .collect()
+}
+
+/// Upper-cased name (ß folds with SS, T-1762; see `spelling_key`) → the spelling every call or value use of it prints with.
 #[derive(Clone, Default)]
 pub(crate) struct CallNameSpellings {
     first: HashMap<String, String>,
@@ -31,7 +44,7 @@ impl CallNameSpellings {
         self.defined.clear();
         for d in defined_names {
             self.defined
-                .entry(d.name.to_uppercase())
+                .entry(spelling_key(&d.name))
                 .or_insert_with(|| d.name.clone());
         }
     }
@@ -48,7 +61,7 @@ impl CallNameSpellings {
                 (Some(declared), _) => declared.to_string(),
                 (None, NameSite::Declaration) => return,
                 (None, NameSite::Callee | NameSite::Use) => {
-                    let key = name.to_uppercase();
+                    let key = spelling_key(name);
                     match self.defined.get(&key) {
                         Some(defined) if site == NameSite::Callee => defined.clone(),
                         _ => self
@@ -65,5 +78,31 @@ impl CallNameSpellings {
             }
         });
         changed
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::spelling_key;
+
+    #[test]
+    fn folds_match_excel() {
+        for (a, b) in [
+            ("ςw", "σw"),
+            ("ςu", "Σu"),
+            ("ﬁq", "FIq"),
+            ("ǆd", "Ǆd"),
+            ("straße", "STRASSE"),
+        ] {
+            assert_eq!(spelling_key(a), spelling_key(b), "{a} {b}");
+        }
+        for (a, b) in [
+            ("ıx", "Ix"),
+            ("ſy", "Sy"),
+            ("\u{b5}z", "μz"),
+            ("\u{b5}v", "Μv"),
+        ] {
+            assert_ne!(spelling_key(a), spelling_key(b), "{a} {b}");
+        }
     }
 }

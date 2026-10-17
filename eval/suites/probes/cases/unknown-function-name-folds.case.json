@@ -1,0 +1,56 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Call-name spelling folds in FORMULATEXT for dotless i, long s, micro sign, final sigma and ligatures: does a second spelling reuse the first's (T-1818).",
+  "tags": [
+    "M2",
+    "functions",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=ıx(1)",
+        "B1": "=FORMULATEXT(A1)",
+        "A2": "=Ix(1)",
+        "B2": "=FORMULATEXT(A2)",
+        "A3": "=ſy(1)",
+        "B3": "=FORMULATEXT(A3)",
+        "A4": "=Sy(1)",
+        "B4": "=FORMULATEXT(A4)",
+        "A5": "=µz(1)",
+        "B5": "=FORMULATEXT(A5)",
+        "A6": "=μz(1)",
+        "B6": "=FORMULATEXT(A6)",
+        "A7": "=µv(1)",
+        "B7": "=FORMULATEXT(A7)",
+        "A8": "=Μv(1)",
+        "B8": "=FORMULATEXT(A8)",
+        "A9": "=ςw(1)",
+        "B9": "=FORMULATEXT(A9)",
+        "A10": "=σw(1)",
+        "B10": "=FORMULATEXT(A10)",
+        "A11": "=ςu(1)",
+        "B11": "=FORMULATEXT(A11)",
+        "A12": "=Σu(1)",
+        "B12": "=FORMULATEXT(A12)",
+        "A13": "=ﬁq(1)",
+        "B13": "=FORMULATEXT(A13)",
+        "A14": "=FIq(1)",
+        "B14": "=FORMULATEXT(A14)",
+        "A15": "=ﬂr(1)",
+        "B15": "=FORMULATEXT(A15)",
+        "A16": "=FLr(1)",
+        "B16": "=FORMULATEXT(A16)",
+        "A17": "=ǆd(1)",
+        "B17": "=FORMULATEXT(A17)",
+        "A18": "=Ǆd(1)",
+        "B18": "=FORMULATEXT(A18)",
+        "A19": "=ix2(1)",
+        "B19": "=FORMULATEXT(A19)",
+        "A20": "=Ix2(1)",
+        "B20": "=FORMULATEXT(A20)"
+      }
+    }
+  ]
+}

@@ -796,6 +796,7 @@ C	probes/union-operand-nested-parens.case.json	6
 C	probes/union-operand-quad-minus.case.json	2
 C	probes/union-operand-triple-minus.case.json	2
 C	probes/union-walk-repeated-in-lambda.case.json	15
+C	probes/unknown-function-name-folds.case.json	40
 C	probes/unknown-function-name-reach.case.json	52
 C	probes/unknown-function-name-spelling.case.json	36
 C	probes/value-clock-text.case.json	135
