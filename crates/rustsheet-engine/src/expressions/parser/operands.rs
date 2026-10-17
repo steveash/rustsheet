@@ -5,7 +5,9 @@
 
 use super::super::token::{self, TableReference, TokenType};
 use super::super::types::ParsedReference;
-use super::super::utils::{is_out_of_range_r1c1_name, number_to_column, parse_dotted_a1_range};
+use super::super::utils::{
+    is_out_of_range_r1c1_name, number_to_column, parse_dotted_a1_range, parse_reference_a1,
+};
 use super::reference_operators::is_reference_operand;
 use super::*;
 
@@ -399,6 +401,17 @@ impl Parser {
         // We should do this *only* importing functions from xlsx
         if let Some(function_kind) = self.language.functions.lookup_stored(&name) {
             return self.function_call(function_kind, args);
+        }
+        // A callee spelled like a cell is a call of that cell, `#REF!` like any called reference;
+        // only a name no function lookup knows (`LOG10` stays a function) (probes/
+        // unknown-function-name-spelling A8, T-1758).
+        if let Some(cell) = parse_reference_a1(&name.to_uppercase()).filter(|_| !name.contains('$'))
+        {
+            let callee = self.reference_operand(None, cell.row, cell.column, false, false);
+            return Node::LambdaCallKind {
+                lambda: Box::new(callee),
+                args,
+            };
         }
         Node::NamedFunctionKind {
             name: name.trim_start_matches("_xlpm.").to_string(),
