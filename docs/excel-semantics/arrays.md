@@ -369,6 +369,11 @@ NETWORKDAYS.INTL is the exception: it lifts over a range (`INDEX(WORKDAY.INTL(45
   `from_unit`, `to_unit` and number (Y8-Y10), COMPLEX's `suffix` (Y11), IMSUB's and IMDIV's second argument
   and IMSUB's first (Y12, Y13, Y15), IMPOWER's `n` (Y14) and DOLLARDE's and DOLLARFR's `fraction` and
   DOLLARDE's first argument (Y16-Y18). So the rule holds in every later argument probed.
+  probes/eng-later-argument-lift (T-1383) probes the rest of the engineering later arguments on the
+  range's own rows: BESSELI's, BESSELK's and BESSELY's `n`, the `places` of every base conversion,
+  COMPLEX's `i_num`, DELTA's `number2`, GESTEP's `step` and ERF's `upper_limit` are `#VALUE!` (H1-H11,
+  H16-H19), while BITOR's and BITXOR's `number2` and BITLSHIFT's and BITRSHIFT's `shift_amount` lift
+  to 60 rows, on and off the range's rows (H12-H15, L71), as BITAND's do (H7, H20).
 - **The other Analysis ToolPak-era functions** (probes/scalar-lift-open-a Y19-Y30, T-1777). QUOTIENT
   (either argument), FACTDOUBLE and SERIESSUM's `x`, `n` and `m` refuse a range like the rest (`#VALUE!`,
   Y19-Y21, Y24-Y26). SERIESSUM's `coefficients` over a range is read whole (Y27, `SERIESSUM(2,0,1,B1:B3)` is

@@ -18,3 +18,18 @@ mod tests;
 
 pub(crate) use driver::{grid_dims, LiftCost, LiftOptions, LiftedArg};
 pub(crate) use kinds::{lifting_table_functions, ArgKind, ArgKinds};
+
+use crate::{
+    calc_result::CalcResult, expressions::token::Error, expressions::types::CellReferenceIndex,
+};
+
+/// The `#NUM!` of a lifted kernel's element: its message is empty, so a failing element
+/// allocates nothing (SPEC-0011).
+pub(crate) fn num_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::NUM, cell, String::new())
+}
+
+/// The `#VALUE!` of a lifted kernel's element, likewise without a message.
+pub(crate) fn value_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, String::new())
+}
