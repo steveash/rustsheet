@@ -861,7 +861,9 @@ Rule: one formula evaluation may put at most 65,536 distinct rectangles on recor
 pass (`MAX_SEEN_RANGES`); a formula that reads more is `#VALUE!` ("Too many distinct ranges read").
 A function walking a whole column or row (and a lookup down a column, or a SUMIFS-shaped criteria
 range) visits only the used area and records the rest as one rectangle read empty, and every area of
-a union is recorded whole, whatever its size; which every spill commit of the pass is checked
+a union is recorded whole, whatever its size, as is a multi-cell range a MAP or SCAN LAMBDA returns
+for an element (read over its existing cells only, since the element is `#VALUE!` whatever they hold;
+T-1769); which every spill commit of the pass is checked
 against (evaluation.rs module doc). A rectangle already on record for the formula's root is free, so
 repeating a walk costs nothing (T-1497: `MAX_AREAS` copies of `A:A` walked by a MAP record one), but
 each new reference makes a new one, and nothing else bounds them: `=SUM(MAKEARRAY(1024,1024,
@@ -884,8 +886,8 @@ anchors.
 Status: DEVIATION (decision 0014)
 Implemented in: area_budget.rs (`MAX_SEEN_RANGES`, `AreaBudget::spend_seen_range`,
 `Model::with_area_budget`); seen_ranges.rs (`SeenRanges::push`); evaluation.rs
-(`Model::record_seen_empty_range`)
-Tasks: T-1463
+(`Model::record_seen_empty_range`); functions/logical/bycol_byrow.rs (`Model::lambda_result_value`)
+Tasks: T-1463, T-1769
 
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence
