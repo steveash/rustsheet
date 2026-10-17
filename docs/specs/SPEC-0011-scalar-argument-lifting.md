@@ -2,19 +2,26 @@
 
 - **Status:** accepted (on merge of T-1767)
 - **Milestone / lane:** M9 / engine (the driver), then the functions-* lanes (the families) and quality (the old helpers)
-- **Tasks:** T-1767 (this spec), T-1771 (directive-5 fix, independent), T-1770 (driver, first consumers),
-  T-1236, T-1372, T-1290, T-1772, T-1383, T-1241, T-1271, T-1389 (families), T-1773, T-1774, T-1775
-  (old helpers), T-1776 (catalog check), T-1777 (open probes). The order is under Rollout.
+- **Tasks:** T-1767 (this spec).
+  - Independent directive-5 fixes: T-1771, T-1780, T-1781, T-1782.
+  - The driver: T-1784 (pure move), T-1770 (table, hooks, first consumers).
+  - The families: T-1236, T-1372, T-1290, T-1772, T-1383, T-1241, T-1271, T-1389.
+  - The old helpers: T-1773, T-1785, T-1774, T-1775, T-1783.
+  - The catalog check and the open probes: T-1776, T-1777.
+  - The order is under Rollout.
 
 ## Problem
 Excel lifts a scalar argument over an array: `ROWS(F(..{v;v}..))` is 2. Worksheet functions also
 lift over a multi-cell range in that argument. The engine does neither for most of the M6, M7 and
 M9 functions. An array argument gets `#N/IMPL!` from `cast_to_number`. A range argument is
 implicitly intersected by `Model::dereference` (`#VALUE!` off the range's rows, one value on them).
-This is the largest remaining failure group in the probes suite. The counts below are failing cells
-in `eval/baseline/probes.txt` at ea76d91f. That file is what `make eval` reports as known failures,
-and a scratch run of `rustsheet-eval run` agrees. "Lift" cells are those of the form
-`ROWS|COLUMNS|INDEX(F(..))`, split by whether the lifted argument is an array literal or a range.
+This is the largest remaining failure group in the probes suite.
+
+The counts below are a **snapshot: 2026-10-17, main at ea76d91f**. They are failing cells in
+`eval/baseline/probes.txt`, which is what `make eval` reports as known failures, and a scratch run of
+`rustsheet-eval run` agreed. "Lift" cells are those of the form `ROWS|COLUMNS|INDEX(F(..))`, split
+by whether the lifted argument is an array literal or a range. The split is a text heuristic, so
+it is approximate.
 
 | Case | Checked | Failing | Lift: array | Lift: range | Owner task |
 |---|---|---|---|---|---|
@@ -32,55 +39,82 @@ nearly all of them an array in a scalar argument. The owner tasks list them. The
 in each case (86 stat, 28 fin, ...) are other bugs: ulp misses (T-1374, T-0901), the pairing
 functions (T-1292), IMSUM (T-1384) and NPV (T-1373).
 
-Lifting already exists, in nine shapes that do not share code:
+### Today's lifting code
+The engine already lifts in many places that share no code. The table is a snapshot of the
+same date and commit. Each row has a migration task, or is a non-goal with its reason.
 
-| Helper | File | Consumers | Elements | Ranges | Bound |
-|---|---|---|---|---|---|
-| `NumberOrArray`, `lift_numbers`, `lift_number_operands`, `number_at` | cast.rs | ROUND family, MOD, CEILING/FLOOR, DATE, DATEDIF, HOUR/MINUTE/SECOND, MUNIT | `f64`, coerced by `array_node_to_number` | lift (`evaluate_range`) | `check_array_size` |
-| `lift_with_defaults` | math_and_trigonometry/mathematical.rs | CEILING.MATH, CEILING.PRECISE, FLOOR.MATH, ISO.CEILING | via `lift_number_operands` | lift | same |
-| `apply_number_unary` | cast.rs | DAY/MONTH/YEAR (`date_part_fn!`), WEEKDAY, ISOWEEKNUM; also the unary `-`/`%` chain | `f64`, rewritten in place (T-1078) | lift | per range |
-| `single_number_fn!` | functions/macros.rs | 34 one-argument math functions | `f64` | lift | per range |
-| MROUND, SQRTPI, `parity_predicate` | mathematical.rs, information/mod.rs | MROUND, SQRTPI, ISEVEN, ISODD | own loops | refused (`#VALUE!`) | none needed (one array) |
-| `lifted_arg` / `Lifted` | information/mod.rs | IS*, ERROR.TYPE, ENCODEURL, FIELDVALUE, the offline functions | `ArrayNode` as stored | lift | per range |
-| `TextArg`, `broadcast_text` | text/text_arg.rs | LEFT, MID, FIND, REPT, TEXT, CONCATENATE, … (17 call sites) | `ArrayNode` | lift | **none** (a 64 MiB text budget only) |
-| `Weekend::lift` | date_and_time.rs | WORKDAY.INTL, NETWORKDAYS.INTL `weekend` | masks, memoized | lift | per range |
-| `lift_with_cost`, `CriteriaArg`, `count_walks` | statistical/if_ifs.rs | *IF(S), AGGREGATE, IFS, SWITCH, VLOOKUP/HLOOKUP (`lookup_each`), XLOOKUP | `CalcResult`, scalar kernel per element | lift | `check_array_size` + cell-visit cap |
+| Code | File | Consumers | Becomes | Task |
+|---|---|---|---|---|
+| `lift_with_cost`, `CriteriaArg`, `count_walks` | statistical/if_ifs.rs | *IF(S), AGGREGATE, IFS, SWITCH, `lookup_each` (VLOOKUP/HLOOKUP), XLOOKUP | moved as the driver core, `lift_values` | T-1784 |
+| `is_lifted` | logical/mod.rs | IFS, SWITCH: when to call `lift_with_cost` | `LiftedArg::is_grid`, deleted | T-1784 |
+| `NumberOrArray`, `lift_numbers`, `lift_number_operands`, `number_at` | cast.rs | ROUND family, MOD, CEILING/FLOOR, DATE, DATEDIF, HOUR/MINUTE/SECOND, MUNIT | table entries + kernels. `NumberOrArray` stays for the operators only | T-1773, T-1785 |
+| `lift_with_defaults` | math_and_trigonometry/mathematical.rs | CEILING.MATH, CEILING.PRECISE, FLOOR.MATH, ISO.CEILING | table entries; the kernel takes the defaults | T-1773 |
+| `single_number_fn!` | functions/macros.rs | 34 one-argument math functions | table entries + kernels | T-1773 |
+| `apply_number_unary` | cast.rs | DAY/MONTH/YEAR (`date_part_fn!`), WEEKDAY, ISOWEEKNUM; the unary `-`/`%` chain | function callers move. It stays for `apply_unary_chain`, an operator | T-1785 |
+| `time_part_fn!`, `date_part_fn!` | date_and_time.rs | HOUR, MINUTE, SECOND, DAY, MONTH, YEAR | table entries + kernels | T-1785 |
+| MROUND's and SQRTPI's own range checks | mathematical.rs | MROUND, SQRTPI | `LiftArrays` entries | T-1785 |
+| `parity_predicate` | information/mod.rs | ISEVEN, ISODD | `LiftArrays` entries | T-1774 |
+| `lifted_arg` / `Lifted`, and `map_elements` in offline_errors.rs | information/ | IS*, ERROR.TYPE, ENCODEURL, FIELDVALUE, STOCKHISTORY and the other offline functions | `Lift` entries. `map_elements` stays only for N and T (below) | T-1774 |
+| `TextArg`, `broadcast_text` | text/text_arg.rs | 17 call sites: LEFT, MID, FIND, REPT, TEXT, CONCATENATE, … | `Lift` entries + text kernels | T-1775 |
+| `Weekend::lift` | date_and_time.rs | WORKDAY.INTL, NETWORKDAYS.INTL `weekend` | a kernel with the mask memo in its closure | T-1236 |
+| CHOOSE's index lift (`choose_array`) | lookup_and_reference/mod.rs | CHOOSE | `index_num` is `Lift`, the value arms are `Whole`. `choose_array` becomes the kernel | T-1241 |
+| IF's `IfArg`, `if_arg_at` | logical/mod.rs | IF (condition and branches broadcast, logic.md) | non-goal: IF evaluates its branches lazily and returns references. It keeps its own broadcast, which already uses `bcast_idx` | — |
+| `lifted_relative_to`, `lifted_groupby` | relative_to.rs, groupby.rs | GROUPBY, PIVOTBY | non-goal: LAMBDA calls with their own cell-visit budget (SPEC-0006) | — |
+| `broadcast_static_result` | expressions/parser/static_analysis.rs | the static shape of a call | stays as the shape primitive; the table-driven `lifted_static_result` calls it | T-1770 |
+| `map_elements` (N, T) | information/mod.rs, text/t_function.rs | N, T | non-goal: they read a range as a reference (its top-left cell, or "") and lift only arrays (information.md, T-1616, T-1713) | — |
+| `broadcast_arrays` | arithmetic.rs | operators | non-goal: a two-operand hot path, which already uses `bcast_idx`/`MISSING` | — |
+| INDEX's index lift | lookup_and_reference/index.rs | INDEX | non-goal: its elements are references (T-1260) | — |
 
-The broadcast primitives are shared: `bcast_idx`, `bcast_get` and `MISSING` in arithmetic.rs. The
-operators use `broadcast_arrays`. INDEX lifts its indices on its own (T-1260, index.rs), and
-GROUPBY/PIVOTBY have their own lifts (groupby.rs, relative_to.rs).
+The last migration task (T-1775) ends with a grep showing that no lift outside the driver
+remains, apart from the non-goals above (Test plan).
 
-`broadcast_text` never calls `check_array_size`, which breaks directive 5. A row of indices against
-a column of text is a full grid, so `ROWS(LEFT(A1:A2000,COLUMN(A1:ALL1)))` builds 2,000,000 cells
-(ours: 2000), where `&` and ROUND over the same operands are `#ERROR!`. `LEFT(A:A,1:1)` would need
-2^34 cells. T-1771 fixes this now, separately from the driver (P0).
+### Not driver paths, same hole (directive 5)
+`broadcast_text` never calls `check_array_size`. A row of indices against a column of text is a
+full grid: on a sheet whose A1:A2000 is filled, `ROWS(LEFT(A1:A2000,COLUMN(A1:ALL1)))` builds
+2,000,000 cells (ours: 2000), where `&` and ROUND over the same operands are `#ERROR!`.
+`evaluate_range` allocates a whole range even where it is blank, so `LEFT(A:A,1:1)` asks for
+2^34 cells on any sheet. T-1771 fixes this (P0).
 
-Directive 3 forbids a tenth copy for the statistical, financial and engineering families.
+Reading the code of the functions that build arrays outside the lifting paths shows the same
+hole. None of them calls `check_array_size` before it allocates:
+- **EXPAND** (lookup_and_reference/expand.rs) casts `rows` and `columns` with `n as usize` and
+  calls `Vec::with_capacity(target_rows)`. `EXPAND(1,1E9,1E9)` asks for 10^18 cells.
+- **HSTACK, VSTACK** (hstack_vstack.rs) pad short arguments with `#N/A` to the widest or tallest
+  argument. `VSTACK(A:A,1:1)` is 2^20 × 2^14 cells. **T-1780** (P0) fixes them.
+- **WRAPROWS, WRAPCOLS** (wrapcols_wraprows.rs) cast `wrap_count` with `n as usize`. WRAPCOLS then
+  allocates `vec![..; wrap_count]` before it pads.
+- **MMULT** (math_and_trigonometry/mmult.rs) builds rows(array1) × columns(array2):
+  `MMULT(A:A,1:1)` is 2^34 cells.
+- **TEXTSPLIT** pads its result. **T-1781** (P0) fixes it.
+- **XMATCH:** not traced (no allocation path read). T-1782 checks it.
+
+T-1782 (P0) bounds EXPAND, WRAPROWS/WRAPCOLS and MMULT before they allocate. Its acceptance tests
+include `=EXPAND(1,1E9,1E9)`, which must be `#ERROR!` at once. T-1780's include
+`=ROWS(VSTACK(A:A,1:1))`. Each adds its functions to the arrays.md DEVIATION entry.
+
+Directive 3 forbids yet another copy for the statistical, financial and engineering families.
 Directive 4 asks for a spec first.
 
 ## Goals / non-goals
 Goals:
-1. One table says, for each parameter of each lifting function, whether it lifts over arrays and
-   ranges, over arrays only, or is taken whole. Static analysis (the legacy `@` and the static
-   shape of a call) reads the same table. So does a test against the eval catalog.
-2. One driver reads the arguments once, decides the output shape, checks `check_array_size` and
-   the cell-visit cap before computing any element (directive 5), and calls a scalar kernel once per
-   element.
+1. One table says, for each parameter of each lifting function, how it takes an array or a range.
+   Static analysis (the legacy `@` and the static shape of a call) is derived from the same table,
+   and so is the eval catalog's `lift: arrays` key.
+2. One driver reads the arguments once and decides the output shape. It bounds the output cells,
+   the kernel work and the input cells before computing any element (directive 5). Then it calls a
+   scalar kernel once per element.
 3. The families move onto it one task at a time (stat, financial, engineering, date, lookup, M7,
-   database). Then the nine helpers above become the driver or thin wrappers of it (directive 3).
+   database). Then the existing lifting code becomes the driver, or is a stated non-goal
+   (directive 3).
 4. No result changes in a migration task. Each family task changes only the cells that its probes
    evidence.
 
 Non-goals:
-- Arithmetic, comparison and `&` operators. They keep `broadcast_arrays`, a two-operand hot path,
-  which already uses `bcast_idx` and `MISSING`.
+- The non-goal rows of the table above, each with its reason.
 - Lifts whose elements are arrays or references. A lifted TAKE or DROP element is a whole sub-array
   (arrays.md "Dynamic-array and LAMBDA function argument modes"). A lifted OFFSET or INDIRECT gives
   references. `ArrayNode` cannot hold either. T-1271 and T-1241 settle those, using the driver
   where an element is a value.
-- INDEX's index lift (T-1260), GROUPBY/PIVOTBY, BYROW/MAP and the other LAMBDA helpers.
-- N and T. They read a range as a reference (its top-left cell, or "") and lift only arrays
-  (information.md "N over an array lifts element-wise", T-1616, T-1713), so they keep `map_elements`.
 - How a function reads its whole arguments: aggregate walks (SPEC-0009), pairing (T-1292),
   IMSUM/IMPRODUCT (T-1384), NPV/FVSCHEDULE (T-1373).
 - Legacy `@` on array-valued calls and array constants (T-1713, T-1717). This spec only puts the
@@ -93,57 +127,84 @@ answer the general questions: probes/scalar-lift-shapes, -b and -c (111 cells, e
 2026-10-17). The full rule is recorded in arrays.md "Scalar arguments lift: shapes, element errors,
 and the Analysis ToolPak range rule". In -shapes, every formula sits on the rows of its 60-cell
 ranges, so an intersection would succeed there. -b asks each question on row 3 and on row 70.
+A rule below names the cells it rests on, and says so when it rests on one cell.
 
 ### Which parameters lift
 - **Scalar parameters lift over an array**, whatever the type: numbers, `cumulative`/`type`
   booleans, unit and suffix text, dates, basis, guess. All 210 stat, 256 financial and the
   engineering `ROWS(F(..{v;v}..))` cells are 2. IMSUM and IMPRODUCT are the exception.
 - **Worksheet functions also lift over a multi-cell range.** This covers the statistical
-  functions (92 range cells), the core financial ones (DB … VDB, IRR's guess; 18 cells), BIT* (both
-  arguments: `ROWS(BITAND(13,D1:D60))` is 60, scalar-lift-shapes H7), the date functions DATE …
-  WEEKDAY and the `weekend` argument, the lookup scalars and the M7 scalars. The lift happens on the
-  range's own rows too, not an intersection: `ROWS(PMT(C1:C60,10,100))` and
-  `ROWS(NORM.DIST(2.5,0,1,B1:B60))` are 60 (H13–H16).
-- **Analysis ToolPak (ATP) functions lift over an array but refuse a multi-cell range in any
-  scalar argument.** The range gives `#VALUE!` for its call, with no intersection, even on its own
-  rows: EDATE's start and months, YEARFRAC's basis, BESSELJ's n, DEC2BIN's places, DELTA, and
-  EFFECT's two arguments (H1, H2, H6, H8–H12; BESSELI eng-argument-modes E1). A reference that a
-  function returns is refused too: `EDATE(IF(TRUE,A1:A60),1)` and `EDATE(INDEX(A1:A60,0,1),1)`
-  (H50, -b K3), and `EOMONTH(..,TAKE(..))` (gen-m9/b58b6d7cd39d195f A9). A one-cell range or
-  reference is its value (H4, -b J3). An operation on a range is an array and lifts:
-  `ROWS(EDATE(A1:A60+0,1))` is 60 (H5, -b N3). The ATP functions: financial.md's list (ACCRINT …
-  YIELDMAT, XIRR's guess, XNPV's rate), every engineering function but BIT*, EDATE, EOMONTH,
-  WEEKNUM, WORKDAY(.INTL), NETWORKDAYS(.INTL), YEARFRAC (but not `weekend`), MROUND, SQRTPI,
-  ISEVEN and ISODD.
+  functions (92 range cells), the core financial ones (DB … VDB, IRR's guess; 18 cells), BIT*
+  (BITAND's second argument too: `ROWS(BITAND(13,D1:D60))` is 60, scalar-lift-shapes H7), the date
+  functions DATE … WEEKDAY, the lookup scalars and the M7 scalars. The lift happens on the range's own
+  rows too, not an intersection: `ROWS(PMT(C1:C60,10,100))` and `ROWS(NORM.DIST(2.5,0,1,B1:B60))`
+  are 60 (H13–H16). Only a written range was probed. A reference that a function returns
+  (`PMT(IF(TRUE,C1:C60),10,100)`, `PMT(INDEX(C1:C60,0,1),10,100)`) is open question 6.
+- **Analysis ToolPak (ATP) functions lift over an array but refuse a multi-cell range.** The range
+  gives `#VALUE!` for its call, with no intersection, even on its own rows.
+  - Arguments probed over a range:
+    - every first scalar argument of the financial ATP functions (fin-argument-modes) and of the
+      engineering functions (eng-argument-modes, BESSELI E1 on its range's rows);
+    - EDATE's start and months, YEARFRAC's basis, BESSELJ's n, DEC2BIN's places, DELTA's first
+      argument, and EFFECT's nominal_rate and npery (H1, H2, H6, H8–H12).
+  - **Other later arguments are unverified** (for example PRICE's or COUP*'s frequency, ACCRINT's
+    basis, CONVERT's units, COMPLEX's suffix, an IM* second argument). T-1777 samples some of them.
+    T-1372 and T-1383 must probe a later argument before they enter it as `LiftArrays`. The table
+    describes a function whole, so until then that function has no entry and keeps today's code.
+  - A reference that a function returns is refused too: `EDATE(IF(TRUE,A1:A60),1)` and
+    `EDATE(INDEX(A1:A60,0,1),1)` (H50, -b K3), and `EOMONTH(..,TAKE(..))` (gen-m9/b58b6d7cd39d195f A9).
+  - A one-cell range or reference is its value (H4, -b J3).
+  - An operation on a range is an array, and that lifts: `ROWS(EDATE(A1:A60+0,1))` is 60 (H5, -b N3).
+  - The ATP functions: financial.md's list (ACCRINT … YIELDMAT, XIRR's guess, XNPV's rate), every
+    engineering function but BIT*, EDATE, EOMONTH, WEEKNUM, WORKDAY(.INTL), NETWORKDAYS(.INTL),
+    YEARFRAC, MROUND, SQRTPI, ISEVEN and ISODD.
+  - **Exception:** the `weekend` argument of WORKDAY.INTL and NETWORKDAYS.INTL lifts over a range
+    (`INDEX(WORKDAY.INTL(45000,5,B1:B3),2)` = 45007; dates.md "Date function argument modes"), so it
+    is `Lift`.
 - **An ATP call with an array and a range** lifts over the array only. The range is passed whole to
-  every element, which refuses it, so the call is the array's shape with all elements `#VALUE!`.
-  This holds on and off the range's rows: `EDATE({45000;45031},M1:M60)` and `EDATE(A1:A60,{1;2})`
-  are 2 rows of `#VALUE!`, and `EDATE({45000,45031},M1:M60)` is 1 row (-b C–I, L).
+  every element, which refuses it, so the call has the array's shape. The probed elements are all
+  `#VALUE!`, on and off the range's rows:
+  - `EDATE({45000;45031},M1:M60)`: both elements (-b C, D), ROWS 2 (E);
+  - `EFFECT({0.1;0.2},M1:M60)`: both elements (H, I);
+  - `EDATE(A1:A60,{1;2})`: ROWS 2 (F) and element 1 only (G);
+  - `EDATE({45000,45031},M1:M60)`: one row (L), elements unprobed.
+
+  T-1777 probes the missing elements.
 - **Whole parameters** are vector, data and list arguments: the stat data arrays, NPV's values,
   holidays, LOOKUP/XLOOKUP vectors, CHOOSECOLS indexes, TEXTSPLIT delimiters and SORT's
   sort_index. They are read as one value and never lifted.
+- **The D-functions' `criteria`** lifts over an array literal, while a range is the criteria
+  table, read whole (probes/db-argument-modes F11:F23). This is the fifth kind below.
 
 ### Shape and broadcasting
 - The result is as tall as the tallest lifted argument and as wide as the widest. A size-1
   dimension repeats, and positions past a shorter argument are `#N/A`. This holds in 1-D, for
-  row × column grids and in 2-D: `PMT({0.1;0.2;0.3},{10;20},100)` is 3 rows, row 3 `#N/A`;
-  `NORM.DIST({1;2;3},{0,1},1,TRUE)` is 3×2; `PMT({0.1,0.2;0.3,0.4},{10,20,30},100)` has column 3
-  `#N/A`; a 60-cell range against `{10;20}` is 60 rows, `#N/A` from row 3 (H17–H25, H47–H48). ATP
-  calls pad the same way (H22). These are the operator rules (arrays.md "MOD lifts over array
+  row × column grids and in 2-D:
+  - `PMT({0.1;0.2;0.3},{10;20},100)` is 3 rows, row 3 `#N/A`;
+  - `NORM.DIST({1;2;3},{0,1},1,TRUE)` is 3×2;
+  - `PMT({0.1,0.2;0.3,0.4},{10,20,30},100)` has column 3 `#N/A`;
+  - a 60-cell range against `{10;20}` is 60 rows, `#N/A` from row 3 (H17–H25, H47–H48).
+
+  ATP calls pad the same way (H22). These are the operator rules (arrays.md "MOD lifts over array
   arguments", CONCATENATE, *IFS), so `bcast_get` + `MISSING` serve every family.
 
 ### Errors and element values
 - **Each element is its own scalar call.** A failing element is an error in that position only
-  (H26–H27, H34–H35). In each element the leftmost failing argument wins:
-  `PMT({1;#N/A},{#DIV/0!;#NUM!},100)` is `#DIV/0!`, `#N/A` (H31–H33).
+  (H26–H27, H34–H35).
+- **Error precedence within an element** rests on one probed cell. `PMT({1;#N/A},{#DIV/0!;#NUM!},100)`
+  element 2 is `#N/A`, the leftmost error (H33). Element 1, with only nper failing, is `#DIV/0!`
+  (H31). The design takes the leftmost failing argument. T-1777 adds `INDEX(PMT({#NUM!},{#N/A},100),1)`
+  and the reversed `INDEX(PMT({#N/A},{#NUM!},100),1)`.
 - **A scalar error, or uncoercible scalar text, next to an array is broadcast.** It does not short
-  out the whole call: `PMT(NA(),{10;20},100)`, `EDATE(NA(),{1;2})`, `PMT("x",{10;20},100)` and
-  `EDATE("x",{1;2})` are 2 rows (H28–H30, H44–H45). CONCATENATE is the one known exception (a scalar
-  error is the whole result, arrays.md), and it keeps its own rule.
-- **An array element is a typed value, and a range cell is a referenced cell.** EDATE's
-  `{TRUE;45000}` is `#VALUE!`, 45031, as a typed boolean date is `#VALUE!`. NORM.S.DIST's
-  `{TRUE;"1"}` reads both as 1 (H36–H40). Over 0.1, blank, "x", `=1/0`, `PMT(F1:F4,10,100)` is a
-  number, -10, `#VALUE!`, `#DIV/0!` (H41–H43): a blank cell is 0, as a blank cell reference is.
+  out the whole call: `PMT(NA(),{10;20},100)` is 2 rows with element 2 `#N/A` (H28, H29).
+  `EDATE(NA(),{1;2})`, `PMT("x",{10;20},100)` and `EDATE("x",{1;2})` are 2 rows, but their
+  element values are unprobed (H30, H44, H45). T-1777 adds the INDEX cells. CONCATENATE is the one
+  known exception (a scalar error is the whole result, arrays.md), and it keeps its own rule.
+- **An array element is a typed value, and a range cell is a referenced cell.**
+  - EDATE's `{TRUE;45000}` is `#VALUE!`, 45031, because a typed boolean date is `#VALUE!`.
+  - NORM.S.DIST's `{TRUE;"1"}` reads both as 1 (H36–H40).
+  - Over 0.1, blank, "x", `=1/0`, `PMT(F1:F4,10,100)` is a number, -10, `#VALUE!`, `#DIV/0!`
+    (H41–H43): a blank cell is 0, as a blank cell reference is.
 - With nothing lifted, the call is exactly today's scalar call.
 
 ### Legacy formulas and implicit intersection
@@ -155,9 +216,11 @@ ranges, so an intersection would succeed there. -b asks each question on row 3 a
   `=EDATE(@A1:A60+0,1)` (-c F, Q). This is the aggregate rule, `legacy_value_operand`.
 - Under SUMPRODUCT (an array context) nothing is intersected. Legacy
   `SUMPRODUCT(PMT(C1:C60,10,100))` sums 60 and `SUMPRODUCT(EDATE(A1:A60,1))` is `#VALUE!` (J5–J8).
-  Legacy `SUM(PMT({0.1;0.2},10,100))` sums both elements (J3).
+  Legacy `SUM(PMT({0.1;0.2},10,100))` sums both elements (J3). Its FORMULATEXT was not probed, so
+  whether Excel shows an `@` there is open (T-1777).
 - An explicit `@` intersects in a dynamic formula: `PMT(@C1:C60,10,100)` and `EDATE(@A1:A60,1)`
   (H46, -c D).
+
 So the driver needs no legacy flag. Every legacy difference is an `@` that
 `add_implicit_intersection` puts in from the table at import, or leaves out.
 
@@ -165,17 +228,31 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
 1. An error argument left or right of a refused range, as in `EDATE(NA(),A1:A60)` [the leftmost
    wins, as MROUND does today].
 2. A 3-D range in a lifted argument [`#VALUE!`, as `lift_with_cost` gives today].
-3. The other ATP-era functions not yet probed over a range: QUOTIENT, FACTDOUBLE, MULTINOMIAL,
-   SERIESSUM and the rest of the Analysis ToolPak list [they keep today's behavior until probed].
+3. Whether later ATP arguments are refused like the probed ones, and whether the other ATP-era
+   functions (QUOTIENT, FACTDOUBLE, MULTINOMIAL, SERIESSUM, …) refuse a range [no table entry until
+   probed].
 4. Whether Excel saves an ATP call with a range argument as a dynamic-array formula [the static
    shape ignores the refused range].
-5. Lifted elements that are arrays or references (TAKE, DROP, OFFSET, INDIRECT) [non-goal, see above].
+5. Lifted elements that are arrays or references (TAKE, DROP, OFFSET, INDIRECT) [non-goal].
+6. A function-returned multi-cell reference in a `Lift` argument (`ROWS(PMT(IF(TRUE,C1:C60),10,100))`,
+   `PMT(INDEX(C1:C60,0,1),10,100)`) [lifts like a written range].
+7. The precedence and element-value gaps above (H33 alone; the H30/H44/H45 elements; element 2 of
+   `EDATE(A1:A60,{1;2})` and the -b L elements; the FORMULATEXT of legacy J3).
 
 ## Design
-Two new modules, both `pub(crate)`. Nothing leaves the engine crate except one `#[doc(hidden)]`
-listing for the catalog check (T-1776).
+New module `crates/rustsheet-engine/src/functions/lift/`, all `pub(crate)`:
+- `mod.rs` re-exports;
+- `kinds.rs` holds the table;
+- `driver.rs` holds the driver.
 
-### The argument-kind table: `crates/rustsheet-engine/src/functions/arg_kinds.rs`
+It is a directory module of its own, not part of `functions/util/`. Static analysis and every
+family import the table, while `util/` is the walk helpers.
+
+The one item that leaves the crate is a testing hook for the catalog check (T-1776):
+`#[doc(hidden)] pub fn lift_kinds(name: &str) -> Option<Vec<&'static str>>`. It is hidden, not
+part of the public API (SPEC-0001), and comes with no stability promise.
+
+### The argument-kind table (`functions/lift/kinds.rs`)
 ```rust
 /// How one parameter takes an array or a range (SPEC-0011).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -185,12 +262,25 @@ pub(crate) enum ArgKind {
     /// Lifts over an array. A multi-cell range or reference is `#VALUE!` in its position, with no
     /// intersection (the Analysis ToolPak functions: EDATE, EFFECT, BESSELJ, MROUND).
     LiftArrays,
+    /// Lifts over an array; a range is handed to the kernel whole, as data (the D-functions'
+    /// `criteria`, probes/db-argument-modes F11:F23; entered by T-1389).
+    LiftArraysRangeWhole,
     /// Read once as written (`evaluate_node_with_reference`) and handed to every element whole
     /// (LARGE's array, holidays, LOOKUP's vectors).
     Whole,
     /// Read by the caller before the driver runs (an aggregate walk, a prepared search vector),
     /// and captured by the kernel. The driver does not evaluate it, and its slot is `EmptyArg`.
     WholeByCaller,
+}
+
+/// What one kernel call may cost, beyond reading its arguments (security rule below).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum KernelWork {
+    /// O(1), or a loop with a fixed iteration cap that does not depend on argument values.
+    Constant,
+    /// A loop whose length depends on argument values. One call is charged `weight` units
+    /// against the visit cap, and the kernel also keeps its own per-call cap, as T-1197 bounds MULTINOMIAL's loop.
+    Weighted(u32),
 }
 
 /// The parameters of one function: `params[i]` is the kind of argument `i`. Arguments past
@@ -200,10 +290,11 @@ pub(crate) struct ArgKinds {
     pub(crate) params: &'static [ArgKind],
     pub(crate) repeat: Option<ArgKind>,
     pub(crate) max: usize,
+    pub(crate) work: KernelWork,
 }
 
 impl ArgKinds {
-    pub(crate) const fn fixed(required: usize, params: &'static [ArgKind]) -> Self;
+    pub(crate) const fn fixed(required: usize, params: &'static [ArgKind], work: KernelWork) -> Self;
     pub(crate) fn kind(&self, index: usize) -> Option<ArgKind>;
     pub(crate) fn accepts(&self, count: usize) -> bool;
 }
@@ -213,40 +304,48 @@ impl Function {
     pub(crate) fn arg_kinds(&self) -> Option<&'static ArgKinds>;
 }
 ```
-A fifth kind is known and left to its task. A parameter that lifts over an array but reads a range
-whole as data is the D-functions' `criteria` (probes/db-argument-modes F11:F23; T-1389 adds it).
+`arg_kinds` is one `match` that returns a `&'static` to shared `const`s
+(`const ATP_2: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays], Constant)`). The driver
+calls it once per call. A family task adds its functions, and each entry carries a comment that
+cites its probe.
 
-`arg_kinds` is one `match` that maps functions to shared `const`s
-(`const ATP_2: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays])`,
-`const PMT_ARGS: ArgKinds = ArgKinds::fixed(3, &[Lift; 5])`). A family task adds its functions,
-and each entry carries a comment that cites its probe. It is the one source of truth:
-- **Static analysis** reads it before its own per-function tables:
-  - `get_function_args_signature` maps `Lift` to `Signature::Scalar`, the three other kinds to
+**The table wins: it is the single source of truth.**
+- **Static analysis** asks the table first. Only a function without an entry falls through to the
+  old hand-written arms, which T-1770 moves into `fallback_signature` and `fallback_shape`.
+  - `get_function_args_signature` maps `Lift` to `Signature::Scalar`, the other kinds to
     `Signature::Vector`, and a bad count to `Signature::Error`.
-  - `static_analysis_on_function` broadcasts the static shapes of the `Lift` arguments (arrays and
-    ranges) and of the `LiftArrays` arguments (arrays only: a bare range is refused, so it adds no
-    shape). An `Unknown` argument makes the call `Unknown`. A `Whole` argument adds nothing.
-  - `legacy_value_operand` (legacy.rs) takes the argument index. It returns true for a
-    value operation in a `LiftArrays` position, so legacy `EDATE(A1:A60+0,1)` gets its `@` and
+  - `static_analysis_on_function` calls `lifted_static_result`. That function feeds
+    `broadcast_static_result` the shapes of the `Lift` arguments (arrays and ranges) and of the
+    `LiftArrays`/`LiftArraysRangeWhole` arguments (arrays only: a bare range adds no shape). An
+    `Unknown` argument makes the call `Unknown`, and a `Whole` argument adds nothing.
+  - `legacy_value_operand` (legacy.rs) takes the argument index. It returns true for a value
+    operation in a `LiftArrays` position, so legacy `EDATE(A1:A60+0,1)` gets its `@` and
     `EDATE(A1:A60,1)` does not.
 
-  The family task that adds a function to the table deletes its `args_signature_scalars` and
-  `scalar_arguments` lines, so a function is never described twice.
-  `remove_redundant_implicit_intersection` and the export follow, because they call the same
-  functions.
+  A family task deletes the old arms of each function it enters. A unit test enforces this: for
+  every `Function` with an entry, the two fallbacks return `None`, so no function is in the table
+  and in a hand-written arm. `remove_redundant_implicit_intersection` and the export follow,
+  because they call the same functions.
 - **The driver** reads the table to evaluate each argument.
-- **The eval catalog** is checked against it (T-1776). `mode: value` must be `Lift` or
-  `LiftArrays`. `array`, `aggregate`, `aggregate_a`, `range`, `criteria` and `lambda` must be
-  `Whole` or `WholeByCaller`. A new optional catalog key `lift: arrays` marks the `LiftArrays`
-  parameters, so the generator stops spending cases on ranges that are refused anyway. The test
-  reads the table through `#[doc(hidden)] pub fn rustsheet_engine::lift_kinds(name) ->
-  Option<Vec<&'static str>>`.
+- **The eval catalog** derives `lift: arrays` from the table (T-1776). A generator command writes
+  the key from the `lift_kinds` hook, and the test fails when the committed catalog differs. One
+  mapping rule is stated here and in T-1389 and T-1776:
 
-### The driver: `crates/rustsheet-engine/src/functions/util/lift.rs`
-This is today's `lift_with_cost` and `CriteriaArg`, moved out of if_ifs.rs and generalized. It
-sits beside SPEC-0009's `aggregate_args.rs`.
+  | Table kind | Catalog |
+  |---|---|
+  | `Lift` | `mode: value` |
+  | `LiftArrays` | `mode: value`, `lift: arrays` |
+  | `LiftArraysRangeWhole` | `mode: criteria` or `range`, `lift: arrays` |
+  | `Whole`, `WholeByCaller` | `mode: array`, `aggregate`, `aggregate_a`, `range`, `criteria` or `lambda`, without `lift` |
+
+  The generator stops passing ranges to `mode: value, lift: arrays` parameters, because they are
+  refused anyway.
+
+### The driver (`functions/lift/driver.rs`)
+This is today's `lift_with_cost` and `CriteriaArg`, moved out of if_ifs.rs (T-1784) and
+generalized (T-1770).
 ```rust
-/// One argument as the driver holds it.
+/// One lifted argument as the driver holds it.
 pub(crate) enum LiftedArg {
     /// One value for every element: a scalar, a one-cell reference's value, an error, a refused
     /// range (`#VALUE!`), an omitted argument (`EmptyArg`), or a whole argument.
@@ -255,133 +354,175 @@ pub(crate) enum LiftedArg {
     Grid(Vec<Vec<ArrayNode>>),
 }
 
-/// What one element costs, for the cell-visit cap: the cells its whole arguments hold.
-pub(crate) enum LiftCost<'a> { Unit, Cells(u64), Walk(&'a Node) }
+/// What one element costs, for the cell-visit cap.
+pub(crate) enum LiftCost<'a> {
+    /// `KernelWork::Constant` and no whole data: elements × 1.
+    Unit,
+    /// Every element walks `cells` (today's *IF(S) criteria walk): elements × cells.
+    Cells(u64),
+    /// The kernel prepares its whole data once (LARGE sorts it): cells + elements.
+    Prepared(u64),
+    /// `walk_cost` of this node, per element (the *IF(S) front end).
+    Walk(&'a Node),
+}
 
 pub(crate) struct LiftOptions {
-    /// Reuse the previous element's result when every lifted element is equal to the previous
-    /// one: the *IF(S) blank-tail optimization of `lift_with_cost`. Off for scalar kernels.
+    /// Reuse the previous element's result when every grid slot equals the previous element's:
+    /// the *IF(S) blank-tail optimization of `lift_with_cost`. Off for scalar kernels.
     pub(crate) reuse_equal_runs: bool,
 }
 
+/// A per-element kernel: the scalar function over the argument values of one element.
+pub(crate) type Kernel<'k> = dyn FnMut(&mut Model, &[CalcResult]) -> CalcResult + 'k;
+
 impl Model {
-    /// Evaluates `args` by `kind.arg_kinds()`, then calls `kernel` once with the values (nothing
-    /// lifted) or once per element of the broadcast shape. Wrong argument count: the count error.
-    pub(crate) fn lift_call<K>(
+    /// Reads `args` by `kind.arg_kinds()` (non-generic, `#[inline(never)]`, so the reading code
+    /// is not copied into every caller's frame, T-1110), then runs the kernel once (nothing
+    /// lifted) or once per element. Wrong argument count: the count error.
+    pub(crate) fn lift_call(
         &mut self,
         kind: Function,
         args: &[Node],
         cell: CellReferenceIndex,
-        kernel: K,
-    ) -> CalcResult
-    where
-        K: FnMut(&mut Self, &[CalcResult]) -> CalcResult;
+        kernel: &mut Kernel<'_>,
+    ) -> CalcResult;
 
-    /// The broadcasting core over arguments already read (was `lift_with_cost`); the *IF(S),
+    /// The broadcasting core over arguments already read (was `lift_with_cost`). The *IF(S),
     /// AGGREGATE, IFS, SWITCH and lookup lifts call it directly.
-    pub(crate) fn lift_values<K>(
+    pub(crate) fn lift_values(
         &mut self,
-        args: Vec<LiftedArg>,
+        args: ArgBuf<LiftedArg>,
         cost: LiftCost<'_>,
         options: LiftOptions,
         cell: CellReferenceIndex,
-        kernel: K,
-    ) -> CalcResult
-    where
-        K: FnMut(&mut Self, &[CalcResult]) -> CalcResult;
+        kernel: &mut Kernel<'_>,
+    ) -> CalcResult;
 }
 ```
+`ArgBuf<T>` is a fixed inline array of 8 slots with a `Vec` fallback for longer calls. It adds no
+new dependency. A call with 8 arguments or fewer does not touch the heap to hold its values. The
+kernel is `&mut dyn FnMut`: there is one indirect call per element, and one copy of the loop for
+every function instead of a monomorphized copy each.
+
 Each argument is read once, by its kind:
 
 | Kind | Array | Multi-cell range or reference | One-cell range | Anything else |
 |---|---|---|---|---|
-| `Lift` | `Grid` | `Grid` via `evaluate_range` (bounded by `check_range_size`, clipped to the used area) | `Scalar(evaluate_cell)` | `Scalar(value)` |
+| `Lift` | `Grid` | `Grid` via `evaluate_range` | `Scalar(evaluate_cell)` | `Scalar(value)` |
 | `LiftArrays` | `Grid` | `Scalar(#VALUE!)`, no intersection | `Scalar(evaluate_cell)` | `Scalar(value)` |
+| `LiftArraysRangeWhole` | `Grid` | `Scalar(the range)`, read whole | `Scalar(the range)` | `Scalar(value)` |
 | `Whole` | `Scalar` of the value as `evaluate_node_with_reference` read it, once | | | |
 | `WholeByCaller` | `Scalar(EmptyArg)`, not evaluated | | | |
 
 A range across sheets is `Scalar(#VALUE!)` (open question 2). The kernel therefore never sees a
-multi-cell `Range` in a lifted position. `Model::dereference`'s intersection, which is why BESSELI
-intersects today (eng-argument-modes E1), is no longer reached from these functions.
+multi-cell `Range` in a `Lift` or `LiftArrays` position. `Model::dereference`'s intersection, which
+is why BESSELI intersects today (eng-argument-modes E1), is no longer reached from these functions.
 
-`lift_values` then runs these steps:
-1. **No `Grid`:** call `kernel` once with the values moved into a `Vec` (no clones). The result
-   is returned as it is, so an unlifted call is exactly today's call.
-2. **Shape:** rows and columns are the maxima of the grids' dimensions.
-   `check_array_size(rows, columns)` is checked before anything else is computed or allocated. Past
+`lift_values` (and the read phase before it) runs these steps:
+1. **No `Grid`:** the read phase hands the kernel the values directly, as a slice of the inline
+   buffer. No `LiftedArg`, grid or shape code runs, and nothing goes on the heap for 8 arguments or
+   fewer. The result is returned as it is, so an unlifted call is exactly today's call.
+2. **Input bound:** before each range is read into a grid, `check_range_size` bounds that grid,
+   and the running total of grid cells must stay within `MAX_LIFTED_CELL_VISITS`. So the read phase
+   allocates at most that many input cells, however many arguments the call has. No parser limit
+   on the argument count exists, so this is the bound.
+3. **Output bound:** rows and columns are the maxima of the grids' dimensions.
+   `check_array_size(rows, columns)` is checked before any element is computed or allocated. Past
    the bound the call is `#ERROR!`, the existing DEVIATION (arrays.md "Array results above 1,048,576
    cells").
-3. **Cost:** elements × max(1, cells of the whole arguments) must stay within
-   `MAX_LIFTED_CELL_VISITS`, through `too_many_visits`, before the first element. `LiftCost::Walk`
-   is today's `walk_cost`. `lift_call` uses `Cells` (the cells of its `Whole` ranges and arrays) or
-   `Unit`. So `LARGE(A:A,SEQUENCE(1048576))` is refused up front and does not run for hours.
-4. **Elements**, in row-major order. One `Vec<CalcResult>` buffer is kept for the whole call. The
-   scalar and whole slots are written once, and only the grid slots are overwritten per element, by
-   `array_node_to_calc_result(bcast_get(grid, i, j).unwrap_or(&MISSING))`. Then `kernel(&buffer)`.
-   With one grid and nothing else lifted, the grid is rewritten in place, which keeps T-1078's
-   whole-column speed for `ABS(A:A)`-style calls.
-5. **Element result** → `ArrayNode` via one function, `element_node`. A one-cell reference is its
-   value. A multi-cell range, an array or a LAMBDA is `#VALUE!`, as `calc_result_to_array_node`
-   does today. This is the single place T-1271/T-1241 would change for array-valued elements.
-6. **Text budget:** element strings count against `util::within_text_budget`, the 64 MiB that
-   `broadcast_text` has today, so every family has one output bound.
+4. **Work bound:** before the first element, the total cost must stay within
+   `MAX_LIFTED_CELL_VISITS` (`too_many_visits`, saturating arithmetic). The total is the `LiftCost`
+   of the call: `elements × 1` for `Unit`, `elements × cells` for `Cells`/`Walk`,
+   `cells + elements` for `Prepared`. The table's `KernelWork::Weighted(w)` multiplies the
+   per-element term by `w`.
+   - `LARGE(A:A,SEQUENCE(1048576))` with a per-element walk is refused up front.
+   - `LARGE(A1:A1000000,SEQUENCE(200))`, which sorts once, costs about 1,000,200 and runs.
+
+   Steps 2–4 bound the output, the kernel calls and the input. They do not bound what one kernel
+   call does inside, which is why `KernelWork` exists.
+5. **Elements**, in row-major order, into one buffer kept for the whole call. Scalar and whole
+   slots are written once. Only the grid slots are overwritten per element, by
+   `array_node_to_calc_result(bcast_get(grid, i, j).unwrap_or(&MISSING), cell)` (functions/util.rs).
+   - **In place:** when exactly one argument is a grid (any number of scalar or whole arguments
+     beside it, as in `ROUND(A1:A1000000,2)`), the output has the grid's shape. Each element is
+     moved out of the grid (`mem::replace(node, ArrayNode::Empty)`), converted by value, given to
+     the kernel, and its result written back into the same slot. This is T-1078's contract: at most
+     one allocation per output element, and none for a number. Kernels build error results with
+     `String::new()` messages, so a failing number element allocates nothing either.
+   - **`reuse_equal_runs`:** the element is compared with the previous position slot by slot,
+     through `bcast_get` at both positions. No per-element key `Vec` is built.
+6. **Element result** → `ArrayNode` via the existing `cast::calc_result_to_array_node`. A range,
+   an array or a LAMBDA is `#VALUE!`, as today. There is no new helper, and T-1783 deletes the four
+   private copies of that function in functions/logical/.
+7. **Text budget:** element strings count against `util::within_text_budget`, the 64 MiB
+   `broadcast_text` has today. The size check comes first: a call above the array bound is
+   `#ERROR!` before any text is built, and the budget's error stays `#VALUE!`.
 
 No argument is re-evaluated per element. A `Whole` value is the same `CalcResult` for every
 element. A kernel that derives something costly from it (LARGE's sorted data, WORKDAY.INTL's
 weekend mask results, today's `Weekend::lift` memo) computes it on the first element and keeps it
-in the closure (`FnMut`).
+in its closure. It declares `LiftCost::Prepared`.
 
 ### Kernels
-A kernel is the scalar function over values. Turning a function into one is mechanical: each
-`self.get_number(&args[i], cell)` becomes `self.cast_to_number(values[i].clone(), cell)`, and the
-same for `get_number_no_bools`, `get_boolean` and `get_string` → `cast_to_*`. Checks keep their
-order, so the leftmost-error rule per element holds by construction (PMT reads rate, nper, pv in
-order: H31–H33).
+A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
+It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_text_ref` and
+`cast_number_no_bools_ref` (`&CalcResult` → `Result<_, CalcResult>`). The owned `cast_to_*`
+become `dereference` plus the borrowing cast, so each coercion keeps one definition. An error is
+cloned only on the failure path. Turning a function into a kernel is mechanical:
+`self.get_number(&args[i], cell)` becomes `self.cast_number_ref(&values[i], cell)`, and the same for
+the other getters. Checks keep their order, so the leftmost-failing-argument rule per element holds
+by construction (PMT reads rate, nper, pv in order).
 ```rust
 pub(crate) fn fn_edate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-    self.lift_call(Function::Edate, args, cell, |model, values| model.edate_of(values, cell))
+    self.lift_call(Function::Edate, args, cell, &mut |model, values| model.edate_of(values, cell))
 }
 fn edate_of(&mut self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult { … }
 ```
 `evaluate_function` (functions/mod.rs) is unchanged. The fn-pointer dispatch and its small
 stack frames (T-1110) stay as they are, and the driver runs inside `fn_edate`.
 
-### Error handling
-There is no new public API, so no `thiserror`. Everything returns `CalcResult`. A bad argument
-count gives `CalcResult::new_args_number_error` before anything is evaluated, as today. No
-indexing on untrusted sizes: elements are read through `bcast_get`, and dimensions are `usize`
-from `Vec::len`. The cost multiplication saturates. If a function calls `lift_call` and has no
-table entry, the kernel is called once with the evaluated values, plus a `debug_assert!`. This is
-never a panic in release, and the family's probe cells catch it.
+**Security rule for kernel work.** A table entry is `KernelWork::Constant` only if its kernel is
+O(1) or loops a fixed number of times, whatever the argument values. A value-dependent kernel
+must be `Weighted` and also keep a per-call cap of its own. Examples are BINOM.DIST, POISSON,
+COMBIN, FACT and MULTINOMIAL (T-1197), the RATE/IRR/YIELD solvers (they have iteration caps, so
+they are `Constant` only if the cap is fixed), and the Bessel series. T-1776 checks a list of
+value-dependent functions against the table, so a family task cannot enter one as `Constant`
+silently.
 
-### Migration of the existing helpers (directive 3)
-| Helper | Becomes | Task |
-|---|---|---|
-| `lift_with_cost`, `CriteriaArg`, `count_walks` (if_ifs.rs) | `lift_values`, `LiftedArg` (moved). `lift_criteria` stays as the *IF(S) front end with `reuse_equal_runs` | T-1770 |
-| MROUND, SQRTPI, `parity_predicate` | `LiftArrays` table entries and kernels. Their hand-written range checks are deleted | T-1773, T-1774 |
-| `lift_numbers`, `lift_number_operands`, `number_at`, `lift_with_defaults`, `single_number_fn!`, `date_part_fn!`, `time_part_fn!`, the function callers of `apply_number_unary` | table entries + kernels. A missing optional argument takes the kernel's default. `NumberOrArray` and `apply_number_unary` stay only for the operators (`handle_arithmetic`, `apply_unary_chain`) | T-1773 |
-| `lifted_arg` / `Lifted` (IS*, ERROR.TYPE, ENCODEURL, FIELDVALUE, the offline functions) | `Lift` entries. The IS* kernels test the element as it is (`EmptyCell` is ISBLANK) | T-1774 |
-| `TextArg`, `broadcast_text` (17 call sites) | `Lift` entries + text kernels. The T-1022 rule (an error argument is the result only when it is the first failure) is what a left-to-right kernel gives. CONCATENATE keeps its scalar-error short cut (arrays.md) | T-1775 |
-| `Weekend::lift` | WORKDAY.INTL/NETWORKDAYS.INTL kernels with the mask memo in the closure | T-1236 |
-| `lookup_each`, XLOOKUP, AGGREGATE, IFS, SWITCH | already on `lift_with_cost`, so on `lift_values` once it moves | T-1770 |
-| `broadcast_arrays`, INDEX's lift, GROUPBY's lifts | unchanged (non-goals) | — |
-
-`rg -n "fn lift_numbers|fn lift_number_operands|fn lift_with_defaults|macro_rules! single_number_fn|fn lifted_arg|fn broadcast_text|fn lift_with_cost"`
-finds nothing after T-1775. `scripts/check_duplication.py` must not rise; record each drop with
-`--update` (decision 0010).
+### Error handling, recursion and stack
+- **Errors:** everything returns `CalcResult`, and the only public item is the hidden testing hook,
+  so no `thiserror` is needed. A bad argument count gives `new_args_number_error` before anything is
+  evaluated, as today. No indexing on untrusted sizes: elements are read through `bcast_get`,
+  dimensions are `usize` from `Vec::len`, and cost arithmetic saturates.
+- **A missing table entry** is a programming error, not an input condition. `lift_call` is only
+  ever called with the constant `Function` of the `fn_x` that calls it, so no workbook can reach the
+  case. If it happens, the kernel is called once with the evaluated values, behind a
+  `debug_assert!`. It is never a panic in release, and the family's probe cells and T-1776's
+  metamorphic test catch it.
+- **Recursion:** the driver adds none. It evaluates each argument once through
+  `evaluate_node_in_context`/`evaluate_node_with_reference`, under their existing depth limits, and
+  the kernel does not evaluate nodes.
+- **Stack:** the read phase is non-generic and `#[inline(never)]`, so it is one frame of fixed size
+  (T-1110). Only the kernel closure differs per function.
 
 ### Performance
-- Unlifted calls (almost every cell) build one `Vec` of argument values, then go straight to the
-  kernel. The kernel's casts are the ones it ran before, minus `evaluate_node_in_context`, which the
-  driver ran instead.
-- Lifted calls read each argument once. A range is read once into a grid, which is bounded and
-  clipped to the used area. Each element writes only its lifted slots into one reused buffer, and a
-  single-grid call rewrites the grid in place. A `Number` element allocates nothing. A `String`
-  element clones its `Text`, as `array_node_to_calc_result` does today.
-- T-1773 adds a criterion bench next to `benches/edit.rs`, because it moves the hot math lifts. It
-  covers `=SUM(ROUND(A1:A1000000,2))`, `=SUM(ABS(A1:A1000000))` and `=SUM(PMT(A1:A100000,10,100))`
-  on main and on the branch, in release. The first two must be within 5%, and the numbers go in the
-  task's Outcome.
+- Unlifted calls (almost every cell) hold their values inline and go straight to the kernel. The
+  kernel's casts are the ones it ran before, minus `evaluate_node_in_context`, which the read phase
+  ran instead.
+- Lifted calls read each argument once. A single-grid call is rewritten in place (step 5).
+  Otherwise one reused buffer holds the slots: a `Number` element allocates nothing, and a `String`
+  element clones its `Text`, as today.
+- Benchmarks live in `crates/rustsheet/benches/` (`aggregate.rs`, `edit.rs` and `text.rs` exist).
+  Every number goes in its task's Outcome, measured on main and on the branch in release:
+
+  | Task | Bench | Budget |
+  |---|---|---|
+  | T-1784 | a lifted whole-column COUNTIFS (`=SUM(COUNTIFS(A:A,A1:A100000))`, the `reuse_equal_runs` path) and a *IF(S) bench | within 5% |
+  | T-1773 | per-row unlifted cells over ≥ 100k rows, full recalc: `=ROUND(A{r},2)`, `=ABS(A{r})`, `=MOD(A{r},7)` | within 5% each |
+  | T-1773 | lifted `=SUM(ROUND(A1:A1000000,2))` and `=SUM(ABS(A1:A1000000))` | within 5% |
+  | T-1785 | per-row unlifted `=DAY(A{r})` over ≥ 100k rows | within 5% |
+  | T-1775 | `benches/text.rs` | within 5% |
+  | T-1372 | `=SUM(PMT(A1:A100000,10,100))` | none: a new path, a smoke number only |
 
 ## Alternatives considered
 - **A helper per family** (status quo, "lift literals only" variants for financial and
@@ -396,21 +537,24 @@ finds nothing after T-1775. `scripts/check_duplication.py` must not rise; record
   text needs re-quoting, every element allocates nodes, and reference-reading kernels would misread.
   Rejected.
 - **Generate the table from eval/catalog/functions.yaml.** The engine must not depend on repo data
-  at build time, and the catalog has no ATP distinction. Rejected. The catalog is checked against
-  the table instead (T-1776).
+  at build time, and the catalog has no ATP distinction. Rejected; the catalog is derived from the
+  table instead (T-1776).
 - **Keep the kinds in the parser's `Signature`** (add a `LiftArrays` variant there). The evaluator
   would depend on parser internals, and the signature has no `Whole`/`WholeByCaller` distinction.
   The table lives with `Function` instead, and static analysis derives `Signature` from it.
 - **A trait per kernel** (`trait ScalarKernel`). This is more ceremony than a closure. Closures
   also hold per-call caches. SPEC-0009 made the same choice. Rejected.
+- **A generic kernel parameter** (`K: FnMut`) instead of `&mut dyn FnMut`. It saves one indirect
+  call per element, but copies the loop into every function and grows `fn_x` frames. Rejected
+  (T-1110).
 
 ## Test plan
 - **Probe cells:** the lift cells of the seven argument-mode cases above, and probes/
   scalar-lift-shapes, -b and -c. Each family task removes its lines from eval/baseline/probes.txt
-  (`make eval-baseline`), with no new F lines anywhere. Value cells that are ulp misses (PMT, NORM.S.DIST:
-  T-0901, T-1374) stay listed under those tasks.
-- **Unit tests** in `functions/util/lift.rs` (T-1770), against `lift_values` with counting kernels
-  and against formulas:
+  (`make eval-baseline`), with no new F lines anywhere. Value cells that are ulp misses (PMT,
+  NORM.S.DIST: T-0901, T-1374) stay listed under those tasks.
+- **Unit tests** in `functions/lift/` (T-1770), against `lift_values` with counting kernels and
+  against formulas:
   - shapes: row × column grid; `#N/A` padding in 1-D and 2-D; a one-cell range is a scalar; a 1×1
     array lifts to a 1×1 result.
   - errors: an element error stays in its position; a scalar error and scalar text broadcast; the
@@ -420,12 +564,23 @@ finds nothing after T-1775. `scripts/check_duplication.py` must not rise; record
     a one-cell reference is its value.
   - `Whole`: never lifted, and evaluated once. A kernel counting calls and the identity of the whole
     value shows this.
-  - the unlifted path calls the kernel exactly once with the plain values.
-- **Size bound (directive 5):** `=ROWS(PMT(A:A,1:1,100))` is `#ERROR!`, and a counting kernel is
-  never called. A unit test of `lift_values` with a 1,048,576×1 and a 1×2 grid makes 0 kernel
-  calls. A whole argument of 2^20 cells against 2^8 elements trips the cell-visit cap before the
-  first element. T-1771 adds the same test for `broadcast_text` (`ROWS(LEFT(A1:A2000,COLUMN(A1:ALL1)))`
-  is `#ERROR!`).
+  - the unlifted path calls the kernel exactly once and allocates no `LiftedArg` or grid.
+  - the table-wins test: no function with an entry has a fallback arm.
+- **Size bounds (directive 5).** The tests use explicit ranges on a fixture whose cells are filled,
+  so a pass cannot come from blank cells:
+  - `=ROWS(PMT(A1:A1048576+0,A1:B1+0,100))` is `#ERROR!` and the counting kernel is never called;
+  - grids whose summed input cells exceed the cap are refused before the next grid is read;
+  - a whole argument of 2^20 cells against 2^8 elements under `LiftCost::Cells` trips the work bound
+    before the first element, while `Prepared` lets it run;
+  - a `Weighted` entry is charged its weight.
+
+  `clip_to_used_area` changes which cells `evaluate_range` reads, never the shape it returns or
+  the bound it checks: `check_range_size` and `check_array_size` use the written shape (arrays.md
+  "Array results above 1,048,576 cells", which documents the clipping). It is not a DEVIATION,
+  because no result changes. T-1771 and T-1782 add the same kind of tests for their functions.
+- **Nesting and stack:** `test_nested_formula_stack` gains a deeply nested lifted formula through a
+  migrated function (`EDATE(EDATE(…{45000;45031}…,1),1)`, T-1770). T-1773 keeps that test's
+  existing subject, ABS, passing after ABS moves onto the driver.
 - **Static analysis:** legacy FORMULATEXT for `Lift` vs `LiftArrays` (`=PMT(@C1:C60,10,100)`,
   `=EDATE(A1:A60,1)`, `=EDATE(@A1:A60+0,1)`: -c E–H). Static shape `Array(2,1)` for
   `EDATE({1;2},A1:A3)` and `Scalar` for `EDATE(A1:A3,1)`. Each family task adds its functions to
@@ -434,36 +589,48 @@ finds nothing after T-1775. `scripts/check_duplication.py` must not rise; record
   call. The test evaluates it, then the same call with one lifted argument as `{v;v}`, and checks
   that both elements equal the scalar result. This catches a function that is in the table but not
   wired to `lift_call`, or the reverse.
-- **No-change migrations** (T-1773, T-1774, T-1775): `make eval` shows 0 fixes and 0 regressions,
-  and the bench above holds.
+- **No-change migrations** (T-1784, T-1773, T-1785, T-1774, T-1775): `make eval` shows 0 fixes and
+  0 regressions, and the benches above hold.
+- **No ad-hoc lift remains** (T-1775's acceptance, the last migration):
+  - `rg -n "fn lift_numbers|fn lift_number_operands|fn lift_with_defaults|macro_rules! single_number_fn|fn lifted_arg|fn parity_predicate|fn broadcast_text|enum TextArg|fn lift_with_cost|fn is_lifted|enum CriteriaArg" crates/rustsheet-engine/src` finds nothing.
+  - `rg -n "bcast_get|bcast_idx" crates/rustsheet-engine/src` finds only functions/lift/,
+    arithmetic.rs and the non-goal rows of the inventory.
+  - `scripts/check_duplication.py` does not rise, and each drop is recorded with `--update`
+    (decision 0010).
 
 ## Rollout
 Each step is one PR of size S/M. The old paths stay until their step.
-0. **T-1771** (functions-text, P0, S): bound `broadcast_text` by `check_array_size` now. It does
-   not depend on the driver.
-1. **T-1770** (engine, opus, M): `arg_kinds.rs`, `util/lift.rs` (moving `lift_with_cost`), the
-   static-analysis hooks and the unit tests. First consumers are EDATE, EOMONTH, WEEKNUM and
-   YEARFRAC. They are `LiftArrays` throughout and cover the refused range, the array + range rule
-   and the legacy no-`@` rule: date-argument-modes F/G 20, 22, 24, 26, 54, 56, 66, 68, and the EDATE
-   and YEARFRAC cells of scalar-lift-shapes, -b and -c.
-2. After T-1770, in parallel (one lane each):
-   - **T-1236** (functions-date, S): WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL
-     (`LiftArrays`, `weekend` `Lift`, holidays `Whole`; `Weekend::lift` folds in).
-   - **T-1372** (functions-financial, M): core `Lift`, ATP `LiftArrays`, values/schedule/dates
-     `WholeByCaller`.
-   - **T-1290** (functions-stat, M): the functions whose every argument is scalar (the
-     distributions, CONFIDENCE, STANDARDIZE, …).
-   - **T-1772** (functions-stat, M): the scalar arguments next to a data array (LARGE, SMALL,
-     PERCENTILE*, QUARTILE*, PERCENTRANK*, RANK*, TRIMMEAN, FORECAST, PROB, Z.TEST, T.TEST). These
-     need the `Whole` read once, the prepare-once cache and the cost cap.
-   - **T-1383** (functions-engineering, M): `LiftArrays` except BIT* (`Lift`); fixes BESSELI's
-     intersection.
-3. **T-1241** and **T-1271** (functions-lookup), and **T-1389** (functions-criteria). Their value
-   lifts use the driver. Lifts whose elements are references or arrays stay their own design
-   inside those tasks.
-4. **T-1773** (quality, opus, M), **T-1774** (quality, sonnet, S), **T-1775** (quality, opus, M):
-   move the old helpers onto the driver with no result change, and delete them.
-5. **T-1776** (harness, sonnet, S, any time after T-1770): the catalog cross-check, `lift: arrays`
-   in the catalog, and the metamorphic test.
+0. **Directive-5 fixes, independent of the driver:**
+   - **T-1771** (functions-text, P0, S): bound `broadcast_text`.
+   - **T-1780** (functions-lookup, P0): bound HSTACK/VSTACK padding.
+   - **T-1781** (functions-text, P0): bound TEXTSPLIT padding.
+   - **T-1782** (functions-lookup, P0, M): bound EXPAND, WRAPROWS/WRAPCOLS and MMULT; check XMATCH.
+1. **The driver:**
+   - **T-1784** (engine, opus, S): move `lift_with_cost`, `CriteriaArg`, `count_walks` and
+     `is_lifted` into `functions/lift/driver.rs` as `lift_values`, with 0 eval diff and the
+     COUNTIFS/*IF(S) benches.
+   - **T-1770** (engine, opus, M): the table, `lift_call`, the read phase, the static-analysis hooks
+     and fallbacks, and the unit and size tests. EDATE, EOMONTH, WEEKNUM and YEARFRAC are the first
+     consumers, `LiftArrays` throughout: date-argument-modes F/G 20, 22, 24, 26, 54, 56, 66, 68, and
+     the EDATE and YEARFRAC cells of scalar-lift-shapes, -b and -c.
+2. **After T-1770, in parallel (one lane each):**
+   - **T-1236** (functions-date, S): WORKDAY(.INTL), NETWORKDAYS(.INTL); `weekend` is `Lift`.
+   - **T-1372** (functions-financial, M): later ATP arguments are probed before they are entered.
+   - **T-1290** (functions-stat, M): the functions whose every argument is scalar.
+   - **T-1772** (functions-stat, M): the first real `Whole` + `Prepared` consumer (LARGE k and the
+     other scalar arguments next to a data array).
+   - **T-1383** (functions-engineering, M): later arguments are probed before they are entered.
+3. **T-1241** (CHOOSE's index moves in), **T-1271** (functions-lookup), **T-1389**
+   (functions-criteria; adds `LiftArraysRangeWhole`).
+4. **The old helpers, with no result change:**
+   - **T-1773** (quality, opus, M): `single_number_fn!`, `lift_numbers`, `lift_with_defaults`,
+     ROUND/MOD/CEILING.
+   - **T-1785** (quality, opus, M): the date and time parts, DATE, DATEDIF, WEEKDAY, ISOWEEKNUM,
+     MUNIT, MROUND, SQRTPI.
+   - **T-1774** (quality, sonnet, S): IS* and ISEVEN.
+   - **T-1775** (quality, opus, M; last, with the no-ad-hoc-lift grep): the text functions.
+   - **T-1783** (quality, sonnet, S): the private `calc_result_to_array_node` copies.
+5. **T-1776** (harness, sonnet, S, any time after T-1770): the derived catalog key, the
+   cross-check, the `KernelWork` list check and the metamorphic test.
 6. **T-1777** (research, sonnet, S, any time): probe the open questions. A finding changes a table
    entry or a kernel in a task of its own.

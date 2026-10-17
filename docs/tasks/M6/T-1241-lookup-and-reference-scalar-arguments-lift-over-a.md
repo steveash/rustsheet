@@ -15,7 +15,7 @@ spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 The probed scalar arguments of ADDRESS, HYPERLINK, INDIRECT, LOOKUP, XLOOKUP, XMATCH, OFFSET, TRIMRANGE and FORMULATEXT lift over a range and an array, CHOOSECOLS/CHOOSEROWS read a range or array of indexes whole as a list, and vector/array arguments take array literals whole, as Excel does.
 
 ## Context
-SPEC-0011 rollout step 3 (docs/specs/SPEC-0011-scalar-argument-lifting.md). Lift the lookup scalars whose elements are values through `lift_call`, with their parameters in `Function::arg_kinds` (`Lift`, or `Whole` for the vector and list arguments). Lifted elements that are references (OFFSET, INDIRECT) or whole arrays (TAKE, DROP) are outside the spec. Design them here, on top of `lift_values` and its `element_node`, rather than as a new copy of the broadcast.
+SPEC-0011 rollout step 3 (docs/specs/SPEC-0011-scalar-argument-lifting.md). Lift the lookup scalars whose elements are values through `lift_call`, with their parameters in `Function::arg_kinds` (`Lift`, or `Whole` for the vector and list arguments). Lifted elements that are references (OFFSET, INDIRECT) or whole arrays (TAKE, DROP) are outside the spec. Design them here, on top of `lift_values` and `cast::calc_result_to_array_node`, rather than as a new copy of the broadcast. CHOOSE's index lift (`choose_array`, lookup_and_reference/mod.rs) moves onto the driver here: `index_num` is `Lift`, and the value arms are `Whole` (SPEC-0011 "Today's lifting code").
 
 T-1238's probe probes/lookup-argument-modes (excel-graph, 2026-10-09) shows the probed scalar arguments lift (CHOOSE already
 does), CHOOSECOLS/CHOOSEROWS take a range or array of indexes whole as a list in any orientation (F7-F9: 3x2, 3x2,

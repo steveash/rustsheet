@@ -1,6 +1,6 @@
 ---
 id: T-1771
-title: "Bound the broadcast of the element-wise text functions by the shared array limit (LEFT(A:A,1:1) allocates 2^34 cells)"
+title: "Bound the broadcast of the element-wise text functions by the shared array limit (a column against a row builds rows x columns cells)"
 milestone: M9
 lane: functions-text
 status: todo
@@ -21,7 +21,8 @@ The bound is the existing DEVIATION (docs/excel-semantics/arrays.md "Array resul
 
 ## Acceptance criteria
 - [ ] `broadcast_text` returns `check_array_size`'s error (`#ERROR!` above 2^20 cells, `#VALUE!` past the grid) before it allocates or computes any element.
-- [ ] A unit test shows `=ROWS(LEFT(A1:A2000,COLUMN(A1:ALL1)))` and `=ROWS(FIND("a",A1:A2000,COLUMN(A1:ALL1)))` are `#ERROR!`. A test with whole-column and whole-row operands (`=ROWS(LEFT(A:A,1:1))`) returns at once.
+- [ ] A unit test with explicit ranges on a filled A1:A2000 shows `=ROWS(LEFT(A1:A2000,COLUMN(A1:ALL1)))` and `=ROWS(FIND("a",A1:A2000,COLUMN(A1:ALL1)))` are `#ERROR!`. The test fails before the fix (2000) and passes after it.
+- [ ] The size check comes before the text budget: a broadcast above the array limit is `#ERROR!`, and the text budget's own error stays `#VALUE!` (a test for each). T-1775 keeps this order.
 - [ ] arrays.md's DEVIATION entry lists the text broadcast. No eval cell changes (`make eval`: 0 fixes, 0 regressions).
 - [ ] `make check` green; reviewers approve.
 

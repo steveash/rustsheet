@@ -92,9 +92,10 @@ Over a two-cell range only BITAND, BITOR, BITXOR, BITLSHIFT and BITRSHIFT lift
 (`ROWS(BITAND(K15:K16,25))` is 2). Every other function is `#VALUE!` when its first argument is a
 multi-cell range. That covers the Bessel functions, the base conversions, COMPLEX, CONVERT, DELTA,
 GESTEP, ERF, ERFC and their .PRECISE forms, and IM* (`ROWS(BESSELI(K1:K2,1))`). This is the Analysis
-ToolPak split seen in the financial functions. Later arguments follow the same split (probes/scalar-lift-shapes H7-H9,
+ToolPak split seen in the financial functions. Three later arguments were probed and follow the same split (probes/scalar-lift-shapes H7-H9,
 T-1767): `ROWS(BITAND(13,D1:D60))` is 60, while `ROWS(BESSELJ(2.5,B1:B60))` and `ROWS(DEC2BIN(9,D1:D60))` are `#VALUE!`,
-even on the range's own rows. See arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak
+even on the range's own rows. Other later arguments (CONVERT's units, COMPLEX's suffix, an IM* second argument, ...)
+are unverified (T-1777). See arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak
 range rule".
 
 IMSUM and IMPRODUCT take their arguments whole:
