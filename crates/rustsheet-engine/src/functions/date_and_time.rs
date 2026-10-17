@@ -746,8 +746,8 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        // Errors keep their pre-lift order: the dates' own, #NUM! of the dates, then the unit's
-        // (UNVERIFIED, dates.md "DATEDIF and DAYS360 error order", T-1430).
+        // Errors keep their pre-lift order: the dates' own, #NUM! of a reversed pair, the unit's, then
+        // out-of-calendar #NUM! (T-1355; UNVERIFIED, dates.md "DATEDIF and DAYS360 error order").
         let unit = self.get_string(&args[2], cell).map(|s| s.to_uppercase());
         // Both dates lift over a range or array (probes/date-argument-modes F5:F8).
         let operands = args[..2]
@@ -803,7 +803,7 @@ impl Model {
         if end_serial < start_serial {
             return Err(Error::NUM);
         }
-        // A unit error beats an out-of-calendar start date (dates.md "DATEDIF argument errors", T-1355).
+        // A unit error beats an out-of-calendar start date (dates.md "DATEDIF argument errors before date checks").
         let unit = unit?;
         let start = date_system.date_of_serial(start_serial).ok_or(Error::NUM)?;
         let end = date_system.date_of_serial(end_serial).ok_or(Error::NUM)?;

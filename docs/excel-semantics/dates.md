@@ -449,8 +449,8 @@ Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array
 ## DATEDIF and DAYS360 error order with a bad unit or method (inferred)
 Rule (inferred from the leftmost-error rule in arrays.md, not probed): a date argument's own error comes first
 (`DATEDIF(1/0,5,NA())` and `DAYS360(1/0,5,NA())` are `#DIV/0!`). After that ours keeps each function's pre-lift
-order: DATEDIF reports the dates' `#NUM!` (end before start, out of range) before the unit's error
-(`DATEDIF(10,5,NA())` is `#NUM!`), while DAYS360 reports the method's error before the dates' `#NUM!`
+order: DATEDIF reports the `#NUM!` of an end before the start before the unit's error
+(`DATEDIF(10,5,NA())` is `#NUM!`; for out-of-range dates the unit's error wins, see "DATEDIF argument errors before date checks", T-1355), while DAYS360 reports the method's error before the dates' `#NUM!`
 (`DAYS360(-5,5,NA())` is `#N/A`). Also unprobed: `TIMEVALUE(B3:B3)` of a single cell is that cell's value, and a
 single-cell-range or 3D-range `weekend` is `#VALUE!`/first-sheet in ours.
 Status: UNVERIFIED (probe pending)
@@ -707,6 +707,6 @@ Tasks: T-1354
 Rule: an error in DATEDIF's unit argument wins over an invalid start date: `DATEDIF(-1,38627,CHOOSE(3,x))` (the unit is
 `#VALUE!`) is `#VALUE!`, not the `#NUM!` of a negative date.
 Evidence: gen-m7/f68fafa0ca2eba26 Calc!A1 (`Data!D10^DATEDIF((Data!E$5+(-1)),38627,CHOOSE(3,Data!B12))`, E5 blank) (excel-graph, 2026-10-11, T-1275).
-Ours: the unit's error wins over a start date outside the calendar (T-1355); a reversed pair still gives `#NUM!` first.
-Status: VERIFIED (web); an invalid unit text with a negative start date, and an error unit with a reversed pair, are UNVERIFIED
+Ours: once start <= end, the unit's error wins over any start or end date outside the calendar (T-1355); a reversed pair still gives `#NUM!` first.
+Status: VERIFIED (web) for a negative start date with an in-range end; UNVERIFIED: an out-of-range high end date or an ordered pair of negative dates with an error unit, an invalid unit text with a negative start date, and an error unit with a reversed pair
 Tasks: T-1355

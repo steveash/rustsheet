@@ -1008,7 +1008,8 @@ fn datedif_date_errors_come_before_the_unit_error() {
 }
 
 // An error unit wins over a start date outside the calendar (gen-m7/f68fafa0ca2eba26 Calc!A1,
-// dates.md "DATEDIF argument errors before date checks", T-1355); an invalid unit text does not.
+// dates.md "DATEDIF argument errors before date checks", T-1355). A3 and A4 are our own
+// expectation (an invalid unit text with a negative start date is UNVERIFIED).
 #[test]
 fn datedif_error_unit_comes_before_a_negative_start_date() {
     let mut model = new_empty_model();
