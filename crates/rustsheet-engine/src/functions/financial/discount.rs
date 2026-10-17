@@ -5,8 +5,9 @@
 //! argument over an array, the first over a range) and probes/fin-later-argument-ranges H1-H82
 //! (every later argument over a range on its own rows), docs/excel-semantics/financial.md
 //! "Financial function argument modes". Each kernel reads all its arguments, in order, before it
-//! checks their values, so an error argument wins over an invalid value: ACCRINTM with a negative
-//! rate and an `NA()` basis is `#N/A` (fin-later-argument-ranges J17, J20). Moved out of
+//! checks their values, so an error argument wins over an invalid value. That is oracle-proven for
+//! ACCRINTM (a negative rate and an `NA()` basis is `#N/A`, fin-later-argument-ranges J17, J20); the
+//! others keep main's existing read-then-check order. Moved out of
 //! `financial/mod.rs` (T-1372).
 
 use super::dates::is_less_than_one_year;

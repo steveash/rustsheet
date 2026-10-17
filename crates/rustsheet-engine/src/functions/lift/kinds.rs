@@ -100,6 +100,9 @@ const ATP_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[LiftArrays, LiftArrays], Const
 /// Two required Analysis `ToolPak` arguments and one optional:
 /// `YEARFRAC(start_date, end_date, [basis])`.
 const ATP_2_OF_3: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays, LiftArrays], Constant);
+/// Three required Analysis `ToolPak` arguments: `CONVERT(number, from_unit, to_unit)` and the
+/// T-bills (`TBILLEQ(settlement, maturity, discount)`, TBILLPRICE, TBILLYIELD).
+const ATP_3: ArgKinds = ArgKinds::fixed(3, &[LiftArrays, LiftArrays, LiftArrays], Constant);
 
 /// A data argument its function reads itself, then one lifted worksheet argument:
 /// `LARGE(array, k)`, `PERCENTILE(array, k)`, `QUARTILE(array, quart)`, `TRIMMEAN(array, percent)`.
@@ -118,6 +121,9 @@ const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Co
 /// `HYPERLINK(link_location, [friendly_name])`: both arguments lift.
 const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
 
+// The shapes below are named by kind and (required, total) argument counts: `LIFT_4_OF_6` is four
+// required and two optional arguments, every one `Lift`; `ATP_*` are the `LiftArrays` shapes.
+
 /// Three or four worksheet arguments that lift over arrays and ranges: RRI, PDURATION, SLN;
 /// ISPMT and SYD.
 const LIFT_3: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Constant);
@@ -130,6 +136,8 @@ const LIFT_4_OF_6: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift, Lift,
 const LIFT_4_OF_5: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift, Lift], Constant);
 /// `RATE(nper, pmt, pv, [fv], [type], [guess])`: Newton's method with a fixed cap of 50 steps
 /// (`financial_util::compute_rate`), each element charged that weight (SPEC-0011 security rule).
+/// Under the 2^20-element output cap the charge never reaches `MAX_LIFTED_CELL_VISITS`, so it
+/// records the work rather than refusing a call: at worst about 2^20 × 50 Newton steps.
 const RATE: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift, Lift, Lift], Weighted(50));
 /// `ACCRINTM(issue, settlement, rate, [par], [basis])`.
 const ATP_3_OF_5: ArgKinds = ArgKinds::fixed(
@@ -153,9 +161,6 @@ const ATP_5_OF_6: ArgKinds = ArgKinds::fixed(
     Constant,
 );
 // --- Engineering (T-1383) -------------------------------------------------------------------
-/// Three required Analysis `ToolPak` arguments: `CONVERT(number, from_unit, to_unit)`, and the
-/// T-bills (`TBILLEQ(settlement, maturity, discount)`, T-1372).
-const ATP_3: ArgKinds = ArgKinds::fixed(3, &[LiftArrays, LiftArrays, LiftArrays], Constant);
 /// Two worksheet arguments that lift over an array and a range: BITAND, BITOR, BITXOR,
 /// BITLSHIFT and BITRSHIFT.
 const LIFT_2: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Constant);
