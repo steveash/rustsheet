@@ -3,7 +3,7 @@ id: T-1353
 title: "HOUR, MINUTE and SECOND of a serial past 9999-12-31 are #NUM!"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
