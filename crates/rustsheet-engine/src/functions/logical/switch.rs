@@ -34,9 +34,11 @@ impl Model {
             for node in &args[1..] {
                 lifted.push(self.evaluate_node_in_context(node, cell));
             }
+            // Each element compares its value with the cases: one unit per argument.
+            let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
             return self.lift_values(
                 lifted,
-                LiftCost::Cells(1),
+                LiftCost::Cells(units),
                 &LiftOptions::REUSE_EQUAL_RUNS,
                 cell,
                 &mut |_, element| switch_element(element, cell),

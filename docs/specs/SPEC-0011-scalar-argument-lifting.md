@@ -257,7 +257,14 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
 New module `crates/rustsheet-engine/src/functions/lift/`, all `pub(crate)`:
 - `mod.rs` re-exports;
 - `kinds.rs` holds the table;
-- `driver.rs` holds the driver.
+- `driver.rs` holds the driver (`lift_values` and the broadcast `lift_grids`);
+- `call.rs` holds `lift_call` and its read phase;
+- `arg_buf.rs` holds `ArgBuf`;
+- `tests/` holds the unit tests.
+
+Static analysis reads the table in `expressions/parser/static_analysis/lifted.rs`
+(`lifted_signature`, `lifted_static_result`, `lifts_arrays_at`); T-1770 moved OFFSET's and
+INDIRECT's shapes to `static_analysis/reference_result.rs` and `broadcast_shapes` to `static_analysis/broadcast.rs` to make room for the dispatch.
 
 It is a directory module of its own, not part of `functions/util/`. Static analysis and every
 family import the table, while `util/` is the walk helpers.
@@ -376,14 +383,22 @@ pub(crate) enum LiftCost<'a> {
     Cells(u64),
     /// The kernel prepares its whole data once (LARGE sorts it): cells + elements.
     Prepared(u64),
-    /// `walk_cost` of this node, per element (the *IF(S) front end).
-    Walk(&'a Node),
+    /// `walk_cost` of `range`, `walks` times per element (the *IF(S) front end: one walk per
+    /// criterion).
+    Walk { range: &'a Node, walks: u64 },
 }
 
 pub(crate) struct LiftOptions {
     /// Reuse the previous element's result when every grid slot equals the previous element's:
     /// the *IF(S) blank-tail optimization of `lift_with_cost`. Off for scalar kernels.
     pub(crate) reuse_equal_runs: bool,
+    /// The table's `KernelWork` (`lift_call`); `Constant` for the direct callers.
+    pub(crate) work: KernelWork,
+}
+
+impl LiftOptions {
+    /// What every direct caller passes (*IF(S), AGGREGATE, IFS, SWITCH, the lookups).
+    pub(crate) const REUSE_EQUAL_RUNS: Self;
 }
 
 /// A per-element kernel: the scalar function over the argument values of one element.
@@ -401,18 +416,26 @@ impl Model {
         kernel: &mut Kernel<'_>,
     ) -> CalcResult;
 
-    /// The broadcasting core over arguments already read (was `lift_with_cost`). The *IF(S),
-    /// AGGREGATE, IFS, SWITCH and lookup lifts call it directly.
+    /// The broadcasting core (was `lift_with_cost`). The *IF(S), AGGREGATE, IFS, SWITCH and
+    /// lookup lifts call it directly, with their arguments evaluated: a range there, a one-cell
+    /// range included, lifts as a grid (their T-1784 contract). It reads them into `LiftedArg`s
+    /// and runs the same broadcast (`lift_grids`) as `lift_call`.
     pub(crate) fn lift_values(
         &mut self,
-        args: ArgBuf<LiftedArg>,
+        args: Vec<CalcResult>,
         cost: LiftCost<'_>,
-        options: LiftOptions,
+        options: &LiftOptions,
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
     ) -> CalcResult;
 }
 ```
+As built (T-1770): `lift_call` runs `lift_call_with(kinds, args, LiftCost::Unit, …)`, which a
+future `Prepared` or `Cells` consumer calls with its own cost. The direct callers keep their
+T-1784 totals exactly: *IF(S) passes `Walk { walks: criteria }`, `lookup_each` and AGGREGATE
+multiply their `Cells` by the lifted arguments, IFS and SWITCH pass `Cells(arguments)`; XLOOKUP
+passes its search cost once (it divided it by its three criteria before, so its bound only
+loosens by the rounding).
 `ArgBuf<T>` is a fixed inline array of 8 slots with a `Vec` fallback for longer calls. It adds no
 new dependency. A call with 8 arguments or fewer does not touch the heap to hold its values. The
 kernel is `&mut dyn FnMut`: there is one indirect call per element, and one copy of the loop for
@@ -423,7 +446,7 @@ Each argument is read once, by its kind:
 | Kind | Array | Multi-cell range or reference | One-cell range | Anything else |
 |---|---|---|---|---|
 | `Lift` | `Grid` | `Grid` via `evaluate_range` | `Scalar(evaluate_cell)` | `Scalar(value)` |
-| `LiftArrays` | `Grid` | `Scalar(#VALUE!)`, no intersection | `Scalar(evaluate_cell)` | `Scalar(value)` |
+| `LiftArrays` | `Grid` | `Scalar(#VALUE!)`, no intersection; INDEX, XLOOKUP, TAKE, DROP and TRIMRANGE are read in their reference form, so a multi-cell one is refused too (TAKE: gen-m9/b58b6d7cd39d195f A9; INDEX and IF: scalar-lift-shapes H50, -b K3; XLOOKUP, DROP and TRIMRANGE are inferred, T-1801 probes them) | `Scalar(evaluate_cell)` | `Scalar(value)` |
 | `LiftArraysRangeWhole` | `Grid` | `Scalar(the range)`, read whole | `Scalar(the range)` | `Scalar(value)` |
 | `Whole` | `Scalar` of the value as `evaluate_node_with_reference` read it, once | | | |
 | `WholeByCaller` | `Scalar(EmptyArg)`, not evaluated | | | |
@@ -489,8 +512,10 @@ in its closure. It declares `LiftCost::Prepared`.
 
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
-It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_text_ref` and
-`cast_number_no_bools_ref` (`&CalcResult` → `Result<_, CalcResult>`). The owned `cast_to_*`
+It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and
+`cast_number_no_bools_ref` (`&CalcResult` → `Result<_, CalcResult>`). As built (T-1770) the casts
+keep the messages the owned casts had ("Expecting number", ...), so a cast failure still allocates
+its message; only the errors a kernel builds itself are `String::new()`. The owned `cast_to_*`
 become `dereference` plus the borrowing cast, so each coercion keeps one definition. An error is
 cloned only on the failure path. Turning a function into a kernel is mechanical:
 `self.get_number(&args[i], cell)` becomes `self.cast_number_ref(&values[i], cell)`, and the same for

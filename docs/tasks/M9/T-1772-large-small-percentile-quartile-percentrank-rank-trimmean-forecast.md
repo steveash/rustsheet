@@ -26,6 +26,7 @@ Spec: docs/specs/SPEC-0011-scalar-argument-lifting.md. Evidence: probes/stat-arg
 - [ ] `=ROWS(LARGE(A1:A1000000,SEQUENCE(200)))` over a filled column runs (`Prepared`), and a call above the cap is `#ERROR!` before the first element.
 - [ ] The functions are in `Function::arg_kinds`, and their old static-analysis arms are deleted.
 - [ ] `make check` green; reviewers approve.
+- [ ] The entries it adds make the variant live, and it removes the `#[allow(dead_code)]` on `ArgKind::Whole` and `LiftCost::Prepared` (functions/lift/kinds.rs, driver.rs), and on `ArgKind::WholeByCaller` if this task enters a caller-read argument (else name the task that will) (T-1770 left the allow with a `TODO(T-1772)`).
 
 ## Out of scope
 - The pairing functions' unequal sizes (T-1292). The data rules themselves, such as which cells LARGE skips.
