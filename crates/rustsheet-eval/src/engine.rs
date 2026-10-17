@@ -2,6 +2,8 @@
 //! directly, so other engines (e.g. upstream IronCalc, a future rewritten core)
 //! can be plugged in and compared side by side.
 
+use std::collections::BTreeMap;
+
 use rustsheet::{
     CellRef, Clock, DateSystem, ErrorKind, Input, LoadOptions, RangeRef, SheetId,
     Value as ApiValue, Workbook, WorkbookOptions, XlError,
@@ -208,7 +210,7 @@ impl Engine for RustSheetEngine {
                                 )?;
                             }
                         }
-                        for (a1, input) in &sheet.cells {
+                        for (addr, a1, input) in row_major(&sheet.cells)? {
                             let Some(mut input) = spec_input(input) else {
                                 continue;
                             };
@@ -223,9 +225,6 @@ impl Engine for RustSheetEngine {
                             if is_formula != formulas {
                                 continue;
                             }
-                            let addr = Addr::parse(a1).ok_or_else(|| {
-                                rustsheet::EditError::Engine(format!("bad address {a1}"))
-                            })?;
                             tx.set(CellRef::new(id, addr.row - 1, addr.col - 1)?, input)?;
                         }
                     }
@@ -255,6 +254,24 @@ impl Engine for RustSheetEngine {
         }
         Ok(Box::new(RustSheetEvaluated { workbook }))
     }
+}
+
+/// A spec sheet's cells row by row, left to right: the order an xlsx stores them in and Excel
+/// loads them, which decides the spelling a called name that is no function keeps (the first met;
+/// probes/unknown-function-name-spelling, T-1719).
+fn row_major(
+    cells: &BTreeMap<String, CellInput>,
+) -> Result<Vec<(Addr, &String, &CellInput)>, rustsheet::EditError> {
+    let mut ordered = cells
+        .iter()
+        .map(|(a1, input)| {
+            Addr::parse(a1)
+                .map(|addr| (addr, a1, input))
+                .ok_or_else(|| rustsheet::EditError::Engine(format!("bad address {a1}")))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    ordered.sort_by_key(|(addr, ..)| (addr.row, addr.col));
+    Ok(ordered)
 }
 
 /// Makes a case's sheet edits after it is built, as the oracle backend replays them in Excel after

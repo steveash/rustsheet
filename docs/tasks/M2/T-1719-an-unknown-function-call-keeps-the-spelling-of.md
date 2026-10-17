@@ -3,7 +3,7 @@ id: T-1719
 title: "An unknown function call keeps the spelling of its name in the formula text"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -17,9 +17,9 @@ FORMULATEXT of a call to a name that is no function prints the name as typed, as
 Found by T-1659: probes/lotus-dot-range-func-second E2 (excel-graph) fails on the case only. `LambdaCallKind` with a `NamedVariableKind` callee prints `name.to_lowercase()` (parser/stringify.rs "When the callee is a plain named variable"), on purpose for the R1C1 storage form. Probe first: a lowercase or mixed-case unknown name (`=foo(1)`, `=Foo(1)`) and whether Excel keeps the case or uppercases it; then make the A1 text keep the spelling while the R1C1 storage still round-trips (a reload must keep it a call of an unknown name, not a LAMBDA call of a variable).
 
 ## Acceptance criteria
-- [ ] probes/lotus-dot-range-func-second passes and the new probe cells pass; the rule is in docs/excel-semantics/.
-- [ ] A reload (`Model::from_bytes(model.to_bytes())`) keeps the formula text.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/lotus-dot-range-func-second passes and the new probe cells pass; the rule is in docs/excel-semantics/.
+- [x] A reload (`Model::from_bytes(model.to_bytes())`) keeps the formula text.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -57,3 +57,20 @@ Design read of the code (no code changed yet):
 - Unprobed: load order vs edit order for "first" (the handoff's last point).
 
 (Resumed again 2026-10-17 by an opus run after 2h idle.)
+
+## Outcome
+- `CallNameSpellings` (expressions/parser/call_names.rs), a `Model` field: lowercase name → first
+  spelling. Every stored formula's free callee (one no enclosing LET/LAMBDA binds) gets it, on load
+  (`parse_formulas`, sheet then shared-formula order, rewriting a stored text it re-spells) and on
+  each edit (`shared_formula_index`). Bound callees keep printing lowercase, as before.
+- The printer prints a callee as stored. In the R1C1 storage form, a callee that English would
+  read back as a function, boolean or cell gets the `_xlpm.` prefix the parser drops (this was what
+  the old lowercasing half-did: a Spanish `=TRUE()`/`=SUM(1)` must stay an unknown call, also after
+  a reload; that reload case was broken before).
+- `walk_names` (stringify/bound_variables.rs) is the one LET/LAMBDA scope walker; `_xlpm.` export
+  prefixing and the spelling registry both use it.
+- Harness: a spec case's cells are set row by row (an xlsx's load order) so "first met" matches.
+- Eval delta: probes known failures 2962 → 2950 (12 fixed: unknown-function-name-spelling B4-B7,
+  B9, B10, B14-B18, lotus-dot-range-func-second E2), 0 regressions.
+- Follow-up: T-1750 (`=Ab1(1)` is a call of the cell AB1: `#REF!`, printed `=AB1(1)`; A8/B8).
+
