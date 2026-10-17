@@ -10,12 +10,15 @@ inverse sweep uses); a literal p is used as is.
 Candidates, each plain IEEE double (Python floats, platform libm for log/sqrt/exp/erfc):
 - Wichura's AS 241: PPND16 (the double-precision coefficients) and PPND7, with the tail argument
   r = sqrt(-ln(min(p, 1-p))) taken as `log(p)`/`log(1-p)` or `log1p(-p)` on the upper side, and
-  the rational functions by Horner (as published) or as ascending power sums;
+  the rational functions by Horner (as published), Horner with fused multiply-adds, or as
+  ascending power sums;
 - PPND16 plus one Newton or Halley step against libm's erfc, and one Newton step against
   0.5*erfc(-x*sqrt(0.5)), the CDF form closest to Excel's NORM.S.DIST on the T-1746 probe (the
   "iterate on Excel's own CDF" hypothesis that T-0925's notes raise);
 - statrs' `-sqrt(2)*erfc_inv(2p)` (Boost's erf_inv regions; the engine today), and the hybrid
   PPND16 in the tails with statrs centrally (|p - 0.5| <= 0.425);
+- Newton solves on 0.5*erfc(-x*sqrt(0.5)) from PPND7, Acklam, Moro or 0, stopping at
+  |dx| <= 1e-15|x| or at dx = 0;
 - Acklam's rational approximation, raw and with its published Halley refinement;
 - Moro's (Beasley-Springer-Moro) algorithm;
 - the correctly rounded inverse of p, from a 60-digit Newton solve (decimal), as a reference.
@@ -478,7 +481,8 @@ def norm_inv_candidates() -> list[Candidate]:
             def solved(p: float, st: Callable[[float], float] = start, t: float = tol) -> float:
                 return newton_solve(p, st(p), relative_tol=t)
 
-            label = f"Newton solve on 0.5*erfc(-x*sqrt(0.5)) from {sname}, |dx| <= {tol:g}|x|"
+            stop = f"|dx| <= {tol:g}|x|" if tol else "dx = 0"
+            label = f"Newton solve on 0.5*erfc(-x*sqrt(0.5)) from {sname}, {stop}"
             out.append(candidate(label, _p(solved), "Newton solve"))
     out.append(candidate("PPND16 tails, statrs centre", _p(hybrid), "hybrid"))
     out.append(

@@ -70,7 +70,9 @@ Exact counts, from `uv run rustsheet-fitlab norm-s-inv` with the engine row (the
 | Moro | 12 |
 | PPND7, every variant | 12 |
 
-At ≤4 ulp every candidate scores 975 to 987, and all 1,024 cells are within 1e-9.
+At ≤4 ulp the PPND16-based candidates, the engine and the correctly rounded value score 975 to
+987, and all 1,024 cells are within 1e-9 for them; the others are far looser (PPND7 12, Acklam 12,
+Moro 13, Acklam+Halley and the Newton solves 829 to 834).
 
 Findings (docs/excel-semantics/statistics.md, "NORM.S.INV is AS 241 PPND16 in the tails"):
 - **Tails are PPND16.** The tails (|p-0.5| > 0.425) are AS 241 PPND16 in doubles: Horner, with

@@ -149,7 +149,7 @@ Candidates that model Excel's rounding use `Fraction`s:
 | `power-1+r`, `exp-ln` | 462, 154 (m9-fin-power) | the pow models (`kernels/power.py`) with 1+r a double or at 64 bits; EXP(n*LN(1+r)) stored or kept at 64 bits |
 | `power-nonint`, `power-recip`, `power-mantissa`, `power-large-int`, `power-sqrt5` | 183, 45, 76, 224, 20 | the pow models on the T-1319, T-0221 and T-1311 power sweeps |
 | `gamma-int`, `gammaln-int`, `gamma-half-int` | 171, 171, 62 (T-1042) | factorial and sqrt(pi) recurrences per rounding model and order, correctly rounded, libm |
-| `norm-s-inv` | 1,024 (m9-norm-s-inv, t1048-normsinv, t1048-norminv, t1746-norm-s-inv-central; nested p is Excel's own NORM.S.DIST(k)) | AS 241 PPND16 and PPND7 per evaluation order and upper-tail log, Newton and Halley steps on two CDF forms, statrs and a PPND16-tails/statrs-centre hybrid, Acklam, Moro, correctly rounded (T-1746) |
+| `norm-s-inv` | 1,024 (m9-norm-s-inv, t1048-normsinv, t1048-norminv, t1746-norm-s-inv-central; nested p is Excel's own NORM.S.DIST(k)) | AS 241 PPND16 and PPND7 per evaluation order (Horner, FMA Horner, power sum) and upper-tail log, Newton and Halley steps on two CDF forms, Newton solves from four starts under two stop rules, statrs and a PPND16-tails/statrs-centre hybrid, Acklam, Moro, correctly rounded (T-1746) |
 
 The `erfc-tail` fit replaces `docs/research/t1187-erfc-candidates.py`. It reproduces that
 script's counts: best 57, 58, 38 and 4, with a union of 174/205.
