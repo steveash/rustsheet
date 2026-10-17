@@ -3,7 +3,7 @@ id: T-1624
 title: "Probe the discount-security functions RECEIVED, YIELDDISC, PRICEDISC, INTRATE, PRICEMAT, YIELDMAT to the evidence floor"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -31,3 +31,9 @@ every basis 0-4 and invalid basis, settlement >= maturity, issue after settlemen
 
 ## Out of scope
 - Engine fixes for the mismatches found (filed as tasks).
+
+## Outcome
+Added probes/discount-security-modes (135 cells, excel-graph): all six functions are now over the
+evidence floor (RECEIVED 33, YIELDDISC 33, PRICEDISC 34, INTRATE 38, PRICEMAT 40, YIELDMAT 36 cells);
+floor lock updated. 45 new-coverage failures baselined: 42 last-digit misses (existing T-1374) and
+3 settlement-serial-0 cells (new fix task T-1757). Quirks recorded in docs/excel-semantics/financial.md.

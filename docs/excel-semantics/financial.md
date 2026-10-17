@@ -374,6 +374,20 @@ annuity, NPV and solver misses are T-0901's and T-0916's.
 Status: VERIFIED (excel-graph)
 Tasks: T-1084, T-1372, T-1373, T-1374
 
+## Discount-security functions: settlement 0, basis and argument modes
+Rule: INTRATE, PRICEDISC and YIELDDISC accept settlement serial 0 and compute with it (`INTRATE(0,43466,1000,1100)` =
+0.0008403165192222404, `PRICEDISC(0,43466,0.05,100)` = -495.0138888888889, `YIELDDISC(0,43466,95,100)` =
+0.00044227185222223174), whereas RECEIVED, PRICEMAT and YIELDMAT return #NUM! for settlement 0 (PRICEMAT and
+YIELDMAT because issue > settlement). All six: basis 5 and -1 are #NUM!, a fractional basis truncates (1.9 is 1), a text
+basis "1" is coerced, a boolean basis is #VALUE!, text dates are parsed, fractional dates truncate, settlement >= maturity
+is #NUM!, and a zero or negative investment, discount, price, rate or redemption is #NUM! (PRICEMAT and YIELDMAT accept a
+zero rate; issue after settlement is #NUM!). Basis 2 is the only mode whose result differs on a one-year span
+(actual/360); bases 0, 1, 3 and 4 agree there.
+Evidence: probes/discount-security-modes (135 cells, excel-graph, 2026-10-17, T-1624).
+Ours: the settlement-0 cells return #NUM! (T-1757); the other mismatches (42 of 45) are last-digit misses in the T-1374 class.
+Status: VERIFIED (excel-graph)
+Tasks: T-1624, T-1757, T-1374
+
 ## PMT when (1+rate)^nper overflows
 Rule: `PMT(100,184,439103)` is not an error, although 101^184 overflows a double: `FLOOR(PMT(100,184,439103),<#DIV/0!>)`
 is `#DIV/0!` (inferred: FLOOR returns its first argument's error first). The value is unprobed (the limit is -pv*rate =
