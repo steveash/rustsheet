@@ -57,10 +57,13 @@ Exact counts, from `uv run rustsheet-fitlab norm-s-inv` with the engine row (the
 | PPND16 horner, upper log(1-p) | 693 |
 | PPND16 horner, upper log1p(-p) | 690 |
 | PPND16 + Newton on 0.5*erfc(-x*sqrt(0.5)) | 469 |
+| PPND16 Horner with FMA | 373 / 370 |
 | PPND16 + Newton or Halley on libm erfc | 358 |
 | engine today (statrs) | 341 |
 | correctly rounded | 326 |
+| Newton solve on 0.5*erfc(-x*sqrt(0.5)) from PPND7, Acklam, Moro (two stop rules) | 256 to 276 |
 | PPND16 power sum | 268 / 265 |
+| Newton solve from 0 | 149 / 150 |
 | Acklam + Halley | 200 |
 | statrs centre only | 164 of 408 central |
 | Acklam | 12 |
@@ -75,15 +78,16 @@ Findings (docs/excel-semantics/statistics.md, "NORM.S.INV is AS 241 PPND16 in th
   miss by 1 to 2 ulp.
 - **The centre is unsolved.** It was time-boxed after two failed hypothesis families, per
   decision 0056:
-  - the PPND16 central rational in every evaluation order, with and without FMA;
-  - refinement on Excel's own CDF: one step, or a Newton solve from four starts under several
-    stopping rules. Excel's NORM.S.DIST(PPND16(p)) is already exactly p at 232 of the 341 points,
-    yet Excel returns a different x at 177 of them.
-  Excel is up to 31 ulp from the correctly rounded value there, symmetric in p ↔ 1-p.
+  - the PPND16 central rational by Horner, FMA Horner or the power sum;
+  - refinement on Excel's own CDF: one step, or a Newton solve on 0.5*erfc(-x*sqrt(0.5)) from
+    four starts under two stopping rules (all in the shipped fit). Excel's NORM.S.DIST(PPND16(p))
+    is already exactly p at 232 of the 341 points, yet Excel returns a different x at 177 of them.
+  Excel is up to 31 ulp from the correctly rounded value there; outputs are mirrored for 106 of
+  170 (p, 1-p) pairs, not all.
 - **What T-0925 should implement.** The hybrid: PPND16 tails, statrs centre (775 vs 341 exact).
   The centre reopens only on a new hypothesis. The task is done rather than blocked because the
   fit raised the bit-exact count (341 to 775), which is what decision 0056 measures.
 - **Lead for T-0968.** NORM.S.DIST equals `0.5*erfc(-x*sqrt(0.5))` on 260 of 341 probe points,
-  against 199 for `/sqrt(2)`.
+  against 199 for `/sqrt(2)` (at the PPND16(p) points; 240 vs 203 at Excel's own results).
 - LOGNORM.INV and CONFIDENCE.NORM, listed in the goal, are not scored: their mean, sd and exp or
   scaling steps add arithmetic of their own; they follow once T-0925 lands the kernel.

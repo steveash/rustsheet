@@ -23,7 +23,8 @@ Candidates, each plain IEEE double (Python floats, platform libm for log/sqrt/ex
 Result (T-1746 Outcome; docs/excel-semantics/statistics.md, "NORM.S.INV is AS 241 PPND16 in the
 tails"): PPND16 by Horner, upper tail via log(1-p), is bit-exact on 611 of 616 tail cells
 (|p - 0.5| > 0.425), and none of the candidates fits the central region, where Excel is up to
-31 ulp from the correctly rounded value, symmetric in p and 1 - p, and does not round-trip through its own NORM.S.DIST.
+31 ulp from the correctly rounded value, often but not always mirrored between p and 1 - p, and
+does not round-trip through its own NORM.S.DIST.
 Cells whose p reaches the kernel through Excel's input handling (text p, a 16-digit literal Excel
 reads to 15 digits, a subnormal operand Excel flushes) are left out by `kernel_input`.
 LOGNORM.INV and CONFIDENCE.NORM, which the task lists, are not scored: their mean, sd and
@@ -35,6 +36,7 @@ from __future__ import annotations
 import decimal
 import math
 from collections.abc import Callable, Sequence
+from fractions import Fraction
 from functools import cache
 
 from rustsheet_tools.fitlab.exact import pi_cr
@@ -120,6 +122,14 @@ def power_sum(coeffs: Poly, x: float) -> float:
     for c in coeffs:
         acc += c * xp
         xp *= x
+    return acc
+
+
+def horner_fma(coeffs: Poly, x: float) -> float:
+    """`horner` with each step a fused multiply-add (one rounding of acc*x + c)."""
+    acc = coeffs[-1]
+    for c in reversed(coeffs[:-1]):
+        acc = float(Fraction(acc) * Fraction(x) + Fraction(c))
     return acc
 
 
@@ -230,9 +240,24 @@ def libm_cdf(x: float) -> float:
 
 
 def sqrt_half_cdf(x: float) -> float:
-    """0.5*erfc(-x*sqrt(0.5)): equal to Excel's NORM.S.DIST on 260 of the 341 T-1746 probe points
-    (0.5*erfc(-x/sqrt(2)) on 199), so the closest stand-in for Excel's own CDF the lab has."""
+    """0.5*erfc(-x*sqrt(0.5)): equal to Excel's NORM.S.DIST at 260 of the 341 PPND16(p) points of the
+    T-1746 probe (column D; 0.5*erfc(-x/sqrt(2)) on 199) and at 240 of Excel's own NORM.S.INV
+    results (column B; 203), so the closest stand-in for Excel's own CDF the lab has."""
     return 0.5 * math.erfc(-x * SQRT_HALF)
+
+
+_MAX_NEWTON = 100  # directive 5: a bounded solve (Newton from these starts converges in < 10)
+
+
+def newton_solve(p: float, x: float, *, relative_tol: float) -> float:
+    """Newton on sqrt_half_cdf(x) = p from `x` until |dx| <= relative_tol*|x| (0: until dx is 0)."""
+    _domain(p)
+    for _ in range(_MAX_NEWTON):
+        dx = (sqrt_half_cdf(x) - p) * SQRT2PI * math.exp(x * x / 2.0)
+        x -= dx
+        if abs(dx) <= relative_tol * abs(x):
+            break
+    return x
 
 
 def refine(p: float, x: float, halley: bool, cdf: Callable[[float], float] = libm_cdf) -> float:
@@ -417,7 +442,7 @@ def _p(fn: Callable[[float], float]) -> Callable[..., float]:
 def norm_inv_candidates() -> list[Candidate]:
     out: list[Candidate] = [candidate("correctly rounded", _p(correctly_rounded), "reference")]
     for cname, coeffs in (("PPND16", PPND16), ("PPND7", PPND7)):
-        for ename, ev in (("horner", horner), ("power sum", power_sum)):
+        for ename, ev in (("horner", horner), ("horner fma", horner_fma), ("power sum", power_sum)):
             for log1p_upper in (False, True):
                 label = f"{cname} {ename}, upper {'log1p(-p)' if log1p_upper else 'log(1-p)'}"
 
@@ -441,6 +466,20 @@ def norm_inv_candidates() -> list[Candidate]:
             "PPND16+step",
         )
     )
+    starts: dict[str, Callable[[float], float]] = {
+        "PPND7": lambda p: as241(p, PPND7, horner, log1p_upper=False),
+        "Acklam": lambda p: acklam(p, halley=False),
+        "Moro": moro,
+        "0": lambda _: 0.0,
+    }
+    for sname, start in starts.items():
+        for tol in (1e-15, 0.0):
+
+            def solved(p: float, st: Callable[[float], float] = start, t: float = tol) -> float:
+                return newton_solve(p, st(p), relative_tol=t)
+
+            label = f"Newton solve on 0.5*erfc(-x*sqrt(0.5)) from {sname}, |dx| <= {tol:g}|x|"
+            out.append(candidate(label, _p(solved), "Newton solve"))
     out.append(candidate("PPND16 tails, statrs centre", _p(hybrid), "hybrid"))
     out.append(
         candidate(

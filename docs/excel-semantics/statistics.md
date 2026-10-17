@@ -626,24 +626,32 @@ AS 241 PPND16 evaluated in doubles: the published coefficients by Horner, r = sq
 and sqrt(-ln(1-p)) above (not `log1p(-p)`), then r - 1.6 (r <= 5) or r - 5 and the tail rational.
 It is bit-exact on 611 of 616 tail cells, p from 5E-309 to 1-7E-16. The 5 misses are two
 upper-tail p next to the split, 0.925 and NORM.S.DIST(1.5), each 1 to 2 ulp off.
-Centrally (|p - 0.5| <= 0.425) no candidate fits:
+Centrally (|p - 0.5| <= 0.425) no candidate fits (central bit-exact counts of 408 cells in brackets):
 - Excel is up to 31 ulp from the correctly rounded inverse. NORM.S.INV(0.16) is
   -0.9944578832097497, where the correctly rounded value is ...7531.
-- The error is symmetric in p and 1 - p.
-- It is not PPND16's central rational in any evaluation order, with or without FMA.
-- It is not statrs/Boost erf_inv, which is the best central candidate at 164/408.
-- It is not one Newton or Halley step from PPND16. On 232 of 341 probe points Excel's own
-  NORM.S.DIST(PPND16(p)) is already exactly p, yet Excel returns a different x on 177 of those.
-- It is not a Newton solve from PPND7, Acklam, Moro or 0 under several stopping rules.
+- The output is often, not always, mirrored: 106 of the 170 (p, 1-p) probe pairs give exactly
+  opposite values, but NORM.S.INV(0.08) is 12 ulp off while NORM.S.INV(0.92) is correctly
+  rounded. The rounding of 1-p explains at most about 2 ulp of that.
+- It is not PPND16's central rational q*A(r)/B(r) by Horner [82], Horner with fused multiply-adds
+  [100] or the ascending power sum [87].
+- It is not statrs/Boost erf_inv, which is the best central candidate [164]; the correctly rounded
+  value gets [126].
+- It is not one Newton or Halley step from PPND16 [85 to 105]. On 232 of 341 probe points Excel's
+  own NORM.S.DIST(PPND16(p)) is already exactly p, yet Excel returns a different x on 177 of those.
+- It is not a Newton solve on 0.5*erfc(-x*sqrt(0.5)) from PPND7, Acklam, Moro or 0, stopping at
+  |dx| <= 1e-15|x| or at dx = 0 [61 to 79].
 - NORM.S.DIST(NORM.S.INV(p)) equals p on only 172 of 341 points.
 Consequence: the best kernel is a hybrid, PPND16 in the tails and statrs centrally. It is bit-exact
 on 775 of 1,024 sweep cells, against 341 for the engine's statrs alone (fit `norm-s-inv`).
-Side finding for T-0968: on the 341 probe points, NORM.S.DIST(x,TRUE) equals
-`0.5*erfc(-x*sqrt(0.5))` (glibc erfc) on 260 of them. The `0.5*erfc(-x/sqrt(2))` form matches 199.
+Side finding for T-0968: NORM.S.DIST(x,TRUE) equals `0.5*erfc(-x*sqrt(0.5))` (glibc erfc) at 260
+of the 341 PPND16(p) points of the probe (column D) and at 240 of Excel's own NORM.S.INV results
+(column B). The `0.5*erfc(-x/sqrt(2))` form matches 199 and 203.
 Input handling seen on the way:
 - `NORM.S.INV(0.9999999999999999)` is PPND16(0.999999999999999). Excel reads the 16-digit
   literal to 15 significant digits.
-- `NORM.S.INV(2.3E-308-1E-309)` is PPND16(2.3E-308). The subnormal operand counts as 0.
+- `NORM.S.INV(2.3E-308-1E-309)` is PPND16(2.3E-308): the subnormal literal 1E-309 counts as 0
+  (numbers.md, "A subnormal divisor is zero"). The difference itself is normal; had it flushed,
+  the result would be #NUM!.
 Evidence: probes-numeric/t1746-norm-s-inv-central (341 literal p over the central region, with
 NORM.S.DIST of each result and of PPND16(p)), m9-norm-s-inv, t1048-normsinv, t1048-norminv. Run
 it with `uv run rustsheet-fitlab norm-s-inv` (`fitlab/kernels/norm_inv.py`).

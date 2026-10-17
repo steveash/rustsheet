@@ -87,4 +87,4 @@ approximation not yet tried (Hart et al., W. J. Cody's ANORM for the CDF directl
 evidence such as a dense ERFC sweep around one x to expose the formulation's error pattern.
 
 ## Lead from T-1746
-On the 341 points of probes-numeric/t1746-norm-s-inv-central, NORM.S.DIST(x,TRUE) equals `0.5*erfc(-x*sqrt(0.5))` (glibc erfc) on 260, against 199 for `0.5*erfc(-x/sqrt(2))` (docs/excel-semantics/statistics.md, "NORM.S.INV is AS 241 PPND16 in the tails"). This is a new hypothesis to test before the task reopens.
+On the 341 points of probes-numeric/t1746-norm-s-inv-central, NORM.S.DIST(x,TRUE) equals `0.5*erfc(-x*sqrt(0.5))` (glibc erfc) at 260 of the PPND16(p) points (240 of Excel's own NORM.S.INV results), against 199 (203) for `0.5*erfc(-x/sqrt(2))` (docs/excel-semantics/statistics.md, "NORM.S.INV is AS 241 PPND16 in the tails"). This is a new hypothesis to test before the task reopens.
