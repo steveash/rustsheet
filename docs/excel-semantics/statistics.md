@@ -321,7 +321,7 @@ PERCENTRANK*, TRIMMEAN, Z.TEST, F.TEST and T.TEST skip text and booleans in a ra
 plain 8-point series on the timeline 1..8 (T-1293). These decide the generator modes in eval/catalog/functions.yaml
 (`value`, `aggregate`, `aggregate_a`, `array`; RANK `ref`, COUNTBLANK and the *IFS ranges are `range`).
 Evidence: probes/stat-argument-modes (573 cells, excel-graph, 2026-10-09, T-1080).
-Ours: LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN lift (T-1772, section below); the other scalar arguments do not (`#N/IMPL!` for an array, `#VALUE!` for a range; T-1290, T-1810); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
+Ours: LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN lift (T-1772, section below); the other scalar arguments do not (`#N/IMPL!` for an array, `#VALUE!` for a range; T-1290, T-1813); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
 `#N/IMPL!`; many distribution values are a few ulps off (the existing accuracy entries above).
 Status: VERIFIED (excel-graph)
 Tasks: T-1080, T-1290, T-1291, T-1292, T-1293
@@ -342,7 +342,7 @@ over "x", TRUE, blank has 2 rows (W18) and element 1 is `#NUM!` (W17); `PERCENTR
 (`LARGE((A1:A4,A5:A8),{1;2})` element 2 is 7, W45). A one-cell range in the lifted argument is its value (`ROWS` 1,
 W20, W43), and a range a function returns lifts (`IF(TRUE,G5:G6)`, W42). A 1x1 array argument (`LARGE(A1:A8,{1})`) is
 unprobed: ours gives a 1x1 array (TYPE 64, where the scalar call is TYPE 1), by analogy with INDEX's 1x1 array
-index (lookup.md "INDEX lifts over array and range indices", probes/index-1x1-array-index, T-1507); T-1810 probes it.
+index (lookup.md "INDEX lifts over array and range indices", probes/index-1x1-array-index, T-1507); T-1813 probes it.
 Evidence: probes/stat-whole-lift W1-W48 (excel-graph, 2026-10-17, T-1772); probes/stat-argument-modes H345-H463,
 H549-H550.
 Ours: matches (T-1772): the data argument is read once by the function's own reader and sorted once per call
@@ -357,7 +357,7 @@ each element averages the kept values); and its result is bounded by the shared 
 `a_sorted_column_against_many_elements_runs_and_the_bound_holds`, which also shows `ROWS(LARGE(A1:A1000000,SEQUENCE(200)))`
 is 200).
 Status: VERIFIED (excel-graph)
-Tasks: T-1772, T-1810
+Tasks: T-1772, T-1813
 
 ## Array arguments given a scalar, a single cell or an error
 Rule: an array argument of the paired and single-array statistical functions takes a plain number or a single cell as an
