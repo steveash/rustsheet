@@ -16,7 +16,7 @@ mod kinds;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use driver::{LiftCost, LiftOptions, LiftedArg};
+pub(crate) use driver::{grid_dims, LiftCost, LiftOptions, LiftedArg};
 pub(crate) use kinds::{lifting_table_functions, ArgKind, ArgKinds};
 
 use crate::{

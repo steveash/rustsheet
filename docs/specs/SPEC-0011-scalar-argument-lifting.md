@@ -238,8 +238,8 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
    W19-W20, W26) (T-1801).
 3. **Answered.** Later ATP arguments are refused like the probed ones (PRICE, COUP*, ACCRINT, CONVERT,
    COMPLEX, IM*, DOLLARDE/FR; -a Y1-Y18), and so are QUOTIENT, FACTDOUBLE and SERIESSUM's x, n, m
-   (-a Y19-Y21, Y24-Y26): they refuse a range, but whether they lift over an array is unprobed
-   (T-1802 probes it before entering them). GCD and LCM give one result (ROWS 1), as MULTINOMIAL does, whose value
+   (-a Y19-Y21, Y24-Y26): they refuse a range, and they lift over an array (probes/math-atp-array-lift
+   and -b, T-1802). GCD and LCM give one result (ROWS 1), as MULTINOMIAL does, whose value
    was probed (-d W30); SERIESSUM's coefficients is read whole (-a Y22-Y23, Y27-Y30).
 4. **Answered, with a limit.** `=EDATE({45000;45031},A1:A60)` spills 2 rows, as the static shape says
    (-a AA3, AC3). FORMULATEXT carries no marker, so how Excel saves it needs the file (M14).
