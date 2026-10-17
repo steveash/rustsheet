@@ -5,7 +5,7 @@ milestone: M7
 lane: functions-lookup
 status: todo
 priority: P2
-size: S
+size: M
 tier: opus
 depends_on: [T-1770]
 spec: docs/specs/SPEC-0011-scalar-argument-lifting.md

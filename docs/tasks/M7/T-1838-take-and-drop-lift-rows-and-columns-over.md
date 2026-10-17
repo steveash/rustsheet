@@ -26,6 +26,8 @@ Owned cells, probes/m7-argument-modes (T-1083, excel-graph, 2026-10-09; arrays.m
 - K1 `=ROWS(INDEX(TAKE(A1:B3,{1;2}),1,1))` 1; K2 `=COLUMNS(INDEX(TAKE(A1:B3,{1;2}),1,1))` 2.
 - K3 `=ROWS(INDEX(DROP(A1:B3,{1;2}),1,1))` 2; K4 `=COLUMNS(INDEX(DROP(A1:B3,{1;2}),1,1))` 2.
 
+If T-1833's design needs a new `ArrayNode` variant (INDEX, ROWS, COLUMNS or the spill path changing too), split this task further before implementing it.
+
 ## Acceptance criteria
 - [ ] probes/m7-argument-modes F4:H4, I4, F5:H5, I5, F6:H6 and K1-K4 pass; their lines leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failures.
 - [ ] TAKE and DROP have table entries citing those cells; their fallback arms are gone (`no_function_in_the_table_has_a_fallback_arm` passes).

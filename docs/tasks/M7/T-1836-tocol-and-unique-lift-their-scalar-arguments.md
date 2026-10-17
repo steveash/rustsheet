@@ -29,6 +29,8 @@ Owned cells:
   - gen-m9/1782efcecd5d4b1b Calc!A19 `=TOCOL(Data!C8:D11,HSTACK(Data!E5:E6),..)` (ignore over a 2x1 array): Excel `#SPILL!`, ours `#N/IMPL!`.
   - gen-m9/4df1b22d3ed63f58 Calc!A36 `=UNIQUE(Data!A6:D10,INDEX(Data!D4:D10,0))` (by_col over a 7-cell range): Excel `#SPILL!`, ours `#VALUE!`.
 
+Parameters not yet probed lift only where T-1833's per-parameter list marks them `Lift` (it decides which need a probe first).
+
 ## Acceptance criteria
 - [ ] probes/m7-argument-modes F9:H9, K8 and F12:H12 pass; F54:H54 and K14-K16 still pass.
 - [ ] gen-m9/1782efcecd5d4b1b A19 and gen-m9/4df1b22d3ed63f58 A36 pass, with no new failing gen-m9 cell.

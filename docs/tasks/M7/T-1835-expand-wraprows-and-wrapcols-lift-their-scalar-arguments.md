@@ -27,6 +27,8 @@ Owned cells:
   - K5 `=ROWS(INDEX(EXPAND(A1:A2,{3;4}),1,1))` 1; K6 `=ROWS(INDEX(WRAPROWS(A1:A3,{1;2}),1,1))` 1; K7 `=COLUMNS(INDEX(WRAPROWS(A1:A3,{1;2}),2,1))` 1.
 - gen-m7/6db767d720c5b55a Calc!A12 `=WRAPCOLS(Data!D3:D3,UNIQUE(Data!B3:E4,SWITCH(..)))` (wrap_count is UNIQUE's 2-D array): Excel `#SPILL!`, ours `#N/IMPL!` (T-1275, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/6db767d720c5b55a.case.json`).
 
+Parameters not yet probed lift only where T-1833's per-parameter list marks them `Lift` (it decides which need a probe first).
+
 ## Acceptance criteria
 - [ ] probes/m7-argument-modes F7:H7, F8:H8, G42 and K5-K7 pass, and F42, H42 still pass.
 - [ ] gen-m7/6db767d720c5b55a A12 passes, with no new failing gen-m7 cell.

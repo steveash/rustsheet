@@ -27,6 +27,8 @@ Owned cells, probes/m7-argument-modes (T-1083, excel-graph, 2026-10-09; docs/exc
 - K9 `=ROWS(INDEX(SEQUENCE({1;2;3}),3,1))` 1; K10 `=ROWS(INDEX(MAKEARRAY(A1:A2,2,LAMBDA(r,c,r+c)),2,1))` 1.
 G1 and H1 pass today and must keep passing; so must F53:H53 (`SEQUENCE(0)` is `#CALC!`) and F48:H48 (`MAKEARRAY(2,2,SUM)`).
 
+Parameters not yet probed lift only where T-1833's per-parameter list marks them `Lift` (it decides which need a probe first).
+
 ## Acceptance criteria
 - [ ] The probes/m7-argument-modes cells F1, F2:H2, F3:H3, F23:H23, K9 and K10 pass; their lines leave eval/baseline/probes.txt (`make eval-baseline`), and no other cell regresses.
 - [ ] SEQUENCE and MAKEARRAY have table entries citing those cells; their `fallback_signature`/`fallback_shape` arms are gone and `no_function_in_the_table_has_a_fallback_arm` passes.
