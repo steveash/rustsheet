@@ -127,5 +127,7 @@
   functions' fallback arms deleted: the lifting table derives them), and functions/date_and_time.rs
   1018 → 1014 (already 1014 lines on main; the update tightened a stale entry)
   (`check_file_size.py --update`).
+  T-1384: duplicated lines 5084 → 5062 (IMSUM and IMPRODUCT share one fold over SPEC-0009's walker
+  instead of their two-argument readers) (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

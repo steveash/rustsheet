@@ -537,6 +537,12 @@ fn engineering_legacy_ranges_follow_the_table() {
             "CONVERT(1,P1:P60,\"ft\")",
         ),
         ("IMABS(A1:A60+0)", "IMABS(@A1:A60+0)", "IMABS(A1:A60+0)"),
+        // IMSUM and IMPRODUCT read their arguments whole (`WholeByCaller`, T-1384).
+        (
+            "IMSUM(A1:A60,B1:B60)",
+            "IMSUM(A1:A60,B1:B60)",
+            "IMSUM(A1:A60,B1:B60)",
+        ),
         (
             "BITAND(A1:A60,1)",
             "BITAND(@A1:A60,1)",
@@ -580,6 +586,15 @@ fn engineering_static_shapes_follow_the_table() {
         StaticResult::Array(1, 2)
     ));
     assert!(matches!(shape("DELTA({1;2;3})"), StaticResult::Array(3, 1)));
+    // IMSUM and IMPRODUCT fold their arguments into one value (T-1384).
+    assert!(matches!(
+        shape("IMSUM({\"1\";\"2\"},\"1-2i\")"),
+        StaticResult::Scalar
+    ));
+    assert!(matches!(
+        shape("IMPRODUCT(A1:A3,{1,2})"),
+        StaticResult::Scalar
+    ));
 }
 
 // SPEC-0011 for the financial functions (T-1372): a core worksheet function's argument is `Lift`,
