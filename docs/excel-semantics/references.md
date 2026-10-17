@@ -1733,14 +1733,14 @@ spelling (`x1y`, `Xyz2`, `_Foo`, `Foo_`), except `=Ab1(1)` (cell-reference-shape
 whether a later edit can re-spell a name is unprobed.
 Ours (T-1719): a workbook-level registry (`CallNameSpellings`, lowercase name → first spelling) gives
 every stored formula's free callee the registered spelling, on load in sheet and shared-formula
-order and on each edit; a callee bound by an enclosing LET or LAMBDA takes none and prints lowercase
-as before. The harness sets a spec case's cells row by row so the first-met order matches the xlsx.
+order and on each edit; a callee bound by an enclosing LET or LAMBDA takes none and prints the spelling of its
+declaration (T-1720, T-1761). The harness sets a spec case's cells row by row so the first-met order matches the xlsx.
 Reach (excel-graph, 2026-10-17, T-1756, probes/unknown-function-name-reach):
 - A call of a defined LAMBDA name prints the defined name's spelling, not the first typed one:
   `OtherFn` defined, `=otherfn(1)` then `=OTHERFN(1)` both print `=OtherFn(1)`. Ours prints the first typed spelling (T-1763).
 - A callee bound by an enclosing LET or LAMBDA prints the binding's spelling
   (LET, whatever case the call used: `=LET(Gg,LAMBDA(x,x*2),gG(3))` prints `Gg(3)`; LAMBDA, same-case call only probed:
-  `=LAMBDA(Hh,Hh(1))(LAMBDA(x,x))` keeps `Hh`). Ours prints lowercase (T-1761).
+  `=LAMBDA(Hh,Hh(1))(LAMBDA(x,x))` keeps `Hh`). Ours matches (T-1720 respells every bound use to its declaration).
 - An unknown name used as a value shares the table with unknown callees, in either order: `=Qux+1` then
   `=qux(1)` prints `=Qux(1)`; `=wib(1)` then `=Wib+1` prints `=wib+1`. Ours keeps values out of the table (T-1760).
 - Cross-sheet: the first spelling in sheet order wins (`=Zed(1)` on Sheet1, `=ZED(1)`/`=zed(2)` on Sheet2 print

@@ -3,7 +3,7 @@ id: T-1761
 title: "A LET/LAMBDA-bound callee prints the binding's spelling in FORMULATEXT"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Excel: `=LET(Gg,LAMBDA(x,x*2),gG(3))` prints `...,Gg(3))` and `=LAMBDA(Hh,Hh(1))
 
 ## Out of scope
 - Other cells of probes/unknown-function-name-reach.
+
+## Outcome
+Done by T-1720: bound names, called or used, print in the spelling of their declaration. Sheet1!B5 and B7 of probes/unknown-function-name-reach now pass.
