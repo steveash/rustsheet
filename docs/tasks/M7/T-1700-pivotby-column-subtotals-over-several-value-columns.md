@@ -3,7 +3,7 @@ id: T-1700
 title: "PIVOTBY column subtotals over several value columns"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: blocked
 priority: P3
 size: S
 tier: opus
@@ -34,3 +34,13 @@ cells are in pivotby.rs (`Slot::Subtotal`, `Model::grid_row`).
 
 ## Out of scope
 -
+
+## Blocked because
+The rule is not found yet (opus run, 2026-10-17). probes/pivotby-col-subtotals-values (12 shapes, excel-graph, ARRAYTOTEXT
+shows each cell's records and value column) narrows it down, recorded in docs/excel-semantics/arrays.md under the T-1700
+quirk: single-child parents take their child's last value column in their first subtotal column, one parent (index
+floor(parents / values) so far) shows Grand Total columns in its other subtotal columns, everything else is `""`. A brute
+force over linear index formulas (leaf cells group- or value-major, ranges and single cells, the positive-depth layout
+with subtotal lines) found none that fits. Next: probe more parents (8-10, all single-child) with 2, 3 and 4 values to
+pin down which parent and which value the Grand Total cells land on, and four values to see whether a single-child
+parent's later columns stay `""`; then try a model where the value index is an extra innermost column key.
