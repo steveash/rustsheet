@@ -97,6 +97,8 @@ impl Model {
         let locale = self.locale;
         let language = self.language;
 
+        self.call_name_spellings
+            .set_defined_names(&self.workbook.defined_names);
         self.parser.set_locale(get_default_locale());
         self.parser.set_language(get_default_language());
         self.parser.set_lexer_mode(LexerMode::R1C1);
@@ -115,10 +117,7 @@ impl Model {
                 // The list keeps the workbook's spelling of each called name, as a typed formula
                 // stores it (`shared_formula_index`); the sheets are read in order, and each list
                 // in the order its formulas were first met.
-                if self
-                    .call_name_spellings
-                    .apply(&mut t, &self.workbook.defined_names)
-                {
+                if self.call_name_spellings.apply(&mut t) {
                     *formula = to_rc_format(&t);
                 }
                 let static_result = run_static_analysis_on_node(&t);

@@ -2400,7 +2400,7 @@ impl Model {
         mut parsed_formula: Node,
         static_result: StaticResult,
     ) -> Result<i32, String> {
-        self.respell_call_names(&mut parsed_formula);
+        self.call_name_spellings.apply(&mut parsed_formula);
         let text = to_rc_format(&parsed_formula);
         let sheet_index = sheet as usize;
         let shared_formulas = &mut self.workbook.worksheet_mut(sheet)?.shared_formulas;

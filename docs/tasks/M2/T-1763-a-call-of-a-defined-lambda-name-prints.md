@@ -24,4 +24,4 @@ Excel: `OtherFn` defined, `=otherfn(1)` then `=OTHERFN(1)` both print `=OtherFn(
 - Other cells of probes/unknown-function-name-reach.
 
 ## Outcome
-`CallNameSpellings::apply` takes the workbook's defined names; a free callee matching one (case-insensitively) prints the defined name's spelling. B20 and B21 of probes/unknown-function-name-reach now pass (baseline: two failures fewer, 0 regressions). Defined names used as values and name scope are unprobed.
+`CallNameSpellings::apply` takes the workbook's defined names; a free callee matching one (case-insensitively) prints the defined name's spelling. B20 and B21 of probes/unknown-function-name-reach now pass (baseline: two failures fewer, 0 regressions). `CallNameSpellings` keeps a hash map of the defined names, rebuilt in `parse_formulas`. Defined names used as values, name scope (ours ignores it) and the ß/SS fold against defined names are unprobed.
