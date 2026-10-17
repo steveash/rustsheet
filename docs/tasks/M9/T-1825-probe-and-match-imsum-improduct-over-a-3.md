@@ -25,6 +25,10 @@ arguments whole"). Three forms have no oracle evidence, and ours are guesses:
 Probe them in one case with the excel-probe skill, record the answers in engineering.md and match them.
 
 ## Acceptance criteria
+- [ ] The probe also pins the boolean refusal T-1384 inferred for unprobed arguments: IMDIV's first,
+  IMAGINARY, IMARGUMENT, IMCOSH, IMCOT, IMCSC, IMCSCH, IMEXP, IMLN, IMLOG10, IMLOG2, IMSEC, IMSECH,
+  IMSIN, IMSINH, IMTAN, and COMPLEX's `i_num` (`COMPLEX(1,TRUE)`, a TRUE cell); engineering.md
+  drops its "Unprobed" line for whatever passes.
 - [ ] The new probe case passes, with no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
