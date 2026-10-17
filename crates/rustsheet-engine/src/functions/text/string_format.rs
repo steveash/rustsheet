@@ -302,12 +302,12 @@ fn replace_element(
     Ok(ArrayNode::String(result))
 }
 
-/// Excel's per-character case mapping for PROPER: the simple (one-to-one) mapping only, so ß, ŉ,
+/// Excel's per-character case mapping for PROPER, UPPER and LOWER: the simple (one-to-one) mapping only, so ß, ŉ,
 /// ǰ and the ﬁ ligatures keep their form where Rust would expand them ("SS", "ʼN"); İ folds to
 /// ASCII I (upper) and i (lower), and ΐ, ΰ upper-case to Ϊ, Ϋ (probes/clean-proper-chars
 /// D4, D14:D18, D23:D24). UPPER and LOWER use the same mapping (probes/case-mapping-expanding
 /// A1:C13).
-pub(super) fn simple_case(c: char, upper: bool) -> char {
+fn simple_case(c: char, upper: bool) -> char {
     match (c, upper) {
         ('İ', true) => 'I',
         ('İ', false) => 'i',
