@@ -3,7 +3,7 @@ id: T-1290
 title: "Statistical functions whose arguments are all scalar lift over arrays and ranges (probes/stat-argument-modes)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
