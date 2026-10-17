@@ -16,7 +16,7 @@ are `#N/A` past a shorter array: `IFS({TRUE,FALSE,TRUE},{1,2},TRUE,0)` is 1, 0, 
 `SWITCH({1;2},{1,2},"m","n")` is m, n; n, m.
 Implemented in: parser/static_analysis.rs (`Function::Ifs`, `Function::Switch` are `Unknown`);
 `fn_ifs` (functions/logical/mod.rs) lifts from the first array or range condition and `fn_switch`
-(functions/logical/switch.rs) over an array or range expression, both through `lift_with_cost`
+(functions/logical/switch.rs) over an array or range expression, both through `lift_values` (functions/lift/driver.rs)
 (T-0276). Tests: test/test_ifs_switch_lift.rs.
 
 ## XOR argument modes
