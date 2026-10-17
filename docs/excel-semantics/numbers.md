@@ -1334,6 +1334,9 @@ Ours: implemented (T-1802): QUOTIENT and FACTDOUBLE are `LiftArrays` entries of 
 `x`, `n`, `m` too with its coefficients `WholeByCaller` (read once by `series_coefficients`, each element charged their
 cells); MULTINOMIAL, GCD and LCM have no entry. Before T-1802 FACTDOUBLE read a boolean as 1 or 0 and lifted over a range,
 and QUOTIENT and SERIESSUM's `x`, `n`, `m` intersected a range and were `#N/IMPL!` over an array.
+Unprobed for these three functions (T-1832), taken from the arrays.md Analysis ToolPak rule (EDATE, WEEKNUM,
+EOMONTH, YEARFRAC): a 3-D range in QUOTIENT, FACTDOUBLE or SERIESSUM's `x`, `n`, `m` is `#VALUE!` (FACTDOUBLE gave
+`#ERROR!` before), and a legacy bare range gets no `@`. `SERIESSUM(2,0,1,Sheet1:Sheet2!A1)` is `#REF!` in ours.
 Status: VERIFIED (excel-graph)
 Tasks: T-1777, T-1802
 
