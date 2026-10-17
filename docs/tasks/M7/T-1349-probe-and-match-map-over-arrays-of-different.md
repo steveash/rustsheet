@@ -3,7 +3,7 @@ id: T-1349
 title: "Probe and match MAP over arrays of different sizes or a single value with an array (#VALUE! today)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
