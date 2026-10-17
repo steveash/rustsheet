@@ -70,6 +70,43 @@ impl Model {
     ) -> Result<f64, CalcResult> {
         let out_of_range =
             || CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
+        // Skip whole weeks first so large day counts cost O(holidays), not O(days). The skip stops
+        // short of the target and of the range limits, so the loop below still yields the same
+        // result and the same range errors.
+        let per_week = 7 - weekend_mask.iter().filter(|&&w| w).count() as i64;
+        loop {
+            let weeks = (i64::from(days.unsigned_abs()) - 1).max(0) / per_week;
+            if weeks == 0 {
+                break;
+            }
+            let forward = days > 0;
+            let from = i64::from(date.num_days_from_ce() - EXCEL_DATE_BASE);
+            let to = if forward {
+                from + 7 * weeks
+            } else {
+                from - 7 * weeks
+            };
+            if to >= i64::from(MAXIMUM_DATE_SERIAL_NUMBER)
+                || to <= i64::from(MINIMUM_DATE_SERIAL_NUMBER)
+            {
+                break;
+            }
+            let (lo, hi) = if forward {
+                (from + 1, to)
+            } else {
+                (to, from - 1)
+            };
+            let skipped_holidays = holidays
+                .iter()
+                .filter(|h| {
+                    let serial = i64::from(h.num_days_from_ce() - EXCEL_DATE_BASE);
+                    (lo..=hi).contains(&serial) && !Self::is_weekend(h.weekday(), weekend_mask)
+                })
+                .count() as i64;
+            let consumed = i32::try_from(per_week * weeks - skipped_holidays).unwrap_or(0);
+            days += if forward { -consumed } else { consumed };
+            date += chrono::Duration::days(to - from);
+        }
         while days != 0 {
             if days > 0 {
                 if date.num_days_from_ce() - EXCEL_DATE_BASE >= MAXIMUM_DATE_SERIAL_NUMBER {

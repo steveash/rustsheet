@@ -33,3 +33,25 @@ fn arguments() {
     assert_eq!(model._get_text("B5"), *"46007");
     assert_eq!(model._get_text("B6"), *"#ERROR!");
 }
+
+#[test]
+fn whole_week_skipping() {
+    // 46000 is a Tuesday; 1000 workdays at 5 per week is exactly 200 weeks.
+    let mut model = new_empty_model();
+    model._set("A1", "=WORKDAY(46000, 1000)");
+    model._set("A2", "=WORKDAY(46000, 1000, 46100)");
+    model._set("A3", "=WORKDAY(46000, -1000)");
+    model._set("A4", "=WORKDAY(46000, 1000, 46103)");
+    model._set("A5", "=WORKDAY.INTL(46000, 2000000, 11)");
+    model._set("A6", "=WORKDAY.INTL(46000, 4000000, 11)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"47400");
+    // 46100 is a Thursday inside the span: one extra workday.
+    assert_eq!(model._get_text("A2"), *"47401");
+    assert_eq!(model._get_text("A3"), *"44600");
+    // 46103 is a Sunday: no effect.
+    assert_eq!(model._get_text("A4"), *"47400");
+    assert_eq!(model._get_text("A5"), *"2379333");
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+}
