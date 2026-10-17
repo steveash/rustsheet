@@ -9,25 +9,35 @@ use crate::test::util::new_empty_model;
 /// `MAX_FORMULA_DEPTH`, the innermost `1` included (expressions/parser/depth.rs).
 const MAX_NESTING: usize = MAX_FORMULA_DEPTH / 2 - 1;
 
-fn nested(open: &str, close: &str, levels: usize) -> String {
-    format!("={}1{}", open.repeat(levels), close.repeat(levels))
+fn nested(open: &str, inner: &str, close: &str, levels: usize) -> String {
+    format!("={}{inner}{}", open.repeat(levels), close.repeat(levels))
 }
 
 /// Sets A1 to the deepest nesting of `open`..`close` the parser accepts, evaluates it on a thread
 /// with a 2 MiB stack and returns A1's text and the levels accepted. An operator in `open` costs a
 /// level of its own, so shapes reach different depths.
 fn deepest_on_2_mib_stack(open: &'static str, close: &'static str) -> Option<(usize, String)> {
+    let (accepted, mut texts) = deepest_with_inner_on_2_mib_stack(open, "1", close)?;
+    Some((accepted, texts.swap_remove(0)))
+}
+
+/// [`deepest_on_2_mib_stack`] around `inner` instead of `1`; returns the texts of A1 and A2.
+fn deepest_with_inner_on_2_mib_stack(
+    open: &'static str,
+    inner: &'static str,
+    close: &'static str,
+) -> Option<(usize, Vec<String>)> {
     let handle = std::thread::Builder::new()
         .stack_size(2 << 20)
         .spawn(move || {
             let mut model = new_empty_model();
             let accepted = (1..=MAX_NESTING).rev().find(|&levels| {
                 model
-                    .set_user_input(0, 1, 1, nested(open, close, levels))
+                    .set_user_input(0, 1, 1, nested(open, inner, close, levels))
                     .is_ok()
             })?;
             model.evaluate();
-            Some((accepted, model._get_text("A1")))
+            Some((accepted, vec![model._get_text("A1"), model._get_text("A2")]))
         })
         .ok()?;
     handle.join().ok()?
@@ -54,6 +64,17 @@ fn formulas_at_the_nesting_limit_evaluate_on_a_2_mib_stack() {
         let text = evaluate_deepest_on_2_mib_stack(open, close);
         assert_eq!(text.as_deref(), Some("1"), "{open}");
     }
+}
+
+/// SPEC-0011 (T-1770): a lifted call through the driver at every level,
+/// `EDATE(EDATE(…{45000;45031}…,0),0)`, evaluates at the parser's limit on a 2 MiB stack and
+/// spills both elements.
+#[test]
+fn nested_lifted_edate_at_the_nesting_limit_evaluates_on_a_2_mib_stack() {
+    let deepest = deepest_with_inner_on_2_mib_stack("EDATE(", "{45000;45031}", ",0)");
+    let (accepted, texts) = deepest.unwrap_or_default();
+    assert!(accepted > 64, "EDATE: {accepted}");
+    assert_eq!(texts, vec!["45000".to_string(), "45031".to_string()]);
 }
 
 /// SPEC-0007: a call and a written group alternating, `SUM((SUM((…))))`, so every level is a

@@ -429,3 +429,88 @@ fn legacy_index_array_indices_intersect_and_export_unchanged() {
         ),
     ]);
 }
+
+// SPEC-0011: the lifting table decides the legacy `@`. EDATE, EOMONTH, WEEKNUM and YEARFRAC are
+// `LiftArrays`: a bare range keeps its text (Excel shows legacy `=EDATE(A1:A60,1)` and
+// `=YEARFRAC(A1:A60,46000)` as typed), a value operation on the range gets the `@` of an
+// aggregate's argument (`=EDATE(@A1:A60+0,1)`), and an explicit `@` is kept on export
+// (probes/scalar-lift-shapes-c E-H, P-S; -shapes J2).
+#[test]
+fn lift_arrays_arguments_get_no_at_on_a_bare_range() {
+    check(&[
+        ("EDATE(A1:A60,1)", "EDATE(A1:A60,1)", "EDATE(A1:A60,1)"),
+        (
+            "YEARFRAC(A1:A60,46000)",
+            "YEARFRAC(A1:A60,46000)",
+            "YEARFRAC(A1:A60,46000)",
+        ),
+        (
+            "EOMONTH(45000,B1:B60)",
+            "EOMONTH(45000,B1:B60)",
+            "EOMONTH(45000,B1:B60)",
+        ),
+        (
+            "WEEKNUM(A1:A60,B1:B60)",
+            "WEEKNUM(A1:A60,B1:B60)",
+            "WEEKNUM(A1:A60,B1:B60)",
+        ),
+        (
+            "EDATE(A1:A60+0,1)",
+            "EDATE(@A1:A60+0,1)",
+            "EDATE(A1:A60+0,1)",
+        ),
+        (
+            "EDATE(45000,M1:M60*1)",
+            "EDATE(45000,@M1:M60*1)",
+            "EDATE(45000,M1:M60*1)",
+        ),
+        (
+            "EDATE(_xlfn.SINGLE(A1:A60),1)",
+            "EDATE(@A1:A60,1)",
+            "EDATE(_xlfn.SINGLE(A1:A60),1)",
+        ),
+        // Under SUMPRODUCT nothing is intersected (-shapes J6, J7).
+        (
+            "SUMPRODUCT(EDATE(A1:A60,1))",
+            "SUMPRODUCT(EDATE(A1:A60,1))",
+            "SUMPRODUCT(EDATE(A1:A60,1))",
+        ),
+    ]);
+}
+
+// The static shape of a `LiftArrays` call: an array argument adds its shape, a bare range none
+// (SPEC-0011 Test plan).
+#[test]
+fn lift_arrays_static_shapes_come_from_arrays_only() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let shape = |parser: &mut crate::expressions::parser::Parser, formula: &str| {
+        run_static_analysis_on_node(&parser.parse(formula, &cell_reference))
+    };
+    assert!(matches!(
+        shape(&mut parser, "EDATE({1;2},A1:A3)"),
+        StaticResult::Array(2, 1)
+    ));
+    assert!(matches!(
+        shape(&mut parser, "EDATE(A1:A3,1)"),
+        StaticResult::Scalar
+    ));
+    assert!(matches!(
+        shape(&mut parser, "YEARFRAC(1,{2,3,4},A1:A3)"),
+        StaticResult::Array(1, 3)
+    ));
+    assert!(matches!(
+        shape(&mut parser, "EDATE(A1:A3+0,1)"),
+        StaticResult::Array(3, 1)
+    ));
+    assert!(matches!(
+        shape(&mut parser, "EDATE(1)"),
+        StaticResult::Scalar
+    ));
+}

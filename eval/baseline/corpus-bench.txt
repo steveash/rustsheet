@@ -156,7 +156,6 @@ F	corpus-bench/1726/1_1726_input.xlsx	*
 F	corpus-bench/38655/1_38655_input.xlsx	*
 F	corpus-bench/41978/1_41978_input.xlsx	!Timeout
 F	corpus-bench/42181/1_42181_input.xlsx	*
-F	corpus-bench/45738/1_45738_input.xlsx	*
 F	corpus-bench/47766/1_47766_input.xlsx	*
 F	corpus-bench/49036/1_49036_input.xlsx	*
 F	corpus-bench/49278/1_49278_input.xlsx	*
