@@ -98,5 +98,7 @@
   T-1623: functions below the evidence floor 34 → 27 (SKEW.P, STANDARDIZE, SUMX2PY2, SUMXMY2, SUMX2MY2, MDETERM and
   ECMA.CEILING reach ≥ 20 Excel cells through probes/stats-evidence-floor-t1623; SKEW, KURT and HARMEAN were already
   above the floor; decision 0062) (`make eval-baseline`).
+  T-1624: functions below the evidence floor 27 → 21 (RECEIVED, YIELDDISC, PRICEDISC, INTRATE, PRICEMAT and YIELDMAT
+  reach ≥ 20 Excel cells through probes/discount-security-modes; decision 0062) (`make eval-baseline`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
