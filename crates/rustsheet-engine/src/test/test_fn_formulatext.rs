@@ -142,6 +142,22 @@ fn an_unknown_call_name_keeps_the_first_spelling_met() {
 }
 
 #[test]
+fn an_unknown_name_used_as_a_value_shares_the_call_name_spelling() {
+    // Either order: the first spelling met wins (probes/unknown-function-name-reach B9/B11, T-1760).
+    let mut model = new_empty_model();
+    model._set("A1", "=Qux+1");
+    model._set("A2", "=qux(1)");
+    model._set("A3", "=wib(1)");
+    model._set("A4", "=Wib+1");
+    model.evaluate();
+
+    assert_eq!(model._get_formula("A1"), "=Qux+1");
+    assert_eq!(model._get_formula("A2"), "=Qux(1)");
+    assert_eq!(model._get_formula("A3"), "=wib(1)");
+    assert_eq!(model._get_formula("A4"), "=wib+1");
+}
+
+#[test]
 fn a_reload_keeps_the_spelling_of_an_unknown_call_name() {
     let mut model = new_empty_model();
     model._set("A1", "=Foo(1)");
