@@ -120,7 +120,7 @@ QUOTIENT, FACTDOUBLE and SERIESSUM's x, n, m are `#VALUE!` too, while MULTINOMIA
 (Y19-Y30). See arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak
 range rule".
 
-IMSUM and IMPRODUCT take their arguments whole:
+IMSUM and IMPRODUCT take their arguments whole (the section below has the full rule):
 - A range or array literal is folded into the result, not lifted: `IMSUM({"1+2i","3"})` and
   `IMSUM(M1:M2)` are "4+2i", and `ROWS(IMSUM({"1+2i";"3"}))` is 1.
 - A blank cell is 0. `IMPRODUCT(M1:M3)` with M3 blank is "0".
@@ -131,7 +131,13 @@ IMSUM and IMPRODUCT take their arguments whole:
 Typed coercion follows the ToolPak rule:
 - Numeric text is read: `BIN2DEC("101")` is 5, `DEC2BIN("9")` is "1001", and `BITAND("13",25)`,
   `CONVERT("2.5","m","ft")`, `ERF("0.5")` and `BESSELJ("2.5",1)` all work.
-- A boolean is `#VALUE!`: `BIN2DEC(TRUE)`, `DEC2BIN(TRUE)`, `IMABS(TRUE)` and `DELTA(TRUE,1)`.
+- A boolean is `#VALUE!`: `BIN2DEC(TRUE)`, `DEC2BIN(TRUE)`, `IMABS(TRUE)` and `DELTA(TRUE,1)`. Every IM*
+  argument refuses one, typed, in a cell or as an array element, and so does COMPLEX's `real_num`
+  (probes/eng-imsum-improduct-whole C1-C15: IMREAL, IMSUB's both arguments, IMDIV's second, IMPOWER's both,
+  IMCOS, IMCONJUGATE, IMSQRT and IMABS of a TRUE cell, `INDEX(IMREAL({TRUE;"3"}),1)`, `COMPLEX(TRUE,1)`).
+  Unprobed, inferred from the shared parse path (T-1828): IMDIV's first argument, IMAGINARY, IMARGUMENT,
+  IMCOSH, IMCOT, IMCSC, IMCSCH, IMEXP, IMLN, IMLOG10, IMLOG2, IMSEC, IMSECH, IMSIN, IMSINH, IMTAN, and
+  COMPLEX's `i_num`. The 255-argument limit of IMSUM and IMPRODUCT is Excel's documented one, not probed.
 - A number is read as its digits: `IMABS(3)` is 3, and `HEX2DEC(255)` is 597 (0x255).
 - COMPLEX's suffix is case-sensitive: `COMPLEX(3,4,"I")` is `#VALUE!`.
 - Non-complex text is `#NUM!` (`IMSUB("x","1")`), and a number cell is a real number (`IMDIV("3+4i",M2)` with M2 = 3 is
@@ -147,12 +153,45 @@ Ours:
 - Matches the argument modes (T-1383): every engineering function but IMSUM and IMPRODUCT is in the SPEC-0011 lifting
   table, BIT* as `Lift` and the rest as `LiftArrays`.
 - DEC2BIN's and DELTA's error order inside an element (above, T-1816).
-- IMSUM and IMPRODUCT are `#ERROR!` on any range or array. Booleans give `#NUM!`, and some text cases
-  that should be `#NUM!` give `#VALUE!` (T-1384).
+- IMSUM and IMPRODUCT match (T-1384, the section below).
 - IMCOT, IMSECH and IMTAN of "3+4i" are off in the last printed digit (T-0907).
 
 Status: VERIFIED (excel-graph)
 Tasks: T-1085, T-1383, T-1384, T-0907, T-1816
+
+## IMSUM and IMPRODUCT take their arguments whole
+Rule: IMSUM and IMPRODUCT (1 to 255 arguments) fold every value their arguments hold, in argument order and
+row-major order inside a range or array, and the first bad item is the result.
+- A range, a reference a function returns (`IMSUM(IF(TRUE,M1:M2))` is "4+2i") and an array give each of their
+  cells; nothing lifts, so the call is one value. A union is `#VALUE!` (`IMSUM((M1,M6))`).
+- A blank cell is 0, also one past the used area: `IMPRODUCT(M1:M2,Q1:Q3)` is "0" and `IMSUM(M1:M2,Q1:Q3)` "4+2i".
+  An empty argument is skipped, not 0: `IMPRODUCT(M1,)` is "1+2i".
+- Empty text is `#NUM!`, typed (`IMSUM(M1,"")`), from a formula (M9 `=""`) and in an array
+  (`IMPRODUCT({"1+2i",""})`), unlike the one-argument IM* functions that read it as 0.
+- The first bad item wins, whatever its kind: `IMSUM(M5,M4)` ("x", TRUE) is `#NUM!` and `IMSUM(M4,M5)` `#VALUE!`;
+  `IMSUM(M5,M7)` is `#NUM!` and `IMSUM(M7,M5)` `#DIV/0!` (M7 `=1/0`); `IMSUM({"x",TRUE})` is `#NUM!` and
+  `IMSUM("x",NA())` `#NUM!`. A blank does not stop the walk: `IMPRODUCT(M1:M3,M5)` is `#NUM!`.
+- Different suffixes are `#VALUE!`: `IMSUM("1+2i","3+4j")` (where IMSUB and IMDIV give `#NUM!`, T-1625 probes).
+- A number is a real part (`IMSUM({1,2;3,4})` is "10"), and one cell is its value (`IMPRODUCT(M2)` is "3").
+Evidence: probes/eng-argument-modes A60-A83, B/C/E42, B/C/E50 (excel-graph, 2026-10-11, T-1085);
+probes/eng-imsum-improduct-whole B1-B28 (excel-graph, 2026-10-17, T-1384). The data is M1 "1+2i", M2 3, M3 blank,
+M4 TRUE, M5 "x", M6 "2-i", M7 `=1/0`, M8 "3+4j", M9 `=""`.
+Unprobed: a 3-D reference (ours `#VALUE!`, as a union), a real number next to a `j` number (ours `#VALUE!`: a real
+reads as an `i` number), a call whose arguments hold no number at all (ours "0") (T-1828).
+Status: VERIFIED (excel-graph)
+Implemented in: `fold_complex` in functions/engineering/complex.rs (T-1384)
+Tasks: T-1384, T-1828
+
+## IMSUM and IMPRODUCT read cap
+Rule: RustSheet stops an IMSUM or IMPRODUCT call with `#ERROR!` once the cells its ranges walk and the elements of its
+arrays add up to more than 2^27 (`MAX_LIFTED_CELL_VISITS`), before it walks the range that passes the cap, to bound
+per-cell work on untrusted input (CLAUDE.md directive 5). A whole column or row counts only up to the sheet's used
+area, so `IMSUM(A:A)` reads only the data; `IMSUM(XA1:XFD1048576)` (2^28 cells) is `#ERROR!` on any sheet, where
+Excel walks it.
+Evidence: none needed for the cap, a resource limit; Excel has none.
+Status: DEVIATION (decision 0014)
+Implemented in: `fold_complex` in functions/engineering/complex.rs (T-1384)
+Tasks: T-1384
 
 ## OCT2BIN of a blank cell is 0
 Rule: `OCT2BIN(E5,2)` with E5 blank is "00": a blank cell is the number 0. The other X2Y conversions of a blank cell,
