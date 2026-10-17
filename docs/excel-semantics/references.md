@@ -1737,7 +1737,7 @@ order and on each edit; a callee bound by an enclosing LET or LAMBDA takes none 
 as before. The harness sets a spec case's cells row by row so the first-met order matches the xlsx.
 Reach (excel-graph, 2026-10-17, T-1756, probes/unknown-function-name-reach):
 - A call of a defined LAMBDA name prints the defined name's spelling, not the first typed one:
-  `OtherFn` defined, `=otherfn(1)` then `=OTHERFN(1)` both print `=OtherFn(1)`.
+  `OtherFn` defined, `=otherfn(1)` then `=OTHERFN(1)` both print `=OtherFn(1)`. Ours prints the first typed spelling (T-1763).
 - A callee bound by an enclosing LET or LAMBDA prints the binding's spelling whatever case the call used
   (`=LET(Gg,LAMBDA(x,x*2),gG(3))` prints `Gg(3)`; `=LAMBDA(Hh,Hh(1))(LAMBDA(x,x))` keeps `Hh`). Ours prints lowercase (T-1761).
 - An unknown name used as a value shares the table with unknown callees, in either order: `=Qux+1` then
@@ -1749,4 +1749,4 @@ Reach (excel-graph, 2026-10-17, T-1756, probes/unknown-function-name-reach):
 Unprobed: re-spelling after edits (edit order, deleting the first user; needs the sheet_ops replay, T-1608).
 Evidence: probes/unknown-function-name-spelling, probes/unknown-function-name-reach.
 Status: VERIFIED (excel-graph)
-Tasks: T-1719, T-1756, T-1760, T-1761, T-1762
+Tasks: T-1719, T-1756, T-1760, T-1761, T-1762, T-1763

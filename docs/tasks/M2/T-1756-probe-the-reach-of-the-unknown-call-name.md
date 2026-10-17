@@ -25,6 +25,6 @@ T-1719 implemented "first spelling met wins, case-insensitively" for free callee
 
 ## Outcome
 Added probes/unknown-function-name-reach (48 checked cells, excel-graph). Points 1-5 are recorded in
-docs/excel-semantics/references.md. Cross-sheet order already matches; four cells (value-use sharing, LET/LAMBDA
-binding spelling, ß/SS folding) mismatch and are baselined with fix tasks T-1760, T-1761 and T-1762. Re-spelling
+docs/excel-semantics/references.md. Cross-sheet order already matches; seven cells mismatch (value-use sharing, LET/LAMBDA
+binding spelling, defined-name spelling, ß/SS folding) and are baselined with fix tasks T-1760, T-1761, T-1762 and T-1763. Re-spelling
 after edits stays unprobed (needs the T-1608 replay).
