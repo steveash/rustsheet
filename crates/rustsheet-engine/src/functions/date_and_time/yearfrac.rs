@@ -20,7 +20,7 @@ fn leap_years_through(year: i32) -> i64 {
     year / 4 - year / 100 + year / 400
 }
 
-/// YEARFRAC basis 0, the financial US 30/360 convention (`dateDiff360Us`, ModifyStartDate), over
+/// YEARFRAC basis 0, the financial US 30/360 convention (`dateDiff360Us`, `ModifyStartDate`), over
 /// `(year, month, day)` triples, which differs from the DAYS360 worksheet function for February
 /// month-ends: a February-end *end* date only collapses to 30 when the *start* is also a February
 /// month-end, and the `end == 31` rule tests the original (un-normalised) start day.
