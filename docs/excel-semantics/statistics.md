@@ -704,6 +704,44 @@ Tasks: T-1543
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368 (ours). These are not implemented.
 - Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. `BETA.INV` uses it for shapes up to 1E5 and p of 1E-15 or more (bit-exact with Excel in ironcalc-calc BETADIST_BETAINV.xlsx) and bisects on the cdf otherwise. A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
 
+## NORM.S.INV is AS 241 PPND16 in the tails; the central region is unfitted (T-1746)
+Rule: for |p - 0.5| > 0.425, NORM.S.INV(p) (and NORMSINV, NORM.INV(p,0,1)) equals Wichura's
+AS 241 PPND16 evaluated in doubles: the published coefficients by Horner, r = sqrt(-ln(p)) below
+and sqrt(-ln(1-p)) above (not `log1p(-p)`), then r - 1.6 (r <= 5) or r - 5 and the tail rational.
+It is bit-exact on 611 of 616 tail cells, p from 5E-309 to 1-7E-16. The 5 misses are two
+upper-tail p next to the split, 0.925 and NORM.S.DIST(1.5), each 1 to 2 ulp off.
+Centrally (|p - 0.5| <= 0.425) no candidate fits (central bit-exact counts of 408 cells in brackets):
+- Excel is up to 31 ulp from the correctly rounded inverse. NORM.S.INV(0.16) is
+  -0.9944578832097497, where the correctly rounded value is ...7531.
+- The output is often, not always, mirrored: 106 of the 170 (p, 1-p) probe pairs give exactly
+  opposite values, but NORM.S.INV(0.08) is 12 ulp off while NORM.S.INV(0.92) is correctly
+  rounded. The rounding of 1-p explains at most about 2 ulp of that.
+- It is not PPND16's central rational q*A(r)/B(r) by Horner [82], Horner with fused multiply-adds
+  [100] or the ascending power sum [87].
+- It is not statrs/Boost erf_inv, which is the best central candidate [164]; the correctly rounded
+  value gets [126].
+- It is not one Newton or Halley step from PPND16 [85 to 105]. On 232 of 341 probe points Excel's
+  own NORM.S.DIST(PPND16(p)) is already exactly p, yet Excel returns a different x on 177 of those.
+- It is not a Newton solve on 0.5*erfc(-x*sqrt(0.5)) from PPND7, Acklam, Moro or 0, stopping at
+  |dx| <= 1e-15|x| or at dx = 0 [61 to 79].
+- NORM.S.DIST(NORM.S.INV(p)) equals p on only 172 of 341 points.
+Consequence: the best kernel is a hybrid, PPND16 in the tails and statrs centrally. It is bit-exact
+on 775 of 1,024 sweep cells, against 341 for the engine's statrs alone (fit `norm-s-inv`).
+Side finding for T-0968: NORM.S.DIST(x,TRUE) equals `0.5*erfc(-x*sqrt(0.5))` (glibc erfc) at 260
+of the 341 PPND16(p) points of the probe (column D) and at 240 of Excel's own NORM.S.INV results
+(column B). The `0.5*erfc(-x/sqrt(2))` form matches 199 and 203.
+Input handling seen on the way:
+- `NORM.S.INV(0.9999999999999999)` is PPND16(0.999999999999999). Excel reads the 16-digit
+  literal to 15 significant digits.
+- `NORM.S.INV(2.3E-308-1E-309)` is PPND16(2.3E-308): the subnormal literal 1E-309 counts as 0
+  (numbers.md, "A subnormal divisor is zero"). The difference itself is normal; had it flushed,
+  the result would be #NUM!.
+Evidence: probes-numeric/t1746-norm-s-inv-central (341 literal p over the central region, with
+NORM.S.DIST of each result and of PPND16(p)), m9-norm-s-inv, t1048-normsinv, t1048-norminv. Run
+it with `uv run rustsheet-fitlab norm-s-inv` (`fitlab/kernels/norm_inv.py`).
+Status: VERIFIED (tails); the central algorithm is UNVERIFIED
+Tasks: T-1746, T-0925, T-0968
+
 ## AVERAGEA, MAXA and MINA over an array
 Rule: an array value's elements are not read like range cells. AVERAGEA skips a boolean element and
 counts a text element, numeric text and the empty string included, as 0; MAXA and MINA skip both and

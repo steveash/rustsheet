@@ -15,6 +15,7 @@ uv run rustsheet-fitlab erfc                   # ERFC + ERFC.PRECISE, engine vs 
 uv run rustsheet-fitlab erfc-tail --top 10     # the T-1187 grid, about 5,800 candidates (~10 s)
 uv run rustsheet-fitlab xirr                   # T-1525 solvers: also xirr-oos, irr, rate, yield-one-period, yield
 uv run rustsheet-fitlab beta-dist              # T-1744: I_x(a,b); also f-dist, t-dist
+uv run rustsheet-fitlab norm-s-inv             # T-1746: NORM.S.INV, AS 241 tails vs the unfitted centre
 uv run rustsheet-fitlab erfc-tail --only 'bu_even' --worst 10 --no-engine
 uv run rustsheet-fitlab --case probes-numeric/t1040-erfc \
     --pattern '^=ERFC\((.*)\)$' --candidate math:erfc --candidate mymod:my_erfc   # ad hoc
@@ -151,6 +152,7 @@ Candidates that model Excel's rounding use `Fraction`s:
 | `gamma-int`, `gammaln-int`, `gamma-half-int` | 171, 171, 62 (T-1042) | factorial and sqrt(pi) recurrences per rounding model and order, correctly rounded, libm |
 | `beta-dist`, `f-dist`, `t-dist` | 283, 33, 150 (m9-beta-dist-a*, m9-legacy-betadist; m9-f-dist, m9-legacy-fdist, t1049-fdist; m9-t-dist-cdf, t1048-tdist) | I_x(a,b): Numerical Recipes betai, Cephes incbet per x^a and Gamma source, Cephes plus Excel's closed forms, the best combination, correctly rounded (T-1744); F and t map their arguments onto I_x |
 | `beta-inv`, `f-inv`, `f-inv-rt`, `t-inv`, `t-inv-2t` | 212, 54, 121, 130, 162 (m9-beta-inv, m9-legacy-betainv; m9-f-inv, t1049-finv; m9-f-inv-rt, m9-legacy-finv, t1049-finvrt; m9-t-inv; m9-t-inv-2t, t1048-tinv) | bisection to adjacent doubles (lower end, upper end, the even-significand "mid") on the correctly rounded I_x, the T-1744 best combination, Cephes incbet and NR betai, through T-1744's F and t mappings (T-1745) |
+| `norm-s-inv` | 1,024 (m9-norm-s-inv, t1048-normsinv, t1048-norminv, t1746-norm-s-inv-central; nested p is Excel's own NORM.S.DIST(k)) | AS 241 PPND16 and PPND7 per evaluation order (Horner, FMA Horner, power sum) and upper-tail log, Newton and Halley steps on two CDF forms, Newton solves from four starts under two stop rules, statrs and a PPND16-tails/statrs-centre hybrid, Acklam, Moro, correctly rounded (T-1746) |
 
 The `erfc-tail` fit replaces `docs/research/t1187-erfc-candidates.py`. It reproduces that
 script's counts: best 57, 58, 38 and 4, with a union of 174/205.
