@@ -517,8 +517,9 @@ fn test_performance_stress_with_extreme_values() {
         ("A1", "=TIME(2147483647, 0, 0)"), // Max i32 hours
         ("A2", "=TIME(0, 2147483647, 0)"), // Max i32 minutes
         ("A3", "=TIME(0, 0, 2147483647)"), // Max i32 seconds
-        // Component extraction with extreme day values
-        ("B1", "=HOUR(1e15)"), // Very large day number
+        // Component extraction past 9999-12-31 is #NUM!, as in Excel (probes/time-parts-past-max-date
+        // A12, gen-m7/bf889c3917eb54c5 A1)
+        ("B1", "=HOUR(1e15)"),
         ("B2", "=MINUTE(1e15)"),
         ("B3", "=SECOND(1e15)"),
         // Edge of floating point precision
@@ -531,8 +532,12 @@ fn test_performance_stress_with_extreme_values() {
         ("D4", "=SECOND(D1)"),
     ]);
 
+    for cell in ["B1", "B2", "B3"] {
+        assert_eq!(model._get_text(cell), "#NUM!", "{cell}");
+    }
+
     // All results should be valid (not errors) even with extreme inputs
-    for cell in ["A1", "A2", "A3", "B1", "B2", "B3", "D1", "D2", "D3", "D4"] {
+    for cell in ["A1", "A2", "A3", "D1", "D2", "D3", "D4"] {
         let result = model._get_text(cell);
         assert!(
             result != *"#ERROR!" && result != *"#NUM!" && result != *"#VALUE!",
@@ -541,14 +546,6 @@ fn test_performance_stress_with_extreme_values() {
     }
 
     // Results should be mathematically valid
-    let hour_b1 = model._get_text("B1").parse::<i32>().unwrap();
-    let minute_b2 = model._get_text("B2").parse::<i32>().unwrap();
-    let second_b3 = model._get_text("B3").parse::<i32>().unwrap();
-
-    assert!((0..=23).contains(&hour_b1));
-    assert!((0..=59).contains(&minute_b2));
-    assert!((0..=59).contains(&second_b3));
-
     // TIME function results should be valid time fractions
     let time_d1 = model._get_text("D1").parse::<f64>().unwrap();
     assert!(

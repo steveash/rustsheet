@@ -3,7 +3,7 @@ id: T-1353
 title: "HOUR, MINUTE and SECOND of a serial past 9999-12-31 are #NUM!"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -29,3 +29,6 @@ is 2958466 `#NUM!`) is not evidenced: probe `HOUR(2958465.9)`, `HOUR(2958466)`, 
 
 ## Out of scope
 -
+
+## Outcome
+Probed the bound (probes/time-parts-past-max-date, 14 cells): HOUR, MINUTE and SECOND are `#NUM!` from serial 2958466; `time_part_fn!` now rejects `>= MAXIMUM_DATE_SERIAL_NUMBER + 1`. dates.md is VERIFIED. gen-m7/bf889c3917eb54c5 A1 and gen-m7/851eb2099ae3f805 A39 now pass.

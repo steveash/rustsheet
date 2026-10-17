@@ -675,9 +675,11 @@ Tasks: T-1105, T-1366, T-1330
 Rule: HOUR and MINUTE of a serial far beyond the last date (2958465, 9999-12-31) are `#NUM!`: `HOUR(123456789.123)` and
 `MINUTE(7+123456789.123)` are `#NUM!`, as DAY is.
 Evidence: gen-m7/bf889c3917eb54c5 Calc!A1, gen-m7/851eb2099ae3f805 Calc!A39 (excel-graph, 2026-10-11, T-1275).
-Ours: only negative serials are rejected (`HOUR(123456789.123)` = 2).
-Status: VERIFIED (web) for these values; SECOND and the exact bound (2958466 or above) are UNVERIFIED
-Tasks: T-1353
+The bound (T-1353, probes/time-parts-past-max-date A1-A14, excel-graph, 2026-10-17): a serial of 2958466 or more is `#NUM!`
+for HOUR, MINUTE and SECOND alike (`HOUR(2958466)`, `MINUTE(2958466.5)`, `SECOND(2958466)`, `SECOND(1E+15)`), while
+2958465.99999 still has a time (`HOUR` = 23) and `HOUR(2958465.9)` = 21, `MINUTE(2958465.9)` = 36, `SECOND(2958465.9)` = 0.
+Implemented in `time_part_fn!` (functions/date_and_time.rs).
+Status: VERIFIED (web)
 
 ## HOUR, MINUTE and SECOND round to the nearest second
 Rule: SECOND of a time of day 22:24:01.729 is 2: `SECOND(DDB(81074,518,21,6,1))`, where DDB is 3024.9333533459067 (a
