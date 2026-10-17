@@ -15,13 +15,10 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let result = match self.evaluate_node_in_context(&args[0], cell) {
-            // The top-left cell, with no lift and no implicit intersection, legacy or dynamic:
-            // `T(A1:A3)` with A1 "x" is "x" from any row, and with A1 5 "" even from A2's row
-            // (probes/t-n-range-top-left F2, F10, F12; t-array-lift S!E7; T-0985).
-            CalcResult::Range { left, .. } => self.evaluate_cell(left),
-            other => other,
-        };
+        // A range is its top-left cell, with no lift and no implicit intersection, legacy or
+        // dynamic: `T(A1:A3)` with A1 "x" is "x" from any row, and with A1 5 "" even from A2's
+        // row (probes/t-n-range-top-left F2, F10, F12; t-array-lift S!E7; T-0985).
+        let result = self.evaluate_node_top_left(&args[0], cell);
         match result {
             CalcResult::String(_) => result,
             error @ CalcResult::Error { .. } => error,

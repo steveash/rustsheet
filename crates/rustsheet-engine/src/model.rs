@@ -530,6 +530,19 @@ impl Model {
         }
     }
 
+    /// The value `node` evaluates to, a range read as its top-left cell without evaluating the
+    /// rest of it: N, T and the offline-error functions take their argument so.
+    pub(crate) fn evaluate_node_top_left(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match self.evaluate_node_in_context(node, cell) {
+            CalcResult::Range { left, .. } => self.evaluate_cell(left),
+            other => other,
+        }
+    }
+
     pub(crate) fn evaluate_node_in_context(
         &mut self,
         node: &Node,

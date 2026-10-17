@@ -109,15 +109,6 @@ pub(crate) fn error_array(values: &[Vec<ArrayNode>], error: &Error) -> CalcResul
 }
 
 impl Model {
-    /// The value an argument evaluates to; a range is its top-left cell, read without
-    /// evaluating the rest of the range.
-    fn offline_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
-        match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Range { left, .. } => self.evaluate_cell(left),
-            other => other,
-        }
-    }
-
     /// Evaluates every argument in order and returns the first error among them, with the
     /// lifted first argument otherwise (IMAGE and STOCKHISTORY: an argument error wins,
     /// probes/rich-errors-args). A later argument's error lifts over an array or range first
@@ -146,7 +137,7 @@ impl Model {
         let mut rest_values = Vec::with_capacity(rest.len());
         let mut pending = None;
         for arg in rest {
-            let value = self.offline_arg(arg, cell);
+            let value = self.evaluate_node_top_left(arg, cell);
             if let CalcResult::Error { error, .. } = &value {
                 match &first {
                     Lifted::Array(values) => {

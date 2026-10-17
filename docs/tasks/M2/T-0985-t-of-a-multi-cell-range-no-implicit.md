@@ -27,7 +27,7 @@ with H1 = "x" (text top-left), from a row outside the range, is one "x" (probes/
 excel-graph, 2026-10-16, T-1729; a known failure, ours ""), so T reads the top-left cell. Semantics: docs/excel-semantics/
 references.md "T of a multi-cell range is not intersected" (UNVERIFIED part).
 
-Code: `static_analysis.rs` gives T `args_signature_scalars(arg_count, 1, 0)`, so the parser inserts
+Code (as found; see the Outcome for what changed): `static_analysis.rs` gives T `args_signature_scalars(arg_count, 1, 0)`, so the parser inserts
 implicit intersection in legacy formulas; `fn_t` in `crates/rustsheet-engine/src/functions/text/common.rs`
 has a `FIXME: Implicit intersection` and maps a `Range` to "". N (`fn_n` in
 `functions/information/mod.rs`) has the same signature and returns `#N/IMPL!` for ranges; check it
@@ -56,6 +56,7 @@ no `@` on the range or on an OFFSET or literal-condition IF of it (an operator s
 argument whole as it did N's (`reads_reference_whole`, legacy.rs). references.md "T of a multi-cell
 range is not intersected" is rewritten from the probe, Status VERIFIED. Eval delta: poi 488 -> 484
 known failures (M1352, N1352, O1352, plus E260 `COMBIN(19,7)`, already passing on main but not
-recorded because CI does not fetch poi); probes: t-array-lift S!E7 fixed, new case 45 cells, 41 pass.
-Its 4 failures are the legacy `@` over an array constant under N and T (M10/M20, O10/O20, plus the
-N10 spill cell), which is T-1717's scope; its context now cites them.
+recorded because CI does not fetch poi); probes: t-array-lift S!E7 fixed, new case 45 cells, 42 pass.
+Its 4 failures (M20, N10, O10, O20) are the legacy `@` over an array constant under N and T, which
+is T-1717's scope; its context now cites them. N, T and the offline-error functions now share
+`Model::evaluate_node_top_left` (model.rs) for the top-left read.

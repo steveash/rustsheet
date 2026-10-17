@@ -1209,8 +1209,8 @@ spills (M14:N14, M16:N16).
 Evidence: probes/t-n-range-top-left (excel-graph, 2026-10-17, T-0985); probes/t-array-lift S!E7,
 probes/text-argument-modes F9; poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15)
 EverythingTests!M1352, N1352, O1352 (`T(H12:J12)` from column M, `T(L7:N7)`, `T(J1351:J1353)`: all "").
-Status: VERIFIED. Not implemented: the legacy `@` over an array constant under N and T (M10/M20,
-O10/O20: ours spills), T-1717.
+Status: VERIFIED. Not implemented: the legacy `@` over an array constant under N and T (M20, O20
+lack it; M10 spills into N10, and O10 is `#SPILL!`), T-1717.
 Implemented in: functions/text/t_function.rs (`Model::fn_t`);
 expressions/parser/static_analysis/legacy.rs (`reads_reference_whole`)
 Tasks: T-0985, T-1728

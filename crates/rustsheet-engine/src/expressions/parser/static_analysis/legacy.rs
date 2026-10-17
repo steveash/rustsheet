@@ -396,10 +396,8 @@ fn is_value_operation(node: &Node) -> bool {
 /// array-constant-at H3, excel-graph, T-1643). Only the `@` placement changes: a dynamic formula
 /// of that shape still spills.
 pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool {
-    (matches!(kind, Function::N | Function::T)
-        && args
-            .first()
-            .is_some_and(|arg| reads_reference_whole(kind, arg)))
+    args.first()
+        .is_some_and(|arg| reads_reference_whole(kind, arg))
         || matches!(kind, Function::Index)
             && matches!(
                 args.first().map(Node::ungrouped),
