@@ -445,8 +445,8 @@ arrays", information.md "ISEVEN/ISODD over a range").
 - Not probed: lifted elements that are arrays or references (TAKE, DROP, OFFSET, INDIRECT).
 Ours: EDATE, EOMONTH, WEEKNUM and YEARFRAC follow the rule (T-1770): every argument is
 `LiftArrays` in the lifting table, so they lift over an array, refuse a multi-cell range or a
-returned reference (TAKE and INDEX included) with `#VALUE!`, and a 3-D range with `#VALUE!` (probed for a multi-cell 3-D range; a one-cell 3-D range, `EDATE(Sheet1:Sheet2!A1,1)`, is inferred to be the same), and get no legacy `@` on a bare
-range; all their cells in the three scalar-lift-shapes probes pass, and since T-1800 so do scalar-lift-open-a W6, W7 and -d W1-W7 (YEARFRAC checks basis, start, end; the driver hands a refused range to the kernel as `#VALUE!` in its slot and picks no error by position). The other families listed in SPEC-0011 do not
+returned reference (TAKE and INDEX included) with `#VALUE!`, and a 3-D range with `#VALUE!` (multi-cell: scalar-lift-open-b W4, W5, W7, -d W19-W20, W26; one-cell, `EDATE(Sheet1:Sheet2!A1,1)`, and in WEEKNUM, EOMONTH and YEARFRAC: scalar-lift-open-e W1-W9, also beside an array, W2-W3, whose shape stays the array's, W8), and get no legacy `@` on a bare
+range. DROP, TRIMRANGE and XLOOKUP results that span several cells are refused too, and one-cell results are their value (scalar-lift-open-e W10-W22, T-1801); all their cells in the three scalar-lift-shapes probes pass, and since T-1800 so do scalar-lift-open-a W6, W7 and -d W1-W7 (YEARFRAC checks basis, start, end; the driver hands a refused range to the kernel as `#VALUE!` in its slot and picks no error by position). The other families listed in SPEC-0011 do not
 lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic formula). SPEC-0011's
 rollout tasks fix them.
 Status: VERIFIED (excel-graph)

@@ -446,7 +446,7 @@ Each argument is read once, by its kind:
 | Kind | Array | Multi-cell range or reference | One-cell range | Anything else |
 |---|---|---|---|---|
 | `Lift` | `Grid` | `Grid` via `evaluate_range` | `Scalar(evaluate_cell)` | `Scalar(value)` |
-| `LiftArrays` | `Grid` | `Scalar(#VALUE!)`, no intersection; INDEX, XLOOKUP, TAKE, DROP and TRIMRANGE are read in their reference form, so a multi-cell one is refused too (TAKE: gen-m9/b58b6d7cd39d195f A9; INDEX and IF: scalar-lift-shapes H50, -b K3; XLOOKUP, DROP and TRIMRANGE are inferred, T-1801 probes them) | `Scalar(evaluate_cell)` | `Scalar(value)` |
+| `LiftArrays` | `Grid` | `Scalar(#VALUE!)`, no intersection; INDEX, XLOOKUP, TAKE, DROP and TRIMRANGE are read in their reference form, so a multi-cell one is refused too (TAKE: gen-m9/b58b6d7cd39d195f A9; INDEX and IF: scalar-lift-shapes H50, -b K3; XLOOKUP, DROP and TRIMRANGE: scalar-lift-open-e W10-W22, T-1801) | `Scalar(evaluate_cell)` | `Scalar(value)` |
 | `LiftArraysRangeWhole` | `Grid` | `Scalar(the range)`, read whole | `Scalar(the range)` | `Scalar(value)` |
 | `Whole` | `Scalar` of the value as `evaluate_node_with_reference` read it, once | | | |
 | `WholeByCaller` | `Scalar(EmptyArg)`, not evaluated | | | |
@@ -455,7 +455,7 @@ A range across sheets (`Sheet1:Sheet2!C1:C2`, 3-D) is `Scalar(#REF!)` in a `Lift
 `Scalar(#VALUE!)` in a `LiftArrays` position (open question 2; T-1801). That holds for a one-cell
 3-D reference, in a later argument and beside an array (every element carries it). Evidence: `Lift` `#REF!`
 probes/scalar-lift-open-b W2, W3, W6, W10, W11 and -d W17-W18, W21-W23, W25, W29; `LiftArrays` `#VALUE!`
--b W4, W5, W7 and -d W19-W20, W26. The kernel therefore never sees a
+-b W4, W5, W7, -d W19-W20, W26, and for a one-cell 3-D range scalar-lift-open-e W1-W9. The kernel therefore never sees a
 multi-cell `Range` in a `Lift` or `LiftArrays` position. `Model::dereference`'s intersection, which
 is why BESSELI intersects today (eng-argument-modes E1), is no longer reached from these functions.
 

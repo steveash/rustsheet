@@ -34,6 +34,8 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - [ ] The lift cells of probes/fin-argument-modes pass (their baseline lines removed), and the 37 range `#VALUE!` cells
   still pass. The PMT and EFFECT shape and error cells of probes/scalar-lift-shapes and -b listed under Context pass. Value cells that miss by ulps stay T-0901's and T-1374's.
 - [ ] gen-m9/675763979c1defb6 A13 and b58b6d7cd39d195f A21 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [ ] probes/scalar-lift-open-b W9 and probes/scalar-lift-open-d W17, W18 pass (`PMT` beside an array and a 3-D range: the result has the array's shape, ROWS 2 at -b W9, and each element is `#REF!`, -d W17, W18; moved here from T-1801, which needed a `Lift` consumer).
+- [ ] probes/scalar-lift-open-a W4 (`EFFECT(C1:C60,1/0)`) and probes/scalar-lift-open-d W9, W11, W13, W14, W16 (ACCRINTM over a range or array) pass, with each kernel's own error order (moved here from T-1800).
 - [ ] `make check` green; reviewers approve.
 - [ ] The entries it adds make the variant live, and it removes the `#[allow(dead_code)]` on `ArgKind::Lift` (functions/lift/kinds.rs), unless T-1290 removed it first (T-1770 left the allow with a `TODO(T-1372)`).
 
