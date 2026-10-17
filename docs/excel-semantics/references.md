@@ -1735,6 +1735,8 @@ Ours (T-1719): a workbook-level registry (`CallNameSpellings`, lowercase name â†
 every stored formula's free callee the registered spelling, on load in sheet and shared-formula
 order and on each edit; a callee bound by an enclosing LET or LAMBDA takes none and prints lowercase
 as before. The harness sets a spec case's cells row by row so the first-met order matches the xlsx.
+Unprobed (T-1756): calls of defined names and LET/LAMBDA-bound callees typed in another case, unknown
+names used as values, cross-sheet order, non-ASCII case folding, re-spelling after edits.
 Evidence: probes/unknown-function-name-spelling.
 Status: VERIFIED (excel-graph)
 Tasks: T-1719
