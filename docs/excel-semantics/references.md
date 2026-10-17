@@ -856,14 +856,22 @@ Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
 `MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`, `Model::for_each_indexed_position`); sheet_data.rs (`SheetData::rows_in_column_between`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
 Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502
 
+## MAP and SCAN with a multi-cell range element
+Rule: when the LAMBDA of a MAP or SCAN returns a multi-cell range for any element, Excel gives the
+whole formula one `#CALC!` (not a spill of per-element errors), whatever the range holds: numbers,
+an error cell, or only blanks. A row range (`B1:C1`) is the same; a one-cell range (`B1:B1`) is the
+control and counts as its value (MAP over 2 elements spills 10, 10). BYROW/BYCOL give the same
+`#CALC!` (see Arrays). Evidence: probes/map-scan-range-element (A1, E1, I1, M1, Q1, U1, AG1, AK1
+`#CALC!`; Y1 and AC1 spill). T-1792.
+
 ## Seen-range cap
 Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a
 pass (`MAX_SEEN_RANGES`); a formula that reads more is `#VALUE!` ("Too many distinct ranges read").
 A function walking a whole column or row (and a lookup down a column, or a SUMIFS-shaped criteria
 range) visits only the used area and records the rest as one rectangle read empty, and every area of
 a union is recorded whole, whatever its size, as is a multi-cell range a MAP or SCAN LAMBDA returns
-for an element (read over its existing cells only, since the engine's element is `#VALUE!` whatever they hold;
-Excel's element value is unprobed, T-1792; T-1769); which every spill commit of the pass is checked
+for an element (read over its existing cells only, since the whole formula is `#CALC!` whatever they hold;
+see "MAP and SCAN with a multi-cell range element"; T-1769); which every spill commit of the pass is checked
 against (evaluation.rs module doc). A rectangle already on record for the formula's root is free, so
 repeating a walk costs nothing (T-1497: `MAX_AREAS` copies of `A:A` walked by a MAP record one), but
 each new reference makes a new one, and nothing else bounds them: `=SUM(MAKEARRAY(1024,1024,

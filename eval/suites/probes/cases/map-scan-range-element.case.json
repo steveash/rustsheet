@@ -1,0 +1,53 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "MAP and SCAN element whose LAMBDA returns a multi-cell range: values, error cells, row range, one-cell control, empty range (T-1792).",
+  "tags": [
+    "M2",
+    "lambda",
+    "arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=MAP(Data!A1:A2,LAMBDA(r,Data!B1:B3))",
+        "E1": "=SCAN(0,Data!A1:A2,LAMBDA(a,v,Data!B1:B3))",
+        "I1": "=MAP(Data!A1:A2,LAMBDA(r,Err!B1:B3))",
+        "M1": "=SCAN(0,Data!A1:A2,LAMBDA(a,v,Err!B1:B3))",
+        "Q1": "=MAP(Data!A1:A2,LAMBDA(r,Data!B1:C1))",
+        "U1": "=SCAN(0,Data!A1:A2,LAMBDA(a,v,Data!B1:C1))",
+        "Y1": "=MAP(Data!A1:A2,LAMBDA(r,Data!B1:B1))",
+        "AC1": "=SCAN(0,Data!A1:A2,LAMBDA(a,v,Data!B1:B1))",
+        "AG1": "=MAP(Data!A1:A2,LAMBDA(r,Empty!B1:B3))",
+        "AK1": "=SCAN(0,Data!A1:A2,LAMBDA(a,v,Empty!B1:B3))",
+        "AO1": "=MAP(Data!A1:A2,LAMBDA(r,Data!B1:B3))&\"\""
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "C1": 40
+      }
+    },
+    {
+      "name": "Err",
+      "cells": {
+        "B1": 10,
+        "B2": "=1/0",
+        "B3": 30
+      }
+    },
+    {
+      "name": "Empty",
+      "cells": {
+        "D4": 1
+      }
+    }
+  ]
+}

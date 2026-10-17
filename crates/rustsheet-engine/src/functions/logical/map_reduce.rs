@@ -69,7 +69,10 @@ impl Model {
                 values.clear();
                 values.extend(arrays.iter().map(|arr| arr.at(i, j)));
                 let cell_result = self.call_lambda_caller(&mut caller, values.drain(..), cell);
-                let cell_result = self.lambda_result_value(cell_result, cell);
+                let cell_result = match self.lambda_result_value(cell_result, cell) {
+                    Ok(value) => value,
+                    Err(error) => return error,
+                };
                 *slot = calc_result_to_array_node(cell_result);
             }
         }

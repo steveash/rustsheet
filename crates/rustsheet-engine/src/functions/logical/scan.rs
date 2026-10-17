@@ -65,7 +65,10 @@ impl Model {
         // slot in the output is that seed value itself (not the result of calling lambda).
         let mut start_col = 0;
         if !has_initial {
-            let seed = self.lambda_result_value(accumulator.clone(), cell);
+            let seed = match self.lambda_result_value(accumulator.clone(), cell) {
+                Ok(value) => value,
+                Err(error) => return error,
+            };
             result[0][0] = calc_result_to_array_node(seed);
             start_col = 1;
         }
@@ -79,7 +82,10 @@ impl Model {
                 if accumulator.is_error() {
                     return accumulator;
                 }
-                let value = self.lambda_result_value(accumulator.clone(), cell);
+                let value = match self.lambda_result_value(accumulator.clone(), cell) {
+                    Ok(value) => value,
+                    Err(error) => return error,
+                };
                 *slot = calc_result_to_array_node(value);
             }
         }

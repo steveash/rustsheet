@@ -285,17 +285,19 @@ impl Model {
     /// A LAMBDA's result as a value: a reference it returns (`LAMBDA(v,v)` over a range cell)
     /// is read, so MAP and SCAN never carry one into their output. A one-cell reference is read
     /// directly, without building a one-element array. A multi-cell reference is no element:
-    /// both callers show it as `#VALUE!`, so only its existing cells are read, for what reading
-    /// does (a cycle through the range, the reads a spill checks), and no array is built.
-    /// Building one made every call cost the range's full size (T-1769 fuzz timeout).
+    /// Excel gives the whole MAP or SCAN formula one `#CALC!`, whatever the range holds (error
+    /// cells and blanks too; probes/map-scan-range-element, T-1792), so that is the `Err` the
+    /// callers return. Only its existing cells are read, for what reading does (a cycle through
+    /// the range, the reads a spill checks), and no array is built. Building one made every
+    /// call cost the range's full size (T-1769 fuzz timeout).
     pub(super) fn lambda_result_value(
         &mut self,
         result: CalcResult,
         cell: CellReferenceIndex,
-    ) -> CalcResult {
+    ) -> Result<CalcResult, CalcResult> {
         match result {
             CalcResult::Range { left, right } if left == right => {
-                match self.evaluate_cell(left) {
+                Ok(match self.evaluate_cell(left) {
                     // Read as `evaluate_range` reads a cell: an error is re-originated here and
                     // an empty argument is an empty cell.
                     CalcResult::Error { error, .. } => {
@@ -303,7 +305,7 @@ impl Model {
                     }
                     CalcResult::EmptyArg => CalcResult::EmptyCell,
                     value => value,
-                }
+                })
             }
             // A one-cell range on two sheets reads as its first sheet's cell.
             CalcResult::Range { left, right }
@@ -317,7 +319,7 @@ impl Model {
                 // recorded as read empty in one piece. Every value it could hold gives the same
                 // element, and a dense walk made each call cost the range's height.
                 if let Some((error, message)) = check_range_size(&left, &right) {
-                    return CalcResult::new_error(error, cell, message);
+                    return Err(CalcResult::new_error(error, cell, message));
                 }
                 let area = Range {
                     left,
@@ -331,15 +333,15 @@ impl Model {
                     Ok(())
                 });
                 match read {
-                    Ok(()) => CalcResult::new_error(
-                        Error::VALUE,
+                    Ok(()) => Err(CalcResult::new_error(
+                        Error::CALC,
                         cell,
                         "A range is not an element".to_string(),
-                    ),
-                    Err(error) => error,
+                    )),
+                    Err(error) => Err(error),
                 }
             }
-            other => other,
+            other => Ok(other),
         }
     }
 

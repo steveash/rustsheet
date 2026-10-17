@@ -3,7 +3,7 @@ id: T-1792
 title: "Probe what MAP and SCAN show for an element whose LAMBDA returns a multi-cell range"
 milestone: M2
 lane: functions-logic
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -34,3 +34,9 @@ the same with an error cell (`=1/0`) inside B1:B3, a 1x2 row range `B1:C1`, and 
 
 ## Out of scope
 - BYROW/BYCOL (T-1511) and MAKEARRAY.
+
+## Outcome
+Probed (probes/map-scan-range-element): Excel gives the whole MAP/SCAN formula one `#CALC!` for a
+multi-cell range element, independent of contents (error cell, blanks); one-cell range is the
+control. `lambda_result_value` now returns the `#CALC!` as an `Err` the callers return as the
+formula result. Recorded in docs/excel-semantics/references.md.
