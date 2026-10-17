@@ -3,7 +3,7 @@
 
 use super::arg_buf::ArgBuf;
 use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg};
-use super::kinds::{ArgKind, ArgKinds};
+use super::kinds::{ArgKind, ArgKinds, KernelWork};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
 use crate::limits::{check_range_size, too_many_visits, MAX_LIFTED_CELL_VISITS};
@@ -47,6 +47,10 @@ fn refused_range(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, String::new())
 }
 
+/// One `Lift` argument, for the callers that read their first argument apart from the rest
+/// (the offline functions).
+const LIFT_ONE: ArgKinds = ArgKinds::fixed(1, &[ArgKind::Lift], KernelWork::Constant);
+
 impl Model {
     /// A `LiftArrays` argument: a call that returns a reference when its source is one (INDEX,
     /// XLOOKUP, TAKE, DROP, TRIMRANGE) is read as that reference, so a multi-cell one is refused
@@ -71,6 +75,25 @@ impl Model {
             _ => {}
         }
         self.evaluate_node_in_context(node, cell)
+    }
+
+    /// Reads one `Lift` argument: an array or a multi-cell range is a grid, anything else (a
+    /// one-cell range included) its value. The read is bounded like `lift_call`'s.
+    pub(crate) fn read_lift_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<LiftedArg, CalcResult> {
+        let read = self.read_lift_args(
+            &LIFT_ONE,
+            std::slice::from_ref(node),
+            MAX_LIFTED_CELL_VISITS,
+            cell,
+        )?;
+        let mut lifted = read.into_lifted();
+        Ok(lifted
+            .pop()
+            .unwrap_or(LiftedArg::Scalar(CalcResult::EmptyArg)))
     }
 
     /// Reads `args` by `kind.arg_kinds()`, then runs `kernel` once (nothing lifted) or once per

@@ -3,7 +3,7 @@ id: T-1774
 title: "Move the IS*, ISEVEN/ISODD, ERROR.TYPE, ENCODEURL and FIELDVALUE lifts (lifted_arg, parity_predicate) onto the SPEC-0011 driver"
 milestone: M9
 lane: quality
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -28,3 +28,6 @@ Spec: docs/specs/SPEC-0011-scalar-argument-lifting.md, "Today's lifting code".
 
 ## Out of scope
 - N, T and CELL.
+
+## Outcome
+IS*, ERROR.TYPE and ENCODEURL are `Lift` table entries and ISEVEN/ISODD `LiftArrays` entries; their kernels run through `lift_call`. The offline functions (IMAGE, STOCKHISTORY, FIELDVALUE) read their lifted argument with the new `read_lift_arg` and build their error grids with `lift_values`. `lifted_arg`, `Lifted`, `parity_predicate` and the offline `map_elements`/`error_array` lifts are deleted; `map_elements` is left to N and T. Static analysis derives the signatures and shapes of these functions from the table (`lifting_table_functions!`). Eval: 0 fixes, 0 regressions.
