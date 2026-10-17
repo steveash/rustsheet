@@ -10,6 +10,7 @@ pub(crate) use bycol_byrow::as_lambda;
 pub(crate) use lambda::{FunctionValue, LambdaCaller};
 pub(crate) use r#let::{has_duplicate_parameter, same_variable};
 
+use crate::cast::calc_result_to_array_node;
 use crate::{
     arithmetic::bcast_idx,
     calc_result::CalcResult,
@@ -72,19 +73,6 @@ pub(crate) fn if_arg_at(arg: &IfArg, row: usize, col: usize) -> ArrayNode {
                 Some(n) => n.clone(),
                 None => ArrayNode::Error(Error::NA),
             }
-        }
-    }
-}
-
-fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
-    match result {
-        CalcResult::Number(n) => ArrayNode::Number(n),
-        CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-        CalcResult::String(s) => ArrayNode::String(s),
-        CalcResult::Error { error, .. } => ArrayNode::Error(error),
-        CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-        CalcResult::Lambda(_) | CalcResult::Range { .. } | CalcResult::Array(_) => {
-            ArrayNode::Error(Error::VALUE)
         }
     }
 }

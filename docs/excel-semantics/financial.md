@@ -107,14 +107,35 @@ labels in the case's `hypotheses`):
 - XIRR guess failures: guess -0.5 gives `#NUM!` for positive-rate flows. Guesses 1 and 10 give `#NUM!` for
   the negative-rate flows (`flow=C`, `D`, `Byr`). XIRR with day-serial dates 1..6 (`flow=B`) gives
   `#NUM!` for every guess.
-- MIRR: 32 of 35 cells already match the engine. `MIRR({-5,4},fr,rr)` is -0.19999999999999996 for
-  every rate pair.
+- MIRR: 32 of 35 cells matched the engine before T-1687 (all 35 since, "MIRR's evaluation order" below).
+  `MIRR({-5,4},fr,rr)` is -0.19999999999999996 for every rate pair.
 Engine today (after T-0916): 312 of 691 cells pass (IRR 161/216, RATE 47/368, XIRR 72/72, MIRR 32/35;
 before: 96, with IRR 19 and XIRR 9).
 Status: VERIFIED (observations). XIRR's and IRR's iterations are fitted (next two sections, T-1525,
 T-1533) and implemented (T-0916); RATE's update rule and stopping test are UNVERIFIED (partial findings
-below); MIRR's last digits are T-1687
+below); MIRR is fitted and implemented ("MIRR's evaluation order", T-1687)
 Implemented in: XIRR and IRR in functions/financial/financial_util.rs (T-0916, next two sections); RATE n/a
+
+## MIRR's evaluation order
+Rule: MIRR is `q^(1/(n-1)) - 1` with `q = (P * (1+rr)^n / (1+rr)) / -N`, where P sums the positive flows
+`x / (1+rr)^i` and N the negative flows `x / (1+fr)^i` (i = 0..n-1, in order), each power a running product
+(`(1+r)^i = (1+r)^(i-1) * (1+r)` from 1, so `(1+rr)^n` is the loop's last factor), and the root is Excel's `^`
+(SQRT for n = 3, else `exp(y * ln q)`; numbers.md "Non-integer exponents"). The `/ (1+rr)` step is not the
+same as compounding to `(1+rr)^(n-1)`: on two flows (exponent 1, so the root is exact) `MIRR({-100,120},fr,0.03)`
+is 0.19999999999999973 for every fr and `MIRR({-3,7},fr,rr)` is 1.333333333333333 at rr = 0.03, 0.07 and 0.12,
+while `(120/1.03)*1.03` and `(7/A)*A` round back to the flow; of the products of x with A, A^2, 1/A tried, only `((x/A)*A^2)/A` gives Excel's digits there.
+Microsoft's documented `-NPV(rr,pos)*(1+rr)^n / (NPV(fr,neg)*(1+fr))` is mathematically the same but scores 365.
+Fit (fit lab `mirr`, 467 cells of m9-fin-mirr and m9-fin-irr-rate; bit-exact / within 4 ulp): this formulation with
+Excel's `^` 467/467; with `exp(ln q/(n-1))` 456/467, libm `pow` 456/465; the same sums compounded as
+`P * (1+rr)^(n-1)` 413/451 at best; FV and PV computed directly with libm powers 407/447 at best; the NPV form
+365/437 at best (the engine before T-1687 was this NPV form, 207 of the first 252 sweep cells).
+Evidence: probes-numeric/m9-fin-mirr Calc!A1:A432 (excel-graph, 2026-10-17; A253:A432 are the 6x6 rate grids for
+{-100,120}, {-3,7}, {120,-100}, {-3,0,7} and {-3,7,0}); probes-numeric/m9-fin-irr-rate MIRR cells;
+ironcalc-calc/FINANCIAL/MIRR.xlsx (225 cells, all passing since).
+Status: VERIFIED (fit, 467/467 bit-exact)
+Implemented in: `fn_mirr` (functions/financial/mirr.rs). A rate of -1 keeps its own limit cases, and a ratio that is
+zero, negative or infinite keeps `powf`; neither is part of the fit.
+Tasks: T-1687
 
 ## XIRR is a bracketing bisection, not Newton
 Rule: XIRR finds a sign change of XNPV on a chain of trial rates, then bisects it. The chain starts at
@@ -349,8 +370,11 @@ ACCRINT, ACCRINTM, AMORDEGRC, AMORLINC, the COUP* family, CUMIPMT, CUMPRINC, DIS
 EFFECT, FVSCHEDULE's principal, INTRATE, MDURATION, NOMINAL, ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD, PRICE,
 PRICEDISC, PRICEMAT, RECEIVED, TBILLEQ, TBILLPRICE, TBILLYIELD, XIRR's guess, XNPV's rate, YIELD, YIELDDISC and YIELDMAT
 are `#VALUE!` when their first scalar argument is a multi-cell range. Of the later scalars only EFFECT's npery was probed over a range: `ROWS(EFFECT(0.1,D1:D60))` is
-`#VALUE!`, while the core `ROWS(PMT(0.1,D1:D60,100))` is 60 (probes/scalar-lift-shapes H12, H14, T-1767). Other later
-ATP scalars (PRICE's and COUP*'s frequency, ACCRINT's basis, ...) are unverified (T-1777). Next to an array, the range
+`#VALUE!`, while the core `ROWS(PMT(0.1,D1:D60,100))` is 60 (probes/scalar-lift-shapes H12, H14, T-1767). The other
+later ATP scalars sampled are refused as well (probes/scalar-lift-open-a Y1-Y7, Y16-Y18, T-1777, scalar controls Z1-Z7, Z16-Z18):
+`ROWS(F(..))` is `#VALUE!` for PRICE's `frequency` and `basis`, COUPDAYS's and COUPNUM's `frequency`, COUPDAYS's `basis`,
+ACCRINT's `frequency` and `basis`, and DOLLARDE's and DOLLARFR's `fraction` over a range. An error scalar beside a
+range follows the function's own check order (ACCRINTM: `NA()` before the range is `#N/A`, after it `#VALUE!`; probes/scalar-lift-open-d W8-W15). Next to an array, the range
 makes every probed element `#VALUE!` (`EFFECT({0.1;0.2},M1:M60)`). See arrays.md "Scalar arguments lift: shapes,
 element errors, and the Analysis ToolPak range rule".
 NPV's values work like an aggregate. A range skips text, booleans and blanks: `NPV(0.1,L1:L8)` over

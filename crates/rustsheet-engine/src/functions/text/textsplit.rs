@@ -1,3 +1,4 @@
+use super::casefold::{char_offsets, fold_for_split};
 use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
@@ -106,15 +107,16 @@ impl Model {
         let pad_node = pad_with.as_ref().unwrap_or(&na_node);
 
         // Normalize to comparison strings for optional case-insensitive matching.
-        // For ASCII delimiters to_lowercase() is a 1:1 byte mapping, so positions
-        // derived from `cmp_text` are valid indices into the original `text`.
+        // `fold_for_split` maps every char to exactly one char (TEXTSPLIT's folding, probes/
+        // textsplit-casefold-length), so char positions in `cmp_text` are char positions in
+        // `text`; `split_by_any` converts them to byte offsets of the original (T-1794).
         let cmp_text: String;
         let cmp_col_delims: Vec<String>;
         let cmp_row_delims: Vec<String>;
         if case_insensitive {
-            cmp_text = text.to_lowercase();
-            cmp_col_delims = col_delims.iter().map(|s| s.to_lowercase()).collect();
-            cmp_row_delims = row_delims.iter().map(|s| s.to_lowercase()).collect();
+            cmp_text = fold_for_split(&text);
+            cmp_col_delims = col_delims.iter().map(|s| fold_for_split(s)).collect();
+            cmp_row_delims = row_delims.iter().map(|s| fold_for_split(s)).collect();
         } else {
             cmp_text = text.clone();
             cmp_col_delims = col_delims.clone();
@@ -253,11 +255,13 @@ impl Model {
 }
 
 /// Split `original` by the first (earliest) occurrence of any non-empty delimiter
-/// in `cmp_delims`, using `cmp` (a parallel comparison string, e.g. lowercased) to
-/// locate match positions. The same byte offsets are applied to `original`.
+/// in `cmp_delims`, using `cmp` (a parallel, char-for-char comparison string, e.g. case-folded)
+/// to locate match positions.
 ///
-/// This works correctly as long as `cmp` and `original` share the same byte layout
-/// for non-delimiter characters — true for ASCII case-insensitive comparisons.
+/// `cmp` and `original` have the same number of chars but not necessarily the same byte layout
+/// (U+212A is 3 bytes, its fold `k` is 1), so a match is converted to a char index in `cmp` and
+/// then to a byte offset in `original`. If the two ever disagree the original is returned whole
+/// rather than sliced out of range.
 fn split_by_any(original: &str, cmp: &str, cmp_delims: &[String]) -> Vec<String> {
     let delims: Vec<&str> = cmp_delims
         .iter()
@@ -269,24 +273,47 @@ fn split_by_any(original: &str, cmp: &str, cmp_delims: &[String]) -> Vec<String>
         return vec![original.to_string()];
     }
 
+    let cmp_offsets = char_offsets(cmp);
+    let orig_offsets = char_offsets(original);
+    if cmp_offsets.len() != orig_offsets.len() {
+        return vec![original.to_string()];
+    }
+    // Char index in `cmp` of a byte offset that `find` returned (always a char boundary).
+    let char_index = |byte: usize| cmp_offsets.binary_search(&byte).ok();
+
     let mut result = Vec::new();
-    let mut pos = 0usize;
+    let mut pos = 0usize; // byte offset in `cmp`
+    let mut orig_pos = 0usize; // byte offset in `original`
 
     loop {
         // Find the earliest match among all delimiters.
         let best = delims
             .iter()
-            .filter_map(|d| cmp[pos..].find(d).map(|i| (pos + i, d.len())))
+            .filter_map(|d| {
+                cmp.get(pos..)?
+                    .find(d)
+                    .map(|i| (pos + i, pos + i + d.len()))
+            })
             .min_by_key(|(p, _)| *p);
 
-        match best {
+        let matched = best.and_then(|(start, end)| {
+            let (s, e) = (char_index(start)?, char_index(end)?);
+            Some((start, end, *orig_offsets.get(s)?, *orig_offsets.get(e)?))
+        });
+        match matched {
             None => {
-                result.push(original[pos..].to_string());
+                result.push(original.get(orig_pos..).unwrap_or_default().to_string());
                 break;
             }
-            Some((match_pos, delim_len)) => {
-                result.push(original[pos..match_pos].to_string());
-                pos = match_pos + delim_len;
+            Some((_, cmp_end, orig_start, orig_end)) => {
+                result.push(
+                    original
+                        .get(orig_pos..orig_start)
+                        .unwrap_or_default()
+                        .to_string(),
+                );
+                pos = cmp_end;
+                orig_pos = orig_end;
             }
         }
     }

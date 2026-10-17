@@ -105,6 +105,13 @@ impl Model {
                 let within_a_year =
                     y1 == y2 || (y2 == y1 + 1 && (m1 > m2 || (m1 == m2 && d1 >= d2)));
 
+                // A start year after the end year is #NUM! here, as the summed year lengths
+                // (an empty `y1..=y2`) gave before T-1770. Excel swaps the dates instead
+                // (gen-m7/c263b43217a5898b Calc!A38; dates.md "YEARFRAC swaps reversed dates
+                // for every basis"): TODO(T-1354).
+                if y2 < y1 {
+                    return num_error(cell);
+                }
                 let days_in_year = if !within_a_year {
                     // Dates more than a year apart: average the calendar-year
                     // lengths spanned, inclusive of both end years. Counted in

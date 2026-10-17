@@ -1,6 +1,7 @@
 mod arraytotext;
 mod bahttext;
 mod byte_functions;
+mod casefold;
 mod char_code;
 mod common;
 mod concatenate;

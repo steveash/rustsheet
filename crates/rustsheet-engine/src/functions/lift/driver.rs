@@ -2,6 +2,7 @@
 //! `statistical/if_ifs.rs` by T-1784 with no result change; T-1770 adds the spec's cost model,
 //! the in-place single-grid path and the text budget.
 
+use super::arg_buf::ArgBuf;
 use super::kinds::KernelWork;
 use crate::arithmetic::{bcast_get, MISSING};
 use crate::cast::calc_result_to_array_node;
@@ -254,25 +255,23 @@ impl Model {
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
     ) -> CalcResult {
-        let mut values = Vec::with_capacity(lifted.len());
+        // The values live inline for up to `INLINE_ARGS` arguments, as in the read phase.
+        let mut values = ArgBuf::filled(lifted.len(), || CalcResult::EmptyCell);
         let mut output = Vec::new();
-        for arg in lifted {
+        for (slot, arg) in values.as_mut_slice().iter_mut().zip(lifted) {
             match arg {
-                LiftedArg::Scalar(value) => values.push(value),
-                LiftedArg::Grid(grid) => {
-                    values.push(CalcResult::EmptyCell);
-                    output = grid;
-                }
+                LiftedArg::Scalar(value) => *slot = value,
+                LiftedArg::Grid(grid) => output = grid,
             }
         }
         let mut text_bytes = 0;
         for row in &mut output {
             for node in row {
                 let element = std::mem::replace(node, ArrayNode::Empty);
-                if let Some(slot) = values.get_mut(grid_index) {
+                if let Some(slot) = values.as_mut_slice().get_mut(grid_index) {
                     *slot = array_node_into_calc_result(element, cell);
                 }
-                *node = calc_result_to_array_node(kernel(self, &values));
+                *node = calc_result_to_array_node(kernel(self, values.as_slice()));
                 if let Some(error) = over_text_budget(node, &mut text_bytes, cell) {
                     return error;
                 }

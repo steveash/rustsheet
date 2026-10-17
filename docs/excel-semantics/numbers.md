@@ -1213,12 +1213,19 @@ precision, or rounding the atan to 64 bits then to a double, never beats 233. A 
 (libm's count).
 Excel's ASIN is not odd: 31 ± pairs in the sweep differ in the last digit (`ASIN(0.09)` = 0.09012194501459526,
 `ASIN(-0.09)` = -0.09012194501459525). 26 of the 35 misses are negative arguments, and `ASIN(±1E-13)` is ±1E-13 exactly.
+A tiny argument is returned as is (T-1605): `ASIN(x)` = x for |x| from 1E-15 to 1E-9 and for -1E-8, but `ASIN(1E-8)` is
+1.0000000000000002E-8 (the quotient's value), so a symmetric cut lies between 1E-13 and 1E-8; the engine uses 2^-28.
+T-1605's other candidates over the sweep (bit-exact out of 268, python doubles and glibc): `atan(x/sqrt(1-x)/sqrt(1+x))` 163,
+`atan(x/sqrt(1+x)/sqrt(1-x))` 160, `atan(x/(sqrt(1-x)*sqrt(1+x)))` 175, `atan(x*(1/sqrt((1-x)(1+x))))` 177, `atan2` of the same
+175, `2 atan(x/(1+sqrt((1-x)(1+x))))` 165, `pi/2 - 2 asin(sqrt((1-x)/2))` and `2 asin(sqrt((1+x)/2)) - pi/2` (a few misses each,
+no rule), and a table reduction `atan(c) + atan((q-c)/(1+qc))` with c = floor/ceil/round/trunc(q N)/N for N in 1..128, at
+most 215. The residue (33 cells) is T-1797.
 Evidence: probes/asin-argument-sweep; gen-m6/2f6b96385ed3facd Calc!A38 (excel-graph, 2026-10-09, T-1239); gen-m7/0e40208f51c2454c
 Calc!A27 and gen-m7/cb748b6a9b81fbb7 Calc!A38 (excel-graph, 2026-10-11, T-1275).
-Ours: `atan(x/sqrt((1-x)*(1+x)))` since T-1259 (`fn_asin`, mathematical.rs). The gen-m6/gen-m7 cells pass; 35 sweep cells are known
-failures (T-1605). The result depends on the platform `atan` (glibc fits).
+Ours: `atan(x/sqrt((1-x)*(1+x)))` since T-1259, and x itself below 2^-28 since T-1605 (`fn_asin`, mathematical.rs). The gen-m6/gen-m7
+cells pass; 33 sweep cells are known failures (T-1797). The result depends on the platform `atan` (glibc fits).
 Status: VERIFIED (excel-graph); formulation PARTIAL
-Tasks: T-1259, T-1605
+Tasks: T-1259, T-1605, T-1797
 
 ## MULTINOMIAL of a huge argument
 Rule: MULTINOMIAL is `#NUM!` once its arguments add up to more than 170, where `sum!` overflows a double. That holds

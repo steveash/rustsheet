@@ -598,3 +598,33 @@ fn a_3d_range_is_value_in_lift_arrays_and_ref_in_lift() {
         .iter()
         .all(|row| matches!(row.as_slice(), [ArrayNode::Error(Error::REF)])));
 }
+
+/// Reversed basis-1 dates in different years stay `#NUM!`, as before T-1770 (Excel swaps them:
+/// gen-m7/c263b43217a5898b Calc!A38 is 77.11295191295191; TODO(T-1354)). A reversed pair within
+/// one year was already computed and still is.
+#[test]
+fn reversed_basis_1_dates_in_different_years_stay_num() {
+    let model = model_with(&[
+        ("A1", "=YEARFRAC(45400,45000,1)"),
+        ("A2", "=YEARFRAC(46000,45000,1)"),
+        ("A3", "=YEARFRAC(52874,24708,1)"),
+        ("A4", "=INDEX(YEARFRAC({46000;45000},{45000;46000},1),1)"),
+        ("A5", "=YEARFRAC(45100,45000,1)=YEARFRAC(45000,45100,1)"),
+    ]);
+    for cell in ["A1", "A2", "A3", "A4"] {
+        assert_eq!(model._get_text(cell), "#NUM!", "{cell}");
+    }
+    assert_eq!(model._get_text("A5"), "TRUE");
+}
+
+/// ACCRINTM reads its basis as a scalar (its lifting is T-1372's): an array basis is not handed
+/// to YEARFRAC's lift.
+#[test]
+fn accrintm_does_not_lift_its_basis_through_yearfrac() {
+    let model = model_with(&[
+        ("A1", "=ACCRINTM(39083,39448,0.1,1000,0)"),
+        ("A2", "=ROWS(ACCRINTM(39083,39448,0.1,1000,{0;0}))"),
+    ]);
+    assert_eq!(model._get_text("A1"), "100");
+    assert_ne!(model._get_text("A2"), "2");
+}

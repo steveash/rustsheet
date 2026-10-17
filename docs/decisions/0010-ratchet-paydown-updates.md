@@ -102,9 +102,11 @@
   reach ≥ 20 Excel cells through probes/discount-security-modes; decision 0062) (`make eval-baseline`).
   T-1625: functions below the evidence floor 21 → 13 (VDB, AMORDEGRC, FVSCHEDULE, MDURATION, RRI, IMPOWER, IMSUB
   and IMDIV reach ≥ 20 Excel cells through probes/fin-* and eng-im*; decision 0062) (`make eval-baseline`).
+  T-1787: duplicated lines 6155 → 6111 (the four private `calc_result_to_array_node` copies in functions/logical
+  now call `cast::calc_result_to_array_node`) (`check_duplication.py --update`).
   T-1770: functions/date_and_time.rs 1131 → 1018 lines (EDATE and EOMONTH moved to `date_and_time/month_shift.rs`)
-  and expressions/parser/static_analysis.rs 1669 → 1658 (OFFSET's and INDIRECT's shapes moved to
-  `static_analysis/reference_result.rs`) (`check_file_size.py --update`); duplicated lines 6155 → 6137
-  (`check_duplication.py --update`).
+  and expressions/parser/static_analysis.rs 1669 → 1641 (OFFSET's and INDIRECT's shapes moved to
+  `static_analysis/reference_result.rs`, `broadcast_shapes` to `static_analysis/broadcast.rs`), and
+  functions/financial/mod.rs 2290 → 2194, already shrunk on main (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

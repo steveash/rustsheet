@@ -1,11 +1,13 @@
 use super::reference_operators::{at_outside, wrong_range_shape};
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
+use broadcast::broadcast_shapes;
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
     legacy_call_reads_a_value, legacy_context_intersects, remove_array_at, remove_in_array_context,
 };
 mod aggregate;
+mod broadcast;
 mod legacy;
 mod lifted;
 mod reference_parameter;
@@ -16,17 +18,17 @@ use signature::{
     args_signature_address, args_signature_arraytotext, args_signature_bycol_byrow,
     args_signature_cell, args_signature_choose, args_signature_choosecols, args_signature_drop,
     args_signature_expand, args_signature_fieldvalue, args_signature_filter,
-    args_signature_groupby, args_signature_hlookup, args_signature_ifs, args_signature_index,
-    args_signature_irr, args_signature_lambda, args_signature_let, args_signature_lookup,
-    args_signature_map, args_signature_match, args_signature_mirr, args_signature_npv,
-    args_signature_offset, args_signature_one_vector, args_signature_pivotby,
-    args_signature_randarray, args_signature_reduce, args_signature_row, args_signature_scalars,
-    args_signature_scan, args_signature_sequence, args_signature_sort, args_signature_sortby,
-    args_signature_sumif, args_signature_take, args_signature_textafter, args_signature_textjoin,
-    args_signature_textsplit, args_signature_tocol, args_signature_trimrange,
-    args_signature_unique, args_signature_with_holidays, args_signature_wrapcols,
-    args_signature_xirr, args_signature_xlookup, args_signature_xmatch, args_signature_xnpv,
-    Signature,
+    args_signature_getpivotdata, args_signature_groupby, args_signature_hlookup,
+    args_signature_ifs, args_signature_index, args_signature_irr, args_signature_lambda,
+    args_signature_let, args_signature_lookup, args_signature_map, args_signature_match,
+    args_signature_mirr, args_signature_npv, args_signature_offset, args_signature_one_vector,
+    args_signature_pivotby, args_signature_randarray, args_signature_reduce, args_signature_row,
+    args_signature_scalars, args_signature_scan, args_signature_sequence, args_signature_sort,
+    args_signature_sortby, args_signature_sumif, args_signature_take, args_signature_textafter,
+    args_signature_textjoin, args_signature_textsplit, args_signature_tocol,
+    args_signature_trimrange, args_signature_unique, args_signature_with_holidays,
+    args_signature_wrapcols, args_signature_xirr, args_signature_xlookup, args_signature_xmatch,
+    args_signature_xnpv, Signature,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -420,27 +422,6 @@ fn broadcast_static_result<'a>(args: impl IntoIterator<Item = &'a Node>) -> Stat
     broadcast_shapes(args.into_iter().map(run_static_analysis_on_node))
 }
 
-/// [`broadcast_static_result`] of shapes already analysed.
-fn broadcast_shapes(shapes: impl IntoIterator<Item = StaticResult>) -> StaticResult {
-    let mut shape: Option<(i32, i32)> = None;
-    for result in shapes {
-        match result {
-            StaticResult::Scalar => {}
-            StaticResult::Unknown => return StaticResult::Unknown,
-            // An array or a range (`counts` is never `None` here).
-            other => {
-                let (a, b) = other.counts().unwrap_or((1, 1));
-                let (n, m) = shape.unwrap_or((0, 0));
-                shape = Some((n.max(a), m.max(b)));
-            }
-        }
-    }
-    match shape {
-        Some((n, m)) => StaticResult::Array(n, m),
-        None => StaticResult::Scalar,
-    }
-}
-
 // We only care if the function can return a range or not
 fn not_implemented(_args: &[Node]) -> StaticResult {
     StaticResult::Scalar
@@ -577,6 +558,7 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Bycol | Function::Byrow => args_signature_bycol_byrow(arg_count),
         Function::Groupby => args_signature_groupby(arg_count),
         Function::Pivotby => args_signature_pivotby(arg_count),
+        Function::Getpivotdata => args_signature_getpivotdata(arg_count),
         Function::Map => args_signature_map(arg_count),
         Function::Reduce => args_signature_reduce(arg_count),
         Function::Scan => args_signature_scan(arg_count),
@@ -1238,6 +1220,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Mmult => StaticResult::Unknown,
         Function::Bycol | Function::Byrow => StaticResult::Unknown,
         Function::Groupby | Function::Pivotby => StaticResult::Unknown,
+        Function::Getpivotdata => StaticResult::Scalar,
         Function::Map | Function::Reduce => StaticResult::Unknown,
         Function::Scan | Function::Makearray => StaticResult::Unknown,
         Function::Sequence => StaticResult::Unknown,

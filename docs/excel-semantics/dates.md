@@ -386,7 +386,11 @@ per element) when a date, month count, day count, return type or basis argument 
 an array literal in the same place (`EDATE(A1:A3,1)` is `#VALUE!`, `INDEX(EDATE({45000.25;45031.5;45100.75},1),2)`
 = 45061). The refusal holds on the range's own rows and in a later argument (`ROWS(EDATE(45000,B1:B60))`,
 `ROWS(YEARFRAC(45000,46000,B1:B60))`), and also in a legacy formula, which puts no `@` on the range. Next to an array
-the range makes every element `#VALUE!` (`EDATE({45000;45031},M1:M60)` is 2 rows of `#VALUE!`). See probes/scalar-lift-shapes,
+the range makes every element `#VALUE!` (`EDATE({45000;45031},M1:M60)` is 2 rows of `#VALUE!`, and `EDATE(A1:A60,{1;2})` and `EDATE({45000,45031},M1:M60)`
+have every element `#VALUE!`, probes/scalar-lift-open-a W24-W30, W70-W73). An error argument beside the range follows the
+function's check order: `EDATE(NA(),A1:A60)` is `#N/A`, `EDATE(A1:A60,NA())` is `#VALUE!`, and YEARFRAC checks `basis`, start, end
+(`YEARFRAC(1/0,45000,NA())` is `#N/A`; probes/scalar-lift-open-a W1-W8, -d W1-W7). A 3-D range in EDATE is `#VALUE!`
+(probes/scalar-lift-open-b W4, W5, W7). See probes/scalar-lift-shapes,
 -b and -c (T-1767) and arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule".
 The `weekend` argument of WORKDAY.INTL and NETWORKDAYS.INTL is the exception: it lifts over a range too
 (`INDEX(WORKDAY.INTL(45000,5,B1:B3),2)` = 45007); `holidays` is read whole (see "WORKDAY holidays take the whole
@@ -399,6 +403,7 @@ the 9999 limit: the month argument is bounded (see "DATE month and day bounds").
 `DATE(2042,8,1E+15)` = 84845 = `DATE(2042,8,32767)` (gen-m6/5cc04d6f42b23b51 Calc!A4, `DATE(..)%*88` = 74663.6;
 excel-graph 2026-10-09), the same 32767 cap (T-1419).
 Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
+Ours: YEARFRAC's scalar kernel checks start, end, basis, where Excel checks basis, start, end, so probes/scalar-lift-open-d W1, W3, W4, W6, W7 fail (T-1800).
 Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift (T-1235), as do
 DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. EDATE, EOMONTH, WEEKNUM and YEARFRAC lift
 over an array and refuse a multi-cell range in every argument, in dynamic and legacy formulas (T-1770, SPEC-0011

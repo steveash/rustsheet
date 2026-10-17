@@ -53,7 +53,9 @@ impl Model {
     /// like a written range: `EOMONTH(..,TAKE(Data!B9:E12,-2,-1))` is `#VALUE!`
     /// (gen-m9/b58b6d7cd39d195f A9), as `EDATE(INDEX(A1:A60,0,1),1)` is (-b K3).
     /// A 3-D range there is `#VALUE!`, where a `Lift` argument reads it as `#REF!`
-    /// (probes/scalar-lift-open-b W2-W11, -d W17-W29; T-1777).
+    /// (probes/scalar-lift-open-b W2-W11, -d W17-W29; T-1777). A one-cell 3-D range,
+    /// `EDATE(Sheet1:Sheet2!A1,1)`, is inferred to be `#VALUE!` too, and so are the XLOOKUP, DROP
+    /// and TRIMRANGE reference forms (only TAKE, INDEX and IF are probed): T-1801 probes them.
     fn evaluate_as_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         match node.ungrouped() {
             Node::FunctionKind { kind, args } => {
