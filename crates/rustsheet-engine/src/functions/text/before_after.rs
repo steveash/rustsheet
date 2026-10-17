@@ -13,12 +13,12 @@ enum Side {
 }
 
 impl Model {
-    /// TEXTAFTER(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])
+    /// `TEXTAFTER(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])`
     pub(crate) fn fn_textafter(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.text_around(args, cell, Side::After)
     }
 
-    /// TEXTBEFORE(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])
+    /// `TEXTBEFORE(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])`
     pub(crate) fn fn_textbefore(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.text_around(args, cell, Side::Before)
     }
@@ -85,7 +85,7 @@ impl Model {
         };
         let match_mode = if arg_count > 3 {
             match self.cast_to_number(values[3].clone(), cell) {
-                Ok(f) if f == 0.0 => Case::Sensitive,
+                Ok(0.0) => Case::Sensitive,
                 Ok(_) => Case::Insensitive,
                 Err(s) => return s,
             }
