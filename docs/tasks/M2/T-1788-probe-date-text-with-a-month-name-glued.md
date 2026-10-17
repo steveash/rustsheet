@@ -30,8 +30,8 @@ current-year serials left unscored, as probes/date-text-yearless does. Use the `
 ## Acceptance criteria
 - [ ] A probes case (e.g. `probes/date-text-glued-month`) with an excel-graph sidecar covers the forms above.
 - [ ] docs/excel-semantics/dates.md "Date text with a month name glued to digits" states the rule from that evidence and cites its cells.
-- [ ] T-1770 is updated with the rule (or split) if the evidence differs from its assumption.
+- [ ] T-1789 is updated with the rule (or split) if the evidence differs from its assumption.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The parser change (T-1770).
+- The parser change (T-1789).

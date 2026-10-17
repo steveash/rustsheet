@@ -7,7 +7,8 @@ status: todo
 priority: P2
 size: S
 tier: sonnet
-depends_on: []
+depends_on: [T-1770]
+spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
 
 ## Goal
@@ -15,6 +16,8 @@ The database functions lift `field` and `criteria` given as array literals eleme
 and DCOUNT and DCOUNTA with an empty `field` count the matching records.
 
 ## Context
+SPEC-0011 rollout step 3 (docs/specs/SPEC-0011-scalar-argument-lifting.md). `field` lifts through `lift_call` as `LiftArrays`: an array lifts and a two-cell range is `#VALUE!` (D11:D22). `database` is `Whole`. `criteria` is the spec's fifth kind, `LiftArraysRangeWhole`: it lifts over an array literal (F11:F23), but a range is the criteria table, read whole. This task adds that variant to `ArgKind`. The one catalog rule (SPEC-0011, stated in T-1776 too): `LiftArraysRangeWhole` is catalog `mode: criteria` or `range` with `lift: arrays`, derived from the table by T-1776's command. This is the shared lifting helper this task waits for.
+
 Evidence: probes/db-argument-modes (excel-graph, 2026-10-11, T-1086), docs/excel-semantics/statistics.md
 "Database function argument modes". Known failures:
 - C11:C22, `ROWS(DSUM(A1:C6,{2;3},E1:E2))` is 2 for every D-function. We give `#N/IMPL!`.

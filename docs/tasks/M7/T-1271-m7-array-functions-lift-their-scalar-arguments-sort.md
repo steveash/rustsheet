@@ -7,13 +7,16 @@ status: todo
 priority: P2
 size: M
 tier: sonnet
-depends_on: []
+depends_on: [T-1770]
+spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
 
 ## Goal
 The scalar arguments of SEQUENCE, TAKE, DROP, EXPAND, MAKEARRAY, WRAPROWS, WRAPCOLS, TOCOL, UNIQUE and SORTBY lift over a range and an array (one call per element) as in Excel, and SORT reads an array sort_index as a list of sort keys with a sort_order of the same length.
 
 ## Context
+SPEC-0011 rollout step 3 (docs/specs/SPEC-0011-scalar-argument-lifting.md). Lift the M7 scalars whose elements are values through `lift_call`, with their parameters in `Function::arg_kinds` (`Lift`, or `Whole` for the vector and list arguments). Lifted elements that are references (OFFSET, INDIRECT) or whole arrays (TAKE, DROP) are outside the spec. Design them here, on top of `lift_values` and `cast::calc_result_to_array_node`, rather than as a new copy of the broadcast.
+
 T-1083's probe probes/m7-argument-modes (excel-graph, 2026-10-09; docs/excel-semantics/arrays.md "Dynamic-array and LAMBDA function argument modes"). Failing rows (F/G/H cells): 1-3 SEQUENCE (a range gives one row, an array `#N/IMPL!`), 4-5 TAKE, 6 DROP (a lifted TAKE or DROP element is the whole sub-array, column K), 7 EXPAND, 8 WRAPROWS, 9 TOCOL, 10-11 SORT (`SORT(A1:B3,{1;2})` is 3x2; `SORT(A1:B3,1,{1;-1})` is `#VALUE!`), 12 UNIQUE, 23 MAKEARRAY, 26 SORTBY, 42 WRAPCOLS pad_with. Reuse the existing lift helpers (T-1241 does the same for the M6 lookup functions; check whether it landed a shared helper first). The functions live in functions/lookup_and_reference and spill_functions.rs. Split per function family if it outgrows size M.
 
 More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/<case>.case.json`):

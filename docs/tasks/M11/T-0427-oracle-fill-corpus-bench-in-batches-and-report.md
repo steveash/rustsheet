@@ -51,7 +51,7 @@ LibreOffice 96.7–98.9%, witan 99.7–99.8%). Baseline: corpus-bench known fail
 Caveat: 373 of the near-miss cells hold the workbook's 15-digit cached value, not the web value, because the fill
 keeps a cached Microsoft Excel value within 1e-9 (decision 0030 rule 1); T-0433 decides whether that applies here.
 
-Gap-triager on the failures: T-1788/T-1770 (month name glued to digits, 623 cells), T-0433 (cached value over web
-value, 373), T-1771 (VLOOKUP into a cached external workbook, 115), T-1236 (EOMONTH array lift, 26, extended),
-T-0434 (volatile detection through table references, 6), T-1772 (three array/legacy cells, 4), T-1089 (bare
+Gap-triager on the failures: T-1788/T-1789 (month name glued to digits, 623 cells), T-0433 (cached value over web
+value, 373), T-1790 (VLOOKUP into a cached external workbook, 115), T-1770 (EOMONTH array lift, 26, extended),
+T-0434 (volatile detection through table references, 6), T-1791 (three array/legacy cells, 4), T-1089 (bare
 IMAGE, 1, extended). The 5 timeouts stay with T-0430. The steward adds the status.md row.
