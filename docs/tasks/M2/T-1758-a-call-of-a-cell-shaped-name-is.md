@@ -3,7 +3,7 @@ id: T-1758
 title: "A call of a cell-shaped name is a call of that cell"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -27,7 +27,7 @@ Found by T-1719: probes/unknown-function-name-spelling A8 (`#REF!`, ours `#NAME?
 ## Outcome
 `parse_named_call` turns a callee spelled like an in-range A1 cell, and no function, into a `LambdaCallKind` of that cell (`#REF!`); `callee_operand` prints a bare cell callee unparenthesized (`AB1(1)`). Probe cells unknown-function-name-spelling A8/B8 now pass; unit test added. Edge shapes (past XFD, `$`, R1C1) remain unprobed and are noted in references.md.
 
-## Handoff
+## Handoff (resumed)
 Branch `agent/engine/T-1758-cell-shaped-call` holds a working implementation; A8/B8 pass, `make check` was green at the last commit, security/architecture/quality reviewers APPROVE. `reviewer-excel-fidelity` requested changes three rounds running, so it is handed off (step 5b). What exists: `parse_named_call` turns an ASCII, `$`-free, A1-cell-shaped non-function callee into a `LambdaCallKind` of the reference (operands.rs); `callee_operand` prints a relative sheet-less `ReferenceKind` callee bare (reference_operators.rs); `reference_or_call_operand` lets the R1C1 parser read `R[-7]C[27](1)` back (stored form); tests in test_lambda.rs and test_defined_name_grouped.rs; follow-up probe task T-1804.
 Open fidelity finding (MAJOR): the cell-shaped rule in `parse_named_call` also runs in R1C1 mode. A parse-error formula is stored as raw A1 text (stringify.rs ~734), so `=Ab1 (1)` re-parsed after `rename_sheet` becomes `=AC18(1)` (A1 coordinates read as R1C1 offsets), a regression from main. Next: gate the rule on `self.lexer.is_a1_mode()` and add a regression test that puts `=Ab1 (1)` in a cell, renames the sheet and asserts the text is not shifted. Also: record `XFD1(1)` after `insert_columns` (becomes `=#REF!(1)`, `#ERROR!`) in T-1804, and state in references.md that XFD and 1048576 count as cells. Then re-run `make check` and the fidelity reviewer.
 Set the Outcome note below to done once finished (the status was reset to todo for the handoff).
