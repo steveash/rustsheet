@@ -50,8 +50,6 @@ impl Model {
         // `P * (1+rr)^n / (1+rr)`; the root is Excel's `^`. Every order and power source matters
         // in the last digits: this one matches all 432 cells of probes-numeric/m9-fin-mirr
         // (docs/excel-semantics/financial.md "MIRR's evaluation order", T-1687).
-        // We do a bit of analysis if the rates are -1 as there are some cancellations
-        // It is probably not important.
         let years = values.len() as f64;
         let reinvest_growth = 1.0 + reinvest_rate;
         let finance_growth = 1.0 + finance_rate;
@@ -68,6 +66,8 @@ impl Model {
             reinvest_power *= reinvest_growth;
             finance_power *= finance_growth;
         }
+        // A rate of -1 makes the powers 0, so its limits are taken by hand (the pre-T-1687
+        // behaviour, unfitted; `fn_mirr_div_0` covers a finance rate of -1).
         let top = if reinvest_rate == -1.0 {
             // This is finite
             match positive_values.last() {

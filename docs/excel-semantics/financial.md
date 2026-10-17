@@ -133,7 +133,7 @@ Evidence: probes-numeric/m9-fin-mirr Calc!A1:A432 (excel-graph, 2026-10-17; A253
 {-100,120}, {-3,7}, {120,-100}, {-3,0,7} and {-3,7,0}); probes-numeric/m9-fin-irr-rate MIRR cells;
 ironcalc-calc/FINANCIAL/MIRR.xlsx (225 cells, all passing since).
 Status: VERIFIED (fit, 467/467 bit-exact)
-Implemented in: `fn_mirr` (functions/financial/mod.rs). A rate of -1 keeps its own limit cases, and a ratio that is
+Implemented in: `fn_mirr` (functions/financial/mirr.rs). A rate of -1 keeps its own limit cases, and a ratio that is
 zero, negative or infinite keeps `powf`; neither is part of the fit.
 Tasks: T-1687
 
