@@ -312,6 +312,91 @@ is `#VALUE!`; a BYROW row result is not `#CALC!`; `REGEXTEST(A1,1)` is `#VALUE!`
 Status: VERIFIED (web)
 Tasks: T-1083 (generator modes)
 
+## Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule
+Rule: a function whose scalar argument gets an array lifts, one call per element, and the arguments
+broadcast like the arithmetic operators. A worksheet function also lifts over a multi-cell range in
+that argument. An Analysis ToolPak function does not take a multi-cell range in the scalar
+arguments probed (listed below): the range makes its call `#VALUE!`, with no implicit intersection,
+in a dynamic formula and in a legacy one. The `weekend` argument of WORKDAY.INTL and
+NETWORKDAYS.INTL is the exception: it lifts over a range (`INDEX(WORKDAY.INTL(45000,5,B1:B3),2)` =
+45007; dates.md "Date function argument modes").
+- **Shape.** The result has the largest height and the largest width among the lifted arguments. A
+  size-1 dimension repeats, and a position past a shorter argument is `#N/A`:
+  `ROWS(PMT({0.1;0.2;0.3},{10;20},100))` is 3, with element 3 `#N/A` and element 2
+  `PMT(0.2,20,100)`. `NORM.DIST({1;2;3},{0,1},1,TRUE)` is a 3x2 grid. In
+  `PMT({0.1,0.2;0.3,0.4},{10,20,30},100)` column 3 is `#N/A` in both rows, and
+  `PMT({0.1;0.2},{10,20,30},100)` is a full 2x3 grid. A 60-cell range against `{10;20}` is 60 rows,
+  `#N/A` from row 3 on. EDATE pads the same way (`EDATE({45000;45031;45061},{1;2})` element 3).
+- **Errors per element.** Each element follows the scalar rules on its own. An element that fails
+  is an error in its own position only (`PMT({0.1;"x"},10,100)` is a number, then `#VALUE!`;
+  `NORM.DIST(2.5,0,{1;-1},TRUE)` is a number, then `#NUM!`). In each element the leftmost failing
+  argument decides. This rests on one cell: element 2 of `PMT({1;#N/A},{#DIV/0!;#NUM!},100)` is
+  `#N/A` (H33). Element 1, where only nper fails, is `#DIV/0!` (H31, a sibling formula with the same element-1 inputs). A scalar error, or scalar text
+  that is not a number, next to an array is broadcast: `PMT(NA(),{10;20},100)` is 2 rows with
+  element 2 `#N/A` (H28-H29). `EDATE(NA(),{1;2})`, `PMT("x",{10;20},100)` and `EDATE("x",{1;2})` are
+  2 rows, but their element values are unprobed (H30, H44, H45).
+- **Elements are typed values.** An array element is read like the same value typed as the
+  argument. EDATE's `{TRUE;45000}` gives `#VALUE!`, then 45031, because a typed boolean date is
+  `#VALUE!` for EDATE. NORM.S.DIST's `{TRUE;"1"}` gives NORM.S.DIST(1) twice, which is also
+  `NORM.S.DIST(TRUE,TRUE)`. A range cell is read like a referenced cell: over F1:F4 = 0.1, blank,
+  "x", `=1/0`, `PMT(F1:F4,10,100)` gives a number, -10 (the blank cell is 0), `#VALUE!`, `#DIV/0!`.
+- **Ranges in worksheet functions lift, also on their own rows.** On the rows of the range, where
+  an intersection would succeed, `ROWS(PMT(C1:C60,10,100))`, `ROWS(PMT(0.1,D1:D60,100))`,
+  `ROWS(NORM.DIST(E1:E60,0,1,TRUE))` and `ROWS(NORM.DIST(2.5,0,1,B1:B60))` are 60, and so is
+  `ROWS(BITAND(13,D1:D60))` in a later argument. An explicit `@` intersects:
+  `PMT(@C1:C60,10,100)` is one number.
+- **Ranges in Analysis ToolPak functions are refused, in the arguments probed.** On the range's own rows,
+  `ROWS(EDATE(A1:A60,1))`, `ROWS(EDATE(45000,B1:B60))`, `ROWS(YEARFRAC(45000,46000,B1:B60))`,
+  `ROWS(BESSELJ(2.5,B1:B60))`, `ROWS(DEC2BIN(9,D1:D60))`, `ROWS(DELTA(B1:B60,1))`,
+  `ROWS(EFFECT(C1:C60,4))` and `ROWS(EFFECT(0.1,D1:D60))` are `#VALUE!`. A reference returned by a
+  function is refused too: `EDATE(IF(TRUE,A1:A60),1)` and `EDATE(INDEX(A1:A60,0,1),1)`. A one-cell
+  range or reference is its value (`EDATE(A1:A1,1)` = 45031, `EDATE(INDEX(A1:A60,2),1)` = 45032).
+  An operation on a range is an array, and that lifts: `ROWS(EDATE(A1:A60+0,1))` and
+  `ROWS(EDATE(45000,M1:M60*1))` are 60, `ROWS(EDATE(TAKE(A1:A60,2)+0,1))` is 2. An explicit `@`
+  intersects (`EDATE(@A1:A60,1)` on row 3 is 45033, and `#VALUE!` off the range's rows). The
+  arguments probed over a range are every first scalar argument of the financial and engineering
+  ATP functions (fin-argument-modes, eng-argument-modes), and these later arguments: EDATE's months,
+  YEARFRAC's basis, BESSELJ's n, DEC2BIN's places and EFFECT's npery. Other later arguments are
+  unverified (PRICE's or COUP*'s frequency, ACCRINT's basis, CONVERT's units, COMPLEX's suffix, an
+  IM* second argument; T-1777).
+- **A range next to an array in an Analysis ToolPak call.** The call lifts over the array only.
+  The range is passed whole to each element's call, which refuses it. So the shape comes from the
+  array, and the probed elements are `#VALUE!`, on the range's rows and off them.
+  `EDATE({45000;45031},M1:M60)` and `EFFECT({0.1;0.2},M1:M60)` are 2 rows with both elements
+  `#VALUE!` (-b C, D, H, I). `EDATE(A1:A60,{1;2})` is 2 rows with element 1 `#VALUE!` (F, G; element 2
+  unprobed). `EDATE({45000,45031},M1:M60)` is one row (L; elements unprobed).
+- **Legacy (non-dynamic) formulas.** A worksheet function's range gets the usual implicit `@`:
+  legacy `=PMT(C1:C60,10,100)` shows `=PMT(@C1:C60,10,100)` and gives the intersected value on
+  the range's rows and `#VALUE!` off them. Legacy `=SUM(PMT(C1:C60,10,100))` is that one value,
+  where the dynamic formula sums 60. An Analysis ToolPak argument's bare range gets no `@`:
+  legacy `=EDATE(A1:A60,1)` and `=YEARFRAC(A1:A60,46000)` keep their text and are `#VALUE!`, on
+  the range's rows too. An operation on the range gets the `@`, as in an aggregate's argument
+  (references.md "Legacy formulas intersect the ranges in value arguments"): legacy
+  `=EDATE(A1:A60+0,1)` shows `=EDATE(@A1:A60+0,1)` and is 45033 on row 3. Under SUMPRODUCT, an
+  array context, nothing is intersected. Legacy `=SUMPRODUCT(PMT(C1:C60,10,100))` sums 60,
+  `=SUMPRODUCT(EDATE(A1:A60,1))` is `#VALUE!`, and `=SUMPRODUCT(EDATE(A1:A60+0,1))` and
+  `=SUMPRODUCT(NORM.DIST(E1:E60,0,1,TRUE))` lift. Legacy `=SUM(PMT({0.1;0.2},10,100))` sums both
+  elements (-40.12681517653708), like the dynamic formula. Its FORMULATEXT was not probed (T-1777).
+Evidence: probes/scalar-lift-shapes H1-H50, J1-J8, K1-K8; probes/scalar-lift-shapes-b (each
+question on row 3 and row 70); probes/scalar-lift-shapes-c (legacy formulas and their FORMULATEXT).
+All three: excel-graph, 2026-10-17, T-1767. The per-family argument lists are in statistics.md,
+financial.md, engineering.md, dates.md, lookup.md and the "argument modes" entries above. The ATP
+range rule is the one MROUND and ISEVEN follow ("CEILING/FLOOR family and MROUND lift over
+arrays", information.md "ISEVEN/ISODD over a range").
+Unprobed (T-1777):
+- an error argument to the left or right of a refused range (`EDATE(NA(),A1:A60)`; the design
+  takes the leftmost, as MROUND does);
+- whether Excel marks such a call as a dynamic-array formula when it saves it;
+- a multi-cell reference returned by a function in a worksheet function's argument
+  (`ROWS(PMT(IF(TRUE,C1:C60),10,100))`, `PMT(INDEX(C1:C60,0,1),10,100)`): only written ranges were
+  probed;
+- the element gaps named above.
+Ours: the families listed in SPEC-0011 do not lift (`#N/IMPL!` for an array). A range is
+intersected in a dynamic formula, and in a legacy one an Analysis ToolPak range gets an `@` it
+should not have. 90 of these 111 cells fail. SPEC-0011 and its rollout tasks fix them.
+Status: VERIFIED (excel-graph)
+Tasks: T-1767 (SPEC-0011), T-1290, T-1372, T-1383, T-1236
+
 ## GROUPBY and PIVOTBY
 Rule: groups are keyed like UNIQUE (case-insensitive text, first spelling shown) and always sorted ascending:
 numbers < text < FALSE < TRUE < blank, with the blank-key group shown as the number 0 and kept last even
