@@ -3,7 +3,7 @@ id: T-1782
 title: "Probe RANDBETWEEN with a scalar boolean beside an array bound, and which error wins per element"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
