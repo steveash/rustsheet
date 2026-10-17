@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: [T-1769]
+depends_on: [T-1788]
 ---
 
 ## Goal
@@ -23,12 +23,12 @@ docs/excel-semantics/dates.md, "Date text with a month name glued to digits"):
 - corpus-bench/1726 (33 cells): `July-KPIs!J12` `=DATE(F2,MONTH(D2&1),E2)` with D2 = `"July"`: expected 45483, engine `#VALUE!`; A6:A36 follow.
 Inspect with `./target/release/rustsheet-eval show corpus-bench/<id>/1_<id>_input.xlsx`.
 Code: `formatter::date_text::parse_date` (shared by DATEVALUE, VALUE, number coercion and criteria).
-The probe T-1769 settles which digits are day and year; implement its rule, not a guess.
+The probe T-1788 settles which digits are day and year; implement its rule, not a guess.
 
 ## Acceptance criteria
 - [ ] The `F` lines of corpus-bench/55392, CF_18814 and 1726 leave eval/baseline/corpus-bench.txt (1726 keeps its line only for `July-KPIs!A1`, T-1089), with no new ones.
-- [ ] The probe case of T-1769 passes; unit tests in `date_text` cover each glued form.
+- [ ] The probe case of T-1788 passes; unit tests in `date_text` cover each glued form.
 - [ ] dates.md entry updated with "Implemented in"; `make check` green; reviewers approve.
 
 ## Out of scope
-- Other date-text shapes not evidenced by T-1769.
+- Other date-text shapes not evidenced by T-1788.

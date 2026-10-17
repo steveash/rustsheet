@@ -336,7 +336,7 @@ evidence is the corpus-bench sidecars, recalculated by excel-graph 2026-10-17, T
   B2 = 2021 is 44348 (2021-06-01; corpus-bench/CF_18814 `attendance-Dec!E1`).
 Unprobed: which numbers count as day or year in the glued forms (`"July10"`, `"July45"`,
 `"Jul2026"`), whether VALUE and number coercion agree, and lower-case or full-name `"1June2021"`.
-Probe: T-1769. Status: UNVERIFIED beyond the three cited forms. Not implemented (T-1770): the engine
+Probe: T-1788. Status: UNVERIFIED beyond the three cited forms. Not implemented (T-1770): the engine
 gives `#VALUE!` for all three.
 
 ## WORKDAY holidays take the whole range
