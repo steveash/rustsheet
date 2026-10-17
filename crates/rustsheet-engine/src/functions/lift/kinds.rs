@@ -172,6 +172,16 @@ const LIFT_2: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Constant);
 const BESSEL: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays], Weighted(BESSEL_WEIGHT));
 /// The units one Bessel element is charged against `MAX_LIFTED_CELL_VISITS`.
 const BESSEL_WEIGHT: u32 = 1 << 16;
+/// `IMSUM(inumber1, ...)` and IMPRODUCT: up to 255 arguments, each read whole by the function's
+/// own fold (`Model::fold_complex`), so nothing lifts and the call is one value. The fold never
+/// enters the lift driver, so its `KernelWork` is not charged; it caps its own reads.
+const COMPLEX_FOLD: ArgKinds = ArgKinds {
+    required: 1,
+    params: &[],
+    repeat: Some(WholeByCaller),
+    max: 255,
+    work: Constant,
+};
 // --- End engineering (T-1383) ---------------------------------------------------------------
 
 /// The functions of [`Function::arg_kinds`], as a pattern: the arm of an exhaustive `match` on a
@@ -291,6 +301,8 @@ macro_rules! lifting_table_functions {
             | Function::Imsqrt
             | Function::Imsub
             | Function::Imtan
+            | Function::Imsum
+            | Function::Improduct
             // --- End engineering (T-1383) ---
     };
 }
@@ -450,7 +462,11 @@ impl Function {
             | Function::Bitxor
             | Function::Bitlshift
             | Function::Bitrshift => Some(&LIFT_2),
-            // IMSUM and IMPRODUCT read their arguments whole (T-1384): no entry.
+            // IMSUM and IMPRODUCT fold their arguments whole: a range or an array is never
+            // lifted, `ROWS(IMSUM({"1+2i";"3"}))` is 1 (probes/eng-argument-modes A60:A83,
+            // B/C/E42, B/C/E50; engineering.md "IMSUM and IMPRODUCT take their arguments
+            // whole", T-1384).
+            Function::Imsum | Function::Improduct => Some(&COMPLEX_FOLD),
             // --- End engineering (T-1383) ---
             _ => None,
         }

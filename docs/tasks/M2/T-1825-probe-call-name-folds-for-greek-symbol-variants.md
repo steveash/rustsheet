@@ -3,7 +3,7 @@ id: T-1825
 title: "Probe call-name folds for Greek symbol variants, other ligatures and capital sharp s"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1818 found ı, ſ and µ do not fold though `to_uppercase` merges them; ϐ/β,
 
 ## Out of scope
 -
+
+## Outcome
+Probed 16 pairs (excel-graph). ϵ, ﬀ ﬃ ﬄ ﬆ and ẞ fold; ϐ ϑ ϕ ϖ ϰ ϱ, ﬅ and ŉ do not. `spelling_key` updated; U+0345, ǰ, ΐ stay unprobed (excel-graph rejects the workbook). Recorded in references.md.

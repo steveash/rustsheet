@@ -16,17 +16,25 @@ use super::stringify::bound_variables::{walk_names, NameSite};
 use super::Node;
 use crate::types::DefinedName;
 
-/// The registry key of a name: upper-cased, except that dotless ı, long ſ and the micro sign µ keep
-/// their own key. Excel folds ß/SS, ς/σ/Σ, ﬁ/FI and ǆ/Ǆ but not ı/I, ſ/S or µ/μ/Μ
-/// (probes/unknown-function-name-folds, T-1818).
+/// Characters Excel keeps apart from their upper-case form in a name, though `to_uppercase` merges them.
+const UNFOLDED: [char; 11] = [
+    'ı', 'ſ', '\u{b5}', 'ϐ', 'ϑ', 'ϕ', 'ϖ', 'ϰ', 'ϱ', '\u{fb05}', 'ŉ',
+];
+
+/// The registry key of a name: upper-cased, except that the `UNFOLDED` characters keep their own
+/// key and the capital sharp s ẞ is `SS` like ß. Excel folds ß/SS/ẞ, ς/σ/Σ, ϵ/ε, ﬁ/FI, ﬀ, ﬃ, ﬄ, ﬆ and
+/// ǆ/Ǆ but not ı/I, ſ/S, µ/μ/Μ, ϐ/β (likewise ϑ ϕ ϖ ϰ ϱ), ﬅ/ST or ŉ
+/// (probes/unknown-function-name-folds{,-2}, T-1818, T-1825).
 fn spelling_key(name: &str) -> String {
-    name.chars()
-        .flat_map(|c| {
-            let keep = matches!(c, 'ı' | 'ſ' | '\u{b5}');
-            let (own, upper) = (keep.then_some(c), (!keep).then(|| c.to_uppercase()));
-            own.into_iter().chain(upper.into_iter().flatten())
-        })
-        .collect()
+    let mut key = String::with_capacity(name.len());
+    for c in name.chars() {
+        match c {
+            'ẞ' => key.push_str("SS"),
+            c if UNFOLDED.contains(&c) => key.push(c),
+            c => key.extend(c.to_uppercase()),
+        }
+    }
+    key
 }
 
 /// Upper-cased name (ß folds with SS, T-1762; see `spelling_key`) → the spelling every call or value use of it prints with.
@@ -85,24 +93,27 @@ impl CallNameSpellings {
 mod tests {
     use super::spelling_key;
 
+    /// Whitespace-separated name pairs: whether the two keys of each pair are equal.
+    fn pairs_fold(pairs: &str, folds: bool) {
+        let names: Vec<&str> = pairs.split_whitespace().collect();
+        for pair in names.chunks(2) {
+            assert_eq!(
+                spelling_key(pair[0]) == spelling_key(pair[1]),
+                folds,
+                "{pair:?}"
+            );
+        }
+    }
+
     #[test]
     fn folds_match_excel() {
-        for (a, b) in [
-            ("ςw", "σw"),
-            ("ςu", "Σu"),
-            ("ﬁq", "FIq"),
-            ("ǆd", "Ǆd"),
-            ("straße", "STRASSE"),
-        ] {
-            assert_eq!(spelling_key(a), spelling_key(b), "{a} {b}");
-        }
-        for (a, b) in [
-            ("ıx", "Ix"),
-            ("ſy", "Sy"),
-            ("\u{b5}z", "μz"),
-            ("\u{b5}v", "Μv"),
-        ] {
-            assert_ne!(spelling_key(a), spelling_key(b), "{a} {b}");
-        }
+        pairs_fold(
+            "ςw σw ςu Σu ﬁq FIq ǆd Ǆd straße STRASSE ϵg εg ﬀj FFj ﬆn STn ẞr ßr ẞs SSs",
+            true,
+        );
+        pairs_fold(
+            "ıx Ix ſy Sy \u{b5}z μz \u{b5}v Μv ϐa βa ϑb θb ϕc φc ϖd πd ϰe κe ϱf ρf ﬅm STm ŉo ʼNo",
+            false,
+        );
     }
 }
