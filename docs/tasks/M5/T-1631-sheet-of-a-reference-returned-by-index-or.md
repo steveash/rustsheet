@@ -3,7 +3,7 @@ id: T-1631
 title: "SHEET of a reference returned by INDEX or IF, and of a union"
 milestone: M5
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
