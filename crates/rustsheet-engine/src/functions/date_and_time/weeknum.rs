@@ -10,6 +10,10 @@ use crate::{
 impl Model {
     /// `WEEKNUM(serial, [return_type])`; 1900 weeks follow Excel's Sunday serial 1 (docs/excel-semantics/dates.md).
     pub(crate) fn fn_weeknum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_array_args(args, &[0, 1], cell, |_| 1, Self::weeknum_scalar)
+    }
+
+    fn weeknum_scalar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }

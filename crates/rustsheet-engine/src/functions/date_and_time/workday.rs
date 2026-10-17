@@ -25,6 +25,30 @@ impl Model {
     }
 
     pub(crate) fn fn_workday(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_array_args(
+            args,
+            &[0, 1],
+            cell,
+            super::lift::step_days,
+            Self::workday_scalar,
+        )
+    }
+
+    pub(crate) fn fn_workday_intl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.lift_array_args(
+            args,
+            &[0, 1],
+            cell,
+            super::lift::step_days,
+            Self::workday_intl_scalar,
+        )
+    }
+
+    fn workday_scalar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -125,11 +149,7 @@ impl Model {
         Ok(holiday_set)
     }
 
-    pub(crate) fn fn_workday_intl(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
+    fn workday_intl_scalar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }

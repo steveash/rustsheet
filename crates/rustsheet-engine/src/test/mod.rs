@@ -43,6 +43,7 @@ mod test_fn_formulatext;
 mod test_fn_hyperlink;
 mod test_fn_if;
 mod test_fn_indirect;
+mod test_fn_date_array_lift;
 mod test_fn_is_array_lift;
 mod test_fn_maxifs;
 mod test_fn_minifs;

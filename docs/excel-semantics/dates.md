@@ -379,8 +379,12 @@ the 9999 limit: the month argument is bounded (see "DATE month and day bounds").
 excel-graph 2026-10-09), the same 32767 cap (T-1419).
 Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
 Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift (T-1235), as do
-DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. Still `#N/IMPL!` (T-1236) for an array literal in
-a date argument: EDATE, EOMONTH, WEEKNUM, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL, YEARFRAC.
+DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. EDATE, EOMONTH, WEEKNUM, WORKDAY,
+WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL and YEARFRAC lift over an array literal in a date, count, return type or
+basis argument (T-1236, `lift_array_args`): the scalar function runs once per broadcast element, a multi-cell range
+stays `#VALUE!`. A WORKDAY.INTL or NETWORKDAYS.INTL element whose `weekend` is itself a range or array has no single
+value and is `#VALUE!` (unprobed). The lifted day walkers are bounded by `MAX_LIFTED_CELL_VISITS` (DEVIATION, arrays.md "GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap"; Excel
+has no such limit).
 In a 1904 workbook DATEDIF reads date text as DATEVALUE does (from
 1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330). It counts the days on the 1904 calendar since T-1416 (`DATEDIF(0,1000,"ym")` = 8, probes/date-system-1904-readers A11).
 Status: VERIFIED

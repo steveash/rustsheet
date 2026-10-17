@@ -2,6 +2,7 @@ use crate::tz::Tz;
 use chrono::Datelike;
 use std::collections::HashMap;
 
+mod lift;
 pub(crate) mod time_text;
 mod weekend;
 mod weeknum;
@@ -274,6 +275,38 @@ impl Model {
     date_part_fn!(fn_year, 0);
 
     pub(crate) fn fn_eomonth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_array_args(args, &[0, 1], cell, |_| 1, Self::eomonth_scalar)
+    }
+
+    pub(crate) fn fn_edate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_array_args(args, &[0, 1], cell, |_| 1, Self::edate_scalar)
+    }
+
+    pub(crate) fn fn_networkdays(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_array_args(
+            args,
+            &[0, 1],
+            cell,
+            lift::day_span,
+            Self::networkdays_scalar,
+        )
+    }
+
+    pub(crate) fn fn_networkdays_intl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.lift_array_args(
+            args,
+            &[0, 1],
+            cell,
+            lift::day_span,
+            Self::networkdays_intl_scalar,
+        )
+    }
+
+    fn eomonth_scalar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count != 2 {
             return CalcResult::new_args_number_error(cell);
@@ -382,7 +415,7 @@ impl Model {
     }
 
     // date, months
-    pub(crate) fn fn_edate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+    fn edate_scalar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count != 2 {
             return CalcResult::new_args_number_error(cell);
@@ -535,7 +568,7 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_networkdays(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+    fn networkdays_scalar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -677,11 +710,7 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_networkdays_intl(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
+    fn networkdays_intl_scalar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
