@@ -833,7 +833,7 @@ Tasks: T-1466
 Rule: BYROW and BYCOL take a single value as a 1x1 array and call the LAMBDA once: `"ü"&BYROW(COUNT(..),LAMBDA(z,z))` with
 the COUNT 7 is "ü7", and `BYROW("",_xleta.PRODUCT)` is 0 (PRODUCT of the row {""}).
 Evidence: gen-m7/93976dd9a3578ed9 Calc!A31, gen-m7/59cc50701f4937c9 Calc!A4 (excel-graph, 2026-10-11, T-1275).
-Ours: `#VALUE!` for BYROW and BYCOL of a number or text (`BYROW(7,LAMBDA(z,z))`; MAP, SCAN and REDUCE of 7 work).
+Ours: matches (a single value is a 1x1 array and the LAMBDA is called once; unit test `byrow_bycol_of_a_single_value_call_the_lambda_once`, T-1350).
 Status: VERIFIED (web)
 Tasks: T-1350
 

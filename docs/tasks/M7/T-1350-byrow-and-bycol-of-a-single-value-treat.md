@@ -3,7 +3,7 @@ id: T-1350
 title: "BYROW and BYCOL of a single value treat it as a 1x1 array (#VALUE! today)"
 milestone: M7
 lane: functions-logic
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,9 +22,12 @@ T-1275's gen-m7 suite (excel-graph sidecars, 2026-10-11); docs/excel-semantics/a
 Code: `fn_byrow`/`fn_bycol` in crates/rustsheet-engine/src/functions/logical/bycol_byrow.rs.
 
 ## Acceptance criteria
-- [ ] gen-m7/93976dd9a3578ed9 A31 passes in `./target/release/rustsheet-eval show gen-m7/<case>.case.json` (and 59cc50701f4937c9 A4 once T-1273 has landed), with no new failing gen-m7 cell and no new known failures in eval/baseline/.
-- [ ] Unit tests for BYROW and BYCOL of a number, a text and a 1x1 array constant.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m7/93976dd9a3578ed9 A31 passes in `./target/release/rustsheet-eval show gen-m7/<case>.case.json` (and 59cc50701f4937c9 A4 once T-1273 has landed), with no new failing gen-m7 cell and no new known failures in eval/baseline/.
+- [x] Unit tests for BYROW and BYCOL of a number, a text and a 1x1 array constant.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+On current main BYROW/BYCOL of a single value already worked (gen-m7 93976dd9a3578ed9 A31 and 59cc50701f4937c9 A4 pass; the remaining mismatches in those cases are other cells). Added the missing unit test (number, text, 1x1 array constant, scalar function) and updated docs/excel-semantics/arrays.md. No eval delta.
