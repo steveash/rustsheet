@@ -1083,19 +1083,14 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Right => scalar_arguments(args),
         Function::Search => scalar_arguments(args),
         Function::Substitute => scalar_arguments(args),
-        Function::Regexextract => {
-            if args.len() == 3 {
-                StaticResult::Unknown
-            } else {
-                not_implemented(args)
-            }
+        // Their text and scalar arguments lift over a range or an array (T-1272); the table derives
+        // their shape once they move onto `lift_call`. TODO(T-1775)
+        Function::Regexextract | Function::Regexreplace | Function::Regextest => {
+            StaticResult::Unknown
         }
-        Function::Regexreplace => not_implemented(args),
-        Function::Regextest => not_implemented(args),
         Function::T => scalar_arguments(args),
         Function::Text => scalar_arguments(args),
-        Function::Textafter => not_implemented(args),
-        Function::Textbefore => not_implemented(args),
+        Function::Textafter | Function::Textbefore => StaticResult::Unknown,
         Function::Textjoin => not_implemented(args),
         Function::Trim => scalar_arguments(args),
         Function::Unicode => not_implemented(args),
