@@ -3,7 +3,7 @@ id: T-1272
 title: "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX functions lift text over a range and scalar arguments over an array"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ Delimiter ranges (a multi-cell range with blanks, numbers or booleans as the del
 
 ## Out of scope
 -
+
+## Outcome
+TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEXTEST/EXTRACT/REPLACE lift their text and scalar arguments over ranges and arrays; the delimiters stay lists (TEXTBEFORE/AFTER now take a delimiter list). Static analysis marks them array-capable. Eval delta: probes known failures 3072 -> 3042 (30 cells fixed, 0 regressions); gen-m7 A24/A11 now `#SPILL!` as in Excel. Unverified guesses are listed in docs/excel-semantics/text.md.
