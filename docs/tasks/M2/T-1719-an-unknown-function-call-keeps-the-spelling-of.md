@@ -72,5 +72,5 @@ Design read of the code (no code changed yet):
 - Harness: a spec case's cells are set row by row (an xlsx's load order) so "first met" matches.
 - Eval delta: probes known failures 2962 → 2950 (12 fixed: unknown-function-name-spelling B4-B7,
   B9, B10, B14-B18, lotus-dot-range-func-second E2), 0 regressions.
-- Follow-up: T-1750 (`=Ab1(1)` is a call of the cell AB1: `#REF!`, printed `=AB1(1)`; A8/B8).
+- Follow-up: T-1758 (`=Ab1(1)` is a call of the cell AB1: `#REF!`, printed `=AB1(1)`; A8/B8).
 

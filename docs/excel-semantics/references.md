@@ -1728,7 +1728,7 @@ prints `=my_Fn(1,2)+SUM(3)` and a later `=My_Fn(1)` / `=MY_FN(1)` print `=my_Fn(
 `=BAR(1)` / `=bAr(1)` print `=Bar(1)`; `=my.fn(1)` then `=My.Fn(1)` prints `=my.fn(1)`;
 `=A1.INDEX(1)` then `=a1.Index(1)` prints `=A1.INDEX(1)`. A name never seen before keeps its typed
 spelling (`x1y`, `Xyz2`, `_Foo`, `Foo_`), except `=Ab1(1)` (cell-reference-shaped name), which prints
-`=AB1(1)` and is `#REF!` (a call of the cell AB1; ours is still `#NAME?` printing `=Ab1(1)`, T-1750).
+`=AB1(1)` and is `#REF!` (a call of the cell AB1; ours is still `#NAME?` printing `=Ab1(1)`, T-1758).
 "First" is in cell order of the probe (row-major, A before B), the order Excel loads the xlsx in;
 whether a later edit can re-spell a name is unprobed.
 Ours (T-1719): a workbook-level registry (`CallNameSpellings`, lowercase name → first spelling) gives
