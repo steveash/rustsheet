@@ -1106,7 +1106,7 @@ option, and gives `#VALUE!` for text or a boolean), and which error wins between
 Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034).
 The VAR.P last digit (probes/aggregate-grid B31, C31) has passed since T-1037.
 Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.rs); the lift reuses
-`Model::lift_with_cost`, and the spill shape is `aggregate_static_result` in static_analysis/aggregate.rs (T-1038).
+`Model::lift_values` (functions/lift/driver.rs), and the spill shape is `aggregate_static_result` in static_analysis/aggregate.rs (T-1038).
 
 ## SUBTOTAL and AGGREGATE over hidden and filtered rows
 Rule: a row hidden by hand is read by SUBTOTAL 1-11 and skipped by 101-111; a row hidden by a filter is skipped by
@@ -1143,20 +1143,29 @@ double: `MULTINOMIAL(2,3)` = 9.999999999999998 (exact 10), `MULTINOMIAL(4,6)` = 
 `(6)` 0.9999999999999982, `(50)` 1.000000000000018, `(170)` 1.0000000000001974. Argument order matters from
 large sums on: `(20,150)` 5.221123511164219e+25 but `(150,20)` 5.221123511166111e+25, `(10,20,30)`
 3.553261127085186e+24 but `(30,20,10)` 3.5532611270850594e+24; `(2,3)` = `(3,2)` and `(1,169)` = `(169,1)`.
-The algorithm (fit, T-1190): one double running sum adds `log10(k)` (correctly rounded) for k = 1..sum, then
-subtracts `log10(k)` for k = 1..n for each argument, last argument first, and the result is `exp(sum * ln 10)`.
-That reproduces 64 of the 72 probed cells bit-exactly. The other 8 are single arguments (and the same
-ones padded with zeros), each one ulp off in either direction: `(5)` 0.9999999999999996 (fit 0.9999999999999994),
-`(8)`, `(10)`, `(30)`, `(40)`, `(140)`, `(0,5)`, `(5,0)`. Rejected candidates (scores out of 72): `exp(GAMMALN(s+1))`
-over exact factorials (Excel's own GAMMALN values, at most 17), natural-log sums (at most 16), `10^x` in place of
-`exp(x * ln 10)` (30), the arguments in their given order (60), glibc `log10` in place of a correctly rounded one
-(57), `ln(k)/ln 10` or `ln(k)*log10(e)` terms (at most 33), and x87 80-bit terms or accumulator (at most 54).
-No single one-ulp change to a `log10(k)` term fits more cells.
+The algorithm (fit, T-1190, T-1600): one double running sum adds `log10(k)` (correctly rounded) for k = 1..sum, then
+subtracts `log10(k)` for k = 1..n for each argument, last argument first. With `y = sum * ln 10`, the result is `exp(y)`
+when `y >= 0` and `1 / exp(-y)` when `y < 0`, which only a lone argument's residue (alone or padded with zeros) can be.
+So a single argument below 1 is always 1 minus an even number of ulps (2^-53 each; the inverse of a value just above 1):
+`(5)` 0.9999999999999996 where `exp(y)` would give the nearer 0.9999999999999994. That reproduces all 240 probed cells
+bit-exactly; `exp(y)` alone gets 188 (every miss a single argument below 1). Rejected candidates, scored by T-1190
+on the 72 cells it had: `exp(GAMMALN(s+1))` over exact factorials (Excel's own GAMMALN values, at most 17/72),
+natural-log sums (at most 16/72), `10^x` in place of `exp(x * ln 10)` (30/72), the arguments in their given order
+(60/72), glibc `log10` in place of a correctly rounded one (57/72), `ln(k)/ln 10` or `ln(k)*log10(e)` terms (at most
+33/72), x87 80-bit terms or accumulator (at most 54/72). Scored by T-1600 on all 240: `10^y` (156/240), descending
+subtraction (35/240), a separate denominator sum (21/240), `1 + expm1(y)` (184/240), `exp(y/log10 e)` (172/240), and a
+`2^t` split at floor/round/ceil of `t = sum * log2 10` (at most 156/240).
+Numeric text in a range cell after a negative is `#NUM!` (a range holding -1, "2", 3), as typed `(-1,"2",3)` is;
+non-numeric text wins over a negative (`(-1,"x",3)` and `(D1:D1,"x")` with D1 = -1 are `#VALUE!`). Formatted numeric
+text in a cell reads as its number, by direct reference and in a range alike (typed literals other than
+plain "2" and "4" are unprobed): " 2" and "2 " are 2, "1e1" 10, "$3" 3, "50%" 0.5 (truncated to 0),
+"(2)" -2 and "1,000" 1000 (so `#NUM!`), and date text "1/2/2000" 36527 (`#NUM!`, over 170).
 Evidence: probes/math-argument-modes Sheet1!C9, C35, C47, C49:C53 (excel-graph, 2026-10-08);
-probes/multinomial-large-arguments A1:A20 (2026-10-09); probes/multinomial-algorithm-sweep A1:A60 (excel-graph, 2026-10-15).
-Ours: the fitted algorithm (`multinomial_value`, functions/math_and_trigonometry/multinomial.rs); the 8 cells above are one ulp off.
-Status: VERIFIED (values); algorithm a fit, 64/72 bit-exact
-Tasks: T-1082, T-1190
+probes/multinomial-large-arguments A1:A20 (2026-10-09); probes/multinomial-algorithm-sweep A1:A60 (excel-graph, 2026-10-15);
+probes/multinomial-single-arguments A1:A170 (every single argument), B1:C13 (coercion; excel-graph, 2026-10-17).
+Ours: the fitted algorithm (`multinomial_value`, functions/math_and_trigonometry/multinomial.rs), bit-exact on every probed cell.
+Status: VERIFIED (values); algorithm a fit, 240/240 bit-exact
+Tasks: T-1082, T-1190, T-1600
 
 ## COMBIN is inexact
 Rule: Excel's COMBIN is not the exact binomial coefficient either, and its rounding differs from MULTINOMIAL's:

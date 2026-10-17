@@ -13,6 +13,7 @@ pub(crate) mod date_and_time;
 mod engineering;
 mod financial;
 mod information;
+mod lift;
 pub(crate) mod logical;
 pub(crate) mod lookup_and_reference;
 mod macros;
@@ -1673,8 +1674,7 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        // Pick, then call once: a call per arm gets its own stack slots in an unoptimized build, a
-        // 6 KB frame that every nesting level of a formula keeps on the stack (T-1110).
+        // Pick, then call once: a call per arm is a 6 KB debug-build frame per nesting (T-1110).
         let implementation: FunctionImplementation = match kind {
             Function::And => Self::fn_and,
             Function::False => Self::fn_false,
