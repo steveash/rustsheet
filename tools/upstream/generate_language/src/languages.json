@@ -527,7 +527,8 @@
       "fieldvalue": "FIELDVALUE",
       "filterxml": "FILTERXML",
       "groupby": "GROUPBY",
-      "pivotby": "PIVOTBY"
+      "pivotby": "PIVOTBY",
+      "getpivotdata": "GETPIVOTDATA"
     }
   },
   "it": {
@@ -1058,7 +1059,8 @@
       "fieldvalue": "FIELDVALUE",
       "filterxml": "FILTERXML",
       "groupby": "GROUPBY",
-      "pivotby": "PIVOTBY"
+      "pivotby": "PIVOTBY",
+      "getpivotdata": "GETPIVOTDATA"
     }
   },
   "fr": {
@@ -1589,7 +1591,8 @@
       "fieldvalue": "FIELDVALUE",
       "filterxml": "FILTERXML",
       "groupby": "GROUPBY",
-      "pivotby": "PIVOTBY"
+      "pivotby": "PIVOTBY",
+      "getpivotdata": "GETPIVOTDATA"
     }
   },
   "de": {
@@ -2120,7 +2123,8 @@
       "fieldvalue": "FIELDVALUE",
       "filterxml": "FILTERXML",
       "groupby": "GROUPBY",
-      "pivotby": "PIVOTBY"
+      "pivotby": "PIVOTBY",
+      "getpivotdata": "GETPIVOTDATA"
     }
   },
   "es": {
@@ -2651,7 +2655,8 @@
       "fieldvalue": "FIELDVALUE",
       "filterxml": "FILTERXML",
       "groupby": "GROUPBY",
-      "pivotby": "PIVOTBY"
+      "pivotby": "PIVOTBY",
+      "getpivotdata": "GETPIVOTDATA"
     }
   }
 }
