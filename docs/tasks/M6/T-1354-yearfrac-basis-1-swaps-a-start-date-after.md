@@ -3,7 +3,7 @@ id: T-1354
 title: "YEARFRAC basis 1 swaps a start date after the end date (#NUM! today)"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,3 +27,6 @@ reversed dates in unit tests too.
 
 ## Out of scope
 -
+
+## Outcome
+Basis 1 now swaps reversed dates like the other bases (A38 `=YEARFRAC(52874,24708,1)` = 77.11295191295191). Unit test covers bases 0-4 reversed. Eval: no baseline entry changed.
