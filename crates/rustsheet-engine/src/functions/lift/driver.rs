@@ -62,7 +62,6 @@ pub(crate) enum LiftCost<'a> {
     /// Every element visits this many cells: elements × cells.
     Cells(u64),
     /// The kernel prepares its whole data once (LARGE sorts it): cells + elements.
-    #[allow(dead_code)] // TODO(T-1772): LARGE's sorted data is the first prepared kernel.
     Prepared(u64),
     /// Every element walks the used cells of `range` (`Model::walk_cost`) `walks` times: the
     /// *IF(S) front end, one walk per criterion. The range is only measured when the call lifts.
