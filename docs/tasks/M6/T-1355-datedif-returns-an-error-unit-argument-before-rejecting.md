@@ -3,7 +3,7 @@ id: T-1355
 title: "DATEDIF returns an error unit argument before rejecting a negative start date"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
