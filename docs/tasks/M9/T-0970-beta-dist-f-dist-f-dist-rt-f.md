@@ -65,4 +65,4 @@ BETA.INV/F.INV/F.INV.RT (T-0974); Student t (T-0969); discrete distributions (T-
 BETADIST/FDIST/FTEST evidence (T-1047).
 
 ## Fit result (T-1744)
-Implement Excel's closed forms first (I_x(a,1) = exp(a ln x), I_x(1,b) = 1 - exp(b ln(1-x)); exact on every cell). The best general candidate, `best_combination` in `fitlab/kernels/beta.py`, is bit-exact on 158 of 283 BETA.DIST cells, against 87 today.
+Implement Excel's closed forms first: I_x(a,1) = exp(a ln x) (27/27 b = 1 cells; not pow) and I_x(1,b) = 1 - exp(b ln(1-x)) (22/24 a = 1 cells; 1 - pow(1-x,b) fits equally; the misses at x = 0.9, b = 2.5 and 5 are unfitted). The best general candidate, `best_combination` in `fitlab/kernels/beta.py`, is bit-exact on 158 of 283 BETA.DIST cells, against 87 today.

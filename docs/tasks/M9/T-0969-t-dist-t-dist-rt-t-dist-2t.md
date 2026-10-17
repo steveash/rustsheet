@@ -66,4 +66,4 @@ T.INV/T.INV.2T/CONFIDENCE.T (T-0967); the incomplete-beta kernel for BETA.DIST/F
 legacy TDIST/TTEST evidence (T-1048).
 
 ## Fit result (T-1744)
-T.DIST is closer to the correctly rounded value (104/150) than to any I_x candidate (best 94, engine 78), so test a direct t algorithm before mapping onto I_x.
+Through I_x (mapped via the smaller of n/(n+t^2) and t^2/(n+t^2), which large n needs), Cephes incbet as published is bit-exact on 106 of 150 T.DIST cells and the correctly rounded value on 112, against 78 today; no candidate is Excel's algorithm yet.

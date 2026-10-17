@@ -18,9 +18,10 @@ Candidates, each plain IEEE double (Python floats, platform libm):
 - the correctly rounded I_x(a, b) (70-digit decimal continued fraction), as a reference.
 
 Result (T-1744 Outcome; docs/excel-semantics/statistics.md, "Incomplete beta: Excel's closed forms
-and the best candidate"): no candidate is Excel's algorithm; the closed forms are exact (b = 1 on
-27 of 27 cells, a = 1 on 22 of 24) and the best combination is bit-exact on 157 of 279 BETA.DIST
-cells, against 87 for the engine (statrs `beta_reg`) and 130 for the correctly rounded value.
+and the best candidate"): no candidate is Excel's algorithm. I_x(a,1) = exp(a ln x) holds on 27 of
+27 b = 1 cells; I_x(1,b) = 1 - exp(b ln(1-x)) on 22 of 24 a = 1 cells (1 - pow(1-x,b) equally).
+The best combination is bit-exact on 158 of the 283 BETA.DIST cells (279 numeric), against 87 for
+the engine (statrs `beta_reg`) and 130 for the correctly rounded value.
 """
 
 from __future__ import annotations
@@ -130,11 +131,13 @@ def ibeta_reference(x: float, a: float, b: float) -> float:
 
 @cache
 def gamma_cr(z: float) -> float:
+    """Gamma(z) correctly rounded (from the decimal ln Gamma)."""
     return float(_CTX.exp(ln_gamma_decimal(decimal.Decimal(z))))
 
 
 @cache
 def ln_gamma_cr(z: float) -> float:
+    """ln Gamma(z) correctly rounded."""
     return float(ln_gamma_decimal(decimal.Decimal(z)))
 
 
@@ -144,6 +147,7 @@ def gamma_ratio_cr(a: float, b: float) -> float:
 
 
 def gamma_ratio_libm(a: float, b: float) -> float:
+    """Gamma(a+b)/(Gamma(a)*Gamma(b)) from libm tgamma (Cephes' own source)."""
     return math.gamma(a + b) / (math.gamma(a) * math.gamma(b))
 
 
@@ -153,6 +157,7 @@ def exp_log_power(x: float, a: float) -> float:
 
 
 def libm_pow(x: float, a: float) -> float:
+    """x^a by libm pow."""
     return float(x**a)
 
 
@@ -162,6 +167,7 @@ _MAX_NR_TERMS = 1000
 
 
 def nr_betacf(a: float, b: float, x: float, eps: float = 3e-16) -> float:
+    """Numerical Recipes' continued fraction for I_x(a,b), modified Lentz, to `eps`."""
     qab, qap, qam = a + b, a + 1.0, a - 1.0
     c = 1.0
     d = 1.0 - qab * x / qap
@@ -185,6 +191,7 @@ def nr_betacf(a: float, b: float, x: float, eps: float = 3e-16) -> float:
 
 
 def nr_betai(x: float, a: float, b: float, log1p_tail: bool = False, eps: float = 3e-16) -> float:
+    """Numerical Recipes' betai: log-space prefactor, fraction, switch at (a+1)/(a+b+2)."""
     if x <= 0:
         return 0.0
     if x >= 1:
@@ -259,6 +266,7 @@ Ratio = Callable[[float, float], float]
 
 
 def cephes_pseries(a: float, b: float, x: float, pw: Power, ratio: Ratio) -> float:
+    """Cephes' power series for I_x(a,b), used when b*x <= 1 and x <= 0.95."""
     ai = 1.0 / a
     u = (1.0 - b) * x
     v = u / (a + 1.0)
@@ -382,11 +390,13 @@ def beta_dist_candidates() -> list[Candidate]:
 
 
 def f_dist_candidates() -> list[Candidate]:
-    """F.DIST(x,d1,d2,TRUE) = I_y(d1/2, d2/2), y = d1*x/(d1*x + d2)."""
+    """F.DIST(x,d1,d2,TRUE) = I_y(d1/2, d2/2), y = d1*x/(d1*x + d2), df truncated."""
 
     def wrap(fn: Ibeta) -> Callable[..., float]:
         def call(*args: Arg) -> float:
             x, d1, d2 = _numbers(args)
+            # Excel truncates both df (t1049-fdist: F.DIST(1,3.9,7.9,TRUE) = F.DIST(1,3,7,TRUE)).
+            d1, d2 = float(math.trunc(d1)), float(math.trunc(d2))
             return fn(d1 * x / (d1 * x + d2), d1 / 2.0, d2 / 2.0)
 
         return call
@@ -395,8 +405,9 @@ def f_dist_candidates() -> list[Candidate]:
 
 
 def t_dist_candidates() -> list[Candidate]:
-    """T.DIST(t,n,TRUE) = 1 - I_y(n/2, 1/2)/2 for t > 0 (I_y/2 below), y = n/(n + t^2); Excel
-    truncates n to an integer (docs/excel-semantics/statistics.md, T-1043)."""
+    """T.DIST(t,n,TRUE) = 1 - I_y(n/2, 1/2)/2 for t > 0 (I_y/2 below), y = n/(n + t^2), or
+    0.5 +- I_z(1/2, n/2)/2 with z = 1 - y when z is smaller; Excel truncates n to an integer
+    (docs/excel-semantics/statistics.md, T-1043)."""
 
     def wrap(fn: Ibeta) -> Callable[..., float]:
         def call(*args: Arg) -> float:
@@ -404,8 +415,14 @@ def t_dist_candidates() -> list[Candidate]:
             n = float(math.trunc(n))
             if t == 0:
                 return 0.5
-            half_tail = fn(n / (n + t * t), n / 2.0, 0.5) / 2.0
-            return 1.0 - half_tail if t > 0 else half_tail
+            # Map through the smaller of y = n/(n+t^2) and z = t^2/(n+t^2): rounding y near 1
+            # before I_y loses the tail (about 7E5 ulp at n = 1E6).
+            y, z = n / (n + t * t), t * t / (n + t * t)
+            if y <= z:
+                half_tail = fn(y, n / 2.0, 0.5) / 2.0
+                return 1.0 - half_tail if t > 0 else half_tail
+            centre = fn(z, 0.5, n / 2.0) / 2.0
+            return 0.5 + centre if t > 0 else 0.5 - centre
 
         return call
 

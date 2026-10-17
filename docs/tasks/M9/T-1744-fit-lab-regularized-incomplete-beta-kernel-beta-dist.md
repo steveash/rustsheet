@@ -57,9 +57,11 @@ this way (T-1524, T-1525, T-1533; implemented by T-0901 and T-0916). It has no f
 Done 2026-10-17.
 - **Fits.** `uv run rustsheet-fitlab beta-dist` (also `f-dist` and `t-dist`), in `fitlab/kernels/beta.py`.
 - **Reference.** A 70-digit decimal continued fraction with a Stirling ln Gamma.
-- **Engine rows.** These are from the same command with the release `rustsheet-eval`.
-- **Closed forms (VERIFIED).** Excel computes I_x(a,1) = exp(a ln x), 27 of 27 cells, and
-  I_x(1,b) = 1 - exp(b ln(1-x)), 22 of 24 cells.
+- **Engine rows.** These are from the same command with the release `rustsheet-eval`. The engine
+  also scores the cells with text or bool arguments, which the candidates do not take, so its
+  ≤1e-9 column counts more cells.
+- **Closed forms.** Excel computes I_x(a,1) = exp(a ln x) on 27 of 27 cells (VERIFIED; pow gets
+  14). I_x(1,b) = 1 - exp(b ln(1-x)) matches 22 of 24 cells, as does 1 - pow(1-x,b) (PARTIAL).
 - **General algorithm (UNVERIFIED).** The best combination is Cephes' fractions without the power
   series, a mean switch, and an exp-log prefactor with Gamma correctly rounded. Two families were
   tried, NR and Cephes. Both beat the engine, so the task is done, not blocked (decision 0056).
@@ -67,22 +69,24 @@ Done 2026-10-17.
 
 Exact / within 4 ulp / within 1e-9:
 
-| candidate | beta-dist (283; 279 numeric) | f-dist (33; 28) | t-dist (150) |
+| candidate | beta-dist (283; 279 numeric) | f-dist (33; 30) | t-dist (150) |
 |---|---|---|---|
-| best combination | 158 / 220 / 279 | 15 / 26 / 28 | 94 / 127 / 150 |
-| Cephes incbet + closed forms | 133 / 214 / 279 | 12 / 24 / 28 | 92 / 125 / 150 |
-| correctly rounded | 130 / 209 / 279 | 17 / 28 / 28 | 104 / 129 / 150 |
-| Cephes, exp(a ln x), Gamma correctly rounded | 121 / 210 / 279 | 11 / 24 / 28 | 91 / 125 / 150 |
-| Cephes, exp(a ln x), tgamma | 103 / 209 / 279 | 9 / 25 / 28 | 90 / 126 / 150 |
-| NR betai (eps 3e-16, 1e-15; log or log1p) | 98 / 153–156 / 279 | 3 / 15–16 / 28 | 86–87 / 118 / 150 |
-| NR betai eps 1e-14 | 97 / 149–152 / 279 | 4 / 14 / 28 | 85 / 117 / 150 |
-| Cephes, pow, Gamma correctly rounded | 94 / 193 / 279 | 13 / 25 / 28 | 90 / 122 / 150 |
-| Cephes as published (pow, tgamma) | 89 / 190 / 279 | 12 / 26 / 28 | 92 / 123 / 150 |
+| best combination | 158 / 220 / 279 | 15 / 28 / 30 | 95 / 129 / 148 |
+| Cephes incbet + closed forms | 133 / 214 / 279 | 13 / 26 / 30 | 103 / 132 / 148 |
+| correctly rounded | 130 / 209 / 279 | 17 / 30 / 30 | 112 / 142 / 148 |
+| Cephes, exp(a ln x), Gamma correctly rounded | 121 / 210 / 279 | 12 / 26 / 30 | 104 / 133 / 148 |
+| Cephes, exp(a ln x), tgamma | 103 / 209 / 279 | 9 / 27 / 30 | 104 / 132 / 148 |
+| NR betai (eps 3e-16, 1e-15; log or log1p) | 98 / 153–156 / 279 | 3 / 17–18 / 30 | 89 / 120 / 148 |
+| NR betai eps 1e-14 | 97 / 149–152 / 279 | 4 / 16 / 30 | 86 / 119 / 148 |
+| Cephes, pow, Gamma correctly rounded | 94 / 193 / 279 | 15 / 27 / 30 | 105 / 130 / 148 |
+| Cephes as published (pow, tgamma) | 89 / 190 / 279 | 13 / 28 / 30 | 106 / 129 / 148 |
 | engine (statrs `beta_reg`) | 87 / 127 / 282 | 6 / 15 / 32 | 78 / 105 / 150 |
 
 **Where the remaining misses are.** Shapes of 50 and 100 at x = 0.5 and 0.9. There Excel is
 more accurate than exp(a ln x)*exp(b ln(1-x)), but at x = 0.1 it is not.
 
-**For the implementers.** T-0970 can implement the closed forms now; they are exact and cheap,
-and the best combination is a candidate on top. T-0969 should check T.DIST separately (see
-statistics.md, "Incomplete beta: Excel's closed forms and the best candidate").
+**For the implementers.** T-0970 can implement the b = 1 closed form now (exact on every cell)
+and the a = 1 form (22 of 24),
+and the best combination is a candidate on top. For T-0969, T.DIST through I_x scores best with Cephes as published (106/150); it needs the
+complement mapping for large n (see statistics.md, "Incomplete beta: Excel's closed forms and
+the best candidate").

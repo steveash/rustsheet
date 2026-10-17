@@ -8,6 +8,7 @@ import pytest
 
 from rustsheet_tools.fitlab import fit
 from rustsheet_tools.fitlab.kernels import beta, registry
+from rustsheet_tools.fitlab.sweep import Cell
 
 
 def test_reference_and_cephes_agree_on_closed_forms() -> None:
@@ -36,3 +37,17 @@ def test_best_combination_beats_the_reference_on_beta_dist() -> None:
     assert len(result.sweep.cells) == 283
     assert scores["closed forms, Cephes fractions, mean switch (best)"] == 158
     assert scores["correctly rounded"] == 130
+
+
+def test_gamma_and_mappings() -> None:
+    assert beta.gamma_cr(5.0) == 24.0
+    assert beta.gamma_ratio_cr(2.0, 3.0) == 12.0
+    t_dist = beta.t_dist_candidates()[0].evaluate
+    f_dist = beta.f_dist_candidates()[0].evaluate
+
+    def cell(*args: float) -> Cell:
+        return Cell("case", "Calc", "A1", "", args, 0.0)
+
+    assert t_dist(cell(0.0, 5.0)) == 0.5
+    # Excel truncates the F df: F.DIST(1,3.9,7.9,TRUE) = F.DIST(1,3,7,TRUE) (t1049-fdist).
+    assert f_dist(cell(1.0, 3.9, 7.9)) == f_dist(cell(1.0, 3.0, 7.0))
