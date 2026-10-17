@@ -3,7 +3,7 @@ id: T-1569
 title: "Probe ATANH(1) and ATANH(-1) (infinite results) against Excel"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
