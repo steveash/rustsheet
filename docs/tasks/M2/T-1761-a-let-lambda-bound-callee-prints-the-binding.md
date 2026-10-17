@@ -17,7 +17,7 @@ A callee bound by an enclosing LET or LAMBDA prints with the binding's spelling 
 Excel: `=LET(Gg,LAMBDA(x,x*2),gG(3))` prints `...,Gg(3))` and `=LAMBDA(Hh,Hh(1))(LAMBDA(x,x))` keeps `Hh`; ours prints the lowercase name (`gg(3)`, `hh(1)`). Failing cells: Sheet1!B5, B7. Semantics: docs/excel-semantics/references.md "Unknown function call names" (T-1756); registry `CallNameSpellings` (T-1719).
 
 ## Acceptance criteria
-- [ ] - [ ] Sheet1!B5 and B7 of probes/unknown-function-name-reach pass; B4 and B6 (already passing) keep passing.
+- [ ] Sheet1!B5 and B7 of probes/unknown-function-name-reach pass; B4 and B6 (already passing) keep passing.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

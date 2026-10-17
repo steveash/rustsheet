@@ -17,7 +17,7 @@ FORMULATEXT of a free call whose name is a defined name prints the defined name'
 Excel: `OtherFn` defined, `=otherfn(1)` then `=OTHERFN(1)` both print `=OtherFn(1)`; ours prints the first typed spelling. Failing cells: probes/unknown-function-name-reach Sheet1!B20, B21. Semantics: docs/excel-semantics/references.md "Unknown function call names" (T-1756); registry `CallNameSpellings` (T-1719).
 
 ## Acceptance criteria
-- [ ] - [ ] Sheet1!B20 and B21 of probes/unknown-function-name-reach pass; B1-B3 keep passing.
+- [ ] Sheet1!B20 and B21 of probes/unknown-function-name-reach pass; B1-B3 keep passing.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

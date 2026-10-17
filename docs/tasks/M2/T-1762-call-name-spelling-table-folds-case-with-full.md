@@ -17,7 +17,7 @@ The spelling table matches names the way Excel does for non-ASCII letters: `=str
 Excel folds ß with SS (full case folding) and Ä/ä, É/é; ours folds simple case only, so STRASSE is a new name. Failing cell: Sheet1!B16. Semantics: docs/excel-semantics/references.md "Unknown function call names" (T-1756); registry `CallNameSpellings` (T-1719).
 
 ## Acceptance criteria
-- [ ] - [ ] Sheet1!B16 of probes/unknown-function-name-reach passes; B13, B14, B17 and B18 keep passing.
+- [ ] Sheet1!B16 of probes/unknown-function-name-reach passes; B13, B14, B17 and B18 keep passing.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
