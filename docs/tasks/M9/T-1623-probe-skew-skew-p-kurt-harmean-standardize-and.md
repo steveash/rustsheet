@@ -38,8 +38,8 @@ SKEW.P, KURT, HARMEAN, STANDARDIZE, SUMX2PY2, SUMXMY2, SUMX2MY2, MDETERM and ECM
 filed as T-1750 (STANDARDIZE range lift), T-1751 (MDETERM residual), T-1752 (SKEW.P few points, 2 cells), T-1753
 (HARMEAN empty ranges), T-1754 (KURT ulp), T-1755 (STANDARDIZE TRUE). Quirks in docs/excel-semantics/statistics.md.
 None of the ten is on the report's "Below the evidence floor" list any more (`make eval`, 2026-10-17). The ratchet
-fell by 7 (34 → 27), not 10, because the task's per-function counts date from 2026-10-15 and other probe batches had
-already moved some of them before this PR; the lock follows the count `evidence-floor` reports on the merged tree.
+fell by 7 (34 → 27), not 10, because SKEW, KURT and HARMEAN already had 30, 30 and 29 cells before this PR (the task's
+counts date from 2026-10-15); the other seven were lifted here; the lock follows the count `evidence-floor` reports on the merged tree.
 `quality/evidence-floor.json` was written by `make eval-baseline` (`evidence-floor --update`), and the decision-record
 line is in docs/decisions/0010-ratchet-paydown-updates.md.
 Cells now in the report: SKEW.P 22, STANDARDIZE 24, SUMX2PY2 24, SUMXMY2 26, SUMX2MY2 27, ECMA.CEILING 28, MDETERM 34,

@@ -219,7 +219,7 @@ Implemented in: `Model::sumx_fold` / `sumx_values` (math_and_trigonometry/sum.rs
 Scalar text and boolean arguments are one skipped pair: `SUMX2PY2("1",2)`, `SUMXMY2("1",2)`, `SUMX2MY2("1",2)` and the same
 with `TRUE` are `#DIV/0!` (numeric text is not read as a number here) while `SUMX2PY2(1,2)` is 5; a text element inside an
 array constant is skipped (`SUMX2PY2({1,"a"},{3,4})` = 10); two all-blank ranges are `#DIV/0!`. Evidence:
-probes/stats-evidence-floor-t1623 Q73-Q79, Q86-Q91, Q99-Q104 (excel-graph, 2026-10-17, T-1623).
+probes/stats-evidence-floor-t1623 Q73-Q76, Q79, Q86-Q89, Q91, Q99-Q102, Q104 (excel-graph, 2026-10-17, T-1623).
 Open (unverified, T-0961): an empty argument (`SUMXMY2(,1)`) and error-versus-`#N/A` precedence were not probed there.
 Tasks: T-0944
 
