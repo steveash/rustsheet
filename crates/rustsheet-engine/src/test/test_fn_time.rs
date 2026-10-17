@@ -545,7 +545,6 @@ fn test_performance_stress_with_extreme_values() {
         );
     }
 
-    // Results should be mathematically valid
     // TIME function results should be valid time fractions
     let time_d1 = model._get_text("D1").parse::<f64>().unwrap();
     assert!(
