@@ -516,6 +516,50 @@ Evidence: probes-numeric cases `m9-beta-dist-a<a>` (one per a; `p` stands for th
 Status: VERIFIED (excel-graph)
 Tasks: T-1044 (sweep), T-0970, T-0974
 
+## Incomplete beta: Excel's closed forms and the best candidate (T-1744)
+Rule: BETA.DIST(x,a,b,TRUE) takes a closed form for b = 1, and probably for a = 1:
+- I_x(a,1) = exp(a*ln(x)). This matches all 27 b = 1 cells. `pow` does not: BETA.DIST(0.1,5,1,TRUE) is
+  1.0000000000000016E-05, not 1E-05.
+- I_x(1,b) = 1 - exp(b*ln(1-x)), or equally 1 - pow(1-x,b), with the cancellation either implies:
+  22 of 24 a = 1 cells. BETA.DIST(0.1,1,0.0001,TRUE) is 1.0535996061822317E-05, 3.4E-12 relative
+  above the true value. The two misses, BETA.DIST(0.9,1,2.5,TRUE) and BETA.DIST(0.9,1,5,TRUE), are
+  1 ulp below; no log1p, expm1, pow or correctly rounded form matches them.
+
+Every other cell is unfitted. Excel's prefactor carries exp(a*ln x)'s rounding: at
+BETA.DIST(0.1,100,2,TRUE) (m9-beta-dist-a100 Calc!A19) Excel is 1 ulp from that model and 66 from
+the correctly rounded value. Its continued
+fraction is not Numerical Recipes' Lentz.
+
+The best combination found is bit-exact on 158 of 283 BETA.DIST/BETADIST cells (279 with numeric arguments):
+- the closed forms above;
+- otherwise Cephes' two continued fractions (incbcf/incbd, without the power series);
+- a switch at the mean, x > a/(a+b);
+- the prefactor exp(a ln x)*exp(b ln(1-x))*Gamma(a+b)/(Gamma(a)Gamma(b))/a*w.
+
+For comparison:
+
+| candidate | BETA.DIST cells exact |
+|---|---|
+| best combination | 158 |
+| correctly rounded | 130 |
+| Cephes, exp(a ln x), Gamma correctly rounded (best Cephes variant) | 121 |
+| Cephes incbet as published (pow, tgamma) | 89 |
+| Numerical Recipes betai | 98 |
+| the engine (statrs `beta_reg`) | 87 |
+
+Through the F and t mappings:
+- F.DIST(x,d1,d2,TRUE), df truncated as Excel does: the best combination 15 of 33 cells (30
+  with numeric arguments), against 6 for the engine and 17 correctly rounded.
+- T.DIST(t,n,TRUE), mapped through the smaller of n/(n+t^2) and t^2/(n+t^2) (but I_y/2 directly
+  for a lower tail under 0.1, where 0.5 - I_z/2 cancels): Cephes 105 of 150, the best combination
+  95, the engine 78, correctly rounded 113.
+
+Evidence: probes-numeric m9-beta-dist-a*, m9-legacy-betadist, m9-f-dist, m9-legacy-fdist,
+t1049-fdist, m9-t-dist-cdf, t1048-tdist; fits `beta-dist`, `f-dist`, `t-dist`
+(`fitlab/kernels/beta.py`).
+Status: VERIFIED (b = 1 closed form); a = 1 PARTIAL (22/24, form not distinguished from pow); the general algorithm is UNVERIFIED
+Tasks: T-1744, T-0970, T-0969, T-1745
+
 ## Incomplete gamma sweep (T-1045)
 Rule: Excel's incomplete-gamma values (the targets for T-0971 and T-0972) are plain numbers on the whole in-domain grid, and the CDF saturates to exactly 1 deep in the upper tail while the pdf stays finite.
 Oracle sweep (excel-graph) of `GAMMA.DIST` (a in {0.5, 1, 2, 9, 50, 500}, b in {1, 2, 1E6}, x = 0.1, 0.5, 1, 1.5, 3 times the mean a*b,
@@ -619,6 +663,44 @@ Tasks: T-1543
 - Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Ours give `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380): see the follow-up task.
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368 (ours). These are not implemented.
 - Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. `BETA.INV` uses it for shapes up to 1E5 and p of 1E-15 or more (bit-exact with Excel in ironcalc-calc BETADIST_BETAINV.xlsx) and bisects on the cdf otherwise. A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
+
+## NORM.S.INV is AS 241 PPND16 in the tails; the central region is unfitted (T-1746)
+Rule: for |p - 0.5| > 0.425, NORM.S.INV(p) (and NORMSINV, NORM.INV(p,0,1)) equals Wichura's
+AS 241 PPND16 evaluated in doubles: the published coefficients by Horner, r = sqrt(-ln(p)) below
+and sqrt(-ln(1-p)) above (not `log1p(-p)`), then r - 1.6 (r <= 5) or r - 5 and the tail rational.
+It is bit-exact on 611 of 616 tail cells, p from 5E-309 to 1-7E-16. The 5 misses are two
+upper-tail p next to the split, 0.925 and NORM.S.DIST(1.5), each 1 to 2 ulp off.
+Centrally (|p - 0.5| <= 0.425) no candidate fits (central bit-exact counts of 408 cells in brackets):
+- Excel is up to 31 ulp from the correctly rounded inverse. NORM.S.INV(0.16) is
+  -0.9944578832097497, where the correctly rounded value is ...7531.
+- The output is often, not always, mirrored: 106 of the 170 (p, 1-p) probe pairs give exactly
+  opposite values, but NORM.S.INV(0.08) is 12 ulp off while NORM.S.INV(0.92) is correctly
+  rounded. The rounding of 1-p explains at most about 2 ulp of that.
+- It is not PPND16's central rational q*A(r)/B(r) by Horner [82], Horner with fused multiply-adds
+  [100] or the ascending power sum [87].
+- It is not statrs/Boost erf_inv, which is the best central candidate [164]; the correctly rounded
+  value gets [126].
+- It is not one Newton or Halley step from PPND16 [85 to 105]. On 232 of 341 probe points Excel's
+  own NORM.S.DIST(PPND16(p)) is already exactly p, yet Excel returns a different x on 177 of those.
+- It is not a Newton solve on 0.5*erfc(-x*sqrt(0.5)) from PPND7, Acklam, Moro or 0, stopping at
+  |dx| <= 1e-15|x| or at dx = 0 [61 to 79].
+- NORM.S.DIST(NORM.S.INV(p)) equals p on only 172 of 341 points.
+Consequence: the best kernel is a hybrid, PPND16 in the tails and statrs centrally. It is bit-exact
+on 775 of 1,024 sweep cells, against 341 for the engine's statrs alone (fit `norm-s-inv`).
+Side finding for T-0968: NORM.S.DIST(x,TRUE) equals `0.5*erfc(-x*sqrt(0.5))` (glibc erfc) at 260
+of the 341 PPND16(p) points of the probe (column D) and at 240 of Excel's own NORM.S.INV results
+(column B). The `0.5*erfc(-x/sqrt(2))` form matches 199 and 203.
+Input handling seen on the way:
+- `NORM.S.INV(0.9999999999999999)` is PPND16(0.999999999999999). Excel reads the 16-digit
+  literal to 15 significant digits.
+- `NORM.S.INV(2.3E-308-1E-309)` is PPND16(2.3E-308): the subnormal literal 1E-309 counts as 0
+  (numbers.md, "A subnormal divisor is zero"). The difference itself is normal; had it flushed,
+  the result would be #NUM!.
+Evidence: probes-numeric/t1746-norm-s-inv-central (341 literal p over the central region, with
+NORM.S.DIST of each result and of PPND16(p)), m9-norm-s-inv, t1048-normsinv, t1048-norminv. Run
+it with `uv run rustsheet-fitlab norm-s-inv` (`fitlab/kernels/norm_inv.py`).
+Status: VERIFIED (tails); the central algorithm is UNVERIFIED
+Tasks: T-1746, T-0925, T-0968
 
 ## AVERAGEA, MAXA and MINA over an array
 Rule: an array value's elements are not read like range cells. AVERAGEA skips a boolean element and
