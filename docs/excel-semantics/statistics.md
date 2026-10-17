@@ -893,7 +893,7 @@ too). HARMEAN of two empty ranges is `#N/A` (not `#DIV/0!`). STANDARDIZE reads a
 is -1), and a range argument lifts element-wise (`STANDARDIZE(A1:A2,3,2)` spills; with data below it is `#SPILL!`).
 MDETERM of the singular matrix [1,2,3;4,5,6;7,8,9] is 6.661338147750939e-16, not 0, so Excel's elimination leaves a
 rounding residual. KURT with a direct `TRUE` argument is -1.4331834319526635 for 3,5,2,8,9,4,7,1 plus TRUE, ours
-differs in the last digits. The other 132 cells of the case (SUMX2PY2, SUMXMY2, SUMX2MY2 size mismatches and text or
+is -1.4331834319526626 (about 2 ulp off). The other 132 cells of the case (SUMX2PY2, SUMXMY2, SUMX2MY2 size mismatches and text or
 blank pairs, MDETERM non-square, text and 1x1, ECMA.CEILING sign and zero-significance cases, SKEW/KURT/HARMEAN too-few
 and non-positive values) already match.
 Literal `1E+308` inside a formula makes Graph reject the whole workbook (`createSession` 501 `unsupportedWorkbook`),
