@@ -478,13 +478,6 @@ pub(super) fn args_signature_trimrange(arg_count: usize) -> Vec<Signature> {
     result
 }
 
-pub(super) fn args_signature_address(arg_count: usize) -> Vec<Signature> {
-    if !(2..=5).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    vec![Signature::Scalar; arg_count]
-}
-
 pub(super) fn args_signature_choose(arg_count: usize) -> Vec<Signature> {
     // CHOOSE(index, value1, ...): the index is a scalar; the value arguments
     // pass references through untouched (Excel: SUM(CHOOSE(2, A1:A5, B1:B5))
@@ -495,15 +488,6 @@ pub(super) fn args_signature_choose(arg_count: usize) -> Vec<Signature> {
     }
     let mut result = vec![Signature::Vector; arg_count];
     result[0] = Signature::Scalar;
-    result
-}
-
-pub(super) fn args_signature_choosecols(arg_count: usize) -> Vec<Signature> {
-    if arg_count < 2 {
-        return vec![Signature::Error; arg_count];
-    }
-    let mut result = vec![Signature::Scalar; arg_count];
-    result[0] = Signature::Vector;
     result
 }
 

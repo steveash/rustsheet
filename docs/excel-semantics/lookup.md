@@ -417,12 +417,11 @@ array literal whole: `LOOKUP(2,{1,2,3},{4,5,6})` = 5, `LOOKUP(2,{1,2,3})` = 2, `
 `INDEX(AREAS(A1:B3),1,1)` = 1). UNVERIFIED (not probed): OFFSET's cols, height and width, XLOOKUP/XMATCH search_mode,
 XLOOKUP's if_not_found, ADDRESS's a1 and sheet_text, INDIRECT's a1 and TRIMRANGE's trim_cols.
 Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-1238).
-Ours: none of the lifting arguments above lifts except CHOOSE's (a range gives `#VALUE!` or an implicit intersection,
-an array `#N/IMPL!`); LOOKUP/XLOOKUP/XMATCH give `#N/A` for a range lookup_value; CHOOSECOLS and CHOOSEROWS are `#VALUE!`
-for a range of indexes and `#N/IMPL!` for an array; HYPERLINK and INDIRECT over an array literal are `#N/IMPL!`;
-FORMULATEXT over a range is `#N/IMPL!`; INDEX of a single value is `#VALUE!`. 34 of 117 cells pass.
+Ours: ADDRESS, HYPERLINK, LOOKUP's and XMATCH's lookup_value, XMATCH's match_mode and XLOOKUP lift, FORMULATEXT gives
+one result per cell, and CHOOSECOLS/CHOOSEROWS read their index lists whole (T-1241). OFFSET, INDIRECT and TRIMRANGE
+still do not lift (their elements are references; T-1810), and INDEX of a single value is `#VALUE!` (T-1242).
 Status: VERIFIED (web)
-Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1242 (INDEX of a single value)
+Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1810 (reference-valued lifts), T-1242 (INDEX of a single value)
 
 ## A reference-valued lookup_value is looked up by its cell's value
 Rule: when lookup_value is a one-cell reference returned by a function or written as a range (`CHOOSE(1,J1)`,
@@ -436,7 +435,7 @@ Evidence: probes/lookup-reference-lookup-value (220 cells: 5 shapes x 4 values x
 Status: VERIFIED
 Implemented in: VLOOKUP, HLOOKUP and XLOOKUP lift the lookup_value, so a 1x1 range lifts to its value
 (`lookup_each`, xlookup.rs); MATCH, XMATCH and LOOKUP read it through `Model::lookup_value_arg`
-(functions/lookup_and_reference/mod.rs). A multi-cell lookup_value in MATCH, XMATCH or LOOKUP is T-0270.
+(functions/lookup_and_reference/mod.rs); a multi-cell one lifts in XMATCH and LOOKUP (T-1241) and is T-0270 in MATCH.
 Tasks: T-1256
 
 ## A reference-valued lookup_value pointing at a blank or error cell
