@@ -5,6 +5,7 @@
 
 use super::sorted_data::{DataArg, DataOrder, SortedNumbers};
 use crate::expressions::types::CellReferenceIndex;
+pub(super) use crate::functions::lift::num_error;
 use crate::functions::lift::LiftCost;
 use crate::functions::Function;
 use crate::{
@@ -45,11 +46,6 @@ pub(super) const PERCENTILE_DATA: DataArg = DataArg {
     order: DataOrder::Ascending,
     cost: LiftCost::Prepared,
 };
-
-/// The `#NUM!` of an element out of its function's domain; an element error allocates nothing.
-pub(super) fn num_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::NUM, cell, String::new())
-}
 
 /// Argument `index` of one element's values, `EmptyArg` past the end.
 pub(super) fn value_at(values: &[CalcResult], index: usize) -> &CalcResult {

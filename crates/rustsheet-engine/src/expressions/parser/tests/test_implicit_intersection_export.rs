@@ -514,3 +514,70 @@ fn lift_arrays_static_shapes_come_from_arrays_only() {
         StaticResult::Scalar
     ));
 }
+
+// SPEC-0011 for the engineering functions (T-1383): the Analysis ToolPak ones are `LiftArrays`,
+// so a legacy bare range keeps its text; BIT* are `Lift`, so a legacy range gets its `@`
+// (docs/excel-semantics/engineering.md "Engineering function argument modes").
+#[test]
+fn engineering_legacy_ranges_follow_the_table() {
+    check(&[
+        (
+            "BESSELJ(A1:A60,1)",
+            "BESSELJ(A1:A60,1)",
+            "BESSELJ(A1:A60,1)",
+        ),
+        (
+            "DEC2BIN(9,B1:B60)",
+            "DEC2BIN(9,B1:B60)",
+            "DEC2BIN(9,B1:B60)",
+        ),
+        (
+            "CONVERT(1,P1:P60,\"ft\")",
+            "CONVERT(1,P1:P60,\"ft\")",
+            "CONVERT(1,P1:P60,\"ft\")",
+        ),
+        ("IMABS(A1:A60+0)", "IMABS(@A1:A60+0)", "IMABS(A1:A60+0)"),
+        (
+            "BITAND(A1:A60,1)",
+            "BITAND(@A1:A60,1)",
+            "_xlfn.BITAND(A1:A60,1)",
+        ),
+        (
+            "BITLSHIFT(13,C1:C60)",
+            "BITLSHIFT(13,@C1:C60)",
+            "_xlfn.BITLSHIFT(13,C1:C60)",
+        ),
+    ]);
+}
+
+#[test]
+fn engineering_static_shapes_follow_the_table() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let mut shape =
+        |formula: &str| run_static_analysis_on_node(&parser.parse(formula, &cell_reference));
+    assert!(matches!(
+        shape("BITAND(A1:A3,1)"),
+        StaticResult::Array(3, 1)
+    ));
+    assert!(matches!(
+        shape("BITOR(13,{1,2})"),
+        StaticResult::Array(1, 2)
+    ));
+    assert!(matches!(shape("BESSELJ(A1:A3,1)"), StaticResult::Scalar));
+    assert!(matches!(
+        shape("BESSELJ(2.5,{1;2})"),
+        StaticResult::Array(2, 1)
+    ));
+    assert!(matches!(
+        shape("CONVERT(1,\"m\",{\"ft\",\"in\"})"),
+        StaticResult::Array(1, 2)
+    ));
+    assert!(matches!(shape("DELTA({1;2;3})"), StaticResult::Array(3, 1)));
+}

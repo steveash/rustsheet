@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    functions::Function,
     model::Model,
 };
 
@@ -44,20 +45,29 @@ fn convert_temperature(
 }
 
 impl Model {
-    // CONVERT(number, from_unit, to_unit)
+    /// `CONVERT(number, from_unit, to_unit)`: every argument lifts over an array and refuses a
+    /// multi-cell range (`ArgKind::LiftArrays`, SPEC-0011; probes/eng-argument-modes B14:E14,
+    /// probes/scalar-lift-open-a Y8-Y10).
     pub(crate) fn fn_convert(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
+        self.lift_call(Function::Convert, args, cell, &mut |model, values| {
+            model.convert_of(values, cell)
+        })
+    }
+
+    /// CONVERT of one element: the number, then the two units, read in order.
+    fn convert_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        let [value, from_unit, to_unit] = values else {
             return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
+        };
+        let value = match self.cast_number_ref(value, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let from_unit = match self.get_string(&args[1], cell) {
+        let from_unit = match Self::cast_string_ref(from_unit, cell) {
             Ok(s) => s,
             Err(error) => return error,
         };
-        let to_unit = match self.get_string(&args[2], cell) {
+        let to_unit = match Self::cast_string_ref(to_unit, cell) {
             Ok(s) => s,
             Err(error) => return error,
         };
@@ -391,12 +401,12 @@ impl Model {
             }
         }
         if from_unit_kind != to_unit_kind {
-            return CalcResult::new_error(Error::NA, cell, "Different units".to_string());
+            return CalcResult::new_error(Error::NA, cell, String::new());
         }
 
         // Let's check if it is temperature;
         if from_unit_kind.is_empty() {
-            return CalcResult::new_error(Error::NA, cell, "Unit not found".to_string());
+            return CalcResult::new_error(Error::NA, cell, String::new());
         }
 
         if from_unit_kind == "temperature" {
@@ -409,7 +419,7 @@ impl Model {
                 "Reau" => Temperature::Reaumur,
                 "F" | "fah" => Temperature::Fahrenheit,
                 _ => {
-                    return CalcResult::new_error(Error::ERROR, cell, "Internal error".to_string());
+                    return CalcResult::new_error(Error::ERROR, cell, String::new());
                 }
             };
             let from_temperature = match from_unit_name {
@@ -419,7 +429,7 @@ impl Model {
                 "Reau" => Temperature::Reaumur,
                 "F" | "fah" => Temperature::Fahrenheit,
                 _ => {
-                    return CalcResult::new_error(Error::ERROR, cell, "Internal error".to_string());
+                    return CalcResult::new_error(Error::ERROR, cell, String::new());
                 }
             };
             let t = convert_temperature(
