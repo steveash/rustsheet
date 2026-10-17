@@ -1,4 +1,4 @@
-# Excel statistical-kernel algorithms: what is public, and what the fit lab made of it (T-1758, 2026-10-17)
+# Excel statistical-kernel algorithms: what is public, and what the fit lab made of it (T-1759, 2026-10-17)
 
 Owner request: check the web for what people know about the algorithms behind the
 distributions that still differ from Excel by a few ulps, then test any concrete claim in the fit
@@ -43,9 +43,9 @@ Third-party relatives (none claims bit-exact Excel parity):
 |---|---|
 | NORM.S.DIST is Cody's erfc (R `pnorm_both`) | refuted: 991 of 1,773 cells, against 1,103 for glibc's `0.5*erfc(-x*sqrt(0.5))` and 879 for the engine (fit `norm-s-dist`) |
 | NORM.S.INV's centre is AS 111 (split 0.42), with or without Newton polish, on Cody or glibc CDFs | refuted. Central cells, of 408: AS 111 alone 12; AS 111 plus 1 or 3 Newton steps 70–95; the best polish overall is PPND16 plus one Newton step on Cody, 114. statrs gets 164 (fit `norm-s-inv`) |
-| NORM.S.INV iterates on Excel's own NORM.S.DIST (Microsoft docs) | supported in part. Probe t1758-norm-s-inv-roundtrip: Excel's central x is a crossing of its own CDF at 234 of 340 points; the CDF is flat at 36; 70 miss by 1–32 ulps of p. This is the same shape as BETA.INV (T-1745) |
+| NORM.S.INV iterates on Excel's own NORM.S.DIST (Microsoft docs) | supported in part. Probe t1759-norm-s-inv-roundtrip: Excel's central x is a crossing of its own CDF at 234 of 340 points; the CDF is flat at 36; 70 miss by 1–32 ulps of p. This is the same shape as BETA.INV (T-1745) |
 | BETA.DIST is LibreOffice's GetBetaDist | ties the best candidate: 156 of 283 with Excel's closed forms (134 without), against 158 for the Cephes combination and 87 for the engine. Neither is Excel's |
-| The remaining BETA.DIST error is Excel's Gamma (lnB) | refuted: Excel's relative error depends on x, not only on (a, b), at all 38 direct-branch (a, b) pairs. Plugging in Excel's own GAMMA values gives at best 62 of 136 points (docs/research/t1758_beta_direct_branch.py) |
+| The remaining BETA.DIST error is Excel's Gamma (lnB) | refuted: Excel's relative error depends on x, not only on (a, b), at all 38 direct-branch (a, b) pairs. Plugging in Excel's own GAMMA values gives at best 62 of 136 points (docs/research/t1759_beta_direct_branch.py) |
 
 ## General conclusions
 
@@ -63,7 +63,7 @@ Third-party relatives (none claims bit-exact Excel parity):
    - Hypothesis: x^a is its own EXP(a·LN(x)) factor, like Excel's b = 1 closed form. Rounding a
      summed exponent of about −230 would add b-dependent noise that the data do not show.
    - Neither Excel's own GAMMA values nor 360 combinations of fraction, prefactor form and
-     operation order reproduce the rest (docs/research/t1758_beta_direct_branch.py).
+     operation order reproduce the rest (docs/research/t1759_beta_direct_branch.py).
 3. **NORM.S.DIST's best stand-in is glibc's `0.5*erfc(-x*sqrt(0.5))`** (1,103 of 1,773 against
    879 today). T-0968 can take it as an interim kernel.
 

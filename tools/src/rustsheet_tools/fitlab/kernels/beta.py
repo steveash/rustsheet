@@ -350,7 +350,7 @@ def best_combination(x: float, a: float, b: float) -> float:
 # Derived from LibreOffice sc/source/core/tool/interpr3.cxx (MPL-2.0), ported for fit analysis
 # only; engine code must not copy it without the MPL-2.0 notice (deny.toml allows MPL-2.0).
 # LibreOffice's GetBetaDist is the closest public relative the
-# T-1758 web research found: the same mean reflection, A&S 26.5.8's continued fraction, the
+# T-1759 web research found: the same mean reflection, A&S 26.5.8's continued fraction, the
 # prefactor pdf*x*y for a, b > 1 with p, q < 0.97 (else exp(a ln x + b ln y - lnB)), and a
 # Boost-style Lanczos sum (g = 6.0246800407767296) for Gamma and lnB.
 _LO_NUM = [23531376880.41075968857200767445163675473, 42919803642.64909876895789904700198885093,

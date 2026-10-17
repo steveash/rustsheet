@@ -1,11 +1,11 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1758 probe (web-research hypothesis (Microsoft: NORM.S.INV 'uses an iterative search' against NORM.S.DIST)): for each central NORM.S.INV point of t1746-norm-s-inv-central, Excel's x (column C, from the oracle) and its neighbouring doubles (B, D) as constants, NORM.S.DIST(.,TRUE) of each (E-G), and NORM.S.INV again from a constant p (H). Shows whether Excel's central quantile is the crossing point of its own CDF.",
+ "description": "T-1759 probe (web-research hypothesis (Microsoft: NORM.S.INV 'uses an iterative search' against NORM.S.DIST)): for each central NORM.S.INV point of t1746-norm-s-inv-central, Excel's x (column C, from the oracle) and its neighbouring doubles (B, D) as constants, NORM.S.DIST(.,TRUE) of each (E-G), and NORM.S.INV again from a constant p (H). Shows whether Excel's central quantile is the crossing point of its own CDF.",
  "tags": [
   "M9",
   "probe",
   "numeric",
-  "T-1758",
+  "T-1759",
   "sweep",
   "norm-s-inv"
  ],

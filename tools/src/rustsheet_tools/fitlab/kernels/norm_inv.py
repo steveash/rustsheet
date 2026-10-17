@@ -268,7 +268,7 @@ def newton_solve(p: float, x: float, *, relative_tol: float) -> float:
 # W. J. Cody's rational Chebyshev normal CDF (Math. Comp. 23, 1969; netlib SPECFUN ANORM, public
 # domain coefficients), in the arrangement of R's pnorm_both (nmath/pnorm.c): R's split at
 # qnorm(3/4) = 0.67448975 instead of Cody's 0.66291, and the same sixteenths split of x^2. This is
-# an independent reimplementation of the published method for fit analysis only; the T-1758 web
+# an independent reimplementation of the published method for fit analysis only; the T-1759 web
 # research names it as the obvious alternative to glibc's erfc.
 CODY_A = [2.2352520354606839287, 161.02823106855587881, 1067.6894854603709582, 18154.981253343561249,
           0.065682337918207449113]  # fmt: skip
@@ -369,7 +369,7 @@ AS111_SPLIT = 0.42
 
 def as111_hybrid(p: float) -> float:
     """Beasley-Springer AS 111's central rational (|p - 0.5| <= 0.42; the same coefficients as Moro's
-    centre) with PPND16 beyond, the shape of the "like Excel NORMINV" ports the T-1758 research found."""
+    centre) with PPND16 beyond, the shape of the "like Excel NORMINV" ports the T-1759 research found."""
     _domain(p)
     q = p - 0.5
     if abs(q) > AS111_SPLIT:
@@ -617,11 +617,11 @@ def norm_s_dist_candidates() -> list[Candidate]:
 FITS = [
     Fit(
         name="norm-s-dist",
-        description="NORM.S.DIST(x,TRUE)/NORMSDIST (T-1040, T-1048, T-1746, T-1758): glibc erfc forms vs Cody",
+        description="NORM.S.DIST(x,TRUE)/NORMSDIST (T-1040, T-1048, T-1746, T-1759): glibc erfc forms vs Cody",
         cases=[
             *_CDF_CASES,
             "probes-numeric/t1746-norm-s-inv-central",
-            "probes-numeric/t1758-norm-s-inv-roundtrip",
+            "probes-numeric/t1759-norm-s-inv-roundtrip",
         ],
         pattern=_CDF_PATTERN,
         candidates=norm_s_dist_candidates,

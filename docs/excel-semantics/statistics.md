@@ -557,7 +557,7 @@ Through the F and t mappings:
 Evidence: probes-numeric m9-beta-dist-a*, m9-legacy-betadist, m9-f-dist, m9-legacy-fdist,
 t1049-fdist, m9-t-dist-cdf, t1048-tdist; fits `beta-dist`, `f-dist`, `t-dist`
 (`fitlab/kernels/beta.py`).
-T-1758 tested LibreOffice's GetBetaDist, the closest public relative. It uses the same mean
+T-1759 tested LibreOffice's GetBetaDist, the closest public relative. It uses the same mean
 reflection, A&S 26.5.8's fraction, a pdf·x·y prefactor for a, b > 1, and a Lanczos lnB. It
 scores 156 of 283 with Excel's closed forms (134 with its own pow and expm1), level with the
 Cephes combination and not Excel's algorithm.
@@ -577,9 +577,9 @@ points with 0 < x < 1:
   would add up to ±1.4E-14 of b-dependent noise, but the spread across b <= 5 is about ±1.5E-15.
 - **What did not close the residual:** Excel's own GAMMA values (from T-1042), with best 62 of
   136 points, and 360 combinations of fraction, prefactor form and operation order, with best
-  16 of 107. Reproduce all of this with docs/research/t1758_beta_direct_branch.py.
+  16 of 107. Reproduce all of this with docs/research/t1759_beta_direct_branch.py.
 Status: VERIFIED (b = 1 closed form); a = 1 PARTIAL (22/24, form not distinguished from pow); the general algorithm is UNVERIFIED
-Tasks: T-1744, T-1758, T-0970, T-0969, T-1745
+Tasks: T-1744, T-1759, T-0970, T-0969, T-1745
 
 ## BETA.INV solves Excel's own CDF to the crossing (T-1745)
 Rule: BETA.INV(p,a,b) returns, in most cases, a double where Excel's own BETA.DIST(.,a,b,TRUE)
@@ -745,8 +745,8 @@ Centrally (|p - 0.5| <= 0.425) no candidate fits (central bit-exact counts of 40
   own NORM.S.DIST(PPND16(p)) is already exactly p, yet Excel returns a different x on 177 of those.
 - It is not a Newton solve on 0.5*erfc(-x*sqrt(0.5)) from PPND7, Acklam, Moro or 0, stopping at
   |dx| <= 1e-15|x| or at dx = 0 [61 to 79].
-- NORM.S.DIST(NORM.S.INV(p)) equals p on only 172 of 341 points. Probe t1758-norm-s-inv-roundtrip
-  (T-1758) adds NORM.S.DIST at Excel's x and at its neighbouring doubles:
+- NORM.S.DIST(NORM.S.INV(p)) equals p on only 172 of 341 points. Probe t1759-norm-s-inv-roundtrip
+  (T-1759) adds NORM.S.DIST at Excel's x and at its neighbouring doubles:
   - x is a crossing of Excel's own CDF at 234 of 340 central points;
   - the CDF is flat across the three doubles at 36;
   - x misses by 1 to 32 ulps of p at 70, 52 of them below.
@@ -757,7 +757,7 @@ Centrally (|p - 0.5| <= 0.425) no candidate fits (central bit-exact counts of 40
   has the same shape as BETA.INV (T-1745). Its start and stop rule are not fitted.
 Consequence: the best kernel is a hybrid, PPND16 in the tails and statrs centrally. It is bit-exact
 on 775 of 1,024 sweep cells, against 341 for the engine's statrs alone (fit `norm-s-inv`).
-Side finding for T-0968, now the fit `norm-s-dist` (T-1758): over all 1,773 NORM.S.DIST cells,
+Side finding for T-0968, now the fit `norm-s-dist` (T-1759): over all 1,773 NORM.S.DIST cells,
 `0.5*erfc(-x*sqrt(0.5))` (glibc) is bit-exact on 1,103, Cody's rational approximations (R's
 pnorm_both) on 991, `0.5*erfc(-x/sqrt(2))` on 869, and the engine on 879. On the T-1746 probe
 alone, NORM.S.DIST(x,TRUE) equals `0.5*erfc(-x*sqrt(0.5))` (glibc erfc) at 260
@@ -773,7 +773,7 @@ Evidence: probes-numeric/t1746-norm-s-inv-central (341 literal p over the centra
 NORM.S.DIST of each result and of PPND16(p)), m9-norm-s-inv, t1048-normsinv, t1048-norminv. Run
 it with `uv run rustsheet-fitlab norm-s-inv` (`fitlab/kernels/norm_inv.py`).
 Status: VERIFIED (tails); the central algorithm is UNVERIFIED
-Tasks: T-1746, T-1758, T-0925, T-0968
+Tasks: T-1746, T-1759, T-0925, T-0968
 
 ## AVERAGEA, MAXA and MINA over an array
 Rule: an array value's elements are not read like range cells. AVERAGEA skips a boolean element and

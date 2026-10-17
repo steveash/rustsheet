@@ -1,8 +1,8 @@
-"""BETA.DIST's direct (unreflected) branch: the T-1758 analyses behind statistics.md.
+"""BETA.DIST's direct (unreflected) branch: the T-1759 analyses behind statistics.md.
 
 Usage (from tools/, so the fit lab imports):
 
-    uv run python ../docs/research/t1758_beta_direct_branch.py
+    uv run python ../docs/research/t1759_beta_direct_branch.py
 
 Four reports over the beta-dist sweep (fit `beta-dist`, fitlab/kernels/beta.py), on the
 de-duplicated (x, a, b) points with numeric arguments:

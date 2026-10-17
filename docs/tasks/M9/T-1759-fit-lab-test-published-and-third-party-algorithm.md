@@ -1,5 +1,5 @@
 ---
-id: T-1758
+id: T-1759
 title: "Fit lab: test published and third-party algorithm claims (web research) against the normal and beta oracle sweeps"
 milestone: M9
 lane: research
@@ -28,7 +28,7 @@ T-0970 and T-0974.
 - [x] The testable claims are fit-lab candidates or probes:
   - Cody's erfc in a new `norm-s-dist` fit;
   - LibreOffice GetBetaDist in `beta-dist`, `f-dist` and `t-dist`;
-  - the "iterative search on own CDF" claim in probe t1758-norm-s-inv-roundtrip.
+  - the "iterative search on own CDF" claim in probe t1759-norm-s-inv-roundtrip.
 - [x] docs/excel-semantics/statistics.md records the findings.
 - [x] `make check` green; reviewers approve.
 
@@ -48,7 +48,7 @@ Results:
   out of 408. AS 111's central rational (split 0.42) alone gets 12. With 1 or 3 Newton steps on
   Cody or glibc it gets 70 to 95. The best polish overall is PPND16 plus one Newton step on Cody,
   at 114. statrs gets 164. Refuted.
-- **NORM.S.INV round trip** (probe t1758-norm-s-inv-roundtrip): Excel's central x is a crossing of
+- **NORM.S.INV round trip** (probe t1759-norm-s-inv-roundtrip): Excel's central x is a crossing of
   its own NORM.S.DIST at 234 of 340 points, the CDF is flat at 36, and 70 miss by 1 to 32 ulps of
   p, mostly below. This is the same shape as BETA.INV, so Excel's inverses are root searches on its
   own CDF, and inverse parity waits on forward parity.
@@ -62,5 +62,5 @@ Results:
     EXP(a·LN(x)) factor (hypothesis).
   - Excel's own GAMMA values (best 62 of 136) and 360 combinations of fraction, prefactor and
     operation order (best 16 of 107) do not close the rest.
-  - Script: docs/research/t1758_beta_direct_branch.py.
+  - Script: docs/research/t1759_beta_direct_branch.py.
 - **F.DIST and T.DIST.** LibreOffice gets 15 of 33 and 100 of 150 (Cephes 15 and 105).

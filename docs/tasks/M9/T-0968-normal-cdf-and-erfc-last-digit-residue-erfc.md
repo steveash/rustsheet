@@ -89,5 +89,5 @@ evidence such as a dense ERFC sweep around one x to expose the formulation's err
 ## Lead from T-1746
 On the 341 points of probes-numeric/t1746-norm-s-inv-central, NORM.S.DIST(x,TRUE) equals `0.5*erfc(-x*sqrt(0.5))` (glibc erfc) at 260 of the PPND16(p) points (240 of Excel's own NORM.S.INV results), against 199 (203) for `0.5*erfc(-x/sqrt(2))` (docs/excel-semantics/statistics.md, "NORM.S.INV is AS 241 PPND16 in the tails"). This is a new hypothesis to test before the task reopens.
 
-## Fit result (T-1758)
+## Fit result (T-1759)
 Fit `norm-s-dist` over 1,773 NORM.S.DIST cells: glibc `0.5*erfc(-x*sqrt(0.5))` is bit-exact on 1,103, Cody's rational approximations (R pnorm_both) on 991, the engine on 879. Within 4 ulp: 1,524, 1,562 and 1,473. The glibc form is the best interim kernel; Cody is not Excel's. The `0.5*erfc(-x*sqrt(0.5))` form, from the T-1746 lead, is the new hypothesis decision 0056 needs for reopening this task, not a third failed attempt.
