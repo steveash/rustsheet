@@ -76,7 +76,7 @@ pub(super) fn find_element(
 /// than one character as it is. Excel's SEARCH never changes the length of the text it counts in:
 /// `SEARCH("x","İx")` is 2 and `SEARCH("i","İx")` is #VALUE!, whereas Rust's `to_lowercase` turns
 /// U+0130 into "i" + U+0307 (probes/text-search-casefold-length A1, A2, A8, A12, A13).
-fn fold_case(text: &str) -> String {
+pub(super) fn fold_case(text: &str) -> String {
     text.chars()
         .map(|c| {
             // Final sigma matches sigma in either case (`SEARCH("ς","ΟΣ")` is 2), while the other

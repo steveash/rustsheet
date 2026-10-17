@@ -754,6 +754,7 @@ C	probes/textjoin-array-arguments.case.json	34
 C	probes/textjoin-array-limit-empty-strings.case.json	11
 C	probes/textjoin-delimiter-array.case.json	6
 C	probes/textjoin-delimiter-elements.case.json	24
+C	probes/textsplit-casefold-length.case.json	8
 C	probes/textsplit-padded-size.case.json	6
 C	probes/textsplit-wide.case.json	5
 C	probes/timevalue-ampm-limits.case.json	44

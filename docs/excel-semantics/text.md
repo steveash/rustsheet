@@ -313,6 +313,19 @@ Ours: the empty row delimiter is ignored (the whole text comes back; `TEXTSPLIT(
 Status: VERIFIED (web) for this form; an empty element inside a delimiter list is UNVERIFIED
 Tasks: T-1412
 
+## TEXTSPLIT match_mode 1 case folding
+Rule: with match_mode 1 TEXTSPLIT compares case-insensitively without changing the length of the text. `İ` (U+0130) matches `i`
+(`TEXTSPLIT("aİbİc","i",,,1)` splits at both İ, and so does the delimiter `İ`: {"a","b","c"}), unlike SEARCH, where `SEARCH("i","İx")`
+is `#VALUE!`. The Kelvin sign U+212A does not match `k` (`TEXTSPLIT("a"&UNICHAR(8490)&"bkc","k",,,1)` is {"aKb","c"}), unlike SEARCH, where
+`SEARCH("k",UNICHAR(8490))` is 1. `ß` and `ẞ` do not match `ss` (`TEXTSPLIT("aßbSSc","ss",,,1)` is {"aßb","c"}), and `Ä` matches `ä`.
+Pieces are cut from the original text, so they keep their case.
+Evidence: probes/textsplit-casefold-length A1-A8 (excel-graph, 2026-10-17, T-1794).
+Ours: `fold_for_split` (textsplit.rs) folds char by char (one char in, one char out) with those two exceptions; positions are mapped back to
+byte offsets of the original text. Before T-1794 the code sliced the original at byte offsets found in `to_lowercase()`, which panicked on
+`TEXTSPLIT("İİİ,a",",",,,1)`. The folding of other chars (Å U+212B, ſ, µ, final sigma, titlecase digraphs) is UNVERIFIED and follows SEARCH's.
+Status: VERIFIED (web) for the listed forms
+Tasks: T-1794
+
 ## ARRAYTOTEXT number text
 Rule: ARRAYTOTEXT writes a number as General text with 15 significant digits, like VALUETOTEXT and `&`:
 `ARRAYTOTEXT(YEARFRAC(1911,31142))` is "80.0277777777778".
