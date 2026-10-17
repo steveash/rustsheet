@@ -9,7 +9,6 @@ use crate::functions::Function;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ArgKind {
     /// Lifts over an array and over a multi-cell range or reference (PMT, NORM.DIST, BITAND, DATE).
-    #[allow(dead_code)] // TODO(T-1372): the first `Lift` entries come with the families.
     Lift,
     /// Lifts over an array. A multi-cell range or reference is `#VALUE!` in its position, with no
     /// intersection (the Analysis `ToolPak` functions: EDATE, EFFECT, BESSELJ, MROUND).
@@ -92,7 +91,7 @@ impl ArgKinds {
     }
 }
 
-use ArgKind::LiftArrays;
+use ArgKind::{Lift, LiftArrays};
 use KernelWork::Constant;
 
 /// Two Analysis `ToolPak` arguments, both required: `EDATE(start_date, months)` and
@@ -104,6 +103,38 @@ const ATP_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[LiftArrays, LiftArrays], Const
 /// Two required Analysis `ToolPak` arguments and one optional:
 /// `YEARFRAC(start_date, end_date, [basis])`.
 const ATP_2_OF_3: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays, LiftArrays], Constant);
+
+/// One required argument that lifts over an array and a range: the IS* type tests, ERROR.TYPE
+/// and ENCODEURL.
+const LIFT_1: ArgKinds = ArgKinds::fixed(1, &[Lift], Constant);
+/// ISEVEN and ISODD: one argument, lifted over arrays only.
+const ARRAYS_1: ArgKinds = ArgKinds::fixed(1, &[LiftArrays], Constant);
+
+/// The functions of [`Function::arg_kinds`], as a pattern: the arm of an exhaustive `match` on a
+/// `Function` that has no hand-written arm because the table derives it (static analysis).
+/// Keep it equal to the table; `static_analysis::lifted`'s test checks that no function in the
+/// table has a fallback arm.
+macro_rules! lifting_table_functions {
+    () => {
+        Function::Edate
+            | Function::Eomonth
+            | Function::Weeknum
+            | Function::Yearfrac
+            | Function::Isnumber
+            | Function::Istext
+            | Function::Isnontext
+            | Function::Islogical
+            | Function::Isblank
+            | Function::Iserror
+            | Function::Iserr
+            | Function::Isna
+            | Function::ErrorType
+            | Function::Encodeurl
+            | Function::Iseven
+            | Function::Isodd
+    };
+}
+pub(crate) use lifting_table_functions;
 
 impl Function {
     /// The lifting table: `None` for a function the driver does not lift (yet).
@@ -120,6 +151,25 @@ impl Function {
             // YEARFRAC's basis over a range: probes/scalar-lift-shapes H6; its dates:
             // date-argument-modes F/G 54, 56. Basis 1 counts the year lengths in closed form.
             Function::Yearfrac => Some(&ATP_2_OF_3),
+            // The IS* tests lift over arrays and ranges, an element as stored (`EmptyCell` is
+            // ISBLANK, an error element ISERROR): probes/is-functions-array-lift,
+            // probes/info-logic-argument-modes (docs/excel-semantics/information.md "IS* type
+            // tests lift over arrays and ranges"). ERROR.TYPE follows (probes/rich-errors-arg-kinds
+            // F10:G10, F40:G41), and so does ENCODEURL (docs/excel-semantics/web.md).
+            Function::Isnumber
+            | Function::Istext
+            | Function::Isnontext
+            | Function::Islogical
+            | Function::Isblank
+            | Function::Iserror
+            | Function::Iserr
+            | Function::Isna
+            | Function::ErrorType
+            | Function::Encodeurl => Some(&LIFT_1),
+            // A multi-cell range is `#VALUE!` with no intersection; an array constant lifts
+            // (probes/is-functions-array-lift J2, K2, L3, M30, M32; information.md "ISEVEN/ISODD
+            // over a range").
+            Function::Iseven | Function::Isodd => Some(&ARRAYS_1),
             _ => None,
         }
     }
