@@ -6,7 +6,7 @@ lane: functions-lookup
 status: todo
 priority: P2
 size: M
-tier: sonnet
+tier: opus
 depends_on: [T-1770]
 spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
@@ -43,3 +43,9 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 -
+
+## Handoff
+Read, not started; handed off by a sonnet run before any code (work-loop step 5b: a design question). Why:
+- The task needs lifted elements that are references (OFFSET, INDIRECT return arrays of references, `#SPILL!` cells in gen-m7/gen-m9), which SPEC-0011 puts outside the driver ("Design them here, on top of `lift_values`"). That design is not settled and needs a decision on how the engine represents an array of references (references.md).
+- Many functions with mixed `Lift`/`Whole`/`WholeByCaller` parameter kinds (CHOOSECOLS/CHOOSEROWS read a list whole; CHOOSE's `choose_array` moves onto the driver).
+- Next: land T-1774 pattern first (merged, PR #1022: table entries in `functions/lift/kinds.rs`, `lifting_table_functions!` in the same file, `read_lift_arg` for single-argument reads); then split by family (value-only: ADDRESS, HYPERLINK, LOOKUP, XLOOKUP, XMATCH, FORMULATEXT, TRIMRANGE; reference-returning: OFFSET, INDIRECT as their own task after a design note).
