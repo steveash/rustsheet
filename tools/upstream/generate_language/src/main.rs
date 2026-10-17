@@ -534,6 +534,7 @@ pub struct Functions {
     pub filterxml: String,
     pub groupby: String,
     pub pivotby: String,
+    pub getpivotdata: String,
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Clone)]
