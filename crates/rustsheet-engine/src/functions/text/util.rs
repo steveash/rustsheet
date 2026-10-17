@@ -141,8 +141,8 @@ pub(crate) fn substitute(text: &str, old_text: &str, new_text: &str, instance_nu
 /// Byte range of the `instance_num`-th match of any of `delimiters` (counted from the end when
 /// negative). Every position where some delimiter starts counts once; the first delimiter in
 /// list order that matches there decides the match length (UNVERIFIED for delimiters that
-/// match at the same position, docs/excel-semantics/text.md "TEXTBEFORE and TEXTAFTER delimiter
-/// lists").
+/// match at the same position, docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and
+/// REGEX* lift their text and scalar arguments"; T-1812).
 fn match_text(
     text: &str,
     delimiters: &[&str],

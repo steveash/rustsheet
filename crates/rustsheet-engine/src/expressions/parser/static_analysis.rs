@@ -1216,7 +1216,8 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Right => scalar_arguments(args),
         Function::Search => scalar_arguments(args),
         Function::Substitute => scalar_arguments(args),
-        // Their text and scalar arguments lift over a range or an array (T-1272).
+        // Their text and scalar arguments lift over a range or an array (T-1272); the table derives
+        // their shape once they move onto `lift_call`. TODO(T-1775)
         Function::Regexextract | Function::Regexreplace | Function::Regextest => {
             StaticResult::Unknown
         }

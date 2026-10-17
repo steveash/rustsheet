@@ -282,18 +282,32 @@ scalar arguments (`TEXTBEFORE("a,b,c",",",{1;2})` is 2x1 "a", "a,b"; the REGEX p
 The delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are one list, not lifted: any entry matches, so `TEXTAFTER(C1:C3,
 {",";"-"})` is "b", "d", "f". VERIFIED: probes/m7-argument-modes F13-K13 (excel-graph, 2026-10-09; T-1083), and gen-m7 cells
 whose lifted result is `#SPILL!` because its spill range is occupied (gen-m7/93976dd9a3578ed9 Calc!A11, 59cc50701f4937c9 A24).
-UNVERIFIED (T-1272 guesses, nothing probed): when two delimiters of a list match at the same position, the first in list
-order sets the match length; every entry longer than the text gives the single-delimiter error (`#VALUE!` with more than
-two arguments, `#N/A` with two); a lifted element whose call returns an array (`TEXTSPLIT` of "a,b") keeps its first value.
-Ours: all of this since T-1272. A call is `#ERROR!` (DEVIATION, decision 0014, as the *IF(S) lift) when its work passes
-`limits::MAX_LIFTED_CELL_VISITS` (2^27): (longest text + 1) × delimiters per element, plus 4,096 per element when a REGEX
-pattern lifts, times the elements; a call that does not lift is capped the same way (`TEXTBEFORE(REPT("a",32767),SEQUENCE(10000))`).
-A REGEX pattern whose compiled program passes 1 MiB is `#VALUE!`, like an invalid one (DEVIATION, decision 0014;
-`PATTERN_SIZE_LIMIT` in functions/text/regex_functions.rs), and one call keeps at most 16 compiled patterns.
-A multi-cell range as the TEXTBEFORE/TEXTAFTER delimiter is still read as one text, as before T-1272 (gen-m7/851eb2099ae3f805
-Calc!A25 is `#VALUE!`); its list rule is T-1361's.
-Status: VERIFIED (web) for the listed cells; the rest UNVERIFIED
+A lifted element whose call returns an array keeps its first value: TEXTSPLIT, probes/m7-argument-modes F13:H13.
+UNVERIFIED (T-1272 guesses, nothing probed; T-1812 probes them): when two delimiters of a list match at the same
+position, the first in list order sets the match length; every entry longer than the text gives the single-delimiter
+error (`#VALUE!` with more than two arguments, `#N/A` with two); an error inside a delimiter array is `#VALUE!`; a
+boolean inside a TEXTBEFORE/TEXTAFTER delimiter array is `#VALUE!` (as TEXTSPLIT's already was), although a boolean in a
+delimiter range raises no error (next entry); a REGEX pattern that does not compile is `#VALUE!` in its own element
+only; if_not_found, pad_with, match_end and return_all lift like the other scalars, and if_not_found is evaluated even
+when the delimiter is found; REGEXEXTRACT's return_all keeps the first value of a lifted element.
+Ours: all of this since T-1272. The work caps are the next entry's. A multi-cell range as the TEXTBEFORE/TEXTAFTER
+delimiter is still read as one text, as before T-1272 (gen-m7/851eb2099ae3f805 Calc!A25 is `#VALUE!`); its list rule is
+T-1361's.
+Status: VERIFIED (excel-graph) for the cited cells; UNVERIFIED (probe pending, T-1812) for the rest
 Tasks: T-1272, T-1812 (probe the guesses), T-1361 (delimiter ranges)
+
+## Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped
+Rule: Excel computes these calls whatever their size.
+Ours: a call is `#ERROR!` (as the *IF(S) lift) when its work passes `limits::MAX_LIFTED_CELL_VISITS` (2^27): each text
+element's length plus 1, times the delimiters, times how often the broadcast repeats it, plus 4,096 per element when a
+REGEX pattern lifts. A call that does not lift is capped the same way (`TEXTBEFORE(REPT("a",32767),SEQUENCE(10000))`);
+one long cell in a blank column costs its own length once (`ROWS(TEXTBEFORE(A1:A100000,","))` is 100000). One call keeps
+at most 4 compiled REGEX patterns, each within the regex crate's default size limit (as before T-1272).
+Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
+Status: DEVIATION (decision 0014)
+Implemented in: `Model::lift_text_call` and `text_call_cost` (functions/text/lifted.rs), `PatternCache`
+(functions/text/regex_functions.rs)
+Tasks: T-1272
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA

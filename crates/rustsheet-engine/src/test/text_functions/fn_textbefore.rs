@@ -204,3 +204,28 @@ fn unlifted_call_over_a_long_delimiter_list_is_capped() {
     assert_eq!(model._get_text("A1"), *"#ERROR!");
     assert_eq!(model._get_text("A2"), *"a");
 }
+
+// Ordinary patterns compile as on main: the cache bounds memory by its entry count, not by a
+// per-pattern size below the regex crate's default (T-1272 review).
+#[test]
+fn ordinary_counted_patterns_still_compile() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REGEXTEST(REPT(\"a\",100),\"\\w{100}\")");
+    model._set("A2", "=REGEXTEST(REPT(\"a\",30),\"(\\w+){30}\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"TRUE");
+}
+
+// One long cell in a mostly blank column costs its own length once, not once per element
+// (T-1272 review): Excel gives 100000 for both.
+#[test]
+fn one_long_cell_does_not_cap_a_long_lifted_column() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REPT(\"a,\",1000)");
+    model._set("C1", "=ROWS(TEXTBEFORE(A1:A100000,\",\"))");
+    model._set("D1", "=ROWS(REGEXTEST(A1:A100000,\",\"))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"100000");
+    assert_eq!(model._get_text("D1"), *"100000");
+}

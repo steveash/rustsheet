@@ -1,7 +1,7 @@
 #[cfg(not(target_arch = "wasm32"))]
-use regex::{Regex, RegexBuilder};
+use regex::Regex;
 #[cfg(target_arch = "wasm32")]
-use regex_lite::{Regex, RegexBuilder};
+use regex_lite::Regex;
 
 use crate::{
     calc_result::CalcResult,
@@ -14,15 +14,12 @@ use crate::{
 };
 
 /// Patterns a [`PatternCache`] keeps: a lifted call with a few distinct patterns compiles each
-/// once, and a call with many keeps memory bounded (CLAUDE.md directive 5).
-const PATTERN_CACHE_ENTRIES: usize = 16;
+/// once, and a call with many keeps memory bounded (CLAUDE.md directive 5). Each compiled pattern
+/// is bounded by the regex crate's default size limit, as on main, so ordinary patterns such as
+/// `\w{100}` still compile.
+const PATTERN_CACHE_ENTRIES: usize = 4;
 
-/// Bytes one compiled pattern may take (`RegexBuilder::size_limit`): a pattern past it is
-/// `#VALUE!`, like an invalid one. With [`PATTERN_CACHE_ENTRIES`] it bounds the cache's memory.
-/// DEVIATION, decision 0014: Excel has no such limit (docs/excel-semantics/text.md).
-const PATTERN_SIZE_LIMIT: usize = 1 << 20;
-
-/// The patterns compiled most recently and their regexes (`None` when invalid or too large),
+/// The patterns compiled most recently and their regexes (`None` when invalid),
 /// oldest first: a lifted call over a range of text with one pattern, or over a short list of
 /// patterns, compiles each once.
 #[derive(Default)]
@@ -37,10 +34,7 @@ impl PatternCache {
                 if self.0.len() == PATTERN_CACHE_ENTRIES {
                     self.0.remove(0);
                 }
-                let regex = RegexBuilder::new(&pattern)
-                    .size_limit(PATTERN_SIZE_LIMIT)
-                    .build()
-                    .ok();
+                let regex = Regex::new(&pattern).ok();
                 self.0.push((pattern, regex));
                 self.0.len() - 1
             }

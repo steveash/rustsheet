@@ -75,13 +75,16 @@ impl Model {
     }
 
     /// Runs `element` once on `operands`, or once per element when one lifts. A lifted element
-    /// keeps its first value when the call gives an array (UNVERIFIED, text.md "TEXTSPLIT,
-    /// TEXTBEFORE and TEXTAFTER lift").
+    /// keeps its first value when the call gives an array (TEXTSPLIT: probes/m7-argument-modes
+    /// F13:H13; REGEXEXTRACT's `return_all` UNVERIFIED, text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER
+    /// and REGEX* lift their text and scalar arguments").
     ///
-    /// An element scans its text once per delimiter (`delimiters`, at least 1) and, when
-    /// `compiles_patterns`, compiles its pattern (operand 1) if that lifts; the call is
-    /// `#ERROR!` when that work exceeds `limits::MAX_LIFTED_CELL_VISITS` (DEVIATION, decision
-    /// 0014: Excel has no such limit).
+    /// An element scans its own text once per delimiter (`delimiters`, at least 1) and, when
+    /// `compiles_patterns`, compiles its pattern (operand 1) if that lifts. The work is the sum
+    /// over the text's elements, each counted as often as the broadcast repeats it, so one long
+    /// cell in a mostly blank column costs its own length once. The call is `#ERROR!` when the
+    /// work exceeds `limits::MAX_LIFTED_CELL_VISITS` (DEVIATION, decision 0014: Excel has no such
+    /// limit), lifted or not.
     pub(super) fn lift_text_call(
         &mut self,
         operands: Vec<CalcResult>,
@@ -91,38 +94,15 @@ impl Model {
         mut element: impl FnMut(&mut Model, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
         let lifts = operands.iter().any(LiftedArg::is_grid);
-        let longest = match operands.first() {
-            Some(CalcResult::String(s)) => s.len(),
-            Some(CalcResult::Array(grid)) => grid
-                .iter()
-                .flatten()
-                .map(|node| match node {
-                    ArrayNode::String(s) => s.len(),
-                    _ => 0,
-                })
-                .max()
-                .unwrap_or(0),
-            _ => 0,
-        };
-        let scans = u64::try_from(delimiters.max(1)).unwrap_or(u64::MAX);
-        let mut cost = u64::try_from(longest)
-            .unwrap_or(u64::MAX)
-            .saturating_add(1)
-            .saturating_mul(scans);
-        if compiles_patterns && operands.get(1).is_some_and(LiftedArg::is_grid) {
-            cost = cost.saturating_add(COMPILE_COST);
-        }
-        // `lift_values` caps only a call that lifts; one call scanning a long text once per
-        // delimiter of a large list (`TEXTBEFORE(REPT("a",32767),SEQUENCE(1048576))`) is capped
-        // here. DEVIATION, decision 0014: Excel has no such limit.
-        if !lifts {
-            if let Some(error) = too_many_visits(cost, cell) {
-                return error;
-            }
+        if let Some(error) = too_many_visits(
+            text_call_cost(&operands, delimiters, compiles_patterns),
+            cell,
+        ) {
+            return error;
         }
         self.lift_values(
             operands,
-            LiftCost::Cells(cost),
+            LiftCost::Unit,
             &LiftOptions::EVERY_ELEMENT,
             cell,
             &mut |model, values| match element(model, values) {
@@ -164,6 +144,51 @@ impl Model {
         }
         Ok(delimiters)
     }
+}
+
+/// The shape of an operand: an array's rows and columns, 1x1 for a scalar.
+fn operand_dims(operand: &CalcResult) -> (usize, usize) {
+    match operand {
+        CalcResult::Array(grid) => (grid.len(), grid.first().map_or(0, Vec::len)),
+        _ => (1, 1),
+    }
+}
+
+/// The work of one text call ([`Model::lift_text_call`]): every text element's length plus 1,
+/// times the delimiters, times how often the broadcast repeats it (a dimension of 1 stretches
+/// over the output's), plus [`COMPILE_COST`] per element when the pattern lifts. Saturating.
+fn text_call_cost(operands: &[CalcResult], delimiters: usize, compiles_patterns: bool) -> u64 {
+    let (rows, columns) = operands
+        .iter()
+        .map(operand_dims)
+        .fold((1, 1), |acc, d| (acc.0.max(d.0), acc.1.max(d.1)));
+    let to_u64 = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
+    let length = |len: usize| to_u64(len).saturating_add(1);
+    let text_work = match operands.first() {
+        Some(CalcResult::Array(grid)) => {
+            let (text_rows, text_columns) = operand_dims(&operands[0]);
+            let repeats = to_u64(if text_rows == 1 { rows } else { 1 })
+                .saturating_mul(to_u64(if text_columns == 1 { columns } else { 1 }));
+            grid.iter()
+                .flatten()
+                .map(|node| match node {
+                    ArrayNode::String(s) => length(s.len()),
+                    _ => 1,
+                })
+                .fold(0u64, u64::saturating_add)
+                .saturating_mul(repeats)
+        }
+        Some(CalcResult::String(s)) => {
+            length(s.len()).saturating_mul(to_u64(rows.saturating_mul(columns)))
+        }
+        _ => to_u64(rows.saturating_mul(columns)),
+    };
+    let mut cost = text_work.saturating_mul(to_u64(delimiters.max(1)));
+    if compiles_patterns && operands.get(1).is_some_and(LiftedArg::is_grid) {
+        cost =
+            cost.saturating_add(COMPILE_COST.saturating_mul(to_u64(rows.saturating_mul(columns))));
+    }
+    cost
 }
 
 /// The text of one delimiter: a string, or a number as its text.
