@@ -14,6 +14,7 @@ use std::collections::HashMap;
 
 use super::stringify::bound_variables::{walk_names, NameSite};
 use super::Node;
+use crate::model::Model;
 use crate::types::DefinedName;
 
 /// Upper-cased name (ß folds with SS, T-1762) → the spelling every call or value use of it prints with.
@@ -53,5 +54,13 @@ impl CallNameSpellings {
             }
         });
         changed
+    }
+}
+
+impl Model {
+    /// Gives the free callees of `node` the workbook's spelling of their names.
+    pub(crate) fn respell_call_names(&mut self, node: &mut Node) -> bool {
+        self.call_name_spellings
+            .apply(node, &self.workbook.defined_names)
     }
 }
