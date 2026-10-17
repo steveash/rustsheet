@@ -173,7 +173,8 @@ const BESSEL: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays], Weighted(
 /// The units one Bessel element is charged against `MAX_LIFTED_CELL_VISITS`.
 const BESSEL_WEIGHT: u32 = 1 << 16;
 /// `IMSUM(inumber1, ...)` and IMPRODUCT: up to 255 arguments, each read whole by the function's
-/// own fold (`Model::fold_complex`), so nothing lifts and the call is one value.
+/// own fold (`Model::fold_complex`), so nothing lifts and the call is one value. The fold never
+/// enters the lift driver, so its `KernelWork` is not charged; it caps its own reads.
 const COMPLEX_FOLD: ArgKinds = ArgKinds {
     required: 1,
     params: &[],

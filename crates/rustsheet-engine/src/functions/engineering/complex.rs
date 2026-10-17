@@ -544,9 +544,7 @@ impl Model {
                     _ => return value_error(cell),
                 },
                 RefArg::Value(CalcResult::Array(array)) => {
-                    let cells = array
-                        .len()
-                        .saturating_mul(array.first().map_or(0, Vec::len));
+                    let cells: usize = array.iter().map(Vec::len).sum();
                     (0, u64::try_from(cells).unwrap_or(u64::MAX))
                 }
                 RefArg::Value(_) => (0, 1),
