@@ -1,4 +1,4 @@
-mod bound_variables;
+pub(super) mod bound_variables;
 use super::reference_operators::{
     at_text, callee_operand, group_text, intersection_operand, spill_operand, tight_operand,
     union_text,
@@ -15,7 +15,7 @@ use crate::expressions::token::OpUnary;
 use crate::language::{get_language, Language};
 use crate::locale::{get_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
-use bound_variables::{prefix_bound_variables, variable_text};
+use bound_variables::{callee_text, prefix_bound_variables, variable_text};
 
 pub enum DisplaceData {
     Column {
@@ -119,7 +119,7 @@ fn excel_string(node: &Node, context: &CellReferenceRC, is_array_formula: bool) 
     if !is_array_formula {
         remove_redundant_implicit_intersection(&mut node, true);
     }
-    prefix_bound_variables(&mut node, &mut Vec::new());
+    prefix_bound_variables(&mut node);
     stringify(&node, Some(context), &NO_REWRITE, true, locale, language)
 }
 
@@ -667,7 +667,7 @@ fn stringify(
             text
         }
         NamedFunctionKind { name, args, id: _ } => format_function(
-            &name.to_lowercase(),
+            &callee_text(name, context),
             args,
             context,
             rewrite,

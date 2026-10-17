@@ -16,7 +16,7 @@ use crate::{
             new_parser_english,
             static_analysis::StaticResult,
             stringify::{to_english_string, to_localized_string, to_rc_format},
-            ArrayNode, CompletionContext, NamedVariable, Node, Parser,
+            ArrayNode, CallNameSpellings, CompletionContext, NamedVariable, Node, Parser,
         },
         token::{get_error_by_name, Error},
         types::*,
@@ -169,17 +169,17 @@ pub struct Model {
     pub(crate) area_budget: crate::area_budget::AreaBudget,
     /// Everything the evaluation algorithm needs besides the workbook. See `evaluation.rs`.
     pub(crate) evaluation: Evaluation,
-    /// Evaluated CF results per cell, keyed by (`sheet_index`, row, column).
-    /// Rebuilt from scratch on every call to `evaluate_conditional_formatting()`.
+    /// Evaluated CF results per cell by (`sheet_index`, row, column), rebuilt from scratch by `evaluate_conditional_formatting()`.
     pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
     /// Dynamic links: links created by formulas like HYPERLINK
     pub(crate) links: HashMap<(u32, i32, i32), Link>,
-    /// For each sheet, where each of its shared formulas is. Only an aid to
-    /// find a formula without comparing it with all the others; the list is
-    /// what counts and what is saved. Rebuilt with the parsed formulas
-    /// (`parse_formulas`), extended when a formula is added. See
-    /// `shared_formula_index`.
+    /// For each sheet, where each of its shared formulas is. Only an aid to find a formula without
+    /// comparing it with all the others; the list is what counts and what is saved. Rebuilt with the
+    /// parsed formulas (`parse_formulas`), extended when a formula is added (`shared_formula_index`).
     pub(crate) shared_formula_lookup: Vec<SharedFormulaLookup>,
+    /// The spelling of each name called like a function that is none, given to every stored
+    /// formula; kept across reparses, as Excel keeps it (a reload rebuilds it from the formulas).
+    pub(crate) call_name_spellings: CallNameSpellings,
 }
 
 /// Formula text to index in `Worksheet::shared_formulas`, for one sheet.
@@ -1494,6 +1494,7 @@ impl Model {
             workbook,
             parsed_formulas,
             shared_formula_lookup: Vec::new(),
+            call_name_spellings: CallNameSpellings::default(),
             shared_strings,
             parsed_defined_names: HashMap::new(),
             parser,
@@ -2391,16 +2392,15 @@ impl Model {
         worksheet.get_cell_structure(row, column)
     }
 
-    /// The index of a formula among the shared formulas of the sheet, adding
-    /// it to them if it is new.
-    ///
-    /// It tries to use the 'cache' lookup first to avoid quadratic time complexity when adding new formulas.
+    /// The index of a formula among the shared formulas of the sheet, adding it to them if it is new.
+    /// The 'cache' lookup comes first, to avoid quadratic time complexity when adding new formulas.
     fn shared_formula_index(
         &mut self,
         sheet: u32,
-        parsed_formula: Node,
+        mut parsed_formula: Node,
         static_result: StaticResult,
     ) -> Result<i32, String> {
+        self.call_name_spellings.apply(&mut parsed_formula);
         let text = to_rc_format(&parsed_formula);
         let sheet_index = sheet as usize;
         let shared_formulas = &mut self.workbook.worksheet_mut(sheet)?.shared_formulas;

@@ -756,6 +756,7 @@ C	probes/union-operand-nested-parens.case.json	6
 C	probes/union-operand-quad-minus.case.json	2
 C	probes/union-operand-triple-minus.case.json	2
 C	probes/union-walk-repeated-in-lambda.case.json	15
+C	probes/unknown-function-name-spelling.case.json	36
 C	probes/value-clock-text.case.json	135
 C	probes/valuetotext-error-format.case.json	10
 C	probes/valuetotext-format.case.json	37
@@ -2767,7 +2768,6 @@ F	probes/lookup-argument-modes.case.json	Sheet1!H7
 F	probes/lookup-argument-modes.case.json	Sheet1!H8
 F	probes/lookup-argument-modes.case.json	Sheet1!H9
 F	probes/lotus-dot-name-let-lower.case.json	Sheet1!E2
-F	probes/lotus-dot-range-func-second.case.json	Sheet1!E2
 F	probes/m7-argument-modes.case.json	Sheet1!F1
 F	probes/m7-argument-modes.case.json	Sheet1!F10
 F	probes/m7-argument-modes.case.json	Sheet1!F11
@@ -3662,6 +3662,8 @@ F	probes/text-format-length-limit-f.case.json	Sheet1!A42
 F	probes/text-format-length-limit-j.case.json	Sheet1!A43
 F	probes/text-format-length-limit-l.case.json	Sheet1!A40
 F	probes/text-format-length-limit-m.case.json	Sheet1!A22
+F	probes/unknown-function-name-spelling.case.json	Sheet1!A8
+F	probes/unknown-function-name-spelling.case.json	Sheet1!B8
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D18
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D19
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D26
