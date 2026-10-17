@@ -143,6 +143,39 @@ fn fn_mirr() {
 }
 
 #[test]
+fn fn_mirr_has_excels_evaluation_order() {
+    // T-1687: period-0 sums with running powers, `P * (1+rr)^n / (1+rr)`, Excel's `^` for the root
+    // (probes-numeric/m9-fin-mirr A254, A13, A66, A146; docs/excel-semantics/financial.md
+    // "MIRR's evaluation order").
+    let mut model = new_empty_model();
+    let cases = [
+        ("A1", "=MIRR({-100,120},0,0.03)", 0.19999999999999973),
+        ("A2", "=MIRR({-3,7},0.1,0.12)", 1.333333333333333),
+        (
+            "A3",
+            "=MIRR({-954,-1515,1291,-678,-46,-1588,-17,-216,-70},0.07,1)",
+            0.44791438357999236,
+        ),
+        (
+            "A4",
+            "=MIRR({-396,992,-678,-1340,-1384,1958,-1245,-384,-775,220},0,-0.5)",
+            -0.274291846946638,
+        ),
+    ];
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cases {
+        assert_eq!(
+            model.get_cell_value_by_ref(&format!("Sheet1!{cell}")),
+            Ok(CellValue::Number(expected)),
+            "{formula}"
+        );
+    }
+}
+
+#[test]
 fn fn_mirr_div_0() {
     // This test produces #DIV/0! in Excel (but it is incorrect)
     let mut model = new_empty_model();
