@@ -81,7 +81,7 @@ impl Parser {
 
     /// `callee(args)`, at the `(` that opens the arguments: a call of whatever `callee`
     /// evaluates to. Its depth is covered by the operand's own ([`Parser::parse_primary`]).
-    fn parse_call(&mut self, callee: Node) -> Node {
+    pub(super) fn parse_call(&mut self, callee: Node) -> Node {
         self.lexer.advance_token(); // consume '('
         let call_args = match self.parse_function_args("LAMBDA") {
             Ok(args) => args,
