@@ -696,7 +696,7 @@ Tasks: T-1408
 Rule: YEARFRAC with a start date after the end date swaps them for basis 1 as for basis 0: `YEARFRAC(52874,24708,1)` =
 77.11295191295191 = `YEARFRAC(24708,52874,1)`.
 Evidence: gen-m7/c263b43217a5898b Calc!A38 (excel-graph, 2026-10-11, T-1275).
-Ours: `#NUM!` for basis 1 (basis 0 already swaps); bases 2-4 unchecked.
+Ours: swaps for basis 1 (T-1354); bases 0, 2, 3, 4 take the absolute value of the day count. Reversed pairs equal their forward result for all five bases (`test_yearfrac_reversed_dates_swap_for_every_basis`); only basis 1 has Excel evidence.
 Status: VERIFIED (web)
 Tasks: T-1354
 
