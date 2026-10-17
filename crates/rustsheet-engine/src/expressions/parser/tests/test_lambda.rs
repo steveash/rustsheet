@@ -351,4 +351,7 @@ fn test_cell_shaped_callee_is_call_of_cell() {
     assert_eq!(to_english_localized_string(&node, &cell()), "AB1(1)");
     let node = p.parse("LOG10(100)", &cell());
     assert!(matches!(node, Node::FunctionKind { .. }), "{node:?}");
+    // Excel's A1 grammar is ASCII: `ß1` must not upper-case into the cell SS1.
+    let node = p.parse("ß1(1)", &cell());
+    assert!(matches!(node, Node::NamedFunctionKind { .. }), "{node:?}");
 }
