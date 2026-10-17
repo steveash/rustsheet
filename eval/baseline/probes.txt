@@ -755,6 +755,7 @@ C	probes/textjoin-array-arguments.case.json	34
 C	probes/textjoin-array-limit-empty-strings.case.json	11
 C	probes/textjoin-delimiter-array.case.json	6
 C	probes/textjoin-delimiter-elements.case.json	24
+C	probes/textsplit-casefold-length.case.json	8
 C	probes/textsplit-padded-size.case.json	6
 C	probes/textsplit-wide.case.json	5
 C	probes/timevalue-ampm-limits.case.json	44
@@ -763,6 +764,7 @@ C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/tiny-vs-zero-criteria.case.json	75
 C	probes/trig-huge-argument.case.json	86
+C	probes/trimrange-fractional-trim.case.json	20
 C	probes/trunc-decimal-stages.case.json	56
 C	probes/typed-currency-percent-input.case.json	66
 C	probes/typed-number-tiny.case.json	24
