@@ -13,6 +13,9 @@
 //!
 //! One warm-up run, then `RUNS` measured recalculations; each case prints the fastest, the median
 //! and the spread.
+//!
+//! Compare a parent and a branch one case per process (`-- NAME`): run together, a later case
+//! inherits the allocator state of the earlier ones and its times are not comparable (T-1784).
 
 mod common;
 
