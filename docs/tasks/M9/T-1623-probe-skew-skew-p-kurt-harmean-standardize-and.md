@@ -3,7 +3,7 @@ id: T-1623
 title: "Probe SKEW, SKEW.P, KURT, HARMEAN, STANDARDIZE and SUMX2PY2, SUMXMY2, SUMX2MY2, MDETERM, ECMA.CEILING to the evidence floor"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
