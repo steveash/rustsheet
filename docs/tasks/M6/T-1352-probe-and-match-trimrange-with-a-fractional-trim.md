@@ -3,7 +3,7 @@ id: T-1352
 title: "Probe and match TRIMRANGE with a fractional trim_rows or trim_cols (gen-m7 bcad709c A20)"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -29,3 +29,6 @@ Code: crates/rustsheet-engine/src/functions/lookup_and_reference/trimrange.rs.
 
 ## Out of scope
 -
+
+## Outcome
+TRIMRANGE now rejects any non-integer trim_rows/trim_cols with `#VALUE!` (probe `probes/trimrange-fractional-trim`, excel-graph; `0.9`, `1.5`, `2.5`, `3.9` all `#VALUE!`; `"2"` and `TRUE` coerce). gen-m7/bcad709c30cfdf64 A20 passes; lookup.md entry VERIFIED. Probe cases added to the probes baseline.
