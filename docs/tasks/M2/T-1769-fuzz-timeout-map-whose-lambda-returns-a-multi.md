@@ -3,7 +3,7 @@ id: T-1769
 title: "Fuzz timeout: MAP whose LAMBDA returns a multi-cell range materialises the range once per element"
 milestone: M2
 lane: functions-logic
-status: in-progress
+status: done
 priority: P0
 size: S
 tier: opus
@@ -41,12 +41,25 @@ Repro: `cd fuzz && cargo fuzz run --target "$(rustc -vV | sed -n 's/^host: //p')
 with the formula above as the file's bytes (decision 0035).
 
 ## Acceptance criteria
-- [ ] The reproducer is a unit test (decision 0035) that runs in well under a second in a debug test
+- [x] The reproducer is a unit test (decision 0035) that runs in well under a second in a debug test
       build and returns the same value as before the fix.
-- [ ] A MAP element whose LAMBDA returns a multi-cell range costs O(1) or O(used area), not the
+- [x] A MAP element whose LAMBDA returns a multi-cell range costs O(1) or O(used area), not the
       range's full size; check the other LAMBDA helpers that share `lambda_result_value` (SCAN,
       REDUCE, MAKEARRAY, BYROW/BYCOL) for the same path.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing what MAP returns for such an element (needs a probe first).
+
+## Outcome
+`Model::lambda_result_value` (functions/logical/bycol_byrow.rs) no longer builds an array for a
+multi-cell range a MAP or SCAN LAMBDA returns. It keeps `evaluate_range`'s size check and first-sheet
+read, but walks only the range's existing cells (the union walk, `for_each_position_in_area` with
+`of_union`), recording the blank rest as one seen-empty rectangle, and gives the same `#VALUE!`
+element. Cells are still evaluated, so a cycle through the range is still `#CIRC!`. The reproducer
+`SUM(MAP(A1:A1000,LAMBDA(r,B1:B100000)))` went from 21 s to 23 ms in a debug build (unit tests in
+test_fn_map_reduce.rs, the whole file runs in 0.07 s). Only MAP and SCAN call the helper: REDUCE
+returns the accumulator as is, and BYROW/BYCOL and MAKEARRAY never read a returned range. A LAMBDA
+returning a densely filled range still costs its existing cells per call, bounded by the formula's
+walk budget, whose error is the same `#VALUE!`. Eval delta: none (0 regressions, 0 fixes). Follow-up:
+T-1792 (probe Excel's element value for such a MAP/SCAN element).
