@@ -59,4 +59,4 @@ known failures (M1352, N1352, O1352, plus E260 `COMBIN(19,7)`, already passing o
 recorded because CI does not fetch poi); probes: t-array-lift S!E7 fixed, new case 45 cells, 42 pass.
 Its 4 failures (M20, N10, O10, O20) are the legacy `@` over an array constant under N and T, which
 is T-1717's scope; its context now cites them. N, T and the offline-error functions now share
-`Model::evaluate_node_top_left` (model.rs) for the top-left read.
+`Model::evaluate_node_top_left` (cast.rs) for the top-left read.
