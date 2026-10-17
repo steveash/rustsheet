@@ -49,7 +49,7 @@ where Excel gives 2100. At the order cap a BESSELI element runs about 2·10^5 re
 take about 2 s in a release build (8,192 took 8 s, T-1383).
 Evidence: probes-numeric/m9-bessel (T-1004) shows Excel's behavior for huge orders; the cap itself is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
-Tasks: T-1004, T-1383; T-1818 narrows the lifted cap to an order-based work budget.
+Tasks: T-1004, T-1383; T-1819 narrows the lifted cap to an order-based work budget.
 Implemented in: functions/engineering/transcendental/bessel_excel.rs (`MAX_ORDER`), bessel_i.rs, bessel_k.rs;
 functions/lift/kinds.rs (`BESSEL_WEIGHT`)
 
