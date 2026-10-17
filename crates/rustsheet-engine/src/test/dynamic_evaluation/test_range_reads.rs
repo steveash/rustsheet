@@ -327,7 +327,8 @@ fn many_small_spills_skip_the_whole_column_rectangles_in_other_columns() {
     assert_eq!(model._get_text("BYG1"), "2");
     assert_eq!(model.evaluation.seen_ranges.len(), 50_000);
     assert_eq!(restarts(&model), 0);
-    // The rectangles are on record before the small spills commit.
+    // The setup's premise: the four readers commit first, so all their rectangles are on record
+    // when each small spill is checked.
     let first_columns: Vec<i32> = model.evaluation.anchor_order[..4]
         .iter()
         .map(|anchor| anchor.column)

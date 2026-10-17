@@ -150,12 +150,18 @@ impl SeenRanges {
             anchor.column,
             anchor.column.saturating_add(area.0.max(1) - 1),
         );
+        // The pairs of levels in use, walking only the set bits of each row level's mask.
         let level_pairs = || {
             (0..32_u32).flat_map(move |row_level| {
-                let column_levels = self.levels[row_level as usize];
-                (0..32_u32)
-                    .filter(move |column_level| column_levels & (1 << column_level) != 0)
-                    .map(move |column_level| (row_level, column_level))
+                let mut column_levels = self.levels[row_level as usize];
+                std::iter::from_fn(move || {
+                    if column_levels == 0 {
+                        return None;
+                    }
+                    let column_level = column_levels.trailing_zeros();
+                    column_levels &= column_levels - 1;
+                    Some((row_level, column_level))
+                })
             })
         };
         let count =
