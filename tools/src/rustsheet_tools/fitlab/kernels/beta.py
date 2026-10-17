@@ -389,15 +389,54 @@ def beta_dist_candidates() -> list[Candidate]:
     return [candidate(name, wrap(fn), family) for name, family, fn in ibeta_candidates()]
 
 
+def f_cdf(fn: Ibeta, x: float, d1: float, d2: float) -> float:
+    """F.DIST(x,d1,d2,TRUE) = I_y(d1/2, d2/2), y = d1*x/(d1*x + d2). Excel truncates both df
+    (t1049-fdist: F.DIST(1,3.9,7.9,TRUE) = F.DIST(1,3,7,TRUE))."""
+    d1, d2 = float(math.trunc(d1)), float(math.trunc(d2))
+    return fn(d1 * x / (d1 * x + d2), d1 / 2.0, d2 / 2.0)
+
+
+def f_cdf_rt(fn: Ibeta, x: float, d1: float, d2: float) -> float:
+    """F.DIST.RT(x,d1,d2) = I_w(d2/2, d1/2), w = d2/(d2 + d1*x), df truncated as in `f_cdf`."""
+    d1, d2 = float(math.trunc(d1)), float(math.trunc(d2))
+    return fn(d2 / (d2 + d1 * x), d2 / 2.0, d1 / 2.0)
+
+
+def t_two_tail(fn: Ibeta, t: float, n: float) -> float:
+    """P(|T| > |t|) = I_y(n/2, 1/2), y = n/(n + t^2); n truncated (statistics.md, T-1043)."""
+    n = float(math.trunc(n))
+    return fn(n / (n + t * t), n / 2.0, 0.5)
+
+
+def t_cdf(fn: Ibeta, t: float, n: float) -> float:
+    """T.DIST(t,n,TRUE) = 1 - I_y(n/2, 1/2)/2 for t > 0 (I_y/2 below), y = n/(n + t^2), or
+    0.5 +- I_z(1/2, n/2)/2 with z = 1 - y when z is smaller (back to I_y/2 for a lower tail under
+    0.1, where the difference cancels); Excel truncates n to an integer
+    (docs/excel-semantics/statistics.md, T-1043)."""
+    n = float(math.trunc(n))
+    if t == 0:
+        return 0.5
+    # Map through the smaller of y = n/(n+t^2) and z = t^2/(n+t^2): rounding y near 1 before I_y
+    # loses the tail (about 7E5 ulp at n = 1E6).
+    y, z = n / (n + t * t), t * t / (n + t * t)
+    if y <= z:
+        half_tail = fn(y, n / 2.0, 0.5) / 2.0
+        return 1.0 - half_tail if t > 0 else half_tail
+    centre = fn(z, 0.5, n / 2.0) / 2.0
+    if t > 0:
+        return 0.5 + centre
+    lower = 0.5 - centre
+    # 0.5 - centre cancels in the deep lower tail (T.DIST(-10,1000,TRUE) = 8.3E-23): take I_y/2.
+    return lower if lower >= 0.1 else fn(y, n / 2.0, 0.5) / 2.0
+
+
 def f_dist_candidates() -> list[Candidate]:
-    """F.DIST(x,d1,d2,TRUE) = I_y(d1/2, d2/2), y = d1*x/(d1*x + d2), df truncated."""
+    """F.DIST(x,d1,d2,TRUE) through `f_cdf` for every I_x candidate."""
 
     def wrap(fn: Ibeta) -> Callable[..., float]:
         def call(*args: Arg) -> float:
             x, d1, d2 = _numbers(args)
-            # Excel truncates both df (t1049-fdist: F.DIST(1,3.9,7.9,TRUE) = F.DIST(1,3,7,TRUE)).
-            d1, d2 = float(math.trunc(d1)), float(math.trunc(d2))
-            return fn(d1 * x / (d1 * x + d2), d1 / 2.0, d2 / 2.0)
+            return f_cdf(fn, x, d1, d2)
 
         return call
 
@@ -405,30 +444,12 @@ def f_dist_candidates() -> list[Candidate]:
 
 
 def t_dist_candidates() -> list[Candidate]:
-    """T.DIST(t,n,TRUE) = 1 - I_y(n/2, 1/2)/2 for t > 0 (I_y/2 below), y = n/(n + t^2), or
-    0.5 +- I_z(1/2, n/2)/2 with z = 1 - y when z is smaller (back to I_y/2 for a lower tail under
-    0.1, where the difference cancels); Excel truncates n to an integer
-    (docs/excel-semantics/statistics.md, T-1043)."""
+    """T.DIST(t,n,TRUE) through `t_cdf` for every I_x candidate."""
 
     def wrap(fn: Ibeta) -> Callable[..., float]:
         def call(*args: Arg) -> float:
             t, n = _numbers(args)
-            n = float(math.trunc(n))
-            if t == 0:
-                return 0.5
-            # Map through the smaller of y = n/(n+t^2) and z = t^2/(n+t^2): rounding y near 1
-            # before I_y loses the tail (about 7E5 ulp at n = 1E6).
-            y, z = n / (n + t * t), t * t / (n + t * t)
-            if y <= z:
-                half_tail = fn(y, n / 2.0, 0.5) / 2.0
-                return 1.0 - half_tail if t > 0 else half_tail
-            centre = fn(z, 0.5, n / 2.0) / 2.0
-            if t > 0:
-                return 0.5 + centre
-            lower = 0.5 - centre
-            # 0.5 - centre cancels in the deep lower tail (T.DIST(-10,1000,TRUE) = 8.3E-23):
-            # take I_y/2 directly there.
-            return lower if lower >= 0.1 else fn(y, n / 2.0, 0.5) / 2.0
+            return t_cdf(fn, t, n)
 
         return call
 
