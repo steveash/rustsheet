@@ -3,7 +3,7 @@ id: T-1687
 title: "MIRR: fit Excel's formulation against an oracle sweep"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
