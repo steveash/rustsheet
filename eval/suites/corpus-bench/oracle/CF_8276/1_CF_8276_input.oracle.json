@@ -1,0 +1,30 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Data": {
+   "B3": {
+    "t": "n",
+    "v": 65.0
+   },
+   "B4": {
+    "t": "n",
+    "v": 0.0
+   },
+   "E2": {
+    "t": "s",
+    "v": "Go to Hyperlinked sheet"
+   },
+   "E3": {
+    "t": "s",
+    "v": ""
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "4ef4531737d79fdb75c708d41cf8bac60f2c49ce99844cc0fcc9489e8f3777bf",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:39:43+00:00",
+  "version": null
+ }
+}
