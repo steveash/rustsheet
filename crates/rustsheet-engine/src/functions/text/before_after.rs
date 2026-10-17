@@ -121,8 +121,8 @@ impl Model {
         }
     }
 
-    /// The instance_num, match_mode and match_end of one element, read in that order (the
-    /// defaults 1, case-sensitive and 0 when omitted). An instance_num of 0 is `#VALUE!`.
+    /// The `instance_num`, `match_mode` and `match_end` of one element, read in that order (the
+    /// defaults 1, case-sensitive and 0 when omitted). An `instance_num` of 0 is `#VALUE!`.
     fn around_options(
         &self,
         values: &[CalcResult],
@@ -156,8 +156,8 @@ impl Model {
         })
     }
 
-    /// The result of an element whose delimiter is not found: with match_end the end of the text
-    /// is the missing delimiter, then if_not_found, else `#N/A`.
+    /// The result of an element whose delimiter is not found: with `match_end` the end of the text
+    /// is the missing delimiter, then `if_not_found`, else `#N/A`.
     fn around_not_found(
         values: &[CalcResult],
         arg_count: usize,
