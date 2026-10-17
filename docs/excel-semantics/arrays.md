@@ -768,8 +768,12 @@ Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a col
 occupied cells below). A wrap_count of 0.5 is `#NUM!` (`HYPERLINK(WRAPCOLS(C12,0.5,..),..)`).
 Evidence: gen-m7/bb4617644fee40c9 Calc!A30, gen-m7/d38b52bfa1a9f9e6 Calc!A26, gen-m7/f68fafa0ca2eba26 Calc!A39 (excel-graph, 2026-10-11, T-1275).
 Ours: pads to wrap_count (`ROWS(WRAPCOLS(1,4))` = 4, so both cells are `#SPILL!`), and wrap_count 0.5 is `#VALUE!`.
-Status: VERIFIED for single values (web); a multi-element vector shorter than wrap_count (`WRAPCOLS({1,2},4)`), WRAPROWS,
-and wrap_count 0 or negative are UNVERIFIED
+Also: an error pad_with is the whole result when nothing is padded (with padding it fills the padded cells,
+WRAPCOLS_ROWS.xlsx E10) (`WRAPCOLS(D6:D6,2,VALUE("x"))` is `#VALUE!`,
+gen-m9/675763979c1defb6 A6), and wrap_count 0 is `#NUM!` for WRAPROWS (gen-m9/50f10c4062fb2e98 A21). Single values are
+not padded since T-1786 (wrap_count is capped at the vector's length).
+Status: VERIFIED for single values (excel-graph); a multi-element vector shorter than wrap_count (`WRAPCOLS({1,2},4)`),
+a multi-element vector with an error pad_with and no padding, WRAPROWS of a single value and a negative wrap_count are UNVERIFIED
 Tasks: T-1348
 
 ## MAP over arrays of different sizes, or a single value and an array

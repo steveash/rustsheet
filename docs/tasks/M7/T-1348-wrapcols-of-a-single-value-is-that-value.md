@@ -3,7 +3,7 @@ id: T-1348
 title: "WRAPCOLS of a single value is that value, not padded to wrap_count; a wrap_count below 1 is #NUM!"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -38,3 +38,6 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 -
+
+## Outcome
+wrap_count below 1 (0.5, 0, negatives) is `#NUM!` for WRAPCOLS and WRAPROWS; an error pad_with is the result when nothing is padded. The single-value padding was already fixed by T-1786. Eval: probes known failures 4444 -> 4436 (8 fixed, 0 regressions); the six listed gen-m7/gen-m9 cells pass. Unverified (still in arrays.md): multi-element vectors shorter than wrap_count, WRAPROWS of a single value, negative wrap_count, an error pad_with on a multi-element vector.
