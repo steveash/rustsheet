@@ -49,3 +49,17 @@ fn grouped_reference_name_joins_with_a_cell_in_the_range_operator() {
     assert_eq!(model._get_text("A2"), "3");
     assert_eq!(model._get_text("A3"), "5");
 }
+
+// A call of a cell-shaped name is stored in R1C1 as `R[-7]C[27](1)`, which must parse back after
+// a structural edit (T-1758).
+#[test]
+fn cell_shaped_call_survives_a_sheet_rename() {
+    let mut model = new_empty_model();
+    model._set("A8", "=Ab1(1)");
+    model.evaluate();
+    assert_eq!(model._get_formula("A8"), "=AB1(1)");
+    model.rename_sheet("Sheet1", "Other").unwrap();
+    model.evaluate();
+    assert_eq!(model._get_formula("A8"), "=AB1(1)");
+    assert_eq!(model._get_text("A8"), "#REF!");
+}

@@ -65,6 +65,26 @@ impl Parser {
         Node::ArrayKind(matrix)
     }
 
+    /// A reference token, or in the stored R1C1 form a call of one, `R[-7]C[27](1)` (A1 text
+    /// `AB1(1)`; in A1 text a cell followed by `(` is lexed as a name instead, T-1758).
+    pub(super) fn reference_or_call_operand(
+        &mut self,
+        sheet: Option<String>,
+        row: i32,
+        column: i32,
+        absolute_column: bool,
+        absolute_row: bool,
+    ) -> Node {
+        let node = self.reference_operand(sheet, row, column, absolute_column, absolute_row);
+        if !self.lexer.is_a1_mode()
+            && !self.lexer.whitespace_follows()
+            && self.lexer.peek_token() == TokenType::LeftParenthesis
+        {
+            return self.parse_call(node);
+        }
+        node
+    }
+
     /// A cell reference token, made relative to the formula's cell in A1 mode.
     pub(super) fn reference_operand(
         &mut self,
