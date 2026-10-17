@@ -169,6 +169,7 @@ use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::shift_months;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
+use crate::functions::lift::num_error;
 use crate::functions::text::text_arg::broadcast_text;
 use crate::functions::util::array_node_to_calc_result;
 use crate::number_format::parse_excel_number;
@@ -188,11 +189,6 @@ fn error_kind(result: &CalcResult) -> Error {
         CalcResult::Error { error, .. } => error.clone(),
         _ => Error::VALUE,
     }
-}
-
-/// The `#NUM!` of a lifted date kernel's element (SPEC-0011: an element error allocates nothing).
-fn num_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::NUM, cell, String::new())
 }
 
 /// Saturday-Sunday weekend (pattern 1), Monday first.

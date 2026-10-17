@@ -1,3 +1,4 @@
+mod test_argument_lift;
 mod test_bessel;
 mod test_bit_operations;
 mod test_complex;

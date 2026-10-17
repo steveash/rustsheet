@@ -39,11 +39,19 @@ Provenance: the coefficients are the published Numerical Recipes (2nd ed., §6.5
 approximations, reproduced only because Excel's output matches them bit-for-bit.
 
 ## BESSEL order cap
-Rule: RustSheet returns `#NUM!` for BESSELJ and BESSELY orders above 100,000 to bound per-cell work on
+Rule: RustSheet returns `#NUM!` for BESSELI, BESSELJ, BESSELK and BESSELY orders above 100,000 to bound per-cell work on
 untrusted input (CLAUDE.md directive 5). Excel gives `BESSELJ(10,1000000)` = `0` (probes-numeric/m9-bessel, T-1004), so the engine differs above 100,000 for J.
+BESSELI and BESSELK took the cap in T-1383 (before it, `BESSELI(2.5,2E9)` looped about 4·10^9 times); Excel's values above
+100,000 are unprobed for them.
+A lifted Bessel call is also charged 2^16 units per element against the lifting visit cap (SPEC-0011
+`KernelWork::Weighted`), so one call lifts at most 2,048 elements: `ROWS(BESSELJ(2.5,SEQUENCE(2100)))` is `#ERROR!`
+where Excel gives 2100. At the order cap a BESSELI element runs about 2·10^5 recurrence steps; 2,048 such elements
+take about 2 s in a release build (8,192 took 8 s, T-1383).
 Evidence: probes-numeric/m9-bessel (T-1004) shows Excel's behavior for huge orders; the cap itself is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
-Implemented in: functions/engineering/transcendental/bessel_excel.rs (`MAX_ORDER`)
+Tasks: T-1004, T-1383; T-1819 narrows the lifted cap to an order-based work budget.
+Implemented in: functions/engineering/transcendental/bessel_excel.rs (`MAX_ORDER`), bessel_i.rs, bessel_k.rs;
+functions/lift/kinds.rs (`BESSEL_WEIGHT`)
 
 ## DECIMAL of unreadable text
 Rule: DECIMAL reads its first argument as text (a number or TRUE goes through its text form, so `DECIMAL(0.5,13)`, `DECIMAL(1E+20,10)` and `DECIMAL(TRUE,10)` read "0.5", "1E+20", "TRUE"). Leading spaces and tabs are skipped; empty or all-blank text is 0. Any other unreadable character is `#NUM!` (not `#VALUE!`): a sign (`"-1"`, `"+1"`), a point, trailing space, a non-breaking space, a digit not below the radix. Text over 255 UTF-16 units (200 emoji is too long) is `#VALUE!`, checked before the radix (`DECIMAL(REPT("1",256),37)` is `#VALUE!`), as is a non-numeric radix. Newline and fullwidth digits are unreadable (`#NUM!`); the overflow is `#NUM!` inside a larger formula too (`ERROR.TYPE` 6, `IFERROR` falls through). Error arguments: the text argument's error wins (`DECIMAL(#N/A,#DIV/0!)` is `#N/A`). Radix 16 only also skips leading zeros and one `x`/`X` (`"0x1F"`, `"x1F"`, `"00x1F"` are 31; `"0x0x1"`, `"1x1F"`, `"0x 1F"` are `#NUM!`; in radix 10 or 15 `"0x1F"` is `#NUM!`, in radix 36 the x is a digit). The sum is a float with no 2^53 limit (255 ones in radix 2 is 5.78960446186581E+76; 198 `Z`s in radix 36 is 1.4057081148316923E+308), but a result past the largest double is `#NUM!` (199 `Z`s in radix 36, 255 `Z`s).
@@ -97,6 +105,17 @@ T-1767): `ROWS(BITAND(13,D1:D60))` is 60, while `ROWS(BESSELJ(2.5,B1:B60))` and 
 even on the range's own rows. Probes/scalar-lift-open-a (T-1777) adds
 more later arguments, all `#VALUE!` over a range with a working scalar control: CONVERT's `from_unit`, `to_unit` and number
 (Y8-Y10), COMPLEX's `suffix` (Y11), IMSUB's and IMDIV's second argument (Y12, Y13), IMPOWER's `n` (Y14) and IMSUB's first (Y15).
+Probes/eng-later-argument-lift (T-1383) covers the remaining later arguments, each on its range's own rows with an array
+element (column I) equal to its scalar control (column J):
+- `#VALUE!` over a range: BESSELI's, BESSELK's and BESSELY's `n` (H1-H3; L70 off the rows), the `places` of BIN2HEX,
+  BIN2OCT, DEC2HEX, DEC2OCT, HEX2BIN, HEX2OCT, OCT2BIN and OCT2HEX (H4-H11), COMPLEX's `i_num` (H16), DELTA's
+  `number2` (H17; L72 off the rows), GESTEP's `step` (H18) and ERF's `upper_limit` (H19).
+- 60 rows over a range: BITOR's and BITXOR's `number2`, BITLSHIFT's and BITRSHIFT's `shift_amount` (H12-H15; L71 off
+  the rows) and BITAND's first argument on its own rows (H20). The elements are the scalar calls:
+  `INDEX(BITLSHIFT(13,C1:C60),5)` with C5 = 2 is 52 (K12-K15).
+- Error order inside one element: `INDEX(F({"x";..},NA()),1)` is the first argument's `#VALUE!` (or IMPOWER's `#NUM!`)
+  for BESSELJ, BITLSHIFT, CONVERT, COMPLEX, IMPOWER and ERF (M1, M3-M7), but `#N/A` for DEC2BIN and DELTA (M2, M8):
+  those two read their second argument before the first fails. Ours: `#VALUE!` for both (T-1816).
 QUOTIENT, FACTDOUBLE and SERIESSUM's x, n, m are `#VALUE!` too, while MULTINOMIAL, GCD and LCM give one result (ROWS 1)
 (Y19-Y30). See arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak
 range rule".
@@ -125,14 +144,15 @@ Evidence: probes/eng-argument-modes (231 cells, excel-graph, 2026-10-11, T-1085)
 M1 "1+2i", M2 3, M3 blank, M4 TRUE, M5 "x" and M6 "2-i".
 
 Ours:
-- No scalar argument lifts over an array (`#N/IMPL!`), and BIT* is `#VALUE!` over a range (T-1383).
-- BESSELI intersects a range instead of giving `#VALUE!` (T-1383).
+- Matches the argument modes (T-1383): every engineering function but IMSUM and IMPRODUCT is in the SPEC-0011 lifting
+  table, BIT* as `Lift` and the rest as `LiftArrays`.
+- DEC2BIN's and DELTA's error order inside an element (above, T-1816).
 - IMSUM and IMPRODUCT are `#ERROR!` on any range or array. Booleans give `#NUM!`, and some text cases
   that should be `#NUM!` give `#VALUE!` (T-1384).
 - IMCOT, IMSECH and IMTAN of "3+4i" are off in the last printed digit (T-0907).
 
 Status: VERIFIED (excel-graph)
-Tasks: T-1085, T-1383, T-1384, T-0907
+Tasks: T-1085, T-1383, T-1384, T-0907, T-1816
 
 ## OCT2BIN of a blank cell is 0
 Rule: `OCT2BIN(E5,2)` with E5 blank is "00": a blank cell is the number 0. The other X2Y conversions of a blank cell,

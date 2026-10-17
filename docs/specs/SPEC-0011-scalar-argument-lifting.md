@@ -520,6 +520,12 @@ the count check, the kernel sorts them on its first element, and the call goes t
 `lift_call_costed` with `LiftCost::Prepared(numbers)` (TRIMMEAN: `Cells(numbers)`, since every
 element averages the kept values). `Whole` stays unused until T-1236's holidays.
 
+As built (T-1383): the engineering functions are the first `KernelWork::Weighted` entries. The four
+Bessel functions loop up to about 2·10^5 times per element at the order cap (`MAX_ORDER`, 100,000,
+now also BESSELI's and BESSELK's per-call cap), so they are `Weighted(2^16)`: a lifted call runs at most
+2,048 elements, about 2 s at the cap in release (engineering.md "BESSEL order cap", a DEVIATION). HEX2DEC
+and OCT2DEC take one argument, as the parser's signature already said; their old code ignored a second one.
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and
