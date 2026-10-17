@@ -266,3 +266,33 @@ fn regexreplace_replacement_syntax() {
     assert_eq!(model._get_text("A1"), *"[a|b|$||$]");
     assert_eq!(model._get_text("A2"), *"aab");
 }
+
+// T-1272 performance review: iterating matches on the PikeVM (a `\b` pattern over non-ASCII
+// text, where the lazy DFA quits) charges each successive search the rest of the text, so a few
+// KB with many matches is `#ERROR!` (DEVIATION, decision 0014; T-1829 charges the work done and
+// updates this test). ASCII text stays on the lazy DFA.
+#[test]
+fn pike_iteration_is_charged_by_rest_of_text() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=COLUMNS(REGEXEXTRACT(REPT(\"naïve \",300),\"\\b\\w+\\b\",1))",
+    );
+    model._set(
+        "A2",
+        "=COLUMNS(REGEXEXTRACT(REPT(\"naïve \",500),\"\\b\\w+\\b\",1))",
+    );
+    model._set(
+        "A3",
+        "=LEN(REGEXREPLACE(REPT(\"cafe foo bar \",2500),\"\\bfoo\\b\",\"x\"))",
+    );
+    model._set(
+        "A4",
+        "=LEN(REGEXREPLACE(REPT(\"café foo bar \",2500),\"\\bfoo\\b\",\"x\"))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"300");
+    assert_eq!(model._get_text("A2"), *"#ERROR!");
+    assert_eq!(model._get_text("A3"), *"27500");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
+}
