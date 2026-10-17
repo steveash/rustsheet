@@ -38,6 +38,7 @@ C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
 C	probes/array-context-legacy-sumproduct.case.json	31
+C	probes/arraytotext-empty-ref.case.json	25
 C	probes/arraytotext-number-text.case.json	15
 C	probes/asin-argument-sweep.case.json	268
 C	probes/at-group-leftmost-shapes.case.json	20
@@ -50,6 +51,7 @@ C	probes/at-paren-operands-levels.case.json	20
 C	probes/at-paren-operands.case.json	6
 C	probes/at-power-text.case.json	24
 C	probes/at-signed-operand.case.json	24
+C	probes/atanh-unit-argument.case.json	12
 C	probes/average-value-args.case.json	32
 C	probes/averagea-array-constant-elements.case.json	25
 C	probes/base-min-length.case.json	14
@@ -793,8 +795,6 @@ C	probes/xmatch-text-bool-equal-runs.case.json	134
 C	probes/xmatch-xlookup-blanks.case.json	69
 C	probes/xnpv-argument-count.case.json	3
 C	probes/yield-solver-sweep.case.json	66
-F	probes/arraytotext-number-text.case.json	Sheet1!A14
-F	probes/arraytotext-number-text.case.json	Sheet1!A15
 F	probes/asin-argument-sweep.case.json	Sheet1!B10
 F	probes/asin-argument-sweep.case.json	Sheet1!B109
 F	probes/asin-argument-sweep.case.json	Sheet1!B11

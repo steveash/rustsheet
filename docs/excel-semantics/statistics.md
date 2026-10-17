@@ -560,6 +560,46 @@ t1049-fdist, m9-t-dist-cdf, t1048-tdist; fits `beta-dist`, `f-dist`, `t-dist`
 Status: VERIFIED (b = 1 closed form); a = 1 PARTIAL (22/24, form not distinguished from pow); the general algorithm is UNVERIFIED
 Tasks: T-1744, T-0970, T-0969, T-1745
 
+## BETA.INV solves Excel's own CDF to the crossing (T-1745)
+Rule: BETA.INV(p,a,b) returns, in most cases, a double where Excel's own BETA.DIST(.,a,b,TRUE)
+crosses p. The probe t1745-beta-inv-roundtrip has 188 rows: 187 distinct in-domain sweep points
+plus one duplicate, (0.5,0.5,0.5). It leaves out the 5 points where Excel returns x = 1, which
+have no neighbour above. The crossing holds at 155 of the 188:
+- BETA.DIST at Excel's x equals p exactly at 79 points.
+- p lies between BETA.DIST at x and at a neighbouring double at 76 points. In 36 of these x is at
+  or just above the crossing, and in 40 it is the last double below it, so there is no
+  one-sided rule.
+- At 22 of the other 33, Excel's CDF is flat across all three doubles (tiny x, for example
+  BETA.INV(1E-10,0.5,1) = 9.999999999999992E-21).
+- At the last 11, x misses the crossing by 1 to 188 ulps of p, on both sides (8 above, 3 below).
+  For example, BETA.DIST(BETA.INV(0.05,2.5,10)) is 32 ulps off and BETA.DIST(BETA.INV(0.05,2.5,100))
+  is 188 ulps off, about 82 doubles from the correctly rounded quantile (rows 91 and 98). BETA.INV(0.5,10,10) is 0.5 while
+  BETA.DIST(0.5,10,10,TRUE) is 0.5000000000000002. This suggests a tolerance stop, but it is not
+  established.
+- Recomputing BETA.INV from constant inputs reproduces x at all 188 rows.
+Consequence: BETA.INV parity follows BETA.DIST parity (T-1744) plus a solver that usually
+converges to the crossing.
+
+Best candidate: a bisection to adjacent doubles on the correctly rounded I_x, bit-exact on 87 of
+212 cells (202 with numeric arguments). It takes the bracket's "midpoint", which for adjacent doubles
+rounds (ties to even) to whichever end has an even significand, so its edge over the one-sided ends
+(75, 54) is not evidence of an Excel rule. For comparison:
+- the same solver on the T-1744 best combination: 65;
+- on Cephes incbet: 73;
+- the engine (statrs `inverse_cdf`): 34.
+Through the F and t mappings of T-1744 (F df truncated) the same solver is far from Excel's values,
+because no forward candidate is Excel's CDF. It still beats the engine:
+- F.INV: 8 of 54, against 2;
+- F.INV.RT/FINV: 11 of 121, against 9;
+- T.INV: 29 of 130, against 17;
+- T.INV.2T/TINV: 25 of 162, against 9.
+Evidence: probes-numeric m9-beta-inv, m9-legacy-betainv, t1745-beta-inv-roundtrip (Excel's x
+and its neighbours as constants, BETA.DIST of each, and BETA.INV again), m9-f-inv, t1049-finv,
+m9-f-inv-rt, m9-legacy-finv, t1049-finvrt, m9-t-inv, m9-t-inv-2t, t1048-tinv. Fits `beta-inv`,
+`f-inv`, `f-inv-rt`, `t-inv`, `t-inv-2t` (`fitlab/kernels/beta_inv.py`).
+Status: VERIFIED (crossing at 155/188); the 11 misses and the solver's start, step and stop are UNVERIFIED
+Tasks: T-1745, T-0974
+
 ## Incomplete gamma sweep (T-1045)
 Rule: Excel's incomplete-gamma values (the targets for T-0971 and T-0972) are plain numbers on the whole in-domain grid, and the CDF saturates to exactly 1 deep in the upper tail while the pdf stays finite.
 Oracle sweep (excel-graph) of `GAMMA.DIST` (a in {0.5, 1, 2, 9, 50, 500}, b in {1, 2, 1E6}, x = 0.1, 0.5, 1, 1.5, 3 times the mean a*b,

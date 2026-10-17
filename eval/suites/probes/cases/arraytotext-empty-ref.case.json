@@ -1,0 +1,45 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ARRAYTOTEXT of empty cell references, ranges holding empty cells, omitted arguments and wrapped references (T-1718).",
+  "tags": [
+    "M5",
+    "text",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "C1": 1,
+        "C3": 3,
+        "D1": "a",
+        "E1": "",
+        "A1": "=ARRAYTOTEXT(B1:B1)",
+        "A2": "=ARRAYTOTEXT(B1:B1,1)",
+        "A3": "=ARRAYTOTEXT(B1:B2)",
+        "A4": "=ARRAYTOTEXT(B1:B2,1)",
+        "A5": "=ARRAYTOTEXT(C1:C3)",
+        "A6": "=ARRAYTOTEXT(C1:C3,1)",
+        "A7": "=ARRAYTOTEXT(,1)",
+        "A8": "=ARRAYTOTEXT(B1:B1,)",
+        "A9": "=ARRAYTOTEXT(B1,0)",
+        "A10": "=ARRAYTOTEXT(C1,)",
+        "A11": "=ARRAYTOTEXT(C1:D1,)",
+        "A12": "=ARRAYTOTEXT(C1:C3,)",
+        "A13": "=ARRAYTOTEXT(B1+0)",
+        "A14": "=ARRAYTOTEXT(B1&\"\")",
+        "A15": "=ARRAYTOTEXT((B1))",
+        "A16": "=ARRAYTOTEXT(IF(TRUE,B1))",
+        "A17": "=ARRAYTOTEXT(INDEX(B1:B2,1))",
+        "A18": "=ARRAYTOTEXT(INDEX(B1:B2,2),1)",
+        "A19": "=ARRAYTOTEXT(E1)",
+        "A20": "=ARRAYTOTEXT(E1,1)",
+        "A21": "=ARRAYTOTEXT(\"\")",
+        "A22": "=ARRAYTOTEXT(\"\",1)",
+        "A23": "=VALUETOTEXT(B1)",
+        "A24": "=VALUETOTEXT(B1,1)"
+      }
+    }
+  ],
+  "expected": {}
+}
