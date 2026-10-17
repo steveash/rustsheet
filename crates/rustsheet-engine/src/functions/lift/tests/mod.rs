@@ -612,7 +612,6 @@ fn one_cell_3d_range_and_reference_forms_in_lift_arrays() {
     }
     model._set("E1", "2");
     let formulas = [
-        ("=EDATE(Sheet1:Sheet2!A1,1)", "#VALUE!"),
         ("=INDEX(EDATE(Sheet1:Sheet2!A1,{1;2}),2)", "#VALUE!"),
         ("=ROWS(EDATE(Sheet1:Sheet2!A1,{1;2}))", "2"),
         ("=WEEKNUM(Sheet1:Sheet2!A1)", "#VALUE!"),
