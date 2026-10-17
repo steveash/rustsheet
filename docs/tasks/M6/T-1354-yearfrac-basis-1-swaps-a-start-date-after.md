@@ -3,7 +3,7 @@ id: T-1354
 title: "YEARFRAC basis 1 swaps a start date after the end date (#NUM! today)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
