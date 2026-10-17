@@ -3,7 +3,7 @@ id: T-1818
 title: "Probe call-name spelling folds for dotless i, long s, micro, final sigma and ligatures"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1762 keys `CallNameSpellings` on the upper-cased name; that also merges charac
 
 ## Out of scope
 -
+
+## Outcome
+Probed 10 pairs (excel-graph): ς/σ/Σ, ﬁ/FI, ﬂ/FL, ǆ/Ǆ fold; ı/I, ſ/S, µ/μ/Μ do not. `spelling_key` keeps ı, ſ, µ distinct. Recorded in references.md.

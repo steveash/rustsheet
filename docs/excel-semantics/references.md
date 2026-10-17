@@ -1763,7 +1763,7 @@ Reach (excel-graph, 2026-10-17, T-1756, probes/unknown-function-name-reach):
 - Cross-sheet: the first spelling in sheet order wins (`=Zed(1)` on Sheet1, `=ZED(1)`/`=zed(2)` on Sheet2 print
   `Zed`; `=MMM(1)` on Sheet1 beats `=Mmm(1)` on Sheet2). Ours matches.
 - Non-ASCII: Ä/ä and É/é fold (`=ÄBC(1)` then `=äbc(1)` prints `=ÄBC(1)`), and ß folds with SS: `=straße(1)` then
-  `=STRASSE(1)` prints `=straße(1)`. Ours matches: the registry keys on the upper-cased name (T-1762). Unprobed: other folds upper-casing adds (ı/i, ſ/s, µ/μ, ς/σ, ligatures such as ﬁ/FI); Excel's SEARCH does not match ſ/s or µ/μ.
+  `=STRASSE(1)` prints `=straße(1)`. Ours matches: the registry keys on the upper-cased name (T-1762). Folds (excel-graph, 2026-10-17, T-1818, probes/unknown-function-name-folds): ς, σ and Σ are one name (`=ςw(1)` then `=σw(1)` prints `=ςw(1)`), so are the ligatures ﬁ/FI and ﬂ/FL and ǆ/Ǆ; ı/I, ſ/S, µ (U+00B5)/μ and µ/Μ are NOT folded (each prints its own spelling). Ours matches: the key is the upper-cased name except that ı, ſ and µ stay as they are (`spelling_key`).
 Unprobed: re-spelling after edits (edit order, deleting the first user; needs the sheet_ops replay, T-1608).
 Evidence: probes/unknown-function-name-spelling, probes/unknown-function-name-reach.
 Status: VERIFIED (excel-graph)
