@@ -3,7 +3,7 @@ id: T-1517
 title: "Add upstream EOMONTH_issue_1388.xlsx and WEEKDAY_WEEKNUM_ISOWEEKNUM_issue_1502.xlsx to calc_tests"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
