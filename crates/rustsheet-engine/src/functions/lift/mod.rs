@@ -33,3 +33,8 @@ pub(crate) fn num_error(cell: CellReferenceIndex) -> CalcResult {
 pub(crate) fn value_error(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, String::new())
 }
+
+/// The `#DIV/0!` of a lifted kernel's element, likewise without a message.
+pub(crate) fn div_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::DIV, cell, String::new())
+}

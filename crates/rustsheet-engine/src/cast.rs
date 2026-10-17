@@ -657,6 +657,30 @@ impl Model {
         }
     }
 
+    /// [`Model::cast_number_ref`] for an optional argument of a kernel: `default` when the call
+    /// has no such argument (`values.get(i)` is `None`). A written empty argument is there, and
+    /// reads as 0 (`PMT(0.1,10,100,,)`), as `get_number` read it.
+    pub(crate) fn cast_number_or(
+        &self,
+        value: Option<&CalcResult>,
+        default: f64,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        value.map_or(Ok(default), |value| self.cast_number_ref(value, cell))
+    }
+
+    /// [`Model::cast_number_or`] where a boolean is `#VALUE!` ([`Model::cast_number_no_bools_ref`]).
+    pub(crate) fn cast_number_no_bools_or(
+        &self,
+        value: Option<&CalcResult>,
+        default: f64,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        value.map_or(Ok(default), |value| {
+            self.cast_number_no_bools_ref(value, cell)
+        })
+    }
+
     pub(crate) fn get_number_no_bools(
         &mut self,
         node: &Node,

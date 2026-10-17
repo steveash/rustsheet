@@ -125,7 +125,7 @@ fn the_table_reads_its_kinds_and_counts() {
         let kinds = function.arg_kinds().unwrap();
         assert_eq!(kinds.work, KernelWork::Constant, "{function:?}");
     }
-    assert!(Function::Pmt.arg_kinds().is_none());
+    assert!(Function::Db.arg_kinds().is_none());
 }
 
 // ---------------------------------------------------------------- the unlifted path
@@ -761,16 +761,4 @@ fn reversed_basis_1_dates_in_different_years_stay_num() {
         assert_eq!(model._get_text(cell), "#NUM!", "{cell}");
     }
     assert_eq!(model._get_text("A5"), "TRUE");
-}
-
-/// ACCRINTM reads its basis as a scalar (its lifting is T-1372's): an array basis is not handed
-/// to YEARFRAC's lift.
-#[test]
-fn accrintm_does_not_lift_its_basis_through_yearfrac() {
-    let model = model_with(&[
-        ("A1", "=ACCRINTM(39083,39448,0.1,1000,0)"),
-        ("A2", "=ROWS(ACCRINTM(39083,39448,0.1,1000,{0;0}))"),
-    ]);
-    assert_eq!(model._get_text("A1"), "100");
-    assert_ne!(model._get_text("A2"), "2");
 }

@@ -452,16 +452,21 @@ arrays", information.md "ISEVEN/ISODD over a range").
 Ours: EDATE, EOMONTH, WEEKNUM and YEARFRAC follow the rule (T-1770): every argument is
 `LiftArrays` in the lifting table, so they lift over an array, refuse a multi-cell range or a
 returned reference (TAKE and INDEX included) with `#VALUE!`, and a 3-D range with `#VALUE!` (multi-cell: scalar-lift-open-b W4, W5, W7, -d W19-W20, W26; one-cell, `EDATE(Sheet1:Sheet2!A1,1)`, and in WEEKNUM, EOMONTH and YEARFRAC: scalar-lift-open-e W1-W9, also beside an array, W2-W3, whose shape stays the array's, W8), and get no legacy `@` on a bare
-range. DROP, TRIMRANGE and XLOOKUP results that span several cells are refused too, and one-cell results are their value (scalar-lift-open-e W10-W22, T-1801); all their cells in the three scalar-lift-shapes probes pass, and since T-1800 so do scalar-lift-open-a W6, W7 and -d W1-W7 (YEARFRAC checks basis, start, end; the driver hands a refused range to the kernel as `#VALUE!` in its slot and picks no error by position). The other families listed in SPEC-0011 do not
-lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic formula). SPEC-0011's
-rollout tasks fix them.
+range. DROP, TRIMRANGE and XLOOKUP results that span several cells are refused too, and one-cell results are their value (scalar-lift-open-e W10-W22, T-1801); all their cells in the three scalar-lift-shapes probes pass, and since T-1800 so do scalar-lift-open-a W6, W7 and -d W1-W7 (YEARFRAC checks basis, start, end; the driver hands a refused range to the kernel as `#VALUE!` in its slot and picks no error by position). Since T-1383
+the engineering functions lift too, and since T-1372 28 financial functions (PMT, PV, FV, NPER,
+RATE, IPMT, PPMT, ISPMT, RRI, PDURATION, SLN, SYD, DDB as `Lift`; EFFECT, NOMINAL, DOLLARDE,
+DOLLARFR, ACCRINTM and the discount securities and T-bills as `LiftArrays`), so the PMT, EFFECT and
+ACCRINTM cells here pass (scalar-lift-open-a W4, W14, W15; -b W9; -d W8-W18). The other families
+listed in SPEC-0011 do not lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic
+formula). SPEC-0011's rollout tasks fix them.
 Status: VERIFIED (excel-graph)
 Implemented in: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds.rs),
 `Model::lift_call` and its read phase (functions/lift/call.rs), the broadcast `Model::lift_grids`
 (functions/lift/driver.rs), and the static-analysis hooks `lifted_signature`,
 `lifted_static_result` and `lifts_arrays_at` (expressions/parser/static_analysis/lifted.rs);
 kernels `edate_of`, `eomonth_of` (functions/date_and_time/month_shift.rs), `weeknum_of`
-(weeknum.rs) and `yearfrac_of` (yearfrac.rs).
+(weeknum.rs) and `yearfrac_of` (yearfrac.rs); the financial kernels in functions/financial/
+(annuity.rs, discount.rs, rate_conversions.rs) and financial_depreciation.rs.
 Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236
 
 ## GROUPBY and PIVOTBY
