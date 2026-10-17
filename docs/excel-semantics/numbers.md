@@ -1158,7 +1158,8 @@ subtraction (35/240), a separate denominator sum (21/240), `1 + expm1(y)` (184/2
 Numeric text in a range cell after a negative is `#NUM!` (a range holding -1, "2", 3), as typed `(-1,"2",3)` is;
 non-numeric text wins over a negative (`(-1,"x",3)` and `(D1:D1,"x")` with D1 = -1 are `#VALUE!`). Formatted numeric
 text in a cell reads as its number, by direct reference and in a range alike (typed literals other than
-plain "2" and "4" are unprobed): " 2" and "2 " are 2, "1e1" 10, "$3" 3, "50%" 0.5 (truncated to 0), "(2)" -2 and "1,000" 1000 (so `#NUM!`), and date text "1/2/2000" 36527 (`#NUM!`, over 170).
+plain "2" and "4" are unprobed): " 2" and "2 " are 2, "1e1" 10, "$3" 3, "50%" 0.5 (truncated to 0),
+"(2)" -2 and "1,000" 1000 (so `#NUM!`), and date text "1/2/2000" 36527 (`#NUM!`, over 170).
 Evidence: probes/math-argument-modes Sheet1!C9, C35, C47, C49:C53 (excel-graph, 2026-10-08);
 probes/multinomial-large-arguments A1:A20 (2026-10-09); probes/multinomial-algorithm-sweep A1:A60 (excel-graph, 2026-10-15);
 probes/multinomial-single-arguments A1:A170 (every single argument), B1:C13 (coercion; excel-graph, 2026-10-17).
