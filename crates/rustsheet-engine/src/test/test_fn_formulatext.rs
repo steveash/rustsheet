@@ -118,3 +118,50 @@ fn test_sign_prefixed() {
     assert_eq!(model._get_text("A6"), *"42");
     assert_eq!(model._get_text("A7"), *"#NAME?");
 }
+
+#[test]
+fn an_unknown_call_name_keeps_the_first_spelling_met() {
+    // Excel interns the spelling workbook-wide, case-insensitively, first met wins
+    // (probes/unknown-function-name-spelling, T-1719).
+    let mut model = new_empty_model();
+    model._set("A1", "=my_Fn(1,2)+sum(3)");
+    model._set("A2", "=MY_FN(1)");
+    model._set("A3", "=Xyz2(1)");
+    model._set("A4", "=SUM(A1.INDEX(B2:B2,1))");
+    model.evaluate();
+
+    assert_eq!(model._get_formula("A1"), "=my_Fn(1,2)+SUM(3)");
+    assert_eq!(model._get_formula("A2"), "=my_Fn(1)");
+    assert_eq!(model._get_formula("A3"), "=Xyz2(1)");
+    assert_eq!(model._get_formula("A4"), "=SUM(A1.INDEX(B2:B2,1))");
+}
+
+#[test]
+fn a_reload_keeps_the_spelling_of_an_unknown_call_name() {
+    let mut model = new_empty_model();
+    model._set("A1", "=Foo(1)");
+    model._set("A2", "=FOO(2)");
+    model.evaluate();
+
+    let mut reloaded = crate::Model::from_bytes(&model.to_bytes(), "en").unwrap();
+    assert_eq!(reloaded._get_formula("A1"), "=Foo(1)");
+    assert_eq!(reloaded._get_formula("A2"), "=Foo(2)");
+    // The reloaded workbook still knows the spelling for a new formula, and the call is still
+    // one of an unknown name.
+    reloaded._set("A3", "=foo(3)");
+    reloaded.evaluate();
+    assert_eq!(reloaded._get_formula("A3"), "=Foo(3)");
+    assert_eq!(reloaded._get_text("A3"), *"#NAME?");
+}
+
+#[test]
+fn a_let_bound_callee_takes_no_workbook_spelling() {
+    let mut model = new_empty_model();
+    model._set("A1", "=F(1)");
+    model._set("A2", "=LET(f,LAMBDA(x,x*2),F(3))");
+    model.evaluate();
+
+    assert_eq!(model._get_formula("A1"), "=F(1)");
+    assert_eq!(model._get_formula("A2"), "=LET(f,LAMBDA(x,x*2),f(3))");
+    assert_eq!(model._get_text("A2"), *"6");
+}
