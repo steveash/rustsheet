@@ -1,0 +1,35 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Data": {},
+  "Main Sheet": {
+   "E2": {
+    "t": "s",
+    "v": "product 1"
+   },
+   "E3": {
+    "t": "s",
+    "v": "product 2"
+   },
+   "E4": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "E5": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "E6": {
+    "t": "e",
+    "v": "#N/A"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "8e992394b341fcd2ccd06822a459a9c33f384df157fa3de1aea12d2a209ebc1d",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:16:16+00:00",
+  "version": null
+ }
+}

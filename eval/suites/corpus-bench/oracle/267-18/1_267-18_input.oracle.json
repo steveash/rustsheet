@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Folha1": {
+   "G1": {
+    "t": "s",
+    "v": "[\"/link/\", \"path2img&track/path2img&track\", \"alt-text\", \"path2img&track\"],"
+   },
+   "G2": {
+    "t": "s",
+    "v": "[\"/link/\", \"path2img&track/path2img&track2\", \"alt-text?\", \"path2img&track2\"],"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "fb04394380aeb439e65ea95d6e87e42b012eb07af73035cef6d243cb54889389",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:15:40+00:00",
+  "version": null
+ }
+}

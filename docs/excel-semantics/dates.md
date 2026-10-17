@@ -322,6 +322,22 @@ and `"Feb 29"` are 29 February; in a non-leap year `"29-Feb"` is #VALUE!.
 Implemented in: `formatter::date_text::parse_date`, `Model::parse_datevalue_text`, `Model::parse_number_text`,
 `functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159); `remove_separator_spaces` in `parse_date` (spaces around `-` and `/`, T-1136, Ported-From: ironcalc@753da658)
 
+## Date text with a month name glued to digits (no separator)
+Rule: date text whose month name touches a number with no space or separator still parses as a
+date. Seen in real workbooks (corpus-bench, Excel for the web agreeing with the cached values;
+evidence is the corpus-bench sidecars, recalculated by excel-graph 2026-10-17, T-0427):
+- `"July1"` (month name then day): `DATE(F2,MONTH(D2&1),E2)` with D2 = `"July"` is a July date
+  (corpus-bench/1726 `July-KPIs!J12` = 45483, J13 = 45504), so `MONTH("July1")` = 7.
+- `"January0"` .. `"December0"` (month name then `0`, presumably the year 2000 as `"Jul-0"` is):
+  `MONTH(E$4&0)` with E4 = `"January"` feeds a SUMPRODUCT month filter (corpus-bench/55392
+  `Monthly Expenses Summary!G6` = 35000, E6 = 0, not the `IFERROR` fallback `""`).
+- `"1JUN2021"` (day, abbreviated month, 4-digit year): `DATEVALUE("1"&B1&B2)` with B1 = `"JUN"`,
+  B2 = 2021 is 44348 (2021-06-01; corpus-bench/CF_18814 `attendance-Dec!E1`).
+Unprobed: which numbers count as day or year in the glued forms (`"July10"`, `"July45"`,
+`"Jul2026"`), whether VALUE and number coercion agree, and lower-case or full-name `"1June2021"`.
+Probe: T-1769. Status: UNVERIFIED beyond the three cited forms. Not implemented (T-1770): the engine
+gives `#VALUE!` for all three.
+
 ## WORKDAY holidays take the whole range
 Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no
 implicit intersection: `=WORKDAY(C2,6,D2:D5)` in row 2 skips the holiday in D4.

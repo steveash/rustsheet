@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "KPI 1": {
+   "C3": {
+    "t": "n",
+    "v": 203.0
+   },
+   "D3": {
+    "t": "n",
+    "v": 137.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "f90e8e67dffb475b163920533aa4ec9e7c206484898c5569a2a9a325479e7c3f",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:26:45+00:00",
+  "version": null
+ }
+}
