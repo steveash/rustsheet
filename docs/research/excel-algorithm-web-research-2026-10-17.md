@@ -42,7 +42,7 @@ Third-party relatives (none claims bit-exact Excel parity):
 | hypothesis (source) | result |
 |---|---|
 | NORM.S.DIST is Cody's erfc (R `pnorm_both`) | refuted: 991 of 1,779 cells, against 1,103 for glibc's `0.5*erfc(-x*sqrt(0.5))` and 881 for the engine (fit `norm-s-dist`) |
-| NORM.S.INV's centre is AS 111 (split 0.42), with or without Newton/Halley polish, on Cody or glibc CDFs | refuted: best 114 of 408 central cells, against 164 for statrs (scratch run, not shipped) |
+| NORM.S.INV's centre is AS 111 (split 0.42), with or without Newton polish, on Cody or glibc CDFs | refuted. Central cells, of 408: AS 111 alone 12; AS 111 plus 1 or 3 Newton steps 70–95; the best polish overall is PPND16 plus one Newton step on Cody, 114. statrs gets 164 (fit `norm-s-inv`) |
 | NORM.S.INV iterates on Excel's own NORM.S.DIST (Microsoft docs) | supported in part. Probe t1758-norm-s-inv-roundtrip: Excel's central x is a crossing of its own CDF at 234 of 340 points; the CDF is flat at 36; 70 miss by 1–32 ulps of p. This is the same shape as BETA.INV (T-1745) |
 | BETA.DIST is LibreOffice's GetBetaDist | ties the best candidate: 156 of 283 with Excel's closed forms (134 without), against 158 for the Cephes combination and 87 for the engine. Neither is Excel's |
 | The remaining BETA.DIST error is Excel's Gamma (lnB) | refuted: Excel's relative error depends on x, not only on (a, b), at all 38 (a, b) pairs. Plugging in Excel's own GAMMALN/GAMMA values does not close it |

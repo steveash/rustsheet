@@ -347,7 +347,9 @@ def best_combination(x: float, a: float, b: float) -> float:
     return 1.0 - v if flip else v
 
 
-# LibreOffice's GetBetaDist (sc/source/core/tool/interpr3.cxx), the closest public relative the
+# Derived from LibreOffice sc/source/core/tool/interpr3.cxx (MPL-2.0), ported for fit analysis
+# only; engine code must not copy it without the MPL-2.0 notice (deny.toml allows MPL-2.0).
+# LibreOffice's GetBetaDist is the closest public relative the
 # T-1758 web research found: the same mean reflection, A&S 26.5.8's continued fraction, the
 # prefactor pdf*x*y for a, b > 1 with p, q < 0.97 (else exp(a ln x + b ln y - lnB)), and a
 # Boost-style Lanczos sum (g = 6.0246800407767296) for Gamma and lnB.
@@ -361,6 +363,8 @@ _LO_NUM = [23531376880.41075968857200767445163675473, 42919803642.64909876895789
 _LO_DEN = [0.0, 39916800.0, 120543840.0, 150917976.0, 105258076.0, 45995730.0, 13339535.0, 2637558.0,
            357423.0, 32670.0, 1925.0, 66.0, 1.0]  # fmt: skip
 _LO_G = 6.024680040776729583740234375
+# LibreOffice's own thresholds, kept apart from Cephes' MAXGAM/MAXLOG/MINLOG on purpose: the values
+# differ in the last digits and the port must keep LibreOffice's.
 _LO_MAX_GAMMA = 171.624376956302
 _LO_MAX_ITER = 50000  # LibreOffice's own loop guard
 _LOG_DBL_MAX = math.log(sys.float_info.max)

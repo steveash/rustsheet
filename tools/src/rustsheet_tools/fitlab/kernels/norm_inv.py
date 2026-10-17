@@ -37,7 +37,9 @@ exp/scaling steps add arithmetic of their own, so they wait until T-0925 has the
 from __future__ import annotations
 
 import decimal
+import itertools
 import math
+import sys
 from collections.abc import Callable, Sequence
 from fractions import Fraction
 from functools import cache
@@ -263,8 +265,11 @@ def newton_solve(p: float, x: float, *, relative_tol: float) -> float:
     return x
 
 
-# W. J. Cody's rational Chebyshev normal CDF (1969, as R's pnorm_both, nmath/pnorm.c): the
-# erfc that the T-1758 web research names as the obvious alternative to glibc's.
+# W. J. Cody's rational Chebyshev normal CDF (Math. Comp. 23, 1969; netlib SPECFUN ANORM, public
+# domain coefficients), in the arrangement of R's pnorm_both (nmath/pnorm.c): R's split at
+# qnorm(3/4) = 0.67448975 instead of Cody's 0.66291, and the same sixteenths split of x^2. This is
+# an independent reimplementation of the published method for fit analysis only; the T-1758 web
+# research names it as the obvious alternative to glibc's erfc.
 CODY_A = [2.2352520354606839287, 161.02823106855587881, 1067.6894854603709582, 18154.981253343561249,
           0.065682337918207449113]  # fmt: skip
 CODY_B = [47.20258190468824187, 976.09855173777669322, 10260.932208618978205, 45507.789335026729956]
@@ -278,8 +283,8 @@ CODY_P = [0.21589853405795699, 0.1274011611602473639, 0.022235277870649807, 0.00
 CODY_Q = [1.28426009614491121, 0.468238212480865118, 0.0659881378689285515, 0.00378239633202758244,
           7.29751555083966205e-5]  # fmt: skip
 _CODY_SPLIT = 0.67448975  # qnorm(3/4); Cody's own was 0.66291
-_CODY_EPS = 2.220446049250313e-16 * 0.5
-_ONE_OVER_SQRT_2PI = 0.398942280401432677939946059934
+_CODY_EPS = sys.float_info.epsilon * 0.5  # R's DBL_EPSILON * 0.5: below it Phi(x) = 0.5 + x*a3/b3
+_ONE_OVER_SQRT_2PI = 1.0 / SQRT2PI  # the same double as R's M_1_SQRT_2PI
 
 
 def _cody_tail(x: float, temp: float) -> float:
@@ -357,6 +362,20 @@ MORO_B = [-8.47351093090, 23.08336743743, -21.06224101826, 3.13082909833]
 MORO_C = [0.3374754822726147, 0.9761690190917186, 0.1607979714918209, 0.0276438810333863,
           0.0038405729373609, 0.0003951896511919, 0.0000321767881768, 0.0000002888167364,
           0.0000003960315187]  # fmt: skip
+
+
+AS111_SPLIT = 0.42
+
+
+def as111_hybrid(p: float) -> float:
+    """Beasley-Springer AS 111's central rational (|p - 0.5| <= 0.42; the same coefficients as Moro's
+    centre) with PPND16 beyond, the shape of the "like Excel NORMINV" ports the T-1758 research found."""
+    _domain(p)
+    q = p - 0.5
+    if abs(q) > AS111_SPLIT:
+        return as241(p, PPND16, horner, log1p_upper=False)
+    r = q * q
+    return q * horner(MORO_A, r) / horner([1.0, *MORO_B], r)
 
 
 def moro(p: float) -> float:
@@ -539,6 +558,30 @@ def norm_inv_candidates() -> list[Candidate]:
             stop = f"|dx| <= {tol:g}|x|" if tol else "dx = 0"
             label = f"Newton solve on 0.5*erfc(-x*sqrt(0.5)) from {sname}, {stop}"
             out.append(candidate(label, _p(solved), "Newton solve"))
+    cdf_forms: dict[str, Callable[[float], float]] = {
+        "Cody": cody_cdf,
+        "0.5*erfc(-x*sqrt(0.5))": sqrt_half_cdf,
+        "0.5*erfc(-x/sqrt(2))": libm_cdf,
+    }
+    centre_starts: dict[str, Callable[[float], float]] = {
+        "AS 111 centre": as111_hybrid,
+        "PPND16": lambda p: as241(p, PPND16, horner, log1p_upper=False),
+    }
+    out.append(candidate("AS 111 centre (|q| <= 0.42), PPND16 tails", _p(as111_hybrid), "AS 111"))
+    for (sname, start), (cname, cdf), steps in itertools.product(
+        centre_starts.items(), cdf_forms.items(), (1, 3)
+    ):
+
+        def polished(
+            p: float, st: Callable[[float], float] = start, f: Callable[[float], float] = cdf, k: int = steps
+        ) -> float:
+            x = st(p)
+            for _ in range(k):
+                x = refine(p, x, False, f)
+            return x
+
+        label = f"{sname} + {steps} Newton step{'s' if steps > 1 else ''} on {cname}"
+        out.append(candidate(label, _p(polished), "polished"))
     out.append(candidate("PPND16 tails, statrs centre", _p(hybrid), "hybrid"))
     out.append(
         candidate(

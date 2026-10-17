@@ -41,12 +41,13 @@ digit. Microsoft documents only that the inverses are iterative searches on the 
 function, which run "to the limit of Excel's precision" since Excel 2003.
 
 Results:
-- **NORM.S.DIST.** Cody's erfc gets 991 of 1,779 cells, against 1,103 for glibc's
-  `0.5*erfc(-x*sqrt(0.5))` and 881 for the engine (fit `norm-s-dist`). Cody is refuted. The glibc
+- **NORM.S.DIST.** Cody's erfc gets 991 of 1,779 cells (1,562 within 4 ulp), against 1,103
+  (1,524) for glibc's `0.5*erfc(-x*sqrt(0.5))` and 881 (1,479) for the engine (fit `norm-s-dist`). Cody is refuted. The glibc
   form is an interim kernel for T-0968.
-- **NORM.S.INV centre.** An AS 111 start (split 0.42), with or without Newton/Halley polish on the
-  Cody or glibc CDFs, peaks at 114 of 408 central cells, against 164 for statrs. Refuted
-  (scratch run, not shipped).
+- **NORM.S.INV centre.** All of these are `norm-s-inv` candidates now; scores are central cells
+  out of 408. AS 111's central rational (split 0.42) alone gets 12. With 1 or 3 Newton steps on
+  Cody or glibc it gets 70 to 95. The best polish overall is PPND16 plus one Newton step on Cody,
+  at 114. statrs gets 164. Refuted.
 - **NORM.S.INV round trip** (probe t1758-norm-s-inv-roundtrip): Excel's central x is a crossing of
   its own NORM.S.DIST at 234 of 340 points, the CDF is flat at 36, and 70 miss by 1 to 32 ulps of
   p, mostly below. This is the same shape as BETA.INV, so Excel's inverses are root searches on its
