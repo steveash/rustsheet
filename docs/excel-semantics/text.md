@@ -275,6 +275,21 @@ Ours: matches (`fn_bahttext`, functions/text/bahttext.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1214, T-1270
 
+## TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments
+Rule: the text of TEXTSPLIT, TEXTBEFORE, TEXTAFTER, REGEXTEST, REGEXEXTRACT and REGEXREPLACE lifts over a multi-cell range
+or array, one call per element (`TEXTBEFORE(C1:C3,{",";"-"})` over "a,b", "c-d", "e,f" is 3x1 "a", "c", "e"), as do their
+scalar arguments (`TEXTBEFORE("a,b,c",",",{1;2})` is 2x1 "a", "a,b"; the REGEX patterns, `REGEXTEST("abc",{"a";"z"})` 2x1).
+The delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are one list, not lifted: any entry matches, so `TEXTAFTER(C1:C3,
+{",";"-"})` is "b", "d", "f". VERIFIED: probes/m7-argument-modes F13-K13 (excel-graph, 2026-10-09; T-1083), and gen-m7 cells
+whose lifted result is `#SPILL!` because its spill range is occupied (gen-m7/93976dd9a3578ed9 Calc!A11, 59cc50701f4937c9 A24).
+UNVERIFIED (T-1272 guesses, nothing probed): when two delimiters of a list match at the same position, the first in list
+order sets the match length; every entry longer than the text gives the single-delimiter error (`#VALUE!` with more than
+two arguments, `#N/A` with two); a lifted element whose call returns an array (`TEXTSPLIT` of "a,b") keeps its first value.
+Ours: all of this since T-1272. A lift over more than about 100,000 elements is `#ERROR!` (DEVIATION, decision 0014, as the
+*IF(S) lift: `limits::MAX_LIFTED_CELL_VISITS`).
+Status: VERIFIED (web) for the listed cells; the rest UNVERIFIED
+Tasks: T-1272
+
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
 function argument modes"), and numbers and booleans in it raise no error. VERIFIED: a 2-row range is accepted

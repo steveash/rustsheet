@@ -121,3 +121,32 @@ fn test_textbefore_textafter_huge_negative_instance_does_not_overflow() {
         );
     }
 }
+
+// T-1272: the text lifts over a range, the delimiter is a list (probes/m7-argument-modes F13-K13).
+#[test]
+fn text_lifts_and_delimiters_are_a_list() {
+    let mut model = new_empty_model();
+    model._set("A1", "a,b");
+    model._set("A2", "c-d");
+    model._set("A3", "e,f");
+    model._set("C1", "=TEXTBEFORE(A1:A3,{\",\";\"-\"})");
+    model._set("D1", "=TEXTAFTER(A1:A3,{\",\";\"-\"})");
+    model._set("E1", "=TEXTBEFORE(\"a,b,c\",\",\",{1;2})");
+    model._set("F1", "=TEXTSPLIT(A1:A3,\",\")");
+    model._set("G1", "=REGEXTEST(A1:A3,\"a\")");
+    model._set("H1", "=REGEXEXTRACT(\"a1b2\",{\"[0-9]\";\"[a-z]\"})");
+    model._set("I1", "=REGEXREPLACE(A1:A3,\",\",\"+\")");
+    model.evaluate();
+
+    let column = |letter: char, rows: i32| -> Vec<String> {
+        let c = i32::from(letter as u8 - b'A') + 1;
+        (1..=rows).map(|r| model._get_text_at(0, r, c)).collect()
+    };
+    assert_eq!(column('C', 3), ["a", "c", "e"]);
+    assert_eq!(column('D', 3), ["b", "d", "f"]);
+    assert_eq!(column('E', 2), ["a", "a,b"]);
+    assert_eq!(column('F', 3), ["a", "c-d", "e"]);
+    assert_eq!(column('G', 3), ["TRUE", "FALSE", "FALSE"]);
+    assert_eq!(column('H', 2), ["1", "a"]);
+    assert_eq!(column('I', 3), ["a+b", "c-d", "e+f"]);
+}

@@ -1,5 +1,6 @@
 mod arraytotext;
 mod bahttext;
+mod before_after;
 mod byte_functions;
 mod casefold;
 mod char_code;
@@ -7,6 +8,7 @@ mod common;
 mod concatenate;
 mod encodeurl;
 mod filterxml;
+mod lifted;
 mod position;
 mod regex_functions;
 mod string_format;

@@ -1,5 +1,4 @@
 use super::casefold::{char_offsets, fold_for_split};
-use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -27,15 +26,41 @@ impl Model {
         if args.len() < 2 || args.len() > 6 {
             return CalcResult::new_args_number_error(cell);
         }
+        // The delimiters are lists taken whole; the text and the scalar arguments lift over a
+        // range or an array (probes/m7-argument-modes F13, F14).
+        let (operands, lists) = self.lift_text_operands(args, &[1, 2], cell);
+        let mut lists = lists.into_iter();
+        let col_delimiters = lists.next().map(|list| self.delimiter_list(list, cell));
+        let row_delimiters = lists.next().map(|list| self.delimiter_list(list, cell));
+        let arg_count = args.len();
+        self.lift_text_call(operands, cell, |model, values| {
+            model.textsplit_element(
+                values,
+                arg_count,
+                col_delimiters.as_ref(),
+                row_delimiters.as_ref(),
+                cell,
+            )
+        })
+    }
 
-        let text = match self.get_string(&args[0], cell) {
+    /// One TEXTSPLIT call on the values of the lifted arguments.
+    fn textsplit_element(
+        &mut self,
+        values: &[CalcResult],
+        arg_count: usize,
+        col_delimiters: Option<&Result<Vec<String>, CalcResult>>,
+        row_delimiters: Option<&Result<Vec<String>, CalcResult>>,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let text = match self.cast_to_string(values[0].clone(), cell) {
             Ok(s) => s,
             Err(e) => return e,
         };
-
-        let col_delims = match self.extract_delimiters(&args[1], cell) {
-            Ok(d) => d,
-            Err(e) => return e,
+        let col_delims = match col_delimiters {
+            Some(Ok(d)) => d.clone(),
+            Some(Err(e)) => return e.clone(),
+            None => vec![],
         };
 
         // An explicit empty string "" as a delimiter is invalid.
@@ -48,19 +73,11 @@ impl Model {
             );
         }
 
-        let row_delims: Vec<String> = if args.len() >= 3 {
-            // A bare empty-arg (omitted) → no row splitting
-            let val = self.evaluate_node_in_context(&args[2], cell);
-            if matches!(val, CalcResult::EmptyArg) {
-                vec![]
-            } else {
-                match self.extract_delimiters(&args[2], cell) {
-                    Ok(d) => d.into_iter().filter(|s| !s.is_empty()).collect(),
-                    Err(e) => return e,
-                }
-            }
-        } else {
-            vec![]
+        // A bare empty-arg (omitted) row delimiter → no row splitting, which is the empty list.
+        let row_delims: Vec<String> = match row_delimiters {
+            Some(Ok(d)) => d.iter().filter(|s| !s.is_empty()).cloned().collect(),
+            Some(Err(e)) => return e.clone(),
+            None => vec![],
         };
 
         if col_delims.is_empty() && row_delims.is_empty() {
@@ -71,8 +88,8 @@ impl Model {
             );
         }
 
-        let ignore_empty = if args.len() >= 4 {
-            match self.get_boolean(&args[3], cell) {
+        let ignore_empty = if arg_count >= 4 {
+            match self.cast_to_bool(values[3].clone(), cell) {
                 Ok(b) => b,
                 Err(e) => return e,
             }
@@ -80,8 +97,8 @@ impl Model {
             false
         };
 
-        let case_insensitive = if args.len() >= 5 {
-            match self.get_number(&args[4], cell) {
+        let case_insensitive = if arg_count >= 5 {
+            match self.cast_to_number(values[4].clone(), cell) {
                 Ok(n) => n != 0.0,
                 Err(e) => return e,
             }
@@ -89,14 +106,12 @@ impl Model {
             false
         };
 
-        let pad_with: Option<ArrayNode> = if args.len() >= 6 {
-            let val = self.evaluate_node_in_context(&args[5], cell);
-            match val {
-                CalcResult::EmptyArg => None,
-                CalcResult::Number(n) => Some(ArrayNode::Number(n)),
-                CalcResult::Boolean(b) => Some(ArrayNode::Boolean(b)),
-                CalcResult::String(s) => Some(ArrayNode::String(s)),
-                CalcResult::Error { error, .. } => Some(ArrayNode::Error(error)),
+        let pad_with: Option<ArrayNode> = if arg_count >= 6 {
+            match &values[5] {
+                CalcResult::Number(n) => Some(ArrayNode::Number(*n)),
+                CalcResult::Boolean(b) => Some(ArrayNode::Boolean(*b)),
+                CalcResult::String(s) => Some(ArrayNode::String(s.clone())),
+                CalcResult::Error { error, .. } => Some(ArrayNode::Error(error.clone())),
                 _ => None,
             }
         } else {
@@ -189,68 +204,6 @@ impl Model {
             .collect();
 
         CalcResult::Array(result)
-    }
-
-    /// Evaluate a node and return all string values it contains.
-    /// Handles single strings, inline arrays (`{"a","b"}`), and range references.
-    fn extract_delimiters(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<Vec<String>, CalcResult> {
-        let result = self.evaluate_node_in_context(node, cell);
-        match result {
-            CalcResult::String(s) => Ok(vec![s.into_lossy_string()]),
-            CalcResult::Number(n) => Ok(vec![number_to_text(n)]),
-            CalcResult::EmptyArg | CalcResult::EmptyCell => Ok(vec![]),
-            CalcResult::Array(arr) => {
-                let mut delims = Vec::new();
-                for row in arr {
-                    for item in row {
-                        match item {
-                            ArrayNode::String(s) => delims.push(s.into_lossy_string()),
-                            ArrayNode::Number(n) => delims.push(number_to_text(n)),
-                            ArrayNode::Empty => {}
-                            _ => {
-                                return Err(CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "delimiter must be a string".to_string(),
-                                ))
-                            }
-                        }
-                    }
-                }
-                Ok(delims)
-            }
-            CalcResult::Range { left, right } => {
-                let range = self.evaluate_range(left, right, cell)?;
-                let mut delims = Vec::new();
-                for row in range {
-                    for item in row {
-                        match item {
-                            ArrayNode::String(s) => delims.push(s.into_lossy_string()),
-                            ArrayNode::Number(n) => delims.push(number_to_text(n)),
-                            ArrayNode::Empty => {}
-                            _ => {
-                                return Err(CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "delimiter must be a string".to_string(),
-                                ))
-                            }
-                        }
-                    }
-                }
-                Ok(delims)
-            }
-            err @ CalcResult::Error { .. } => Err(err),
-            _ => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "delimiter must be a string".to_string(),
-            )),
-        }
     }
 }
 
