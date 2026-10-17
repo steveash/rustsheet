@@ -1,4 +1,5 @@
 use super::lambda::LambdaCaller;
+use crate::cast::calc_result_to_array_node;
 use crate::functions::util::array_node_to_calc_result;
 use crate::{
     calc_result::{CalcResult, Range},
@@ -74,18 +75,14 @@ pub(crate) fn as_lambda(value: CalcResult) -> Result<CalcResult, CalcResult> {
     }
 }
 
-fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
+/// A LAMBDA result as one BYROW/BYCOL/MAKEARRAY cell: a 1x1 array is its one value (probes/
+/// byrow-bycol-array-results, excel-graph 2026-10-16); otherwise the shared element mapping.
+pub(super) fn lambda_result_to_array_node(result: CalcResult) -> ArrayNode {
     match result {
-        CalcResult::Number(n) => ArrayNode::Number(n),
-        CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-        CalcResult::String(s) => ArrayNode::String(s),
-        CalcResult::Error { error, .. } => ArrayNode::Error(error),
-        CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-        // A 1x1 array is its one value (probes/byrow-bycol-array-results, excel-graph 2026-10-16).
         CalcResult::Array(mut rows) if rows.len() == 1 && rows[0].len() == 1 => {
             rows.remove(0).remove(0)
         }
-        _ => ArrayNode::Error(Error::VALUE),
+        other => calc_result_to_array_node(other),
     }
 }
 
@@ -123,7 +120,7 @@ impl Model {
                         &[Node::ArrayKind(column)],
                         cell,
                     );
-                    (!makes_calc_error(&result)).then(|| calc_result_to_array_node(result))
+                    (!makes_calc_error(&result)).then(|| lambda_result_to_array_node(result))
                 })
                 .collect::<Option<Vec<_>>>(),
         };
@@ -161,7 +158,7 @@ impl Model {
                         &[Node::ArrayKind(vec![row])],
                         cell,
                     );
-                    (!makes_calc_error(&result)).then(|| vec![calc_result_to_array_node(result)])
+                    (!makes_calc_error(&result)).then(|| vec![lambda_result_to_array_node(result)])
                 })
                 .collect::<Option<Vec<_>>>(),
         };
@@ -217,7 +214,7 @@ impl Model {
             right: slice.right,
         };
         let result = self.call_lambda_caller(caller, [reference], cell);
-        (!makes_calc_error(&result)).then(|| calc_result_to_array_node(result))
+        (!makes_calc_error(&result)).then(|| lambda_result_to_array_node(result))
     }
 
     /// The array argument of BYROW or BYCOL. A range on one sheet (also through TAKE, DROP,
@@ -400,7 +397,7 @@ impl Model {
                     [CalcResult::Number(r as f64), CalcResult::Number(c as f64)],
                     cell,
                 );
-                row.push(calc_result_to_array_node(cell_result));
+                row.push(lambda_result_to_array_node(cell_result));
             }
             result.push(row);
         }
