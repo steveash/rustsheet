@@ -2,7 +2,6 @@
 //! element-wise text functions do (T-1780, CLAUDE.md directive 5). DEVIATION (decision 0014):
 //! Excel (expected, not measured) builds the array; we refuse one above a whole column
 //! (docs/excel-semantics/arrays.md "Array results above 1,048,576 cells").
-#![allow(clippy::unwrap_used)]
 
 use crate::test::util::new_empty_model;
 

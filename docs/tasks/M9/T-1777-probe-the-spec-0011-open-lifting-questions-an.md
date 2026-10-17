@@ -31,6 +31,7 @@ Spec: docs/specs/SPEC-0011-scalar-argument-lifting.md, "Open questions". Write o
 7. FORMULATEXT of the legacy `=SUM(PMT({0.1;0.2},10,100))` (probes/scalar-lift-shapes J3).
 8. A 3-D range (`Sheet1:Sheet2!A1:A2`) in a `Lift` and in a `LiftArrays` argument. The design gives `#VALUE!`.
 9. Whether the other Analysis ToolPak-era functions refuse a range: QUOTIENT, FACTDOUBLE, MULTINOMIAL, SERIESSUM, and GCD/LCM (catalog `array`, check only).
+10. A stacked result past the grid: `ROWS(VSTACK(A:A,1:1))` and `ROWS(HSTACK(A:A,1:1))` (RustSheet gives `#VALUE!` through `check_array_size`, T-1780).
 10. FORMULATEXT and spill of a dynamic `=EDATE({45000;45031},A1:A60)`, as a hint to how Excel saves it.
 
 ## Acceptance criteria
