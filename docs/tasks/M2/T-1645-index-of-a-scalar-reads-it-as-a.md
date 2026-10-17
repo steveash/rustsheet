@@ -3,7 +3,7 @@ id: T-1645
 title: "INDEX of a scalar reads it as a one-element array everywhere (12 probe cells pass; function-name-forms A4 was passing by accident)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
