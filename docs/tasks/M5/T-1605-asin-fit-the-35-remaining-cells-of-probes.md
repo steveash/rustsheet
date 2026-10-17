@@ -3,7 +3,7 @@ id: T-1605
 title: "ASIN: fit the 35 remaining cells of probes/asin-argument-sweep (Excel's ASIN is not odd)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
