@@ -3,7 +3,7 @@ id: T-1787
 title: "Delete the four private calc_result_to_array_node copies in functions/logical"
 milestone: M9
 lane: quality
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,9 @@ Found by the T-1767 quality review of SPEC-0011, whose driver uses the shared he
 
 ## Out of scope
 - `array_node_to_calc_result` (functions/util.rs), which is already shared.
+
+## Outcome
+Deleted the four private copies; `cast::calc_result_to_array_node` is the only definition. The
+BYROW/BYCOL/MAKEARRAY 1x1-array unwrap stays visible as `lambda_result_to_array_node` in
+bycol_byrow.rs (probes/byrow-bycol-array-results). Eval: 0 fixes, 0 regressions. Duplication
+6155 -> 6111 (`--update`).

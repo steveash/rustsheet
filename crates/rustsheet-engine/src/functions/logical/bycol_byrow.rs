@@ -77,7 +77,7 @@ pub(crate) fn as_lambda(value: CalcResult) -> Result<CalcResult, CalcResult> {
 
 /// A LAMBDA result as one BYROW/BYCOL/MAKEARRAY cell: a 1x1 array is its one value (probes/
 /// byrow-bycol-array-results, excel-graph 2026-10-16); otherwise the shared element mapping.
-pub(super) fn lambda_result_to_array_node(result: CalcResult) -> ArrayNode {
+fn lambda_result_to_array_node(result: CalcResult) -> ArrayNode {
     match result {
         CalcResult::Array(mut rows) if rows.len() == 1 && rows[0].len() == 1 => {
             rows.remove(0).remove(0)
