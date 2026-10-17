@@ -3,7 +3,7 @@ id: T-1760
 title: "Unknown names used as values share the call-name spelling table"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
