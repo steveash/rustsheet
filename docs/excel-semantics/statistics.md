@@ -324,10 +324,10 @@ Evidence: probes/stat-argument-modes (573 cells, excel-graph, 2026-10-09, T-1080
 Ours: LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN lift (T-1772, section below), and so do the
 44 functions whose every argument is scalar and whose kernel is bounded (T-1290, "Later arguments and element values
 of the scalar statistical functions" below); the other scalar arguments do not (`#N/IMPL!` for an array, `#VALUE!` for
-a range): the quantile searches, the incomplete-gamma functions and HYPGEOM.DIST (T-1830), and the rest (T-1813); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
+a range): the quantile searches, the incomplete-gamma functions and HYPGEOM.DIST (T-1842), and the rest (T-1813); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
 `#N/IMPL!`; many distribution values are a few ulps off (the existing accuracy entries above).
 Status: VERIFIED (excel-graph)
-Tasks: T-1080, T-1290, T-1291, T-1292, T-1293, T-1830
+Tasks: T-1080, T-1290, T-1291, T-1292, T-1293, T-1842
 
 ## Later arguments and element values of the scalar statistical functions (T-1290)
 Rule: the later arguments of the statistical functions whose every argument is scalar lift over a multi-cell range too,
@@ -349,7 +349,7 @@ the text "TRUE" (L2) and a one-cell range or reference as its value (`BETA.DIST(
 and STANDARDIZE (probes-numeric/t1049-fdistrt A19, A26, m9-legacy-fdist A90; "SKEW, SKEW.P, KURT, ..." below).
 Evidence: probes/stat-later-argument-lift (141 formula cells, value cells rounded to 12 places, excel-graph, 2026-10-17, T-1290); probes/stat-argument-modes.
 Ours: matches (T-1290), except that BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as `#VALUE!`, as their scalar
-calls always did (L1, L13: T-1829; STANDARDIZE, L14: T-1755; WEIBULL's and PHI's are unprobed). Every argument of these functions is `Lift`
+calls always did (L1, L13: T-1841; STANDARDIZE, L14: T-1755; WEIBULL's and PHI's are unprobed). Every argument of these functions is `Lift`
 in the lifting table and each kernel reads its arguments in its scalar order (T.DIST.2T reads both before it checks
 x; TDIST checks x before it reads tails and the degrees of freedom). The one scalar change: BETA.DIST's
 `cumulative` given as a one-cell range was `#VALUE!` and is now its value (L11). BINOM.INV and CRITBINOM are
@@ -357,14 +357,14 @@ x; TDIST checks x before it reads tails and the degrees of freedom). The one sca
 product now stops once it is infinite, after at most 171 factors, so `PERMUT(1E15,1E15)` no longer loops 10^15 times
 (the value is unchanged). The quantile searches (BETA.INV, F.INV, T.INV, CHISQ.INV, GAMMA.INV, CONFIDENCE.T), the
 incomplete-gamma functions (CHISQ.DIST, GAMMA.DIST, POISSON) and HYPGEOM.DIST's cdf sum loop by value with no per-call
-cap, so they are not lifted yet (T-1830).
+cap, so they are not lifted yet (T-1842).
 DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted PERMUT is charged 171 units per element against the shared
 cell-visit cap of 2^27 (`limits::MAX_LIFTED_CELL_VISITS`), so a lifted PERMUT of more than 784,890 elements is `#ERROR!`
 before it runs where Excel computes it (`ROWS(PERMUT(5,SEQUENCE(800000)))`, unit test
 `weighted_kernels_are_charged_their_weight`). BINOM.INV's weight of 64 never refuses under the 1,048,576-element array
 bound.
 Status: VERIFIED (excel-graph)
-Tasks: T-1290, T-1829, T-1755, T-1830
+Tasks: T-1290, T-1841, T-1755, T-1842
 
 ## LARGE, SMALL, PERCENTILE, QUARTILE, PERCENTRANK and TRIMMEAN: each lifted element is the scalar call
 Rule: when `k`, `quart`, `x`, `significance` or `percent` is an array or a multi-cell range, every element is the

@@ -29,7 +29,7 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/1466c66c61189a83 Calc!A1 `=EXPONDIST(INDEX(Data!A1:C3,3,-1e-15),..)`: Excel 0.027981694209681673 (EXPONDIST over the row A3:C3, anchor value), engine `#VALUE!`; also needs T-1407 (INDEX with -1E-15).
 
 ## Acceptance criteria
-- [x] (subset; the rest moved to T-1830) The lift cells of probes/stat-argument-modes for the functions in scope pass (their baseline lines removed), as do probes/scalar-lift-shapes H15, H16, H20, H21, H34, H35, H38, H40, J8 and K8. Ulp misses in values are named in the Outcome with their owner task.
+- [x] (subset; the rest moved to T-1842) The lift cells of probes/stat-argument-modes for the functions in scope pass (their baseline lines removed), as do probes/scalar-lift-shapes H15, H16, H20, H21, H34, H35, H38, H40, J8 and K8. Ulp misses in values are named in the Outcome with their owner task.
 - [x] gen-m9/55fc8c4ffbd7c7cc A5 and d5bd4272655c5211 A6 pass, and 1466c66c61189a83 A1 once T-1407 has landed, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve. (`make check` green locally; review is the PR's.)
 - [x] The entries it adds make the variant live, and it removes the `#[allow(dead_code)]` on `KernelWork::Weighted` and, if still there, on `ArgKind::Lift` (functions/lift/kinds.rs) (T-1770 left the allow with a `TODO(T-1290)`).
@@ -52,7 +52,7 @@ WEIBULL and WEIBULL.DIST.
   places): the last and the optional arguments of each function over a range on the formula's own rows (all lift),
   BETA.DIST's/BETADIST's `[A]`/`[B]` and BINOM.DIST.RANGE's `[number_s2]` over an array, and element values. 138 pass.
   The three that fail are a finding, not a regression: a typed TRUE element reads as 1 in BETA.DIST's and F.DIST's x
-  (L1, L13: T-1829) and STANDARDIZE's x (L14: T-1755), where the kernels keep their scalar `#VALUE!`.
+  (L1, L13: T-1841) and STANDARDIZE's x (L14: T-1755), where the kernels keep their scalar `#VALUE!`.
 - **Code:** the kernels borrow their values and build their own errors with empty messages; the legacy names
   (BETADIST, NORMSDIST, LOGNORMDIST, NEGBINOMDIST, TDIST) share their modern kernel instead of rebuilding argument
   nodes, and each kernel keeps its scalar read and check order (T.DIST.2T reads both arguments before it checks x;
@@ -66,7 +66,7 @@ WEIBULL and WEIBULL.DIST.
   family, CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV, POISSON, POISSON.DIST, HYPGEOM.DIST and
   HYPGEOMDIST: their statrs quantile searches, incomplete-gamma series and hypergeometric cdf sum loop by value with no
   per-call cap (`Gamma::new(a,1).cdf(a)` 1.6 ms at a = 1E10 and growing as sqrt(a); a hypergeometric cdf of 5E7 terms
-  4 s), so T-1830 bounds them first. Z.TEST, T.TEST, PROB, RANK and FORECAST stay T-1772's/T-1813's.
+  4 s), so T-1842 bounds them first. Z.TEST, T.TEST, PROB, RANK and FORECAST stay T-1772's/T-1813's.
   T-1750 (STANDARDIZE over a range) is done by this task.
 - **Eval:** `update-baseline --timeout 240`: 0 regressions; probes known failures 4438 → 4270 on main at b9df1570 (171 F lines removed:
   stat-argument-modes 161, scalar-lift-shapes 8 (H15, H16, H20, H21, H34, H35, J8, K8), scalar-lift-open-a W33,

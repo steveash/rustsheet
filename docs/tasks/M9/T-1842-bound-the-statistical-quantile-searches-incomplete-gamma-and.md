@@ -1,5 +1,5 @@
 ---
-id: T-1830
+id: T-1842
 title: "Bound the statistical quantile searches, incomplete-gamma and HYPGEOM cdf loops, then lift them (SPEC-0011)"
 milestone: M9
 lane: functions-stat

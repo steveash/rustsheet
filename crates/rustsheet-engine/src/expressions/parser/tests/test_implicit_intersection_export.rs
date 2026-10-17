@@ -760,7 +760,7 @@ fn statistical_legacy_ranges_and_shapes_follow_the_table() {
         StaticResult::Array(1, 2)
     ));
     assert!(matches!(shape("GAMMA(2.5)"), StaticResult::Scalar));
-    // Not entered yet (T-1830): the old scalar shape.
+    // Not entered yet (T-1842): the old scalar shape.
     assert!(matches!(
         shape("CHISQ.DIST(A1:A3,2,TRUE)"),
         StaticResult::Scalar

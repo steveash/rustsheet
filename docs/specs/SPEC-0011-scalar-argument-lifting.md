@@ -537,7 +537,7 @@ As built (T-1290): 44 statistical functions whose every argument is scalar are `
 statrs' incomplete beta (a 140-step continued fraction) a fixed number of times are `Constant`; BINOM.INV and CRITBINOM
 are `Weighted(64)` (a halving search over a `u64`), and PERMUT `Weighted(171)`, its product now stopping once it is
 infinite (statistics.md, a DEVIATION past 784,890 elements). The quantile searches, the incomplete-gamma functions and
-HYPGEOM.DIST loop by value with no per-call cap, so they stay out until T-1830 bounds them.
+HYPGEOM.DIST loop by value with no per-call cap, so they stay out until T-1842 bounds them.
 
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
