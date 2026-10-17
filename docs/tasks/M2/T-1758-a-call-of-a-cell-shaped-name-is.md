@@ -3,7 +3,7 @@ id: T-1758
 title: "A call of a cell-shaped name is a call of that cell"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
