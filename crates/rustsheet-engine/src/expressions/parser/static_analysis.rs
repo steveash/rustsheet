@@ -1277,7 +1277,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         }
         Function::Regexreplace => not_implemented(args),
         Function::Regextest => not_implemented(args),
-        Function::T => not_implemented(args),
+        Function::T => scalar_arguments(args),
         Function::Text => scalar_arguments(args),
         Function::Textafter => not_implemented(args),
         Function::Textbefore => not_implemented(args),

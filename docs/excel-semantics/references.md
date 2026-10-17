@@ -1198,10 +1198,12 @@ Rule: in a legacy formula, `T(range)` over several cells is not the implicitly i
 J1352 is text, and `T(H12:J12)` from column M (no intersection) is "", not `#VALUE!`.
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!M1352, N1352,
 O1352 (all top-left cells are non-text: 545, 1.001, blank).
-Status: VERIFIED for these cells; UNVERIFIED (probe pending, T-0985): whether T reads the top-left
-cell or is always "" for a multi-cell range, and N's behaviour. In a dynamic-array formula T does not lift
-over the range either: `T(A1:A3)` with A1 = 5, A2 = "ab", A3 = TRUE is a single "", no spill (probes/text-argument-modes
-F9, excel-graph, 2026-10-09, T-1087).
+Status: VERIFIED for these cells. In a dynamic-array formula T does not lift over the range either,
+and reads its top-left cell: `T(A1:A3)` with A1 = 5, A2 = "ab", A3 = TRUE is a single "", no spill
+(probes/text-argument-modes F9, excel-graph, 2026-10-09, T-1087), while `T(H1:H2)` with H1 = "x",
+H2 = 2 is a single "x" from a row outside the range (probes/t-array-lift S!E7, excel-graph,
+2026-10-16, T-1729). UNVERIFIED (T-0985): the legacy form with a text top-left cell, and N's behaviour.
+Not implemented: ours gives "" for S!E7 (T-0985).
 Tasks: T-0985
 
 ## FORMULATEXT keeps the parentheses of an `@` operand; ANCHORARRAY is `#`; `:` passes an error operand on
