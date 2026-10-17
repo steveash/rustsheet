@@ -35,11 +35,7 @@ impl Model {
                 // gives "": probes/groupby-blank-values).
                 Ok(array) if matches!(array.as_slice(), [row] if matches!(row.as_slice(), [ArrayNode::Empty])) =>
                 {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "ARRAYTOTEXT of an empty cell".to_string(),
-                    );
+                    return empty_cell_error(cell);
                 }
                 Ok(array) => array,
                 Err(error) => return error,
@@ -60,11 +56,7 @@ impl Model {
             // #VALUE!, while an empty cell inside a larger range is empty text
             // (docs/excel-semantics/text.md#arraytotext-empty-cell, probes/arraytotext-empty-ref).
             CalcResult::EmptyCell | CalcResult::EmptyArg => {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "ARRAYTOTEXT of an empty cell".to_string(),
-                );
+                return empty_cell_error(cell);
             }
             error @ CalcResult::Error { .. } => return error,
             CalcResult::Lambda(_) => {
@@ -98,6 +90,14 @@ impl Model {
         };
         CalcResult::String(result.into())
     }
+}
+
+fn empty_cell_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::VALUE,
+        cell,
+        "ARRAYTOTEXT of an empty cell".to_string(),
+    )
 }
 
 fn scalar_text(node: &ArrayNode, strict: bool) -> CalcResult {
