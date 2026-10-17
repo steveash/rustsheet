@@ -413,7 +413,10 @@ mod tests {
             text_after("One element", &["E"], 4, Case::Insensitive),
             Some("nt".to_string())
         );
-        assert_eq!(text_after("One element", &["E"], 5, Case::Insensitive), None);
+        assert_eq!(
+            text_after("One element", &["E"], 5, Case::Insensitive),
+            None
+        );
         assert_eq!(
             text_after("長壽相等！", &["相"], 1, Case::Insensitive),
             Some("等！".to_string())
@@ -433,7 +436,10 @@ mod tests {
             text_before("One element", &["E"], 4, Case::Insensitive),
             Some("One elem".to_string())
         );
-        assert_eq!(text_before("One element", &["E"], 5, Case::Insensitive), None);
+        assert_eq!(
+            text_before("One element", &["E"], 5, Case::Insensitive),
+            None
+        );
         assert_eq!(
             text_before("長壽相等！", &["相"], 1, Case::Insensitive),
             Some("長壽".to_string())
