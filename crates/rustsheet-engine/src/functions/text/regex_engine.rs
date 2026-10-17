@@ -2,7 +2,7 @@
 //! so one call can be stopped (CLAUDE.md directive 5; T-1272 performance review).
 //!
 //! A search runs on a lazy DFA that gives up instead of thrashing: once its cache has been
-//! cleared [`MIN_CLEARS`] times and it builds a state every fewer than [`MIN_BYTES_PER_STATE`]
+//! cleared [`MIN_CLEARS`] times and it builds a state more often than every [`MIN_BYTES_PER_STATE`]
 //! bytes. The DFA's work is measured from its cache (bytes scanned and state memory built), so a
 //! simple pattern over a long column costs what it really costs. A search the DFA gives up on
 //! (or quits, on a Unicode word boundary) runs on a `PikeVM` instead, charged its span times the
@@ -236,7 +236,7 @@ impl Search<'_> {
                 return Ok(found);
             }
         }
-        self.charge_pike(input.end() - input.start())?;
+        self.charge_pike(input.end().saturating_sub(input.start()))?;
         Ok(self.engine.pike.find(&mut self.caches.pike, input.clone()))
     }
 

@@ -3,7 +3,7 @@ id: T-1272
 title: "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX functions lift text over a range and scalar arguments over an array"
 milestone: M7
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -26,7 +26,7 @@ Delimiter ranges (a multi-cell range with blanks, numbers or booleans as the del
 ## Acceptance criteria
 - [x] Probe rows 13, 15-22 and 55 and cells K11-K13 pass; baseline updated.
 - [x] gen-m7/59cc50701f4937c9 A24, gen-m7/93976dd9a3578ed9 A11 and (with T-1361) gen-m7/9ff3afcacd3bd0fc A35 pass. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -44,7 +44,7 @@ text until T-1361). `lift_text_call` calls `lift_values` directly; moving onto `
   PikeVM fallback charged span x NFA states) against 2^30 units (about 1 s) a call; a REGEXREPLACE result is sized before it is built (over 32,767 units `#VALUE!`, UNVERIFIED,
   T-1817 probes it).
 - Sixth run: the size-tier search charge did not bound DFA-thrashing patterns; the REGEX* functions now search with
-  `regex_automata`'s lazy DFA and PikeVM directly (same syntax and semantics as `regex`), their work measured.
+  `regex_automata`'s lazy DFA and PikeVM directly (same syntax and semantics as `regex`), their work measured (decision 0071).
   Release timings: the review's `a[ab]{100}c|b[ab]{100}c` over 560 x 30,000 bytes 12.9 s -> `#ERROR!` at 1.1 s;
   `REGEXTEST(REPT("y",200)&SEQUENCE(100000),"x")` `#ERROR!` -> 0 in 0.17 s; `\w{200}b` over 4,000 x 3,000 bytes
   `#ERROR!` at 1.1 s -> 0 in 0.14 s; held memory is measured, so tiny patterns no longer cost 64 KiB each.
@@ -67,32 +67,3 @@ text until T-1361). `lift_text_call` calls `lift_values` directly; moving onto `
   for T-1775.
   Follow-ups: T-1824 (probe the guesses), T-1817 (probe REGEXREPLACE past 32,767; the bound is done here); T-1814 done
   here.
-
-## Handoff (resumed)
-Fifth opus run (2026-10-17, budget out). Branch merged with main at the start of the run; `make check` green on
-5894a428 (later commits: `to_u64` dedup, docs). PR #1016 (draft). This run fixed the previous performance review's #2
-(one `memchr::memmem::Finder` per TEXTSPLIT delimiter, re-search bytes at 8 a visit), #3 (each distinct pattern compiled
-once, no eviction, 64 MiB held cap, 128 MiB compile budget, five size tiers) and #4 (`Replacement` sizes a REGEXREPLACE
-result with `regex_automata::util::interpolate` before building; over 32,767 units `#VALUE!`, UNVERIFIED, T-1817), plus
-a per-call search budget (text bytes x size limit, min 256 KiB, 2^42). Review round on 4b1d26ad: security, architecture,
-quality and excel-fidelity APPROVE (their MINORs are done or noted in text.md). Performance REQUEST_CHANGES:
-1. BLOCKING: the size tier does not bound search cost. Compact patterns whose lazy DFA thrashes sit in the cheapest tier:
-   `=SUM(--REGEXTEST(CONCAT(IF(MOD(SEQUENCE(30000)^2*7919+SEQUENCE(30000)*104729,30011)>15005,"a","b"))&SEQUENCE(560),"a[ab]{100}c|b[ab]{100}c"))`
-   runs 12.9 s before `#ERROR!` (`a[ab]{60}c` 5.8 s).
-2. MAJOR: simple patterns over columns hit the budget early: `REGEXTEST(A1:A100000,"x")` over 200-byte cells is
-   `#ERROR!` after 0.08 s; `\w{10}` over 60-byte cells after 0.05 s.
-Measured this run (release, `regex_automata::nfa::thompson::NFA::new(p).states().len()`): `x` 6 states, `\w{10}` 3,166,
-`\w+@\w+\.com` 644, `\w{200}b` 63,294, `a[ab]{60}c` 67 (363 ns/B), `(?i)a[ab]{100}c` 107 (574 ns/B),
-`a[ab]{100}c|b[ab]{100}c` 210 (726 ns/B), `\w{200}b` about 3 µs/B on `aaa...`. So the worst cost is about 5.5 ns per
-state-byte for small automata and saturates near 3-4 µs/B for large ones; a state-count bound (the reviewer suggests
-bytes x states x factor) fixes 1 and `x`, but over-charges `\w{10}`/`\w+@...` (DFA really about 1-25 ns/B), making 2
-worse for them. Design choice for the next run: (a) charge `min(5.5 ns x states, 4 µs) + floor` per byte and raise the
-budget, accepting false `#ERROR!` on mid-size Unicode classes; or (b) bound the lazy DFA instead: build the regex with
-`regex_automata::meta` and a hybrid config that never falls back silently (e.g. a minimum cache clear count / bytes per
-state via `hybrid::dfa::Config::minimum_cache_clear_count` and `minimum_bytes_per_state`), and charge the PikeVM fallback
-by states only when it happens (measured from the search, deterministic); or (c) record the residual as a known
-DEVIATION with a follow-up task if the reviewer accepts it. Then add the regression test (`a[ab]{100}c|b[ab]{100}c` over
-a lifted column), update the text.md "...are capped" entry, `make check`, re-run performance, mark done and merge.
-Open MINORs: HELD_LIMIT/COMPILE_BUDGET charge a full 64 KiB per tiny pattern (1,100 distinct patterns `#ERROR!`);
-`Replacement::new` per element (hoist for a scalar replacement); `SplitList::new` folds eagerly; no benches in
-crates/rustsheet/benches/text.rs.

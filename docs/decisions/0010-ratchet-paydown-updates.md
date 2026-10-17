@@ -117,11 +117,6 @@
   functions one, and the one-argument IM* functions one lifted reader) (`check_duplication.py
   --update`), and expressions/parser/static_analysis.rs 1567 → 1462 lines (the fallback arms of
   the 52 engineering functions now in the lifting table) (`check_file_size.py --update`).
-<<<<<<< HEAD
-  T-1272: duplicated lines 5561 → 5375 (TEXTBEFORE and TEXTAFTER share one `text_around`, TEXTSPLIT and
-  TEXTBEFORE/TEXTAFTER one `delimiter_list`, and the text path reads ranges through `LiftedArg::read`)
-  (`check_duplication.py --update`).
-=======
   T-1372: duplicated lines 5561 → 5084 (the financial functions' repeated `get_number` argument
   blocks become kernels over borrowed values, sharing `discount_args`, `maturity_args`,
   `two_numbers` and `period_payment_args`) (`check_duplication.py --update`);
@@ -132,6 +127,8 @@
   functions' fallback arms deleted: the lifting table derives them), and functions/date_and_time.rs
   1018 → 1014 (already 1014 lines on main; the update tightened a stale entry)
   (`check_file_size.py --update`).
->>>>>>> origin/main
+  T-1272: duplicated lines 5084 → 4898 (TEXTBEFORE and TEXTAFTER share one `text_around`, TEXTSPLIT and
+  TEXTBEFORE/TEXTAFTER one `delimiter_list`, and the text path reads ranges through `LiftedArg::read`)
+  (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
