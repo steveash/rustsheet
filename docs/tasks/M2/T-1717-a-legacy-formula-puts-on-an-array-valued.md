@@ -31,6 +31,10 @@ run the full eval (ironcalc-calc, poi) for regressions. docs/excel-semantics/ref
 
 ## Acceptance criteria
 - [ ] probes/legacy-array-result B10:F11, H10:H11, K10:L11 and their FORMULATEXT cells in row 20 leave eval/baseline/probes.txt; no regressions.
+- [ ] probes/legacy-n-t-reference-args S!D11, D20 (IFERROR under N gets the `@`), M11, M20 (SWITCH under N gets
+      none: ours prints `=N(@SWITCH(1,1,{2;3}))` and does not spill) and P11, P20 (`=@IF(1,N(IF(1,{2;3})))`) leave
+      eval/baseline/probes.txt. (Added by the 2026-10-17 planner: the Context assigns these six cells here, but no
+      acceptance criterion named them, so no open task owned them.)
 - [ ] references.md updated.
 - [ ] `make check` green; reviewers approve.
 
