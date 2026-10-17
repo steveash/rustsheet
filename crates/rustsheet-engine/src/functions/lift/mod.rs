@@ -16,12 +16,31 @@ mod kinds;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use driver::{LiftCost, LiftOptions, LiftedArg};
+pub(crate) use driver::{grid_dims, LiftCost, LiftOptions, LiftedArg};
 pub(crate) use kinds::{lifting_table_functions, ArgKind, ArgKinds};
 
 use crate::{
     calc_result::CalcResult, expressions::token::Error, expressions::types::CellReferenceIndex,
+    model::Model,
 };
+
+impl Model {
+    /// The two numbers of EFFECT, NOMINAL, DOLLARDE, DOLLARFR and QUOTIENT, in order (the first
+    /// one's error wins); a boolean is `#VALUE!`.
+    pub(crate) fn two_numbers(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<(f64, f64), CalcResult> {
+        let [first, second] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
+        };
+        Ok((
+            self.cast_number_no_bools_ref(first, cell)?,
+            self.cast_number_no_bools_ref(second, cell)?,
+        ))
+    }
+}
 
 /// The `#NUM!` of a lifted kernel's element: its message is empty, so a failing element
 /// allocates nothing (SPEC-0011).
