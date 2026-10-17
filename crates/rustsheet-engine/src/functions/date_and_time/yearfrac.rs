@@ -106,6 +106,14 @@ impl Model {
             1 => {
                 // Actual/Actual. Port of ExcelFinancialFunctions
                 // `ActualActual.DaysInYear`: yearfrac = actual_days / DaysInYear.
+                // Excel swaps reversed dates for basis 1 (gen-m7/c263b43217a5898b
+                // Calc!A38; dates.md "YEARFRAC swaps reversed dates for basis 1"); `days`
+                // is made positive by the final `abs`.
+                let (start_date, end_date) = if start_date > end_date {
+                    (end_date, start_date)
+                } else {
+                    (start_date, end_date)
+                };
                 let (y1, m1, d1) = (start_date.year(), start_date.month(), start_date.day());
                 let (y2, m2, d2) = (end_date.year(), end_date.month(), end_date.day());
 
@@ -113,13 +121,6 @@ impl Model {
                 let within_a_year =
                     y1 == y2 || (y2 == y1 + 1 && (m1 > m2 || (m1 == m2 && d1 >= d2)));
 
-                // A start year after the end year is #NUM! here, as the summed year lengths
-                // (an empty `y1..=y2`) gave before T-1770. Excel swaps the dates instead
-                // (gen-m7/c263b43217a5898b Calc!A38; dates.md "YEARFRAC swaps reversed dates
-                // for every basis"): TODO(T-1354).
-                if y2 < y1 {
-                    return num_error(cell);
-                }
                 let days_in_year = if !within_a_year {
                     // Dates more than a year apart: average the calendar-year
                     // lengths spanned, inclusive of both end years. Counted in
