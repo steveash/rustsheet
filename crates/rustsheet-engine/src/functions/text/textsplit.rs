@@ -6,7 +6,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    limits::check_array_size,
+    limits::check_array_cells,
     model::Model,
 };
 
@@ -166,8 +166,9 @@ impl Model {
         // The padded shape is rows x widest row: a 32,767-char text with the column delimiters
         // first and the row delimiters after pads ~2^28 cells. Refuse one above the array limit
         // before any row is padded (DEVIATION, arrays.md "Array results above 1,048,576 cells";
-        // T-1781).
-        if let Some((error, message)) = check_array_size(rows_of_cols.len(), max_cols) {
+        // T-1781). Cell count only: Excel builds a row wider than the grid (probe
+        // textsplit-wide A1: 16,385 columns), so the past-the-grid test does not apply.
+        if let Some((error, message)) = check_array_cells(rows_of_cols.len(), max_cols) {
             return CalcResult::new_error(error, cell, message);
         }
 

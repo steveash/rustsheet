@@ -56,3 +56,19 @@ fn results_under_the_limit_are_unchanged() {
     assert_eq!(model._get_text("D2"), "#N/A");
     assert_eq!(model._get_text("D5"), "-");
 }
+
+#[test]
+fn wide_row_under_the_cell_limit_is_unchanged() {
+    let mut model = new_empty_model();
+    // 1 x 16,385 cells: wider than the grid but far under 2^20. Excel builds it (probe
+    // textsplit-wide A1:A2).
+    model._set("A1", r#"=COLUMNS(TEXTSPLIT(REPT(",",16384),","))"#);
+    model._set("A2", r#"=COLUMNS(TEXTSPLIT(REPT(",",16383),","))"#);
+    model._set("A3", r#"=ROWS(TEXTSPLIT(REPT(";",32000),,";"))"#);
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "16385");
+    assert_eq!(model._get_text("A2"), "16384");
+    assert_eq!(model._get_text("A3"), "32001");
+}

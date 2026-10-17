@@ -19,11 +19,11 @@ Found while doing T-1771. `fn_textsplit` (crates/rustsheet-engine/src/functions/
 ## Acceptance criteria
 - [x] TEXTSPLIT returns `check_array_size`'s error before padding any row when rows x widest row exceeds the limit.
 - [x] A unit test shows the 1501 x 1501 case above is `#ERROR!` and a case under the limit is unchanged.
-- [x] arrays.md's DEVIATION entry lists TEXTSPLIT. No eval cell changes (`make eval`: 0 fixes, 0 regressions).
+- [x] arrays.md's DEVIATION entry lists TEXTSPLIT. 4 new deliberate known failures (DEVIATION, probe textsplit-padded-size A1-A4), 0 regressions.
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Moving TEXTSPLIT onto the SPEC-0011 driver.
 
 ## Outcome
-`fn_textsplit` calls `limits::check_array_size(rows, max_cols)` before padding any row; results at or under 2^20 cells are unchanged (1024 x 1024 still fits). Tests in `test/text_functions/textsplit_bound.rs` (the 1501 x 1501 and 1025 x 1025 cases give `#ERROR!`; failed before the fix). arrays.md DEVIATION lists TEXTSPLIT. Oracle probe `textsplit-padded-size` (excel-graph): Excel builds the array, ROWS and COLUMNS of the 1501 x 1501 split are 1501 and the 1025 x 1025 case gives 1025, so the refusal stays a directive-5 DEVIATION. A 16,000 + 16,000 delimiter case (about 2^28 cells) made the graph backend fail at createSession (retries exhausted), so it is not probed. No eval cell changes.
+`fn_textsplit` calls `limits::check_array_size(rows, max_cols)` before padding any row; results at or under 2^20 cells are unchanged (1024 x 1024 still fits). Tests in `test/text_functions/textsplit_bound.rs` (the 1501 x 1501 and 1025 x 1025 cases give `#ERROR!`; failed before the fix). arrays.md DEVIATION lists TEXTSPLIT. Oracle probe `textsplit-padded-size` (excel-graph): Excel builds the array, ROWS and COLUMNS of the 1501 x 1501 split are 1501 and the 1025 x 1025 case gives 1025, so the refusal stays a directive-5 DEVIATION. A 16,000 + 16,000 delimiter case (about 2^28 cells) made the graph backend fail at createSession (retries exhausted), so it is not probed. 4 new deliberate known failures (DEVIATION, probe textsplit-padded-size A1-A4), 0 regressions. Review round: `check_array_size` answers `#VALUE!` past the grid, which changed a 16,385-column split under 2^20 cells; Excel builds it (probe textsplit-wide A1 = 16385), so TEXTSPLIT uses the cell-count-only `limits::check_array_cells`.
