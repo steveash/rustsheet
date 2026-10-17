@@ -30,6 +30,13 @@ impl Model {
 
         let array = match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
+                // Excel: a 1x1 range holding an empty cell is as much an empty cell as a bare reference;
+                // only a range, not an array (GROUPBY hands a one-blank group over as an array, which
+                // gives "": probes/groupby-blank-values).
+                Ok(array) if matches!(array.as_slice(), [row] if matches!(row.as_slice(), [ArrayNode::Empty])) =>
+                {
+                    return empty_cell_error(cell);
+                }
                 Ok(array) => array,
                 Err(error) => return error,
             },
@@ -45,8 +52,11 @@ impl Model {
             CalcResult::Boolean(b) => {
                 return scalar_text(&ArrayNode::Boolean(b), strict);
             }
+            // Excel: a single empty cell (also a 1x1 range, INDEX/IF result or an omitted argument) is
+            // #VALUE!, while an empty cell inside a larger range is empty text
+            // (docs/excel-semantics/text.md#arraytotext-empty-cell, probes/arraytotext-empty-ref).
             CalcResult::EmptyCell | CalcResult::EmptyArg => {
-                return CalcResult::String(String::new().into());
+                return empty_cell_error(cell);
             }
             error @ CalcResult::Error { .. } => return error,
             CalcResult::Lambda(_) => {
@@ -80,6 +90,14 @@ impl Model {
         };
         CalcResult::String(result.into())
     }
+}
+
+fn empty_cell_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::VALUE,
+        cell,
+        "ARRAYTOTEXT of an empty cell".to_string(),
+    )
 }
 
 fn scalar_text(node: &ArrayNode, strict: bool) -> CalcResult {
