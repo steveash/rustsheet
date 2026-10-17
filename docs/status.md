@@ -42,7 +42,7 @@ Where M2's exit stands:
   - `unknown-function-name-spelling` (2): T-1758 (engine).
   - `t-array-lift` (1): T-0985 (functions-text).
   - T-1716 had been filed in M10 and T-0985 in M9, although their cells count toward M2 (decision 0051). This PR moves them to M2.
-- Criteria matching and aggregate-argument iteration: T-1677 (AND/OR/XOR onto the shared walk) merged. PLANNER_VERDICT
+- Criteria matching and aggregate-argument iteration: T-1677 (AND/OR/XOR onto the shared walk) merged. The planner confirmed that SUM, AVERAGE, COUNT, COUNTA, MIN, MAX, AND, OR and XOR all go through the shared walk, and every *IF(S), D-function, MATCH and XMATCH consumer goes through criteria.rs: **met**. The private walks left (GCD/LCM, MULTINOMIAL, CONCAT/TEXTJOIN, COUNTBLANK, CHISQ, date serials, SUMX*) are outside SPEC-0009's scope.
 - Duplication is at 6,155 lines, 32.8% below the fork's 9,153 (target ≥ 15%), so the number is met.
 
 Hygiene: lint-debt 91 allow entries (= last run) · duplicated lines 6,155 (ratchet 6,155, tightened since the last run) · oversized files 14 (ratchet 14).
@@ -74,7 +74,10 @@ Queues at the start of the run:
 - functions: 61 ready. The sonnet buffer is 55, so the gap-triager did not run.
 - engine 0, api 1, harness 2, quality 0, research 0, perf 17.
   - engine and research are busy, not empty. Their branches moved in the last 2 h (T-1728, T-1767; T-1625), and engine holds 6 unclaimed M2 tasks (T-1717, T-1727, T-1758, T-1760, T-1762, T-1763).
-  - PLANNER_RESULT
+  - The planner ran for M2:
+    - It filed **T-1778** (quality, sonnet): resolve six code TODOs that name done tasks. It also filed **T-1779** (quality, opus, after T-1778): `make hygiene` rejects a TODO naming a done, dropped or missing task.
+    - Six failing cells had no owner in any task's acceptance criteria: probes/legacy-n-t-reference-args S!D11, D20, M11, M20, P11 and P20. T-1717's Context already named them, and this PR adds them to its acceptance criteria.
+    - research and api have no M2 work left. The api lane's ready task, T-1671, is M8.
 
 Upstream IronCalc: no new engine commits. 7f992398 only touches the webapp, and 297553dc is the v0.9.0 version bump. UPSTREAM.md is now recorded as triaged through 297553dc (the last run triaged it but did not record it).
 
@@ -86,10 +89,13 @@ Oracle: excel-graph credentials are present.
 
 Spot-audit: the last one was 2026-10-16, so none is due (next on or after 2026-10-23).
 
-**Critical lane:** CRITICAL
+**Critical lane:** engine, quality
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M2.
-CRIT_NOTES)
+- engine: T-1728 (PR #985), T-1717, T-1727, T-1758, T-1760, T-1762 and T-1763 hold 65 of the 70 M0–M2 probe failures.
+- quality: T-1778 and T-1779, hygiene from the planner.
+- The other 5 failing cells are reached through `functions`: T-1716, T-0985 and, after T-1727, T-1713. So is the P0 T-1769.
+- research, api and harness have no M2 work. perf stays out: Phase 2.)
 
 ## Needs owner
 
