@@ -62,7 +62,7 @@ text until T-1361). `lift_text_call` calls `lift_values` directly; moving onto `
   Follow-ups: T-1824 (probe the guesses), T-1817 (probe REGEXREPLACE past 32,767; the bound is done here); T-1814 done
   here.
 
-## Handoff
+## Handoff (resumed)
 Fifth opus run (2026-10-17, budget out). Branch merged with main at the start of the run; `make check` green on
 5894a428 (later commits: `to_u64` dedup, docs). PR #1016 (draft). This run fixed the previous performance review's #2
 (one `memchr::memmem::Finder` per TEXTSPLIT delimiter, re-search bytes at 8 a visit), #3 (each distinct pattern compiled
