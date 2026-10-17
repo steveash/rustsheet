@@ -54,7 +54,7 @@ text until T-1361). `lift_text_call` calls `lift_values` directly; moving onto `
   for T-1775.
   Follow-ups: T-1816 (probe the guesses), T-1817 (REGEXREPLACE result bound); T-1814 done here.
 
-## Handoff
+## Handoff (resumed)
 Fourth opus run (2026-10-17, budget out). Branch merged with main; `make check` green. PR #1016 (draft). This run fixed
 the previous performance review's four items (fold lists once, delimiter-byte cost, tiered regex compile budget,
 first-value-only lifted elements; absorbs T-1814), the quality review's two MAJORs (`LiftedArg::read`, `grid_dims`
