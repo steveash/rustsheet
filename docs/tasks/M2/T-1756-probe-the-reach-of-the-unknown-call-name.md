@@ -3,7 +3,7 @@ id: T-1756
 title: "Probe the reach of the unknown-call-name spelling table"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
