@@ -3,7 +3,7 @@ id: T-0427
 title: "Oracle-fill corpus-bench in batches and report the formula-cell match rate against the published leaderboard"
 milestone: M11
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
