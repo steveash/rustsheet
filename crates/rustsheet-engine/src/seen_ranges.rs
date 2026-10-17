@@ -1,7 +1,7 @@
 //! The rectangles a pass read as empty in one go (`SeenRange`), each recorded once per root.
 
 use std::collections::{HashMap, HashSet};
-use std::ops::Deref;
+use std::ops::{Deref, RangeInclusive};
 
 use crate::area_budget::AreaBudget;
 use crate::expressions::types::CellReferenceIndex;
@@ -56,42 +56,69 @@ impl SeenRange {
 /// default hasher, not `KeyBuild`: the rectangles come from formulas (`OFFSET`), so their keys
 /// are chosen by the workbook (directive 5).
 ///
-/// Each rectangle is also filed once under a row band (`Band`), so that a spill commit visits
-/// only the rectangles in the rows it writes, not every rectangle of the pass (T-1545).
+/// Each rectangle is also filed once under a band of rows and columns (`Band`), so that a spill
+/// commit visits only the rectangles near the cells it writes, not every rectangle of the pass
+/// (T-1545), nor every whole-column rectangle in other columns (T-1646).
 #[derive(Default, Debug)]
 pub(crate) struct SeenRanges {
     ranges: Vec<SeenRange>,
     members: HashSet<SeenRange>,
     /// The positions in `ranges` of the rectangles filed under each band, in the order read.
     bands: HashMap<Band, Vec<usize>>,
-    /// Bit `level` is set when some band of that level holds a rectangle.
-    levels: u32,
+    /// Bit `column_level` of entry `row_level` is set when some band of those levels holds a
+    /// rectangle.
+    levels: [u32; 32],
 }
 
-/// A row band: rows `index << level` to `((index + 1) << level) - 1` of `sheet`. A rectangle of
-/// height `h` is filed at the smallest level with `h <= 1 << level`, under the band holding its
-/// first row, so it lies within that band and the next one: each rectangle is filed once, and a
-/// spill over rows `a..=b` finds every rectangle that can meet it in the bands
-/// `(a >> level) - 1 ..= b >> level` of each level, about twice its height plus the levels.
+/// A band of rows and columns of `sheet`: rows `row_index << row_level` to
+/// `((row_index + 1) << row_level) - 1`, and likewise for columns. Along each axis a rectangle of
+/// extent `n` is filed at the smallest level with `n <= 1 << level`, under the band holding its
+/// first row (column), so it lies within that band and the next one: each rectangle is filed once,
+/// and a spill finds every rectangle that can meet it in the bands `bands_over` its rows and
+/// columns of each pair of levels in use.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 struct Band {
     sheet: u32,
-    level: u32,
-    index: i32,
+    row_level: u32,
+    row_index: i32,
+    column_level: u32,
+    column_index: i32,
+}
+
+/// The level and band index, along one axis, of a rectangle over `first..=last`.
+fn level_and_index(first: i32, last: i32) -> (u32, i32) {
+    // `first <= last` (`record_seen_empty_range`), so the extent is at least 1. Level 31 holds
+    // every index of an `i32` in its bands -1 and 0, whatever the extent.
+    let extent = last.abs_diff(first).saturating_add(1);
+    let level = extent
+        .checked_next_power_of_two()
+        .map_or(31, |power| power.trailing_zeros().min(31));
+    (level, first >> level)
+}
+
+/// The bands of `level`, along one axis, that can hold a rectangle reaching into `first..=last`:
+/// those over it and the one before, whose rectangles can reach into the next band. A level-0
+/// rectangle is one row (column) wide and never does.
+fn bands_over(level: u32, (first, last): (i32, i32)) -> RangeInclusive<i32> {
+    let start = first >> level;
+    let start = if level == 0 {
+        start
+    } else {
+        start.saturating_sub(1)
+    };
+    start..=(last >> level)
 }
 
 impl Band {
     fn of(range: &SeenRange) -> Band {
-        // `row1 <= row2` (`record_seen_empty_range`), so the height is at least 1. Level 31 holds
-        // every row of an `i32` in its bands -1 and 0, whatever the height.
-        let height = range.row2.abs_diff(range.row1).saturating_add(1);
-        let level = height
-            .checked_next_power_of_two()
-            .map_or(31, |power| power.trailing_zeros().min(31));
+        let (row_level, row_index) = level_and_index(range.row1, range.row2);
+        let (column_level, column_index) = level_and_index(range.column1, range.column2);
         Band {
             sheet: range.sheet,
-            level,
-            index: range.row1 >> level,
+            row_level,
+            row_index,
+            column_level,
+            column_index,
         }
     }
 }
@@ -104,7 +131,7 @@ impl SeenRanges {
         if !self.members.contains(&range) && budget.spend_seen_range() {
             let band = Band::of(&range);
             self.bands.entry(band).or_default().push(self.ranges.len());
-            self.levels |= 1 << band.level;
+            self.levels[band.row_level as usize] |= 1 << band.column_level;
             self.members.insert(range);
             self.ranges.push(range);
         }
@@ -112,19 +139,38 @@ impl SeenRanges {
 
     /// The rectangles `anchor` writes into when it spills over `area` (width, height), each with
     /// the first cell written in it (`SeenRange::first_cell_written`), ordered by that cell and,
-    /// at the same cell, in the order read. Only the bands over the spill's rows are visited.
+    /// at the same cell, in the order read. Only the bands over the spill's cells are visited.
     pub(crate) fn written_by_spill(
         &self,
         anchor: CellReferenceIndex,
         area: (i32, i32),
     ) -> Vec<((i32, i32), CellReferenceIndex)> {
-        let first_row = anchor.row;
-        let last_row = anchor.row.saturating_add(area.1.max(1) - 1);
-        let levels = || (0..32).filter(|level| self.levels & (1 << level) != 0);
-        let bands_over = |level: u32| (first_row >> level).saturating_sub(1)..=(last_row >> level);
-        let probes = levels().fold(0_u64, |probes, level| {
-            let bands = bands_over(level);
-            probes + u64::from(bands.end().abs_diff(*bands.start())) + 1
+        let rows = (anchor.row, anchor.row.saturating_add(area.1.max(1) - 1));
+        let columns = (
+            anchor.column,
+            anchor.column.saturating_add(area.0.max(1) - 1),
+        );
+        // The pairs of levels in use, walking only the set bits of each row level's mask.
+        let level_pairs = || {
+            (0..32_u32).flat_map(move |row_level| {
+                let mut column_levels = self.levels[row_level as usize];
+                std::iter::from_fn(move || {
+                    if column_levels == 0 {
+                        return None;
+                    }
+                    let column_level = column_levels.trailing_zeros();
+                    column_levels &= column_levels - 1;
+                    Some((row_level, column_level))
+                })
+            })
+        };
+        let count =
+            |bands: RangeInclusive<i32>| u64::from(bands.end().abs_diff(*bands.start())) + 1;
+        let probes = level_pairs().fold(0_u64, |probes, (row_level, column_level)| {
+            probes.saturating_add(
+                count(bands_over(row_level, rows))
+                    .saturating_mul(count(bands_over(column_level, columns))),
+            )
         });
         let mut met: Vec<((i32, i32), usize)> = Vec::new();
         let mut meet = |position: usize| {
@@ -132,24 +178,28 @@ impl SeenRanges {
                 met.push((cell, position));
             }
         };
-        // A spill so tall that probing its bands costs more than testing every rectangle on
+        // A spill so large that probing its bands costs more than testing every rectangle on
         // record tests them all instead, so a commit never costs more than before the bands.
         if probes >= self.ranges.len() as u64 {
             (0..self.ranges.len()).for_each(&mut meet);
         } else {
-            for level in levels() {
-                for index in bands_over(level) {
-                    let band = Band {
-                        sheet: anchor.sheet,
-                        level,
-                        index,
-                    };
-                    self.bands
-                        .get(&band)
-                        .into_iter()
-                        .flatten()
-                        .copied()
-                        .for_each(&mut meet);
+            for (row_level, column_level) in level_pairs() {
+                for row_index in bands_over(row_level, rows) {
+                    for column_index in bands_over(column_level, columns) {
+                        let band = Band {
+                            sheet: anchor.sheet,
+                            row_level,
+                            row_index,
+                            column_level,
+                            column_index,
+                        };
+                        self.bands
+                            .get(&band)
+                            .into_iter()
+                            .flatten()
+                            .copied()
+                            .for_each(&mut meet);
+                    }
                 }
             }
         }
@@ -164,7 +214,7 @@ impl SeenRanges {
         self.ranges.clear();
         self.members.clear();
         self.bands.clear();
-        self.levels = 0;
+        self.levels = [0; 32];
     }
 }
 
