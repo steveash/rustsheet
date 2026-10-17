@@ -1,7 +1,7 @@
 ---
 id: T-1716
 title: "Locale tags in number formats localize month and day names"
-milestone: M10
+milestone: M2
 lane: functions-text
 status: todo
 priority: P3
