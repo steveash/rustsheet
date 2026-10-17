@@ -1765,7 +1765,8 @@ Reach (excel-graph, 2026-10-17, T-1756, probes/unknown-function-name-reach):
 - Non-ASCII: Ä/ä and É/é fold (`=ÄBC(1)` then `=äbc(1)` prints `=ÄBC(1)`), and ß folds with SS: `=straße(1)` then
   `=STRASSE(1)` prints `=straße(1)`. Ours matches: the registry keys on the upper-cased name (T-1762). Folds (excel-graph, 2026-10-17, T-1818, probes/unknown-function-name-folds): ς, σ and Σ are one name (`=ςw(1)` then `=σw(1)` prints `=ςw(1)`), so are the ligatures ﬁ/FI and ﬂ/FL and ǆ/Ǆ; ı/I, ſ/S, µ (U+00B5)/μ and µ/Μ are NOT folded (each prints its own spelling). Ours matches: the key is the upper-cased name except that ı, ſ and µ stay as they are (`spelling_key`).
 Unprobed: re-spelling after edits (edit order, deleting the first user; needs the sheet_ops replay, T-1608).
-Unprobed folds (still merged by upper-casing, T-1825): ϐ/β, ϑ/θ, ϕ/φ, ϖ/π, ϰ/κ, ϱ/ρ, ϵ/ε, ẛ, U+0345, ﬀ ﬃ ﬄ ﬅ ﬆ, ŉ/ǰ/ΐ, ẞ and İ.
-Evidence: probes/unknown-function-name-spelling, probes/unknown-function-name-reach, probes/unknown-function-name-folds.
+More folds (excel-graph, 2026-10-17, T-1825, probes/unknown-function-name-folds-2): ϵ/ε, ﬀ/FF, ﬃ/FFI, ﬄ/FFL, ﬆ/ST and the capital sharp s ẞ (with ß and with SS) are one name; ϐ/β, ϑ/θ, ϕ/φ, ϖ/π, ϰ/κ, ϱ/ρ, ﬅ/ST (unlike ﬆ) and ŉ/ʼN are NOT folded; İ/i is not either. Ours: `spelling_key` (UNFOLDED list; ẞ is SS).
+Unprobed folds (still merged by upper-casing): U+0345, ǰ and ΐ (a workbook with the combining-mark spelling is rejected by excel-graph, FileCorruptTryRepair).
+Evidence: probes/unknown-function-name-spelling, probes/unknown-function-name-reach, probes/unknown-function-name-folds, probes/unknown-function-name-folds-2.
 Status: VERIFIED (excel-graph)
 Tasks: T-1719, T-1756, T-1760, T-1761, T-1762, T-1763
