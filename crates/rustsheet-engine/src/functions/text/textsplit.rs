@@ -1,4 +1,4 @@
-use super::position::fold_char;
+use super::casefold::{char_offsets, fold_for_split};
 use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
@@ -252,28 +252,6 @@ impl Model {
             )),
         }
     }
-}
-
-/// Case folding for `match_mode` 1: one char in, one char out, so char positions stay aligned
-/// with the original text. Excel: U+0130 matches `i` (`TEXTSPLIT("aİbİc","i",,,1)` splits at both
-/// İ), unlike SEARCH, and U+212A (Kelvin) does not match `k`, again unlike SEARCH; `ß` and `ẞ` do
-/// not match `ss` (probes/textsplit-casefold-length A2, A6, A7; docs/excel-semantics/text.md).
-fn fold_for_split(text: &str) -> String {
-    text.chars()
-        .map(|c| match c {
-            '\u{130}' => 'i',
-            '\u{212A}' => c,
-            _ => fold_char(c),
-        })
-        .collect()
-}
-
-/// Byte offset of every char of `s`, plus `s.len()` for the end.
-fn char_offsets(s: &str) -> Vec<usize> {
-    s.char_indices()
-        .map(|(i, _)| i)
-        .chain(std::iter::once(s.len()))
-        .collect()
 }
 
 /// Split `original` by the first (earliest) occurrence of any non-empty delimiter

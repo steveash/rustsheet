@@ -469,7 +469,7 @@ impl WildcardPattern {
     }
 
     /// Compiles a pattern whose units the caller has already case-folded (SEARCH folds with its
-    /// own rules, see `fold_case` in functions/text/position.rs).
+    /// own rules, see `fold_case` in functions/text/casefold.rs).
     pub(crate) fn from_units(units: impl Iterator<Item = u16>) -> WildcardPattern {
         let mut units = units;
         let mut tokens = Vec::new();
