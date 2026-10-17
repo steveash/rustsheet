@@ -12,6 +12,14 @@ enum Side {
     After,
 }
 
+/// The scalar options of one TEXTBEFORE or TEXTAFTER element.
+#[derive(Clone, Copy)]
+struct AroundOptions {
+    instance_num: i32,
+    case: Case,
+    match_end: f64,
+}
+
 impl Model {
     /// `TEXTAFTER(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])`
     pub(crate) fn fn_textafter(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -76,46 +84,15 @@ impl Model {
             Err(error) => return error.clone(),
         };
         let delimiters: Vec<&str> = delimiters.iter().map(String::as_str).collect();
-        let instance_num = if arg_count > 2 {
-            match self.cast_to_number(values[2].clone(), cell) {
-                Ok(f) => f.floor() as i32,
-                Err(s) => return s,
-            }
-        } else {
-            1
+        let options = match self.around_options(values, arg_count, cell) {
+            Ok(options) => options,
+            Err(error) => return error,
         };
-        let match_mode = if arg_count > 3 {
-            match self.cast_to_number(values[3].clone(), cell) {
-                Ok(0.0) => Case::Sensitive,
-                Ok(_) => Case::Insensitive,
-                Err(s) => return s,
-            }
-        } else {
-            Case::Sensitive
-        };
-        let match_end = if arg_count > 4 {
-            match self.cast_to_number(values[4].clone(), cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            // disabled by default
-            // the delimiter is specified in the formula
-            0.0
-        };
-        if instance_num == 0 {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "instance_num must be <> 0".to_string(),
-            );
-        }
         // With no delimiter shorter than the text a match is impossible. UNVERIFIED for a list
-        // (text.md "TEXTBEFORE and TEXTAFTER delimiter lists"): every entry longer than the text.
+        // (text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar
+        // arguments", T-1812): every entry longer than the text.
         if !delimiters.is_empty() && delimiters.iter().all(|d| d.len() > text.len()) {
-            // so this is fun(!)
-            // if the function was provided with two arguments is a #VALUE!
-            // if it had more is a #N/A (irrespective of their values)
+            // With two arguments this is `#VALUE!`, with more `#N/A`, whatever their values.
             let error = if arg_count > 2 {
                 Error::VALUE
             } else {
@@ -127,7 +104,7 @@ impl Model {
                 "The delimiter is longer than the text is trying to match".to_string(),
             );
         }
-        if match_end != 0.0 && match_end != 1.0 {
+        if options.match_end != 0.0 && options.match_end != 1.0 {
             return CalcResult::new_error(
                 Error::VALUE,
                 cell,
@@ -135,18 +112,65 @@ impl Model {
             );
         }
         let found = match side {
-            Side::Before => text_before(&text, &delimiters, instance_num, match_mode),
-            Side::After => text_after(&text, &delimiters, instance_num, match_mode),
+            Side::Before => text_before(&text, &delimiters, options.instance_num, options.case),
+            Side::After => text_after(&text, &delimiters, options.instance_num, options.case),
         };
-        if let Some(s) = found {
-            return CalcResult::String(s.into());
+        match found {
+            Some(s) => CalcResult::String(s.into()),
+            None => Self::around_not_found(values, arg_count, text, options, side, cell),
         }
-        if match_end == 1.0 {
-            // The end of the text is the delimiter that is missing: before the first match from
-            // the start is the whole text, after it is empty, and the other way for a search
-            // from the end.
-            let from_start = instance_num == 1;
-            let from_end = instance_num == -1;
+    }
+
+    /// The instance_num, match_mode and match_end of one element, read in that order (the
+    /// defaults 1, case-sensitive and 0 when omitted). An instance_num of 0 is `#VALUE!`.
+    fn around_options(
+        &self,
+        values: &[CalcResult],
+        arg_count: usize,
+        cell: CellReferenceIndex,
+    ) -> Result<AroundOptions, CalcResult> {
+        let number_at = |index: usize| -> Result<Option<f64>, CalcResult> {
+            if arg_count > index {
+                self.cast_number_ref(&values[index], cell).map(Some)
+            } else {
+                Ok(None)
+            }
+        };
+        let instance_num = number_at(2)?.map_or(1, |f| f.floor() as i32);
+        let case = match number_at(3)? {
+            Some(f) if f != 0.0 => Case::Insensitive,
+            _ => Case::Sensitive,
+        };
+        let match_end = number_at(4)?.unwrap_or(0.0);
+        if instance_num == 0 {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "instance_num must be <> 0".to_string(),
+            ));
+        }
+        Ok(AroundOptions {
+            instance_num,
+            case,
+            match_end,
+        })
+    }
+
+    /// The result of an element whose delimiter is not found: with match_end the end of the text
+    /// is the missing delimiter, then if_not_found, else `#N/A`.
+    fn around_not_found(
+        values: &[CalcResult],
+        arg_count: usize,
+        text: String,
+        options: AroundOptions,
+        side: Side,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if options.match_end == 1.0 {
+            // Before the first match from the start is the whole text, after it is empty, and
+            // the other way for a search from the end.
+            let from_start = options.instance_num == 1;
+            let from_end = options.instance_num == -1;
             match side {
                 Side::Before if from_end => return CalcResult::String("".into()),
                 Side::Before if from_start => return CalcResult::String(text.into()),

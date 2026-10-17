@@ -1,7 +1,7 @@
 #[cfg(not(target_arch = "wasm32"))]
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 #[cfg(target_arch = "wasm32")]
-use regex_lite::Regex;
+use regex_lite::{Regex, RegexBuilder};
 
 use crate::{
     calc_result::CalcResult,
@@ -13,20 +13,40 @@ use crate::{
     model::Model,
 };
 
-/// The last pattern compiled and its regex (`None` when invalid): a lifted call over a range of
-/// text with one pattern compiles it once.
+/// Patterns a [`PatternCache`] keeps: a lifted call with a few distinct patterns compiles each
+/// once, and a call with many keeps memory bounded (CLAUDE.md directive 5).
+const PATTERN_CACHE_ENTRIES: usize = 16;
+
+/// Bytes one compiled pattern may take (`RegexBuilder::size_limit`): a pattern past it is
+/// `#VALUE!`, like an invalid one. With [`PATTERN_CACHE_ENTRIES`] it bounds the cache's memory.
+/// DEVIATION, decision 0014: Excel has no such limit (docs/excel-semantics/text.md).
+const PATTERN_SIZE_LIMIT: usize = 1 << 20;
+
+/// The patterns compiled most recently and their regexes (`None` when invalid or too large),
+/// oldest first: a lifted call over a range of text with one pattern, or over a short list of
+/// patterns, compiles each once.
 #[derive(Default)]
-struct PatternCache(Option<(String, Option<Regex>)>);
+struct PatternCache(Vec<(String, Option<Regex>)>);
 
 impl PatternCache {
     /// The regex for `pattern`, or the `#VALUE!` of an invalid one.
     fn get(&mut self, pattern: String, cell: CellReferenceIndex) -> Result<&Regex, CalcResult> {
-        if self.0.as_ref().is_none_or(|(last, _)| *last != pattern) {
-            let regex = Regex::new(&pattern).ok();
-            self.0 = Some((pattern, regex));
-        }
+        let index = match self.0.iter().position(|(known, _)| *known == pattern) {
+            Some(index) => index,
+            None => {
+                if self.0.len() == PATTERN_CACHE_ENTRIES {
+                    self.0.remove(0);
+                }
+                let regex = RegexBuilder::new(&pattern)
+                    .size_limit(PATTERN_SIZE_LIMIT)
+                    .build()
+                    .ok();
+                self.0.push((pattern, regex));
+                self.0.len() - 1
+            }
+        };
         self.0
-            .as_ref()
+            .get(index)
             .and_then(|(_, regex)| regex.as_ref())
             .ok_or_else(|| {
                 CalcResult::new_error(Error::VALUE, cell, "Invalid regular expression".to_string())

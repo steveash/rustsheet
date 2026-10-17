@@ -55,6 +55,7 @@ pub(crate) fn unit_chars_to_units(text: &str) -> Vec<u16> {
         .collect()
 }
 
+#[derive(Clone, Copy)]
 pub(crate) enum Case {
     Sensitive,
     Insensitive,

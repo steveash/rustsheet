@@ -288,6 +288,8 @@ two arguments, `#N/A` with two); a lifted element whose call returns an array (`
 Ours: all of this since T-1272. A call is `#ERROR!` (DEVIATION, decision 0014, as the *IF(S) lift) when its work passes
 `limits::MAX_LIFTED_CELL_VISITS` (2^27): (longest text + 1) × delimiters per element, plus 4,096 per element when a REGEX
 pattern lifts, times the elements; a call that does not lift is capped the same way (`TEXTBEFORE(REPT("a",32767),SEQUENCE(10000))`).
+A REGEX pattern whose compiled program passes 1 MiB is `#VALUE!`, like an invalid one (DEVIATION, decision 0014;
+`PATTERN_SIZE_LIMIT` in functions/text/regex_functions.rs), and one call keeps at most 16 compiled patterns.
 A multi-cell range as the TEXTBEFORE/TEXTAFTER delimiter is still read as one text, as before T-1272 (gen-m7/851eb2099ae3f805
 Calc!A25 is `#VALUE!`); its list rule is T-1361's.
 Status: VERIFIED (web) for the listed cells; the rest UNVERIFIED
