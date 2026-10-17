@@ -25,6 +25,7 @@ Spec: docs/specs/SPEC-0011-scalar-argument-lifting.md, "Today's lifting code". T
 - [ ] `make eval`: 0 fixes and 0 regressions in every suite (probes/date-argument-modes, ceiling-floor-mround-array-lift, sqrtpi-range-operands, mod-array-lift and round-concat-array-edges keep passing).
 - [ ] `rg -n "fn lift_numbers|fn lift_number_operands|fn number_at" crates/rustsheet-engine/src` finds nothing, and `apply_number_unary` has no caller outside the unary-operator chain.
 - [ ] A per-row unlifted `=DAY(A{r})` bench over at least 100k rows with a full recalc is within 5% of main; the numbers are in the Outcome.
+- [ ] Kernels on the driver build element errors with an empty message (`String::new()`).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

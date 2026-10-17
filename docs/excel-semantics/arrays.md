@@ -331,7 +331,7 @@ NETWORKDAYS.INTL is the exception: it lifts over a range (`INDEX(WORKDAY.INTL(45
   is an error in its own position only (`PMT({0.1;"x"},10,100)` is a number, then `#VALUE!`;
   `NORM.DIST(2.5,0,{1;-1},TRUE)` is a number, then `#NUM!`). In each element the leftmost failing
   argument decides. This rests on one cell: element 2 of `PMT({1;#N/A},{#DIV/0!;#NUM!},100)` is
-  `#N/A` (H33). Element 1, where only nper fails, is `#DIV/0!` (H31). A scalar error, or scalar text
+  `#N/A` (H33). Element 1, where only nper fails, is `#DIV/0!` (H31, a sibling formula with the same element-1 inputs). A scalar error, or scalar text
   that is not a number, next to an array is broadcast: `PMT(NA(),{10;20},100)` is 2 rows with
   element 2 `#N/A` (H28-H29). `EDATE(NA(),{1;2})`, `PMT("x",{10;20},100)` and `EDATE("x",{1;2})` are
   2 rows, but their element values are unprobed (H30, H44, H45).

@@ -20,7 +20,7 @@ Owner-directed work (2026-10-17): array lifting of scalar arguments is the large
 ## Acceptance criteria
 - [x] docs/specs/SPEC-0011-scalar-argument-lifting.md: the Excel rules with evidence (which parameters lift over arrays, over ranges, or are taken whole; result shape and broadcasting of mismatched sizes, #N/A padding; error per element vs whole result; the ATP functions that refuse ranges), an inventory of today's lifting helpers, the shared design (per-function argument-kind table, one driver, bounded by check_array_size before any element is computed), migration of the existing helpers, and an ordered rollout of S/M tasks.
 - [x] T-1290, T-1372, T-1383 (and T-1236, T-1241, T-1271 where they fit) get `depends_on` on the implementation task and a Context line pointing to the spec; new tasks filed for the rollout with scripts/tasks.py.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing the families (T-1290, T-1372, T-1383 and the rollout tasks).
@@ -46,4 +46,4 @@ Owner-directed work (2026-10-17): array lifting of scalar arguments is the large
   4. The old helpers: T-1773, T-1785, T-1774, T-1775 (last, with the grep check), T-1787.
   5. T-1776: derived catalog key, mapping, kernel-work and metamorphic checks.
   6. T-1777: open probes.
-- Checks: `make check` passes. The reviewers' second round is pending.
+- Review: security, architecture, quality, excel-fidelity and performance all approved on the second round (PR #987); their minor notes are folded in.

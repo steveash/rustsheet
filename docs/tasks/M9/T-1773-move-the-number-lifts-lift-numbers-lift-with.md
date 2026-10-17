@@ -27,9 +27,11 @@ Spec: docs/specs/SPEC-0011-scalar-argument-lifting.md, "Today's lifting code" an
 - [ ] `rg -n "macro_rules! single_number_fn|fn lift_with_defaults" crates/rustsheet-engine/src` finds nothing. `scripts/check_duplication.py` does not rise, and any drop is recorded with `--update`.
 - [ ] A criterion bench in crates/rustsheet/benches/ covers:
   - per-row unlifted cells over at least 100k rows with a full recalc: `=ROUND(A{r},2)`, `=ABS(A{r})`, `=MOD(A{r},7)`;
-  - lifted `=SUM(ROUND(A1:A1000000,2))` and `=SUM(ABS(A1:A1000000))`.
+  - lifted `=SUM(ROUND(A1:A1000000,2))` and `=SUM(ABS(A1:A1000000))`;
+  - a lifted error fan-out, `=SUM(IFERROR(ROUND(A1:A1000000&"x",2),0))`.
 
   Each runs on main and on the branch in release and is within 5%; the numbers are in the Outcome.
+- [ ] Kernels on the driver build element errors with an empty message (`String::new()`), so an error element allocates nothing.
 - [ ] `test_nested_formula_stack` passes unchanged.
 - [ ] `make check` green; reviewers approve.
 

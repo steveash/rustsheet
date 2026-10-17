@@ -44,6 +44,7 @@ Cells, all failing in eval/baseline/probes.txt:
   - `=ROWS(EDATE(A1:A1048576+0,A1:B1+0))` is `#ERROR!` with 0 kernel calls.
   - The summed-input-cells bound refuses before the next grid is read.
   - `LiftCost::Cells` trips the work bound before the first element, and `Prepared` runs.
+- [ ] Kernels on the driver build element errors with an empty message (`String::new()`), so an error element allocates nothing.
 - [ ] `test_nested_formula_stack` passes with a deeply nested lifted EDATE formula added.
 - [ ] docs/excel-semantics/dates.md and arrays.md say "Implemented in" for the four functions.
 - [ ] `make check` green; reviewers approve.

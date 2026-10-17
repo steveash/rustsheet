@@ -193,7 +193,7 @@ A rule below names the cells it rests on, and says so when it rests on one cell.
   (H26–H27, H34–H35).
 - **Error precedence within an element** rests on one probed cell. `PMT({1;#N/A},{#DIV/0!;#NUM!},100)`
   element 2 is `#N/A`, the leftmost error (H33). Element 1, with only nper failing, is `#DIV/0!`
-  (H31). The design takes the leftmost failing argument. T-1777 adds `INDEX(PMT({#NUM!},{#N/A},100),1)`
+  (H31, a sibling formula with the same element-1 inputs). The design takes the leftmost failing argument. T-1777 adds `INDEX(PMT({#NUM!},{#N/A},100),1)`
   and the reversed `INDEX(PMT({#N/A},{#NUM!},100),1)`.
 - **A scalar error, or uncoercible scalar text, next to an array is broadcast.** It does not short
   out the whole call: `PMT(NA(),{10;20},100)` is 2 rows with element 2 `#N/A` (H28, H29).
@@ -420,7 +420,9 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
 
 `lift_values` (and the read phase before it) runs these steps:
 1. **No `Grid`:** the read phase hands the kernel the values directly, as a slice of the inline
-   buffer. No `LiftedArg`, grid or shape code runs, and nothing goes on the heap for 8 arguments or
+   buffer. The read phase keeps the values in an `ArgBuf<CalcResult>` and records the grid
+   positions separately, so this slice is borrowed, not copied; `LiftedArg` is only built when a
+   grid exists. No `LiftedArg`, grid or shape code runs, and nothing goes on the heap for 8 arguments or
    fewer. The result is returned as it is, so an unlifted call is exactly today's call.
 2. **Input bound:** before each range is read into a grid, `check_range_size` bounds that grid,
    and the running total of grid cells must stay within `MAX_LIFTED_CELL_VISITS`. So the read phase
@@ -447,8 +449,10 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
      beside it, as in `ROUND(A1:A1000000,2)`), the output has the grid's shape. Each element is
      moved out of the grid (`mem::replace(node, ArrayNode::Empty)`), converted by value, given to
      the kernel, and its result written back into the same slot. This is T-1078's contract: at most
-     one allocation per output element, and none for a number. Kernels build error results with
-     `String::new()` messages, so a failing number element allocates nothing either.
+     one allocation per output element, and none for a number. Kernels moved onto the driver build
+     element errors with `String::new()` messages (T-1770, T-1773 and T-1785 acceptance), so a
+     failing number element allocates nothing either; about 211 sites under functions/ allocate a
+     message today, and only the migrated kernels change.
    - **`reuse_equal_runs`:** the element is compared with the previous position slot by slot,
      through `bcast_get` at both positions. No per-element key `Vec` is built.
 6. **Element result** → `ArrayNode` via the existing `cast::calc_result_to_array_node`. A range,

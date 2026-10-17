@@ -21,6 +21,7 @@ Spec: docs/specs/SPEC-0011-scalar-argument-lifting.md, "The driver" and "Today's
   - The `previous`-key memo becomes `LiftOptions::reuse_equal_runs`, comparing grid slots at the previous position through `bcast_get` instead of building a key `Vec` per element.
   - The cost argument becomes `LiftCost` (`Walk` and `Cells` for the existing callers).
   - The kernel becomes `&mut dyn FnMut`.
+  - The argument list stays today's `Vec`; T-1770 introduces `ArgBuf`.
 - No new behavior: the same shapes, bounds and results.
 
 ## Acceptance criteria
