@@ -57,6 +57,7 @@ C	probes/averagea-array-constant-elements.case.json	25
 C	probes/base-min-length.case.json	14
 C	probes/bond-one-period-bases.case.json	80
 C	probes/byrow-bycol-array-results.case.json	32
+C	probes/case-mapping-expanding.case.json	81
 C	probes/catalog/availability-01.case.json	12
 C	probes/catalog/availability-02.case.json	12
 C	probes/catalog/availability-03.case.json	12
