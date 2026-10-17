@@ -512,10 +512,16 @@ pub(crate) fn at_text(child: &Node, sub: &dyn Fn(&Node) -> String) -> String {
 /// exception: a callee spelled like a cell (`Ab1(1)`) is a call of that cell and prints bare,
 /// `AB1(1)` (probes/unknown-function-name-spelling B8, T-1758).
 pub(crate) fn callee_operand(text: String, node: &Node) -> String {
-    if matches!(
+    let bare_cell = matches!(
         node,
-        Node::LambdaDefKind { .. } | Node::Group { .. } | Node::ReferenceKind { .. }
-    ) {
+        Node::ReferenceKind {
+            sheet_name: None,
+            absolute_row: false,
+            absolute_column: false,
+            ..
+        }
+    );
+    if bare_cell || matches!(node, Node::LambdaDefKind { .. } | Node::Group { .. }) {
         text
     } else {
         format!("({text})")

@@ -402,9 +402,9 @@ impl Parser {
         if let Some(function_kind) = self.language.functions.lookup_stored(&name) {
             return self.function_call(function_kind, args);
         }
-        // A callee spelled like a cell is a call of that cell, `#REF!` like any called reference;
-        // only a name no function lookup knows (`LOG10` stays a function) (probes/
-        // unknown-function-name-spelling A8, T-1758).
+        // A callee spelled like a cell, and no function (`LOG10` stays one), is a call of that cell:
+        // `#REF!` like any called reference (probes/unknown-function-name-spelling A8, T-1758).
+        // `$` shapes are unprobed, so they stay names.
         if let Some(cell) = parse_reference_a1(&name.to_uppercase()).filter(|_| !name.contains('$'))
         {
             let callee = self.reference_operand(None, cell.row, cell.column, false, false);
