@@ -3,7 +3,7 @@ id: T-1272
 title: "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX functions lift text over a range and scalar arguments over an array"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: todo
 priority: P2
 size: S
 tier: opus
@@ -47,3 +47,17 @@ Next: finish the above, re-run `make check`, merge origin/main, re-run the faile
 - MAJOR: tests pin unproven behaviour (first-in-list tie-break, all entries longer than the text, an error inside the delimiter array, per-element regex compile error, if_not_found/pad_with/match_end/return_all lifting; if_not_found is now evaluated eagerly). Mark each as unverified in the test with a comment citing text.md, and file a probe task (excel-probe) linked from the entry's `Tasks:` line.
 - MINOR: text.md "Ours:" line of the delimiter-ranges entry is out of date (multi-row text ranges now work; gen-m9 3ec66461400faf2f A3 and 95efb37a9874f82e A25 pass); the DEVIATION wording "about 100,000 elements" is wrong (cost is (longest text + 1) x delimiters, plus COMPILE_COST when the pattern lifts, against 2^27); TEXTSPLIT's first-value-of-lifted-element is VERIFIED by probe rows 13 (keep REGEXEXTRACT return_all unverified); comments cite text.md headings that do not exist (real heading: "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments").
 - Eval: `make eval-check` has 0 regressions; also fixed gen-m7 59cc50701f4937c9 A24, 93976dd9a3578ed9 A11, 9ff3afcacd3bd0fc A35, 6db767d720c5b55a A28 and gen-m9 3ec66461400faf2f A3, 95efb37a9874f82e A25.
+
+### Resumed by opus 2026-10-17 (session budget ran out; status back to todo, tier opus)
+Done on the branch, `make check` green:
+- Merged origin/main (T-1770's SPEC-0011 driver). `lift_text_call` stays a direct caller of `lift_values`, like the *IF(S) and lookup callers. SPEC-0011 moves the text functions onto `lift_call` later (T-1775). It uses the new `LiftOptions::EVERY_ELEMENT`.
+- BLOCKING fidelity: a multi-cell range as the TEXTBEFORE/TEXTAFTER delimiter is read as one text again (`around_delimiters`), so gen-m7/851eb2099ae3f805 A25 is `#VALUE!` as on main. gen-m9/3ec66461400faf2f A3 and 95efb37a9874f82e A25 fail again, as on main; T-1361 now cites all three.
+- MAJOR (security, performance), first half: `lift_text_call` caps a call that does not lift by its own cost, so `TEXTBEFORE(REPT("a",32767),SEQUENCE(10000))` is `#ERROR!`. Test: `unlifted_call_over_a_long_delimiter_list_is_capped`. text.md's DEVIATION wording is fixed.
+- Fidelity MAJOR, filing half: T-1809 probes the guesses the tests pin; text.md links it.
+
+Still open, in this order:
+1. Mark each guess-pinning test as UNVERIFIED with a comment citing text.md and T-1809 (fidelity MAJOR).
+2. REGEX: a bounded multi-entry `PatternCache`, a small `RegexBuilder::size_limit`, and the doc comment fix (MAJOR).
+3. Quality: split the long `text_around_element`; rewrite old comments to cite evidence; run `scripts/check_duplication.py --update` and commit the drop.
+4. MINOR performance: per-element clones of the delimiter lists and of `values[i]`; REGEXEXTRACT/TEXTSPLIT build the full array for a lifted element when only [0][0] is kept.
+5. Re-run security, quality, performance and excel-fidelity, open the PR, and check the gen-m7/gen-m9 cells by hand: they have no baseline, so `make eval-check` misses them.
