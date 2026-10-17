@@ -3,7 +3,7 @@ id: T-1236
 title: "EDATE, EOMONTH, WORKDAY, NETWORKDAYS, WEEKNUM and YEARFRAC lift over arrays but are #VALUE! for a range"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,6 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 -
+
+## Outcome
+EDATE, EOMONTH, WEEKNUM, WORKDAY(.INTL), NETWORKDAYS(.INTL) and YEARFRAC lift over array literals via `lift_array_args` (date_and_time/lift.rs); multi-cell ranges stay `#VALUE!`. Eval: probes known failures 2998 -> 2969 (29 fixed, 0 regressions). The two gen-m9 cells cited in Context no longer exist in the regenerated gen-m9 suite (those case ids now hold other formulas), so they could not be checked; a `TAKE(range)` argument still takes the range path (kept as a node).

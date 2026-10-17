@@ -274,38 +274,6 @@ impl Model {
     date_part_fn!(fn_month, 1);
     date_part_fn!(fn_year, 0);
 
-    pub(crate) fn fn_eomonth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_array_args(args, &[0, 1], cell, |_| 1, Self::eomonth_scalar)
-    }
-
-    pub(crate) fn fn_edate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_array_args(args, &[0, 1], cell, |_| 1, Self::edate_scalar)
-    }
-
-    pub(crate) fn fn_networkdays(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_array_args(
-            args,
-            &[0, 1],
-            cell,
-            lift::day_span,
-            Self::networkdays_scalar,
-        )
-    }
-
-    pub(crate) fn fn_networkdays_intl(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        self.lift_array_args(
-            args,
-            &[0, 1],
-            cell,
-            lift::day_span,
-            Self::networkdays_intl_scalar,
-        )
-    }
-
     fn eomonth_scalar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count != 2 {

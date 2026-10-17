@@ -142,4 +142,24 @@ impl Model {
             .collect();
         CalcResult::Array(output)
     }
+
+    pub(crate) fn fn_eomonth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_array_args(args, &[0, 1], cell, |_| 1, Self::eomonth_scalar)
+    }
+
+    pub(crate) fn fn_edate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_array_args(args, &[0, 1], cell, |_| 1, Self::edate_scalar)
+    }
+
+    pub(crate) fn fn_networkdays(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_array_args(args, &[0, 1], cell, day_span, Self::networkdays_scalar)
+    }
+
+    pub(crate) fn fn_networkdays_intl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.lift_array_args(args, &[0, 1], cell, day_span, Self::networkdays_intl_scalar)
+    }
 }
