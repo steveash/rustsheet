@@ -35,7 +35,7 @@ Where M2's exit stands:
 - ironcalc-calc cells using only M1/M2 functions: criterion met.
 - The frozen m1-probes list is at 0 failures (89 cases, 1,858 cells).
 - M0–M2 probes: 366 cases, 10,439 cells, 10,365 bit-exact, 4 deviations, **70 known failures** (was 29). The rise is new coverage, not regressions: T-1713 (#958) and T-1756 (#981) added probes whose failing cells all have open tasks. All 29 failures from the last snapshot are fixed.
-  - `legacy-n-t-reference-args` (37) and `legacy-array-result` (19): T-1728 (engine, PR #985 open), T-1717 and the spec T-1727 (engine). T-1713 (functions-logic) stays blocked on T-1727.
+  - `legacy-n-t-reference-args` (37) and `legacy-array-result` (19): T-1728 (engine; PR #985 merged during this run at ba903077, so 6 of these cells are fixed on `main` now), T-1717 and the spec T-1727 (engine). T-1713 (functions-logic) stays blocked on T-1727.
   - `unknown-function-name-reach` (5): T-1760, T-1762, T-1763 (engine).
   - `text-ap-locale-inferences` (4): T-1716 (functions-text).
   - `n-array-lift` (2): T-1713, after T-1727.
@@ -68,7 +68,18 @@ Blocked: 25 (24 last run, plus T-1713). None can be unblocked.
 - Filed **T-1769** (functions-logic, P0, opus).
 - `formula_parse` and `xlsx_import` passed.
 
-OPEN_PRS
+Open PRs: 9 at the end of the run (5 at the start of the last one).
+- #891 (T-1316) was the one agent PR open over 24 h and not a blocked draft. Its `hygiene` check had been red since 2026-10-16 because zip 0.6.6 was yanked, which T-1668 fixed on `main`, and its own fidelity review was unconfirmed.
+  - This run merged `main` into it. It also dropped the T-0057 task file it carried, a duplicate of T-1668, and fixed the Outcome's cell count.
+  - All four reviewers (security, architecture, quality, excel-fidelity) re-ran on that diff and approved. `make check` passed.
+  - Another session squash-merged it at 0514aabf (06:33 UTC) before this run's up-to-date push. CI on `main` is green there, and the local `make check` of the PR plus T-1728 passed.
+  - The fidelity reviewer's MINOR gaps (an unprobed scalar TRUE beside an array bound, and error order per element) are filed as **T-1782** (functions-math, sonnet).
+- Under 24 h: #912 (T-1626), #941 (T-1698), #980 (T-1631), #986 (T-1598), #987 (T-1767).
+  - #912 renumbered its ASC follow-up to T-1691, which `main` has since given to a 3-D span task (M8). Merging `main` into it will need a fresh id from `make new-task`.
+- Blocked drafts, each with a `status: blocked` task on its branch: #698 (T-1486), #553 (T-1284), #436 (T-1186), #409 (T-1155).
+  - None of their branches moved since the last run.
+  - #698's blocker, commented on the PR on 2026-10-15, still holds.
+- No duplicates.
 
 Queues at the start of the run:
 - functions: 61 ready. The sonnet buffer is 55, so the gap-triager did not run.
@@ -92,7 +103,7 @@ Spot-audit: the last one was 2026-10-16, so none is due (next on or after 2026-1
 **Critical lane:** engine, quality
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M2.
-- engine: T-1728 (PR #985), T-1717, T-1727, T-1758, T-1760, T-1762 and T-1763 hold 65 of the 70 M0–M2 probe failures.
+- engine: T-1717, T-1727, T-1758, T-1760, T-1762 and T-1763 hold 59 of the 64 M0–M2 probe failures left after T-1728.
 - quality: T-1778 and T-1779, hygiene from the planner.
 - The other 5 failing cells are reached through `functions`: T-1716, T-0985 and, after T-1727, T-1713. So is the P0 T-1769.
 - research, api and harness have no M2 work. perf stays out: Phase 2.)
