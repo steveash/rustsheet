@@ -3,7 +3,7 @@ id: T-1783
 title: "Resolve the six TODOs that name done tasks (T-0126, T-0236, T-0931, T-1114)"
 milestone: M2
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
