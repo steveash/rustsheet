@@ -17,4 +17,4 @@ mod kinds;
 mod tests;
 
 pub(crate) use driver::{LiftCost, LiftOptions, LiftedArg};
-pub(crate) use kinds::{ArgKind, ArgKinds};
+pub(crate) use kinds::{lifting_table_functions, ArgKind, ArgKinds};

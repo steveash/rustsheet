@@ -25,7 +25,12 @@ Also covered by M34:P34 (`{4.5,-7,"3",TRUE}` -> TRUE, FALSE, FALSE, #VALUE!: par
 absolute value, text cast, boolean #VALUE!). UNVERIFIED sub-rules (no probe yet): an array
 expression derived from a range (`ISEVEN(Data!C1:C5+0)`), arguments of magnitude >= 2^63, and the
 dynamic-array flag Excel writes for the range form.
-Implemented in: `Model::parity_predicate` (functions/information/mod.rs).
+Legacy (pre-dynamic-array) formulas, UNVERIFIED for ISEVEN/ISODD (T-1774 moved them onto the
+SPEC-0011 `LiftArrays` table entry, so they follow the Analysis ToolPak rule probed for EDATE and
+YEARFRAC, probes/scalar-lift-shapes-c E, F, H, Q): a bare range gets no `@` and is `#VALUE!`, a
+value operation over a range (`ISEVEN(C1:C5+0)`) gets `@`, and `{5}` gets no `@`. Before T-1774 the
+hand-written arm gave the argument a scalar signature (`@` on the range and on `{5}`).
+Implemented in: `Model::lifted_parity` and the `ARRAYS_1` entry in functions/lift/kinds.rs.
 Status: VERIFIED (excel-graph)
 Tasks: T-0247, T-0248
 
