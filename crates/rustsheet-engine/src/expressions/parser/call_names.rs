@@ -15,14 +15,14 @@ use std::collections::HashMap;
 use super::stringify::bound_variables::{walk_names, NameSite};
 use super::Node;
 
-/// Lowercase name → the spelling every call of it prints with.
+/// Lowercase name → the spelling every call or value use of it prints with.
 #[derive(Clone, Default)]
 pub(crate) struct CallNameSpellings {
     first: HashMap<String, String>,
 }
 
 impl CallNameSpellings {
-    /// Gives every callee of `node` that no LET or LAMBDA binds the workbook's spelling, which a
+    /// Gives every callee and value-used name of `node` that no LET or LAMBDA binds the workbook's spelling, which a
     /// name met for the first time becomes. A bound name, called or used, takes the spelling of
     /// its declaration. Returns whether a name changed.
     pub(crate) fn apply(&mut self, node: &mut Node) -> bool {
