@@ -3,7 +3,7 @@ id: T-1831
 title: "Move the shared two_numbers kernel reader out of financial/ beside the lift helpers"
 milestone: M9
 lane: quality
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -26,3 +26,8 @@ review asked to move it to a neutral home before a third caller appears. T-1290 
 
 ## Out of scope
 - Other kernel readers.
+
+## Outcome
+`Model::two_numbers` moved unchanged from functions/financial/rate_conversions.rs to
+functions/lift/mod.rs; its five callers (EFFECT, NOMINAL, DOLLARDE, DOLLARFR, QUOTIENT) resolve it
+through `Model`, so none changed. No behavior change, no eval delta.
