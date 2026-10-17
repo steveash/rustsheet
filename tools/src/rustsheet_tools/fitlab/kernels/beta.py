@@ -406,7 +406,8 @@ def f_dist_candidates() -> list[Candidate]:
 
 def t_dist_candidates() -> list[Candidate]:
     """T.DIST(t,n,TRUE) = 1 - I_y(n/2, 1/2)/2 for t > 0 (I_y/2 below), y = n/(n + t^2), or
-    0.5 +- I_z(1/2, n/2)/2 with z = 1 - y when z is smaller; Excel truncates n to an integer
+    0.5 +- I_z(1/2, n/2)/2 with z = 1 - y when z is smaller (back to I_y/2 for a lower tail under
+    0.1, where the difference cancels); Excel truncates n to an integer
     (docs/excel-semantics/statistics.md, T-1043)."""
 
     def wrap(fn: Ibeta) -> Callable[..., float]:
@@ -422,7 +423,12 @@ def t_dist_candidates() -> list[Candidate]:
                 half_tail = fn(y, n / 2.0, 0.5) / 2.0
                 return 1.0 - half_tail if t > 0 else half_tail
             centre = fn(z, 0.5, n / 2.0) / 2.0
-            return 0.5 + centre if t > 0 else 0.5 - centre
+            if t > 0:
+                return 0.5 + centre
+            lower = 0.5 - centre
+            # 0.5 - centre cancels in the deep lower tail (T.DIST(-10,1000,TRUE) = 8.3E-23):
+            # take I_y/2 directly there.
+            return lower if lower >= 0.1 else fn(y, n / 2.0, 0.5) / 2.0
 
         return call
 

@@ -530,7 +530,7 @@ BETA.DIST(0.1,100,2,TRUE) (m9-beta-dist-a100 Calc!A19) Excel is 1 ulp from that 
 the correctly rounded value. Its continued
 fraction is not Numerical Recipes' Lentz.
 
-The best combination found is bit-exact on 158 of 283 BETA.DIST/BETADIST cells (279 numeric):
+The best combination found is bit-exact on 158 of 283 BETA.DIST/BETADIST cells (279 with numeric arguments):
 - the closed forms above;
 - otherwise Cephes' two continued fractions (incbcf/incbd, without the power series);
 - a switch at the mean, x > a/(a+b);
@@ -549,9 +549,10 @@ For comparison:
 
 Through the F and t mappings:
 - F.DIST(x,d1,d2,TRUE), df truncated as Excel does: the best combination 15 of 33 cells (30
-  numeric), against 6 for the engine and 17 correctly rounded.
-- T.DIST(t,n,TRUE), mapped through the smaller of n/(n+t^2) and t^2/(n+t^2): Cephes as published
-  106 of 150, the best combination 95, the engine 78, correctly rounded 112.
+  with numeric arguments), against 6 for the engine and 17 correctly rounded.
+- T.DIST(t,n,TRUE), mapped through the smaller of n/(n+t^2) and t^2/(n+t^2) (but I_y/2 directly
+  for a lower tail under 0.1, where 0.5 - I_z/2 cancels): Cephes 105 of 150, the best combination
+  95, the engine 78, correctly rounded 113.
 
 Evidence: probes-numeric m9-beta-dist-a*, m9-legacy-betadist, m9-f-dist, m9-legacy-fdist,
 t1049-fdist, m9-t-dist-cdf, t1048-tdist; fits `beta-dist`, `f-dist`, `t-dist`
