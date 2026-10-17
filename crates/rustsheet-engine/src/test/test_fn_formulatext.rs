@@ -23,15 +23,20 @@ fn multi_sheet_ref() {
     assert_eq!(model._get_text("A1"), *"#ERROR!");
 }
 
+/// A multi-cell reference gives one result per cell, `#N/A` where a cell has no formula
+/// (probes/lookup-argument-modes F38:H38, T-1241).
 #[test]
-fn implicit_intersection() {
+fn multi_cell_reference_gives_one_result_per_cell() {
     let mut model = new_empty_model();
+    model._set("C1", "=1+1");
     model._set("A1", "=FORMULATEXT(C1:C2)");
-    model._set("A2", "=FORMULATEXT(D1:E1)");
+    model._set("A4", "=FORMULATEXT(C1:D1)");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#N/IMPL!");
-    assert_eq!(model._get_text("A2"), *"#N/IMPL!");
+    assert_eq!(model._get_text("A1"), *"=1+1");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+    assert_eq!(model._get_text("A4"), *"=1+1");
+    assert_eq!(model._get_text("B4"), *"#N/A");
 }
 
 #[test]
