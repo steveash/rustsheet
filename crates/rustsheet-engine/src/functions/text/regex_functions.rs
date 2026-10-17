@@ -5,7 +5,10 @@ use regex::{Regex, RegexBuilder};
 #[cfg(target_arch = "wasm32")]
 use regex_lite::{Regex, RegexBuilder};
 
-use super::{lifted::COMPARED_BYTES_PER_VISIT, util::within_text_budget};
+use super::{
+    lifted::{to_u64, COMPARED_BYTES_PER_VISIT},
+    util::within_text_budget,
+};
 use crate::{
     calc_result::CalcResult,
     cast::MAX_TEXT_UNITS,
@@ -169,10 +172,6 @@ impl PatternCache {
     }
 }
 
-fn to_u64(n: usize) -> u64 {
-    u64::try_from(n).unwrap_or(u64::MAX)
-}
-
 fn too_much_regex_work(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(
         Error::ERROR,
@@ -183,7 +182,8 @@ fn too_much_regex_work(cell: CellReferenceIndex) -> CalcResult {
 
 /// A REGEXREPLACE replacement split once into its literal text and the capture groups it
 /// refers to, with the regex crates' own `$name` rules (`regex_automata`'s interpolation), so
-/// the length of a result is known before it is built.
+/// the length of a result is known before it is built. `regex_lite` (wasm32) documents the same
+/// syntax; should it ever differ, the built result's length is checked again.
 struct Replacement {
     literal_len: usize,
     /// Each group referred to and how often.

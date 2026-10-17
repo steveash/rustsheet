@@ -169,7 +169,8 @@ fn text_call_cost(operands: &[CalcResult], scanned: &[usize], bytes_per_visit: u
         .fold(0u64, u64::saturating_add)
 }
 
-fn to_u64(n: usize) -> u64 {
+/// `n` as a `u64`, saturating.
+pub(super) fn to_u64(n: usize) -> u64 {
     u64::try_from(n).unwrap_or(u64::MAX)
 }
 
