@@ -165,3 +165,22 @@ fn a_let_bound_callee_takes_no_workbook_spelling() {
     assert_eq!(model._get_formula("A2"), "=LET(f,LAMBDA(x,x*2),f(3))");
     assert_eq!(model._get_text("A2"), *"6");
 }
+
+#[test]
+fn a_bound_name_use_prints_in_the_spelling_of_its_declaration() {
+    // probes/let-name-use-spelling (T-1720): the innermost declaration decides.
+    let mut model = new_empty_model();
+    model._set("A1", "=LET(x,5,X*2)");
+    model._set("A2", "=LAMBDA(Ab,aB*2)(4)");
+    model._set("A3", "=LET(x,1,LET(X,5,x))");
+    model._set("A4", "=LET(Ab,LAMBDA(Q,q+1),aB(2))");
+    model.evaluate();
+
+    let reloaded = crate::Model::from_bytes(&model.to_bytes(), "en").unwrap();
+    for model in [&model, &reloaded] {
+        assert_eq!(model._get_formula("A1"), "=LET(x,5,x*2)");
+        assert_eq!(model._get_formula("A2"), "=LAMBDA(Ab,Ab*2)(4)");
+        assert_eq!(model._get_formula("A3"), "=LET(x,1,LET(X,5,X))");
+        assert_eq!(model._get_formula("A4"), "=LET(Ab,LAMBDA(Q,Q+1),Ab(2))");
+    }
+}
