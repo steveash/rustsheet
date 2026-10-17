@@ -102,7 +102,7 @@ impl Model {
         let [x, df1, df2, cumulative] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        // TODO(T-1841): Excel reads a TRUE as 1 in x and the degrees of freedom
+        // TODO(T-1847): Excel reads a TRUE as 1 in x and the degrees of freedom
         // (probes/stat-later-argument-lift L13, probes-numeric/t1049-fdistrt A19, A26).
         let x = self.cast_number_no_bools_ref(x, cell)?;
         let df1 = self.cast_number_no_bools_ref(df1, cell)?.trunc();
@@ -137,7 +137,7 @@ impl Model {
         let [x, df1, df2] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        // TODO(T-1841): a TRUE reads as 1 in Excel, as in F.DIST.
+        // TODO(T-1847): a TRUE reads as 1 in Excel, as in F.DIST.
         let x = self.cast_number_no_bools_ref(x, cell)?;
         let df1 = self.cast_number_no_bools_ref(df1, cell)?.trunc();
         let df2 = self.cast_number_no_bools_ref(df2, cell)?.trunc();

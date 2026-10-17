@@ -569,7 +569,7 @@ impl Function {
             // fraction of at most 140 steps) a fixed number of times. The quantile searches
             // (BETA.INV, F.INV, T.INV, CHISQ.INV, GAMMA.INV), the incomplete-gamma ones (CHISQ.*,
             // GAMMA.DIST, POISSON) and HYPGEOM.DIST's cdf sum loop by value with no per-call cap
-            // of their own, so they are not entered yet (TODO(T-1842)).
+            // of their own, so they are not entered yet (TODO(T-1848)).
             Function::Gauss
             | Function::Phi
             | Function::Fisher
