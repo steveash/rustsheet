@@ -3,7 +3,7 @@ id: T-1598
 title: "COMBIN matches Excel's inexact results (COMBIN(10,4) = 209.99999999999997)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
