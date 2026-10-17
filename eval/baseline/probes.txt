@@ -3815,8 +3815,6 @@ F	probes/unknown-function-name-reach.case.json	Sheet1!B16
 F	probes/unknown-function-name-reach.case.json	Sheet1!B20
 F	probes/unknown-function-name-reach.case.json	Sheet1!B21
 F	probes/unknown-function-name-reach.case.json	Sheet1!B9
-F	probes/unknown-function-name-spelling.case.json	Sheet1!A8
-F	probes/unknown-function-name-spelling.case.json	Sheet1!B8
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D18
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D19
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D26

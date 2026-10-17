@@ -3,7 +3,7 @@ id: T-1758
 title: "A call of a cell-shaped name is a call of that cell"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ Found by T-1719: probes/unknown-function-name-spelling A8 (`#REF!`, ours `#NAME?
 
 ## Out of scope
 -
+
+## Outcome
+`parse_named_call` turns a callee spelled like an in-range A1 cell, and no function, into a `LambdaCallKind` of that cell (`#REF!`); `callee_operand` prints a bare cell callee unparenthesized (`AB1(1)`). Probe cells unknown-function-name-spelling A8/B8 now pass; unit test added. Edge shapes (past XFD, `$`, R1C1) remain unprobed and are noted in references.md.

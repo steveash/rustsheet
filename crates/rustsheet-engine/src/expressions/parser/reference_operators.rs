@@ -508,9 +508,14 @@ pub(crate) fn at_text(child: &Node, sub: &dyn Fn(&Node) -> String) -> String {
 
 /// `text` (the printed `node`) as the callee of a call, `(A1)(A2)`: a LAMBDA prints bare
 /// (`LAMBDA(x,x)(1)`) and a group with its own parentheses; any other callee was written in
-/// parentheses, and bare, `A1(A2)`, it would not parse back (T-0149).
+/// parentheses, and bare, `A1(A2)`, it would not parse back (T-0149). A bare cell is the one
+/// exception: a callee spelled like a cell (`Ab1(1)`) is a call of that cell and prints bare,
+/// `AB1(1)` (probes/unknown-function-name-spelling B8, T-1758).
 pub(crate) fn callee_operand(text: String, node: &Node) -> String {
-    if matches!(node, Node::LambdaDefKind { .. } | Node::Group { .. }) {
+    if matches!(
+        node,
+        Node::LambdaDefKind { .. } | Node::Group { .. } | Node::ReferenceKind { .. }
+    ) {
         text
     } else {
         format!("({text})")

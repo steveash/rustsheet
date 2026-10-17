@@ -339,3 +339,16 @@ fn lambda_single_char_rc_param_roundtrips_in_r1c1_mode() {
         "LAMBDA(r,...) should parse in R1C1 mode, got {t:?}"
     );
 }
+
+/// A callee spelled like a cell is a call of that cell and prints bare, upper-cased; a known
+/// function shaped like a cell stays a function (T-1758).
+#[test]
+fn test_cell_shaped_callee_is_call_of_cell() {
+    use crate::expressions::parser::tests::utils::to_english_localized_string;
+    let mut p = parser();
+    let node = p.parse("Ab1(1)", &cell());
+    assert!(matches!(node, Node::LambdaCallKind { .. }), "{node:?}");
+    assert_eq!(to_english_localized_string(&node, &cell()), "AB1(1)");
+    let node = p.parse("LOG10(100)", &cell());
+    assert!(matches!(node, Node::FunctionKind { .. }), "{node:?}");
+}
