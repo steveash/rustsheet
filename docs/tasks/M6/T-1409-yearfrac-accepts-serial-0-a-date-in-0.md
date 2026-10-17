@@ -3,7 +3,7 @@ id: T-1409
 title: "YEARFRAC accepts serial 0 (a date in [0,1)) as start or end date"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,9 +24,12 @@ T-1254 accept it in WEEKDAY, WORKDAY and NETWORKDAYS: reuse what they use. Code:
 (crates/rustsheet-engine/src/functions/date_and_time.rs).
 
 ## Acceptance criteria
-- [ ] gen-m9/a2e51f48717af2a1 A32 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] Unit tests: `YEARFRAC(33752,0)` = 33268/360 and `YEARFRAC(0,33752)` the same; other bases with serial 0 only if probed.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m9/a2e51f48717af2a1 A32 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] Unit tests: `YEARFRAC(33752,0)` = 33268/360 and `YEARFRAC(0,33752)` the same; other bases with serial 0 only if probed.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+YEARFRAC basis 0 accepts a start or end date in [0, 1) as day 0 of January 1900 (new `us_30_360` helper shared with the existing basis-0 path); gen-m9/a2e51f48717af2a1 A32 passes (the case's other mismatches A24, A34 are not this task's). gen-m9 baseline unchanged. Bases 1-4 with serial 0 stay `#NUM!`: unprobed. Unit test `test_yearfrac_basis_0_accepts_serial_0`.

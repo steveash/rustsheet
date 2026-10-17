@@ -20,6 +20,37 @@ fn leap_years_through(year: i32) -> i64 {
     year / 4 - year / 100 + year / 400
 }
 
+/// YEARFRAC basis 0, the financial US 30/360 convention (`dateDiff360Us`, ModifyStartDate), over
+/// `(year, month, day)` triples, which differs from the DAYS360 worksheet function for February
+/// month-ends: a February-end *end* date only collapses to 30 when the *start* is also a February
+/// month-end, and the `end == 31` rule tests the original (un-normalised) start day.
+fn us_30_360(start: (i32, u32, u32), end: (i32, u32, u32)) -> f64 {
+    let (start_year, start_month, start_day) = start;
+    let (end_year, end_month, end_day) = end;
+    let last_day_feb = |year: i32| if is_leap_year(year) { 29 } else { 28 };
+    let sd_is_feb_last = start_month == 2 && start_day == last_day_feb(start_year);
+    let ed_is_feb_last = end_month == 2 && end_day == last_day_feb(end_year);
+    let mut sd_day = start_day as i32;
+    let mut ed_day = end_day as i32;
+
+    if ed_is_feb_last && sd_is_feb_last {
+        ed_day = 30;
+    }
+    if ed_day == 31 && sd_day >= 30 {
+        ed_day = 30;
+    }
+    if sd_day == 31 {
+        sd_day = 30;
+    }
+    if sd_is_feb_last {
+        sd_day = 30;
+    }
+    let d360 = (end_year - start_year) * 360
+        + (end_month as i32 - start_month as i32) * 30
+        + (ed_day - sd_day);
+    f64::from(d360) / 360.0
+}
+
 impl Model {
     /// `YEARFRAC(start_date, end_date, [basis])`. Every argument lifts over arrays and refuses a
     /// multi-cell range (SPEC-0011 `LiftArrays`; probes/scalar-lift-shapes H6,
@@ -63,46 +94,30 @@ impl Model {
             Ok(c) => date_system.financial_1900_serial(c),
             Err(s) => return s,
         };
-        let (Ok(start_date), Ok(end_date)) = (
-            from_excel_date(start_raw.floor() as i64),
-            from_excel_date(end_raw.floor() as i64),
-        ) else {
+        let (start_serial, end_serial) = (start_raw.floor() as i64, end_raw.floor() as i64);
+        // Serial 0 (1900-01-00, so any date in [0, 1)) is a date to the 30/360 day count of basis 0
+        // only, as day 0 of January 1900; other bases keep #NUM! until probed (gen-m9/a2e51f48717af2a1
+        // Calc!A32; dates.md "YEARFRAC accepts serial 0", T-1409).
+        if basis == 0 && (start_serial == 0 || end_serial == 0) {
+            let (Some(start), Some(end)) = (
+                excel_serial_to_ymd(start_serial),
+                excel_serial_to_ymd(end_serial),
+            ) else {
+                return num_error(cell);
+            };
+            return CalcResult::Number(us_30_360(start, end).abs());
+        }
+        let (Ok(start_date), Ok(end_date)) =
+            (from_excel_date(start_serial), from_excel_date(end_serial))
+        else {
             return num_error(cell);
         };
         let days = (end_date - start_date).num_days() as f64;
         let result = match basis {
-            0 => {
-                // YEARFRAC basis 0 uses the financial US 30/360 convention
-                // (`dateDiff360Us`, ModifyStartDate), which differs from the
-                // DAYS360 worksheet function for February month-ends: a
-                // February-end *end* date only collapses to 30 when the *start*
-                // is also a February month-end, and the `end == 31` rule tests
-                // the original (un-normalised) start day.
-                let last_day_feb = |year: i32| if is_leap_year(year) { 29 } else { 28 };
-                let sd_is_feb_last =
-                    start_date.month() == 2 && start_date.day() == last_day_feb(start_date.year());
-                let ed_is_feb_last =
-                    end_date.month() == 2 && end_date.day() == last_day_feb(end_date.year());
-                let mut sd_day = start_date.day() as i32;
-                let mut ed_day = end_date.day() as i32;
-
-                if ed_is_feb_last && sd_is_feb_last {
-                    ed_day = 30;
-                }
-                if ed_day == 31 && sd_day >= 30 {
-                    ed_day = 30;
-                }
-                if sd_day == 31 {
-                    sd_day = 30;
-                }
-                if sd_is_feb_last {
-                    sd_day = 30;
-                }
-                let d360 = (end_date.year() - start_date.year()) * 360
-                    + (end_date.month() as i32 - start_date.month() as i32) * 30
-                    + (ed_day - sd_day);
-                d360 as f64 / 360.0
-            }
+            0 => us_30_360(
+                (start_date.year(), start_date.month(), start_date.day()),
+                (end_date.year(), end_date.month(), end_date.day()),
+            ),
             1 => {
                 // Actual/Actual. Port of ExcelFinancialFunctions
                 // `ActualActual.DaysInYear`: yearfrac = actual_days / DaysInYear.

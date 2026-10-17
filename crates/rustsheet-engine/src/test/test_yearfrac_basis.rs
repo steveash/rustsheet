@@ -86,3 +86,23 @@ fn test_yearfrac_reversed_dates_swap_for_every_basis() {
     };
     assert!((v - 77.112_951_912_951_91).abs() < 1e-12);
 }
+
+// Serial 0 is day 0 of January 1900 to the 30/360 count of basis 0: gen-m9/a2e51f48717af2a1
+// Calc!A32 (Excel 0.9995471537332011 = (0.3 + 33268/360)^-0.0001), T-1409. Other bases stay #NUM!.
+#[test]
+fn test_yearfrac_basis_0_accepts_serial_0() {
+    let mut model = new_empty_model();
+    model._set("A1", "=YEARFRAC(33752,0)=33268/360");
+    model._set("A2", "=YEARFRAC(0,33752)=33268/360");
+    model._set("A3", "=YEARFRAC(33752,0.5)=33268/360");
+    model._set("A4", "=YEARFRAC(0,0)");
+    model._set("A5", "=((0.3+YEARFRAC(33752,0))^SUM((-0.0001)))");
+    model._set("A6", "=YEARFRAC(33752,0,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"TRUE");
+    assert_eq!(model._get_text("A3"), *"TRUE");
+    assert_eq!(model._get_text("A4"), *"0");
+    assert_eq!(model._get_text("A5"), *"0.999547154");
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+}
