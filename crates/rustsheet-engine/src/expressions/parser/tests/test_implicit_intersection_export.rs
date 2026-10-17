@@ -662,6 +662,67 @@ fn financial_static_shapes_come_from_the_lifting_table() {
     ));
 }
 
+// SPEC-0011 for QUOTIENT, FACTDOUBLE and SERIESSUM (T-1802): x, n and m are `LiftArrays`, so a
+// legacy bare range keeps its text and an operation on it gets the `@`; SERIESSUM's coefficients
+// are read whole and get none (probes/scalar-lift-open-a Y19-Y27).
+#[test]
+fn math_atp_legacy_ranges_follow_the_table() {
+    check(&[
+        (
+            "QUOTIENT(A1:A60,2)",
+            "QUOTIENT(A1:A60,2)",
+            "QUOTIENT(A1:A60,2)",
+        ),
+        (
+            "FACTDOUBLE(D1:D60)",
+            "FACTDOUBLE(D1:D60)",
+            "FACTDOUBLE(D1:D60)",
+        ),
+        (
+            "FACTDOUBLE(D1:D60+0)",
+            "FACTDOUBLE(@D1:D60+0)",
+            "FACTDOUBLE(D1:D60+0)",
+        ),
+        (
+            "SERIESSUM(B1:B60,0,1,C1:C3)",
+            "SERIESSUM(B1:B60,0,1,C1:C3)",
+            "SERIESSUM(B1:B60,0,1,C1:C3)",
+        ),
+    ]);
+}
+
+#[test]
+fn math_atp_static_shapes_follow_the_table() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let mut shape =
+        |formula: &str| run_static_analysis_on_node(&parser.parse(formula, &cell_reference));
+    assert!(matches!(
+        shape("QUOTIENT({7;9},2)"),
+        StaticResult::Array(2, 1)
+    ));
+    assert!(matches!(shape("QUOTIENT(A1:A3,2)"), StaticResult::Scalar));
+    assert!(matches!(
+        shape("FACTDOUBLE({5,6})"),
+        StaticResult::Array(1, 2)
+    ));
+    assert!(matches!(
+        shape("SERIESSUM({1;2},{0,1},1,{1,2,3})"),
+        StaticResult::Array(2, 2)
+    ));
+    assert!(matches!(
+        shape("SERIESSUM(2,0,1,{1;2;3})"),
+        StaticResult::Scalar
+    ));
+    assert!(matches!(shape("GCD({4;6},2)"), StaticResult::Scalar));
+}
+
 // SPEC-0011 for the statistical functions whose every argument is scalar (T-1290): they are
 // `Lift`, so a legacy range gets its `@` and the call's static shape is the lifted one
 // (docs/excel-semantics/statistics.md "Statistical function argument modes").

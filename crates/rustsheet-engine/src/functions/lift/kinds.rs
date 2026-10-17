@@ -183,6 +183,18 @@ const COMPLEX_FOLD: ArgKinds = ArgKinds {
     work: Constant,
 };
 // --- End engineering (T-1383) ---------------------------------------------------------------
+// --- Math (T-1802) --------------------------------------------------------------------------
+/// `SERIESSUM(x, n, m, coefficients)`: x, n and m are Analysis `ToolPak` arguments, and the
+/// coefficients are read once by the function itself (`Model::series_coefficients`), which keeps
+/// the scalar reading of a one-cell text reference. Each element walks the coefficients, so the
+/// call is charged their cells per element (`LiftCost::Cells`); the kernel itself loops once per
+/// coefficient, a fixed count for the call.
+const SERIES: ArgKinds = ArgKinds::fixed(
+    4,
+    &[LiftArrays, LiftArrays, LiftArrays, WholeByCaller],
+    Constant,
+);
+// --- End math (T-1802) ----------------------------------------------------------------------
 // --- Statistical (T-1290) -------------------------------------------------------------------
 /// `BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])`.
 const LIFT_3_OF_4: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift], Constant);
@@ -316,6 +328,11 @@ macro_rules! lifting_table_functions {
             | Function::Imsum
             | Function::Improduct
             // --- End engineering (T-1383) ---
+            // --- Math (T-1802) ---
+            | Function::Quotient
+            | Function::Factdouble
+            | Function::Seriessum
+            // --- End math (T-1802) ---
             // --- Statistical (T-1290) ---
             | Function::BetaDist
             | Function::BetaDistCompat
@@ -526,6 +543,21 @@ impl Function {
             // whole", T-1384).
             Function::Imsum | Function::Improduct => Some(&COMPLEX_FOLD),
             // --- End engineering (T-1383) ---
+            // --- Math (T-1802) ---
+            // QUOTIENT, FACTDOUBLE and SERIESSUM's x, n and m are Analysis ToolPak arguments: they
+            // lift over an array (probes/math-atp-array-lift C1-C16) and refuse a multi-cell
+            // range, also on its own rows (probes/scalar-lift-open-a Y19-Y21, Y24-Y26); a range
+            // beside an array is `#VALUE!` in every element (math-atp-array-lift C27-C28).
+            // SERIESSUM's coefficients are read whole (C13, C40; -a Y27). MULTINOMIAL, GCD and LCM
+            // have no lifted argument: they give one value over a range or an array (-a Y22,
+            // Y23, Y28-Y30; math-atp-array-lift C34-C39), so they keep their own readers and no
+            // entry (docs/excel-semantics/numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument
+            // modes"). QUOTIENT is O(1); FACTDOUBLE's product of n, n-2, ... overflows a double
+            // within 151 steps whatever n is (`FACTDOUBLE(301)` is `#NUM!`), a fixed cap.
+            Function::Quotient => Some(&ATP_2),
+            Function::Factdouble => Some(&ARRAYS_1),
+            Function::Seriessum => Some(&SERIES),
+            // --- End math (T-1802) ---
             // --- Statistical (T-1290) ---
             // The statistical functions whose every argument is scalar are worksheet functions:
             // every argument lifts over an array and over a multi-cell range, on the range's own
