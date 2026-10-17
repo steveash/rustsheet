@@ -368,7 +368,7 @@ NETWORKDAYS.INTL is the exception: it lifts over a range (`INDEX(WORKDAY.INTL(45
 - **The other Analysis ToolPak-era functions** (probes/scalar-lift-open-a Y19-Y30, T-1777). QUOTIENT
   (either argument), FACTDOUBLE and SERIESSUM's `x`, `n` and `m` refuse a range like the rest (`#VALUE!`,
   Y19-Y21, Y24-Y26). SERIESSUM's `coefficients` over a range is read whole (Y27, `SERIESSUM(2,0,1,B1:B3)` is
-  7, -d W31). MULTINOMIAL, GCD and LCM take a range as an aggregate, with one result (ROWS 1, Y22, Y23,
+  7, -d W31). MULTINOMIAL, GCD and LCM give one result over a range (only MULTINOMIAL's value is probed, -d W30) (ROWS 1, Y22, Y23,
   Y28-Y30; `MULTINOMIAL(B1:B3,2)` = 59.999999999999986, -d W30).
 - **A range next to an array in an Analysis ToolPak call.** The call lifts over the array only.
   The range is passed whole to each element's call, which refuses it. So the shape comes from the

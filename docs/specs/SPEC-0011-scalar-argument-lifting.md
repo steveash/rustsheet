@@ -233,7 +233,7 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
    `EDATE(A1:A60,NA())` `#VALUE!`; -a W1-W13, -d W8-W15) but not for YEARFRAC, which checks `basis` first
    (-d W1-W5, -a W6-W7). The driver must let the kernel decide (T-1800).
 2. **Answered.** A 3-D range in a lifted argument [`#VALUE!`]: `#REF!` in a `Lift` argument (PMT,
-   NORM.DIST, BITAND; -b W2-W11, -d W17-W29), `#VALUE!` in a `LiftArrays` argument (EDATE; -b W4-W7, -d
+   NORM.DIST, BITAND; -b W2, W3, W6, W10, W11, -d W17-W18, W21-W23, W25, W29), `#VALUE!` in a `LiftArrays` argument (EDATE; -b W4, W5, W7, -d
    W19-W20, W26) (T-1801).
 3. **Answered.** Later ATP arguments are refused like the probed ones (PRICE, COUP*, ACCRINT, CONVERT,
    COMPLEX, IM*, DOLLARDE/FR; -a Y1-Y18), and so are QUOTIENT, FACTDOUBLE and SERIESSUM's x, n, m

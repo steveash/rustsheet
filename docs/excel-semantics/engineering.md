@@ -97,7 +97,7 @@ T-1767): `ROWS(BITAND(13,D1:D60))` is 60, while `ROWS(BESSELJ(2.5,B1:B60))` and 
 even on the range's own rows. Probes/scalar-lift-open-a (T-1777) adds
 more later arguments, all `#VALUE!` over a range with a working scalar control: CONVERT's `from_unit`, `to_unit` and number
 (Y8-Y10), COMPLEX's `suffix` (Y11), IMSUB's and IMDIV's second argument (Y12, Y13), IMPOWER's `n` (Y14) and IMSUB's first (Y15).
-QUOTIENT, FACTDOUBLE and SERIESSUM's x, n, m are `#VALUE!` too, while MULTINOMIAL, GCD and LCM take a range as an aggregate
+QUOTIENT, FACTDOUBLE and SERIESSUM's x, n, m are `#VALUE!` too, while MULTINOMIAL, GCD and LCM give one result (ROWS 1)
 (Y19-Y30). See arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak
 range rule".
 
