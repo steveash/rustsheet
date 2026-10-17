@@ -3,7 +3,7 @@ id: T-1788
 title: "Probe date text with a month name glued to digits (July1, January0, 1JUN2021)"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,10 +28,17 @@ DATEVALUE, VALUE, `MONTH()` and `0+`, with clock-independent cells (MONTH/DAY/YE
 current-year serials left unscored, as probes/date-text-yearless does. Use the `excel-probe` skill.
 
 ## Acceptance criteria
-- [ ] A probes case (e.g. `probes/date-text-glued-month`) with an excel-graph sidecar covers the forms above.
-- [ ] docs/excel-semantics/dates.md "Date text with a month name glued to digits" states the rule from that evidence and cites its cells.
-- [ ] T-1789 is updated with the rule (or split) if the evidence differs from its assumption.
-- [ ] `make check` green; reviewers approve.
+- [x] A probes case (e.g. `probes/date-text-glued-month`) with an excel-graph sidecar covers the forms above.
+- [x] docs/excel-semantics/dates.md "Date text with a month name glued to digits" states the rule from that evidence and cites its cells.
+- [x] T-1789 is updated with the rule (or split) if the evidence differs from its assumption.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The parser change (T-1789).
+
+## Outcome
+probes/date-text-glued-month (24 forms x DATEVALUE, VALUE, `0+`, MONTH, DAY; excel-graph 2026-10-17) settles
+the glued forms: a month glued to one number reads as with a space (the year-less "Month d" rule; a number that
+is no day of the month is a two-digit or four-digit year, the 1st of that month), day-month(-year) parses glued
+on either side, and a month glued to a day that a year follows is `#VALUE!`. Rule in dates.md; T-1789 points to
+it. Eval: 0 fixed, new-coverage failures for the new probe only (the engine gives `#VALUE!`), 0 regressions.
