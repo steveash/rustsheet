@@ -3,7 +3,7 @@ id: T-1272
 title: "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX functions lift text over a range and scalar arguments over an array"
 milestone: M7
 lane: functions-text
-status: done
+status: todo
 priority: P2
 size: S
 tier: opus
@@ -26,12 +26,12 @@ Delimiter ranges (a multi-cell range with blanks, numbers or booleans as the del
 ## Acceptance criteria
 - [x] Probe rows 13, 15-22 and 55 and cells K11-K13 pass; baseline updated.
 - [x] gen-m7/59cc50701f4937c9 A24, gen-m7/93976dd9a3578ed9 A11 and (with T-1361) gen-m7/9ff3afcacd3bd0fc A35 pass. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
-## Outcome
+## Outcome (draft; not merged)
 TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEXTEST/EXTRACT/REPLACE lift their text and scalar arguments over ranges and
 arrays; the delimiters stay lists (TEXTBEFORE/AFTER take a delimiter array as a list; a delimiter range is still one
 text until T-1361). `lift_text_call` calls `lift_values` directly; moving onto `lift_call` is T-1775.
@@ -53,3 +53,32 @@ text until T-1361). `lift_text_call` calls `lift_values` directly; moving onto `
   one-cell-range collapse (`collapse_single_cell`) inlined in several lift callers, and `lift_text_call` itself, both
   for T-1775.
   Follow-ups: T-1816 (probe the guesses), T-1817 (REGEXREPLACE result bound); T-1814 done here.
+
+## Handoff
+Fourth opus run (2026-10-17, budget out). Branch merged with main; `make check` green. PR #1016 (draft). This run fixed
+the previous performance review's four items (fold lists once, delimiter-byte cost, tiered regex compile budget,
+first-value-only lifted elements; absorbs T-1814), the quality review's two MAJORs (`LiftedArg::read`, `grid_dims`
+shared with the lift driver) and the governance gate (decision 0010 entry). Review round on 877196fa: security,
+architecture and quality APPROVE (quality after the shared-helper fix); excel-fidelity's MAJOR (a 1x1 array now lifts:
+`COLUMNS(TEXTSPLIT({"a,b"},","))` 2 → 1) is recorded UNVERIFIED in text.md, pinned by
+`fn_textsplit::one_by_one_array_lifts` and listed first in T-1816, so re-run excel-fidelity to confirm that suffices.
+Performance REQUEST_CHANGES, still open (measured with a release harness):
+1. BLOCKING: regex search cost is not counted. `=SUM(--REGEXTEST(REPT("a",3000)&SEQUENCE(4000),"\w{200}b"))` takes
+   38.5 s at about 9% of the cap (the lazy DFA gives up on big Unicode classes). Fix: in `PatternCache::get`'s caller,
+   charge `text.len() x weight(size tier)` against a per-call search budget, `#ERROR!` when spent (DEVIATION); measure
+   the weights per tier; add a regression test.
+2. BLOCKING: TEXTSPLIT re-searches cost more than the model says: `rest.find(d)` builds a new searcher per piece, so
+   `=ROWS(TEXTSPLIT(REPT("a",32767)&SEQUENCE(16),HSTACK("a",REPT("a",16000))))` takes 19 s. Fix: one searcher per
+   delimiter per call (`memchr::memmem::Finder`, or `aho-corasick` leftmost-first; both already in Cargo.lock through
+   `regex`, so adding one as a direct dependency needs the security reviewer's OK), or charge the re-search by needle
+   length.
+3. MAJOR: the LRU cache still loses to cycling large patterns: `=ROWS(REGEXTEST("a","\w{"&(200+MOD(SEQUENCE(100),5))&"}"))`
+   is `#ERROR!` after 2.3 s with only 5 distinct patterns. Fix: visit elements grouped by pattern (compile each distinct
+   pattern once), budget distinct patterns; test with more cycling large patterns than the cache holds (release-only
+   timing; a debug unit test can use mid-tier patterns such as `\w{2}`..`\w{16}`).
+4. MAJOR: lifting multiplies the REGEXREPLACE result blow-up: count matches x replacement length before building
+   (T-1817's fix) inside this PR, at least for the lifted path.
+MINORs: `COMPILE_BUDGET` (about 2.3 s per cell) could be smaller; textsplit.rs `text.clone()` for the case-sensitive
+comparison could be a `Cow`; `Delimiters::new` could fold lazily; add TEXTSPLIT/TEXTBEFORE/REGEX* cases to
+crates/rustsheet/benches/text.rs with before/after numbers. Next: fix 1-4 with a regression test each, update the text.md
+DEVIATION entry, `make check`, re-run performance and excel-fidelity, then mark done and merge.
