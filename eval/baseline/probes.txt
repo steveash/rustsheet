@@ -1353,14 +1353,6 @@ F	probes/discount-security-modes.case.json	Calc!A83
 F	probes/discount-security-modes.case.json	Calc!A86
 F	probes/discount-security-modes.case.json	Calc!A88
 F	probes/displayed-text-formats.case.json	S!A21
-F	probes/dynamic-array-reshape-and-isomitted.case.json	S!C20
-F	probes/dynamic-array-reshape-and-isomitted.case.json	S!C21
-F	probes/dynamic-array-reshape-and-isomitted.case.json	S!C36
-F	probes/dynamic-array-reshape-and-isomitted.case.json	S!C37
-F	probes/dynamic-array-reshape-and-isomitted.case.json	S!D20
-F	probes/dynamic-array-reshape-and-isomitted.case.json	S!D21
-F	probes/dynamic-array-reshape-and-isomitted.case.json	S!D36
-F	probes/dynamic-array-reshape-and-isomitted.case.json	S!D37
 F	probes/eng-argument-modes.case.json	Calc!A20
 F	probes/eng-argument-modes.case.json	Calc!A21
 F	probes/eng-argument-modes.case.json	Calc!A22
