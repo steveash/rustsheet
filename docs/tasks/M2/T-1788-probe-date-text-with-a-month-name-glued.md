@@ -3,7 +3,7 @@ id: T-1788
 title: "Probe date text with a month name glued to digits (July1, January0, 1JUN2021)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
