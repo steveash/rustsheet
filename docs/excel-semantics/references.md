@@ -1754,7 +1754,7 @@ order and on each edit; a callee bound by an enclosing LET or LAMBDA takes none 
 declaration (T-1720, T-1761). The harness sets a spec case's cells row by row so the first-met order matches the xlsx.
 Reach (excel-graph, 2026-10-17, T-1756, probes/unknown-function-name-reach):
 - A call of a defined LAMBDA name prints the defined name's spelling, not the first typed one:
-  `OtherFn` defined, `=otherfn(1)` then `=OTHERFN(1)` both print `=OtherFn(1)`. Ours prints the first typed spelling (T-1763).
+  `OtherFn` defined, `=otherfn(1)` then `=OTHERFN(1)` both print `=OtherFn(1)`. Ours matches: a free callee that is a defined name takes the defined name's spelling (T-1763).
 - A callee bound by an enclosing LET or LAMBDA prints the binding's spelling
   (LET, whatever case the call used: `=LET(Gg,LAMBDA(x,x*2),gG(3))` prints `Gg(3)`; LAMBDA, same-case call only probed:
   `=LAMBDA(Hh,Hh(1))(LAMBDA(x,x))` keeps `Hh`). Ours matches (T-1720 respells every bound use to its declaration).
