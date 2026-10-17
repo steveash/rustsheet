@@ -34,6 +34,8 @@ pub fn check_array_cells(rows: usize, columns: usize) -> Option<(Error, String)>
     // If rows * columns exceeds MAX_SIZE, return #ERROR!
     // Otherwise this would be an easy way to crash the program by trying to create a huge array.
     // NB: This is a limitation of IronCalc
+    // Saturating: callers need not cap rows and columns at the grid first, and even capped the
+    // product (up to 2^34) does not fit a 32-bit `usize` (wasm32).
     if rows.saturating_mul(columns) > MAX_SIZE {
         return Some((
             Error::ERROR,
