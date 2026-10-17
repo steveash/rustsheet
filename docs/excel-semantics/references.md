@@ -1195,18 +1195,25 @@ Implemented in: `address_sheet_text` in functions/lookup_and_reference/address_a
 Tasks: T-0984
 
 ## T of a multi-cell range is not intersected
-Rule: in a legacy formula, `T(range)` over several cells is not the implicitly intersected cell:
-`T(L7:N7)` in N1352 is "" although N7 is text, `T(J1351:J1353)` in O1352 is "" although
-J1352 is text, and `T(H12:J12)` from column M (no intersection) is "", not `#VALUE!`.
-Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!M1352, N1352,
-O1352 (all top-left cells are non-text: 545, 1.001, blank).
-Status: VERIFIED for these cells. In a dynamic-array formula T does not lift over the range either,
-and reads its top-left cell: `T(A1:A3)` with A1 = 5, A2 = "ab", A3 = TRUE is a single "", no spill
-(probes/text-argument-modes F9, excel-graph, 2026-10-09, T-1087), while `T(H1:H2)` with H1 = "x",
-H2 = 2 is a single "x" from a row outside the range (probes/t-array-lift S!E7, excel-graph,
-2026-10-16, T-1729). UNVERIFIED (T-0985): the legacy form with a text top-left cell, and N's behaviour.
-Not implemented: ours gives "" for S!E7 (T-0985).
-Tasks: T-0985
+Rule: T, like N, reads a multi-cell range as its top-left cell, in legacy and dynamic formulas
+alike, with no implicit intersection and no lift: with A1:A3 = "x", 5, "y", `T(A1:A3)` is "x" from
+a row outside the range (F10 legacy, F12 dynamic) and from A3's row (G3); with B1:B3 = 5, "ab", "c",
+`T(B1:B3)` is "" from row 2 too (F2 legacy, J2 dynamic), not the intersected "ab". An error top-left
+is that error (`T(E1:E2)` with E1 `=1/0` is `#DIV/0!`, J10/J12), a row range reads its left cell
+(`T(G1:H1)` "p", L10). A legacy formula shows no `@` (FORMULATEXT `=T(A1:A3)`), nor over an OFFSET
+or a literal-condition IF of the range (`T(OFFSET(A1:A3,0,0))`, `T(IF(1,A1:A3))` "x", P10, Q10),
+while an operator is a value and gets one (`=T(@A1:A3&"")`, `#VALUE!` off the rows, R10). N gives
+the same picture (H2/H10/H12 7, I10 0 for text top-left, K10 `#DIV/0!`). Over an array constant a
+legacy formula adds the `@` (`=T(@{"a","b"})` "a", `=N(@{5,6})` 5, M10/O10) and a dynamic one
+spills (M14:N14, M16:N16).
+Evidence: probes/t-n-range-top-left (excel-graph, 2026-10-17, T-0985); probes/t-array-lift S!E7,
+probes/text-argument-modes F9; poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15)
+EverythingTests!M1352, N1352, O1352 (`T(H12:J12)` from column M, `T(L7:N7)`, `T(J1351:J1353)`: all "").
+Status: VERIFIED. Not implemented: the legacy `@` over an array constant under N and T (M20, O20
+lack it; M10 spills into N10, and O10 is `#SPILL!`), T-1717.
+Implemented in: functions/text/t_function.rs (`Model::fn_t`);
+expressions/parser/static_analysis/legacy.rs (`reads_reference_whole`)
+Tasks: T-0985, T-1728
 
 ## FORMULATEXT keeps the parentheses of an `@` operand; ANCHORARRAY is `#`; `:` passes an error operand on
 Rule: Excel keeps the parentheses the user wrote around the operand of `@`, for every operand form

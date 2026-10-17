@@ -2,6 +2,7 @@
 # never edit by hand. `C<TAB>case<TAB>checked-cells` lists every case; `F<TAB>case<TAB>item` lists
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
+# `TC` and `TF` lines do the same for displayed text (decision 0070).
 C	poi/45540_classic_Footer.xlsx	104
 C	poi/45540_classic_Header.xlsx	104
 C	poi/45544.xlsx	104
@@ -236,7 +237,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!D1112
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E1056
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E1060
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E160
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E260
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F160
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F392
@@ -251,9 +251,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J136
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!K936
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!L160
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!M1352
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!N1352
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!O1352
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!Q104
 F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O3
 F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O5

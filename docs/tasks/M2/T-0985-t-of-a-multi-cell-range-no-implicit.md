@@ -3,7 +3,7 @@ id: T-0985
 title: "T of a multi-cell range: no implicit intersection in legacy formulas (3 poi known failures)"
 milestone: M2
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -27,7 +27,7 @@ with H1 = "x" (text top-left), from a row outside the range, is one "x" (probes/
 excel-graph, 2026-10-16, T-1729; a known failure, ours ""), so T reads the top-left cell. Semantics: docs/excel-semantics/
 references.md "T of a multi-cell range is not intersected" (UNVERIFIED part).
 
-Code: `static_analysis.rs` gives T `args_signature_scalars(arg_count, 1, 0)`, so the parser inserts
+Code (as found; see the Outcome for what changed): `static_analysis.rs` gives T `args_signature_scalars(arg_count, 1, 0)`, so the parser inserts
 implicit intersection in legacy formulas; `fn_t` in `crates/rustsheet-engine/src/functions/text/common.rs`
 has a `FIXME: Implicit intersection` and maps a `Range` to "". N (`fn_n` in
 `functions/information/mod.rs`) has the same signature and returns `#N/IMPL!` for ranges; check it
@@ -38,12 +38,25 @@ top-left cell, with text only in a later cell, and from a row outside the range;
 `N(A1:A3)` with a number top-left; and `T({"a","b"})`, `N({5,6})`. Then implement the observed rule.
 
 ## Acceptance criteria
-- [ ] A probe case pins the questions above (oracle-filled); the references.md entry is rewritten
+- [x] A probe case pins the questions above (oracle-filled); the references.md entry is rewritten
       from it with Status VERIFIED.
-- [ ] `F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!M1352`, `...!N1352` and `...!O1352`
+- [x] `F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!M1352`, `...!N1352` and `...!O1352`
       disappear from eval/baseline/poi.txt (`make eval-baseline`), with no new F lines; the probe's
       cells pass, and so does probes/t-array-lift S!E7.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other functions whose range arguments are marked scalar (WORKDAY holidays: T-0983).
+
+## Outcome
+Probe probes/t-n-range-top-left (excel-graph, 2026-10-17): T, like N, reads a multi-cell range as its
+top-left cell in legacy and dynamic formulas, never the intersected cell, and a legacy formula shows
+no `@` on the range or on an OFFSET or literal-condition IF of it (an operator still gets one).
+`fn_t` reads the top-left cell of a range (it gave ""), and the legacy rewrite leaves T's reference
+argument whole as it did N's (`reads_reference_whole`, legacy.rs). references.md "T of a multi-cell
+range is not intersected" is rewritten from the probe, Status VERIFIED. Eval delta: poi 488 -> 484
+known failures (M1352, N1352, O1352, plus E260 `COMBIN(19,7)`, already passing on main but not
+recorded because CI does not fetch poi); probes: t-array-lift S!E7 fixed, new case 45 cells, 42 pass.
+Its 4 failures (M20, N10, O10, O20) are the legacy `@` over an array constant under N and T, which
+is T-1717's scope; its context now cites them. N, T and the offline-error functions now share
+`Model::evaluate_node_top_left` (cast.rs) for the top-left read.
