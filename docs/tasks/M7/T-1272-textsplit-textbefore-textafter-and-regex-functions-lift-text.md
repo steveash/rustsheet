@@ -3,7 +3,7 @@ id: T-1272
 title: "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX functions lift text over a range and scalar arguments over an array"
 milestone: M7
 lane: functions-text
-status: done
+status: todo
 priority: P2
 size: S
 tier: opus
@@ -26,12 +26,12 @@ Delimiter ranges (a multi-cell range with blanks, numbers or booleans as the del
 ## Acceptance criteria
 - [x] Probe rows 13, 15-22 and 55 and cells K11-K13 pass; baseline updated.
 - [x] gen-m7/59cc50701f4937c9 A24, gen-m7/93976dd9a3578ed9 A11 and (with T-1361) gen-m7/9ff3afcacd3bd0fc A35 pass. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
-## Outcome
+## Outcome (draft; not merged)
 TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEXTEST/EXTRACT/REPLACE lift their text and scalar arguments over ranges and
 arrays; the delimiters stay lists (TEXTBEFORE/AFTER take a delimiter array as a list; a delimiter range is still one
 text until T-1361). `lift_text_call` calls `lift_values` directly; moving onto `lift_call` is T-1775.
@@ -44,3 +44,29 @@ text until T-1361). `lift_text_call` calls `lift_values` directly; moving onto `
   gen-suite cell changed (checked against main's binary). Duplication 6111 -> 5925.
 - Handed off twice (budget), resumed by opus: the earlier reviews' findings are all addressed in the branch history.
   Follow-ups: T-1812 (probe the guesses), T-1813 (REGEXREPLACE result bound), T-1814 (per-element clones).
+
+## Handoff
+Third opus run (2026-10-17, budget out). Branch `agent/functions-text/T-1272-text-lift` is merged with main as of
+26dbd619 and `make check` is green on it, except the typo fixed in the last commit. Review round on that head: security,
+architecture and quality APPROVE; excel-fidelity's four MAJORs are fixed in 1f87faf8 (the regex default size limit,
+per-element text cost, the DEVIATION entry, the unverified list); performance REQUEST_CHANGES with three BLOCKING
+findings, all of them work the cost model does not count (directive 5). Measured with a release harness:
+1. REGEX compile: a lifted pattern is charged a flat 4,096, but one compile of `\w{200}` takes about 63 ms, and 5
+   patterns cycling defeat the 4-entry `PatternCache`: `=ROWS(REGEXTEST("a","\w{"&(200+MOD(SEQUENCE(100),5))&"}"))`
+   takes 6.3 s, and the cap allows about 32,700 elements (about 34 min). Fix: collect the distinct patterns of the
+   pattern grid before the lift, compile each once into a per-call map, charge per distinct pattern at a realistic cost,
+   and cap the distinct count (a DEVIATION). Add a test with more cycling patterns than the cache holds.
+2. Delimiter length: `text_call_cost` counts the delimiters, not their bytes, and `delimiter_at` (util.rs) compares
+   every delimiter at every position. `=TEXTBEFORE(REPT("a",32767),REPT("a",16383)&"b"&SEQUENCE(512))` takes 6.2 s.
+   Fix: a linear multi-pattern matcher (Aho-Corasick leftmost-first, keeping the overlapping instance count), or charge
+   text length x total delimiter bytes, each capped at the text length.
+3. Per-element list work: TEXTBEFORE/TEXTAFTER with match_mode 1 fold every delimiter per element (util.rs:170,
+   before_after.rs:86), and TEXTSPLIT clones the lists twice per element (textsplit.rs:66, 138, 142).
+   `=ROWS(TEXTBEFORE(SEQUENCE(20)&"x",VSTACK("x",REPT("a",16000)&SEQUENCE(4000)),1,1))` takes 12.1 s. Fix: fold and
+   borrow the lists once per call (or once per match_mode value), outside the element closure.
+4. MAJOR: a lifted TEXTSPLIT element builds its whole padded array to keep [0][0] (textsplit.rs:211); compute only the
+   first piece. REGEXEXTRACT return_all likewise.
+MINORs: borrow `values[n]` instead of cloning before casts (before_after.rs:78, `regex_operands`); update the text.md
+DEVIATION entry's cost wording after the fixes. T-1814 now covers only what is left after 3 and 4. Next: fix 1-4 with a
+regression test each, re-run `make check`, merge main, re-run the performance reviewer (and excel-fidelity if the cap
+changes results), open the PR from this branch.

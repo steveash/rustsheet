@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: sonnet
-depends_on: []
+depends_on: [T-1272]
 ---
 
 ## Goal
@@ -15,11 +15,11 @@ A lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER or REGEX* call does not copy its delim
 every element, and an element that keeps only its first value does not build the rest of its array.
 
 ## Context
-T-1272's performance and security reviews (MINOR): `text_around_element` (functions/text/before_after.rs) builds a
-`Vec<&str>` of the delimiters and clones `values[0]` per element; TEXTSPLIT and REGEXEXTRACT build their whole array for
-a lifted element when `lift_text_call` (functions/text/lifted.rs) keeps only [0][0]. The total work is already bounded
-by `text_call_cost`, so this is speed only. No result may change: `make eval-check` and the text unit tests must stay
-identical.
+T-1272's performance and security reviews (MINOR): per-element copies left after T-1272 itself fixes the unbounded parts
+(its Handoff items 3 and 4: folding/cloning the delimiter lists per element and building a lifted TEXTSPLIT element's
+whole array are directive-5 work and land in T-1272). What remains here is speed only, for example the per-element
+`Vec<&str>` of the delimiters and the `values[n]` clones in `text_around_element` (functions/text/before_after.rs) and
+`regex_operands`. No result may change: `make eval-check` and the text unit tests must stay identical.
 
 ## Acceptance criteria
 - [ ] The delimiter list is borrowed once per call, not rebuilt per element.
