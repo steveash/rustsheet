@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: [T-1770]
+depends_on: [T-1770, T-1800, T-1801]
 spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
 
