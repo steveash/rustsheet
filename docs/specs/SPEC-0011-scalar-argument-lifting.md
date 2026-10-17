@@ -534,7 +534,8 @@ the lift driver, so its `KernelWork` is not charged. Its own read cap (`MAX_LIFT
 the cells walked) is engineering.md "IMSUM and IMPRODUCT read cap", a DEVIATION.
 
 As built (T-1822): ACCRINT, the COUP* family, DURATION, MDURATION and PRICE are `LiftArrays` and the first
-`Weighted` entries whose loop is bounded by the calendar rather than by a cap constant: a coupon schedule walk steps
+`Weighted` entries whose loop is bounded by the calendar rather than by a cap constant (their per-call cap is
+`check_settlement` plus the calendar's end): a coupon schedule walk steps
 one period at a time, at most about 32,400 quarters once a settlement below serial 1 is `#NUM!` (Excel's rule,
 probes/fin-coupon-walk-bounds; before, a settlement of -1E15 walked about 10^6 quarters). Each walk is charged 2^16
 units (`COUPON_WALK_WEIGHT`, about 1 ms at the longest schedule): two for COUP* and ACCRINT (1,024 elements), four

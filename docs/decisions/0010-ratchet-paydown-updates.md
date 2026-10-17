@@ -134,5 +134,8 @@
   T-1272: duplicated lines 5062 → 4876 (TEXTBEFORE and TEXTAFTER share one `text_around`, TEXTSPLIT and
   TEXTBEFORE/TEXTAFTER one `delimiter_list`, and the text path reads ranges through `LiftedArg::read`)
   (`check_duplication.py --update`).
+  T-1822: duplicated lines 4876 → 4812 (ACCRINT, DURATION, MDURATION, PRICE and the COUP* functions
+  share `coupon_args` and `bond_args` instead of their repeated `get_number` argument blocks)
+  (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
