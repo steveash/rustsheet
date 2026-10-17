@@ -1,0 +1,21 @@
+name = "corpus-bench"
+description = "Real-world workbooks from SpreadsheetBench (the xlsx-corpus-bench corpus), crash-only until oracle values exist (T-0427)"
+kind = "xlsx"
+root = "../../.cache/suites/corpus-bench"
+# Sampling rule (growable): the first test case's input workbook of each of the 912 instructions,
+# `<id>/1_<id>_input.xlsx`. Next steps widen it to `2_`/`3_` inputs, then the answers.
+include = ["**/1_*_input.xlsx"]
+license = "CC-BY-SA-4.0"
+origin = "https://github.com/RUCKBReasoning/SpreadsheetBench (corpus as listed by https://github.com/witanlabs/xlsx-corpus-bench results-sb/manifest.jsonl)"
+# No expectations yet: SpreadsheetBench caches were recalculated by LibreOffice or win32com and
+# are not Excel evidence (docs/research/test-suites-and-oracle.md §10). Crash-only.
+use_cached_values = false
+gate = true
+baseline = "cases"
+milestone = ["M11"]
+
+[fetch]
+url = "https://raw.githubusercontent.com/RUCKBReasoning/SpreadsheetBench/49b73a94775fb489063f60ca1865e3a650079a79/data/spreadsheetbench_912_v0.1.tar.gz"
+sha256 = "9cf7228b54f1edcdd4b372eb736774adf29cb4f804c9920229bac6c154833399"
+subdir = "all_data_912_v0.1/spreadsheet"
+include = ["**/1_*_input.xlsx"]
