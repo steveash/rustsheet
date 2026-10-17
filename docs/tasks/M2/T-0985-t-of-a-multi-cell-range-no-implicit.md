@@ -3,7 +3,7 @@ id: T-0985
 title: "T of a multi-cell range: no implicit intersection in legacy formulas (3 poi known failures)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
