@@ -46,17 +46,18 @@ impl CallNameSpellings {
         walk_names(node, &mut Vec::new(), &mut |site, name, declared| {
             let spelling = match (declared, site) {
                 (Some(declared), _) => declared.to_string(),
-                (None, NameSite::Callee)
-                    if let Some(defined) = self.defined.get(&name.to_uppercase()) =>
-                {
-                    defined.clone()
-                }
-                (None, NameSite::Callee | NameSite::Use) => self
-                    .first
-                    .entry(name.to_uppercase())
-                    .or_insert_with(|| name.clone())
-                    .clone(),
                 (None, NameSite::Declaration) => return,
+                (None, NameSite::Callee | NameSite::Use) => {
+                    let key = name.to_uppercase();
+                    match self.defined.get(&key) {
+                        Some(defined) if site == NameSite::Callee => defined.clone(),
+                        _ => self
+                            .first
+                            .entry(key)
+                            .or_insert_with(|| name.clone())
+                            .clone(),
+                    }
+                }
             };
             if *name != spelling {
                 *name = spelling;
