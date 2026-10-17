@@ -50,6 +50,7 @@ C	probes/at-paren-operands-levels.case.json	20
 C	probes/at-paren-operands.case.json	6
 C	probes/at-power-text.case.json	24
 C	probes/at-signed-operand.case.json	24
+C	probes/atanh-unit-argument.case.json	12
 C	probes/average-value-args.case.json	32
 C	probes/averagea-array-constant-elements.case.json	25
 C	probes/base-min-length.case.json	14

@@ -534,7 +534,14 @@ impl Model {
     single_number_fn!(fn_atan, |f| Ok(f64::atan(f)));
     single_number_fn!(fn_asinh, |f| Ok(f64::asinh(f)));
     single_number_fn!(fn_acosh, |f| Ok(f64::acosh(f)));
-    single_number_fn!(fn_atanh, |f| Ok(f64::atanh(f)));
+    // ATANH(+-1) is `#NUM!` at once, like any other out-of-domain argument; f64::atanh gives an
+    // infinity there, which the macro's NaN mapping misses (probes/atanh-unit-argument A1:A8,
+    // excel-graph, T-1569).
+    single_number_fn!(fn_atanh, |f: f64| if f.abs() == 1.0 {
+        Err(Error::NUM)
+    } else {
+        Ok(f64::atanh(f))
+    });
     single_number_fn!(fn_abs, |f| Ok(f64::abs(f)));
     single_number_fn!(fn_sqrt, |f| if f < 0.0 {
         Err(Error::NUM)
