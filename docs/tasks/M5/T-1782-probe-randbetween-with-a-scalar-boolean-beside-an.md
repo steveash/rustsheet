@@ -3,7 +3,7 @@ id: T-1782
 title: "Probe RANDBETWEEN with a scalar boolean beside an array bound, and which error wins per element"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -35,3 +35,9 @@ results in docs/excel-semantics/numbers.md beside the T-1316 entry.
 
 ## Out of scope
 - Other lifted functions' error order.
+
+## Outcome
+New probe `probes/randbetween-bound-errors` (22 cells, excel-graph). A scalar boolean beside an array
+bound was already `#VALUE!` per element; the error order was wrong: Excel returns the **top**
+bound's error when both are errors, the engine returned the bottom's. `fn_randbetween` now reads
+the top first (scalar and lifted). Rules recorded in numbers.md.

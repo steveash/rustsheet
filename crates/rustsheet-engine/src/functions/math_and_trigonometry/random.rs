@@ -72,7 +72,9 @@ impl Model {
             .iter()
             .any(|v| matches!(v, CalcResult::Array(_)))
         {
-            let operands = [first, second]
+            // Excel reads the top first: when both bounds are errors the top's wins, per element
+            // (probes/randbetween-bound-errors A6:A20), so the operands go in as [top, bottom].
+            let operands = [second, first]
                 .into_iter()
                 .map(|v| match v {
                     CalcResult::Array(rows) => self.number_or_array(
@@ -95,15 +97,15 @@ impl Model {
                         .map(NumberOrArray::Number),
                 })
                 .collect();
-            return self.lift_number_operands(operands, cell, "Invalid arguments", |[b, t]| {
+            return self.lift_number_operands(operands, cell, "Invalid arguments", |[t, b]| {
                 randbetween_draw(b, t)
             });
         }
-        let bottom = match self.cast_to_number_no_bools(first, cell) {
+        let top = match self.cast_to_number_no_bools(second, cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let top = match self.cast_to_number_no_bools(second, cell) {
+        let bottom = match self.cast_to_number_no_bools(first, cell) {
             Ok(f) => f,
             Err(e) => return e,
         };
