@@ -167,7 +167,7 @@ fn for_each_value_operand(node: &mut Node, f: &mut impl FnMut(&mut Node)) {
 }
 
 /// Adds the `@`s a legacy formula puts in `arg`, the argument of `kind` with `signature`, none
-/// where N or T read a reference whole ([`reads_reference_whole`]).
+/// where N reads a reference whole ([`reads_reference_whole`]).
 pub(super) fn add_argument_intersection(
     kind: &Function,
     signature: Option<&Signature>,
@@ -188,7 +188,7 @@ fn legacy_intersects(kind: &Function, signature: Option<&Signature>, arg: &Node)
 }
 
 /// Whether `arg` of `kind` needs no intersection although `kind` takes a scalar: a scalar, or
-/// under N or T, which read a reference and give its top-left cell, a range or an IF or OFFSET
+/// under N, which reads a reference and give its top-left cell, a range or an IF or OFFSET
 /// of one ([`is_plain_reference`]): a legacy `=N(Z1:Z2)`,
 /// `=N(OFFSET(Z1:Z2,0,0))` and `=N(IF(1,Z1:Z2))` are 7 off the range's rows and show no `@`
 /// (probes/legacy-n-t-reference-args C, J, Q, T-1728). An array constant or any other call keeps
@@ -201,13 +201,13 @@ fn reads_reference(kind: &Function, arg: &Node) -> bool {
     }
 }
 
-/// Whether `arg` is an argument of N or T that is a reference they read whole, with nothing in
+/// Whether `arg` is an argument of N that is a reference it reads whole, with nothing in
 /// it to intersect: the `@` of a range or of an IF arm in it is not added either.
 pub(super) fn reads_reference_whole(kind: &Function, arg: &Node) -> bool {
-    matches!(kind, Function::N | Function::T) && is_plain_reference(arg)
+    matches!(kind, Function::N) && is_plain_reference(arg)
 }
 
-/// Whether `node` is a reference N or T read whole, in the shapes probed: a range or cell, an
+/// Whether `node` is a reference N reads whole, in the shapes probed: a range or cell, an
 /// OFFSET of one with number literals for its offsets, or an IF with a number or boolean literal
 /// condition whose arms are such references. A range in a scalar slot (`IF(A1:A2,Z1,Z2)`), an
 /// array constant, an operator or any other call is not (`N(B1:B3*1)` is `#VALUE!` off the
@@ -395,7 +395,7 @@ fn is_value_operation(node: &Node) -> bool {
 /// array-constant-at H3, excel-graph, T-1643). Only the `@` placement changes: a dynamic formula
 /// of that shape still spills.
 pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool {
-    (matches!(kind, Function::N | Function::T)
+    (matches!(kind, Function::N)
         && args
             .first()
             .is_some_and(|arg| reads_reference_whole(kind, arg)))
