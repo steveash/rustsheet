@@ -3,7 +3,7 @@ id: T-1728
 title: "A legacy N or T reads a range argument as a reference, with no @"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
