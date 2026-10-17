@@ -3,7 +3,7 @@ id: T-1774
 title: "Move the IS*, ISEVEN/ISODD, ERROR.TYPE, ENCODEURL and FIELDVALUE lifts (lifted_arg, parity_predicate) onto the SPEC-0011 driver"
 milestone: M9
 lane: quality
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
