@@ -1735,8 +1735,19 @@ Ours (T-1719): a workbook-level registry (`CallNameSpellings`, lowercase name �
 every stored formula's free callee the registered spelling, on load in sheet and shared-formula
 order and on each edit; a callee bound by an enclosing LET or LAMBDA takes none and prints lowercase
 as before. The harness sets a spec case's cells row by row so the first-met order matches the xlsx.
-Unprobed (T-1756): calls of defined names and LET/LAMBDA-bound callees typed in another case, unknown
-names used as values, cross-sheet order, non-ASCII case folding, re-spelling after edits.
-Evidence: probes/unknown-function-name-spelling.
+Reach (excel-graph, 2026-10-17, T-1756, probes/unknown-function-name-reach):
+- A call of a defined LAMBDA name prints the defined name's spelling, not the first typed one:
+  `OtherFn` defined, `=otherfn(1)` then `=OTHERFN(1)` both print `=OtherFn(1)`. Ours prints the first typed spelling (T-1763).
+- A callee bound by an enclosing LET or LAMBDA prints the binding's spelling
+  (LET, whatever case the call used: `=LET(Gg,LAMBDA(x,x*2),gG(3))` prints `Gg(3)`; LAMBDA, same-case call only probed:
+  `=LAMBDA(Hh,Hh(1))(LAMBDA(x,x))` keeps `Hh`). Ours prints lowercase (T-1761).
+- An unknown name used as a value shares the table with unknown callees, in either order: `=Qux+1` then
+  `=qux(1)` prints `=Qux(1)`; `=wib(1)` then `=Wib+1` prints `=wib+1`. Ours keeps values out of the table (T-1760).
+- Cross-sheet: the first spelling in sheet order wins (`=Zed(1)` on Sheet1, `=ZED(1)`/`=zed(2)` on Sheet2 print
+  `Zed`; `=MMM(1)` on Sheet1 beats `=Mmm(1)` on Sheet2). Ours matches.
+- Non-ASCII: Ä/ä and É/é fold (`=ÄBC(1)` then `=äbc(1)` prints `=ÄBC(1)`), and ß folds with SS: `=straße(1)` then
+  `=STRASSE(1)` prints `=straße(1)`. Ours folds simple case only (T-1762).
+Unprobed: re-spelling after edits (edit order, deleting the first user; needs the sheet_ops replay, T-1608).
+Evidence: probes/unknown-function-name-spelling, probes/unknown-function-name-reach.
 Status: VERIFIED (excel-graph)
-Tasks: T-1719
+Tasks: T-1719, T-1756, T-1760, T-1761, T-1762, T-1763
