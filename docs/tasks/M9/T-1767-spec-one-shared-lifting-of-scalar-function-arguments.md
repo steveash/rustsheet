@@ -20,31 +20,30 @@ Owner-directed work (2026-10-17): array lifting of scalar arguments is the large
 ## Acceptance criteria
 - [x] docs/specs/SPEC-0011-scalar-argument-lifting.md: the Excel rules with evidence (which parameters lift over arrays, over ranges, or are taken whole; result shape and broadcasting of mismatched sizes, #N/A padding; error per element vs whole result; the ATP functions that refuse ranges), an inventory of today's lifting helpers, the shared design (per-function argument-kind table, one driver, bounded by check_array_size before any element is computed), migration of the existing helpers, and an ordered rollout of S/M tasks.
 - [x] T-1290, T-1372, T-1383 (and T-1236, T-1241, T-1271 where they fit) get `depends_on` on the implementation task and a Context line pointing to the spec; new tasks filed for the rollout with scripts/tasks.py.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing the families (T-1290, T-1372, T-1383 and the rollout tasks).
 
 ## Outcome
-- docs/specs/SPEC-0011-scalar-argument-lifting.md. The design:
-  - `functions/arg_kinds.rs` gives each parameter one of `Lift` (arrays and ranges), `LiftArrays` (Analysis ToolPak: arrays only, a multi-cell range is `#VALUE!` with no intersection), `Whole` or `WholeByCaller`. Static analysis derives its `Signature`, the static shape of a call and the legacy `@` from that table.
-  - `functions/util/lift.rs` holds the driver. It is `lift_with_cost` moved and generalized: it reads every argument once, broadcasts with `bcast_get` and `MISSING` (#N/A padding), and checks `check_array_size` and the cell-visit cap before any element. Then it calls a scalar kernel over values per element.
-  - The spec inventories the nine existing lifting helpers and says how each one moves onto the driver.
-- Probes (excel-graph, 2026-10-17): probes/scalar-lift-shapes, -b and -c (111 cells), recorded in docs/excel-semantics/arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule", with pointers in financial.md, engineering.md, dates.md and references.md. New findings:
-  - ATP functions refuse a range in any argument, also on its own rows.
-  - With an array next to the range, the call lifts over the array and every element is `#VALUE!`.
-  - A legacy formula puts no `@` on an ATP argument's bare range (`=EDATE(A1:A60,1)` is `#VALUE!` on any row), but does put one on an operation on the range.
-  - BITAND's later argument lifts over a range.
-  - The shapes are padded with `#N/A` and the errors are per element, as for the operators.
-  - The 90 failing cells are in eval/baseline/probes.txt.
-- Found a directive-5 hole: `broadcast_text` has no `check_array_size` (`ROWS(LEFT(A1:A2000,COLUMN(A1:ALL1)))` builds 2M cells). Filed as T-1771 (P0).
+- docs/specs/SPEC-0011-scalar-argument-lifting.md, revised after the five-reviewer round on PR #987. The design:
+  - A table in `functions/lift/kinds.rs` gives each parameter one of `Lift`, `LiftArrays` (Analysis ToolPak: arrays lift, a multi-cell range is `#VALUE!` with no intersection), `LiftArraysRangeWhole` (the D-functions' criteria), `Whole` or `WholeByCaller`, and each function a `KernelWork`.
+  - The table wins: static analysis derives its signatures, static shapes and legacy `@` from it, and a test forbids old hand-written arms for table functions. The catalog's `lift: arrays` is derived from it.
+  - The driver is in `functions/lift/driver.rs`. It is `lift_with_cost` moved (T-1784) and generalized (T-1770):
+    - it reads every argument once, in a non-generic phase with an inline buffer, so an unlifted call has no heap and no grid machinery;
+    - it bounds input cells, output cells (`check_array_size`) and kernel work (`LiftCost`, including `Prepared`) before any element;
+    - it calls a borrowing scalar kernel per element (`&mut dyn FnMut`), in place when only one argument is a grid.
+  - The spec inventories all existing lifting code: a migration task for each piece, or a non-goal with its reason. A final grep check is in T-1775.
+- Probes (excel-graph, 2026-10-17): probes/scalar-lift-shapes, -b and -c (111 cells), recorded in docs/excel-semantics/arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule", with pointers in financial.md, engineering.md, dates.md and references.md. Each rule names the cells it rests on. The unprobed later ATP arguments, element values and precedence cases are listed and go to T-1777. The 90 failing cells are in eval/baseline/probes.txt. The counts in the spec are a snapshot (2026-10-17, ea76d91f).
+- Directive-5 holes found:
+  - `broadcast_text` has no array-size bound (T-1771, P0).
+  - EXPAND, WRAPROWS, WRAPCOLS and MMULT allocate without `check_array_size` (T-1786, P0). HSTACK/VSTACK and TEXTSPLIT have the same hole (T-1780, T-1781, filed by the T-1771 work).
 - Rollout:
-  0. T-1771.
-  1. T-1770: the driver, the table, static analysis, and EDATE, EOMONTH, WEEKNUM and YEARFRAC as first consumers.
-  2. In parallel: T-1236 (rescoped to WORKDAY and NETWORKDAYS), T-1372, T-1290 (rescoped to the all-scalar stat functions), T-1772 (stat k/x arguments over a data array), T-1383.
+  0. T-1771, T-1780, T-1781, T-1786.
+  1. T-1784 (pure move), then T-1770 (table, hooks, EDATE, EOMONTH, WEEKNUM, YEARFRAC).
+  2. In parallel: T-1236, T-1372, T-1290, T-1772 (the `Whole` + `Prepared` consumer), T-1383.
   3. T-1241, T-1271, T-1389.
-  4. The old helpers: T-1773, T-1774, T-1775.
-  5. T-1776: catalog cross-check, `lift: arrays`, metamorphic test.
-  6. T-1777: probe the open questions.
-- Checks: `make hygiene`, `make typos`, `tasks.py validate`, `rustsheet-eval check` and `evidence-floor` pass. The reviewers have not run yet.
-
+  4. The old helpers: T-1773, T-1785, T-1774, T-1775 (last, with the grep check), T-1787.
+  5. T-1776: derived catalog key, mapping, kernel-work and metamorphic checks.
+  6. T-1777: open probes.
+- Review: security, architecture, quality, excel-fidelity and performance all approved on the second round (PR #987); their minor notes are folded in.
