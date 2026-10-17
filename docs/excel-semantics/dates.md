@@ -382,8 +382,8 @@ Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE a
 DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. EDATE, EOMONTH, WEEKNUM, WORKDAY,
 WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL and YEARFRAC lift over an array literal in a date, count, return type or
 basis argument (T-1236, `lift_array_args`): the scalar function runs once per broadcast element, a multi-cell range
-stays `#VALUE!`. A WORKDAY.INTL or NETWORKDAYS.INTL element whose `weekend` is itself a range or array has no single
-value and is `#VALUE!` (unprobed). The lifted day walkers are bounded by `MAX_LIFTED_CELL_VISITS` (DEVIATION, arrays.md "GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap"; Excel
+stays `#VALUE!`. A lifted date together with a lifted `weekend` in WORKDAY.INTL or NETWORKDAYS.INTL is `#N/IMPL!`
+(unprobed, T-1784; Excel presumably broadcasts both). Mismatched-shape arrays follow the operator rule, also unprobed. The lifted day walkers are bounded by `MAX_LIFTED_CELL_VISITS` (DEVIATION, arrays.md "GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap"; Excel
 has no such limit).
 In a 1904 workbook DATEDIF reads date text as DATEVALUE does (from
 1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330). It counts the days on the 1904 calendar since T-1416 (`DATEDIF(0,1000,"ym")` = 8, probes/date-system-1904-readers A11).

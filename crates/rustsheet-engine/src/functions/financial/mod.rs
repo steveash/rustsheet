@@ -1797,7 +1797,7 @@ impl Model {
             Node::NumberKind(settlement_serial as f64),
             basis_node,
         ];
-        match self.fn_yearfrac(&yearfrac_args, cell) {
+        match self.yearfrac_scalar(&yearfrac_args, cell) {
             CalcResult::Number(yf) => CalcResult::Number(par * rate * yf),
             error => error,
         }
@@ -1815,7 +1815,7 @@ impl Model {
             Node::NumberKind(end as f64),
             Node::NumberKind(basis),
         ];
-        match self.fn_yearfrac(&args, cell) {
+        match self.yearfrac_scalar(&args, cell) {
             CalcResult::Number(yf) => Ok(yf),
             error => Err(error),
         }

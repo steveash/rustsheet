@@ -16,7 +16,11 @@ impl Model {
         self.lift_array_args(args, &[0, 1, 2], cell, |_| 1, Self::yearfrac_scalar)
     }
 
-    fn yearfrac_scalar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+    pub(crate) fn yearfrac_scalar(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }

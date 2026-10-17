@@ -32,3 +32,35 @@ fn array_literal_lifts_and_range_is_value_error() {
     assert_eq!(model._get_text("B8"), *"#VALUE!");
     assert_eq!(model._get_text("B9"), *"#VALUE!");
 }
+
+#[test]
+fn huge_elements_and_holiday_ranges_are_bounded() {
+    let mut model = new_empty_model();
+    model._set("B1", "=INDEX(NETWORKDAYS({1E+300},1),1)");
+    model._set("B2", "=INDEX(WORKDAY(1,{1E+300}),1)");
+    model._set(
+        "B3",
+        "=INDEX(NETWORKDAYS(SEQUENCE(1000000),45000,A1:A1000),1)",
+    );
+    for row in 1..=1000 {
+        model._set(&format!("A{row}"), "45000");
+    }
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), *"#NUM!");
+    assert_eq!(model._get_text("B2"), *"#NUM!");
+    assert_eq!(model._get_text("B3"), *"#ERROR!");
+}
+
+#[test]
+fn text_elements_and_reference_results_keep_their_path() {
+    let mut model = new_empty_model();
+    model._set("A1", "45000");
+    model._set("A2", "45031");
+    model._set("B1", r#"=INDEX(EDATE({"a""b";45031},1),1)"#);
+    model._set("B2", "=ISREF(TAKE(A1:A2,2))");
+    model._set("B3", "=INDEX(NETWORKDAYS.INTL({45000;45031},45040,1),2)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), *"#VALUE!");
+    assert_eq!(model._get_text("B2"), *"TRUE");
+    assert_eq!(model._get_text("B3"), *"6");
+}

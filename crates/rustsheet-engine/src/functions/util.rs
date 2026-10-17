@@ -812,6 +812,20 @@ impl Function {
     }
 }
 
+/// An evaluated scalar as a literal argument node, so the scalar path reads it like a typed
+/// value; `None` for a reference or an array.
+pub(crate) fn value_node(value: &CalcResult) -> Option<Node> {
+    Some(match value {
+        CalcResult::Number(number) => Node::NumberKind(*number),
+        CalcResult::Boolean(boolean) => Node::BooleanKind(*boolean),
+        // `StringKind` holds the formula spelling, with `"` doubled.
+        CalcResult::String(text) => Node::StringKind(text.replace('"', "\"\"")),
+        CalcResult::Error { error, .. } => Node::ErrorKind(error.clone()),
+        CalcResult::EmptyCell | CalcResult::EmptyArg => Node::EmptyArgKind,
+        _ => return None,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::near_integer_count;
