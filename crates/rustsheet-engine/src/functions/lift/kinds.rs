@@ -114,6 +114,10 @@ const DATA_THEN_1_OF_2: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift, Lif
 const LIFT_1: ArgKinds = ArgKinds::fixed(1, &[Lift], Constant);
 /// ISEVEN and ISODD: one argument, lifted over arrays only.
 const ARRAYS_1: ArgKinds = ArgKinds::fixed(1, &[LiftArrays], Constant);
+/// `ADDRESS(row_num, column_num, [abs_num], [a1], [sheet_text])`: every argument lifts.
+const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Constant);
+/// `HYPERLINK(link_location, [friendly_name])`: both arguments lift.
+const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
 
 /// The functions of [`Function::arg_kinds`], as a pattern: the arm of an exhaustive `match` on a
 /// `Function` that has no hand-written arm because the table derives it (static analysis).
@@ -149,6 +153,8 @@ macro_rules! lifting_table_functions {
             | Function::QuartileInc
             | Function::QuartileExc
             | Function::Trimmean
+            | Function::Address
+            | Function::Hyperlink
     };
 }
 pub(crate) use lifting_table_functions;
@@ -206,6 +212,14 @@ impl Function {
             Function::PercentrankCompat | Function::PercentrankInc | Function::PercentrankExc => {
                 Some(&DATA_THEN_1_OF_2)
             }
+            // ADDRESS's row_num, column_num and abs_num, and HYPERLINK's link_location and
+            // friendly_name, lift over a range and an array (probes/lookup-argument-modes F1:G4,
+            // F11:G13; docs/excel-semantics/lookup.md "Lookup and reference function argument
+            // modes"); so do ADDRESS's a1 (gen-m7/f68fafa0ca2eba26 A7) and HYPERLINK's
+            // friendly_name over an array (gen-m7/2bb922eef72e785e A22). ADDRESS's sheet_text is
+            // unprobed and follows SPEC-0011's rule for scalar parameters.
+            Function::Address => Some(&ADDRESS),
+            Function::Hyperlink => Some(&LIFT_1_OF_2),
             _ => None,
         }
     }

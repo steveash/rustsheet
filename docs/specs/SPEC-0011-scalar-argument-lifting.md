@@ -9,6 +9,7 @@
   - The old helpers: T-1773, T-1785, T-1774, T-1775, T-1787.
   - The catalog check and the open probes: T-1776, T-1777.
   - Findings of T-1777: T-1800, T-1801, T-1802, T-1803.
+  - Split from T-1241: T-1810 (the reference-valued lifts of OFFSET, INDIRECT and TRIMRANGE; CHOOSE onto the driver).
   - The order is under Rollout.
 
 ## Problem
