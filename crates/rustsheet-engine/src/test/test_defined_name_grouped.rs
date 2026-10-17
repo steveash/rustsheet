@@ -63,3 +63,18 @@ fn cell_shaped_call_survives_a_sheet_rename() {
     assert_eq!(model._get_formula("A8"), "=AB1(1)");
     assert_eq!(model._get_text("A8"), "#REF!");
 }
+
+// A formula that does not parse is stored as its A1 text and re-parsed in R1C1 mode after a
+// structural edit; the cell-shaped callee rule is A1 grammar only, so `Ab1` there must not be
+// read as the R1C1 offset `R[1]C[28]` (T-1758).
+#[test]
+fn unparsed_cell_shaped_call_keeps_its_text_after_a_sheet_rename() {
+    let mut model = new_empty_model();
+    model._set("A8", "=Ab1 (1)");
+    model.evaluate();
+    assert_eq!(model._get_formula("A8"), "=Ab1 (1)");
+    model.rename_sheet("Sheet1", "Other").unwrap();
+    model.evaluate();
+    // Not `=AC9(1)`. The dropped space is older than T-1758 (main prints the same; T-1805).
+    assert_eq!(model._get_formula("A8"), "=Ab1(1)");
+}

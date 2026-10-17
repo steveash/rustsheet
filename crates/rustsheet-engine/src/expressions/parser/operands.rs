@@ -424,9 +424,11 @@ impl Parser {
         }
         // A callee spelled like a cell, and no function (`LOG10` stays one), is a call of that cell:
         // `#REF!` like any called reference (probes/unknown-function-name-spelling A8, T-1758).
-        // `$` shapes are unprobed, so they stay names.
-        if let Some(cell) =
-            parse_reference_a1(&name.to_ascii_uppercase()).filter(|_| !name.contains('$'))
+        // `$` shapes are unprobed, so they stay names. A1 grammar only: in R1C1 mode (stored
+        // forms, and the raw A1 text of a formula that did not parse) `AB1` is no cell, and reading
+        // it as one would turn A1 coordinates into R1C1 offsets.
+        if let Some(cell) = parse_reference_a1(&name.to_ascii_uppercase())
+            .filter(|_| self.lexer.is_a1_mode() && !name.contains('$'))
         {
             let callee = self.reference_operand(None, cell.row, cell.column, false, false);
             return Node::LambdaCallKind {

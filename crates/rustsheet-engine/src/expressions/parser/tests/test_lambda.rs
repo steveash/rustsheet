@@ -349,6 +349,9 @@ fn test_cell_shaped_callee_is_call_of_cell() {
     let node = p.parse("Ab1(1)", &cell());
     assert!(matches!(node, Node::LambdaCallKind { .. }), "{node:?}");
     assert_eq!(to_english_localized_string(&node, &cell()), "AB1(1)");
+    // The last cell of the grid is still a cell.
+    let node = p.parse("xfd1048576(1)", &cell());
+    assert!(matches!(node, Node::LambdaCallKind { .. }), "{node:?}");
     let node = p.parse("LOG10(100)", &cell());
     assert!(matches!(node, Node::FunctionKind { .. }), "{node:?}");
     // Excel's A1 grammar is ASCII: `ß1` must not upper-case into the cell SS1.
