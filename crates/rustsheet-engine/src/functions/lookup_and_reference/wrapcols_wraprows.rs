@@ -5,6 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    limits::check_array_size,
     model::Model,
 };
 
@@ -27,17 +28,10 @@ impl Model {
             Err(e) => return e,
         };
 
-        let wrap_count = match self.get_number(&args[1], cell) {
-            Ok(n) => n as usize,
+        let wrap_count = match self.get_wrap_count(args, flat.len(), cell) {
+            Ok(n) => n,
             Err(e) => return e,
         };
-        if wrap_count < 1 {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "wrap_count must be >= 1".to_string(),
-            );
-        }
 
         let pad = match self.get_pad_with(args, cell) {
             Ok(p) => p,
@@ -46,6 +40,11 @@ impl Model {
 
         let n = flat.len();
         let num_cols = n.div_ceil(wrap_count);
+        // The padded shape is wrap_count rows: refuse one above the array limit before
+        // allocating it (DEVIATION, arrays.md "Array results above 1,048,576 cells"; T-1786).
+        if let Some((error, message)) = check_array_size(wrap_count, num_cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
 
         let mut result: Vec<Vec<ArrayNode>> = vec![Vec::with_capacity(num_cols); wrap_count];
         for (i, val) in flat.into_iter().enumerate() {
@@ -79,22 +78,23 @@ impl Model {
             Err(e) => return e,
         };
 
-        let wrap_count = match self.get_number(&args[1], cell) {
-            Ok(n) => n as usize,
+        let wrap_count = match self.get_wrap_count(args, flat.len(), cell) {
+            Ok(n) => n,
             Err(e) => return e,
         };
-        if wrap_count < 1 {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "wrap_count must be >= 1".to_string(),
-            );
-        }
 
         let pad = match self.get_pad_with(args, cell) {
             Ok(p) => p,
             Err(e) => return e,
         };
+
+        // The padded shape is wrap_count columns: refuse one above the array limit before
+        // allocating a row (T-1786, as WRAPCOLS).
+        if let Some((error, message)) =
+            check_array_size(flat.len().div_ceil(wrap_count), wrap_count)
+        {
+            return CalcResult::new_error(error, cell, message);
+        }
 
         let mut result: Vec<Vec<ArrayNode>> = Vec::new();
         let mut chunk = Vec::with_capacity(wrap_count);
@@ -140,6 +140,26 @@ impl Model {
             data.into_iter().map(|mut r| r.remove(0)).collect()
         };
         Ok(flat)
+    }
+
+    /// The `wrap_count` argument (2nd arg of WRAPCOLS/WRAPROWS) for a vector of `len` values: at
+    /// least 1, and a count above the vector's length does not pad, it is the length
+    /// (probes/dynamic-array-reshape-and-isomitted, arrays.md "WRAPROWS and WRAPCOLS"; T-1786).
+    fn get_wrap_count(
+        &mut self,
+        args: &[Node],
+        len: usize,
+        cell: CellReferenceIndex,
+    ) -> Result<usize, CalcResult> {
+        let wrap_count = self.get_number(&args[1], cell)? as usize;
+        if wrap_count < 1 {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "wrap_count must be >= 1".to_string(),
+            ));
+        }
+        Ok(wrap_count.min(len.max(1)))
     }
 
     /// Parse the optional `pad_with` argument (3rd arg of WRAPCOLS/WRAPROWS).
