@@ -283,8 +283,11 @@ impl Model {
     }
 
     /// A LAMBDA's result as a value: a reference it returns (`LAMBDA(v,v)` over a range cell)
-    /// is read, so MAP, SCAN and REDUCE never carry one into their output. A one-cell reference
-    /// is read directly, without building a one-element array.
+    /// is read, so MAP and SCAN never carry one into their output. A one-cell reference is read
+    /// directly, without building a one-element array. A multi-cell reference is no element:
+    /// both callers show it as `#VALUE!`, so only its existing cells are read, for what reading
+    /// does (a cycle through the range, the reads a spill checks), and no array is built.
+    /// Building one made every call cost the range's full size (T-1769 fuzz timeout).
     pub(super) fn lambda_result_value(
         &mut self,
         result: CalcResult,
@@ -302,13 +305,40 @@ impl Model {
                     value => value,
                 }
             }
-            CalcResult::Range { .. } => match self.result_to_array(result, cell) {
-                Ok(data) if data.len() == 1 && data[0].len() == 1 => {
-                    array_node_to_calc_result(&data[0][0], cell)
+            // A one-cell range on two sheets reads as its first sheet's cell.
+            CalcResult::Range { left, right }
+                if left.row == right.row && left.column == right.column =>
+            {
+                self.lambda_result_value(CalcResult::Range { left, right: left }, cell)
+            }
+            CalcResult::Range { left, right } => {
+                // Read as `evaluate_range` reads it, its size limit and then its first sheet,
+                // but over the cells that exist only, as a union walks an area: the blank rest is
+                // recorded as read empty in one piece. Every value it could hold gives the same
+                // element, and a dense walk made each call cost the range's height.
+                if let Some((error, message)) = check_range_size(&left, &right) {
+                    return CalcResult::new_error(error, cell, message);
                 }
-                Ok(data) => CalcResult::Array(data),
-                Err(e) => e,
-            },
+                let area = Range {
+                    left,
+                    right: CellReferenceIndex {
+                        sheet: left.sheet,
+                        ..right
+                    },
+                };
+                let read = self.for_each_position_in_area(&area, true, cell, &mut |model, at| {
+                    model.evaluate_cell(at);
+                    Ok(())
+                });
+                match read {
+                    Ok(()) => CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "A range is not an element".to_string(),
+                    ),
+                    Err(error) => error,
+                }
+            }
             other => other,
         }
     }
