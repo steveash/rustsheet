@@ -370,8 +370,11 @@ ACCRINT, ACCRINTM, AMORDEGRC, AMORLINC, the COUP* family, CUMIPMT, CUMPRINC, DIS
 EFFECT, FVSCHEDULE's principal, INTRATE, MDURATION, NOMINAL, ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD, PRICE,
 PRICEDISC, PRICEMAT, RECEIVED, TBILLEQ, TBILLPRICE, TBILLYIELD, XIRR's guess, XNPV's rate, YIELD, YIELDDISC and YIELDMAT
 are `#VALUE!` when their first scalar argument is a multi-cell range. Of the later scalars only EFFECT's npery was probed over a range: `ROWS(EFFECT(0.1,D1:D60))` is
-`#VALUE!`, while the core `ROWS(PMT(0.1,D1:D60,100))` is 60 (probes/scalar-lift-shapes H12, H14, T-1767). Other later
-ATP scalars (PRICE's and COUP*'s frequency, ACCRINT's basis, ...) are unverified (T-1777). Next to an array, the range
+`#VALUE!`, while the core `ROWS(PMT(0.1,D1:D60,100))` is 60 (probes/scalar-lift-shapes H12, H14, T-1767). The other
+later ATP scalars sampled are refused as well (probes/scalar-lift-open-a Y1-Y7, Y16-Y18, T-1777, scalar controls Z1-Z7, Z16-Z18):
+`ROWS(F(..))` is `#VALUE!` for PRICE's `frequency` and `basis`, COUPDAYS's and COUPNUM's `frequency`, COUPDAYS's `basis`,
+ACCRINT's `frequency` and `basis`, and DOLLARDE's and DOLLARFR's `fraction` over a range. An error scalar beside a
+range follows the function's own check order (ACCRINTM: `NA()` before the range is `#N/A`, after it `#VALUE!`; probes/scalar-lift-open-d W8-W15). Next to an array, the range
 makes every probed element `#VALUE!` (`EFFECT({0.1;0.2},M1:M60)`). See arrays.md "Scalar arguments lift: shapes,
 element errors, and the Analysis ToolPak range rule".
 NPV's values work like an aggregate. A range skips text, booleans and blanks: `NPV(0.1,L1:L8)` over

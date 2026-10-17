@@ -1,0 +1,43 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1796 TEXTBEFORE/TEXTAFTER match_mode 1 with non-ASCII text whose lowercase changes length (U+0130, U+212A, U+1E9E), real case folding (Ä/ä, ß) and final sigma",
+  "tags": [
+    "M7",
+    "text",
+    "dynamic-arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aİbİc\",\"i\",1,1),\"ERR\"),1)",
+        "A2": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"aİbİc\",\"i\",1,1),\"ERR\"),1)",
+        "A3": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aİbİc\",\"İ\",1,1),\"ERR\"),1)",
+        "A4": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aibic\",\"İ\",1,1),\"ERR\"),1)",
+        "A5": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aKbkc\",\"k\",1,1),\"ERR\"),1)",
+        "A6": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"aKbkc\",\"k\",1,1),\"ERR\"),1)",
+        "A7": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"akbkc\",\"K\",1,1),\"ERR\"),1)",
+        "A8": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aßbSSc\",\"ss\",1,1),\"ERR\"),1)",
+        "A9": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"assbẞc\",\"ß\",1,1),\"ERR\"),1)",
+        "A10": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aẞbssc\",\"ss\",1,1),\"ERR\"),1)",
+        "A11": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"ÄxäyÄ\",\"ä\",2,1),\"ERR\"),1)",
+        "A12": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"ÄxäyÄ\",\"ä\",2,1),\"ERR\"),1)",
+        "A13": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"İİİ,a\",\",\",1,1),\"ERR\"),1)",
+        "A14": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"İİİ,a\",\",\",1,1),\"ERR\"),1)",
+        "A15": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"İİİ,a,b\",\",\",-1,1),\"ERR\"),1)",
+        "A16": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"İİİ,a,b\",\",\",-1,1),\"ERR\"),1)",
+        "A17": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aΟΣb\",\"ος\",1,1),\"ERR\"),1)",
+        "A18": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"aΟΣb\",\"ς\",1,1),\"ERR\"),1)",
+        "A19": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aοςb\",\"Σ\",1,1),\"ERR\"),1)",
+        "A20": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aοςb\",\"ς\",1,1),\"ERR\"),1)",
+        "A21": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aοσb\",\"ς\",1,1),\"ERR\"),1)",
+        "A22": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aοσb\",\"Σ\",1,1),\"ERR\"),1)",
+        "A23": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aοςb\",\"σ\",1,1),\"ERR\"),1)",
+        "A24": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aΟΣb\",\"σ\",1,1),\"ERR\"),1)",
+        "A25": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aΟΣ\",\"ς\",1,1),\"ERR\"),1)"
+      }
+    }
+  ],
+  "expected": {}
+}
