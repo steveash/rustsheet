@@ -746,9 +746,8 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        // Errors come in the order DATEDIF had before it lifted: the dates' own errors, then
-        // #NUM! of the dates, then the unit's error (UNVERIFIED, dates.md "DATEDIF and DAYS360 error
-        // order", T-1430).
+        // Errors keep their pre-lift order: the dates' own, #NUM! of a reversed pair, the unit's, then
+        // out-of-calendar #NUM! (T-1355; UNVERIFIED, dates.md "DATEDIF and DAYS360 error order").
         let unit = self.get_string(&args[2], cell).map(|s| s.to_uppercase());
         // Both dates lift over a range or array (probes/date-argument-modes F5:F8).
         let operands = args[..2]
@@ -804,9 +803,11 @@ impl Model {
         if end_serial < start_serial {
             return Err(Error::NUM);
         }
+        // A unit error beats an out-of-calendar start date (dates.md "DATEDIF argument errors before date checks").
+        let unit = unit?;
         let start = date_system.date_of_serial(start_serial).ok_or(Error::NUM)?;
         let end = date_system.date_of_serial(end_serial).ok_or(Error::NUM)?;
-        match unit? {
+        match unit {
             "Y" => {
                 let mut years = end.year() - start.year();
                 if (end.month(), end.day()) < (start.month(), start.day()) {
@@ -832,7 +833,6 @@ impl Model {
                 Ok(f64::from((months % 12).abs()))
             }
             "YD" => {
-                // Helper to create a date or early-return with #NUM! if impossible
                 let make_date = |y: i32, m: u32, d: u32| -> Result<chrono::NaiveDate, Error> {
                     chrono::NaiveDate::from_ymd_opt(y, m, d).ok_or(Error::NUM)
                 };
