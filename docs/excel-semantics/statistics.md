@@ -750,3 +750,12 @@ Evidence: probes/regression-trend (excel-graph, 2026-10-16, T-1620).
 Ours: differs for the empty arguments, array constants, single points, zero-variance x and the text/error inputs.
 Status: VERIFIED (web)
 Tasks: T-1726 (overlaps T-1402)
+
+## Order-statistic and deviation functions: edge behaviour (T-1622)
+Rule: `AVEDEV(1,)` and `DEVSQ(1,)` are 0.5, so an empty argument counts as 0 (this settles the "Open" note in
+coercion.md: they do not ignore it); `QUARTILE(TRUE,1)` and `QUARTILE.INC(TRUE,1)` are 1 (a typed boolean is a
+one-element array); DEVSQ is not a naive sum of squares about the mean: `DEVSQ(1E15,1E15+1)` is exactly 0.5 and
+`DEVSQ(0.1,0.2,0.3)` is 0.019999999999999997 (probes/stat-order-floor-batch A274, A299, A102, A128, A294, A295;
+excel-graph, 2026-10-17). Remaining cells of the probe (MODE/MODE.MULT shape, QUARTILE/PERCENTILE/PERCENTRANK
+edges) match the engine.
+Status: VERIFIED (excel-graph). Tasks: T-1748, T-1749

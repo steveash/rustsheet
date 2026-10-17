@@ -3,7 +3,7 @@ id: T-1622
 title: "Probe MODE, MODE.MULT, MODE.SNGL, QUARTILE*, PERCENTILE, PERCENTRANK, AVEDEV and DEVSQ to the evidence floor"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -31,3 +31,9 @@ no repeated value (#N/A), ties and their order, MODE.MULT spill shape for row vs
 
 ## Out of scope
 - Engine fixes for the mismatches found (filed as tasks).
+
+## Outcome
+Added probes/stat-order-floor-batch (300 cells, excel-graph). MODE, MODE.SNGL, MODE.MULT, QUARTILE,
+QUARTILE.INC/EXC, PERCENTILE, PERCENTRANK, AVEDEV and DEVSQ are now over the floor: below-floor 39 → 34.
+11 new failing cells recorded; fix tasks T-1748 (empty arg counted as 0, typed-boolean QUARTILE) and T-1749
+(DEVSQ accumulation). Quirks in docs/excel-semantics/statistics.md.
