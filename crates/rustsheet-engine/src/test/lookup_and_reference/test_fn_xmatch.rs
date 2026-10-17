@@ -285,8 +285,9 @@ fn test_xmatch_whole_row_and_column_search_the_used_range() {
 
 // The blank tail of a whole-column/row search vector is virtual (T-0127): every
 // match and search mode must see what a full walk sees, wherever the used area
-// ends. The pinned values below are the engine's full-walk values (an empty
-// cell compares as 0), not Excel evidence: TODO(T-0126).
+// ends. The first loop compares the engine with itself across used areas (an empty
+// cell compares as 0), so it pins no Excel value; the Excel-backed ones are the
+// asserts below (probes/lookup-whole-column-blank-tail, T-0126).
 #[test]
 fn test_xmatch_whole_column_and_row_independent_of_used_area() {
     let data = [
