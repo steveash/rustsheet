@@ -834,8 +834,6 @@ F	probes/asin-argument-sweep.case.json	Sheet1!B18
 F	probes/asin-argument-sweep.case.json	Sheet1!B201
 F	probes/asin-argument-sweep.case.json	Sheet1!B208
 F	probes/asin-argument-sweep.case.json	Sheet1!B211
-F	probes/asin-argument-sweep.case.json	Sheet1!B220
-F	probes/asin-argument-sweep.case.json	Sheet1!B221
 F	probes/asin-argument-sweep.case.json	Sheet1!B228
 F	probes/asin-argument-sweep.case.json	Sheet1!B232
 F	probes/asin-argument-sweep.case.json	Sheet1!B240
