@@ -263,6 +263,61 @@ def newton_solve(p: float, x: float, *, relative_tol: float) -> float:
     return x
 
 
+# W. J. Cody's rational Chebyshev normal CDF (1969, as R's pnorm_both, nmath/pnorm.c): the
+# erfc that the T-1758 web research names as the obvious alternative to glibc's.
+CODY_A = [2.2352520354606839287, 161.02823106855587881, 1067.6894854603709582, 18154.981253343561249,
+          0.065682337918207449113]  # fmt: skip
+CODY_B = [47.20258190468824187, 976.09855173777669322, 10260.932208618978205, 45507.789335026729956]
+CODY_C = [0.39894151208813466764, 8.8831497943883759412, 93.506656132177855979, 597.27027639480026226,
+          2494.5375852903726711, 6848.1904505362823326, 11602.651437647350124, 9842.7148383839780218,
+          1.0765576773720192317e-8]  # fmt: skip
+CODY_D = [22.266688044328115691, 235.38790178262499861, 1519.377599407554805, 6485.558298266760755,
+          18615.571640885098091, 34900.952721145977266, 38912.003286093271411, 19685.429676859990727]  # fmt: skip
+CODY_P = [0.21589853405795699, 0.1274011611602473639, 0.022235277870649807, 0.001421619193227893466,
+          2.9112874951168792e-5, 0.02307344176494017303]  # fmt: skip
+CODY_Q = [1.28426009614491121, 0.468238212480865118, 0.0659881378689285515, 0.00378239633202758244,
+          7.29751555083966205e-5]  # fmt: skip
+_CODY_SPLIT = 0.67448975  # qnorm(3/4); Cody's own was 0.66291
+_CODY_EPS = 2.220446049250313e-16 * 0.5
+_ONE_OVER_SQRT_2PI = 0.398942280401432677939946059934
+
+
+def _cody_tail(x: float, temp: float) -> float:
+    """exp(-x^2/2)*temp with x^2 split at sixteenths, as Cody does to keep exp's argument exact."""
+    xsq = math.trunc(x * 16.0) / 16.0
+    delta = (x - xsq) * (x + xsq)
+    return math.exp(-xsq * xsq * 0.5) * math.exp(-delta * 0.5) * temp
+
+
+def cody_cdf(x: float) -> float:
+    """Phi(x) by Cody's three rational approximations (|x| <= 0.674, <= sqrt(32), beyond)."""
+    y = abs(x)
+    if y <= _CODY_SPLIT:
+        xnum = xden = 0.0
+        if y > _CODY_EPS:
+            xsq = x * x
+            xnum, xden = CODY_A[4] * xsq, xsq
+            for i in range(3):
+                xnum = (xnum + CODY_A[i]) * xsq
+                xden = (xden + CODY_B[i]) * xsq
+        return 0.5 + x * (xnum + CODY_A[3]) / (xden + CODY_B[3])
+    if y <= math.sqrt(32.0):
+        xnum, xden = CODY_C[8] * y, y
+        for i in range(7):
+            xnum = (xnum + CODY_C[i]) * y
+            xden = (xden + CODY_D[i]) * y
+        cum = _cody_tail(y, (xnum + CODY_C[7]) / (xden + CODY_D[7]))
+    else:
+        xsq = 1.0 / (x * x)
+        xnum, xden = CODY_P[5] * xsq, xsq
+        for i in range(4):
+            xnum = (xnum + CODY_P[i]) * xsq
+            xden = (xden + CODY_Q[i]) * xsq
+        temp = (_ONE_OVER_SQRT_2PI - xsq * (xnum + CODY_P[4]) / (xden + CODY_Q[4])) / y
+        cum = _cody_tail(y, temp)
+    return 1.0 - cum if x > 0 else cum
+
+
 def refine(p: float, x: float, halley: bool, cdf: Callable[[float], float] = libm_cdf) -> float:
     """One Newton (or Halley) step on cdf(x) = p."""
     e = cdf(x) - p
@@ -498,7 +553,31 @@ def norm_inv_candidates() -> list[Candidate]:
     return out
 
 
+def norm_s_dist_candidates() -> list[Candidate]:
+    """NORM.S.DIST(x,TRUE): glibc erfc in two argument forms and Cody's rational approximations."""
+
+    def x_arg(fn: Callable[[float], float]) -> Callable[..., float]:
+        return lambda *args: fn(numeric_arg(args[0]))
+
+    return [
+        candidate("0.5*erfc(-x*sqrt(0.5)) (glibc)", x_arg(sqrt_half_cdf), "glibc"),
+        candidate("0.5*erfc(-x/sqrt(2)) (glibc)", x_arg(libm_cdf), "glibc"),
+        candidate("Cody (R pnorm_both)", x_arg(cody_cdf), "Cody"),
+    ]
+
+
 FITS = [
+    Fit(
+        name="norm-s-dist",
+        description="NORM.S.DIST(x,TRUE)/NORMSDIST (T-1040, T-1048, T-1746, T-1758): glibc erfc forms vs Cody",
+        cases=[
+            *_CDF_CASES,
+            "probes-numeric/t1746-norm-s-inv-central",
+            "probes-numeric/t1758-norm-s-inv-roundtrip",
+        ],
+        pattern=_CDF_PATTERN,
+        candidates=norm_s_dist_candidates,
+    ),
     Fit(
         name="norm-s-inv",
         description="NORM.S.INV/NORMSINV/NORM.INV(p,0,1) (T-1006, T-1048): AS 241, Acklam, Moro",

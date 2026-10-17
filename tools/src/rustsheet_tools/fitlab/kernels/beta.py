@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import decimal
 import math
+import sys
 from collections.abc import Callable
 from fractions import Fraction
 from functools import cache
@@ -346,6 +347,146 @@ def best_combination(x: float, a: float, b: float) -> float:
     return 1.0 - v if flip else v
 
 
+# LibreOffice's GetBetaDist (sc/source/core/tool/interpr3.cxx), the closest public relative the
+# T-1758 web research found: the same mean reflection, A&S 26.5.8's continued fraction, the
+# prefactor pdf*x*y for a, b > 1 with p, q < 0.97 (else exp(a ln x + b ln y - lnB)), and a
+# Boost-style Lanczos sum (g = 6.0246800407767296) for Gamma and lnB.
+_LO_NUM = [23531376880.41075968857200767445163675473, 42919803642.64909876895789904700198885093,
+           35711959237.35566804944018545154716670596, 17921034426.03720969991975575445893111267,
+           6039542586.35202800506429164430729792107, 1439720407.311721673663223072794912393972,
+           248874557.8620541565114603864132294232163, 31426415.58540019438061423162831820536287,
+           2876370.628935372441225409051620849613599, 186056.2653952234950402949897160456992822,
+           8071.672002365816210638002902272250613822, 210.8242777515793458725097339207133627117,
+           2.506628274631000270164908177133837338626]  # fmt: skip
+_LO_DEN = [0.0, 39916800.0, 120543840.0, 150917976.0, 105258076.0, 45995730.0, 13339535.0, 2637558.0,
+           357423.0, 32670.0, 1925.0, 66.0, 1.0]  # fmt: skip
+_LO_G = 6.024680040776729583740234375
+_LO_MAX_GAMMA = 171.624376956302
+_LO_MAX_ITER = 50000  # LibreOffice's own loop guard
+_LOG_DBL_MAX = math.log(sys.float_info.max)
+_LOG_DBL_MIN = math.log(sys.float_info.min)
+
+
+def _lo_lanczos(z: float) -> float:
+    if z <= 1.0:
+        num, den = _LO_NUM[12], _LO_DEN[12]
+        for i in range(11, -1, -1):
+            num = num * z + _LO_NUM[i]
+            den = den * z + _LO_DEN[i]
+    else:
+        zi = 1.0 / z
+        num, den = _LO_NUM[0], _LO_DEN[0]
+        for i in range(1, 13):
+            num = num * zi + _LO_NUM[i]
+            den = den * zi + _LO_DEN[i]
+    return num / den
+
+
+def _lo_gamma_helper(z: float) -> float:
+    g = _lo_lanczos(z)
+    zg = z + _LO_G - 0.5
+    half = zg ** (z / 2 - 0.25)
+    g = g * half / math.exp(zg) * half
+    if z <= 20.0 and z == math.floor(z):
+        g = float(math.floor(g + 0.5))  # LibreOffice rounds small integer arguments
+    return g
+
+
+def _lo_gamma(z: float) -> float:
+    if z >= 1.0:
+        return _lo_gamma_helper(z)
+    if z >= 0.5:
+        return _lo_gamma_helper(z + 1) / z
+    return _lo_gamma_helper(z + 2) / (z + 1) / z
+
+
+def _lo_beta(alpha: float, beta_: float) -> float:
+    a, b = (alpha, beta_) if alpha > beta_ else (beta_, alpha)
+    if a + b < _LO_MAX_GAMMA:
+        return _lo_gamma(a) / _lo_gamma(a + b) * _lo_gamma(b)
+    gm = _LO_G - 0.5
+    lanczos = _lo_lanczos(a) / _lo_lanczos(a + b) * _lo_lanczos(b)
+    lanczos *= math.sqrt(((a + b + gm) / (a + gm)) / (b + gm))
+    return math.exp(-a * math.log1p(b / (a + gm)) - b * math.log1p(a / (b + gm)) - gm) * lanczos
+
+
+def _lo_log_beta(alpha: float, beta_: float) -> float:
+    a, b = (alpha, beta_) if alpha > beta_ else (beta_, alpha)
+    gm = _LO_G - 0.5
+    lanczos = _lo_lanczos(a) / _lo_lanczos(a + b) * _lo_lanczos(b)
+    log_lanczos = math.log(lanczos) + 0.5 * (math.log(a + b + gm) - math.log(a + gm) - math.log(b + gm))
+    return -a * math.log1p(b / (a + gm)) - b * math.log1p(a / (b + gm)) - gm + log_lanczos
+
+
+def _lo_pdf(x: float, a: float, b: float) -> float:
+    """GetBetaDistPDF for 0 < x < 1 and a, b > 1 (the only branch GetBetaDist calls it on)."""
+    log_y = math.log1p(-x) if x < 0.1 else math.log(0.5 - x + 0.5)
+    am1, bm1 = (a - 1.0) * math.log(x), (b - 1.0) * log_y
+    lb = _lo_log_beta(a, b)
+    if all(_LOG_DBL_MIN < v < _LOG_DBL_MAX for v in (am1, bm1, lb, am1 + bm1)):
+        return float(x ** (a - 1.0) * (0.5 - x + 0.5) ** (b - 1.0)) / _lo_beta(a, b)
+    return math.exp(am1 + bm1 - lb)
+
+
+def _lo_cont_frac(x: float, a: float, b: float) -> float:
+    a1 = b1 = 1.0
+    b2 = 1.0 - (a + b) / (a + 1.0) * x
+    if b2 == 0.0:
+        a2, fnorm, cf = 0.0, 1.0, 1.0
+    else:
+        a2, fnorm = 1.0, 1.0 / b2
+        cf = a2 * fnorm
+    cfnew, rm = 1.0, 1.0
+    for _ in range(_LO_MAX_ITER):
+        apl2m = a + 2.0 * rm
+        d2m = rm * (b - rm) * x / ((apl2m - 1.0) * apl2m)
+        d2m1 = -(a + rm) * (a + b + rm) * x / (apl2m * (apl2m + 1.0))
+        a1 = (a2 + d2m * a1) * fnorm
+        b1 = (b2 + d2m * b1) * fnorm
+        a2 = a1 + d2m1 * a2 * fnorm
+        b2 = b1 + d2m1 * b2 * fnorm
+        finished = False
+        if b2 != 0.0:
+            fnorm = 1.0 / b2
+            cfnew = a2 * fnorm
+            finished = abs(cf - cfnew) < abs(cf) * sys.float_info.epsilon
+        cf = cfnew
+        rm += 1.0
+        if finished:
+            break
+    return cf
+
+
+def libreoffice_beta_dist(x: float, alpha: float, beta_: float, *, excel_closed_forms: bool = False) -> float:
+    """LibreOffice GetBetaDist; with `excel_closed_forms`, Excel's b = 1 and a = 1 forms instead of
+    LibreOffice's pow(x,a) and -expm1(b*log1p(-x))."""
+    if x <= 0.0:
+        return 0.0
+    if x >= 1.0:
+        return 1.0
+    if excel_closed_forms:
+        special = closed_form(x, alpha, beta_)
+        if special is not None:
+            return special
+    elif beta_ == 1.0:
+        return float(x**alpha)
+    elif alpha == 1.0:
+        return -math.expm1(beta_ * math.log1p(-x))
+    y, ln_y, ln_x, a, b, xx = (0.5 - x) + 0.5, math.log1p(-x), math.log(x), alpha, beta_, x
+    reflect = x > alpha / (alpha + beta_)
+    if reflect:
+        a, b, xx, y, ln_x, ln_y = beta_, alpha, y, x, ln_y, math.log(x)
+    result = _lo_cont_frac(xx, a, b) / a
+    p, q = a / (a + b), b / (a + b)
+    if a > 1.0 and b > 1.0 and p < 0.97 and q < 0.97:  # LibreOffice: "found experimental"
+        result *= _lo_pdf(xx, a, b) * xx * y
+    else:
+        result *= math.exp(a * ln_x + b * ln_y - _lo_log_beta(a, b))
+    if reflect:
+        result = 0.5 - result + 0.5
+    return min(max(result, 0.0), 1.0)
+
+
 def ibeta_candidates() -> list[tuple[str, str, Ibeta]]:
     """(name, family, I_x(a,b)) for every candidate; the fits map their arguments onto these."""
     out: list[tuple[str, str, Ibeta]] = [("correctly rounded", "reference", ibeta_reference)]
@@ -371,6 +512,12 @@ def ibeta_candidates() -> list[tuple[str, str, Ibeta]]:
 
     out.append(("Cephes incbet + closed forms", "Cephes", cephes_closed))
     out.append(("closed forms, Cephes fractions, mean switch (best)", "best", best_combination))
+    out.append(("LibreOffice GetBetaDist", "LibreOffice", libreoffice_beta_dist))
+
+    def libreoffice_closed(x: float, a: float, b: float) -> float:
+        return libreoffice_beta_dist(x, a, b, excel_closed_forms=True)
+
+    out.append(("LibreOffice GetBetaDist + Excel closed forms", "LibreOffice", libreoffice_closed))
     return out
 
 
