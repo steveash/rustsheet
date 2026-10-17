@@ -885,3 +885,21 @@ A294, A295, A300 (DEVSQ; a two-pass reproduces all seven bit-exactly); excel-gra
 Status: VERIFIED (excel-graph).
 Ours: AVEDEV/DEVSQ ignore the empty argument (0), QUARTILE(TRUE,1) is an error, DEVSQ is one-pass (devsq.rs).
 Tasks: T-1748, T-1749
+
+## SKEW, SKEW.P, KURT, HARMEAN, STANDARDIZE, SUMX* and MDETERM edge pools (T-1623)
+Rule (Excel, evidence below): SKEW.P of fewer than three numbers is `#DIV/0!` (`SKEW.P(A1:A2)`, and a range that
+leaves two numbers after text, booleans and blanks are skipped; a single value and three equal values are `#DIV/0!`
+too). HARMEAN of two empty ranges is `#N/A` (not `#DIV/0!`). STANDARDIZE reads a direct `TRUE` as 1 (`STANDARDIZE(TRUE,3,2)`
+is -1), and a range argument lifts element-wise (`STANDARDIZE(A1:A2,3,2)` spills; with data below it is `#SPILL!`).
+MDETERM of the singular matrix [1,2,3;4,5,6;7,8,9] is 6.661338147750939e-16, not 0, so Excel's elimination leaves a
+rounding residual. KURT with a direct `TRUE` argument is -1.4331834319526635 for 3,5,2,8,9,4,7,1 plus TRUE, ours
+differs in the last digits. The other 132 cells of the case (SUMX2PY2, SUMXMY2, SUMX2MY2 size mismatches and text or
+blank pairs, MDETERM non-square, text and 1x1, ECMA.CEILING sign and zero-significance cases, SKEW/KURT/HARMEAN too-few
+and non-positive values) already match.
+Literal `1E+308` inside a formula makes Graph reject the whole workbook (`createSession` 501 `unsupportedWorkbook`),
+as does a wrong argument count (`STANDARDIZE(5,3)`, a three-range `SUMX2PY2`); `ECMA.CEILING` and `SKEW.P` must be
+written `_xlfn.`-prefixed in the file.
+Evidence: probes/stats-evidence-floor-t1623 (excel-graph, 2026-10-17).
+Status: VERIFIED (excel-graph).
+Ours: the mismatches above are open.
+Tasks: T-1750, T-1751, T-1752, T-1753, T-1754, T-1755
