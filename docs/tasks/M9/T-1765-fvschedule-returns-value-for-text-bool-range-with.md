@@ -14,7 +14,7 @@ depends_on: []
 FVSCHEDULE gives Excel's #VALUE! for non-numeric schedule elements.
 
 ## Context
-Probe `probes/fin-fvschedule` A3, A4, A13, A14, A16, A18, A19: text, boolean or text-cell elements in the schedule, a text-only schedule, a TRUE principal and an empty-string schedule are #VALUE! in Excel; we skip them or coerce. See docs/excel-semantics/financial.md (T-1625 entry).
+Probe `probes/fin-fvschedule` A3, A4, A13, A14, A16, A18, A19: text, boolean or text-cell elements in the schedule, a quoted-number element, a TRUE principal and an empty-string schedule are #VALUE! in Excel; we skip them or coerce. See docs/excel-semantics/financial.md (T-1625 entry).
 
 ## Acceptance criteria
 - [ ] all failing cells of probes/fin-fvschedule pass; baseline shrinks

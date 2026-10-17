@@ -566,7 +566,7 @@ Tasks: T-1475
 - FVSCHEDULE: any text, boolean or text-cell element in the schedule, a quoted-number element
   `{"0.1"}`, `TRUE` as principal and `""` as schedule are all `#VALUE!` (nothing is skipped).
 - FVSCHEDULE: blank cells in the schedule are harmless (`B5:B6` = 1000) and a text-number principal is converted (`"1000"` -> 1100), but a boolean principal is `#VALUE!`.
-- VDB differs from us by ~1 ulp (A6, A10, A13) and ~4e-13 (A7); Excel's result for the same inputs depends on no_switch (A6 FALSE = 203.31648000000007, A7 TRUE = 203.3164800000004).
+- VDB differs from us by a few ulp (A6, A10, A13) and ~4e-13 (A7); Excel's result for the same inputs depends on no_switch (A6 FALSE = 203.31648000000007, A7 TRUE = 203.3164800000004).
 - MDURATION and RRI(TRUE principal) differ from us only in the last ulp.
 Evidence: probes/fin-vdb-modes, fin-amordegrc, fin-fvschedule, fin-mduration, fin-rri (excel-graph, 2026-10-17, T-1625).
 Status: VERIFIED (excel-graph)
