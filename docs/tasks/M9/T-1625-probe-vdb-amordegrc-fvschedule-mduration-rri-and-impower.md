@@ -3,7 +3,7 @@ id: T-1625
 title: "Probe VDB, AMORDEGRC, FVSCHEDULE, MDURATION, RRI and IMPOWER, IMSUB, IMDIV to the evidence floor"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
