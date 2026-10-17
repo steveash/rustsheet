@@ -3,7 +3,7 @@ id: T-0057
 title: "Replace yanked zip 0.6.6 (cargo deny advisories fails on main)"
 milestone: M0
 lane: quality
-status: todo
+status: dropped
 priority: P0
 size: S
 tier: opus
@@ -21,4 +21,8 @@ crates.io yanked zip 0.6.6 on 2026-10-16; `cargo update -p zip` cannot select a 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- The zip upgrade itself (done in T-1668).
+
+## Outcome
+Dropped as a duplicate of T-1668, which upgraded zip to 9.0.3 on `main` (de25e70c) the same day.
+`make deny` passes on `main` again.
