@@ -172,28 +172,28 @@ impl Model {
         for row in 0..rows {
             let mut out_row = Vec::with_capacity(columns);
             for column in 0..columns {
-                let reused = match &previous {
-                    Some((position, value))
-                        if options.reuse_equal_runs && same_as(&lifted, row, column, *position) =>
-                    {
-                        Some(value.clone())
+                let reuse = options.reuse_equal_runs
+                    && previous
+                        .as_ref()
+                        .is_some_and(|(position, _)| same_as(&lifted, row, column, *position));
+                let value = match previous.as_mut() {
+                    // Equal slots are transitive, so comparing with the previous position is the
+                    // same as comparing with the last computed one; only the position moves.
+                    Some((position, value)) if reuse => {
+                        *position = (row, column);
+                        value.clone()
                     }
-                    _ => None,
-                };
-                let value = match reused {
-                    Some(value) => value,
-                    None => {
+                    _ => {
                         for (slot, arg) in values.iter_mut().zip(&lifted) {
                             if let Some(node) = arg.element(row, column) {
                                 *slot = array_node_to_calc_result(node, cell);
                             }
                         }
-                        calc_result_to_array_node(kernel(self, &values))
+                        let value = calc_result_to_array_node(kernel(self, &values));
+                        previous = Some(((row, column), value.clone()));
+                        value
                     }
                 };
-                // Equal slots are transitive, so comparing with the previous position is the
-                // same as comparing with the last computed one.
-                previous = Some(((row, column), value.clone()));
                 out_row.push(value);
             }
             output.push(out_row);

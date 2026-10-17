@@ -4,8 +4,10 @@ use crate::{
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
     expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
-    functions::lift::{LiftCost, LiftOptions, LiftedArg},
-    functions::util::array_node_to_calc_result,
+    functions::{
+        lift::{LiftCost, LiftOptions, LiftedArg},
+        util::array_node_to_calc_result,
+    },
     limits::check_array_size,
     model::Model,
 };

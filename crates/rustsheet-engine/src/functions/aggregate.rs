@@ -16,8 +16,10 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::lift::{LiftCost, LiftOptions},
-    functions::Function,
+    functions::{
+        lift::{LiftCost, LiftOptions},
+        Function,
+    },
     model::Model,
     reference_operators::RefArg,
 };
