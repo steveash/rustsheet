@@ -599,6 +599,47 @@ fn a_3d_range_is_value_in_lift_arrays_and_ref_in_lift() {
         .all(|row| matches!(row.as_slice(), [ArrayNode::Error(Error::REF)])));
 }
 
+/// probes/scalar-lift-open-e (T-1801, excel-graph): a one-cell 3-D range in a `LiftArrays`
+/// argument is `#VALUE!`, alone and beside an array (the array's shape), and the reference forms
+/// of DROP, TRIMRANGE and XLOOKUP are refused when they return several cells.
+#[test]
+fn one_cell_3d_range_and_reference_forms_in_lift_arrays() {
+    let mut model = new_empty_model();
+    model.add_sheet("Sheet2").unwrap();
+    for (row, value) in [(1, 45000), (2, 45001), (3, 45002)] {
+        model._set(&format!("A{row}"), &value.to_string());
+        model._set(&format!("D{row}"), &row.to_string());
+    }
+    model._set("E1", "2");
+    let formulas = [
+        ("=EDATE(Sheet1:Sheet2!A1,1)", "#VALUE!"),
+        ("=INDEX(EDATE(Sheet1:Sheet2!A1,{1;2}),2)", "#VALUE!"),
+        ("=ROWS(EDATE(Sheet1:Sheet2!A1,{1;2}))", "2"),
+        ("=WEEKNUM(Sheet1:Sheet2!A1)", "#VALUE!"),
+        ("=EOMONTH(Sheet1:Sheet2!A1,0)", "#VALUE!"),
+        ("=YEARFRAC(Sheet1:Sheet2!A1,50000)", "#VALUE!"),
+        ("=EDATE(45000,Sheet1:Sheet2!A1)", "#VALUE!"),
+        ("=EDATE(DROP(A1:A3,1),1)", "#VALUE!"),
+        ("=EDATE(DROP(A1:A2,1),1)", "45032"),
+        ("=EDATE(TRIMRANGE(A1:A3),1)", "#VALUE!"),
+        ("=EDATE(TRIMRANGE(A1:A1),1)", "45031"),
+        ("=EDATE(XLOOKUP(1,D1:E1,A1:B3),1)", "#VALUE!"),
+        ("=EDATE(XLOOKUP(2,D1:D3,A1:A3),1)", "45032"),
+        ("=EDATE(XLOOKUP(1,D1:E1,A1:B1),1)", "45031"),
+    ];
+    for (row, (formula, _)) in formulas.iter().enumerate() {
+        model._set(&format!("G{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in formulas.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("G{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
+
 /// Reversed basis-1 dates in different years stay `#NUM!`, as before T-1770 (Excel swaps them:
 /// gen-m7/c263b43217a5898b Calc!A38 is 77.11295191295191; TODO(T-1354)). A reversed pair within
 /// one year was already computed and still is.

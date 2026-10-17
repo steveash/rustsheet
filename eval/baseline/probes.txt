@@ -623,6 +623,7 @@ C	probes/scalar-lift-open-c.case.json	10
 C	probes/scalar-lift-open-c2.case.json	1
 C	probes/scalar-lift-open-c3.case.json	1
 C	probes/scalar-lift-open-d.case.json	31
+C	probes/scalar-lift-open-e.case.json	22
 C	probes/scalar-lift-shapes-b.case.json	26
 C	probes/scalar-lift-shapes-c.case.json	18
 C	probes/scalar-lift-shapes.case.json	67
