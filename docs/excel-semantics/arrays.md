@@ -686,12 +686,18 @@ and wrap_count 0 or negative are UNVERIFIED
 Tasks: T-1348
 
 ## MAP over arrays of different sizes, or a single value and an array
-Rule: MAP does not reject arrays of different sizes: `MAP(B4:E8,A4:D11,B5:E7,LAMBDA(z,x,acc,A3))` (5x4, 8x4, 3x4) and
-`MAP(WEEKDAY(7538),B4:E11,LAMBDA(acc,y,acc))` (a number and 8x4) both return arrays (`#SPILL!` in a cell with occupied
-neighbours). The element values (broadcast and `#N/A` padding as in array arithmetic?) are not evidenced.
-Evidence: gen-m7/a0cbc75358b429b6 Calc!A31, gen-m7/b5186d194fec0fdc Calc!A13 (excel-graph, 2026-10-11, T-1275).
-Ours: `#VALUE!` ("all arrays must have the same dimensions").
-Status: VERIFIED that the result is an array (web); its size and values are UNVERIFIED
+Rule: MAP does not reject arrays of different sizes, and does not broadcast: the result has the largest row count and the
+largest column count of its arrays, an element that every array has is the LAMBDA's result, and any other element is
+`#N/A` without the LAMBDA being called (`MAP({1;2;3},{10;20},LAMBDA(a,b,a+b))` is 11, 22, `#N/A`; with `ISNA(b)` as the
+body the padded element is still `#N/A`, not TRUE). A scalar is a 1x1 array: `MAP(5,{1,2,3},LAMBDA(a,b,a+b))` is 6,
+`#N/A`, `#N/A`. A row next to a column gives their bounding box with only the corner computed:
+`MAP({1,2,3},{10;20},..)` is 2x3, `ROWS` 2, `COLUMNS` 3, 11 then `#N/A` everywhere else; `MAP({1;2;3},{10},..)` is 11,
+`#N/A`, `#N/A`. In a cell with occupied neighbours the array is `#SPILL!` (gen-m7/a0cbc75358b429b6 A31,
+gen-m7/b5186d194fec0fdc A13, gen-m9/55fc8c4ffbd7c7cc A33, gen-m9/95efb37a9874f82e A17).
+Evidence: probes/map-unequal-sizes (excel-graph, 2026-10-17, T-1349); the four gen cells above (T-1275, T-1289).
+Ours: padded as above since T-1349 (`fn_map`, map_reduce.rs); the padded shape is checked against the 2^20-cell bound
+before allocating ("Array results above 1,048,576 cells").
+Status: VERIFIED (excel-graph)
 Tasks: T-1349
 
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
