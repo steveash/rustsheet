@@ -278,18 +278,25 @@ tell whether GAMMA.DIST calls an erf/erfc pair or the reverse; it takes its own 
   plain reflection of the other everywhere.
 What the probes show about the kernel itself (none of it yet reproduces Excel bit for bit):
 - Tiny x: `ERF.PRECISE(2^-k)*2^k` = 1.1283791670955128 for every k from 27 to 79, one ulp above
-  fl(2/sqrt(pi)) = 1.1283791670955126. Excel's GAMMA, GAMMALN and 2/SQRT(PI()) all give the ...126 values,
-  and m*2^-30 inputs deviate from a single product fl(c*x) for every double c, so the small-x path rounds
-  at least twice.
+  fl(2/sqrt(pi)) = 1.1283791670955126. Excel's GAMMA, GAMMALN and 2/SQRT(PI()) all give the ...126 values.
+  Below about x = 1E-8 the result depends only on x's mantissa (exactly scale invariant: 100 of 100
+  mantissas at five scales). There it is `fl(fl(x*A) + fl(x*B))`, a constant split in two:
+  A = 1.1170334248975802 and B = 0.011345742197932508. That form reproduces 2,429 of 2,448 points (400 random
+  mantissas, 2,048 consecutive ones; 99.2%). A was read off the period of Excel's rounding pattern over runs of
+  consecutive mantissas spaced 2^j apart (j = 0 to 41), then confirmed by an exact solve. A + B is
+  2/sqrt(pi) + 1.08E-16 (about half an ulp), which is the +0.5 ulp bias Excel shows for x < 0.5. Neither constant is a known
+  coefficient, and B is not fl(2/sqrt(pi) - A) (that is 0.0113457421979324). The z-dependent part above 1E-8 is not
+  identified: adding a Taylor tail inside or outside either term, or an exp(-z) factor, still misses about
+  half of the dense points.
 - Generic shape a: at z = m*2^-60, `GAMMA.DIST(z,a,1,TRUE)` for a = 2, 3, 10 is off by up to 640E-16
   relative, and that error follows the rounding of fl(a*fl(ln z)) to within about 2E-16 (the docs/research
   script prints both). For a = 10 a constant -25E-16 remains, the error of Excel's own
   `GAMMALN(11)` = 15.104412573075518 (true 15.1044125730755153). So the prefix z^a/Gamma(a+1) is
   exp(a*ln z) times a factor built from Excel's GAMMALN, not pow. The density
-  `GAMMA.DIST(z,a,1,FALSE)` carries the CDF's relative error exactly (a = 2, 3): it is the same prefix
-  divided by z.
+  `GAMMA.DIST(z,a,1,FALSE)` is computed from the CDF's prefix: at z = m*2^-60 it equals
+  fl(`GAMMA.DIST(z,a,1,TRUE)` * fl(a/z)) at 100 of 100 points for a = 2, 3 and 1.5.
 - Shape 0.5's CDF does not take that path: it stays within 2 ulp at tiny z, while its density there is off
-  by up to 12.5 ulp, as exp(0.5*ln z) would be. Shape 1 is not on it either: it returns z exactly at
+  by up to about 15 ulp, as exp(0.5*ln z) would be. Shape 1 is not on it either: it returns z exactly at
   z = m*2^-60 (100 of 100), where exp(fl(ln z)) would be off by up to 16 ulp.
 - ERFC tail: removing the rounding of a naive `exp(-fl(x*x))` cuts Excel's error from a standard deviation
   of 115 ulp to 1.85 ulp for x >= 4 (1,702 points). The rest (at most 7.4 ulp) has a smooth part of up to
@@ -311,7 +318,9 @@ Candidates that do not reproduce Excel (exact matches):
   correlates at most 0.39 with it.
 Evidence: probes-numeric cases `kmyst-norm-erfc-a`, `kmyst-norm-erfc-b`, `kmyst-erf-gamma`,
 `kmyst-erf-tiny`, `kmyst-erf-dense`, `kmyst-erfc-dense`, `kmyst-gamma-tiny` and `kmyst-kernel-map`
-(excel-graph, 2026-10-17). `uv run python ../docs/research/t1778_incomplete_gamma_kernel_map.py` in tools/
+(excel-graph, 2026-10-17); the tiny-x erf split uses `kmyst-erf-mantissa`, `kmyst-erf-scale`,
+`kmyst-erf-consecutive`, `kmyst-erf-stride06` to `kmyst-erf-stride41` and `kmyst-erf-runs`, and the
+internal-exp check uses `kmyst-gamma-exp`. `uv run python ../docs/research/t1778_incomplete_gamma_kernel_map.py` in tools/
 reprints the identity counts, the tiny-x constant, the GAMMA.DIST error tracking and the ERFC tail figures.
 Status: VERIFIED (identities, constant, error structure); the kernel's exact operation sequence is OPEN.
 Tasks: T-1778; T-0968, T-1187, T-0971, T-0972 inherit the map.

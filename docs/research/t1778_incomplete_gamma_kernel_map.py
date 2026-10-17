@@ -12,7 +12,8 @@ docs/excel-semantics/statistics.md ("One incomplete-gamma kernel ..."):
 3. GAMMA.DIST at tiny z: Excel's relative error against z^a/Gamma(a+1) next to the rounding of
    fl(a * fl(ln z)), and the density's relative error next to the CDF's;
 4. ERFC.PRECISE for 0.5 <= x <= 27: Excel's error before and after removing the naive exp(-fl(x*x))
-   rounding.
+   rounding;
+5. the tiny-x erf split fl(fl(x*A) + fl(x*B)) and the GAMMA.DIST density built from the CDF.
 """
 
 from __future__ import annotations
@@ -159,8 +160,29 @@ def erfc_tail() -> None:
         )
 
 
+def erf_tiny_split() -> None:
+    """Excel's erf below about 1E-8: fl(fl(x*A) + fl(x*B)), and the density = fl(CDF * fl(a/z))."""
+    split_a, split_b = 1.1170334248975802, 0.011345742197932508
+    hits = total = 0
+    for name, rows in (("kmyst-erf-mantissa", range(1, 401)), ("kmyst-erf-consecutive", range(1, 2049))):
+        case, val = load(name)
+        for x, e in column(case, val, "B", rows):
+            total += 1
+            hits += x * split_a + x * split_b == e
+    print(f"5. ERF.PRECISE = fl(fl(x*A) + fl(x*B)) below 1E-8: {hits}/{total}")
+    case, val = load("kmyst-gamma-tiny")
+    for a, cdf, pdf in ((2, "E", "M"), (3, "F", "N"), (1.5, "G", "L")):
+        rows = range(1, 101)
+        n = sum(
+            float(val[f"{cdf}{r}"]) * (a / float(case[f"A{r}"])) == float(val[f"{pdf}{r}"])  # type: ignore[arg-type]
+            for r in rows
+        )
+        print(f"   GAMMA.DIST(z,{a},1,FALSE) = fl(CDF * fl(a/z)) at z = m*2^-60: {n}/100")
+
+
 if __name__ == "__main__":
     identities()
     erf_constant()
     gamma_prefix()
     erfc_tail()
+    erf_tiny_split()
