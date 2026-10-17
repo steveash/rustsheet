@@ -1,5 +1,5 @@
 ---
-id: T-1816
+id: T-1820
 title: "DB and VDB bound their period loops, then lift over arrays and ranges (SPEC-0011)"
 milestone: M9
 lane: functions-financial
@@ -23,7 +23,7 @@ T-1372 left them off the SPEC-0011 driver because their kernels loop over the pe
 that (CLAUDE.md directive 5; SPEC-0011 "Security rule for kernel work", as T-1236 found for the day loops). Bound the
 loops first: a closed form where it matches the loop bit for bit on the existing evidence (ironcalc-calc DB/VDB
 workbooks, probes-numeric), or a per-call cap with a DEVIATION entry. Then enter both as `Lift` in
-functions/lift/kinds.rs (the `TODO(T-1816)` there), `KernelWork::Weighted` if a value-dependent loop remains.
+functions/lift/kinds.rs (the `TODO(T-1820)` there), `KernelWork::Weighted` if a value-dependent loop remains.
 
 ## Acceptance criteria
 - [ ] `DB` and `VDB` with a life of 1E9 or more finish in milliseconds; any capped result is a DEVIATION entry.

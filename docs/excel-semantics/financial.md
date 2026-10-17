@@ -406,14 +406,14 @@ schedule containing text.
 Ours: since T-1372 the core functions but DB, VDB, NPV, IRR and MIRR are `Lift` and EFFECT, NOMINAL, DOLLARDE,
 DOLLARFR, ACCRINTM, DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT and the T-bills `LiftArrays`
 (SPEC-0011). The rest do not lift yet (`#N/IMPL!` for an array literal; DB and VDB `#VALUE!` for a range): DB and VDB
-need their period loops bounded first (T-1816), NPV's rate, IRR's guess and MIRR's rates sit beside a whole cash flow
-(T-1817), and the other ATP functions wait for their later arguments to be probed (T-1818). NPV of an array
+need their period loops bounded first (T-1820), NPV's rate, IRR's guess and MIRR's rates sit beside a whole cash flow
+(T-1821), and the other ATP functions wait for their later arguments to be probed (T-1822). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE ignores text in the schedule (T-1373).
 The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
 ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD and YIELD are off at 1e-10 to 1e-12 relative (T-1374; TBILLEQ and TBILLYIELD are exact since T-1475). The
 annuity, NPV and solver misses are T-0901's and T-0916's.
 Status: VERIFIED (excel-graph)
-Tasks: T-1084, T-1372, T-1373, T-1374, T-1816, T-1817, T-1818
+Tasks: T-1084, T-1372, T-1373, T-1374, T-1820, T-1821, T-1822
 
 ## Discount-security functions: settlement 0, basis and argument modes
 Rule: INTRATE, PRICEDISC and YIELDDISC accept settlement serial 0 and compute with it (`INTRATE(0,43466,1000,1100)` =

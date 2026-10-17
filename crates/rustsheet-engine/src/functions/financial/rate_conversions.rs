@@ -7,22 +7,13 @@
 //! argument modes"). Moved out of `financial/mod.rs` (T-1372).
 
 use super::number_or_error;
+use crate::functions::lift::{div_error, num_error};
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{parser::Node, types::CellReferenceIndex},
     functions::Function,
     model::Model,
 };
-
-/// The `#NUM!` a kernel's own check gives; it allocates no message.
-fn num_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::NUM, cell, String::new())
-}
-
-/// The `#DIV/0!` a kernel's own check gives.
-fn div_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::DIV, cell, String::new())
-}
 
 impl Model {
     /// The two numbers of EFFECT, NOMINAL, DOLLARDE and DOLLARFR, in order; a boolean is

@@ -10,6 +10,7 @@ use crate::{
 
 use super::accrint::acc_days_between;
 use super::number_or_error;
+use crate::functions::lift::{div_error, num_error};
 
 // ---------------------------------------------------------------------------
 // VDB / AMORDEGRC / AMORLINC
@@ -571,11 +572,6 @@ impl Model {
     }
 }
 
-/// The `#NUM!` a depreciation kernel's own check gives; it allocates no message.
-fn depreciation_num_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::NUM, cell, String::new())
-}
-
 // SLN, SYD and DDB are core worksheet functions in closed form: every argument lifts over an
 // array and a multi-cell range (`ArgKind::Lift`, SPEC-0011; probes/fin-argument-modes H97, H304,
 // H309, probes/fin-later-argument-ranges K19-K23). Moved here from `financial/mod.rs` (T-1372).
@@ -592,7 +588,7 @@ impl Model {
                 let salvage = model.cast_number_ref(salvage, cell)?;
                 let life = model.cast_number_ref(life, cell)?;
                 if life == 0.0 {
-                    return Err(CalcResult::new_error(Error::DIV, cell, String::new()));
+                    return Err(div_error(cell));
                 }
                 Ok((cost - salvage) / life)
             };
@@ -612,7 +608,7 @@ impl Model {
                 let life = model.cast_number_ref(life, cell)?;
                 let per = model.cast_number_ref(per, cell)?;
                 if life == 0.0 || per > life || per <= 0.0 {
-                    return Err(depreciation_num_error(cell));
+                    return Err(num_error(cell));
                 }
                 Ok(((cost - salvage) * (life - per + 1.0) * 2.0) / (life * (life + 1.0)))
             };
@@ -634,7 +630,7 @@ impl Model {
                 let period = model.cast_number_ref(period, cell)?;
                 let factor = model.cast_number_no_bools_or(rest.first(), 2.0, cell)?;
                 if period > life || cost < 0.0 || salvage < 0.0 || period <= 0.0 || factor <= 0.0 {
-                    return Err(depreciation_num_error(cell));
+                    return Err(num_error(cell));
                 }
                 Ok(ddb_depreciation(cost, salvage, life, period, factor))
             };

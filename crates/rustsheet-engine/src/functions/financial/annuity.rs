@@ -9,6 +9,7 @@
 
 use super::financial_util::compute_rate;
 use super::{formula_error, number_or_error};
+use crate::functions::lift::{div_error, num_error};
 use crate::{
     arithmetic::{extended_quotient, extended_sum, power},
     calc_result::CalcResult,
@@ -209,16 +210,6 @@ pub(super) fn compute_ppmt(
 //   $pmt*nper+pv+fv=0$
 // All, except for rate are easily solvable in terms of the others.
 // In these formulas the payment (pmt) is normally negative
-
-/// The `#NUM!` a kernel's own check gives; it allocates no message.
-fn num_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::NUM, cell, String::new())
-}
-
-/// The `#DIV/0!` a kernel's own check gives.
-fn div_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::DIV, cell, String::new())
-}
 
 impl Model {
     /// `PMT(rate, nper, pv, [fv], [type])`.

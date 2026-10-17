@@ -1,5 +1,5 @@
 ---
-id: T-1817
+id: T-1821
 title: "NPV's rate, IRR's guess and MIRR's rates lift over arrays and ranges beside their whole cash flows (SPEC-0011)"
 milestone: M9
 lane: functions-financial

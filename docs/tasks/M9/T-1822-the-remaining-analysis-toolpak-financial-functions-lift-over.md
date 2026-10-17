@@ -1,5 +1,5 @@
 ---
-id: T-1818
+id: T-1822
 title: "The remaining Analysis ToolPak financial functions lift over arrays, after their later arguments are probed over ranges (SPEC-0011)"
 milestone: M9
 lane: functions-financial
@@ -24,7 +24,7 @@ range on its own rows. probes/scalar-lift-open-a Y1-Y7 covers PRICE's frequency 
 frequency, COUPDAYS's basis and ACCRINT's frequency and basis; the other later arguments need a probe case like
 probes/fin-later-argument-ranges (T-1372). Kernel work: PRICE/YIELD/ODD*YIELD iterate (fixed caps → `Weighted`), and
 CUMIPMT/CUMPRINC loop from start to end period with no cap of their own (`CUMIPMT(1E-9,1E9,1,1,1E9,0)`), which needs
-bounding first (as T-1816 for DB/VDB). XNPV and XIRR keep their values and dates `WholeByCaller` (T-1373, T-1817).
+bounding first (as T-1820 for DB/VDB). XNPV and XIRR keep their values and dates `WholeByCaller` (T-1373, T-1821).
 
 ## Acceptance criteria
 - [ ] The later arguments are probed over a range (a probe case, excel-probe skill) and recorded in financial.md.

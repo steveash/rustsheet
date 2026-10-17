@@ -31,7 +31,7 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/b58b6d7cd39d195f Calc!A21 `=PPMT(MUNIT(3),1,359,117633,154)`: Excel `#SPILL!`, engine `#N/IMPL!`.
 
 ## Acceptance criteria
-- [x] (subset; the rest moved to T-1816, T-1817, T-1818) The lift cells of probes/fin-argument-modes pass (their baseline lines removed), and the 37 range `#VALUE!` cells
+- [x] (subset; the rest moved to T-1820, T-1821, T-1822) The lift cells of probes/fin-argument-modes pass (their baseline lines removed), and the 37 range `#VALUE!` cells
   still pass. The PMT and EFFECT shape and error cells of probes/scalar-lift-shapes and -b listed under Context pass. Value cells that miss by ulps stay T-0901's and T-1374's.
 - [x] gen-m9/675763979c1defb6 A13 and b58b6d7cd39d195f A21 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [x] probes/scalar-lift-open-b W9 and probes/scalar-lift-open-d W17, W18 pass (`PMT` beside an array and a 3-D range: the result has the array's shape, ROWS 2 at -b W9, and each element is `#REF!`, -d W17, W18; moved here from T-1801, which needed a `Lift` consumer).
@@ -61,15 +61,15 @@ The core annuity and depreciation functions and 15 Analysis ToolPak functions ru
   financial/mod.rs (2194 → 673 lines, no longer oversized) into `annuity.rs`, `discount.rs`, `rate_conversions.rs`
   and `financial_depreciation.rs`. Their 56 fallback arms in static_analysis.rs are deleted. The new
   `cast_number_or` and `cast_number_no_bools_or` (cast.rs) read optional kernel arguments. Duplicated lines went
-  5907 → 5450 (main at cf51d234) (decision 0010 line).
+  5561 → 5084 (main at 9afea647) (decision 0010 line).
 - **Not entered, filed:**
-  - DB and VDB loop over periods with no per-call cap (`DB(1,0,1E15,1E15)`), so their loops get bounded first (T-1816).
+  - DB and VDB loop over periods with no per-call cap (`DB(1,0,1E15,1E15)`), so their loops get bounded first (T-1820).
   - NPV's rate, IRR's guess and MIRR's rates sit beside a whole cash flow, the first `WholeByCaller` consumer, which
-    T-1772 is landing in parallel (T-1817).
+    T-1772 had not landed when this was written (T-1821).
   - The bond, COUP*, ODD*, AMOR*, ACCRINT, DURATION, PRICE/YIELD, CUMIPMT/CUMPRINC, FVSCHEDULE-principal,
     XNPV-rate and XIRR-guess functions need their later arguments probed first, and CUMIPMT/CUMPRINC also need a
-    loop bound (T-1818).
-- **Eval:** `update-baseline --timeout 240` gave 0 regressions. Probes known failures 4751 → 4574 (main at c2ed80cd; 4572 after rebasing on cf51d234): 177 F lines
+    loop bound (T-1822).
+- **Eval:** `update-baseline --timeout 240` gave 0 regressions. Probes known failures 4652 → 4475 (main at 9afea647): 177 F lines
   removed (fin-argument-modes 132, scalar-lift-shapes 23, -b 4, scalar-lift-open-a 10, -b 1, -d 7). The new case
   passes 115/115. Every suite, the non-gated ones too, was compared cell by cell against main (both binaries over
   the same suites):
