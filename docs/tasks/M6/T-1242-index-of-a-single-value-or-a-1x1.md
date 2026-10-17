@@ -3,7 +3,7 @@ id: T-1242
 title: "INDEX of a single value or a 1x1 array returns that value"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
