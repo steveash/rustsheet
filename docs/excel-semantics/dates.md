@@ -389,7 +389,12 @@ an array literal in the same place (`EDATE(A1:A3,1)` is `#VALUE!`, `INDEX(EDATE(
 the range makes every element `#VALUE!` (`EDATE({45000;45031},M1:M60)` is 2 rows of `#VALUE!`, and `EDATE(A1:A60,{1;2})` and `EDATE({45000,45031},M1:M60)`
 have every element `#VALUE!`, probes/scalar-lift-open-a W24-W30, W70-W73). An error argument beside the range follows the
 function's check order: `EDATE(NA(),A1:A60)` is `#N/A`, `EDATE(A1:A60,NA())` is `#VALUE!`, and YEARFRAC checks `basis`, start, end
-(`YEARFRAC(1/0,45000,NA())` is `#N/A`; probes/scalar-lift-open-a W1-W8, -d W1-W7). A 3-D range in EDATE is `#VALUE!`
+(`YEARFRAC(1/0,45000,NA())` is `#N/A`; probes/scalar-lift-open-a W1-W8, -d W1-W7). YEARFRAC range-checks the basis
+before it reads either date: `YEARFRAC(NA(),45000,5)`, `YEARFRAC(45000,NA(),5)`, `YEARFRAC("x",45000,5)`,
+`YEARFRAC(TRUE,45000,5)` and `YEARFRAC(NA(),45000,-1)` are `#NUM!`, while a basis that is not a number wins with
+its own error (`YEARFRAC(NA(),45000,"x")` and `YEARFRAC(NA(),45000,TRUE)` are `#VALUE!`); numeric text is a basis
+(`YEARFRAC(NA(),45000,"5")` is `#NUM!`, `YEARFRAC(45000,46000,"1")` = 2.737226277372263; probes/yearfrac-basis-order,
+excel-graph, 2026-10-17, T-1800). A 3-D range in EDATE is `#VALUE!`
 (probes/scalar-lift-open-b W4, W5, W7). See probes/scalar-lift-shapes,
 -b and -c (T-1767) and arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule".
 The `weekend` argument of WORKDAY.INTL and NETWORKDAYS.INTL is the exception: it lifts over a range too
@@ -403,7 +408,7 @@ the 9999 limit: the month argument is bounded (see "DATE month and day bounds").
 `DATE(2042,8,1E+15)` = 84845 = `DATE(2042,8,32767)` (gen-m6/5cc04d6f42b23b51 Calc!A4, `DATE(..)%*88` = 74663.6;
 excel-graph 2026-10-09), the same 32767 cap (T-1419).
 Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
-Ours: YEARFRAC's scalar kernel checks start, end, basis, where Excel checks basis, start, end, so probes/scalar-lift-open-d W1, W3, W4, W6, W7 fail (T-1800).
+Ours: YEARFRAC's kernel (`yearfrac_of`) reads and range-checks the basis, then reads the start and the end date, as Excel does, so probes/scalar-lift-open-d W1-W7, -a W5-W8 and probes/yearfrac-basis-order pass (T-1800). The financial callers of `get_yearfrac` (ACCRINTM, DISC and the rest) pass three numbers, where every failing check is `#NUM!` in either order, so the reorder changes nothing for them.
 Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift (T-1235), as do
 DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. EDATE, EOMONTH, WEEKNUM and YEARFRAC lift
 over an array and refuse a multi-cell range in every argument, in dynamic and legacy formulas (T-1770, SPEC-0011

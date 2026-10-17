@@ -830,6 +830,7 @@ C	probes/xmatch-blank-extensions.case.json	43
 C	probes/xmatch-text-bool-equal-runs.case.json	134
 C	probes/xmatch-xlookup-blanks.case.json	69
 C	probes/xnpv-argument-count.case.json	3
+C	probes/yearfrac-basis-order.case.json	14
 C	probes/yield-solver-sweep.case.json	66
 F	probes/asin-argument-sweep.case.json	Sheet1!B10
 F	probes/asin-argument-sweep.case.json	Sheet1!B109
@@ -4748,8 +4749,6 @@ F	probes/scalar-lift-open-a.case.json	Sheet1!W34
 F	probes/scalar-lift-open-a.case.json	Sheet1!W35
 F	probes/scalar-lift-open-a.case.json	Sheet1!W36
 F	probes/scalar-lift-open-a.case.json	Sheet1!W4
-F	probes/scalar-lift-open-a.case.json	Sheet1!W6
-F	probes/scalar-lift-open-a.case.json	Sheet1!W7
 F	probes/scalar-lift-open-a.case.json	Sheet1!Y1
 F	probes/scalar-lift-open-a.case.json	Sheet1!Y10
 F	probes/scalar-lift-open-a.case.json	Sheet1!Y11
@@ -4788,17 +4787,12 @@ F	probes/scalar-lift-open-c.case.json	Sheet1!W8
 F	probes/scalar-lift-open-c.case.json	Sheet1!W9
 F	probes/scalar-lift-open-c2.case.json	Sheet1!W1
 F	probes/scalar-lift-open-c3.case.json	Sheet1!W1
-F	probes/scalar-lift-open-d.case.json	Sheet1!W1
 F	probes/scalar-lift-open-d.case.json	Sheet1!W11
 F	probes/scalar-lift-open-d.case.json	Sheet1!W13
 F	probes/scalar-lift-open-d.case.json	Sheet1!W14
 F	probes/scalar-lift-open-d.case.json	Sheet1!W16
 F	probes/scalar-lift-open-d.case.json	Sheet1!W17
 F	probes/scalar-lift-open-d.case.json	Sheet1!W18
-F	probes/scalar-lift-open-d.case.json	Sheet1!W3
-F	probes/scalar-lift-open-d.case.json	Sheet1!W4
-F	probes/scalar-lift-open-d.case.json	Sheet1!W6
-F	probes/scalar-lift-open-d.case.json	Sheet1!W7
 F	probes/scalar-lift-open-d.case.json	Sheet1!W9
 F	probes/scalar-lift-shapes-b.case.json	Sheet1!H3
 F	probes/scalar-lift-shapes-b.case.json	Sheet1!H70

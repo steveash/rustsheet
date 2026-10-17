@@ -37,6 +37,21 @@ impl Model {
             [start, end, basis] => (start, end, Some(basis)),
             _ => return CalcResult::new_args_number_error(cell),
         };
+        // Excel reads `basis` first and range-checks it, then the start date, then the end date:
+        // `YEARFRAC(1/0,45000,NA())` is #N/A and `YEARFRAC(NA(),45000,5)` is #NUM!
+        // (probes/scalar-lift-open-d W1-W7, probes/yearfrac-basis-order; dates.md "Date
+        // function argument modes"). Per element, that order also decides between an error and
+        // a refused range (-a W6, W7).
+        let basis = match basis {
+            Some(value) => match self.cast_number_no_bools_ref(value, cell) {
+                Ok(f) => f as i32,
+                Err(s) => return s,
+            },
+            None => 0,
+        };
+        if !(0..=4).contains(&basis) {
+            return num_error(cell);
+        }
         // The dates as the 1900 serials the financial day counts read: 2 * 1462 days on in a 1904
         // workbook (`DateSystem::financial_1900_serial`).
         let date_system = self.workbook.settings.date_system;
@@ -47,13 +62,6 @@ impl Model {
         let end_raw = match self.cast_number_no_bools_ref(end, cell) {
             Ok(c) => date_system.financial_1900_serial(c),
             Err(s) => return s,
-        };
-        let basis = match basis {
-            Some(value) => match self.cast_number_no_bools_ref(value, cell) {
-                Ok(f) => f as i32,
-                Err(s) => return s,
-            },
-            None => 0,
         };
         let (Ok(start_date), Ok(end_date)) = (
             from_excel_date(start_raw.floor() as i64),
@@ -143,6 +151,7 @@ impl Model {
                 (Some(start), Some(end)) => days360_eu(start, end) / 360.0,
                 _ => return num_error(cell),
             },
+            // Range-checked before the dates were read.
             _ => return num_error(cell),
         };
         CalcResult::Number(result.abs())
