@@ -35,8 +35,6 @@ pub(crate) enum KernelWork {
     /// A loop whose length depends on argument values. One call is charged `weight` units
     /// against the visit cap, and the kernel also keeps its own per-call cap, as T-1197 bounds
     /// MULTINOMIAL's loop.
-    #[allow(dead_code)]
-    // TODO(T-1290): BINOM.DIST, POISSON and the other loops enter weighted.
     Weighted(u32),
 }
 
@@ -91,7 +89,7 @@ impl ArgKinds {
 }
 
 use ArgKind::{Lift, LiftArrays, WholeByCaller};
-use KernelWork::Constant;
+use KernelWork::{Constant, Weighted};
 
 /// Two Analysis `ToolPak` arguments, both required: `EDATE(start_date, months)` and
 /// `EOMONTH(start_date, months)`.
@@ -118,6 +116,25 @@ const ARRAYS_1: ArgKinds = ArgKinds::fixed(1, &[LiftArrays], Constant);
 const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Constant);
 /// `HYPERLINK(link_location, [friendly_name])`: both arguments lift.
 const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
+
+// --- Engineering (T-1383) -------------------------------------------------------------------
+/// One required Analysis `ToolPak` argument: BIN2DEC, HEX2DEC, OCT2DEC, ERF.PRECISE, ERFC,
+/// ERFC.PRECISE and the one-argument IM* functions.
+const ATP_1: ArgKinds = ArgKinds::fixed(1, &[LiftArrays], Constant);
+/// Three required Analysis `ToolPak` arguments: `CONVERT(number, from_unit, to_unit)`.
+const ATP_3: ArgKinds = ArgKinds::fixed(3, &[LiftArrays, LiftArrays, LiftArrays], Constant);
+/// Two worksheet arguments that lift over an array and a range: BITAND, BITOR, BITXOR,
+/// BITLSHIFT and BITRSHIFT.
+const LIFT_2: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Constant);
+/// `BESSELI|J|K|Y(x, n)`: the recurrences loop about once (BESSELK, BESSELY) or twice (BESSELI,
+/// BESSELJ's Miller recurrence) per order, up to the order cap `transcendental::MAX_ORDER`
+/// (100,000), each kernel's own per-call cap. The weight charges a lifted call for that work:
+/// at most 2,048 elements, which at the cap run in about 2 s in release (BESSELI, the slowest:
+/// 8,192 elements took 8 s; docs/excel-semantics/engineering.md "BESSEL order cap").
+const BESSEL: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays], Weighted(BESSEL_WEIGHT));
+/// The units one Bessel element is charged against `MAX_LIFTED_CELL_VISITS`.
+const BESSEL_WEIGHT: u32 = 1 << 16;
+// --- End engineering (T-1383) ---------------------------------------------------------------
 
 /// The functions of [`Function::arg_kinds`], as a pattern: the arm of an exhaustive `match` on a
 /// `Function` that has no hand-written arm because the table derives it (static analysis).
@@ -155,6 +172,60 @@ macro_rules! lifting_table_functions {
             | Function::Trimmean
             | Function::Address
             | Function::Hyperlink
+            // --- Engineering (T-1383) ---
+            | Function::Besseli
+            | Function::Besselj
+            | Function::Besselk
+            | Function::Bessely
+            | Function::Erf
+            | Function::ErfPrecise
+            | Function::Erfc
+            | Function::ErfcPrecise
+            | Function::Bin2dec
+            | Function::Bin2hex
+            | Function::Bin2oct
+            | Function::Dec2Bin
+            | Function::Dec2hex
+            | Function::Dec2oct
+            | Function::Hex2bin
+            | Function::Hex2dec
+            | Function::Hex2oct
+            | Function::Oct2bin
+            | Function::Oct2dec
+            | Function::Oct2hex
+            | Function::Bitand
+            | Function::Bitor
+            | Function::Bitxor
+            | Function::Bitlshift
+            | Function::Bitrshift
+            | Function::Complex
+            | Function::Convert
+            | Function::Delta
+            | Function::Gestep
+            | Function::Imabs
+            | Function::Imaginary
+            | Function::Imargument
+            | Function::Imconjugate
+            | Function::Imcos
+            | Function::Imcosh
+            | Function::Imcot
+            | Function::Imcsc
+            | Function::Imcsch
+            | Function::Imdiv
+            | Function::Imexp
+            | Function::Imln
+            | Function::Imlog10
+            | Function::Imlog2
+            | Function::Impower
+            | Function::Imreal
+            | Function::Imsec
+            | Function::Imsech
+            | Function::Imsin
+            | Function::Imsinh
+            | Function::Imsqrt
+            | Function::Imsub
+            | Function::Imtan
+            // --- End engineering (T-1383) ---
     };
 }
 pub(crate) use lifting_table_functions;
@@ -220,6 +291,72 @@ impl Function {
             // unprobed and follows SPEC-0011's rule for scalar parameters.
             Function::Address => Some(&ADDRESS),
             Function::Hyperlink => Some(&LIFT_1_OF_2),
+            // --- Engineering (T-1383) ---
+            // The engineering functions are Analysis ToolPak functions: every argument lifts
+            // over an array and refuses a multi-cell range, also on the range's own rows
+            // (docs/excel-semantics/engineering.md "Engineering function argument modes"). Each
+            // argument is probed over both: the first in probes/eng-argument-modes B:E; the
+            // later ones in B:D there and over a range in probes/scalar-lift-shapes H8-H10
+            // (BESSELJ's n, DEC2BIN's places, DELTA), probes/scalar-lift-open-a Y8-Y15
+            // (CONVERT's units, COMPLEX's suffix, IMSUB's and IMDIV's second, IMPOWER's n) and
+            // probes/eng-later-argument-lift H1-H11, H16-H19 (the other orders and places,
+            // COMPLEX's i_num, DELTA's number2, GESTEP's step, ERF's upper_limit).
+            Function::Besseli | Function::Besselj | Function::Besselk | Function::Bessely => {
+                Some(&BESSEL)
+            }
+            Function::Bin2dec
+            | Function::Hex2dec
+            | Function::Oct2dec
+            | Function::ErfPrecise
+            | Function::Erfc
+            | Function::ErfcPrecise
+            | Function::Imabs
+            | Function::Imaginary
+            | Function::Imargument
+            | Function::Imconjugate
+            | Function::Imcos
+            | Function::Imcosh
+            | Function::Imcot
+            | Function::Imcsc
+            | Function::Imcsch
+            | Function::Imexp
+            | Function::Imln
+            | Function::Imlog10
+            | Function::Imlog2
+            | Function::Imreal
+            | Function::Imsec
+            | Function::Imsech
+            | Function::Imsin
+            | Function::Imsinh
+            | Function::Imsqrt
+            | Function::Imtan => Some(&ATP_1),
+            // `[places]`, `[number2]`, `[step]`, `[upper_limit]`: one required, one optional.
+            Function::Bin2hex
+            | Function::Bin2oct
+            | Function::Dec2Bin
+            | Function::Dec2hex
+            | Function::Dec2oct
+            | Function::Hex2bin
+            | Function::Hex2oct
+            | Function::Oct2bin
+            | Function::Oct2hex
+            | Function::Delta
+            | Function::Gestep
+            | Function::Erf => Some(&ATP_1_OF_2),
+            Function::Imdiv | Function::Imsub | Function::Impower => Some(&ATP_2),
+            // `COMPLEX(real_num, i_num, [suffix])`.
+            Function::Complex => Some(&ATP_2_OF_3),
+            Function::Convert => Some(&ATP_3),
+            // BIT* are worksheet functions: both arguments lift over a range too
+            // (probes/eng-argument-modes E8:E12, probes/scalar-lift-shapes H7,
+            // probes/eng-later-argument-lift H12-H15, H20, K12-K15). The kernels are O(1).
+            Function::Bitand
+            | Function::Bitor
+            | Function::Bitxor
+            | Function::Bitlshift
+            | Function::Bitrshift => Some(&LIFT_2),
+            // IMSUM and IMPRODUCT read their arguments whole (T-1384): no entry.
+            // --- End engineering (T-1383) ---
             _ => None,
         }
     }
