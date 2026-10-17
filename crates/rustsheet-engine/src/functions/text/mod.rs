@@ -10,6 +10,7 @@ mod encodeurl;
 mod filterxml;
 mod lifted;
 mod position;
+mod regex_engine;
 mod regex_functions;
 mod string_format;
 mod t_function;

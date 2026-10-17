@@ -19,9 +19,9 @@ statrs = { version = "0.18.0", default-features = false, features = [] }
 libm = "0.2.16"
 thiserror = "1"
 # Both already in the tree through `regex`: one substring searcher per TEXTSPLIT delimiter, and
-# the regex crates' replacement syntax to size a REGEXREPLACE result before building it (T-1272).
+# the REGEX* engine, a lazy DFA and PikeVM whose search work is counted (T-1272).
 memchr = "2"
-regex-automata = { version = "0.4", default-features = false, features = ["alloc"] }
+regex-automata = { version = "0.4", default-features = false, features = ["std", "syntax", "unicode", "hybrid", "nfa-pikevm"] }
 
 [dev-dependencies]
 serde_json = "1.0"

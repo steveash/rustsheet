@@ -311,24 +311,24 @@ each piece, so its delimiter bytes count 8 to a visit rather than 64
 (`ROWS(TEXTSPLIT(REPT("a",32767)&SEQUENCE(16),HSTACK("a",REPT("a",16000))))` is `#ERROR!`). A REGEX* call compiles each
 distinct pattern once, under the smallest of the size limits 64 KiB, 256 KiB, 1 MiB, 4 MiB and 10 MiB (the regex
 crate's default, so every pattern that compiled before T-1272 still does) it fits; it may spend 128 MiB of limits on
-compiling, too-big attempts included, and hold 64 MiB of them (1,024 small patterns or 6 of the largest; none is
-evicted, so patterns that cycle compile once), and each search is charged its text's bytes times its pattern's limit
-(at least 256 KiB), 2^42 a call (about 440,000 bytes with the largest patterns, 17 million with small ones; a
-REGEXREPLACE searches twice, once to size its result). A call past any of these is `#ERROR!`
-(`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`, `SUM(--REGEXTEST(REPT("a",3000)&SEQUENCE(4000),"\w{200}b"))`,
-`ROWS(REGEXREPLACE(REPT("a",32767)&SEQUENCE(1000),"","b"))`). A REGEXREPLACE result over 32,767 UTF-16 units is
+compiling, too-big attempts included (2,048 small patterns), and hold 64 MiB of patterns and search caches, measured
+after each search (none is evicted, so patterns that cycle compile once). Its searches (functions/text/regex_engine.rs)
+run on a lazy DFA that gives up when it thrashes (after 3 cache clears, below 10 bytes a state, the regex crate's own
+setting) and then on a PikeVM; the DFA is charged what its cache says it scanned (4 a byte) and built (8 a byte of
+state), the PikeVM its span times its NFA's state count (5 a state-byte) before it runs, 64 a search, and a call may
+spend 2^30 (about 1 s of the slowest searches; `SUM(--REGEXTEST(REPT("y",200)&SEQUENCE(100000),"x"))` fits, 20 MB).
+A pattern whose DFA thrashes over a lot of text (`a[ab]{100}c|b[ab]{100}c` over 560 texts of 30,000 bytes) and a call
+past any of these limits is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`). A REGEXREPLACE searches twice,
+once to size its result: over 32,767 UTF-16 units it is
 `#VALUE!`, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`), as SUBSTITUTE's
 is (UNVERIFIED for REGEXREPLACE; T-1817 probes it); a lifted REGEXREPLACE whose results pass the text broadcast cap
-(64 MiB, first entry) is one `#VALUE!`. The search budget is tighter than the lift cap: `REGEXTEST(A:A,"x")` over a full
-column of cells averaging 17 bytes or more is `#ERROR!`. On wasm32 `regex_lite` does not tell a too-big pattern from an
-invalid one, so an invalid pattern is tried under all five limits and about 8 distinct invalid patterns spend a call's
-compile budget (`#ERROR!` where native builds give each element `#VALUE!`).
+(64 MiB, first entry) is one `#VALUE!`.
 The REGEXREPLACE replacement syntax is the regex crate's (`$1`, `${1}`, `$name`, `$$`; `$1a` is the group named `1a`,
 a lone `$` is itself), as before T-1272; UNVERIFIED against Excel's PCRE2 rules (T-1817 probes it).
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
 Status: DEVIATION (decision 0014)
 Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
-and `Replacement` (functions/text/regex_functions.rs), `SplitList` (functions/text/textsplit.rs)
+and `Replacement` (functions/text/regex_functions.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
 Tasks: T-1272
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges

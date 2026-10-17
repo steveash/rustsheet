@@ -176,8 +176,8 @@ fn test_regexreplace_wrong_arg_count() {
 }
 
 // T-1272 performance review: a call compiles each distinct pattern once, keeps it and never
-// evicts, so 600 patterns that cycle compile 600 times; 5,000 distinct ones are past the 1,024
-// small patterns a call may hold, `#ERROR!` (DEVIATION, decision 0014).
+// evicts, so 600 patterns that cycle compile 600 times; 5,000 distinct ones are past the 2,048
+// small patterns a call may compile, `#ERROR!` (DEVIATION, decision 0014).
 #[test]
 fn regex_compiles_are_cached_and_budgeted() {
     let mut model = new_empty_model();

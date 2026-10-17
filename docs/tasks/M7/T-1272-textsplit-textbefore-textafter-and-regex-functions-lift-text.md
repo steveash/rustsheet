@@ -39,9 +39,15 @@ text until T-1361). `lift_text_call` calls `lift_values` directly; moving onto `
   operand element's length x its broadcast repeats, the text's further x the delimiter comparisons per position
   (delimiter count + compared bytes / 64, / 8 for TEXTSPLIT's re-searches), capped at 2^27 lifted or not. REGEX
   patterns compile once each under the smallest of five size limits they fit (64 KiB .. 10 MiB), within a per-call
-  compile budget (128 MiB of limits) and a held cap (64 MiB, no eviction); every search is charged text bytes x size
-  limit against 2^42 a call; a REGEXREPLACE result is sized before it is built (over 32,767 units `#VALUE!`, UNVERIFIED,
+  compile budget (128 MiB of limits) and a held cap (64 MiB of measured pattern and cache memory, no eviction);
+  searches run on a counted engine (functions/text/regex_engine.rs: lazy DFA charged what it scans and builds, a
+  PikeVM fallback charged span x NFA states) against 2^30 units (about 1 s) a call; a REGEXREPLACE result is sized before it is built (over 32,767 units `#VALUE!`, UNVERIFIED,
   T-1817 probes it).
+- Sixth run: the size-tier search charge did not bound DFA-thrashing patterns; the REGEX* functions now search with
+  `regex_automata`'s lazy DFA and PikeVM directly (same syntax and semantics as `regex`), their work measured.
+  Release timings: the review's `a[ab]{100}c|b[ab]{100}c` over 560 x 30,000 bytes 12.9 s -> `#ERROR!` at 1.1 s;
+  `REGEXTEST(REPT("y",200)&SEQUENCE(100000),"x")` `#ERROR!` -> 0 in 0.17 s; `\w{200}b` over 4,000 x 3,000 bytes
+  `#ERROR!` at 1.1 s -> 0 in 0.14 s; held memory is measured, so tiny patterns no longer cost 64 KiB each.
 - Performance review fixes (fifth run, release timings): `\w{200}b` over 4,000 x 3,000 bytes 38.5 s -> `#ERROR!` at
   1.1 s; TEXTSPLIT with a 16,000-byte delimiter matching everywhere 19 s -> `#ERROR!` at once (2 cells: 0.2 s, one
   `memchr::memmem::Finder` per delimiter per call); 5 cycling `\w{200}` patterns `#ERROR!` at 2.3 s -> 100 values at

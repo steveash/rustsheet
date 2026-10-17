@@ -1,12 +1,8 @@
 use std::collections::HashMap;
 
-#[cfg(not(target_arch = "wasm32"))]
-use regex::{Regex, RegexBuilder};
-#[cfg(target_arch = "wasm32")]
-use regex_lite::{Regex, RegexBuilder};
-
 use super::{
-    lifted::{to_u64, COMPARED_BYTES_PER_VISIT},
+    lifted::COMPARED_BYTES_PER_VISIT,
+    regex_engine::{BuildFailure, Caches, Engine, Search, Spent},
     util::within_text_budget,
 };
 use crate::{
@@ -23,11 +19,9 @@ use crate::{
 
 /// The size limits a pattern is compiled under, smallest first. A pattern is compiled under the
 /// next one only when it is too big for the one before; the last is the regex crate's default,
-/// so every pattern that compiled before T-1272 still compiles. Compile time, memory and the
-/// cost of a search grow with the limit: in a release build the largest patterns the last
-/// admits take 70-90 ms to compile (`\w{200}`), a failed attempt about as long as its limit
-/// admits, and searching with one costs up to about 3 µs a byte of text when the lazy DFA gives
-/// up (T-1272 performance review).
+/// so every pattern that compiled before T-1272 still compiles. Compile time grows with the
+/// limit: in a release build the largest patterns the last admits take 70-90 ms to compile
+/// (`\w{200}`), a failed attempt about as long as its limit admits.
 const SIZE_LIMITS: [usize; 5] = [1 << 16, 1 << 18, 1 << 20, 4 << 20, 10 << 20];
 
 /// Bytes of size limit one call may compile under, attempts that were too big included: 2,048
@@ -35,40 +29,21 @@ const SIZE_LIMITS: [usize; 5] = [1 << 16, 1 << 18, 1 << 20, 4 << 20, 10 << 20];
 /// more is `#ERROR!` (DEVIATION, decision 0014: Excel has no such limit).
 const COMPILE_BUDGET: usize = 128 << 20;
 
-/// Bytes of size limit one call may keep compiled, bounding its memory (CLAUDE.md directive 5):
-/// 1,024 small patterns or 6 of the largest. A call compiles each distinct pattern once and
-/// evicts none, so patterns that cycle cost no recompiles; one with more distinct patterns is
-/// `#ERROR!` (DEVIATION, decision 0014).
+/// Bytes of heap one call's compiled patterns and their search caches may hold, as measured
+/// after each search (CLAUDE.md directive 5). A call compiles each distinct pattern once and
+/// evicts none, so patterns that cycle cost no recompiles; one that holds more is `#ERROR!`
+/// (DEVIATION, decision 0014).
 const HELD_LIMIT: usize = 64 << 20;
 
-/// Bytes of text searched times the size limit of the pattern searched with (at least
-/// [`MIN_SEARCH_WEIGHT`]), per call: about 440,000 bytes with the largest patterns (about 1.3 s
-/// at 3 µs a byte), 4.4 million with a 1 MiB one, so even an unlifted search of a full 32,767-character cell fits twice over. A call
-/// past it is `#ERROR!` (DEVIATION, decision 0014). Search time grows with the compiled size
-/// once the lazy DFA gives up, so the limit stands in for it.
-const SEARCH_BUDGET: u64 = 1 << 42;
+/// The search work one call may do, in the units of `regex_engine` (about a nanosecond each):
+/// about 1 s of the slowest searches, or 250 MB of text a simple pattern scans. A call past it
+/// is `#ERROR!` (DEVIATION, decision 0014).
+const SEARCH_BUDGET: u64 = 1 << 30;
 
-/// The least a byte of searched text is charged: a pattern that matches at every position (an
-/// empty one) costs about 40 ns a match whatever its size, so the smallest limits are charged as
-/// 256 KiB, about 17 million bytes a call.
-const MIN_SEARCH_WEIGHT: usize = 1 << 18;
-
-/// Whether a compile error says only that the pattern is too big for its size limit.
-#[cfg(not(target_arch = "wasm32"))]
-fn too_big(error: &regex::Error) -> bool {
-    matches!(error, regex::Error::CompiledTooBig(_))
-}
-
-/// `regex_lite` does not tell a size error from a syntax error: try the next limit either way.
-#[cfg(target_arch = "wasm32")]
-fn too_big(_: &regex_lite::Error) -> bool {
-    true
-}
-
-/// A compiled pattern (`None` when invalid) and the size limit it holds.
+/// A compiled pattern (`None` when invalid), its search caches and the heap they last held.
 struct Compiled {
-    regex: Option<Regex>,
-    limit: usize,
+    engine: Option<(Engine, Caches)>,
+    held: usize,
 }
 
 /// The patterns one REGEX* call has compiled and the work it may still do: each distinct
@@ -78,7 +53,7 @@ struct PatternCache {
     entries: HashMap<String, Compiled>,
     held: usize,
     budget: usize,
-    search_budget: u64,
+    work: u64,
     exhausted: bool,
 }
 
@@ -88,78 +63,77 @@ impl PatternCache {
             entries: HashMap::new(),
             held: 0,
             budget: COMPILE_BUDGET,
-            search_budget: SEARCH_BUDGET,
+            work: SEARCH_BUDGET,
             exhausted: false,
         }
     }
 
-    /// The regex for `pattern`, charged for `searches` passes over `haystack` bytes; or the
-    /// `#VALUE!` of an invalid pattern; or `#ERROR!` once the call's work is spent.
-    fn get(
+    /// Runs `searches` with `pattern`: its result; or the `#VALUE!` of an invalid pattern; or
+    /// `#ERROR!` once the call's work is spent.
+    fn with<R>(
         &mut self,
         pattern: &str,
-        haystack: usize,
-        searches: u64,
         cell: CellReferenceIndex,
-    ) -> Result<&Regex, CalcResult> {
+        searches: impl FnOnce(&mut Search<'_>) -> Result<R, Spent>,
+    ) -> Result<R, CalcResult> {
         if self.exhausted {
             return Err(too_much_regex_work(cell));
         }
         if !self.entries.contains_key(pattern) {
-            let compiled = self.compile(pattern, cell)?;
-            if self.held + compiled.limit > HELD_LIMIT {
-                self.exhausted = true;
-                return Err(too_much_regex_work(cell));
-            }
-            self.held += compiled.limit;
-            self.entries.insert(pattern.to_string(), compiled);
+            let engine = self.compile(pattern, cell)?;
+            self.entries
+                .insert(pattern.to_string(), Compiled { engine, held: 0 });
         }
-        let Some(entry) = self.entries.get(pattern) else {
+        let Some(entry) = self.entries.get_mut(pattern) else {
             return Err(too_much_regex_work(cell));
         };
-        let Some(regex) = entry.regex.as_ref() else {
+        let Some((engine, caches)) = entry.engine.as_mut() else {
             return Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "Invalid regular expression".to_string(),
             ));
         };
-        let cost = to_u64(haystack.max(1))
-            .saturating_mul(searches)
-            .saturating_mul(to_u64(entry.limit.max(MIN_SEARCH_WEIGHT)));
-        match self.search_budget.checked_sub(cost) {
-            Some(left) => {
-                self.search_budget = left;
-                Ok(regex)
-            }
-            None => {
+        let result = searches(&mut Search {
+            engine,
+            caches,
+            work: &mut self.work,
+        });
+        let held = engine.memory_usage(caches);
+        self.held = self.held.saturating_sub(entry.held).saturating_add(held);
+        entry.held = held;
+        match result {
+            Ok(result) if self.held <= HELD_LIMIT => Ok(result),
+            _ => {
                 self.exhausted = true;
                 Err(too_much_regex_work(cell))
             }
         }
     }
 
-    /// Compiles `pattern` under the smallest size limit it fits, charging each attempt.
-    fn compile(&mut self, pattern: &str, cell: CellReferenceIndex) -> Result<Compiled, CalcResult> {
-        let mut regex = None;
-        let mut held = 0;
+    /// Compiles `pattern` under the smallest size limit it fits, charging each attempt; `None`
+    /// when it is invalid.
+    fn compile(
+        &mut self,
+        pattern: &str,
+        cell: CellReferenceIndex,
+    ) -> Result<Option<(Engine, Caches)>, CalcResult> {
         for limit in SIZE_LIMITS {
             if self.budget < limit {
                 self.exhausted = true;
                 return Err(too_much_regex_work(cell));
             }
             self.budget -= limit;
-            held = limit;
-            match RegexBuilder::new(pattern).size_limit(limit).build() {
-                Ok(compiled) => {
-                    regex = Some(compiled);
-                    break;
+            match Engine::new(pattern, limit) {
+                Ok(engine) => {
+                    let caches = engine.create_caches();
+                    return Ok(Some((engine, caches)));
                 }
-                Err(error) if too_big(&error) => {}
-                Err(_) => break,
+                Err(BuildFailure::TooBig) => {}
+                Err(BuildFailure::Invalid) => break,
             }
         }
-        Ok(Compiled { regex, limit: held })
+        Ok(None)
     }
 
     /// The call's result: `#ERROR!` when its work ran out in any element.
@@ -182,22 +156,23 @@ fn too_much_regex_work(cell: CellReferenceIndex) -> CalcResult {
 
 /// A REGEXREPLACE replacement split once into its literal text and the capture groups it
 /// refers to, with the regex crates' own `$name` rules (`regex_automata`'s interpolation), so
-/// the length of a result is known before it is built. `regex_lite` (wasm32) documents the same
-/// syntax; should it ever differ, the built result's length is checked again.
-struct Replacement {
-    literal_len: usize,
+/// the length of a result is known before it is built.
+struct Replacement<'a> {
+    text: &'a str,
+    /// The replacement with no groups expanded: all of it when it refers to none.
+    literal: String,
     /// Each group referred to and how often.
     groups: Vec<(usize, usize)>,
 }
 
-impl Replacement {
-    fn new(re: &Regex, replacement: &str) -> Self {
+impl<'a> Replacement<'a> {
+    fn new(engine: &Engine, text: &'a str) -> Self {
         let mut literal = String::new();
         let mut refs = Vec::new();
         regex_automata::util::interpolate::string(
-            replacement,
+            text,
             |index, _| refs.push(index),
-            |name| re.capture_names().position(|n| n == Some(name)),
+            |name| engine.group_index(name),
             &mut literal,
         );
         refs.sort_unstable();
@@ -209,30 +184,57 @@ impl Replacement {
             }
         }
         Replacement {
-            literal_len: literal.len(),
+            text,
+            literal,
             groups,
         }
     }
 
     /// The byte length of `REGEXREPLACE(text, re, replacement)`, saturating, without building it.
-    fn result_len(&self, re: &Regex, text: &str) -> usize {
+    fn result_len(&self, search: &mut Search<'_>, text: &str) -> Result<usize, Spent> {
         let mut len = text.len();
+        let literal_len = self.literal.len();
         if self.groups.is_empty() {
-            for m in re.find_iter(text) {
-                len = len.saturating_add(self.literal_len).saturating_sub(m.len());
-            }
-            return len;
+            search.for_each_match(text, |m| {
+                len = len.saturating_add(literal_len).saturating_sub(m.len());
+            })?;
+            return Ok(len);
         }
-        for caps in re.captures_iter(text) {
-            let matched = caps.get(0).map_or(0, |m| m.len());
+        let mut caps = search.engine.create_captures();
+        search.for_each_captures(text, &mut caps, |caps| {
+            let span_len = |index| caps.get_group(index).map_or(0, |m| m.len());
             let expanded = self
                 .groups
                 .iter()
-                .map(|&(index, count)| caps.get(index).map_or(0, |m| m.len()).saturating_mul(count))
-                .fold(self.literal_len, usize::saturating_add);
-            len = len.saturating_add(expanded).saturating_sub(matched);
+                .map(|&(index, count)| span_len(index).saturating_mul(count))
+                .fold(literal_len, usize::saturating_add);
+            len = len.saturating_add(expanded).saturating_sub(span_len(0));
+        })?;
+        Ok(len)
+    }
+
+    /// `REGEXREPLACE(text, re, replacement)`, `len` bytes long.
+    fn replace(&self, search: &mut Search<'_>, text: &str, len: usize) -> Result<String, Spent> {
+        let mut out = String::with_capacity(len);
+        let mut last = 0;
+        if self.groups.is_empty() {
+            search.for_each_match(text, |m| {
+                out.push_str(text.get(last..m.start()).unwrap_or_default());
+                out.push_str(&self.literal);
+                last = m.end();
+            })?;
+        } else {
+            let mut caps = search.engine.create_captures();
+            search.for_each_captures(text, &mut caps, |caps| {
+                if let Some(m) = caps.get_match() {
+                    out.push_str(text.get(last..m.start()).unwrap_or_default());
+                    caps.interpolate_string_into(text, self.text, &mut out);
+                    last = m.end();
+                }
+            })?;
         }
-        len
+        out.push_str(text.get(last..).unwrap_or_default());
+        Ok(out)
     }
 }
 
@@ -299,48 +301,47 @@ impl Model {
                 } else {
                     false
                 };
-                let re = match cache.get(&pattern, text.len(), 1, cell) {
-                    Ok(re) => re,
-                    Err(error) => return error,
-                };
-                if return_all && first_only {
-                    // A lifted element keeps the first match only (T-1272 performance review).
-                    return match re.find(&text) {
-                        Some(m) => CalcResult::String(m.as_str().to_string().into()),
-                        None => {
-                            CalcResult::new_error(Error::NA, cell, "No match found".to_string())
-                        }
-                    };
-                }
-                if return_all {
-                    let row: Vec<ArrayNode> = re
-                        .find_iter(&text)
-                        .map(|m| ArrayNode::String(m.as_str().to_string().into()))
-                        .collect();
-                    if row.is_empty() {
-                        return CalcResult::new_error(
-                            Error::NA,
-                            cell,
-                            "No match found".to_string(),
-                        );
+                let found = cache.with(&pattern, cell, |search| {
+                    if return_all && first_only {
+                        // A lifted element keeps the first match only (T-1272 performance
+                        // review).
+                        return Ok(search.find(&text)?.map(|m| vec![m.range()]));
                     }
-                    CalcResult::Array(vec![row])
-                } else {
-                    match re.captures(&text) {
-                        None => {
-                            CalcResult::new_error(Error::NA, cell, "No match found".to_string())
-                        }
-                        Some(caps) => {
-                            // If there is at least one explicit capture group, return group 1.
-                            // Otherwise return the full match (group 0).
-                            let matched = if caps.len() > 1 {
-                                caps.get(1).map_or("", |m| m.as_str())
-                            } else {
-                                caps.get(0).map_or("", |m| m.as_str())
-                            };
-                            CalcResult::String(matched.to_string().into())
-                        }
+                    if return_all {
+                        let mut all = Vec::new();
+                        search.for_each_match(&text, |m| all.push(m.range()))?;
+                        return Ok(Some(all).filter(|all| !all.is_empty()));
                     }
+                    let mut caps = search.engine.create_captures();
+                    if !search.captures(&text, &mut caps)? {
+                        return Ok(None);
+                    }
+                    // If there is at least one explicit capture group, return group 1.
+                    // Otherwise return the full match (group 0).
+                    let group = usize::from(caps.group_len() > 1);
+                    Ok(Some(vec![caps
+                        .get_group(group)
+                        .map_or(0..0, |m| m.range())]))
+                });
+                let piece =
+                    |range: std::ops::Range<usize>| Text::from(text.get(range).unwrap_or_default());
+                match found {
+                    Err(error) => error,
+                    Ok(None) => {
+                        CalcResult::new_error(Error::NA, cell, "No match found".to_string())
+                    }
+                    Ok(Some(ranges)) if return_all && !first_only => {
+                        CalcResult::Array(vec![ranges
+                            .into_iter()
+                            .map(|range| ArrayNode::String(piece(range)))
+                            .collect()])
+                    }
+                    Ok(Some(ranges)) => ranges
+                        .into_iter()
+                        .next()
+                        .map_or(CalcResult::String(Text::from("")), |range| {
+                            CalcResult::String(piece(range))
+                        }),
                 }
             },
         );
@@ -379,19 +380,23 @@ impl Model {
                     Err(e) => return e,
                 };
                 // Two passes over the text: one measures the result, one builds it.
-                let re = match cache.get(&pattern, text.len(), 2, cell) {
-                    Ok(re) => re,
+                let replaced = cache.with(&pattern, cell, |search| {
+                    let replacement = Replacement::new(search.engine, &replacement);
+                    let len = replacement.result_len(search, &text)?;
+                    if !within_text_budget(&mut total, len) {
+                        over_budget = true;
+                        return Ok(None);
+                    }
+                    if len > MAX_REPLACED_BYTES {
+                        return Ok(None);
+                    }
+                    Ok(Some(replacement.replace(search, &text, len)?))
+                });
+                let replaced = match replaced {
+                    Ok(Some(replaced)) => Text::from(replaced.as_str()),
+                    Ok(None) => return too_long(cell),
                     Err(error) => return error,
                 };
-                let len = Replacement::new(re, &replacement).result_len(re, &text);
-                if !within_text_budget(&mut total, len) {
-                    over_budget = true;
-                    return too_long(cell);
-                }
-                if len > MAX_REPLACED_BYTES {
-                    return too_long(cell);
-                }
-                let replaced = Text::from(re.replace_all(&text, replacement.as_str()).as_ref());
                 if replaced.len_utf16() > MAX_TEXT_UNITS {
                     return too_long(cell);
                 }
@@ -426,8 +431,8 @@ impl Model {
                     Ok(operands) => operands,
                     Err(error) => return error,
                 };
-                match cache.get(&pattern, text.len(), 1, cell) {
-                    Ok(re) => CalcResult::Boolean(re.is_match(&text)),
+                match cache.with(&pattern, cell, |search| search.is_match(&text)) {
+                    Ok(matched) => CalcResult::Boolean(matched),
                     Err(error) => error,
                 }
             },
@@ -438,7 +443,7 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::{CalcResult, PatternCache, COMPILE_BUDGET, SEARCH_BUDGET};
+    use super::{CalcResult, PatternCache, COMPILE_BUDGET};
     use crate::expressions::{token::Error, types::CellReferenceIndex};
 
     const CELL: CellReferenceIndex = CellReferenceIndex {
@@ -447,7 +452,7 @@ mod tests {
         column: 1,
     };
 
-    fn is_error(result: Result<&super::Regex, CalcResult>) -> bool {
+    fn is_error<R>(result: &Result<R, CalcResult>) -> bool {
         matches!(
             result,
             Err(CalcResult::Error {
@@ -457,22 +462,54 @@ mod tests {
         )
     }
 
-    // T-1272 performance review: a search is charged its text's bytes times the pattern's size
-    // limit before it runs. `\w{200}b` over 4,000 texts of 3,000 bytes took 38.5 s; at the
-    // largest limit the budget is about 440,000 bytes.
+    // T-1272 performance review: a simple pattern is charged what its lazy DFA scans, so a
+    // long column fits; the call is spent once the work runs out, and stays spent.
     #[test]
-    fn searches_are_charged_by_size_limit() {
+    fn searches_are_charged_by_work_done() {
+        let text = "y".repeat(1 << 20);
         let mut cache = PatternCache::new();
-        assert!(cache.get("a", 1 << 20, 2, CELL).is_ok());
-        assert!(is_error(cache.get("a", 1 << 30, 1, CELL)));
-        // Spent for the rest of the call.
-        assert!(is_error(cache.get("a", 1, 1, CELL)));
+        for _ in 0..100 {
+            assert!(matches!(
+                cache.with("x", CELL, |search| search.is_match(&text)),
+                Ok(false)
+            ));
+        }
+        let mut cache = PatternCache::new();
+        cache.work = 1_000;
+        assert!(is_error(
+            &cache.with("x", CELL, |search| search.is_match(&text))
+        ));
+        assert!(is_error(
+            &cache.with("x", CELL, |search| search.is_match("x"))
+        ));
+    }
 
+    // T-1272 performance review: a compact pattern whose lazy DFA thrashes gives up and runs on
+    // the PikeVM, charged its NFA's states for every byte, so a call over many such texts stops
+    // early instead of running for seconds.
+    #[test]
+    fn thrashing_patterns_are_charged_by_state_count() {
+        let text: String = (1..=30_000u64)
+            .map(|i| {
+                if (i * i * 7919 + i * 104_729) % 30_011 > 15_005 {
+                    'a'
+                } else {
+                    'b'
+                }
+            })
+            .collect();
+        let pattern = "a[ab]{100}c|b[ab]{100}c";
         let mut cache = PatternCache::new();
-        // 400,000 x 10 MiB is just under the budget; 100,000 more bytes are not.
-        const _: () = assert!(400_000 * (10 << 20) < SEARCH_BUDGET);
-        assert!(cache.get("\\w{200}b", 400_000, 1, CELL).is_ok());
-        assert!(is_error(cache.get("\\w{200}b", 100_000, 1, CELL)));
+        let mut searches = 0;
+        while cache
+            .with(pattern, CELL, |search| search.is_match(&text))
+            .is_ok()
+        {
+            searches += 1;
+        }
+        // About 30,000 bytes x 210 states x 5 units a search once the DFA gives up.
+        assert!(searches < 100, "{searches} searches");
+        assert!(searches > 2, "{searches} searches");
     }
 
     // The compile budget charges every attempt, so past it the call is spent; an invalid
@@ -481,7 +518,7 @@ mod tests {
     fn compiles_are_budgeted() {
         let mut cache = PatternCache::new();
         assert!(matches!(
-            cache.get("(", 1, 1, CELL),
+            cache.with("(", CELL, |search| search.is_match("")),
             Err(CalcResult::Error {
                 error: Error::VALUE,
                 ..
@@ -490,7 +527,7 @@ mod tests {
         let small = COMPILE_BUDGET / (1 << 16);
         let mut spent = false;
         for i in 0..=small {
-            spent |= is_error(cache.get(&format!("a{i}"), 1, 1, CELL));
+            spent |= is_error(&cache.with(&format!("a{i}"), CELL, |search| search.is_match("")));
         }
         assert!(spent);
     }
