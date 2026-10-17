@@ -341,9 +341,10 @@ day that a year follows does not parse; DATEVALUE, VALUE, `0+`, MONTH and DAY ag
 are 0 wherever DATEVALUE parses):
 - Month then one number is the year-less "Month d" rule above: a day of that month in the current year
   (`"July1"`, `"July10"`, `"July31"`, `"Jul1"`, `"Sept1"`: rows 1-3, 7, 20), otherwise the 1st of
-  that month in that year, two digits as a two-digit year (`"July32"` 1932-07-01, `"July45"` 1945-07-01,
+  that month in that year, one or two digits as a two-digit year (`"July32"` 1932-07-01, `"July45"` 1945-07-01,
   `"July0"` 2000-07-01, `"January0"` 2000-01-01, `"December0"` 2000-12-01: rows 4-6, 22-23) and four
-  digits as the year (`"Jul2026"`, `"July2026"`: 2026-07-01, rows 8-9).
+  digits as the year (`"Jul2026"`, `"July2026"`: 2026-07-01, rows 8-9). Unprobed in glued form: a number that is a
+  day of no 30-day month or of February (`"Jun31"`, `"Feb29"`); the year-less rule reads them as years.
 - Day then month, with or without a year, glued on either side or both: `"1July"` (current year,
   row 12), `"1Jul2026"`, `"01JUN21"` (2021), `"1June2021"`, `"1jun2021"` (case-insensitive),
   `"1JUN 2021"`, `"1 JUN2021"`, `"1JUN2021"` (rows 13-16, 18-19, 24).
