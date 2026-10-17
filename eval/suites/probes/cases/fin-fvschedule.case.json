@@ -1,0 +1,42 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1625: FVSCHEDULE schedule shapes, text/bool/blank elements and errors.",
+ "tags": [
+  "M9",
+  "probe",
+  "financial",
+  "T-1625"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=FVSCHEDULE(1000,{0.09,0.11,0.1})",
+    "A2": "=FVSCHEDULE(1000,{0.09})",
+    "A3": "=FVSCHEDULE(1000,{0.09,\"a\",0.1})",
+    "A4": "=FVSCHEDULE(1000,{0.09,TRUE,0.1})",
+    "A5": "=FVSCHEDULE(1000,{-1,0.1})",
+    "A6": "=FVSCHEDULE(1000,{-2,0.1})",
+    "A7": "=FVSCHEDULE(0,{0.1,0.2})",
+    "A8": "=FVSCHEDULE(-1000,{0.1,0.2})",
+    "A9": "=FVSCHEDULE(\"1000\",{0.1})",
+    "A10": "=FVSCHEDULE(1000,0.1)",
+    "A11": "=FVSCHEDULE(1000,{0.1;0.2})",
+    "A12": "=FVSCHEDULE(1000,{0.1,0.2;0.3,0.4})",
+    "A13": "=FVSCHEDULE(1000,B1:B3)",
+    "A14": "=FVSCHEDULE(1000,B1:B4)",
+    "A15": "=FVSCHEDULE(1000,B5:B6)",
+    "A16": "=FVSCHEDULE(1000,{\"0.1\"})",
+    "A17": "=FVSCHEDULE(1000,{#DIV/0!})",
+    "A18": "=FVSCHEDULE(TRUE,{0.1})",
+    "A19": "=FVSCHEDULE(1000,\"\")",
+    "A20": "=FVSCHEDULE(1000,{0,0})",
+    "B1": 0.1,
+    "B2": "x",
+    "B3": 0.2,
+    "B4": true
+   }
+  }
+ ],
+ "expected": {}
+}

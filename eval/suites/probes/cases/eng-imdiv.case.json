@@ -1,0 +1,42 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1625: IMDIV suffixes, mixed suffixes, zero divisor, numeric/bool arguments and invalid text.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-1625"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=IMDIV(\"3+4i\",\"1+2i\")",
+    "A2": "=IMDIV(\"3+4j\",\"1+2j\")",
+    "A3": "=IMDIV(\"3+4i\",\"1+2j\")",
+    "A4": "=IMDIV(\"3+4j\",\"1+2i\")",
+    "A5": "=IMDIV(\"5\",\"2i\")",
+    "A6": "=IMDIV(\"3+4i\",\"3+4i\")",
+    "A7": "=IMDIV(\"3+4i\",\"0\")",
+    "A8": "=IMDIV(\"0\",\"3+4i\")",
+    "A9": "=IMDIV(\"i\",\"i\")",
+    "A10": "=IMDIV(\"abc\",\"1+i\")",
+    "A11": "=IMDIV(\"1+i\",\"abc\")",
+    "A12": "=IMDIV(\"\",\"1+i\")",
+    "A13": "=IMDIV(\"1+i\",\"\")",
+    "A14": "=IMDIV(\"1E2+1i\",\"1+1E-2i\")",
+    "A15": "=IMDIV(\"3+4i\",5)",
+    "A16": "=IMDIV(5,\"3+4i\")",
+    "A17": "=IMDIV(\"3+4i\",TRUE)",
+    "A18": "=IMDIV(\"0\",\"0\")",
+    "A19": "=IMDIV(\"-3-4i\",\"1E-200+0i\")",
+    "A20": "=IMDIV(\"3+4i\",\"1+2k\")",
+    "A21": "=IMDIV(\"1+i\",\"-i\")",
+    "A22": "=IMDIV(\"0\",\"0\")",
+    "A23": "=IMDIV(\"0i\",\"0j\")",
+    "A24": "=IMDIV(\"1\",\"1E-200\")"
+   }
+  }
+ ],
+ "expected": {}
+}

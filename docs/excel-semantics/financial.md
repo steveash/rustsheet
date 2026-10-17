@@ -558,3 +558,14 @@ Macintosh Excel; all 273 cells bit-exact, T-1475); the same formulation is bit-e
 probes fin-argument-modes H313, date-system-1904-financial A29:A30 and -shift A32.
 Status: VERIFIED (desktop-cached)
 Tasks: T-1475
+
+## T-1625 probes: VDB, AMORDEGRC, FVSCHEDULE, MDURATION, RRI
+- `VDB(2400,3000,10,0,1)` (salvage above cost) is -600, not -60; `VDB(2400,300,10,9.5,10,2,FALSE)` is 0 (the
+  last half period after the book value reaches salvage).
+- AMORDEGRC with rate 0.20 or 0.25 over a 1.5 year life returns a number (1437, 1346), not #NUM!.
+- FVSCHEDULE: any text, boolean or text-cell element in the schedule, a quoted-number element
+  `{"0.1"}`, `TRUE` as principal and `""` as schedule are all `#VALUE!` (nothing is skipped).
+- MDURATION and RRI(TRUE principal) differ from us only in the last ulp.
+Evidence: probes/fin-vdb-modes, fin-amordegrc, fin-fvschedule, fin-mduration, fin-rri (excel-graph, 2026-10-17, T-1625).
+Status: VERIFIED (excel-graph)
+Tasks: T-1764, T-1765
