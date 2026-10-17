@@ -381,8 +381,8 @@ NETWORKDAYS.INTL is the exception: it lifts over a range (`INDEX(WORKDAY.INTL(45
   function's own scalar check order decides, and a refused range counts as a `#VALUE!` argument in its
   position (probes/scalar-lift-open-a, -d, T-1777). For most functions that is the leftmost:
   `INDEX(PMT({#NUM!},{#N/A},100),1)` is `#NUM!` and the reversed `INDEX(PMT({#N/A},{#NUM!},100),1)`
-  is `#N/A`, and so are EDATE's with `{#NUM!},{#N/A}` and `{#N/A},{#NUM!}` (-open-a W14-W17), with the H33 element
-  now confirmed on six cells. Beside a refused range: `EDATE(NA(),A1:A60)` is `#N/A` and
+  is `#N/A`, and so are EDATE's with `{#NUM!},{#N/A}` and `{#N/A},{#NUM!}` (-open-a W14-W17), with H33's
+  leftmost-error element confirmed by W14-W17. Beside a refused range: `EDATE(NA(),A1:A60)` is `#N/A` and
   `EDATE(A1:A60,NA())` is `#VALUE!` (W1, W2; ROWS the same, W11, W12), `EFFECT(1/0,C1:C60)` is `#DIV/0!` and
   `EFFECT(C1:C60,1/0)` is `#VALUE!` (W3, W4), `EDATE("x",A1:A60)` and `EDATE(A1:A60,"x")` are `#VALUE!`
   (W9, W10), and ACCRINTM does the same in its first four arguments, also next to an array (-d W8-W15). A
@@ -415,7 +415,7 @@ arrays", information.md "ISEVEN/ISODD over a range").
   `=EDATE({45000;45031},A1:A60)` entered as a dynamic formula spills the array's shape: `ROWS(AA3#)` is 2 and
   both cells are `#VALUE!` (AA3, AA4). Its FORMULATEXT is the written text with no `@` and no
   braces (AB3), the same for `EDATE({45000;45031},B1:B60)` (AA6, AB6), for the plain `=PMT({0.1;0.2},10,100)`
-  (AA9, AB9: -16.27453948825116 and -23.852275688285914) and for the legacy `=EDATE(A1:A60,1)` (AA12, AB12). So
+  (AA9, AA10, AB9: -16.27453948825116 in AA9 and the spill cell AA10 -23.852275688285914) and for the legacy `=EDATE(A1:A60,1)` (AA12, AB12). So
   FORMULATEXT does not show whether Excel saves the cell as a dynamic-array formula (the `cm` flag of the
   file); that needs the file itself (desktop Excel, M14), and the static shape above is what the cell does.
 - **A multi-cell reference that a function returns lifts in a worksheet function.** Where the same

@@ -21,7 +21,6 @@ SPEC-0011 open question 2 assumed `#VALUE!` in both, as `lift_with_cost` gives t
 - [ ] probes/scalar-lift-open-b W2-W11 and probes/scalar-lift-open-d W17-W29 pass.
 - [ ] A test covers a 3-D range in a `Lift` and in a `LiftArrays` argument, alone and beside an array.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - 3-D ranges in aggregates or in any non-lifted function.
