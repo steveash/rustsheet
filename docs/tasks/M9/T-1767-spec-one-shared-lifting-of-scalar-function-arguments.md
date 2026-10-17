@@ -37,13 +37,13 @@ Owner-directed work (2026-10-17): array lifting of scalar arguments is the large
 - Probes (excel-graph, 2026-10-17): probes/scalar-lift-shapes, -b and -c (111 cells), recorded in docs/excel-semantics/arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule", with pointers in financial.md, engineering.md, dates.md and references.md. Each rule names the cells it rests on. The unprobed later ATP arguments, element values and precedence cases are listed and go to T-1777. The 90 failing cells are in eval/baseline/probes.txt. The counts in the spec are a snapshot (2026-10-17, ea76d91f).
 - Directive-5 holes found:
   - `broadcast_text` has no array-size bound (T-1771, P0).
-  - EXPAND, WRAPROWS, WRAPCOLS and MMULT allocate without `check_array_size` (T-1782, P0). HSTACK/VSTACK and TEXTSPLIT have the same hole (T-1780, T-1781, filed by the T-1771 work).
+  - EXPAND, WRAPROWS, WRAPCOLS and MMULT allocate without `check_array_size` (T-1786, P0). HSTACK/VSTACK and TEXTSPLIT have the same hole (T-1780, T-1781, filed by the T-1771 work).
 - Rollout:
-  0. T-1771, T-1780, T-1781, T-1782.
+  0. T-1771, T-1780, T-1781, T-1786.
   1. T-1784 (pure move), then T-1770 (table, hooks, EDATE, EOMONTH, WEEKNUM, YEARFRAC).
   2. In parallel: T-1236, T-1372, T-1290, T-1772 (the `Whole` + `Prepared` consumer), T-1383.
   3. T-1241, T-1271, T-1389.
-  4. The old helpers: T-1773, T-1785, T-1774, T-1775 (last, with the grep check), T-1783.
+  4. The old helpers: T-1773, T-1785, T-1774, T-1775 (last, with the grep check), T-1787.
   5. T-1776: derived catalog key, mapping, kernel-work and metamorphic checks.
   6. T-1777: open probes.
 - Checks: `make check` passes. The reviewers' second round is pending.

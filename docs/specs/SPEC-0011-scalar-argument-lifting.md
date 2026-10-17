@@ -3,10 +3,10 @@
 - **Status:** accepted (on merge of T-1767)
 - **Milestone / lane:** M9 / engine (the driver), then the functions-* lanes (the families) and quality (the old helpers)
 - **Tasks:** T-1767 (this spec).
-  - Independent directive-5 fixes: T-1771, T-1780, T-1781, T-1782.
+  - Independent directive-5 fixes: T-1771, T-1780, T-1781, T-1786.
   - The driver: T-1784 (pure move), T-1770 (table, hooks, first consumers).
   - The families: T-1236, T-1372, T-1290, T-1772, T-1383, T-1241, T-1271, T-1389.
-  - The old helpers: T-1773, T-1785, T-1774, T-1775, T-1783.
+  - The old helpers: T-1773, T-1785, T-1774, T-1775, T-1787.
   - The catalog check and the open probes: T-1776, T-1777.
   - The order is under Rollout.
 
@@ -86,9 +86,9 @@ hole. None of them calls `check_array_size` before it allocates:
 - **MMULT** (math_and_trigonometry/mmult.rs) builds rows(array1) × columns(array2):
   `MMULT(A:A,1:1)` is 2^34 cells.
 - **TEXTSPLIT** pads its result. **T-1781** (P0) fixes it.
-- **XMATCH:** not traced (no allocation path read). T-1782 checks it.
+- **XMATCH:** not traced (no allocation path read). T-1786 checks it.
 
-T-1782 (P0) bounds EXPAND, WRAPROWS/WRAPCOLS and MMULT before they allocate. Its acceptance tests
+T-1786 (P0) bounds EXPAND, WRAPROWS/WRAPCOLS and MMULT before they allocate. Its acceptance tests
 include `=EXPAND(1,1E9,1E9)`, which must be `#ERROR!` at once. T-1780's include
 `=ROWS(VSTACK(A:A,1:1))`. Each adds its functions to the arrays.md DEVIATION entry.
 
@@ -452,7 +452,7 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
    - **`reuse_equal_runs`:** the element is compared with the previous position slot by slot,
      through `bcast_get` at both positions. No per-element key `Vec` is built.
 6. **Element result** → `ArrayNode` via the existing `cast::calc_result_to_array_node`. A range,
-   an array or a LAMBDA is `#VALUE!`, as today. There is no new helper, and T-1783 deletes the four
+   an array or a LAMBDA is `#VALUE!`, as today. There is no new helper, and T-1787 deletes the four
    private copies of that function in functions/logical/.
 7. **Text budget:** element strings count against `util::within_text_budget`, the 64 MiB
    `broadcast_text` has today. The size check comes first: a call above the array bound is
@@ -577,7 +577,7 @@ silently.
   `clip_to_used_area` changes which cells `evaluate_range` reads, never the shape it returns or
   the bound it checks: `check_range_size` and `check_array_size` use the written shape (arrays.md
   "Array results above 1,048,576 cells", which documents the clipping). It is not a DEVIATION,
-  because no result changes. T-1771 and T-1782 add the same kind of tests for their functions.
+  because no result changes. T-1771 and T-1786 add the same kind of tests for their functions.
 - **Nesting and stack:** `test_nested_formula_stack` gains a deeply nested lifted formula through a
   migrated function (`EDATE(EDATE(…{45000;45031}…,1),1)`, T-1770). T-1773 keeps that test's
   existing subject, ABS, passing after ABS moves onto the driver.
@@ -604,7 +604,7 @@ Each step is one PR of size S/M. The old paths stay until their step.
    - **T-1771** (functions-text, P0, S): bound `broadcast_text`.
    - **T-1780** (functions-lookup, P0): bound HSTACK/VSTACK padding.
    - **T-1781** (functions-text, P0): bound TEXTSPLIT padding.
-   - **T-1782** (functions-lookup, P0, M): bound EXPAND, WRAPROWS/WRAPCOLS and MMULT; check XMATCH.
+   - **T-1786** (functions-lookup, P0, M): bound EXPAND, WRAPROWS/WRAPCOLS and MMULT; check XMATCH.
 1. **The driver:**
    - **T-1784** (engine, opus, S): move `lift_with_cost`, `CriteriaArg`, `count_walks` and
      `is_lifted` into `functions/lift/driver.rs` as `lift_values`, with 0 eval diff and the
@@ -629,7 +629,7 @@ Each step is one PR of size S/M. The old paths stay until their step.
      MUNIT, MROUND, SQRTPI.
    - **T-1774** (quality, sonnet, S): IS* and ISEVEN.
    - **T-1775** (quality, opus, M; last, with the no-ad-hoc-lift grep): the text functions.
-   - **T-1783** (quality, sonnet, S): the private `calc_result_to_array_node` copies.
+   - **T-1787** (quality, sonnet, S): the private `calc_result_to_array_node` copies.
 5. **T-1776** (harness, sonnet, S, any time after T-1770): the derived catalog key, the
    cross-check, the `KernelWork` list check and the metamorphic test.
 6. **T-1777** (research, sonnet, S, any time): probe the open questions. A finding changes a table

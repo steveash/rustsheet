@@ -1,5 +1,5 @@
 ---
-id: T-1782
+id: T-1786
 title: "Bound EXPAND, WRAPROWS, WRAPCOLS and MMULT results by check_array_size before allocating; check XMATCH"
 milestone: M9
 lane: functions-lookup
