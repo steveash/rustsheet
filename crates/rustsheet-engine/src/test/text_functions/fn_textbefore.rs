@@ -98,3 +98,26 @@ fn test_textbefore_textafter_case_insensitive_final_sigma() {
     assert_eq!(model._get_text("A8"), "aΟ");
     assert_eq!(model._get_text("A9"), "aΟ");
 }
+
+// A huge negative instance number saturates to i32::MIN in the caller; negating it must not
+// overflow (T-1796 security review). It behaves like the largest representable negative count.
+#[test]
+fn test_textbefore_textafter_huge_negative_instance_does_not_overflow() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTBEFORE(\"a,b\",\",\",-1E10)");
+    model._set("A2", "=TEXTBEFORE(\"a,b\",\",\",-1E10,1)");
+    model._set("A3", "=TEXTAFTER(\"a,b\",\",\",-1E10)");
+    model._set("A4", "=TEXTAFTER(\"a,b\",\",\",-1E10,1)");
+    model._set("B1", "=TEXTBEFORE(\"a,b\",\",\",-2147483647)");
+    model._set("B2", "=TEXTBEFORE(\"a,b\",\",\",-2147483647,1)");
+    model._set("B3", "=TEXTAFTER(\"a,b\",\",\",-2147483647)");
+    model._set("B4", "=TEXTAFTER(\"a,b\",\",\",-2147483647,1)");
+    model.evaluate();
+    for row in 1..=4 {
+        assert_eq!(
+            model._get_text(&format!("A{row}")),
+            model._get_text(&format!("B{row}")),
+            "row {row}"
+        );
+    }
+}

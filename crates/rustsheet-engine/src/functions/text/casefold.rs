@@ -10,7 +10,7 @@ pub(super) fn fold_case(text: &str) -> String {
 }
 
 /// [`fold_case`] for one character: always exactly one character out.
-pub(super) fn fold_char(c: char) -> char {
+fn fold_char(c: char) -> char {
     // Final sigma matches sigma in either case (`SEARCH("ς","ΟΣ")` is 2), while the other
     // simple-fold pairs do not: ſ/s, µ/μ and ϐ/β are #VALUE! (A14-A24).
     if c == 'ς' {
@@ -23,8 +23,9 @@ pub(super) fn fold_char(c: char) -> char {
     }
 }
 
-/// The folding `match_mode` 1 of TEXTSPLIT, TEXTBEFORE and TEXTAFTER share, for a char other
-/// than sigma: U+0130 matches `i`, unlike SEARCH; the Kelvin sign does not match `k`, again
+/// The folding `match_mode` 1 of TEXTSPLIT, TEXTBEFORE and TEXTAFTER share (TEXTBEFORE and
+/// TEXTAFTER handle sigma themselves; TEXTSPLIT's final sigma follows SEARCH through
+/// [`fold_char`]): U+0130 matches `i`, unlike SEARCH; the Kelvin sign does not match `k`, again
 /// unlike SEARCH; `ß` and `ẞ` do not match `ss` (probes/textsplit-casefold-length A2, A6, A7 and
 /// probes/textbefore-casefold-length A1-A12; docs/excel-semantics/text.md).
 fn fold_match_char(c: char) -> char {
@@ -43,8 +44,8 @@ pub(super) fn fold_for_split(text: &str) -> String {
 /// TEXTBEFORE and TEXTAFTER's `match_mode` 1 folding: [`fold_match_char`], except that sigma
 /// folds by position. A `Σ` followed by a letter is `σ` and any other `Σ` is `ς`, and `ς`
 /// stays `ς`, so `ς` matches only `ς` and a final `Σ` (probes/textbefore-casefold-length
-/// A17-A25). `ẞ` does not fold to `ß`. Whether "followed by a letter" is exact (case-ignorable chars, or a required
-/// letter before the `Σ`) is UNVERIFIED.
+/// A17-A25). `ẞ` does not fold to `ß`. Whether "followed by a letter" is exact (case-ignorable
+/// chars, or a required letter before the `Σ`) is UNVERIFIED.
 pub(super) fn fold_for_before_after(text: &str) -> String {
     let mut folded = String::with_capacity(text.len());
     let mut chars = text.chars().peekable();

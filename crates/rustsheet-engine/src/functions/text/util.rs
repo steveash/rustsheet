@@ -143,12 +143,15 @@ fn match_text(
     instance_num: i32,
     match_mode: Case,
 ) -> Option<(usize, usize)> {
+    // The callers saturate a huge instance number to i32::MIN, whose negation overflows; saturate
+    // it to i32::MAX instead, the same count a huge positive instance number gets.
+    let reverse_num = instance_num.saturating_neg();
     match match_mode {
         Case::Sensitive => {
             if instance_num > 0 {
                 text_sensitive(text, delimiter, instance_num)
             } else {
-                text_sensitive_reverse(text, delimiter, -instance_num)
+                text_sensitive_reverse(text, delimiter, reverse_num)
             }
         }
         Case::Insensitive => {
@@ -160,7 +163,7 @@ fn match_text(
             let (left, right) = if instance_num > 0 {
                 text_sensitive(&folded_text, &folded_delimiter, instance_num)
             } else {
-                text_sensitive_reverse(&folded_text, &folded_delimiter, -instance_num)
+                text_sensitive_reverse(&folded_text, &folded_delimiter, reverse_num)
             }?;
             let original = char_offsets(text);
             let char_index = |byte: usize| folded_text.get(..byte).map(|s| s.chars().count());
