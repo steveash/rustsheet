@@ -539,7 +539,8 @@ As built (T-1822): ACCRINT, the COUP* family, DURATION, MDURATION and PRICE are 
 one period at a time, at most about 32,400 quarters once a settlement below serial 1 is `#NUM!` (Excel's rule,
 probes/fin-coupon-walk-bounds; before, a settlement of -1E15 walked about 10^6 quarters). Each walk is charged 2^16
 units (`COUPON_WALK_WEIGHT`, about 1 ms at the longest schedule): two for COUP* and ACCRINT (1,024 elements), four
-for DURATION, MDURATION and PRICE (512; financial.md "Coupon schedule work cap", a DEVIATION). YIELD, the ODD*
+for DURATION, MDURATION and PRICE (512; financial.md "Coupon schedule work cap", a DEVIATION; T-1846 narrows it
+to a schedule-length budget). YIELD, the ODD*
 functions, CUMIPMT/CUMPRINC, AMOR* and the scalars beside XNPV's, XIRR's and FVSCHEDULE's data are T-1841 to T-1843 and T-1845.
 
 ### Kernels

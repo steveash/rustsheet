@@ -463,7 +463,7 @@ so a lifted call at the cap takes 1-2 s at the longest schedule. The scalar call
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
 Implemented in: functions/lift/kinds.rs (`COUPON_WALK_WEIGHT`, `COUPON`, `ACCRINT`, `BOND_5_OF_6`, `BOND_6_OF_7`)
-Tasks: T-1822, T-1842
+Tasks: T-1822, T-1842; T-1846 narrows the cap to a schedule-length budget.
 
 ## Discount-security functions: settlement 0, basis and argument modes
 Rule: INTRATE, PRICEDISC and YIELDDISC accept settlement serial 0 and compute with it (`INTRATE(0,43466,1000,1100)` =
