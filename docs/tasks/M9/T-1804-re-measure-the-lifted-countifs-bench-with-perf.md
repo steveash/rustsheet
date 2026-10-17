@@ -38,7 +38,8 @@ under-0.5 the task asks for). Parent = `6ed7cd39^` (before T-1770), branch = `or
 | parent | 631, 635, 646, 650, 654, 671, 718 | 650 |
 | main | 608, 612, 624, 624, 625, 638, 654 | 624 |
 
-The first 3 pairs agree (parent 662-699, main 614-658). Main is about 3-4% faster than the parent,
-so T-1770's +5.2% ± 3.6% was layout or noise, and main now carries no COUNTIFS regression against
-SPEC-0011's 5% budget. Accepted: the unmeasured per-counter breakdown, since there is no gap left
+The first 3 pairs agree (parent 662-699, main 614-658). Main is at parity or better (about 3-4% lower
+min time, within this box's noise), so T-1770's +5.2% ± 3.6% was layout or noise, and main carries no
+COUNTIFS regression against SPEC-0011's 5% budget. The first 3 pairs are given as ranges only; the
+table and its median cover the later 7 of the 10. Accepted: the unmeasured per-counter breakdown, since there is no gap left
 to explain.
