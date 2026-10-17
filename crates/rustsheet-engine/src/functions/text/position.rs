@@ -77,20 +77,21 @@ pub(super) fn find_element(
 /// `SEARCH("x","İx")` is 2 and `SEARCH("i","İx")` is #VALUE!, whereas Rust's `to_lowercase` turns
 /// U+0130 into "i" + U+0307 (probes/text-search-casefold-length A1, A2, A8, A12, A13).
 fn fold_case(text: &str) -> String {
-    text.chars()
-        .map(|c| {
-            // Final sigma matches sigma in either case (`SEARCH("ς","ΟΣ")` is 2), while the other
-            // simple-fold pairs do not: ſ/s, µ/μ and ϐ/β are #VALUE! (A14-A24).
-            if c == 'ς' {
-                return 'σ';
-            }
-            let mut lower = c.to_lowercase();
-            match (lower.next(), lower.next()) {
-                (Some(single), None) => single,
-                _ => c,
-            }
-        })
-        .collect()
+    text.chars().map(fold_char).collect()
+}
+
+/// [`fold_case`] for one character: always exactly one character out.
+pub(super) fn fold_char(c: char) -> char {
+    // Final sigma matches sigma in either case (`SEARCH("ς","ΟΣ")` is 2), while the other
+    // simple-fold pairs do not: ſ/s, µ/μ and ϐ/β are #VALUE! (A14-A24).
+    if c == 'ς' {
+        return 'σ';
+    }
+    let mut lower = c.to_lowercase();
+    match (lower.next(), lower.next()) {
+        (Some(single), None) => single,
+        _ => c,
+    }
 }
 
 /// Finds the first instance of '`search_for`' in text starting at char index start
