@@ -61,6 +61,7 @@ pub(super) fn lifts_arrays_at(kind: &Function, index: usize) -> bool {
 mod tests {
     use super::super::{fallback_shape, fallback_signature};
     use crate::expressions::parser::Node;
+    use crate::functions::lift::lifting_table_functions;
     use crate::functions::Function;
 
     /// The table wins: no function in the lifting table also has a hand-written signature or
@@ -86,9 +87,21 @@ mod tests {
             }
         }
         assert!(
-            entered >= 4,
-            "EDATE, EOMONTH, WEEKNUM and YEARFRAC are in the table"
+            entered >= 16,
+            "the date, IS*, ERROR.TYPE and ENCODEURL functions are in the table"
         );
+    }
+
+    /// The static-analysis pattern lists exactly the functions of the table.
+    #[test]
+    fn the_pattern_macro_matches_the_table() {
+        for function in Function::into_iter() {
+            assert_eq!(
+                matches!(function, lifting_table_functions!()),
+                function.arg_kinds().is_some(),
+                "{function:?}"
+            );
+        }
     }
 
     /// And the reverse: a function outside the table keeps its hand-written arms.

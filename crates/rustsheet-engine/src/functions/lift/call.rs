@@ -3,7 +3,7 @@
 
 use super::arg_buf::ArgBuf;
 use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg};
-use super::kinds::{ArgKind, ArgKinds};
+use super::kinds::{ArgKind, ArgKinds, KernelWork};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
 use crate::limits::{check_range_size, too_many_visits, MAX_LIFTED_CELL_VISITS};
@@ -47,15 +47,20 @@ fn refused_range(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, String::new())
 }
 
+/// One `Lift` argument, for the callers that read their first argument apart from the rest
+/// (the offline functions).
+const LIFT_ONE: ArgKinds = ArgKinds::fixed(1, &[ArgKind::Lift], KernelWork::Constant);
+
 impl Model {
     /// A `LiftArrays` argument: a call that returns a reference when its source is one (INDEX,
     /// XLOOKUP, TAKE, DROP, TRIMRANGE) is read as that reference, so a multi-cell one is refused
     /// like a written range: `EOMONTH(..,TAKE(Data!B9:E12,-2,-1))` is `#VALUE!`
     /// (gen-m9/b58b6d7cd39d195f A9), as `EDATE(INDEX(A1:A60,0,1),1)` is (-b K3).
     /// A 3-D range there is `#VALUE!`, where a `Lift` argument reads it as `#REF!`
-    /// (probes/scalar-lift-open-b W2-W11, -d W17-W29; T-1777). A one-cell 3-D range,
-    /// `EDATE(Sheet1:Sheet2!A1,1)`, is inferred to be `#VALUE!` too, and so are the XLOOKUP, DROP
-    /// and TRIMRANGE reference forms (only TAKE, INDEX and IF are probed): T-1801 probes them.
+    /// (probes/scalar-lift-open-b W2-W11, -d W17-W29; T-1777), also a one-cell one,
+    /// `EDATE(Sheet1:Sheet2!A1,1)` (scalar-lift-open-e W1-W9). A DROP, TRIMRANGE or XLOOKUP that
+    /// returns several cells is refused like TAKE, INDEX and IF (scalar-lift-open-e W10-W15, W20,
+    /// W22), and one that returns one cell is its value (W16-W19, W21; T-1801).
     fn evaluate_as_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         match node.ungrouped() {
             Node::FunctionKind { kind, args } => {
@@ -71,6 +76,25 @@ impl Model {
             _ => {}
         }
         self.evaluate_node_in_context(node, cell)
+    }
+
+    /// Reads one `Lift` argument: an array or a multi-cell range is a grid, anything else (a
+    /// one-cell range included) its value. The read is bounded like `lift_call`'s.
+    pub(crate) fn read_lift_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<LiftedArg, CalcResult> {
+        let read = self.read_lift_args(
+            &LIFT_ONE,
+            std::slice::from_ref(node),
+            MAX_LIFTED_CELL_VISITS,
+            cell,
+        )?;
+        let mut lifted = read.into_lifted();
+        Ok(lifted
+            .pop()
+            .unwrap_or(LiftedArg::Scalar(CalcResult::EmptyArg)))
     }
 
     /// Reads `args` by `kind.arg_kinds()`, then runs `kernel` once (nothing lifted) or once per

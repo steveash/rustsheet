@@ -33,7 +33,7 @@ impl LiftedArg {
         matches!(value, CalcResult::Range { .. } | CalcResult::Array(_))
     }
 
-    fn dims(&self) -> (usize, usize) {
+    pub(crate) fn dims(&self) -> (usize, usize) {
         match self {
             LiftedArg::Scalar(_) => (1, 1),
             LiftedArg::Grid(grid) => (grid.len(), grid.first().map_or(0, Vec::len)),

@@ -1,5 +1,6 @@
 use super::reference_operators::{at_outside, wrong_range_shape};
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
+use crate::functions::lift::lifting_table_functions;
 use crate::functions::Function;
 use broadcast::broadcast_shapes;
 use legacy::{
@@ -496,20 +497,9 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Sumifs => args_signature_ifs(arg_count, 2),
         Function::Tan => args_signature_scalars(arg_count, 1, 0),
         Function::Tanh => args_signature_scalars(arg_count, 1, 0),
-        Function::ErrorType => args_signature_scalars(arg_count, 1, 0),
-        Function::Isblank => args_signature_scalars(arg_count, 1, 0),
-        Function::Iserr => args_signature_scalars(arg_count, 1, 0),
-        Function::Iserror => args_signature_scalars(arg_count, 1, 0),
-        Function::Iseven => args_signature_scalars(arg_count, 1, 0),
         Function::Isformula => args_signature_scalars(arg_count, 1, 0),
-        Function::Islogical => args_signature_scalars(arg_count, 1, 0),
-        Function::Isna => args_signature_scalars(arg_count, 1, 0),
-        Function::Isnontext => args_signature_scalars(arg_count, 1, 0),
-        Function::Isnumber => args_signature_scalars(arg_count, 1, 0),
-        Function::Isodd => args_signature_scalars(arg_count, 1, 0),
         Function::Isomitted => args_signature_scalars(arg_count, 1, 0),
         Function::Isref => args_signature_one_vector(arg_count),
-        Function::Istext => args_signature_scalars(arg_count, 1, 0),
         Function::Na => args_signature_scalars(arg_count, 0, 0),
         // A reference argument (a range, a table's data area: `SHEET(Table1[])`) gives its sheet's
         // number and is not implicitly intersected (probes/info-logic-argument-modes A12; legacy formulas:
@@ -742,7 +732,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Asc | Function::Dbcs => args_signature_scalars(arg_count, 1, 0),
         Function::Arraytotext => args_signature_arraytotext(arg_count),
         Function::Dollar => args_signature_scalars(arg_count, 1, 1),
-        Function::Encodeurl => args_signature_scalars(arg_count, 1, 0),
         Function::Image => args_signature_scalars(arg_count, 1, 4),
         Function::Stockhistory => args_signature_scalars(arg_count, 2, 9),
         Function::Fieldvalue => args_signature_fieldvalue(arg_count),
@@ -1103,9 +1092,7 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::SkewP => vec![Signature::Vector; arg_count],
         Function::Small => vec![Signature::Vector, Signature::Scalar],
         // In the lifting table (SPEC-0011): `lifted.rs` derives these.
-        Function::Edate | Function::Eomonth | Function::Weeknum | Function::Yearfrac => {
-            return None
-        }
+        lifting_table_functions!() => return None,
     })
 }
 
@@ -1174,20 +1161,9 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Sumifs => criteria_static_result(args, 2),
         Function::Tan => scalar_arguments(args),
         Function::Tanh => scalar_arguments(args),
-        Function::ErrorType => scalar_arguments(args),
-        Function::Isblank => scalar_arguments(args),
-        Function::Iserr => scalar_arguments(args),
-        Function::Iserror => scalar_arguments(args),
-        Function::Iseven => scalar_arguments(args),
         Function::Isformula => scalar_arguments(args),
-        Function::Islogical => scalar_arguments(args),
-        Function::Isna => scalar_arguments(args),
-        Function::Isnontext => scalar_arguments(args),
-        Function::Isnumber => scalar_arguments(args),
-        Function::Isodd => scalar_arguments(args),
         Function::Isomitted => not_implemented(args),
         Function::Isref => not_implemented(args),
-        Function::Istext => scalar_arguments(args),
         Function::Na => StaticResult::Scalar,
         Function::Sheet => StaticResult::Scalar,
         Function::Type => not_implemented(args),
@@ -1258,7 +1234,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Phonetic => not_implemented(args),
         Function::Arraytotext => not_implemented(args),
         Function::Dollar => not_implemented(args),
-        Function::Encodeurl => scalar_arguments(args),
         // All three lift over an array or range `source`/`stock`/`value` (T-1179).
         Function::Image | Function::Stockhistory | Function::Fieldvalue => StaticResult::Unknown,
         // Lifts over array arguments, `#VALUE!` per element (filterxml.rs).
@@ -1628,8 +1603,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::SkewP => StaticResult::Scalar,
         Function::Small => StaticResult::Scalar,
         // In the lifting table (SPEC-0011): `lifted.rs` derives these.
-        Function::Edate | Function::Eomonth | Function::Weeknum | Function::Yearfrac => {
-            return None
-        }
+        lifting_table_functions!() => return None,
     })
 }
