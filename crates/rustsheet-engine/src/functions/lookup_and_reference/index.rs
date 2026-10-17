@@ -4,7 +4,7 @@
 use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
 use crate::external_reference::{ExternalArea, PickedReference};
 use crate::functions::util::{
-    array_node_to_calc_result, near_integer_count, picks_a_branch, NEAR_INTEGER_TOLERANCE,
+    array_node_to_calc_result, near_integer_count, NEAR_INTEGER_TOLERANCE,
 };
 use crate::limits::check_array_size;
 use crate::reference_operators::{three_d_needs_one_sheet, RefArg};
@@ -256,19 +256,17 @@ impl Model {
                     Err(error) => error,
                 };
             }
+            // A scalar is a one-element array, wherever it comes from: `INDEX(CHOOSE(1,
+            // @B1:B6*1),3)` is `#REF!` on the range's rows (probes/legacy-choose-arm-aggregate-
+            // and-array-constant-at H1, T-1643) and `INDEX(XMATCH(2,{1,2,3}),1,1)` 2
+            // (probes/lookup-argument-modes H1:H39, m7-argument-modes H31:H55; T-1645).
             PickedReference::Node(reference) => {
                 match self.evaluate_reference_arg(reference, cell) {
-                    // A scalar picked by IF or CHOOSE is a one-element array: `INDEX(CHOOSE(1,
-                    // @B1:B6*1),3)` is `#REF!` on the range's rows (probes/legacy-choose-arm-
-                    // aggregate-and-array-constant-at H1, T-1643). A scalar anywhere else keeps
-                    // being `#VALUE!` (unprobed, T-1645).
-                    RefArg::Value(scalar) if picks_a_branch(&args[0]) => {
-                        RefArg::Value(scalar_as_array(scalar))
-                    }
-                    other => other,
+                    RefArg::Value(scalar) => RefArg::Value(scalar_as_array(scalar)),
+                    ranges @ RefArg::Ranges(_) => ranges,
                 }
             }
-            PickedReference::Value(value) => RefArg::Value(value),
+            PickedReference::Value(value) => RefArg::Value(scalar_as_array(value)),
         };
         self.index_select(&arg, numbers, two_arg, cell, form)
     }
