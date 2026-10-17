@@ -118,7 +118,7 @@ What we do:
 - Each fine sweep gives V's phase mod 1, with intervals 0.002 to 0.015 wide when sharp.
 - The phases are chained up a z ladder by branch-and-bound over integer tooth counts, with an LP on the
   polynomial coefficients (`wfit.py` / `chain3.py`).
-- The new sweep-level joint fit (`swfit.c`) fits one hi alias, one fractional hi offset, one V phase and one
+- The new sweep-level joint fit (`sweepfit.c`) fits one hi alias, one fractional hi offset, one V phase and one
   common lo offset per sweep. It gives sharp phases at 25 of the 40 ladder sweeps.
 
 The blocker:
@@ -161,10 +161,10 @@ The blocker:
 
 ## 6. Planned experiments
 
-1. Re-chain V using only `swfit` sweep-level phases, with old and new sweeps fitted the same way. If it is
+1. Re-chain V using only `sweepfit` sweep-level phases, with old and new sweeps fitted the same way. If it is
    still inconsistent, test hypothesis 1 directly. Run 32k-point runs at z about 2E-5 and check whether the
    in-run phase is a 1/64 staircase.
-2. Refit H for z from 4E-4 to 0.25 from the per-sweep fractional hi offsets, which `swfit` now reports, and
+2. Refit H for z from 4E-4 to 0.25 from the per-sweep fractional hi offsets, which `sweepfit` now reports, and
    extend the hi step bootstrap past 4.3E-3.
 3. Pin K exactly using the sawtooth amplitude at large z (free SAWAMP) and the doubled-grid region above
    z = 0.022.
