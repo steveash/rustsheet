@@ -1064,11 +1064,11 @@ impl Model {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let date_system = self.workbook.settings.date_system;
+        let ds = self.workbook.settings.date_system;
         let sat = chrono::NaiveDate::from_ymd_opt(1899, 12, 30); // 1900 serial 0: weekday-serial-zero
         let date = move |serial: f64| {
-            let s = serial.floor() as i64;
-            let d = date_system.date_of_serial(s).or(sat.filter(|_| s == 0));
+            let s = serial.floor();
+            let d = ds.date_of_serial(s as i64).or(sat.filter(|_| s == 0.0));
             d.ok_or(Error::NUM)
         };
         if args.len() == 1 {
