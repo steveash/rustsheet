@@ -3,7 +3,7 @@ id: T-1804
 title: "Re-measure the lifted COUNTIFS bench with perf counters on a quiet box (T-1770 +5% wall, equal instructions)"
 milestone: M9
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
