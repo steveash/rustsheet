@@ -102,5 +102,9 @@
   reach ≥ 20 Excel cells through probes/discount-security-modes; decision 0062) (`make eval-baseline`).
   T-1625: functions below the evidence floor 21 → 13 (VDB, AMORDEGRC, FVSCHEDULE, MDURATION, RRI, IMPOWER, IMSUB
   and IMDIV reach ≥ 20 Excel cells through probes/fin-* and eng-im*; decision 0062) (`make eval-baseline`).
+  T-1770: functions/date_and_time.rs 1131 → 1018 lines (EDATE and EOMONTH moved to `date_and_time/month_shift.rs`)
+  and expressions/parser/static_analysis.rs 1669 → 1658 (OFFSET's and INDIRECT's shapes moved to
+  `static_analysis/reference_result.rs`) (`check_file_size.py --update`); duplicated lines 6155 → 6137
+  (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

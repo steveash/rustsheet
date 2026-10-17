@@ -428,9 +428,11 @@ impl Model {
                 for node in &args[2 * case_index + 2..] {
                     lifted.push(self.evaluate_node_in_context(node, cell));
                 }
+                // Each element reads its condition and value pairs: one unit per argument.
+                let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
                 return self.lift_values(
                     lifted,
-                    LiftCost::Cells(1),
+                    LiftCost::Cells(units),
                     &LiftOptions::REUSE_EQUAL_RUNS,
                     cell,
                     &mut |model, pairs| model.ifs_element(pairs, cell),
