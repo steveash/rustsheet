@@ -23,7 +23,14 @@
         "A9": "=ARRAYTOTEXT(TEXTSPLIT(\"\",,\";\"),1)",
         "A10": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\"\"),1)",
         "A11": "=ISERROR(TEXTSPLIT(\"\",\",\"))",
-        "A12": "=ROWS(TEXTSPLIT(\"a\",\",\"))"
+        "A12": "=ROWS(TEXTSPLIT(\"a\",\",\"))",
+        "A13": "=ARRAYTOTEXT(TEXTSPLIT(\"\",NA()),1)",
+        "A14": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\",\",NA()),1)",
+        "A15": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\",\",,1/0),1)",
+        "A16": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\",\",,,1/0),1)",
+        "A17": "=ARRAYTOTEXT(TEXTSPLIT({\"a\",\"\";\"b\",\"c\"},\",\"),1)",
+        "A18": "=ARRAYTOTEXT(TEXTSPLIT(C9:C10,\",\"),1)",
+        "C10": "x,y"
       }
     }
   ],
