@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use super::stringify::bound_variables::{walk_names, NameSite};
 use super::Node;
 
-/// Lowercase name → the spelling every call or value use of it prints with.
+/// Upper-cased name (ß folds with SS, T-1762) → the spelling every call or value use of it prints with.
 #[derive(Clone, Default)]
 pub(crate) struct CallNameSpellings {
     first: HashMap<String, String>,
@@ -32,7 +32,7 @@ impl CallNameSpellings {
                 (Some(declared), _) => declared.to_string(),
                 (None, NameSite::Callee | NameSite::Use) => self
                     .first
-                    .entry(name.to_lowercase())
+                    .entry(name.to_uppercase())
                     .or_insert_with(|| name.clone())
                     .clone(),
                 (None, NameSite::Declaration) => return,
