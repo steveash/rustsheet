@@ -630,6 +630,7 @@ C	probes/sort-omitted-args.case.json	75
 C	probes/sqrtpi-range-operands.case.json	10
 C	probes/stat-a-computed-arrays.case.json	18
 C	probes/stat-argument-modes.case.json	573
+C	probes/stat-order-floor-batch.case.json	301
 C	probes/subnormal-flush-edges.case.json	50
 C	probes/subnormal-function-boundaries.case.json	30
 C	probes/subnormal-function-results.case.json	129
@@ -3629,6 +3630,17 @@ F	probes/stat-argument-modes.case.json	Sheet1!H96
 F	probes/stat-argument-modes.case.json	Sheet1!H97
 F	probes/stat-argument-modes.case.json	Sheet1!H98
 F	probes/stat-argument-modes.case.json	Sheet1!H99
+F	probes/stat-order-floor-batch.case.json	Sheet1!A102
+F	probes/stat-order-floor-batch.case.json	Sheet1!A128
+F	probes/stat-order-floor-batch.case.json	Sheet1!A274
+F	probes/stat-order-floor-batch.case.json	Sheet1!A277
+F	probes/stat-order-floor-batch.case.json	Sheet1!A278
+F	probes/stat-order-floor-batch.case.json	Sheet1!A280
+F	probes/stat-order-floor-batch.case.json	Sheet1!A290
+F	probes/stat-order-floor-batch.case.json	Sheet1!A294
+F	probes/stat-order-floor-batch.case.json	Sheet1!A295
+F	probes/stat-order-floor-batch.case.json	Sheet1!A299
+F	probes/stat-order-floor-batch.case.json	Sheet1!A300
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
 F	probes/t-array-lift.case.json	S!E7
