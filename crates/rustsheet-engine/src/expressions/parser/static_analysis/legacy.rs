@@ -207,11 +207,10 @@ fn is_plain_reference(node: &Node) -> bool {
     let mut pending = vec![node];
     while let Some(node) = pending.pop() {
         match node {
-            Node::FunctionKind { kind, .. }
-                if matches!(
-                    kind,
-                    Function::If | Function::Offset | Function::Choose | Function::Index
-                ) => {}
+            Node::FunctionKind {
+                kind: Function::If | Function::Offset | Function::Choose | Function::Index,
+                ..
+            } => {}
             Node::ReferenceKind { .. }
             | Node::RangeKind { .. }
             | Node::NumberKind(_)
