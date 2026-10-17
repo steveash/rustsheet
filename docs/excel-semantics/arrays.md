@@ -696,6 +696,21 @@ size in column Z and the ERROR.TYPE of its first cell in AA, excel-graph, 2026-1
   `""`, while Banana (one child) shows Banana's Units in its Sales-subtotal column and every row's Units total in its
   Units-subtotal column; -2 is the same (G!A1141); with Year over Product (G!A1171) only the first of those two columns
   is filled. The engine gives `#N/IMPL!`.
+  More shapes (probes/pivotby-col-subtotals-values, sheet S, excel-graph 2026-10-17; LAMBDA(x,ARRAYTOTEXT(x)) over
+  values 101-109, 201-209 and 301-309 shows which records and value column each cell takes; Outer keys A (1 child),
+  B (2), C (1), D (3), E (1)): every cell is either `""`, one group's cell, or a Grand Total cell, never a mix.
+  With one value the subtotals are right (S!A51). With several, a parent's first subtotal column shows its only
+  child's last value column (A: Ax's V2, S!A1; Ax's V3 with three values, S!A21) and is `""` for a parent with two or
+  more children (B, D); the other subtotal columns are `""` except at one parent, where they show Grand Total columns:
+  C's V2 column holds every record's V1 (S!A1), B's V2 and V3 columns every record's V1 and V2 (S!A21), but with all
+  parents single-child C's V2 column holds every record's V2 (S!A71), and a parent with two or more children in that place shows nothing
+  (G!A1171, S!A61). The parent is the one at index floor(parents / values) in every probe so far (C of five with two
+  values, B with three, Banana of three); which value its columns take is not explained. The Grand Total columns are
+  always `""`. The same cells come back with depth -2 (S!A11, S!A81), sorted descending (S!A111: by position in the
+  order, E, C and A as above), with shown headers (S!A31: "V1"/"V2" over every column) and with the value columns
+  swapped (S!A101: a single child's last value column is now V1, and C's Grand Total cells hold the first value
+  column, V2). No index arithmetic over the leaf cells (group- or
+  value-major, ranges or single cells, positive-depth layout) fits all of these (T-1700 search, 2026-10-17).
 Ours (T-1324): `Grouping::lines` lays the groups out with their subtotals in one pass over the sorted groups (a prefix
 change between neighbours opens or closes a subtotal), `effective_depth` adds the omitted depth of a value sort,
 `ParentOrder` picks hierarchical, key-order or flat parents, the value sort's `Aggregates` (each group's and
