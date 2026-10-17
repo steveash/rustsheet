@@ -152,7 +152,8 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<usize, CalcResult> {
         // Below 1 is checked before truncation: 0.5 and 0 are `#NUM!` (arrays.md "WRAPCOLS of a
-        // single value is not padded"; gen-m7/f68fafa0ca2eba26 A39, gen-m9/50f10c4062fb2e98 A21).
+        // single value is not padded"; probes/dynamic-array-reshape-and-isomitted C20/C36/D20/D36 (0, -1),
+        // gen-m7/f68fafa0ca2eba26 A39, gen-m9/50f10c4062fb2e98 A21).
         let wrap_count = self.get_number(&args[1], cell)?;
         if wrap_count.is_nan() || wrap_count < 1.0 {
             return Err(CalcResult::new_error(

@@ -772,13 +772,12 @@ Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a col
 `WRAPCOLS(FALSE,4)` is FALSE in one cell and `WRAPCOLS("1.5",4)&DROP(C10,0,3)` is one `#CALC!` (neither spills over the
 occupied cells below). A wrap_count of 0.5 is `#NUM!` (`HYPERLINK(WRAPCOLS(C12,0.5,..),..)`).
 Evidence: gen-m7/bb4617644fee40c9 Calc!A30, gen-m7/d38b52bfa1a9f9e6 Calc!A26, gen-m7/f68fafa0ca2eba26 Calc!A39 (excel-graph, 2026-10-11, T-1275).
-Ours: pads to wrap_count (`ROWS(WRAPCOLS(1,4))` = 4, so both cells are `#SPILL!`), and wrap_count 0.5 is `#VALUE!`.
-Also: an error pad_with is the whole result when nothing is padded (with padding it fills the padded cells,
-WRAPCOLS_ROWS.xlsx E10) (`WRAPCOLS(D6:D6,2,VALUE("x"))` is `#VALUE!`,
-gen-m9/675763979c1defb6 A6), and wrap_count 0 is `#NUM!` for WRAPROWS (gen-m9/50f10c4062fb2e98 A21). Single values are
-not padded since T-1786 (wrap_count is capped at the vector's length).
-Status: VERIFIED for single values (excel-graph); a multi-element vector shorter than wrap_count (`WRAPCOLS({1,2},4)`),
-a multi-element vector with an error pad_with and no padding, WRAPROWS of a single value and a negative wrap_count are UNVERIFIED
+Also: an error pad_with is the whole result when nothing is padded (`WRAPCOLS(D6:D6,2,VALUE("x"))` is `#VALUE!`,
+gen-m9/675763979c1defb6 A6), while with padding it fills the padded cells (WRAPCOLS_ROWS.xlsx E10, `NA()`). wrap_count 0
+is `#NUM!` for WRAPROWS too (gen-m9/50f10c4062fb2e98 A21; the full set is under "WRAPROWS and WRAPCOLS" below).
+Ours: all of the above since T-1786 and T-1348 (wrap_count is read before truncation, so 0.5 is `#NUM!`).
+Status: VERIFIED for single values (excel-graph). UNVERIFIED: the error pad_with rule for a vector of more than one
+element (it may apply only to a scalar input; follow-up task in Tasks), `WRAPCOLS({1,2},4)` and `WRAPROWS({1,2},4)`.
 Tasks: T-1348
 
 ## MAP over arrays of different sizes, or a single value and an array
@@ -889,7 +888,7 @@ Rule (probes/dynamic-array-reshape-and-isomitted C20-C52, D20-D52, excel-graph, 
 `WRAPROWS(B5:H5,0,"p")` and `WRAPROWS(B5:H5,-1,"p")` are `#NUM!`, and so are the WRAPCOLS forms. A wrap_count above
 the vector's length does not pad: `WRAPROWS(B5:H5,8,"p")` and `WRAPROWS(B5:H5,100,"p")` are the 1x7 row `1,2,3,4,5,6,7`
 (`WRAPCOLS` the 7x1 column), the same as wrap_count 7. A scalar is a one-element vector: `WRAPROWS(5,2)` is 5
-(`WRAPCOLS(5,2)` too). Ours gives `#VALUE!` for 0 and -1 (fix T-1630); the clamp above the vector's length, which
+(`WRAPCOLS(5,2)` too). Ours: `#NUM!` for 0 and -1 since T-1348 (checked before truncation, so 0.5 too); the clamp above the vector's length, which
 also makes a scalar 1x1, is implemented (T-1786). Everything else probed matches: wrap_count 1-7 with a pad, an omitted pad (`#N/A`
 fill), pad_with 0, "" and `#N/A`, a column vector, an inline array, a 2-D range (`#VALUE!`), a text
 wrap_count (`#VALUE!`; C43, D43); a boolean wrap_count counts as a number (TRUE is 1: `WRAPCOLS(B5:H5,TRUE)` is the 1x7 row 1..7, D44; `WRAPROWS(B5:H5,TRUE)` is the 7x1 column, shown by probes/dynamic-array-reshape-reprobe B20-B22; it was `#SPILL!` in C44 only because the cell below blocked it); a fractional wrap_count
