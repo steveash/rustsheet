@@ -299,33 +299,40 @@ fn many_small_spills_skip_the_rectangles_far_from_them() {
     assert_eq!(restarts(&model), 0);
 }
 
-// T-1646: a small spill's commit check skips the whole-column rectangles in other columns. A1 to
-// D1 each put 12,500 whole-column rectangles on record (rows 2 down, columns DKK to VXD, right of
-// the used area), all in one row band; then 1,000 anchors in row 1 (columns F to BYC) each spill
-// two cells. Testing every anchor against every rectangle is 5 x 10^7 tests.
+// T-1646: a small spill's commit check skips the whole-column rectangles in other columns. The
+// anchors A1, C1, E1 and G1 each put 12,500 whole-column rectangles on record (rows 2 down,
+// columns DKK to VXD, right of the used area), all in one row band; then 1,000 anchors in row 1
+// (columns J to BYG) each spill two cells. Testing every anchor against every rectangle is
+// 5 x 10^7 tests.
 #[test]
 fn many_small_spills_skip_the_whole_column_rectangles_in_other_columns() {
     use std::time::{Duration, Instant};
     let mut model = new_empty_model();
-    for anchor in ["A1", "B1", "C1", "D1"] {
+    for anchor in ["A1", "C1", "E1", "G1"] {
         model._set(
             anchor,
-            "=SUM(MAP(SEQUENCE(12500,1,3000),LAMBDA(c,SUM(OFFSET($A:$A,0,c)))))",
+            "=SUM(MAP(SEQUENCE(12500,1,3000),LAMBDA(c,SUM(OFFSET($A:$A,0,c)))))+{0,1}",
         );
     }
     for anchor in 0..1000 {
         model
-            .set_user_input(0, 1, 6 + 2 * anchor, "=SEQUENCE(1,2)".to_string())
+            .set_user_input(0, 1, 10 + 2 * anchor, "=SEQUENCE(1,2)".to_string())
             .unwrap();
     }
     let start = Instant::now();
     model.evaluate();
     let elapsed = start.elapsed();
     assert!(elapsed < Duration::from_secs(20), "{elapsed:?}");
-    assert_eq!(model._get_text("D1"), "0");
-    assert_eq!(model._get_text("BYC1"), "2");
+    assert_eq!(model._get_text("H1"), "1");
+    assert_eq!(model._get_text("BYG1"), "2");
     assert_eq!(model.evaluation.seen_ranges.len(), 50_000);
     assert_eq!(restarts(&model), 0);
+    // The rectangles are on record before the small spills commit.
+    let first_columns: Vec<i32> = model.evaluation.anchor_order[..4]
+        .iter()
+        .map(|anchor| anchor.column)
+        .collect();
+    assert_eq!(first_columns, [1, 3, 5, 7]);
 }
 
 // T-1545, T-1646: the lookup by row and column band finds the same rectangles, in the same order,
