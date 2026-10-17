@@ -3,7 +3,7 @@ id: T-1822
 title: "The remaining Analysis ToolPak financial functions lift over arrays, after their later arguments are probed over ranges (SPEC-0011)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
