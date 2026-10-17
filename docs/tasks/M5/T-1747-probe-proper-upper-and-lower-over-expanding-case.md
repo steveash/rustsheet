@@ -3,7 +3,7 @@ id: T-1747
 title: "Probe PROPER, UPPER and LOWER over expanding case mappings and final sigma variants"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
