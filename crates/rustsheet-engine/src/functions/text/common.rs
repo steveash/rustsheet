@@ -897,19 +897,6 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_t(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // FIXME: Implicit intersection
-        let result = self.evaluate_node_in_context(&args[0], cell);
-        match result {
-            CalcResult::String(_) => result,
-            error @ CalcResult::Error { .. } => error,
-            _ => CalcResult::String("".into()),
-        }
-    }
-
     // VALUETOTEXT(value, [format]) lifts over a range or array like LEN
     // (probes/text-argument-modes F17:F19); an error element is spelled out.
     pub(crate) fn fn_valuetotext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
