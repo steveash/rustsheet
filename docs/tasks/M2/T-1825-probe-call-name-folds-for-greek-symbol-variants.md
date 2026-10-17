@@ -3,7 +3,7 @@ id: T-1825
 title: "Probe call-name folds for Greek symbol variants, other ligatures and capital sharp s"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
