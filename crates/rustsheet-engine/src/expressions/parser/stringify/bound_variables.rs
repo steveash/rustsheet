@@ -17,22 +17,24 @@ pub(crate) enum NameSite {
     Declaration,
 }
 
-/// Calls `visit` with every name of `node`, where it is and whether an enclosing LAMBDA or LET
-/// binds it, `bound` holding the names already in scope. Matching is case-insensitive, mirroring
-/// evaluation (see `same_variable`). LAMBDA parameters themselves are not visited.
+/// Calls `visit` with every name of `node`, where it is and the spelling of the innermost
+/// enclosing LAMBDA or LET declaration that binds it (`None` when none does), `bound` holding the
+/// names already in scope. Matching is case-insensitive, mirroring evaluation (see
+/// `same_variable`). LAMBDA parameters themselves are not visited.
 pub(crate) fn walk_names<F>(node: &mut Node, bound: &mut Vec<String>, visit: &mut F)
 where
-    F: FnMut(NameSite, &mut String, bool),
+    F: FnMut(NameSite, &mut String, Option<&str>),
 {
-    let is_bound = |bound: &[String], name: &str| bound.iter().any(|n| same_variable(n, name));
+    let declared =
+        |bound: &[String], name: &str| bound.iter().rev().find(|n| same_variable(n, name)).cloned();
     match node {
         Node::NamedVariableKind { name, .. } => {
-            let b = is_bound(bound, name);
-            visit(NameSite::Use, name, b);
+            let d = declared(bound, name);
+            visit(NameSite::Use, name, d.as_deref());
         }
         Node::NamedFunctionKind { name, args, .. } => {
-            let b = is_bound(bound, name);
-            visit(NameSite::Callee, name, b);
+            let d = declared(bound, name);
+            visit(NameSite::Callee, name, d.as_deref());
             for arg in args {
                 walk_names(arg, bound, visit);
             }
@@ -56,7 +58,8 @@ where
             for i in 0..pair_count {
                 if let Node::NamedVariableKind { name, .. } = &mut args[2 * i] {
                     bound.push(name.clone());
-                    visit(NameSite::Declaration, name, true);
+                    let d = name.clone();
+                    visit(NameSite::Declaration, name, Some(&d));
                 }
                 walk_names(&mut args[2 * i + 1], bound, visit);
             }
@@ -116,8 +119,8 @@ where
 /// included. Unbound names (e.g. a defined name that only resolves at
 /// evaluation time) are left alone.
 pub(super) fn prefix_bound_variables(node: &mut Node) {
-    walk_names(node, &mut Vec::new(), &mut |_, name, bound| {
-        if bound {
+    walk_names(node, &mut Vec::new(), &mut |_, name, declared| {
+        if declared.is_some() {
             *name = format!("_xlpm.{name}");
         }
     });
