@@ -24,4 +24,4 @@ T-1235 lifts the weekend argument; each of up to 127 distinct masks runs the day
 -
 
 ## Outcome
-`step_workdays` skips whole weeks (workdays per week = 7 minus weekend days), correcting for non-weekend holidays in the skipped span, and stops short of the date-range limits so the day loop still yields the same `#NUM!` edges. Unit test `whole_week_skipping` covers forward/backward, holidays and range overflow; holidays are counted by binary search over a per-mask sorted vector, and a range overflow returns `#NUM!` at once. The WORKDAY test module (including a 2M-day and a dense-2000-holiday case) runs in 0.71s total. Eval delta: none (no cells changed).
+`step_workdays` skips whole weeks (workdays per week = 7 minus weekend days), correcting for non-weekend holidays in the skipped span,. Unit test `whole_week_skipping` covers forward/backward, holidays and range overflow; holidays are counted by binary search over a per-mask sorted vector, and a range overflow returns `#NUM!` at once. The WORKDAY test module (including a 2M-day and a dense-2000-holiday case) runs in 0.71s total. Eval delta: none (no cells changed).

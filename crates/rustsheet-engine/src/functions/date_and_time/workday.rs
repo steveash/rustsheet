@@ -74,6 +74,7 @@ impl Model {
         // short of the target and of the range limits, so the loop below still yields the same
         // result and the same range errors.
         let per_week = 7 - weekend_mask.iter().filter(|&&w| w).count() as i64;
+        // Unreachable today (callers reject the all-weekend mask with #VALUE!); guards the division.
         if per_week == 0 {
             return Err(out_of_range());
         }
