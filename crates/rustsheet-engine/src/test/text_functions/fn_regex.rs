@@ -251,8 +251,9 @@ fn regexreplace_result_is_bounded_before_it_is_built() {
     assert_eq!(model._get_text("A5"), *"30000");
 }
 
-// The replacement keeps the regex crate's syntax: `$$` is a dollar, `${name}` and `$name` a
-// named group, `$1a` the (absent) group named `1a`, and a lone `$` itself.
+// The replacement keeps the regex crate's syntax, as on main: `$$` is a dollar, `${name}` and
+// `$name` a named group, `$1a` the (absent) group named `1a`, and a lone `$` itself. UNVERIFIED
+// against Excel's PCRE2 syntax (T-1817 probes it).
 #[test]
 fn regexreplace_replacement_syntax() {
     let mut model = new_empty_model();

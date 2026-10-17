@@ -19,7 +19,9 @@ functions/text/regex_functions.rs, and a result over 32,767 UTF-16 units is `#VA
 (text.md "Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped", UNVERIFIED). Use the excel-probe skill:
 `=LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`, `=LEN(REGEXREPLACE(REPT("a",32767),"a","bb"))`, a result of
 exactly 32,767 and 32,768 units, and one with an emoji straddling the limit. If Excel truncates or gives another error,
-change `too_long` in regex_functions.rs to match.
+change `too_long` in regex_functions.rs to match. Also probe the replacement syntax ours takes from the regex crate
+(text.md, same entry): `REGEXREPLACE("ab","(a)(b)","[$1a|$|$$|${1}]")` (ours `[|$|$|a]`) and a named group
+`REGEXREPLACE("ab","(?<x>a)","${x}$x")`; a syntax fix must keep `Replacement` (the size check) in step.
 
 ## Acceptance criteria
 - [ ] A probe case with oracle values covers the cells above; text.md marks the rule VERIFIED or records Excel's.

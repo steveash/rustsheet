@@ -319,7 +319,12 @@ REGEXREPLACE searches twice, once to size its result). A call past any of these 
 `ROWS(REGEXREPLACE(REPT("a",32767)&SEQUENCE(1000),"","b"))`). A REGEXREPLACE result over 32,767 UTF-16 units is
 `#VALUE!`, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`), as SUBSTITUTE's
 is (UNVERIFIED for REGEXREPLACE; T-1817 probes it); a lifted REGEXREPLACE whose results pass the text broadcast cap
-(64 MiB, first entry) is one `#VALUE!`.
+(64 MiB, first entry) is one `#VALUE!`. The search budget is tighter than the lift cap: `REGEXTEST(A:A,"x")` over a full
+column of cells averaging 17 bytes or more is `#ERROR!`. On wasm32 `regex_lite` does not tell a too-big pattern from an
+invalid one, so an invalid pattern is tried under all five limits and about 8 distinct invalid patterns spend a call's
+compile budget (`#ERROR!` where native builds give each element `#VALUE!`).
+The REGEXREPLACE replacement syntax is the regex crate's (`$1`, `${1}`, `$name`, `$$`; `$1a` is the group named `1a`,
+a lone `$` is itself), as before T-1272; UNVERIFIED against Excel's PCRE2 rules (T-1817 probes it).
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
 Status: DEVIATION (decision 0014)
 Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
