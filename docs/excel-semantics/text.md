@@ -402,3 +402,12 @@ Rule (PROPER, for the probed characters; others tracked by T-1747): a letter aft
 Evidence: probes/clean-proper-chars (excel-graph, 2026-10-16, 88 cells; engine matches all after T-1307). Implemented in `proper_case` (functions/text/string_format.rs). Not probed: UPPER and LOWER of the same characters (they may differ; out of scope for T-1307).
 Status: VERIFIED (excel-graph)
 Tasks: T-1307
+
+## ARRAYTOTEXT: a single empty cell is #VALUE!, an empty cell in a larger range is empty text
+Rule: `ARRAYTOTEXT` of a reference to one empty cell is `#VALUE!` in both formats, and so are a 1x1 range of an empty
+cell, `(B1)`, `IF(TRUE,B1)`, `INDEX(B1:B2,1)` of an empty cell and an omitted first argument (`ARRAYTOTEXT(,1)`). Within a
+multi-cell range an empty cell is empty text (`B1:B2` all empty is ", ", strict "{;}"; `C1:C3` with C2 empty is "1, , 3",
+strict "{1;;3}"). Computed empties are not references: `B1+0` is "0" and `B1&""` is "". `VALUETOTEXT(B1)` of an empty
+cell is "" in both formats, and a typed `""` is "" / `{""}`.
+Evidence: probes/arraytotext-empty-ref A1-A24 (excel-graph, 2026-10-17, T-1718).
+Status: VERIFIED (excel-graph). Implemented in: `fn_arraytotext`. Tasks: T-1718

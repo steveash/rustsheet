@@ -3,7 +3,7 @@ id: T-1718
 title: "ARRAYTOTEXT of an empty cell reference is #VALUE!"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ probes/arraytotext-number-text A14, A15 (excel-graph, T-1356): `=ARRAYTOTEXT(B1,
 
 ## Out of scope
 -
+
+## Outcome
+`fn_arraytotext` returns `#VALUE!` for a single empty cell (bare, 1x1 range, wrapped, omitted argument). Probed range,
+omitted-argument and wrapped cases (probes/arraytotext-empty-ref, 25 cells, all pass); recorded in
+docs/excel-semantics/text.md. A14/A15 of probes/arraytotext-number-text leave the baseline.
