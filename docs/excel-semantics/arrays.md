@@ -393,7 +393,9 @@ NETWORKDAYS.INTL is the exception: it lifts over a range (`INDEX(WORKDAY.INTL(45
   (`YEARFRAC(1/0,45000,NA())` and `YEARFRAC(NA(),1/0,1)` are `#N/A`, `YEARFRAC(45000,NA(),1/0)` is
   `#DIV/0!`, -d W1-W5), so `INDEX(YEARFRAC(1/0,{45000;45031},B1:B60),1)` is `#VALUE!` (the range is the basis, -open-a W6) and
   `INDEX(YEARFRAC({45000;45031},B1:B60,NA()),1)` is `#N/A` (W7). SPEC-0011's "leftmost" is therefore wrong
-  for YEARFRAC (T-1800).
+  for YEARFRAC (T-1800). The basis is also range-checked before the dates are read:
+  `INDEX(YEARFRAC(NA(),{45000;45031},{5;1}),1)` is `#NUM!` and element 2 `#N/A` (probes/yearfrac-basis-order
+  A13, A14; dates.md "Date function argument modes").
 - **Legacy (non-dynamic) formulas.** A worksheet function's range gets the usual implicit `@`:
   legacy `=PMT(C1:C60,10,100)` shows `=PMT(@C1:C60,10,100)` and gives the intersected value on
   the range's rows and `#VALUE!` off them. Legacy `=SUM(PMT(C1:C60,10,100))` is that one value,
@@ -444,7 +446,7 @@ arrays", information.md "ISEVEN/ISODD over a range").
 Ours: EDATE, EOMONTH, WEEKNUM and YEARFRAC follow the rule (T-1770): every argument is
 `LiftArrays` in the lifting table, so they lift over an array, refuse a multi-cell range or a
 returned reference (TAKE and INDEX included) with `#VALUE!`, and a 3-D range with `#VALUE!` (multi-cell: scalar-lift-open-b W4, W5, W7, -d W19-W20, W26; one-cell, `EDATE(Sheet1:Sheet2!A1,1)`, and in WEEKNUM, EOMONTH and YEARFRAC: scalar-lift-open-e W1-W9, also beside an array, W2-W3, whose shape stays the array's, W8), and get no legacy `@` on a bare
-range. DROP, TRIMRANGE and XLOOKUP results that span several cells are refused too, and one-cell results are their value (scalar-lift-open-e W10-W22, T-1801); all their cells in the three scalar-lift-shapes probes pass (scalar-lift-open-a W6, W7 and -d W1, W3, W4, W6, W7 still fail on YEARFRAC's check order, T-1800). The other families listed in SPEC-0011 do not
+range. DROP, TRIMRANGE and XLOOKUP results that span several cells are refused too, and one-cell results are their value (scalar-lift-open-e W10-W22, T-1801); all their cells in the three scalar-lift-shapes probes pass, and since T-1800 so do scalar-lift-open-a W6, W7 and -d W1-W7 (YEARFRAC checks basis, start, end; the driver hands a refused range to the kernel as `#VALUE!` in its slot and picks no error by position). The other families listed in SPEC-0011 do not
 lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic formula). SPEC-0011's
 rollout tasks fix them.
 Status: VERIFIED (excel-graph)
