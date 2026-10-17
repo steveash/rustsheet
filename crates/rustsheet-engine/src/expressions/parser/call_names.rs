@@ -14,6 +14,7 @@ use std::collections::HashMap;
 
 use super::stringify::bound_variables::{walk_names, NameSite};
 use super::Node;
+use crate::types::DefinedName;
 
 /// Upper-cased name (ß folds with SS, T-1762) → the spelling every call or value use of it prints with.
 #[derive(Clone, Default)]
@@ -24,12 +25,21 @@ pub(crate) struct CallNameSpellings {
 impl CallNameSpellings {
     /// Gives every callee and value-used name of `node` that no LET or LAMBDA binds the workbook's spelling, which a
     /// name met for the first time becomes. A bound name, called or used, takes the spelling of
-    /// its declaration. Returns whether a name changed.
-    pub(crate) fn apply(&mut self, node: &mut Node) -> bool {
+    /// its declaration. A callee that is a defined name takes the defined name's spelling, whatever
+    /// the first typed one (probes/unknown-function-name-reach, T-1763). Returns whether a name
+    /// changed.
+    pub(crate) fn apply(&mut self, node: &mut Node, defined_names: &[DefinedName]) -> bool {
         let mut changed = false;
         walk_names(node, &mut Vec::new(), &mut |site, name, declared| {
             let spelling = match (declared, site) {
                 (Some(declared), _) => declared.to_string(),
+                (None, NameSite::Callee)
+                    if let Some(defined) = defined_names
+                        .iter()
+                        .find(|d| d.name.to_uppercase() == name.to_uppercase()) =>
+                {
+                    defined.name.clone()
+                }
                 (None, NameSite::Callee | NameSite::Use) => self
                     .first
                     .entry(name.to_uppercase())
