@@ -71,3 +71,12 @@ fn whole_week_skipping_dense_holidays() {
     assert_eq!(model._get_text("A2"), *"45989");
     assert_eq!(model._get_text("A3"), *"48008");
 }
+
+#[test]
+fn whole_week_skipping_lifted_weekend() {
+    // Every lifted weekend code steps 2M workdays without walking the days one by one.
+    let mut model = new_empty_model();
+    model._set("A1", "=WORKDAY.INTL(46000, 1000000, SEQUENCE(7))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1446000");
+}
