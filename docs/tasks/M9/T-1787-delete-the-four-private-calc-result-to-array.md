@@ -38,3 +38,4 @@ Code is complete and all four reviewers approved (security, architecture, qualit
 not add one. Next: `make new-decision TITLE="..."` (or confirm an existing decision already
 covers ratchet-down `--update` of quality/*.json), commit it on this branch, push, then restore
 `status: done` and re-merge per the work-loop. PR: #1009.
+Resolved by the opus run: the ratchet paydown is recorded in decision 0010 (no new record needed).
