@@ -166,15 +166,23 @@ fn for_each_value_operand(node: &mut Node, f: &mut impl FnMut(&mut Node)) {
     }
 }
 
+/// Adds the `@`s a legacy formula puts in `arg`, the argument of `kind` with `signature`, none
+/// where N or T read a reference whole ([`reads_reference_whole`]).
+pub(super) fn add_argument_intersection(
+    kind: &Function,
+    signature: Option<&Signature>,
+    arg: &mut Node,
+) {
+    if !reads_reference_whole(kind, arg) {
+        add_implicit_intersection(arg, legacy_intersects(kind, signature, arg));
+    }
+}
+
 /// Whether a legacy formula intersects `arg`, the argument of `kind` with `signature`: a scalar
 /// argument that is not a scalar, `IFERROR(B1:B6*1,100)` and `IF(A1:A6="a",1,0)` included
 /// (probes/legacy-value-argument-intersection I10, array-context-legacy-sumproduct R10), or an
 /// argument [`legacy_context_intersects`] makes a value.
-pub(super) fn legacy_intersects(
-    kind: &Function,
-    signature: Option<&Signature>,
-    arg: &Node,
-) -> bool {
+fn legacy_intersects(kind: &Function, signature: Option<&Signature>, arg: &Node) -> bool {
     (is_scalar_context(kind, signature) && !reads_reference(kind, arg))
         || legacy_value_operand(kind, arg)
 }
