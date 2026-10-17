@@ -569,6 +569,7 @@ C	probes/r1c1-shaped-sheet-names-lower.case.json	22
 C	probes/r1c1-shaped-sheet-names.case.json	54
 C	probes/radians-sqrtpi-munit.case.json	94
 C	probes/randbetween-huge-span.case.json	23
+C	probes/randbetween-lift-operands.case.json	18
 C	probes/range-operator-column-letter-before-colon.case.json	1
 C	probes/range-operator-unnamed-operands.case.json	10
 C	probes/range-right-operand-errors.case.json	4
@@ -3765,15 +3766,6 @@ F	probes/unknown-function-name-spelling.case.json	Sheet1!B8
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D18
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D19
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D26
-F	probes/volatile-invariant.case.json	Calc!F1
-F	probes/volatile-invariant.case.json	Calc!F2
-F	probes/volatile-invariant.case.json	Calc!F3
-F	probes/volatile-invariant.case.json	Calc!F4
-F	probes/volatile-invariant.case.json	Calc!F5
-F	probes/volatile-invariant.case.json	Calc!F6
-F	probes/volatile-invariant.case.json	Calc!F7
-F	probes/volatile-invariant.case.json	Calc!F8
-F	probes/volatile-invariant.case.json	Calc!F9
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4
 F	probes/weeknum-stale-return-type.case.json	Type1!A1
