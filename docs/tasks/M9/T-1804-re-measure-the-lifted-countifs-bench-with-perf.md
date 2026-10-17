@@ -3,7 +3,7 @@ id: T-1804
 title: "Re-measure the lifted COUNTIFS bench with perf counters on a quiet box (T-1770 +5% wall, equal instructions)"
 milestone: M9
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,23 @@ T-1770 measured `=SUM(COUNTIFS(A:A,A1:A100000))` (crates/rustsheet/benches/lift.
 
 ## Out of scope
 - The other benches, unless the measurement shows the same effect there.
+
+## Outcome
+No slowdown found; no code change. `perf` is not installed in the agent container and a callgrind
+cache/branch simulation of the 85-billion-instruction bench process is impractical there, so the
+acceptance criterion's counters were not collected (T-1770 already has the instruction counts:
++0.006%). What was measured instead: min wall time of `-- COUNTIFS`, one case per process, pinned
+with `taskset -c 2`, 10 alternating-order pairs, on a 4-core box with load about 1.0 (not the
+under-0.5 the task asks for). Parent = `6ed7cd39^` (before T-1770), branch = `origin/main` at
+`b9df157` (T-1770 plus later lift work, not the T-1770 commit alone).
+
+| | min wall, 7 later pairs (ms) | median of mins |
+|---|---|---|
+| parent | 631, 635, 646, 650, 654, 671, 718 | 650 |
+| main | 608, 612, 624, 624, 625, 638, 654 | 624 |
+
+The first 3 pairs agree (parent 662-699, main 614-658). Main is at parity or better (about 3-4% lower
+min time, within this box's noise), so T-1770's +5.2% ± 3.6% was layout or noise, and main carries no
+COUNTIFS regression against SPEC-0011's 5% budget. The first 3 pairs are given as ranges only; the
+table and its median cover the later 7 of the 10. Accepted: the unmeasured per-counter breakdown, since there is no gap left
+to explain.

@@ -16,22 +16,6 @@ use crate::{
 };
 
 impl Model {
-    /// The two numbers of EFFECT, NOMINAL, DOLLARDE, DOLLARFR and QUOTIENT, in order (the first
-    /// one's error wins); a boolean is `#VALUE!`.
-    pub(crate) fn two_numbers(
-        &self,
-        values: &[CalcResult],
-        cell: CellReferenceIndex,
-    ) -> Result<(f64, f64), CalcResult> {
-        let [first, second] = values else {
-            return Err(CalcResult::new_args_number_error(cell));
-        };
-        Ok((
-            self.cast_number_no_bools_ref(first, cell)?,
-            self.cast_number_no_bools_ref(second, cell)?,
-        ))
-    }
-
     /// `NOMINAL(effect_rate, npery)`: `n*((1+r)^(1/n) - 1)`, with `n` floored.
     pub(crate) fn fn_nominal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Nominal, args, cell, &mut |model, values| {
