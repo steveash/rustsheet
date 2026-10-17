@@ -102,5 +102,7 @@
   reach ≥ 20 Excel cells through probes/discount-security-modes; decision 0062) (`make eval-baseline`).
   T-1625: functions below the evidence floor 21 → 13 (VDB, AMORDEGRC, FVSCHEDULE, MDURATION, RRI, IMPOWER, IMSUB
   and IMDIV reach ≥ 20 Excel cells through probes/fin-* and eng-im*; decision 0062) (`make eval-baseline`).
+  T-1787: duplicated lines 6155 → 6111 (the four private `calc_result_to_array_node` copies in functions/logical
+  now call `cast::calc_result_to_array_node`) (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
