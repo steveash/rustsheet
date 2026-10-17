@@ -19,7 +19,6 @@ Oracle (excel-graph, 2026-10-17): `AVEDEV(1,)` and `DEVSQ(1,)` are 0.5 (empty co
 ## Acceptance criteria
 - [ ] The four cells above pass and leave eval/baseline/probes.txt.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- SUMSQ and other functions (probe `SUMSQ(1,)` before changing it).

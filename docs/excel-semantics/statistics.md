@@ -752,10 +752,14 @@ Status: VERIFIED (web)
 Tasks: T-1726 (overlaps T-1402)
 
 ## Order-statistic and deviation functions: edge behaviour (T-1622)
-Rule: `AVEDEV(1,)` and `DEVSQ(1,)` are 0.5, so an empty argument counts as 0 (this settles the "Open" note in
-coercion.md: they do not ignore it); `QUARTILE(TRUE,1)` and `QUARTILE.INC(TRUE,1)` are 1 (a typed boolean is a
-one-element array); DEVSQ is not a naive sum of squares about the mean: `DEVSQ(1E15,1E15+1)` is exactly 0.5 and
-`DEVSQ(0.1,0.2,0.3)` is 0.019999999999999997 (probes/stat-order-floor-batch A274, A299, A102, A128, A294, A295;
-excel-graph, 2026-10-17). Remaining cells of the probe (MODE/MODE.MULT shape, QUARTILE/PERCENTILE/PERCENTRANK
-edges) match the engine.
-Status: VERIFIED (excel-graph). Tasks: T-1748, T-1749
+Rule: `AVEDEV(1,)` and `DEVSQ(1,)` are 0.5, so an empty argument counts as 0 in both. `QUARTILE(TRUE,1)` and
+`QUARTILE.INC(TRUE,1)` are 1 (a typed boolean is a one-element array; untested for QUARTILE.EXC and PERCENTILE).
+DEVSQ equals the two-pass sum of squared deviations about the mean, in argument order, not the one-pass
+`Σx² − (Σx)²/n`: `DEVSQ(1E15,1E15+1)` is exactly 0.5, `DEVSQ(0.1,0.2,0.3)` is 0.019999999999999997, `DEVSQ(L1:L6)`
+is 48.833333333333336. Every other cell of the probe (MODE/MODE.MULT shape, QUARTILE/PERCENTILE/PERCENTRANK edges)
+matches the engine.
+Evidence: probes/stat-order-floor-batch A274, A299 (empty argument), A102, A128 (boolean), A277, A278, A280, A290,
+A294, A295, A300 (DEVSQ; a two-pass reproduces all seven bit-exactly); excel-graph, 2026-10-17.
+Status: VERIFIED (excel-graph).
+Ours: AVEDEV/DEVSQ ignore the empty argument (0), QUARTILE(TRUE,1) is an error, DEVSQ is one-pass (devsq.rs).
+Tasks: T-1748, T-1749

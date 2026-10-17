@@ -19,7 +19,6 @@ Oracle: `DEVSQ(L1:L6)` = 48.833333333333336 (ours ...34), `DEVSQ(0.1,0.2,0.3)` =
 ## Acceptance criteria
 - [ ] A277, A278, A280, A290, A294, A295, A300 pass and leave eval/baseline/probes.txt.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- SUMSQ and other functions (probe `SUMSQ(1,)` before changing it).
