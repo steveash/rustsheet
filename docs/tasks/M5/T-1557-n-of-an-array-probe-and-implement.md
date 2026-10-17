@@ -3,7 +3,7 @@ id: T-1557
 title: "N of an array: probe and implement"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
