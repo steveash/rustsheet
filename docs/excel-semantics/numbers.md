@@ -1148,11 +1148,11 @@ subtracts `log10(k)` for k = 1..n for each argument, last argument first. With `
 when `y >= 0` and `1 / exp(-y)` when `y < 0`, which only a lone argument's residue (alone or padded with zeros) can be.
 So a single argument below 1 is always 1 minus an even number of ulps (2^-53 each; the inverse of a value just above 1):
 `(5)` 0.9999999999999996 where `exp(y)` would give the nearer 0.9999999999999994. That reproduces all 240 probed cells
-bit-exactly; `exp(y)` alone gets 188 (every miss a single argument below 1). Rejected candidates (scores out of 72
-before T-1600, or 240): `exp(GAMMALN(s+1))`
-over exact factorials (Excel's own GAMMALN values, at most 17), natural-log sums (at most 16), `10^x` in place of
-`exp(x * ln 10)` (30; 156/240), the arguments in their given order (60), glibc `log10` in place of a correctly rounded one
-(57), `ln(k)/ln 10` or `ln(k)*log10(e)` terms (at most 33), x87 80-bit terms or accumulator (at most 54), descending
+bit-exactly; `exp(y)` alone gets 188 (every miss a single argument below 1). Rejected candidates, scored by T-1190
+on the 72 cells it had: `exp(GAMMALN(s+1))` over exact factorials (Excel's own GAMMALN values, at most 17/72),
+natural-log sums (at most 16/72), `10^x` in place of `exp(x * ln 10)` (30/72), the arguments in their given order
+(60/72), glibc `log10` in place of a correctly rounded one (57/72), `ln(k)/ln 10` or `ln(k)*log10(e)` terms (at most
+33/72), x87 80-bit terms or accumulator (at most 54/72). Scored by T-1600 on all 240: `10^y` (156/240), descending
 subtraction (35/240), a separate denominator sum (21/240), `1 + expm1(y)` (184/240), `exp(y/log10 e)` (172/240), and a
 `2^t` split at floor/round/ceil of `t = sum * log2 10` (at most 156/240).
 Numeric text in a range cell after a negative is `#NUM!` (a range holding -1, "2", 3), as typed `(-1,"2",3)` is;
