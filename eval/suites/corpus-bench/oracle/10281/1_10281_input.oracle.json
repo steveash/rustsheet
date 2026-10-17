@@ -1,0 +1,50 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "G15": {
+    "t": "n",
+    "v": 1.0
+   },
+   "G16": {
+    "t": "n",
+    "v": 1.0
+   },
+   "I15": {
+    "t": "s",
+    "v": "PASS"
+   },
+   "I16": {
+    "t": "s",
+    "v": "PASS"
+   },
+   "I17": {
+    "t": "s",
+    "v": "PASS"
+   },
+   "I3": {
+    "t": "n",
+    "v": 0.26
+   },
+   "I4": {
+    "t": "n",
+    "v": 0.31
+   },
+   "J3": {
+    "t": "n",
+    "v": 0.2
+   },
+   "J4": {
+    "t": "n",
+    "v": 0.29
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "de8085b77b9b405616434c00beabfd0a9e944a08f353a19c2f47cb3ec29c9ca7",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:07:13+00:00",
+  "version": null
+ }
+}

@@ -1,0 +1,94 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Customer": {
+   "P10": {
+    "t": "s",
+    "v": "Success"
+   },
+   "P11": {
+    "t": "s",
+    "v": "Late"
+   },
+   "P2": {
+    "t": "s",
+    "v": "Late"
+   },
+   "P3": {
+    "t": "s",
+    "v": "Success"
+   },
+   "P4": {
+    "t": "s",
+    "v": "Success"
+   },
+   "P5": {
+    "t": "s",
+    "v": "Late"
+   },
+   "P6": {
+    "t": "s",
+    "v": "Success"
+   },
+   "P7": {
+    "t": "s",
+    "v": "Success"
+   },
+   "P8": {
+    "t": "s",
+    "v": "Success"
+   },
+   "P9": {
+    "t": "s",
+    "v": "Success"
+   },
+   "Q10": {
+    "t": "s",
+    "v": "Success"
+   },
+   "Q11": {
+    "t": "s",
+    "v": "Success"
+   },
+   "Q2": {
+    "t": "s",
+    "v": "Success"
+   },
+   "Q3": {
+    "t": "s",
+    "v": "Success"
+   },
+   "Q4": {
+    "t": "s",
+    "v": "Success"
+   },
+   "Q5": {
+    "t": "s",
+    "v": "Success"
+   },
+   "Q6": {
+    "t": "s",
+    "v": "Late"
+   },
+   "Q7": {
+    "t": "s",
+    "v": "Success"
+   },
+   "Q8": {
+    "t": "s",
+    "v": "Success"
+   },
+   "Q9": {
+    "t": "s",
+    "v": "Success"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "a21b8984faacb254eebf60e3e28596a21fa2ed2b7f3b9ba06bee75a9aec545a9",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:26:54+00:00",
+  "version": null
+ }
+}

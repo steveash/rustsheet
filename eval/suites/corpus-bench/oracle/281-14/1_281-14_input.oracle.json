@@ -1,0 +1,27 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "10": {},
+  "11": {},
+  "14": {},
+  "2": {},
+  "22": {},
+  "23": {},
+  "24": {},
+  "25": {},
+  "28": {},
+  "3": {},
+  "4": {},
+  "7": {},
+  "8": {},
+  "9": {},
+  "Summary": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "2af7c77c80d47989fe1fd18281ca815485886c9ca18aa78b4fa1a539dab3756a",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:15:49+00:00",
+  "version": null
+ }
+}

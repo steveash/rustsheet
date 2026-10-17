@@ -1,0 +1,90 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "B12": {
+    "t": "s",
+    "v": "Sales Allocation"
+   },
+   "B13": {
+    "t": "s",
+    "v": "Sales Allocation"
+   },
+   "B17": {
+    "t": "s",
+    "v": "Sales Allocation"
+   },
+   "B18": {
+    "t": "s",
+    "v": "Sales Allocation"
+   },
+   "B3": {
+    "t": "s",
+    "v": "Sales Allocation"
+   },
+   "B7": {
+    "t": "s",
+    "v": "Sales Allocation"
+   },
+   "B8": {
+    "t": "s",
+    "v": "Sales Allocation"
+   },
+   "D14": {
+    "t": "n",
+    "v": 715.0
+   },
+   "D19": {
+    "t": "n",
+    "v": 958.0
+   },
+   "D4": {
+    "t": "n",
+    "v": 45.25
+   },
+   "D9": {
+    "t": "n",
+    "v": 4535.0
+   },
+   "E13": {
+    "t": "n",
+    "v": 715.0
+   },
+   "E14": {
+    "t": "n",
+    "v": 715.0
+   },
+   "E18": {
+    "t": "n",
+    "v": 958.0
+   },
+   "E19": {
+    "t": "n",
+    "v": 958.0
+   },
+   "E3": {
+    "t": "n",
+    "v": 45.25
+   },
+   "E4": {
+    "t": "n",
+    "v": 45.25
+   },
+   "E8": {
+    "t": "n",
+    "v": 4535.0
+   },
+   "E9": {
+    "t": "n",
+    "v": 4535.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "a5d4498cf065c810cae5efacf9388171a4f4e0bdc4b1d6bbe1d1139f7c7af972",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:34:24+00:00",
+  "version": null
+ }
+}
