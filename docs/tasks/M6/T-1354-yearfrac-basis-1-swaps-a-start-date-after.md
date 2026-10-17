@@ -11,7 +11,7 @@ depends_on: []
 ---
 
 ## Goal
-YEARFRAC with basis 1 and a start date after the end date swaps them and returns the positive fraction, as Excel does and as the engine already does for basis 0.
+YEARFRAC with basis 1 and a start date after the end date swaps them and returns the positive fraction, as Excel does and (basis 0 takes the absolute 30/360 count; see T-1826).
 
 ## Context
 T-1275's gen-m7 suite (excel-graph sidecars, 2026-10-11): gen-m7/c263b43217a5898b Calc!A38 `=YEARFRAC(52874,24708,1)`: Excel 77.11295191295191, engine `#NUM!`.
@@ -21,12 +21,12 @@ Code: `fn_yearfrac` in crates/rustsheet-engine/src/functions/date_and_time.rs (t
 reversed dates in unit tests too.
 
 ## Acceptance criteria
-- [ ] gen-m7/c263b43217a5898b A38 passes in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
-- [ ] Unit tests with reversed dates for bases 0-4.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m7/c263b43217a5898b A38 passes in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
+- [x] Unit tests with reversed dates for bases 0-4.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
 ## Outcome
-Basis 1 now swaps reversed dates like the other bases (A38 `=YEARFRAC(52874,24708,1)` = 77.11295191295191). Unit test covers bases 0-4 reversed. Eval: no baseline entry changed.
+Basis 1 now swaps reversed dates like the other bases (A38 `=YEARFRAC(52874,24708,1)` = 77.11295191295191). Unit test covers bases 0-4 reversed. Eval: gen-m7 is ungated (no baseline), gen-m7/c263b43217a5898b now passes 40/40, no regressions. Bases 0, 2-4 are unverified: follow-up T-1826.

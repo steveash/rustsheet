@@ -60,6 +60,7 @@ fn test_yearfrac_basis_3_actual_365() {
 }
 
 #[test]
+// Only basis 1 has Excel evidence; the other bases' equality is our own expectation (dates.md).
 fn test_yearfrac_reversed_dates_swap_for_every_basis() {
     let mut model = new_empty_model();
     for basis in 0..=4 {

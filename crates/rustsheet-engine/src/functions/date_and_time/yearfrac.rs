@@ -106,8 +106,8 @@ impl Model {
             1 => {
                 // Actual/Actual. Port of ExcelFinancialFunctions
                 // `ActualActual.DaysInYear`: yearfrac = actual_days / DaysInYear.
-                // Excel swaps reversed dates for every basis (gen-m7/c263b43217a5898b
-                // Calc!A38; dates.md "YEARFRAC swaps reversed dates for every basis"); `days`
+                // Excel swaps reversed dates for basis 1 (gen-m7/c263b43217a5898b
+                // Calc!A38; dates.md "YEARFRAC swaps reversed dates for basis 1"); `days`
                 // is made positive by the final `abs`.
                 let (start_date, end_date) = if start_date > end_date {
                     (end_date, start_date)
