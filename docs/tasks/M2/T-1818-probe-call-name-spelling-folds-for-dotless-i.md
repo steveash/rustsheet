@@ -3,7 +3,7 @@ id: T-1818
 title: "Probe call-name spelling folds for dotless i, long s, micro, final sigma and ligatures"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
