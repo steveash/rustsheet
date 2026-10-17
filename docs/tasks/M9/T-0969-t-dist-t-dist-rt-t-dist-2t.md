@@ -64,3 +64,6 @@ Oracle sweep (T-1043): probes-numeric cases `m9-t-dist-cdf`, `m9-t-dist-pdf`, `m
 ## Out of scope
 T.INV/T.INV.2T/CONFIDENCE.T (T-0967); the incomplete-beta kernel for BETA.DIST/F.DIST (T-0970);
 legacy TDIST/TTEST evidence (T-1048).
+
+## Fit result (T-1744)
+T.DIST is closer to the correctly rounded value (104/150) than to any I_x candidate (best 94, engine 78), so test a direct t algorithm before mapping onto I_x.

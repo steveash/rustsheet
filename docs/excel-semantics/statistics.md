@@ -516,6 +516,45 @@ Evidence: probes-numeric cases `m9-beta-dist-a<a>` (one per a; `p` stands for th
 Status: VERIFIED (excel-graph)
 Tasks: T-1044 (sweep), T-0970, T-0974
 
+## Incomplete beta: Excel's closed forms and the best candidate (T-1744)
+Rule: BETA.DIST(x,a,b,TRUE) uses exact closed forms for a unit shape:
+- I_x(a,1) = exp(a*ln(x)). This matches all 27 b = 1 cells. `pow` does not: BETA.DIST(0.1,5,1,TRUE) is
+  1.0000000000000016E-05, not 1E-05.
+- I_x(1,b) = 1 - exp(b*ln(1-x)), with the cancellation that implies. This matches 22 of 24 a = 1 cells.
+  BETA.DIST(0.1,1,0.0001,TRUE) is 1.0535996061822317E-05, 3.4E-12 relative above the true value.
+
+Every other cell is unfitted. Excel's prefactor carries exp(a*ln x)'s rounding: for a = 100 at
+x = 0.1, Excel is 1 ulp from that model and 66 from the correctly rounded value. Its continued
+fraction is not Numerical Recipes' Lentz.
+
+The best combination found is bit-exact on 158 of 283 BETA.DIST/BETADIST cells (279 numeric):
+- the closed forms above;
+- otherwise Cephes' two continued fractions (incbcf/incbd, without the power series);
+- a switch at the mean, x > a/(a+b);
+- the prefactor exp(a ln x)*exp(b ln(1-x))*Gamma(a+b)/(Gamma(a)Gamma(b))/a*w.
+
+For comparison:
+
+| candidate | BETA.DIST cells exact |
+|---|---|
+| best combination | 158 |
+| correctly rounded | 130 |
+| Cephes incbet as published | at most 121 |
+| Numerical Recipes betai | 98 |
+| the engine (statrs `beta_reg`) | 87 |
+
+Through the F and t mappings:
+- F.DIST(x,d1,d2,TRUE): 15 of 33 cells (28 numeric), against 6 for the engine and 17 correctly rounded.
+- T.DIST(t,n,TRUE): 94 of 150, against 78 for the engine and 104 correctly rounded.
+
+T.DIST is closer to the correctly rounded value than to any beta candidate, so it may not go
+through I_x at all.
+Evidence: probes-numeric m9-beta-dist-a*, m9-legacy-betadist, m9-f-dist, m9-legacy-fdist,
+t1049-fdist, m9-t-dist-cdf, t1048-tdist; fits `beta-dist`, `f-dist`, `t-dist`
+(`fitlab/kernels/beta.py`).
+Status: VERIFIED (closed forms); the general algorithm is UNVERIFIED
+Tasks: T-1744, T-0970, T-0969, T-1745
+
 ## Incomplete gamma sweep (T-1045)
 Rule: Excel's incomplete-gamma values (the targets for T-0971 and T-0972) are plain numbers on the whole in-domain grid, and the CDF saturates to exactly 1 deep in the upper tail while the pdf stays finite.
 Oracle sweep (excel-graph) of `GAMMA.DIST` (a in {0.5, 1, 2, 9, 50, 500}, b in {1, 2, 1E6}, x = 0.1, 0.5, 1, 1.5, 3 times the mean a*b,
