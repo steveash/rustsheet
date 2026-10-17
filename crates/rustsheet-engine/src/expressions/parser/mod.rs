@@ -52,6 +52,7 @@ use super::types::*;
 use sheet_span::with_sheet_span;
 use token::OpCompare;
 
+mod call_names;
 mod chain;
 mod contains_function;
 mod depth;
@@ -71,6 +72,8 @@ pub(crate) use depth::is_limit_error;
 pub use depth::{
     MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
 };
+
+pub(crate) use call_names::CallNameSpellings;
 
 #[cfg(test)]
 mod tests;
