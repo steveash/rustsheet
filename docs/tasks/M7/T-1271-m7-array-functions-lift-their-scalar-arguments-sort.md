@@ -3,7 +3,7 @@ id: T-1271
 title: "M7 array functions lift their scalar arguments; SORT reads sort_index and sort_order as lists"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: sonnet
