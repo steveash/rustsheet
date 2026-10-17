@@ -3,7 +3,7 @@ id: T-1600
 title: "MULTINOMIAL: the one-ulp residue on single arguments, and numeric text after a negative"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -24,9 +24,17 @@ or the final step is not `exp(acc * ln 10)` for |acc| near 0. Probe more single 
 Note: the last step uses the platform `exp`, which may differ by an ulp off glibc.
 
 ## Acceptance criteria
-- [ ] A probe of all single arguments 1..170 and the coercion cells above, filled by excel-graph; the candidates and their scores recorded.
-- [ ] The 8 cells pass, or the task is blocked as time-boxed (decision 0056) with the candidates listed.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe of all single arguments 1..170 and the coercion cells above, filled by excel-graph; the candidates and their scores recorded.
+- [x] The 8 cells pass, or the task is blocked as time-boxed (decision 0056) with the candidates listed.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - COMBIN (T-1598).
+
+## Outcome
+New probe probes/multinomial-single-arguments (excel-graph): MULTINOMIAL(n) for every n in 1..170, plus numeric and
+formatted text in range cells after a negative. The fit: Excel's last step is `exp(y)` for `y = sum * ln 10 >= 0` and
+`1 / exp(-y)` for `y < 0` (only a lone argument's residue is negative), so a single argument below 1 sits on the grid of
+`1 - 2k * 2^-53`. That scores 240/240 over every probed MULTINOMIAL cell (exp alone 188/240); the rejected candidates
+and scores are in docs/excel-semantics/numbers.md "MULTINOMIAL is inexact". The coercion cells already matched.
+Eval delta: probes fixed 8 (the 8 cells T-1190 left one ulp off), plus 191 new cells all passing; 0 regressions.
