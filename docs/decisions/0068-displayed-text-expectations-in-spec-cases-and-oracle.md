@@ -1,6 +1,6 @@
 # 0068 — Displayed-text expectations in spec cases and oracle sidecars
 
-- **Status:** accepted (2026-10-16, T-1610)
+- **Status:** accepted (2026-10-16, T-1610); amended by 0070 (text is gated on `TC`/`TF` baseline lines)
 - **Context:** M10's exit criterion is a formatted-text oracle suite (≥ 10k cells) at 100%. An xlsx
   stores the raw value, not the text Excel shows, so a sidecar built from the saved file cannot
   carry it. Graph's range resource returns the shown text (`text`) of a recalculated workbook.

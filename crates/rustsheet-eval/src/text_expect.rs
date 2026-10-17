@@ -1,8 +1,9 @@
 //! Displayed-text expectations (T-1610, decision 0068): a spec case lists cells in `text`, its
 //! oracle sidecar holds Excel's displayed text for them (`Range.Text`, read by the backend after
 //! the recalculation), and the eval compares that with the engine's formatted text. Text is scored
-//! as a verdict of its own beside the value's, so value scoring, baselines and the gate do not
-//! change; the report shows a text pass rate per suite.
+//! as a verdict of its own beside the value's, so value scoring does not change; the report shows
+//! a text pass rate per suite, and the baseline gates text cells on `TC`/`TF` lines of their own
+//! (decision 0070).
 
 use std::fmt::Write as _;
 
