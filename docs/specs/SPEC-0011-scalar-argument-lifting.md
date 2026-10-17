@@ -645,7 +645,7 @@ Each step is one PR of size S/M. The old paths stay until their step.
      the EDATE and YEARFRAC cells of scalar-lift-shapes, -b and -c.
 2. **After T-1770, in parallel (one lane each):**
    - **T-1800** (engine, S; the YEARFRAC kernel-order part can land before T-1770): kernel order
-     for error precedence; the driver never scans for the first error. T-1372 and T-1383 wait for it.
+     for error precedence; the driver never scans for the first error. T-1372, T-1383 and T-1290 wait for it.
    - **T-1801** (engine, S): a 3-D range is `#REF!` in `Lift`, `#VALUE!` in `LiftArrays`. T-1372, T-1383
      and T-1290 wait for it.
    - **T-1802** (functions-math, S): probe, then enter QUOTIENT, FACTDOUBLE and SERIESSUM.
