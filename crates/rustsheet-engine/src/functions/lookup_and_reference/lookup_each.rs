@@ -4,7 +4,10 @@ use crate::{
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
     expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
-    functions::util::array_node_to_calc_result,
+    functions::{
+        lift::{LiftCost, LiftOptions, LiftedArg},
+        util::array_node_to_calc_result,
+    },
     limits::check_array_size,
     model::Model,
 };
@@ -26,7 +29,7 @@ impl Model {
     /// resolved index. Excel searches first: a value that is not found is #N/A whatever the
     /// index is. An array or multi-cell range `lookup_value` is looked up element by element
     /// into a same-shaped array, each element by the scalar rules (an error element is itself,
-    /// probes/vlookup-array-lookup-value, T-0270); it lifts through [`Model::lift_with_cost`],
+    /// probes/vlookup-array-lookup-value, T-0270); it lifts through [`Model::lift_values`],
     /// so a whole column of lookup values is bounded by the shared cell-visit cap
     /// (elements times the search vector length).
     pub(super) fn lookup_each(
@@ -38,8 +41,7 @@ impl Model {
         pick: impl Fn(&mut Self, usize, i32, bool) -> CalcResult,
     ) -> CalcResult {
         // A lifted element is a value: only a scalar lookup may hand its cell on as a reference.
-        let is_array =
-            |value: &CalcResult| matches!(value, CalcResult::Range { .. } | CalcResult::Array(_));
+        let is_array = LiftedArg::is_grid;
         let lifts = is_array(&lookup_value) || is_array(&search.is_sorted);
         let as_reference = as_reference && !lifts;
         // Only an array range_lookup is lifted; a boolean one adds no criterion, so it does not
@@ -51,17 +53,19 @@ impl Model {
         // A lifted lookup or range_lookup reads only the first element of an index array.
         let narrowed = lifts.then(|| search.index.first_element(cell));
         let index = narrowed.as_ref().unwrap_or(&search.index);
-        self.lift_with_cost(
+        // Each element scans the evaluated cells of the first column (or row) once, however the
+        // table was given: a computed array table counts too, not just a range. The estimate is
+        // charged once per lifted criterion, as T-1784's driver charged it.
+        let scan = u64::try_from(search.search_vector.search_cost())
+            .unwrap_or(u64::MAX)
+            .max(1);
+        let criteria_count = u64::try_from(criteria.len()).unwrap_or(u64::MAX);
+        self.lift_values(
             criteria,
-            // Each element scans the evaluated cells of the first column (or row) once, however
-            // the table was given: a computed array table counts too, not just a range.
-            |_| {
-                u64::try_from(search.search_vector.search_cost())
-                    .unwrap_or(u64::MAX)
-                    .max(1)
-            },
+            LiftCost::Cells(scan.saturating_mul(criteria_count)),
+            &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
-            |model, values| {
+            &mut |model, values| {
                 let value = &values[0];
                 if value.is_error() {
                     return value.clone();

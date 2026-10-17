@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: [T-1770]
+depends_on: [T-1770, T-1800, T-1801]
 spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
 
@@ -35,6 +35,7 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
   still pass. The PMT and EFFECT shape and error cells of probes/scalar-lift-shapes and -b listed under Context pass. Value cells that miss by ulps stay T-0901's and T-1374's.
 - [ ] gen-m9/675763979c1defb6 A13 and b58b6d7cd39d195f A21 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
+- [ ] The entries it adds make the variant live, and it removes the `#[allow(dead_code)]` on `ArgKind::Lift` (functions/lift/kinds.rs), unless T-1290 removed it first (T-1770 left the allow with a `TODO(T-1372)`).
 
 ## Out of scope
 - Base-value ulp misses (T-1374, T-0901, T-0916).

@@ -1,0 +1,37 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1349: MAP over arrays of different sizes, or a scalar and an array: shape and padded element values (#N/A padding?).",
+ "tags": [
+  "M7",
+  "probe",
+  "T-1349"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=MAP({1;2;3},{10;20},LAMBDA(a,b,a+b))",
+    "C1": "=MAP({1,2,3},{10;20},LAMBDA(a,b,a+b))",
+    "F1": "=MAP(5,{1,2,3},LAMBDA(a,b,a+b))",
+    "J1": "=MAP({1,2},{1;2},LAMBDA(a,b,a*10+b))",
+    "A8": "=MAP(M1:M3,N1:N2,LAMBDA(a,b,a+b))",
+    "C8": "=ROWS(MAP({1;2;3},{10;20},LAMBDA(a,b,a+b)))",
+    "D8": "=COLUMNS(MAP({1,2,3},{10;20},LAMBDA(a,b,a+b)))",
+    "E8": "=ROWS(MAP({1,2,3},{10;20},LAMBDA(a,b,a+b)))",
+    "F8": "=INDEX(MAP({1;2;3},{10;20},LAMBDA(a,b,a+b)),3)",
+    "G8": "=ISNA(INDEX(MAP({1;2;3},{10;20},LAMBDA(a,b,a+b)),3))",
+    "H8": "=INDEX(MAP({1,2,3},{10;20},LAMBDA(a,b,a+b)),2,3)",
+    "I8": "=MAP({1;2;3},{10;20},LAMBDA(a,b,ISNA(b)))",
+    "A14": "=MAP({1;2;3},{10},LAMBDA(a,b,a+b))",
+    "C14": "=MAP({1,2;3,4},{10,20},LAMBDA(a,b,a+b))",
+    "F14": "=ROWS(MAP(5,{1;2;3},LAMBDA(a,b,a+b)))",
+    "M1": 1,
+    "M2": 2,
+    "M3": 3,
+    "N1": 10,
+    "N2": 20
+   }
+  }
+ ],
+ "expected": {}
+}

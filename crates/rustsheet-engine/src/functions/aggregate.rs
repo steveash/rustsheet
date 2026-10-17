@@ -16,7 +16,10 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::{util::value_node, Function},
+    functions::{
+        lift::{LiftCost, LiftOptions},
+        Function,
+    },
     model::Model,
     reference_operators::RefArg,
 };
@@ -98,7 +101,7 @@ impl Model {
         }
         let mut lifted = vec![function, option];
         lifted.extend(fourth.filter(lifts));
-        // A single-cell range stays a scalar reference; `lift_with_cost` reads multi-cell ones.
+        // A single-cell range stays a scalar reference; `lift_values` reads multi-cell ones.
         let ranges: Vec<Option<CalcResult>> = lifted
             .iter_mut()
             .map(|value| match value {
@@ -108,11 +111,14 @@ impl Model {
                 _ => None,
             })
             .collect();
-        self.lift_with_cost(
+        // Charged once per lifted argument, as T-1784's driver charged it.
+        let lifted_count = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
+        self.lift_values(
             lifted,
-            |_| cost.max(1),
+            LiftCost::Cells(cost.max(1).saturating_mul(lifted_count)),
+            &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
-            |model, values| {
+            &mut |model, values| {
                 let scalar = |index: usize| {
                     ranges[index]
                         .clone()
@@ -422,4 +428,18 @@ fn numbers_array(numbers: Vec<f64>) -> Node {
 /// Whether a range spans more than one cell.
 fn is_multi_cell(left: &CellReferenceIndex, right: &CellReferenceIndex) -> bool {
     left.row != right.row || left.column != right.column
+}
+
+/// An evaluated scalar as a literal argument node, so the scalar path reads it like a typed
+/// value; `None` for a reference or an array.
+fn value_node(value: &CalcResult) -> Option<Node> {
+    Some(match value {
+        CalcResult::Number(number) => Node::NumberKind(*number),
+        CalcResult::Boolean(boolean) => Node::BooleanKind(*boolean),
+        // `StringKind` holds the formula spelling, with `"` doubled.
+        CalcResult::String(text) => Node::StringKind(text.replace('"', "\"\"")),
+        CalcResult::Error { error, .. } => Node::ErrorKind(error.clone()),
+        CalcResult::EmptyCell | CalcResult::EmptyArg => Node::EmptyArgKind,
+        _ => return None,
+    })
 }

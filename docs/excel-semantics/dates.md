@@ -322,6 +322,23 @@ and `"Feb 29"` are 29 February; in a non-leap year `"29-Feb"` is #VALUE!.
 Implemented in: `formatter::date_text::parse_date`, `Model::parse_datevalue_text`, `Model::parse_number_text`,
 `functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159); `remove_separator_spaces` in `parse_date` (spaces around `-` and `/`, T-1136, Ported-From: ironcalc@753da658)
 
+## Date text with a month name glued to digits (no separator)
+Rule: date text whose month name touches a number with no space or separator still parses as a
+date. Seen in real workbooks (corpus-bench, Excel for the web agreeing with the cached values;
+evidence is the corpus-bench sidecars, recalculated by excel-graph 2026-10-17, T-0427):
+- `"July1"` (month name then day): `DATE(F2,MONTH(D2&1),E2)` with D2 = `"July"` is a July date
+  (corpus-bench/1726 `July-KPIs!J12` = 45483, J13 = 45504), so `MONTH("July1")` = 7.
+- `"January0"` .. `"December0"` (month name then `0`, presumably the year 2000 as `"Jul-0"` is):
+  `MONTH(E$4&0)` with E4 = `"January"` feeds a SUMPRODUCT month filter and does not error
+  (corpus-bench/55392 `Monthly Expenses Summary!E6` = 0, not the `IFERROR` fallback `""`); G6, the
+  same formula over the G4 month, is 35000, so a glued month matches the data.
+- `"1JUN2021"` (day, abbreviated month, 4-digit year): `DATEVALUE("1"&B1&B2)` with B1 = `"JUN"`,
+  B2 = 2021 is 44348 (2021-06-01; corpus-bench/CF_18814 `attendance-Dec!E1`).
+Unprobed: which numbers count as day or year in the glued forms (`"July10"`, `"July45"`,
+`"Jul2026"`), whether VALUE and number coercion agree, and lower-case or full-name `"1June2021"`.
+Probe: T-1788. Status: UNVERIFIED beyond the three cited forms. Not implemented (T-1789): the engine
+gives `#VALUE!` for all three.
+
 ## WORKDAY holidays take the whole range
 Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no
 implicit intersection: `=WORKDAY(C2,6,D2:D5)` in row 2 skips the holiday in D4.
@@ -369,7 +386,11 @@ per element) when a date, month count, day count, return type or basis argument 
 an array literal in the same place (`EDATE(A1:A3,1)` is `#VALUE!`, `INDEX(EDATE({45000.25;45031.5;45100.75},1),2)`
 = 45061). The refusal holds on the range's own rows and in a later argument (`ROWS(EDATE(45000,B1:B60))`,
 `ROWS(YEARFRAC(45000,46000,B1:B60))`), and also in a legacy formula, which puts no `@` on the range. Next to an array
-the range makes every element `#VALUE!` (`EDATE({45000;45031},M1:M60)` is 2 rows of `#VALUE!`). See probes/scalar-lift-shapes,
+the range makes every element `#VALUE!` (`EDATE({45000;45031},M1:M60)` is 2 rows of `#VALUE!`, and `EDATE(A1:A60,{1;2})` and `EDATE({45000,45031},M1:M60)`
+have every element `#VALUE!`, probes/scalar-lift-open-a W24-W30, W70-W73). An error argument beside the range follows the
+function's check order: `EDATE(NA(),A1:A60)` is `#N/A`, `EDATE(A1:A60,NA())` is `#VALUE!`, and YEARFRAC checks `basis`, start, end
+(`YEARFRAC(1/0,45000,NA())` is `#N/A`; probes/scalar-lift-open-a W1-W8, -d W1-W7). A 3-D range in EDATE is `#VALUE!`
+(probes/scalar-lift-open-b W4, W5, W7). See probes/scalar-lift-shapes,
 -b and -c (T-1767) and arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule".
 The `weekend` argument of WORKDAY.INTL and NETWORKDAYS.INTL is the exception: it lifts over a range too
 (`INDEX(WORKDAY.INTL(45000,5,B1:B3),2)` = 45007); `holidays` is read whole (see "WORKDAY holidays take the whole
@@ -382,16 +403,18 @@ the 9999 limit: the month argument is bounded (see "DATE month and day bounds").
 `DATE(2042,8,1E+15)` = 84845 = `DATE(2042,8,32767)` (gen-m6/5cc04d6f42b23b51 Calc!A4, `DATE(..)%*88` = 74663.6;
 excel-graph 2026-10-09), the same 32767 cap (T-1419).
 Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
+Ours: YEARFRAC's scalar kernel checks start, end, basis, where Excel checks basis, start, end, so probes/scalar-lift-open-d W1, W3, W4, W6, W7 fail (T-1800).
 Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift (T-1235), as do
-DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. EDATE, EOMONTH, WEEKNUM, WORKDAY,
-WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL and YEARFRAC lift over an array literal in a date, count, return type or
-basis argument (T-1236, `lift_array_args`): the scalar function runs once per broadcast element, a multi-cell range
-stays `#VALUE!`. A lifted date together with a lifted `weekend` in WORKDAY.INTL or NETWORKDAYS.INTL is `#N/IMPL!`
-(unprobed, T-1789; Excel presumably broadcasts both). Mismatched-shape arrays follow the operator rule, also unprobed. The lifted day walkers are bounded by `MAX_LIFTED_CELL_VISITS` (DEVIATION, arrays.md "GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap"; Excel
-has no such limit).
+DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. EDATE, EOMONTH, WEEKNUM and YEARFRAC lift
+over an array and refuse a multi-cell range in every argument, in dynamic and legacy formulas (T-1770, SPEC-0011
+`LiftArrays`). Still `#N/IMPL!` (T-1236) for an array literal in a date argument: WORKDAY, WORKDAY.INTL, NETWORKDAYS,
+NETWORKDAYS.INTL.
 In a 1904 workbook DATEDIF reads date text as DATEVALUE does (from
 1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330). It counts the days on the 1904 calendar since T-1416 (`DATEDIF(0,1000,"ym")` = 8, probes/date-system-1904-readers A11).
 Status: VERIFIED
+Implemented in: EDATE, EOMONTH, WEEKNUM and YEARFRAC: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds.rs)
+and `Model::lift_call` (functions/lift/call.rs), with the kernels `edate_of`, `eomonth_of`
+(functions/date_and_time/month_shift.rs), `weeknum_of` (date_and_time/weeknum.rs) and `yearfrac_of` (date_and_time/yearfrac.rs).
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
 
 ## DATEDIF and DAYS360 error order with a bad unit or method (inferred)

@@ -42,8 +42,9 @@ Rule: with no pivot table in the workbook, `GETPIVOTDATA("Sales",ref,...)` is `#
 (a cell outside any pivot, a range, `OFFSET`/`INDIRECT` results, extra field/item pairs, an odd number of
 pairs, `""` as data_field, a numeric pivot_table or numeric item). An error in either of the first two arguments
 propagates as it came (`pivot_table` `NA()` is `#N/A`, `1/0` is `#DIV/0!`; `data_field` `NA()` is `#N/A`).
-`ERROR.TYPE(GETPIVOTDATA("Sales",A1))` is 4. Which error wins when both are errors, a boolean data_field and a
-reference to an existing second sheet are unprobed.
+`ERROR.TYPE(GETPIVOTDATA("Sales",A1))` is 4. Which error wins when both are errors, a boolean data_field, a
+reference to an existing second sheet, an error inside a field/item pair (`A1,NA(),1`) and an array
+data_field or pivot_table are unprobed (ours: pairs are not evaluated, an array argument gives one `#REF!`, T-1703).
 Evidence: probes/getpivotdata-evidence-floor (oracle: excel-graph, 2026-10-16, T-1628).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081).
 A real pivot: see the next section (T-1705).

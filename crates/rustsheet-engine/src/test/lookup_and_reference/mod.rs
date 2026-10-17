@@ -1,3 +1,5 @@
+mod array_result_bound;
+mod stack_bound;
 mod test_approximate_search;
 mod test_fn_address_areas;
 mod test_fn_choosecols_chooserows;

@@ -1,30 +1,34 @@
 use super::reference_operators::{at_outside, wrong_range_shape};
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
+use broadcast::broadcast_shapes;
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
     legacy_call_reads_a_value, legacy_context_intersects, remove_array_at, remove_in_array_context,
 };
 mod aggregate;
+mod broadcast;
 mod legacy;
+mod lifted;
 mod reference_parameter;
+mod reference_result;
 mod row_column;
 mod signature;
 use signature::{
     args_signature_address, args_signature_arraytotext, args_signature_bycol_byrow,
     args_signature_cell, args_signature_choose, args_signature_choosecols, args_signature_drop,
     args_signature_expand, args_signature_fieldvalue, args_signature_filter,
-    args_signature_groupby, args_signature_hlookup, args_signature_ifs, args_signature_index,
-    args_signature_irr, args_signature_lambda, args_signature_let, args_signature_lookup,
-    args_signature_map, args_signature_match, args_signature_mirr, args_signature_npv,
-    args_signature_offset, args_signature_one_vector, args_signature_pivotby,
-    args_signature_randarray, args_signature_reduce, args_signature_row, args_signature_scalars,
-    args_signature_scan, args_signature_sequence, args_signature_sort, args_signature_sortby,
-    args_signature_sumif, args_signature_take, args_signature_textafter, args_signature_textjoin,
-    args_signature_textsplit, args_signature_tocol, args_signature_trimrange,
-    args_signature_unique, args_signature_with_holidays, args_signature_wrapcols,
-    args_signature_xirr, args_signature_xlookup, args_signature_xmatch, args_signature_xnpv,
-    Signature,
+    args_signature_getpivotdata, args_signature_groupby, args_signature_hlookup,
+    args_signature_ifs, args_signature_index, args_signature_irr, args_signature_lambda,
+    args_signature_let, args_signature_lookup, args_signature_map, args_signature_match,
+    args_signature_mirr, args_signature_npv, args_signature_offset, args_signature_one_vector,
+    args_signature_pivotby, args_signature_randarray, args_signature_reduce, args_signature_row,
+    args_signature_scalars, args_signature_scan, args_signature_sequence, args_signature_sort,
+    args_signature_sortby, args_signature_sumif, args_signature_take, args_signature_textafter,
+    args_signature_textjoin, args_signature_textsplit, args_signature_tocol,
+    args_signature_trimrange, args_signature_unique, args_signature_with_holidays,
+    args_signature_wrapcols, args_signature_xirr, args_signature_xlookup, args_signature_xmatch,
+    args_signature_xnpv, Signature,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -186,7 +190,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 add_array_at(kind, signature.get(index), index, arg);
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
-                add_argument_intersection(kind, signature.get(index), arg);
+                add_argument_intersection(kind, signature.get(index), index, arg);
             }
             // There are some function that will never add an automatic II:
             let new_function = matches!(kind, Function::Let | Function::Lambda);
@@ -286,7 +290,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
                 remove_array_at(kind, signature.get(index), index, arg);
                 // Scalar arguments are an intersecting context; vector arguments
                 // (ranges/arrays) are not (`legacy_context_intersects`).
-                let child_add = legacy_context_intersects(kind, signature.get(index), arg);
+                let child_add = legacy_context_intersects(kind, signature.get(index), index, arg);
                 remove_redundant_implicit_intersection(arg, child_add);
             }
         }
@@ -415,23 +419,7 @@ fn scalar_arguments(args: &[Node]) -> StaticResult {
 /// Excel puts a legacy `@` on it as on any range, `=ABS(@E1:E1)`, `=ABS(@CHOOSE(1,{5}))` and
 /// `=ABS(@E1:E1+1)` (probes/legacy-one-cell-shape-intersection, T-1265).
 fn broadcast_static_result<'a>(args: impl IntoIterator<Item = &'a Node>) -> StaticResult {
-    let mut shape: Option<(i32, i32)> = None;
-    for arg in args {
-        match run_static_analysis_on_node(arg) {
-            StaticResult::Scalar => {}
-            StaticResult::Unknown => return StaticResult::Unknown,
-            // An array or a range (`counts` is never `None` here).
-            other => {
-                let (a, b) = other.counts().unwrap_or((1, 1));
-                let (n, m) = shape.unwrap_or((0, 0));
-                shape = Some((n.max(a), m.max(b)));
-            }
-        }
-    }
-    match shape {
-        Some((n, m)) => StaticResult::Array(n, m),
-        None => StaticResult::Scalar,
-    }
+    broadcast_shapes(args.into_iter().map(run_static_analysis_on_node))
 }
 
 // We only care if the function can return a range or not
@@ -446,45 +434,22 @@ fn criteria_static_result(args: &[Node], first: usize) -> StaticResult {
     broadcast_static_result(args.iter().skip(first).step_by(2))
 }
 
-fn static_analysis_offset(args: &[Node]) -> StaticResult {
-    // If first argument is a single cell reference and there are no4th and 5th argument,
-    // or they are 1, then it is a scalar
-    let arg_count = args.len();
-    if arg_count < 3 {
-        // Actually an error
-        return StaticResult::Scalar;
-    }
-    if !matches!(args[0], Node::ReferenceKind { .. }) {
-        return StaticResult::Unknown;
-    }
-    if arg_count == 3 {
-        return StaticResult::Scalar;
-    }
-    if !matches!(args[3], Node::NumberKind(f) if f == 1.0) {
-        return StaticResult::Unknown;
-    }
-    if arg_count == 4 {
-        return StaticResult::Scalar;
-    }
-    if !matches!(args[4], Node::NumberKind(f) if f == 1.0) {
-        return StaticResult::Unknown;
-    }
-    // Both height and width are explicitly 1, so OFFSET will return a single cell
-    StaticResult::Scalar
-}
-
-fn static_analysis_indirect(_args: &[Node]) -> StaticResult {
-    // We will always insert the @, but we don't need to do that in every scenario`
-    StaticResult::Unknown
-}
-
 // The signature of the functions should be defined only once
 
 // Given a function and a number of arguments this returns the arguments at each position
 // are expected to be scalars or vectors (array/ranges).
 // Sets signature::Error to all arguments if the number of arguments is incorrect.
+// The lifting table decides first (SPEC-0011 "The table wins").
 fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signature> {
-    match kind {
+    match kind.arg_kinds() {
+        Some(kinds) => lifted::lifted_signature(kinds, arg_count),
+        None => fallback_signature(kind, arg_count).unwrap_or_default(),
+    }
+}
+
+/// The hand-written signatures of the functions not in the lifting table; `None` for one in it.
+fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature>> {
+    Some(match kind {
         Function::And => vec![Signature::Vector; arg_count],
         Function::False => args_signature_scalars(arg_count, 0, 0),
         Function::If => args_signature_scalars(arg_count, 2, 1),
@@ -593,6 +558,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Bycol | Function::Byrow => args_signature_bycol_byrow(arg_count),
         Function::Groupby => args_signature_groupby(arg_count),
         Function::Pivotby => args_signature_pivotby(arg_count),
+        Function::Getpivotdata => args_signature_getpivotdata(arg_count),
         Function::Map => args_signature_map(arg_count),
         Function::Reduce => args_signature_reduce(arg_count),
         Function::Scan => args_signature_scan(arg_count),
@@ -640,8 +606,6 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Datedif => args_signature_scalars(arg_count, 3, 0),
         Function::Datevalue => args_signature_scalars(arg_count, 1, 0),
         Function::Day => args_signature_scalars(arg_count, 1, 0),
-        Function::Edate => args_signature_scalars(arg_count, 2, 0),
-        Function::Eomonth => args_signature_scalars(arg_count, 2, 0),
         Function::Month => args_signature_scalars(arg_count, 1, 0),
         Function::Time => args_signature_scalars(arg_count, 3, 0),
         Function::Timevalue => args_signature_scalars(arg_count, 1, 0),
@@ -654,10 +618,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Days => args_signature_scalars(arg_count, 2, 0),
         Function::Days360 => args_signature_scalars(arg_count, 2, 1),
         Function::Weekday => args_signature_scalars(arg_count, 1, 1),
-        Function::Weeknum => args_signature_scalars(arg_count, 1, 1),
         Function::Workday => args_signature_with_holidays(arg_count, 2, 0),
         Function::WorkdayIntl => args_signature_with_holidays(arg_count, 2, 1),
-        Function::Yearfrac => args_signature_scalars(arg_count, 2, 1),
         Function::Isoweeknum => args_signature_scalars(arg_count, 1, 0),
         Function::Accrint => args_signature_scalars(arg_count, 6, 2),
         Function::Accrintm => args_signature_scalars(arg_count, 3, 2),
@@ -1140,12 +1102,25 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Skew => vec![Signature::Vector; arg_count],
         Function::SkewP => vec![Signature::Vector; arg_count],
         Function::Small => vec![Signature::Vector, Signature::Scalar],
+        // In the lifting table (SPEC-0011): `lifted.rs` derives these.
+        Function::Edate | Function::Eomonth | Function::Weeknum | Function::Yearfrac => {
+            return None
+        }
+    })
+}
+
+// Returns the type of the result (Scalar, Array or Range) depending on the arguments; the
+// lifting table decides first (SPEC-0011 "The table wins").
+fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
+    match kind.arg_kinds() {
+        Some(kinds) => lifted::lifted_static_result(kinds, args),
+        None => fallback_shape(kind, args).unwrap_or(StaticResult::Unknown),
     }
 }
 
-// Returns the type of the result (Scalar, Array or Range) depending on the arguments
-fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
-    match kind {
+/// The hand-written shapes of the functions not in the lifting table; `None` for one in it.
+fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
+    Some(match kind {
         Function::And => StaticResult::Scalar,
         Function::False => StaticResult::Scalar,
         Function::If => scalar_arguments(args),
@@ -1226,10 +1201,10 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Hyperlink => StaticResult::Scalar,
         // INDEX has two forms, but they are indistinguishable at parse time.
         Function::Index => StaticResult::Unknown,
-        Function::Indirect => static_analysis_indirect(args),
+        Function::Indirect => reference_result::static_analysis_indirect(args),
         Function::Lookup => not_implemented(args),
         Function::Match => not_implemented(args),
-        Function::Offset => static_analysis_offset(args),
+        Function::Offset => reference_result::static_analysis_offset(args),
         Function::Row => row_column::static_analysis_row_column(args, true),
         Function::Rows => not_implemented(args),
         Function::Vlookup => aggregate::lookup_static_result(args), // T-0270, T-1269
@@ -1245,6 +1220,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Mmult => StaticResult::Unknown,
         Function::Bycol | Function::Byrow => StaticResult::Unknown,
         Function::Groupby | Function::Pivotby => StaticResult::Unknown,
+        Function::Getpivotdata => StaticResult::Scalar,
         Function::Map | Function::Reduce => StaticResult::Unknown,
         Function::Scan | Function::Makearray => StaticResult::Unknown,
         Function::Sequence => StaticResult::Unknown,
@@ -1326,7 +1302,6 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Datedif => scalar_arguments(&args[..args.len().min(2)]),
         Function::Datevalue => scalar_arguments(args),
         Function::Day => scalar_arguments(args),
-        Function::Edate => not_implemented(args),
         Function::Month => scalar_arguments(args),
         Function::Time => scalar_arguments(args),
         Function::Timevalue => scalar_arguments(args),
@@ -1339,10 +1314,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Days => scalar_arguments(args),
         Function::Days360 => scalar_arguments(&args[..args.len().min(2)]),
         Function::Weekday => scalar_arguments(args),
-        Function::Weeknum => not_implemented(args),
         Function::Workday => not_implemented(args),
         Function::WorkdayIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
-        Function::Yearfrac => not_implemented(args),
         Function::Isoweeknum => scalar_arguments(args),
         Function::Accrint => scalar_arguments(args),
         Function::Accrintm => scalar_arguments(args),
@@ -1457,7 +1430,6 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Aggregate => aggregate::aggregate_static_result(args),
         Function::Rand => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),
-        Function::Eomonth => scalar_arguments(args),
         Function::Formulatext => not_implemented(args),
         Function::Geomean => not_implemented(args),
         Function::Networkdays => not_implemented(args),
@@ -1661,5 +1633,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Skew => StaticResult::Scalar,
         Function::SkewP => StaticResult::Scalar,
         Function::Small => StaticResult::Scalar,
-    }
+        // In the lifting table (SPEC-0011): `lifted.rs` derives these.
+        Function::Edate | Function::Eomonth | Function::Weeknum | Function::Yearfrac => {
+            return None
+        }
+    })
 }

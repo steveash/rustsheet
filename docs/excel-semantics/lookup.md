@@ -109,7 +109,7 @@ is `#ERROR!`).
 Unprobed: blank elements of a multi-cell lookup_value.
 Evidence: probes/vlookup-array-lookup-value (35 cells, excel-graph, 2026-10-09, T-0270).
 Implemented in: `Model::lookup_each` (functions/lookup_and_reference/lookup_each.rs) through
-`Model::lift_with_cost`; the spill shape follows lookup_value in static analysis.
+`Model::lift_values` (functions/lift/driver.rs); the spill shape follows lookup_value in static analysis.
 Status: VERIFIED (web)
 
 ## VLOOKUP / HLOOKUP with an array index or range_lookup
@@ -507,6 +507,17 @@ Status: VERIFIED (excel-graph)
 Implemented in: `Model::index_impl` / `index_lifted` (functions/lookup_and_reference/index.rs).
 Tasks: T-1260, T-1376, T-1437, T-1507
 
+## INDEX of a scalar or a 1x1 array
+Rule: a scalar (number, text, boolean) or a 1x1 array is a 1x1 range for INDEX. Row and column 0 or 1 return the value (`INDEX(5,0,0)`,
+`(5,0,1)`, `(5,1,0)`, `(5,1)`, `(5,0)`, `INDEX("a",1)`, `INDEX(TRUE,1,1)`, `INDEX({7},1,1)`, `INDEX({7},0,0)` return it; `INDEX(5,1.9,1)` is 5); a
+row or column of 2 is `#REF!` (`INDEX(5,2,1)`, `(5,1,2)`, `(5,2)`, `INDEX("a",2)`, `INDEX({7},2,1)`, `INDEX({7},1,2)`), a negative index or a text
+index is `#VALUE!` (`INDEX(5,-1,1)`, `(5,1,-1)`, `(5,"a",1)`), an error value is that error (`INDEX(#N/A,1,1)`), and area_num 1 is
+accepted while 2 is `#REF!` (`INDEX(5,1,1,1)` is 5, `INDEX(5,1,1,2)`).
+So `INDEX(LOOKUP(2,{1,2,3},{4,5,6}),1,1)` is 5 and `INDEX(ROWS({1;2;3}),1,1)` is 3.
+Evidence: probes/index-scalar-indexes A1:A23 (excel-graph, 2026-10-17, T-1242); probes/lookup-argument-modes H18, H19, H24, H28, H30, H31, H39.
+Status: VERIFIED (excel-graph)
+Ours: implemented (the engine matched every cell before T-1242).
+
 ## INDEX rounds an index up near an integer; a tiny negative index is 0
 Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
 counts up near an integer"): truncated, except that a value within 2^-22 + 2^-33 (about 2.38535E-7) below an integer
@@ -543,17 +554,18 @@ Argument errors do not collapse the result: every element gets the error, in the
 Quirk: under a lifted lookup_value an array `if_not_found` is not lifted but gives its first element (`XLOOKUP({2;9},A1:A4,B1:B4,{"x";"y"})` is "two", "x"), and a reference `if_not_found`, even one cell, is `#VALUE!` where it applies (`XLOOKUP({9;2},..,Data!C1)` and `..,Data!C1:C2)` are `#VALUE!`, "two"), while the scalar `XLOOKUP(9,..,Data!C1:C2)` spills 11, 12.
 DEVIATION (decision 0014, CLAUDE.md directive 5): each element is charged one search of the lookup vector (its evaluated cells, so a whole column costs its used area) against the shared cell-visit cap of criteria.md; `ROWS(XLOOKUP(SEQUENCE(1048576),SEQUENCE(1048576),SEQUENCE(1048576)))` is `#ERROR!` where Excel computes it.
 Evidence: probes/let-name-uncalled-picked-refs H21 (T-1252), probes/xlookup-array-lookup-value and probes/xlookup-array-lookup-value-args (excel-graph, 2026-10-10 and 2026-10-11, T-1264).
-Implemented in: `Model::xlookup_impl` (functions/xlookup.rs) through `Model::lift_with_cost`, evaluating the table once (`xlookup_table`).
+Implemented in: `Model::xlookup_impl` (functions/xlookup.rs) through `Model::lift_values` (functions/lift/driver.rs), evaluating the table once (`xlookup_table`).
 Status: VERIFIED (web)
 Tasks: T-1252, T-1264
 
 ## TRIMRANGE with a fractional trim argument
-Rule (hypothesis): `TRIMRANGE(C10:E11,2.5,3)` is `#VALUE!`. In `UPPER(..)&REPLACE("abc",TRIMRANGE(Data!C10:E11,2.5,3),1,PROPER(""))`
-the result is `#VALUE!` while the left operand is "42"; either TRIMRANGE rejects trim_rows 2.5 or REPLACE rejects a 2x3
-reference start_num instead of lifting over it.
-Evidence: gen-m7/bcad709c30cfdf64 Calc!A20 (excel-graph, 2026-10-11, T-1275).
-Ours: trim_rows 2.5 reads as 2 and REPLACE lifts, so `#SPILL!`.
-Status: UNVERIFIED (probe pending)
+Rule: trim_rows and trim_cols must be exactly 0, 1, 2 or 3; any fractional value is `#VALUE!`, including `0.9`,
+`1.5`, `2.5` and `3.9` (no truncation), in either argument (`(A1:C3,3,2.5)`, `(A1:C3,2.5,2.5)`), as are `4` and `-1`.
+Text `"2"` and `TRUE` coerce (3x3 kept for full data). So `TRIMRANGE` is the `#VALUE!` source in
+`REPLACE("abc",TRIMRANGE(Data!C10:E11,2.5,3),1,"")`; REPLACE itself lifts over a multi-cell start_num or num_chars
+and spills (`REPLACE("abc",E1:F2,1,"")` is a 2x2 spill).
+Evidence: probes/trimrange-fractional-trim H1-H10, J1, L1 (excel-graph, 2026-10-17, T-1352); gen-m7/bcad709c30cfdf64 Calc!A20.
+Status: VERIFIED
 Tasks: T-1352
 
 ## XMATCH with an omitted argument; SORT with omitted sort arguments

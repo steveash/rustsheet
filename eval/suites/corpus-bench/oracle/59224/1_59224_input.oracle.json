@@ -1,0 +1,58 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "E10": {
+    "t": "s",
+    "v": "Do Not Select"
+   },
+   "E11": {
+    "t": "s",
+    "v": "Do Not Select"
+   },
+   "E12": {
+    "t": "s",
+    "v": "Do Not Select"
+   },
+   "E13": {
+    "t": "s",
+    "v": "Do Not Select"
+   },
+   "E14": {
+    "t": "s",
+    "v": "Do Not Select"
+   },
+   "E4": {
+    "t": "s",
+    "v": "Do Not Select"
+   },
+   "E5": {
+    "t": "s",
+    "v": "Do Not Select"
+   },
+   "E6": {
+    "t": "s",
+    "v": "Do Not Select"
+   },
+   "E7": {
+    "t": "s",
+    "v": "Do Not Select"
+   },
+   "E8": {
+    "t": "s",
+    "v": "Do Not Select"
+   },
+   "E9": {
+    "t": "s",
+    "v": "Select Period"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "d05f0a04044607610a7689d542d749bfe3b27f7ff793c4ee3a4f71970319f3d4",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:34:33+00:00",
+  "version": null
+ }
+}

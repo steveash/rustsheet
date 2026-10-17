@@ -8,6 +8,7 @@ use crate::{
 
 use super::{
     binary_search::{binary_search, Sequence},
+    lift::{LiftCost, LiftOptions, LiftedArg},
     lookup_and_reference::lookup_table::SearchVector,
     lookup_and_reference::xmatch::{linear_scan, MatchMode as XmatchMode},
     util::array_node_to_calc_result,
@@ -436,9 +437,7 @@ impl Model {
             None => CalcResult::Number(1.0),
         };
         let criteria = vec![lookup_value, match_mode, search_mode];
-        let lifts = criteria
-            .iter()
-            .any(|c| matches!(c, CalcResult::Range { .. } | CalcResult::Array(_)));
+        let lifts = criteria.iter().any(LiftedArg::is_grid);
         let if_not_found = self.xlookup_if_not_found(args.get(3), lifts, as_reference, cell);
         let table = self.xlookup_table(&args[1], &args[2], cell);
         // A lifted element is a value, never a reference, and keeps only the first cell of its
@@ -448,21 +447,19 @@ impl Model {
         } else {
             XlookupPick::Whole { as_reference }
         };
-        // Each element searches the evaluated cells of the lookup vector once; the table is
-        // never walked again. `lift_with_cost` charges the cost once per criterion, but only one
-        // search runs per element whatever the three criteria are, so it is split among them.
-        let criteria_count = u64::try_from(criteria.len()).unwrap_or(1);
+        // Each element searches the evaluated cells of the lookup vector once, whatever the
+        // three criteria are; the table is never walked again.
         let cost = table.as_ref().map_or(1, |table| {
             u64::try_from(table.values.search_cost())
                 .unwrap_or(u64::MAX)
-                .div_ceil(criteria_count)
                 .max(1)
         });
-        self.lift_with_cost(
+        self.lift_values(
             criteria,
-            |_| cost,
+            LiftCost::Cells(cost),
+            &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
-            |model, values| model.xlookup_one(values, &table, &if_not_found, pick, cell),
+            &mut |model, values| model.xlookup_one(values, &table, &if_not_found, pick, cell),
         )
     }
 

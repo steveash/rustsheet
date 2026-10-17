@@ -15,6 +15,7 @@ mod dates;
 mod financial_bonds;
 mod financial_depreciation;
 mod financial_util;
+mod mirr;
 
 use dates::is_less_than_one_year;
 use financial_util::{compute_irr, compute_npv, compute_rate, compute_xirr, compute_xnpv};
@@ -1013,103 +1014,6 @@ impl Model {
         }
     }
 
-    //  MIRR(values, finance_rate, reinvest_rate)
-    // The formula is:
-    // $$ (-NPV(r1, v_p) * (1+r1)^y)/(NPV(r2, v_n)*(1+r2))^(1/y)-1$$
-    // where:
-    // $r1$ is the reinvest_rate, $r2$ the finance_rate
-    // $v_p$ the vector of positive values
-    // $v_n$ the vector of negative values
-    // and $y$ is dimension of $v$ - 1 (number of years)
-    pub(crate) fn fn_mirr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let values = match self.get_array_of_numbers(&args[0], &cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let finance_rate = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let reinvest_rate = match self.get_number(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let mut positive_values = Vec::new();
-        let mut negative_values = Vec::new();
-        let mut last_negative_index = -1;
-        for (index, &value) in values.iter().enumerate() {
-            let (p, n) = if value >= 0.0 {
-                (value, 0.0)
-            } else {
-                last_negative_index = index as i32;
-                (0.0, value)
-            };
-            positive_values.push(p);
-            negative_values.push(n);
-        }
-        if last_negative_index == -1 {
-            return CalcResult::new_error(
-                Error::DIV,
-                cell,
-                "Invalid data for MIRR function".to_string(),
-            );
-        }
-        // We do a bit of analysis if the rates are -1 as there are some cancellations
-        // It is probably not important.
-        let years = values.len() as f64;
-        let top = if reinvest_rate == -1.0 {
-            // This is finite
-            match positive_values.last() {
-                Some(f) => *f,
-                None => 0.0,
-            }
-        } else {
-            match compute_npv(reinvest_rate, &positive_values) {
-                Ok(npv) => -npv * ((1.0 + reinvest_rate).powf(years)),
-                Err((error, message)) => {
-                    return CalcResult::Error {
-                        error,
-                        origin: cell,
-                        message,
-                    }
-                }
-            }
-        };
-        let bottom = if finance_rate == -1.0 {
-            if last_negative_index == 0 {
-                // This is still finite
-                negative_values[last_negative_index as usize]
-            } else {
-                // or -Infinity depending of the sign in the last_negative_index coef.
-                // But it is irrelevant for the calculation
-                f64::INFINITY
-            }
-        } else {
-            match compute_npv(finance_rate, &negative_values) {
-                Ok(npv) => npv * (1.0 + finance_rate),
-                Err((error, message)) => {
-                    return CalcResult::Error {
-                        error,
-                        origin: cell,
-                        message,
-                    }
-                }
-            }
-        };
-
-        let result = (top / bottom).powf(1.0 / (years - 1.0)) - 1.0;
-        if result.is_infinite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
-        }
-        if result.is_nan() {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid data for MIRR".to_string());
-        }
-        CalcResult::Number(result)
-    }
-
     // ISPMT(rate, per, nper, pv)
     // Formula is:
     // $$pv*rate*\left(\frac{per}{nper}-1\right)$$
@@ -1787,19 +1691,19 @@ impl Model {
                 "issue must be before settlement".to_string(),
             );
         }
-        let basis_node = if arg_count > 4 {
-            args[4].clone()
+        // The basis is read as a scalar, as YEARFRAC read it before it lifted (T-1770):
+        // ACCRINTM's own lifting is T-1372's.
+        let basis = if arg_count > 4 {
+            match self.get_number_no_bools(&args[4], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
         } else {
-            Node::NumberKind(0.0)
+            0.0
         };
-        let yearfrac_args = [
-            Node::NumberKind(issue_serial as f64),
-            Node::NumberKind(settlement_serial as f64),
-            basis_node,
-        ];
-        match self.yearfrac_scalar(&yearfrac_args, cell) {
-            CalcResult::Number(yf) => CalcResult::Number(par * rate * yf),
-            error => error,
+        match self.get_yearfrac(issue_serial, settlement_serial, basis, cell) {
+            Ok(yf) => CalcResult::Number(par * rate * yf),
+            Err(error) => error,
         }
     }
 
@@ -1815,7 +1719,7 @@ impl Model {
             Node::NumberKind(end as f64),
             Node::NumberKind(basis),
         ];
-        match self.yearfrac_scalar(&args, cell) {
+        match self.fn_yearfrac(&args, cell) {
             CalcResult::Number(yf) => Ok(yf),
             error => Err(error),
         }

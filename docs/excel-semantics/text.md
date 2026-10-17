@@ -1,7 +1,7 @@
 # Text
 
 ## Broadcast text output cap
-Rule: a text function broadcast over arrays (LEFT, REPT, SUBSTITUTE, ...) returns a single scalar `#VALUE!` (no spill) once the total bytes of its string results exceed 64 MiB, to bound allocation on untrusted input (CLAUDE.md directive 5). Excel's behavior (expected, not measured): compute the whole array, limited only by memory and the 32,767-char per-cell limit. Ours differs on legitimate data too: the budget counts UTF-8 bytes (not Excel's UTF-16 characters, so CJK text hits it about 3x sooner in characters), and a full-column text formula such as `=UPPER(A:A)` over ~65-char strings exceeds 64 MiB and returns `#VALUE!` where Excel spills normally.
+Rule: a text function broadcast over arrays (LEFT, REPT, SUBSTITUTE, ...) returns a single scalar `#VALUE!` (no spill) once the total bytes of its string results exceed 64 MiB, to bound allocation on untrusted input (CLAUDE.md directive 5). A broadcast whose shape is above 1,048,576 cells is refused with `#ERROR!` before any element is computed, so that bound takes precedence over this one (arrays.md "Array results above 1,048,576 cells", T-1771). Excel's behavior (expected, not measured): compute the whole array, limited only by memory and the 32,767-char per-cell limit. Ours differs on legitimate data too: the budget counts UTF-8 bytes (not Excel's UTF-16 characters, so CJK text hits it about 3x sooner in characters), and a full-column text formula such as `=UPPER(A:A)` over ~65-char strings exceeds 64 MiB and returns `#VALUE!` where Excel spills normally.
 Evidence: none for Excel's behavior; this is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
 Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text_budget`), checked by functions/text/common.rs (`broadcast_text`)
@@ -313,6 +313,39 @@ Ours: the empty row delimiter is ignored (the whole text comes back; `TEXTSPLIT(
 Status: VERIFIED (web) for this form; an empty element inside a delimiter list is UNVERIFIED
 Tasks: T-1412
 
+## TEXTSPLIT match_mode 1 case folding
+Rule: with match_mode 1 TEXTSPLIT compares case-insensitively without changing the length of the text. `İ` (U+0130) matches `i`
+(`TEXTSPLIT("aİbİc","i",,,1)` splits at both İ, and so does the delimiter `İ` against text containing `İ`: {"a","b","c"}; the delimiter `İ` against a plain `i` or `I`, and `I` against `İ`, are UNVERIFIED), unlike SEARCH, where `SEARCH("i","İx")`
+is `#VALUE!`. The Kelvin sign U+212A does not match `k` (`TEXTSPLIT("a"&UNICHAR(8490)&"bkc","k",,,1)` is {"aKb","c"}), unlike SEARCH, where
+`SEARCH("k",UNICHAR(8490))` is 1. `ß` and `ẞ` do not match `ss` (`TEXTSPLIT("aßbSSc","ss",,,1)` is {"aßb","c"}), and `Ä` matches `ä`.
+Pieces are cut from the original text, so they keep their case. Final sigma follows SEARCH (`ς` and `Σ` both fold to `σ`), which changed from the pre-T-1794 string-level lowercase; it is UNVERIFIED for TEXTSPLIT.
+Evidence: probes/textsplit-casefold-length A1-A8 (excel-graph, 2026-10-17, T-1794).
+Ours: `fold_for_split` (text/casefold.rs) folds char by char (one char in, one char out) with those two exceptions; positions are mapped back to
+byte offsets of the original text. Before T-1794 the code sliced the original at byte offsets found in `to_lowercase()`, which panicked on
+`TEXTSPLIT("İİİ,a",",",,,1)`. The folding of other chars (Å U+212B, ſ, µ, final sigma, titlecase digraphs) is UNVERIFIED and follows SEARCH's.
+Status: VERIFIED (web) for the listed forms
+Tasks: T-1794
+
+## TEXTBEFORE and TEXTAFTER match_mode 1 case folding
+Rule: with match_mode 1 TEXTBEFORE and TEXTAFTER fold case like TEXTSPLIT, never changing the length of the text: `İ` (U+0130) matches `i`
+in both directions (`TEXTBEFORE("aİbİc","i",1,1)` is "a", `TEXTAFTER` of it is "bİc", and the delimiter `İ` finds the `i` of "aibic"),
+the Kelvin sign U+212A does not match `k` in either direction (`TEXTBEFORE("a"&UNICHAR(8490)&"bkc","k",1,1)` is "aKb"; the delimiter
+U+212A against "akbkc" is `#N/A`), `ß` does not match `ss` (`TEXTBEFORE("aßbSSc","ss",1,1)` is "aßb") and `ẞ` (U+1E9E) does not match
+the delimiter `ß` (`TEXTBEFORE("assbẞc","ß",1,1)` is `#N/A`, although `ẞ` lowercases to `ß`), and `Ä` matches `ä`
+(`TEXTBEFORE("ÄxäyÄ","ä",2,1)` is "Äx"). The result is cut from the original text, so it keeps its case. Positive and negative
+instance numbers behave the same on `"İİİ,a,b"`. Sigma is positional, unlike TEXTSPLIT and SEARCH: `Σ` followed by a letter is `σ`, any
+other `Σ` is `ς`, and `ς` is only `ς`. So the delimiter `Σ` alone matches a text `ς` but not `σ`, the delimiter `ς` matches a final `Σ`
+("aΟΣ") but neither `σ` nor a `Σ` followed by a letter, and the delimiter `σ` matches a `Σ` followed by a letter but not `ς`.
+Evidence: probes/textbefore-casefold-length A1-A25 (excel-graph, 2026-10-17, T-1796).
+Ours: `fold_for_before_after` (text/casefold.rs) folds char by char with `fold_for_split`'s İ/Kelvin exceptions plus the sigma and `ẞ` rules,
+and `match_text` (util.rs) maps the match back to byte offsets of the original with `str::get`. Before T-1796 it searched `to_lowercase()` of the text
+and sliced the original at those offsets, which panicked on `TEXTBEFORE("İİİ,a",",",1,1)`. UNVERIFIED: a delimiter with the same `Σ` as the text, which our separate folds miss (`TEXTBEFORE("aΣb","Σ",1,1)` is `#N/A` here: the text's `Σ` is `σ`, the lone delimiter `Σ` is `ς`), and a `Σ` followed by a space, digit or punctuation (`"ΟΔΟΣ ΚΑΙ"`; only a `Σ` at the end of the text is probed, A25), both T-1799; the exact sigma context rule
+(whether a `Σ` after a non-letter, or before a combining mark, is final; the code ignores what precedes it), the folding of other chars (Å U+212B, ſ, µ,
+titlecase digraphs, which follow SEARCH's `fold_char`), `ẞ` against the delimiter `ß`'s mirror (text `ß`, delimiter `ẞ`), and whether TEXTSPLIT shares the
+`ẞ` and sigma rules (its probe has no such cell).
+Status: VERIFIED (web) for the listed forms
+Tasks: T-1796
+
 ## ARRAYTOTEXT number text
 Rule: ARRAYTOTEXT writes a number as General text with 15 significant digits, like VALUETOTEXT and `&`:
 `ARRAYTOTEXT(YEARFRAC(1911,31142))` is "80.0277777777778".
@@ -328,7 +361,7 @@ Rule: SEARCH lowercases per character and never changes the text's length: a cha
 Also: ς (final sigma) matches Σ and σ in either direction (`SEARCH("ς","ΟΣ")` is 2, `SEARCH("σ","ΟΣ")` is 2), ǆ matches ǅ, and U+212A (Kelvin) matches k; ſ/s, µ/μ, ϐ/β and ﬀ/ff do not match (`#VALUE!`).
 Evidence: probes/text-search-casefold-length A1-A24 (oracle: excel-graph, 2026-10-12, T-1296).
 Status: VERIFIED (excel-graph)
-Implemented in: `fold_case` (functions/text/position.rs).
+Implemented in: `fold_case` (functions/text/casefold.rs).
 Tasks: T-1296
 
 ## TEXT over an array of format codes
@@ -398,10 +431,15 @@ Tasks: T-1482, T-1510
 
 ## CLEAN character set and PROPER word starts and case mapping (T-1307)
 Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.
-Rule (PROPER, for the probed characters; others tracked by T-1747): a letter after any non-letter, digits, apostrophes (straight or curly), `_` and `-` included, is upper-cased and the other letters lowered (`2Nd Place`, `O'Neil Mc-Donald`, `It'S 3Rd`, `A1B2C3`, `Hello_World`; full-width letters follow the same rule). Case mapping is per character and one-to-one: the characters whose full mapping expands stay as they are (`PROPER("ßa straße")` is `ßa Straße`, ŉ, ǰ and the ﬁ/ﬂ ligatures unchanged), where Rust's `to_uppercase` gives "SS", "ʼN" and "FI". İ folds to ASCII (`PROPER("İstanbul")` is `Istanbul`, `PROPER("aİb")` `Aib`) and ΐ, ΰ upper-case to Ϊ, Ϋ. Titlecase digraphs map to their capital (`ǅ ǈ ǋ ǲ` give `Ǆ Ǉ Ǌ Ǳ`). A capital sigma ending a word lowers to the final ς, with no letter or digit after it (`ΣΊΣΥΦΟΣ` is `Σίσυφος`, `ΑΣ.ΑΣ-Σ ΑΣ1` is `Ας.Ας-Σ Ασ1`, so a following digit keeps σ and a word-initial Σ stays). A combining mark is not a letter, so the next letter is capitalised (`e` + U+0301 + `cole` is `ÉCole`), and a zero-width space (U+200B) is not a letter either (`PROPER(U+200B&"abc def")` is `<U+200B>Abc Def`).
-Evidence: probes/clean-proper-chars (excel-graph, 2026-10-16, 88 cells; engine matches all after T-1307). Implemented in `proper_case` (functions/text/string_format.rs). Not probed: UPPER and LOWER of the same characters (they may differ; out of scope for T-1307).
+Rule (PROPER; UPPER, LOWER and further characters in the T-1747 section below): a letter after any non-letter, digits, apostrophes (straight or curly), `_` and `-` included, is upper-cased and the other letters lowered (`2Nd Place`, `O'Neil Mc-Donald`, `It'S 3Rd`, `A1B2C3`, `Hello_World`; full-width letters follow the same rule). Case mapping is per character and one-to-one: the characters whose full mapping expands stay as they are (`PROPER("ßa straße")` is `ßa Straße`, ŉ, ǰ and the ﬁ/ﬂ ligatures unchanged), where Rust's `to_uppercase` gives "SS", "ʼN" and "FI". İ folds to ASCII (`PROPER("İstanbul")` is `Istanbul`, `PROPER("aİb")` `Aib`) and ΐ, ΰ upper-case to Ϊ, Ϋ. Titlecase digraphs map to their capital (`ǅ ǈ ǋ ǲ` give `Ǆ Ǉ Ǌ Ǳ`). A capital sigma ending a word lowers to the final ς, with no letter or digit after it (`ΣΊΣΥΦΟΣ` is `Σίσυφος`, `ΑΣ.ΑΣ-Σ ΑΣ1` is `Ας.Ας-Σ Ασ1`, so a following digit keeps σ and a word-initial Σ stays). A combining mark is not a letter, so the next letter is capitalised (`e` + U+0301 + `cole` is `ÉCole`), and a zero-width space (U+200B) is not a letter either (`PROPER(U+200B&"abc def")` is `<U+200B>Abc Def`).
+Evidence: probes/clean-proper-chars (excel-graph, 2026-10-16, 88 cells; engine matches all after T-1307). Implemented in `proper_case` (functions/text/string_format.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1307
+
+## UPPER, LOWER and PROPER: one-to-one case mapping, final-sigma context (T-1747)
+Rule: UPPER, LOWER and PROPER all use the simple one-to-one mapping, so characters whose full mapping expands stay unchanged in every case (ᾳ, ẖ, ẘ, ﬀ, ﬃ, ﬆ, և, ß, ŉ, ǰ, ﬁ; `UPPER("ß")` is `ß`, not "SS"). ΐ upper-cases to Ϊ in UPPER and PROPER (LOWER leaves it; ΰ to Ϋ in UPPER is unprobed, carried over from PROPER). İ is the exception to consistency: PROPER and LOWER fold it to I / i (`LOWER("aİb İc")` is `aib ic`) but UPPER leaves it as İ. A capital Σ lowers to the final ς in LOWER and PROPER when the next character is the end of the text, a space, a straight apostrophe or `-`, and to σ when a letter or digit, a combining mark (probed: U+0301, U+0308; the rest of U+0300-U+036F is assumed, other combining blocks and U+200C/U+200D/U+2018 are unprobed and give ς), a curly apostrophe (U+2019) or a zero-width space (U+200B) follows. In LOWER a lone `Σ`, `Σ ` and `1Σ` give ς (no preceding letter needed), but `Σ`+U+0308 gives σ̈; lower-case σ is never changed (`LOWER("ασ")` is `ασ`). PROPER keeps a word-initial Σ capital.
+Evidence: probes/case-mapping-expanding (excel-graph, 2026-10-17, 81 cells; engine matches all).
+Status: VERIFIED (excel-graph). Implemented in: `lower_case`, `upper_case`, `proper_case` (functions/text/string_format.rs). Tasks: T-1747
 
 ## ARRAYTOTEXT: a single empty cell is #VALUE!, an empty cell in a larger range is empty text
 Rule: `ARRAYTOTEXT` of a reference to one empty cell is `#VALUE!` in both formats, and so are a 1x1 range of an empty

@@ -1,0 +1,61 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1793: RANDBETWEEN with a multi-cell range bound beside an error bound, both positions (ERROR.TYPE of element 1: 3 #VALUE!, 7 #N/A, 2 #DIV/0!). D1:D3 = 1,2,3.",
+  "tags": [
+    "M2",
+    "volatile",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ERROR.TYPE(INDEX(RANDBETWEEN(D1:D3,NA()),1))",
+        "A2": "=ERROR.TYPE(INDEX(RANDBETWEEN(NA(),D1:D3),1))",
+        "A3": "=ERROR.TYPE(INDEX(RANDBETWEEN(D1:D3,1/0),1))",
+        "A4": "=ERROR.TYPE(INDEX(RANDBETWEEN(1/0,D1:D3),1))",
+        "A5": "=ERROR.TYPE(INDEX(RANDBETWEEN(D1:D3,\"x\"),1))",
+        "A6": "=ERROR.TYPE(INDEX(RANDBETWEEN(\"x\",D1:D3),1))",
+        "A7": "=ERROR.TYPE(INDEX(RANDBETWEEN(D1:D3,TRUE),1))",
+        "A8": "=ERROR.TYPE(INDEX(RANDBETWEEN(TRUE,D1:D3),1))",
+        "A9": "=ERROR.TYPE(INDEX(RANDBETWEEN(D1:D3,{#N/A}),1))",
+        "A10": "=ERROR.TYPE(INDEX(RANDBETWEEN({#N/A},D1:D3),1))",
+        "A11": "=ERROR.TYPE(INDEX(RANDBETWEEN(D1:D3,D1:D3),1))",
+        "A12": "=ERROR.TYPE(INDEX(RANDBETWEEN(D1:D3,#N/A),1))",
+        "A13": "=ERROR.TYPE(INDEX(RANDBETWEEN(#N/A,D1:D3),1))",
+        "D1": 1,
+        "D2": 2,
+        "D3": 3,
+        "A14": "=ROWS(RANDBETWEEN(D1:D3,{5;6}))",
+        "A15": "=ROWS(RANDBETWEEN({5;6},D1:D3))",
+        "A16": "=ROWS(RANDBETWEEN(D1:D3,SEQUENCE(4)))",
+        "A17": "=ERROR.TYPE(INDEX(RANDBETWEEN(D1:D3,{5;#N/A}),2))",
+        "A18": "=ERROR.TYPE(INDEX(RANDBETWEEN(D1:D3,{5;#N/A}),1))",
+        "A19": "=ERROR.TYPE(INDEX(RANDBETWEEN({5;#N/A},D1:D3),2))",
+        "A20": "=ERROR.TYPE(INDEX(RANDBETWEEN(D1:D3,{5,#N/A}),1,2))"
+      }
+    }
+  ],
+  "invariant": [
+    "Calc!A1",
+    "Calc!A2",
+    "Calc!A3",
+    "Calc!A4",
+    "Calc!A5",
+    "Calc!A6",
+    "Calc!A7",
+    "Calc!A8",
+    "Calc!A9",
+    "Calc!A10",
+    "Calc!A11",
+    "Calc!A12",
+    "Calc!A13",
+    "Calc!A14",
+    "Calc!A15",
+    "Calc!A16",
+    "Calc!A17",
+    "Calc!A18",
+    "Calc!A19",
+    "Calc!A20"
+  ]
+}

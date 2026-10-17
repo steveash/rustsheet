@@ -1,0 +1,15 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "GL Details": {},
+  "Import Data": {},
+  "extract items NA": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "c5f93923f23e65a5c728ad8df16d043454cf6f7afac445aaf09323b8eb33afce",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:35:55+00:00",
+  "version": null
+ }
+}

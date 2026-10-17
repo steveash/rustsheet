@@ -1,28 +1,36 @@
 use chrono::Datelike;
 
+use super::num_error;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::{from_excel_date, DATE_OUT_OF_RANGE_MESSAGE},
+    formatter::dates::from_excel_date,
+    functions::Function,
     model::Model,
 };
 
 impl Model {
     /// `WEEKNUM(serial, [return_type])`; 1900 weeks follow Excel's Sunday serial 1 (docs/excel-semantics/dates.md).
+    /// Both arguments lift over arrays and refuse a multi-cell range (SPEC-0011 `LiftArrays`,
+    /// probes/date-argument-modes).
     pub(crate) fn fn_weeknum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_array_args(args, &[0, 1], cell, |_| 1, Self::weeknum_scalar)
+        self.lift_call(Function::Weeknum, args, cell, &mut |model, values| {
+            model.weeknum_of(values, cell)
+        })
     }
 
-    fn weeknum_scalar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(1..=2).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let serial = match self.get_number(&args[0], cell) {
+    /// WEEKNUM of one element.
+    fn weeknum_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        let (serial, return_type) = match values {
+            [serial] => (serial, None),
+            [serial, return_type] => (serial, Some(return_type)),
+            _ => return CalcResult::new_args_number_error(cell),
+        };
+        let serial = match self.cast_number_ref(serial, cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let out_of_range =
-            || CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
+        let out_of_range = || num_error(cell);
         // The weeks are numbered on the 1900 calendar: a 1904 serial is shifted to it first, so
         // `WEEKNUM(0)` is 1 there (1904-01-01; probes/date-system-1904-readers A5).
         let Some(serial) = self.workbook.settings.date_system.to_1900_serial(serial) else {
@@ -36,20 +44,17 @@ impl Model {
         };
         // A boolean return_type is #VALUE! (`WEEKNUM(100,TRUE)`); text that reads as a number
         // is accepted (`WEEKNUM(100,"2")` = 16; probes/weeknum-serial-0 C35-C38, T-1023).
-        let return_type = if args.len() == 2 {
-            match self.get_number_no_bools(&args[1], cell) {
+        let return_type = match return_type {
+            Some(value) => match self.cast_number_no_bools_ref(value, cell) {
                 Ok(f) => f as i32,
                 Err(s) => return s,
-            }
-        } else {
-            1
+            },
+            None => 1,
         };
         if return_type == 21 {
             return match iso_week(serial) {
                 Ok(week) => CalcResult::Number(week),
-                Err(error) => {
-                    CalcResult::new_error(error, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string())
-                }
+                Err(error) => CalcResult::new_error(error, cell, String::new()),
             };
         }
         let start_offset = match return_type {
@@ -66,7 +71,7 @@ impl Model {
             // earlier in the recalc, #NUM! only when none ran (probes/weeknum-stale-return-type,
             // docs/excel-semantics/dates.md). That value depends on Excel's calc order; we give
             // #NUM!, Excel's no-state value, until TODO(T-1484) reproduces the state.
-            _ => return CalcResult::new_error(Error::NUM, cell, "Invalid return_type".to_string()),
+            _ => return num_error(cell),
         };
         // Excel numbers the weeks of 1900 as if serial 1 were a Sunday (the real 1 Jan 1900 is a
         // Monday): the week-1 anchor is the last serial <= 1 on the start weekday, and serials

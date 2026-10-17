@@ -1,6 +1,7 @@
 mod arraytotext;
 mod bahttext;
 mod byte_functions;
+mod casefold;
 mod char_code;
 mod common;
 mod concatenate;
@@ -12,4 +13,4 @@ mod string_format;
 mod t_function;
 pub(crate) mod text_arg;
 mod textsplit;
-mod util;
+pub(super) mod util;
