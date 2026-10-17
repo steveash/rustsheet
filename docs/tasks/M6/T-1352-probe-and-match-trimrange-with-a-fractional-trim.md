@@ -3,7 +3,7 @@ id: T-1352
 title: "Probe and match TRIMRANGE with a fractional trim_rows or trim_cols (gen-m7 bcad709c A20)"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
