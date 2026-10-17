@@ -3,7 +3,7 @@ id: T-1237
 title: "DATEDIF reads numeric text"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -34,3 +34,8 @@ bounds found by the probe keep this cell; add `DATE(2042,8,32768)`, `(2042,8,1E+
 
 ## Out of scope
 -
+
+## Outcome
+Already satisfied on `main`: `datedif_date_text` (date_and_time.rs) reads plain number text, and
+probes/date-argument-modes F89 (`DATEDIF("45000",46000,"d")` = 1000, excel-graph) passes bit-exact
+with no baseline entry (the DATE month/day bounds were T-1419's). No code change; closing the task.
