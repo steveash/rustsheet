@@ -644,12 +644,13 @@ size in column Z and the ERROR.TYPE of its first cell in AA, excel-graph, 2026-1
   child's last value column (A: Ax's V2, S!A1; Ax's V3 with three values, S!A21) and is `""` for a parent with two or
   more children (B, D); the other subtotal columns are `""` except at one parent, where they show Grand Total columns:
   C's V2 column holds every record's V1 (S!A1), B's V2 and V3 columns every record's V1 and V2 (S!A21), but with all
-  parents single-child C's V2 column holds every record's V2 (S!A71), and a two-child parent in that place shows nothing
+  parents single-child C's V2 column holds every record's V2 (S!A71), and a parent with two or more children in that place shows nothing
   (G!A1171, S!A61). The parent is the one at index floor(parents / values) in every probe so far (C of five with two
   values, B with three, Banana of three); which value its columns take is not explained. The Grand Total columns are
   always `""`. The same cells come back with depth -2 (S!A11, S!A81), sorted descending (S!A111: by position in the
   order, E, C and A as above), with shown headers (S!A31: "V1"/"V2" over every column) and with the value columns
-  swapped (S!A101: the first value column is the one taken). No index arithmetic over the leaf cells (group- or
+  swapped (S!A101: a single child's last value column is now V1, and C's Grand Total cells hold the first value
+  column, V2). No index arithmetic over the leaf cells (group- or
   value-major, ranges or single cells, positive-depth layout) fits all of these (T-1700 search, 2026-10-17).
 Ours (T-1324): `Grouping::lines` lays the groups out with their subtotals in one pass over the sorted groups (a prefix
 change between neighbours opens or closes a subtotal), `effective_depth` adds the omitted depth of a value sort,
