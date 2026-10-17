@@ -52,15 +52,17 @@ fn map_2d_array() {
 }
 
 #[test]
-fn map_mismatched_array_sizes_is_error() {
+fn map_mismatched_array_sizes_pad_with_na() {
     let mut model = new_empty_model();
     model._set("A1", "1");
     model._set("A2", "2");
     model._set("B1", "10");
-    // A1:A2 is 2×1, B1:B1 is 1×1 — mismatch
+    // A1:A2 is 2×1, B1:B1 is 1×1: the shorter array pads with #N/A, nothing broadcasts
+    // (probes/map-unequal-sizes, arrays.md "MAP over arrays of different sizes").
     model._set("C1", "=MAP(A1:A2, B1:B1, LAMBDA(a, b, a + b))");
     model.evaluate();
-    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert_eq!(model._get_text("C1"), "11");
+    assert_eq!(model._get_text("C2"), "#N/A");
 }
 
 #[test]

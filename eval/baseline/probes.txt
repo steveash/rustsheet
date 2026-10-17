@@ -416,6 +416,7 @@ C	probes/lotus-dot-range-space.case.json	2
 C	probes/lotus-dot-range-trailing-letter.case.json	2
 C	probes/lotus-dot-range.case.json	6
 C	probes/m7-argument-modes.case.json	174
+C	probes/map-unequal-sizes.case.json	36
 C	probes/match-descending-argcheck.case.json	20
 C	probes/match-descending-forward-continuation.case.json	20
 C	probes/match-fractional-match-type.case.json	8
@@ -751,6 +752,7 @@ C	probes/text-scalar-edges.case.json	63
 C	probes/text-search-casefold-length.case.json	24
 C	probes/text-surrogate-positions.case.json	68
 C	probes/text-unicode-lone-surrogate-followed.case.json	10
+C	probes/textbefore-casefold-length.case.json	25
 C	probes/textjoin-array-arguments.case.json	34
 C	probes/textjoin-array-limit-empty-strings.case.json	11
 C	probes/textjoin-delimiter-array.case.json	6
