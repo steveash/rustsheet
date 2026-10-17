@@ -3,7 +3,7 @@ id: T-1624
 title: "Probe the discount-security functions RECEIVED, YIELDDISC, PRICEDISC, INTRATE, PRICEMAT, YIELDMAT to the evidence floor"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
