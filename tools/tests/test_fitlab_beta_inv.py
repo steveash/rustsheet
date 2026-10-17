@@ -25,6 +25,21 @@ def test_bisection_on_cephes_score() -> None:
     assert [s.exact for s in result.scores] == [73]
 
 
+@pytest.mark.usefixtures("real_cases")
+@pytest.mark.parametrize(
+    ("name", "only", "exact"),
+    [
+        ("f-inv", r"\(hi\) on Cephes", 3),
+        ("f-inv-rt", r"\(hi\) on Cephes", 11),
+        ("t-inv", r"\(hi\) on Cephes", 24),
+        ("t-inv-2t", r"\(mid\) on Cephes", 24),
+    ],
+)
+def test_f_and_t_inverse_scores(name: str, only: str, exact: int) -> None:
+    result = fit.run(registry()[name], engine=False, only=only)
+    assert [s.exact for s in result.scores] == [exact]
+
+
 def test_f_and_t_inverses() -> None:
     cephes = beta_inv.FORWARD["Cephes incbet as published"]
     # F(2,2) has CDF x/(1+x): the median is 1. The t distribution with 1 df is Cauchy.

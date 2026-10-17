@@ -41,8 +41,8 @@ from rustsheet_tools.fitlab.kernels.beta import (
 from rustsheet_tools.fitlab.score import Candidate, candidate
 from rustsheet_tools.fitlab.sweep import Arg, numeric_arg
 
-CASES = ["probes-numeric/m9-beta-inv", "probes-numeric/m9-legacy-betainv"]
-PATTERN = r"^=(?:BETA\.INV|BETAINV)\(([^,()]+),([^,()]+),([^,()]+)\)$"
+_BETA_INV_CASES = ["probes-numeric/m9-beta-inv", "probes-numeric/m9-legacy-betainv"]
+_BETA_INV_PATTERN = r"^=(?:BETA\.INV|BETAINV)\(([^,()]+),([^,()]+),([^,()]+)\)$"
 _F_INV_CASES = ["probes-numeric/m9-f-inv", "probes-numeric/t1049-finv"]
 _F_INV_PATTERN = r"^=F\.INV\(([^,()]+),([^,()]+),([^,()]+)\)$"
 _F_INV_RT_CASES = [
@@ -169,65 +169,64 @@ def _candidates(solver: Solver) -> list[Candidate]:
 
 
 def beta_inv_candidates() -> list[Candidate]:
+    """BETA.INV: `bisect` per forward candidate and end."""
     return _candidates(lambda f, a, e: bisect(f, a[0], a[1], a[2], e))
 
 
 def f_inv_candidates() -> list[Candidate]:
+    """F.INV: `f_inv` on F.DIST per forward candidate and end."""
     return _candidates(lambda f, a, e: f_inv(f, a[0], a[1], a[2], e, right_tail=False))
 
 
 def f_inv_rt_candidates() -> list[Candidate]:
+    """F.INV.RT/FINV: `f_inv` on F.DIST.RT per forward candidate and end."""
     return _candidates(lambda f, a, e: f_inv(f, a[0], a[1], a[2], e, right_tail=True))
 
 
 def t_inv_candidates() -> list[Candidate]:
+    """T.INV: `t_inv` on T.DIST per forward candidate and end."""
     return _candidates(lambda f, a, e: t_inv(f, a[0], a[1], e, two_tailed=False))
 
 
 def t_inv_2t_candidates() -> list[Candidate]:
+    """T.INV.2T/TINV: `t_inv` on the two-tailed probability per forward candidate and end."""
     return _candidates(lambda f, a, e: t_inv(f, a[0], a[1], e, two_tailed=True))
 
 
-def _fit(
-    name: str, description: str, cases: list[str], pattern: str, cands: Callable[[], list[Candidate]]
-) -> Fit:
-    return Fit(name=name, description=description, cases=cases, pattern=pattern, candidates=cands)
-
-
 FITS = [
-    _fit(
-        "beta-inv",
-        "BETA.INV/BETAINV (T-1044, T-1047): bisection to the crossing on the T-1744 candidates",
-        CASES,
-        PATTERN,
-        beta_inv_candidates,
+    Fit(
+        name="beta-inv",
+        description="BETA.INV/BETAINV (T-1044, T-1047): bisection to the crossing on the T-1744 candidates",
+        cases=_BETA_INV_CASES,
+        pattern=_BETA_INV_PATTERN,
+        candidates=beta_inv_candidates,
     ),
-    _fit(
-        "f-inv",
-        "F.INV (T-1044, T-1049): bisection on F.DIST through each I_x",
-        _F_INV_CASES,
-        _F_INV_PATTERN,
-        f_inv_candidates,
+    Fit(
+        name="f-inv",
+        description="F.INV (T-1044, T-1049): bisection on F.DIST through each I_x",
+        cases=_F_INV_CASES,
+        pattern=_F_INV_PATTERN,
+        candidates=f_inv_candidates,
     ),
-    _fit(
-        "f-inv-rt",
-        "F.INV.RT/FINV (T-1044, T-1047, T-1049): bisection on F.DIST.RT",
-        _F_INV_RT_CASES,
-        _F_INV_RT_PATTERN,
-        f_inv_rt_candidates,
+    Fit(
+        name="f-inv-rt",
+        description="F.INV.RT/FINV (T-1044, T-1047, T-1049): bisection on F.DIST.RT",
+        cases=_F_INV_RT_CASES,
+        pattern=_F_INV_RT_PATTERN,
+        candidates=f_inv_rt_candidates,
     ),
-    _fit(
-        "t-inv",
-        "T.INV (T-1043): bisection on T.DIST through each I_x",
-        _T_INV_CASES,
-        _T_INV_PATTERN,
-        t_inv_candidates,
+    Fit(
+        name="t-inv",
+        description="T.INV (T-1043): bisection on T.DIST through each I_x",
+        cases=_T_INV_CASES,
+        pattern=_T_INV_PATTERN,
+        candidates=t_inv_candidates,
     ),
-    _fit(
-        "t-inv-2t",
-        "T.INV.2T/TINV (T-1043, T-1048): bisection on the two-tailed t probability",
-        _T_INV_2T_CASES,
-        _T_INV_2T_PATTERN,
-        t_inv_2t_candidates,
+    Fit(
+        name="t-inv-2t",
+        description="T.INV.2T/TINV (T-1043, T-1048): bisection on the two-tailed t probability",
+        cases=_T_INV_2T_CASES,
+        pattern=_T_INV_2T_PATTERN,
+        candidates=t_inv_2t_candidates,
     ),
 ]

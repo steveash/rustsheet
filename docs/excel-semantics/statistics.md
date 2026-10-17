@@ -571,9 +571,9 @@ have no neighbour above. The crossing holds at 155 of the 188:
   one-sided rule.
 - At 22 of the other 33, Excel's CDF is flat across all three doubles (tiny x, for example
   BETA.INV(1E-10,0.5,1) = 9.999999999999992E-21).
-- At the last 11, x misses the crossing by 1 to 188 ulps of p, on both sides (7 above, 4 below).
+- At the last 11, x misses the crossing by 1 to 188 ulps of p, on both sides (8 above, 3 below).
   For example, BETA.DIST(BETA.INV(0.05,2.5,10)) is 32 ulps off and BETA.DIST(BETA.INV(0.05,2.5,100))
-  is 188 ulps off, about 82 doubles of x (rows 91 and 98). BETA.INV(0.5,10,10) is 0.5 while
+  is 188 ulps off, about 82 doubles from the correctly rounded quantile (rows 91 and 98). BETA.INV(0.5,10,10) is 0.5 while
   BETA.DIST(0.5,10,10,TRUE) is 0.5000000000000002. This suggests a tolerance stop, but it is not
   established.
 - Recomputing BETA.INV from constant inputs reproduces x at all 188 rows.

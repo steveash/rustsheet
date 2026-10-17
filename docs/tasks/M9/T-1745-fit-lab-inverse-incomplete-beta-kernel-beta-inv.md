@@ -58,7 +58,7 @@ Done 2026-10-17.
 - **Finding.** Excel's x is a crossing of its own CDF at 155 of 188 rows: BETA.DIST(x) = p at 79,
   and p lies between x and a neighbour at 76, on either side (36 at or above, 40 below). Of the
   other 33, 22 are flat-CDF tiny-x points. At 11, x misses the crossing by 1 to 188 ulps of p on
-  both sides (7 above, 4 below; rows 91 and 98 are 32 and 188 off), which suggests a tolerance
+  both sides (8 above, 3 below; rows 91 and 98 are 32 and 188 off), which suggests a tolerance
   stop but does not establish it.
 - **Consequence.** The quantile follows the forward kernel (T-1744). Excel's start, step and stop
   cannot be fitted until that kernel matches.
