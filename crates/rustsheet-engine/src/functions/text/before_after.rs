@@ -91,7 +91,7 @@ impl Model {
         };
         // With no delimiter shorter than the text a match is impossible. UNVERIFIED for a list
         // (text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar
-        // arguments", T-1812): every entry longer than the text.
+        // arguments", T-1816): every entry longer than the text.
         let exact = delimiters.exact();
         if !exact.is_empty() && exact.iter().all(|d| d.len() > text.len()) {
             // With two arguments this is `#VALUE!`, with more `#N/A`, whatever their values.

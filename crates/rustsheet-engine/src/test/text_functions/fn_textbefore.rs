@@ -151,7 +151,7 @@ fn text_lifts_and_delimiters_are_a_list() {
     assert_eq!(column('I', 3), ["a+b", "c-d", "e+f"]);
 }
 
-// UNVERIFIED (no oracle cell; T-1812 probes them): match_end and if_not_found with a delimiter list,
+// UNVERIFIED (no oracle cell; T-1816 probes them): match_end and if_not_found with a delimiter list,
 // every list entry longer than the text, and an error inside the list
 // (docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and
 // scalar arguments"). These pin the engine's current guesses so a change is deliberate.
@@ -175,7 +175,7 @@ fn list_with_match_end_and_if_not_found() {
     assert_eq!(model._get_text("A7"), *"#VALUE!");
 }
 
-// UNVERIFIED (no oracle cell; T-1812 probes it): a per-element REGEX compile error stays in its
+// UNVERIFIED (no oracle cell; T-1816 probes it): a per-element REGEX compile error stays in its
 // element (docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their
 // text and scalar arguments").
 #[test]

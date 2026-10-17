@@ -101,16 +101,13 @@ pub(crate) fn text_after(
     instance_num: i32,
     match_mode: Case,
 ) -> Option<String> {
-    let found = match_text(
+    let (_, right) = match_text(
         text,
         delimiters.for_case(match_mode),
         instance_num,
         match_mode,
-    );
-    if let Some((_, right)) = found {
-        return text.get(right..).map(str::to_string);
-    };
-    None
+    )?;
+    text.get(right..).map(str::to_string)
 }
 
 pub(crate) fn text_before(
@@ -119,16 +116,13 @@ pub(crate) fn text_before(
     instance_num: i32,
     match_mode: Case,
 ) -> Option<String> {
-    let found = match_text(
+    let (left, _) = match_text(
         text,
         delimiters.for_case(match_mode),
         instance_num,
         match_mode,
-    );
-    if let Some((left, _)) = found {
-        return text.get(..left).map(str::to_string);
-    };
-    None
+    )?;
+    text.get(..left).map(str::to_string)
 }
 
 /// Character count of `SUBSTITUTE(text, old_text, new_text[, instance_num])` computed without
@@ -187,7 +181,7 @@ pub(crate) fn substitute(text: &str, old_text: &str, new_text: &str, instance_nu
 /// negative). Every position where some delimiter starts counts once; the first delimiter in
 /// list order that matches there decides the match length (UNVERIFIED for delimiters that
 /// match at the same position, docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and
-/// REGEX* lift their text and scalar arguments"; T-1812). With `Case::Insensitive` the
+/// REGEX* lift their text and scalar arguments"; T-1816). With `Case::Insensitive` the
 /// delimiters are already folded ([`Delimiters`]); only the text is folded here.
 fn match_text<S: AsRef<str>>(
     text: &str,

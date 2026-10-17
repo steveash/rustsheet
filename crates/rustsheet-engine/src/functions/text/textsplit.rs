@@ -165,7 +165,7 @@ impl Model {
         let cmp_col_delims = col_delims.for_case(case);
         let cmp_row_delims = row_delims.for_case(case);
 
-        let rows_of_cols: Vec<Vec<String>> = if !cmp_row_delims.is_empty() {
+        let rows_of_cols: Vec<Vec<&str>> = if !cmp_row_delims.is_empty() {
             // Split into rows first, then each row into columns.
             let row_parts = split_by_any(&text, &cmp_text, cmp_row_delims);
             let cmp_row_parts = split_by_any(&cmp_text, &cmp_text, cmp_row_delims);
@@ -177,7 +177,7 @@ impl Model {
                     if ignore_empty && orig_row.is_empty() {
                         return None;
                     }
-                    let cols = split_by_any(&orig_row, &cmp_row_part, cmp_col_delims);
+                    let cols = split_by_any(orig_row, cmp_row_part, cmp_col_delims);
                     let cols = if ignore_empty {
                         cols.into_iter().filter(|s| !s.is_empty()).collect()
                     } else {
@@ -223,7 +223,7 @@ impl Model {
                 .next()
                 .and_then(|row| row.into_iter().next())
             {
-                Some(piece) => CalcResult::String(piece.into()),
+                Some(piece) => CalcResult::String(piece.to_string().into()),
                 None => array_node_to_calc_result(pad_node, cell),
             };
         }
@@ -233,7 +233,7 @@ impl Model {
             .map(|row| {
                 let mut arr: Vec<ArrayNode> = row
                     .into_iter()
-                    .map(|s| ArrayNode::String(s.into()))
+                    .map(|s| ArrayNode::String(s.to_string().into()))
                     .collect();
                 while arr.len() < max_cols {
                     arr.push(pad_node.clone());
@@ -254,7 +254,7 @@ impl Model {
 /// (U+212A is 3 bytes, its fold `k` is 1), so a match is converted to a char index in `cmp` and
 /// then to a byte offset in `original`. If the two ever disagree the original is returned whole
 /// rather than sliced out of range.
-fn split_by_any(original: &str, cmp: &str, cmp_delims: &[String]) -> Vec<String> {
+fn split_by_any<'a>(original: &'a str, cmp: &str, cmp_delims: &[String]) -> Vec<&'a str> {
     let delims: Vec<&str> = cmp_delims
         .iter()
         .map(String::as_str)
@@ -262,23 +262,36 @@ fn split_by_any(original: &str, cmp: &str, cmp_delims: &[String]) -> Vec<String>
         .collect();
 
     if delims.is_empty() {
-        return vec![original.to_string()];
+        return vec![original];
     }
 
-    let cmp_offsets = char_offsets(cmp);
-    let orig_offsets = char_offsets(original);
+    // ASCII on both sides (the usual case) has the same byte layout: no offsets to map.
+    let same_layout = original.len() == cmp.len() && original.is_ascii() && cmp.is_ascii();
+    let (cmp_offsets, orig_offsets) = if same_layout {
+        (vec![], vec![])
+    } else {
+        (char_offsets(cmp), char_offsets(original))
+    };
     if cmp_offsets.len() != orig_offsets.len() {
-        return vec![original.to_string()];
+        return vec![original];
     }
-    // Char index in `cmp` of a byte offset that `find` returned (always a char boundary).
-    let char_index = |byte: usize| cmp_offsets.binary_search(&byte).ok();
+    // The byte offset in `original` of a byte offset in `cmp` that `find` returned (always a
+    // char boundary).
+    let to_original = |byte: usize| {
+        if same_layout {
+            return Some(byte);
+        }
+        let index = cmp_offsets.binary_search(&byte).ok()?;
+        orig_offsets.get(index).copied()
+    };
 
     let mut result = Vec::new();
     let mut pos = 0usize; // byte offset in `cmp`
     let mut orig_pos = 0usize; // byte offset in `original`
-                               // The next match of each delimiter at or after `pos`, searched again only once `pos` has
-                               // passed it, so each delimiter's searches move forward through `cmp` instead of rescanning
-                               // the rest of it for every piece (T-1272 performance review).
+
+    // The next match of each delimiter at or after `pos`, searched again only once `pos` has
+    // passed it, so each delimiter's searches move forward through `cmp` instead of rescanning
+    // the rest of it for every piece (T-1272 performance review).
     let mut next: Vec<Option<usize>> = delims.iter().map(|d| cmp.find(d)).collect();
 
     loop {
@@ -297,22 +310,15 @@ fn split_by_any(original: &str, cmp: &str, cmp_delims: &[String]) -> Vec<String>
             .filter_map(|(found, d)| found.map(|start| (start, start + d.len())))
             .min_by_key(|(p, _)| *p);
 
-        let matched = best.and_then(|(start, end)| {
-            let (s, e) = (char_index(start)?, char_index(end)?);
-            Some((start, end, *orig_offsets.get(s)?, *orig_offsets.get(e)?))
-        });
+        let matched = best
+            .and_then(|(start, end)| Some((start, end, to_original(start)?, to_original(end)?)));
         match matched {
             None => {
-                result.push(original.get(orig_pos..).unwrap_or_default().to_string());
+                result.push(original.get(orig_pos..).unwrap_or_default());
                 break;
             }
             Some((_, cmp_end, orig_start, orig_end)) => {
-                result.push(
-                    original
-                        .get(orig_pos..orig_start)
-                        .unwrap_or_default()
-                        .to_string(),
-                );
+                result.push(original.get(orig_pos..orig_start).unwrap_or_default());
                 pos = cmp_end;
                 orig_pos = orig_end;
             }

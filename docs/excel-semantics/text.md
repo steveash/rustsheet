@@ -283,7 +283,7 @@ The delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are one list, not lifted: 
 {",";"-"})` is "b", "d", "f". VERIFIED: probes/m7-argument-modes F13-K13 (excel-graph, 2026-10-09; T-1083), and gen-m7 cells
 whose lifted result is `#SPILL!` because its spill range is occupied (gen-m7/93976dd9a3578ed9 Calc!A11, 59cc50701f4937c9 A24).
 A lifted element whose call returns an array keeps its first value: TEXTSPLIT, probes/m7-argument-modes F13:H13.
-UNVERIFIED (T-1272 guesses, nothing probed; T-1812 probes them): when two delimiters of a list match at the same
+UNVERIFIED (T-1272 guesses, nothing probed; T-1816 probes them): when two delimiters of a list match at the same
 position, the first in list order sets the match length; every entry longer than the text gives the single-delimiter
 error (`#VALUE!` with more than two arguments, `#N/A` with two); an error inside a delimiter array is `#VALUE!`; a
 boolean inside a TEXTBEFORE/TEXTAFTER delimiter array is `#VALUE!` (as TEXTSPLIT's already was), although a boolean in a
@@ -293,8 +293,8 @@ when the delimiter is found; REGEXEXTRACT's return_all keeps the first value of 
 Ours: all of this since T-1272. The work caps are the next entry's. A multi-cell range as the TEXTBEFORE/TEXTAFTER
 delimiter is still read as one text, as before T-1272 (gen-m7/851eb2099ae3f805 Calc!A25 is `#VALUE!`); its list rule is
 T-1361's.
-Status: VERIFIED (excel-graph) for the cited cells; UNVERIFIED (probe pending, T-1812) for the rest
-Tasks: T-1272, T-1812 (probe the guesses), T-1361 (delimiter ranges)
+Status: VERIFIED (excel-graph) for the cited cells; UNVERIFIED (probe pending, T-1816) for the rest
+Tasks: T-1272, T-1816 (probe the guesses), T-1361 (delimiter ranges)
 
 ## Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped
 Rule: Excel computes these calls whatever their size.
