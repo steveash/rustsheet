@@ -4,10 +4,13 @@ use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
+    functions::Function,
     model::Model,
 };
 
 use super::accrint::acc_days_between;
+use super::number_or_error;
+use crate::functions::lift::{div_error, num_error};
 
 // ---------------------------------------------------------------------------
 // VDB / AMORDEGRC / AMORLINC
@@ -566,5 +569,72 @@ impl Model {
             Ok(f) => CalcResult::Number(f),
             Err(s) => CalcResult::new_error(Error::NUM, cell, s),
         }
+    }
+}
+
+// SLN, SYD and DDB are core worksheet functions in closed form: every argument lifts over an
+// array and a multi-cell range (`ArgKind::Lift`, SPEC-0011; probes/fin-argument-modes H97, H304,
+// H309, probes/fin-later-argument-ranges K19-K23). Moved here from `financial/mod.rs` (T-1372).
+// DB and VDB loop over the periods, so they stay off the driver until their loops are bounded.
+impl Model {
+    /// `SLN(cost, salvage, life)`: `(cost - salvage)/life`.
+    pub(crate) fn fn_sln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_call(Function::Sln, args, cell, &mut |model, values| {
+            let [cost, salvage, life] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let read = || -> Result<f64, CalcResult> {
+                let cost = model.cast_number_ref(cost, cell)?;
+                let salvage = model.cast_number_ref(salvage, cell)?;
+                let life = model.cast_number_ref(life, cell)?;
+                if life == 0.0 {
+                    return Err(div_error(cell));
+                }
+                Ok((cost - salvage) / life)
+            };
+            number_or_error(read())
+        })
+    }
+
+    /// `SYD(cost, salvage, life, per)`: `((cost - salvage)*(life - per + 1)*2)/(life*(life + 1))`.
+    pub(crate) fn fn_syd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_call(Function::Syd, args, cell, &mut |model, values| {
+            let [cost, salvage, life, per] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let read = || -> Result<f64, CalcResult> {
+                let cost = model.cast_number_ref(cost, cell)?;
+                let salvage = model.cast_number_ref(salvage, cell)?;
+                let life = model.cast_number_ref(life, cell)?;
+                let per = model.cast_number_ref(per, cell)?;
+                if life == 0.0 || per > life || per <= 0.0 {
+                    return Err(num_error(cell));
+                }
+                Ok(((cost - salvage) * (life - per + 1.0) * 2.0) / (life * (life + 1.0)))
+            };
+            number_or_error(read())
+        })
+    }
+
+    /// `DDB(cost, salvage, life, period, [factor])`; `factor` is 2 when omitted (the
+    /// double-declining balance), and a boolean factor is `#VALUE!`.
+    pub(crate) fn fn_ddb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_call(Function::Ddb, args, cell, &mut |model, values| {
+            let [cost, salvage, life, period, rest @ ..] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let read = || -> Result<f64, CalcResult> {
+                let cost = model.cast_number_ref(cost, cell)?;
+                let salvage = model.cast_number_ref(salvage, cell)?;
+                let life = model.cast_number_ref(life, cell)?;
+                let period = model.cast_number_ref(period, cell)?;
+                let factor = model.cast_number_no_bools_or(rest.first(), 2.0, cell)?;
+                if period > life || cost < 0.0 || salvage < 0.0 || period <= 0.0 || factor <= 0.0 {
+                    return Err(num_error(cell));
+                }
+                Ok(ddb_depreciation(cost, salvage, life, period, factor))
+            };
+            number_or_error(read())
+        })
     }
 }
