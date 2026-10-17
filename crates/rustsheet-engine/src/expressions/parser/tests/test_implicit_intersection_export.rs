@@ -646,3 +646,47 @@ fn financial_static_shapes_come_from_the_lifting_table() {
         StaticResult::Array(2, 1)
     ));
 }
+
+// SPEC-0011 for the statistical functions whose every argument is scalar (T-1290): they are
+// `Lift`, so a legacy range gets its `@` and the call's static shape is the lifted one
+// (docs/excel-semantics/statistics.md "Statistical function argument modes").
+#[test]
+fn statistical_legacy_ranges_and_shapes_follow_the_table() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    check(&[
+        (
+            "NORMDIST(A1:A60,0,1,TRUE)",
+            "NORMDIST(@A1:A60,0,1,TRUE)",
+            "NORMDIST(A1:A60,0,1,TRUE)",
+        ),
+        (
+            "BETA.DIST(0.5,2,3,TRUE,0,B1:B60)",
+            "BETA.DIST(0.5,2,3,TRUE,0,@B1:B60)",
+            "_xlfn.BETA.DIST(0.5,2,3,TRUE,0,B1:B60)",
+        ),
+        ("PERMUT(5,C1:C60)", "PERMUT(5,@C1:C60)", "PERMUT(5,C1:C60)"),
+    ]);
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let mut shape =
+        |formula: &str| run_static_analysis_on_node(&parser.parse(formula, &cell_reference));
+    assert!(matches!(
+        shape("NORM.S.DIST(A1:A3,TRUE)"),
+        StaticResult::Array(3, 1)
+    ));
+    assert!(matches!(
+        shape("BINOM.INV(5,0.4,{0.4,0.9})"),
+        StaticResult::Array(1, 2)
+    ));
+    assert!(matches!(shape("GAMMA(2.5)"), StaticResult::Scalar));
+    // Not entered yet (T-1830): the old scalar shape.
+    assert!(matches!(
+        shape("CHISQ.DIST(A1:A3,2,TRUE)"),
+        StaticResult::Scalar
+    ));
+}

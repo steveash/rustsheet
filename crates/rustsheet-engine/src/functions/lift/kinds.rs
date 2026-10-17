@@ -173,6 +173,18 @@ const BESSEL: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays], Weighted(
 /// The units one Bessel element is charged against `MAX_LIFTED_CELL_VISITS`.
 const BESSEL_WEIGHT: u32 = 1 << 16;
 // --- End engineering (T-1383) ---------------------------------------------------------------
+// --- Statistical (T-1290) -------------------------------------------------------------------
+/// `BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])`.
+const LIFT_3_OF_4: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift], Constant);
+/// `BINOM.INV(trials, probability_s, alpha)` and CRITBINOM: a search that halves `[0, trials]`
+/// (a `u64`) at most 64 times with one cdf each, its own per-call cap (`statistical/binom.rs`);
+/// each element is charged that weight (SPEC-0011 security rule).
+const BINOM_INV: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(64));
+/// `PERMUT(number, number_chosen)`: the product of `number_chosen` factors stops once it is
+/// infinite, after at most 171 factors (171! is past `f64::MAX`), its own per-call cap
+/// (`statistical/permut.rs`); each element is charged that weight.
+const PERMUT: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(171));
+// --- End statistical (T-1290) ---------------------------------------------------------------
 
 /// The functions of [`Function::arg_kinds`], as a pattern: the arm of an exhaustive `match` on a
 /// `Function` that has no hand-written arm because the table derives it (static analysis).
@@ -292,6 +304,52 @@ macro_rules! lifting_table_functions {
             | Function::Imsub
             | Function::Imtan
             // --- End engineering (T-1383) ---
+            // --- Statistical (T-1290) ---
+            | Function::BetaDist
+            | Function::BetaDistCompat
+            | Function::BinomDist
+            | Function::BinomDistCompat
+            | Function::BinomDistRange
+            | Function::BinomInv
+            | Function::CritbinomCompat
+            | Function::NegbinomDist
+            | Function::NegbinomDistCompat
+            | Function::ConfidenceNorm
+            | Function::ConfidenceCompat
+            | Function::ExponDist
+            | Function::ExponDistCompat
+            | Function::FDist
+            | Function::FDistRT
+            | Function::FDistCompat
+            | Function::Fisher
+            | Function::FisherInv
+            | Function::Gamma
+            | Function::GammaLn
+            | Function::GammaLnPrecise
+            | Function::Gauss
+            | Function::Phi
+            | Function::LogNormDist
+            | Function::LogNormDistCompat
+            | Function::LogNormInv
+            | Function::LoginvCompat
+            | Function::NormDist
+            | Function::NormDistCompat
+            | Function::NormInv
+            | Function::NormInvCompat
+            | Function::NormSdist
+            | Function::NormSDistCompat
+            | Function::NormSInv
+            | Function::NormSInvCompat
+            | Function::Permut
+            | Function::Permutationa
+            | Function::Standardize
+            | Function::TDist
+            | Function::TDist2T
+            | Function::TDistRT
+            | Function::TDistCompat
+            | Function::WeibullDist
+            | Function::WeibullCompat
+            // --- End statistical (T-1290) ---
     };
 }
 pub(crate) use lifting_table_functions;
@@ -452,6 +510,63 @@ impl Function {
             | Function::Bitrshift => Some(&LIFT_2),
             // IMSUM and IMPRODUCT read their arguments whole (T-1384): no entry.
             // --- End engineering (T-1383) ---
+            // --- Statistical (T-1290) ---
+            // The statistical functions whose every argument is scalar are worksheet functions:
+            // every argument lifts over an array and over a multi-cell range, on the range's own
+            // rows too (probes/stat-argument-modes: every argument over `{v;v}`, the first over
+            // a range; probes/stat-later-argument-lift H1-H73: the last and the optional ones
+            // over a range, K3-K16: the optional ones over an array; scalar-lift-shapes H15,
+            // H16; docs/excel-semantics/statistics.md "Statistical function argument modes").
+            // Their kernels are closed form, or call statrs' incomplete beta (a continued
+            // fraction of at most 140 steps) a fixed number of times. The quantile searches
+            // (BETA.INV, F.INV, T.INV, CHISQ.INV, GAMMA.INV), the incomplete-gamma ones (CHISQ.*,
+            // GAMMA.DIST, POISSON) and HYPGEOM.DIST's cdf sum loop by value with no per-call cap
+            // of their own, so they are not entered yet (TODO(T-1830)).
+            Function::Gauss
+            | Function::Phi
+            | Function::Fisher
+            | Function::FisherInv
+            | Function::Gamma
+            | Function::GammaLn
+            | Function::GammaLnPrecise
+            | Function::NormSInv
+            | Function::NormSInvCompat
+            | Function::NormSDistCompat => Some(&LIFT_1),
+            Function::NormSdist
+            | Function::Permutationa
+            | Function::TDist2T
+            | Function::TDistRT => Some(&LIFT_2),
+            Function::NormInv
+            | Function::NormInvCompat
+            | Function::LogNormInv
+            | Function::LoginvCompat
+            | Function::ConfidenceNorm
+            | Function::ConfidenceCompat
+            | Function::Standardize
+            | Function::ExponDist
+            | Function::ExponDistCompat
+            | Function::LogNormDistCompat
+            | Function::NegbinomDistCompat
+            | Function::TDist
+            | Function::TDistCompat
+            | Function::FDistRT
+            | Function::FDistCompat => Some(&LIFT_3),
+            Function::NormDist
+            | Function::NormDistCompat
+            | Function::WeibullDist
+            | Function::WeibullCompat
+            | Function::LogNormDist
+            | Function::BinomDist
+            | Function::BinomDistCompat
+            | Function::NegbinomDist
+            | Function::FDist => Some(&LIFT_4),
+            // `BETA.DIST(x, alpha, beta, cumulative, [A], [B])`, `BETADIST(x, alpha, beta, [A], [B])`.
+            Function::BetaDist => Some(&LIFT_4_OF_6),
+            Function::BetaDistCompat => Some(&LIFT_3_OF_5),
+            Function::BinomDistRange => Some(&LIFT_3_OF_4),
+            Function::BinomInv | Function::CritbinomCompat => Some(&BINOM_INV),
+            Function::Permut => Some(&PERMUT),
+            // --- End statistical (T-1290) ---
             _ => None,
         }
     }

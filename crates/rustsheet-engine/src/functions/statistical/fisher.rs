@@ -1,8 +1,10 @@
 use statrs::distribution::{Continuous, ContinuousCDF, FisherSnedecor};
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::statistical::special::bisect_increasing;
 use crate::functions::statistical::t_dist::sample_var;
+use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -38,190 +40,117 @@ fn f_quantile(dist: &FisherSnedecor, df1: f64, df2: f64, p: f64) -> f64 {
 }
 
 impl Model {
-    // FISHER(x) = 0.5 * ln((1 + x) / (1 - x))
+    /// `FISHER(x) = 0.5 * ln((1 + x) / (1 - x))`: lifts over an array and a range (SPEC-0011;
+    /// probes/stat-argument-modes H252-H254).
     pub(crate) fn fn_fisher(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        if x <= -1.0 || x >= 1.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "x must be between -1 and 1 (exclusive) in FISHER".to_string(),
+        self.lift_call(Function::Fisher, args, cell, &mut |model, values| {
+            let [x] = values else {
+                return CalcResult::new_args_number_error(cell);
             };
-        }
-
-        let ratio = (1.0 + x) / (1.0 - x);
-        let result = 0.5 * ratio.ln();
-
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid result for FISHER".to_string(),
-            };
-        }
-
-        CalcResult::Number(result)
+            number_or_error(model.cast_number_ref(x, cell).and_then(|x| {
+                if x <= -1.0 || x >= 1.0 {
+                    return Err(num_error(cell));
+                }
+                let result = 0.5 * ((1.0 + x) / (1.0 - x)).ln();
+                if result.is_nan() || result.is_infinite() {
+                    return Err(num_error(cell));
+                }
+                Ok(result)
+            }))
+        })
     }
 
-    // FISHERINV(y) = (e^(2y) - 1) / (e^(2y) + 1), evaluated as written (not tanh)
+    /// `FISHERINV(y) = (e^(2y) - 1) / (e^(2y) + 1)`, evaluated as written (not tanh): lifts over
+    /// an array and a range (probes/stat-argument-modes H255-H257).
     pub(crate) fn fn_fisher_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let y = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        // Excel evaluates (exp(2y)-1)/(exp(2y)+1) in doubles, not a correctly rounded tanh, and
-        // is 1 once exp(2y) overflows (docs/excel-semantics/statistics.md, "FISHERINV is
-        // (EXP(2y)-1)/(EXP(2y)+1)").
-        let e = (2.0 * y).exp();
-        let result = if e.is_infinite() {
-            1.0
-        } else {
-            (e - 1.0) / (e + 1.0)
-        };
-
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid result for FISHERINV".to_string(),
+        self.lift_call(Function::FisherInv, args, cell, &mut |model, values| {
+            let [y] = values else {
+                return CalcResult::new_args_number_error(cell);
             };
-        }
-
-        CalcResult::Number(result)
+            number_or_error(model.cast_number_ref(y, cell).and_then(|y| {
+                // Excel evaluates (exp(2y)-1)/(exp(2y)+1) in doubles, not a correctly rounded
+                // tanh, and is 1 once exp(2y) overflows (docs/excel-semantics/statistics.md,
+                // "FISHERINV is (EXP(2y)-1)/(EXP(2y)+1)").
+                let e = (2.0 * y).exp();
+                let result = if e.is_infinite() {
+                    1.0
+                } else {
+                    (e - 1.0) / (e + 1.0)
+                };
+                if result.is_nan() || result.is_infinite() {
+                    return Err(num_error(cell));
+                }
+                Ok(result)
+            }))
+        })
     }
 
-    // F.DIST(x, deg_freedom1, deg_freedom2, cumulative)
+    /// `F.DIST(x, deg_freedom1, deg_freedom2, cumulative)`: every argument lifts over an array
+    /// and a range (probes/stat-argument-modes H215-H220, probes/stat-later-argument-lift H69).
+    /// The cdf is statrs' incomplete beta, a continued fraction of at most 140 steps.
     pub(crate) fn fn_f_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 4 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let x = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let df1 = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-        let df2 = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-
-        let cumulative = match self.get_boolean(&args[3], cell) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-
-        // Excel domain checks
-        if x < 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "x must be >= 0 in F.DIST".to_string());
-        }
-        if !f_df_ok(df1) || !f_df_ok(df2) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "degrees of freedom must be >= 1 in F.DIST".to_string(),
-            );
-        }
-
-        let dist = match FisherSnedecor::new(df1, df2) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid parameters for F distribution".to_string(),
-                )
-            }
-        };
-
-        let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
-
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Invalid result for F.DIST".to_string(),
-            );
-        }
-
-        CalcResult::Number(result)
+        self.lift_call(Function::FDist, args, cell, &mut |model, values| {
+            number_or_error(model.f_dist_of(values, cell))
+        })
     }
 
+    fn f_dist_of(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let [x, df1, df2, cumulative] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
+        };
+        // TODO(T-1829): Excel reads a TRUE as 1 in x and the degrees of freedom
+        // (probes/stat-later-argument-lift L13, probes-numeric/t1049-fdistrt A19, A26).
+        let x = self.cast_number_no_bools_ref(x, cell)?;
+        let df1 = self.cast_number_no_bools_ref(df1, cell)?.trunc();
+        let df2 = self.cast_number_no_bools_ref(df2, cell)?.trunc();
+        let cumulative = Self::cast_bool_ref(cumulative, cell)?;
+        // Excel domain checks
+        if x < 0.0 || !f_df_ok(df1) || !f_df_ok(df2) {
+            return Err(num_error(cell));
+        }
+        let dist = FisherSnedecor::new(df1, df2).map_err(|_| num_error(cell))?;
+        let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
+        if result.is_nan() || result.is_infinite() {
+            return Err(num_error(cell));
+        }
+        Ok(result)
+    }
+
+    /// `F.DIST.RT(x, deg_freedom1, deg_freedom2)`, and FDIST: every argument lifts over an array
+    /// and a range (probes/stat-argument-modes H221-H230, probes/stat-later-argument-lift H71,
+    /// H73).
     pub(crate) fn fn_f_dist_rt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        // F.DIST.RT(x, deg_freedom1, deg_freedom2)
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
+        self.lift_call(Function::FDistRT, args, cell, &mut |model, values| {
+            number_or_error(model.f_dist_rt_of(values, cell))
+        })
+    }
+
+    fn f_dist_rt_of(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let [x, df1, df2] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
+        };
+        // TODO(T-1829): a TRUE reads as 1 in Excel, as in F.DIST.
+        let x = self.cast_number_no_bools_ref(x, cell)?;
+        let df1 = self.cast_number_no_bools_ref(df1, cell)?.trunc();
+        let df2 = self.cast_number_no_bools_ref(df2, cell)?.trunc();
+        if x < 0.0 || !f_df_ok(df1) || !f_df_ok(df2) {
+            return Err(num_error(cell));
         }
-
-        let x = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let df1 = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-        let df2 = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-
-        if x < 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "x must be >= 0 in F.DIST.RT".to_string(),
-            );
-        }
-        if !f_df_ok(df1) || !f_df_ok(df2) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "degrees of freedom must be >= 1 in F.DIST.RT".to_string(),
-            );
-        }
-
-        let dist = match FisherSnedecor::new(df1, df2) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid parameters for F distribution".to_string(),
-                )
-            }
-        };
-
+        let dist = FisherSnedecor::new(df1, df2).map_err(|_| num_error(cell))?;
         // Right-tail probability: P(F > x) = 1 - CDF(x)
         let result = 1.0 - dist.cdf(x);
-
         if result.is_nan() || result.is_infinite() || result < 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Invalid result for F.DIST.RT".to_string(),
-            );
+            return Err(num_error(cell));
         }
-
-        CalcResult::Number(result)
+        Ok(result)
     }
 
     // F.INV(probability, deg_freedom1, deg_freedom2)

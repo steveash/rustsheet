@@ -321,10 +321,50 @@ PERCENTRANK*, TRIMMEAN, Z.TEST, F.TEST and T.TEST skip text and booleans in a ra
 plain 8-point series on the timeline 1..8 (T-1293). These decide the generator modes in eval/catalog/functions.yaml
 (`value`, `aggregate`, `aggregate_a`, `array`; RANK `ref`, COUNTBLANK and the *IFS ranges are `range`).
 Evidence: probes/stat-argument-modes (573 cells, excel-graph, 2026-10-09, T-1080).
-Ours: LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN lift (T-1772, section below); the other scalar arguments do not (`#N/IMPL!` for an array, `#VALUE!` for a range; T-1290, T-1813); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
+Ours: LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN lift (T-1772, section below), and so do the
+44 functions whose every argument is scalar and whose kernel is bounded (T-1290, "Later arguments and element values
+of the scalar statistical functions" below); the other scalar arguments do not (`#N/IMPL!` for an array, `#VALUE!` for
+a range): the quantile searches, the incomplete-gamma functions and HYPGEOM.DIST (T-1830), and the rest (T-1813); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
 `#N/IMPL!`; many distribution values are a few ulps off (the existing accuracy entries above).
 Status: VERIFIED (excel-graph)
-Tasks: T-1080, T-1290, T-1291, T-1292, T-1293
+Tasks: T-1080, T-1290, T-1291, T-1292, T-1293, T-1830
+
+## Later arguments and element values of the scalar statistical functions (T-1290)
+Rule: the later arguments of the statistical functions whose every argument is scalar lift over a multi-cell range too,
+on the formula's own rows (not an intersection), and so do the optional ones over an array: the last argument of
+BETA.DIST, BETADIST, BINOM.DIST, BINOMDIST, BINOM.DIST.RANGE, NEGBINOM.DIST, NEGBINOMDIST, BINOM.INV, CRITBINOM,
+NORM.DIST, NORMDIST, NORM.S.DIST, NORM.INV, NORMINV, CONFIDENCE, CONFIDENCE.NORM, STANDARDIZE, EXPON.DIST, EXPONDIST,
+WEIBULL, WEIBULL.DIST, LOGNORM.DIST, LOGNORMDIST, LOGNORM.INV, LOGINV, PERMUT, PERMUTATIONA, T.DIST, T.DIST.2T,
+T.DIST.RT, TDIST, F.DIST, F.DIST.RT and FDIST over a two-cell range is 2 rows (H1-H73), each element the scalar call
+(I, J, rounded to 12 places: `INDEX(NORM.DIST(1.5,1,2,G25:G26),2)` with G26 FALSE is the pdf, 0.193334058401). BETA.DIST's and
+BETADIST's `[A]` and `[B]` and BINOM.DIST.RANGE's `[number_s2]` lift over an array and a range (H3-H9, H15, K3-K16).
+Element values follow the scalar rules: `{1;"x"}` gives `#VALUE!` in its element and `{1;"1"}` reads the text
+(L4, L5), an error element is its error (`PERMUT({5;#N/A},2)`, L6), each element is checked alone
+(`GAMMA({1.5;-1})` element 2 `#NUM!`, `PERMUT({5;5},{2;6})` element 2 `#NUM!`, L18, L20), TDIST checks x and then
+`tails` per element (`TDIST({-1;1.5},5,1)` and `TDIST({1.5;1.5},5,{3;2})` element 1 `#NUM!`, L9, L10), and
+broadcasting is the operators' (`NORM.DIST({1;2;3},{0,1},1,TRUE)` is 3x2, L16, L17). BETA.DIST's `cumulative` takes
+the text "TRUE" (L2) and a one-cell range or reference as its value (`BETA.DIST(0.5,2,3,G1:G1)` with G1 TRUE is
+0.6875, L11, L12). A typed TRUE as an array element reads as 1 in BETA.DIST's x (L1: 1), F.DIST's x (L13:
+0.5 rounded), STANDARDIZE's x (L14: 0) and NORM.S.DIST's z (L15), as a direct TRUE does in F.DIST.RT, FDIST
+and STANDARDIZE (probes-numeric/t1049-fdistrt A19, A26, m9-legacy-fdist A90; "SKEW, SKEW.P, KURT, ..." below).
+Evidence: probes/stat-later-argument-lift (141 formula cells, value cells rounded to 12 places, excel-graph, 2026-10-17, T-1290); probes/stat-argument-modes.
+Ours: matches (T-1290), except that BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as `#VALUE!`, as their scalar
+calls always did (L1, L13: T-1829; STANDARDIZE, L14: T-1755; WEIBULL's and PHI's are unprobed). Every argument of these functions is `Lift`
+in the lifting table and each kernel reads its arguments in its scalar order (T.DIST.2T reads both before it checks
+x; TDIST checks x before it reads tails and the degrees of freedom). The one scalar change: BETA.DIST's
+`cumulative` given as a one-cell range was `#VALUE!` and is now its value (L11). BINOM.INV and CRITBINOM are
+`KernelWork::Weighted(64)` (their search halves a `u64` interval at most 64 times) and PERMUT `Weighted(171)`: its
+product now stops once it is infinite, after at most 171 factors, so `PERMUT(1E15,1E15)` no longer loops 10^15 times
+(the value is unchanged). The quantile searches (BETA.INV, F.INV, T.INV, CHISQ.INV, GAMMA.INV, CONFIDENCE.T), the
+incomplete-gamma functions (CHISQ.DIST, GAMMA.DIST, POISSON) and HYPGEOM.DIST's cdf sum loop by value with no per-call
+cap, so they are not lifted yet (T-1830).
+DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted PERMUT is charged 171 units per element against the shared
+cell-visit cap of 2^27 (`limits::MAX_LIFTED_CELL_VISITS`), so a lifted PERMUT of more than 784,890 elements is `#ERROR!`
+before it runs where Excel computes it (`ROWS(PERMUT(5,SEQUENCE(800000)))`, unit test
+`weighted_kernels_are_charged_their_weight`). BINOM.INV's weight of 64 never refuses under the 1,048,576-element array
+bound.
+Status: VERIFIED (excel-graph)
+Tasks: T-1290, T-1829, T-1755, T-1830
 
 ## LARGE, SMALL, PERCENTILE, QUARTILE, PERCENTRANK and TRIMMEAN: each lifted element is the scalar call
 Rule: when `k`, `quart`, `x`, `significance` or `percent` is an array or a multi-cell range, every element is the
