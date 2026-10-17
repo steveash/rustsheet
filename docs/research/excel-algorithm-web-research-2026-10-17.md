@@ -41,11 +41,11 @@ Third-party relatives (none claims bit-exact Excel parity):
 
 | hypothesis (source) | result |
 |---|---|
-| NORM.S.DIST is Cody's erfc (R `pnorm_both`) | refuted: 991 of 1,779 cells, against 1,103 for glibc's `0.5*erfc(-x*sqrt(0.5))` and 881 for the engine (fit `norm-s-dist`) |
+| NORM.S.DIST is Cody's erfc (R `pnorm_both`) | refuted: 991 of 1,773 cells, against 1,103 for glibc's `0.5*erfc(-x*sqrt(0.5))` and 879 for the engine (fit `norm-s-dist`) |
 | NORM.S.INV's centre is AS 111 (split 0.42), with or without Newton polish, on Cody or glibc CDFs | refuted. Central cells, of 408: AS 111 alone 12; AS 111 plus 1 or 3 Newton steps 70–95; the best polish overall is PPND16 plus one Newton step on Cody, 114. statrs gets 164 (fit `norm-s-inv`) |
 | NORM.S.INV iterates on Excel's own NORM.S.DIST (Microsoft docs) | supported in part. Probe t1758-norm-s-inv-roundtrip: Excel's central x is a crossing of its own CDF at 234 of 340 points; the CDF is flat at 36; 70 miss by 1–32 ulps of p. This is the same shape as BETA.INV (T-1745) |
 | BETA.DIST is LibreOffice's GetBetaDist | ties the best candidate: 156 of 283 with Excel's closed forms (134 without), against 158 for the Cephes combination and 87 for the engine. Neither is Excel's |
-| The remaining BETA.DIST error is Excel's Gamma (lnB) | refuted: Excel's relative error depends on x, not only on (a, b), at all 38 (a, b) pairs. Plugging in Excel's own GAMMALN/GAMMA values does not close it |
+| The remaining BETA.DIST error is Excel's Gamma (lnB) | refuted: Excel's relative error depends on x, not only on (a, b), at all 38 direct-branch (a, b) pairs. Plugging in Excel's own GAMMA values gives at best 62 of 136 points (docs/research/t1758_beta_direct_branch.py) |
 
 ## General conclusions
 
@@ -53,15 +53,19 @@ Third-party relatives (none claims bit-exact Excel parity):
    NORM.S.INV both land on a crossing of Excel's CDF at most points, with a minority stopping a
    few ulps of p short. Inverse parity therefore follows forward parity, so the forward kernels
    (T-0968 normal CDF, T-0970 incomplete beta) come first.
-2. **BETA.DIST's gap is the small-result branch.** In the reflected branch (1 − small) both
-   candidates match 90 to 94% of cells, because 1 − small hides the small term's error. In the
-   direct branch no candidate gets more than 18 of 110 cells, and the correctly rounded value gets
-   10. There Excel's relative error grows with a·err(ln x): at x = 0.1 it is about 1.2E-14 for
-   a = 100, against 1.7E-14 predicted from ln(0.1)'s double rounding. So Excel builds the
-   prefactor in log space from a double ln x. The rest is the rounding of the exponent sum, and
-   none of 360 tested combinations of fraction, prefactor form and operation order reproduces it.
-3. **NORM.S.DIST's best stand-in is glibc's `0.5*erfc(-x*sqrt(0.5))`** (1,103 of 1,779 against
-   881 today). T-0968 can take it as an interim kernel.
+2. **BETA.DIST's gap is the small-result branch.** Counts are de-duplicated points with 0 < x < 1.
+   - In the reflected branch (1 − small), LibreOffice matches 92% of points and the Cephes
+     combination 79%, because 1 − small hides most of the small term's error.
+   - In the direct branch no candidate gets more than 15 of 107 points, and the correctly
+     rounded value gets 7.
+   - There Excel's relative error tracks the rounding of the double product fl(a·fl(ln x)): it
+     predicts 1.18E-14 at x = 0.1, a = 100, where Excel shows 1.04–1.35E-14 across b.
+   - Hypothesis: x^a is its own EXP(a·LN(x)) factor, like Excel's b = 1 closed form. Rounding a
+     summed exponent of about −230 would add b-dependent noise that the data do not show.
+   - Neither Excel's own GAMMA values nor 360 combinations of fraction, prefactor form and
+     operation order reproduce the rest (docs/research/t1758_beta_direct_branch.py).
+3. **NORM.S.DIST's best stand-in is glibc's `0.5*erfc(-x*sqrt(0.5))`** (1,103 of 1,773 against
+   879 today). T-0968 can take it as an interim kernel.
 
 ## Where to look next
 - The 2009 Excel-team blog post "Function Improvements in Excel 2010"

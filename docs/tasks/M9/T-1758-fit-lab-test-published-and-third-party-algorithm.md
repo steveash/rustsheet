@@ -41,8 +41,8 @@ digit. Microsoft documents only that the inverses are iterative searches on the 
 function, which run "to the limit of Excel's precision" since Excel 2003.
 
 Results:
-- **NORM.S.DIST.** Cody's erfc gets 991 of 1,779 cells (1,562 within 4 ulp), against 1,103
-  (1,524) for glibc's `0.5*erfc(-x*sqrt(0.5))` and 881 (1,479) for the engine (fit `norm-s-dist`). Cody is refuted. The glibc
+- **NORM.S.DIST.** Cody's erfc gets 991 of 1,773 cells (1,562 within 4 ulp), against 1,103
+  (1,524) for glibc's `0.5*erfc(-x*sqrt(0.5))` and 879 (1,473) for the engine (fit `norm-s-dist`). Cody is refuted. The glibc
   form is an interim kernel for T-0968.
 - **NORM.S.INV centre.** All of these are `norm-s-inv` candidates now; scores are central cells
   out of 408. AS 111's central rational (split 0.42) alone gets 12. With 1 or 3 Newton steps on
@@ -55,7 +55,12 @@ Results:
 - **BETA.DIST, LibreOffice.** LibreOffice's GetBetaDist gets 156 of 283 with Excel's closed forms
   (134 without), level with the Cephes combination (158); not Excel's.
 - **BETA.DIST, where the gap is.** The remaining gap is the direct (unreflected) branch: at most
-  18 of 110 cells for any candidate. There Excel's relative error grows with a·err(ln x), so
-  Excel builds the prefactor in log space from a double ln x. Excel's own GAMMALN and 360
-  combinations of fraction, prefactor and operation order do not close the rest.
+  15 of 107 points for any candidate, against 92% (LibreOffice) and 79% (Cephes) in the reflected
+  branch.
+  - Excel's relative error there tracks the rounding of fl(a·fl(ln x)): 1.18E-14 predicted at
+    x = 0.1, a = 100, against 1.04–1.35E-14 observed. That suggests x^a is a separate
+    EXP(a·LN(x)) factor (hypothesis).
+  - Excel's own GAMMA values (best 62 of 136) and 360 combinations of fraction, prefactor and
+    operation order (best 16 of 107) do not close the rest.
+  - Script: docs/research/t1758_beta_direct_branch.py.
 - **F.DIST and T.DIST.** LibreOffice gets 15 of 33 and 100 of 150 (Cephes 15 and 105).

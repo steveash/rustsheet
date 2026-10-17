@@ -561,15 +561,23 @@ T-1758 tested LibreOffice's GetBetaDist, the closest public relative. It uses th
 reflection, A&S 26.5.8's fraction, a pdf·x·y prefactor for a, b > 1, and a Lanczos lnB. It
 scores 156 of 283 with Excel's closed forms (134 with its own pow and expm1), level with the
 Cephes combination and not Excel's algorithm.
-The remaining gap is the direct (unreflected) branch:
-- In the reflected branch (1 − small) the candidates match 90 to 94% of cells.
-- In the direct branch no candidate matches more than 18 of 110 cells, and the correctly rounded
-  value matches 10.
-- There Excel's relative error depends on x as well as (a, b), and it grows with a·err(ln x).
-  For BETA.DIST(0.1,100,b,TRUE) the error is about 1.2E-14, against 1.7E-14 predicted from the
-  double rounding of ln(0.1). So the prefactor is built in log space from a double ln x.
-- Neither Excel's own GAMMALN/GAMMA values (taken from T-1042) nor 360 combinations of fraction,
-  prefactor form and operation order reproduce the rest (docs/research/excel-algorithm-web-research-2026-10-17.md).
+The remaining gap is the direct (unreflected) branch. Counts below are de-duplicated (x, a, b)
+points with 0 < x < 1:
+- **Reflected branch (1 − small):** LibreOffice matches 87 of 95 points (92%), the Cephes
+  combination 75 (79%) and the correctly rounded value 78.
+- **Direct branch:** no candidate matches more than 15 of 107 points (Cephes 15, LibreOffice 5,
+  correctly rounded 7).
+- **Error model:** Excel's relative error on the direct branch depends on x as well as (a, b). It
+  tracks the total rounding error of the double product fl(a·fl(ln x)). For BETA.DIST(0.1,100,b,TRUE)
+  that predicts 1.18E-14, and Excel's error ranges from 1.04E-14 to 1.35E-14 across b. At
+  BETA.DIST(0.01,10,1.5,TRUE) it predicts 6.11E-15 against 6.15E-15 observed. Subtracting it
+  leaves an x-independent residual for 8 of 38 (a, b) pairs; subtracting a·err(ln x) does so for 4.
+- **Hypothesis (UNVERIFIED):** x^a is its own EXP(a·LN(x)) factor, the form of Excel's b = 1
+  closed form. If the product were first summed with b·ln y − lnB, rounding that ≈ −230 sum
+  would add up to ±1.4E-14 of b-dependent noise, but the spread across b is about ±1.5E-15.
+- **What did not close the residual:** Excel's own GAMMA values (from T-1042), with best 62 of
+  136 points, and 360 combinations of fraction, prefactor form and operation order, with best
+  16 of 107. Reproduce all of this with docs/research/t1758_beta_direct_branch.py.
 Status: VERIFIED (b = 1 closed form); a = 1 PARTIAL (22/24, form not distinguished from pow); the general algorithm is UNVERIFIED
 Tasks: T-1744, T-1758, T-0970, T-0969, T-1745
 
@@ -742,13 +750,16 @@ Centrally (|p - 0.5| <= 0.425) no candidate fits (central bit-exact counts of 40
   - x is a crossing of Excel's own CDF at 234 of 340 central points;
   - the CDF is flat across the three doubles at 36;
   - x misses by 1 to 32 ulps of p at 70, 52 of them below.
+  - At 53 of the 63 adjacent rows, a neighbouring double gives NORM.S.DIST exactly p, yet Excel
+    returned its own x. So the stop rule neither minimises |CDF − p| nor stops at CDF = p.
+  - NORM.S.INV recomputed from a constant p reproduces x at all 340 rows.
   This matches Microsoft's description of NORM.S.INV as an "iterative search" on NORM.S.DIST and
   has the same shape as BETA.INV (T-1745). Its start and stop rule are not fitted.
 Consequence: the best kernel is a hybrid, PPND16 in the tails and statrs centrally. It is bit-exact
 on 775 of 1,024 sweep cells, against 341 for the engine's statrs alone (fit `norm-s-inv`).
-Side finding for T-0968, now the fit `norm-s-dist` (T-1758): over all 1,779 NORM.S.DIST cells,
+Side finding for T-0968, now the fit `norm-s-dist` (T-1758): over all 1,773 NORM.S.DIST cells,
 `0.5*erfc(-x*sqrt(0.5))` (glibc) is bit-exact on 1,103, Cody's rational approximations (R's
-pnorm_both) on 991, `0.5*erfc(-x/sqrt(2))` on 869, and the engine on 881. On the T-1746 probe
+pnorm_both) on 991, `0.5*erfc(-x/sqrt(2))` on 869, and the engine on 879. On the T-1746 probe
 alone, NORM.S.DIST(x,TRUE) equals `0.5*erfc(-x*sqrt(0.5))` (glibc erfc) at 260
 of the 341 PPND16(p) points of the probe (column D) and at 240 of Excel's own NORM.S.INV results
 (column B). The `0.5*erfc(-x/sqrt(2))` form matches 199 and 203.

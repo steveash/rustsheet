@@ -596,6 +596,11 @@ def norm_inv_candidates() -> list[Candidate]:
     return out
 
 
+def numeric_x(cell: Cell) -> bool:
+    """Leaves out NORM.S.DIST cells whose x is text or a bool (coercion probes, not the kernel)."""
+    return isinstance(cell.args[0], float)
+
+
 def norm_s_dist_candidates() -> list[Candidate]:
     """NORM.S.DIST(x,TRUE): glibc erfc in two argument forms and Cody's rational approximations."""
 
@@ -620,6 +625,7 @@ FITS = [
         ],
         pattern=_CDF_PATTERN,
         candidates=norm_s_dist_candidates,
+        where=numeric_x,
     ),
     Fit(
         name="norm-s-inv",

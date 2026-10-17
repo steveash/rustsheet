@@ -75,6 +75,6 @@ def test_cody_cdf_is_accurate() -> None:
 def test_norm_s_dist_scores() -> None:
     result = fit.run(registry()["norm-s-dist"], engine=False)
     scores = {s.name: s.exact for s in result.scores}
-    assert len(result.sweep.cells) == 1779
+    assert len(result.sweep.cells) == 1773
     assert scores["0.5*erfc(-x*sqrt(0.5)) (glibc)"] == 1103
     assert scores["Cody (R pnorm_both)"] == 991
