@@ -4,10 +4,12 @@ use super::dates::broken_schedule_error;
 use crate::{
     calc_result::CalcResult,
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{parser::Node, types::CellReferenceIndex},
     formatter::dates::{
         from_excel_date, from_excel_date_up_to, real_date_to_serial, EPOCH_1904_IN_1900_SERIALS,
     },
+    functions::lift::num_error,
+    functions::Function,
     model::Model,
 };
 
@@ -321,76 +323,50 @@ impl Model {
     // (issue = settlement, or accrual reduces to zero days), return 0.
     // The `issue >= settlement` case still errors per the MS spec.
     pub(crate) fn fn_accrint(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(6..=8).contains(&arg_count) {
+        self.lift_call(Function::Accrint, args, cell, &mut |model, values| {
+            model.accrint_of(values, cell)
+        })
+    }
+
+    /// ACCRINT's kernel: every argument is read, in order, before any value is checked. Its
+    /// dates and numbers take booleans (as `get_number` did), `calc_method` reads as a boolean.
+    fn accrint_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        let [issue, first_interest, settlement, rate, par, frequency, rest @ ..] = values else {
             return CalcResult::new_args_number_error(cell);
-        }
-        let issue_serial = match self.get_number(&args[0], cell) {
-            Ok(c) => self.financial_date(c),
-            Err(s) => return s,
         };
-        let first_interest_serial = match self.get_number(&args[1], cell) {
-            Ok(c) => self.financial_date(c),
-            Err(s) => return s,
+        let read = || -> Result<_, CalcResult> {
+            Ok((
+                self.financial_date(self.cast_number_ref(issue, cell)?),
+                self.financial_date(self.cast_number_ref(first_interest, cell)?),
+                self.financial_date(self.cast_number_ref(settlement, cell)?),
+                self.cast_number_ref(rate, cell)?,
+                self.cast_number_ref(par, cell)?,
+                self.cast_number_ref(frequency, cell)?.floor() as i32,
+                self.cast_number_or(rest.first(), 0.0, cell)?.floor() as i32,
+                rest.get(1)
+                    .map_or(Ok(true), |value| Self::cast_bool_ref(value, cell))?,
+            ))
         };
-        let settlement_serial = match self.get_number(&args[2], cell) {
-            Ok(c) => self.financial_date(c),
-            Err(s) => return s,
+        let (
+            issue_serial,
+            first_interest_serial,
+            settlement_serial,
+            rate,
+            par,
+            frequency,
+            basis,
+            calc_method,
+        ) = match read() {
+            Ok(read) => read,
+            Err(error) => return error,
         };
-        let rate = match self.get_number(&args[3], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let par = match self.get_number(&args[4], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let frequency = match self.get_number(&args[5], cell) {
-            Ok(f) => f.floor() as i32,
-            Err(s) => return s,
-        };
-        let basis = if arg_count > 6 {
-            match self.get_number(&args[6], cell) {
-                Ok(f) => f.floor() as i32,
-                Err(s) => return s,
-            }
-        } else {
-            0
-        };
-        let calc_method = if arg_count > 7 {
-            match self.get_boolean(&args[7], cell) {
-                Ok(b) => b,
-                Err(s) => return s,
-            }
-        } else {
-            true
-        };
-        if rate <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "rate must be > 0".to_string());
-        }
-        if par <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "par must be > 0".to_string());
-        }
-        if !matches!(frequency, 1 | 2 | 4) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "frequency must be 1, 2, or 4".to_string(),
-            );
-        }
-        if !(0..=4).contains(&basis) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "basis must be between 0 and 4".to_string(),
-            );
-        }
-        if issue_serial >= settlement_serial {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "issue must be before settlement".to_string(),
-            );
+        if rate <= 0.0
+            || par <= 0.0
+            || !matches!(frequency, 1 | 2 | 4)
+            || !(0..=4).contains(&basis)
+            || issue_serial >= settlement_serial
+        {
+            return num_error(cell);
         }
 
         // ACCRINT walks the coupon schedule of `first_interest`, which in a 1904 workbook breaks
@@ -402,11 +378,11 @@ impl Model {
         }
         let issue = match from_excel_date(issue_serial) {
             Ok(d) => d,
-            Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
+            Err(_) => return num_error(cell),
         };
         let first_interest = match from_excel_date(first_interest_serial) {
             Ok(d) => d,
-            Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
+            Err(_) => return num_error(cell),
         };
         let settlement_limit = self
             .workbook
@@ -415,7 +391,7 @@ impl Model {
             .accrint_settlement_limit(calc_method);
         let settlement = match from_excel_date_up_to(settlement_serial, settlement_limit) {
             Ok(d) => d,
-            Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
+            Err(_) => return num_error(cell),
         };
 
         // Excel: a 1904 settlement read past 9999-12-31 (calc_method FALSE) has no 30/360 date;
@@ -438,7 +414,7 @@ impl Model {
             settlement_days,
         ) {
             Ok(value) => CalcResult::Number(value),
-            Err(e) => CalcResult::new_error(Error::NUM, cell, e),
+            Err(_) => num_error(cell),
         }
     }
 }
