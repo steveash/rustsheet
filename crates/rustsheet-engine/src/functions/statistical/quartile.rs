@@ -21,8 +21,8 @@ impl Model {
             args,
             &PERCENTILE_DATA,
             cell,
-            &mut |model, sorted, values| {
-                if sorted.is_empty() {
+            &mut |model, data, values| {
+                if data.is_empty() {
                     return num_error(cell);
                 }
                 match model.cast_number_ref(value_at(values, 1), cell) {
@@ -31,7 +31,7 @@ impl Model {
                         if !(0..=4).contains(&quart) {
                             return num_error(cell);
                         }
-                        CalcResult::Number(percentile_inc_impl(sorted, quart as f64 / 4.0))
+                        CalcResult::Number(percentile_inc_impl(data.sorted(), quart as f64 / 4.0))
                     }
                     Err(e) => e,
                 }
@@ -50,8 +50,8 @@ impl Model {
             args,
             &PERCENTILE_DATA,
             cell,
-            &mut |model, sorted, values| {
-                if sorted.is_empty() {
+            &mut |model, data, values| {
+                if data.is_empty() {
                     return num_error(cell);
                 }
                 match model.cast_number_ref(value_at(values, 1), cell) {
@@ -60,7 +60,7 @@ impl Model {
                         if !(1..=3).contains(&quart) {
                             return num_error(cell);
                         }
-                        percentile_exc_impl(sorted, quart as f64 / 4.0)
+                        percentile_exc_impl(data.sorted(), quart as f64 / 4.0)
                             .map_or_else(|| num_error(cell), CalcResult::Number)
                     }
                     Err(e) => e,

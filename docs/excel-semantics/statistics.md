@@ -335,15 +335,27 @@ blank, TRUE the elements are 7, `#VALUE!`, `#NUM!` (a blank cell is 0), 8 (a ref
 element is that error (`{1;#DIV/0!}`, W16). The shape is the lifted argument's: a row (`COLUMNS` 3, W14), 2-D (W15),
 and PERCENTRANK's `x` and `significance` broadcast a column against a row (`PERCENTRANK.EXC(A1:A8,{4.5;2.5},{1,2})` is
 2x2, element (2,2) 0.27; W32-W33). `significance` lifts over an array and a range (W29-W31) and is `#NUM!` below 1 per
-element (W34). A data error or data with no numbers is every element's error: `LARGE(B1:B3,{1;2})` with B2 = `#N/A`
-is two `#N/A` (W12-W13), `SMALL(C1:C3,{1;2})` over "x", TRUE, blank is two `#NUM!` (W17-W18), PERCENTRANK of it two
+element (W34). A data error or data with no numbers keeps the lifted shape and gives the scalar error in the elements
+probed: `LARGE(B1:B3,{1;2})` with B2 = `#N/A` has 2 rows (W12) and element 2 is `#N/A` (W13); `SMALL(C1:C3,{1;2})`
+over "x", TRUE, blank has 2 rows (W18) and element 1 is `#NUM!` (W17); `PERCENTRANK(C1:C3,{1;2})` element 2 is
 `#N/A` (W39). The data argument keeps its own reading: an arithmetic array (W19), an array literal (W38), a union
 (`LARGE((A1:A4,A5:A8),{1;2})` element 2 is 7, W45). A one-cell range in the lifted argument is its value (`ROWS` 1,
-W20, W43), and a range a function returns lifts (`IF(TRUE,G5:G6)`, W42).
+W20, W43), and a range a function returns lifts (`IF(TRUE,G5:G6)`, W42). A 1x1 array argument (`LARGE(A1:A8,{1})`) is
+unprobed: ours gives a 1x1 array (TYPE 64, where the scalar call is TYPE 1), by analogy with INDEX's 1x1 array
+index (lookup.md "INDEX lifts over array and range indices", probes/index-1x1-array-index, T-1507); T-1810 probes it.
 Evidence: probes/stat-whole-lift W1-W48 (excel-graph, 2026-10-17, T-1772); probes/stat-argument-modes H345-H463,
 H549-H550.
 Ours: matches (T-1772): the data argument is read once by the function's own reader and sorted once per call
 (`functions/statistical/sorted_data.rs`), and the scalar arguments lift through `lift_call`.
+DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted call is charged against the shared cell-visit cap of 2^27
+(`limits::MAX_LIFTED_CELL_VISITS`) before its first element: numbers + elements for LARGE, SMALL, PERCENTILE*, QUARTILE*
+and PERCENTRANK* (`LiftCost::Prepared`, the data is sorted once), numbers × elements for TRIMMEAN (`LiftCost::Cells`,
+each element averages the kept values); and its result is bounded by the shared 1,048,576-element array bound (arrays.md,
+"Array results above 1,048,576 cells are #ERROR!"). Past either the call is `#ERROR!` where Excel computes it:
+`ROWS(TRIMMEAN(A1:A1000000,SEQUENCE(200)/1000))` over a filled column (unit test `trimmean_is_charged_per_element`) and
+`ROWS(PERCENTRANK(A1:A1000000,SEQUENCE(1100),SEQUENCE(1,1000)))`, a 1,100,000-element result (unit test
+`a_sorted_column_against_many_elements_runs_and_the_bound_holds`, which also shows `ROWS(LARGE(A1:A1000000,SEQUENCE(200)))`
+is 200).
 Status: VERIFIED (excel-graph)
 Tasks: T-1772, T-1810
 

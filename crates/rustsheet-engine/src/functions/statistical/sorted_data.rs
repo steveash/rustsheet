@@ -34,47 +34,71 @@ pub(crate) struct DataArg {
     pub(crate) cost: fn(u64) -> LiftCost<'static>,
 }
 
-/// The data argument as the kernel sees it: the numbers read once, sorted on first use, or the
-/// read's error, which every element returns (`LARGE(B1:B3,{1;2})` with B2 = `#N/A` is two
-/// `#N/A`, probes/stat-whole-lift W12-W13).
-pub(crate) struct SortedData {
-    numbers: Result<Vec<f64>, CalcResult>,
+/// The numbers of a data argument read once, sorted on the first element that asks for them. A
+/// kernel checks its own arguments (and `is_empty`) before it asks, so a bad scalar `k` never
+/// sorts a column (`=LARGE(A:A,0)`).
+pub(crate) struct SortedNumbers {
+    numbers: Vec<f64>,
     order: DataOrder,
     sorts: u32,
+}
+
+impl SortedNumbers {
+    /// Whether the data holds no number; does not sort.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.numbers.is_empty()
+    }
+
+    /// How many numbers the data holds; does not sort.
+    pub(crate) fn len(&self) -> usize {
+        self.numbers.len()
+    }
+
+    /// The numbers in the kernel's order, sorted on the first call only.
+    pub(crate) fn sorted(&mut self) -> &[f64] {
+        if self.sorts == 0 {
+            self.sorts = 1;
+            // A stable sort, as each function sorted before (cells hold no NaN).
+            match self.order {
+                DataOrder::Ascending => self
+                    .numbers
+                    .sort_by(|a, b| a.partial_cmp(b).unwrap_or(Equal)),
+                DataOrder::Descending => self
+                    .numbers
+                    .sort_by(|a, b| b.partial_cmp(a).unwrap_or(Equal)),
+            }
+        }
+        &self.numbers
+    }
+}
+
+/// The data argument as the kernel sees it: the numbers, or the read's error, which comes first
+/// in every kernel's check order and is every element's result (`LARGE(B1:B3,{1;2})` with B2 =
+/// `#N/A` has 2 rows and element 2 is `#N/A`, probes/stat-whole-lift W12-W13). The error is
+/// kept with an empty message, so copying it per element allocates nothing.
+pub(crate) struct SortedData {
+    numbers: Result<SortedNumbers, CalcResult>,
 }
 
 impl SortedData {
     /// How many numbers were read (0 for a read error).
     fn len(&self) -> u64 {
         self.numbers.as_ref().map_or(0, |numbers| {
-            u64::try_from(numbers.len()).unwrap_or(u64::MAX)
+            u64::try_from(numbers.numbers.len()).unwrap_or(u64::MAX)
         })
-    }
-
-    /// The numbers in the kernel's order, sorted on the first call only; or the read's error.
-    fn sorted(&mut self) -> Result<&[f64], &CalcResult> {
-        let numbers = self.numbers.as_mut().map_err(|error| &*error)?;
-        if self.sorts == 0 {
-            self.sorts = 1;
-            // A stable sort, as each function sorted before (cells hold no NaN).
-            match self.order {
-                DataOrder::Ascending => numbers.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Equal)),
-                DataOrder::Descending => numbers.sort_by(|a, b| b.partial_cmp(a).unwrap_or(Equal)),
-            }
-        }
-        Ok(numbers)
     }
 
     /// How many times the numbers were sorted: at most once per call.
     #[cfg(test)]
     pub(crate) fn sorts(&self) -> u32 {
-        self.sorts
+        self.numbers.as_ref().map_or(0, |numbers| numbers.sorts)
     }
 }
 
-/// A kernel over the sorted numbers and the argument values of one element (slot 0, the data
-/// argument, is `EmptyArg`).
-pub(crate) type SortedKernel<'k> = dyn FnMut(&Model, &[f64], &[CalcResult]) -> CalcResult + 'k;
+/// A kernel over the data's numbers and the argument values of one element (slot 0, the data
+/// argument, is `EmptyArg`). It takes [`SortedNumbers::sorted`] only once its own checks pass.
+pub(crate) type SortedKernel<'k> =
+    dyn FnMut(&Model, &mut SortedNumbers, &[CalcResult]) -> CalcResult + 'k;
 
 impl Model {
     /// Runs `kind` (data, then scalar arguments) by its table entry: a wrong count is the count
@@ -111,17 +135,27 @@ impl Model {
         let (true, Some(node)) = (accepts, args.first()) else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        Ok(SortedData {
-            numbers: (data.read)(self, node, cell),
-            order: data.order,
-            sorts: 0,
-        })
+        let numbers = match (data.read)(self, node, cell) {
+            Ok(numbers) => Ok(SortedNumbers {
+                numbers,
+                order: data.order,
+                sorts: 0,
+            }),
+            Err(CalcResult::Error { error, origin, .. }) => Err(CalcResult::Error {
+                error,
+                origin,
+                message: String::new(),
+            }),
+            // A reader's non-error `Err` (RANK's array of errors; none here) is kept as it is.
+            Err(other) => Err(other),
+        };
+        Ok(SortedData { numbers })
     }
 
     /// The elements of [`Self::lift_with_sorted_data`] over data already read: the data's error,
-    /// or the kernel over the sorted numbers. The data argument comes first in every kernel's
-    /// check order (statistics.md "Array arguments given a scalar, a single cell or an error":
-    /// LARGE of an error is that error).
+    /// or the kernel over the numbers. The data argument comes first in every kernel's check
+    /// order (statistics.md "Array arguments given a scalar, a single cell or an error": LARGE
+    /// of an error is that error).
     pub(crate) fn lift_over_sorted(
         &mut self,
         kind: Function,
@@ -137,8 +171,8 @@ impl Model {
             args,
             cost,
             cell,
-            &mut |model, values| match data.sorted() {
-                Ok(sorted) => kernel(model, sorted, values),
+            &mut |model, values| match &mut data.numbers {
+                Ok(numbers) => kernel(model, numbers, values),
                 Err(error) => error.clone(),
             },
         )
@@ -147,7 +181,11 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used, clippy::panic)]
+    #![allow(
+        clippy::unwrap_used,
+        clippy::panic,
+        reason = "a test fails loudly on an unexpected shape"
+    )]
 
     use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -216,9 +254,9 @@ mod tests {
             &mut data,
             data_arg.cost,
             AT,
-            &mut |_, sorted, _| {
+            &mut |_, data, _| {
                 calls += 1;
-                CalcResult::Number(sorted.first().copied().unwrap_or(f64::NAN))
+                CalcResult::Number(data.sorted().first().copied().unwrap_or(f64::NAN))
             },
         );
         let CalcResult::Array(rows) = result else {
@@ -236,5 +274,74 @@ mod tests {
             .read_sorted_data(&Function::Large, &args, &data_arg, AT)
             .is_err());
         assert_eq!(READS.load(Ordering::SeqCst), 1);
+    }
+
+    /// A bad scalar k is refused before the data is sorted: `=LARGE(A:A,0)` never sorts.
+    #[test]
+    fn a_bad_k_does_not_sort_the_data() {
+        let mut model = new_empty_model();
+        for row in 1..=8 {
+            model._set(&format!("A{row}"), &row.to_string());
+        }
+        model.evaluate();
+        let context = CellReferenceRC {
+            sheet: "Sheet1".to_string(),
+            row: AT.row,
+            column: AT.column,
+        };
+        let data_arg = DataArg {
+            read: |model, node, cell| {
+                model
+                    .numbers_from_reference_arg(node, cell)
+                    .map(|numbers| numbers.into_iter().flatten().collect())
+            },
+            order: DataOrder::Descending,
+            cost: LiftCost::Prepared,
+        };
+        for formula in ["LARGE(A1:A8,0)", "LARGE(A1:A8,\"x\")", "LARGE(A1:A8,1/0)"] {
+            let Node::FunctionKind { args, .. } = model.parser.parse(formula, &context) else {
+                panic!("not a call");
+            };
+            let mut data = model
+                .read_sorted_data(&Function::Large, &args, &data_arg, AT)
+                .ok()
+                .unwrap();
+            let result = model.lift_over_sorted(
+                Function::Large,
+                &args,
+                &mut data,
+                data_arg.cost,
+                AT,
+                &mut |model, data, values| model.large_of(data, values, AT),
+            );
+            assert!(matches!(result, CalcResult::Error { .. }), "{formula}");
+            assert_eq!(data.sorts(), 0, "{formula}");
+        }
+    }
+
+    /// A data read error still comes before a bad k, and it carries no message.
+    #[test]
+    fn a_data_error_wins_over_a_bad_k() {
+        let mut model = new_empty_model();
+        for (cell, value) in [("B1", "3"), ("B2", "=NA()"), ("B3", "5")] {
+            model._set(cell, value);
+        }
+        let cases = [
+            ("C1", "=LARGE(B1:B3,0)"),
+            ("C2", "=SMALL(B1:B3,\"x\")"),
+            ("C3", "=LARGE(B1:B3,1/0)"),
+            ("C4", "=PERCENTILE(B1:B3,5)"),
+            ("C5", "=PERCENTRANK(B1:B3,1/0)"),
+            ("C6", "=TRIMMEAN(B1:B3,2)"),
+            ("C7", "=INDEX(QUARTILE.EXC(B1:B3,{9;9}),2)"),
+        ];
+        for (cell, formula) in cases {
+            model._set(cell, formula);
+        }
+        model.evaluate();
+        for (cell, formula) in cases {
+            assert_eq!(model._get_text(cell), "#N/A", "{formula}");
+        }
+        assert_eq!(model._get_error_message("C1"), "");
     }
 }

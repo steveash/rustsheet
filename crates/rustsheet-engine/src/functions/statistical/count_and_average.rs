@@ -3,7 +3,7 @@ use crate::functions::util::aggregate_args::{
     ErrorRule, ItemSource, NumberRules,
 };
 
-use super::sorted_data::{DataArg, DataOrder};
+use super::sorted_data::{DataArg, DataOrder, SortedNumbers};
 use crate::arithmetic::{extended_quotient, extended_sum, flush_subnormal};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
@@ -524,7 +524,7 @@ impl Model {
             args,
             &RANKED_DESCENDING,
             cell,
-            &mut |model, sorted, values| model.large_of(sorted, values, cell),
+            &mut |model, data, values| model.large_of(data, values, cell),
         )
     }
 
@@ -535,14 +535,14 @@ impl Model {
             args,
             &RANKED_ASCENDING,
             cell,
-            &mut |model, sorted, values| model.small_of(sorted, values, cell),
+            &mut |model, data, values| model.small_of(data, values, cell),
         )
     }
 
     /// LARGE of one element over the numbers sorted largest first.
-    fn large_of(
+    pub(super) fn large_of(
         &self,
-        sorted: &[f64],
+        data: &mut SortedNumbers,
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> CalcResult {
@@ -550,9 +550,10 @@ impl Model {
             Ok(k) => k,
             Err(e) => return e,
         };
-        if sorted.is_empty() {
+        if data.is_empty() {
             return CalcResult::new_error(Error::NUM, cell, String::new());
         }
+        let sorted = data.sorted();
         // k >= 1, so its ceiling is a position from 1; a k past the count is #NUM!.
         match (k.ceil() as usize)
             .checked_sub(1)
@@ -566,7 +567,7 @@ impl Model {
     /// SMALL of one element over the numbers sorted smallest first.
     fn small_of(
         &self,
-        sorted: &[f64],
+        data: &mut SortedNumbers,
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> CalcResult {
@@ -574,13 +575,14 @@ impl Model {
             Ok(k) => k,
             Err(e) => return e,
         };
-        if sorted.is_empty() {
+        if data.is_empty() {
             return CalcResult::new_error(Error::NUM, cell, String::new());
         }
         // Excel takes the floor for SMALL but still refuses a k whose ceiling is out of range.
-        if k.ceil() as usize > sorted.len() {
+        if k.ceil() as usize > data.len() {
             return CalcResult::new_error(Error::NUM, cell, String::new());
         }
+        let sorted = data.sorted();
         match (k.floor() as usize)
             .checked_sub(1)
             .and_then(|index| sorted.get(index))

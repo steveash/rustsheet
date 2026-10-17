@@ -3,7 +3,7 @@
 //! `significance` lift over arrays and ranges (probes/stat-argument-modes,
 //! probes/stat-whole-lift W21-W47).
 
-use super::sorted_data::{DataArg, DataOrder};
+use super::sorted_data::{DataArg, DataOrder, SortedNumbers};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::LiftCost;
 use crate::functions::Function;
@@ -89,13 +89,13 @@ impl Model {
             args,
             &PERCENTILE_DATA,
             cell,
-            &mut |model, sorted, values| {
-                if sorted.is_empty() {
+            &mut |model, data, values| {
+                if data.is_empty() {
                     return num_error(cell);
                 }
                 match model.cast_number_ref(value_at(values, 1), cell) {
                     Ok(k) if (0.0..=1.0).contains(&k) => {
-                        CalcResult::Number(percentile_inc_impl(sorted, k))
+                        CalcResult::Number(percentile_inc_impl(data.sorted(), k))
                     }
                     Ok(_) => num_error(cell),
                     Err(e) => e,
@@ -115,12 +115,12 @@ impl Model {
             args,
             &PERCENTILE_DATA,
             cell,
-            &mut |model, sorted, values| {
-                if sorted.is_empty() {
+            &mut |model, data, values| {
+                if data.is_empty() {
                     return num_error(cell);
                 }
                 match model.cast_number_ref(value_at(values, 1), cell) {
-                    Ok(k) => percentile_exc_impl(sorted, k)
+                    Ok(k) => percentile_exc_impl(data.sorted(), k)
                         .map_or_else(|| num_error(cell), CalcResult::Number),
                     Err(e) => e,
                 }
@@ -139,8 +139,8 @@ impl Model {
             args,
             &PERCENTILE_DATA,
             cell,
-            &mut |model, sorted, values| {
-                model.percentrank_of(sorted, values, percentrank_inc_impl, cell)
+            &mut |model, data, values| {
+                model.percentrank_of(data, values, percentrank_inc_impl, cell)
             },
         )
     }
@@ -156,8 +156,8 @@ impl Model {
             args,
             &PERCENTILE_DATA,
             cell,
-            &mut |model, sorted, values| {
-                model.percentrank_of(sorted, values, percentrank_exc_impl, cell)
+            &mut |model, data, values| {
+                model.percentrank_of(data, values, percentrank_exc_impl, cell)
             },
         )
     }
@@ -167,23 +167,27 @@ impl Model {
     /// value), then an x outside the data is `#N/A`.
     fn percentrank_of(
         &self,
-        sorted: &[f64],
+        data: &mut SortedNumbers,
         values: &[CalcResult],
         rank_of: fn(&[f64], f64) -> f64,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let (Some(first), Some(last)) = (sorted.first(), sorted.last()) else {
+        if data.is_empty() {
             return CalcResult::new_error(Error::NA, cell, String::new());
-        };
+        }
         let x = match self.cast_number_ref(value_at(values, 1), cell) {
             Ok(v) => v,
             Err(e) => return e,
         };
+        // No cell or coercion gives NaN; refuse one before it reaches the rank search.
+        if x.is_nan() {
+            return num_error(cell);
+        }
         let sig = match values.get(2) {
             Some(significance) => match self.cast_number_ref(significance, cell) {
                 Ok(v) => {
                     let s = v.floor() as i32;
-                    if s < 1 && sorted.len() > 1 {
+                    if s < 1 && data.len() > 1 {
                         return num_error(cell);
                     }
                     s
@@ -191,6 +195,10 @@ impl Model {
                 Err(e) => return e,
             },
             None => 3,
+        };
+        let sorted = data.sorted();
+        let (Some(first), Some(last)) = (sorted.first(), sorted.last()) else {
+            return CalcResult::new_error(Error::NA, cell, String::new());
         };
         // Unlike the documentation, x at either end of the array is in range (EXC too).
         if x < *first || x > *last {
@@ -224,13 +232,17 @@ pub(crate) fn percentrank_inc_impl(sorted: &[f64], x: f64) -> f64 {
     // Number of values strictly less than x
     let k = sorted.partition_point(|&v| v < x);
 
-    if k == n || (k < n && sorted[k] == x) {
-        // x exactly matches sorted[k] or x >= all values
+    let (Some(below), Some(at)) = (k.checked_sub(1).and_then(|i| sorted.get(i)), sorted.get(k))
+    else {
+        // x matches the smallest value (k = 0) or is at least every value (k = n).
+        return k as f64 / n.saturating_sub(1) as f64;
+    };
+    if *at == x {
         return k as f64 / (n - 1) as f64;
     }
 
     // x is between sorted[k-1] and sorted[k]
-    let frac = (x - sorted[k - 1]) / (sorted[k] - sorted[k - 1]);
+    let frac = (x - below) / (at - below);
     (k as f64 - 1.0 + frac) / (n - 1) as f64
 }
 
@@ -239,13 +251,14 @@ pub(crate) fn percentrank_exc_impl(sorted: &[f64], x: f64) -> f64 {
     let n = sorted.len();
     let k = sorted.partition_point(|&v| v < x);
 
-    let virtual_pos = if k < n && sorted[k] == x {
-        k as f64
-    } else if k > 0 && k < n {
-        let frac = (x - sorted[k - 1]) / (sorted[k] - sorted[k - 1]);
-        k as f64 - 1.0 + frac
-    } else {
-        k as f64
+    let below = k.checked_sub(1).and_then(|i| sorted.get(i));
+    let virtual_pos = match (below, sorted.get(k)) {
+        (_, Some(at)) if *at == x => k as f64,
+        (Some(below), Some(at)) => {
+            let frac = (x - below) / (at - below);
+            k as f64 - 1.0 + frac
+        }
+        _ => k as f64,
     };
 
     (virtual_pos + 1.0) / (n + 1) as f64

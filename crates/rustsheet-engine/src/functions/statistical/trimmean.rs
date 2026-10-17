@@ -26,8 +26,8 @@ impl Model {
             args,
             &TRIMMEAN_DATA,
             cell,
-            &mut |model, sorted, values| {
-                if sorted.is_empty() {
+            &mut |model, data, values| {
+                if data.is_empty() {
                     return num_error(cell);
                 }
                 let percent = match model.cast_number_ref(value_at(values, 1), cell) {
@@ -37,6 +37,7 @@ impl Model {
                 if !(0.0..1.0).contains(&percent) {
                     return num_error(cell);
                 }
+                let sorted = data.sorted();
                 let n = sorted.len();
                 // Number of values to remove from each end (floored)
                 let trim = (n as f64 * percent / 2.0).floor() as usize;
