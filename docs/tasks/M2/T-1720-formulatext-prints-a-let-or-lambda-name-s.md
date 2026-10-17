@@ -3,7 +3,7 @@ id: T-1720
 title: "FORMULATEXT prints a LET or LAMBDA name's uses in the spelling of its declaration"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
