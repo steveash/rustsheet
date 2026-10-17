@@ -86,7 +86,7 @@ Queues at the start of the run:
 - engine 0, api 1, harness 2, quality 0, research 0, perf 17.
   - engine and research are busy, not empty. Their branches moved in the last 2 h (T-1728, T-1767; T-1625), and engine holds 6 unclaimed M2 tasks (T-1717, T-1727, T-1758, T-1760, T-1762, T-1763).
   - The planner ran for M2:
-    - It filed **T-1778** (quality, sonnet): resolve six code TODOs that name done tasks. It also filed **T-1779** (quality, opus, after T-1778): `make hygiene` rejects a TODO naming a done, dropped or missing task.
+    - It filed **T-1783** (quality, sonnet): resolve six code TODOs that name done tasks. It also filed **T-1779** (quality, opus, after T-1783): `make hygiene` rejects a TODO naming a done, dropped or missing task.
     - Six failing cells had no owner in any task's acceptance criteria: probes/legacy-n-t-reference-args S!D11, D20, M11, M20, P11 and P20. T-1717's Context already named them, and this PR adds them to its acceptance criteria.
     - research and api have no M2 work left. The api lane's ready task, T-1671, is M8.
 
@@ -104,7 +104,7 @@ Spot-audit: the last one was 2026-10-16, so none is due (next on or after 2026-1
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M2.
 - engine: T-1717, T-1727, T-1758, T-1760, T-1762 and T-1763, together with T-1713 (functions-logic, unblocked by the spec T-1727), hold 59 of the 64 M0–M2 probe failures left after T-1728.
-- quality: T-1778 and T-1779, hygiene from the planner.
+- quality: T-1783 and T-1779, hygiene from the planner.
 - The other 5 failing cells are reached through `functions` (functions-text: T-1716 with 4 cells, T-0985 with 1). So is the P0 T-1769 (functions-logic).
 - research, api and harness have no M2 work. perf stays out: Phase 2.)
 
