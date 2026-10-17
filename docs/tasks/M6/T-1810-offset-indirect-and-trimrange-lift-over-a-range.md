@@ -1,0 +1,49 @@
+---
+id: T-1810
+title: "OFFSET, INDIRECT and TRIMRANGE lift over a range or an array into arrays of references"
+milestone: M6
+lane: functions-lookup
+status: todo
+priority: P2
+size: M
+tier: opus
+depends_on: [T-1241]
+spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
+---
+
+## Goal
+OFFSET's rows/cols/height/width, INDIRECT's ref_text and a1, and TRIMRANGE's trim_rows/trim_cols lift over a
+multi-cell range and an array as Excel does, each element the scalar call's result; CHOOSE's index lift moves onto
+the SPEC-0011 driver (`index_num` `Lift`, the value arms `Whole`).
+
+## Context
+Split from T-1241, which lifted the value-returning lookup scalars (ADDRESS, HYPERLINK, LOOKUP, XMATCH, FORMULATEXT)
+and the CHOOSECOLS/CHOOSEROWS index lists. What is left returns references per element, which `ArrayNode` cannot
+hold (SPEC-0011 non-goal 2, open question 5). Write a short design note first (in this task or docs/specs/): an
+element that is a one-cell reference becomes that cell's value; a multi-cell element is `#VALUE!`-or-`#SPILL!`
+per the evidence (`INDEX(TRIMRANGE(A1:B5,{0;1}),1,1)` is `#SPILL!`, a nested array). Check references.md and
+how INDEX's own index lift (T-1260, lookup.md "INDEX lifts over array and range indices") treats its elements as
+values before choosing. Build on `lift_values` and `read_lift_arg` (functions/lift/), not on a new broadcast.
+
+Failing cells (probes/lookup-argument-modes, excel-graph, 2026-10-09; `rustsheet-eval show
+probes/lookup-argument-modes.case.json`): F14:H15 INDIRECT, F20:H21 OFFSET, F34:H35 TRIMRANGE.
+Generated cells (`rustsheet-eval show gen-m7/<case>.case.json`, gen-m9 likewise):
+- gen-m7/cb748b6a9b81fbb7 Calc!A28 `=OFFSET(..,OFFSET(Data!D6:D9,3,(Data!D$4+7)))` (width a 4x1 reference, cols
+  `#N/A`): Excel `#SPILL!` (the lift wins over the `#N/A` scalar argument), engine `#N/A`.
+- gen-m9/675763979c1defb6 Calc!A25 `=UNICODE(INDIRECT("Data!A2:A4",VSTACK(Data!C6:E7)))` (a1 over an array):
+  Excel `#SPILL!`, engine `#N/IMPL!`.
+- gen-m9/adb3fd63c7368166 Calc!A34 `=INDIRECT(OFFSET(Data!A3:A5,3,1,3,3),(TANH(1)=Data!B12))` (ref_text over a
+  3x3 range): Excel `#SPILL!`, engine `#VALUE!`.
+Unprobed (lookup.md): OFFSET's cols, height and width, INDIRECT's a1, TRIMRANGE's trim_cols; probe them
+(excel-probe skill) before entering them. XMATCH's search_mode (still a plain scalar, `#N/IMPL!` over an array) is
+unprobed too: probe and lift it here.
+
+## Acceptance criteria
+- [ ] probes/lookup-argument-modes F14:H15, F20:H21 and F34:H35 pass; baseline updated.
+- [ ] gen-m7/cb748b6a9b81fbb7 A28, gen-m9/675763979c1defb6 A25 and gen-m9/adb3fd63c7368166 A34 pass, with no new
+  known failures in eval/baseline/.
+- [ ] CHOOSE's `choose_array` is the kernel of a `lift_call`, with no result change.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- INDEX of a single value (T-1242).

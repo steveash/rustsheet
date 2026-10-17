@@ -16,20 +16,20 @@ mod reference_result;
 mod row_column;
 mod signature;
 use signature::{
-    args_signature_address, args_signature_arraytotext, args_signature_bycol_byrow,
-    args_signature_cell, args_signature_choose, args_signature_choosecols, args_signature_drop,
-    args_signature_expand, args_signature_fieldvalue, args_signature_filter,
-    args_signature_getpivotdata, args_signature_groupby, args_signature_hlookup,
-    args_signature_ifs, args_signature_index, args_signature_irr, args_signature_lambda,
-    args_signature_let, args_signature_lookup, args_signature_map, args_signature_match,
-    args_signature_mirr, args_signature_npv, args_signature_offset, args_signature_one_vector,
-    args_signature_pivotby, args_signature_randarray, args_signature_reduce, args_signature_row,
-    args_signature_scalars, args_signature_scan, args_signature_sequence, args_signature_sort,
-    args_signature_sortby, args_signature_sumif, args_signature_take, args_signature_textafter,
-    args_signature_textjoin, args_signature_textsplit, args_signature_tocol,
-    args_signature_trimrange, args_signature_unique, args_signature_with_holidays,
-    args_signature_wrapcols, args_signature_xirr, args_signature_xlookup, args_signature_xmatch,
-    args_signature_xnpv, Signature,
+    args_signature_arraytotext, args_signature_bycol_byrow, args_signature_cell,
+    args_signature_choose, args_signature_choosecols, args_signature_drop, args_signature_expand,
+    args_signature_fieldvalue, args_signature_filter, args_signature_getpivotdata,
+    args_signature_groupby, args_signature_hlookup, args_signature_ifs, args_signature_index,
+    args_signature_irr, args_signature_lambda, args_signature_let, args_signature_lookup,
+    args_signature_map, args_signature_match, args_signature_mirr, args_signature_npv,
+    args_signature_offset, args_signature_one_vector, args_signature_pivotby,
+    args_signature_randarray, args_signature_reduce, args_signature_row, args_signature_scalars,
+    args_signature_scan, args_signature_sequence, args_signature_sort, args_signature_sortby,
+    args_signature_sumif, args_signature_take, args_signature_textafter, args_signature_textjoin,
+    args_signature_textsplit, args_signature_tocol, args_signature_trimrange,
+    args_signature_unique, args_signature_with_holidays, args_signature_wrapcols,
+    args_signature_xirr, args_signature_xlookup, args_signature_xmatch, args_signature_xnpv,
+    Signature,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -507,14 +507,12 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Sheet if arg_count == 1 => args_signature_one_vector(arg_count),
         Function::Sheet => args_signature_scalars(arg_count, 0, 1),
         Function::Type => args_signature_one_vector(arg_count),
-        Function::Address => args_signature_address(arg_count),
         Function::Areas | Function::Phonetic => args_signature_one_vector(arg_count),
         Function::Choosecols => args_signature_choosecols(arg_count),
         Function::Chooserows => args_signature_choosecols(arg_count),
         Function::Expand => args_signature_expand(arg_count),
         Function::Hlookup => args_signature_hlookup(arg_count),
         Function::Hstack => vec![Signature::Vector; arg_count],
-        Function::Hyperlink => args_signature_scalars(arg_count, 1, 1),
         Function::Index => args_signature_index(arg_count),
         Function::Indirect => args_signature_scalars(arg_count, 1, 1),
         Function::Lookup => args_signature_lookup(arg_count),
@@ -966,30 +964,7 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::NormDistCompat => args_signature_scalars(arg_count, 4, 0),
         Function::NormInvCompat => args_signature_scalars(arg_count, 3, 0),
         Function::NormSInvCompat => args_signature_scalars(arg_count, 1, 0),
-        Function::PercentileCompat => {
-            if arg_count == 2 {
-                vec![Signature::Vector, Signature::Scalar]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
-        Function::PercentrankCompat => {
-            if arg_count == 2 {
-                vec![Signature::Vector, Signature::Scalar]
-            } else if arg_count == 3 {
-                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::PoissonCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::QuartileCompat => {
-            if arg_count == 2 {
-                vec![Signature::Vector, Signature::Scalar]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::RankCompat => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
         Function::StDevPCompat => vec![Signature::Vector; arg_count],
         Function::TInvCompat => args_signature_scalars(arg_count, 2, 0),
@@ -1058,12 +1033,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
             _ => vec![Signature::Error; arg_count],
         },
         Function::ModeMult | Function::ModeSingl => vec![Signature::Vector; arg_count],
-        Function::PercentileExc | Function::PercentileInc => {
-            vec![Signature::Vector, Signature::Scalar]
-        }
-        Function::PercentrankExc | Function::PercentrankInc => {
-            vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-        }
         Function::Permut | Function::Permutationa => vec![Signature::Scalar; 2],
         Function::Prob => match arg_count {
             3 => vec![Signature::Vector, Signature::Vector, Signature::Scalar],
@@ -1075,14 +1044,9 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
             ],
             _ => vec![Signature::Error; arg_count],
         },
-        Function::QuartileExc | Function::QuartileInc => {
-            vec![Signature::Vector, Signature::Scalar]
-        }
-        Function::Trimmean => vec![Signature::Vector, Signature::Scalar],
         Function::Gauss => args_signature_scalars(arg_count, 1, 0),
         Function::Harmean => vec![Signature::Vector; arg_count],
         Function::Kurt => vec![Signature::Vector; arg_count],
-        Function::Large => vec![Signature::Vector, Signature::Scalar],
         Function::MaxA => vec![Signature::Vector; arg_count],
         Function::Median => vec![Signature::Vector; arg_count],
         Function::MinA => vec![Signature::Vector; arg_count],
@@ -1090,7 +1054,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::RankEq => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
         Function::Skew => vec![Signature::Vector; arg_count],
         Function::SkewP => vec![Signature::Vector; arg_count],
-        Function::Small => vec![Signature::Vector, Signature::Scalar],
         // In the lifting table (SPEC-0011): `lifted.rs` derives these.
         lifting_table_functions!() => return None,
     })
@@ -1167,18 +1130,17 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Na => StaticResult::Scalar,
         Function::Sheet => StaticResult::Scalar,
         Function::Type => not_implemented(args),
-        Function::Address => not_implemented(args),
         Function::Areas => aggregate::areas_static_result(args),
         Function::Choosecols => StaticResult::Unknown,
         Function::Chooserows => StaticResult::Unknown,
         Function::Expand => StaticResult::Unknown,
         Function::Hlookup => aggregate::lookup_static_result(args), // T-0270, T-1269
         Function::Hstack => StaticResult::Unknown,
-        Function::Hyperlink => StaticResult::Scalar,
         // INDEX has two forms, but they are indistinguishable at parse time.
         Function::Index => StaticResult::Unknown,
         Function::Indirect => reference_result::static_analysis_indirect(args),
-        Function::Lookup => not_implemented(args),
+        // Spills by lookup_value; the vectors are consumed (T-1241).
+        Function::Lookup => broadcast_static_result(args.first()),
         Function::Match => not_implemented(args),
         Function::Offset => reference_result::static_analysis_offset(args),
         Function::Row => row_column::static_analysis_row_column(args, true),
@@ -1188,7 +1150,8 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,
         Function::Xlookup => StaticResult::Unknown,
-        Function::Xmatch => not_implemented(args),
+        // Spills by lookup_value and match_mode, broadcast; lookup_array is consumed (T-1241).
+        Function::Xmatch => broadcast_static_result(args.iter().step_by(2).take(2)),
         Function::Trimrange => StaticResult::Unknown,
         Function::Sort | Function::Sortby | Function::Unique => StaticResult::Unknown,
         Function::Filter | Function::Take | Function::Drop => StaticResult::Unknown,
@@ -1400,7 +1363,8 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Aggregate => aggregate::aggregate_static_result(args),
         Function::Rand => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),
-        Function::Formulatext => not_implemented(args),
+        // One result per cell of a multi-cell reference (T-1241).
+        Function::Formulatext => broadcast_static_result(args),
         Function::Geomean => not_implemented(args),
         Function::Networkdays => not_implemented(args),
         Function::NetworkdaysIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
@@ -1546,10 +1510,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::NormDistCompat => StaticResult::Scalar,
         Function::NormInvCompat => StaticResult::Scalar,
         Function::NormSInvCompat => StaticResult::Scalar,
-        Function::PercentileCompat => StaticResult::Scalar,
-        Function::PercentrankCompat => StaticResult::Scalar,
         Function::PoissonCompat => StaticResult::Scalar,
-        Function::QuartileCompat => StaticResult::Scalar,
         Function::RankCompat => reference_parameter::rank_static_result(args),
         Function::StDevPCompat => StaticResult::Scalar,
         Function::TInvCompat => StaticResult::Scalar,
@@ -1581,20 +1542,12 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Trend => StaticResult::Unknown,
         // Scalar-returning functions
         Function::ModeSingl => StaticResult::Scalar,
-        Function::PercentileExc => StaticResult::Scalar,
-        Function::PercentileInc => StaticResult::Scalar,
-        Function::PercentrankExc => StaticResult::Scalar,
-        Function::PercentrankInc => StaticResult::Scalar,
         Function::Permut => StaticResult::Scalar,
         Function::Permutationa => StaticResult::Scalar,
         Function::Prob => StaticResult::Scalar,
-        Function::QuartileExc => StaticResult::Scalar,
-        Function::QuartileInc => StaticResult::Scalar,
-        Function::Trimmean => StaticResult::Scalar,
         Function::Gauss => StaticResult::Scalar,
         Function::Harmean => StaticResult::Scalar,
         Function::Kurt => StaticResult::Scalar,
-        Function::Large => StaticResult::Scalar,
         Function::MaxA => StaticResult::Scalar,
         Function::Median => StaticResult::Scalar,
         Function::MinA => StaticResult::Scalar,
@@ -1602,7 +1555,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::RankEq => reference_parameter::rank_static_result(args),
         Function::Skew => StaticResult::Scalar,
         Function::SkewP => StaticResult::Scalar,
-        Function::Small => StaticResult::Scalar,
         // In the lifting table (SPEC-0011): `lifted.rs` derives these.
         lifting_table_functions!() => return None,
     })

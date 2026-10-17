@@ -19,11 +19,10 @@ pub(crate) enum ArgKind {
     LiftArraysRangeWhole,
     /// Read once as written (`evaluate_node_with_reference`) and handed to every element whole
     /// (LARGE's array, holidays, LOOKUP's vectors).
-    #[allow(dead_code)] // TODO(T-1772): LARGE's array is the first `Whole` entry.
+    #[allow(dead_code)] // TODO(T-1236): WORKDAY's holidays are the first `Whole` entry.
     Whole,
     /// Read by the caller before the driver runs (an aggregate walk, a prepared search vector),
     /// and captured by the kernel. The driver does not evaluate it, and its slot is `EmptyArg`.
-    #[allow(dead_code)] // TODO(T-1772): the first caller-read argument.
     WholeByCaller,
 }
 
@@ -91,7 +90,7 @@ impl ArgKinds {
     }
 }
 
-use ArgKind::{Lift, LiftArrays};
+use ArgKind::{Lift, LiftArrays, WholeByCaller};
 use KernelWork::Constant;
 
 /// Two Analysis `ToolPak` arguments, both required: `EDATE(start_date, months)` and
@@ -104,11 +103,21 @@ const ATP_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[LiftArrays, LiftArrays], Const
 /// `YEARFRAC(start_date, end_date, [basis])`.
 const ATP_2_OF_3: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays, LiftArrays], Constant);
 
+/// A data argument its function reads itself, then one lifted worksheet argument:
+/// `LARGE(array, k)`, `PERCENTILE(array, k)`, `QUARTILE(array, quart)`, `TRIMMEAN(array, percent)`.
+const DATA_THEN_1: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift], Constant);
+/// The same with an optional second lifted argument: `PERCENTRANK(array, x, [significance])`.
+const DATA_THEN_1_OF_2: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift, Lift], Constant);
+
 /// One required argument that lifts over an array and a range: the IS* type tests, ERROR.TYPE
 /// and ENCODEURL.
 const LIFT_1: ArgKinds = ArgKinds::fixed(1, &[Lift], Constant);
 /// ISEVEN and ISODD: one argument, lifted over arrays only.
 const ARRAYS_1: ArgKinds = ArgKinds::fixed(1, &[LiftArrays], Constant);
+/// `ADDRESS(row_num, column_num, [abs_num], [a1], [sheet_text])`: every argument lifts.
+const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Constant);
+/// `HYPERLINK(link_location, [friendly_name])`: both arguments lift.
+const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
 
 /// The functions of [`Function::arg_kinds`], as a pattern: the arm of an exhaustive `match` on a
 /// `Function` that has no hand-written arm because the table derives it (static analysis).
@@ -132,6 +141,20 @@ macro_rules! lifting_table_functions {
             | Function::Encodeurl
             | Function::Iseven
             | Function::Isodd
+            | Function::Large
+            | Function::Small
+            | Function::PercentileCompat
+            | Function::PercentileInc
+            | Function::PercentileExc
+            | Function::PercentrankCompat
+            | Function::PercentrankInc
+            | Function::PercentrankExc
+            | Function::QuartileCompat
+            | Function::QuartileInc
+            | Function::QuartileExc
+            | Function::Trimmean
+            | Function::Address
+            | Function::Hyperlink
     };
 }
 pub(crate) use lifting_table_functions;
@@ -170,6 +193,33 @@ impl Function {
             // (probes/is-functions-array-lift J2, K2, L3, M30, M32; information.md "ISEVEN/ISODD
             // over a range").
             Function::Iseven | Function::Isodd => Some(&ARRAYS_1),
+            // The scalar arguments of these worksheet functions lift over an array and over a
+            // multi-cell range, also PERCENTRANK's significance; each element is the scalar call
+            // (probes/stat-argument-modes H345-H463, H549-H550; probes/stat-whole-lift W1-W48;
+            // statistics.md "Statistical function argument modes"). The data argument is read by
+            // the function's own reader (`statistical/sorted_data.rs`) and sorted once per call.
+            // A kernel looks up its sorted numbers in O(1) or by binary search (PERCENTRANK); the
+            // call pays for the numbers through its `LiftCost`.
+            Function::Large
+            | Function::Small
+            | Function::PercentileCompat
+            | Function::PercentileInc
+            | Function::PercentileExc
+            | Function::QuartileCompat
+            | Function::QuartileInc
+            | Function::QuartileExc
+            | Function::Trimmean => Some(&DATA_THEN_1),
+            Function::PercentrankCompat | Function::PercentrankInc | Function::PercentrankExc => {
+                Some(&DATA_THEN_1_OF_2)
+            }
+            // ADDRESS's row_num, column_num and abs_num, and HYPERLINK's link_location and
+            // friendly_name, lift over a range and an array (probes/lookup-argument-modes F1:G4,
+            // F11:G13; docs/excel-semantics/lookup.md "Lookup and reference function argument
+            // modes"); so do ADDRESS's a1 (gen-m7/f68fafa0ca2eba26 A7) and HYPERLINK's
+            // friendly_name over an array (gen-m7/2bb922eef72e785e A22). ADDRESS's sheet_text is
+            // unprobed and follows SPEC-0011's rule for scalar parameters.
+            Function::Address => Some(&ADDRESS),
+            Function::Hyperlink => Some(&LIFT_1_OF_2),
             _ => None,
         }
     }

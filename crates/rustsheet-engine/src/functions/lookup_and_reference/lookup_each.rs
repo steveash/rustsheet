@@ -56,9 +56,7 @@ impl Model {
         // Each element scans the evaluated cells of the first column (or row) once, however the
         // table was given: a computed array table counts too, not just a range. The estimate is
         // charged once per lifted criterion, as T-1784's driver charged it.
-        let scan = u64::try_from(search.search_vector.search_cost())
-            .unwrap_or(u64::MAX)
-            .max(1);
+        let scan = search.search_vector.scan_cells();
         let criteria_count = u64::try_from(criteria.len()).unwrap_or(u64::MAX);
         self.lift_values(
             criteria,

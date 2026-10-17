@@ -449,11 +449,7 @@ impl Model {
         };
         // Each element searches the evaluated cells of the lookup vector once, whatever the
         // three criteria are; the table is never walked again.
-        let cost = table.as_ref().map_or(1, |table| {
-            u64::try_from(table.values.search_cost())
-                .unwrap_or(u64::MAX)
-                .max(1)
-        });
+        let cost = table.as_ref().map_or(1, |table| table.values.scan_cells());
         self.lift_values(
             criteria,
             LiftCost::Cells(cost),

@@ -28,6 +28,7 @@ mod poisson;
 mod prob;
 mod quartile;
 mod rank_eq_avg;
+mod sorted_data;
 pub(super) mod special;
 mod standard_dev;
 mod standardize;

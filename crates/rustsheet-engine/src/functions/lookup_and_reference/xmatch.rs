@@ -10,6 +10,7 @@ use crate::{
 };
 
 use super::lookup_table::SearchVector;
+use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::functions::{
     binary_search::binary_search, criteria::wildcard_text_matcher, util::compare_values,
 };
@@ -119,23 +120,21 @@ pub(crate) fn linear_scan<'a>(
 }
 
 /// Searches `array` for `lookup_value` and returns the 0-based index of the match,
-/// or `None` if not found. Only the candidates `SearchVector` names are tested:
+/// or `None` if not found. `regex` is the regex mode's pattern, compiled once by the caller
+/// (`None` for a lookup value that is not text, which matches nothing). Only the candidates `SearchVector` names are tested:
 /// they cover the virtual empty tail with a single cell.
 fn linear_search(
     lookup_value: &CalcResult,
     array: &SearchVector,
     search_mode: &SearchMode,
     match_mode: MatchMode,
+    regex: Option<&Regex>,
 ) -> Option<usize> {
     let candidates = array.linear_candidates(*search_mode == SearchMode::FirstToLast);
 
     match match_mode {
         MatchMode::Regex => {
-            let pattern = match lookup_value {
-                CalcResult::String(s) => &**s,
-                _ => return None,
-            };
-            let re = Regex::new(pattern).ok()?;
+            let re = regex?;
             candidates.into_iter().find(|&idx| {
                 let text = match array.get(idx) {
                     CalcResult::String(s) => (**s).to_owned(),
@@ -167,123 +166,115 @@ impl Model {
     ///   * -1 – last to first
     ///   *  2 – binary search ascending
     ///   * -2 – binary search descending
+    ///
+    /// `lookup_value` and `match_mode` lift over a multi-cell range and an array, one search per
+    /// element (`ROWS(XMATCH(A1:A3,A1:A3))` is 3, `ROWS(XMATCH(2,A1:A3,{0;1}))` is 2;
+    /// probes/lookup-argument-modes F26:G29; docs/excel-semantics/lookup.md "Lookup and reference
+    /// function argument modes"). `lookup_array` and `search_mode` are read once for every element.
     pub(crate) fn fn_xmatch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 4 {
             return CalcResult::new_args_number_error(cell);
         }
 
         let lookup_value = self.lookup_value_arg(&args[0], cell);
-        if lookup_value.is_error() {
+        let match_mode = match args.get(2) {
+            Some(node) => self.lookup_value_arg(node, cell),
+            None => CalcResult::Number(0.0),
+        };
+        // An error lookup_value that nothing lifts is the result: lookup_array is not read.
+        if lookup_value.is_error() && !LiftedArg::is_grid(&match_mode) {
             return lookup_value;
         }
 
-        let match_mode = if args.len() >= 3 {
-            match self.get_number(&args[2], cell) {
+        let search_mode = match args.get(3) {
+            Some(node) => match self.get_number(node, cell) {
                 Ok(n) => match n.floor() as i32 {
-                    -1 => MatchMode::ExactMatchSmaller,
-                    0 => MatchMode::Exact,
-                    1 => MatchMode::ExactMatchLarger,
-                    2 => MatchMode::Wildcard,
-                    3 => MatchMode::Regex,
-                    _ => {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Invalid match_mode".to_string(),
-                        )
-                    }
+                    1 => Ok(SearchMode::FirstToLast),
+                    -1 => Ok(SearchMode::LastToFirst),
+                    2 => Ok(SearchMode::BinaryAscending),
+                    -2 => Ok(SearchMode::BinaryDescending),
+                    _ => Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Invalid search_mode".to_string(),
+                    )),
                 },
-                Err(e) => return e,
-            }
-        } else {
-            MatchMode::Exact
+                Err(e) => Err(e),
+            },
+            None => Ok(SearchMode::FirstToLast),
         };
 
-        let search_mode = if args.len() == 4 {
-            match self.get_number(&args[3], cell) {
-                Ok(n) => match n.floor() as i32 {
-                    1 => SearchMode::FirstToLast,
-                    -1 => SearchMode::LastToFirst,
-                    2 => SearchMode::BinaryAscending,
-                    -2 => SearchMode::BinaryDescending,
-                    _ => {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Invalid search_mode".to_string(),
-                        )
-                    }
-                },
-                Err(e) => return e,
-            }
-        } else {
-            SearchMode::FirstToLast
-        };
+        let array = self.xmatch_vector(&args[1], cell);
+        let scan = array.as_ref().map_or(1, SearchVector::scan_cells);
+        self.lift_values(
+            vec![lookup_value, match_mode],
+            LiftCost::Cells(scan),
+            &LiftOptions::REUSE_EQUAL_RUNS,
+            cell,
+            &mut |model, values| {
+                let [lookup_value, match_mode] = values else {
+                    return CalcResult::new_args_number_error(cell);
+                };
+                model.xmatch_of(lookup_value, match_mode, &search_mode, &array, cell)
+            },
+        )
+    }
 
-        // Materialise `lookup_array` into a one-dimensional vector of values.
-        // It may be a range reference or an in-formula array constant `{…}`;
-        // either way it must be a single row or single column.
-        // A single-cell reference is a one-cell vector (probes/text-collation-longer A104-A107).
-        let array: SearchVector = match self.evaluate_node_with_reference(&args[1], cell) {
-            CalcResult::Range { left, right } => {
-                let is_col_vec = left.column == right.column;
-                let is_row_vec = left.row == right.row;
-                if !is_col_vec && !is_row_vec {
+    /// XMATCH of one element. The errors come in argument order: `lookup_value`, `match_mode`,
+    /// `search_mode`, then `lookup_array`.
+    fn xmatch_of(
+        &self,
+        lookup_value: &CalcResult,
+        match_mode: &CalcResult,
+        search_mode: &Result<SearchMode, CalcResult>,
+        array: &Result<SearchVector, CalcResult>,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if lookup_value.is_error() {
+            return lookup_value.clone();
+        }
+        let match_mode = match self.cast_number_ref(match_mode, cell) {
+            Ok(n) => match n.floor() as i32 {
+                -1 => MatchMode::ExactMatchSmaller,
+                0 => MatchMode::Exact,
+                1 => MatchMode::ExactMatchLarger,
+                2 => MatchMode::Wildcard,
+                3 => MatchMode::Regex,
+                _ => {
                     return CalcResult::new_error(
                         Error::VALUE,
                         cell,
-                        "lookup_array must be a single row or column".to_string(),
-                    );
+                        "Invalid match_mode".to_string(),
+                    )
                 }
-
-                // Entire-column/row references evaluate only the used part;
-                // the rest is a virtual run of empty cells (T-0127).
-                self.range_search_vector(&left, &right, is_col_vec)
-            }
-            CalcResult::Array(rows) => {
-                // An array constant must be a single row or single column.
-                let n_rows = rows.len();
-                let n_cols = rows.first().map(|r| r.len()).unwrap_or(0);
-                let is_row_vec = n_rows == 1;
-                let is_col_vec = n_cols == 1;
-                if n_rows == 0 || n_cols == 0 || (!is_row_vec && !is_col_vec) {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "lookup_array must be a single row or column".to_string(),
-                    );
-                }
-                SearchVector::new(
-                    rows.iter()
-                        .flatten()
-                        .map(|node| super::array_node_to_calc_result(node, cell))
-                        .collect(),
-                )
-            }
-            error @ CalcResult::Error { .. } => return error,
-            _ => {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "lookup_array must be a range or array".to_string(),
-                )
-            }
+            },
+            Err(e) => return e,
+        };
+        let search_mode = match search_mode {
+            Ok(search_mode) => search_mode,
+            Err(error) => return error.clone(),
+        };
+        let array = match array {
+            Ok(array) => array,
+            Err(error) => return error.clone(),
         };
 
-        match search_mode {
+        match *search_mode {
             SearchMode::FirstToLast | SearchMode::LastToFirst => {
-                if match_mode == MatchMode::Regex {
-                    if let CalcResult::String(ref pat) = lookup_value {
-                        if Regex::new(pat).is_err() {
+                let regex = match (match_mode, lookup_value) {
+                    (MatchMode::Regex, CalcResult::String(pat)) => match Regex::new(pat) {
+                        Ok(regex) => Some(regex),
+                        Err(_) => {
                             return CalcResult::new_error(
                                 Error::VALUE,
                                 cell,
                                 "Invalid regular expression".to_string(),
-                            );
+                            )
                         }
-                    }
-                }
-                match linear_search(&lookup_value, &array, &search_mode, match_mode) {
+                    },
+                    _ => None,
+                };
+                match linear_search(lookup_value, array, search_mode, match_mode, regex.as_ref()) {
                     Some(idx) => CalcResult::Number(idx as f64 + 1.0),
                     None => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
                 }
@@ -297,9 +288,9 @@ impl Model {
                     );
                 }
                 match binary_search(
-                    &lookup_value,
-                    &array,
-                    search_mode == SearchMode::BinaryDescending,
+                    lookup_value,
+                    array,
+                    *search_mode == SearchMode::BinaryDescending,
                     match_mode.ordering(),
                 ) {
                     None => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
@@ -307,5 +298,62 @@ impl Model {
                 }
             }
         }
+    }
+
+    /// XMATCH's `lookup_array` as a one-dimensional vector of values.
+    fn xmatch_vector(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<SearchVector, CalcResult> {
+        // Materialise `lookup_array` into a one-dimensional vector of values.
+        // It may be a range reference or an in-formula array constant `{…}`;
+        // either way it must be a single row or single column.
+        // A single-cell reference is a one-cell vector (probes/text-collation-longer A104-A107).
+        Ok(match self.evaluate_node_with_reference(node, cell) {
+            CalcResult::Range { left, right } => {
+                let is_col_vec = left.column == right.column;
+                let is_row_vec = left.row == right.row;
+                if !is_col_vec && !is_row_vec {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "lookup_array must be a single row or column".to_string(),
+                    ));
+                }
+
+                // Entire-column/row references evaluate only the used part;
+                // the rest is a virtual run of empty cells (T-0127).
+                self.range_search_vector(&left, &right, is_col_vec)
+            }
+            CalcResult::Array(rows) => {
+                // An array constant must be a single row or single column.
+                let n_rows = rows.len();
+                let n_cols = rows.first().map(|r| r.len()).unwrap_or(0);
+                let is_row_vec = n_rows == 1;
+                let is_col_vec = n_cols == 1;
+                if n_rows == 0 || n_cols == 0 || (!is_row_vec && !is_col_vec) {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "lookup_array must be a single row or column".to_string(),
+                    ));
+                }
+                SearchVector::new(
+                    rows.iter()
+                        .flatten()
+                        .map(|node| super::array_node_to_calc_result(node, cell))
+                        .collect(),
+                )
+            }
+            error @ CalcResult::Error { .. } => return Err(error),
+            _ => {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "lookup_array must be a range or array".to_string(),
+                ))
+            }
+        })
     }
 }
