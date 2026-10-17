@@ -48,39 +48,45 @@ this way (T-1524, T-1525, T-1533; implemented by T-0901 and T-0916). It has no f
 
 ## Outcome
 Done 2026-10-17.
-- **Fit.** `uv run rustsheet-fitlab beta-inv` (`fitlab/kernels/beta_inv.py`), over 212 cells from
-  m9-beta-inv and m9-legacy-betainv.
-- **Probe.** probes-numeric/t1745-beta-inv-roundtrip (excel-graph). For each of the 188 numeric
-  sweep points it holds Excel's x and its two neighbouring doubles as constants, BETA.DIST of each,
-  and BETA.INV again.
-- **Finding.** Excel's x is a crossing of its own CDF at 155 of 188 points: BETA.DIST(x) = p at 79,
+- **Fits.** `uv run rustsheet-fitlab beta-inv` (also `f-inv`, `f-inv-rt`, `t-inv`, `t-inv-2t`), in
+  `fitlab/kernels/beta_inv.py`: bisection to adjacent doubles on each T-1744 forward candidate,
+  through T-1744's F and t mappings.
+- **Probe.** probes-numeric/t1745-beta-inv-roundtrip (excel-graph). It has 188 rows: 187 distinct
+  in-domain BETA.INV points plus one duplicate, leaving out the 5 where Excel returns x = 1. Each
+  row holds Excel's x and its two neighbouring doubles as constants, BETA.DIST of each, and
+  BETA.INV again.
+- **Finding.** Excel's x is a crossing of its own CDF at 155 of 188 rows: BETA.DIST(x) = p at 79,
   and p lies between x and a neighbour at 76, on either side (36 at or above, 40 below). Of the
-  other 33, 22 are flat-CDF tiny-x points, and at 11 x stops a few CDF ulps short of the crossing
-  (BETA.INV(0.5,10,10) = 0.5, BETA.DIST(0.5,10,10,TRUE) = 0.5000000000000002), which suggests a
-  tolerance stop. So the quantile follows the forward kernel (T-1744). Excel's
-  start, step and stop rule cannot be fitted until that forward kernel matches.
-- **Iterate hits.** Not scored, because no forward candidate is Excel's CDF.
+  other 33, 22 are flat-CDF tiny-x points. At 11, x misses the crossing by 1 to 188 ulps of p on
+  both sides (7 above, 4 below; rows 91 and 98 are 32 and 188 off), which suggests a tolerance
+  stop but does not establish it.
+- **Consequence.** The quantile follows the forward kernel (T-1744). Excel's start, step and stop
+  cannot be fitted until that kernel matches.
+- **Not tried.** Newton, Halley, AS 109 and AS 64 starts, and Cephes `incbi` were not tried: with
+  a forward CDF that is not Excel's, their iterates cannot be told apart from bisection's at the
+  crossing. Iterate hits are not scored for the same reason. They are the next step once T-0970
+  matches BETA.DIST.
+- **Mid end.** For adjacent doubles the bisection's "mid" end is the even-significand end
+  (ties to even), not a solver rule.
 
-Exact / ≤4 ulp / ≤1e-9 (202 cells with numeric arguments; the engine also scores the others):
+Exact / ≤4 ulp / ≤1e-9 per fit (candidates over the cells with numeric arguments; the engine also
+scores the others):
 
-| candidate (bisection to adjacent doubles, returned end) | beta-inv |
-|---|---|
-| midpoint, correctly rounded I_x | 87 / 173 / 202 |
-| upper end, correctly rounded I_x | 75 / 171 / 202 |
-| midpoint, Cephes incbet as published | 73 / 159 / 202 |
-| midpoint, T-1744 best combination | 65 / 151 / 198 |
-| upper end, Cephes | 64 / 163 / 202 |
-| upper end, best combination | 56 / 148 / 198 |
-| lower end, correctly rounded I_x | 54 / 173 / 202 |
-| lower end, best combination | 44 / 149 / 198 |
-| lower end, Cephes | 43 / 157 / 202 |
-| midpoint, NR betai | 39 / 112 / 202 |
-| upper end, NR betai | 36 / 115 / 202 |
-| engine (statrs `inverse_cdf`) | 34 / 81 / 207 |
-| lower end, NR betai | 22 / 115 / 202 |
+| candidate (bisection end, forward I_x) | beta-inv (212) | f-inv (54) | f-inv-rt (121) | t-inv (130) | t-inv-2t (162) |
+|---|---|---|---|---|---|
+| mid, correctly rounded | 87 / 173 / 202 | 2 / 31 / 46 | 8 / 65 / 103 | 29 / 64 / 120 | 25 / 65 / 126 |
+| hi, correctly rounded | 75 / 171 / 202 | 3 / 31 / 46 | 10 / 62 / 103 | 29 / 66 / 120 | 24 / 65 / 126 |
+| lo, correctly rounded | 54 / 173 / 202 | 8 / 31 / 46 | 2 / 64 / 103 | 23 / 65 / 120 | 15 / 65 / 126 |
+| mid, Cephes as published | 73 / 159 / 202 | 2 / 27 / 46 | 7 / 67 / 103 | 22 / 62 / 118 | 24 / 65 / 125 |
+| hi, Cephes | 64 / 163 / 202 | 3 / 28 / 46 | 11 / 66 / 103 | 24 / 62 / 118 | 17 / 65 / 125 |
+| lo, Cephes | 43 / 157 / 202 | 2 / 27 / 46 | 6 / 64 / 103 | 20 / 61 / 118 | 18 / 65 / 125 |
+| mid, T-1744 best combination | 65 / 151 / 198 | 2 / 25 / 45 | 5 / 60 / 102 | 22 / 56 / 119 | 18 / 60 / 125 |
+| hi, best combination | 56 / 148 / 198 | 3 / 26 / 45 | 4 / 60 / 102 | 18 / 57 / 119 | 16 / 62 / 125 |
+| lo, best combination | 44 / 149 / 198 | 0 / 25 / 45 | 4 / 57 / 102 | 20 / 55 / 119 | 11 / 60 / 125 |
+| mid, NR betai | 39 / 112 / 202 | 0 / 11 / 46 | 1 / 31 / 103 | 16 / 44 / 118 | 8 / 42 / 124 |
+| hi, NR betai | 36 / 115 / 202 | 0 / 12 / 46 | 3 / 35 / 103 | 13 / 43 / 118 | 9 / 43 / 124 |
+| lo, NR betai | 22 / 115 / 202 | 4 / 11 / 46 | 2 / 31 / 103 | 16 / 46 / 118 | 5 / 42 / 124 |
+| engine (statrs) | 34 / 81 / 207 | 2 / 13 / 52 | 9 / 19 / 103 | 17 / 41 / 130 | 9 / 23 / 137 |
 
-**Status.** The bit-exact count rose from 34 to 87, so the task is done, not blocked (decision
-0056).
-
-**Scope.** F.INV, F.INV.RT, T.INV and T.INV.2T are not scored here. They invert the F and t
-mappings of the forward kernel, and their own fits wait until T-0974 has the beta inverse.
+**Status.** The best bit-exact count beats the engine on every fit (87 vs 34, 8 vs 2, 11 vs 9,
+29 vs 17, 25 vs 9), so the task is done, not blocked (decision 0056).
