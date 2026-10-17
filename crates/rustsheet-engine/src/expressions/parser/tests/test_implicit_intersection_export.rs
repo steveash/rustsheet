@@ -514,3 +514,68 @@ fn lift_arrays_static_shapes_come_from_arrays_only() {
         StaticResult::Scalar
     ));
 }
+
+// SPEC-0011 for the financial functions (T-1372): a core worksheet function's argument is `Lift`,
+// so a legacy range gets the `@` and exports without it (`=PMT(@C1:C60,10,100)`,
+// probes/scalar-lift-shapes-c G, R; -shapes J1, J4); an Analysis ToolPak argument is
+// `LiftArrays`, so a bare range keeps its text and an operation on it gets the `@`.
+#[test]
+fn financial_legacy_at_follows_the_lifting_table() {
+    check(&[
+        (
+            "PMT(C1:C60,10,100)",
+            "PMT(@C1:C60,10,100)",
+            "PMT(C1:C60,10,100)",
+        ),
+        (
+            "RATE(36,-300,8000,0,0,D1:D60)",
+            "RATE(36,-300,8000,0,0,@D1:D60)",
+            "RATE(36,-300,8000,0,0,D1:D60)",
+        ),
+        ("EFFECT(C1:C60,4)", "EFFECT(C1:C60,4)", "EFFECT(C1:C60,4)"),
+        (
+            "ACCRINTM(A1:A60,46000,0.1,1000,B1:B60)",
+            "ACCRINTM(A1:A60,46000,0.1,1000,B1:B60)",
+            "ACCRINTM(A1:A60,46000,0.1,1000,B1:B60)",
+        ),
+        (
+            "TBILLPRICE(A1:A60+0,46000,0.05)",
+            "TBILLPRICE(@A1:A60+0,46000,0.05)",
+            "TBILLPRICE(A1:A60+0,46000,0.05)",
+        ),
+        (
+            "SUMPRODUCT(PMT(C1:C60,10,100))",
+            "SUMPRODUCT(PMT(C1:C60,10,100))",
+            "SUMPRODUCT(PMT(C1:C60,10,100))",
+        ),
+    ]);
+}
+
+// The static shapes: a `Lift` range adds its shape, a `LiftArrays` range none.
+#[test]
+fn financial_static_shapes_come_from_the_lifting_table() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let mut shape =
+        |formula: &str| run_static_analysis_on_node(&parser.parse(formula, &cell_reference));
+    assert!(matches!(
+        shape("PMT(C1:C3,10,100)"),
+        StaticResult::Array(3, 1)
+    ));
+    assert!(matches!(
+        shape("PMT({0.1,0.2},C1:C3,100)"),
+        StaticResult::Array(3, 2)
+    ));
+    assert!(matches!(shape("PMT(0.1,10,100)"), StaticResult::Scalar));
+    assert!(matches!(shape("EFFECT(C1:C3,4)"), StaticResult::Scalar));
+    assert!(matches!(
+        shape("PRICEDISC(39448,43831,{0.05;0.06},C1:C3)"),
+        StaticResult::Array(2, 1)
+    ));
+}

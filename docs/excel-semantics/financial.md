@@ -377,6 +377,15 @@ ACCRINT's `frequency` and `basis`, and DOLLARDE's and DOLLARFR's `fraction` over
 range follows the function's own check order (ACCRINTM: `NA()` before the range is `#N/A`, after it `#VALUE!`; probes/scalar-lift-open-d W8-W15). Next to an array, the range
 makes every probed element `#VALUE!` (`EFFECT({0.1;0.2},M1:M60)`). See arrays.md "Scalar arguments lift: shapes,
 element errors, and the Analysis ToolPak range rule".
+Every later argument of NOMINAL, ACCRINTM, DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT, TBILLEQ,
+TBILLPRICE and TBILLYIELD is refused too, over a two-cell range on the formula's own rows, where the intersected
+call (`@G3:G4`) is the base value (probes/fin-later-argument-ranges H1-I82, T-1372). The last argument of every core
+function lifts over such a range (`ROWS(RATE(36,-300,8000,0,0,L7:L8))` is 2; K1-K25 for PV, FV, NPER, RATE, IPMT,
+PPMT, ISPMT, RRI, PDURATION, SLN, SYD, DDB and PMT). ACCRINTM's basis lifts element by element like a scalar basis:
+`{0;1;2;3;4}` gives 100, 100, 101.38888888888889, 100, 100; 5 and -1 are `#NUM!`, `TRUE` is `#VALUE!`, `"1"` is
+100, 1.9 truncates to 1 and `"x"` is `#VALUE!`; beside `{39083;39100}` in the issue it broadcasts to a 2x2 result
+(J1-J15). ACCRINTM reads every argument before it checks a value: `ACCRINTM(39083,39448,-0.1,1000,NA())` is `#N/A`,
+not the rate's `#NUM!`, and the same per element (J17, J20).
 NPV's values work like an aggregate. A range skips text, booleans and blanks: `NPV(0.1,L1:L8)` over
 -10000, "2750", TRUE, 4250, "x", blank, 3250, 2750 is -1258.4522915101434, the NPV of -10000, 4250, 3250, 2750.
 Typed arguments are coerced: `NPV(0.1,-10000,"2750",TRUE,4250)` = -3914.6233180793665, the NPV of
@@ -390,16 +399,21 @@ With text and a boolean in the values, XNPV is `#NUM!` and XIRR is `#VALUE!`: `X
 or text in an array literal (`{0.09,"0.11"}`). A plain number is a one-rate schedule: `FVSCHEDULE(1000,0.09)` = 1090.
 These set the generator modes in eval/catalog/functions.yaml. Scalars are `value`, NPV's values are `aggregate`,
 and IRR's and MIRR's values, XNPV's and XIRR's values and dates, and FVSCHEDULE's schedule are `array`.
-Evidence: probes/fin-argument-modes (386 cells, excel-graph, 2026-10-11, T-1084). The cash flow is K1:K5 and its
+Evidence: probes/fin-argument-modes (386 cells, excel-graph, 2026-10-11, T-1084), probes/fin-later-argument-ranges
+(115 cells, excel-graph, 2026-10-17, T-1372). The cash flow is K1:K5 and its
 dates are M1:M5. L1:L8 is the same flow with typed text, a boolean, text and a blank mixed in, and N1:N5 is a
 schedule containing text.
-Ours: no scalar argument lifts (`#N/IMPL!` for an array literal, `#VALUE!` for a range; T-1372). NPV of an array
+Ours: since T-1372 the core functions but DB, VDB, NPV, IRR and MIRR are `Lift` and EFFECT, NOMINAL, DOLLARDE,
+DOLLARFR, ACCRINTM, DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT and the T-bills `LiftArrays`
+(SPEC-0011). The rest do not lift yet (`#N/IMPL!` for an array literal; DB and VDB `#VALUE!` for a range): DB and VDB
+need their period loops bounded first (T-1816), NPV's rate, IRR's guess and MIRR's rates sit beside a whole cash flow
+(T-1817), and the other ATP functions wait for their later arguments to be probed (T-1818). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE ignores text in the schedule (T-1373).
 The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
 ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD and YIELD are off at 1e-10 to 1e-12 relative (T-1374; TBILLEQ and TBILLYIELD are exact since T-1475). The
 annuity, NPV and solver misses are T-0901's and T-0916's.
 Status: VERIFIED (excel-graph)
-Tasks: T-1084, T-1372, T-1373, T-1374
+Tasks: T-1084, T-1372, T-1373, T-1374, T-1816, T-1817, T-1818
 
 ## Discount-security functions: settlement 0, basis and argument modes
 Rule: INTRATE, PRICEDISC and YIELDDISC accept settlement serial 0 and compute with it (`INTRATE(0,43466,1000,1100)` =

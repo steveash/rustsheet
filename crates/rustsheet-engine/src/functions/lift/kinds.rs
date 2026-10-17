@@ -35,8 +35,6 @@ pub(crate) enum KernelWork {
     /// A loop whose length depends on argument values. One call is charged `weight` units
     /// against the visit cap, and the kernel also keeps its own per-call cap, as T-1197 bounds
     /// MULTINOMIAL's loop.
-    #[allow(dead_code)]
-    // TODO(T-1290): BINOM.DIST, POISSON and the other loops enter weighted.
     Weighted(u32),
 }
 
@@ -91,10 +89,10 @@ impl ArgKinds {
 }
 
 use ArgKind::{Lift, LiftArrays, WholeByCaller};
-use KernelWork::Constant;
+use KernelWork::{Constant, Weighted};
 
-/// Two Analysis `ToolPak` arguments, both required: `EDATE(start_date, months)` and
-/// `EOMONTH(start_date, months)`.
+/// Two Analysis `ToolPak` arguments, both required: `EDATE(start_date, months)`,
+/// `EOMONTH(start_date, months)`, EFFECT, NOMINAL, DOLLARDE and DOLLARFR.
 const ATP_2: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays], Constant);
 /// One required Analysis `ToolPak` argument and one optional:
 /// `WEEKNUM(serial_number, [return_type])`.
@@ -118,6 +116,43 @@ const ARRAYS_1: ArgKinds = ArgKinds::fixed(1, &[LiftArrays], Constant);
 const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Constant);
 /// `HYPERLINK(link_location, [friendly_name])`: both arguments lift.
 const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
+
+/// Three or four worksheet arguments that lift over arrays and ranges: RRI, PDURATION, SLN;
+/// ISPMT and SYD.
+const LIFT_3: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Constant);
+const LIFT_4: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift], Constant);
+/// `PMT(rate, nper, pv, [fv], [type])` and PV, FV, NPER alike.
+const LIFT_3_OF_5: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift, Lift], Constant);
+/// `IPMT(rate, per, nper, pv, [fv], [type])` and PPMT.
+const LIFT_4_OF_6: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift, Lift, Lift], Constant);
+/// `DDB(cost, salvage, life, period, [factor])`.
+const LIFT_4_OF_5: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift, Lift], Constant);
+/// `RATE(nper, pmt, pv, [fv], [type], [guess])`: Newton's method with a fixed cap of 50 steps
+/// (`financial_util::compute_rate`), each element charged that weight (SPEC-0011 security rule).
+const RATE: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift, Lift, Lift], Weighted(50));
+/// Three required Analysis `ToolPak` arguments: the T-bills; and up to two optional ones:
+/// `ACCRINTM(issue, settlement, rate, [par], [basis])`.
+const ATP_3: ArgKinds = ArgKinds::fixed(3, &[LiftArrays, LiftArrays, LiftArrays], Constant);
+const ATP_3_OF_5: ArgKinds = ArgKinds::fixed(
+    3,
+    &[LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays],
+    Constant,
+);
+/// `DISC(settlement, maturity, pr, redemption, [basis])` and INTRATE, PRICEDISC, RECEIVED,
+/// YIELDDISC alike.
+const ATP_4_OF_5: ArgKinds = ArgKinds::fixed(
+    4,
+    &[LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays],
+    Constant,
+);
+/// `PRICEMAT(settlement, maturity, issue, rate, yld, [basis])` and YIELDMAT.
+const ATP_5_OF_6: ArgKinds = ArgKinds::fixed(
+    5,
+    &[
+        LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
+    ],
+    Constant,
+);
 
 /// The functions of [`Function::arg_kinds`], as a pattern: the arm of an exhaustive `match` on a
 /// `Function` that has no hand-written arm because the table derives it (static analysis).
@@ -155,6 +190,34 @@ macro_rules! lifting_table_functions {
             | Function::Trimmean
             | Function::Address
             | Function::Hyperlink
+            | Function::Pmt
+            | Function::Pv
+            | Function::Fv
+            | Function::Nper
+            | Function::Rate
+            | Function::Ipmt
+            | Function::Ppmt
+            | Function::Ispmt
+            | Function::Rri
+            | Function::Pduration
+            | Function::Sln
+            | Function::Syd
+            | Function::Ddb
+            | Function::Effect
+            | Function::Nominal
+            | Function::Dollarde
+            | Function::Dollarfr
+            | Function::Accrintm
+            | Function::Disc
+            | Function::Intrate
+            | Function::Pricedisc
+            | Function::Received
+            | Function::Yielddisc
+            | Function::Pricemat
+            | Function::Yieldmat
+            | Function::Tbilleq
+            | Function::Tbillprice
+            | Function::Tbillyield
     };
 }
 pub(crate) use lifting_table_functions;
@@ -220,6 +283,35 @@ impl Function {
             // unprobed and follows SPEC-0011's rule for scalar parameters.
             Function::Address => Some(&ADDRESS),
             Function::Hyperlink => Some(&LIFT_1_OF_2),
+            // The core worksheet financial functions lift over arrays and over a range in every
+            // argument, on the range's own rows too (`ROWS(PMT(C1:C60,10,100))` and
+            // `ROWS(PMT(0.1,D1:D60,100))` are 60): probes/fin-argument-modes (every argument over
+            // `{v;v}`, the first over a range), probes/fin-later-argument-ranges K1-K25 (the last
+            // over a range), probes/scalar-lift-shapes H13-H48 (docs/excel-semantics/financial.md
+            // "Financial function argument modes"). Their kernels run in closed form; RATE is
+            // weighted by its step cap. DB and VDB loop over the periods without a cap of their
+            // own, so they are not entered yet (TODO(T-1816)).
+            Function::Pmt | Function::Pv | Function::Fv | Function::Nper => Some(&LIFT_3_OF_5),
+            Function::Rate => Some(&RATE),
+            Function::Ipmt | Function::Ppmt => Some(&LIFT_4_OF_6),
+            Function::Ispmt | Function::Syd => Some(&LIFT_4),
+            Function::Rri | Function::Pduration | Function::Sln => Some(&LIFT_3),
+            Function::Ddb => Some(&LIFT_4_OF_5),
+            // Analysis ToolPak functions whose every argument has been probed over a range on
+            // its own rows: all are refused, while an array lifts (fin-argument-modes; EFFECT:
+            // scalar-lift-shapes H11, H12; DOLLARDE, DOLLARFR: scalar-lift-open-a Y16-Y18; the
+            // rest: fin-later-argument-ranges H1-H82).
+            Function::Effect | Function::Nominal | Function::Dollarde | Function::Dollarfr => {
+                Some(&ATP_2)
+            }
+            Function::Accrintm => Some(&ATP_3_OF_5),
+            Function::Disc
+            | Function::Intrate
+            | Function::Pricedisc
+            | Function::Received
+            | Function::Yielddisc => Some(&ATP_4_OF_5),
+            Function::Pricemat | Function::Yieldmat => Some(&ATP_5_OF_6),
+            Function::Tbilleq | Function::Tbillprice | Function::Tbillyield => Some(&ATP_3),
             _ => None,
         }
     }

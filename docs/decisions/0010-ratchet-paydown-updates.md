@@ -113,5 +113,12 @@
   arms of static analysis are gone) (`check_duplication.py --update`), and
   expressions/parser/static_analysis.rs 1641 → 1567 lines (the fallback arms of the 12 functions
   now in the lifting table; 1614 already on main after T-1774) (`check_file_size.py --update`).
+  T-1372: duplicated lines 5907 → 5450 (the financial functions' repeated `get_number` argument blocks become
+  kernels over borrowed values, sharing `discount_args`, `maturity_args`, `two_numbers` and
+  `period_payment_args`) (`check_duplication.py --update`); functions/financial/mod.rs 2194 → 673 lines, no longer
+  oversized (the annuity functions moved to `financial/annuity.rs`, the discount securities and T-bills to
+  `financial/discount.rs`, EFFECT/NOMINAL/DOLLARDE/DOLLARFR to `financial/rate_conversions.rs`, SLN/SYD/DDB to
+  `financial_depreciation.rs`), and expressions/parser/static_analysis.rs 1567 → 1510 (the 28 functions' fallback
+  arms deleted: the lifting table derives them) (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
