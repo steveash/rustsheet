@@ -612,7 +612,7 @@ impl Parser {
                 column,
                 absolute_column,
                 absolute_row,
-            } => self.reference_operand(sheet, row, column, absolute_column, absolute_row),
+            } => self.reference_or_call_operand(sheet, row, column, absolute_column, absolute_row),
             TokenType::Range { sheet, left, right } => self.range_operand(sheet, left, right),
             TokenType::Ident(name) => self.parse_identifier(name),
             TokenType::Error(kind) => Node::ErrorKind(kind),
