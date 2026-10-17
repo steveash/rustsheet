@@ -1198,10 +1198,12 @@ Rule: in a legacy formula, `T(range)` over several cells is not the implicitly i
 J1352 is text, and `T(H12:J12)` from column M (no intersection) is "", not `#VALUE!`.
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!M1352, N1352,
 O1352 (all top-left cells are non-text: 545, 1.001, blank).
-Status: VERIFIED for these cells; UNVERIFIED (probe pending, T-0985): whether T reads the top-left
-cell or is always "" for a multi-cell range, and N's behaviour. In a dynamic-array formula T does not lift
-over the range either: `T(A1:A3)` with A1 = 5, A2 = "ab", A3 = TRUE is a single "", no spill (probes/text-argument-modes
-F9, excel-graph, 2026-10-09, T-1087).
+Status: VERIFIED for these cells. In a dynamic-array formula T does not lift over the range either,
+and reads its top-left cell: `T(A1:A3)` with A1 = 5, A2 = "ab", A3 = TRUE is a single "", no spill
+(probes/text-argument-modes F9, excel-graph, 2026-10-09, T-1087), while `T(H1:H2)` with H1 = "x",
+H2 = 2 is a single "x" from a row outside the range (probes/t-array-lift S!E7, excel-graph,
+2026-10-16, T-1729). UNVERIFIED (T-0985): the legacy form with a text top-left cell, and N's behaviour.
+Not implemented: ours gives "" for S!E7 (T-0985).
 Tasks: T-0985
 
 ## FORMULATEXT keeps the parentheses of an `@` operand; ANCHORARRAY is `#`; `:` passes an error operand on
@@ -1473,6 +1475,46 @@ function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, an
 Status: VERIFIED
 Tasks: T-0293, T-1526, T-1551, T-1555, T-1556
 
+## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
+Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value
+position, and at the top level, through an implicit `@` that FORMULATEXT shows: `=IF(1,{2;3})` is
+`=@IF(1,{2;3})` (2), `=ABS(IF(1,{-2;3}))` `=ABS(@IF(1,{-2;3}))` (2), `=LEN(IF(1,{"ab";"c"}))` 2,
+`=N({2;3})` `=N(@{2;3})` (2), `=ABS({-2;3})` 2, `=ISNUMBER(IF(1,{2;3}))` TRUE, `=-IF(1,{2;3})`
+`=-@IF(1,{2;3})` (-2), `=N(TRANSPOSE({2,3}))` `=N(@TRANSPOSE({2,3}))` (2). Each dynamic twin spills
+(`=N(IF(1,{2,3}))` is `#SPILL!` there, its spill range blocked).
+Exception: N and T over `IF(...)` get no `@`, and the legacy cell is `#VALUE!` (`=N(IF(1,{2;3}))`,
+`=N(IF(1,{2,3}))`, `=T(IF(1,{"a";"b"}))`), while `=N(IF(1,2))` is 2. N and T take a reference or a
+value, and IF can return a reference: CHOOSE, INDEX and IFS behave the same, see "Legacy N and T over
+a reference-returning call" below.
+Evidence: probes/legacy-array-result (excel-graph, 2026-10-16), probes/n-array-lift D4.
+Not implemented: ours adds no `@` there, so these legacy cells spill (T-1717), and the N/T
+exception is T-1713.
+Status: VERIFIED (excel-graph)
+Tasks: T-1713, T-1717
+
+## Legacy N and T over a reference-returning call (T-1713)
+Rule: in a legacy (non-array) formula, N and T read their argument as a reference: no `@` goes on it,
+on a range in it, or on an IF, CHOOSE, INDEX, IFS or OFFSET call in it (FORMULATEXT shows none). A
+reference result is read as N/T of a reference, its top-left cell: with Z1:Z2 = 7, 8, `=N(Z1:Z2)`,
+`=N(OFFSET(Z1:Z2,0,0))` and `=N(IF(1,Z1:Z2))` are 7 off the range's rows. An array result is
+`#VALUE!`, whatever its size and also nested in a scalar position: `=N(IF(1,{2;3}))`,
+`=N(CHOOSE(1,{2;3}))`, `=N(INDEX({2;3},0,1))`, `=N(IFS(1,{2;3}))`, `=N(IF(1,{2;3},{4;5}))`,
+`=N(IF({1;0},2,3))`, `=N(IF(1,{2}))`, `=N(IF(1,{2,3;4,5}))`, `=N(IF(1,{"x";3}))`,
+`=T(CHOOSE(1,{"a";"b"}))`, `=T(IF(1,{2;3}))`, `=ABS(N(IF(1,{2;3})))`, `=N(IF(1,{2;3}))+0` and
+`=N(IF(1,{2;3}))&""` are all `#VALUE!` with no spill. In an array context the array lifts instead:
+`=SUM(N(IF(1,{2;3})))` is 5, and under an `@`-ed IF it is intersected: `=IF(1,N(IF(1,{2;3})))` is
+shown `=@IF(1,N(IF(1,{2;3})))` and is 2.
+Exceptions: IFERROR gets the `@` (`=N(IFERROR({2;3},0))` is `=N(@IFERROR({2;3},0))`, 2), and SWITCH
+gets none and the legacy cell spills: `=N(SWITCH(1,1,{2;3}))` shows no `@` and gives 2, 3 in two
+cells, as a dynamic formula would.
+Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16).
+Not implemented: the text is identical to the dynamic formula's, which spills, so the `#VALUE!`
+needs the engine to remember that a formula is legacy (spec T-1727, then T-1713); ours adds an `@`
+on the calls (N gives the top-left value, T "") and on ranges (`#VALUE!` off their rows, T-1728); the IFERROR `@`, the
+SWITCH spill and the `@IF` are T-1717's.
+Status: VERIFIED (excel-graph)
+Tasks: T-1713, T-1717, T-1727, T-1728
+
 ## `@` of a non-reference array as a function argument is its top-left value
 Rule (probes/rank-at-if-ref, excel-graph, 2026-10-15, T-1596): where an argument takes a reference (aggregates, RANK's `ref`,
 COUNTBLANK's `range`), `@` of an array that is not a reference is the array's top-left value, a plain value, never the whole array.
@@ -1549,9 +1591,9 @@ probed shapes: a legacy INDEX over a CHOOSE whose arms are all arithmetic takes 
 (`legacy_call_reads_a_value`; a dynamic `=INDEX(CHOOSE(1,B1:B6*1),0)` still spills); LOOKUP (array and vector forms) reads
 any scalar lookup_vector as a one-element array, picked by IF or CHOOSE or written directly (`LOOKUP(2,1)` is 1, `LOOKUP("b","a")` is "a", `LOOKUP(2,1,5)` is 5, `LOOKUP(2,{1})` is 1, `LOOKUP(2,IF(TRUE,1))` is 1: probes/mode-direct-error-lookup-scalar-vector B1-B5, T-1651); INDEX reads a scalar IF or CHOOSE picked as a one-element array, `INDEX(IF(TRUE,5),1)` is 5 (B6); MODE propagates the error of an argument IF or CHOOSE picked, and every other argument error too (direct, referenced or named: probes/mode-typed-arguments A30-A33, probes/mode-error-and-computed-arguments A1-A6, A11-A13, T-1291).
 `MODE(IF(TRUE,1/0),1,1)` and direct errors in MODE, MODE.SNGL and MODE.MULT (`1/0`, `NA()`, `#DIV/0!`, a cell, a name) all propagate the error (probes/mode-direct-error-lookup-scalar-vector A1-A16, T-1651).
-Inferred, unprobed (T-1645): INDEX of a scalar other than an IF or CHOOSE pick stays `#VALUE!`.
+INDEX reads any scalar first argument as a one-element array, not only an IF or CHOOSE pick (T-1645): `INDEX(XMATCH(2,{1,2,3}),1,1)` is 2, `INDEX(ROWS({1;2;3}),1,1)` 3, `INDEX(AREAS(A1:B3),1,1)` 1, `INDEX(ISOMITTED(A1),1,1)` FALSE, `INDEX(REGEXTEST(A1,1),1,1)` TRUE, `INDEX(REDUCE(0,A1:B3,LAMBDA(a,v,a+v)),1,1)` 66 (probes/lookup-argument-modes H18, H19, H24, H28, H30, H31, H39; probes/m7-argument-modes H31, H39, H46, H55; excel-graph). A literal or computed scalar too: `INDEX(5,1)` 5, `INDEX("a",1,1)` "a", `INDEX(1+1,1)` 2, `INDEX(TRUE,1,1)` TRUE, `INDEX(LET(x,7,x),1)` 7, `INDEX(5,0)` 5, and an index past it is `#REF!` (`INDEX(5,2)`, `INDEX(5,1,2)`); lifted indices read it the same way, `INDEX(XMATCH(2,{1,2,3}),{1,2})` 2, `#REF!` and `INDEX(5,{1;1})` 5, 5 (probes/index-literal-scalar, excel-graph, 2026-10-17). lookup-argument-modes H1 (`INDEX(ADDRESS(A1:A3,1),1,1)` "$A$1") is not evidence for the scalar rule: Excel's ADDRESS lifts there (`ROWS(ADDRESS(A1:A3,1))` is 3, F1), ours gives one scalar, so H1 passes for the wrong reason until ADDRESS lifts (T-1241). Ours gave `#VALUE!` ("Expecting a Range") before. probes/catalog/function-name-forms A4 (`IFERROR(INDEX(ERROR.TYPE(GROUPBY(...)),1,1),0)`, 0) is unaffected: ERROR.TYPE lifts over GROUPBY's array, so INDEX picks `#N/A`.
 LOOKUP with a boolean or empty scalar lookup_vector (T-1709; its own evidence is probes/lookup-bool-empty-scalar-vector, 10 cells, excel-graph 2026-10-16): a boolean scalar is a one-element array like the number and text ones: `LOOKUP(TRUE,TRUE)` is TRUE, `LOOKUP(TRUE,TRUE,5)` 5, `LOOKUP(TRUE,TRUE,"r")` "r", `LOOKUP(FALSE,FALSE)` FALSE, and `LOOKUP(FALSE,TRUE)` and `LOOKUP(1,TRUE)` are #N/A (reasons unprobed: probably FALSE sorting before TRUE in the approximate search, and a boolean not matching a number). An empty lookup_vector (`IF(TRUE,Z99)`, which may be the reference Z99 rather than a scalar, or `Z99` itself, Z99 empty) gives #N/A for lookup values 0, "" and 1 (`LOOKUP(0,IF(TRUE,Z99))`, `LOOKUP("",IF(TRUE,Z99),5)`, `LOOKUP(1,IF(TRUE,Z99),5)`, `LOOKUP(0,Z99)`). Ours already matched all 10 cells (`scalar_as_array` in cast.rs); no code change.
-Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at, probes/lookup-bool-empty-scalar-vector (excel-graph, 2026-10-15).
+Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at, probes/lookup-bool-empty-scalar-vector (excel-graph, 2026-10-15), probes/lookup-argument-modes, probes/m7-argument-modes, probes/index-literal-scalar (excel-graph).
 Status: VERIFIED (excel-graph)
 Tasks: T-1638, T-1643, T-1645, T-1651, T-1709
 

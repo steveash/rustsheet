@@ -497,7 +497,7 @@ Edge cases (probes/index-lifted-edge-cases, T-1376):
   index), ROWS 1; what needs a reference is `#VALUE!`: AREAS, the range operator (`ROWS(INDEX(D1:D5,{2}):D5)`,
   `SUM(INDEX(D1:D5,{1}):D3)`), OFFSET, `CELL("address",…)`, SUMIF, COUNTIF and COUNTBLANK (countblank-array-values H1).
   COUNTA counts its blank element (1; the scalar index gives 0) while ISBLANK of it is TRUE and `&"|"` gives "|";
-  `N(INDEX(D1:D5,{1}))` is 10 (the engine: `#N/IMPL!`, T-1557).
+  `N(INDEX(D1:D5,{1}))` is 10 (T-1557: already fixed by the T-1616 element-wise lift).
 The legacy, implicitly intersected form is T-0294.
 DEVIATION (decision 0014): a lifted INDEX whose broadcast indices exceed 1,048,576 elements is `#ERROR!`, the shared
 array bound (arrays.md, "Array results above 1,048,576 cells are #ERROR!").

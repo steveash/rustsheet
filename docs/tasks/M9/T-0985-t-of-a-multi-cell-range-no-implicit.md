@@ -22,7 +22,9 @@ legacy formulas in row 1352 of EverythingTests); all three expect "":
 - O1352 `T(J1351:J1353)` (J1351 blank, J1352 = "non-numeric", J1353 = "non-numeric"): actual
   "non-numeric" (J1352).
 All three top-left cells are non-text, so the evidence fits both "T reads the top-left cell" and "T of
-a multi-cell range is always empty"; neither rule is shown yet. Semantics: docs/excel-semantics/
+a multi-cell range is always empty". The dynamic form now settles it for dynamic formulas: `T(H1:H2)`
+with H1 = "x" (text top-left), from a row outside the range, is one "x" (probes/t-array-lift S!E7,
+excel-graph, 2026-10-16, T-1729; a known failure, ours ""), so T reads the top-left cell. Semantics: docs/excel-semantics/
 references.md "T of a multi-cell range is not intersected" (UNVERIFIED part).
 
 Code: `static_analysis.rs` gives T `args_signature_scalars(arg_count, 1, 0)`, so the parser inserts
@@ -40,7 +42,7 @@ top-left cell, with text only in a later cell, and from a row outside the range;
       from it with Status VERIFIED.
 - [ ] `F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!M1352`, `...!N1352` and `...!O1352`
       disappear from eval/baseline/poi.txt (`make eval-baseline`), with no new F lines; the probe's
-      cells pass.
+      cells pass, and so does probes/t-array-lift S!E7.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

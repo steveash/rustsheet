@@ -267,6 +267,26 @@ Legacy: `SUM(N({1,2}))` is 3 and `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` 5, bu
 `=N(IF(1,{2;3}))` is `#VALUE!` (not the top-left 2), though FORMULATEXT shows it with no `@`, and legacy
 `=N(B1:B3*1)` off the rows `#VALUE!`.
 Evidence: probes/n-array-lift (excel-graph, 2026-10-16, T-1616).
-Not implemented: the legacy cell `=N(IF(1,{2;3}))` gives 2, 3 spilled in ours instead of `#VALUE!` (S!D4:D5, T-1713).
+Not implemented: the legacy cell `=N(IF(1,{2;3}))` gives 2, 3 spilled in ours instead of `#VALUE!` (S!D4:D5,
+T-1713, which needs the legacy marker of spec T-1727). T, CHOOSE, INDEX and IFS arguments and nested uses
+(`=ABS(N(IF(1,{2;3})))`) behave the same, while N of an array constant or of TRANSPOSE gets an `@` (2):
+references.md "Legacy formulas put `@` on array-valued calls and array constants" and "Legacy N and T over a
+reference-returning call" (probes/legacy-array-result, probes/legacy-n-t-reference-args).
 Status: VERIFIED (excel-graph)
-Tasks: T-1616, T-1713
+Tasks: T-1616, T-1713, T-1727
+
+## T over an array lifts element-wise (T-1713)
+Rule: in a dynamic formula, T of an array value lifts element-wise like N: text elements are kept
+(also ""), error elements are kept, and number and boolean elements become "":
+`=T({"a",1,#N/A,TRUE,""})` spills "a", "", `#N/A`, "", "", and `=T(IF(1,{"a";"b"}))` spills "a", "b".
+It nests (`T(T({"b",2}))` "b", "") and consumers see the lifted array (`ROWS(T({1;2;3}))` 3,
+`CONCAT(T({"x",1,"y"}))` "xy"). An array from a range expression lifts too (`T(H1:H2*1)` with
+H1 = "x", H2 = 2 is `#VALUE!`, ""). A bare multi-cell range does not lift: see references.md
+"T of a multi-cell range is not intersected" (`T(H1:H2)` is one "x", the top-left cell).
+In a legacy cell, T over an array-valued IF is `#VALUE!` instead (references.md "Legacy N and T over
+a reference-returning call"; not implemented, T-1713, which also owns the legacy spill rows
+probes/legacy-array-result S!G11 and probes/legacy-n-t-reference-args S!S11, decision 0069).
+Evidence: probes/legacy-array-result S!G1:G2, probes/t-array-lift (excel-graph, 2026-10-16).
+Implemented in fn_t (T-1729).
+Status: VERIFIED (excel-graph)
+Tasks: T-1713, T-1729

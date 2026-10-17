@@ -17,7 +17,8 @@ impl Model {
     // gen-m7/4629e931955aa4b8 A34 is DROP's `#CALC!`); with errors in both, the first wins left to
     // right (probes/filterxml-error-arguments A1:A6). An array argument lifts, `#VALUE!` per
     // element: a first-argument array literal is probed (probes/filterxml-evidence-floor
-    // D27:D28, T-1704); the other array forms are inferred (T-1722). No XML is parsed.
+    // D27:D28, T-1704), the other array forms in probes/filterxml-array-forms (T-1722). No XML
+    // is parsed.
     pub(crate) fn fn_filterxml(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
