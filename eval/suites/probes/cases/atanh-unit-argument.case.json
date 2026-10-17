@@ -1,0 +1,29 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ATANH at exactly +-1, where f64::atanh is an infinity rather than NaN, direct, nested, and with a value just inside the domain (T-1569).",
+  "tags": [
+    "M2",
+    "numbers",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=ATANH(1)",
+        "A2": "=ATANH(-1)",
+        "A3": "=ATANH(1+0)",
+        "A4": "=ATANH(-1+0)",
+        "A5": "=SUM(ATANH(1),1)",
+        "A6": "=IFERROR(ATANH(1),\"err\")",
+        "A7": "=ISERR(ATANH(1))",
+        "A8": "=ISNA(ATANH(-1))",
+        "A9": "=ATANH(1.0000000000000002)",
+        "A10": "=ATANH(0.9999999999999999)",
+        "A11": "=ACOTH(1)",
+        "A12": "=ACOTH(-1)"
+      }
+    }
+  ],
+  "expected": {}
+}
