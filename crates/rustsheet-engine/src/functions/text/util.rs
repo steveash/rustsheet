@@ -1,5 +1,7 @@
 use std::borrow::Cow;
 
+use super::casefold::{char_offsets, fold_for_before_after};
+
 use crate::{
     cast::{array_node_to_text, MAX_TEXT_UNITS},
     expressions::{parser::ArrayNode, token::Error},
@@ -66,7 +68,7 @@ pub(crate) fn text_after(
     match_mode: Case,
 ) -> Option<String> {
     if let Some((_, right)) = match_text(text, delimiter, instance_num, match_mode) {
-        return Some(text[right..].to_string());
+        return text.get(right..).map(str::to_string);
     };
     None
 }
@@ -78,7 +80,7 @@ pub(crate) fn text_before(
     match_mode: Case,
 ) -> Option<String> {
     if let Some((left, _)) = match_text(text, delimiter, instance_num, match_mode) {
-        return Some(text[..left].to_string());
+        return text.get(..left).map(str::to_string);
     };
     None
 }
@@ -128,7 +130,9 @@ pub(crate) fn substitute_exceeds_limit(
 
 pub(crate) fn substitute(text: &str, old_text: &str, new_text: &str, instance_num: i32) -> String {
     if let Some((left, right)) = match_text(text, old_text, instance_num, Case::Sensitive) {
-        return format!("{}{}{}", &text[..left], new_text, &text[right..]);
+        if let (Some(head), Some(tail)) = (text.get(..left), text.get(right..)) {
+            return format!("{head}{new_text}{tail}");
+        }
     };
     text.to_string()
 }
@@ -148,19 +152,22 @@ fn match_text(
             }
         }
         Case::Insensitive => {
-            if instance_num > 0 {
-                text_sensitive(
-                    &text.to_lowercase(),
-                    &delimiter.to_lowercase(),
-                    instance_num,
-                )
+            // Fold char by char (one char in, one char out) and map the match back to byte
+            // offsets of the original; offsets found in a lowercased copy are not valid there
+            // (T-1796, probes/textbefore-casefold-length).
+            let folded_text = fold_for_before_after(text);
+            let folded_delimiter = fold_for_before_after(delimiter);
+            let (left, right) = if instance_num > 0 {
+                text_sensitive(&folded_text, &folded_delimiter, instance_num)
             } else {
-                text_sensitive_reverse(
-                    &text.to_lowercase(),
-                    &delimiter.to_lowercase(),
-                    -instance_num,
-                )
-            }
+                text_sensitive_reverse(&folded_text, &folded_delimiter, -instance_num)
+            }?;
+            let original = char_offsets(text);
+            let char_index = |byte: usize| folded_text.get(..byte).map(|s| s.chars().count());
+            Some((
+                *original.get(char_index(left)?)?,
+                *original.get(char_index(right)?)?,
+            ))
         }
     }
 }
@@ -171,7 +178,10 @@ fn text_sensitive(text: &str, delimiter: &str, instance_num: i32) -> Option<(usi
     // delimiter length in bytes
     let delimiter_len = delimiter.len();
     for c in text.chars() {
-        if text[byte_index..].starts_with(delimiter) {
+        if text
+            .get(byte_index..)
+            .is_some_and(|rest| rest.starts_with(delimiter))
+        {
             if local_index == instance_num {
                 return Some((byte_index, byte_index + delimiter_len));
             } else {
@@ -193,7 +203,10 @@ fn text_sensitive_reverse(
     let mut local_index = 1;
     let delimiter_len = delimiter.len();
     for c in text.chars().rev() {
-        if text[byte_index..].starts_with(delimiter) {
+        if text
+            .get(byte_index..)
+            .is_some_and(|rest| rest.starts_with(delimiter))
+        {
             if local_index == instance_num {
                 return Some((byte_index, byte_index + delimiter_len));
             } else {
