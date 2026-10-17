@@ -3,7 +3,7 @@ id: T-1762
 title: "Call-name spelling table folds case with full folding (ss matches the sharp s)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Excel folds ß with SS (the mechanism is unproven: an upper-casing comparison gi
 
 ## Out of scope
 - Other cells of probes/unknown-function-name-reach.
+
+## Outcome
+`CallNameSpellings` keys on the upper-cased name, so ß folds with SS. Sheet1!B16 of probes/unknown-function-name-reach now passes (baseline: one failure fewer).
