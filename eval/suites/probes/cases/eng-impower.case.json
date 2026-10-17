@@ -1,0 +1,40 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1625: IMPOWER suffixes, integer/fractional/negative/zero powers, zero base and invalid text.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-1625"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=IMPOWER(\"3+4i\",2)",
+    "A2": "=IMPOWER(\"3+4j\",2)",
+    "A3": "=IMPOWER(\"3+4i\",0.5)",
+    "A4": "=IMPOWER(\"3+4i\",-1)",
+    "A5": "=IMPOWER(\"3+4i\",0)",
+    "A6": "=IMPOWER(\"0\",0)",
+    "A7": "=IMPOWER(\"0\",2)",
+    "A8": "=IMPOWER(\"0\",-1)",
+    "A9": "=IMPOWER(\"i\",2)",
+    "A10": "=IMPOWER(\"5\",3)",
+    "A11": "=IMPOWER(\"-j\",3)",
+    "A12": "=IMPOWER(\"1+i\",2.5)",
+    "A13": "=IMPOWER(\"1+i\",\"2\")",
+    "A14": "=IMPOWER(\"1+i\",\"x\")",
+    "A15": "=IMPOWER(\"abc\",2)",
+    "A16": "=IMPOWER(\"\",2)",
+    "A17": "=IMPOWER(\"3+4k\",2)",
+    "A18": "=IMPOWER(\"3+4i\",10000000000.0)",
+    "A19": "=IMPOWER(\"3+4i\",-0.5)",
+    "A20": "=IMPOWER(\"1E2+1i\",2)",
+    "A21": "=IMPOWER(\"2.5+0.5i\",3)",
+    "A22": "=IMPOWER(\"1+i\",100)"
+   }
+  }
+ ],
+ "expected": {}
+}

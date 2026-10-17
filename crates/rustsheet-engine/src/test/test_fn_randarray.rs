@@ -270,3 +270,38 @@ fn test_randbetween_draws_stay_in_range() {
     }
     assert!((2..=4).contains(&low) && (2..=4).contains(&high));
 }
+
+#[test]
+fn test_randbetween_lifts_over_array_bounds() {
+    // Excel: probes/volatile-invariant Calc!F5 (T-1316): one draw per element of the broadcast shape.
+    let mut model = new_empty_model();
+    model._set("A1", "=ROWS(RANDBETWEEN(SEQUENCE(1000,1,5.5,0),5.7))");
+    model._set("A2", "=MIN(RANDBETWEEN(SEQUENCE(50,1,5.5,0),5.7))");
+    model._set("A3", "=MAX(RANDBETWEEN(SEQUENCE(50,1,5.5,0),5.7))");
+    model._set("A4", "=SUM(RANDBETWEEN({3,3},{3;3}))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1000");
+    assert_eq!(model._get_text("A2"), "6");
+    assert_eq!(model._get_text("A3"), "6");
+    assert_eq!(model._get_text("A4"), "12");
+}
+
+#[test]
+fn test_randbetween_array_elements_and_ranges() {
+    // Excel: probes/randbetween-lift-operands (T-1316): a boolean element is `#VALUE!`, a
+    // multi-cell range bound is `#VALUE!` even where it intersects the formula's row.
+    let mut model = new_empty_model();
+    model._set("D1", "1");
+    model._set("D2", "2");
+    model._set("A1", "=COUNT(RANDBETWEEN({TRUE;1},{2;2}))");
+    model._set("A2", "=COUNT(RANDBETWEEN({\"5\";\"6\"},9))");
+    model._set("B2", "=COUNT(RANDBETWEEN(D1:D2,10))");
+    model._set("B3", "=RANDBETWEEN(D1:D2,10)");
+    model._set("B4", "=RANDBETWEEN(D2,10)>=2");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "2");
+    assert_eq!(model._get_text("B2"), "0");
+    assert_eq!(model._get_text("B3"), "#VALUE!");
+    assert_eq!(model._get_text("B4"), "TRUE");
+}

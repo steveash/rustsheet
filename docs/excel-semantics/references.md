@@ -1439,6 +1439,11 @@ With B1:B6 = 1,2,3,1,2,3, each formula on row 2 (on the range's rows, B2 = 2) an
   2 / 100, `SUMPRODUCT(IFNA(B1:B6*1,100))` 2 / `#VALUE!`, `SUMPRODUCT(IFERROR(1/(B1:B6-2),100))`
   100 / 100, `SUMPRODUCT(ABS(IF(B1:B6>1,B1:B6,0)))` 12 / `#VALUE!` (the condition intersects, the
   value branch stays the whole range), while `SUMPRODUCT(B1:B6+0)` is 12 on both rows;
+- an Analysis ToolPak function's scalar argument is read like an aggregate's argument (probed for EDATE's and YEARFRAC's
+  first argument). A bare range gets no `@` and is
+  `#VALUE!` on any row, and an operation on it is intersected: legacy `=EDATE(A1:A60,1)` keeps its text and is `#VALUE!`,
+  and `=EDATE(A1:A60+0,1)` shows `=EDATE(@A1:A60+0,1)` (probes/scalar-lift-shapes-c, T-1767; arrays.md "Scalar
+  arguments lift: shapes, element errors, and the Analysis ToolPak range rule");
 - the reference functions are unchanged: `ROWS(B1:B6)` 6, `SUBTOTAL(9,B1:B6)` and
   `AGGREGATE(9,6,B1:B6)` 12, `AVERAGEA(B1:D1)` (C1 "x", D1 TRUE) 0.667 on both rows.
 The same holds for the other aggregates (probes/legacy-value-argument-intersection-b, excel-graph,
@@ -1510,10 +1515,10 @@ cells, as a dynamic formula would.
 Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16).
 Not implemented: the text is identical to the dynamic formula's, which spills, so the `#VALUE!`
 needs the engine to remember that a formula is legacy (spec T-1727, then T-1713); ours adds an `@`
-on the calls (N gives the top-left value, T "") and on ranges (`#VALUE!` off their rows, T-1728); the IFERROR `@`, the
+on array-valued calls (N gives the top-left value, T ""); a range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms, gets none under N since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator, an array constant or another call keeps the old `@`; CHOOSE and INDEX over references and every T over a range keep the old `@`, unprobed: T-1768); the IFERROR `@`, the
 SWITCH spill and the `@IF` are T-1717's.
 Status: VERIFIED (excel-graph)
-Tasks: T-1713, T-1717, T-1727, T-1728
+Tasks: T-1713, T-1717, T-1727, T-1728, T-1768
 
 ## `@` of a non-reference array as a function argument is its top-left value
 Rule (probes/rank-at-if-ref, excel-graph, 2026-10-15, T-1596): where an argument takes a reference (aggregates, RANK's `ref`,

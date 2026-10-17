@@ -348,8 +348,11 @@ PPMT, PV, RATE, RRI, SLN, SYD, VDB and IRR's guess: `ROWS(F(G1:G2,..))` is 2). T
 ACCRINT, ACCRINTM, AMORDEGRC, AMORLINC, the COUP* family, CUMIPMT, CUMPRINC, DISC, DOLLARDE, DOLLARFR, DURATION,
 EFFECT, FVSCHEDULE's principal, INTRATE, MDURATION, NOMINAL, ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD, PRICE,
 PRICEDISC, PRICEMAT, RECEIVED, TBILLEQ, TBILLPRICE, TBILLYIELD, XIRR's guess, XNPV's rate, YIELD, YIELDDISC and YIELDMAT
-are `#VALUE!` when their first scalar argument is a multi-cell range. Only the first scalar was probed over a range (XIRR's guess
-and XNPV's rate are the first scalars there). How the later scalars behave over a range is unverified.
+are `#VALUE!` when their first scalar argument is a multi-cell range. Of the later scalars only EFFECT's npery was probed over a range: `ROWS(EFFECT(0.1,D1:D60))` is
+`#VALUE!`, while the core `ROWS(PMT(0.1,D1:D60,100))` is 60 (probes/scalar-lift-shapes H12, H14, T-1767). Other later
+ATP scalars (PRICE's and COUP*'s frequency, ACCRINT's basis, ...) are unverified (T-1777). Next to an array, the range
+makes every probed element `#VALUE!` (`EFFECT({0.1;0.2},M1:M60)`). See arrays.md "Scalar arguments lift: shapes,
+element errors, and the Analysis ToolPak range rule".
 NPV's values work like an aggregate. A range skips text, booleans and blanks: `NPV(0.1,L1:L8)` over
 -10000, "2750", TRUE, 4250, "x", blank, 3250, 2750 is -1258.4522915101434, the NPV of -10000, 4250, 3250, 2750.
 Typed arguments are coerced: `NPV(0.1,-10000,"2750",TRUE,4250)` = -3914.6233180793665, the NPV of
@@ -558,3 +561,16 @@ Macintosh Excel; all 273 cells bit-exact, T-1475); the same formulation is bit-e
 probes fin-argument-modes H313, date-system-1904-financial A29:A30 and -shift A32.
 Status: VERIFIED (desktop-cached)
 Tasks: T-1475
+
+## T-1625 probes: VDB, AMORDEGRC, FVSCHEDULE, MDURATION, RRI
+- `VDB(2400,3000,10,0,1)` (salvage above cost) is -600, not -60; `VDB(2400,300,10,9.5,10,2,FALSE)` is 0 (the
+  last half period after the book value reaches salvage).
+- AMORDEGRC with rate 0.20 or 0.25 (first period 1.5 years after purchase) returns a number (1437, 1346), not #NUM!. Observed thresholds: rate 0.3 gives 1616, rates 0.15 and 0.25 both give 1346, rate 0.5 (life 2) is #NUM!.
+- FVSCHEDULE: any text, boolean or text-cell element in the schedule, a quoted-number element
+  `{"0.1"}`, `TRUE` as principal and `""` as schedule are all `#VALUE!` (nothing is skipped).
+- FVSCHEDULE: blank cells in the schedule are harmless (`B5:B6` = 1000) and a text-number principal is converted (`"1000"` -> 1100), but a boolean principal is `#VALUE!`.
+- VDB differs from us by a few ulp (A6, A10, A13) and ~4e-13 (A7); Excel's result for the same inputs depends on no_switch (A6 FALSE = 203.31648000000007, A7 TRUE = 203.3164800000004).
+- MDURATION and RRI(TRUE principal) differ from us only in the last ulp.
+Evidence: probes/fin-vdb-modes, fin-amordegrc, fin-fvschedule, fin-mduration, fin-rri (excel-graph, 2026-10-17, T-1625).
+Status: VERIFIED (excel-graph)
+Tasks: T-1764 (incl. MDURATION, RRI ulp), T-1765
