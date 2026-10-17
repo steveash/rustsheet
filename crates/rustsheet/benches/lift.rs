@@ -6,7 +6,9 @@
 //!   (10 distinct criteria, one walk each);
 //! - SWITCH lifted over 1,000,000 cells, where the driver itself dominates: a numeric result,
 //!   `=SUM(SWITCH(A1:A1000000,0,1,1,2,3))`, and a text one, `=ROWS(SWITCH(A1:A1000000,0,"a","b"))`
-//!   (every element a clone of a reused text result).
+//!   (every element a clone of a reused text result);
+//! - PMT lifted over a 100,000-cell range, `=SUM(PMT(A1:A100000,10,100))` (`lift_call`'s in-place
+//!   single-grid path with a `Lift` kernel, T-1372; a smoke number, SPEC-0011 Performance).
 //!
 //! `cargo bench -p rustsheet --bench lift [-- FILTER...]` (only the cases whose name contains a
 //! FILTER, e.g. `SWITCH`)
@@ -61,6 +63,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             "SWITCH, text result",
             1_000_000,
             "=ROWS(SWITCH(A1:A1000000,0,\"a\",\"b\"))",
+        ),
+        (
+            "PMT, lifted over a range",
+            100_000,
+            "=SUM(PMT(A1:A100000,10,100))",
         ),
     ];
     let filters: Vec<String> = std::env::args()
