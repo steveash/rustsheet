@@ -3,7 +3,7 @@ id: T-1600
 title: "MULTINOMIAL: the one-ulp residue on single arguments, and numeric text after a negative"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
