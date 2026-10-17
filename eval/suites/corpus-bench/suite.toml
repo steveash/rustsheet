@@ -1,5 +1,5 @@
 name = "corpus-bench"
-description = "Real-world workbooks from SpreadsheetBench (the xlsx-corpus-bench corpus), crash-only until oracle values exist (T-0427)"
+description = "Real-world workbooks from SpreadsheetBench (the xlsx-corpus-bench corpus), scored against excel-graph oracle sidecars (T-0427)"
 kind = "xlsx"
 root = "../../.cache/suites/corpus-bench"
 # Sampling rule (growable): the first test case's input workbook of each of the 912 instructions,
@@ -7,8 +7,8 @@ root = "../../.cache/suites/corpus-bench"
 include = ["**/1_*_input.xlsx"]
 license = "CC-BY-SA-4.0"
 origin = "https://github.com/RUCKBReasoning/SpreadsheetBench (corpus as listed by https://github.com/witanlabs/xlsx-corpus-bench results-sb/manifest.jsonl)"
-# No expectations yet: SpreadsheetBench caches were recalculated by LibreOffice or win32com and
-# are not Excel evidence (docs/research/test-suites-and-oracle.md §10). Crash-only.
+# The workbooks' own caches are not trusted: SpreadsheetBench recalculated them with LibreOffice or
+# win32com (docs/research/test-suites-and-oracle.md §10). Workbooks without a sidecar stay crash-only.
 use_cached_values = false
 # Excel values from `rustsheet-oracle fill -b excel-graph` (T-0427), committed here: the workbooks
 # themselves are fetched into the cache, so their sidecars cannot sit beside them (decision 0019).

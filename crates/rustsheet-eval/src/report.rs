@@ -95,13 +95,7 @@ impl SuiteSummary {
     /// Bit-exact rate over the scored cells that are not accepted deviations (decision 0036).
     #[must_use]
     pub fn cell_pass_rate(&self) -> f64 {
-        let scored = self.cells.saturating_sub(self.deviations);
-        if scored == 0 {
-            return 0.0;
-        }
-        #[allow(clippy::cast_precision_loss)]
-        let rate = self.cells_passed as f64 / scored as f64;
-        rate
+        self.rate(self.cells_passed)
     }
 
     /// Rate of the same scored cells that are bit-exact or within 1e-9 relative (`NumericUlp`,
@@ -109,15 +103,19 @@ impl SuiteSummary {
     /// bit-exact score so corpus-bench can be read against it (T-0427).
     #[must_use]
     pub fn cell_close_rate(&self) -> f64 {
+        let near = |k| self.verdicts.get(&k).copied().unwrap_or(0);
+        self.rate(self.cells_passed + near(Verdict::NumericUlp) + near(Verdict::NumericClose))
+    }
+
+    /// `count` over the scored cells (all but accepted deviations), at most 1.
+    fn rate(&self, count: usize) -> f64 {
         let scored = self.cells.saturating_sub(self.deviations);
         if scored == 0 {
             return 0.0;
         }
-        let near = |k| self.verdicts.get(&k).copied().unwrap_or(0);
-        let close = (self.cells_passed + near(Verdict::NumericUlp) + near(Verdict::NumericClose))
-            .min(scored);
+        // Cell counts stay far below 2^52, so the casts are exact.
         #[allow(clippy::cast_precision_loss)]
-        let rate = close as f64 / scored as f64;
+        let rate = count.min(scored) as f64 / scored as f64;
         rate
     }
 }
