@@ -24,13 +24,8 @@ pub(crate) fn walk_names<F>(node: &mut Node, bound: &mut Vec<String>, visit: &mu
 where
     F: FnMut(NameSite, &mut String, Option<&str>),
 {
-    let declared = |bound: &[String], name: &str| {
-        bound
-            .iter()
-            .rev()
-            .find(|n| same_variable(n, name))
-            .cloned()
-    };
+    let declared =
+        |bound: &[String], name: &str| bound.iter().rev().find(|n| same_variable(n, name)).cloned();
     match node {
         Node::NamedVariableKind { name, .. } => {
             let d = declared(bound, name);
