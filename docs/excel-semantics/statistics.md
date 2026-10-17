@@ -322,6 +322,26 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
   plain double polynomial. The coarse steps at z = 1E-8, 1E-7 and 1E-6 do not fit one quadratic either.
   The excel-graph oracle is 64-bit Excel for the web, so x87 is run only as an emulated variant. It improves
   the small-z score from 99.35% to 99.56%.
+  Re-analysis with the alias-free observables (the z where a part's rounding steps, read through the
+  per-run lo interval; scripts and data extraction in docs/research/t1778/README.md)
+  supersedes three statements above:
+  - The coarse product is rounded through 80 bits (x87 double rounding). The three hard misses of the tiny
+    split all have x*A within 0.0002 ulp of a tie, inside the 2^-12 window where an 80-bit round makes a
+    tie. With that, and B carried in extended precision (0.0113457421979325066854), the tiny form matches
+    3,043 of 3,048 points. The 5 left are final-sum near-ties (0.501 to 0.503 ulp).
+  - The coarse factor is hi = fl(H(z)) with H(0) exactly the double A (offset -0.005 to +0.0006 ulp). The
+    step positions bootstrapped from z = 2E-15 to 4.3E-3 (one unique hi in each of 80 runs) give
+    H = A + h1*z + h2*z^2 + h3*z^3 + h4*z^4 with h1 = 0.14068131264(22..36), h2 = 0.04481917(05..09),
+    h3 = 0.0018050(2..5) and h4 = 0.00009..0.00027. The earlier one-quadratic conflict was the alias choice:
+    the z = 1E-6 step sits at hi = A + 633572509 ulp, two lattice periods from the nearest candidate.
+  - hi + lo (smooth part) equals the exact erf(x)/x plus 1.07E-16 to within the two rounding sawtooths at
+    every z probed, 2E-15 to 1E-3. So the smooth part is computed to better than double precision.
+  - W is not exp(-BETA*z). The phase of the W sawtooth, read at eight sweeps from z = 2E-15 to 1E-4, rules
+    out exp, 1/(1+bz), the (1,1) Pade, a line, 2exp(-bz/2)-1, sech(sqrt(2bz)) and 1/sqrt(1+2bz). Only
+    W = fl(sqrt(1 - 2*b*z)) survives, through third order, with b = 0.4546567435376 or
+    0.4546589639848 (two branches). The ladder probe's "z^2 shortfall" above has the sign of sqrt, not exp.
+    Neither branch, nor sqrt of a rounded argument, is exact past z = 1.2E-3, so W's exact form is still
+    open there.
 - Generic shape a: at z = m*2^-60, `GAMMA.DIST(z,a,1,TRUE)` for a = 2, 3, 10 is off by up to 640E-16
   relative, and that error follows the rounding of fl(a*fl(ln z)) to within about 2E-16 (the docs/research
   script prints both). For a = 10 a constant -25E-16 remains, the error of Excel's own
@@ -353,7 +373,7 @@ Candidates that do not reproduce Excel (exact matches):
 Evidence: probes-numeric cases `kmyst-norm-erfc-a`, `kmyst-norm-erfc-b`, `kmyst-erf-gamma`,
 `kmyst-erf-tiny`, `kmyst-erf-dense`, `kmyst-erfc-dense`, `kmyst-gamma-tiny` and `kmyst-kernel-map`
 (excel-graph, 2026-10-17); the tiny-x erf split uses `kmyst-erf-mantissa`, `kmyst-erf-scale`,
-`kmyst-erf-consecutive`, `kmyst-erf-stride06` to `kmyst-erf-stride41`, `kmyst-erf-runs`, `kmyst-erf-zstride`, `kmyst-erf-zsweep`, `kmyst-erf-zsweep2`, `kmyst-erf-bridge`, `kmyst-erf-ladder`, `kmyst-erf-scatter` and `kmyst-erf-zsweep3`, and the
+`kmyst-erf-consecutive`, `kmyst-erf-stride06` to `kmyst-erf-stride41`, `kmyst-erf-runs`, `kmyst-erf-zstride`, `kmyst-erf-zsweep`, `kmyst-erf-zsweep2`, `kmyst-erf-bridge`, `kmyst-erf-ladder`, `kmyst-erf-scatter`, `kmyst-erf-zsweep3` and `kmyst-erf-zladder`, and the
 internal-exp check uses `kmyst-gamma-exp`. `uv run python ../docs/research/t1778_incomplete_gamma_kernel_map.py` in tools/
 reprints the identity counts, the tiny-x constant, the GAMMA.DIST error tracking and the ERFC tail figures.
 Status: VERIFIED (identities, constant, error structure); the kernel's exact operation sequence is OPEN.
