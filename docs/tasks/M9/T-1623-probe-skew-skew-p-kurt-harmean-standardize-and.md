@@ -3,7 +3,7 @@ id: T-1623
 title: "Probe SKEW, SKEW.P, KURT, HARMEAN, STANDARDIZE and SUMX2PY2, SUMXMY2, SUMX2MY2, MDETERM, ECMA.CEILING to the evidence floor"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -23,11 +23,24 @@ too few points and zero deviation (#DIV/0!), non-positive values for HARMEAN, st
 (`make new-task`); fixing the engine is out of scope.
 
 ## Acceptance criteria
-- [ ] Each listed function has ≥ 20 Excel-evidence cells in the report.
-- [ ] `make eval-baseline` lowers quality/evidence-floor.json by the number of functions lifted
+- [x] Each listed function has ≥ 20 Excel-evidence cells in the report.
+- [x] `make eval-baseline` lowers quality/evidence-floor.json by the number of functions lifted
   over the floor; new failing cells are recorded as new-coverage failures with fix tasks.
-- [ ] Quirks recorded in docs/excel-semantics/.
-- [ ] `make check` green; reviewers approve.
+- [x] Quirks recorded in docs/excel-semantics/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine fixes for the mismatches found (filed as tasks).
+
+## Outcome
+Added probes/stats-evidence-floor-t1623 (139 cells, excel-graph): ≥ 10 new Excel-evidence cells for each of SKEW,
+SKEW.P, KURT, HARMEAN, STANDARDIZE, SUMX2PY2, SUMXMY2, SUMX2MY2, MDETERM and ECMA.CEILING. 132 pass; 7 mismatches
+filed as T-1750 (STANDARDIZE range lift), T-1751 (MDETERM residual), T-1752 (SKEW.P few points, 2 cells), T-1753
+(HARMEAN empty ranges), T-1754 (KURT ulp), T-1755 (STANDARDIZE TRUE). Quirks in docs/excel-semantics/statistics.md.
+None of the ten is on the report's "Below the evidence floor" list any more (`make eval`, 2026-10-17). The ratchet
+fell by 7 (34 → 27), not 10, because SKEW, KURT and HARMEAN already had 30, 30 and 29 cells before this PR (the task's
+counts date from 2026-10-15); the other seven were lifted here; the lock follows the count `evidence-floor` reports on the merged tree.
+`quality/evidence-floor.json` was written by `make eval-baseline` (`evidence-floor --update`), and the decision-record
+line is in docs/decisions/0010-ratchet-paydown-updates.md.
+Cells now in the report: SKEW.P 22, STANDARDIZE 24, SUMX2PY2 24, SUMXMY2 26, SUMX2MY2 27, ECMA.CEILING 28, MDETERM 34,
+HARMEAN 43, KURT 43, SKEW 44 (the task's starting counts were stale for several of them).
