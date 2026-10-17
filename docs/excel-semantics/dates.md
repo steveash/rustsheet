@@ -45,6 +45,16 @@ The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONT
 `DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
 04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)
 
+### WEEKNUM and ISOWEEKNUM at modern year boundaries (T-1308, VERIFIED)
+Rule: for modern dates ISOWEEKNUM and `WEEKNUM(d,21)` are the ISO-8601 week, and WEEKNUM types 1, 2 and 11-17 count
+from the week containing 1 January (system 1) on the real calendar, with no 1900 anchor quirk. ISOWEEKNUM is 53 on
+2020-12-31, 2021-01-01 and 2021-01-03 (all of ISO 2020), 1 on 2021-01-04 and on 2024-12-30, 52 on 2024-12-29, 53 on
+2026-12-31, 2027-01-01 and 2027-01-03, on 2015-12-31, 2016-01-03, 2032-12-31 and 2033-01-02, and 52 on 9999-12-31.
+A fractional serial truncates (`ISOWEEKNUM(44197.99)` = 53), a serial past 9999-12-31 is `#NUM!`
+(`ISOWEEKNUM(2958466)`), and date text is read as a date (`ISOWEEKNUM("2021-01-03")` = 53). The engine already matches
+all 67 cells, WEEKNUM types 1, 2 and 11-17 on 2023-01-01, 2022-01-01, 2021-12-31 and 2024-12-31 included.
+Evidence: probes/weeknum-modern-boundaries A1-A67 (excel-graph, 2026-10-17).
+
 ### WEEKNUM return_type edge cases and serial 0 (T-1023)
 Rule: return_type 1, 2, 11-17 and 21 are valid (a fraction truncates: 2.9 is 2, 21.5 is 21);
 0, 3-10 and 18-20 are always `#NUM!` (not `#VALUE!`). A return_type of 22 or more, or negative, is
