@@ -1,0 +1,38 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "C2": {
+    "t": "s",
+    "v": "Sales"
+   },
+   "C3": {
+    "t": "s",
+    "v": "Marketing"
+   },
+   "C4": {
+    "t": "s",
+    "v": "Marketing"
+   },
+   "C5": {
+    "t": "s",
+    "v": "Marketing"
+   },
+   "C6": {
+    "t": "s",
+    "v": "Sales"
+   },
+   "C7": {
+    "t": "s",
+    "v": "Sales"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "7553c356e5abd3839865b2de52da09696c9bf800bd6bb4733367e7b30d9b5a3e",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:20:52+00:00",
+  "version": null
+ }
+}

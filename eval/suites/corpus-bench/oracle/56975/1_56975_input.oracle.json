@@ -1,0 +1,58 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "E10": {
+    "t": "s",
+    "v": "Other"
+   },
+   "E11": {
+    "t": "s",
+    "v": "Other"
+   },
+   "E12": {
+    "t": "s",
+    "v": "Other"
+   },
+   "E2": {
+    "t": "s",
+    "v": "Other"
+   },
+   "E3": {
+    "t": "s",
+    "v": "Other"
+   },
+   "E4": {
+    "t": "s",
+    "v": "Other"
+   },
+   "E5": {
+    "t": "s",
+    "v": "Other"
+   },
+   "E6": {
+    "t": "s",
+    "v": "Other"
+   },
+   "E7": {
+    "t": "s",
+    "v": "Other"
+   },
+   "E8": {
+    "t": "s",
+    "v": "Other"
+   },
+   "E9": {
+    "t": "s",
+    "v": "Other"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "a5771b3d4bc524bb9f3fd95357c8f6471be406731f57151099b8b91d0398a45e",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:33:21+00:00",
+  "version": null
+ }
+}

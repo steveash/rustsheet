@@ -1,0 +1,86 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "B13": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "E11": {
+    "t": "s",
+    "v": "Joe George Veteran"
+   },
+   "E12": {
+    "t": "s",
+    "v": "Veteran, Joe George"
+   },
+   "E13": {
+    "t": "s",
+    "v": "JGV"
+   },
+   "E14": {
+    "t": "s",
+    "v": "6789"
+   },
+   "E18": {
+    "t": "s",
+    "v": "Joe George Veteran"
+   },
+   "E19": {
+    "t": "s",
+    "v": "Joe George Veteran"
+   },
+   "E20": {
+    "t": "s",
+    "v": "Joe George Veteran"
+   },
+   "E4": {
+    "t": "n",
+    "v": 0.0
+   },
+   "E5": {
+    "t": "s",
+    "v": "Joe"
+   },
+   "E6": {
+    "t": "s",
+    "v": "Geor"
+   },
+   "E7": {
+    "t": "s",
+    "v": "Veteran"
+   },
+   "E9": {
+    "t": "s",
+    "v": "George"
+   },
+   "F10": {
+    "t": "s",
+    "v": "George"
+   },
+   "F4": {
+    "t": "n",
+    "v": 0.0
+   },
+   "F6": {
+    "t": "s",
+    "v": "Joe"
+   },
+   "F7": {
+    "t": "s",
+    "v": "G"
+   },
+   "F8": {
+    "t": "s",
+    "v": "Veteran"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "d41f7f0145787c57b22a9a5f4696eabe18cf935f005b8c8dc476fa6f572cb41a",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:25:59+00:00",
+  "version": null
+ }
+}

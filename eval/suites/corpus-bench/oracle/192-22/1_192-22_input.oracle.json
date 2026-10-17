@@ -1,0 +1,266 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "E10": {
+    "t": "s",
+    "v": " SIP, ISDN, Codecs, H.323"
+   },
+   "E11": {
+    "t": "s",
+    "v": "\u00a0GPRS, CDMA, GSM, UMTS"
+   },
+   "E12": {
+    "t": "s",
+    "v": "\u00a0SNMP"
+   },
+   "E13": {
+    "t": "s",
+    "v": "\u00a0ARP, STP, L2TP, PPP"
+   },
+   "E14": {
+    "t": "s",
+    "v": "\u00a0ICMP, BGP, ISIS, MPLS"
+   },
+   "E15": {
+    "t": "s",
+    "v": "\u00a0ATM, TCP/IP, LAN/VLAN, SSH"
+   },
+   "E16": {
+    "t": "s",
+    "v": " VoIP, IMS, MPLS, ISDN, PSTN"
+   },
+   "E17": {
+    "t": "s",
+    "v": " SIP, ISDN, Codecs, H.323"
+   },
+   "E18": {
+    "t": "s",
+    "v": "\u00a0GPRS, CDMA, GSM, UMTS"
+   },
+   "E19": {
+    "t": "s",
+    "v": "\u00a0SNMP"
+   },
+   "E20": {
+    "t": "s",
+    "v": "\u00a0ARP, STP, L2TP, PPP"
+   },
+   "E21": {
+    "t": "s",
+    "v": "\u00a0ICMP, BGP, ISIS, MPLS"
+   },
+   "E22": {
+    "t": "s",
+    "v": "\u00a0ATM, TCP/IP, LAN/VLAN, SSH"
+   },
+   "E23": {
+    "t": "s",
+    "v": " VoIP, IMS, MPLS, ISDN, PSTN"
+   },
+   "E24": {
+    "t": "s",
+    "v": " SIP, ISDN, Codecs, H.323"
+   },
+   "E25": {
+    "t": "s",
+    "v": "\u00a0GPRS, CDMA, GSM, UMTS"
+   },
+   "E26": {
+    "t": "s",
+    "v": "\u00a0SNMP"
+   },
+   "E27": {
+    "t": "s",
+    "v": "\u00a0ARP, STP, L2TP, PPP"
+   },
+   "E28": {
+    "t": "s",
+    "v": "\u00a0ICMP, BGP, ISIS, MPLS"
+   },
+   "E29": {
+    "t": "s",
+    "v": "\u00a0ATM, TCP/IP, LAN/VLAN, SSH"
+   },
+   "E30": {
+    "t": "s",
+    "v": " VoIP, IMS, MPLS, ISDN, PSTN"
+   },
+   "E31": {
+    "t": "s",
+    "v": " SIP, ISDN, Codecs, H.323"
+   },
+   "E32": {
+    "t": "s",
+    "v": "\u00a0GPRS, CDMA, GSM, UMTS"
+   },
+   "E33": {
+    "t": "s",
+    "v": "\u00a0SNMP"
+   },
+   "E34": {
+    "t": "s",
+    "v": "\u00a0ARP, STP, L2TP, PPP"
+   },
+   "E35": {
+    "t": "s",
+    "v": "\u00a0ICMP, BGP, ISIS, MPLS"
+   },
+   "E36": {
+    "t": "s",
+    "v": "\u00a0ATM, TCP/IP, LAN/VLAN, SSH"
+   },
+   "E37": {
+    "t": "s",
+    "v": " VoIP, IMS, MPLS, ISDN, PSTN"
+   },
+   "E38": {
+    "t": "s",
+    "v": " SIP, ISDN, Codecs, H.323"
+   },
+   "E39": {
+    "t": "s",
+    "v": "\u00a0GPRS, CDMA, GSM, UMTS"
+   },
+   "E40": {
+    "t": "s",
+    "v": "\u00a0SNMP"
+   },
+   "E41": {
+    "t": "s",
+    "v": "\u00a0ARP, STP, L2TP, PPP"
+   },
+   "E42": {
+    "t": "s",
+    "v": "\u00a0ICMP, BGP, ISIS, MPLS"
+   },
+   "E43": {
+    "t": "s",
+    "v": "\u00a0ATM, TCP/IP, LAN/VLAN, SSH"
+   },
+   "E44": {
+    "t": "s",
+    "v": " VoIP, IMS, MPLS, ISDN, PSTN"
+   },
+   "E45": {
+    "t": "s",
+    "v": " SIP, ISDN, Codecs, H.323"
+   },
+   "E46": {
+    "t": "s",
+    "v": "\u00a0GPRS, CDMA, GSM, UMTS"
+   },
+   "E47": {
+    "t": "s",
+    "v": "\u00a0SNMP"
+   },
+   "E48": {
+    "t": "s",
+    "v": "\u00a0ARP, STP, L2TP, PPP"
+   },
+   "E49": {
+    "t": "s",
+    "v": "\u00a0ICMP, BGP, ISIS, MPLS"
+   },
+   "E50": {
+    "t": "s",
+    "v": "\u00a0ATM, TCP/IP, LAN/VLAN, SSH"
+   },
+   "E51": {
+    "t": "s",
+    "v": " VoIP, IMS, MPLS, ISDN, PSTN"
+   },
+   "E52": {
+    "t": "s",
+    "v": " SIP, ISDN, Codecs, H.323"
+   },
+   "E53": {
+    "t": "s",
+    "v": "\u00a0GPRS, CDMA, GSM, UMTS"
+   },
+   "E54": {
+    "t": "s",
+    "v": "\u00a0SNMP"
+   },
+   "E55": {
+    "t": "s",
+    "v": "\u00a0ARP, STP, L2TP, PPP"
+   },
+   "E56": {
+    "t": "s",
+    "v": "\u00a0ICMP, BGP, ISIS, MPLS"
+   },
+   "E57": {
+    "t": "s",
+    "v": "\u00a0ATM, TCP/IP, LAN/VLAN, SSH"
+   },
+   "E58": {
+    "t": "s",
+    "v": " VoIP, IMS, MPLS, ISDN, PSTN"
+   },
+   "E59": {
+    "t": "s",
+    "v": " SIP, ISDN, Codecs, H.323"
+   },
+   "E60": {
+    "t": "s",
+    "v": "\u00a0GPRS, CDMA, GSM, UMTS"
+   },
+   "E61": {
+    "t": "s",
+    "v": "\u00a0SNMP"
+   },
+   "E62": {
+    "t": "s",
+    "v": "\u00a0ARP, STP, L2TP, PPP"
+   },
+   "E63": {
+    "t": "s",
+    "v": "\u00a0ICMP, BGP, ISIS, MPLS"
+   },
+   "E64": {
+    "t": "s",
+    "v": "\u00a0ATM, TCP/IP, LAN/VLAN, SSH"
+   },
+   "E65": {
+    "t": "s",
+    "v": " VoIP, IMS, MPLS, ISDN, PSTN"
+   },
+   "E66": {
+    "t": "s",
+    "v": " SIP, ISDN, Codecs, H.323"
+   },
+   "E67": {
+    "t": "s",
+    "v": "\u00a0GPRS, CDMA, GSM, UMTS"
+   },
+   "E68": {
+    "t": "s",
+    "v": "\u00a0SNMP"
+   },
+   "E69": {
+    "t": "s",
+    "v": "\u00a0ARP, STP, L2TP, PPP"
+   },
+   "E70": {
+    "t": "s",
+    "v": "\u00a0ICMP, BGP, ISIS, MPLS"
+   },
+   "E71": {
+    "t": "s",
+    "v": "\u00a0ATM, TCP/IP, LAN/VLAN, SSH"
+   },
+   "E9": {
+    "t": "s",
+    "v": " VoIP, IMS, MPLS, ISDN, PSTN"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "fb9dcfdd99b5186df9ef845ccd2f646854abdfcb80a64bb76673fde2b5a1685a",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:14:19+00:00",
+  "version": null
+ }
+}
