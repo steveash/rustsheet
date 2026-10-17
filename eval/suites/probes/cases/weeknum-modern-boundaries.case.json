@@ -2,7 +2,7 @@
  "format": "rustsheet-case/v1",
  "description": "ISOWEEKNUM and WEEKNUM at modern year boundaries and week-53 years (T-1308).",
  "tags": [
-  "M1",
+  "M2",
   "dates",
   "probe"
  ],
