@@ -3,7 +3,7 @@ id: T-1769
 title: "Fuzz timeout: MAP whose LAMBDA returns a multi-cell range materialises the range once per element"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
