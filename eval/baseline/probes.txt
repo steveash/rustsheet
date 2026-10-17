@@ -5234,8 +5234,6 @@ F	probes/textsplit-padded-size.case.json	Calc!A1
 F	probes/textsplit-padded-size.case.json	Calc!A2
 F	probes/textsplit-padded-size.case.json	Calc!A3
 F	probes/textsplit-padded-size.case.json	Calc!A4
-F	probes/unknown-function-name-reach.case.json	Sheet1!B20
-F	probes/unknown-function-name-reach.case.json	Sheet1!B21
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D18
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D19
 F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D26
