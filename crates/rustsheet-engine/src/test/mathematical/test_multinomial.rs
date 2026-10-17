@@ -133,6 +133,11 @@ fn multinomial_has_excels_rounding_and_reads_numeric_text() {
         ("A8", "=MULTINOMIAL(\"2\",3)", 9.999999999999998),
         ("A9", "=MULTINOMIAL(\"4\",6)", 209.99999999999977),
         ("A10", "=MULTINOMIAL(D1:D3)", 13859.99999999998),
+        // T-1600: a lone argument below 1 is `1 / exp(-y)`, not the nearer `exp(y)`
+        // (probes/multinomial-single-arguments A5, A30, A140).
+        ("A11", "=MULTINOMIAL(5)", 0.9999999999999996),
+        ("A12", "=MULTINOMIAL(30)", 0.9999999999999953),
+        ("A13", "=MULTINOMIAL(140)", 0.9999999999999674),
     ];
     model._set("D1", "4");
     model._set("D2", "'2");
