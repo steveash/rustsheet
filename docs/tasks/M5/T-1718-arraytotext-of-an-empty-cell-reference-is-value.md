@@ -3,7 +3,7 @@ id: T-1718
 title: "ARRAYTOTEXT of an empty cell reference is #VALUE!"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
