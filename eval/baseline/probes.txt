@@ -314,6 +314,7 @@ C	probes/index-area-num-snap.case.json	11
 C	probes/index-array-indices.case.json	60
 C	probes/index-lifted-edge-cases.case.json	61
 C	probes/index-literal-scalar.case.json	12
+C	probes/index-scalar-indexes.case.json	23
 C	probes/index-single-index.case.json	6
 C	probes/index-snap-tolerance.case.json	67
 C	probes/index-tiny-negative.case.json	150
