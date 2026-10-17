@@ -1057,9 +1057,29 @@ impl Model {
                 "Invalid data for MIRR function".to_string(),
             );
         }
+        // Excel discounts each flow to period 0 with a running power, `x / (1+r)^i` with
+        // `(1+r)^i = (1+r)^(i-1) * (1+r)`, and compounds the positive sum forward as
+        // `P * (1+rr)^n / (1+rr)`; the root is Excel's `^`. Every order and power source matters
+        // in the last digits: this one matches all 432 cells of probes-numeric/m9-fin-mirr
+        // (docs/excel-semantics/financial.md "MIRR's evaluation order", T-1687).
         // We do a bit of analysis if the rates are -1 as there are some cancellations
         // It is probably not important.
         let years = values.len() as f64;
+        let reinvest_growth = 1.0 + reinvest_rate;
+        let finance_growth = 1.0 + finance_rate;
+        let mut positive_sum = 0.0;
+        let mut negative_sum = 0.0;
+        let mut reinvest_power = 1.0;
+        let mut finance_power = 1.0;
+        for &value in &values {
+            if value > 0.0 {
+                positive_sum += value / reinvest_power;
+            } else if value < 0.0 {
+                negative_sum += value / finance_power;
+            }
+            reinvest_power *= reinvest_growth;
+            finance_power *= finance_growth;
+        }
         let top = if reinvest_rate == -1.0 {
             // This is finite
             match positive_values.last() {
@@ -1067,16 +1087,7 @@ impl Model {
                 None => 0.0,
             }
         } else {
-            match compute_npv(reinvest_rate, &positive_values) {
-                Ok(npv) => -npv * ((1.0 + reinvest_rate).powf(years)),
-                Err((error, message)) => {
-                    return CalcResult::Error {
-                        error,
-                        origin: cell,
-                        message,
-                    }
-                }
-            }
+            -(positive_sum * reinvest_power / reinvest_growth)
         };
         let bottom = if finance_rate == -1.0 {
             if last_negative_index == 0 {
@@ -1088,19 +1099,18 @@ impl Model {
                 f64::INFINITY
             }
         } else {
-            match compute_npv(finance_rate, &negative_values) {
-                Ok(npv) => npv * (1.0 + finance_rate),
-                Err((error, message)) => {
-                    return CalcResult::Error {
-                        error,
-                        origin: cell,
-                        message,
-                    }
-                }
-            }
+            negative_sum
         };
 
-        let result = (top / bottom).powf(1.0 / (years - 1.0)) - 1.0;
+        let ratio = top / bottom;
+        let exponent = 1.0 / (years - 1.0);
+        // Only the ordinary case is fitted; a zero, negative or infinite ratio and a single flow
+        // keep `powf` and the errors below.
+        let root = match power(ratio, exponent) {
+            Ok(root) if ratio.is_finite() && ratio > 0.0 && exponent.is_finite() => root,
+            _ => ratio.powf(exponent),
+        };
+        let result = root - 1.0;
         if result.is_infinite() {
             return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
         }
