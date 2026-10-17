@@ -1,6 +1,11 @@
 use std::fmt;
 
 use crate::functions::lift::{num_error, value_error};
+use crate::functions::util::aggregate_args::{
+    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, ItemSource,
+};
+use crate::limits::too_many_visits;
+use crate::reference_operators::RefArg;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -19,7 +24,7 @@ use crate::{
 /// So this functions will return `CalcResult::Complex(x,y`, Suffix)
 /// and not having to parse it over and over again.
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum Suffix {
     I,
     J,
@@ -195,33 +200,52 @@ fn complex_result(x: f64, y: f64, suffix: Suffix) -> CalcResult {
     CalcResult::String(Complex { x, y, suffix }.to_string().into())
 }
 
-/// How a complex argument reads empty text: IMCOS, IMCOSH, IMCOT, IMCSC and IMCSCH parse it
-/// (`#NUM!`), the other functions read it as 0. `Zero` is our older behavior, not Excel's rule:
-/// Excel gives `#NUM!` for empty text in IMSUB, IMDIV and IMPOWER (engineering.md "T-1625
-/// probes") and probably IMSQRT (T-1385).
+/// How a complex argument reads empty text: IMCOS, IMCOSH, IMCOT, IMCSC, IMCSCH, IMSUM and
+/// IMPRODUCT parse it (`#NUM!`), the other functions read it as 0. `Zero` is our older behavior,
+/// not Excel's rule: Excel gives `#NUM!` for empty text in IMSUB, IMDIV and IMPOWER
+/// (engineering.md "T-1625 probes") and probably IMSQRT (T-1385).
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum EmptyText {
     Zero,
     Parse,
 }
 
-impl Model {
-    fn get_complex_number(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<ComplexParts, CalcResult> {
-        let value = self.evaluate_node_in_context(node, cell);
-        let value = self.dereference(value, cell);
-        Self::complex_of(&value, EmptyText::Zero, cell)
-    }
+/// How IMSUM and IMPRODUCT combine their numbers.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ComplexFold {
+    Sum,
+    Product,
+}
 
-    /// The complex number of one element value: its text, parsed. Non-complex text is `#NUM!`.
+/// IMSUM's and IMPRODUCT's walk: the first bad item in argument order is the result, whether it
+/// is an error cell, a boolean (`#VALUE!`) or non-complex text (`#NUM!`): `IMSUM(M5,M4)` is
+/// `#NUM!`, `IMSUM(M4,M5)` `#VALUE!`, `IMSUM(M7,M5)` `#DIV/0!` (probes/eng-imsum-improduct-whole
+/// B4:B9, B27). Blank cells are kept, so a cached blank of a linked workbook is a blank too.
+const COMPLEX_FOLD_POLICY: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::PickedKeepingBlanks,
+    errors: ErrorRule::First,
+    skip_empty_args: false,
+};
+
+/// The cells of the rectangle `rows` x `columns`, 0 when either is not positive.
+fn rectangle_cells(rows: i32, columns: i32) -> u64 {
+    let rows = u64::try_from(rows).unwrap_or(0);
+    let columns = u64::try_from(columns).unwrap_or(0);
+    rows.saturating_mul(columns)
+}
+
+impl Model {
+    /// The complex number of one element value: its text, parsed. Non-complex text is `#NUM!`,
+    /// and a boolean, typed or in a cell, is `#VALUE!` (`IMABS(TRUE)`, `IMSUB(M4,"1")`:
+    /// probes/eng-argument-modes A89, probes/eng-imsum-improduct-whole C1:C15).
     fn complex_of(
         value: &CalcResult,
         empty: EmptyText,
         cell: CellReferenceIndex,
     ) -> Result<ComplexParts, CalcResult> {
+        if matches!(value, CalcResult::Boolean(_)) {
+            return Err(value_error(cell));
+        }
         let value = Self::cast_string_ref(value, cell)?;
         if value.is_empty() && empty == EmptyText::Zero {
             return Ok((0.0, 0.0, Suffix::I));
@@ -277,11 +301,12 @@ impl Model {
                 [x, y, suffix] => (x, y, Some(suffix)),
                 _ => return CalcResult::new_args_number_error(cell),
             };
-            let x = match model.cast_number_ref(x, cell) {
+            // A boolean is `#VALUE!`: `COMPLEX(TRUE,1)` (probes/eng-imsum-improduct-whole C12).
+            let x = match model.cast_number_no_bools_ref(x, cell) {
                 Ok(s) => s,
                 Err(s) => return s,
             };
-            let y = match model.cast_number_ref(y, cell) {
+            let y = match model.cast_number_no_bools_ref(y, cell) {
                 Ok(s) => s,
                 Err(s) => return s,
             };
@@ -406,30 +431,10 @@ impl Model {
         })
     }
 
+    /// `IMPRODUCT(inumber1, ...)`: the product of every number its arguments hold, read whole
+    /// ([`Model::fold_complex`]).
     pub(crate) fn fn_improduct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let (x1, y1, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-
-        let (x2, y2, suffix2) = match self.get_complex_number(&args[1], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-
-        if suffix != suffix2 {
-            return CalcResult::new_error(Error::VALUE, cell, "Different suffixes".to_string());
-        }
-        let complex = Complex {
-            x: x1 * x2 - y1 * y2,
-            y: x1 * y2 + y1 * x2,
-            suffix,
-        };
-        CalcResult::String(complex.to_string().into())
+        self.fold_complex(Function::Improduct, args, ComplexFold::Product, cell)
     }
 
     pub(crate) fn fn_imreal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -470,27 +475,132 @@ impl Model {
         )
     }
 
+    /// `IMSUM(inumber1, ...)`: the sum of every number its arguments hold, read whole
+    /// ([`Model::fold_complex`]).
     pub(crate) fn fn_imsum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
+        self.fold_complex(Function::Imsum, args, ComplexFold::Sum, cell)
+    }
+
+    /// IMSUM and IMPRODUCT: every argument is read whole, never lifted (`ArgKind::WholeByCaller`),
+    /// so the call is one value (probes/eng-argument-modes A60:A83, B/C/E42, B/C/E50;
+    /// docs/excel-semantics/engineering.md "IMSUM and IMPRODUCT take their arguments whole"):
+    /// - a range, a reference a function returns and an array give each of their cells, in
+    ///   row-major order; a union or a 3-D reference is `#VALUE!` (`IMSUM((M1,M6))`,
+    ///   probes/eng-imsum-improduct-whole B19);
+    /// - a blank cell is 0, so IMPRODUCT over a range with a blank cell, also one past the used
+    ///   area, is "0" (A73, B11); an empty argument is skipped (`IMPRODUCT(M1,)` is "1+2i", B18);
+    /// - empty text is `#NUM!` (B13:B16, B25), and the first bad item in order is the result
+    ///   ([`COMPLEX_FOLD_POLICY`]); different suffixes are `#VALUE!` (B10).
+    ///
+    /// The cells read are capped (directive 5): the cells a range walks (a whole column or row
+    /// clipped to the used area) and the elements of an array add up, and the call is `#ERROR!`
+    /// once they pass `MAX_LIFTED_CELL_VISITS`, before the range is walked. Excel has no such
+    /// limit: DEVIATION (engineering.md).
+    fn fold_complex(
+        &mut self,
+        kind: Function,
+        args: &[Node],
+        fold: ComplexFold,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if !kind
+            .arg_kinds()
+            .is_some_and(|kinds| kinds.accepts(args.len()))
+        {
             return CalcResult::new_args_number_error(cell);
         }
-        let (x1, y1, suffix) = match self.get_complex_number(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let (x2, y2, suffix2) = match self.get_complex_number(&args[1], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        if suffix != suffix2 {
-            return CalcResult::new_error(Error::VALUE, cell, "Different suffixes".to_string());
+        let mut total: Option<ComplexParts> = None;
+        let mut has_blank = false;
+        let mut visits: u64 = 0;
+        let mut walk = AggregateWalk::new(COMPLEX_FOLD_POLICY);
+        for arg in args {
+            let read = self.evaluate_picked_reference_arg(arg, cell);
+            // The cells of the range (blank cells included), and the cells its walk visits.
+            let (cells, walked) = match &read {
+                RefArg::Ranges(ranges) => match &ranges[..] {
+                    [range] if range.left.sheet == range.right.sheet => {
+                        let (left, right) = (range.left, range.right);
+                        let corner = self.used_area_corner(
+                            left.sheet,
+                            left.row,
+                            left.column,
+                            right.row,
+                            right.column,
+                        );
+                        let (row2, column2) = match corner {
+                            Ok(corner) => corner,
+                            Err(message) => {
+                                return CalcResult::new_error(Error::ERROR, cell, message)
+                            }
+                        };
+                        let cells = rectangle_cells(
+                            right.row - left.row + 1,
+                            right.column - left.column + 1,
+                        );
+                        let walked =
+                            rectangle_cells(row2 - left.row + 1, column2 - left.column + 1);
+                        (cells, walked)
+                    }
+                    _ => return value_error(cell),
+                },
+                RefArg::Value(CalcResult::Array(array)) => {
+                    let cells = array
+                        .len()
+                        .saturating_mul(array.first().map_or(0, Vec::len));
+                    (0, u64::try_from(cells).unwrap_or(u64::MAX))
+                }
+                RefArg::Value(_) => (0, 1),
+            };
+            visits = visits.saturating_add(walked);
+            if let Some(error) = too_many_visits(visits, cell) {
+                return error;
+            }
+            let is_reference = matches!(arg.ungrouped(), Node::ReferenceKind { .. });
+            // The cells of a range the walk hands on: the others are blank.
+            let mut referenced: u64 = 0;
+            let walked = self.walk_aggregate_read(
+                read,
+                is_reference,
+                cell,
+                &mut walk,
+                &mut |_, source, value| {
+                    if source == ItemSource::ReferencedCell {
+                        referenced += 1;
+                    }
+                    let z = match value {
+                        CalcResult::EmptyArg => return Ok(()),
+                        CalcResult::EmptyCell => {
+                            has_blank = true;
+                            return Ok(());
+                        }
+                        value => Self::complex_of(&value, EmptyText::Parse, cell)?,
+                    };
+                    total = Some(match total {
+                        None => z,
+                        Some((x, y, suffix)) if suffix == z.2 => match fold {
+                            ComplexFold::Sum => (x + z.0, y + z.1, suffix),
+                            ComplexFold::Product => (x * z.0 - y * z.1, x * z.1 + y * z.0, suffix),
+                        },
+                        Some(_) => return Err(value_error(cell)),
+                    });
+                    Ok(())
+                },
+            );
+            if let Err(error) = walked {
+                return error;
+            }
+            if referenced < cells {
+                has_blank = true;
+            }
         }
-        let complex = Complex {
-            x: x1 + x2,
-            y: y1 + y2,
-            suffix,
-        };
-        CalcResult::String(complex.to_string().into())
+        if let Err(error) = walk.finish() {
+            return error;
+        }
+        let (x, y, suffix) = total.unwrap_or((0.0, 0.0, Suffix::I));
+        if fold == ComplexFold::Product && has_blank {
+            return complex_result(0.0, 0.0, suffix);
+        }
+        complex_result(x, y, suffix)
     }
 
     pub(crate) fn fn_imtan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
