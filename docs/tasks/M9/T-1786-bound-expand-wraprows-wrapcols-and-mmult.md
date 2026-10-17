@@ -37,9 +37,10 @@ allocate it. For EXPAND that is after its rows/columns rules, and for MMULT afte
 so Excel's `#VALUE!` for a blank or text input still comes first. `EXPAND(1,1E9,1E9)` and a
 wrap_count of 1E9 are `#VALUE!` (a dimension past the grid). An in-grid shape above 2^20 cells is
 `#ERROR!`: `ROWS(EXPAND(1,2000,1000))`, and `ROWS(MMULT(A1:A2000,B1#))` with a 1,000-column B1#.
-WRAPCOLS/WRAPROWS cannot reach `#ERROR!`: their vector is at most 2^20 cells. Excel clamps a
-wrap_count above the vector's length instead of padding (arrays.md, T-1630), which bounds them the
-same way once T-1630 lands. MMULT's inputs were already bounded by `eval_to_array`, and with the
+WRAPCOLS/WRAPROWS pad to at most n + wrap_count - 1 cells for a vector of n, so an in-grid
+wrap_count can still be `#ERROR!` (n = 2^20 and wrap_count = 2^20 - 1 pads to about 2^21). Excel
+clamps a wrap_count above the vector's length instead of padding (arrays.md, T-1630), which keeps
+them at n cells once T-1630 lands. MMULT's inputs were already bounded by `eval_to_array`, and with the
 output bound its work is at most 2^30 multiply-adds.
 XMATCH is bounded by its inputs: it lifts nothing and builds no result array. Its `lookup_array`
 must be one row or one column. A range becomes a `SearchVector` over its used part
