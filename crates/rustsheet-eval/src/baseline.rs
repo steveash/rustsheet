@@ -98,20 +98,20 @@ impl Baseline {
                 continue;
             }
             let mut parts = line.splitn(3, '\t');
-            let count = |count: &str| -> Result<usize> {
-                count
+            let count = |cells: &str| -> Result<usize> {
+                cells
                     .parse()
                     .with_context(|| format!("{}:{}: bad count", path.display(), n + 1))
             };
             match (parts.next(), parts.next(), parts.next()) {
-                (Some("C"), Some(case), Some(n)) => {
-                    b.checked.insert(case.to_string(), count(n)?);
+                (Some("C"), Some(case), Some(cells)) => {
+                    b.checked.insert(case.to_string(), count(cells)?);
                 }
                 (Some("F"), Some(case), Some(item)) => {
                     b.failing.insert((case.to_string(), item.to_string()));
                 }
-                (Some("TC"), Some(case), Some(n)) => {
-                    b.text_checked.insert(case.to_string(), count(n)?);
+                (Some("TC"), Some(case), Some(cells)) => {
+                    b.text_checked.insert(case.to_string(), count(cells)?);
                 }
                 (Some("TF"), Some(case), Some(item)) => {
                     b.text_failing.insert((case.to_string(), item.to_string()));
