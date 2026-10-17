@@ -100,5 +100,7 @@
   above the floor; decision 0062) (`make eval-baseline`).
   T-1624: functions below the evidence floor 27 → 21 (RECEIVED, YIELDDISC, PRICEDISC, INTRATE, PRICEMAT and YIELDMAT
   reach ≥ 20 Excel cells through probes/discount-security-modes; decision 0062) (`make eval-baseline`).
+  T-1625: functions below the evidence floor 21 → 13 (VDB, AMORDEGRC, FVSCHEDULE, MDURATION, RRI, IMPOWER, IMSUB
+  and IMDIV reach ≥ 20 Excel cells through probes/fin-* and eng-im*; decision 0062) (`make eval-baseline`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
