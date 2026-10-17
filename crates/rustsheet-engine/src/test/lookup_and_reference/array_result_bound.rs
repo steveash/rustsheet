@@ -1,20 +1,23 @@
 //! EXPAND, WRAPCOLS, WRAPROWS and MMULT check the size of their result before building it, as
 //! HSTACK and VSTACK do (T-1786, CLAUDE.md directive 5). DEVIATION (decision 0014): Excel
-//! (expected, not measured) builds the array; we refuse one above a whole column, and one past
-//! the grid is `#VALUE!` (docs/excel-semantics/arrays.md "Array results above 1,048,576 cells").
+//! (expected, not measured) builds an in-grid array above a whole column, which we refuse with
+//! `#ERROR!`; a shape past the grid is `check_array_size`'s `#VALUE!` (Excel's value not
+//! measured; docs/excel-semantics/arrays.md "Array results above 1,048,576 cells").
 
 use crate::test::util::new_empty_model;
 
 #[test]
-fn expand_wrapcols_and_wraprows_past_the_grid_are_value() {
+fn expand_past_the_grid_is_value_and_a_huge_wrap_count_clamps() {
     let mut model = new_empty_model();
     for row in 1..=10 {
         model._set(&format!("A{row}"), &row.to_string());
     }
-    // 10^18 cells, a billion rows and a billion columns: each a dimension past the grid.
+    // 10^18 cells: a dimension past the grid.
     model._set("C1", "=EXPAND(1,1E9,1E9)");
+    // A wrap_count above the vector's length is the length, as in Excel (arrays.md "WRAPROWS
+    // and WRAPCOLS"), so a billion pads nothing: a 10x1 column and a 1x10 row.
     model._set("C2", "=ROWS(WRAPCOLS(A1:A10,1E9))");
-    model._set("C3", "=ROWS(WRAPROWS(A1:A10,1E9))");
+    model._set("C3", "=COLUMNS(WRAPROWS(A1:A10,1E9))");
     // Inside the grid but above 2^20 cells: 2,000 x 1,000.
     model._set("C4", "=ROWS(EXPAND(1,2000,1000))");
     // Valid sizes keep their values.
@@ -24,9 +27,9 @@ fn expand_wrapcols_and_wraprows_past_the_grid_are_value() {
 
     model.evaluate();
 
-    for cell in ["C1", "C2", "C3"] {
-        assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
-    }
+    assert_eq!(model._get_text("C1"), *"#VALUE!");
+    assert_eq!(model._get_text("C2"), *"10");
+    assert_eq!(model._get_text("C3"), *"10");
     assert_eq!(model._get_text("C4"), *"#ERROR!");
     assert_eq!(model._get_text("C5"), *"12");
     assert_eq!(model._get_text("C6"), *"4");

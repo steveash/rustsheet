@@ -37,14 +37,16 @@ allocate it. For EXPAND that is after its rows/columns rules, and for MMULT afte
 so Excel's `#VALUE!` for a blank or text input still comes first. `EXPAND(1,1E9,1E9)` and a
 wrap_count of 1E9 are `#VALUE!` (a dimension past the grid). An in-grid shape above 2^20 cells is
 `#ERROR!`: `ROWS(EXPAND(1,2000,1000))`, and `ROWS(MMULT(A1:A2000,B1#))` with a 1,000-column B1#.
-WRAPCOLS/WRAPROWS pad to at most n + wrap_count - 1 cells for a vector of n, so an in-grid
-wrap_count can still be `#ERROR!` (n = 2^20 and wrap_count = 2^20 - 1 pads to about 2^21). Excel
-clamps a wrap_count above the vector's length instead of padding (arrays.md, T-1630), which keeps
-them at n cells once T-1630 lands. MMULT's inputs were already bounded by `eval_to_array`, and with the
+WRAPCOLS/WRAPROWS first clamp wrap_count to the vector's length, as Excel does (arrays.md "WRAPROWS
+and WRAPCOLS", VERIFIED; it was T-1630's, whose task now notes it), so `ROWS(WRAPCOLS(A1:A10,1E9))`
+is 10 and the padding is at most wrap_count - 1 cells. The check still runs: n = 2^20 with
+wrap_count = 2^20 - 1 pads to about 2^21 cells (`#ERROR!`). `check_array_size` now multiplies with
+`saturating_mul`, so a 32-bit `usize` (wasm32) cannot wrap the 2^34 grid product past the check. MMULT's inputs were already bounded by `eval_to_array`, and with the
 output bound its work is at most 2^30 multiply-adds.
 XMATCH is bounded by its inputs: it lifts nothing and builds no result array. Its `lookup_array`
 must be one row or one column. A range becomes a `SearchVector` over its used part
 (`range_search_vector`, the rest a virtual run of blanks), and an array constant or computed array
 was bounded when it was built. arrays.md's DEVIATION entry lists the four functions and the XMATCH
-finding. Tests: test/lookup_and_reference/array_result_bound.rs, 0.37 s in debug. Eval delta:
-`make eval-check` shows 0 regressions (see the PR).
+finding. Tests: test/lookup_and_reference/array_result_bound.rs, under a second in debug. Eval delta: see
+the PR (probes: 3,119 -> 3,109 known failures, the clamp fixes 10 cells of
+probes/dynamic-array-reshape-and-isomitted; 0 regressions in every suite).

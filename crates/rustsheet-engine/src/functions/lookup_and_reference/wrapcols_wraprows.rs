@@ -39,6 +39,9 @@ impl Model {
                 "wrap_count must be >= 1".to_string(),
             );
         }
+        // A wrap_count above the vector's length does not pad: it is the length
+        // (probes/dynamic-array-reshape-and-isomitted, arrays.md "WRAPROWS and WRAPCOLS"; T-1786).
+        let wrap_count = wrap_count.min(flat.len().max(1));
 
         let pad = match self.get_pad_with(args, cell) {
             Ok(p) => p,
@@ -96,6 +99,9 @@ impl Model {
                 "wrap_count must be >= 1".to_string(),
             );
         }
+        // A wrap_count above the vector's length does not pad: it is the length
+        // (probes/dynamic-array-reshape-and-isomitted, arrays.md "WRAPROWS and WRAPCOLS"; T-1786).
+        let wrap_count = wrap_count.min(flat.len().max(1));
 
         let pad = match self.get_pad_with(args, cell) {
             Ok(p) => p,
