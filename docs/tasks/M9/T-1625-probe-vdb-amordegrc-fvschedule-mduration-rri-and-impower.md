@@ -3,7 +3,7 @@ id: T-1625
 title: "Probe VDB, AMORDEGRC, FVSCHEDULE, MDURATION, RRI and IMPOWER, IMSUB, IMDIV to the evidence floor"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -31,3 +31,9 @@ VDB fractional periods and no_switch, AMORDEGRC life bands and rate thresholds a
 
 ## Out of scope
 - Engine fixes for the mismatches found (filed as tasks).
+
+## Outcome
+Added probes fin-vdb-modes, fin-rri, fin-fvschedule, fin-amordegrc, fin-mduration, eng-impower, eng-imsub,
+eng-imdiv (excel-graph filled). All eight functions are over the 20-cell floor (below_floor 21 -> 13).
+44 new-coverage failures baselined, 0 regressions. Quirks in docs/excel-semantics/{financial,engineering}.md;
+fixes filed as T-1764, T-1765, T-1766.
