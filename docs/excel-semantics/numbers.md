@@ -1106,7 +1106,7 @@ option, and gives `#VALUE!` for text or a boolean), and which error wins between
 Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034).
 The VAR.P last digit (probes/aggregate-grid B31, C31) has passed since T-1037.
 Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.rs); the lift reuses
-`Model::lift_with_cost`, and the spill shape is `aggregate_static_result` in static_analysis/aggregate.rs (T-1038).
+`Model::lift_values` (functions/lift/driver.rs), and the spill shape is `aggregate_static_result` in static_analysis/aggregate.rs (T-1038).
 
 ## SUBTOTAL and AGGREGATE over hidden and filtered rows
 Rule: a row hidden by hand is read by SUBTOTAL 1-11 and skipped by 101-111; a row hidden by a filter is skipped by

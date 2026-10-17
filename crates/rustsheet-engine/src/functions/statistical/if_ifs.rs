@@ -1,13 +1,12 @@
-use crate::arithmetic::{bcast_get, extended_quotient, extended_sum, flush_subnormal, MISSING};
-use crate::cast::{calc_result_to_array_node, number_text_too_long};
+use crate::arithmetic::{extended_quotient, extended_sum, flush_subnormal};
+use crate::cast::number_text_too_long;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
-use crate::functions::util::array_node_to_calc_result;
-use crate::limits::{check_array_size, too_many_visits};
+use crate::functions::lift::{LiftCost, LiftOptions};
 use crate::{
     calc_result::{CalcResult, Range},
-    expressions::parser::{ArrayNode, Node},
+    expressions::parser::Node,
     expressions::token::Error,
     model::Model,
 };
@@ -42,56 +41,10 @@ fn resize_to(anchor: &Range, shape_of: &Range) -> Range {
     resized
 }
 
-/// One criteria argument of an *IF(S) function, as [`Model::lift_criteria`] sees it.
-enum CriteriaArg {
-    /// A single value: every element of a lifted result uses it.
-    Scalar(CalcResult),
-    /// An array, or a multi-cell range read element by element.
-    Grid(Vec<Vec<ArrayNode>>),
-}
-
 const TOO_LONG: &str = "Criterion too long";
 
 fn criterion_too_long(criterion: &CalcResult) -> bool {
     matches!(criterion, CalcResult::String(text) if number_text_too_long(text))
-}
-
-impl CriteriaArg {
-    fn dims(&self) -> (usize, usize) {
-        match self {
-            CriteriaArg::Scalar(_) => (1, 1),
-            CriteriaArg::Grid(grid) => (grid.len(), grid.first().map_or(0, Vec::len)),
-        }
-    }
-
-    /// The criterion at output position (`row`, `column`): a dimension of length 1 stretches,
-    /// a position past a shorter array is `#N/A` (probes/ifs-array-criteria H11, H33-H37).
-    fn element(&self, row: usize, column: usize) -> Option<&ArrayNode> {
-        match self {
-            CriteriaArg::Scalar(_) => None,
-            CriteriaArg::Grid(grid) => Some(bcast_get(grid, row, column).unwrap_or(&MISSING)),
-        }
-    }
-}
-
-/// Elements [`Model::lift_criteria`] computes: one per run of equal consecutive criteria, in
-/// row-major order (the rest reuse the previous result).
-fn count_walks(args: &[CriteriaArg], rows: usize, columns: usize) -> u64 {
-    let mut walks = 0;
-    let mut previous: Option<(usize, usize)> = None;
-    for row in 0..rows {
-        for column in 0..columns {
-            let same = previous.is_some_and(|(r, c)| {
-                args.iter()
-                    .all(|arg| arg.element(row, column) == arg.element(r, c))
-            });
-            if !same {
-                walks += 1;
-            }
-            previous = Some((row, column));
-        }
-    }
-    walks
 }
 
 fn shape_mismatch(cell: CellReferenceIndex) -> CalcResult {
@@ -117,117 +70,29 @@ impl Model {
             .collect()
     }
 
-    /// Runs an *IF(S) function once per criteria element: when any criterion is an array or a
-    /// multi-cell range, the result is an array of the criteria broadcast against each other,
-    /// as the element-wise operators do (a row and a column give a grid; a position past a
-    /// shorter array uses an `#N/A` criterion). Otherwise `compute` runs once with the
-    /// criteria as they are. Evidence: probes/ifs-array-criteria, poi/70005-countifs.xlsx
-    /// (docs/excel-semantics/criteria.md "*IF(S) lift array criteria").
+    /// Runs an *IF(S) function once per criteria element through [`Model::lift_values`]: when
+    /// any criterion is an array or a multi-cell range, the result is an array of the criteria
+    /// broadcast against each other (a position past a shorter array uses an `#N/A`
+    /// criterion). Otherwise `compute` runs once with the criteria as they are.
     ///
     /// `walked` is the range every element walks (the value range, or COUNTIFS's first criteria
     /// range): the call is `#ERROR!` when its used cells times the criteria count times the
-    /// elements to compute exceed `limits::MAX_LIFTED_CELL_VISITS`.
-    ///
+    /// elements to compute exceed `limits::MAX_LIFTED_CELL_VISITS`. Consecutive equal criteria
+    /// (the blank tail of a whole-column criteria range) reuse the previous result.
     fn lift_criteria(
         &mut self,
         criteria: Vec<CalcResult>,
         walked: &Node,
         cell: CellReferenceIndex,
-        compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
-    ) -> CalcResult {
-        self.lift_with_cost(
-            criteria,
-            |model| model.walk_cost(walked, cell),
-            cell,
-            compute,
-        )
-    }
-
-    /// [`Model::lift_criteria`] with the cells one element visits given by `walk_cost` (called
-    /// only when something lifts). AGGREGATE lifts its `function_num`, options and k this way.
-    pub(crate) fn lift_with_cost(
-        &mut self,
-        criteria: Vec<CalcResult>,
-        walk_cost: impl FnOnce(&mut Self) -> u64,
-        cell: CellReferenceIndex,
         mut compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
-        if !criteria
-            .iter()
-            .any(|c| matches!(c, CalcResult::Range { .. } | CalcResult::Array(_)))
-        {
-            return compute(self, &criteria);
-        }
-        let mut args = Vec::with_capacity(criteria.len());
-        for criterion in criteria {
-            args.push(match criterion {
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    match self.evaluate_range(left, right, cell) {
-                        Ok(grid) => CriteriaArg::Grid(grid),
-                        Err(error) => return error,
-                    }
-                }
-                CalcResult::Array(grid) => CriteriaArg::Grid(grid),
-                scalar => CriteriaArg::Scalar(scalar),
-            });
-        }
-        let (rows, columns) = args
-            .iter()
-            .map(CriteriaArg::dims)
-            .fold((1, 1), |acc, d| (acc.0.max(d.0), acc.1.max(d.1)));
-        if let Some((error, message)) = check_array_size(rows, columns) {
-            return CalcResult::new_error(error, cell, message);
-        }
-        // Refuse before walking anything when the walks would visit too many cells.
-        let walks = count_walks(&args, rows, columns);
-        let criteria_count = u64::try_from(args.len()).unwrap_or(u64::MAX);
-        let visits = walk_cost(self)
-            .saturating_mul(criteria_count)
-            .saturating_mul(walks);
-        if let Some(error) = too_many_visits(visits, cell) {
-            return error;
-        }
-        // Consecutive equal criteria (the blank tail of a whole-column criteria range) reuse
-        // the previous result instead of walking the ranges again.
-        let mut previous: Option<(Vec<Option<ArrayNode>>, ArrayNode)> = None;
-        let mut output = Vec::with_capacity(rows);
-        for row in 0..rows {
-            let mut out_row = Vec::with_capacity(columns);
-            for column in 0..columns {
-                let key: Vec<Option<ArrayNode>> = args
-                    .iter()
-                    .map(|arg| arg.element(row, column).cloned())
-                    .collect();
-                let value = match &previous {
-                    Some((previous_key, value)) if *previous_key == key => value.clone(),
-                    _ => {
-                        let values: Vec<CalcResult> = args
-                            .iter()
-                            .zip(&key)
-                            .map(|(arg, element)| match (arg, element) {
-                                (CriteriaArg::Scalar(value), _) => value.clone(),
-                                (_, Some(node)) => array_node_to_calc_result(node, cell),
-                                (_, None) => CalcResult::EmptyCell,
-                            })
-                            .collect();
-                        let result = compute(self, &values);
-                        let value = calc_result_to_array_node(result);
-                        previous = Some((key, value.clone()));
-                        value
-                    }
-                };
-                out_row.push(value);
-            }
-            output.push(out_row);
-        }
-        CalcResult::Array(output)
+        self.lift_values(
+            criteria,
+            LiftCost::Walk(walked),
+            &LiftOptions::REUSE_EQUAL_RUNS,
+            cell,
+            &mut compute,
+        )
     }
 
     /// Cells of `node`'s range inside the used area (at least 1): what one criteria walk visits.

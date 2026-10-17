@@ -16,7 +16,10 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::Function,
+    functions::{
+        lift::{LiftCost, LiftOptions},
+        Function,
+    },
     model::Model,
     reference_operators::RefArg,
 };
@@ -98,7 +101,7 @@ impl Model {
         }
         let mut lifted = vec![function, option];
         lifted.extend(fourth.filter(lifts));
-        // A single-cell range stays a scalar reference; `lift_with_cost` reads multi-cell ones.
+        // A single-cell range stays a scalar reference; `lift_values` reads multi-cell ones.
         let ranges: Vec<Option<CalcResult>> = lifted
             .iter_mut()
             .map(|value| match value {
@@ -108,11 +111,12 @@ impl Model {
                 _ => None,
             })
             .collect();
-        self.lift_with_cost(
+        self.lift_values(
             lifted,
-            |_| cost.max(1),
+            LiftCost::Cells(cost.max(1)),
+            &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
-            |model, values| {
+            &mut |model, values| {
                 let scalar = |index: usize| {
                     ranges[index]
                         .clone()
