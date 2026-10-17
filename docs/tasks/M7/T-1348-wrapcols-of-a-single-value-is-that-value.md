@@ -3,7 +3,7 @@ id: T-1348
 title: "WRAPCOLS of a single value is that value, not padded to wrap_count; a wrap_count below 1 is #NUM!"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
