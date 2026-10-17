@@ -185,6 +185,19 @@ impl Model {
     /// (DEVIATION, docs/excel-semantics/arrays.md "Array results above 1,048,576 cells").
     /// A whole-row or whole-column range is read only within the sheet's used area; the
     /// rest is empty and goes on record as read empty in one rectangle (`clip_to_used_area`).
+    /// The value `node` evaluates to, a range read as its top-left cell without evaluating the
+    /// rest of it: N, T and the offline-error functions take their argument so.
+    pub(crate) fn evaluate_node_top_left(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match self.evaluate_node_in_context(node, cell) {
+            CalcResult::Range { left, .. } => self.evaluate_cell(left),
+            other => other,
+        }
+    }
+
     pub(crate) fn evaluate_range(
         &mut self,
         left: CellReferenceIndex,

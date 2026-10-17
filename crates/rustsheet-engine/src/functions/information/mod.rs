@@ -512,12 +512,9 @@ impl Model {
         if arg_count != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let argument = match self.evaluate_node_in_context(&args[0], cell) {
-            // The top-left cell, with no lift and no implicit intersection
-            // (probes/info-logic-argument-modes A6:A7, excel-graph).
-            CalcResult::Range { left, .. } => self.evaluate_cell(left),
-            other => other,
-        };
+        // A range is its top-left cell, with no lift and no implicit intersection
+        // (probes/info-logic-argument-modes A6:A7, excel-graph).
+        let argument = self.evaluate_node_top_left(&args[0], cell);
         let value = match argument {
             CalcResult::Number(n) => n,
             CalcResult::String(_) => 0.0,

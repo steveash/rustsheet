@@ -18,6 +18,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::lift::{LiftCost, LiftOptions, LiftedArg},
     limits::check_array_size,
     model::Model,
     reference_operators::{Picked, RefArg},
@@ -86,11 +87,6 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
             ArrayNode::Error(Error::VALUE)
         }
     }
-}
-
-/// Whether an argument value makes IFS or SWITCH run element by element: an array or a range.
-fn is_lifted(value: &CalcResult) -> bool {
-    matches!(value, CalcResult::Range { .. } | CalcResult::Array(_))
 }
 
 /// IFS's and SWITCH's `#N/A` when nothing matches.
@@ -424,7 +420,7 @@ impl Model {
         let case_count = args_count / 2;
         for case_index in 0..case_count {
             let condition = self.evaluate_node_in_context(&args[2 * case_index], cell);
-            if is_lifted(&condition) {
+            if LiftedArg::is_grid(&condition) {
                 // The earlier conditions were all FALSE, so the result is decided element by
                 // element from here (`IFS({TRUE,FALSE},1,TRUE,2)` is {1,2}).
                 let mut lifted = vec![condition];
@@ -432,11 +428,12 @@ impl Model {
                 for node in &args[2 * case_index + 2..] {
                     lifted.push(self.evaluate_node_in_context(node, cell));
                 }
-                return self.lift_with_cost(
+                return self.lift_values(
                     lifted,
-                    |_| 1,
+                    LiftCost::Cells(1),
+                    &LiftOptions::REUSE_EQUAL_RUNS,
                     cell,
-                    |model, pairs| model.ifs_element(pairs, cell),
+                    &mut |model, pairs| model.ifs_element(pairs, cell),
                 );
             }
             match self.cast_to_bool(condition, cell) {

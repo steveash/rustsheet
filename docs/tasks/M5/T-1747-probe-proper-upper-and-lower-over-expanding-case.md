@@ -3,7 +3,7 @@ id: T-1747
 title: "Probe PROPER, UPPER and LOWER over expanding case mappings and final sigma variants"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -26,3 +26,6 @@ of these. Code: `simple_case` in functions/text/string_format.rs, UPPER/LOWER in
 
 ## Out of scope
 - CLEAN (T-1307 covered it).
+
+## Outcome
+Probe probes/case-mapping-expanding (81 cells) found UPPER and LOWER one-to-one like PROPER (İ stays in UPPER) and a narrower final-sigma context (no final sigma before combining marks, U+2019, U+200B). Added shared `upper_case`/`lower_case`/`sigma_is_final`; text.md updated. Eval: probes case 47/66 -> 81/81 cells.

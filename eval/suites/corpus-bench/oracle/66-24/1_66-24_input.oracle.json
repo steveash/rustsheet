@@ -1,0 +1,14 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Imported Data": {},
+  "Items Older than 30 days": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "39ebccfbd4d7d667d7a049842874cab3c10ec5f4416d5c81225e5f88ae1cef29",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:36:13+00:00",
+  "version": null
+ }
+}

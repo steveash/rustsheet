@@ -120,3 +120,29 @@ fn t_lifts_over_an_array() {
     assert_eq!(model._get_text("E3"), *"");
     assert_eq!(model._get_text("E4"), *"");
 }
+
+/// T reads a multi-cell range as its top-left cell, legacy or dynamic, with no implicit
+/// intersection, and a legacy formula puts no `@` on the range, an OFFSET or a literal-condition
+/// IF of it (probes/t-n-range-top-left F2, F10, F20, P20, Q20, R20; T-0985).
+#[test]
+fn t_reads_the_top_left_cell_of_a_range() {
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("A2", "5");
+    model._set("B1", "5");
+    model._set("B2", "ab");
+    model._set("C2", "=T(A1:A2)");
+    model._set("D2", "=T(B1:B2)");
+    model.evaluate();
+    assert_eq!(model._get_text("C2"), *"x");
+    assert_eq!(model._get_text("D2"), *"");
+    for (formula, legacy) in [
+        ("=T(A1:A3)", "=T(A1:A3)"),
+        ("=T(OFFSET(A1:A3,0,0))", "=T(OFFSET(A1:A3,0,0))"),
+        ("=T(IF(1,A1:A3))", "=T(IF(1,A1:A3))"),
+        ("=T(A1:A3&\"\")", "=T(@A1:A3&\"\")"),
+    ] {
+        let text = model.legacy_formula_text(0, 10, 6, formula).unwrap();
+        assert_eq!(text, legacy, "{formula}");
+    }
+}

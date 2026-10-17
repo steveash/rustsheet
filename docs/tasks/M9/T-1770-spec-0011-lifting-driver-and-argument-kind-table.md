@@ -36,6 +36,7 @@ Cells, all failing in eval/baseline/probes.txt:
 - probes/scalar-lift-shapes-b C3, C70, D3, D70, E3, E70, F3, F70, G3, K3, L3, L70, N3, N70, P3, Q3.
 - probes/scalar-lift-shapes-c E3, E70, H3, H70, P3, S3.
 - gen-m9/4df1b22d3ed63f58 A24 (EOMONTH over an array start: `#SPILL!`) and gen-m9/b58b6d7cd39d195f A9 (EOMONTH's months a TAKE reference: `#VALUE!`). Both moved here from T-1236.
+- corpus-bench/45738 (26 cells, T-0427, excel-graph): `Sheet1!L48` `=$B6*ISNUMBER(MATCH(L$4,EOMONTH($D6,-ROW($AI$1:$AI$8)*12/$C6),))+(EOMONTH($D6,0)=L$4)*($A6+$B6)` expected 1000, engine 0: EOMONTH's months argument is a computed array, EOMONTH gives `#N/IMPL!`, so MATCH never matches (also O49, M50, F51, I52, E53, J54, ...). Its `F` line should leave eval/baseline/corpus-bench.txt.
 
 ## Acceptance criteria
 - [ ] The cells listed under Context pass and leave eval/baseline/probes.txt (and gen-m9's baseline), with no new F line in any suite.
