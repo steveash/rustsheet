@@ -3,7 +3,7 @@ id: T-1717
 title: "A legacy formula puts @ on an array-valued call or array constant in a value argument and at the top level"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
