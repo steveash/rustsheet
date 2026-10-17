@@ -10,6 +10,9 @@ origin = "https://github.com/RUCKBReasoning/SpreadsheetBench (corpus as listed b
 # No expectations yet: SpreadsheetBench caches were recalculated by LibreOffice or win32com and
 # are not Excel evidence (docs/research/test-suites-and-oracle.md §10). Crash-only.
 use_cached_values = false
+# Excel values from `rustsheet-oracle fill -b excel-graph` (T-0427), committed here: the workbooks
+# themselves are fetched into the cache, so their sidecars cannot sit beside them (decision 0019).
+oracle_dir = "oracle"
 gate = true
 baseline = "cases"
 milestone = ["M11"]

@@ -103,6 +103,23 @@ impl SuiteSummary {
         let rate = self.cells_passed as f64 / scored as f64;
         rate
     }
+
+    /// Rate of the same scored cells that are bit-exact or within 1e-9 relative (`NumericUlp`,
+    /// `NumericClose`): the comparator xlsx-corpus-bench's leaderboard uses, reported beside our
+    /// bit-exact score so corpus-bench can be read against it (T-0427).
+    #[must_use]
+    pub fn cell_close_rate(&self) -> f64 {
+        let scored = self.cells.saturating_sub(self.deviations);
+        if scored == 0 {
+            return 0.0;
+        }
+        let near = |k| self.verdicts.get(&k).copied().unwrap_or(0);
+        let close = (self.cells_passed + near(Verdict::NumericUlp) + near(Verdict::NumericClose))
+            .min(scored);
+        #[allow(clippy::cast_precision_loss)]
+        let rate = close as f64 / scored as f64;
+        rate
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -409,10 +426,10 @@ impl RunReport {
 
     fn write_suites_table(&self, md: &mut String) {
         let _ = writeln!(md, "## Suites\n");
-        let _ = writeln!(md, "| suite | cases | pass | fail | pending | crashes | errors | cells | deviations | cell pass % | ulp | close | mismatch | unsupported | type |");
+        let _ = writeln!(md, "| suite | cases | pass | fail | pending | crashes | errors | cells | deviations | cell pass % | 1e-9 % | ulp | close | mismatch | unsupported | type |");
         let _ = writeln!(
             md,
-            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
         );
         for s in &self.suites {
             let st = |k: CaseStatus| s.statuses.get(&k).copied().unwrap_or(0);
@@ -425,7 +442,7 @@ impl RunReport {
                 st(CaseStatus::EngineError) + st(CaseStatus::Panic) + st(CaseStatus::Timeout);
             let _ = writeln!(
                 md,
-                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {:.2} | {} | {} | {} | {} | {} |",
+                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {:.2} | {:.2} | {} | {} | {} | {} | {} |",
                 s.name,
                 s.cases,
                 st(CaseStatus::Pass),
@@ -436,6 +453,7 @@ impl RunReport {
                 s.cells,
                 s.deviations,
                 100.0 * s.cell_pass_rate(),
+                100.0 * s.cell_close_rate(),
                 v(Verdict::NumericUlp),
                 v(Verdict::NumericClose),
                 v(Verdict::NumericMismatch)
@@ -678,6 +696,21 @@ mod tests {
             listed_deviation: false,
             graph_subnormal: false,
         }
+    }
+
+    #[test]
+    fn near_misses_count_toward_the_close_rate_only() {
+        let mut r = case("corpus-bench/a", 1);
+        r.cells = vec![
+            cell("ABS(1)", Verdict::NumericUlp),
+            cell("ABS(2)", Verdict::NumericClose),
+            cell("ABS(3)", Verdict::NumericMismatch),
+        ];
+        (r.checked, r.passed) = (4, 1);
+        let report = RunReport::build("e", &[r], &[], &Catalog::default());
+        let s = &report.suites[0];
+        assert!((s.cell_pass_rate() - 0.25).abs() < 1e-12);
+        assert!((s.cell_close_rate() - 0.75).abs() < 1e-12);
     }
 
     #[test]
