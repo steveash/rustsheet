@@ -3,7 +3,7 @@ id: T-1831
 title: "Move the shared two_numbers kernel reader out of financial/ beside the lift helpers"
 milestone: M9
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
