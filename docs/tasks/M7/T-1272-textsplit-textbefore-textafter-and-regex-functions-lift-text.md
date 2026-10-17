@@ -45,7 +45,7 @@ text until T-1361). `lift_text_call` calls `lift_values` directly; moving onto `
 - Handed off twice (budget), resumed by opus: the earlier reviews' findings are all addressed in the branch history.
   Follow-ups: T-1812 (probe the guesses), T-1813 (REGEXREPLACE result bound), T-1814 (per-element clones).
 
-## Handoff
+## Handoff (resumed)
 Third opus run (2026-10-17, budget out). Branch `agent/functions-text/T-1272-text-lift` is merged with main as of
 26dbd619 and `make check` is green on it, except the typo fixed in the last commit. Review round on that head: security,
 architecture and quality APPROVE; excel-fidelity's four MAJORs are fixed in 1f87faf8 (the regex default size limit,
