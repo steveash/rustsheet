@@ -18,8 +18,9 @@ pub(crate) enum NameSite {
 }
 
 /// Calls `visit` with every name of `node`, where it is and the spelling of the innermost
-/// enclosing LAMBDA or LET declaration that binds it (`None` when none does), `bound` holding the names already in scope. Matching is case-insensitive, mirroring
-/// evaluation (see `same_variable`). LAMBDA parameters themselves are not visited.
+/// enclosing LAMBDA or LET declaration that binds it (`None` when none does), `bound` holding the
+/// names already in scope. Matching is case-insensitive, mirroring evaluation (see
+/// `same_variable`). LAMBDA parameters themselves are not visited.
 pub(crate) fn walk_names<F>(node: &mut Node, bound: &mut Vec<String>, visit: &mut F)
 where
     F: FnMut(NameSite, &mut String, Option<&str>),
