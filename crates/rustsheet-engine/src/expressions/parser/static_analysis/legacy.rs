@@ -3,6 +3,7 @@
 //! their mirror in `remove_redundant_implicit_intersection`. Excel:
 //! docs/excel-semantics/references.md "Legacy formulas intersect the ranges in value arguments".
 
+use super::lifted::lifts_arrays_at;
 use super::{
     add_implicit_intersection, for_each_chain_operand_mut, remove_redundant_implicit_intersection,
     run_static_analysis_on_node, Node, Signature, StaticResult,
@@ -171,20 +172,26 @@ fn for_each_value_operand(node: &mut Node, f: &mut impl FnMut(&mut Node)) {
 pub(super) fn add_argument_intersection(
     kind: &Function,
     signature: Option<&Signature>,
+    index: usize,
     arg: &mut Node,
 ) {
     if !reads_reference_whole(kind, arg) {
-        add_implicit_intersection(arg, legacy_intersects(kind, signature, arg));
+        add_implicit_intersection(arg, legacy_intersects(kind, signature, index, arg));
     }
 }
 
-/// Whether a legacy formula intersects `arg`, the argument of `kind` with `signature`: a scalar
+/// Whether a legacy formula intersects `arg`, argument `index` of `kind` with `signature`: a scalar
 /// argument that is not a scalar, `IFERROR(B1:B6*1,100)` and `IF(A1:A6="a",1,0)` included
 /// (probes/legacy-value-argument-intersection I10, array-context-legacy-sumproduct R10), or an
 /// argument [`legacy_context_intersects`] makes a value.
-fn legacy_intersects(kind: &Function, signature: Option<&Signature>, arg: &Node) -> bool {
+fn legacy_intersects(
+    kind: &Function,
+    signature: Option<&Signature>,
+    index: usize,
+    arg: &Node,
+) -> bool {
     (is_scalar_context(kind, signature) && !reads_reference(kind, arg))
-        || legacy_value_operand(kind, arg)
+        || legacy_value_operand(kind, index, arg)
 }
 
 /// Whether `arg` of `kind` needs no intersection although `kind` takes a scalar: a scalar, or
@@ -235,14 +242,15 @@ fn is_plain_reference(node: &Node) -> bool {
     true
 }
 
-/// Whether the argument `arg` of `kind` with `signature` is read as a value, where an `@` is
-/// redundant because [`legacy_intersects`] adds it again on import.
+/// Whether the argument `arg` (number `index`) of `kind` with `signature` is read as a value,
+/// where an `@` is redundant because [`legacy_intersects`] adds it again on import.
 pub(super) fn legacy_context_intersects(
     kind: &Function,
     signature: Option<&Signature>,
+    index: usize,
     arg: &Node,
 ) -> bool {
-    is_scalar_context(kind, signature) || legacy_value_operand(kind, arg)
+    is_scalar_context(kind, signature) || legacy_value_operand(kind, index, arg)
 }
 
 /// A scalar argument, or any argument of a function whose arguments a legacy formula reads as
@@ -319,9 +327,11 @@ fn for_each_array_context_site(node: &mut Node, f: &mut impl FnMut(&mut Node, Pl
 /// fixtures/external-link-cached-ranges Refs!B44; T-1526), as for the other aggregates in the match
 /// below (probes/legacy-value-argument-intersection-b, T-1551, and -c, T-1556); MODE, MODE.MULT, MODE.SNGL, MMULT, INDEX and LOOKUP
 /// evaluate such an argument as an array (that probe S; probes/array-context-legacy-sumproduct
-/// N, P, Q). docs/excel-semantics/references.md has the result per function.
-fn legacy_value_operand(kind: &Function, arg: &Node) -> bool {
-    matches!(
+/// N, P, Q). docs/excel-semantics/references.md has the result per function. A `LiftArrays`
+/// argument of the lifting table is one too ([`lifts_arrays_at`]: `=EDATE(A1:A60+0,1)` shows
+/// `=EDATE(@A1:A60+0,1)`, probes/scalar-lift-shapes-c F, Q).
+fn legacy_value_operand(kind: &Function, index: usize, arg: &Node) -> bool {
+    (matches!(
         kind,
         Function::Sum
             | Function::Average
@@ -371,7 +381,8 @@ fn legacy_value_operand(kind: &Function, arg: &Node) -> bool {
             // arm's range operand rather than on the call (probes/legacy-one-cell-shape-intersection
             // H3, P3, excel-graph, T-1633).
             | Function::Choose
-    ) && is_value_operation(arg)
+    ) || lifts_arrays_at(kind, index))
+        && is_value_operation(arg)
 }
 
 /// Whether `node` is arithmetic, concatenation or a comparison, possibly in parentheses:

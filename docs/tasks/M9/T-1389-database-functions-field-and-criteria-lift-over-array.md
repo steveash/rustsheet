@@ -32,6 +32,7 @@ per-function copy.
 ## Acceptance criteria
 - [ ] Those probes/db-argument-modes cells leave eval/baseline/probes.txt with no new F lines.
 - [ ] `make check` green; reviewers approve.
+- [ ] The entries it adds make the variant live, and it removes the `#[allow(dead_code)]` on `ArgKind::LiftArraysRangeWhole` (functions/lift/kinds.rs) (T-1770 left the allow with a `TODO(T-1389)`).
 
 ## Out of scope
 - The semantic gaps found on generated data (T-1390).
