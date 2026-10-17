@@ -526,6 +526,13 @@ now also BESSELI's and BESSELK's per-call cap), so they are `Weighted(2^16)`: a 
 2,048 elements, about 2 s at the cap in release (engineering.md "BESSEL order cap", a DEVIATION). HEX2DEC
 and OCT2DEC take one argument, as the parser's signature already said; their old code ignored a second one.
 
+As built (T-1384): IMSUM and IMPRODUCT are the first `WholeByCaller` entries outside the sorted-data
+functions: `COMPLEX_FOLD` repeats `WholeByCaller` up to 255 arguments. The entry is declarative, as
+T-1772's are: it gives the argument count, the static shape (one value) and the legacy export rule (no
+`@`); the function reads its own arguments through SPEC-0009's `walk_aggregate_read` and never enters
+the lift driver, so its `KernelWork` is not charged. Its own read cap (`MAX_LIFTED_CELL_VISITS` over
+the cells walked) is engineering.md "IMSUM and IMPRODUCT read cap", a DEVIATION.
+
 As built (T-1290): 44 statistical functions whose every argument is scalar are `Lift` entries. Kernels that call
 statrs' incomplete beta (a 140-step continued fraction) a fixed number of times are `Constant`; BINOM.INV and CRITBINOM
 are `Weighted(64)` (a halving search over a `u64`), and PERMUT `Weighted(171)`, its product now stopping once it is

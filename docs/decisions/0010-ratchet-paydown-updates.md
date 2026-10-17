@@ -127,10 +127,12 @@
   functions' fallback arms deleted: the lifting table derives them), and functions/date_and_time.rs
   1018 → 1014 (already 1014 lines on main; the update tightened a stale entry)
   (`check_file_size.py --update`).
-  T-1290: duplicated lines 5084 → 4782 (the statistical functions whose every argument is scalar
+  T-1384: duplicated lines 5084 → 5062 (IMSUM and IMPRODUCT share one fold over SPEC-0009's walker
+  instead of their two-argument readers) (`check_duplication.py --update`).
+  T-1290: duplicated lines 5062 → 4760 (the statistical functions whose every argument is scalar
   become kernels over borrowed values; BETADIST, NORMSDIST, LOGNORMDIST, NEGBINOMDIST and TDIST share
   their modern function's kernel instead of rebuilding its argument nodes) (`check_duplication.py
-  --update`), and expressions/parser/static_analysis.rs 1406 → 1319 lines (the fallback arms of the
+  --update`), and expressions/parser/static_analysis.rs 1406 → 1315 lines (the fallback arms of the
   44 statistical functions now in the lifting table), functions/mod.rs 2180 → 2179 (GAMMALN and
   GAMMALN.PRECISE share one dispatch arm) (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in

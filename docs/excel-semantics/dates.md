@@ -449,8 +449,8 @@ Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array
 ## DATEDIF and DAYS360 error order with a bad unit or method (inferred)
 Rule (inferred from the leftmost-error rule in arrays.md, not probed): a date argument's own error comes first
 (`DATEDIF(1/0,5,NA())` and `DAYS360(1/0,5,NA())` are `#DIV/0!`). After that ours keeps each function's pre-lift
-order: DATEDIF reports the dates' `#NUM!` (end before start, out of range) before the unit's error
-(`DATEDIF(10,5,NA())` is `#NUM!`), while DAYS360 reports the method's error before the dates' `#NUM!`
+order: DATEDIF reports the `#NUM!` of an end before the start before the unit's error
+(`DATEDIF(10,5,NA())` is `#NUM!`; for out-of-range dates the unit's error wins, see "DATEDIF argument errors before date checks", T-1355), while DAYS360 reports the method's error before the dates' `#NUM!`
 (`DAYS360(-5,5,NA())` is `#N/A`). Also unprobed: `TIMEVALUE(B3:B3)` of a single cell is that cell's value, and a
 single-cell-range or 3D-range `weekend` is `#VALUE!`/first-sheet in ours.
 Status: UNVERIFIED (probe pending)
@@ -692,18 +692,21 @@ Ours: the time is rounded to the millisecond and the seconds truncated (`SECOND(
 Status: VERIFIED (web) for these two cells; ties and carries UNVERIFIED
 Tasks: T-1408
 
-## YEARFRAC swaps reversed dates for every basis
-Rule: YEARFRAC with a start date after the end date swaps them for basis 1 as for basis 0: `YEARFRAC(52874,24708,1)` =
-77.11295191295191 = `YEARFRAC(24708,52874,1)`.
-Evidence: gen-m7/c263b43217a5898b Calc!A38 (excel-graph, 2026-10-11, T-1275).
-Ours: `#NUM!` for basis 1 (basis 0 already swaps); bases 2-4 unchecked.
-Status: VERIFIED (web)
+## YEARFRAC swaps reversed dates for basis 1
+Rule: YEARFRAC with basis 1 and a start date after the end date swaps them: `YEARFRAC(52874,24708,1)` =
+77.11295191295191 = `YEARFRAC(24708,52874,1)`. Whether bases 0, 2, 3 and 4 swap is UNVERIFIED.
+Evidence: gen-m7/c263b43217a5898b Calc!A38 (excel-graph, 2026-10-11, T-1275), basis 1 only.
+Ours: basis 1 swaps (T-1354). Bases 2-4 take the absolute day count, which is symmetric. Basis 0 takes the absolute
+value of the US 30/360 count on the original order, which is not symmetric at day 30/31 and end of February
+(`YEARFRAC(DATE(2024,3,31),DATE(2024,1,15),0)` is 75/360, its forward pair 76/360). The equality test in
+`test_yearfrac_basis.rs` covers one pair without those edges and is not evidence.
+Status: VERIFIED (web) for basis 1; UNVERIFIED for bases 0, 2, 3, 4
 Tasks: T-1354
 
 ## DATEDIF argument errors before date checks
 Rule: an error in DATEDIF's unit argument wins over an invalid start date: `DATEDIF(-1,38627,CHOOSE(3,x))` (the unit is
 `#VALUE!`) is `#VALUE!`, not the `#NUM!` of a negative date.
 Evidence: gen-m7/f68fafa0ca2eba26 Calc!A1 (`Data!D10^DATEDIF((Data!E$5+(-1)),38627,CHOOSE(3,Data!B12))`, E5 blank) (excel-graph, 2026-10-11, T-1275).
-Ours: `#NUM!`.
-Status: VERIFIED (web); an invalid unit text with a negative start date is UNVERIFIED
+Ours: once start <= end, the unit's error wins over any start or end date outside the calendar (T-1355); a reversed pair still gives `#NUM!` first.
+Status: VERIFIED (web) for a negative start date with an in-range end; UNVERIFIED: an out-of-range high end date or an ordered pair of negative dates with an error unit, an invalid unit text with a negative start date, and an error unit with a reversed pair
 Tasks: T-1355
