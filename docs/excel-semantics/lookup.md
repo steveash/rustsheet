@@ -559,12 +559,13 @@ Status: VERIFIED (web)
 Tasks: T-1252, T-1264
 
 ## TRIMRANGE with a fractional trim argument
-Rule (hypothesis): `TRIMRANGE(C10:E11,2.5,3)` is `#VALUE!`. In `UPPER(..)&REPLACE("abc",TRIMRANGE(Data!C10:E11,2.5,3),1,PROPER(""))`
-the result is `#VALUE!` while the left operand is "42"; either TRIMRANGE rejects trim_rows 2.5 or REPLACE rejects a 2x3
-reference start_num instead of lifting over it.
-Evidence: gen-m7/bcad709c30cfdf64 Calc!A20 (excel-graph, 2026-10-11, T-1275).
-Ours: trim_rows 2.5 reads as 2 and REPLACE lifts, so `#SPILL!`.
-Status: UNVERIFIED (probe pending)
+Rule: trim_rows and trim_cols must be exactly 0, 1, 2 or 3; any fractional value is `#VALUE!`, including `0.9`,
+`1.5`, `2.5` and `3.9` (no truncation), in either argument (`(A1:C3,3,2.5)`, `(A1:C3,2.5,2.5)`), as are `4` and `-1`.
+Text `"2"` and `TRUE` coerce (3x3 kept for full data). So `TRIMRANGE` is the `#VALUE!` source in
+`REPLACE("abc",TRIMRANGE(Data!C10:E11,2.5,3),1,"")`; REPLACE itself lifts over a multi-cell start_num or num_chars
+and spills (`REPLACE("abc",E1:F2,1,"")` is a 2x2 spill).
+Evidence: probes/trimrange-fractional-trim H1-H10, J1, L1 (excel-graph, 2026-10-17, T-1352); gen-m7/bcad709c30cfdf64 Calc!A20.
+Status: VERIFIED
 Tasks: T-1352
 
 ## XMATCH with an omitted argument; SORT with omitted sort arguments

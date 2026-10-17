@@ -456,61 +456,6 @@ F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E4
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E5
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Two Values!C4
 F	ironcalc-calc/FINANCIAL/ISPMT.xlsx	Sheet1!E2
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!N10
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!N11
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!N20
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!N22
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!N46
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!N49
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!N5
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!N8
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O13
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O2
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O27
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O34
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O35
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O36
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O39
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O40
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O43
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O5
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O52
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O53
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O56
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O57
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!O58
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P16
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P2
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P22
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P3
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P33
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P35
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P4
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P42
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P43
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P46
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P48
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P49
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P50
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P51
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P53
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P55
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P56
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Sheet2!P60
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Three parameters!F12
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Three parameters!F13
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Three parameters!F16
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Three parameters!F2
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Three parameters!F20
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Three parameters!F26
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Three parameters!F29
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Three parameters!F30
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Three parameters!F32
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Three parameters!F7
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Two Parameters!E2
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Two Parameters!E3
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Two Parameters!E5
-F	ironcalc-calc/FINANCIAL/MIRR.xlsx	Two Parameters!E6
 F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!C8
 F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!D17
 F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!D2
