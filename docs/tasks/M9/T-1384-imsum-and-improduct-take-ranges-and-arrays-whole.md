@@ -15,6 +15,8 @@ IMSUM and IMPRODUCT take a range or array argument whole, with Excel's rules for
 the IM* functions refuse a boolean argument with `#VALUE!`.
 
 ## Context
+SPEC-0011 (docs/specs/SPEC-0011-scalar-argument-lifting.md) makes IMSUM's and IMPRODUCT's inumbers `WholeByCaller`: the lifting driver never lifts them (T-1383 enters them in the table). This task's rules decide how they are folded.
+
 Evidence: probes/eng-argument-modes A60:A83 and A89 (excel-graph, 2026-10-11, T-1085), docs/excel-semantics/
 engineering.md "Engineering function argument modes". The data is M1 "1+2i", M2 3, M3 blank, M4 TRUE,
 M5 "x" and M6 "2-i". Excel's rules:

@@ -112,7 +112,7 @@ impl Model {
                     }
                 }
                 match scalar(model, &nodes, cell) {
-                    // A .INTL element with a lifted weekend has no single value (unprobed, TODO(T-1784)); without a
+                    // A .INTL element with a lifted weekend has no single value (unprobed, TODO(T-1789)); without a
                     // lifted date the weekend array is the result.
                     CalcResult::Array(_) if lifting => CalcResult::new_error(
                         Error::NIMPL,

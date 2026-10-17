@@ -1,19 +1,22 @@
 ---
 id: T-1236
-title: "EDATE, EOMONTH, WORKDAY, NETWORKDAYS, WEEKNUM and YEARFRAC lift over arrays but are #VALUE! for a range"
+title: "WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL lift over arrays and refuse ranges (SPEC-0011 driver)"
 milestone: M6
 lane: functions-date
-status: done
-priority: P2
+status: todo
+priority: P1
 size: S
-tier: sonnet
-depends_on: []
+tier: opus
+depends_on: [T-1770]
+spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
 
 ## Goal
-EDATE, EOMONTH, WEEKNUM, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL and YEARFRAC lift over an array argument and are `#VALUE!` for a multi-cell range argument, as Excel does.
+WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL lift over an array argument and are `#VALUE!` for a multi-cell range in a date or day argument, as Excel does. EDATE, EOMONTH, WEEKNUM and YEARFRAC moved to T-1770.
 
 ## Context
+SPEC-0011 rollout step 2 (docs/specs/SPEC-0011-scalar-argument-lifting.md). Rescoped by T-1767: EDATE, EOMONTH, WEEKNUM and YEARFRAC, and the gen-m9 EOMONTH cells below, are T-1770's first consumers. This task does WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL. Their date and day arguments are `LiftArrays`, `weekend` is `Lift` (it lifts over a range too), and `holidays` is `Whole`. `Weekend::lift`'s per-mask memo becomes a cache in the kernel closure (the day loop is millions of steps long). Its probe cells are F/G 36, 38, 40, 58, 60, 62.
+
 probes/date-argument-modes (excel-graph, 2026-10-09, T-1090): these Analysis ToolPak-era functions return `#VALUE!`
 when a date, month count, day count, return type or basis argument is a multi-cell range (the engine matches that),
 but lift over an array literal in the same place (`INDEX(EDATE({45000.25;45031.5;45100.75},1),2)` = 45061), where the
@@ -26,12 +29,12 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/b58b6d7cd39d195f Calc!A9 `=EOMONTH((1*HYPGEOMDIST(0,3,1,13)),TAKE(Data!B9:E12,-2,-1))`: Excel `#VALUE!`, engine `#N/IMPL!`. TAKE of a range is a reference (references.md, ISREF of it is TRUE), so this is the range form (`#VALUE!`), not an array lift: keep TAKE/DROP results on the range path when lifting.
 
 ## Acceptance criteria
-- [ ] The listed probes/date-argument-modes cells pass, and the range forms stay `#VALUE!`; baseline updated.
-- [ ] gen-m9/4df1b22d3ed63f58 A24 and b58b6d7cd39d195f A9 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [ ] probes/date-argument-modes F/G 36, 38, 40, 58, 60 and 62 pass, the range forms stay `#VALUE!` and the weekend lifts keep passing; baseline updated.
+- [ ] No new failing gen-m9 cell and no new known failures in eval/baseline/ (the two gen-m9 EOMONTH cells are T-1770's).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
-## Outcome
-EDATE, EOMONTH, WEEKNUM, WORKDAY(.INTL), NETWORKDAYS(.INTL) and YEARFRAC lift over array literals via `lift_array_args` (date_and_time/lift.rs, built on `lift_with_cost`; `value_node` is shared from functions/util.rs); a range argument stays on the scalar path (`#VALUE!` by implicit intersection, as before). Eval: probes known failures 3026 -> 2998 (28 date-argument-modes cells fixed, 0 regressions). The two gen-m9 cells cited in Context no longer exist in the regenerated suite (those case ids now hold other formulas), so they could not be checked; the TAKE/DROP-of-range `#VALUE!` case is unverified here (follow-up). Lifted calls are bounded by `MAX_LIFTED_CELL_VISITS` including the holidays range per element.
+## Handoff
+Branch `agent/functions-date/T-1236-date-fn-array-lift` (PR #991, draft) holds a complete, reviewed implementation of the *old* T-1236 scope (EDATE, EOMONTH, WEEKNUM, WORKDAY(.INTL), NETWORKDAYS(.INTL), YEARFRAC): `lift_array_args` in `date_and_time/lift.rs`, a thin wrapper over `lift_with_cost`, with the `*_scalar` bodies behind lifting entry points. All four reviewers approved it, `make check` was green and probes known failures went 3026 -> 2998 (28 date-argument-modes cells). Before it could merge, `main` adopted SPEC-0011 (T-1767), which rescopes this task to WORKDAY/NETWORKDAYS on the table-driven driver (depends on T-1770, not yet done) and moves EDATE/EOMONTH/WEEKNUM/YEARFRAC to T-1770. My wrapper would be a parallel lifting mechanism next to the spec's driver, so I did not merge it. Next: decide whether to land it as an interim step (then T-1770/T-1236 migrate it) or drop it; if dropped, reuse its pieces: the cost estimates (`day_span`/`step_days`, capped at the calendar span, holidays counted per element), the tests in `test_fn_date_array_lift.rs`, and the ACCRINTM finding (financial callers must call the scalar YEARFRAC, not a lifted one). Unprobed items are tracked by T-1789.
