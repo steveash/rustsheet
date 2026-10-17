@@ -367,7 +367,7 @@ impl Model {
     }
 
     pub(crate) fn fn_lower(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.apply_text_unary(args, cell, |s| s.to_lowercase())
+        self.apply_text_unary(args, cell, super::string_format::lower_case)
     }
 
     /// Applies a single-argument string transform element-wise.
@@ -470,7 +470,7 @@ impl Model {
     }
 
     pub(crate) fn fn_upper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.apply_text_unary(args, cell, |s| s.to_uppercase())
+        self.apply_text_unary(args, cell, super::string_format::upper_case)
     }
 
     /// Evaluates an argument of a text function into a scalar value or a 2-D array of
