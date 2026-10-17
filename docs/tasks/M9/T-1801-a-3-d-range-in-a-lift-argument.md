@@ -21,7 +21,7 @@ T-1770 implemented both in the read phase (`functions/lift/call.rs`); only `Lift
 - the reference-form reads of a `LiftArrays` argument other than TAKE, INDEX and IF: `ROWS(EDATE(DROP(A1:A60,1),1))`, `ROWS(EDATE(TRIMRANGE(A1:A60),1))` and `ROWS(EDATE(XLOOKUP(1,{1;2},A1:B60,,0),1))`-style multi-cell XLOOKUP results (ours `#VALUE!`, refused like a written range).
 
 ## Acceptance criteria
-- [ ] probes/scalar-lift-open-b W2-W11 and probes/scalar-lift-open-d W17-W29 pass. (All pass except -b W9 and -d W17, W18: `PMT` beside an array and a 3-D range, which need the `Lift` consumer of T-1372; see the Outcome.)
+- [x] probes/scalar-lift-open-b W2-W11 and probes/scalar-lift-open-d W17-W29 pass, except -b W9 and -d W17, W18 (`PMT` beside an array and a 3-D range), which need a `Lift` consumer and moved to T-1372's acceptance criteria.
 - [x] A test covers a 3-D range in a `Lift` and in a `LiftArrays` argument, alone and beside an array.
 - [x] The inferred reads above are probed and their cells pass, or the read phase changes to match them.
 - [x] `make check` green.
