@@ -14,28 +14,50 @@ use std::collections::HashMap;
 
 use super::stringify::bound_variables::{walk_names, NameSite};
 use super::Node;
+use crate::types::DefinedName;
 
 /// Upper-cased name (ß folds with SS, T-1762) → the spelling every call or value use of it prints with.
 #[derive(Clone, Default)]
 pub(crate) struct CallNameSpellings {
     first: HashMap<String, String>,
+    /// Upper-cased defined name → its spelling, refreshed with every reparse of the workbook's
+    /// formulas (every defined-name edit reparses them), so a lookup costs one allocation.
+    defined: HashMap<String, String>,
 }
 
 impl CallNameSpellings {
+    /// Registers the spellings of the workbook's defined names; the first of equal names wins.
+    pub(crate) fn set_defined_names(&mut self, defined_names: &[DefinedName]) {
+        self.defined.clear();
+        for d in defined_names {
+            self.defined
+                .entry(d.name.to_uppercase())
+                .or_insert_with(|| d.name.clone());
+        }
+    }
+
     /// Gives every callee and value-used name of `node` that no LET or LAMBDA binds the workbook's spelling, which a
     /// name met for the first time becomes. A bound name, called or used, takes the spelling of
-    /// its declaration. Returns whether a name changed.
+    /// its declaration. A callee that is a defined name takes the defined name's spelling, whatever
+    /// the first typed one (probes/unknown-function-name-reach, T-1763). Returns whether a name
+    /// changed.
     pub(crate) fn apply(&mut self, node: &mut Node) -> bool {
         let mut changed = false;
         walk_names(node, &mut Vec::new(), &mut |site, name, declared| {
             let spelling = match (declared, site) {
                 (Some(declared), _) => declared.to_string(),
-                (None, NameSite::Callee | NameSite::Use) => self
-                    .first
-                    .entry(name.to_uppercase())
-                    .or_insert_with(|| name.clone())
-                    .clone(),
                 (None, NameSite::Declaration) => return,
+                (None, NameSite::Callee | NameSite::Use) => {
+                    let key = name.to_uppercase();
+                    match self.defined.get(&key) {
+                        Some(defined) if site == NameSite::Callee => defined.clone(),
+                        _ => self
+                            .first
+                            .entry(key)
+                            .or_insert_with(|| name.clone())
+                            .clone(),
+                    }
+                }
             };
             if *name != spelling {
                 *name = spelling;
