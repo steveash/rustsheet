@@ -29,5 +29,9 @@ T-1643 made `INDEX(CHOOSE(1,@B1:B6*1),3)` `#REF!` by wrapping a scalar picked by
   only caller and is removed.
 - function-name-forms A4 needed no GROUPBY fix: ERROR.TYPE already lifts over GROUPBY's array, so
   `INDEX(...,1,1)` is `#N/A` and the IFERROR gives 0 for its real reason.
+- The lifted-indices path wraps the scalar too (`scalar_as_one_element_array`, used by both paths).
+- New probe probes/index-literal-scalar (excel-graph, 12 cells, all pass): literal and computed
+  scalars, `#REF!` past them, lifted indices over a scalar.
 - Eval: probes 2950 -> 2938 known failures (12 fixed: lookup-argument-modes H1, H18, H19, H24, H28,
-  H30, H31, H39; m7-argument-modes H31, H39, H46, H55), no regressions. references.md updated.
+  H30, H31, H39; m7-argument-modes H31, H39, H46, H55), no regressions; the new case adds 12
+  passing cells. H1 passes only because our ADDRESS does not lift yet (T-1241); references.md says so.

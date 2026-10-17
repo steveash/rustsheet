@@ -237,6 +237,8 @@ impl Model {
                     RefArg::Value(CalcResult::Error { error, .. }) => Some(error.clone()),
                     _ => None,
                 };
+                // `INDEX(XMATCH(2,{1,2,3}),{1,2})` is 2, #REF! (probes/index-literal-scalar A10).
+                let arg = scalar_as_one_element_array(arg);
                 return self.index_lifted(row, col, area, cell, arg_error, |model, numbers| {
                     model.index_select(&arg, numbers, two_arg, cell, IndexForm::TopLeft)
                 });
@@ -258,13 +260,10 @@ impl Model {
             }
             // A scalar is a one-element array, wherever it comes from: `INDEX(CHOOSE(1,
             // @B1:B6*1),3)` is `#REF!` on the range's rows (probes/legacy-choose-arm-aggregate-
-            // and-array-constant-at H1, T-1643) and `INDEX(XMATCH(2,{1,2,3}),1,1)` 2
-            // (probes/lookup-argument-modes H1:H39, m7-argument-modes H31:H55; T-1645).
+            // and-array-constant-at H1, T-1643), `INDEX(XMATCH(2,{1,2,3}),1,1)` 2 and `INDEX(5,2)`
+            // `#REF!` (probes/lookup-argument-modes, m7-argument-modes, index-literal-scalar; T-1645).
             PickedReference::Node(reference) => {
-                match self.evaluate_reference_arg(reference, cell) {
-                    RefArg::Value(scalar) => RefArg::Value(scalar_as_array(scalar)),
-                    ranges @ RefArg::Ranges(_) => ranges,
-                }
+                scalar_as_one_element_array(self.evaluate_reference_arg(reference, cell))
             }
             PickedReference::Value(value) => RefArg::Value(scalar_as_array(value)),
         };
@@ -524,4 +523,12 @@ fn external_index_area(
         last_column: offset(area.first_column, last_col),
         cache: area.cache,
     })
+}
+
+/// INDEX's first argument with a scalar value read as a one-element array (T-1645).
+fn scalar_as_one_element_array(arg: RefArg) -> RefArg {
+    match arg {
+        RefArg::Value(scalar) => RefArg::Value(scalar_as_array(scalar)),
+        ranges @ RefArg::Ranges(_) => ranges,
+    }
 }
