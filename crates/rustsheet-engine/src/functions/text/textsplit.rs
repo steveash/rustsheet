@@ -1,4 +1,4 @@
-use super::position::fold_case;
+use super::position::fold_char;
 use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
@@ -107,8 +107,8 @@ impl Model {
         let pad_node = pad_with.as_ref().unwrap_or(&na_node);
 
         // Normalize to comparison strings for optional case-insensitive matching.
-        // `fold_case` maps every char to exactly one char (SEARCH's folding, probes/
-        // text-search-casefold-length), so char positions in `cmp_text` are char positions in
+        // `fold_for_split` maps every char to exactly one char (TEXTSPLIT's folding, probes/
+        // textsplit-casefold-length), so char positions in `cmp_text` are char positions in
         // `text`; `split_by_any` converts them to byte offsets of the original (T-1794).
         let cmp_text: String;
         let cmp_col_delims: Vec<String>;
@@ -263,10 +263,7 @@ fn fold_for_split(text: &str) -> String {
         .map(|c| match c {
             '\u{130}' => 'i',
             '\u{212A}' => c,
-            _ => fold_case(c.encode_utf8(&mut [0; 4]))
-                .chars()
-                .next()
-                .unwrap_or(c),
+            _ => fold_char(c),
         })
         .collect()
 }
