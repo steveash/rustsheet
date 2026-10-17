@@ -299,6 +299,33 @@ fn many_small_spills_skip_the_rectangles_far_from_them() {
     assert_eq!(restarts(&model), 0);
 }
 
+// T-1646: a small spill's commit check skips the whole-column rectangles in other columns. A1 to
+// D1 each put 12,500 whole-column rectangles on record (columns ALM to SMH, right of the used
+// area), all in one row band; then 1,000 anchors in column F each spill two cells. Testing every
+// anchor against every rectangle is 5 x 10^7 tests.
+#[test]
+fn many_small_spills_skip_the_whole_column_rectangles_in_other_columns() {
+    use std::time::{Duration, Instant};
+    let mut model = new_empty_model();
+    for anchor in ["A1", "B1", "C1", "D1"] {
+        model._set(
+            anchor,
+            "=MAP(SEQUENCE(12500,1,1000),LAMBDA(c,SUM(OFFSET($A:$A,0,c))))",
+        );
+    }
+    for anchor in 0..1000 {
+        model._set(&format!("F{}", 2 * anchor + 1), "=SEQUENCE(2)");
+    }
+    let start = Instant::now();
+    model.evaluate();
+    let elapsed = start.elapsed();
+    assert!(elapsed < Duration::from_secs(20), "{elapsed:?}");
+    assert_eq!(model._get_text("D12500"), "0");
+    assert_eq!(model._get_text("F2000"), "2");
+    assert_eq!(model.evaluation.seen_ranges.len(), 50_000);
+    assert_eq!(restarts(&model), 0);
+}
+
 // T-1545: the lookup by row band finds the same rectangles, in the same order, as testing every
 // rectangle on record: 100,000 one-row rectangles and a few tall ones, met by 1,000 small spills
 // among them and one spill over all of them (which tests every rectangle instead).
