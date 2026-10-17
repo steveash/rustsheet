@@ -3,7 +3,7 @@ id: T-1237
 title: "DATEDIF reads numeric text"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
