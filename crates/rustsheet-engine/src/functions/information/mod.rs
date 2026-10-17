@@ -487,8 +487,8 @@ impl Model {
             arg => {
                 // A reference (a range included) gives its sheet's number, with no spill
                 // (probes/info-logic-argument-modes A12, excel-graph).
-                // Reached through INDEX, IF or a union it is the same: a union gives its first
-                // area's sheet (probes/volatile-and-info-rand-true-false-sheet D18, D19, D26).
+                // Reached through INDEX, IF or a union it is the same: a union of areas on one
+                // sheet gives that sheet (probes/volatile-and-info-rand-true-false-sheet D18, D19, D26).
                 if let RefArg::Ranges(ranges) = self.evaluate_reference_arg(arg, cell) {
                     if let Some(first) = ranges.first() {
                         return CalcResult::Number(first.left.sheet as f64 + 1.0);
