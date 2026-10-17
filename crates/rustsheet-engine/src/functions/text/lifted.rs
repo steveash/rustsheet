@@ -12,7 +12,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     functions::{
-        lift::{LiftCost, LiftOptions, LiftedArg},
+        lift::{grid_dims, LiftCost, LiftOptions, LiftedArg},
         util::array_node_to_calc_result,
     },
     limits::too_many_visits,
@@ -52,23 +52,12 @@ impl Model {
                 operands.push(CalcResult::EmptyArg);
                 continue;
             }
-            operands.push(match self.collapse_single_cell(value) {
-                // Read once here: the cost of a lifted call depends on the text it holds.
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        )
-                    } else {
-                        match self.evaluate_range(left, right, cell) {
-                            Ok(grid) => CalcResult::Array(grid),
-                            Err(error) => error,
-                        }
-                    }
-                }
-                other => other,
+            // Read once here: the cost of a lifted call depends on the text it holds.
+            let value = self.collapse_single_cell(value);
+            operands.push(match LiftedArg::read(self, value, cell) {
+                Ok(LiftedArg::Grid(grid)) => CalcResult::Array(grid),
+                Ok(LiftedArg::Scalar(value)) => value,
+                Err(error) => error,
             });
         }
         (operands, whole)
@@ -146,7 +135,7 @@ impl Model {
 /// The shape of an operand: an array's rows and columns, 1x1 for a scalar.
 fn operand_dims(operand: &CalcResult) -> (usize, usize) {
     match operand {
-        CalcResult::Array(grid) => (grid.len(), grid.first().map_or(0, Vec::len)),
+        CalcResult::Array(grid) => grid_dims(grid),
         _ => (1, 1),
     }
 }

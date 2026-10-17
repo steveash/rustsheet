@@ -94,7 +94,7 @@ impl Model {
         // arguments", T-1816): every entry longer than the text.
         let exact = delimiters.exact();
         if !exact.is_empty() && exact.iter().all(|d| d.len() > text.len()) {
-            // With two arguments this is `#VALUE!`, with more `#N/A`, whatever their values.
+            // With more than two arguments this is `#VALUE!`, with two `#N/A`, whatever their values.
             let error = if arg_count > 2 {
                 Error::VALUE
             } else {

@@ -289,7 +289,10 @@ error (`#VALUE!` with more than two arguments, `#N/A` with two); an error inside
 boolean inside a TEXTBEFORE/TEXTAFTER delimiter array is `#VALUE!` (as TEXTSPLIT's already was), although a boolean in a
 delimiter range raises no error (next entry); a REGEX pattern that does not compile is `#VALUE!` in its own element
 only; if_not_found, pad_with, match_end and return_all lift like the other scalars, and if_not_found is evaluated even
-when the delimiter is found; REGEXEXTRACT's return_all keeps the first value of a lifted element.
+when the delimiter is found; REGEXEXTRACT's return_all keeps the first value of a lifted element. A 1x1 array lifts too, so
+`COLUMNS(TEXTSPLIT({"a,b"},","))`, `COLUMNS(TEXTSPLIT(FILTER(A1:A2,A1:A2="a,b"),","))` and
+`COLUMNS(REGEXEXTRACT({"a1b2"},"[0-9]",1))` are 1 (2 before T-1272), by analogy with `COLUMNS(XLOOKUP({2},A1:A4,C1:E4))`
+= 1 (lookup.md); a common pattern, so T-1816 probes it first.
 Ours: all of this since T-1272. The work caps are the next entry's. A multi-cell range as the TEXTBEFORE/TEXTAFTER
 delimiter is still read as one text, as before T-1272 (gen-m7/851eb2099ae3f805 Calc!A25 is `#VALUE!`); its list rule is
 T-1361's.

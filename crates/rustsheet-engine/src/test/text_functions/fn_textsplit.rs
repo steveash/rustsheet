@@ -228,3 +228,19 @@ fn many_pieces_with_an_absent_delimiter() {
     assert_eq!(model._get_text("B2"), *"b");
     assert_eq!(model._get_text("C2"), *"c");
 }
+
+// UNVERIFIED (no oracle cell; T-1816 probes it): a 1x1 array lifts the call like a larger one, so
+// the element keeps its first value, by analogy with `COLUMNS(XLOOKUP({2},A1:A4,C1:E4))` = 1
+// (docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and
+// scalar arguments"). Pins the guess so a change is deliberate.
+#[test]
+fn one_by_one_array_lifts() {
+    let mut model = new_empty_model();
+    model._set("A1", "=COLUMNS(TEXTSPLIT({\"a,b\"},\",\"))");
+    model._set("A2", "=COLUMNS(REGEXEXTRACT({\"a1b2\"},\"[0-9]\",1))");
+    model._set("A3", "=COLUMNS(TEXTSPLIT(\"a,b\",\",\"))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A2"), *"1");
+    assert_eq!(model._get_text("A3"), *"2");
+}

@@ -113,5 +113,8 @@
   arms of static analysis are gone) (`check_duplication.py --update`), and
   expressions/parser/static_analysis.rs 1641 → 1567 lines (the fallback arms of the 12 functions
   now in the lifting table; 1614 already on main after T-1774) (`check_file_size.py --update`).
+  T-1272: duplicated lines 5907 → 5721 (TEXTBEFORE and TEXTAFTER share one `text_around`, TEXTSPLIT and
+  TEXTBEFORE/TEXTAFTER one `delimiter_list`, and the text path reads ranges through `LiftedArg::read`)
+  (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

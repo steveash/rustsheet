@@ -295,7 +295,7 @@ fn split_by_any<'a>(original: &'a str, cmp: &str, cmp_delims: &[String]) -> Vec<
     let mut next: Vec<Option<usize>> = delims.iter().map(|d| cmp.find(d)).collect();
 
     loop {
-        // Find the earliest match among all delimiters (the last in list order on a tie).
+        // Find the earliest match among all delimiters (the first in list order on a tie).
         for (found, d) in next.iter_mut().zip(&delims) {
             if found.is_some_and(|start| start < pos) {
                 *found = cmp
