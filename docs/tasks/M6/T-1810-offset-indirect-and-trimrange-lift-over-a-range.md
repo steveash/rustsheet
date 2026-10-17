@@ -35,7 +35,8 @@ Generated cells (`rustsheet-eval show gen-m7/<case>.case.json`, gen-m9 likewise)
 - gen-m9/adb3fd63c7368166 Calc!A34 `=INDIRECT(OFFSET(Data!A3:A5,3,1,3,3),(TANH(1)=Data!B12))` (ref_text over a
   3x3 range): Excel `#SPILL!`, engine `#VALUE!`.
 Unprobed (lookup.md): OFFSET's cols, height and width, INDIRECT's a1, TRIMRANGE's trim_cols; probe them
-(excel-probe skill) before entering them.
+(excel-probe skill) before entering them. XMATCH's search_mode (still a plain scalar, `#N/IMPL!` over an array) is
+unprobed too: probe and lift it here.
 
 ## Acceptance criteria
 - [ ] probes/lookup-argument-modes F14:H15, F20:H21 and F34:H35 pass; baseline updated.
