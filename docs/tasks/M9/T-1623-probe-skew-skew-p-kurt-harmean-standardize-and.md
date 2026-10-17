@@ -42,3 +42,5 @@ fell by 7 (34 → 27), not 10, because the task's per-function counts date from 
 already moved some of them before this PR; the lock follows the count `evidence-floor` reports on the merged tree.
 `quality/evidence-floor.json` was written by `make eval-baseline` (`evidence-floor --update`), and the decision-record
 line is in docs/decisions/0010-ratchet-paydown-updates.md.
+Cells now in the report: SKEW.P 22, STANDARDIZE 24, SUMX2PY2 24, SUMXMY2 26, SUMX2MY2 27, ECMA.CEILING 28, MDETERM 34,
+HARMEAN 43, KURT 43, SKEW 44 (the task's starting counts were stale for several of them).

@@ -14,7 +14,7 @@ depends_on: []
 MDETERM(G1:I3) of the singular matrix [1,2,3;4,5,6;7,8,9] gives Excel's 6.661338147750939e-16 instead of 0.
 
 ## Context
-Found by T-1623: probes/stats-evidence-floor-t1623 S!Q107 (excel-graph). Excel's elimination order leaves a rounding residual; ours gives exactly 0. Needs the pivoting/elimination order that reproduces it (numeric fitting, so opus).
+Found by T-1623: probes/stats-evidence-floor-t1623 S!Q107 (excel-graph). Excel's elimination order leaves a rounding residual; ours gives exactly 0. Needs the pivoting/elimination order that reproduces it (numeric fitting, so opus). A second data point: `MDETERM({1,2,3;4,5,6;7,8,10})` is -2.9999999999999982 (S!Q120, which passes today and must keep passing).
 
 ## Acceptance criteria
 - [ ] The failing cell(s) in probes/stats-evidence-floor-t1623 pass and are removed from eval/baseline via `make eval-baseline`.
