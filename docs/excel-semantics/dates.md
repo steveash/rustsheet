@@ -336,8 +336,9 @@ evidence is the corpus-bench sidecars, recalculated by excel-graph 2026-10-17, T
   B2 = 2021 is 44348 (2021-06-01; corpus-bench/CF_18814 `attendance-Dec!E1`).
 Probed (probes/date-text-glued-month, excel-graph 2026-10-17, Sheet1 rows 1-24; columns B-D are
 MONTH/DAY/YEAR of DATEVALUE, E and F are VALUE and `0+` minus DATEVALUE, G-H MONTH/DAY of the text, I
-the serial): a month name glued to its number reads exactly as with a space between them, and DATEVALUE,
-VALUE, `0+`, MONTH and DAY agree on every form (E and F are 0 wherever DATEVALUE parses):
+the serial): a month name glued to one number reads as with a space between them, but a month glued to a
+day that a year follows does not parse; DATEVALUE, VALUE, `0+`, MONTH and DAY agree on every form (E and F
+are 0 wherever DATEVALUE parses):
 - Month then one number is the year-less "Month d" rule above: a day of that month in the current year
   (`"July1"`, `"July10"`, `"July31"`, `"Jul1"`, `"Sept1"`: rows 1-3, 7, 20), otherwise the 1st of
   that month in that year, two digits as a two-digit year (`"July32"` 1932-07-01, `"July45"` 1945-07-01,
