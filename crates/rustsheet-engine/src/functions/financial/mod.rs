@@ -1691,19 +1691,19 @@ impl Model {
                 "issue must be before settlement".to_string(),
             );
         }
-        let basis_node = if arg_count > 4 {
-            args[4].clone()
+        // The basis is read as a scalar, as YEARFRAC read it before it lifted (T-1770):
+        // ACCRINTM's own lifting is T-1372's.
+        let basis = if arg_count > 4 {
+            match self.get_number_no_bools(&args[4], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
         } else {
-            Node::NumberKind(0.0)
+            0.0
         };
-        let yearfrac_args = [
-            Node::NumberKind(issue_serial as f64),
-            Node::NumberKind(settlement_serial as f64),
-            basis_node,
-        ];
-        match self.fn_yearfrac(&yearfrac_args, cell) {
-            CalcResult::Number(yf) => CalcResult::Number(par * rate * yf),
-            error => error,
+        match self.get_yearfrac(issue_serial, settlement_serial, basis, cell) {
+            Ok(yf) => CalcResult::Number(par * rate * yf),
+            Err(error) => error,
         }
     }
 

@@ -32,6 +32,7 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - [ ] The lift cells of probes/stat-argument-modes for the functions in scope pass (their baseline lines removed), as do probes/scalar-lift-shapes H15, H16, H20, H21, H34, H35, H38, H40, J8 and K8. Ulp misses in values are named in the Outcome with their owner task.
 - [ ] gen-m9/55fc8c4ffbd7c7cc A5 and d5bd4272655c5211 A6 pass, and 1466c66c61189a83 A1 once T-1407 has landed, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
+- [ ] The entries it adds make the variant live, and it removes the `#[allow(dead_code)]` on `KernelWork::Weighted` and, if still there, on `ArgKind::Lift` (functions/lift/kinds.rs) (T-1770 left the allow with a `TODO(T-1290)`).
 
 ## Out of scope
 -

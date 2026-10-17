@@ -111,9 +111,11 @@ impl Model {
                 _ => None,
             })
             .collect();
+        // Charged once per lifted argument, as T-1784's driver charged it.
+        let lifted_count = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
         self.lift_values(
             lifted,
-            LiftCost::Cells(cost.max(1)),
+            LiftCost::Cells(cost.max(1).saturating_mul(lifted_count)),
             &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
             &mut |model, values| {

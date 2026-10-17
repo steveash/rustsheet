@@ -86,9 +86,14 @@ impl Model {
         cell: CellReferenceIndex,
         mut compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
+        // Each element walks the range once per criterion.
+        let walks = u64::try_from(criteria.len()).unwrap_or(u64::MAX);
         self.lift_values(
             criteria,
-            LiftCost::Walk(walked),
+            LiftCost::Walk {
+                range: walked,
+                walks,
+            },
             &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
             &mut compute,

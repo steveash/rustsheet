@@ -334,10 +334,23 @@ evidence is the corpus-bench sidecars, recalculated by excel-graph 2026-10-17, T
   same formula over the G4 month, is 35000, so a glued month matches the data.
 - `"1JUN2021"` (day, abbreviated month, 4-digit year): `DATEVALUE("1"&B1&B2)` with B1 = `"JUN"`,
   B2 = 2021 is 44348 (2021-06-01; corpus-bench/CF_18814 `attendance-Dec!E1`).
-Unprobed: which numbers count as day or year in the glued forms (`"July10"`, `"July45"`,
-`"Jul2026"`), whether VALUE and number coercion agree, and lower-case or full-name `"1June2021"`.
-Probe: T-1788. Status: UNVERIFIED beyond the three cited forms. Not implemented (T-1789): the engine
-gives `#VALUE!` for all three.
+Probed (probes/date-text-glued-month, excel-graph 2026-10-17, Sheet1 rows 1-24; columns B-D are
+MONTH/DAY/YEAR of DATEVALUE, E and F are VALUE and `0+` minus DATEVALUE, G-H MONTH/DAY of the text, I
+the serial): a month name glued to one number reads as with a space between them, but a month glued to a
+day that a year follows does not parse; DATEVALUE, VALUE, `0+`, MONTH and DAY agree on every form (E and F
+are 0 wherever DATEVALUE parses):
+- Month then one number is the year-less "Month d" rule above: a day of that month in the current year
+  (`"July1"`, `"July10"`, `"July31"`, `"Jul1"`, `"Sept1"`: rows 1-3, 7, 20), otherwise the 1st of
+  that month in that year, one or two digits as a two-digit year (`"July32"` 1932-07-01, `"July45"` 1945-07-01,
+  `"July0"` 2000-07-01, `"January0"` 2000-01-01, `"December0"` 2000-12-01: rows 4-6, 22-23) and four
+  digits as the year (`"Jul2026"`, `"July2026"`: 2026-07-01, rows 8-9). Unprobed in glued form: a number that is a
+  day of no 30-day month or of February (`"Jun31"`, `"Feb29"`); the year-less rule reads them as years.
+- Day then month, with or without a year, glued on either side or both: `"1July"` (current year,
+  row 12), `"1Jul2026"`, `"01JUN21"` (2021), `"1June2021"`, `"1jun2021"` (case-insensitive),
+  `"1JUN 2021"`, `"1 JUN2021"`, `"1JUN2021"` (rows 13-16, 18-19, 24).
+- `#VALUE!`: a month glued to a day followed by a year, whatever joins them (`"July1,2026"`,
+  `"July12026"`, `"Jun1 2021"`: rows 10, 11, 17), and a name that is no month (`"Ju1"`, row 21).
+Status: VERIFIED (web). Not implemented (T-1789): the engine gives `#VALUE!` for all of them.
 
 ## WORKDAY holidays take the whole range
 Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no
@@ -405,11 +418,16 @@ excel-graph 2026-10-09), the same 32767 cap (T-1419).
 Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
 Ours: YEARFRAC's scalar kernel checks start, end, basis, where Excel checks basis, start, end, so probes/scalar-lift-open-d W1, W3, W4, W6, W7 fail (T-1800).
 Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift (T-1235), as do
-DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. Still `#N/IMPL!` (T-1236) for an array literal in
-a date argument: EDATE, EOMONTH, WEEKNUM, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL, YEARFRAC.
+DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. EDATE, EOMONTH, WEEKNUM and YEARFRAC lift
+over an array and refuse a multi-cell range in every argument, in dynamic and legacy formulas (T-1770, SPEC-0011
+`LiftArrays`). Still `#N/IMPL!` (T-1236) for an array literal in a date argument: WORKDAY, WORKDAY.INTL, NETWORKDAYS,
+NETWORKDAYS.INTL.
 In a 1904 workbook DATEDIF reads date text as DATEVALUE does (from
 1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330). It counts the days on the 1904 calendar since T-1416 (`DATEDIF(0,1000,"ym")` = 8, probes/date-system-1904-readers A11).
 Status: VERIFIED
+Implemented in: EDATE, EOMONTH, WEEKNUM and YEARFRAC: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds.rs)
+and `Model::lift_call` (functions/lift/call.rs), with the kernels `edate_of`, `eomonth_of`
+(functions/date_and_time/month_shift.rs), `weeknum_of` (date_and_time/weeknum.rs) and `yearfrac_of` (date_and_time/yearfrac.rs).
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
 
 ## DATEDIF and DAYS360 error order with a bad unit or method (inferred)
