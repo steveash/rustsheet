@@ -359,11 +359,13 @@ Status: VERIFIED (web) for the listed cells; blank and number/boolean matching U
 Tasks: T-1361
 
 ## TEXTSPLIT of empty text is #VALUE!
-Rule: `TEXTSPLIT("","a","TRUE")` is `#VALUE!`: in `B5>TEXTSPLIT("","a",CONCAT(D9))` with B5 blank the result is `#VALUE!`, which
-the comparison cannot produce from a blank and text. (TEXTBEFORE("",x) is `#N/A` instead, see the entry above.)
-Evidence: gen-m7/3a62e0950c1074fd Calc!A5 (excel-graph, 2026-10-11, T-1275).
-Ours: "" (so the comparison is FALSE).
-Status: VERIFIED (web) for this form; a blank cell as the text and `TEXTSPLIT("",",")` alone are UNVERIFIED
+Rule: TEXTSPLIT of empty text is `#VALUE!` whatever its other arguments: a literal `""`, a blank cell and an empty-string cell,
+with or without a row delimiter, with `ignore_empty` TRUE, `match_mode` 1 or a `pad_with`. `TEXTSPLIT("","a","TRUE")` is `#VALUE!` too, so
+in `B5>TEXTSPLIT("","a",CONCAT(D9))` with B5 blank the comparison is `#VALUE!`. (TEXTBEFORE("",x) is `#N/A` instead, see the entry above.)
+Evidence: gen-m7/3a62e0950c1074fd Calc!A5 (excel-graph, 2026-10-11, T-1275); probes/textsplit-empty-text Calc!A1-A12 (excel-graph,
+2026-10-17; an empty delimiter with empty text, A9 and A10, is `#VALUE!` as well).
+Ours: matches (T-1347, `textsplit_element` in functions/text/textsplit.rs).
+Status: VERIFIED (web)
 Tasks: T-1347
 
 ## TEXTSPLIT with an empty delimiter is #VALUE!

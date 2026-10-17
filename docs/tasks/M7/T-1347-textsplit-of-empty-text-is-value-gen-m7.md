@@ -3,7 +3,7 @@ id: T-1347
 title: "TEXTSPLIT of empty text is #VALUE! (gen-m7 3a62e0950c1074fd A5)"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,3 +28,10 @@ match those too.
 
 ## Out of scope
 -
+
+## Outcome
+`textsplit_element` returns `#VALUE!` for empty text, after the other arguments are checked. New probe
+probes/textsplit-empty-text (13 cells, excel-graph, all pass): literal, blank-cell and empty-string text, with and
+without a row delimiter, `ignore_empty`, `match_mode` and `pad_with`, an empty delimiter, and `ISERROR`; every empty-text form is
+`#VALUE!`. gen-m7/3a62e0950c1074fd now passes in full (39/39). Eval delta: +13 passing probe cells, no new known failures;
+docs/excel-semantics/text.md entry is VERIFIED.
