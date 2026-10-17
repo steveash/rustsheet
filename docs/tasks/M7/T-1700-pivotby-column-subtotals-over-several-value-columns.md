@@ -3,7 +3,7 @@ id: T-1700
 title: "PIVOTBY column subtotals over several value columns"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
