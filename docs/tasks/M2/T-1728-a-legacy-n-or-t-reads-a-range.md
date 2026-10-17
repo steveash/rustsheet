@@ -3,7 +3,7 @@ id: T-1728
 title: "A legacy N or T reads a range argument as a reference, with no @"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -32,3 +32,6 @@ docs/excel-semantics/references.md "Legacy N and T over a reference-returning ca
 
 ## Out of scope
 - N/T over array-valued calls (T-1713, T-1727).
+
+## Outcome
+Under N and T a range, or a call of IF, OFFSET, CHOOSE or INDEX holding only references and scalar literals, is read whole: no `@` is added to the argument, its arms or the call (`reads_reference_whole`). probes/legacy-n-t-reference-args C10, C20, J10, J20, Q10, Q20 now pass (probes known failures 3004 -> 2998, 6 fixed, 0 regressions; ironcalc-calc unchanged; the poi suite is not fetched in this environment, so CI's run is its check).

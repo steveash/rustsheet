@@ -175,9 +175,54 @@ pub(super) fn legacy_intersects(
     signature: Option<&Signature>,
     arg: &Node,
 ) -> bool {
-    (is_scalar_context(kind, signature)
-        && !matches!(run_static_analysis_on_node(arg), StaticResult::Scalar))
+    (is_scalar_context(kind, signature) && !reads_reference(kind, arg))
         || legacy_value_operand(kind, arg)
+}
+
+/// Whether `arg` of `kind` needs no intersection although `kind` takes a scalar: a scalar, or
+/// under N or T, which read a reference and give its top-left cell, a range or a call of IF,
+/// OFFSET, CHOOSE or INDEX that holds nothing else: a legacy `=N(Z1:Z2)`,
+/// `=N(OFFSET(Z1:Z2,0,0))` and `=N(IF(1,Z1:Z2))` are 7 off the range's rows and show no `@`
+/// (probes/legacy-n-t-reference-args C, J, Q, T-1728). An array constant or any other call keeps
+/// its `@` (T-1713, T-1727).
+fn reads_reference(kind: &Function, arg: &Node) -> bool {
+    match run_static_analysis_on_node(arg) {
+        StaticResult::Scalar => true,
+        StaticResult::Range(..) | StaticResult::Unknown => reads_reference_whole(kind, arg),
+        StaticResult::Array(..) => false,
+    }
+}
+
+/// Whether `arg` is an argument of N or T that is a reference they read whole, with nothing in
+/// it to intersect: the `@` of a range or of an IF arm in it is not added either.
+pub(super) fn reads_reference_whole(kind: &Function, arg: &Node) -> bool {
+    matches!(kind, Function::N | Function::T) && is_plain_reference(arg)
+}
+
+/// Whether `node` is a reference, or a call of IF, OFFSET, CHOOSE or INDEX over such and
+/// scalar literals, with no array constant, operator or other call (`N(B1:B3*1)` is `#VALUE!`
+/// off the rows: probes/n-array-lift D7). An explicit stack keeps the walk
+/// off the call stack: a formula's tree is untrusted input.
+fn is_plain_reference(node: &Node) -> bool {
+    let mut pending = vec![node];
+    while let Some(node) = pending.pop() {
+        match node {
+            Node::FunctionKind { kind, .. }
+                if matches!(
+                    kind,
+                    Function::If | Function::Offset | Function::Choose | Function::Index
+                ) => {}
+            Node::ReferenceKind { .. }
+            | Node::RangeKind { .. }
+            | Node::NumberKind(_)
+            | Node::StringKind(_)
+            | Node::BooleanKind(_)
+            | Node::EmptyArgKind => {}
+            _ => return false,
+        }
+        node.push_children(&mut pending);
+    }
+    true
 }
 
 /// Whether the argument `arg` of `kind` with `signature` is read as a value, where an `@` is
@@ -341,12 +386,16 @@ fn is_value_operation(node: &Node) -> bool {
 /// array-constant-at H3, excel-graph, T-1643). Only the `@` placement changes: a dynamic formula
 /// of that shape still spills.
 pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool {
-    matches!(kind, Function::Index)
-        && matches!(
-            args.first().map(Node::ungrouped),
-            Some(Node::FunctionKind {
-                kind: Function::Choose,
-                args: arms,
-            }) if arms.len() > 1 && arms[1..].iter().all(is_value_operation)
-        )
+    (matches!(kind, Function::N | Function::T)
+        && args
+            .first()
+            .is_some_and(|arg| reads_reference_whole(kind, arg)))
+        || matches!(kind, Function::Index)
+            && matches!(
+                args.first().map(Node::ungrouped),
+                Some(Node::FunctionKind {
+                    kind: Function::Choose,
+                    args: arms,
+                }) if arms.len() > 1 && arms[1..].iter().all(is_value_operation)
+            )
 }

@@ -3,7 +3,8 @@ use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
 use legacy::{
     add_array_at, add_in_array_context, is_array_context, legacy_call_reads_a_value,
-    legacy_context_intersects, legacy_intersects, remove_array_at, remove_in_array_context,
+    legacy_context_intersects, legacy_intersects, reads_reference_whole, remove_array_at,
+    remove_in_array_context,
 };
 mod aggregate;
 mod legacy;
@@ -186,7 +187,9 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 add_array_at(kind, signature.get(index), index, arg);
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
-                if legacy_intersects(kind, signature.get(index), arg) {
+                if reads_reference_whole(kind, arg) {
+                    // N and T read the reference itself: nothing in it is intersected.
+                } else if legacy_intersects(kind, signature.get(index), arg) {
                     add_implicit_intersection(arg, true);
                 } else {
                     add_implicit_intersection(arg, false);

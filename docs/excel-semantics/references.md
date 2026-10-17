@@ -1510,7 +1510,7 @@ cells, as a dynamic formula would.
 Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16).
 Not implemented: the text is identical to the dynamic formula's, which spills, so the `#VALUE!`
 needs the engine to remember that a formula is legacy (spec T-1727, then T-1713); ours adds an `@`
-on the calls (N gives the top-left value, T "") and on ranges (`#VALUE!` off their rows, T-1728); the IFERROR `@`, the
+on array-valued calls (N gives the top-left value, T ""); a range, or an IF, OFFSET, CHOOSE or INDEX call holding only references and scalar literals, gets none under N or T since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; an operator, array constant or other call in it keeps the old `@`); the IFERROR `@`, the
 SWITCH spill and the `@IF` are T-1717's.
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1717, T-1727, T-1728
