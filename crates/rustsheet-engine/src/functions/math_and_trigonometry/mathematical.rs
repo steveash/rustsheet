@@ -40,6 +40,9 @@ const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     skip_empty_args: false,
 };
 
+/// Below this |x| (2^-28) ASIN returns its argument (`fn_asin`).
+const ASIN_IDENTITY_BOUND: f64 = 3.725_290_298_461_914e-9;
+
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
     ///
@@ -526,10 +529,14 @@ impl Model {
     // them. Excel's is not even odd (`ASIN(0.09)` and `ASIN(-0.09)` differ in the last digit), so no
     // formulation found yet fits every cell (docs/excel-semantics/numbers.md "ASIN of a small
     // argument"). At ±1 the quotient is ±inf and atan gives ±π/2; outside [-1, 1] the square root is
-    // NaN, which is `#NUM!`.
-    single_number_fn!(fn_asin, |f: f64| Ok(f64::atan(
-        f / ((1.0 - f) * (1.0 + f)).sqrt()
-    )));
+    // NaN, which is `#NUM!`. A tiny argument is returned as is: `ASIN(±1E-13)` is ±1E-13, where the
+    // quotient gives ±1.0000000000000002E-13 (T-1605). The sweep only bounds the cut to between 1E-13
+    // and 1E-8 (`ASIN(1E-8)` is the quotient's 1.0000000000000002E-8, `ASIN(-1E-8)` is -1E-8).
+    single_number_fn!(fn_asin, |f: f64| Ok(if f.abs() < ASIN_IDENTITY_BOUND {
+        f
+    } else {
+        f64::atan(f / ((1.0 - f) * (1.0 + f)).sqrt())
+    }));
     single_number_fn!(fn_acos, |f| Ok(f64::acos(f)));
     single_number_fn!(fn_atan, |f| Ok(f64::atan(f)));
     single_number_fn!(fn_asinh, |f| Ok(f64::asinh(f)));
