@@ -55,3 +55,19 @@ fn whole_week_skipping() {
     assert_eq!(model._get_text("A5"), *"2379333");
     assert_eq!(model._get_text("A6"), *"#NUM!");
 }
+
+#[test]
+fn whole_week_skipping_dense_holidays() {
+    // Every workday of a 2000-row holiday column is a holiday; the answer lies past the column.
+    let mut model = new_empty_model();
+    for row in 1..=2000 {
+        model._set(&format!("H{row}"), &format!("={}", 46000 + row));
+    }
+    model._set("A1", "=WORKDAY.INTL(46000, 7, 1, H1:H2000)");
+    model._set("A2", "=WORKDAY.INTL(46000, -7, 1, H1:H2000)");
+    model._set("A3", "=WORKDAY.INTL(46000, 7, 11, H1:H2000)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"48009");
+    assert_eq!(model._get_text("A2"), *"45989");
+    assert_eq!(model._get_text("A3"), *"48008");
+}
