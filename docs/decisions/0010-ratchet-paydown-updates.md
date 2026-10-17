@@ -108,5 +108,10 @@
   and expressions/parser/static_analysis.rs 1669 → 1641 (OFFSET's and INDIRECT's shapes moved to
   `static_analysis/reference_result.rs`, `broadcast_shapes` to `static_analysis/broadcast.rs`), and
   functions/financial/mod.rs 2290 → 2194, already shrunk on main (`check_file_size.py --update`).
+  T-1772: duplicated lines 6111 → 5907 (PERCENTILE.EXC, QUARTILE.EXC and the two PERCENTRANK
+  functions share one interpolation and one kernel; the LARGE/SMALL bodies and the stat fallback
+  arms of static analysis are gone) (`check_duplication.py --update`), and
+  expressions/parser/static_analysis.rs 1641 → 1567 lines (the fallback arms of the 12 functions
+  now in the lifting table; 1614 already on main after T-1774) (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
