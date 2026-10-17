@@ -1,0 +1,24 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "TEXTSPLIT's padded result of a 32,767-char text: rows x widest row at, just above and well above 2^20 cells (T-1781). What Excel gives above 1,048,576 cells (we refuse with #ERROR!, arrays.md DEVIATION).",
+  "tags": [
+    "M7",
+    "text",
+    "dynamic-arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ROWS(TEXTSPLIT(REPT(\",\",1500)&REPT(\";\",1500),\",\",\";\"))",
+        "A2": "=COLUMNS(TEXTSPLIT(REPT(\",\",1500)&REPT(\";\",1500),\",\",\";\"))",
+        "A3": "=ROWS(TEXTSPLIT(REPT(\",\",1024)&REPT(\";\",1024),\",\",\";\"))",
+        "A4": "=COLUMNS(TEXTSPLIT(REPT(\",\",1024)&REPT(\";\",1024),\",\",\";\"))",
+        "A5": "=ROWS(TEXTSPLIT(REPT(\",\",1023)&REPT(\";\",1023),\",\",\";\"))",
+        "A6": "=ROWS(TEXTSPLIT(REPT(\",\",1000)&REPT(\";\",1000),\",\",\";\"))"
+      }
+    }
+  ],
+  "expected": {}
+}
