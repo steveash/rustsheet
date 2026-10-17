@@ -444,7 +444,7 @@ arrays", information.md "ISEVEN/ISODD over a range").
 Ours: EDATE, EOMONTH, WEEKNUM and YEARFRAC follow the rule (T-1770): every argument is
 `LiftArrays` in the lifting table, so they lift over an array, refuse a multi-cell range or a
 returned reference (TAKE and INDEX included) with `#VALUE!`, and a 3-D range with `#VALUE!` (probed for a multi-cell 3-D range; a one-cell 3-D range, `EDATE(Sheet1:Sheet2!A1,1)`, is inferred to be the same), and get no legacy `@` on a bare
-range; all their cells in these three probes pass. The other families listed in SPEC-0011 do not
+range; all their cells in the three scalar-lift-shapes probes pass (scalar-lift-open-a W6, W7 and -d W1, W3, W4, W6, W7 still fail on YEARFRAC's check order, T-1800). The other families listed in SPEC-0011 do not
 lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic formula). SPEC-0011's
 rollout tasks fix them.
 Status: VERIFIED (excel-graph)
