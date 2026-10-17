@@ -27,6 +27,7 @@ docs/excel-semantics/xlsx-storage.md, "Newer functions need `_xlfn.` in the file
 - Export: `Function::to_xlsx_string` writes `_xlfn.` names, but nothing writes `_xleta.` for a
   function passed by name. Excel reads such a bare name as `#NAME?`.
 Tests need xlsx inputs (an import test with a bare `_xlfn`-less newer name) and an export test.
+- corpus-bench/1726 `July-KPIs!A1` `=IMAGE("https://...")` stored without `_xlfn.`: Excel `#NAME?`, engine `#BLOCKED!` (T-0427 run; the case's other 33 cells are T-1770).
 
 ## Acceptance criteria
 - [ ] Importing a workbook whose `<f>` is `PERCENTOF(1,2)` gives `#NAME?`; `_xlfn.PERCENTOF(1,2)`

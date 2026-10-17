@@ -1,0 +1,17 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "BUYING": {},
+  "CASE1": {},
+  "CASE2": {},
+  "SALES": {},
+  "SH2": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "2e347ba3f0e66ba77b7c88b3db84ccad9d54681028ba34d8443e76f793dfa393",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:14:46+00:00",
+  "version": null
+ }
+}
