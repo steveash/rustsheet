@@ -285,9 +285,10 @@ fn test_xmatch_whole_row_and_column_search_the_used_range() {
 
 // The blank tail of a whole-column/row search vector is virtual (T-0127): every
 // match and search mode must see what a full walk sees, wherever the used area
-// ends. The first loop compares the engine with itself across used areas (an empty
-// cell compares as 0), so it pins no Excel value; the Excel-backed ones are the
-// asserts below (probes/lookup-whole-column-blank-tail, T-0126).
+// ends. The first loop compares the engine with itself across used areas, so it pins
+// no Excel value. Of the asserts below, `XMATCH(0,A:A)` and `XMATCH(0,1:1)` are Excel-backed
+// (probes/lookup-whole-column-blank-tail Col!M14, Row!A17; T-0126); the reverse search is
+// engine-only.
 #[test]
 fn test_xmatch_whole_column_and_row_independent_of_used_area() {
     let data = [
@@ -313,7 +314,6 @@ fn test_xmatch_whole_column_and_row_independent_of_used_area() {
         let filler = if vector == "A:A" { "Z1048576" } else { "XFD5" };
         results_independent_of_used_area(&data, "H3", filler, &refs);
     }
-    // XMATCH(0,A:A): the first empty cell is row 4 (full walk, not truncated).
     let model_value = |formula: &str| {
         let mut model = new_empty_model();
         for (cell, value) in data {
@@ -324,7 +324,8 @@ fn test_xmatch_whole_column_and_row_independent_of_used_area() {
         model._get_text("H3")
     };
     // Excel: a blank never matches an exact XMATCH
-    // (probes/lookup-whole-column-blank-tail Col!M14, Row!A17; T-0126).
+    // (probes/lookup-whole-column-blank-tail Col!M14, Row!A17; T-0126). The reverse search
+    // (0,-1) has no probe cell: it follows the engine's full walk.
     assert_eq!(model_value("=XMATCH(0,A:A)"), "#N/A");
     assert_eq!(model_value("=XMATCH(0,A:A,0,-1)"), "#N/A");
     assert_eq!(model_value("=XMATCH(0,1:1)"), "#N/A");
