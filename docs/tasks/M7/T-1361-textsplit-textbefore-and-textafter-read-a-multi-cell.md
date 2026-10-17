@@ -38,6 +38,8 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/95efb37a9874f82e Calc!A25 `=TEXTBEFORE(" x ",Data!D10:E11)`: Excel `#N/A`, engine `#VALUE!`.
 - The first two contradict "a blank cell is the empty delimiter" (that would give "" in A6) and the instance_num bound (A14): add `TEXTBEFORE("2",A1:B1)` with A1 blank and B1 "q", and `TEXTBEFORE("42",A1:B1,1E+15)`, to the probe (text.md entry updated).
 
+- gen-m7/851eb2099ae3f805 Calc!A25 `=TEXTAFTER(" x ",Data!A6:A10,Data!A9)`: Excel `#VALUE!`. Ours `#VALUE!` (a TEXTBEFORE/TEXTAFTER delimiter range is read as one text, kept so by T-1272). An early list reading of the range, with its blanks dropped, gave `#N/A`; the rule for a range holding blanks, numbers or booleans must match this cell. gen-m9/3ec66461400faf2f A3 and 95efb37a9874f82e A25 pass once ranges are lists.
+
 ## Acceptance criteria
 - [ ] gen-m7/0e40208f51c2454c A17, gen-m7/8ed8a680e9794b77 A17 and A26 and gen-m7/4629e931955aa4b8 A19 pass in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
 - [ ] An excel-probe case settles the UNVERIFIED parts first: `TEXTBEFORE("xyz",A1:B1)` with A1 blank and B1 "q", `TEXTBEFORE("a1b",A1:B1)` with A1 = 1, `TEXTAFTER("a TRUE b",A1:B1)` with A1 = TRUE; text.md updated.

@@ -275,6 +275,68 @@ Ours: matches (`fn_bahttext`, functions/text/bahttext.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1214, T-1270
 
+## TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments
+Rule: the text of TEXTSPLIT, TEXTBEFORE, TEXTAFTER, REGEXTEST, REGEXEXTRACT and REGEXREPLACE lifts over a multi-cell range
+or array, one call per element (`TEXTBEFORE(C1:C3,{",";"-"})` over "a,b", "c-d", "e,f" is 3x1 "a", "c", "e"), as do their
+scalar arguments (`TEXTBEFORE("a,b,c",",",{1;2})` is 2x1 "a", "a,b"; the REGEX patterns, `REGEXTEST("abc",{"a";"z"})` 2x1).
+The delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are one list, not lifted: any entry matches, so `TEXTAFTER(C1:C3,
+{",";"-"})` is "b", "d", "f". VERIFIED: probes/m7-argument-modes F13-K13 (excel-graph, 2026-10-09; T-1083), and gen-m7 cells
+whose lifted result is `#SPILL!` because its spill range is occupied (gen-m7/93976dd9a3578ed9 Calc!A11, 59cc50701f4937c9 A24).
+A lifted element whose call returns an array keeps its first value: TEXTSPLIT, probes/m7-argument-modes F13:H13.
+UNVERIFIED (T-1272 guesses, nothing probed; T-1824 probes them): when two delimiters of a list match at the same
+position, the first in list order sets the match length; every entry longer than the text gives the single-delimiter
+error (`#VALUE!` with more than two arguments, `#N/A` with two); an error inside a delimiter array is `#VALUE!`; a
+boolean inside a TEXTBEFORE/TEXTAFTER delimiter array is `#VALUE!` (as TEXTSPLIT's already was), although a boolean in a
+delimiter range raises no error (next entry); a REGEX pattern that does not compile is `#VALUE!` in its own element
+only; if_not_found, pad_with, match_end and return_all lift like the other scalars, and if_not_found is evaluated even
+when the delimiter is found; REGEXEXTRACT's return_all keeps the first value of a lifted element. A 1x1 array lifts too, so
+`COLUMNS(TEXTSPLIT({"a,b"},","))`, `COLUMNS(TEXTSPLIT(FILTER(A1:A2,A1:A2="a,b"),","))` and
+`COLUMNS(REGEXEXTRACT({"a1b2"},"[0-9]",1))` are 1 (2 before T-1272), by analogy with `COLUMNS(XLOOKUP({2},A1:A4,C1:E4))`
+= 1 (lookup.md); a common pattern, so T-1824 probes it first.
+Ours: all of this since T-1272. The work caps are the next entry's. A multi-cell range as the TEXTBEFORE/TEXTAFTER
+delimiter is still read as one text, as before T-1272 (gen-m7/851eb2099ae3f805 Calc!A25 is `#VALUE!`); its list rule is
+T-1361's.
+Status: VERIFIED (excel-graph) for the cited cells; UNVERIFIED (probe pending, T-1824) for the rest
+Tasks: T-1272, T-1824 (probe the guesses), T-1361 (delimiter ranges)
+
+## Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped
+Rule: Excel computes these calls whatever their size.
+Ours: a call is `#ERROR!` (as the *IF(S) lift) when its work passes `limits::MAX_LIFTED_CELL_VISITS` (2^27): over
+every operand, each element's length plus 1, times how often the broadcast repeats it; the text's length is further
+multiplied, per position, by the delimiter count plus the delimiter bytes compared there (each delimiter at most the
+text's length) over 64. A call that does not lift is capped the same way (`TEXTBEFORE(REPT("a",32767),SEQUENCE(10000))`,
+`TEXTBEFORE(REPT("a",32767),REPT("a",16383)&"b"&SEQUENCE(512))`); one long cell in a blank column costs its own length
+once (`ROWS(TEXTBEFORE(A1:A100000,","))` is 100000). TEXTSPLIT searches each delimiter again from
+each piece, so its delimiter bytes count 8 to a visit rather than 64
+(`ROWS(TEXTSPLIT(REPT("a",32767)&SEQUENCE(16),HSTACK("a",REPT("a",16000))))` is `#ERROR!`). A REGEX* call compiles each
+distinct pattern once, under the smallest of the size limits 64 KiB, 256 KiB, 1 MiB, 4 MiB and 10 MiB (the regex
+crate's default, so every pattern that compiled before T-1272 still does) it fits; it may spend 128 MiB of limits on
+compiling, too-big attempts included (2,048 small patterns), and hold 64 MiB of patterns and search caches, measured
+after each search (none is evicted, so patterns that cycle compile once). Its searches (functions/text/regex_engine.rs)
+run on a lazy DFA that gives up when it thrashes (after 3 cache clears, below 10 bytes a state, the regex crate's own
+setting) and then on a PikeVM; the DFA is charged what its cache says it scanned (4 a byte) and built (8 a byte of
+state), the PikeVM its span times its NFA's state count (5 a state-byte) before it runs, 64 a search, and a call may
+spend 2^30 (about 1 s of the slowest searches; `SUM(--REGEXTEST(REPT("y",200)&SEQUENCE(100000),"x"))` fits, 20 MB).
+A pattern whose DFA thrashes over a lot of text (`a[ab]{100}c|b[ab]{100}c` over 560 texts of 30,000 bytes) and a call
+past any of these limits is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`). Iterating matches on the PikeVM
+charges every successive search the rest of the text, and a pattern with `\b` runs on the PikeVM over non-ASCII
+text (the lazy DFA quits there), so `COLUMNS(REGEXEXTRACT(REPT("naïve ",500),"\b\w+\b",1))` is `#ERROR!` where
+Excel returns an array (T-1829 charges it by the work done). A REGEXREPLACE searches twice,
+once to size its result: over 32,767 UTF-16 units it is
+`#VALUE!`, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`), as SUBSTITUTE's
+is (UNVERIFIED for REGEXREPLACE; T-1817 probes it); a lifted REGEXREPLACE whose results pass the text broadcast cap
+(64 MiB, first entry) is one `#VALUE!`.
+The REGEX* dialect is the regex crate's on every target (wasm32 used `regex_lite`, whose `\w`, `\d` and `\s` are
+ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE),
+UNVERIFIED against Excel's PCRE2 (T-1817 probes it).
+The REGEXREPLACE replacement syntax is the regex crate's (`$1`, `${1}`, `$name`, `$$`; `$1a` is the group named `1a`,
+a lone `$` is itself), as before T-1272; UNVERIFIED against Excel's PCRE2 rules (T-1817 probes it).
+Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
+Status: DEVIATION (decision 0014)
+Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
+and `Replacement` (functions/text/regex_functions.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
+Tasks: T-1272, T-1829
+
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
 function argument modes"), and numbers and booleans in it raise no error. VERIFIED: a 2-row range is accepted
