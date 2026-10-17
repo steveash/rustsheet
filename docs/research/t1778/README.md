@@ -10,3 +10,6 @@ the Python scripts from OUT (scipy for `hboot.py`, mpmath for `wfamilies.py`).
 - `erf_small_model.c`, `erf_global_fit.c`: the earlier small-z model and global fit.
 - `sweepphase.py`, `phscan.c`: per-sweep W phases by exact interval intersection; `w_phases.txt` holds the
   28 sweep phases (name, z of the sweep's first run, phase interval) that `wfit.py` chains into W's polynomial.
+- `sweepfit.c`, `sweepphase2.py`: sweep-level joint fit of hi alias, fractional hi offset, V phase and one lo offset
+  over all 3,072 points of a fine sweep (`ws.txt`, `wla.txt`). The research plan is in
+  `docs/research/t1778-erf-kernel-research-plan.md`.
