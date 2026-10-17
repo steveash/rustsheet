@@ -511,6 +511,15 @@ element. A kernel that derives something costly from it (LARGE's sorted data, WO
 weekend mask results, today's `Weekend::lift` memo) computes it on the first element and keeps it
 in its closure. It declares `LiftCost::Prepared`.
 
+As built (T-1772): LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN take their data
+argument as `WholeByCaller`, not `Whole`. Their readers look at the argument's node (a typed scalar
+against a cell reference, a union's areas, an external range, `evaluate_node_in_context` for a
+single cell), which a `Whole` value read by `evaluate_node_with_reference` cannot tell apart, so a
+`Whole` read would change scalar results. `statistical/sorted_data.rs` reads the numbers once after
+the count check, the kernel sorts them on its first element, and the call goes through
+`lift_call_costed` with `LiftCost::Prepared(numbers)` (TRIMMEAN: `Cells(numbers)`, since every
+element averages the kept values). `Whole` stays unused until T-1236's holidays.
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and

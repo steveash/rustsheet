@@ -107,6 +107,20 @@ impl Model {
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
     ) -> CalcResult {
+        self.lift_call_costed(kind, args, LiftCost::Unit, cell, kernel)
+    }
+
+    /// [`Model::lift_call`] for a kernel whose elements cost `cost` rather than one unit each:
+    /// `LiftCost::Prepared` for one that prepares a whole argument once (LARGE sorts its data,
+    /// T-1772), `LiftCost::Cells` for one whose every element walks it.
+    pub(crate) fn lift_call_costed(
+        &mut self,
+        kind: Function,
+        args: &[Node],
+        cost: LiftCost<'_>,
+        cell: CellReferenceIndex,
+        kernel: &mut Kernel<'_>,
+    ) -> CalcResult {
         let Some(kinds) = kind.arg_kinds() else {
             // A programming error, not an input condition: `lift_call` is only called with the
             // constant `Function` of the `fn_x` that calls it (SPEC-0011 "Error handling").
@@ -117,7 +131,7 @@ impl Model {
                 .collect();
             return kernel(self, &values);
         };
-        self.lift_call_with(kinds, args, LiftCost::Unit, cell, kernel)
+        self.lift_call_with(kinds, args, cost, cell, kernel)
     }
 
     /// [`Model::lift_call`] for the kinds `kinds` and the element cost `cost`. Not generic and
