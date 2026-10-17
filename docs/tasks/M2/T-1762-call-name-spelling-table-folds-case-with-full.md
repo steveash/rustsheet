@@ -3,7 +3,7 @@ id: T-1762
 title: "Call-name spelling table folds case with full folding (ss matches the sharp s)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
