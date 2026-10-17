@@ -1439,6 +1439,10 @@ With B1:B6 = 1,2,3,1,2,3, each formula on row 2 (on the range's rows, B2 = 2) an
   2 / 100, `SUMPRODUCT(IFNA(B1:B6*1,100))` 2 / `#VALUE!`, `SUMPRODUCT(IFERROR(1/(B1:B6-2),100))`
   100 / 100, `SUMPRODUCT(ABS(IF(B1:B6>1,B1:B6,0)))` 12 / `#VALUE!` (the condition intersects, the
   value branch stays the whole range), while `SUMPRODUCT(B1:B6+0)` is 12 on both rows;
+- an Analysis ToolPak function's scalar argument is read like an aggregate's argument. A bare range gets no `@` and is
+  `#VALUE!` on any row, and an operation on it is intersected: legacy `=EDATE(A1:A60,1)` keeps its text and is `#VALUE!`,
+  and `=EDATE(A1:A60+0,1)` shows `=EDATE(@A1:A60+0,1)` (probes/scalar-lift-shapes-c, T-1767; arrays.md "Scalar
+  arguments lift: shapes, element errors, and the Analysis ToolPak range rule");
 - the reference functions are unchanged: `ROWS(B1:B6)` 6, `SUBTOTAL(9,B1:B6)` and
   `AGGREGATE(9,6,B1:B6)` 12, `AVERAGEA(B1:D1)` (C1 "x", D1 TRUE) 0.667 on both rows.
 The same holds for the other aggregates (probes/legacy-value-argument-intersection-b, excel-graph,

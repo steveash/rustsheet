@@ -14,6 +14,8 @@ depends_on: []
 NPV and FVSCHEDULE treat their non-scalar arguments as Excel does.
 
 ## Context
+SPEC-0011 (docs/specs/SPEC-0011-scalar-argument-lifting.md) makes NPV's values and FVSCHEDULE's schedule `WholeByCaller` parameters: the lifting driver passes them whole, and this task's rules decide what is inside them. NPV's rate lifting is T-1372's.
+
 probes/fin-argument-modes rows H368, H370, H371 and H382-H384 (excel-graph, 2026-10-11, T-1084; financial.md "Financial
 function argument modes"):
 - `NPV(0.1,{-10000,2750,4250,3250,2750})` is 302.233453999042 in Excel, but the engine gives 0.
