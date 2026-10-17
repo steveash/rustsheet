@@ -3,7 +3,7 @@ id: T-1646
 title: "Bucket the seen-range records by column band too"
 milestone: M1
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
