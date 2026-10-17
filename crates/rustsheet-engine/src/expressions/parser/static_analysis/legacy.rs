@@ -188,8 +188,8 @@ fn legacy_intersects(kind: &Function, signature: Option<&Signature>, arg: &Node)
 }
 
 /// Whether `arg` of `kind` needs no intersection although `kind` takes a scalar: a scalar, or
-/// under N or T, which read a reference and give its top-left cell, a range or a call of IF,
-/// OFFSET, CHOOSE or INDEX that holds nothing else: a legacy `=N(Z1:Z2)`,
+/// under N or T, which read a reference and give its top-left cell, a range or an IF or OFFSET
+/// of one ([`is_plain_reference`]): a legacy `=N(Z1:Z2)`,
 /// `=N(OFFSET(Z1:Z2,0,0))` and `=N(IF(1,Z1:Z2))` are 7 off the range's rows and show no `@`
 /// (probes/legacy-n-t-reference-args C, J, Q, T-1728). An array constant or any other call keeps
 /// its `@` (T-1713, T-1727).
@@ -207,27 +207,29 @@ pub(super) fn reads_reference_whole(kind: &Function, arg: &Node) -> bool {
     matches!(kind, Function::N | Function::T) && is_plain_reference(arg)
 }
 
-/// Whether `node` is a reference, or a call of IF, OFFSET, CHOOSE or INDEX over such and
-/// scalar literals, with no array constant, operator or other call (`N(B1:B3*1)` is `#VALUE!`
-/// off the rows: probes/n-array-lift D7). An explicit stack keeps the walk
-/// off the call stack: a formula's tree is untrusted input.
+/// Whether `node` is a reference N or T read whole, in the shapes probed: a range or cell, an
+/// OFFSET of one with number literals for its offsets, or an IF with a number or boolean literal
+/// condition whose arms are such references. A range in a scalar slot (`IF(A1:A2,Z1,Z2)`), an
+/// array constant, an operator or any other call is not (`N(B1:B3*1)` is `#VALUE!` off the
+/// rows: probes/n-array-lift D7); CHOOSE and INDEX over references are unprobed
+/// (docs/excel-semantics/references.md "Legacy N and T over a reference-returning call"). An
+/// explicit stack keeps the walk off the call stack: a formula's tree is untrusted input.
 fn is_plain_reference(node: &Node) -> bool {
+    let is_literal = |node: &Node| matches!(node, Node::NumberKind(_) | Node::BooleanKind(_));
     let mut pending = vec![node];
     while let Some(node) = pending.pop() {
         match node {
+            Node::ReferenceKind { .. } | Node::RangeKind { .. } => {}
             Node::FunctionKind {
-                kind: Function::If | Function::Offset | Function::Choose | Function::Index,
-                ..
-            } => {}
-            Node::ReferenceKind { .. }
-            | Node::RangeKind { .. }
-            | Node::NumberKind(_)
-            | Node::StringKind(_)
-            | Node::BooleanKind(_)
-            | Node::EmptyArgKind => {}
+                kind: Function::If,
+                args,
+            } if args.len() > 1 && is_literal(&args[0]) => pending.extend(&args[1..]),
+            Node::FunctionKind {
+                kind: Function::Offset,
+                args,
+            } if args.len() > 2 && args[1..].iter().all(is_literal) => pending.push(&args[0]),
             _ => return false,
         }
-        node.push_children(&mut pending);
     }
     true
 }
