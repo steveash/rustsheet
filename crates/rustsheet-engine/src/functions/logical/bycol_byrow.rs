@@ -286,8 +286,8 @@ impl Model {
     /// is read, so MAP and SCAN never carry one into their output. A one-cell reference is read
     /// directly, without building a one-element array. A multi-cell reference is no element:
     /// both callers show it as `#VALUE!`, so only its existing cells are read, for what reading
-    /// does (a cycle through the range, the reads a spill checks), and no array is built. Building one
-    /// made every call cost the range's full size (T-1769 fuzz timeout).
+    /// does (a cycle through the range, the reads a spill checks), and no array is built.
+    /// Building one made every call cost the range's full size (T-1769 fuzz timeout).
     pub(super) fn lambda_result_value(
         &mut self,
         result: CalcResult,
