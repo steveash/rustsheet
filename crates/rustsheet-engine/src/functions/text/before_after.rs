@@ -42,7 +42,10 @@ impl Model {
     }
 
     /// The delimiter list of TEXTBEFORE and TEXTAFTER: a scalar is read as text (a blank is the
-    /// empty delimiter, a boolean its spelling), a range or array is a list.
+    /// empty delimiter, a boolean its spelling), an array is a list (probes/m7-argument-modes
+    /// row 17). A multi-cell range is still read as one text, as before T-1272: Excel's rule for
+    /// a range with blanks, numbers or booleans is unprobed (T-1361), and
+    /// `TEXTAFTER(" x ",Data!A6:A10,Data!A9)` is `#VALUE!` (gen-m7/851eb2099ae3f805 Calc!A25).
     fn around_delimiters(
         &mut self,
         value: CalcResult,
@@ -50,7 +53,7 @@ impl Model {
     ) -> Result<Vec<String>, CalcResult> {
         let value = self.collapse_single_cell(value);
         match value {
-            CalcResult::Range { .. } | CalcResult::Array(_) => self.delimiter_list(value, cell),
+            CalcResult::Array(_) => self.delimiter_list(value, cell),
             scalar => self.cast_to_string(scalar, cell).map(|text| vec![text]),
         }
     }

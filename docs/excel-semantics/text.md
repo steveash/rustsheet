@@ -285,8 +285,11 @@ whose lifted result is `#SPILL!` because its spill range is occupied (gen-m7/939
 UNVERIFIED (T-1272 guesses, nothing probed): when two delimiters of a list match at the same position, the first in list
 order sets the match length; every entry longer than the text gives the single-delimiter error (`#VALUE!` with more than
 two arguments, `#N/A` with two); a lifted element whose call returns an array (`TEXTSPLIT` of "a,b") keeps its first value.
-Ours: all of this since T-1272. A lift over more than about 100,000 elements is `#ERROR!` (DEVIATION, decision 0014, as the
-*IF(S) lift: `limits::MAX_LIFTED_CELL_VISITS`).
+Ours: all of this since T-1272. A call is `#ERROR!` (DEVIATION, decision 0014, as the *IF(S) lift) when its work passes
+`limits::MAX_LIFTED_CELL_VISITS` (2^27): (longest text + 1) × delimiters per element, plus 4,096 per element when a REGEX
+pattern lifts, times the elements; a call that does not lift is capped the same way (`TEXTBEFORE(REPT("a",32767),SEQUENCE(10000))`).
+A multi-cell range as the TEXTBEFORE/TEXTAFTER delimiter is still read as one text, as before T-1272 (gen-m7/851eb2099ae3f805
+Calc!A25 is `#VALUE!`); its list rule is T-1361's.
 Status: VERIFIED (web) for the listed cells; the rest UNVERIFIED
 Tasks: T-1272
 

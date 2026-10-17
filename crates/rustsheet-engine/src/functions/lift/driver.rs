@@ -88,6 +88,13 @@ impl LiftOptions {
         reuse_equal_runs: true,
         work: KernelWork::Constant,
     };
+
+    /// Every element runs, and the caller's [`LiftCost`] already counts its work: the lifted
+    /// text functions (TEXTSPLIT, TEXTBEFORE, TEXTAFTER, REGEX*; T-1272).
+    pub(crate) const EVERY_ELEMENT: Self = Self {
+        reuse_equal_runs: false,
+        work: KernelWork::Constant,
+    };
 }
 
 /// A per-element kernel: the scalar function over the argument values of one element.

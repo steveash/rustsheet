@@ -182,3 +182,15 @@ fn regex_pattern_errors_stay_per_element() {
     assert_eq!(model._get_text("C1"), *"#VALUE!");
     assert_eq!(model._get_text("C2"), *"#VALUE!");
 }
+
+// A call that does not lift is capped too: 32,768 positions times 10,000 delimiters is past
+// `MAX_LIFTED_CELL_VISITS` (DEVIATION, decision 0014: Excel has no such limit). T-1272.
+#[test]
+fn unlifted_call_over_a_long_delimiter_list_is_capped() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTBEFORE(REPT(\"a\",32767),SEQUENCE(10000))");
+    model._set("A2", "=TEXTBEFORE(\"a-b\",IF(SEQUENCE(100)=1,\"-\",\"zz\"))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"a");
+}

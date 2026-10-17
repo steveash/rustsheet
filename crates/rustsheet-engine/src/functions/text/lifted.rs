@@ -15,6 +15,7 @@ use crate::{
         lift::{LiftCost, LiftOptions, LiftedArg},
         util::array_node_to_calc_result,
     },
+    limits::too_many_visits,
     model::Model,
     number_format::number_to_text,
 };
@@ -111,12 +112,18 @@ impl Model {
         if compiles_patterns && operands.get(1).is_some_and(LiftedArg::is_grid) {
             cost = cost.saturating_add(COMPILE_COST);
         }
+        // `lift_values` caps only a call that lifts; one call scanning a long text once per
+        // delimiter of a large list (`TEXTBEFORE(REPT("a",32767),SEQUENCE(1048576))`) is capped
+        // here. DEVIATION, decision 0014: Excel has no such limit.
+        if !lifts {
+            if let Some(error) = too_many_visits(cost, cell) {
+                return error;
+            }
+        }
         self.lift_values(
             operands,
             LiftCost::Cells(cost),
-            &LiftOptions {
-                reuse_equal_runs: false,
-            },
+            &LiftOptions::EVERY_ELEMENT,
             cell,
             &mut |model, values| match element(model, values) {
                 CalcResult::Array(grid) if lifts => match grid.first().and_then(|r| r.first()) {
