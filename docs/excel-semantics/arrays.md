@@ -778,7 +778,7 @@ is `#NUM!` for WRAPROWS too (gen-m9/50f10c4062fb2e98 A21; the full set is under 
 Ours: all of the above since T-1786 and T-1348 (wrap_count is read before truncation, so 0.5 is `#NUM!`).
 Status: VERIFIED for single values (excel-graph). UNVERIFIED: the error pad_with rule for a vector of more than one
 element (it may apply only to a scalar input; follow-up task in Tasks), `WRAPCOLS({1,2},4)` and `WRAPROWS({1,2},4)`.
-Tasks: T-1348
+Tasks: T-1348, T-1840
 
 ## MAP over arrays of different sizes, or a single value and an array
 Rule: MAP does not reject arrays of different sizes, and does not broadcast: the result has the largest row count and the
