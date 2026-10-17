@@ -745,20 +745,21 @@ fn one_cell_3d_range_and_reference_forms_in_lift_arrays() {
     }
 }
 
-/// Reversed basis-1 dates in different years stay `#NUM!`, as before T-1770 (Excel swaps them:
-/// gen-m7/c263b43217a5898b Calc!A38 is 77.11295191295191; TODO(T-1354)). A reversed pair within
-/// one year was already computed and still is.
+/// Reversed basis-1 dates swap, as Excel does (gen-m7/c263b43217a5898b Calc!A38 is
+/// 77.11295191295191), whether they fall in one year or several.
 #[test]
-fn reversed_basis_1_dates_in_different_years_stay_num() {
+fn reversed_basis_1_dates_swap() {
     let model = model_with(&[
-        ("A1", "=YEARFRAC(45400,45000,1)"),
-        ("A2", "=YEARFRAC(46000,45000,1)"),
-        ("A3", "=YEARFRAC(52874,24708,1)"),
-        ("A4", "=INDEX(YEARFRAC({46000;45000},{45000;46000},1),1)"),
+        ("A1", "=YEARFRAC(45400,45000,1)=YEARFRAC(45000,45400,1)"),
+        ("A2", "=YEARFRAC(46000,45000,1)=YEARFRAC(45000,46000,1)"),
+        ("A3", "=YEARFRAC(52874,24708,1)=YEARFRAC(24708,52874,1)"),
+        (
+            "A4",
+            "=INDEX(YEARFRAC({46000;45000},{45000;46000},1),1)=YEARFRAC(45000,46000,1)",
+        ),
         ("A5", "=YEARFRAC(45100,45000,1)=YEARFRAC(45000,45100,1)"),
     ]);
-    for cell in ["A1", "A2", "A3", "A4"] {
-        assert_eq!(model._get_text(cell), "#NUM!", "{cell}");
+    for cell in ["A1", "A2", "A3", "A4", "A5"] {
+        assert_eq!(model._get_text(cell), "TRUE", "{cell}");
     }
-    assert_eq!(model._get_text("A5"), "TRUE");
 }

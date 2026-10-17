@@ -692,12 +692,15 @@ Ours: the time is rounded to the millisecond and the seconds truncated (`SECOND(
 Status: VERIFIED (web) for these two cells; ties and carries UNVERIFIED
 Tasks: T-1408
 
-## YEARFRAC swaps reversed dates for every basis
-Rule: YEARFRAC with a start date after the end date swaps them for basis 1 as for basis 0: `YEARFRAC(52874,24708,1)` =
-77.11295191295191 = `YEARFRAC(24708,52874,1)`.
-Evidence: gen-m7/c263b43217a5898b Calc!A38 (excel-graph, 2026-10-11, T-1275).
-Ours: `#NUM!` for basis 1 (basis 0 already swaps); bases 2-4 unchecked.
-Status: VERIFIED (web)
+## YEARFRAC swaps reversed dates for basis 1
+Rule: YEARFRAC with basis 1 and a start date after the end date swaps them: `YEARFRAC(52874,24708,1)` =
+77.11295191295191 = `YEARFRAC(24708,52874,1)`. Whether bases 0, 2, 3 and 4 swap is UNVERIFIED.
+Evidence: gen-m7/c263b43217a5898b Calc!A38 (excel-graph, 2026-10-11, T-1275), basis 1 only.
+Ours: basis 1 swaps (T-1354). Bases 2-4 take the absolute day count, which is symmetric. Basis 0 takes the absolute
+value of the US 30/360 count on the original order, which is not symmetric at day 30/31 and end of February
+(`YEARFRAC(DATE(2024,3,31),DATE(2024,1,15),0)` is 75/360, its forward pair 76/360). The equality test in
+`test_yearfrac_basis.rs` covers one pair without those edges and is not evidence.
+Status: VERIFIED (web) for basis 1; UNVERIFIED for bases 0, 2, 3, 4
 Tasks: T-1354
 
 ## DATEDIF argument errors before date checks
