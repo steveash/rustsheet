@@ -7,7 +7,8 @@
     "probe"
   ],
   "names": {
-    "MyFn": "=LAMBDA(x,x+1)"
+    "MyFn": "=LAMBDA(x,x+1)",
+    "OtherFn": "=LAMBDA(x,x+2)"
   },
   "sheets": [
     {
@@ -50,7 +51,11 @@
         "A18": "=éA(1)",
         "B18": "=FORMULATEXT(A18)",
         "A19": "=MMM(1)",
-        "B19": "=FORMULATEXT(A19)"
+        "B19": "=FORMULATEXT(A19)",
+        "A20": "=otherfn(1)",
+        "B20": "=FORMULATEXT(A20)",
+        "A21": "=OTHERFN(1)",
+        "B21": "=FORMULATEXT(A21)"
       }
     },
     {

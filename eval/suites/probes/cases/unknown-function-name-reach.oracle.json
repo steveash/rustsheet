@@ -50,6 +50,14 @@
     "t": "n",
     "v": 2.0
    },
+   "A20": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A21": {
+    "t": "n",
+    "v": 3.0
+   },
    "A3": {
     "t": "n",
     "v": 2.0
@@ -126,6 +134,14 @@
     "t": "s",
     "v": "=MyFn(1)"
    },
+   "B20": {
+    "t": "s",
+    "v": "=OtherFn(1)"
+   },
+   "B21": {
+    "t": "s",
+    "v": "=OtherFn(1)"
+   },
    "B3": {
     "t": "s",
     "v": "=MyFn(1)"
@@ -200,9 +216,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "656b371073207590eaed22c98196a8bbc993011b106041ed8e53f85ea38a01d3",
+  "input_sha256": "001e7dc210241a9c5bbae90f0212789c06896c924c4d06d64433e16fb0ba4e01",
   "kind": "excel-graph",
-  "produced_at": "2026-10-17T03:06:48+00:00",
+  "produced_at": "2026-10-17T03:07:44+00:00",
   "version": null
  }
 }
