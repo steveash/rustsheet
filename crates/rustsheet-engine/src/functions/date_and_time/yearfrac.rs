@@ -4,7 +4,8 @@
 use chrono::Datelike;
 
 use super::{
-    days360_eu, days360_serial, is_feb29_between_consecutive_years, is_leap_year, num_error,
+    super::financial::days_30_360_us_ymd, days360_eu, days360_serial,
+    is_feb29_between_consecutive_years, is_leap_year, num_error,
 };
 use crate::{
     calc_result::CalcResult,
@@ -18,37 +19,6 @@ use crate::{
 fn leap_years_through(year: i32) -> i64 {
     let year = i64::from(year);
     year / 4 - year / 100 + year / 400
-}
-
-/// YEARFRAC basis 0, the financial US 30/360 convention (`dateDiff360Us`, `ModifyStartDate`), over
-/// `(year, month, day)` triples, which differs from the DAYS360 worksheet function for February
-/// month-ends: a February-end *end* date only collapses to 30 when the *start* is also a February
-/// month-end, and the `end == 31` rule tests the original (un-normalised) start day.
-fn us_30_360(start: (i32, u32, u32), end: (i32, u32, u32)) -> f64 {
-    let (start_year, start_month, start_day) = start;
-    let (end_year, end_month, end_day) = end;
-    let last_day_feb = |year: i32| if is_leap_year(year) { 29 } else { 28 };
-    let sd_is_feb_last = start_month == 2 && start_day == last_day_feb(start_year);
-    let ed_is_feb_last = end_month == 2 && end_day == last_day_feb(end_year);
-    let mut sd_day = start_day as i32;
-    let mut ed_day = end_day as i32;
-
-    if ed_is_feb_last && sd_is_feb_last {
-        ed_day = 30;
-    }
-    if ed_day == 31 && sd_day >= 30 {
-        ed_day = 30;
-    }
-    if sd_day == 31 {
-        sd_day = 30;
-    }
-    if sd_is_feb_last {
-        sd_day = 30;
-    }
-    let d360 = (end_year - start_year) * 360
-        + (end_month as i32 - start_month as i32) * 30
-        + (ed_day - sd_day);
-    f64::from(d360) / 360.0
 }
 
 impl Model {
@@ -105,7 +75,8 @@ impl Model {
             ) else {
                 return num_error(cell);
             };
-            return CalcResult::Number(us_30_360(start, end).abs());
+            // A reversed pair negates the count, so `abs` equals swapping first.
+            return CalcResult::Number(days_30_360_us_ymd(start, end).abs() / 360.0);
         }
         let (Ok(start_date), Ok(end_date)) =
             (from_excel_date(start_serial), from_excel_date(end_serial))
@@ -122,10 +93,12 @@ impl Model {
         };
         let days = (end_date - start_date).num_days() as f64;
         let result = match basis {
-            0 => us_30_360(
-                (start_date.year(), start_date.month(), start_date.day()),
-                (end_date.year(), end_date.month(), end_date.day()),
-            ),
+            0 => {
+                days_30_360_us_ymd(
+                    (start_date.year(), start_date.month(), start_date.day()),
+                    (end_date.year(), end_date.month(), end_date.day()),
+                ) / 360.0
+            }
             1 => {
                 // Actual/Actual. Port of ExcelFinancialFunctions
                 // `ActualActual.DaysInYear`: yearfrac = actual_days / DaysInYear.
