@@ -33,3 +33,50 @@ fn arguments() {
     assert_eq!(model._get_text("B5"), *"46007");
     assert_eq!(model._get_text("B6"), *"#ERROR!");
 }
+
+#[test]
+fn whole_week_skipping() {
+    // 46000 is a Tuesday; 1000 workdays at 5 per week is exactly 200 weeks.
+    let mut model = new_empty_model();
+    model._set("A1", "=WORKDAY(46000, 1000)");
+    model._set("A2", "=WORKDAY(46000, 1000, 46100)");
+    model._set("A3", "=WORKDAY(46000, -1000)");
+    model._set("A4", "=WORKDAY(46000, 1000, 46103)");
+    model._set("A5", "=WORKDAY.INTL(46000, 2000000, 11)");
+    model._set("A6", "=WORKDAY.INTL(46000, 4000000, 11)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"47400");
+    // 46100 is a Thursday inside the span: one extra workday.
+    assert_eq!(model._get_text("A2"), *"47401");
+    assert_eq!(model._get_text("A3"), *"44600");
+    // 46103 is a Sunday: no effect.
+    assert_eq!(model._get_text("A4"), *"47400");
+    assert_eq!(model._get_text("A5"), *"2379333");
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+}
+
+#[test]
+fn whole_week_skipping_dense_holidays() {
+    // Every workday of a 2000-row holiday column is a holiday; the answer lies past the column.
+    let mut model = new_empty_model();
+    for row in 1..=2000 {
+        model._set(&format!("H{row}"), &format!("={}", 46000 + row));
+    }
+    model._set("A1", "=WORKDAY.INTL(46000, 7, 1, H1:H2000)");
+    model._set("A2", "=WORKDAY.INTL(46000, -7, 1, H1:H2000)");
+    model._set("A3", "=WORKDAY.INTL(46000, 7, 11, H1:H2000)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"48009");
+    assert_eq!(model._get_text("A2"), *"45989");
+    assert_eq!(model._get_text("A3"), *"48008");
+}
+
+#[test]
+fn whole_week_skipping_lifted_weekend() {
+    // Every lifted weekend code steps 2M workdays without walking the days one by one.
+    let mut model = new_empty_model();
+    model._set("A1", "=WORKDAY.INTL(46000, 1000000, SEQUENCE(7))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1446000");
+}
