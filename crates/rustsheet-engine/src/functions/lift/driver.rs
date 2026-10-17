@@ -36,7 +36,30 @@ impl LiftedArg {
     pub(crate) fn dims(&self) -> (usize, usize) {
         match self {
             LiftedArg::Scalar(_) => (1, 1),
-            LiftedArg::Grid(grid) => (grid.len(), grid.first().map_or(0, Vec::len)),
+            LiftedArg::Grid(grid) => grid_dims(grid),
+        }
+    }
+
+    /// An argument value as the driver holds it: a range read once into its cells (`#VALUE!`
+    /// across sheets), an array as its grid, anything else a scalar.
+    pub(crate) fn read(
+        model: &mut Model,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<LiftedArg, CalcResult> {
+        match value {
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    ));
+                }
+                model.evaluate_range(left, right, cell).map(LiftedArg::Grid)
+            }
+            CalcResult::Array(grid) => Ok(LiftedArg::Grid(grid)),
+            scalar => Ok(LiftedArg::Scalar(scalar)),
         }
     }
 
@@ -49,6 +72,11 @@ impl LiftedArg {
             LiftedArg::Grid(grid) => Some(bcast_get(grid, row, column).unwrap_or(&MISSING)),
         }
     }
+}
+
+/// The rows and columns of a grid.
+pub(crate) fn grid_dims(grid: &[Vec<ArrayNode>]) -> (usize, usize) {
+    (grid.len(), grid.first().map_or(0, Vec::len))
 }
 
 /// What one element costs, for the cell-visit cap (`limits::MAX_LIFTED_CELL_VISITS`). The total
@@ -85,6 +113,13 @@ impl LiftOptions {
     /// lookups all reuse equal runs, as `lift_with_cost` did.
     pub(crate) const REUSE_EQUAL_RUNS: Self = Self {
         reuse_equal_runs: true,
+        work: KernelWork::Constant,
+    };
+
+    /// Every element runs, and the caller's [`LiftCost`] already counts its work: the lifted
+    /// text functions (TEXTSPLIT, TEXTBEFORE, TEXTAFTER, REGEX*; T-1272).
+    pub(crate) const EVERY_ELEMENT: Self = Self {
+        reuse_equal_runs: false,
         work: KernelWork::Constant,
     };
 }
@@ -167,23 +202,10 @@ impl Model {
         }
         let mut lifted = Vec::with_capacity(args.len());
         for arg in args {
-            lifted.push(match arg {
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    match self.evaluate_range(left, right, cell) {
-                        Ok(grid) => LiftedArg::Grid(grid),
-                        Err(error) => return error,
-                    }
-                }
-                CalcResult::Array(grid) => LiftedArg::Grid(grid),
-                scalar => LiftedArg::Scalar(scalar),
-            });
+            match LiftedArg::read(self, arg, cell) {
+                Ok(arg) => lifted.push(arg),
+                Err(error) => return error,
+            }
         }
         self.lift_grids(lifted, cost, options, cell, kernel)
     }

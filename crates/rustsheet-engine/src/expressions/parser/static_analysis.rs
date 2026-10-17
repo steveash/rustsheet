@@ -676,7 +676,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Sech => args_signature_scalars(arg_count, 1, 0),
         Function::Exp => args_signature_scalars(arg_count, 1, 0),
         Function::Fact => args_signature_scalars(arg_count, 1, 0),
-        Function::Factdouble => args_signature_scalars(arg_count, 1, 0),
         Function::Sign => args_signature_scalars(arg_count, 1, 0),
         Function::Radians => args_signature_scalars(arg_count, 1, 0),
         Function::Degrees => args_signature_scalars(arg_count, 1, 0),
@@ -691,7 +690,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::FloorPrecise => args_signature_scalars(arg_count, 1, 1),
         Function::IsoCeiling => args_signature_scalars(arg_count, 1, 1),
         Function::Mod => args_signature_scalars(arg_count, 2, 0),
-        Function::Quotient => args_signature_scalars(arg_count, 2, 0),
         Function::Mround => args_signature_scalars(arg_count, 2, 0),
         Function::Trunc => args_signature_scalars(arg_count, 1, 1),
         Function::Gcd => vec![Signature::Vector; arg_count],
@@ -707,18 +705,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Minverse => args_signature_one_vector(arg_count),
         Function::Munit => args_signature_scalars(arg_count, 1, 0),
         Function::Multinomial => vec![Signature::Vector; arg_count],
-        Function::Seriessum => {
-            if arg_count == 4 {
-                vec![
-                    Signature::Scalar,
-                    Signature::Scalar,
-                    Signature::Scalar,
-                    Signature::Vector,
-                ]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::Sumproduct => vec![Signature::Vector; arg_count],
         Function::Percentof => {
             if arg_count == 2 {
@@ -1097,19 +1083,14 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Right => scalar_arguments(args),
         Function::Search => scalar_arguments(args),
         Function::Substitute => scalar_arguments(args),
-        Function::Regexextract => {
-            if args.len() == 3 {
-                StaticResult::Unknown
-            } else {
-                not_implemented(args)
-            }
+        // Their text and scalar arguments lift over a range or an array (T-1272); the table derives
+        // their shape once they move onto `lift_call`. TODO(T-1775)
+        Function::Regexextract | Function::Regexreplace | Function::Regextest => {
+            StaticResult::Unknown
         }
-        Function::Regexreplace => not_implemented(args),
-        Function::Regextest => not_implemented(args),
         Function::T => scalar_arguments(args),
         Function::Text => scalar_arguments(args),
-        Function::Textafter => not_implemented(args),
-        Function::Textbefore => not_implemented(args),
+        Function::Textafter | Function::Textbefore => StaticResult::Unknown,
         Function::Textjoin => not_implemented(args),
         Function::Trim => scalar_arguments(args),
         Function::Unicode => not_implemented(args),
@@ -1219,7 +1200,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Sech => scalar_arguments(args),
         Function::Exp => scalar_arguments(args),
         Function::Fact => scalar_arguments(args),
-        Function::Factdouble => scalar_arguments(args),
         Function::Sign => scalar_arguments(args),
         Function::Radians => scalar_arguments(args),
         Function::Degrees => scalar_arguments(args),
@@ -1234,7 +1214,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::FloorPrecise => scalar_arguments(args),
         Function::IsoCeiling => scalar_arguments(args),
         Function::Mod => scalar_arguments(args),
-        Function::Quotient => scalar_arguments(args),
         Function::Mround => scalar_arguments(args),
         Function::Trunc => scalar_arguments(args),
         Function::Gcd => StaticResult::Scalar,
@@ -1250,7 +1229,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Minverse => StaticResult::Unknown,
         Function::Munit => StaticResult::Unknown,
         Function::Multinomial => StaticResult::Scalar,
-        Function::Seriessum => StaticResult::Scalar,
         Function::Sumproduct => StaticResult::Scalar,
         Function::Percentof => StaticResult::Scalar,
         Function::N => scalar_arguments(args),

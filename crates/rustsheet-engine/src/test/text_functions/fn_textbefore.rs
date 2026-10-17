@@ -121,3 +121,144 @@ fn test_textbefore_textafter_huge_negative_instance_does_not_overflow() {
         );
     }
 }
+
+// T-1272: the text lifts over a range, the delimiter is a list (probes/m7-argument-modes F13-K13).
+#[test]
+fn text_lifts_and_delimiters_are_a_list() {
+    let mut model = new_empty_model();
+    model._set("A1", "a,b");
+    model._set("A2", "c-d");
+    model._set("A3", "e,f");
+    model._set("C1", "=TEXTBEFORE(A1:A3,{\",\";\"-\"})");
+    model._set("D1", "=TEXTAFTER(A1:A3,{\",\";\"-\"})");
+    model._set("E1", "=TEXTBEFORE(\"a,b,c\",\",\",{1;2})");
+    model._set("F1", "=TEXTSPLIT(A1:A3,\",\")");
+    model._set("G1", "=REGEXTEST(A1:A3,\"a\")");
+    model._set("H1", "=REGEXEXTRACT(\"a1b2\",{\"[0-9]\";\"[a-z]\"})");
+    model._set("I1", "=REGEXREPLACE(A1:A3,\",\",\"+\")");
+    model.evaluate();
+
+    let column = |letter: char, rows: i32| -> Vec<String> {
+        let c = i32::from(letter as u8 - b'A') + 1;
+        (1..=rows).map(|r| model._get_text_at(0, r, c)).collect()
+    };
+    assert_eq!(column('C', 3), ["a", "c", "e"]);
+    assert_eq!(column('D', 3), ["b", "d", "f"]);
+    assert_eq!(column('E', 2), ["a", "a,b"]);
+    assert_eq!(column('F', 3), ["a", "c-d", "e"]);
+    assert_eq!(column('G', 3), ["TRUE", "FALSE", "FALSE"]);
+    assert_eq!(column('H', 2), ["1", "a"]);
+    assert_eq!(column('I', 3), ["a+b", "c-d", "e+f"]);
+}
+
+// UNVERIFIED (no oracle cell; T-1824 probes them): match_end and if_not_found with a delimiter list,
+// every list entry longer than the text, and an error inside the list
+// (docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and
+// scalar arguments"). These pin the engine's current guesses so a change is deliberate.
+#[test]
+fn list_with_match_end_and_if_not_found() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTBEFORE(\"a,b\",{\"-\",\";\"},1,0,1)");
+    model._set("A2", "=TEXTAFTER(\"a,b\",{\"-\",\";\"},1,0,1)");
+    model._set("A3", "=TEXTAFTER(\"a,b\",{\"-\",\";\"},1,0,0,\"none\")");
+    model._set("A4", "=TEXTAFTER(\"a,b\",{\"-\",\";\"})");
+    model._set("A5", "=TEXTAFTER(\"a,b\",{\",\",#N/A})");
+    model._set("A6", "=TEXTAFTER(\"a\",{\"abc\",\"abcd\"})");
+    model._set("A7", "=TEXTAFTER(\"a\",{\"abc\",\"abcd\"},1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"a,b");
+    assert_eq!(model._get_text("A2"), *"");
+    assert_eq!(model._get_text("A3"), *"none");
+    assert_eq!(model._get_text("A4"), *"#N/A");
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
+    assert_eq!(model._get_text("A6"), *"#N/A");
+    assert_eq!(model._get_text("A7"), *"#VALUE!");
+}
+
+// UNVERIFIED (no oracle cell; T-1824 probes it): a per-element REGEX compile error stays in its
+// element (docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their
+// text and scalar arguments").
+#[test]
+fn regex_pattern_errors_stay_per_element() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REGEXTEST(\"abc\",{\"a\";\"(\"})");
+    model._set("C1", "=REGEXTEST({\"a\";\"b\"},\"(\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("C1"), *"#VALUE!");
+    assert_eq!(model._get_text("C2"), *"#VALUE!");
+}
+
+// A call that does not lift is capped too: 32,768 positions times 10,000 delimiters is past
+// `MAX_LIFTED_CELL_VISITS` (DEVIATION, decision 0014: Excel has no such limit). T-1272.
+#[test]
+fn unlifted_call_over_a_long_delimiter_list_is_capped() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTBEFORE(REPT(\"a\",32767),SEQUENCE(10000))");
+    model._set(
+        "A2",
+        "=TEXTBEFORE(\"a-b\",IF(SEQUENCE(100)=1,\"-\",\"zz\"))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"a");
+}
+
+// Ordinary patterns compile as on main: the cache bounds memory by its entry count, not by a
+// per-pattern size below the regex crate's default (T-1272 review).
+#[test]
+fn ordinary_counted_patterns_still_compile() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REGEXTEST(REPT(\"a\",100),\"\\w{100}\")");
+    model._set("A2", "=REGEXTEST(REPT(\"a\",30),\"(\\w+){30}\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"TRUE");
+}
+
+// One long cell in a mostly blank column costs its own length once, not once per element
+// (T-1272 review): Excel gives 100000 for both.
+#[test]
+fn one_long_cell_does_not_cap_a_long_lifted_column() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REPT(\"a,\",1000)");
+    model._set("C1", "=ROWS(TEXTBEFORE(A1:A100000,\",\"))");
+    model._set("D1", "=ROWS(REGEXTEST(A1:A100000,\",\"))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"100000");
+    assert_eq!(model._get_text("D1"), *"100000");
+}
+
+// T-1272 performance review: a delimiter's bytes count, not only the delimiter, so 512
+// delimiters of 16,384 bytes over a 32,767-character text are capped (DEVIATION, decision
+// 0014), while one long delimiter still matches.
+#[test]
+fn long_delimiters_count_their_bytes() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=TEXTBEFORE(REPT(\"a\",32767),REPT(\"a\",16383)&\"b\"&SEQUENCE(512))",
+    );
+    model._set(
+        "A2",
+        "=LEN(TEXTBEFORE(REPT(\"a\",32766)&\"b\",REPT(\"a\",16000)&\"b\"))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"16766");
+}
+
+// The delimiter list is folded once per call, not once per element: match_mode 1 over a lifted
+// text with a long list (T-1272 performance review).
+#[test]
+fn case_insensitive_list_over_a_lifted_text() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=TEXTBEFORE(SEQUENCE(20)&\"X\",VSTACK(\"x\",REPT(\"a\",1000)&SEQUENCE(4000)),1,1)",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A20"), *"20");
+}
