@@ -16,9 +16,9 @@ use crate::{
 };
 
 impl Model {
-    /// The two numbers of EFFECT, NOMINAL, DOLLARDE and DOLLARFR, in order; a boolean is
-    /// `#VALUE!`.
-    fn two_numbers(
+    /// The two numbers of EFFECT, NOMINAL, DOLLARDE, DOLLARFR and QUOTIENT, in order (the first
+    /// one's error wins); a boolean is `#VALUE!`.
+    pub(crate) fn two_numbers(
         &self,
         values: &[CalcResult],
         cell: CellReferenceIndex,

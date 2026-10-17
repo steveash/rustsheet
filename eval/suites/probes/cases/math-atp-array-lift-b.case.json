@@ -1,0 +1,37 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1802 follow-up to probes/math-atp-array-lift C22 (`INDEX(FACTDOUBLE({TRUE;5}),1)` is #VALUE!): how FACTDOUBLE, QUOTIENT and SERIESSUM read a boolean or text scalar, typed or in a cell. D1 TRUE, D2 text \"5\", D3 blank. E1-E7 FACTDOUBLE scalars, E8-E10 array elements, E11-E15 QUOTIENT and SERIESSUM booleans, E16-E18 FACTDOUBLE over an operation, an IF array and a bare range.",
+  "tags": [
+    "M5",
+    "argument-modes",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "D1": true,
+        "D2": "5",
+        "E1": "=FACTDOUBLE(TRUE)",
+        "E2": "=FACTDOUBLE(FALSE)",
+        "E3": "=FACTDOUBLE(D1)",
+        "E4": "=FACTDOUBLE(\"5\")",
+        "E5": "=FACTDOUBLE(D2)",
+        "E6": "=FACTDOUBLE(D3)",
+        "E7": "=FACTDOUBLE(\"x\")",
+        "E8": "=INDEX(FACTDOUBLE({FALSE;5}),1)",
+        "E9": "=INDEX(FACTDOUBLE({\"5\";5}),1)",
+        "E10": "=INDEX(FACTDOUBLE({\"x\";5}),1)",
+        "E11": "=QUOTIENT(TRUE,1)",
+        "E12": "=QUOTIENT(D1,1)",
+        "E13": "=QUOTIENT(5,TRUE)",
+        "E14": "=SERIESSUM(TRUE,0,1,{1,2})",
+        "E15": "=SERIESSUM(D1,0,1,{1,2})",
+        "E16": "=INDEX(FACTDOUBLE(D1:D2+0),1)",
+        "E17": "=INDEX(FACTDOUBLE(IF({1;1},D1:D2)),1)",
+        "E18": "=ROWS(FACTDOUBLE(D1:D2))"
+      }
+    }
+  ],
+  "expected": {}
+}

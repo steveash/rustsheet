@@ -1306,6 +1306,40 @@ error cell in it is `#VALUE!` even after a bad-power term or with every power po
 Status: VERIFIED
 Tasks: T-1359, T-1653
 
+## QUOTIENT, FACTDOUBLE and SERIESSUM argument modes
+Rule: QUOTIENT (both arguments), FACTDOUBLE and SERIESSUM's `x`, `n` and `m` are Analysis ToolPak arguments. They lift
+over an array, one scalar call per element, and refuse a multi-cell range with `#VALUE!`, even on the range's own rows.
+SERIESSUM's coefficients, and every argument of MULTINOMIAL, GCD and LCM, are read whole, over an array as over a range.
+- Lifts: `INDEX(QUOTIENT({7;9},2),2)` = 4, `INDEX(FACTDOUBLE({5;6}),2)` = 48 and `INDEX(SERIESSUM({1;2},0,1,{1,2}),2)` = 5,
+  with ROWS 2 each (C1-C6). The later arguments lift too: `QUOTIENT(10,{3;4})`, `SERIESSUM(2,{0;1},1,{1,2})` (element 2
+  = 10) and `SERIESSUM(2,0,{1;2},{1,2})` (element 2 = 9) (C7-C12). A column `x` against a row `n` is a 2×2 grid (C15-C16).
+- Coefficients whole: `INDEX(SERIESSUM({1;2},0,1,B1:B3),2)` = 17 beside a lifted `x`, with ROWS 2 (C13-C14);
+  `ROWS(SERIESSUM(2,0,1,{1;2;3}))` = 1 (C40). A blank coefficient cell adds 0 (C44).
+- Elements: an element error stays in its position (`QUOTIENT({7;9},{0;2})` is `#DIV/0!`, 4; `FACTDOUBLE({5;-2})` 15,
+  `#NUM!`; C17-C20), short arrays pad with `#N/A` (C33), and a scalar error beside an array is broadcast
+  (`QUOTIENT(NA(),{1;2})` is 2 rows of `#N/A`; C25-C26). Inside one element the leftmost error wins:
+  `QUOTIENT({#N/A},{#DIV/0!})` is `#N/A`, the reversed one `#DIV/0!`, SERIESSUM's `x` error comes before a coefficient error
+  and before an `n` error (C29-C32).
+- A range beside an array: `ROWS(QUOTIENT(A1:A3,{1;2}))` = 2, every element `#VALUE!` (C27-C28). An operation on a range is
+  an array and lifts (`ROWS(QUOTIENT(A1:A3+0,2))` = 3, C41-C42); a one-cell reference is its value (C43).
+- Booleans: FACTDOUBLE refuses a boolean in every form, typed (`FACTDOUBLE(TRUE)`, `(FALSE)`), in a cell, or as an array
+  element (`{TRUE;5}`, `{FALSE;5}`): all `#VALUE!` (-b E1-E3, E8; C22). Numeric text is read (`FACTDOUBLE("5")`, a text
+  cell "5", `{"5";5}`: 15) and a blank cell is 0 (`FACTDOUBLE(<blank>)` = 1). QUOTIENT's and SERIESSUM's booleans are
+  `#VALUE!` the same way (C21, C24, -b E11-E15).
+- MULTINOMIAL, GCD and LCM over an array give one value: `GCD({4;6},2)` = 2, `LCM({4;6},2)` = 12,
+  `MULTINOMIAL({1;2},2)` = 29.99999999999999, all ROWS 1 (C34-C39).
+Evidence: probes/math-atp-array-lift C1-C44 and probes/math-atp-array-lift-b E1-E18 (excel-graph, 2026-10-17, T-1802);
+probes/scalar-lift-open-a Y19-Y30 (the range refusals, T-1777).
+Ours: implemented (T-1802): QUOTIENT and FACTDOUBLE are `LiftArrays` entries of the SPEC-0011 table, SERIESSUM's
+`x`, `n`, `m` too with its coefficients `WholeByCaller` (read once by `series_coefficients`, each element charged their
+cells); MULTINOMIAL, GCD and LCM have no entry. Before T-1802 FACTDOUBLE read a boolean as 1 or 0 and lifted over a range,
+and QUOTIENT and SERIESSUM's `x`, `n`, `m` intersected a range and were `#N/IMPL!` over an array.
+Unprobed for these three functions (T-1832), taken from the arrays.md Analysis ToolPak rule (EDATE, WEEKNUM,
+EOMONTH, YEARFRAC): a 3-D range in QUOTIENT, FACTDOUBLE or SERIESSUM's `x`, `n`, `m` is `#VALUE!` (FACTDOUBLE gave
+`#ERROR!` before), and a legacy bare range gets no `@`. `SERIESSUM(2,0,1,Sheet1:Sheet2!A1)` is `#REF!` in ours.
+Status: VERIFIED (excel-graph)
+Tasks: T-1777, T-1802
+
 ## ECMA.CEILING
 Rule: `ECMA.CEILING(number, significance)` is a real Excel function with exactly the two-argument `CEILING` semantics (rounds away from zero for negative `number` with negative `significance`; `#NUM!` when `number` is positive and `significance` negative; zero significance gives 0; number text `"2.5"` and `TRUE` are read as numbers; text significance is `#VALUE!`). It is stored in a file as `_xlfn.ECMA.CEILING`, and `FORMULATEXT` prints it as `=ECMA.CEILING(2.5,2)` (no prefix). Written bare (`ECMA.CEILING(...)`) in a file, Graph rejects the whole workbook (`createSession` 501 `unsupportedWorkbook`); the one-argument form `_xlfn.ECMA.CEILING(2.5)` is rejected the same way (arity is exactly 2, like CEILING).
 Evidence: probes/ecma-ceiling A1:A6, A8:A11, A13:A14; probes/ecma-ceiling-formulatext A12 (excel-graph, 2026-10-12, T-1301).

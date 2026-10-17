@@ -427,6 +427,8 @@ C	probes/match-fractional-match-type.case.json	8
 C	probes/match-type-nested-passthrough.case.json	17
 C	probes/match-type-text-passthrough.case.json	9
 C	probes/math-argument-modes.case.json	56
+C	probes/math-atp-array-lift-b.case.json	18
+C	probes/math-atp-array-lift.case.json	44
 C	probes/matrix-boolean-elements.case.json	14
 C	probes/min-max-reference-forms.case.json	25
 C	probes/min-max-value-args.case.json	16
@@ -4608,13 +4610,7 @@ F	probes/scalar-lift-open-a.case.json	Sheet1!AA1
 F	probes/scalar-lift-open-a.case.json	Sheet1!AA9
 F	probes/scalar-lift-open-a.case.json	Sheet1!W33
 F	probes/scalar-lift-open-a.case.json	Sheet1!Y1
-F	probes/scalar-lift-open-a.case.json	Sheet1!Y19
 F	probes/scalar-lift-open-a.case.json	Sheet1!Y2
-F	probes/scalar-lift-open-a.case.json	Sheet1!Y20
-F	probes/scalar-lift-open-a.case.json	Sheet1!Y21
-F	probes/scalar-lift-open-a.case.json	Sheet1!Y24
-F	probes/scalar-lift-open-a.case.json	Sheet1!Y25
-F	probes/scalar-lift-open-a.case.json	Sheet1!Y26
 F	probes/scalar-lift-open-a.case.json	Sheet1!Y3
 F	probes/scalar-lift-open-a.case.json	Sheet1!Y4
 F	probes/scalar-lift-open-a.case.json	Sheet1!Y5
