@@ -754,6 +754,8 @@ C	probes/textjoin-array-arguments.case.json	34
 C	probes/textjoin-array-limit-empty-strings.case.json	11
 C	probes/textjoin-delimiter-array.case.json	6
 C	probes/textjoin-delimiter-elements.case.json	24
+C	probes/textsplit-padded-size.case.json	6
+C	probes/textsplit-wide.case.json	5
 C	probes/timevalue-ampm-limits.case.json	44
 C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
@@ -3842,6 +3844,10 @@ F	probes/text-format-length-limit-f.case.json	Sheet1!A42
 F	probes/text-format-length-limit-j.case.json	Sheet1!A43
 F	probes/text-format-length-limit-l.case.json	Sheet1!A40
 F	probes/text-format-length-limit-m.case.json	Sheet1!A22
+F	probes/textsplit-padded-size.case.json	Calc!A1
+F	probes/textsplit-padded-size.case.json	Calc!A2
+F	probes/textsplit-padded-size.case.json	Calc!A3
+F	probes/textsplit-padded-size.case.json	Calc!A4
 F	probes/unknown-function-name-reach.case.json	Sheet1!B11
 F	probes/unknown-function-name-reach.case.json	Sheet1!B16
 F	probes/unknown-function-name-reach.case.json	Sheet1!B20
