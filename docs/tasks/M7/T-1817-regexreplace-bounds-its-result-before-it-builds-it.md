@@ -23,6 +23,9 @@ change `too_long` in regex_functions.rs to match. Also probe the replacement syn
 (text.md, same entry): `REGEXREPLACE("ab","(a)(b)","[$1a|$|$$|${1}]")` (ours `[|$|$|a]`) and a named group
 `REGEXREPLACE("ab","(?<x>a)","${x}$x")`; a syntax fix must keep `Replacement` (the size check) in step.
 
+- From T-1272's fidelity review: whether `\w`, `\b` and `\pL` are Unicode in Excel (`REGEXTEST("é","\w")`,
+  `REGEXEXTRACT("naïve","\w+")`, `REGEXTEST("é","\pL")`); ours follow the regex crate (Unicode).
+
 ## Acceptance criteria
 - [ ] A probe case with oracle values covers the cells above; text.md marks the rule VERIFIED or records Excel's.
 - [ ] Ours matches; `make check` green; reviewers approve.

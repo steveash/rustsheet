@@ -326,6 +326,9 @@ once to size its result: over 32,767 UTF-16 units it is
 `#VALUE!`, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`), as SUBSTITUTE's
 is (UNVERIFIED for REGEXREPLACE; T-1817 probes it); a lifted REGEXREPLACE whose results pass the text broadcast cap
 (64 MiB, first entry) is one `#VALUE!`.
+The REGEX* dialect is the regex crate's on every target (wasm32 used `regex_lite`, whose `\w`, `\d` and `\s` are
+ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE),
+UNVERIFIED against Excel's PCRE2 (T-1817 probes it).
 The REGEXREPLACE replacement syntax is the regex crate's (`$1`, `${1}`, `$name`, `$$`; `$1a` is the group named `1a`,
 a lone `$` is itself), as before T-1272; UNVERIFIED against Excel's PCRE2 rules (T-1817 probes it).
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
