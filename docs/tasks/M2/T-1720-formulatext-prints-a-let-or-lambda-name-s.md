@@ -3,7 +3,7 @@ id: T-1720
 title: "FORMULATEXT prints a LET or LAMBDA name's uses in the spelling of its declaration"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found by T-1659: probes/lotus-dot-name-let-lower E2 (excel-graph; the file holds
 
 ## Out of scope
 -
+
+## Outcome
+Uses of a LET or LAMBDA name, called or not, now take the spelling of the innermost declaration that binds them (`CallNameSpellings::apply`, replacing the lowercase a bound callee used to print with). New probe `probes/let-name-use-spelling` (excel-graph) covers plain names, LAMBDA parameters, a bound callee, later LET pairs and shadowing; `lotus-dot-name-let-lower` E2 passes. Eval: probes known failures 3007 -> 3004 (3 fixed, 0 regressions). Rule recorded in docs/excel-semantics/references.md. Also closes T-1761 (bound callee spelling; probes/unknown-function-name-reach B5 and B7 now pass).

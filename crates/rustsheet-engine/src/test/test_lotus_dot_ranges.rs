@@ -106,7 +106,8 @@ fn let_and_lambda_names_spelled_like_dotted_ranges_are_variables_in_scope() {
     let mut model = model_with_values();
     let cases = [
         ("=LET(R1.C1,5,R1.C1*2)", "10"),
-        ("=LET(a1.b2,5,A1.B2*2)", "10"),
+        // A use prints in the spelling of its declaration (probes/lotus-dot-name-let-lower, T-1720).
+        ("=LET(a1.b2,5,a1.b2*2)", "10"),
         ("=LET(x,1,SUM(A1:B2))", "15"),
         ("=LET(A1.B2,5,A1.B2)+SUM(A1:B2)", "20"),
         // Unprobed as typed (the probe file prefixed the first use; references.md).
