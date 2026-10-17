@@ -196,7 +196,9 @@ fn complex_result(x: f64, y: f64, suffix: Suffix) -> CalcResult {
 }
 
 /// How a complex argument reads empty text: IMCOS, IMCOSH, IMCOT, IMCSC and IMCSCH parse it
-/// (`#NUM!`), the other functions read it as 0.
+/// (`#NUM!`), the other functions read it as 0. `Zero` is our older behavior, not Excel's rule:
+/// Excel gives `#NUM!` for empty text in IMSUB, IMDIV and IMPOWER (engineering.md "T-1625
+/// probes") and probably IMSQRT (T-1385).
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum EmptyText {
     Zero,

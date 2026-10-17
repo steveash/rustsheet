@@ -119,6 +119,7 @@ fn scalar_calls_are_unchanged() {
     model._set("A5", "=IMDIV(\"3+4i\",\"1-2i\")");
     model._set("A6", "=DELTA(5)");
     model._set("A7", "=IMCOS(\"\")");
+    // Pins the unchanged scalar result, not Excel's: empty text is a known mismatch (T-1385).
     model._set("A8", "=IMABS(\"\")");
     model._set("A9", "=BITLSHIFT(13,-2)");
     model._set("A10", "=CONVERT(1,\"m\",\"ft\")");
