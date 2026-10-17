@@ -49,7 +49,7 @@ over 1,024 cells. Nested `NORM.S.DIST(k,TRUE)` inputs are looked up in Excel's o
 new probe, probes-numeric/t1746-norm-s-inv-central, covers 341 central p, with NORM.S.DIST of each
 result and of PPND16(p).
 
-Exact counts:
+Exact counts, from `uv run rustsheet-fitlab norm-s-inv` with the engine row (the release `rustsheet-eval`):
 
 | candidate | exact |
 |---|---|
@@ -81,6 +81,9 @@ Findings (docs/excel-semantics/statistics.md, "NORM.S.INV is AS 241 PPND16 in th
     yet Excel returns a different x at 177 of them.
   Excel is up to 31 ulp from the correctly rounded value there, symmetric in p ↔ 1-p.
 - **What T-0925 should implement.** The hybrid: PPND16 tails, statrs centre (775 vs 341 exact).
-  The centre reopens only on a new hypothesis.
+  The centre reopens only on a new hypothesis. The task is done rather than blocked because the
+  fit raised the bit-exact count (341 to 775), which is what decision 0056 measures.
 - **Lead for T-0968.** NORM.S.DIST equals `0.5*erfc(-x*sqrt(0.5))` on 260 of 341 probe points,
   against 199 for `/sqrt(2)`.
+- LOGNORM.INV and CONFIDENCE.NORM, listed in the goal, are not scored: their mean, sd and exp or
+  scaling steps add arithmetic of their own; they follow once T-0925 lands the kernel.

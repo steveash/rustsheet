@@ -47,3 +47,19 @@ def test_tails_are_ppnd16_and_the_hybrid_is_best() -> None:
         == c.expected
     ]
     assert (len(exact), len(tails)) == (611, 616)
+
+
+def test_other_candidates_are_close_to_ppnd16() -> None:
+    reference = norm_inv.as241(0.975, norm_inv.PPND16, norm_inv.horner, log1p_upper=False)
+    assert norm_inv.acklam(0.975, halley=True) == pytest.approx(reference, abs=1e-15)
+    assert norm_inv.acklam(0.975, halley=False) == pytest.approx(reference, rel=2e-9)
+    assert norm_inv.moro(0.975) == pytest.approx(reference, rel=1e-8)
+    assert norm_inv.refine(0.975, reference, halley=False) == pytest.approx(reference, abs=1e-15)
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_input_quirk_cells_are_left_out() -> None:
+    result = fit.run(registry()["norm-s-inv"], engine=False, only="^$")
+    keys = {f"{c.case} {c.key}" for c in result.sweep.cells}
+    assert not keys & norm_inv._INPUT_QUIRKS
+    assert result.sweep.excluded == 7  # the 3 quirk cells and 4 text-p cells

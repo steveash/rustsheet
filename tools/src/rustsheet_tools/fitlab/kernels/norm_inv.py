@@ -2,9 +2,9 @@
 docs/research/numeric-kernel-map.md).
 
 One fit, `norm-s-inv`, over the T-1006, T-1048 and T-1746 sweeps (probes-numeric/m9-norm-s-inv,
-t1048-normsinv, t1048-norminv, t1746-norm-s-inv-central). Most m9-norm-s-inv cells take p = NORM.S.DIST(k,TRUE), a nested
-call the sweep reader does not evaluate, so the pattern captures k and a candidate looks p up in
-Excel's own NORM.S.DIST(k,TRUE) values (the T-1040/T-1048/M9 NORM.S.DIST sweeps cover every k the
+t1048-normsinv, t1048-norminv, t1746-norm-s-inv-central). Most m9-norm-s-inv cells take
+p = NORM.S.DIST(k,TRUE), a nested call the sweep reader does not evaluate, so the pattern captures
+k and a candidate looks p up in Excel's own NORM.S.DIST(k,TRUE) values (the T-1040/T-1048/M9 NORM.S.DIST sweeps cover every k the
 inverse sweep uses); a literal p is used as is.
 
 Candidates, each plain IEEE double (Python floats, platform libm for log/sqrt/exp/erfc):
@@ -22,10 +22,12 @@ Candidates, each plain IEEE double (Python floats, platform libm for log/sqrt/ex
 
 Result (T-1746 Outcome; docs/excel-semantics/statistics.md, "NORM.S.INV is AS 241 PPND16 in the
 tails"): PPND16 by Horner, upper tail via log(1-p), is bit-exact on 611 of 616 tail cells
-(|p - 0.5| > 0.425), and none of the candidates fits the central region, where Excel is up to 31 ulp from the correctly
-rounded value, symmetric in p and 1 - p, and does not round-trip through its own NORM.S.DIST.
+(|p - 0.5| > 0.425), and none of the candidates fits the central region, where Excel is up to
+31 ulp from the correctly rounded value, symmetric in p and 1 - p, and does not round-trip through its own NORM.S.DIST.
 Cells whose p reaches the kernel through Excel's input handling (text p, a 16-digit literal Excel
 reads to 15 digits, a subnormal operand Excel flushes) are left out by `kernel_input`.
+LOGNORM.INV and CONFIDENCE.NORM, which the task lists, are not scored: their mean, sd and
+exp/scaling steps add arithmetic of their own, so they wait until T-0925 has the kernel.
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ import math
 from collections.abc import Callable, Sequence
 from functools import cache
 
+from rustsheet_tools.fitlab.exact import pi_cr
 from rustsheet_tools.fitlab.fit import Fit
 from rustsheet_tools.fitlab.score import Candidate, candidate
 from rustsheet_tools.fitlab.sweep import Arg, Cell, load_sweep, numeric_arg
@@ -45,8 +48,9 @@ CASES = [
     "probes-numeric/t1048-norminv",
     "probes-numeric/t1746-norm-s-inv-central",
 ]
-# Keyed `<case file> <Sheet!A1>` as `Cell.case` and `Cell.key` give them. Cells whose p is shaped by Excel's input handling before the kernel sees it: both are PPND16
-# bit-exact at the p Excel actually uses (0.999999999999999, 2.3E-308).
+# Cells whose p is shaped by Excel's input handling before the kernel sees it. Both are PPND16
+# bit-exact at the p Excel actually uses (0.999999999999999, 2.3E-308). Keys are
+# `<Cell.case> <Cell.key>`.
 _INPUT_QUIRKS = {
     "probes-numeric/t1048-normsinv.case.json Calc!A21",  # =NORMSINV(0.9999999999999999): 15-digit literal
     "probes-numeric/t1048-normsinv.case.json Calc!B21",  # =NORM.S.INV(0.9999999999999999)
@@ -221,6 +225,7 @@ SQRT_HALF = math.sqrt(0.5)
 
 
 def libm_cdf(x: float) -> float:
+    """Phi(x) as 0.5*erfc(-x/sqrt(2)) with libm's erfc."""
     return 0.5 * math.erfc(-x / SQRT2)
 
 
@@ -237,6 +242,7 @@ def refine(p: float, x: float, halley: bool, cdf: Callable[[float], float] = lib
     return x - u / (1.0 + x * u / 2.0) if halley else x - u
 
 
+# Acklam publishes the coefficients highest power first; `horner` takes them ascending.
 ACKLAM_A = [-3.969683028665376e01, 2.209460984245205e02, -2.759285104469687e02, 1.383577518672690e02,
             -3.066479806614716e01, 2.506628277459239e00]  # fmt: skip
 ACKLAM_B = [-5.447609879822406e01, 1.615858368580409e02, -1.556989798598866e02, 6.680131188771972e01,
@@ -247,26 +253,19 @@ ACKLAM_D = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e00, 
 ACKLAM_LOW = 0.02425
 
 
-def _descending(coeffs: Poly, x: float) -> float:
-    acc = 0.0
-    for c in coeffs:
-        acc = acc * x + c
-    return acc
-
-
 def acklam(p: float, halley: bool) -> float:
     """Acklam's rational approximation (relative error 1.15e-9), optionally Halley-refined."""
     _domain(p)
     if p < ACKLAM_LOW:
         q = math.sqrt(-2.0 * math.log(p))
-        x = _descending(ACKLAM_C, q) / (_descending(ACKLAM_D, q) * q + 1.0)
+        x = horner(ACKLAM_C[::-1], q) / (horner(ACKLAM_D[::-1], q) * q + 1.0)
     elif p <= 1.0 - ACKLAM_LOW:
         q = p - 0.5
         r = q * q
-        x = _descending(ACKLAM_A, r) * q / (_descending(ACKLAM_B, r) * r + 1.0)
+        x = horner(ACKLAM_A[::-1], r) * q / (horner(ACKLAM_B[::-1], r) * r + 1.0)
     else:
         q = math.sqrt(-2.0 * math.log(1.0 - p))
-        x = -_descending(ACKLAM_C, q) / (_descending(ACKLAM_D, q) * q + 1.0)
+        x = -horner(ACKLAM_C[::-1], q) / (horner(ACKLAM_D[::-1], q) * q + 1.0)
     return refine(p, x, halley=True) if halley else x
 
 
@@ -346,10 +345,14 @@ def hybrid(p: float) -> float:
     return as241(p, PPND16, horner, log1p_upper=False)
 
 
-# A 60-digit reference: Phi by erf's Taylor series (|z| < 3) or erfc's continued fraction.
+# A 60-digit reference: Phi by erf's Taylor series (|z| < 3) or erfc's continued fraction. It is
+# decimal rather than `exact` Fractions because it needs erfc on the whole line at many Newton
+# iterates (kernels/erfc.py's 128-bit Fraction fraction covers x >= 1 only and is far slower).
 _DIGITS = 60
 _CTX = decimal.Context(prec=_DIGITS + 20)
-_PI = decimal.Decimal("3.14159265358979323846264338327950288419716939937510582097494459230781640628620899")
+_PI_BITS = 280  # about 84 digits: beyond the context precision
+_PI_FRACTION = pi_cr(_PI_BITS)
+_PI = _CTX.divide(decimal.Decimal(_PI_FRACTION.numerator), decimal.Decimal(_PI_FRACTION.denominator))
 _MAX_TERMS = 2000  # bounded loops (directive 5): both expansions converge far sooner for |z| <= 30
 
 

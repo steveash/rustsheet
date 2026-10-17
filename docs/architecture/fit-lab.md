@@ -14,6 +14,7 @@ uv run rustsheet-fitlab --list                 # shipped fits
 uv run rustsheet-fitlab erfc                   # ERFC + ERFC.PRECISE, engine vs libm (530 cells)
 uv run rustsheet-fitlab erfc-tail --top 10     # the T-1187 grid, about 5,800 candidates (~10 s)
 uv run rustsheet-fitlab xirr                   # T-1525 solvers: also xirr-oos, irr, rate, yield-one-period, yield
+uv run rustsheet-fitlab norm-s-inv             # T-1746: NORM.S.INV, AS 241 tails vs the unfitted centre
 uv run rustsheet-fitlab erfc-tail --only 'bu_even' --worst 10 --no-engine
 uv run rustsheet-fitlab --case probes-numeric/t1040-erfc \
     --pattern '^=ERFC\((.*)\)$' --candidate math:erfc --candidate mymod:my_erfc   # ad hoc
