@@ -1,0 +1,32 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1800 YEARFRAC check order with a number basis out of range (#NUM!) beside a bad start or end date, and with a text, boolean or numeric-text basis. A1 the control (basis 5, valid dates).",
+ "tags": [
+  "M6",
+  "probe",
+  "date",
+  "yearfrac"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=YEARFRAC(45000,46000,5)",
+    "A2": "=YEARFRAC(NA(),45000,5)",
+    "A3": "=YEARFRAC(45000,NA(),5)",
+    "A4": "=YEARFRAC(\"x\",45000,5)",
+    "A5": "=YEARFRAC(TRUE,45000,5)",
+    "A6": "=YEARFRAC(NA(),45000,-1)",
+    "A7": "=YEARFRAC(\"x\",NA(),5)",
+    "A8": "=YEARFRAC(NA(),45000,\"x\")",
+    "A9": "=YEARFRAC(NA(),45000,TRUE)",
+    "A10": "=YEARFRAC(NA(),45000,\"5\")",
+    "A11": "=YEARFRAC(45000,46000,TRUE)",
+    "A12": "=YEARFRAC(45000,46000,\"1\")",
+    "A13": "=INDEX(YEARFRAC(NA(),{45000;45031},{5;1}),1)",
+    "A14": "=INDEX(YEARFRAC(NA(),{45000;45031},{5;1}),2)"
+   }
+  }
+ ],
+ "expected": {}
+}

@@ -302,6 +302,112 @@ fn the_kernel_check_order_decides_the_error_per_element() {
 }
 
 #[test]
+fn yearfrac_checks_basis_then_start_then_end() {
+    // probes/scalar-lift-open-d W1-W7, -a W5-W8 and probes/yearfrac-basis-order (T-1800): the
+    // basis is read and range-checked first, so a refused range there beats a start error, and
+    // a refused range in a date slot loses to an error basis.
+    let model = model_with(&[
+        ("B1", "1"),
+        ("B2", "1"),
+        ("B3", "1"),
+        ("A1", "=YEARFRAC(1/0,45000,NA())"),
+        ("A2", "=YEARFRAC(NA(),1/0,1)"),
+        ("A3", "=YEARFRAC(45000,NA(),1/0)"),
+        ("A4", "=YEARFRAC(NA(),45000,1/0)"),
+        ("A5", "=YEARFRAC(1/0,NA(),1)"),
+        ("A6", "=YEARFRAC(45000,\"x\",NA())"),
+        ("A7", "=YEARFRAC(\"x\",45000,NA())"),
+        ("A8", "=INDEX(YEARFRAC(NA(),A1:A3,{1;2}),1)"),
+        ("A9", "=INDEX(YEARFRAC(1/0,{45000;45031},B1:B3),1)"),
+        ("A10", "=INDEX(YEARFRAC({45000;45031},B1:B3,NA()),1)"),
+        ("A11", "=INDEX(YEARFRAC(B1:B3,NA(),{1;2}),2)"),
+        // A number basis out of range is #NUM! before either date is read.
+        ("A12", "=YEARFRAC(NA(),45000,5)"),
+        ("A13", "=YEARFRAC(45000,NA(),5)"),
+        ("A14", "=YEARFRAC(\"x\",45000,5)"),
+        ("A15", "=YEARFRAC(TRUE,45000,5)"),
+        ("A16", "=YEARFRAC(NA(),45000,-1)"),
+        ("A17", "=YEARFRAC(NA(),45000,\"x\")"),
+        ("A18", "=YEARFRAC(NA(),45000,TRUE)"),
+        ("A19", "=YEARFRAC(NA(),45000,\"5\")"),
+        ("A20", "=INDEX(YEARFRAC(NA(),{45000;45031},{5;1}),1)"),
+        ("A21", "=INDEX(YEARFRAC(NA(),{45000;45031},{5;1}),2)"),
+    ]);
+    let expected = [
+        ("A1", "#N/A"),
+        ("A2", "#N/A"),
+        ("A3", "#DIV/0!"),
+        ("A4", "#DIV/0!"),
+        ("A5", "#DIV/0!"),
+        ("A6", "#N/A"),
+        ("A7", "#N/A"),
+        ("A8", "#N/A"),
+        ("A9", "#VALUE!"),
+        ("A10", "#N/A"),
+        ("A11", "#VALUE!"),
+        ("A12", "#NUM!"),
+        ("A13", "#NUM!"),
+        ("A14", "#NUM!"),
+        ("A15", "#NUM!"),
+        ("A16", "#NUM!"),
+        ("A17", "#VALUE!"),
+        ("A18", "#VALUE!"),
+        ("A19", "#NUM!"),
+        ("A20", "#NUM!"),
+        ("A21", "#N/A"),
+    ];
+    for (cell, value) in expected {
+        assert_eq!(model._get_text(cell), value, "{cell}");
+    }
+}
+
+#[test]
+fn the_driver_hands_a_refused_range_to_the_kernel_in_its_slot() {
+    // The driver never picks an error by argument position: an error argument and a refused
+    // range both reach every kernel call, and the kernel's order decides (probes/scalar-lift-open-a
+    // W1-W17, -d W8-W16; T-1800). The kernels here return one slot each.
+    let mut model = model_with(&[("A1", "45000"), ("A2", "45001"), ("A3", "45002")]);
+    let slot = |index: usize| {
+        move |values: &[CalcResult]| values.get(index).cloned().unwrap_or(CalcResult::EmptyArg)
+    };
+    for (formula, index, error) in [
+        ("EDATE(NA(),A1:A3)", 0, Error::NA),
+        ("EDATE(NA(),A1:A3)", 1, Error::VALUE),
+        ("EDATE(A1:A3,NA())", 0, Error::VALUE),
+        ("EDATE(A1:A3,NA())", 1, Error::NA),
+    ] {
+        let (result, calls) = run_counting(
+            &mut model,
+            edate_kinds(),
+            formula,
+            LiftCost::Unit,
+            slot(index),
+        );
+        assert_eq!(calls, 1, "{formula}");
+        assert!(is_error(&result, &error), "{formula} slot {index}");
+    }
+    let yearfrac = Function::Yearfrac.arg_kinds().unwrap();
+    for (index, error) in [(0, Error::DIV), (2, Error::VALUE)] {
+        let (result, calls) = run_counting(
+            &mut model,
+            yearfrac,
+            "YEARFRAC(1/0,{45000;45031},A1:A3)",
+            LiftCost::Unit,
+            slot(index),
+        );
+        assert_eq!(calls, 2, "slot {index}");
+        let CalcResult::Array(rows) = result else {
+            panic!("not an array");
+        };
+        assert!(
+            rows.iter()
+                .all(|row| matches!(row.as_slice(), [ArrayNode::Error(e)] if *e == error)),
+            "slot {index}: {rows:?}"
+        );
+    }
+}
+
+#[test]
 fn kernel_element_errors_carry_no_message() {
     let model = model_with(&[
         ("A1", "=EDATE(-1,1)"),
