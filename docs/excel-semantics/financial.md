@@ -568,4 +568,4 @@ Tasks: T-1475
 - MDURATION and RRI(TRUE principal) differ from us only in the last ulp.
 Evidence: probes/fin-vdb-modes, fin-amordegrc, fin-fvschedule, fin-mduration, fin-rri (excel-graph, 2026-10-17, T-1625).
 Status: VERIFIED (excel-graph)
-Tasks: T-1764, T-1765
+Tasks: T-1764 (incl. MDURATION, RRI ulp), T-1765
