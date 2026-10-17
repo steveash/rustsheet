@@ -23,7 +23,7 @@ T-1275's gen-m7 suite (excel-graph sidecars, 2026-10-11); docs/excel-semantics/a
 Code: crates/rustsheet-engine/src/functions/lookup_and_reference/wrapcols_wraprows.rs. Only single values are evidenced.
 Before generalising, probe with the excel-probe skill `WRAPCOLS({1,2},4)`, `WRAPCOLS(A1:A2,4)`, `WRAPROWS(1,4)`,
 `WRAPROWS({1,2},4)` and wrap_count 0.5, 0, -1 for both functions, and match all of them (the engine pads `WRAPCOLS({1,2},4)` to
-4 rows today). Lifting wrap_count/pad_with over an array is T-1271.
+4 rows today). Lifting wrap_count/pad_with over an array is T-1835.
 
 More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
 - gen-m9/3b8e9078261b5bd2 Calc!A9 `=WRAPCOLS(FIXED(SINH(Data!E12)),4,(-1))`: Excel "1.18" (one cell), engine `#SPILL!`.

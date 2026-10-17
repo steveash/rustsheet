@@ -57,8 +57,8 @@ WEIBULL and WEIBULL.DIST.
   (BETADIST, NORMSDIST, LOGNORMDIST, NEGBINOMDIST, TDIST) share their modern kernel instead of rebuilding argument
   nodes, and each kernel keeps its scalar read and check order (T.DIST.2T reads both arguments before it checks x;
   TDIST checks x before tails). `number_or_error` moved from financial/mod.rs to functions/lift. The 88 fallback arms
-  in static_analysis.rs are deleted (1385 → 1298 lines after merging main at b9df1570); duplicated lines
-  5062 → 4760 (decision 0010 line).
+  in static_analysis.rs are deleted (1385 → 1293 lines after merging main at 5439ee33); duplicated lines
+  4876 → 4574 (decision 0010 line).
 - **Scalar change:** BETA.DIST's `cumulative` given as a one-cell range (`BETA.DIST(0.5,2,3,G1:G1)`) was `#VALUE!` and
   is its value, as Excel (stat-later-argument-lift L11). A 1x1 array argument now gives a 1x1 result, as for the other
   table entries (T-1813).
@@ -68,7 +68,7 @@ WEIBULL and WEIBULL.DIST.
   per-call cap (`Gamma::new(a,1).cdf(a)` 1.6 ms at a = 1E10 and growing as sqrt(a); a hypergeometric cdf of 5E7 terms
   4 s), so T-1842 bounds them first. Z.TEST, T.TEST, PROB, RANK and FORECAST stay T-1772's/T-1813's.
   T-1750 (STANDARDIZE over a range) is done by this task.
-- **Eval:** `update-baseline --timeout 240`: 0 regressions; probes known failures 4438 → 4270 on main at b9df1570 (171 F lines removed:
+- **Eval:** `update-baseline --timeout 240`: 0 regressions; probes known failures 4408 → 4240 on main at 5439ee33 (171 F lines removed:
   stat-argument-modes 161, scalar-lift-shapes 8 (H15, H16, H20, H21, H34, H35, J8, K8), scalar-lift-open-a W33,
   stats-evidence-floor-t1623 Q63; 3 added, the new case's L1, L13, L14). Every suite, the non-gated ones too, was
   compared cell by cell against main (both binaries, same suites): 0 new failing cells; fixed also gen-m9
