@@ -3,7 +3,7 @@ id: T-1271
 title: "M7 array functions lift their scalar arguments; SORT reads sort_index and sort_order as lists"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -37,9 +37,16 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 ## Out of scope
 -
 
-## Handoff (resumed)
-Sonnet run, 2026-10-17. No code written; escalated at the design step (work-loop 5b).
-- Read SPEC-0011 and `functions/lift/` (`kinds.rs` table, `call.rs` `lift_call`, `driver.rs` `lift_values`). The table already has entries for the M6/stat/fin/eng/date families; none of the M7 functions (SEQUENCE, TAKE, DROP, EXPAND, MAKEARRAY, WRAPROWS, WRAPCOLS, TOCOL, UNIQUE, SORTBY, SORT) has an `arg_kinds` entry yet.
-- Why it is beyond a sonnet run: TAKE and DROP (probe rows 4-6, column K) lift to a *whole sub-array per element*, which `ArrayNode`/`lift_values` cannot hold. The task says to design this on `lift_values` + `cast::calc_result_to_array_node`; that is a design question. SORT's `sort_index`/`sort_order` as lists (rows 10-11, gen-m7/a0cbc75358b429b6) and the `#SPILL!` vs `#N/IMPL!` cells (gen-m7/6db767d720c5b55a, gen-m9/1782efcecd5d4b1b, 4df1b22d3ed63f58) need per-function error-order care.
-- 87 baseline lines for probes/m7-argument-modes (F/G/H cells of rows 1-26, 42, 44; K1-K13). Release harness build takes ~3 min.
-- Suggested next step: enter the value-element functions first (SEQUENCE, EXPAND, WRAPROWS/COLS, TOCOL, UNIQUE, SORTBY, MAKEARRAY, then SORT with `Whole` index lists) as `Lift`/`Whole` entries with kernels; design the sub-array element result for TAKE/DROP last (or split it into its own task).
+## Outcome
+Split into smaller tasks (2026-10-17); no code changed. Each new task owns the probe and gen cells listed for it:
+- T-1833 (opus, S): SPEC-0011 amendment for array-valued functions in the lifting table (static shape, the top-left element rule, the element cost bound, SORTBY's alternating kinds) and for TAKE/DROP elements that are whole sub-arrays. No eval cells.
+- T-1834 (opus, M): SEQUENCE and MAKEARRAY, the first array-valued entries (rows 1-3, 23; K9, K10).
+- T-1835 (sonnet, S): EXPAND, WRAPROWS, WRAPCOLS (rows 7, 8, G42; K5-K7; gen-m7/6db767d720c5b55a A12).
+- T-1836 (sonnet, S): TOCOL, UNIQUE (rows 9, 12; K8; gen-m9/1782efcecd5d4b1b A19, gen-m9/4df1b22d3ed63f58 A36).
+- T-1837 (opus, S): SORT reads sort_index and sort_order as lists (rows 10, 11; gen-m7/a0cbc75358b429b6 A12).
+- T-1838 (opus, M): TAKE and DROP with whole sub-array elements (rows 4-6, I4, I5; K1-K4).
+- T-1839 (opus, S): SORTBY's sort_order (row 26).
+Found while splitting: the table cannot yet hold any M7 function. `lifted_static_result` gives an unlifted call the
+shape `Scalar`, the M7 functions are `Unknown`, and the table-wins test forbids keeping their fallback arms. So
+every entry waits on T-1833's design and T-1834's implementation, except SORT, which has nothing to lift. Row 44
+(`LAMBDA(x,x)`) belongs to T-1511.
