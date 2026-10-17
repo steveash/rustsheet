@@ -27,6 +27,9 @@ skill), then match it in functions/financial/financial_bonds/coupon_schedule.rs 
 
 ## Acceptance criteria
 - [ ] The failing cells of probes/fin-coupon-walk-bounds and -b pass, or financial.md records the rule that was ruled out.
+- [ ] The probe sweep also covers settlements of 0 and 0.5 for COUPPCD, COUPDAYS, YIELD, DURATION, MDURATION and
+  ACCRINT, 1904 PRICE/YIELD/DURATION at -1, 1904 `COUPNUM(-0.5,400,2)`, and MDURATION's error order
+  (`MDURATION(NA(),43831,0.08,"x",2)`, ours `#VALUE!`, kept from before T-1822).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

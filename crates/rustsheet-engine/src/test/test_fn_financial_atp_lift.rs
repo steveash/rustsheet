@@ -142,7 +142,8 @@ fn a_range_is_refused_in_every_argument() {
 #[test]
 fn mduration_reads_yld_and_frequency_first() {
     // MDURATION reads its yld and frequency before DURATION reads every argument, as it did
-    // before the lift: the typed text yld wins over the settlement's `#N/A`.
+    // before the lift: the typed text yld wins over the settlement's `#N/A`. Not oracle-confirmed:
+    // T-1844 probes it.
     check(&[
         ("A1", "=MDURATION(NA(),43831,0.08,\"x\",2)", "#VALUE!"),
         ("A2", "=DURATION(NA(),43831,0.08,\"x\",2)", "#N/A"),

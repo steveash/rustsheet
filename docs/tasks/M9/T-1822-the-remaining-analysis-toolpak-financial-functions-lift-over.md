@@ -37,7 +37,7 @@ bounding first (as T-1820 for DB/VDB). XNPV and XIRR keep their values and dates
 - Base-value ulp misses (T-1374, T-0901, T-0916).
 
 ## Outcome
-- Probed first: probes/fin-remaining-later-argument-ranges (199 cells, excel-graph, 2026-10-17) puts every later
+- Probed first: probes/fin-remaining-later-argument-ranges (197 checked cells, excel-graph, 2026-10-17) puts every later
   argument of the remaining functions over a two-cell range on its own rows (H, all `#VALUE!`) beside its intersected
   control (I), plus CUMIPMT/CUMPRINC over 10^6-10^15 periods and AMOR* at period 1E9 (K1-K5, all computed by Excel;
   the 10^9-period CUMIPMT/CUMPRINC cells were probed but dropped from the case, the engine loops 10^9 times there)
@@ -54,7 +54,7 @@ bounding first (as T-1820 for DB/VDB). XNPV and XIRR keep their values and dates
   DURATION and MDURATION (was a number, e.g. `COUPNUM(-1,43831,2)` 241; `COUPNUM(-1E15,43831,4)` walked about 10^6
   quarters). Error messages of the touched kernels are empty (the lift helpers); no value changes otherwise.
 - Eval: probes 58 known failures fixed (fin-argument-modes 51, scalar-lift-open-a Y1-Y7), 0 regressions, 0 changed
-  failing values cell by cell against main; the three new cases add 130 known failures (unlifted functions' H cells,
+  failing values cell by cell against main; the three new cases add 128 known failures (unlifted functions' H cells,
   T-1374's base-value ulps in the I controls, and the calendar-edge cells of T-1844).
 - Follow-ups: T-1845 (CUMIPMT/CUMPRINC), T-1841 (AMOR*), T-1842 (YIELD, ODD*), T-1843 (XNPV's rate, XIRR's guess,
   FVSCHEDULE's principal), T-1844 (coupon schedules at the calendar's edges).

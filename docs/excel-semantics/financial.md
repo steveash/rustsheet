@@ -429,10 +429,12 @@ Tasks: T-1084, T-1372, T-1373, T-1374, T-1820, T-1821, T-1822, T-1841, T-1842, T
 
 ## Coupon settlement before the calendar
 Rule: the COUP* functions, PRICE, YIELD, DURATION, MDURATION and ACCRINT are `#NUM!` for a settlement (ACCRINT: an
-issue, first interest date or settlement) below serial 1 in a 1900 workbook: 0, 0.5, -0.5, -1 and -1E15 all are
-(`COUPNUM(0,43831,4)`, `COUPNUM(-1E15,43831,4)`, `COUPPCD(-1,43831,2)`, `PRICE(0,43831,0.05,0.06,100,4)`,
-`ACCRINT(-1,39264,39448,0.1,1000,2,0)`). In a 1904 workbook serial 0 is a date and computes
-(`COUPPCD(0,400,2)` = -150), while -1 is `#NUM!` (probes/date-system-1904-financial A35-A41).
+issue, first interest date or settlement) below serial 1 in a 1900 workbook. Probed values: -1 for every one of them
+(A1, A4-A13; ACCRINT's three dates at -1 and -1E15, A14-A17); 0 for COUPNUM and PRICE (A3, A20); -0.5, 0.5 and -1E15
+for COUPNUM only (A19, -b A11, A2). The other functions at 0 or a fraction follow the same check but are unprobed
+(T-1844). In a 1904 workbook serial 0 is a date and computes
+(`COUPPCD(0,400,2)` = -150), while -1 is `#NUM!` (probes/date-system-1904-financial A35-A41; only
+`COUPDAYBS(-1,400,2)` backs the 1904 negatives, and whether -0.5 truncates to 0 is unprobed, T-1844).
 Evidence: probes/fin-coupon-walk-bounds A1-A20 and -b A11 (excel-graph, 2026-10-17, T-1822).
 Ours: `Model::check_settlement` (functions/financial/dates.rs) makes a settlement below 1900 serial 1, as
 `financial_date` reads it, `#NUM!` for the COUP* functions, PRICE, YIELD and DURATION; ACCRINT already checked its
@@ -449,7 +451,9 @@ calendar, which the engine computes: `COUPNUM(1,43831,2)` is 240 (ours 241), `CO
 serial 1 or 1900-03-01 to a maturity in 9990-9999 is `#NUM!` for COUPNUM, PRICE, YIELD and DURATION, and
 `ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)` is 0. The rule behind them is unknown.
 Evidence: probes/fin-coupon-walk-bounds A21-A28, -b A1-A10, A12, A13 (excel-graph, 2026-10-17, T-1822).
-Status: UNVERIFIED (the cells are verified; the rule is not found)
+Ours: computes these: `COUPNUM(1,43831,2)` 241, a number for the `#NUM!` cells (e.g. 32,362 quarterly coupons from
+serial 1 to 9990, `PRICE` 404516.67); a known gap, the general rule still open.
+Status: VERIFIED (excel-graph; the rule behind the cells is not found)
 Tasks: T-1844
 
 ## Coupon schedule work cap

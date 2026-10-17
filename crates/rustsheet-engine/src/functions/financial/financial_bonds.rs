@@ -543,7 +543,7 @@ type CouponBody = fn(&Model, CouponArgs, CellReferenceIndex) -> CalcResult;
 
 impl Model {
     /// Reads and checks the COUP* arguments: every one is read, in order, before any value is
-    /// checked. A settlement before the calendar is #NUM! (`Model::check_bond_dates`).
+    /// checked. A settlement before the calendar is #NUM! (`Model::check_settlement`).
     fn coupon_args(
         &self,
         values: &[CalcResult],
