@@ -147,8 +147,8 @@ A rule below names the cells it rests on, and says so when it rests on one cell.
       engineering functions (eng-argument-modes, BESSELI E1 on its range's rows);
     - EDATE's start and months, YEARFRAC's basis, BESSELJ's n, DEC2BIN's places, DELTA's first
       argument, and EFFECT's nominal_rate and npery (H1, H2, H6, H8–H12).
-  - **Other later arguments are unverified** (for example PRICE's or COUP*'s frequency, ACCRINT's
-    basis, CONVERT's units, COMPLEX's suffix, an IM* second argument). T-1777 samples some of them.
+  - **Other later arguments are refused too** (T-1777, probes/scalar-lift-open-a Y1-Y30; for example PRICE's or COUP*'s frequency, ACCRINT's
+    basis, CONVERT's units, COMPLEX's suffix, an IM* second argument). T-1777 sampled them: all refused (open question 3).
     T-1372 and T-1383 must probe a later argument before they enter it as `LiftArrays`. The table
     describes a function whole, so until then that function has no entry and keeps today's code.
   - A reference that a function returns is refused too: `EDATE(IF(TRUE,A1:A60),1)` and
@@ -167,9 +167,9 @@ A rule below names the cells it rests on, and says so when it rests on one cell.
   - `EDATE({45000;45031},M1:M60)`: both elements (-b C, D), ROWS 2 (E);
   - `EFFECT({0.1;0.2},M1:M60)`: both elements (H, I);
   - `EDATE(A1:A60,{1;2})`: ROWS 2 (F) and element 1 only (G);
-  - `EDATE({45000,45031},M1:M60)`: one row (L), elements unprobed.
+  - `EDATE({45000,45031},M1:M60)`: one row (L), elements all `#VALUE!` (-a W26-W29).
 
-  T-1777 probes the missing elements.
+  T-1777 probed them: all `#VALUE!` (probes/scalar-lift-open-a W24-W30).
 - **Whole parameters** are vector, data and list arguments: the stat data arrays, NPV's values,
   holidays, LOOKUP/XLOOKUP vectors, CHOOSECOLS indexes, TEXTSPLIT delimiters and SORT's
   sort_index. They are read as one value and never lifted.
@@ -191,14 +191,16 @@ A rule below names the cells it rests on, and says so when it rests on one cell.
 ### Errors and element values
 - **Each element is its own scalar call.** A failing element is an error in that position only
   (H26–H27, H34–H35).
-- **Error precedence within an element** rests on one probed cell. `PMT({1;#N/A},{#DIV/0!;#NUM!},100)`
-  element 2 is `#N/A`, the leftmost error (H33). Element 1, with only nper failing, is `#DIV/0!`
-  (H31, a sibling formula with the same element-1 inputs). The design takes the leftmost failing argument. T-1777 adds `INDEX(PMT({#NUM!},{#N/A},100),1)`
-  and the reversed `INDEX(PMT({#N/A},{#NUM!},100),1)`.
+- **Error precedence within an element** is the kernel's own scalar check order, which is the
+  leftmost for PMT and EDATE: `PMT({1;#N/A},{#DIV/0!;#NUM!},100)` element 2 is `#N/A` (H33), element 1,
+  with only nper failing, is `#DIV/0!` (H31), and `INDEX(PMT({#NUM!},{#N/A},100),1)` is `#NUM!`, the
+  reversed one `#N/A` (probes/scalar-lift-open-a W14-W17, T-1777). It is not the leftmost for
+  YEARFRAC, which checks `basis` first (-d W1-W5; -a W6-W7), so the driver gives a refused range to
+  the kernel as a `#VALUE!` in its slot and does not pick an error by position (T-1800).
 - **A scalar error, or uncoercible scalar text, next to an array is broadcast.** It does not short
   out the whole call: `PMT(NA(),{10;20},100)` is 2 rows with element 2 `#N/A` (H28, H29).
-  `EDATE(NA(),{1;2})`, `PMT("x",{10;20},100)` and `EDATE("x",{1;2})` are 2 rows, but their
-  element values are unprobed (H30, H44, H45). T-1777 adds the INDEX cells. CONCATENATE is the one
+  `EDATE(NA(),{1;2})`, `PMT("x",{10;20},100)` and `EDATE("x",{1;2})` are 2 rows, and
+  every element is the scalar's own error: `#N/A`, `#VALUE!`, `#VALUE!` (H30, H44, H45; probes/scalar-lift-open-a W18-W23). CONCATENATE is the one
   known exception (a scalar error is the whole result, arrays.md), and it keeps its own rule.
 - **An array element is a typed value, and a range cell is a referenced cell.**
   - EDATE's `{TRUE;45000}` is `#VALUE!`, 45031, because a typed boolean date is `#VALUE!`.
@@ -216,28 +218,38 @@ A rule below names the cells it rests on, and says so when it rests on one cell.
   `=EDATE(@A1:A60+0,1)` (-c F, Q). This is the aggregate rule, `legacy_value_operand`.
 - Under SUMPRODUCT (an array context) nothing is intersected. Legacy
   `SUMPRODUCT(PMT(C1:C60,10,100))` sums 60 and `SUMPRODUCT(EDATE(A1:A60,1))` is `#VALUE!` (J5–J8).
-  Legacy `SUM(PMT({0.1;0.2},10,100))` sums both elements (J3). Its FORMULATEXT was not probed, so
-  whether Excel shows an `@` there is open (T-1777).
+  Legacy `SUM(PMT({0.1;0.2},10,100))` sums both elements (J3). Its FORMULATEXT is the written text,
+  with no `@` (probes/scalar-lift-open-a AB1).
 - An explicit `@` intersects in a dynamic formula: `PMT(@C1:C60,10,100)` and `EDATE(@A1:A60,1)`
   (H46, -c D).
 
 So the driver needs no legacy flag. Every legacy difference is an `@` that
 `add_implicit_intersection` puts in from the table at import, or leaves out.
 
-### Open questions (T-1777 probes them; the design's choice in brackets)
-1. An error argument left or right of a refused range, as in `EDATE(NA(),A1:A60)` [the leftmost
-   wins, as MROUND does today].
-2. A 3-D range in a lifted argument [`#VALUE!`, as `lift_with_cost` gives today].
-3. Whether later ATP arguments are refused like the probed ones, and whether the other ATP-era
-   functions (QUOTIENT, FACTDOUBLE, MULTINOMIAL, SERIESSUM, …) refuse a range [no table entry until
-   probed].
-4. Whether Excel saves an ATP call with a range argument as a dynamic-array formula [the static
-   shape ignores the refused range].
-5. Lifted elements that are arrays or references (TAKE, DROP, OFFSET, INDIRECT) [non-goal].
-6. A function-returned multi-cell reference in a `Lift` argument (`ROWS(PMT(IF(TRUE,C1:C60),10,100))`,
-   `PMT(INDEX(C1:C60,0,1),10,100)`) [lifts like a written range].
-7. The precedence and element-value gaps above (H33 alone; the H30/H44/H45 elements; element 2 of
-   `EDATE(A1:A60,{1;2})` and the -b L elements; the FORMULATEXT of legacy J3).
+### Open questions (T-1777 probed them: probes/scalar-lift-open-a to -d, excel-graph 2026-10-17; the design's choice in brackets)
+1. **Answered.** An error beside a refused range [the leftmost wins]: it is the kernel's own check
+   order, which is the leftmost for EDATE, EFFECT, ACCRINTM and PMT (`EDATE(NA(),A1:A60)` `#N/A`,
+   `EDATE(A1:A60,NA())` `#VALUE!`; -a W1-W13, -d W8-W15) but not for YEARFRAC, which checks `basis` first
+   (-d W1-W5, -a W6-W7). The driver must let the kernel decide (T-1800).
+2. **Answered.** A 3-D range in a lifted argument [`#VALUE!`]: `#REF!` in a `Lift` argument (PMT,
+   NORM.DIST, BITAND; -b W2-W11, -d W17-W29), `#VALUE!` in a `LiftArrays` argument (EDATE; -b W4-W7, -d
+   W19-W20, W26) (T-1801).
+3. **Answered.** Later ATP arguments are refused like the probed ones (PRICE, COUP*, ACCRINT, CONVERT,
+   COMPLEX, IM*, DOLLARDE/FR; -a Y1-Y18), and so are QUOTIENT, FACTDOUBLE and SERIESSUM's x, n, m
+   (-a Y19-Y21, Y24-Y26). MULTINOMIAL, GCD and LCM take a range as an aggregate, and SERIESSUM's
+   coefficients is read whole (-a Y22-Y23, Y27-Y30; T-1802). The entries can now be made.
+4. **Answered, with a limit.** `=EDATE({45000;45031},A1:A60)` spills 2 rows, as the static shape says
+   (-a AA3, AC3). FORMULATEXT carries no marker, so how Excel saves it needs the file (M14).
+5. Lifted elements that are arrays or references (TAKE, DROP, OFFSET, INDIRECT) [non-goal]: not probed.
+6. **Answered.** A function-returned multi-cell reference in a `Lift` argument [lifts like a written
+   range]: it does (IF, INDEX, OFFSET, INDIRECT, CHOOSE; -a W31-W36).
+7. **Answered.** The precedence and element-value gaps: precedence is the kernel's order (-a W14-W17
+   leftmost for PMT and EDATE, H33 now confirmed); the scalar-broadcast elements are the scalar's own
+   error (-a W18-W23); `EDATE(A1:A60,{1;2})` and `EDATE({45000,45031},M1:M60)` elements are all `#VALUE!`
+   (-a W24-W30, W70-W73); the legacy J3's FORMULATEXT has no `@` (-a AB1).
+8. **Answered.** A stacked result past the grid [`#VALUE!` through `check_array_size`]: Excel gives `#NUM!`
+   for rows past the grid and allows columns past it (-c, -c2; T-1803). The 2^34-cell HSTACK is
+   unsettled (-c3).
 
 ## Design
 New module `crates/rustsheet-engine/src/functions/lift/`, all `pub(crate)`:

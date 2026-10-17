@@ -94,8 +94,11 @@ multi-cell range. That covers the Bessel functions, the base conversions, COMPLE
 GESTEP, ERF, ERFC and their .PRECISE forms, and IM* (`ROWS(BESSELI(K1:K2,1))`). This is the Analysis
 ToolPak split seen in the financial functions. Three later arguments were probed and follow the same split (probes/scalar-lift-shapes H7-H9,
 T-1767): `ROWS(BITAND(13,D1:D60))` is 60, while `ROWS(BESSELJ(2.5,B1:B60))` and `ROWS(DEC2BIN(9,D1:D60))` are `#VALUE!`,
-even on the range's own rows. Other later arguments (CONVERT's units, COMPLEX's suffix, an IM* second argument, ...)
-are unverified (T-1777). See arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak
+even on the range's own rows. Probes/scalar-lift-open-a (T-1777) adds
+more later arguments, all `#VALUE!` over a range with a working scalar control: CONVERT's `from_unit`, `to_unit` and number
+(Y8-Y10), COMPLEX's `suffix` (Y11), IMSUB's and IMDIV's second argument (Y12, Y13), IMPOWER's `n` (Y14) and IMSUB's first (Y15).
+QUOTIENT, FACTDOUBLE and SERIESSUM's x, n, m are `#VALUE!` too, while MULTINOMIAL, GCD and LCM take a range as an aggregate
+(Y19-Y30). See arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak
 range rule".
 
 IMSUM and IMPRODUCT take their arguments whole:
