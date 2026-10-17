@@ -291,7 +291,7 @@ pattern lifts, times the elements; a call that does not lift is capped the same 
 A multi-cell range as the TEXTBEFORE/TEXTAFTER delimiter is still read as one text, as before T-1272 (gen-m7/851eb2099ae3f805
 Calc!A25 is `#VALUE!`); its list rule is T-1361's.
 Status: VERIFIED (web) for the listed cells; the rest UNVERIFIED
-Tasks: T-1272, T-1809 (probe the guesses), T-1361 (delimiter ranges)
+Tasks: T-1272, T-1812 (probe the guesses), T-1361 (delimiter ranges)
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA

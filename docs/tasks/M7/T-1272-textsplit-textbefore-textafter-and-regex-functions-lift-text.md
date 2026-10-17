@@ -53,10 +53,10 @@ Done on the branch, `make check` green:
 - Merged origin/main (T-1770's SPEC-0011 driver). `lift_text_call` stays a direct caller of `lift_values`, like the *IF(S) and lookup callers. SPEC-0011 moves the text functions onto `lift_call` later (T-1775). It uses the new `LiftOptions::EVERY_ELEMENT`.
 - BLOCKING fidelity: a multi-cell range as the TEXTBEFORE/TEXTAFTER delimiter is read as one text again (`around_delimiters`), so gen-m7/851eb2099ae3f805 A25 is `#VALUE!` as on main. gen-m9/3ec66461400faf2f A3 and 95efb37a9874f82e A25 fail again, as on main; T-1361 now cites all three.
 - MAJOR (security, performance), first half: `lift_text_call` caps a call that does not lift by its own cost, so `TEXTBEFORE(REPT("a",32767),SEQUENCE(10000))` is `#ERROR!`. Test: `unlifted_call_over_a_long_delimiter_list_is_capped`. text.md's DEVIATION wording is fixed.
-- Fidelity MAJOR, filing half: T-1809 probes the guesses the tests pin; text.md links it.
+- Fidelity MAJOR, filing half: T-1812 (renumbered from T-1809, which main had taken) probes the guesses the tests pin; text.md links it.
 
 Still open, in this order:
-1. Mark each guess-pinning test as UNVERIFIED with a comment citing text.md and T-1809 (fidelity MAJOR).
+1. Mark each guess-pinning test as UNVERIFIED with a comment citing text.md and T-1812 (fidelity MAJOR).
 2. REGEX: a bounded multi-entry `PatternCache`, a small `RegexBuilder::size_limit`, and the doc comment fix (MAJOR).
 3. Quality: split the long `text_around_element`; rewrite old comments to cite evidence; run `scripts/check_duplication.py --update` and commit the drop.
 4. MINOR performance: per-element clones of the delimiter lists and of `values[i]`; REGEXEXTRACT/TEXTSPLIT build the full array for a lifted element when only [0][0] is kept.

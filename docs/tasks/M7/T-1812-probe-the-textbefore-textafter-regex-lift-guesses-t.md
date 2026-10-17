@@ -1,5 +1,5 @@
 ---
-id: T-1809
+id: T-1812
 title: "Probe the TEXTBEFORE/TEXTAFTER/REGEX lift guesses T-1272 pins in tests"
 milestone: M7
 lane: functions-text
