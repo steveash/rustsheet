@@ -5,6 +5,7 @@
 
 use crate::{
     calc_result::CalcResult,
+    cast::calc_result_to_array_node,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -18,12 +19,20 @@ use crate::{
     number_format::number_to_text,
 };
 
-/// Cells one lifted element counts for against `limits::MAX_LIFTED_CELL_VISITS`: an element
-/// scans a text of up to 32,767 characters, so a lift of this many elements stays bounded
-/// (DEVIATION, decision 0014: Excel has no such limit).
-const ELEMENT_COST: u64 = 256;
+/// Cells a lifted call counts for compiling one pattern (`Regex::new` on a pattern of up to
+/// 32,767 characters can build a program of megabytes), charged per element when the pattern
+/// lifts. DEVIATION, decision 0014: Excel has no such limit.
+const COMPILE_COST: u64 = 4096;
 
 impl Model {
+    /// A one-cell reference as the value of its cell, any other value as it is.
+    pub(super) fn collapse_single_cell(&mut self, value: CalcResult) -> CalcResult {
+        match value {
+            CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
+            other => other,
+        }
+    }
+
     /// Evaluates the arguments of a lifting text call. Those at the indices in `lists` are
     /// returned whole, in order, and left as `EmptyArg` in the first vector, which holds the
     /// operands that lift (a single-cell reference is its value).
@@ -42,8 +51,22 @@ impl Model {
                 operands.push(CalcResult::EmptyArg);
                 continue;
             }
-            operands.push(match value {
-                CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
+            operands.push(match self.collapse_single_cell(value) {
+                // Read once here: the cost of a lifted call depends on the text it holds.
+                CalcResult::Range { left, right } => {
+                    if left.sheet != right.sheet {
+                        CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Ranges are in different sheets".to_string(),
+                        )
+                    } else {
+                        match self.evaluate_range(left, right, cell) {
+                            Ok(grid) => CalcResult::Array(grid),
+                            Err(error) => error,
+                        }
+                    }
+                }
                 other => other,
             });
         }
@@ -53,16 +76,44 @@ impl Model {
     /// Runs `element` once on `operands`, or once per element when one lifts. A lifted element
     /// keeps its first value when the call gives an array (UNVERIFIED, text.md "TEXTSPLIT,
     /// TEXTBEFORE and TEXTAFTER lift").
+    ///
+    /// An element scans its text once per delimiter (`delimiters`, at least 1) and, when
+    /// `compiles_patterns`, compiles its pattern (operand 1) if that lifts; the call is
+    /// `#ERROR!` when that work exceeds `limits::MAX_LIFTED_CELL_VISITS` (DEVIATION, decision
+    /// 0014: Excel has no such limit).
     pub(super) fn lift_text_call(
         &mut self,
         operands: Vec<CalcResult>,
         cell: CellReferenceIndex,
+        delimiters: usize,
+        compiles_patterns: bool,
         mut element: impl FnMut(&mut Model, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
         let lifts = operands.iter().any(LiftedArg::is_grid);
+        let longest = match operands.first() {
+            Some(CalcResult::String(s)) => s.len(),
+            Some(CalcResult::Array(grid)) => grid
+                .iter()
+                .flatten()
+                .map(|node| match node {
+                    ArrayNode::String(s) => s.len(),
+                    _ => 0,
+                })
+                .max()
+                .unwrap_or(0),
+            _ => 0,
+        };
+        let scans = u64::try_from(delimiters.max(1)).unwrap_or(u64::MAX);
+        let mut cost = u64::try_from(longest)
+            .unwrap_or(u64::MAX)
+            .saturating_add(1)
+            .saturating_mul(scans);
+        if compiles_patterns && operands.get(1).is_some_and(LiftedArg::is_grid) {
+            cost = cost.saturating_add(COMPILE_COST);
+        }
         self.lift_values(
             operands,
-            LiftCost::Cells(ELEMENT_COST),
+            LiftCost::Cells(cost),
             &LiftOptions {
                 reuse_equal_runs: false,
             },
@@ -87,33 +138,36 @@ impl Model {
         let grid = match value {
             CalcResult::Range { left, right } => self.evaluate_range(left, right, cell)?,
             CalcResult::Array(grid) => grid,
-            CalcResult::String(s) => return Ok(vec![s.into_lossy_string()]),
-            CalcResult::Number(n) => return Ok(vec![number_to_text(n)]),
             CalcResult::EmptyArg | CalcResult::EmptyCell => return Ok(vec![]),
             err @ CalcResult::Error { .. } => return Err(err),
-            _ => {
-                return Err(CalcResult::new_error(
-                    Error::VALUE,
+            scalar @ (CalcResult::String(_) | CalcResult::Number(_)) => {
+                return Ok(vec![delimiter_text(
+                    &calc_result_to_array_node(scalar),
                     cell,
-                    "delimiter must be a string".to_string(),
-                ))
+                )?])
             }
+            _ => return Err(not_a_string(cell)),
         };
         let mut delimiters = Vec::new();
         for item in grid.into_iter().flatten() {
             match item {
-                ArrayNode::String(s) => delimiters.push(s.into_lossy_string()),
-                ArrayNode::Number(n) => delimiters.push(number_to_text(n)),
                 ArrayNode::Empty => {}
-                _ => {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "delimiter must be a string".to_string(),
-                    ))
-                }
+                other => delimiters.push(delimiter_text(&other, cell)?),
             }
         }
         Ok(delimiters)
     }
+}
+
+/// The text of one delimiter: a string, or a number as its text.
+fn delimiter_text(item: &ArrayNode, cell: CellReferenceIndex) -> Result<String, CalcResult> {
+    match item {
+        ArrayNode::String(s) => Ok(s.clone().into_lossy_string()),
+        ArrayNode::Number(n) => Ok(number_to_text(*n)),
+        _ => Err(not_a_string(cell)),
+    }
+}
+
+fn not_a_string(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, "delimiter must be a string".to_string())
 }

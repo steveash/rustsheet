@@ -150,3 +150,35 @@ fn text_lifts_and_delimiters_are_a_list() {
     assert_eq!(column('H', 2), ["1", "a"]);
     assert_eq!(column('I', 3), ["a+b", "c-d", "e+f"]);
 }
+
+#[test]
+fn list_with_match_end_and_if_not_found() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTBEFORE(\"a,b\",{\"-\",\";\"},1,0,1)");
+    model._set("A2", "=TEXTAFTER(\"a,b\",{\"-\",\";\"},1,0,1)");
+    model._set("A3", "=TEXTAFTER(\"a,b\",{\"-\",\";\"},1,0,0,\"none\")");
+    model._set("A4", "=TEXTAFTER(\"a,b\",{\"-\",\";\"})");
+    model._set("A5", "=TEXTAFTER(\"a,b\",{\",\",#N/A})");
+    model._set("A6", "=TEXTAFTER(\"a\",{\"abc\",\"abcd\"})");
+    model._set("A7", "=TEXTAFTER(\"a\",{\"abc\",\"abcd\"},1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"a,b");
+    assert_eq!(model._get_text("A2"), *"");
+    assert_eq!(model._get_text("A3"), *"none");
+    assert_eq!(model._get_text("A4"), *"#N/A");
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
+    assert_eq!(model._get_text("A6"), *"#N/A");
+    assert_eq!(model._get_text("A7"), *"#VALUE!");
+}
+
+#[test]
+fn regex_pattern_errors_stay_per_element() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REGEXTEST(\"abc\",{\"a\";\"(\"})");
+    model._set("C1", "=REGEXTEST({\"a\";\"b\"},\"(\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("C1"), *"#VALUE!");
+    assert_eq!(model._get_text("C2"), *"#VALUE!");
+}

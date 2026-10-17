@@ -453,4 +453,33 @@ mod tests {
         assert!((0..2048).all(|_| within_text_budget(&mut total, 32768)));
         assert!(!within_text_budget(&mut total, 1));
     }
+
+    // T-1272: a list of delimiters matches at the earliest position of any entry.
+    #[test]
+    fn delimiter_lists() {
+        let list = [",", "-"];
+        assert_eq!(
+            text_after("a,b-c", &list, 2, Case::Sensitive),
+            Some("c".to_string())
+        );
+        assert_eq!(
+            text_before("a,b-c", &list, -1, Case::Sensitive),
+            Some("a,b".to_string())
+        );
+        assert_eq!(text_before("a,b-c", &list, 3, Case::Sensitive), None);
+        // The first entry in list order sets the length where two match at one position.
+        assert_eq!(
+            text_after("xabc", &["ab", "a"], 1, Case::Sensitive),
+            Some("c".to_string())
+        );
+        assert_eq!(
+            text_after("xabc", &["a", "ab"], 1, Case::Sensitive),
+            Some("bc".to_string())
+        );
+        assert_eq!(
+            text_before("xAbC", &["B", "x"], 1, Case::Insensitive),
+            Some("".to_string())
+        );
+        assert_eq!(text_before("abc", &[], 1, Case::Sensitive), None);
+    }
 }

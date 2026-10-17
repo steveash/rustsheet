@@ -3,10 +3,10 @@ id: T-1272
 title: "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX functions lift text over a range and scalar arguments over an array"
 milestone: M7
 lane: functions-text
-status: done
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -33,3 +33,11 @@ Delimiter ranges (a multi-cell range with blanks, numbers or booleans as the del
 
 ## Outcome
 TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEXTEST/EXTRACT/REPLACE lift their text and scalar arguments over ranges and arrays; the delimiters stay lists (TEXTBEFORE/AFTER now take a delimiter list). Static analysis marks them array-capable. Eval delta: probes known failures 3072 -> 3042 (30 cells fixed, 0 regressions); gen-m7 A24/A11 now `#SPILL!` as in Excel. Unverified guesses are listed in docs/excel-semantics/text.md.
+
+## Handoff
+Branch `agent/functions-text/T-1272-text-lift` has the full lift implementation (text/before_after.rs, text/lifted.rs, regex_functions.rs, textsplit.rs, util.rs multi-delimiter matching, static_analysis marks the six functions array-capable); `make check` was green before the review, the probe/gen-m7 cells pass and the baseline is updated (probes 3072 -> 3042). The review round returned REQUEST_CHANGES from security, quality and performance (architecture APPROVE, excel-fidelity not yet reported):
+- MAJOR (security, performance): TEXTBEFORE/TEXTAFTER now take an unbounded delimiter list scanned per character (`util.rs` `delimiter_at`); a NON-lifted call such as `TEXTBEFORE(REPT("a",32767),SEQUENCE(1048576))` costs ~3e10 prefix checks and `lift_values` never applies the visit cap when nothing lifts. Needs a cost check (text length x delimiters) for the single call too, or a multi-pattern matcher; TEXTSPLIT's `split_by_any` has the same pre-existing exposure. Document as DEVIATION (decision 0014).
+- MAJOR: REGEX* lifting the pattern can compile many distinct patterns; `PatternCache` keeps only the last. I already added a size-aware cost to `lift_text_call` (longest text x delimiter count, plus `COMPILE_COST` when the pattern lifts) in the working tree; still to do: a bounded multi-entry cache, small `RegexBuilder::size_limit`, fix the doc comment/text.md wording ("about 100,000 elements" is no longer right).
+- MAJOR (quality): unit tests for multi-delimiter helpers (added `delimiter_lists` in util.rs) and focused tests (added in test/text_functions/fn_textbefore.rs); the over-the-cap test I tried failed because a non-lifted call is never capped (the first MAJOR). Also split the ~100-line `text_around_element`, rewrite old comments to cite evidence, run `scripts/check_duplication.py --update` (6111 -> 5925).
+- MINOR (performance): per-element clones of delimiter lists and `values[i]`, REGEXEXTRACT/TEXTSPLIT build the full array for a lifted element when only [0][0] is kept.
+Next: finish the above, re-run `make check`, merge origin/main, re-run the failed reviewers plus excel-fidelity, open the PR.

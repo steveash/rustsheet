@@ -66,7 +66,7 @@ impl Model {
         let (operands, _) = self.lift_text_operands(args, &[], cell);
         let has_return_all = args.len() == 3;
         let mut cache = PatternCache::default();
-        self.lift_text_call(operands, cell, |model, values| {
+        self.lift_text_call(operands, cell, 1, true, |model, values| {
             let (text, pattern) = match model.regex_operands(values, cell) {
                 Ok(operands) => operands,
                 Err(error) => return error,
@@ -125,7 +125,7 @@ impl Model {
         }
         let (operands, _) = self.lift_text_operands(args, &[], cell);
         let mut cache = PatternCache::default();
-        self.lift_text_call(operands, cell, |model, values| {
+        self.lift_text_call(operands, cell, 1, true, |model, values| {
             let (text, pattern) = match model.regex_operands(values, cell) {
                 Ok(operands) => operands,
                 Err(error) => return error,
@@ -156,7 +156,7 @@ impl Model {
         }
         let (operands, _) = self.lift_text_operands(args, &[], cell);
         let mut cache = PatternCache::default();
-        self.lift_text_call(operands, cell, |model, values| {
+        self.lift_text_call(operands, cell, 1, true, |model, values| {
             let (text, pattern) = match model.regex_operands(values, cell) {
                 Ok(operands) => operands,
                 Err(error) => return error,

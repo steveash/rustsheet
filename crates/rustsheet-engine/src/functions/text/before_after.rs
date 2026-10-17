@@ -35,7 +35,8 @@ impl Model {
             Some(list) => self.around_delimiters(list, cell),
             None => Ok(vec![]),
         };
-        self.lift_text_call(operands, cell, |model, values| {
+        let delimiter_count = delimiters.as_ref().map_or(0, Vec::len);
+        self.lift_text_call(operands, cell, delimiter_count, false, |model, values| {
             model.text_around_element(values, arg_count, &delimiters, side, cell)
         })
     }
@@ -47,10 +48,7 @@ impl Model {
         value: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<Vec<String>, CalcResult> {
-        let value = match value {
-            CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
-            other => other,
-        };
+        let value = self.collapse_single_cell(value);
         match value {
             CalcResult::Range { .. } | CalcResult::Array(_) => self.delimiter_list(value, cell),
             scalar => self.cast_to_string(scalar, cell).map(|text| vec![text]),

@@ -33,7 +33,12 @@ impl Model {
         let col_delimiters = lists.next().map(|list| self.delimiter_list(list, cell));
         let row_delimiters = lists.next().map(|list| self.delimiter_list(list, cell));
         let arg_count = args.len();
-        self.lift_text_call(operands, cell, |model, values| {
+        let delimiter_count = [&col_delimiters, &row_delimiters]
+            .into_iter()
+            .flatten()
+            .map(|d| d.as_ref().map_or(0, Vec::len))
+            .sum();
+        self.lift_text_call(operands, cell, delimiter_count, false, |model, values| {
             model.textsplit_element(
                 values,
                 arg_count,
