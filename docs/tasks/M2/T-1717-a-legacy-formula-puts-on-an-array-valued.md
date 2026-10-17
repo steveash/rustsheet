@@ -27,7 +27,8 @@ N/T over IF, CHOOSE, INDEX, IFS and ranges are T-1727/T-1713 and T-1728, not thi
 calls Excel leaves without `@` (reference-returning ones such as IF, CHOOSE, INDEX, OFFSET) before
 generalizing; probe if needed. The xlsx import uses the same rewrite, so a plain `<f>` changes too:
 run the full eval (ironcalc-calc, poi) for regressions. docs/excel-semantics/references.md
-"Legacy formulas intersect the ranges in value arguments".
+"Legacy formulas intersect the ranges in value arguments". probes/t-n-range-top-left (T-0985) adds `=T(@{"a","b"})` (M10/M20, "a")
+and `=N(@{5,6})` (O10/O20, 5), known failures until this task: ours spills with no `@`.
 
 ## Acceptance criteria
 - [ ] probes/legacy-array-result B10:F11, H10:H11, K10:L11 and their FORMULATEXT cells in row 20 leave eval/baseline/probes.txt; no regressions.

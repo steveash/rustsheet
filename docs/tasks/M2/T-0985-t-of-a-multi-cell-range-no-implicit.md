@@ -3,7 +3,7 @@ id: T-0985
 title: "T of a multi-cell range: no implicit intersection in legacy formulas (3 poi known failures)"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -38,12 +38,24 @@ top-left cell, with text only in a later cell, and from a row outside the range;
 `N(A1:A3)` with a number top-left; and `T({"a","b"})`, `N({5,6})`. Then implement the observed rule.
 
 ## Acceptance criteria
-- [ ] A probe case pins the questions above (oracle-filled); the references.md entry is rewritten
+- [x] A probe case pins the questions above (oracle-filled); the references.md entry is rewritten
       from it with Status VERIFIED.
-- [ ] `F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!M1352`, `...!N1352` and `...!O1352`
+- [x] `F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!M1352`, `...!N1352` and `...!O1352`
       disappear from eval/baseline/poi.txt (`make eval-baseline`), with no new F lines; the probe's
       cells pass, and so does probes/t-array-lift S!E7.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other functions whose range arguments are marked scalar (WORKDAY holidays: T-0983).
+
+## Outcome
+Probe probes/t-n-range-top-left (excel-graph, 2026-10-17): T, like N, reads a multi-cell range as its
+top-left cell in legacy and dynamic formulas, never the intersected cell, and a legacy formula shows
+no `@` on the range or on an OFFSET or literal-condition IF of it (an operator still gets one).
+`fn_t` reads the top-left cell of a range (it gave ""), and the legacy rewrite leaves T's reference
+argument whole as it did N's (`reads_reference_whole`, legacy.rs). references.md "T of a multi-cell
+range is not intersected" is rewritten from the probe, Status VERIFIED. Eval delta: poi 488 -> 484
+known failures (M1352, N1352, O1352, plus E260 `COMBIN(19,7)`, already passing on main but not
+recorded because CI does not fetch poi); probes: t-array-lift S!E7 fixed, new case 45 cells, 41 pass.
+Its 4 failures are the legacy `@` over an array constant under N and T (M10/M20, O10/O20, plus the
+N10 spill cell), which is T-1717's scope; its context now cites them.
