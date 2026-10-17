@@ -1161,13 +1161,22 @@ Tasks: T-1082, T-1190
 ## COMBIN is inexact
 Rule: Excel's COMBIN is not the exact binomial coefficient either, and its rounding differs from MULTINOMIAL's:
 `COMBIN(10,4)` = 209.99999999999997 where `MULTINOMIAL(4,6)` = 209.99999999999977 (exact 210 for both);
-`COMBIN(40,20)` 137846528819.99997, `COMBIN(100,50)` 1.0089134454556413e+29, `COMBIN(170,20)` 5.221123511163077e+25,
-`COMBIN(170,70)` 6.491922168400297e+48 and `COMBIN(170,85)` 9.144841845131565e+49. `COMBIN(5,2)` 10, `COMBIN(10,5)` 252,
-`COMBIN(170,1)` and `COMBIN(170,169)` 170 are exact. Excel's algorithm is not identified.
-Evidence: probes/multinomial-algorithm-sweep B1:B10 (excel-graph, 2026-10-15, T-1190).
-Ours: the exact value (7 of the 10 cells fail).
-Status: VERIFIED (values); algorithm UNVERIFIED
-Tasks: T-1598
+`COMBIN(9,3)` 83.99999999999999, `COMBIN(15,3)` 455.00000000000006, `COMBIN(40,20)` 137846528819.99997, `COMBIN(100,50)`
+1.0089134454556413e+29, `COMBIN(170,85)` 9.144841845131565e+49. It is symmetric (`COMBIN(n,k)` = `COMBIN(n,n-k)` bit for bit),
+k = 0, 1 and 2 are always exact, and it stays finite up to `COMBIN(1029,514)` 1.4298206864989032e+308; `COMBIN(1030,514)` is `#NUM!`.
+The algorithm (fit, T-1598): with `j = min(k, n-k)`, one double running product multiplies the rounded quotients
+`(n-j+i)/(i+1)` for i = 1..j-1 in that order, and the result is that product times `n` (j = 0 gives 1). The numerators
+pair with the denominators shifted by one: `COMBIN(9,3)` is `((7/2)*(8/3))*9`. This reproduces all 841 numeric cells
+of probes/combin-algorithm-sweep bit-exactly. Rejected candidates (scores out of 841; the correctly rounded value scores
+572): the textbook loop `r*(n-j+i)/i` (569), `r*((n-j+i)/i)` and the other natural pairings and orders over min, max or k
+(at most 570), the same shifted pairing with `n` first (624) or over k instead of min(k, n-k) (636), the quotient not
+rounded on its own (`r*(n-j+i)/(i+1)`, 569), and natural-log, log10 and lgamma sums (at most 6 of the 87 j = 3 cells).
+Evidence: probes/multinomial-algorithm-sweep B1:B10 (excel-graph, 2026-10-15, T-1190); probes/combin-algorithm-sweep
+A1:A844 (every k for n = 1..32, and small, n/3, n/2 and near-n k for n = 40..1030; excel-graph, 2026-10-17, T-1598).
+Ours: the fitted algorithm (`combin`, functions/math_and_trigonometry/mathematical.rs). Every factor is at least 1, so the
+product overflows within a few hundred factors for a large j, which bounds the work (directive 5).
+Status: VERIFIED (values); algorithm a fit, 841/841 bit-exact
+Tasks: T-1190, T-1598
 
 ## Huge arguments of trig functions
 Rule: `COS(1E+15)` is `#NUM!` in Excel (the argument is too large to reduce). Errors from a left operand win over a
@@ -1258,7 +1267,8 @@ F1:F9 take MIN/MAX/ROWS over 1000 draws in one cell, which is what shows the RAN
 rule (F8:F9: `RANDBETWEEN(5.2,7.9)` spans 6 to 7, not ROUND's 5 to 8); the spill members D2, E1,
 E2 and D5 were not compared between fills, but their min equals their max; B15 and G1 have an occupied neighbour, so a 2-row or 2-column result would be `#SPILL!`.
 T-1584 (excel-graph, 2026-10-15): a boolean reached through a reference is rejected like the literal (`RANDBETWEEN(J1,2)`, J1 TRUE, is `#VALUE!`: probes/volatile-invariant Calc!I1); RANDARRAY errors apply in argument order (`RANDARRAY(0,1,1.5,2.5,TRUE)` is `#CALC!`, I2); an omitted bound on either side is `#N/A`, not 0 (`RANDBETWEEN(,5)` and `RANDBETWEEN(5,)`, I5:I6, like `RANDBETWEEN(,)`). A RANDBETWEEN whose span `top - bottom` overflows a double is `#NUM!` (`RANDBETWEEN(-9*10^307,9*10^307)`, `RANDBETWEEN(-(10^308),10^308)`), while a span of 1E308 or equal bounds at +-1E308 return a value (probes/randbetween-huge-span A1:A7). RANDARRAY has no such error: with a span that overflows (`-(10^308)` to `10^308`, whole or not) it returns a finite number inside the bounds (B2:B3, B14:B15), and equal bounds at +-1E308 return that bound. `-10^308` is presumably `(-10)^308` (unary minus binds tighter than `^`), positive and a hair above 1E308, which is consistent with `RANDARRAY(1,1,-10^308,10^308)` `min > max`: `#VALUE!` (B12) and `RANDBETWEEN(-10^308,10^308)` is `#NUM!` (A8). A literal `1E308` pair in the volatile-invariant workbook made excel-graph refuse the file ("unsupportedWorkbook"), so those probes use `10^308`.
-Status: VERIFIED. Implemented (T-1318, T-1584): A2, A6, A8, A12, A13, B9, B10, B18, I1:I6 and randbetween-huge-span pass. The engine still misses the array lift F1:F9 (T-1316).
+Status: VERIFIED. Implemented (T-1318, T-1584): A2, A6, A8, A12, A13, B9, B10, B18, I1:I6 and randbetween-huge-span pass. The array lift F1:F9 is implemented too (T-1316, `randbetween_draw` plus `lift_number_operands`).
+Operands of the lift (probes/randbetween-lift-operands, 18 cells, all scalar-returning so nothing spills; excel-graph, 2026-10-16, T-1316): a boolean element of an array bound is an error element, not 1 or 0 (`COUNT(RANDBETWEEN({TRUE;1},{2;2}))` = 1, `SUM(...)` `#VALUE!`), like a scalar boolean; text elements read as number text (`{"5";"6"}` gives 2 numbers) and `"x"` or `""` elements are errors; a scalar error beside an array bound spreads over the broadcast shape (`ROWS(RANDBETWEEN(SEQUENCE(3),NA()))` = 3). A multi-cell range bound is `#VALUE!` as a whole (`RANDBETWEEN(D1:D3,10)`, even from a row the range intersects: no lift and no implicit intersection), so only array values lift, never ranges; a single-cell reference is a scalar.
 
 ## SERIESSUM with x = 0
 Rule: SERIESSUM with x = 0 (a literal 0 or a blank) is `#NUM!` when any term's power `n + i*m` is zero or negative, whatever its

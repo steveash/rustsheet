@@ -797,13 +797,14 @@ impl Model {
                 message: "k cannot be greater than n".to_string(),
             };
         }
-        let k = k as usize;
-        let mut result = 1.0;
-        for i in 0..k {
-            let t = i as f64;
-            result *= (n - t) / (t + 1.0);
+        match combin(n, k) {
+            Ok(result) => CalcResult::Number(result),
+            Err(error) => CalcResult::Error {
+                error,
+                origin: cell,
+                message: "Result is too large".to_string(),
+            },
         }
-        CalcResult::Number(result)
     }
 
     // PERCENTOF(part, total) — returns SUM(part) / SUM(total) as a decimal fraction. Both sums snap
@@ -873,6 +874,35 @@ pub(crate) fn percent_of(
 /// push an exact multiple over a step boundary.
 fn snap_ratio(value: f64, significance: f64) -> f64 {
     to_excel_precision(value / significance, EXCEL_PRECISION)
+}
+
+/// COMBIN(n, k) for integers `0 <= k <= n`, rounded as Excel rounds it. With `j = min(k, n-k)`,
+/// Excel multiplies the factors `(n-j+i)/(i+1)` for i = 1..j-1, each a rounded quotient, into one
+/// double running product and then multiplies by `n`: `COMBIN(10,4)` is 209.99999999999997, not 210.
+/// This matches all 841 numeric cells of probes/combin-algorithm-sweep bit for bit (numbers.md
+/// "COMBIN is inexact"). Every factor is at least 1, so the product only grows: it overflows (`#NUM!`,
+/// as `COMBIN(1030,515)` is in Excel) within a few hundred
+/// factors whenever `j` is large, which bounds the work (directive 5).
+fn combin(n: f64, k: f64) -> Result<f64, Error> {
+    let j = k.min(n - k);
+    if j < 1.0 {
+        return Ok(1.0);
+    }
+    let mut acc = 1.0;
+    let mut i = 1.0;
+    while i < j {
+        acc *= (n - j + i) / (i + 1.0);
+        if !acc.is_finite() {
+            return Err(Error::NUM);
+        }
+        i += 1.0;
+    }
+    let result = acc * n;
+    if result.is_finite() {
+        Ok(result)
+    } else {
+        Err(Error::NUM)
+    }
 }
 
 /// `n * (n - step) * (n - 2 step) * ...` down to 1 or 2, multiplied from `n` down, which is the
