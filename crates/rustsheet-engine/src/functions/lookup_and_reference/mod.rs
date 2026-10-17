@@ -7,9 +7,10 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::expressions::utils::is_out_of_range_r1c1_name;
 use crate::external_reference::{one_external_area, PickedReference};
 use crate::functions::logical::{if_arg_at, if_arg_dims};
+use crate::functions::text::util::within_text_budget;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
-use crate::limits::check_array_size;
+use crate::limits::{check_array_size, check_range_size};
 use crate::reference_operators::{several_areas_ref, Picked, Ranges, RefArg};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -89,7 +90,7 @@ impl Model {
     /// (`CHOOSE(1,A1)`, `OFFSET(A1,0,0)`, `INDIRECT("A1")`, `A1:A1`) gives that cell's value: Excel
     /// finds 30 for `MATCH(CHOOSE(1,J1),A1:A5,0)` with J1 = 30 (docs/excel-semantics/lookup.md,
     /// probes/lookup-reference-lookup-value). VLOOKUP, HLOOKUP and XLOOKUP get there by lifting.
-    /// A multi-cell `lookup_value` is left as it is (T-0270).
+    /// A multi-cell `lookup_value` is left as it is: XMATCH and LOOKUP lift it, MATCH is T-0270.
     pub(super) fn lookup_value_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         match self.evaluate_node_in_context(node, cell) {
             range @ CalcResult::Range { left, right } if left == right => {
@@ -319,30 +320,32 @@ impl Model {
     // internal link ("#Sheet1!A1"), anything else is external.
     // The link itself is dynamic: it lives in `Model::links` and is rebuilt on
     // every evaluation, it is not part of the workbook.
+    // Both arguments lift over an array and a multi-cell range (`ROWS(HYPERLINK(D1:D3))`,
+    // `ROWS(HYPERLINK(D1,A1:A3))` are 3; probes/lookup-argument-modes F11:G13,
+    // gen-m7/2bb922eef72e785e A22; docs/excel-semantics/lookup.md "Lookup and reference function
+    // argument modes"). A lifted call attaches the link of its last element.
     pub(crate) fn fn_hyperlink(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() || args.len() > 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let location = match self.get_string(&args[0], cell) {
+        self.lift_call(Function::Hyperlink, args, cell, &mut |model, values| {
+            model.hyperlink_of(values, cell)
+        })
+    }
+
+    /// HYPERLINK of one element.
+    fn hyperlink_of(&mut self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        let (location, friendly_name) = match values {
+            [location] => (location, None),
+            [location, friendly_name] => (location, Some(friendly_name)),
+            _ => return CalcResult::new_args_number_error(cell),
+        };
+        let location = match Self::cast_string_ref(location, cell) {
             Ok(s) => s,
             Err(error) => return error,
         };
-
-        let display = if args.len() == 2 {
-            // The friendly name is the value displayed in the cell. It can be
-            // a string, a number or a boolean.
-            let result = self.evaluate_node_in_context(&args[1], cell);
-            match result {
-                CalcResult::Range { .. } | CalcResult::Array(_) => {
-                    match self.cast_to_string(result, cell) {
-                        Ok(s) => CalcResult::String(s.into()),
-                        Err(error) => error,
-                    }
-                }
-                other => other,
-            }
-        } else {
-            CalcResult::String(location.clone().into())
+        // The friendly name is the value displayed in the cell. It can be
+        // a string, a number or a boolean.
+        let display = match friendly_name {
+            Some(value) => value.clone(),
+            None => CalcResult::String(location.clone().into()),
         };
         // A cell displaying an error is not clickable: no link is attached
         if matches!(display, CalcResult::Error { .. }) {
@@ -870,28 +873,63 @@ impl Model {
                     message: "3D ranges not supported".to_string(),
                 };
             }
-            if left.row != right.row || left.column != right.column {
-                // FIXME: Implicit intersection or dynamic arrays
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "argument must be a reference to a single cell".to_string(),
-                };
+            if left == right {
+                return self.formula_text_of(left, cell);
             }
-            if let Ok(Some(f)) = self.get_english_cell_formula(left.sheet, left.row, left.column) {
-                CalcResult::String(f.into())
-            } else {
-                CalcResult::Error {
-                    error: Error::NA,
-                    origin: cell,
-                    message: "Reference does not have a formula".to_string(),
+            // A multi-cell reference gives one result per cell, `#N/A` for a cell with no
+            // formula (`ROWS(FORMULATEXT(A1:A3))` is 3; probes/lookup-argument-modes F38:H38,
+            // docs/excel-semantics/lookup.md "Lookup and reference function argument modes").
+            // The cells and the total text are bounded (CLAUDE.md directive 5).
+            if let Some((error, message)) = check_range_size(&left, &right) {
+                return CalcResult::new_error(error, cell, message);
+            }
+            let mut text_bytes = 0;
+            let width = usize::try_from(right.column - left.column + 1).unwrap_or(0);
+            let mut rows =
+                Vec::with_capacity(usize::try_from(right.row - left.row + 1).unwrap_or(0));
+            for row in left.row..=right.row {
+                let mut values = Vec::with_capacity(width);
+                for column in left.column..=right.column {
+                    let at = CellReferenceIndex {
+                        sheet: left.sheet,
+                        row,
+                        column,
+                    };
+                    values.push(match self.formula_text_of(at, cell) {
+                        CalcResult::String(text) => {
+                            if !within_text_budget(&mut text_bytes, text.len()) {
+                                return CalcResult::new_error(
+                                    Error::VALUE,
+                                    cell,
+                                    "Total text result is too large".to_string(),
+                                );
+                            }
+                            ArrayNode::String(text)
+                        }
+                        _ => ArrayNode::Error(Error::NA),
+                    });
                 }
+                rows.push(values);
             }
+            CalcResult::Array(rows)
         } else {
             CalcResult::Error {
                 error: Error::ERROR,
                 origin: cell,
                 message: "Argument must be a reference".to_string(),
+            }
+        }
+    }
+
+    /// FORMULATEXT of the one cell `at`: its formula, or `#N/A` when it holds none.
+    fn formula_text_of(&self, at: CellReferenceIndex, cell: CellReferenceIndex) -> CalcResult {
+        if let Ok(Some(f)) = self.get_english_cell_formula(at.sheet, at.row, at.column) {
+            CalcResult::String(f.into())
+        } else {
+            CalcResult::Error {
+                error: Error::NA,
+                origin: cell,
+                message: "Reference does not have a formula".to_string(),
             }
         }
     }
