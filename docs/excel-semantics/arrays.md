@@ -787,8 +787,8 @@ Rule (probes/dynamic-array-reshape-and-isomitted C20-C52, D20-D52, excel-graph, 
 `WRAPROWS(B5:H5,0,"p")` and `WRAPROWS(B5:H5,-1,"p")` are `#NUM!`, and so are the WRAPCOLS forms. A wrap_count above
 the vector's length does not pad: `WRAPROWS(B5:H5,8,"p")` and `WRAPROWS(B5:H5,100,"p")` are the 1x7 row `1,2,3,4,5,6,7`
 (`WRAPCOLS` the 7x1 column), the same as wrap_count 7. A scalar is a one-element vector: `WRAPROWS(5,2)` is 5
-(`WRAPCOLS(5,2)` too). Ours gives `#VALUE!` for 0 and -1 and `#N/A` for a scalar (fix T-1630); the clamp above the
-vector's length is implemented (T-1786). Everything else probed matches: wrap_count 1-7 with a pad, an omitted pad (`#N/A`
+(`WRAPCOLS(5,2)` too). Ours gives `#VALUE!` for 0 and -1 (fix T-1630); the clamp above the vector's length, which
+also makes a scalar 1x1, is implemented (T-1786). Everything else probed matches: wrap_count 1-7 with a pad, an omitted pad (`#N/A`
 fill), pad_with 0, "" and `#N/A`, a column vector, an inline array, a 2-D range (`#VALUE!`), a text
 wrap_count (`#VALUE!`; C43, D43); a boolean wrap_count counts as a number (TRUE is 1: `WRAPCOLS(B5:H5,TRUE)` is the 1x7 row 1..7, D44; `WRAPROWS(B5:H5,TRUE)` is the 7x1 column, shown by probes/dynamic-array-reshape-reprobe B20-B22; it was `#SPILL!` in C44 only because the cell below blocked it); a fractional wrap_count
 truncates (2.5 is 2: `WRAPROWS(B5:H5,2.5,"p")` is 4x2, `WRAPCOLS` 2x4, C38-D39) and an error vector.

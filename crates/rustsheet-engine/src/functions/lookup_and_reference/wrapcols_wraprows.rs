@@ -28,20 +28,10 @@ impl Model {
             Err(e) => return e,
         };
 
-        let wrap_count = match self.get_number(&args[1], cell) {
-            Ok(n) => n as usize,
+        let wrap_count = match self.get_wrap_count(args, flat.len(), cell) {
+            Ok(n) => n,
             Err(e) => return e,
         };
-        if wrap_count < 1 {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "wrap_count must be >= 1".to_string(),
-            );
-        }
-        // A wrap_count above the vector's length does not pad: it is the length
-        // (probes/dynamic-array-reshape-and-isomitted, arrays.md "WRAPROWS and WRAPCOLS"; T-1786).
-        let wrap_count = wrap_count.min(flat.len().max(1));
 
         let pad = match self.get_pad_with(args, cell) {
             Ok(p) => p,
@@ -88,20 +78,10 @@ impl Model {
             Err(e) => return e,
         };
 
-        let wrap_count = match self.get_number(&args[1], cell) {
-            Ok(n) => n as usize,
+        let wrap_count = match self.get_wrap_count(args, flat.len(), cell) {
+            Ok(n) => n,
             Err(e) => return e,
         };
-        if wrap_count < 1 {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "wrap_count must be >= 1".to_string(),
-            );
-        }
-        // A wrap_count above the vector's length does not pad: it is the length
-        // (probes/dynamic-array-reshape-and-isomitted, arrays.md "WRAPROWS and WRAPCOLS"; T-1786).
-        let wrap_count = wrap_count.min(flat.len().max(1));
 
         let pad = match self.get_pad_with(args, cell) {
             Ok(p) => p,
@@ -160,6 +140,26 @@ impl Model {
             data.into_iter().map(|mut r| r.remove(0)).collect()
         };
         Ok(flat)
+    }
+
+    /// The `wrap_count` argument (2nd arg of WRAPCOLS/WRAPROWS) for a vector of `len` values: at
+    /// least 1, and a count above the vector's length does not pad, it is the length
+    /// (probes/dynamic-array-reshape-and-isomitted, arrays.md "WRAPROWS and WRAPCOLS"; T-1786).
+    fn get_wrap_count(
+        &mut self,
+        args: &[Node],
+        len: usize,
+        cell: CellReferenceIndex,
+    ) -> Result<usize, CalcResult> {
+        let wrap_count = self.get_number(&args[1], cell)? as usize;
+        if wrap_count < 1 {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "wrap_count must be >= 1".to_string(),
+            ));
+        }
+        Ok(wrap_count.min(len.max(1)))
     }
 
     /// Parse the optional `pad_with` argument (3rd arg of WRAPCOLS/WRAPROWS).
