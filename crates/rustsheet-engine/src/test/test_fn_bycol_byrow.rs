@@ -371,6 +371,8 @@ fn byrow_one_by_one_array_result_is_its_value() {
 
 // ── a single value is a 1x1 array (T-1350) ────────────────────────────────────
 
+// Oracle-backed: A1, A2, A7 (gen-m7/93976dd9a3578ed9 A31, gen-m9/65faaeb48419087d A23) and A3 in its
+// `_xleta.PRODUCT` form (gen-m7/59cc50701f4937c9 A4). A4-A6 are inferred, not yet oracle-checked.
 #[test]
 fn byrow_bycol_of_a_single_value_call_the_lambda_once() {
     let mut model = new_empty_model();
