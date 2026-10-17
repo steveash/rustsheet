@@ -321,10 +321,31 @@ PERCENTRANK*, TRIMMEAN, Z.TEST, F.TEST and T.TEST skip text and booleans in a ra
 plain 8-point series on the timeline 1..8 (T-1293). These decide the generator modes in eval/catalog/functions.yaml
 (`value`, `aggregate`, `aggregate_a`, `array`; RANK `ref`, COUNTBLANK and the *IFS ranges are `range`).
 Evidence: probes/stat-argument-modes (573 cells, excel-graph, 2026-10-09, T-1080).
-Ours: no scalar argument lifts (`#N/IMPL!` for an array, `#VALUE!` for a range; T-1290); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
+Ours: LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN lift (T-1772, section below); the other scalar arguments do not (`#N/IMPL!` for an array, `#VALUE!` for a range; T-1290, T-1810); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
 `#N/IMPL!`; many distribution values are a few ulps off (the existing accuracy entries above).
 Status: VERIFIED (excel-graph)
 Tasks: T-1080, T-1290, T-1291, T-1292, T-1293
+
+## LARGE, SMALL, PERCENTILE, QUARTILE, PERCENTRANK and TRIMMEAN: each lifted element is the scalar call
+Rule: when `k`, `quart`, `x`, `significance` or `percent` is an array or a multi-cell range, every element is the
+scalar call over the whole data argument, with the scalar rules per element. With A1:A8 = 1,2,4,3,7,5,8,6:
+`LARGE(A1:A8,{1;2;9})` is 8, 7, `#NUM!` (W1-W2); `LARGE(..,{0.5;2.5})` is `#NUM!`, 6 (k below 1, then the ceiling;
+W3-W4); `SMALL(..,{2.5;"3";TRUE})` is 2, 3, 1 (typed text and booleans coerce; W5-W7); over a range G1:G4 = 2, "x",
+blank, TRUE the elements are 7, `#VALUE!`, `#NUM!` (a blank cell is 0), 8 (a referenced TRUE is 1; W8-W11); an error
+element is that error (`{1;#DIV/0!}`, W16). The shape is the lifted argument's: a row (`COLUMNS` 3, W14), 2-D (W15),
+and PERCENTRANK's `x` and `significance` broadcast a column against a row (`PERCENTRANK.EXC(A1:A8,{4.5;2.5},{1,2})` is
+2x2, element (2,2) 0.27; W32-W33). `significance` lifts over an array and a range (W29-W31) and is `#NUM!` below 1 per
+element (W34). A data error or data with no numbers is every element's error: `LARGE(B1:B3,{1;2})` with B2 = `#N/A`
+is two `#N/A` (W12-W13), `SMALL(C1:C3,{1;2})` over "x", TRUE, blank is two `#NUM!` (W17-W18), PERCENTRANK of it two
+`#N/A` (W39). The data argument keeps its own reading: an arithmetic array (W19), an array literal (W38), a union
+(`LARGE((A1:A4,A5:A8),{1;2})` element 2 is 7, W45). A one-cell range in the lifted argument is its value (`ROWS` 1,
+W20, W43), and a range a function returns lifts (`IF(TRUE,G5:G6)`, W42).
+Evidence: probes/stat-whole-lift W1-W48 (excel-graph, 2026-10-17, T-1772); probes/stat-argument-modes H345-H463,
+H549-H550.
+Ours: matches (T-1772): the data argument is read once by the function's own reader and sorted once per call
+(`functions/statistical/sorted_data.rs`), and the scalar arguments lift through `lift_call`.
+Status: VERIFIED (excel-graph)
+Tasks: T-1772, T-1810
 
 ## Array arguments given a scalar, a single cell or an error
 Rule: an array argument of the paired and single-array statistical functions takes a plain number or a single cell as an

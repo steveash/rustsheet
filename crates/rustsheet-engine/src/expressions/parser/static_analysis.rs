@@ -966,30 +966,7 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::NormDistCompat => args_signature_scalars(arg_count, 4, 0),
         Function::NormInvCompat => args_signature_scalars(arg_count, 3, 0),
         Function::NormSInvCompat => args_signature_scalars(arg_count, 1, 0),
-        Function::PercentileCompat => {
-            if arg_count == 2 {
-                vec![Signature::Vector, Signature::Scalar]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
-        Function::PercentrankCompat => {
-            if arg_count == 2 {
-                vec![Signature::Vector, Signature::Scalar]
-            } else if arg_count == 3 {
-                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::PoissonCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::QuartileCompat => {
-            if arg_count == 2 {
-                vec![Signature::Vector, Signature::Scalar]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::RankCompat => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
         Function::StDevPCompat => vec![Signature::Vector; arg_count],
         Function::TInvCompat => args_signature_scalars(arg_count, 2, 0),
@@ -1058,12 +1035,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
             _ => vec![Signature::Error; arg_count],
         },
         Function::ModeMult | Function::ModeSingl => vec![Signature::Vector; arg_count],
-        Function::PercentileExc | Function::PercentileInc => {
-            vec![Signature::Vector, Signature::Scalar]
-        }
-        Function::PercentrankExc | Function::PercentrankInc => {
-            vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-        }
         Function::Permut | Function::Permutationa => vec![Signature::Scalar; 2],
         Function::Prob => match arg_count {
             3 => vec![Signature::Vector, Signature::Vector, Signature::Scalar],
@@ -1075,14 +1046,9 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
             ],
             _ => vec![Signature::Error; arg_count],
         },
-        Function::QuartileExc | Function::QuartileInc => {
-            vec![Signature::Vector, Signature::Scalar]
-        }
-        Function::Trimmean => vec![Signature::Vector, Signature::Scalar],
         Function::Gauss => args_signature_scalars(arg_count, 1, 0),
         Function::Harmean => vec![Signature::Vector; arg_count],
         Function::Kurt => vec![Signature::Vector; arg_count],
-        Function::Large => vec![Signature::Vector, Signature::Scalar],
         Function::MaxA => vec![Signature::Vector; arg_count],
         Function::Median => vec![Signature::Vector; arg_count],
         Function::MinA => vec![Signature::Vector; arg_count],
@@ -1090,7 +1056,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::RankEq => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
         Function::Skew => vec![Signature::Vector; arg_count],
         Function::SkewP => vec![Signature::Vector; arg_count],
-        Function::Small => vec![Signature::Vector, Signature::Scalar],
         // In the lifting table (SPEC-0011): `lifted.rs` derives these.
         lifting_table_functions!() => return None,
     })
@@ -1551,10 +1516,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::NormDistCompat => StaticResult::Scalar,
         Function::NormInvCompat => StaticResult::Scalar,
         Function::NormSInvCompat => StaticResult::Scalar,
-        Function::PercentileCompat => StaticResult::Scalar,
-        Function::PercentrankCompat => StaticResult::Scalar,
         Function::PoissonCompat => StaticResult::Scalar,
-        Function::QuartileCompat => StaticResult::Scalar,
         Function::RankCompat => reference_parameter::rank_static_result(args),
         Function::StDevPCompat => StaticResult::Scalar,
         Function::TInvCompat => StaticResult::Scalar,
@@ -1586,20 +1548,12 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Trend => StaticResult::Unknown,
         // Scalar-returning functions
         Function::ModeSingl => StaticResult::Scalar,
-        Function::PercentileExc => StaticResult::Scalar,
-        Function::PercentileInc => StaticResult::Scalar,
-        Function::PercentrankExc => StaticResult::Scalar,
-        Function::PercentrankInc => StaticResult::Scalar,
         Function::Permut => StaticResult::Scalar,
         Function::Permutationa => StaticResult::Scalar,
         Function::Prob => StaticResult::Scalar,
-        Function::QuartileExc => StaticResult::Scalar,
-        Function::QuartileInc => StaticResult::Scalar,
-        Function::Trimmean => StaticResult::Scalar,
         Function::Gauss => StaticResult::Scalar,
         Function::Harmean => StaticResult::Scalar,
         Function::Kurt => StaticResult::Scalar,
-        Function::Large => StaticResult::Scalar,
         Function::MaxA => StaticResult::Scalar,
         Function::Median => StaticResult::Scalar,
         Function::MinA => StaticResult::Scalar,
@@ -1607,7 +1561,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::RankEq => reference_parameter::rank_static_result(args),
         Function::Skew => StaticResult::Scalar,
         Function::SkewP => StaticResult::Scalar,
-        Function::Small => StaticResult::Scalar,
         // In the lifting table (SPEC-0011): `lifted.rs` derives these.
         lifting_table_functions!() => return None,
     })
