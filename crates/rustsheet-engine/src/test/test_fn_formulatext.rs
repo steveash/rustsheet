@@ -146,7 +146,9 @@ fn an_unknown_name_used_as_a_value_shares_the_call_name_spelling() {
     model._set("A4", "=Wib+1");
     model.evaluate();
 
+    assert_eq!(model._get_formula("A1"), "=Qux+1");
     assert_eq!(model._get_formula("A2"), "=Qux(1)");
+    assert_eq!(model._get_formula("A3"), "=wib(1)");
     assert_eq!(model._get_formula("A4"), "=wib+1");
 }
 

@@ -5,9 +5,9 @@
 //! declaration that binds it: `LET(x,5,X*2)` reads `LET(x,5,x*2)`, and `LET(x,1,LET(X,5,x))`
 //! reads `LET(x,1,LET(X,5,X))` (probes/let-name-use-spelling, T-1720).
 //!
-//! Excel keeps one spelling per such name, called or used as a value (T-1760), for the whole workbook, the first it meets in load
-//! order and then in edit order, case-insensitively: after `=foo(1)`, a typed `=Foo(1)` or
-//! `=FOO(1)` prints `=foo(1)` (probes/unknown-function-name-spelling,
+//! Excel keeps one spelling per such name, called or used as a value (T-1760), for the whole
+//! workbook, the first it meets in load order and then in edit order, case-insensitively: after
+//! `=foo(1)`, a typed `=Foo(1)` or `=FOO(1)` prints `=foo(1)` (probes/unknown-function-name-spelling,
 //! docs/excel-semantics/references.md "Unknown function call names", T-1719).
 
 use std::collections::HashMap;
