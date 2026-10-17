@@ -3,7 +3,7 @@ id: T-0426
 title: "Suite corpus-bench: pinned SpreadsheetBench and FUSE subset from the xlsx-corpus-bench manifest, crash-only first"
 milestone: M11
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
