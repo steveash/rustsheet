@@ -1325,4 +1325,9 @@ result, so an enclosing function never sees a number: `SERIESSUM(ACOS(1E+15),0,.
 Evidence (excel-graph): gen-m5/cd883013bea3b305 Calc!A23, gen-m6/3ee7ffc8d6ab061f Calc!A26,
 gen-m7/2bb922eef72e785e Calc!A30, gen-m7/93976dd9a3578ed9 Calc!A13. Implemented in
 `single_number_fn!` (functions/macros.rs), which maps any NaN result to `#NUM!`; ATANH is covered
-by the same macro, not by its own oracle cell.
+by the same macro, not by its own oracle cell (except +-1, below).
+
+ATANH(1) and ATANH(-1) are `#NUM!` too, at once: `IFERROR(ATANH(1),"err")` is "err", `ISERR(ATANH(1))` TRUE,
+`SUM(ATANH(1),1)` `#NUM!`; ATANH(0.9999999999999999) is 17.616361586450413 and ATANH(1.0000000000000002) `#NUM!`.
+ACOTH(1) and ACOTH(-1) are `#NUM!`. Evidence: probes/atanh-unit-argument (excel-graph, 2026-10-17, T-1569).
+`f64::atanh` returns an infinity at +-1 (not NaN), so ATANH has its own check beside the macro's NaN mapping.

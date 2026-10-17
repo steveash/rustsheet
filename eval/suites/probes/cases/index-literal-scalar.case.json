@@ -1,0 +1,28 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "INDEX of a literal or computed scalar first argument (number, text, boolean, arithmetic), an out-of-range index into it, and lifted indices over a scalar function result (T-1645).",
+  "tags": [
+    "M2",
+    "lookup",
+    "arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=INDEX(5,1)",
+        "A2": "=INDEX(\"a\",1,1)",
+        "A3": "=INDEX(1+1,1)",
+        "A4": "=INDEX(TRUE,1,1)",
+        "A5": "=INDEX(5,2)",
+        "A6": "=INDEX(5,1,2)",
+        "A7": "=INDEX(5,0)",
+        "A8": "=INDEX(LET(x,7,x),1)",
+        "A10": "=INDEX(XMATCH(2,{1,2,3}),{1,2})",
+        "A12": "=INDEX(5,{1;1})"
+      }
+    }
+  ],
+  "expected": {}
+}

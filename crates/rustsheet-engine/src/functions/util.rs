@@ -159,17 +159,6 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
     }
 }
 
-/// Whether `node` is an IF or CHOOSE call, which hands on the branch it picks.
-pub(crate) fn picks_a_branch(node: &Node) -> bool {
-    matches!(
-        node.ungrouped(),
-        Node::FunctionKind {
-            kind: Function::If | Function::Choose,
-            ..
-        }
-    )
-}
-
 /// Whether `node` is `@IF(...)`: the `@` of an IF keeps the reference the IF picks.
 pub(crate) fn is_at_if(node: &Node) -> bool {
     matches!(
