@@ -253,6 +253,69 @@ counts above: best 57, 58, 38 and 4, union 174/205 over the four T-1187 families
 row, 177/205, also counts libm and the engine). The engine today: 44/205 bit-exact, 203/205 within 4 ulp.
 Status: OPEN (no candidate found); T-1186 stays blocked.
 
+## One incomplete-gamma kernel under ERF, ERFC, NORM, CHISQ, GAMMA.DIST and POISSON (T-1778)
+Rule: these functions are bit-identical compositions of one another, so their last digits come from one
+kernel: the regularized incomplete gamma P(a, z) and its upper half Q(a, z). At shape 0.5 the probes cannot
+tell whether GAMMA.DIST calls an erf/erfc pair or the reverse; it takes its own path there (below).
+- `NORM.S.DIST(x,TRUE)` = `ERFC.PRECISE(-x*SQRT(0.5))/2` (1,545 of 1,545 points, the whole norm-s-dist
+  fit sweep). The scaling is a multiply by the double sqrt(0.5): `-x/SQRT(2)` matches at only 692 of the
+  1,352 points where the two inputs differ (both cases). `GAUSS(x)` = `NORM.S.DIST(x,TRUE)-0.5` (1,545 of 1,545).
+  `NORM.DIST(x,m,s,TRUE)` = `NORM.S.DIST((x-m)/s,TRUE)` and
+  `LOGNORM.DIST(x,m,s,TRUE)` = `NORM.DIST(LN(x),m,s,TRUE)` (60 of 60 each).
+- `ERF.PRECISE(x)` = `GAMMA.DIST(x^2,0.5,1,TRUE)` = `CHISQ.DIST(2*x^2,1,TRUE)`, and
+  `ERFC.PRECISE(x)` = `CHISQ.DIST.RT(2*x^2,1)` (600 of 600, x from 2^-40 to 6). ERFC is computed directly:
+  `1-GAMMA.DIST(x^2,0.5,1,TRUE)` matches it at only 17 of the 201 points with x >= 0.5.
+- `CHISQ.DIST(x,k,TRUE)` = `GAMMA.DIST(x/2,k/2,1,TRUE)` = `GAMMA.DIST(x,k/2,2,TRUE)`,
+  `GAMMA.DIST(x,a,b,TRUE)` = `GAMMA.DIST(x/b,a,1,TRUE)`, and `POISSON.DIST(k,m,TRUE)` =
+  `CHISQ.DIST.RT(2*m,2*(k+1))`, an upper Q (60 of 60 each). `T.DIST(x,n,TRUE)` for x < 0 =
+  `T.DIST.2T(-x,n)/2` (60 of 60).
+- Not identities (the lower count is the closest form tried): `EXPON.DIST` against `1-EXP(-l*x)` 58/60 and
+  `GAMMA.DIST(x,1,1/l,TRUE)` 57/60; `BINOM.DIST(k,n,p,TRUE)` against `BETA.DIST(1-p,n-k,k+1,TRUE)` 53/60;
+  `F.DIST` against its BETA.DIST forms 44/60; `CHISQ.DIST.RT` against `1-CHISQ.DIST` 18/60;
+  `POISSON.DIST` against `1-GAMMA.DIST(m,k+1,1,TRUE)` 38/60.
+- ERF is odd (460 of 460 pairs). `ERFC.PRECISE(-d)` = fl(1+`ERF.PRECISE(d)`) at 340 of 347 points with
+  0 <= d < 0.5 and `ERF.PRECISE(d)` = `ERFC.PRECISE(-d)`-1 at 213 of 304 with d >= 0.5, so neither half is a
+  plain reflection of the other everywhere.
+What the probes show about the kernel itself (none of it yet reproduces Excel bit for bit):
+- Tiny x: `ERF.PRECISE(2^-k)*2^k` = 1.1283791670955128 for every k from 27 to 79, one ulp above
+  fl(2/sqrt(pi)) = 1.1283791670955126. Excel's GAMMA, GAMMALN and 2/SQRT(PI()) all give the ...126 values,
+  and m*2^-30 inputs deviate from a single product fl(c*x) for every double c, so the small-x path rounds
+  at least twice.
+- Generic shape a: at z = m*2^-60, `GAMMA.DIST(z,a,1,TRUE)` for a = 2, 3, 10 is off by up to 640E-16
+  relative, and that error follows the rounding of fl(a*fl(ln z)) to within about 2E-16 (the docs/research
+  script prints both). For a = 10 a constant -25E-16 remains, the error of Excel's own
+  `GAMMALN(11)` = 15.104412573075518 (true 15.1044125730755153). So the prefix z^a/Gamma(a+1) is
+  exp(a*ln z) times a factor built from Excel's GAMMALN, not pow. The density
+  `GAMMA.DIST(z,a,1,FALSE)` carries the CDF's relative error exactly (a = 2, 3): it is the same prefix
+  divided by z.
+- Shape 0.5's CDF does not take that path: it stays within 2 ulp at tiny z, while its density there is off
+  by up to 12.5 ulp, as exp(0.5*ln z) would be. Shape 1 is not on it either: it returns z exactly at
+  z = m*2^-60 (100 of 100), where exp(fl(ln z)) would be off by up to 16 ulp.
+- ERFC tail: removing the rounding of a naive `exp(-fl(x*x))` cuts Excel's error from a standard deviation
+  of 115 ulp to 1.85 ulp for x >= 4 (1,702 points). The rest (at most 7.4 ulp) has a smooth part of up to
+  about +-2.5 ulp: positive around x = 6.5-7.5, 9-9.75, 13-15.5 and 19.75-22.75, negative around
+  10.25-11.75, 16-19.5 and 23-23.75 (means over bins of 0.25). It is the drift T-1187 reported.
+Candidates that do not reproduce Excel (exact matches):
+- Small-x erf (1,875 to 2,677 points, x < 0.5): Taylor series, CALERF and Cephes rationals with
+  c = ...128 in four operation orders, at most 772 (41%); Taylor coefficients rounded to 15, 16 or 17
+  digits, 623; incomplete-gamma series (Numerical Recipes and Cephes forms, seven prefixes, six tolerances), 703;
+  the same with sqrt(z), exp(-z) and Gamma constants within 3 ulp, 782 of 2,533.
+- Generic-shape prefix: exp(fl(a*fl(ln z))) times exp(-GAMMALN(a+1)), 1/GAMMA(a+1) or exp(-GAMMALN(a))/a
+  in 14 orders: at most 285 of 600 (a in {2, 3, 1.5, 0.25, 2.5, 10}); the residual is within 2 ulp. Cephes
+  `exp` and `log` (Moshier's cmath) in place of libm: 269.
+- ERFC tail shape: the exact-arithmetic error curves of CALERF, Cephes `erfc` and Boost's 53-bit erfc
+  are flat (within 0.35 ulp) and do not follow Excel's drift; CALERF with coefficients cut to 10 to 18
+  digits shifts the curve but adds no drift. Numerical Recipes `gcf` (tolerance 1E-15 or below) and the
+  Cephes `igamc` fraction stop with a truncation error below 0.03 ulp for x >= 5, so truncation is not
+  the drift. The asymptotic series stopped by a relative or absolute tolerance from 3E-17 to 3E-14
+  correlates at most 0.39 with it.
+Evidence: probes-numeric cases `kmyst-norm-erfc-a`, `kmyst-norm-erfc-b`, `kmyst-erf-gamma`,
+`kmyst-erf-tiny`, `kmyst-erf-dense`, `kmyst-erfc-dense`, `kmyst-gamma-tiny` and `kmyst-kernel-map`
+(excel-graph, 2026-10-17). `uv run python ../docs/research/t1778_incomplete_gamma_kernel_map.py` in tools/
+reprints the identity counts, the tiny-x constant, the GAMMA.DIST error tracking and the ERFC tail figures.
+Status: VERIFIED (identities, constant, error structure); the kernel's exact operation sequence is OPEN.
+Tasks: T-1778; T-0968, T-1187, T-0971, T-0972 inherit the map.
+
 ## RANK of a non-reference array
 Rule: RANK, RANK.EQ and RANK.AVG need a reference as their second argument. An array that is not a reference
 (`IF(A1:C1>0,A1:C1)`, 1x3; `IF(A1:B2>0,A1:B2)`, 2x2) gives `#VALUE!` in every element of the array's own shape that is not an error (a spill), so
