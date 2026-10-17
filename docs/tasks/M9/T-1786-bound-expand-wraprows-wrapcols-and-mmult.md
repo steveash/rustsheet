@@ -3,7 +3,7 @@ id: T-1786
 title: "Bound EXPAND, WRAPROWS, WRAPCOLS and MMULT results by check_array_size before allocating; check XMATCH"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: done
 priority: P0
 size: M
 tier: opus
@@ -23,10 +23,30 @@ Found by the T-1767 security review of SPEC-0011 ("Not driver paths, same hole")
 The bound is the existing DEVIATION (docs/excel-semantics/arrays.md "Array results above 1,048,576 cells"): `#ERROR!` above 2^20 cells and `#VALUE!` past the grid. Check the size in `usize` with saturating or checked arithmetic, before any `with_capacity` or `vec!`. Excel's own results for valid sizes must not change: arrays.md has EXPAND's, WRAPROWS's and WRAPCOLS's evidenced rules (WRAPCOLS of a single value, wrap_count clamping), so keep them.
 
 ## Acceptance criteria
-- [ ] Unit tests with explicit ranges on a filled fixture: `=EXPAND(1,1E9,1E9)`, `=ROWS(WRAPCOLS(A1:A10,1E9))`, `=ROWS(WRAPROWS(A1:A10,1E9))` and `=ROWS(MMULT(A1:A1048576,A1:B1))` are `#ERROR!` (or the evidenced `#VALUE!`/`#NUM!` where Excel's rules decide first). Each test finishes in under a second in debug.
-- [ ] The XMATCH finding is in the Outcome, as a fix or as "bounded by …".
-- [ ] arrays.md's DEVIATION entry lists these functions. `make eval`: 0 regressions.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests with explicit ranges on a filled fixture: `=EXPAND(1,1E9,1E9)`, `=ROWS(WRAPCOLS(A1:A10,1E9))`, `=ROWS(WRAPROWS(A1:A10,1E9))` and `=ROWS(MMULT(A1:A1048576,A1:B1))` are `#ERROR!` (or the evidenced `#VALUE!`/`#NUM!` where Excel's rules decide first). Each test finishes in under a second in debug.
+- [x] The XMATCH finding is in the Outcome, as a fix or as "bounded by …".
+- [x] arrays.md's DEVIATION entry lists these functions. `make eval`: 0 regressions.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - HSTACK/VSTACK (T-1780), TEXTSPLIT (T-1781), the text broadcast (T-1771) and the lifting driver (T-1770).
+
+## Outcome
+EXPAND, WRAPCOLS, WRAPROWS and MMULT call `check_array_size` on their result shape before they
+allocate it. For EXPAND that is after its rows/columns rules, and for MMULT after its input checks,
+so Excel's `#VALUE!` for a blank or text input still comes first. `EXPAND(1,1E9,1E9)` and a
+wrap_count of 1E9 are `#VALUE!` (a dimension past the grid). An in-grid shape above 2^20 cells is
+`#ERROR!`: `ROWS(EXPAND(1,2000,1000))`, and `ROWS(MMULT(A1:A2000,B1#))` with a 1,000-column B1#.
+WRAPCOLS/WRAPROWS first clamp wrap_count to the vector's length, as Excel does (arrays.md "WRAPROWS
+and WRAPCOLS", VERIFIED; it was T-1630's, whose task now notes it), so `ROWS(WRAPCOLS(A1:A10,1E9))`
+is 10 and the padding is at most wrap_count - 1 cells. The check still runs: n = 2^20 with
+wrap_count = 2^20 - 1 pads to about 2^21 cells (`#ERROR!`). `check_array_size` now multiplies with
+`saturating_mul`, so a 32-bit `usize` (wasm32) cannot wrap the 2^34 grid product past the check. MMULT's inputs were already bounded by `eval_to_array`, and with the
+output bound its work is at most 2^30 multiply-adds.
+XMATCH is bounded by its inputs: it lifts nothing and builds no result array. Its `lookup_array`
+must be one row or one column. A range becomes a `SearchVector` over its used part
+(`range_search_vector`, the rest a virtual run of blanks), and an array constant or computed array
+was bounded when it was built. arrays.md's DEVIATION entry lists the four functions and the XMATCH
+finding. Tests: test/lookup_and_reference/array_result_bound.rs, under a second in debug. Eval delta: see
+the PR (probes: 3,119 -> 3,109 known failures, the clamp fixes 10 cells of
+probes/dynamic-array-reshape-and-isomitted; 0 regressions in every suite).
