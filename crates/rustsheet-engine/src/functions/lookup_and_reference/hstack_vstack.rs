@@ -5,6 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    limits::check_array_size,
     model::Model,
 };
 
@@ -34,6 +35,17 @@ impl Model {
         let max_rows = arrays.iter().map(|a| a.len()).max().unwrap_or(0);
         if max_rows == 0 {
             return CalcResult::Array(vec![]);
+        }
+
+        // The padded shape is known from the arguments: refuse one above the array limit before
+        // any padding or copying (DEVIATION, arrays.md "Array results above 1,048,576 cells";
+        // T-1780). A column next to a row is their product.
+        let total_cols = arrays
+            .iter()
+            .map(|a| a.first().map_or(0, Vec::len))
+            .fold(0_usize, usize::saturating_add);
+        if let Some((error, message)) = check_array_size(max_rows, total_cols) {
+            return CalcResult::new_error(error, cell, message);
         }
 
         let na = ArrayNode::Error(Error::NA);
@@ -87,8 +99,17 @@ impl Model {
             return CalcResult::Array(vec![]);
         }
 
+        // Refuse a padded shape above the array limit before any padding (T-1780, as HSTACK).
+        let total_rows = arrays
+            .iter()
+            .map(Vec::len)
+            .fold(0_usize, usize::saturating_add);
+        if let Some((error, message)) = check_array_size(total_rows, max_cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
+
         let na = ArrayNode::Error(Error::NA);
-        let mut result: Vec<Vec<ArrayNode>> = Vec::new();
+        let mut result: Vec<Vec<ArrayNode>> = Vec::with_capacity(total_rows);
         for arr in arrays {
             for row in arr {
                 let mut padded = row;
