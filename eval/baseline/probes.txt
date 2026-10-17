@@ -3655,9 +3655,6 @@ F	probes/text-format-length-limit-f.case.json	Sheet1!A42
 F	probes/text-format-length-limit-j.case.json	Sheet1!A43
 F	probes/text-format-length-limit-l.case.json	Sheet1!A40
 F	probes/text-format-length-limit-m.case.json	Sheet1!A22
-F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D18
-F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D19
-F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D26
 F	probes/volatile-invariant.case.json	Calc!F1
 F	probes/volatile-invariant.case.json	Calc!F2
 F	probes/volatile-invariant.case.json	Calc!F3
