@@ -1510,10 +1510,10 @@ cells, as a dynamic formula would.
 Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16).
 Not implemented: the text is identical to the dynamic formula's, which spills, so the `#VALUE!`
 needs the engine to remember that a formula is legacy (spec T-1727, then T-1713); ours adds an `@`
-on the calls (N gives the top-left value, T "") and on ranges (`#VALUE!` off their rows, T-1728); the IFERROR `@`, the
+on array-valued calls (N gives the top-left value, T ""); a range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms, gets none under N since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator, an array constant or another call keeps the old `@`; CHOOSE and INDEX over references and every T over a range keep the old `@`, unprobed: T-1768); the IFERROR `@`, the
 SWITCH spill and the `@IF` are T-1717's.
 Status: VERIFIED (excel-graph)
-Tasks: T-1713, T-1717, T-1727, T-1728
+Tasks: T-1713, T-1717, T-1727, T-1728, T-1768
 
 ## `@` of a non-reference array as a function argument is its top-left value
 Rule (probes/rank-at-if-ref, excel-graph, 2026-10-15, T-1596): where an argument takes a reference (aggregates, RANK's `ref`,
