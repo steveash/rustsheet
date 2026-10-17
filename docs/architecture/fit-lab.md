@@ -150,6 +150,7 @@ Candidates that model Excel's rounding use `Fraction`s:
 | `power-nonint`, `power-recip`, `power-mantissa`, `power-large-int`, `power-sqrt5` | 183, 45, 76, 224, 20 | the pow models on the T-1319, T-0221 and T-1311 power sweeps |
 | `gamma-int`, `gammaln-int`, `gamma-half-int` | 171, 171, 62 (T-1042) | factorial and sqrt(pi) recurrences per rounding model and order, correctly rounded, libm |
 | `beta-dist`, `f-dist`, `t-dist` | 283, 33, 150 (m9-beta-dist-a*, m9-legacy-betadist; m9-f-dist, m9-legacy-fdist, t1049-fdist; m9-t-dist-cdf, t1048-tdist) | I_x(a,b): Numerical Recipes betai, Cephes incbet per x^a and Gamma source, Cephes plus Excel's closed forms, the best combination, correctly rounded (T-1744); F and t map their arguments onto I_x |
+| `beta-inv` | 212 (m9-beta-inv, m9-legacy-betainv) | bisection to the crossing (lower end, upper end, midpoint) on the correctly rounded I_x, the T-1744 best combination, Cephes incbet and NR betai (T-1745) |
 
 The `erfc-tail` fit replaces `docs/research/t1187-erfc-candidates.py`. It reproduces that
 script's counts: best 57, 58, 38 and 4, with a union of 174/205.

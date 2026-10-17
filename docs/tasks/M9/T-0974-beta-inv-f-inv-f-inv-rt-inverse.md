@@ -49,3 +49,6 @@ T-1044 incomplete-beta sweep, never blind.
 
 ## Out of scope
 The CDF kernel (T-0970); T.INV (T-0967); legacy BETAINV/FINV evidence (T-1047).
+
+## Fit result (T-1745)
+Excel's BETA.INV returns a crossing point of its own BETA.DIST at 155 of 188 probe points (statistics.md, "BETA.INV solves Excel's own CDF to the crossing"). Solve the engine's BETA.DIST to adjacent doubles rather than to a tolerance; with the correctly rounded I_x that gets 87 of 212 cells, against 34 today, and it improves as T-0970's forward kernel does.

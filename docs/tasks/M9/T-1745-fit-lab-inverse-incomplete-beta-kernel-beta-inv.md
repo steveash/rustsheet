@@ -3,7 +3,7 @@ id: T-1745
 title: "Fit lab: inverse incomplete beta kernel (BETA.INV, F.INV, T.INV) against the oracle sweeps"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -37,11 +37,50 @@ this way (T-1524, T-1525, T-1533; implemented by T-0901 and T-0916). It has no f
   mapping).
 
 ## Acceptance criteria
-- [ ] `fitlab/kernels/beta_inv.py` adds fits over the sweeps above, shipped in `--list` and fit-lab.md.
-- [ ] Every candidate's counts (bit-exact, ≤ 4 ulp, ≤ 1e-9, iterate hits) are recorded in the Outcome,
+- [x] `fitlab/kernels/beta_inv.py` adds fits over the sweeps above, shipped in `--list` and fit-lab.md.
+- [x] Every candidate's counts (bit-exact, ≤ 4 ulp, ≤ 1e-9, iterate hits) are recorded in the Outcome,
   with the engine's row.
-- [ ] docs/excel-semantics/statistics.md records the fitted iteration or the best candidate.
-- [ ] Time-boxed per decision 0056; `make check` green; reviewers approve.
+- [x] docs/excel-semantics/statistics.md records the fitted iteration or the best candidate.
+- [x] Time-boxed per decision 0056; `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the engine (T-0974).
+
+## Outcome
+Done 2026-10-17.
+- **Fit.** `uv run rustsheet-fitlab beta-inv` (`fitlab/kernels/beta_inv.py`), over 212 cells from
+  m9-beta-inv and m9-legacy-betainv.
+- **Probe.** probes-numeric/t1745-beta-inv-roundtrip (excel-graph). For each of the 188 numeric
+  sweep points it holds Excel's x and its two neighbouring doubles as constants, BETA.DIST of each,
+  and BETA.INV again.
+- **Finding.** Excel's x is a crossing of its own CDF at 155 of 188 points: BETA.DIST(x) = p at 79,
+  and p lies between x and a neighbour at 76, on either side (36 at or above, 40 below). Of the
+  other 33, 22 are flat-CDF tiny-x points, and at 11 x stops a few CDF ulps short of the crossing
+  (BETA.INV(0.5,10,10) = 0.5, BETA.DIST(0.5,10,10,TRUE) = 0.5000000000000002), which suggests a
+  tolerance stop. So the quantile follows the forward kernel (T-1744). Excel's
+  start, step and stop rule cannot be fitted until that forward kernel matches.
+- **Iterate hits.** Not scored, because no forward candidate is Excel's CDF.
+
+Exact / ≤4 ulp / ≤1e-9 (202 cells with numeric arguments; the engine also scores the others):
+
+| candidate (bisection to adjacent doubles, returned end) | beta-inv |
+|---|---|
+| midpoint, correctly rounded I_x | 87 / 173 / 202 |
+| upper end, correctly rounded I_x | 75 / 171 / 202 |
+| midpoint, Cephes incbet as published | 73 / 159 / 202 |
+| midpoint, T-1744 best combination | 65 / 151 / 198 |
+| upper end, Cephes | 64 / 163 / 202 |
+| upper end, best combination | 56 / 148 / 198 |
+| lower end, correctly rounded I_x | 54 / 173 / 202 |
+| lower end, best combination | 44 / 149 / 198 |
+| lower end, Cephes | 43 / 157 / 202 |
+| midpoint, NR betai | 39 / 112 / 202 |
+| upper end, NR betai | 36 / 115 / 202 |
+| engine (statrs `inverse_cdf`) | 34 / 81 / 207 |
+| lower end, NR betai | 22 / 115 / 202 |
+
+**Status.** The bit-exact count rose from 34 to 87, so the task is done, not blocked (decision
+0056).
+
+**Scope.** F.INV, F.INV.RT, T.INV and T.INV.2T are not scored here. They invert the F and t
+mappings of the forward kernel, and their own fits wait until T-0974 has the beta inverse.
