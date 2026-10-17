@@ -21,7 +21,7 @@ use crate::{
 };
 
 /// Applies `f` to every element of a 2-D array, keeping its shape.
-fn map_elements(
+pub(crate) fn map_elements(
     values: &[Vec<ArrayNode>],
     f: impl Fn(&ArrayNode) -> ArrayNode,
 ) -> Vec<Vec<ArrayNode>> {

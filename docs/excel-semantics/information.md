@@ -276,10 +276,17 @@ Status: VERIFIED (excel-graph)
 Tasks: T-1616, T-1713, T-1727
 
 ## T over an array lifts element-wise (T-1713)
-Rule: in a dynamic formula, T of an array value lifts element-wise like N: `=T(IF(1,{"a";"b"}))` spills "a", "b".
-T of a multi-cell range does not lift (one "", text.md "Text function argument modes"). Error and number elements
-are unprobed.
-Evidence: probes/legacy-array-result S!G1:G2 (excel-graph, 2026-10-16).
-Not implemented: ours gives one "" with no spill (T-1729).
+Rule: in a dynamic formula, T of an array value lifts element-wise like N: text elements are kept
+(also ""), error elements are kept, and number and boolean elements become "":
+`=T({"a",1,#N/A,TRUE,""})` spills "a", "", `#N/A`, "", "", and `=T(IF(1,{"a";"b"}))` spills "a", "b".
+It nests (`T(T({"b",2}))` "b", "") and consumers see the lifted array (`ROWS(T({1;2;3}))` 3,
+`CONCAT(T({"x",1,"y"}))` "xy"). An array from a range expression lifts too (`T(H1:H2*1)` with
+H1 = "x", H2 = 2 is `#VALUE!`, ""). A bare multi-cell range does not lift: see references.md
+"T of a multi-cell range is not intersected" (`T(H1:H2)` is one "x", the top-left cell).
+In a legacy cell, T over an array-valued IF is `#VALUE!` instead (references.md "Legacy N and T over
+a reference-returning call"; not implemented, T-1713, which also owns the legacy spill rows
+probes/legacy-array-result S!G11 and probes/legacy-n-t-reference-args S!S11, decision 0069).
+Evidence: probes/legacy-array-result S!G1:G2, probes/t-array-lift (excel-graph, 2026-10-16).
+Implemented in fn_t (T-1729).
 Status: VERIFIED (excel-graph)
-Tasks: T-1729
+Tasks: T-1713, T-1729
