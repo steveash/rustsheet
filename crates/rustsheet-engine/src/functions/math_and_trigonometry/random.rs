@@ -54,18 +54,19 @@ impl Model {
         if matches!(first, CalcResult::EmptyArg) || matches!(second, CalcResult::EmptyArg) {
             return CalcResult::new_error(Error::NA, cell, "bottom or top omitted".to_string());
         }
-        // Excel: a multi-cell range bound is `#VALUE!` (no lift, no implicit intersection:
-        // probes/randbetween-lift-operands A7:A11, B2:B4, T-1316); a single-cell reference is a
-        // scalar.
-        for bound in [&first, &second] {
-            if matches!(bound, CalcResult::Range { left, right } if left != right) {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "RANDBETWEEN bound is a range".to_string(),
-                );
-            }
-        }
+        // Excel: a multi-cell range bound is a `#VALUE!` operand (no lift, no implicit
+        // intersection: probes/randbetween-lift-operands A7:A11, B2:B4, T-1316) that takes its
+        // place in the top-first error order like any other error, and broadcasts against an
+        // array bound (probes/randbetween-range-error-bounds, T-1793); a single-cell reference
+        // is a scalar.
+        let range_error = |model: &mut Self, v: CalcResult| match v {
+            CalcResult::Range { left, right } if left != right => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "RANDBETWEEN bound is a range".to_string(),
+            )),
+            scalar => model.cast_to_number_no_bools(scalar, cell),
+        };
         // An array bound lifts, one draw per element (probes/volatile-invariant F1:F9); a boolean
         // element is `#VALUE!` like a scalar boolean (probes/randbetween-lift-operands A1:A3, A12).
         if [&first, &second]
@@ -92,20 +93,18 @@ impl Model {
                         ),
                         cell,
                     ),
-                    scalar => self
-                        .cast_to_number_no_bools(scalar, cell)
-                        .map(NumberOrArray::Number),
+                    scalar => range_error(self, scalar).map(NumberOrArray::Number),
                 })
                 .collect();
             return self.lift_number_operands(operands, cell, "Invalid arguments", |[t, b]| {
                 randbetween_draw(b, t)
             });
         }
-        let top = match self.cast_to_number_no_bools(second, cell) {
+        let top = match range_error(self, second) {
             Ok(f) => f,
             Err(e) => return e,
         };
-        let bottom = match self.cast_to_number_no_bools(first, cell) {
+        let bottom = match range_error(self, first) {
             Ok(f) => f,
             Err(e) => return e,
         };

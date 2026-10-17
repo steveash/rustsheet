@@ -3,7 +3,7 @@ id: T-1793
 title: "Probe RANDBETWEEN with a multi-cell range bound beside an error bound, both positions"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -24,3 +24,9 @@ T-1782 review (fidelity, MINOR): `fn_randbetween` (functions/math_and_trigonomet
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/randbetween-range-error-bounds` (20 cells, excel-graph). A multi-cell range bound is a
+`#VALUE!` operand in the top-first error order and broadcasts against an array bound (the engine
+returned a whole-result `#VALUE!` first). `fn_randbetween` now feeds it to `lift_number_operands` as
+an error operand. Rules in numbers.md.
