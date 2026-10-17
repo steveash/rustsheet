@@ -1161,13 +1161,22 @@ Tasks: T-1082, T-1190
 ## COMBIN is inexact
 Rule: Excel's COMBIN is not the exact binomial coefficient either, and its rounding differs from MULTINOMIAL's:
 `COMBIN(10,4)` = 209.99999999999997 where `MULTINOMIAL(4,6)` = 209.99999999999977 (exact 210 for both);
-`COMBIN(40,20)` 137846528819.99997, `COMBIN(100,50)` 1.0089134454556413e+29, `COMBIN(170,20)` 5.221123511163077e+25,
-`COMBIN(170,70)` 6.491922168400297e+48 and `COMBIN(170,85)` 9.144841845131565e+49. `COMBIN(5,2)` 10, `COMBIN(10,5)` 252,
-`COMBIN(170,1)` and `COMBIN(170,169)` 170 are exact. Excel's algorithm is not identified.
-Evidence: probes/multinomial-algorithm-sweep B1:B10 (excel-graph, 2026-10-15, T-1190).
-Ours: the exact value (7 of the 10 cells fail).
-Status: VERIFIED (values); algorithm UNVERIFIED
-Tasks: T-1598
+`COMBIN(9,3)` 83.99999999999999, `COMBIN(15,3)` 455.00000000000006, `COMBIN(40,20)` 137846528819.99997, `COMBIN(100,50)`
+1.0089134454556413e+29, `COMBIN(170,85)` 9.144841845131565e+49. It is symmetric (`COMBIN(n,k)` = `COMBIN(n,n-k)` bit for bit),
+k = 0, 1 and 2 are always exact, and it stays finite up to `COMBIN(1029,514)` 1.4298206864989032e+308; `COMBIN(1030,514)` is `#NUM!`.
+The algorithm (fit, T-1598): with `j = min(k, n-k)`, one double running product multiplies the rounded quotients
+`(n-j+i)/(i+1)` for i = 1..j-1 in that order, and the result is that product times `n` (j = 0 gives 1). The numerators
+pair with the denominators shifted by one: `COMBIN(9,3)` is `((7/2)*(8/3))*9`. This reproduces all 841 numeric cells
+of probes/combin-algorithm-sweep bit-exactly. Rejected candidates (scores out of 841; the correctly rounded value scores
+572): the textbook loop `r*(n-j+i)/i` (569), `r*((n-j+i)/i)` and the other natural pairings and orders over min, max or k
+(at most 570), the same shifted pairing with `n` first (624) or over k instead of min(k, n-k) (636), the quotient not
+rounded on its own (`r*(n-j+i)/(i+1)`, 569), and natural-log, log10 and lgamma sums (at most 6 of the 87 j = 3 cells).
+Evidence: probes/multinomial-algorithm-sweep B1:B10 (excel-graph, 2026-10-15, T-1190); probes/combin-algorithm-sweep
+A1:A844 (every k for n = 1..32, and small, n/3, n/2 and near-n k for n = 40..1030; excel-graph, 2026-10-17, T-1598).
+Ours: the fitted algorithm (`combin`, functions/math_and_trigonometry/mathematical.rs). Every factor is at least 1, so the
+product overflows within a few hundred factors for a large j, which bounds the work (directive 5).
+Status: VERIFIED (values); algorithm a fit, 841/841 bit-exact
+Tasks: T-1190, T-1598
 
 ## Huge arguments of trig functions
 Rule: `COS(1E+15)` is `#NUM!` in Excel (the argument is too large to reduce). Errors from a left operand win over a
