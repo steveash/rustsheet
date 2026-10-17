@@ -3,7 +3,7 @@ id: T-1793
 title: "Probe RANDBETWEEN with a multi-cell range bound beside an error bound, both positions"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
