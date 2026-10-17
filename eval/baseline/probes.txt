@@ -2449,8 +2449,6 @@ F	probes/legacy-n-t-reference-args.case.json	S!A10
 F	probes/legacy-n-t-reference-args.case.json	S!A20
 F	probes/legacy-n-t-reference-args.case.json	S!B10
 F	probes/legacy-n-t-reference-args.case.json	S!B20
-F	probes/legacy-n-t-reference-args.case.json	S!C10
-F	probes/legacy-n-t-reference-args.case.json	S!C20
 F	probes/legacy-n-t-reference-args.case.json	S!D11
 F	probes/legacy-n-t-reference-args.case.json	S!D20
 F	probes/legacy-n-t-reference-args.case.json	S!E10
@@ -2461,8 +2459,6 @@ F	probes/legacy-n-t-reference-args.case.json	S!H10
 F	probes/legacy-n-t-reference-args.case.json	S!H11
 F	probes/legacy-n-t-reference-args.case.json	S!I10
 F	probes/legacy-n-t-reference-args.case.json	S!I11
-F	probes/legacy-n-t-reference-args.case.json	S!J10
-F	probes/legacy-n-t-reference-args.case.json	S!J20
 F	probes/legacy-n-t-reference-args.case.json	S!K10
 F	probes/legacy-n-t-reference-args.case.json	S!K20
 F	probes/legacy-n-t-reference-args.case.json	S!L10
@@ -2474,8 +2470,6 @@ F	probes/legacy-n-t-reference-args.case.json	S!N20
 F	probes/legacy-n-t-reference-args.case.json	S!O10
 F	probes/legacy-n-t-reference-args.case.json	S!P11
 F	probes/legacy-n-t-reference-args.case.json	S!P20
-F	probes/legacy-n-t-reference-args.case.json	S!Q10
-F	probes/legacy-n-t-reference-args.case.json	S!Q20
 F	probes/legacy-n-t-reference-args.case.json	S!R10
 F	probes/legacy-n-t-reference-args.case.json	S!R11
 F	probes/legacy-n-t-reference-args.case.json	S!S10

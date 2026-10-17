@@ -3,7 +3,7 @@ id: T-1728
 title: "A legacy N or T reads a range argument as a reference, with no @"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -26,9 +26,12 @@ Keep the `@` on array-valued calls under N/T as it is (`N(@CHOOSE(1,{2;3}))` giv
 docs/excel-semantics/references.md "Legacy N and T over a reference-returning call".
 
 ## Acceptance criteria
-- [ ] probes/legacy-n-t-reference-args S!C10, C20, J10, J20, Q10, Q20 leave eval/baseline/probes.txt; no regressions (full eval, ironcalc-calc and poi too: the xlsx import uses the same rewrite).
-- [ ] references.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/legacy-n-t-reference-args S!C10, C20, J10, J20, Q10, Q20 leave eval/baseline/probes.txt; no regressions (full eval, ironcalc-calc and poi too: the xlsx import uses the same rewrite).
+- [x] references.md updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - N/T over array-valued calls (T-1713, T-1727).
+
+## Outcome
+Under N a range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms (the probed shapes; T and CHOOSE and INDEX over references are unprobed, T-1768), is read whole: no `@` is added to the argument, its arms or the call (`reads_reference_whole`). probes/legacy-n-t-reference-args C10, C20, J10, J20, Q10, Q20 now pass (probes known failures 3004 -> 2998, 6 fixed, 0 regressions; ironcalc-calc unchanged; the poi suite is not fetched in this environment, so CI's run is its check).
