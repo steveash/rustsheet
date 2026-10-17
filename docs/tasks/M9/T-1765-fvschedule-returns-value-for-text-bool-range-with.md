@@ -1,6 +1,6 @@
 ---
 id: T-1765
-title: "FVSCHEDULE returns #VALUE! for text/bool/range-with-text/blank schedule elements and text principal (probe fin-fvschedule)"
+title: "FVSCHEDULE returns #VALUE! for text/bool/text-cell schedule elements and a boolean principal (probe fin-fvschedule)"
 milestone: M9
 lane: functions-financial
 status: todo

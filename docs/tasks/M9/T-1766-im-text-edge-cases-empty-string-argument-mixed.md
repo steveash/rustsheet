@@ -14,7 +14,7 @@ depends_on: []
 IM* functions match Excel on empty-string, mixed-suffix, boolean and extreme-magnitude arguments, and number formatting of tiny parts.
 
 ## Context
-Probes `probes/eng-impower`, `eng-imsub`, `eng-imdiv` failing cells (A3/A4/A12/A13/A17 IMSUB; A3/A4/A12/A17/A19/A23/A24 IMDIV; A6/A11/A13/A16/A22/A9 IMPOWER). See docs/excel-semantics/engineering.md (T-1625 entry). Tiny-part formatting (1.22514845490862E-16 vs our plain decimal) probably needs the shared complex formatter.
+Probes `probes/eng-impower`, `eng-imsub`, `eng-imdiv` failing cells (A3/A4/A12/A13/A17 IMSUB; A3/A4/A12/A17/A19/A23/A24 IMDIV; A6/A11/A13/A16/A22/A9 IMPOWER). See docs/excel-semantics/engineering.md (T-1625 entry). IMPOWER computes different values from our polar form (tiny parts 1.22514845490862E-16 vs 1.22464679914735E-16; A22 differs in both parts), so the fix is the algorithm, not just the formatter.
 
 ## Acceptance criteria
 - [ ] all failing cells of the three probes pass; baseline shrinks
