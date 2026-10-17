@@ -107,14 +107,35 @@ labels in the case's `hypotheses`):
 - XIRR guess failures: guess -0.5 gives `#NUM!` for positive-rate flows. Guesses 1 and 10 give `#NUM!` for
   the negative-rate flows (`flow=C`, `D`, `Byr`). XIRR with day-serial dates 1..6 (`flow=B`) gives
   `#NUM!` for every guess.
-- MIRR: 32 of 35 cells already match the engine. `MIRR({-5,4},fr,rr)` is -0.19999999999999996 for
-  every rate pair.
+- MIRR: 32 of 35 cells matched the engine before T-1687 (all 35 since, "MIRR's evaluation order" below).
+  `MIRR({-5,4},fr,rr)` is -0.19999999999999996 for every rate pair.
 Engine today (after T-0916): 312 of 691 cells pass (IRR 161/216, RATE 47/368, XIRR 72/72, MIRR 32/35;
 before: 96, with IRR 19 and XIRR 9).
 Status: VERIFIED (observations). XIRR's and IRR's iterations are fitted (next two sections, T-1525,
 T-1533) and implemented (T-0916); RATE's update rule and stopping test are UNVERIFIED (partial findings
-below); MIRR's last digits are T-1687
+below); MIRR is fitted and implemented ("MIRR's evaluation order", T-1687)
 Implemented in: XIRR and IRR in functions/financial/financial_util.rs (T-0916, next two sections); RATE n/a
+
+## MIRR's evaluation order
+Rule: MIRR is `q^(1/(n-1)) - 1` with `q = (P * (1+rr)^n / (1+rr)) / -N`, where P sums the positive flows
+`x / (1+rr)^i` and N the negative flows `x / (1+fr)^i` (i = 0..n-1, in order), each power a running product
+(`(1+r)^i = (1+r)^(i-1) * (1+r)` from 1, so `(1+rr)^n` is the loop's last factor), and the root is Excel's `^`
+(SQRT for n = 3, else `exp(y * ln q)`; numbers.md "Non-integer exponents"). The `/ (1+rr)` step is not the
+same as compounding to `(1+rr)^(n-1)`: on two flows (exponent 1, so the root is exact) `MIRR({-100,120},fr,0.03)`
+is 0.19999999999999973 for every fr and `MIRR({-3,7},fr,rr)` is 1.333333333333333 at rr = 0.03, 0.07 and 0.12,
+while `(120/1.03)*1.03` and `(7/A)*A` round back to the flow; of the products of x with A, A^2, 1/A tried, only `((x/A)*A^2)/A` gives Excel's digits there.
+Microsoft's documented `-NPV(rr,pos)*(1+rr)^n / (NPV(fr,neg)*(1+fr))` is mathematically the same but scores 365.
+Fit (fit lab `mirr`, 467 cells of m9-fin-mirr and m9-fin-irr-rate; bit-exact / within 4 ulp): this formulation with
+Excel's `^` 467/467; with `exp(ln q/(n-1))` 456/467, libm `pow` 456/465; the same sums compounded as
+`P * (1+rr)^(n-1)` 413/451 at best; FV and PV computed directly with libm powers 407/447 at best; the NPV form
+365/437 at best (the engine before T-1687 was this NPV form, 207 of the first 252 sweep cells).
+Evidence: probes-numeric/m9-fin-mirr Calc!A1:A432 (excel-graph, 2026-10-17; A253:A432 are the 6x6 rate grids for
+{-100,120}, {-3,7}, {120,-100}, {-3,0,7} and {-3,7,0}); probes-numeric/m9-fin-irr-rate MIRR cells;
+ironcalc-calc/FINANCIAL/MIRR.xlsx (225 cells, all passing since).
+Status: VERIFIED (fit, 467/467 bit-exact)
+Implemented in: `fn_mirr` (functions/financial/mirr.rs). A rate of -1 keeps its own limit cases, and a ratio that is
+zero, negative or infinite keeps `powf`; neither is part of the fit.
+Tasks: T-1687
 
 ## XIRR is a bracketing bisection, not Newton
 Rule: XIRR finds a sign change of XNPV on a chain of trial rates, then bisects it. The chain starts at
@@ -348,8 +369,14 @@ PPMT, PV, RATE, RRI, SLN, SYD, VDB and IRR's guess: `ROWS(F(G1:G2,..))` is 2). T
 ACCRINT, ACCRINTM, AMORDEGRC, AMORLINC, the COUP* family, CUMIPMT, CUMPRINC, DISC, DOLLARDE, DOLLARFR, DURATION,
 EFFECT, FVSCHEDULE's principal, INTRATE, MDURATION, NOMINAL, ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD, PRICE,
 PRICEDISC, PRICEMAT, RECEIVED, TBILLEQ, TBILLPRICE, TBILLYIELD, XIRR's guess, XNPV's rate, YIELD, YIELDDISC and YIELDMAT
-are `#VALUE!` when their first scalar argument is a multi-cell range. Only the first scalar was probed over a range (XIRR's guess
-and XNPV's rate are the first scalars there). How the later scalars behave over a range is unverified.
+are `#VALUE!` when their first scalar argument is a multi-cell range. Of the later scalars only EFFECT's npery was probed over a range: `ROWS(EFFECT(0.1,D1:D60))` is
+`#VALUE!`, while the core `ROWS(PMT(0.1,D1:D60,100))` is 60 (probes/scalar-lift-shapes H12, H14, T-1767). The other
+later ATP scalars sampled are refused as well (probes/scalar-lift-open-a Y1-Y7, Y16-Y18, T-1777, scalar controls Z1-Z7, Z16-Z18):
+`ROWS(F(..))` is `#VALUE!` for PRICE's `frequency` and `basis`, COUPDAYS's and COUPNUM's `frequency`, COUPDAYS's `basis`,
+ACCRINT's `frequency` and `basis`, and DOLLARDE's and DOLLARFR's `fraction` over a range. An error scalar beside a
+range follows the function's own check order (ACCRINTM: `NA()` before the range is `#N/A`, after it `#VALUE!`; probes/scalar-lift-open-d W8-W15). Next to an array, the range
+makes every probed element `#VALUE!` (`EFFECT({0.1;0.2},M1:M60)`). See arrays.md "Scalar arguments lift: shapes,
+element errors, and the Analysis ToolPak range rule".
 NPV's values work like an aggregate. A range skips text, booleans and blanks: `NPV(0.1,L1:L8)` over
 -10000, "2750", TRUE, 4250, "x", blank, 3250, 2750 is -1258.4522915101434, the NPV of -10000, 4250, 3250, 2750.
 Typed arguments are coerced: `NPV(0.1,-10000,"2750",TRUE,4250)` = -3914.6233180793665, the NPV of
@@ -373,6 +400,24 @@ ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD and YIELD
 annuity, NPV and solver misses are T-0901's and T-0916's.
 Status: VERIFIED (excel-graph)
 Tasks: T-1084, T-1372, T-1373, T-1374
+
+## Discount-security functions: settlement 0, basis and argument modes
+Rule: INTRATE, PRICEDISC and YIELDDISC accept settlement serial 0 and compute with it (`INTRATE(0,43466,1000,1100)` =
+0.0008403165192222404, `PRICEDISC(0,43466,0.05,100)` = -495.0138888888889, `YIELDDISC(0,43466,95,100)` =
+0.00044227185222223174), whereas RECEIVED, PRICEMAT and YIELDMAT return #NUM! for settlement 0 (PRICEMAT and
+YIELDMAT possibly because issue > settlement: inferred, the probe cannot tell it from a rejection of settlement 0 itself). All six: basis 5 and -1 are #NUM!, a fractional basis truncates (1.9 is 1), a text
+basis "1" is coerced, a boolean basis is #VALUE!, text dates are parsed, fractional dates truncate, settlement >= maturity
+is #NUM!, and a zero or negative investment, price or redemption (probed for INTRATE, PRICEDISC and YIELDDISC; RECEIVED's investment) is #NUM!, as is a zero or negative PRICEDISC discount; RECEIVED is #NUM! once 1 - discount*yearfrac = 0 (the "< 0" side is inferred, not probed) (`RECEIVED(...,1000,1)` is #NUM!, `...,0.99` is 99999.99999999991); a negative PRICEMAT/YIELDMAT rate or yield price is #NUM! (PRICEMAT and YIELDMAT accept a
+zero rate; issue after settlement is #NUM!). Basis 2 is the only mode whose result differs on a one-year span
+(actual/360); bases 0, 1, 3 and 4 agree there.
+PRICEMAT and YIELDMAT count the settlement-to-maturity days as DSM = YEARFRAC-days(issue,maturity) - days(issue,settlement), not
+a direct 30/360 count: on 2018-02-28 to 2018-03-30 basis 0 and basis 4 agree for them (A103 = A104 = 100.05774336283186,
+A126 = A127 = 0.271557884707002, 32 days), whereas INTRATE, PRICEDISC, RECEIVED and YIELDDISC give different results for
+the two bases (INTRATE A14 = 1.2000000000000002 for 30 days, A15 = 1.125 for 32). Ours already matches (`get_mat_factors`).
+Evidence: probes/discount-security-modes (135 cells, excel-graph, 2026-10-17, T-1624).
+Ours: the settlement-0 cells return #NUM! (T-1757); the other mismatches (42 of 45) are last-digit misses in the T-1374 class.
+Status: VERIFIED (excel-graph)
+Tasks: T-1624, T-1757, T-1374
 
 ## PMT when (1+rate)^nper overflows
 Rule: `PMT(100,184,439103)` is not an error, although 101^184 overflows a double: `FLOOR(PMT(100,184,439103),<#DIV/0!>)`
@@ -540,3 +585,16 @@ Macintosh Excel; all 273 cells bit-exact, T-1475); the same formulation is bit-e
 probes fin-argument-modes H313, date-system-1904-financial A29:A30 and -shift A32.
 Status: VERIFIED (desktop-cached)
 Tasks: T-1475
+
+## T-1625 probes: VDB, AMORDEGRC, FVSCHEDULE, MDURATION, RRI
+- `VDB(2400,3000,10,0,1)` (salvage above cost) is -600, not -60; `VDB(2400,300,10,9.5,10,2,FALSE)` is 0 (the
+  last half period after the book value reaches salvage).
+- AMORDEGRC with rate 0.20 or 0.25 (first period 1.5 years after purchase) returns a number (1437, 1346), not #NUM!. Observed thresholds: rate 0.3 gives 1616, rates 0.15 and 0.25 both give 1346, rate 0.5 (life 2) is #NUM!.
+- FVSCHEDULE: any text, boolean or text-cell element in the schedule, a quoted-number element
+  `{"0.1"}`, `TRUE` as principal and `""` as schedule are all `#VALUE!` (nothing is skipped).
+- FVSCHEDULE: blank cells in the schedule are harmless (`B5:B6` = 1000) and a text-number principal is converted (`"1000"` -> 1100), but a boolean principal is `#VALUE!`.
+- VDB differs from us by a few ulp (A6, A10, A13) and ~4e-13 (A7); Excel's result for the same inputs depends on no_switch (A6 FALSE = 203.31648000000007, A7 TRUE = 203.3164800000004).
+- MDURATION and RRI(TRUE principal) differ from us only in the last ulp.
+Evidence: probes/fin-vdb-modes, fin-amordegrc, fin-fvschedule, fin-mduration, fin-rri (excel-graph, 2026-10-17, T-1625).
+Status: VERIFIED (excel-graph)
+Tasks: T-1764 (incl. MDURATION, RRI ulp), T-1765

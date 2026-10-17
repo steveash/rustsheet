@@ -1,19 +1,24 @@
 use super::reference_operators::{at_outside, wrong_range_shape};
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
+use crate::functions::lift::lifting_table_functions;
 use crate::functions::Function;
+use broadcast::broadcast_shapes;
 use legacy::{
-    add_array_at, add_in_array_context, is_array_context, legacy_call_reads_a_value,
-    legacy_context_intersects, legacy_intersects, remove_array_at, remove_in_array_context,
+    add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
+    legacy_call_reads_a_value, legacy_context_intersects, remove_array_at, remove_in_array_context,
 };
 mod aggregate;
+mod broadcast;
 mod legacy;
+mod lifted;
 mod reference_parameter;
+mod reference_result;
 mod row_column;
 mod signature;
 use signature::{
-    args_signature_address, args_signature_arraytotext, args_signature_bycol_byrow,
-    args_signature_cell, args_signature_choose, args_signature_choosecols, args_signature_drop,
-    args_signature_expand, args_signature_fieldvalue, args_signature_filter,
+    args_signature_arraytotext, args_signature_bycol_byrow, args_signature_cell,
+    args_signature_choose, args_signature_choosecols, args_signature_drop, args_signature_expand,
+    args_signature_fieldvalue, args_signature_filter, args_signature_getpivotdata,
     args_signature_groupby, args_signature_hlookup, args_signature_ifs, args_signature_index,
     args_signature_irr, args_signature_lambda, args_signature_let, args_signature_lookup,
     args_signature_map, args_signature_match, args_signature_mirr, args_signature_npv,
@@ -186,11 +191,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 add_array_at(kind, signature.get(index), index, arg);
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
-                if legacy_intersects(kind, signature.get(index), arg) {
-                    add_implicit_intersection(arg, true);
-                } else {
-                    add_implicit_intersection(arg, false);
-                }
+                add_argument_intersection(kind, signature.get(index), index, arg);
             }
             // There are some function that will never add an automatic II:
             let new_function = matches!(kind, Function::Let | Function::Lambda);
@@ -290,7 +291,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
                 remove_array_at(kind, signature.get(index), index, arg);
                 // Scalar arguments are an intersecting context; vector arguments
                 // (ranges/arrays) are not (`legacy_context_intersects`).
-                let child_add = legacy_context_intersects(kind, signature.get(index), arg);
+                let child_add = legacy_context_intersects(kind, signature.get(index), index, arg);
                 remove_redundant_implicit_intersection(arg, child_add);
             }
         }
@@ -419,23 +420,7 @@ fn scalar_arguments(args: &[Node]) -> StaticResult {
 /// Excel puts a legacy `@` on it as on any range, `=ABS(@E1:E1)`, `=ABS(@CHOOSE(1,{5}))` and
 /// `=ABS(@E1:E1+1)` (probes/legacy-one-cell-shape-intersection, T-1265).
 fn broadcast_static_result<'a>(args: impl IntoIterator<Item = &'a Node>) -> StaticResult {
-    let mut shape: Option<(i32, i32)> = None;
-    for arg in args {
-        match run_static_analysis_on_node(arg) {
-            StaticResult::Scalar => {}
-            StaticResult::Unknown => return StaticResult::Unknown,
-            // An array or a range (`counts` is never `None` here).
-            other => {
-                let (a, b) = other.counts().unwrap_or((1, 1));
-                let (n, m) = shape.unwrap_or((0, 0));
-                shape = Some((n.max(a), m.max(b)));
-            }
-        }
-    }
-    match shape {
-        Some((n, m)) => StaticResult::Array(n, m),
-        None => StaticResult::Scalar,
-    }
+    broadcast_shapes(args.into_iter().map(run_static_analysis_on_node))
 }
 
 // We only care if the function can return a range or not
@@ -450,45 +435,22 @@ fn criteria_static_result(args: &[Node], first: usize) -> StaticResult {
     broadcast_static_result(args.iter().skip(first).step_by(2))
 }
 
-fn static_analysis_offset(args: &[Node]) -> StaticResult {
-    // If first argument is a single cell reference and there are no4th and 5th argument,
-    // or they are 1, then it is a scalar
-    let arg_count = args.len();
-    if arg_count < 3 {
-        // Actually an error
-        return StaticResult::Scalar;
-    }
-    if !matches!(args[0], Node::ReferenceKind { .. }) {
-        return StaticResult::Unknown;
-    }
-    if arg_count == 3 {
-        return StaticResult::Scalar;
-    }
-    if !matches!(args[3], Node::NumberKind(f) if f == 1.0) {
-        return StaticResult::Unknown;
-    }
-    if arg_count == 4 {
-        return StaticResult::Scalar;
-    }
-    if !matches!(args[4], Node::NumberKind(f) if f == 1.0) {
-        return StaticResult::Unknown;
-    }
-    // Both height and width are explicitly 1, so OFFSET will return a single cell
-    StaticResult::Scalar
-}
-
-fn static_analysis_indirect(_args: &[Node]) -> StaticResult {
-    // We will always insert the @, but we don't need to do that in every scenario`
-    StaticResult::Unknown
-}
-
 // The signature of the functions should be defined only once
 
 // Given a function and a number of arguments this returns the arguments at each position
 // are expected to be scalars or vectors (array/ranges).
 // Sets signature::Error to all arguments if the number of arguments is incorrect.
+// The lifting table decides first (SPEC-0011 "The table wins").
 fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signature> {
-    match kind {
+    match kind.arg_kinds() {
+        Some(kinds) => lifted::lifted_signature(kinds, arg_count),
+        None => fallback_signature(kind, arg_count).unwrap_or_default(),
+    }
+}
+
+/// The hand-written signatures of the functions not in the lifting table; `None` for one in it.
+fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature>> {
+    Some(match kind {
         Function::And => vec![Signature::Vector; arg_count],
         Function::False => args_signature_scalars(arg_count, 0, 0),
         Function::If => args_signature_scalars(arg_count, 2, 1),
@@ -535,20 +497,9 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Sumifs => args_signature_ifs(arg_count, 2),
         Function::Tan => args_signature_scalars(arg_count, 1, 0),
         Function::Tanh => args_signature_scalars(arg_count, 1, 0),
-        Function::ErrorType => args_signature_scalars(arg_count, 1, 0),
-        Function::Isblank => args_signature_scalars(arg_count, 1, 0),
-        Function::Iserr => args_signature_scalars(arg_count, 1, 0),
-        Function::Iserror => args_signature_scalars(arg_count, 1, 0),
-        Function::Iseven => args_signature_scalars(arg_count, 1, 0),
         Function::Isformula => args_signature_scalars(arg_count, 1, 0),
-        Function::Islogical => args_signature_scalars(arg_count, 1, 0),
-        Function::Isna => args_signature_scalars(arg_count, 1, 0),
-        Function::Isnontext => args_signature_scalars(arg_count, 1, 0),
-        Function::Isnumber => args_signature_scalars(arg_count, 1, 0),
-        Function::Isodd => args_signature_scalars(arg_count, 1, 0),
         Function::Isomitted => args_signature_scalars(arg_count, 1, 0),
         Function::Isref => args_signature_one_vector(arg_count),
-        Function::Istext => args_signature_scalars(arg_count, 1, 0),
         Function::Na => args_signature_scalars(arg_count, 0, 0),
         // A reference argument (a range, a table's data area: `SHEET(Table1[])`) gives its sheet's
         // number and is not implicitly intersected (probes/info-logic-argument-modes A12; legacy formulas:
@@ -556,14 +507,12 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Sheet if arg_count == 1 => args_signature_one_vector(arg_count),
         Function::Sheet => args_signature_scalars(arg_count, 0, 1),
         Function::Type => args_signature_one_vector(arg_count),
-        Function::Address => args_signature_address(arg_count),
         Function::Areas | Function::Phonetic => args_signature_one_vector(arg_count),
         Function::Choosecols => args_signature_choosecols(arg_count),
         Function::Chooserows => args_signature_choosecols(arg_count),
         Function::Expand => args_signature_expand(arg_count),
         Function::Hlookup => args_signature_hlookup(arg_count),
         Function::Hstack => vec![Signature::Vector; arg_count],
-        Function::Hyperlink => args_signature_scalars(arg_count, 1, 1),
         Function::Index => args_signature_index(arg_count),
         Function::Indirect => args_signature_scalars(arg_count, 1, 1),
         Function::Lookup => args_signature_lookup(arg_count),
@@ -597,6 +546,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Bycol | Function::Byrow => args_signature_bycol_byrow(arg_count),
         Function::Groupby => args_signature_groupby(arg_count),
         Function::Pivotby => args_signature_pivotby(arg_count),
+        Function::Getpivotdata => args_signature_getpivotdata(arg_count),
         Function::Map => args_signature_map(arg_count),
         Function::Reduce => args_signature_reduce(arg_count),
         Function::Scan => args_signature_scan(arg_count),
@@ -644,8 +594,6 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Datedif => args_signature_scalars(arg_count, 3, 0),
         Function::Datevalue => args_signature_scalars(arg_count, 1, 0),
         Function::Day => args_signature_scalars(arg_count, 1, 0),
-        Function::Edate => args_signature_scalars(arg_count, 2, 0),
-        Function::Eomonth => args_signature_scalars(arg_count, 2, 0),
         Function::Month => args_signature_scalars(arg_count, 1, 0),
         Function::Time => args_signature_scalars(arg_count, 3, 0),
         Function::Timevalue => args_signature_scalars(arg_count, 1, 0),
@@ -658,10 +606,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Days => args_signature_scalars(arg_count, 2, 0),
         Function::Days360 => args_signature_scalars(arg_count, 2, 1),
         Function::Weekday => args_signature_scalars(arg_count, 1, 1),
-        Function::Weeknum => args_signature_scalars(arg_count, 1, 1),
         Function::Workday => args_signature_with_holidays(arg_count, 2, 0),
         Function::WorkdayIntl => args_signature_with_holidays(arg_count, 2, 1),
-        Function::Yearfrac => args_signature_scalars(arg_count, 2, 1),
         Function::Isoweeknum => args_signature_scalars(arg_count, 1, 0),
         Function::Accrint => args_signature_scalars(arg_count, 6, 2),
         Function::Accrintm => args_signature_scalars(arg_count, 3, 2),
@@ -784,7 +730,6 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Asc | Function::Dbcs => args_signature_scalars(arg_count, 1, 0),
         Function::Arraytotext => args_signature_arraytotext(arg_count),
         Function::Dollar => args_signature_scalars(arg_count, 1, 1),
-        Function::Encodeurl => args_signature_scalars(arg_count, 1, 0),
         Function::Image => args_signature_scalars(arg_count, 1, 4),
         Function::Stockhistory => args_signature_scalars(arg_count, 2, 9),
         Function::Fieldvalue => args_signature_fieldvalue(arg_count),
@@ -1019,30 +964,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::NormDistCompat => args_signature_scalars(arg_count, 4, 0),
         Function::NormInvCompat => args_signature_scalars(arg_count, 3, 0),
         Function::NormSInvCompat => args_signature_scalars(arg_count, 1, 0),
-        Function::PercentileCompat => {
-            if arg_count == 2 {
-                vec![Signature::Vector, Signature::Scalar]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
-        Function::PercentrankCompat => {
-            if arg_count == 2 {
-                vec![Signature::Vector, Signature::Scalar]
-            } else if arg_count == 3 {
-                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::PoissonCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::QuartileCompat => {
-            if arg_count == 2 {
-                vec![Signature::Vector, Signature::Scalar]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::RankCompat => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
         Function::StDevPCompat => vec![Signature::Vector; arg_count],
         Function::TInvCompat => args_signature_scalars(arg_count, 2, 0),
@@ -1111,12 +1033,6 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
             _ => vec![Signature::Error; arg_count],
         },
         Function::ModeMult | Function::ModeSingl => vec![Signature::Vector; arg_count],
-        Function::PercentileExc | Function::PercentileInc => {
-            vec![Signature::Vector, Signature::Scalar]
-        }
-        Function::PercentrankExc | Function::PercentrankInc => {
-            vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-        }
         Function::Permut | Function::Permutationa => vec![Signature::Scalar; 2],
         Function::Prob => match arg_count {
             3 => vec![Signature::Vector, Signature::Vector, Signature::Scalar],
@@ -1128,14 +1044,9 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
             ],
             _ => vec![Signature::Error; arg_count],
         },
-        Function::QuartileExc | Function::QuartileInc => {
-            vec![Signature::Vector, Signature::Scalar]
-        }
-        Function::Trimmean => vec![Signature::Vector, Signature::Scalar],
         Function::Gauss => args_signature_scalars(arg_count, 1, 0),
         Function::Harmean => vec![Signature::Vector; arg_count],
         Function::Kurt => vec![Signature::Vector; arg_count],
-        Function::Large => vec![Signature::Vector, Signature::Scalar],
         Function::MaxA => vec![Signature::Vector; arg_count],
         Function::Median => vec![Signature::Vector; arg_count],
         Function::MinA => vec![Signature::Vector; arg_count],
@@ -1143,13 +1054,23 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::RankEq => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
         Function::Skew => vec![Signature::Vector; arg_count],
         Function::SkewP => vec![Signature::Vector; arg_count],
-        Function::Small => vec![Signature::Vector, Signature::Scalar],
+        // In the lifting table (SPEC-0011): `lifted.rs` derives these.
+        lifting_table_functions!() => return None,
+    })
+}
+
+// Returns the type of the result (Scalar, Array or Range) depending on the arguments; the
+// lifting table decides first (SPEC-0011 "The table wins").
+fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
+    match kind.arg_kinds() {
+        Some(kinds) => lifted::lifted_static_result(kinds, args),
+        None => fallback_shape(kind, args).unwrap_or(StaticResult::Unknown),
     }
 }
 
-// Returns the type of the result (Scalar, Array or Range) depending on the arguments
-fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
-    match kind {
+/// The hand-written shapes of the functions not in the lifting table; `None` for one in it.
+fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
+    Some(match kind {
         Function::And => StaticResult::Scalar,
         Function::False => StaticResult::Scalar,
         Function::If => scalar_arguments(args),
@@ -1203,37 +1124,25 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sumifs => criteria_static_result(args, 2),
         Function::Tan => scalar_arguments(args),
         Function::Tanh => scalar_arguments(args),
-        Function::ErrorType => scalar_arguments(args),
-        Function::Isblank => scalar_arguments(args),
-        Function::Iserr => scalar_arguments(args),
-        Function::Iserror => scalar_arguments(args),
-        Function::Iseven => scalar_arguments(args),
         Function::Isformula => scalar_arguments(args),
-        Function::Islogical => scalar_arguments(args),
-        Function::Isna => scalar_arguments(args),
-        Function::Isnontext => scalar_arguments(args),
-        Function::Isnumber => scalar_arguments(args),
-        Function::Isodd => scalar_arguments(args),
         Function::Isomitted => not_implemented(args),
         Function::Isref => not_implemented(args),
-        Function::Istext => scalar_arguments(args),
         Function::Na => StaticResult::Scalar,
         Function::Sheet => StaticResult::Scalar,
         Function::Type => not_implemented(args),
-        Function::Address => not_implemented(args),
         Function::Areas => aggregate::areas_static_result(args),
         Function::Choosecols => StaticResult::Unknown,
         Function::Chooserows => StaticResult::Unknown,
         Function::Expand => StaticResult::Unknown,
         Function::Hlookup => aggregate::lookup_static_result(args), // T-0270, T-1269
         Function::Hstack => StaticResult::Unknown,
-        Function::Hyperlink => StaticResult::Scalar,
         // INDEX has two forms, but they are indistinguishable at parse time.
         Function::Index => StaticResult::Unknown,
-        Function::Indirect => static_analysis_indirect(args),
-        Function::Lookup => not_implemented(args),
+        Function::Indirect => reference_result::static_analysis_indirect(args),
+        // Spills by lookup_value; the vectors are consumed (T-1241).
+        Function::Lookup => broadcast_static_result(args.first()),
         Function::Match => not_implemented(args),
-        Function::Offset => static_analysis_offset(args),
+        Function::Offset => reference_result::static_analysis_offset(args),
         Function::Row => row_column::static_analysis_row_column(args, true),
         Function::Rows => not_implemented(args),
         Function::Vlookup => aggregate::lookup_static_result(args), // T-0270, T-1269
@@ -1241,7 +1150,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,
         Function::Xlookup => StaticResult::Unknown,
-        Function::Xmatch => not_implemented(args),
+        // Spills by lookup_value and match_mode, broadcast; lookup_array is consumed (T-1241).
+        Function::Xmatch => broadcast_static_result(args.iter().step_by(2).take(2)),
         Function::Trimrange => StaticResult::Unknown,
         Function::Sort | Function::Sortby | Function::Unique => StaticResult::Unknown,
         Function::Filter | Function::Take | Function::Drop => StaticResult::Unknown,
@@ -1249,6 +1159,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Mmult => StaticResult::Unknown,
         Function::Bycol | Function::Byrow => StaticResult::Unknown,
         Function::Groupby | Function::Pivotby => StaticResult::Unknown,
+        Function::Getpivotdata => StaticResult::Scalar,
         Function::Map | Function::Reduce => StaticResult::Unknown,
         Function::Scan | Function::Makearray => StaticResult::Unknown,
         Function::Sequence => StaticResult::Unknown,
@@ -1277,7 +1188,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         }
         Function::Regexreplace => not_implemented(args),
         Function::Regextest => not_implemented(args),
-        Function::T => not_implemented(args),
+        Function::T => scalar_arguments(args),
         Function::Text => scalar_arguments(args),
         Function::Textafter => not_implemented(args),
         Function::Textbefore => not_implemented(args),
@@ -1292,11 +1203,10 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Phonetic => not_implemented(args),
         Function::Arraytotext => not_implemented(args),
         Function::Dollar => not_implemented(args),
-        Function::Encodeurl => scalar_arguments(args),
         // All three lift over an array or range `source`/`stock`/`value` (T-1179).
         Function::Image | Function::Stockhistory | Function::Fieldvalue => StaticResult::Unknown,
-        // Never lifts: the whole call is `#VALUE!` (filterxml.rs).
-        Function::Filterxml => StaticResult::Scalar,
+        // Lifts over array arguments, `#VALUE!` per element (filterxml.rs).
+        Function::Filterxml => scalar_arguments(args),
         // The *B functions delegate to their non-B counterparts (byte_functions.rs), so they lift
         // over ranges exactly as FIND/LEFT/LEN/... do (T-0271).
         Function::Findb => scalar_arguments(args),
@@ -1330,7 +1240,6 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Datedif => scalar_arguments(&args[..args.len().min(2)]),
         Function::Datevalue => scalar_arguments(args),
         Function::Day => scalar_arguments(args),
-        Function::Edate => not_implemented(args),
         Function::Month => scalar_arguments(args),
         Function::Time => scalar_arguments(args),
         Function::Timevalue => scalar_arguments(args),
@@ -1343,10 +1252,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Days => scalar_arguments(args),
         Function::Days360 => scalar_arguments(&args[..args.len().min(2)]),
         Function::Weekday => scalar_arguments(args),
-        Function::Weeknum => not_implemented(args),
         Function::Workday => not_implemented(args),
         Function::WorkdayIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
-        Function::Yearfrac => not_implemented(args),
         Function::Isoweeknum => scalar_arguments(args),
         Function::Accrint => scalar_arguments(args),
         Function::Accrintm => scalar_arguments(args),
@@ -1461,8 +1368,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Aggregate => aggregate::aggregate_static_result(args),
         Function::Rand => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),
-        Function::Eomonth => scalar_arguments(args),
-        Function::Formulatext => not_implemented(args),
+        // One result per cell of a multi-cell reference (T-1241).
+        Function::Formulatext => broadcast_static_result(args),
         Function::Geomean => not_implemented(args),
         Function::Networkdays => not_implemented(args),
         Function::NetworkdaysIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
@@ -1608,10 +1515,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::NormDistCompat => StaticResult::Scalar,
         Function::NormInvCompat => StaticResult::Scalar,
         Function::NormSInvCompat => StaticResult::Scalar,
-        Function::PercentileCompat => StaticResult::Scalar,
-        Function::PercentrankCompat => StaticResult::Scalar,
         Function::PoissonCompat => StaticResult::Scalar,
-        Function::QuartileCompat => StaticResult::Scalar,
         Function::RankCompat => reference_parameter::rank_static_result(args),
         Function::StDevPCompat => StaticResult::Scalar,
         Function::TInvCompat => StaticResult::Scalar,
@@ -1643,20 +1547,12 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Trend => StaticResult::Unknown,
         // Scalar-returning functions
         Function::ModeSingl => StaticResult::Scalar,
-        Function::PercentileExc => StaticResult::Scalar,
-        Function::PercentileInc => StaticResult::Scalar,
-        Function::PercentrankExc => StaticResult::Scalar,
-        Function::PercentrankInc => StaticResult::Scalar,
         Function::Permut => StaticResult::Scalar,
         Function::Permutationa => StaticResult::Scalar,
         Function::Prob => StaticResult::Scalar,
-        Function::QuartileExc => StaticResult::Scalar,
-        Function::QuartileInc => StaticResult::Scalar,
-        Function::Trimmean => StaticResult::Scalar,
         Function::Gauss => StaticResult::Scalar,
         Function::Harmean => StaticResult::Scalar,
         Function::Kurt => StaticResult::Scalar,
-        Function::Large => StaticResult::Scalar,
         Function::MaxA => StaticResult::Scalar,
         Function::Median => StaticResult::Scalar,
         Function::MinA => StaticResult::Scalar,
@@ -1664,6 +1560,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::RankEq => reference_parameter::rank_static_result(args),
         Function::Skew => StaticResult::Scalar,
         Function::SkewP => StaticResult::Scalar,
-        Function::Small => StaticResult::Scalar,
-    }
+        // In the lifting table (SPEC-0011): `lifted.rs` derives these.
+        lifting_table_functions!() => return None,
+    })
 }

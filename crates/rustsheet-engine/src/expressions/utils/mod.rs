@@ -166,18 +166,44 @@ pub(crate) fn is_out_of_range_r1c1_name(name: &str) -> bool {
 /// name (docs/excel-semantics/references.md "R1C1-shaped sheet and defined names",
 /// probes/r1c1-shaped-sheet-names-4, -5, lotus-dot-range; excel-graph, T-1652).
 fn is_dotted_a1_range(name: &str) -> bool {
-    let Some((first, rest)) = name.split_once('.') else {
-        return false;
-    };
-    let rest = rest.trim_start_matches('.');
-    let second = rest.split('.').next().unwrap_or(rest);
-    parse_reference_a1(first).is_some() && parse_reference_a1(second).is_some()
+    dotted_a1_corners(name).is_some()
 }
 
-/// Whether `name` is `R<digits>C<digits>` in uppercase, which the R1C1 lexer reads as a cell
-/// reference when both numbers are in range. Formulas are stored in R1C1 form, so an identifier
-/// spelled like that would come back as a reference after a reload.
-fn is_r1c1_cell_text(name: &str) -> bool {
+/// The two cells of the Lotus-style range `name` starts with ([`is_dotted_a1_range`]) and
+/// whether more text follows the second one (`.C3` in `A1.B2.C3`).
+fn dotted_a1_corners(name: &str) -> Option<(ParsedReference, ParsedReference, bool)> {
+    let (first, rest) = name.split_once('.')?;
+    let rest = rest.trim_start_matches('.');
+    let (second, more) = rest
+        .split_once('.')
+        .map_or((rest, false), |(s, _)| (s, true));
+    Some((
+        parse_reference_a1(first)?,
+        parse_reference_a1(second)?,
+        more,
+    ))
+}
+
+/// The corners of `name` when all of it is a Lotus-style range, in any case: `A1.B2`, `a1..b2`,
+/// `R1.C1` (the range `C1:R1`). Excel reads such a name in a formula as the range, even over a
+/// defined name spelled so (`SUM(A1.B2)` is `SUM(A1:B2)`, `=R1.C1*1` spills; probes/lotus-dot-
+/// range, -forms, r1c1-name-r1-dot-c1, excel-graph, T-1659), while text after the second cell
+/// leaves a name (`A1.B2.C3` makes Excel reject the file; ours reads `#NAME?`).
+pub(crate) fn parse_dotted_a1_range(name: &str) -> Option<(ParsedReference, ParsedReference)> {
+    if !name.contains('.') {
+        return None;
+    }
+    match dotted_a1_corners(&name.to_ascii_uppercase())? {
+        (left, right, false) => Some((left, right)),
+        (_, _, true) => None,
+    }
+}
+
+/// Whether the R1C1 lexer reads `name` as a cell reference: `R<digits>C<digits>` in uppercase,
+/// both numbers in range (an out-of-range `R0C1` is a name there, T-1657). Formulas are stored
+/// in R1C1 form, so a LET or LAMBDA name spelled like that is stored with the `_xlpm.` prefix
+/// the parser drops (T-1658).
+pub(crate) fn reads_as_r1c1_cell(name: &str) -> bool {
     let text = name.as_bytes();
     let mut position = 1;
     text.first() == Some(&b'R')
@@ -188,6 +214,7 @@ fn is_r1c1_cell_text(name: &str) -> bool {
             leading_number(text, &mut position).is_some()
         }
         && position == text.len()
+        && !is_out_of_range_r1c1_name(name)
 }
 
 /// The decimal digits at `position`, which is left after them, or `None` if there are none. A
@@ -259,13 +286,12 @@ pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
 
 /// Returns true if `name` is a valid identifier in an A1-mode formula expression.
 /// Unlike `is_valid_identifier`, it permits the R1C1-shaped names ("R", "C", "RC",
-/// "R12C", "R1C1D") that are valid as LAMBDA parameters or LET variables but not as
-/// defined names (`is_r1c1_shaped`). An uppercase `R<n>C<m>` is refused, though.
+/// "R12C", "R1C1", "R0C1") that are valid as LAMBDA parameters or LET variables but not as
+/// defined names (`is_r1c1_shaped`): Excel takes `LET(R1C1,5,R1C1*2)` (10,
+/// probes/r1c1-let-name-r1c1). The R1C1 storage form escapes the ones it would read back as
+/// a cell ([`reads_as_r1c1_cell`]).
 pub fn is_valid_a1_identifier(name: &str) -> bool {
-    // Excel takes `LET(R1C1,5,R1C1*2)` (10, probes/r1c1-let-name-r1c1), but the engine's R1C1
-    // storage would turn the name into a cell reference on reload (TODO(T-1658)).
-    // An out-of-range `R0C1` stays a name in R1C1 form too (the lexer reads it so; T-1657).
-    is_identifier_text(name) && (!is_r1c1_cell_text(name) || is_out_of_range_r1c1_name(name))
+    is_identifier_text(name)
 }
 
 /// The rules every name follows: its characters, and not `TRUE`, `FALSE` or an A1 cell.

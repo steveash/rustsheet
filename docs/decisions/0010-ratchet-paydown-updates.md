@@ -88,5 +88,30 @@
   cells through the three *-evidence-floor probes; decision 0062) (`make eval-baseline`).
   T-1651: functions below the evidence floor 53 → 52 (one more function reaches ≥ 20 Excel cells through
   the MODE/LOOKUP direct-argument probe, probes/mode-direct-error-lookup-scalar-vector; decision 0062) (`make eval-baseline`).
+  T-1620: functions below the evidence floor 52 → 42 (FORECAST, FORECAST.LINEAR, CORREL, PEARSON, RSQ, SLOPE,
+  COVAR, STEYX, INTERCEPT and TREND reach ≥ 20 Excel cells through the four regression-* probes; decision 0062)
+  (`make eval-baseline`).
+  T-1621: functions below the evidence floor 42 → 39 (LINEST, LOGEST and GROWTH reach ≥ 20 Excel cells through
+  probes/linest-modes, logest-modes and growth-modes; decision 0062) (`make eval-baseline`).
+  T-1622: functions below the evidence floor 39 → 34 (MODE*, QUARTILE*, PERCENTILE, PERCENTRANK*, AVEDEV and
+  DEVSQ reach ≥ 20 Excel cells through probes/stat-order-floor-batch) (`make eval-baseline`).
+  T-1623: functions below the evidence floor 34 → 27 (SKEW.P, STANDARDIZE, SUMX2PY2, SUMXMY2, SUMX2MY2, MDETERM and
+  ECMA.CEILING reach ≥ 20 Excel cells through probes/stats-evidence-floor-t1623; SKEW, KURT and HARMEAN were already
+  above the floor; decision 0062) (`make eval-baseline`).
+  T-1624: functions below the evidence floor 27 → 21 (RECEIVED, YIELDDISC, PRICEDISC, INTRATE, PRICEMAT and YIELDMAT
+  reach ≥ 20 Excel cells through probes/discount-security-modes; decision 0062) (`make eval-baseline`).
+  T-1625: functions below the evidence floor 21 → 13 (VDB, AMORDEGRC, FVSCHEDULE, MDURATION, RRI, IMPOWER, IMSUB
+  and IMDIV reach ≥ 20 Excel cells through probes/fin-* and eng-im*; decision 0062) (`make eval-baseline`).
+  T-1787: duplicated lines 6155 → 6111 (the four private `calc_result_to_array_node` copies in functions/logical
+  now call `cast::calc_result_to_array_node`) (`check_duplication.py --update`).
+  T-1770: functions/date_and_time.rs 1131 → 1018 lines (EDATE and EOMONTH moved to `date_and_time/month_shift.rs`)
+  and expressions/parser/static_analysis.rs 1669 → 1641 (OFFSET's and INDIRECT's shapes moved to
+  `static_analysis/reference_result.rs`, `broadcast_shapes` to `static_analysis/broadcast.rs`), and
+  functions/financial/mod.rs 2290 → 2194, already shrunk on main (`check_file_size.py --update`).
+  T-1772: duplicated lines 6111 → 5907 (PERCENTILE.EXC, QUARTILE.EXC and the two PERCENTRANK
+  functions share one interpolation and one kernel; the LARGE/SMALL bodies and the stat fallback
+  arms of static analysis are gone) (`check_duplication.py --update`), and
+  expressions/parser/static_analysis.rs 1641 → 1567 lines (the fallback arms of the 12 functions
+  now in the lifting table; 1614 already on main after T-1774) (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

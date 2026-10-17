@@ -35,3 +35,7 @@ harness = false
 [[bench]]
 name = "text"
 harness = false
+
+[[bench]]
+name = "lift"
+harness = false

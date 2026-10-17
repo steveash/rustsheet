@@ -1,4 +1,5 @@
 use crate::external_reference::PickedReference;
+use crate::functions::Function;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex, utils::quote_name},
@@ -31,12 +32,24 @@ impl Model {
     ///   * `abs_num`: 1=absolute $A$1 (default), 2=row-abs/col-rel A$1, 3=row-rel/col-abs $A1, 4=relative A1
     ///   * a1: TRUE=A1 style (default), FALSE=R1C1 style
     ///   * `sheet_text`: optional sheet name prefix
+    ///
+    /// Every argument lifts over an array and a multi-cell range (`ROWS(ADDRESS(A1:A3,1))` and
+    /// `ROWS(ADDRESS({1;2;3},1))` are 3; probes/lookup-argument-modes F1:G4, gen-m7/f68fafa0ca2eba26
+    /// A7; docs/excel-semantics/lookup.md "Lookup and reference function argument modes").
     pub(crate) fn fn_address(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() < 2 || args.len() > 5 {
-            return CalcResult::new_args_number_error(cell);
-        }
+        self.lift_call(Function::Address, args, cell, &mut |model, values| {
+            model.address_of(values, cell)
+        })
+    }
 
-        let row_num = match self.get_number(&args[0], cell) {
+    /// ADDRESS of one element. The arguments are checked left to right, as the scalar call
+    /// always did.
+    fn address_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        let (row_num, col_num, rest) = match values {
+            [row_num, col_num, rest @ ..] => (row_num, col_num, rest),
+            _ => return CalcResult::new_args_number_error(cell),
+        };
+        let row_num = match self.cast_number_ref(row_num, cell) {
             Ok(n) => n as i32,
             Err(e) => return e,
         };
@@ -44,7 +57,7 @@ impl Model {
             return CalcResult::new_error(Error::VALUE, cell, "row_num must be >= 1".to_string());
         }
 
-        let col_num = match self.get_number(&args[1], cell) {
+        let col_num = match self.cast_number_ref(col_num, cell) {
             Ok(n) => n as i32,
             Err(e) => return e,
         };
@@ -52,13 +65,12 @@ impl Model {
             return CalcResult::new_error(Error::VALUE, cell, "col_num must be >= 1".to_string());
         }
 
-        let abs_num = if args.len() >= 3 {
-            match self.get_number(&args[2], cell) {
+        let abs_num = match rest.first() {
+            Some(value) => match self.cast_number_ref(value, cell) {
                 Ok(n) => n as i32,
                 Err(e) => return e,
-            }
-        } else {
-            1
+            },
+            None => 1,
         };
 
         if !(1..=4).contains(&abs_num) {
@@ -69,25 +81,23 @@ impl Model {
             );
         }
 
-        let use_a1 = if args.len() >= 4 {
-            match self.get_boolean(&args[3], cell) {
+        let use_a1 = match rest.get(1) {
+            Some(value) => match Self::cast_bool_ref(value, cell) {
                 Ok(b) => b,
                 Err(e) => return e,
-            }
-        } else {
-            true
+            },
+            None => true,
         };
 
         // When `sheet_text` is present the `!` separator is always emitted, even
         // for an empty string: ADDRESS(1,1,1,TRUE,"") is "!$A$1" in Excel. A
         // `sheet_text` that is omitted entirely produces no prefix.
-        let sheet_prefix = if args.len() == 5 {
-            match self.get_string(&args[4], cell) {
+        let sheet_prefix = match rest.get(2) {
+            Some(value) => match Self::cast_string_ref(value, cell) {
                 Ok(s) => format!("{}!", address_sheet_text(&s)),
                 Err(e) => return e,
-            }
-        } else {
-            String::new()
+            },
+            None => String::new(),
         };
 
         let address = if use_a1 {

@@ -138,6 +138,10 @@ fn asin_rounds_like_excel() {
     model._set("A4", "=ASIN(1)");
     model._set("A5", "=ASIN(-1)");
     model._set("A6", "=ASIN(1.0000001)");
+    // T-1605: a tiny argument is returned as is (sweep B220, B221, B210).
+    model._set("A7", "=ASIN(1E-13)");
+    model._set("A8", "=ASIN(-1E-13)");
+    model._set("A9", "=ASIN(1E-8)");
     model.evaluate();
     let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
         Ok(CellValue::Number(n)) => n.to_bits(),
@@ -149,4 +153,7 @@ fn asin_rounds_like_excel() {
     assert_eq!(bits("A4"), std::f64::consts::FRAC_PI_2.to_bits());
     assert_eq!(bits("A5"), (-std::f64::consts::FRAC_PI_2).to_bits());
     assert_eq!(model._get_text("A6"), *"#NUM!");
+    assert_eq!(bits("A7"), 1e-13_f64.to_bits());
+    assert_eq!(bits("A8"), (-1e-13_f64).to_bits());
+    assert_eq!(bits("A9"), 1.000_000_000_000_000_2e-8_f64.to_bits());
 }

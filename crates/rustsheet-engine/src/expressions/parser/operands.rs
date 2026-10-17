@@ -5,7 +5,9 @@
 
 use super::super::token::{self, TableReference, TokenType};
 use super::super::types::ParsedReference;
-use super::super::utils::{is_out_of_range_r1c1_name, number_to_column};
+use super::super::utils::{
+    is_out_of_range_r1c1_name, number_to_column, parse_dotted_a1_range, parse_reference_a1,
+};
 use super::reference_operators::is_reference_operand;
 use super::*;
 
@@ -61,6 +63,26 @@ impl Parser {
             };
         }
         Node::ArrayKind(matrix)
+    }
+
+    /// A reference token, or in the stored R1C1 form a call of one, `R[-7]C[27](1)` (A1 text
+    /// `AB1(1)`; in A1 text a cell followed by `(` is lexed as a name instead, T-1758).
+    pub(super) fn reference_or_call_operand(
+        &mut self,
+        sheet: Option<String>,
+        row: i32,
+        column: i32,
+        absolute_column: bool,
+        absolute_row: bool,
+    ) -> Node {
+        let node = self.reference_operand(sheet, row, column, absolute_column, absolute_row);
+        if !self.lexer.is_a1_mode()
+            && !self.lexer.whitespace_follows()
+            && self.lexer.peek_token() == TokenType::LeftParenthesis
+        {
+            return self.parse_call(node);
+        }
+        node
     }
 
     /// A cell reference token, made relative to the formula's cell in A1 mode.
@@ -254,6 +276,9 @@ impl Parser {
         if name.starts_with('[') {
             return Node::DefinedNameKind((name, None, String::new()));
         }
+        if let Some(node) = self.dotted_range_operand(&name) {
+            return node;
+        }
         let context = &self.context;
 
         let context_sheet_index = match self.get_sheet_index_by_name(&context.sheet) {
@@ -286,6 +311,41 @@ impl Parser {
         // xlpm: Excel Lambda Parameter
         let name = name.trim_start_matches("_xlpm.").to_string();
         Node::NamedVariableKind { name, id: None }
+    }
+
+    /// The range a name spelled like a Lotus-style range is (`A1.B2` is `A1:B2`; see
+    /// `utils::parse_dotted_a1_range`), in A1 mode and unless an enclosing LET or LAMBDA binds
+    /// it. Stored formulas (R1C1 mode) already print such a range as a range.
+    fn dotted_range_operand(&mut self, name: &str) -> Option<Node> {
+        if !self.lexer.is_a1_mode()
+            || self
+                .dotted_bound_names
+                .iter()
+                .any(|bound| bound.eq_ignore_ascii_case(name))
+        {
+            return None;
+        }
+        let (left, right) = parse_dotted_a1_range(name)?;
+        Some(self.range_operand(None, left, right))
+    }
+
+    /// `node`, parsed from the argument starting at `token`, where a LET or LAMBDA expects a
+    /// name: a name spelled like a Lotus-style range was read as the range while unbound, so it
+    /// becomes the variable again, and stays one for the rest of the call (Excel:
+    /// `LET(R1.C1,5,R1.C1*2)` is 10, probes/r1c1-let-name-r1-c1, T-1659).
+    pub(super) fn bind_dotted_name(&mut self, token: &TokenType, node: Node) -> Node {
+        match (token, &node) {
+            (TokenType::Ident(name), Node::RangeKind { .. } | Node::WrongRangeKind { .. })
+                if self.lexer.is_a1_mode() && parse_dotted_a1_range(name).is_some() =>
+            {
+                self.dotted_bound_names.push(name.clone());
+                Node::NamedVariableKind {
+                    name: name.clone(),
+                    id: None,
+                }
+            }
+            _ => node,
+        }
     }
 
     /// A call by name, `SUM(...)` or `_xlfn.LAMBDA(...)(...)`, after its `(`.
@@ -361,6 +421,20 @@ impl Parser {
         // We should do this *only* importing functions from xlsx
         if let Some(function_kind) = self.language.functions.lookup_stored(&name) {
             return self.function_call(function_kind, args);
+        }
+        // A callee spelled like a cell, and no function (`LOG10` stays one), is a call of that cell:
+        // `#REF!` like any called reference (probes/unknown-function-name-spelling A8, T-1758).
+        // `$` shapes are unprobed, so they stay names. A1 grammar only: in R1C1 mode (stored
+        // forms, and the raw A1 text of a formula that did not parse) `AB1` is no cell, and reading
+        // it as one would turn A1 coordinates into R1C1 offsets.
+        if let Some(cell) = parse_reference_a1(&name.to_ascii_uppercase())
+            .filter(|_| self.lexer.is_a1_mode() && !name.contains('$'))
+        {
+            let callee = self.reference_operand(None, cell.row, cell.column, false, false);
+            return Node::LambdaCallKind {
+                lambda: Box::new(callee),
+                args,
+            };
         }
         Node::NamedFunctionKind {
             name: name.trim_start_matches("_xlpm.").to_string(),

@@ -367,7 +367,7 @@ impl Model {
     }
 
     pub(crate) fn fn_lower(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.apply_text_unary(args, cell, |s| s.to_lowercase())
+        self.apply_text_unary(args, cell, super::string_format::lower_case)
     }
 
     /// Applies a single-argument string transform element-wise.
@@ -470,7 +470,7 @@ impl Model {
     }
 
     pub(crate) fn fn_upper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.apply_text_unary(args, cell, |s| s.to_uppercase())
+        self.apply_text_unary(args, cell, super::string_format::upper_case)
     }
 
     /// Evaluates an argument of a text function into a scalar value or a 2-D array of
@@ -894,19 +894,6 @@ impl Model {
                 origin: cell,
                 message: "Arrays not supported yet".to_string(),
             },
-        }
-    }
-
-    pub(crate) fn fn_t(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // FIXME: Implicit intersection
-        let result = self.evaluate_node_in_context(&args[0], cell);
-        match result {
-            CalcResult::String(_) => result,
-            error @ CalcResult::Error { .. } => error,
-            _ => CalcResult::String("".into()),
         }
     }
 

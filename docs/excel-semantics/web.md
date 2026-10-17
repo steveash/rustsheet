@@ -14,7 +14,7 @@ An error only in the second argument propagates too
 (`FILTERXML("x",NA())` is `#N/A`), and with errors in both the first argument wins, left to right
 (`FILTERXML(1/0,NA())` is `#DIV/0!`, `FILTERXML(NA(),1/0)` is `#N/A`).
 Evidence: probes/filterxml-error-arguments A1:A6 (oracle: excel-graph, 2026-10-15, T-1570).
-Whether an array argument lifts is unprobed; ours gives one scalar `#VALUE!`.
+An array argument lifts: `FILTERXML({"<a>1</a>";"<a>2</a>"},"//a")` spills two `#VALUE!` (probes/filterxml-evidence-floor D27:D28, T-1704). Probed too (probes/filterxml-array-forms, excel-graph, T-1722): a range as the first argument (`FILTERXML(Z1:Z2,"//a")`) and an array as the second (`FILTERXML("<a/>",{"//a","//b"})`) give `#VALUE!` per element; an error element passes through while the others stay `#VALUE!` (`FILTERXML({"x";#N/A},"//a")` is `#VALUE!`, `#N/A`); a scalar error next to an array broadcasts (`FILTERXML(NA(),{"//a";"//b"})` spills two `#N/A`, `FILTERXML({"<a/>";"<b/>"},NA())` too); a lambda first argument is `#VALUE!` even with `NA()` second (`FILTERXML(LAMBDA(x,x),NA())`).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 Implemented in: crates/rustsheet-engine/src/functions/text/filterxml.rs (T-1255, decision 0039); no XML is parsed.
 
@@ -42,8 +42,9 @@ Rule: with no pivot table in the workbook, `GETPIVOTDATA("Sales",ref,...)` is `#
 (a cell outside any pivot, a range, `OFFSET`/`INDIRECT` results, extra field/item pairs, an odd number of
 pairs, `""` as data_field, a numeric pivot_table or numeric item). An error in either of the first two arguments
 propagates as it came (`pivot_table` `NA()` is `#N/A`, `1/0` is `#DIV/0!`; `data_field` `NA()` is `#N/A`).
-`ERROR.TYPE(GETPIVOTDATA("Sales",A1))` is 4. Which error wins when both are errors, a boolean data_field and a
-reference to an existing second sheet are unprobed.
+`ERROR.TYPE(GETPIVOTDATA("Sales",A1))` is 4. Which error wins when both are errors, a boolean data_field, a
+reference to an existing second sheet, an error inside a field/item pair (`A1,NA(),1`) and an array
+data_field or pivot_table are unprobed (ours: pairs are not evaluated, an array argument gives one `#REF!`, T-1703).
 Evidence: probes/getpivotdata-evidence-floor (oracle: excel-graph, 2026-10-16, T-1628).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081).
 A real pivot: see the next section (T-1705).

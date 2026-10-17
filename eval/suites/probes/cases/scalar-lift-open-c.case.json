@@ -1,0 +1,30 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1777 SPEC-0011 open question 11, the cheap forms: a stacked result one row or column past the grid with few cells. W1-W2 VSTACK(A:A,B1:B2) is 1048578 x 1; W3-W4 HSTACK(A1:XFD1,A1:A2) is 2 x 16385; W7 and W8 add one cell past the grid; W9 the explicit form; W5, W6 and W10 are in-grid controls. The 2^34-cell forms are in -c2 and -c3.",
+  "tags": [
+    "M9",
+    "argument-modes",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "B1": 1,
+        "B2": 2,
+        "W1": "=ROWS(VSTACK(A:A,B1:B2))",
+        "W2": "=COLUMNS(VSTACK(A:A,B1:B2))",
+        "W3": "=COLUMNS(HSTACK(A1:XFD1,A1:A2))",
+        "W4": "=ROWS(HSTACK(A1:XFD1,A1:A2))",
+        "W5": "=ROWS(VSTACK(A1:A2,1:1))",
+        "W6": "=COLUMNS(HSTACK(A1:A2,1:1))",
+        "W7": "=ROWS(VSTACK(A:A,B1))",
+        "W8": "=COLUMNS(HSTACK(A1:XFD1,A1))",
+        "W9": "=ROWS(VSTACK(A1:A1048576,B1))",
+        "W10": "=COLUMNS(HSTACK(A1:XFC1,A1:A2))"
+      }
+    }
+  ]
+}

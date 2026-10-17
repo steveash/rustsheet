@@ -22,79 +22,13 @@ impl Parser {
         }
 
         let mut parameters = Vec::new();
-
-        // Parse items one by one. Items followed by the separator are parameters (must
-        // be plain names or [name]). The final item before ')' is the body expression.
-        let mut arg_index = 1;
-        let body = loop {
-            // The cursor is currently in item `arg_index` of LAMBDA, so an EOF
-            // here reports the argument context for the Formula Helper. LAMBDA
-            // is parsed specially (not through `parse_function_args`), so this
-            // hint has to be stamped explicitly.
-            self.set_argument_hint("LAMBDA", arg_index);
-
-            // Optional parameter syntax: [name]
-            let bracket_optional = self.lexer.peek_token() == TokenType::LeftBracket;
-            if bracket_optional {
-                // consume '['
-                self.lexer.advance_token();
-            }
-
-            let expr = self.parse_enclosed_expr();
-            if let Node::ParseErrorKind { .. } = expr {
-                return expr;
-            }
-
-            if bracket_optional {
-                if let Err(err) = self.lexer.expect(TokenType::RightBracket) {
-                    return Node::ParseErrorKind {
-                        formula: self.lexer.get_formula(),
-                        expecting: vec![ExpectedTokens::Other],
-                        position: err.position,
-                        message: "Expected ']' after optional parameter name".to_string(),
-                    };
-                }
-            }
-
-            let next = self.lexer.peek_token();
-            if next == arg_separator {
-                // This item must be a parameter name.
-                self.lexer.advance_token();
-                arg_index += 1;
-                match expr {
-                    Node::NamedVariableKind { name, id } => {
-                        // xlop: Excel Optional Parameter.
-                        let (clean, is_optional) = if let Some(s) = name.strip_prefix("_xlop.") {
-                            (s.to_string(), true)
-                        } else {
-                            (name, bracket_optional)
-                        };
-                        parameters.push(NamedVariable {
-                            name: clean,
-                            id,
-                            is_optional,
-                        });
-                    }
-                    _ => {
-                        return Node::ParseErrorKind {
-                            formula: self.lexer.get_formula(),
-                            expecting: vec![ExpectedTokens::Other],
-                            position: self.lexer.get_position() as usize,
-                            message: "LAMBDA parameter must be a name".to_string(),
-                        };
-                    }
-                }
-            } else if next == TokenType::RightParenthesis {
-                self.lexer.advance_token(); // consume ')'
-                break expr;
-            } else {
-                return Node::ParseErrorKind {
-                    formula: self.lexer.get_formula(),
-                    expecting: vec![ExpectedTokens::Other],
-                    position: self.lexer.get_position() as usize,
-                    message: "Expected ',' or ')' in LAMBDA".to_string(),
-                };
-            }
+        // The parameters are in scope up to the LAMBDA's `)`.
+        let scope = self.dotted_bound_names.len();
+        let def = self.parse_lambda_items(&arg_separator, &mut parameters);
+        self.dotted_bound_names.truncate(scope);
+        let body = match def {
+            Ok(body) => body,
+            Err(error) => return error,
         };
 
         if has_duplicate_parameter(&parameters) {
@@ -147,7 +81,7 @@ impl Parser {
 
     /// `callee(args)`, at the `(` that opens the arguments: a call of whatever `callee`
     /// evaluates to. Its depth is covered by the operand's own ([`Parser::parse_primary`]).
-    fn parse_call(&mut self, callee: Node) -> Node {
+    pub(super) fn parse_call(&mut self, callee: Node) -> Node {
         self.lexer.advance_token(); // consume '('
         let call_args = match self.parse_function_args("LAMBDA") {
             Ok(args) => args,
@@ -164,6 +98,90 @@ impl Parser {
         Node::LambdaCallKind {
             lambda: Box::new(callee),
             args: call_args,
+        }
+    }
+
+    /// The parameters (into `parameters`) and the body of a LAMBDA, up to and including its
+    /// `)`; a parse error as `Err`.
+    fn parse_lambda_items(
+        &mut self,
+        arg_separator: &TokenType,
+        parameters: &mut Vec<NamedVariable>,
+    ) -> Result<Node, Node> {
+        // Parse items one by one. Items followed by the separator are parameters (must
+        // be plain names or [name]). The final item before ')' is the body expression.
+        let mut arg_index = 1;
+        loop {
+            // The cursor is currently in item `arg_index` of LAMBDA, so an EOF
+            // here reports the argument context for the Formula Helper. LAMBDA
+            // is parsed specially (not through `parse_function_args`), so this
+            // hint has to be stamped explicitly.
+            self.set_argument_hint("LAMBDA", arg_index);
+
+            // Optional parameter syntax: [name]
+            let bracket_optional = self.lexer.peek_token() == TokenType::LeftBracket;
+            if bracket_optional {
+                // consume '['
+                self.lexer.advance_token();
+            }
+
+            let token = self.lexer.peek_token();
+            let mut expr = self.parse_enclosed_expr();
+            if let Node::ParseErrorKind { .. } = expr {
+                return Err(expr);
+            }
+
+            if bracket_optional {
+                if let Err(err) = self.lexer.expect(TokenType::RightBracket) {
+                    return Err(Node::ParseErrorKind {
+                        formula: self.lexer.get_formula(),
+                        expecting: vec![ExpectedTokens::Other],
+                        position: err.position,
+                        message: "Expected ']' after optional parameter name".to_string(),
+                    });
+                }
+            }
+
+            let next = self.lexer.peek_token();
+            if next == *arg_separator {
+                // This item must be a parameter name.
+                self.lexer.advance_token();
+                arg_index += 1;
+                expr = self.bind_dotted_name(&token, expr);
+                match expr {
+                    Node::NamedVariableKind { name, id } => {
+                        // xlop: Excel Optional Parameter.
+                        let (clean, is_optional) = if let Some(s) = name.strip_prefix("_xlop.") {
+                            (s.to_string(), true)
+                        } else {
+                            (name, bracket_optional)
+                        };
+                        parameters.push(NamedVariable {
+                            name: clean,
+                            id,
+                            is_optional,
+                        });
+                    }
+                    _ => {
+                        return Err(Node::ParseErrorKind {
+                            formula: self.lexer.get_formula(),
+                            expecting: vec![ExpectedTokens::Other],
+                            position: self.lexer.get_position() as usize,
+                            message: "LAMBDA parameter must be a name".to_string(),
+                        });
+                    }
+                }
+            } else if next == TokenType::RightParenthesis {
+                self.lexer.advance_token(); // consume ')'
+                return Ok(expr);
+            } else {
+                return Err(Node::ParseErrorKind {
+                    formula: self.lexer.get_formula(),
+                    expecting: vec![ExpectedTokens::Other],
+                    position: self.lexer.get_position() as usize,
+                    message: "Expected ',' or ')' in LAMBDA".to_string(),
+                });
+            }
         }
     }
 }

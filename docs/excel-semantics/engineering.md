@@ -92,7 +92,14 @@ Over a two-cell range only BITAND, BITOR, BITXOR, BITLSHIFT and BITRSHIFT lift
 (`ROWS(BITAND(K15:K16,25))` is 2). Every other function is `#VALUE!` when its first argument is a
 multi-cell range. That covers the Bessel functions, the base conversions, COMPLEX, CONVERT, DELTA,
 GESTEP, ERF, ERFC and their .PRECISE forms, and IM* (`ROWS(BESSELI(K1:K2,1))`). This is the Analysis
-ToolPak split seen in the financial functions. Only the first argument was probed over a range.
+ToolPak split seen in the financial functions. Three later arguments were probed and follow the same split (probes/scalar-lift-shapes H7-H9,
+T-1767): `ROWS(BITAND(13,D1:D60))` is 60, while `ROWS(BESSELJ(2.5,B1:B60))` and `ROWS(DEC2BIN(9,D1:D60))` are `#VALUE!`,
+even on the range's own rows. Probes/scalar-lift-open-a (T-1777) adds
+more later arguments, all `#VALUE!` over a range with a working scalar control: CONVERT's `from_unit`, `to_unit` and number
+(Y8-Y10), COMPLEX's `suffix` (Y11), IMSUB's and IMDIV's second argument (Y12, Y13), IMPOWER's `n` (Y14) and IMSUB's first (Y15).
+QUOTIENT, FACTDOUBLE and SERIESSUM's x, n, m are `#VALUE!` too, while MULTINOMIAL, GCD and LCM give one result (ROWS 1)
+(Y19-Y30). See arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak
+range rule".
 
 IMSUM and IMPRODUCT take their arguments whole:
 - A range or array literal is folded into the result, not lifted: `IMSUM({"1+2i","3"})` and
@@ -156,3 +163,12 @@ Evidence: `rustsheet-gen --milestone M9 --count 20 --seed 17` run from a scratch
 the engineering signatures (excel-graph, 2026-10-11, T-1085; not committed).
 Status: UNVERIFIED (probe pending)
 Tasks: T-1385
+
+## T-1625 probes: IMPOWER, IMSUB, IMDIV
+- Mixed suffixes (`"3+4i"` with `"1+2j"`) are `#NUM!` in IMSUB and IMDIV (we give #VALUE!).
+- An empty-string argument is `#NUM!` in IMSUB, IMDIV and IMPOWER (we treat it as 0); a boolean second argument is `#VALUE!`.
+- `IMPOWER("0",0)` is `#NUM!`; `IMDIV` with a tiny divisor gives a large result (`IMDIV("1","1E-200")` = `1E+200`), not #NUM!.
+- IMPOWER does not use the naive polar form: `IMPOWER("i",2)` = `-1+1.22514845490862E-16i` (ours 1.22464679914735E-16), `IMPOWER("-j",3)` real part -1.83772268236293E-16, `IMPOWER("1+i","2")` real part 1.22514845490862E-16, `IMPOWER("1+i",100)` = `-1125899906842640-0.551513671875006i` (ours `-1125899906842630-0.552925707312197i`). The values differ, not only the printing; tiny parts also print in E-notation.
+Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625).
+Status: VERIFIED (excel-graph)
+Tasks: T-1766

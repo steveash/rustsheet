@@ -216,8 +216,11 @@ G1336, I1336, J1336 (`#N/A`), K1336, E1340, F1340, H1340, J1340 (`SUMX2PY2(G7:H9
 105.7931362501), K1340, F1344, G1344, H1344 (`#N/A`), I1344, J1344.
 Status: VERIFIED (Excel-cached)
 Implemented in: `Model::sumx_fold` / `sumx_values` (math_and_trigonometry/sum.rs); other `fn_get_two_matrices` callers are unchanged.
-Open (unverified, T-0961): scalar text, boolean and empty arguments are currently one skipped pair
-(`#DIV/0!`); the first error in either array wins over the element-count `#N/A`.
+Scalar text and boolean arguments are one skipped pair: `SUMX2PY2("1",2)`, `SUMXMY2("1",2)`, `SUMX2MY2("1",2)` and the same
+with `TRUE` are `#DIV/0!` (numeric text is not read as a number here) while `SUMX2PY2(1,2)` is 5; a text element inside an
+array constant is skipped (`SUMX2PY2({1,"a"},{3,4})` = 10); two all-blank ranges are `#DIV/0!`. Evidence:
+probes/stats-evidence-floor-t1623 Q73-Q76, Q79, Q86-Q89, Q91, Q99-Q102, Q104 (excel-graph, 2026-10-17, T-1623).
+Open (unverified, T-0961): an empty argument (`SUMXMY2(,1)`) and error-versus-`#N/A` precedence were not probed there.
 Tasks: T-0944
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
@@ -231,9 +234,10 @@ F1448, F1456, H1288.
 Status: VERIFIED (Excel-cached)
 Implemented in: `Model::for_each_value` users `fn_stdev_s`/`fn_stdev_p`, `fn_var_s`/`fn_var_p`,
 `fn_devsq`, `fn_avedev`, `fn_sumsq`. Open: I392 (`DEVSQ("1","2",2)`) and K1456
-(`VARP(TRUE,FALSE,TRUE)`) differ in the last digit (accumulation order, like E392/F392/J392).
-Open: an empty argument (`DEVSQ(1,)`) is ignored by DEVSQ/AVEDEV/SUMSQ but counted as 0 by STDEV/VAR
-(probes/average-value-args); no evidence yet for the first group (T-0236).
+(`VARP(TRUE,FALSE,TRUE)`) differ in the last digit (accumulation order, like E392/F392/J392; DEVSQ is
+probably the two-pass sum, T-1749).
+An empty argument is counted as 0 by DEVSQ and AVEDEV (`DEVSQ(1,)` = `AVEDEV(1,)` = 0.5; probes/stat-order-floor-batch
+A274, A299; T-1748) and by STDEV/VAR (probes/average-value-args); SUMSQ is untested (open, T-0236).
 Tasks: T-0945
 
 ## MODE: a blank single-cell reference is #VALUE!; typed text and booleans are skipped

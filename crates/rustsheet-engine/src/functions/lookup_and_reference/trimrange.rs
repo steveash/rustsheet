@@ -20,6 +20,16 @@ fn col_is_empty(data: &[Vec<ArrayNode>], col: usize) -> bool {
     data.iter().all(|row| row.get(col).is_none_or(is_blank))
 }
 
+/// A trim argument as an integer; a fractional one (even `0.9` or `3.9`) is out of range, like
+/// `4` and `-1` (docs/excel-semantics/lookup.md "TRIMRANGE with a fractional trim argument").
+fn trim_mode(n: f64) -> i32 {
+    if n.fract() == 0.0 && (0.0..=3.0).contains(&n) {
+        n as i32
+    } else {
+        -1
+    }
+}
+
 impl Model {
     /// `=TRIMRANGE(range, [trim_rows], [trim_cols])`
     ///
@@ -67,7 +77,7 @@ impl Model {
 
         let trim_rows = if args.len() >= 2 {
             match self.get_number(&args[1], cell) {
-                Ok(n) => n as i32,
+                Ok(n) => trim_mode(n),
                 Err(e) => return e,
             }
         } else {
@@ -76,7 +86,7 @@ impl Model {
 
         let trim_cols = if args.len() == 3 {
             match self.get_number(&args[2], cell) {
-                Ok(n) => n as i32,
+                Ok(n) => trim_mode(n),
                 Err(e) => return e,
             }
         } else {

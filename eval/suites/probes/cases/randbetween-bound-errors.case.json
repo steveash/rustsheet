@@ -1,0 +1,62 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1782: RANDBETWEEN scalar boolean beside an array bound (error type of element 1 via ERROR.TYPE: 3 #VALUE!, 6 #NUM!, 7 #N/A, 2 #DIV/0!), and which error wins when both bounds are errors. Scalar-returning wrappers only.",
+  "tags": [
+    "M2",
+    "volatile",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ERROR.TYPE(INDEX(RANDBETWEEN(SEQUENCE(3),TRUE),1))",
+        "A2": "=ERROR.TYPE(INDEX(RANDBETWEEN(SEQUENCE(3),FALSE),1))",
+        "A3": "=ERROR.TYPE(INDEX(RANDBETWEEN(TRUE,SEQUENCE(3,1,5)),1))",
+        "A4": "=ERROR.TYPE(INDEX(RANDBETWEEN(FALSE,SEQUENCE(3,1,5)),1))",
+        "A5": "=ERROR.TYPE(INDEX(RANDBETWEEN({1;1},{TRUE;TRUE}),1))",
+        "A6": "=ERROR.TYPE(INDEX(RANDBETWEEN({#N/A},{\"x\"}),1))",
+        "A7": "=ERROR.TYPE(INDEX(RANDBETWEEN({\"x\"},{#N/A}),1))",
+        "A8": "=ERROR.TYPE(INDEX(RANDBETWEEN({#DIV/0!},{#N/A}),1))",
+        "A9": "=ERROR.TYPE(INDEX(RANDBETWEEN({#N/A},{#DIV/0!}),1))",
+        "A10": "=ERROR.TYPE(INDEX(RANDBETWEEN({TRUE},{#N/A}),1))",
+        "A11": "=ERROR.TYPE(INDEX(RANDBETWEEN({#N/A},{TRUE}),1))",
+        "A12": "=ERROR.TYPE(INDEX(RANDBETWEEN({TRUE},{#DIV/0!}),1))",
+        "A13": "=ERROR.TYPE(INDEX(RANDBETWEEN({#DIV/0!},{TRUE}),1))",
+        "A14": "=ERROR.TYPE(INDEX(RANDBETWEEN(#N/A,\"x\"),1))",
+        "A15": "=ERROR.TYPE(INDEX(RANDBETWEEN(\"x\",#N/A),1))",
+        "A16": "=ERROR.TYPE(INDEX(RANDBETWEEN(#DIV/0!,#N/A),1))",
+        "A17": "=ERROR.TYPE(INDEX(RANDBETWEEN(NA(),{\"x\";\"y\"}),1))",
+        "A18": "=ERROR.TYPE(INDEX(RANDBETWEEN({\"x\";\"y\"},NA()),1))",
+        "A19": "=ERROR.TYPE(INDEX(RANDBETWEEN({\"x\";#N/A},{#DIV/0!;\"x\"}),1))",
+        "A20": "=ERROR.TYPE(INDEX(RANDBETWEEN({\"x\";#N/A},{#DIV/0!;\"x\"}),2))",
+        "A21": "=COUNT(RANDBETWEEN(SEQUENCE(3),TRUE))",
+        "A22": "=ROWS(RANDBETWEEN(SEQUENCE(3),FALSE))"
+      }
+    }
+  ],
+  "invariant": [
+    "Calc!A1",
+    "Calc!A10",
+    "Calc!A11",
+    "Calc!A12",
+    "Calc!A13",
+    "Calc!A14",
+    "Calc!A15",
+    "Calc!A16",
+    "Calc!A17",
+    "Calc!A18",
+    "Calc!A19",
+    "Calc!A2",
+    "Calc!A20",
+    "Calc!A21",
+    "Calc!A22",
+    "Calc!A3",
+    "Calc!A4",
+    "Calc!A5",
+    "Calc!A6",
+    "Calc!A7",
+    "Calc!A8",
+    "Calc!A9"
+  ]
+}

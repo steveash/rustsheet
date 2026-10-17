@@ -583,6 +583,7 @@ mod tests {
             millis: 0,
             tags: tags.iter().map(|t| (*t).to_string()).collect(),
             cells,
+            text: Vec::new(),
         }
     }
 

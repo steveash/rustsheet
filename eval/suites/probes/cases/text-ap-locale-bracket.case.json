@@ -1,0 +1,45 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "A/P and a locale-only [$-409] bracket in date, number and text formats (T-1702).",
+ "tags": [
+  "M2",
+  "text",
+  "number-format-probe",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=TEXT(0.25,\"h A/P\")",
+    "A2": "=TEXT(0.75,\"h A/P\")",
+    "A3": "=TEXT(0.25,\"h a/p\")",
+    "A4": "=TEXT(0.75,\"h a/p\")",
+    "A5": "=TEXT(0.75,\"h A/p\")",
+    "A6": "=TEXT(0.75,\"h a/P\")",
+    "A7": "=TEXT(0.75,\"h:mm A/P\"\"x\"\"\")",
+    "A8": "=TEXT(0.75,\"hh:mm AM/PM\")",
+    "A9": "=TEXT(0.75,\"A/P\")",
+    "A10": "=TEXT(0.25,\"a/p\")",
+    "A11": "=TEXT(5,\"[$-409]0\")",
+    "A12": "=TEXT(5,\"[$-409]0.00\")",
+    "A13": "=TEXT(45000,\"[$-409]d\")",
+    "A14": "=TEXT(45000,\"[$-409]yyyy-mm-dd\")",
+    "A15": "=TEXT(45000,\"[$-409]mmmm\")",
+    "A16": "=TEXT(5,\"[$-409]@\")",
+    "A17": "=TEXT(5,\"[$-409]General\")",
+    "A18": "=TEXT(-5,\"[$-409]0;[$-409]0\")",
+    "A19": "=TEXT(5,\"0[$-409]\")",
+    "A20": "=TEXT(45000,\"[$-409]dddd\")",
+    "A21": "=TEXT(\"abc\",\"x@a/p\")",
+    "A22": "=TEXT(\"abc\",\"x@A/p\")",
+    "A23": "=TEXT(\"abc\",\"x@a/P\")",
+    "A24": "=TEXT(\"abc\",\"x@am/pm\")",
+    "A25": "=TEXT(\"abc\",\"x@a/x\")",
+    "A26": "=TEXT(0.75,\"h a/x\")",
+    "A27": "=TEXT(0.75,\"h am/pm\")",
+    "A28": "=TEXT(0.25,\"h A/p\")"
+   }
+  }
+ ]
+}

@@ -5,6 +5,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, token::Error},
     functions::{text::util, CellReferenceIndex},
+    limits::check_array_size,
 };
 
 /// An argument of a text function that works element by element (LEFT, MID,
@@ -44,6 +45,11 @@ impl TextArg {
 /// Broadcasts `compute` over the (possibly array) `operands`. When every operand
 /// is a scalar the result is a single value; otherwise it is an array whose shape
 /// is the element-wise maximum of the operand shapes.
+///
+/// A result above the engine's array limit is the limit's error before any element is computed
+/// or allocated: a whole column against a whole row (`=LEFT(A:A,1:1)`) would be 2^34 cells, and
+/// a numeric result (FIND, LEN) does not count against the text budget (DEVIATION,
+/// docs/excel-semantics/arrays.md "Array results above 1,048,576 cells"; T-1771).
 pub(crate) fn broadcast_text(
     cell: CellReferenceIndex,
     operands: &[&TextArg],
@@ -84,6 +90,9 @@ pub(crate) fn broadcast_text(
         };
     }
 
+    if let Some((error, message)) = check_array_size(rows, cols) {
+        return CalcResult::new_error(error, cell, message);
+    }
     let mut total_bytes: usize = 0;
     let mut result = Vec::with_capacity(rows);
     for i in 0..rows {
@@ -105,3 +114,6 @@ pub(crate) fn broadcast_text(
     }
     CalcResult::Array(result)
 }
+
+#[cfg(test)]
+mod tests;

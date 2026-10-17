@@ -45,6 +45,17 @@ The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONT
 `DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
 04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)
 
+### WEEKNUM and ISOWEEKNUM at modern year boundaries (T-1308, VERIFIED)
+Rule: for modern dates ISOWEEKNUM and `WEEKNUM(d,21)` are the ISO-8601 week, and WEEKNUM types 1, 2 and 11-17 count
+from the week containing 1 January (system 1) on the real calendar, with no 1900 anchor quirk. ISOWEEKNUM is 53 on
+2020-12-31, 2021-01-01 and 2021-01-03 (all of ISO 2020), 1 on 2021-01-04 and on 2024-12-30, 52 on 2024-12-29, 53 on
+2026-12-31, 2027-01-01 and 2027-01-03, on 2015-12-31, 2016-01-03, 2032-12-31 and 2033-01-02, and 52 on 9999-12-31.
+A fractional serial truncates (`ISOWEEKNUM(44197.99)` = 53), a serial past 9999-12-31 is `#NUM!`
+(`ISOWEEKNUM(2958466)`), and date text is read as a date (`ISOWEEKNUM("2021-01-03")` = 53). The engine already matches
+all 67 cells, WEEKNUM types 1, 2 and 11-17 on 2023-01-01, 2022-01-01, 2021-12-31 and 2024-12-31 included.
+A year can have 54 weeks: `WEEKNUM(DATE(2024,12,31),12)` is 54 (Tuesday week start, 2024-01-01 a Monday; A59).
+Evidence: probes/weeknum-modern-boundaries A1-A67 (excel-graph, 2026-10-17).
+
 ### WEEKNUM return_type edge cases and serial 0 (T-1023)
 Rule: return_type 1, 2, 11-17 and 21 are valid (a fraction truncates: 2.9 is 2, 21.5 is 21);
 0, 3-10 and 18-20 are always `#NUM!` (not `#VALUE!`). A return_type of 22 or more, or negative, is
@@ -322,6 +333,36 @@ and `"Feb 29"` are 29 February; in a non-leap year `"29-Feb"` is #VALUE!.
 Implemented in: `formatter::date_text::parse_date`, `Model::parse_datevalue_text`, `Model::parse_number_text`,
 `functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159); `remove_separator_spaces` in `parse_date` (spaces around `-` and `/`, T-1136, Ported-From: ironcalc@753da658)
 
+## Date text with a month name glued to digits (no separator)
+Rule: date text whose month name touches a number with no space or separator still parses as a
+date. Seen in real workbooks (corpus-bench, Excel for the web agreeing with the cached values;
+evidence is the corpus-bench sidecars, recalculated by excel-graph 2026-10-17, T-0427):
+- `"July1"` (month name then day): `DATE(F2,MONTH(D2&1),E2)` with D2 = `"July"` is a July date
+  (corpus-bench/1726 `July-KPIs!J12` = 45483, J13 = 45504), so `MONTH("July1")` = 7.
+- `"January0"` .. `"December0"` (month name then `0`, presumably the year 2000 as `"Jul-0"` is):
+  `MONTH(E$4&0)` with E4 = `"January"` feeds a SUMPRODUCT month filter and does not error
+  (corpus-bench/55392 `Monthly Expenses Summary!E6` = 0, not the `IFERROR` fallback `""`); G6, the
+  same formula over the G4 month, is 35000, so a glued month matches the data.
+- `"1JUN2021"` (day, abbreviated month, 4-digit year): `DATEVALUE("1"&B1&B2)` with B1 = `"JUN"`,
+  B2 = 2021 is 44348 (2021-06-01; corpus-bench/CF_18814 `attendance-Dec!E1`).
+Probed (probes/date-text-glued-month, excel-graph 2026-10-17, Sheet1 rows 1-24; columns B-D are
+MONTH/DAY/YEAR of DATEVALUE, E and F are VALUE and `0+` minus DATEVALUE, G-H MONTH/DAY of the text, I
+the serial): a month name glued to one number reads as with a space between them, but a month glued to a
+day that a year follows does not parse; DATEVALUE, VALUE, `0+`, MONTH and DAY agree on every form (E and F
+are 0 wherever DATEVALUE parses):
+- Month then one number is the year-less "Month d" rule above: a day of that month in the current year
+  (`"July1"`, `"July10"`, `"July31"`, `"Jul1"`, `"Sept1"`: rows 1-3, 7, 20), otherwise the 1st of
+  that month in that year, one or two digits as a two-digit year (`"July32"` 1932-07-01, `"July45"` 1945-07-01,
+  `"July0"` 2000-07-01, `"January0"` 2000-01-01, `"December0"` 2000-12-01: rows 4-6, 22-23) and four
+  digits as the year (`"Jul2026"`, `"July2026"`: 2026-07-01, rows 8-9). Unprobed in glued form: a number that is a
+  day of no 30-day month or of February (`"Jun31"`, `"Feb29"`); the year-less rule reads them as years.
+- Day then month, with or without a year, glued on either side or both: `"1July"` (current year,
+  row 12), `"1Jul2026"`, `"01JUN21"` (2021), `"1June2021"`, `"1jun2021"` (case-insensitive),
+  `"1JUN 2021"`, `"1 JUN2021"`, `"1JUN2021"` (rows 13-16, 18-19, 24).
+- `#VALUE!`: a month glued to a day followed by a year, whatever joins them (`"July1,2026"`,
+  `"July12026"`, `"Jun1 2021"`: rows 10, 11, 17), and a name that is no month (`"Ju1"`, row 21).
+Status: VERIFIED (web). Not implemented (T-1789): the engine gives `#VALUE!` for all of them.
+
 ## WORKDAY holidays take the whole range
 Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no
 implicit intersection: `=WORKDAY(C2,6,D2:D5)` in row 2 skips the holiday in D4.
@@ -367,7 +408,20 @@ over a multi-cell range and over an array in every probed argument (`ROWS(HOUR(A
 WEEKNUM, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL and YEARFRAC are `#VALUE!` (the whole result, not
 per element) when a date, month count, day count, return type or basis argument is a multi-cell range, yet lift over
 an array literal in the same place (`EDATE(A1:A3,1)` is `#VALUE!`, `INDEX(EDATE({45000.25;45031.5;45100.75},1),2)`
-= 45061). The `weekend` argument of WORKDAY.INTL and NETWORKDAYS.INTL is the exception: it lifts over a range too
+= 45061). The refusal holds on the range's own rows and in a later argument (`ROWS(EDATE(45000,B1:B60))`,
+`ROWS(YEARFRAC(45000,46000,B1:B60))`), and also in a legacy formula, which puts no `@` on the range. Next to an array
+the range makes every element `#VALUE!` (`EDATE({45000;45031},M1:M60)` is 2 rows of `#VALUE!`, and `EDATE(A1:A60,{1;2})` and `EDATE({45000,45031},M1:M60)`
+have every element `#VALUE!`, probes/scalar-lift-open-a W24-W30, W70-W73). An error argument beside the range follows the
+function's check order: `EDATE(NA(),A1:A60)` is `#N/A`, `EDATE(A1:A60,NA())` is `#VALUE!`, and YEARFRAC checks `basis`, start, end
+(`YEARFRAC(1/0,45000,NA())` is `#N/A`; probes/scalar-lift-open-a W1-W8, -d W1-W7). YEARFRAC range-checks the basis
+before it reads either date: `YEARFRAC(NA(),45000,5)`, `YEARFRAC(45000,NA(),5)`, `YEARFRAC("x",45000,5)`,
+`YEARFRAC(TRUE,45000,5)` and `YEARFRAC(NA(),45000,-1)` are `#NUM!`, while a basis that is not a number wins with
+its own error (`YEARFRAC(NA(),45000,"x")` and `YEARFRAC(NA(),45000,TRUE)` are `#VALUE!`); numeric text is a basis
+(`YEARFRAC(NA(),45000,"5")` is `#NUM!`, `YEARFRAC(45000,46000,"1")` = 2.737226277372263; probes/yearfrac-basis-order,
+excel-graph, 2026-10-17, T-1800). A 3-D range in EDATE is `#VALUE!`
+(probes/scalar-lift-open-b W4, W5, W7). See probes/scalar-lift-shapes,
+-b and -c (T-1767) and arrays.md "Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule".
+The `weekend` argument of WORKDAY.INTL and NETWORKDAYS.INTL is the exception: it lifts over a range too
 (`INDEX(WORKDAY.INTL(45000,5,B1:B3),2)` = 45007); `holidays` is read whole (see "WORKDAY holidays take the whole
 range"). Typed coercion differs the same way: a boolean date is `#VALUE!` for EDATE, WORKDAY and YEARFRAC, but
 counts as serial 1 for DAYS (`DAYS(TRUE,1)` = 0), WEEKDAY (1), DATEDIF (45999 for `(TRUE,46000,"d")`) and
@@ -378,12 +432,18 @@ the 9999 limit: the month argument is bounded (see "DATE month and day bounds").
 `DATE(2042,8,1E+15)` = 84845 = `DATE(2042,8,32767)` (gen-m6/5cc04d6f42b23b51 Calc!A4, `DATE(..)%*88` = 74663.6;
 excel-graph 2026-10-09), the same 32767 cap (T-1419).
 Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
+Ours: YEARFRAC's kernel (`yearfrac_of`) reads and range-checks the basis, then reads the start and the end date, as Excel does, so probes/scalar-lift-open-d W1-W7, -a W5-W8 and probes/yearfrac-basis-order pass (T-1800). The financial callers of `get_yearfrac` (ACCRINTM, DISC and the rest) pass three numbers, where every failing check is `#NUM!` in either order, so the reorder changes nothing for them.
 Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift (T-1235), as do
-DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. Still `#N/IMPL!` (T-1236) for an array literal in
-a date argument: EDATE, EOMONTH, WEEKNUM, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL, YEARFRAC.
+DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. EDATE, EOMONTH, WEEKNUM and YEARFRAC lift
+over an array and refuse a multi-cell range in every argument, in dynamic and legacy formulas (T-1770, SPEC-0011
+`LiftArrays`). Still `#N/IMPL!` (T-1236) for an array literal in a date argument: WORKDAY, WORKDAY.INTL, NETWORKDAYS,
+NETWORKDAYS.INTL.
 In a 1904 workbook DATEDIF reads date text as DATEVALUE does (from
 1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330). It counts the days on the 1904 calendar since T-1416 (`DATEDIF(0,1000,"ym")` = 8, probes/date-system-1904-readers A11).
 Status: VERIFIED
+Implemented in: EDATE, EOMONTH, WEEKNUM and YEARFRAC: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds.rs)
+and `Model::lift_call` (functions/lift/call.rs), with the kernels `edate_of`, `eomonth_of`
+(functions/date_and_time/month_shift.rs), `weeknum_of` (date_and_time/weeknum.rs) and `yearfrac_of` (date_and_time/yearfrac.rs).
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
 
 ## DATEDIF and DAYS360 error order with a bad unit or method (inferred)
@@ -615,9 +675,11 @@ Tasks: T-1105, T-1366, T-1330
 Rule: HOUR and MINUTE of a serial far beyond the last date (2958465, 9999-12-31) are `#NUM!`: `HOUR(123456789.123)` and
 `MINUTE(7+123456789.123)` are `#NUM!`, as DAY is.
 Evidence: gen-m7/bf889c3917eb54c5 Calc!A1, gen-m7/851eb2099ae3f805 Calc!A39 (excel-graph, 2026-10-11, T-1275).
-Ours: only negative serials are rejected (`HOUR(123456789.123)` = 2).
-Status: VERIFIED (web) for these values; SECOND and the exact bound (2958466 or above) are UNVERIFIED
-Tasks: T-1353
+The bound (T-1353, probes/time-parts-past-max-date A1-A14, excel-graph, 2026-10-17): a serial of 2958466 or more is `#NUM!`
+for HOUR, MINUTE and SECOND alike (`HOUR(2958466)`, `MINUTE(2958466.5)`, `SECOND(2958466)`, `SECOND(1E+15)`), while
+2958465.99999 still has a time (`HOUR` = 23) and `HOUR(2958465.9)` = 21, `MINUTE(2958465.9)` = 36, `SECOND(2958465.9)` = 0.
+Implemented in `time_part_fn!` (functions/date_and_time.rs).
+Status: VERIFIED (web)
 
 ## HOUR, MINUTE and SECOND round to the nearest second
 Rule: SECOND of a time of day 22:24:01.729 is 2: `SECOND(DDB(81074,518,21,6,1))`, where DDB is 3024.9333533459067 (a

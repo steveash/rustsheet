@@ -302,16 +302,81 @@ fn replace_element(
     Ok(ArrayNode::String(result))
 }
 
+/// Excel's per-character case mapping for PROPER, UPPER and LOWER: the simple (one-to-one) mapping only, so ß, ŉ,
+/// ǰ and the ﬁ ligatures keep their form where Rust would expand them ("SS", "ʼN"); İ folds to
+/// ASCII I (upper) and i (lower), and ΐ, ΰ upper-case to Ϊ, Ϋ (probes/clean-proper-chars
+/// D4, D14:D18, D23:D24). UPPER and LOWER use the same mapping (probes/case-mapping-expanding
+/// A1:C13).
+fn simple_case(c: char, upper: bool) -> char {
+    match (c, upper) {
+        ('İ', true) => 'I',
+        ('İ', false) => 'i',
+        ('ΐ', true) => 'Ϊ',
+        ('ΰ', true) => 'Ϋ',
+        _ => {
+            let mut mapped: Vec<char> = if upper {
+                c.to_uppercase().collect()
+            } else {
+                c.to_lowercase().collect()
+            };
+            match (mapped.pop(), mapped.is_empty()) {
+                (Some(one), true) => one,
+                _ => c,
+            }
+        }
+    }
+}
+
+/// Whether a capital sigma followed by `next` lowers to the final ς: not before a letter or digit,
+/// a combining mark (U+0300..U+036F), a right single quote (U+2019) or a zero-width space, while
+/// a straight apostrophe, space, `-` and the end of the text all give ς (probes/case-mapping-expanding
+/// A14:C27). The rule is the same in PROPER and LOWER, and a lone Σ lowers to ς in LOWER.
+fn sigma_is_final(next: Option<char>) -> bool {
+    next.is_none_or(|n| {
+        !(n.is_alphanumeric() || matches!(n, '\u{300}'..='\u{36f}' | '\u{2019}' | '\u{200b}'))
+    })
+}
+
+/// Excel's LOWER: the simple mapping per character, with the final-sigma rule.
+pub(super) fn lower_case(s: &str) -> String {
+    let chars: Vec<char> = s.chars().collect();
+    chars
+        .iter()
+        .enumerate()
+        .map(|(i, &c)| {
+            if c == 'Σ' && sigma_is_final(chars.get(i + 1).copied()) {
+                'ς'
+            } else {
+                simple_case(c, false)
+            }
+        })
+        .collect()
+}
+
+/// Excel's UPPER: the simple mapping per character (ß, ŉ, ǰ, ligatures stay as they are). Unlike
+/// PROPER, UPPER leaves İ alone (probes/case-mapping-expanding B12).
+pub(super) fn upper_case(s: &str) -> String {
+    s.chars()
+        .map(|c| if c == 'İ' { c } else { simple_case(c, true) })
+        .collect()
+}
+
+/// A word start is any character after a non-letter, digits included ("2Nd"). A capital sigma
+/// ending a word (see `sigma_is_final`) lowers to the final ς: "ΑΣ.ΑΣ-Σ ΑΣ1" is "Ας.Ας-Σ Ασ1"
+/// (probes/clean-proper-chars D7, D16, D25).
 fn proper_case(s: &str) -> String {
+    let chars: Vec<char> = s.chars().collect();
     let mut result = String::with_capacity(s.len());
     let mut capitalize_next = true;
-    for c in s.chars() {
+    for (i, &c) in chars.iter().enumerate() {
         if c.is_alphabetic() {
             if capitalize_next {
-                result.extend(c.to_uppercase());
+                result.push(simple_case(c, true));
                 capitalize_next = false;
+            } else if c == 'Σ' && sigma_is_final(chars.get(i + 1).copied()) {
+                result.push('ς');
             } else {
-                result.extend(c.to_lowercase());
+                result.push(simple_case(c, false));
             }
         } else {
             result.push(c);

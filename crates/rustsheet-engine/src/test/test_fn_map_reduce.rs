@@ -52,15 +52,17 @@ fn map_2d_array() {
 }
 
 #[test]
-fn map_mismatched_array_sizes_is_error() {
+fn map_mismatched_array_sizes_pad_with_na() {
     let mut model = new_empty_model();
     model._set("A1", "1");
     model._set("A2", "2");
     model._set("B1", "10");
-    // A1:A2 is 2×1, B1:B1 is 1×1 — mismatch
+    // A1:A2 is 2×1, B1:B1 is 1×1: the shorter array pads with #N/A, nothing broadcasts
+    // (probes/map-unequal-sizes, arrays.md "MAP over arrays of different sizes").
     model._set("C1", "=MAP(A1:A2, B1:B1, LAMBDA(a, b, a + b))");
     model.evaluate();
-    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert_eq!(model._get_text("C1"), "11");
+    assert_eq!(model._get_text("C2"), "#N/A");
 }
 
 #[test]
@@ -361,4 +363,41 @@ fn a_parameter_read_once_through_if_let_sort_take_drop_is_moved_and_one_read_twi
     assert_eq!(model._get_text("C4"), "3");
     assert_eq!(model._get_text("C5"), "5");
     assert_eq!(model._get_text("C6"), "3");
+}
+
+// ── A LAMBDA returning a multi-cell range (T-1769) ───────────────────────────
+
+#[test]
+fn map_whose_lambda_returns_a_tall_range_reads_only_the_used_area() {
+    // Nightly fuzz timeout (formula_eval, T-1769), on the fuzz target's sheet: every element was
+    // read as a 100,000-cell array before it became #VALUE!, so 1,000 calls took seconds.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "=A1*2");
+    model._set("C3", "=SUM(MAP(A1:A1000,LAMBDA(rSMU,((B1:B100000)))))");
+    model._set("D3", "=ROWS(MAP(A1:A1000,LAMBDA(r,B1:B1048576)))");
+    model._set("E3", "=SUM(SCAN(0,A1:A1000,LAMBDA(a,v,B2:C500000)))");
+    model.evaluate();
+    assert_eq!(model._get_text("C3"), "#VALUE!");
+    assert_eq!(model._get_text("D3"), "1000");
+    assert_eq!(model._get_text("E3"), "#VALUE!");
+}
+
+#[test]
+fn map_and_scan_elements_that_are_ranges_still_read_their_cells() {
+    // The element is #VALUE! whatever the range holds, but its cells are still read: a range
+    // through the formula's own cell closes a cycle, and an error cell stays inside the element.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "=1/0");
+    model._set("C1", "=MAP(A1:A2,LAMBDA(r,A1:A2))");
+    model._set("E1", "=SCAN(0,A1:A1,LAMBDA(a,v,A1:A2))");
+    model._set("G1", "=MAP(A1:A2,LAMBDA(r,G1:G5))");
+    model._set("H1", "=SCAN(0,A1:A2,LAMBDA(a,v,H1:H5))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert_eq!(model._get_text("C2"), "#VALUE!");
+    assert_eq!(model._get_text("E1"), "#VALUE!");
+    assert_eq!(model._get_text("G1"), "#CIRC!");
+    assert_eq!(model._get_text("H1"), "#CIRC!");
 }

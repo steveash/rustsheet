@@ -14,8 +14,8 @@ use crate::{
     model::Model,
 };
 
-use super::{map_elements, Lifted};
 use crate::arithmetic::bcast_get;
+use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::functions::util::array_node_to_calc_result;
 use crate::limits::check_array_size;
 
@@ -100,22 +100,26 @@ fn image_error(source: &ArrayNode, valid: bool) -> Error {
     }
 }
 
-/// An array of `error` with the shape of `values` (an element that is already an error stays).
-pub(crate) fn error_array(values: &[Vec<ArrayNode>], error: &Error) -> CalcResult {
-    CalcResult::Array(map_elements(values, |v| match v {
-        ArrayNode::Error(_) => v.clone(),
-        _ => ArrayNode::Error(error.clone()),
-    }))
-}
-
 impl Model {
-    /// The value an argument evaluates to; a range is its top-left cell, read without
-    /// evaluating the rest of the range.
-    fn offline_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
-        match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Range { left, .. } => self.evaluate_cell(left),
-            other => other,
-        }
+    /// An array of `error` with the shape of `values`; with `keep_errors` an element that is
+    /// already an error stays.
+    fn error_grid(
+        &mut self,
+        values: Vec<Vec<ArrayNode>>,
+        error: &Error,
+        keep_errors: bool,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.lift_values(
+            vec![CalcResult::Array(values)],
+            LiftCost::Unit,
+            &LiftOptions::REUSE_EQUAL_RUNS,
+            cell,
+            &mut |_, element| match element {
+                [kept @ CalcResult::Error { .. }] if keep_errors => kept.clone(),
+                _ => CalcResult::new_error(error.clone(), cell, String::new()),
+            },
+        )
     }
 
     /// Evaluates every argument in order and returns the first error among them, with the
@@ -132,13 +136,13 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
         lift_option_errors: bool,
-    ) -> Result<(Lifted, Vec<CalcResult>), CalcResult> {
+    ) -> Result<(LiftedArg, Vec<CalcResult>), CalcResult> {
         // The callers check arity first; an empty list is an argument-count error, not a panic.
         let Some((head, rest)) = args.split_first() else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let first = self.lifted_arg(head, cell)?;
-        if let Lifted::Scalar(value) = &first {
+        let first = self.read_lift_arg(head, cell)?;
+        if let LiftedArg::Scalar(value) = &first {
             if value.is_error() {
                 return Err(value.clone());
             }
@@ -146,21 +150,19 @@ impl Model {
         let mut rest_values = Vec::with_capacity(rest.len());
         let mut pending = None;
         for arg in rest {
-            let value = self.offline_arg(arg, cell);
+            let value = self.evaluate_node_top_left(arg, cell);
             if let CalcResult::Error { error, .. } = &value {
                 match &first {
-                    Lifted::Array(values) => {
-                        return Err(CalcResult::Array(map_elements(values, |_| {
-                            ArrayNode::Error(error.clone())
-                        })));
+                    LiftedArg::Grid(values) => {
+                        return Err(self.error_grid(values.clone(), error, false, cell));
                     }
                     // A scalar error option beside an array option lifts over it
                     // (probes/rich-errors-image-array-error-elements, T-1427): keep it for
                     // `image_grid`; with no array option it is the result.
-                    Lifted::Scalar(_) if lift_option_errors => {
+                    LiftedArg::Scalar(_) if lift_option_errors => {
                         pending.get_or_insert_with(|| value.clone());
                     }
-                    Lifted::Scalar(_) => return Err(value),
+                    LiftedArg::Scalar(_) => return Err(value),
                 }
             }
             rest_values.push(value);
@@ -181,7 +183,7 @@ impl Model {
     /// itself (T-1417).
     fn image_grid(
         &mut self,
-        source: &Lifted,
+        source: &LiftedArg,
         options: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> CalcResult {
@@ -203,8 +205,8 @@ impl Model {
                     (0..cols)
                         .map(|col| {
                             let source = match source {
-                                Lifted::Array(values) => element(values, row, col),
-                                Lifted::Scalar(value) => {
+                                LiftedArg::Grid(values) => element(values, row, col),
+                                LiftedArg::Scalar(value) => {
                                     Some(calc_result_to_array_node(value.clone()))
                                 }
                             };
@@ -256,13 +258,23 @@ impl Model {
             Ok((source, options)) if has_array_option(&options) => {
                 self.image_grid(&source, &options, cell)
             }
-            Ok((Lifted::Array(values), options)) => {
+            Ok((LiftedArg::Grid(values), options)) => {
                 let valid = image_options_valid(options.get(1..).unwrap_or_default());
-                CalcResult::Array(map_elements(&values, |v| {
-                    ArrayNode::Error(image_error(v, valid))
-                }))
+                self.lift_values(
+                    vec![CalcResult::Array(values)],
+                    LiftCost::Unit,
+                    &LiftOptions::REUSE_EQUAL_RUNS,
+                    cell,
+                    &mut |_, element| {
+                        let source = element
+                            .first()
+                            .cloned()
+                            .map_or(ArrayNode::Empty, calc_result_to_array_node);
+                        CalcResult::new_error(image_error(&source, valid), cell, String::new())
+                    },
+                )
             }
-            Ok((Lifted::Scalar(source), options)) => {
+            Ok((LiftedArg::Scalar(source), options)) => {
                 let valid = image_options_valid(options.get(1..).unwrap_or_default());
                 let error = image_error(&calc_result_to_array_node(source), valid);
                 let message = if error == Error::BLOCKED {
@@ -288,8 +300,10 @@ impl Model {
         }
         match self.offline_args(args, cell, false) {
             Err(error) => error,
-            Ok((Lifted::Array(values), _)) => error_array(&values, &Error::CONNECT),
-            Ok((Lifted::Scalar(_), _)) => CalcResult::new_error(
+            Ok((LiftedArg::Grid(values), _)) => {
+                self.error_grid(values, &Error::CONNECT, true, cell)
+            }
+            Ok((LiftedArg::Scalar(_), _)) => CalcResult::new_error(
                 Error::CONNECT,
                 cell,
                 "Stock data is never fetched".to_string(),
@@ -306,19 +320,19 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.lifted_arg(&args[0], cell) {
+        let value = match self.read_lift_arg(&args[0], cell) {
             Ok(value) => value,
             Err(error) => return error,
         };
-        let field_name = match self.lifted_arg(&args[1], cell) {
-            Ok(Lifted::Scalar(scalar)) if scalar.is_error() => return scalar,
+        let field_name = match self.read_lift_arg(&args[1], cell) {
+            Ok(LiftedArg::Scalar(scalar)) if scalar.is_error() => return scalar,
             Ok(field_name) => field_name,
             Err(error) => return error,
         };
         // A single value (or a 1x1 range) is a scalar `#FIELD!`.
         if matches!(
             (&value, &field_name),
-            (Lifted::Scalar(_), Lifted::Scalar(_))
+            (LiftedArg::Scalar(_), LiftedArg::Scalar(_))
         ) {
             return CalcResult::new_error(Error::FIELD, cell, String::new());
         }
@@ -333,7 +347,7 @@ impl Model {
         // T-1189). A 1-wide `field_name` repeats along that axis, and a `value` shorter than the result is
         // not padded (A2:C7).
         let field_error = |row: usize, col: usize| match &field_name {
-            Lifted::Array(values) => {
+            LiftedArg::Grid(values) => {
                 let r = if field_rows == 1 { 0 } else { row };
                 let c = if field_cols == 1 { 0 } else { col };
                 match values.get(r).and_then(|line| line.get(c)) {
@@ -345,7 +359,7 @@ impl Model {
                     _ => Error::FIELD,
                 }
             }
-            Lifted::Scalar(_) => Error::FIELD,
+            LiftedArg::Scalar(_) => Error::FIELD,
         };
         CalcResult::Array(
             (0..rows)

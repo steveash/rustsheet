@@ -33,6 +33,7 @@ use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
+use rustsheet_eval::text_expect;
 use rustsheet_eval::xlsx_snapshot::{read_snapshot, WorkbookSnapshot};
 
 #[derive(Parser)]
@@ -380,9 +381,11 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         let old = Baseline::read(&path)?;
         let delta = baseline::diff(&old, &current);
         println!(
-            "[{name}] known failures {} -> {}  (fixed {}, new-coverage failures {}, REGRESSIONS {}, new cases {}, removed cases {})",
+            "[{name}] known failures {} -> {}, text {} -> {}  (fixed {}, new-coverage failures {}, REGRESSIONS {}, new cases {}, removed cases {})",
             old.failing.len(),
             current.failing.len(),
+            old.text_failing.len(),
+            current.text_failing.len(),
             delta.fixed.len(),
             delta.new_failures.len(),
             delta.regressions.len(),
@@ -508,6 +511,9 @@ fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
             c.actual
         );
     }
+    let mut text = String::new();
+    text_expect::write_case(&r.text, all, &mut text);
+    print!("{text}");
     Ok(ExitCode::SUCCESS)
 }
 

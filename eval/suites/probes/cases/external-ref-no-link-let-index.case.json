@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "INDEX and OFFSET over a LET that picks a reference into another workbook with no externalLink part, and LET bodies that may also pick a non-external argument (T-1710).",
+  "tags": [
+    "M8",
+    "references",
+    "external-reference",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ERROR.TYPE(INDEX(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1:C4)),2,2))",
+        "A2": "=ROWS(INDEX(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1:C4)),2,0))",
+        "A3": "=ISREF(OFFSET(LET(c,TRUE,'[other.xlsx]Sheet1'!A1),1,1))",
+        "A4": "=ROWS(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1:B3,\"x\")))",
+        "A5": "=ROWS(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1:B3,D1:D2)))",
+        "A6": "=ISREF(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1,D1)))",
+        "A7": "=COUNTA(LET(c,TRUE,IF(c,'[other.xlsx]Sheet1'!A1:B2,1)))"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -30,6 +30,16 @@ pub(super) fn args_signature_fieldvalue(arg_count: usize) -> Vec<Signature> {
     }
 }
 
+/// `GETPIVOTDATA(data_field, pivot_table, [field1, item1, ...])`: every argument is taken as is, a
+/// range included (it never intersects or lifts; probes/getpivotdata-evidence-floor D6, D26).
+pub(super) fn args_signature_getpivotdata(arg_count: usize) -> Vec<Signature> {
+    if arg_count >= 2 {
+        vec![Signature::Vector; arg_count]
+    } else {
+        vec![Signature::Error; arg_count]
+    }
+}
+
 pub(super) fn args_signature_lambda(arg_count: usize) -> Vec<Signature> {
     // LAMBDA([param1, param2, ...], body) — at least 1 arg (the body)
     if arg_count == 0 {
@@ -468,13 +478,6 @@ pub(super) fn args_signature_trimrange(arg_count: usize) -> Vec<Signature> {
     result
 }
 
-pub(super) fn args_signature_address(arg_count: usize) -> Vec<Signature> {
-    if !(2..=5).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    vec![Signature::Scalar; arg_count]
-}
-
 pub(super) fn args_signature_choose(arg_count: usize) -> Vec<Signature> {
     // CHOOSE(index, value1, ...): the index is a scalar; the value arguments
     // pass references through untouched (Excel: SUM(CHOOSE(2, A1:A5, B1:B5))
@@ -488,13 +491,13 @@ pub(super) fn args_signature_choose(arg_count: usize) -> Vec<Signature> {
     result
 }
 
+/// CHOOSECOLS and CHOOSEROWS read every argument whole: the array, and each index list
+/// (probes/lookup-argument-modes F7:G10, T-1241).
 pub(super) fn args_signature_choosecols(arg_count: usize) -> Vec<Signature> {
     if arg_count < 2 {
         return vec![Signature::Error; arg_count];
     }
-    let mut result = vec![Signature::Scalar; arg_count];
-    result[0] = Signature::Vector;
-    result
+    vec![Signature::Vector; arg_count]
 }
 
 pub(super) fn args_signature_expand(arg_count: usize) -> Vec<Signature> {

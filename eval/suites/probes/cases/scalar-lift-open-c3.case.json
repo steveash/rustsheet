@@ -1,0 +1,18 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1777 SPEC-0011 open question 11: ROWS(HSTACK(A:A,1:1)), a 1048576 x 16385 result (2^34 cells). Alone, because the backend may fail on it. The committed oracle value 0 for this cell is considered unreliable (an excel-graph backend artifact), not Excel's own answer.",
+  "tags": [
+    "M9",
+    "argument-modes",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "W1": "=ROWS(HSTACK(A:A,1:1))"
+      }
+    }
+  ]
+}

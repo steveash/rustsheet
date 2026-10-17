@@ -227,10 +227,14 @@ Calc!H1, I1; T-1537). Over a cached range the same lift gives the cached cell pe
 top-left cached cell (`{0,2},1` is "Hello!", 5; `{1,2},0` is "Hello!", 5), an out-of-range element is a per-element `#REF!`
 (`{1,4},1` is "Hello!", #REF!) and a cached `#N/A` stays that element (`INDEX(…A1:C3,1,{1,2,3})` is "Hello!", 10, #N/A)
 (fixtures/external-link-cached-ranges Refs!B83:D88, excel-graph, 2026-10-14, T-1546; the engine matches).
-Excel treats the lifted INDEX over an external range as a single-cell reference (its first element, which in these probes is also the range's top-left cell; `{2,1}` would tell them apart, UNVERIFIED):
-`SUM(INDEX(…,{1,2},1))` is 0 ("Hello!" is text), `ROWS(…)` is 1, `ISREF(…)` is TRUE and a further
-`INDEX(INDEX(…,{1,2},1),2)` is `#REF!` (Refs!B89:B92). Not implemented: we give `#BLOCKED!`, `#BLOCKED!`, FALSE and
-`#BLOCKED!` for those four (T-1554).
+In a legacy (non-array) formula, an INDEX with an index array over an external range is a single-cell
+reference to its *first element*, not to the range's top-left cell. `SUM(INDEX(…,{1,2},1))` is 0 ("Hello!" is text), `ROWS(…)` is 1, `ISREF(…)` is TRUE and a further
+`INDEX(INDEX(…,{1,2},1),2)` is `#REF!` (Refs!B89:B92). With `{2,1}` the two candidates differ, and the first element
+(A2, 5) wins: `SUM(INDEX([1]Uses!$A$1:$B$3,{2,1},1))` is 5, `INDEX(INDEX(…,{2,1},1),1)` 5, `…&""` "5",
+`COUNTA(…)` 1, `ROWS(…)` 1, `ISREF(…)` TRUE, `INDEX(INDEX(…,{2,1},1),2)` `#REF!`; across a row
+`SUM(INDEX(…,1,{2,1}))` is 10 (B1) and `COLUMN(INDEX(…,1,{2,1}))` 2. Entered as a two-cell array formula (B10:C10), the
+same INDEX gives one result per element: 5, "Hello!" (fixtures/external-link-cached-index-array Refs!B1:B10, C10, excel-graph,
+2026-10-16, T-1554). The engine matches all of these.
 A LET is transparent here too: a LET whose body is (or IF, CHOOSE or a nested LET picks) a
 reference into another workbook is that reference. `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` is 3,
 `ROWS(LET(c,TRUE,…!A1:B3))` 3, `ROWS(LET(c,TRUE,LET(d,1,CHOOSE(d,…!A1:B4))))` 4,
@@ -246,7 +250,13 @@ Evidence: probes/external-ref-no-link-let Calc!A1:A20, external-ref-no-link-ifch
 (excel-graph, 2026-10-16, T-1535). Engine: `Model::pick_reference` reads such a LET with its names
 bound (`let_scope`) when every argument its body may pick names another workbook; a LET whose body
 may pick any other argument (a reference into this workbook, a value: `IF(c,…!A1:B3,"x")`) is read
-as before, and INDEX over such a LET reads it as INDEX over the IF does; both unprobed (T-1710).
+as before. Probed since (T-1710, probes/external-ref-no-link-let-index, excel-graph 2026-10-16):
+INDEX over such a LET is INDEX over the reference it picks (`ERROR.TYPE(INDEX(LET(c,TRUE,IF(c,…!A1:C4)),2,2))`
+`#N/A`, `ROWS(INDEX(…,2,0))` 1; ours matches), and a LET body that may also pick another argument is
+still read with its names bound and the IF's pick made: `ROWS(LET(c,TRUE,IF(c,…!A1:B3,"x")))` and
+`ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))` are 3, `ISREF(LET(c,TRUE,IF(c,…!A1,D1)))` TRUE and
+`COUNTA(LET(c,TRUE,IF(c,…!A1:B2,1)))` 0; ours gives `#BLOCKED!`, FALSE and 1 (T-1721). OFFSET over
+such a LET is not a reference: `ISREF(OFFSET(LET(c,TRUE,…!A1),1,1))` is FALSE (ours TRUE; T-1721), as OFFSET over the bare external reference is (external-ref-no-link-index A16, A17): the miss is that ours does not unwrap the LET first.
 `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3, and the engine matches since T-1508, which broadcasts CHOOSE's
 arms over an index array (external-ref-no-link-ifchoose A32).
 Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external
@@ -280,7 +290,7 @@ to a workbook, or whose part is missing or unreadable, is an empty book that kee
 lexer reads `[n]!Name` and `[n]Sheet!Name` as one identifier, which the parser keeps as a defined
 name with its prefix, and `external_links.rs` reads the cache. A cell the cache does not hold reads
 as empty: `=[1]Uses!$B$3` is 0, `SUM` and `COUNTA` of `[1]Uses!$E$1:$F$2` are 0
-(fixtures/external-link-cached-ranges Refs!B24, B55, B77). Unprobed, so UNVERIFIED: a book, sheet or name the cache does not hold and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
+(fixtures/external-link-cached-ranges Refs!B24, B55, B77). A name or sheet the cache does not hold is `#BLOCKED!` (probed: fixtures/external-link-cached-lookups Refs!B18-B20, T-1609; see "a name the cache does not hold" below). Unprobed, so UNVERIFIED: a book index with no link part and a book written by file name (`[other.xlsx]`) are `#BLOCKED!` as an
 uncached reference is; a sheet with `refreshError="1"` is read like any other; `[0]!Missing` is
 `#NAME?` and `[0]Nope!Name` (no such sheet) `#REF!`, as the plain name and a missing sheet are; only
 evaluation strips the `[0]` prefix, so ISREF and a rename of the name do not see through it
@@ -343,8 +353,8 @@ the web keeps the cache on upload):
   cell of a sheet the cache does not hold (`[1]Nope!$A$1`) are `#BLOCKED!` (`ERROR.TYPE([1]!NoSuchName)` 11), yet
   `ISREF([1]Nope!$A$1)` is TRUE;
 - a 3-D span of the cached sheets aggregates over them: `SUM([1]Uses:Defines!$B$2)` 142,
-  `SUM(…!$A$1:$B$2)` 157, COUNT 4, COUNTA 9, MAX 142, the span reversed (`[1]Defines:Uses!`) the
-  same; but `ISREF([1]Uses:Defines!$A$1)` is FALSE, ERROR.TYPE of the bare span 4 (`#REF!`) and
+  `SUM(…!$A$1:$B$2)` 157, COUNT 4, COUNTA 9, MAX 142, and `SUM([1]Defines:Uses!$B$2)` for the span reversed 142
+  (fixtures/external-link-cached-3d-span Refs!B9; the other aggregates reversed are unprobed); but `ISREF([1]Uses:Defines!$A$1)` is FALSE, ERROR.TYPE of the bare span 4 (`#REF!`) and
   ROWS `#VALUE!`, as for a span of this workbook ("3-D references outside the aggregates"), while
   without a link `SUM('[other.xlsx]S1:S2'!A1)` is `#BLOCKED!` (T-1381). Ours does not parse the span
   (`#ERROR!`; T-1654).
@@ -418,7 +428,7 @@ PRODUCT skips a text or boolean cell from a reference, so with no number left it
 LARGE of a one-cell reference with no number is `#NUM!`; RANK of a number absent
 from a one-cell reference is `#N/A` (statistics.md, T-1055). Over `A1:A5` = {"5", TRUE, 7, "9", 3}: MAXA 7, MINA 0,
 AVERAGEA 2.2, PRODUCT 21, LARGE(,1) 7, RANK(3,) 2.
-Probe T-1378 (probes/subtotal-reference-operands-f, excel-graph, 2026-10-11): TAKE and DROP pick cells (SUBTOTAL reads them, AREAS 1, ISREF TRUE) or values (SUBTOTAL and AREAS spill `#VALUE!` per element, ISREF FALSE) according to the arm the IF, CHOOSE, SWITCH or IFS actually selects: `TAKE(IF(TRUE,A1:A4,SEQUENCE(4)),2)`, `TAKE(CHOOSE(1,A1:A4,SEQUENCE(4)),2)` and `TAKE(IFS(TRUE,A1:A4,FALSE,SEQUENCE(4)),2)` are cells, `CHOOSE(2,...)` and `IF(FALSE,A1:A4,SEQUENCE(4))` are values. LET variable names and LAMBDA parameters are case-insensitive (`LET(x,A1:A4,X)` reads `x`; probes/let-lambda-name-case: `LAMBDA(x,X+1)(2)` 3, `LAMBDA(Ab,aB*2)(4)` 8, `LET(f,LAMBDA(x,x+1),F(2))` 3, and a parameter of another case shadows the LET name, `LET(x,1,LAMBDA(X,x*10)(2))` 20, `LET(x,1,LET(X,5,x))` 5); an inner LET rebinding a name shadows the outer one. A LET or LAMBDA that binds one name twice is refused in any case: Excel for the web refuses (createSession 501 `FileCorruptTryRepair`) a single-cell workbook holding `LET(x,1,x,2,x)`, `LET(x,1,X,2,x)`, `LET(é,1,É,2,é)`, `LAMBDA(x,x,x)(1,2)`, `LAMBDA(x,X,x+X)(1,2)`, `LAMBDA(ä,Ä,ä+Ä)(1,2)` or `LAMBDA(x,[X],x)(1)` (an optional parameter too) (`rustsheet-oracle recalc -b excel-graph`, 2026-10-12, T-1387; refused inputs cannot be committed), while `LET(x,1,LET(X,2,x))` loads and gives 2. The engine gives `#ERROR!` for each (a parse error for LAMBDA, the LET duplicate check). Names may start with a non-ASCII letter, and one-to-one letter pairs fold case (probes/let-name-non-ascii: `LET(é,1,É+1)` 2, `LET(Ä,2,ä*10)` 20, `LET(Ärger,5,äRGER+1)` 6, `LAMBDA(ß,ß*2)(3)` 6, `LET(é,1,LAMBDA(É,é*10)(2))` 20); a fold that changes length does not: `LET(ß,1,ẞ+1)` is 2 but `LET(ß,1,SS+1)` is `#NAME?` (probes/let-name-sharp-s, which stores the use as `_xlpm.SS`: spec2xlsx decides which names are bound with Python `str.lower()`, so a probe of a fold where Python and Excel may differ must write the `_xlpm.` prefix itself). Other scripts (CJK) and letters such as Turkish `İ` are unprobed (T-1431). The earlier refusal of `LET(é,1,É+1)` was spec2xlsx leaving a non-ASCII name without its `_xlpm.` prefix; before T-1387 the engine also rejected a name whose first letter is non-ASCII, unless it uppercased to ASCII (`ß` → `SS`). The same identifier check (`is_valid_a1_identifier`) validates defined names, so a defined name may now start with a non-ASCII letter too; that is unprobed for defined names.
+Probe T-1378 (probes/subtotal-reference-operands-f, excel-graph, 2026-10-11): TAKE and DROP pick cells (SUBTOTAL reads them, AREAS 1, ISREF TRUE) or values (SUBTOTAL and AREAS spill `#VALUE!` per element, ISREF FALSE) according to the arm the IF, CHOOSE, SWITCH or IFS actually selects: `TAKE(IF(TRUE,A1:A4,SEQUENCE(4)),2)`, `TAKE(CHOOSE(1,A1:A4,SEQUENCE(4)),2)` and `TAKE(IFS(TRUE,A1:A4,FALSE,SEQUENCE(4)),2)` are cells, `CHOOSE(2,...)` and `IF(FALSE,A1:A4,SEQUENCE(4))` are values. LET variable names and LAMBDA parameters are case-insensitive (`LET(x,A1:A4,X)` reads `x`; probes/let-lambda-name-case: `LAMBDA(x,X+1)(2)` 3, `LAMBDA(Ab,aB*2)(4)` 8, `LET(f,LAMBDA(x,x+1),F(2))` 3, and a parameter of another case shadows the LET name, `LET(x,1,LAMBDA(X,x*10)(2))` 20, `LET(x,1,LET(X,5,x))` 5); an inner LET rebinding a name shadows the outer one. FORMULATEXT shows each use of a LET or LAMBDA name, called or not, in the spelling of the innermost declaration that binds it, not as typed: `LET(x,5,X*2)` reads `LET(x,5,x*2)`, `LAMBDA(Ab,aB*2)(4)` reads `LAMBDA(Ab,Ab*2)(4)`, `LET(Ab,LAMBDA(Q,q+1),aB(2))` reads `LET(Ab,LAMBDA(Q,Q+1),Ab(2))`, `LET(x,1,y,X+1,Y)` reads `LET(x,1,y,x+1,y)`, and a shadowing `LET(x,1,LET(X,5,x))` reads `LET(x,1,LET(X,5,X))` (probes/let-name-use-spelling, excel-graph, 2026-10-17, T-1720; implemented in `CallNameSpellings::apply`). A LET or LAMBDA that binds one name twice is refused in any case: Excel for the web refuses (createSession 501 `FileCorruptTryRepair`) a single-cell workbook holding `LET(x,1,x,2,x)`, `LET(x,1,X,2,x)`, `LET(é,1,É,2,é)`, `LAMBDA(x,x,x)(1,2)`, `LAMBDA(x,X,x+X)(1,2)`, `LAMBDA(ä,Ä,ä+Ä)(1,2)` or `LAMBDA(x,[X],x)(1)` (an optional parameter too) (`rustsheet-oracle recalc -b excel-graph`, 2026-10-12, T-1387; refused inputs cannot be committed), while `LET(x,1,LET(X,2,x))` loads and gives 2. The engine gives `#ERROR!` for each (a parse error for LAMBDA, the LET duplicate check). Names may start with a non-ASCII letter, and one-to-one letter pairs fold case (probes/let-name-non-ascii: `LET(é,1,É+1)` 2, `LET(Ä,2,ä*10)` 20, `LET(Ärger,5,äRGER+1)` 6, `LAMBDA(ß,ß*2)(3)` 6, `LET(é,1,LAMBDA(É,é*10)(2))` 20); a fold that changes length does not: `LET(ß,1,ẞ+1)` is 2 but `LET(ß,1,SS+1)` is `#NAME?` (probes/let-name-sharp-s, which stores the use as `_xlpm.SS`: spec2xlsx decides which names are bound with Python `str.lower()`, so a probe of a fold where Python and Excel may differ must write the `_xlpm.` prefix itself). Other scripts (CJK) and letters such as Turkish `İ` are unprobed (T-1431). The earlier refusal of `LET(é,1,É+1)` was spec2xlsx leaving a non-ASCII name without its `_xlpm.` prefix; before T-1387 the engine also rejected a name whose first letter is non-ASCII, unless it uppercased to ASCII (`ß` → `SS`). The same identifier check (`is_valid_a1_identifier`) validates defined names, so a defined name may now start with a non-ASCII letter too; that is unprobed for defined names.
 Tasks: T-0216, T-0235, T-0940, T-1003, T-1378, T-1387
 
 ## Names, LET/LAMBDA variables and @ are references; FILTER's scalar if_empty is a value
@@ -851,7 +861,9 @@ Rule: one formula evaluation may put at most 65,536 distinct rectangles on recor
 pass (`MAX_SEEN_RANGES`); a formula that reads more is `#VALUE!` ("Too many distinct ranges read").
 A function walking a whole column or row (and a lookup down a column, or a SUMIFS-shaped criteria
 range) visits only the used area and records the rest as one rectangle read empty, and every area of
-a union is recorded whole, whatever its size; which every spill commit of the pass is checked
+a union is recorded whole, whatever its size, as is a multi-cell range a MAP or SCAN LAMBDA returns
+for an element (read over its existing cells only, since the engine's element is `#VALUE!` whatever they hold;
+Excel's element value is unprobed, T-1792; T-1769); which every spill commit of the pass is checked
 against (evaluation.rs module doc). A rectangle already on record for the formula's root is free, so
 repeating a walk costs nothing (T-1497: `MAX_AREAS` copies of `A:A` walked by a MAP record one), but
 each new reference makes a new one, and nothing else bounds them: `=SUM(MAKEARRAY(1024,1024,
@@ -874,8 +886,8 @@ anchors.
 Status: DEVIATION (decision 0014)
 Implemented in: area_budget.rs (`MAX_SEEN_RANGES`, `AreaBudget::spend_seen_range`,
 `Model::with_area_budget`); seen_ranges.rs (`SeenRanges::push`); evaluation.rs
-(`Model::record_seen_empty_range`)
-Tasks: T-1463
+(`Model::record_seen_empty_range`); functions/logical/bycol_byrow.rs (`Model::lambda_result_value`)
+Tasks: T-1463, T-1769
 
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence
@@ -1183,16 +1195,25 @@ Implemented in: `address_sheet_text` in functions/lookup_and_reference/address_a
 Tasks: T-0984
 
 ## T of a multi-cell range is not intersected
-Rule: in a legacy formula, `T(range)` over several cells is not the implicitly intersected cell:
-`T(L7:N7)` in N1352 is "" although N7 is text, `T(J1351:J1353)` in O1352 is "" although
-J1352 is text, and `T(H12:J12)` from column M (no intersection) is "", not `#VALUE!`.
-Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!M1352, N1352,
-O1352 (all top-left cells are non-text: 545, 1.001, blank).
-Status: VERIFIED for these cells; UNVERIFIED (probe pending, T-0985): whether T reads the top-left
-cell or is always "" for a multi-cell range, and N's behaviour. In a dynamic-array formula T does not lift
-over the range either: `T(A1:A3)` with A1 = 5, A2 = "ab", A3 = TRUE is a single "", no spill (probes/text-argument-modes
-F9, excel-graph, 2026-10-09, T-1087).
-Tasks: T-0985
+Rule: T, like N, reads a multi-cell range as its top-left cell, in legacy and dynamic formulas
+alike, with no implicit intersection and no lift: with A1:A3 = "x", 5, "y", `T(A1:A3)` is "x" from
+a row outside the range (F10 legacy, F12 dynamic) and from A3's row (G3); with B1:B3 = 5, "ab", "c",
+`T(B1:B3)` is "" from row 2 too (F2 legacy, J2 dynamic), not the intersected "ab". An error top-left
+is that error (`T(E1:E2)` with E1 `=1/0` is `#DIV/0!`, J10/J12), a row range reads its left cell
+(`T(G1:H1)` "p", L10). A legacy formula shows no `@` (FORMULATEXT `=T(A1:A3)`), nor over an OFFSET
+or a literal-condition IF of the range (`T(OFFSET(A1:A3,0,0))`, `T(IF(1,A1:A3))` "x", P10, Q10),
+while an operator is a value and gets one (`=T(@A1:A3&"")`, `#VALUE!` off the rows, R10). N gives
+the same picture (H2/H10/H12 7, I10 0 for text top-left, K10 `#DIV/0!`). Over an array constant a
+legacy formula adds the `@` (`=T(@{"a","b"})` "a", `=N(@{5,6})` 5, M10/O10) and a dynamic one
+spills (M14:N14, M16:N16).
+Evidence: probes/t-n-range-top-left (excel-graph, 2026-10-17, T-0985); probes/t-array-lift S!E7,
+probes/text-argument-modes F9; poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15)
+EverythingTests!M1352, N1352, O1352 (`T(H12:J12)` from column M, `T(L7:N7)`, `T(J1351:J1353)`: all "").
+Status: VERIFIED. Not implemented: the legacy `@` over an array constant under N and T (M20, O20
+lack it; M10 spills into N10, and O10 is `#SPILL!`), T-1717.
+Implemented in: functions/text/t_function.rs (`Model::fn_t`);
+expressions/parser/static_analysis/legacy.rs (`reads_reference_whole`)
+Tasks: T-0985, T-1728
 
 ## FORMULATEXT keeps the parentheses of an `@` operand; ANCHORARRAY is `#`; `:` passes an error operand on
 Rule: Excel keeps the parentheses the user wrote around the operand of `@`, for every operand form
@@ -1427,6 +1448,11 @@ With B1:B6 = 1,2,3,1,2,3, each formula on row 2 (on the range's rows, B2 = 2) an
   2 / 100, `SUMPRODUCT(IFNA(B1:B6*1,100))` 2 / `#VALUE!`, `SUMPRODUCT(IFERROR(1/(B1:B6-2),100))`
   100 / 100, `SUMPRODUCT(ABS(IF(B1:B6>1,B1:B6,0)))` 12 / `#VALUE!` (the condition intersects, the
   value branch stays the whole range), while `SUMPRODUCT(B1:B6+0)` is 12 on both rows;
+- an Analysis ToolPak function's scalar argument is read like an aggregate's argument (probed for EDATE's and YEARFRAC's
+  first argument). A bare range gets no `@` and is
+  `#VALUE!` on any row, and an operation on it is intersected: legacy `=EDATE(A1:A60,1)` keeps its text and is `#VALUE!`,
+  and `=EDATE(A1:A60+0,1)` shows `=EDATE(@A1:A60+0,1)` (probes/scalar-lift-shapes-c, T-1767; arrays.md "Scalar
+  arguments lift: shapes, element errors, and the Analysis ToolPak range rule");
 - the reference functions are unchanged: `ROWS(B1:B6)` 6, `SUBTOTAL(9,B1:B6)` and
   `AGGREGATE(9,6,B1:B6)` 12, `AVERAGEA(B1:D1)` (C1 "x", D1 TRUE) 0.667 on both rows.
 The same holds for the other aggregates (probes/legacy-value-argument-intersection-b, excel-graph,
@@ -1462,6 +1488,46 @@ function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, an
 (CHOOSE's index under SUMPRODUCT lifts, T-0294).
 Status: VERIFIED
 Tasks: T-0293, T-1526, T-1551, T-1555, T-1556
+
+## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
+Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value
+position, and at the top level, through an implicit `@` that FORMULATEXT shows: `=IF(1,{2;3})` is
+`=@IF(1,{2;3})` (2), `=ABS(IF(1,{-2;3}))` `=ABS(@IF(1,{-2;3}))` (2), `=LEN(IF(1,{"ab";"c"}))` 2,
+`=N({2;3})` `=N(@{2;3})` (2), `=ABS({-2;3})` 2, `=ISNUMBER(IF(1,{2;3}))` TRUE, `=-IF(1,{2;3})`
+`=-@IF(1,{2;3})` (-2), `=N(TRANSPOSE({2,3}))` `=N(@TRANSPOSE({2,3}))` (2). Each dynamic twin spills
+(`=N(IF(1,{2,3}))` is `#SPILL!` there, its spill range blocked).
+Exception: N and T over `IF(...)` get no `@`, and the legacy cell is `#VALUE!` (`=N(IF(1,{2;3}))`,
+`=N(IF(1,{2,3}))`, `=T(IF(1,{"a";"b"}))`), while `=N(IF(1,2))` is 2. N and T take a reference or a
+value, and IF can return a reference: CHOOSE, INDEX and IFS behave the same, see "Legacy N and T over
+a reference-returning call" below.
+Evidence: probes/legacy-array-result (excel-graph, 2026-10-16), probes/n-array-lift D4.
+Not implemented: ours adds no `@` there, so these legacy cells spill (T-1717), and the N/T
+exception is T-1713.
+Status: VERIFIED (excel-graph)
+Tasks: T-1713, T-1717
+
+## Legacy N and T over a reference-returning call (T-1713)
+Rule: in a legacy (non-array) formula, N and T read their argument as a reference: no `@` goes on it,
+on a range in it, or on an IF, CHOOSE, INDEX, IFS or OFFSET call in it (FORMULATEXT shows none). A
+reference result is read as N/T of a reference, its top-left cell: with Z1:Z2 = 7, 8, `=N(Z1:Z2)`,
+`=N(OFFSET(Z1:Z2,0,0))` and `=N(IF(1,Z1:Z2))` are 7 off the range's rows. An array result is
+`#VALUE!`, whatever its size and also nested in a scalar position: `=N(IF(1,{2;3}))`,
+`=N(CHOOSE(1,{2;3}))`, `=N(INDEX({2;3},0,1))`, `=N(IFS(1,{2;3}))`, `=N(IF(1,{2;3},{4;5}))`,
+`=N(IF({1;0},2,3))`, `=N(IF(1,{2}))`, `=N(IF(1,{2,3;4,5}))`, `=N(IF(1,{"x";3}))`,
+`=T(CHOOSE(1,{"a";"b"}))`, `=T(IF(1,{2;3}))`, `=ABS(N(IF(1,{2;3})))`, `=N(IF(1,{2;3}))+0` and
+`=N(IF(1,{2;3}))&""` are all `#VALUE!` with no spill. In an array context the array lifts instead:
+`=SUM(N(IF(1,{2;3})))` is 5, and under an `@`-ed IF it is intersected: `=IF(1,N(IF(1,{2;3})))` is
+shown `=@IF(1,N(IF(1,{2;3})))` and is 2.
+Exceptions: IFERROR gets the `@` (`=N(IFERROR({2;3},0))` is `=N(@IFERROR({2;3},0))`, 2), and SWITCH
+gets none and the legacy cell spills: `=N(SWITCH(1,1,{2;3}))` shows no `@` and gives 2, 3 in two
+cells, as a dynamic formula would.
+Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16).
+Not implemented: the text is identical to the dynamic formula's, which spills, so the `#VALUE!`
+needs the engine to remember that a formula is legacy (spec T-1727, then T-1713); ours adds an `@`
+on array-valued calls (N gives the top-left value, T ""); a range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms, gets none under N since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator, an array constant or another call keeps the old `@`; CHOOSE and INDEX over references and every T over a range keep the old `@`, unprobed: T-1768); the IFERROR `@`, the
+SWITCH spill and the `@IF` are T-1717's.
+Status: VERIFIED (excel-graph)
+Tasks: T-1713, T-1717, T-1727, T-1728, T-1768
 
 ## `@` of a non-reference array as a function argument is its top-left value
 Rule (probes/rank-at-if-ref, excel-graph, 2026-10-15, T-1596): where an argument takes a reference (aggregates, RANK's `ref`,
@@ -1539,10 +1605,11 @@ probed shapes: a legacy INDEX over a CHOOSE whose arms are all arithmetic takes 
 (`legacy_call_reads_a_value`; a dynamic `=INDEX(CHOOSE(1,B1:B6*1),0)` still spills); LOOKUP (array and vector forms) reads
 any scalar lookup_vector as a one-element array, picked by IF or CHOOSE or written directly (`LOOKUP(2,1)` is 1, `LOOKUP("b","a")` is "a", `LOOKUP(2,1,5)` is 5, `LOOKUP(2,{1})` is 1, `LOOKUP(2,IF(TRUE,1))` is 1: probes/mode-direct-error-lookup-scalar-vector B1-B5, T-1651); INDEX reads a scalar IF or CHOOSE picked as a one-element array, `INDEX(IF(TRUE,5),1)` is 5 (B6); MODE propagates the error of an argument IF or CHOOSE picked, and every other argument error too (direct, referenced or named: probes/mode-typed-arguments A30-A33, probes/mode-error-and-computed-arguments A1-A6, A11-A13, T-1291).
 `MODE(IF(TRUE,1/0),1,1)` and direct errors in MODE, MODE.SNGL and MODE.MULT (`1/0`, `NA()`, `#DIV/0!`, a cell, a name) all propagate the error (probes/mode-direct-error-lookup-scalar-vector A1-A16, T-1651).
-Inferred, unprobed (T-1645, T-1709): INDEX of a scalar other than an IF or CHOOSE pick stays `#VALUE!`; a boolean or empty scalar lookup_vector in LOOKUP is read as a one-element array like the probed number and text ones.
-Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at (excel-graph, 2026-10-15).
+INDEX reads any scalar first argument as a one-element array, not only an IF or CHOOSE pick (T-1645): `INDEX(XMATCH(2,{1,2,3}),1,1)` is 2, `INDEX(ROWS({1;2;3}),1,1)` 3, `INDEX(AREAS(A1:B3),1,1)` 1, `INDEX(ISOMITTED(A1),1,1)` FALSE, `INDEX(REGEXTEST(A1,1),1,1)` TRUE, `INDEX(REDUCE(0,A1:B3,LAMBDA(a,v,a+v)),1,1)` 66 (probes/lookup-argument-modes H18, H19, H24, H28, H30, H31, H39; probes/m7-argument-modes H31, H39, H46, H55; excel-graph). A literal or computed scalar too: `INDEX(5,1)` 5, `INDEX("a",1,1)` "a", `INDEX(1+1,1)` 2, `INDEX(TRUE,1,1)` TRUE, `INDEX(LET(x,7,x),1)` 7, `INDEX(5,0)` 5, and an index past it is `#REF!` (`INDEX(5,2)`, `INDEX(5,1,2)`); lifted indices read it the same way, `INDEX(XMATCH(2,{1,2,3}),{1,2})` 2, `#REF!` and `INDEX(5,{1;1})` 5, 5 (probes/index-literal-scalar, excel-graph, 2026-10-17). lookup-argument-modes H1 (`INDEX(ADDRESS(A1:A3,1),1,1)` "$A$1") is not evidence for the scalar rule: Excel's ADDRESS lifts there (`ROWS(ADDRESS(A1:A3,1))` is 3, F1), ours gives one scalar, so H1 passes for the wrong reason until ADDRESS lifts (T-1241). Ours gave `#VALUE!` ("Expecting a Range") before. probes/catalog/function-name-forms A4 (`IFERROR(INDEX(ERROR.TYPE(GROUPBY(...)),1,1),0)`, 0) is unaffected: ERROR.TYPE lifts over GROUPBY's array, so INDEX picks `#N/A`.
+LOOKUP with a boolean or empty scalar lookup_vector (T-1709; its own evidence is probes/lookup-bool-empty-scalar-vector, 10 cells, excel-graph 2026-10-16): a boolean scalar is a one-element array like the number and text ones: `LOOKUP(TRUE,TRUE)` is TRUE, `LOOKUP(TRUE,TRUE,5)` 5, `LOOKUP(TRUE,TRUE,"r")` "r", `LOOKUP(FALSE,FALSE)` FALSE, and `LOOKUP(FALSE,TRUE)` and `LOOKUP(1,TRUE)` are #N/A (reasons unprobed: probably FALSE sorting before TRUE in the approximate search, and a boolean not matching a number). An empty lookup_vector (`IF(TRUE,Z99)`, which may be the reference Z99 rather than a scalar, or `Z99` itself, Z99 empty) gives #N/A for lookup values 0, "" and 1 (`LOOKUP(0,IF(TRUE,Z99))`, `LOOKUP("",IF(TRUE,Z99),5)`, `LOOKUP(1,IF(TRUE,Z99),5)`, `LOOKUP(0,Z99)`). Ours already matched all 10 cells (`scalar_as_array` in cast.rs); no code change.
+Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at, probes/lookup-bool-empty-scalar-vector (excel-graph, 2026-10-15), probes/lookup-argument-modes, probes/m7-argument-modes, probes/index-literal-scalar (excel-graph).
 Status: VERIFIED (excel-graph)
-Tasks: T-1638, T-1643, T-1645, T-1651
+Tasks: T-1638, T-1643, T-1645, T-1651, T-1709
 
 ## R1C1-shaped sheet and defined names
 Rule (case-insensitive; odd, Excel is right): Excel quotes a sheet name in formula text, and refuses it
@@ -1563,12 +1630,30 @@ when it is an A1 reference, which is a separate test: `R1`, `C3`, `RC99999`, `C1
   `R1.C16385`, `R1.C1.5`); not `A1.B2D`, `A1.B`, `A.B2`, `A0.B1`, `A1.XFE1`, `R1.R1048577`, `R1.C0`,
   `R1.C1D`, `R1.RC`, `RC.C1`. In a formula the dots are the range operator: `SUM(A1.B2)`,
   `ROWS(A1..B2)` and `SUM(B2.A1)` are `SUM(A1:B2)` (7), `ROWS(A1:B2)` (2) and `SUM(A1:B2)` in
-  FORMULATEXT (probes/lotus-dot-range; ours: T-1659).
+  FORMULATEXT (probes/lotus-dot-range). The probed forms (probes/lotus-dot-range-*, T-1659): `$`
+  cells (`$A$1.B2`, `A$1..$B$2`, `A1.$B$2`), a sheet prefix on the first cell (`Data!A1.B2`,
+  `'Data'!B2..A1` is `Data!A1:B2`), lowercase (`a1.b2` prints `A1:B2`), whitespace around the
+  dots (`A1 . B2` prints `A1:B2`; whitespace on one side only, `A1 .B2`, `A1. B2`, and `A1 .5` are unprobed, and ours reads the first two as the range too), ISREF (TRUE), an intersection (`A1.B2 B1:B3`) and a colon after
+  it (`ROWS(A1.B2:C3)` is `A1:B2:C3`, 3) all read the range. Names, kept as typed and `#NAME?`:
+  whole columns (`A.B`, `A..B`), `A1.5`, an off-grid second cell (`A1.XFE1`), `A1.B2D`, a name
+  as the second part (`A1.foo` with `foo` defined) and a call (`A1.INDEX(B2:B2,1)`, `#NAME?`).
+  Excel rejects the file (Graph `FileCorruptTryRepair`) for `ROWS(1..2)`, `A1.B2.C3`, `A1.B2.x`,
+  `Data!A1.Data!B2` and `ROWS(A1:B2.C3)`; ours reads the first two as names. A LET or LAMBDA
+  name spelled so is the variable in its call and the range outside it (probes/lotus-dot-name-*,
+  r1c1-let-name-r1-c1): `LET(R1.C1,5,R1.C1*2)` 10, `LAMBDA(A1.B2,A1.B2*2)(4)` 8,
+  `LAMBDA([A1.B2],ISOMITTED(A1.B2))()` TRUE, `LET(A1.B2,5,A1.B2)+SUM(A1.B2)` 20 (printed
+  `...+SUM(A1:B2)`), `LAMBDA(x,LAMBDA(A1.B2,A1.B2+x)(1)+SUM(A1.B2))(2)` 18, and
+  `LET(a1.b2,5,A1.B2*2)` 10, which FORMULATEXT prints `=LET(a1.b2,5,a1.b2*2)`: the uses take the
+  declaration's spelling (ours keeps them as typed, T-1720). These files hold every use inside
+  the call as `_xlpm.A1.B2` (spec2xlsx `prefix_bound_names` prefixes the whole call), so a use
+  before its binding (`LET(x,SUM(A1.B2),A1.B2,x,...)`, `#NAME?` with `SUM(_xlpm.A1.B2)` in
+  FORMULATEXT) shows only how Excel reads that prefixed file; it has no case, and ours reads the
+  unprefixed use as the range.
 Defined names: a workbook defining any name the R1C1 test quotes is rejected by Graph (`createSession`
 501 `unsupportedWorkbook`): probed `RC`, `rc`, `R1C`, `R12C`, `R1C1`, `C1D`, `R1C1D`, `R1C16385`,
 `R1_`, `R1R`, `R1D`, `C1R1`, `RC1D`, `R1048576D`, `R1CD`, `R1C1.`. `RCR`, `RCD`, `CR`, `R1.5` and
 `C1.5` work (7). A Lotus-shaped name loads, but a use reads the range: with `R1.C1`, `R1..C1` and
-`C1.C1` defined, `=R1.C1*1` is `#SPILL!` and `=C1.C1*1` 0, ISREF TRUE (ours reads the name: T-1659).
+`C1.C1` defined, `=R1.C1*1` is `#SPILL!` and `=C1.C1*1` 0, ISREF TRUE (ours matches: T-1659).
 A name spelled like an out-of-range R1C1 reference (`R0`, `C0`, `R0C1`, `r0c1`, `R1048577`,
 `R1048577C1`) loads but every use is `#NAME?` (`=R0*1`, `SUM(R0)`, and `ISREF(INDIRECT("R0"))` is
 FALSE; FORMULATEXT keeps `=R0*1`). Ours matches (T-1657): the parser does not resolve it, and
@@ -1576,23 +1661,31 @@ the R1C1 lexer reads an out-of-range uppercase `R0C1` as a name, so it survives 
 Table names are not probed;
 ours applies the defined-name rule to them.
 LET and LAMBDA names are not tested at all: `LET(n,5,n*2)` is 10 for `RC`, `R1C`, `R1C1`, `r1c1`,
-`R5C7`, `R12C`, `R0C1`, `R0`, `R1048577`, `R1_`, `R1.C1`, `R1C1D`, `C1D`, `RCR` and `C`. Ours keeps
-refusing an in-range uppercase `R<n>C<m>` (`R1C1`, `R5C7`): formulas are stored in R1C1 form, where
-that spelling reads back as a cell reference after a reload (T-1658). An out-of-range one (`R0C1`)
-is a name in R1C1 form too, so `LET(R0C1,5,R0C1*2)` is 10 (T-1657).
+`R5C7`, `R12C`, `R0C1`, `R0`, `R1048577`, `R1_`, `R1.C1`, `R1C1D`, `C1D`, `RCR` and `C`, and
+FORMULATEXT keeps the name as typed. Ours matches, and takes LAMBDA parameters spelled so too
+(`LAMBDA(R1C1,R1C1*2)(5)` is 10 and `LAMBDA(R5C7,[R1C1],R5C7*2+ISOMITTED(R1C1))(5)` is 11, FORMULATEXT keeps the text; probes/r1c1-bare-lambda-one and
+-lambda-opt, excel-graph 2026-10-16, T-1715; ours matches). Formulas are stored in R1C1 form, where an in-range uppercase `R<n>C<m>`
+reads back as a cell, so such a name is stored as `_xlpm.R1C1`, the prefix Excel's own xlsx form
+puts on every LET and LAMBDA name and the parser drops. An out-of-range one (`R0C1`) is a name in R1C1 form already (T-1657). A bare `=R1C1`,
+`=R5C7*1` or `=SUM(R5C7)` outside a LET in A1 mode is rejected by Graph too (`createSession` 501 `unsupportedWorkbook`, T-1715), so it is unprobed; ours reads it as a name (`#NAME?`), as it does `=r1c1`.
 A bare `RC`, `R1C1D`, `R0C1` or `RCR` token in a cell formula of an uploaded file makes Graph reject
 the workbook (so it is unprobed).
 Unprobed: brackets cannot occur in sheet or defined names, so `R[1]C` forms are not covered;
-lowercase Lotus-shaped names (`a1.b2`); non-ASCII digits.
+lowercase Lotus-shaped defined names (`a1.b2`; in a formula `a1.b2` is the range); non-ASCII digits.
 Evidence: probes/r1c1-shaped-sheet-names, -lower, -2, -3, -4, -5, -lower-2 (FORMULATEXT of
 `='<name>'!A1`), r1c1-name-* and r1c1-name-use-* (defined names; the rejected names have no case),
-r1c1-let-name-*, lotus-dot-range (excel-graph, 2026-10-15).
+r1c1-let-name-*, lotus-dot-range (excel-graph, 2026-10-15), lotus-dot-range-*, lotus-dot-name-* (2026-10-16).
 Implemented in: `is_r1c1_shaped` and `is_dotted_a1_range` (expressions/utils/mod.rs), used by
 `name_needs_quoting` (both) and `is_valid_identifier` (the R1C1 test); `is_valid_a1_identifier`
-(LET, LAMBDA and the lexer) refuses only an in-range `R<n>C<m>` (`is_r1c1_cell_text`);
+(LET, LAMBDA and the lexer) takes them all; `reads_as_r1c1_cell` (`variable_text`,
+parser/stringify/bound_variables.rs) picks the names the R1C1 storage escapes;
 `is_out_of_range_r1c1_name` (names never resolved: `name_operand`, INDIRECT, the R1C1 lexer).
-Status: VERIFIED (excel-graph), except T-1658 and T-1659.
-Tasks: T-1652
+Dotted ranges in formulas: `consume_dotted_corner` (lexer/ranges.rs; the forms with `$` or
+whitespace) and `parse_dotted_a1_range` through `dotted_range_operand` (parser/operands.rs; an
+identifier such as `A1.B2`, unless an enclosing LET or LAMBDA binds it: `bind_dotted_name`).
+The unknown call `A1.INDEX(...)` keeps its spelling (spelling rule in "Unknown function call names", T-1719).
+Status: VERIFIED (excel-graph)
+Tasks: T-1652, T-1659
 
 ## Structured references: this row, totals and ranges
 Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
@@ -1639,3 +1732,39 @@ Evidence: gen-m8b in-table 19fdc25163755713 and this-row e1bf5aa0ffb4ed87 (excel
 Status: VERIFIED for evaluation; UNVERIFIED for FORMULATEXT (RustSheet shows the lowered `=$A$2`; Excel's output unprobed) and for rejecting unbracketed multi-word `T[@Unit Price]` / unterminated `T[@Qty`.
 Implemented in: `Lexer::consume_this_row_shorthand`.
 Tasks: T-1672, T-1683
+
+## Unknown function call names: spelling in FORMULATEXT
+Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`
+and FORMULATEXT prints the name with the spelling of the *first* occurrence of that name (compared
+case-insensitively) in the workbook, not the spelling typed in that cell, and not lowercased: with
+`=foo(1)` in A1, `=Foo(1)` and `=FOO(1)` in A2/A3 all print `=foo(1)`; `=my_Fn(1,2)+sum(3)` in A4
+prints `=my_Fn(1,2)+SUM(3)` and a later `=My_Fn(1)` / `=MY_FN(1)` print `=my_Fn(1)`; `=Bar(1)`, then
+`=BAR(1)` / `=bAr(1)` print `=Bar(1)`; `=my.fn(1)` then `=My.Fn(1)` prints `=my.fn(1)`;
+`=A1.INDEX(1)` then `=a1.Index(1)` prints `=A1.INDEX(1)`. A name never seen before keeps its typed
+spelling (`x1y`, `Xyz2`, `_Foo`, `Foo_`), except `=Ab1(1)` (cell-reference-shaped name), which prints
+`=AB1(1)` and is `#REF!` (a call of the cell AB1; ours matches: `parse_named_call` makes a cell-shaped
+name that is no function a `LambdaCallKind` of the reference, printed bare, T-1758; ours also reads the last column XFD and the last row 1048576 as cells, `XFD1048576(1)` is a call (unprobed, T-1806); A1 grammar only: in R1C1 mode `AB1(1)` stays a name). Unprobed: a column past XFD, a row past 1048576 or 0 (ours: unknown name, `#NAME?`), `$`-anchored and
+sheet-qualified callees (ours: parse error) and non-ASCII letters such as `ß1(1)` (ours: unknown name; only ASCII
+names are read as cells; edge shapes: T-1806).
+"First" is in cell order of the probe (row-major, A before B), the order Excel loads the xlsx in;
+whether a later edit can re-spell a name is unprobed.
+Ours (T-1719): a workbook-level registry (`CallNameSpellings`, lowercase name → first spelling) gives
+every stored formula's free callee the registered spelling, on load in sheet and shared-formula
+order and on each edit; a callee bound by an enclosing LET or LAMBDA takes none and prints the spelling of its
+declaration (T-1720, T-1761). The harness sets a spec case's cells row by row so the first-met order matches the xlsx.
+Reach (excel-graph, 2026-10-17, T-1756, probes/unknown-function-name-reach):
+- A call of a defined LAMBDA name prints the defined name's spelling, not the first typed one:
+  `OtherFn` defined, `=otherfn(1)` then `=OTHERFN(1)` both print `=OtherFn(1)`. Ours prints the first typed spelling (T-1763).
+- A callee bound by an enclosing LET or LAMBDA prints the binding's spelling
+  (LET, whatever case the call used: `=LET(Gg,LAMBDA(x,x*2),gG(3))` prints `Gg(3)`; LAMBDA, same-case call only probed:
+  `=LAMBDA(Hh,Hh(1))(LAMBDA(x,x))` keeps `Hh`). Ours matches (T-1720 respells every bound use to its declaration).
+- An unknown name used as a value shares the table with unknown callees, in either order: `=Qux+1` then
+  `=qux(1)` prints `=Qux(1)`; `=wib(1)` then `=Wib+1` prints `=wib+1`. Ours matches (T-1760). Unprobed: unknown-name shapes built by the parser (U+3000 intersection text, out-of-range R1C1-looking names) also go through the table.
+- Cross-sheet: the first spelling in sheet order wins (`=Zed(1)` on Sheet1, `=ZED(1)`/`=zed(2)` on Sheet2 print
+  `Zed`; `=MMM(1)` on Sheet1 beats `=Mmm(1)` on Sheet2). Ours matches.
+- Non-ASCII: Ä/ä and É/é fold (`=ÄBC(1)` then `=äbc(1)` prints `=ÄBC(1)`), and ß folds with SS: `=straße(1)` then
+  `=STRASSE(1)` prints `=straße(1)`. Ours folds simple case only (T-1762).
+Unprobed: re-spelling after edits (edit order, deleting the first user; needs the sheet_ops replay, T-1608).
+Evidence: probes/unknown-function-name-spelling, probes/unknown-function-name-reach.
+Status: VERIFIED (excel-graph)
+Tasks: T-1719, T-1756, T-1760, T-1761, T-1762, T-1763

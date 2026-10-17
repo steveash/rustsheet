@@ -40,6 +40,9 @@ const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     skip_empty_args: false,
 };
 
+/// Below this |x| (2^-28) ASIN returns its argument (`fn_asin`).
+const ASIN_IDENTITY_BOUND: f64 = 3.725_290_298_461_914e-9;
+
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
     ///
@@ -526,15 +529,26 @@ impl Model {
     // them. Excel's is not even odd (`ASIN(0.09)` and `ASIN(-0.09)` differ in the last digit), so no
     // formulation found yet fits every cell (docs/excel-semantics/numbers.md "ASIN of a small
     // argument"). At ±1 the quotient is ±inf and atan gives ±π/2; outside [-1, 1] the square root is
-    // NaN, which is `#NUM!`.
-    single_number_fn!(fn_asin, |f: f64| Ok(f64::atan(
-        f / ((1.0 - f) * (1.0 + f)).sqrt()
-    )));
+    // NaN, which is `#NUM!`. A tiny argument is returned as is: `ASIN(±1E-13)` is ±1E-13, where the
+    // quotient gives ±1.0000000000000002E-13 (T-1605). The sweep only bounds the cut to between 1E-13
+    // and 1E-8 (`ASIN(1E-8)` is the quotient's 1.0000000000000002E-8, `ASIN(-1E-8)` is -1E-8).
+    single_number_fn!(fn_asin, |f: f64| Ok(if f.abs() < ASIN_IDENTITY_BOUND {
+        f
+    } else {
+        f64::atan(f / ((1.0 - f) * (1.0 + f)).sqrt())
+    }));
     single_number_fn!(fn_acos, |f| Ok(f64::acos(f)));
     single_number_fn!(fn_atan, |f| Ok(f64::atan(f)));
     single_number_fn!(fn_asinh, |f| Ok(f64::asinh(f)));
     single_number_fn!(fn_acosh, |f| Ok(f64::acosh(f)));
-    single_number_fn!(fn_atanh, |f| Ok(f64::atanh(f)));
+    // ATANH(+-1) is `#NUM!` at once, like any other out-of-domain argument; f64::atanh gives an
+    // infinity there, which the macro's NaN mapping misses (probes/atanh-unit-argument A1:A8,
+    // excel-graph, T-1569).
+    single_number_fn!(fn_atanh, |f: f64| if f.abs() == 1.0 {
+        Err(Error::NUM)
+    } else {
+        Ok(f64::atanh(f))
+    });
     single_number_fn!(fn_abs, |f| Ok(f64::abs(f)));
     single_number_fn!(fn_sqrt, |f| if f < 0.0 {
         Err(Error::NUM)
@@ -790,13 +804,14 @@ impl Model {
                 message: "k cannot be greater than n".to_string(),
             };
         }
-        let k = k as usize;
-        let mut result = 1.0;
-        for i in 0..k {
-            let t = i as f64;
-            result *= (n - t) / (t + 1.0);
+        match combin(n, k) {
+            Ok(result) => CalcResult::Number(result),
+            Err(error) => CalcResult::Error {
+                error,
+                origin: cell,
+                message: "Result is too large".to_string(),
+            },
         }
-        CalcResult::Number(result)
     }
 
     // PERCENTOF(part, total) — returns SUM(part) / SUM(total) as a decimal fraction. Both sums snap
@@ -866,6 +881,35 @@ pub(crate) fn percent_of(
 /// push an exact multiple over a step boundary.
 fn snap_ratio(value: f64, significance: f64) -> f64 {
     to_excel_precision(value / significance, EXCEL_PRECISION)
+}
+
+/// COMBIN(n, k) for integers `0 <= k <= n`, rounded as Excel rounds it. With `j = min(k, n-k)`,
+/// Excel multiplies the factors `(n-j+i)/(i+1)` for i = 1..j-1, each a rounded quotient, into one
+/// double running product and then multiplies by `n`: `COMBIN(10,4)` is 209.99999999999997, not 210.
+/// This matches all 841 numeric cells of probes/combin-algorithm-sweep bit for bit (numbers.md
+/// "COMBIN is inexact"). Every factor is at least 1, so the product only grows: it overflows (`#NUM!`,
+/// as `COMBIN(1030,515)` is in Excel) within a few hundred
+/// factors whenever `j` is large, which bounds the work (directive 5).
+fn combin(n: f64, k: f64) -> Result<f64, Error> {
+    let j = k.min(n - k);
+    if j < 1.0 {
+        return Ok(1.0);
+    }
+    let mut acc = 1.0;
+    let mut i = 1.0;
+    while i < j {
+        acc *= (n - j + i) / (i + 1.0);
+        if !acc.is_finite() {
+            return Err(Error::NUM);
+        }
+        i += 1.0;
+    }
+    let result = acc * n;
+    if result.is_finite() {
+        Ok(result)
+    } else {
+        Err(Error::NUM)
+    }
 }
 
 /// `n * (n - step) * (n - 2 step) * ...` down to 1 or 2, multiplied from `n` down, which is the

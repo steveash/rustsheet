@@ -1,10 +1,10 @@
 # Text
 
 ## Broadcast text output cap
-Rule: a text function broadcast over arrays (LEFT, REPT, SUBSTITUTE, ...) returns a single scalar `#VALUE!` (no spill) once the total bytes of its string results exceed 64 MiB, to bound allocation on untrusted input (CLAUDE.md directive 5). Excel's behavior (expected, not measured): compute the whole array, limited only by memory and the 32,767-char per-cell limit. Ours differs on legitimate data too: the budget counts UTF-8 bytes (not Excel's UTF-16 characters, so CJK text hits it about 3x sooner in characters), and a full-column text formula such as `=UPPER(A:A)` over ~65-char strings exceeds 64 MiB and returns `#VALUE!` where Excel spills normally.
+Rule: a text function broadcast over arrays (LEFT, REPT, SUBSTITUTE, ...) returns a single scalar `#VALUE!` (no spill) once the total bytes of its string results exceed 64 MiB, to bound allocation on untrusted input (CLAUDE.md directive 5). A broadcast whose shape is above 1,048,576 cells is refused with `#ERROR!` before any element is computed, so that bound takes precedence over this one (arrays.md "Array results above 1,048,576 cells", T-1771). Excel's behavior (expected, not measured): compute the whole array, limited only by memory and the 32,767-char per-cell limit. Ours differs on legitimate data too: the budget counts UTF-8 bytes (not Excel's UTF-16 characters, so CJK text hits it about 3x sooner in characters), and a full-column text formula such as `=UPPER(A:A)` over ~65-char strings exceeds 64 MiB and returns `#VALUE!` where Excel spills normally.
 Evidence: none for Excel's behavior; this is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
-Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text_budget`), checked by functions/text/common.rs (`broadcast_text`)
+Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text_budget`), checked by functions/text/common.rs (`broadcast_text`), the lift driver and FORMULATEXT over a range
 
 ## Text functions broadcast over array arguments
 Rule: EXACT, FIND, LEN, REPT, SEARCH, SUBSTITUTE, TRIM, CLEAN, PROPER and REPLACE lift element-wise over
@@ -99,7 +99,7 @@ exact UTF-16 units throughout:
 - 32,767 limit: `LEN(REPT("a",32766)&"😀")` is 32767 (the kept unit is the high half, coercion.md "Truncation inside a surrogate pair"); `REPT("😀",16384)` is `#VALUE!`;
   CONCAT and TEXTJOIN one unit over (a pair straddling the limit) are `#CALC!`, not truncated (existing entry below).
 Evidence: probes/text-lone-surrogates A1-A81, B1-B6 (excel-graph, 2026-10-15, T-1582).
-Ours: comparisons, EXACT and exact-mode MATCH read lone units exactly (T-1585): `cmp_text` in functions/util/collation.rs weighs a lone unit (and each unit of an astral character) above every BMP character, by unit value, which gives H<L, H<"😀"<L, and both H and L above U+FFFD (`H<UNICHAR(65533)` FALSE); COUNTIF-style criteria and wildcard MATCH/XMATCH read lone units exactly as well (T-1642, criteria paragraph below). UPPER, LOWER, PROPER, TRIM and CLEAN keep lone units (`Text::map_runs`; a lone unit breaks a word for PROPER, unprobed). FIND, SEARCH and SUBSTITUTE read lone units exactly (T-1586: `find_element` in functions/text/position.rs maps each unit, a lone one included, to one character; `substitute_units` in functions/text/util.rs matches unit for unit, so a lone half splits a pair; with an `instance_num` instances overlap, as in the well-formed path, `SUBSTITUTE("aaa","aa","x",2)` is "ax": unprobed by Excel, an inherited engine choice). CODE and VALUE already behaved as probed. REPT repeats the exact units (`Text::repeat`; `REPT(L&H,2)` re-pairs at the join like `&`), TEXT prints the exact text where `@` is (`format_text_value_exact` in formatter/format.rs formats a one-character private-use stand-in the format does not hold, so the 255-character limit and every format rule stay the well-formed path's, then swaps the exact text in; the limit is re-checked on the real length), and T returns its argument unchanged (T-1587; exactness VERIFIED, T-1647).
+Ours: comparisons, EXACT and exact-mode MATCH read lone units exactly (T-1585): `cmp_text` in functions/util/collation.rs weighs a lone unit (and each unit of an astral character) above every BMP character, by unit value, which gives H<L, H<"😀"<L, and both H and L above U+FFFD (`H<UNICHAR(65533)` FALSE); COUNTIF-style criteria and wildcard MATCH/XMATCH read lone units exactly as well (T-1642, criteria paragraph below). UPPER, LOWER, PROPER, TRIM and CLEAN keep lone units (`Text::map_runs`; a lone unit breaks a word for PROPER, unprobed). FIND, SEARCH and SUBSTITUTE read lone units exactly (T-1586: `find_element` in functions/text/position.rs maps each unit, a lone one included, to one character; `substitute_units` in functions/text/util.rs matches unit for unit, so a lone half splits a pair; with an `instance_num` instances overlap, as in the well-formed path, `SUBSTITUTE("aaa","aa","x",2)` is "ax", as Excel gives: "SUBSTITUTE instances overlap" below). CODE and VALUE already behaved as probed. REPT repeats the exact units (`Text::repeat`; `REPT(L&H,2)` re-pairs at the join like `&`), TEXT prints the exact text where `@` is (`format_text_value_exact` in formatter/format.rs formats a one-character private-use stand-in the format does not hold, so the 255-character limit and every format rule stay the well-formed path's, then swaps the exact text in; the limit is re-checked on the real length), and T returns its argument unchanged (T-1587; exactness VERIFIED, T-1647).
 Status: VERIFIED
 **Criteria and wildcards (VERIFIED, probes/criteria-lone-surrogates, excel-graph 2026-10-16, T-1642).** Excel's criteria (SUMIF, COUNTIFS) and wildcard MATCH/XMATCH read lone units exactly, unit by unit. Data: H, L, "😀", U+FFFD, "x", H&"a", "a"&L, "a".
 - A lone-half criterion (`H`, `"="&H`) matches H only. It does not match U+FFFD or the other half. `"<>"&H` matches everything else.
@@ -110,6 +110,19 @@ Status: VERIFIED
 - MATCH(..,0) and XMATCH(..,2) agree: `MATCH("??",..)` is 3 and `MATCH(H&"?",..)` is 3.
 Ours: all 48 cells pass (T-1642). The text criteria (`result_is_*_string` in functions/criteria.rs) take the operand as `Text` and compare with `cmp_text`; `WildcardPattern` (same file) matches `?`, `*` and `~` over lower-cased UTF-16 units, for COUNTIF-style criteria and for MATCH/XMATCH/XLOOKUP's `wildcard_text_matcher`. D-function prefix matching (`result_starts_with_units`) compares lower-cased UTF-16 units and agrees with Excel (probes/d-function-prefix-lone-surrogates, criteria.md "D-function plain-text equality matches by prefix", T-1667). Exact-mode MATCH with a lone-half lookup value now goes through `WildcardPattern` like any other text, so it matches unit for unit with no collation (as MATCH(..,0) does for well-formed text, coercion.md); the lone-half cells A31 and A32 agree.
 Tasks: T-1582, T-1585, T-1586, T-1587, T-1647 (probe follow-up), T-1642, T-1667
+
+## SUBSTITUTE instances overlap (T-1644)
+Rule: with an `instance_num`, SUBSTITUTE counts every match of old_text, overlapping ones included, and
+replaces only the nth: `SUBSTITUTE("aaa","aa","x",1)` "xa", `,2)` "ax", `,3)` "aaa" (no third match);
+`SUBSTITUTE("aaaa","aa","x",2)` "axa", `,3)` "aax"; `SUBSTITUTE("aaaaa","aaa","x",3)` "aax";
+`SUBSTITUTE("abab","bab","x",1)` "ax"; `SUBSTITUTE("ababab","abab","x",2)` "abx". Without one, it replaces
+left-to-right non-overlapping matches: `SUBSTITUTE("aaaa","aa","x")` "xx", `SUBSTITUTE("aaa","aa","x")` "xa".
+Matching is case-sensitive (`SUBSTITUTE("AaA","aa","x",2)` "AaA"); an instance past the last match leaves the
+text unchanged; 0 and -1 are `#VALUE!`; 1.9 truncates to 1; an empty old_text changes nothing (probed with an instance_num); the instance lifts
+over an array (`{1,2,3}` gives "xa", "ax", "aaa").
+Evidence: probes/substitute-overlapping-instances (excel-graph, 2026-10-16).
+Status: VERIFIED (excel-graph); ours matches (`nth_overlapping_match`, functions/text/util.rs).
+Tasks: T-1644
 
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
@@ -214,7 +227,8 @@ Rule: the M5 text functions take scalar arguments that lift over a range or arra
 probes/text-argument-modes F1:F26: LEN, CODE, EXACT, VALUETOTEXT, REPT, FIND), with four exceptions: TEXTJOIN's text
 arguments and ARRAYTOTEXT's array take a range whole, PHONETIC's argument must be a reference, and T does not lift:
 `T(A1:A3)` in a dynamic-array formula is one "" with no spill although A2 = "ab" (F9; see references.md "T of a
-multi-cell range is not intersected"). TEXTJOIN turns numbers and booleans in a range into their text
+multi-cell range is not intersected"; T of an array value does lift, information.md "T over an array lifts
+element-wise"). TEXTJOIN turns numbers and booleans in a range into their text
 (`TEXTJOIN("-",TRUE,A1:A6)` over 5, "ab", TRUE, blank, "x", "2" is "5-ab-TRUE-x-2"; with ignore_empty FALSE the blank
 adds a delimiter); ARRAYTOTEXT gives "5, ab, TRUE, , x, 2" and, with format 1, `{5;"ab";TRUE;;"x";"2"}`. A boolean read
 from a cell (A3 = TRUE; literal TRUE arguments are unprobed) is its text where the function wants text (`CODE(A3)` = 84,
@@ -299,12 +313,45 @@ Ours: the empty row delimiter is ignored (the whole text comes back; `TEXTSPLIT(
 Status: VERIFIED (web) for this form; an empty element inside a delimiter list is UNVERIFIED
 Tasks: T-1412
 
+## TEXTSPLIT match_mode 1 case folding
+Rule: with match_mode 1 TEXTSPLIT compares case-insensitively without changing the length of the text. `İ` (U+0130) matches `i`
+(`TEXTSPLIT("aİbİc","i",,,1)` splits at both İ, and so does the delimiter `İ` against text containing `İ`: {"a","b","c"}; the delimiter `İ` against a plain `i` or `I`, and `I` against `İ`, are UNVERIFIED), unlike SEARCH, where `SEARCH("i","İx")`
+is `#VALUE!`. The Kelvin sign U+212A does not match `k` (`TEXTSPLIT("a"&UNICHAR(8490)&"bkc","k",,,1)` is {"aKb","c"}), unlike SEARCH, where
+`SEARCH("k",UNICHAR(8490))` is 1. `ß` and `ẞ` do not match `ss` (`TEXTSPLIT("aßbSSc","ss",,,1)` is {"aßb","c"}), and `Ä` matches `ä`.
+Pieces are cut from the original text, so they keep their case. Final sigma follows SEARCH (`ς` and `Σ` both fold to `σ`), which changed from the pre-T-1794 string-level lowercase; it is UNVERIFIED for TEXTSPLIT.
+Evidence: probes/textsplit-casefold-length A1-A8 (excel-graph, 2026-10-17, T-1794).
+Ours: `fold_for_split` (text/casefold.rs) folds char by char (one char in, one char out) with those two exceptions; positions are mapped back to
+byte offsets of the original text. Before T-1794 the code sliced the original at byte offsets found in `to_lowercase()`, which panicked on
+`TEXTSPLIT("İİİ,a",",",,,1)`. The folding of other chars (Å U+212B, ſ, µ, final sigma, titlecase digraphs) is UNVERIFIED and follows SEARCH's.
+Status: VERIFIED (web) for the listed forms
+Tasks: T-1794
+
+## TEXTBEFORE and TEXTAFTER match_mode 1 case folding
+Rule: with match_mode 1 TEXTBEFORE and TEXTAFTER fold case like TEXTSPLIT, never changing the length of the text: `İ` (U+0130) matches `i`
+in both directions (`TEXTBEFORE("aİbİc","i",1,1)` is "a", `TEXTAFTER` of it is "bİc", and the delimiter `İ` finds the `i` of "aibic"),
+the Kelvin sign U+212A does not match `k` in either direction (`TEXTBEFORE("a"&UNICHAR(8490)&"bkc","k",1,1)` is "aKb"; the delimiter
+U+212A against "akbkc" is `#N/A`), `ß` does not match `ss` (`TEXTBEFORE("aßbSSc","ss",1,1)` is "aßb") and `ẞ` (U+1E9E) does not match
+the delimiter `ß` (`TEXTBEFORE("assbẞc","ß",1,1)` is `#N/A`, although `ẞ` lowercases to `ß`), and `Ä` matches `ä`
+(`TEXTBEFORE("ÄxäyÄ","ä",2,1)` is "Äx"). The result is cut from the original text, so it keeps its case. Positive and negative
+instance numbers behave the same on `"İİİ,a,b"`. Sigma is positional, unlike TEXTSPLIT and SEARCH: `Σ` followed by a letter is `σ`, any
+other `Σ` is `ς`, and `ς` is only `ς`. So the delimiter `Σ` alone matches a text `ς` but not `σ`, the delimiter `ς` matches a final `Σ`
+("aΟΣ") but neither `σ` nor a `Σ` followed by a letter, and the delimiter `σ` matches a `Σ` followed by a letter but not `ς`.
+Evidence: probes/textbefore-casefold-length A1-A25 (excel-graph, 2026-10-17, T-1796).
+Ours: `fold_for_before_after` (text/casefold.rs) folds char by char with `fold_for_split`'s İ/Kelvin exceptions plus the sigma and `ẞ` rules,
+and `match_text` (util.rs) maps the match back to byte offsets of the original with `str::get`. Before T-1796 it searched `to_lowercase()` of the text
+and sliced the original at those offsets, which panicked on `TEXTBEFORE("İİİ,a",",",1,1)`. UNVERIFIED: a delimiter with the same `Σ` as the text, which our separate folds miss (`TEXTBEFORE("aΣb","Σ",1,1)` is `#N/A` here: the text's `Σ` is `σ`, the lone delimiter `Σ` is `ς`), and a `Σ` followed by a space, digit or punctuation (`"ΟΔΟΣ ΚΑΙ"`; only a `Σ` at the end of the text is probed, A25), both T-1799; the exact sigma context rule
+(whether a `Σ` after a non-letter, or before a combining mark, is final; the code ignores what precedes it), the folding of other chars (Å U+212B, ſ, µ,
+titlecase digraphs, which follow SEARCH's `fold_char`), `ẞ` against the delimiter `ß`'s mirror (text `ß`, delimiter `ẞ`), and whether TEXTSPLIT shares the
+`ẞ` and sigma rules (its probe has no such cell).
+Status: VERIFIED (web) for the listed forms
+Tasks: T-1796
+
 ## ARRAYTOTEXT number text
 Rule: ARRAYTOTEXT writes a number as General text with 15 significant digits, like VALUETOTEXT and `&`:
 `ARRAYTOTEXT(YEARFRAC(1911,31142))` is "80.0277777777778".
 Evidence: gen-m7/d38b52bfa1a9f9e6 Calc!A2 (excel-graph, 2026-10-11, T-1275).
-Ours: Rust's shortest round-trip text ("80.02777777777777"; `ARRAYTOTEXT(1/3)` "0.3333333333333333", `ARRAYTOTEXT({1E+20})`
-"100000000000000000000").
+Also probed (probes/arraytotext-number-text, 15 cells, excel-graph, 2026-10-16): `ARRAYTOTEXT(-0.0000001234567890123)` is "-1.234567890123E-07"; the array `{0.3333333333333333,1E+20}` is "0.333333333333333, 1E+20" (format 0) and "{0.333333333333333,1E+20}" (format 1). **A scalar is a one-element array in strict form**: `ARRAYTOTEXT(1/3,1)` is "{0.333333333333333}", `ARRAYTOTEXT("abc",1)` "{""abc""}" and `ARRAYTOTEXT(TRUE,1)` "{TRUE}"; format 0 gives the bare text; `ARRAYTOTEXT(#N/A,1)` is `#N/A`. **A reference to one empty cell is `#VALUE!`** in both formats (the engine gives ""; T-1718).
+Implemented (T-1356): `format_array_value` uses `number_to_text`, the helper VALUETOTEXT and `&` use; `ARRAYTOTEXT(1/3)` is "0.333333333333333" and `ARRAYTOTEXT({1E+20})` "1E+20".
 Status: VERIFIED (web)
 Tasks: T-1356
 
@@ -314,7 +361,7 @@ Rule: SEARCH lowercases per character and never changes the text's length: a cha
 Also: ς (final sigma) matches Σ and σ in either direction (`SEARCH("ς","ΟΣ")` is 2, `SEARCH("σ","ΟΣ")` is 2), ǆ matches ǅ, and U+212A (Kelvin) matches k; ſ/s, µ/μ, ϐ/β and ﬀ/ff do not match (`#VALUE!`).
 Evidence: probes/text-search-casefold-length A1-A24 (oracle: excel-graph, 2026-10-12, T-1296).
 Status: VERIFIED (excel-graph)
-Implemented in: `fold_case` (functions/text/position.rs).
+Implemented in: `fold_case` (functions/text/casefold.rs).
 Tasks: T-1296
 
 ## TEXT over an array of format codes
@@ -381,3 +428,25 @@ The delimiter may be an array or a range, and then it cycles between the joined 
 Evidence: probes cases `textjoin-array-arguments` (A1-A28, A30-A35), `textjoin-array-limit-empty-strings` (A1-A10) and `textjoin-delimiter-array` (A1-A6). Oracle: excel-graph, 2026-10-14.
 Status: VERIFIED (excel-graph); the array argument (T-1482) and the cycling delimiter (T-1510) are implemented.
 Tasks: T-1482, T-1510
+
+## CLEAN character set and PROPER word starts and case mapping (T-1307)
+Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.
+Rule (PROPER; UPPER, LOWER and further characters in the T-1747 section below): a letter after any non-letter, digits, apostrophes (straight or curly), `_` and `-` included, is upper-cased and the other letters lowered (`2Nd Place`, `O'Neil Mc-Donald`, `It'S 3Rd`, `A1B2C3`, `Hello_World`; full-width letters follow the same rule). Case mapping is per character and one-to-one: the characters whose full mapping expands stay as they are (`PROPER("ßa straße")` is `ßa Straße`, ŉ, ǰ and the ﬁ/ﬂ ligatures unchanged), where Rust's `to_uppercase` gives "SS", "ʼN" and "FI". İ folds to ASCII (`PROPER("İstanbul")` is `Istanbul`, `PROPER("aİb")` `Aib`) and ΐ, ΰ upper-case to Ϊ, Ϋ. Titlecase digraphs map to their capital (`ǅ ǈ ǋ ǲ` give `Ǆ Ǉ Ǌ Ǳ`). A capital sigma ending a word lowers to the final ς, with no letter or digit after it (`ΣΊΣΥΦΟΣ` is `Σίσυφος`, `ΑΣ.ΑΣ-Σ ΑΣ1` is `Ας.Ας-Σ Ασ1`, so a following digit keeps σ and a word-initial Σ stays). A combining mark is not a letter, so the next letter is capitalised (`e` + U+0301 + `cole` is `ÉCole`), and a zero-width space (U+200B) is not a letter either (`PROPER(U+200B&"abc def")` is `<U+200B>Abc Def`).
+Evidence: probes/clean-proper-chars (excel-graph, 2026-10-16, 88 cells; engine matches all after T-1307). Implemented in `proper_case` (functions/text/string_format.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-1307
+
+## UPPER, LOWER and PROPER: one-to-one case mapping, final-sigma context (T-1747)
+Rule: UPPER, LOWER and PROPER all use the simple one-to-one mapping, so characters whose full mapping expands stay unchanged in every case (ᾳ, ẖ, ẘ, ﬀ, ﬃ, ﬆ, և, ß, ŉ, ǰ, ﬁ; `UPPER("ß")` is `ß`, not "SS"). ΐ upper-cases to Ϊ in UPPER and PROPER (LOWER leaves it; ΰ to Ϋ in UPPER is unprobed, carried over from PROPER). İ is the exception to consistency: PROPER and LOWER fold it to I / i (`LOWER("aİb İc")` is `aib ic`) but UPPER leaves it as İ. A capital Σ lowers to the final ς in LOWER and PROPER when the next character is the end of the text, a space, a straight apostrophe or `-`, and to σ when a letter or digit, a combining mark (probed: U+0301, U+0308; the rest of U+0300-U+036F is assumed, other combining blocks and U+200C/U+200D/U+2018 are unprobed and give ς), a curly apostrophe (U+2019) or a zero-width space (U+200B) follows. In LOWER a lone `Σ`, `Σ ` and `1Σ` give ς (no preceding letter needed), but `Σ`+U+0308 gives σ̈; lower-case σ is never changed (`LOWER("ασ")` is `ασ`). PROPER keeps a word-initial Σ capital.
+Evidence: probes/case-mapping-expanding (excel-graph, 2026-10-17, 81 cells; engine matches all).
+Status: VERIFIED (excel-graph). Implemented in: `lower_case`, `upper_case`, `proper_case` (functions/text/string_format.rs). Tasks: T-1747
+
+## ARRAYTOTEXT: a single empty cell is #VALUE!, an empty cell in a larger range is empty text
+Rule: `ARRAYTOTEXT` of a reference to one empty cell is `#VALUE!` in both formats, and so are a 1x1 range of an empty
+cell, `(B1)`, `IF(TRUE,B1)`, `INDEX(B1:B2,1)` of an empty cell and an omitted first argument (`ARRAYTOTEXT(,1)`). Within a
+multi-cell range an empty cell is empty text (`B1:B2` all empty is ", ", strict "{;}"; `C1:C3` with C2 empty is "1, , 3",
+strict "{1;;3}"). Computed empties are not references: `B1+0` is "0" and `B1&""` is "". `VALUETOTEXT(B1)` of an empty
+cell is "" in both formats, and a typed `""` is "" / `{""}`. An array element is not a reference: GROUPBY hands a one-blank group to
+its function as an array and `ARRAYTOTEXT` of it is "" (probes/groupby-blank-values).
+Evidence: probes/arraytotext-empty-ref A1-A25 (excel-graph, 2026-10-17, T-1718).
+Status: VERIFIED (excel-graph). Implemented in: `fn_arraytotext`. Tasks: T-1718
