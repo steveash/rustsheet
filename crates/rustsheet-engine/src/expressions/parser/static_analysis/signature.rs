@@ -491,6 +491,15 @@ pub(super) fn args_signature_choose(arg_count: usize) -> Vec<Signature> {
     result
 }
 
+/// CHOOSECOLS and CHOOSEROWS read every argument whole: the array, and each index list
+/// (probes/lookup-argument-modes F7:G10, T-1241).
+pub(super) fn args_signature_choosecols(arg_count: usize) -> Vec<Signature> {
+    if arg_count < 2 {
+        return vec![Signature::Error; arg_count];
+    }
+    vec![Signature::Vector; arg_count]
+}
+
 pub(super) fn args_signature_expand(arg_count: usize) -> Vec<Signature> {
     if !(2..=4).contains(&arg_count) {
         return vec![Signature::Error; arg_count];

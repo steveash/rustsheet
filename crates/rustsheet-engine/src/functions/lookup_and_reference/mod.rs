@@ -884,9 +884,11 @@ impl Model {
                 return CalcResult::new_error(error, cell, message);
             }
             let mut text_bytes = 0;
-            let mut rows = Vec::new();
+            let width = usize::try_from(right.column - left.column + 1).unwrap_or(0);
+            let mut rows =
+                Vec::with_capacity(usize::try_from(right.row - left.row + 1).unwrap_or(0));
             for row in left.row..=right.row {
-                let mut values = Vec::new();
+                let mut values = Vec::with_capacity(width);
                 for column in left.column..=right.column {
                     let at = CellReferenceIndex {
                         sheet: left.sheet,

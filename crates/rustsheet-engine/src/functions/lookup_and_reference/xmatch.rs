@@ -10,7 +10,7 @@ use crate::{
 };
 
 use super::lookup_table::SearchVector;
-use crate::functions::lift::{LiftCost, LiftOptions};
+use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::functions::{
     binary_search::binary_search, criteria::wildcard_text_matcher, util::compare_values,
 };
@@ -120,23 +120,21 @@ pub(crate) fn linear_scan<'a>(
 }
 
 /// Searches `array` for `lookup_value` and returns the 0-based index of the match,
-/// or `None` if not found. Only the candidates `SearchVector` names are tested:
+/// or `None` if not found. `regex` is the regex mode's pattern, compiled once by the caller
+/// (`None` for a lookup value that is not text, which matches nothing). Only the candidates `SearchVector` names are tested:
 /// they cover the virtual empty tail with a single cell.
 fn linear_search(
     lookup_value: &CalcResult,
     array: &SearchVector,
     search_mode: &SearchMode,
     match_mode: MatchMode,
+    regex: Option<&Regex>,
 ) -> Option<usize> {
     let candidates = array.linear_candidates(*search_mode == SearchMode::FirstToLast);
 
     match match_mode {
         MatchMode::Regex => {
-            let pattern = match lookup_value {
-                CalcResult::String(s) => &**s,
-                _ => return None,
-            };
-            let re = Regex::new(pattern).ok()?;
+            let re = regex?;
             candidates.into_iter().find(|&idx| {
                 let text = match array.get(idx) {
                     CalcResult::String(s) => (**s).to_owned(),
@@ -183,6 +181,10 @@ impl Model {
             Some(node) => self.lookup_value_arg(node, cell),
             None => CalcResult::Number(0.0),
         };
+        // An error lookup_value that nothing lifts is the result: lookup_array is not read.
+        if lookup_value.is_error() && !LiftedArg::is_grid(&match_mode) {
+            return lookup_value;
+        }
 
         let search_mode = match args.get(3) {
             Some(node) => match self.get_number(node, cell) {
@@ -203,13 +205,10 @@ impl Model {
         };
 
         let array = self.xmatch_vector(&args[1], cell);
-        let scan = match &array {
-            Ok(array) => u64::try_from(array.search_cost()).unwrap_or(u64::MAX),
-            Err(_) => 1,
-        };
+        let scan = array.as_ref().map_or(1, SearchVector::scan_cells);
         self.lift_values(
             vec![lookup_value, match_mode],
-            LiftCost::Cells(scan.max(1)),
+            LiftCost::Cells(scan),
             &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
             &mut |model, values| {
@@ -262,18 +261,20 @@ impl Model {
 
         match *search_mode {
             SearchMode::FirstToLast | SearchMode::LastToFirst => {
-                if match_mode == MatchMode::Regex {
-                    if let CalcResult::String(pat) = lookup_value {
-                        if Regex::new(pat).is_err() {
+                let regex = match (match_mode, lookup_value) {
+                    (MatchMode::Regex, CalcResult::String(pat)) => match Regex::new(pat) {
+                        Ok(regex) => Some(regex),
+                        Err(_) => {
                             return CalcResult::new_error(
                                 Error::VALUE,
                                 cell,
                                 "Invalid regular expression".to_string(),
-                            );
+                            )
                         }
-                    }
-                }
-                match linear_search(lookup_value, array, search_mode, match_mode) {
+                    },
+                    _ => None,
+                };
+                match linear_search(lookup_value, array, search_mode, match_mode, regex.as_ref()) {
                     Some(idx) => CalcResult::Number(idx as f64 + 1.0),
                     None => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
                 }

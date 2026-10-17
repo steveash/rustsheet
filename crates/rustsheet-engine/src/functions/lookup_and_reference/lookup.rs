@@ -111,13 +111,12 @@ impl Model {
         }
         let result = args.get(2).map(|node| self.lookup_result(node, cell));
         // Each element tests the evaluated cells of the searched row or column once.
-        let scan = match &search {
-            Ok(search) => u64::try_from(search.vector.search_cost()).unwrap_or(u64::MAX),
-            Err(_) => 1,
-        };
+        let scan = search
+            .as_ref()
+            .map_or(1, |search| search.vector.scan_cells());
         self.lift_values(
             vec![target],
-            LiftCost::Cells(scan.max(1)),
+            LiftCost::Cells(scan),
             &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
             &mut |model, values| {

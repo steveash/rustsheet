@@ -1,6 +1,6 @@
 ---
 id: T-1241
-title: "Lookup and reference scalar arguments lift over a range or an array (ADDRESS, INDIRECT, XLOOKUP, XMATCH, LOOKUP, OFFSET and more)"
+title: "Lookup and reference scalar arguments lift over a range or an array (ADDRESS, HYPERLINK, LOOKUP, XMATCH, FORMULATEXT; CHOOSECOLS/CHOOSEROWS lists)"
 milestone: M6
 lane: functions-lookup
 status: done
@@ -12,6 +12,8 @@ spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
 
 ## Goal
+Split on resumption: OFFSET, INDIRECT and TRIMRANGE (reference-valued elements) and CHOOSE's move onto the driver are
+T-1810. Original goal:
 The probed scalar arguments of ADDRESS, HYPERLINK, INDIRECT, LOOKUP, XLOOKUP, XMATCH, OFFSET, TRIMRANGE and FORMULATEXT lift over a range and an array, CHOOSECOLS/CHOOSEROWS read a range or array of indexes whole as a list, and vector/array arguments take array literals whole, as Excel does.
 
 ## Context
