@@ -93,37 +93,27 @@ impl CallNameSpellings {
 mod tests {
     use super::spelling_key;
 
+    /// Whitespace-separated name pairs: whether the two keys of each pair are equal.
+    fn pairs_fold(pairs: &str, folds: bool) {
+        let names: Vec<&str> = pairs.split_whitespace().collect();
+        for pair in names.chunks(2) {
+            assert_eq!(
+                spelling_key(pair[0]) == spelling_key(pair[1]),
+                folds,
+                "{pair:?}"
+            );
+        }
+    }
+
     #[test]
     fn folds_match_excel() {
-        for (a, b) in [
-            ("ςw", "σw"),
-            ("ςu", "Σu"),
-            ("ﬁq", "FIq"),
-            ("ǆd", "Ǆd"),
-            ("straße", "STRASSE"),
-            ("ϵg", "εg"),
-            ("ﬀj", "FFj"),
-            ("ﬆn", "STn"),
-            ("ẞr", "ßr"),
-            ("ẞs", "SSs"),
-        ] {
-            assert_eq!(spelling_key(a), spelling_key(b), "{a} {b}");
-        }
-        for (a, b) in [
-            ("ıx", "Ix"),
-            ("ſy", "Sy"),
-            ("\u{b5}z", "μz"),
-            ("\u{b5}v", "Μv"),
-            ("ϐa", "βa"),
-            ("ϑb", "θb"),
-            ("ϕc", "φc"),
-            ("ϖd", "πd"),
-            ("ϰe", "κe"),
-            ("ϱf", "ρf"),
-            ("ﬅm", "STm"),
-            ("ŉo", "ʼNo"),
-        ] {
-            assert_ne!(spelling_key(a), spelling_key(b), "{a} {b}");
-        }
+        pairs_fold(
+            "ςw σw ςu Σu ﬁq FIq ǆd Ǆd straße STRASSE ϵg εg ﬀj FFj ﬆn STn ẞr ßr ẞs SSs",
+            true,
+        );
+        pairs_fold(
+            "ıx Ix ſy Sy \u{b5}z μz \u{b5}v Μv ϐa βa ϑb θb ϕc φc ϖd πd ϰe κe ϱf ρf ﬅm STm ŉo ʼNo",
+            false,
+        );
     }
 }
