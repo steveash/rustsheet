@@ -3,7 +3,7 @@ id: T-1409
 title: "YEARFRAC accepts serial 0 (a date in [0,1)) as start or end date"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
