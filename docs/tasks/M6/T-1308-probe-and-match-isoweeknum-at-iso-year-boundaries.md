@@ -3,7 +3,7 @@ id: T-1308
 title: "Probe and match ISOWEEKNUM and WEEKNUM at modern year boundaries and week-53 years"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
