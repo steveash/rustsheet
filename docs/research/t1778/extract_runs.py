@@ -4,7 +4,8 @@ Usage (from the repository root): python3 docs/research/t1778/extract_runs.py OU
 
 Each line is `run_id x erf`, both values as float.hex(). OUTDIR/runs.txt holds kmyst-erf-zsweep (runs 0-63),
 kmyst-erf-zsweep2 (64-159), kmyst-erf-ladder (5000-5021), kmyst-erf-scatter (8000-8023) and kmyst-erf-zladder
-(9000-9062); OUTDIR/zs3.txt holds kmyst-erf-zsweep3 (runs 0-143). Run ids number consecutive blocks of rows.
+(9000-9062); OUTDIR/zs3.txt holds kmyst-erf-zsweep3 (runs 0-143) and OUTDIR/ws.txt
+kmyst-erf-wsweep (runs 0-191) and kmyst-erf-wsweep2 (192-503), 128 rows each. Run ids number consecutive blocks of rows.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ LAYOUT = {
     "runs.txt": [("kmyst-erf-zsweep", 0, 256), ("kmyst-erf-zsweep2", 64, 256), ("kmyst-erf-ladder", 5000, 512),
                  ("kmyst-erf-scatter", 8000, 256), ("kmyst-erf-zladder", 9000, 256)],
     "zs3.txt": [("kmyst-erf-zsweep3", 0, 256)],
+    "ws.txt": [("kmyst-erf-wsweep", 0, 128), ("kmyst-erf-wsweep2", 192, 128)],
 }
 
 
