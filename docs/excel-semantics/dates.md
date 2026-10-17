@@ -53,6 +53,7 @@ from the week containing 1 January (system 1) on the real calendar, with no 1900
 A fractional serial truncates (`ISOWEEKNUM(44197.99)` = 53), a serial past 9999-12-31 is `#NUM!`
 (`ISOWEEKNUM(2958466)`), and date text is read as a date (`ISOWEEKNUM("2021-01-03")` = 53). The engine already matches
 all 67 cells, WEEKNUM types 1, 2 and 11-17 on 2023-01-01, 2022-01-01, 2021-12-31 and 2024-12-31 included.
+A year can have 54 weeks: `WEEKNUM(DATE(2024,12,31),12)` is 54 (Tuesday week start, 2024-01-01 a Monday; A59).
 Evidence: probes/weeknum-modern-boundaries A1-A67 (excel-graph, 2026-10-17).
 
 ### WEEKNUM return_type edge cases and serial 0 (T-1023)
