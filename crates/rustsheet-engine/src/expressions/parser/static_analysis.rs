@@ -213,9 +213,10 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
                 && !legacy_call_reads_a_value(kind, args)
                 && match static_analysis_on_function(kind, args) {
                     StaticResult::Range(_, _) | StaticResult::Unknown => add,
-                    // A one-cell array gives the same value with or without the `@`, which Excel
-                    // does not show on `=SUBTOTAL(9,CHOOSE(1,{5}))`
-                    // (probes/legacy-one-cell-shape-intersection J3).
+                    // A one-cell array gives the same value with or without the `@`. Excel shows
+                    // none on `=SUBTOTAL(9,CHOOSE(1,{5}))`, a 1x1 array shape here
+                    // (probes/legacy-one-cell-shape-intersection J3); other one-cell calls are
+                    // unprobed (T-1847). A one-cell CHOOSE is a range shape and keeps its `@`.
                     StaticResult::Array(rows, columns) => {
                         arrays
                             && (rows > 1 || columns > 1)

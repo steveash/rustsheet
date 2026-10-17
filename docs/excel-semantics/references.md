@@ -1512,11 +1512,15 @@ IFS, SWITCH, LET or LAMBDA, nor N/T over IF or SWITCH). Where it holds, an array
 gets the `@`, and so does an array-valued call of more than one cell whose array is one of its
 arguments or comes from a non-scalar one (`legacy_array_call_at`). Unprobed and left alone: an
 array constant inside an operator (`=N({2;3}+0)`) and a call whose array comes from such an operator
-(`=ABS({2;3}+0)`), both of which still spill; one-cell arrays (`=SUBTOTAL(9,CHOOSE(1,{5}))` shows
-none). The export drops exactly these `@`s (`remove_redundant_legacy_intersection`). The N/T
+(`=ABS({2;3}+0)`), both of which still spill; one-cell array-valued calls other than CHOOSE
+(Excel shows none on `=SUBTOTAL(9,CHOOSE(1,{5}))`, probes/legacy-one-cell-shape-intersection J3,
+while `=ABS(@CHOOSE(1,{5}))` keeps one through CHOOSE's range shape). Extrapolated, unprobed: IFNA,
+IFS and SWITCH taking the `@` on the call, the arguments of IFERROR, IFNA, IFS and SWITCH staying
+whole, T over SWITCH, and the array-constant `@` under scalar functions other than N, T and ABS
+(T-1847). The export drops exactly these `@`s (`remove_redundant_legacy_intersection`). The N/T
 exception's `#VALUE!` is T-1713.
 Status: VERIFIED (excel-graph)
-Tasks: T-1713, T-1717
+Tasks: T-1713, T-1717, T-1847
 
 ## Legacy N and T over a reference-returning call (T-1713)
 Rule: in a legacy (non-array) formula, N and T read their argument as a reference: no `@` goes on it,

@@ -52,5 +52,5 @@ multi-cell array-valued call whose array is one of its arguments or comes from a
 (`legacy_array_call_at`); the export mirrors it (`remove_redundant_legacy_intersection`). Under N, a
 SWITCH now gets no `@` and spills, as in Excel. Left alone (unprobed): an array constant inside an
 operator (`=N({2;3}+0)`, `=ABS({2;3}+0)`) and one-cell arrays. Eval: probes known failures
-4408 -> 4384 (24 fixed, 0 regressions); fixtures, gen-*, ironcalc-calc unchanged; poi is not
-fetched here, so CI's run is its check.
+4408 -> 4384 (24 fixed, 0 regressions); fixtures, gen-*, ironcalc-calc unchanged; poi 484 -> 484
+(0 regressions, fetched and run by the fidelity reviewer). Unprobed extrapolations: T-1847.
