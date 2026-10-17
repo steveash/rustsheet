@@ -7,22 +7,22 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-/// VARA, VARPA, STDEVA and STDEVPA return the first error in argument order at once, as before
-/// they moved onto the walker (an error in a range, an array or a direct argument; the order is
-/// UNVERIFIED, T-1439).
+/// VARA, VARPA, STDEVA and STDEVPA rank errors as SUM does: a direct error beats referenced and
+/// array ones, otherwise the leftmost wins (probes/aggregate-error-precedence-a-variants, 36
+/// cells, excel-graph, T-1696; VAR and STDEV: T-1439).
 const VARA_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
-    errors: ErrorRule::First,
+    errors: ErrorRule::Ranked,
     skip_empty_args: false,
 };
 
-/// A referenced cell coerces (text 0, booleans 1/0) and an array element counts only when it is a
-/// number: both verified, probes/vara-single-ref-picked D1-D36, D40, D41 (docs/excel-semantics/
-/// statistics.md). A direct value counts only when it is a number here, but Excel coerces a
-/// direct "2" and TRUE (probes/stat-argument-modes Sheet1!H69, H72, H75, H78 and
-/// vara-single-ref-picked D37-D39, known failures), which T-1291 fixes.
+/// A referenced cell coerces (text 0, booleans 1/0), a direct value casts like the other
+/// A-variants (a typed "2" is 2, TRUE is 1 and text that is no number is `#VALUE!`), and an array
+/// element counts only when it is a number: verified, probes/vara-single-ref-picked D1-D41,
+/// probes/stat-argument-modes H69, H72, H75, H78 and gen-m9/288b99797f58f149 A7
+/// (docs/excel-semantics/statistics.md "Statistical function argument modes", T-1291).
 const VARA_NUMBERS: NumberRules = NumberRules {
-    direct: DirectNumbers::NumbersOnly,
+    direct: DirectNumbers::CastA,
     cells: CellNumbers::CoercedA,
     array: ArrayNumbers::Numbers,
 };

@@ -1,0 +1,85 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1667: D-function (database flavor) criteria with a lone surrogate (H = high, L = low half of U+1F600, built with MID): plain text criterion = prefix match, and \"=\"& = exact. Data!A2:A9 = H, L, U+1F600, U+FFFD, x, H&a, a&L, a with v = powers of two (DSUM names the matched set); Crit row 2 holds the criteria in columns A-J, Calc column A is DSUM, column B DCOUNTA.",
+ "tags": [
+  "M2",
+  "probe",
+  "text",
+  "criteria"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=DSUM(Data!$A$1:$B$9,\"v\",Crit!A1:A2)",
+    "B1": "=DCOUNTA(Data!$A$1:$B$9,\"v\",Crit!A1:A2)",
+    "A2": "=DSUM(Data!$A$1:$B$9,\"v\",Crit!B1:B2)",
+    "B2": "=DCOUNTA(Data!$A$1:$B$9,\"v\",Crit!B1:B2)",
+    "A3": "=DSUM(Data!$A$1:$B$9,\"v\",Crit!C1:C2)",
+    "B3": "=DCOUNTA(Data!$A$1:$B$9,\"v\",Crit!C1:C2)",
+    "A4": "=DSUM(Data!$A$1:$B$9,\"v\",Crit!D1:D2)",
+    "B4": "=DCOUNTA(Data!$A$1:$B$9,\"v\",Crit!D1:D2)",
+    "A5": "=DSUM(Data!$A$1:$B$9,\"v\",Crit!E1:E2)",
+    "B5": "=DCOUNTA(Data!$A$1:$B$9,\"v\",Crit!E1:E2)",
+    "A6": "=DSUM(Data!$A$1:$B$9,\"v\",Crit!F1:F2)",
+    "B6": "=DCOUNTA(Data!$A$1:$B$9,\"v\",Crit!F1:F2)",
+    "A7": "=DSUM(Data!$A$1:$B$9,\"v\",Crit!G1:G2)",
+    "B7": "=DCOUNTA(Data!$A$1:$B$9,\"v\",Crit!G1:G2)",
+    "A8": "=DSUM(Data!$A$1:$B$9,\"v\",Crit!H1:H2)",
+    "B8": "=DCOUNTA(Data!$A$1:$B$9,\"v\",Crit!H1:H2)",
+    "A9": "=DSUM(Data!$A$1:$B$9,\"v\",Crit!I1:I2)",
+    "B9": "=DCOUNTA(Data!$A$1:$B$9,\"v\",Crit!I1:I2)",
+    "A10": "=DSUM(Data!$A$1:$B$9,\"v\",Crit!J1:J2)",
+    "B10": "=DCOUNTA(Data!$A$1:$B$9,\"v\",Crit!J1:J2)"
+   }
+  },
+  {
+   "name": "Data",
+   "cells": {
+    "A1": "t",
+    "B1": "v",
+    "A2": "=MID(\"\ud83d\ude00\",1,1)",
+    "B2": 1,
+    "A3": "=MID(\"\ud83d\ude00\",2,1)",
+    "B3": 2,
+    "A4": "\ud83d\ude00",
+    "B4": 4,
+    "A5": "=UNICHAR(65533)",
+    "B5": 8,
+    "A6": "x",
+    "B6": 16,
+    "A7": "=MID(\"\ud83d\ude00\",1,1)&\"a\"",
+    "B7": 32,
+    "A8": "=\"a\"&MID(\"\ud83d\ude00\",2,1)",
+    "B8": 64,
+    "A9": "a",
+    "B9": 128
+   }
+  },
+  {
+   "name": "Crit",
+   "cells": {
+    "A1": "t",
+    "A2": "=MID(\"\ud83d\ude00\",1,1)",
+    "B1": "t",
+    "B2": "=MID(\"\ud83d\ude00\",2,1)",
+    "C1": "t",
+    "C2": "=\"\ud83d\ude00\"",
+    "D1": "t",
+    "D2": "=UNICHAR(65533)",
+    "E1": "t",
+    "E2": "=MID(\"\ud83d\ude00\",1,1)&\"a\"",
+    "F1": "t",
+    "F2": "=\"a\"&MID(\"\ud83d\ude00\",2,1)",
+    "G1": "t",
+    "G2": "=\"a\"",
+    "H1": "t",
+    "H2": "=\"=\"&MID(\"\ud83d\ude00\",1,1)",
+    "I1": "t",
+    "I2": "=\"=\"&MID(\"\ud83d\ude00\",2,1)",
+    "J1": "t",
+    "J2": "=\"x\""
+   }
+  }
+ ]
+}

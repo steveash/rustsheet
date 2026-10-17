@@ -1,10 +1,10 @@
-mod bound_variables;
+pub(super) mod bound_variables;
 use super::reference_operators::{
     at_text, callee_operand, group_text, intersection_operand, spill_operand, tight_operand,
     union_text,
 };
 use super::{
-    super::utils::{name_needs_quoting, quote_name},
+    super::utils::{name_needs_quoting, quote_name, rename_defined_name_sheet},
     for_each_chain_operand_mut, left_chain,
     move_formula::{moved_reference_text, MoveContext},
     value_operands, ArrayNode, Node, Reference,
@@ -15,7 +15,7 @@ use crate::expressions::token::OpUnary;
 use crate::language::{get_language, Language};
 use crate::locale::{get_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
-use bound_variables::prefix_bound_variables;
+use bound_variables::{callee_text, prefix_bound_variables, variable_text};
 
 pub enum DisplaceData {
     Column {
@@ -119,7 +119,7 @@ fn excel_string(node: &Node, context: &CellReferenceRC, is_array_formula: bool) 
     if !is_array_formula {
         remove_redundant_implicit_intersection(&mut node, true);
     }
-    prefix_bound_variables(&mut node, &mut Vec::new());
+    prefix_bound_variables(&mut node);
     stringify(&node, Some(context), &NO_REWRITE, true, locale, language)
 }
 
@@ -667,7 +667,7 @@ fn stringify(
             text
         }
         NamedFunctionKind { name, args, id: _ } => format_function(
-            &name.to_lowercase(),
+            &callee_text(name, context),
             args,
             context,
             rewrite,
@@ -721,9 +721,8 @@ fn stringify(
             }
             format!("{{{matrix_string}}}")
         }
-        TableNameKind(value) => value.to_string(),
         DefinedNameKind((name, ..)) => name.to_string(),
-        NamedVariableKind { name, id: _ } => name.to_string(),
+        NamedVariableKind { name, id: _ } => variable_text(name, context),
         UnaryKind { kind, right } => {
             let operand = wrap(sub(right), binding(right) < binding(node));
             match kind {
@@ -758,9 +757,9 @@ fn stringify(
                             format!("_xlpm.{}", p.name)
                         }
                     } else if p.is_optional {
-                        format!("[{}]", p.name)
+                        format!("[{}]", variable_text(&p.name, context))
                     } else {
-                        p.name.clone()
+                        variable_text(&p.name, context)
                     }
                 })
                 .collect();
@@ -962,16 +961,15 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         }
 
         // Do nothing
-        Node::BooleanKind(_) => {}
-        Node::NumberKind(_) => {}
-        Node::StringKind(_) => {}
-        Node::ErrorKind(_) => {}
-        Node::ParseErrorKind { .. } => {}
-        Node::ArrayKind(_) => {}
-        Node::DefinedNameKind(_) => {}
-        Node::TableNameKind(_) => {}
-        Node::NamedVariableKind { .. } => {}
-        Node::EmptyArgKind => {}
+        Node::BooleanKind(_)
+        | Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::ErrorKind(_)
+        | Node::ParseErrorKind { .. }
+        | Node::ArrayKind(_)
+        | Node::NamedVariableKind { .. }
+        | Node::EmptyArgKind => {}
+        Node::DefinedNameKind((n, s, _)) => rename_defined_name_sheet(n, *s, sheet_index, new_name),
         Node::LambdaDefKind {
             parameters: _,
             body,
@@ -1052,7 +1050,6 @@ pub(crate) fn rename_defined_name_in_node(
         Node::SheetSpanKind { .. } => {}
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
-        Node::TableNameKind(_) => {}
         Node::NamedVariableKind { .. } => {}
         Node::LambdaDefKind {
             parameters: _,

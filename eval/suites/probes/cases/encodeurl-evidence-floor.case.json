@@ -1,0 +1,46 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ENCODEURL argument modes and character classes, evidence floor (T-1628)",
+  "tags": [
+    "M5",
+    "web",
+    "encodeurl",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "a b",
+        "B1": "x/y",
+        "D1": "=ENCODEURL(\"a b&c\")",
+        "D2": "=ENCODEURL(\"abc\")",
+        "D3": "=ENCODEURL(\"\")",
+        "D4": "=ENCODEURL(\"\u00e9\")",
+        "D5": "=ENCODEURL(\"\ud83d\ude00\")",
+        "D6": "=ENCODEURL(\"a/b?c=d#e\")",
+        "D7": "=ENCODEURL(\"100%\")",
+        "D8": "=ENCODEURL(\"a+b\")",
+        "D9": "=ENCODEURL(\"~-._\")",
+        "D10": "=ENCODEURL(123)",
+        "D11": "=ENCODEURL(1.5)",
+        "D12": "=ENCODEURL(TRUE)",
+        "D13": "=ENCODEURL(-0)",
+        "D14": "=ENCODEURL(\"a\"&CHAR(10)&\"b\")",
+        "D15": "=ENCODEURL(\"%41\")",
+        "D16": "=ENCODEURL(\"\u00e4 \u00f6 \u00fc\")",
+        "D17": "=ENCODEURL(\"\u65e5\u672c\u8a9e\")",
+        "D18": "=ENCODEURL(1E+20)",
+        "D19": "=ENCODEURL(DATE(2020,1,1))",
+        "D20": "=ENCODEURL(\" \")",
+        "D21": "=ENCODEURL(A1)",
+        "D22": "=ENCODEURL(B1)",
+        "D23": "=ERROR.TYPE(ENCODEURL(1/0))",
+        "D24": "=ENCODEURL(ENCODEURL(\"a b\"))",
+        "D25": "=LEN(ENCODEURL(\"a b\"))",
+        "F1": "=ENCODEURL(A1:B1)",
+        "F2": "=ENCODEURL({\"a b\";\"c&d\"})"
+      }
+    }
+  ]
+}

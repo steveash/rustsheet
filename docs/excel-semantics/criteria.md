@@ -22,16 +22,43 @@ Before any other character, `~` is a literal tilde: `"a~c"` matches "a~c", and a
 is literal (`"abc~"` matches "abc~", not "abc"). `~~` is **not** an escape for one tilde: `"~~"`
 does not match the text "~" and `"a~~c"` does not match "a~c". Matching, with or without
 wildcards, is case-insensitive (`"ABC"` → abc and ABC; `"A?C"`, `"*C"` → 5).
-Verified with COUNTIF only; MATCH/XLOOKUP wildcard mode and D-functions are unprobed for `~~`.
+Verified with COUNTIF only, for patterns without `*`/`?`; inside wildcard patterns and in MATCH/XMATCH see "Tildes inside wildcard patterns and wildcard-mode lookups" below. D-functions are unprobed for `~~`.
 Evidence: probes/criteria-gaps C4–C14 over 10, abc, TRUE, #N/A, blank, ABC, abc~, a*c, a?c, a~c,
 *, ~: 1, 1, 1, 0, 0, 1, 2, 5, 10, 5, 1; probes/criteria-grammar C8. Oracle: excel-graph, 2026-10-05 (T-0011).
 Status: VERIFIED
 Implemented in: functions::criteria::wildcard_text_matcher
 
+## Tildes inside wildcard patterns and wildcard-mode lookups
+Rule: once a criterion holds `*` or `?`, or always for a MATCH(..,0)/XMATCH(..,2) text lookup value, `~` makes the next
+character literal whatever it is: `~x` reads as `x`, `~~` as one `~`, `~*`/`~?` as `*`/`?`; a trailing `~` is dropped.
+This differs from the plain-text criterion rule above, where `~` before a non-wildcard and a trailing `~` stay literal.
+Over Data!A1:A8 = a~c, ac, abc~, abc, ~, a~~c, a~b, a~bx (SUMIF weights 1..128): `"a~c*"` 2 (ac), `"~~*"` 16 (~),
+`"abc~*"` 0, `"*~"` 255, `"a~~c*"` 1, `"*~c"` 43, `"a~?*"` 0, `"a~b?"` 8 (abc); `MATCH("a~c",..,0)` 2,
+`MATCH("abc~",..,0)` 4, `MATCH("~~",..,0)` 5, `MATCH("a~~c",..,0)` 1, `MATCH("~",..,0)` #N/A; `XMATCH("a~c",..,2)` 2.
+Evidence: probes/criteria-wildcard-tilde (excel-graph, 2026-10-16, T-1642).
+Status: VERIFIED
+Implemented in: `WildcardPattern::new` (functions/criteria.rs)
+
+## Wildcards match line breaks
+Rule: `?` matches one CHAR(10) or CHAR(13) and `*` spans them, in criteria and in wildcard MATCH/XMATCH alike. Over
+Data!A1:A5 = "a"&CHAR(10)&"b", CHAR(10), "ab", "a"&CHAR(13)&"b", "a"&CHAR(10) (SUMIF weights 1, 2, 4, 8, 16):
+`"a*"` 29, `"?"` 2, `"a?b"` 9, `"*b"` 13, `"*"` 31, `"a*b"` 13, `"???"` 9, `"*"&CHAR(10)&"*"` 19,
+`"a"&CHAR(10)&"*"` 17; `MATCH("a?b",..,0)` 1, `MATCH("?",..,0)` 2, `XMATCH("a*b",..,2)` 1, `COUNTIFS(..,"a*")` 4.
+Evidence: probes/criteria-wildcard-newline (excel-graph, 2026-10-16, T-1642).
+Status: VERIFIED
+SEARCH agrees (probes/search-wildcard-newline, excel-graph 2026-10-16, T-1666): `SEARCH("a?b","x"&"a"&CHAR(10)&"b")` 2,
+`SEARCH("a*b","a"&CHAR(10)&"b")` 1, `SEARCH("?",CHAR(10))` and `SEARCH("?",CHAR(13))` 1, `SEARCH("a?b","xa"&CHAR(13)&"b")` and `SEARCH("a*b","xa"&CHAR(13)&"yb")` 2, `SEARCH("?b","xa"&CHAR(13)&"b")` 3, `SEARCH("*b","xxb",2)` 2 and `,3)` 3, `SEARCH("*"&CHAR(10)&"*","ab"&CHAR(10)&"c")` 1;
+over "😀b": `"?b"` 2, `"??b"` 1, `"???b"` #VALUE!, `"*b"` 1; `SEARCH("?","😀")` and `SEARCH("??","😀")` 1, `"???"` #VALUE!;
+`SEARCH("a?b","😀a😀b",2)` #VALUE! (the pair is two units); `SEARCH("*","")` and `SEARCH("?","")` #VALUE!.
+Status: VERIFIED
+Implemented in: `WildcardPattern` (functions/criteria.rs), which matches any unit for `?`/`*`; SEARCH uses its
+unanchored `find_from`. The regex translation both used before (`.` skips `\n`) is gone.
+
 ## D-function plain-text equality matches by prefix
 Rule: in DSUM/DCOUNT/DGET/... a plain text criterion (no operator, no wildcard) matches cells that *start with* it ("ab" matches "abc"); every other part of the grammar is shared with COUNTIF.
 An explicit leading `=` (`"=ab"`) turns the prefix match into an exact match (probes/criteria-operands D18).
 Evidence: probes/criteria-grammar C11 (`DCOUNTA` with criterion "ab" over ab, abc, xab → 2).
+The prefix is read unit by unit, so a lone surrogate is a unit of its own (probes/d-function-prefix-lone-surrogates, excel-graph 2026-10-16, T-1667): over H, L, "😀", U+FFFD, "x", H&"a", "a"&L, "a" (v = 1, 2, 4, ..., 128), `DSUM` with criterion H gives 37 (H, "😀", H&"a"), L gives 2 (L only, not "a"&L), "😀" gives 4, U+FFFD gives 8 (never a lone half), H&"a" gives 32, "a"&L gives 64, "a" gives 192 ("a" and "a"&L), `"="&H` gives 1 and `"="&L` gives 2, "x" gives 16; `DCOUNTA` counts agree (H 3, "a" 2).
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: functions::criteria::build_criteria_with (CriteriaFlavor::Database)
@@ -160,10 +187,12 @@ arithmetic, and FORMULATEXT shows it: `=SUM(INDEX(B1:B6,{2;3}))` is 2 and shows 
 `SUMPRODUCT(INDEX(B1:B6,{2;3},1))` 2, `INDEX(B1:B6,2,{1,1})` 2, `INDEX((B1:B6,B1:B6),1,1,{2;1})` 1, `INDEX(B1:B6,{2;3}+0)`
 shows `@{2;3}+0`, and a legacy cell `=INDEX(B1:B6,{3;2})` shows `=@INDEX(B1:B6,@{3;2})`; a range index intersects
 (`SUMPRODUCT(INDEX(B1:B6,C1:C3))` is B2 on row 1 and `#VALUE!` off-row, shown `@C1:C3`), while the one function call
-probed gets none: `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` is 5 with no `@` (the classic trick; the engine is `#N/IMPL!`
-there because N does not take an array yet, T-1616). Evidence: probes/legacy-index-array-index (excel-graph,
-2026-10-15, T-0294; unprobed: an array-returning call such as `ROW(B1:B2)` there, which the engine intersects like any
-scalar argument, and functions in INDEX's first argument, which keep SUMPRODUCT's array context in the engine);
+probed gets none: `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` is 5 with no `@` (the classic trick; the engine matches
+since T-1616, N lifting over an array). An array-returning call is intersected like a scalar argument:
+legacy `SUMPRODUCT(INDEX(B1:B6,ROW(B1:B2)))` is 1 (B1) on and off the range's rows, and a function in INDEX's first
+argument keeps SUMPRODUCT's array context: legacy `SUMPRODUCT(INDEX(ABS(B1:B6),0))` is 21 on and off them;
+FORMULATEXT shows them as `=SUMPRODUCT(INDEX(B1:B6,@ROW(B1:B2)))` and `=SUMPRODUCT(INDEX(ABS(B1:B6),0))`
+(probes/n-array-lift A12, D2, A13, D3, A24, A25). Evidence: probes/legacy-index-array-index (excel-graph, 2026-10-15, T-0294);
 fixtures/external-link-cached-ranges Refs!B89:B92 (`SUM`, `ROWS`, `ISREF` and `INDEX` of a legacy
 `INDEX([1]Uses!$A$1:$B$3,{1,2},1)`, Excel-cached). Implemented in `add_index_array_at` (expressions/parser/static_analysis/legacy.rs).
 
@@ -183,6 +212,8 @@ over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walki
 use the same cap, at elements x evaluated cells of the searched column or row (lookup.md, T-0270; unit test
 `lifted_lookup_over_an_array_table_hits_the_visit_cap`).
 AGGREGATE's array function_num, options and k lift through the same code and cap (numbers.md "AGGREGATE", T-1038).
+GROUPBY and PIVOTBY charge their two-parameter LAMBDA calls against the same cap (arrays.md "GROUPBY and PIVOTBY:
+two-parameter LAMBDAs and the cell-visit cap", T-1325).
 Implemented in: `Model::lift_criteria` / `lift_ifs` (crates/rustsheet-engine/src/functions/statistical/if_ifs.rs),
 `criteria_static_result` (expressions/parser/static_analysis.rs)
 Tasks: T-0207, T-0263, T-0278

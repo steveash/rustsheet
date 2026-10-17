@@ -302,16 +302,46 @@ fn replace_element(
     Ok(ArrayNode::String(result))
 }
 
+/// Excel's per-character case mapping for PROPER: the simple (one-to-one) mapping only, so ß, ŉ,
+/// ǰ and the ﬁ ligatures keep their form where Rust would expand them ("SS", "ʼN"); İ folds to
+/// ASCII I (upper) and i (lower), and ΐ, ΰ upper-case to Ϊ, Ϋ (probes/clean-proper-chars
+/// D4, D14:D18, D23:D24).
+fn simple_case(c: char, upper: bool) -> char {
+    match (c, upper) {
+        ('İ', true) => 'I',
+        ('İ', false) => 'i',
+        ('ΐ', true) => 'Ϊ',
+        ('ΰ', true) => 'Ϋ',
+        _ => {
+            let mut mapped: Vec<char> = if upper {
+                c.to_uppercase().collect()
+            } else {
+                c.to_lowercase().collect()
+            };
+            match (mapped.pop(), mapped.is_empty()) {
+                (Some(one), true) => one,
+                _ => c,
+            }
+        }
+    }
+}
+
+/// A word start is any character after a non-letter, digits included ("2Nd"). A capital sigma
+/// ending a word (end of text or before a non-alphanumeric character, not before a digit) lowers
+/// to the final ς: "ΑΣ.ΑΣ-Σ ΑΣ1" is "Ας.Ας-Σ Ασ1" (probes/clean-proper-chars D7, D16, D25).
 fn proper_case(s: &str) -> String {
+    let chars: Vec<char> = s.chars().collect();
     let mut result = String::with_capacity(s.len());
     let mut capitalize_next = true;
-    for c in s.chars() {
+    for (i, &c) in chars.iter().enumerate() {
         if c.is_alphabetic() {
             if capitalize_next {
-                result.extend(c.to_uppercase());
+                result.push(simple_case(c, true));
                 capitalize_next = false;
+            } else if c == 'Σ' && !chars.get(i + 1).is_some_and(|n| n.is_alphanumeric()) {
+                result.push('ς');
             } else {
-                result.extend(c.to_lowercase());
+                result.push(simple_case(c, false));
             }
         } else {
             result.push(c);

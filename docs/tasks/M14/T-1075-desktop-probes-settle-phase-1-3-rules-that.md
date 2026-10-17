@@ -49,6 +49,10 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    on excel-graph"). probes/info-cell-contents-range: excel-graph reads `CELL("contents",Data!A2)` on Calc
    as Calc!A2 and never gives `#VALUE!` for a cross-sheet range. Desktop very likely honours the named
    sheet (a web bug?); if so, the engine goes back to reading `reference.sheet`.
+10. **MODE typed text without a repeated number** (T-1291; coercion.md "MODE: a blank single-cell reference is #VALUE!", decision 0067).
+   poi/FormulaEvalTestData_Copy.xlsx EverythingTests!G936 `MODE(C9,E16,"1",B8)`, H936 `MODE(B8,"1",2,3)` and K936
+   `MODE("1",1,#DIV/0!,2,3)`: Excel 15 cached `#VALUE!`, excel-graph gives `#N/A`, `#N/A` and `#DIV/0!`
+   (probes/mode-typed-text-no-mode A3, A4, A2). The engine follows the web; the three cells stay known failures.
 
 ## Acceptance criteria
 - [ ] Each item above has its desktop value(s) in docs/excel-semantics/ with the probe or workbook

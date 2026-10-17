@@ -186,6 +186,8 @@ pub enum Function {
     Xlookup,
     Xmatch,
     Trimrange,
+    Groupby,
+    Pivotby,
     Take,
     Drop,
     Tocol,
@@ -754,6 +756,8 @@ impl_function_lookup! {
     xlookup   => Xlookup,
     xmatch    => Xmatch,
     trimrange => Trimrange,
+    groupby   => Groupby,
+    pivotby   => Pivotby,
     take      => Take,
     drop      => Drop,
     tocol     => Tocol,
@@ -1139,16 +1143,6 @@ impl_function_lookup! {
 }
 
 impl Function {
-    /// XLOOKUP, TAKE, DROP and TRIMRANGE: over a range they evaluate to the cells they pick, so
-    /// SUBTOTAL, AREAS and a LET or LAMBDA binding read a reference
-    /// (`Model::evaluate_picked_reference_arg`, probes/subtotal-reference-operands-b H12,
-    /// H15:H17; probes/let-name-uncalled-picked-refs). The one list of these calls.
-    pub(crate) fn picks_reference(&self) -> bool {
-        matches!(
-            self,
-            Function::Xlookup | Function::Take | Function::Drop | Function::Trimrange
-        )
-    }
     pub fn to_localized_name(&self, language: &Language) -> String {
         let functions = &language.functions;
         match self {
@@ -1302,6 +1296,8 @@ impl Function {
             Function::Xlookup => functions.xlookup.clone(),
             Function::Xmatch => functions.xmatch.clone(),
             Function::Trimrange => functions.trimrange.clone(),
+            Function::Groupby => functions.groupby.clone(),
+            Function::Pivotby => functions.pivotby.clone(),
             Function::Take => functions.take.clone(),
             Function::Drop => functions.drop.clone(),
             Function::Tocol => functions.tocol.clone(),
@@ -1760,6 +1756,8 @@ impl Model {
             Function::Xlookup => Self::fn_xlookup,
             Function::Xmatch => Self::fn_xmatch,
             Function::Trimrange => Self::fn_trimrange,
+            Function::Groupby => Self::fn_groupby,
+            Function::Pivotby => Self::fn_pivotby,
             Function::Take => Self::fn_take,
             Function::Drop => Self::fn_drop,
             Function::Tocol => Self::fn_tocol,

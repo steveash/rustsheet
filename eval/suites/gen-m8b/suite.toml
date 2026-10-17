@@ -1,0 +1,10 @@
+name = "gen-m8b"
+description = "M8 Excel table and structured-reference probes from rustsheet-gen --policy tables; expectations from the Excel oracle"
+kind = "spec"
+root = "cases"
+include = ["**/*.case.json"]
+license = "Apache-2.0"
+origin = "generated"
+gate = false
+baseline = "cells"
+milestone = ["M8"]

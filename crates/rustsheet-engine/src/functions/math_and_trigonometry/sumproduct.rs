@@ -1,4 +1,4 @@
-use crate::arithmetic::flush_subnormal;
+use crate::arithmetic::{extended_product, extended_sum, flush_subnormal};
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -77,10 +77,14 @@ impl Model {
 
         for i in 0..rows {
             for j in 0..cols {
-                let product = arrays
-                    .iter()
-                    .fold(1.0, |acc, a| flush_subnormal(acc * a[i][j]));
-                total += product;
+                // Each multiplication rounds twice, as `*` does (probes-numeric/
+                // double-rounding-sumproduct-multi A1-A14, T-1697).
+                let product = arrays.iter().fold(1.0, |acc, a| {
+                    flush_subnormal(extended_product(acc, a[i][j]))
+                });
+                // Excel rounds each addition of the running total twice, as SUM does (numbers.md
+                // "double rounding", probes-numeric/double-rounding-avedev-deviations, T-1665).
+                total = extended_sum(total, product);
             }
         }
 

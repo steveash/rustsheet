@@ -47,18 +47,19 @@ fn is_read_reference(arg: &Node) -> bool {
         | Node::OpRangeKind { .. }
         | Node::OpIntersectKind { .. }
         | Node::OpUnionKind { .. }
-        | Node::SheetSpanKind { .. }
-        | Node::TableNameKind(_) => true,
+        | Node::SheetSpanKind { .. } => true,
         // Over a literal or computed array they pick values, not cells, and spill like any array
         // (`SUBTOTAL(9,TAKE({1,2;3,4},1))`, probes/subtotal-reference-operands-c H1, T-1206;
         // `SUBTOTAL(9,TAKE(SEQUENCE(4),2))` is two `#VALUE!`, probes/subtotal-reference-operands-d
         // J4:J5, T-1211).
         Node::FunctionKind { kind, args } if kind.picks_reference() => {
+            let picked = kind
+                .picked_reference_arg()
+                .and_then(|index| args.get(index));
             if *kind == Function::Xlookup {
-                !matches!(args.get(2), Some(Node::ArrayKind(_)))
+                !matches!(picked, Some(Node::ArrayKind(_)))
             } else {
-                args.first()
-                    .is_some_and(|first| yields_cells(first, &mut Vec::new()))
+                picked.is_some_and(|first| yields_cells(first, &mut Vec::new()))
             }
         }
         _ => false,

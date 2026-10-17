@@ -38,6 +38,8 @@ impl Function {
             Function::Xlookup => "_xlfn.XLOOKUP".to_string(),
             Function::Xmatch => "_xlfn.XMATCH".to_string(),
             Function::Trimrange => "_xlfn.TRIMRANGE".to_string(),
+            Function::Groupby => "_xlfn.GROUPBY".to_string(),
+            Function::Pivotby => "_xlfn.PIVOTBY".to_string(),
             // Stored bare it is #NAME? in Excel (probes/catalog/function-name-forms A1/A2, T-0416).
             Function::Percentof => "_xlfn.PERCENTOF".to_string(),
             Function::Take => "_xlfn.TAKE".to_string(),

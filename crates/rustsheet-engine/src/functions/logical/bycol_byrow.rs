@@ -64,6 +64,16 @@ impl LambdaGrid {
     }
 }
 
+/// `Ok` when an evaluated function argument is a LAMBDA (an eta name evaluates to one), else `Err`
+/// with what it evaluated to: the check BYROW, BYCOL, GROUPBY and PIVOTBY share, each mapping
+/// anything else to its own error.
+pub(crate) fn as_lambda(value: CalcResult) -> Result<CalcResult, CalcResult> {
+    match value {
+        lambda @ CalcResult::Lambda(_) => Ok(lambda),
+        other => Err(other),
+    }
+}
+
 fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     match result {
         CalcResult::Number(n) => ArrayNode::Number(n),
@@ -71,8 +81,19 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
         CalcResult::String(s) => ArrayNode::String(s),
         CalcResult::Error { error, .. } => ArrayNode::Error(error),
         CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
+        // A 1x1 array is its one value (probes/byrow-bycol-array-results, excel-graph 2026-10-16).
+        CalcResult::Array(mut rows) if rows.len() == 1 && rows[0].len() == 1 => {
+            rows.remove(0).remove(0)
+        }
         _ => ArrayNode::Error(Error::VALUE),
     }
+}
+
+/// Whether a LAMBDA's result makes BYROW or BYCOL give one `#CALC!` cell: several values, but not
+/// a 1x1 array, which counts as its one value (T-1670).
+fn makes_calc_error(result: &CalcResult) -> bool {
+    result.is_multi_value()
+        && !matches!(result, CalcResult::Array(a) if a.len() == 1 && a[0].len() == 1)
 }
 
 impl Model {
@@ -93,7 +114,7 @@ impl Model {
                     slice.right.column = column;
                     self.call_lambda_on_slice(&mut caller, slice, cell)
                 })
-                .collect(),
+                .collect::<Option<Vec<_>>>(),
             Source::Values(data) => (0..data[0].len())
                 .map(|j| {
                     let column = data.iter().map(|row| vec![row[j].clone()]).collect();
@@ -102,12 +123,15 @@ impl Model {
                         &[Node::ArrayKind(column)],
                         cell,
                     );
-                    calc_result_to_array_node(result)
+                    (!makes_calc_error(&result)).then(|| calc_result_to_array_node(result))
                 })
-                .collect(),
+                .collect::<Option<Vec<_>>>(),
         };
 
-        CalcResult::Array(vec![results])
+        match results {
+            Some(results) => CalcResult::Array(vec![results]),
+            None => Self::by_slices_calc_error(cell),
+        }
     }
 
     /// `=BYROW(array, lambda)`
@@ -125,9 +149,10 @@ impl Model {
                     let mut slice = range.clone();
                     slice.left.row = row;
                     slice.right.row = row;
-                    vec![self.call_lambda_on_slice(&mut caller, slice, cell)]
+                    self.call_lambda_on_slice(&mut caller, slice, cell)
+                        .map(|node| vec![node])
                 })
-                .collect(),
+                .collect::<Option<Vec<_>>>(),
             Source::Values(data) => data
                 .into_iter()
                 .map(|row| {
@@ -136,12 +161,21 @@ impl Model {
                         &[Node::ArrayKind(vec![row])],
                         cell,
                     );
-                    vec![calc_result_to_array_node(result)]
+                    (!makes_calc_error(&result)).then(|| vec![calc_result_to_array_node(result)])
                 })
-                .collect(),
+                .collect::<Option<Vec<_>>>(),
         };
 
-        CalcResult::Array(results)
+        match results {
+            Some(results) => CalcResult::Array(results),
+            None => Self::by_slices_calc_error(cell),
+        }
+    }
+
+    /// The one `#CALC!` cell BYROW and BYCOL give when the LAMBDA returned an array or a
+    /// multi-cell reference for any slice (probes/eta-reduced-names E49 and E101, T-1664).
+    fn by_slices_calc_error(cell: CellReferenceIndex) -> CalcResult {
+        CalcResult::new_error(Error::CALC, cell, "a LAMBDA returned an array".to_string())
     }
 
     /// The LAMBDA argument of BYROW or BYCOL. Anything else, an error or an unknown name too, is
@@ -152,14 +186,8 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<CalcResult, CalcResult> {
-        match self.evaluate_node_in_context(arg, cell) {
-            lambda @ CalcResult::Lambda(_) => Ok(lambda),
-            _ => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Expected a LAMBDA".to_string(),
-            )),
-        }
+        as_lambda(self.evaluate_node_in_context(arg, cell))
+            .map_err(|_| CalcResult::new_error(Error::VALUE, cell, "Expected a LAMBDA".to_string()))
     }
 
     /// The array and the one-argument LAMBDA caller of a BYROW or BYCOL call, in that order of
@@ -183,12 +211,13 @@ impl Model {
         caller: &mut LambdaCaller,
         slice: Range,
         cell: CellReferenceIndex,
-    ) -> ArrayNode {
+    ) -> Option<ArrayNode> {
         let reference = CalcResult::Range {
             left: slice.left,
             right: slice.right,
         };
-        calc_result_to_array_node(self.call_lambda_caller(caller, [reference], cell))
+        let result = self.call_lambda_caller(caller, [reference], cell);
+        (!makes_calc_error(&result)).then(|| calc_result_to_array_node(result))
     }
 
     /// The array argument of BYROW or BYCOL. A range on one sheet (also through TAKE, DROP,
@@ -347,5 +376,27 @@ impl Model {
         }
 
         CalcResult::Array(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::as_lambda;
+    use crate::calc_result::CalcResult;
+
+    #[test]
+    fn as_lambda_passes_anything_else_through_unchanged() {
+        assert!(matches!(
+            as_lambda(CalcResult::Lambda(7)),
+            Ok(CalcResult::Lambda(7))
+        ));
+        assert!(matches!(
+            as_lambda(CalcResult::Number(5.0)),
+            Err(CalcResult::Number(n)) if n == 5.0
+        ));
+        assert!(matches!(
+            as_lambda(CalcResult::Array(Vec::new())),
+            Err(CalcResult::Array(rows)) if rows.is_empty()
+        ));
     }
 }

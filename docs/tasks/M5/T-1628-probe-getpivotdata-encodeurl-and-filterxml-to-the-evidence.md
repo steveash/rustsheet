@@ -3,7 +3,7 @@ id: T-1628
 title: "Probe GETPIVOTDATA, ENCODEURL and FILTERXML to the evidence floor"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -23,11 +23,14 @@ GETPIVOTDATA needs a pivot table in an xlsx fixture (field/item pairs, grand tot
 (`make new-task`); fixing the engine is out of scope.
 
 ## Acceptance criteria
-- [ ] Each listed function has ≥ 20 Excel-evidence cells in the report.
-- [ ] `make eval-baseline` lowers quality/evidence-floor.json by the number of functions lifted
+- [x] Each listed function has ≥ 20 Excel-evidence cells in the report.
+- [x] `make eval-baseline` lowers quality/evidence-floor.json by the number of functions lifted
   over the floor; new failing cells are recorded as new-coverage failures with fix tasks.
-- [ ] Quirks recorded in docs/excel-semantics/.
-- [ ] `make check` green; reviewers approve.
+- [x] Quirks recorded in docs/excel-semantics/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine fixes for the mismatches found (filed as tasks).
+
+## Outcome
+Three probe cases (encodeurl/filterxml/getpivotdata `-evidence-floor`) filled from excel-graph. Report cells: GETPIVOTDATA 24, ENCODEURL 38, FILTERXML 46, so all three clear the floor (evidence-floor lock 58 -> 55). ENCODEURL and FILTERXML are `#VALUE!` on the web throughout; GETPIVOTDATA without a pivot is `#REF!`. GETPIVOTDATA is not yet implemented, so its 21 new cells and one FILTERXML cell are new-coverage failures. A real pivot is not probed (builder cannot write pivots). Quirks in docs/excel-semantics/web.md. Follow-ups: T-1703, T-1704, T-1705.

@@ -36,6 +36,7 @@ One probe point per function is not enough to fit a formulation: first add an or
 
 ## Acceptance criteria
 - [ ] A probes-numeric sweep for the bond and depreciation families is oracle-filled.
+- [ ] The last-digit cells of probes/discount-security-modes pass: INTRATE A1-A6, A11-A16, A19; YIELDDISC A68-A73, A78-A83, A86; PRICEMAT A103, A104, A106; YIELDMAT A113-A118, A123, A124, A126-A129, A131 (T-1624). Fitting hint: every INTRATE one-year cell is 0.10000000000000009 against Excel's 0.1, which suggests (redemption-investment)/investment rather than redemption/investment-1.
 - [ ] The base rows above pass, or the Outcome records which formulation was ruled out.
 - [ ] `make check` green; reviewers approve.
 

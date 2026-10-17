@@ -1,0 +1,28 @@
+---
+id: T-1714
+title: "Probe A/P and locale bracket inferences"
+milestone: M2
+lane: functions-text
+status: done
+priority: P3
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+Every inference T-1702 made about `A/P` and `[$-...]` is probed in Excel, and the engine matches.
+
+## Context
+T-1702 lexes any `[$-...]` as a silent locale and treats `A/P` unlike `AM/PM` in a fourth section. See the "Inferred, not probed" paragraph in docs/excel-semantics/number-formats.md. Code: formatter/lexer.rs, formatter/complexity.rs.
+
+## Acceptance criteria
+- [ ] Probe `[$-zzz]0`, `[$-]0`, `[$-40C]0`, `0;0;0;x@AM/PM`, `0;0;0;A/P`, `A/P` and `[$-409]` length-limit costs, and `A/P` in cell display; oracle values committed.
+- [ ] The engine matches and number-formats.md drops the inferred note.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+-
+
+## Outcome
+Probed all seven inferences (two new probe cases, 89 cells). The engine now accepts `AM/PM` in a fourth section and fits the `AM/PM`, `A/P` and `[$-409]` length costs. Locale tags also localize month and day names, which the engine does not do: filed T-1716 (4 value cells stay in the baseline, plus 1 displayed-text cell, which is scored but never baselined). Eval: +84 cells passing, 5 new known failures.

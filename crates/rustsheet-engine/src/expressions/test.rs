@@ -2,20 +2,8 @@ use super::*;
 
 #[test]
 fn test_error_codes() {
-    let errors = vec![
-        Error::REF,
-        Error::NAME,
-        Error::VALUE,
-        Error::DIV,
-        Error::NA,
-        Error::NUM,
-        Error::ERROR,
-        Error::NIMPL,
-        Error::SPILL,
-        Error::CALC,
-        Error::CIRC,
-        Error::NULL
-    ];
+    // The kinds before the newer ones (SPEC-0003) have an `error_index`.
+    let errors = &Error::ALL[..12];
     for (i, error) in errors.iter().enumerate() {
         let s = format!("{}", error);
         let index = error_index(s.clone()).unwrap();

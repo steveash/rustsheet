@@ -141,9 +141,28 @@ impl Model {
         cell: CellReferenceIndex,
         as_reference: bool,
     ) -> RefArg {
+        self.let_scope(args, cell, |model, body| {
+            if as_reference {
+                model.evaluate_reference_arg(body, cell)
+            } else {
+                RefArg::Value(model.evaluate_node_in_context(body, cell))
+            }
+        })
+        .unwrap_or_else(RefArg::Value)
+    }
+
+    /// Binds LET's names to their values in order, then hands `read_body` the body while the
+    /// bindings are live, and removes them. `Err` is LET's own error: a wrong argument count, a
+    /// name that is not a variable name or is bound twice, before the body is read.
+    pub(crate) fn let_scope<R>(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        read_body: impl FnOnce(&mut Self, &Node) -> R,
+    ) -> Result<R, CalcResult> {
         // LET requires an odd number of args >= 3: name1, value1, [name2, value2, ...], body
         if args.len() < 3 || args.len().is_multiple_of(2) {
-            return RefArg::Value(CalcResult::new_args_number_error(cell));
+            return Err(CalcResult::new_args_number_error(cell));
         }
 
         let pair_count = (args.len() - 1) / 2;
@@ -184,7 +203,7 @@ impl Model {
                     for id in bound_ids {
                         self.variable_stack.remove(id);
                     }
-                    return RefArg::Value(error);
+                    return Err(error);
                 }
             };
 
@@ -205,19 +224,14 @@ impl Model {
         }
 
         // Evaluate the body with all bindings in scope.
-        let body = &cloned[args.len() - 1];
-        let result = if as_reference {
-            self.evaluate_reference_arg(body, cell)
-        } else {
-            RefArg::Value(self.evaluate_node_in_context(body, cell))
-        };
+        let result = read_body(self, &cloned[args.len() - 1]);
 
         // Remove only the ids introduced by this LET frame.
         for id in bound_ids {
             self.variable_stack.remove(id);
         }
 
-        result
+        Ok(result)
     }
 
     /// What a LET value or a LAMBDA argument binds. A reference stays a reference, a single

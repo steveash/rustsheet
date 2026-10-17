@@ -62,6 +62,10 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   "8", A4 "abc", A5 30. It probes COUNTA over the cached empty string, GCD/LCM over cached text,
   booleans, the empty string and blanks, and SUM/COUNT/MAX/AVERAGEA over an area taller than the
   array bound.
+- `external-link-cached-index-array.xlsx` (T-1554): `external-link-cached-lookups.xlsx` with sheet `Refs`
+  replaced the same way: INDEX with the index array `{2,1}` over `[1]Uses!$A$1:$B$3` under SUM, ROWS, ISREF,
+  COUNTA, COLUMN, a nested INDEX and `&""` (legacy formulas), and as a two-cell array formula (B10:C10). The
+  index array is `{2,1}`, not `{1,2}`, so the first element (A2) and the top-left cell (A1) differ.
 - `external-link-cached-lookups.xlsx`, `external-link-cached-3d-span.xlsx` (T-1609):
   `external-link-cached-ranges.xlsx` with only sheet `Refs` rewritten (one legacy formula per row in
   column B, placeholder cached 0, label in column A; built by replacing `xl/worksheets/sheet1.xml`).

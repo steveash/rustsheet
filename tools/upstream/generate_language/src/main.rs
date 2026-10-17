@@ -532,6 +532,8 @@ pub struct Functions {
     pub stockhistory: String,
     pub fieldvalue: String,
     pub filterxml: String,
+    pub groupby: String,
+    pub pivotby: String,
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Clone)]

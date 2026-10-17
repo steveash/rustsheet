@@ -37,9 +37,11 @@ pub(crate) enum ErrorRule {
     /// direct error to its right still beats it. An error inside an array ranks with the
     /// referenced errors (SUM: probes/aggregate-error-precedence C50, C53–C55, C61, C77; PRODUCT:
     /// probes/product-array-2d-and-scalar A7–A17, T-1287; MIN, MAX, AVERAGE, MEDIAN:
-    /// probes/aggregate-array-error-vs-ref-error, T-1615).
+    /// probes/aggregate-array-error-vs-ref-error, T-1615; the AVERAGE family and DEVSQ, AVEDEV,
+    /// SUMSQ: probes/aggregate-error-precedence-stat-family, T-1439; VARA, VARPA, STDEVA, STDEVPA:
+    /// probes/aggregate-error-precedence-a-variants, T-1696).
     Ranked,
-    /// The first error in argument order returns at once (DEVSQ, AVEDEV, SUMSQ).
+    /// The first error in argument order returns at once (AND, OR, XOR).
     First,
     /// Errors are items for the visitor, which counts or ignores them (COUNT ignores them, COUNTA
     /// counts them; syntax.md). Only a walk-budget error returns.
@@ -77,10 +79,6 @@ pub(crate) enum DirectNumbers {
     /// A number, boolean or text; text that does not cast is `#VALUE!` and an empty argument is
     /// skipped (AVERAGEA, MAXA, MINA).
     CastA,
-    /// Only a number counts; booleans, text and the rest are skipped (VARA, VARPA, STDEVA and
-    /// STDEVPA, which ignore them "for now"; Excel coerces them, so this is a known failure owned by
-    /// T-1291: probes/stat-argument-modes Sheet1!H69, H72, H75, H78).
-    NumbersOnly,
 }
 
 /// How a referenced cell (and, except under [`DirectNumbers::Cast`], a
@@ -158,7 +156,8 @@ impl AggregateWalk {
     /// The `#VALUE!` of a direct LAMBDA ranks with the referenced errors: it is held when nothing
     /// is held yet, so a later direct error beats it and an earlier or later referenced error does
     /// not (probes/aggregate-direct-lambda-average-family D14-D31, excel-graph 2026-10-15, T-1602).
-    /// This holds under `ErrorRule::First` too (DEVSQ, AVEDEV, SUMSQ), whatever `policy.errors` says.
+    /// Under `ErrorRule::First` an error cell read before the LAMBDA returns at once and wins,
+    /// while one after it is never read (probes/and-or-xor-picked-text J5/J6, T-1685).
     fn lambda_error(&mut self, error: CalcResult) {
         if self.held.is_none() {
             self.held = Some(error);
@@ -390,8 +389,6 @@ impl Model {
             (DirectNumbers::Cast, value) => {
                 self.cast_aggregate_arg_to_number(value, cell).map(Some)
             }
-            (DirectNumbers::NumbersOnly, CalcResult::Number(n)) => Ok(Some(n)),
-            (DirectNumbers::NumbersOnly, _) => Ok(None),
             (_, CalcResult::Number(n)) => Ok(Some(n)),
             (_, CalcResult::Boolean(b)) => Ok(Some(if b { 1.0 } else { 0.0 })),
             // An empty argument (`AVERAGE(5,)`) counts as 0 (probes/average-value-args F2, F6,
@@ -573,16 +570,16 @@ mod tests {
     }
 
     #[test]
-    fn numbers_only_skips_direct_booleans_and_text_but_coerces_cells() {
-        // VARA's rules: a direct boolean and direct text are skipped, an array keeps its numbers,
-        // and a referenced cell coerces (text 0, TRUE 1).
+    fn vara_casts_direct_values_keeps_array_numbers_and_coerces_cells() {
+        // VARA's rules: a direct boolean and numeric text cast (TRUE 1, "7" 7), an array keeps
+        // its numbers, and a referenced cell coerces (text 0, TRUE 1).
         let policy = AggregatePolicy {
             reading: ArgReading::Aggregate,
-            errors: ErrorRule::First,
+            errors: ErrorRule::Ranked,
             skip_empty_args: false,
         };
         let rules = NumberRules {
-            direct: DirectNumbers::NumbersOnly,
+            direct: DirectNumbers::CastA,
             cells: CellNumbers::CoercedA,
             array: ArrayNumbers::Numbers,
         };
@@ -594,7 +591,7 @@ mod tests {
         let walked =
             model.for_each_aggregate_number(&args, Z1, policy, rules, |number| seen.push(number));
         assert!(walked.is_ok());
-        assert_eq!(seen, vec![5.0, 2.0, 0.0, 1.0]);
+        assert_eq!(seen, vec![5.0, 1.0, 7.0, 2.0, 0.0, 1.0]);
     }
 
     #[test]

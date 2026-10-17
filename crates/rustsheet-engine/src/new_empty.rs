@@ -13,7 +13,7 @@ use crate::{
             stringify::{
                 rename_sheet_in_node, to_english_string, to_localized_string, to_rc_format,
             },
-            Node, Parser,
+            CallNameSpellings, Node, Parser,
         },
         types::CellReferenceRC,
     },
@@ -103,22 +103,30 @@ impl Model {
         // The lookup of the shared formulas follows the parsed formulas: both
         // are made from the lists of the sheets, here.
         self.shared_formula_lookup.clear();
-        let worksheets = &self.workbook.worksheets;
-        for worksheet in worksheets {
-            let shared_formulas = &worksheet.shared_formulas;
-            self.shared_formula_lookup
-                .push(crate::model::build_shared_formula_lookup(shared_formulas));
+        for worksheet in &mut self.workbook.worksheets {
             let cell_reference = CellReferenceRC {
                 sheet: worksheet.get_name(),
                 row: 1,
                 column: 1,
             };
             let mut parse_formula = Vec::new();
-            for formula in shared_formulas {
-                let t = self.parser.parse(formula, &cell_reference);
+            for formula in &mut worksheet.shared_formulas {
+                let mut t = self.parser.parse(formula, &cell_reference);
+                // The list keeps the workbook's spelling of each called name, as a typed formula
+                // stores it (`shared_formula_index`); the sheets are read in order, and each list
+                // in the order its formulas were first met.
+                if self.call_name_spellings.apply(&mut t) {
+                    *formula = to_rc_format(&t);
+                }
                 let static_result = run_static_analysis_on_node(&t);
                 parse_formula.push((std::sync::Arc::new(t), static_result));
             }
+            // The lookup of the shared formulas follows the parsed formulas: both
+            // are made from the lists of the sheets, here.
+            self.shared_formula_lookup
+                .push(crate::model::build_shared_formula_lookup(
+                    &worksheet.shared_formulas,
+                ));
             self.parsed_formulas.push(parse_formula);
         }
         self.parser.set_lexer_mode(LexerMode::A1);
@@ -702,6 +710,7 @@ impl Model {
             shared_strings: HashMap::new(),
             parsed_formulas,
             shared_formula_lookup: Vec::new(),
+            call_name_spellings: CallNameSpellings::default(),
             parsed_defined_names: HashMap::new(),
             parser,
             locale,

@@ -267,7 +267,8 @@ impl Model {
     ) -> Result<XlookupTable, CalcResult> {
         let value_error =
             |message: &str| CalcResult::new_error(Error::VALUE, cell, message.to_string());
-        let lookup = match self.evaluate_node_in_context(lookup_node, cell) {
+        // A single-cell reference is a one-cell vector (probes/text-collation-longer A102).
+        let lookup = match self.evaluate_node_with_reference(lookup_node, cell) {
             lookup @ (CalcResult::Range { .. } | CalcResult::Array(_)) => lookup,
             error @ CalcResult::Error { .. } => return Err(error),
             _ => {
@@ -282,7 +283,7 @@ impl Model {
         if xlookup_orientation(rows, columns, 1).is_none() {
             return Err(value_error("Second argument must be a vector"));
         }
-        let returned = self.evaluate_node_in_context(return_node, cell);
+        let returned = self.evaluate_node_with_reference(return_node, cell);
         let (return_rows, return_columns) = shape(&returned);
         let returns = match returned {
             CalcResult::Range { left, right } => XlookupReturns::Range(left, right),

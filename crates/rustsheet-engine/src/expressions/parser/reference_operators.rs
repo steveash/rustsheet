@@ -445,7 +445,6 @@ pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> 
         | Node::NamedFunctionKind { .. }
         | Node::LambdaCallKind { .. }
         | Node::DefinedNameKind(_)
-        | Node::TableNameKind(_)
         | Node::NamedVariableKind { .. }
         | Node::Group { .. }
         | Node::SpillRangeOperator { .. } => true,

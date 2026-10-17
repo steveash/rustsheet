@@ -2,12 +2,12 @@
 //! array indices (docs/excel-semantics/lookup.md).
 
 use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
-use crate::external_reference::ExternalArea;
+use crate::external_reference::{ExternalArea, PickedReference};
 use crate::functions::util::{
-    array_node_to_calc_result, near_integer_count, picks_a_branch, NEAR_INTEGER_TOLERANCE,
+    array_node_to_calc_result, near_integer_count, NEAR_INTEGER_TOLERANCE,
 };
 use crate::limits::check_array_size;
-use crate::reference_operators::{three_d_needs_one_sheet, Picked, RefArg};
+use crate::reference_operators::{three_d_needs_one_sheet, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::{ArrayNode, Node},
@@ -57,19 +57,6 @@ fn index_number(x: f64) -> Option<usize> {
     }
     // A huge index saturates and is out of range later; NaN is 0, as before.
     Some(near_integer_count(x.max(0.0)) as usize)
-}
-
-/// Whether an evaluated index makes INDEX lift: a multi-cell range or any array. A single cell
-/// stays a scalar index, but a 1x1 array lifts too, so `INDEX(D1:D5,{2})` is a 1x1 array and not
-/// a reference: ISREF FALSE, TYPE 64, `COUNTBLANK` and `AREAS` of it `#VALUE!`
-/// (docs/excel-semantics/lookup.md "INDEX lifts over array and range indices";
-/// probes/index-1x1-array-index, countblank-array-values H1).
-fn lifts(index: &CalcResult) -> bool {
-    match index {
-        CalcResult::Range { left, right } => left != right,
-        CalcResult::Array(_) => true,
-        _ => false,
-    }
 }
 
 /// Resolves the effective (row, column) indices for INDEX, where `0` means "the
@@ -250,6 +237,8 @@ impl Model {
                     RefArg::Value(CalcResult::Error { error, .. }) => Some(error.clone()),
                     _ => None,
                 };
+                // `INDEX(XMATCH(2,{1,2,3}),{1,2})` is 2, #REF! (probes/index-literal-scalar A10).
+                let arg = scalar_as_one_element_array(arg);
                 return self.index_lifted(row, col, area, cell, arg_error, |model, numbers| {
                     model.index_select(&arg, numbers, two_arg, cell, IndexForm::TopLeft)
                 });
@@ -260,28 +249,23 @@ impl Model {
         // that reference (`ERROR.TYPE(INDEX(IF(TRUE,…!A1:C4),2,2))` is `#N/A`;
         // probes/external-ref-no-link-ifchoose A22, A23). The pick reads the condition once,
         // after the indices, as the reference is read otherwise.
-        let arg = match self.pick_branch(&args[0], cell) {
-            Picked::Node(reference) => {
-                if let Some(areas) = self.external_reference(reference, cell) {
-                    return match areas
-                        .and_then(|areas| external_index_area(&areas, numbers, two_arg, cell))
-                    {
-                        Ok(area) => self.external_picked_value(area, cell),
-                        Err(error) => error,
-                    };
-                }
-                match self.evaluate_reference_arg(reference, cell) {
-                    // A scalar picked by IF or CHOOSE is a one-element array: `INDEX(CHOOSE(1,
-                    // @B1:B6*1),3)` is `#REF!` on the range's rows (probes/legacy-choose-arm-
-                    // aggregate-and-array-constant-at H1, T-1643). A scalar anywhere else keeps
-                    // being `#VALUE!` (unprobed, T-1645).
-                    RefArg::Value(scalar) if picks_a_branch(&args[0]) => {
-                        RefArg::Value(scalar_as_array(scalar))
-                    }
-                    other => other,
-                }
+        let arg = match self.pick_reference(&args[0], cell) {
+            PickedReference::External(areas) => {
+                return match areas
+                    .and_then(|areas| external_index_area(&areas, numbers, two_arg, cell))
+                {
+                    Ok(area) => self.external_picked_value(area, cell),
+                    Err(error) => error,
+                };
             }
-            Picked::Value(value) => RefArg::Value(value),
+            // A scalar is a one-element array, wherever it comes from: `INDEX(CHOOSE(1,
+            // @B1:B6*1),3)` is `#REF!` on the range's rows (probes/legacy-choose-arm-aggregate-
+            // and-array-constant-at H1, T-1643), `INDEX(XMATCH(2,{1,2,3}),1,1)` 2 and `INDEX(5,2)`
+            // `#REF!` (probes/lookup-argument-modes, m7-argument-modes, index-literal-scalar; T-1645).
+            PickedReference::Node(reference) => {
+                scalar_as_one_element_array(self.evaluate_reference_arg(reference, cell))
+            }
+            PickedReference::Value(value) => RefArg::Value(scalar_as_array(value)),
         };
         self.index_select(&arg, numbers, two_arg, cell, form)
     }
@@ -299,7 +283,13 @@ impl Model {
         });
         let col = args.get(2).map(|a| self.evaluate_node_in_context(a, cell));
         let area = args.get(3).map(|a| self.evaluate_node_in_context(a, cell));
-        if lifts(&row) || col.as_ref().is_some_and(lifts) || area.as_ref().is_some_and(lifts) {
+        // A multi-cell range or any array index lifts, a 1x1 array too: `INDEX(D1:D5,{2})` is a
+        // 1x1 array, not a reference (docs/excel-semantics/lookup.md "INDEX lifts over array and
+        // range indices"; probes/index-1x1-array-index, countblank-array-values H1).
+        if row.is_multi_value()
+            || col.as_ref().is_some_and(CalcResult::is_multi_value)
+            || area.as_ref().is_some_and(CalcResult::is_multi_value)
+        {
             return Ok(IndexArgs::Lifted { row, col, area });
         }
         let area = area.map_or(Ok(1.0), |a| self.cast_to_number(a, cell));
@@ -533,4 +523,12 @@ fn external_index_area(
         last_column: offset(area.first_column, last_col),
         cache: area.cache,
     })
+}
+
+/// INDEX's first argument with a scalar value read as a one-element array (T-1645).
+fn scalar_as_one_element_array(arg: RefArg) -> RefArg {
+    match arg {
+        RefArg::Value(scalar) => RefArg::Value(scalar_as_array(scalar)),
+        ranges @ RefArg::Ranges(_) => ranges,
+    }
 }

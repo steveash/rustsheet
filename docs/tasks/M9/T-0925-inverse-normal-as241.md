@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: S
 tier: opus
-depends_on: [T-1006]
+depends_on: [T-1006, T-1746]
 ---
 
 ## Goal
@@ -36,6 +36,9 @@ T-0968, so an iteration against Excel's CDF needs T-0968 first.
 
 ## Out of scope
 erf/CDF accuracy (T-0924); T.INV/GAMMA.INV/BETA.INV iterations.
+
+## Fit result (T-1746)
+Implement PPND16 (Horner; log(1-p) on the upper side) for |p-0.5| > 0.425: it is bit-exact on 611 of 616 tail cells. Centrally, keep statrs: nothing fitted there, and statrs is the best candidate. The hybrid is bit-exact on 775 of 1,024 sweep cells, against 341 today (`uv run rustsheet-fitlab norm-s-inv`; docs/excel-semantics/statistics.md, "NORM.S.INV is AS 241 PPND16 in the tails").
 
 ## Earlier attempt (draft PR #38, 2026-10-04; salvaged by T-0031)
 Plain AS241 (PPND16) fixed 57 of ~120 cells (ironcalc-calc known failures 1632 -> 1580) but regressed

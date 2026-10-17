@@ -5,6 +5,7 @@ use crate::functions::criteria::{
     build_criteria, build_criteria_with, wildcard_text_matcher, CriteriaFlavor,
 };
 use crate::locale::{get_locale, Locale};
+use crate::text::Text;
 use crate::types::DateSystem;
 
 fn en_locale() -> &'static Locale {
@@ -368,15 +369,64 @@ fn test_build_criteria_database_flavor_prefix_equality() {
 
 #[test]
 fn test_wildcard_text_matcher_escapes_and_case() {
-    let m = wildcard_text_matcher("A~*B?");
+    let m = wildcard_text_matcher(&Text::from("A~*B?"));
     assert!(m(&CalcResult::String("a*bX".into())));
     assert!(!m(&CalcResult::String("aXbX".into())));
     assert!(!m(&CalcResult::Number(1.0)));
-    let m = wildcard_text_matcher("a~~b");
+    let m = wildcard_text_matcher(&Text::from("a~~b"));
     assert!(m(&CalcResult::String("A~B".into())));
-    let m = wildcard_text_matcher("a~?");
+    let m = wildcard_text_matcher(&Text::from("a~?"));
     assert!(m(&CalcResult::String("a?".into())));
     assert!(!m(&CalcResult::String("ab".into())));
+}
+
+// Excel matches wildcards by UTF-16 unit: `?` is one unit, a pair takes two, a lone half is its
+// own unit, and `?`/`*` match line breaks (probes/criteria-lone-surrogates,
+// probes/criteria-wildcard-newline).
+#[test]
+fn test_wildcard_text_matcher_reads_utf16_units() {
+    let high = Text::from_utf16(vec![0xD83D]);
+    let low = Text::from_utf16(vec![0xDE00]);
+    let text = |t: &Text| CalcResult::String(t.clone());
+    let emoji = text(&Text::from("\u{1F600}"));
+    let one = wildcard_text_matcher(&Text::from("?"));
+    assert!(one(&text(&high)) && one(&text(&low)) && !one(&emoji));
+    assert!(one(&CalcResult::String("\n".into())));
+    assert!(wildcard_text_matcher(&Text::from("??"))(&emoji));
+    let starts_high = wildcard_text_matcher(&Text::concat(&high, &Text::from("*")));
+    assert!(starts_high(&emoji) && starts_high(&text(&high)));
+    assert!(!starts_high(&text(&low)) && !starts_high(&CalcResult::String("\u{FFFD}".into())));
+    assert!(wildcard_text_matcher(&Text::from("a*b"))(
+        &CalcResult::String("A\nxB".into())
+    ));
+}
+
+#[test]
+fn test_wildcard_text_matcher_backtracks_to_the_last_star() {
+    let m = wildcard_text_matcher(&Text::from("*ab*abc"));
+    assert!(m(&CalcResult::String("xabxababc".into())));
+    assert!(!m(&CalcResult::String("xabxabab".into())));
+    let m = wildcard_text_matcher(&Text::from("a?*"));
+    assert!(!m(&CalcResult::String("a".into())) && m(&CalcResult::String("ab".into())));
+    assert!(wildcard_text_matcher(&Text::from("**"))(
+        &CalcResult::String(String::new().into())
+    ));
+}
+
+// Text criteria read a lone surrogate exactly: `H` and `"<>"&H` split the values at H only
+// (probes/criteria-lone-surrogates A1, A4).
+#[test]
+fn test_text_criteria_keep_lone_surrogates() {
+    let locale = en_locale();
+    let high = Text::from_utf16(vec![0xD83D]);
+    let not_high = CalcResult::String(Text::concat(&Text::from("<>"), &high));
+    let not_high = build_criteria(&not_high, locale, &year_2026, DateSystem::default());
+    assert!(!not_high(&CalcResult::String(high.clone())));
+    assert!(not_high(&CalcResult::String("\u{FFFD}".into())));
+    let equal_high = CalcResult::String(high.clone());
+    let equal_high = build_criteria(&equal_high, locale, &year_2026, DateSystem::default());
+    assert!(equal_high(&CalcResult::String(high)));
+    assert!(!equal_high(&CalcResult::String("\u{FFFD}".into())));
 }
 
 // Excel ignores spaces around a numeric operand (probes/criteria-padded-operand);
@@ -500,4 +550,39 @@ fn test_text_equality_criteria_use_collation() {
     assert!(!not_ae(&text("æ")));
     assert!(!not_ae(&text("ae")));
     assert!(not_ae(&text("a-e")));
+}
+
+/// T-1667: the D-function prefix match reads a lone surrogate as its own unit
+/// (probes/d-function-prefix-lone-surrogates A1-A7): `H` matches H, "😀" and H&"a" but not U+FFFD.
+#[test]
+fn test_database_prefix_criteria_keep_lone_surrogates() {
+    let high = Text::from_utf16(vec![0xD83D]);
+    let low = Text::from_utf16(vec![0xDE00]);
+    let text = |t: &Text| CalcResult::String(t.clone());
+    let pair = Text::from("😀");
+    let high_a = Text::from_utf16(vec![0xD83D, u16::from(b'a')]);
+    let a_low = Text::from_utf16(vec![u16::from(b'a'), 0xDE00]);
+    let criterion = text(&high);
+    let prefix = build_criteria_with(
+        &criterion,
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+        CriteriaFlavor::Database,
+    );
+    assert!(prefix(&text(&high)));
+    assert!(prefix(&text(&pair)));
+    assert!(prefix(&text(&high_a)));
+    assert!(!prefix(&text(&low)));
+    assert!(!prefix(&text(&Text::from("\u{fffd}"))));
+    assert!(!prefix(&text(&a_low)));
+    let criterion = text(&Text::from("a"));
+    let prefix_a = build_criteria_with(
+        &criterion,
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+        CriteriaFlavor::Database,
+    );
+    assert!(prefix_a(&text(&a_low)));
 }

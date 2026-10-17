@@ -17,7 +17,12 @@ use super::util::compare_values;
 /// Compare two sort keys following Excel's rules:
 ///   Numbers < Strings < Booleans < Errors < Empty cells
 /// Empty cells always sort last regardless of ascending/descending.
-fn sort_key_cmp(
+///
+/// It is a total order, so `sort_by` cannot panic: grouping.rs tests it with GROUPBY's `key_cmp`
+/// (`sort_comparators_are_total_orders_on_mixed_types`, T-1694). The blank check must stay here:
+/// `compare_values` alone coerces a blank to 0, "" or FALSE, which is not transitive (-0 = blank =
+/// "" but -0 < "").
+pub(crate) fn sort_key_cmp(
     a: &ArrayNode,
     b: &ArrayNode,
     ascending: bool,
@@ -56,8 +61,8 @@ fn array_node_is_truthy(node: &ArrayNode) -> bool {
 /// Strings are uppercased (matching case-insensitive `array_nodes_equal`).
 /// Numbers use bit-level identity (`f64::to_bits`), which is exact for all
 /// values that actually appear in spreadsheet cells.
-#[derive(Hash, Eq, PartialEq)]
-enum CellKey {
+#[derive(Clone, Hash, Eq, PartialEq)]
+pub(crate) enum CellKey {
     Number(u64),
     Boolean(bool),
     Str(String),
@@ -65,7 +70,7 @@ enum CellKey {
     Empty,
 }
 
-fn cell_key(node: &ArrayNode) -> CellKey {
+pub(crate) fn cell_key(node: &ArrayNode) -> CellKey {
     match node {
         ArrayNode::Number(n) => CellKey::Number(n.to_bits()),
         ArrayNode::Boolean(b) => CellKey::Boolean(*b),

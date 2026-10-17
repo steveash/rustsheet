@@ -4,7 +4,8 @@ Every gate is automated and runs in CI (`.github/workflows/ci.yml`). `make check
 gates locally, except `cargo deny` and `cargo machete` (`make ci`). Gates are **ratchets**: a number that may only improve. Lowering a bar requires a
 decision record in `docs/decisions/` (enforced by `scripts/check_governance.py`).
 On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygiene always runs, and
-`docs/excel-semantics/` counts as code because the eval harness reads it.
+`docs/excel-semantics/` counts as code because the eval harness reads it. The rules are
+`scripts/ci_changes.py`, run from the PR's base commit (decision 0066).
 
 | Gate | Command | Rule |
 |---|---|---|
@@ -22,6 +23,7 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
 | Dependencies | `cargo deny check` | license allow-list, RustSec advisories, sources, no wildcard versions |
 | Unused deps | `cargo machete` | none |
 | Spelling | `typos` | clean (Excel names allow-listed in `_typos.toml`) |
+| Docs readers | `scripts/check_docs_readers.py` | code may read `docs/` or `.claude/` only under `CODE_READ_PATHS` in `scripts/ci_changes.py`, which CI never skips (decision 0066) |
 | Governance | `scripts/check_governance.py origin/main` | protected-path changes need a decision record; test deletions flagged |
 
 ## Ratchet mechanics
@@ -33,6 +35,9 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
   - `make eval-baseline` rewrites it and refuses regressions unless `--allow-regressions` is
     passed. That flag is only legitimate with a decision record, for example when an oracle
     re-run shows the old expectation was wrong.
+  - Displayed text (a sidecar's `text` map, decision 0068) is gated the same way on its own lines,
+    `TC` (a case's scored text cells) and `TF` (a known text failure), in every gated suite
+    (decision 0070).
 - **Accepted deviations** (`eval/suites/<suite>/deviations`, decision 0036): cells that differ
   from Excel by design (a `Status: DEVIATION` entry, decision 0014), each with RustSheet's pinned
   by-design value.

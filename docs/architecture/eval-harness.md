@@ -64,7 +64,11 @@ Input conventions:
   autoFilter a values filter on its first column that keeps exactly the visible data rows (those
   cells must be literal text or whole numbers, and no value may be both kept and hidden), so Excel
   reads the hidden rows as filtered. The engine adapter loads both through `Txn::add_table` and
-  `Txn::set_row_hidden`.
+  `Txn::set_row_hidden`. With `"totals_row": true` the last row of `ref` is the table's totals row; its
+  cells must be labels or formulas, which spec2xlsx writes with the totals-row metadata Excel needs. The
+  facade cannot add a totals row yet, so the adapter registers the table without that row (T-1671).
+  Formulas use structured references as typed (`Sales[@Qty]`, a bare `Sales`); spec2xlsx stores their
+  file form (`Sales[[#This Row],[Qty]]`, `Sales[]`; T-1607). References must name their table.
 - Optional top-level `"date_system": 1904` (default 1900) writes `<workbookPr date1904="1"/>`, and
   optional per-sheet `"number_formats": {"B1": "[h]:mm"}` gives cells (blank ones included) a number
   format (T-1268; an `entered` cell cannot have one, Excel picks its format). The engine adapter
@@ -72,7 +76,18 @@ Input conventions:
   `Txn::set_number_format`. Number formats change only what a cell displays, which excel-graph
   cannot report (it reads cached values), so they are for cases that formulas read through.
 - Optional `"names": {"rate": "=Sheet1!$B$1"}` declares workbook-scoped defined names (any
-  formula Excel accepts as a name body, e.g. an intersection; sheet-scoped names are not supported).
+  formula Excel accepts as a name body, e.g. an intersection). A key `Sheet1!name` is a name scoped
+  to that sheet.
+- Optional `"sheet_ops"` lists sheet edits made after the workbook loads and before it is
+  recalculated (T-1608): `{"op":"add","sheet":"New"}` appends a sheet, `{"op":"rename",
+  "sheet":"Data","to":"Inputs"}` renames one (formulas that refer to it are rewritten), and
+  `{"op":"move","sheet":"Data","to":0}` moves one to a 0-based position. Any other op or key is
+  refused. spec2xlsx records them as docProps custom properties `rustsheet.sheetop.<n>`. The
+  excel-graph backend replays them in the session after the typed entries and keeps its canary
+  sheet last: an added sheet goes just before the canary, and a move may not reach the canary's
+  position. The other backends refuse such cases. The engine adapter applies each op as its own
+  `Workbook::edit` (`Txn::add_sheet`, `rename_sheet`, `move_sheet`). Keys in `expected` and
+  `check` use the sheet names after the edits.
 
 The same conventions are implemented by `tools/.../spec2xlsx.py` (for Excel) and by
 `engine.rs::evaluate_spec` (for RustSheet).
@@ -90,6 +105,10 @@ JSON numbers are written shortest-round-trip, so they are exact.
 `{format, source{kind, application, version, produced_at, input_sha256}, sheets{Sheet:{A1:value}}}`.
 `input_sha256` hashes the `spec2xlsx` output, which is deterministic since T-0015 (creation time pinned in `docProps/core.xml`). Sidecars filled before T-0015 carry hashes of non-reproducible bytes: treat them as legacy; they refresh on the next fill, and values do not depend on the hash.
 Oracle values override hand expectations. `libreoffice` results are never written as sidecars.
+A sidecar may also hold `text{Sheet:{A1:"shown text"}}`: Excel's displayed text of the cells a spec
+case lists in `"text": ["Sheet!A1", ...]` (T-1610, decision 0068). spec2xlsx records those cells in
+the `rustsheet.text.<n>` custom properties, and the excel-graph backend reads each one's
+`Range.text` after the recalculation, in the same session.
 Tools never re-derive case discovery: `rustsheet-eval cases <suite>` prints each case's path,
 sidecar path, formula-cell count and whether the suite trusts its cached values.
 
@@ -116,6 +135,11 @@ does not flow through it to its dependents. Rules:
 | `error_mismatch` | different error kinds |
 | `unsupported` | engine returned `#NAME?`/`#N/IMPL` where Excel did not |
 | `type_mismatch` | different value types |
+
+Displayed text is scored apart from values (`text_expect.rs`): each listed cell with a sidecar
+text passes when the engine's `Workbook::formatted` text is the same string. Text verdicts never
+change a case's status, `checked`/`passed`, the baselines or the gate; the report's "Displayed text"
+section shows each suite's text pass rate and every failing text cell.
 
 Only `pass` counts as passing. Case statuses:
 - `pass` / `fail`

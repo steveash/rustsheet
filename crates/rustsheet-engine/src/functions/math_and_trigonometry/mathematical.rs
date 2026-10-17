@@ -534,7 +534,14 @@ impl Model {
     single_number_fn!(fn_atan, |f| Ok(f64::atan(f)));
     single_number_fn!(fn_asinh, |f| Ok(f64::asinh(f)));
     single_number_fn!(fn_acosh, |f| Ok(f64::acosh(f)));
-    single_number_fn!(fn_atanh, |f| Ok(f64::atanh(f)));
+    // ATANH(+-1) is `#NUM!` at once, like any other out-of-domain argument; f64::atanh gives an
+    // infinity there, which the macro's NaN mapping misses (probes/atanh-unit-argument A1:A8,
+    // excel-graph, T-1569).
+    single_number_fn!(fn_atanh, |f: f64| if f.abs() == 1.0 {
+        Err(Error::NUM)
+    } else {
+        Ok(f64::atanh(f))
+    });
     single_number_fn!(fn_abs, |f| Ok(f64::abs(f)));
     single_number_fn!(fn_sqrt, |f| if f < 0.0 {
         Err(Error::NUM)
@@ -549,6 +556,14 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let value = self.evaluate_node_in_context(&args[0], cell);
+        // A range of several cells is one `#VALUE!`, never a spill, whatever it holds (numbers,
+        // text or blanks); an array constant still lifts (probes/sqrtpi-range-operands,
+        // radians-sqrtpi-munit A80; docs/excel-semantics/numbers.md "RADIANS, SQRTPI and MUNIT").
+        if let CalcResult::Range { left, right } = &value {
+            if left != right {
+                return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
+            }
+        }
         if matches!(value, CalcResult::Boolean(_)) {
             return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
         }
@@ -798,20 +813,8 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let part = match self.fn_sum(&args[0..1], cell) {
-            CalcResult::Number(v) => v,
-            other => return other,
-        };
-        let total = match self.fn_sum(&args[1..2], cell) {
-            CalcResult::Number(v) => v,
-            other => return other,
-        };
-        // Divided like the operator `/`: a zero (or subnormal) total is #DIV/0! and an overflowing
-        // quotient #NUM! (the latter two UNVERIFIED for PERCENTOF).
-        match divide(part, total) {
-            Ok(ratio) => CalcResult::Number(ratio),
-            Err(error) => CalcResult::new_error(error, cell, "Invalid division".to_string()),
-        }
+        let part = self.fn_sum(&args[0..1], cell);
+        percent_of(part, || self.fn_sum(&args[1..2], cell), cell)
     }
 
     pub(crate) fn fn_combina(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -840,6 +843,29 @@ impl Model {
             result *= (n + t) / (t + 1.0);
         }
         CalcResult::Number(result)
+    }
+}
+
+/// PERCENTOF from the SUM of its subset, `part`, and the SUM of all, `total`, computed only when
+/// `part` is a number (the first error wins). GROUPBY and PIVOTBY call it with a total they sum
+/// once per relative set (SPEC-0006 Design step 3).
+pub(crate) fn percent_of(
+    part: CalcResult,
+    total: impl FnOnce() -> CalcResult,
+    cell: CellReferenceIndex,
+) -> CalcResult {
+    let CalcResult::Number(part) = part else {
+        return part;
+    };
+    let total = match total() {
+        CalcResult::Number(v) => v,
+        other => return other,
+    };
+    // Divided like the operator `/`: a zero (or subnormal) total is #DIV/0! and an overflowing
+    // quotient #NUM! (the latter two UNVERIFIED for PERCENTOF).
+    match divide(part, total) {
+        Ok(ratio) => CalcResult::Number(ratio),
+        Err(error) => CalcResult::new_error(error, cell, "Invalid division".to_string()),
     }
 }
 

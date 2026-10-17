@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "A2": {
+    "t": "n",
+    "v": 3.0
+   }
+  },
+  "Inputs": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "eae458bda8b5d3f000743cd83afe8181f7c506a0651926423e7921c01038d32a",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T10:00:33+00:00",
+  "version": null
+ }
+}

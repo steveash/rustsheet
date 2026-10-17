@@ -10,8 +10,31 @@ Status: VERIFIED (Excel-cached values)
 Implemented in: the engine already returns #REF! (those cells pass).
 Oracle caveat: **Excel for the web disagrees.** Through the Graph oracle the same formulas give
 a reference to an empty cell (`INDIRECT(...)` = 0, `ISREF(...)` = TRUE, `ROW(...)` = 3), probed
-2026-10-04. Never take oracle values as evidence for references to missing sheets
+2026-10-04. The web gives the same after a sheet edit: a sheet renamed away, or a name added and
+then renamed (T-1608, the unscored cells of probes/sheet-ops/sheet-ops-rename-indirect-text,
+-add-then-rename and -add-resolves-indirect). Never take oracle values as evidence for references to missing sheets
 (docs/architecture/oracle.md, "Known divergences"; desktop wins per decision 0030).
+
+## INDIRECT resolves a defined name that holds a reference
+Rule: `INDIRECT("<name>")` of a defined name whose body is a cell or range reference is that
+reference: `ISREF(INDIRECT("RCR"))` is TRUE with `RCR` = `Sheet1!$B$1`. Text that is neither a
+reference nor such a name is `#REF!`, so `ISREF(INDIRECT("R0"))` is FALSE, also when `R0` is a
+defined name, since a name spelled like an out-of-range R1C1 reference is never resolved
+(references.md "R1C1-shaped sheet and defined names").
+The value is read through the name (`SUM(INDIRECT("nm"))` is 7, a range name sums and `ROWS` counts it, `ISREF` is TRUE).
+`a1` FALSE and TRUE both resolve a name (`INDIRECT("nm",FALSE)` is 7). Name text is case-insensitive
+(`"NM"`, `"mixedcase"`) and trailing spaces are ignored (`"nm "` resolves) but a leading space is `#REF!`.
+A `Sheet!name` prefix picks the name scoped to that sheet (`INDIRECT("Sheet2!nm")` reads Sheet2's own `nm`
+though a workbook `nm` exists), and a prefix on a workbook-scoped name falls back to it (`"Sheet1!nm"`, `"Sheet2!gl"`);
+an unprefixed name is read sheet scope first. A name whose body is a formula is `#REF!` and `ISREF` FALSE:
+`OFFSET(...)`, `Sheet1!$B$1+1`, a constant `=5` and a text constant `="B1"`. A multi-cell name spills as a range
+(`INDIRECT("rng")` in a cell with occupied cells below is `#SPILL!`).
+Evidence: probes/r1c1-name-use-rcr A2, r1c1-name-use-r0, -c0, -r0c1, -r1048577 A2, probes/indirect-defined-name-text
+A1:A30, Sheet2!C1:C2 (an unprefixed name text on Sheet2 reads Sheet2's own `nm`, not the workbook one; excel-graph, 2026-10-15 and 2026-10-16, T-1682).
+Implemented in: `indirect_defined_name` (functions/lookup_and_reference/mod.rs); ISREF evaluates
+an INDIRECT argument (functions/information/mod.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-1657, T-1682
 
 ## INDIRECT's a1 argument is coerced like a boolean; text must be TRUE/FALSE
 Rule: `a1` is coerced like a logical argument: a nonzero number is TRUE (`INDIRECT("H2",2)` and
@@ -62,7 +85,7 @@ Edges (probes/lookup-vector-edges, excel-graph, 2026-10-07, T-0269):
 - A single-cell lookup_vector is a one-element vector: `LOOKUP(2,C1,D1)` and `LOOKUP(3,C1,D1)` with C1 = 2 are D1, `LOOKUP(0,C1,D1)` is `#N/A`.
 - A scalar result_vector is a one-element array: `LOOKUP(2,A1:A2,5)` is 5 (match at position 1) and `LOOKUP(99,A1:A2,5)` (position 2) is `#N/A`,
   as is `"x"`; unlike a one-cell range it is not read past.
-- In the array form a scalar picked by CHOOSE is a one-element array: legacy `=LOOKUP(2,CHOOSE(1,B1:B6*1))` is 1 on the range's rows (references.md "Legacy `@` on CHOOSE operator arms under aggregates", T-1643; other scalar lookup_vectors unprobed, T-1651).
+- In both the array and vector forms, any scalar lookup_vector (direct, array constant `{1}`, or picked by IF or CHOOSE) is a one-element array (`LOOKUP(2,1)` is 1, `LOOKUP("b","a")` is "a": probes/mode-direct-error-lookup-scalar-vector B1-B5, T-1651); booleans too (`LOOKUP(TRUE,TRUE)` is TRUE), and an empty lookup_vector (a blank cell or `IF(TRUE,Z99)`) gives #N/A (probes/lookup-bool-empty-scalar-vector, T-1709; the probe cannot tell a one-element blank array from an empty value that never matches, and `IF(TRUE,Z99)` may be a reference); e.g. legacy `=LOOKUP(2,CHOOSE(1,B1:B6*1))` is 1 on the range's rows (references.md "Legacy `@` on CHOOSE operator arms under aggregates", T-1643).
 - Reading past the sheet's last row or column gives a blank, 0, not `#N/A`: `LOOKUP(99,A1:A3,F1048575:F1048576)` and
   `LOOKUP(99,A5:B5,XFD5)` are 0, while a position still on the sheet reads its cell (`LOOKUP(3,A1:A3,F1048575:F1048576)` is F1048576's 12,
   `LOOKUP(99,A5:B5,XFC5:XFD5)` is XFD5).
@@ -474,7 +497,7 @@ Edge cases (probes/index-lifted-edge-cases, T-1376):
   index), ROWS 1; what needs a reference is `#VALUE!`: AREAS, the range operator (`ROWS(INDEX(D1:D5,{2}):D5)`,
   `SUM(INDEX(D1:D5,{1}):D3)`), OFFSET, `CELL("address",…)`, SUMIF, COUNTIF and COUNTBLANK (countblank-array-values H1).
   COUNTA counts its blank element (1; the scalar index gives 0) while ISBLANK of it is TRUE and `&"|"` gives "|";
-  `N(INDEX(D1:D5,{1}))` is 10 (the engine: `#N/IMPL!`, T-1557).
+  `N(INDEX(D1:D5,{1}))` is 10 (T-1557: already fixed by the T-1616 element-wise lift).
 The legacy, implicitly intersected form is T-0294.
 DEVIATION (decision 0014): a lifted INDEX whose broadcast indices exceed 1,048,576 elements is `#ERROR!`, the shared
 array bound (arrays.md, "Array results above 1,048,576 cells are #ERROR!").

@@ -1,0 +1,52 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Two sheets swap names through a third: references follow the sheets, INDIRECT follows the names. (T-1608)",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=Left!A1",
+        "A2": "=Right!A1",
+        "A3": "=INDIRECT(\"Left!A1\")",
+        "B1": "=FORMULATEXT(A1)",
+        "B2": "=FORMULATEXT(A2)",
+        "B3": "=FORMULATEXT(A3)"
+      }
+    },
+    {
+      "name": "Left",
+      "cells": {
+        "A1": "L"
+      }
+    },
+    {
+      "name": "Right",
+      "cells": {
+        "A1": "R"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "rename",
+      "sheet": "Left",
+      "to": "Tmp"
+    },
+    {
+      "op": "rename",
+      "sheet": "Right",
+      "to": "Left"
+    },
+    {
+      "op": "rename",
+      "sheet": "Tmp",
+      "to": "Right"
+    }
+  ]
+}

@@ -7,8 +7,8 @@ use crate::{
     cast::array_node_to_text,
     expressions::{parser::ArrayNode, token::Error},
     functions::{
-        criteria::from_wildcard_to_regex,
-        text::util::{one_char_per_unit, one_char_per_utf16_unit},
+        criteria::WildcardPattern,
+        text::util::{one_char_per_unit, one_char_per_utf16_unit, unit_chars_to_units},
     },
     text::Text,
 };
@@ -111,21 +111,10 @@ fn find(search_for: &str, text: &str, start: usize) -> Option<i32> {
 /// * An asterisk matches any sequence of characters.
 /// * If you want to find an actual question mark or asterisk, type a tilde (~) before the character.
 fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
-    let re = match from_wildcard_to_regex(search_for, false) {
-        Ok(r) => r,
-        Err(_) => return None,
-    };
-
-    let ch = text.chars();
-    let mut byte_index = 0;
-    for (char_index, c) in ch.enumerate() {
-        if char_index + 1 >= start {
-            {
-                let m = re.find(&text[byte_index..])?;
-                return Some((text[0..(m.start() + byte_index)].chars().count() as i32) + 1);
-            }
-        }
-        byte_index += c.len_utf8();
-    }
-    None
+    // Both strings have one char per UTF-16 unit (`one_char_per_unit`), so `?` and `*` run over
+    // units and match line breaks too (probes/search-wildcard-newline).
+    let pattern = WildcardPattern::from_units(unit_chars_to_units(search_for).into_iter());
+    let units = unit_chars_to_units(text);
+    let at = pattern.find_from(&units, start.saturating_sub(1))?;
+    Some(at as i32 + 1)
 }

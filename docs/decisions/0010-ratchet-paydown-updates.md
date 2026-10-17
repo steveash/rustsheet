@@ -69,5 +69,36 @@
   TOROW, WRAPCOLS and WRAPROWS probed to ≥ 20 Excel cells; decision 0062) (`make eval-baseline`).
   T-1629: functions below the evidence floor 63 → 60 (SKEW, KURT and HARMEAN reach ≥ 20 Excel cells through
   the AVERAGE-family array-error probe; decision 0062) (`make eval-baseline`).
+  T-1665: functions below the evidence floor 60 → 59 (one more function (among AVEDEV, ABS, SUMPRODUCT and SUM) reaches ≥ 20 Excel cells through the
+  AVEDEV deviation-sum probe, probes-numeric/double-rounding-avedev-deviations; decision 0062) (`make eval-baseline`).
+  T-1439: functions below the evidence floor 59 → 58 (one more function reaches ≥ 20 Excel cells through
+  the statistical-family error-precedence probe, probes/aggregate-error-precedence-stat-family; decision 0062) (`make eval-baseline`).
+  T-1326: static_analysis.rs 2147 → 1669 lines (the `args_signature_*` helpers moved to
+  `static_analysis/signature.rs`); the same run lowered the locks other merged work had already paid down
+  (evaluation.rs 1101 → 1096, stringify.rs 1070 → 1067, date_and_time.rs 1134 → 1131, financial_bonds.rs 1310 → 1212,
+  financial/mod.rs 2303 → 2290, functions/mod.rs 2182 → 2180, model.rs 3499 → 3462) and dropped
+  xlsx import/worksheets.rs, now under 1000 lines (`check_file_size.py --update`); duplicated lines 6360 → 6328
+  (already lower on the branch before T-1326's fix commit; PIVOTBY reuses GROUPBY's header-name, total-row and width
+  helpers instead of copying them) (`check_duplication.py --update`).
+  T-1291: functions below the evidence floor 58 → 56 (two more functions reach ≥ 20 Excel cells through the
+  mode-typed-arguments, mode-typed-text-no-mode and vara-direct-lambda probes; decision 0062) (`make eval-baseline`);
+  duplicated lines 6328 → 6155 (paid down by other merged work already on main; T-1291 itself adds none)
+  (`check_duplication.py --update`).
+  T-1628: functions below the evidence floor 56 → 53 (GETPIVOTDATA, ENCODEURL and FILTERXML reach ≥ 20 Excel
+  cells through the three *-evidence-floor probes; decision 0062) (`make eval-baseline`).
+  T-1651: functions below the evidence floor 53 → 52 (one more function reaches ≥ 20 Excel cells through
+  the MODE/LOOKUP direct-argument probe, probes/mode-direct-error-lookup-scalar-vector; decision 0062) (`make eval-baseline`).
+  T-1620: functions below the evidence floor 52 → 42 (FORECAST, FORECAST.LINEAR, CORREL, PEARSON, RSQ, SLOPE,
+  COVAR, STEYX, INTERCEPT and TREND reach ≥ 20 Excel cells through the four regression-* probes; decision 0062)
+  (`make eval-baseline`).
+  T-1621: functions below the evidence floor 42 → 39 (LINEST, LOGEST and GROWTH reach ≥ 20 Excel cells through
+  probes/linest-modes, logest-modes and growth-modes; decision 0062) (`make eval-baseline`).
+  T-1622: functions below the evidence floor 39 → 34 (MODE*, QUARTILE*, PERCENTILE, PERCENTRANK*, AVEDEV and
+  DEVSQ reach ≥ 20 Excel cells through probes/stat-order-floor-batch) (`make eval-baseline`).
+  T-1623: functions below the evidence floor 34 → 27 (SKEW.P, STANDARDIZE, SUMX2PY2, SUMXMY2, SUMX2MY2, MDETERM and
+  ECMA.CEILING reach ≥ 20 Excel cells through probes/stats-evidence-floor-t1623; SKEW, KURT and HARMEAN were already
+  above the floor; decision 0062) (`make eval-baseline`).
+  T-1624: functions below the evidence floor 27 → 21 (RECEIVED, YIELDDISC, PRICEDISC, INTRATE, PRICEMAT and YIELDMAT
+  reach ≥ 20 Excel cells through probes/discount-security-modes; decision 0062) (`make eval-baseline`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

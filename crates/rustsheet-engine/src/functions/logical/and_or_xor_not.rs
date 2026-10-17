@@ -1,4 +1,3 @@
-use crate::calc_result::Range;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -6,6 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, ItemSource},
     functions::util::array_node_to_calc_result,
     model::Model,
 };
@@ -64,25 +64,18 @@ impl Model {
         self.logical_nary(args, cell, |acc, value| acc.unwrap_or(false) ^ value)
     }
 
-    /// Base function for AND, OR, XOR. These are all n-ary functions that perform a boolean operation on a series of
-    /// boolean values. These boolean values are sourced from `args`. Note that there is not a 1-1 relationship between
-    /// arguments and boolean values evaluated (see how Ranges are handled for example).
+    /// Base function for AND, OR, XOR: `fold_fn` combines the running result (`None` at first)
+    /// with each logical value the arguments give, read through the SPEC-0009 walker
+    /// ([`LOGICAL_ARGS`]):
+    /// - a boolean is itself, a number is TRUE unless 0, in any source;
+    /// - direct text "TRUE" or "FALSE" (any case) counts; other text, referenced text and array
+    ///   text are skipped (probes/and-or-xor-text-arguments, T-0258);
+    /// - an empty argument is FALSE when nothing came before and changes nothing after; empty
+    ///   cells are skipped; a whole-column range is clipped to the used area (`OR(F:LSE)`, T-0230);
+    /// - the first error in argument order wins, and every argument is evaluated: Excel does not
+    ///   short-circuit (T-0215, docs/excel-semantics/coercion.md, probes/and-or-xor-error-order).
     ///
-    /// Each argument in `args` is evaluated and the resulting value is interpreted as a boolean as follows:
-    /// - Boolean: The value is used directly.
-    /// - Number: 0 is FALSE, all other values are TRUE.
-    /// - Range: Each cell in the range is evaluated as if they were individual arguments with some caveats
-    /// - Empty arg: FALSE
-    /// - Empty cell & String: Ignored, behaves exactly like the argument wasn't passed in at all
-    /// - Error: Propagated
-    ///
-    /// If no arguments are provided, or all arguments are ignored, the function returns a #VALUE! error
-    ///
-    /// **`fold_fn`:** The function that combines the running result with the next value boolean value. The running result
-    /// starts as `None`.
-    ///
-    /// Every argument is evaluated: Excel does not short-circuit, so an error after a decisive
-    /// FALSE (AND) or TRUE (OR) still wins (T-0215, docs/excel-semantics/coercion.md).
+    /// No logical value at all is `#VALUE!`.
     fn logical_nary(
         &mut self,
         args: &[Node],
@@ -92,107 +85,54 @@ impl Model {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-
         let mut result = None;
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Boolean(value) => result = Some(fold_fn(result, value)),
-                CalcResult::Number(value) => result = Some(fold_fn(result, value != 0.0)),
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    // The walk is clipped to the used area: a whole-column argument such as
-                    // `OR(F:LSE)` must not visit (and record a read of) billions of empty
-                    // cells (CLAUDE.md directive 5, T-0230). Empty cells are ignored anyway.
-                    let walk = self.for_each_cell_or_error_in_areas(
-                        &[Range { left, right }],
-                        cell,
-                        |_, value| {
-                            match value {
-                                CalcResult::Boolean(value) => result = Some(fold_fn(result, value)),
-                                CalcResult::Number(value) => {
-                                    result = Some(fold_fn(result, value != 0.0));
-                                }
-                                error @ CalcResult::Error { .. } => return Err(error),
-                                // A cell's value is never an empty argument or a range.
-                                CalcResult::EmptyArg
-                                | CalcResult::Range { .. }
-                                | CalcResult::String { .. }
-                                | CalcResult::EmptyCell => {}
-                                CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                                    return Err(CalcResult::Error {
-                                        error: Error::NIMPL,
-                                        origin: cell,
-                                        message: "Arrays not supported yet".to_string(),
-                                    });
-                                }
-                            }
-                            Ok(())
-                        },
-                    );
-                    if let Err(error) = walk {
-                        return error;
-                    }
+        let walked = self.walk_aggregate_args(args, cell, LOGICAL_ARGS, |model, source, value| {
+            let logical = match value {
+                CalcResult::Boolean(value) => Some(value),
+                CalcResult::Number(value) => Some(value != 0.0),
+                CalcResult::EmptyArg => {
+                    result = Some(result.unwrap_or(false));
+                    None
                 }
-                error @ CalcResult::Error { .. } => return error,
-                CalcResult::EmptyArg => result = Some(result.unwrap_or(false)),
-                // Strings are ignored unless they are "TRUE" or "FALSE" (case insensitive). EXCEPT if the string value
-                // comes from a reference, in which case it is always ignored regardless of its value.
-                CalcResult::String(..) => {
-                    if !matches!(arg.ungrouped(), Node::ReferenceKind { .. }) {
-                        if let Ok(f) = self.get_boolean(arg, cell) {
-                            result = Some(fold_fn(result, f));
-                        }
-                    }
+                text @ CalcResult::String(_) if source == ItemSource::Direct => {
+                    model.cast_to_bool(text, cell).ok()
                 }
-                // References to empty cells are ignored. If all args are ignored the result is #VALUE!
-                CalcResult::EmptyCell => {}
-                // Each element of the array is treated as an individual value, exactly like the
-                // cells of a range. Booleans and numbers are evaluated, strings and empties are
-                // ignored and errors are propagated.
-                CalcResult::Array(array) => {
-                    for array_row in &array {
-                        for node in array_row {
-                            match node {
-                                ArrayNode::Boolean(value) => result = Some(fold_fn(result, *value)),
-                                ArrayNode::Number(value) => {
-                                    result = Some(fold_fn(result, *value != 0.0));
-                                }
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::new_error(
-                                        error.clone(),
-                                        cell,
-                                        "Error in array".to_string(),
-                                    )
-                                }
-                                ArrayNode::String(_) | ArrayNode::Empty => {}
-                            }
-                        }
-                    }
-                }
+                // A direct LAMBDA is `#VALUE!`; the walker holds this error, so a direct error
+                // beats it in either order (probes/and-or-xor-picked-text J1-J18, T-1685).
                 CalcResult::Lambda(_) => {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Lambdas not supported".to_string(),
-                    }
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Lambdas not supported".to_string(),
+                    ));
                 }
+                // Empty values and the rest of the text are skipped.
+                _ => None,
+            };
+            if let Some(value) = logical {
+                result = Some(fold_fn(result, value));
             }
+            Ok(())
+        });
+        if let Err(error) = walked {
+            return error;
         }
-
-        if let Some(result) = result {
-            CalcResult::Boolean(result)
-        } else {
-            CalcResult::new_error(
+        match result {
+            Some(result) => CalcResult::Boolean(result),
+            None => CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "No logical values in argument list".to_string(),
-            )
+            ),
         }
     }
 }
+
+/// How AND, OR and XOR read their arguments (SPEC-0009 "Consumer mapping"): as
+/// `evaluate_aggregate_arg` gives them (picked cells are references), first error wins, an
+/// empty argument is an item.
+const LOGICAL_ARGS: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::Aggregate,
+    errors: ErrorRule::First,
+    skip_empty_args: false,
+};

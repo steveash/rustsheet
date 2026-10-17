@@ -19,7 +19,8 @@
   - `docs/excel-semantics/` always runs the full CI because the eval harness validates DEVIATION
     anchors in it (`crates/rustsheet-eval/src/deviations.rs`). Any future code or test that reads a
     file under `docs/` or `.claude/` at build or test time must add that path to the exception
-    list in `.github/workflows/ci.yml` in the same PR.
+    list in the same PR (since decision 0066: `CODE_READ_PATHS` in `scripts/ci_changes.py`,
+    enforced by `scripts/check_docs_readers.py`).
   - The diff uses `--no-renames`, so a rename lists both the old and the new path: moving a code
     file into `docs/` still counts as code (security and architecture review).
   - `make check` locally is unchanged.
