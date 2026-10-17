@@ -25,6 +25,7 @@ Today `special.rs` `normal_cdf` computes `0.5 * erfc((mean - x) / (std_dev * SQR
 ## Acceptance criteria
 - [ ] Each identity above holds bit for bit in the engine, with a unit test per identity on the probe inputs.
 - [ ] `make eval`: known failures do not grow in any suite. NORM_DIST.xlsx, LOGNORM.xlsx, GAUSS.xlsx, ERFs.xlsx, CHISQ/GAMMA/POISSON workbooks and the kmyst probes are compared before and after. Baseline shrinks are recorded with `make eval-baseline`.
+- [ ] Fallback: if routing one function makes a suite regress, that function keeps its current path, and the task's Outcome records why.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

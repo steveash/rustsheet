@@ -24,6 +24,7 @@ import statistics
 from collections import defaultdict
 from pathlib import Path
 
+# The fit lab's 80-digit exact erfc (private to norm_inv; this script tracks its names).
 from rustsheet_tools.fitlab.kernels.norm_inv import _CTX, _erfc
 
 CASES = Path(__file__).resolve().parents[2] / "eval/suites/probes-numeric/cases"

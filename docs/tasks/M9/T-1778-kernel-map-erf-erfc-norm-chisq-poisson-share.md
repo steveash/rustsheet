@@ -39,4 +39,4 @@ Done 2026-10-17. Excel's distribution functions collapse onto far fewer kernels 
   - shapes 0.5 and 1 off that path;
   - naive exp(-fl(x*x)) in the ERFC tail, plus a smooth ±2.5-ulp drift.
 - The exact operation sequence is still open; the candidates tried are listed as negatives in statistics.md.
-- Follow-up: T-1780 routes the engine through the identities. T-0968, T-1187, T-0971 and T-0972 now target one kernel.
+- Follow-up: T-1780 routes the engine through the identities. T-0968, T-1187, T-0971 and T-0972 should be read with the map (statistics.md).
