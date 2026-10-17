@@ -3,7 +3,7 @@ id: T-1236
 title: "WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL lift over arrays and refuse ranges (SPEC-0011 driver)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
@@ -36,5 +36,5 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Branch `agent/functions-date/T-1236-date-fn-array-lift` (PR #991, draft) holds a complete, reviewed implementation of the *old* T-1236 scope (EDATE, EOMONTH, WEEKNUM, WORKDAY(.INTL), NETWORKDAYS(.INTL), YEARFRAC): `lift_array_args` in `date_and_time/lift.rs`, a thin wrapper over `lift_with_cost`, with the `*_scalar` bodies behind lifting entry points. All four reviewers approved it, `make check` was green and probes known failures went 3026 -> 2998 (28 date-argument-modes cells). Before it could merge, `main` adopted SPEC-0011 (T-1767), which rescopes this task to WORKDAY/NETWORKDAYS on the table-driven driver (depends on T-1770, not yet done) and moves EDATE/EOMONTH/WEEKNUM/YEARFRAC to T-1770. My wrapper would be a parallel lifting mechanism next to the spec's driver, so I did not merge it. Next: decide whether to land it as an interim step (then T-1770/T-1236 migrate it) or drop it; if dropped, reuse its pieces: the cost estimates (`day_span`/`step_days`, capped at the calendar span, holidays counted per element), the tests in `test_fn_date_array_lift.rs`, and the ACCRINTM finding (financial callers must call the scalar YEARFRAC, not a lifted one). Unprobed items are tracked by T-1789.
