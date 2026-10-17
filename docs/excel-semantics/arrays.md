@@ -379,6 +379,9 @@ NETWORKDAYS.INTL is the exception: it lifts over a range (`INDEX(WORKDAY.INTL(45
   Y19-Y21, Y24-Y26). SERIESSUM's `coefficients` over a range is read whole (Y27, `SERIESSUM(2,0,1,B1:B3)` is
   7, -d W31). MULTINOMIAL, GCD and LCM give one result over a range (only MULTINOMIAL's value is probed, -d W30) (ROWS 1, Y22, Y23,
   Y28-Y30; `MULTINOMIAL(B1:B3,2)` = 59.999999999999986, -d W30).
+  probes/math-atp-array-lift (T-1802) shows that QUOTIENT, FACTDOUBLE and SERIESSUM's `x`, `n` and `m`
+  lift over an array, as the other ATP arguments do, while SERIESSUM's coefficients and MULTINOMIAL, GCD
+  and LCM stay whole over an array too (numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes").
 - **A range next to an array in an Analysis ToolPak call.** The call lifts over the array only.
   The range is passed whole to each element's call, which refuses it. So the shape comes from the
   array, and the probed elements are `#VALUE!`, on the range's rows and off them.

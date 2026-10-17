@@ -129,6 +129,8 @@
   (`check_file_size.py --update`).
   T-1384: duplicated lines 5084 → 5062 (IMSUM and IMPRODUCT share one fold over SPEC-0009's walker
   instead of their two-argument readers) (`check_duplication.py --update`).
+  T-1802: expressions/parser/static_analysis.rs 1406 → 1385 lines (the fallback arms of QUOTIENT,
+  FACTDOUBLE and SERIESSUM deleted: the lifting table derives them) (`check_file_size.py --update`).
   T-1272: duplicated lines 5062 → 4876 (TEXTBEFORE and TEXTAFTER share one `text_around`, TEXTSPLIT and
   TEXTBEFORE/TEXTAFTER one `delimiter_list`, and the text path reads ranges through `LiftedArg::read`)
   (`check_duplication.py --update`).
