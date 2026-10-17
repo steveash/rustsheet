@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+mod broadcast_bound;
 mod byte_variants;
 mod fn_arraytotext;
 mod fn_char_code;
