@@ -61,14 +61,53 @@ pub(crate) enum Case {
     Insensitive,
 }
 
+/// The delimiter list of one TEXTSPLIT, TEXTBEFORE or TEXTAFTER call, folded for `match_mode` 1
+/// once per call rather than once per lifted element (T-1272 performance review).
+pub(crate) struct Delimiters {
+    exact: Vec<String>,
+    folded: Vec<String>,
+}
+
+impl Delimiters {
+    /// TEXTBEFORE and TEXTAFTER's list, folded by [`fold_for_before_after`].
+    pub(crate) fn new(exact: Vec<String>) -> Self {
+        Self::folded_with(exact, fold_for_before_after)
+    }
+
+    /// A list folded by `fold` (TEXTSPLIT's is `fold_for_split`).
+    pub(crate) fn folded_with(exact: Vec<String>, fold: fn(&str) -> String) -> Self {
+        let folded = exact.iter().map(|d| fold(d)).collect();
+        Delimiters { exact, folded }
+    }
+
+    /// The delimiters as written.
+    pub(crate) fn exact(&self) -> &[String] {
+        &self.exact
+    }
+
+    /// The delimiters a text is matched with under `case`.
+    pub(crate) fn for_case(&self, case: Case) -> &[String] {
+        match case {
+            Case::Sensitive => &self.exact,
+            Case::Insensitive => &self.folded,
+        }
+    }
+}
+
 /// Finds the text after the occurrence instance of any of the `delimiters` in text
 pub(crate) fn text_after(
     text: &str,
-    delimiters: &[&str],
+    delimiters: &Delimiters,
     instance_num: i32,
     match_mode: Case,
 ) -> Option<String> {
-    if let Some((_, right)) = match_text(text, delimiters, instance_num, match_mode) {
+    let found = match_text(
+        text,
+        delimiters.for_case(match_mode),
+        instance_num,
+        match_mode,
+    );
+    if let Some((_, right)) = found {
         return text.get(right..).map(str::to_string);
     };
     None
@@ -76,11 +115,17 @@ pub(crate) fn text_after(
 
 pub(crate) fn text_before(
     text: &str,
-    delimiters: &[&str],
+    delimiters: &Delimiters,
     instance_num: i32,
     match_mode: Case,
 ) -> Option<String> {
-    if let Some((left, _)) = match_text(text, delimiters, instance_num, match_mode) {
+    let found = match_text(
+        text,
+        delimiters.for_case(match_mode),
+        instance_num,
+        match_mode,
+    );
+    if let Some((left, _)) = found {
         return text.get(..left).map(str::to_string);
     };
     None
@@ -142,10 +187,11 @@ pub(crate) fn substitute(text: &str, old_text: &str, new_text: &str, instance_nu
 /// negative). Every position where some delimiter starts counts once; the first delimiter in
 /// list order that matches there decides the match length (UNVERIFIED for delimiters that
 /// match at the same position, docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and
-/// REGEX* lift their text and scalar arguments"; T-1812).
-fn match_text(
+/// REGEX* lift their text and scalar arguments"; T-1812). With `Case::Insensitive` the
+/// delimiters are already folded ([`Delimiters`]); only the text is folded here.
+fn match_text<S: AsRef<str>>(
     text: &str,
-    delimiters: &[&str],
+    delimiters: &[S],
     instance_num: i32,
     match_mode: Case,
 ) -> Option<(usize, usize)> {
@@ -165,15 +211,10 @@ fn match_text(
             // offsets of the original; offsets found in a lowercased copy are not valid there
             // (T-1796, probes/textbefore-casefold-length).
             let folded_text = fold_for_before_after(text);
-            let folded: Vec<String> = delimiters
-                .iter()
-                .map(|d| fold_for_before_after(d))
-                .collect();
-            let folded: Vec<&str> = folded.iter().map(String::as_str).collect();
             let (left, right) = if instance_num > 0 {
-                text_sensitive(&folded_text, &folded, instance_num)
+                text_sensitive(&folded_text, delimiters, instance_num)
             } else {
-                text_sensitive_reverse(&folded_text, &folded, reverse_num)
+                text_sensitive_reverse(&folded_text, delimiters, reverse_num)
             }?;
             let original = char_offsets(text);
             let char_index = |byte: usize| folded_text.get(..byte).map(|s| s.chars().count());
@@ -186,14 +227,19 @@ fn match_text(
 }
 
 /// Length in bytes of the first delimiter that `rest` starts with.
-fn delimiter_at(rest: &str, delimiters: &[&str]) -> Option<usize> {
+fn delimiter_at<S: AsRef<str>>(rest: &str, delimiters: &[S]) -> Option<usize> {
     delimiters
         .iter()
-        .find(|d| rest.starts_with(**d))
-        .map(|d| d.len())
+        .map(AsRef::as_ref)
+        .find(|d| rest.starts_with(d))
+        .map(str::len)
 }
 
-fn text_sensitive(text: &str, delimiters: &[&str], instance_num: i32) -> Option<(usize, usize)> {
+fn text_sensitive<S: AsRef<str>>(
+    text: &str,
+    delimiters: &[S],
+    instance_num: i32,
+) -> Option<(usize, usize)> {
     let mut byte_index = 0;
     let mut local_index = 1;
     for c in text.chars() {
@@ -212,9 +258,9 @@ fn text_sensitive(text: &str, delimiters: &[&str], instance_num: i32) -> Option<
     None
 }
 
-fn text_sensitive_reverse(
+fn text_sensitive_reverse<S: AsRef<str>>(
     text: &str,
-    delimiters: &[&str],
+    delimiters: &[S],
     instance_num: i32,
 ) -> Option<(usize, usize)> {
     let mut byte_index = text.len();
@@ -359,7 +405,17 @@ fn nth_overlapping_match(text: &[u16], pattern: &[u16], n: usize) -> Option<usiz
 #[cfg(test)]
 mod tests {
 
-    use super::{text_after, text_before, within_text_budget, Case};
+    use super::{within_text_budget, Case, Delimiters};
+
+    fn text_after(text: &str, delimiters: &[&str], n: i32, case: Case) -> Option<String> {
+        let delimiters = Delimiters::new(delimiters.iter().map(|d| (*d).to_string()).collect());
+        super::text_after(text, &delimiters, n, case)
+    }
+
+    fn text_before(text: &str, delimiters: &[&str], n: i32, case: Case) -> Option<String> {
+        let delimiters = Delimiters::new(delimiters.iter().map(|d| (*d).to_string()).collect());
+        super::text_before(text, &delimiters, n, case)
+    }
     #[test]
     fn test_text_after_sensitive() {
         assert_eq!(

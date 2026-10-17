@@ -35,15 +35,20 @@ Delimiter ranges (a multi-cell range with blanks, numbers or booleans as the del
 TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEXTEST/EXTRACT/REPLACE lift their text and scalar arguments over ranges and
 arrays; the delimiters stay lists (TEXTBEFORE/AFTER take a delimiter array as a list; a delimiter range is still one
 text until T-1361). `lift_text_call` calls `lift_values` directly; moving onto `lift_call` is T-1775.
-- Bounds (DEVIATION, text.md "Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped"): the work is each
-  text element's length x delimiters x its broadcast repeats, plus a compile charge when the pattern lifts, capped at
-  2^27 lifted or not; the REGEX pattern cache keeps 4 patterns at the regex crate's default size limit.
+- Bounds (DEVIATION, text.md "Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped"): the work is every
+  operand element's length x its broadcast repeats, the text's further x the delimiter comparisons per position
+  (delimiter count + compared bytes / 64), capped at 2^27 lifted or not. REGEX patterns compile under the smallest of
+  64 KiB / 1 MiB / 10 MiB size limits they fit, with a per-call compile budget (256 MiB of limits) and an LRU cache
+  bounded at 32 MiB of limits.
+- Performance review fixes (fourth run): delimiter lists folded once per call and borrowed per element; TEXTSPLIT's
+  split searches each delimiter forward once instead of per piece; a lifted TEXTSPLIT/REGEXEXTRACT element computes only
+  its first value (this absorbs T-1814).
 - Unverified guesses are listed in text.md and the tests pinning them say so; T-1812 probes them.
 - Eval: probes known failures -30 (rows 13, 15-22, 55 and K11:K13 of probes/m7-argument-modes), 0 regressions; gen-m7
   59cc50701f4937c9 A24, 93976dd9a3578ed9 A11, 9ff3afcacd3bd0fc A35 and 6db767d720c5b55a A28 now pass, no other
   gen-suite cell changed (checked against main's binary). Duplication 6111 -> 5925.
 - Handed off twice (budget), resumed by opus: the earlier reviews' findings are all addressed in the branch history.
-  Follow-ups: T-1812 (probe the guesses), T-1813 (REGEXREPLACE result bound), T-1814 (per-element clones).
+  Follow-ups: T-1812 (probe the guesses), T-1813 (REGEXREPLACE result bound); T-1814 done here.
 
 ## Handoff (resumed)
 Third opus run (2026-10-17, budget out). Branch `agent/functions-text/T-1272-text-lift` is merged with main as of

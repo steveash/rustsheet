@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
 #[cfg(not(target_arch = "wasm32"))]
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 #[cfg(target_arch = "wasm32")]
-use regex_lite::Regex;
+use regex_lite::{Regex, RegexBuilder};
 
 use crate::{
     calc_result::CalcResult,
@@ -13,50 +15,152 @@ use crate::{
     model::Model,
 };
 
-/// Patterns a [`PatternCache`] keeps: a lifted call with a few distinct patterns compiles each
-/// once, and a call with many keeps memory bounded (CLAUDE.md directive 5). Each compiled pattern
-/// is bounded by the regex crate's default size limit, as on main, so ordinary patterns such as
-/// `\w{100}` still compile.
-const PATTERN_CACHE_ENTRIES: usize = 4;
+/// The size limits a pattern is compiled under, smallest first. A pattern is compiled under the
+/// next one only when it is too big for the one before; the last is the regex crate's default,
+/// so every pattern that compiled before T-1272 still compiles. Compile time and memory grow
+/// with the limit: in a release build the largest patterns each admits take about 0.5 ms, 7 ms
+/// and 70-90 ms (`\w{200}`), and a failed attempt about as long (T-1272 performance review).
+const SIZE_LIMITS: [usize; 3] = [1 << 16, 1 << 20, 10 << 20];
 
-/// The patterns compiled most recently and their regexes (`None` when invalid),
-/// oldest first: a lifted call over a range of text with one pattern, or over a short list of
-/// patterns, compiles each once.
-#[derive(Default)]
-struct PatternCache(Vec<(String, Option<Regex>)>);
+/// Bytes of size limit one call may compile under, attempts that were too big included: about
+/// 2 s of compiling, 4,096 small patterns, 256 medium or 25 of the largest. A call that needs
+/// more is `#ERROR!` (DEVIATION, decision 0014: Excel has no such limit).
+const COMPILE_BUDGET: usize = 256 << 20;
+
+/// Bytes of size limit the cache keeps compiled at once, bounding its memory (CLAUDE.md
+/// directive 5): 512 small patterns, 32 medium or 3 of the largest.
+const CACHE_LIMIT: usize = 32 << 20;
+
+/// Whether a compile error says only that the pattern is too big for its size limit.
+#[cfg(not(target_arch = "wasm32"))]
+fn too_big(error: &regex::Error) -> bool {
+    matches!(error, regex::Error::CompiledTooBig(_))
+}
+
+/// `regex_lite` does not tell a size error from a syntax error: try the next limit either way.
+#[cfg(target_arch = "wasm32")]
+fn too_big(_: &regex_lite::Error) -> bool {
+    true
+}
+
+/// A compiled pattern (`None` when invalid), the size limit it holds and when it was last used.
+struct Compiled {
+    regex: Option<Regex>,
+    limit: usize,
+    used: u64,
+}
+
+/// The patterns one REGEX* call has compiled, least recently used evicted first: a lifted call
+/// compiles each of a few distinct patterns once, within [`COMPILE_BUDGET`] and [`CACHE_LIMIT`].
+struct PatternCache {
+    entries: HashMap<String, Compiled>,
+    held: usize,
+    budget: usize,
+    clock: u64,
+    exhausted: bool,
+}
 
 impl PatternCache {
-    /// The regex for `pattern`, or the `#VALUE!` of an invalid one.
-    fn get(&mut self, pattern: String, cell: CellReferenceIndex) -> Result<&Regex, CalcResult> {
-        let index = match self.0.iter().position(|(known, _)| *known == pattern) {
-            Some(index) => index,
-            None => {
-                if self.0.len() == PATTERN_CACHE_ENTRIES {
-                    self.0.remove(0);
-                }
-                let regex = Regex::new(&pattern).ok();
-                self.0.push((pattern, regex));
-                self.0.len() - 1
-            }
-        };
-        self.0
-            .get(index)
-            .and_then(|(_, regex)| regex.as_ref())
+    fn new() -> Self {
+        PatternCache {
+            entries: HashMap::new(),
+            held: 0,
+            budget: COMPILE_BUDGET,
+            clock: 0,
+            exhausted: false,
+        }
+    }
+
+    /// The regex for `pattern`, or the `#VALUE!` of an invalid one, or `#ERROR!` once the
+    /// call's compile budget is spent.
+    fn get(&mut self, pattern: &str, cell: CellReferenceIndex) -> Result<&Regex, CalcResult> {
+        self.clock += 1;
+        if !self.entries.contains_key(pattern) {
+            let compiled = self.compile(pattern, cell)?;
+            self.make_room(compiled.limit);
+            self.held += compiled.limit;
+            self.entries.insert(pattern.to_string(), compiled);
+        }
+        let clock = self.clock;
+        self.entries
+            .get_mut(pattern)
+            .and_then(|entry| {
+                entry.used = clock;
+                entry.regex.as_ref()
+            })
             .ok_or_else(|| {
                 CalcResult::new_error(Error::VALUE, cell, "Invalid regular expression".to_string())
             })
     }
+
+    /// Compiles `pattern` under the smallest size limit it fits, charging each attempt.
+    fn compile(&mut self, pattern: &str, cell: CellReferenceIndex) -> Result<Compiled, CalcResult> {
+        let mut regex = None;
+        let mut held = 0;
+        for limit in SIZE_LIMITS {
+            if self.exhausted || self.budget < limit {
+                self.exhausted = true;
+                return Err(too_many_compiles(cell));
+            }
+            self.budget -= limit;
+            held = limit;
+            match RegexBuilder::new(pattern).size_limit(limit).build() {
+                Ok(compiled) => {
+                    regex = Some(compiled);
+                    break;
+                }
+                Err(error) if too_big(&error) => {}
+                Err(_) => break,
+            }
+        }
+        Ok(Compiled {
+            regex,
+            limit: held,
+            used: 0,
+        })
+    }
+
+    /// Evicts the least recently used patterns until one of size limit `limit` fits.
+    fn make_room(&mut self, limit: usize) {
+        while self.held + limit > CACHE_LIMIT {
+            let oldest = self
+                .entries
+                .iter()
+                .min_by_key(|(_, entry)| entry.used)
+                .map(|(pattern, _)| pattern.clone());
+            match oldest.and_then(|pattern| self.entries.remove(&pattern)) {
+                Some(entry) => self.held -= entry.limit,
+                None => break,
+            }
+        }
+    }
+
+    /// The call's result: `#ERROR!` when the compile budget ran out in any element.
+    fn finish(&self, result: CalcResult, cell: CellReferenceIndex) -> CalcResult {
+        if self.exhausted {
+            too_many_compiles(cell)
+        } else {
+            result
+        }
+    }
+}
+
+fn too_many_compiles(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::ERROR,
+        cell,
+        "Too many regular expressions to compile".to_string(),
+    )
 }
 
 impl Model {
     /// The text and pattern of one REGEX* call element, coerced to text left to right.
     fn regex_operands(
-        &mut self,
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<(String, String), CalcResult> {
-        let text = self.cast_to_string(values[0].clone(), cell)?;
-        let pattern = self.cast_to_string(values[1].clone(), cell)?;
+        let text = Self::cast_string_ref(&values[0], cell)?;
+        let pattern = Self::cast_string_ref(&values[1], cell)?;
         Ok((text, pattern))
     }
 
@@ -79,24 +183,31 @@ impl Model {
         }
         let (operands, _) = self.lift_text_operands(args, &[], cell);
         let has_return_all = args.len() == 3;
-        let mut cache = PatternCache::default();
-        self.lift_text_call(operands, cell, 1, true, |model, values| {
-            let (text, pattern) = match model.regex_operands(values, cell) {
+        let mut cache = PatternCache::new();
+        let result = self.lift_text_call(operands, cell, &[], |model, values, first_only| {
+            let (text, pattern) = match Model::regex_operands(values, cell) {
                 Ok(operands) => operands,
                 Err(error) => return error,
             };
             let return_all = if has_return_all {
-                match model.cast_to_number(values[2].clone(), cell) {
+                match model.cast_number_ref(&values[2], cell) {
                     Ok(n) => n != 0.0,
                     Err(e) => return e,
                 }
             } else {
                 false
             };
-            let re = match cache.get(pattern, cell) {
+            let re = match cache.get(&pattern, cell) {
                 Ok(re) => re,
                 Err(error) => return error,
             };
+            if return_all && first_only {
+                // A lifted element keeps the first match only (T-1272 performance review).
+                return match re.find(&text) {
+                    Some(m) => CalcResult::String(m.as_str().to_string().into()),
+                    None => CalcResult::new_error(Error::NA, cell, "No match found".to_string()),
+                };
+            }
             if return_all {
                 let row: Vec<ArrayNode> = re
                     .find_iter(&text)
@@ -121,7 +232,8 @@ impl Model {
                     }
                 }
             }
-        })
+        });
+        cache.finish(result, cell)
     }
 
     /// REGEXREPLACE(text, `regular_expression`, replacement)
@@ -138,17 +250,17 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let (operands, _) = self.lift_text_operands(args, &[], cell);
-        let mut cache = PatternCache::default();
-        self.lift_text_call(operands, cell, 1, true, |model, values| {
-            let (text, pattern) = match model.regex_operands(values, cell) {
+        let mut cache = PatternCache::new();
+        let result = self.lift_text_call(operands, cell, &[], |_, values, _| {
+            let (text, pattern) = match Model::regex_operands(values, cell) {
                 Ok(operands) => operands,
                 Err(error) => return error,
             };
-            let replacement = match model.cast_to_string(values[2].clone(), cell) {
+            let replacement = match Model::cast_string_ref(&values[2], cell) {
                 Ok(s) => s,
                 Err(e) => return e,
             };
-            match cache.get(pattern, cell) {
+            match cache.get(&pattern, cell) {
                 Ok(re) => CalcResult::String(
                     re.replace_all(&text, replacement.as_str())
                         .into_owned()
@@ -156,7 +268,8 @@ impl Model {
                 ),
                 Err(error) => error,
             }
-        })
+        });
+        cache.finish(result, cell)
     }
 
     /// REGEXTEST(text, `regular_expression`)
@@ -169,16 +282,17 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let (operands, _) = self.lift_text_operands(args, &[], cell);
-        let mut cache = PatternCache::default();
-        self.lift_text_call(operands, cell, 1, true, |model, values| {
-            let (text, pattern) = match model.regex_operands(values, cell) {
+        let mut cache = PatternCache::new();
+        let result = self.lift_text_call(operands, cell, &[], |_, values, _| {
+            let (text, pattern) = match Model::regex_operands(values, cell) {
                 Ok(operands) => operands,
                 Err(error) => return error,
             };
-            match cache.get(pattern, cell) {
+            match cache.get(&pattern, cell) {
                 Ok(re) => CalcResult::Boolean(re.is_match(&text)),
                 Err(error) => error,
             }
-        })
+        });
+        cache.finish(result, cell)
     }
 }

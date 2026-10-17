@@ -298,14 +298,19 @@ Tasks: T-1272, T-1812 (probe the guesses), T-1361 (delimiter ranges)
 
 ## Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped
 Rule: Excel computes these calls whatever their size.
-Ours: a call is `#ERROR!` (as the *IF(S) lift) when its work passes `limits::MAX_LIFTED_CELL_VISITS` (2^27): each text
-element's length plus 1, times the delimiters, times how often the broadcast repeats it, plus 4,096 per element when a
-REGEX pattern lifts. A call that does not lift is capped the same way (`TEXTBEFORE(REPT("a",32767),SEQUENCE(10000))`);
-one long cell in a blank column costs its own length once (`ROWS(TEXTBEFORE(A1:A100000,","))` is 100000). One call keeps
-at most 4 compiled REGEX patterns, each within the regex crate's default size limit (as before T-1272).
+Ours: a call is `#ERROR!` (as the *IF(S) lift) when its work passes `limits::MAX_LIFTED_CELL_VISITS` (2^27): over
+every operand, each element's length plus 1, times how often the broadcast repeats it; the text's length is further
+multiplied, per position, by the delimiter count plus the delimiter bytes compared there (each delimiter at most the
+text's length) over 64. A call that does not lift is capped the same way (`TEXTBEFORE(REPT("a",32767),SEQUENCE(10000))`,
+`TEXTBEFORE(REPT("a",32767),REPT("a",16383)&"b"&SEQUENCE(512))`); one long cell in a blank column costs its own length
+once (`ROWS(TEXTBEFORE(A1:A100000,","))` is 100000). A REGEX* call compiles each pattern under the smallest of the size
+limits 64 KiB, 1 MiB and 10 MiB (the regex crate's default, so every pattern that compiled before T-1272 still does) it
+fits, keeps up to 32 MiB of those limits compiled (least recently used evicted), and may spend 256 MiB of limits on
+compiling, too-big attempts included (4,096 small patterns, 256 medium or 25 of the largest, about 2 s); a call past
+that is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`).
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
 Status: DEVIATION (decision 0014)
-Implemented in: `Model::lift_text_call` and `text_call_cost` (functions/text/lifted.rs), `PatternCache`
+Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
 (functions/text/regex_functions.rs)
 Tasks: T-1272
 

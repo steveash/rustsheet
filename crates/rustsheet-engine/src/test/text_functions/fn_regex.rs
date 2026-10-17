@@ -174,3 +174,38 @@ fn test_regexreplace_wrong_arg_count() {
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("A2"), "#ERROR!");
 }
+
+// T-1272 performance review: a call compiles each pattern it has pushed out of its cache again,
+// within a compile budget; past the budget it is `#ERROR!` (DEVIATION, decision 0014). 600
+// distinct small patterns cycle through a cache of 512; 5,000 distinct ones are past the 4,096
+// small compiles the budget allows.
+#[test]
+fn regex_compiles_are_cached_and_budgeted() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=ROWS(REGEXTEST(\"a\",\"a\"&MOD(SEQUENCE(1000),600)))",
+    );
+    model._set(
+        "A2",
+        "=SUM(--REGEXTEST(\"a\"&MOD(SEQUENCE(1000),600),\"a\"&MOD(SEQUENCE(1000),600)))",
+    );
+    model._set("A3", "=ROWS(REGEXTEST(\"a\",\"a\"&SEQUENCE(5000)))");
+    model._set("A4", "=REGEXTEST(\"ab\",\"\\w{2}\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1000");
+    assert_eq!(model._get_text("A2"), *"1000");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    // `\w{2}` is too big for the smallest size limit and compiles under the next one.
+    assert_eq!(model._get_text("A4"), *"TRUE");
+}
+
+// A lifted REGEXEXTRACT element with return_all keeps the first match only.
+#[test]
+fn lifted_regexextract_return_all_keeps_the_first_match() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REGEXEXTRACT({\"a1b2\";\"xyz\"},\"[0-9]\",1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+}

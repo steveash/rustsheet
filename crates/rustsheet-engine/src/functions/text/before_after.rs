@@ -1,4 +1,4 @@
-use super::util::{text_after, text_before, Case};
+use super::util::{text_after, text_before, Case, Delimiters};
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
@@ -40,11 +40,13 @@ impl Model {
         }
         let (operands, mut lists) = self.lift_text_operands(args, &[1], cell);
         let delimiters = match lists.pop() {
-            Some(list) => self.around_delimiters(list, cell),
-            None => Ok(vec![]),
+            Some(list) => self.around_delimiters(list, cell).map(Delimiters::new),
+            None => Ok(Delimiters::new(vec![])),
         };
-        let delimiter_count = delimiters.as_ref().map_or(0, Vec::len);
-        self.lift_text_call(operands, cell, delimiter_count, false, |model, values| {
+        let scanned: Vec<usize> = delimiters
+            .as_ref()
+            .map_or(vec![], |d| d.exact().iter().map(String::len).collect());
+        self.lift_text_call(operands, cell, &scanned, |model, values, _| {
             model.text_around_element(values, arg_count, &delimiters, side, cell)
         })
     }
@@ -71,11 +73,11 @@ impl Model {
         &mut self,
         values: &[CalcResult],
         arg_count: usize,
-        delimiters: &Result<Vec<String>, CalcResult>,
+        delimiters: &Result<Delimiters, CalcResult>,
         side: Side,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let text = match self.cast_to_string(values[0].clone(), cell) {
+        let text = match Self::cast_string_ref(&values[0], cell) {
             Ok(s) => s,
             Err(error) => return error,
         };
@@ -83,7 +85,6 @@ impl Model {
             Ok(list) => list,
             Err(error) => return error.clone(),
         };
-        let delimiters: Vec<&str> = delimiters.iter().map(String::as_str).collect();
         let options = match self.around_options(values, arg_count, cell) {
             Ok(options) => options,
             Err(error) => return error,
@@ -91,7 +92,8 @@ impl Model {
         // With no delimiter shorter than the text a match is impossible. UNVERIFIED for a list
         // (text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar
         // arguments", T-1812): every entry longer than the text.
-        if !delimiters.is_empty() && delimiters.iter().all(|d| d.len() > text.len()) {
+        let exact = delimiters.exact();
+        if !exact.is_empty() && exact.iter().all(|d| d.len() > text.len()) {
             // With two arguments this is `#VALUE!`, with more `#N/A`, whatever their values.
             let error = if arg_count > 2 {
                 Error::VALUE
@@ -112,8 +114,8 @@ impl Model {
             );
         }
         let found = match side {
-            Side::Before => text_before(&text, &delimiters, options.instance_num, options.case),
-            Side::After => text_after(&text, &delimiters, options.instance_num, options.case),
+            Side::Before => text_before(&text, delimiters, options.instance_num, options.case),
+            Side::After => text_after(&text, delimiters, options.instance_num, options.case),
         };
         match found {
             Some(s) => CalcResult::String(s.into()),

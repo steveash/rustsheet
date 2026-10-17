@@ -190,3 +190,41 @@ fn test_textsplit_case_insensitive_matches_excel_folding() {
     assert_eq!(model._get_text("A3"), "aßb");
     assert_eq!(model._get_text("B3"), "c");
 }
+
+// T-1272: a lifted element keeps the first value of its array without building it; an empty
+// first row (ignore_empty) is its padding.
+#[test]
+fn lifted_element_keeps_the_first_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTSPLIT({\",;a\";\"b,c\"},\",\",\";\",TRUE)");
+    model._set(
+        "B1",
+        "=TEXTSPLIT({\",;a\";\"b,c\"},\",\",\";\",TRUE,0,\"p\")",
+    );
+    model._set("C1", "=TEXTSPLIT(\",;a\",\",\",\";\",TRUE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"b");
+    assert_eq!(model._get_text("B1"), *"p");
+    assert_eq!(model._get_text("B2"), *"b");
+    // Unlifted, the same text is the whole padded array.
+    assert_eq!(model._get_text("C1"), *"#N/A");
+    assert_eq!(model._get_text("C2"), *"a");
+}
+
+// Each delimiter's search moves forward through the text: many pieces with a delimiter that
+// never matches (T-1272 performance review).
+#[test]
+fn many_pieces_with_an_absent_delimiter() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=COLUMNS(TEXTSPLIT(REPT(\"a,\",16000),{\",\",\"zz\"}))",
+    );
+    model._set("A2", "=TEXTSPLIT(\"a-b,c\",{\",\",\"-\"})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"16001");
+    assert_eq!(model._get_text("A2"), *"a");
+    assert_eq!(model._get_text("B2"), *"b");
+    assert_eq!(model._get_text("C2"), *"c");
+}

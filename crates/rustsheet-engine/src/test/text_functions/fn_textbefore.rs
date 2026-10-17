@@ -229,3 +229,36 @@ fn one_long_cell_does_not_cap_a_long_lifted_column() {
     assert_eq!(model._get_text("C1"), *"100000");
     assert_eq!(model._get_text("D1"), *"100000");
 }
+
+// T-1272 performance review: a delimiter's bytes count, not only the delimiter, so 512
+// delimiters of 16,384 bytes over a 32,767-character text are capped (DEVIATION, decision
+// 0014), while one long delimiter still matches.
+#[test]
+fn long_delimiters_count_their_bytes() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=TEXTBEFORE(REPT(\"a\",32767),REPT(\"a\",16383)&\"b\"&SEQUENCE(512))",
+    );
+    model._set(
+        "A2",
+        "=LEN(TEXTBEFORE(REPT(\"a\",32766)&\"b\",REPT(\"a\",16000)&\"b\"))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"16766");
+}
+
+// The delimiter list is folded once per call, not once per element: match_mode 1 over a lifted
+// text with a long list (T-1272 performance review).
+#[test]
+fn case_insensitive_list_over_a_lifted_text() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=TEXTBEFORE(SEQUENCE(20)&\"X\",VSTACK(\"x\",REPT(\"a\",1000)&SEQUENCE(4000)),1,1)",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A20"), *"20");
+}

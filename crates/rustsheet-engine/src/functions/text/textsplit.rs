@@ -1,4 +1,7 @@
-use super::casefold::{char_offsets, fold_for_split};
+use super::{
+    casefold::{char_offsets, fold_for_split},
+    util::{Case, Delimiters},
+};
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -6,6 +9,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::util::array_node_to_calc_result,
     limits::check_array_cells,
     model::Model,
 };
@@ -30,47 +34,71 @@ impl Model {
         // range or an array (probes/m7-argument-modes F13, F14).
         let (operands, lists) = self.lift_text_operands(args, &[1, 2], cell);
         let mut lists = lists.into_iter();
-        let col_delimiters = lists.next().map(|list| self.delimiter_list(list, cell));
-        let row_delimiters = lists.next().map(|list| self.delimiter_list(list, cell));
+        let col_delimiters = lists
+            .next()
+            .map(|list| self.split_delimiters(list, false, cell));
+        // A bare empty-arg (omitted) row delimiter → no row splitting, which is the empty list.
+        let row_delimiters = lists
+            .next()
+            .map(|list| self.split_delimiters(list, true, cell));
         let arg_count = args.len();
-        let delimiter_count = [&col_delimiters, &row_delimiters]
+        let scanned: Vec<usize> = [&col_delimiters, &row_delimiters]
             .into_iter()
             .flatten()
-            .map(|d| d.as_ref().map_or(0, Vec::len))
-            .sum();
-        self.lift_text_call(operands, cell, delimiter_count, false, |model, values| {
+            .flatten()
+            .flat_map(|d| d.exact().iter().map(String::len))
+            .collect();
+        self.lift_text_call(operands, cell, &scanned, |model, values, first_only| {
             model.textsplit_element(
                 values,
                 arg_count,
                 col_delimiters.as_ref(),
                 row_delimiters.as_ref(),
+                first_only,
                 cell,
             )
         })
     }
 
-    /// One TEXTSPLIT call on the values of the lifted arguments.
+    /// A TEXTSPLIT delimiter list, folded once per call; `skip_empty` drops its empty strings.
+    fn split_delimiters(
+        &mut self,
+        list: CalcResult,
+        skip_empty: bool,
+        cell: CellReferenceIndex,
+    ) -> Result<Delimiters, CalcResult> {
+        let mut exact = self.delimiter_list(list, cell)?;
+        if skip_empty {
+            exact.retain(|d| !d.is_empty());
+        }
+        Ok(Delimiters::folded_with(exact, fold_for_split))
+    }
+
+    /// One TEXTSPLIT call on the values of the lifted arguments; `first_only` returns only the
+    /// first value of its array (a lifted element).
     fn textsplit_element(
         &mut self,
         values: &[CalcResult],
         arg_count: usize,
-        col_delimiters: Option<&Result<Vec<String>, CalcResult>>,
-        row_delimiters: Option<&Result<Vec<String>, CalcResult>>,
+        col_delimiters: Option<&Result<Delimiters, CalcResult>>,
+        row_delimiters: Option<&Result<Delimiters, CalcResult>>,
+        first_only: bool,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let text = match self.cast_to_string(values[0].clone(), cell) {
+        let text = match Self::cast_string_ref(&values[0], cell) {
             Ok(s) => s,
             Err(e) => return e,
         };
+        let no_delimiters = Delimiters::new(vec![]);
         let col_delims = match col_delimiters {
-            Some(Ok(d)) => d.clone(),
+            Some(Ok(d)) => d,
             Some(Err(e)) => return e.clone(),
-            None => vec![],
+            None => &no_delimiters,
         };
 
         // An explicit empty string "" as a delimiter is invalid.
         // An omitted col_delimiter (empty vec) is allowed when row_delimiter is provided.
-        if col_delims.iter().any(|d| d.is_empty()) {
+        if col_delims.exact().iter().any(String::is_empty) {
             return CalcResult::new_error(
                 Error::VALUE,
                 cell,
@@ -78,14 +106,13 @@ impl Model {
             );
         }
 
-        // A bare empty-arg (omitted) row delimiter → no row splitting, which is the empty list.
-        let row_delims: Vec<String> = match row_delimiters {
-            Some(Ok(d)) => d.iter().filter(|s| !s.is_empty()).cloned().collect(),
+        let row_delims = match row_delimiters {
+            Some(Ok(d)) => d,
             Some(Err(e)) => return e.clone(),
-            None => vec![],
+            None => &no_delimiters,
         };
 
-        if col_delims.is_empty() && row_delims.is_empty() {
+        if col_delims.exact().is_empty() && row_delims.exact().is_empty() {
             return CalcResult::new_error(
                 Error::VALUE,
                 cell,
@@ -94,7 +121,7 @@ impl Model {
         }
 
         let ignore_empty = if arg_count >= 4 {
-            match self.cast_to_bool(values[3].clone(), cell) {
+            match Self::cast_bool_ref(&values[3], cell) {
                 Ok(b) => b,
                 Err(e) => return e,
             }
@@ -103,7 +130,7 @@ impl Model {
         };
 
         let case_insensitive = if arg_count >= 5 {
-            match self.cast_to_number(values[4].clone(), cell) {
+            match self.cast_number_ref(&values[4], cell) {
                 Ok(n) => n != 0.0,
                 Err(e) => return e,
             }
@@ -130,23 +157,18 @@ impl Model {
         // `fold_for_split` maps every char to exactly one char (TEXTSPLIT's folding, probes/
         // textsplit-casefold-length), so char positions in `cmp_text` are char positions in
         // `text`; `split_by_any` converts them to byte offsets of the original (T-1794).
-        let cmp_text: String;
-        let cmp_col_delims: Vec<String>;
-        let cmp_row_delims: Vec<String>;
-        if case_insensitive {
-            cmp_text = fold_for_split(&text);
-            cmp_col_delims = col_delims.iter().map(|s| fold_for_split(s)).collect();
-            cmp_row_delims = row_delims.iter().map(|s| fold_for_split(s)).collect();
+        let (cmp_text, case) = if case_insensitive {
+            (fold_for_split(&text), Case::Insensitive)
         } else {
-            cmp_text = text.clone();
-            cmp_col_delims = col_delims.clone();
-            cmp_row_delims = row_delims.clone();
-        }
+            (text.clone(), Case::Sensitive)
+        };
+        let cmp_col_delims = col_delims.for_case(case);
+        let cmp_row_delims = row_delims.for_case(case);
 
         let rows_of_cols: Vec<Vec<String>> = if !cmp_row_delims.is_empty() {
             // Split into rows first, then each row into columns.
-            let row_parts = split_by_any(&text, &cmp_text, &cmp_row_delims);
-            let cmp_row_parts = split_by_any(&cmp_text, &cmp_text, &cmp_row_delims);
+            let row_parts = split_by_any(&text, &cmp_text, cmp_row_delims);
+            let cmp_row_parts = split_by_any(&cmp_text, &cmp_text, cmp_row_delims);
 
             row_parts
                 .into_iter()
@@ -155,7 +177,7 @@ impl Model {
                     if ignore_empty && orig_row.is_empty() {
                         return None;
                     }
-                    let cols = split_by_any(&orig_row, &cmp_row_part, &cmp_col_delims);
+                    let cols = split_by_any(&orig_row, &cmp_row_part, cmp_col_delims);
                     let cols = if ignore_empty {
                         cols.into_iter().filter(|s| !s.is_empty()).collect()
                     } else {
@@ -166,7 +188,7 @@ impl Model {
                 .collect()
         } else {
             // No row delimiter — single row.
-            let cols = split_by_any(&text, &cmp_text, &cmp_col_delims);
+            let cols = split_by_any(&text, &cmp_text, cmp_col_delims);
             let cols = if ignore_empty {
                 cols.into_iter().filter(|s| !s.is_empty()).collect()
             } else {
@@ -192,6 +214,18 @@ impl Model {
         // textsplit-wide A1: 16,385 columns), so the past-the-grid test does not apply.
         if let Some((error, message)) = check_array_cells(rows_of_cols.len(), max_cols) {
             return CalcResult::new_error(error, cell, message);
+        }
+        if first_only {
+            // A lifted element keeps its first value: the first piece, or the padding of an
+            // empty first row; the padded array is not built (T-1272 performance review).
+            return match rows_of_cols
+                .into_iter()
+                .next()
+                .and_then(|row| row.into_iter().next())
+            {
+                Some(piece) => CalcResult::String(piece.into()),
+                None => array_node_to_calc_result(pad_node, cell),
+            };
         }
 
         let result: Vec<Vec<ArrayNode>> = rows_of_cols
@@ -242,16 +276,25 @@ fn split_by_any(original: &str, cmp: &str, cmp_delims: &[String]) -> Vec<String>
     let mut result = Vec::new();
     let mut pos = 0usize; // byte offset in `cmp`
     let mut orig_pos = 0usize; // byte offset in `original`
+                               // The next match of each delimiter at or after `pos`, searched again only once `pos` has
+                               // passed it, so each delimiter's searches move forward through `cmp` instead of rescanning
+                               // the rest of it for every piece (T-1272 performance review).
+    let mut next: Vec<Option<usize>> = delims.iter().map(|d| cmp.find(d)).collect();
 
     loop {
-        // Find the earliest match among all delimiters.
-        let best = delims
+        // Find the earliest match among all delimiters (the last in list order on a tie).
+        for (found, d) in next.iter_mut().zip(&delims) {
+            if found.is_some_and(|start| start < pos) {
+                *found = cmp
+                    .get(pos..)
+                    .and_then(|rest| rest.find(d))
+                    .map(|i| pos + i);
+            }
+        }
+        let best = next
             .iter()
-            .filter_map(|d| {
-                cmp.get(pos..)?
-                    .find(d)
-                    .map(|i| (pos + i, pos + i + d.len()))
-            })
+            .zip(&delims)
+            .filter_map(|(found, d)| found.map(|start| (start, start + d.len())))
             .min_by_key(|(p, _)| *p);
 
         let matched = best.and_then(|(start, end)| {

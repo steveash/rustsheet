@@ -20,10 +20,10 @@ use crate::{
     number_format::number_to_text,
 };
 
-/// Cells a lifted call counts for compiling one pattern (`Regex::new` on a pattern of up to
-/// 32,767 characters can build a program of megabytes), charged per element when the pattern
-/// lifts. DEVIATION, decision 0014: Excel has no such limit.
-const COMPILE_COST: u64 = 4096;
+/// Bytes of delimiter comparison counted as one cell visit: a position is compared with a
+/// delimiter by `starts_with` (a `memcmp`), about 25 ps a byte in a release build against a few
+/// nanoseconds a visit (T-1272 performance review).
+const BYTES_PER_VISIT: u64 = 64;
 
 impl Model {
     /// A one-cell reference as the value of its cell, any other value as it is.
@@ -74,30 +74,27 @@ impl Model {
         (operands, whole)
     }
 
-    /// Runs `element` once on `operands`, or once per element when one lifts. A lifted element
-    /// keeps its first value when the call gives an array (TEXTSPLIT: probes/m7-argument-modes
-    /// F13:H13; REGEXEXTRACT's `return_all` UNVERIFIED, text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER
-    /// and REGEX* lift their text and scalar arguments").
+    /// Runs `element` once on `operands`, or once per element when one lifts; `element` is told
+    /// whether it lifts, as a lifted element keeps only the first value of an array result
+    /// (TEXTSPLIT: probes/m7-argument-modes F13:H13; REGEXEXTRACT's `return_all` UNVERIFIED,
+    /// text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar
+    /// arguments"), so it need not build the rest.
     ///
-    /// An element scans its own text once per delimiter (`delimiters`, at least 1) and, when
-    /// `compiles_patterns`, compiles its pattern (operand 1) if that lifts. The work is the sum
-    /// over the text's elements, each counted as often as the broadcast repeats it, so one long
-    /// cell in a mostly blank column costs its own length once. The call is `#ERROR!` when the
-    /// work exceeds `limits::MAX_LIFTED_CELL_VISITS` (DEVIATION, decision 0014: Excel has no such
-    /// limit), lifted or not.
+    /// An element compares each position of its text with the delimiters of byte lengths
+    /// `scanned` (one pass when empty) and reads its other operands once. The work is the sum
+    /// over the operands' elements, each counted as often as the broadcast repeats it, so one
+    /// long cell in a mostly blank column costs its own length once. The call is `#ERROR!` when
+    /// the work exceeds `limits::MAX_LIFTED_CELL_VISITS` (DEVIATION, decision 0014: Excel has no
+    /// such limit), lifted or not.
     pub(super) fn lift_text_call(
         &mut self,
         operands: Vec<CalcResult>,
         cell: CellReferenceIndex,
-        delimiters: usize,
-        compiles_patterns: bool,
-        mut element: impl FnMut(&mut Model, &[CalcResult]) -> CalcResult,
+        scanned: &[usize],
+        mut element: impl FnMut(&mut Model, &[CalcResult], bool) -> CalcResult,
     ) -> CalcResult {
         let lifts = operands.iter().any(LiftedArg::is_grid);
-        if let Some(error) = too_many_visits(
-            text_call_cost(&operands, delimiters, compiles_patterns),
-            cell,
-        ) {
+        if let Some(error) = too_many_visits(text_call_cost(&operands, scanned), cell) {
             return error;
         }
         self.lift_values(
@@ -105,7 +102,7 @@ impl Model {
             LiftCost::Unit,
             &LiftOptions::EVERY_ELEMENT,
             cell,
-            &mut |model, values| match element(model, values) {
+            &mut |model, values| match element(model, values, lifts) {
                 CalcResult::Array(grid) if lifts => match grid.first().and_then(|r| r.first()) {
                     Some(node) => array_node_to_calc_result(node, cell),
                     None => CalcResult::new_error(Error::VALUE, cell, String::new()),
@@ -154,41 +151,99 @@ fn operand_dims(operand: &CalcResult) -> (usize, usize) {
     }
 }
 
-/// The work of one text call ([`Model::lift_text_call`]): every text element's length plus 1,
-/// times the delimiters, times how often the broadcast repeats it (a dimension of 1 stretches
-/// over the output's), plus [`COMPILE_COST`] per element when the pattern lifts. Saturating.
-fn text_call_cost(operands: &[CalcResult], delimiters: usize, compiles_patterns: bool) -> u64 {
+/// The work of one text call ([`Model::lift_text_call`]): over every operand, each element's
+/// length plus 1 (a non-string 1), times how often the broadcast repeats it (a dimension of 1
+/// stretches over the output's); the text operand's length is further multiplied by the
+/// delimiter comparisons at each position ([`ScanCost`]). Saturating.
+fn text_call_cost(operands: &[CalcResult], scanned: &[usize]) -> u64 {
     let (rows, columns) = operands
         .iter()
         .map(operand_dims)
         .fold((1, 1), |acc, d| (acc.0.max(d.0), acc.1.max(d.1)));
-    let to_u64 = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
-    let length = |len: usize| to_u64(len).saturating_add(1);
-    let text_work = match operands.first() {
-        Some(CalcResult::Array(grid)) => {
-            let (text_rows, text_columns) = operand_dims(&operands[0]);
-            let repeats = to_u64(if text_rows == 1 { rows } else { 1 })
-                .saturating_mul(to_u64(if text_columns == 1 { columns } else { 1 }));
+    let scan = ScanCost::new(scanned);
+    operands
+        .iter()
+        .enumerate()
+        .map(|(index, operand)| {
+            let per_position = |len: usize| if index == 0 { scan.at(len) } else { 1 };
+            operand_work(operand, rows, columns, per_position)
+        })
+        .fold(0u64, u64::saturating_add)
+}
+
+fn to_u64(n: usize) -> u64 {
+    u64::try_from(n).unwrap_or(u64::MAX)
+}
+
+/// The work of reading one operand over a `rows` x `columns` output: each element's length
+/// plus 1 times `per_position(length)`, times how often the broadcast repeats it.
+fn operand_work(
+    operand: &CalcResult,
+    rows: usize,
+    columns: usize,
+    per_position: impl Fn(usize) -> u64,
+) -> u64 {
+    let length = |len: usize| {
+        to_u64(len)
+            .saturating_add(1)
+            .saturating_mul(per_position(len))
+    };
+    match operand {
+        CalcResult::Array(grid) => {
+            let (own_rows, own_columns) = operand_dims(operand);
+            let repeats = to_u64(if own_rows == 1 { rows } else { 1 })
+                .saturating_mul(to_u64(if own_columns == 1 { columns } else { 1 }));
             grid.iter()
                 .flatten()
                 .map(|node| match node {
                     ArrayNode::String(s) => length(s.len()),
-                    _ => 1,
+                    _ => length(0),
                 })
                 .fold(0u64, u64::saturating_add)
                 .saturating_mul(repeats)
         }
-        Some(CalcResult::String(s)) => {
+        CalcResult::String(s) => {
             length(s.len()).saturating_mul(to_u64(rows.saturating_mul(columns)))
         }
-        _ => to_u64(rows.saturating_mul(columns)),
-    };
-    let mut cost = text_work.saturating_mul(to_u64(delimiters.max(1)));
-    if compiles_patterns && operands.get(1).is_some_and(LiftedArg::is_grid) {
-        cost =
-            cost.saturating_add(COMPILE_COST.saturating_mul(to_u64(rows.saturating_mul(columns))));
+        _ => length(0).saturating_mul(to_u64(rows.saturating_mul(columns))),
     }
-    cost
+}
+
+/// The delimiter comparisons at one position of a text: each delimiter costs 1 plus the bytes
+/// it compares (at most the text's length) over [`BYTES_PER_VISIT`]; at least 1 (one pass).
+struct ScanCost {
+    /// The delimiter lengths, ascending.
+    lengths: Vec<usize>,
+    /// `prefix[i]` is the sum of the `i` shortest lengths.
+    prefix: Vec<u64>,
+}
+
+impl ScanCost {
+    fn new(scanned: &[usize]) -> Self {
+        let mut lengths = scanned.to_vec();
+        lengths.sort_unstable();
+        let mut prefix = Vec::with_capacity(lengths.len() + 1);
+        prefix.push(0u64);
+        for &len in &lengths {
+            let last = prefix.last().copied().unwrap_or(0);
+            prefix.push(last.saturating_add(to_u64(len)));
+        }
+        ScanCost { lengths, prefix }
+    }
+
+    /// The cost at each position of a text of `text_len` bytes, in logarithmic time.
+    fn at(&self, text_len: usize) -> u64 {
+        let shorter = self.lengths.partition_point(|&len| len <= text_len);
+        let compared = self
+            .prefix
+            .get(shorter)
+            .copied()
+            .unwrap_or(0)
+            .saturating_add(to_u64(self.lengths.len() - shorter).saturating_mul(to_u64(text_len)));
+        to_u64(self.lengths.len())
+            .saturating_add(compared / BYTES_PER_VISIT)
+            .max(1)
+    }
 }
 
 /// The text of one delimiter: a string, or a number as its text.
