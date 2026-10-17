@@ -707,6 +707,6 @@ Tasks: T-1354
 Rule: an error in DATEDIF's unit argument wins over an invalid start date: `DATEDIF(-1,38627,CHOOSE(3,x))` (the unit is
 `#VALUE!`) is `#VALUE!`, not the `#NUM!` of a negative date.
 Evidence: gen-m7/f68fafa0ca2eba26 Calc!A1 (`Data!D10^DATEDIF((Data!E$5+(-1)),38627,CHOOSE(3,Data!B12))`, E5 blank) (excel-graph, 2026-10-11, T-1275).
-Ours: `#NUM!`.
-Status: VERIFIED (web); an invalid unit text with a negative start date is UNVERIFIED
+Ours: the unit's error wins over a start date outside the calendar (T-1355); a reversed pair still gives `#NUM!` first.
+Status: VERIFIED (web); an invalid unit text with a negative start date, and an error unit with a reversed pair, are UNVERIFIED
 Tasks: T-1355

@@ -804,9 +804,14 @@ impl Model {
         if end_serial < start_serial {
             return Err(Error::NUM);
         }
+        // An error value in the unit wins over a start date outside the calendar: `DATEDIF(-1,
+        // 38627,CHOOSE(3,x))` is #VALUE!, not #NUM! (gen-m7/f68fafa0ca2eba26 Calc!A1; dates.md
+        // "DATEDIF argument errors before date checks", T-1355). Its order against a reversed
+        // pair, and an invalid unit text against such a date, stay as before (UNVERIFIED).
+        let unit = unit?;
         let start = date_system.date_of_serial(start_serial).ok_or(Error::NUM)?;
         let end = date_system.date_of_serial(end_serial).ok_or(Error::NUM)?;
-        match unit? {
+        match unit {
             "Y" => {
                 let mut years = end.year() - start.year();
                 if (end.month(), end.day()) < (start.month(), start.day()) {
