@@ -3,7 +3,7 @@ id: T-1802
 title: "Probe, then enter QUOTIENT, FACTDOUBLE and SERIESSUM's x, n, m (they refuse a range; probes/scalar-lift-open-a Y19-Y30)"
 milestone: M9
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
