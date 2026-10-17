@@ -300,9 +300,9 @@ fn many_small_spills_skip_the_rectangles_far_from_them() {
 }
 
 // T-1646: a small spill's commit check skips the whole-column rectangles in other columns. A1 to
-// D1 each put 12,500 whole-column rectangles on record (columns ALM to SMH, right of the used
-// area), all in one row band; then 1,000 anchors in column F each spill two cells. Testing every
-// anchor against every rectangle is 5 x 10^7 tests.
+// D1 each put 12,500 whole-column rectangles on record (rows 2 down, columns DKK to VXD, right of
+// the used area), all in one row band; then 1,000 anchors in row 1 (columns F to BYC) each spill
+// two cells. Testing every anchor against every rectangle is 5 x 10^7 tests.
 #[test]
 fn many_small_spills_skip_the_whole_column_rectangles_in_other_columns() {
     use std::time::{Duration, Instant};
@@ -310,25 +310,28 @@ fn many_small_spills_skip_the_whole_column_rectangles_in_other_columns() {
     for anchor in ["A1", "B1", "C1", "D1"] {
         model._set(
             anchor,
-            "=MAP(SEQUENCE(12500,1,1000),LAMBDA(c,SUM(OFFSET($A:$A,0,c))))",
+            "=SUM(MAP(SEQUENCE(12500,1,3000),LAMBDA(c,SUM(OFFSET($A:$A,0,c)))))",
         );
     }
     for anchor in 0..1000 {
-        model._set(&format!("F{}", 2 * anchor + 1), "=SEQUENCE(2)");
+        model
+            .set_user_input(0, 1, 6 + 2 * anchor, "=SEQUENCE(1,2)".to_string())
+            .unwrap();
     }
     let start = Instant::now();
     model.evaluate();
     let elapsed = start.elapsed();
     assert!(elapsed < Duration::from_secs(20), "{elapsed:?}");
-    assert_eq!(model._get_text("D12500"), "0");
-    assert_eq!(model._get_text("F2000"), "2");
+    assert_eq!(model._get_text("D1"), "0");
+    assert_eq!(model._get_text("BYC1"), "2");
     assert_eq!(model.evaluation.seen_ranges.len(), 50_000);
     assert_eq!(restarts(&model), 0);
 }
 
-// T-1545: the lookup by row band finds the same rectangles, in the same order, as testing every
-// rectangle on record: 100,000 one-row rectangles and a few tall ones, met by 1,000 small spills
-// among them and one spill over all of them (which tests every rectangle instead).
+// T-1545, T-1646: the lookup by row and column band finds the same rectangles, in the same order,
+// as testing every rectangle on record: 100,000 one-row rectangles, a few tall ones and 2,003
+// whole-column ones side by side, met by 1,000 small spills among the rows, 1,000 among the
+// columns, a few wide ones, and one spill over all the rows (which tests every rectangle instead).
 #[test]
 fn a_spill_meets_the_same_rectangles_as_a_full_scan() {
     use crate::area_budget::AreaBudget;
@@ -367,6 +370,29 @@ fn a_spill_meets_the_same_rectangles_as_a_full_scan() {
         };
         ranges.push(range, &mut budget);
     }
+    // T-1646: whole-column rectangles side by side, one to three columns wide, and a few wider.
+    for column in 20_i32..2_020 {
+        let range = SeenRange {
+            root: cell(1, column),
+            sheet: 0,
+            row1: 2,
+            column1: column,
+            row2: 1_048_576,
+            column2: column + column % 3,
+        };
+        ranges.push(range, &mut budget);
+    }
+    for (column1, column2) in [(100, 400), (1_000, 1_000), (3_000, 16_384)] {
+        let range = SeenRange {
+            root: cell(2, column1),
+            sheet: 0,
+            row1: 1,
+            column1,
+            row2: 1_048_576,
+            column2,
+        };
+        ranges.push(range, &mut budget);
+    }
     let full_scan = |anchor, area| {
         let mut met: Vec<((i32, i32), CellReferenceIndex)> = ranges
             .iter()
@@ -377,6 +403,8 @@ fn a_spill_meets_the_same_rectangles_as_a_full_scan() {
     };
     let mut spills: Vec<(CellReferenceIndex, (i32, i32))> =
         (0..1_000).map(|n| (cell(2 * n + 1, 2), (2, 2))).collect();
+    spills.extend((0..1_000).map(|n| (cell(1, 3 * n + 1), (2, 2))));
+    spills.extend([(cell(1, 1_990), (40, 1)), (cell(5, 2_990), (20, 3))]);
     spills.push((cell(990, 1), (3, 50)));
     spills.push((cell(1, 1), (3, 200_000)));
     for (anchor, area) in spills {
