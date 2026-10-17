@@ -37,7 +37,7 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Sonnet run, 2026-10-17. No code written; escalated at the design step (work-loop 5b).
 - Read SPEC-0011 and `functions/lift/` (`kinds.rs` table, `call.rs` `lift_call`, `driver.rs` `lift_values`). The table already has entries for the M6/stat/fin/eng/date families; none of the M7 functions (SEQUENCE, TAKE, DROP, EXPAND, MAKEARRAY, WRAPROWS, WRAPCOLS, TOCOL, UNIQUE, SORTBY, SORT) has an `arg_kinds` entry yet.
 - Why it is beyond a sonnet run: TAKE and DROP (probe rows 4-6, column K) lift to a *whole sub-array per element*, which `ArrayNode`/`lift_values` cannot hold. The task says to design this on `lift_values` + `cast::calc_result_to_array_node`; that is a design question. SORT's `sort_index`/`sort_order` as lists (rows 10-11, gen-m7/a0cbc75358b429b6) and the `#SPILL!` vs `#N/IMPL!` cells (gen-m7/6db767d720c5b55a, gen-m9/1782efcecd5d4b1b, 4df1b22d3ed63f58) need per-function error-order care.
