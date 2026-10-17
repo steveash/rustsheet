@@ -3,7 +3,7 @@ id: T-1350
 title: "BYROW and BYCOL of a single value treat it as a 1x1 array (#VALUE! today)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
