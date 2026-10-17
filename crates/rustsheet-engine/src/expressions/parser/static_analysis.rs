@@ -5,7 +5,8 @@ use crate::functions::Function;
 use broadcast::broadcast_shapes;
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
-    legacy_call_reads_a_value, legacy_context_intersects, remove_array_at, remove_in_array_context,
+    leaves_call_whole, legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value,
+    legacy_context_intersects, remove_array_at, remove_in_array_context,
 };
 mod aggregate;
 mod broadcast;
@@ -93,6 +94,15 @@ fn is_range_reference(s: &str) -> bool {
 ///
 /// Assumes formula return a scalar
 pub fn add_implicit_intersection(node: &mut Node, add: bool) {
+    add_legacy_intersection(node, add, add);
+}
+
+/// [`add_implicit_intersection`] with `arrays`: whether `node` is in a value position of the cell
+/// (every enclosing argument a scalar one, [`legacy_array_context`]), where a legacy formula also
+/// puts the `@` on an array-valued call or array constant: `=@IF(1,{2;3})`, `=N(@{2;3})`, while
+/// `=SUM(N({1,2}))` is 3 with no `@` (docs/excel-semantics/references.md "Legacy formulas put `@`
+/// on array-valued calls and array constants").
+pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) {
     match node {
         Node::BooleanKind(_)
         | Node::NumberKind(_)
@@ -111,14 +121,14 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::ImplicitIntersection { child, .. } => {
             // We need to check whether the II can be automatic or not
             let mut new_node = child.as_ref().clone();
-            add_implicit_intersection(&mut new_node, add);
+            add_legacy_intersection(&mut new_node, add, arrays);
             if matches!(&new_node, Node::ImplicitIntersection { .. }) {
                 *node = new_node;
             }
         }
         Node::SpillRangeOperator { child } => {
             // A spill anchor is never intersected: `INDEX(D1:D2,1)#` (T-1109, probes K1).
-            add_implicit_intersection(child, false);
+            add_legacy_intersection(child, false, false);
         }
         Node::RangeKind {
             row1,
@@ -157,14 +167,16 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
 
         // operations
         Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
-            add_implicit_intersection(child, add);
+            add_legacy_intersection(child, add, arrays);
         }
         Node::OpConcatenateKind { .. }
         | Node::OpSumKind { .. }
         | Node::OpProductKind { .. }
         | Node::OpPowerKind { .. }
         | Node::CompareKind { .. } => {
-            for_each_chain_operand_mut(node, |operand| add_implicit_intersection(operand, add));
+            for_each_chain_operand_mut(node, |operand| {
+                add_legacy_intersection(operand, add, arrays);
+            });
         }
 
         Node::DefinedNameKind(v) => {
@@ -188,20 +200,28 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
-                add_array_at(kind, signature.get(index), index, arg);
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
-                add_argument_intersection(kind, signature.get(index), index, arg);
+                let arrays = legacy_array_context(kind, signature.get(index), arg, arrays);
+                add_array_at(kind, signature.get(index), index, arg, arrays);
+                add_argument_intersection(kind, signature.get(index), index, arg, arrays);
             }
             // There are some function that will never add an automatic II:
             let new_function = matches!(kind, Function::Let | Function::Lambda);
             if !new_function
-                && add
                 && !legacy_call_reads_a_value(kind, args)
-                && matches!(
-                    run_static_analysis_on_node(node),
-                    StaticResult::Range(_, _) | StaticResult::Unknown
-                )
+                && match static_analysis_on_function(kind, args) {
+                    StaticResult::Range(_, _) | StaticResult::Unknown => add,
+                    // A one-cell array gives the same value with or without the `@`, which Excel
+                    // does not show on `=SUBTOTAL(9,CHOOSE(1,{5}))`
+                    // (probes/legacy-one-cell-shape-intersection J3).
+                    StaticResult::Array(rows, columns) => {
+                        arrays
+                            && (rows > 1 || columns > 1)
+                            && legacy_array_call_at(kind, &signature, args)
+                    }
+                    StaticResult::Scalar => false,
+                }
             {
                 *node = Node::automatic_at(node.clone());
             }
@@ -228,6 +248,12 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
 /// `add` mirrors the flag in `add_implicit_intersection` and must start `true`
 /// (a formula is evaluated in a scalar context).
 pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
+    remove_redundant_legacy_intersection(node, add, add);
+}
+
+/// [`remove_redundant_implicit_intersection`] with the `arrays` flag of
+/// [`add_legacy_intersection`].
+pub(super) fn remove_redundant_legacy_intersection(node: &mut Node, add: bool, arrays: bool) {
     match node {
         // Leaves and nodes that never contain a nested implicit intersection.
         Node::BooleanKind(_)
@@ -251,35 +277,36 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::LambdaDefKind { .. }
         | Node::LambdaCallKind { .. } => {}
         Node::ImplicitIntersection { child, .. } => {
-            if add {
+            if add || arrays {
                 // Would `add_implicit_intersection` re-insert this operator on
-                // import? Probe the child in a scalar context to find out.
+                // import? Probe the child in the same context to find out.
                 let mut probe = child.as_ref().clone();
-                add_implicit_intersection(&mut probe, true);
+                add_legacy_intersection(&mut probe, add, arrays);
                 if matches!(probe, Node::ImplicitIntersection { .. }) {
                     // Redundant: drop the operator and keep cleaning the child.
                     // The child is still in the same (scalar) context, so recurse
                     // with `add` to also remove any nested redundant operators.
                     let mut inner = child.as_ref().clone();
-                    remove_redundant_implicit_intersection(&mut inner, add);
+                    remove_redundant_legacy_intersection(&mut inner, add, arrays);
                     *node = inner;
                     return;
                 }
             }
             // Meaningful operator: keep it, but still clean any nested ones.
-            remove_redundant_implicit_intersection(child, false);
+            remove_redundant_legacy_intersection(child, false, false);
         }
-        Node::SpillRangeOperator { child } | Node::Group { child, .. } => {
-            remove_redundant_implicit_intersection(child, add);
+        Node::SpillRangeOperator { child } => {
+            remove_redundant_legacy_intersection(child, add, false);
         }
-        Node::UnaryKind { right, .. } => remove_redundant_implicit_intersection(right, add),
+        Node::Group { child, .. } => remove_redundant_legacy_intersection(child, add, arrays),
+        Node::UnaryKind { right, .. } => remove_redundant_legacy_intersection(right, add, arrays),
         Node::OpConcatenateKind { .. }
         | Node::OpSumKind { .. }
         | Node::OpProductKind { .. }
         | Node::OpPowerKind { .. }
         | Node::CompareKind { .. } => {
             for_each_chain_operand_mut(node, |operand| {
-                remove_redundant_implicit_intersection(operand, add);
+                remove_redundant_legacy_intersection(operand, add, arrays);
             });
         }
         Node::FunctionKind { kind, args } if is_array_context(kind) => {
@@ -288,11 +315,13 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
-                remove_array_at(kind, signature.get(index), index, arg);
+                let arrays = legacy_array_context(kind, signature.get(index), arg, arrays);
+                remove_array_at(kind, signature.get(index), index, arg, arrays);
                 // Scalar arguments are an intersecting context; vector arguments
                 // (ranges/arrays) are not (`legacy_context_intersects`).
-                let child_add = legacy_context_intersects(kind, signature.get(index), index, arg);
-                remove_redundant_implicit_intersection(arg, child_add);
+                let child_add = legacy_context_intersects(kind, signature.get(index), index, arg)
+                    && !leaves_call_whole(kind, arg);
+                remove_redundant_legacy_intersection(arg, child_add, arrays);
             }
         }
     };

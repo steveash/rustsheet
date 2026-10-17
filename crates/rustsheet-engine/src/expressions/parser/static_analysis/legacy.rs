@@ -5,7 +5,7 @@
 
 use super::lifted::lifts_arrays_at;
 use super::{
-    add_implicit_intersection, for_each_chain_operand_mut, remove_redundant_implicit_intersection,
+    add_legacy_intersection, for_each_chain_operand_mut, remove_redundant_legacy_intersection,
     run_static_analysis_on_node, Node, Signature, StaticResult,
 };
 use crate::functions::Function;
@@ -40,7 +40,7 @@ pub(super) fn remove_in_array_context(args: &mut [Node]) {
             if place == Place::IndexNumber {
                 remove_index_array_at(&Function::Index, 1, node);
             }
-            remove_redundant_implicit_intersection(node, true);
+            remove_redundant_legacy_intersection(node, true, false);
         });
     }
 }
@@ -60,7 +60,7 @@ enum Place {
 /// whole of it unless it is a scalar.
 fn add_condition_intersection(node: &mut Node) {
     if !matches!(run_static_analysis_on_node(node), StaticResult::Scalar) {
-        add_implicit_intersection(node, true);
+        add_legacy_intersection(node, true, false);
     }
 }
 
@@ -105,37 +105,33 @@ fn is_one_element_array(node: &Node) -> bool {
     matches!(node, Node::ArrayKind(rows) if rows.len() == 1 && rows[0].len() == 1)
 }
 
-/// A legacy formula shows an `@` on a one-element array constant in a scalar argument:
-/// `=ABS({5})` is shown as `=ABS(@{5})` (probes/legacy-one-cell-shape-intersection M3, excel-graph,
-/// T-1633). Larger array constants are unprobed and left alone. TYPE reads its argument whole and
-/// shows none: `=TYPE({5})` stays `=TYPE({5})` (probes/legacy-choose-arm-aggregate-and-array-constant-at
+/// Whether a legacy formula shows an `@` on the array constant `node` in a scalar argument, one
+/// in a value position of the cell (`arrays`, [`legacy_array_context`]) or a one-element one
+/// anywhere: `=ABS({5})` is shown as `=ABS(@{5})` (probes/legacy-one-cell-shape-intersection M3,
+/// excel-graph, T-1633), `=N({2;3})` as `=N(@{2;3})` and `=ABS({-2;3})` as `=ABS(@{-2;3})`, 2
+/// (probes/legacy-array-result E, F, T-1713; probes/t-n-range-top-left M, O, T-0985), while
+/// `=SUM(N({1,2}))` is 3 with none (probes/n-array-lift A3). An array constant in an operator
+/// (`N({2;3}+0)`) is unprobed and left alone. TYPE reads its argument whole and shows none:
+/// `=TYPE({5})` stays `=TYPE({5})` (probes/legacy-choose-arm-aggregate-and-array-constant-at
 /// L3, excel-graph, T-1638).
-fn add_scalar_array_at(signature: Option<&Signature>, arg: &mut Node) {
-    if matches!(signature, Some(Signature::Scalar)) && is_one_element_array(arg) {
-        *arg = Node::automatic_at(arg.clone());
-    }
+fn shows_scalar_array_at(signature: Option<&Signature>, arrays: bool, node: &Node) -> bool {
+    matches!(signature, Some(Signature::Scalar))
+        && (is_one_element_array(node) || arrays && matches!(node, Node::ArrayKind(_)))
 }
 
-/// Drops the `@` [`add_scalar_array_at`] adds again on import.
-fn remove_scalar_array_at(signature: Option<&Signature>, arg: &mut Node) {
-    if matches!(signature, Some(Signature::Scalar)) {
-        if let Node::ImplicitIntersection { child, .. } = arg {
-            if is_one_element_array(child) {
-                *arg = child.as_ref().clone();
-            }
-        }
-    }
-}
-
-/// The `@`s a legacy formula puts on the array constants of argument `index` of `kind`.
+/// The `@`s a legacy formula puts on the array constants of argument `index` of `kind`, `arrays`
+/// when it is in a value position of the cell ([`legacy_array_context`]).
 pub(super) fn add_array_at(
     kind: &Function,
     signature: Option<&Signature>,
     index: usize,
     arg: &mut Node,
+    arrays: bool,
 ) {
     add_index_array_at(kind, index, arg);
-    add_scalar_array_at(signature, arg);
+    if shows_scalar_array_at(signature, arrays, arg) {
+        *arg = Node::automatic_at(arg.clone());
+    }
 }
 
 /// Drops the `@`s [`add_array_at`] adds again on import.
@@ -144,9 +140,88 @@ pub(super) fn remove_array_at(
     signature: Option<&Signature>,
     index: usize,
     arg: &mut Node,
+    arrays: bool,
 ) {
     remove_index_array_at(kind, index, arg);
-    remove_scalar_array_at(signature, arg);
+    if let Node::ImplicitIntersection { child, .. } = arg {
+        if shows_scalar_array_at(signature, arrays, child) {
+            *arg = child.as_ref().clone();
+        }
+    }
+}
+
+/// Whether argument `arg` of `kind` with `signature` is still in a value position of the cell
+/// when `kind`'s call is (`arrays`), so that a legacy formula puts its `@` on an array-valued call
+/// or array constant there rather than on an enclosing call: a scalar argument of a function that
+/// computes from it (`=ABS(@IF(1,{-2;3}))`, `=LEN(@IF(1,{"ab";"c"}))`, `=N(@TRANSPOSE({2,3}))`,
+/// `=N(@IFERROR({2;3},0))`; probes/legacy-array-result, legacy-n-t-reference-args D, T-1713).
+/// Not the arguments of IF, IFERROR, IFNA, CHOOSE, IFS or SWITCH, whose result is one of them:
+/// `=@IF(1,{2;3})` and `=@IF(1,N(IF(1,{2;3})))` take the `@` on the call (probes/legacy-array-result
+/// D, legacy-n-t-reference-args P); nor N or T over IF or SWITCH ([`leaves_call_whole`]); nor
+/// anything under a vector argument, `=SUM(N({1,2}))` (probes/n-array-lift A3) or LET, LAMBDA.
+pub(super) fn legacy_array_context(
+    kind: &Function,
+    signature: Option<&Signature>,
+    arg: &Node,
+    arrays: bool,
+) -> bool {
+    arrays
+        && matches!(signature, Some(Signature::Scalar))
+        && !returns_an_argument(kind)
+        && !matches!(kind, Function::Let | Function::Lambda)
+        && !leaves_call_whole(kind, arg)
+}
+
+/// Whether `kind`'s result is one of its arguments as it is: IF, IFERROR, IFNA, CHOOSE, IFS and
+/// SWITCH.
+fn returns_an_argument(kind: &Function) -> bool {
+    matches!(
+        kind,
+        Function::If
+            | Function::Iferror
+            | Function::Ifna
+            | Function::Choose
+            | Function::Ifs
+            | Function::Switch
+    )
+}
+
+/// Whether a legacy formula puts the `@` on the array-valued call `kind(args)` in a value
+/// position of the cell, its arguments already rewritten: when the array is one of its arguments
+/// ([`returns_an_argument`], `=@IF(1,{2;3})`) or comes from a non-scalar one
+/// (`=N(@TRANSPOSE({2,3}))`). A scalar argument that is still an array is one the rewrite left
+/// whole, so the call is not intersected either: `=ABS(N(IF(1,{2;3})))` shows no `@`
+/// (probes/legacy-n-t-reference-args E20), and `=ABS({2;3}+0)`, unprobed, is left alone.
+pub(super) fn legacy_array_call_at(
+    kind: &Function,
+    signature: &[Signature],
+    args: &[Node],
+) -> bool {
+    returns_an_argument(kind)
+        || args.iter().enumerate().any(|(index, arg)| {
+            !matches!(signature.get(index), Some(Signature::Scalar))
+                && !matches!(run_static_analysis_on_node(arg), StaticResult::Scalar)
+        })
+}
+
+/// Whether a legacy formula puts no `@` on the call `arg` of `kind`, a value it would otherwise
+/// intersect: N and T over IF or SWITCH (`=N(IF(1,{2;3}))`, `=T(IF(1,{"a";"b"}))`,
+/// `=N(SWITCH(1,1,{2;3}))`, the last spilling 2, 3; probes/legacy-array-result A, G, I,
+/// legacy-n-t-reference-args M, T-1713), where IFERROR gets one (`=N(@IFERROR({2;3},0))`, D).
+/// An explicit `@` on the call is looked through, so the export keeps it.
+pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
+    let call = match arg {
+        Node::ImplicitIntersection { child, .. } => child.as_ref(),
+        other => other,
+    };
+    matches!(kind, Function::N | Function::T)
+        && matches!(
+            call,
+            Node::FunctionKind {
+                kind: Function::If | Function::Switch,
+                ..
+            }
+        )
 }
 
 /// Calls `f` on `node`, or on each operand of the operators, parentheses and signs it is made
@@ -167,16 +242,19 @@ fn for_each_value_operand(node: &mut Node, f: &mut impl FnMut(&mut Node)) {
     }
 }
 
-/// Adds the `@`s a legacy formula puts in `arg`, the argument of `kind` with `signature`, none
-/// where N or T reads a reference whole ([`reads_reference_whole`]).
+/// Adds the `@`s a legacy formula puts in `arg`, the argument of `kind` with `signature`, `arrays`
+/// when it is in a value position of the cell ([`legacy_array_context`]); none where N or T reads
+/// a reference whole ([`reads_reference_whole`]) and none on the call [`leaves_call_whole`].
 pub(super) fn add_argument_intersection(
     kind: &Function,
     signature: Option<&Signature>,
     index: usize,
     arg: &mut Node,
+    arrays: bool,
 ) {
     if !reads_reference_whole(kind, arg) {
-        add_implicit_intersection(arg, legacy_intersects(kind, signature, index, arg));
+        let add = legacy_intersects(kind, signature, index, arg) && !leaves_call_whole(kind, arg);
+        add_legacy_intersection(arg, add, arrays);
     }
 }
 
@@ -402,13 +480,14 @@ fn is_value_operation(node: &Node) -> bool {
 }
 
 /// Whether a legacy formula leaves the `@` off the call `kind(args)` although it may return a
-/// range: INDEX of a CHOOSE whose arms are all arithmetic reads a value, so `=INDEX(CHOOSE(1,
+/// range or an array: N or T over a reference it reads whole or over a call it leaves whole
+/// ([`leaves_call_whole`]: `=N(IF(1,{2;3}))` shows no `@` at all), or INDEX of a CHOOSE whose arms are all arithmetic reads a value, so `=INDEX(CHOOSE(1,
 /// B1:B6*1),3)` shows as `=INDEX(CHOOSE(1,@B1:B6*1),3)` (probes/legacy-choose-arm-aggregate-and-
 /// array-constant-at H3, excel-graph, T-1643). Only the `@` placement changes: a dynamic formula
 /// of that shape still spills.
 pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool {
     args.first()
-        .is_some_and(|arg| reads_reference_whole(kind, arg))
+        .is_some_and(|arg| reads_reference_whole(kind, arg) || leaves_call_whole(kind, arg))
         || matches!(kind, Function::Index)
             && matches!(
                 args.first().map(Node::ungrouped),

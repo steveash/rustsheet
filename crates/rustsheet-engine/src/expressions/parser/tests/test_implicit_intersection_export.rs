@@ -722,3 +722,70 @@ fn math_atp_static_shapes_follow_the_table() {
     ));
     assert!(matches!(shape("GCD({4;6},2)"), StaticResult::Scalar));
 }
+
+// A legacy formula puts the `@` on an array-valued call or array constant in a value position of
+// the cell, and the export drops it as automatic; under a vector argument, in IF's arms and in N
+// or T over IF or SWITCH it adds none, so an explicit `@` there is kept (probes/legacy-array-result,
+// legacy-n-t-reference-args, n-array-lift A3; T-1717).
+#[test]
+fn legacy_array_values_intersect_in_value_positions() {
+    check(&[
+        ("IF(1,{2;3})", "@IF(1,{2;3})", "IF(1,{2;3})"),
+        (
+            "ABS(IF(1,{-2;3}))",
+            "ABS(@IF(1,{-2;3}))",
+            "ABS(IF(1,{-2;3}))",
+        ),
+        ("-IF(1,{2;3})", "-@IF(1,{2;3})", "-IF(1,{2;3})"),
+        ("N({2;3})", "N(@{2;3})", "N({2;3})"),
+        ("ABS({-2;3})", "ABS(@{-2;3})", "ABS({-2;3})"),
+        (
+            "N(IFERROR({2;3},0))",
+            "N(@IFERROR({2;3},0))",
+            "N(IFERROR({2;3},0))",
+        ),
+        (
+            "IF(1,N(IF(1,{2;3})))",
+            "@IF(1,N(IF(1,{2;3})))",
+            "IF(1,N(IF(1,{2;3})))",
+        ),
+        ("N(IF(1,{2;3}))", "N(IF(1,{2;3}))", "N(IF(1,{2;3}))"),
+        (
+            "ABS(N(IF(1,{2;3})))",
+            "ABS(N(IF(1,{2;3})))",
+            "ABS(N(IF(1,{2;3})))",
+        ),
+        (
+            "N(_xlfn.SWITCH(1,1,{2;3}))",
+            "N(SWITCH(1,1,{2;3}))",
+            "N(_xlfn.SWITCH(1,1,{2;3}))",
+        ),
+        ("SUM(N({1,2}))", "SUM(N({1,2}))", "SUM(N({1,2}))"),
+        (
+            "SUM(ABS(IF(1,{-2;3})))",
+            "SUM(ABS(IF(1,{-2;3})))",
+            "SUM(ABS(IF(1,{-2;3})))",
+        ),
+        // Explicit `@`s where the import adds none survive the export.
+        (
+            "SUM(ABS(_xlfn.SINGLE(IF(1,{-2;3}))))",
+            "SUM(ABS(@IF(1,{-2;3})))",
+            "SUM(ABS(_xlfn.SINGLE(IF(1,{-2;3}))))",
+        ),
+        (
+            "SUM(N(_xlfn.SINGLE({1,2})))",
+            "SUM(N(@{1,2}))",
+            "SUM(N(_xlfn.SINGLE({1,2})))",
+        ),
+        (
+            "N(_xlfn.SINGLE(IF(1,{2;3})))",
+            "N(@IF(1,{2;3}))",
+            "N(_xlfn.SINGLE(IF(1,{2;3})))",
+        ),
+        (
+            "IF(1,_xlfn.SINGLE({2;3}))",
+            "IF(1,@{2;3})",
+            "IF(1,_xlfn.SINGLE({2;3}))",
+        ),
+    ]);
+}
