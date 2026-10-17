@@ -101,6 +101,11 @@ mod tests {
             ("ﬁq", "FIq"),
             ("ǆd", "Ǆd"),
             ("straße", "STRASSE"),
+            ("ϵg", "εg"),
+            ("ﬀj", "FFj"),
+            ("ﬆn", "STn"),
+            ("ẞr", "ßr"),
+            ("ẞs", "SSs"),
         ] {
             assert_eq!(spelling_key(a), spelling_key(b), "{a} {b}");
         }
@@ -109,6 +114,14 @@ mod tests {
             ("ſy", "Sy"),
             ("\u{b5}z", "μz"),
             ("\u{b5}v", "Μv"),
+            ("ϐa", "βa"),
+            ("ϑb", "θb"),
+            ("ϕc", "φc"),
+            ("ϖd", "πd"),
+            ("ϰe", "κe"),
+            ("ϱf", "ρf"),
+            ("ﬅm", "STm"),
+            ("ŉo", "ʼNo"),
         ] {
             assert_ne!(spelling_key(a), spelling_key(b), "{a} {b}");
         }
