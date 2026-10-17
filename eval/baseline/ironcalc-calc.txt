@@ -2,6 +2,7 @@
 # never edit by hand. `C<TAB>case<TAB>checked-cells` lists every case; `F<TAB>case<TAB>item` lists
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
+# `TC` and `TF` lines do the same for displayed text (decision 0070).
 C	ironcalc-calc/DATABASE/DAVERAGE.xlsx	4
 C	ironcalc-calc/DATABASE/DCOUNT_DCOUNTA_DGET_DPRODUCT.xlsx	212
 C	ironcalc-calc/DATABASE/DMIN_DMAX_DAVERAGE_DSUM.xlsx	175

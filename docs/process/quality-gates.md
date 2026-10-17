@@ -35,6 +35,9 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
   - `make eval-baseline` rewrites it and refuses regressions unless `--allow-regressions` is
     passed. That flag is only legitimate with a decision record, for example when an oracle
     re-run shows the old expectation was wrong.
+  - Displayed text (a sidecar's `text` map, decision 0068) is gated the same way on its own lines,
+    `TC` (a case's scored text cells) and `TF` (a known text failure), in every gated suite
+    (decision 0070).
 - **Accepted deviations** (`eval/suites/<suite>/deviations`, decision 0036): cells that differ
   from Excel by design (a `Status: DEVIATION` entry, decision 0014), each with RustSheet's pinned
   by-design value.
