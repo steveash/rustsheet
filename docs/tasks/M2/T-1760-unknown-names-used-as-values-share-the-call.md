@@ -3,7 +3,7 @@ id: T-1760
 title: "Unknown names used as values share the call-name spelling table"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Excel: `=Qux+1` then `=qux(1)` prints `=Qux(1)`; `=wib(1)` then `=Wib+1` prints 
 
 ## Out of scope
 - Other cells of probes/unknown-function-name-reach.
+
+## Outcome
+Unknown names used as values now share the workbook's call-name spelling table (`CallNameSpellings::apply` treats `NameSite::Use` like `Callee`). probes/unknown-function-name-reach B9 and B11 pass.

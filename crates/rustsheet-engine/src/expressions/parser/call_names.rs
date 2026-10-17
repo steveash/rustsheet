@@ -5,7 +5,7 @@
 //! declaration that binds it: `LET(x,5,X*2)` reads `LET(x,5,x*2)`, and `LET(x,1,LET(X,5,x))`
 //! reads `LET(x,1,LET(X,5,X))` (probes/let-name-use-spelling, T-1720).
 //!
-//! Excel keeps one spelling per such name for the whole workbook, the first it meets in load
+//! Excel keeps one spelling per such name, called or used as a value (T-1760), for the whole workbook, the first it meets in load
 //! order and then in edit order, case-insensitively: after `=foo(1)`, a typed `=Foo(1)` or
 //! `=FOO(1)` prints `=foo(1)` (probes/unknown-function-name-spelling,
 //! docs/excel-semantics/references.md "Unknown function call names", T-1719).
@@ -30,12 +30,12 @@ impl CallNameSpellings {
         walk_names(node, &mut Vec::new(), &mut |site, name, declared| {
             let spelling = match (declared, site) {
                 (Some(declared), _) => declared.to_string(),
-                (None, NameSite::Callee) => self
+                (None, NameSite::Callee | NameSite::Use) => self
                     .first
                     .entry(name.to_lowercase())
                     .or_insert_with(|| name.clone())
                     .clone(),
-                (None, _) => return,
+                (None, NameSite::Declaration) => return,
             };
             if *name != spelling {
                 *name = spelling;
