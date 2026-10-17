@@ -293,8 +293,18 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
     -2/(3*sqrt(pi)) as erf requires, but the fine part scatters by about +-6E-17 around that line. That
     scatter is not the coarse rounding error, and neither a full-scale nor a half-scale double Taylor
     series explains it.
-  Adding a Taylor tail inside or outside either term, or an exp(-z) factor, still misses about half of the
-  dense points.
+  Sweeping z finely (`kmyst-erf-zsweep`, `kmyst-erf-zsweep2`, `kmyst-erf-bridge`) explains that scatter. The
+  fine part is piecewise constant, `lo = B0 + K*(W - 1)` with `W = fl(1 - BETA*z)`, a value just below 1 on the
+  2^-53 grid. Bootstrapping the integer step count n = (1 - W)/2^-53 from n ~ 10 up to n ~ 2E7 gives:
+  - K = 1.13669733 (+-2.5E-9);
+  - BETA = 0.454657262 (+-5E-9), so K*BETA = 0.5168077 = 2/(3*sqrt(pi)) + a1;
+  - a1 refined to 0.1406813111.
+  With `erf = fl(fl(x*hi) + x*lo)`, evaluating the final sum in 80-bit x87 and rounding the coarse product
+  through 80 bits before storing it, the model matches 66,756 of 67,048 probe points (99.6%) with z <= 6E-9.
+  Every remaining miss is within a few thousandths of an ulp of a rounding tie, which points to
+  extended-precision constants.
+  Model source: docs/research/t1778/erf_small_model.c. Not yet fitted: the z^2 and higher terms (z > 6E-9,
+  x > 7.7E-5).
 - Generic shape a: at z = m*2^-60, `GAMMA.DIST(z,a,1,TRUE)` for a = 2, 3, 10 is off by up to 640E-16
   relative, and that error follows the rounding of fl(a*fl(ln z)) to within about 2E-16 (the docs/research
   script prints both). For a = 10 a constant -25E-16 remains, the error of Excel's own
@@ -326,7 +336,7 @@ Candidates that do not reproduce Excel (exact matches):
 Evidence: probes-numeric cases `kmyst-norm-erfc-a`, `kmyst-norm-erfc-b`, `kmyst-erf-gamma`,
 `kmyst-erf-tiny`, `kmyst-erf-dense`, `kmyst-erfc-dense`, `kmyst-gamma-tiny` and `kmyst-kernel-map`
 (excel-graph, 2026-10-17); the tiny-x erf split uses `kmyst-erf-mantissa`, `kmyst-erf-scale`,
-`kmyst-erf-consecutive`, `kmyst-erf-stride06` to `kmyst-erf-stride41`, `kmyst-erf-runs` and `kmyst-erf-zstride`, and the
+`kmyst-erf-consecutive`, `kmyst-erf-stride06` to `kmyst-erf-stride41`, `kmyst-erf-runs`, `kmyst-erf-zstride`, `kmyst-erf-zsweep`, `kmyst-erf-zsweep2` and `kmyst-erf-bridge`, and the
 internal-exp check uses `kmyst-gamma-exp`. `uv run python ../docs/research/t1778_incomplete_gamma_kernel_map.py` in tools/
 reprints the identity counts, the tiny-x constant, the GAMMA.DIST error tracking and the ERFC tail figures.
 Status: VERIFIED (identities, constant, error structure); the kernel's exact operation sequence is OPEN.
