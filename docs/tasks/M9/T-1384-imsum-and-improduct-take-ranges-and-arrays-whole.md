@@ -60,4 +60,4 @@ empty text (before: 0); a boolean is `#VALUE!` in every IM* function (before: `#
 (before: read as 1).
 Eval: probes 29 baseline lines fixed (eng-argument-modes 27, eng-imdiv and eng-imsub S!A17), the new
 case passes all 45 cells; gen-m9/b5352ebdb9c5f1a1 A3 passes; 0 regressions and no new failing cell in
-any suite. Follow-up: T-1825 (a 3-D reference, a real next to a `j` number, no numbers at all).
+any suite. Follow-up: T-1828 (a 3-D reference, a real next to a `j` number, no numbers at all).

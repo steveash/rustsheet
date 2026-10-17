@@ -135,7 +135,7 @@ Typed coercion follows the ToolPak rule:
   argument refuses one, typed, in a cell or as an array element, and so does COMPLEX's `real_num`
   (probes/eng-imsum-improduct-whole C1-C15: IMREAL, IMSUB's both arguments, IMDIV's second, IMPOWER's both,
   IMCOS, IMCONJUGATE, IMSQRT and IMABS of a TRUE cell, `INDEX(IMREAL({TRUE;"3"}),1)`, `COMPLEX(TRUE,1)`).
-  Unprobed, inferred from the shared parse path (T-1825): IMDIV's first argument, IMAGINARY, IMARGUMENT,
+  Unprobed, inferred from the shared parse path (T-1828): IMDIV's first argument, IMAGINARY, IMARGUMENT,
   IMCOSH, IMCOT, IMCSC, IMCSCH, IMEXP, IMLN, IMLOG10, IMLOG2, IMSEC, IMSECH, IMSIN, IMSINH, IMTAN, and
   COMPLEX's `i_num`. The 255-argument limit of IMSUM and IMPRODUCT is Excel's documented one, not probed.
 - A number is read as its digits: `IMABS(3)` is 3, and `HEX2DEC(255)` is 597 (0x255).
@@ -177,10 +177,10 @@ Evidence: probes/eng-argument-modes A60-A83, B/C/E42, B/C/E50 (excel-graph, 2026
 probes/eng-imsum-improduct-whole B1-B28 (excel-graph, 2026-10-17, T-1384). The data is M1 "1+2i", M2 3, M3 blank,
 M4 TRUE, M5 "x", M6 "2-i", M7 `=1/0`, M8 "3+4j", M9 `=""`.
 Unprobed: a 3-D reference (ours `#VALUE!`, as a union), a real number next to a `j` number (ours `#VALUE!`: a real
-reads as an `i` number), a call whose arguments hold no number at all (ours "0") (T-1825).
+reads as an `i` number), a call whose arguments hold no number at all (ours "0") (T-1828).
 Status: VERIFIED (excel-graph)
 Implemented in: `fold_complex` in functions/engineering/complex.rs (T-1384)
-Tasks: T-1384, T-1825
+Tasks: T-1384, T-1828
 
 ## IMSUM and IMPRODUCT read cap
 Rule: RustSheet stops an IMSUM or IMPRODUCT call with `#ERROR!` once the cells its ranges walk and the elements of its
