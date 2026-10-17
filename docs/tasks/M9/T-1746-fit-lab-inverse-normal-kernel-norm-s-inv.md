@@ -3,7 +3,7 @@ id: T-1746
 title: "Fit lab: inverse normal kernel (NORM.S.INV, NORM.INV, LOGNORM.INV) against the oracle sweeps"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -35,10 +35,52 @@ this way (T-1524, T-1525, T-1533; implemented by T-0901 and T-0916). It has no f
 - Owner task that implements the winner: T-0925.
 
 ## Acceptance criteria
-- [ ] `fitlab/kernels/norm_inv.py` adds the fit, shipped in `--list` and fit-lab.md.
-- [ ] Every candidate's counts are recorded in the Outcome, with the engine's row.
-- [ ] docs/excel-semantics/statistics.md records the fitted algorithm or the best candidate.
-- [ ] Time-boxed per decision 0056; `make check` green; reviewers approve.
+- [x] `fitlab/kernels/norm_inv.py` adds the fit, shipped in `--list` and fit-lab.md.
+- [x] Every candidate's counts are recorded in the Outcome, with the engine's row.
+- [x] docs/excel-semantics/statistics.md records the fitted algorithm or the best candidate.
+- [x] Time-boxed per decision 0056; `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the engine (T-0925).
+
+## Outcome
+Done 2026-10-16. The fit is `uv run rustsheet-fitlab norm-s-inv` (`fitlab/kernels/norm_inv.py`)
+over 1,024 cells. Nested `NORM.S.DIST(k,TRUE)` inputs are looked up in Excel's own CDF sweeps. A
+new probe, probes-numeric/t1746-norm-s-inv-central, covers 341 central p, with NORM.S.DIST of each
+result and of PPND16(p).
+
+Exact counts:
+
+| candidate | exact |
+|---|---|
+| PPND16 tails, statrs centre | 775 |
+| PPND16 horner, upper log(1-p) | 693 |
+| PPND16 horner, upper log1p(-p) | 690 |
+| PPND16 + Newton on 0.5*erfc(-x*sqrt(0.5)) | 469 |
+| PPND16 + Newton or Halley on libm erfc | 358 |
+| engine today (statrs) | 341 |
+| correctly rounded | 326 |
+| PPND16 power sum | 268 / 265 |
+| Acklam + Halley | 200 |
+| statrs centre only | 164 of 408 central |
+| Acklam | 12 |
+| Moro | 12 |
+| PPND7, every variant | 12 |
+
+At ≤4 ulp every candidate scores 975 to 987, and all 1,024 cells are within 1e-9.
+
+Findings (docs/excel-semantics/statistics.md, "NORM.S.INV is AS 241 PPND16 in the tails"):
+- **Tails are PPND16.** The tails (|p-0.5| > 0.425) are AS 241 PPND16 in doubles: Horner, with
+  log(1-p) above. They are bit-exact on 611 of 616 cells; two upper-tail p next to the split
+  miss by 1 to 2 ulp.
+- **The centre is unsolved.** It was time-boxed after two failed hypothesis families, per
+  decision 0056:
+  - the PPND16 central rational in every evaluation order, with and without FMA;
+  - refinement on Excel's own CDF: one step, or a Newton solve from four starts under several
+    stopping rules. Excel's NORM.S.DIST(PPND16(p)) is already exactly p at 232 of the 341 points,
+    yet Excel returns a different x at 177 of them.
+  Excel is up to 31 ulp from the correctly rounded value there, symmetric in p ↔ 1-p.
+- **What T-0925 should implement.** The hybrid: PPND16 tails, statrs centre (775 vs 341 exact).
+  The centre reopens only on a new hypothesis.
+- **Lead for T-0968.** NORM.S.DIST equals `0.5*erfc(-x*sqrt(0.5))` on 260 of 341 probe points,
+  against 199 for `/sqrt(2)`.
