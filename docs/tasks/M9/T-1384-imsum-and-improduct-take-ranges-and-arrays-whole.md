@@ -3,7 +3,7 @@ id: T-1384
 title: "IMSUM and IMPRODUCT take ranges and arrays whole; IM* functions refuse booleans (probes/eng-argument-modes)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
