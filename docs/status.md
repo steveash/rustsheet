@@ -17,7 +17,7 @@ merged since its last run.
 | probes | 797 | 46,257 | 93.58% (4 accepted deviations, 11 cells passed by decision 0042) | 3,004 |
 | smoke | 6 | 46 | 100% | 0 |
 | fixtures | 17 | 248 | 96.37% | 9 |
-| corpus-bench | 912 | 0 (crash-only, 907 pending until T-0427) | — | 5 |
+| corpus-bench | 912 | 0 (crash-only, 907 pending until T-0427) | — | 5 load timeouts (T-0430) |
 | gen-m5 | 10 | 400 | 99.25% | not gated |
 | gen-m6 | 25 | 1,000 | 99.50% | not gated |
 | gen-m7 | 25 | 994 | 97.08% | not gated |
@@ -35,7 +35,7 @@ Where M2's exit stands:
 - ironcalc-calc cells using only M1/M2 functions: criterion met.
 - The frozen m1-probes list is at 0 failures (89 cases, 1,858 cells).
 - M0–M2 probes: 366 cases, 10,439 cells, 10,365 bit-exact, 4 deviations, **70 known failures** (was 29). The rise is new coverage, not regressions: T-1713 (#958) and T-1756 (#981) added probes whose failing cells all have open tasks. All 29 failures from the last snapshot are fixed.
-  - `legacy-n-t-reference-args` (37) and `legacy-array-result` (19): T-1728 (engine; PR #985 merged during this run at ba903077, so 6 of these cells are fixed on `main` now), T-1717 and the spec T-1727 (engine). T-1713 (functions-logic) stays blocked on T-1727.
+  - `legacy-n-t-reference-args` (37) and `legacy-array-result` (19): T-1728 (engine; PR #985 merged during this run, so 6 of these cells are fixed on `main` now), T-1717 and the spec T-1727 (engine). T-1713 (functions-logic) stays blocked on T-1727.
   - `unknown-function-name-reach` (5): T-1760, T-1762, T-1763 (engine).
   - `text-ap-locale-inferences` (4): T-1716 (functions-text).
   - `n-array-lift` (2): T-1713, after T-1727.
@@ -103,12 +103,14 @@ Spot-audit: the last one was 2026-10-16, so none is due (next on or after 2026-1
 **Critical lane:** engine, quality
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M2.
-- engine: T-1717, T-1727, T-1758, T-1760, T-1762 and T-1763 hold 59 of the 64 M0–M2 probe failures left after T-1728.
+- engine: T-1717, T-1727, T-1758, T-1760, T-1762 and T-1763, together with T-1713 (functions-logic, unblocked by the spec T-1727), hold 59 of the 64 M0–M2 probe failures left after T-1728.
 - quality: T-1778 and T-1779, hygiene from the planner.
-- The other 5 failing cells are reached through `functions`: T-1716, T-0985 and, after T-1727, T-1713. So is the P0 T-1769.
+- The other 5 failing cells are reached through `functions` (functions-text: T-1716 with 4 cells, T-0985 with 1). So is the P0 T-1769 (functions-logic).
 - research, api and harness have no M2 work. perf stays out: Phase 2.)
 
 ## Needs owner
+
+The 2026-10-16 item "Sync the live steward routine prompt with docs/process/routines.md" is resolved. The steward prompt this run received (2026-10-17) opens with "Work on a branch cut from a freshly fetched `origin/main` … never check out, pull into or reset a local `main`, decision 0055". That matches routines.md line 45 word for word, so the item is removed.
 
 excel-desktop needs are not owner items (decision 0039): T-1016, T-1051 and the other desktop tasks wait in M14 (Phase 4), tracked by T-1074 and T-1075.
 
