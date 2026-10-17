@@ -58,7 +58,7 @@ Results:
   15 of 107 points for any candidate, against 92% (LibreOffice) and 79% (Cephes) in the reflected
   branch.
   - Excel's relative error there tracks the rounding of fl(a·fl(ln x)): 1.18E-14 predicted at
-    x = 0.1, a = 100, against 1.04–1.35E-14 observed. That suggests x^a is a separate
+    x = 0.1, a = 100, against 1.04–1.35E-14 observed for b <= 5 (b = 10, 50, 100 unexplained). That suggests x^a is a separate
     EXP(a·LN(x)) factor (hypothesis).
   - Excel's own GAMMA values (best 62 of 136) and 360 combinations of fraction, prefactor and
     operation order (best 16 of 107) do not close the rest.

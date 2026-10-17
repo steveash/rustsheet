@@ -569,12 +569,12 @@ points with 0 < x < 1:
   correctly rounded 7).
 - **Error model:** Excel's relative error on the direct branch depends on x as well as (a, b). It
   tracks the total rounding error of the double product fl(a·fl(ln x)). For BETA.DIST(0.1,100,b,TRUE)
-  that predicts 1.18E-14, and Excel's error ranges from 1.04E-14 to 1.35E-14 across b. At
+  that predicts 1.18E-14, and Excel's error ranges from 1.04E-14 to 1.35E-14 for b <= 5 (b = 10, 50 and 100 give -2.51E-14, -5.0E-15 and +2.31E-14, unexplained). At
   BETA.DIST(0.01,10,1.5,TRUE) it predicts 6.11E-15 against 6.15E-15 observed. Subtracting it
   leaves an x-independent residual for 8 of 38 (a, b) pairs; subtracting a·err(ln x) does so for 4.
 - **Hypothesis (UNVERIFIED):** x^a is its own EXP(a·LN(x)) factor, the form of Excel's b = 1
   closed form. If the product were first summed with b·ln y − lnB, rounding that ≈ −230 sum
-  would add up to ±1.4E-14 of b-dependent noise, but the spread across b is about ±1.5E-15.
+  would add up to ±1.4E-14 of b-dependent noise, but the spread across b <= 5 is about ±1.5E-15.
 - **What did not close the residual:** Excel's own GAMMA values (from T-1042), with best 62 of
   136 points, and 360 combinations of fraction, prefactor form and operation order, with best
   16 of 107. Reproduce all of this with docs/research/t1758_beta_direct_branch.py.

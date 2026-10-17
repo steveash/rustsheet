@@ -24,7 +24,7 @@ import math
 from collections import Counter, defaultdict
 from collections.abc import Callable
 
-from rustsheet_tools.fitlab.kernels import beta as B
+from rustsheet_tools.fitlab.kernels import beta as kb
 from rustsheet_tools.fitlab.kernels import registry
 from rustsheet_tools.fitlab.sweep import load_sweep
 
@@ -57,7 +57,7 @@ def branch(x: float, a: float, b: float) -> str:
 def exact_ibeta(x: float, a: float, b: float) -> decimal.Decimal:
     """I_x(a, b) unrounded, with x < (a+1)/(a+b+2) (the direct branch): NR's fraction at 70 digits."""
     dx, da, db = decimal.Decimal(x), decimal.Decimal(a), decimal.Decimal(b)
-    lbt = B.ln_gamma_decimal(da + db) - B.ln_gamma_decimal(da) - B.ln_gamma_decimal(db)
+    lbt = kb.ln_gamma_decimal(da + db) - kb.ln_gamma_decimal(da) - kb.ln_gamma_decimal(db)
     lbt += da * CTX.ln(dx) + db * CTX.ln(1 - dx)
     qab, qap, qam = da + db, da + 1, da - 1
     cc, d = decimal.Decimal(1), 1 / (1 - qab * dx / qap)
@@ -85,11 +85,11 @@ def report_branches(points: dict[Point, float]) -> None:
             continue
         row = table[branch(x, a, b)]
         row["points"] += 1
-        row["best combination"] += B.best_combination(x, a, b) == expected
+        row["best combination"] += kb.best_combination(x, a, b) == expected
         row["LibreOffice + closed forms"] += (
-            B.libreoffice_beta_dist(x, a, b, excel_closed_forms=True) == expected
+            kb.libreoffice_beta_dist(x, a, b, excel_closed_forms=True) == expected
         )
-        row["correctly rounded"] += B.ibeta_reference(x, a, b) == expected
+        row["correctly rounded"] += kb.ibeta_reference(x, a, b) == expected
     for name, row in sorted(table.items()):
         print(f"   {name:18s} {dict(row)}")
 
@@ -136,10 +136,10 @@ def report_error_models(points: dict[Point, float]) -> None:
 
 def _cf(name: str, x: float, a: float, b: float) -> float:
     if name == "Cephes":
-        return B.cephes_cf(a, b, x)
+        return kb.cephes_cf(a, b, x)
     if name == "LibreOffice":
-        return B._lo_cont_frac(x, a, b)  # noqa: SLF001 - the port's own fraction
-    return B.nr_betacf(a, b, x)
+        return kb._lo_cont_frac(x, a, b)
+    return kb.nr_betacf(a, b, x)
 
 
 def _ln_y(x: float, log1p: bool) -> float:
@@ -151,13 +151,13 @@ def report_combinations(points: dict[Point, float]) -> None:
     direct = {k: v for k, v in points.items() if branch(*k).startswith("direct") and 0.0 < k[0] < 1.0}
     ln_beta: dict[str, Callable[[float, float], float]] = {
         "lgamma": lambda a, b: math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b),
-        "LibreOffice": B._lo_log_beta,  # noqa: SLF001
-        "correctly rounded": lambda a, b: B.ln_gamma_cr(a) + B.ln_gamma_cr(b) - B.ln_gamma_cr(a + b),
+        "LibreOffice": kb._lo_log_beta,
+        "correctly rounded": lambda a, b: kb.ln_gamma_cr(a) + kb.ln_gamma_cr(b) - kb.ln_gamma_cr(a + b),
     }
     beta_fn: dict[str, Callable[[float, float], float]] = {
         "tgamma": lambda a, b: math.gamma(a) * math.gamma(b) / math.gamma(a + b),
-        "LibreOffice": B._lo_beta,  # noqa: SLF001
-        "correctly rounded": lambda a, b: B.gamma_cr(a) * B.gamma_cr(b) / B.gamma_cr(a + b),
+        "LibreOffice": kb._lo_beta,
+        "correctly rounded": lambda a, b: kb.gamma_cr(a) * kb.gamma_cr(b) / kb.gamma_cr(a + b),
     }
     forms: dict[str, Callable[[float, float, float], float]] = {}
     for (name, lb), log1p in itertools.product(ln_beta.items(), (False, True)):

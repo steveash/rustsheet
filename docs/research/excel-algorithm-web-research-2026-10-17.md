@@ -59,7 +59,7 @@ Third-party relatives (none claims bit-exact Excel parity):
    - In the direct branch no candidate gets more than 15 of 107 points, and the correctly
      rounded value gets 7.
    - There Excel's relative error tracks the rounding of the double product fl(a·fl(ln x)): it
-     predicts 1.18E-14 at x = 0.1, a = 100, where Excel shows 1.04–1.35E-14 across b.
+     predicts 1.18E-14 at x = 0.1, a = 100, where Excel shows 1.04–1.35E-14 for b <= 5; b = 10, 50 and 100 do not fit it.
    - Hypothesis: x^a is its own EXP(a·LN(x)) factor, like Excel's b = 1 closed form. Rounding a
      summed exponent of about −230 would add b-dependent noise that the data do not show.
    - Neither Excel's own GAMMA values nor 360 combinations of fraction, prefactor form and
