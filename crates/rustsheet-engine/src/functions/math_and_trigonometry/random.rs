@@ -1,3 +1,4 @@
+use crate::cast::NumberOrArray;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::limits::check_array_size;
@@ -14,6 +15,21 @@ fn random() -> f64 {
 fn random() -> f64 {
     use js_sys::Math;
     Math::random()
+}
+
+/// One RANDBETWEEN draw: the raw bounds are compared, a span that overflows a double is `#NUM!`
+/// (probes/randbetween-huge-span A1:A2) and an empty `CEILING(bottom)..FLOOR(top)` gives
+/// `CEILING(bottom)`.
+fn randbetween_draw(bottom: f64, top: f64) -> Result<f64, Error> {
+    if bottom > top || !(top - bottom).is_finite() {
+        return Err(Error::NUM);
+    }
+    let low = bottom.ceil();
+    let high = top.floor();
+    if high < low {
+        return Ok(low);
+    }
+    Ok((low + random() * (high - low + 1.0)).floor().min(high))
 }
 
 impl Model {
@@ -38,6 +54,51 @@ impl Model {
         if matches!(first, CalcResult::EmptyArg) || matches!(second, CalcResult::EmptyArg) {
             return CalcResult::new_error(Error::NA, cell, "bottom or top omitted".to_string());
         }
+        // Excel: a multi-cell range bound is `#VALUE!` (no lift, no implicit intersection:
+        // probes/randbetween-lift-operands A7:A11, B2:B4, T-1316); a single-cell reference is a
+        // scalar.
+        for bound in [&first, &second] {
+            if matches!(bound, CalcResult::Range { left, right } if left != right) {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "RANDBETWEEN bound is a range".to_string(),
+                );
+            }
+        }
+        // An array bound lifts, one draw per element (probes/volatile-invariant F1:F9); a boolean
+        // element is `#VALUE!` like a scalar boolean (probes/randbetween-lift-operands A1:A3, A12).
+        if [&first, &second]
+            .iter()
+            .any(|v| matches!(v, CalcResult::Array(_)))
+        {
+            let operands = [first, second]
+                .into_iter()
+                .map(|v| match v {
+                    CalcResult::Array(rows) => self.number_or_array(
+                        CalcResult::Array(
+                            rows.into_iter()
+                                .map(|row| {
+                                    row.into_iter()
+                                        .map(|node| match node {
+                                            ArrayNode::Boolean(_) => ArrayNode::Error(Error::VALUE),
+                                            other => other,
+                                        })
+                                        .collect()
+                                })
+                                .collect(),
+                        ),
+                        cell,
+                    ),
+                    scalar => self
+                        .cast_to_number_no_bools(scalar, cell)
+                        .map(NumberOrArray::Number),
+                })
+                .collect();
+            return self.lift_number_operands(operands, cell, "Invalid arguments", |[b, t]| {
+                randbetween_draw(b, t)
+            });
+        }
         let bottom = match self.cast_to_number_no_bools(first, cell) {
             Ok(f) => f,
             Err(e) => return e,
@@ -46,27 +107,10 @@ impl Model {
             Ok(f) => f,
             Err(e) => return e,
         };
-        if bottom > top {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: format!("{bottom}>{top}"),
-            };
+        match randbetween_draw(bottom, top) {
+            Ok(n) => CalcResult::Number(n),
+            Err(e) => CalcResult::new_error(e, cell, format!("RANDBETWEEN({bottom},{top})")),
         }
-        // Excel: a span that overflows a double is `#NUM!` (probes/randbetween-huge-span A1:A2).
-        if !(top - bottom).is_finite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: format!("{bottom}..{top} overflows"),
-            };
-        }
-        let low = bottom.ceil();
-        let high = top.floor();
-        if high < low {
-            return CalcResult::Number(low);
-        }
-        CalcResult::Number((low + random() * (high - low + 1.0)).floor().min(high))
     }
 
     /// `=RANDARRAY([rows], [cols], [min], [max], [whole_number])`

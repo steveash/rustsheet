@@ -156,3 +156,12 @@ Evidence: `rustsheet-gen --milestone M9 --count 20 --seed 17` run from a scratch
 the engineering signatures (excel-graph, 2026-10-11, T-1085; not committed).
 Status: UNVERIFIED (probe pending)
 Tasks: T-1385
+
+## T-1625 probes: IMPOWER, IMSUB, IMDIV
+- Mixed suffixes (`"3+4i"` with `"1+2j"`) are `#NUM!` in IMSUB and IMDIV (we give #VALUE!).
+- An empty-string argument is `#NUM!` in IMSUB, IMDIV and IMPOWER (we treat it as 0); a boolean second argument is `#VALUE!`.
+- `IMPOWER("0",0)` is `#NUM!`; `IMDIV` with a tiny divisor gives a large result (`IMDIV("1","1E-200")` = `1E+200`), not #NUM!.
+- IMPOWER does not use the naive polar form: `IMPOWER("i",2)` = `-1+1.22514845490862E-16i` (ours 1.22464679914735E-16), `IMPOWER("-j",3)` real part -1.83772268236293E-16, `IMPOWER("1+i","2")` real part 1.22514845490862E-16, `IMPOWER("1+i",100)` = `-1125899906842640-0.551513671875006i` (ours `-1125899906842630-0.552925707312197i`). The values differ, not only the printing; tiny parts also print in E-notation.
+Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625).
+Status: VERIFIED (excel-graph)
+Tasks: T-1766
