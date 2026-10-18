@@ -19,7 +19,7 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
 | Python bindings | `make py-bindings` | maturin build + pytest |
 | Duplication | `scripts/check_duplication.py` | duplicated lines (10-line normalized windows) may not increase; `quality/duplication.json` |
 | File size | `scripts/check_file_size.py` | new source files ≤ 1000 lines; inherited oversized files may not grow; `quality/oversized-files.json` |
-| Tasks | `scripts/tasks.py validate` | task schema, ids, dependencies, no unsplit L tasks |
+| Tasks | `scripts/tasks.py validate` | task schema, ids, dependencies, no unsplit L tasks; every `TODO(T-XXXX)` under crates/, bindings/, tools/, scripts/ names an open task (decision 0072) |
 | Dependencies | `cargo deny check` | license allow-list, RustSec advisories, sources, no wildcard versions |
 | Unused deps | `cargo machete` | none |
 | Spelling | `typos` | clean (Excel names allow-listed in `_typos.toml`) |
