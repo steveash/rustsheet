@@ -817,17 +817,24 @@ crates/rustsheet-engine/src/limits.rs (`too_many_visits`, `MAX_LIFTED_CELL_VISIT
 crates/rustsheet-engine/src/functions/lookup_and_reference/relative_to.rs (`RelativeSets::new`, `MAX_SET_ENTRIES`)
 Tasks: T-1325, T-1327
 
-## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!
+## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!; an empty single cell is #VALUE!
 Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:
 `WRAPCOLS(FALSE,4)` is FALSE in one cell and `WRAPCOLS("1.5",4)&DROP(C10,0,3)` is one `#CALC!` (neither spills over the
 occupied cells below). A wrap_count of 0.5 is `#NUM!` (`HYPERLINK(WRAPCOLS(C12,0.5,..),..)`).
 Evidence: gen-m7/bb4617644fee40c9 Calc!A30, gen-m7/d38b52bfa1a9f9e6 Calc!A26, gen-m7/f68fafa0ca2eba26 Calc!A39 (excel-graph, 2026-10-11, T-1275).
-Also: an error pad_with is the whole result when nothing is padded (`WRAPCOLS(D6:D6,2,VALUE("x"))` is `#VALUE!`,
-gen-m9/675763979c1defb6 A6), while with padding it fills the padded cells (WRAPCOLS_ROWS.xlsx E10, `NA()`). wrap_count 0
-is `#NUM!` for WRAPROWS too (gen-m9/50f10c4062fb2e98 A21; the full set is under "WRAPROWS and WRAPCOLS" below).
-Ours: all of the above since T-1786 and T-1348 (wrap_count is read before truncation, so 0.5 is `#NUM!`).
-Status: VERIFIED for single values (excel-graph). UNVERIFIED: the error pad_with rule for a vector of more than one
-element (it may apply only to a scalar input; follow-up task in Tasks), `WRAPCOLS({1,2},4)` and `WRAPROWS({1,2},4)`.
+Also: an error pad_with is an ordinary pad value: it fills the padded cells (WRAPCOLS_ROWS.xlsx E10, `NA()`;
+`WRAPCOLS({1,2,3},2,VALUE("x"))` pads with `#VALUE!`) and when nothing is padded the array is returned
+(`WRAPROWS({1,2,3,4},4,VALUE("x"))` is 1 2 3 4; `WRAPCOLS(5,3,VALUE("x"))` is 5). The `#VALUE!` of
+`WRAPCOLS(D6:D6,2,VALUE("x"))` (gen-m9/675763979c1defb6 A6) is the empty single-cell input: `WRAPCOLS(Z1:Z1,2)`,
+`WRAPCOLS(Z1,2)`, `WRAPROWS(Z1:Z1,1)` and a wrap_count of 0 are `#VALUE!` with any pad_with, while two empty cells
+(`Z1:Z2`) are two 0s. wrap_count above the length is the length, so `WRAPCOLS({1,2},4)` is 2x1 and
+`WRAPCOLS(B5:H5,100,NA())` is 7x1, unpadded. wrap_count is `#NUM!` below 1 for WRAPROWS too (gen-m9/50f10c4062fb2e98 A21;
+the full set is under "WRAPROWS and WRAPCOLS" below).
+Evidence: probes/wrapcols-wraprows-pad-with (excel-graph, 2026-10-18, T-1840).
+Unprobed: an omitted vector (`WRAPCOLS(,2)`) and an empty cell reached indirectly (`WRAPCOLS(IF(TRUE,Z1),2)`,
+`WRAPCOLS(INDEX(Z1:Z2,1),2)`); the engine treats the omitted vector like an empty cell (`#VALUE!`).
+Ours: all of the above since T-1786, T-1348 and T-1840 (wrap_count is read before truncation, so 0.5 is `#NUM!`).
+Status: VERIFIED (excel-graph).
 Tasks: T-1348, T-1840
 
 ## MAP over arrays of different sizes, or a single value and an array
