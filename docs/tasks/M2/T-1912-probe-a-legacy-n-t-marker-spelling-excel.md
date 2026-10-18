@@ -3,7 +3,7 @@ id: T-1912
 title: "Probe a legacy N/T marker spelling Excel refuses as a defined name"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
