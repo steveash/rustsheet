@@ -3,7 +3,7 @@ id: T-1789
 title: "Date text with a month name glued to digits parses (July1, January0, 1JUN2021)"
 milestone: M2
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
