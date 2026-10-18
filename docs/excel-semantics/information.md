@@ -273,7 +273,7 @@ Legacy: `SUM(N({1,2}))` is 3 and `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` 5, bu
 `=N(B1:B3*1)` off the rows `#VALUE!`.
 Evidence: probes/n-array-lift (excel-graph, 2026-10-16, T-1616).
 Not implemented: the legacy cell `=N(IF(1,{2;3}))` gives 2, 3 spilled in ours instead of `#VALUE!` (S!D4:D5,
-T-1713, which needs the legacy marker of spec T-1727). T, CHOOSE, INDEX and IFS arguments and nested uses
+T-1713, which needs the legacy marker of SPEC-0012, legacy-n-t-marker.md: T-1851, T-1713). T, CHOOSE, INDEX and IFS arguments and nested uses
 (`=ABS(N(IF(1,{2;3})))`) behave the same, while N of an array constant or of TRANSPOSE gets an `@` (2):
 references.md "Legacy formulas put `@` on array-valued calls and array constants" and "Legacy N and T over a
 reference-returning call" (probes/legacy-array-result, probes/legacy-n-t-reference-args).
