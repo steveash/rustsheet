@@ -53,11 +53,12 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
 **Exit criteria:**
 - [x] `make check` and CI green on `main`.
 - [x] `eval-check` gate active, with ironcalc-calc baseline 69,478 / 71,387 bit-exact (97.33%).
-- [ ] Owner completes oracle setup. `rustsheet-oracle fill` produces sidecars for `smoke`,
+- [x] Owner completes oracle setup. `rustsheet-oracle fill` produces sidecars for `smoke`,
   `probes` and `gen-m2` from a real Excel. Calibration: Excel-for-web vs cached values agree on
-  ≥ 99.9% of ironcalc-calc cells (T-0004).
-- [ ] One full autonomous work-loop iteration merged without human help (T-0010).
-- [ ] Scheduled worker routines running (2 lanes).
+  ≥ 99.9% of ironcalc-calc cells (T-0004: 99.96% of 71,765 cells, docs/research/oracle-calibration.md).
+- [x] One full autonomous work-loop iteration merged without human help (#3, T-0200, 2026-10-02; T-0058).
+- [x] Scheduled worker routines running (2 lanes): the sonnet and opus workers and the daily steward
+  in docs/process/routines.md (T-0058).
 
 ## M1 — Core calculation semantics (no functions beyond trivial)
 
