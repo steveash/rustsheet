@@ -371,6 +371,7 @@ C	probes/lcm-result-edge.case.json	6
 C	probes/legacy-array-result.case.json	46
 C	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	27
 C	probes/legacy-index-array-index.case.json	30
+C	probes/legacy-n-t-reference-args-2.case.json	30
 C	probes/legacy-n-t-reference-args.case.json	41
 C	probes/legacy-one-cell-shape-intersection.case.json	26
 C	probes/legacy-type-intersection.case.json	17
@@ -1845,6 +1846,14 @@ F	probes/legacy-array-result.case.json	S!A11
 F	probes/legacy-array-result.case.json	S!G10
 F	probes/legacy-array-result.case.json	S!G11
 F	probes/legacy-array-result.case.json	S!I10
+F	probes/legacy-n-t-reference-args-2.case.json	S!A10
+F	probes/legacy-n-t-reference-args-2.case.json	S!A20
+F	probes/legacy-n-t-reference-args-2.case.json	S!B10
+F	probes/legacy-n-t-reference-args-2.case.json	S!B20
+F	probes/legacy-n-t-reference-args-2.case.json	S!C20
+F	probes/legacy-n-t-reference-args-2.case.json	S!D20
+F	probes/legacy-n-t-reference-args-2.case.json	S!L20
+F	probes/legacy-n-t-reference-args-2.case.json	S!M20
 F	probes/legacy-n-t-reference-args.case.json	S!A10
 F	probes/legacy-n-t-reference-args.case.json	S!A20
 F	probes/legacy-n-t-reference-args.case.json	S!B10
