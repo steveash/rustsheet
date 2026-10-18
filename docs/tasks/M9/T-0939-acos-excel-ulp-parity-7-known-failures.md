@@ -3,7 +3,7 @@ id: T-0939
 title: "ACOS: Excel ulp parity (7 known failures)"
 milestone: M9
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
