@@ -156,5 +156,9 @@
   kernels over borrowed values; F.INV and F.INV.RT share one kernel, and so do T.INV and T.INV.2T)
   (`check_duplication.py --update`), and expressions/parser/static_analysis.rs 1199 → 1181 lines (the 18
   fallback lines of the nine quantile functions now in the lifting table) (`check_file_size.py --update`).
+  T-1872: duplicated lines 4248 → 4085 (CHISQ.*, GAMMA.DIST, GAMMA.INV and POISSON.DIST become kernels over
+  borrowed values; CHISQ.INV and CHISQ.INV.RT share one kernel, and the four chi-squared kernels one df check)
+  (`check_duplication.py --update`), and expressions/parser/static_analysis.rs 1181 → 1157 lines (the 24
+  fallback lines of the twelve incomplete-gamma functions now in the lifting table) (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

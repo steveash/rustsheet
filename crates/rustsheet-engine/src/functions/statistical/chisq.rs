@@ -1,6 +1,10 @@
 use crate::calc_result::Range;
 use crate::reference_operators::{Ranges, RefArg};
-use statrs::distribution::{ChiSquared, Continuous, ContinuousCDF};
+use statrs::distribution::{Continuous, Gamma};
+
+use super::incomplete_gamma::{gamma_cdf, gamma_inverse_cdf, gamma_sf};
+use crate::functions::lift::{num_error, number_or_error};
+use crate::functions::Function;
 
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
@@ -9,254 +13,133 @@ use crate::{
 };
 const MAX_DEGREES_OF_FREEDOM: f64 = 10_000_000_000.0;
 
+/// The chi-squared distribution of `df` degrees of freedom, truncated, as statrs builds it (a
+/// gamma of shape df/2 and rate 1/2); a df below 1 or above 1E10 is `#NUM!`.
+fn chi_squared(df: f64, cell: CellReferenceIndex) -> Result<Gamma, CalcResult> {
+    let df = df.trunc();
+    if !(1.0..=MAX_DEGREES_OF_FREEDOM).contains(&df) {
+        return Err(num_error(cell));
+    }
+    Gamma::new(df / 2.0, 0.5).map_err(|_| num_error(cell))
+}
+
+/// A distribution value as a cell value: `#NUM!` unless finite and not negative.
+fn non_negative(value: f64, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+    if value.is_finite() && value >= 0.0 {
+        Ok(value)
+    } else {
+        Err(num_error(cell))
+    }
+}
+
 impl Model {
-    // CHISQ.DIST(x, deg_freedom, cumulative)
+    /// `CHISQ.DIST(x, deg_freedom, cumulative)`: every argument lifts over an array and a range
+    /// (SPEC-0011; probes/stat-argument-modes H152-H156, probes/stat-quantile-lift H27). The cdf
+    /// is the capped port of statrs' incomplete gamma (`incomplete_gamma.rs`), which the lifting
+    /// table charges (kinds.rs `INCOMPLETE_GAMMA_WEIGHT`).
     pub(crate) fn fn_chisq_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let df = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-
-        let cumulative = match self.get_boolean(&args[2], cell) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-
-        if x < 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "x must be >= 0 in CHISQ.DIST".to_string(),
-            );
-        }
-        // if degrees of freedom < 1 or > 10^10 → #NUM!
-        if !(1.0..=MAX_DEGREES_OF_FREEDOM).contains(&df) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "degrees of freedom must be in [1, 10^10] in CHISQ.DIST".to_string(),
-            );
-        }
-
-        let dist = match ChiSquared::new(df) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid parameters for Chi-squared distribution".to_string(),
-                )
-            }
-        };
-
-        let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
-
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Invalid result for CHISQ.DIST".to_string(),
-            );
-        }
-
-        CalcResult::Number(result)
+        self.lift_call(Function::ChisqDist, args, cell, &mut |model, values| {
+            number_or_error(model.chisq_dist_of(values, cell))
+        })
     }
 
-    // CHISQ.DIST.RT(x, deg_freedom)
+    fn chisq_dist_of(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let [x, df, cumulative] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
+        };
+        let x = self.cast_number_ref(x, cell)?;
+        let df = self.cast_number_ref(df, cell)?;
+        let cumulative = Self::cast_bool_ref(cumulative, cell)?;
+        if x < 0.0 {
+            return Err(num_error(cell));
+        }
+        let dist = chi_squared(df, cell)?;
+        let result = if cumulative {
+            gamma_cdf(&dist, x)
+        } else {
+            dist.pdf(x)
+        };
+        if !result.is_finite() {
+            return Err(num_error(cell));
+        }
+        Ok(result)
+    }
+
+    /// `CHISQ.DIST.RT(x, deg_freedom)`, and CHIDIST: both arguments lift over an array and a
+    /// range (SPEC-0011; probes/stat-argument-modes H132-H139, probes/stat-quantile-lift
+    /// H29-H32). The right tail is statrs' `sf`, capped (`incomplete_gamma.rs`).
     pub(crate) fn fn_chisq_dist_rt(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
+        self.lift_call(Function::ChisqDistRT, args, cell, &mut |model, values| {
+            number_or_error(model.chisq_dist_rt_of(values, cell))
+        })
+    }
 
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
+    fn chisq_dist_rt_of(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let [x, df] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
         };
-
-        let df_raw = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let df = df_raw.trunc();
-
+        let x = self.cast_number_ref(x, cell)?;
+        let df = self.cast_number_ref(df, cell)?;
         if x < 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "x must be >= 0 in CHISQ.DIST.RT".to_string(),
-            );
+            return Err(num_error(cell));
         }
-
-        // if degrees of freedom < 1 or > 10^10 → #NUM!
-        if !(1.0..=MAX_DEGREES_OF_FREEDOM).contains(&df) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "degrees of freedom must be in [1, 10^10] in CHISQ.DIST.RT".to_string(),
-            );
-        }
-
-        let dist = match ChiSquared::new(df) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid parameters for Chi-squared distribution".to_string(),
-                )
-            }
-        };
-
-        // Right-tail probability: P(X > x).
-        // Use sf(x) directly for better numerical properties than 1 - cdf(x).
-        let result = dist.sf(x);
-
-        if result.is_nan() || result.is_infinite() || result < 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Invalid result for CHISQ.DIST.RT".to_string(),
-            );
-        }
-
-        CalcResult::Number(result)
+        let dist = chi_squared(df, cell)?;
+        non_negative(gamma_sf(&dist, x), cell)
     }
 
-    // CHISQ.INV(probability, deg_freedom)
+    /// `CHISQ.INV(probability, deg_freedom)`: both arguments lift over an array and a range
+    /// (SPEC-0011; probes/stat-argument-modes H144-H147, probes/stat-quantile-lift H33). The
+    /// quantile is the capped port of statrs' search (`incomplete_gamma.rs`).
     pub(crate) fn fn_chisq_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let p = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let df = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-
-        // if probability < 0 or > 1 → #NUM!
-        if !(0.0..=1.0).contains(&p) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "probability must be in [0,1] in CHISQ.INV".to_string(),
-            );
-        }
-
-        // if degrees of freedom < 1 or > 10^10 → #NUM!
-        if !(1.0..=MAX_DEGREES_OF_FREEDOM).contains(&df) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "degrees of freedom must be in [1, 10^10] in CHISQ.INV".to_string(),
-            );
-        }
-
-        let dist = match ChiSquared::new(df) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid parameters for Chi-squared distribution".to_string(),
-                )
-            }
-        };
-
-        let x = dist.inverse_cdf(p);
-
-        if x.is_nan() || x.is_infinite() || x < 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Invalid result for CHISQ.INV".to_string(),
-            );
-        }
-
-        CalcResult::Number(x)
+        self.lift_call(Function::ChisqInv, args, cell, &mut |model, values| {
+            number_or_error(model.chisq_inv_of(values, false, cell))
+        })
     }
 
-    // CHISQ.INV.RT(probability, deg_freedom)
+    /// `CHISQ.INV.RT(probability, deg_freedom)`, and CHIINV: the quantile of `1 - probability`
+    /// (SPEC-0011; probes/stat-argument-modes H140-H143, H148-H151, probes/stat-quantile-lift
+    /// H35-H38).
     pub(crate) fn fn_chisq_inv_rt(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
+        self.lift_call(Function::ChisqInvRT, args, cell, &mut |model, values| {
+            number_or_error(model.chisq_inv_of(values, true, cell))
+        })
+    }
 
-        let p = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
+    fn chisq_inv_of(
+        &self,
+        values: &[CalcResult],
+        right_tail: bool,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let [p, df] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
         };
-
-        let df_raw = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let df = df_raw.trunc();
-
-        // if probability < 0 or > 1 → #NUM!
+        let p = self.cast_number_ref(p, cell)?;
+        let df = self.cast_number_ref(df, cell)?;
+        // probability outside [0, 1] is #NUM!.
         if !(0.0..=1.0).contains(&p) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "probability must be in [0,1] in CHISQ.INV.RT".to_string(),
-            );
+            return Err(num_error(cell));
         }
-        // if degrees of freedom < 1 or > 10^10 → #NUM!
-        if !(1.0..=MAX_DEGREES_OF_FREEDOM).contains(&df) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "degrees of freedom must be in [1, 10^10] in CHISQ.INV.RT".to_string(),
-            );
-        }
-
-        let dist = match ChiSquared::new(df) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid parameters for Chi-squared distribution".to_string(),
-                )
-            }
-        };
-
-        // Right-tail inverse: p = P(X > x) = SF(x) = 1 - CDF(x)
-        // So x = inverse_cdf(1 - p).
-        let x = dist.inverse_cdf(1.0 - p);
-
-        if x.is_nan() || x.is_infinite() || x < 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Invalid result for CHISQ.INV.RT".to_string(),
-            );
-        }
-
-        CalcResult::Number(x)
+        let dist = chi_squared(df, cell)?;
+        // The right tail: p = P(X > x) = 1 - CDF(x), so x = inverse_cdf(1 - p).
+        let p = if right_tail { 1.0 - p } else { p };
+        non_negative(gamma_inverse_cdf(&dist, p), cell)
     }
 
     /// The values of a range, row-major, for a caller that keeps the numbers: a number is `Some`,
@@ -510,7 +393,7 @@ impl Model {
             total - 1
         };
 
-        let dist = match ChiSquared::new(df as f64) {
+        let dist = match Gamma::new(df as f64 / 2.0, 0.5) {
             Ok(d) => d,
             Err(_) => {
                 return CalcResult::new_error(
@@ -521,7 +404,16 @@ impl Model {
             }
         };
 
-        let mut p = 1.0 - dist.cdf(chi2);
+        // The capped cdf. A sheet's cell count keeps the shape under 2^33, where the series needs
+        // under 2^20 terms; NaN is a statistic of 5E-324, whose half underflows (statrs panicked).
+        let mut p = 1.0 - gamma_cdf(&dist, chi2);
+        if p.is_nan() {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Invalid result for CHISQ.TEST".to_string(),
+            );
+        }
 
         // clamp tiny fp noise
         if p < 0.0 && p > -1e-15 {

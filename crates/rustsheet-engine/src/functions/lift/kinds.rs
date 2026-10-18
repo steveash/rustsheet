@@ -248,6 +248,36 @@ const T_INV: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(T_QUANTILE_WE
 const CONFIDENCE_T: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(T_QUANTILE_WEIGHT));
 // --- End statistical quantiles (T-1848) -----------------------------------------------------
 
+// --- Incomplete gamma (T-1872) --------------------------------------------------------------
+/// What one GAMMA.DIST, GAMMA.INV, CHISQ.* or POISSON element is charged. Each runs one capped
+/// port of statrs' incomplete gamma (`statistical/incomplete_gamma.rs`): a cdf of at most 2^19
+/// series or continued-fraction terms, or an inversion whose cdfs (at most about 2,120 of them:
+/// 1,075 halvings, 1,025 doublings, 8 bisections, 4 Newton steps) share one budget of 2^19
+/// terms. Measured in release (T-1872, load 2 on 4 cores) over 512 elements at the cap: a
+/// continued-fraction term costs 4.7 ns (2.4 ms for 2^19,
+/// `GAMMA.DIST(1.0000001E300,1E300,1,TRUE)`), a series term 2.5 ns (1.3 ms,
+/// `GAMMA.DIST(1E12,1E12,1,TRUE)`), and a cdf's own work 49 ns (`GAMMA.INV(1E-300,0.001,1E-300)`,
+/// 1,060 cdfs: 52 us). The bound of an element is 2^19 terms at the slower 4.7 ns plus 2,120 cdfs
+/// at 49 ns, about 2.6 ms, so the weight caps a lifted call at 2^27 / 2^18 = 512 elements: 1.3 s
+/// at the bound (a DEVIATION, statistics.md). Measured cases cost less: 2.4 ms for the
+/// continued fraction at the cap, 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)` (481,117 terms),
+/// 1.6 us for `GAMMA.INV(0.4,2,3)`.
+const INCOMPLETE_GAMMA_WEIGHT: u32 = 1 << 18;
+/// `CHISQ.DIST.RT(x, deg_freedom)`, CHIDIST, `CHISQ.INV(probability, deg_freedom)`,
+/// CHISQ.INV.RT and CHIINV.
+const CHISQ_2: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(INCOMPLETE_GAMMA_WEIGHT));
+/// `CHISQ.DIST(x, deg_freedom, cumulative)`, `POISSON.DIST(x, mean, cumulative)`, POISSON,
+/// `GAMMA.INV(probability, alpha, beta)` and GAMMAINV.
+const INCOMPLETE_GAMMA_3: ArgKinds =
+    ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(INCOMPLETE_GAMMA_WEIGHT));
+/// `GAMMA.DIST(x, alpha, beta, cumulative)` and GAMMADIST.
+const GAMMA_DIST: ArgKinds = ArgKinds::fixed(
+    4,
+    &[Lift, Lift, Lift, Lift],
+    Weighted(INCOMPLETE_GAMMA_WEIGHT),
+);
+// --- End incomplete gamma (T-1872) ----------------------------------------------------------
+
 // --- Financial ATP (T-1822) -----------------------------------------------------------------
 /// What one walk of a coupon schedule is charged: the walk steps one coupon period at a time
 /// from the maturity back to the settlement (or from the first interest date to the issue), at
@@ -549,6 +579,20 @@ macro_rules! lifting_table_functions {
             | Function::TInvCompat
             | Function::ConfidenceT
             // --- End statistical quantiles (T-1848) ---
+            // --- Incomplete gamma (T-1872) ---
+            | Function::ChisqDist
+            | Function::ChisqDistRT
+            | Function::ChiDistCompat
+            | Function::ChisqInv
+            | Function::ChisqInvRT
+            | Function::ChiInvCompat
+            | Function::GammaDist
+            | Function::GammaDistCompat
+            | Function::GammaInv
+            | Function::GammaInvCompat
+            | Function::PoissonDist
+            | Function::PoissonCompat
+            // --- End incomplete gamma (T-1872) ---
     };
 }
 pub(crate) use lifting_table_functions;
@@ -774,10 +818,9 @@ impl Function {
             // slowest, BINOM.DIST with 1E18 trials, about 3.2 us (3.3 s for 2^20 elements), and
             // BINOM.DIST.RANGE, which runs two cdfs, 6.4 us (6.7 s for 2^20 elements).
             // PERMUT multiplies at most 171 factors whatever its arguments (0.22 us). The
-            // quantile searches of BETA.INV, F.INV and T.INV are entered below (T-1848); the
-            // incomplete-gamma functions and their searches (CHISQ.*, GAMMA.DIST, GAMMA.INV,
-            // POISSON; TODO(T-1872)) and HYPGEOM.DIST's cdf sum (TODO(T-1873)) loop by value with
-            // no per-call cap of their own, so they are not entered yet.
+            // quantile searches of BETA.INV, F.INV and T.INV (T-1848) and the incomplete-gamma
+            // functions (T-1872) are entered below; HYPGEOM.DIST's cdf sum (TODO(T-1873)) loops by
+            // value with no per-call cap of its own, so it is not entered yet.
             Function::Gauss
             | Function::Phi
             | Function::Fisher
@@ -836,6 +879,25 @@ impl Function {
             Function::TInv | Function::TInv2T | Function::TInvCompat => Some(&T_INV),
             Function::ConfidenceT => Some(&CONFIDENCE_T),
             // --- End statistical quantiles (T-1848) ---
+            // --- Incomplete gamma (T-1872) ---
+            // As the statistical functions above: every argument lifts over an array and a range,
+            // on the range's own rows (probes/stat-argument-modes H132-H156, H293-H314,
+            // H476-H485; probes/stat-quantile-lift H27-H50: the last argument over a range). The
+            // incomplete gamma and its search keep a per-call cap of their own
+            // (`statistical/incomplete_gamma.rs`), so the entries are weighted by its bound
+            // (statistics.md "Incomplete gamma: per-call cap and lifting").
+            Function::ChisqDistRT
+            | Function::ChiDistCompat
+            | Function::ChisqInv
+            | Function::ChisqInvRT
+            | Function::ChiInvCompat => Some(&CHISQ_2),
+            Function::ChisqDist
+            | Function::PoissonDist
+            | Function::PoissonCompat
+            | Function::GammaInv
+            | Function::GammaInvCompat => Some(&INCOMPLETE_GAMMA_3),
+            Function::GammaDist | Function::GammaDistCompat => Some(&GAMMA_DIST),
+            // --- End incomplete gamma (T-1872) ---
             _ => None,
         }
     }

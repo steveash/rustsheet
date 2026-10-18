@@ -14,6 +14,10 @@
 //!   377-step Newton search over 512 elements, T.INV.2T's bisection over 2,048 (the cases measured,
 //!   which cost far less than the bound the lifting table charges).
 //!
+//! - the incomplete-gamma functions at their lift cap (T-1872): GAMMA.DIST's continued fraction at
+//!   its 2^19-term cap (the bound's slower term) and CHISQ.DIST at the largest chi-squared shape,
+//!   over 512 elements.
+//!
 //! `cargo bench -p rustsheet --bench lift [-- FILTER...]` (only the cases whose name contains a
 //! FILTER, e.g. `SWITCH`)
 //!
@@ -87,6 +91,16 @@ fn main() -> Result<(), Box<dyn Error>> {
             "T.INV.2T, bisection at the element cap",
             1,
             "=SUM(T.INV.2T(SEQUENCE(2048)*0+1E-9,99999))",
+        ),
+        (
+            "GAMMA.DIST, continued fraction at its term cap, at the element cap",
+            1,
+            "=ROWS(GAMMA.DIST(SEQUENCE(512)*0+1.0000001E300,1E300,1,TRUE))",
+        ),
+        (
+            "CHISQ.DIST, the largest shape at the element cap",
+            1,
+            "=SUM(CHISQ.DIST(SEQUENCE(512)*0+1E10,1E10,TRUE))",
         ),
     ];
     let filters: Vec<String> = std::env::args()

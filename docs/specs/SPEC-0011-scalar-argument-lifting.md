@@ -565,6 +565,15 @@ panicked or hung (statistics.md "Quantile searches: per-call cap and lifting", a
 of the caps at a full-cost cdf (140 continued-fraction steps, 3.1 to 3.4 us), not a measured case: BETA.INV and F.INV
 are `Weighted(2^18)` (F.INV's 1,301-cdf bisection, about 4 ms an element: 512 elements in about 2.1 s), T.INV and
 CONFIDENCE.T `Weighted(2^16)` (a 264-cdf bisection, 0.82 ms: 2,048 elements in about 1.7 s). The incomplete-gamma functions and HYPGEOM.DIST stay out (T-1872, T-1873).
+As built (T-1872): CHISQ.DIST, CHISQ.DIST.RT, CHIDIST, CHISQ.INV, CHISQ.INV.RT, CHIINV, GAMMA.DIST, GAMMADIST,
+GAMMA.INV, GAMMAINV, POISSON and POISSON.DIST are `Lift` entries. Their incomplete gamma was statrs' `gamma_lr` and
+`gamma_ur`, whose series and continued fraction are open (they never finish once `a + 1 == a`, or once the fraction's
+terms are NaN, and panic where `x / beta` overflows or underflows); it is now a line-for-line port with a per-call cap
+of its own (`statistical/incomplete_gamma.rs`: 2^19 terms in one cdf, and in one whole inversion over all its cdfs), bit
+for bit statrs' value wherever statrs finishes within it, and `#NUM!` elsewhere (statistics.md "Incomplete gamma:
+per-call cap and lifting", a DEVIATION; T-1891 owns Excel's values). The weight charges the cap's bound, not a measured
+case: 2^19 continued-fraction terms at 4.7 ns plus an inversion's 2,120 cdfs at 49 ns, about 2.6 ms an element, so all
+twelve are `Weighted(2^18)`: 512 elements in about 1.3 s. HYPGEOM.DIST stays out (T-1873).
 
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
