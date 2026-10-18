@@ -31,7 +31,8 @@ Spec: docs/specs/SPEC-0011-scalar-argument-lifting.md, "Today's lifting code". T
 ## Out of scope
 - WORKDAY and NETWORKDAYS (T-1236). EDATE, EOMONTH, WEEKNUM and YEARFRAC (T-1770).
 
-## Handoff
+## Handoff (resumed)
+Resumed on branch `agent/quality/T-1785-date-time-lifts-driver`, which is blocked on T-1932; this branch is superseded.
 An opus run (2026-10-18) claimed this task and found it would not fit in the time left in its session.
 No code was changed. The claim is released through this note. Findings for the next run:
 - Call sites that the acceptance `rg` must clear: cast.rs (`lift_numbers`, `lift_number_operands`, `number_at`,
