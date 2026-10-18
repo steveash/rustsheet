@@ -25,6 +25,9 @@ libm `acos` is 1 ulp off Excel on several inputs (ASIN and ATAN are already 65/6
 For 0.5, `atan2(sqrt(1-x*x), x)`, `2*atan(sqrt((1-x)/(1+x)))` and `pi/2 - asin(x)` all give the
 expected value. Fit one formulation against all 7 cells, including C15 near x = 1, where
 cancellation in `1-x` matters.
+T-1797 found that Excel's ACOS is exactly `PI()/2 - ASIN(x)` in all 240 ACOS cells of
+probes/asin-atan-sign-source (columns H and I), with ASIN being `fn_asin`'s kernel (numbers.md "ASIN's formulation").
+Reuse that kernel; those 83 H/I known failures should leave the probes baseline too.
 
 ## Acceptance criteria
 - [ ] The 6 NumericUlp lines leave eval/baseline (poi.txt and ironcalc-calc.txt) with no new F lines;
