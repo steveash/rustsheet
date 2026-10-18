@@ -24,7 +24,7 @@ Split from T-1791. CSE `{=INDEX($A:$A,SMALL(IF(($B$2:$B$176&$C$2:$C$176=$E2&$F2)
 -
 
 ## Outcome
-Already fixed on main by T-1866 (MATCH lifts over an array lookup_value), which made corpus-bench 530-28 P8:Q8 pass; this task
+No engine change was needed: T-1866 (MATCH lifts over an array lookup_value) already made corpus-bench 530-28 P8:Q8 pass; this task
 adds the evidence and a regression test for the cause. New probe probes/match-empty-text-lift (13 cells, excel-graph): blanks
 under `&""` lift to `""` and match the first `""` with the omitted match_type, unlike `MATCH("",blanks,0)`, which is `#N/A`. All
 13 pass (probes known failures unchanged, one new case). Unit test `test_match_lifts_over_empty_text_of_blanks`; lookup.md's
