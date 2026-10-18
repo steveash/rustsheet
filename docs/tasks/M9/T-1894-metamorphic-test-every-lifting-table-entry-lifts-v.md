@@ -31,8 +31,9 @@ Split from T-1776 (SPEC-0011 Test plan). For each row of `rustsheet_engine::lift
   sample sets (small counts, fractions, dates with rates; nine positions, ODDFPRICE's length), and
   every argument the driver reads, it writes that argument as `{v;v}`.
 - **Comparison:** both spilled elements must equal the scalar call's value, errors included. The
-  test compares cell values, not display text, because only the anchor takes the units' number
-  format: the FV, NPER and DDB anchors show currency, their spill cells do not.
+  test compares cell values, not display text, because in RustSheet only the anchor takes the
+  units' number format: the FV, NPER and DDB anchors show currency, their spill cells do not.
+  (Whether Excel formats the spill cells too is unprobed; this test does not depend on it.)
 - **Coverage:** a second assertion fails if any lifted parameter of any entry goes unchecked.
 - **Positions:** `WholeByCaller` arguments stay as written. Every other kind is checked, so a
   scalar parameter entered as `Whole` shows up as a mismatch. Seeded on EDATE's months, that gives

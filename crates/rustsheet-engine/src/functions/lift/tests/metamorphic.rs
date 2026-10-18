@@ -27,8 +27,8 @@ fn lifts(kinds: &ArgKinds, index: usize) -> bool {
 
 /// The mismatches of `function`: for each valid argument count, sample set and lifted position,
 /// the call text and what each `{v;v}` element gave where the scalar call gave something else.
-/// `lifted` collects the positions checked.
-fn mismatches(function: &Function, kinds: &ArgKinds, lifted: &mut Vec<usize>) -> Vec<String> {
+/// `checked` collects the positions checked.
+fn mismatches(function: &Function, kinds: &ArgKinds, checked: &mut Vec<usize>) -> Vec<String> {
     let name = function.to_localized_name(get_default_language());
     // A repeated parameter is checked up to one repeat past the listed ones.
     let last = kinds.max.min(kinds.params.len() + 1).min(SAMPLES[0].len());
@@ -37,12 +37,12 @@ fn mismatches(function: &Function, kinds: &ArgKinds, lifted: &mut Vec<usize>) ->
         for sample in &SAMPLES {
             let scalar = &sample[..count];
             for index in (0..count).filter(|&index| lifts(kinds, index)) {
-                lifted.push(index);
-                let mut lifted: Vec<String> = scalar.iter().map(|v| (*v).to_string()).collect();
-                lifted[index] = format!("{{{v};{v}}}", v = scalar[index]);
+                checked.push(index);
+                let mut args: Vec<String> = scalar.iter().map(|v| (*v).to_string()).collect();
+                args[index] = format!("{{{v};{v}}}", v = scalar[index]);
                 calls.push((
                     format!("={name}({})", scalar.join(",")),
-                    format!("={name}({})", lifted.join(",")),
+                    format!("={name}({})", args.join(",")),
                 ));
             }
         }
@@ -74,12 +74,12 @@ fn every_lifting_table_entry_lifts_like_its_scalar_call() {
         let Some(kinds) = function.arg_kinds() else {
             continue;
         };
-        let mut lifted = Vec::new();
-        found.extend(mismatches(&function, kinds, &mut lifted));
+        let mut checked = Vec::new();
+        found.extend(mismatches(&function, kinds, &mut checked));
         // Every lifted parameter of the entry is checked.
         for index in (0..kinds.max.min(kinds.params.len())).filter(|&i| lifts(kinds, i)) {
             assert!(
-                lifted.contains(&index),
+                checked.contains(&index),
                 "{function:?} argument {index} is not checked"
             );
         }
