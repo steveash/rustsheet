@@ -192,7 +192,8 @@ Evidence: probes/lift-arrays-choose-arms (excel-graph, 2026-10-18, T-1874). H1:H
 
 Ours: matches for the lifted functions (T-1874). Static analysis used to take such a call for a scalar, since CHOOSE
 gives its array arms a range's shape; the fuzz reproducer `IMSECH(CHOOSE({1,2},{1,2,3},{4;5}))` hit a debug assertion.
-The SUBTOTAL over TAKE cell is still a scalar `#VALUE!` (T-1882).
+The SUBTOTAL over TAKE cell matches since T-1882: SUBTOTAL reads TAKE's first argument as cells only when its static
+shape is not an array, analysed once so nesting stays linear.
 
 Status: VERIFIED (excel-graph)
 Tasks: T-1874, T-1882
