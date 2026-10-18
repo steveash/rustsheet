@@ -149,10 +149,24 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<bool, CalcResult> {
+        let order = self.get_sort_order_arg(node, cell)?;
+        Self::validate_sort_order(order, cell)
+    }
+
+    /// Evaluates a `sort_order` argument without validating its value (an omitted one is 1).
+    fn get_sort_order_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<i32, CalcResult> {
         if matches!(node, Node::EmptyArgKind) {
-            return Ok(true);
+            return Ok(1);
         }
-        match self.get_number(node, cell)? as i32 {
+        Ok(self.get_number(node, cell)? as i32)
+    }
+
+    fn validate_sort_order(order: i32, cell: CellReferenceIndex) -> Result<bool, CalcResult> {
+        match order {
             1 => Ok(true),
             -1 => Ok(false),
             _ => Err(CalcResult::new_error(
@@ -189,32 +203,24 @@ impl Model {
         let num_cols = data[0].len();
 
         // An omitted argument (`SORT(arr,,)`) takes its default: probes/counta-empty-value D22-D24.
-        let sort_index: usize = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {
+        // Every argument is evaluated, and the first error wins, before any value is validated:
+        // docs/excel-semantics/arrays.md "SORT argument errors come before validation".
+        let raw_index: i64 = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {
             match self.get_number(&args[1], cell) {
-                Ok(n) => {
-                    let n = n as i64;
-                    if n < 1 {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "sort_index must be >= 1".to_string(),
-                        );
-                    }
-                    n as usize
-                }
+                Ok(n) => n as i64,
                 Err(e) => return e,
             }
         } else {
             1
         };
 
-        let ascending: bool = if args.len() >= 3 {
-            match self.get_sort_order(&args[2], cell) {
+        let raw_order: i32 = if args.len() >= 3 {
+            match self.get_sort_order_arg(&args[2], cell) {
                 Ok(a) => a,
                 Err(e) => return e,
             }
         } else {
-            true
+            1
         };
 
         let by_col: bool = if args.len() >= 4 {
@@ -224,6 +230,19 @@ impl Model {
             }
         } else {
             false
+        };
+
+        if raw_index < 1 {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "sort_index must be >= 1".to_string(),
+            );
+        }
+        let sort_index = raw_index as usize;
+        let ascending = match Self::validate_sort_order(raw_order, cell) {
+            Ok(a) => a,
+            Err(e) => return e,
         };
 
         if !by_col {

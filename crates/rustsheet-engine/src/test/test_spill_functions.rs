@@ -560,3 +560,20 @@ fn nested_anchorarray_of_at_if_and_at_index_is_linear() {
     assert_eq!(model._get_text("J1"), "1");
     assert_eq!(model._get_text("J3"), "3");
 }
+
+#[test]
+fn sort_error_argument_wins_over_invalid_sort_index_and_order() {
+    // gen-m7/c5d278a8662ef4b2 Calc!A39 (Excel): by_col `#N/A` beats sort_index 0.
+    let mut model = new_empty_model();
+    model._set("A1", "=SORT({1;2},0,1,NA())");
+    model._set("A2", "=SORT({1;2},0,NA())");
+    model._set("A3", "=SORT({1;2},1,0,NA())");
+    model._set("A4", "=SORT({1;2},0,1)");
+    model._set("A5", "=SORT({1;2},1,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#N/A");
+    assert_eq!(model._get_text("A2"), "#N/A");
+    assert_eq!(model._get_text("A3"), "#N/A");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+}
