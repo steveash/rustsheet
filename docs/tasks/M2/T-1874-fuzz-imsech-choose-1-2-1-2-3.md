@@ -3,7 +3,7 @@ id: T-1874
 title: "Fuzz: IMSECH(CHOOSE({1,2},{1,2,3},{4;5})) reaches a scalar-context cell with a 3x2 array (debug_assert panic)"
 milestone: M2
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
