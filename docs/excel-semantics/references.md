@@ -862,8 +862,8 @@ pass (`MAX_SEEN_RANGES`); a formula that reads more is `#VALUE!` ("Too many dist
 A function walking a whole column or row (and a lookup down a column, or a SUMIFS-shaped criteria
 range) visits only the used area and records the rest as one rectangle read empty, and every area of
 a union is recorded whole, whatever its size, as is a multi-cell range a MAP or SCAN LAMBDA returns
-for an element (read over its existing cells only, since the engine's element is `#VALUE!` whatever they hold;
-Excel's element value is unprobed, T-1792; T-1769); which every spill commit of the pass is checked
+for an element (read over its existing cells only, since the whole call is `#CALC!` whatever they hold,
+arrays.md "MAP and SCAN with a LAMBDA that returns a multi-cell range"; T-1769); which every spill commit of the pass is checked
 against (evaluation.rs module doc). A rectangle already on record for the formula's root is free, so
 repeating a walk costs nothing (T-1497: `MAX_AREAS` copies of `A:A` walked by a MAP record one), but
 each new reference makes a new one, and nothing else bounds them: `=SUM(MAKEARRAY(1024,1024,

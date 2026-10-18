@@ -24,15 +24,14 @@ use crate::test::util::new_empty_model;
 // ── ASC ───────────────────────────────────────────────────────────────────────
 
 #[test]
-fn test_asc_fullwidth() {
+fn test_asc_leaves_fullwidth_unchanged() {
     let mut model = new_empty_model();
-    // Full-width A (U+FF21) → A (U+0041)
+    // en-US Excel does not narrow: probes/t1626-asc, text.md "ASC and JIS in en-US" (T-1863).
     model._set("A1", "=ASC(\"\u{FF21}\u{FF22}\u{FF23}\")");
-    // Full-width space (U+3000) → regular space
     model._set("A2", "=ASC(\"\u{3000}\")");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), "ABC");
-    assert_eq!(model._get_text("A2"), " ");
+    assert_eq!(model._get_text("A1"), "\u{FF21}\u{FF22}\u{FF23}");
+    assert_eq!(model._get_text("A2"), "\u{3000}");
 }
 
 #[test]

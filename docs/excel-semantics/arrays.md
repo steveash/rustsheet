@@ -963,3 +963,13 @@ ISOMITTED inside `LAMBDA(x,[y],...)` matches ours in every probed form (A20-A49)
 filled cell (A28-A31) count as supplied (FALSE), and so is a reference to a blank cell: `LAMBDA(x,[y],ISOMITTED(y))(1,C1)` with C1 blank is FALSE (probes/dynamic-array-reshape-reprobe E20-E21); outside a LAMBDA `ISOMITTED(5)`, `ISOMITTED(A1)` and `ISOMITTED(#N/A)` are FALSE (A43-A45).
 Status: VERIFIED (excel-graph)
 Tasks: T-1627, T-1630, T-1632
+
+## MAP and SCAN with a LAMBDA that returns a multi-cell range
+Rule: when the LAMBDA of MAP or SCAN returns a multi-cell reference (`MAP(A1:A2,LAMBDA(r,B1:B3))`,
+a row range, a range holding an error cell), Excel gives the whole call one `#CALC!` (a scalar, not a
+`#CALC!` per element: `ROWS` of it is `#CALC!` too), as BYROW and BYCOL do. It does not depend on
+what the range holds (numbers, an error cell among numbers, an error cell among blanks, text and booleans all alike; an all-blank range and a LAMBDA that returns a range for only some elements are unprobed). A one-cell
+range is the control: its value is the element (`MAP(A1:A2,LAMBDA(r,J1:J1))` is 4, 4).
+Evidence: probes/map-scan-range-result (excel-graph 2026-10-18).
+Implemented in: `Model::lambda_result_value`, which still reads the range's existing cells (a cycle
+through it is `#CIRC!`). Tasks: T-1792, T-1769.

@@ -497,3 +497,26 @@ piecewise coefficients. Candidate piece breaks: about 4.1, 4.6-5.66, 5.227, 8.04
 - **Remaining for ERFC parity:**
   - the [0.5, 4] kernel (x = 4 goes low), now under the same method;
   - Excel's EXP F2XM1 residual (a dedicated session).
+
+### Research update 8 (2026-10-18, end of night): status
+
+| Piece | Status |
+|---|---|
+| ERF, 0 <= x <= 0.5 | Bit-exact (775,272 / 775,272). |
+| ERFC, 0 <= x <= 0.5 | Bit-exact: fl(1 - ERF). |
+| ERFC, 4 < x <= 26.55 | Bit-exact on every probed point (1,540,477). The 2 apparent misses are inputs Excel parsed one ulp off from the xlsx text. Uses Excel's own EXP as E. |
+| ERFC, x > 26.55 | 0 (subnormal flush). |
+| Excel EXP | Model V6: nint split, F2XM1 on \|f\| <= 1/2, 64-bit reciprocal for f < 0. Matches 2,139,591 / 2,139,684; the 93 misses are F2XM1 near-ties, possibly CPU-dependent (AMD hypothesis untested). |
+| ERFC/ERF, 0.5 < x <= 4 | Structure known: Horner in x with stored ops, degree (7,7) with a tiny top coefficient, lambda = 1.020495. Coefficients blocked: the top stages are below visibility. |
+
+Other findings:
+- Excel's xlsx number parser is not always correctly rounded: 4 of about 2.1M cells were read one ulp off.
+- GAMMA.DIST's shapes 0.5 and 1 are special-cased.
+- NORM.S.DIST(-y) = ERFC(fl(y*sqrt(0.5)))/2.
+
+Open routes for [0.5, 4]:
+1. Find the construction that generated the coefficients. Small-x erf and the tail also defied published sources.
+2. A global exact-match optimisation over 15 coefficients plus lambda, from a better start than least squares.
+3. A side channel exposing N or D separately.
+4. Engine work (T-1780) can already ship ERF for x <= 0.5, the ERFC tail, and EXP V6. [0.5, 4] would use the best
+   smooth model until it is cracked.
