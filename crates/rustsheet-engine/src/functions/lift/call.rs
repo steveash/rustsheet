@@ -156,6 +156,8 @@ impl Model {
         // One- and two-argument calls (most of the math functions) read into locals: building,
         // moving and dropping a whole `ArgBuf` cost about as much as a scalar kernel, and was
         // most of the per-call overhead over the old math macros (T-1773 bench).
+        // Each argument is read by `read_lift_arg_with`, as in `read_lift_args`: a change to how
+        // the arguments are read or counted against the cap goes there, not in these arms.
         let lifted = match args {
             [only] => match self.read_lift_arg_at(kinds, 0, only, &mut 0, cell) {
                 Ok(LiftedArg::Scalar(value)) => return kernel(self, std::slice::from_ref(&value)),
@@ -208,7 +210,8 @@ impl Model {
         self.read_lift_arg_with(kind, node, input_cells, MAX_LIFTED_CELL_VISITS, cell)
     }
 
-    /// The read phase: each argument once, by its kind (SPEC-0011's read table). An array is a
+    /// The read phase for calls of three or more arguments (`lift_call_with` reads shorter ones
+    /// into locals): each argument once, by its kind (SPEC-0011's read table). An array is a
     /// grid; a multi-cell range is a grid for `Lift` (read through `evaluate_range`, bounded
     /// before it is read) and `#VALUE!` for `LiftArrays`, with no intersection; a one-cell range
     /// is its cell's value. The grids' cells add up, and the call is `#ERROR!` before the next

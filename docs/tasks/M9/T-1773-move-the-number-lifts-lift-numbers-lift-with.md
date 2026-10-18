@@ -65,3 +65,6 @@ Spec: docs/specs/SPEC-0011-scalar-argument-lifting.md, "Today's lifting code" an
   | SUM(ROUND(A1:A1000000,2)) | 1.90 s | 1.09 s |
   | SUM(ABS(A1:A1000000)) | 435 ms | 381 ms |
   | SUM(IFERROR(ROUND(A1:A1000000&"x",2),0)) | 3.21 s | 3.01 s |
+- Review: a LAMBDA argument read `#N/IMPL!` on the driver where main read `#VALUE!`;
+  `kernel_number` maps it to `#VALUE!` again (test `a_lambda_number_argument_is_value_error`).
+  Follow-up probe: T-1916.

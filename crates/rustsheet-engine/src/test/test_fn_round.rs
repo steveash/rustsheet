@@ -56,3 +56,20 @@ fn round_of_a_column_against_a_row_is_bounded() {
     model.evaluate();
     assert_eq!(model._get_text("B2"), *"#ERROR!");
 }
+
+// A LAMBDA read as a number by a math function on the lifting driver is `#VALUE!`, as it was
+// before they moved onto it (T-1773), and as MEDIAN and AND read one
+// (probes/aggregate-picked-direct-a-variants D7-D12, probes/and-or-xor-picked-text).
+#[test]
+fn a_lambda_number_argument_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ABS(LAMBDA(x,x))");
+    model._set("A2", "=ROUND(LAMBDA(x,x),1)");
+    model._set("A3", "=ROUND(1,LAMBDA(x,x))");
+    model._set("A4", "=CEILING.MATH(LAMBDA(x,x))");
+    model._set("A5", "=MOD(7,LAMBDA(x,x))");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4", "A5"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
+    }
+}

@@ -48,7 +48,8 @@ impl Model {
 impl Model {
     /// A number argument of a lifted kernel, read as `cast_number_ref` reads it (a boolean is 0 or
     /// 1, a blank 0), except that text which is not a number is [`value_error`]: a failing
-    /// element allocates nothing.
+    /// element allocates nothing. A LAMBDA is `#VALUE!`, as the math functions read it before
+    /// they moved onto the driver (T-1773).
     pub(crate) fn kernel_number(
         &self,
         value: &CalcResult,
@@ -56,6 +57,7 @@ impl Model {
     ) -> Result<f64, CalcResult> {
         match value {
             CalcResult::String(text) => self.cast_number(text).ok_or_else(|| value_error(cell)),
+            CalcResult::Lambda(_) => Err(Self::lambda_as_number_error(cell)),
             other => self.cast_number_ref(other, cell),
         }
     }
