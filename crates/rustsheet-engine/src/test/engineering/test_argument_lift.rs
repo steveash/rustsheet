@@ -179,7 +179,7 @@ fn a_lifted_argument_over_a_choose_of_values_spills() {
         model._set(cell, value);
     }
     // (top-left cell, formula, spill width, the spilled values row by row).
-    let cases: [(&str, &str, i32, &[&str]); 8] = [
+    let cases: [(&str, &str, i32, &[&str]); 9] = [
         (
             "A1",
             "=IMABS(CHOOSE({1,2},{1,2,3},{4;5}))",
@@ -198,6 +198,7 @@ fn a_lifted_argument_over_a_choose_of_values_spills() {
         ("A21", "=EDATE(CHOOSE(1,{4;5}),1)", 1, &["35", "36"]),
         ("A25", "=ISEVEN(CHOOSE(1,{4;5}))", 1, &["TRUE", "FALSE"]),
         ("A29", "=IMABS(CHOOSE(1,H1))", 1, &["3", ""]),
+        ("A37", "=IMABS((CHOOSE(1,{1,2,3})))", 3, &["1", "2", "3"]),
     ];
     for (cell, formula, _, _) in cases {
         model._set(cell, formula);

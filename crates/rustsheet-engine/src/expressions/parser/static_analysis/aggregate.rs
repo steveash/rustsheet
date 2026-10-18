@@ -77,8 +77,10 @@ fn is_read_reference(arg: &Node) -> bool {
 /// `TAKE(LET(x,SEQUENCE(4),x),2)` pick values and spill like any array
 /// (probes/subtotal-reference-operands-e I2:J2, O2:P2, R2:U2, T-1365). `bound` holds the LET
 /// variables in scope with their answer, computed once when bound so a chain of variables costs
-/// linear time; a name not in it (a LAMBDA parameter) counts as cells, as before.
+/// linear time; a name not in it (a LAMBDA parameter) counts as cells, as before. A written group
+/// is its child: `IMABS((CHOOSE(1,{1,2,3})))` lifts like the bare call (T-1874).
 pub(super) fn yields_cells<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
+    let node = node.ungrouped();
     match node {
         Node::FunctionKind {
             kind: Function::If,
