@@ -44,7 +44,10 @@ fn f_quantile(dist: &FisherSnedecor, df1: f64, df2: f64, p: f64) -> f64 {
 /// Excel's `F.DIST(1E308,1,3,FALSE)` is 0 (probes/stat-overflow-arguments E11, -b A6). Only in
 /// that case, where the overflow comes from x alone (`df1^df1`, `df2^df2` and
 /// `(df1+df2)^(df1+df2)` are finite, so the direct form does not overflow at x near 1), is the
-/// density evaluated in logarithms. Degrees of freedom large enough to overflow those powers
+/// density evaluated in logarithms, and only an underflow to 0 is taken from it: a density that
+/// is a positive double stays `#NUM!` as before, because no oracle cell covers it (moderate x
+/// with df1 near 30-140, e.g. `F.DIST(20,100,3,FALSE)`) and the logarithmic form misses there by
+/// up to about 300 ulp (TODO(T-1864)). Degrees of freedom large enough to overflow those powers
 /// (`F.DIST(3,50,100,FALSE)`, `F.DIST(2,5,1E10,FALSE)`) overflow the direct form too; they stay
 /// `#NUM!` as before, because the logarithmic form is not accurate enough there (Excel's
 /// `F.DIST(2,5,1E10,FALSE)` is 0.14167277676179968, probes-numeric/t1530-f-df-cut; TODO(T-1864)).
@@ -61,7 +64,13 @@ fn f_pdf(dist: &FisherSnedecor, df1: f64, df2: f64, x: f64) -> f64 {
     let ln_density = 0.5 * (df1 * scaled.ln() + df2 * df2.ln() - (df1 + df2) * (scaled + df2).ln())
         - x.ln()
         - ln_beta;
-    ln_density.exp()
+    // Only the evidence-backed underflow: ln of the smallest positive double is about -744.44.
+    let density = ln_density.exp();
+    if density == 0.0 {
+        0.0
+    } else {
+        direct
+    }
 }
 
 impl Model {

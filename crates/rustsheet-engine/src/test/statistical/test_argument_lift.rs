@@ -281,3 +281,20 @@ fn overflowing_arguments_are_excels_errors_not_panics() {
         assert_eq!(model._get_text(cell), *value, "{cell}");
     }
 }
+
+#[test]
+fn the_f_pdf_takes_only_an_underflow_from_its_log_form() {
+    // A positive F density whose direct form overflows at moderate x stays #NUM!, as on main:
+    // unprobed, and the logarithmic form misses there (T-1864). An underflow to 0 is Excel's
+    // (probes/stat-overflow-arguments E11, -b A6).
+    let mut model = new_empty_model();
+    model._set("A1", "=F.DIST(20,100,3,FALSE)");
+    model._set("A2", "=F.DIST(2,140,2,FALSE)");
+    model._set("A3", "=F.DIST(1E10,30,5,FALSE)");
+    model._set("A4", "=F.DIST(8E+307,2,3,FALSE)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3"] {
+        assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
+    }
+    assert_eq!(model._get_text("A4"), *"0");
+}
