@@ -1,0 +1,13 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "CALCULATE AGE": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "9bb02d9c0dd02b862bc0ae7624bfb0b64652af3f935b4d2af165362790f399a4",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:52:34+00:00",
+  "version": null
+ }
+}

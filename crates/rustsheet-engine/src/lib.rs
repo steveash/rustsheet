@@ -88,7 +88,7 @@ mod workbook;
 mod test;
 
 pub use evaluation::{KeyBuild, KeyHasher};
-pub use function_names::implemented_function_names;
+pub use function_names::{implemented_function_names, lift_kinds_table, LiftKinds};
 pub use locale::get_supported_locales;
 pub use merged_cells::MergeStructure;
 pub use model::FmtSettings;

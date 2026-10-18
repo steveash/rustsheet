@@ -1,0 +1,5266 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "C100": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1000": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1001": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1002": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1003": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1004": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1005": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1006": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1007": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1008": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1009": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C101": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1010": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1011": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1012": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1013": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1014": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1015": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1016": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1017": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1018": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1019": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C102": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1020": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1021": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1022": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1023": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1024": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1025": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1026": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1027": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1028": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1029": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C103": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1030": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1031": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1032": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1033": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1034": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1035": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1036": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1037": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1038": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1039": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C104": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1040": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1041": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1042": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1043": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1044": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1045": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1046": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1047": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1048": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1049": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C105": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1050": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1051": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1052": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1053": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1054": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1055": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1056": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1057": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1058": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1059": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C106": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1060": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1061": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1062": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1063": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1064": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1065": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1066": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1067": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1068": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1069": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C107": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1070": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1071": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1072": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1073": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1074": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1075": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1076": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1077": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1078": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1079": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C108": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1080": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1081": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1082": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1083": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1084": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1085": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1086": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1087": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1088": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1089": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C109": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1090": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1091": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1092": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1093": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1094": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1095": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1096": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1097": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1098": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1099": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C110": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1100": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1101": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1102": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1103": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1104": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1105": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1106": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1107": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1108": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1109": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C111": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1110": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1111": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1112": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1113": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1114": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1115": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1116": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1117": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1118": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1119": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C112": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1120": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1121": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1122": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1123": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1124": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1125": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1126": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1127": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1128": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1129": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C113": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1130": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1131": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1132": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1133": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1134": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1135": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1136": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1137": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1138": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1139": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C114": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1140": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1141": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1142": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1143": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1144": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1145": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1146": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1147": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1148": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1149": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C115": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1150": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1151": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1152": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1153": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1154": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1155": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1156": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1157": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1158": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1159": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C116": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1160": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1161": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1162": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1163": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1164": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1165": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1166": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1167": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1168": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1169": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C117": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1170": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1171": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1172": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1173": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1174": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1175": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1176": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1177": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1178": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1179": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C118": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1180": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1181": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1182": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1183": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1184": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1185": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1186": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1187": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1188": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1189": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C119": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1190": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1191": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1192": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1193": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1194": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1195": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1196": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1197": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1198": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1199": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C120": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1200": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1201": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1202": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1203": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1204": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1205": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1206": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1207": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1208": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1209": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C121": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1210": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1211": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1212": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1213": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1214": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1215": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1216": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1217": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1218": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1219": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C122": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1220": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1221": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1222": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1223": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1224": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1225": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1226": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1227": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1228": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1229": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C123": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1230": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1231": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1232": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1233": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1234": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1235": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1236": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1237": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1238": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1239": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C124": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1240": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1241": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1242": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1243": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1244": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1245": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1246": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1247": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1248": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1249": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C125": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1250": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1251": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1252": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1253": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1254": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1255": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1256": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1257": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1258": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1259": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C126": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1260": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1261": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1262": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1263": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1264": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1265": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1266": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1267": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1268": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1269": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C127": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1270": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1271": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1272": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1273": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1274": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1275": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C1276": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1277": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1278": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1279": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C128": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1280": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1281": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1282": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1283": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1284": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1285": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1286": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C1287": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C1288": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1289": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C129": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1290": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1291": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1292": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1293": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1294": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1295": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1296": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1297": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1298": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1299": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C130": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1300": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1301": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C1302": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1303": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1304": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1305": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C1306": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1307": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1308": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1309": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C131": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1310": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1311": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1312": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1313": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1314": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C1315": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1316": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1317": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1318": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1319": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C132": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1320": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1321": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1322": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1323": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1324": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1325": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1326": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1327": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1328": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C1329": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C133": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C134": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C135": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C136": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C137": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C138": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C139": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C140": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C141": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C142": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C143": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C144": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C145": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C146": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C147": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C148": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C149": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C150": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C151": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C152": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C153": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C154": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C155": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C156": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C157": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C158": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C159": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C160": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C161": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C162": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C163": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C164": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C165": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C166": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C167": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C168": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C169": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C170": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C171": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C172": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C173": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C174": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C175": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C176": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C177": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C178": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C179": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C18": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C180": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C181": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C182": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C183": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C184": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C185": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C186": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C187": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C188": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C189": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C19": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C190": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C191": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C192": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C193": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C194": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C195": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C196": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C197": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C198": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C199": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C20": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C200": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C201": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C202": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C203": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C204": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C205": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C206": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C207": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C208": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C209": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C21": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C210": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C211": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C212": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C213": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C214": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C215": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C216": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C217": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C218": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C219": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C22": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C220": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C221": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C222": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C223": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C224": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C225": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C226": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C227": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C228": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C229": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C23": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C230": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C231": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C232": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C233": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C234": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C235": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C236": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C237": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C238": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C239": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C24": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C240": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C241": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C242": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C243": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C244": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C245": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C246": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C247": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C248": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C249": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C25": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C250": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C251": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C252": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C253": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C254": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C255": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C256": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C257": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C258": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C259": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C26": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C260": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C261": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C262": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C263": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C264": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C265": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C266": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C267": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C268": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C269": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C27": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C270": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C271": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C272": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C273": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C274": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C275": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C276": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C277": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C278": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C279": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C28": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C280": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C281": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C282": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C283": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C284": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C285": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C286": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C287": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C288": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C289": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C29": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C290": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C291": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C292": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C293": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C294": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C295": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C296": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C297": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C298": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C299": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C30": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C300": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C301": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C302": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C303": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C304": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C305": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C306": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C307": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C308": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C309": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C31": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C310": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C311": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C312": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C313": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C314": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C315": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C316": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C317": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C318": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C319": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C32": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C320": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C321": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C322": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C323": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C324": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C325": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C326": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C327": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C328": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C329": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C33": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C330": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C331": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C332": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C333": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C334": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C335": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C336": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C337": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C338": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C339": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C34": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C340": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C341": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C342": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C343": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C344": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C345": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C346": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C347": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C348": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C349": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C35": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C350": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C351": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C352": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C353": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C354": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C355": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C356": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C357": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C358": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C359": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C36": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C360": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C361": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C362": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C363": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C364": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C365": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C366": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C367": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C368": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C369": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C37": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C370": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C371": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C372": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C373": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C374": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C375": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C376": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C377": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C378": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C379": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C38": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C380": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C381": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C382": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C383": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C384": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C385": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C386": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C387": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C388": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C389": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C39": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C390": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C391": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C392": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C393": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C394": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C395": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C396": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C397": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C398": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C399": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C40": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C400": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C401": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C402": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C403": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C404": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C405": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C406": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C407": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C408": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C409": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C41": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C410": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C411": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C412": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C413": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C414": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C415": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C416": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C417": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C418": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C419": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C42": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C420": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C421": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C422": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C423": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C424": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C425": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C426": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C427": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C428": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C429": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C43": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C430": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C431": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C432": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C433": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C434": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C435": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C436": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C437": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C438": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C439": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C44": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C440": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C441": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C442": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C443": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C444": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C445": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C446": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C447": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C448": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C449": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C45": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C450": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C451": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C452": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C453": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C454": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C455": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C456": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C457": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C458": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C459": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C46": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C460": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C461": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C462": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C463": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C464": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C465": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C466": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C467": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C468": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C469": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C47": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C470": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C471": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C472": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C473": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C474": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C475": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C476": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C477": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C478": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C479": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C48": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C480": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C481": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C482": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C483": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C484": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C485": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C486": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C487": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C488": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C489": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C49": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C490": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C491": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C492": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C493": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C494": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C495": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C496": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C497": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C498": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C499": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C5": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C50": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C500": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C501": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C502": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C503": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C504": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C505": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C506": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C507": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C508": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C509": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C51": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C510": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C511": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C512": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C513": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C514": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C515": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C516": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C517": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C518": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C519": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C52": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C520": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C521": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C522": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C523": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C524": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C525": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C526": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C527": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C528": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C529": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C53": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C530": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C531": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C532": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C533": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C534": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C535": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C536": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C537": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C538": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C539": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C54": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C540": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C541": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C542": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C543": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C544": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C545": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C546": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C547": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C548": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C549": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C55": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C550": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C551": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C552": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C553": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C554": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C555": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C556": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C557": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C558": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C559": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C56": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C560": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C561": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C562": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C563": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C564": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C565": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C566": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C567": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C568": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C569": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C57": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C570": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C571": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C572": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C573": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C574": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C575": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C576": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C577": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C578": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C579": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C58": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C580": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C581": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C582": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C583": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C584": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C585": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C586": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C587": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C588": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C589": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C59": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C590": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C591": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C592": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C593": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C594": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C595": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C596": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C597": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C598": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C599": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C60": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C600": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C601": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C602": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C603": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C604": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C605": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C606": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C607": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C608": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C609": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C61": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C610": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C611": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C612": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C613": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C614": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C615": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C616": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C617": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C618": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C619": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C62": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C620": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C621": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C622": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C623": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C624": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C625": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C626": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C627": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C628": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C629": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C63": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C630": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C631": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C632": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C633": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C634": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C635": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C636": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C637": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C638": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C639": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C64": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C640": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C641": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C642": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C643": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C644": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C645": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C646": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C647": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C648": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C649": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C65": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C650": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C651": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C652": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C653": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C654": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C655": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C656": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C657": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C658": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C659": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C66": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C660": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C661": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C662": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C663": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C664": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C665": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C666": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C667": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C668": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C669": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C67": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C670": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C671": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C672": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C673": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C674": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C675": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C676": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C677": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C678": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C679": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C68": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C680": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C681": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C682": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C683": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C684": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C685": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C686": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C687": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C688": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C689": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C69": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C690": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C691": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C692": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C693": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C694": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C695": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C696": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C697": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C698": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C699": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C70": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C700": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C701": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C702": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C703": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C704": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C705": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C706": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C707": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C708": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C709": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C71": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C710": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C711": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C712": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C713": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C714": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C715": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C716": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C717": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C718": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C719": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C72": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C720": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C721": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C722": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C723": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C724": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C725": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C726": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C727": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C728": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C729": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C73": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C730": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C731": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C732": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C733": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C734": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C735": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C736": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C737": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C738": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C739": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C74": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C740": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C741": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C742": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C743": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C744": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C745": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C746": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C747": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C748": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C749": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C75": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C750": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C751": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C752": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C753": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C754": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C755": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C756": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C757": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C758": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C759": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C76": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C760": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C761": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C762": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C763": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C764": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C765": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C766": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C767": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C768": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C769": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C77": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C770": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C771": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C772": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C773": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C774": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C775": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C776": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C777": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C778": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C779": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C78": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C780": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C781": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C782": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C783": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C784": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C785": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C786": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C787": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C788": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C789": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C79": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C790": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C791": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C792": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C793": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C794": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C795": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C796": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C797": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C798": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C799": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C80": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C800": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C801": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C802": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C803": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C804": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C805": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C806": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C807": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C808": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C809": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C81": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C810": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C811": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C812": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C813": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C814": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C815": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C816": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C817": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C818": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C819": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C82": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C820": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C821": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C822": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C823": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C824": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C825": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C826": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C827": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C828": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C829": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C83": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C830": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C831": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C832": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C833": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C834": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C835": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C836": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C837": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C838": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C839": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C84": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C840": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C841": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C842": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C843": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C844": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C845": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C846": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C847": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C848": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C849": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C85": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C850": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C851": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C852": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C853": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C854": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C855": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C856": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C857": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C858": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C859": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C86": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C860": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C861": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C862": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C863": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C864": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C865": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C866": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C867": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C868": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C869": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C87": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C870": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C871": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C872": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C873": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C874": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C875": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C876": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C877": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C878": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C879": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C88": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C880": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C881": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C882": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C883": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C884": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C885": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C886": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C887": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C888": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C889": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C89": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C890": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C891": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C892": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C893": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C894": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C895": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C896": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C897": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C898": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C899": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C90": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C900": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C901": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C902": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C903": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C904": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C905": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C906": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C907": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C908": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C909": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C91": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C910": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C911": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C912": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C913": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C914": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C915": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C916": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C917": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C918": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C919": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C92": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C920": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C921": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C922": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C923": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C924": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C925": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C926": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C927": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C928": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C929": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C93": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C930": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C931": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C932": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C933": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C934": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C935": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C936": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C937": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C938": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C939": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C94": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C940": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C941": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C942": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C943": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C944": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C945": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C946": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C947": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C948": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C949": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C95": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C950": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C951": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C952": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C953": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C954": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C955": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C956": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C957": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C958": {
+    "t": "s",
+    "v": "Saturday"
+   },
+   "C959": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C96": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C960": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C961": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C962": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C963": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C964": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C965": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C966": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C967": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C968": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C969": {
+    "t": "s",
+    "v": "Monday"
+   },
+   "C97": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C970": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C971": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C972": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C973": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C974": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C975": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C976": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C977": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C978": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C979": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C98": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C980": {
+    "t": "s",
+    "v": "Tuesday"
+   },
+   "C981": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C982": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C983": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C984": {
+    "t": "s",
+    "v": "Wednesday"
+   },
+   "C985": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C986": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C987": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C988": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C989": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C99": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "C990": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C991": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C992": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C993": {
+    "t": "s",
+    "v": "Thursday"
+   },
+   "C994": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C995": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C996": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C997": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C998": {
+    "t": "s",
+    "v": "Friday"
+   },
+   "C999": {
+    "t": "s",
+    "v": "Friday"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "3401dd91f84fb9bbf0ebc755b5b155bb1524cb37c572716b1fd926eb95558f40",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:40:25+00:00",
+  "version": null
+ }
+}

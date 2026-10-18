@@ -1,0 +1,74 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "G10": {
+    "t": "n",
+    "v": 44407.0
+   },
+   "G6": {
+    "t": "n",
+    "v": 44271.0
+   },
+   "G7": {
+    "t": "n",
+    "v": 44299.0
+   },
+   "G8": {
+    "t": "n",
+    "v": 44304.0
+   },
+   "G9": {
+    "t": "n",
+    "v": 44320.0
+   },
+   "H10": {
+    "t": "n",
+    "v": 13000.0
+   },
+   "H6": {
+    "t": "n",
+    "v": 25000.0
+   },
+   "H7": {
+    "t": "n",
+    "v": 22000.0
+   },
+   "H8": {
+    "t": "n",
+    "v": -3000.0
+   },
+   "H9": {
+    "t": "n",
+    "v": 16000.0
+   },
+   "J10": {
+    "t": "s",
+    "v": "Bad Debts"
+   },
+   "J6": {
+    "t": "s",
+    "v": "Bad Debts"
+   },
+   "J7": {
+    "t": "s",
+    "v": "Bad Debts"
+   },
+   "J8": {
+    "t": "s",
+    "v": "Bad Debts"
+   },
+   "J9": {
+    "t": "s",
+    "v": "Bad Debts"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "2f9a764eab30028bbe6874c306758857e4c0f25d8ef610c612f165678e9d9de6",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:42:48+00:00",
+  "version": null
+ }
+}
