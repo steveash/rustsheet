@@ -230,10 +230,44 @@ impl Model {
                         return e;
                     }
                 }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
+                // Excel: a typed argument is coerced (`NPV(0.1,-10000,"2750",TRUE,4250)` is
+                // -3914.6233180793665) and typed text that is no number is #VALUE!, while the
+                // cells of a range keep skipping text and booleans (probes/fin-argument-modes
+                // H368-H371; docs/excel-semantics/financial.md "NPV and FVSCHEDULE arguments").
+                // A single-cell reference is not typed: `NPV(A5,B5,..)` with TRUE in B5 skips it
+                // (ironcalc-calc FINANCIAL/NPV.xlsx K5, L5).
+                direct @ (CalcResult::String(_) | CalcResult::Boolean(_))
+                    if !matches!(
+                        arg,
+                        Node::ReferenceKind { .. }
+                            | Node::ImplicitIntersection { .. }
+                            | Node::OpRangeKind { .. }
+                            | Node::DefinedNameKind(_)
+                    ) =>
+                {
+                    match self.cast_number_ref(&direct, cell) {
+                        Ok(value) => values.push(value),
+                        Err(error) => return error,
+                    }
                 }
+                // An array literal is read whole: its numbers are the cash flows (H368).
+                CalcResult::Array(rows) => {
+                    for node in rows.into_iter().flatten() {
+                        match node {
+                            ArrayNode::Number(value) => values.push(value),
+                            ArrayNode::Error(error) => {
+                                return CalcResult::new_error(
+                                    error,
+                                    cell,
+                                    "Error in array".to_string(),
+                                );
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                error @ CalcResult::Error { .. } => return error,
+                _ => {}
             };
         }
         match compute_npv(rate, &values) {
@@ -657,7 +691,21 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let schedule = match self.get_array_of_numbers(&args[1], &cell) {
+        // Excel: text in the schedule, in a range or an array literal, is #VALUE!
+        // (probes/fin-argument-modes H382-H384).
+        let schedule = match self.get_array_of_numbers_generic(
+            &args[1],
+            &cell,
+            true,
+            || Ok(None),
+            || {
+                Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Expected number".to_string(),
+                ))
+            },
+        ) {
             Ok(s) => s,
             Err(e) => return e,
         };

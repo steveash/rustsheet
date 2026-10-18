@@ -666,3 +666,16 @@ Tasks: T-1475
 Evidence: probes/fin-vdb-modes, fin-amordegrc, fin-fvschedule, fin-mduration, fin-rri (excel-graph, 2026-10-17, T-1625).
 Status: VERIFIED (excel-graph)
 Tasks: T-1764 (incl. MDURATION, RRI ulp), T-1765
+
+## NPV and FVSCHEDULE arguments
+Rule: NPV reads an array literal whole (`NPV(0.1,{-10000,2750,4250,3250,2750})` is 302.233453999042), coerces
+typed arguments (`NPV(0.1,-10000,"2750",TRUE,4250)` is -3914.6233180793665) and returns `#VALUE!` for typed text
+that is no number (`NPV(0.1,-10000,"x",4250)`); text and booleans in a range, or in a single-cell reference (`NPV(A5,B5,..)` with TRUE in B5;
+ironcalc-calc FINANCIAL/NPV.xlsx K5, L5), are skipped. FVSCHEDULE is
+`#VALUE!` when the schedule holds text, in a range (`N1:N2` with `"0.11"`) or in an array literal
+(`{0.09,"0.11"}`). Text and booleans inside an array literal passed to NPV are skipped like a range's (not probed).
+Evidence: probes/fin-argument-modes H368, H370, H371, H382-H384 (excel-graph, T-1084, T-1373).
+Backend: excel-graph.
+Status: VERIFIED (excel-graph)
+Implemented in: `fn_npv`, `fn_fvschedule` in functions/financial/mod.rs (T-1373)
+Tasks: T-1084, T-1373

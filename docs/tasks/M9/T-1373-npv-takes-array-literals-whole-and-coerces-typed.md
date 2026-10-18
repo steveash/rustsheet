@@ -3,7 +3,7 @@ id: T-1373
 title: "NPV takes array literals whole and coerces typed text and booleans; FVSCHEDULE is #VALUE! for text"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -26,8 +26,11 @@ NPV's ranges already skip text and booleans correctly (H369). Check whether the 
 statistical functions use (`aggregate` mode) already does this, and reuse it.
 
 ## Acceptance criteria
-- [ ] H368, H370, H371, H382, H383 and H384 of probes/fin-argument-modes pass. The ulp miss on H368's value, if any, is T-0901's.
-- [ ] `make check` green; reviewers approve.
+- [x] H368, H370, H371, H382, H383 and H384 of probes/fin-argument-modes pass. The ulp miss on H368's value, if any, is T-0901's.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The ulp misses of NPV's value (T-0901).
+
+## Outcome
+NPV now takes array literals whole, coerces typed text and booleans and returns #VALUE! for typed text that is no number; FVSCHEDULE is #VALUE! for text in its schedule. Findings in financial.md "NPV and FVSCHEDULE arguments". H371 and H382-H384 now pass; H368 and H370 differ only by ulp (T-0901's). Eval delta: probes fixed 4 cells, no regressions.
