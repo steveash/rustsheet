@@ -215,3 +215,32 @@ fn test_match_fractional_match_type() {
     assert_eq!(model._get_text("A3"), "2");
     assert_eq!(model._get_text("A4"), "2");
 }
+
+#[test]
+fn test_match_lifts_over_array_lookup_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set("A3", "30");
+    model._set("B1", "30");
+    model._set("B2", "10");
+    // A 1x1 array, a 2x1 array and a multi-cell range each give one position per element (T-1866).
+    model._set("C1", "=MATCH({20},A1:A3,0)");
+    model._set("D1", "=MATCH({30;10},A1:A3,0)");
+    model._set("E1", "=MATCH(B1:B2,A1:A3,0)");
+    model._set("F1", "=ROWS(MATCH(B1:B2,A1:A3,0))");
+    model._set("G1", "=MATCH({20;99},A1:A3,0)");
+    // An error element wins over an invalid match_type (probes/match-lookup-value-lift E17).
+    model._set("H1", "=MATCH({#N/A;10},A1:A3,\"x\")");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "2");
+    assert_eq!(model._get_text("D1"), "3");
+    assert_eq!(model._get_text("D2"), "1");
+    assert_eq!(model._get_text("E1"), "3");
+    assert_eq!(model._get_text("E2"), "1");
+    assert_eq!(model._get_text("F1"), "2");
+    assert_eq!(model._get_text("G1"), "2");
+    assert_eq!(model._get_text("G2"), "#N/A");
+    assert_eq!(model._get_text("H1"), "#N/A");
+    assert_eq!(model._get_text("H2"), "#VALUE!");
+}
