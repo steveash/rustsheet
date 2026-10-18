@@ -25,7 +25,8 @@ const AVERAGE_ARGS: AggregatePolicy = AggregatePolicy {
     skip_empty_args: false,
 };
 
-/// DEVSQ, AVEDEV and SUMSQ: an empty argument is skipped (TODO(T-0236)), and errors rank as in
+/// DEVSQ, AVEDEV and SUMSQ: an empty argument is skipped (TODO(T-1748): Excel counts it as 0, probes/stat-order-floor-batch
+/// A274, A299), and errors rank as in
 /// the AVERAGE family: a direct error beats a referenced or array error whichever comes first
 /// (probes/aggregate-error-precedence-stat-family rows 10-12, T-1439).
 const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
@@ -67,8 +68,9 @@ impl Model {
 
     /// `for_each_value` that skips empty arguments (`DEVSQ(1, )`) instead of counting them as 0;
     /// errors rank as in `for_each_value` (T-1439). DEVSQ, AVEDEV and SUMSQ ignored them before they
-    /// moved onto `for_each_value`; for the empty-argument skip there is no Excel evidence either way yet. TODO(T-0236):
-    /// probe empty arguments and fold this into `for_each_value`.
+    /// moved onto `for_each_value`. Excel counts the empty argument of AVEDEV and DEVSQ as 0
+    /// (probes/stat-order-floor-batch A274, A299; SUMSQ is unprobed), so the skip is wrong.
+    /// TODO(T-1748): implement that and fold this into `for_each_value`.
     pub(crate) fn for_each_value_skip_empty<F>(
         &mut self,
         args: &[Node],
