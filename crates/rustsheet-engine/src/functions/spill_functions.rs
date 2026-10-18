@@ -318,7 +318,7 @@ impl Model {
 
         // Every argument is evaluated left to right and the first error wins before any value
         // is validated (probes/sort-error-args H73-H105; docs/excel-semantics/arrays.md).
-        let mut raw_keys: Vec<(SortByArray, Result<i32, CalcResult>)> = Vec::new();
+        let mut raw_keys: Vec<(SortByArray, i32)> = Vec::new();
         let mut i = 1;
         while i < n {
             let key = match self.eval_to_array(&args[i], cell) {
@@ -327,12 +327,11 @@ impl Model {
             };
             let order = if i + 1 < n {
                 match self.get_sort_order_arg(&args[i + 1], cell) {
-                    Ok(o) => Ok(o),
-                    Err(e @ CalcResult::Error { .. }) => return e,
-                    Err(e) => Err(e),
+                    Ok(o) => o,
+                    Err(e) => return e,
                 }
             } else {
-                Ok(1)
+                1
             };
             raw_keys.push((key, order));
             i += 2;
@@ -348,7 +347,7 @@ impl Model {
                     "by_array must be one column or row with the same size as array".to_string(),
                 );
             };
-            let ascending = match order.and_then(|o| Self::validate_sort_order(o, cell)) {
+            let ascending = match Self::validate_sort_order(order, cell) {
                 Ok(a) => a,
                 Err(e) => return e,
             };
