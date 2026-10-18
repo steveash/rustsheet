@@ -46,10 +46,11 @@ The `@_"` cells were not a cost question: `_` takes the quote, which leaves an u
 rejects an unterminated code (an open quote or bracket, or a trailing `\`, `_` or `*`) for any value,
 even when the section the value uses is complete (`TEXT(5,"0;""")` is `#VALUE!`).
 
-Eval: probes l A13:A15, l A40 and m A22 are fixed (5 cells). The new rounds add 12 known failures.
-Eleven are unquoted letters after `_"`/`*"` (n A1, A2, A6:A9, o A35, A37:A40; T-1450): Excel accepts
-`a` and `aa` there and rejects `aaa` and longer runs, while our lexer rejects all of them. One is an unmatched
-condition printing General (q A16, T-0936). All are recorded in docs/excel-semantics/number-formats.md.
+Eval: probes l A13:A15, l A40 and m A22 are fixed (5 cells). After the merge with main (below), the new
+rounds add 6 known failures, each with an owner and recorded in docs/excel-semantics/number-formats.md:
+n A2 and A7:A9 (Excel accepts `a` and `aa` after `_"` but rejects `aaa` and longer runs, while we print
+them; T-1876), o A37 (`*` takes `"` as its fill, and we print a space for the fill; T-1735) and q A16
+(an unmatched condition printing General; T-0936).
 
 ## Blocked because
 Review hit the three-round limit (work-loop step 5). Security, architecture and quality approved.
@@ -66,8 +67,8 @@ entry, and eval/baseline/probes.txt (main's copy, then regenerated). Main's T-16
 and T-1714 AM/PM, A/P and locale costs sit on top of this refit, and their tests pass. Main's T-1262
 (bare letters print as literals) already fixed l A13:A15 and now also n A1, A6, o A35, A38:A40.
 That leaves 6 new-coverage known failures, not 12: n A2, A7:A9 (`@_"aaa` and longer runs are
-`#VALUE!` in Excel, but we print the letters; T-1450), o A37 (`TEXT(7,"0*""a")` is "7a" in Excel
-and "7 a" with us) and q A16 (T-0936). Probes against main: l A40 and m A22 are fixed, and there
+`#VALUE!` in Excel, but we print the letters; T-1876), o A37 (`TEXT(7,"0*""a")` is "7a" in Excel
+and "7 a" with us; T-1735) and q A16 (T-0936). Probes against main: l A40 and m A22 are fixed, and there
 are no new failures. Main had brought the duplication lock down to 4510, and this branch's
 tuple tables in `after_quoted_text_and_placeholder_runs` put it 21 lines over. They are now
 `prefix|n|suffix` strings, with the same rows. Still to do: re-run `reviewer-excel-fidelity`, then mark the task done and merge.

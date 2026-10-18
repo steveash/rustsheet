@@ -265,9 +265,8 @@ pub(crate) fn rejects_format_code(format: &str) -> bool {
 /// section the value uses is complete: `TEXT(5,"0;""")`, `TEXT("x","0;0;0;""")` and
 /// `TEXT("x","0;[Red")` are `#VALUE!`, and so are `@_""` on "x", as `_` takes the first quote,
 /// and `TEXT(5,"0;0_")` (probes/text-format-length-limit-n, -o, -q, -s;
-/// docs/excel-semantics/number-formats.md). Other
-/// codes our parser rejects are not covered: Excel accepts some of them (`TEXT("x","0 a")` is
-/// "x", -q A3; T-1450).
+/// docs/excel-semantics/number-formats.md). Other codes our parser rejects are not covered:
+/// whether Excel rejects one in a section the value does not use (`TEXT(5,"0;0 n")`) is unprobed.
 fn is_unterminated(format: &str) -> bool {
     let mut chars = format.chars();
     while let Some(c) = chars.next() {
