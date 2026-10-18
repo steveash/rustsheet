@@ -493,8 +493,9 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
     - A Cody-(8,8) shape fit to two strong lines on [3.5, 4) was an alias; no single stage reproduces those lines.
   - **Visibility.** Under (9,10), every stored stage from the first sum down has a rounding weight of 0.02-1.05
     noise units, so the tail's peeling method applies.
-    - Peeling so far pins N's top coefficient and D's top coefficient each modulo 8,192 ulps.
-    - Their aliases are tied: Delta(d10) = (sqrt(pi)/2)*Delta(c9).
+    - No coefficient is pinned yet. Early top-coefficient readings used only x in [3.5, 4) and proved to be local
+      false peaks: two parameters can fit one narrow x patch. A candidate now counts only if it lights up in
+      several disjoint x regions, as the true coefficients do on synthetic data.
   - **Data.** Long runs of consecutive doubles below 4, 2 and 1, for stage-mantissa readout: `kmyst-erfc-r8d*` and
     `kmyst-erfc-r10a*`..`r10d*`. `r10d*` is a control below 3.
 
