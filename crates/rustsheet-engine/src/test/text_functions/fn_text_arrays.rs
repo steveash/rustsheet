@@ -406,3 +406,17 @@ fn text_error_value_with_an_array_of_formats() {
     assert_eq!(row(&model, 1, 2), ["#N/A", "#N/A"]);
     assert_eq!(row(&model, 2, 2), ["1", "#N/A"]);
 }
+
+/// One result per format, following the format array's orientation (probes/text-format-array A20
+/// and A24, excel-graph, T-1458).
+#[test]
+fn text_over_a_column_array_and_a_range_of_formats() {
+    let mut model = new_empty_model();
+    model._set("C1", "'0");
+    model._set("C2", "'0.0");
+    model._set("A1", "=ROWS(TEXT(1,{\"0\";\"0.0\"}))");
+    model._set("A2", "=TEXT(1,C1:C2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"2");
+    assert_eq!(column(&model, 1, 3), ["2", "1", "1.0"]);
+}

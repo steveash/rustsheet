@@ -1,9 +1,10 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::test::util::{fixed_clock, TEST_CLOCK_MS};
 use crate::Model;
 
 pub fn new_empty_model() -> Model {
-    Model::new_empty("model", "de", "UTC", "de").unwrap()
+    Model::new_empty_with_clock("model", "de", "UTC", "de", fixed_clock(TEST_CLOCK_MS)).unwrap()
 }
 
 #[test]

@@ -1,0 +1,27 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1635: UNICODE of a lone surrogate followed by another character (lone high then another character, lone low then another, controls). Numbers only.",
+  "tags": [
+    "M2",
+    "probe",
+    "text"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=UNICODE(MID(\"a😀b\",2,2))",
+        "A2": "=UNICODE(MID(\"a😀b\",3,2))",
+        "A3": "=UNICODE(MID(\"a😀b\",2,3))",
+        "A4": "=UNICODE(MID(\"😀\",1,1)&\"x\")",
+        "A5": "=UNICODE(MID(\"😀\",2,1)&\"x\")",
+        "A6": "=UNICODE(MID(\"a😀b\",2,1))",
+        "A7": "=UNICODE(RIGHT(MID(\"😀\",1,1)&\"x\",1))",
+        "A8": "=CODE(MID(\"a😀b\",2,2))",
+        "A9": "=UNICODE(MID(\"😀😀\",2,3))",
+        "A10": "=UNICODE(MID(\"😀😀\",1,3))"
+      }
+    }
+  ],
+  "expected": {}
+}

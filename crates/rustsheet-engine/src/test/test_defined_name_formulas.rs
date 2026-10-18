@@ -155,3 +155,50 @@ fn isref_false_for_cross_sheet_corner_range() {
     assert_eq!(model._get_text("A1"), *"FALSE");
     assert_eq!(model._get_text("A2"), *"TRUE");
 }
+
+// `Sheet2!loc`, where Sheet2 has no local `loc`, is the workbook-scoped `loc`; with neither it is
+// #NAME? (gen-m8a names-scope c238d93c128fd5ee, names-errors 6322c0f2638aa11b).
+#[test]
+fn sheet_qualified_name_falls_back_to_workbook_name() {
+    let mut model = new_empty_model();
+    model.add_sheet("Sheet2").unwrap();
+    model.define_name("loc", None, "10").unwrap();
+    model.define_name("loc", Some(0), "30").unwrap();
+    model.define_name("only1", Some(0), "5").unwrap();
+    model._set("A1", "=Sheet2!loc");
+    model._set("A2", "=ISERROR(Sheet2!loc)");
+    model._set("A3", "=Sheet1!loc");
+    model._set("A4", "=IFERROR(Sheet2!only1,\"x\")");
+    model._set("A5", "=Sheet2!LOC");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"10");
+    assert_eq!(model._get_text("A2"), *"FALSE");
+    assert_eq!(model._get_text("A3"), *"30");
+    assert_eq!(model._get_text("A4"), *"x");
+    assert_eq!(model._get_text("A5"), *"10");
+}
+
+// A name spelled like an out-of-range R1C1 reference is defined but never resolved, also after a
+// reload from the R1C1 form formulas are stored in (probes/r1c1-name-*, r1c1-name-use-*,
+// excel-graph, T-1657).
+#[test]
+fn out_of_range_r1c1_names_are_never_resolved() {
+    let names = ["R0", "C0", "R0C1", "r0c1", "R1048577", "R1048577C1"];
+    for name in names {
+        let mut model = new_empty_model();
+        model._set("B1", "7");
+        model.define_name(name, None, "=Sheet1!$B$1").unwrap();
+        model._set("A1", &format!("={name}*1"));
+        model._set("A2", &format!("=ISREF(INDIRECT(\"{name}\"))"));
+        model._set("A3", &format!("=SUM({name})"));
+        model.evaluate();
+        let mut reloaded = crate::Model::from_bytes(&model.to_bytes(), "en").unwrap();
+        reloaded.evaluate();
+        for m in [&model, &reloaded] {
+            assert_eq!(m._get_text("A1"), "#NAME?", "{name}");
+            assert_eq!(m._get_text("A2"), "FALSE", "{name}");
+            assert_eq!(m._get_text("A3"), "#NAME?", "{name}");
+            assert_eq!(m._get_formula("A1"), format!("={name}*1"), "{name}");
+        }
+    }
+}

@@ -119,69 +119,150 @@ fn test_references_3() {
     );
 }
 
+// probes/r1c1-shaped-sheet-names{,-2,-3,-4,-lower,-lower-2} (excel-graph, T-1652): the sheet
+// names Excel quotes; A1-shaped ones (R1, C3, RC99999) are quoted by the A1 test instead.
 #[test]
-fn test_r1c1_references() {
-    assert_eq!(
-        parse_reference_r1c1("R1C1"),
-        Some(ParsedReference {
-            row: 1,
-            column: 1,
-            absolute_column: true,
-            absolute_row: true
-        })
-    );
+fn r1c1_shaped_names() {
+    for name in [
+        "RC",
+        "R",
+        "C",
+        "rc",
+        "r",
+        "c",
+        "Rc",
+        "R1C",
+        "R1C1",
+        "r1c1",
+        "R12C",
+        "R1048576C1",
+        "R1C16385",
+        "R1C0D",
+        "R1C99999999999",
+        "R1CD",
+        "R1C_",
+        "R1C1.",
+        "R1C.",
+        "R2C3.4",
+        "R1C1D",
+        "R1048576D",
+        "R0001D",
+        "R01C01",
+        "R1_",
+        "R1R",
+        "C1D",
+        "c1d",
+        "C1_",
+        "C1R1",
+        "c1r1",
+        "C16384D",
+        "RC1D",
+        "RC1R",
+        "RC16384D",
+        "rC1",
+    ] {
+        assert!(is_r1c1_shaped(name), "{name}");
+    }
+    for name in [
+        "R0C1",
+        "r0c1",
+        "R0C0",
+        "R1048577C1",
+        "R0",
+        "C0",
+        "R1048577",
+        "R2147483648",
+        "C2147483648",
+        "RC2147483648",
+        "RCR",
+        "rcr",
+        "CR",
+        "RCD",
+        "RD",
+        "CD",
+        "RC_",
+        "R_",
+        "C_",
+        "RCC",
+        "RRC",
+        "R1.",
+        "R1.5",
+        "R1.A",
+        "C1.",
+        "C1.5",
+        "RC1.",
+        "RC.",
+        "RC.1",
+        "R.1",
+        "R2.3C",
+        "R0D",
+        "R0_",
+        "R1048577D",
+        "C0D",
+        "R0C1D",
+        "C16385D",
+        "RC16385D",
+        "RC0D",
+        "R1.C1D",
+        "R1.RC",
+        "R1.R",
+        "R1.D.C1",
+        "R1.C0",
+        "A.C1",
+        "X.R1",
+        "ABC.R1C1",
+        "Q.R",
+        "A1B",
+        "Data",
+    ] {
+        assert!(!is_r1c1_shaped(name), "{name}");
+    }
 }
 
+// probes/r1c1-shaped-sheet-names-4, -5 (excel-graph, T-1652): Lotus-style ranges are quoted.
 #[test]
-fn test_r1c1_references_1() {
-    assert_eq!(
-        parse_reference_r1c1("R32C[-3]"),
-        Some(ParsedReference {
-            row: 32,
-            column: -3,
-            absolute_column: false,
-            absolute_row: true
-        })
-    );
-}
-
-#[test]
-fn test_r1c1_references_2() {
-    assert_eq!(
-        parse_reference_r1c1("R32C"),
-        Some(ParsedReference {
-            row: 32,
-            column: 0,
-            absolute_column: true,
-            absolute_row: true
-        })
-    );
-}
-
-#[test]
-fn test_r1c1_references_3() {
-    assert_eq!(
-        parse_reference_r1c1("R[-2]C[-3]"),
-        Some(ParsedReference {
-            row: -2,
-            column: -3,
-            absolute_column: false,
-            absolute_row: false
-        })
-    );
-}
-
-#[test]
-fn test_r1c1_references_4() {
-    assert_eq!(
-        parse_reference_r1c1("RC[-3]"),
-        Some(ParsedReference {
-            row: 0,
-            column: -3,
-            absolute_column: false,
-            absolute_row: true
-        })
-    );
+fn dotted_a1_ranges_are_quoted() {
+    for name in [
+        "R1.C1",
+        "R1..C1",
+        "R1.R1",
+        "C1.R1",
+        "RC1.C1",
+        "C1.C1",
+        "R1.C1.5",
+        "R1.C1.",
+        "R1.C16385",
+        "A1.B2",
+        "A1..B2",
+        "B2.A1",
+        "XFD1.A1",
+        "R1.R1048576",
+        "A1.B2.C3",
+        "AA1.B1",
+        "Z9.Z9",
+        "A1...B2",
+    ] {
+        assert!(!is_r1c1_shaped(name) && name_needs_quoting(name), "{name}");
+    }
+    for name in [
+        "A1.XFE1",
+        "A1.R1048577",
+        "R1.R1048577",
+        "A1.B2D",
+        "A1.B",
+        "A.B2",
+        "RC.C1",
+        "R.C1",
+        "A0.B1",
+        "R1.C1D",
+        "R1.RC",
+        "R1.C0",
+        "A1.5",
+        "R1.",
+        "X.R1",
+    ] {
+        assert!(!name_needs_quoting(name), "{name}");
+    }
 }
 
 #[test]
@@ -219,6 +300,12 @@ fn test_names() {
     assert!(!is_valid_identifier("R23C"));
     assert!(!is_valid_identifier("R"));
     assert!(!is_valid_identifier("c"));
+    // Graph rejects a workbook defining these (probes/r1c1-name-*, T-1652); RCR is fine.
+    for name in ["RC", "rc", "R1C", "R12C", "C1D", "R1C1D", "R1C16385"] {
+        assert!(!is_valid_identifier(name), "{name}");
+    }
+    assert!(is_valid_identifier("RCR"));
+    assert!(is_valid_identifier("CR"));
     assert!(!is_valid_identifier("1true"));
 
     assert!(!is_valid_identifier("test€"));
@@ -236,8 +323,66 @@ fn test_a1_identifier_allows_r_and_c() {
     assert!(is_valid_a1_identifier("r"));
     assert!(is_valid_a1_identifier("C"));
     assert!(is_valid_a1_identifier("c"));
+    // And R1C1 references: `LET(R1C1,5,R1C1*2)` is 10 (probes/r1c1-let-name-*, T-1652).
+    // An out-of-range `R0C1` too: the R1C1 lexer reads it as a name (T-1657).
+    for name in [
+        "R12C",
+        "RC",
+        "R1C",
+        "R1C1D",
+        "r1c1",
+        "R0",
+        "R0C1",
+        "R1048577C1",
+        "R1C1",
+        "R5C7",
+        "R1048576C16384",
+    ] {
+        assert!(is_valid_a1_identifier(name), "{name}");
+    }
     // All other is_valid_identifier rules still apply.
-    assert!(!is_valid_a1_identifier("R1C1"));
     assert!(!is_valid_a1_identifier("A23"));
     assert!(!is_valid_a1_identifier("true"));
+}
+
+// probes/r1c1-name-r0 and siblings (excel-graph, T-1657): defined names Excel never resolves.
+#[test]
+fn out_of_range_r1c1_names() {
+    for name in [
+        "R0",
+        "C0",
+        "R0C1",
+        "r0c1",
+        "R1048577",
+        "R1048577C1",
+        "c16385",
+        "R1C0",
+    ] {
+        assert!(is_out_of_range_r1c1_name(name), "{name}");
+    }
+    for name in [
+        "R1", "C1", "R1C1", "RC", "R", "C", "R1C", "RCR", "CR", "R0D", "R0C1D", "okname", "",
+    ] {
+        assert!(!is_out_of_range_r1c1_name(name), "{name}");
+    }
+}
+
+// The LET and LAMBDA names the R1C1 storage escapes as `_xlpm.<name>` (T-1658).
+#[test]
+fn names_read_as_r1c1_cells() {
+    for name in ["R1C1", "R5C7", "R1048576C16384"] {
+        assert!(reads_as_r1c1_cell(name), "{name}");
+    }
+    for name in [
+        "r1c1",
+        "R1c1",
+        "R0C1",
+        "R1048577C1",
+        "R1C",
+        "RC",
+        "R1C1D",
+        "R1",
+    ] {
+        assert!(!reads_as_r1c1_cell(name), "{name}");
+    }
 }

@@ -133,3 +133,80 @@ fn test_lambda_parameter_names_are_case_insensitive() {
     assert_eq!(model._get_text("A5"), "3");
     assert_eq!(model._get_text("A6"), "2");
 }
+
+#[test]
+fn test_let_binds_index_reference_and_at_index_reference() {
+    let mut model = new_empty_model();
+    model._set("B1", "5");
+    model._set("B2", "6");
+    // An INDEX binding stays a reference (probes/let-bind-reference-forms).
+    model._set("A1", "=LET(x,INDEX(B1:B2,2),ROW(x))");
+    // `@INDEX(..)` stays a reference too (probes/let-bind-implicit-index, T-1503).
+    model._set("A2", "=LET(x,@INDEX(B1:B2,2),ISREF(x))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "2");
+    assert_eq!(model._get_text("A2"), "TRUE");
+}
+
+// probes/r1c1-let-name-* (excel-graph, T-1652): LET takes names Excel reads as R1C1 references,
+// and they survive a reload (formulas are kept in R1C1 form, where an uppercase `R1C1` is
+// stored as `_xlpm.R1C1`, T-1658).
+#[test]
+fn let_names_may_be_r1c1_shaped() {
+    let mut model = new_empty_model();
+    let names = [
+        "R12C",
+        "RC",
+        "R1C",
+        "R1C1D",
+        "C1D",
+        "R1.C1",
+        "r1c1",
+        "R1C1",
+        "R5C7",
+        "R1048576C16384",
+        "R1c1",
+        "r1C1",
+        "R0",
+        "R0C1",
+        "R1048577C1",
+    ];
+    for (row, name) in names.iter().enumerate() {
+        model._set(
+            &format!("A{}", row + 1),
+            &format!("=LET({name},5,{name}*2)"),
+        );
+    }
+    model.evaluate();
+    let mut reloaded = crate::Model::from_bytes(&model.to_bytes(), "en").unwrap();
+    reloaded.evaluate();
+    for (row, name) in names.iter().enumerate() {
+        let cell = format!("A{}", row + 1);
+        assert_eq!(model._get_text(&cell), "10", "{name}");
+        assert_eq!(reloaded._get_text(&cell), "10", "{name}");
+        assert_eq!(
+            reloaded._get_formula(&cell),
+            format!("=LET({name},5,{name}*2)")
+        );
+    }
+}
+
+// A LAMBDA parameter spelled like an R1C1 cell is a name too, through a reload (T-1658), and the
+// stored form is R1C1 with the escaped name.
+#[test]
+fn lambda_parameters_spelled_like_r1c1_cells_survive_a_reload() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LAMBDA(R5C7,[R1C1],R5C7*2+ISOMITTED(R1C1))(5)");
+    model._set("A2", "=LET(R1C1,LAMBDA(R2C2,R2C2+1),R1C1(9))");
+    model.evaluate();
+    let mut reloaded = crate::Model::from_bytes(&model.to_bytes(), "en").unwrap();
+    reloaded.evaluate();
+    for m in [&model, &reloaded] {
+        assert_eq!(m._get_text("A1"), "11");
+        assert_eq!(m._get_text("A2"), "10");
+    }
+    assert_eq!(
+        reloaded._get_formula("A1"),
+        "=LAMBDA(R5C7,[R1C1],R5C7*2+ISOMITTED(R1C1))(5)"
+    );
+}

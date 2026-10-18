@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    functions::Function,
     model::Model,
 };
 
@@ -14,50 +15,67 @@ enum Temperature {
     Fahrenheit,
 }
 
-// To Kelvin
-// T_K = T_C + 273.15
-// T_K = 5/9 * T_rank
-// T_K = (T_R-273.15)*4/5
-// T_K = 5/9 ( T_F + 459.67)
+// Excel: no single pivot unit reproduces the last digits of every pair (probes/convert-targets,
+// excel-graph; docs/excel-semantics/engineering.md "CONVERT temperature"). Kelvin is the pivot,
+// except that Fahrenheit goes through Celsius (and to Rankine through `5/9 * (F + 459.67)`), and
+// Rankine to Fahrenheit is `9/5 * K - 459.67`; the other pairs use the Celsius-offset forms below.
 fn convert_temperature(
     value: f64,
     from_temperature: Temperature,
     to_temperature: Temperature,
 ) -> f64 {
-    let from_t_kelvin = match from_temperature {
-        Temperature::Kelvin => value,
-        Temperature::Celsius => value + 273.15,
-        Temperature::Rankine => 5.0 * value / 9.0,
-        Temperature::Reaumur => 5.0 * value / 4.0 + 273.15,
-        // Excel: ironcalc-calc ENGINEERING/CONVERT.xlsx Temperature!C4 `CONVERT(1,"F","K")` is
-        // 255.92777777777775, which only this order gives.
-        Temperature::Fahrenheit => (value - 32.0) * 5.0 / 9.0 + 273.15,
+    use Temperature::{Celsius, Fahrenheit, Kelvin, Rankine, Reaumur};
+    if let Fahrenheit = from_temperature {
+        let celsius = (value - 32.0) * 5.0 / 9.0;
+        return match to_temperature {
+            Celsius => celsius,
+            Kelvin => celsius + 273.15,
+            Rankine => 5.0 / 9.0 * (value + 459.67) * 1.8,
+            Reaumur => celsius * 0.8,
+            Fahrenheit => value,
+        };
+    }
+    let kelvin = match from_temperature {
+        Kelvin => value,
+        Celsius => value + 273.15,
+        Rankine => 5.0 * value / 9.0,
+        Reaumur => 5.0 * value / 4.0 + 273.15,
+        Fahrenheit => value,
     };
-
     match to_temperature {
-        Temperature::Kelvin => from_t_kelvin,
-        Temperature::Celsius => from_t_kelvin - 273.5,
-        Temperature::Rankine => 9.0 * from_t_kelvin / 5.0,
-        Temperature::Reaumur => 4.0 * (from_t_kelvin - 273.15) / 5.0,
-        Temperature::Fahrenheit => 9.0 * from_t_kelvin / 5.0 - 459.67,
+        Kelvin => kelvin,
+        Celsius => kelvin - 273.15,
+        Rankine => 9.0 * kelvin / 5.0,
+        Reaumur => (kelvin - 273.15) * 0.8,
+        Fahrenheit if matches!(from_temperature, Rankine) => 9.0 * kelvin / 5.0 - 459.67,
+        Fahrenheit => (kelvin - 273.15) * 9.0 / 5.0 + 32.0,
     }
 }
 
 impl Model {
-    // CONVERT(number, from_unit, to_unit)
+    /// `CONVERT(number, from_unit, to_unit)`: every argument lifts over an array and refuses a
+    /// multi-cell range (`ArgKind::LiftArrays`, SPEC-0011; probes/eng-argument-modes B14:E14,
+    /// probes/scalar-lift-open-a Y8-Y10).
     pub(crate) fn fn_convert(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
+        self.lift_call(Function::Convert, args, cell, &mut |model, values| {
+            model.convert_of(values, cell)
+        })
+    }
+
+    /// CONVERT of one element: the number, then the two units, read in order.
+    fn convert_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        let [value, from_unit, to_unit] = values else {
             return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
+        };
+        let value = match self.cast_number_ref(value, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let from_unit = match self.get_string(&args[1], cell) {
+        let from_unit = match Self::cast_string_ref(from_unit, cell) {
             Ok(s) => s,
             Err(error) => return error,
         };
-        let to_unit = match self.get_string(&args[2], cell) {
+        let to_unit = match Self::cast_string_ref(to_unit, cell) {
             Ok(s) => s,
             Err(error) => return error,
         };
@@ -165,7 +183,7 @@ impl Model {
             ("N", 100000.0),
             ("dyn", 1.0),
             ("dy", 1.0),
-            ("lbf", 444822.16152605007),
+            ("lbf", 444822.16152605),
             ("pond", 980.665),
         ]);
         units.insert("force", force);
@@ -391,12 +409,12 @@ impl Model {
             }
         }
         if from_unit_kind != to_unit_kind {
-            return CalcResult::new_error(Error::NA, cell, "Different units".to_string());
+            return CalcResult::new_error(Error::NA, cell, String::new());
         }
 
         // Let's check if it is temperature;
         if from_unit_kind.is_empty() {
-            return CalcResult::new_error(Error::NA, cell, "Unit not found".to_string());
+            return CalcResult::new_error(Error::NA, cell, String::new());
         }
 
         if from_unit_kind == "temperature" {
@@ -409,7 +427,7 @@ impl Model {
                 "Reau" => Temperature::Reaumur,
                 "F" | "fah" => Temperature::Fahrenheit,
                 _ => {
-                    return CalcResult::new_error(Error::ERROR, cell, "Internal error".to_string());
+                    return CalcResult::new_error(Error::ERROR, cell, String::new());
                 }
             };
             let from_temperature = match from_unit_name {
@@ -419,7 +437,7 @@ impl Model {
                 "Reau" => Temperature::Reaumur,
                 "F" | "fah" => Temperature::Fahrenheit,
                 _ => {
-                    return CalcResult::new_error(Error::ERROR, cell, "Internal error".to_string());
+                    return CalcResult::new_error(Error::ERROR, cell, String::new());
                 }
             };
             let t = convert_temperature(
@@ -433,8 +451,16 @@ impl Model {
         // scaled by the prefixes, in that order (docs/excel-semantics/engineering.md "CONVERT
         // constants and evaluation order"; ironcalc-calc ENGINEERING/CONVERT.xlsx, e.g. Volume!J17
         // `CONVERT(0.0002,"Mang3","m3")` = 2.0000000000000002E-16).
-        CalcResult::Number(
-            value * from_unit_factor / to_unit_factor * from_unit_scale / to_unit_scale,
-        )
+        // Excel: `1E290 m2 -> m2`, `1E300 ha -> m2` and `1E302 J -> J` do not overflow although
+        // `value * F_from` does (probes/convert-targets): when the product is infinite the
+        // division goes first. The target prefix is applied as a reciprocal multiply
+        // (`CONVERT(0.0002,"m3","Mm3")` is 2.0000000000000003E-22, not 2E-22).
+        let product = value * from_unit_factor;
+        let scaled = if product.is_infinite() {
+            value / to_unit_factor * from_unit_factor
+        } else {
+            product / to_unit_factor
+        };
+        CalcResult::Number(scaled * from_unit_scale * (1.0 / to_unit_scale))
     }
 }

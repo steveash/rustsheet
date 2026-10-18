@@ -1,7 +1,15 @@
-use crate::arithmetic::flush_subnormal;
+use crate::arithmetic::{extended_product, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
-use crate::reference_operators::RefArg;
+use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
+
+/// PRODUCT: a referenced-cell or in-array error ranks below a direct scalar error; the leftmost
+/// wins (probes/aggregate-error-precedence C1-C8, probes/product-array-2d-and-scalar A8-A17).
+const PRODUCT_ARGS: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::Aggregate,
+    errors: ErrorRule::Ranked,
+    skip_empty_args: false,
+};
 
 impl Model {
     /// PRODUCT(number1, [number2], ...)
@@ -17,7 +25,8 @@ impl Model {
     /// - **`Node::ReferenceKind` args**: Similar to ranges, conversions are not performed on the evaluated value of the
     ///   referenced cell and errors are propagated.
     /// - **Args evaluating to `CalcResult::Array`**: Only the numbers are multiplied; text and booleans are skipped and
-    ///   the first error element is propagated.
+    ///   the first error element is propagated
+    ///   after any direct scalar error (it ranks like a referenced-cell error).
     /// - **Args evaluating to `CalcResult::Error`**: Errors are propagated.
     pub(crate) fn fn_product(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
@@ -25,71 +34,18 @@ impl Model {
         }
         let mut result = 1.0;
         let mut seen_value = false;
-        // A referenced-cell error ranks below a direct scalar error; the leftmost wins
-        // (probes/aggregate-error-precedence C1-C8).
-        let mut reference_error = None;
-
-        for arg in args {
-            // Handle reference special case. Behaviour of a reference is equivalent to a range of one cell.
-            let arg = match arg.ungrouped() {
-                Node::ReferenceKind {
-                    column,
-                    absolute_column,
-                    row,
-                    absolute_row,
-                    sheet_index,
-                    sheet_name,
-                } => &Node::RangeKind {
-                    sheet_name: sheet_name.clone(),
-                    sheet_index: *sheet_index,
-                    absolute_row1: *absolute_row,
-                    absolute_column1: *absolute_column,
-                    row1: *row,
-                    column1: *column,
-                    absolute_row2: *absolute_row,
-                    absolute_column2: *absolute_column,
-                    row2: *row,
-                    column2: *column,
-                },
-                _ => arg,
-            };
-            match self.evaluate_reference_arg(arg, cell) {
-                RefArg::Ranges(areas) => {
-                    if reference_error.is_none() {
-                        if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
-                            seen_value = true;
-                            result = flush_subnormal(result * value);
-                        }) {
-                            reference_error = Some(error);
-                        }
-                    }
-                }
-                RefArg::Value(error @ CalcResult::Error { .. }) => return error,
-                // Like a range, an array argument contributes only its numbers; text and
-                // booleans inside it are skipped (same rule as `for_each_value`).
-                RefArg::Value(CalcResult::Array(array)) => {
-                    let values = match self.values_from_array(array) {
-                        Ok(values) => values,
-                        Err(error) => {
-                            return CalcResult::new_error(error, cell, "Error in array".to_string())
-                        }
-                    };
-                    for value in values.into_iter().flatten() {
-                        seen_value = true;
-                        result = flush_subnormal(result * value);
-                    }
-                }
-                RefArg::Value(calc_result) => {
-                    seen_value = true;
-                    let cast_result = self.cast_aggregate_arg_to_number(calc_result, cell);
-                    match cast_result {
-                        Ok(f) => result = flush_subnormal(result * f),
-                        Err(s) => return s,
-                    }
-                }
-            };
-        }
-        if let Some(error) = reference_error {
+        // An empty argument counts as seen (`PRODUCT(,)` is 0 like `PRODUCT(0)`; the walker hands
+        // it on as a direct value that casts to 0).
+        if let Err(error) = self.for_each_aggregate_number(
+            args,
+            cell,
+            PRODUCT_ARGS,
+            NumberRules::SUM_LIKE,
+            |value| {
+                seen_value = true;
+                result = flush_subnormal(extended_product(result, value));
+            },
+        ) {
             return error;
         }
         if !seen_value {

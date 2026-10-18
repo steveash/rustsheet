@@ -378,7 +378,8 @@ fn test_weekday_function() {
 
     // Error cases
     assert_eq!(model._get_text("A7"), *"#ERROR!");
-    assert_eq!(model._get_text("A8"), *"#VALUE!");
+    // Excel: return_type 0 is #NUM! (probes/weekday-serial-zero A1)
+    assert_eq!(model._get_text("A8"), *"#NUM!");
     assert_eq!(model._get_text("A9"), *"#NUM!");
 }
 
@@ -1004,6 +1005,23 @@ fn datedif_date_errors_come_before_the_unit_error() {
     assert_eq!(model._get_text("A1"), *"#NUM!");
     assert_eq!(model._get_text("A2"), *"#DIV/0!");
     assert_eq!(model._get_text("A3"), *"#N/A");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+}
+
+// An error unit wins over a start date outside the calendar (gen-m7/f68fafa0ca2eba26 Calc!A1,
+// dates.md "DATEDIF argument errors before date checks", T-1355). A3 and A4 are our own
+// expectation (an invalid unit text with a negative start date is UNVERIFIED).
+#[test]
+fn datedif_error_unit_comes_before_a_negative_start_date() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DATEDIF(-1,38627,NA())");
+    model._set("A2", "=DATEDIF(-1,38627,1/0)");
+    model._set("A3", "=DATEDIF(-1,38627,\"D\")");
+    model._set("A4", "=DATEDIF(-1,38627,\"X\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
     assert_eq!(model._get_text("A4"), *"#NUM!");
 }
 

@@ -3,46 +3,79 @@
 
 use chrono::Datelike;
 
-use super::{days360_eu, days360_serial, is_feb29_between_consecutive_years, is_leap_year};
+use super::{
+    days360_eu, days360_serial, is_feb29_between_consecutive_years, is_leap_year, num_error,
+};
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::{excel_serial_to_ymd, from_excel_date, DATE_OUT_OF_RANGE_MESSAGE},
+    expressions::{parser::Node, types::CellReferenceIndex},
+    formatter::dates::{excel_serial_to_ymd, from_excel_date},
+    functions::Function,
     model::Model,
 };
 
+/// Leap years in 1..=`year` (Gregorian), for the average year length of basis 1 in O(1).
+fn leap_years_through(year: i32) -> i64 {
+    let year = i64::from(year);
+    year / 4 - year / 100 + year / 400
+}
+
 impl Model {
+    /// `YEARFRAC(start_date, end_date, [basis])`. Every argument lifts over arrays and refuses a
+    /// multi-cell range (SPEC-0011 `LiftArrays`; probes/scalar-lift-shapes H6,
+    /// probes/date-argument-modes).
     pub(crate) fn fn_yearfrac(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(2..=3).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // The dates as the 1900 serials the financial day counts read: a day late in a 1904
-        // workbook (`DateSystem::financial_1900_serial`).
-        let date_system = self.workbook.settings.date_system;
-        let start_raw = match self.get_number_no_bools(&args[0], cell) {
-            Ok(c) => date_system.financial_1900_serial(c),
-            Err(s) => return s,
+        self.lift_call(Function::Yearfrac, args, cell, &mut |model, values| {
+            model.yearfrac_of(values, cell)
+        })
+    }
+
+    /// YEARFRAC of one element.
+    fn yearfrac_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        let (start, end, basis) = match values {
+            [start, end] => (start, end, None),
+            [start, end, basis] => (start, end, Some(basis)),
+            _ => return CalcResult::new_args_number_error(cell),
         };
-        let end_raw = match self.get_number_no_bools(&args[1], cell) {
-            Ok(c) => date_system.financial_1900_serial(c),
-            Err(s) => return s,
-        };
-        let basis = if args.len() == 3 {
-            match self.get_number_no_bools(&args[2], cell) {
+        // Excel reads `basis` first and range-checks it, then the start date, then the end date:
+        // `YEARFRAC(1/0,45000,NA())` is #N/A and `YEARFRAC(NA(),45000,5)` is #NUM!
+        // (probes/scalar-lift-open-d W1-W7, probes/yearfrac-basis-order; dates.md "Date
+        // function argument modes"). Per element, that order also decides between an error and
+        // a refused range (-a W6, W7).
+        let basis = match basis {
+            Some(value) => match self.cast_number_no_bools_ref(value, cell) {
                 Ok(f) => f as i32,
                 Err(s) => return s,
-            }
-        } else {
-            0
+            },
+            None => 0,
         };
-        let (start_date, end_date) = match (
+        if !(0..=4).contains(&basis) {
+            return num_error(cell);
+        }
+        // The dates as the 1900 serials the financial day counts read: 2 * 1462 days on in a 1904
+        // workbook (`DateSystem::financial_1900_serial`).
+        let date_system = self.workbook.settings.date_system;
+        let start_raw = match self.cast_number_no_bools_ref(start, cell) {
+            Ok(c) => date_system.financial_1900_serial(c),
+            Err(s) => return s,
+        };
+        let end_raw = match self.cast_number_no_bools_ref(end, cell) {
+            Ok(c) => date_system.financial_1900_serial(c),
+            Err(s) => return s,
+        };
+        let (Ok(start_date), Ok(end_date)) = (
             from_excel_date(start_raw.floor() as i64),
             from_excel_date(end_raw.floor() as i64),
-        ) {
-            (Ok(start), Ok(end)) => (start, end),
-            (Err(message), _) | (_, Err(message)) => {
-                return CalcResult::new_error(Error::NUM, cell, message)
-            }
+        ) else {
+            return num_error(cell);
+        };
+        // Excel swaps reversed dates for every basis, so the asymmetric 30/360 counts read the
+        // same pair either way (probes/yearfrac-reversed-bases; dates.md "YEARFRAC swaps
+        // reversed dates").
+        let (start_raw, end_raw, start_date, end_date) = if start_date > end_date {
+            (end_raw, start_raw, end_date, start_date)
+        } else {
+            (start_raw, end_raw, start_date, end_date)
         };
         let days = (end_date - start_date).num_days() as f64;
         let result = match basis {
@@ -81,6 +114,7 @@ impl Model {
             1 => {
                 // Actual/Actual. Port of ExcelFinancialFunctions
                 // `ActualActual.DaysInYear`: yearfrac = actual_days / DaysInYear.
+                // Actual/Actual reads the (already ordered) pair.
                 let (y1, m1, d1) = (start_date.year(), start_date.month(), start_date.day());
                 let (y2, m2, d2) = (end_date.year(), end_date.month(), end_date.day());
 
@@ -90,11 +124,12 @@ impl Model {
 
                 let days_in_year = if !within_a_year {
                     // Dates more than a year apart: average the calendar-year
-                    // lengths spanned, inclusive of both end years.
-                    let tot_days: i64 = (y1..=y2)
-                        .map(|y| if is_leap_year(y) { 366 } else { 365 })
-                        .sum();
-                    tot_days as f64 / (y2 - y1 + 1) as f64
+                    // lengths spanned, inclusive of both end years. Counted in
+                    // closed form, so the kernel is O(1) (SPEC-0011 `KernelWork`).
+                    let years = i64::from(y2 - y1 + 1);
+                    let tot_days =
+                        365 * years + leap_years_through(y2) - leap_years_through(y1 - 1);
+                    tot_days as f64 / years as f64
                 } else {
                     // considerAsBisestile
                     let consider = (y1 == y2 && is_leap_year(y1))
@@ -116,15 +151,10 @@ impl Model {
                 excel_serial_to_ymd(days360_serial(end_raw)),
             ) {
                 (Some(start), Some(end)) => days360_eu(start, end) / 360.0,
-                _ => {
-                    return CalcResult::new_error(
-                        Error::NUM,
-                        cell,
-                        DATE_OUT_OF_RANGE_MESSAGE.to_string(),
-                    )
-                }
+                _ => return num_error(cell),
             },
-            _ => return CalcResult::new_error(Error::NUM, cell, "Invalid basis".to_string()),
+            // Range-checked before the dates were read.
+            _ => return num_error(cell),
         };
         CalcResult::Number(result.abs())
     }

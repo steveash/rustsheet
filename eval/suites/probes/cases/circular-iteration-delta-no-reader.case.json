@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "The convergent cycles of circular-iteration-delta-small (iterateDelta 0.001) without the reader cell C1 = A1+B1: does the delta stop count a recalculated cell outside the cycles (T-0429)?",
+  "tags": [
+    "M3",
+    "circular",
+    "iteration",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=A1/2+1",
+        "B1": "=B1/2+8"
+      }
+    }
+  ],
+  "calculation": {
+    "iterate": true,
+    "iterate_count": 100,
+    "iterate_delta": 0.001
+  },
+  "expected": {}
+}

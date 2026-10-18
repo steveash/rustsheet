@@ -1,6 +1,6 @@
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::math_and_trigonometry::array_size::check_array_size;
+use crate::limits::check_array_size;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };

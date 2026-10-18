@@ -40,6 +40,7 @@ use crate::language::Language;
 use crate::locale::get_default_locale;
 use crate::locale::get_locale;
 use crate::locale::Locale;
+use crate::text::Text;
 use crate::types::Table;
 
 use super::lexer;
@@ -51,6 +52,7 @@ use super::types::*;
 use sheet_span::with_sheet_span;
 use token::OpCompare;
 
+mod call_names;
 mod chain;
 mod contains_function;
 mod depth;
@@ -70,6 +72,8 @@ pub(crate) use depth::is_limit_error;
 pub use depth::{
     MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
 };
+
+pub(crate) use call_names::CallNameSpellings;
 
 #[cfg(test)]
 mod tests;
@@ -96,8 +100,9 @@ pub(crate) fn parse_range(formula: &str) -> Result<(i32, i32, i32, i32), String>
 }
 
 fn get_table_column_by_name(table_column_name: &str, table: &Table) -> Option<i32> {
+    let wanted = table_column_name.to_lowercase();
     for (index, table_column) in table.columns.iter().enumerate() {
-        if table_column.name == table_column_name {
+        if table_column.name.to_lowercase() == wanted {
             return Some(index as i32);
         }
     }
@@ -120,7 +125,7 @@ pub(crate) struct Reference<'a> {
 pub enum ArrayNode {
     Boolean(bool),
     Number(f64),
-    String(String),
+    String(Text),
     Error(token::Error),
     /// An empty (blank) cell from a range reference.
     Empty,
@@ -267,7 +272,6 @@ pub enum Node {
     },
     ArrayKind(Vec<Vec<ArrayNode>>),
     DefinedNameKind(DefinedNameS),
-    TableNameKind(String),
     NamedVariableKind {
         name: String,
         id: Option<u32>,
@@ -370,6 +374,10 @@ pub struct Parser {
     /// The parser is outside every parenthesis and argument list, where a comma is the bare
     /// union operator (`=A1,B2`, T-1073).
     top_level: bool,
+    /// Names the enclosing LET and LAMBDA calls bind so far, kept only when spelled like a
+    /// Lotus-style range: such a name is the variable where bound and the range elsewhere
+    /// (`LET(R1.C1,5,R1.C1*2)` is 10; probes/r1c1-let-name-r1-c1, lotus-dot-range, T-1659).
+    dotted_bound_names: Vec<String>,
 }
 
 pub fn new_parser_english(
@@ -411,6 +419,7 @@ impl Parser {
             depth: 0,
             inner_depth: 0,
             value_operators: 0,
+            dotted_bound_names: Vec::new(),
         }
     }
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
@@ -451,6 +460,7 @@ impl Parser {
         self.depth = 0;
         self.inner_depth = 0;
         self.value_operators = 0;
+        self.dotted_bound_names.clear();
         self.top_level = true;
         let node = self.parse_expr();
         self.top_level = false;
@@ -602,7 +612,7 @@ impl Parser {
                 column,
                 absolute_column,
                 absolute_row,
-            } => self.reference_operand(sheet, row, column, absolute_column, absolute_row),
+            } => self.reference_or_call_operand(sheet, row, column, absolute_column, absolute_row),
             TokenType::Range { sheet, left, right } => self.range_operand(sheet, left, right),
             TokenType::Ident(name) => self.parse_identifier(name),
             TokenType::Error(kind) => Node::ErrorKind(kind),

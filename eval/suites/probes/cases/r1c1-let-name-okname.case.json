@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Is the R1C1-shaped string okname a valid LET name? One per case: an invalid formula may make Graph reject the workbook (T-1652)",
+  "tags": [
+    "M2",
+    "names",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LET(okname,5,okname*2)",
+        "A2": "=FORMULATEXT(A1)"
+      }
+    }
+  ],
+  "expected": {}
+}

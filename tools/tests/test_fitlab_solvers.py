@@ -1,0 +1,168 @@
+"""The solver fits (T-1525): sweep literals, the XIRR model, and the scores the docs quote."""
+
+from __future__ import annotations
+
+import datetime
+import math
+
+import pytest
+
+from rustsheet_tools.fitlab import fit
+from rustsheet_tools.fitlab.kernels import registry, solvers
+from rustsheet_tools.fitlab.sweep import Arg, UnparsedError, Workbook, parse_arg, serial_date
+
+
+def test_parse_arg_reads_array_literals_and_dates() -> None:
+    book = Workbook({}, {})
+    assert parse_arg('{-1,1.5;"a",TRUE}', "S", book) == [-1.0, 1.5, "a", True]
+    assert parse_arg("DATE(2024,3,1)", "S", book) == 45352.0
+    assert parse_arg("DATE(1900,3,1)", "S", book) == 61.0  # after Excel's phantom 1900-02-29
+    with pytest.raises(UnparsedError):
+        parse_arg("DATE(2024,2,30)", "S", book)
+
+
+def test_day_counts_and_schedule() -> None:
+    settle, maturity = datetime.date(2024, 3, 1), datetime.date(2024, 8, 31)
+    assert solvers.days360(datetime.date(2023, 8, 31), settle, european=False) == 181
+    assert solvers.days360(settle, maturity, european=False) == 180  # d2 = 31 stays when d1 < 30
+    assert solvers.days360(settle, maturity, european=True) == 179
+    assert solvers.schedule(settle, maturity, 1) == (datetime.date(2023, 8, 31), maturity, 1)
+    # YIELD's one-period day counts on basis 0: A 181, E 360, DSR 180 (not E - A = 179).
+    assert solvers.day_counts(settle, maturity, 1, 0, period_e=True)[:4] == (181.0, 360.0, 180.0, 179.0)
+
+
+def test_xirr_model_on_a_known_root() -> None:
+    # Default guess, root exactly 0.1: the bracket [0, 0.1] bisected to 3355443 / 2^25.
+    got = solvers.xirr_model([-1000.0, 1100.0], [45000.0, 45365.0], 0.1, solvers.fitted_stop())
+    assert got == 3355443 / 2**25
+    with pytest.raises(solvers.NoResultError):  # guess -0.5 walks only toward -1
+        solvers.xirr_model([-1000.0, 1100.0], [45000.0, 45365.0], -0.5, solvers.fitted_stop())
+
+
+def test_xirr_first_value_sign_with_a_zero_first_value() -> None:
+    # T-1583: a zero first value replaces the upper end every step, so the bracket [0, 0.1] is bisected
+    # down to 0.1 / 2^25 (xirr-early-dates A10), where the first-value-blind rule converges to 0.1.
+    values, dates = [0.0, -1000.0, 1100.0], [45000.0, 45000.0, 45365.0]
+    got = solvers.xirr_model(values, dates, 0.1, solvers.span_stop(), first_value_sign=True)
+    assert got == 0.1 / 2**25
+    assert solvers.xirr_model(values, dates, 0.1, solvers.h_test()) == 3355443 / 2**25
+
+
+def test_rpow_rejects_a_complex_power() -> None:
+    with pytest.raises(solvers.NoResultError):
+        solvers.rpow(-0.5, 0.5)
+
+
+def _scores(name: str) -> dict[str, int]:
+    result = fit.run(registry()[name], engine=False)
+    return {s.name: s.exact for s in result.scores} | {"cells": len(result.sweep.cells)}
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_xirr_fit_scores() -> None:
+    s = _scores("xirr")
+    assert s["cells"] == 227  # 208 numbers and 19 `#NUM!` cells
+    assert s["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 227
+    assert s["bisect, stop h<5e-9+1e-8|m| only"] == 214
+    assert s["bisect fitted, m=(a+b)/2"] == 225
+    assert s["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 227
+    oos = _scores("xirr-oos")
+    assert oos["cells"] == 22  # 11 numbers and 11 errors; the model solves three cells Excel rejects
+    assert (
+        oos["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 16
+    )  # 8 of 11 numbers, 8 of 11 errors
+    # T-1583: all 11 numbers, and 10 of 11 errors (two by non-convergence, not Excel's input check)
+    assert oos["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 21
+    assert oos["bisect, first-value sign, fitted stop"] == 18
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_yield_one_period_closed_form_is_exact_on_every_basis() -> None:
+    s = _scores("yield-one-period")
+    assert s["cells"] == 60
+    assert s["closed form, DSR, E = period on bases 1-3 (fitted)"] == 60
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_irr_results_are_x_minus_one() -> None:
+    cells = fit.run(registry()["irr"], engine=False, only="^$").sweep.cells
+    assert len(cells) == 263
+    assert all((1 + c.expected) - 1 == c.expected for c in cells)
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_irr_secant_fit_scores() -> None:
+    s = _scores("irr")
+    assert s["secant in v, fitted"] == 189
+    assert s["secant in v, no residual test"] == 181
+    assert s["secant in v, no retry"] == 187
+    assert s["Newton in v=1/(1+r), converged"] == 74
+
+
+def test_irr_secant_on_a_two_flow_root() -> None:
+    # {-1, 1.1}: one secant step on a line lands on v = 1/1.1; the next step is below 1e-7.
+    got = solvers.irr_secant_v()([-1.0, 1.1], 0.1, None)
+    assert math.isclose(got, 0.1, rel_tol=1e-14)
+    with pytest.raises(solvers.NoResultError):
+        solvers.irr_secant_v(retry=False)([-20.0, -5.0], 0.1, None)
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_rate_results_are_rates() -> None:
+    cells = fit.run(registry()["rate"], engine=False, only="^$").sweep.cells
+    assert len(cells) == 136
+    assert sum((1 + c.expected) - 1 == c.expected for c in cells) == 7
+
+
+def test_iterate_converges_or_reports_no_result() -> None:
+    root = solvers.iterate(lambda u: (u + 2 / u) / 2, 1.0, None)  # a fixed point of the step
+    assert abs(root - math.sqrt(2)) <= math.ulp(root) and (root + 2 / root) / 2 == root
+    assert solvers.iterate(lambda u: u / 2, 1.0, 3) == 0.125
+    with pytest.raises(solvers.NoResultError):
+        solvers.iterate(lambda u: u * 1e200, 1.0, None)  # overflows to infinity
+    with pytest.raises(solvers.NoResultError):
+        solvers.iterate(lambda u: -u, 1.0, None)  # oscillates for ever
+
+
+def test_floats_rejects_text_bool_and_scalars() -> None:
+    assert solvers.floats([1.0, -2.5]) == [1.0, -2.5]
+    bads: list[Arg] = [[1.0, "2"], [True], 3.0, [None]]
+    for bad in bads:
+        with pytest.raises(TypeError):
+            solvers.floats(bad)
+
+
+def test_regula_falsi_finds_a_price_root() -> None:
+    bond: solvers.Bond = (0.05, 100.0, 2, 61.0, 180.0, 119.0, 21)
+    y = 0.07861731922256075
+    target = solvers.price(y, bond)
+    got = solvers.regula_falsi(lambda r: solvers.price(r, bond), target)
+    assert abs(got - y) < 1e-12
+
+
+def test_schedule_and_serial_bounds() -> None:
+    with pytest.raises(UnparsedError):
+        solvers.schedule(datetime.date(2024, 3, 1), datetime.date(2024, 8, 31), 3)
+    with pytest.raises(UnparsedError):
+        serial_date(math.inf)
+    with pytest.raises(UnparsedError):
+        serial_date(1e12)
+    assert serial_date(45352.0) == datetime.date(2024, 3, 1)
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_yield_back_chain_shares_a_frequency_independent_iterate() -> None:
+    # T-1592: one analytic-Newton step back from Excel's YIELD gives the same iterate, to 1e-10,
+    # for yield-solver-sweep S!A1 (frequency 2, 9 coupons) and S!F1 (frequency 1, 5 coupons).
+    cells = fit.run(registry()["yield"], engine=False, only="^$").sweep.cells
+    by_key = {c.key: c for c in cells if c.case.endswith("yield-solver-sweep.case.json")}
+    a1, f1 = (solvers.newton_back_chain(by_key[k].args, by_key[k].expected, 1)[1] for k in ("S!A1", "S!F1"))
+    assert abs(a1 - 0.0552344627) < 1e-10
+    assert abs(a1 - f1) < 1e-10
+    # Two and three steps back: S!E10 (redemption 100.5), and the three frequencies of Y!C2:E2.
+    assert abs(solvers.newton_back_chain(by_key["S!E10"].args, by_key["S!E10"].expected, 2)[2] - a1) < 1e-8
+    traces = {c.key: c for c in cells if c.case.endswith("solver-iteration-traces.case.json")}
+    starts = [
+        solvers.newton_back_chain(traces[k].args, traces[k].expected, 3)[3] for k in ("Y!C2", "Y!D2", "Y!E2")
+    ]
+    assert max(starts) - min(starts) < 1e-6

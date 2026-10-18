@@ -79,83 +79,156 @@ fn is_valid_row_str(row: &str) -> bool {
     }
 }
 
-pub fn parse_reference_r1c1(r: &str) -> Option<ParsedReference> {
-    let chars = r.as_bytes();
-    let len = chars.len();
-    let absolute_column;
-    let absolute_row;
-    let mut row = "".to_string();
-    let mut column = "".to_string();
-    if len < 4 {
-        return None;
-    }
-    if chars[0] != b'R' {
-        return None;
-    }
-    let mut i = 1;
-    if chars[i] == b'[' {
-        i += 1;
-        absolute_row = false;
-        if chars[i] == b'-' {
-            i += 1;
-            row.push('-');
-        }
-    } else {
-        absolute_row = true;
-    }
-    while i < len {
-        let ch = chars[i];
-        if ch.is_ascii_digit() {
-            row.push(ch as char);
-        } else {
-            break;
-        }
-        i += 1;
-    }
-    if !absolute_row {
-        if i >= len || chars[i] != b']' {
-            return None;
-        };
-        i += 1;
-    }
-    if i >= len || chars[i] != b'C' {
-        return None;
+/// Whether Excel reads `name` as an R1C1 reference, or as one followed by more text. A sheet with
+/// such a name is quoted in formula text and a defined name with it is refused (Graph rejects the
+/// workbook). LET and LAMBDA names are not tested: `LET(R1C1D,5,R1C1D*2)` is 10.
+/// docs/excel-semantics/references.md "R1C1-shaped sheet and defined names" (probes/r1c1-shaped-
+/// sheet-names*, r1c1-name-*, r1c1-let-name-*; excel-graph, 2026-10-15, T-1652).
+///
+/// The test ignores case and is not a reference parse (brackets cannot occur in these names):
+/// - `R`, `C` and `RC` on their own;
+/// - `R<row>` followed by `C` and anything at all (`R1CD`, `R1C0D`, `R1C99999`, `R1C1.`);
+/// - otherwise `R<row>`, `C<column>` or `RC<column>`, with the row in 1..=1048576 and the column
+///   in 1..=16384 (`R0D`, `C16385D` and `RC16385D` are not), followed by nothing or by anything
+///   but a dot (`R1_`, `C1R`, `RC1D`; not `R1.`, `R1.5`, `RC1.`).
+///
+/// `RCR`, `RCD` and `CR` are not R1C1 references: a letter after a bare `R`, `C` or `RC` ends it.
+/// (`R1.C1` is quoted too, as the Lotus-style range `R1:C1`: see [`is_dotted_a1_range`].)
+pub(crate) fn is_r1c1_shaped(name: &str) -> bool {
+    let text = name.as_bytes();
+    let is_letter = |position: usize, letter: u8| {
+        text.get(position)
+            .is_some_and(|c| c.eq_ignore_ascii_case(&letter))
     };
-    i += 1;
-    if i < len && chars[i] == b'[' {
-        absolute_column = false;
-        i += 1;
-        if i < len && chars[i] == b'-' {
-            i += 1;
-            column.push('-');
+    let mut position = 1;
+    if is_letter(0, b'R') {
+        match leading_number(text, &mut position) {
+            Some(row) if !is_valid_row(row) => return false,
+            Some(_) if is_letter(position, b'C') => return true,
+            Some(_) => {}
+            None if is_letter(1, b'C') => {
+                position = 2;
+                match leading_number(text, &mut position) {
+                    None => return text.len() == 2,
+                    Some(column) if !is_valid_column_number(column) => return false,
+                    Some(_) => {}
+                }
+            }
+            None => return text.len() == 1,
+        }
+    } else if is_letter(0, b'C') {
+        match leading_number(text, &mut position) {
+            None => return text.len() == 1,
+            Some(column) if !is_valid_column_number(column) => return false,
+            Some(_) => {}
         }
     } else {
-        absolute_column = true;
+        return false;
     }
-    while i < len {
-        let ch = chars[i];
-        if ch.is_ascii_digit() {
-            column.push(ch as char);
-        } else {
-            break;
-        }
-        i += 1;
-    }
-    if !absolute_column {
-        if i >= len || chars[i] != b']' {
-            return None;
+    text.get(position) != Some(&b'.')
+}
+
+/// Whether `name` is exactly `R<n>`, `C<n>` or `R<n>C<n>` (any case) with a number out of range
+/// (`R0`, `C0`, `R0C1`, `R1048577`, `R1048577C1`). Graph loads a defined name spelled so, but every
+/// use is `#NAME?`: docs/excel-semantics/references.md "R1C1-shaped sheet and defined names"
+/// (probes/r1c1-name-r0 and siblings, r1c1-name-use-*; excel-graph, T-1657). `LET` names are
+/// not affected (probes/r1c1-let-name-r0).
+pub(crate) fn is_out_of_range_r1c1_name(name: &str) -> bool {
+    let text = name.as_bytes();
+    let mut position = 1;
+    let (row, column) = if text.first().is_some_and(|c| c.eq_ignore_ascii_case(&b'R')) {
+        let Some(row) = leading_number(text, &mut position) else {
+            return false;
         };
-        i += 1;
+        if position == text.len() {
+            (Some(row), None)
+        } else if text[position].eq_ignore_ascii_case(&b'C') {
+            position += 1;
+            (Some(row), leading_number(text, &mut position))
+        } else {
+            return false;
+        }
+    } else if text.first().is_some_and(|c| c.eq_ignore_ascii_case(&b'C')) {
+        (None, leading_number(text, &mut position))
+    } else {
+        return false;
+    };
+    // A bare `R1C`, `C` or trailing text is not this shape.
+    if position != text.len() || (row.is_none() && column.is_none()) {
+        return false;
     }
-    if i != len {
+    row.is_some_and(|r| !is_valid_row(r)) || column.is_some_and(|c| !is_valid_column_number(c))
+}
+
+/// Whether `name` starts with a Lotus-style range: an A1 cell, one or more dots and an A1 cell,
+/// then nothing or a dot and anything (`A1.B2`, `A1..B2`, `R1.C1`, `A1.B2.C3`; not `A1.B2D`,
+/// `A1.XFE1`, `A0.B1`). Excel reads `SUM(A1.B2)` as `SUM(A1:B2)`, and quotes a sheet with such a
+/// name (docs/excel-semantics/references.md "R1C1-shaped sheet and defined names",
+/// probes/r1c1-shaped-sheet-names-4, -5, lotus-dot-range; excel-graph, T-1652).
+fn is_dotted_a1_range(name: &str) -> bool {
+    dotted_a1_corners(name).is_some()
+}
+
+/// The two cells of the Lotus-style range `name` starts with ([`is_dotted_a1_range`]) and
+/// whether more text follows the second one (`.C3` in `A1.B2.C3`).
+fn dotted_a1_corners(name: &str) -> Option<(ParsedReference, ParsedReference, bool)> {
+    let (first, rest) = name.split_once('.')?;
+    let rest = rest.trim_start_matches('.');
+    let (second, more) = rest
+        .split_once('.')
+        .map_or((rest, false), |(s, _)| (s, true));
+    Some((
+        parse_reference_a1(first)?,
+        parse_reference_a1(second)?,
+        more,
+    ))
+}
+
+/// The corners of `name` when all of it is a Lotus-style range, in any case: `A1.B2`, `a1..b2`,
+/// `R1.C1` (the range `C1:R1`). Excel reads such a name in a formula as the range, even over a
+/// defined name spelled so (`SUM(A1.B2)` is `SUM(A1:B2)`, `=R1.C1*1` spills; probes/lotus-dot-
+/// range, -forms, r1c1-name-r1-dot-c1, excel-graph, T-1659), while text after the second cell
+/// leaves a name (`A1.B2.C3` makes Excel reject the file; ours reads `#NAME?`).
+pub(crate) fn parse_dotted_a1_range(name: &str) -> Option<(ParsedReference, ParsedReference)> {
+    if !name.contains('.') {
         return None;
     }
-    Some(ParsedReference {
-        row: row.parse::<i32>().unwrap_or(0),
-        column: column.parse::<i32>().unwrap_or(0),
-        absolute_column,
-        absolute_row,
-    })
+    match dotted_a1_corners(&name.to_ascii_uppercase())? {
+        (left, right, false) => Some((left, right)),
+        (_, _, true) => None,
+    }
+}
+
+/// Whether the R1C1 lexer reads `name` as a cell reference: `R<digits>C<digits>` in uppercase,
+/// both numbers in range (an out-of-range `R0C1` is a name there, T-1657). Formulas are stored
+/// in R1C1 form, so a LET or LAMBDA name spelled like that is stored with the `_xlpm.` prefix
+/// the parser drops (T-1658).
+pub(crate) fn reads_as_r1c1_cell(name: &str) -> bool {
+    let text = name.as_bytes();
+    let mut position = 1;
+    text.first() == Some(&b'R')
+        && leading_number(text, &mut position).is_some()
+        && text.get(position) == Some(&b'C')
+        && {
+            position += 1;
+            leading_number(text, &mut position).is_some()
+        }
+        && position == text.len()
+        && !is_out_of_range_r1c1_name(name)
+}
+
+/// The decimal digits at `position`, which is left after them, or `None` if there are none. A
+/// number past `i32::MAX` saturates there (it is out of any sheet's range either way).
+fn leading_number(text: &[u8], position: &mut usize) -> Option<i32> {
+    let start = *position;
+    let mut number = 0_i32;
+    while let Some(digit) = text.get(*position).filter(|c| c.is_ascii_digit()) {
+        number = number
+            .saturating_mul(10)
+            .saturating_add(i32::from(digit - b'0'));
+        *position += 1;
+    }
+    (*position > start).then_some(number)
 }
 
 pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
@@ -212,10 +285,17 @@ pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
 }
 
 /// Returns true if `name` is a valid identifier in an A1-mode formula expression.
-/// This is a superset of `is_valid_identifier`: it permits the single-character
-/// names "R" and "C" that are valid as LAMBDA parameters or LET variables but
-/// not as worksheet-level defined names.
+/// Unlike `is_valid_identifier`, it permits the R1C1-shaped names ("R", "C", "RC",
+/// "R12C", "R1C1", "R0C1") that are valid as LAMBDA parameters or LET variables but not as
+/// defined names (`is_r1c1_shaped`): Excel takes `LET(R1C1,5,R1C1*2)` (10,
+/// probes/r1c1-let-name-r1c1). The R1C1 storage form escapes the ones it would read back as
+/// a cell ([`reads_as_r1c1_cell`]).
 pub fn is_valid_a1_identifier(name: &str) -> bool {
+    is_identifier_text(name)
+}
+
+/// The rules every name follows: its characters, and not `TRUE`, `FALSE` or an A1 cell.
+fn is_identifier_text(name: &str) -> bool {
     // https://support.microsoft.com/en-us/office/names-in-formulas-fc2935f9-115d-4bef-a370-3aa8bb4c91f1
     // https://github.com/MartinTrummer/excel-names/
     let upper = name.to_uppercase();
@@ -244,9 +324,6 @@ pub fn is_valid_a1_identifier(name: &str) -> bool {
     if parse_reference_a1(name).is_some() {
         return false;
     }
-    if parse_reference_r1c1(name).is_some() {
-        return false;
-    }
     for ch in chars {
         if !(ch.is_alphanumeric() || ch == '_' || ch == '.' || ch == '\\') {
             return false;
@@ -256,13 +333,11 @@ pub fn is_valid_a1_identifier(name: &str) -> bool {
     true
 }
 
+/// Whether `name` is a valid defined or table name: one that Excel does not read as an R1C1
+/// reference ([`is_r1c1_shaped`]; that also refuses "R", "C", "r" and "c"). `R0C1` passes, as
+/// Excel loads it (T-1657: its uses are `#NAME?` there).
 pub fn is_valid_identifier(name: &str) -> bool {
-    // You cannot use the uppercase and lowercase characters "C", "c", "R", or "r" as a defined name
-    let upper = name.to_uppercase();
-    if upper == "R" || upper == "C" {
-        return false;
-    }
-    is_valid_a1_identifier(name)
+    !is_r1c1_shaped(name) && is_identifier_text(name)
 }
 
 pub(crate) fn name_needs_quoting(name: &str) -> bool {
@@ -285,11 +360,36 @@ pub(crate) fn name_needs_quoting(name: &str) -> bool {
         // cell reference in A1 notation, e.g. B1048576 is quoted, B1048577 is not
         return true;
     }
-    if parse_reference_r1c1(name).is_some() {
-        // cell reference in R1C1 notation, e.g. RC, RC2, R5C, R-4C, RC-8, R, C
-        return true;
+    // An R1C1 reference or one followed by more text (RC, R1C1D, r1, C1R, R, C), or a
+    // Lotus-style range (A1.B2, R1.C1).
+    is_r1c1_shaped(name) || is_dotted_a1_range(name)
+}
+
+/// A defined name of this workbook without its scope prefix: `Name` for `Name`, `Sheet!Name` and
+/// `[0]Sheet!Name` (the parser keeps the prefix in the node so the formula text round-trips as
+/// typed). A linked workbook's `[1]!Name` is returned whole, so it never finds this workbook's
+/// name of the same spelling.
+pub(crate) fn bare_defined_name(name: &str) -> &str {
+    if name.starts_with('[') && !name.starts_with("[0]") {
+        return name;
     }
-    false
+    name.rsplit_once('!').map_or(name, |(_, bare)| bare)
+}
+
+/// Points the sheet prefix of a qualified defined name (`Data!Local`) at `new_sheet` when the
+/// name is scoped to the renamed sheet (`scope == Some(renamed)`). A name with no prefix, and a
+/// linked workbook's `[1]!Name`, are left as they are. A workbook name read through a sheet
+/// prefix has no scope here: no Excel evidence yet for rewriting it.
+pub(crate) fn rename_defined_name_sheet(
+    name: &mut String,
+    scope: Option<u32>,
+    renamed: u32,
+    new_sheet: &str,
+) {
+    let bare = bare_defined_name(name);
+    if scope == Some(renamed) && bare.len() < name.len() && !name.starts_with('[') {
+        *name = format!("{}!{bare}", quote_name(new_sheet));
+    }
 }
 
 /// Quotes a string sheet name if it needs to

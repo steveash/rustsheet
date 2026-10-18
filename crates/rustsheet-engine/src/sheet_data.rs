@@ -26,7 +26,7 @@
 //! read was two hashes and two jumps to unrelated places in memory, which on a
 //! large sheet cost more than running the formulas.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use bitcode::{Decode, Encode};
 
@@ -63,6 +63,18 @@ pub struct SheetData {
     /// `Model::from_workbook` rebuilds it with `rebuild_column_counts`.
     #[bitcode(skip)]
     column_counts: BTreeMap<i32, usize>,
+    /// The position of every cell as `(column, row)`, in that order, so the rows a column
+    /// holds are found without visiting the rows other columns fill: a union walk of a few
+    /// columns costs what those columns hold (T-1502). Built from the cells by
+    /// `build_column_index` the first time a walk needs it, then kept in step by every write;
+    /// until then writes and loads pay nothing for it (an index kept from the start doubled
+    /// the cost of filling a sheet). Not serialised, so bytes cannot forge it.
+    #[bitcode(skip)]
+    column_rows: Option<BTreeSet<(i32, i32)>>,
+    /// Counts the writes that add or remove a cell, so a walk that hands cells to code that may
+    /// write (a spill) can tell that what it found before is out of date.
+    #[bitcode(skip)]
+    layout_version: u64,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -117,6 +129,17 @@ impl Row {
             }
         }
     }
+}
+
+/// What [`SheetData::next_row_between`] found and what it looked at to find it.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct RowSearch {
+    /// The first existing row of the span, if any.
+    pub(crate) row: Option<i32>,
+    /// Unallocated chunks passed over.
+    pub(crate) absent_chunks: u64,
+    /// Row slots of allocated chunks tested.
+    pub(crate) slots: u64,
 }
 
 /// The chunk and the place in it of a row, if the row is within the sheet.
@@ -199,7 +222,7 @@ impl SheetData {
     pub fn set_cell(&mut self, row: i32, column: i32, cell: Cell) -> Option<Cell> {
         let previous = self.row_or_insert(row)?.insert(column, cell);
         if previous.is_none() {
-            self.count_column(column);
+            self.index_cell(row, column);
         }
         previous
     }
@@ -212,7 +235,7 @@ impl SheetData {
         if row_data.cells.is_empty() {
             self.remove_row(row);
         }
-        self.uncount_column(column);
+        self.unindex_cell(row, column);
         Some(cell)
     }
 
@@ -250,26 +273,116 @@ impl SheetData {
         self.column_counts.keys().next_back().copied().unwrap_or(0)
     }
 
-    /// Recounts the columns from the cells, for a sheet that was decoded.
+    /// Recounts the columns from the cells, for a sheet that was decoded. The column index is
+    /// left to be built when a walk needs it.
     pub(crate) fn rebuild_column_counts(&mut self) {
         let mut counts = BTreeMap::new();
         for (_, column, _) in self.cells() {
             *counts.entry(column).or_insert(0) += 1;
         }
         self.column_counts = counts;
+        self.column_rows = None;
+        self.layout_version = self.layout_version.wrapping_add(1);
     }
 
-    fn count_column(&mut self, column: i32) {
+    /// Builds the column index from the cells if it is not built yet. One pass over the cells
+    /// and a sort, paid once per sheet: afterwards every write keeps it in step.
+    pub(crate) fn build_column_index(&mut self) {
+        if self.column_rows.is_none() {
+            // Collected and sorted, then built in one pass: far cheaper than one insert per cell.
+            self.column_rows = Some(self.cells().map(|(row, column, _)| (column, row)).collect());
+        }
+    }
+
+    /// Whether the column index is built, for tests of when a walk builds it.
+    #[cfg(test)]
+    pub(crate) fn has_column_index(&self) -> bool {
+        self.column_rows.is_some()
+    }
+
+    fn index_cell(&mut self, row: i32, column: i32) {
         *self.column_counts.entry(column).or_insert(0) += 1;
+        if let Some(index) = &mut self.column_rows {
+            index.insert((column, row));
+        }
+        self.layout_version = self.layout_version.wrapping_add(1);
     }
 
-    fn uncount_column(&mut self, column: i32) {
+    fn unindex_cell(&mut self, row: i32, column: i32) {
         if let Some(count) = self.column_counts.get_mut(&column) {
             *count -= 1;
             if *count == 0 {
                 self.column_counts.remove(&column);
             }
         }
+        if let Some(index) = &mut self.column_rows {
+            index.remove(&(column, row));
+        }
+        self.layout_version = self.layout_version.wrapping_add(1);
+    }
+
+    /// Changes whenever a cell is added or removed (wrapping, so equal means unchanged only
+    /// between reads close together, as a walk's are).
+    pub(crate) fn layout_version(&self) -> u64 {
+        self.layout_version
+    }
+
+    /// Replaces `columns` with the columns of `column1..=column2` that hold a cell, in ascending
+    /// order, unless there are more than `limit`: then `false`, with `columns` holding the first
+    /// `limit` of them. Each column found is one search of the index. `false` with no columns
+    /// when the index is not built ([`Self::build_column_index`]).
+    pub(crate) fn columns_between(
+        &self,
+        column1: i32,
+        column2: i32,
+        limit: usize,
+        columns: &mut Vec<i32>,
+    ) -> bool {
+        columns.clear();
+        let Some(index) = &self.column_rows else {
+            return false;
+        };
+        let mut from = column1;
+        while from <= column2 {
+            let Some(&(column, _)) = index.range((from, i32::MIN)..=(column2, i32::MAX)).next()
+            else {
+                break;
+            };
+            if columns.len() == limit {
+                return false;
+            }
+            columns.push(column);
+            let Some(next) = column.checked_add(1) else {
+                break;
+            };
+            from = next;
+        }
+        true
+    }
+
+    /// Replaces `rows` with the first `limit` rows of `from..=to` at which `column` holds a cell,
+    /// in ascending order: one search of the index, then a step per row. `rows` is left empty
+    /// when the index is not built ([`Self::build_column_index`]).
+    pub(crate) fn rows_in_column_between(
+        &self,
+        column: i32,
+        (from, to): (i32, i32),
+        limit: usize,
+        rows: &mut Vec<i32>,
+    ) {
+        rows.clear();
+        let Some(index) = &self.column_rows else {
+            return;
+        };
+        if from > to {
+            return;
+        }
+        rows.extend(
+            index
+                .range((column, from)..=(column, to))
+                .take(limit)
+                .map(|&(_, row)| row),
+        );
     }
 
     /// The rows that exist, in ascending order.
@@ -283,6 +396,65 @@ impl SheetData {
             Some(row_data) => row_data.cells.iter().map(|(column, _)| *column).collect(),
             None => Vec::new(),
         }
+    }
+
+    /// The first row of `from..=to` that exists, if any, with the work of finding it: how many
+    /// unallocated chunks were passed over and how many row slots of allocated chunks were
+    /// tested. A walk over sparse rows calls it again from the row after the one found, so its
+    /// total work is one pass over the chunks of the span, whatever the number of rows in it.
+    pub(crate) fn next_row_between(&self, from: i32, to: i32) -> RowSearch {
+        let mut search = RowSearch::default();
+        if from > to {
+            return search;
+        }
+        let (Some((mut chunk_index, mut index)), Some((last_chunk, last_index))) =
+            (locate(from.max(1)), locate(to.min(LAST_ROW)))
+        else {
+            return search;
+        };
+        while chunk_index <= last_chunk && chunk_index < self.chunks.len() {
+            if let Some(chunk) = &self.chunks[chunk_index] {
+                let end = if chunk_index == last_chunk {
+                    last_index
+                } else {
+                    CHUNK_MASK
+                };
+                for slot in index..=end {
+                    search.slots += 1;
+                    if chunk.rows[slot].is_some() {
+                        search.row = Some(((chunk_index << CHUNK_BITS) | slot) as i32);
+                        return search;
+                    }
+                }
+            } else {
+                search.absent_chunks += 1;
+            }
+            chunk_index += 1;
+            index = 0;
+        }
+        search
+    }
+
+    /// Replaces `columns` with the columns of `row` in `column1..=column2` that have cells, in
+    /// ascending order. The row is searched once, as [`Self::cell`] would search it.
+    pub(crate) fn columns_in_row_between(
+        &self,
+        row: i32,
+        column1: i32,
+        column2: i32,
+        columns: &mut Vec<i32>,
+    ) {
+        columns.clear();
+        let Some(row_data) = self.row(row) else {
+            return;
+        };
+        let start = row_data.position(column1).unwrap_or_else(|index| index);
+        columns.extend(
+            row_data.cells[start..]
+                .iter()
+                .map(|(column, _)| *column)
+                .take_while(|column| *column <= column2),
+        );
     }
 
     /// The cells of a row with their column, in ascending order of column.
@@ -312,7 +484,7 @@ impl SheetData {
                 self.chunks[chunk_index] = None;
             }
             for (column, _) in &removed.cells {
-                self.uncount_column(*column);
+                self.unindex_cell(row, *column);
             }
         }
     }
@@ -342,10 +514,10 @@ impl SheetData {
         let old = std::mem::replace(&mut row_data.cells, cells);
         let new_columns: Vec<i32> = row_data.cells.iter().map(|(column, _)| *column).collect();
         for (column, _) in &old {
-            self.uncount_column(*column);
+            self.unindex_cell(row, *column);
         }
         for column in new_columns {
-            self.count_column(column);
+            self.index_cell(row, column);
         }
     }
 }
@@ -366,6 +538,42 @@ mod test {
 
     fn number(v: f64) -> Cell {
         Cell::NumberCell { v, s: 0 }
+    }
+
+    #[test]
+    fn next_row_between_skips_absent_rows_and_chunks() {
+        let mut data = SheetData::new();
+        data.set_cell(1, 2, number(1.0));
+        data.set_cell(10_000, 3, number(1.0));
+        let first = data.next_row_between(1, LAST_ROW);
+        assert_eq!(
+            (first.row, first.absent_chunks, first.slots),
+            (Some(1), 0, 1)
+        );
+        // Rows 2..=1023 of chunk 0, chunks 1..=8 absent, then 785 slots of chunk 9.
+        let second = data.next_row_between(2, LAST_ROW);
+        assert_eq!(second.row, Some(10_000));
+        assert_eq!((second.absent_chunks, second.slots), (8, 1022 + 785));
+        // Past the last chunk the search stops: the chunks after it are never looked at.
+        let none = data.next_row_between(10_001, LAST_ROW);
+        assert_eq!((none.row, none.absent_chunks, none.slots), (None, 0, 239));
+        assert_eq!(data.next_row_between(3, 2), RowSearch::default());
+        assert_eq!(data.next_row_between(2, 9_999).row, None);
+    }
+
+    #[test]
+    fn columns_in_row_between_keeps_the_span() {
+        let mut data = SheetData::new();
+        for column in [1, 3, 5, 7, 9, 11, 13, 15, 17, 19] {
+            data.set_cell(4, column, number(1.0));
+        }
+        let mut columns = vec![99];
+        data.columns_in_row_between(4, 4, 15, &mut columns);
+        assert_eq!(columns, [5, 7, 9, 11, 13, 15]);
+        data.columns_in_row_between(4, 2, 2, &mut columns);
+        assert!(columns.is_empty());
+        data.columns_in_row_between(5, 1, 20, &mut columns);
+        assert!(columns.is_empty());
     }
 
     #[test]
@@ -412,6 +620,53 @@ mod test {
         assert_eq!(decoded.last_column(), 6);
         decoded.remove_cell(2, 6);
         assert_eq!(decoded.last_column(), 3);
+    }
+
+    #[test]
+    fn the_column_index_follows_every_write() {
+        let mut data = SheetData::new();
+        let mut rows = Vec::new();
+        let mut columns = Vec::new();
+        for row in 1..=9_000 {
+            data.set_cell(row, 7, number(1.0));
+        }
+        // not built yet: no columns, and the caller walks by rows
+        assert!(!data.columns_between(1, 16_384, 8, &mut columns));
+        assert!(columns.is_empty());
+        data.build_column_index();
+        data.set_cell(3, 2, number(1.0));
+        data.set_cell(9_500, 2, number(1.0));
+        data.set_cell(2, 3, number(1.0));
+        data.rows_in_column_between(2, (1, LAST_ROW), 64, &mut rows);
+        assert_eq!(rows, [3, 9_500]);
+        data.rows_in_column_between(2, (4, 9_499), 64, &mut rows);
+        assert!(rows.is_empty());
+        data.rows_in_column_between(7, (10, LAST_ROW), 3, &mut rows);
+        assert_eq!(rows, [10, 11, 12]);
+        // an empty span is no rows, not a panic
+        data.rows_in_column_between(7, (10, 9), 3, &mut rows);
+        assert!(rows.is_empty());
+        assert!(data.columns_between(1, 16_384, 8, &mut columns));
+        assert_eq!(columns, [2, 3, 7]);
+        assert!(!data.columns_between(1, 16_384, 2, &mut columns));
+        assert_eq!(columns, [2, 3]);
+        assert!(data.columns_between(4, 6, 8, &mut columns));
+        assert!(columns.is_empty());
+        // removing a cell, a row, or replacing a row keeps it in step, and each such write
+        // changes the layout version
+        let version = data.layout_version();
+        data.remove_cell(3, 2);
+        assert_ne!(data.layout_version(), version);
+        data.set_row(2, vec![(4, number(1.0))]);
+        data.remove_row(9_500);
+        data.rows_in_column_between(2, (1, LAST_ROW), 64, &mut rows);
+        assert!(rows.is_empty());
+        assert!(data.columns_between(1, 16_384, 8, &mut columns));
+        assert_eq!(columns, [4, 7]);
+        // replacing a cell's value does not
+        let version = data.layout_version();
+        data.set_cell(2, 4, number(2.0));
+        assert_eq!(data.layout_version(), version);
     }
 
     #[test]

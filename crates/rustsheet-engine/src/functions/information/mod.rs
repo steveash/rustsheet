@@ -1,6 +1,7 @@
 mod isomitted;
 mod offline_errors;
 
+use crate::external_reference::PickedReference;
 use crate::{
     calc_result::{CalcResult, Range},
     cast::calc_result_to_array_node,
@@ -11,15 +12,15 @@ use crate::{
         types::CellReferenceIndex,
         utils::number_to_column,
     },
-    functions::math_and_trigonometry::array_size::check_range_size,
-    functions::util::array_node_to_calc_result,
+    functions::Function,
     get_all_timezones,
+    limits::check_range_size,
     model::Model,
-    reference_operators::{external_area, RefArg},
+    reference_operators::RefArg,
 };
 
 /// Applies `f` to every element of a 2-D array, keeping its shape.
-fn map_elements(
+pub(crate) fn map_elements(
     values: &[Vec<ArrayNode>],
     f: impl Fn(&ArrayNode) -> ArrayNode,
 ) -> Vec<Vec<ArrayNode>> {
@@ -29,20 +30,13 @@ fn map_elements(
         .collect()
 }
 
-/// An argument that lifts: a multi-cell range or an array gives its values, anything else
-/// (a one-cell range included) a single value.
-enum Lifted {
-    Scalar(CalcResult),
-    Array(Vec<Vec<ArrayNode>>),
-}
-
-impl Lifted {
-    /// Rows and columns; a single value is 1x1.
-    fn dims(&self) -> (usize, usize) {
-        match self {
-            Lifted::Array(values) => (values.len(), values.iter().map(Vec::len).max().unwrap_or(0)),
-            Lifted::Scalar(_) => (1, 1),
-        }
+/// N of one array element: a number stays, TRUE is 1, text, FALSE and blanks are 0, an error stays.
+fn n_of(value: &ArrayNode) -> ArrayNode {
+    match value {
+        ArrayNode::Number(n) => ArrayNode::Number(*n),
+        ArrayNode::Boolean(b) => ArrayNode::Number(f64::from(u8::from(*b))),
+        ArrayNode::String(_) | ArrayNode::Empty => ArrayNode::Number(0.0),
+        ArrayNode::Error(error) => ArrayNode::Error(error.clone()),
     }
 }
 
@@ -65,65 +59,61 @@ impl Model {
     /// yields one boolean.
     fn is_predicate(
         &mut self,
+        kind: Function,
         args: &[Node],
         cell: CellReferenceIndex,
         test: impl Fn(&ArrayNode) -> bool,
     ) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        match self.lifted_arg(&args[0], cell) {
-            Ok(Lifted::Array(values)) => {
-                CalcResult::Array(map_elements(&values, |v| ArrayNode::Boolean(test(v))))
-            }
-            Ok(Lifted::Scalar(other)) => {
-                CalcResult::Boolean(test(&calc_result_to_array_node(other)))
-            }
-            Err(error) => error,
-        }
-    }
-
-    /// Evaluates an argument that lifts over a multi-cell range or array.
-    fn lifted_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<Lifted, CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Range { left, right } if left == right => {
-                Ok(Lifted::Scalar(self.evaluate_cell(left)))
-            }
-            CalcResult::Range { left, right } => {
-                Ok(Lifted::Array(self.evaluate_range(left, right, cell)?))
-            }
-            CalcResult::Array(values) => Ok(Lifted::Array(values)),
-            other => Ok(Lifted::Scalar(other)),
-        }
+        self.lift_call(kind, args, cell, &mut |_, values| {
+            let [value] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            CalcResult::Boolean(test(&calc_result_to_array_node(value.clone())))
+        })
     }
 
     pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Number(_)))
+        self.is_predicate(Function::Isnumber, args, cell, |v| {
+            matches!(v, ArrayNode::Number(_))
+        })
     }
     pub(crate) fn fn_istext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::String(_)))
+        self.is_predicate(Function::Istext, args, cell, |v| {
+            matches!(v, ArrayNode::String(_))
+        })
     }
     pub(crate) fn fn_isnontext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| !matches!(v, ArrayNode::String(_)))
+        self.is_predicate(Function::Isnontext, args, cell, |v| {
+            !matches!(v, ArrayNode::String(_))
+        })
     }
     pub(crate) fn fn_islogical(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Boolean(_)))
+        self.is_predicate(Function::Islogical, args, cell, |v| {
+            matches!(v, ArrayNode::Boolean(_))
+        })
     }
     pub(crate) fn fn_isblank(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Empty))
+        self.is_predicate(Function::Isblank, args, cell, |v| {
+            matches!(v, ArrayNode::Empty)
+        })
     }
     pub(crate) fn fn_iserror(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Error(_)))
+        self.is_predicate(Function::Iserror, args, cell, |v| {
+            matches!(v, ArrayNode::Error(_))
+        })
     }
     pub(crate) fn fn_iserr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.is_predicate(
+            Function::Iserr,
             args,
             cell,
             |v| matches!(v, ArrayNode::Error(e) if *e != Error::NA),
         )
     }
     pub(crate) fn fn_isna(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Error(Error::NA)))
+        self.is_predicate(Function::Isna, args, cell, |v| {
+            matches!(v, ArrayNode::Error(Error::NA))
+        })
     }
 
     // Returns true if it is a reference or evaluates to a reference
@@ -137,7 +127,29 @@ impl Model {
 
     /// Whether `node` stands for a reference (ISREF).
     fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
-        let node = node.ungrouped();
+        // `ISREF(IF(TRUE,…!A1))` is TRUE (probes/external-ref-no-link-ifchoose A9, A10, A31).
+        // A reference into another workbook, written or through INDEX, a union, an
+        // intersection or LET (probes/external-ref-no-link-shapes A4, external-ref-no-link-index
+        // A28, A33, external-ref-no-link-let A1, A10); one into two workbooks is `#VALUE!`, so
+        // not a reference.
+        let node = match self.pick_reference(node, cell) {
+            PickedReference::Node(node) => node,
+            PickedReference::External(areas) => return areas.is_ok(),
+            PickedReference::Value(_) => return false,
+        };
+        // OFFSET of one is `#VALUE!`, so not a reference (probes/external-ref-no-link-index
+        // A16), where OFFSET otherwise counts as one unevaluated (`kind.returns_reference()`).
+        if let Node::FunctionKind {
+            kind: crate::functions::Function::Offset,
+            args,
+        } = node
+        {
+            if let Some(reference) = args.first() {
+                if self.external_reference(reference, cell).is_some() {
+                    return false;
+                }
+            }
+        }
         match node {
             Node::ReferenceKind { .. } | Node::RangeKind { .. } => true,
             // A range whose corners are on two sheets is `#VALUE!`, so not a reference:
@@ -158,12 +170,48 @@ impl Model {
                 kind: crate::functions::Function::If | crate::functions::Function::Choose,
                 ..
             } => matches!(self.evaluate_reference_arg(node, cell), RefArg::Ranges(_)),
+            // The `@` of an XLOOKUP or TAKE that picks one cell keeps the reference too
+            // (probes/isref-implicit-xlookup-take, T-1509).
+            Node::ImplicitIntersection { child, .. }
+                if matches!(
+                    child.ungrouped(),
+                    Node::FunctionKind {
+                        kind: crate::functions::Function::Xlookup
+                            | crate::functions::Function::Take,
+                        ..
+                    }
+                ) =>
+            {
+                matches!(
+                    self.eval_at_picked_reference(node, cell),
+                    Some(CalcResult::Range { .. })
+                )
+            }
+            // The `@` of an INDEX that picks one cell keeps the reference: `ISREF(@INDEX(B1:B3,2))`
+            // is TRUE (probes/let-bind-implicit-index H10, excel-graph; T-1506).
+            Node::ImplicitIntersection { child, .. }
+                if matches!(
+                    child.ungrouped(),
+                    Node::FunctionKind {
+                        kind: crate::functions::Function::Index,
+                        ..
+                    }
+                ) =>
+            {
+                matches!(self.eval_ref_or_index(node, cell), CalcResult::Range { .. })
+            }
             // INDEX, XLOOKUP, TAKE, DROP and TRIMRANGE are references when they pick cells of a
             // range, and not when they fail or work on an array (`ISREF(INDEX(A1,1,2,2))` is
             // FALSE; probes/isref-reference-lookups).
             Node::FunctionKind { kind, args } => {
                 match self.evaluate_reference_form(kind, args, cell) {
                     Some(result) => matches!(result, CalcResult::Range { .. }),
+                    // INDIRECT of text that is no reference is `#REF!`, not a reference:
+                    // `ISREF(INDIRECT("R0"))` is FALSE (probes/r1c1-name-use-r0, excel-graph; T-1657).
+                    None if matches!(kind, crate::functions::Function::Indirect) => matches!(
+                        self.evaluate_node_with_reference(node, cell),
+                        CalcResult::Range { .. }
+                    ),
                     None => kind.returns_reference(),
                 }
             }
@@ -173,10 +221,7 @@ impl Model {
             // but not one whose body is a value (`=SUM(...)`, `=total*2`): probes/defined-name-
             // intersection H2, H9 and probes/defined-name-formula-bodies H7, H8, H10, H16.
             Node::DefinedNameKind((name, scope, _)) => {
-                match self
-                    .parsed_defined_names
-                    .get(&(*scope, name.to_lowercase()))
-                {
+                match self.parsed_defined_name(name, *scope) {
                     Some(
                         ParsedDefinedName::CellReference(_) | ParsedDefinedName::RangeReference(_),
                     ) => true,
@@ -194,9 +239,6 @@ impl Model {
                 self.evaluate_node_with_reference(node, cell),
                 CalcResult::Range { .. }
             ),
-            Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. } => {
-                external_area(node, cell).is_some()
-            }
             _ => false,
         }
     }
@@ -207,34 +249,19 @@ impl Model {
     /// wherever the formula sits; an array constant lifts element by element
     /// (probes/is-functions-array-lift J2, K2, L3, M30, M32; excel-graph;
     /// docs/excel-semantics/information.md).
-    fn parity_predicate(
+    fn lifted_parity(
         &mut self,
+        kind: Function,
         args: &[Node],
         cell: CellReferenceIndex,
         even: bool,
     ) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } if left != right => {
-                CalcResult::new_error(Error::VALUE, cell, "Expecting a single value".to_string())
-            }
-            CalcResult::Array(values) => CalcResult::Array(
-                values
-                    .into_iter()
-                    .map(|row| {
-                        row.into_iter()
-                            .map(|v| {
-                                let element = array_node_to_calc_result(&v, cell);
-                                calc_result_to_array_node(self.parity_of(element, even, cell))
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            ),
-            other => self.parity_of(other, even, cell),
-        }
+        self.lift_call(kind, args, cell, &mut |model, values| {
+            let [value] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            model.parity_of(value.clone(), even, cell)
+        })
     }
 
     fn parity_of(&mut self, value: CalcResult, even: bool, cell: CellReferenceIndex) -> CalcResult {
@@ -251,11 +278,11 @@ impl Model {
     }
 
     pub(crate) fn fn_isodd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.parity_predicate(args, cell, false)
+        self.lifted_parity(Function::Isodd, args, cell, false)
     }
 
     pub(crate) fn fn_iseven(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.parity_predicate(args, cell, true)
+        self.lifted_parity(Function::Iseven, args, cell, true)
     }
 
     // ISFORMULA arg needs to be a reference or something that evaluates to a reference
@@ -317,28 +344,25 @@ impl Model {
         )
     }
 
+    /// Lifts over a multi-cell range or array like the IS* tests (probes/rich-errors-arg-kinds
+    /// F10:G10, F40:G41: `ERROR.TYPE(FIELDVALUE(Q1:R2,"Price"))` spills 13s).
     pub(crate) fn fn_errortype(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // Lifts over a multi-cell range or array like the IS* tests (probes/rich-errors-arg-kinds
-        // F10:G10, F40:G41: `ERROR.TYPE(FIELDVALUE(Q1:R2,"Price"))` spills 13s).
-        let error_type = |v: &ArrayNode| match v {
-            ArrayNode::Error(error) => ArrayNode::Number(f64::from(error.error_type_code())),
-            _ => ArrayNode::Error(Error::NA),
-        };
-        match self.lifted_arg(&args[0], cell) {
-            Ok(Lifted::Array(values)) => CalcResult::Array(map_elements(&values, error_type)),
-            Ok(Lifted::Scalar(CalcResult::Error { error, .. })) => {
-                CalcResult::Number(f64::from(error.error_type_code()))
-            }
-            Ok(Lifted::Scalar(_)) => CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Not an error".to_string(),
+        self.lift_call(
+            Function::ErrorType,
+            args,
+            cell,
+            &mut |_, values| match values {
+                [CalcResult::Error { error, .. }] => {
+                    CalcResult::Number(f64::from(error.error_type_code()))
+                }
+                [_] => CalcResult::Error {
+                    error: Error::NA,
+                    origin: cell,
+                    message: "Not an error".to_string(),
+                },
+                _ => CalcResult::new_args_number_error(cell),
             },
-            Err(error) => error,
-        }
+        )
     }
 
     // Excel believes for some reason that TYPE(A1:A7) is an array formula
@@ -373,10 +397,7 @@ impl Model {
         match args[0].ungrouped() {
             Node::DefinedNameKind((name, scope, _)) => {
                 // Let's see if it is a defined name
-                if let Some(defined_name) = self
-                    .parsed_defined_names
-                    .get(&(*scope, name.to_lowercase()))
-                {
+                if let Some(defined_name) = self.parsed_defined_name(name, *scope) {
                     match defined_name {
                         ParsedDefinedName::CellReference(reference) => {
                             return CalcResult::Number(reference.sheet as f64 + 1.0)
@@ -412,18 +433,6 @@ impl Model {
                     };
                 }
             }
-            Node::TableNameKind(name) => {
-                // Now let's see if it is a table
-                for (table_name, table) in &self.workbook.tables {
-                    if table_name == name {
-                        if let Some(sheet_index) = self.get_sheet_index_by_name(&table.sheet_name) {
-                            return CalcResult::Number(sheet_index as f64 + 1.0);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
             Node::NamedVariableKind { name, id: _ } => {
                 return CalcResult::Error {
                     error: Error::NAME,
@@ -434,8 +443,12 @@ impl Model {
             arg => {
                 // A reference (a range included) gives its sheet's number, with no spill
                 // (probes/info-logic-argument-modes A12, excel-graph).
-                if let Ok(range) = self.get_reference(arg, cell) {
-                    return CalcResult::Number(range.left.sheet as f64 + 1.0);
+                // Reached through INDEX, IF or a union it is the same: a union of areas on one
+                // sheet gives that sheet (probes/volatile-and-info-rand-true-false-sheet D18, D19, D26).
+                if let RefArg::Ranges(ranges) = self.evaluate_reference_arg(arg, cell) {
+                    if let Some(first) = ranges.first() {
+                        return CalcResult::Number(first.left.sheet as f64 + 1.0);
+                    }
                 }
                 // Now it should be the name of a sheet
                 let sheet_name = match self.get_string(arg, cell) {
@@ -459,25 +472,20 @@ impl Model {
         if arg_count != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let argument = match self.evaluate_node_in_context(&args[0], cell) {
-            // The top-left cell, with no lift and no implicit intersection
-            // (probes/info-logic-argument-modes A6:A7, excel-graph).
-            CalcResult::Range { left, .. } => self.evaluate_cell(left),
-            other => other,
-        };
+        // A range is its top-left cell, with no lift and no implicit intersection
+        // (probes/info-logic-argument-modes A6:A7, excel-graph).
+        let argument = self.evaluate_node_top_left(&args[0], cell);
         let value = match argument {
             CalcResult::Number(n) => n,
             CalcResult::String(_) => 0.0,
-            CalcResult::Boolean(f) => {
-                if f {
-                    1.0
-                } else {
-                    0.0
-                }
-            }
+            CalcResult::Boolean(f) => f64::from(u8::from(f)),
             CalcResult::EmptyCell | CalcResult::EmptyArg => 0.0,
             error @ CalcResult::Error { .. } => return error,
-            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+            // An array lifts element-wise, an error element kept: `N({1,#N/A})` spills 1, #N/A,
+            // `N(IF(1,{2;3}))` 2, 3, and legacy `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` is 5
+            // (probes/n-array-lift, legacy-index-array-index L1, L10; T-1616).
+            CalcResult::Array(values) => return CalcResult::Array(map_elements(&values, n_of)),
+            CalcResult::Range { .. } | CalcResult::Lambda(_) => {
                 return CalcResult::Error {
                     error: Error::NIMPL,
                     origin: cell,
@@ -530,7 +538,7 @@ impl Model {
         // An array info_type lifts: one result per element (CELL({"row","col"},B2) spills 2, 2;
         // probes/info-logic-argument-modes A27:B27, excel-graph).
         let info_type = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::String(s) => s,
+            CalcResult::String(s) => s.into_lossy_string(),
             CalcResult::Array(types) => {
                 let lifted = types
                     .iter()
@@ -587,7 +595,7 @@ impl Model {
                     };
                     addresses.push(format!("${}${}", column, area.row));
                 }
-                CalcResult::String(addresses.join(", "))
+                CalcResult::String(addresses.join(", ").into())
             }
             "COL" => CalcResult::Number(reference.column as f64),
             "COLOR" | "FORMAT" | "PARENTHESES" | "PREFIX" | "PROTECT" | "WIDTH" => {
@@ -617,11 +625,17 @@ impl Model {
                         }
                     }
                 };
-                CalcResult::String(format!("[{workbook_name}.xlsx]{worksheet_name}"))
+                CalcResult::String(format!("[{workbook_name}.xlsx]{worksheet_name}").into())
             }
             "ROW" => CalcResult::Number(reference.row as f64),
+            // Like "contents", "type" reads the reference's address on the formula's own sheet
+            // (`CELL("type",Data!A7)` is "b" when Calc!A7 is blank although Data!A7 is text;
+            // probes/info-cell-legacy-range J1:K3, excel-graph, T-1433).
             "TYPE" => {
-                let cell_type = match self.evaluate_cell(reference) {
+                let cell_type = match self.evaluate_cell(CellReferenceIndex {
+                    sheet: cell.sheet,
+                    ..reference
+                }) {
                     CalcResult::EmptyCell => "b",
                     CalcResult::String(_) => "l",
                     CalcResult::Number(_) => "v",
@@ -631,7 +645,7 @@ impl Model {
                     CalcResult::EmptyArg => "v",
                     CalcResult::Array(_) | CalcResult::Lambda(_) => "v",
                 };
-                CalcResult::String(cell_type.to_string())
+                CalcResult::String(cell_type.to_string().into())
             }
             _ => CalcResult::Error {
                 error: Error::VALUE,
@@ -665,16 +679,16 @@ impl Model {
             "NUMFILE" => CalcResult::Number(self.workbook.worksheets.len() as f64),
 
             // At the moment we always do automatic recalc
-            "RECALC" => CalcResult::String("Automatic".to_string()),
-            "RELEASE" => CalcResult::String(release.to_string()),
-            "SYSTEM" => CalcResult::String(get_system()),
-            "TIMEZONE" => CalcResult::String(self.get_timezone()),
+            "RECALC" => CalcResult::String("Automatic".into()),
+            "RELEASE" => CalcResult::String(release.to_string().into()),
+            "SYSTEM" => CalcResult::String(get_system().into()),
+            "TIMEZONE" => CalcResult::String(self.get_timezone().into()),
             "TIMEZONES" => {
                 let mut tzs = get_all_timezones();
                 tzs.sort();
                 let list: Vec<Vec<ArrayNode>> = tzs
                     .into_iter()
-                    .map(|name| vec![ArrayNode::String(name.to_string())])
+                    .map(|name| vec![ArrayNode::String(name.to_string().into())])
                     .collect();
                 CalcResult::Array(list)
             }

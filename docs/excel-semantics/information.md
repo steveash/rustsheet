@@ -25,7 +25,12 @@ Also covered by M34:P34 (`{4.5,-7,"3",TRUE}` -> TRUE, FALSE, FALSE, #VALUE!: par
 absolute value, text cast, boolean #VALUE!). UNVERIFIED sub-rules (no probe yet): an array
 expression derived from a range (`ISEVEN(Data!C1:C5+0)`), arguments of magnitude >= 2^63, and the
 dynamic-array flag Excel writes for the range form.
-Implemented in: `Model::parity_predicate` (functions/information/mod.rs).
+Legacy (pre-dynamic-array) formulas, UNVERIFIED for ISEVEN/ISODD (T-1774 moved them onto the
+SPEC-0011 `LiftArrays` table entry, so they follow the Analysis ToolPak rule probed for EDATE and
+YEARFRAC, probes/scalar-lift-shapes-c E, F, H, Q): a bare range gets no `@` and is `#VALUE!`, a
+value operation over a range (`ISEVEN(C1:C5+0)`) gets `@`, and `{5}` gets no `@`. Before T-1774 the
+hand-written arm gave the argument a scalar signature (`@` on the range and on `{5}`).
+Implemented in: `Model::lifted_parity` and the `ARRAYS_1` entry in functions/lift/kinds.rs.
 Status: VERIFIED (excel-graph)
 Tasks: T-0247, T-0248
 
@@ -185,7 +190,10 @@ Tasks: T-1013
 Rule: how the other M5 information functions take a range, an array and a direct value (T-1088):
 - ERROR.TYPE and ISFORMULA lift over a multi-cell range: `ERROR.TYPE(E1:F1)` over `#DIV/0!`, `#N/A` spills 2, 7, and
   `ISFORMULA(A3:B3)` over a formula and a constant spills TRUE, FALSE. `ERROR.TYPE(1)` is `#N/A`.
-- TYPE takes a range or an array whole: `TYPE(A2:C2)` and `TYPE({1,2})` are 64, with no spill. `TYPE` of one number cell is 1.
+- TYPE takes a range or an array whole: `TYPE(A2:C2)` and `TYPE({1,2})` are 64, with no spill. `TYPE` of one number cell is 1. In a legacy
+  formula TYPE's range is implicitly intersected instead: 1 on its rows, 16 off them (references.md "Legacy
+  formulas intersect the ranges in value arguments", probes/legacy-type-intersection, T-1526). An array constant is not intersected: `=TYPE({5})` is 64 with no `@`
+  (references.md "Legacy `@` on CHOOSE operator arms", T-1638).
 - N gives the top-left cell of a range, with no lift and no implicit intersection: `N(A2:C2)` is 2 (A2) and
   `N(B2:C2)` from a row and column outside the range is 3 (B2). `N("5")` and `N` of a text cell are 0, and `N(TRUE)` is 1.
 - ISREF takes any value: a range is TRUE (no spill), while `ISREF(1)` and `ISREF(A1:A2+0)` are FALSE.
@@ -213,15 +221,76 @@ Ours: matches except `ISFORMULA(INDEX(range,1))`, which Excel gives as TRUE and 
 Tasks: T-1279, T-1453
 
 ## CELL("contents", ref) reads the formula's own sheet (excel-graph)
-Rule (excel-graph): `CELL("contents", ref)` reads the top-left cell of `ref` taken **on the formula's own sheet**, whatever sheet `ref` names; a multi-cell range is never implicitly intersected, and a legacy (non-array) formula gives the same value as a dynamic one. `=CELL("contents",Data!A2)` on Calc is Calc!A2 (12.5), not Data!A2 (2.5); `Data!A7:C7` is Calc!A7 (21.5); `Data!E1:F1` is Calc!E1 (blank, 0). The earlier "other sheet = `#VALUE!`" reading (probes/info-logic-argument-modes A18) was this: Calc!A2 there is `=XOR(Data!B1)` = `#VALUE!`. Same-sheet ranges give the top-left cell (`A1:A5` in C1, C3, C8 all 11.5), legacy twins included. Only `"contents"` has legacy-twin evidence; the vector signature for CELL's `reference` covers every info_type (other info_types: T-1433).
+Rule (excel-graph): `CELL("contents", ref)` reads the top-left cell of `ref` taken **on the formula's own sheet**, whatever sheet `ref` names; a multi-cell range is never implicitly intersected, and a legacy (non-array) formula gives the same value as a dynamic one. `=CELL("contents",Data!A2)` on Calc is Calc!A2 (12.5), not Data!A2 (2.5); `Data!A7:C7` is Calc!A7 (21.5); `Data!E1:F1` is Calc!E1 (blank, 0). The earlier "other sheet = `#VALUE!`" reading (probes/info-logic-argument-modes A18) was this: Calc!A2 there is `=XOR(Data!B1)` = `#VALUE!`. Same-sheet ranges give the top-left cell (`A1:A5` in C1, C3, C8 all 11.5), legacy twins included. Legacy-twin evidence for the other info_types is in the next entry (T-1433).
 Evidence: probes/info-cell-contents-range Calc!C1:F8, S2:S7, T1:T6, V1:V5 (oracle: excel-graph, 2026-10-12, T-1230).
 Status: VERIFIED (excel-graph); desktop UNVERIFIED. A desktop Excel that honours the sheet is likely (this looks like a web bug); the desktop check is T-1075 item 9 (decision 0039: excel-graph is the oracle of record until then).
 Ours: matches since T-1230 (`cell_info` reads the top-left cell on `cell.sheet`; CELL's `reference` argument has a vector signature, so a legacy formula does not intersect it).
 Also: `CELL({1,"row"},B2)` is `#VALUE!` (a non-string element) and `CELL({"row",1},B2)` spills 2, `#VALUE!`; `N(range)` with an error top-left cell is that error (Calc!J1, K1); the info_type array lifts per element.
 Tasks: T-1230
 
+## CELL("row"/"col"/"address"/"type", range): no intersection; "type" reads the formula's own sheet
+Rule (excel-graph, 2026-10-15): a legacy (non-array) `CELL(info_type, range)` gives the same value as its dynamic twin and is never implicitly intersected, whether the formula row or column is inside the range or not. `CELL("row",A1:A5)` is 1 and `CELL("address",A1:A5)` is `$A$1` in rows 3 and 8; `CELL("col",B20:D20)` is 2 in columns C, D (inside) and F, G (outside); `CELL("type",A1:A5)` is "v" (the top-left cell; the probe cannot tell it from an intersected cell, since both are numbers, so no-intersection for "type" rests on the vector signature, UNVERIFIED). `row`, `col` and `address` use the reference's own address (`CELL("row",Data!A2:A5)` is 2, `CELL("col",Data!C20:D20)` is 3). `"type"` reads the top-left cell at the same address **on the formula's own sheet**, like `"contents"`: `CELL("type",Data!A7)` is "b" when Data!A7 is text but Calc!A7 is blank, `Data!A8` is "l" (Calc!A8 is text, Data!A8 blank) and `Data!A9` is "b" (Data!A9 a number, Calc!A9 blank).
+Cross-sheet `CELL("address",Data!A2)` was observed as `[<file>.xlsx]Data!$A$2` with the oracle's temporary file name in the T-1433 oracle run; it cannot be scored (not in the case, no stored evidence).
+Evidence: probes/info-cell-legacy-range (40 cells; oracle: excel-graph, 2026-10-15, T-1433).
+Status: VERIFIED (excel-graph); desktop UNVERIFIED (same caveat as "contents", T-1075 item 9).
+Ours: matches (`cell_info` "TYPE" reads `cell.sheet` since T-1433). Cross-sheet "address" is `#N/IMPL!` (no case, file-name dependent).
+Tasks: T-1230, T-1433
+
 ## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
 The oracle appends a canary sheet to every workbook it recalculates, which changes `SHEETS()`, `INFO()`
 and the XLM `GET.WORKBOOK(...)` sheet list. Workbooks that use `GET.WORKBOOK(` (defined names or macro
 sheets) are refused by `embed_canary` for that reason only; this says nothing about what Excel returns
 (T-0014, tools/src/rustsheet_tools/oracle/canary.py).
+
+## SHEET of a reference, a name in text and a non-reference value
+Rule (probes/volatile-and-info-rand-true-false-sheet D1-D28, excel-graph, 2026-10-15, T-1627; sheets S, T, U in order):
+`SHEET()` is the formula's own sheet (1) and `SHEET(ref)` the reference's sheet, for a cell or a range
+(`SHEET(T!A1:B2)` 2, `SHEET(A1:B2)` 1); `SHEET("T")` and `SHEET("t")` are the sheet of that name (2, case-insensitive),
+`SHEET("Nope")`, `SHEET("")`, `SHEET(" T")` and `SHEET("S!A1")` are `#N/A`. A number, a boolean, an error and `ROW(A1)` are
+`#N/A`. A reference returned by OFFSET (1), INDIRECT (2), INDEX (`SHEET(INDEX(T!A1:B2,1,1))` 2), IF (`SHEET(IF(TRUE,U!A1))` 3)
+and a union of two areas on sheet T (`SHEET((T!A1,T!B2))` 2) all resolve to their sheet. Ours matches (T-1631).
+Volatile functions through shape-stable formulas (probes/volatile-now-today-shapes, probes/volatile-and-info-rand-true-false-sheet):
+NOW, TODAY and RAND are numbers (`TYPE` 1, never text or boolean), `NOW()-NOW()` is 0 within one recalculation,
+`INT(NOW())=TODAY()`, `RAND()` is in [0,1) and two calls differ, `TRUE()` and `FALSE()` behave as the literals in
+arithmetic, text, comparison and logical contexts (`TRUE()=1` is FALSE, B11, since a boolean never equals a number, and a
+boolean ranks above every number: `TRUE()>5` is TRUE, `FALSE()<5` FALSE, B26/C26;
+`VALUE(TRUE())` is `#VALUE!`, B28); the engine matches all of them. The eval clock is pinned, so a cell comparing
+NOW or TODAY with a threshold the real clock could cross (`NOW()>45000`) cannot be scored; `NOW()>0` and `YEAR(TODAY())>=1900`
+can never change and are.
+A legacy (non-dynamic) formula does not implicitly intersect SHEET's single reference argument: `SHEET(Table1[])` gives the table's sheet (1..4 for Table1..Table4 on four sheets; Excel-cached values in crates/rustsheet-xlsx/tests/calc_test_no_export/tables.xlsx sheet9 A5:A8; T-1674).
+Status: VERIFIED (excel-graph)
+Tasks: T-1627, T-1631, T-1674
+
+## N over an array lifts element-wise (T-1616)
+Rule: N of an array or array-valued expression is an array of N of each element (number kept, TRUE 1, text,
+FALSE and blanks 0, an error element kept); a range still gives its top-left cell (probes/info-logic-argument-modes
+A6:A7). Dynamic: `N(IF(1,{2;3}))` spills 2, 3, `N(B1:B3*1)` 1, 2, 3, `N({1,#N/A})` 1, `#N/A`, `N({"",FALSE})` 0, 0,
+`N(N({4,5}))` 4, 5, `SUM(N({1,2}))` 3, `ROWS(N({1;2;3}))` 3, `N({1,"a",TRUE})` 1, 0, 1 (`#SPILL!` with data in its
+spill range), `SUM(N({1,"a",TRUE}))` 2 dynamic and legacy.
+Legacy: `SUM(N({1,2}))` is 3 and `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` 5, but a legacy cell
+`=N(IF(1,{2;3}))` is `#VALUE!` (not the top-left 2), though FORMULATEXT shows it with no `@`, and legacy
+`=N(B1:B3*1)` off the rows `#VALUE!`.
+Evidence: probes/n-array-lift (excel-graph, 2026-10-16, T-1616).
+Not implemented: the legacy cell `=N(IF(1,{2;3}))` gives 2, 3 spilled in ours instead of `#VALUE!` (S!D4:D5,
+T-1713, which needs the legacy marker of SPEC-0012, legacy-n-t-marker.md: T-1851, T-1713). T, CHOOSE, INDEX and IFS arguments and nested uses
+(`=ABS(N(IF(1,{2;3})))`) behave the same, while N of an array constant or of TRANSPOSE gets an `@` (2):
+references.md "Legacy formulas put `@` on array-valued calls and array constants" and "Legacy N and T over a
+reference-returning call" (probes/legacy-array-result, probes/legacy-n-t-reference-args).
+Status: VERIFIED (excel-graph)
+Tasks: T-1616, T-1713, T-1727
+
+## T over an array lifts element-wise (T-1713)
+Rule: in a dynamic formula, T of an array value lifts element-wise like N: text elements are kept
+(also ""), error elements are kept, and number and boolean elements become "":
+`=T({"a",1,#N/A,TRUE,""})` spills "a", "", `#N/A`, "", "", and `=T(IF(1,{"a";"b"}))` spills "a", "b".
+It nests (`T(T({"b",2}))` "b", "") and consumers see the lifted array (`ROWS(T({1;2;3}))` 3,
+`CONCAT(T({"x",1,"y"}))` "xy"). An array from a range expression lifts too (`T(H1:H2*1)` with
+H1 = "x", H2 = 2 is `#VALUE!`, ""). A bare multi-cell range does not lift: see references.md
+"T of a multi-cell range is not intersected" (`T(H1:H2)` is one "x", the top-left cell).
+In a legacy cell, T over an array-valued IF is `#VALUE!` instead (references.md "Legacy N and T over
+a reference-returning call"; not implemented, T-1713, which also owns the legacy spill rows
+probes/legacy-array-result S!G11 and probes/legacy-n-t-reference-args S!S11, decision 0069).
+Evidence: probes/legacy-array-result S!G1:G2, probes/t-array-lift (excel-graph, 2026-10-16).
+Implemented in fn_t (T-1729).
+Status: VERIFIED (excel-graph)
+Tasks: T-1713, T-1729

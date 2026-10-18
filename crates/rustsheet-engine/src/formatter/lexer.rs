@@ -1,3 +1,4 @@
+use super::locale_tag::{self, LocaleTag};
 use crate::number_format::{parse_excel_number, parse_finite_number};
 
 pub struct Lexer {
@@ -13,7 +14,8 @@ pub enum Token {
     Color(i32),              // [Red] or [Color 23]
     Condition(Compare, f64), // [<=100] (Comparator, number)
     Currency(char),          // [$€] ($ currency symbol)
-    Literal(char), // €, £, ¥, |, $, (, ), /, :, +, -, ^, ', {, }, <, =, !, ~, > and space or escaped \X
+    Literal(char), // €, £, ¥, |, $, (, ), /, :, +, -, ^, ', {, }, <, =, !, ~, >, space, digits 1-9 and literal letters
+    Escaped(char), // \X
     Spacer(char),  // *X
     Ghost(char),   // _X
     Text(String),  // "Text"
@@ -39,7 +41,11 @@ pub enum Token {
     MonthName,           // mmmm or mmmmmm+
     MonthLetter,         // mmmmm
     YearShort,           // y or yy
-    Year,                // yyy+
+    Year,                // yyy+ (or e+)
+    BuddhistYearShort,   // b or bb
+    BuddhistYear,        // bbb+
+    Era,                 // g+ (empty in en-US)
+    Calendar(char),      // B1 (Gregorian) or B2 (Hijri)
     Hour,                // h
     HourPadded,          // hh
     Second,              // s
@@ -50,7 +56,11 @@ pub enum Token {
     ElapsedHourPadded,   // [hh]
     ElapsedMinutePadded, // [mm]
     ElapsedSecondPadded, // [ss]
-    AMPM,                // AM/PM (or A/P)
+    AMPM,                // AM/PM
+    /// `A/P`: the letters printed for the morning and for the afternoon.
+    AP(char, char),
+    /// `[$-409]`: a locale with no currency symbol, which prints nothing.
+    Locale(LocaleTag),
     ILLEGAL,
     EOF,
 }
@@ -81,6 +91,8 @@ impl Token {
             || self == &Token::MonthLetter
             || self == &Token::YearShort
             || self == &Token::Year
+            || self == &Token::BuddhistYearShort
+            || self == &Token::BuddhistYear
     }
 }
 
@@ -322,6 +334,33 @@ impl Lexer {
         None
     }
 
+    /// Consumes the letters equal (ignoring case) to `letter` that follow one already read and
+    /// returns how many there are in all.
+    fn consume_run(&mut self, letter: char) -> usize {
+        let mut count = 1;
+        while let Some(c) = self.peek_char() {
+            if c.eq_ignore_ascii_case(&letter) {
+                count += 1;
+                self.read_next_char();
+            } else {
+                break;
+            }
+        }
+        count
+    }
+
+    /// Whether the characters from the current position start with `text`, ignoring ASCII case.
+    fn looks_at(&self, text: &str) -> bool {
+        let mut position = self.position;
+        for expected in text.chars() {
+            match self.chars.get(position) {
+                Some(c) if c.eq_ignore_ascii_case(&expected) => position += 1,
+                _ => return false,
+            }
+        }
+        true
+    }
+
     pub fn peek_token(&mut self) -> Token {
         let position = self.position;
         let token = self.next_token();
@@ -362,6 +401,21 @@ impl Lexer {
                             //      Like [$$-409] (=1033 for en-US) or
                             //           [$$-40C] (=1036 for fr-FR)
                             self.read_next_char();
+                            // Excel: `[$-409]` has a locale and no symbol and prints nothing
+                            // (probes/text-ap-locale-bracket A11-A20; number-formats.md); the
+                            // locale it names applies to date names (`locale_tag`, T-1716).
+                            if self.peek_char() == Some('-') {
+                                self.read_next_char();
+                                let mut tag = String::new();
+                                while let Some(c) = self.read_next_char() {
+                                    if c == ']' {
+                                        return Token::Locale(locale_tag::resolve(&tag));
+                                    }
+                                    tag.push(c);
+                                }
+                                self.set_error("Failed to parse locale");
+                                return Token::ILLEGAL;
+                            }
                             if let Some(currency) = self.read_next_char() {
                                 // ignore the locale part for now, just check if it ends with ']'
                                 if Some('-') == self.peek_char() {
@@ -415,7 +469,7 @@ impl Lexer {
                 }
                 '\\' => {
                     if let Some(y) = self.read_next_char() {
-                        Token::Literal(y)
+                        Token::Escaped(y)
                     } else {
                         self.set_error("Unexpected end of input");
                         Token::ILLEGAL
@@ -445,15 +499,7 @@ impl Lexer {
                     }
                 }
                 'd' | 'D' => {
-                    let mut d = 1;
-                    while let Some(c) = self.peek_char() {
-                        if c.eq_ignore_ascii_case(&'d') {
-                            d += 1;
-                            self.read_next_char();
-                        } else {
-                            break;
-                        }
-                    }
+                    let d = self.consume_run('d');
                     match d {
                         1 => Token::Day,
                         2 => Token::DayPadded,
@@ -462,15 +508,7 @@ impl Lexer {
                     }
                 }
                 'm' | 'M' => {
-                    let mut m = 1;
-                    while let Some(c) = self.peek_char() {
-                        if c.eq_ignore_ascii_case(&'m') {
-                            m += 1;
-                            self.read_next_char();
-                        } else {
-                            break;
-                        }
-                    }
+                    let m = self.consume_run('m');
                     match m {
                         1 => Token::Month,       // (or minute)
                         2 => Token::MonthPadded, // (or minute padded)
@@ -481,15 +519,7 @@ impl Lexer {
                     }
                 }
                 'y' | 'Y' => {
-                    let mut y = 1;
-                    while let Some(c) = self.peek_char() {
-                        if c.eq_ignore_ascii_case(&'y') {
-                            y += 1;
-                            self.read_next_char();
-                        } else {
-                            break;
-                        }
-                    }
+                    let y = self.consume_run('y');
                     if y == 1 || y == 2 {
                         Token::YearShort
                     } else {
@@ -497,15 +527,7 @@ impl Lexer {
                     }
                 }
                 'h' | 'H' => {
-                    let mut h = 1;
-                    while let Some(c) = self.peek_char() {
-                        if c.eq_ignore_ascii_case(&'h') {
-                            h += 1;
-                            self.read_next_char();
-                        } else {
-                            break;
-                        }
-                    }
+                    let h = self.consume_run('h');
                     if h == 1 {
                         Token::Hour
                     } else if h == 2 {
@@ -516,15 +538,7 @@ impl Lexer {
                     }
                 }
                 's' | 'S' => {
-                    let mut s = 1;
-                    while let Some(c) = self.peek_char() {
-                        if c.eq_ignore_ascii_case(&'s') {
-                            s += 1;
-                            self.read_next_char();
-                        } else {
-                            break;
-                        }
-                    }
+                    let s = self.consume_run('s');
                     if s == 1 {
                         Token::Second
                     } else if s == 2 {
@@ -535,42 +549,74 @@ impl Lexer {
                     }
                 }
                 'A' | 'a' => {
-                    if let Some('M') | Some('m') = self.peek_char() {
+                    if self.looks_at("m/pm") {
+                        self.position += 4;
+                        Token::AMPM
+                    } else if self.looks_at("/p") {
+                        // Excel: `A/P` prints the first letter in the morning and the second
+                        // in the afternoon, each as typed (`h A/p` is "6 A" and "6 p";
+                        // probes/text-ap-locale-bracket A1-A6, A28).
                         self.read_next_char();
+                        let pm = self.read_next_char().unwrap_or('p');
+                        Token::AP(x, pm)
                     } else {
-                        self.set_error("Unexpected character after 'A'");
+                        // Excel: an unquoted `a` that is not AM/PM prints as itself
+                        // (probes/text-format-unquoted-letters A1, A27).
+                        Token::Literal(x)
+                    }
+                }
+                // Excel: `b`/`bb` is the two-digit Buddhist-era year and `bbb`+ the four-digit one,
+                // `B1`/`B2` a calendar prefix that prints nothing, and a lone `B` closing the code is
+                // invalid (`TEXT(100,"ABC")` = "A43C", `"B"` and `"dB"` are #VALUE!;
+                // probes/text-format-bare-literals A40-A50, probes/text-format-unquoted-letters).
+                'b' | 'B' => {
+                    if let Some(c @ ('1' | '2')) = self.peek_char() {
+                        self.read_next_char();
+                        return Token::Calendar(c);
+                    }
+                    let count = self.consume_run('b');
+                    if x == 'B' && count == 1 && matches!(self.peek_char(), None | Some(';')) {
+                        self.set_error("Unexpected end of input after 'B'");
                         return Token::ILLEGAL;
                     }
-                    if let Some('/') = self.peek_char() {
-                        self.read_next_char();
+                    if count <= 2 {
+                        Token::BuddhistYearShort
                     } else {
-                        self.set_error("Unexpected character after 'AM'");
-                        return Token::ILLEGAL;
+                        Token::BuddhistYear
                     }
-                    if let Some('P') | Some('p') = self.peek_char() {
-                        self.read_next_char();
-                    } else {
-                        self.set_error("Unexpected character after 'AM'");
-                        return Token::ILLEGAL;
-                    }
-                    if let Some('M') | Some('m') = self.peek_char() {
-                        self.read_next_char();
-                    } else {
-                        self.set_error("Unexpected character after 'AMP'");
-                        return Token::ILLEGAL;
-                    }
-                    Token::AMPM
+                }
+                // Excel: a lowercase `e` (any run) is the four-digit year (`TEXT(100,"e")` = "1900",
+                // `"e+"` = "1900+"; probes/text-format-bare-literals A51, A52, A63).
+                'e' => {
+                    self.consume_run('e');
+                    Token::Year
                 }
                 'g' | 'G' => {
-                    for c in "eneral".chars() {
-                        let cc = self.read_next_char();
-                        if Some(c) != cc {
-                            self.set_error(&format!("Unexpected character: {x}"));
-                            return Token::ILLEGAL;
-                        }
+                    if self
+                        .chars
+                        .get(self.position..)
+                        .is_some_and(|rest| rest.starts_with(&['e', 'n', 'e', 'r', 'a', 'l']))
+                    {
+                        self.position += 6;
+                        return Token::General;
                     }
-                    Token::General
+                    // Excel: any other run of `g` is the era, empty for the Gregorian calendar
+                    // (`TEXT(100,"g")` = "", `TEXT(1,"dG")` = "1"; probes/text-format-bare-literals
+                    // A53-A56, probes/text-format-unquoted-letters).
+                    self.consume_run('g');
+                    Token::Era
                 }
+                // Excel: `n`/`N` are invalid (cause unknown, not an en-US date token;
+                // probes/text-format-unquoted-letters A14, A40).
+                'n' | 'N' => {
+                    self.set_error("Unexpected character: n");
+                    Token::ILLEGAL
+                }
+                // Excel prints every other letter (the format-token letters have their own arms
+                // above) and the digits 1-9 as they are: `TEXT(1,"0x")` = "1x", `TEXT(PI(),"ü")` =
+                // "ü", `TEXT(5,"2")` = "2" (probes/text-format-unquoted-letters,
+                // probes/text-format-bare-literals A1-A7).
+                _ if x.is_alphabetic() || ('1'..='9').contains(&x) => Token::Literal(x),
                 _ => {
                     self.set_error(&format!("Unexpected character: {x}"));
                     Token::ILLEGAL

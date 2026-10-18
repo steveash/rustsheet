@@ -5,6 +5,7 @@ use crate::functions::criteria::{
     build_criteria, build_criteria_with, wildcard_text_matcher, CriteriaFlavor,
 };
 use crate::locale::{get_locale, Locale};
+use crate::text::Text;
 use crate::types::DateSystem;
 
 fn en_locale() -> &'static Locale {
@@ -45,15 +46,15 @@ fn test_build_criteria_is_number() {
     let c = CalcResult::Number(42.0);
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(42.0)));
-    assert!(fn_criteria(&CalcResult::String("42".to_string())));
-    assert!(fn_criteria(&CalcResult::String("42.00".to_string())));
+    assert!(fn_criteria(&CalcResult::String("42".into())));
+    assert!(fn_criteria(&CalcResult::String("42.00".into())));
     assert!(!fn_criteria(&CalcResult::Number(2.0)));
 
-    let c = CalcResult::String("=42".to_string());
+    let c = CalcResult::String("=42".into());
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(42.0)));
-    assert!(fn_criteria(&CalcResult::String("42".to_string())));
-    assert!(fn_criteria(&CalcResult::String("42.00".to_string())));
+    assert!(fn_criteria(&CalcResult::String("42".into())));
+    assert!(fn_criteria(&CalcResult::String("42.00".into())));
     assert!(!fn_criteria(&CalcResult::Number(2.0)));
 }
 
@@ -62,13 +63,13 @@ fn test_build_criteria_is_bool() {
     let c = CalcResult::Boolean(true);
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Boolean(true)));
-    assert!(!fn_criteria(&CalcResult::String("true".to_string())));
+    assert!(!fn_criteria(&CalcResult::String("true".into())));
     assert!(!fn_criteria(&CalcResult::Number(1.0)));
 
-    let c = CalcResult::String("=True".to_string());
+    let c = CalcResult::String("=True".into());
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Boolean(true)));
-    assert!(!fn_criteria(&CalcResult::String("true".to_string())));
+    assert!(!fn_criteria(&CalcResult::String("true".into())));
     assert!(!fn_criteria(&CalcResult::Number(1.0)));
 }
 
@@ -77,14 +78,14 @@ fn test_build_criteria_ordering_with_bool_operand() {
     // Excel (probes/criteria-operands C1-C4): `<`/`>` match nothing, `<=`/`>=` act as equality.
     // The `#N/A` operand is covered by the same eval cells (C5-C8).
     let t = CalcResult::Boolean(true);
-    let text = CalcResult::String("abc".to_string());
+    let text = CalcResult::String("abc".into());
     for op in ["<", ">"] {
-        let c = CalcResult::String(format!("{op}TRUE"));
+        let c = CalcResult::String(format!("{op}TRUE").into());
         let f = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
         assert!(!f(&t) && !f(&text));
     }
     for op in ["<=", ">="] {
-        let c = CalcResult::String(format!("{op}TRUE"));
+        let c = CalcResult::String(format!("{op}TRUE").into());
         let f = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
         assert!(f(&t) && !f(&text) && !f(&CalcResult::Boolean(false)));
     }
@@ -93,10 +94,10 @@ fn test_build_criteria_ordering_with_bool_operand() {
 #[test]
 fn test_database_explicit_equals_is_exact_not_prefix() {
     // probes/criteria-operands D18: `ab` matches "abc" by prefix, `=ab` does not.
-    let abc = CalcResult::String("abc".to_string());
+    let abc = CalcResult::String("abc".into());
     let (plain_c, exact_c) = (
-        CalcResult::String("ab".to_string()),
-        CalcResult::String("=ab".to_string()),
+        CalcResult::String("ab".into()),
+        CalcResult::String("=ab".into()),
     );
     let plain = build_criteria_with(
         &plain_c,
@@ -113,35 +114,27 @@ fn test_database_explicit_equals_is_exact_not_prefix() {
         CriteriaFlavor::Database,
     );
     assert!(plain(&abc) && !exact(&abc));
-    assert!(exact(&CalcResult::String("AB".to_string())));
+    assert!(exact(&CalcResult::String("AB".into())));
 }
 
 #[test]
 fn test_build_criteria_is_less_than() {
-    let c = CalcResult::String("<100".to_string());
+    let c = CalcResult::String("<100".into());
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Boolean(true)));
-    assert!(!fn_criteria(&CalcResult::String("23".to_string())));
+    assert!(!fn_criteria(&CalcResult::String("23".into())));
     assert!(fn_criteria(&CalcResult::Number(1.0)));
     assert!(!fn_criteria(&CalcResult::Number(101.0)));
 }
 
 #[test]
 fn test_build_criteria_is_less_wildcard() {
-    let c = CalcResult::String("=D* G*".to_string());
+    let c = CalcResult::String("=D* G*".into());
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
-    assert!(fn_criteria(&CalcResult::String(
-        "Diarmuid Glynn".to_string()
-    )));
-    assert!(fn_criteria(&CalcResult::String(
-        "Daniel Gonzalez".to_string()
-    )));
-    assert!(!fn_criteria(&CalcResult::String(
-        "DanielGonzalez".to_string()
-    )));
-    assert!(!fn_criteria(&CalcResult::String(
-        " Daniel Gonzalez".to_string()
-    )));
+    assert!(fn_criteria(&CalcResult::String("Diarmuid Glynn".into())));
+    assert!(fn_criteria(&CalcResult::String("Daniel Gonzalez".into())));
+    assert!(!fn_criteria(&CalcResult::String("DanielGonzalez".into())));
+    assert!(!fn_criteria(&CalcResult::String(" Daniel Gonzalez".into())));
 }
 
 // Date-string criteria. Excel parses literals like "7/31/2023" into a serial
@@ -155,7 +148,7 @@ fn test_build_criteria_is_less_wildcard() {
 
 #[test]
 fn test_build_criteria_date_less_than() {
-    let c = CalcResult::String("<7/31/2023".to_string());
+    let c = CalcResult::String("<7/31/2023".into());
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45137.0)));
     assert!(!fn_criteria(&CalcResult::Number(45138.0)));
@@ -164,7 +157,7 @@ fn test_build_criteria_date_less_than() {
 
 #[test]
 fn test_build_criteria_date_less_or_equal() {
-    let c = CalcResult::String("<=7/31/2023".to_string());
+    let c = CalcResult::String("<=7/31/2023".into());
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45137.0)));
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
@@ -173,7 +166,7 @@ fn test_build_criteria_date_less_or_equal() {
 
 #[test]
 fn test_build_criteria_date_greater_than() {
-    let c = CalcResult::String(">7/31/2023".to_string());
+    let c = CalcResult::String(">7/31/2023".into());
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Number(45137.0)));
     assert!(!fn_criteria(&CalcResult::Number(45138.0)));
@@ -182,7 +175,7 @@ fn test_build_criteria_date_greater_than() {
 
 #[test]
 fn test_build_criteria_date_greater_or_equal() {
-    let c = CalcResult::String(">=7/31/2023".to_string());
+    let c = CalcResult::String(">=7/31/2023".into());
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Number(45137.0)));
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
@@ -191,7 +184,7 @@ fn test_build_criteria_date_greater_or_equal() {
 
 #[test]
 fn test_build_criteria_date_not_equal() {
-    let c = CalcResult::String("<>7/31/2023".to_string());
+    let c = CalcResult::String("<>7/31/2023".into());
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45137.0)));
     assert!(!fn_criteria(&CalcResult::Number(45138.0)));
@@ -200,14 +193,14 @@ fn test_build_criteria_date_not_equal() {
 
 #[test]
 fn test_build_criteria_date_equal() {
-    let c = CalcResult::String("7/31/2023".to_string());
+    let c = CalcResult::String("7/31/2023".into());
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Number(45137.0)));
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
     assert!(!fn_criteria(&CalcResult::Number(45139.0)));
 
     // Same with a leading "=" prefix.
-    let c = CalcResult::String("=7/31/2023".to_string());
+    let c = CalcResult::String("=7/31/2023".into());
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Number(45137.0)));
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
@@ -235,7 +228,7 @@ fn test_build_criteria_date_dmy_locale_en_gb() {
     // "31/7/2023" is unambiguously a date under en-GB (D/M/Y), but under en
     // (M/D/Y) the would-be month is 31 and the parse must fail.
     let en_gb = get_locale("en-GB").unwrap();
-    let c = CalcResult::String("<31/7/2023".to_string());
+    let c = CalcResult::String("<31/7/2023".into());
     let fn_criteria = build_criteria(&c, en_gb, &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45137.0)));
     assert!(!fn_criteria(&CalcResult::Number(45138.0)));
@@ -252,12 +245,12 @@ fn test_build_criteria_date_dmy_locale_es() {
     // Spanish is also D/M/Y. Cover equality and >= to exercise different
     // branches than the en-GB test above.
     let es = get_locale("es").unwrap();
-    let c = CalcResult::String("31/7/2023".to_string());
+    let c = CalcResult::String("31/7/2023".into());
     let fn_criteria = build_criteria(&c, es, &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
     assert!(!fn_criteria(&CalcResult::Number(45137.0)));
 
-    let c = CalcResult::String(">=31/7/2023".to_string());
+    let c = CalcResult::String(">=31/7/2023".into());
     let fn_criteria = build_criteria(&c, es, &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Number(45137.0)));
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
@@ -268,13 +261,13 @@ fn test_build_criteria_date_dot_separator_locale_de() {
     // German short format is "dd.mm.yy" — the `.` separator is a third path
     // through parse_date, separate from `/` and `-`.
     let de = get_locale("de").unwrap();
-    let c = CalcResult::String("<=31.7.2023".to_string());
+    let c = CalcResult::String("<=31.7.2023".into());
     let fn_criteria = build_criteria(&c, de, &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45137.0)));
     assert!(fn_criteria(&CalcResult::Number(45138.0)));
     assert!(!fn_criteria(&CalcResult::Number(45139.0)));
 
-    let c = CalcResult::String("<>31.7.2023".to_string());
+    let c = CalcResult::String("<>31.7.2023".into());
     let fn_criteria = build_criteria(&c, de, &year_2026, DateSystem::default());
     assert!(fn_criteria(&CalcResult::Number(45137.0)));
     assert!(!fn_criteria(&CalcResult::Number(45138.0)));
@@ -285,7 +278,7 @@ fn test_build_criteria_date_iso_is_locale_independent() {
     // ISO yyyy-mm-dd must parse the same way under every locale. Without this
     // guard, a regression that wrongly applied the D/M/Y swap to ISO dates
     // would slip through.
-    let iso = CalcResult::String("2023-07-31".to_string());
+    let iso = CalcResult::String("2023-07-31".into());
     for id in ["en", "en-GB", "es", "de", "fr", "it"] {
         let loc = get_locale(id).unwrap();
         let fn_criteria = build_criteria(&iso, loc, &year_2026, DateSystem::default());
@@ -305,7 +298,7 @@ fn test_build_criteria_date_locale_disambiguation() {
     // "3/7/2023" is ambiguous: en reads March 7 (44992), es reads July 3 (45110).
     // Pin both interpretations to make sure the locale is actually consulted
     // rather than silently defaulted.
-    let c = CalcResult::String("3/7/2023".to_string());
+    let c = CalcResult::String("3/7/2023".into());
 
     let fn_en = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(fn_en(&CalcResult::Number(44992.0))); // March 7
@@ -322,7 +315,7 @@ fn test_build_criteria_date_localized_month_name() {
     // Spanish abbreviates January as "ene". parse_month consults the locale's
     // months_short list, so this only matches under the matching locale.
     let es = get_locale("es").unwrap();
-    let c = CalcResult::String("=15-ene-2023".to_string());
+    let c = CalcResult::String("=15-ene-2023".into());
     let fn_es = build_criteria(&c, es, &year_2026, DateSystem::default());
     assert!(fn_es(&CalcResult::Number(44941.0))); // 2023-01-15
     assert!(!fn_es(&CalcResult::Number(44942.0)));
@@ -336,10 +329,10 @@ fn test_build_criteria_date_localized_month_name() {
 // `"<>text"` matches everything that is not that text (numbers, booleans, errors, blanks).
 #[test]
 fn test_build_criteria_not_equal_text_matches_non_text() {
-    let c = CalcResult::String("<>Banana".to_string());
+    let c = CalcResult::String("<>Banana".into());
     let f = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
-    assert!(f(&CalcResult::String("Apple".to_string())));
-    assert!(!f(&CalcResult::String("BANANA".to_string())));
+    assert!(f(&CalcResult::String("Apple".into())));
+    assert!(!f(&CalcResult::String("BANANA".into())));
     assert!(f(&CalcResult::Number(1.0)));
     assert!(f(&CalcResult::Boolean(true)));
     assert!(f(&CalcResult::EmptyCell));
@@ -348,7 +341,7 @@ fn test_build_criteria_not_equal_text_matches_non_text() {
 // D-functions share the grammar but plain text equality matches by prefix.
 #[test]
 fn test_build_criteria_database_flavor_prefix_equality() {
-    let c = CalcResult::String("ab".to_string());
+    let c = CalcResult::String("ab".into());
     let db = build_criteria_with(
         &c,
         en_locale(),
@@ -356,12 +349,12 @@ fn test_build_criteria_database_flavor_prefix_equality() {
         DateSystem::default(),
         CriteriaFlavor::Database,
     );
-    assert!(db(&CalcResult::String("ABc".to_string())));
-    assert!(!db(&CalcResult::String("xab".to_string())));
+    assert!(db(&CalcResult::String("ABc".into())));
+    assert!(!db(&CalcResult::String("xab".into())));
     let std = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
-    assert!(!std(&CalcResult::String("abc".to_string())));
+    assert!(!std(&CalcResult::String("abc".into())));
     // Operators are unaffected by the flavor.
-    let ne = CalcResult::String("<>ab".to_string());
+    let ne = CalcResult::String("<>ab".into());
     let db_ne = build_criteria_with(
         &ne,
         en_locale(),
@@ -369,22 +362,71 @@ fn test_build_criteria_database_flavor_prefix_equality() {
         DateSystem::default(),
         CriteriaFlavor::Database,
     );
-    assert!(db_ne(&CalcResult::String("abc".to_string())));
+    assert!(db_ne(&CalcResult::String("abc".into())));
     // A blank cell only starts with the empty string.
     assert!(!db(&CalcResult::EmptyCell));
 }
 
 #[test]
 fn test_wildcard_text_matcher_escapes_and_case() {
-    let m = wildcard_text_matcher("A~*B?");
-    assert!(m(&CalcResult::String("a*bX".to_string())));
-    assert!(!m(&CalcResult::String("aXbX".to_string())));
+    let m = wildcard_text_matcher(&Text::from("A~*B?"));
+    assert!(m(&CalcResult::String("a*bX".into())));
+    assert!(!m(&CalcResult::String("aXbX".into())));
     assert!(!m(&CalcResult::Number(1.0)));
-    let m = wildcard_text_matcher("a~~b");
-    assert!(m(&CalcResult::String("A~B".to_string())));
-    let m = wildcard_text_matcher("a~?");
-    assert!(m(&CalcResult::String("a?".to_string())));
-    assert!(!m(&CalcResult::String("ab".to_string())));
+    let m = wildcard_text_matcher(&Text::from("a~~b"));
+    assert!(m(&CalcResult::String("A~B".into())));
+    let m = wildcard_text_matcher(&Text::from("a~?"));
+    assert!(m(&CalcResult::String("a?".into())));
+    assert!(!m(&CalcResult::String("ab".into())));
+}
+
+// Excel matches wildcards by UTF-16 unit: `?` is one unit, a pair takes two, a lone half is its
+// own unit, and `?`/`*` match line breaks (probes/criteria-lone-surrogates,
+// probes/criteria-wildcard-newline).
+#[test]
+fn test_wildcard_text_matcher_reads_utf16_units() {
+    let high = Text::from_utf16(vec![0xD83D]);
+    let low = Text::from_utf16(vec![0xDE00]);
+    let text = |t: &Text| CalcResult::String(t.clone());
+    let emoji = text(&Text::from("\u{1F600}"));
+    let one = wildcard_text_matcher(&Text::from("?"));
+    assert!(one(&text(&high)) && one(&text(&low)) && !one(&emoji));
+    assert!(one(&CalcResult::String("\n".into())));
+    assert!(wildcard_text_matcher(&Text::from("??"))(&emoji));
+    let starts_high = wildcard_text_matcher(&Text::concat(&high, &Text::from("*")));
+    assert!(starts_high(&emoji) && starts_high(&text(&high)));
+    assert!(!starts_high(&text(&low)) && !starts_high(&CalcResult::String("\u{FFFD}".into())));
+    assert!(wildcard_text_matcher(&Text::from("a*b"))(
+        &CalcResult::String("A\nxB".into())
+    ));
+}
+
+#[test]
+fn test_wildcard_text_matcher_backtracks_to_the_last_star() {
+    let m = wildcard_text_matcher(&Text::from("*ab*abc"));
+    assert!(m(&CalcResult::String("xabxababc".into())));
+    assert!(!m(&CalcResult::String("xabxabab".into())));
+    let m = wildcard_text_matcher(&Text::from("a?*"));
+    assert!(!m(&CalcResult::String("a".into())) && m(&CalcResult::String("ab".into())));
+    assert!(wildcard_text_matcher(&Text::from("**"))(
+        &CalcResult::String(String::new().into())
+    ));
+}
+
+// Text criteria read a lone surrogate exactly: `H` and `"<>"&H` split the values at H only
+// (probes/criteria-lone-surrogates A1, A4).
+#[test]
+fn test_text_criteria_keep_lone_surrogates() {
+    let locale = en_locale();
+    let high = Text::from_utf16(vec![0xD83D]);
+    let not_high = CalcResult::String(Text::concat(&Text::from("<>"), &high));
+    let not_high = build_criteria(&not_high, locale, &year_2026, DateSystem::default());
+    assert!(!not_high(&CalcResult::String(high.clone())));
+    assert!(not_high(&CalcResult::String("\u{FFFD}".into())));
+    let equal_high = CalcResult::String(high.clone());
+    let equal_high = build_criteria(&equal_high, locale, &year_2026, DateSystem::default());
+    assert!(equal_high(&CalcResult::String(high)));
+    assert!(!equal_high(&CalcResult::String("\u{FFFD}".into())));
 }
 
 // Excel ignores spaces around a numeric operand (probes/criteria-padded-operand);
@@ -393,7 +435,7 @@ fn test_wildcard_text_matcher_escapes_and_case() {
 fn test_padded_numeric_operand_compares_numerically() {
     let locale = en_locale();
     let hits = |criteria: &str, n: f64| {
-        let crit = CalcResult::String(criteria.to_string());
+        let crit = CalcResult::String(criteria.to_string().into());
         let matcher = build_criteria(&crit, locale, &year_2026, DateSystem::default());
         matcher(&CalcResult::Number(n))
     };
@@ -410,13 +452,13 @@ fn test_padded_numeric_operand_compares_numerically() {
 // (probes/criteria-grammar C3/C4, probes/criteria-gaps C2/C3).
 #[test]
 fn test_build_criteria_bare_equals_skips_empty_string() {
-    let eq_c = CalcResult::String("=".to_string());
+    let eq_c = CalcResult::String("=".into());
     let eq = build_criteria(&eq_c, en_locale(), &year_2026, DateSystem::default());
-    assert!(!eq(&CalcResult::String(String::new())));
+    assert!(!eq(&CalcResult::String(String::new().into())));
     assert!(eq(&CalcResult::EmptyCell));
-    let empty_c = CalcResult::String(String::new());
+    let empty_c = CalcResult::String(String::new().into());
     let empty = build_criteria(&empty_c, en_locale(), &year_2026, DateSystem::default());
-    assert!(empty(&CalcResult::String(String::new())));
+    assert!(empty(&CalcResult::String(String::new().into())));
     assert!(empty(&CalcResult::EmptyCell));
 }
 
@@ -439,7 +481,7 @@ fn test_build_criteria_number_tolerance_is_relative() {
     );
     assert!(!fn_criteria(&CalcResult::Number(1e-17)));
     assert!(fn_criteria(&CalcResult::Number(0.0)));
-    let c = CalcResult::String("<>1".to_string());
+    let c = CalcResult::String("<>1".into());
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
     assert!(!fn_criteria(&CalcResult::Number(one_plus_ulp)));
 }
@@ -489,4 +531,58 @@ fn text_order_puts_nbsp_right_after_space() {
     assert_eq!(model._get_text("C4"), *"TRUE");
     assert_eq!(model._get_text("C5"), *"TRUE");
     assert_eq!(model._get_text("C6"), *"FALSE");
+}
+
+/// T-1594: text `=` and `<>` criteria use the collation of `=` (probes/text-collation-lookups K1-K12):
+/// `"ae"` matches "æ", `"a-e"` is not "ae".
+#[test]
+fn test_text_equality_criteria_use_collation() {
+    let text = |s: &str| CalcResult::String(s.into());
+    for criterion in ["ae", "=ae", "æ", "AE"] {
+        let c = text(criterion);
+        let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
+        assert!(fn_criteria(&text("æ")), "{criterion}");
+        assert!(fn_criteria(&text("ae")), "{criterion}");
+        assert!(!fn_criteria(&text("a-e")), "{criterion}");
+    }
+    let c = text("<>ae");
+    let not_ae = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
+    assert!(!not_ae(&text("æ")));
+    assert!(!not_ae(&text("ae")));
+    assert!(not_ae(&text("a-e")));
+}
+
+/// T-1667: the D-function prefix match reads a lone surrogate as its own unit
+/// (probes/d-function-prefix-lone-surrogates A1-A7): `H` matches H, "😀" and H&"a" but not U+FFFD.
+#[test]
+fn test_database_prefix_criteria_keep_lone_surrogates() {
+    let high = Text::from_utf16(vec![0xD83D]);
+    let low = Text::from_utf16(vec![0xDE00]);
+    let text = |t: &Text| CalcResult::String(t.clone());
+    let pair = Text::from("😀");
+    let high_a = Text::from_utf16(vec![0xD83D, u16::from(b'a')]);
+    let a_low = Text::from_utf16(vec![u16::from(b'a'), 0xDE00]);
+    let criterion = text(&high);
+    let prefix = build_criteria_with(
+        &criterion,
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+        CriteriaFlavor::Database,
+    );
+    assert!(prefix(&text(&high)));
+    assert!(prefix(&text(&pair)));
+    assert!(prefix(&text(&high_a)));
+    assert!(!prefix(&text(&low)));
+    assert!(!prefix(&text(&Text::from("\u{fffd}"))));
+    assert!(!prefix(&text(&a_low)));
+    let criterion = text(&Text::from("a"));
+    let prefix_a = build_criteria_with(
+        &criterion,
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+        CriteriaFlavor::Database,
+    );
+    assert!(prefix_a(&text(&a_low)));
 }

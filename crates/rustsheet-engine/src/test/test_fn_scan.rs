@@ -99,3 +99,16 @@ fn scan_too_few_args() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
+
+#[test]
+fn scan_moves_the_accumulator_through_many_steps() {
+    // Each step moves the accumulator into the LAMBDA (T-1561); every slot keeps its own copy.
+    let mut model = new_empty_model();
+    model._set("A1", "=SCAN(0, SEQUENCE(1000), LAMBDA(a, x, a + x))");
+    model._set("B1", "=SUM(A1#)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "3");
+    assert_eq!(model._get_text("A1000"), "500500");
+    assert_eq!(model._get_text("B1"), "167167000");
+}

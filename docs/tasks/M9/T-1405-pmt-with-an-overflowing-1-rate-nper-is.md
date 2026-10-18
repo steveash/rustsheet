@@ -14,6 +14,7 @@ depends_on: []
 PMT (and IPMT/PPMT if the probe shows the same) returns Excel's number when `(1+rate)^nper` overflows a double, instead of `#NUM!`.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 1 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 T-1289's gen-m9 suite (excel-graph sidecars, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
 - gen-m9/3b8e9078261b5bd2 Calc!A34 `=(CEILING.MATH(IF(FALSE,"1",Data!$A12))+FLOOR(PMT(100,184,439103),(Data!D$7/Data!$B6)))`:
   Excel `#DIV/0!`, engine `#NUM!`. The significance `Data!D$7/Data!$B6` is `#DIV/0!` (B6 blank) and CEILING.MATH(FALSE) is 0,

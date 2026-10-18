@@ -20,7 +20,7 @@ fn parts() -> Result<Vec<(String, String)>, Box<dyn Error>> {
         let mut file = src.by_index(i)?;
         let mut content = String::new();
         file.read_to_string(&mut content)?;
-        parts.push((file.name().to_string(), content));
+        parts.push((file.name()?.into_owned(), content));
     }
     Ok(parts)
 }
@@ -28,7 +28,7 @@ fn parts() -> Result<Vec<(String, String)>, Box<dyn Error>> {
 fn zip_of(parts: &[(String, String)]) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
     for (name, content) in parts {
-        out.start_file(name, zip::write::FileOptions::default())?;
+        out.start_file(name, zip::write::SimpleFileOptions::default())?;
         out.write_all(content.as_bytes())?;
     }
     Ok(out.finish()?.into_inner())
@@ -381,7 +381,66 @@ fn formula_longer_than_8192_characters_refuses_the_workbook() -> TestResult {
     assert_imports(&sheet_with_formula_chars(8_192)?)?;
     assert_import_error(
         &sheet_with_formula_chars(8_193)?,
-        "Formula in Sheet1!A100 is longer than 8192 characters",
+        "Formula in Sheet1!A100 is longer than 8192 UTF-16 code units",
+    );
+    Ok(())
+}
+
+/// A workbook whose only defined name `nm` has `body` as its stored text.
+fn workbook_with_name_body(body: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    let names = format!(
+        "</sheets><definedNames><definedName name=\"nm\">{body}</definedName></definedNames>"
+    );
+    rewrite(|name, content| {
+        if name == "xl/workbook.xml" {
+            content.replace("</sheets>", &names)
+        } else {
+            content
+        }
+    })
+}
+
+/// A sheet whose A100 holds `-LEN("<emoji_count emoji>")`, `8 + 2 * emoji_count` UTF-16 units.
+fn sheet_with_emoji_formula(emoji_count: usize) -> Result<Vec<u8>, Box<dyn Error>> {
+    let f = format!("-LEN(\"{}\")", "\u{1F600}".repeat(emoji_count));
+    let cell = format!("<sheetData><row r=\"100\"><c r=\"A100\"><f>{f}</f></c></row>");
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            content.replacen("<sheetData>", &cell, 1)
+        } else {
+            content
+        }
+    })
+}
+
+// Excel for the web loads a name body of 8,191 characters and refuses 8,192 (T-1386).
+#[test]
+fn name_body_longer_than_8191_characters_refuses_the_workbook() -> TestResult {
+    let ascii = "1".repeat(8_191);
+    assert_imports(&workbook_with_name_body(&ascii)?)?;
+    assert_import_error(
+        &workbook_with_name_body(&format!("{ascii}1"))?,
+        "definedName nm body is longer than 8191 UTF-16 code units",
+    );
+    Ok(())
+}
+
+// Excel for the web counts UTF-16 code units, emoji being two (T-1397 probes
+// `name-body-nonbmp-*`, `formula-length-nonbmp-*`): these bodies are 8,190 and 8,192 units but
+// 4,097 and 4,099 scalars, so a scalar count would accept the second.
+#[test]
+fn non_bmp_text_counts_two_utf16_units_toward_the_limits() -> TestResult {
+    let emoji = "\u{1F600}".repeat(4_093);
+    assert_imports(&workbook_with_name_body(&format!("\"{emoji}\"&amp;1"))?)?;
+    assert_import_error(
+        &workbook_with_name_body(&format!("\"{emoji}\"&amp;1&amp;1"))?,
+        "definedName nm body is longer than 8191 UTF-16 code units",
+    );
+    // 4,092 emoji + 8 = 8,192 units loads; one more emoji is 8,194 and is refused.
+    assert_imports(&sheet_with_emoji_formula(4_092)?)?;
+    assert_import_error(
+        &sheet_with_emoji_formula(4_093)?,
+        "Formula in Sheet1!A100 is longer than 8192 UTF-16 code units",
     );
     Ok(())
 }

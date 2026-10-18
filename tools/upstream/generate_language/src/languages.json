@@ -524,7 +524,11 @@
       "encodeurl": "ENCODEURL",
       "image": "IMAGE",
       "stockhistory": "STOCKHISTORY",
-      "fieldvalue": "FIELDVALUE"
+      "fieldvalue": "FIELDVALUE",
+      "filterxml": "FILTERXML",
+      "groupby": "GROUPBY",
+      "pivotby": "PIVOTBY",
+      "getpivotdata": "GETPIVOTDATA"
     }
   },
   "it": {
@@ -1052,7 +1056,11 @@
       "encodeurl": "CODIFICA.URL",
       "image": "IMAGE",
       "stockhistory": "STOCKHISTORY",
-      "fieldvalue": "FIELDVALUE"
+      "fieldvalue": "FIELDVALUE",
+      "filterxml": "FILTERXML",
+      "groupby": "GROUPBY",
+      "pivotby": "PIVOTBY",
+      "getpivotdata": "GETPIVOTDATA"
     }
   },
   "fr": {
@@ -1580,7 +1588,11 @@
       "encodeurl": "URLENCODAGE",
       "image": "IMAGE",
       "stockhistory": "STOCKHISTORY",
-      "fieldvalue": "FIELDVALUE"
+      "fieldvalue": "FIELDVALUE",
+      "filterxml": "FILTERXML",
+      "groupby": "GROUPBY",
+      "pivotby": "PIVOTBY",
+      "getpivotdata": "GETPIVOTDATA"
     }
   },
   "de": {
@@ -2108,7 +2120,11 @@
       "encodeurl": "URLCODIEREN",
       "image": "IMAGE",
       "stockhistory": "STOCKHISTORY",
-      "fieldvalue": "FIELDVALUE"
+      "fieldvalue": "FIELDVALUE",
+      "filterxml": "FILTERXML",
+      "groupby": "GROUPBY",
+      "pivotby": "PIVOTBY",
+      "getpivotdata": "GETPIVOTDATA"
     }
   },
   "es": {
@@ -2636,7 +2652,11 @@
       "encodeurl": "URLCODIF",
       "image": "IMAGE",
       "stockhistory": "STOCKHISTORY",
-      "fieldvalue": "FIELDVALUE"
+      "fieldvalue": "FIELDVALUE",
+      "filterxml": "FILTERXML",
+      "groupby": "GROUPBY",
+      "pivotby": "PIVOTBY",
+      "getpivotdata": "GETPIVOTDATA"
     }
   }
 }

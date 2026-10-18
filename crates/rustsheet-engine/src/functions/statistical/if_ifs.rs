@@ -1,13 +1,12 @@
-use crate::arithmetic::{bcast_idx, flush_subnormal, MISSING};
-use crate::cast::{calc_result_to_array_node, number_text_too_long};
+use crate::arithmetic::{extended_quotient, extended_sum, flush_subnormal};
+use crate::cast::number_text_too_long;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
-use crate::functions::math_and_trigonometry::array_size::check_array_size;
-use crate::functions::util::array_node_to_calc_result;
+use crate::functions::lift::{LiftCost, LiftOptions};
 use crate::{
     calc_result::{CalcResult, Range},
-    expressions::parser::{ArrayNode, Node},
+    expressions::parser::Node,
     expressions::token::Error,
     model::Model,
 };
@@ -42,67 +41,10 @@ fn resize_to(anchor: &Range, shape_of: &Range) -> Range {
     resized
 }
 
-/// One criteria argument of an *IF(S) function, as [`Model::lift_criteria`] sees it.
-enum CriteriaArg {
-    /// A single value: every element of a lifted result uses it.
-    Scalar(CalcResult),
-    /// An array, or a multi-cell range read element by element.
-    Grid(Vec<Vec<ArrayNode>>),
-}
-
 const TOO_LONG: &str = "Criterion too long";
 
 fn criterion_too_long(criterion: &CalcResult) -> bool {
     matches!(criterion, CalcResult::String(text) if number_text_too_long(text))
-}
-
-impl CriteriaArg {
-    fn dims(&self) -> (usize, usize) {
-        match self {
-            CriteriaArg::Scalar(_) => (1, 1),
-            CriteriaArg::Grid(grid) => (grid.len(), grid.first().map_or(0, Vec::len)),
-        }
-    }
-
-    /// The criterion at output position (`row`, `column`): a dimension of length 1 stretches,
-    /// a position past a shorter array is `#N/A` (probes/ifs-array-criteria H11, H33-H37).
-    fn element(&self, row: usize, column: usize) -> Option<&ArrayNode> {
-        match self {
-            CriteriaArg::Scalar(_) => None,
-            CriteriaArg::Grid(grid) => Some(
-                bcast_idx(grid.len(), row)
-                    .and_then(|r| grid.get(r))
-                    .and_then(|r| bcast_idx(r.len(), column).and_then(|c| r.get(c)))
-                    .unwrap_or(&MISSING),
-            ),
-        }
-    }
-}
-
-/// Most cells all the per-element walks of one lifted *IF(S) call may visit, so a crafted formula
-/// (`COUNTIFS(A:A,SEQUENCE(1048576))` over a filled column) cannot run for hours (CLAUDE.md
-/// directive 5). Excel has no such limit: DEVIATION, docs/excel-semantics/criteria.md
-/// ("*IF(S) lift array criteria").
-const MAX_LIFTED_CELL_VISITS: u64 = 1 << 27;
-
-/// Elements [`Model::lift_criteria`] computes: one per run of equal consecutive criteria, in
-/// row-major order (the rest reuse the previous result).
-fn count_walks(args: &[CriteriaArg], rows: usize, columns: usize) -> u64 {
-    let mut walks = 0;
-    let mut previous: Option<(usize, usize)> = None;
-    for row in 0..rows {
-        for column in 0..columns {
-            let same = previous.is_some_and(|(r, c)| {
-                args.iter()
-                    .all(|arg| arg.element(row, column) == arg.element(r, c))
-            });
-            if !same {
-                walks += 1;
-            }
-            previous = Some((row, column));
-        }
-    }
-    walks
 }
 
 fn shape_mismatch(cell: CellReferenceIndex) -> CalcResult {
@@ -128,121 +70,34 @@ impl Model {
             .collect()
     }
 
-    /// Runs an *IF(S) function once per criteria element: when any criterion is an array or a
-    /// multi-cell range, the result is an array of the criteria broadcast against each other,
-    /// as the element-wise operators do (a row and a column give a grid; a position past a
-    /// shorter array uses an `#N/A` criterion). Otherwise `compute` runs once with the
-    /// criteria as they are. Evidence: probes/ifs-array-criteria, poi/70005-countifs.xlsx
-    /// (docs/excel-semantics/criteria.md "*IF(S) lift array criteria").
+    /// Runs an *IF(S) function once per criteria element through [`Model::lift_values`]: when
+    /// any criterion is an array or a multi-cell range, the result is an array of the criteria
+    /// broadcast against each other (a position past a shorter array uses an `#N/A`
+    /// criterion). Otherwise `compute` runs once with the criteria as they are.
     ///
     /// `walked` is the range every element walks (the value range, or COUNTIFS's first criteria
     /// range): the call is `#ERROR!` when its used cells times the criteria count times the
-    /// elements to compute exceed [`MAX_LIFTED_CELL_VISITS`].
-    ///
+    /// elements to compute exceed `limits::MAX_LIFTED_CELL_VISITS`. Consecutive equal criteria
+    /// (the blank tail of a whole-column criteria range) reuse the previous result.
     fn lift_criteria(
         &mut self,
         criteria: Vec<CalcResult>,
         walked: &Node,
         cell: CellReferenceIndex,
-        compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
-    ) -> CalcResult {
-        self.lift_with_cost(
-            criteria,
-            |model| model.walk_cost(walked, cell),
-            cell,
-            compute,
-        )
-    }
-
-    /// [`Model::lift_criteria`] with the cells one element visits given by `walk_cost` (called
-    /// only when something lifts). AGGREGATE lifts its `function_num`, options and k this way.
-    pub(crate) fn lift_with_cost(
-        &mut self,
-        criteria: Vec<CalcResult>,
-        walk_cost: impl FnOnce(&mut Self) -> u64,
-        cell: CellReferenceIndex,
         mut compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
-        if !criteria
-            .iter()
-            .any(|c| matches!(c, CalcResult::Range { .. } | CalcResult::Array(_)))
-        {
-            return compute(self, &criteria);
-        }
-        let mut args = Vec::with_capacity(criteria.len());
-        for criterion in criteria {
-            args.push(match criterion {
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    match self.evaluate_range(left, right, cell) {
-                        Ok(grid) => CriteriaArg::Grid(grid),
-                        Err(error) => return error,
-                    }
-                }
-                CalcResult::Array(grid) => CriteriaArg::Grid(grid),
-                scalar => CriteriaArg::Scalar(scalar),
-            });
-        }
-        let (rows, columns) = args
-            .iter()
-            .map(CriteriaArg::dims)
-            .fold((1, 1), |acc, d| (acc.0.max(d.0), acc.1.max(d.1)));
-        if let Some((error, message)) = check_array_size(rows, columns) {
-            return CalcResult::new_error(error, cell, message);
-        }
-        // Refuse before walking anything when the walks would visit too many cells.
-        let walks = count_walks(&args, rows, columns);
-        let criteria_count = u64::try_from(args.len()).unwrap_or(u64::MAX);
-        let visits = walk_cost(self)
-            .saturating_mul(criteria_count)
-            .saturating_mul(walks);
-        if visits > MAX_LIFTED_CELL_VISITS {
-            return CalcResult::new_error(
-                Error::ERROR,
-                cell,
-                "Too many cells to visit for array criteria".to_string(),
-            );
-        }
-        // Consecutive equal criteria (the blank tail of a whole-column criteria range) reuse
-        // the previous result instead of walking the ranges again.
-        let mut previous: Option<(Vec<Option<ArrayNode>>, ArrayNode)> = None;
-        let mut output = Vec::with_capacity(rows);
-        for row in 0..rows {
-            let mut out_row = Vec::with_capacity(columns);
-            for column in 0..columns {
-                let key: Vec<Option<ArrayNode>> = args
-                    .iter()
-                    .map(|arg| arg.element(row, column).cloned())
-                    .collect();
-                let value = match &previous {
-                    Some((previous_key, value)) if *previous_key == key => value.clone(),
-                    _ => {
-                        let values: Vec<CalcResult> = args
-                            .iter()
-                            .zip(&key)
-                            .map(|(arg, element)| match (arg, element) {
-                                (CriteriaArg::Scalar(value), _) => value.clone(),
-                                (_, Some(node)) => array_node_to_calc_result(node, cell),
-                                (_, None) => CalcResult::EmptyCell,
-                            })
-                            .collect();
-                        let result = compute(self, &values);
-                        let value = calc_result_to_array_node(result);
-                        previous = Some((key, value.clone()));
-                        value
-                    }
-                };
-                out_row.push(value);
-            }
-            output.push(out_row);
-        }
-        CalcResult::Array(output)
+        // Each element walks the range once per criterion.
+        let walks = u64::try_from(criteria.len()).unwrap_or(u64::MAX);
+        self.lift_values(
+            criteria,
+            LiftCost::Walk {
+                range: walked,
+                walks,
+            },
+            &LiftOptions::REUSE_EQUAL_RUNS,
+            cell,
+            &mut compute,
+        )
     }
 
     /// Cells of `node`'s range inside the used area (at least 1): what one criteria walk visits.
@@ -308,8 +163,70 @@ impl Model {
         })
     }
 
+    /// Resolves the criteria ranges of COUNTIFS and the SUMIFS-shaped functions and builds their
+    /// predicates: `args[first + 2k]` is the range of `criteria[k]`.
+    ///
+    /// The ranges are taken by reference (a single-cell range `A1` is a 1x1 range, probes/
+    /// sumif-edge-single-cell F11-F15) and a cross-sheet range or a non-range is `#VALUE!`.
+    /// `shape_error` then checks their shapes. A criterion over 255 characters is `#VALUE!` (from a
+    /// literal, a cell or one element of a range), but only once the ranges and shapes resolved: a
+    /// bad range wins (probes/long-text-args-min-criteria A10-A26, probes/ifs-long-criterion-precedence).
+    fn resolve_ifs_criteria<'c>(
+        &mut self,
+        args: &[Node],
+        first: usize,
+        criteria: &'c [CalcResult],
+        cell: CellReferenceIndex,
+        shape_error: impl FnOnce(&[Range]) -> Option<CalcResult>,
+    ) -> Result<(Vec<Range>, Vec<Criterion<'c>>), CalcResult> {
+        let mut ranges = Vec::with_capacity(criteria.len());
+        for case_index in 0..criteria.len() {
+            let result = self.evaluate_node_with_reference(&args[first + case_index * 2], cell);
+            if result.is_error() {
+                return Err(result);
+            }
+            if let CalcResult::Range { left, right } = result {
+                if left.sheet != right.sheet {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    ));
+                }
+                ranges.push(Range { left, right });
+            } else {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Expected a range".to_string(),
+                ));
+            }
+        }
+        if let Some(error) = shape_error(&ranges) {
+            return Err(error);
+        }
+        if criteria.iter().any(criterion_too_long) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                TOO_LONG.to_string(),
+            ));
+        }
+        let fn_criteria = criteria
+            .iter()
+            .map(|criterion| {
+                build_criteria(
+                    criterion,
+                    self.locale,
+                    &|| self.current_year(),
+                    self.workbook.settings.date_system,
+                )
+            })
+            .collect();
+        Ok((ranges, fn_criteria))
+    }
+
     /// COUNTIFS with the criteria already evaluated (`criteria[k]` is `args[2k + 1]`'s value).
-    // TODO(T-0408): share the range resolution and walk with apply_ifs.
     fn count_ifs(
         &mut self,
         args: &[Node],
@@ -317,46 +234,14 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let case_count = criteria.len();
-        let mut fn_criteria = Vec::new();
-        let ranges = &mut Vec::new();
-        for case_index in 0..case_count {
-            // By reference: a single-cell criteria range (`A1`) is a 1x1 range
-            // (probes/sumif-edge-single-cell F11-F15).
-            let result = self.evaluate_node_with_reference(&args[case_index * 2], cell);
-            if result.is_error() {
-                return result;
-            }
-            if let CalcResult::Range { left, right } = result {
-                if left.sheet != right.sheet {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Ranges are in different sheets".to_string(),
-                    );
-                }
-                ranges.push(Range { left, right });
-            } else {
-                return CalcResult::new_error(Error::VALUE, cell, "Expected a range".to_string());
-            }
-        }
         // Excel: any criteria range shaped unlike the first is #VALUE! (T-0209).
-        if !same_shape(ranges) {
-            return shape_mismatch(cell);
-        }
-        // A criterion over 255 characters is #VALUE! (from a literal, a cell or one element of a
-        // range), but only once the ranges resolved: a bad range wins
-        // (probes/long-text-args-min-criteria A10-A26, probes/ifs-long-criterion-precedence).
-        if criteria.iter().any(criterion_too_long) {
-            return CalcResult::new_error(Error::VALUE, cell, TOO_LONG.to_string());
-        }
-        for criterion in criteria.iter() {
-            fn_criteria.push(build_criteria(
-                criterion,
-                self.locale,
-                &|| self.current_year(),
-                self.workbook.settings.date_system,
-            ));
-        }
+        let (ranges, fn_criteria) =
+            match self.resolve_ifs_criteria(args, 0, criteria, cell, |ranges| {
+                (!same_shape(ranges)).then(|| shape_mismatch(cell))
+            }) {
+                Ok(resolved) => resolved,
+                Err(error) => return error,
+            };
 
         let mut total = 0.0;
         let first_range = &ranges[0];
@@ -490,67 +375,24 @@ impl Model {
             ));
         };
 
-        let case_count = criteria.len();
-        let mut fn_criteria = Vec::new();
-        let ranges = &mut Vec::new();
-        for case_index in 1..=case_count {
-            // By reference, as above (probes/sumif-edge-single-cell F11-F15).
-            let result = self.evaluate_node_with_reference(&args[case_index * 2 - 1], cell);
-            if result.is_error() {
-                return Err(result);
-            }
-            if let CalcResult::Range { left, right } = result {
-                if left.sheet != right.sheet {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Ranges are in different sheets".to_string(),
-                    ));
-                }
-                ranges.push(Range { left, right });
-            } else {
-                return Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Expected a range".to_string(),
-                ));
-            }
-        }
         // Every range shaped like sum_range, else #VALUE! (T-0209; SUMIFS from
         // gen-m2, AVERAGEIFS/MINIFS/MAXIFS from probes/ifs-shape-mismatch). Only
         // SUMIF's single-criterion path opts out: it never errors (T-0214).
-        if strict_shape
-            && (!same_shape(ranges)
-                || ranges.first().map(range_shape) != Some(range_shape(&sum_range)))
-        {
-            return Err(shape_mismatch(cell));
-        }
+        let (ranges, fn_criteria) =
+            self.resolve_ifs_criteria(args, 1, criteria, cell, |ranges| {
+                (strict_shape
+                    && (!same_shape(ranges)
+                        || ranges.first().map(range_shape) != Some(range_shape(&sum_range))))
+                .then(|| shape_mismatch(cell))
+            })?;
         if !strict_shape {
             // SUMIF/AVERAGEIF sum a sum_range resized to the shape of the criteria
             // range from its top-left cell (gen-m2/04cfd82f54dbc2b2 Calc!A344,
             // gen-m2/629e6e8b76fab8b9 Calc!A217; probes/ifs-shape-mismatch F9-F11).
             sum_range = resize_to(&sum_range, &ranges[0]);
         }
-        // A criterion over 255 characters is #VALUE! (from a literal, a cell or one element of a
-        // range), but only once the ranges resolved: a bad range wins
-        // (probes/long-text-args-min-criteria A10-A26, probes/ifs-long-criterion-precedence).
-        if criteria.iter().any(criterion_too_long) {
-            return Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                TOO_LONG.to_string(),
-            ));
-        }
-        for criterion in criteria.iter() {
-            fn_criteria.push(build_criteria(
-                criterion,
-                self.locale,
-                &|| self.current_year(),
-                self.workbook.settings.date_system,
-            ));
-        }
 
-        self.run_ifs(&sum_range, ranges.as_slice(), &fn_criteria, cell, apply)
+        self.run_ifs(&sum_range, &ranges, &fn_criteria, cell, apply)
     }
 
     /// Walks `sum_range` and applies `apply` to every numeric cell whose parallel
@@ -644,7 +486,10 @@ impl Model {
     ) -> CalcResult {
         self.lift_ifs(args, cell, |model, criteria| {
             let mut total = 0.0;
-            match model.apply_ifs(args, criteria, cell, strict_shape, |v| total += v) {
+            // Each addition rounds twice like SUM's (probes-numeric/double-rounding-accumulators).
+            match model.apply_ifs(args, criteria, cell, strict_shape, |v| {
+                total = extended_sum(total, v);
+            }) {
                 Ok(()) => CalcResult::finite_number_or_num(total, cell),
                 Err(e) => e,
             }
@@ -666,7 +511,7 @@ impl Model {
             let mut total = 0.0;
             let mut count = 0.0;
             let average = |value: f64| {
-                total += value;
+                total = extended_sum(total, value);
                 count += 1.0;
             };
             if let Err(e) = model.apply_ifs(args, criteria, cell, strict_shape, average) {
@@ -679,7 +524,9 @@ impl Model {
                     message: "division by 0".to_string(),
                 };
             }
-            CalcResult::Number(flush_subnormal(total / count))
+            // The division rounds twice like AVERAGE's (docs/excel-semantics/numbers.md "Division
+            // rounds twice"; probes-numeric/average-family-large-count-division, T-1636).
+            CalcResult::Number(flush_subnormal(extended_quotient(total, count)))
         })
     }
 

@@ -23,7 +23,9 @@ fn test_frequency_basic() {
     assert_eq!(model._get_text("C3"), "1");
 }
 
-// Evidence: poi FormulaEvalTestData_Copy.xlsx EverythingTests row 936 (T-0947).
+// Evidence: probes/mode-typed-arguments A21-A29 (excel-graph, 2026-10-16, T-1291), which supersedes
+// the inference from poi EverythingTests row 936 (T-0947): typed and referenced text is skipped, a
+// direct error propagates, and a blank single-cell reference or an empty argument is `#VALUE!`.
 #[test]
 fn test_mode_text_and_blank_reference_arguments() {
     let mut model = new_empty_model();
@@ -36,15 +38,19 @@ fn test_mode_text_and_blank_reference_arguments() {
     model._set("B4", "=MODE(A1:A4,2)");
     model._set("B5", "=MODE(A1,A2,\"1\",2)");
     model._set("B6", "=MODE(1,1,)");
+    model._set("B7", "=MODE(1,2,2,TRUE)");
+    model._set("B8", "=MODE(\"2\",\"2\",5)");
     model.evaluate();
-    assert_eq!(model._get_text("B5"), "#VALUE!");
-    // An empty argument is unprobed and must keep its old behaviour.
-    assert_eq!(model._get_text("B6"), "1");
-    assert_eq!(model._get_text("B1"), "#VALUE!");
-    assert_eq!(model._get_text("B2"), "#VALUE!");
+    assert_eq!(model._get_text("B1"), "2");
+    assert_eq!(model._get_text("B2"), "#DIV/0!");
     assert_eq!(model._get_text("B3"), "#VALUE!");
     // Text and blanks inside a range are ignored.
     assert_eq!(model._get_text("B4"), "2");
+    assert_eq!(model._get_text("B5"), "2");
+    assert_eq!(model._get_text("B6"), "#VALUE!");
+    // Typed booleans and numeric text are skipped, not read as numbers (A9, A6).
+    assert_eq!(model._get_text("B7"), "2");
+    assert_eq!(model._get_text("B8"), "#N/A");
 }
 
 // ── MODE.SNGL ────────────────────────────────────────────────────────────────
@@ -149,6 +155,25 @@ fn test_percentrank_inc_exact_match() {
     model.evaluate();
     let v: f64 = model._get_text("B1").parse().unwrap();
     assert!((v - 0.5).abs() < 0.001);
+}
+
+#[test]
+fn test_percentrank_inc_single_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "2");
+    model._set("B1", "=PERCENTRANK.INC(A1, 2)");
+    model._set("B2", "=PERCENTRANK(A1, 2)");
+    model._set("B3", "=PERCENTRANK.INC(A1, 3)");
+    model._set("B4", "=PERCENTRANK.EXC(A1, 2)");
+    model._set("B5", "=PERCENTRANK.INC(A1, 2, 0)");
+    model._set("B6", "=PERCENTRANK.INC(A1, 2, -400)");
+    model.evaluate();
+    assert_eq!(model._get_text("B4"), "1");
+    assert_eq!(model._get_text("B5"), "1");
+    assert_eq!(model._get_text("B6"), "1");
+    assert_eq!(model._get_text("B1"), "1");
+    assert_eq!(model._get_text("B2"), "1");
+    assert_eq!(model._get_text("B3"), "#N/A");
 }
 
 // ── PERCENTRANK.EXC ──────────────────────────────────────────────────────────
@@ -442,4 +467,51 @@ fn nested_countblank_of_an_error_reads_each_argument_once() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#N/A");
     assert_eq!(model._get_text("B2"), *"0");
+}
+
+#[test]
+fn rank_of_at_prefixed_non_reference_array_is_one_cell() {
+    // The formula_eval fuzz reproducer (T-1596): `@` of the 2x2 IF is its top-left value, so
+    // RANK returns one cell instead of a 2x2 array static analysis took for a scalar (a debug
+    // assertion). Excel: probes/rank-at-if-ref. In the fuzz model A1:B2 is empty, so every test
+    // is FALSE, the undefined name is never picked, and RANK of FALSE is #VALUE!
+    // (probes/rank-unknown-shape-ref); with numbers there it is #NAME? (below).
+    let mut model = new_empty_model();
+    model._set("C3", "=RANK(5,@IF(A1:B2>0,A1:ANK))");
+    model.evaluate();
+    assert_eq!(model._get_text("C3"), *"#VALUE!");
+    assert_eq!(model._get_text("D3"), *"");
+
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "7"), ("B1", "1"), ("A2", "5"), ("B2", "3")] {
+        model._set(cell, value);
+    }
+    model._set("H1", "=RANK(5,@IF(A1:B2>0,A1:B2))");
+    model._set("H4", "=RANK.EQ(5,@IF(A1:B2>0,A1:B2))");
+    model._set("H7", "=RANK.AVG(5,@IF(A1:B2>0,A1:B2))");
+    model._set("C3", "=RANK(5,@IF(A1:B2>0,A1:ANK))");
+    model._set("H19", "=RANK.EQ(5,@IF(A1:B2>0,A1:ANK))");
+    model._set("H22", "=RANK.AVG(5,@IF(A1:B2>0,A1:ANK))");
+    model._set("H28", "=RANK(5,@IF(TRUE,A1:A30))");
+    model._set("H31", "=RANK(5,@IF(A1:B2>0,1/0))");
+    model._set("K1", "=SUM(@(A1:B2*1))");
+    model._set("K7", "=COUNT(@IF(A1:B2>0,A1:B2))");
+    model._set("K25", "=SUM(@{3,4})");
+    model.evaluate();
+
+    for cell in ["H1", "H4", "H7"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!");
+    }
+    for cell in ["C3", "H19", "H22"] {
+        assert_eq!(model._get_text(cell), *"#NAME?");
+    }
+    for cell in ["D3", "C4", "I1", "H2", "I4", "I7", "I19", "I22"] {
+        assert_eq!(model._get_text(cell), *"");
+    }
+    // A picked reference is still one: A28 is blank, so 5 is absent.
+    assert_eq!(model._get_text("H28"), *"#N/A");
+    assert_eq!(model._get_text("H31"), *"#DIV/0!");
+    assert_eq!(model._get_text("K1"), *"7");
+    assert_eq!(model._get_text("K7"), *"1");
+    assert_eq!(model._get_text("K25"), *"3");
 }

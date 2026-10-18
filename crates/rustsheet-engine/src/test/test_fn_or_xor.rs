@@ -359,3 +359,52 @@ fn first_error_wins_row_by_row() {
     assert_eq!(model._get_text("A5"), *"#DIV/0!");
     assert_eq!(model._get_text("A6"), *"#DIV/0!");
 }
+
+// AND, OR and XOR read through the SPEC-0009 walker with today's results kept (T-1677).
+#[test]
+fn logical_walker_keeps_text_empty_and_error_rules() {
+    let mut model = new_empty_model();
+    model._set("A1", "=\"TRUE\"");
+    model._set("A2", "x");
+    model.new_sheet();
+    // Direct text counts in any case; referenced text, also "TRUE", is skipped.
+    model._set("B1", "=AND(\"true\")");
+    model._set("B2", "=OR(\"FALSE\",\"tRuE\")");
+    model._set("B3", "=AND(A1)");
+    model._set("B4", "=OR(A1:A2,FALSE)");
+    model._set("B5", "=OR({\"TRUE\"},FALSE)");
+    // An empty argument is FALSE only when nothing came before.
+    model._set("B6", "=AND(TRUE,)");
+    model._set("B7", "=AND(,TRUE)");
+    model._set("B8", "=OR(,)");
+    // The first error wins after a decisive value.
+    model._set("B9", "=AND(FALSE,1/0)");
+    model._set("B10", "=OR(TRUE,{1,#N/A},1/0)");
+    // A whole column on an empty sheet has no logical value.
+    model._set("B11", "=OR(Sheet2!C:C)");
+    // A direct LAMBDA is `#VALUE!`, held so a direct error beats it (probes/and-or-xor-picked-text).
+    model._set("B13", "=AND(LAMBDA(x,x),1/0)");
+    model._set("B14", "=XOR(A1:A2)");
+    // A text "TRUE" cell picked by a function is a referenced cell: skipped (T-1685).
+    model._set("B15", "=AND(IF(TRUE,A1))");
+    model._set("B16", "=OR(INDEX(A1:A2,1))");
+    model._set("B17", "=XOR(LET(x,A1,x))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("B1"), "TRUE");
+    assert_eq!(model._get_text("B2"), "TRUE");
+    assert_eq!(model._get_text("B3"), "#VALUE!");
+    assert_eq!(model._get_text("B4"), "FALSE");
+    assert_eq!(model._get_text("B5"), "FALSE");
+    assert_eq!(model._get_text("B6"), "TRUE");
+    assert_eq!(model._get_text("B7"), "FALSE");
+    assert_eq!(model._get_text("B8"), "FALSE");
+    assert_eq!(model._get_text("B9"), "#DIV/0!");
+    assert_eq!(model._get_text("B10"), "#N/A");
+    assert_eq!(model._get_text("B11"), "#VALUE!");
+    assert_eq!(model._get_text("B13"), "#DIV/0!");
+    assert_eq!(model._get_text("B14"), "#VALUE!");
+    assert_eq!(model._get_text("B15"), "#VALUE!");
+    assert_eq!(model._get_text("B16"), "#VALUE!");
+    assert_eq!(model._get_text("B17"), "#VALUE!");
+}

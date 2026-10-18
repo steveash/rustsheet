@@ -3,7 +3,7 @@ id: T-1308
 title: "Probe and match ISOWEEKNUM and WEEKNUM at modern year boundaries and week-53 years"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -46,3 +46,6 @@ Suggested cells (write dates as `DATE(y,m,d)` so the case reads clearly):
 - Lifting over ranges and arrays (T-1235, T-1236).
 - Stale WEEKNUM return types (decision 0038, probes/weeknum-stale-return-type).
 - The 1904 date system (SPEC-0005, T-1266 follow-ups).
+
+## Outcome
+Added probes/weeknum-modern-boundaries (67 cells: ISOWEEKNUM and WEEKNUM(,21) at 14 boundary dates, WEEKNUM types 1, 2, 11-17 on four dates, a fractional serial, a serial past the last date and date text), filled by excel-graph. The engine matched all 67 cells, so no mismatch tasks. dates.md records the rule. Eval: 67 new passing cells, 0 regressions.

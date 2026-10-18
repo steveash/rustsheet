@@ -2,7 +2,7 @@
 
 use crate::{
     calc_result::CalcResult,
-    cast::array_node_to_string,
+    cast::array_node_to_text,
     cast::number_text_too_long,
     cast::MAX_TEXT_UNITS,
     expressions::{
@@ -15,7 +15,6 @@ use crate::{
 };
 
 use super::text_arg::broadcast_text;
-use super::util::utf16_slice;
 use crate::functions::util::near_integer_count;
 
 fn format_thousands(n: u64) -> String {
@@ -107,7 +106,7 @@ impl Model {
         } else {
             format!("${formatted}")
         };
-        CalcResult::String(result)
+        CalcResult::String(result.into())
     }
 
     /// FIXED(number, [decimals], [`no_commas`]) — Formats a number as text with fixed decimal places.
@@ -133,12 +132,16 @@ impl Model {
         };
         let use_thousands = !no_commas;
         let formatted = format_abs(value.abs(), decimals, use_thousands);
-        let result = if value < 0.0 {
+        // Excel drops the sign when the value rounds to zero: look at the rounded text, not the
+        // value (docs/excel-semantics/text.md "FIXED drops the sign of a value that rounds to
+        // zero"; gen-m6/f94b5b8236742618 A24, probes/dollar-fixed-unichar-edges A49, A50).
+        let rounds_to_zero = !formatted.bytes().any(|b| matches!(b, b'1'..=b'9'));
+        let result = if value < 0.0 && !rounds_to_zero {
             format!("-{formatted}")
         } else {
             formatted
         };
-        CalcResult::String(result)
+        CalcResult::String(result.into())
     }
 
     /// NUMBERVALUE(text, [`decimal_separator`], [`group_separator`])
@@ -270,10 +273,10 @@ fn replace_element(
 ) -> Result<ArrayNode, Error> {
     // Every argument is coerced before the range checks: an error argument beats a start or length
     // failure (docs/excel-semantics/arrays.md, probes/error-arg-vs-range-check, T-1056).
-    let old_text = array_node_to_string(old_text)?;
+    let old_text = array_node_to_text(old_text)?;
     let start_num = start_num?;
     let num_chars = num_chars?;
-    let new_text = array_node_to_string(new_text)?;
+    let new_text = array_node_to_text(new_text)?;
     // Excel: both numbers count as whole like LEFT's (near an integer they round up, so
     // `REPLACE(t,1-2E-7,1,"z")` starts at 1) and either one above 32,767 is #VALUE!, even
     // past the end of a short text (probes/text-count-argument-bounds J, K, U, F22, F24).
@@ -288,26 +291,92 @@ fn replace_element(
 
     // Excel: positions count UTF-16 code units, so `REPLACE("a😀b",2,2,"x")` is "axb"
     // (probes/text-surrogate-positions A27-A31).
-    let len = old_text.encode_utf16().count();
+    let len = old_text.len_utf16();
     // start_num is 1-indexed; clamp to valid range
     let start = (start_num as usize).saturating_sub(1).min(len);
     let end = start.saturating_add(num_chars as usize).min(len);
-    let mut result = utf16_slice(&old_text, 0, start);
-    result.push_str(&new_text);
-    result.push_str(&utf16_slice(&old_text, end, len));
+    // The lone half of a pair either bound cuts is kept (probes/text-surrogate-positions A29).
+    let mut result = old_text.slice_utf16(0, start);
+    result.push(&new_text);
+    result.push(&old_text.slice_utf16(end, len));
     Ok(ArrayNode::String(result))
 }
 
+/// Excel's per-character case mapping for PROPER, UPPER and LOWER: the simple (one-to-one) mapping only, so ß, ŉ,
+/// ǰ and the ﬁ ligatures keep their form where Rust would expand them ("SS", "ʼN"); İ folds to
+/// ASCII I (upper) and i (lower), and ΐ, ΰ upper-case to Ϊ, Ϋ (probes/clean-proper-chars
+/// D4, D14:D18, D23:D24). UPPER and LOWER use the same mapping (probes/case-mapping-expanding
+/// A1:C13).
+fn simple_case(c: char, upper: bool) -> char {
+    match (c, upper) {
+        ('İ', true) => 'I',
+        ('İ', false) => 'i',
+        ('ΐ', true) => 'Ϊ',
+        ('ΰ', true) => 'Ϋ',
+        _ => {
+            let mut mapped: Vec<char> = if upper {
+                c.to_uppercase().collect()
+            } else {
+                c.to_lowercase().collect()
+            };
+            match (mapped.pop(), mapped.is_empty()) {
+                (Some(one), true) => one,
+                _ => c,
+            }
+        }
+    }
+}
+
+/// Whether a capital sigma followed by `next` lowers to the final ς: not before a letter or digit,
+/// a combining mark (U+0300..U+036F), a right single quote (U+2019) or a zero-width space, while
+/// a straight apostrophe, space, `-` and the end of the text all give ς (probes/case-mapping-expanding
+/// A14:C27). The rule is the same in PROPER and LOWER, and a lone Σ lowers to ς in LOWER.
+fn sigma_is_final(next: Option<char>) -> bool {
+    next.is_none_or(|n| {
+        !(n.is_alphanumeric() || matches!(n, '\u{300}'..='\u{36f}' | '\u{2019}' | '\u{200b}'))
+    })
+}
+
+/// Excel's LOWER: the simple mapping per character, with the final-sigma rule.
+pub(super) fn lower_case(s: &str) -> String {
+    let chars: Vec<char> = s.chars().collect();
+    chars
+        .iter()
+        .enumerate()
+        .map(|(i, &c)| {
+            if c == 'Σ' && sigma_is_final(chars.get(i + 1).copied()) {
+                'ς'
+            } else {
+                simple_case(c, false)
+            }
+        })
+        .collect()
+}
+
+/// Excel's UPPER: the simple mapping per character (ß, ŉ, ǰ, ligatures stay as they are). Unlike
+/// PROPER, UPPER leaves İ alone (probes/case-mapping-expanding B12).
+pub(super) fn upper_case(s: &str) -> String {
+    s.chars()
+        .map(|c| if c == 'İ' { c } else { simple_case(c, true) })
+        .collect()
+}
+
+/// A word start is any character after a non-letter, digits included ("2Nd"). A capital sigma
+/// ending a word (see `sigma_is_final`) lowers to the final ς: "ΑΣ.ΑΣ-Σ ΑΣ1" is "Ας.Ας-Σ Ασ1"
+/// (probes/clean-proper-chars D7, D16, D25).
 fn proper_case(s: &str) -> String {
+    let chars: Vec<char> = s.chars().collect();
     let mut result = String::with_capacity(s.len());
     let mut capitalize_next = true;
-    for c in s.chars() {
+    for (i, &c) in chars.iter().enumerate() {
         if c.is_alphabetic() {
             if capitalize_next {
-                result.extend(c.to_uppercase());
+                result.push(simple_case(c, true));
                 capitalize_next = false;
+            } else if c == 'Σ' && sigma_is_final(chars.get(i + 1).copied()) {
+                result.push('ς');
             } else {
-                result.extend(c.to_lowercase());
+                result.push(simple_case(c, false));
             }
         } else {
             result.push(c);

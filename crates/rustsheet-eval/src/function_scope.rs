@@ -121,6 +121,7 @@ mod tests {
     fn function(name: &str, milestone: &str) -> CatalogFunction {
         CatalogFunction {
             name: name.to_string(),
+            category: "math".to_string(),
             milestone: milestone.to_string(),
             scope: Scope::In,
             reason: None,
@@ -156,6 +157,7 @@ mod tests {
             millis: 0,
             tags: Vec::new(),
             cells,
+            text: Vec::new(),
         }
     }
 

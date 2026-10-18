@@ -15,6 +15,7 @@ T.INV, T.INV.2T and CONFIDENCE.T return Excel's values from one Student-t quanti
 the T-0969 CDF kernel.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 5 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Triage T-0903. Kernel: `statrs::distribution::StudentsT::inverse_cdf`, which calls statrs'
 `inv_beta_reg(df/2, 0.5, 2p)` and back-transforms (`sqrt(df(1-y)/y)`), losing precision near p = 0.5.
 Code: `functions/statistical/t_dist.rs` (`fn_t_inv`, `fn_t_inv_2t`), `functions/statistical/normal.rs`
@@ -41,6 +42,8 @@ directly (no `1 - p`). The last digits depend on the solver's start, step and st
 **Needs an oracle sweep (T-0018):** fit against the T-1043 Student-t sweep, never blind.
 Previous evidence from T-0925 (inverse normal): a closed-form inverse plus one Newton step regressed
 cells that the old code matched by luck; measure regressions on every attempt.
+
+Oracle sweep (T-1043): probes-numeric cases `m9-t-inv`, `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`; findings in docs/excel-semantics/statistics.md "Student t sweep".
 
 ## Acceptance criteria
 - [ ] All 6 NumericMismatch and all 48 NumericClose lines above leave the NumericClose/Mismatch

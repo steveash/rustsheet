@@ -140,7 +140,7 @@ struct Zip {
 impl Zip {
     fn new(bytes: &[u8]) -> Result<Self, SnapshotError> {
         let archive = zip::ZipArchive::new(Cursor::new(bytes.to_vec()))?;
-        let names = PartNames::new(archive.file_names());
+        let names = PartNames::from_archive(&archive)?;
         Ok(Zip { archive, names })
     }
 }
@@ -683,7 +683,9 @@ fn decode_value(
         ("str", v) => Value::Text(decode_xlsx_escapes(v.unwrap_or_default())),
         ("b", Some(v)) => Value::Bool(v.trim() == "1" || v.trim().eq_ignore_ascii_case("true")),
         ("e", Some(v)) => Value::Error(v.trim().to_string()),
-        ("d", Some(v)) => iso8601_to_serial(v).map_or(Value::Empty, Value::Number),
+        ("d", Some(v)) => {
+            iso8601_to_serial(v).map_or_else(|| Value::Error("#VALUE!".to_string()), Value::Number)
+        }
         (_, Some(v)) if !v.trim().is_empty() => v
             .trim()
             .parse::<f64>()
@@ -699,7 +701,7 @@ mod tests {
 
     fn zip_with(name: &str, body: &[u8]) -> Zip {
         let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
-        w.start_file(name, zip::write::FileOptions::default())
+        w.start_file(name, zip::write::SimpleFileOptions::default())
             .unwrap();
         w.write_all(body).unwrap();
         let bytes = w.finish().unwrap().into_inner();

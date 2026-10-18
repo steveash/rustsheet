@@ -1,13 +1,18 @@
 use crate::{
     calc_result::CalcResult,
-    cast::{array_node_to_string, concat_text, NumberOrArray, StringOrArray, ValueOrArray},
+    cast::{
+        array_node_to_string, array_node_to_text, NumberOrArray, StringOrArray, ValueOrArray,
+        MAX_TEXT_UNITS,
+    },
     expressions::{
         parser::{left_chain, ArrayNode, Node},
         token::{Error, OpCompare, OpProduct, OpSum},
         types::CellReferenceIndex,
     },
-    functions::{math_and_trigonometry::array_size::check_array_size, util::compare_values},
+    functions::util::compare_values,
+    limits::check_array_size,
     model::Model,
+    text::Text,
 };
 
 /// Maps an output index `i` back to the source array index, applying Excel's
@@ -23,17 +28,24 @@ pub(crate) fn bcast_idx(len: usize, i: usize) -> Option<usize> {
     }
 }
 
+/// The element at (`row`, `col`) of `grid` under [`bcast_idx`] broadcasting on each axis, using the
+/// length of the addressed row for the column axis; `None` where either index is out of range.
+pub(crate) fn bcast_get<T>(grid: &[Vec<T>], row: usize, col: usize) -> Option<&T> {
+    let line = grid.get(bcast_idx(grid.len(), row)?)?;
+    line.get(bcast_idx(line.len(), col)?)
+}
+
 /// `x + y`; a sum beyond the double range is `#NUM!` at once, like a product
 /// (probes/arith-overflow Calc!B1:B5, excel-graph).
 pub(crate) fn plus(x: f64, y: f64) -> Result<f64, Error> {
-    finite_or_overflow(x + y)
+    finite_or_overflow(extended_sum(x, y))
 }
 
 /// `x - y`; a difference beyond the double range is `#NUM!` (probes/arith-overflow Calc!B2:B3).
 /// A subnormal difference is kept, unlike a product's: `(3E-308-2.5E-308)=0` is FALSE
 /// (probes/subnormal-function-results C69, T-1027).
 pub(crate) fn minus(x: f64, y: f64) -> Result<f64, Error> {
-    finite_or_overflow(x - y)
+    finite_or_overflow(extended_sum(x, -y))
 }
 
 /// `value`, or `#NUM!` beyond the double range; subnormals are kept (addition, subtraction).
@@ -48,7 +60,7 @@ fn finite_or_overflow(value: f64) -> Result<f64, Error> {
 /// `x * y`; a product beyond the double range is `#NUM!` at once, so it stays an error through
 /// `&`, CONCAT, TEXT and LEN (probes-numeric/4f413cc257ce15c4 Calc!A121:A124, excel-graph).
 pub(crate) fn times(x: f64, y: f64) -> Result<f64, Error> {
-    finite_or_num(x * y)
+    finite_or_num(extended_product(x, y))
 }
 
 /// `x / y`. A divisor below the smallest normal double counts as zero, so `1/1E-308` and
@@ -58,7 +70,251 @@ pub(crate) fn divide(x: f64, y: f64) -> Result<f64, Error> {
     if y.abs() < f64::MIN_POSITIVE {
         return Err(Error::DIV);
     }
-    finite_or_num(x / y)
+    finite_or_num(extended_quotient(x, y))
+}
+
+/// `x / y` rounded twice, first to a 64-bit significand and then to a double, as an x87 division
+/// in extended precision stored to a double would be. It differs from the correctly rounded
+/// quotient (about once in 4,000 random divisions) only when the exact quotient lies within half
+/// an extended ulp of a double midpoint: the first rounding lands on the midpoint and the second
+/// rounds it to even. `1/(2-2^-52)` is 0.5, not 0.5000000000000001, and so is `8^(-1/3)`
+/// (docs/excel-semantics/numbers.md "Division rounds twice", probes-numeric/power-reciprocal-rounding).
+/// A quotient that is not a normal double, and any non-finite or zero operand, is the plain `x / y`.
+pub(crate) fn extended_quotient(x: f64, y: f64) -> f64 {
+    let plain = x / y;
+    if !plain.is_normal() || !x.is_normal() || !y.is_normal() {
+        return plain;
+    }
+    let (x_significand, x_exponent) = significand_and_exponent(x);
+    let (y_significand, y_exponent) = significand_and_exponent(y);
+    // Both significands are 53-bit integers, so the integer quotient of x << 74 by y has 74 or 75
+    // bits, and the remainder makes the result exact enough to round to 64 bits.
+    let numerator = u128::from(x_significand) << 74;
+    let divisor = u128::from(y_significand);
+    let quotient = numerator / divisor;
+    let inexact = numerator % divisor != 0;
+    // First rounding: to 64 bits, ties to even, the remainder breaking ties.
+    let (extended, shift) = round_to_bits(quotient, 64, inexact);
+    let exponent = x_exponent - y_exponent - 74 + shift;
+    round_extended_to_double(
+        extended,
+        exponent,
+        x.is_sign_negative() != y.is_sign_negative(),
+    )
+    .unwrap_or(plain)
+}
+
+/// `sqrt(x)` rounded twice, first to a 64-bit significand and then to a double, like
+/// [`extended_quotient`] (docs/excel-semantics/numbers.md "Division rounds twice",
+/// probes-numeric/double-rounding-ops A65-A80, excel-graph). The root is built bit by bit from the
+/// exact significand, so the first rounding sees the true root. A subnormal `x` rounds twice too
+/// (probes-numeric/power-neg-half-rounding A9-A12, B9-B12; T-1541). A zero, negative or
+/// non-finite `x` is the plain `x.sqrt()`.
+pub(crate) fn extended_sqrt(x: f64) -> f64 {
+    let plain = x.sqrt();
+    if x <= 0.0 || !x.is_finite() {
+        return plain;
+    }
+    let (significand, mut exponent) = significand_and_exponent(x);
+    let mut radicand = u128::from(significand);
+    if exponent % 2 != 0 {
+        // The exponent must be even to halve it; the significand then has 54 bits.
+        radicand <<= 1;
+        exponent -= 1;
+    }
+    // 27 bit pairs of the (zero-padded to 54 bits) radicand, then 39 zero pairs: a 66-bit root
+    // `root·2^-39` of the significand, and `remainder != 0` says it is only the floor.
+    let (mut root, mut remainder) = (0u128, 0u128);
+    for pair in (0..66).rev() {
+        let digits = if pair >= 39 {
+            (radicand >> (2 * (pair - 39))) & 3
+        } else {
+            0
+        };
+        remainder = (remainder << 2) | digits;
+        let trial = (root << 2) | 1;
+        root <<= 1;
+        if remainder >= trial {
+            remainder -= trial;
+            root |= 1;
+        }
+    }
+    let (extended, shift) = round_to_bits(root, 64, remainder != 0);
+    round_extended_to_double(extended, exponent / 2 - 39 + shift, false).unwrap_or(plain)
+}
+
+/// `x * y` rounded twice, first to a 64-bit significand and then to a double, like
+/// [`extended_quotient`] (docs/excel-semantics/numbers.md "Division rounds twice",
+/// probes-numeric/double-rounding-ops A1-A16, excel-graph). The exact 106-bit product is rounded to
+/// 64 bits and then to 53. A zero or non-finite operand or product is the plain `x * y`.
+/// The range edges follow the same two roundings (probes-numeric/double-rounding-range-edges): a
+/// product just under the midpoint between `f64::MAX` and 2^1024 rounds up to 2^1024 and is
+/// infinite (`#NUM!`), and one just under the midpoint between the largest subnormal and 2^-1022
+/// is 2^-1022. A subnormal product is rounded on the 2^-1074 grid (callers flush it to 0 unless it reaches 2^-1022).
+pub(crate) fn extended_product(x: f64, y: f64) -> f64 {
+    let plain = x * y;
+    if plain == 0.0 || !plain.is_finite() || !x.is_normal() || !y.is_normal() {
+        return plain;
+    }
+    let (x_significand, x_exponent) = significand_and_exponent(x);
+    let (y_significand, y_exponent) = significand_and_exponent(y);
+    let product = u128::from(x_significand) * u128::from(y_significand);
+    let (extended, shift) = round_to_bits(product, 64, false);
+    let negative = x.is_sign_negative() != y.is_sign_negative();
+    match round_extended_to_double(extended, x_exponent + y_exponent + shift, negative) {
+        Some(rounded) => rounded,
+        // A plain `f64::MAX` with no double-rounded double means the exponent ran past the top.
+        None if plain.abs() == f64::MAX => f64::INFINITY.copysign(plain),
+        None if plain.abs() < f64::MIN_POSITIVE => {
+            round_extended_to_subnormal(extended, x_exponent + y_exponent + shift, negative)
+                .unwrap_or(plain)
+        }
+        None => plain,
+    }
+}
+
+/// The 64-bit `extended·2^exponent` rounded, ties to even, to a multiple of 2^-1074 (a subnormal
+/// has fewer than 53 bits, so a tie of the second rounding is a tie on that grid, not on 53 bits),
+/// or `None` when the grid is not coarser than the value or the result is zero.
+fn round_extended_to_subnormal(extended: u128, exponent: i32, negative: bool) -> Option<f64> {
+    let drop = u32::try_from(-1074 - exponent)
+        .ok()
+        .filter(|d| (1..128).contains(d))?;
+    let mut units = extended >> drop;
+    let dropped = extended & ((1 << drop) - 1);
+    let half = 1 << (drop - 1);
+    if dropped > half || (dropped == half && units & 1 == 1) {
+        units += 1;
+    }
+    let units = u64::try_from(units)
+        .ok()
+        .filter(|u| *u != 0 && *u <= 1 << 52)?;
+    // `units` is at most 2^52, so it converts exactly and 2^-1074 is a subnormal power of two.
+    let magnitude = units as f64 * f64::from_bits(1);
+    Some(if negative { -magnitude } else { magnitude })
+}
+
+/// Whether `plain = x + y` can differ from the twice-rounded sum. The rounding error `e` of the
+/// addition is found exactly (Knuth's `TwoSum`); the first rounding to 64 bits can land on a double
+/// midpoint, and so change the result, only when `|e|` is within 2^-8 of half a unit in the last
+/// place of the sum (or of a quarter, below a power of two, where the next lower double is closer).
+/// An exact sum and every other error keep `plain`, so the 128-bit path runs for few additions.
+fn sum_may_round_twice(x: f64, y: f64, plain: f64) -> bool {
+    let virtual_y = plain - x;
+    let error = (x - (plain - virtual_y)) + (y - virtual_y);
+    if error == 0.0 {
+        return false;
+    }
+    // The unit in the last place of `plain`, a power of two (`plain` is normal).
+    let ulp = f64::from_bits(plain.to_bits() & (0x7FF << 52)) * f64::EPSILON;
+    let ratio = error.abs() / ulp;
+    (ratio - 0.5).abs() <= 1.0 / 256.0 || (ratio - 0.25).abs() <= 1.0 / 256.0
+}
+
+/// `x + y` rounded twice, first to a 64-bit significand and then to a double, like
+/// [`extended_quotient`] (docs/excel-semantics/numbers.md "Division rounds twice",
+/// probes-numeric/double-rounding-ops A33-A64, excel-graph). The sum is formed exactly in 128 bits.
+/// These give the plain `x + y`: a zero, subnormal or non-finite operand or result; a difference
+/// that cancels down to 53 bits or fewer (exact in a double); and operands whose lowest-bit
+/// exponents are 70 or more apart (the smaller lies far under half a 64-bit ulp of the larger, so
+/// both roundings return the larger operand, which is also the plain sum).
+pub(crate) fn extended_sum(x: f64, y: f64) -> f64 {
+    let plain = x + y;
+    if !plain.is_normal() || !x.is_normal() || !y.is_normal() || !sum_may_round_twice(x, y, plain) {
+        return plain;
+    }
+    let (x_significand, x_exponent) = significand_and_exponent(x);
+    let (y_significand, y_exponent) = significand_and_exponent(y);
+    // `high` has the larger exponent for its lowest bit; `low` is aligned down to it.
+    let (
+        (high_significand, high_exponent, high_negative),
+        (low_significand, low_exponent, low_negative),
+    ) = if x_exponent >= y_exponent {
+        (
+            (x_significand, x_exponent, x < 0.0),
+            (y_significand, y_exponent, y < 0.0),
+        )
+    } else {
+        (
+            (y_significand, y_exponent, y < 0.0),
+            (x_significand, x_exponent, x < 0.0),
+        )
+    };
+    let Ok(gap) = u32::try_from(high_exponent - low_exponent) else {
+        return plain;
+    };
+    if gap >= 70 {
+        return plain;
+    }
+    let aligned = u128::from(high_significand) << gap;
+    let low_magnitude = u128::from(low_significand);
+    let (magnitude, negative) = if high_negative == low_negative {
+        (aligned + low_magnitude, high_negative)
+    } else if aligned >= low_magnitude {
+        (aligned - low_magnitude, high_negative)
+    } else {
+        (low_magnitude - aligned, low_negative)
+    };
+    // Cancellation can leave fewer than 53 bits (below 2^52), which a double holds exactly: the
+    // plain sum.
+    if magnitude >> 52 == 0 {
+        return plain;
+    }
+    let (extended, shift) = round_to_bits(magnitude, 64, false);
+    // A double-rounded value past the range (no probe reaches it) falls back to the plain sum.
+    round_extended_to_double(extended, low_exponent + shift, negative).unwrap_or(plain)
+}
+
+/// The 64-bit `extended·2^exponent` rounded to a double (second rounding: the value is exact now,
+/// so a tie is a tie), or `None` when the result is not a normal double.
+fn round_extended_to_double(extended: u128, exponent: i32, negative: bool) -> Option<f64> {
+    let (significand, shift) = round_to_bits(extended, 53, false);
+    let biased = u64::try_from(exponent + shift + 1075)
+        .ok()
+        .filter(|b| (1..=2046).contains(b))?;
+    let sign = u64::from(negative) << 63;
+    // The significand has 53 bits after the second rounding, so the conversion cannot fail.
+    let fraction = u64::try_from(significand).unwrap_or(0) & 0x000F_FFFF_FFFF_FFFF;
+    Some(f64::from_bits(sign | (biased << 52) | fraction))
+}
+
+/// The 53-bit integer significand `m` and exponent `e` of a non-zero finite double,
+/// `|x| = m·2^e`; a subnormal's significand is shifted up to 53 bits.
+fn significand_and_exponent(x: f64) -> (u64, i32) {
+    let bits = x.to_bits();
+    let fraction = bits & 0x000F_FFFF_FFFF_FFFF;
+    let biased = i32::try_from((bits >> 52) & 0x7FF).unwrap_or(0);
+    if biased == 0 {
+        // The top set bit of the fraction moves to bit 52 (a u64 then has 11 leading zeros).
+        let shift = fraction.leading_zeros().saturating_sub(11);
+        return (fraction << shift, -1074 - i32::try_from(shift).unwrap_or(0));
+    }
+    (fraction | (1 << 52), biased - 1075)
+}
+
+/// `value` (non-zero) rounded to nearest, ties to even, to `bits` significant bits: the rounded
+/// significand and the number of low bits dropped, so the result is `significand·2^shift`.
+/// `inexact` says the exact value lies a little above `value`, which turns a tie into a round up.
+fn round_to_bits(value: u128, bits: u32, inexact: bool) -> (u128, i32) {
+    let width = 128 - value.leading_zeros();
+    if width <= bits {
+        return (value, 0);
+    }
+    let shift = width - bits;
+    let mut significand = value >> shift;
+    let dropped = value & ((1 << shift) - 1);
+    let half = 1 << (shift - 1);
+    if dropped > half || (dropped == half && (inexact || significand & 1 == 1)) {
+        significand += 1;
+    }
+    // At most 75 - 53 bits are dropped, so the conversion cannot fail.
+    let mut shift = i32::try_from(shift).unwrap_or(0);
+    // A carry out of the top bit (all ones rounded up) is one more bit to drop.
+    if significand >> bits != 0 {
+        significand >>= 1;
+        shift += 1;
+    }
+    (significand, shift)
 }
 
 /// An infinite (or NaN) result is the error `#NUM!`; a result below the smallest normal double
@@ -118,7 +374,7 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
         return Err(Error::NUM);
     }
     if let Some(result) = integer_power(x, y) {
-        return Ok(result);
+        return result;
     }
     let result = if x < 0.0 && is_one_over_an_odd_integer(y) {
         // An odd root of a negative number is a real number, minus the root of the magnitude:
@@ -147,61 +403,72 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
 }
 
 /// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)`, a negative exponent as one over
-/// the positive power, and `y` = ±0.5 through `sqrt`. This matches all 180 numeric oracle cells over
-/// 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep;
+/// the positive power, and `y` = ±0.5 through [`extended_sqrt`]. This matches all 180 numeric
+/// oracle cells over 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep;
 /// docs/excel-semantics/numbers.md "Non-integer exponents: exp(y·ln x)"). A negative `x` gives NaN.
 fn non_integer_power(x: f64, y: f64) -> f64 {
     // -0 has the logarithm of 0: `-0^0.5` is 0, not `sqrt`'s -0 (gen-m1/6462bf910ef9f28f Calc!A19).
     let x = if x == 0.0 { 0.0 } else { x };
     if y == 0.5 {
-        x.sqrt()
+        extended_sqrt(x)
     } else if y == -0.5 {
-        1.0 / x.sqrt()
+        // One over the twice-rounded root, divided like `/`: `x^-0.5`, `POWER(x,-0.5)` and
+        // `1/SQRT(x)` agree (probes-numeric/power-neg-half-rounding, T-1541).
+        extended_quotient(1.0, extended_sqrt(x))
     } else if y > 0.0 {
         (y * x.ln()).exp()
     } else {
-        1.0 / (-y * x.ln()).exp()
+        extended_quotient(1.0, (-y * x.ln()).exp())
     }
 }
 
 /// `x^y` for an integer `y`, by binary exponentiation scanning the bits of `|y|` from the low end,
 /// as Excel computes it (docs/excel-semantics/numbers.md "Integer exponents: right-to-left
 /// square-and-multiply"; libm `pow` and `powi` round differently). A negative `y` is one over
-/// the result. `None` leaves the case to the general path: a non-integer or huge `y` (bounding the
-/// loop to 54 iterations), and any result that is zero or not finite, whose overflow and
-/// underflow behavior is unverified beyond the oracle's exponents 1..360.
-fn integer_power(x: f64, y: f64) -> Option<f64> {
+/// the positive power, divided like the operator `/`. `None` leaves a non-integer or huge `y` to
+/// the general path (bounding the loop to 54 iterations).
+///
+/// Out of range, for any sign of `x` (probes-numeric/power-negative-base-range,
+/// power-odd-roots A157-A162): a positive power that overflows is `#NUM!` and one that underflows
+/// is 0, so `(-0.1)^401` is 0; a negative exponent whose positive power underflows is `#DIV/0!`
+/// (`(-0.1)^-401`, `(-0.5)^-1075`), and one whose positive power overflows is 0 (`(-10)^-401`).
+fn integer_power(x: f64, y: f64) -> Option<Result<f64, Error>> {
     // 2^53: beyond it every float is an integer, and the loop would need more than 54 iterations
     const MAX_EXPONENT: f64 = 9_007_199_254_740_992.0;
     if !x.is_finite() || !y.is_finite() || y.fract() != 0.0 || y.abs() > MAX_EXPONENT {
         return None;
     }
-    let mut result =
+    let positive_power =
         decimal_power_of_ten(x, y.abs()).unwrap_or_else(|| square_and_multiply(x, y.abs()));
-    if y < 0.0 {
-        result = 1.0 / result;
-    }
-    if !result.is_finite() || result == 0.0 {
-        return None;
-    }
-    // Excel flushes a subnormal result to zero (T-1311 oracle: 0.1^310, 2^-1074, (-0.5)^1073).
-    Some(if result.abs() < f64::MIN_POSITIVE {
-        0.0
+    let result = if y > 0.0 {
+        if positive_power.is_infinite() {
+            return Some(Err(Error::NUM));
+        }
+        positive_power
+    } else if positive_power.abs() < f64::MIN_POSITIVE {
+        // Excel divides 1 by the positive power, and a subnormal divisor counts as zero
+        // (`1E-10^-31`, numbers.md "Non-integer exponents: exp(y·ln x)").
+        return Some(Err(Error::DIV));
     } else {
-        result
-    })
+        extended_quotient(1.0, positive_power)
+    };
+    // Excel flushes a subnormal result to zero (T-1311 oracle: 0.1^310, 2^-1074, (-0.5)^1073).
+    Some(Ok(flush_subnormal(result)))
 }
 
 /// `x^n` for a non-negative integer `n` <= 2^53 by scanning the bits of `n` from the low end.
+/// Each product is rounded twice, like the operator `*` ([`extended_product`]): with products
+/// rounded once the loop misses 18 of the 20 `SQRT(5)^n` cells (numbers.md "Integer exponents
+/// beyond 360", T-1524 fit lab `power-sqrt5`).
 fn square_and_multiply(x: f64, n: f64) -> f64 {
     let mut remaining = n;
     let mut base = x;
     let mut result = 1.0_f64;
     while remaining >= 1.0 {
         if remaining % 2.0 == 1.0 {
-            result *= base;
+            result = extended_product(result, base);
         }
-        base *= base;
+        base = extended_product(base, base);
         remaining = (remaining / 2.0).floor();
     }
     result
@@ -544,15 +811,15 @@ impl Model {
 
         // Concatenates two array elements, propagating errors as error nodes.
         let concat_nodes = |a: &ArrayNode, b: &ArrayNode| -> ArrayNode {
-            match (array_node_to_string(a), array_node_to_string(b)) {
-                (Ok(sa), Ok(sb)) => ArrayNode::String(concat_text(&sa, &sb)),
+            match (array_node_to_text(a), array_node_to_text(b)) {
+                (Ok(sa), Ok(sb)) => ArrayNode::String(concat_limited(&sa, &sb)),
                 (Err(e), _) | (_, Err(e)) => ArrayNode::Error(e),
             }
         };
 
         match (l, r) {
             (StringOrArray::String(s1), StringOrArray::String(s2)) => {
-                CalcResult::String(concat_text(&s1, &s2))
+                CalcResult::String(concat_limited(&s1, &s2))
             }
             (StringOrArray::String(s1), StringOrArray::Array(a2)) => CalcResult::Array(
                 a2.iter()
@@ -671,47 +938,15 @@ impl Model {
 }
 
 #[cfg(test)]
-mod power_tests {
-    use super::power;
-    use crate::expressions::token::Error;
+mod power_tests;
 
-    // Oracle doubles: gen-m1/6462bf910ef9f28f A33, gen-m1/57fe331cb7611dbf A104, gen-m2
-    // f0d1bacec5de8146 A196 (docs/excel-semantics/numbers.md "Integer exponents").
-    #[test]
-    fn integer_exponents_use_square_and_multiply() {
-        assert_eq!(power(1e-15, 3.0), Ok(1.000_000_000_000_000_1e-45));
-        assert_eq!(power(3.25, 100.0), Ok(1.54289402744788e+51));
-        assert_eq!(power(100.0, 100.0), Ok(1.000_000_000_000_000_5e200));
-        assert_eq!(power(2.0, -2.0), Ok(0.25));
-        assert_eq!(power(-2.0, 3.0), Ok(-8.0));
-    }
+#[cfg(test)]
+mod bcast_tests;
 
-    #[test]
-    fn special_cases_keep_the_general_path() {
-        assert_eq!(power(0.0, -1.0), Err(Error::DIV));
-        assert_eq!(power(0.0, 0.0), Err(Error::NUM));
-        // Excel's cached -1.9999999999999998 (ironcalc-calc POWER.xlsx Sheet1!D3, F9), exp(ln 8/3).
-        assert_eq!(power(-8.0, 1.0 / 3.0), Ok(-1.999_999_999_999_999_8));
-        assert_eq!(power(10.0, 400.0), Err(Error::NUM));
-        assert_eq!(power(-0.0, 0.5), Ok(0.0));
-        assert_eq!(power(0.0, -0.5), Err(Error::DIV));
-        // The positive power underflows, so Excel's 1/x^|y| is #DIV/0! (sweep A141, A186).
-        assert_eq!(power(1e-10, -33.5), Err(Error::DIV));
-        assert_eq!(power(0.1, -400.0), Err(Error::DIV));
-    }
-
-    // Excel's doubles, where libm `pow` differs (probes-numeric/power-non-integer-sweep A17, A42,
-    // A75; gen-m1/6462bf910ef9f28f Calc!A41, A207; gen-m2/1b6ceed7489e0800 Calc!A62).
-    #[test]
-    fn non_integer_exponents_use_exp_of_y_ln_x() {
-        assert_eq!(power(3.0, -0.5), Ok(0.577_350_269_189_625_8));
-        // One ulp below the double nearest √2.
-        let below_sqrt_2 = f64::from_bits(std::f64::consts::SQRT_2.to_bits() - 1);
-        assert_eq!(power(0.5, -0.5), Ok(below_sqrt_2));
-        assert_eq!(power(2.0, -0.5), Ok(0.707_106_781_186_547_5));
-        assert_eq!(power(2.0, 0.5), Ok(std::f64::consts::SQRT_2));
-        assert_eq!(power(6.0, 2.5), Ok(88.181_630_740_194_38));
-        assert_eq!(power(10.0, 33.5), Ok(3.162_277_660_168_401e33));
-        assert_eq!(power(10.0, -33.5), Ok(3.162_277_660_168_357_6e-34));
-    }
+/// `a & b`, cut to the cell text limit. Excel keeps the high half of a pair the limit cuts
+/// (probes/concatenate-limit-spill E8, E9, E11; docs/excel-semantics/coercion.md).
+fn concat_limited(a: &Text, b: &Text) -> Text {
+    let mut joined = Text::concat(a, b);
+    joined.truncate_utf16(MAX_TEXT_UNITS);
+    joined
 }

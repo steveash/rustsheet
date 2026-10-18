@@ -16,7 +16,10 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::Function,
+    functions::{
+        lift::{LiftCost, LiftOptions},
+        Function,
+    },
     model::Model,
     reference_operators::RefArg,
 };
@@ -98,7 +101,7 @@ impl Model {
         }
         let mut lifted = vec![function, option];
         lifted.extend(fourth.filter(lifts));
-        // A single-cell range stays a scalar reference; `lift_with_cost` reads multi-cell ones.
+        // A single-cell range stays a scalar reference; `lift_values` reads multi-cell ones.
         let ranges: Vec<Option<CalcResult>> = lifted
             .iter_mut()
             .map(|value| match value {
@@ -108,11 +111,14 @@ impl Model {
                 _ => None,
             })
             .collect();
-        self.lift_with_cost(
+        // Charged once per lifted argument, as T-1784's driver charged it.
+        let lifted_count = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
+        self.lift_values(
             lifted,
-            |_| cost.max(1),
+            LiftCost::Cells(cost.max(1).saturating_mul(lifted_count)),
+            &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
-            |model, values| {
+            &mut |model, values| {
                 let scalar = |index: usize| {
                     ranges[index]
                         .clone()
@@ -193,16 +199,28 @@ impl Model {
     ) -> CalcResult {
         let mut collected = Collected::default();
         for node in refs {
+            // A cached range of a linked workbook is a reference: `AGGREGATE(9,6,[1]Uses!$A$1:$C$2)`
+            // is 16, its `#N/A` skipped (fixtures/external-link-cached-ranges Refs!B60).
+            if let Some(cells) = self.external_reference_cells(node, cell) {
+                match cells {
+                    Ok(cells) => {
+                        for value in &cells {
+                            collect_value(value_of(value, cell), ignore, &mut collected);
+                        }
+                    }
+                    Err(error) => return error,
+                }
+                continue;
+            }
             let areas = match self.reference_areas(node, cell) {
                 Ok(areas) => areas,
                 Err(error) => return error,
             };
-            // Several areas draw on the formula's cell budget, as SUM's do.
-            if let Err(error) = self.check_area_cells(&areas, cell) {
-                return error;
-            }
+            // Several areas are walked as a union's, on the formula's walk budget, as SUM's are.
+            let of_union = areas.len() > 1;
             for area in areas {
-                if let Err(error) = self.aggregate_collect_area(&area, ignore, &mut collected, cell)
+                if let Err(error) =
+                    self.aggregate_collect_area(&area, of_union, ignore, &mut collected, cell)
                 {
                     return error;
                 }
@@ -288,8 +306,11 @@ impl Model {
             Ok(areas) => areas,
             Err(error) => return error,
         };
+        let of_union = areas.len() > 1;
         for area in areas {
-            if let Err(error) = self.aggregate_collect_area(&area, ignore, &mut collected, cell) {
+            if let Err(error) =
+                self.aggregate_collect_area(&area, of_union, ignore, &mut collected, cell)
+            {
                 return error;
             }
         }
@@ -317,6 +338,7 @@ impl Model {
     fn aggregate_collect_area(
         &mut self,
         area: &Range,
+        of_union: bool,
         ignore: Ignore,
         collected: &mut Collected,
         cell: CellReferenceIndex,
@@ -342,7 +364,7 @@ impl Model {
                 );
             }
         }
-        self.for_each_position_in_areas(std::slice::from_ref(area), cell, |model, position| {
+        let mut f = |model: &mut Self, position: CellReferenceIndex| {
             if collected
                 .hidden_rows
                 .contains(&(position.sheet, position.row))
@@ -362,7 +384,8 @@ impl Model {
             let value = model.evaluate_cell(position);
             collect_value(value, ignore, collected);
             Ok(())
-        })
+        };
+        self.for_each_position_in_area(area, of_union, cell, &mut f)
     }
 }
 

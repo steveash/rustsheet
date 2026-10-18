@@ -1,0 +1,97 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FORMULATEXT quoting of lowercase sheet names whose uppercase forms Excel leaves unquoted (T-1652)",
+  "tags": [
+    "M6",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "rcr",
+      "cells": {
+        "A1": 1
+      }
+    },
+    {
+      "name": "cr",
+      "cells": {
+        "A1": 2
+      }
+    },
+    {
+      "name": "r0",
+      "cells": {
+        "A1": 3
+      }
+    },
+    {
+      "name": "c0",
+      "cells": {
+        "A1": 4
+      }
+    },
+    {
+      "name": "r0c1",
+      "cells": {
+        "A1": 5
+      }
+    },
+    {
+      "name": "r1048577",
+      "cells": {
+        "A1": 6
+      }
+    },
+    {
+      "name": "rcd",
+      "cells": {
+        "A1": 7
+      }
+    },
+    {
+      "name": "c1d",
+      "cells": {
+        "A1": 8
+      }
+    },
+    {
+      "name": "Rc",
+      "cells": {
+        "A1": 9
+      }
+    },
+    {
+      "name": "rC1",
+      "cells": {
+        "A1": 10
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "='rcr'!A1",
+        "B1": "=FORMULATEXT(A1)",
+        "A2": "='cr'!A1",
+        "B2": "=FORMULATEXT(A2)",
+        "A3": "='r0'!A1",
+        "B3": "=FORMULATEXT(A3)",
+        "A4": "='c0'!A1",
+        "B4": "=FORMULATEXT(A4)",
+        "A5": "='r0c1'!A1",
+        "B5": "=FORMULATEXT(A5)",
+        "A6": "='r1048577'!A1",
+        "B6": "=FORMULATEXT(A6)",
+        "A7": "='rcd'!A1",
+        "B7": "=FORMULATEXT(A7)",
+        "A8": "='c1d'!A1",
+        "B8": "=FORMULATEXT(A8)",
+        "A9": "='Rc'!A1",
+        "B9": "=FORMULATEXT(A9)",
+        "A10": "='rC1'!A1",
+        "B10": "=FORMULATEXT(A10)"
+      }
+    }
+  ],
+  "expected": {}
+}

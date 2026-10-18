@@ -36,7 +36,7 @@ fn scalar_matches(stored: &FormulaValue, result: &CalcResult) -> bool {
     match (stored, result) {
         (FormulaValue::Number(a), CalcResult::Number(b)) => a == b,
         (FormulaValue::Number(a), CalcResult::EmptyCell | CalcResult::EmptyArg) => *a == 0.0,
-        (FormulaValue::Text(a), CalcResult::String(b)) => a == b,
+        (FormulaValue::Text(a), CalcResult::String(b)) => **a == **b,
         (FormulaValue::Boolean(a), CalcResult::Boolean(b)) => a == b,
         (FormulaValue::Error { ei, .. }, CalcResult::Error { error, .. }) => ei == error,
         _ => false,
@@ -47,7 +47,7 @@ fn spill_matches(stored: &SpillValue, node: &ArrayNode) -> bool {
     match (stored, node) {
         (SpillValue::Number(a), ArrayNode::Number(b)) => a == b,
         (SpillValue::Number(a), ArrayNode::Empty) => *a == 0.0,
-        (SpillValue::Text(a), ArrayNode::String(b)) => a == b,
+        (SpillValue::Text(a), ArrayNode::String(b)) => **a == **b,
         (SpillValue::Boolean(a), ArrayNode::Boolean(b)) => a == b,
         (SpillValue::Error(a), ArrayNode::Error(b)) => a == b,
         _ => false,
@@ -58,7 +58,7 @@ fn anchor_matches(stored: &FormulaValue, node: &ArrayNode) -> bool {
     match (stored, node) {
         (FormulaValue::Number(a), ArrayNode::Number(b)) => a == b,
         (FormulaValue::Number(a), ArrayNode::Empty) => *a == 0.0,
-        (FormulaValue::Text(a), ArrayNode::String(b)) => a == b,
+        (FormulaValue::Text(a), ArrayNode::String(b)) => **a == **b,
         (FormulaValue::Boolean(a), ArrayNode::Boolean(b)) => a == b,
         (FormulaValue::Error { ei, .. }, ArrayNode::Error(b)) => ei == b,
         _ => false,

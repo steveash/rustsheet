@@ -5,6 +5,7 @@
 //! rustsheet-eval run [--suite S] [--filter X]   # run + write eval/runs/latest/{report.json,report.md}
 //! rustsheet-eval check                          # gate: fail on any baseline regression
 //! rustsheet-eval update-baseline                # ratchet baselines up (refuses regressions)
+//! rustsheet-eval evidence-floor [--update]      # ratchet functions below the evidence floor
 //! rustsheet-eval show <case-id> [--all]         # per-cell detail for one case
 //! rustsheet-eval snapshot <file.xlsx>           # dump stored formulas/values as JSON
 //! rustsheet-eval cases <suite>                  # cases + sidecar paths as JSON (for tools)
@@ -17,7 +18,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use clap::{Parser, Subcommand};
 
 use rustsheet_eval::baseline::{self, Baseline};
@@ -25,12 +26,14 @@ use rustsheet_eval::calibrate::compare_snapshots;
 use rustsheet_eval::catalog::Catalog;
 use rustsheet_eval::deviations;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
+use rustsheet_eval::evidence_floor::{self, Lock, EVIDENCE_FLOOR, LOCK_PATH};
 use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::milestone_lists::{self, MilestoneList};
 use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
+use rustsheet_eval::text_expect;
 use rustsheet_eval::xlsx_snapshot::{read_snapshot, WorkbookSnapshot};
 
 #[derive(Parser)]
@@ -92,6 +95,17 @@ enum Cmd {
         /// Permit removing previously passing items (requires PR justification).
         #[arg(long)]
         allow_regressions: bool,
+    },
+    /// Fail if more in-scope functions are below the evidence floor than
+    /// quality/evidence-floor.json allows, or if the lock is stale (T-0056, decision 0062).
+    /// Counts the vendored suites only, so a fetched external suite cannot move it.
+    EvidenceFloor {
+        /// Record a lower count in the lock.
+        #[arg(long)]
+        update: bool,
+        /// With --update, also record a higher count (needs a decision record).
+        #[arg(long)]
+        allow_increase: bool,
     },
     /// Show every scored cell of one case.
     Show {
@@ -236,17 +250,28 @@ struct Milestones {
 }
 
 /// Loads the frozen lists and the probe-milestone mapping, and fails when a line of either names
-/// a case that no suite discovers.
+/// a case that no suite discovers, or a cell line names a cell its case holds no expectation for.
 fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
     let lists = milestone_lists::load_all(root)?;
     let mapping = Mapping::load(root)?;
     if !lists.is_empty() || mapping != Mapping::default() {
-        let mut known = BTreeSet::new();
+        let mut files = BTreeMap::new();
         for suite in Suite::load_all(&root.join("eval/suites"))? {
-            known.extend(suite.cases()?.into_iter().map(|c| c.id));
+            files.extend(suite.cases()?.into_iter().map(|c| (c.id.clone(), c)));
         }
+        let known: BTreeSet<String> = files.keys().cloned().collect();
         milestone_lists::check_known(&lists, &known)?;
         mapping.check_known(&known)?;
+        // A cell line must name a cell its case scores (T-1568).
+        let mut expectations = BTreeMap::new();
+        for (case, _) in mapping.cells.keys() {
+            if let Some(file) = files.get(case) {
+                let cells = rustsheet_eval::case::expectation_cells(file)
+                    .map_err(|e| anyhow!("{case}: {e}"))?;
+                expectations.insert(case.clone(), cells);
+            }
+        }
+        mapping.check_cells(&expectations)?;
     }
     let rules = Rules::new(&lists, mapping, catalog);
     Ok(Milestones { lists, rules })
@@ -356,9 +381,11 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         let old = Baseline::read(&path)?;
         let delta = baseline::diff(&old, &current);
         println!(
-            "[{name}] known failures {} -> {}  (fixed {}, new-coverage failures {}, REGRESSIONS {}, new cases {}, removed cases {})",
+            "[{name}] known failures {} -> {}, text {} -> {}  (fixed {}, new-coverage failures {}, REGRESSIONS {}, new cases {}, removed cases {})",
             old.failing.len(),
             current.failing.len(),
+            old.text_failing.len(),
+            current.text_failing.len(),
             delta.fixed.len(),
             delta.new_failures.len(),
             delta.regressions.len(),
@@ -394,6 +421,67 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
     })
 }
 
+fn cmd_evidence_floor(root: &Path, update: bool, allow_increase: bool) -> Result<ExitCode> {
+    let sel = Selection {
+        suites: Suite::load_all(&root.join("eval/suites"))?
+            .into_iter()
+            .filter(|s| s.manifest.fetch.is_none())
+            .map(|s| s.manifest.name)
+            .collect(),
+        filter: None,
+        timeout: 60,
+    };
+    let suites = select(root, &sel, false)?;
+    let catalog = Catalog::load(root)?;
+    let results = execute(&suites, &sel);
+    let report = RunReport::build(
+        RustSheetEngine.name(),
+        &results,
+        &RustSheetEngine.implemented_functions(),
+        &catalog,
+    );
+    let count = report.below_floor.len();
+    let lock = Lock::read(root)?;
+    let verdict = evidence_floor::judge(lock, count);
+    println!(
+        "evidence floor: {count} in-scope functions with fewer than {EVIDENCE_FLOOR} Excel cells (lock {} at floor {})",
+        lock.below_floor, lock.floor
+    );
+    let new_lock = Lock {
+        floor: EVIDENCE_FLOOR,
+        below_floor: count,
+    };
+    let ok = match (verdict, update) {
+        (evidence_floor::Verdict::Unchanged, _) => true,
+        (_, true) if !evidence_floor::may_record(verdict, allow_increase) => {
+            println!("  refusing to record an increase or a new floor without --allow-increase (needs a decision record)");
+            false
+        }
+        (_, true) => {
+            new_lock.write(root)?;
+            println!("  updated {LOCK_PATH}: commit it");
+            true
+        }
+        (evidence_floor::Verdict::Improved, false) => {
+            println!("  fewer functions are below the floor: run `make eval-baseline` and commit {LOCK_PATH}");
+            false
+        }
+        (evidence_floor::Verdict::Regressed, false) => {
+            println!("  REGRESSION: more functions are below the floor than {LOCK_PATH} allows; the report's \"Below the evidence floor\" list names them");
+            false
+        }
+        (evidence_floor::Verdict::FloorChanged, false) => {
+            println!("  {LOCK_PATH} was taken at another floor: rerun with --update --allow-increase under a decision record");
+            false
+        }
+    };
+    Ok(if ok {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
+}
+
 fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
     let suite_name = case_id.split('/').next().unwrap_or_default().to_string();
     let sel = Selection {
@@ -423,6 +511,9 @@ fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
             c.actual
         );
     }
+    let mut text = String::new();
+    text_expect::write_case(&r.text, all, &mut text);
+    print!("{text}");
     Ok(ExitCode::SUCCESS)
 }
 
@@ -516,6 +607,10 @@ fn run() -> Result<ExitCode> {
             sel,
             allow_regressions,
         } => cmd_check(&root, &sel, Some(allow_regressions)),
+        Cmd::EvidenceFloor {
+            update,
+            allow_increase,
+        } => cmd_evidence_floor(&root, update, allow_increase),
         Cmd::Show { case_id, all } => cmd_show(&root, &case_id, all),
         Cmd::Cases { suite } => cmd_cases(&root, &suite),
         Cmd::Snapshot { .. } | Cmd::Compare { .. } => unreachable!("handled above"),

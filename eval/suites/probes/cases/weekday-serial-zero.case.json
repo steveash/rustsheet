@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1253: WEEKDAY of a serial in [0,1) and return_type 0 / -1 / -0.0001.",
+  "tags": [
+    "M6",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=WEEKDAY(31330,0)",
+        "A2": "=WEEKDAY(31330,-1)",
+        "A3": "=WEEKDAY(31330,-0.0001)",
+        "A4": "=WEEKDAY(31330,0.5)",
+        "A5": "=WEEKDAY(31330,0.9999)",
+        "A6": "=WEEKDAY(0)",
+        "A7": "=WEEKDAY(0.5)",
+        "A8": "=WEEKDAY(0.5,2)",
+        "A9": "=WEEKDAY(0.5,3)",
+        "A10": "=WEEKDAY(0,11)",
+        "A11": "=WEEKDAY(0,17)",
+        "A12": "=WEEKDAY(0.9999)",
+        "A13": "=WEEKDAY(1)",
+        "A14": "=WEEKDAY(-0.5)",
+        "A15": "=WEEKDAY(0,0)",
+        "A16": "=WEEKDAY(0,18)",
+        "A17": "=WEEKDAY(31330,10)",
+        "A18": "=WEEKDAY(31330,4)"
+      }
+    }
+  ]
+}

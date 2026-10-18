@@ -4,13 +4,14 @@ use crate::functions::util::array_node_to_calc_result;
 use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
-    cast::{array_node_to_string, truncate_text, MAX_TEXT_UNITS},
+    cast::{array_node_to_string, array_node_to_text, StringOrArray, MAX_TEXT_UNITS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
     model::Model,
+    text::Text,
 };
 
 /// Excel: CONCAT and TEXTJOIN text over 32767 characters is #CALC!, not truncated
@@ -26,27 +27,35 @@ fn text_limit_error(cell: CellReferenceIndex) -> CalcResult {
 /// Running UTF-16 size of a TEXTJOIN result, kept incrementally so each check is O(new values)
 /// and an oversized join stops before it is built (CLAUDE.md directive 5).
 struct JoinSize {
-    delimiter_units: usize,
+    /// UTF-16 size of each delimiter; the one before value `n` (n >= 1) is `delimiter_units[(n - 1) % len]`.
+    delimiter_units: Vec<usize>,
     counted: usize,
     units: usize,
 }
 
 impl JoinSize {
-    fn new(delimiter: &str) -> Self {
+    fn new(delimiters: &[String]) -> Self {
         JoinSize {
-            delimiter_units: delimiter.encode_utf16().count(),
+            delimiter_units: delimiters
+                .iter()
+                .map(|d| d.encode_utf16().count())
+                .collect(),
             counted: 0,
             units: 0,
         }
     }
 
+    /// Size of the delimiter before the value at index `counted`; delimiters cycle (T-1510).
+    fn separator(&self) -> usize {
+        match self.counted.checked_sub(1) {
+            Some(gap) => self.delimiter_units[gap % self.delimiter_units.len()],
+            None => 0,
+        }
+    }
+
     fn exceeds(&mut self, values: &[String]) -> bool {
         for value in values.get(self.counted..).unwrap_or_default() {
-            let separator = if self.counted == 0 {
-                0
-            } else {
-                self.delimiter_units
-            };
+            let separator = self.separator();
             self.units = self
                 .units
                 .saturating_add(separator + value.encode_utf16().count());
@@ -60,11 +69,7 @@ impl JoinSize {
     /// over the limit (probes/text-result-limit-errors C2-C3, C7-C9).
     fn exceeds_with_separator(&mut self, values: &[String]) -> bool {
         let over = self.exceeds(values);
-        let separator = if self.counted == 0 {
-            0
-        } else {
-            self.delimiter_units
-        };
+        let separator = self.separator();
         over || self.units.saturating_add(separator) > MAX_TEXT_UNITS
     }
 
@@ -86,7 +91,10 @@ impl JoinSize {
         }
         match value {
             CalcResult::Number(n) => values.push(number_to_text(n)),
-            CalcResult::String(text) => values.push(text),
+            // An empty string is skipped like an empty cell with ignore_empty
+            // (probes/textjoin-array-limit-empty-strings A7-A10).
+            CalcResult::String(text) if ignore_empty && text.is_empty() => {}
+            CalcResult::String(text) => values.push(text.into_lossy_string()),
             CalcResult::Boolean(b) => values.push(if b { "TRUE" } else { "FALSE" }.to_string()),
             CalcResult::EmptyCell if !ignore_empty => values.push(String::new()),
             CalcResult::Error { .. } if *over_limit || self.exceeds_with_separator(values) => {
@@ -109,7 +117,7 @@ impl JoinSize {
     /// join is over the limit (so at most about 32,767 are added). Returns whether it is over.
     /// With an empty delimiter they add nothing, so none are added.
     fn push_empties(&mut self, values: &mut Vec<String>, count: i64) -> bool {
-        if self.delimiter_units == 0 {
+        if self.delimiter_units.iter().all(|&units| units == 0) {
             return false;
         }
         for _ in 0..count {
@@ -169,10 +177,16 @@ impl Model {
         }
         let operand_refs: Vec<&TextArg> = operands.iter().collect();
         broadcast_text(cell, &operand_refs, |i, j| {
-            let mut joined = String::new();
+            let mut joined = Text::default();
+            // Once the limit has cut the text, the later arguments are still read (an error
+            // argument wins) but cannot change it, so they are not appended and re-cut.
+            let mut at_limit = false;
             for operand in &operands {
-                joined.push_str(&array_node_to_string(operand.elem(i, j))?);
-                truncate_text(&mut joined);
+                let piece = array_node_to_text(operand.elem(i, j))?;
+                if !at_limit {
+                    joined.push(&piece);
+                    at_limit = joined.truncate_utf16(MAX_TEXT_UNITS);
+                }
             }
             Ok(ArrayNode::String(joined))
         })
@@ -246,7 +260,32 @@ impl Model {
         if result.units > MAX_TEXT_UNITS {
             return text_limit_error(cell);
         }
-        CalcResult::String(result.text)
+        CalcResult::String(result.text.into())
+    }
+
+    /// TEXTJOIN's delimiter: a scalar, or the elements of an array or range in row-major order,
+    /// which cycle between the joined values (probes/textjoin-delimiter-array A1-A6, T-1510).
+    /// Never empty.
+    fn textjoin_delimiters(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<String>, CalcResult> {
+        match self.get_string_or_array(node, cell)? {
+            StringOrArray::String(text) => Ok(vec![text.into_lossy_string()]),
+            StringOrArray::Array(array) => {
+                let mut delimiters = Vec::new();
+                for element in array.iter().flatten() {
+                    delimiters.push(array_node_to_string(element).map_err(|error| {
+                        CalcResult::new_error(error, cell, "Error in delimiter".to_string())
+                    })?);
+                }
+                if delimiters.is_empty() {
+                    delimiters.push(String::new());
+                }
+                Ok(delimiters)
+            }
+        }
     }
 
     /// TEXTJOIN(delimiter, `ignore_empty`, text1, [text2], ...): joins text with a delimiter; over 32767
@@ -256,8 +295,8 @@ impl Model {
         if arg_count < 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let delimiter = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
+        let delimiters = match self.textjoin_delimiters(&args[0], cell) {
+            Ok(delimiters) => delimiters,
             Err(error) => return error,
         };
         let ignore_empty = match self.get_boolean(&args[1], cell) {
@@ -265,7 +304,7 @@ impl Model {
             Err(error) => return error,
         };
         let mut values: Vec<String> = Vec::new();
-        let mut size = JoinSize::new(&delimiter);
+        let mut size = JoinSize::new(&delimiters);
         // Once over the limit the values are dropped, but arguments are still evaluated so an error
         // argument after the limit wins; a cell error read past it is dropped and evaluation goes on,
         // so the result is #CALC! unless a later error argument wins
@@ -361,7 +400,8 @@ impl Model {
                     over_limit = true;
                 }
                 error @ CalcResult::Error { .. } => return error,
-                CalcResult::String(value) => values.push(value),
+                CalcResult::String(value) if ignore_empty && value.is_empty() => {}
+                CalcResult::String(value) => values.push(value.into_lossy_string()),
                 CalcResult::Boolean(value) => {
                     if value {
                         values.push("TRUE".to_string());
@@ -375,7 +415,21 @@ impl Model {
                     }
                 }
                 CalcResult::EmptyArg => {}
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                // Excel joins an array row by row; the first error element wins and an empty element
+                // (a blank cell passed through SORT, UNIQUE, TRANSPOSE) is skipped only with
+                // ignore_empty (probes/textjoin-array-arguments A1-A28, A30-A35); an error element past the 32,767
+                // limit is dropped like a range cell's (probes/textjoin-array-limit-empty-strings A1-A5).
+                CalcResult::Array(array) => {
+                    for element in array.iter().flatten() {
+                        let value = array_node_to_calc_result(element, cell);
+                        if let Err(error) =
+                            size.push_cell(value, ignore_empty, &mut values, &mut over_limit, cell)
+                        {
+                            return error;
+                        }
+                    }
+                }
+                CalcResult::Lambda(_) => {
                     return CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,
@@ -387,6 +441,14 @@ impl Model {
         if over_limit || size.exceeds(&values) {
             return text_limit_error(cell);
         }
-        CalcResult::String(values.join(&delimiter))
+        let mut joined = String::new();
+        for (index, value) in values.iter().enumerate() {
+            // Same cycling rule as `JoinSize::separator`, which sizes these delimiters.
+            if let Some(gap) = index.checked_sub(1) {
+                joined.push_str(&delimiters[gap % delimiters.len()]);
+            }
+            joined.push_str(value);
+        }
+        CalcResult::String(joined.into())
     }
 }

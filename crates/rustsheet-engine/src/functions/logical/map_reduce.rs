@@ -1,24 +1,16 @@
+use super::bycol_byrow::LambdaGrid;
+use crate::cast::calc_result_to_array_node;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
+    limits::check_array_cells,
     model::Model,
 };
-
-fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
-    match result {
-        CalcResult::Number(n) => ArrayNode::Number(n),
-        CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-        CalcResult::String(s) => ArrayNode::String(s),
-        CalcResult::Error { error, .. } => ArrayNode::Error(error),
-        CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-        _ => ArrayNode::Error(Error::VALUE),
-    }
-}
 
 impl Model {
     /// `=MAP(array1, [array2, ...], lambda)`
     ///
-    /// Applies the lambda element-wise across one or more arrays of equal dimensions.
+    /// Applies the lambda element-wise across one or more arrays; smaller arrays pad with `#N/A`.
     /// The lambda receives one scalar value from each array per call.
     pub(crate) fn fn_map(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 {
@@ -32,7 +24,7 @@ impl Model {
             return lambda_result;
         }
 
-        let mut arrays: Vec<Vec<Vec<CalcResult>>> = Vec::with_capacity(n_arrays);
+        let mut arrays: Vec<LambdaGrid> = Vec::with_capacity(n_arrays);
         for arg in &args[..n_arrays] {
             let data = match self.lambda_cells(arg, cell) {
                 Ok(d) => d,
@@ -41,31 +33,43 @@ impl Model {
             arrays.push(data);
         }
 
-        if arrays[0].is_empty() || arrays[0][0].is_empty() {
+        if arrays
+            .iter()
+            .any(|arr| arr.rows() == 0 || arr.columns() == 0)
+        {
             return CalcResult::new_error(Error::VALUE, cell, "empty array".to_string());
         }
 
-        let num_rows = arrays[0].len();
-        let num_cols = arrays[0][0].len();
-
-        for arr in &arrays[1..] {
-            if arr.len() != num_rows || arr.is_empty() || arr[0].len() != num_cols {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "MAP: all arrays must have the same dimensions".to_string(),
-                );
-            }
+        // Arrays of different sizes pad to the largest rows and columns: an element missing from
+        // any array is #N/A and the LAMBDA is not called for it, a scalar or a row next to a column
+        // does not broadcast (probes/map-unequal-sizes, excel-graph 2026-10-17; arrays.md "MAP
+        // over arrays of different sizes").
+        let num_rows = arrays.iter().map(LambdaGrid::rows).max().unwrap_or(0);
+        let num_cols = arrays.iter().map(LambdaGrid::columns).max().unwrap_or(0);
+        // The padded shape is known before allocating it (DEVIATION, arrays.md "Array results
+        // above 1,048,576 cells").
+        if let Some((error, message)) = check_array_cells(num_rows, num_cols) {
+            return CalcResult::new_error(error, cell, message);
         }
 
-        let mut result = vec![vec![ArrayNode::Empty; num_cols]; num_rows];
+        let mut result = vec![vec![ArrayNode::Error(Error::NA); num_cols]; num_rows];
+        // One argument buffer for every element.
+        let mut values: Vec<CalcResult> = Vec::with_capacity(arrays.len());
+        let mut caller = self.lambda_caller(&lambda_result, arrays.len());
 
-        for i in 0..num_rows {
-            for j in 0..num_cols {
-                let values: Vec<CalcResult> = arrays.iter().map(|arr| arr[i][j].clone()).collect();
-                let cell_result = self.call_lambda_with_values(lambda_result.clone(), values, cell);
+        for (i, result_row) in result.iter_mut().enumerate() {
+            for (j, slot) in result_row.iter_mut().enumerate() {
+                if arrays
+                    .iter()
+                    .any(|arr| i >= arr.rows() || j >= arr.columns())
+                {
+                    continue;
+                }
+                values.clear();
+                values.extend(arrays.iter().map(|arr| arr.at(i, j)));
+                let cell_result = self.call_lambda_caller(&mut caller, values.drain(..), cell);
                 let cell_result = self.lambda_result_value(cell_result, cell);
-                result[i][j] = calc_result_to_array_node(cell_result);
+                *slot = calc_result_to_array_node(cell_result);
             }
         }
 
@@ -98,9 +102,10 @@ impl Model {
             Err(e) => return e,
         };
 
-        let elements: Vec<&CalcResult> = data.iter().flat_map(|row| row.iter()).collect();
+        let columns = data.columns();
+        let count = data.rows() * columns;
 
-        if elements.is_empty() {
+        if count == 0 {
             return CalcResult::new_error(Error::VALUE, cell, "empty array".to_string());
         }
 
@@ -111,13 +116,14 @@ impl Model {
             }
             (init, 0)
         } else {
-            (elements[0].clone(), 1)
+            (data.at(0, 0), 1)
         };
 
-        for element in &elements[start..] {
-            accumulator = self.call_lambda_with_values(
-                lambda_result.clone(),
-                vec![accumulator, (*element).clone()],
+        let mut caller = self.lambda_caller(&lambda_result, 2);
+        for index in start..count {
+            accumulator = self.call_lambda_caller(
+                &mut caller,
+                [accumulator, data.at(index / columns, index % columns)],
                 cell,
             );
             if accumulator.is_error() {

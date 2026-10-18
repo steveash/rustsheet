@@ -1,19 +1,9 @@
+use crate::cast::calc_result_to_array_node;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
 };
-
-fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
-    match result {
-        CalcResult::Number(n) => ArrayNode::Number(n),
-        CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-        CalcResult::String(s) => ArrayNode::String(s),
-        CalcResult::Error { error, .. } => ArrayNode::Error(error),
-        CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-        _ => ArrayNode::Error(Error::VALUE),
-    }
-}
 
 impl Model {
     /// `=SCAN([initial_value], array, lambda)`
@@ -42,12 +32,12 @@ impl Model {
             Err(e) => return e,
         };
 
-        if data.is_empty() || data[0].is_empty() {
+        if data.rows() == 0 || data.columns() == 0 {
             return CalcResult::new_error(Error::VALUE, cell, "empty array".to_string());
         }
 
-        let num_rows = data.len();
-        let num_cols = data[0].len();
+        let num_rows = data.rows();
+        let num_cols = data.columns();
 
         let mut accumulator = if has_initial {
             let init = self.evaluate_node_in_context(&args[0], cell);
@@ -56,7 +46,7 @@ impl Model {
             }
             init
         } else {
-            data[0][0].clone()
+            data.at(0, 0)
         };
 
         let mut result = vec![vec![ArrayNode::Empty; num_cols]; num_rows];
@@ -70,19 +60,17 @@ impl Model {
             start_col = 1;
         }
 
-        for i in 0..num_rows {
+        let mut caller = self.lambda_caller(&lambda_result, 2);
+        for (i, result_row) in result.iter_mut().enumerate() {
             let col_start = if i == 0 { start_col } else { 0 };
-            for j in col_start..num_cols {
-                accumulator = self.call_lambda_with_values(
-                    lambda_result.clone(),
-                    vec![accumulator, data[i][j].clone()],
-                    cell,
-                );
+            for (j, slot) in result_row.iter_mut().enumerate().skip(col_start) {
+                accumulator =
+                    self.call_lambda_caller(&mut caller, [accumulator, data.at(i, j)], cell);
                 if accumulator.is_error() {
                     return accumulator;
                 }
                 let value = self.lambda_result_value(accumulator.clone(), cell);
-                result[i][j] = calc_result_to_array_node(value);
+                *slot = calc_result_to_array_node(value);
             }
         }
 

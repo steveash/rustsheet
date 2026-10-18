@@ -30,7 +30,7 @@ from rustsheet_tools import repo_root
 from rustsheet_tools.oracle.backends import BACKENDS, OracleError, OracleInfo
 from rustsheet_tools.oracle.calibrate import calibrate, to_markdown
 from rustsheet_tools.oracle.canary import checked_values, embed_canary
-from rustsheet_tools.snapshot import compare_workbooks, eval_binary, formula_values, snapshot
+from rustsheet_tools.snapshot import compare_workbooks, formula_values, snapshot, suite_cases
 from rustsheet_tools.spec2xlsx import build_xlsx
 
 GOLDEN_BACKENDS = {"excel-graph", "excel-desktop"}
@@ -96,18 +96,6 @@ def cmd_recalc(args: argparse.Namespace) -> int:
     return 0
 
 
-def _suite_cases(suite: str) -> list[dict[str, Any]]:
-    """The suite's cases as the harness discovers them (`rustsheet-eval cases`, see main.rs)."""
-    out = subprocess.run(
-        [str(eval_binary()), "--root", str(repo_root()), "cases", suite],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    cases: list[dict[str, Any]] = json.loads(out.stdout)
-    return cases
-
-
 def _skip_reason(case: dict[str, Any], include_cached: bool) -> str | None:
     """Why an xlsx case needs no oracle run: unreadable, nothing to score, or cached values trusted."""
     if case.get("unreadable"):
@@ -127,7 +115,7 @@ def cmd_fill(args: argparse.Namespace) -> int:
     if not ok:
         sys.exit(f"{backend.name} unavailable: {why}")
     done = failed = skipped = conflicts = 0
-    for entry in _suite_cases(args.suite)[: args.limit or None]:
+    for entry in suite_cases(args.suite)[: args.limit or None]:
         case, sidecar = Path(entry["path"]), Path(entry["sidecar"])
         is_spec = case.name.endswith(".case.json")
         if sidecar.exists() and not args.force:
@@ -162,6 +150,8 @@ def cmd_fill(args: argparse.Namespace) -> int:
             },
             "sheets": values,
         }
+        if info.texts:  # displayed text of the cells the case lists in `text` (T-1610)
+            oracle["text"] = info.texts
         _drop_undecoded(case, values)
         if spec:
             _report_hand_disagreements(case, spec, values)
@@ -176,7 +166,7 @@ def cmd_fill(args: argparse.Namespace) -> int:
 
 
 def cmd_calibrate(args: argparse.Namespace) -> int:
-    workbooks = [Path(e["path"]) for e in _suite_cases(args.suite)]
+    workbooks = [Path(e["path"]) for e in suite_cases(args.suite)]
     if not workbooks or any(p.name.endswith(".case.json") for p in workbooks):
         sys.exit(f"calibrate needs an xlsx suite of Excel-authored workbooks; {args.suite} is not one")
     ok, why = _backend(args.backend).available()

@@ -1,0 +1,233 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FORMULATEXT quoting of sheets with an R1C1 reference after a dot, and column bounds after C and RC (T-1652)",
+  "tags": [
+    "M6",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "R1.C1D",
+      "cells": {
+        "A1": 1
+      }
+    },
+    {
+      "name": "C1.R1",
+      "cells": {
+        "A1": 2
+      }
+    },
+    {
+      "name": "RC1.C1",
+      "cells": {
+        "A1": 3
+      }
+    },
+    {
+      "name": "C1.C1",
+      "cells": {
+        "A1": 4
+      }
+    },
+    {
+      "name": "R1.R1",
+      "cells": {
+        "A1": 5
+      }
+    },
+    {
+      "name": "R1.RC",
+      "cells": {
+        "A1": 6
+      }
+    },
+    {
+      "name": "R1.R",
+      "cells": {
+        "A1": 7
+      }
+    },
+    {
+      "name": "R1..C1",
+      "cells": {
+        "A1": 8
+      }
+    },
+    {
+      "name": "R1.D.C1",
+      "cells": {
+        "A1": 9
+      }
+    },
+    {
+      "name": "R1.C0",
+      "cells": {
+        "A1": 10
+      }
+    },
+    {
+      "name": "R1.C1.5",
+      "cells": {
+        "A1": 11
+      }
+    },
+    {
+      "name": "A.C1",
+      "cells": {
+        "A1": 12
+      }
+    },
+    {
+      "name": "X.R1",
+      "cells": {
+        "A1": 13
+      }
+    },
+    {
+      "name": "X.RC",
+      "cells": {
+        "A1": 14
+      }
+    },
+    {
+      "name": "ABC.R1C1",
+      "cells": {
+        "A1": 15
+      }
+    },
+    {
+      "name": "R1.C1.",
+      "cells": {
+        "A1": 16
+      }
+    },
+    {
+      "name": "Q.R",
+      "cells": {
+        "A1": 17
+      }
+    },
+    {
+      "name": "C16385D",
+      "cells": {
+        "A1": 18
+      }
+    },
+    {
+      "name": "C16384D",
+      "cells": {
+        "A1": 19
+      }
+    },
+    {
+      "name": "RC16384D",
+      "cells": {
+        "A1": 20
+      }
+    },
+    {
+      "name": "RC16385D",
+      "cells": {
+        "A1": 21
+      }
+    },
+    {
+      "name": "R1048576C1D",
+      "cells": {
+        "A1": 22
+      }
+    },
+    {
+      "name": "r1C1D",
+      "cells": {
+        "A1": 23
+      }
+    },
+    {
+      "name": "RC0D",
+      "cells": {
+        "A1": 24
+      }
+    },
+    {
+      "name": "R1C1D.C1",
+      "cells": {
+        "A1": 25
+      }
+    },
+    {
+      "name": "R1.C16385",
+      "cells": {
+        "A1": 26
+      }
+    },
+    {
+      "name": "X.C16385",
+      "cells": {
+        "A1": 27
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "='R1.C1D'!A1",
+        "B1": "=FORMULATEXT(A1)",
+        "A2": "='C1.R1'!A1",
+        "B2": "=FORMULATEXT(A2)",
+        "A3": "='RC1.C1'!A1",
+        "B3": "=FORMULATEXT(A3)",
+        "A4": "='C1.C1'!A1",
+        "B4": "=FORMULATEXT(A4)",
+        "A5": "='R1.R1'!A1",
+        "B5": "=FORMULATEXT(A5)",
+        "A6": "='R1.RC'!A1",
+        "B6": "=FORMULATEXT(A6)",
+        "A7": "='R1.R'!A1",
+        "B7": "=FORMULATEXT(A7)",
+        "A8": "='R1..C1'!A1",
+        "B8": "=FORMULATEXT(A8)",
+        "A9": "='R1.D.C1'!A1",
+        "B9": "=FORMULATEXT(A9)",
+        "A10": "='R1.C0'!A1",
+        "B10": "=FORMULATEXT(A10)",
+        "A11": "='R1.C1.5'!A1",
+        "B11": "=FORMULATEXT(A11)",
+        "A12": "='A.C1'!A1",
+        "B12": "=FORMULATEXT(A12)",
+        "A13": "='X.R1'!A1",
+        "B13": "=FORMULATEXT(A13)",
+        "A14": "='X.RC'!A1",
+        "B14": "=FORMULATEXT(A14)",
+        "A15": "='ABC.R1C1'!A1",
+        "B15": "=FORMULATEXT(A15)",
+        "A16": "='R1.C1.'!A1",
+        "B16": "=FORMULATEXT(A16)",
+        "A17": "='Q.R'!A1",
+        "B17": "=FORMULATEXT(A17)",
+        "A18": "='C16385D'!A1",
+        "B18": "=FORMULATEXT(A18)",
+        "A19": "='C16384D'!A1",
+        "B19": "=FORMULATEXT(A19)",
+        "A20": "='RC16384D'!A1",
+        "B20": "=FORMULATEXT(A20)",
+        "A21": "='RC16385D'!A1",
+        "B21": "=FORMULATEXT(A21)",
+        "A22": "='R1048576C1D'!A1",
+        "B22": "=FORMULATEXT(A22)",
+        "A23": "='r1C1D'!A1",
+        "B23": "=FORMULATEXT(A23)",
+        "A24": "='RC0D'!A1",
+        "B24": "=FORMULATEXT(A24)",
+        "A25": "='R1C1D.C1'!A1",
+        "B25": "=FORMULATEXT(A25)",
+        "A26": "='R1.C16385'!A1",
+        "B26": "=FORMULATEXT(A26)",
+        "A27": "='X.C16385'!A1",
+        "B27": "=FORMULATEXT(A27)"
+      }
+    }
+  ],
+  "expected": {}
+}

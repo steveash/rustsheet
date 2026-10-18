@@ -3,7 +3,7 @@ id: T-1349
 title: "Probe and match MAP over arrays of different sizes or a single value with an array (#VALUE! today)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -36,3 +36,9 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 -
+
+## Outcome
+Probed MAP's unequal-size shape (probes/map-unequal-sizes, 36 cells): the result is the bounding box of the
+arrays, an element missing from any array is `#N/A` and the LAMBDA is not called, nothing broadcasts. `fn_map` pads
+accordingly under the 2^20-cell bound. gen-m7 a0cbc75358b429b6 and b5186d194fec0fdc now pass; gen-m9 55fc8c4ffbd7c7cc A33
+and 95efb37a9874f82e A17 pass (those cases keep other failing cells). Eval: probes +36 cells, 0 regressions.

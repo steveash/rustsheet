@@ -3,8 +3,13 @@ use chrono::{Datelike, NaiveDate};
 use super::dates::broken_schedule_error;
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::from_excel_date,
+    constants::MAXIMUM_DATE_SERIAL_NUMBER,
+    expressions::{parser::Node, types::CellReferenceIndex},
+    formatter::dates::{
+        from_excel_date, from_excel_date_up_to, real_date_to_serial, EPOCH_1904_IN_1900_SERIALS,
+    },
+    functions::lift::num_error,
+    functions::Function,
     model::Model,
 };
 
@@ -214,7 +219,7 @@ fn acc_coup_days(settl: NaiveDate, mat: NaiveDate, freq: i32, basis: i32) -> Res
 // period contributes a prorated slice; each earlier full period contributes
 // `calc_method` (1 for the default issue→settlement, 0 for
 // first_interest→settlement); the issue-stub period contributes its own prorated
-// slice.
+// slice. `settlement_days`, when given, replaces the day count of the settlement slice.
 #[allow(clippy::too_many_arguments)]
 fn compute_accrint(
     issue: NaiveDate,
@@ -225,6 +230,7 @@ fn compute_accrint(
     frequency: i32,
     basis: i32,
     calc_method: bool,
+    settlement_days: Option<f64>,
 ) -> Result<f64, String> {
     let num_months = 12 / frequency;
     let freq = frequency as f64;
@@ -238,13 +244,24 @@ fn compute_accrint(
     // first_interest (only meaningful for the default calc_method) walk the
     // schedule forward to find it; otherwise it is the regular coupon start.
     let pcd = if settlement > first_interest && calc_method {
-        acc_find_pcd_ncd(first_interest, settlement, num_months, end_month_bond)?.1
+        let (ncd, pcd) = acc_find_pcd_ncd(first_interest, settlement, num_months, end_month_bond)?;
+        // Excel: the coupon date that ends the settlement's period must be a date; one past
+        // 9999-12-31 is #NUM! in either date system (`ACCRINT(2956276,2956456,2958100,0.05,1000,
+        // 2,0,TRUE)`, next coupon 10000-01-01; probes/date-system-1900-accrint-settlement-bound
+        // A23:A28, A39:A49; docs/excel-semantics/financial.md).
+        if real_date_to_serial(ncd).is_none() {
+            return Err("Next coupon date is past 9999-12-31".to_string());
+        }
+        pcd
     } else {
         reg_pcd
     };
 
     let first_date = if issue > pcd { issue } else { pcd };
-    let days0 = acc_days_between(first_date, settlement, true, basis)?;
+    let days0 = match settlement_days {
+        Some(days) => days,
+        None => acc_days_between(first_date, settlement, true, basis)?,
+    };
     let coup_days0 = acc_coup_days(reg_pcd, first_interest, frequency, basis)?;
     let mut acc = days0 / coup_days0;
 
@@ -306,76 +323,50 @@ impl Model {
     // (issue = settlement, or accrual reduces to zero days), return 0.
     // The `issue >= settlement` case still errors per the MS spec.
     pub(crate) fn fn_accrint(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(6..=8).contains(&arg_count) {
+        self.lift_call(Function::Accrint, args, cell, &mut |model, values| {
+            model.accrint_of(values, cell)
+        })
+    }
+
+    /// ACCRINT's kernel: every argument is read, in order, before any value is checked. Its
+    /// dates and numbers take booleans (as `get_number` did), `calc_method` reads as a boolean.
+    fn accrint_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        let [issue, first_interest, settlement, rate, par, frequency, rest @ ..] = values else {
             return CalcResult::new_args_number_error(cell);
-        }
-        let issue_serial = match self.get_number(&args[0], cell) {
-            Ok(c) => self.financial_date(c),
-            Err(s) => return s,
         };
-        let first_interest_serial = match self.get_number(&args[1], cell) {
-            Ok(c) => self.financial_date(c),
-            Err(s) => return s,
+        let read = || -> Result<_, CalcResult> {
+            Ok((
+                self.financial_date(self.cast_number_ref(issue, cell)?),
+                self.financial_date(self.cast_number_ref(first_interest, cell)?),
+                self.financial_date(self.cast_number_ref(settlement, cell)?),
+                self.cast_number_ref(rate, cell)?,
+                self.cast_number_ref(par, cell)?,
+                self.cast_number_ref(frequency, cell)?.floor() as i32,
+                self.cast_number_or(rest.first(), 0.0, cell)?.floor() as i32,
+                rest.get(1)
+                    .map_or(Ok(true), |value| Self::cast_bool_ref(value, cell))?,
+            ))
         };
-        let settlement_serial = match self.get_number(&args[2], cell) {
-            Ok(c) => self.financial_date(c),
-            Err(s) => return s,
+        let (
+            issue_serial,
+            first_interest_serial,
+            settlement_serial,
+            rate,
+            par,
+            frequency,
+            basis,
+            calc_method,
+        ) = match read() {
+            Ok(read) => read,
+            Err(error) => return error,
         };
-        let rate = match self.get_number(&args[3], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let par = match self.get_number(&args[4], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let frequency = match self.get_number(&args[5], cell) {
-            Ok(f) => f.floor() as i32,
-            Err(s) => return s,
-        };
-        let basis = if arg_count > 6 {
-            match self.get_number(&args[6], cell) {
-                Ok(f) => f.floor() as i32,
-                Err(s) => return s,
-            }
-        } else {
-            0
-        };
-        let calc_method = if arg_count > 7 {
-            match self.get_boolean(&args[7], cell) {
-                Ok(b) => b,
-                Err(s) => return s,
-            }
-        } else {
-            true
-        };
-        if rate <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "rate must be > 0".to_string());
-        }
-        if par <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "par must be > 0".to_string());
-        }
-        if !matches!(frequency, 1 | 2 | 4) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "frequency must be 1, 2, or 4".to_string(),
-            );
-        }
-        if !(0..=4).contains(&basis) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "basis must be between 0 and 4".to_string(),
-            );
-        }
-        if issue_serial >= settlement_serial {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "issue must be before settlement".to_string(),
-            );
+        if rate <= 0.0
+            || par <= 0.0
+            || !matches!(frequency, 1 | 2 | 4)
+            || !(0..=4).contains(&basis)
+            || issue_serial >= settlement_serial
+        {
+            return num_error(cell);
         }
 
         // ACCRINT walks the coupon schedule of `first_interest`, which in a 1904 workbook breaks
@@ -387,17 +378,30 @@ impl Model {
         }
         let issue = match from_excel_date(issue_serial) {
             Ok(d) => d,
-            Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
+            Err(_) => return num_error(cell),
         };
         let first_interest = match from_excel_date(first_interest_serial) {
             Ok(d) => d,
-            Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
+            Err(_) => return num_error(cell),
         };
-        let settlement = match from_excel_date(settlement_serial) {
+        let settlement_limit = self
+            .workbook
+            .settings
+            .date_system
+            .accrint_settlement_limit(calc_method);
+        let settlement = match from_excel_date_up_to(settlement_serial, settlement_limit) {
             Ok(d) => d,
-            Err(e) => return CalcResult::new_error(Error::NUM, cell, e),
+            Err(_) => return num_error(cell),
         };
 
+        // Excel: a 1904 settlement read past 9999-12-31 (calc_method FALSE) has no 30/360 date;
+        // bases 0 and 4 then accrue first_interest's 1904 serial plus 1462 days in the settlement
+        // slice, whatever the settlement and the issue (410415.83 for first_interest 9990-06-30,
+        // 1904 serial 2953532; probes/date-system-1904-accrint-settlement-bound A1:A17,
+        // docs/excel-semantics/dates.md). Bases 1 to 3 count its actual days.
+        let settlement_days = (settlement_serial > i64::from(MAXIMUM_DATE_SERIAL_NUMBER)
+            && matches!(basis, 0 | 4))
+        .then(|| (first_interest_serial - EPOCH_1904_IN_1900_SERIALS) as f64);
         match compute_accrint(
             issue,
             first_interest,
@@ -407,9 +411,10 @@ impl Model {
             frequency,
             basis,
             calc_method,
+            settlement_days,
         ) {
             Ok(value) => CalcResult::Number(value),
-            Err(e) => CalcResult::new_error(Error::NUM, cell, e),
+            Err(_) => num_error(cell),
         }
     }
 }

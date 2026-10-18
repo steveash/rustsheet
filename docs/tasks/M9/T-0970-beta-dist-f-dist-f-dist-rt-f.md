@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-1744]
 ---
 
 ## Goal
@@ -15,6 +15,8 @@ One accurate regularized incomplete beta I_x(a,b) (and its complement, computed 
 engine, used by BETA.DIST, F.DIST, F.DIST.RT and F.TEST, replacing statrs' `beta_reg`.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 3 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
+Oracle targets: probes-numeric cases `m9-beta-dist-a*`, `m9-f-dist`, `m9-f-dist-rt`, `m9-beta-inv`, `m9-f-inv`, `m9-f-inv-rt` (T-1044).
 Triage T-0903. Kernel: `statrs::function::beta::beta_reg` (Numerical-Recipes Lentz continued fraction
 whose prefactor uses statrs' Lanczos `ln_gamma`; ~1e-15..1e-13 relative error here), reached through
 `statrs::distribution::Beta::cdf`/`pdf` (`functions/statistical/beta.rs` `fn_beta_dist`) and
@@ -61,3 +63,6 @@ definition afterwards.
 ## Out of scope
 BETA.INV/F.INV/F.INV.RT (T-0974); Student t (T-0969); discrete distributions (T-0927); legacy
 BETADIST/FDIST/FTEST evidence (T-1047).
+
+## Fit result (T-1744)
+Implement Excel's closed forms first: I_x(a,1) = exp(a ln x) (27/27 b = 1 cells; not pow) and I_x(1,b) = 1 - exp(b ln(1-x)) (22/24 a = 1 cells; 1 - pow(1-x,b) fits equally; the misses at x = 0.9, b = 2.5 and 5 are unfitted). The best general candidate, `best_combination` in `fitlab/kernels/beta.py`, is bit-exact on 158 of 283 BETA.DIST cells, against 87 today.

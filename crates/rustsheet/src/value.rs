@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use rustsheet_engine::expressions::token::Error as EngineError;
 use rustsheet_engine::types::{Cell, FormulaValue, SpillValue};
+use rustsheet_engine::Text;
 
 /// The kind of an Excel error value (`#DIV/0!`, `#N/A`, ...).
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -246,6 +247,27 @@ impl Value {
     }
 }
 
+/// The engine text of a formula or spill cell that holds a lone surrogate, if it does. Shared
+/// strings are `String`s and cannot hold one.
+pub(crate) fn lone_text(cell: &Cell) -> Option<&Text> {
+    let (Cell::CellFormula {
+        v: FormulaValue::Text(text),
+        ..
+    }
+    | Cell::ArrayFormula {
+        v: FormulaValue::Text(text),
+        ..
+    }
+    | Cell::SpillCell {
+        v: SpillValue::Text(text),
+        ..
+    }) = cell
+    else {
+        return None;
+    };
+    text.has_lone_surrogate().then_some(text)
+}
+
 /// A cell's value borrowed from the engine, so unchanged cells can be compared without
 /// building an owned [`Value`] (no `Arc<str>` per text cell).
 #[derive(Copy, Clone, Debug)]
@@ -278,7 +300,7 @@ impl<'a> CellView<'a> {
             Cell::SpillCell { v, .. } => match v {
                 SpillValue::Boolean(b) => Self::Bool(*b),
                 SpillValue::Number(n) => Self::Number(*n),
-                SpillValue::Text(s) => Self::Text(s.as_str()),
+                SpillValue::Text(s) => Self::Text(s),
                 SpillValue::Error(ei) => Self::Error(ErrorKind::from_engine(ei), None),
             },
         }
@@ -292,7 +314,7 @@ impl<'a> CellView<'a> {
             }
             FormulaValue::Boolean(b) => Self::Bool(*b),
             FormulaValue::Number(n) => Self::Number(*n),
-            FormulaValue::Text(s) => Self::Text(s.as_str()),
+            FormulaValue::Text(s) => Self::Text(s),
             FormulaValue::Error { ei, m, .. } => Self::Error(
                 ErrorKind::from_engine(ei),
                 (!m.is_empty()).then_some(m.as_str()),

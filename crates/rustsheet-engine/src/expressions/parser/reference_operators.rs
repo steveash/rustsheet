@@ -445,7 +445,6 @@ pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> 
         | Node::NamedFunctionKind { .. }
         | Node::LambdaCallKind { .. }
         | Node::DefinedNameKind(_)
-        | Node::TableNameKind(_)
         | Node::NamedVariableKind { .. }
         | Node::Group { .. }
         | Node::SpillRangeOperator { .. } => true,
@@ -509,9 +508,20 @@ pub(crate) fn at_text(child: &Node, sub: &dyn Fn(&Node) -> String) -> String {
 
 /// `text` (the printed `node`) as the callee of a call, `(A1)(A2)`: a LAMBDA prints bare
 /// (`LAMBDA(x,x)(1)`) and a group with its own parentheses; any other callee was written in
-/// parentheses, and bare, `A1(A2)`, it would not parse back (T-0149).
+/// parentheses, and bare, `A1(A2)`, it would not parse back (T-0149). A bare cell is the one
+/// exception: a callee spelled like a cell (`Ab1(1)`) is a call of that cell and prints bare,
+/// `AB1(1)` (probes/unknown-function-name-spelling B8, T-1758).
 pub(crate) fn callee_operand(text: String, node: &Node) -> String {
-    if matches!(node, Node::LambdaDefKind { .. } | Node::Group { .. }) {
+    let bare_cell = matches!(
+        node,
+        Node::ReferenceKind {
+            sheet_name: None,
+            absolute_row: false,
+            absolute_column: false,
+            ..
+        }
+    );
+    if bare_cell || matches!(node, Node::LambdaDefKind { .. } | Node::Group { .. }) {
         text
     } else {
         format!("({text})")
@@ -570,4 +580,21 @@ fn keeps_own_group(node: &Node) -> bool {
 pub(super) fn at_outside(node: &Node) -> bool {
     matches!(node, Node::Group { child, .. }
         if !matches!(child.ungrouped(), Node::OpUnionKind { .. }) && keeps_own_group(child))
+}
+
+/// The static shape of a written range on a sheet the workbook does not hold. One into another
+/// workbook spills its `#BLOCKED!` cells as a range of this workbook spills its values
+/// (`='[other.xlsx]Sheet1'!A1:B2`, probes/external-ref-no-link-index C1:D2; T-1454), so it has the
+/// shape a `RangeKind` has; any other is a scalar error, which that shape evaluates to as well.
+pub(super) fn wrong_range_shape(node: &Node) -> super::static_analysis::StaticResult {
+    match node {
+        Node::WrongRangeKind {
+            row1,
+            column1,
+            row2,
+            column2,
+            ..
+        } => super::static_analysis::StaticResult::Range(row2 - row1, column2 - column1),
+        _ => super::static_analysis::StaticResult::Scalar,
+    }
 }

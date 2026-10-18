@@ -6,8 +6,11 @@ mod map_reduce;
 mod scan;
 mod switch;
 
+pub(crate) use bycol_byrow::as_lambda;
+pub(crate) use lambda::{FunctionValue, LambdaCaller};
 pub(crate) use r#let::{has_duplicate_parameter, same_variable};
 
+use crate::cast::calc_result_to_array_node;
 use crate::{
     arithmetic::bcast_idx,
     calc_result::CalcResult,
@@ -16,9 +19,10 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::math_and_trigonometry::array_size::check_array_size,
+    functions::lift::{LiftCost, LiftOptions, LiftedArg},
+    limits::check_array_size,
     model::Model,
-    reference_operators::RefArg,
+    reference_operators::{Picked, RefArg},
 };
 
 /// How IF hands back the branch a scalar condition chose.
@@ -37,15 +41,15 @@ pub(crate) enum IfBranchMode {
 
 // ── IF array helpers ──────────────────────────────────────────────────────────
 
-/// A branch argument to IF/IFERROR/IFNA: either a scalar (broadcast to all
-/// positions) or a 2-D array (indexed by position with size-1 broadcasting; a
-/// ragged out-of-range position → #N/A). See [`if_arg_at`].
-enum IfArg {
+/// A branch argument to IF/IFERROR/IFNA (and an arm of CHOOSE over an index array): either a
+/// scalar (broadcast to all positions) or a 2-D array (indexed by position with size-1
+/// broadcasting; a ragged out-of-range position → #N/A). See [`if_arg_at`].
+pub(crate) enum IfArg {
     Scalar(ArrayNode),
     Array(Vec<Vec<ArrayNode>>),
 }
 
-fn if_arg_dims(arg: &IfArg) -> (usize, usize) {
+pub(crate) fn if_arg_dims(arg: &IfArg) -> (usize, usize) {
     match arg {
         IfArg::Scalar(_) => (1, 1),
         IfArg::Array(arr) => (arr.len(), arr.first().map_or(0, |r| r.len())),
@@ -56,7 +60,7 @@ fn if_arg_dims(arg: &IfArg) -> (usize, usize) {
 /// size-1 broadcasting rule: a scalar covers every position, a length-1
 /// dimension repeats its only element to cover the whole output extent, and a
 /// ragged mismatch (e.g. length 2 against an extent of 3) yields `#N/A`.
-fn if_arg_at(arg: &IfArg, row: usize, col: usize) -> ArrayNode {
+pub(crate) fn if_arg_at(arg: &IfArg, row: usize, col: usize) -> ArrayNode {
     match arg {
         IfArg::Scalar(node) => node.clone(),
         IfArg::Array(arr) => {
@@ -71,24 +75,6 @@ fn if_arg_at(arg: &IfArg, row: usize, col: usize) -> ArrayNode {
             }
         }
     }
-}
-
-fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
-    match result {
-        CalcResult::Number(n) => ArrayNode::Number(n),
-        CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-        CalcResult::String(s) => ArrayNode::String(s),
-        CalcResult::Error { error, .. } => ArrayNode::Error(error),
-        CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-        CalcResult::Lambda(_) | CalcResult::Range { .. } | CalcResult::Array(_) => {
-            ArrayNode::Error(Error::VALUE)
-        }
-    }
-}
-
-/// Whether an argument value makes IFS or SWITCH run element by element: an array or a range.
-fn is_lifted(value: &CalcResult) -> bool {
-    matches!(value, CalcResult::Range { .. } | CalcResult::Array(_))
 }
 
 /// IFS's and SWITCH's `#N/A` when nothing matches.
@@ -148,48 +134,78 @@ impl Model {
     /// IF; with a scalar condition the chosen branch comes back as `mode` says
     /// (T-0216, T-1026; docs/excel-semantics/references.md). In reference context a union in
     /// the chosen branch stays its areas: `SUM(IF(TRUE,(A1,B2)))` is 6 and
-    /// `IF(TRUE,(A1,B2)) A1` is 1 (probes/multiarea-ifchoose H1:H2).
+    /// `IF(TRUE,(A1,B2)) A1` is 1 (probes/multiarea-ifchoose H1:H2). The condition is evaluated
+    /// once, then the chosen branch once (`read_once` in functions/logical/lambda.rs relies on it).
     pub(crate) fn if_impl(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
         mode: IfBranchMode,
     ) -> RefArg {
+        let node = match self.if_pick(args, cell) {
+            Picked::Node(node) => node,
+            Picked::Value(value) => return RefArg::Value(value),
+        };
+        match mode {
+            IfBranchMode::Aggregate => self.evaluate_reference_arg(node, cell),
+            IfBranchMode::SingleSheet => self.evaluate_single_sheet_arg(node, cell).into(),
+            IfBranchMode::Chosen => self.evaluate_chosen_reference(node, cell).into(),
+            // A reference into another workbook picked is read as INDEX reads the cell it picks:
+            // `IF(TRUE,…!A1)` is 0, `&"x"` "x", ERROR.TYPE `#N/A`, where the written `…!A1` is
+            // `#BLOCKED!` (probes/external-ref-no-link-index A26, external-ref-no-link-ifchoose).
+            IfBranchMode::Value => self
+                .external_reference_picked_value(node, cell)
+                .unwrap_or_else(|| self.evaluate_node_in_context(node, cell))
+                .into(),
+        }
+    }
+
+    /// What IF's condition picks: with a scalar condition the branch it chooses, unevaluated;
+    /// otherwise the value IF gives (the condition's error, FALSE for a missing branch, or IF
+    /// over an array condition, its branches evaluated).
+    pub(crate) fn if_pick<'a>(&mut self, args: &'a [Node], cell: CellReferenceIndex) -> Picked<'a> {
         if args.len() != 2 && args.len() != 3 {
-            return RefArg::Value(CalcResult::new_args_number_error(cell));
+            return Picked::Value(CalcResult::new_args_number_error(cell));
         }
         let cond_result = self.evaluate_node_in_context(&args[0], cell);
 
         // Normalize cond to a 2-D array, or take the scalar early-return path.
         let cond_array: Vec<Vec<ArrayNode>> = match cond_result {
-            error @ CalcResult::Error { .. } => return RefArg::Value(error),
+            error @ CalcResult::Error { .. } => return Picked::Value(error),
             CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
                 Ok(array) => array,
-                Err(error) => return RefArg::Value(error),
+                Err(error) => return Picked::Value(error),
             },
             CalcResult::Array(a) => a,
             other => {
-                // Scalar cond: cast to bool and evaluate the chosen branch directly.
+                // Scalar cond: cast to bool and pick the chosen branch.
                 // The branch result may itself be an array (it will spill).
-                let b = match self.cast_to_bool(other, cell) {
-                    Ok(b) => b,
-                    Err(e) => return RefArg::Value(e),
-                };
-                let branch = if b { args.get(1) } else { args.get(2) };
-                return match branch {
-                    Some(node) => match mode {
-                        IfBranchMode::Aggregate => self.evaluate_reference_arg(node, cell),
-                        IfBranchMode::SingleSheet => {
-                            self.evaluate_single_sheet_arg(node, cell).into()
-                        }
-                        IfBranchMode::Chosen => self.evaluate_chosen_reference(node, cell).into(),
-                        IfBranchMode::Value => self.evaluate_node_in_context(node, cell).into(),
-                    },
-                    None => RefArg::Value(CalcResult::Boolean(false)),
+                return match self.cast_to_bool(other, cell) {
+                    Ok(true) => Picked::Node(&args[1]),
+                    Ok(false) => args
+                        .get(2)
+                        .map_or(Picked::Value(CalcResult::Boolean(false)), Picked::Node),
+                    Err(error) => Picked::Value(error),
                 };
             }
         };
-        RefArg::Value(self.if_array(args, cond_array, cell))
+        Picked::Value(self.if_array(args, cond_array, cell))
+    }
+
+    /// Evaluates a branch of IF over an array condition (or an arm of CHOOSE over an index
+    /// array) once, as a scalar or a 2-D array; `Err` is a range that cannot be read.
+    pub(crate) fn evaluate_if_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<IfArg, CalcResult> {
+        Ok(match self.evaluate_node_in_context(node, cell) {
+            CalcResult::Range { left, right } => {
+                IfArg::Array(self.evaluate_range(left, right, cell)?)
+            }
+            CalcResult::Array(a) => IfArg::Array(a),
+            other => IfArg::Scalar(calc_result_to_array_node(other)),
+        })
     }
 
     /// IF over an array condition: one result per position, the branches broadcast.
@@ -200,27 +216,18 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let has_else = args.len() == 3;
+        // Both branches are read here, so a parameter read once in each is read twice.
+        self.variable_stack.copy_read_once();
         // Evaluate branches once and normalise each to a scalar or 2-D array.
-        let true_result = self.evaluate_node_in_context(&args[1], cell);
-        let true_arg = match true_result {
-            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
-                Ok(array) => IfArg::Array(array),
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => IfArg::Array(a),
-            other => IfArg::Scalar(calc_result_to_array_node(other)),
+        let true_arg = match self.evaluate_if_arg(&args[1], cell) {
+            Ok(arg) => arg,
+            Err(error) => return error,
         };
-
         let false_arg: Option<IfArg> = if has_else {
-            let r = self.evaluate_node_in_context(&args[2], cell);
-            Some(match r {
-                CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
-                    Ok(array) => IfArg::Array(array),
-                    Err(error) => return error,
-                },
-                CalcResult::Array(a) => IfArg::Array(a),
-                other => IfArg::Scalar(calc_result_to_array_node(other)),
-            })
+            match self.evaluate_if_arg(&args[2], cell) {
+                Ok(arg) => Some(arg),
+                Err(error) => return error,
+            }
         } else {
             None
         };
@@ -316,14 +323,9 @@ impl Model {
 
         // value is an array: replace each handled error element with the
         // fallback, broadcasting the fallback across positions.
-        let fallback_result = self.evaluate_node_in_context(&args[1], cell);
-        let fallback_arg = match fallback_result {
-            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
-                Ok(array) => IfArg::Array(array),
-                Err(error) => return error,
-            },
-            CalcResult::Array(a) => IfArg::Array(a),
-            other => IfArg::Scalar(calc_result_to_array_node(other)),
+        let fallback_arg = match self.evaluate_if_arg(&args[1], cell) {
+            Ok(arg) => arg,
+            Err(error) => return error,
         };
 
         // Output size = largest extent across value and the fallback.
@@ -406,7 +408,7 @@ impl Model {
         let case_count = args_count / 2;
         for case_index in 0..case_count {
             let condition = self.evaluate_node_in_context(&args[2 * case_index], cell);
-            if is_lifted(&condition) {
+            if LiftedArg::is_grid(&condition) {
                 // The earlier conditions were all FALSE, so the result is decided element by
                 // element from here (`IFS({TRUE,FALSE},1,TRUE,2)` is {1,2}).
                 let mut lifted = vec![condition];
@@ -414,11 +416,14 @@ impl Model {
                 for node in &args[2 * case_index + 2..] {
                     lifted.push(self.evaluate_node_in_context(node, cell));
                 }
-                return self.lift_with_cost(
+                // Each element reads its condition and value pairs: one unit per argument.
+                let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
+                return self.lift_values(
                     lifted,
-                    |_| 1,
+                    LiftCost::Cells(units),
+                    &LiftOptions::REUSE_EQUAL_RUNS,
                     cell,
-                    |model, pairs| model.ifs_element(pairs, cell),
+                    &mut |model, pairs| model.ifs_element(pairs, cell),
                 );
             }
             match self.cast_to_bool(condition, cell) {

@@ -3,10 +3,11 @@ id: T-1476
 title: "Move MIN, MAX, PRODUCT, COUNT and COUNTA onto the shared aggregate-argument walker"
 milestone: M2
 lane: quality
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
+spec: docs/specs/SPEC-0009-aggregate-argument-walker.md
 depends_on: [T-1474]
 ---
 
@@ -23,11 +24,20 @@ PRODUCT's `seen_value` and MIN/MAX's "0 when there is none"). Evidence that must
 probes/min-max-value-args, probes/aggregate-error-precedence (C1-C24 cover PRODUCT, MIN and MAX) and the COUNT
 probes named in the spec.
 
+T-1474 built only the parts its consumers use. This task adds the rest of SPEC-0009's policy in
+`functions/util/aggregate_args.rs`: `ErrorRule::Items` (COUNT, COUNTA), the `reading` field with
+`ArgReading::PickedKeepingBlanks` (COUNTA) and `ArgReading::Reference` (PRODUCT), and the
+`ReferenceValue` rules COUNT needs. `for_each_value` and its two siblings in count_and_average.rs
+stay as named-policy entry points.
+
 ## Acceptance criteria
-- [ ] MIN, MAX, PRODUCT, COUNT and COUNTA call the walker. `rg "let mut reference_error" crates/rustsheet-engine/src/functions` finds only the walker.
-- [ ] `make eval`: 0 regressions and 0 fixes in every suite.
-- [ ] scripts/check_duplication.py does not rise; record any drop with `--update` per decision 0010.
-- [ ] `make check` green; reviewers approve.
+- [x] MIN, MAX, PRODUCT, COUNT and COUNTA call the walker. `rg "let mut reference_error" crates/rustsheet-engine/src/functions` finds only the walker.
+- [x] `make eval`: 0 regressions and 0 fixes in every suite.
+- [x] scripts/check_duplication.py does not rise; record any drop with `--update` per decision 0010.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - MINA/MAXA and the other A-variants unless the spec lists them; behavior changes of any kind.
+
+## Outcome
+MIN, MAX, PRODUCT, COUNT and COUNTA now call the shared walker; `rg "let mut reference_error"` finds nothing under `functions/`. Added `ArgReading` (with `PickedKeepingBlanks` for COUNTA), `ErrorRule::Items` (COUNT, COUNTA), `ArrayErrorRank::DirectUnlessLambdaHeld` (MIN, MAX keep their held-LAMBDA rule, TODO(T-1615)) and `walk_aggregate_read` (COUNTA picks its argument first). `ArgReading::Reference` was not needed (PRODUCT reads as `Aggregate` since T-1571). Eval delta: 0 fixed, 0 regressions; duplicated lines 6369 -> 6360 (baseline updated). No benchmark was run: the hot path (a range of numbers) is the walker SUM already uses.

@@ -1,0 +1,40 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1044 sweep: F.DIST.RT(x,d1,d2).",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-1044",
+  "sweep",
+  "incomplete-beta"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=F.DIST.RT(0.5,1,1)",
+    "A2": "=F.DIST.RT(1,1,1)",
+    "A3": "=F.DIST.RT(3,1,1)",
+    "A4": "=F.DIST.RT(10,1,1)",
+    "A5": "=F.DIST.RT(0.5,2,5)",
+    "A6": "=F.DIST.RT(1,2,5)",
+    "A7": "=F.DIST.RT(3,2,5)",
+    "A8": "=F.DIST.RT(10,2,5)",
+    "A9": "=F.DIST.RT(0.5,5,2)",
+    "A10": "=F.DIST.RT(1,5,2)",
+    "A11": "=F.DIST.RT(3,5,2)",
+    "A12": "=F.DIST.RT(10,5,2)",
+    "A13": "=F.DIST.RT(0.5,10,10)",
+    "A14": "=F.DIST.RT(1,10,10)",
+    "A15": "=F.DIST.RT(3,10,10)",
+    "A16": "=F.DIST.RT(10,10,10)",
+    "A17": "=F.DIST.RT(0.5,50,100)",
+    "A18": "=F.DIST.RT(1,50,100)",
+    "A19": "=F.DIST.RT(3,50,100)",
+    "A20": "=F.DIST.RT(10,50,100)"
+   }
+  }
+ ],
+ "expected": {}
+}

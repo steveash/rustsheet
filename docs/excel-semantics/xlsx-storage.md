@@ -19,6 +19,14 @@ Characters invalid in XML 1.0 (U+0000–U+0008, U+000B, U+000C, U+000E–U+001F)
 cells; a literal `_xHHHH_` look-alike is written `_x005F_xHHHH_`.
 Evidence: `ironcalc-calc/TEXT/CHAR.xlsx` (Excel-cached): `=CHAR(1)` is stored as `_x0001_`.
 Readers must decode (`rustsheet_xlsx::import::decode_xlsx_escapes`); this is not CHAR behavior.
+A lone (unpaired) surrogate in a cached `<v>` is written the same way: the Excel-recalculated
+file of probes/text-surrogate-positions A6 (`LEFT("a😀b",2)&MID("a😀b",3,2)`, excel-graph
+2026-10-09) holds `a😀_xDE00_b`. `decode_xlsx_escapes` cannot decode a surrogate into a `String`
+and keeps the escape literally, so the oracle value is the text `a😀_xDE00_b` (SPEC-0010: the
+harness renders our lone units the same way, T-1578; the writer writes them so, T-1577).
+A lone high surrogate is written the same way, as `_xD83D_`: probes/text-lone-surrogates B1
+(`MID("😀",1,1)`), B3 (`a_xD83D_`) and B6 (`😀a_xD83D_`) (excel-graph, 2026-10-15, T-1582).
+Status: VERIFIED (control characters; lone low and lone high surrogates)
 
 ## Shared-formula members store no text; the master's text applies shifted
 Only the master `<f t="shared" ref=.. si=..>` carries text; members are `<f t="shared" si=../>` and
@@ -100,7 +108,7 @@ A5 (no error), A6 (5); function-name-forms-2 A3 `_xlfn.SUM(1,2)` = 3; probes/cat
 A4 `_xlfn.NORMSDIST(0)` = 0.5 (oracle: excel-graph, 2026-10-07, T-0040; A1 until T-0052). Consequence for case specs: the
 case builder (tools/src/rustsheet_tools/spec2xlsx.py) prefixes every call of a name on its own table
 (the engine exporter's list plus the names only XlsxWriter knew; T-0052), whatever else shares the
-formula; GROUPBY, PIVOTBY and PERCENTOF are not on it, so specs spell them `_xlfn.`
+formula; GROUPBY and PIVOTBY are not on it, so specs spell them `_xlfn.`
 (probes/catalog/availability-*). The classic NORMSDIST/NORMSINV give the same values bare as
 prefixed: normsdist-stored-form A1-A2 and availability-27 A8-A9 (refilled bare) and A4
 `_xlfn.NORMSDIST(0)` = 0.5 (excel-graph, 2026-10-07, T-0052).
@@ -110,9 +118,11 @@ exporter never writes `_xleta.` (T-1089).
 Comparison (T-0412): the exporter's arms were checked against XlsxWriter 3.2.9's future-function list; every
 name there that has an engine function already has an arm. XlsxWriter also prefixes ANCHORARRAY (the `#`
 operator), SINGLE (the `@` operator, handled by the parser), FILTERXML, QUERYSTRING and WEBSERVICE; the engine
-has no Function variant for the last three or for GROUPBY/PIVOTBY (not on XlsxWriter's list), so nothing is
-exported for them. PERCENTOF has an engine function but no arm; adding one also makes the case builder prefix it
-(spec2xlsx.py reads these arms), which would stale the bare-form evidence above, so it is T-0416. Two existing arms
+has no Function variant for the last three, so nothing is
+exported for them. GROUPBY and PIVOTBY (not on XlsxWriter's list) have `_xlfn.` arms since T-1322 and T-1326. PERCENTOF has an arm since T-0416. The case builder (which reads these arms) now prefixes it, and a
+sheet's `bare_function_names` list keeps a cell's names as typed, so function-name-forms A1 still
+stores the bare form (refilled 2026-10-13: still `#NAME?`). The gen-m5/m6/m7 cases that call PERCENTOF
+were refilled with the prefixed form. Two existing arms
 add a prefix Excel-authored workbooks omit (`GAMMALN`, `ISO.CEILING`): T-0417.
 Tasks: T-0040, T-0412, T-0416, T-0417, T-1089
 
@@ -148,6 +158,26 @@ C3 `=SIN(@(A1:A3))`, C4 `=@A1:A3`, C5 `=SIN(@((A1:A3)))`.
 Status: VERIFIED (web)
 Implemented in: expressions/parser/stringify.rs (`Group`, T-1340; `_xlfn.SINGLE((x))`, T-1343).
 Tasks: T-1244, T-1340, T-1343, T-1398
+
+## A one-cell dynamic formula is stored as a one-cell array with `cm="1"`
+Rule: a dynamic-array formula whose result is one cell is stored like a spilling one, with the
+anchor alone as the range: `<c r="F3" cm="1"><f t="array" ref="F3">SUM(ROW(C2:C4))</f>`. A plain
+`<f>` is a legacy formula, which Excel and our import intersect ("Legacy formulas intersect the
+ranges in value arguments", references.md), so `SUM(B1:B6+0)` stored plain would read back as
+`SUM(@B1:B6+0)`: `#VALUE!` off the range's rows instead of 12.
+Evidence: Excel-authored workbooks in crates/rustsheet-xlsx/tests/calc_tests:
+LOOKUP_AND_REFERENCE/ROW_COLUM.xlsx sheet6 F3 `SUM(ROW(C2:C4))` and sheet7 A1
+`MAX((C1:C20<>"")*ROW(C1:C20))`, MATCH_LOOKUP_arrays.xlsx D9, simple_arrays.xlsx A1
+`SUM({1,2,3}+{4,5,6})`. Excel also writes `cm` where no `@` is at stake (the array constants of
+simple_arrays A1).
+Ours: a formula typed with a one-cell result is a plain formula cell. The export writes it as a
+one-cell dynamic array exactly when reading its stored text as legacy would add an `@`
+(`legacy_reading_intersects`, T-1552), with every `@` it has kept as `_xlfn.SINGLE`; otherwise it
+writes a plain `<f>`. Re-exporting the 274 Excel-authored and fixture workbooks under
+crates/rustsheet-xlsx/tests and eval/suites adds no array formula (2026-10-15).
+Status: VERIFIED (Excel-authored files)
+Implemented in: crates/rustsheet-xlsx/src/export/worksheets.rs (`plain_formula`, T-1552).
+Tasks: T-1552
 
 ## LAMBDA optional parameters are stored `_xlop.`
 Rule: Excel stores an optional LAMBDA parameter `[y]` as `_xlop.y`, brackets dropped, and every use of
@@ -202,7 +232,7 @@ Rule: a workbook saved as "Strict Open XML Spreadsheet" writes `r:id` in the nam
 `t="d"` with ISO 8601 text (`<c r="A4" s="1" t="d"><v>1990-01-01</v></c>`) instead of a serial.
 Strict files also declare `<workbookPr dateCompatibility="0">`, which ECMA-376 ties to the 1900
 date base compatibility (serial 60 and dates before 1900-03-01); the importer ignores the attribute
-and what Excel computes under it is not probed (T-0407).
+and it changes nothing Excel computes (T-0407, below).
 Evidence: poi/SimpleStrict.xlsx, poi/SampleSS.strict.xlsx, poi/sample.strict.xlsx and
 poi/57914.xlsx (Excel-authored): all use the purl namespace for every `<sheet r:id>` and declare
 `dateCompatibility="0"`; SimpleStrict "Sheet Number 2"!A4 is the `t="d"` cell above. Their cached
@@ -211,10 +241,42 @@ Status: VERIFIED for `r:id`. VERIFIED for `t="d"` (T-0406): Excel reads the text
 `1990-01-01` = 32874, `1990-01-01T12:00:00` = 32874.5, `1900-02-28` = 59, `1900-03-01` = 61, and
 `ISNUMBER` of the cell is TRUE (fixtures/t-d-iso-date-cells, Excel for the web). Excel for the web
 refuses the whole workbook (`unsupportedWorkbook`) when a `t="d"` cell holds unparsable text
-(`abc`), so there is no value to match: the importer leaves such a cell empty. UNVERIFIED (probe
-pending, T-0407) for `dateCompatibility="0"`. UNVERIFIED (no probe): a trailing `Z`, fractional
-seconds, `1900-02-29` (serial 60), dates before 1900-01-01 and time-only text; the importer reads the
-first two as `serial + fraction` and leaves the rest empty. Probe run 2026-10-07, Excel for the web.
+(`abc`), so there is no value to match: the importer leaves such a cell empty. VERIFIED for
+`dateCompatibility="0"` (T-0407, fixtures/strict-date-compatibility-0, Excel for the web): the attribute
+does not switch off the 1900 leap-year bug. `DATE(1900,2,28)` = 59, `DATE(1900,3,1)` = 61, `DATE(1900,2,29)` = 60,
+`TEXT(60,"yyyy-mm-dd")` = `1900-02-29`, `DAY(59)` = 28, `DATEVALUE("1900-01-01")` = 1, and a `t="d"` cell
+`1900-01-01` reads as 1 (a number). The probe package was Transitional (standard namespace) carrying the attribute, not a purl-namespace package. The result is the same as a Transitional workbook, so the importer's
+ignoring the attribute is correct and no follow-up is needed. Probed one form per workbook (Excel for the web rejects
+a workbook with unparsable text; T-0409, fixtures/t-d-*): `1990-01-01T12:00:00Z` = 32874.5 (the `Z`
+is ignored), `1990-01-01T12:00:00.5` = 32874.500005787035 (fractional seconds count), `1900-02-29` = 60,
+time-only `12:00:00` = 0.5, and `1899-12-31` (before 1900-01-01) is a `#VALUE!` cell
+(`ISNUMBER` FALSE). UNVERIFIED: dates after 9999-12-31, `24:00:00`, non-zero-padded dates (the importer
+maps these to `#VALUE!` too) and a `t="d"` cell with no `<v>` (imported empty). Probe run 2026-10-07 (plain forms), 2026-10-14 (the rest), Excel for the web.
 Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/xml.rs;
 `iso8601_to_serial` in crates/rustsheet-xlsx/src/import/iso_date.rs (shared with the eval snapshot reader)
 Tasks: T-0112, T-0406, T-0407
+
+## Structured references in the file
+Rule (excel-graph uploads of spec2xlsx files, 2026-10-16, T-1607): the file form of a structured reference
+differs from what a user types, and Excel for the web refuses or misreads the typed forms.
+- A bare table name is stored as `Sales[]`. A stored bare `Sales` (`=ROWS(Sales)`, as a dynamic-array or a
+  legacy formula) makes the upload fail as corrupt (`createSession` 501 `FileCorruptTryRepair` /
+  `unsupportedWorkbook`); `ROWS(Sales[])` loads and gives the row count.
+- `@` is stored as `#This Row`: `Sales[[#This Row],[A]]`, `Sales[[#This Row],[A]:[B]]`, `Sales[#This Row]`.
+  A stored `Sales[@A]` loads but evaluates to `#REF!`.
+- The escape `'` goes before the special character: `Sales[C'#]` loads; `Sales['C#]` (a quote first) is
+  refused as corrupt.
+- A totals row needs its metadata: a `<tableColumn>` with `totalsRowLabel` for a label cell, or
+  `totalsRowFunction="custom"` and `<totalsRowFormula>` for a formula cell (written as a plain `<f>`). A table
+  with `totalsRowCount="1"` whose totals cells lack it (a label and a dynamic-array SUBTOTAL) is refused as
+  corrupt; with it the file loads and `Sales[[#Totals],[Val]]` reads the totals cell.
+- Table names that look like cell addresses (`T1`) are rejected by XlsxWriter; a header that is a number in
+  text (`2024`) is fine.
+Evidence: the corrupt-file refusals are upload errors, not cell values (throwaway probes during T-1607, not
+kept; to re-run one, a sheet with table `Sales` at A1:D4 or A1:B4 and one formula: `=ROWS(Sales)` stored bare,
+`=SUM(Sales['C#])` with header `C#`, or a totals row A4 "Total", B4 `=SUBTOTAL(109,Sales[Val])` without metadata); the forms that load are what gen-m8b's 3,368 filled cells use. tools/tests/test_spec2xlsx_tables.py
+pins each written form.
+Status: VERIFIED (web)
+Implemented in: tools/src/rustsheet_tools/spec2xlsx.py (`table_refs_to_file_form`, `_totals_column`); the engine
+reads `[#This Row]`; `Table[]` is T-1674.
+Tasks: T-1607

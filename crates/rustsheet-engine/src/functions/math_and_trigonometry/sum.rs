@@ -1,18 +1,20 @@
+use crate::calc_result::Range;
 use crate::expressions::types::CellReferenceIndex;
-use crate::reference_operators::RefArg;
+use crate::functions::statistical::paired::PairedArg;
+use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
 
 use crate::{
-    arithmetic::snap_near_zero,
+    arithmetic::{extended_sum, snap_near_zero},
     calc_result::CalcResult,
-    expressions::parser::{ArrayNode, Node},
+    expressions::parser::Node,
     expressions::token::Error,
     model::Model,
 };
 
-type TwoMatricesResult = (i32, i32, Vec<Option<f64>>, Vec<Option<f64>>);
+type TwoMatricesResult = (i64, i64, Vec<Option<f64>>, Vec<Option<f64>>);
 
 // Helper to check if two shapes are the same or compatible 1D shapes
-fn is_same_shape_or_1d(rows1: i32, cols1: i32, rows2: i32, cols2: i32) -> bool {
+fn is_same_shape_or_1d(rows1: i64, cols1: i64, rows2: i64, cols2: i64) -> bool {
     (rows1 == rows2 && cols1 == cols2)
         || (rows1 == 1 && cols2 == 1 && cols1 == rows2)
         || (rows2 == 1 && cols1 == 1 && cols2 == rows1)
@@ -46,15 +48,15 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let left = match self.sumx_values(&args[0], cell) {
-            Ok(v) => v,
+        let first = self.sumx_arg(&args[0], cell);
+        let second = self.sumx_arg(&args[1], cell);
+        let array_error =
+            |_, error| CalcResult::new_error(error, cell, "Error in array".to_string());
+        let paired = match self.paired_values(first, second, cell, array_error) {
+            Ok(paired) => paired,
             Err(e) => return e,
         };
-        let right = match self.sumx_values(&args[1], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        if left.len() != right.len() {
+        if !paired.same_size {
             return CalcResult::new_error(
                 Error::NA,
                 cell,
@@ -63,7 +65,7 @@ impl Model {
         }
         let mut sum = 0.0;
         let mut count = 0;
-        for (x, y) in left.into_iter().zip(right) {
+        for (x, y) in paired.first.into_iter().zip(paired.second) {
             if let (Some(x), Some(y)) = (x, y) {
                 sum += term(x, y);
                 count += 1;
@@ -75,20 +77,15 @@ impl Model {
         CalcResult::finite_number_or_num(sum, cell)
     }
 
-    // Flattens one SUMX argument (range, array or scalar number) row-major; non-numbers are `None`.
-    fn sumx_values(
-        &mut self,
-        arg: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<Vec<Option<f64>>, CalcResult> {
+    // One SUMX argument: a range, an array or a scalar typed in place (a non-number is `None`).
+    // An error is returned when its turn comes, after the first argument's cells.
+    fn sumx_arg(&mut self, arg: &Node, cell: CellReferenceIndex) -> PairedArg {
         match self.evaluate_node_in_context(arg, cell) {
-            CalcResult::Range { left, right } => self.values_from_range(left, right),
-            CalcResult::Array(array) => self
-                .values_from_array(array)
-                .map_err(|error| CalcResult::new_error(error, cell, "Error in array".to_string())),
-            CalcResult::Number(n) => Ok(vec![Some(n)]),
-            error @ CalcResult::Error { .. } => Err(error),
-            _ => Ok(vec![None]),
+            CalcResult::Range { left, right } => PairedArg::Range(Range { left, right }),
+            CalcResult::Array(array) => PairedArg::Array(array),
+            CalcResult::Number(n) => PairedArg::Values(vec![Some(n)]),
+            error @ CalcResult::Error { .. } => PairedArg::Error(error),
+            _ => PairedArg::Values(vec![None]),
         }
     }
 
@@ -104,148 +101,62 @@ impl Model {
         }
         let x_range = self.evaluate_node_in_context(&args[0], cell);
         let y_range = self.evaluate_node_in_context(&args[1], cell);
-
-        let result = match (x_range, y_range) {
-            (
-                CalcResult::Range {
-                    left: l1,
-                    right: r1,
-                },
-                CalcResult::Range {
-                    left: l2,
-                    right: r2,
-                },
-            ) => {
-                if l1.sheet != l2.sheet {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Ranges are in different sheets".to_string(),
-                    ));
-                }
-                let rows1 = r1.row - l1.row + 1;
-                let cols1 = r1.column - l1.column + 1;
-                let rows2 = r2.row - l2.row + 1;
-                let cols2 = r2.column - l2.column + 1;
-                if !is_same_shape_or_1d(rows1, cols1, rows2, cols2) {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Ranges must be of the same shape".to_string(),
-                    ));
-                }
-                let values_left = self.values_from_range(l1, r1)?;
-                let values_right = self.values_from_range(l2, r2)?;
-                (rows1, cols1, values_left, values_right)
-            }
-            (
-                CalcResult::Array(left),
-                CalcResult::Range {
-                    left: l2,
-                    right: r2,
-                },
-            ) => {
-                let rows2 = r2.row - l2.row + 1;
-                let cols2 = r2.column - l2.column + 1;
-
-                let rows1 = left.len() as i32;
-                let cols1 = if rows1 > 0 { left[0].len() as i32 } else { 0 };
-                if !is_same_shape_or_1d(rows1, cols1, rows2, cols2) {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Array and range must be of the same shape".to_string(),
-                    ));
-                }
-                let values_left = match self.values_from_array(left) {
-                    Err(error) => {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            format!("Error in first array: {error:?}"),
-                        ));
-                    }
-                    Ok(v) => v,
-                };
-                let values_right = self.values_from_range(l2, r2)?;
-                (rows2, cols2, values_left, values_right)
-            }
-            (
-                CalcResult::Range {
-                    left: l1,
-                    right: r1,
-                },
-                CalcResult::Array(right),
-            ) => {
-                let rows1 = r1.row - l1.row + 1;
-                let cols1 = r1.column - l1.column + 1;
-
-                let rows2 = right.len() as i32;
-                let cols2 = if rows2 > 0 { right[0].len() as i32 } else { 0 };
-                if !is_same_shape_or_1d(rows1, cols1, rows2, cols2) {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Range and array must be of the same shape".to_string(),
-                    ));
-                }
-                let values_left = self.values_from_range(l1, r1)?;
-                let values_right = match self.values_from_array(right) {
-                    Err(error) => {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            format!("Error in second array: {error:?}"),
-                        ));
-                    }
-                    Ok(v) => v,
-                };
-                (rows1, cols1, values_left, values_right)
-            }
-            (CalcResult::Array(left), CalcResult::Array(right)) => {
-                let rows1 = left.len() as i32;
-                let rows2 = right.len() as i32;
-                let cols1 = if rows1 > 0 { left[0].len() as i32 } else { 0 };
-                let cols2 = if rows2 > 0 { right[0].len() as i32 } else { 0 };
-
-                if !is_same_shape_or_1d(rows1, cols1, rows2, cols2) {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Arrays must be of the same shape".to_string(),
-                    ));
-                }
-                let values_left = match self.values_from_array(left) {
-                    Err(error) => {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            format!("Error in first array: {error:?}"),
-                        ));
-                    }
-                    Ok(v) => v,
-                };
-                let values_right = match self.values_from_array(right) {
-                    Err(error) => {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            format!("Error in second array: {error:?}"),
-                        ));
-                    }
-                    Ok(v) => v,
-                };
-                (rows1, cols1, values_left, values_right)
-            }
-            _ => {
+        if let (CalcResult::Range { left: l1, .. }, CalcResult::Range { left: l2, .. }) =
+            (&x_range, &y_range)
+        {
+            if l1.sheet != l2.sheet {
                 return Err(CalcResult::new_error(
                     Error::VALUE,
                     cell,
-                    "Both arguments must be ranges or arrays".to_string(),
+                    "Ranges are in different sheets".to_string(),
                 ));
             }
+        }
+        let (Some((rows1, cols1, first)), Some((rows2, cols2, second))) =
+            (matrix_arg(x_range), matrix_arg(y_range))
+        else {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Both arguments must be ranges or arrays".to_string(),
+            ));
         };
-        Ok(result)
+        if !is_same_shape_or_1d(rows1, cols1, rows2, cols2) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Arguments must be of the same shape".to_string(),
+            ));
+        }
+        let array_error = |index, error| {
+            let which = if index == 0 { "first" } else { "second" };
+            CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                format!("Error in {which} array: {error:?}"),
+            )
+        };
+        let paired = self.paired_values(first, second, cell, array_error)?;
+        Ok((rows1, cols1, paired.first, paired.second))
+    }
+}
+
+/// A range or array argument of [`Model::fn_get_two_matrices`] with its rows and columns.
+fn matrix_arg(value: CalcResult) -> Option<(i64, i64, PairedArg)> {
+    match value {
+        CalcResult::Range { left, right } => Some((
+            i64::from(right.row - left.row + 1),
+            i64::from(right.column - left.column + 1),
+            PairedArg::Range(Range { left, right }),
+        )),
+        CalcResult::Array(array) => {
+            let rows = i64::try_from(array.len()).unwrap_or(i64::MAX);
+            let columns = array
+                .first()
+                .map_or(0, |row| i64::try_from(row.len()).unwrap_or(i64::MAX));
+            Some((rows, columns, PairedArg::Array(array)))
+        }
+        _ => None,
     }
 }
 
@@ -262,7 +173,7 @@ impl SumParts {
     pub(crate) fn add(&mut self, value: f64) {
         self.before_last = self.total;
         self.last = value;
-        self.total += value;
+        self.total = extended_sum(self.total, value);
     }
 
     /// The total with its final addition snapped by [`snap_near_zero`].
@@ -270,6 +181,16 @@ impl SumParts {
         snap_near_zero(self.before_last, self.last, self.total)
     }
 }
+
+/// SUM: an error in a referenced cell or an array ranks below an error in a direct argument,
+/// whichever comes first, and the leftmost reference error wins (docs/excel-semantics/syntax.md
+/// "Aggregate error precedence", probes/sum-error-precedence; arrays: probes/aggregate-error-precedence
+/// C50, C53, C61, C77).
+const SUM_ARGS: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::Aggregate,
+    errors: ErrorRule::Ranked,
+    skip_empty_args: false,
+};
 
 impl Model {
     /// SUM(number1, [number2], ...)
@@ -295,19 +216,6 @@ impl Model {
         }
     }
 
-    /// SUM without the near-zero snap, for PERCENTOF, whose Excel behavior is not observable
-    /// (`#NAME?` on excel-graph; docs/excel-semantics/numbers.md "Near-zero snapping").
-    pub(crate) fn fn_sum_unsnapped(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        match self.sum_with_last_addition(args, cell) {
-            Ok(sum) => CalcResult::finite_number_or_num(sum.total, cell),
-            Err(error) => error,
-        }
-    }
-
     /// The sum of SUM's arguments, with the two addends of its final addition.
     fn sum_with_last_addition(
         &mut self,
@@ -318,51 +226,9 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         }
         let mut sum = SumParts::default();
-        // Excel: an error in a referenced cell or an array ranks below an error in a direct argument, whichever
-        // comes first, and the leftmost reference error wins (docs/excel-semantics/syntax.md,
-        // "Stored #BUSY! behaviors", probes/sum-error-precedence). So a reference error is held
-        // back until the direct arguments are known to be clean.
-        let mut reference_error = None;
-        for arg in args {
-            // A reference (also via IF/INDEX) is a one-cell range: text is skipped.
-            match self.evaluate_picked_reference_arg(arg, cell) {
-                RefArg::Ranges(areas) => {
-                    if reference_error.is_none() {
-                        if let Err(error) =
-                            self.for_each_number_in_areas(&areas, cell, |value| sum.add(value))
-                        {
-                            reference_error = Some(error);
-                        }
-                    }
-                }
-                RefArg::Value(CalcResult::Array(array)) => {
-                    for value in array.into_iter().flatten() {
-                        match value {
-                            ArrayNode::Number(value) => sum.add(value),
-                            // An error inside an array is not a scalar direct error: it ranks with
-                            // the reference errors (leftmost wins, a direct scalar error beats it;
-                            // probes/aggregate-error-precedence C50, C53, C61, C77).
-                            ArrayNode::Error(error) if reference_error.is_none() => {
-                                reference_error = Some(CalcResult::Error {
-                                    error,
-                                    origin: cell,
-                                    message: "Error in array".to_string(),
-                                });
-                            }
-                            // Later errors, booleans and text in an array are ignored.
-                            _ => {}
-                        }
-                    }
-                }
-                RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
-                RefArg::Value(calc_result) => {
-                    sum.add(self.cast_aggregate_arg_to_number(calc_result, cell)?);
-                }
-            };
-        }
-        match reference_error {
-            Some(error) => Err(error),
-            None => Ok(sum),
-        }
+        self.for_each_aggregate_number(args, cell, SUM_ARGS, NumberRules::SUM_LIKE, |value| {
+            sum.add(value);
+        })?;
+        Ok(sum)
     }
 }

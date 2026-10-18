@@ -89,8 +89,8 @@ fn is_valid_r1c1_identifier(name: &str, next_char: Option<char>) -> bool {
     if !utils::is_valid_a1_identifier(name) {
         return false;
     }
-    // `is_valid_identifier` differs from `is_valid_a1_identifier` only for "R"/"C".
-    // For those, only reject when they start a (malformed) reference, i.e. `R[`.
+    // `is_valid_identifier` also refuses the R1C1-shaped names ("R", "C", "RC", "R1C1D").
+    // Only reject those when they start a (malformed) reference, i.e. `R[`.
     utils::is_valid_identifier(name) || next_char != Some('[')
 }
 
@@ -491,6 +491,15 @@ impl Lexer {
                                                     ),
                                                 );
                                             }
+                                        }
+                                        // An uppercase `R0C1` or `R1048577C1` is no cell but a
+                                        // name Excel never resolves (`#NAME?`, T-1657); reading it
+                                        // so keeps it a name after a reload from R1C1 storage.
+                                        // A range (`R0C1:R1C1`) stays a range.
+                                        if right.is_none()
+                                            && utils::is_out_of_range_r1c1_name(&name)
+                                        {
+                                            return TokenType::Ident(name);
                                         }
                                         if let Some(right) = right {
                                             return TokenType::Range {
@@ -959,6 +968,11 @@ impl Lexer {
                     return TokenType::Ident(format!("{prefix}!{name}"));
                 }
                 self.position = end;
+            }
+        }
+        if let (Err(_), Some(sheet)) = (&m, &sheet) {
+            if let Some(name) = self.consume_sheet_scoped_name(sheet, start) {
+                return name;
             }
         }
         match m {

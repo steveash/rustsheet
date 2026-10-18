@@ -15,10 +15,10 @@ use crate::Model;
 fn linked() -> Model {
     let mut model = new_empty_model();
     let cells = HashMap::from([
-        ((0, 1, 1), SpillValue::Text("Hello!".to_string())),
+        ((0, 1, 1), SpillValue::Text("Hello!".into())),
         ((0, 2, 1), SpillValue::Boolean(true)),
         ((0, 3, 1), SpillValue::Error(Error::DIV)),
-        ((1, 1, 1), SpillValue::Text("Test A1".to_string())),
+        ((1, 1, 1), SpillValue::Text("Test A1".into())),
         ((1, 2, 2), SpillValue::Number(142.0)),
     ]);
     let name = |name: &str, formula: &str, sheet_id| DefinedName {
@@ -60,6 +60,62 @@ fn cell_references_read_the_cache() {
     assert_eq!(eval(&mut model, "=[other.xlsx]Uses!$A$1"), "#BLOCKED!");
     // Still a reference of the written shape (T-1381).
     assert_eq!(eval(&mut model, "=ISREF([1]Uses!$A$1)"), "TRUE");
+    // Aggregates and COUNTA read the cached cell as a reference cell (T-1460).
+    assert_eq!(eval(&mut model, "=SUM([1]Defines!$B$2)"), "142");
+    assert_eq!(eval(&mut model, "=SUM(([1]Defines!$B$2))"), "142");
+    assert_eq!(eval(&mut model, "=AVERAGE([1]Defines!$B$2)"), "142");
+    assert_eq!(eval(&mut model, "=COUNT([1]Defines!$B$2)"), "1");
+    assert_eq!(eval(&mut model, "=COUNTA([1]Uses!$A$1)"), "1");
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$A$1)"), "0");
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$A$2)"), "0");
+    // COUNTBLANK of another workbook is #VALUE!, cached or not.
+    assert_eq!(eval(&mut model, "=COUNTBLANK([1]Uses!$Z$9)"), "#VALUE!");
+    assert_eq!(eval(&mut model, "=COUNTBLANK([1]Uses!$A$1)"), "#VALUE!");
+}
+
+// A range of a cached sheet reads its cached cells as a range of this workbook would
+// (fixtures/external-link-cached-ranges, excel-graph; T-1460).
+#[test]
+fn cached_ranges_read_as_references() {
+    let mut model = linked();
+    model.workbook.external_books[0].cells.extend([
+        ((0, 1, 2), SpillValue::Number(10.0)),
+        ((0, 2, 2), SpillValue::Number(5.0)),
+    ]);
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$A$1:$B$2)"), "15");
+    assert_eq!(eval(&mut model, "=COUNT([1]Uses!$A$1:$B$2)"), "2");
+    assert_eq!(eval(&mut model, "=COUNTA([1]Uses!$A$1:$B$2)"), "4");
+    assert_eq!(eval(&mut model, "=COUNTA([1]Uses!$A$1:$B$9)"), "5");
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$B:$B)"), "15");
+    assert_eq!(
+        eval(&mut model, "=SUM(([1]Uses!$A$1,[1]Uses!$B$1:$B$2))"),
+        "15"
+    );
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$C$1:$D$4)"), "0");
+    // An area past the cached cells keeps its blanks; only whole columns and rows are cut.
+    assert_eq!(
+        eval(&mut model, "=TEXTJOIN(\"|\",FALSE,[1]Uses!$B$1:$B$5)"),
+        "10|5|||"
+    );
+    // An error in the range is the aggregate's error.
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$A$1:$B$3)"), "#DIV/0!");
+    // Lookups and INDEX read the cached values.
+    assert_eq!(eval(&mut model, "=MATCH(5,[1]Uses!$B$1:$B$2,0)"), "2");
+    assert_eq!(
+        eval(&mut model, "=VLOOKUP(TRUE,[1]Uses!$A$1:$B$2,2,FALSE)"),
+        "5"
+    );
+    assert_eq!(eval(&mut model, "=INDEX([1]Uses!$A$1:$B$2,1,1)"), "Hello!");
+    assert_eq!(
+        eval(&mut model, "=SUMPRODUCT(--ISTEXT([1]Uses!$A$1:$B$2))"),
+        "1"
+    );
+    // Still a reference of the written shape.
+    assert_eq!(eval(&mut model, "=ISREF([1]Uses!$A$1:$B$2)"), "TRUE");
+    assert_eq!(eval(&mut model, "=ROWS([1]Uses!$A$1:$B$3)"), "3");
+    // A sheet the cache does not hold stays #BLOCKED!.
+    assert_eq!(eval(&mut model, "=SUM([1]Nope!$A$1:$B$2)"), "#BLOCKED!");
+    assert_eq!(eval(&mut model, "=COUNTA([1]Nope!$A$1:$B$2)"), "0");
 }
 
 #[test]
@@ -73,8 +129,12 @@ fn defined_names_read_the_cache() {
     assert_eq!(eval(&mut model, "=[1]Defines!NR_Global_B2"), "#BLOCKED!");
     assert_eq!(eval(&mut model, "=[1]!Missing"), "#BLOCKED!");
     assert_eq!(eval(&mut model, "=[3]!NR_Global_B2"), "#BLOCKED!");
-    // Only a name for one cell is read.
-    assert_eq!(eval(&mut model, "=[1]!Span"), "#BLOCKED!");
+    // A workbook name of several cells is that cached range (T-1460).
+    assert_eq!(eval(&mut model, "=SUM([1]!Span)"), "142");
+    assert_eq!(eval(&mut model, "=COUNTA([1]!Span)"), "2");
+    assert_eq!(eval(&mut model, "=ROWS([1]!Span)"), "2");
+    assert_eq!(eval(&mut model, "=ISREF([1]!Span)"), "TRUE");
+    assert_eq!(eval(&mut model, "=INDEX([1]!Span,2,2)"), "142");
     // The formula text keeps the external prefix.
     model._set("C1", "=[1]Defines!NR_To_A1&[1]!NR_Global_B2");
     assert_eq!(
@@ -98,4 +158,268 @@ fn book_zero_is_this_workbook() {
     assert_eq!(eval(&mut model, "=[0]Sheet1!Local+1"), "43");
     assert_eq!(eval(&mut model, "=[0]!Nope"), "#NAME?");
     assert_eq!(eval(&mut model, "=[0]Nope!Local"), "#REF!");
+}
+
+// `Sheet!LocalName` is the name scoped to that sheet of this workbook (poi/56737.xlsx Uses!D2,
+// Excel-cached "Test A1"); `Sheet1!A1` is still a reference (T-1459).
+#[test]
+fn sheet_qualified_defined_name() {
+    let mut model = new_empty_model();
+    model.add_sheet("Sheet 2").unwrap();
+    model._set("B1", "7");
+    model
+        .new_defined_name("Local", Some(1), "Sheet1!$B$1")
+        .unwrap();
+    model._set("A1", "=Sheet1!B1");
+    model._set("A2", "='Sheet 2'!Local+1");
+    model._set("A3", "=ISREF('Sheet 2'!Local)");
+    model._set("A4", "=Sheet1!Nope");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "7");
+    assert_eq!(model._get_formula("A2"), "='Sheet 2'!Local+1");
+    assert_eq!(model._get_text("A2"), "8");
+    assert_eq!(model._get_text("A3"), "TRUE");
+    assert_eq!(model._get_text("A4"), "#NAME?");
+    // A rename keeps the prefix as typed.
+    model
+        .update_defined_name("Local", Some(1), "Renamed", Some(1), "Sheet1!$B$1")
+        .unwrap();
+    assert_eq!(model._get_formula("A2"), "='Sheet 2'!Renamed+1");
+}
+
+// `[0]!Name` resolves at parse time like `Name`, so ISREF and a rename see it (T-1459).
+#[test]
+fn book_zero_name_is_resolved_at_parse_time() {
+    let mut model = new_empty_model();
+    model._set("B1", "7");
+    model
+        .new_defined_name("CellName", None, "Sheet1!$B$1")
+        .unwrap();
+    model._set("A1", "=ISREF([0]!CellName)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "TRUE");
+    model
+        .update_defined_name("CellName", None, "Other", None, "Sheet1!$B$1")
+        .unwrap();
+    assert_eq!(model._get_formula("A1"), "=ISREF([0]!Other)");
+}
+
+// A local name never answers for a linked workbook's name of the same spelling (T-1459).
+#[test]
+fn local_name_does_not_shadow_a_linked_name() {
+    let mut model = linked();
+    model._set("A1", "42");
+    model
+        .new_defined_name("NR_Global_B2", None, "Sheet1!$A$1")
+        .unwrap();
+    model
+        .new_defined_name("Missing", None, "Sheet1!$A$1")
+        .unwrap();
+    assert_eq!(eval(&mut model, "=SUM([1]!NR_Global_B2)"), "142");
+    assert_eq!(eval(&mut model, "=ISREF([1]!Missing)"), "FALSE");
+    assert_eq!(eval(&mut model, "=SUM([1]!Missing)"), "#BLOCKED!");
+    model._set("C1", "=[1]!Missing");
+    model
+        .update_defined_name("Missing", None, "Renamed", None, "Sheet1!$A$1")
+        .unwrap();
+    assert_eq!(model._get_formula("C1"), "=[1]!Missing");
+}
+
+// A sparse cache (A1 and the last row) makes a whole column span the grid: a union of such
+// columns must stay within the array bound, not allocate a column per area (directive 5).
+#[test]
+fn union_of_sparse_whole_columns_is_bounded() {
+    let mut model = linked();
+    model.workbook.external_books[0]
+        .cells
+        .insert((0, 1_048_576, 1), SpillValue::Number(1.0));
+    assert_eq!(eval(&mut model, "=COUNT([1]Uses!$A:$A)"), "1");
+    let columns = ["[1]Uses!$A:$A"; 8].join(",");
+    assert_eq!(eval(&mut model, &format!("=SUM(({columns}))")), "#VALUE!");
+}
+
+// A lifted INDEX reads each picked cell from the cache, the top-left cell of a whole row or column
+// (probes/external-ref-no-link-ifchoose H1, I1 for the no-cache case; T-1537). The cached case is
+// UNVERIFIED until T-1546 probes it.
+#[test]
+fn lifted_index_reads_each_picked_cell_from_the_cache() {
+    let mut model = linked();
+    model._set("C1", "=INDEX([1]Uses!$A$1:$B$2,{1,2},1)");
+    model._set("C2", "=INDEX([1]Uses!$A$1:$B$2,{0,2},1)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "Hello!");
+    assert_eq!(model._get_text("D1"), "TRUE");
+    assert_eq!(model._get_text("C2"), "Hello!");
+    assert_eq!(model._get_text("D2"), "TRUE");
+}
+
+// Book `[1]` caches what fixtures/external-link-cached-ranges does: `Uses` A1 "Hello!", B1 10,
+// C1 #N/A, A2 5, B2 the text "7", C2 1, A3 TRUE.
+fn cached_ranges_fixture() -> Model {
+    let mut model = new_empty_model();
+    let cells = HashMap::from([
+        ((0, 1, 1), SpillValue::Text("Hello!".into())),
+        ((0, 1, 2), SpillValue::Number(10.0)),
+        ((0, 1, 3), SpillValue::Error(Error::NA)),
+        ((0, 2, 1), SpillValue::Number(5.0)),
+        ((0, 2, 2), SpillValue::Text("7".into())),
+        ((0, 2, 3), SpillValue::Number(1.0)),
+        ((0, 3, 1), SpillValue::Boolean(true)),
+    ]);
+    model.workbook.external_books.push(ExternalBook {
+        sheet_names: vec!["Uses".to_string()],
+        defined_names: vec![DefinedName {
+            name: "NR_Range".to_string(),
+            formula: "='Uses'!$A$1:$B$3".to_string(),
+            sheet_id: None,
+        }],
+        cells,
+    });
+    model
+}
+
+// The functions that take a reference see a cached range as one (fixtures/external-link-cached-ranges
+// Refs!B53, B59, B60; T-1526).
+#[test]
+fn reference_functions_take_a_cached_range() {
+    let mut model = cached_ranges_fixture();
+    assert_eq!(eval(&mut model, "=SUBTOTAL(9,[1]Uses!$A$1:$B$3)"), "15");
+    assert_eq!(eval(&mut model, "=SUBTOTAL(109,[1]!NR_Range)"), "15");
+    assert_eq!(eval(&mut model, "=SUBTOTAL(9,[1]Uses!$C$1:$C$2)"), "#N/A");
+    assert_eq!(eval(&mut model, "=AGGREGATE(9,6,[1]Uses!$A$1:$C$2)"), "16");
+    assert_eq!(
+        eval(&mut model, "=AGGREGATE(9,4,[1]Uses!$A$1:$C$2)"),
+        "#N/A"
+    );
+    assert_eq!(eval(&mut model, "=AVERAGEA([1]Uses!$A$1:$B$3)"), "3.2");
+    assert_eq!(eval(&mut model, "=AVERAGEA([1]!NR_Range)"), "3.2");
+    // A cached error ranks as a referenced error: a scalar direct error beats it either side
+    // (T-1573; UNVERIFIED, mirrors probes/aggregate-picked-direct-a-variants D20-D23).
+    let cached_na = "[1]Uses!$C$1:$C$2";
+    assert_eq!(eval(&mut model, &format!("=MAXA({cached_na})")), "#N/A");
+    assert_eq!(
+        eval(&mut model, &format!("=MAXA({cached_na},1/0)")),
+        "#DIV/0!"
+    );
+    assert_eq!(
+        eval(&mut model, &format!("=MAXA(1/0,{cached_na})")),
+        "#DIV/0!"
+    );
+    // A sheet the cache does not hold stays #BLOCKED!.
+    assert_eq!(
+        eval(&mut model, "=SUBTOTAL(9,[1]Nope!$A$1:$B$3)"),
+        "#BLOCKED!"
+    );
+    assert_eq!(
+        eval(&mut model, "=AVERAGEA([1]Nope!$A$1:$B$3)"),
+        "#BLOCKED!"
+    );
+}
+
+// An aggregate that skips blanks reads an area of any shape only where the cache holds cells, so a
+// tall area adds its cached cells instead of tripping the array bound (arrays.md "Array results
+// above 1,048,576 cells"; T-1550). A reader that sees blanks keeps the written shape.
+#[test]
+fn blank_skipping_aggregates_read_a_tall_area_from_the_cache() {
+    let mut model = cached_ranges_fixture();
+    let tall = "[1]Uses!$A$2:$B$1048576";
+    assert_eq!(eval(&mut model, &format!("=SUM({tall})")), "5");
+    assert_eq!(eval(&mut model, &format!("=COUNT({tall})")), "1");
+    assert_eq!(eval(&mut model, &format!("=MAX({tall})")), "5");
+    assert_eq!(eval(&mut model, &format!("=MIN({tall})")), "5");
+    assert_eq!(eval(&mut model, &format!("=PRODUCT({tall})")), "5");
+    assert_eq!(eval(&mut model, &format!("=AVERAGE({tall})")), "5");
+    // "7" counts 0 and TRUE 1 (Refs!B53's AVERAGEA rule).
+    assert_eq!(eval(&mut model, &format!("=AVERAGEA({tall})")), "2");
+    assert_eq!(eval(&mut model, &format!("=SUM(IF(TRUE,{tall}))")), "5");
+    assert_eq!(eval(&mut model, &format!("=SUBTOTAL(9,{tall})")), "5");
+    assert_eq!(eval(&mut model, &format!("=RANK(5,{tall})")), "1");
+    // An area wholly past the cache reads no cell.
+    let outside = "[1]Uses!$Z$100:$Z$200";
+    assert_eq!(eval(&mut model, &format!("=SUM({outside})")), "0");
+    assert_eq!(eval(&mut model, &format!("=AVERAGE({outside})")), "#DIV/0!");
+    assert_eq!(
+        eval(&mut model, &format!("=AVERAGEA({outside})")),
+        "#DIV/0!"
+    );
+    // The cut changes no position an INDEX picks.
+    assert_eq!(eval(&mut model, &format!("=SUM(INDEX({tall},1,1))")), "5");
+    // Blanks past the cache still count where the reader sees them.
+    assert_eq!(eval(&mut model, "=ROWS(LET(x,[1]Uses!$A$1:$B$9,x))"), "9");
+    assert_eq!(
+        eval(&mut model, "=TEXTJOIN(\"|\",FALSE,[1]Uses!$B$1:$B$5)"),
+        "10|7|||"
+    );
+}
+
+/// `formula` set in `cell` as a legacy (pre-dynamic-array) formula, as xlsx import reads one.
+fn eval_legacy(model: &mut Model, cell: &str, formula: &str) -> String {
+    let reference = model._parse_reference(cell);
+    let text = model
+        .legacy_formula_text(reference.sheet, reference.row, reference.column, formula)
+        .unwrap();
+    model._set(cell, &text);
+    model.evaluate();
+    model._get_text(cell)
+}
+
+// A legacy formula implicitly intersects a cached range as it does a range of this workbook
+// (fixtures/external-link-cached-ranges Refs!B38, B44, B56, B62; T-1526).
+#[test]
+fn legacy_formula_intersects_a_cached_range() {
+    let mut model = cached_ranges_fixture();
+    let sum = "=SUM(IFERROR([1]Uses!$A$1:$B$3*1,100))";
+    assert_eq!(eval_legacy(&mut model, "D38", sum), "100");
+    let sumproduct = "=SUMPRODUCT(IFERROR([1]Uses!$A$1:$B$3*1,100))";
+    assert_eq!(eval_legacy(&mut model, "D56", sumproduct), "100");
+    assert_eq!(
+        eval_legacy(&mut model, "D44", "=SUM([1]Uses!$A$2:$A$3+0)"),
+        "#VALUE!"
+    );
+    // In a row the range spans, the intersection reads the cached cell.
+    assert_eq!(
+        eval_legacy(&mut model, "D2", "=SUM([1]Uses!$A$1:$A$3+0)"),
+        "5"
+    );
+    assert_eq!(
+        eval_legacy(&mut model, "B9", "=[1]Uses!$B$1:$B$3"),
+        "#VALUE!"
+    );
+    assert_eq!(eval_legacy(&mut model, "B9", "=[1]Uses!$A$1:$C$1"), "10");
+    // A legacy TYPE intersects too (Refs!B62; probes/legacy-type-intersection).
+    assert_eq!(
+        eval_legacy(&mut model, "D62", "=TYPE([1]Uses!$A$1:$B$3)"),
+        "16"
+    );
+    assert_eq!(
+        eval_legacy(&mut model, "D2", "=TYPE([1]Uses!$A$1:$A$3)"),
+        "1"
+    );
+    // The same formula typed today (dynamic) reads the whole range.
+    assert_eq!(eval(&mut model, "=SUM([1]Uses!$A$1:$A$3+0)"), "#VALUE!");
+}
+
+/// A LET whose body picks a reference into another workbook is that reference, its names bound
+/// while it is read (probes/external-ref-no-link-let, external-ref-no-link-ifchoose A26; T-1535).
+#[test]
+fn let_body_picking_an_external_reference_is_that_reference() {
+    let mut model = new_empty_model();
+    let ext = "'[other.xlsx]Sheet1'!";
+    for (formula, expected) in [
+        (format!("=ROWS(LET(c,TRUE,IF(c,{ext}A1:B3)))"), "3"),
+        (
+            format!("=ROWS(LET(c,TRUE,LET(d,1,CHOOSE(d,{ext}A1:B4))))"),
+            "4",
+        ),
+        (format!("=ROWS(IF(TRUE,LET(c,1,{ext}A1:B3)))"), "3"),
+        (format!("=ROW(LET(c,TRUE,IF(c,{ext}B3)))"), "3"),
+        (format!("=ISREF(LET(c,TRUE,IF(c,{ext}A1)))"), "TRUE"),
+        (format!("=COUNTA(LET(c,TRUE,IF(c,{ext}A1:B2)))"), "0"),
+        (format!("=ROWS(LET(c,FALSE,IF(c,{ext}A1:B3)))"), "1"),
+        (format!("=ROWS(LET(c,1/0,IF(c,{ext}A1:B3)))"), "#DIV/0!"),
+        // A body that may pick a reference into this workbook is read as before.
+        (format!("=ROWS(LET(c,FALSE,IF(c,{ext}A1:B3,D1:D2)))"), "2"),
+    ] {
+        assert_eq!(eval(&mut model, &formula), expected, "{formula}");
+    }
 }

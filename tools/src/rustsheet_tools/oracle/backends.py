@@ -21,15 +21,16 @@ import sys
 import tempfile
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import quote
 
 import requests
+from xlsxwriter.utility import xl_rowcol_to_cell
 
 from rustsheet_tools.oracle.package import PackageError, patch_workbook
-from rustsheet_tools.spec2xlsx import entered_cells
+from rustsheet_tools.spec2xlsx import entered_cells, parse_a1, sheet_ops, text_cells
 
 
 class OracleError(RuntimeError):
@@ -41,6 +42,8 @@ class OracleInfo:
     kind: str
     application: str
     version: str | None = None
+    # Displayed text of the cells the workbook lists for it (`text_cells`): sheet -> A1 -> text.
+    texts: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 class Backend(Protocol):
@@ -75,6 +78,22 @@ def typed_entries(xlsx: bytes) -> list[tuple[str, str, str]]:
     """The cells a backend must enter as typed text before recalculating (spec2xlsx, T-0280)."""
     try:
         return entered_cells(xlsx)
+    except ValueError as e:
+        raise OracleError(str(e)) from e
+
+
+def recorded_text_cells(xlsx: bytes) -> list[tuple[str, str]]:
+    """The cells whose displayed text a backend must read after recalculating (spec2xlsx, T-1610)."""
+    try:
+        return text_cells(xlsx)
+    except ValueError as e:
+        raise OracleError(str(e)) from e
+
+
+def recorded_sheet_ops(xlsx: bytes) -> list[tuple[str, str, str | int | None]]:
+    """The sheet edits a backend must replay after load, before recalculating (spec2xlsx, T-1608)."""
+    try:
+        return sheet_ops(xlsx)
     except ValueError as e:
         raise OracleError(str(e)) from e
 
@@ -244,6 +263,42 @@ class GraphBackend:
             return resp
         raise OracleError(f"{method} {self._redact(url)}: retries exhausted")
 
+    def _replay_sheet_ops(
+        self, item_url: str, sid: dict[str, str], ops: list[tuple[str, str, str | int | None]]
+    ) -> None:
+        """Makes the spec's sheet edits in the session (T-1608). The canary sheet stays last: an
+        added sheet goes just before it, and a move may not reach its position."""
+        # canary.py imports this module, so its sheet name is read here, at call time.
+        from rustsheet_tools.oracle.canary import SHEET as CANARY_SHEET  # noqa: PLC0415
+
+        sheets = f"{item_url}/workbook/worksheets"
+
+        def ref(name: str) -> str:
+            escaped = quote(name.replace("'", "''"), safe="")
+            return f"{sheets}('{escaped}')"
+
+        def position(name: str) -> int:
+            return int(self._call("GET", ref(name), headers=sid).json()["position"])
+
+        def move(name: str, to: int) -> None:
+            # Graph has been seen to answer a position PATCH without moving the sheet (T-1608), so
+            # the move is read back: a replay that did not happen must not become an oracle value.
+            self._call("PATCH", ref(name), json={"position": to}, headers=sid)
+            if position(name) != to:
+                raise OracleError(f"sheet op move {name!r} to {to}: Excel left it at {position(name)}")
+
+        for op, sheet, to in ops:
+            if op == "add":
+                self._call("POST", f"{sheets}/add", json={"name": sheet}, headers=sid)
+                move(sheet, position(CANARY_SHEET))
+            elif op == "rename":
+                self._call("PATCH", ref(sheet), json={"name": to}, headers=sid)
+            elif op == "move":
+                if not isinstance(to, int) or to >= position(CANARY_SHEET):
+                    raise OracleError(f"sheet op move {sheet!r} to {to}: past the last sheet")
+                move(sheet, to)
+            print(f"SHEET OP {op} {sheet!r} {to!r}", file=sys.stderr)
+
     def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:
         import hashlib  # noqa: PLC0415
 
@@ -273,12 +328,17 @@ class GraphBackend:
                     f"numberFormat={rng.get('numberFormat')}",
                     file=sys.stderr,
                 )
+            self._replay_sheet_ops(item_url, sid, recorded_sheet_ops(xlsx))
+            # Load, this rebuild and the scratch edit below are three calculations; the eval
+            # adapter repeats them for iterative cases (`ORACLE_CALCULATIONS` in
+            # crates/rustsheet-eval/src/engine.rs, T-0429): keep the two in step.
             self._call(
                 "POST",
                 f"{item_url}/workbook/application/calculate",
                 json={"calculationType": "FullRebuild"},
                 headers=sid,
             )
+            texts = self._read_texts(item_url, sid, recorded_text_cells(xlsx))
             # Excel only persists a session that *edited* the workbook: after a bare recalculation
             # of a file last saved by current Excel, closeSession saves nothing and the download is
             # the upload, cached values and all (observed 2026-10-04 on ironcalc's arithmetic.xlsx;
@@ -306,7 +366,58 @@ class GraphBackend:
         finally:
             with contextlib.suppress(OracleError):
                 self._call("DELETE", item_url)
-        return content, OracleInfo(kind=self.name, application="Excel for the web (Graph)")
+        return content, OracleInfo(kind=self.name, application="Excel for the web (Graph)", texts=texts)
+
+    def _read_texts(
+        self, item_url: str, sid: dict[str, str], cells: list[tuple[str, str]]
+    ) -> dict[str, dict[str, str]]:
+        """Each cell's displayed text (`Range.text`, which does not depend on the column width) in the
+        session that recalculated it, before the scratch edit (T-1610, decision 0068). The cells of a
+        sheet are read in one request for their bounding block when it is small enough
+        ([`text_blocks`]), so a suite of thousands of text cells costs one request per sheet (T-1611)."""
+        texts: dict[str, dict[str, str]] = {}
+        for sheet, block, wanted in text_blocks(cells):
+            sheet_ref = quote(sheet.replace("'", "''"), safe="")
+            rng = self._call(
+                "GET",
+                f"{item_url}/workbook/worksheets('{sheet_ref}')/range(address='{quote(block, safe='')}')?$select=text",
+                headers=sid,
+            ).json()
+            rows = rng.get("text")
+            for a1, (row, col) in wanted.items():
+                text = rows[row][col] if _has_cell(rows, row, col) else None
+                if text is None:
+                    raise OracleError(f"no text for {sheet}!{a1}")
+                texts.setdefault(sheet, {})[a1] = str(text)
+        return texts
+
+
+MAX_TEXT_BLOCK = 20_000  # cells in one `Range.text` read: well under Graph's response limits
+
+
+def text_blocks(cells: list[tuple[str, str]]) -> list[tuple[str, str, dict[str, tuple[int, int]]]]:
+    """The `(sheet, block, {a1: (row, col) in block})` reads that cover `cells`: one per sheet for the
+    bounding block of its cells when that has at most [`MAX_TEXT_BLOCK`] cells and at most four
+    unlisted cells per listed one, else one per cell (a sparse list would read a mostly empty block)."""
+    by_sheet: dict[str, dict[str, tuple[int, int]]] = {}
+    for sheet, a1 in cells:
+        by_sheet.setdefault(sheet, {})[a1] = parse_a1(a1)
+    reads: list[tuple[str, str, dict[str, tuple[int, int]]]] = []
+    for sheet, at in by_sheet.items():
+        top, left = min(r for r, _ in at.values()), min(c for _, c in at.values())
+        bottom, right = max(r for r, _ in at.values()), max(c for _, c in at.values())
+        area = (bottom - top + 1) * (right - left + 1)
+        if len(at) > 1 and area <= MAX_TEXT_BLOCK and area <= 5 * len(at):
+            block = f"{xl_rowcol_to_cell(top, left)}:{xl_rowcol_to_cell(bottom, right)}"
+            reads.append((sheet, block, {a1: (r - top, c - left) for a1, (r, c) in at.items()}))
+        else:
+            reads.extend((sheet, a1, {a1: (0, 0)}) for a1 in at)
+    return reads
+
+
+def _has_cell(rows: Any, row: int, col: int) -> bool:
+    """Whether Graph's `text` matrix `rows` has a cell at (row, col)."""
+    return isinstance(rows, list) and row < len(rows) and isinstance(rows[row], list) and col < len(rows[row])
 
 
 # --------------------------------------------------------------------------- Windows COM
@@ -328,6 +439,9 @@ class ExcelDesktopBackend:
 
     def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:
         import win32com.client  # noqa: PLC0415
+
+        if recorded_sheet_ops(xlsx):
+            raise OracleError("excel-desktop cannot replay sheet edits yet (spec `sheet_ops`, T-1608)")
 
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "in.xlsx"
@@ -375,6 +489,8 @@ class LibreOfficeBackend:
     def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:
         if typed_entries(xlsx):
             raise OracleError("libreoffice cannot enter typed cell input (spec `entered` cells)")
+        if recorded_sheet_ops(xlsx):
+            raise OracleError("libreoffice cannot replay sheet edits (spec `sheet_ops`)")
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "in.xlsx"
             outdir = Path(tmp) / "out"

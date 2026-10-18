@@ -1,0 +1,59 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1695: VSTACK/HSTACK with a scalar error argument first, last or in the middle: one error or an array?",
+ "tags": [
+  "M7",
+  "arrays",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "B1": "=ROWS(VSTACK(NA(),{1;2}))",
+    "C1": "=COLUMNS(VSTACK(NA(),{1;2}))",
+    "D1": "=ISERROR(VSTACK(NA(),{1;2}))",
+    "E1": "=INDEX(VSTACK(NA(),{1;2}),2)",
+    "F1": "=VSTACK(NA(),{1;2})",
+    "B2": "=ROWS(VSTACK({1;2},NA()))",
+    "C2": "=COLUMNS(VSTACK({1;2},NA()))",
+    "D2": "=ISERROR(VSTACK({1;2},NA()))",
+    "E2": "=INDEX(VSTACK({1;2},NA()),2)",
+    "F2": "=VSTACK({1;2},NA())",
+    "B3": "=ROWS(VSTACK({1;2},NA(),{3;4}))",
+    "C3": "=COLUMNS(VSTACK({1;2},NA(),{3;4}))",
+    "D3": "=ISERROR(VSTACK({1;2},NA(),{3;4}))",
+    "E3": "=INDEX(VSTACK({1;2},NA(),{3;4}),2)",
+    "F3": "=VSTACK({1;2},NA(),{3;4})",
+    "B4": "=ROWS(HSTACK(NA(),{1,2}))",
+    "C4": "=COLUMNS(HSTACK(NA(),{1,2}))",
+    "D4": "=ISERROR(HSTACK(NA(),{1,2}))",
+    "E4": "=INDEX(HSTACK(NA(),{1,2}),2)",
+    "F4": "=HSTACK(NA(),{1,2})",
+    "B5": "=ROWS(HSTACK({1,2},NA()))",
+    "C5": "=COLUMNS(HSTACK({1,2},NA()))",
+    "D5": "=ISERROR(HSTACK({1,2},NA()))",
+    "E5": "=INDEX(HSTACK({1,2},NA()),2)",
+    "F5": "=HSTACK({1,2},NA())",
+    "B6": "=ROWS(HSTACK({1,2},NA(),{3,4}))",
+    "C6": "=COLUMNS(HSTACK({1,2},NA(),{3,4}))",
+    "D6": "=ISERROR(HSTACK({1,2},NA(),{3,4}))",
+    "E6": "=INDEX(HSTACK({1,2},NA(),{3,4}),2)",
+    "F6": "=HSTACK({1,2},NA(),{3,4})",
+    "B7": "=ROWS(VSTACK(1/0,{1;2}))",
+    "C7": "=COLUMNS(VSTACK(1/0,{1;2}))",
+    "D7": "=ISERROR(VSTACK(1/0,{1;2}))",
+    "E7": "=INDEX(VSTACK(1/0,{1;2}),2)",
+    "F7": "=VSTACK(1/0,{1;2})",
+    "B8": "=ROWS(VSTACK(A1:A2,NA()))",
+    "C8": "=COLUMNS(VSTACK(A1:A2,NA()))",
+    "D8": "=ISERROR(VSTACK(A1:A2,NA()))",
+    "E8": "=INDEX(VSTACK(A1:A2,NA()),2)",
+    "F8": "=VSTACK(A1:A2,NA())",
+    "A1": 1,
+    "A2": 2
+   }
+  }
+ ],
+ "expected": {}
+}

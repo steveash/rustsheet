@@ -418,10 +418,9 @@ fn test_reference_r1c1() {
 #[test]
 fn test_reference_r1c1_true() {
     let mut lx = new_lexer("R1C1", true);
-    // NOTE: This is what google docs does.
-    // Excel will not let you enter this formula.
-    // Online Excel will let you and will mark the cell as in Error
-    assert!(matches!(lx.next_token(), Illegal(_)));
+    // A name in A1 mode, as `r1c1` is: Excel takes it as a LET name (probes/r1c1-let-name-r1c1,
+    // T-1658).
+    assert_eq!(lx.next_token(), Ident("R1C1".to_string()));
     assert_eq!(lx.next_token(), EOF);
 }
 

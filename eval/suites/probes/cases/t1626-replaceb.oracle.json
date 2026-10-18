@@ -1,0 +1,122 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A8": {
+    "t": "s",
+    "v": ""
+   },
+   "C1": {
+    "t": "s",
+    "v": "zbcabc"
+   },
+   "C10": {
+    "t": "s",
+    "v": "z\u672c\u8a9e\u30c6\u30ad\u30b9\u30c8"
+   },
+   "C11": {
+    "t": "s",
+    "v": "z\u8a9e\u30c6\u30ad\u30b9\u30c8"
+   },
+   "C12": {
+    "t": "s",
+    "v": "z\u30c6\u30ad\u30b9\u30c8"
+   },
+   "C13": {
+    "t": "s",
+    "v": "\u65e5z\u30ad\u30b9\u30c8"
+   },
+   "C14": {
+    "t": "s",
+    "v": "\u65e5\u672c\u8a9ez\u30c8"
+   },
+   "C15": {
+    "t": "s",
+    "v": "z_xDE00_a\ud83d\ude00"
+   },
+   "C16": {
+    "t": "s",
+    "v": "za\ud83d\ude00"
+   },
+   "C17": {
+    "t": "s",
+    "v": "z_xDE00_"
+   },
+   "C18": {
+    "t": "s",
+    "v": "_xD83D_z\ud83d\ude00"
+   },
+   "C19": {
+    "t": "s",
+    "v": "z\uff72\uff73\uff76\uff9e"
+   },
+   "C2": {
+    "t": "s",
+    "v": "azbcabc"
+   },
+   "C20": {
+    "t": "s",
+    "v": "z\uff73\uff76\uff9e"
+   },
+   "C21": {
+    "t": "s",
+    "v": "z"
+   },
+   "C22": {
+    "t": "s",
+    "v": "7bcabc"
+   },
+   "C23": {
+    "t": "s",
+    "v": "z"
+   },
+   "C24": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C25": {
+    "t": "s",
+    "v": "\u65e5\u672cbcabc"
+   },
+   "C26": {
+    "t": "s",
+    "v": "z\uff23\uff11\uff12\uff13"
+   },
+   "C3": {
+    "t": "s",
+    "v": "abcabcz"
+   },
+   "C4": {
+    "t": "s",
+    "v": "abcabcz"
+   },
+   "C5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C6": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C7": {
+    "t": "s",
+    "v": "zbcabc"
+   },
+   "C8": {
+    "t": "s",
+    "v": "az"
+   },
+   "C9": {
+    "t": "s",
+    "v": "aabc"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "22767bc0f5f821ddf4600c1d36ce8e4eecf165e2977d19174501e47662a69732",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T08:27:42+00:00",
+  "version": null
+ }
+}

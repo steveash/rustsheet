@@ -2,12 +2,17 @@
 //! directly, so other engines (e.g. upstream IronCalc, a future rewritten core)
 //! can be plugged in and compared side by side.
 
+use std::collections::BTreeMap;
+
 use rustsheet::{
-    CellRef, DateSystem, ErrorKind, Input, LoadOptions, RangeRef, SheetId, Value as ApiValue,
-    Workbook, WorkbookOptions, XlError,
+    CellRef, Clock, DateSystem, ErrorKind, Input, LoadOptions, RangeRef, SheetId,
+    Value as ApiValue, Workbook, WorkbookOptions, XlError,
 };
 
-use crate::case::{split_qualified, CaseSpec, CellInput};
+use rustsheet_engine::text::{lone_escape, Segment};
+use rustsheet_engine::Text;
+
+use crate::case::{split_qualified, CaseSpec, CellInput, SheetOp};
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
 
@@ -15,6 +20,14 @@ use crate::value::Value;
 pub trait Evaluated {
     /// Returns `None` if the sheet does not exist.
     fn value(&self, sheet: &str, addr: Addr) -> Option<Value>;
+    /// Every stored cell of `sheet` (spill members included); empty for an unknown sheet. The
+    /// spill-extent check reads it (T-1660), so an empty list turns that check off.
+    fn stored_cells(&self, sheet: &str) -> Vec<Addr>;
+    /// The cell's text as displayed under its number format (T-1610); `None` if the sheet does
+    /// not exist or the engine cannot format the cell.
+    fn text(&self, _sheet: &str, _addr: Addr) -> Option<String> {
+        None
+    }
 }
 
 pub trait Engine: Sync {
@@ -33,6 +46,19 @@ pub trait Engine: Sync {
     fn implemented_functions(&self) -> Vec<String>;
 }
 
+/// The instant every evaluation reads as "now" unless a METADATA `NOW` row pins another one:
+/// 2022-11-08T11:13:28.578Z, the instant the engine's former thread-local mock clock defaulted to,
+/// so harness results did not change when the clock moved into the workbook (SPEC-0008).
+const HARNESS_CLOCK_MS: i64 = 1_667_906_008_578;
+
+/// Default workbook options on the harness clock.
+fn harness_options() -> Result<WorkbookOptions, String> {
+    Ok(WorkbookOptions {
+        clock: Clock::fixed_unix_millis(HARNESS_CLOCK_MS).map_err(|e| e.to_string())?,
+        ..WorkbookOptions::default()
+    })
+}
+
 /// The RustSheet engine (currently the forked IronCalc `Model`).
 pub struct RustSheetEngine;
 
@@ -40,22 +66,63 @@ struct RustSheetEvaluated {
     workbook: Workbook,
 }
 
-impl Evaluated for RustSheetEvaluated {
-    fn value(&self, sheet: &str, addr: Addr) -> Option<Value> {
-        let cell = CellRef::new(
+/// Text holding a lone surrogate as the snapshot reader sees Excel's value: each lone unit as
+/// the `_xHHHH_` escape, which the reader keeps literally when it cannot decode it (SPEC-0010;
+/// probes/text-surrogate-positions A6).
+fn render_lone_units(units: &[u16]) -> String {
+    let mut out = String::new();
+    for segment in Text::from_utf16(units.to_vec()).segments() {
+        match segment {
+            Segment::Str(s) => out.push_str(s),
+            Segment::Lone(unit) => out.push_str(&lone_escape(unit)),
+        }
+    }
+    out
+}
+
+impl RustSheetEvaluated {
+    /// The facade cell at `addr` (1-based) on `sheet`, `None` for an unknown sheet.
+    fn cell(&self, sheet: &str, addr: Addr) -> Option<CellRef> {
+        CellRef::new(
             self.workbook.sheet_id(sheet).ok()?,
             addr.row.checked_sub(1)?,
             addr.col.checked_sub(1)?,
         )
-        .ok()?;
+        .ok()
+    }
+}
+
+impl Evaluated for RustSheetEvaluated {
+    fn value(&self, sheet: &str, addr: Addr) -> Option<Value> {
+        let cell = self.cell(sheet, addr)?;
         Some(match self.workbook.value(cell).ok()? {
             ApiValue::Number(n) => Value::Number(n),
-            ApiValue::Text(s) => Value::Text(s.to_string()),
+            ApiValue::Text(s) => Value::Text(match self.workbook.text_utf16(cell) {
+                Ok(Some(units)) => render_lone_units(&units),
+                _ => s.to_string(),
+            }),
             ApiValue::Bool(b) => Value::Bool(b),
             ApiValue::Error(e) => Value::Error(e.kind.stored_literal().to_string()),
             // `ApiValue` is non-exhaustive; `Empty` and future variants score as empty.
             _ => Value::Empty,
         })
+    }
+
+    fn text(&self, sheet: &str, addr: Addr) -> Option<String> {
+        self.workbook.formatted(self.cell(sheet, addr)?).ok()
+    }
+
+    fn stored_cells(&self, sheet: &str) -> Vec<Addr> {
+        let cells = (self.workbook.sheet_id(sheet))
+            .and_then(|id| self.workbook.stored_cells(id))
+            .unwrap_or_default();
+        cells
+            .into_iter()
+            .map(|cell| Addr {
+                row: cell.row + 1,
+                col: cell.col + 1,
+            })
+            .collect()
     }
 }
 
@@ -71,12 +138,13 @@ impl Engine for RustSheetEngine {
     fn evaluate_xlsx(&self, bytes: &[u8]) -> Result<Box<dyn Evaluated>, String> {
         let opts = LoadOptions {
             recalc: false,
+            workbook: harness_options()?,
             ..LoadOptions::default()
         };
         let mut workbook =
             Workbook::from_xlsx_bytes(bytes, &opts).map_err(|e| format!("import failed: {e}"))?;
-        // The mock clock is thread-local and defaults to a fixed instant; a METADATA `NOW` row
-        // (IronCalc convention, mirrored by `volatile::pinned_clock_serial`) overrides it.
+        // A METADATA `NOW` row (IronCalc convention, mirrored by `volatile::pinned_clock_serial`)
+        // overrides the harness clock.
         workbook.pin_clock_from_metadata();
         workbook.recalculate();
         Ok(Box::new(RustSheetEvaluated { workbook }))
@@ -90,7 +158,7 @@ impl Engine for RustSheetEngine {
         };
         let mut workbook = Workbook::new(&WorkbookOptions {
             date_system,
-            ..WorkbookOptions::default()
+            ..harness_options()?
         })
         .map_err(|e| e.to_string())?;
         // The harness only reads final values: skip the per-edit value diff.
@@ -136,13 +204,13 @@ impl Engine for RustSheetEngine {
                         if formulas {
                             for table in &sheet.tables {
                                 tx.add_table(
-                                    table_range(id, &table.range)?,
+                                    table_range(id, &table.range, table.totals_row)?,
                                     &table.name,
                                     table.filter,
                                 )?;
                             }
                         }
-                        for (a1, input) in &sheet.cells {
+                        for (addr, a1, input) in row_major(&sheet.cells)? {
                             let Some(mut input) = spec_input(input) else {
                                 continue;
                             };
@@ -157,9 +225,6 @@ impl Engine for RustSheetEngine {
                             if is_formula != formulas {
                                 continue;
                             }
-                            let addr = Addr::parse(a1).ok_or_else(|| {
-                                rustsheet::EditError::Engine(format!("bad address {a1}"))
-                            })?;
                             tx.set(CellRef::new(id, addr.row - 1, addr.col - 1)?, input)?;
                         }
                     }
@@ -182,19 +247,88 @@ impl Engine for RustSheetEngine {
                 Ok(())
             })
             .map_err(|e| e.to_string())?;
+        apply_sheet_ops(&mut workbook, &spec.sheet_ops)?;
+        // The edit calculated once; an iterative case gets the oracle's other calculations.
+        for _ in 1..calculations(spec) {
+            workbook.recalculate();
+        }
         Ok(Box::new(RustSheetEvaluated { workbook }))
     }
 }
 
-/// A spec table's `A1:B9` range on sheet `id`.
-fn table_range(id: SheetId, a1: &str) -> Result<RangeRef, rustsheet::EditError> {
+/// A spec sheet's cells row by row, left to right: the order an xlsx stores them in and Excel
+/// loads them, which decides the spelling a called name that is no function keeps (the first met;
+/// probes/unknown-function-name-spelling, T-1719).
+fn row_major(
+    cells: &BTreeMap<String, CellInput>,
+) -> Result<Vec<(Addr, &String, &CellInput)>, rustsheet::EditError> {
+    let mut ordered = cells
+        .iter()
+        .map(|(a1, input)| {
+            Addr::parse(a1)
+                .map(|addr| (addr, a1, input))
+                .ok_or_else(|| rustsheet::EditError::Engine(format!("bad address {a1}")))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    ordered.sort_by_key(|(addr, ..)| (addr.row, addr.col));
+    Ok(ordered)
+}
+
+/// Makes a case's sheet edits after it is built, as the oracle backend replays them in Excel after
+/// the workbook loads (T-1608). Each op is its own edit, so it sees the names the ops before it
+/// left.
+fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), String> {
+    for op in ops {
+        let sheet_id_of = |workbook: &Workbook, sheet: &str| {
+            workbook
+                .sheet_id(sheet)
+                .map_err(|e| format!("sheet op on {sheet}: {e}"))
+        };
+        let done = match op {
+            SheetOp::Add { sheet } => workbook.edit(|tx| tx.add_sheet(sheet).map(|_| ())),
+            SheetOp::Rename { sheet, to } => {
+                let id = sheet_id_of(workbook, sheet)?;
+                workbook.edit(|tx| tx.rename_sheet(id, to))
+            }
+            SheetOp::Move { sheet, to } => {
+                let id = sheet_id_of(workbook, sheet)?;
+                workbook.edit(|tx| tx.move_sheet(id, *to))
+            }
+        };
+        done.map_err(|e| format!("sheet op {op:?}: {e}"))?;
+    }
+    Ok(())
+}
+
+/// How many times excel-graph calculates a case workbook: on load (`fullCalcOnLoad`), at the
+/// `FullRebuild` and at the scratch-sheet edit (`tools/src/rustsheet_tools/oracle/backends.py`).
+/// Iterative calculation resumes from the previous values each time, so its oracle values hold
+/// three calculations' worth of iterations (docs/excel-semantics/recalc.md "How excel-graph
+/// calculates a probe workbook"; probes/circular-iteration-on, T-0428).
+const ORACLE_CALCULATIONS: usize = 3;
+
+/// The calculations the adapter runs for `spec` so that its values compare with the oracle's:
+/// [`ORACLE_CALCULATIONS`] for an iterative case, one otherwise. Without iteration every
+/// calculation gives the same values, so the extra ones would only cost time (T-0429).
+fn calculations(spec: &CaseSpec) -> usize {
+    if spec.calculation.as_ref().is_some_and(|c| c.iterate) {
+        ORACLE_CALCULATIONS
+    } else {
+        1
+    }
+}
+
+/// A spec table's `A1:B9` range on sheet `id`, without its last row when that is a totals row
+/// (`TableSpec::totals_row`).
+fn table_range(id: SheetId, a1: &str, totals_row: bool) -> Result<RangeRef, rustsheet::EditError> {
     let (first, last) = parse_range(a1)
         .ok_or_else(|| rustsheet::EditError::Engine(format!("bad table ref {a1}")))?;
+    let bottom = (last.row - 1).saturating_sub(u32::from(totals_row));
     Ok(RangeRef::new(
         id,
         first.row - 1,
         first.col - 1,
-        last.row - 1,
+        bottom,
         last.col - 1,
     )?)
 }
@@ -229,6 +363,14 @@ mod tests {
     use rustsheet_engine::Model;
 
     use super::*;
+
+    #[test]
+    fn lone_units_render_as_xhhhh_escapes_and_pairs_stay_text() {
+        // "a😀" then the lone low surrogate of a cut pair, then "b" (text-surrogate-positions A6).
+        let units = [0x61, 0xD83D, 0xDE00, 0xDE00, 0x62];
+        assert_eq!(render_lone_units(&units), "a😀_xDE00_b");
+        assert_eq!(render_lone_units(&[0xD83D]), "_xD83D_");
+    }
 
     /// Workbook with `Sheet1!A1 = TODAY()` and an optional `METADATA` NOW row.
     fn workbook(now_serial: Option<f64>) -> Vec<u8> {
@@ -270,6 +412,47 @@ mod tests {
 
     fn spec(json: &str) -> CaseSpec {
         serde_json::from_str(json).expect("spec")
+    }
+
+    #[test]
+    fn spec_sheet_ops_apply_in_order_after_the_build() {
+        // probes/sheet-ops (T-1608): references follow the renamed sheet, the moved sheet keeps
+        // them, and an added sheet is empty.
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1",
+                "sheets":[{"name":"Calc","cells":{"A1":"=Data!A1","A2":"=FORMULATEXT(A1)",
+                                                 "A3":"=SHEET(Inputs!A1)","A4":"=COUNTA(New!A1:B2)"}},
+                          {"name":"Data","cells":{"A1":5}}],
+                "sheet_ops":[{"op":"rename","sheet":"Data","to":"Inputs"},
+                             {"op":"move","sheet":"Inputs","to":0},
+                             {"op":"add","sheet":"New"}]}"#,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let calc = |row| evaluated.value("Calc", Addr { row, col: 1 });
+        assert_eq!(calc(1), Some(Value::Number(5.0)));
+        assert_eq!(calc(2), Some(Value::Text("=Inputs!A1".into())));
+        assert_eq!(calc(3), Some(Value::Number(1.0)));
+        assert_eq!(
+            evaluated.value("New", Addr { row: 1, col: 1 }),
+            Some(Value::Empty)
+        );
+    }
+
+    #[test]
+    fn unknown_or_malformed_sheet_ops_are_refused() {
+        for ops in [
+            r#"[{"op":"delete","sheet":"Data"}]"#,
+            r#"[{"op":"move","sheet":"Data","to":-1}]"#,
+            r#"[{"op":"add","sheet":"New","to":1}]"#,
+        ] {
+            let json = format!(r#"{{"format":"rustsheet-case/v1","sheets":[],"sheet_ops":{ops}}}"#);
+            assert!(serde_json::from_str::<CaseSpec>(&json).is_err(), "{ops}");
+        }
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"Calc","cells":{}}],
+                "sheet_ops":[{"op":"rename","sheet":"Nope","to":"X"}]}"#,
+        );
+        assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
     }
 
     #[test]
@@ -355,6 +538,19 @@ mod tests {
     }
 
     #[test]
+    fn iterative_cases_run_the_oracle_calculations() {
+        let parse = |json: &str| serde_json::from_str::<CaseSpec>(json).expect("spec");
+        let plain = parse(r#"{"format":"rustsheet-case/v1","sheets":[]}"#);
+        assert_eq!(calculations(&plain), 1);
+        let off =
+            parse(r#"{"format":"rustsheet-case/v1","sheets":[],"calculation":{"iterate":false}}"#);
+        assert_eq!(calculations(&off), 1);
+        let on =
+            parse(r#"{"format":"rustsheet-case/v1","sheets":[],"calculation":{"iterate":true}}"#);
+        assert_eq!(calculations(&on), ORACLE_CALCULATIONS);
+    }
+
+    #[test]
     fn spec_date_system_and_number_formats_build() {
         // No value reads either yet (SPEC-0005 step 3); the facade test covers the format.
         let ok = spec(
@@ -391,6 +587,26 @@ mod tests {
         assert_eq!(at(1), Some(Value::Number(5.0)));
         assert_eq!(at(2), Some(Value::Number(5.0)));
         assert_eq!(at(3), Some(Value::Number(7.0)));
+    }
+
+    #[test]
+    fn spec_totals_row_is_left_out_of_the_table() {
+        // Until the facade takes totals rows (T-1671) the adapter registers the table without
+        // its last row, so data references are right and the totals formula is not circular.
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
+                "A1":"Key","B1":"Val","A2":"a","B2":1,"A3":"b","B3":2,"A4":"Total",
+                "B4":"=SUBTOTAL(109,Data[Val])","D1":"=ROWS(Data[#All])"},
+                "tables":[{"name":"Data","ref":"A1:B4","totals_row":true}]}]}"#,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        // B4 sums the two data rows; `#All` has no totals row (Excel: 4 rows).
+        for (row, col) in [(4, 2), (1, 4)] {
+            assert_eq!(
+                evaluated.value("S", Addr { row, col }),
+                Some(Value::Number(3.0))
+            );
+        }
     }
 
     #[test]

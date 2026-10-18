@@ -217,3 +217,91 @@ fn test_randarray_negative_cols_returns_value() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#VALUE!");
 }
+
+#[test]
+fn test_randarray_whole_number_rejects_fractional_bounds() {
+    // Excel: probes/volatile-invariant Calc!B9, B10, B18.
+    let mut model = new_empty_model();
+    model._set("A1", "=RANDARRAY(1,1,1.5,1.5,TRUE)");
+    model._set("A2", "=RANDARRAY(1,1,1,2.5,TRUE)");
+    model._set("A3", "=RANDARRAY(1,1,1.5,2.5)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_ne!(model._get_text("A3"), "#VALUE!");
+}
+
+#[test]
+fn test_randbetween_argument_checks() {
+    // Excel: probes/volatile-invariant Calc!A2, A6, A8, A12, A13.
+    let mut model = new_empty_model();
+    model._set("A1", "=RANDBETWEEN(2,1)");
+    model._set("A2", "=RANDBETWEEN(5,4.5)");
+    model._set("A3", "=RANDBETWEEN(5.5,5.7)");
+    model._set("A4", "=RANDBETWEEN(TRUE,TRUE)");
+    model._set("A5", "=RANDBETWEEN(,)");
+    model._set("A6", "=RANDBETWEEN(-5.5,-5.2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+    assert_eq!(model._get_text("A3"), "6");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "#N/A");
+    assert_eq!(model._get_text("A6"), "-5");
+}
+
+#[test]
+fn test_randbetween_draws_stay_in_range() {
+    let mut model = new_empty_model();
+    model._set("A1", "=RANDBETWEEN(3,3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3");
+    let mut low = i32::MAX;
+    let mut high = i32::MIN;
+    for i in 0..200 {
+        let cell = format!("B{}", i + 1);
+        model._set(&cell, "=RANDBETWEEN(2,4)");
+    }
+    model.evaluate();
+    for i in 0..200 {
+        let v: i32 = model._get_text(&format!("B{}", i + 1)).parse().unwrap();
+        low = low.min(v);
+        high = high.max(v);
+    }
+    assert!((2..=4).contains(&low) && (2..=4).contains(&high));
+}
+
+#[test]
+fn test_randbetween_lifts_over_array_bounds() {
+    // Excel: probes/volatile-invariant Calc!F5 (T-1316): one draw per element of the broadcast shape.
+    let mut model = new_empty_model();
+    model._set("A1", "=ROWS(RANDBETWEEN(SEQUENCE(1000,1,5.5,0),5.7))");
+    model._set("A2", "=MIN(RANDBETWEEN(SEQUENCE(50,1,5.5,0),5.7))");
+    model._set("A3", "=MAX(RANDBETWEEN(SEQUENCE(50,1,5.5,0),5.7))");
+    model._set("A4", "=SUM(RANDBETWEEN({3,3},{3;3}))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1000");
+    assert_eq!(model._get_text("A2"), "6");
+    assert_eq!(model._get_text("A3"), "6");
+    assert_eq!(model._get_text("A4"), "12");
+}
+
+#[test]
+fn test_randbetween_array_elements_and_ranges() {
+    // Excel: probes/randbetween-lift-operands (T-1316): a boolean element is `#VALUE!`, a
+    // multi-cell range bound is `#VALUE!` even where it intersects the formula's row.
+    let mut model = new_empty_model();
+    model._set("D1", "1");
+    model._set("D2", "2");
+    model._set("A1", "=COUNT(RANDBETWEEN({TRUE;1},{2;2}))");
+    model._set("A2", "=COUNT(RANDBETWEEN({\"5\";\"6\"},9))");
+    model._set("B2", "=COUNT(RANDBETWEEN(D1:D2,10))");
+    model._set("B3", "=RANDBETWEEN(D1:D2,10)");
+    model._set("B4", "=RANDBETWEEN(D2,10)>=2");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "2");
+    assert_eq!(model._get_text("B2"), "0");
+    assert_eq!(model._get_text("B3"), "#VALUE!");
+    assert_eq!(model._get_text("B4"), "TRUE");
+}

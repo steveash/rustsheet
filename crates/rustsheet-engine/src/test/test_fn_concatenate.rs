@@ -91,8 +91,9 @@ fn fn_concatenate_limit_counts_utf16_units() {
     let a1 = model._get_text("A1");
     assert_eq!(a1.encode_utf16().count(), 32767);
     assert!(a1.ends_with("😀a"));
-    // The last emoji would straddle the limit; it is dropped whole (no lone surrogate).
-    assert_eq!(model._get_text("A2").encode_utf16().count(), 32766);
+    // The last emoji straddles the limit; Excel keeps its high half (E11), which the lossy
+    // text view shows as one U+FFFD unit.
+    assert_eq!(model._get_text("A2").encode_utf16().count(), 32767);
     // "é" is one UTF-16 unit (two UTF-8 bytes).
     assert_eq!(model._get_text("A3").chars().count(), 32767);
 }
@@ -174,4 +175,27 @@ fn concat_joins_array_arguments_row_by_row() {
     assert_eq!(model._get_text("A1"), *"abcd");
     assert_eq!(model._get_text("A2"), *"");
     assert_eq!(model._get_text("A3"), *"a1z");
+}
+
+// Excel keeps the high half of a surrogate pair the 32,767-unit limit cuts
+// (probes/concatenate-limit-spill E8, E9, E11); arguments after the cut change nothing, but an
+// error argument after it still wins.
+#[test]
+fn concatenation_keeps_a_lone_high_surrogate_at_the_limit() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=LEN(CONCATENATE(REPT("😀",16383),"😀"))"#);
+    model._set("A2", r#"=LEN(CONCATENATE(REPT("a",32766),"😀"))"#);
+    model._set("A3", r#"=LEN(REPT("😀",16383)&"😀")"#);
+    model._set("A4", r#"=LEN(CONCATENATE(REPT("a",32766),"😀","zz",1))"#);
+    model._set("A5", r#"=CONCATENATE(REPT("a",32766),"😀",NA())"#);
+    model._set("A6", r#"=LEN("😀"&REPT("a",32766))"#);
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"32767");
+    assert_eq!(model._get_text("A2"), *"32767");
+    assert_eq!(model._get_text("A3"), *"32767");
+    assert_eq!(model._get_text("A4"), *"32767");
+    assert_eq!(model._get_text("A5"), *"#N/A");
+    assert_eq!(model._get_text("A6"), *"32767");
 }

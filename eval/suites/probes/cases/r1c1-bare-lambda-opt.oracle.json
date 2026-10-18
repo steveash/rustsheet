@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "n",
+    "v": 11.0
+   },
+   "A2": {
+    "t": "s",
+    "v": "=LAMBDA(R5C7,[R1C1],R5C7*2+ISOMITTED(R1C1))(5)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "0d9701c77bbd83b78b83d9fee7b2ca70006ebfc18e3dd874287e5cfe57df7f31",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T19:26:19+00:00",
+  "version": null
+ }
+}

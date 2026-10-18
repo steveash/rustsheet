@@ -36,3 +36,40 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   (crates/rustsheet-xlsx/tests/error_cell_export.rs) loads this and `rich-error-export.xlsx`, saves them again and
   requires the same `vm` cells, `xl/metadata.xml`, `xl/richData/*` and content-type overrides, so a change to the
   exporter's parts needs new fixtures and an oracle refill.
+- `external-link-cached-ranges.xlsx` (T-1460): poi/ref-56737.xlsx (Apache-2.0, Excel-written, one
+  `externalReference` to `56737.xlsx`) with its calcChain dropped, docProps replaced (app name
+  `RustSheet fixture`), sheet `Refs` rewritten and `xl/externalLinks/externalLink1.xml` given a
+  bigger cache: sheet `Uses` A1 "Hello!", B1 10, C1 `#N/A`, A2 5, B2 the text "7" (`t="str"`), C2 1,
+  A3 TRUE; `Defines` A1 "Test A1", B2 142; workbook names `NR_Global_B2` (`'Defines'!$B$2`) and
+  `NR_Range` (`'Uses'!$A$1:$B$3`), sheet-scoped (`Defines`) `NR_To_A1` and `NR_Local_Range`
+  (`'Defines'!$A$1:$B$2`). `Refs` holds a label in column A and, in column B, one legacy formula
+  per row (placeholder cached 0) over those cached ranges: aggregates, COUNTA, the reference
+  readers, lookups, COUNTIF/SUMIF/COUNTBLANK, names, whole columns, unions. A formula over the
+  cache's third sheet (`refreshError="1"`) is left out: Excel for the web refuses to open such a
+  workbook.
+- `strict-date-compatibility-0.xlsx` (T-0407): `t-d-iso-date-cells.xlsx` with `<workbookPr dateCompatibility="0">`
+  (as in every Excel-saved Strict file). A1 is a `t="d"` cell `1900-01-01`; B1:B6 = `DATE(1900,2,28)`, `DATE(1900,3,1)`,
+  `DATE(1900,2,29)`, `TEXT(60,"yyyy-mm-dd")`, `DAY(59)`, `DATEVALUE("1900-01-01")`; B7 = `A1`, C7 = `ISNUMBER(A1)`.
+  Excel for the web gives 59, 61, 60, `1900-02-29`, 28, 1, 1, TRUE.
+- `t-d-z-suffix.xlsx`, `t-d-fractional-seconds.xlsx`, `t-d-1900-02-29.xlsx`, `t-d-pre-1900.xlsx`,
+  `t-d-time-only.xlsx` (T-0409): `t-d-iso-date-cells.xlsx` cut to row 1, with A1 a `t="d"` cell
+  `1990-01-01T12:00:00Z`, `1990-01-01T12:00:00.5`, `1900-02-29`, `1899-12-31` and `12:00:00`; B1 = `A1`,
+  C1 = `ISNUMBER(A1)`. One form per workbook because Excel for the web rejects unparsable text. Excel gives
+  32874.5, 32874.500005787035, 60, `#VALUE!` (ISNUMBER FALSE) and 0.5.
+- `external-link-cached-text.xlsx` (T-1550): `external-link-cached-ranges.xlsx` with sheet `Refs`
+  rewritten (one legacy formula per row in column B, placeholder cached 0) and the cached `Uses`
+  sheet replaced: A1 the empty string (`t="str"`, `<v></v>`), B1 18, A2 12, B2 TRUE, A3 the text
+  "8", A4 "abc", A5 30. It probes COUNTA over the cached empty string, GCD/LCM over cached text,
+  booleans, the empty string and blanks, and SUM/COUNT/MAX/AVERAGEA over an area taller than the
+  array bound.
+- `external-link-cached-index-array.xlsx` (T-1554): `external-link-cached-lookups.xlsx` with sheet `Refs`
+  replaced the same way: INDEX with the index array `{2,1}` over `[1]Uses!$A$1:$B$3` under SUM, ROWS, ISREF,
+  COUNTA, COLUMN, a nested INDEX and `&""` (legacy formulas), and as a two-cell array formula (B10:C10). The
+  index array is `{2,1}`, not `{1,2}`, so the first element (A2) and the top-left cell (A1) differ.
+- `external-link-cached-lookups.xlsx`, `external-link-cached-3d-span.xlsx` (T-1609):
+  `external-link-cached-ranges.xlsx` with only sheet `Refs` rewritten (one legacy formula per row in
+  column B, placeholder cached 0, label in column A; built by replacing `xl/worksheets/sheet1.xml`).
+  The first probes lookups over partly cached ranges (VLOOKUP, HLOOKUP, MATCH, XLOOKUP, XMATCH,
+  LOOKUP, INDEX), the case of sheet and name lookups, and names, sheets and scopes the cache does not
+  hold. The second probes 3-D spans of the cached sheets (`[1]Uses:Defines!$B$2`); it is a workbook of
+  its own so that a span Excel for the web refused could not take the other questions down with it.

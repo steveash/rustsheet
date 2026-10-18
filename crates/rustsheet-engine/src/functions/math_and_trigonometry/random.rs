@@ -1,6 +1,7 @@
+use crate::cast::NumberOrArray;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::math_and_trigonometry::array_size::check_array_size;
+use crate::limits::check_array_size;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -16,6 +17,21 @@ fn random() -> f64 {
     Math::random()
 }
 
+/// One RANDBETWEEN draw: the raw bounds are compared, a span that overflows a double is `#NUM!`
+/// (probes/randbetween-huge-span A1:A2) and an empty `CEILING(bottom)..FLOOR(top)` gives
+/// `CEILING(bottom)`.
+fn randbetween_draw(bottom: f64, top: f64) -> Result<f64, Error> {
+    if bottom > top || !(top - bottom).is_finite() {
+        return Err(Error::NUM);
+    }
+    let low = bottom.ceil();
+    let high = top.floor();
+    if high < low {
+        return Ok(low);
+    }
+    Ok((low + random() * (high - low + 1.0)).floor().min(high))
+}
+
 impl Model {
     pub(crate) fn fn_rand(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !args.is_empty() {
@@ -24,27 +40,78 @@ impl Model {
         CalcResult::Number(random())
     }
 
-    // TODO: Add tests for RANDBETWEEN
+    /// `=RANDBETWEEN(bottom, top)`. Excel compares the raw bounds, draws a whole number from
+    /// `CEILING(bottom)` to `FLOOR(top)` (`CEILING(bottom)` when that range is empty), rejects
+    /// booleans and treats an omitted bound (`RANDBETWEEN(,5)`, `(5,)`, `(,)`)
+    /// as `#N/A` (docs/excel-semantics/numbers.md
+    /// "RANDBETWEEN and RANDARRAY argument checks", probes/volatile-invariant).
     pub(crate) fn fn_randbetween(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor(),
-            Err(s) => return s,
-        };
-        let y = match self.get_number(&args[1], cell) {
-            Ok(f) => f.ceil() + 1.0,
-            Err(s) => return s,
-        };
-        if x > y {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: format!("{x}>{y}"),
-            };
+        let first = self.evaluate_node_in_context(&args[0], cell);
+        let second = self.evaluate_node_in_context(&args[1], cell);
+        if matches!(first, CalcResult::EmptyArg) || matches!(second, CalcResult::EmptyArg) {
+            return CalcResult::new_error(Error::NA, cell, "bottom or top omitted".to_string());
         }
-        CalcResult::Number((x + random() * (y - x)).floor())
+        // Excel: a multi-cell range bound is a `#VALUE!` operand (no lift, no implicit
+        // intersection: probes/randbetween-lift-operands A7:A11, B2:B4, T-1316) that takes its
+        // place in the top-first error order like any other error, and broadcasts against an
+        // array bound (probes/randbetween-range-error-bounds, T-1793); a single-cell reference
+        // is a scalar.
+        let range_error = |model: &mut Self, v: CalcResult| match v {
+            CalcResult::Range { left, right } if left != right => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "RANDBETWEEN bound is a range".to_string(),
+            )),
+            scalar => model.cast_to_number_no_bools(scalar, cell),
+        };
+        // An array bound lifts, one draw per element (probes/volatile-invariant F1:F9); a boolean
+        // element is `#VALUE!` like a scalar boolean (probes/randbetween-lift-operands A1:A3, A12).
+        if [&first, &second]
+            .iter()
+            .any(|v| matches!(v, CalcResult::Array(_)))
+        {
+            // Excel reads the top first: when both bounds are errors the top's wins, per element
+            // (probes/randbetween-bound-errors A6:A20), so the operands go in as [top, bottom].
+            let operands = [second, first]
+                .into_iter()
+                .map(|v| match v {
+                    CalcResult::Array(rows) => self.number_or_array(
+                        CalcResult::Array(
+                            rows.into_iter()
+                                .map(|row| {
+                                    row.into_iter()
+                                        .map(|node| match node {
+                                            ArrayNode::Boolean(_) => ArrayNode::Error(Error::VALUE),
+                                            other => other,
+                                        })
+                                        .collect()
+                                })
+                                .collect(),
+                        ),
+                        cell,
+                    ),
+                    scalar => range_error(self, scalar).map(NumberOrArray::Number),
+                })
+                .collect();
+            return self.lift_number_operands(operands, cell, "Invalid arguments", |[t, b]| {
+                randbetween_draw(b, t)
+            });
+        }
+        let top = match range_error(self, second) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        let bottom = match range_error(self, first) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        match randbetween_draw(bottom, top) {
+            Ok(n) => CalcResult::Number(n),
+            Err(e) => CalcResult::new_error(e, cell, format!("RANDBETWEEN({bottom},{top})")),
+        }
     }
 
     /// `=RANDARRAY([rows], [cols], [min], [max], [whole_number])`
@@ -168,17 +235,30 @@ impl Model {
             false
         };
 
+        // Excel: a fractional bound with whole_number TRUE is #VALUE! (RANDARRAY(1,1,1.5,2.5,TRUE)).
+        if whole_number && (min.fract() != 0.0 || max.fract() != 0.0) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "min and max must be whole numbers".to_string(),
+            );
+        }
+
         let mut result = Vec::with_capacity(rows);
         for _ in 0..rows {
             let mut row = Vec::with_capacity(columns);
             for _ in 0..columns {
-                let val = if whole_number {
-                    let min_int = min.floor();
-                    let max_int = max.floor();
-                    let span = max_int - min_int + 1.0;
-                    min_int + (random() * span).floor()
+                let r = random();
+                let span = max - min + 1.0;
+                // Excel: a span that overflows a double still draws a finite value in range
+                // (probes/randbetween-huge-span B2:B3, B14:B15), so interpolate instead. Whether such a
+                // value is a whole number with `whole_number` TRUE is unprobed at this scale.
+                let val = if !span.is_finite() {
+                    min * (1.0 - r) + max * r
+                } else if whole_number {
+                    min + (r * span).floor()
                 } else {
-                    min + random() * (max - min)
+                    min + r * (max - min)
                 };
                 row.push(ArrayNode::Number(val));
             }

@@ -1,6 +1,6 @@
 //! Executes cases against an [`Engine`] and scores every checked cell.
 
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::mpsc;
@@ -11,7 +11,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::case::{
-    canonical_key, cell_key, is_excel_evidence, split_qualified, CaseSpec, CellInput, OracleFile,
+    canonical_key, cell_key, is_excel_evidence, load_oracle, split_qualified, CaseSpec, CellInput,
     CASE_FORMAT, GRAPH_ORACLE,
 };
 use crate::case_log;
@@ -19,9 +19,11 @@ use crate::cellref::Addr;
 use crate::deviations::{self, Outcome};
 use crate::engine::{Engine, Evaluated};
 use crate::overrides;
+use crate::spill_extent::SpillExtent;
 use crate::suite::{CaseFile, Suite, SuiteKind};
+use crate::text_expect::{self, TextExpectation, TextResult};
 use crate::value::{compare, Value, Verdict};
-use crate::volatile::{pinned_clock_serial, scorable_cells, volatile_cells, FormulaCell};
+use crate::volatile::{pinned_clock_serial, scorable_cells, spec_volatile_cells, FormulaCell};
 use crate::xlsx_snapshot::{is_undecoded, read_snapshot};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -92,6 +94,9 @@ pub struct CaseResult {
     pub tags: Vec<String>,
     /// Every scored cell (reports may drop passing cells when serializing).
     pub cells: Vec<CellResult>,
+    /// Displayed-text verdicts, beside the values' (T-1610, decision 0068).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub text: Vec<TextResult>,
 }
 
 #[derive(Debug, Clone)]
@@ -147,9 +152,11 @@ enum Prepared {
 struct PreparedCase {
     input: Prepared,
     expectations: Vec<Expectation>,
+    extent: Option<SpillExtent>,
     expected_source: String,
     skipped_volatile: usize,
     tags: Vec<String>,
+    text: Vec<TextExpectation>,
 }
 
 /// Runs all cases of the given suites in parallel.
@@ -195,6 +202,7 @@ fn invalid(suite: &Suite, case: &CaseFile, message: String) -> CaseResult {
         millis: 0,
         tags: Vec::new(),
         cells: Vec::new(),
+        text: Vec::new(),
     }
 }
 
@@ -223,6 +231,7 @@ pub fn run_case(
         millis: 0,
         tags: prepared.tags.clone(),
         cells: Vec::new(),
+        text: Vec::new(),
     };
     // Cases without expectations still run: a panic, timeout or load error is a crash we can
     // catch before any oracle value exists (T-0007).
@@ -239,7 +248,12 @@ pub fn run_case(
                     Prepared::Xlsx { bytes } => engine.evaluate_xlsx(bytes),
                     Prepared::Spec { spec } => engine.evaluate_spec(spec),
                 }?;
-                Ok::<_, String>(score(evaluated.as_ref(), &prepared.expectations))
+                let mut cells = score(evaluated.as_ref(), &prepared.expectations);
+                let scored = cells.len();
+                let extent = prepared.extent.iter();
+                cells.extend(extent.flat_map(|e| e.unexpected_cells(evaluated.as_ref())));
+                let text = text_expect::score(evaluated.as_ref(), &prepared.text);
+                Ok::<_, String>((cells, scored, text))
             }));
             let _ = tx.send(outcome);
         });
@@ -267,8 +281,10 @@ pub fn run_case(
             result.status = CaseStatus::EngineError;
             result.message = Some(e);
         }
-        Ok(Ok(Ok(cells))) => {
-            result.checked = cells.len();
+        Ok(Ok(Ok((cells, scored, text)))) => {
+            result.text = text;
+            // Spill-extent cells (after `scored`) all fail but stay out of `checked` (decision 0063).
+            result.checked = scored;
             result.passed = cells.iter().filter(|c| c.verdict.is_pass()).count();
             result.deviations = cells
                 .iter()
@@ -276,7 +292,7 @@ pub fn run_case(
                 .count();
             result.status = if result.checked == 0 {
                 CaseStatus::Pending
-            } else if result.passed + result.deviations == result.checked {
+            } else if result.passed + result.deviations == cells.len() {
                 CaseStatus::Pass
             } else {
                 CaseStatus::Fail
@@ -331,17 +347,6 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
             }
         })
         .collect()
-}
-
-fn load_oracle(case: &CaseFile) -> Result<Option<OracleFile>, String> {
-    let path = &case.sidecar;
-    if !path.exists() {
-        return Ok(None);
-    }
-    let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-    serde_json::from_str(&text)
-        .map(Some)
-        .map_err(|e| format!("{}: {e}", path.display()))
 }
 
 fn prepare(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> {
@@ -410,9 +415,11 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
         return Ok(PreparedCase {
             input: Prepared::Xlsx { bytes },
             expectations: Vec::new(),
+            extent: None,
             expected_source: "none".into(),
             skipped_volatile: 0,
             tags: Vec::new(),
+            text: Vec::new(),
         });
     };
     let (scorable, skipped_volatile) = scorable_cells(
@@ -438,9 +445,11 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
     Ok(PreparedCase {
         input: Prepared::Xlsx { bytes },
         expectations,
+        extent: None,
         expected_source: source,
         skipped_volatile,
         tags: Vec::new(),
+        text: Vec::new(),
     })
 }
 
@@ -468,28 +477,6 @@ fn apply_cached_overrides(
         target.expected = expected;
     }
     Ok(expectations)
-}
-
-/// The volatile cells of a spec case once its `invariant` cells are taken out. A listed cell that
-/// is not a volatile formula cell is an error, so a stale listing cannot linger unnoticed.
-fn spec_volatile_cells(
-    listed: &[String],
-    formulas: &[FormulaCell],
-) -> Result<HashSet<(String, Addr)>, String> {
-    let volatile = volatile_cells(formulas, &[], false, &HashSet::new());
-    if listed.is_empty() {
-        return Ok(volatile);
-    }
-    let mut invariant = HashSet::new();
-    for q in listed {
-        let (sheet, a1) = split_qualified(q).ok_or_else(|| format!("bad cell key {q}"))?;
-        let addr = Addr::parse(&a1).ok_or_else(|| format!("bad cell key {q}"))?;
-        if !volatile.contains(&(sheet.clone(), addr)) {
-            return Err(format!("invariant cell {q} is not a volatile formula cell"));
-        }
-        invariant.insert((sheet.to_lowercase(), addr));
-    }
-    Ok(volatile_cells(formulas, &[], false, &invariant))
 }
 
 fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
@@ -594,7 +581,10 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         });
     }
     Ok(PreparedCase {
+        extent: oracle_is_excel
+            .then(|| SpillExtent::new(&spec, &expected, &oracle_cells, &formulas)),
         tags: spec.tags.clone(),
+        text: text_expect::expectations(&spec, case)?,
         input: Prepared::Spec {
             spec: Box::new(spec),
         },
@@ -617,6 +607,9 @@ mod tests {
     impl Evaluated for NoValues {
         fn value(&self, _: &str, _: Addr) -> Option<Value> {
             None
+        }
+        fn stored_cells(&self, _: &str) -> Vec<Addr> {
+            Vec::new()
         }
     }
 

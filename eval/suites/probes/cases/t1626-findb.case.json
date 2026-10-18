@@ -1,0 +1,52 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1626 FINDB evidence-floor probe",
+ "tags": [
+  "M5",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "abcabc",
+    "A2": "日本語テキスト",
+    "A3": "ｱｲｳｶﾞ",
+    "A4": "😀a😀",
+    "A5": "ＡＢＣ１２３",
+    "A6": "abc",
+    "A7": 7,
+    "A8": "",
+    "A9": "Ａ",
+    "A10": "カタカナ",
+    "C1": "=FINDB(\"b\",A1)",
+    "C2": "=FINDB(\"B\",A1)",
+    "C3": "=FINDB(\"c\",A1,4)",
+    "C4": "=FINDB(\"c\",A1,0)",
+    "C5": "=FINDB(\"c\",A1,7)",
+    "C6": "=FINDB(\"c\",A1,6)",
+    "C7": "=FINDB(\"c\",A1,2.9)",
+    "C8": "=FINDB(\"?c\",A1)",
+    "C9": "=FINDB(\"本\",A2)",
+    "C10": "=FINDB(\"語\",A2)",
+    "C11": "=FINDB(\"語\",A2,3)",
+    "C12": "=FINDB(\"語\",A2,4)",
+    "C13": "=FINDB(\"a\",A4)",
+    "C14": "=FINDB(\"a\",A4,2)",
+    "C15": "=FINDB(\"\",A1)",
+    "C16": "=FINDB(\"\",A1,7)",
+    "C17": "=FINDB(\"x\",A1)",
+    "C18": "=FINDB(\"b\",A7)",
+    "C19": "=FINDB(\"b\",A1,-1)",
+    "C20": "=FINDB(\"ｱ\",A3)",
+    "C21": "=FINDB(\"ガ\",A3)",
+    "C22": "=FINDB(\"1\",A5)",
+    "C23": "=FINDB(\"１\",A5)",
+    "C24": "=FINDB(\"a\",A8)",
+    "C25": "=FINDB(\"\",A8)"
+   }
+  }
+ ],
+ "expected": {}
+}

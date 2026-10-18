@@ -7,6 +7,7 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 
+use crate::case::split_qualified;
 use crate::cellref::Addr;
 use crate::value::Value;
 use crate::xlsx_snapshot::{CellSnapshot, DefinedName, SheetSnapshot};
@@ -93,8 +94,8 @@ pub fn is_volatile(formula: &str, clock_pinned: bool) -> bool {
 
 /// The Excel serial stored next to the label `NOW` in the first rows of a `METADATA` sheet.
 ///
-/// This is IronCalc's mock-time convention (`rustsheet_xlsx::mock_time`); the engine adapter
-/// pins its clock to the same value, so `NOW()`/`TODAY()` cells reproduce Excel's cached values.
+/// This is IronCalc's METADATA clock convention (`rustsheet_xlsx::metadata_clock`); the engine
+/// adapter pins the workbook clock to the same value, so `NOW()`/`TODAY()` cells reproduce Excel's cached values.
 #[must_use]
 pub fn pinned_clock_serial(sheets: &[SheetSnapshot]) -> Option<f64> {
     let sheet = sheets
@@ -265,6 +266,28 @@ pub fn volatile_cells<S: std::hash::BuildHasher>(
         .filter(|(_, t)| *t)
         .map(|((sheet, addr, _), _)| (sheet.clone(), *addr))
         .collect()
+}
+
+/// The volatile cells of a spec case once its `invariant` cells are taken out. A listed cell that
+/// is not a volatile formula cell is an error, so a stale listing cannot linger unnoticed.
+pub(crate) fn spec_volatile_cells(
+    listed: &[String],
+    formulas: &[FormulaCell],
+) -> Result<HashSet<(String, Addr)>, String> {
+    let volatile = volatile_cells(formulas, &[], false, &HashSet::new());
+    if listed.is_empty() {
+        return Ok(volatile);
+    }
+    let mut invariant = HashSet::new();
+    for q in listed {
+        let (sheet, a1) = split_qualified(q).ok_or_else(|| format!("bad cell key {q}"))?;
+        let addr = Addr::parse(&a1).ok_or_else(|| format!("bad cell key {q}"))?;
+        if !volatile.contains(&(sheet.clone(), addr)) {
+            return Err(format!("invariant cell {q} is not a volatile formula cell"));
+        }
+        invariant.insert((sheet.to_lowercase(), addr));
+    }
+    Ok(volatile_cells(formulas, &[], false, &invariant))
 }
 
 #[cfg(test)]

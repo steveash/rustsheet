@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "How Excel loads a defined name RCR whose cell use is #NAME?: INDIRECT, SUM and FORMULATEXT of the use (T-1652)",
+  "tags": [
+    "M8",
+    "names",
+    "probe"
+  ],
+  "names": {
+    "RCR": "=Sheet1!$B$1"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": 7,
+        "A1": "=RCR*1",
+        "A2": "=ISREF(INDIRECT(\"RCR\"))",
+        "A3": "=FORMULATEXT(A1)",
+        "A4": "=SUM(RCR)"
+      }
+    }
+  ],
+  "expected": {}
+}

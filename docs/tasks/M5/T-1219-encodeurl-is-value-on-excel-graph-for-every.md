@@ -3,7 +3,7 @@ id: T-1219
 title: "ENCODEURL is #VALUE! on excel-graph for every argument"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -25,9 +25,17 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/fcf11f2ec6f7a59d Calc!A7 `=CODE((ENCODEURL(Data!B3)&DOLLAR(Data!$E$1)))`: Excel `#VALUE!`, engine 49.
 
 ## Acceptance criteria
-- [ ] The ENCODEURL probe cells either pass or are recorded as a DEVIATION with a decision citation.
-- [ ] gen-m9/fcf11f2ec6f7a59d A7 passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] `make check` green; reviewers approve.
+- [x] The ENCODEURL probe cells either pass or are recorded as a DEVIATION with a decision citation.
+- [x] gen-m9/fcf11f2ec6f7a59d A7 passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+ENCODEURL now follows the excel-graph golden (decision 0039 rule 4): `#VALUE!` for every argument,
+lifted element-wise over a range or array (static_analysis marks it `scalar_arguments`); an error
+argument propagates (unprobed). Recorded in docs/excel-semantics/web.md; desktop confirmation stays
+T-1081. Eval: probes known failures 5523 -> 5514 (9 fixed, 0 regressions). gen-m9/fcf11f2ec6f7a59d passes 40/40
+against its excel-graph golden (gen-m9 is outside the gated `check` set); a unit test covers the same shape.
+Error-argument propagation is unprobed (see web.md).

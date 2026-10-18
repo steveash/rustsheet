@@ -18,7 +18,7 @@ fn workbook_with(cols: &str, format_attrs: &str) -> Result<Vec<u8>, Box<dyn Erro
     let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
     for i in 0..src.len() {
         let mut file = src.by_index(i)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         let mut content = String::new();
         file.read_to_string(&mut content)?;
         if name == "xl/worksheets/sheet1.xml" {
@@ -34,7 +34,7 @@ fn workbook_with(cols: &str, format_attrs: &str) -> Result<Vec<u8>, Box<dyn Erro
                 &format!("<sheetFormatPr {format_attrs} "),
             );
         }
-        out.start_file(name, zip::write::FileOptions::default())?;
+        out.start_file(name, zip::write::SimpleFileOptions::default())?;
         out.write_all(content.as_bytes())?;
     }
     Ok(out.finish()?.into_inner())

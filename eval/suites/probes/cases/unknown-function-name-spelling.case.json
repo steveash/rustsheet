@@ -1,0 +1,53 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FORMULATEXT of a call to a name that is no function: is the typed spelling kept? (T-1719)",
+  "tags": [
+    "M2",
+    "functions",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=foo(1)",
+        "A2": "=Foo(1)",
+        "A3": "=FOO(1)",
+        "A4": "=my_Fn(1,2)+sum(3)",
+        "B1": "=FORMULATEXT(A1)",
+        "B2": "=FORMULATEXT(A2)",
+        "B3": "=FORMULATEXT(A3)",
+        "B4": "=FORMULATEXT(A4)",
+        "A5": "=Bar(1)",
+        "B5": "=FORMULATEXT(A5)",
+        "A6": "=BAR(1)",
+        "B6": "=FORMULATEXT(A6)",
+        "A7": "=bAr(1)",
+        "B7": "=FORMULATEXT(A7)",
+        "A8": "=Ab1(1)",
+        "B8": "=FORMULATEXT(A8)",
+        "A9": "=My_Fn(1)",
+        "B9": "=FORMULATEXT(A9)",
+        "A10": "=MY_FN(1)",
+        "B10": "=FORMULATEXT(A10)",
+        "A11": "=my.fn(1)",
+        "B11": "=FORMULATEXT(A11)",
+        "A12": "=My.Fn(1)",
+        "B12": "=FORMULATEXT(A12)",
+        "A13": "=x1y(1)",
+        "B13": "=FORMULATEXT(A13)",
+        "A14": "=Xyz2(1)",
+        "B14": "=FORMULATEXT(A14)",
+        "A15": "=A1.INDEX(1)",
+        "B15": "=FORMULATEXT(A15)",
+        "A16": "=a1.Index(1)",
+        "B16": "=FORMULATEXT(A16)",
+        "A17": "=_Foo(1)",
+        "B17": "=FORMULATEXT(A17)",
+        "A18": "=Foo_(1)",
+        "B18": "=FORMULATEXT(A18)"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -28,5 +28,56 @@ class ProtectedPaths(unittest.TestCase):
             self.assertFalse(gov.is_protected(path), path)
 
 
+class NewProbeCaseTags(unittest.TestCase):
+    """Decision 0057: an added probes case has one milestone tag, M2 or later."""
+
+    TAGS = {
+        "eval/suites/probes/cases/m1.case.json": ["M1", "probe"],
+        "eval/suites/probes/cases/untagged.case.json": ["probe", "lookup"],
+        "eval/suites/probes/cases/two.case.json": ["M2", "M9"],
+        "eval/suites/probes/cases/m2.case.json": ["M2", "probe"],
+        "eval/suites/probes/cases/m9.case.json": ["probe", "M9"],
+        "eval/suites/probes/cases/catalog/sum.case.json": ["M0"],
+        "eval/suites/probes/cases/old.case.json": ["M1"],
+    }
+
+    def problems(self, *lines: str) -> list[str]:
+        return gov.probe_tag_problems(lines, lambda path: self.TAGS[path])
+
+    def test_added_m0_m1_untagged_or_twice_tagged_cases_fail(self) -> None:
+        self.assertEqual(
+            self.problems("A\teval/suites/probes/cases/m1.case.json"),
+            ["eval/suites/probes/cases/m1.case.json (milestone tags: M1)"],
+        )
+        self.assertEqual(
+            self.problems("A\teval/suites/probes/cases/untagged.case.json"),
+            ["eval/suites/probes/cases/untagged.case.json (milestone tags: none)"],
+        )
+        self.assertEqual(
+            self.problems("A\teval/suites/probes/cases/two.case.json"),
+            ["eval/suites/probes/cases/two.case.json (milestone tags: M2, M9)"],
+        )
+
+    def test_added_m2_or_later_and_catalog_cases_pass(self) -> None:
+        self.assertEqual(
+            self.problems(
+                "A\teval/suites/probes/cases/m2.case.json",
+                "A\teval/suites/probes/cases/m9.case.json",
+                "A\teval/suites/probes/cases/catalog/sum.case.json",
+            ),
+            [],
+        )
+
+    def test_modified_cases_and_other_files_are_not_checked(self) -> None:
+        self.assertEqual(
+            self.problems(
+                "M\teval/suites/probes/cases/old.case.json",
+                "A\teval/suites/probes/cases/m1.oracle.json",
+                "A\teval/suites/smoke/cases/m1.case.json",
+            ),
+            [],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

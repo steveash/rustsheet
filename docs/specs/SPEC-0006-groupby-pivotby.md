@@ -20,9 +20,9 @@ Goals:
 3. Every documented argument. Undocumented behavior follows the probe, never the documentation.
 
 Non-goals:
-- Eta-reduced names (`_xleta.SUM`) as values. T-1273 adds them for BYROW and the other LAMBDA
+- Eta-reduced names (`_xleta.SUM`) as values. T-1466 added them (it superseded T-1273) for BYROW and the other LAMBDA
   helpers. This spec only needs a function value it can call with one argument (two for
-  PERCENTOF-style relative totals). Until T-1273 lands, only the LAMBDA forms work.
+  PERCENTOF-style relative totals). GROUPBY and PIVOTBY get them through the same LAMBDA call path.
 - Rendering pivot-like formatting. Excel's bold total rows are cell styles, which the engine
   does not produce for spills.
 
@@ -35,12 +35,12 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
 
 ### Grouping and ordering
 - Keys compare like UNIQUE: text is case-insensitive, and the group shows the first spelling met
-  (`East`, `east` → `East`, G!A1). Numbers presumably compare exactly (`cell_key` uses `to_bits`), but that is unprobed: near-equal floats, -0 against 0, and a numeric 0 key against the blank key (both show 0) go to T-1328.
+  (`East`, `east` → `East`, G!A1). Numbers compare exactly: 0.1+0.2 and 0.3 are two groups (0.3 first), 1E-17 is not 0, 1 and 1+1E-15 are two groups, but 0 and a computed 0 are one group (a cell `=-0` is stored as +0, so a true negative zero is unprobed). The blank key is a separate group from numeric 0 (both show 0, the blank one last, also when descending). Equal errors form one group, sorted after the numbers and before Total (their place against text, booleans and blank is unprobed) (`1/{1;0;2;0}` keys: 0.5, 1, #DIV/0!). Evidence: probes/groupby-pivotby-followup G!A761-A821, G!A741, G!A841 (T-1328).
 - Groups are sorted ascending by key, with no option to keep source order. Mixed key types sort
   numbers < text < FALSE < TRUE < blank (G!A193). That is `sort_key_cmp` in
-  `functions/spill_functions.rs`. Errors as keys are unprobed.
+  `functions/spill_functions.rs`. Errors as keys: equal errors share one group, sorted after the numbers (see above).
 - A blank key is its own group, shown as the number 0, and it sorts last even when sorting
-  descending (G!A1, G!A145).
+  descending, for key sorts (G!A1, G!A145); sorting by a value column does not pin it (see sort_order).
 - Within a group, function inputs keep source order: ARRAYTOTEXT gives "Apple, Pear, Apple"
   (G!AB97). The total row applies the function to all values in source order, not to the group
   results: AVERAGE's total is 13.05 = 130.5/10, MAX's is 40 (G!S73, G!J97).
@@ -58,19 +58,36 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
   totals (G!A49). `2` adds a subtotal after each first-level group, with the key and a blank
   second key, and the grand total is then labeled "Grand Total" (G!J49). Negative values put
   totals above their group (G!S49 for `-2`, G!AB49 for `-1`, the last labeled "Total").
+  T-1324 (probes/groupby-subtotals): `n` subtotals the first n - 1 key fields and may not exceed
+  the number of keys; with the depth omitted, a value sort over n keys shows every level's
+  subtotals; a table relationship sorted by a value sorts every group by its own value. Details
+  in docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
 - **Filler cells** (the blank key columns of total rows, the corner above the key columns) are
   empty text `""`, not empty cells (oracle `t:"s"`, G!AC33). Only the blank-key group shows 0.
 - **sort_order**: an integer column index, 1-based over keys then values. Negative means
   descending. `-1` sorts keys descending, but blank stays last and the total stays at the bottom
-  (G!A145). `2` and `-2` sort by the value column (G!J145, G!S145). An index past the last column
+  (G!A145). `2` and `-2` sort by the value column (G!J145, G!S145): rows are ordered by value, blank key included (blank 9 sits in the middle); with two keys and sort_order 3, parents are ordered by their aggregate (consistent with sum, max or mean; not separated by this probe) and children by value inside each parent, again without pinning blank (followup2 G!A261). An index past the last column
   is `#VALUE!` (G!S217). The array `{2,-1}` with two key fields gives region descending, then
-  product ascending (G!AB145). The exact multi-key semantics are left to the probe task.
+  product ascending (G!AB145). Multi-key arrays name key columns with a sign: the priority is the column
+  order, not the array order. `{2,-1}` equals `{-1,2}` (Region desc, Product asc), `{1,-2}` equals `{-2,1}` (Region asc,
+  Product desc), `{2,1}` equals `{1,2}` (both asc); a one-element array is accepted (`{1}`, `{2}`: both asc);
+  `{1,-1}` (a column twice), `{0,1}` are `#VALUE!` (PIVOTBY's row_sort_order 0 was `#VALUE!` too, but in a formula with other changed arguments: confounded); `{1,2,3}` over two keys is
+  `#VALUE!` (followup G!A341-A541, followup2 G!A181-A241; T-1328; probed under the default hierarchy relationship only).
+  T-1323 (probes/groupby-sort-filter-args B1-B40): fractions, 0, text, TRUE and a blank cell are `#VALUE!`; an array may
+  be a column; it names a value column only as its one element (`{-3}`), mixing key and value columns is `#VALUE!`; equal
+  values keep the ascending key order in both directions; values sort like keys (numbers < text, errors last ascending).
 - **filter_array**: a Boolean column as tall as the data. FALSE rows are dropped before grouping,
   so groups with no rows vanish and totals cover only kept rows (G!A169). A height mismatch is
-  `#VALUE!` (G!AB217). All FALSE is `#VALUE!` (G!A241).
+  `#VALUE!` (G!AB217). All FALSE is `#VALUE!`, not `#CALC!` (ERROR.TYPE 3, unlike FILTER's 14), also as a scalar `FALSE`, `0` or `{FALSE}`, with two key
+  fields, and for PIVOTBY; a scalar `TRUE` filters nothing (followup3 G!A1-A133; G!A241).
+  T-1323 (probes/groupby-sort-filter-args B42-B60): numbers count (0 drops), blanks drop, the text "TRUE"/"FALSE" counts;
+  other text, an error element, a row or a 2-column filter are `#VALUE!`; with a header row the filter may be as tall as
+  the fields or as the records.
+- **Argument errors** (T-1323, B61-B83): an error value in any argument wins over every invalid argument, and the first
+  in argument order wins among error values.
 - **field_relationship**: `0` (hierarchy, the default) gives the same result as omitted
-  (G!S169). `2` is `#VALUE!` (G!J241). `1` (table) with total_depth 2 returned no value through
-  excel-graph (G!J169). This is unresolved; see the probe task.
+  (G!S169). `2` is `#VALUE!` (G!J241). `1` (table) with total_depth 2 or -2 is `#VALUE!` (ERROR.TYPE 3; followup G!A181, G!A261); with total_depth 1 or omitted it
+  equals 0 (T-1328; probed with default sorting only). An array in argument 8 is lifted per element (a 10x1 column of group results, `{FALSE}` 1x1, a numeric column 10x1 `#VALUE!`, scalar FALSE/0 act as 0; followup G!A861-A981, followup2 G!A1-A161).
 - **function** forms: an eta name (`SUM`, `AVERAGE`, `COUNT`, `COUNTA`, `MAX`, `PERCENTOF`,
   `ARRAYTOTEXT`) or a one-parameter LAMBDA (`LAMBDA(x,ROWS(x))`, text results too, G!A121,
   G!AB241). A LAMBDA that returns an array gives `#VALUE!` in each cell, totals included (G!J121).
@@ -83,9 +100,9 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
 - **Values**: several value columns aggregate side by side (G!J73). SUM ignores text and
   Booleans in values (G!S193). An error value makes its group's result and the total that error
   (G!J193). Numeric keys sort numerically (G!AB169, G!S241).
-- **Undecoded** (excel-graph cannot decode the error type): values one row shorter than the
-  keys (G!AB193), and total_depth 3 with one key field (G!J217). Probably `#VALUE!` or a newer
-  error kind (SPEC-0003). The probe task settles them.
+- **Errors** (decoded with ERROR.TYPE, T-1328): values one row shorter than the keys (G!AB193), longer or offset values,
+  a shorter key range, and PIVOTBY with short values are all `#VALUE!` (ERROR.TYPE 3). So are total_depth 3 (one or two keys, G!J217) and -3 (one key only probed)
+  and total_depth 2 with a single key field.
 
 ### PIVOTBY(row_fields, col_fields, values, function, [field_headers], [row_total_depth], [row_sort_order], [col_total_depth], [col_sort_order], [filter_array], [relative_to])
 - **Shape**: a header row (column keys plus "Total"), then one row per row group and a "Total"
@@ -104,9 +121,10 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
 - **row_sort_order / col_sort_order**: `-1` reverses the keys (P!M25). `2` sorts rows by the
   total column ascending, and `-2` sorts columns by the total row descending (P!M121).
 - **filter_array**: as in GROUPBY. Filtering out 2025 drops that column (P!Y73).
-- **Several value columns** interleave per column key (2023/Sales, 2023/Units, ...). The two
-  Total columns came back as `""` in every row (P!Y97). That is surprising; the probe task
-  re-checks it before anyone implements it. Unlike several functions, several value columns get
+- **Several value columns** interleave per column key (2023/Sales, 2023/Units, ...). There
+  are two Total columns (one per value column, 9 columns in all), both headed `Total` and `""` in every row, including the Total row
+  (P!Y97, re-checked in followup G!A281: header row `""`,2023,2023,2024,2024,2025,2025,Total,Total; Total row 35,15,86,21,9.5,19,`""`,`""`). The Total
+  row itself is filled per value column. Unlike several functions, several value columns get
   no header row naming them (no "Sales"/"Units" row).
 - **Several functions** (`HSTACK(SUM,MAX)`) interleave the same way. A second header row names
   the functions, and the Total columns are filled (P!A121).
@@ -136,9 +154,14 @@ struct Aggregate<'a> { rows: &'a [usize], relative: &'a [usize] }
 
 1. **Arguments**: `row_fields` / `col_fields` / `values` go through `Model::eval_to_array`
    (spill_functions.rs). `filter_array` must be a column of the same height. Headers are split off
-   by `field_headers`, and auto-detect uses the rule probed above. The exact detection rule (first
-   row text in keys and values, with numbers below?) is pinned by the probe task. Until then, use
-   "the first value cell is text and the second is a number".
+   by `field_headers`, and auto-detect uses the rule probed above. The detection rule (T-1328, followup3
+   matrix over array constants): only the first row of the *values* decides; the key's first cell is irrelevant. The row is a
+   header when its first value cell is text and the next row's is not text (`{"v";1;2;3}`: header; `{5;1;2;3}`, `{TRUE;..}` and
+   `{#N/A;..}`: data; all-text `{"v";"1";"2";"3"}`: data; `{5,"w";..}` over two columns: data). A header is hidden
+   (the key range then drops its first row too).
+   (Probed with SUM and the first value column only; do not generalise to other functions or later columns.) The result is `#VALUE!` when the first value cell is text and the rows below mix text with non-text
+   (`{"v";1;2;"3"}`, followup3 G!A205/A277/A349; `"h","1",2,3`, followup2 G!A521; `"v","1","2",<blank>`, followup2 G!A341/A381). When the
+   first cell is not text, mixed values aggregate normally and text is ignored (G!S193); all-text values SUM to 0.
 2. **Grouping**: a hash map from `Vec<CellKey>` (`cell_key` in spill_functions.rs, case-folded
    text) to the group index. The key is built once per source row, never once per function or
    value column, and the map records each group's first spelling. Then sort the groups with
@@ -150,8 +173,8 @@ struct Aggregate<'a> { rows: &'a [usize], relative: &'a [usize] }
    totals (depth 2) need groups ordered by their key prefix. The lexicographic sort already gives
    that order, so the subtotal rows are inserted in one linear pass, not by any quadratic search.
 3. **Aggregation**: for each (group, value column, function) build a column array of the
-   group's values in source order and call the function value: `call_lambda_with_values` for a
-   LAMBDA, or the T-1273 eta-call path for a name. Any array result becomes `#VALUE!`, a 1x1 array included: never unwrap it
+   group's values in source order and call the function value: a `LambdaCaller` (`Model::lambda_caller`, T-1560) for a
+   LAMBDA, or the T-1466 eta-call path (`eta_definition`, lambda.rs) for a name. Any array result becomes `#VALUE!`, a 1x1 array included: never unwrap it
    (G!J121 is `#VALUE!` for the one-record groups too). A function array (`HSTACK`/`VSTACK` of function values) is a list of functions plus
    an orientation. Two-parameter functions (PERCENTOF) also get the relative set's values:
    - Each distinct relative set is built once and shared, never rebuilt per call. GROUPBY has one
@@ -209,13 +232,16 @@ Ordered; each is S/M. The grouping core lands with GROUPBY; PIVOTBY reuses it.
 2. GROUPBY options (sonnet, S): sort_order (scalar and array), filter_array, the `#VALUE!`
    argument errors.
 3. GROUPBY subtotals (opus, M): total_depth ±2 with "Grand Total", field_relationship.
-4. Function arrays (sonnet, S; after T-1273): eta names, HSTACK/VSTACK of functions, and the
-   PERCENTOF relative set in GROUPBY.
+4. Function arrays (sonnet, S; after T-1466): eta names, HSTACK/VSTACK of functions, and the
+   PERCENTOF relative set in GROUPBY. DONE (T-1325): labels, pairing with value columns, arities and the
+   reference result are in docs/excel-semantics/arrays.md (probes/groupby-pivotby-functions*).
 5. PIVOTBY (opus, M): the grid on the shared core, totals and subtotals on both axes, sort
    orders, filter, headers, several values and functions.
-6. PIVOTBY relative_to (opus, S): the reference sets 0-4 for two-argument functions.
-7. Probe follow-up (sonnet, S; research): the undecoded cells (G!AB193, G!J217),
+6. PIVOTBY relative_to (opus, S): the reference sets 0-4 for two-argument functions. DONE (T-1327): a row selection
+   crossed with a column selection, parents one key field up, probed over two fields per axis and with subtotals
+   (docs/excel-semantics/arrays.md, probes/groupby-pivotby-functions*).
+7. DONE (T-1328) Probe follow-up (sonnet, S; research): the undecoded cells (G!AB193, G!J217),
    field_relationship 1 with subtotals (G!J169), the two-values PIVOTBY Totals (P!Y97), the
    multi-key sort array, the header auto-detect rule, errors as keys, and whether all-FALSE
    filters are `#VALUE!` or `#CALC!`. A cell excel-graph cannot answer goes to M14 Phase 4
-   (decision 0039).
+   (decision 0039). Done in T-1328: all questions answered by excel-graph, none left for Phase 4.

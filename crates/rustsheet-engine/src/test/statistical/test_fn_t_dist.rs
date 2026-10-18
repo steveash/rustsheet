@@ -187,3 +187,45 @@ fn test_fn_t_dist_arguments() {
     assert_eq!(model._get_text("B3"), *"8");
     assert_eq!(model._get_text("B4"), *"#ERROR!");
 }
+
+// T-1518: nightly fuzz input `T.INV(0.9,5E10)` hung; Excel gives #NUM! above df = 1E10
+// (probes-numeric case t1518-t-df-cut), with the pdf staying finite.
+#[test]
+fn test_t_family_df_upper_limit() {
+    let mut model = new_empty_model();
+    let over = [
+        "=T.INV(0.9,5E10)",
+        "=T.INV(0.9,10000000001)",
+        "=T.INV.2T(0.1,1.2E10)",
+        "=T.DIST(2,1.2E10,TRUE)",
+        "=T.DIST.RT(2,1.2E10)",
+        "=T.DIST.2T(2,1.2E10)",
+        "=CONFIDENCE.T(0.05,1,10000000002)",
+    ];
+    for (i, f) in over.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), f);
+    }
+    // At the limit (and a fractional df that truncates to it) the functions still evaluate.
+    model._set("B1", "=T.INV(0.9,1E10)");
+    model._set("B2", "=T.INV(0.9,10000000000.5)");
+    model._set("B3", "=T.DIST(2,1E10,TRUE)");
+    model._set("B4", "=T.DIST(2,1E11,FALSE)");
+    model._set("B5", "=CONFIDENCE.T(0.05,1,10000000001)");
+    model.evaluate();
+
+    for i in 1..=over.len() {
+        assert_eq!(
+            model._get_text(&format!("A{i}")),
+            *"#NUM!",
+            "{}",
+            over[i - 1]
+        );
+    }
+    // TODO(T-0967): Excel's own values here (1.2815518424115688) are not the exact quantile;
+    // only the bounded time and the non-error result are asserted.
+    for c in ["B1", "B2", "B5"] {
+        assert!(model._get_text(c).parse::<f64>().is_ok(), "{c}");
+    }
+    assert_eq!(model._get_text("B3"), *"0.977249868");
+    assert_eq!(model._get_text("B4"), *"0.053990967");
+}

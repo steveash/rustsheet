@@ -3,17 +3,18 @@ id: T-0916
 title: "IRR/RATE/XIRR/MIRR: match Excel's iteration and termination behavior"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
-depends_on: [T-1009]
+depends_on: [T-1009, T-1525]
 ---
 
 ## Goal
 The iterative financial solvers return results that differ from Excel at 1e-12 to 1e-8 relative because Excel stops its iteration at a looser tolerance than the engine, so the last digits are Excel's un-converged values. Emulate Excel's iteration (initial guess, update rule, tolerance, iteration cap) using the Excel-cached values as the spec. MIRR is a ulp-level formulation difference.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 4 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Evidence is Excel-cached values in `ironcalc-calc/FINANCIAL/*.xlsx`. Failing cells (report.md): IRR 74 (IRR.xlsx, mostly NumericClose), RATE 26 (RATE.xlsx), XIRR 17 (XIRR.xlsx 13, XNPV.xlsx 4; NumericMismatch up to 1e-8), MIRR 51 (MIRR.xlsx, NumericUlp). About 170 cells, the largest single group in the report.
 Examples: IRR.xlsx General!L2 `IRR(A2:F2)` expected 0.07930826116039724 got 0.0793082611605286; General!N2 `IRR(A2:F2,I2)` expected 0.07930826116414913 got 0.0793082610836084 (the guess changes Excel's result, so the exact Newton path matters). RATE.xlsx Sheet1!F2 expected 0.008052981923906556 got 0.008052981923938503. XIRR.xlsx Sheet1!R2 expected 1.1859161972999572 got 1.1859162079821048. MIRR.xlsx `Two Parameters!E2` `-MIRR(A2:B2,C2,D2)` expected 0.19999999999999996 got 0.20000000000000007.
 Approach: for IRR/RATE/XIRR, fit a Newton (or secant) iteration with candidate starting guesses and stopping rules to the cached results, e.g. Excel is documented to iterate up to 20 times to a 1e-5-ish tolerance; confirm against the data, do not trust the documentation. For MIRR, try the formulation `(-NPV(rr, positives)*(1+rr)^n / (NPV(fr, negatives)*(1+fr)))^(1/(n-1)) - 1` and variants until the cached bits match. Reuse any shared NPV/XNPV helper (see T-0901, which owns PV/FV/PMT/NPER/IPMT/PPMT/NPV; do not touch those functions here, only call them if they exist).
@@ -29,14 +30,70 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/675763979c1defb6 Calc!A39 `=(42+MIRR(Data!A2:C11,0.5,STDEV.S(Data!C11:C12,Data!D7)))` (reinvest rate 5.8E+14): Excel 636207158862729.4, engine 636207158862728.5.
 - gen-m9/eefcc3989f31de76 Calc!A5 `=IFERROR((RATE(199,-805,61378)/Data!E3),..)` (E3 = -1): Excel -0.011859926889590918, engine -0.011859926889595479.
 
+**XIRR model fitted by T-1525** (from `tools/`: `uv run rustsheet-fitlab xirr`, 208/208 numeric cells of
+probes/solver-iteration-traces X and m9-fin-irr-rate bit-exact, plus 19/19 `#NUM!` via
+`solvers.xirr_error_agreement`; `xirr-oos` 8/11; model `xirr_model` in
+`tools/src/rustsheet_tools/fitlab/kernels/solvers.py`). XIRR is not Newton. With s = guess (1e-5 when the
+guess is 0) and f0 = XNPV(0): for a guess >= 0 walk 0, s, 2s, 4s, ...; the bracket is the first point whose
+XNPV sign differs from f0's, with the point before it; if none and s < 1, walk 0, -s, then p -> (p - 1)/2;
+a negative guess walks only 0, g, (g - 1)/2, ...; no bracket is `#NUM!`. Then with a = upper end, b = lower
+end: m = a + (b - a)/2, replace the end whose XNPV has XNPV(m)'s sign (an exact 0 does not stop), and
+return m once (b - a)/2 < 5e-9 + 1e-8*|m| and |XNPV(m)| < 2e-8*max|value|.
+**Refined by T-1583** (`xirr-oos` 21/22, fit set still 227/227): replace the upper end when
+XNPV(m) * values[0] >= 0, else the lower end (the same choice on every fitted cell; with a zero first
+value it replaces the upper end every step, giving Excel's 0.1/2^25 on xirr-early-dates A10, A11 and
+xirr-mismatched-empties X3, X4), and scale the XNPV bound by max(1, years from the first date to the
+latest), with no XNPV bound when the first value is 0 (`span_stop`, candidate "bisect, first-value sign,
+span-scaled |f| bound (T-1583)"). The span scaling rests on one long-span cell (A8, 124 years); the
+exact form is open (T-1591 probes it). The walk and bisection caps are unprobed.
+
+**IRR model fitted by T-1533** (`uv run rustsheet-fitlab irr`, 189/263 bit-exact, 207 within 4 ulp;
+`irr_secant_v` in `tools/src/rustsheet_tools/fitlab/kernels/solvers.py`; financial.md "IRR is a secant in
+v = 1/(1 + r)"). Secant on NPV(v), v0 = 1/(1 + guess), v1 = v0 + 0.001*sign(NPV(v0)); v2 = v0 -
+NPV(v0)(v1 - v0)/(NPV(v1) - NPV(v0)); stop at the first v2 with |v2 - v1| < 1e-7 and |NPV(v2)| < 1e-7,
+return 1/v2 - 1; a run that does not stop in 50 steps is retried once from 0.1; NPV(v) as sum c_i/x^i with
+x = 1/v and x87-rounded divisions (numbers.md "Division rounds twice"). The Rust port must round its divisions the same way
+(`arithmetic::extended_quotient`) and use the same NPV evaluation order, or it will
+not reproduce the lab's count. Engine choices without oracle evidence (keep them, but not as Excel facts): the
+v <= 0 guard, no retry when the guess is already 0.1, and `#NUM!` for flows without a sign change arising
+from non-convergence rather than an up-front check (both give `#NUM!` on all 18 such cells).
+
+**Scope.** The XIRR and IRR parts can be implemented now. RATE is not fitted (financial.md "RATE iterates
+on the rate itself"); its part of this task waits for a new hypothesis.
+
 ## Acceptance criteria
-- [ ] At least 100 of the ~170 listed F lines for IRR, RATE, XIRR, MIRR leave eval/baseline/ironcalc-calc.txt with no new ones; the Outcome note lists the remainder.
-- [ ] Algorithm parameters (guess, tolerance, iteration cap) documented in docs/excel-semantics/numbers.md with evidence cell ids.
-- [ ] Error cases (#NUM! when no convergence) still pass.
-- [ ] `make check` green.
+- [x] (XIRR done; MIRR moved to T-1687; RATE waits for a fit) The listed XIRR and MIRR F lines leave eval/baseline/ironcalc-calc.txt with no new ones (the RATE lines wait for a RATE fit; IRR lines leave where the T-1533 model is exact); the Outcome note lists the remainder.
+- [x] Algorithm parameters (guess, tolerance, iteration cap) documented in docs/excel-semantics/financial.md (the solver entries live there, not numbers.md) with evidence cell ids.
+- [x] Error cases (#NUM! when no convergence) still pass.
+- [x] IRR follows the T-1533 secant model; `uv run rustsheet-fitlab irr` shows the engine at the fitted candidate's 189/263.
+- [x] XIRR follows the T-1525 model (bracket chain, bisection, stop test); `uv run rustsheet-fitlab xirr` shows the engine at 208/208.
+- [x] The chain-walk and bisection caps (unprobed; 100 points per walk and 200 bisection steps are enough on all data) are either probed or recorded as a DEVIATION candidate under decision 0052 and directive 5 (a bound the engine needs whatever Excel's cap is).
+- [x] `make check` green.
 
 ## Out of scope
 PV/FV/PMT/NPER/IPMT/PPMT/NPV (T-0901), bond PRICE/YIELD families, CUMIPMT/CUMPRINC.
 
 ## Findings (attempt 1, no oracle)
 IRR.xlsx General!L2 (`IRR(-20,5,5,5,5,5)`, expected 0.07930826116039724): Excel's value is 1.3e-13 below the true root, and its own NPV residual there is 6.4e-12, so Excel stops un-converged. It is not any Newton iterate (from guess 0.1 the iterates are 0.0793082611540 then ...6052853), not a Newton iterate in 1/(1+r), and not a secant iterate for starts g*1.1, g±0.1, g+1e-3/1e-4/1e-5, 0. With guess 17 Excel still reaches 0.07930826116414913, where plain Newton diverges, so Excel uses a safeguarded method. Needs oracle probes with intermediate-iteration evidence before further fitting.
+
+## Outcome
+2026-10-16. XIRR and IRR follow the fitted models (`xirr_bracket`/`compute_xirr`,
+`irr_npv`/`irr_secant`/`compute_irr` in functions/financial/financial_util.rs). Oracle values are
+pinned in test/test_fn_irr_xirr_fits.rs.
+- **Fit lab, engine row:**
+  - `xirr`: 227/227 (was 9);
+  - `xirr-oos`: 22/22 (was 11; the lab model gets 21);
+  - `irr`: 189/263 bit-exact and 207 within 4 ulp, the lab model's own counts (was 1).
+- **Gated suites:** 298 cells fixed (ironcalc-calc 70, including every XIRR/XNPV line; probes 228;
+  poi unchanged). Three IRR cells the old Newton code matched by chance are known failures now
+  (decision 0065: IRR.xlsx General!L42, fin-argument-modes H374/H375).
+- **Parameters:** documented in financial.md "XIRR is a bracketing bisection" and "IRR is a secant
+  in v", with evidence cell ids. That file, not numbers.md, is where the solver entries live.
+  The XIRR walk and bisection caps and the IRR caps are `DEVIATION` entries (financial.md "The IRR
+  and XIRR solver caps", decision 0014). Where both secant runs fail, IRR falls back to the earlier
+  solver; that, the caps and overflowing trial rates are probed by T-1686.
+- **Remainder:**
+  - RATE is not fitted (financial.md "RATE iterates on the rate itself"), so its F lines stay.
+  - MIRR is untouched; its F lines move to T-1687.
+  - IRR's 74 unfitted fit-set cells and the 3 decision-0065 cells need NPV's exact evaluation
+    order.

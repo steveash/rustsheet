@@ -16,6 +16,8 @@ in the engine, used by GAMMA.DIST, CHISQ.DIST, CHISQ.DIST.RT and CHISQ.TEST, rep
 `gamma_lr`/`gamma_ur`; the gamma density from the same building blocks.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 7 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
+Oracle targets: probes-numeric cases `m9-gamma-dist-a*`, `m9-chisq-dist`, `m9-chisq-dist-rt`, `m9-gamma-inv`, `m9-chisq-inv`, `m9-chisq-inv-rt` (T-1045).
 Triage T-0903. Kernel: `statrs::function::gamma::{gamma_lr, gamma_ur}` (series / continued fraction
 with statrs' Lanczos `ln_gamma` in the prefactor), reached through `statrs::distribution::Gamma::cdf`/
 `pdf` (`functions/statistical/gamma.rs` `fn_gamma_dist`) and `ChiSquared` (`functions/statistical/chisq.rs`

@@ -9,11 +9,21 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   table shows APPROVE from every applicable reviewer, (c) the branch is up to date with `main`.
   Check (c) mechanically right before every merge call (decision 0028): `git fetch origin main
   <branch>`, then `git merge-base --is-ancestor origin/main origin/<branch>`, and pass that same
-  `origin/<branch>` sha as `expectedHeadSha`. If it fails, `main` moved since
+  `origin/<branch>` sha as `expectedHeadSha`. In a shallow clone the check can fail for want of
+  history, not because `main` moved: deepen first (`git fetch --unshallow origin`, or `git fetch
+  --deepen=500 origin main <branch>`), never reset (decision 0055). If it fails, `main` moved since
   the last CI run, and the green CI does not cover the merged result. GitHub's `mergeable_state:
   clean` only means "no textual conflict", and two PRs that each add `T-0129` (or decision `0026`)
   never conflict textually. Merge `origin/main` in, run `make check`, push, and merge only after
   CI is green on that new head.
+- **Merge queue** (decision 0053): once the owner has turned on the merge queue for `main` (a merge
+  call is refused with "merge queue" in the message, or the PR shows as queued), do not merge and
+  skip check (c): on a head that meets (a) and (b), call `enable_pr_auto_merge` with `mergeMethod:
+  SQUASH` to enqueue it. The queue tests it merged with current `main` and the PRs ahead of it.
+  Never merge `main` in only because the branch is behind; do merge it in to fix a conflict. A PR
+  the queue removes (a failed merge-group check) is red CI: fix it per this skill, then enqueue
+  again. Never push to a queued PR: `disable_pr_auto_merge` first, push, re-run the reviewers on
+  the new diff, then enqueue again.
 - **Orphaned agent PRs** (decision 0050): the steward may merge a task PR (branch
   `agent/<lane>/T-XXXX-*`) opened by another session only when ALL of these hold:
   - it has been open 24 h or more, and its branch has not moved for 2 h or more. Measure when the
@@ -22,7 +32,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     session's `Claude-Session` trailer) do not reset this clock;
   - it is not a draft, and its task is not `status: blocked`;
   - CI is green on the latest head;
-  - the branch passes the up-to-date check above (decision 0028); you may merge `main` in first;
+  - the branch passes the up-to-date check above (decision 0028; with the merge queue on, enqueue
+    instead, decision 0053); you may merge `main` in first;
   - you have run the `review` skill's applicable reviewers yourself on the current diff
     (`git diff origin/main...origin/<branch>` at the head you will merge) and every one says
     APPROVE. Do not rely on the PR body's table: it records no head sha and may predate later
@@ -90,5 +101,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
   explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
+- **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision 0056)"
+  is not reopened when its dependencies land, only when a new hypothesis is recorded there.
 - **Stuck**: after 3 failed fix attempts on the same failure, mark the task blocked with details,
   leave the PR as draft, and move on. Do not leave `main` red: if a merge broke `main`, revert first.

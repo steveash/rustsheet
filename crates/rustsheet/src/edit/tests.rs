@@ -190,6 +190,39 @@ fn sheet_ops_apply_and_roll_back() {
 }
 
 #[test]
+fn move_sheet_reorders_reports_and_rolls_back() {
+    let mut wb = book();
+    let first = wb.sheets()[0].id;
+    let (data, _) = wb.edit(|tx| tx.add_sheet("Data")).unwrap();
+    let names = |wb: &Workbook| {
+        wb.sheets()
+            .iter()
+            .map(|s| s.name.clone())
+            .collect::<Vec<_>>()
+    };
+    let ((), changes) = wb.edit(|tx| tx.move_sheet(data, 0)).unwrap();
+    assert_eq!(names(&wb), ["Data", "Sheet1"]);
+    assert_eq!(
+        changes.sheets,
+        [SheetChange::Moved {
+            id: data,
+            from: 1,
+            to: 0
+        }]
+    );
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.move_sheet(first, 0)?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(names(&wb), ["Data", "Sheet1"]);
+    assert!(matches!(
+        wb.edit(|tx| tx.move_sheet(data, 2)),
+        Err(EditError::Ref(RefError::OutOfBounds))
+    ));
+}
+
+#[test]
 fn defined_names_apply_and_roll_back() {
     let mut wb = book();
     let ((), changes) = wb
@@ -407,6 +440,62 @@ fn volatile_cells_change_on_every_edit() {
     let retarget = wb.set("D1", 2.0).unwrap();
     assert!(retarget.values.iter().any(|v| v.cell.to_string() == "B1"));
     assert_eq!(wb.value("B1").unwrap(), Value::Number(2.0));
+}
+
+fn fixed(ms: i64) -> Clock {
+    Clock::fixed_unix_millis(ms).expect("clock in range")
+}
+
+fn clock_book() -> Workbook {
+    let opts = WorkbookOptions {
+        clock: fixed(0),
+        ..WorkbookOptions::default()
+    };
+    let mut wb = Workbook::new(&opts).unwrap();
+    wb.set("A1", Input::Formula("=NOW()".into())).unwrap();
+    wb.set("B1", Input::Formula("=TODAY()".into())).unwrap();
+    wb.set("A2", Input::Formula("=A1+1".into())).unwrap();
+    wb
+}
+
+#[test]
+fn set_clock_recalculates_and_reports_clock_readers() {
+    let mut wb = clock_book();
+    assert_eq!(wb.clock(), fixed(0));
+    assert_eq!(wb.value("A1").unwrap(), Value::Number(25569.0));
+    assert_eq!(wb.value("B1").unwrap(), Value::Number(25569.0));
+    let changes = wb.set_clock(fixed(86_400_000)).unwrap();
+    assert_eq!(wb.clock(), fixed(86_400_000));
+    let mut cells: Vec<String> = changes.values.iter().map(|v| v.cell.to_string()).collect();
+    cells.sort();
+    assert_eq!(cells, ["A1", "A2", "B1"]);
+    assert!(changes.inputs.is_empty() && changes.sheets.is_empty());
+    assert_eq!(wb.value("A1").unwrap(), Value::Number(25570.0));
+    assert_eq!(wb.value("B1").unwrap(), Value::Number(25570.0));
+    assert_eq!(wb.value("A2").unwrap(), Value::Number(25571.0));
+}
+
+#[test]
+fn set_clock_to_the_same_fixed_clock_reports_no_value_change() {
+    let mut wb = clock_book();
+    let changes = wb.set_clock(fixed(0)).unwrap();
+    assert!(changes.values.is_empty());
+}
+
+#[test]
+fn failed_edit_restores_the_clock() {
+    let mut wb = clock_book();
+    let before = dump(&wb);
+    let err = wb
+        .edit(|tx| {
+            tx.set_clock(fixed(86_400_000))?;
+            tx.set("E5", Input::Formula("nope".into()))
+        })
+        .unwrap_err();
+    assert!(matches!(err, EditError::InvalidInput { .. }));
+    assert_eq!(wb.clock(), fixed(0));
+    assert_eq!(dump(&wb), before);
+    assert_eq!(wb.value("A1").unwrap(), Value::Number(25569.0));
 }
 
 /// Deterministic generator (no proptest in the offline dependency set).

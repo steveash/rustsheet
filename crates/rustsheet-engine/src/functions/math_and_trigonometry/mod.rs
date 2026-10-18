@@ -1,6 +1,4 @@
 mod arabic_roman;
-pub(crate) mod array_size;
-pub(crate) mod decimal_round;
 mod decimal_text;
 mod gcd_lcm;
 mod hyperbolic;
@@ -15,3 +13,5 @@ mod seriessum;
 mod sum;
 pub(crate) use sum::SumParts;
 mod sumproduct;
+mod trig;
+pub(crate) use mathematical::percent_of;

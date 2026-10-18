@@ -14,15 +14,28 @@ rustsheet_xlsx = { path = "../rustsheet-xlsx" }
 thiserror = "1"
 
 [dev-dependencies]
-zip = { version = "0.6.6", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.3", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [features]
-# Lets the eval harness pin NOW()/TODAY() (see `Workbook::pin_clock_from_metadata`).
-mock_time = ["rustsheet_engine/mock_time", "rustsheet_xlsx/mock_time"]
+# Lets the eval harness pin the workbook clock to IronCalc's METADATA `NOW` convention
+# (see `Workbook::pin_clock_from_metadata`).
+metadata_clock = []
 
 [lints]
 workspace = true
 
 [[bench]]
 name = "edit"
+harness = false
+
+[[bench]]
+name = "aggregate"
+harness = false
+
+[[bench]]
+name = "text"
+harness = false
+
+[[bench]]
+name = "lift"
 harness = false

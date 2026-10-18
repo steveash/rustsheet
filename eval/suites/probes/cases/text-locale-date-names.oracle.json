@@ -1,0 +1,510 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A1": {
+    "t": "s",
+    "v": "janv."
+   },
+   "A10": {
+    "t": "s",
+    "v": "oct."
+   },
+   "A100": {
+    "t": "s",
+    "v": "mars mercredi mars mer."
+   },
+   "A101": {
+    "t": "s",
+    "v": "mars mercredi mars mer."
+   },
+   "A102": {
+    "t": "s",
+    "v": "mars mercredi mars mer."
+   },
+   "A103": {
+    "t": "s",
+    "v": "M\u00e4rz Mittwoch Mrz Mi"
+   },
+   "A104": {
+    "t": "s",
+    "v": "Wednesday, March 15, 2023"
+   },
+   "A105": {
+    "t": "s",
+    "v": "March Wednesday Mar Wed"
+   },
+   "A106": {
+    "t": "s",
+    "v": "March Wednesday Mar Wed"
+   },
+   "A107": {
+    "t": "s",
+    "v": "Wednesday, March 15, 2023"
+   },
+   "A108": {
+    "t": "s",
+    "v": "Wednesday, March 15, 2023"
+   },
+   "A109": {
+    "t": "s",
+    "v": "Wednesday, March 15, 2023"
+   },
+   "A11": {
+    "t": "s",
+    "v": "nov."
+   },
+   "A110": {
+    "t": "s",
+    "v": "Wednesday, March 15, 2023"
+   },
+   "A111": {
+    "t": "s",
+    "v": "6:00:00 PM"
+   },
+   "A112": {
+    "t": "s",
+    "v": "6:00:00 PM"
+   },
+   "A113": {
+    "t": "s",
+    "v": "6:00:00 PM"
+   },
+   "A114": {
+    "t": "s",
+    "v": "Wednesday, March 15, 2023"
+   },
+   "A115": {
+    "t": "s",
+    "v": "Wednesday, March 15, 2023"
+   },
+   "A116": {
+    "t": "s",
+    "v": "\u20acmars"
+   },
+   "A117": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A118": {
+    "t": "s",
+    "v": "mars"
+   },
+   "A119": {
+    "t": "s",
+    "v": "mars"
+   },
+   "A12": {
+    "t": "s",
+    "v": "d\u00e9c."
+   },
+   "A120": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A121": {
+    "t": "s",
+    "v": "15/03/2023"
+   },
+   "A122": {
+    "t": "s",
+    "v": "mars 2023"
+   },
+   "A123": {
+    "t": "s",
+    "v": "mars"
+   },
+   "A124": {
+    "t": "s",
+    "v": "mercredi"
+   },
+   "A13": {
+    "t": "s",
+    "v": "janvier"
+   },
+   "A14": {
+    "t": "s",
+    "v": "f\u00e9vrier"
+   },
+   "A15": {
+    "t": "s",
+    "v": "mars"
+   },
+   "A16": {
+    "t": "s",
+    "v": "avril"
+   },
+   "A17": {
+    "t": "s",
+    "v": "mai"
+   },
+   "A18": {
+    "t": "s",
+    "v": "juin"
+   },
+   "A19": {
+    "t": "s",
+    "v": "juillet"
+   },
+   "A2": {
+    "t": "s",
+    "v": "f\u00e9vr."
+   },
+   "A20": {
+    "t": "s",
+    "v": "ao\u00fbt"
+   },
+   "A21": {
+    "t": "s",
+    "v": "septembre"
+   },
+   "A22": {
+    "t": "s",
+    "v": "octobre"
+   },
+   "A23": {
+    "t": "s",
+    "v": "novembre"
+   },
+   "A24": {
+    "t": "s",
+    "v": "d\u00e9cembre"
+   },
+   "A25": {
+    "t": "s",
+    "v": "mer."
+   },
+   "A26": {
+    "t": "s",
+    "v": "jeu."
+   },
+   "A27": {
+    "t": "s",
+    "v": "ven."
+   },
+   "A28": {
+    "t": "s",
+    "v": "sam."
+   },
+   "A29": {
+    "t": "s",
+    "v": "dim."
+   },
+   "A3": {
+    "t": "s",
+    "v": "mars"
+   },
+   "A30": {
+    "t": "s",
+    "v": "lun."
+   },
+   "A31": {
+    "t": "s",
+    "v": "mar."
+   },
+   "A32": {
+    "t": "s",
+    "v": "mercredi"
+   },
+   "A33": {
+    "t": "s",
+    "v": "jeudi"
+   },
+   "A34": {
+    "t": "s",
+    "v": "vendredi"
+   },
+   "A35": {
+    "t": "s",
+    "v": "samedi"
+   },
+   "A36": {
+    "t": "s",
+    "v": "dimanche"
+   },
+   "A37": {
+    "t": "s",
+    "v": "lundi"
+   },
+   "A38": {
+    "t": "s",
+    "v": "mardi"
+   },
+   "A39": {
+    "t": "s",
+    "v": "m"
+   },
+   "A4": {
+    "t": "s",
+    "v": "avr."
+   },
+   "A40": {
+    "t": "s",
+    "v": "6 AM"
+   },
+   "A41": {
+    "t": "s",
+    "v": "6 PM"
+   },
+   "A42": {
+    "t": "s",
+    "v": "6 PM"
+   },
+   "A43": {
+    "t": "s",
+    "v": " 2023"
+   },
+   "A44": {
+    "t": "s",
+    "v": "Jan"
+   },
+   "A45": {
+    "t": "s",
+    "v": "Feb"
+   },
+   "A46": {
+    "t": "s",
+    "v": "Mrz"
+   },
+   "A47": {
+    "t": "s",
+    "v": "Apr"
+   },
+   "A48": {
+    "t": "s",
+    "v": "Mai"
+   },
+   "A49": {
+    "t": "s",
+    "v": "Jun"
+   },
+   "A5": {
+    "t": "s",
+    "v": "mai"
+   },
+   "A50": {
+    "t": "s",
+    "v": "Jul"
+   },
+   "A51": {
+    "t": "s",
+    "v": "Aug"
+   },
+   "A52": {
+    "t": "s",
+    "v": "Sep"
+   },
+   "A53": {
+    "t": "s",
+    "v": "Okt"
+   },
+   "A54": {
+    "t": "s",
+    "v": "Nov"
+   },
+   "A55": {
+    "t": "s",
+    "v": "Dez"
+   },
+   "A56": {
+    "t": "s",
+    "v": "Januar"
+   },
+   "A57": {
+    "t": "s",
+    "v": "Februar"
+   },
+   "A58": {
+    "t": "s",
+    "v": "M\u00e4rz"
+   },
+   "A59": {
+    "t": "s",
+    "v": "April"
+   },
+   "A6": {
+    "t": "s",
+    "v": "juin"
+   },
+   "A60": {
+    "t": "s",
+    "v": "Mai"
+   },
+   "A61": {
+    "t": "s",
+    "v": "Juni"
+   },
+   "A62": {
+    "t": "s",
+    "v": "Juli"
+   },
+   "A63": {
+    "t": "s",
+    "v": "August"
+   },
+   "A64": {
+    "t": "s",
+    "v": "September"
+   },
+   "A65": {
+    "t": "s",
+    "v": "Oktober"
+   },
+   "A66": {
+    "t": "s",
+    "v": "November"
+   },
+   "A67": {
+    "t": "s",
+    "v": "Dezember"
+   },
+   "A68": {
+    "t": "s",
+    "v": "Mi"
+   },
+   "A69": {
+    "t": "s",
+    "v": "Do"
+   },
+   "A7": {
+    "t": "s",
+    "v": "juil."
+   },
+   "A70": {
+    "t": "s",
+    "v": "Fr"
+   },
+   "A71": {
+    "t": "s",
+    "v": "Sa"
+   },
+   "A72": {
+    "t": "s",
+    "v": "So"
+   },
+   "A73": {
+    "t": "s",
+    "v": "Mo"
+   },
+   "A74": {
+    "t": "s",
+    "v": "Di"
+   },
+   "A75": {
+    "t": "s",
+    "v": "Mittwoch"
+   },
+   "A76": {
+    "t": "s",
+    "v": "Donnerstag"
+   },
+   "A77": {
+    "t": "s",
+    "v": "Freitag"
+   },
+   "A78": {
+    "t": "s",
+    "v": "Samstag"
+   },
+   "A79": {
+    "t": "s",
+    "v": "Sonntag"
+   },
+   "A8": {
+    "t": "s",
+    "v": "ao\u00fbt"
+   },
+   "A80": {
+    "t": "s",
+    "v": "Montag"
+   },
+   "A81": {
+    "t": "s",
+    "v": "Dienstag"
+   },
+   "A82": {
+    "t": "s",
+    "v": "M"
+   },
+   "A83": {
+    "t": "s",
+    "v": "6 AM"
+   },
+   "A84": {
+    "t": "s",
+    "v": "6 PM"
+   },
+   "A85": {
+    "t": "s",
+    "v": "6 PM"
+   },
+   "A86": {
+    "t": "s",
+    "v": " 2023"
+   },
+   "A87": {
+    "t": "s",
+    "v": "marzo mercoled\u00ec mar mer"
+   },
+   "A88": {
+    "t": "s",
+    "v": "marzo mi\u00e9rcoles mar. mi."
+   },
+   "A89": {
+    "t": "s",
+    "v": "marzo mi\u00e9rcoles mar. mi."
+   },
+   "A9": {
+    "t": "s",
+    "v": "sept."
+   },
+   "A90": {
+    "t": "s",
+    "v": "March Wednesday Mar Wed"
+   },
+   "A91": {
+    "t": "s",
+    "v": "3\u6708 \u6c34\u66dc\u65e5 3 \u6c34"
+   },
+   "A92": {
+    "t": "s",
+    "v": "\u4e09\u6708 \u661f\u671f\u4e09 3\u6708 \u5468\u4e09"
+   },
+   "A93": {
+    "t": "s",
+    "v": "\u041c\u0430\u0440\u0442 \u0441\u0440\u0435\u0434\u0430 \u043c\u0430\u0440 \u0421\u0440"
+   },
+   "A94": {
+    "t": "s",
+    "v": "mar\u00e7o quarta-feira mar qua"
+   },
+   "A95": {
+    "t": "s",
+    "v": "maart woensdag mrt wo"
+   },
+   "A96": {
+    "t": "s",
+    "v": "mar\u00e7o quarta-feira mar qua"
+   },
+   "A97": {
+    "t": "s",
+    "v": "mars mercredi mars mer."
+   },
+   "A98": {
+    "t": "s",
+    "v": "M\u00e4rz Mittwoch M\u00e4r Mi."
+   },
+   "A99": {
+    "t": "s",
+    "v": "mars mercredi mars mer."
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "20df0a3cdb652064f9f8ae98869447e8c26e3f8b6ce4cc578430e75a793901a2",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T01:25:40+00:00",
+  "version": null
+ }
+}

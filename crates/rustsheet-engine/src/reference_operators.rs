@@ -5,13 +5,15 @@ use std::{ops::Deref, sync::Arc};
 
 use crate::{
     calc_result::{CalcResult, Range},
-    constants::{LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::{util::is_at_if, Function},
+    functions::{
+        util::{is_at_if, is_at_xlookup_take},
+        Function,
+    },
     model::Model,
 };
 
@@ -138,9 +140,20 @@ pub(crate) enum RefArg {
     Value(CalcResult),
 }
 
-/// What an array stands for where a function takes a reference (SUBTOTAL, AREAS): `#VALUE!`
-/// per element, an element that is an error kept (`SUBTOTAL(9,IF(TRUE,{1,#N/A}))` is `#VALUE!`,
-/// `#N/A`; probes/subtotal-reference-operands, T-1163).
+/// What an IF or CHOOSE stands for once its condition or index is read: the argument it picks,
+/// or the value it gives instead ([`Model::if_pick`], [`Model::choose_pick`],
+/// [`Model::pick_branch`]).
+pub(crate) enum Picked<'a> {
+    /// The argument picked, still unevaluated, to read in place of the IF or CHOOSE.
+    Node(&'a Node),
+    /// What it gives when it picks no one argument: an argument-count error, the condition's or
+    /// index's error, IF's FALSE for a missing branch, or its result lifted over an array.
+    Value(CalcResult),
+}
+
+/// What an array stands for where a function takes a reference (SUBTOTAL, AREAS, COUNTBLANK):
+/// `#VALUE!` per element, an element that is an error kept (`SUBTOTAL(9,IF(TRUE,{1,#N/A}))` is
+/// `#VALUE!`, `#N/A`; probes/subtotal-reference-operands, T-1163; probes/countblank-array-values).
 pub(crate) fn not_a_reference_array(rows: Vec<Vec<ArrayNode>>) -> CalcResult {
     CalcResult::Array(
         rows.into_iter()
@@ -284,95 +297,14 @@ fn intersect_pair(
     }))
 }
 
-fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
+pub(crate) fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::NULL, cell, "Empty intersection".to_string())
 }
 
 /// Whether a sheet prefix names a sheet of another workbook: `[book]Sheet` (a sheet name cannot
 /// hold `[`). That workbook is never opened (directive 5).
-fn names_other_workbook(sheet_name: Option<&str>) -> bool {
+pub(crate) fn names_other_workbook(sheet_name: Option<&str>) -> bool {
     sheet_name.is_some_and(|name| name.contains('['))
-}
-
-/// The rows and columns a reference into another workbook covers, absolute and in order.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct ExternalArea {
-    pub(crate) first_row: i32,
-    pub(crate) first_column: i32,
-    pub(crate) last_row: i32,
-    pub(crate) last_column: i32,
-}
-
-impl ExternalArea {
-    /// `(rows, columns)` of the area.
-    pub(crate) fn extent(self) -> (usize, usize) {
-        let span = |first: i32, last: i32| usize::try_from(last - first + 1).unwrap_or(0);
-        (
-            span(self.first_row, self.last_row),
-            span(self.first_column, self.last_column),
-        )
-    }
-}
-
-/// The area of `node` when it is a reference on one sheet of another workbook whose data the
-/// engine does not hold: still a reference of the written shape (its cells read `#BLOCKED!`), so
-/// `ISREF('[other.xlsx]Sheet1'!A1)` is TRUE, `ROWS('[other.xlsx]Sheet1'!A1:B3)` 3, `COLUMNS`,
-/// `ROW`, `COLUMN` and `AREAS` read its shape (probes/external-ref-no-link A4, A10;
-/// external-ref-no-link-shapes A1, A2, A6:A10, A13). A 3-D prefix naming another workbook
-/// (`'[other.xlsx]S1:S2'!A1`) is not a reference: ISREF is FALSE (external-ref-no-link-shapes
-/// A12). `None` also for an area off the grid.
-pub(crate) fn external_area(node: &Node, cell: CellReferenceIndex) -> Option<ExternalArea> {
-    let (sheet_name, first, last) = match node.ungrouped() {
-        Node::WrongReferenceKind {
-            sheet_name,
-            absolute_row,
-            absolute_column,
-            row,
-            column,
-        } => {
-            let corner = (*row, *column, *absolute_row, *absolute_column);
-            (sheet_name, corner, corner)
-        }
-        Node::WrongRangeKind {
-            sheet_name,
-            absolute_row1,
-            absolute_column1,
-            row1,
-            column1,
-            absolute_row2,
-            absolute_column2,
-            row2,
-            column2,
-        } => (
-            sheet_name,
-            (*row1, *column1, *absolute_row1, *absolute_column1),
-            (*row2, *column2, *absolute_row2, *absolute_column2),
-        ),
-        _ => return None,
-    };
-    let name = sheet_name.as_deref();
-    if !names_other_workbook(name) || name.is_some_and(|name| name.contains(':')) {
-        return None;
-    }
-    // Relative coordinates are offsets from the formula's cell, as for a reference on a sheet.
-    let absolute = |(row, column, absolute_row, absolute_column): (i32, i32, bool, bool)| {
-        (
-            row + if absolute_row { 0 } else { cell.row },
-            column + if absolute_column { 0 } else { cell.column },
-        )
-    };
-    let ((row1, column1), (row2, column2)) = (absolute(first), absolute(last));
-    let area = ExternalArea {
-        first_row: row1.min(row2),
-        first_column: column1.min(column2),
-        last_row: row1.max(row2),
-        last_column: column1.max(column2),
-    };
-    let on_grid = area.first_row >= 1
-        && area.first_column >= 1
-        && area.last_row <= LAST_ROW
-        && area.last_column <= LAST_COLUMN;
-    on_grid.then_some(area)
 }
 
 impl Model {
@@ -424,6 +356,29 @@ impl Model {
         CalcResult::new_error(error, cell, message.to_string())
     }
 
+    /// `@XLOOKUP(..)` / `@TAKE(..)`: the one cell they pick stays a reference, `None` for any
+    /// other node. ISREF and LET binding (probes/isref-implicit-xlookup-take H1, H3, H5, H6,
+    /// excel-graph; T-1509), the operand of `#`/ANCHORARRAY and LOOKUP's `result_vector`
+    /// (probes/anchorarray-lookup-implicit-xlookup-take H1, L1, J10, L10, N10; T-1527) use it.
+    pub(crate) fn eval_at_picked_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        let node = node.ungrouped();
+        if !is_at_xlookup_take(node) {
+            return None;
+        }
+        let Node::ImplicitIntersection { child, .. } = node else {
+            return None;
+        };
+        let Node::FunctionKind { kind, args } = child.ungrouped() else {
+            return None;
+        };
+        let picked = self.evaluate_reference_form(kind, args, cell)?;
+        Some(Self::intersect_reference(picked, cell))
+    }
+
     /// A reference-context operand: a reference, or an INDEX that selects one cell, which stays
     /// a reference: the anchor of `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109),
     /// a lookup index argument and LOOKUP's `result_vector` (probes/lookup-vector-edges A9, A12).
@@ -437,11 +392,7 @@ impl Model {
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
-            } => self.index_impl(
-                args,
-                cell,
-                crate::functions::lookup_and_reference::IndexForm::Reference,
-            ),
+            } => self.index_reference(args, cell),
             // `ANCHORARRAY(@INDEX(D1:D2,1))` spills D1#: the `@` of a one-cell reference keeps
             // the reference (probes/anchorarray-at-operand-kinds H81, T-1247). The operand is
             // evaluated once and intersected, so nested `@INDEX` stays linear (T-1321).
@@ -464,14 +415,18 @@ impl Model {
     /// The operand of `#` and ANCHORARRAY: [`Model::eval_ref_or_index`], and the `@` of an IF
     /// that picks one cell keeps the reference, so `ANCHORARRAY(@IF(TRUE,D1))` spills D1#
     /// (probes/at-signed-operand H71:H73, T-1321). Also LOOKUP's `result_vector`, for `@IF`
-    /// only (probes/at-if-spill-anchor-operand H50, T-1368); the other lookup callers of
-    /// `eval_ref_or_index` have no evidence for `@IF`.
+    /// only (probes/at-if-spill-anchor-operand H50, T-1368), and for `@XLOOKUP`/`@TAKE`
+    /// (probes/anchorarray-lookup-implicit-xlookup-take, T-1527); the other lookup callers of
+    /// `eval_ref_or_index` have no evidence for these.
     pub(crate) fn spill_anchor_operand(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let node = node.ungrouped();
+        if let Some(picked) = self.eval_at_picked_reference(node, cell) {
+            return picked;
+        }
         match node {
             Node::ImplicitIntersection { child, .. } if is_at_if(node) => {
                 let picked = self
@@ -499,11 +454,7 @@ impl Model {
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
-            } => self.index_impl(
-                args,
-                cell,
-                crate::functions::lookup_and_reference::IndexForm::Reference,
-            ),
+            } => self.index_reference(args, cell),
             // An IF corner is the reference it picks, on either side: `A1:IF(TRUE,B2)` is A1:B2
             // and `IF(TRUE,B2):A1` too; a picked value is `#VALUE!` (probes/isref-range-operands
             // D3, D7, D10, D11, E3, E7, E10-E13; T-1177). A picked union is its bounding box
@@ -691,6 +642,11 @@ impl Model {
         right: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        // Into another workbook, the one area's cells are read at once (`ERROR.TYPE(…!A1
+        // …!A1:B2)` is `#N/A`, probes/external-ref-no-link-index A36).
+        if let Some(areas) = self.external_intersection(left, right, cell) {
+            return self.external_areas_value(areas, cell);
+        }
         match self.intersect_to_one_area(left, right, cell) {
             Ok(area) => CalcResult::Range {
                 left: area.left,

@@ -1,0 +1,32 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Lotus-style dotted range: a dotted range followed by a colon corner; one per case (T-1659)",
+  "tags": [
+    "M2",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 4,
+        "A2": 8,
+        "B2": 2,
+        "C3": 16,
+        "E1": "=ROWS(A1.B2:C3)",
+        "E2": "=FORMULATEXT(E1)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 10,
+        "B2": 20,
+        "C3": 40
+      }
+    }
+  ],
+  "expected": {}
+}

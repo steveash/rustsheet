@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+import functools
 import io
 import json
 import re
@@ -7,15 +9,30 @@ import zipfile
 from collections import Counter
 from pathlib import Path
 
+import pytest
+
 from rustsheet_tools import repo_root
 from rustsheet_tools.gen.generator import NAME_POOL, Catalog, generate_case
+from rustsheet_tools.gen.names_3d import CATEGORIES as NAMES_3D_CATEGORIES
+from rustsheet_tools.gen.names_3d import SPAN_SHEETS, generate_names_3d
+from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM, generate_number_formats
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
 from rustsheet_tools.gen.operators_refs import CATEGORIES, generate_operators_refs
+from rustsheet_tools.gen.tables import CATEGORIES as TABLES_CATEGORIES
+from rustsheet_tools.gen.tables import FORMULA_HEADERS, escape_column, generate_tables, this_row
 from rustsheet_tools.spec2xlsx import build_xlsx, parse_a1, prefix_bound_names
 
 
-def catalog() -> Catalog:
+@functools.cache
+def _loaded_catalog() -> Catalog:
     return Catalog.load(repo_root() / "eval" / "catalog" / "functions.yaml")
+
+
+def catalog() -> Catalog:
+    # Parsing functions.yaml takes about 0.7 s and the coverage tests call this once per seed, which
+    # made this file most of CI's python job (12 min). Parse once; a deep copy (about 6 ms) keeps each
+    # caller's catalog independent.
+    return copy.deepcopy(_loaded_catalog())
 
 
 def test_generation_is_deterministic() -> None:
@@ -69,6 +86,23 @@ M2_ADDED = [
     "RIGHT", "MID", "TRIM", "UPPER", "LOWER", "CONCAT", "YEAR", "MONTH", "DAY",
 ]  # fmt: skip
 VALID_MODES = {"value", "aggregate", "aggregate_a", "range", "criteria", "array", "any", "lambda", "name"}
+
+
+def test_number_formats_policy_lists_ten_thousand_text_cells_and_every_format() -> None:
+    specs = generate_number_formats(0)
+    assert specs == generate_number_formats(0)
+    used = set()
+    texts = 0
+    for spec in specs:
+        grid = spec["sheets"][0]
+        assert set(spec["text"]) == {f"F!{a1}" for a1 in grid["cells"]}
+        texts += len(spec["text"])
+        used |= {grid["number_formats"].get(a1, "General") for a1 in grid["cells"]}
+        assert all(f.startswith("=TEXT(") for f in spec["sheets"][1]["cells"].values())
+        build_xlsx(spec)
+    assert texts >= 10_000
+    assert used == set(BUILTIN) | set(CUSTOM)
+    assert not any("e+" in code or "e-" in code for code in used)  # excel-graph refuses them
 
 
 def test_catalog_schema() -> None:
@@ -481,3 +515,88 @@ def test_operators_refs_is_bounded_and_locale_free() -> None:
         if tag.startswith("chain/"):
             row = int(cell[1:])
             assert all(int(n) < row for n in re.findall(r"(?<![!\w$])\$?A\$?(\d+)", _strip_quoted(f))), f
+
+
+def test_names_3d_is_deterministic_and_distinct_per_sheet() -> None:
+    dump = json.dumps(generate_names_3d(3), sort_keys=True)
+    assert dump == json.dumps(generate_names_3d(3), sort_keys=True)
+    assert dump != json.dumps(generate_names_3d(4), sort_keys=True)
+    cases = generate_names_3d(0)
+    assert {c["tags"][-1] for c in cases} == set(NAMES_3D_CATEGORIES)
+    total = 0
+    for c in cases:
+        assert set(c["hypotheses"]) == set(c["check"])
+        assert c["expected"] == {}
+        assert [s["name"] for s in c["sheets"]][:7] == SPAN_SHEETS
+        for sheet in c["sheets"]:
+            probes = [v for a1, v in sheet["cells"].items() if f"{sheet['name']}!{a1}" in c["hypotheses"]]
+            assert len(probes) == len(set(probes)), sheet["name"]  # a repeat is the same probe again
+            total += len(probes)
+        assert build_xlsx(c)[:2] == b"PK"
+    # T-1606: gen-m8a has >= 3,000 oracle cells.
+    assert total >= 3000
+
+
+def test_names_3d_spans_and_named_ranges_never_cover_a_probe() -> None:
+    """3-D spans include `Calc`, so a span reaching column K would make probes circular."""
+    for c in generate_names_3d(0):
+        texts = [
+            *c["names"].values(),
+            *(c["sheets"][4]["cells"][a1.split("!")[1]] for a1 in c["check"] if a1.startswith("Calc!")),
+        ]
+        for text in texts:
+            for col in re.findall(r"![$]?([A-Z]+)[$]?\d", _strip_quoted(str(text))):
+                assert len(col) == 1 and col <= "F", text
+
+
+def test_tables_is_deterministic_and_covers_its_shapes() -> None:
+    dump = json.dumps(generate_tables(3), sort_keys=True)
+    assert dump == json.dumps(generate_tables(3), sort_keys=True)
+    assert dump != json.dumps(generate_tables(4), sort_keys=True)
+    cases = generate_tables(0)
+    assert {c["tags"][-1] for c in cases} == set(TABLES_CATEGORIES)
+    total, widths, rows, totals = 0, set(), set(), set()
+    for c in cases:
+        assert set(c["hypotheses"]) == set(c["check"])
+        assert c["expected"] == {}
+        cells = {f"{s['name']}!{a1}": v for s in c["sheets"] for a1, v in s["cells"].items()}
+        assert all(str(cells[a1]).startswith("=") for a1 in c["check"])
+        total += len(c["check"])
+        for t in c["sheets"][0]["tables"]:
+            (r1, c1), (r2, c2) = (parse_a1(x) for x in t["ref"].split(":"))  # 0-based
+            headers = [cells[f"Data!{chr(65 + c1 + i)}{r1 + 1}"] for i in range(c2 - c1 + 1)]
+            data = [h for h in headers if h not in FORMULA_HEADERS]
+            widths.add(len(data))
+            totals.add(bool(t.get("totals_row")))
+            body = range(r1 + 2, r2 + 2 - int(bool(t.get("totals_row"))))
+            filled = any(f"Data!{chr(65 + c1 + i)}{r}" in cells for i in range(len(data)) for r in body)
+            rows.add(len(body) if filled else 0)
+        assert build_xlsx(c)[:2] == b"PK"
+    assert widths == {1, 2, 3, 4, 5}
+    assert totals == {True, False}
+    assert 0 in rows and max(rows) == 20
+    # T-1607: gen-m8b has >= 3,000 oracle cells.
+    assert total >= 3000
+
+
+def test_tables_probes_never_read_their_own_formula_column() -> None:
+    """`in-table` probes fill the formula columns, so reading one of them would be circular."""
+    case = next(c for c in generate_tables(0) if c["tags"][-1] == "in-table")
+    for a1 in case["check"]:
+        assert "Calc" not in case["sheets"][0]["cells"][a1.split("!")[1]]
+
+
+@pytest.mark.parametrize(
+    ("header", "escaped", "at"),
+    [
+        ("Qty", "Qty", "@Qty"),
+        ("C#", "C'#", "@[C'#]"),
+        ("it's", "it''s", "@[it''s]"),
+        ("[x]", "'[x']", "@['[x']]"),
+        ("x@y", "x'@y", "@[x'@y]"),
+        ("Unit Price", "Unit Price", "@[Unit Price]"),
+    ],
+)
+def test_table_columns_are_escaped(header: str, escaped: str, at: str) -> None:
+    assert escape_column(header) == escaped
+    assert this_row(escaped) == at

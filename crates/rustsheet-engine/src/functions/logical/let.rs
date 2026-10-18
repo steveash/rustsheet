@@ -133,16 +133,36 @@ impl Model {
     }
 
     /// LET; with `as_reference` the body is evaluated in reference context, so a union there
-    /// stays its areas: `SUM(LET(x,(A1,B2),x))` is 6 (probes/multiarea-letbind H8).
+    /// stays its areas: `SUM(LET(x,(A1,B2),x))` is 6 (probes/multiarea-letbind H8). Each value
+    /// and the body are evaluated once (`read_once` in functions/logical/lambda.rs relies on it).
     pub(crate) fn let_impl(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
         as_reference: bool,
     ) -> RefArg {
+        self.let_scope(args, cell, |model, body| {
+            if as_reference {
+                model.evaluate_reference_arg(body, cell)
+            } else {
+                RefArg::Value(model.evaluate_node_in_context(body, cell))
+            }
+        })
+        .unwrap_or_else(RefArg::Value)
+    }
+
+    /// Binds LET's names to their values in order, then hands `read_body` the body while the
+    /// bindings are live, and removes them. `Err` is LET's own error: a wrong argument count, a
+    /// name that is not a variable name or is bound twice, before the body is read.
+    pub(crate) fn let_scope<R>(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        read_body: impl FnOnce(&mut Self, &Node) -> R,
+    ) -> Result<R, CalcResult> {
         // LET requires an odd number of args >= 3: name1, value1, [name2, value2, ...], body
         if args.len() < 3 || args.len().is_multiple_of(2) {
-            return RefArg::Value(CalcResult::new_args_number_error(cell));
+            return Err(CalcResult::new_args_number_error(cell));
         }
 
         let pair_count = (args.len() - 1) / 2;
@@ -183,7 +203,7 @@ impl Model {
                     for id in bound_ids {
                         self.variable_stack.remove(id);
                     }
-                    return RefArg::Value(error);
+                    return Err(error);
                 }
             };
 
@@ -204,19 +224,14 @@ impl Model {
         }
 
         // Evaluate the body with all bindings in scope.
-        let body = &cloned[args.len() - 1];
-        let result = if as_reference {
-            self.evaluate_reference_arg(body, cell)
-        } else {
-            RefArg::Value(self.evaluate_node_in_context(body, cell))
-        };
+        let result = read_body(self, &cloned[args.len() - 1]);
 
         // Remove only the ids introduced by this LET frame.
         for id in bound_ids {
             self.variable_stack.remove(id);
         }
 
-        result
+        Ok(result)
     }
 
     /// What a LET value or a LAMBDA argument binds. A reference stays a reference, a single
@@ -228,19 +243,17 @@ impl Model {
     /// (probes/multiarea-let H1, multiarea-letbind H1:H3 and H7).
     pub(crate) fn bind_argument(&mut self, node: &Node, cell: CellReferenceIndex) -> Binding {
         let node = node.ungrouped();
-        let is_index = matches!(
-            node,
-            Node::FunctionKind {
-                kind: Function::Index,
-                ..
-            }
-        );
         let is_span = matches!(node, Node::SheetSpanKind { .. });
         // XLOOKUP, TAKE, DROP and TRIMRANGE bind the reference they pick, so calling the name is
         // `#REF!` as for OFFSET (probes/let-name-call-forms H7:H9, H11; T-1232).
         let is_picked = matches!(node, Node::FunctionKind { kind, .. } if kind.picks_reference());
-        if !is_index && !is_span && !is_picked && !self.is_multi_area(node) {
-            return Binding::Value(self.evaluate_node_with_reference(node, cell));
+        if !is_span && !is_picked && !self.is_multi_area(node) {
+            // An INDEX that picks one cell stays a reference, `@INDEX(..)` too (probes/let-bind-implicit-index
+            // H1:H9, T-1503): `eval_ref_or_index` owns that rule.
+            if let Some(picked) = self.eval_at_picked_reference(node, cell) {
+                return Binding::Value(picked);
+            }
+            return Binding::Value(self.eval_ref_or_index(node, cell));
         }
         match self.evaluate_picked_reference_arg(node, cell) {
             RefArg::Ranges(Ranges::Areas(areas)) => Binding::Areas(areas),
@@ -259,8 +272,8 @@ impl Model {
     pub(crate) fn variable_value(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         match node {
             Node::NamedVariableKind { name, id: Some(id) } => {
-                match self.variable_stack.get(*id as usize) {
-                    Some(binding) => binding.value(cell),
+                match self.variable_stack.read_value(*id as usize, cell) {
+                    Some(value) => value,
                     None => CalcResult::new_error(
                         Error::NAME,
                         cell,
@@ -268,11 +281,7 @@ impl Model {
                     ),
                 }
             }
-            Node::NamedVariableKind { name, id: None } => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("Variable name \"{name}\" not found."),
-            ),
+            Node::NamedVariableKind { name, id: None } => self.unbound_name(name, cell),
             _ => CalcResult::new_error(Error::ERROR, cell, "Not a variable".to_string()),
         }
     }

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::{
     calc_result::{CalcResult, Range},
-    expressions::types::CellReferenceIndex,
+    expressions::{token::Error, types::CellReferenceIndex},
     reference_operators::{
         several_areas, three_d_needs_one_sheet, too_many_areas, Areas, MAX_AREAS,
     },
@@ -18,6 +18,10 @@ use crate::{
 #[derive(Clone)]
 pub(crate) enum Binding {
     Value(CalcResult),
+    /// A LAMBDA parameter's value that the body reads exactly once per call
+    /// (`Model::call_prepared`): that read takes the value instead of copying it, so an array
+    /// accumulator handed through REDUCE is not deep-copied on each step (T-1588).
+    ReadOnce(CalcResult),
     Areas(Areas),
     /// A range whose corners sit on two sheets: an aggregate reads it like the written span
     /// (`LET(x,Data1:Data3!A1,SUM(x))` is 111, probes/3d-ref-let-bound-span C1:C3).
@@ -28,7 +32,7 @@ impl Binding {
     /// The binding where a value or a single reference is needed.
     pub(crate) fn value(&self, cell: CellReferenceIndex) -> CalcResult {
         match self {
-            Binding::Value(value) => value.clone(),
+            Binding::Value(value) | Binding::ReadOnce(value) => value.clone(),
             Binding::Areas(_) => several_areas(cell),
             Binding::Span(_) => three_d_needs_one_sheet(cell),
         }
@@ -37,7 +41,7 @@ impl Binding {
     /// How many areas the binding holds: those of a union, none for a value or a span.
     pub(crate) fn held_areas(&self) -> usize {
         match self {
-            Binding::Value(_) | Binding::Span(_) => 0,
+            Binding::Value(_) | Binding::ReadOnce(_) | Binding::Span(_) => 0,
             Binding::Areas(areas) => areas.len(),
         }
     }
@@ -61,6 +65,37 @@ pub(crate) struct VariableStack {
 impl VariableStack {
     pub(crate) fn get(&self, id: usize) -> Option<&Binding> {
         self.bindings.get(&id)
+    }
+
+    /// What `id` holds where a value is wanted: [`Binding::value`], except that a
+    /// [`Binding::ReadOnce`] value is moved out. What it leaves behind is an error, not a value, so
+    /// that a second read (a broken read-once analysis) shows instead of silently reading 0.
+    pub(crate) fn read_value(&mut self, id: usize, cell: CellReferenceIndex) -> Option<CalcResult> {
+        let binding = self.bindings.get_mut(&id)?;
+        if let Binding::ReadOnce(_) = binding {
+            let read_twice = CalcResult::new_error(
+                Error::ERROR,
+                cell,
+                "A LAMBDA parameter read once was read again".to_string(),
+            );
+            if let Binding::ReadOnce(value) = std::mem::replace(binding, Binding::Value(read_twice))
+            {
+                return Some(value);
+            }
+        }
+        Some(binding.value(cell))
+    }
+
+    /// Turns every [`Binding::ReadOnce`] into a copied [`Binding::Value`]. IF over an array
+    /// condition evaluates both branches, where `read_once` (functions/logical/lambda.rs) counts
+    /// a read in each as one, since a scalar condition evaluates only one (T-1593).
+    pub(crate) fn copy_read_once(&mut self) {
+        for binding in self.bindings.values_mut() {
+            if let Binding::ReadOnce(value) = binding {
+                let value = std::mem::replace(value, CalcResult::EmptyArg);
+                *binding = Binding::Value(value);
+            }
+        }
     }
 
     /// Binds `id`; a union that would pass [`MAX_HELD_AREAS`] is bound to `#VALUE!` instead.

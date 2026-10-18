@@ -29,27 +29,30 @@ impl Model {
                     }
                 },
                 CalcResult::Number(n) => values.push(n),
-                // Only a union's `#VALUE!` is probed (H17, H18); other errors keep being skipped.
-                error @ CalcResult::Error { .. }
-                    if matches!(arg.ungrouped(), Node::OpUnionKind { .. }) =>
-                {
-                    return Err(error)
-                }
-                // Excel: a text value or a blank single-cell reference is #VALUE!, while
-                // text/blanks inside ranges are skipped (coercion.md, MODE; T-0947). A
-                // single-cell reference to text is unprobed, so it keeps being skipped.
-                CalcResult::String(_) if !matches!(arg.ungrouped(), Node::ReferenceKind { .. }) => {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "MODE: text argument".to_string(),
-                    ));
-                }
+                // A direct error propagates as itself: `MODE(1,"1",#DIV/0!,2,3)` is `#DIV/0!`
+                // (probes/mode-typed-arguments A22, T-1291), as do an error cell, range or name
+                // (`MODE(K1,1,1)`, K1 = `=1/0`: probes/mode-error-and-computed-arguments A1-A6), a union's `#VALUE!` (H17, H18) and
+                // the error of a branch picked by IF or CHOOSE (`MODE(CHOOSE(1,B1:B6*1))` off the
+                // range's rows is `#VALUE!`, probes/legacy-choose-arm-aggregate-and-array-constant-at
+                // I10, T-1643).
+                error @ CalcResult::Error { .. } => return Err(error),
+                // Excel: typed (direct) text, even numeric text, and booleans are skipped, not
+                // coerced and not `#VALUE!` (probes/mode-typed-arguments A1-A20, T-1291), and
+                // text inside ranges is skipped too. A blank single-cell reference is `#VALUE!`
+                // (coercion.md, MODE; T-0947).
                 CalcResult::EmptyCell if matches!(arg.ungrouped(), Node::ReferenceKind { .. }) => {
                     return Err(CalcResult::new_error(
                         Error::VALUE,
                         cell,
                         "MODE: blank cell reference".to_string(),
+                    ));
+                }
+                // An empty argument is `#VALUE!` too: `MODE(1,1,)` (probes/mode-typed-arguments A27).
+                CalcResult::EmptyArg => {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "MODE: empty argument".to_string(),
                     ));
                 }
                 _ => {}

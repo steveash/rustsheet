@@ -1,0 +1,41 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A sheet renamed twice: references follow both renames. (T-1608)",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=Data!A1",
+        "A2": "=INDIRECT(\"Final!A2\")",
+        "B1": "=FORMULATEXT(A1)",
+        "B2": "=FORMULATEXT(A2)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": "x"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "rename",
+      "sheet": "Data",
+      "to": "Tmp"
+    },
+    {
+      "op": "rename",
+      "sheet": "Tmp",
+      "to": "Final"
+    }
+  ]
+}

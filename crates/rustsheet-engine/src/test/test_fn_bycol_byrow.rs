@@ -258,3 +258,137 @@ fn byrow_over_a_range_above_the_array_bound_is_an_error() {
     assert!(model._get_text("A1").starts_with('#'));
     assert!(model._get_text("A2").starts_with('#'));
 }
+
+#[test]
+fn byrow_bycol_need_a_lambda() {
+    // Anything but a LAMBDA is `#VALUE!`, an error and an unknown name too
+    // (probes/eta-reduced-names E5:E21).
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("D1", "=BYCOL(A1:B3,NA())");
+    model._set("D2", "=BYCOL(A1:B3,1)");
+    model._set("D3", "=BYCOL(A1:B3,COUNTA)");
+    model._set("D4", "=BYROW(A1:B3,_xleta.NONSUCH)");
+    model.evaluate();
+    for cell in ["D1", "D2", "D3", "D4"] {
+        assert_eq!(model._get_text(cell), "#VALUE!", "{cell}");
+    }
+}
+
+#[test]
+fn functions_passed_by_name() {
+    // `_xleta.NAME` takes as many arguments as the helper passes (probes/eta-reduced-names,
+    // probes/m7-argument-modes F28:H51).
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("A3", "z");
+    model._set("B3", "y");
+    model._set("D1", "=BYCOL(A1:B3,_xleta.COUNTA)");
+    model._set("D3", "=BYROW(A1:B3,_xleta.countblank)");
+    model._set("D7", "=MAKEARRAY(2,2,_xleta.POWER)");
+    model._set("D9", "=LET(f,_xleta.SUM,f(1,2))");
+    model._set("D10", "=MAP(A1:A3,_xleta.ISREF)");
+    model._set("D13", "=BYROW({1,2;3,4},_xleta._xlfn.STDEV.S)");
+    model._set("D15", "=SCAN(0,A1:A3,_xleta.COUNTA)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "2");
+    assert_eq!(model._get_text("E1"), "1");
+    assert_eq!(model._get_text("D3"), "1");
+    assert_eq!(model._get_text("D4"), "2");
+    assert_eq!(model._get_text("D5"), "0");
+    assert_eq!(model._get_text("E7"), "1");
+    assert_eq!(model._get_text("E8"), "4");
+    assert_eq!(model._get_text("D9"), "3");
+    assert_eq!(model._get_text("D10"), "TRUE");
+    assert_eq!(model._get_text("D12"), "TRUE");
+    assert_eq!(model._get_text("D13"), "0.707106781");
+    assert_eq!(model._get_text("D15"), "2");
+    assert_eq!(model._get_text("D16"), "1");
+}
+
+#[test]
+fn functions_passed_by_name_with_special_forms_do_not_panic() {
+    // Functions the parser or evaluator treats specially still evaluate to some value.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    let formulas = [
+        "=BYROW(A1:B3,_xleta.LET)",
+        "=MAKEARRAY(2,2,_xleta.LET)",
+        "=BYROW(A1:B3,_xleta.LAMBDA)",
+        "=MAKEARRAY(2,2,_xleta.LAMBDA)",
+        "=MAP(A1:A3,_xleta.SUBTOTAL)",
+        "=MAKEARRAY(2,2,_xleta.SUBTOTAL)",
+        "=BYROW(A1:B3,_xleta.AREAS)",
+        "=MAKEARRAY(2,2,_xleta.OFFSET)",
+        "=MAP(A1:A3,_xleta.NOW)",
+        "=REDUCE(0,A1:A3,_xleta.INDIRECT)",
+        "=_xleta.SUM",
+        "=_xleta.",
+    ];
+    for (row, formula) in formulas.iter().enumerate() {
+        model._set(&format!("D{}", 4 * row + 1), formula);
+    }
+    model.evaluate();
+    for row in 0..formulas.len() {
+        let _ = model._get_text(&format!("D{}", 4 * row + 1));
+    }
+    // An uncalled function is one value, like an uncalled LAMBDA (probes/eta-reduced-names E73).
+    assert_eq!(model._get_text("D41"), "#CALC!");
+    assert_eq!(model._get_text("D45"), "#NAME?");
+}
+
+// A LAMBDA that returns several values makes the whole BYROW or BYCOL one `#CALC!` cell with
+// nothing spilled (probes/eta-reduced-names E49, T-1664). The BYROW range case has Excel evidence;
+// the BYCOL and array-constant cases are hand expectations awaiting T-1670.
+#[test]
+fn byrow_bycol_array_result_is_one_calc_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("A2", "3");
+    model._set("B2", "4");
+    model._set("D1", "=BYROW(A1:B2, LAMBDA(r, r))");
+    model._set("F1", "=BYCOL(A1:B2, LAMBDA(c, c))");
+    model._set("H1", "=BYROW({1,2;3,4}, LAMBDA(r, r))");
+    model.evaluate();
+    for (at, below) in [("D1", "D2"), ("F1", "G1"), ("H1", "H2")] {
+        assert_eq!(model._get_text(at), "#CALC!");
+        assert_eq!(model._get_text(below), "");
+    }
+}
+
+// A 1x1 array result is its one value (probes/byrow-bycol-array-results, T-1670).
+#[test]
+fn byrow_one_by_one_array_result_is_its_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("C1", "=BYROW(A1:A2, LAMBDA(r, {7}))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "7");
+    assert_eq!(model._get_text("C2"), "7");
+}
+
+// ── a single value is a 1x1 array (T-1350) ────────────────────────────────────
+
+// Oracle-backed: A1, A2, A7 (gen-m7/93976dd9a3578ed9 A31, gen-m9/65faaeb48419087d A23) and A3 in its
+// `_xleta.PRODUCT` form (gen-m7/59cc50701f4937c9 A4). A4-A6 are inferred, not yet oracle-checked.
+#[test]
+fn byrow_bycol_of_a_single_value_call_the_lambda_once() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BYROW(7,LAMBDA(z,z))");
+    model._set("A2", "=BYCOL(7,LAMBDA(z,z))");
+    model._set("A3", "=BYROW(\"\",LAMBDA(r,PRODUCT(r)))");
+    model._set("A4", "=BYROW({7},LAMBDA(z,z))");
+    model._set("A5", "=BYCOL({7},LAMBDA(z,z))");
+    model._set("A6", "=BYROW(\"x\",LAMBDA(z,z&\"!\"))");
+    model._set("A7", "=\"ü\"&BYROW(COUNT(1,2),LAMBDA(z,z))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "7");
+    assert_eq!(model._get_text("A2"), "7");
+    assert_eq!(model._get_text("A3"), "0");
+    assert_eq!(model._get_text("A4"), "7");
+    assert_eq!(model._get_text("A5"), "7");
+    assert_eq!(model._get_text("A6"), "x!");
+    assert_eq!(model._get_text("A7"), "ü2");
+}

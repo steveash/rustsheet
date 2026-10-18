@@ -1,0 +1,46 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Displayed text of A/P and locale-bracket formats on cells (T-1714): the cell-display path of T-1702's TEXT-only probe.",
+ "tags": [
+  "M10",
+  "number-format",
+  "displayed-text",
+  "probe"
+ ],
+ "text": [
+  "S!A1",
+  "S!A2",
+  "S!A3",
+  "S!A4",
+  "S!A5",
+  "S!A6",
+  "S!A7",
+  "S!A8"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": 0.25,
+    "A2": 0.75,
+    "A3": 0.75,
+    "A4": 0.25,
+    "A5": 5,
+    "A6": 5,
+    "A7": 1234.5,
+    "A8": 45000
+   },
+   "number_formats": {
+    "A1": "h A/P",
+    "A2": "h a/p",
+    "A3": "A/P",
+    "A4": "h:mm a/P",
+    "A5": "[$-409]0",
+    "A6": "[$-zzz]0",
+    "A7": "[$-40C]0.00",
+    "A8": "[$-40C]mmmm"
+   }
+  }
+ ],
+ "expected": {}
+}

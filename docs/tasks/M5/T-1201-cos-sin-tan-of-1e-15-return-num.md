@@ -3,7 +3,7 @@ id: T-1201
 title: "COS/SIN/TAN of 1E+15 return #NUM! in Excel (gen-m5 mismatch)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -14,6 +14,7 @@ depends_on: []
 COS (and, once probed, SIN/TAN) of a huge argument such as 1E+15 return Excel's `#NUM!`.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 6 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 From T-1192's gen-m5 run (excel-graph oracle): `COS(1E+15)` is `#NUM!` in Excel; the engine computes a number. Failing cells: gen-m5/c2ce66769f6cc566 Calc!A32 and gen-m5/065c0542a4ce3d1c Calc!A26 (the error propagates before other errors). First probe the threshold and SIN/TAN/COT/SEC/CSC behavior with the `excel-probe` skill and record it in docs/excel-semantics/numbers.md.
 
 More cells (T-1239's gen-m6 suite, excel-graph, 2026-10-09): gen-m6/3ee7ffc8d6ab061f Calc!A2
@@ -41,3 +42,6 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 -
+
+## Outcome
+SIN, COS, TAN, COT, SEC and CSC return `#NUM!` for |x| >= 2^27 (threshold probed: probes/trig-huge-argument, recorded in numbers.md). Eval: the 14 listed gen-m5..gen-m9 cells are not in this checkout's suites (only gen-m1/gen-m2 are present locally) so they could not be run here; the rule covers every cited formula. The new probe adds 6 known failures (`f(2^27-1)` last digits, Excel's inexact range reduction), filed as T-1563.

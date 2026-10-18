@@ -67,6 +67,13 @@ fn simple_test() {
             "SUM(CHOOSE(2,A1:A10,B1:B10))",
         ),
         ("CHOOSE(2,A1,B1)", "CHOOSE(2,A1,B1)"),
+        // An operator arm gets the `@` on its range operand, not on the call (T-1633).
+        ("CHOOSE(1,A1:A2+1)", "CHOOSE(1,@A1:A2+1)"),
+        ("CHOOSE(1,A1:A1+1)", "CHOOSE(1,@A1:A1+1)"),
+        // A one-element array constant in a scalar argument (T-1633).
+        ("ABS({5})", "ABS(@{5})"),
+        // TYPE reads an array whole (T-1638).
+        ("TYPE({5})", "TYPE({5})"),
         // INDIRECT takes one text and gives a reference
         ("INDIRECT(A1:A10)", "@INDIRECT(@A1:A10)"),
         ("INDIRECT(A1:A10,FALSE)", "@INDIRECT(@A1:A10,FALSE)"),
@@ -96,12 +103,12 @@ fn simple_test() {
         // ("ISBLANK(A1:A10)", "ISBLANK(A1:A10)"),
         // ("ISERR(A1:A10)", "ISERR(A1:A10)"),
         // ("ISERROR(A1:A10)", "ISERROR(A1:A10)"),
-        // ("ISEVEN(A1:A10)", "ISEVEN(A1:A10)"),
+        ("ISEVEN(A1:A10)", "ISEVEN(A1:A10)"),
         // ("ISLOGICAL(A1:A10)", "ISLOGICAL(A1:A10)"),
         // ("ISNA(A1:A10)", "ISNA(A1:A10)"),
         // ("ISNONTEXT(A1:A10)", "ISNONTEXT(A1:A10)"),
         // ("ISNUMBER(A1:A10)", "ISNUMBER(A1:A10)"),
-        // ("ISODD(A1:A10)", "ISODD(A1:A10)"),
+        ("ISODD(A1:A10)", "ISODD(A1:A10)"),
         // ("ISREF(A1:A10)", "ISREF(A1:A10)"),
         // ("ISTEXT(A1:A10)", "ISTEXT(A1:A10)"),
     ];

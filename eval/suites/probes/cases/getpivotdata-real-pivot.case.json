@@ -1,0 +1,93 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1705: GETPIVOTDATA against real pivot tables written by the case builder (`pivot_tables`). Data!A1:C7 holds Region/Product/Sales; P!A3 is a Sum of Sales pivot with Region rows and Product columns (East A 14, B 5, C 3; West A 20, B 7, no C; total 49), P!A20 an Average of Sales pivot with Region rows only. Field/item pairs, their order, grand totals, a missing item, field and data field, an empty intersection, case, padding, a reference inside, outside and spanning the pivot, an array item and odd arguments.",
+  "tags": [
+    "probe",
+    "getpivotdata",
+    "pivot",
+    "T-1705",
+    "M6"
+  ],
+  "sheets": [
+    {
+      "name": "Data",
+      "cells": {
+        "A1": "Region",
+        "B1": "Product",
+        "C1": "Sales",
+        "A2": "East",
+        "B2": "A",
+        "C2": 10,
+        "A3": "West",
+        "B3": "A",
+        "C3": 20,
+        "A4": "East",
+        "B4": "B",
+        "C4": 5,
+        "A5": "West",
+        "B5": "B",
+        "C5": 7,
+        "A6": "East",
+        "B6": "C",
+        "C6": 3,
+        "A7": "East",
+        "B7": "A",
+        "C7": 4
+      }
+    },
+    {
+      "name": "P",
+      "cells": {
+        "H1": "=GETPIVOTDATA(\"Sales\",$A$3)",
+        "H2": "=GETPIVOTDATA(\"Sum of Sales\",$A$3)",
+        "H3": "=GETPIVOTDATA(\"Sales\",$A$3,\"Region\",\"East\")",
+        "H4": "=GETPIVOTDATA(\"Sales\",$A$3,\"Product\",\"A\")",
+        "H5": "=GETPIVOTDATA(\"Sales\",$A$3,\"Region\",\"East\",\"Product\",\"A\")",
+        "H6": "=GETPIVOTDATA(\"Sales\",$A$3,\"Product\",\"A\",\"Region\",\"East\")",
+        "H7": "=GETPIVOTDATA(\"Sales\",$A$3,\"Region\",\"North\")",
+        "H8": "=GETPIVOTDATA(\"Sales\",$A$3,\"Market\",\"East\")",
+        "H9": "=GETPIVOTDATA(\"Profit\",$A$3)",
+        "H10": "=GETPIVOTDATA(\"sales\",$A$3,\"region\",\"east\")",
+        "H11": "=GETPIVOTDATA(\"Sales\",$C$6)",
+        "H12": "=GETPIVOTDATA(\"Sales\",$H$30)",
+        "H13": "=GETPIVOTDATA(\"Sales\",$A$3,\"Region\",\"West\",\"Product\",\"C\")",
+        "H15": "=GETPIVOTDATA(\"Sales\",$A$3,\"Region\")",
+        "H16": "=GETPIVOTDATA(\"Sales\",$A$3:$E$7)",
+        "H17": "=GETPIVOTDATA(\"Sales\",$A$3,\"Region\",\"East\",\"Region\",\"West\")",
+        "H18": "=GETPIVOTDATA(\"Sales\",$A$3,\"Region\",\" East\")",
+        "H19": "=GETPIVOTDATA(\" Sales \",$A$3)",
+        "H20": "=GETPIVOTDATA(\"Sales\",Data!$A$1)",
+        "J1": "=GETPIVOTDATA(\"Sales\",$A$20,\"Region\",\"East\")",
+        "J2": "=GETPIVOTDATA(\"Average of Sales\",$A$20)",
+        "J3": "=GETPIVOTDATA(\"Sales\",$A$20,\"Product\",\"A\")",
+        "J4": "=GETPIVOTDATA(\"Sum of Sales\",$A$20)",
+        "J5": "=GETPIVOTDATA(\"Sales\",$A$20)",
+        "L1": "=GETPIVOTDATA(\"Sales\",$A$3,\"Region\",{\"East\";\"West\"})",
+        "H14": "=GETPIVOTDATA(\"Sales\",$A$3,\"Region\",\"West\",\"Product\",\"B\")",
+        "L5": "=GETPIVOTDATA(\"Sales\",$A$3,\"Product\",{\"A\",\"B\",\"C\"})",
+        "J6": "=GETPIVOTDATA(\"Sales\",$A$3,\"Region\",A5)",
+        "J7": "=GETPIVOTDATA(C3,$A$3)",
+        "J8": "=GETPIVOTDATA(\"Sales\",$A$3,\"Product\",\"a\",\"Region\",\"EAST\")"
+      },
+      "pivot_tables": [
+        {
+          "name": "PivotSum",
+          "source": "Data!A1:C7",
+          "location": "A3",
+          "row": "Region",
+          "column": "Product",
+          "value": "Sales",
+          "function": "sum"
+        },
+        {
+          "name": "PivotAvg",
+          "source": "Data!A1:C7",
+          "location": "A20",
+          "row": "Region",
+          "value": "Sales",
+          "function": "average"
+        }
+      ]
+    }
+  ]
+}

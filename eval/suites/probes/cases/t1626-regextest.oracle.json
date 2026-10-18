@@ -1,0 +1,138 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A5": {
+    "t": "s",
+    "v": ""
+   },
+   "C1": {
+    "t": "b",
+    "v": true
+   },
+   "C10": {
+    "t": "b",
+    "v": true
+   },
+   "C13": {
+    "t": "b",
+    "v": true
+   },
+   "C14": {
+    "t": "b",
+    "v": true
+   },
+   "C15": {
+    "t": "b",
+    "v": true
+   },
+   "C16": {
+    "t": "b",
+    "v": false
+   },
+   "C17": {
+    "t": "b",
+    "v": true
+   },
+   "C18": {
+    "t": "b",
+    "v": true
+   },
+   "C19": {
+    "t": "b",
+    "v": true
+   },
+   "C2": {
+    "t": "b",
+    "v": true
+   },
+   "C20": {
+    "t": "b",
+    "v": true
+   },
+   "C21": {
+    "t": "b",
+    "v": true
+   },
+   "C22": {
+    "t": "b",
+    "v": true
+   },
+   "C25": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C26": {
+    "t": "b",
+    "v": true
+   },
+   "C27": {
+    "t": "b",
+    "v": true
+   },
+   "C28": {
+    "t": "b",
+    "v": true
+   },
+   "C29": {
+    "t": "b",
+    "v": true
+   },
+   "C3": {
+    "t": "b",
+    "v": false
+   },
+   "C30": {
+    "t": "b",
+    "v": true
+   },
+   "C31": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "C32": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "C33": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "C34": {
+    "t": "b",
+    "v": true
+   },
+   "C4": {
+    "t": "b",
+    "v": true
+   },
+   "C5": {
+    "t": "b",
+    "v": false
+   },
+   "C6": {
+    "t": "b",
+    "v": true
+   },
+   "C7": {
+    "t": "b",
+    "v": true
+   },
+   "C8": {
+    "t": "b",
+    "v": false
+   },
+   "C9": {
+    "t": "b",
+    "v": true
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "acfc6759fbe6c6f127cea35086e637ac006910d8b43a92868a65dbb581ca69ad",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T08:27:32+00:00",
+  "version": null
+ }
+}

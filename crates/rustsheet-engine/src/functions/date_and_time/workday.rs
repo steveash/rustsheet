@@ -28,62 +28,120 @@ impl Model {
         if !(2..=3).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let start_serial = match self.get_number_no_bools(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let mut date = match self.excel_date(start_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let mut days = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.floor() as i32,
-            Err(s) => return s,
+        let (date, days) = match self.workday_start_and_days(args, cell) {
+            Ok(start) => start,
+            Err(error) => return error,
         };
         let weekend = DEFAULT_WEEKEND;
         let holiday_set = match self.get_holiday_set(args.get(2), cell) {
             Ok(h) => h,
             Err(e) => return e,
         };
+        match self.step_workdays(date, days, &weekend, &holiday_set, cell) {
+            Ok(serial) => CalcResult::Number(serial),
+            Err(error) => error,
+        }
+    }
+
+    /// The start date and the signed working-day count (the first two arguments) of WORKDAY and
+    /// WORKDAY.INTL.
+    fn workday_start_and_days(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(chrono::NaiveDate, i32), CalcResult> {
+        let start_serial = self.get_number_no_bools(&args[0], cell)?.floor() as i64;
+        let date = self.excel_date(start_serial, cell)?;
+        let days = self.get_number_no_bools(&args[1], cell)?.floor() as i32;
+        Ok((date, days))
+    }
+
+    /// Steps `date` over `days` working days (forward when positive), skipping the weekend days
+    /// of `weekend_mask` and `holidays`, and returns the result as a serial of the workbook's
+    /// date system. Out-of-range steps and results before the 1904 epoch are `#NUM!`
+    /// (`WORKDAY(0,-1)`, `WORKDAY.INTL(1,-2)`; probes/date-system-1904-readers A43, A44).
+    fn step_workdays(
+        &self,
+        mut date: chrono::NaiveDate,
+        mut days: i32,
+        weekend_mask: &[bool; 7],
+        holidays: &std::collections::HashSet<chrono::NaiveDate>,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let out_of_range =
+            || CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
+        // Skip whole weeks first so large day counts cost O(holidays), not O(days). The skip stops
+        // short of the target and of the range limits, so the loop below still yields the same
+        // result and the same range errors.
+        let per_week = 7 - weekend_mask.iter().filter(|&&w| w).count() as i64;
+        // Unreachable today (callers reject the all-weekend mask with #VALUE!); guards the division.
+        if per_week == 0 {
+            return Err(out_of_range());
+        }
+        // Holiday serials that fall on a working day, sorted so each skipped span is counted by
+        // binary search (dense holidays make many passes possible).
+        let mut workday_holidays: Vec<i64> = holidays
+            .iter()
+            .filter(|h| !Self::is_weekend(h.weekday(), weekend_mask))
+            .map(|h| i64::from(h.num_days_from_ce() - EXCEL_DATE_BASE))
+            .collect();
+        workday_holidays.sort_unstable();
+        loop {
+            let weeks = (i64::from(days.unsigned_abs()) - 1).max(0) / per_week;
+            if weeks == 0 {
+                break;
+            }
+            let forward = days > 0;
+            let from = i64::from(date.num_days_from_ce() - EXCEL_DATE_BASE);
+            let to = if forward {
+                from + 7 * weeks
+            } else {
+                from - 7 * weeks
+            };
+            if to >= i64::from(MAXIMUM_DATE_SERIAL_NUMBER)
+                || to <= i64::from(MINIMUM_DATE_SERIAL_NUMBER)
+            {
+                // The target lies strictly beyond `to`, so the day loop would end in this error.
+                return Err(out_of_range());
+            }
+            let (lo, hi) = if forward {
+                (from + 1, to)
+            } else {
+                (to, from - 1)
+            };
+            let skipped_holidays = (workday_holidays.partition_point(|&h| h <= hi)
+                - workday_holidays.partition_point(|&h| h < lo))
+                as i64;
+            let consumed = i32::try_from(per_week * weeks - skipped_holidays).unwrap_or(0);
+            days += if forward { -consumed } else { consumed };
+            date += chrono::Duration::days(to - from);
+        }
         while days != 0 {
             if days > 0 {
                 if date.num_days_from_ce() - EXCEL_DATE_BASE >= MAXIMUM_DATE_SERIAL_NUMBER {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
-                    };
+                    return Err(out_of_range());
                 }
                 date += chrono::Duration::days(1);
-                if !Self::is_weekend(date.weekday(), &weekend) && !holiday_set.contains(&date) {
+                if !Self::is_weekend(date.weekday(), weekend_mask) && !holidays.contains(&date) {
                     days -= 1;
                 }
             } else {
                 if date.num_days_from_ce() - EXCEL_DATE_BASE <= MINIMUM_DATE_SERIAL_NUMBER {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
-                    };
+                    return Err(out_of_range());
                 }
                 date -= chrono::Duration::days(1);
-                if !Self::is_weekend(date.weekday(), &weekend) && !holiday_set.contains(&date) {
+                if !Self::is_weekend(date.weekday(), weekend_mask) && !holidays.contains(&date) {
                     days += 1;
                 }
             }
         }
-        // Unlike EDATE, a WORKDAY result before the 1904 epoch is #NUM! (`WORKDAY(0,-1)`,
-        // probes/date-system-1904-readers A43).
         let serial = i64::from(date.num_days_from_ce() - EXCEL_DATE_BASE);
-        match self
-            .workbook
+        self.workbook
             .settings
             .date_system
             .serial_from_1900_serial(serial)
-        {
-            Some(serial) => CalcResult::Number(serial as f64),
-            None => CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string()),
-        }
+            .map(|serial| serial as f64)
+            .ok_or_else(out_of_range)
     }
 
     fn get_holiday_set(
@@ -121,17 +179,9 @@ impl Model {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let start_serial = match self.get_number_no_bools(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let date = match self.excel_date(start_serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let days = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.floor() as i32,
-            Err(s) => return s,
+        let (date, days) = match self.workday_start_and_days(args, cell) {
+            Ok(start) => start,
+            Err(error) => return error,
         };
         let weekend = match self.weekend_arg(args.get(2), cell) {
             Ok(w) => w,
@@ -141,8 +191,6 @@ impl Model {
             Ok(h) => h,
             Err(e) => return e,
         };
-        let date_system = self.workbook.settings.date_system;
-
         weekend.lift(|weekend_mask| {
             // Checks if all days are weekends
             if weekend_mask == [true; 7] {
@@ -152,38 +200,7 @@ impl Model {
                     "Invalid weekend mask".to_string(),
                 ));
             }
-            let out_of_range =
-                || CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
-            let (mut date, mut days) = (date, days);
-            while days != 0 {
-                if days > 0 {
-                    if date.num_days_from_ce() - EXCEL_DATE_BASE >= MAXIMUM_DATE_SERIAL_NUMBER {
-                        return Err(out_of_range());
-                    }
-                    date += chrono::Duration::days(1);
-                    if !Self::is_weekend(date.weekday(), &weekend_mask)
-                        && !holiday_set.contains(&date)
-                    {
-                        days -= 1;
-                    }
-                } else {
-                    if date.num_days_from_ce() - EXCEL_DATE_BASE <= MINIMUM_DATE_SERIAL_NUMBER {
-                        return Err(out_of_range());
-                    }
-                    date -= chrono::Duration::days(1);
-                    if !Self::is_weekend(date.weekday(), &weekend_mask)
-                        && !holiday_set.contains(&date)
-                    {
-                        days += 1;
-                    }
-                }
-            }
-            // Before the 1904 epoch is #NUM!, as in WORKDAY (`WORKDAY.INTL(1,-2)`, A44).
-            let serial = i64::from(date.num_days_from_ce() - EXCEL_DATE_BASE);
-            date_system
-                .serial_from_1900_serial(serial)
-                .map(|serial| serial as f64)
-                .ok_or_else(out_of_range)
+            self.step_workdays(date, days, &weekend_mask, &holiday_set, cell)
         })
     }
 }

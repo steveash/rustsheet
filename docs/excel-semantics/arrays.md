@@ -167,6 +167,14 @@ Implemented in: `array_of_errors` and `MISSING` (crates/rustsheet-engine/src/ari
 `TextArg::Error` (crates/rustsheet-engine/src/functions/text/text_arg.rs), `fn_date`, `fn_weekday`.
 Tasks: T-0129, T-0994, T-1022, T-1056
 
+## CEILING/FLOOR family and MROUND lift over arrays
+Rule: ISO.CEILING, CEILING, CEILING.MATH, CEILING.PRECISE, FLOOR, FLOOR.MATH, FLOOR.PRECISE and MROUND lift element-wise over an array or multi-cell range in every argument, except MROUND (below). An error in `number` still broadcasts over an array in another argument (`CEILING.MATH(<error>,sig,{9x1 mode})` is a 9x1 array, `#SPILL!` where it cannot spill).
+Evidence: gen-m7/e5a361112d83d0c3 Calc!A9 (ISO.CEILING, excel-graph 2026-10-11); gen-m9/89693ab0cafc29df Calc!A14 (CEILING.MATH, excel-graph 2026-10-12); probes/ceiling-floor-mround-array-lift A1:A18 (CEILING, FLOOR, CEILING.PRECISE, FLOOR.PRECISE, FLOOR.MATH, CEILING.MATH and MROUND with an array in each argument; excel-graph 2026-10-15, T-1589). The family reads a boolean element as 1/0 (`CEILING({TRUE,2},1)` spills `1, 2`, `FLOOR(5,{TRUE,2})` spills `5, 4`, A15:A18).
+MROUND keeps its scalar rules per element: a boolean element or cell is `#VALUE!`, not 1/0 (`MROUND({TRUE,2.6},1)` spills `#VALUE!, 3`, `MROUND(1,{TRUE,2})` spills `#VALUE!, 2`, `MROUND(INDIRECT("K1"),1)` and `MROUND(TRUE,1)` are `#VALUE!`; A19:A25). MROUND judges its two arguments left to right: an error, a missing argument (`#N/A`) or a boolean (`#VALUE!`) in `number` wins over whatever `multiple` holds, so `MROUND(TRUE,)` is `#VALUE!` but `MROUND(,TRUE)` is `#N/A` (A27:A28), `MROUND(1/0,TRUE)` and `MROUND(1/0,)` are `#DIV/0!`, `MROUND(,1/0)` is `#N/A`, `MROUND(TRUE,1/0)` is `#VALUE!`, `MROUND("x",)` is `#VALUE!` but `MROUND(,"x")` is `#N/A` (A23, A27:A42); an error in `number` still broadcasts over an array `multiple` (`MROUND(1/0,{TRUE,2})` spills `#DIV/0!, #DIV/0!`, A22). MROUND is an Analysis ToolPak function and does not lift over a multi-cell range in either argument: `MROUND(M1:N1,1)`, `MROUND(1,M1:N1)`, `MROUND(M1:M3,1)` and `MROUND(M1:N1,M1:N1)` over plain numbers are one `#VALUE!` with no spill (`COLUMNS(MROUND(M1:N1,1))` is `#VALUE!`, A43:A49, A55), while an array constant lifts (`COLUMNS(MROUND({1.2,2.6},1))` is 2, A50) and so do CEILING and FLOOR.MATH over the same range (A51:A52, A30:A31); same rule as ISEVEN (information.md). Unprobed: an error argument next to a multi-cell range. `MROUND("3",)` is `#N/A` and `MROUND("3",2)` is 4 (A53:A54). The scalar rule "every missing argument before any boolean" the engine had was wrong for `MROUND(TRUE,)`.
+Status: VERIFIED
+Implemented in: functions/math_and_trigonometry/mathematical.rs (`lift_with_defaults`, `lift_numbers`)
+Tasks: T-1357, T-1589
+
 ## ROUND, ROUNDUP, ROUNDDOWN and TRUNC lift over arrays
 Rule: `ROUNDDOWN(array, num_digits)` returns an array, element-wise, with either argument an array; an error in either argument broadcasts (`ROUND(A1:B1,1/0)` and `ROUND(1/0,A1:B1)` are `#DIV/0!`).
 Evidence: gen-m2/893302d6c5b99e2e Calc!A313; probes/round-concat-array-lift (excel-graph, 2026-10-05).
@@ -187,22 +195,40 @@ with A1 = -2, A2 = 3, `ROWS(ABS(A:A))` = `ROWS(A:A+0)` = 1048576, `SUM(ABS(A:A))
 Only a dimension past the grid is `#VALUE!` (`SEQUENCE(1048577)`).
 RustSheet returns `#ERROR!` (not even an Excel error value) for any array above 1,048,576 cells
 (one whole column): SEQUENCE, RANDARRAY, MAKEARRAY/BYROW/BYCOL results, matrix results, an *IF(S)
-criteria grid (broadcast criteria included), the broadcast result of `lift_numbers` (ROUND family, MOD, DATE), a lifted INDEX's broadcast indices (T-1260), the broadcast of a binary operator over two arrays
+criteria grid (broadcast criteria included), a GROUPBY result (groups x columns, checked while grouping, before any
+LAMBDA call; T-1322), the broadcast result of `lift_numbers` (ROUND family, MOD, DATE), a lifted INDEX's broadcast indices (T-1260), the broadcast of a binary operator over two arrays
 (arithmetic, `&` and comparisons: a whole column against a whole row, `=D:D+4:4`, would be 2^34
-cells, and even a whole column against two columns, `SUM(A1:A1048576*B1:C1)`, is 2^21; T-1420), the broadcast of IF, IFERROR and IFNA (`=IF(D:D,4:4)`, `=IFERROR(D:D,4:4)`; T-1448), and every range lifted into an array (`Model::evaluate_range`: scalar functions
+cells, and even a whole column against two columns, `SUM(A1:A1048576*B1:C1)`, is 2^21; T-1420), the broadcast of IF, IFERROR and IFNA (`=IF(D:D,4:4)`, `=IFERROR(D:D,4:4)`; T-1448), the broadcast of the element-wise text functions (`broadcast_text`: LEFT, RIGHT, MID, FIND, SEARCH, LEN, REPT, EXACT, CONCATENATE, TEXT, CHAR, CODE, BAHTTEXT and the other callers; `=LEFT(A:A,1:1)` would be 2^34 cells and FIND's numbers do not count against the 64 MiB text budget, so `ROWS(FIND("a",A1:A2000,COLUMN(A1:ALL1)))` is `#ERROR!`; T-1771), the padded result of HSTACK and VSTACK (rows x summed columns, or summed rows x columns, checked before any argument is padded or copied: `ROWS(HSTACK(A1:A2000,A1:ALL1))` is `#ERROR!`, and `=VSTACK(A:A,1:1)` is `#VALUE!` as one row past the grid, `check_array_size`'s answer, where Excel gives `#NUM!` for rows past the grid and allows columns past it (probes/scalar-lift-open-c; T-1803); T-1780), the padded results of EXPAND, WRAPCOLS and WRAPROWS and the product of MMULT (rows x columns, checked before allocating and, for EXPAND and MMULT, after their own argument checks: `ROWS(EXPAND(1,2000,1000))` and `ROWS(MMULT(A1:A2000,B1#))` with a 1,000-column B1# are `#ERROR!`, and `EXPAND(1,1E9,1E9)` is `#VALUE!` past the grid, `check_array_size`'s answer: Excel's value there is not measured; WRAPCOLS and WRAPROWS first clamp wrap_count to the vector's length, as Excel does, so they pad at most wrap_count - 1 cells; XMATCH builds no result array, only a one-row or one-column search vector; T-1786), the padded result of MAP over arrays of different sizes (largest rows x largest columns, checked before allocating; T-1349), the padded result of TEXTSPLIT (rows x widest row, checked before any row is padded: a 32,767-char text with the column delimiters first and the row delimiters after pads ~2^28 cells, and `ROWS(TEXTSPLIT(REPT(",",1500)&REPT(";",1500),",",";"))`, 1501 x 1501, is `#ERROR!`, where Excel builds the array and gives 1501 for ROWS and for COLUMNS, and 1025 for the 1025 x 1025 text just above 2^20, and 1024 for the 1024 x 1024 text of exactly 2^20 cells (A5, which fits) and 1001 for 1001 x 1001 (A6): probe `textsplit-padded-size` A1:A6; the bound is the cell count only, `check_array_cells`, because Excel builds a row wider than the grid: `COLUMNS(TEXTSPLIT(REPT(",",16384),","))` is 16385 and the 16383-comma text 16384, probe `textsplit-wide` A1:A2, and a 32,001-row split gives 32001, A4; the bare 16,385-column spill is `#SPILL!` in Excel, A6; T-1781), the broadcast of SPEC-0011's lifting driver (`lift_call`: EDATE, EOMONTH, WEEKNUM and YEARFRAC, and LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN, charged numbers + elements, TRIMMEAN numbers × elements, statistics.md, T-1772; checked before any element runs, and the call is also `#ERROR!` when the cells of its lifted arrays and ranges add up past 2^27 (`limits::MAX_LIFTED_CELL_VISITS`, checked before the next range is read) or when its kernel calls, weighted by the table's `KernelWork`, would cost more than that cap; Excel has neither limit; T-1770), and every range lifted into an array (`Model::evaluate_range`: scalar functions
 over a range, operators, IF/IFERROR, TEXT, IS*, NOT, a bare range spilled from a cell), checked
 before any cell is read, to bound allocation on untrusted input (CLAUDE.md directive 5); so
 `DATE(11:1899,12,1)` and `ROWS(DATE(11:1899,12,1))` are `#ERROR!`. Past-the-grid dimensions are
-`#VALUE!` as in Excel. Excel for the web refuses to open a workbook whose formula sums such a
+`#VALUE!` as in Excel. A cached range of a linked workbook (`[1]Sheet!A1:B2`, T-1460) is read as
+an array of its cached cells under the same bound. An aggregate that skips blanks (SUM, COUNT,
+AVERAGE, AVERAGEA, MIN, MAX, PRODUCT, the other `for_each_value` statistics, SUBTOTAL, AGGREGATE's reference
+form, RANK) first cuts any area to the rows and columns the cache spans, which changes none of its
+results, so `SUM([1]Uses!$A$2:$B$1048576)` adds the cached cells (T-1550). Every other reader keeps
+the written shape with its blanks (only a whole column or row is cut to the cache): TEXTJOIN, BYROW,
+BYCOL, a LET variable, lookups, LARGE/SMALL and value contexts, so there an area above
+1,048,576 cells that is not a whole column or row (`TEXTJOIN(",",TRUE,[1]Uses!$A$2:$B$1048576)`,
+`VLOOKUP(x,[1]Uses!$A$1:$C$1048576,2,0)`) is `#ERROR!`. The cells an aggregate reads from a union
+of cached areas are capped together, so `SUM(([1]Uses!$A:$A,…))` over eight whole columns of a
+cache spanning A1:A1048576 is `#VALUE!` (test_external_links.rs
+`union_of_sparse_whole_columns_is_bounded`); Excel gives the value.
+Excel for the web refuses to open a workbook whose formula sums such a
 31M-cell array (`SUM(DATE(11:1899,12,1))`: Graph `SessionMemoryQuotaExceededOnOpenWorkbook`).
 Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lifted-range-size
 C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are listed in
 eval/suites/probes/deviations, decision 0036).
 Status: DEVIATION (decision 0014)
-Implemented in: functions/math_and_trigonometry/array_size.rs (`MAX_SIZE`, `check_array_size`,
-`check_range_size`); `Model::evaluate_range` in crates/rustsheet-engine/src/cast.rs;
-`broadcast_arrays` in crates/rustsheet-engine/src/arithmetic.rs
-Tasks: T-0047, T-1420
+Implemented in: limits.rs (`MAX_SIZE`, `check_array_size`,
+`check_range_size`); `Model::chosen_indices` (CHOOSECOLS/CHOOSEROWS) and FORMULATEXT over a range in
+crates/rustsheet-engine/src/functions/lookup_and_reference/; `Model::read_lift_args` and `Model::lift_grids` in
+crates/rustsheet-engine/src/functions/lift/; `Model::evaluate_range` in crates/rustsheet-engine/src/cast.rs;
+`broadcast_arrays` in crates/rustsheet-engine/src/arithmetic.rs; `ExternalArea::blocked_value` in
+crates/rustsheet-engine/src/external_reference.rs (a spilled range into another workbook, T-1454);
+`Model::external_area_value` and `Model::external_aggregate_value` in
+crates/rustsheet-engine/src/external_links.rs (a cached range of a linked workbook, T-1460)
+Tasks: T-0047, T-1420, T-1454, T-1460
 
 ## The edit API refuses a cell inside a spill extent above 4,194,304 cells
 Rule: Excel lets you edit any cell. `Workbook` edits (crates/rustsheet) snapshot the spill footprint
@@ -216,15 +242,16 @@ Implemented in: crates/rustsheet/src/edit.rs (`MAX_FOOTPRINT_CELLS`)
 ## MDETERM / MINVERSE: a blank cell in the matrix is #VALUE!
 Rule: MDETERM and MINVERSE return `#VALUE!` when any cell of the matrix range is blank (MMULT
 does the same); a blank does not count as 0. `MDETERM` of a single numeric cell is that number. A boolean is not a
-number either: `MINVERSE(E1)` with E1 = FALSE is `#VALUE!` (gen-m7/7c48e2456500644f Calc!A19
-`MAX(MOD(MINVERSE(Data!E1),(0.1/42)))` (excel-graph, 2026-10-11, T-1275); ours `#NUM!`, reading FALSE as a singular 0, and `MDETERM(E1)` 0;
-MDETERM of a boolean and a boolean inside a larger matrix are UNVERIFIED, T-1358).
+number either: MDETERM, MINVERSE and MMULT give `#VALUE!` for a boolean cell (`MINVERSE(E1)`, E1 = FALSE;
+gen-m7/7c48e2456500644f Calc!A19, T-1275), a boolean value (`MDETERM(TRUE)`, `MINVERSE(FALSE)`), and a boolean
+element of a larger matrix (`MDETERM({TRUE,2;3,4})`, `MMULT(D1:E2,...)` with D1 = TRUE)
+(probes/matrix-boolean-elements G1-G13, excel-graph 2026-10-15, T-1358).
 Evidence: poi/MatrixFormulaEvalTestData.xlsx (Excel-cached, Excel 16) Sheet1!H10 `MDETERM(B10:D12)`
 and H30 `MDETERM(B30:D32)` (all blank / only B30 = 1) are `#VALUE!`; H14:J16 `MINVERSE(B14:D16)` and
 H34:J36 `MINVERSE(B34:D36)` are `#VALUE!` in every cell; H50 `MDETERM(B50)` = 1.
 Implemented in: `coerce_to_f64` (crates/rustsheet-engine/src/functions/math_and_trigonometry/matrix.rs, T-0943)
-Status: VERIFIED (Excel-cached)
-Tasks: T-0943
+Status: VERIFIED (Excel-cached; the boolean rule excel-graph)
+Tasks: T-0943, T-1358
 
 ## Legacy (CSE) array formula over a larger range
 Rule: a legacy array formula entered over a range larger than its result fills the range: a 1x1
@@ -281,11 +308,177 @@ an omitted parameter's value is 0 (`LAMBDA(x,[y],y)(1)` = 0) and "" as text (`y&
 `LAMBDA(x,[y],IF(ISOMITTED(y),x,x+y))` gives 1 for `(1)` and 3 for `(1,2)`; `LAMBDA([x],[y],ISOMITTED(x)+ISOMITTED(y))()`
 is 2 (probes/lambda-optional-params A1-A8, excel-graph, 2026-10-11, T-1274; the engine matches all of them). The
 case builder stores `[y]` as `_xlop.y` (xlsx-storage.md).
-Ours: none of the lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array; `SEQUENCE(A1:A3)` is one row);
-`_xleta.` names, GROUPBY and PIVOTBY are `#NAME?`; INDEX of a scalar result is `#VALUE!` (T-1242); `ROWS(LAMBDA(x,x))`
-is `#VALUE!`; a BYROW row result is not `#CALC!`; `REGEXTEST(A1,1)` is `#VALUE!`. 60 of the 174 scored cells pass.
+Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (rows 13-22, 55, K11:K13; text.md "TEXTSPLIT,
+TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); none of the other lifts above (`#VALUE!` for a
+range, `#N/IMPL!` for an array; `SEQUENCE(A1:A3)` is one row);
+GROUPBY and PIVOTBY exist since T-1322 and T-1326 ("GROUPBY and PIVOTBY" below; `_xleta.` names work since T-1466, see "Functions passed by name" below); INDEX of a scalar result is `#VALUE!` (T-1242); `ROWS(LAMBDA(x,x))`
+is `#VALUE!`; a BYROW row result is not `#CALC!`. 84 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
 Status: VERIFIED (web)
 Tasks: T-1083 (generator modes)
+
+## Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule
+Rule: a function whose scalar argument gets an array lifts, one call per element, and the arguments
+broadcast like the arithmetic operators. A worksheet function also lifts over a multi-cell range in
+that argument. An Analysis ToolPak function does not take a multi-cell range in the scalar
+arguments probed (listed below): the range makes its call `#VALUE!`, with no implicit intersection,
+in a dynamic formula and in a legacy one. The `weekend` argument of WORKDAY.INTL and
+NETWORKDAYS.INTL is the exception: it lifts over a range (`INDEX(WORKDAY.INTL(45000,5,B1:B3),2)` =
+45007; dates.md "Date function argument modes").
+- **Shape.** The result has the largest height and the largest width among the lifted arguments. A
+  size-1 dimension repeats, and a position past a shorter argument is `#N/A`:
+  `ROWS(PMT({0.1;0.2;0.3},{10;20},100))` is 3, with element 3 `#N/A` and element 2
+  `PMT(0.2,20,100)`. `NORM.DIST({1;2;3},{0,1},1,TRUE)` is a 3x2 grid. In
+  `PMT({0.1,0.2;0.3,0.4},{10,20,30},100)` column 3 is `#N/A` in both rows, and
+  `PMT({0.1;0.2},{10,20,30},100)` is a full 2x3 grid. A 60-cell range against `{10;20}` is 60 rows,
+  `#N/A` from row 3 on. EDATE pads the same way (`EDATE({45000;45031;45061},{1;2})` element 3).
+- **Errors per element.** Each element follows the scalar rules on its own. An element that fails
+  is an error in its own position only (`PMT({0.1;"x"},10,100)` is a number, then `#VALUE!`;
+  `NORM.DIST(2.5,0,{1;-1},TRUE)` is a number, then `#NUM!`). In each element the leftmost failing
+  argument decides. This rests on one cell: element 2 of `PMT({1;#N/A},{#DIV/0!;#NUM!},100)` is
+  `#N/A` (H33). Element 1, where only nper fails, is `#DIV/0!` (H31, a sibling formula with the same element-1 inputs). A scalar error, or scalar text
+  that is not a number, next to an array is broadcast: `PMT(NA(),{10;20},100)` is 2 rows with
+  element 2 `#N/A` (H28-H29). `EDATE(NA(),{1;2})`, `PMT("x",{10;20},100)` and `EDATE("x",{1;2})` are
+  2 rows and every element is the scalar's own error: `INDEX(EDATE(NA(),{1;2}),1)` and `2` are `#N/A`,
+  `INDEX(PMT("x",{10;20},100),1)` and `2` and `INDEX(EDATE("x",{1;2}),1)` and `2` are `#VALUE!`
+  (probes/scalar-lift-open-a W18-W23, T-1777; H30, H44, H45 are the ROWS).
+- **Elements are typed values.** An array element is read like the same value typed as the
+  argument. EDATE's `{TRUE;45000}` gives `#VALUE!`, then 45031, because a typed boolean date is
+  `#VALUE!` for EDATE. NORM.S.DIST's `{TRUE;"1"}` gives NORM.S.DIST(1) twice, which is also
+  `NORM.S.DIST(TRUE,TRUE)`. A range cell is read like a referenced cell: over F1:F4 = 0.1, blank,
+  "x", `=1/0`, `PMT(F1:F4,10,100)` gives a number, -10 (the blank cell is 0), `#VALUE!`, `#DIV/0!`.
+- **Ranges in worksheet functions lift, also on their own rows.** On the rows of the range, where
+  an intersection would succeed, `ROWS(PMT(C1:C60,10,100))`, `ROWS(PMT(0.1,D1:D60,100))`,
+  `ROWS(NORM.DIST(E1:E60,0,1,TRUE))` and `ROWS(NORM.DIST(2.5,0,1,B1:B60))` are 60, and so is
+  `ROWS(BITAND(13,D1:D60))` in a later argument. An explicit `@` intersects:
+  `PMT(@C1:C60,10,100)` is one number.
+- **Ranges in Analysis ToolPak functions are refused, in the arguments probed.** On the range's own rows,
+  `ROWS(EDATE(A1:A60,1))`, `ROWS(EDATE(45000,B1:B60))`, `ROWS(YEARFRAC(45000,46000,B1:B60))`,
+  `ROWS(BESSELJ(2.5,B1:B60))`, `ROWS(DEC2BIN(9,D1:D60))`, `ROWS(DELTA(B1:B60,1))`,
+  `ROWS(EFFECT(C1:C60,4))` and `ROWS(EFFECT(0.1,D1:D60))` are `#VALUE!`. A reference returned by a
+  function is refused too: `EDATE(IF(TRUE,A1:A60),1)` and `EDATE(INDEX(A1:A60,0,1),1)`. A one-cell
+  range or reference is its value (`EDATE(A1:A1,1)` = 45031, `EDATE(INDEX(A1:A60,2),1)` = 45032).
+  An operation on a range is an array, and that lifts: `ROWS(EDATE(A1:A60+0,1))` and
+  `ROWS(EDATE(45000,M1:M60*1))` are 60, `ROWS(EDATE(TAKE(A1:A60,2)+0,1))` is 2. An explicit `@`
+  intersects (`EDATE(@A1:A60,1)` on row 3 is 45033, and `#VALUE!` off the range's rows). The
+  arguments probed over a range are every first scalar argument of the financial and engineering
+  ATP functions (fin-argument-modes, eng-argument-modes), and these later arguments: EDATE's months,
+  YEARFRAC's basis, BESSELJ's n, DEC2BIN's places and EFFECT's npery. Other later arguments are
+  refused too (probes/scalar-lift-open-a, T-1777, each with a scalar control in column Z that
+  works): `ROWS(F(..))` is `#VALUE!` for PRICE's `frequency` and `basis` (Y1, Y2), COUPDAYS's and COUPNUM's
+  `frequency` (Y3, Y4) and COUPDAYS's `basis` (Y5), ACCRINT's `basis` and `frequency` (Y6, Y7), CONVERT's
+  `from_unit`, `to_unit` and number (Y8-Y10), COMPLEX's `suffix` (Y11), IMSUB's and IMDIV's second argument
+  and IMSUB's first (Y12, Y13, Y15), IMPOWER's `n` (Y14) and DOLLARDE's and DOLLARFR's `fraction` and
+  DOLLARDE's first argument (Y16-Y18). So the rule holds in every later argument probed.
+  probes/eng-later-argument-lift (T-1383) probes the rest of the engineering later arguments on the
+  range's own rows: BESSELI's, BESSELK's and BESSELY's `n`, the `places` of every base conversion,
+  COMPLEX's `i_num`, DELTA's `number2`, GESTEP's `step` and ERF's `upper_limit` are `#VALUE!` (H1-H11,
+  H16-H19), while BITOR's and BITXOR's `number2` and BITLSHIFT's and BITRSHIFT's `shift_amount` lift
+  to 60 rows, on and off the range's rows (H12-H15, L71), as BITAND's do (H7, H20).
+- **The other Analysis ToolPak-era functions** (probes/scalar-lift-open-a Y19-Y30, T-1777). QUOTIENT
+  (either argument), FACTDOUBLE and SERIESSUM's `x`, `n` and `m` refuse a range like the rest (`#VALUE!`,
+  Y19-Y21, Y24-Y26). SERIESSUM's `coefficients` over a range is read whole (Y27, `SERIESSUM(2,0,1,B1:B3)` is
+  7, -d W31). MULTINOMIAL, GCD and LCM give one result over a range (only MULTINOMIAL's value is probed, -d W30) (ROWS 1, Y22, Y23,
+  Y28-Y30; `MULTINOMIAL(B1:B3,2)` = 59.999999999999986, -d W30).
+  probes/math-atp-array-lift (T-1802) shows that QUOTIENT, FACTDOUBLE and SERIESSUM's `x`, `n` and `m`
+  lift over an array, as the other ATP arguments do, while SERIESSUM's coefficients and MULTINOMIAL, GCD
+  and LCM stay whole over an array too (numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes").
+- **A range next to an array in an Analysis ToolPak call.** The call lifts over the array only.
+  The range is passed whole to each element's call, which refuses it. So the shape comes from the
+  array, and the probed elements are `#VALUE!`, on the range's rows and off them.
+  `EDATE({45000;45031},M1:M60)` and `EFFECT({0.1;0.2},M1:M60)` are 2 rows with both elements
+  `#VALUE!` (-b C, D, H, I). `EDATE(A1:A60,{1;2})` is 2 rows with both elements `#VALUE!` (-b F, G;
+  -open-a W24, W25, W30). `EDATE({45000,45031},M1:M60)` is one row of two columns (-b L; -open-a W28,
+  W29) with both elements `#VALUE!` (W26, W27), also off the range's rows (W70-W73).
+- **Error precedence is the kernel's own order.** Within an element the first failing argument in the
+  function's own scalar check order decides, and a refused range counts as a `#VALUE!` argument in its
+  position (probes/scalar-lift-open-a, -d, T-1777). For most functions that is the leftmost:
+  `INDEX(PMT({#NUM!},{#N/A},100),1)` is `#NUM!` and the reversed `INDEX(PMT({#N/A},{#NUM!},100),1)`
+  is `#N/A`, and so are EDATE's with `{#NUM!},{#N/A}` and `{#N/A},{#NUM!}` (-open-a W14-W17), with H33's
+  leftmost-error element confirmed by W14-W17. Beside a refused range: `EDATE(NA(),A1:A60)` is `#N/A` and
+  `EDATE(A1:A60,NA())` is `#VALUE!` (W1, W2; ROWS the same, W11, W12), `EFFECT(1/0,C1:C60)` is `#DIV/0!` and
+  `EFFECT(C1:C60,1/0)` is `#VALUE!` (W3, W4), `EDATE("x",A1:A60)` and `EDATE(A1:A60,"x")` are `#VALUE!`
+  (W9, W10), and ACCRINTM does the same in its first four arguments, also next to an array (-d W8-W15). A
+  scalar error beside a range and an array follows the same order (`YEARFRAC(NA(),A1:A60,{1;2})` is `#N/A`,
+  `YEARFRAC(B1:B60,NA(),{1;2})` is `#VALUE!`; W5, W8). YEARFRAC is the exception that shows it is the kernel's order, not
+  the argument position: it checks `basis` first, then the start, then the end, in the scalar call too
+  (`YEARFRAC(1/0,45000,NA())` and `YEARFRAC(NA(),1/0,1)` are `#N/A`, `YEARFRAC(45000,NA(),1/0)` is
+  `#DIV/0!`, -d W1-W5), so `INDEX(YEARFRAC(1/0,{45000;45031},B1:B60),1)` is `#VALUE!` (the range is the basis, -open-a W6) and
+  `INDEX(YEARFRAC({45000;45031},B1:B60,NA()),1)` is `#N/A` (W7). SPEC-0011's "leftmost" is therefore wrong
+  for YEARFRAC (T-1800). The basis is also range-checked before the dates are read:
+  `INDEX(YEARFRAC(NA(),{45000;45031},{5;1}),1)` is `#NUM!` and element 2 `#N/A` (probes/yearfrac-basis-order
+  A13, A14; dates.md "Date function argument modes").
+- **Legacy (non-dynamic) formulas.** A worksheet function's range gets the usual implicit `@`:
+  legacy `=PMT(C1:C60,10,100)` shows `=PMT(@C1:C60,10,100)` and gives the intersected value on
+  the range's rows and `#VALUE!` off them. Legacy `=SUM(PMT(C1:C60,10,100))` is that one value,
+  where the dynamic formula sums 60. An Analysis ToolPak argument's bare range gets no `@`:
+  legacy `=EDATE(A1:A60,1)` and `=YEARFRAC(A1:A60,46000)` keep their text and are `#VALUE!`, on
+  the range's rows too. An operation on the range gets the `@`, as in an aggregate's argument
+  (references.md "Legacy formulas intersect the ranges in value arguments"): legacy
+  `=EDATE(A1:A60+0,1)` shows `=EDATE(@A1:A60+0,1)` and is 45033 on row 3. Under SUMPRODUCT, an
+  array context, nothing is intersected. Legacy `=SUMPRODUCT(PMT(C1:C60,10,100))` sums 60,
+  `=SUMPRODUCT(EDATE(A1:A60,1))` is `#VALUE!`, and `=SUMPRODUCT(EDATE(A1:A60+0,1))` and
+  `=SUMPRODUCT(NORM.DIST(E1:E60,0,1,TRUE))` lift. Legacy `=SUM(PMT({0.1;0.2},10,100))` sums both
+  elements (-40.12681517653708), like the dynamic formula. Its FORMULATEXT is the written text, with no `@` (`=SUM(PMT({0.1;0.2},10,100))`; probes/scalar-lift-open-a AA1, AB1, T-1777).
+Evidence: probes/scalar-lift-shapes H1-H50, J1-J8, K1-K8; probes/scalar-lift-shapes-b (each
+question on row 3 and row 70); probes/scalar-lift-shapes-c (legacy formulas and their FORMULATEXT).
+All three: excel-graph, 2026-10-17, T-1767. The per-family argument lists are in statistics.md,
+financial.md, engineering.md, dates.md, lookup.md and the "argument modes" entries above. The ATP
+range rule is the one MROUND and ISEVEN follow ("CEILING/FLOOR family and MROUND lift over
+arrays", information.md "ISEVEN/ISODD over a range").
+- **A dynamic ATP call with a range** (probes/scalar-lift-open-a AA3, AB3, AC3, T-1777).
+  `=EDATE({45000;45031},A1:A60)` entered as a dynamic formula spills the array's shape: `ROWS(AA3#)` is 2 and
+  both cells are `#VALUE!` (AA3, AA4). Its FORMULATEXT is the written text with no `@` and no
+  braces (AB3), the same for `EDATE({45000;45031},B1:B60)` (AA6, AB6), for the plain `=PMT({0.1;0.2},10,100)`
+  (AA9, AA10, AB9: -16.27453948825116 in AA9 and the spill cell AA10 -23.852275688285914) and for the legacy `=EDATE(A1:A60,1)` (AA12, AB12). So
+  FORMULATEXT does not show whether Excel saves the cell as a dynamic-array formula (the `cm` flag of the
+  file); that needs the file itself (desktop Excel, M14), and the static shape above is what the cell does.
+- **A multi-cell reference that a function returns lifts in a worksheet function.** Where the same
+  reference in an ATP argument is refused, `ROWS(PMT(IF(TRUE,C1:C60),10,100))`,
+  `ROWS(PMT(INDEX(C1:C60,0,1),10,100))`, `ROWS(NORM.DIST(OFFSET(E1,0,0,60),0,1,TRUE))`,
+  `ROWS(PMT(INDIRECT("C1:C60"),10,100))` and `ROWS(PMT(CHOOSE(1,C1:C60),10,100))` are 60, as is the operation
+  `PMT(C1:C60+0,10,100)` (probes/scalar-lift-open-a W31-W36, T-1777).
+- **A 3-D range is `#REF!` in a lifted worksheet function and `#VALUE!` in an ATP one.**
+  `Sheet1:Sheet2!A1:A2` is accepted by SUM (182002, probes/scalar-lift-open-b W1) but not by ROWS (`#VALUE!`,
+  W12). `ROWS(PMT(Sheet1:Sheet2!C1:C2,10,100))` is `#REF!` (W2, W3), also in a later argument (W6), for
+  NORM.DIST (W10, W11), BITAND (-d W29), for a one-cell 3-D range (`PMT(Sheet1:Sheet2!C1,10,100)`, -d W21,
+  W22) and beside an array (`INDEX(PMT({0.1;0.2},10,3D),1)` and 2, -d W17, W18; `INDEX(PMT(3D,{10;20},100),1)`,
+  -d W25). EDATE gives `#VALUE!`: `ROWS(EDATE(3D,1))` (W4), `ROWS(EDATE(45000,3D))` (W7) and, beside an array,
+  both elements (-d W19, W20, W26). The shape beside an array is the array's (-b W8, W9: ROWS 2). `ISREF(3D)` is FALSE
+  and `3D+0` is `#REF!` (-d W24, W27, W28). SPEC-0011 assumed `#VALUE!` in both kinds (T-1801).
+- **A stacked result past the grid** (probes/scalar-lift-open-c, -c2, -c3, T-1777). `ROWS(VSTACK(A:A,B1))`,
+  `ROWS(VSTACK(A:A,B1:B2))`, `COLUMNS(VSTACK(A:A,B1:B2))`, `ROWS(VSTACK(A1:A1048576,B1))` and
+  `ROWS(VSTACK(A:A,1:1))` are `#NUM!` (-c W1, W2, W7, W9; -c2 W1), not `#VALUE!`. Columns past the grid are
+  allowed: `COLUMNS(HSTACK(A1:XFD1,A1))` and `COLUMNS(HSTACK(A1:XFD1,A1:A2))` are 16385 (-c W3, W8), as is
+  `COLUMNS(HSTACK(A1:A2,1:1))` (W6), while a stack that fits is exact (`ROWS(VSTACK(A1:A2,1:1))` 3, W5;
+  `COLUMNS(HSTACK(A1:XFC1,A1:A2))` 16384, W10). `ROWS(HSTACK(A:A,1:1))` (a 2^34-cell result) is 0 in the
+  excel-graph backend (-c3 W1), which is not credible as Excel's own value; it was left unsettled. The first fill of the
+  2^34-cell forms in one case hung, so they are cases of their own (T-1803).
+- Not probed: lifted elements that are arrays or references (TAKE, DROP, OFFSET, INDIRECT).
+Ours: EDATE, EOMONTH, WEEKNUM and YEARFRAC follow the rule (T-1770): every argument is
+`LiftArrays` in the lifting table, so they lift over an array, refuse a multi-cell range or a
+returned reference (TAKE and INDEX included) with `#VALUE!`, and a 3-D range with `#VALUE!` (multi-cell: scalar-lift-open-b W4, W5, W7, -d W19-W20, W26; one-cell, `EDATE(Sheet1:Sheet2!A1,1)`, and in WEEKNUM, EOMONTH and YEARFRAC: scalar-lift-open-e W1-W9, also beside an array, W2-W3, whose shape stays the array's, W8), and get no legacy `@` on a bare
+range. DROP, TRIMRANGE and XLOOKUP results that span several cells are refused too, and one-cell results are their value (scalar-lift-open-e W10-W22, T-1801); all their cells in the three scalar-lift-shapes probes pass, and since T-1800 so do scalar-lift-open-a W6, W7 and -d W1-W7 (YEARFRAC checks basis, start, end; the driver hands a refused range to the kernel as `#VALUE!` in its slot and picks no error by position). Since T-1383
+the engineering functions lift too, and since T-1372 28 financial functions (PMT, PV, FV, NPER,
+RATE, IPMT, PPMT, ISPMT, RRI, PDURATION, SLN, SYD, DDB as `Lift`; EFFECT, NOMINAL, DOLLARDE,
+DOLLARFR, ACCRINTM and the discount securities and T-bills as `LiftArrays`), so the PMT, EFFECT and
+ACCRINTM cells here pass (scalar-lift-open-a W4, W14, W15; -b W9; -d W8-W18). Since T-1822 ACCRINT,
+the COUP* family, DURATION, MDURATION and PRICE are `LiftArrays` as well (scalar-lift-open-a Y1-Y7). Since T-1290 the
+44 statistical functions whose every argument is scalar and whose kernels are bounded lift as `Lift`
+(statistics.md "Statistical function argument modes"), so NORM.DIST's cells here pass (H15, H16, H20, H21, H34,
+H35, J8, K8), and NORM.S.DIST's H38 and H40 now lift and miss only by its known last-digit residue, as the scalar H39
+does (statistics.md "The normal CDF is not always correctly rounded", T-0968). The other families
+listed in SPEC-0011 do not lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic
+formula). SPEC-0011's rollout tasks fix them.
+Status: VERIFIED (excel-graph)
+Implemented in: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds.rs),
+`Model::lift_call` and its read phase (functions/lift/call.rs), the broadcast `Model::lift_grids`
+(functions/lift/driver.rs), and the static-analysis hooks `lifted_signature`,
+`lifted_static_result` and `lifts_arrays_at` (expressions/parser/static_analysis/lifted.rs);
+kernels `edate_of`, `eomonth_of` (functions/date_and_time/month_shift.rs), `weeknum_of`
+(weeknum.rs) and `yearfrac_of` (yearfrac.rs); the financial kernels in functions/financial/
+(annuity.rs, discount.rs, rate_conversions.rs, accrint.rs, financial_bonds.rs) and financial_depreciation.rs; the
+statistical kernels in functions/statistical/ (normal.rs, binom.rs, beta.rs, fisher.rs, t_dist.rs and the rest).
+Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236, T-1822
 
 ## GROUPBY and PIVOTBY
 Rule: groups are keyed like UNIQUE (case-insensitive text, first spelling shown) and always sorted ascending:
@@ -299,34 +492,349 @@ field_headers: omitted auto-detects headers without showing them; 0 none, 1 yes/
 4 is `#VALUE!`. A LAMBDA returning an array gives `#VALUE!` per cell. `HSTACK(SUM,AVERAGE)` adds columns
 and a header row of function names; `VSTACK(SUM,MAX)` repeats each group row per function with a
 name column. PIVOTBY relative_to: 0 column total, 1 row total, 2 grand total; with one field per axis 3
-equals 1 and 4 equals 0. Out-of-range sort_order, a filter of another height, an all-FALSE filter and
-field_relationship 2 are `#VALUE!`.
-Surprising (re-probe before implementing, T-1328): PIVOTBY with two value columns leaves its Total
-columns `""` (P!Y97); field_relationship 1 with total_depth 2 returned nothing (G!J169); values one row
-short and total_depth 3 with one key are errors excel-graph cannot decode (G!AB193, G!J217).
+equals 1 and 4 equals 0. Out-of-range, fractional or non-numeric sort_order, a filter of another height or shape, an all-FALSE filter, a filter
+element that is an error or text other than "TRUE"/"FALSE" and field_relationship 2 are `#VALUE!`; an error value in any
+argument wins over them (first in argument order).
+T-1328 follow-up (probes/groupby-pivotby-followup, -followup2, -followup3; spills paired with ROWS/ISERROR/ERROR.TYPE so
+excel-graph's undecodable errors are still answered): values of another height than the keys, total_depth 3 or -3 (and 2 with a
+single key) and field_relationship 1 with total_depth ±2 are all `#VALUE!`; the all-FALSE filter is `#VALUE!` (never `#CALC!`),
+also scalar `FALSE`/`0`/`{FALSE}`, and a scalar `TRUE` filters nothing. PIVOTBY with two value columns: there are two Total
+columns (one per value), both `""` in every row (P!Y97 confirmed). Multi-key sort arrays are signed key-column indices whose priority is the column order
+(`{2,-1}` = `{-1,2}`), duplicates and 0 are `#VALUE!`. Header auto-detect looks at the first row of the values only: text over
+a non-text second row is a header; a first value cell of text over rows that mix text and non-text is `#VALUE!` (otherwise mixed values aggregate, text ignored). Number keys compare exactly (0.1+0.2 and
+0.3 differ; 0, -0, computed 0 equal; blank is its own group shown as 0); equal errors share a group, sorted after numeric keys (against text/boolean/blank unprobed).
+An array field_relationship (e.g. a filter-shaped column in argument 8) is lifted per element (10x1 of the group result; `{FALSE}` 1x1; a
+numeric column 10x1 `#VALUE!`; scalar FALSE/0 act as 0) (followup G!A861-A981, followup2 G!A1-A161). With two keys, sort_order 3 (the value
+column) orders parents by their aggregate (sum, max and mean not separated) and children by value within each parent, and the blank parent is not pinned last (followup2 G!A261).
 Evidence: probes/groupby-pivotby (61 formulas over sheets G and P, excel-graph, 2026-10-11, T-1276);
 every anchor is listed in docs/specs/SPEC-0006-groupby-pivotby.md.
-Ours: `#NAME?` (not implemented; SPEC-0006 rollout T-1322..T-1328).
+T-1322 follow-up (probes/groupby-lambda-forms and probes/groupby-blank-values, excel-graph, 2026-10-16): the LAMBDA forms
+of the sheet G anchors give the eta forms' results. The function gets each group's values as an array, not a reference
+(`LAMBDA(x,ISREF(x))` is FALSE), with blank cells as true blanks: `ISBLANK(INDEX(x,1,1))` is TRUE, TYPE 1, LEN 0, and
+COUNTA counts them (the blank-value group's COUNTA is 1), ARRAYTOTEXT shows them as nothing (`"2, b, TRUE, 1, a, FALSE, 2, , 1.5, B"`).
+A LAMBDA whose body is a one-cell reference (`LAMBDA(x,Data!D2)`) is `#VALUE!` in every cell, like an array result; so is a
+two-parameter LAMBDA (each cell, not the whole result). `field_headers` 2 over two keys and two values generates
+"Row Field 1", "Row Field 2", "Value 1", "Value 2"; `field_headers` 3 with `total_depth` -1 puts the header row first, then
+Total. A header row over no records (`GROUPBY(A1,D1,f,1)`), a non-function (`5`) and fractional options (`total_depth`
+0.5, `field_headers` 2.5) are `#VALUE!` (ERROR.TYPE 3). An empty-text key (`=""`) is its own group, separate from the blank
+key: it shows `""`, sorts as text (before "a"; after it descending), and the blank key stays last.
+T-1326 follow-up (probes/pivotby-followup, 63 PIVOTBY questions over the same Data sheet, excel-graph, 2026-10-16):
+- Headers: omitted detects them from the values only, as in GROUPBY (P!A1, P!A1021). Shown headers (3) add a first row with the
+  column field names joined with ", " as text ("Product, Year"; a consumed record's 2023 becomes the text "2023", P!A61, P!A421)
+  above the first column key, also when the Total column comes first (P!A1181), and a last row with the row field names and the
+  value name of every column, Total columns included (P!A441, P!A521). Generated (2): "Column Field 1, Column Field 2",
+  "Row Field n", "Value n" (P!A21, P!A81). Several value columns name each one only with shown headers.
+- Totals: -1 puts the Total column right after the row keys and the Total row right after the headers (P!A101, P!A121, P!A1241).
+  ±2 with one field on that axis is `#VALUE!` (P!A401, P!A701); 3 is `#VALUE!` (P!A381). Two values with col_total_depth 0 have
+  no Total columns; with row_total_depth 0, no Total row (P!A561, P!A581).
+- Sort orders follow GROUPBY: signed indices over the axis' key fields, then the values; 0, 1.5 and past the last column are
+  `#VALUE!` (P!A141, P!A721, P!A161, P!A1001); scalar 2 over two row fields is the second key (P!A1041, P!A1061); `{-1}` is
+  accepted (P!A641); an error argument is passed on (P!A1261). With two value columns, `{3}` sorts by the second and `{-2}`
+  by the first descending (P!A1321, P!A1361); a key and a value column in one array are `#VALUE!` on both axes (`{1,3}`,
+  `{1,2}`: P!A1341, P!A1381). Error precedence as in GROUPBY: an error value in any option beats an invalid option before or
+  after it and a non-function (`field_headers` 4 with col_sort_order `NA()`, `NA()` with row_total_depth 3, function 5 with
+  `NA()`: all `#N/A`, P!A1401-A1461). A value sort orders by the aggregate (the Total column or row,
+  computed even when it shows `""`: P!A601), ties in key order (P!A741), numbers before text (P!A1121), the blank key not pinned.
+  Quirks: rows are sorted by a value only when there is a Total column: with col_total_depth 0 they keep the key order (P!A781,
+  P!A261, P!A1221), while columns sort by a value with or without the Total row (P!A821, P!A841). With two row fields and an
+  explicit row_total_depth 0 or 1, every level sorts by its own aggregate (parents by theirs, P!A861, P!A881); with two column
+  fields and an explicit col_total_depth only the children sort by value, the parents keeping their key order (P!A1141, P!A1161).
+  With the depth omitted, a value sort over two fields shows subtotals and "Grand Total" as depth 2 does (rows P!A201, P!A901;
+  columns P!A941, whose parents then are sorted by their aggregate), and so does GROUPBY (`GROUPBY(A2:B11,D2:D11,SUM,,,3)`,
+  P!A921), unlike its explicit depth 0 (followup2 G!A261).
+- Filter: a numeric column filters on non-zero (P!A1301); scalar TRUE filters nothing (P!A621); another height (P!A281) or
+  `{TRUE;FALSE}` (P!A1581) is `#VALUE!`, and so is an error or other text in it, not the error (P!A1481, P!A1601). With a
+  header row, the filter may be as tall as the fields or as the records, aligned with them (P!A1501, P!A1521, P!A1541,
+  P!A1561), as in GROUPBY. Short col_fields are `#VALUE!` (P!A301). An error function is passed on (`NA()`, P!A1281); `5` is `#VALUE!` (P!A761).
+- Cells: errors in values make their cells and totals that error (P!A321); a LAMBDA array result is `#VALUE!` per cell, `""`
+  where there are no records (P!A341); text results show as text (P!A541). An array relative_to (here a filter column put one
+  argument too far) is lifted per element: a 10x1 array (P!A681).
+Unprobed: whether one row of text values with no rows below is a header (the engine takes it as data), and where
+error keys sort against text, booleans and the blank key (the engine uses `sort_key_cmp`'s order: after booleans,
+before blank).
+T-1323 follow-up (probes/groupby-sort-filter-args, 83 questions summarised in one cell each, excel-graph, 2026-10-16;
+B<n> is question n). sort_order: a scalar must be a whole number from 1 to the last column, negative for descending;
+0, -3 past the columns, 1.5, 1.9, 2.5, -1.5, 0.5, -0.5, the text "2", TRUE, a blank cell and `""` are all `#VALUE!` (no
+truncation and no coercion, B1-B14), `NA()` is `#N/A` (B12). An array may be a column (`{2;-1}`, B15); it names key
+columns only, or a value column as its one element (`{-3}` = -3, B21-B22); a key column next to a value column (`{1,3}`,
+`{3,1}`, `{2,3}`, `{-1,3}`, `{-2,-3}`), two value columns (`{2,3}`, `{3,-2}` over two values), a fraction, an error or
+text element (`{1.5,2}`, `{1,#N/A}`, `{1,"2"}`) are `#VALUE!` (B16-B30). Sorting by a value: equal values keep the
+ascending key order in both directions (COUNT ties North, South, blank ascending and descending, B32-B33; East before
+South at 9 Units, B27-B28); text sorts as text (`"t-3"` < `"t45"` < `"t7"`, B34), numbers before text (B35), an error
+value last ascending and first descending (B36-B37); with two keys -3 orders parents by their sum descending and the
+children descending inside each (B22). The header row and a top Total stay in place (B38-B40).
+filter_array: each element counts like a condition, a number is TRUE unless 0, a blank is FALSE, the text "TRUE"/"FALSE"
+counts (B42, B44, B52); other text, `""`, any error element (even on a row the filter drops) are `#VALUE!` and not the
+error (B43, B45-B46, B53); a scalar keeps or drops everything (2 keeps, `"x"` is `#VALUE!`, `NA()` is `#N/A`: B47, B54-B55);
+a row of 10, a 10x2 array, a longer one and an all-blank range are `#VALUE!` (B48-B51). With a header row the filter
+may be as tall as the fields (the header's element is ignored, whatever it holds: args2 B1-B5, B29-B30 below) or as tall as the
+records, aligned with them (B56-B59); field_headers 3 still shows the headers.
+Error precedence: every error value among the arguments wins over any invalid argument, before or after it (sort_order
+`NA()` beats total_depth 3, a short filter, an all-FALSE filter, a short values range and the function 5), and among
+error values the first argument wins (field_headers or total_depth `1/0` before sort_order `NA()`, sort_order before
+filter_array before field_relationship): B61-B78. field_relationship: 3, -1, 0.5 are `#VALUE!`, `NA()` `#N/A`, and the
+text "1" counts as 1 (with one total row, the default layout): B79-B83.
+Review follow-up (probes/groupby-sort-filter-args2, 37 questions in column B, excel-graph, 2026-10-16; "args2 Bn"
+below): the filter element beside a header row is never read, so text, `""` or an error there is ignored (args2 B1, B3,
+B5, B29-B30), while an error beside a record is `#VALUE!` (B31-B35). A filter `VSTACK(NA(),Data!C2:C11=2023)` is `#N/A`
+(B2, B4; `1/0` gives `#DIV/0!`), and B36 (`ROWS(VSTACK(NA(),Data!C2:C11))&...`, one `#N/A`) points to VSTACK returning the
+scalar error rather than an array (confirmed directly, T-1695: probes/vstack-scalar-error, excel-graph 2026-10-16: a scalar error argument makes VSTACK or HSTACK that one error, whatever its position (first, last or middle) and with a row/column array beside it: `ROWS`, `COLUMNS` and `INDEX(..,2)` of `VSTACK(NA(),{1;2})`, `VSTACK({1;2},NA())`, `VSTACK({1;2},NA(),{3;4})` and the HSTACK forms are all `#N/A`, `ISERROR` TRUE, and `VSTACK(1/0,{1;2})` is `#DIV/0!` throughout). "true"/"True" count like "TRUE" (B6-B7, B10); numeric text
+"1" does not (B8-B9: `#VALUE!`). `{#N/A}` and `IF({TRUE},NA())` are `#VALUE!` as sort_order and as filter_array
+(B11-B14), while a one-cell reference to `=1/0` is `#DIV/0!` in either place, also before total_depth 3 (B16-B18). A
+value sort over three keys is hierarchical at every level (B19-B21), and a parent's value is the function of all its
+rows, not of its children's values: AVERAGE ranks East (15) before West (18.125) and `LAMBDA(x,100-SUM(x))` West (27.5)
+before East (55), where the sum, the mean or the largest child would disagree (B22-B26). Boolean aggregates sort
+numbers < text < FALSE < TRUE < errors, reversed descending (B27-B28, B37).
+T-1325 follow-up (probes/groupby-pivotby-functions, -functions2, -functions3: 97 GROUPBY and PIVOTBY questions over the
+same Data sheet, excel-graph, 2026-10-16; "functions", "functions2", "functions3" below):
+- Function arrays: a row of functions (`HSTACK(SUM,MAX)`, also `VSTACK(HSTACK(..))`) adds a value column per function under a
+  row of labels (`""` over the keys), with or without shown headers (functions G!A1, G!A21; under PIVOTBY's column keys, above
+  the shown field names: P!A121, functions P!A621); a column of them (`VSTACK(SUM,MAX)`, also `TRANSPOSE(HSTACK(..))`) repeats
+  every group row and total row once per function after a label column, which shown headers head with `""` (functions G!A61,
+  G!A101, functions2 G!A681, P!A21-A61; PIVOTBY P!A601). One function in HSTACK is that function, no label row (G!A601); nested
+  HSTACKs flatten (functions2 G!A581). Labels are the function names as written ("SUM", "STDEV.S", "PERCENTOF") and "CUSTOM"
+  for a LAMBDA (functions G!A181, G!A521, G!A721); two LAMBDAs are "CUSTOM1" and "CUSTOM2", as columns and as rows
+  (probes/pivotby-col-subtotals-values2 S!A181, S!A193; -values3 S!A1; not implemented, the engine prints "CUSTOM":
+  T-1854). Custom labels: values beside a column of functions label its rows
+  (`HSTACK(SUM,"a")` or `HSTACK(SUM,5)` is a label column of "a" or 5 before the values, a third element `HSTACK(SUM,5,MAX)`
+  ignored: functions G!A221, functions2 G!A121-A181, also in PIVOTBY: P!A101), values below a row of functions label its
+  columns (`VSTACK(SUM,5)`: a label row of 5; functions2 G!A161). `#VALUE!` (ERROR.TYPE 3): a 2-D array of functions, an array
+  constant `{1,2}`, a value before the function (`HSTACK(5,SUM)`) (functions G!A201, G!A261, functions2 G!A101); an error element
+  is that error (`HSTACK(SUM,NA())`, `VSTACK(SUM,NA())`: `#N/A`, G!A781, functions2 G!A701).
+- Functions and value columns pair up: n functions over one value column, one function over n, or n over n with function i
+  on column i (`HSTACK(SUM,MAX)` over Sales and Units is SUM of Sales next to MAX of Units, and `VSTACK` gives the same pairs as
+  rows; PIVOTBY too, with its Total columns filled: functions G!A41, G!A81, functions2 P!A1, P!A21); 3 over 2 and 2 over 3 are
+  `#VALUE!` (functions2 G!A1-A61). PIVOTBY's Total columns are `""` only for one function over several value columns (P!Y97,
+  functions P!A701), and then only with two or more column groups ("GROUPBY and PIVOTBY: column totals over several
+  value columns").
+- Detected headers (`field_headers` omitted) are shown, as 3 shows them, with a row of two or more functions (GROUPBY and
+  PIVOTBY: functions2 G!A641, functions3 P!A1), not with a column of them, a labelled one, or `field_headers` 1 (functions3
+  G!A1-A81, P!A31).
+- sort_order past the keys counts the output value columns: 3 is the second function of a row (functions G!A141, functions2
+  G!A221, PIVOTBY P!A181); a column of functions sorts by its first function (functions2 G!A201, G!A261, P!A201, P!A221), each
+  group's rows staying in function order.
+- Not implemented (T-1855): PIVOTBY's col_sort_order -3 with one column field over two value columns is `#VALUE!`
+  (probes/pivotby-total-columns-one-group S!A73), while -3 with two column fields sorts (probes/pivotby-col-subtotals-values
+  S!A111); the engine sorts by the second value column.
+- Arguments: a function passed by name gets its minimum argument count: one (SUM, MEDIAN, SUMPRODUCT, ABS, STDEV.S), two
+  (PERCENTOF, CORREL, PEARSON, RSQ, COVARIANCE.P, and IF, ROUND, SUMIF, whose array results are `#VALUE!` per cell); none or
+  three or more (NOW, TEXTJOIN, XLOOKUP) make the whole result `#VALUE!` (functions G!A421, functions2 G!A281-A501). A LAMBDA gets
+  one argument when it needs at most one (`LAMBDA([x],1)`; `LAMBDA(x,[y],ISOMITTED(y))` is TRUE: an optional parameter is not
+  passed) and two when it needs two; three is `#VALUE!` for the whole result (functions G!A381, G!A401, functions2 G!A601).
+- The second argument is the relative set's values, as an array (ISREF FALSE) in source order without the header row: in
+  GROUPBY every kept row, for every group and the total (`LAMBDA(x,y,ROWS(y))` is 10, 4 with a filter keeping 4; functions
+  G!A301-A361, G!A441, G!A681). So `LAMBDA(x,y,SUM(x)/SUM(y))` equals PERCENTOF (G!A281), also sorted by it (G!A661).
+- A LAMBDA whose result is a reference, written (`Data!D2`, `Data!D2:D3`), picked by IF or returned by INDEX, is `#VALUE!` in
+  every cell (functions G!A541-A581; PIVOTBY P!A841).
+Unprobed (T-1325): mismatched heights inside a function array (the engine pads with `#N/A`, so the result is `#N/A`); which of
+several error elements wins (the engine: the first evaluated); a labelled row of several functions with detected headers (the
+engine does not show them); a LAMBDA without parameters (the engine: `#VALUE!`); other functions passed by name whose minimum
+argument count is not 1 (the engine gives them one argument, T-1706). CORREL, PEARSON and RSQ over arrays of different sizes
+are `#N/A` per group in Excel, `#VALUE!` here, and their total rows differ in the last digit (functions G!B421, functions2
+G!B281, G!B301): a CORREL/PEARSON/RSQ gap, T-1707.
+T-1327 follow-up (PIVOTBY relative_to; probes/groupby-pivotby-functions P!A1-A841 show each cell's set with
+`LAMBDA(x,y,SUM(y))`, and -functions3 P!A61-A181):
+- A cell's relative set is a row selection crossed with a column selection, each all records, the cell's own row (column)
+  item, or that item's parent, the item with its last key field dropped (a single field's parent, and a Total's, is all):
+  0 is all rows x the cell's column, 1 the cell's row x all columns, 2 all x all, 3 the cell's row x its column's parent,
+  4 its row's parent x its column. So with one field per axis 3 equals 1 and 4 equals 0 (P!A1-A81). Two row fields with 4:
+  East/Apple in 2023 gets East in 2023 (15), its Total cell East (45), the Total row the column (P!A181); two column fields
+  with 3: the row under the column's parent (Apple: 15, 64 in the Total row, P!A261); both with 4: West/Apple in
+  Apple/2023 is 0 (P!A321). With subtotals (depth 2) a subtotal row or column is the item of its key prefix, whose
+  parent is one field shorter: with 4 a row subtotal East gets the column (35, 86) and 130.5 in the Total column, with 3 a
+  column subtotal Apple gets the row (P!A341-A441). A cell without records stays `""` without a call (P!A1). Three row
+  fields with 4 (functions3 P!A61) agree with "one field up" but do not separate it from the top field (unprobed).
+- PERCENTOF and the two-parameter LAMBDAs get it (P!Y25-A73 in the anchor case; HSTACK(SUM,PERCENTOF) and VSTACK: functions
+  P!A641, functions2 P!A81); with several value columns each column has its own set and the Total columns stay `""` (P!A701,
+  functions3 P!A181); a filter shrinks every set (P!A661). One-argument functions ignore it (P!A561).
+- relative_to is read as a number (`"1"` and TRUE are 1); 5, -1 and 0.5 are `#VALUE!`, also with SUM (P!A461-A581). An array is
+  lifted: each element is the PIVOTBY's top-left cell, the `""` corner, or `#VALUE!` for an invalid element (`{0;1}` is
+  `""`,`""`; `{5;1}` `#VALUE!`,`""`; ROWS x COLUMNS of an element 1x1: P!A721, P!A741, AB1), `{1}` too (a 1x1 `""`); a
+  one-cell reference is its value, a blank cell 0 (the column total) and 2023 `#VALUE!` (probes/groupby-pivotby-functions4
+  P!A221-A261).
+- Value sorts by a two-argument function: rows sort by their Total column cell's value, so with 4 over two row fields the
+  parents tie at the grand total and keep their key order while the children tie at their parent's total (functions3
+  P!A91); with 1 by their own rows (P!A121). Columns sort by their Total row cell's value the same way: over two column
+  fields sorted by value descending, 3 ties the years at their product's total (Apple 2023 before Apple 2024, both 64), 0
+  and 4 sort them by their own records (2024, 49, before 2023, 15), 1 and 2 tie at the grand total, also with the column
+  subtotals the omitted depth adds, and over one column field 3 ties at the grand total (probes/groupby-pivotby-functions4
+  P!A1-A201, PERCENTOF too).
+Unprobed (T-1327): parents over three or more fields (the engine: one field up) and a parent group's set in a three-level
+sort (the engine: the group one level up); an error
+element in an array relative_to (the engine: that error) and an array relative_to with another invalid argument (the
+engine: the other argument's error, whole).
+Ours: GROUPBY (T-1322, functions/lookup_and_reference/groupby.rs): the shared `Grouping` core (hash grouping on
+`cell_key` with -0 as 0, sorting with `sort_key_cmp` and numbers compared exactly), a LAMBDA or eta-name function called
+once per group and value column through one `LambdaCaller`, field_headers and auto-detect, total_depth 0/±1, `""`
+fillers, several value columns, the output size checked with `check_array_size` before any call. Since T-1323:
+sort_order (`Model::sort_order` into a `SortOrder`; `Grouping::sort_by_keys`, and `Grouping::sort_by_aggregate` for a value
+column, hierarchical over the key prefixes with one call per group and parent), filter_array (`Model::filter_rows`), the
+error values first in argument order (`Model::evaluate_options`), and scalar field_relationship 0/1 (1 is `#VALUE!` with
+total_depth ±2, and the default layout otherwise). Since T-1324: subtotals (grouping.rs), the table sorted by a value and
+an array field_relationship (below). Since T-1325 (functions/lookup_and_reference/group_functions.rs): the function
+argument is read as a grid of functions and labels (`Model::function_elements`, `Model::function_argument`), paired with
+the value columns (`Functions::pair_with`) and laid out as columns or rows (`Functions::shape`); each function is called
+through `Model::lambda_caller` with one or two arguments, its body read in reference context so a reference result is
+`#VALUE!` (`LambdaCaller::keeping_references`); PERCENTOF passed by name sums each relative set once and divides
+(`percent_of`, shared with the PERCENTOF function), and a two-parameter LAMBDA is charged against the cell-visit cap (see
+"GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap").
+PIVOTBY (T-1326, functions/lookup_and_reference/pivotby.rs): two `Grouping`s of the same records (rows, columns), both size
+checked while grouping and before any call; the grid with `""` cells, totals 0/±1 on both axes, the column totals of one function
+over several values placed as below (T-1700), shown and generated headers, key and value sorts with the quirks above, and GROUPBY's argument readers
+(`evaluate_options`, `sort_order`, `filter_rows`: their rules hold for PIVOTBY too, P!A1321-A1601 below);
+`Grouping::sort_by_aggregate` takes whether parents sort by their aggregate (rows, GROUPBY) or keep their key order
+(PIVOTBY columns). Function arrays since T-1325, as in
+GROUPBY. Since T-1327 (functions/lookup_and_reference/relative_to.rs): `Model::relative_to` reads the argument into a row
+and a column selection, `RelativeSets` builds every set the grid uses once, after the sorts, in one pass over the records
+per pair of key-prefix levels (groups, subtotals and totals alike; `Grouping::prefix_ids`), the grid cells, subtotal
+lines included, look theirs up, value sorts take `RelativeTo::of_sort` (the parent group from
+`Grouping::sort_by_aggregate`), and an array is lifted by `Model::lifted_relative_to` without any call.
+Unprobed (PIVOTBY): an error header cell in a joined column name (the engine: that error); a joined column name longer
+than a cell holds (the engine: `#VALUE!`, after the 32,767-character cell limit in coercion.md "Text longer than 32,767
+characters"); value sorts over three or more fields (rows: every level by its aggregate; columns: the last); and
+col_total_depth -1 with a row value sort (the engine sorts, as with 1: the Total column exists).
+T-1324 follow-up (probes/groupby-subtotals, 49 questions over the same Data sheet at G!A1, A31, ..., A1441, each with its
+size in column Z and the ERROR.TYPE of its first cell in AA, excel-graph, 2026-10-16; "G!An" below is that case's sheet G):
+- Depth: n shows the subtotals of the first n - 1 key fields, so 2 over three keys subtotals only the first (G!A1, G!A31)
+  and 3 both (G!A61, G!A91), and |n| may not exceed the key fields (3 over two keys, ±2 over one: `#VALUE!` as above;
+  four keys take 4, G!Z1231, but not 5, G!AA1261). Positive: each subtotal right after its groups, the deepest first;
+  negative: right before them, the shallowest first, with "Grand Total" on top (G!A91). A subtotal row shows its keys,
+  then `""`; its function gets all its groups' rows in source order (`LAMBDA(x,ARRAYTOTEXT(x))`: East "10, 30, 5",
+  G!A331). Shown headers stay first (G!A301).
+- Sorts: a key sort orders the groups as without subtotals, the blank key last (G!A241, G!A271); a value sort is
+  hierarchical, parents by their aggregate (G!A151, G!A181, G!A361, G!A1411). With the depth omitted, a value sort over
+  n fields shows the subtotals of every level, as depth n (three keys: G!A121, PIVOTBY rows G!A1321), and an explicit
+  depth is kept (G!A151: 2; followup2 G!A261: 0).
+- Table (field_relationship 1) sorted by a value: every group by its own value, ignoring the parents ("South, Banana
+  -3; North, Pear 7; 0, Apple 9; West, Banana 12.5; East, Apple 15 ..."), and no subtotals, the depth omitted included
+  (G!A391-A481, three keys G!A1381).
+- Array field_relationship: lifted per element, the top-left cell of each element's GROUPBY or its error: an invalid
+  sort_order is `#VALUE!` per element (G!A511), an error element its error (G!A541), a row array gives a row (G!A571),
+  field_headers 3 the header cell (G!A601), 1 with depth 2 `#VALUE!` beside 0's "East" (G!A631), and an error value in
+  an earlier argument fills every element (`NA()` as sort_order: two `#N/A`, G!A1351).
+- PIVOTBY: each axis has its own depth and label: row subtotals end in a "Grand Total" row (P!A97, G!A661 for -2) while
+  the Total column stays "Total", and column subtotals put the parent's key over `""` and a "Grand Total" column
+  (P!M97, G!A691 for -2, which puts it first) while the Total row stays "Total"; both at once fill the subtotal
+  crossings (G!A721). Shown headers put the column field names over the first group column, never over a subtotal or
+  total column, and the value name under every column (G!A841, G!A871). Column parents sort by their aggregate when
+  there are column subtotals (G!A961, G!A991; P!A941), keeping the key order otherwise (P!A1141). A row value sort with
+  col_total_depth 0 keeps the key order (above) but its omitted row depth still shows the subtotals (G!A1021). Three
+  row fields with depth 2 or 3 as GROUPBY (G!A1051, G!A1291). Row subtotals with two values leave both Total columns
+  `""` (G!A751).
+- Column subtotals of one function over several value columns are not the subtotals: in
+  `PIVOTBY(A2:A11,B2:C11,D2:E11,SUM,,,,2)` (G!A781) the Apple and Pear subtotal columns and both Grand Total columns are
+  `""`, while Banana (one child) shows Banana's Units in its Sales-subtotal column and every row's Units total in its
+  Units-subtotal column; -2 is the same (G!A1141); with Year over Product (G!A1171) only the first of those two columns
+  is filled. The rule is in "GROUPBY and PIVOTBY: column totals over several value columns" below (T-1700).
+Ours (T-1324): `Grouping::lines` lays the groups out with their subtotals in one pass over the sorted groups (a prefix
+change between neighbours opens or closes a subtotal), `effective_depth` adds the omitted depth of a value sort,
+`ParentOrder` picks hierarchical, key-order or flat parents, the value sort's `Aggregates` (each group's and
+parent's) are shown for the groups, subtotals and PIVOTBY Total cells instead of calling the function again, `Model::lifted_groupby` runs GROUPBY at most three times (0,
+1, invalid) for any array; the subtotal rows and columns are counted in key order and size checked with
+`check_array_size` before any call (a value sort keeps each parent's groups together, so it cannot add subtotals).
+Unprobed (T-1324): a depth of 3 or more over three PIVOTBY column fields and value sorts over three column fields (the
+engine: every level by its aggregate with subtotals), an error value before an array field_relationship that comes from
+the keys or values themselves (the engine: one error), a lifted field_relationship over a 2-D array (the engine:
+per element, as the row and column probed), and a 1x1 array field_relationship such as `{0}` or `{1}` (the engine lifts it
+to one cell, as `{FALSE}` is in followup G!A921).
 Status: VERIFIED (web)
-Tasks: T-1276
+Tasks: T-1276, T-1328, T-1322, T-1323, T-1326, T-1324, T-1700, T-1325, T-1327
+
+## GROUPBY and PIVOTBY: column totals over several value columns
+Rule: with one function over two or more value columns (`width` w), PIVOTBY puts its column subtotal and total cells as
+if a subtotal spanned one column per line it covers instead of w. Lay the column lines out with every subtotal after
+its groups (as for a positive col_total_depth) in the order of the key sort (a descending one too) before any value
+sort, w columns per line, the total's w columns last. The total writes its value column v (0-based) into column
+`k + v`, k being the number of lines; then each subtotal, ordered by its first group and a parent before its own
+deeper subtotals, writes its value column v into
+column `f * w + k + v`, f being the index of its first group's line and k the number of lines it covers (its groups and
+deeper subtotals). A write into a group's column is dropped and a later write replaces an earlier one. Each subtotal
+and total column then moves with its line into the real layout (a negative depth puts the subtotals and totals first, a
+value sort reorders the lines) and shows, in every row, the cells of the subtotal or total written into it, or `""`
+where nothing was written. Group columns are always right, and so are the row axis (row subtotals, G!A751) and
+functions paired with the value columns or laid out as columns over one (probes/pivotby-col-subtotals-values2 S!A181,
+-values3 S!A1, S!A13, S!A25).
+Consequences: with one value column every write lands on its own column (S!A51). A parent with one child writes its
+last value column into its first subtotal column; with two or more children everything lands in their group columns.
+The total's writes land near the middle of the lines, so one parent there may show Grand Total cells in its later
+subtotal columns. This had looked like "the parent at floor(parents / values)", which matches every older probe but
+fails on -values2: eight single-child parents with two values put the total in P5's leaf column, so nothing shows
+(S!A1), and with four values over A (three children), B, C, D and E the total writes into 14-17, so A's third and
+fourth subtotal columns show the Grand Total's V1 and V2 (-values2 S!A85; floor(5 / 4) would be B). Without subtotals (depth ±1) the total's writes land in the group columns, which is why the
+Total columns are `""` (P!Y97), unless there is only one column group: then the first Total column shows the last value
+column's total and the others are `""`, also with -1 (probes/pivotby-total-columns-one-group S!A1-A61).
+Example: `PIVOTBY(A2:A10,B2:C10,D2:E10,LAMBDA(x,ARRAYTOTEXT(x)),,,,2)` with Outer keys A (child x), B (x, y), C (z),
+D (x, y, z), E (y) has 14 lines and 28 columns: A writes into columns 1-2, so A's first subtotal column shows A's V2;
+the total writes into 13-14, so C's second subtotal column (13) shows the Grand Total's V1; C writes into 11-12 and E
+into 23-24, the rest land on groups (probes/pivotby-col-subtotals-values S!A1).
+Evidence: probes/pivotby-col-subtotals-values S!A1-A111 (two and three values, depth -2, shown headers, swapped and
+duplicated column fields, a descending value sort), probes/pivotby-col-subtotals-values2 S!A1-A205 (eight and seven
+single-child parents with two to four values, mixed children with two to four values, a descending key sort, value
+sorts with the depth omitted, three column fields at depth 3, 2 and -3, row and column subtotals together),
+probes/pivotby-col-subtotals-values3 S!A49 (three values over three column fields at depth 3),
+probes/pivotby-total-columns-one-group, probes/groupby-subtotals G!A781, G!A1141, G!A1171 (excel-graph,
+2026-10-17/18). ARRAYTOTEXT over distinct values (101-112, 201-212, ...) shows which records and value column each
+cell takes: every cell is `""`, one group's cell or one subtotal's or total's, never a mix.
+A descending key sort places in the descending order: over Outer descending (E, D, C, B, A) the total's writes land in
+C's subtotal columns, which the ascending order would put on a group (-values2 S!A97).
+Unprobed: writes of two subtotals into the same column (the engine: the later in the order above wins, so a parent's
+deeper subtotal over a parent, and a later parent over an earlier one's deeper subtotal); the relative set a moved cell
+gets (the engine: the set of the subtotal or total whose cell it shows; T-1865); several functions over several value columns other than paired (always `#VALUE!` so far: -values3
+S!A37, S!A61).
+Status: VERIFIED (web)
+Implemented in: crates/rustsheet-engine/src/functions/lookup_and_reference/pivotby.rs (`Placement`, `Shown`)
+Tasks: T-1700
+
+## GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap
+Rule: Excel calls a two-parameter LAMBDA in GROUPBY or PIVOTBY once per aggregate cell with the cell's values and its whole
+relative set, so N records in G groups cost about G x N cells, without limit. RustSheet charges every call the cells it
+is given (the cell's rows, plus the relative set a two-parameter LAMBDA gets or PERCENTOF sums) before building its
+arguments, against the 2^27-cell cap of the lifted *IF(S) calls (`too_many_visits`, criteria.md); once the charges would
+pass it, no further call is made and the whole result is `#ERROR!`. One-parameter calls rarely get there (each record is
+given once per output column and subtotal level): `GROUPBY` over 1048575 records with 100 functions is `#ERROR!`, with 10
+it computes (unit test `one_parameter_calls_are_charged_against_the_visit_cap_too`).
+Example: `GROUPBY(SEQUENCE(20000),SEQUENCE(20000),LAMBDA(x,y,ROWS(y)))` (20000 groups x 20000 rows) is `#ERROR!`, while
+PERCENTOF passed by name, summed once per relative set (O(N)), and one-parameter LAMBDAs compute it (unit test
+`two_parameter_lambdas_are_charged_against_the_visit_cap`, in test_fn_groupby.rs and, for 20000 PIVOTBY rows in one
+column, test_fn_pivotby.rs).
+PIVOTBY's relative sets hold every record once per pair of key-prefix levels the cells use (the rows' and the columns'
+items, subtotal levels included); past 2^24 entries (`MAX_SET_ENTRIES`, 128 MiB of indices) the whole result is
+`#ERROR!`, refused from the level counts before any set, prefix table or call is made. Only many key fields with
+subtotals at many levels get there: 65535 records over 16 row and 16 column fields at depth 16 with relative_to 3 (272
+level pairs) is `#ERROR!`, at depth 2 it computes (unit test `relative_sets_are_capped_before_they_are_built`).
+Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5), SPEC-0006 Design step 3.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::aggregate`),
+crates/rustsheet-engine/src/limits.rs (`too_many_visits`, `MAX_LIFTED_CELL_VISITS`),
+crates/rustsheet-engine/src/functions/lookup_and_reference/relative_to.rs (`RelativeSets::new`, `MAX_SET_ENTRIES`)
+Tasks: T-1325, T-1327
 
 ## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!
 Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:
 `WRAPCOLS(FALSE,4)` is FALSE in one cell and `WRAPCOLS("1.5",4)&DROP(C10,0,3)` is one `#CALC!` (neither spills over the
 occupied cells below). A wrap_count of 0.5 is `#NUM!` (`HYPERLINK(WRAPCOLS(C12,0.5,..),..)`).
 Evidence: gen-m7/bb4617644fee40c9 Calc!A30, gen-m7/d38b52bfa1a9f9e6 Calc!A26, gen-m7/f68fafa0ca2eba26 Calc!A39 (excel-graph, 2026-10-11, T-1275).
-Ours: pads to wrap_count (`ROWS(WRAPCOLS(1,4))` = 4, so both cells are `#SPILL!`), and wrap_count 0.5 is `#VALUE!`.
-Status: VERIFIED for single values (web); a multi-element vector shorter than wrap_count (`WRAPCOLS({1,2},4)`), WRAPROWS,
-and wrap_count 0 or negative are UNVERIFIED
-Tasks: T-1348
+Also: an error pad_with is the whole result when nothing is padded (`WRAPCOLS(D6:D6,2,VALUE("x"))` is `#VALUE!`,
+gen-m9/675763979c1defb6 A6), while with padding it fills the padded cells (WRAPCOLS_ROWS.xlsx E10, `NA()`). wrap_count 0
+is `#NUM!` for WRAPROWS too (gen-m9/50f10c4062fb2e98 A21; the full set is under "WRAPROWS and WRAPCOLS" below).
+Ours: all of the above since T-1786 and T-1348 (wrap_count is read before truncation, so 0.5 is `#NUM!`).
+Status: VERIFIED for single values (excel-graph). UNVERIFIED: the error pad_with rule for a vector of more than one
+element (it may apply only to a scalar input; follow-up task in Tasks), `WRAPCOLS({1,2},4)` and `WRAPROWS({1,2},4)`.
+Tasks: T-1348, T-1840
 
 ## MAP over arrays of different sizes, or a single value and an array
-Rule: MAP does not reject arrays of different sizes: `MAP(B4:E8,A4:D11,B5:E7,LAMBDA(z,x,acc,A3))` (5x4, 8x4, 3x4) and
-`MAP(WEEKDAY(7538),B4:E11,LAMBDA(acc,y,acc))` (a number and 8x4) both return arrays (`#SPILL!` in a cell with occupied
-neighbours). The element values (broadcast and `#N/A` padding as in array arithmetic?) are not evidenced.
-Evidence: gen-m7/a0cbc75358b429b6 Calc!A31, gen-m7/b5186d194fec0fdc Calc!A13 (excel-graph, 2026-10-11, T-1275).
-Ours: `#VALUE!` ("all arrays must have the same dimensions").
-Status: VERIFIED that the result is an array (web); its size and values are UNVERIFIED
+Rule: MAP does not reject arrays of different sizes, and does not broadcast: the result has the largest row count and the
+largest column count of its arrays, an element that every array has is the LAMBDA's result, and any other element is
+`#N/A` without the LAMBDA being called (`MAP({1;2;3},{10;20},LAMBDA(a,b,a+b))` is 11, 22, `#N/A`; with `ISNA(b)` as the
+body the padded element is still `#N/A`, not TRUE). A scalar is a 1x1 array: `MAP(5,{1,2,3},LAMBDA(a,b,a+b))` is 6,
+`#N/A`, `#N/A`. A row next to a column gives their bounding box with only the corner computed:
+`MAP({1,2,3},{10;20},..)` is 2x3, `ROWS` 2, `COLUMNS` 3, 11 then `#N/A` everywhere else; `MAP({1;2;3},{10},..)` is 11,
+`#N/A`, `#N/A`. In a cell with occupied neighbours the array is `#SPILL!` (gen-m7/a0cbc75358b429b6 A31,
+gen-m7/b5186d194fec0fdc A13, gen-m9/55fc8c4ffbd7c7cc A33, gen-m9/95efb37a9874f82e A17).
+Evidence: probes/map-unequal-sizes (excel-graph, 2026-10-17, T-1349); the four gen cells above (T-1275, T-1289).
+Ours: padded as above since T-1349 (`fn_map`, map_reduce.rs); the padded shape is checked against the 2^20-cell bound
+before allocating ("Array results above 1,048,576 cells").
+Status: VERIFIED (excel-graph)
 Tasks: T-1349
 
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
@@ -342,15 +850,51 @@ arrays and every element counts: `BYCOL(IFERROR(A1:B3,1),LAMBDA(c,COUNTA(c)))` i
 Evidence: probes/lambda-helper-range-slices (excel-graph, 2026-10-12, T-1395).
 Ours: BYROW and BYCOL pass references since T-1395 (`by_slices_source`, bycol_byrow.rs); a range keeps its full size
 (a whole column gives 1,048,576 calls and full-column slices) under the 2^20-cell array bound of "Array results above
-1,048,576 cells". MAP, SCAN and REDUCE pass each cell of a one-sheet range as a one-cell reference too (`lambda_cells`, T-1442); a reference the LAMBDA returns is read when it becomes a MAP or SCAN output cell, while a REDUCE or SCAN accumulator stays as returned (what Excel does with `ISREF(a)` on an accumulator is unprobed); the eta-reduced COUNTA is still `#NAME?`, as every `_xleta.` name is.
+1,048,576 cells". MAP, SCAN and REDUCE pass each cell of a one-sheet range as a one-cell reference too (`lambda_cells`, T-1442); a reference the LAMBDA returns is read when it becomes a MAP or SCAN output cell, while a REDUCE or SCAN accumulator stays as returned (what Excel does with `ISREF(a)` on an accumulator is unprobed); the bare COUNTA of E32 is `#VALUE!` since T-1466 (a bare name read from a file is unknown, and BYROW and BYCOL refuse anything but a LAMBDA; see "Functions passed by name").
 Status: VERIFIED (excel-graph)
 Tasks: T-1395, T-1442
+
+## BYROW and BYCOL: a LAMBDA result that is an array
+Rule: if the LAMBDA returns a 1x1 array (`{7}`, `SEQUENCE(1)`, a one-element array slice) BYROW and BYCOL use its one
+value; if it returns anything bigger than one cell for any slice (a row or column slice, `{7,8}`, `{7;8}`,
+`SEQUENCE(2,1)`) the whole call is one `#CALC!` cell. This holds for a range source, an array-constant source and a mix of
+scalar and array results (`BYROW(A1:B3,LAMBDA(r,IF(SUM(r)>5,r,0)))` is `#CALC!`; with `SEQUENCE(1)` in place of `r` it is
+0, 1, 1). Over `{1;2;3}` or `{1,2,3}` a slice is one cell, so `BYROW({1;2;3},LAMBDA(r,r))` is 1, 2, 3 and
+`BYCOL({1,2,3},LAMBDA(c,c))` 1, 2, 3, while `LAMBDA(r,{7,8})` is `#CALC!`. Over A1:B3 (1, 2; 3, 4; 5, 6) `BYCOL(..,LAMBDA(c,c))`
+is `#CALC!`, `LAMBDA(c,{7})` 7, 7 and `LAMBDA(c,SEQUENCE(1))` 1, 1.
+Evidence: probes/byrow-bycol-array-results (excel-graph, 2026-10-16, T-1670).
+Ours: bycol_byrow.rs `calc_result_to_array_node` unwraps a 1x1 array; `makes_calc_error` leaves it alone (T-1670).
+Status: VERIFIED (excel-graph)
+Tasks: T-1664, T-1670
+
+## Functions passed by name (`_xleta.`)
+Rule: a function passed by name, stored `_xleta.NAME` (any case, `_xleta._xlfn.STDEV.S` and `_xleta.STDEV.S` alike), is a
+LAMBDA that takes as many arguments as it is given and passes them on: with A1 x, A3 z, B3 y, `BYCOL(A1:B3,_xleta.COUNTA)`
+is 2, 1 (the slices are references), `BYROW(..,_xleta.COUNTA)` 1, 0, 2, `MAKEARRAY(2,2,_xleta.COUNTA)` 2 everywhere (two
+arguments), `MAKEARRAY(2,2,_xleta.POWER)` 1, 1; 2, 4, `MAKEARRAY(2,2,_xleta.IF)` 1, 2; 1, 2, `MAP(A1:A3,_xleta.ISREF)` TRUE x3,
+`SCAN(0,A1:A3,_xleta.COUNTA)` 2, 1, 2, `REDUCE(0,A1:A3,_xleta.SUM)` 0, `BYROW({1,2;3,4},_xleta.SUM)` 3, 7 and
+`LET(f,_xleta.SUM,f(1,2))` 3. On its own it is a value like an uncalled LAMBDA: `=_xleta.SUM` is `#CALC!` and
+`ISERROR(_xleta.SUM)` FALSE. A function whose result is an array for a row is `#CALC!` in BYROW (`_xleta.ABS`,
+`_xleta.IF` with one argument); that `#CALC!` is one cell, not a spill of errors (probes/eta-reduced-names E49 and E101, nothing
+below them in the sidecar; T-1660 spill-extent check; ours is one `#CALC!` since T-1664: `CalcResult::is_multi_value`, bycol_byrow.rs; mixed calls, BYCOL, array-constant sources and 1x1 array results are in "BYROW and BYCOL: a LAMBDA result that is an array" above, T-1670). BYROW and BYCOL refuse anything but a LAMBDA with `#VALUE!`, whatever it is: an error
+(`BYCOL(A1:B3,NA())`), a number (`BYCOL(A1:B3,1)`), an unknown `_xleta.` name, and a bare function name read from a file
+(`BYCOL(A1:B3,COUNTA)`, `BYROW(A1:B3,SUM)`: unknown names, xlsx-storage.md). `MAKEARRAY(2,2,_xleta.ABS)` (too many
+arguments) and `BYROW(A1:B3,_xleta.NOW)` give an error excel-graph cannot decode (left pending).
+Unprobed: other errors (`#DIV/0!`, `#REF!`) and an array as BYROW's or BYCOL's function (the engine says `#VALUE!` for
+both), a special form passed by name (`_xleta.LET`, `_xleta.LAMBDA`, `_xleta.SUBTOTAL`, `_xleta.OFFSET`) and a call with too
+few arguments (`LET(f,_xleta.SUM,f())`): the engine gives whatever the function gives for those arguments.
+Evidence: probes/eta-reduced-names (30 questions, excel-graph, 2026-10-14, T-1466); probes/m7-argument-modes F28:H51.
+Ours: an unbound `_xleta.` name of a known function evaluates to a LAMBDA whose definition is made per call
+(`Model::unbound_name`, `eta_definition`, lambda.rs); BYROW and BYCOL take only a LAMBDA (`by_slices_lambda`). Not yet:
+`ISERROR(_xleta.SUM)` is TRUE, and `_xleta.IF` with one argument is `#ERROR!` where Excel gives `#CALC!` (T-1511). GROUPBY and PIVOTBY call an eta name through the same path (T-1322, T-1326), with its minimum argument count (two for PERCENTOF and CORREL: "GROUPBY and PIVOTBY", T-1325), and share the "is it a LAMBDA" check with BYROW and BYCOL (`as_lambda`, bycol_byrow.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-1466
 
 ## BYROW and BYCOL of a single value
 Rule: BYROW and BYCOL take a single value as a 1x1 array and call the LAMBDA once: `"ü"&BYROW(COUNT(..),LAMBDA(z,z))` with
 the COUNT 7 is "ü7", and `BYROW("",_xleta.PRODUCT)` is 0 (PRODUCT of the row {""}).
-Evidence: gen-m7/93976dd9a3578ed9 Calc!A31, gen-m7/59cc50701f4937c9 Calc!A4 (excel-graph, 2026-10-11, T-1275).
-Ours: `#VALUE!` for BYROW and BYCOL of a number or text (`BYROW(7,LAMBDA(z,z))`; MAP, SCAN and REDUCE of 7 work).
+Evidence: gen-m7/93976dd9a3578ed9 Calc!A31, gen-m7/59cc50701f4937c9 Calc!A4 (excel-graph, 2026-10-11, T-1275)); BYCOL of a scalar: gen-m9/65faaeb48419087d Calc!A23, gen-m9/1466c66c61189a83 Calc!A34.
+Ours: matches (a single value is a 1x1 array and the LAMBDA is called once; unit test `byrow_bycol_of_a_single_value_call_the_lambda_once`, T-1350).
 Status: VERIFIED (web)
 Tasks: T-1350
 
@@ -358,8 +902,8 @@ Tasks: T-1350
 Rule: an error-valued argument of SORT wins over an invalid other argument: `SORT(B11:E12,ROUND(0,7),A3:C5,<#N/A>)`
 (sort_index 0, a 9-cell sort_order range and a by_col that is `#N/A`) is `#N/A`.
 Evidence: gen-m7/c5d278a8662ef4b2 Calc!A39 (by_col `HLOOKUP(ADDRESS(19,19),Data!C8:C12,3)`) (excel-graph, 2026-10-11, T-1275).
-Ours: `#VALUE!` (sort_index 0 is rejected before by_col is looked at).
-Status: VERIFIED (web) for this cell; SORTBY and the order among several error arguments are UNVERIFIED
+Ours: fixed in T-1351 (SORT evaluates sort_index, sort_order and by_col, returns an argument error (by_col first, then sort_index, then sort_order: that order is a guess), then validates sort_index/sort_order).
+Status: VERIFIED (web) for this cell; SORTBY, an error sort_order with sort_index 0 and the order among several error arguments are UNVERIFIED (need a probe)
 Tasks: T-1351
 
 ## SORT: omitted sort_index / sort_order take their defaults
@@ -380,3 +924,25 @@ question (decision 0039).
 
 Status: VERIFIED (excel-graph) for all probed combinations; the three Graph-refused SORTBY forms are UNVERIFIED (desktop question).
 Tasks: T-1394, T-1446.
+
+## WRAPROWS and WRAPCOLS: wrap_count 0 or below is #NUM!, above the vector it clamps, a scalar is 1x1
+Rule (probes/dynamic-array-reshape-and-isomitted C20-C52, D20-D52, excel-graph, 2026-10-15, T-1627; B5:H5 is 1..7):
+`WRAPROWS(B5:H5,0,"p")` and `WRAPROWS(B5:H5,-1,"p")` are `#NUM!`, and so are the WRAPCOLS forms. A wrap_count above
+the vector's length does not pad: `WRAPROWS(B5:H5,8,"p")` and `WRAPROWS(B5:H5,100,"p")` are the 1x7 row `1,2,3,4,5,6,7`
+(`WRAPCOLS` the 7x1 column), the same as wrap_count 7. A scalar is a one-element vector: `WRAPROWS(5,2)` is 5
+(`WRAPCOLS(5,2)` too). Ours: `#NUM!` for 0 and -1 since T-1348 (checked before truncation, so 0.5 too); the clamp above the vector's length, which
+also makes a scalar 1x1, is implemented (T-1786). Everything else probed matches: wrap_count 1-7 with a pad, an omitted pad (`#N/A`
+fill), pad_with 0, "" and `#N/A`, a column vector, an inline array, a 2-D range (`#VALUE!`), a text
+wrap_count (`#VALUE!`; C43, D43); a boolean wrap_count counts as a number (TRUE is 1: `WRAPCOLS(B5:H5,TRUE)` is the 1x7 row 1..7, D44; `WRAPROWS(B5:H5,TRUE)` is the 7x1 column, shown by probes/dynamic-array-reshape-reprobe B20-B22; it was `#SPILL!` in C44 only because the cell below blocked it); a fractional wrap_count
+truncates (2.5 is 2: `WRAPROWS(B5:H5,2.5,"p")` is 4x2, `WRAPCOLS` 2x4, C38-D39) and an error vector.
+TOROW over A1:C3 (1, "x", blank / #N/A, 4, TRUE / 7, 8, 9), ignore 0-3 with scan_by_column FALSE and TRUE, a scalar, inline
+arrays, a bad ignore (4, -1, "a") and an error argument all match ours (probes/dynamic-array-reshape-and-isomitted B20-B49). Ignore 1 keeps
+errors (B22/B23 are `#N/A`) and keeps an empty string `""` (`COLUMNS(TOROW({1,"",3},1))` is 3, B48); a boolean ignore is
+accepted (`TOROW({1,2,3},TRUE)` is 1,2,3, B46). TRUE selects ignore mode 1, dropping blanks: `COLUMNS(TOROW(A1:C3,TRUE))` is 8 (9 cells less blank C1), the same as `TOROW(A1:C3,1)`, and FALSE keeps all 9 (probes/dynamic-array-reshape-reprobe C20-C24).
+`TOROW(A1:C1,1)` drops the blank C1 (2 columns, `1|x`, D20-D21; ignore 0 keeps 3, D22). A scan_by_column of 2 is not an error (`TOROW(A1:C3,0,2)` is 1x9, A21-A22) and is truthy: with ignore 3 (blanks and errors dropped) scan 0 gives `1|x|4|TRUE|7|8|9` but scan 1, 2 and TRUE all give the column order `1|7|x|4|8|TRUE|9` (F20-F23).
+TEXTJOIN over A1:C3 with ignore 0, 1 is `#N/A` because A2 is `#N/A`, so those cells show no value; the shapes decide. `COLUMNS(...)=8` alone cannot tell ignore mode 1 from 2 (one blank, one error); TRUE is mode 1 because the error is kept (C22 `#N/A`). Ours matches in all 20 cells.
+ISOMITTED inside `LAMBDA(x,[y],...)` matches ours in every probed form (A20-A49): an omitted argument is TRUE, an empty slot
+(`(1,)`, A24-A25) counts as omitted and so does a required parameter left empty (`(,2)`, A34), while `""` (A26-A27) and a reference to a
+filled cell (A28-A31) count as supplied (FALSE), and so is a reference to a blank cell: `LAMBDA(x,[y],ISOMITTED(y))(1,C1)` with C1 blank is FALSE (probes/dynamic-array-reshape-reprobe E20-E21); outside a LAMBDA `ISOMITTED(5)`, `ISOMITTED(A1)` and `ISOMITTED(#N/A)` are FALSE (A43-A45).
+Status: VERIFIED (excel-graph)
+Tasks: T-1627, T-1630, T-1632

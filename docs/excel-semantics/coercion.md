@@ -67,10 +67,11 @@ then digits and letters: `" 1" < CHAR(160)&"1" < "0" < "1" < "1"&CHAR(160)`, `" 
 `"a b" < "a"&CHAR(160)&"b" < "ab"`, `CHAR(160)&CHAR(160)&"1" < CHAR(160)&"0"`; CHAR(160) is never
 equal to a space or ignored (`CHAR(160)&"1"="1"` is FALSE). `>` and COUNTIF's `">"` agree on every
 pair whose operand is text (a criterion operand like `" 0"` is numeric, criteria.md). In passing:
-a hyphen is skipped, `"-1" > "0"` is TRUE (Data!A17 vs C3, still FALSE in the engine; T-0220).
-Implemented in: `functions::util::cmp_text_excel`, used by `compare_values` (operators, sort,
-lookups) and the text criteria in functions/criteria.rs. Inferred, not probed: SORT and approximate lookups
-place CHAR(160) the same way (they share `compare_values`), and control characters below the space.
+a hyphen is skipped, `"-1" > "0"` is TRUE (Data!A17 vs C3; implemented by T-0220).
+Implemented in: `functions::util::collation::cmp_text_excel` (T-0220: the three passes below), used by
+`compare_values` (operators including `=`, SWITCH, SORT, XMATCH, XLOOKUP) and the ordered text criteria (`<`, `<=`, `>`, `>=`) in
+functions/criteria.rs. The `=`/`<>` text criteria use it too (T-1594). MATCH(...,0) and VLOOKUP(...,FALSE) do not use the collation
+(T-1590, below). Inferred, not probed: SORT orders texts the same way; control characters sort below the space (see T-1590 for CHAR(9), 10, 13).
 Full order (T-1469, VERIFIED, probes/text-collation-order, 146 strings ranked by
 `SUMPRODUCT(--(range<x))`, excel-graph 2026-10-13). `=`, `<` and `>` ignore case completely (`"a"<"A"` and `"a">"A"` are both FALSE) but not accents; `<`/`>` order, lowest first:
 1. The empty string, then a lone `'`, `''`, `-`, `--`, then space, `  `, then the punctuation
@@ -82,8 +83,46 @@ Full order (T-1469, VERIFIED, probes/text-collation-order, 146 strings ranked by
    `"a" < "á" < "à"="À" < "â" < "ä" < "å" < "aa"`; `"é"="É"` sits after `"E"` and before `"F"`; `"résumé" > "resume"`.
 4. Expansions and multi-letter folds: `"æ"="ae"` and `"ß"="ss"` are equal (`=` TRUE); `"ø" > "o"` but `"ø"` sorts after `"ö"` and before `"P"`
    (observed position only; whether it is a separate letter or a heavier accent of `o` is not probed); `"ÿ"` sorts after `"Y"` and before `"Z"`.
-Ranks for every string are in the oracle sidecar (Calc!A, ties in Calc!B). Fitting the key is T-0220's.
-Tasks: T-0220, T-0244, T-1469
+Ranks for every string are in the oracle sidecar (Calc!A, ties in Calc!B).
+Fitted key (T-0220; all 486 probe cells and the gen-m2 cells above pass): compare in three passes,
+case folded throughout. (1) Letter weights: control characters, space, CHAR(160), the punctuation
+in the order above, digits, letters; an accented Latin-1 letter weighs as its base letter, `æ` as
+`a e`, `ß` as `s s`; hyphen and apostrophe weigh nothing. (2) Accents, letter by letter: none <
+acute < grave < circumflex < diaeresis < ring, then tilde, cedilla and stroke (`ø`). Tilde and
+cedilla are placed by Windows' sort-key order, UNVERIFIED. (3) Hyphens and apostrophes as (position,
+weight), a later position first, apostrophe before hyphen. Characters outside ASCII and the Latin-1
+letters (`þ`, `ð`, `œ`, Greek, symbols such as `§`) are UNVERIFIED: they keep code-point order after
+the letters.
+### Collation equality in lookups and criteria; unprobed characters (T-1590)
+Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-collation-unprobed (90 strings ranked by
+`SUMPRODUCT(--(range<x))`), excel-graph 2026-10-15. Status: VERIFIED.
+- Equality by collation (`"æ"="ae"`, `"ß"="ss"` TRUE; `"a-b"="ab"`, `"a"="á"`, `"ø"="o"`, `"co-op"="coop"` FALSE) applies in
+  **XMATCH, XLOOKUP, SWITCH** (`XMATCH("ae","æ",0)` = 1, `SWITCH("ae","æ",...)` hits) and in **COUNTIF**'s text criteria (below).
+  It does **not** apply in **MATCH(...,0)** and **VLOOKUP(...,FALSE)**: both give `#N/A` for `"ae"` against `"æ"` and `"ss"` against `"ß"`.
+  (The engine already agrees on every lookup cell; the old "inferred: exact-match lookups treat æ and ae as equal" held for XMATCH, XLOOKUP and SWITCH only.)
+- COUNTIF over {"æ","ae","a-e"}: criteria `"ae"`, `"=ae"`, `"æ"` count 2 (æ and ae); `"<>ae"` and `"<>æ"` 1 (a-e); `"<ae"` 0; `"<=ae"` and `"<=æ"` 2;
+  `">ae"` 1; `">=ae"` 3; `"a-e"` 1; `"<>a-e"` 2. So the criteria use the same collation for `=`, `<>` and the ordered operators (see criteria.md). SUMIF, SUMIFS and COUNTIFS agree with COUNTIF (T-1597, criteria.md); wildcard `?`/`*` do not expand.
+- Order of the characters not probed in T-1469 (lowest first, `=` marks equal; whole table in the oracle sidecar): empty, CHAR(1), CHAR(31), CHAR(127),
+  `–` `—` (en and em dash behave like a hyphen: ignored, tiebreak only: `"a'b" < "a-b" < "a–b" < "a—b"`, all after `"ab"`),
+  CHAR(160), CHAR(9), CHAR(10), CHAR(13) (these three sort above CHAR(160), not below the space), then
+  `! ~ ¡ ¦ ¨ ¯ ´ ¸ ¿`, `‘ ’ “ ”` (`’` is an ordinary punctuation mark, not ignored: `"a’b" < "ab"`), `¢ £ ¤ ¥ €`, `+ ±`, `« »`, `× ÷`, `§ © ¬ ® ° µ`, `… •`,
+  `0`, `¼ ½ ¾`, `¹ ² ³`, `9`, then letters: `a=A < ª < á < ä < ã < å`, `c < ç`, `d < đ < ð`, `i < ı < ij=ĳ`, `l < ł`, `n < ñ`, `o < º < ö < ø < œ`,
+  `s`, `t < þ`, `u`, `z`, `α < β < ω`. Notes: `ĳ` equals `ij` (an expansion like `æ`/`ß`). `œ` sits between `ø` and `s`; it equals `oe` (T-1662). `ã` sorts after `ä`.
+  `ç`, `đ`, `ð`, `ł`, `ñ`, `þ` and the digit-like symbols were probed as single characters only (the symbols against `0` and `9` only); the choices made for them are in the next bullet.
+- Fitted in `cmp_text_excel` (T-1595; all 270 cells pass), with these choices where the probe is single-character only (each UNVERIFIED):
+  control characters other than CHAR(9)/CHAR(10)/CHAR(13) are skipped like the hyphen (tiebreak weight below the apostrophe, by code point), so
+  `"a"&CHAR(1)&"b"` sorts just after `"ab"`; CHAR(11) and CHAR(12) sit with CHAR(9)-CHAR(13) above CHAR(160); the en and em dash are skipped
+  everywhere, also alone (`"" < "–"` by tiebreak, below CHAR(160)); the Latin-1 marks, quotes and currency signs go between `~` and `+`, the
+  symbols `± « » × ÷ § © ¬ ® ° µ … •` after `>`; `¼ ½ ¾` between `0` and `1` (by value), `¹ ² ³` as `1 2 3` with a tiebreak accent;
+  `ª º`, `đ ł` (stroke, like `ø`) and `ð ı` are tiebreak accents on `a o d l i` (`þ` is the expansion `th`, below), not letters of their own; `œ` = `oe` like `æ`.
+- Multi-character and lookup check of those choices (T-1662; probes/text-collation-longer, 107 cells, excel-graph 2026-10-16). VERIFIED as fitted:
+  `œ` = `oe` (also `Œ` = `OE`; XMATCH, XLOOKUP and COUNTIF equal, MATCH(...,0) `#N/A`); `"a"&CHAR(1)&"b"` sorts after `"ab"` and `"a b"` and before `"a'b"`, CHAR(1) above `""` and below `"'"`
+  (and `COUNTIF` of `"ab"` over {CHAR(1)-text, "ab"} is 1, XMATCH `#N/A`); CHAR(11) and CHAR(12) above CHAR(160) and CHAR(9), below CHAR(13), CHAR(11) < CHAR(12);
+  every one of `± « » × ÷ § © ¬ ® ° µ … •` sorts above each of `<` `=` `>`; `¼ ½ ¾` between `0` and `1` (`¾` < `2`); `¹ ² ³` above `1 2 3` but below the next
+  letter position (`"¹"` > `"1"`, `"¹a"` < `"1b"`, `"¹b"` > `"1a"`; XMATCH of `"1"` against `¹` `#N/A`); `ç đ ð ł ñ ı` are accents on `c d d l n i` (`"ða"` < `"db"`, > `"da"`).
+  CORRECTED: `þ` is an expansion equal to `th`, not an accent on `t` (`"þ"="th"`, `"þ"&"a"` = `"t"&"h"&"a"` TRUE, `"þa"` > `"tb"`, `XMATCH("th","þ",0)` = 1). Implemented (T-1669): `cmp_text_excel` makes `þ` an `expansion('t','h')`.
+  A single-cell reference as XMATCH `lookup_array` or XLOOKUP `lookup_array`/`return_array` is a one-cell vector, not `#VALUE!`/`#N/A` (probes/text-collation-longer A96, A97, A102, A104, A105, A107).
+Tasks: T-0220, T-0244, T-1469, T-1590, T-1594, T-1595, T-1662, T-1669
 
 ## Double unary minus coerces to a number
 Rule: `--x` is not a no-op. Each unary minus coerces its operand to a number: `--FALSE` = 0,
@@ -145,7 +184,7 @@ Evidence: probes/resource-limits C9–C11; probes/concatenate-limit-spill E1–E
 UTF-16 code units", T-0249).
 Backend: excel-graph only; excel-desktop not used.
 Status: VERIFIED
-Implemented in: `truncate_text`/`concat_text` in cast.rs, shared by CONCATENATE and `&` (T-0240);
+Implemented in: `Text::concat`/`Text::truncate_utf16` (text.rs), shared by CONCATENATE and `&` (T-0240, T-1580);
 REPT's limit in `rept_element` (functions/text/common.rs); both count UTF-16 units (T-0233).
 CONCAT/TEXTJOIN give `#CALC!` (probes/text-result-limit C8-C9, not implemented).
 Tasks: T-0240, T-0233, T-0249
@@ -155,12 +194,17 @@ Rule: when the 32,767-unit limit falls inside a surrogate pair, Excel keeps the 
 `LEN(CONCATENATE(REPT("a",32766),"😀"))` and `LEN(REPT("😀",16383)&"😀")` are 32767, and
 `UNICODE(RIGHT(CONCATENATE(REPT("a",32766),"😀"),1))` is `#VALUE!` (UNICODE of a lone surrogate).
 Evidence: probes/concatenate-limit-spill E8–E11 (excel-graph, 2026-10-06, T-0233).
-Ours: a Rust `String` cannot hold a lone surrogate, so `truncate_text` drops the straddling pair
-whole (32,766 units; E8–E11 stay known failures). A known gap, not a deviation (decision
-0052): T-1483.
+Ours: `&` and CONCATENATE truncate with `Text::truncate_utf16`, which keeps the high half of a cut
+pair (E8, E9, E11 pass since T-1580). Decision 0033 (drop the pair whole) is superseded by
+decision 0052. E10 (UNICODE of the lone half) passes since T-1581. SPEC-0010.
+Arguments after the cut change nothing but an error still wins (probes/concatenate-after-cut, excel-graph,
+2026-10-15, T-1612; the engine matches all nine cells): `LEN(CONCATENATE(REPT("a",32766),"😀","zz",1))` and
+`LEN(CONCATENATE(REPT("a",32767),"zz",1,TRUE))` are 32767 (A1, A4), and at a character boundary the kept text still ends in "a" (A9); an error
+argument after the cut is the result (`#N/A` for `...,"😀",NA())` and `...,"zz",NA())`). Among several errors the first argument's wins, wherever the cut falls: `...,1/0,NA())` is `#DIV/0!` (A6), while `...,NA(),1/0)` and `CONCATENATE(NA(),REPT("a",32767),1/0)` are `#N/A` (A7, A8). `ISERROR` of the first error case is TRUE (A10).
 Status: VERIFIED
-Implemented in: `truncate_text` in cast.rs
-Tasks: T-0233, T-1483
+Implemented in: `concat_limited` in arithmetic.rs (`&`), `fn_concatenate` in
+functions/text/concatenate.rs, `Text::truncate_utf16` in text.rs
+Tasks: T-0233, T-1483, T-1580
 
 ## SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing
 Rule: the two arrays are paired element by element in row-major order and need only the same
@@ -172,8 +216,11 @@ G1336, I1336, J1336 (`#N/A`), K1336, E1340, F1340, H1340, J1340 (`SUMX2PY2(G7:H9
 105.7931362501), K1340, F1344, G1344, H1344 (`#N/A`), I1344, J1344.
 Status: VERIFIED (Excel-cached)
 Implemented in: `Model::sumx_fold` / `sumx_values` (math_and_trigonometry/sum.rs); other `fn_get_two_matrices` callers are unchanged.
-Open (unverified, T-0961): scalar text, boolean and empty arguments are currently one skipped pair
-(`#DIV/0!`); the first error in either array wins over the element-count `#N/A`.
+Scalar text and boolean arguments are one skipped pair: `SUMX2PY2("1",2)`, `SUMXMY2("1",2)`, `SUMX2MY2("1",2)` and the same
+with `TRUE` are `#DIV/0!` (numeric text is not read as a number here) while `SUMX2PY2(1,2)` is 5; a text element inside an
+array constant is skipped (`SUMX2PY2({1,"a"},{3,4})` = 10); two all-blank ranges are `#DIV/0!`. Evidence:
+probes/stats-evidence-floor-t1623 Q73-Q76, Q79, Q86-Q89, Q91, Q99-Q102, Q104 (excel-graph, 2026-10-17, T-1623).
+Open (unverified, T-0961): an empty argument (`SUMXMY2(,1)`) and error-versus-`#N/A` precedence were not probed there.
 Tasks: T-0944
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
@@ -187,23 +234,37 @@ F1448, F1456, H1288.
 Status: VERIFIED (Excel-cached)
 Implemented in: `Model::for_each_value` users `fn_stdev_s`/`fn_stdev_p`, `fn_var_s`/`fn_var_p`,
 `fn_devsq`, `fn_avedev`, `fn_sumsq`. Open: I392 (`DEVSQ("1","2",2)`) and K1456
-(`VARP(TRUE,FALSE,TRUE)`) differ in the last digit (accumulation order, like E392/F392/J392).
-Open: an empty argument (`DEVSQ(1,)`) is ignored by DEVSQ/AVEDEV/SUMSQ but counted as 0 by STDEV/VAR
-(probes/average-value-args); no evidence yet for the first group (T-0236).
+(`VARP(TRUE,FALSE,TRUE)`) differ in the last digit (accumulation order, like E392/F392/J392; DEVSQ is
+probably the two-pass sum, T-1749).
+An empty argument is counted as 0 by DEVSQ and AVEDEV (`DEVSQ(1,)` = `AVEDEV(1,)` = 0.5; probes/stat-order-floor-batch
+A274, A299; T-1748) and by STDEV/VAR (probes/average-value-args); SUMSQ is untested (open, T-1748).
 Tasks: T-0945
 
-## MODE: text arguments and blank single-cell references are #VALUE!
-Rule: a text value argument, even numeric text (`MODE(B8,"1",2,3)`), makes MODE `#VALUE!`, and so
-does a single-cell reference to a blank cell: `MODE(B9,2,D7)` with B9 = 2 and D7 blank is `#VALUE!`
-although 2 appears twice. Blanks and text inside a multi-cell range are ignored
-(`MODE(C16:E16,-1.1)` = -1.1 with D16 blank). Also
-`MODE("1",1,#DIV/0!,2,3)` is `#VALUE!` (whether argument order matters is unprobed). Not isolated yet: a single-cell reference to text on its own.
-Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!G936, H936,
-K936, M936 (`#VALUE!`); D936, F936, I936, J936, L936.
-Status: VERIFIED (Excel-cached)
-Implemented in: `collect_mode_values` (mode_functions.rs). MODE.SNGL/MODE.MULT share it by inference
-(unprobed), as do non-literal text-valued expressions (e.g. `A1&""`).
-Tasks: T-0947
+## MODE: a blank single-cell reference is #VALUE!; typed text and booleans are skipped
+Rule: MODE, MODE.SNGL and MODE.MULT skip typed (direct) text, numeric text included, and typed booleans
+(`MODE(2,"x",2)` is 2, `MODE(1,"1",1)` 1, `MODE("2","2",5)` and `MODE(TRUE,TRUE,5)` `#N/A`), and a
+reference to a text cell (`MODE(K1,K2,"1",2)` is 2). A direct error propagates as itself
+(`MODE(1,"1",#DIV/0!,2,3)`, `MODE(1/0,1,1)` are `#DIV/0!`, `MODE(NA(),1,1)` `#N/A`). A single-cell
+reference to a blank cell and an empty argument are `#VALUE!`: `MODE(B9,2,D7)` with B9 = 2 and D7 blank
+is `#VALUE!` although 2 appears twice, and so is `MODE(1,1,)`. Blanks and text inside a multi-cell range
+are ignored (`MODE(C16:E16,-1.1)` = -1.1 with D16 blank). An error picked by CHOOSE propagates: legacy
+`=MODE(CHOOSE(1,B1:B6*1))` off the range's rows is `#VALUE!` (references.md "Legacy `@` on CHOOSE
+operator arms under aggregates"). An error in a single-cell reference, a range or a name propagates too (`MODE(K1,1,1)` with K1 = `=1/0` and `MODE(nmerr,1,1)` are `#DIV/0!`, MODE.SNGL and MODE.MULT alike), and computed text or booleans are skipped like typed ones (`MODE(1,1,"a"&"")`, `MODE(1,1,1=1)`, `MODE(1,1,"1"&"")`, a name holding text are 1; probes/mode-error-and-computed-arguments A1-A15, excel-graph, 2026-10-16, T-1291).
+Typed text with no repeated number is `#N/A`, wherever it stands (`MODE(1,"1",2,3)`, `MODE("1",2,3)`,
+`MODE(1,2,3,"x")`, `MODE(1.1,K3,"1",1)` with K3 = text "1.1"), and a direct error after typed text still wins
+(`MODE("1",1,#DIV/0!,2,3)` is `#DIV/0!`).
+Evidence: probes/mode-typed-arguments A1-A33, probes/mode-typed-text-no-mode A1-A16 and probes/mode-error-and-computed-arguments A1-A15 (excel-graph,
+2026-10-16, T-1291).
+CONFLICTING (decision 0030 2: Excel 15 is below AppVersion 16; decision 0039: the web value is the Phase 1-3
+target; decision 0067): poi/FormulaEvalTestData_Copy.xlsx (Excel 15) caches `#VALUE!` for EverythingTests!G936
+`MODE(C9,E16,"1",B8)`, H936 `MODE(B8,"1",2,3)` and K936 `MODE("1",1,#DIV/0!,2,3)`, where Microsoft 365 gives
+`#N/A`, `#N/A` and `#DIV/0!` on the same inputs (probes/mode-typed-text-no-mode A3, A4, A2). The engine follows
+M365, and the three cells are known failures until a 16.x desktop value decides (T-1075, M14). M936
+`MODE(B9,2,D7)` (`#VALUE!`, blank single-cell reference) and D936, F936, I936, J936, L936 agree with M365.
+Status: VERIFIED (excel-graph); CONFLICTING with the Excel 15 cached G936, H936, K936
+Implemented in: `collect_mode_values` (mode_functions.rs); MODE.SNGL/MODE.MULT share it (typed text and
+booleans and direct, referenced and named errors verified for all three, T-1291).
+Tasks: T-0947, T-1291
 
 ## MAXA / MINA: single-cell references are read like ranges
 Rule: a single-cell reference argument to text counts as 0 and to a boolean as 1/0, as in a range:
@@ -212,8 +273,13 @@ Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingT
 Status: VERIFIED (Excel-cached)
 Implemented in: `for_each_value_a` (statistical/count_and_average.rs); covers direct single-cell
 references only. A defined name pointing to one cell and numeric text in a referenced cell (counted as
-0 by inference) are unprobed.
-Tasks: T-0949
+0 by inference) are unprobed. AVERAGEA shares this coercion since T-1526, and the helper reads a
+cell that XLOOKUP or INDEX picks as a reference (`AVERAGEA(XLOOKUP(1,A1:A2,B1:B2),5,7)` over "x" is 4;
+probes/subtotal-reference-operands-d H22). An array argument is not read like a range: see
+statistics.md "AVERAGEA, MAXA and MINA over an array" (T-1555). Engine choices with no oracle cell yet
+(T-1551): the same for MAXA/MINA over a picked text cell, and direct date or currency text (read by
+`cast_number`).
+Tasks: T-0949, T-1526, T-1555
 
 ## "inf", "NaN" and out-of-range number text are text
 Rule: the words "inf", "infinity", "NaN" (any case, any sign) and number text of 1E+308 or more
@@ -253,7 +319,13 @@ whether it is literal or computed, empty or not: `AND("1",TRUE)`, `AND("abc",TRU
 `AND("",TRUE)`, `AND(""&"1",TRUE)`, `AND(IFERROR("1",0),TRUE)`, `AND(T("1"),TRUE)`, `AND(("1"),TRUE)`
 and `AND("1",1)` are TRUE, and `AND("1",FALSE)` is FALSE. Text in an array literal (`{"1",TRUE}`) and in
 referenced cells (A1 = "x", A2 = "1") is skipped as well. A literal "TRUE" argument counts as TRUE,
-case-insensitively (`OR("true",FALSE)` = TRUE; computed, array and cell "TRUE" text are unprobed; "FALSE" next to a logical is unprobed, while `AND("FALSE")` alone is FALSE in ironcalc E48), but numeric text does not count as a number (`OR("1",FALSE)` = FALSE).
+case-insensitively (`OR("true",FALSE)` = TRUE; computed and array "TRUE" text are unprobed; "FALSE" next to a logical is unprobed, while `AND("FALSE")` alone is FALSE in ironcalc E48), but numeric text does not count as a number (`OR("1",FALSE)` = FALSE).
+A "TRUE"/"FALSE" text cell is skipped as well, also when a function picks it: with A1 = "TRUE" and A2 = "FALSE",
+`AND`, `OR` and `XOR` of `IF(TRUE,A1)`, `INDEX(A1:A2,1)`, `XLOOKUP(1,{1},A1:A1)`, `CHOOSE(1,A1)`, `LET(x,A1,x)`,
+`TAKE(A1:A2,1)` and `OFFSET(A1,0,0)` are all `#VALUE!` (picked cells are references; evidence:
+probes/and-or-xor-picked-text, 70 cells, excel-graph, T-1685). A direct LAMBDA is `#VALUE!` in AND, OR and XOR
+(`AND(LAMBDA(x,x),TRUE)`, `AND(LAMBDA(x,x))`), but a direct error beats it in either order (`AND(LAMBDA(x,x),1/0)`,
+`AND(1/0,LAMBDA(x,x))` are `#DIV/0!`); an error cell ranks by position: before the LAMBDA it wins (`AND(A3,LAMBDA(x,x))` is `#N/A`, A3 = `#N/A`), after it it does not (`AND(LAMBDA(x,x),A3)` is `#VALUE!`; J5/J6, J11/J12, J17/J18; unlike the AVERAGE family, syntax.md T-1602); ours returned `#N/IMPL!` and skipped it, fixed in T-1685. A 3-D reference (`AND(Sheet1:Sheet2!B1)`) is read as a reference, not `#VALUE!` (K1-K9).
 When nothing but skipped text is left, the result is `#VALUE!` (`AND("1")`, `AND("")`, `OR("","")`). An
 error argument wins (`AND("1",#N/A)` = `#N/A`). OR and XOR behave the same.
 CONFLICTING (decision 0030 2: Excel 15 is below AppVersion 16; decision 0039: the web value is the Phase 1-3
@@ -274,8 +346,9 @@ cell reads as 0 (`LCM(F1:F3)` with 4, blank, 6 is 0). Typed, numeric text is a n
 (`GCD("8",4)` = 4, `MULTINOMIAL("2",3)`) but a boolean is `#VALUE!` (`GCD(TRUE,4)`,
 `MULTINOMIAL(TRUE,3)`; typed LCM arguments are unprobed), whereas
 `FACT(TRUE)` = 1 and `COMBIN("5",2)` = 10. SERIESSUM's coefficient range is stricter still: text,
-boolean and numeric-text cells are all `#VALUE!` (a blank reads as 0), while a typed numeric-text
-`x` is accepted (`SERIESSUM("1",0,1,{1,2})` = 3). SUMPRODUCT is the opposite: anything that is not a
+boolean and numeric-text cells of a multi-cell range are all `#VALUE!` (a blank reads as 0), while a typed numeric-text
+`x` is accepted (`SERIESSUM("1",0,1,{1,2})` = 3). 
+A boolean coefficient is `#VALUE!` in every form (a cell, typed `TRUE`/`FALSE`, an array-literal element, `(B1:B3)`); a single coefficient value is read as a number, so typed `"5"` and a one-cell text reference are 5 (`SERIESSUM(1,0,1,B4)` and `B4:B4`; non-numeric single text such as `"abc"` or `""` is `#VALUE!`), while text in an array literal is `#VALUE!` (probes/seriessum-boolean-coefficients A1:A18, excel-graph, 2026-10-16, T-1191). SUMPRODUCT is the opposite: anything that is not a
 number counts as 0, a typed scalar too (`SUMPRODUCT("2")` = 0, `SUMPRODUCT(TRUE)` = 0,
 `SUMPRODUCT("2",3)` = 0, `SUMPRODUCT(3)` = 3), and text in a range is 0 (`SUMPRODUCT(A1:A6)` = 10).
 PRODUCT and SUMSQ skip text and booleans in ranges and coerce typed ones (`PRODUCT(TRUE,3)` = 3).
@@ -283,16 +356,34 @@ PRODUCT of an array argument (`PRODUCT(IF(SEQUENCE(5),7))`) multiplies its numbe
 (probes/geomean-single-and-copies Copies!B1:B35). Text and booleans inside the array are skipped, an array with no
 numbers gives 0 (`PRODUCT({"a"})`, `PRODUCT({TRUE,FALSE})`), and the first error element wins
 (`PRODUCT({2,#N/A,#DIV/0!})` = #N/A) (probes/product-array-elements, excel-graph).
+In a 2D array the first error in row-major order wins (`PRODUCT({1,#N/A;#DIV/0!,2})` = #N/A, `PRODUCT({1,#DIV/0!;#N/A,2})` = #DIV/0!). A
+no-number array with a scalar gives the scalar (`PRODUCT({"a"},3)` = `PRODUCT(3,{"a"})` = `PRODUCT({TRUE,FALSE},3)` = 3). An error inside an array
+ranks like a referenced-cell error, as in SUM: a direct scalar error beats it either way (`PRODUCT({1,#N/A},#NUM!,#DIV/0!)` = #NUM!,
+`PRODUCT(#NUM!,{1,#N/A})` = #NUM!), and against a referenced error or another array the leftmost wins (`PRODUCT({1,#N/A},C1)` with C1=#NUM! is #N/A,
+`PRODUCT(C1,{1,#N/A})` #NUM!, `PRODUCT({#N/A},{#DIV/0!})` #N/A) (probes/product-array-2d-and-scalar, excel-graph 2026-10-14, T-1287).
 MDETERM, MINVERSE and MMULT are `#VALUE!` for a text cell in a matrix (arrays.md has blanks).
 These decide the generator's argument modes (eval/catalog/functions.yaml `array`, T-1082); the
 SUMX2MY2 family's `array` mode rests on "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing" above, and
-PERCENTOF's `aggregate` on Microsoft's page only (it is `#NAME?` on excel-graph).
+PERCENTOF's `aggregate` on Microsoft's page and on probes/percentof-snap-overflow-union (T-0416): direct text `"1"` and TRUE count as numbers (`PERCENTOF("1",2)` and `PERCENTOF(TRUE,2)` = 0.5), as in SUM.
 The type check wins over a negative argument whatever the order: `GCD(-1,B1:B11)` with the text "TRUE" in B1 is
 `#VALUE!`, and `MULTINOMIAL(A6:D9)` whose first cell is -2.5 and later cells hold FALSE and text is `#VALUE!`
-(gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m6/2c1a6e93a1974f48 Calc!A35, excel-graph 2026-10-09; the engine gives `#NUM!`,
-T-1261). Typed text after a typed negative (`GCD(-1,"a")`) and LCM are unprobed.
+(gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m6/2c1a6e93a1974f48 Calc!A35, gen-m7/4629e931955aa4b8 Calc!A7, excel-graph; fixed in
+T-1261). A negative's `#NUM!` loses to every other error, whatever the position and kind of the other argument, in GCD, LCM
+and MULTINOMIAL alike: typed text (`GCD(-1,"a")`, `GCD("a",-1)`), a typed TRUE, a typed error (`GCD(-1,NA())`, `GCD(NA(),-1)`), a text,
+TRUE or error cell of a range before or after it, and an array-literal element (`GCD(-1,{4,#N/A})`, `GCD(-1,{4,"a"})`, `GCD(-1,{4,TRUE})`) are
+`#VALUE!` or the error itself; only with no other error is the answer `#NUM!`. Array-literal text or TRUE elements next to a negative are the same in LCM and MULTINOMIAL
+(`LCM(-1,{4,"a"})`, `LCM({4,TRUE},-1)`, `MULTINOMIAL(-1,{4,#N/A})`: probes/gcd-lcm-multinomial-error-order A43:A52, T-1655). An argument above 2^53 is
+`#NUM!` the same deferred way, a loser to every other error in either order, in GCD, LCM and MULTINOMIAL (typed text, `NA()` and a negative, range cells and array-literal elements are all probed, T-1661): `GCD(10^16,"a")` and `GCD("a",10^16)` are `#VALUE!`,
+`GCD(10^16,NA())` and `GCD(NA(),10^16)` `#N/A` (A9:A12, A23:A26, A37:A40), and `GCD(10^16,-1)` / `GCD(-1,10^16)` are `#NUM!` (A13:A14); the engine used to return the
+"Argument too large" `#NUM!` at once for GCD and LCM.
+LCM's result above 2^53 is deferred the same way: `LCM(2^26+1,2^27+1)` is `#NUM!` but `LCM(2^26+1,2^27+1,"a")` is `#VALUE!`, `...,NA())` `#N/A`, and a later 0 makes the result 0 (`LCM(2^26+1,2^27+1,0)`); a later negative stays `#NUM!` (probes/gcd-lcm-overflow-ranges A1:A56, excel-graph, 2026-10-16, T-1661).
+An omitted argument: the first one is `#N/A` (`GCD(,4)`, `GCD(,-1)`, `GCD(,)`, `MULTINOMIAL(,4)`), a later one is skipped, not read as 0
+(`LCM(4,)` and `LCM(2,4,)` are 4, `GCD(4,)` 4, `GCD(4,,-1)` and `GCD(-1,,4)` `#NUM!`). Two different non-negative errors are judged left to right, the first argument's winning: `GCD("a",NA())` is `#VALUE!`,
+`GCD(NA(),"a")` `#N/A`, `GCD(1/0,NA())` `#DIV/0!`, `GCD(NA(),1/0)` `#N/A`, and an omitted first argument is `#N/A` ahead of any later error (`GCD(,"a")`, `GCD(,NA())`) while a later omitted one is
+skipped, so the earlier error shows (`GCD("a",)` is `#VALUE!`, `GCD(NA(),)` `#N/A`); LCM and MULTINOMIAL alike (A1:A8, A15:A22, A29:A36).
+Evidence: probes/gcd-lcm-multinomial-negative-precedence E1:E71 (excel-graph, 2026-10-15, T-1574); engine fixed in T-1574. probes/gcd-lcm-multinomial-error-order A1:A52 (excel-graph, 2026-10-15, T-1655); GCD and LCM fixed in T-1655.
 Evidence: probes/math-argument-modes Sheet1!C1:C56 (excel-graph, 2026-10-08).
-Implemented in: the engine matches every cell except MULTINOMIAL numeric text (C9, C47, C52; T-1190)
-and SERIESSUM with a boolean coefficient cell (C44, engine 11; T-1191).
+Implemented in: the engine matches every cell except MULTINOMIAL numeric text (C9, C47, C52; T-1190);
+SERIESSUM boolean coefficients fixed in T-1191.
 Status: VERIFIED
-Tasks: T-1082, T-1190, T-1191, T-1261
+Tasks: T-1082, T-1190, T-1191, T-1261, T-1574, T-1655, T-1661

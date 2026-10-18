@@ -1,4 +1,6 @@
+use crate::arithmetic::{extended_sum, flush_subnormal};
 use crate::{
+    arithmetic::extended_quotient,
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     Model,
@@ -51,7 +53,9 @@ impl Model {
                 });
                 if let CalcResult::Number(n) = v {
                     if n.is_finite() {
-                        sum += n;
+                        // Rounds the total to a double after every addition, like SUM (numbers.md
+                        // "Accumulators beyond SUM and AVERAGE", probes-numeric/daverage-accumulation).
+                        sum = extended_sum(sum, n);
                         count += 1;
                     }
                 }
@@ -67,7 +71,9 @@ impl Model {
             };
         }
 
-        CalcResult::Number(sum / count as f64)
+        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1648), and a subnormal
+        // quotient is 0 as for AVERAGE (probes-numeric/daverage-accumulation A20:A24, T-1649).
+        CalcResult::Number(flush_subnormal(extended_quotient(sum, count as f64)))
     }
 
     // =DCOUNT(database, field, criteria)
@@ -237,7 +243,8 @@ impl Model {
                 });
                 if let CalcResult::Number(n) = v {
                     if n.is_finite() {
-                        sum += n;
+                        // Each addition rounds twice like SUM's (probes-numeric/double-rounding-accumulators).
+                        sum = extended_sum(sum, n);
                     }
                 }
             }

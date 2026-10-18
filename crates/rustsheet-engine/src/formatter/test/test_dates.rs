@@ -118,17 +118,30 @@ fn date_system_serial_conversion() {
     assert_eq!(format_in(2_957_004.0, "yyyy-mm-dd", Excel1904), "#VALUE!");
 }
 
-// The financial day counts read a 1904 serial one day late (1463 days on, not 1462) and return
-// their dates the same day early; a negative 1904 serial stays negative (no date).
+// The financial day counts read a 1904 serial 2 * 1462 days on and return their dates the same
+// number of days earlier (T-1492); a negative 1904 serial stays negative (no date).
 #[test]
-fn financial_1900_serial_reads_a_day_late() {
+fn financial_1900_serial_reads_two_epochs_on() {
     use DateSystem::{Excel1900, Excel1904};
-    assert_eq!(Excel1904.financial_1900_serial(0.0), 1463.0);
-    assert_eq!(Excel1904.financial_1900_serial(10.5), 1473.5);
+    assert_eq!(Excel1904.financial_1900_serial(0.0), 2924.0);
+    assert_eq!(Excel1904.financial_1900_serial(10.5), 2934.5);
     assert_eq!(Excel1904.financial_1900_serial(-1.0), -1.0);
     assert_eq!(Excel1900.financial_1900_serial(45000.0), 45000.0);
-    assert_eq!(Excel1904.serial_from_financial_1900_serial(1462), -1);
+    assert_eq!(Excel1904.serial_from_financial_1900_serial(2923), -1);
     assert_eq!(Excel1900.serial_from_financial_1900_serial(45000), 45000);
+}
+
+// ACCRINT with calc_method FALSE takes a settlement up to the last 1904 date, 2957003, though it
+// reads past 9999-12-31 (probes/date-system-1904-financial-settlement-bound, T-1492, T-1494).
+#[test]
+fn accrint_settlement_limit_is_the_last_1904_date_read_for_calc_false() {
+    use DateSystem::{Excel1900, Excel1904};
+    assert_eq!(Excel1900.accrint_settlement_limit(false), 2_958_465);
+    assert_eq!(
+        Excel1904.accrint_settlement_limit(false),
+        Excel1904.financial_1900_serial(2_957_003.0) as i64
+    );
+    assert_eq!(Excel1904.accrint_settlement_limit(true), 2_958_465);
 }
 
 // The odd-period functions read a 1904 serial 2 * 1462 days on, so the last 1904 serial they read

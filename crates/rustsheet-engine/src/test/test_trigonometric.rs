@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -93,8 +94,9 @@ fn test_fn_tan_pi2() {
     model._set("A1", "=TAN(PI()/2)");
     model.evaluate();
 
-    // This is consistent with IEEE 754 but inconsistent with Excel
-    assert_eq!(model._get_text("A1"), *"1.63312E+16");
+    // Excel reduces by the x87 64-bit pi: 1.6324552277619072E+16, not IEEE's 1.633123935319537E+16
+    // (probes-numeric/m9-trig-reduction C82, T-1563).
+    assert_eq!(model._get_text("A1"), *"1.63246E+16");
 }
 
 #[test]
@@ -106,4 +108,52 @@ fn test_trigonometric_identity() {
     model.evaluate();
 
     assert_eq!(model._get_text("A3"), *"TRUE");
+}
+
+// T-1202: an out-of-domain argument is `#NUM!` at once, so an enclosing function cannot swallow
+// the NaN (gen-m5/cd883013bea3b305, gen-m6/3ee7ffc8d6ab061f, gen-m7/93976dd9a3578ed9; ATANH by the same macro).
+#[test]
+fn out_of_domain_inverse_functions_nested_are_num() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SERIESSUM(ACOS(1E+15),0,1,1)");
+    model._set("A2", "=ADDRESS(ACOSH(-1),4)");
+    model._set("A3", "=CHOOSECOLS(0,ASIN(100))");
+    model._set("A4", "=(1<ASIN(PI()))");
+    model._set("A5", "=SUM(ATANH(2),1)");
+    model.evaluate();
+
+    for cell in ["A1", "A2", "A3", "A4", "A5"] {
+        assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
+    }
+}
+
+#[test]
+fn asin_rounds_like_excel() {
+    // probes/asin-argument-sweep, gen-m6/2f6b96385ed3facd A38, gen-m7/cb748b6a9b81fbb7 A38 (T-1259):
+    // libm `asin` is one ulp off on each of these.
+    let mut model = new_empty_model();
+    model._set("A1", "=ASIN(-0.0001)");
+    model._set("A2", "=ASIN(0.42)");
+    model._set("A3", "=ASIN(-0.96)");
+    model._set("A4", "=ASIN(1)");
+    model._set("A5", "=ASIN(-1)");
+    model._set("A6", "=ASIN(1.0000001)");
+    // T-1605: a tiny argument is returned as is (sweep B220, B221, B210).
+    model._set("A7", "=ASIN(1E-13)");
+    model._set("A8", "=ASIN(-1E-13)");
+    model._set("A9", "=ASIN(1E-8)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A1"), (-0.000_100_000_000_166_666_68_f64).to_bits());
+    assert_eq!(bits("A2"), 0.433_445_320_069_885_9_f64.to_bits());
+    assert_eq!(bits("A3"), (-1.287_002_217_586_568_5_f64).to_bits());
+    assert_eq!(bits("A4"), std::f64::consts::FRAC_PI_2.to_bits());
+    assert_eq!(bits("A5"), (-std::f64::consts::FRAC_PI_2).to_bits());
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+    assert_eq!(bits("A7"), 1e-13_f64.to_bits());
+    assert_eq!(bits("A8"), (-1e-13_f64).to_bits());
+    assert_eq!(bits("A9"), 1.000_000_000_000_000_2e-8_f64.to_bits());
 }

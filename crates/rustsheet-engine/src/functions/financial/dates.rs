@@ -1,6 +1,6 @@
-//! Date arguments of the financial functions: Excel reads a 1904 serial one day late
-//! (`DateSystem::financial_1900_serial`; docs/excel-semantics/dates.md "The 1904 date system:
-//! financial day counts read every date one day late").
+//! Date arguments of the financial functions: Excel reads a 1904 serial as the 1900 serial
+//! s + 2 * 1462 (`DateSystem::financial_1900_serial`; docs/excel-semantics/dates.md "The 1904 date
+//! system: financial day counts read a 1904 serial as the 1900 serial + 2 * 1462").
 //! Also the coupon functions' day counts per basis and the coupon schedule Excel breaks in a 1904
 //! workbook (`Model::coupon_schedule_breaks`).
 
@@ -9,7 +9,8 @@ use chrono::{Datelike, NaiveDate};
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::from_excel_date,
+    formatter::dates::{from_excel_date, EPOCH_1904_IN_1900_SERIALS},
+    functions::lift::num_error,
     model::Model,
 };
 
@@ -44,7 +45,7 @@ pub(super) fn is_less_than_one_year(start_date: i64, end_date: i64) -> Result<bo
 
 impl Model {
     /// The floored 1900 serial a financial function's day counts read for the date argument
-    /// `serial`: a day late in a 1904 workbook (`DateSystem::financial_1900_serial`).
+    /// `serial`: 2 * 1462 days on in a 1904 workbook (`DateSystem::financial_1900_serial`).
     pub(super) fn financial_date(&self, serial: f64) -> i64 {
         self.workbook
             .settings
@@ -103,7 +104,39 @@ impl Model {
             .coupon_schedule_breaks(maturity)
     }
 
-    /// The date checks PRICE, YIELD and DURATION make before computing: settlement before maturity
+    /// A date argument of a financial function as a kernel reads it (SPEC-0011): the number of
+    /// `value` (a boolean is #VALUE!) as `financial_date` reads it.
+    pub(super) fn financial_date_of(
+        &self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<i64, CalcResult> {
+        let serial = self.cast_number_no_bools_ref(value, cell)?;
+        Ok(self.financial_date(serial))
+    }
+
+    /// The settlement check of the COUP* functions, PRICE, YIELD and DURATION: #NUM! unless the
+    /// settlement is a calendar date before the maturity. Excel is #NUM! for a settlement below
+    /// serial 1 in a 1900 workbook (0, 0.5, -0.5, -1, -1E15: probes/fin-coupon-walk-bounds A1-A13,
+    /// A19, A20, fin-coupon-walk-bounds-b A11) and for a negative one in a 1904 workbook, whose 0
+    /// reads as the 1900 serial 2924 (probes/date-system-1904-financial A35-A40). The check also
+    /// keeps the coupon schedule walk back from the maturity inside the calendar: without it
+    /// `COUPNUM(-1E15,43831,4)` stepped about 10^6 quarters back to chrono's first year
+    /// (directive 5, T-1822; docs/excel-semantics/financial.md "Coupon settlement before the
+    /// calendar").
+    pub(super) fn check_settlement(
+        &self,
+        settlement: i64,
+        maturity: i64,
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        if settlement < 1 || settlement >= maturity {
+            return Err(num_error(cell));
+        }
+        Ok(())
+    }
+
+    /// The date checks PRICE, YIELD and DURATION make before computing: [`Model::check_settlement`]
     /// and a coupon schedule that does not break (`coupon_schedule_breaks`); #NUM! otherwise.
     pub(super) fn check_bond_dates(
         &self,
@@ -111,13 +144,7 @@ impl Model {
         maturity: i64,
         cell: CellReferenceIndex,
     ) -> Result<(), CalcResult> {
-        if settlement >= maturity {
-            return Err(CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "settlement must be before maturity".to_string(),
-            ));
-        }
+        self.check_settlement(settlement, maturity, cell)?;
         if self.coupon_schedule_breaks(maturity) {
             return Err(broken_schedule_error(cell));
         }
@@ -125,7 +152,7 @@ impl Model {
     }
 
     /// A date a financial function computed in the `financial_date` space (COUPNCD, COUPPCD), as
-    /// this workbook's serial: a day early in a 1904 workbook.
+    /// this workbook's serial: 2 * 1462 days earlier in a 1904 workbook.
     pub(super) fn financial_date_result(&self, serial: i64) -> CalcResult {
         let date_system = self.workbook.settings.date_system;
         CalcResult::Number(date_system.serial_from_financial_1900_serial(serial) as f64)
@@ -231,8 +258,10 @@ pub(super) fn basis_days(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
 // The coupon schedule Excel breaks in a 1904 workbook (`Model::coupon_schedule_breaks`).
 
 /// The previous coupon date (a 1900 serial) Excel takes when the coupon schedule breaks
-/// (`Model::coupon_schedule_breaks`); the next one is then the maturity itself.
-pub(super) const BROKEN_SCHEDULE_PCD: i64 = 1;
+/// (`Model::coupon_schedule_breaks`); the next one is then the maturity itself. It reads as
+/// 1904 serial -1462 (`COUPPCD` is -1462), 1900 serial 1462 in the doubled-offset reading of
+/// `DateSystem::financial_1900_serial` (T-1492).
+pub(super) const BROKEN_SCHEDULE_PCD: i64 = EPOCH_1904_IN_1900_SERIALS;
 
 /// Days between two serials of a broken coupon schedule: their difference on the actual bases
 /// 1-3 (`COUPDAYS(DATE(9999,1,1),DATE(9999,12,31),2,1)` is 2958465 in a 1904 workbook), #NUM! on

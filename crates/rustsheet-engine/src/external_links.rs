@@ -5,10 +5,18 @@
 //! data is `#BLOCKED!`").
 
 use crate::{
-    calc_result::CalcResult,
+    calc_result::{CalcResult, Range},
+    cast::calc_result_to_array_node,
     cell::spill_value_to_calc_result,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    reference_operators::external_area,
+    constants::{LAST_COLUMN, LAST_ROW},
+    expressions::{
+        parser::{ArrayNode, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
+    external_reference::{external_area, external_blocked, ExternalArea},
+    implicit_intersection::implicit_intersection,
+    limits::check_array_size,
     types::{DefinedName, SpillValue},
     utils::ParsedReference,
     Model,
@@ -16,6 +24,17 @@ use crate::{
 
 use bitcode::{Decode, Encode};
 use std::collections::HashMap;
+
+/// Whether a reader of a cached area of a linked workbook sees the blanks around the cells the
+/// cache holds ([`Model::external_aggregate_value`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CachedBlanks {
+    /// The area keeps its written shape (only a whole column or row is cut): TEXTJOIN joins its
+    /// blanks, BYROW and a LET variable see its rows.
+    Kept,
+    /// The area is cut to the cells the cache spans: SUM, COUNT, MAX and the like skip blanks.
+    Skipped,
+}
 
 /// A workbook this one links to, as far as Excel cached it in `xl/externalLinks/externalLinkN.xml`
 /// (`externalBook`). The other workbook is never opened (directive 5): a reference into it reads
@@ -29,6 +48,14 @@ pub struct ExternalBook {
     pub defined_names: Vec<DefinedName>,
     /// The cached cell values, keyed by (sheet index, row, column).
     pub cells: HashMap<(u32, i32, i32), SpillValue>,
+}
+
+/// A sheet of a linked workbook that the externalLink cache holds: the index of its book in
+/// [`Workbook::external_books`](crate::types::Workbook) and its own index in that book.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct CachedSheet {
+    book: usize,
+    sheet: u32,
 }
 
 /// The book index and sheet name of an external sheet prefix, `[1]Sheet` → (`1`, `Sheet`).
@@ -47,12 +74,357 @@ fn sheet_index(book: &ExternalBook, name: &str) -> Option<u32> {
     u32::try_from(position).ok()
 }
 
+/// The index in [`Workbook::external_books`](crate::types::Workbook) of `[book]`: `[1]` is
+/// the first `externalReference` of the workbook part. A book written by file name
+/// (`[other.xlsx]`) is not looked up.
+fn external_book_index(book: &str) -> Option<usize> {
+    book.parse::<usize>().ok()?.checked_sub(1)
+}
+
+/// How many cells `area` covers.
+fn cell_count(area: ExternalArea) -> usize {
+    let (rows, columns) = area.extent();
+    rows.saturating_mul(columns)
+}
+
+/// The cells of `area`, row by row.
+fn area_cells(area: ExternalArea) -> impl Iterator<Item = (i32, i32)> {
+    (area.first_row..=area.last_row).flat_map(move |row| {
+        (area.first_column..=area.last_column).map(move |column| (row, column))
+    })
+}
+
+/// The reference a defined name of `book` refers to (`='Defines'!$B$2`), its sheet an index in
+/// `book`'s cache; `None` when it is not a reference to one of those sheets.
+fn parse_cached_reference(
+    book: &ExternalBook,
+    formula: &str,
+    model: &Model,
+) -> Option<ParsedReference> {
+    let formula = formula.strip_prefix('=').unwrap_or(formula);
+    ParsedReference::parse_reference_formula(None, formula, model.locale, |sheet| {
+        sheet_index(book, sheet)
+    })
+    .ok()
+}
+
 impl Model {
     /// The linked workbook formulas call `[book]`: `[1]` is the first `externalReference` of the
     /// workbook part. A book written by file name (`[other.xlsx]`) is not looked up.
     fn external_book(&self, book: &str) -> Option<&ExternalBook> {
-        let index = book.parse::<usize>().ok()?.checked_sub(1)?;
-        self.workbook.external_books.get(index)
+        self.workbook.external_books.get(external_book_index(book)?)
+    }
+
+    /// The cache of the sheet `[book]Sheet` names, `None` when the workbook holds none.
+    fn cached_sheet(&self, sheet_name: &str) -> Option<CachedSheet> {
+        let (book, sheet) = split_book_prefix(sheet_name)?;
+        let book_index = external_book_index(book)?;
+        let sheet = sheet_index(self.workbook.external_books.get(book_index)?, sheet)?;
+        Some(CachedSheet {
+            book: book_index,
+            sheet,
+        })
+    }
+
+    /// [`external_area`] with the cache of the sheet it names, if the workbook holds one.
+    pub(crate) fn cached_external_area(
+        &self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<ExternalArea> {
+        let mut area = external_area(node, cell)?;
+        if let Node::WrongReferenceKind {
+            sheet_name: Some(sheet_name),
+            ..
+        }
+        | Node::WrongRangeKind {
+            sheet_name: Some(sheet_name),
+            ..
+        } = node.ungrouped()
+        {
+            area.cache = self.cached_sheet(sheet_name);
+        }
+        Some(area)
+    }
+
+    /// The cached value of the cell (`row`, `column`) of `sheet`; a cell the cache does not
+    /// hold is empty, as is a book the workbook no longer holds.
+    fn cached_value(
+        &self,
+        sheet: CachedSheet,
+        row: i32,
+        column: i32,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match self.workbook.external_books.get(sheet.book) {
+            Some(book) => self.cached_cell(book, sheet.sheet, row, column, cell),
+            None => CalcResult::EmptyCell,
+        }
+    }
+
+    /// The cells of `area` on `sheet`, row by row; the caller bounds the area's size.
+    fn cached_rows(
+        &self,
+        sheet: CachedSheet,
+        area: ExternalArea,
+        cell: CellReferenceIndex,
+    ) -> Vec<Vec<ArrayNode>> {
+        (area.first_row..=area.last_row)
+            .map(|row| {
+                (area.first_column..=area.last_column)
+                    .map(|column| {
+                        calc_result_to_array_node(self.cached_value(sheet, row, column, cell))
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
+    /// The written area's cells in a value context: what the cache holds for them, one cell a
+    /// scalar and several an array (`VLOOKUP(5,[1]Uses!$A$1:$B$3,2,FALSE)`,
+    /// `SUMPRODUCT(--ISTEXT([1]Uses!$A$1:$B$3))`; fixtures/external-link-cached-ranges, T-1460).
+    /// An area the cache does not hold is `#BLOCKED!` ([`ExternalArea::blocked_value`]).
+    pub(crate) fn external_area_value(
+        &self,
+        area: ExternalArea,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let Some(sheet) = area.cache else {
+            return area.blocked_value(cell);
+        };
+        let (rows, columns) = area.extent();
+        if (rows, columns) == (1, 1) {
+            return self.cached_value(sheet, area.first_row, area.first_column, cell);
+        }
+        if let Some((error, message)) = check_array_size(rows, columns) {
+            return CalcResult::new_error(error, cell, message);
+        }
+        CalcResult::Array(self.cached_rows(sheet, area, cell))
+    }
+
+    /// [`ExternalArea::picked_value`] for an area INDEX or an intersection picked: its cached
+    /// cells when the cache holds its sheet (`INDEX([1]Uses!$A$1:$B$3,2,2)` is the cached "7";
+    /// fixtures/external-link-cached-ranges).
+    pub(crate) fn external_picked_value(
+        &self,
+        area: ExternalArea,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if area.cache.is_some() {
+            self.external_area_value(area, cell)
+        } else {
+            area.picked_value(cell)
+        }
+    }
+
+    /// `@` of a written range of a linked workbook whose cache the workbook holds: the cached
+    /// value of the one cell it implicitly intersects at `cell`, as for a range of this workbook,
+    /// and `#VALUE!` when none (a legacy `=SUM([1]Uses!$A$2:$A$3+0)` in row 44 is `#VALUE!`;
+    /// fixtures/external-link-cached-ranges Refs!B44, T-1526). `None` for any other node, which
+    /// the caller evaluates as usual.
+    pub(crate) fn cached_external_at(
+        &self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        if !matches!(node.ungrouped(), Node::WrongRangeKind { .. }) {
+            return None;
+        }
+        let area = self.cached_external_area(node, cell)?;
+        let sheet = area.cache?;
+        // Intersected in the area's own coordinates, as a range of another sheet is.
+        let corner = |row, column| CellReferenceIndex {
+            sheet: cell.sheet,
+            row,
+            column,
+        };
+        let range = Range {
+            left: corner(area.first_row, area.first_column),
+            right: corner(area.last_row, area.last_column),
+        };
+        Some(match implicit_intersection(&cell, &range) {
+            Some(picked) => self.cached_value(sheet, picked.row, picked.column, cell),
+            None => CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Error with Implicit Intersection".to_string(),
+            ),
+        })
+    }
+
+    /// The rows and columns of `sheet` its cached cells span, `None` when it holds none.
+    fn cached_extent(&self, sheet: CachedSheet) -> Option<ExternalArea> {
+        let book = self.workbook.external_books.get(sheet.book)?;
+        let mut cells = book
+            .cells
+            .keys()
+            .filter(|(index, ..)| *index == sheet.sheet);
+        let &(_, row, column) = cells.next()?;
+        let first = ExternalArea {
+            first_row: row,
+            first_column: column,
+            last_row: row,
+            last_column: column,
+            cache: Some(sheet),
+        };
+        Some(cells.fold(first, |area, &(_, row, column)| ExternalArea {
+            first_row: area.first_row.min(row),
+            first_column: area.first_column.min(column),
+            last_row: area.last_row.max(row),
+            last_column: area.last_column.max(column),
+            cache: area.cache,
+        }))
+    }
+
+    /// The cells of `areas` an aggregate reads, as reference cells: an array that skips text,
+    /// booleans and blanks where SUM, COUNT, AVERAGE, MAX and the like skip them in a range
+    /// (`SUM([1]Uses!$A$1)` over cached text is 0, `SUM([1]Uses!$A$1:$B$3)` 15), and MAXA
+    /// coerces them as in a range (10; fixtures/external-link-cached-ranges). Each area is
+    /// clipped to the cells its cache holds as `blanks` says ([`Model::clip_to_cache`]), so
+    /// `SUM([1]Uses!$B:$B)` reads three rows; several areas are one row of their cells in
+    /// formula order. `#BLOCKED!` when the cache does not hold an area's sheet.
+    pub(crate) fn external_aggregate_value(
+        &self,
+        areas: &[ExternalArea],
+        blanks: CachedBlanks,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let mut rows = Vec::new();
+        // The cells of all areas together are one array: a union of many whole columns over a
+        // sparse cache must not add up past the array bound (CLAUDE.md directive 5).
+        let mut total: usize = 0;
+        for area in areas {
+            let Some(sheet) = area.cache else {
+                return external_blocked(cell);
+            };
+            let Some(clipped) = self.clip_to_cache(sheet, *area, blanks) else {
+                continue;
+            };
+            total = total.saturating_add(cell_count(clipped));
+            let (height, width) = clipped.extent();
+            if let Some((error, message)) =
+                check_array_size(height, width).or_else(|| check_array_size(total, 1))
+            {
+                return CalcResult::new_error(error, cell, message);
+            }
+            rows.extend(self.cached_rows(sheet, clipped, cell));
+        }
+        if areas.len() > 1 {
+            rows = vec![rows.into_iter().flatten().collect()];
+        }
+        CalcResult::Array(rows)
+    }
+
+    /// The cells of `node`, when it is a reference into a linked workbook
+    /// ([`Model::external_reference`]), as an aggregate reads them
+    /// ([`Model::external_aggregate_value`]) in one row: `SUBTOTAL(9,[1]Uses!$A$1:$B$3)` is 15,
+    /// `RANK(5,…)` 2 (fixtures/external-link-cached-ranges Refs!B59, B71). `Err` holds what it
+    /// gives instead (`#BLOCKED!` with no cache, an operand's error); `None` when `node` is no
+    /// such reference, and then nothing in it was evaluated.
+    pub(crate) fn external_reference_cells(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<Result<Vec<ArrayNode>, CalcResult>> {
+        let areas = match self.external_reference(node, cell)? {
+            Ok(areas) => areas,
+            Err(error) => return Some(Err(error)),
+        };
+        // SUBTOTAL, AGGREGATE and RANK skip blanks and read no cell by its position.
+        Some(
+            match self.external_aggregate_value(&areas, CachedBlanks::Skipped, cell) {
+                CalcResult::Array(rows) => Ok(rows.into_iter().flatten().collect()),
+                other => Err(other),
+            },
+        )
+    }
+
+    /// How many cells of `areas` the cache holds a value for, as COUNTA counts the non-empty
+    /// cells of a range (`COUNTA([1]Uses!$A$1:$B$3)` is 5; fixtures/external-link-cached-ranges).
+    /// `None` when the cache does not hold an area's sheet.
+    pub(crate) fn external_non_empty_count(&self, areas: &[ExternalArea]) -> Option<usize> {
+        let mut count = 0;
+        for area in areas {
+            let sheet = area.cache?;
+            let book = self.workbook.external_books.get(sheet.book)?;
+            let area = *area;
+            // The smaller of the area and the cache is walked.
+            count += if cell_count(area) <= book.cells.len() {
+                area_cells(area)
+                    .filter(|&(row, column)| book.cells.contains_key(&(sheet.sheet, row, column)))
+                    .count()
+            } else {
+                book.cells
+                    .keys()
+                    .filter(|&&(index, row, column)| {
+                        index == sheet.sheet && area.contains(row, column)
+                    })
+                    .count()
+            };
+        }
+        Some(count)
+    }
+
+    /// `area` as an aggregate reads it, `None` when it shares no cell with what the cache of
+    /// `sheet` spans. A whole column or row is cut to the cells the cache spans, as a whole column
+    /// of this workbook is cut to its used area (engine bound, CLAUDE.md directive 5; Excel's own
+    /// reach is not observable, `SUM([1]Uses!$B:$B)` reads the same). With
+    /// [`CachedBlanks::Skipped`] any other area is cut too, which changes no result of a reader
+    /// that skips blanks (`SUM([1]Uses!$A$2:$B$1048576)` adds the cached cells, not the array bound's
+    /// `#ERROR!`; T-1550); with [`CachedBlanks::Kept`] it keeps its shape, blanks included
+    /// (`TEXTJOIN("|",FALSE,[1]Uses!$A$1:$B$3)` ends in a blank; fixtures/external-link-cached-ranges).
+    fn clip_to_cache(
+        &self,
+        sheet: CachedSheet,
+        area: ExternalArea,
+        blanks: CachedBlanks,
+    ) -> Option<ExternalArea> {
+        let whole_columns = area.first_row == 1 && area.last_row == LAST_ROW;
+        let whole_rows = area.first_column == 1 && area.last_column == LAST_COLUMN;
+        if !whole_columns && !whole_rows {
+            // Finding the extent walks the book's cache, so only an area larger than the cache
+            // is cut; a smaller one already reads no more cells than the cache holds.
+            let small = self
+                .workbook
+                .external_books
+                .get(sheet.book)
+                .is_none_or(|book| cell_count(area) <= book.cells.len());
+            if blanks == CachedBlanks::Kept || small {
+                return Some(area);
+            }
+        }
+        self.cached_extent(sheet)
+            .and_then(|extent| area.intersect(extent))
+    }
+
+    /// The area a workbook-scoped name of a linked workbook, `[1]!Name`, stands for, read from
+    /// the cache: `ISREF([1]!NR_Range)` is TRUE, `ROWS` 3 and `SUM` 15 for a name of
+    /// `'Uses'!$A$1:$B$3` (fixtures/external-link-cached-ranges). A sheet-scoped name
+    /// (`[1]Defines!Name`) of several cells is `#BLOCKED!` there, so only workbook names are
+    /// areas; `None` for any other name.
+    pub(crate) fn external_name_area(&self, prefixed_name: &str) -> Option<ExternalArea> {
+        let (book, rest) = prefixed_name.strip_prefix('[')?.split_once(']')?;
+        self.workbook_name_area(book, rest.strip_prefix('!')?)
+    }
+
+    /// [`Model::external_name_area`] of the workbook-scoped name `name` of `[book]`.
+    fn workbook_name_area(&self, book: &str, name: &str) -> Option<ExternalArea> {
+        let book_index = external_book_index(book)?;
+        let (book, defined_name) = self.cached_name(book, None, name)?;
+        let (first, last) = match parse_cached_reference(book, &defined_name.formula, self)? {
+            ParsedReference::CellReference(target) => (target, target),
+            ParsedReference::Range(first, last) => (first, last),
+        };
+        Some(ExternalArea {
+            first_row: first.row.min(last.row),
+            first_column: first.column.min(last.column),
+            last_row: first.row.max(last.row),
+            last_column: first.column.max(last.column),
+            cache: Some(CachedSheet {
+                book: book_index,
+                sheet: first.sheet,
+            }),
+        })
     }
 
     /// The cached value of the cell (`row`, `column`) of sheet `sheet` of `book`; a cell the cache
@@ -79,18 +451,12 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Option<CalcResult> {
-        let Node::WrongReferenceKind {
-            sheet_name: Some(sheet_name),
-            ..
-        } = node.ungrouped()
-        else {
+        if !matches!(node.ungrouped(), Node::WrongReferenceKind { .. }) {
             return None;
-        };
-        let area = external_area(node, cell)?;
-        let (book, sheet) = split_book_prefix(sheet_name)?;
-        let book = self.external_book(book)?;
-        let sheet = sheet_index(book, sheet)?;
-        Some(self.cached_cell(book, sheet, area.first_row, area.first_column, cell))
+        }
+        let area = self.cached_external_area(node, cell)?;
+        let sheet = area.cache?;
+        Some(self.cached_value(sheet, area.first_row, area.first_column, cell))
     }
 
     /// `[book]!name` or `[book]Sheet!name`: a defined name of a linked workbook (the parser keeps
@@ -122,13 +488,13 @@ impl Model {
         )
     }
 
-    fn cached_name_value(
+    /// The defined name `name` of `book` with the scope `sheet` (a workbook name when `None`).
+    fn cached_name(
         &self,
         book: &str,
         sheet: Option<&str>,
         name: &str,
-        cell: CellReferenceIndex,
-    ) -> Option<CalcResult> {
+    ) -> Option<(&ExternalBook, &DefinedName)> {
         let book = self.external_book(book)?;
         let scope = match sheet {
             Some(sheet) => Some(sheet_index(book, sheet)?),
@@ -138,17 +504,26 @@ impl Model {
         let defined_name = book.defined_names.iter().find(|defined_name| {
             defined_name.sheet_id == scope && defined_name.name.to_uppercase() == name
         })?;
-        let formula = defined_name
-            .formula
-            .strip_prefix('=')
-            .unwrap_or(&defined_name.formula);
-        match ParsedReference::parse_reference_formula(None, formula, self.locale, |sheet| {
-            sheet_index(book, sheet)
-        }) {
-            Ok(ParsedReference::CellReference(target)) => {
-                Some(self.cached_cell(book, target.sheet, target.row, target.column, cell))
+        Some((book, defined_name))
+    }
+
+    fn cached_name_value(
+        &self,
+        book: &str,
+        sheet: Option<&str>,
+        name: &str,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        if sheet.is_none() {
+            let area = self.workbook_name_area(book, name)?;
+            return Some(self.external_area_value(area, cell));
+        }
+        let (cached_book, defined_name) = self.cached_name(book, sheet, name)?;
+        match parse_cached_reference(cached_book, &defined_name.formula, self)? {
+            ParsedReference::CellReference(target) => {
+                Some(self.cached_cell(cached_book, target.sheet, target.row, target.column, cell))
             }
-            _ => None,
+            ParsedReference::Range(..) => None,
         }
     }
 

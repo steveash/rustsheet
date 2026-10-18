@@ -105,6 +105,13 @@ pub enum MappingError {
     /// A line names a case that the `probes` suite does not discover.
     #[error("{MAPPING_PATH} line {line}: no case {case}")]
     UnknownCase { line: usize, case: String },
+    /// A cell line names a cell that its case does not check.
+    #[error("{MAPPING_PATH} line {line}: {case} has no checked cell {cell}")]
+    UnknownCell {
+        line: usize,
+        case: String,
+        cell: String,
+    },
 }
 
 impl Mapping {
@@ -190,6 +197,37 @@ impl Mapping {
             Some((case, line)) => Err(MappingError::UnknownCase {
                 line,
                 case: case.clone(),
+            }),
+            None => Ok(()),
+        }
+    }
+
+    /// Checks that every cell line names a checked cell of its case, so a typo cannot leave a cell
+    /// counted at its case's milestone unnoticed. `expectations` maps a case id to the cells the
+    /// case holds an expectation for (the keys of its `expected` and of its oracle sidecar, as
+    /// `Sheet!A1`; `case::expectation_cells`). A case it does not list is not checked here:
+    /// [`Mapping::check_known`] rejects unknown cases.
+    ///
+    /// # Errors
+    /// The first line, in file order, whose cell its case holds no expectation for.
+    pub fn check_cells(
+        &self,
+        expectations: &BTreeMap<String, BTreeSet<String>>,
+    ) -> Result<(), MappingError> {
+        match self
+            .cells
+            .iter()
+            .filter(|((case, cell), _)| {
+                expectations
+                    .get(case)
+                    .is_some_and(|cells| !cells.contains(cell))
+            })
+            .min_by_key(|(_, a)| a.line)
+        {
+            Some(((case, cell), a)) => Err(MappingError::UnknownCell {
+                line: a.line,
+                case: case.clone(),
+                cell: cell.clone(),
             }),
             None => Ok(()),
         }
@@ -476,6 +514,27 @@ mod tests {
     }
 
     #[test]
+    fn an_unchecked_cell_names_its_line() {
+        let mapping = Mapping::parse(
+            "# c\nprobes/a.case.json\tS!A1\tM9\tx\nprobes/a.case.json\tS!B2\tM9\tx\nprobes/b.case.json\tS!Z9\tM9\tx\n",
+        )
+        .expect("parse");
+        let cells = |keys: &[&str]| keys.iter().map(ToString::to_string).collect();
+        let mut expectations =
+            BTreeMap::from([("probes/a.case.json".to_string(), cells(&["S!A1"]))]);
+        assert_eq!(
+            mapping
+                .check_cells(&expectations)
+                .expect_err("unchecked")
+                .to_string(),
+            format!("{MAPPING_PATH} line 3: probes/a.case.json has no checked cell S!B2")
+        );
+        // A case the expectations do not list (probes/b) is left to `check_known`.
+        expectations.insert("probes/a.case.json".to_string(), cells(&["S!A1", "S!B2"]));
+        assert_eq!(mapping.check_cells(&expectations), Ok(()));
+    }
+
+    #[test]
     fn the_committed_mapping_parses() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let mapping = Mapping::load(&root).unwrap_or_else(|e| panic!("{e}"));
@@ -524,6 +583,7 @@ mod tests {
             millis: 0,
             tags: tags.iter().map(|t| (*t).to_string()).collect(),
             cells,
+            text: Vec::new(),
         }
     }
 
@@ -544,6 +604,7 @@ mod tests {
             ]
             .map(|(name, milestone)| CatalogFunction {
                 name: name.into(),
+                category: "math".into(),
                 milestone: milestone.into(),
                 scope: Scope::In,
                 reason: None,

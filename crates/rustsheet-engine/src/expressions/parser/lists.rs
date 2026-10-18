@@ -44,7 +44,7 @@ impl Parser {
         match self.parse_enclosed_expr() {
             Node::BooleanKind(s) => Ok(ArrayNode::Boolean(s)),
             Node::NumberKind(s) => Ok(ArrayNode::Number(s)),
-            Node::StringKind(s) => Ok(ArrayNode::String(s)),
+            Node::StringKind(s) => Ok(ArrayNode::String(s.into())),
             Node::ErrorKind(kind) => Ok(ArrayNode::Error(kind)),
             error @ Node::ParseErrorKind { .. } => Err(error),
             _ => Err(self.invalid_array_value()),
@@ -63,6 +63,28 @@ impl Parser {
     /// The arguments of a call to `fn_name`, after its `(`; empty arguments
     /// (`IF(A1,,2)`) are `EmptyArgKind`.
     pub(super) fn parse_function_args(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {
+        // The names a LET binds are in scope up to its `)`.
+        let scope = self.dotted_bound_names.len();
+        let args = self.parse_function_args_in_scope(fn_name);
+        self.dotted_bound_names.truncate(scope);
+        args
+    }
+
+    /// One argument of a call; `binds_name` when it is in a LET name position (odd, and a
+    /// separator follows it, so it is not the body).
+    fn parse_argument(&mut self, binds_name: bool) -> Node {
+        let token = binds_name.then(|| self.lexer.peek_token());
+        let node = self.parse_enclosed_expr();
+        match token {
+            Some(token) if self.lexer.peek_token() == self.get_argument_separator_token() => {
+                self.bind_dotted_name(&token, node)
+            }
+            _ => node,
+        }
+    }
+
+    fn parse_function_args_in_scope(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {
+        let binds_names = fn_name.eq_ignore_ascii_case("LET");
         let arg_separator_token = &self.get_argument_separator_token();
         let mut args: Vec<Node> = Vec::new();
         let mut next_token = self.lexer.peek_token();
@@ -74,7 +96,7 @@ impl Parser {
         if &self.lexer.peek_token() == arg_separator_token {
             args.push(Node::EmptyArgKind);
         } else {
-            let t = self.parse_enclosed_expr();
+            let t = self.parse_argument(binds_names);
             if let Node::ParseErrorKind { .. } = t {
                 return Err(t);
             }
@@ -93,7 +115,7 @@ impl Parser {
                 args.push(Node::EmptyArgKind);
                 return Ok(args);
             } else {
-                let p = self.parse_enclosed_expr();
+                let p = self.parse_argument(binds_names && arg_index % 2 == 1);
                 if let Node::ParseErrorKind { .. } = p {
                     return Err(p);
                 }

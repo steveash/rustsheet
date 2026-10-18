@@ -1,0 +1,23 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "TEXTSPLIT of a row wider than the grid (16,384 columns): 16,385 cells, far under 2^20 (T-1781). Does Excel build it or answer past-the-grid?",
+  "tags": [
+    "M7",
+    "text",
+    "dynamic-arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=COLUMNS(TEXTSPLIT(REPT(\",\",16384),\",\"))",
+        "A2": "=COLUMNS(TEXTSPLIT(REPT(\",\",16383),\",\"))",
+        "A3": "=ROWS(TEXTSPLIT(REPT(\";\",1048576),,\";\"))",
+        "A4": "=ROWS(TEXTSPLIT(REPT(\";\",32000),,\";\"))",
+        "A6": "=TEXTSPLIT(REPT(\",\",16384),\",\")"
+      }
+    }
+  ],
+  "expected": {}
+}

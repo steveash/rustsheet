@@ -99,3 +99,62 @@ fn multinomial_past_170_is_num_at_once() {
         model._get_text("B1")
     );
 }
+
+// gen-m6/2c1a6e93a1974f48 Calc!A35: -2.5 first, a boolean later in the range is still `#VALUE!`.
+#[test]
+fn range_boolean_is_value_even_after_a_negative() {
+    let mut model = new_empty_model();
+    model._set("A1", "-2.5");
+    model._set("A2", "FALSE");
+    model._set("B1", "-2.5");
+    model._set("B2", "3");
+    model._set("C1", "=MULTINOMIAL(A1:A2)");
+    model._set("C2", "=MULTINOMIAL(B1:B2)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"#VALUE!");
+    assert_eq!(model._get_text("C2"), *"#NUM!");
+}
+
+#[test]
+fn multinomial_has_excels_rounding_and_reads_numeric_text() {
+    // T-1190: Excel's inexact values, argument order included (probes/multinomial-algorithm-sweep,
+    // multinomial-large-arguments, math-argument-modes; excel-graph), and numeric text typed or in
+    // a range cell as its number (math-argument-modes C9, C47, C52).
+    use crate::cell::CellValue;
+    let mut model = new_empty_model();
+    let cases = [
+        ("A1", "=MULTINOMIAL(2,3)", 9.999999999999998),
+        ("A2", "=MULTINOMIAL(170)", 1.0000000000001974),
+        ("A3", "=MULTINOMIAL(20,150)", 5.221123511164219e25),
+        ("A4", "=MULTINOMIAL(150,20)", 5.221123511166111e25),
+        ("A5", "=MULTINOMIAL(10,20,30)", 3.553261127085186e24),
+        ("A6", "=MULTINOMIAL(30,20,10)", 3.5532611270850594e24),
+        ("A7", "=MULTINOMIAL(1,2)", 3.0000000000000004),
+        ("A8", "=MULTINOMIAL(\"2\",3)", 9.999999999999998),
+        ("A9", "=MULTINOMIAL(\"4\",6)", 209.99999999999977),
+        ("A10", "=MULTINOMIAL(D1:D3)", 13859.99999999998),
+        // T-1600: a lone argument below 1 is `1 / exp(-y)`, not the nearer `exp(y)`
+        // (probes/multinomial-single-arguments A5, A30, A140).
+        ("A11", "=MULTINOMIAL(5)", 0.9999999999999996),
+        ("A12", "=MULTINOMIAL(30)", 0.9999999999999953),
+        ("A13", "=MULTINOMIAL(140)", 0.9999999999999674),
+    ];
+    model._set("D1", "4");
+    model._set("D2", "'2");
+    model._set("D3", "6");
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model._set("B1", "=MULTINOMIAL(\"x\",3)");
+    model._set("B2", "=MULTINOMIAL(TRUE,3)");
+    model.evaluate();
+    for (row, (cell, formula, expected)) in (1..).zip(cases) {
+        assert_eq!(
+            model.get_cell_value_by_index(0, row, 1).unwrap(),
+            CellValue::Number(expected),
+            "{cell}: {formula}"
+        );
+    }
+    assert_eq!(model._get_text("B1"), "#VALUE!");
+    assert_eq!(model._get_text("B2"), "#VALUE!");
+}

@@ -4,6 +4,7 @@
 
 //! Contains functions for performing XML special characters escaping.
 
+use rustsheet_engine::text::{lone_escape, Segment, Text};
 use std::borrow::Cow;
 
 enum Value {
@@ -87,6 +88,25 @@ pub fn escape_xml(s: &'_ str) -> Cow<'_, str> {
     Cow::Owned(result)
 }
 
+/// [`escape_xml`] for engine text that may hold a lone surrogate: each well-formed run is
+/// escaped as by `escape_xml` and each lone unit is written as `_xHHHH_` (upper-case hex), the
+/// way Excel writes it (the oracle file of probes/text-surrogate-positions A6 holds
+/// `a😀_xDE00_b`; see docs/specs/SPEC-0010-text-with-lone-surrogates.md). Borrows when nothing
+/// needs escaping.
+pub fn escape_text(text: &Text) -> Cow<'_, str> {
+    if !text.has_lone_surrogate() {
+        return escape_xml(text);
+    }
+    let mut out = String::new();
+    for segment in text.segments() {
+        match segment {
+            Segment::Str(s) => out.push_str(&escape_xml(s)),
+            Segment::Lone(unit) => out.push_str(&lone_escape(unit)),
+        }
+    }
+    Cow::Owned(out)
+}
+
 // A simpler function that allocates memory for each replacement
 // fn escape_xml(value: &str) -> String {
 //     value
@@ -132,6 +152,21 @@ mod tests {
         assert_eq!(escape_xml("_hello").as_ref(), "_hello");
         assert_eq!(escape_xml("a_b").as_ref(), "a_b");
         assert_eq!(escape_xml("_x").as_ref(), "_x");
+    }
+
+    #[test]
+    fn test_lone_surrogate_written_as_escape() {
+        let text = Text::from_utf16(vec![0x61, 0xD83D, 0xDE00, 0xDE00, 0x62]);
+        assert_eq!(escape_text(&text).as_ref(), "a😀_xDE00_b");
+        let high = Text::from_utf16(vec![0xD83D, 0x61]);
+        assert_eq!(escape_text(&high).as_ref(), "_xD83D_a");
+    }
+
+    #[test]
+    fn test_lookalike_next_to_lone_unit_still_escaped() {
+        let text = Text::from_utf16("_x0001_<".encode_utf16().chain([0xDE00]).collect());
+        assert_eq!(escape_text(&text).as_ref(), "_x005F_x0001_&lt;_xDE00_");
+        assert_eq!(escape_text(&Text::from("a<b")).as_ref(), "a&lt;b");
     }
 
     // --- roundtrip ---

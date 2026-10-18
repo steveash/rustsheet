@@ -1,0 +1,57 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "A direct LAMBDA in the AVERAGE family (GEOMEAN, HARMEAN, VAR, STDEV, SKEW, KURT, DEVSQ, AVEDEV, SUMSQ), its rank against #N/A and referenced errors in SUM/AVERAGE/DEVSQ/SUMSQ, and a function name (_xleta.SUM) passed directly (T-1602). A5 #N/A, A6 #VALUE!. Each D cell is ERROR.TYPE of the error, else the value.",
+ "tags": [
+  "M2",
+  "aggregates",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A5": {
+     "t": "e",
+     "v": "#N/A",
+     "stored": true
+    },
+    "A6": {
+     "t": "e",
+     "v": "#VALUE!",
+     "stored": true
+    },
+    "D1": "=IF(ISERROR(GEOMEAN(LAMBDA(x,x),2,8)),ERROR.TYPE(GEOMEAN(LAMBDA(x,x),2,8)),GEOMEAN(LAMBDA(x,x),2,8))",
+    "D2": "=IF(ISERROR(HARMEAN(LAMBDA(x,x),2,8)),ERROR.TYPE(HARMEAN(LAMBDA(x,x),2,8)),HARMEAN(LAMBDA(x,x),2,8))",
+    "D3": "=IF(ISERROR(VAR(LAMBDA(x,x),2,8)),ERROR.TYPE(VAR(LAMBDA(x,x),2,8)),VAR(LAMBDA(x,x),2,8))",
+    "D4": "=IF(ISERROR(VAR.P(LAMBDA(x,x),2,8)),ERROR.TYPE(VAR.P(LAMBDA(x,x),2,8)),VAR.P(LAMBDA(x,x),2,8))",
+    "D5": "=IF(ISERROR(STDEV(LAMBDA(x,x),2,8)),ERROR.TYPE(STDEV(LAMBDA(x,x),2,8)),STDEV(LAMBDA(x,x),2,8))",
+    "D6": "=IF(ISERROR(STDEV.P(LAMBDA(x,x),2,8)),ERROR.TYPE(STDEV.P(LAMBDA(x,x),2,8)),STDEV.P(LAMBDA(x,x),2,8))",
+    "D7": "=IF(ISERROR(SKEW(LAMBDA(x,x),1,2,4)),ERROR.TYPE(SKEW(LAMBDA(x,x),1,2,4)),SKEW(LAMBDA(x,x),1,2,4))",
+    "D8": "=IF(ISERROR(KURT(LAMBDA(x,x),1,2,4,8)),ERROR.TYPE(KURT(LAMBDA(x,x),1,2,4,8)),KURT(LAMBDA(x,x),1,2,4,8))",
+    "D9": "=IF(ISERROR(DEVSQ(LAMBDA(x,x),2,8)),ERROR.TYPE(DEVSQ(LAMBDA(x,x),2,8)),DEVSQ(LAMBDA(x,x),2,8))",
+    "D10": "=IF(ISERROR(AVEDEV(LAMBDA(x,x),2,8)),ERROR.TYPE(AVEDEV(LAMBDA(x,x),2,8)),AVEDEV(LAMBDA(x,x),2,8))",
+    "D11": "=IF(ISERROR(SUMSQ(LAMBDA(x,x),2,8)),ERROR.TYPE(SUMSQ(LAMBDA(x,x),2,8)),SUMSQ(LAMBDA(x,x),2,8))",
+    "D12": "=IF(ISERROR(SKEW.P(LAMBDA(x,x),1,2,4)),ERROR.TYPE(SKEW.P(LAMBDA(x,x),1,2,4)),SKEW.P(LAMBDA(x,x),1,2,4))",
+    "D13": "=IF(ISERROR(COUNT(LAMBDA(x,x),2,8)),ERROR.TYPE(COUNT(LAMBDA(x,x),2,8)),COUNT(LAMBDA(x,x),2,8))",
+    "D14": "=IF(ISERROR(SUM(LAMBDA(x,x),#N/A)),ERROR.TYPE(SUM(LAMBDA(x,x),#N/A)),SUM(LAMBDA(x,x),#N/A))",
+    "D15": "=IF(ISERROR(SUM(#N/A,LAMBDA(x,x))),ERROR.TYPE(SUM(#N/A,LAMBDA(x,x))),SUM(#N/A,LAMBDA(x,x)))",
+    "D16": "=IF(ISERROR(SUM(A5,LAMBDA(x,x))),ERROR.TYPE(SUM(A5,LAMBDA(x,x))),SUM(A5,LAMBDA(x,x)))",
+    "D17": "=IF(ISERROR(SUM(LAMBDA(x,x),A5)),ERROR.TYPE(SUM(LAMBDA(x,x),A5)),SUM(LAMBDA(x,x),A5))",
+    "D18": "=IF(ISERROR(SUM(A6,LAMBDA(x,x),A5)),ERROR.TYPE(SUM(A6,LAMBDA(x,x),A5)),SUM(A6,LAMBDA(x,x),A5))",
+    "D19": "=IF(ISERROR(AVERAGE(LAMBDA(x,x),#N/A)),ERROR.TYPE(AVERAGE(LAMBDA(x,x),#N/A)),AVERAGE(LAMBDA(x,x),#N/A))",
+    "D20": "=IF(ISERROR(AVERAGE(#N/A,LAMBDA(x,x))),ERROR.TYPE(AVERAGE(#N/A,LAMBDA(x,x))),AVERAGE(#N/A,LAMBDA(x,x)))",
+    "D21": "=IF(ISERROR(AVERAGE(A5,LAMBDA(x,x))),ERROR.TYPE(AVERAGE(A5,LAMBDA(x,x))),AVERAGE(A5,LAMBDA(x,x)))",
+    "D22": "=IF(ISERROR(AVERAGE(LAMBDA(x,x),A5)),ERROR.TYPE(AVERAGE(LAMBDA(x,x),A5)),AVERAGE(LAMBDA(x,x),A5))",
+    "D23": "=IF(ISERROR(SUM(_xleta.SUM)),ERROR.TYPE(SUM(_xleta.SUM)),SUM(_xleta.SUM))",
+    "D24": "=IF(ISERROR(SUM(_xleta.SUM,2)),ERROR.TYPE(SUM(_xleta.SUM,2)),SUM(_xleta.SUM,2))",
+    "D25": "=IF(ISERROR(AVERAGE(_xleta.SUM,2)),ERROR.TYPE(AVERAGE(_xleta.SUM,2)),AVERAGE(_xleta.SUM,2))",
+    "D26": "=IF(ISERROR(COUNT(_xleta.SUM,2)),ERROR.TYPE(COUNT(_xleta.SUM,2)),COUNT(_xleta.SUM,2))",
+    "D27": "=IF(ISERROR(DEVSQ(LAMBDA(x,x),#N/A)),ERROR.TYPE(DEVSQ(LAMBDA(x,x),#N/A)),DEVSQ(LAMBDA(x,x),#N/A))",
+    "D28": "=IF(ISERROR(DEVSQ(#N/A,LAMBDA(x,x))),ERROR.TYPE(DEVSQ(#N/A,LAMBDA(x,x))),DEVSQ(#N/A,LAMBDA(x,x)))",
+    "D29": "=IF(ISERROR(SUMSQ(A5,LAMBDA(x,x))),ERROR.TYPE(SUMSQ(A5,LAMBDA(x,x))),SUMSQ(A5,LAMBDA(x,x)))",
+    "D30": "=IF(ISERROR(DEVSQ(LAMBDA(x,x),A5)),ERROR.TYPE(DEVSQ(LAMBDA(x,x),A5)),DEVSQ(LAMBDA(x,x),A5))",
+    "D31": "=IF(ISERROR(SUMSQ(LAMBDA(x,x),A5)),ERROR.TYPE(SUMSQ(LAMBDA(x,x),A5)),SUMSQ(LAMBDA(x,x),A5))"
+   }
+  }
+ ]
+}

@@ -207,3 +207,30 @@ fn rich_error_fixtures_match_the_exporter() {
         );
     }
 }
+
+/// SPEC-0010 step 3 (T-1577): a cached formula result holding a lone surrogate is saved as the
+/// `_xHHHH_` escape Excel writes (probes/text-surrogate-positions A6 holds `a😀_xDE00_b`), and a
+/// `_xHHHH_` look-alike in the well-formed part is still written `_x005F_xHHHH_`.
+#[test]
+fn cached_lone_surrogate_is_saved_as_an_escape() {
+    use rustsheet_engine::types::{Cell, FormulaValue};
+    use rustsheet_engine::Text;
+    let mut model = Model::new_empty("m", "en", "UTC", "en").unwrap();
+    model.set_user_input(0, 1, 1, "=\"x\"".to_string()).unwrap();
+    model.evaluate();
+    let sheet = model.workbook.worksheet_mut(0).unwrap();
+    let Some(Cell::CellFormula { v, .. }) = sheet.sheet_data.cell_mut(1, 1) else {
+        panic!("A1 is not a formula cell");
+    };
+    let units: Vec<u16> = "a😀_x0001_"
+        .encode_utf16()
+        .chain([0xDE00])
+        .chain("b".encode_utf16())
+        .collect();
+    *v = FormulaValue::Text(Text::from_utf16(units));
+    let path = "temp_cached_lone_surrogate.xlsx";
+    save_to_xlsx(&model, path).unwrap();
+    let xml = part(path, "xl/worksheets/sheet1.xml").unwrap();
+    std::fs::remove_file(path).unwrap();
+    assert!(xml.contains("<v>a😀_x005F_x0001__xDE00_b</v>"), "{xml}");
+}

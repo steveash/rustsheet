@@ -1,31 +1,27 @@
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, types::CellReferenceIndex},
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    functions::Function,
     model::Model,
 };
 
 impl Model {
     // ENCODEURL(text)
-    // Percent-encodes every byte of the UTF-8 representation of `text` except
-    // the RFC 3986 unreserved characters: A-Z, a-z, 0-9, '-', '.', '_' and '~'.
-    // Hexadecimal digits are uppercase, matching Excel.
+    // Excel for the web (the excel-graph golden, decision 0039) gives `#VALUE!` for every
+    // argument probed (docs/excel-semantics/web.md "ENCODEURL is `#VALUE!` in Excel for the web"),
+    // lifted over a range or array one element at a time. An error argument propagates as it
+    // came (gen-m9/fcf11f2ec6f7a59d A7 is `#VALUE!` through CODE; an error argument is unprobed
+    // and follows FILTERXML). No text is encoded; desktop confirmation is T-1081.
     pub(crate) fn fn_encodeurl(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let mut result = String::with_capacity(text.len());
-        for byte in text.as_bytes() {
-            match byte {
-                b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
-                    result.push(*byte as char);
-                }
-                _ => result.push_str(&format!("%{byte:02X}")),
-            }
-        }
-        CalcResult::String(result)
+        self.lift_call(
+            Function::Encodeurl,
+            args,
+            cell,
+            &mut |_, values| match values {
+                [error @ CalcResult::Error { .. }] => error.clone(),
+                [_] => CalcResult::new_error(Error::VALUE, cell, String::new()),
+                _ => CalcResult::new_args_number_error(cell),
+            },
+        )
     }
 }

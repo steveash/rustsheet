@@ -7,13 +7,14 @@ status: todo
 priority: P1
 size: S
 tier: opus
-depends_on: [T-1006]
+depends_on: [T-1006, T-1746]
 ---
 
 ## Goal
 NORM.S.INV, NORM.INV, LOGNORM.INV, CONFIDENCE.NORM (and the NORM-based part of CONFIDENCE.T inputs where applicable) return Excel's values, using one shared accurate inverse-normal routine.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 11 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Oracle-free: Excel's cached values are the exact quantiles, ours (statrs `Normal::inverse_cdf`, which goes through a lower-accuracy erf_inv) are off by ~1e-11.
 - `ironcalc-calc/STATISTICAL/NORM_DIST.xlsx` `NORM.S.DIST NORM.S.INV!D2` `=NORM.S.INV(C2)` expected 1.3333330000000008, actual 1.3333329999747054; `D4` expected 0.8000000000000002 actual 0.7999999999297425. NORM.S.INV 35 cells, NORM.INV 29 cells (incl. 2 NumericMismatch).
 - `ironcalc-calc/STATISTICAL/LOGNORM.xlsx` `LOGNORM.DIST LOGNORM.INV!F2` expected 4.000000000000003 actual 4.000000000091908 (31 cells).
@@ -35,6 +36,9 @@ T-0968, so an iteration against Excel's CDF needs T-0968 first.
 
 ## Out of scope
 erf/CDF accuracy (T-0924); T.INV/GAMMA.INV/BETA.INV iterations.
+
+## Fit result (T-1746)
+Implement PPND16 (Horner; log(1-p) on the upper side) for |p-0.5| > 0.425: it is bit-exact on 611 of 616 tail cells. Centrally, keep statrs: nothing fitted there, and statrs is the best candidate. The hybrid is bit-exact on 775 of 1,024 sweep cells, against 341 today (`uv run rustsheet-fitlab norm-s-inv`; docs/excel-semantics/statistics.md, "NORM.S.INV is AS 241 PPND16 in the tails").
 
 ## Earlier attempt (draft PR #38, 2026-10-04; salvaged by T-0031)
 Plain AS241 (PPND16) fixed 57 of ~120 cells (ironcalc-calc known failures 1632 -> 1580) but regressed

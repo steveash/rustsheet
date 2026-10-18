@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-1744]
 ---
 
 ## Goal
@@ -15,6 +15,7 @@ T.DIST (cumulative and density), T.DIST.RT, T.DIST.2T and T.TEST return Excel's 
 Student-t CDF kernel that computes the upper tail directly instead of as `1 - CDF`.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 3 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Triage T-0903. Kernel: `statrs::distribution::StudentsT::cdf`, i.e. `0.5 * beta_reg(df/2, 0.5, df/(df+x^2))`
 (statrs' Numerical-Recipes continued fraction, ~1e-14..1e-10 relative error) and `StudentsT::pdf`
 (statrs Lanczos `ln_gamma`). Code: `functions/statistical/t_dist.rs` (`fn_t_dist`, `fn_t_dist_2t`
@@ -48,6 +49,8 @@ tail. Put the kernel in `functions/statistical/special.rs` (one definition; T-09
 More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
 - gen-m9/4df1b22d3ed63f58 Calc!A9 `=CHIINV(T.DIST(0.1,7,Data!D1),2)`: Excel 1.2382105318705625, engine 1.2382105318705663 (engine T.DIST(0.1,7,TRUE) = 0.5384259701976026); shared with T-0972.
 
+Oracle sweep (T-1043): probes-numeric cases `m9-t-dist-cdf`, `m9-t-dist-pdf`, `m9-t-dist-rt`, `m9-t-dist-2t`, `m9-t-nonint-df`, `m9-t-edges`; findings in docs/excel-semantics/statistics.md "Student t sweep".
+
 ## Acceptance criteria
 - [ ] No T.DIST/T.DIST.RT/T.DIST.2T/T.TEST line listed above remains with a NumericClose or
       NumericMismatch verdict (`rustsheet-eval show` on both cases), at least 30 of the 55 lines
@@ -61,3 +64,6 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 ## Out of scope
 T.INV/T.INV.2T/CONFIDENCE.T (T-0967); the incomplete-beta kernel for BETA.DIST/F.DIST (T-0970);
 legacy TDIST/TTEST evidence (T-1048).
+
+## Fit result (T-1744)
+Through I_x (mapped via the smaller of n/(n+t^2) and t^2/(n+t^2), which large n needs, but I_y/2 directly for a lower tail under 0.1: 0.5 - I_z/2 cancels to 0 at T.DIST(-10,1000,TRUE) = 8.3E-23), Cephes incbet is bit-exact on 105 of 150 T.DIST cells and the correctly rounded value on 113, against 78 today; no candidate is Excel's algorithm yet.

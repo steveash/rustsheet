@@ -1,199 +1,145 @@
-use crate::reference_operators::RefArg;
-use std::cmp::Ordering;
+use crate::functions::util::aggregate_args::{
+    AggregatePolicy, AggregateWalk, ArgReading, ArrayNumbers, CellNumbers, DirectNumbers,
+    ErrorRule, ItemSource, NumberRules,
+};
 
-use crate::arithmetic::flush_subnormal;
+use super::sorted_data::{DataArg, DataOrder, SortedNumbers};
+use crate::arithmetic::{extended_quotient, extended_sum, flush_subnormal};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::number_format::parse_excel_number;
+use crate::functions::lift::LiftCost;
+use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
+use std::cmp::Ordering;
+
+/// The AVERAGE family: a referenced error ranks below a direct scalar error whichever comes
+/// first, and the leftmost of the referenced and array errors wins
+/// (docs/excel-semantics/syntax.md "Aggregate error precedence"; probes/aggregate-error-precedence
+/// C25-C31; probes/aggregate-array-error-vs-ref-error for AVERAGE and MEDIAN, T-1615; the rest
+/// of the family: probes/aggregate-error-precedence-stat-family, T-1439).
+const AVERAGE_ARGS: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::Aggregate,
+    errors: ErrorRule::Ranked,
+    skip_empty_args: false,
+};
+
+/// DEVSQ, AVEDEV and SUMSQ: an empty argument is skipped (TODO(T-1748): Excel counts it as 0, probes/stat-order-floor-batch
+/// A274, A299), and errors rank as in
+/// the AVERAGE family: a direct error beats a referenced or array error whichever comes first
+/// (probes/aggregate-error-precedence-stat-family rows 10-12, T-1439).
+const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
+    reading: ArgReading::Aggregate,
+    errors: ErrorRule::Ranked,
+    skip_empty_args: true,
+};
+
+/// AVERAGEA, MAXA and MINA rank errors as the AVERAGE family does: a scalar direct error beats a
+/// referenced one either way and the leftmost referenced error wins (probes/aggregate-picked-
+/// direct-a-variants D20-D27; the array rank is as AVERAGE's, below, UNVERIFIED for these: T-1629). The A rules' visitor errs on a
+/// referenced cell holding a range ("Unexpected Range"), which returns at once, UNVERIFIED. An
+/// array error ranks with the referenced errors, as AVERAGE's does (T-1615).
+const A_ARGS: AggregatePolicy = AVERAGE_ARGS;
+
+/// The AVERAGE family's coercion: a direct number, boolean, text or empty argument counts, and
+/// only numbers in references and arrays (coercion.md "AVERAGE, MEDIAN, GEOMEAN, …";
+/// probes/average-value-args).
+const AVERAGE_NUMBERS: NumberRules = NumberRules {
+    direct: DirectNumbers::CastScalars,
+    cells: CellNumbers::Numbers,
+    array: ArrayNumbers::Numbers,
+};
 
 impl Model {
+    /// The numbers of the AVERAGE family's arguments (AVERAGE, GEOMEAN, HARMEAN, MEDIAN, SKEW,
+    /// KURT, VAR/STDEV): SPEC-0009's walker with [`AVERAGE_ARGS`] and [`AVERAGE_NUMBERS`].
     pub(crate) fn for_each_value<F>(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-        mut f: F,
+        f: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(f64),
     {
-        // An error in a referenced cell ranks below a direct scalar error whichever comes first;
-        // the leftmost reference error wins (docs/excel-semantics/syntax.md, "Aggregate error
-        // precedence"; probes/aggregate-error-precedence C25-C31).
-        let mut reference_error = None;
-        for arg in args {
-            // References (also via IF/INDEX) arrive as a Range; the scalar
-            // arms below only see values.
-            match self.evaluate_picked_reference_arg(arg, cell) {
-                RefArg::Value(CalcResult::Number(value)) => {
-                    f(value);
-                }
-                // An empty argument (`AVERAGE(5,)`) counts as 0
-                // (probes/average-value-args F2, F6, F9, F15, F17).
-                RefArg::Value(CalcResult::EmptyArg) => f(0.0),
-                RefArg::Value(CalcResult::Boolean(value))
-                    if !matches!(arg.ungrouped(), Node::ReferenceKind { .. }) =>
-                {
-                    f(if value { 1.0 } else { 0.0 });
-                }
-                RefArg::Value(CalcResult::String(value))
-                    if !matches!(arg.ungrouped(), Node::ReferenceKind { .. }) =>
-                {
-                    f(self.cast_aggregate_arg_to_number(CalcResult::String(value), cell)?);
-                }
-                RefArg::Value(CalcResult::Array(array)) => {
-                    for row in array {
-                        for value in row {
-                            match value {
-                                ArrayNode::Number(value) => {
-                                    f(value);
-                                }
-                                // Booleans inside an array are ignored, unlike direct
-                                // arguments (probes/average-value-args F1, F5, F8, F10).
-                                ArrayNode::Error(error) => {
-                                    return Err(CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: "Error in array".to_string(),
-                                    });
-                                }
-                                _ => {
-                                    // ignore non-numeric
-                                }
-                            }
-                        }
-                    }
-                }
-                RefArg::Ranges(areas) => {
-                    if reference_error.is_none() {
-                        if let Err(error) = self.for_each_number_in_areas(&areas, cell, &mut f) {
-                            reference_error = Some(error);
-                        }
-                    }
-                }
-                RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
-                // Everything else is ignored
-                RefArg::Value(_) => {}
-            }
-        }
-
-        reference_error.map_or(Ok(()), Err)
+        self.for_each_aggregate_number(args, cell, AVERAGE_ARGS, AVERAGE_NUMBERS, f)
     }
 
-    /// `for_each_value` that skips empty arguments (`DEVSQ(1, )`) instead of counting them as 0.
-    /// DEVSQ, AVEDEV and SUMSQ ignored them before they moved onto `for_each_value` and there is
-    /// no Excel evidence either way yet. TODO(T-0236): probe empty arguments and fold this into `for_each_value`.
+    /// `for_each_value` that skips empty arguments (`DEVSQ(1, )`) instead of counting them as 0;
+    /// errors rank as in `for_each_value` (T-1439). DEVSQ, AVEDEV and SUMSQ ignored them before they
+    /// moved onto `for_each_value`. Excel counts the empty argument of AVEDEV and DEVSQ as 0
+    /// (probes/stat-order-floor-batch A274, A299; SUMSQ is unprobed), so the skip is wrong.
+    /// TODO(T-1748): implement that and fold this into `for_each_value`.
     pub(crate) fn for_each_value_skip_empty<F>(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-        mut f: F,
+        f: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(f64),
     {
-        for arg in args {
-            if !matches!(arg, Node::EmptyArgKind) {
-                self.for_each_value(std::slice::from_ref(arg), cell, &mut f)?;
-            }
-        }
-        Ok(())
+        self.for_each_aggregate_number(args, cell, SKIP_EMPTY_ARGS, AVERAGE_NUMBERS, f)
     }
 
+    /// The values AVERAGEA, MAXA and MINA read from `args`: a reference's cells and a direct
+    /// argument coerce text to 0 and booleans to 1/0 (coercion.md "MAXA / MINA"), while an array
+    /// value's elements follow `array_text` (statistics.md "AVERAGEA, MAXA and MINA over an array").
     fn for_each_value_a<F>(
         &mut self,
         args: &[Node],
+        array_text: ArrayNumbers,
         cell: CellReferenceIndex,
         mut f: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(f64),
     {
-        for arg in args {
-            match self.evaluate_reference_arg(arg, cell) {
-                RefArg::Value(CalcResult::Number(value)) => {
-                    f(value);
-                }
-                // A single-cell reference reads like a one-cell range: text counts as 0 and
-                // a boolean as 1/0 (coercion.md "MAXA / MINA", poi EverythingTests J888, F912).
-                RefArg::Value(CalcResult::Boolean(value)) => {
-                    f(if value { 1.0 } else { 0.0 });
-                }
-                RefArg::Value(CalcResult::String(_))
-                    if matches!(arg.ungrouped(), Node::ReferenceKind { .. }) =>
-                {
-                    f(0.0);
-                }
-                RefArg::Value(CalcResult::String(value)) => {
-                    if let Some(error) = Self::aggregate_text_too_long(&value, cell) {
-                        return Err(error);
-                    }
-                    if let Some(parsed) = self.cast_number(&value) {
-                        f(parsed);
-                    } else {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Argument cannot be cast into number".to_string(),
-                        ));
-                    }
-                }
-                RefArg::Value(CalcResult::Array(array)) => {
-                    for row in array {
-                        for value in row {
-                            match value {
-                                ArrayNode::Number(value) => {
-                                    f(value);
-                                }
-                                ArrayNode::Boolean(b) => {
-                                    f(if b { 1.0 } else { 0.0 });
-                                }
-                                ArrayNode::String(_) => {
-                                    f(0.0);
-                                }
-                                ArrayNode::Error(error) => {
-                                    return Err(CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: "Error in array".to_string(),
-                                    });
-                                }
-                                ArrayNode::Empty => {}
-                            }
-                        }
-                    }
-                }
-                RefArg::Ranges(areas) => {
-                    self.for_each_cell_in_areas(&areas, cell, |_, value| match value {
-                        CalcResult::Number(value) => {
-                            f(value);
-                            Ok(())
-                        }
-                        CalcResult::Boolean(b) => {
-                            f(if b { 1.0 } else { 0.0 });
-                            Ok(())
-                        }
-                        CalcResult::String(_) => {
-                            f(0.0);
-                            Ok(())
-                        }
-                        CalcResult::Range { .. } => Err(CalcResult::new_error(
-                            Error::ERROR,
-                            cell,
-                            "Unexpected Range".to_string(),
-                        )),
-                        _ => Ok(()),
-                    })?;
-                }
-                RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
-                // Everything else is ignored
-                RefArg::Value(_) => {}
+        let rules = NumberRules {
+            direct: DirectNumbers::CastA,
+            cells: CellNumbers::CoercedA,
+            array: array_text,
+        };
+        let mut walk = AggregateWalk::new(A_ARGS);
+        let mut visit = |model: &mut Self, source, value| {
+            if let Some(number) = model.aggregate_number(rules, source, value, cell)? {
+                f(number);
             }
+            Ok(())
+        };
+        for arg in args {
+            // A cached range of a linked workbook is a reference, not an array: its text counts 0
+            // and its booleans 1/0 (`AVERAGEA([1]Uses!$A$1:$B$3)` is 3.2;
+            // fixtures/external-link-cached-ranges Refs!B53).
+            if let Some(cells) = self.external_reference_cells(arg, cell) {
+                for value in cells? {
+                    let value = match value {
+                        // A cached error ranks as a referenced error (UNVERIFIED; the walker
+                        // holds the leftmost and a scalar direct error still beats it).
+                        ArrayNode::Error(error) => {
+                            walk.referenced_error(CalcResult::new_error(
+                                error,
+                                cell,
+                                "Error in external reference".to_string(),
+                            ))?;
+                            break;
+                        }
+                        ArrayNode::Empty => continue,
+                        ArrayNode::Number(value) => CalcResult::Number(value),
+                        ArrayNode::Boolean(b) => CalcResult::Boolean(b),
+                        ArrayNode::String(s) => CalcResult::String(s),
+                    };
+                    visit(self, ItemSource::ReferencedCell, value)?;
+                }
+                continue;
+            }
+            // An XLOOKUP or INDEX that picks a cell is that cell: text there counts 0
+            // (`AVERAGEA(XLOOKUP(1,A1:A2,B1:B2),5,7)` over "x" is 4;
+            // probes/subtotal-reference-operands-d H22).
+            self.walk_aggregate_arg(arg, cell, &mut walk, &mut visit)?;
         }
-
-        Ok(())
+        walk.finish()
     }
 
     pub(crate) fn fn_average(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -204,7 +150,7 @@ impl Model {
         let mut sum = 0.0;
         if let Err(e) = self.for_each_value(args, cell, |f| {
             count += 1.0;
-            sum += f;
+            sum = extended_sum(sum, f);
         }) {
             return e;
         }
@@ -216,7 +162,9 @@ impl Model {
                 message: "Division by Zero".to_string(),
             };
         }
-        CalcResult::finite_number_or_num(flush_subnormal(sum / count), cell)
+        // The division rounds twice like the operator `/` (probes-numeric/average-large-count-division,
+        // 24 cells at n = 2051..4095; docs/excel-semantics/numbers.md "Division rounds twice").
+        CalcResult::finite_number_or_num(flush_subnormal(extended_quotient(sum, count)), cell)
     }
 
     pub(crate) fn fn_averagea(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -225,83 +173,14 @@ impl Model {
         }
         let mut count = 0.0;
         let mut sum = 0.0;
-        for arg in args {
-            match self.evaluate_picked_reference_arg(arg, cell) {
-                RefArg::Ranges(areas) => {
-                    if let Err(error) =
-                        self.for_each_cell_in_areas(&areas, cell, |_, value| match value {
-                            CalcResult::String(_) => {
-                                count += 1.0;
-                                Ok(())
-                            }
-                            CalcResult::Number(value) => {
-                                count += 1.0;
-                                sum += value;
-                                Ok(())
-                            }
-                            CalcResult::Boolean(b) => {
-                                count += 1.0;
-                                sum += f64::from(u8::from(b));
-                                Ok(())
-                            }
-                            CalcResult::Range { .. } => Err(CalcResult::new_error(
-                                Error::ERROR,
-                                cell,
-                                "Unexpected Range".to_string(),
-                            )),
-                            CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                                Err(CalcResult::Error {
-                                    error: Error::NIMPL,
-                                    origin: cell,
-                                    message: "Arrays not supported yet".to_string(),
-                                })
-                            }
-                            _ => Ok(()),
-                        })
-                    {
-                        return error;
-                    }
-                }
-                RefArg::Value(CalcResult::Number(value)) => {
-                    count += 1.0;
-                    sum += value;
-                }
-                RefArg::Value(CalcResult::String(s)) => {
-                    if let Node::ReferenceKind { .. } = arg.ungrouped() {
-                        // Do nothing
-                        count += 1.0;
-                    } else if let Some(error) = Self::aggregate_text_too_long(&s, cell) {
-                        return error;
-                    } else if let Some(t) = parse_excel_number(&s) {
-                        sum += t;
-                        count += 1.0;
-                    } else {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Argument cannot be cast into number".to_string(),
-                        };
-                    }
-                }
-                RefArg::Value(CalcResult::Boolean(b)) => {
-                    count += 1.0;
-                    if b {
-                        sum += 1.0;
-                    }
-                }
-                RefArg::Value(error @ CalcResult::Error { .. }) => return error,
-                RefArg::Value(CalcResult::EmptyCell | CalcResult::EmptyArg) => {}
-                // A reference is never a `RefArg::Value` (`RefArg::from`).
-                RefArg::Value(
-                    CalcResult::Array(_) | CalcResult::Lambda(_) | CalcResult::Range { .. },
-                ) => {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Arrays not supported yet".to_string(),
-                    }
-                }
-            };
+        // Coerced as MAXA coerces, a cached range of a linked workbook included
+        // (`AVERAGEA([1]Uses!$A$1:$B$3)` is 3.2; fixtures/external-link-cached-ranges Refs!B53).
+        if let Err(error) = self.for_each_value_a(args, ArrayNumbers::TextZero, cell, |value| {
+            count += 1.0;
+            // Rounds each addition twice like AVERAGE's (probes-numeric/double-rounding-accumulators).
+            sum = extended_sum(sum, value);
+        }) {
+            return error;
         }
         if count == 0.0 {
             return CalcResult::Error {
@@ -310,7 +189,8 @@ impl Model {
                 message: "Division by Zero".to_string(),
             };
         }
-        CalcResult::Number(flush_subnormal(sum / count))
+        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1636).
+        CalcResult::Number(flush_subnormal(extended_quotient(sum, count)))
     }
 
     pub(crate) fn fn_avedev(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -325,7 +205,7 @@ impl Model {
         #[inline]
         fn accumulate(values: &mut Vec<f64>, sum: &mut f64, count: &mut u64, value: f64) {
             values.push(value);
-            *sum += value;
+            *sum = extended_sum(*sum, value);
             *count += 1;
         }
 
@@ -347,9 +227,11 @@ impl Model {
         let n = count as f64;
         let mean = sum / n;
 
+        // Excel: the sum of absolute deviations rounds twice per addition like the mean's sum
+        // (probes-numeric/double-rounding-avedev-deviations, docs/excel-semantics/numbers.md).
         let mut sum_abs_dev = 0.0;
         for v in &values {
-            sum_abs_dev += (v - mean).abs();
+            sum_abs_dev = extended_sum(sum_abs_dev, (v - mean).abs());
         }
 
         CalcResult::Number(sum_abs_dev / n)
@@ -441,7 +323,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut mina: Option<f64> = None;
-        if let Err(e) = self.for_each_value_a(args, cell, |f| {
+        if let Err(e) = self.for_each_value_a(args, ArrayNumbers::Numbers, cell, |f| {
             if let Some(m) = mina {
                 mina = Some(m.min(f));
             } else {
@@ -450,15 +332,9 @@ impl Model {
         }) {
             return e;
         }
-        if let Some(mina) = mina {
-            CalcResult::Number(mina)
-        } else {
-            CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "No numeric values for MINA".to_string(),
-            }
-        }
+        // No value at all is 0, as for MAX (`MINA(Z1:Z3)` over blanks and `MINA({"a"})` are 0;
+        // probes/averagea-array-constant-elements A22:A25).
+        CalcResult::Number(mina.unwrap_or(0.0))
     }
 
     pub(crate) fn fn_maxa(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -466,7 +342,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut maxa: Option<f64> = None;
-        if let Err(e) = self.for_each_value_a(args, cell, |f| {
+        if let Err(e) = self.for_each_value_a(args, ArrayNumbers::Numbers, cell, |f| {
             if let Some(m) = maxa {
                 maxa = Some(m.max(f));
             } else {
@@ -475,15 +351,9 @@ impl Model {
         }) {
             return e;
         }
-        if let Some(maxa) = maxa {
-            CalcResult::Number(maxa)
-        } else {
-            CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "No numeric values for MAXA".to_string(),
-            }
-        }
+        // No value at all is 0, as for MAX (`MAXA(Z1:Z3)` over blanks and `MAXA({"a"})` are 0;
+        // probes/averagea-array-constant-elements A22:A25).
+        CalcResult::Number(maxa.unwrap_or(0.0))
     }
 
     pub(crate) fn fn_skew(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -640,86 +510,113 @@ impl Model {
     /// `floor(k)`-th smallest, and `#NUM!` when `ceil(k)` exceeds the count, so the callers
     /// round it themselves. Evidence: probes/large-small-k (excel-graph),
     /// docs/excel-semantics/statistics.md.
-    fn large_small_k(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
-        let k = self.get_number(node, cell)?;
+    fn large_small_k(&self, k: &CalcResult, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+        let k = self.cast_number_ref(k, cell)?;
         if k < 1.0 {
-            return Err(CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K must be >= 1".to_string(),
-            });
+            return Err(CalcResult::new_error(Error::NUM, cell, String::new()));
         }
         Ok(k)
     }
 
+    /// `LARGE(array, k)`: `k` lifts over its data, which is read and sorted once
+    /// (`sorted_data.rs`; probes/stat-whole-lift W1-W20).
     pub(crate) fn fn_large(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let values = match self.numbers_from_reference_arg(&args[0], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        let k = match self.large_small_k(&args[1], cell) {
-            Ok(k) => k,
-            Err(e) => return e,
-        };
-        let mut numeric_values: Vec<f64> = values.into_iter().flatten().collect();
-        if numeric_values.is_empty() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "No numeric values for LARGE".to_string(),
-            };
-        }
-        numeric_values.sort_by(|a, b| b.partial_cmp(a).unwrap_or(Ordering::Equal));
-        let k_usize = k.ceil() as usize;
-        if k_usize > numeric_values.len() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K is larger than the number of data points".to_string(),
-            };
-        }
-        CalcResult::Number(numeric_values[k_usize - 1])
+        self.lift_with_sorted_data(
+            Function::Large,
+            args,
+            &RANKED_DESCENDING,
+            cell,
+            &mut |model, data, values| model.large_of(data, values, cell),
+        )
     }
 
+    /// `SMALL(array, k)`, as LARGE.
     pub(crate) fn fn_small(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
+        self.lift_with_sorted_data(
+            Function::Small,
+            args,
+            &RANKED_ASCENDING,
+            cell,
+            &mut |model, data, values| model.small_of(data, values, cell),
+        )
+    }
 
-        let values = match self.numbers_from_reference_arg(&args[0], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        let k = match self.large_small_k(&args[1], cell) {
+    /// LARGE of one element over the numbers sorted largest first.
+    pub(super) fn large_of(
+        &self,
+        data: &mut SortedNumbers,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let k = match self.large_small_k(values.get(1).unwrap_or(&CalcResult::EmptyArg), cell) {
             Ok(k) => k,
             Err(e) => return e,
         };
-
-        let mut numeric_values: Vec<f64> = values.into_iter().flatten().collect();
-        if numeric_values.is_empty() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "No numeric values for SMALL".to_string(),
-            };
+        if data.is_empty() {
+            return CalcResult::new_error(Error::NUM, cell, String::new());
         }
+        let sorted = data.sorted();
+        // k >= 1, so its ceiling is a position from 1; a k past the count is #NUM!.
+        match (k.ceil() as usize)
+            .checked_sub(1)
+            .and_then(|index| sorted.get(index))
+        {
+            Some(value) => CalcResult::Number(*value),
+            None => CalcResult::new_error(Error::NUM, cell, String::new()),
+        }
+    }
 
-        // For SMALL, sort ascending
-        numeric_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
-
+    /// SMALL of one element over the numbers sorted smallest first.
+    fn small_of(
+        &self,
+        data: &mut SortedNumbers,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let k = match self.large_small_k(values.get(1).unwrap_or(&CalcResult::EmptyArg), cell) {
+            Ok(k) => k,
+            Err(e) => return e,
+        };
+        if data.is_empty() {
+            return CalcResult::new_error(Error::NUM, cell, String::new());
+        }
         // Excel takes the floor for SMALL but still refuses a k whose ceiling is out of range.
-        let k_usize = k.floor() as usize;
-        if k.ceil() as usize > numeric_values.len() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K is larger than the number of data points".to_string(),
-            };
+        if k.ceil() as usize > data.len() {
+            return CalcResult::new_error(Error::NUM, cell, String::new());
         }
-
-        CalcResult::Number(numeric_values[k_usize - 1])
+        let sorted = data.sorted();
+        match (k.floor() as usize)
+            .checked_sub(1)
+            .and_then(|index| sorted.get(index))
+        {
+            Some(value) => CalcResult::Number(*value),
+            None => CalcResult::new_error(Error::NUM, cell, String::new()),
+        }
     }
 }
+
+/// The numbers LARGE and SMALL rank: a reference (one range or a union's areas), an array, or a
+/// scalar typed in place, read by [`Model::numbers_from_reference_arg`].
+fn ranked_numbers(
+    model: &mut Model,
+    node: &Node,
+    cell: CellReferenceIndex,
+) -> Result<Vec<f64>, CalcResult> {
+    model
+        .numbers_from_reference_arg(node, cell)
+        .map(|numbers| numbers.into_iter().flatten().collect())
+}
+
+/// LARGE's data: its numbers largest first, sorted once, each element O(1).
+const RANKED_DESCENDING: DataArg = DataArg {
+    read: ranked_numbers,
+    order: DataOrder::Descending,
+    cost: LiftCost::Prepared,
+};
+
+/// SMALL's data: its numbers smallest first.
+const RANKED_ASCENDING: DataArg = DataArg {
+    read: ranked_numbers,
+    order: DataOrder::Ascending,
+    cost: LiftCost::Prepared,
+};

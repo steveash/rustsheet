@@ -16,7 +16,7 @@ use crate::{
             new_parser_english,
             static_analysis::StaticResult,
             stringify::{to_english_string, to_localized_string, to_rc_format},
-            ArrayNode, CompletionContext, NamedVariable, Node, Parser,
+            ArrayNode, CallNameSpellings, CompletionContext, NamedVariable, Node, Parser,
         },
         token::{get_error_by_name, Error},
         types::*,
@@ -34,38 +34,7 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
-use crate::{cf_types::CfCellResult, tz::Tz, variable_stack::VariableStack};
-
-#[cfg(any(test, feature = "mock_time"))]
-pub use crate::mock_time::get_milliseconds_since_epoch;
-
-/// Number of milliseconds since January 1, 1970
-/// Used by time and date functions. It takes the value from the environment:
-/// * The Operative System
-/// * The JavaScript environment
-/// * Or mocked for tests
-#[cfg(not(any(test, feature = "mock_time")))]
-#[cfg(not(target_arch = "wasm32"))]
-#[allow(clippy::expect_used)]
-pub fn get_milliseconds_since_epoch() -> i64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("problem with system time")
-        .as_millis() as i64
-}
-
-/// Number of milliseconds since January 1, 1970
-/// Used by time and date functions. It takes the value from the environment:
-/// * The Operative System
-/// * The JavaScript environment
-/// * Or mocked for tests
-#[cfg(not(any(test, feature = "mock_time")))]
-#[cfg(target_arch = "wasm32")]
-pub fn get_milliseconds_since_epoch() -> i64 {
-    use js_sys::Date;
-    Date::now() as i64
-}
+use crate::{cf_types::CfCellResult, clock::Clock, tz::Tz, variable_stack::VariableStack};
 
 // The structure of a cell. It can be:
 // * A single cell
@@ -180,6 +149,8 @@ pub struct Model {
     pub(crate) language: &'static Language,
     /// The timezone used to evaluate the model
     pub(crate) tz: Tz,
+    /// Where NOW, TODAY and the other readers of the time get it from (SPEC-0008).
+    pub(crate) clock: Clock,
     /// The view id. A view consists of a selected sheet and ranges.
     pub(crate) view_id: u32,
     /// A stack of variables used for LET function evaluation. The key is the variable id, and the value is the variable value.
@@ -188,6 +159,8 @@ pub struct Model {
     pub(crate) last_variable_id: usize,
     /// Lambdas
     pub(crate) lambdas: HashMap<usize, (Vec<NamedVariable>, Node)>,
+    /// Functions passed by name (`_xleta.SUM`), keyed by the same ids as `lambdas`.
+    pub(crate) eta_lambdas: HashMap<usize, crate::functions::Function>,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).
@@ -196,17 +169,17 @@ pub struct Model {
     pub(crate) area_budget: crate::area_budget::AreaBudget,
     /// Everything the evaluation algorithm needs besides the workbook. See `evaluation.rs`.
     pub(crate) evaluation: Evaluation,
-    /// Evaluated CF results per cell, keyed by (`sheet_index`, row, column).
-    /// Rebuilt from scratch on every call to `evaluate_conditional_formatting()`.
+    /// Evaluated CF results per cell by (`sheet_index`, row, column), rebuilt from scratch by `evaluate_conditional_formatting()`.
     pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
     /// Dynamic links: links created by formulas like HYPERLINK
     pub(crate) links: HashMap<(u32, i32, i32), Link>,
-    /// For each sheet, where each of its shared formulas is. Only an aid to
-    /// find a formula without comparing it with all the others; the list is
-    /// what counts and what is saved. Rebuilt with the parsed formulas
-    /// (`parse_formulas`), extended when a formula is added. See
-    /// `shared_formula_index`.
+    /// For each sheet, where each of its shared formulas is. Only an aid to find a formula without
+    /// comparing it with all the others; the list is what counts and what is saved. Rebuilt with the
+    /// parsed formulas (`parse_formulas`), extended when a formula is added (`shared_formula_index`).
     pub(crate) shared_formula_lookup: Vec<SharedFormulaLookup>,
+    /// The spelling of each name called like a function that is none, given to every stored
+    /// formula; kept across reparses, as Excel keeps it (a reload rebuilds it from the formulas).
+    pub(crate) call_name_spellings: CallNameSpellings,
 }
 
 /// Formula text to index in `Worksheet::shared_formulas`, for one sheet.
@@ -262,6 +235,7 @@ impl Model {
     }
     pub(crate) fn clear_lambdas(&mut self) {
         self.lambdas.clear();
+        self.eta_lambdas.clear();
         self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(
@@ -337,9 +311,16 @@ impl Model {
                     },
                 }
             }
+            // An array that is not a reference is its top-left value: `SUM(@(A1:B2*1))` and
+            // `SUM(@IF(A1:B2>0,A1:B2))` are A1, and `RANK(5,@IF(A1:B2>0,A1:B2))` is one
+            // `#VALUE!`, not a 2x2 (probes/rank-at-if-ref K1, K4, H1; T-1596).
             Node::ImplicitIntersection { child, .. } => {
-                let operand = self.evaluate_at_operand_reference(child, cell);
-                Self::intersect_reference(operand, cell)
+                match self.evaluate_at_operand_reference(child, cell) {
+                    CalcResult::Array(array) => {
+                        crate::functions::util::top_left_of_array(&array, cell)
+                    }
+                    operand => Self::intersect_reference(operand, cell),
+                }
             }
             Node::SheetSpanKind {
                 first_index,
@@ -352,10 +333,7 @@ impl Model {
             // A defined name that stands for a reference is that reference, to a single cell as
             // well: `MAX(TextCell)` ignores the text in it (upstream MIN_MAX_extras.xlsx A1-A3).
             Node::DefinedNameKind((name, scope, _)) => {
-                match self
-                    .parsed_defined_names
-                    .get(&(*scope, name.to_lowercase()))
-                {
+                match self.parsed_defined_name(name, *scope) {
                     Some(&ParsedDefinedName::CellReference(reference)) => CalcResult::Range {
                         left: reference,
                         right: reference,
@@ -566,7 +544,7 @@ impl Model {
             | OpConcatenateKind { .. }
             | CompareKind { .. } => self.evaluate_operator_chain(node, cell),
             NumberKind(value) => CalcResult::Number(*value),
-            StringKind(value) => CalcResult::String(value.replace(r#""""#, r#"""#)),
+            StringKind(value) => CalcResult::String(value.replace(r#""""#, r#"""#).into()),
             BooleanKind(value) => CalcResult::Boolean(*value),
             ReferenceKind {
                 sheet_name: _,
@@ -599,9 +577,10 @@ impl Model {
                 ..
             } => self.get_sheet_span_value(*first_index, *last_index, reference, cell),
             OpUnionKind { left, right, .. } => self.get_union(left, right, cell),
-            WrongRangeKind { sheet_name, .. } => {
-                Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong range")
-            }
+            WrongRangeKind { sheet_name, .. } => match self.cached_external_area(node, cell) {
+                Some(area) => self.external_area_value(area, cell),
+                None => Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong range"),
+            },
             RangeKind {
                 sheet_index,
                 row1,
@@ -672,8 +651,7 @@ impl Model {
                 if let Some(value) = self.evaluate_external_name(name, cell) {
                     return value;
                 }
-                let key = (*scope, name.to_lowercase());
-                if let Some(parsed_defined_name) = self.parsed_defined_names.get(&key).cloned() {
+                if let Some(parsed_defined_name) = self.parsed_defined_name(name, *scope).cloned() {
                     match parsed_defined_name {
                         ParsedDefinedName::CellReference(reference) => {
                             self.evaluate_cell(reference)
@@ -709,11 +687,6 @@ impl Model {
                     )
                 }
             }
-            TableNameKind(s) => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("table name \"{s}\" not supported."),
-            ),
             // A variable bound to a single cell is that cell's value where a value is wanted, and
             // the reference itself where a reference is wanted (`evaluate_node_with_reference`).
             NamedVariableKind { .. } => match self.variable_value(node, cell) {
@@ -1189,12 +1162,8 @@ impl Model {
             return Ok(spill_error("Cannot spill array result"));
         }
 
-        let writes: Vec<CellKey> = (row..row + height)
-            .flat_map(|r| (column..column + width).map(move |c| (sheet, r, c)))
-            .filter(|&(_, r, c)| (r, c) != (row, column))
-            .collect();
         let clears = self.own_spill_cells_outside(anchor, old_area, (width, height))?;
-        if self.spill_contradicts_a_read(anchor, &writes, &clears) {
+        if self.spill_contradicts_a_read(anchor, (width, height), &clears) {
             return Ok(None);
         }
 
@@ -1238,7 +1207,7 @@ impl Model {
         keep_area: (i32, i32),
     ) -> Result<bool, String> {
         let clears = self.own_spill_cells_outside(anchor, old_area, keep_area)?;
-        if self.spill_contradicts_a_read(anchor, &[], &clears) {
+        if self.spill_contradicts_a_read(anchor, (1, 1), &clears) {
             return Ok(false);
         }
         let worksheet = self.workbook.worksheet_mut(anchor.sheet)?;
@@ -1339,7 +1308,7 @@ impl Model {
             }
             SharedString { si, .. } => {
                 if let Some(s) = self.workbook.shared_strings.get(*si as usize) {
-                    CalcResult::String(s.clone())
+                    CalcResult::String(s.clone().into())
                 } else {
                     let message = "Invalid shared string".to_string();
                     CalcResult::new_error(Error::ERROR, cell_reference, message)
@@ -1483,7 +1452,17 @@ impl Model {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_workbook(mut workbook: Workbook, language_id: &str) -> Result<Model, String> {
+    pub fn from_workbook(workbook: Workbook, language_id: &str) -> Result<Model, String> {
+        Self::from_workbook_with_clock(workbook, language_id, Clock::system())
+    }
+
+    /// [`Model::from_workbook`] on `clock`. Loading already evaluates the cells that conditional
+    /// formatting reads, so a fixed clock must be set here, not after loading (SPEC-0008).
+    pub fn from_workbook_with_clock(
+        mut workbook: Workbook,
+        language_id: &str,
+        clock: Clock,
+    ) -> Result<Model, String> {
         workbook.rebuild_derived_state();
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
@@ -1515,16 +1494,19 @@ impl Model {
             workbook,
             parsed_formulas,
             shared_formula_lookup: Vec::new(),
+            call_name_spellings: CallNameSpellings::default(),
             shared_strings,
             parsed_defined_names: HashMap::new(),
             parser,
             language,
             locale,
             tz,
+            clock,
             view_id: 0,
             variable_stack: VariableStack::default(),
             last_variable_id: 0,
             lambdas: HashMap::new(),
+            eta_lambdas: HashMap::new(),
             last_lambda_id: 0,
             defined_names_running: Default::default(),
             area_budget: Default::default(),
@@ -2382,7 +2364,7 @@ impl Model {
                             Cell::SpillCell {
                                 s: new_style_index_spill,
                                 a: (row, column),
-                                v: SpillValue::Text(String::new()),
+                                v: SpillValue::Text(crate::Text::default()),
                             },
                         )?;
                     }
@@ -2410,16 +2392,15 @@ impl Model {
         worksheet.get_cell_structure(row, column)
     }
 
-    /// The index of a formula among the shared formulas of the sheet, adding
-    /// it to them if it is new.
-    ///
-    /// It tries to use the 'cache' lookup first to avoid quadratic time complexity when adding new formulas.
+    /// The index of a formula among the shared formulas of the sheet, adding it to them if it is new.
+    /// The 'cache' lookup comes first, to avoid quadratic time complexity when adding new formulas.
     fn shared_formula_index(
         &mut self,
         sheet: u32,
-        parsed_formula: Node,
+        mut parsed_formula: Node,
         static_result: StaticResult,
     ) -> Result<i32, String> {
+        self.call_name_spellings.apply(&mut parsed_formula);
         let text = to_rc_format(&parsed_formula);
         let sheet_index = sheet as usize;
         let shared_formulas = &mut self.workbook.worksheet_mut(sheet)?.shared_formulas;
@@ -3302,6 +3283,24 @@ impl Model {
         self.workbook.settings.locale = locale_id.to_string();
         self.evaluate();
         Ok(())
+    }
+
+    /// The clock NOW, TODAY and the other readers of the current time use (SPEC-0008).
+    #[must_use]
+    pub fn clock(&self) -> Clock {
+        self.clock
+    }
+
+    /// Sets the clock. Unlike [`Model::set_timezone`] it does not evaluate: the caller decides
+    /// when to recalculate.
+    pub fn set_clock(&mut self, clock: Clock) {
+        self.clock = clock;
+    }
+
+    /// The current instant in ms since the Unix epoch, read from the model's clock. Every
+    /// in-engine reader of the time goes through here.
+    pub(crate) fn now_unix_millis(&self) -> i64 {
+        self.clock.now_unix_millis()
     }
 
     /// Sets the timezone of the model

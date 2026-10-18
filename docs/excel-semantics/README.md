@@ -33,7 +33,7 @@ arbitrary, inconsistent or undocumented ones. RustSheet matches every entry exac
   that will close it.
 
 Files by area: `numbers.md`, `dates.md`, `financial.md`, `coercion.md`, `errors.md`, `criteria.md`,
-`arrays.md`, `lookup.md`, `web.md`, `number-formats.md`, `references.md`, `syntax.md`, `logic.md`, … (create as needed). Format per rule:
+`arrays.md`, `lookup.md`, `web.md`, `number-formats.md`, `references.md`, `syntax.md`, `logic.md`, `recalc.md`, … (create as needed). Format per rule:
 
 ```
 ## <short rule name>

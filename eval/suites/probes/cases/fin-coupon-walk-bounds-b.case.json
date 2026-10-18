@@ -1,0 +1,30 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1822: the coupon schedule walk over the longest valid schedules in a 1900 workbook (maturity before 9995-12-31, settlement at serial 1, 2 or 1900-03-01, quarterly), and settlement serial 1 and 0.5 against fin-coupon-walk-bounds A3 (serial 0 is #NUM!).",
+ "tags": [
+  "M9",
+  "financial",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=COUPNUM(1,DATE(9995,6,30),4)",
+    "A2": "=COUPNUM(1,DATE(9990,6,30),4)",
+    "A3": "=COUPNUM(2,DATE(9990,6,30),4)",
+    "A4": "=COUPNUM(DATE(1900,3,1),DATE(9990,6,30),4)",
+    "A5": "=COUPPCD(1,DATE(9990,6,30),4)",
+    "A6": "=PRICE(1,DATE(9990,6,30),0.05,0.06,100,4)",
+    "A7": "=PRICE(DATE(1900,3,1),DATE(9990,6,30),0.05,0.06,100,4)",
+    "A8": "=DURATION(DATE(1900,3,1),DATE(9990,6,30),0.05,0.06,4)",
+    "A9": "=ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)",
+    "A10": "=COUPNUM(1,43831,2)",
+    "A11": "=COUPNUM(0.5,43831,2)",
+    "A12": "=COUPNUM(1,1000,2)",
+    "A13": "=COUPNUM(DATE(1900,3,1),DATE(1910,3,31),4)"
+   }
+  }
+ ],
+ "expected": {}
+}

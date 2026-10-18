@@ -1,0 +1,44 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "MODE with a referenced or named error, and computed text or boolean arguments (T-1291).",
+  "tags": [
+    "M9",
+    "stat",
+    "probe"
+  ],
+  "names": {
+    "nmerr": "=1/0",
+    "nmerrref": "=Sheet1!$K$1",
+    "nmtext": "=\"x\""
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "K1": "=1/0",
+        "K2": {
+          "t": "e",
+          "v": "#N/A"
+        },
+        "K3": 1,
+        "K4": "=1/0",
+        "A1": "=MODE(K1,1,1)",
+        "A2": "=MODE(1,1,K1)",
+        "A3": "=MODE(K2,1,1)",
+        "A4": "=MODE(nmerr,1,1)",
+        "A5": "=MODE(nmerrref,1,1)",
+        "A6": "=MODE(K3:K4,1,1)",
+        "A7": "=MODE(1,1,\"a\"&\"\")",
+        "A8": "=MODE(1,1,1=1)",
+        "A9": "=MODE(1,1,\"1\"&\"\")",
+        "A10": "=MODE(1,1,nmtext)",
+        "A11": "=SUM(MODE.MULT(1/0,1,1))",
+        "A12": "=SUM(MODE.MULT(K1,1,1))",
+        "A13": "=MODE.SNGL(K1,1,1)",
+        "A14": "=MODE(2,2,T(\"x\"))",
+        "A15": "=MODE(1,1,IF(TRUE,\"x\"))"
+      }
+    }
+  ],
+  "expected": {}
+}

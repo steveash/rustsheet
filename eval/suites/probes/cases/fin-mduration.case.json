@@ -1,0 +1,36 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1625: MDURATION frequency, basis, rate/yield signs and date order.",
+ "tags": [
+  "M9",
+  "probe",
+  "financial",
+  "T-1625"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=MDURATION(DATE(2020,1,1),DATE(2030,1,1),0.08,0.09,2,0)",
+    "A2": "=MDURATION(DATE(2020,1,1),DATE(2030,1,1),0.08,0.09,1,1)",
+    "A3": "=MDURATION(DATE(2020,1,1),DATE(2030,1,1),0.08,0.09,4,2)",
+    "A4": "=MDURATION(DATE(2020,1,1),DATE(2030,1,1),0.08,0.09,2,3)",
+    "A5": "=MDURATION(DATE(2020,1,1),DATE(2030,1,1),0.08,0.09,2,4)",
+    "A6": "=MDURATION(DATE(2020,1,1),DATE(2030,1,1),0.08,0.09,2)",
+    "A7": "=MDURATION(DATE(2020,3,15),DATE(2025,9,30),0.05,0.06,4,1)",
+    "A8": "=MDURATION(DATE(2020,3,15),DATE(2025,9,30),0,0.06,2,0)",
+    "A9": "=MDURATION(DATE(2020,3,15),DATE(2025,9,30),0.05,0,2,0)",
+    "A10": "=MDURATION(DATE(2020,3,15),DATE(2025,9,30),-0.05,0.06,2,0)",
+    "A11": "=MDURATION(DATE(2020,3,15),DATE(2025,9,30),0.05,-0.01,2,0)",
+    "A12": "=MDURATION(DATE(2020,3,15),DATE(2025,9,30),0.05,0.06,3,0)",
+    "A13": "=MDURATION(DATE(2020,3,15),DATE(2025,9,30),0.05,0.06,2,5)",
+    "A14": "=MDURATION(DATE(2025,9,30),DATE(2020,3,15),0.05,0.06,2,0)",
+    "A15": "=MDURATION(DATE(2020,3,15),DATE(2020,3,15),0.05,0.06,2,0)",
+    "A16": "=MDURATION(DATE(2020,3,15),DATE(2020,6,15),0.05,0.06,2,0)",
+    "A17": "=MDURATION(DATE(2024,2,29),DATE(2029,2,28),0.05,0.06,2,1)",
+    "A18": "=MDURATION(DATE(2023,1,31),DATE(2028,2,29),0.05,0.06,12,0)"
+   }
+  }
+ ],
+ "expected": {}
+}

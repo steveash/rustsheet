@@ -71,9 +71,11 @@ fn char_to_win1252(c: char) -> Option<u32> {
     let cp = c as u32;
     match cp {
         1..=127 => Some(cp),
-        160..=255 => Some(cp),
+        // Excel: CODE of a C1 control character (U+0080-U+009F) is its own code point, not 63, even where the
+        // 1252 slot holds another character (CODE(UNICHAR(159)) = 159; see docs/excel-semantics/text.md "CLEAN and CODE scalar edges").
+        128..=255 => Some(cp),
         _ => {
-            // Search the 128-159 table
+            // Search the 128-159 table (the characters 1252 puts in those slots, such as the euro sign)
             for (i, &wc) in WIN1252_128_159.iter().enumerate() {
                 if wc == c {
                     return Some(128 + i as u32);
@@ -95,7 +97,7 @@ impl Model {
             Err(e) => return e,
         };
         match win1252_to_char(n) {
-            Some(c) => CalcResult::String(c.to_string()),
+            Some(c) => CalcResult::String(c.to_string().into()),
             None => CalcResult::new_error(Error::VALUE, cell, "Invalid character code".to_string()),
         }
     }
@@ -140,7 +142,7 @@ impl Model {
             let cp = n as u32;
             let noncharacter = (0xFDD0..=0xFDEF).contains(&cp) || cp & 0xFFFE == 0xFFFE;
             match char::from_u32(cp) {
-                Some(c) if !noncharacter => Ok(ArrayNode::String(c.to_string())),
+                Some(c) if !noncharacter => Ok(ArrayNode::String(c.to_string().into())),
                 _ => Err(Error::NA),
             }
         })
@@ -157,29 +159,17 @@ impl Model {
     }
 
     /// ASC(text) — For non-DBCS locales, returns text unchanged.
-    /// Full-width to half-width conversion is only meaningful in DBCS locales.
+    /// Full-width to half-width conversion is only meaningful in DBCS locales. Lifts over a
+    /// range or array, one result per element (probes/text-modes-dbcs-lift, T-1248; T-1411).
     pub(crate) fn fn_asc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let s = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(e) => return e,
-        };
-        CalcResult::String(asc_convert(&s))
+        self.apply_text_unary(args, cell, asc_convert)
     }
 
     /// DBCS(text) — text unchanged: en-US Excel for the web does not widen it
-    /// (probes/text-modes-dbcs C3, `DBCS("abc")` = "abc"; T-1213). Only ASCII is probed, and
-    /// so is only a scalar argument: like ASC it does not lift over a range until a probe shows how.
+    /// (probes/text-modes-dbcs C3, `DBCS("abc")` = "abc"; T-1213), and lifts over a range or
+    /// array like ASC (probes/text-modes-dbcs-lift, T-1248; T-1488).
     pub(crate) fn fn_dbcs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        match self.get_string(&args[0], cell) {
-            Ok(s) => CalcResult::String(s),
-            Err(e) => e,
-        }
+        self.apply_text_unary(args, cell, str::to_owned)
     }
 
     /// PHONETIC(reference) — `#N/A` for a text cell, a number cell and a range alike, as

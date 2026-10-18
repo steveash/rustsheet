@@ -1,0 +1,36 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1437 probe: COUNTBLANK of an array value (not a reference): lifted INDEX shapes, CHOOSE and IF with array conditions, aggregated and tested results, a scalar value. D1=10, D2 empty, D3=30, D4=\"x\", D5=TRUE, D6=#N/A; H30:H32 ask about error elements, H34 about RANK over the same CHOOSE.",
+  "tags": [
+    "M2",
+    "statistical",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "D1": 10,
+        "D3": 30,
+        "D4": "x",
+        "D5": true,
+        "H1": "=COUNTBLANK(INDEX(D1:D5,{2}))",
+        "H2": "=COUNTBLANK(INDEX(D1:D5,{2,4}))",
+        "H6": "=SUM(COUNTBLANK(INDEX(D1:D5,{1,2,3})))",
+        "H7": "=ISERROR(COUNTBLANK(INDEX(D1:D5,{1,2})))",
+        "H8": "=COUNTBLANK(CHOOSE(1,5))",
+        "H9": "=COUNTBLANK(CHOOSE(1,\"\"))",
+        "H10": "=COUNTBLANK(INDEX(D1:D5,{1;2}))",
+        "H13": "=COUNTBLANK(INDEX(D1:D5,{1,2},{1;1}))",
+        "H20": "=COUNTBLANK(CHOOSE({1,2},D1:D2,D3:D4))",
+        "H23": "=COUNTBLANK(IF({1,1},D1:D2))",
+        "H26": "=COUNTBLANK(IF({1,0},D1:D2,D3:D4))",
+        "D6": "=NA()",
+        "H30": "=COUNTBLANK(INDEX(D1:D6,{5,6}))",
+        "H32": "=COUNTBLANK(IF({1,0},NA(),D1))",
+        "H34": "=RANK(10,CHOOSE({1,2},D1:D2,D3:D4))"
+      }
+    }
+  ],
+  "expected": {}
+}

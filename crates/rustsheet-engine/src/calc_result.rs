@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 
 use crate::expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex};
 use crate::number_format::cmp_excel_precision;
+use crate::text::Text;
 
 #[derive(Clone)]
 pub struct Range {
@@ -11,7 +12,7 @@ pub struct Range {
 
 #[derive(Clone)]
 pub(crate) enum CalcResult {
-    String(String),
+    String(Text),
     Number(f64),
     Boolean(bool),
     Error {
@@ -30,6 +31,16 @@ pub(crate) enum CalcResult {
 }
 
 impl CalcResult {
+    /// Whether this is more than one value: any array (a 1x1 one too) or a reference to several
+    /// cells. A single-cell reference is a scalar.
+    pub(crate) fn is_multi_value(&self) -> bool {
+        match self {
+            CalcResult::Range { left, right } => left != right,
+            CalcResult::Array(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn new_error(error: Error, origin: CellReferenceIndex, message: String) -> CalcResult {
         CalcResult::Error {
             error,

@@ -3,7 +3,7 @@ id: T-1443
 title: "LAMBDA helpers bind parameters once per call site instead of re-patching the body per element"
 milestone: M2
 lane: perf
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -17,8 +17,12 @@ BYROW, BYCOL, MAP, SCAN, REDUCE and MAKEARRAY call their LAMBDA once per element
 Raised by the performance review of T-1395: `call_lambda` / `call_lambda_with_values` (functions/logical/lambda.rs) clone the body and patch variable ids per call, which is O(body) of allocation per element. Patch once per helper call and rebind the variable-stack slots per element. Behavior must not change (existing BYROW/BYCOL/MAP/SCAN/REDUCE/MAKEARRAY tests and eval stay green).
 
 ## Acceptance criteria
-- [ ] The LAMBDA body is patched once per helper call; a benchmark or test shows `BYROW(C:C,LAMBDA(r,1))` no longer allocates per row for the body.
-- [ ] `make check` green; reviewers approve.
+- [x] The LAMBDA body is patched once per helper call; a benchmark or test shows `BYROW(C:C,LAMBDA(r,1))` no longer allocates per row for the body.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Done by T-1560 (same change, filed twice): the LAMBDA helpers call through a `LambdaCaller` that patches
+the body once per call (functions/logical/lambda.rs). Eval delta: none.

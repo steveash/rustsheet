@@ -1,6 +1,6 @@
 # SPEC-0008 — Per-workbook clock for NOW and TODAY
 
-- **Status:** accepted (on merge of T-1478)
+- **Status:** implemented (T-1478 spec, T-1479 engine, T-1480 facade and Python)
 - **Milestone / lane:** M2 / api (engine part: engine)
 - **Tasks:** T-1478 (this spec), T-1479 (engine), T-1480 (facade and Python)
 

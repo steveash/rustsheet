@@ -4,7 +4,17 @@
 //! regex, so keep each prefixed name on its own match arm.
 
 use super::Function;
-use crate::language::get_default_language;
+use crate::language::{get_default_language, Functions};
+
+impl Functions {
+    /// The function a name read from a file stands for: `name` itself, or `name` without the
+    /// `_xlfn._xlws.` or `_xlfn.` prefix newer functions are stored under
+    /// (docs/excel-semantics/xlsx-storage.md).
+    pub fn lookup_stored(&self, name: &str) -> Option<Function> {
+        self.lookup(name.trim_start_matches("_xlfn._xlws."))
+            .or_else(|| self.lookup(name.trim_start_matches("_xlfn.")))
+    }
+}
 
 impl Function {
     /// Some functions in Excel like CONCAT are stringified as `_xlfn.CONCAT`. (known as "future functions")
@@ -28,6 +38,10 @@ impl Function {
             Function::Xlookup => "_xlfn.XLOOKUP".to_string(),
             Function::Xmatch => "_xlfn.XMATCH".to_string(),
             Function::Trimrange => "_xlfn.TRIMRANGE".to_string(),
+            Function::Groupby => "_xlfn.GROUPBY".to_string(),
+            Function::Pivotby => "_xlfn.PIVOTBY".to_string(),
+            // Stored bare it is #NAME? in Excel (probes/catalog/function-name-forms A1/A2, T-0416).
+            Function::Percentof => "_xlfn.PERCENTOF".to_string(),
             Function::Take => "_xlfn.TAKE".to_string(),
             Function::Drop => "_xlfn.DROP".to_string(),
             Function::Tocol => "_xlfn.TOCOL".to_string(),
@@ -61,6 +75,7 @@ impl Function {
             Function::Image => "_xlfn.IMAGE".to_string(),
             Function::Stockhistory => "_xlfn.STOCKHISTORY".to_string(),
             Function::Fieldvalue => "_xlfn.FIELDVALUE".to_string(),
+            Function::Filterxml => "_xlfn.FILTERXML".to_string(),
             Function::Rri => "_xlfn.RRI".to_string(),
             Function::Pduration => "_xlfn.PDURATION".to_string(),
             Function::Bitand => "_xlfn.BITAND".to_string(),

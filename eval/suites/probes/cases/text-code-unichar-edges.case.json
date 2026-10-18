@@ -1,0 +1,47 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1306 CODE and UNICHAR edge code points: outside Windows-1252, surrogates, out-of-range",
+ "tags": [
+  "M5",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=CODE(CHAR(128))",
+    "A2": "=CODE(UNICHAR(8364))",
+    "A3": "=CODE(\" \")",
+    "A4": "=CODE(\"\")",
+    "A5": "=CODE(\"Ω\")",
+    "A6": "=CODE(\"あ\")",
+    "A7": "=CODE(\"😀\")",
+    "A8": "=CODE(UNICHAR(256))",
+    "A9": "=CODE(UNICHAR(65535))",
+    "A10": "=CODE(\"€abc\")",
+    "A11": "=UNICHAR(8364)",
+    "A12": "=UNICHAR(128512)",
+    "A13": "=LEN(UNICHAR(128512))",
+    "A14": "=UNICODE(UNICHAR(65535))",
+    "A15": "=UNICODE(UNICHAR(128512))",
+    "A16": "=UNICHAR(55296)",
+    "A17": "=UNICHAR(57343)",
+    "A18": "=UNICHAR(65535)",
+    "A19": "=UNICHAR(1114111)",
+    "A20": "=UNICHAR(1114112)",
+    "A21": "=UNICHAR(0)",
+    "A22": "=UNICHAR(-1)",
+    "A23": "=UNICHAR(1E+10)",
+    "A24": "=UNICHAR(65.9)",
+    "A25": "=UNICHAR(1)",
+    "A26": "=UNICHAR(127)",
+    "A27": "=UNICHAR(159)",
+    "A28": "=CODE(UNICHAR(159))",
+    "A29": "=CODE(UNICHAR(129))",
+    "A30": "=CODE(CHAR(129))"
+   }
+  }
+ ],
+ "expected": {}
+}

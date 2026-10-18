@@ -22,16 +22,43 @@ Before any other character, `~` is a literal tilde: `"a~c"` matches "a~c", and a
 is literal (`"abc~"` matches "abc~", not "abc"). `~~` is **not** an escape for one tilde: `"~~"`
 does not match the text "~" and `"a~~c"` does not match "a~c". Matching, with or without
 wildcards, is case-insensitive (`"ABC"` → abc and ABC; `"A?C"`, `"*C"` → 5).
-Verified with COUNTIF only; MATCH/XLOOKUP wildcard mode and D-functions are unprobed for `~~`.
+Verified with COUNTIF only, for patterns without `*`/`?`; inside wildcard patterns and in MATCH/XMATCH see "Tildes inside wildcard patterns and wildcard-mode lookups" below. D-functions are unprobed for `~~`.
 Evidence: probes/criteria-gaps C4–C14 over 10, abc, TRUE, #N/A, blank, ABC, abc~, a*c, a?c, a~c,
 *, ~: 1, 1, 1, 0, 0, 1, 2, 5, 10, 5, 1; probes/criteria-grammar C8. Oracle: excel-graph, 2026-10-05 (T-0011).
 Status: VERIFIED
 Implemented in: functions::criteria::wildcard_text_matcher
 
+## Tildes inside wildcard patterns and wildcard-mode lookups
+Rule: once a criterion holds `*` or `?`, or always for a MATCH(..,0)/XMATCH(..,2) text lookup value, `~` makes the next
+character literal whatever it is: `~x` reads as `x`, `~~` as one `~`, `~*`/`~?` as `*`/`?`; a trailing `~` is dropped.
+This differs from the plain-text criterion rule above, where `~` before a non-wildcard and a trailing `~` stay literal.
+Over Data!A1:A8 = a~c, ac, abc~, abc, ~, a~~c, a~b, a~bx (SUMIF weights 1..128): `"a~c*"` 2 (ac), `"~~*"` 16 (~),
+`"abc~*"` 0, `"*~"` 255, `"a~~c*"` 1, `"*~c"` 43, `"a~?*"` 0, `"a~b?"` 8 (abc); `MATCH("a~c",..,0)` 2,
+`MATCH("abc~",..,0)` 4, `MATCH("~~",..,0)` 5, `MATCH("a~~c",..,0)` 1, `MATCH("~",..,0)` #N/A; `XMATCH("a~c",..,2)` 2.
+Evidence: probes/criteria-wildcard-tilde (excel-graph, 2026-10-16, T-1642).
+Status: VERIFIED
+Implemented in: `WildcardPattern::new` (functions/criteria.rs)
+
+## Wildcards match line breaks
+Rule: `?` matches one CHAR(10) or CHAR(13) and `*` spans them, in criteria and in wildcard MATCH/XMATCH alike. Over
+Data!A1:A5 = "a"&CHAR(10)&"b", CHAR(10), "ab", "a"&CHAR(13)&"b", "a"&CHAR(10) (SUMIF weights 1, 2, 4, 8, 16):
+`"a*"` 29, `"?"` 2, `"a?b"` 9, `"*b"` 13, `"*"` 31, `"a*b"` 13, `"???"` 9, `"*"&CHAR(10)&"*"` 19,
+`"a"&CHAR(10)&"*"` 17; `MATCH("a?b",..,0)` 1, `MATCH("?",..,0)` 2, `XMATCH("a*b",..,2)` 1, `COUNTIFS(..,"a*")` 4.
+Evidence: probes/criteria-wildcard-newline (excel-graph, 2026-10-16, T-1642).
+Status: VERIFIED
+SEARCH agrees (probes/search-wildcard-newline, excel-graph 2026-10-16, T-1666): `SEARCH("a?b","x"&"a"&CHAR(10)&"b")` 2,
+`SEARCH("a*b","a"&CHAR(10)&"b")` 1, `SEARCH("?",CHAR(10))` and `SEARCH("?",CHAR(13))` 1, `SEARCH("a?b","xa"&CHAR(13)&"b")` and `SEARCH("a*b","xa"&CHAR(13)&"yb")` 2, `SEARCH("?b","xa"&CHAR(13)&"b")` 3, `SEARCH("*b","xxb",2)` 2 and `,3)` 3, `SEARCH("*"&CHAR(10)&"*","ab"&CHAR(10)&"c")` 1;
+over "😀b": `"?b"` 2, `"??b"` 1, `"???b"` #VALUE!, `"*b"` 1; `SEARCH("?","😀")` and `SEARCH("??","😀")` 1, `"???"` #VALUE!;
+`SEARCH("a?b","😀a😀b",2)` #VALUE! (the pair is two units); `SEARCH("*","")` and `SEARCH("?","")` #VALUE!.
+Status: VERIFIED
+Implemented in: `WildcardPattern` (functions/criteria.rs), which matches any unit for `?`/`*`; SEARCH uses its
+unanchored `find_from`. The regex translation both used before (`.` skips `\n`) is gone.
+
 ## D-function plain-text equality matches by prefix
 Rule: in DSUM/DCOUNT/DGET/... a plain text criterion (no operator, no wildcard) matches cells that *start with* it ("ab" matches "abc"); every other part of the grammar is shared with COUNTIF.
 An explicit leading `=` (`"=ab"`) turns the prefix match into an exact match (probes/criteria-operands D18).
 Evidence: probes/criteria-grammar C11 (`DCOUNTA` with criterion "ab" over ab, abc, xab → 2).
+The prefix is read unit by unit, so a lone surrogate is a unit of its own (probes/d-function-prefix-lone-surrogates, excel-graph 2026-10-16, T-1667): over H, L, "😀", U+FFFD, "x", H&"a", "a"&L, "a" (v = 1, 2, 4, ..., 128), `DSUM` with criterion H gives 37 (H, "😀", H&"a"), L gives 2 (L only, not "a"&L), "😀" gives 4, U+FFFD gives 8 (never a lone half), H&"a" gives 32, "a"&L gives 64, "a" gives 192 ("a" and "a"&L), `"="&H` gives 1 and `"="&L` gives 2, "x" gives 16; `DCOUNTA` counts agree (H 3, "a" 2).
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: functions::criteria::build_criteria_with (CriteriaFlavor::Database)
@@ -62,7 +89,7 @@ collation", T-0244).
 Evidence: probes/criteria-padded-text C1–C14 over A1:A6 = "1", "1 ", " 1", CHAR(160)&"1",
 "1"&CHAR(160), 1 → 4,4,4,4,4,5,5,1,1,1,1,1,4,5. Oracle: excel-graph, 2026-10-05 (T-0242).
 Status: VERIFIED
-Implemented in: functions::criteria::result_is_equal_to_number; C13 ordering in functions::util::cmp_text_excel (T-0244)
+Implemented in: functions::criteria::result_is_equal_to_number; C13 ordering in functions::util::collation::cmp_text_excel (T-0244, T-0220)
 Tasks: T-0242
 
 ## "=" matches blank cells, not an empty-string cell
@@ -149,9 +176,26 @@ SUMPRODUCT: `SUMPRODUCT(IF(B1:B6>1,B1:B6,0))` is 0 on row 1 and `#VALUE!` on row
 `#VALUE!`, exactly like `SUM(IF(A1:A6="a",1,0))` (presumably it needs CSE; an inference, not probed). LOOKUP's vector and MMULT/INDEX arguments evaluate
 their arithmetic as arrays without SUMPRODUCT: `LOOKUP(2,1/(B1:B6>1),B1:B6)` 3, `SUM(MMULT(B1:B6*1,{1}))` 12,
 `INDEX(B1:B6*1,2)` 2, on and off the row. An array `row_num` in legacy INDEX gives its first element only:
-`SUMPRODUCT(INDEX(B1:B6,{1;2;3}))` and `SUMPRODUCT(INDEX(B1:B6*1,{1;2;3}))` are 1. The engine differs on the IF condition (it lifts it, in `SUM(IF(..))` too, so `is_array_context` is not the only cause:
-F, R and S cells give 10, 3 and 3), on INDEX with an array row (`#N/IMPL!`) and on CHOOSE with an array index
-(2 on row 1, `#VALUE!` on row 10): filed as T-0293 and T-0294.
+`SUMPRODUCT(INDEX(B1:B6,{1;2;3}))` and `SUMPRODUCT(INDEX(B1:B6*1,{1;2;3}))` are 1. The engine matches the IF condition since T-1526 (references.md "Legacy formulas intersect the ranges in value
+arguments", which also covers IFERROR and IFNA under SUMPRODUCT) and INDEX's indices since T-0294 (below).
+CHOOSE with an array index matches since T-1508 (lookup.md, "CHOOSE over an index array
+broadcasts its value arguments").
+
+Legacy INDEX puts an
+automatic `@` on every array constant in its `row_num`, `column_num` and `area_num`, also under SUMPRODUCT and inside
+arithmetic, and FORMULATEXT shows it: `=SUM(INDEX(B1:B6,{2;3}))` is 2 and shows as `=SUM(INDEX(B1:B6,@{2;3}))`,
+`SUMPRODUCT(INDEX(B1:B6,{2;3},1))` 2, `INDEX(B1:B6,2,{1,1})` 2, `INDEX((B1:B6,B1:B6),1,1,{2;1})` 1, `INDEX(B1:B6,{2;3}+0)`
+shows `@{2;3}+0`, and a legacy cell `=INDEX(B1:B6,{3;2})` shows `=@INDEX(B1:B6,@{3;2})`; a range index intersects
+(`SUMPRODUCT(INDEX(B1:B6,C1:C3))` is B2 on row 1 and `#VALUE!` off-row, shown `@C1:C3`), while the one function call
+probed gets none: `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` is 5 with no `@` (the classic trick; the engine matches
+since T-1616, N lifting over an array). An array-returning call is intersected like a scalar argument:
+legacy `SUMPRODUCT(INDEX(B1:B6,ROW(B1:B2)))` is 1 (B1) on and off the range's rows, and a function in INDEX's first
+argument keeps SUMPRODUCT's array context: legacy `SUMPRODUCT(INDEX(ABS(B1:B6),0))` is 21 on and off them;
+FORMULATEXT shows them as `=SUMPRODUCT(INDEX(B1:B6,@ROW(B1:B2)))` and `=SUMPRODUCT(INDEX(ABS(B1:B6),0))`
+(probes/n-array-lift A12, D2, A13, D3, A24, A25). Evidence: probes/legacy-index-array-index (excel-graph, 2026-10-15, T-0294);
+fixtures/external-link-cached-ranges Refs!B89:B92 (`SUM`, `ROWS`, `ISREF` and `INDEX` of a legacy
+`INDEX([1]Uses!$A$1:$B$3,{1,2},1)`, Excel-cached). Implemented in `add_index_array_at` (expressions/parser/static_analysis/legacy.rs).
+
 Dynamic edge cases (probes/ifs-array-criteria-edges, oracle excel-graph 2026-10-07): a SUMIFS or COUNTIFS whose ranges
 differ in shape with an array criterion is an array of `#VALUE!` (1x2 for `{"a","b"}`), not one scalar `#VALUE!`;
 a blank cell in a range criterion (D3, criteria range D1:D3) matched none of the non-empty text cells A1:A6: COUNTIF/COUNTIFS/SUMIFS/SUMIF/MAXIFS
@@ -168,6 +212,8 @@ over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walki
 use the same cap, at elements x evaluated cells of the searched column or row (lookup.md, T-0270; unit test
 `lifted_lookup_over_an_array_table_hits_the_visit_cap`).
 AGGREGATE's array function_num, options and k lift through the same code and cap (numbers.md "AGGREGATE", T-1038).
+GROUPBY and PIVOTBY charge their two-parameter LAMBDA calls against the same cap (arrays.md "GROUPBY and PIVOTBY:
+two-parameter LAMBDAs and the cell-visit cap", T-1325).
 Implemented in: `Model::lift_criteria` / `lift_ifs` (crates/rustsheet-engine/src/functions/statistical/if_ifs.rs),
 `criteria_static_result` (expressions/parser/static_analysis.rs)
 Tasks: T-0207, T-0263, T-0278
@@ -216,3 +262,19 @@ Implemented in: `ValueOperator::Equal`/`NotEqual` in `crates/rustsheet-engine/sr
 Tasks: T-1033
 
 Exception: an error-valued criterion that is a stored `#BUSY!` (e.g. `COUNTIF(A1:A2,A1)`) matches nothing, not even `#BUSY!` cells, unlike a `#N/A` criterion (probes/error-stored-busy-behaviors C15, T-1314). COUNTIFS, SUMIF, SUMIFS, AVERAGEIF and DCOUNTA agree (probes/aggregate-error-precedence C79-C92, T-1334): a stored `#BUSY!` criterion matches nothing (`COUNTIFS(A1:A2,A1)` 0, `COUNTIFS(A1:A2,"<>"&A1)` 0 (the concatenation passes the error on, so it is the same criterion as C82), `DCOUNTA(...,J1:J2)` 0) while a stored `#N/A` criterion matches the `#N/A` cell (`COUNTIFS(A1:A2,A2)` 1, `DCOUNTA(...,K1:K2)` 1); `AVERAGEIF` with nothing matched is `#DIV/0!` (C86). Limitation: the SUMIF/SUMIFS cells (C79-C81, C87, C88) have a text or empty sum cell aligned with the error rows, so they give 0 either way and only show that no error propagates; the COUNTIFS and DCOUNTA cells are the real evidence.
+
+### COUNTIF text criteria use the collation for equality (T-1590)
+Rule: a text criterion `"ae"`, `"=ae"` or `"<>ae"` compares with Excel's text collation, the same one as `<`/`>`: over {"æ","ae","a-e"}
+`COUNTIF(r,"ae")` and `COUNTIF(r,"=ae")` are 2 (æ equals ae), `COUNTIF(r,"<>ae")` is 1; a criterion `"æ"` also counts 2; `"a-e"` counts 1
+(a hyphen is not ignored in equality). The ordered operators agree (`"<=ae"` 2, `">=ae"` 3, `">ae"` 1, `"<ae"` 0).
+Evidence: probes/text-collation-lookups Calc!F1:H2, K1:K12 (oracle: excel-graph, 2026-10-15). Status: VERIFIED
+Implemented in: `result_is_equal_to_string`, `result_is_not_equal_to_string` (functions/criteria.rs), through `cmp_text_excel` (T-1594). The same code serves SUMIF/AVERAGEIF/*IFS and the D-functions' explicit `=`/`<>` criteria; SUMIF, SUMIFS and COUNTIFS are probed too (T-1597); AVERAGEIF(S), MAXIFS, MINIFS and the D-functions are not.
+Tasks: T-1590, T-1594, T-1597
+
+SUMIF, SUMIFS and COUNTIFS agree with COUNTIF cell for cell (T-1597): over {æ, ae, a-e, ß, ss, straße, aex, æx}, `"ae"`, `"=ae"` and `"æ"` match æ and ae (2 rows), `"<>ae"` the other 6; `"ss"` matches ß and ss (2 rows, not straße) and `"<>ß"` excludes both (6 rows). Evidence: probes/text-collation-ifs Calc!A1:D6 (excel-graph, 2026-10-15). Status: VERIFIED
+
+### Wildcard criteria do not use the collation: no expansions (T-1597)
+Rule: `?` and `*` in a text criterion match by character (case-insensitive per "Wildcard text matching" above; this case is lowercase only), with no ae/æ or ss/ß expansion, unlike the equality operators above. Over {æ, ae, a-e, ß, ss, straße, aex, æx}: `"a?"` matches only ae (not æ), `"a*"` matches ae, a-e and aex (not æ), `"?"` matches æ and ß (one character each, not ss), `"??"` matches ae, ss and æx, `"*ss*"` matches only ss (not ß or straße), `"s?"` matches only ss, `"æ*"` matches æ and æx (not aex), `"*e"` matches ae, a-e and straße. COUNTIF, SUMIF, SUMIFS and COUNTIFS agree.
+Evidence: probes/text-collation-ifs Calc!A7:D14 (excel-graph, 2026-10-15). Status: VERIFIED
+Implemented in: `wildcard_text_matcher` (functions/criteria.rs); the engine already passes all 56 cells of the case.
+Tasks: T-1597

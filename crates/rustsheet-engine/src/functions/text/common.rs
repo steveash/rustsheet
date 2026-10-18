@@ -1,30 +1,27 @@
 use super::text_arg::{broadcast_text, TextArg};
+use super::util::substitute_element;
 use crate::cast::number_text_too_long;
 use crate::number_format::number_to_text;
 use crate::{
     arithmetic::{array_of_errors, own_error},
     calc_result::CalcResult,
-    cast::{array_node_to_string, calc_result_to_array_node, MAX_TEXT_UNITS},
+    cast::{array_node_to_string, array_node_to_text, calc_result_to_array_node, MAX_TEXT_UNITS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
     formatter::{
-        format::{format_text, format_text_value, FormatContext, Formatted},
+        format::{format_text, format_text_value_exact, FormatContext, Formatted},
         rejects_format_code,
     },
     functions::{
-        text::{
-            position::find_element,
-            util::{
-                substitute, substitute_exceeds_limit, text_after, text_before, utf16_slice, Case,
-            },
-        },
+        text::position::find_element,
         util::{array_node_to_calc_result, near_integer_count},
     },
     model::Model,
     number_format::to_precision,
+    text::{Char, Text},
 };
 
 /// Computes a single LEFT result from one element of each argument.
@@ -32,7 +29,7 @@ use crate::{
 // count UTF-16 code units: `LEFT("a😀b",3)` is "a😀b" (docs/excel-semantics/text.md "Text
 // positions count UTF-16 code units", probes/text-surrogate-positions A3, B1-B5).
 fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
-    let s = array_node_to_string(text)?;
+    let s = array_node_to_text(text)?;
     let num = num?;
     // Excel: any non-negative count works, however large (`LEFT("abc",1E+100)` is "abc"), and
     // -1E-300 is already #VALUE! (probes/text-count-argument-bounds F14, N18).
@@ -40,19 +37,18 @@ fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, 
         return Err(Error::VALUE);
     }
     let num_chars = near_integer_count(num) as usize;
-    Ok(ArrayNode::String(s.chars().take(num_chars).collect()))
+    Ok(ArrayNode::String(s.left_chars(num_chars)))
 }
 
 /// Computes a single RIGHT result from one element of each argument.
 fn right_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
-    let s = array_node_to_string(text)?;
+    let s = array_node_to_text(text)?;
     let num = num?;
     if num < 0.0 {
         return Err(Error::VALUE);
     }
     let num_chars = near_integer_count(num) as usize;
-    let skip = s.chars().count().saturating_sub(num_chars);
-    Ok(ArrayNode::String(s.chars().skip(skip).collect()))
+    Ok(ArrayNode::String(s.right_chars(num_chars)))
 }
 
 /// MID's `start_num` and `num_chars` must be below 2^31 (they are read as 32-bit integers).
@@ -64,7 +60,7 @@ fn mid_element(
     start: Result<f64, Error>,
     length: Result<f64, Error>,
 ) -> Result<ArrayNode, Error> {
-    let s = array_node_to_string(text)?;
+    let s = array_node_to_text(text)?;
     let start = start?;
     let length = length?;
     // Excel: MID truncates both numbers exactly (`MID(t,1,1-1E-15)` is "") and either one
@@ -79,7 +75,7 @@ fn mid_element(
     // (probes/text-surrogate-positions A9-A13).
     let first = (start.floor() as usize).saturating_sub(1);
     let end = first.saturating_add(length.floor() as usize);
-    Ok(ArrayNode::String(utf16_slice(&s, first, end)))
+    Ok(ArrayNode::String(s.slice_utf16(first, end)))
 }
 
 /// Computes a single LEN result.
@@ -91,48 +87,20 @@ fn len_element(text: &ArrayNode) -> Result<ArrayNode, Error> {
 
 /// Computes a single REPT result from one element of each argument.
 fn rept_element(text: &ArrayNode, number_times: Result<f64, Error>) -> Result<ArrayNode, Error> {
-    let text = array_node_to_string(text)?;
+    let text = array_node_to_text(text)?;
     let number_times = number_times?.floor();
     // Excel's cell text limit, counted in UTF-16 code units (probes/concatenate-limit-spill E12);
     // it also bounds the allocation (CLAUDE.md directive 5).
-    let units = text.encode_utf16().count() as f64;
-    if number_times < 0.0 || units * number_times > MAX_TEXT_UNITS as f64 {
+    let units = text.len_utf16() as f64;
+    // A NaN or infinite count is #VALUE! on its own, not by way of the limit below.
+    if !number_times.is_finite()
+        || number_times < 0.0
+        || units * number_times > MAX_TEXT_UNITS as f64
+    {
         return Err(Error::VALUE);
     }
+    // Repeats the exact units, so a lone surrogate survives (probes/text-lone-surrogates B1-B6).
     Ok(ArrayNode::String(text.repeat(number_times as usize)))
-}
-
-/// Computes a single SUBSTITUTE result from one element of each argument.
-/// Without an `instance_num` every instance is replaced.
-fn substitute_element(
-    text: &ArrayNode,
-    old_text: &ArrayNode,
-    new_text: &ArrayNode,
-    instance_num: Option<Result<f64, Error>>,
-) -> Result<ArrayNode, Error> {
-    let text = array_node_to_string(text)?;
-    let old_text = array_node_to_string(old_text)?;
-    let new_text = array_node_to_string(new_text)?;
-    let instance_num = match instance_num {
-        Some(n) => {
-            let n = n?.floor();
-            if n < 1.0 {
-                return Err(Error::VALUE);
-            }
-            Some(n.min(i32::MAX as f64) as i32)
-        }
-        None => None,
-    };
-    if old_text.is_empty() {
-        return Ok(ArrayNode::String(text));
-    }
-    if substitute_exceeds_limit(&text, &old_text, &new_text, instance_num) {
-        return Err(Error::VALUE);
-    }
-    Ok(ArrayNode::String(match instance_num {
-        Some(n) => substitute(&text, &old_text, &new_text, n),
-        None => text.replace(&old_text, &new_text),
-    }))
 }
 
 /// Computes a single EXACT result from one element of each argument.
@@ -143,14 +111,15 @@ fn exact_element(text1: &ArrayNode, text2: &ArrayNode) -> Result<ArrayNode, Erro
             to_precision(*number1, 15) == to_precision(*number2, 15),
         ));
     }
-    let string1 = array_node_to_string(text1)?;
-    let string2 = array_node_to_string(text2)?;
+    let string1 = array_node_to_text(text1)?;
+    let string2 = array_node_to_text(text2)?;
+    // `Text` equality is exact: a lone surrogate never equals U+FFFD (probes/text-lone-surrogates A10-A13).
     Ok(ArrayNode::Boolean(string1 == string2))
 }
 
 /// A formatted TEXT result as an array element: its text, or `#VALUE!` for a bad format.
 fn formatted_node(d: Formatted) -> ArrayNode {
-    d.error.map_or(ArrayNode::String(d.text), |_| {
+    d.error.map_or(ArrayNode::String(d.text.into()), |_| {
         ArrayNode::Error(Error::VALUE)
     })
 }
@@ -163,8 +132,10 @@ fn text_node(value: Option<f64>, format: &str, ctx: &FormatContext) -> ArrayNode
 /// The TEXT array element for a text or boolean value: the format's text section applied to its
 /// text ("TRUE"/"FALSE" for a boolean).
 fn text_value_node(value: &ArrayNode, format: &str) -> ArrayNode {
-    match array_node_to_string(value) {
-        Ok(text) => formatted_node(format_text_value(&text, format)),
+    match array_node_to_text(value) {
+        // The exact text, so a lone surrogate lands where `@` is (probes/text-lone-surrogates).
+        Ok(text) => format_text_value_exact(&text, format)
+            .map_or(ArrayNode::Error(Error::VALUE), ArrayNode::String),
         Err(error) => ArrayNode::Error(error),
     }
 }
@@ -314,7 +285,7 @@ impl Model {
                         message: "Invalid format code".to_string(),
                     };
                 }
-                CalcResult::String(d.text)
+                CalcResult::String(d.text.into())
             }
         }
     }
@@ -393,16 +364,11 @@ impl Model {
         // or more spaces to a single space. It must NOT touch tab (0x09),
         // non-breaking space (0xA0), or any other Unicode whitespace, so we
         // deliberately split on ' ' rather than using `str::trim`.
-        self.apply_text_unary(args, cell, |s| {
-            s.split(' ')
-                .filter(|w| !w.is_empty())
-                .collect::<Vec<_>>()
-                .join(" ")
-        })
+        self.apply_text_unary_text(args, cell, Text::trim_spaces)
     }
 
     pub(crate) fn fn_lower(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.apply_text_unary(args, cell, |s| s.to_lowercase())
+        self.apply_text_unary(args, cell, super::string_format::lower_case)
     }
 
     /// Applies a single-argument string transform element-wise.
@@ -415,6 +381,17 @@ impl Model {
         cell: CellReferenceIndex,
         f: impl Fn(&str) -> String,
     ) -> CalcResult {
+        self.apply_text_unary_text(args, cell, |text| text.map_runs(&f))
+    }
+
+    /// [`Model::apply_text_unary`] for a transform that reads the exact text, so it can keep a
+    /// lone surrogate.
+    pub(crate) fn apply_text_unary_text(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        f: impl Fn(&Text) -> Text,
+    ) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -424,7 +401,7 @@ impl Model {
                 arr.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|n| match crate::cast::array_node_to_string(n) {
+                            .map(|n| match crate::cast::array_node_to_text(n) {
                                 Ok(s) => crate::expressions::parser::ArrayNode::String(f(&s)),
                                 Err(e) => crate::expressions::parser::ArrayNode::Error(e),
                             })
@@ -439,15 +416,9 @@ impl Model {
     pub(crate) fn fn_unicode(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => number_to_text(v),
+                CalcResult::Number(v) => Text::from(number_to_text(v)),
                 CalcResult::String(v) => v,
-                CalcResult::Boolean(b) => {
-                    if b {
-                        "TRUE".to_string()
-                    } else {
-                        "FALSE".to_string()
-                    }
-                }
+                CalcResult::Boolean(b) => Text::from(if b { "TRUE" } else { "FALSE" }),
                 error @ CalcResult::Error { .. } => return error,
                 CalcResult::Range { .. } => {
                     // Implicit Intersection not implemented
@@ -473,10 +444,19 @@ impl Model {
                 }
             };
 
-            match s.chars().next() {
-                Some(c) => {
-                    let unicode_number = c as u32;
-                    return CalcResult::Number(unicode_number as f64);
+            // Excel: a lone high surrogate is #VALUE!, a lone low one gives its code
+            // (probes/text-lone-surrogates A3, A4; text-surrogate-positions A38).
+            match s.chars_lossless().next() {
+                Some(Char::Scalar(c)) => return CalcResult::Number(f64::from(c as u32)),
+                Some(Char::Lone(u)) if !(0xD800..0xDC00).contains(&u) => {
+                    return CalcResult::Number(f64::from(u));
+                }
+                Some(Char::Lone(_)) => {
+                    return CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Lone high surrogate".to_string(),
+                    };
                 }
                 None => {
                     return CalcResult::Error {
@@ -491,7 +471,7 @@ impl Model {
     }
 
     pub(crate) fn fn_upper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.apply_text_unary(args, cell, |s| s.to_uppercase())
+        self.apply_text_unary(args, cell, super::string_format::upper_case)
     }
 
     /// Evaluates an argument of a text function into a scalar value or a 2-D array of
@@ -607,217 +587,6 @@ impl Model {
         })
     }
 
-    // TEXTAFTER(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])
-    pub(crate) fn fn_textafter(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(2..=6).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let delimiter = match self.get_string(&args[1], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let instance_num = if arg_count > 2 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => f.floor() as i32,
-                Err(s) => return s,
-            }
-        } else {
-            1
-        };
-        let match_mode = if arg_count > 3 {
-            match self.get_number(&args[3], cell) {
-                Ok(f) => {
-                    if f == 0.0 {
-                        Case::Sensitive
-                    } else {
-                        Case::Insensitive
-                    }
-                }
-                Err(s) => return s,
-            }
-        } else {
-            Case::Sensitive
-        };
-
-        let match_end = if arg_count > 4 {
-            match self.get_number(&args[4], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            // disabled by default
-            // the delimiter is specified in the formula
-            0.0
-        };
-        if instance_num == 0 {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "instance_num must be <> 0".to_string(),
-            };
-        }
-        if delimiter.len() > text.len() {
-            // so this is fun(!)
-            // if the function was provided with two arguments is a #VALUE!
-            // if it had more is a #N/A (irrespective of their values)
-            if arg_count > 2 {
-                return CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "The delimiter is longer than the text is trying to match".to_string(),
-                };
-            } else {
-                return CalcResult::Error {
-                    error: Error::NA,
-                    origin: cell,
-                    message: "The delimiter is longer than the text is trying to match".to_string(),
-                };
-            }
-        }
-        if match_end != 0.0 && match_end != 1.0 {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "argument must be 0 or 1".to_string(),
-            };
-        };
-        match text_after(&text, &delimiter, instance_num, match_mode) {
-            Some(s) => CalcResult::String(s),
-            None => {
-                if match_end == 1.0 {
-                    if instance_num == 1 {
-                        return CalcResult::String("".to_string());
-                    } else if instance_num == -1 {
-                        return CalcResult::String(text);
-                    }
-                }
-                if arg_count == 6 {
-                    // An empty cell is converted to empty string (not 0)
-                    match self.evaluate_node_in_context(&args[5], cell) {
-                        CalcResult::EmptyCell => CalcResult::String("".to_string()),
-                        result => result,
-                    }
-                } else {
-                    CalcResult::Error {
-                        error: Error::NA,
-                        origin: cell,
-                        message: "Value not found".to_string(),
-                    }
-                }
-            }
-        }
-    }
-
-    pub(crate) fn fn_textbefore(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(2..=6).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let delimiter = match self.get_string(&args[1], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let instance_num = if arg_count > 2 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => f.floor() as i32,
-                Err(s) => return s,
-            }
-        } else {
-            1
-        };
-        let match_mode = if arg_count > 3 {
-            match self.get_number(&args[3], cell) {
-                Ok(f) => {
-                    if f == 0.0 {
-                        Case::Sensitive
-                    } else {
-                        Case::Insensitive
-                    }
-                }
-                Err(s) => return s,
-            }
-        } else {
-            Case::Sensitive
-        };
-
-        let match_end = if arg_count > 4 {
-            match self.get_number(&args[4], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            // disabled by default
-            // the delimiter is specified in the formula
-            0.0
-        };
-        if instance_num == 0 {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "instance_num must be <> 0".to_string(),
-            };
-        }
-        if delimiter.len() > text.len() {
-            // so this is fun(!)
-            // if the function was provided with two arguments is a #VALUE!
-            // if it had more is a #N/A (irrespective of their values)
-            if arg_count > 2 {
-                return CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "The delimiter is longer than the text is trying to match".to_string(),
-                };
-            } else {
-                return CalcResult::Error {
-                    error: Error::NA,
-                    origin: cell,
-                    message: "The delimiter is longer than the text is trying to match".to_string(),
-                };
-            }
-        }
-        if match_end != 0.0 && match_end != 1.0 {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "argument must be 0 or 1".to_string(),
-            };
-        };
-        match text_before(&text, &delimiter, instance_num, match_mode) {
-            Some(s) => CalcResult::String(s),
-            None => {
-                if match_end == 1.0 {
-                    if instance_num == -1 {
-                        return CalcResult::String("".to_string());
-                    } else if instance_num == 1 {
-                        return CalcResult::String(text);
-                    }
-                }
-                if arg_count == 6 {
-                    // An empty cell is converted to empty string (not 0)
-                    match self.evaluate_node_in_context(&args[5], cell) {
-                        CalcResult::EmptyCell => CalcResult::String("".to_string()),
-                        result => result,
-                    }
-                } else {
-                    CalcResult::Error {
-                        error: Error::NA,
-                        origin: cell,
-                        message: "Value not found".to_string(),
-                    }
-                }
-            }
-        }
-    }
-
     // SUBSTITUTE(text, old_text, new_text, [instance_num])
     pub(crate) fn fn_substitute(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
@@ -883,11 +652,16 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::String(text) if number_text_too_long(&text) => {
-                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
-            }
-            CalcResult::String(text) => {
+        // Lifts over a range or array, each element read as a scalar argument: a blank is 0, a
+        // boolean or "" #VALUE! and an error stays (probes/value-argument-lift C1:C8, D1:D6;
+        // corpus-bench/42181 B14, T-1791).
+        let text = match self.text_arg(&args[0], cell) {
+            Ok(t) => t,
+            Err(e) => return e,
+        };
+        broadcast_text(cell, &[&text], |i, j| match text.elem(i, j) {
+            ArrayNode::String(text) if number_text_too_long(text) => Err(Error::VALUE),
+            ArrayNode::String(text) => {
                 // VALUE trims spaces around date and clock text, unlike number coercion, but
                 // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!
                 // (probes/date-text-grammar C7, value-clock-text B14, B44).
@@ -895,40 +669,15 @@ impl Model {
                 // Clock text and date text with a clock suffix read as in number coercion,
                 // with surrounding spaces trimmed (probes/value-clock-text column B against C;
                 // date-text-grammar C30, C31, C53, C55, C63).
-                match self.parse_number_text(text, &["$", "€"], &|| self.current_year()) {
-                    Some(value) => CalcResult::Number(value),
-                    None => CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string()),
-                }
+                self.parse_number_text(text, &["$", "€"], &|| self.current_year())
+                    .map(ArrayNode::Number)
+                    .ok_or(Error::VALUE)
             }
-            CalcResult::Number(f) => CalcResult::Number(f),
-            CalcResult::Boolean(_) => {
-                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
-            }
-            error @ CalcResult::Error { .. } => error,
-            CalcResult::Range { .. } => {
-                // TODO Implicit Intersection
-                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
-            }
-            CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Number(0.0),
-            CalcResult::Array(_) | CalcResult::Lambda(_) => CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            },
-        }
-    }
-
-    pub(crate) fn fn_t(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // FIXME: Implicit intersection
-        let result = self.evaluate_node_in_context(&args[0], cell);
-        match result {
-            CalcResult::String(_) => result,
-            error @ CalcResult::Error { .. } => error,
-            _ => CalcResult::String("".to_string()),
-        }
+            ArrayNode::Number(f) => Ok(ArrayNode::Number(*f)),
+            ArrayNode::Boolean(_) => Err(Error::VALUE),
+            ArrayNode::Error(e) => Err(e.clone()),
+            ArrayNode::Empty => Ok(ArrayNode::Number(0.0)),
+        })
     }
 
     // VALUETOTEXT(value, [format]) lifts over a range or array like LEN
@@ -956,7 +705,9 @@ impl Model {
             let strict = format
                 .as_ref()
                 .map_or(Ok(false), |f| self.valuetotext_format(f.elem(i, j)))?;
-            Ok(ArrayNode::String(value_to_text(text.elem(i, j), strict)))
+            Ok(ArrayNode::String(
+                value_to_text(text.elem(i, j), strict).into(),
+            ))
         };
         // A scalar error text prints as text, which `broadcast_text` would return as the error.
         let scalar_format = format.as_ref().is_none_or(|f| f.dims() == (1, 1));
@@ -990,5 +741,22 @@ fn value_to_text(node: &ArrayNode, strict: bool) -> String {
         ArrayNode::Error(e) => e.to_string(),
         ArrayNode::String(s) if strict => format!("\"{}\"", s.replace('"', "\"\"")),
         other => array_node_to_string(other).unwrap_or_default(),
+    }
+}
+
+#[cfg(test)]
+mod rept_tests {
+    use super::*;
+
+    #[test]
+    fn rept_element_rejects_non_finite_counts() {
+        let text = ArrayNode::String("a".into());
+        for count in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(rept_element(&text, Ok(count)), Err(Error::VALUE));
+        }
+        assert_eq!(
+            rept_element(&text, Ok(2.0)),
+            Ok(ArrayNode::String("aa".into()))
+        );
     }
 }

@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
-depends_on: [T-0970, T-1044]
+depends_on: [T-0970, T-1044, T-1745]
 ---
 
 ## Goal
@@ -15,6 +15,8 @@ BETA.INV, F.INV and F.INV.RT return Excel's values from one inverse-incomplete-b
 the T-0970 kernel.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 5 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
+Oracle targets: probes-numeric cases `m9-beta-dist-a*`, `m9-f-dist`, `m9-f-dist-rt`, `m9-beta-inv`, `m9-f-inv`, `m9-f-inv-rt` (T-1044).
 Triage T-0903. Kernel: `statrs::function::beta::inv_beta_reg` via `Beta::inverse_cdf`
 (`functions/statistical/beta.rs` `fn_beta_inv`, then `A + (B-A) t`) and `FisherSnedecor::inverse_cdf`
 (`functions/statistical/fisher.rs` `fn_f_inv`, `fn_f_inv_rt` which inverts `1.0 - p`).
@@ -47,3 +49,6 @@ T-1044 incomplete-beta sweep, never blind.
 
 ## Out of scope
 The CDF kernel (T-0970); T.INV (T-0967); legacy BETAINV/FINV evidence (T-1047).
+
+## Fit result (T-1745)
+Excel's BETA.INV returns a crossing point of its own BETA.DIST at 155 of 188 probe points (statistics.md, "BETA.INV solves Excel's own CDF to the crossing"). Solve the engine's BETA.DIST to adjacent doubles rather than to a loose tolerance. With the correctly rounded I_x that gets 87 of 212 cells against 34 today; 11 of Excel's points miss the crossing by 1 to 188 ulps of p, so the stop rule is still open. The fit's "mid" end is the even-significand end of the final bracket, not a rule to copy. The same solver through the F and t mappings beats the engine on F.INV, F.INV.RT, T.INV and T.INV.2T (fits `f-inv`, `f-inv-rt`, `t-inv`, `t-inv-2t`). Parity improves as T-0970's forward kernel does.

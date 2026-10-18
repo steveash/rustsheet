@@ -3,7 +3,7 @@ id: T-0968
 title: "Normal CDF and erfc last-digit residue: ERFC, NORM.S.DIST, NORM.DIST, LOGNORM.DIST, GAUSS, Z.TEST cumulative (59 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: blocked
 priority: P2
 size: M
 tier: opus
@@ -15,6 +15,7 @@ The cumulative normal family and erfc reproduce Excel's last digits from the sin
 in `functions/statistical/special.rs`, finishing what T-0924 started.
 
 ## Context
+Kernel map (T-1522, decision 0056): rank 2 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Oracle sweep (T-1040): probes-numeric cases `t1040-norm-s-dist-cdf-a`, `t1040-norm-s-dist-cdf-b`, `t1040-erfc`, `t1040-erfc-precise`, `t1040-gauss`, `t1040-norm-dist-cdf`, `t1040-lognorm-dist-cdf`; summary in docs/excel-semantics/statistics.md.
 
 Triage T-0903. T-0924 (done) replaced statrs' erf with a series / continued-fraction kernel that is
@@ -50,6 +51,11 @@ or 0.5*erf(z/sqrt2). The far-tail Close cells (C19, E17, E18, E32) show the tail
 differs too. **Needs an oracle sweep (T-0018):** fit against the T-1040 normal-CDF sweep
 (family 1), never blind; T-0924's Outcome records that blind tweaks only trade cells.
 
+**T-1524 (fit lab `erfc-x87`, 2026-10-14):** the x87 hypothesis is rejected for ERFC. The best T-1187 fraction
+evaluated with 64-bit intermediates and exp (idealized or fldl2e/f2xm1/fscale) gets at most 44/205 tail
+cells, the same as a 128-bit evaluation and the engine, while the same fraction in doubles gets 58.
+A 64-bit evaluation does not help; the best fit so far is in doubles (statistics.md "ERFC core factor").
+
 ## Acceptance criteria
 - [ ] At least 40 of the 59 lines leave `eval/baseline/ironcalc-calc.txt`, including every NumericClose
       line, and no new lines appear in any baseline (the T-0924 fixes and T-0925's cells must not
@@ -61,3 +67,27 @@ differs too. **Needs an oracle sweep (T-0018):** fit against the T-1040 normal-C
 
 ## Out of scope
 Normal densities and PHI (T-0975); inverse normal (T-0925); legacy NORMDIST/NORMSDIST evidence (T-1048).
+
+## Blocked because: time-boxed (decision 0056)
+Two attempts on the ERFC kernel, which the normal CDF (NORM.S.DIST, NORM.DIST, LOGNORM.DIST, GAUSS)
+also runs on, so nothing in this task is actionable until ERFC is fitted. Neither attempt raised the
+tail's bit-exact count to a usable level (`erfc-tail` / `erfc-x87`, 205 cells of `t1040-erfc` with x >= 1):
+- T-1187 (2026-10-11, fit lab `erfc-tail`, 5,794 configurations): bottom-up continued fractions in five
+  forms at depths 5-1000, each combined with seven multiply and seven divide orders for exp(-x^2) and
+  1/sqrt(pi), best 58; modified Lentz at tolerances 1e-14 to 1e-16, best 38; Numerical Recipes'
+  incomplete gamma (gcf/gser, three gln values, eight tolerances), best 4; union 174.
+- T-1186: the engine's fraction in 7 orders, Cody CALERF with and without its x*16 split, and the
+  asymptotic series in five orders, all at most 22%.
+- T-1524 (2026-10-14, `erfc-x87`): the best fraction (`bu_even`, depths 30/60/100, the two best
+  combinations) with every operation and exp at 64 bits, idealized or fldl2e/f2xm1/fscale: at most 44,
+  the same as a 128-bit evaluation (depth 1500) and the engine.
+Reopens on a new hypothesis recorded here, for example: MSVC's own `exp` (not available on the agent
+containers; an oracle probe of EXP near the sweep's x^2 values would supply it), a named rational
+approximation not yet tried (Hart et al., W. J. Cody's ANORM for the CDF directly), or new oracle
+evidence such as a dense ERFC sweep around one x to expose the formulation's error pattern.
+
+## Lead from T-1746
+On the 341 points of probes-numeric/t1746-norm-s-inv-central, NORM.S.DIST(x,TRUE) equals `0.5*erfc(-x*sqrt(0.5))` (glibc erfc) at 260 of the PPND16(p) points (240 of Excel's own NORM.S.INV results), against 199 (203) for `0.5*erfc(-x/sqrt(2))` (docs/excel-semantics/statistics.md, "NORM.S.INV is AS 241 PPND16 in the tails"). This is a new hypothesis to test before the task reopens.
+
+## Fit result (T-1759)
+Fit `norm-s-dist` over 1,773 NORM.S.DIST cells: glibc `0.5*erfc(-x*sqrt(0.5))` is bit-exact on 1,103, Cody's rational approximations (R pnorm_both) on 991, the engine on 879. Within 4 ulp: 1,524, 1,562 and 1,473. The glibc form is the best interim kernel; Cody is not Excel's. The `0.5*erfc(-x*sqrt(0.5))` form, from the T-1746 lead, is the new hypothesis decision 0056 needs for reopening this task, not a third failed attempt.

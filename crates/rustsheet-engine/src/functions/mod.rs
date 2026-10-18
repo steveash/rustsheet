@@ -13,10 +13,11 @@ pub(crate) mod date_and_time;
 mod engineering;
 mod financial;
 mod information;
+pub(crate) mod lift;
 pub(crate) mod logical;
 pub(crate) mod lookup_and_reference;
 mod macros;
-pub(crate) mod math_and_trigonometry;
+mod math_and_trigonometry;
 mod spill_functions;
 mod statistical;
 mod subtotal;
@@ -186,6 +187,9 @@ pub enum Function {
     Xlookup,
     Xmatch,
     Trimrange,
+    Groupby,
+    Pivotby,
+    Getpivotdata,
     Take,
     Drop,
     Tocol,
@@ -235,6 +239,7 @@ pub enum Function {
     Image,
     Stockhistory,
     Fieldvalue,
+    Filterxml,
     Findb,
     Fixed,
     Leftb,
@@ -753,6 +758,9 @@ impl_function_lookup! {
     xlookup   => Xlookup,
     xmatch    => Xmatch,
     trimrange => Trimrange,
+    groupby   => Groupby,
+    pivotby   => Pivotby,
+    getpivotdata => Getpivotdata,
     take      => Take,
     drop      => Drop,
     tocol     => Tocol,
@@ -802,6 +810,7 @@ impl_function_lookup! {
     image       => Image,
     stockhistory => Stockhistory,
     fieldvalue  => Fieldvalue,
+    filterxml   => Filterxml,
     findb       => Findb,
     fixed       => Fixed,
     leftb       => Leftb,
@@ -1137,16 +1146,6 @@ impl_function_lookup! {
 }
 
 impl Function {
-    /// XLOOKUP, TAKE, DROP and TRIMRANGE: over a range they evaluate to the cells they pick, so
-    /// SUBTOTAL, AREAS and a LET or LAMBDA binding read a reference
-    /// (`Model::evaluate_picked_reference_arg`, probes/subtotal-reference-operands-b H12,
-    /// H15:H17; probes/let-name-uncalled-picked-refs). The one list of these calls.
-    pub(crate) fn picks_reference(&self) -> bool {
-        matches!(
-            self,
-            Function::Xlookup | Function::Take | Function::Drop | Function::Trimrange
-        )
-    }
     pub fn to_localized_name(&self, language: &Language) -> String {
         let functions = &language.functions;
         match self {
@@ -1300,6 +1299,9 @@ impl Function {
             Function::Xlookup => functions.xlookup.clone(),
             Function::Xmatch => functions.xmatch.clone(),
             Function::Trimrange => functions.trimrange.clone(),
+            Function::Groupby => functions.groupby.clone(),
+            Function::Pivotby => functions.pivotby.clone(),
+            Function::Getpivotdata => functions.getpivotdata.clone(),
             Function::Take => functions.take.clone(),
             Function::Drop => functions.drop.clone(),
             Function::Tocol => functions.tocol.clone(),
@@ -1345,6 +1347,7 @@ impl Function {
             Function::Image => functions.image.clone(),
             Function::Stockhistory => functions.stockhistory.clone(),
             Function::Fieldvalue => functions.fieldvalue.clone(),
+            Function::Filterxml => functions.filterxml.clone(),
             Function::Findb => functions.findb.clone(),
             Function::Fixed => functions.fixed.clone(),
             Function::Leftb => functions.leftb.clone(),
@@ -1674,8 +1677,7 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        // Pick, then call once: a call per arm gets its own stack slots in an unoptimized build, a
-        // 6 KB frame that every nesting level of a formula keeps on the stack (T-1110).
+        // Pick, then call once: a call per arm is a 6 KB debug-build frame per nesting (T-1110).
         let implementation: FunctionImplementation = match kind {
             Function::And => Self::fn_and,
             Function::False => Self::fn_false,
@@ -1757,6 +1759,9 @@ impl Model {
             Function::Xlookup => Self::fn_xlookup,
             Function::Xmatch => Self::fn_xmatch,
             Function::Trimrange => Self::fn_trimrange,
+            Function::Groupby => Self::fn_groupby,
+            Function::Pivotby => Self::fn_pivotby,
+            Function::Getpivotdata => Self::fn_getpivotdata,
             Function::Take => Self::fn_take,
             Function::Drop => Self::fn_drop,
             Function::Tocol => Self::fn_tocol,
@@ -1795,6 +1800,7 @@ impl Model {
             Function::Image => Self::fn_image,
             Function::Stockhistory => Self::fn_stockhistory,
             Function::Fieldvalue => Self::fn_fieldvalue,
+            Function::Filterxml => Self::fn_filterxml,
             Function::Findb => Self::fn_findb,
             Function::Fixed => Self::fn_fixed,
             Function::Leftb => Self::fn_leftb,
@@ -2044,16 +2050,16 @@ impl Model {
             Function::Dvarp => Self::fn_dvarp,
             Function::Dstdevp => Self::fn_dstdevp,
             Function::BetaDist => Self::fn_beta_dist,
-            Function::BetaInv => Self::fn_beta_inv,
-            Function::BinomDist => Self::fn_binom_dist,
+            Function::BetaInv | Function::BetaInvCompat => Self::fn_beta_inv,
+            Function::BinomDist | Function::BinomDistCompat => Self::fn_binom_dist,
             Function::BinomDistRange => Self::fn_binom_dist_range,
             Function::BinomInv => Self::fn_binom_inv,
             Function::ChisqDist => Self::fn_chisq_dist,
             Function::ChisqDistRT => Self::fn_chisq_dist_rt,
             Function::ChisqInv => Self::fn_chisq_inv,
-            Function::ChisqInvRT => Self::fn_chisq_inv_rt,
+            Function::ChisqInvRT | Function::ChiInvCompat => Self::fn_chisq_inv_rt,
             Function::ChisqTest => Self::fn_chisq_test,
-            Function::ConfidenceNorm => Self::fn_confidence_norm,
+            Function::ConfidenceNorm | Function::ConfidenceCompat => Self::fn_confidence_norm,
             Function::ConfidenceT => Self::fn_confidence_t,
             Function::CovarianceP => Self::fn_covariance_p,
             Function::CovarianceS => Self::fn_covariance_s,
@@ -2062,18 +2068,17 @@ impl Model {
             Function::FDist => Self::fn_f_dist,
             Function::FDistRT => Self::fn_f_dist_rt,
             Function::FInv => Self::fn_f_inv,
-            Function::FInvRT => Self::fn_f_inv_rt,
+            Function::FInvRT | Function::FInvCompat => Self::fn_f_inv_rt,
             Function::Fisher => Self::fn_fisher,
             Function::FisherInv => Self::fn_fisher_inv,
             Function::FTest => Self::fn_f_test,
             Function::Gamma => Self::fn_gamma,
-            Function::GammaDist => Self::fn_gamma_dist,
-            Function::GammaInv => Self::fn_gamma_inv,
-            Function::GammaLn => Self::fn_gamma_ln,
-            Function::GammaLnPrecise => Self::fn_gamma_ln_precise,
+            Function::GammaDist | Function::GammaDistCompat => Self::fn_gamma_dist,
+            Function::GammaInv | Function::GammaInvCompat => Self::fn_gamma_inv,
+            Function::GammaLn | Function::GammaLnPrecise => Self::fn_gamma_ln,
             Function::HypGeomDist => Self::fn_hyp_geom_dist,
             Function::LogNormDist => Self::fn_log_norm_dist,
-            Function::LogNormInv => Self::fn_log_norm_inv,
+            Function::LogNormInv | Function::LoginvCompat => Self::fn_log_norm_inv,
             Function::NegbinomDist => Self::fn_negbinom_dist,
             Function::NormDist => Self::fn_norm_dist,
             Function::NormInv => Self::fn_norm_inv,
@@ -2106,21 +2111,13 @@ impl Model {
             Function::NegbinomDistCompat => Self::fn_negbinomdist_compat,
             Function::NormSDistCompat => Self::fn_normsdist_compat,
             Function::TDistCompat => Self::fn_tdist_compat,
-            Function::BetaInvCompat => Self::fn_beta_inv,
-            Function::BinomDistCompat => Self::fn_binom_dist,
             Function::ChiDistCompat => Self::fn_chisq_dist_rt,
-            Function::ChiInvCompat => Self::fn_chisq_inv_rt,
             Function::ChiTestCompat => Self::fn_chisq_test,
-            Function::ConfidenceCompat => Self::fn_confidence_norm,
             Function::CovarCompat => Self::fn_covariance_p,
             Function::CritbinomCompat => Self::fn_binom_inv,
             Function::ExponDistCompat => Self::fn_expon_dist,
             Function::FDistCompat => Self::fn_f_dist_rt,
-            Function::FInvCompat => Self::fn_f_inv_rt,
             Function::FTestCompat => Self::fn_f_test,
-            Function::GammaDistCompat => Self::fn_gamma_dist,
-            Function::GammaInvCompat => Self::fn_gamma_inv,
-            Function::LoginvCompat => Self::fn_log_norm_inv,
             Function::ModeCompat => Self::fn_mode_sngl,
             Function::NormDistCompat => Self::fn_norm_dist,
             Function::NormInvCompat => Self::fn_norm_inv,

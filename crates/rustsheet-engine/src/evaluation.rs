@@ -47,6 +47,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::model::Model;
+use crate::seen_ranges::SeenRange;
 use crate::types::{ArrayKind, Cell};
 
 /// The hasher of the maps the evaluation (and the facade's diff) keep about positions. Their
@@ -145,27 +146,6 @@ pub(crate) enum Seen {
 pub(crate) struct SeenRecord {
     pub(crate) empty: Option<CellReferenceIndex>,
     pub(crate) occupied: Option<CellReferenceIndex>,
-}
-
-/// A rectangle read as empty on behalf of `root`, in one go. A function that walks a whole
-/// column or row visits only the sheet's used area; the rest holds nothing, and the formula
-/// depends on it all the same. That remainder is one record, not one per cell.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct SeenRange {
-    pub(crate) root: CellReferenceIndex,
-    pub(crate) sheet: u32,
-    pub(crate) row1: i32,
-    pub(crate) column1: i32,
-    pub(crate) row2: i32,
-    pub(crate) column2: i32,
-}
-
-impl SeenRange {
-    fn contains(&self, (sheet, row, column): CellKey) -> bool {
-        sheet == self.sheet
-            && (self.row1..=self.row2).contains(&row)
-            && (self.column1..=self.column2).contains(&column)
-    }
 }
 
 /// Why the current pass is abandoned. In every case the pass starts again,
@@ -390,7 +370,7 @@ pub(crate) struct Evaluation {
     /// evaluating at the time), one record per kind.
     pub(crate) seen: HashMap<CellKey, SeenRecord, KeyBuild>,
     /// Rectangles read as empty in one go, with their root (`SeenRange`).
-    pub(crate) seen_ranges: Vec<SeenRange>,
+    pub(crate) seen_ranges: crate::seen_ranges::SeenRanges,
     /// Set when the current pass must be abandoned. Every evaluation in
     /// progress then returns without storing anything.
     pub(crate) restart: Option<Restart>,
@@ -460,7 +440,7 @@ impl Default for Evaluation {
             root: None,
             circular: HashSet::default(),
             seen: HashMap::default(),
-            seen_ranges: Vec::new(),
+            seen_ranges: crate::seen_ranges::SeenRanges::default(),
             restart: None,
             in_pass: false,
             restarts_in_last_evaluation: 0,
@@ -1004,14 +984,17 @@ impl Model {
             return;
         }
         if let Some(root) = self.evaluation.root {
-            self.evaluation.seen_ranges.push(SeenRange {
+            let range = SeenRange {
                 root,
                 sheet,
                 row1,
                 column1,
                 row2,
                 column2,
-            });
+            };
+            self.evaluation
+                .seen_ranges
+                .push(range, &mut self.area_budget);
         }
     }
 
@@ -1040,33 +1023,44 @@ impl Model {
         Ok((last_row, last_column))
     }
 
-    /// Checks, on behalf of the dynamic anchor about to commit, whether writing
-    /// spill cells at `writes` and removing its own spill cells at `clears` would
-    /// contradict what a formula read earlier in this pass. If so, the pass is
-    /// abandoned so that it can start again with the anchor first, and `true`
-    /// is returned: the anchor must not write anything. When every contradicted
-    /// read was made on the anchor's own behalf, the anchor is circular, unless
-    /// only the removals contradict: then the cells were stale, and they go.
+    /// Checks, on behalf of the dynamic anchor about to commit, whether spilling
+    /// over `area` (width, height; every cell of it but the anchor's own is
+    /// written, so `(1, 1)` writes nothing) and removing its own spill cells at
+    /// `clears` would contradict what a formula read earlier in this pass. If
+    /// so, the pass is abandoned so that it can start again with the anchor
+    /// first, and `true` is returned: the anchor must not write anything. When
+    /// every contradicted read was made on the anchor's own behalf, the anchor
+    /// is circular, unless only the removals contradict: then the cells were
+    /// stale, and they go.
+    ///
+    /// The readers are listed in the order of the writes that contradict them,
+    /// cell records first, then rectangles; the rectangles are each met once,
+    /// at their first cell written, so the check costs the cells plus the
+    /// rectangles, not their product (T-1512); only the rectangles filed in row and column bands
+    /// over the spill are met at all (T-1545, T-1646).
     pub(crate) fn spill_contradicts_a_read(
         &mut self,
         anchor: CellReferenceIndex,
-        writes: &[CellKey],
+        area: (i32, i32),
         clears: &[CellKey],
     ) -> bool {
         if !self.evaluation.in_pass {
             return false;
         }
+        let CellReferenceIndex { sheet, row, column } = anchor;
+        let (width, height) = area;
         let seen = &self.evaluation.seen;
-        let ranges = &self.evaluation.seen_ranges;
-        let contradicted_by_writes: Vec<CellReferenceIndex> = writes
-            .iter()
-            .filter_map(|p| seen.get(p).and_then(|record| record.empty))
-            .chain(writes.iter().flat_map(|p| {
-                ranges
-                    .iter()
-                    .filter(move |range| range.contains(*p))
-                    .map(|range| range.root)
-            }))
+        // An area of one cell writes nothing: the clear-only check skips the rectangles.
+        let by_ranges = if width <= 1 && height <= 1 {
+            Vec::new()
+        } else {
+            self.evaluation.seen_ranges.written_by_spill(anchor, area)
+        };
+        let contradicted_by_writes: Vec<CellReferenceIndex> = (row..row + height)
+            .flat_map(|r| (column..column + width).map(move |c| (sheet, r, c)))
+            .filter(|&(_, r, c)| (r, c) != (row, column))
+            .filter_map(|p| seen.get(&p).and_then(|record| record.empty))
+            .chain(by_ranges.into_iter().map(|(_, root)| root))
             .collect();
         let contradicted_by_clears: Vec<CellReferenceIndex> = clears
             .iter()
@@ -1075,12 +1069,13 @@ impl Model {
         if contradicted_by_writes.is_empty() && contradicted_by_clears.is_empty() {
             return false;
         }
-        let mut readers: Vec<CellReferenceIndex> = Vec::new();
-        for root in contradicted_by_writes.iter().chain(&contradicted_by_clears) {
-            if *root != anchor && !readers.contains(root) {
-                readers.push(*root);
-            }
-        }
+        let mut listed: HashSet<CellReferenceIndex> = HashSet::new();
+        let readers: Vec<CellReferenceIndex> = contradicted_by_writes
+            .iter()
+            .chain(&contradicted_by_clears)
+            .copied()
+            .filter(|root| *root != anchor && listed.insert(*root))
+            .collect();
         self.evaluation.restart = Some(if !readers.is_empty() {
             Restart::Conflict { anchor, readers }
         } else if contradicted_by_writes.is_empty() {

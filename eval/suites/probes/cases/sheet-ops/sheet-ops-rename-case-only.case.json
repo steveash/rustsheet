@@ -1,0 +1,36 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Renaming a sheet to the same name in other case. (T-1608)",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=Data!A1",
+        "A2": "=INDIRECT(\"data!A2\")",
+        "B1": "=FORMULATEXT(A1)",
+        "B2": "=FORMULATEXT(A2)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": "x"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "rename",
+      "sheet": "Data",
+      "to": "DATA"
+    }
+  ]
+}

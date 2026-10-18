@@ -38,6 +38,14 @@ fn lcm_i64(a: i64, b: i64) -> Option<i64> {
     }
 }
 
+fn negative_error(cell: CellReferenceIndex, fn_name: &str) -> CalcResult {
+    CalcResult::new_error(
+        Error::NUM,
+        cell,
+        format!("{fn_name} only accepts non-negative integers"),
+    )
+}
+
 impl Model {
     fn gcd_lcm_impl<F>(
         &mut self,
@@ -56,6 +64,15 @@ impl Model {
         let mut acc: Option<i64> = None;
         let mut saw_number = false;
         let mut has_range = false;
+        // A negative number only sets this flag: the type check over every argument wins over
+        // it whatever the order (gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m7/4629e931955aa4b8
+        // Calc!A7, docs/excel-semantics/coercion.md), so `#NUM!` is returned after the last one.
+        let negative_seen = std::cell::Cell::new(false);
+        // An argument above 2^53 is `#NUM!` the same deferred way: any other error, before or
+        // after it, wins (`GCD(10^16,"a")` is #VALUE!, `GCD(10^16,NA())` #N/A, GCD, LCM:
+        // probes/gcd-lcm-multinomial-error-order A9:A12, A23:A26).
+        let too_large_seen = std::cell::Cell::new(false);
+        let result_too_large = std::cell::Cell::new(false);
 
         let mut handle_number = |value: f64| -> Option<CalcResult> {
             if !value.is_finite() {
@@ -68,28 +85,29 @@ impl Model {
             let n = value.trunc() as i64;
 
             if value < 0.0 {
-                return Some(CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    format!("{fn_name} only accepts non-negative integers"),
-                ));
+                negative_seen.set(true);
+                return None;
             } else if n > MAX_LCM_GCD {
-                return Some(CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Argument too large".to_string(),
-                ));
+                too_large_seen.set(true);
+                return None;
             }
             saw_number = true;
+            // An LCM result above 2^53 is `#NUM!` the same deferred way: a later error wins
+            // (`LCM(2^26+1,2^27+1,"a")` is #VALUE!, `...,NA())` #N/A), and a later 0 makes the
+            // result 0 (`LCM(2^26+1,2^27+1,0)`) (probes/gcd-lcm-overflow-ranges A43:A56).
+            if result_too_large.get() {
+                if n == 0 {
+                    result_too_large.set(false);
+                    acc = Some(0);
+                }
+                return None;
+            }
             acc = Some(match acc {
                 Some(cur) => match combine(cur, n) {
                     Some(v) => v,
                     None => {
-                        return Some(CalcResult::new_error(
-                            Error::NUM,
-                            cell,
-                            format!("{fn_name} result too large"),
-                        ));
+                        result_too_large.set(true);
+                        return None;
                     }
                 },
                 None => n,
@@ -97,8 +115,9 @@ impl Model {
             None
         };
 
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+        for (index, arg) in args.iter().enumerate() {
+            let evaluated = self.evaluate_node_in_context(arg, cell);
+            match evaluated {
                 CalcResult::Number(value) => {
                     if let Some(res) = handle_number(value) {
                         return res;
@@ -124,20 +143,25 @@ impl Model {
                         message: "Booleans not allowed in GCD".to_string(),
                     };
                 }
-                CalcResult::EmptyArg => {
+                // Excel: an omitted first argument is `#N/A` (even next to a negative); a later
+                // one is skipped, not read as 0: `LCM(4,)` is 4, not 0
+                // (probes/gcd-lcm-multinomial-negative-precedence E39:E71).
+                CalcResult::EmptyArg if index == 0 => {
                     return CalcResult::Error {
                         error: Error::NA,
                         origin: cell,
-                        message: "Empty argument".to_string(),
+                        message: "Empty first argument".to_string(),
                     };
                 }
+                CalcResult::EmptyArg => {}
                 CalcResult::Range { left, right } => {
                     has_range = true;
-                    if let Err(error) = self.for_each_cell_in_areas(
+                    if let Err(error) = self.for_each_cell_or_error_in_areas(
                         &[Range { left, right }],
                         cell,
                         |model, value| {
                             let number = match value {
+                                error @ CalcResult::Error { .. } => return Err(error),
                                 CalcResult::Number(value) => value,
                                 CalcResult::String(s) => model
                                     .cast_to_number(CalcResult::String(s), cell)
@@ -215,6 +239,16 @@ impl Model {
                     // ignore strings / booleans
                 }
             }
+        }
+
+        if too_large_seen.get() {
+            return CalcResult::new_error(Error::NUM, cell, "Argument too large".to_string());
+        }
+        if result_too_large.get() {
+            return CalcResult::new_error(Error::NUM, cell, format!("{fn_name} result too large"));
+        }
+        if negative_seen.get() {
+            return negative_error(cell, fn_name);
         }
 
         if !saw_number && !has_range {

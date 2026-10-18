@@ -1,0 +1,162 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A5": {
+    "t": "s",
+    "v": ""
+   },
+   "C1": {
+    "t": "s",
+    "v": "Hell0 W0rld 123"
+   },
+   "C10": {
+    "t": "s",
+    "v": "Hello World 123"
+   },
+   "C11": {
+    "t": "s",
+    "v": "Hell0 W0rld 123"
+   },
+   "C12": {
+    "t": "s",
+    "v": "Hello World 123"
+   },
+   "C13": {
+    "t": "s",
+    "v": "Hell0 World 123"
+   },
+   "C14": {
+    "t": "s",
+    "v": "World Hello 123"
+   },
+   "C15": {
+    "t": "s",
+    "v": "Hello World 123"
+   },
+   "C17": {
+    "t": "s",
+    "v": "$ 123"
+   },
+   "C18": {
+    "t": "s",
+    "v": "Hello 123"
+   },
+   "C19": {
+    "t": "s",
+    "v": "Hello-World-123"
+   },
+   "C2": {
+    "t": "s",
+    "v": "Hell0 World 123"
+   },
+   "C20": {
+    "t": "s",
+    "v": "Hello World "
+   },
+   "C21": {
+    "t": "s",
+    "v": "-H-e-l-l-o- -W-o-r-l-d- -1-2-3-"
+   },
+   "C22": {
+    "t": "s",
+    "v": "-H-e-l-l-o- -W-o-r-l-d- -1-2-3-"
+   },
+   "C24": {
+    "t": "s",
+    "v": ">Hello World 123"
+   },
+   "C25": {
+    "t": "s",
+    "v": "Hello World 123<"
+   },
+   "C26": {
+    "t": "s",
+    "v": "-"
+   },
+   "C27": {
+    "t": "s",
+    "v": ">"
+   },
+   "C28": {
+    "t": "s",
+    "v": "8"
+   },
+   "C29": {
+    "t": "s",
+    "v": "9"
+   },
+   "C3": {
+    "t": "s",
+    "v": "Hello W0rld 123"
+   },
+   "C30": {
+    "t": "s",
+    "v": "xxx"
+   },
+   "C31": {
+    "t": "s",
+    "v": "xxx"
+   },
+   "C32": {
+    "t": "s",
+    "v": "aba"
+   },
+   "C33": {
+    "t": "s",
+    "v": "b"
+   },
+   "C34": {
+    "t": "s",
+    "v": "bbbbbbb"
+   },
+   "C35": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "C36": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "C37": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C38": {
+    "t": "s",
+    "v": "Hell0 World 123"
+   },
+   "C4": {
+    "t": "s",
+    "v": "Hello World 123"
+   },
+   "C5": {
+    "t": "s",
+    "v": "Hell0 W0rld 123"
+   },
+   "C6": {
+    "t": "s",
+    "v": "Hello W0rld 123"
+   },
+   "C7": {
+    "t": "s",
+    "v": "Hell0 World 123"
+   },
+   "C8": {
+    "t": "s",
+    "v": "Hello World 123"
+   },
+   "C9": {
+    "t": "s",
+    "v": "Hello World 123"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "f1af513f23b9dc9a5c47d8dad25b8b6fca1664a922856e4a7de483f16156f909",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-16T08:27:22+00:00",
+  "version": null
+ }
+}

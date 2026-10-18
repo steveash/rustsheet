@@ -6,12 +6,144 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::util::array_node_to_calc_result,
+    functions::{util::array_node_to_calc_result, Function},
+    language::get_default_language,
     model::Model,
 };
 
 use super::r#let::assign_variable_ids;
 use crate::variable_stack::Binding;
+
+/// One LAMBDA called repeatedly with the same number of arguments (`Model::lambda_caller`).
+pub(crate) struct LambdaCaller {
+    lambda: CalcResult,
+    provided: usize,
+    prepared: Option<PreparedLambda>,
+    /// Whether a call returns a reference the body gives as one (`LambdaCaller::keeping_references`).
+    references: bool,
+}
+
+impl LambdaCaller {
+    /// This caller with the body read in reference context: a body that is a reference, also
+    /// one picked by IF or returned by INDEX, comes back as a `CalcResult::Range` instead of the
+    /// cell's value, so GROUPBY and PIVOTBY can make it `#VALUE!` as Excel does
+    /// (probes/groupby-lambda-forms G!J193, probes/groupby-pivotby-functions G!A541-A581).
+    pub(crate) fn keeping_references(mut self) -> Self {
+        self.references = true;
+        self
+    }
+}
+
+/// What a function value is, for the callers that choose how many arguments to pass (GROUPBY
+/// and PIVOTBY): a function passed by name, or a LAMBDA with its required and total parameters.
+pub(crate) enum FunctionValue {
+    Eta(Function),
+    Lambda { required: usize, total: usize },
+}
+
+/// A LAMBDA's parameters (each id, and whether the body reads it once: [`read_once`]) and
+/// patched body, or the error calling it gives, and the `last_lambda_id` when it was patched.
+struct PreparedLambda {
+    definition: Result<(Vec<(usize, bool)>, Node), CalcResult>,
+    lambda_mark: usize,
+}
+
+/// One read count of [`read_once`]: more than one read, or reads it cannot count.
+const MANY: u8 = 2;
+
+/// Whether the function `kind` evaluates its argument `index` exactly once per evaluation of the
+/// call (each audited): VSTACK and HSTACK ([`Model::eval_to_array`]), LET (each value bound once,
+/// `bind_argument`, then the body), IF (the condition, then one branch, or with an array condition
+/// both: [`crate::variable_stack::VariableStack::copy_read_once`]), and the array of SORT, TAKE and DROP.
+fn evaluates_once(kind: &Function, index: usize) -> bool {
+    match kind {
+        Function::Vstack | Function::Hstack | Function::Let | Function::If => true,
+        Function::Sort | Function::Take | Function::Drop => index == 0,
+        _ => false,
+    }
+}
+
+/// For each of `ids`, whether `body` reads that variable exactly once per evaluation. A read
+/// counts once when it is the body itself or reached from it only through groups and arguments
+/// that [`evaluates_once`]; anywhere else a function might evaluate its argument twice, or a nested
+/// LAMBDA might read it on each call, so the read counts as [`MANY`]. Reads add up, except that the
+/// branches of an IF are exclusive, so they count as the most any one of them reads:
+/// `IF(x>0,VSTACK(a,x),a)` reads `a` once. One walk serves every parameter, and it is not
+/// recursive: nodes are listed parents first, then counted children first.
+fn read_once(body: &Node, ids: &[usize]) -> Vec<bool> {
+    /// A node, the index of its parent, whether it is a branch of an IF parent, and whether it is
+    /// evaluated once per evaluation of the body.
+    struct Visit<'a> {
+        node: &'a Node,
+        parent: usize,
+        branch: bool,
+        once: bool,
+    }
+    let position = |read: u32| ids.iter().position(|&id| id == read as usize);
+    let mut visits = vec![Visit {
+        node: body,
+        parent: 0,
+        branch: false,
+        once: true,
+    }];
+    let mut children = Vec::new();
+    let mut next = 0;
+    while let Some(visit) = visits.get(next) {
+        let (node, once) = (visit.node, visit.once);
+        node.push_children(&mut children);
+        for (index, child) in children.drain(..).enumerate() {
+            let (passes_once, branch) = match node {
+                Node::Group { .. } => (true, false),
+                Node::FunctionKind { kind, .. } => (
+                    evaluates_once(kind, index),
+                    *kind == Function::If && index > 0,
+                ),
+                _ => (false, false),
+            };
+            visits.push(Visit {
+                node: child,
+                parent: next,
+                branch,
+                once: once && passes_once,
+            });
+        }
+        next += 1;
+    }
+    // Per node and parameter: the reads of its own subtree outside IF branches, and the most
+    // reads of any one of its IF branches.
+    let width = ids.len();
+    let mut sums = vec![0u8; visits.len() * width];
+    let mut branches = vec![0u8; visits.len() * width];
+    for (i, visit) in visits.iter().enumerate().rev() {
+        let read = match visit.node {
+            Node::NamedVariableKind { id: Some(read), .. } => {
+                position(*read).map(|p| (p, if visit.once { 1 } else { MANY }))
+            }
+            Node::NamedFunctionKind { id: Some(read), .. } => position(*read).map(|p| (p, MANY)),
+            _ => None,
+        };
+        if let Some((p, count)) = read {
+            sums[i * width + p] = sums[i * width + p].saturating_add(count).min(MANY);
+        }
+        if i == 0 {
+            break;
+        }
+        for p in 0..width {
+            let total = sums[i * width + p]
+                .saturating_add(branches[i * width + p])
+                .min(MANY);
+            let parent = visit.parent * width + p;
+            if visit.branch {
+                branches[parent] = branches[parent].max(total);
+            } else {
+                sums[parent] = sums[parent].saturating_add(total).min(MANY);
+            }
+        }
+    }
+    (0..width)
+        .map(|p| sums[p].saturating_add(branches[p]) == 1)
+        .collect()
+}
 
 /// `#REF!` for a reference that is called like a function.
 fn reference_called(cell: CellReferenceIndex) -> CalcResult {
@@ -78,7 +210,16 @@ impl Model {
             ),
             error @ CalcResult::Error { .. } => error,
             other => {
-                array_node_to_calc_result(&called_value(&calc_result_to_array_node(other)), cell)
+                let called = called_value(&calc_result_to_array_node(other));
+                if let ArrayNode::Error(error) = &called {
+                    // Array elements carry no message, so only the scalar call can give one.
+                    return CalcResult::new_error(
+                        error.clone(),
+                        cell,
+                        "A value cannot be called".to_string(),
+                    );
+                }
+                array_node_to_calc_result(&called, cell)
             }
         }
     }
@@ -91,106 +232,208 @@ impl Model {
         call_args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let (parameters, body) = match lambda_result {
-            CalcResult::Lambda(id) => match self.lambdas.get(&id) {
-                Some(l) => l.clone(),
-                None => {
-                    return CalcResult::new_error(
-                        Error::NAME,
-                        cell,
-                        "Lambda not found in store".to_string(),
-                    )
-                }
-            },
-            other if other.is_error() => return other,
-            _ => return CalcResult::new_error(Error::VALUE, cell, "Expected a LAMBDA".to_string()),
+        // A reference is passed as a reference, a single cell too, so that
+        // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
+        let mut caller = self.lambda_caller(&lambda_result, call_args.len());
+        self.call_lambda_caller_with_nodes(&mut caller, call_args, cell)
+    }
+
+    /// A caller for `lambda_result` with `provided` arguments per call, for the LAMBDA helpers
+    /// (MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY) that call one LAMBDA once per element: the
+    /// definition is looked up and its body cloned and patched with variable ids on the first
+    /// call, then reused (T-1560).
+    pub(crate) fn lambda_caller(
+        &self,
+        lambda_result: &CalcResult,
+        provided: usize,
+    ) -> LambdaCaller {
+        LambdaCaller {
+            lambda: lambda_result.clone(),
+            provided,
+            prepared: None,
+            references: false,
+        }
+    }
+
+    /// What the LAMBDA `lambda_result` is ([`FunctionValue`]); `None` for anything else.
+    pub(crate) fn function_value(&self, lambda_result: &CalcResult) -> Option<FunctionValue> {
+        let CalcResult::Lambda(id) = lambda_result else {
+            return None;
         };
-
-        if let Err(e) = check_arg_count(&parameters, call_args.len(), cell) {
-            return e;
+        if let Some(kind) = self.eta_lambdas.get(id) {
+            return Some(FunctionValue::Eta(kind.clone()));
         }
+        self.lambdas
+            .get(id)
+            .map(|(parameters, _)| FunctionValue::Lambda {
+                required: parameters.iter().filter(|p| !p.is_optional).count(),
+                total: parameters.len(),
+            })
+    }
 
-        let mut patched_body = body;
-        let mut bound_ids: Vec<usize> = Vec::with_capacity(parameters.len());
+    /// One call of `caller` with `values` (`provided` of them; optional parameters not covered
+    /// receive `EmptyArg`). The values are moved into the parameters, not copied, so REDUCE and
+    /// SCAN hand their accumulator (possibly a large array) to each step without a deep copy.
+    pub(crate) fn call_lambda_caller(
+        &mut self,
+        caller: &mut LambdaCaller,
+        values: impl IntoIterator<Item = CalcResult>,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        // `call_prepared` binds the parameters in order, so the i-th call takes the i-th value.
+        let mut values = values.into_iter();
+        self.call_prepared(caller, cell, |_, _| {
+            Binding::Value(values.next().unwrap_or(CalcResult::EmptyArg))
+        })
+    }
 
-        for param in &parameters {
-            let raw_id = self.get_next_variable_id();
-            assign_variable_ids(&mut patched_body, &param.name, raw_id as u32);
-            bound_ids.push(raw_id);
-        }
+    /// One call of `caller` with argument nodes evaluated in the calling cell, as `call_lambda`
+    /// binds them.
+    pub(crate) fn call_lambda_caller_with_nodes(
+        &mut self,
+        caller: &mut LambdaCaller,
+        call_args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.call_prepared(caller, cell, |model, i| match call_args.get(i) {
+            Some(arg) => model.bind_argument(arg, cell),
+            None => Binding::Value(CalcResult::EmptyArg),
+        })
+    }
 
-        for (i, raw_id) in bound_ids.iter().enumerate() {
-            // A reference is passed as a reference, a single cell too, so that
-            // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
-            let binding = match call_args.get(i) {
-                Some(arg) => self.bind_argument(arg, cell),
-                None => Binding::Value(CalcResult::EmptyArg),
-            };
-            self.variable_stack.insert(*raw_id, binding, cell);
-        }
-
-        let result = self.evaluate_node_in_context(&patched_body, cell);
-
-        for raw_id in bound_ids {
-            self.variable_stack.remove(raw_id);
-        }
-
+    /// Binds parameter `i` to `bind(i)`, once for each `i` in order (`call_lambda_caller` relies
+    /// on that), and evaluates the patched body. The body is reused while no LAMBDA has been
+    /// created since it was patched: a LAMBDA made by the body (`LAMBDA(x,LAMBDA(y,x+y))`) holds
+    /// the parameter ids, so the next call patches a fresh copy with fresh ids, as every call did
+    /// before T-1560. (`last_lambda_id` only grows during an evaluation; `clear_lambdas` resets
+    /// it between evaluations, when no caller is alive.)
+    fn call_prepared(
+        &mut self,
+        caller: &mut LambdaCaller,
+        cell: CellReferenceIndex,
+        mut bind: impl FnMut(&mut Self, usize) -> Binding,
+    ) -> CalcResult {
+        let prepared = match caller.prepared.take() {
+            Some(prepared) if prepared.lambda_mark == self.last_lambda_id => prepared,
+            _ => self.prepare_lambda(&caller.lambda, caller.provided, cell),
+        };
+        let result = match &prepared.definition {
+            Ok((ids, body)) => {
+                for (i, &(raw_id, once)) in ids.iter().enumerate() {
+                    let binding = match bind(self, i) {
+                        Binding::Value(value) if once => Binding::ReadOnce(value),
+                        binding => binding,
+                    };
+                    self.variable_stack.insert(raw_id, binding, cell);
+                }
+                let result = if caller.references {
+                    self.evaluate_reference_arg(body, cell)
+                        .into_single_area(cell)
+                } else {
+                    self.evaluate_node_in_context(body, cell)
+                };
+                for &(raw_id, _) in ids {
+                    self.variable_stack.remove(raw_id);
+                }
+                result
+            }
+            Err(error) => error.clone(),
+        };
+        caller.prepared = Some(prepared);
         result
     }
 
-    /// Like `call_lambda` but accepts already-evaluated `CalcResult` values instead of `Node`s.
-    /// Optional parameters not covered by `values` receive `EmptyArg`.
-    pub(crate) fn call_lambda_with_values(
+    /// The definition of `lambda_result` for `provided` arguments with its body patched with
+    /// fresh variable ids, one per parameter (or the error a call gives).
+    fn prepare_lambda(
         &mut self,
-        lambda_result: CalcResult,
-        values: Vec<CalcResult>,
+        lambda_result: &CalcResult,
+        provided: usize,
         cell: CellReferenceIndex,
-    ) -> CalcResult {
-        let (parameters, body) = match lambda_result {
-            CalcResult::Lambda(id) => match self.lambdas.get(&id) {
-                Some(l) => l.clone(),
-                None => {
-                    return CalcResult::new_error(
-                        Error::NAME,
-                        cell,
-                        "Lambda not found in store".to_string(),
-                    )
-                }
-            },
-            other if other.is_error() => return other,
-            _ => return CalcResult::new_error(Error::VALUE, cell, "Expected a LAMBDA".to_string()),
+    ) -> PreparedLambda {
+        let definition =
+            self.lambda_definition(lambda_result, provided, cell)
+                .map(|(parameters, mut body)| {
+                    let ids: Vec<usize> = parameters
+                        .iter()
+                        .map(|param| {
+                            let raw_id = self.get_next_variable_id();
+                            assign_variable_ids(&mut body, &param.name, raw_id as u32);
+                            raw_id
+                        })
+                        .collect();
+                    // After every id is patched in: a read is found by its id.
+                    let once = read_once(&body, &ids);
+                    let ids = ids.into_iter().zip(once).collect();
+                    (ids, body)
+                });
+        PreparedLambda {
+            definition,
+            lambda_mark: self.last_lambda_id,
+        }
+    }
+
+    /// The parameters and body of the LAMBDA `lambda_result` when called with `provided`
+    /// arguments, `#VALUE!` for a wrong count or for a value that is not a LAMBDA.
+    fn lambda_definition(
+        &self,
+        lambda_result: &CalcResult,
+        provided: usize,
+        cell: CellReferenceIndex,
+    ) -> Result<(Vec<NamedVariable>, Node), CalcResult> {
+        let id = match lambda_result {
+            CalcResult::Lambda(id) => *id,
+            other if other.is_error() => return Err(other.clone()),
+            _ => {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Expected a LAMBDA".to_string(),
+                ))
+            }
         };
-
-        if let Err(e) = check_arg_count(&parameters, values.len(), cell) {
-            return e;
+        if let Some(kind) = self.eta_lambdas.get(&id) {
+            return Ok(eta_definition(kind.clone(), provided));
         }
+        let (parameters, body) = match self.lambdas.get(&id) {
+            Some(definition) => definition.clone(),
+            None => {
+                return Err(CalcResult::new_error(
+                    Error::NAME,
+                    cell,
+                    "Lambda not found in store".to_string(),
+                ))
+            }
+        };
+        check_arg_count(&parameters, provided, cell)?;
+        Ok((parameters, body))
+    }
 
-        let mut patched_body = body;
-        let mut bound_ids: Vec<usize> = Vec::with_capacity(parameters.len());
-
-        for param in &parameters {
-            let raw_id = self.get_next_variable_id();
-            assign_variable_ids(&mut patched_body, &param.name, raw_id as u32);
-            bound_ids.push(raw_id);
+    /// An unbound name: a function passed by name (eta-reduced, stored `_xleta.SUM`, any case,
+    /// `_xlfn.` allowed after the prefix) is a LAMBDA, `#NAME?` for anything else.
+    /// Excel: see docs/excel-semantics/arrays.md "Functions passed by name".
+    pub(crate) fn unbound_name(&mut self, name: &str, cell: CellReferenceIndex) -> CalcResult {
+        let function = name
+            .get(..ETA_PREFIX.len())
+            .filter(|prefix| prefix.eq_ignore_ascii_case(ETA_PREFIX))
+            .and_then(|_| name.get(ETA_PREFIX.len()..))
+            // Stored formulas use the English function names, whatever the UI language.
+            .and_then(|function| get_default_language().functions.lookup_stored(function));
+        match function {
+            Some(kind) => self.eta_lambda(kind),
+            None => CalcResult::new_error(
+                Error::NAME,
+                cell,
+                format!("Variable name \"{name}\" not found."),
+            ),
         }
+    }
 
-        for (i, raw_id) in bound_ids.iter().enumerate() {
-            let val = if i < values.len() {
-                values[i].clone()
-            } else {
-                CalcResult::EmptyArg
-            };
-            self.variable_stack
-                .insert(*raw_id, Binding::Value(val), cell);
-        }
-
-        let result = self.evaluate_node_in_context(&patched_body, cell);
-
-        for raw_id in bound_ids {
-            self.variable_stack.remove(raw_id);
-        }
-
-        result
+    /// The function `kind` passed by name, as a LAMBDA value (what `_xleta.NAME` evaluates to).
+    pub(crate) fn eta_lambda(&mut self, kind: Function) -> CalcResult {
+        let id = self.get_next_lambda_id();
+        self.eta_lambdas.insert(id, kind);
+        CalcResult::Lambda(id)
     }
 
     pub(crate) fn fn_lambda(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -235,6 +478,31 @@ impl Model {
     }
 }
 
+/// How a function passed by name is stored in a file (docs/excel-semantics/xlsx-storage.md).
+const ETA_PREFIX: &str = "_xleta.";
+
+/// The LAMBDA a function passed by name stands for when called with `provided` arguments: it
+/// takes as many parameters as it is given and passes them all on, so `BYROW(r,SUM)` is
+/// `BYROW(r,LAMBDA(a,SUM(a)))` and `MAKEARRAY(2,2,SUM)` sums row and column
+/// (probes/m7-argument-modes F28:H51, probes/eta-reduced-names, T-1466).
+fn eta_definition(kind: Function, provided: usize) -> (Vec<NamedVariable>, Node) {
+    let parameters: Vec<NamedVariable> = (1..=provided)
+        .map(|i| NamedVariable {
+            name: format!("{ETA_PREFIX}{i}"),
+            id: None,
+            is_optional: false,
+        })
+        .collect();
+    let args = parameters
+        .iter()
+        .map(|parameter| Node::NamedVariableKind {
+            name: parameter.name.clone(),
+            id: None,
+        })
+        .collect();
+    (parameters, Node::FunctionKind { kind, args })
+}
+
 fn check_arg_count(
     parameters: &[NamedVariable],
     provided: usize,
@@ -264,5 +532,72 @@ fn called_value(value: &ArrayNode) -> ArrayNode {
         ArrayNode::Number(_) | ArrayNode::Boolean(_) | ArrayNode::Empty => {
             ArrayNode::Error(Error::NAME)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, reason = "tests")]
+
+    use std::collections::HashMap;
+
+    use super::{assign_variable_ids, read_once};
+    use crate::expressions::{
+        parser::{new_parser_english, Node},
+        types::CellReferenceRC,
+    };
+
+    /// `read_once` for the parameters `a` (id 1) and `x` (id 2) of `LAMBDA(a,x,body)`.
+    fn read_once_of(body: &str) -> Vec<bool> {
+        let mut parser = new_parser_english(vec!["Sheet1".to_string()], vec![], HashMap::new());
+        let context = CellReferenceRC {
+            sheet: "Sheet1".to_string(),
+            row: 1,
+            column: 1,
+        };
+        let Node::LambdaDefKind { mut body, .. } =
+            parser.parse(&format!("LAMBDA(a,x,{body})"), &context)
+        else {
+            panic!("not a LAMBDA: {body}");
+        };
+        assign_variable_ids(&mut body, "a", 1);
+        assign_variable_ids(&mut body, "x", 2);
+        read_once(&body, &[1, 2])
+    }
+
+    #[test]
+    fn reads_through_once_positions_count_once() {
+        // T-1588's positions: the body itself and VSTACK/HSTACK arguments, through groups.
+        assert_eq!(read_once_of("a"), [true, false]);
+        assert_eq!(read_once_of("(VSTACK(HSTACK((a),1),x))"), [true, true]);
+        // T-1593: the branches of IF are exclusive, and its condition is read once.
+        assert_eq!(read_once_of("IF(x>0,VSTACK(a,x),a)"), [true, false]);
+        assert_eq!(read_once_of("IF(a,1,IF(x,2,3))"), [true, true]);
+        // LET's values and body.
+        assert_eq!(read_once_of("LET(y,x*2,VSTACK(a,y))"), [true, false]);
+        assert_eq!(read_once_of("LET(b,a,c,x,VSTACK(b,c))"), [true, true]);
+        // The array of SORT, TAKE and DROP.
+        assert_eq!(read_once_of("SORT(VSTACK(a,x))"), [true, true]);
+        assert_eq!(read_once_of("TAKE(a,1)"), [true, false]);
+        assert_eq!(read_once_of("DROP(a,x)"), [true, false]);
+    }
+
+    #[test]
+    fn reads_more_than_once_or_elsewhere_do_not_count_once() {
+        // An IF condition and a branch both read; a branch and a read outside the IF.
+        assert_eq!(read_once_of("IF(SUM(a)>0,a,0)"), [false, false]);
+        assert_eq!(read_once_of("IF(a,a,0)"), [false, false]);
+        assert_eq!(read_once_of("VSTACK(IF(x,a,0),a)"), [false, true]);
+        // One branch reading twice.
+        assert_eq!(read_once_of("IF(x,VSTACK(a,a),a)"), [false, true]);
+        // LET reading in a value and the body.
+        assert_eq!(read_once_of("LET(b,a,VSTACK(a,b))"), [false, false]);
+        // SORT, TAKE and DROP read their other arguments in ways not audited.
+        assert_eq!(read_once_of("SORT(a,COLUMNS(a))"), [false, false]);
+        assert_eq!(read_once_of("TAKE(x,a)"), [false, true]);
+        assert_eq!(read_once_of("DROP(a,ROWS(a)-1)"), [false, false]);
+        // A function outside the audited ones, and a nested LAMBDA.
+        assert_eq!(read_once_of("SUM(a)"), [false, false]);
+        assert_eq!(read_once_of("IF(x,MAP(x,LAMBDA(y,a)),0)"), [false, false]);
     }
 }
