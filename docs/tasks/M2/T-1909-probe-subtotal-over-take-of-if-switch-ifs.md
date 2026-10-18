@@ -31,4 +31,4 @@ mismatch (from T-1882's fidelity review).
 - CHOOSE with an array index under TAKE (T-1882).
 
 ## Outcome
-Probe probes/subtotal-take-array-selector (excel-graph). ABS/LEN over a legacy array-index CHOOSE and SUBTOTAL over TAKE/DROP of IF match; mismatches filed: T-1914 (SWITCH/IFS selector is #SPILL!), T-1915 (legacy N over CHOOSE). references.md updated. Eval: 19 cells, 14 pass, 5 known failures baselined.
+Probe probes/subtotal-take-array-selector (excel-graph). ABS/LEN over a legacy array-index CHOOSE and SUBTOTAL over TAKE/DROP of IF match; mismatches filed: T-1914 (SWITCH/IFS selector spills a 2x2 #VALUE! block), T-1915 (legacy N over CHOOSE). references.md updated. Eval: 25 cells, 16 pass, 9 known failures baselined.

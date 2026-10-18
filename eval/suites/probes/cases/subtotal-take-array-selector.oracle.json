@@ -2,23 +2,31 @@
  "format": "rustsheet-oracle/v1",
  "sheets": {
   "Sheet1": {
-   "A10": {
+   "A20": {
     "t": "e",
     "v": "#VALUE!"
    },
-   "A11": {
+   "A30": {
     "t": "e",
-    "v": "#SPILL!"
+    "v": "#VALUE!"
    },
-   "A12": {
+   "A31": {
     "t": "e",
-    "v": "#SPILL!"
+    "v": "#VALUE!"
    },
-   "A13": {
+   "A40": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A41": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A50": {
     "t": "n",
     "v": 3.0
    },
-   "A14": {
+   "A60": {
     "t": "e",
     "v": "#VALUE!"
    },
@@ -26,11 +34,7 @@
     "t": "n",
     "v": 3.0
    },
-   "B10": {
-    "t": "e",
-    "v": "#VALUE!"
-   },
-   "B14": {
+   "B20": {
     "t": "e",
     "v": "#VALUE!"
    },
@@ -38,7 +42,27 @@
     "t": "s",
     "v": "=ABS(@CHOOSE(@{1,2},H1:H2,I1:I2))"
    },
+   "B30": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B31": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B40": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B41": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "B5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B60": {
     "t": "e",
     "v": "#VALUE!"
    },
@@ -82,9 +106,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "c3c9f36002eccafc708f9fa7dd0f24aa6ef97f05162255fdb7919cd5dc96b5a7",
+  "input_sha256": "a790a7ecf77f0ba8ee6f4eafd75da280b1f19e95accf37653c6adc3f2ba250a6",
   "kind": "excel-graph",
-  "produced_at": "2026-10-18T17:15:14+00:00",
+  "produced_at": "2026-10-18T17:21:22+00:00",
   "version": null
  }
 }

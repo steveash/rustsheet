@@ -1676,8 +1676,10 @@ legacy `=SUM(CHOOSE({1,2},H1:H2,I1:I2))` is 21 and `=ROWS(...)` 2. H1:H2 = 3, 4;
 Inside a scalar function (probes/subtotal-take-array-selector, excel-graph, 2026-10-18, T-1909) the same text is shown for ABS and LEN:
 `=ABS(CHOOSE({1,2},H1:H2,I1:I2))` is `=ABS(@CHOOSE(@{1,2},H1:H2,I1:I2))` (3 on row 1, `#VALUE!` on row 5) and so is LEN (1, `#VALUE!`).
 N is the exception: `=N(CHOOSE({1,2},H1:H2,I1:I2))` shows no `@` and is `#VALUE!` on both rows (it reads a reference; ours adds the `@`s and gives 3: T-1915).
-Also from that probe: `=SUBTOTAL(9,TAKE(IF({TRUE,FALSE},H1:H2,I1:I2),1))` and the DROP form are `#VALUE!`, the scalar-condition IF form is 3,
-and the SWITCH / IFS forms with an array selector are `#SPILL!` (ours `#VALUE!`: T-1914).
+Also from that probe (each case in clear space so a spill shows its shape): `=SUBTOTAL(9,TAKE(IF({TRUE,FALSE},H1:H2,I1:I2),1))`
+and the DROP form spill a 1x2 row of `#VALUE!` (SUBTOTAL lifts over the non-reference array), the scalar-condition IF form is 3,
+and the SWITCH / IFS forms with an array selector (`TAKE(...,2)`) spill a 2x2 block of `#VALUE!`; ours gives a single `#VALUE!` for
+those two (T-1914). An earlier layout with the cases on consecutive rows showed `#SPILL!` for them: that was the spills colliding.
 Evidence: probes/legacy-choose-array-index (excel-graph, 2026-10-18).
 Implemented in: `is_choose_index` / `legacy_array_context` (expressions/parser/static_analysis/legacy.rs).
 Status: VERIFIED (excel-graph)
