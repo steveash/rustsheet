@@ -17,6 +17,7 @@ impl Function {
     /// lookup table plus this list.
     pub const INTERNAL: [Function; 2] = [Function::NLegacy, Function::TLegacy];
 
+    /// Whether the function's result is a reference it builds from its arguments (INDIRECT, OFFSET).
     pub(crate) fn returns_reference(&self) -> bool {
         matches!(self, Function::Indirect | Function::Offset)
     }

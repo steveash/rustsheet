@@ -1575,6 +1575,8 @@ imported call `=_RS_LEGACY_N(1)` is plain N even when a LAMBDA name `_RS_LEGACY_
 Evidence: none yet. Whether Excel accepts these spellings as defined names is unprobed (T-1912). If it
 does, Excel calls the name and ours calls N: a known gap, not a deviation (decision 0052). The matcher
 is exact and case-sensitive, so `_rs_legacy_n(1)` and `_xlfn._RS_LEGACY_N(1)` still call the name.
+A model file saved before T-1851 with such a call stored as `_RS_LEGACY_N(...)` reloads as the marker,
+not as the name call (xlsx never holds the spelling: its A1 text reads as plain N).
 Ours: N (test_legacy_n_t_marker.rs `a_typed_call_of_the_spelling_is_plain_n`).
 Status: UNVERIFIED (probe pending, T-1912)
 Implemented in: functions/kinds.rs (`LEGACY_SPELLINGS`, `Function::from_legacy_spelling`); expressions/parser/operands.rs (`parse_named_call`)

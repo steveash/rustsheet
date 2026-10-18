@@ -148,7 +148,8 @@ fn a_marked_formula_is_a_scalar_cell() {
 }
 
 // A typed call of the spelling is plain N, also over a LAMBDA name of that spelling, which it
-// shadows (a DEVIATION, references.md "Legacy N and T marker spelling").
+// shadows: a known gap, UNVERIFIED until T-1912 (references.md "Legacy N and T marker spelling
+// shadows a defined name of that spelling").
 #[test]
 fn a_typed_call_of_the_spelling_is_plain_n() {
     let mut model = new_empty_model();
