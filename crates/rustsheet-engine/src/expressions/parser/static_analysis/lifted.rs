@@ -2,6 +2,7 @@
 //! argument signatures, their result shapes and the legacy `@` of their `LiftArrays` arguments
 //! are derived from `Function::arg_kinds`, never written by hand.
 
+use super::aggregate::yields_cells;
 use super::broadcast::broadcast_shapes;
 use super::{run_static_analysis_on_node, Node, Signature, StaticResult};
 use crate::functions::lift::{ArgKind, ArgKinds};
@@ -25,9 +26,12 @@ pub(super) fn lifted_signature(kinds: &ArgKinds, arg_count: usize) -> Vec<Signat
 
 /// The shape of a call: its lifted arguments broadcast. A `Lift` argument adds the shape of an
 /// array or a range; a `LiftArrays` or `LiftArraysRangeWhole` argument only that of an array,
-/// since a bare range there is refused or read whole (`EDATE(A1:A3,1)` is a scalar,
-/// `EDATE({1;2},A1:A3)` a 2x1 array). An `Unknown` lifted argument makes the call `Unknown`; a
-/// `Whole` argument adds nothing. A call with a bad count is a scalar (the count error).
+/// since a range there is refused or read whole (`EDATE(A1:A3,1)` is a scalar,
+/// `EDATE({1;2},A1:A3)` a 2x1 array). A range shape whose arms may be values is an array: CHOOSE
+/// gives its array arms a range's shape (`IMABS(CHOOSE(1,{1,2,3}))` is 1x3,
+/// probes/lift-arrays-choose-arms A13, T-1874). An `Unknown` lifted argument makes the call
+/// `Unknown`; a `Whole` argument adds nothing. A call with a bad count is a scalar (the count
+/// error).
 pub(super) fn lifted_static_result(kinds: &ArgKinds, args: &[Node]) -> StaticResult {
     if !kinds.accepts(args.len()) {
         return StaticResult::Scalar;
@@ -39,7 +43,9 @@ pub(super) fn lifted_static_result(kinds: &ArgKinds, args: &[Node]) -> StaticRes
                 Some(ArgKind::Lift) => run_static_analysis_on_node(arg),
                 Some(ArgKind::LiftArrays | ArgKind::LiftArraysRangeWhole) => {
                     match run_static_analysis_on_node(arg) {
-                        StaticResult::Range(..) => StaticResult::Scalar,
+                        StaticResult::Range(..) if yields_cells(arg, &mut Vec::new()) => {
+                            StaticResult::Scalar
+                        }
                         other => other,
                     }
                 }
