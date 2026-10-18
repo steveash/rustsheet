@@ -3,7 +3,7 @@ id: T-1779
 title: "Hygiene check: a TODO(T-XXXX) must name an open task"
 milestone: M2
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
