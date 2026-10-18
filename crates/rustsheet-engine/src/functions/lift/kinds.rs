@@ -26,6 +26,19 @@ pub(crate) enum ArgKind {
     WholeByCaller,
 }
 
+impl ArgKind {
+    /// The variant's name, as the harness's catalog check reads it (T-1776).
+    pub(crate) fn name(self) -> &'static str {
+        match self {
+            ArgKind::Lift => "Lift",
+            ArgKind::LiftArrays => "LiftArrays",
+            ArgKind::LiftArraysRangeWhole => "LiftArraysRangeWhole",
+            ArgKind::Whole => "Whole",
+            ArgKind::WholeByCaller => "WholeByCaller",
+        }
+    }
+}
+
 /// What one kernel call may cost, beyond reading its arguments (SPEC-0011 "Security rule for
 /// kernel work").
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
