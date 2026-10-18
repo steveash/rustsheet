@@ -815,6 +815,7 @@ C	probes/text-lone-surrogates.case.json	107
 C	probes/text-long-input-a.case.json	2
 C	probes/text-long-input-b.case.json	2
 C	probes/text-long-input-c.case.json	1
+C	probes/text-long-input-e.case.json	2
 C	probes/text-modes-bahttext.case.json	2
 C	probes/text-modes-bytes.case.json	8
 C	probes/text-modes-dbcs-lift.case.json	10

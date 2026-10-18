@@ -156,7 +156,8 @@ fn substituted_chars(
 }
 
 /// Whether a SUBSTITUTE result would be over the cell text limit, so it is `#VALUE!`, even when
-/// it does not grow from over-limit input (probes/regexreplace-long-result-d A2).
+/// it does not grow from over-limit input; a result that shrinks to the limit passes
+/// (probes/regexreplace-long-result-d A2, text-long-input-e).
 pub(crate) fn substitute_exceeds_limit(
     text: &str,
     old_text: &str,

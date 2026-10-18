@@ -34,7 +34,7 @@ and fix every function the probe shows rejecting it.
 - REGEXREPLACE's own cap (T-1817).
 
 ## Outcome
-SUBSTITUTE, UPPER, LOWER, PROPER, TRIM, CLEAN and REPLACE return `#VALUE!` for text over 32,767 UTF-16 units
+UPPER, LOWER, PROPER, TRIM, CLEAN and REPLACE return `#VALUE!` for text over 32,767 UTF-16 units; SUBSTITUTE returns `#VALUE!` whenever its result is over the limit, even if the input was not larger (text-long-input-e: shrinking results are returned)
 (shared `reject_over_limit` in functions/text/common.rs). New probes text-long-input-a/-b/-c (excel-graph) show
 all of them `#VALUE!`; `&` is unprobed (excel-graph refuses the workbook). probes/regexreplace-long-result-d and
 -e A2 now pass (known failures removed from eval/baseline/probes.txt). Rule recorded in text.md.
