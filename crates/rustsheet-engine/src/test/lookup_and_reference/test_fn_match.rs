@@ -263,3 +263,34 @@ fn test_match_lifts_over_empty_text_of_blanks() {
     assert_eq!(model._get_text("C3"), "3");
     assert_eq!(model._get_text("C4"), "#N/A");
 }
+
+#[test]
+fn test_match_lifts_over_array_match_type() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set("A3", "30");
+    model._set("B1", "30");
+    model._set("B2", "10");
+    model._set("C1", "1");
+    model._set("C2", "0");
+    // An array match_type lifts, and broadcasts with lookup_value (probes/match-lookup-value-lift
+    // E14:E16, T-1917).
+    model._set("D1", "=MATCH(25,A1:A3,{0;1})");
+    model._set("E1", "=MATCH(B1:B2,A1:A3,{0;1})");
+    model._set("F1", "=ROWS(MATCH(20,A1:A3,{0;1}))");
+    // A multi-cell range match_type still reads its top-left cell, and does not spill
+    // (probes/match-type-nested-passthrough).
+    model._set("G1", "=MATCH(25,A1:A3,C1:C2)");
+    model._set("H1", "=MATCH(25,A1:A3,{0;\"x\"})");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#N/A");
+    assert_eq!(model._get_text("D2"), "2");
+    assert_eq!(model._get_text("E1"), "3");
+    assert_eq!(model._get_text("E2"), "1");
+    assert_eq!(model._get_text("F1"), "2");
+    assert_eq!(model._get_text("G1"), "2");
+    assert_eq!(model._get_text("G2"), "");
+    assert_eq!(model._get_text("H1"), "#N/A");
+    assert_eq!(model._get_text("H2"), "#VALUE!");
+}
