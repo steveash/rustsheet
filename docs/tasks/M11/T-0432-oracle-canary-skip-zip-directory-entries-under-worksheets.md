@@ -3,7 +3,7 @@ id: T-0432
 title: "Oracle canary: skip zip directory entries under worksheets/, then refill the 182 corpus-bench workbooks they blocked"
 milestone: M11
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
