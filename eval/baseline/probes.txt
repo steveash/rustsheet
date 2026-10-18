@@ -512,6 +512,7 @@ C	probes/near-zero-sum-forms.case.json	17
 C	probes/negative-date-sections-1900.case.json	23
 C	probes/negative-date-sections-1904.case.json	23
 C	probes/not-array-cast.case.json	38
+C	probes/npv-fvschedule-typed.case.json	16
 C	probes/number-text-exponent-carry.case.json	9
 C	probes/number-text-exponent-digits.case.json	126
 C	probes/number-to-text-notation.case.json	52
@@ -2415,6 +2416,15 @@ F	probes/negative-date-sections-1904.case.json	S!A21
 F	probes/negative-date-sections-1904.case.json	S!A22
 F	probes/negative-date-sections-1904.case.json	S!A23
 F	probes/negative-date-sections-1904.case.json	S!A9
+F	probes/npv-fvschedule-typed.case.json	Sheet1!A1
+F	probes/npv-fvschedule-typed.case.json	Sheet1!A10
+F	probes/npv-fvschedule-typed.case.json	Sheet1!A11
+F	probes/npv-fvschedule-typed.case.json	Sheet1!A2
+F	probes/npv-fvschedule-typed.case.json	Sheet1!A4
+F	probes/npv-fvschedule-typed.case.json	Sheet1!A5
+F	probes/npv-fvschedule-typed.case.json	Sheet1!A6
+F	probes/npv-fvschedule-typed.case.json	Sheet1!A7
+F	probes/npv-fvschedule-typed.case.json	Sheet1!A8
 F	probes/pivotby-col-subtotals-values2.case.json	S!AA183
 F	probes/pivotby-col-subtotals-values2.case.json	S!AB183
 F	probes/pivotby-col-subtotals-values2.case.json	S!AC183
