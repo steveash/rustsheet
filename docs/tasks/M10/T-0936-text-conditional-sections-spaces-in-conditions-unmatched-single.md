@@ -1,6 +1,6 @@
 ---
 id: T-0936
-title: "TEXT conditional sections: [<>], spaces in conditions, unmatched single condition (14 known failures)"
+title: "TEXT conditional sections: [<>], spaces in conditions, unmatched single condition (15 known failures)"
 milestone: M10
 lane: functions-text
 status: todo
@@ -28,10 +28,14 @@ condition lexer and section choice are in `crates/rustsheet-engine/src/formatter
    "10", A19 on 11 expected "11 Wow".
 3. **Spaces inside the condition are rejected** (4 cells, #VALUE!): A23 `[< 10]#" Wow"` on 1 expected
    "1 Wow", A24 on 10 expected "10", A25 `[<      10]#" Wow"` on 1 expected "1 Wow", A26 on 10 expected "10".
+4. **The same unmatched single condition in the probes suite** (1 cell, TextMismatch, T-1486):
+   probes/text-format-length-limit-q A16, `TEXT(1,"d"&<119 quoted a>&"[>5]d")`, expected "1" (we print
+   the whole section). It fits rule 1 with General as the fallback.
 
 ## Acceptance criteria
 - [ ] The 14 lines (A3, A4, A5, A10, A14, A16, A17, A18, A19, A22, A23, A24, A25, A26)
-      disappear from eval/baseline/poi.txt with no new F lines.
+      disappear from eval/baseline/poi.txt, and probes/text-format-length-limit-q A16 from
+      eval/baseline/probes.txt, with no new F lines.
 - [ ] Rules recorded in `docs/excel-semantics/number-formats.md` citing these cells.
 - [ ] `make check` green; reviewers approve.
 

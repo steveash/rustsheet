@@ -122,13 +122,7 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
         _ => 3,
     };
     let tokens = match parser.parts.get(section) {
-        Some(ParsePart::Error(_)) => {
-            return Formatted {
-                text: "#VALUE!".to_owned(),
-                color: None,
-                error: Some("Problem parsing format string".to_owned()),
-            }
-        }
+        Some(ParsePart::Error(_)) => return format_error(),
         Some(part) => match section_tokens(part) {
             Some(tokens) => tokens,
             None => return capped_text(text.to_string()),
@@ -217,12 +211,22 @@ const BUDDHIST_ERA_OFFSET: i32 = 543;
 
 const TEXT_TOO_LONG: &str = "TEXT result over 255 characters";
 
-fn text_too_long() -> Formatted {
+/// A `#VALUE!` result, with `message` saying why.
+fn value_error(message: &str) -> Formatted {
     Formatted {
         text: "#VALUE!".to_owned(),
         color: None,
-        error: Some(TEXT_TOO_LONG.to_owned()),
+        error: Some(message.to_owned()),
     }
+}
+
+/// The `#VALUE!` of a format code that does not parse.
+fn format_error() -> Formatted {
+    value_error("Problem parsing format string")
+}
+
+fn text_too_long() -> Formatted {
+    value_error(TEXT_TOO_LONG)
 }
 
 /// `text` as a TEXT result, or `#VALUE!` when it is over [`MAX_TEXT_FORMAT_CHARS`].
@@ -345,11 +349,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         }
     }
     match part {
-        ParsePart::Error(..) => Formatted {
-            text: "#VALUE!".to_owned(),
-            color: None,
-            error: Some("Problem parsing format string".to_owned()),
-        },
+        ParsePart::Error(..) => format_error(),
         ParsePart::General(..) => Formatted {
             text: general_text(value, locale),
             color: None,
