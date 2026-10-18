@@ -389,6 +389,7 @@ C	probes/let-name-non-ascii.case.json	10
 C	probes/let-name-sharp-s.case.json	2
 C	probes/let-name-uncalled-picked-refs.case.json	41
 C	probes/let-name-use-spelling.case.json	12
+C	probes/lift-arrays-choose-arms.case.json	51
 C	probes/lifted-range-rows.case.json	4
 C	probes/lifted-range-size.case.json	6
 C	probes/linest-modes.case.json	255
@@ -1849,6 +1850,9 @@ F	probes/legacy-n-t-reference-args.case.json	S!S10
 F	probes/legacy-n-t-reference-args.case.json	S!S11
 F	probes/legacy-n-t-reference-args.case.json	S!T10
 F	probes/legacy-n-t-reference-args.case.json	S!T11
+F	probes/lift-arrays-choose-arms.case.json	Sheet1!A70
+F	probes/lift-arrays-choose-arms.case.json	Sheet1!B69
+F	probes/lift-arrays-choose-arms.case.json	Sheet1!B70
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100
