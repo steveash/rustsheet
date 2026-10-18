@@ -3,7 +3,7 @@ id: T-1909
 title: "Probe SUBTOTAL over TAKE of IF/SWITCH/IFS with an array selector, and legacy CHOOSE with an array index inside a scalar function"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
