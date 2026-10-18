@@ -7,7 +7,6 @@ use super::{
 };
 use crate::{
     calc_result::CalcResult,
-    cast::MAX_TEXT_UNITS,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -369,17 +368,32 @@ impl Replacement {
     }
 }
 
-/// The most bytes a REGEXREPLACE result may have: a text of 32,767 UTF-16 units has at most 3
-/// bytes a unit, so a longer result is over Excel's text limit whatever its characters.
-const MAX_REPLACED_BYTES: usize = 3 * MAX_TEXT_UNITS;
+/// The longest REGEXREPLACE result, in UTF-16 units. Unlike SUBSTITUTE's, it is not the cell
+/// text limit: 65,535 units come back (and a cell holds them), 65,536 are `#CALC!`, emoji
+/// counting two (text.md "REGEXREPLACE results are capped at 65,535 UTF-16 units";
+/// probes/regexreplace-result-cap).
+const MAX_REPLACED_UNITS: usize = 65_535;
 
-/// A REGEXREPLACE result over 32,767 UTF-16 units is `#VALUE!`, as SUBSTITUTE's is (UNVERIFIED
-/// for REGEXREPLACE, T-1817), and so is a lifted call whose results pass the text broadcast cap.
+/// The most bytes a REGEXREPLACE result may have: a UTF-16 unit takes at most 3 bytes, so a
+/// longer result is over [`MAX_REPLACED_UNITS`] whatever its characters.
+const MAX_REPLACED_BYTES: usize = 3 * MAX_REPLACED_UNITS;
+
+/// A REGEXREPLACE result over [`MAX_REPLACED_UNITS`].
+fn over_cap(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::CALC,
+        cell,
+        "REGEXREPLACE result is too long".to_string(),
+    )
+}
+
+/// A lifted REGEXREPLACE whose results pass the text broadcast cap is one `#VALUE!` (text.md,
+/// first entry).
 fn too_long(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(
         Error::VALUE,
         cell,
-        "REGEXREPLACE result is too long".to_string(),
+        "REGEXREPLACE results are too long".to_string(),
     )
 }
 
@@ -525,11 +539,11 @@ impl Model {
                         )));
                     };
                     let len = replacement.result_len(search, &text)?;
+                    if len > MAX_REPLACED_BYTES {
+                        return Ok(Err(over_cap(cell)));
+                    }
                     if !within_text_budget(&mut total, len) {
                         over_budget = true;
-                        return Ok(Err(too_long(cell)));
-                    }
-                    if len > MAX_REPLACED_BYTES {
                         return Ok(Err(too_long(cell)));
                     }
                     Ok(Ok(replacement.replace(search, &text, len)?))
@@ -538,8 +552,8 @@ impl Model {
                     Ok(Ok(replaced)) => Text::from(replaced.as_str()),
                     Ok(Err(error)) | Err(error) => return error,
                 };
-                if replaced.len_utf16() > MAX_TEXT_UNITS {
-                    return too_long(cell);
+                if replaced.len_utf16() > MAX_REPLACED_UNITS {
+                    return over_cap(cell);
                 }
                 CalcResult::String(replaced)
             },

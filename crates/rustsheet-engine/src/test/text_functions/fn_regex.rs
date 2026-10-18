@@ -260,10 +260,10 @@ fn cycling_patterns_compile_once() {
     assert_eq!(model._get_text("A1"), *"400");
 }
 
-// T-1817 (folded into T-1272): REGEXREPLACE knows its result length before it builds it. Over
-// 32,767 characters it is `#VALUE!` as SUBSTITUTE is (UNVERIFIED for REGEXREPLACE); an empty
-// pattern over 32,767 characters with a 10-character replacement is refused without building
-// its 360,000 characters.
+// T-1817: REGEXREPLACE knows its result length before it builds it. Excel caps the result at
+// 65,535 UTF-16 units and is `#CALC!` past it (probes/regexreplace-result-cap,
+// probes/regexreplace-limit-and-syntax A1, A2); an empty pattern over 32,767 characters with a
+// 10-character replacement is refused without building its 360,000 characters.
 #[test]
 fn regexreplace_result_is_bounded_before_it_is_built() {
     let mut model = new_empty_model();
@@ -275,18 +275,29 @@ fn regexreplace_result_is_bounded_before_it_is_built() {
     model._set("A3", "=LEN(REGEXREPLACE(REPT(\"a\",16383),\"a\",\"bb\"))");
     model._set(
         "A4",
-        "=LEN(REGEXREPLACE(REPT(\"ab\",16000),\"(a)(b)\",\"$2$1$1\"))",
+        "=LEN(REGEXREPLACE(REPT(\"ab\",16000),\"(a)(b)\",\"$2$1$1$1$1\"))",
     );
     model._set(
         "A5",
         "=LEN(REGEXREPLACE(REPT(\"ab\",10000),\"(a)(b)\",\"$2$1$1\"))",
     );
+    model._set(
+        "A6",
+        "=LEN(REGEXREPLACE(REPT(\"a\",16384)&REPT(\"c\",16383),\"a\",\"bbb\"))",
+    );
+    model._set(
+        "A7",
+        "=LEN(REGEXREPLACE(REPT(\"a\",16385)&REPT(\"c\",16381),\"a\",\"b\"&UNICHAR(128512)))",
+    );
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"#VALUE!");
-    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A1"), *"#CALC!");
+    assert_eq!(model._get_text("A2"), *"65534");
     assert_eq!(model._get_text("A3"), *"32766");
-    assert_eq!(model._get_text("A4"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"#CALC!");
     assert_eq!(model._get_text("A5"), *"30000");
+    assert_eq!(model._get_text("A6"), *"65535");
+    // 65,536 units in 49,150 characters: the cap counts units.
+    assert_eq!(model._get_text("A7"), *"#CALC!");
 }
 
 // T-1272 performance review: iterating matches on the PikeVM (a `\b` pattern over non-ASCII
