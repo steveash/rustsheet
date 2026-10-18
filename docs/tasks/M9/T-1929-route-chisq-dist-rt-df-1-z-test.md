@@ -3,7 +3,7 @@ id: T-1929
 title: "Route CHISQ.DIST.RT df 1, Z.TEST, POISSON and GAMMA.DIST shape 0.5 through the T-1778 ERF/ERFC identities"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
