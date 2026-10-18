@@ -1,5 +1,5 @@
 ---
-id: T-1863
+id: T-1864
 title: "F.DIST's pdf is accurate for large degrees of freedom instead of #NUM! (probes-numeric t1530-f-df-cut)"
 milestone: M9
 lane: functions-stat
@@ -21,7 +21,7 @@ above about 143, although the density is an ordinary number: probes-numeric/t153
 not accurate enough: `F.DIST(1,1000,1000,FALSE)` gave 6.306254544584165 against the true 6.3062545445902005, and the
 t1530 cell 0.14167422298660368. So T-1290 kept its logarithmic fallback only for an overflow that comes from x alone
 (`df1^df1` and `df2^df2` finite; `F.DIST(1E308,1,3,FALSE)` is 0, probes/stat-overflow-arguments E11), and left the
-large-df pdf `#NUM!` (the `TODO(T-1863)` in fisher.rs). An accurate form is needed, for example the binomial-density
+large-df pdf `#NUM!` (the `TODO(T-1864)` in fisher.rs). An accurate form is needed, for example the binomial-density
 form R's `df()` uses (Loader's `dbinom_raw` with `bd0`/`stirlerr`), then checked against every F pdf cell of
 probes-numeric and ironcalc-calc `F_DIST.xlsx` without moving any value that passes today.
 

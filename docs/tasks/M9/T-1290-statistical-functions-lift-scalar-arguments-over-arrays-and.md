@@ -75,7 +75,7 @@ WEIBULL and WEIBULL.DIST.
     x = A, 1 at x = B and `#DIV/0!` otherwise, as Excel; statrs' incomplete beta used to unwrap the NaN. The F pdf of
     a huge x whose `df1*x` stays finite was `#NUM!` and is now 0 (`F.DIST(1E308,1,3,FALSE)`, E11; -b A6): a
     logarithmic form runs only where the overflow comes from x alone, so large-df pdfs keep main's `#NUM!` (accurate
-    large-df pdfs are T-1863); probes-numeric was compared cell by cell with main: unchanged but for t1049-phi A37,
+    large-df pdfs are T-1864); probes-numeric was compared cell by cell with main: unchanged but for t1049-phi A37,
     a lift fix.
   - PERMUT: a truncated number of 2^31 - 1 or more is `#NUM!` (it was a number, and `PERMUT(1E30,0)` overflowed i64),
     and a product past the double range is `#NUM!`.
