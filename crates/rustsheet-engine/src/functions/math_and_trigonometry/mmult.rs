@@ -5,6 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    limits::check_array_size,
     model::Model,
 };
 
@@ -114,6 +115,14 @@ impl Model {
                     Err(e) => return e,
                 }
             }
+        }
+
+        // Both inputs are bounded, but their product's shape is not: `MMULT(A:A,1:1)` would be
+        // 2^34 cells. Refuse one above the array limit before building it, after the input
+        // checks so Excel's `#VALUE!` for them still comes first (DEVIATION, arrays.md "Array
+        // results above 1,048,576 cells"; T-1786).
+        if let Some((error, message)) = check_array_size(m, n) {
+            return CalcResult::new_error(error, cell, message);
         }
 
         let mut result: Vec<Vec<ArrayNode>> = Vec::with_capacity(m);

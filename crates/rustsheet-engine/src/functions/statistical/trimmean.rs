@@ -1,55 +1,53 @@
+//! TRIMMEAN. The data argument is read and sorted once per call (`sorted_data.rs`); `percent`
+//! lifts over arrays and ranges (probes/stat-argument-modes H549-H550, probes/stat-whole-lift
+//! W35-W37).
+
+use super::percentile::{num_error, value_at};
+use super::sorted_data::{DataArg, DataOrder};
 use crate::expressions::types::CellReferenceIndex;
-use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
+use crate::functions::lift::LiftCost;
+use crate::functions::Function;
+use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
+
+/// TRIMMEAN's data, smallest first. Each element averages the values it keeps, so a call is
+/// charged elements × numbers (`LiftCost::Cells`), not the sort alone.
+const TRIMMEAN_DATA: DataArg = DataArg {
+    read: |model, node, cell| model.collect_numeric_flat(node, cell),
+    order: DataOrder::Ascending,
+    cost: LiftCost::Cells,
 };
 
 impl Model {
-    // TRIMMEAN(array, percent)
-    // Returns the mean of the interior of a data set, after removing percent/2 from each tail.
+    /// `TRIMMEAN(array, percent)`: the mean of the data after removing `floor(n*percent/2)`
+    /// values from each end.
     pub(crate) fn fn_trimmean(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let mut values = match self.collect_numeric_flat(&args[0], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-
-        if values.is_empty() {
-            return CalcResult::new_error(Error::NUM, cell, "TRIMMEAN: empty array".to_string());
-        }
-
-        let percent = match self.get_number(&args[1], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-
-        if !(0.0..1.0).contains(&percent) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "TRIMMEAN: percent must be in [0, 1)".to_string(),
-            );
-        }
-
-        let n = values.len();
-        // Number of values to remove from each end (floored)
-        let trim = (n as f64 * percent / 2.0).floor() as usize;
-
-        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-        let trimmed = &values[trim..n - trim];
-
-        if trimmed.is_empty() {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "TRIMMEAN: all values trimmed".to_string(),
-            );
-        }
-
-        let mean = trimmed.iter().sum::<f64>() / trimmed.len() as f64;
-        CalcResult::Number(mean)
+        self.lift_with_sorted_data(
+            Function::Trimmean,
+            args,
+            &TRIMMEAN_DATA,
+            cell,
+            &mut |model, data, values| {
+                if data.is_empty() {
+                    return num_error(cell);
+                }
+                let percent = match model.cast_number_ref(value_at(values, 1), cell) {
+                    Ok(v) => v,
+                    Err(e) => return e,
+                };
+                if !(0.0..1.0).contains(&percent) {
+                    return num_error(cell);
+                }
+                let sorted = data.sorted();
+                let n = sorted.len();
+                // Number of values to remove from each end (floored)
+                let trim = (n as f64 * percent / 2.0).floor() as usize;
+                match sorted.get(trim..n.saturating_sub(trim)) {
+                    Some(trimmed) if !trimmed.is_empty() => {
+                        CalcResult::Number(trimmed.iter().sum::<f64>() / trimmed.len() as f64)
+                    }
+                    _ => num_error(cell),
+                }
+            },
+        )
     }
 }

@@ -51,3 +51,21 @@ def test_gamma_and_mappings() -> None:
     assert t_dist(cell(0.0, 5.0)) == 0.5
     # Excel truncates the F df: F.DIST(1,3.9,7.9,TRUE) = F.DIST(1,3,7,TRUE) (t1049-fdist).
     assert f_dist(cell(1.0, 3.9, 7.9)) == f_dist(cell(1.0, 3.0, 7.0))
+
+
+def test_libreoffice_beta_dist() -> None:
+    # LibreOffice's own special cases versus Excel's.
+    assert beta.libreoffice_beta_dist(0.1, 5.0, 1.0) == 0.1**5
+    assert beta.libreoffice_beta_dist(0.1, 5.0, 1.0, excel_closed_forms=True) == 1.0000000000000016e-05
+    assert beta.libreoffice_beta_dist(0.3, 2.5, 3.5) == pytest.approx(
+        beta.ibeta_reference(0.3, 2.5, 3.5), rel=1e-14
+    )
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_libreoffice_scores() -> None:
+    result = fit.run(registry()["beta-dist"], engine=False, only="^LibreOffice")
+    assert {s.name: s.exact for s in result.scores} == {
+        "LibreOffice GetBetaDist": 134,
+        "LibreOffice GetBetaDist + Excel closed forms": 156,
+    }

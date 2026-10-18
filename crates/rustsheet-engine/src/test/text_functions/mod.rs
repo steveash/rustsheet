@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+mod broadcast_bound;
 mod byte_variants;
 mod fn_arraytotext;
 mod fn_char_code;
@@ -16,6 +17,7 @@ mod fn_textsplit;
 mod fn_unicode;
 mod fn_utf16_positions;
 mod fn_valuetotext;
+mod textsplit_bound;
 
 use crate::test::util::new_empty_model;
 

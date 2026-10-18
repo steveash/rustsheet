@@ -37,7 +37,9 @@ exp/scaling steps add arithmetic of their own, so they wait until T-0925 has the
 from __future__ import annotations
 
 import decimal
+import itertools
 import math
+import sys
 from collections.abc import Callable, Sequence
 from fractions import Fraction
 from functools import cache
@@ -263,6 +265,64 @@ def newton_solve(p: float, x: float, *, relative_tol: float) -> float:
     return x
 
 
+# W. J. Cody's rational Chebyshev normal CDF (Math. Comp. 23, 1969; netlib SPECFUN ANORM, public
+# domain coefficients), in the arrangement of R's pnorm_both (nmath/pnorm.c): R's split at
+# qnorm(3/4) = 0.67448975 instead of Cody's 0.66291, and the same sixteenths split of x^2. This is
+# an independent reimplementation of the published method for fit analysis only; the T-1759 web
+# research names it as the obvious alternative to glibc's erfc.
+CODY_A = [2.2352520354606839287, 161.02823106855587881, 1067.6894854603709582, 18154.981253343561249,
+          0.065682337918207449113]  # fmt: skip
+CODY_B = [47.20258190468824187, 976.09855173777669322, 10260.932208618978205, 45507.789335026729956]
+CODY_C = [0.39894151208813466764, 8.8831497943883759412, 93.506656132177855979, 597.27027639480026226,
+          2494.5375852903726711, 6848.1904505362823326, 11602.651437647350124, 9842.7148383839780218,
+          1.0765576773720192317e-8]  # fmt: skip
+CODY_D = [22.266688044328115691, 235.38790178262499861, 1519.377599407554805, 6485.558298266760755,
+          18615.571640885098091, 34900.952721145977266, 38912.003286093271411, 19685.429676859990727]  # fmt: skip
+CODY_P = [0.21589853405795699, 0.1274011611602473639, 0.022235277870649807, 0.001421619193227893466,
+          2.9112874951168792e-5, 0.02307344176494017303]  # fmt: skip
+CODY_Q = [1.28426009614491121, 0.468238212480865118, 0.0659881378689285515, 0.00378239633202758244,
+          7.29751555083966205e-5]  # fmt: skip
+_CODY_SPLIT = 0.67448975  # qnorm(3/4); Cody's own was 0.66291
+_CODY_EPS = sys.float_info.epsilon * 0.5  # R's DBL_EPSILON * 0.5: below it Phi(x) = 0.5 + x*a3/b3
+_ONE_OVER_SQRT_2PI = 1.0 / SQRT2PI  # the same double as R's M_1_SQRT_2PI
+
+
+def _cody_tail(x: float, temp: float) -> float:
+    """exp(-x^2/2)*temp with x^2 split at sixteenths, as Cody does to keep exp's argument exact."""
+    xsq = math.trunc(x * 16.0) / 16.0
+    delta = (x - xsq) * (x + xsq)
+    return math.exp(-xsq * xsq * 0.5) * math.exp(-delta * 0.5) * temp
+
+
+def cody_cdf(x: float) -> float:
+    """Phi(x) by Cody's three rational approximations (|x| <= 0.674, <= sqrt(32), beyond)."""
+    y = abs(x)
+    if y <= _CODY_SPLIT:
+        xnum = xden = 0.0
+        if y > _CODY_EPS:
+            xsq = x * x
+            xnum, xden = CODY_A[4] * xsq, xsq
+            for i in range(3):
+                xnum = (xnum + CODY_A[i]) * xsq
+                xden = (xden + CODY_B[i]) * xsq
+        return 0.5 + x * (xnum + CODY_A[3]) / (xden + CODY_B[3])
+    if y <= math.sqrt(32.0):
+        xnum, xden = CODY_C[8] * y, y
+        for i in range(7):
+            xnum = (xnum + CODY_C[i]) * y
+            xden = (xden + CODY_D[i]) * y
+        cum = _cody_tail(y, (xnum + CODY_C[7]) / (xden + CODY_D[7]))
+    else:
+        xsq = 1.0 / (x * x)
+        xnum, xden = CODY_P[5] * xsq, xsq
+        for i in range(4):
+            xnum = (xnum + CODY_P[i]) * xsq
+            xden = (xden + CODY_Q[i]) * xsq
+        temp = (_ONE_OVER_SQRT_2PI - xsq * (xnum + CODY_P[4]) / (xden + CODY_Q[4])) / y
+        cum = _cody_tail(y, temp)
+    return 1.0 - cum if x > 0 else cum
+
+
 def refine(p: float, x: float, halley: bool, cdf: Callable[[float], float] = libm_cdf) -> float:
     """One Newton (or Halley) step on cdf(x) = p."""
     e = cdf(x) - p
@@ -302,6 +362,20 @@ MORO_B = [-8.47351093090, 23.08336743743, -21.06224101826, 3.13082909833]
 MORO_C = [0.3374754822726147, 0.9761690190917186, 0.1607979714918209, 0.0276438810333863,
           0.0038405729373609, 0.0003951896511919, 0.0000321767881768, 0.0000002888167364,
           0.0000003960315187]  # fmt: skip
+
+
+AS111_SPLIT = 0.42
+
+
+def as111_hybrid(p: float) -> float:
+    """Beasley-Springer AS 111's central rational (|p - 0.5| <= 0.42; the same coefficients as Moro's
+    centre) with PPND16 beyond, the shape of the "like Excel NORMINV" ports the T-1759 research found."""
+    _domain(p)
+    q = p - 0.5
+    if abs(q) > AS111_SPLIT:
+        return as241(p, PPND16, horner, log1p_upper=False)
+    r = q * q
+    return q * horner(MORO_A, r) / horner([1.0, *MORO_B], r)
 
 
 def moro(p: float) -> float:
@@ -484,6 +558,30 @@ def norm_inv_candidates() -> list[Candidate]:
             stop = f"|dx| <= {tol:g}|x|" if tol else "dx = 0"
             label = f"Newton solve on 0.5*erfc(-x*sqrt(0.5)) from {sname}, {stop}"
             out.append(candidate(label, _p(solved), "Newton solve"))
+    cdf_forms: dict[str, Callable[[float], float]] = {
+        "Cody": cody_cdf,
+        "0.5*erfc(-x*sqrt(0.5))": sqrt_half_cdf,
+        "0.5*erfc(-x/sqrt(2))": libm_cdf,
+    }
+    centre_starts: dict[str, Callable[[float], float]] = {
+        "AS 111 centre": as111_hybrid,
+        "PPND16": lambda p: as241(p, PPND16, horner, log1p_upper=False),
+    }
+    out.append(candidate("AS 111 centre (|q| <= 0.42), PPND16 tails", _p(as111_hybrid), "AS 111"))
+    for (sname, start), (cname, cdf), steps in itertools.product(
+        centre_starts.items(), cdf_forms.items(), (1, 3)
+    ):
+
+        def polished(
+            p: float, st: Callable[[float], float] = start, f: Callable[[float], float] = cdf, k: int = steps
+        ) -> float:
+            x = st(p)
+            for _ in range(k):
+                x = refine(p, x, False, f)
+            return x
+
+        label = f"{sname} + {steps} Newton step{'s' if steps > 1 else ''} on {cname}"
+        out.append(candidate(label, _p(polished), "polished"))
     out.append(candidate("PPND16 tails, statrs centre", _p(hybrid), "hybrid"))
     out.append(
         candidate(
@@ -498,7 +596,37 @@ def norm_inv_candidates() -> list[Candidate]:
     return out
 
 
+def numeric_x(cell: Cell) -> bool:
+    """Leaves out NORM.S.DIST cells whose x is text or a bool (coercion probes, not the kernel)."""
+    return isinstance(cell.args[0], float)
+
+
+def norm_s_dist_candidates() -> list[Candidate]:
+    """NORM.S.DIST(x,TRUE): glibc erfc in two argument forms and Cody's rational approximations."""
+
+    def x_arg(fn: Callable[[float], float]) -> Callable[..., float]:
+        return lambda *args: fn(numeric_arg(args[0]))
+
+    return [
+        candidate("0.5*erfc(-x*sqrt(0.5)) (glibc)", x_arg(sqrt_half_cdf), "glibc"),
+        candidate("0.5*erfc(-x/sqrt(2)) (glibc)", x_arg(libm_cdf), "glibc"),
+        candidate("Cody (R pnorm_both)", x_arg(cody_cdf), "Cody"),
+    ]
+
+
 FITS = [
+    Fit(
+        name="norm-s-dist",
+        description="NORM.S.DIST(x,TRUE)/NORMSDIST (T-1040, T-1048, T-1746, T-1759): glibc erfc forms vs Cody",
+        cases=[
+            *_CDF_CASES,
+            "probes-numeric/t1746-norm-s-inv-central",
+            "probes-numeric/t1759-norm-s-inv-roundtrip",
+        ],
+        pattern=_CDF_PATTERN,
+        candidates=norm_s_dist_candidates,
+        where=numeric_x,
+    ),
     Fit(
         name="norm-s-inv",
         description="NORM.S.INV/NORMSINV/NORM.INV(p,0,1) (T-1006, T-1048): AS 241, Acklam, Moro",

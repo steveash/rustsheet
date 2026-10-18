@@ -321,10 +321,43 @@ PERCENTRANK*, TRIMMEAN, Z.TEST, F.TEST and T.TEST skip text and booleans in a ra
 plain 8-point series on the timeline 1..8 (T-1293). These decide the generator modes in eval/catalog/functions.yaml
 (`value`, `aggregate`, `aggregate_a`, `array`; RANK `ref`, COUNTBLANK and the *IFS ranges are `range`).
 Evidence: probes/stat-argument-modes (573 cells, excel-graph, 2026-10-09, T-1080).
-Ours: no scalar argument lifts (`#N/IMPL!` for an array, `#VALUE!` for a range; T-1290); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
+Ours: LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN lift (T-1772, section below); the other scalar arguments do not (`#N/IMPL!` for an array, `#VALUE!` for a range; T-1290, T-1813); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
 `#N/IMPL!`; many distribution values are a few ulps off (the existing accuracy entries above).
 Status: VERIFIED (excel-graph)
 Tasks: T-1080, T-1290, T-1291, T-1292, T-1293
+
+## LARGE, SMALL, PERCENTILE, QUARTILE, PERCENTRANK and TRIMMEAN: each lifted element is the scalar call
+Rule: when `k`, `quart`, `x`, `significance` or `percent` is an array or a multi-cell range, every element is the
+scalar call over the whole data argument, with the scalar rules per element. With A1:A8 = 1,2,4,3,7,5,8,6:
+`LARGE(A1:A8,{1;2;9})` is 8, 7, `#NUM!` (W1-W2); `LARGE(..,{0.5;2.5})` is `#NUM!`, 6 (k below 1, then the ceiling;
+W3-W4); `SMALL(..,{2.5;"3";TRUE})` is 2, 3, 1 (typed text and booleans coerce; W5-W7); over a range G1:G4 = 2, "x",
+blank, TRUE the elements are 7, `#VALUE!`, `#NUM!` (a blank cell is 0), 8 (a referenced TRUE is 1; W8-W11); an error
+element is that error (`{1;#DIV/0!}`, W16). The shape is the lifted argument's: a row (`COLUMNS` 3, W14), 2-D (W15),
+and PERCENTRANK's `x` and `significance` broadcast a column against a row (`PERCENTRANK.EXC(A1:A8,{4.5;2.5},{1,2})` is
+2x2, element (2,2) 0.27; W32-W33). `significance` lifts over an array and a range (W29-W31) and is `#NUM!` below 1 per
+element (W34). A data error or data with no numbers keeps the lifted shape and gives the scalar error in the elements
+probed: `LARGE(B1:B3,{1;2})` with B2 = `#N/A` has 2 rows (W12) and element 2 is `#N/A` (W13); `SMALL(C1:C3,{1;2})`
+over "x", TRUE, blank has 2 rows (W18) and element 1 is `#NUM!` (W17); `PERCENTRANK(C1:C3,{1;2})` element 2 is
+`#N/A` (W39). The data argument keeps its own reading: an arithmetic array (W19), an array literal (W38), a union
+(`LARGE((A1:A4,A5:A8),{1;2})` element 2 is 7, W45). A one-cell range in the lifted argument is its value (`ROWS` 1,
+W20, W43), and a range a function returns lifts (`IF(TRUE,G5:G6)`, W42). A 1x1 array argument (`LARGE(A1:A8,{1})`) is
+unprobed: ours gives a 1x1 array (TYPE 64, where the scalar call is TYPE 1), by analogy with INDEX's 1x1 array
+index (lookup.md "INDEX lifts over array and range indices", probes/index-1x1-array-index, T-1507); T-1813 probes it.
+Evidence: probes/stat-whole-lift W1-W48 (excel-graph, 2026-10-17, T-1772); probes/stat-argument-modes H345-H463,
+H549-H550.
+Ours: matches (T-1772): the data argument is read once by the function's own reader and sorted once per call
+(`functions/statistical/sorted_data.rs`), and the scalar arguments lift through `lift_call`.
+DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted call is charged against the shared cell-visit cap of 2^27
+(`limits::MAX_LIFTED_CELL_VISITS`) before its first element: numbers + elements for LARGE, SMALL, PERCENTILE*, QUARTILE*
+and PERCENTRANK* (`LiftCost::Prepared`, the data is sorted once), numbers × elements for TRIMMEAN (`LiftCost::Cells`,
+each element averages the kept values); and its result is bounded by the shared 1,048,576-element array bound (arrays.md,
+"Array results above 1,048,576 cells are #ERROR!"). Past either the call is `#ERROR!` where Excel computes it:
+`ROWS(TRIMMEAN(A1:A1000000,SEQUENCE(200)/1000))` over a filled column (unit test `trimmean_is_charged_per_element`) and
+`ROWS(PERCENTRANK(A1:A1000000,SEQUENCE(1100),SEQUENCE(1,1000)))`, a 1,100,000-element result (unit test
+`a_sorted_column_against_many_elements_runs_and_the_bound_holds`, which also shows `ROWS(LARGE(A1:A1000000,SEQUENCE(200)))`
+is 200).
+Status: VERIFIED (excel-graph)
+Tasks: T-1772, T-1813
 
 ## Array arguments given a scalar, a single cell or an error
 Rule: an array argument of the paired and single-array statistical functions takes a plain number or a single cell as an
@@ -557,8 +590,29 @@ Through the F and t mappings:
 Evidence: probes-numeric m9-beta-dist-a*, m9-legacy-betadist, m9-f-dist, m9-legacy-fdist,
 t1049-fdist, m9-t-dist-cdf, t1048-tdist; fits `beta-dist`, `f-dist`, `t-dist`
 (`fitlab/kernels/beta.py`).
+T-1759 tested LibreOffice's GetBetaDist, the closest public relative. It uses the same mean
+reflection, A&S 26.5.8's fraction, a pdf·x·y prefactor for a, b > 1, and a Lanczos lnB. It
+scores 156 of 283 with Excel's closed forms (134 with its own pow and expm1), level with the
+Cephes combination and not Excel's algorithm.
+The remaining gap is the direct (unreflected) branch. Counts below are de-duplicated (x, a, b)
+points with 0 < x < 1:
+- **Reflected branch (1 − small):** LibreOffice matches 87 of 95 points (92%), the Cephes
+  combination 75 (79%) and the correctly rounded value 78.
+- **Direct branch:** no candidate matches more than 15 of 107 points (Cephes 15, LibreOffice 5,
+  correctly rounded 7).
+- **Error model:** Excel's relative error on the direct branch depends on x as well as (a, b). It
+  tracks the total rounding error of the double product fl(a·fl(ln x)). For BETA.DIST(0.1,100,b,TRUE)
+  that predicts 1.18E-14, and Excel's error ranges from 1.04E-14 to 1.35E-14 for b <= 5 (b = 10, 50 and 100 give -2.51E-14, -5.0E-15 and +2.31E-14, unexplained). At
+  BETA.DIST(0.01,10,1.5,TRUE) it predicts 6.11E-15 against 6.15E-15 observed. Subtracting it
+  leaves an x-independent residual for 8 of 38 (a, b) pairs; subtracting a·err(ln x) does so for 4.
+- **Hypothesis (UNVERIFIED):** x^a is its own EXP(a·LN(x)) factor, the form of Excel's b = 1
+  closed form. If the product were first summed with b·ln y − lnB, rounding that ≈ −230 sum
+  would add up to ±1.4E-14 of b-dependent noise, but the spread across b <= 5 is about ±1.5E-15.
+- **What did not close the residual:** Excel's own GAMMA values (from T-1042), with best 62 of
+  136 points, and 360 combinations of fraction, prefactor form and operation order, with best
+  16 of 107. Reproduce all of this with docs/research/t1759_beta_direct_branch.py.
 Status: VERIFIED (b = 1 closed form); a = 1 PARTIAL (22/24, form not distinguished from pow); the general algorithm is UNVERIFIED
-Tasks: T-1744, T-0970, T-0969, T-1745
+Tasks: T-1744, T-1759, T-0970, T-0969, T-1745
 
 ## BETA.INV solves Excel's own CDF to the crossing (T-1745)
 Rule: BETA.INV(p,a,b) returns, in most cases, a double where Excel's own BETA.DIST(.,a,b,TRUE)
@@ -724,10 +778,22 @@ Centrally (|p - 0.5| <= 0.425) no candidate fits (central bit-exact counts of 40
   own NORM.S.DIST(PPND16(p)) is already exactly p, yet Excel returns a different x on 177 of those.
 - It is not a Newton solve on 0.5*erfc(-x*sqrt(0.5)) from PPND7, Acklam, Moro or 0, stopping at
   |dx| <= 1e-15|x| or at dx = 0 [61 to 79].
-- NORM.S.DIST(NORM.S.INV(p)) equals p on only 172 of 341 points.
+- NORM.S.DIST(NORM.S.INV(p)) equals p on only 172 of 341 points. Probe t1759-norm-s-inv-roundtrip
+  (T-1759) adds NORM.S.DIST at Excel's x and at its neighbouring doubles:
+  - x is a crossing of Excel's own CDF at 234 of 340 central points;
+  - the CDF is flat across the three doubles at 36;
+  - x misses by 1 to 32 ulps of p at 70, 52 of them below.
+  - At 53 of the 63 adjacent rows, a neighbouring double gives NORM.S.DIST exactly p, yet Excel
+    returned its own x. So the stop rule neither minimises |CDF − p| nor stops at CDF = p.
+  - NORM.S.INV recomputed from a constant p reproduces x at all 340 rows.
+  This matches Microsoft's description of NORM.S.INV as an "iterative search" on NORM.S.DIST and
+  has the same shape as BETA.INV (T-1745). Its start and stop rule are not fitted.
 Consequence: the best kernel is a hybrid, PPND16 in the tails and statrs centrally. It is bit-exact
 on 775 of 1,024 sweep cells, against 341 for the engine's statrs alone (fit `norm-s-inv`).
-Side finding for T-0968: NORM.S.DIST(x,TRUE) equals `0.5*erfc(-x*sqrt(0.5))` (glibc erfc) at 260
+Side finding for T-0968, now the fit `norm-s-dist` (T-1759): over all 1,773 NORM.S.DIST cells,
+`0.5*erfc(-x*sqrt(0.5))` (glibc) is bit-exact on 1,103, Cody's rational approximations (R's
+pnorm_both) on 991, `0.5*erfc(-x/sqrt(2))` on 869, and the engine on 879. On the T-1746 probe
+alone, NORM.S.DIST(x,TRUE) equals `0.5*erfc(-x*sqrt(0.5))` (glibc erfc) at 260
 of the 341 PPND16(p) points of the probe (column D) and at 240 of Excel's own NORM.S.INV results
 (column B). The `0.5*erfc(-x/sqrt(2))` form matches 199 and 203.
 Input handling seen on the way:
@@ -740,7 +806,7 @@ Evidence: probes-numeric/t1746-norm-s-inv-central (341 literal p over the centra
 NORM.S.DIST of each result and of PPND16(p)), m9-norm-s-inv, t1048-normsinv, t1048-norminv. Run
 it with `uv run rustsheet-fitlab norm-s-inv` (`fitlab/kernels/norm_inv.py`).
 Status: VERIFIED (tails); the central algorithm is UNVERIFIED
-Tasks: T-1746, T-0925, T-0968
+Tasks: T-1746, T-1759, T-0925, T-0968
 
 ## AVERAGEA, MAXA and MINA over an array
 Rule: an array value's elements are not read like range cells. AVERAGEA skips a boolean element and
@@ -885,3 +951,27 @@ A294, A295, A300 (DEVSQ; a two-pass reproduces all seven bit-exactly); excel-gra
 Status: VERIFIED (excel-graph).
 Ours: AVEDEV/DEVSQ ignore the empty argument (0), QUARTILE(TRUE,1) is an error, DEVSQ is one-pass (devsq.rs).
 Tasks: T-1748, T-1749
+
+## SKEW, SKEW.P, KURT, HARMEAN, STANDARDIZE, SUMX* and MDETERM edge pools (T-1623)
+Rule (Excel, evidence below): SKEW.P of fewer than three numbers is `#DIV/0!` (`SKEW.P(A1:A2)`, and a range that
+leaves two numbers after text, booleans and blanks are skipped; a single value and three equal values are `#DIV/0!`
+too). HARMEAN of a range with no numbers (`HARMEAN(D3:D4)`, two blanks) is `#N/A` (not `#DIV/0!`), unlike SKEW, SKEW.P and KURT of the same
+blanks, which are `#DIV/0!`. STANDARDIZE reads a direct `TRUE` as 1 (`STANDARDIZE(TRUE,3,2)`
+is -1), and a range argument is inferred to lift element-wise: `STANDARDIZE(A1:A2,3,2)` is `#SPILL!` with data below it, which shows
+Excel returned an array, but no element value was observed (T-1750 probes it unblocked).
+MDETERM of the singular matrix [1,2,3;4,5,6;7,8,9] is 6.661338147750939e-16, not 0, so Excel's elimination leaves a
+rounding residual. KURT with a direct `TRUE` argument is -1.4331834319526635 for 3,5,2,8,9,4,7,1 plus TRUE, ours
+is -1.4331834319526626 (about 9e-16, roughly 4 ulp, off). The other 132 cells of the case (SUMX2PY2, SUMXMY2, SUMX2MY2 size mismatches and text, boolean or
+blank pairs, MDETERM non-square, text and 1x1, ECMA.CEILING sign and zero-significance cases, SKEW/KURT/HARMEAN too-few
+and non-positive values) already match.
+Other results a later fix must keep: `MDETERM({1,2,3;4,5,6;7,8,10})` is -2.9999999999999982 (a second elimination
+residual beside the singular case, T-1751), `MDETERM(5)` is 5 while `MDETERM("5")` is `#VALUE!`,
+`ECMA.CEILING(-7,0.3)` is -6.8999999999999995, `ECMA.CEILING(1E+300,1E-10)` is `#NUM!`, and `STANDARDIZE(5,3,1E-300)` is
+1.9999999999999998e+300. The SUMX2PY2/SUMXMY2/SUMX2MY2 scalar text and boolean results are in coercion.md.
+Literal `1E+308` inside a formula makes Graph reject the whole workbook (`createSession` 501 `unsupportedWorkbook`),
+as does a wrong argument count (`STANDARDIZE(5,3)`, a three-range `SUMX2PY2`); `ECMA.CEILING` and `SKEW.P` must be
+written `_xlfn.`-prefixed in the file.
+Evidence: probes/stats-evidence-floor-t1623 (excel-graph, 2026-10-17).
+Status: VERIFIED (excel-graph).
+Ours: the mismatches above are open.
+Tasks: T-1750, T-1751, T-1752, T-1753, T-1754, T-1755

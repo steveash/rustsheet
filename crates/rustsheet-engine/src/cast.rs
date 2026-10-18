@@ -113,6 +113,11 @@ pub(crate) fn number_text_too_long(text: &str) -> bool {
     text.len() > MAX_NUMBER_TEXT_LEN && text.chars().count() > MAX_NUMBER_TEXT_LEN
 }
 
+/// The `#N/IMPL!` of a range, an array or a LAMBDA where a scalar cast expects a value.
+fn not_a_scalar(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::NIMPL, cell, "Arrays not supported yet".to_string())
+}
+
 impl Model {
     /// Coerces a single array element to a number the way a scalar number argument is: booleans
     /// are 1 and 0, text goes through `cast_number` (`Data!D7:D7/1` with D7 = " 2 " is 2,
@@ -185,6 +190,19 @@ impl Model {
     /// (DEVIATION, docs/excel-semantics/arrays.md "Array results above 1,048,576 cells").
     /// A whole-row or whole-column range is read only within the sheet's used area; the
     /// rest is empty and goes on record as read empty in one rectangle (`clip_to_used_area`).
+    /// The value `node` evaluates to, a range read as its top-left cell without evaluating the
+    /// rest of it: N, T and the offline-error functions take their argument so.
+    pub(crate) fn evaluate_node_top_left(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match self.evaluate_node_in_context(node, cell) {
+            CalcResult::Range { left, .. } => self.evaluate_cell(left),
+            other => other,
+        }
+    }
+
     pub(crate) fn evaluate_range(
         &mut self,
         left: CellReferenceIndex,
@@ -610,37 +628,57 @@ impl Model {
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        let result = self.dereference(result, cell);
-        match result {
-            CalcResult::Number(f) => Ok(f),
-            CalcResult::String(s) => match self.cast_number(&s) {
-                Some(f) => Ok(f),
-                None => Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Expecting number".to_string(),
-                )),
-            },
-            CalcResult::Boolean(f) => {
-                if f {
-                    Ok(1.0)
-                } else {
-                    Ok(0.0)
-                }
-            }
-            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(0.0),
+        match self.dereference(result, cell) {
             error @ CalcResult::Error { .. } => Err(error),
-            CalcResult::Range { .. } => Err(CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            }),
-            CalcResult::Array(_) | CalcResult::Lambda(_) => Err(CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            }),
+            value => self.cast_number_ref(&value, cell),
         }
+    }
+
+    /// The number a scalar argument value reads as, borrowed (SPEC-0011 "Kernels"): booleans
+    /// are 1 and 0, text goes through `cast_number`, empty is 0, an error is itself (cloned only
+    /// on that path). A range, an array or a LAMBDA is `#N/IMPL!`: the owned
+    /// [`Model::cast_to_number`] dereferences first, and `lift_call` never hands a kernel one.
+    pub(crate) fn cast_number_ref(
+        &self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        match value {
+            CalcResult::Number(f) => Ok(*f),
+            CalcResult::String(s) => self.cast_number(s).ok_or_else(|| {
+                CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string())
+            }),
+            CalcResult::Boolean(f) => Ok(if *f { 1.0 } else { 0.0 }),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(0.0),
+            error @ CalcResult::Error { .. } => Err(error.clone()),
+            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                Err(not_a_scalar(cell))
+            }
+        }
+    }
+
+    /// [`Model::cast_number_ref`] for an optional argument of a kernel: `default` when the call
+    /// has no such argument (`values.get(i)` is `None`). A written empty argument is there, and
+    /// reads as 0 (`PMT(0.1,10,100,,)`), as `get_number` read it.
+    pub(crate) fn cast_number_or(
+        &self,
+        value: Option<&CalcResult>,
+        default: f64,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        value.map_or(Ok(default), |value| self.cast_number_ref(value, cell))
+    }
+
+    /// [`Model::cast_number_or`] where a boolean is `#VALUE!` ([`Model::cast_number_no_bools_ref`]).
+    pub(crate) fn cast_number_no_bools_or(
+        &self,
+        value: Option<&CalcResult>,
+        default: f64,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        value.map_or(Ok(default), |value| {
+            self.cast_number_no_bools_ref(value, cell)
+        })
     }
 
     pub(crate) fn get_number_no_bools(
@@ -658,15 +696,27 @@ impl Model {
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        let result = self.dereference(result, cell);
-        if matches!(result, CalcResult::Boolean(_)) {
+        match self.dereference(result, cell) {
+            error @ CalcResult::Error { .. } => Err(error),
+            value => self.cast_number_no_bools_ref(&value, cell),
+        }
+    }
+
+    /// [`Model::cast_number_ref`] where a boolean is `#VALUE!` (a typed boolean date for EDATE,
+    /// docs/excel-semantics/dates.md "Date function argument modes").
+    pub(crate) fn cast_number_no_bools_ref(
+        &self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        if matches!(value, CalcResult::Boolean(_)) {
             return Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "Expecting number".to_string(),
             ));
         }
-        self.cast_to_number(result, cell)
+        self.cast_number_ref(value, cell)
     }
 
     pub(crate) fn get_string(
@@ -695,29 +745,29 @@ impl Model {
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<String, CalcResult> {
-        let result = self.dereference(result, cell);
-        match result {
-            CalcResult::Number(f) => Ok(number_to_text(f)),
+        match self.dereference(result, cell) {
             CalcResult::String(s) => Ok(s.into_lossy_string()),
-            CalcResult::Boolean(f) => {
-                if f {
-                    Ok("TRUE".to_string())
-                } else {
-                    Ok("FALSE".to_string())
-                }
-            }
-            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok("".to_string()),
             error @ CalcResult::Error { .. } => Err(error),
-            CalcResult::Range { .. } => Err(CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            }),
-            CalcResult::Array(_) | CalcResult::Lambda(_) => Err(CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            }),
+            value => Self::cast_string_ref(&value, cell),
+        }
+    }
+
+    /// The text a scalar argument value reads as, borrowed: a number as its text, a boolean as
+    /// TRUE or FALSE, empty as "". A range, an array or a LAMBDA is `#N/IMPL!`, as in
+    /// [`Model::cast_number_ref`].
+    pub(crate) fn cast_string_ref(
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<String, CalcResult> {
+        match value {
+            CalcResult::Number(f) => Ok(number_to_text(*f)),
+            CalcResult::String(s) => Ok((**s).to_owned()),
+            CalcResult::Boolean(f) => Ok(if *f { "TRUE" } else { "FALSE" }.to_string()),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(String::new()),
+            error @ CalcResult::Error { .. } => Err(error.clone()),
+            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                Err(not_a_scalar(cell))
+            }
         }
     }
 
@@ -735,39 +785,41 @@ impl Model {
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<bool, CalcResult> {
-        let result = self.dereference(result, cell);
-        match result {
-            CalcResult::Number(f) => {
-                if f == 0.0 {
-                    return Ok(false);
-                }
-                Ok(true)
-            }
-            CalcResult::String(s) => {
-                if s.to_lowercase() == *"true" {
-                    return Ok(true);
-                } else if s.to_lowercase() == *"false" {
-                    return Ok(false);
-                }
-                Err(CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Expected boolean".to_string(),
-                })
-            }
-            CalcResult::Boolean(b) => Ok(b),
-            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(false),
+        match self.dereference(result, cell) {
             error @ CalcResult::Error { .. } => Err(error),
-            CalcResult::Range { .. } => Err(CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            }),
-            CalcResult::Array(_) | CalcResult::Lambda(_) => Err(CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            }),
+            value => Self::cast_bool_ref(&value, cell),
+        }
+    }
+
+    /// The boolean a scalar argument value reads as, borrowed: a number is TRUE unless 0, text is
+    /// TRUE or FALSE in any case (else `#VALUE!`), empty is FALSE. A range, an array or a LAMBDA
+    /// is `#N/IMPL!`, as in [`Model::cast_number_ref`].
+    pub(crate) fn cast_bool_ref(
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<bool, CalcResult> {
+        match value {
+            CalcResult::Number(f) => Ok(*f != 0.0),
+            CalcResult::String(s) => {
+                let lower = s.to_lowercase();
+                if lower == *"true" {
+                    Ok(true)
+                } else if lower == *"false" {
+                    Ok(false)
+                } else {
+                    Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Expected boolean".to_string(),
+                    ))
+                }
+            }
+            CalcResult::Boolean(b) => Ok(*b),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(false),
+            error @ CalcResult::Error { .. } => Err(error.clone()),
+            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                Err(not_a_scalar(cell))
+            }
         }
     }
 

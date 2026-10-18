@@ -1,0 +1,29 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FORMULATEXT of a LET or LAMBDA: does a use of a bound name print in the spelling of its declaration (T-1720)",
+  "tags": [
+    "M2",
+    "names",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LET(x,5,X*2)",
+        "B1": "=FORMULATEXT(A1)",
+        "A2": "=LAMBDA(Ab,aB*2)(4)",
+        "B2": "=FORMULATEXT(A2)",
+        "A3": "=LET(x,1,LET(X,5,x))",
+        "B3": "=FORMULATEXT(A3)",
+        "A4": "=LET(Ab,LAMBDA(Q,q+1),aB(2))",
+        "B4": "=FORMULATEXT(A4)",
+        "A5": "=LET(x,1,y,X+1,Y)",
+        "B5": "=FORMULATEXT(A5)",
+        "A6": "=LET(Ab,2,ab+AB)",
+        "B6": "=FORMULATEXT(A6)"
+      }
+    }
+  ],
+  "expected": {}
+}

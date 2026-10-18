@@ -1,0 +1,28 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "DISCOUNT": {
+   "B1": {
+    "t": "n",
+    "v": -37991655.42999993
+   }
+  },
+  "SUMMARY": {
+   "C37": {
+    "t": "n",
+    "v": 515716924.64000124
+   },
+   "I37": {
+    "t": "n",
+    "v": 0.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "6ae6fac63a5147a205d895b2d67645495f442bcfb3b2fd57610eec549d23e6bf",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:16:54+00:00",
+  "version": null
+ }
+}

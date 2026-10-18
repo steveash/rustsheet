@@ -2,14 +2,17 @@ use crate::functions::util::aggregate_args::{
     AggregatePolicy, AggregateWalk, ArgReading, ArrayNumbers, CellNumbers, DirectNumbers,
     ErrorRule, ItemSource, NumberRules,
 };
-use std::cmp::Ordering;
 
+use super::sorted_data::{DataArg, DataOrder, SortedNumbers};
 use crate::arithmetic::{extended_quotient, extended_sum, flush_subnormal};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::lift::LiftCost;
+use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
+use std::cmp::Ordering;
 
 /// The AVERAGE family: a referenced error ranks below a direct scalar error whichever comes
 /// first, and the leftmost of the referenced and array errors wins
@@ -22,7 +25,8 @@ const AVERAGE_ARGS: AggregatePolicy = AggregatePolicy {
     skip_empty_args: false,
 };
 
-/// DEVSQ, AVEDEV and SUMSQ: an empty argument is skipped (TODO(T-0236)), and errors rank as in
+/// DEVSQ, AVEDEV and SUMSQ: an empty argument is skipped (TODO(T-1748): Excel counts it as 0, probes/stat-order-floor-batch
+/// A274, A299), and errors rank as in
 /// the AVERAGE family: a direct error beats a referenced or array error whichever comes first
 /// (probes/aggregate-error-precedence-stat-family rows 10-12, T-1439).
 const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
@@ -64,8 +68,9 @@ impl Model {
 
     /// `for_each_value` that skips empty arguments (`DEVSQ(1, )`) instead of counting them as 0;
     /// errors rank as in `for_each_value` (T-1439). DEVSQ, AVEDEV and SUMSQ ignored them before they
-    /// moved onto `for_each_value`; for the empty-argument skip there is no Excel evidence either way yet. TODO(T-0236):
-    /// probe empty arguments and fold this into `for_each_value`.
+    /// moved onto `for_each_value`. Excel counts the empty argument of AVEDEV and DEVSQ as 0
+    /// (probes/stat-order-floor-batch A274, A299; SUMSQ is unprobed), so the skip is wrong.
+    /// TODO(T-1748): implement that and fold this into `for_each_value`.
     pub(crate) fn for_each_value_skip_empty<F>(
         &mut self,
         args: &[Node],
@@ -505,86 +510,113 @@ impl Model {
     /// `floor(k)`-th smallest, and `#NUM!` when `ceil(k)` exceeds the count, so the callers
     /// round it themselves. Evidence: probes/large-small-k (excel-graph),
     /// docs/excel-semantics/statistics.md.
-    fn large_small_k(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
-        let k = self.get_number(node, cell)?;
+    fn large_small_k(&self, k: &CalcResult, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+        let k = self.cast_number_ref(k, cell)?;
         if k < 1.0 {
-            return Err(CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K must be >= 1".to_string(),
-            });
+            return Err(CalcResult::new_error(Error::NUM, cell, String::new()));
         }
         Ok(k)
     }
 
+    /// `LARGE(array, k)`: `k` lifts over its data, which is read and sorted once
+    /// (`sorted_data.rs`; probes/stat-whole-lift W1-W20).
     pub(crate) fn fn_large(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let values = match self.numbers_from_reference_arg(&args[0], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        let k = match self.large_small_k(&args[1], cell) {
-            Ok(k) => k,
-            Err(e) => return e,
-        };
-        let mut numeric_values: Vec<f64> = values.into_iter().flatten().collect();
-        if numeric_values.is_empty() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "No numeric values for LARGE".to_string(),
-            };
-        }
-        numeric_values.sort_by(|a, b| b.partial_cmp(a).unwrap_or(Ordering::Equal));
-        let k_usize = k.ceil() as usize;
-        if k_usize > numeric_values.len() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K is larger than the number of data points".to_string(),
-            };
-        }
-        CalcResult::Number(numeric_values[k_usize - 1])
+        self.lift_with_sorted_data(
+            Function::Large,
+            args,
+            &RANKED_DESCENDING,
+            cell,
+            &mut |model, data, values| model.large_of(data, values, cell),
+        )
     }
 
+    /// `SMALL(array, k)`, as LARGE.
     pub(crate) fn fn_small(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
+        self.lift_with_sorted_data(
+            Function::Small,
+            args,
+            &RANKED_ASCENDING,
+            cell,
+            &mut |model, data, values| model.small_of(data, values, cell),
+        )
+    }
 
-        let values = match self.numbers_from_reference_arg(&args[0], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        let k = match self.large_small_k(&args[1], cell) {
+    /// LARGE of one element over the numbers sorted largest first.
+    pub(super) fn large_of(
+        &self,
+        data: &mut SortedNumbers,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let k = match self.large_small_k(values.get(1).unwrap_or(&CalcResult::EmptyArg), cell) {
             Ok(k) => k,
             Err(e) => return e,
         };
-
-        let mut numeric_values: Vec<f64> = values.into_iter().flatten().collect();
-        if numeric_values.is_empty() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "No numeric values for SMALL".to_string(),
-            };
+        if data.is_empty() {
+            return CalcResult::new_error(Error::NUM, cell, String::new());
         }
+        let sorted = data.sorted();
+        // k >= 1, so its ceiling is a position from 1; a k past the count is #NUM!.
+        match (k.ceil() as usize)
+            .checked_sub(1)
+            .and_then(|index| sorted.get(index))
+        {
+            Some(value) => CalcResult::Number(*value),
+            None => CalcResult::new_error(Error::NUM, cell, String::new()),
+        }
+    }
 
-        // For SMALL, sort ascending
-        numeric_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
-
+    /// SMALL of one element over the numbers sorted smallest first.
+    fn small_of(
+        &self,
+        data: &mut SortedNumbers,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let k = match self.large_small_k(values.get(1).unwrap_or(&CalcResult::EmptyArg), cell) {
+            Ok(k) => k,
+            Err(e) => return e,
+        };
+        if data.is_empty() {
+            return CalcResult::new_error(Error::NUM, cell, String::new());
+        }
         // Excel takes the floor for SMALL but still refuses a k whose ceiling is out of range.
-        let k_usize = k.floor() as usize;
-        if k.ceil() as usize > numeric_values.len() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K is larger than the number of data points".to_string(),
-            };
+        if k.ceil() as usize > data.len() {
+            return CalcResult::new_error(Error::NUM, cell, String::new());
         }
-
-        CalcResult::Number(numeric_values[k_usize - 1])
+        let sorted = data.sorted();
+        match (k.floor() as usize)
+            .checked_sub(1)
+            .and_then(|index| sorted.get(index))
+        {
+            Some(value) => CalcResult::Number(*value),
+            None => CalcResult::new_error(Error::NUM, cell, String::new()),
+        }
     }
 }
+
+/// The numbers LARGE and SMALL rank: a reference (one range or a union's areas), an array, or a
+/// scalar typed in place, read by [`Model::numbers_from_reference_arg`].
+fn ranked_numbers(
+    model: &mut Model,
+    node: &Node,
+    cell: CellReferenceIndex,
+) -> Result<Vec<f64>, CalcResult> {
+    model
+        .numbers_from_reference_arg(node, cell)
+        .map(|numbers| numbers.into_iter().flatten().collect())
+}
+
+/// LARGE's data: its numbers largest first, sorted once, each element O(1).
+const RANKED_DESCENDING: DataArg = DataArg {
+    read: ranked_numbers,
+    order: DataOrder::Descending,
+    cost: LiftCost::Prepared,
+};
+
+/// SMALL's data: its numbers smallest first.
+const RANKED_ASCENDING: DataArg = DataArg {
+    read: ranked_numbers,
+    order: DataOrder::Ascending,
+    cost: LiftCost::Prepared,
+};

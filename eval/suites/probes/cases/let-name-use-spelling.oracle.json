@@ -1,0 +1,62 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "n",
+    "v": 10.0
+   },
+   "A2": {
+    "t": "n",
+    "v": 8.0
+   },
+   "A3": {
+    "t": "n",
+    "v": 5.0
+   },
+   "A4": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A5": {
+    "t": "n",
+    "v": 2.0
+   },
+   "A6": {
+    "t": "n",
+    "v": 4.0
+   },
+   "B1": {
+    "t": "s",
+    "v": "=LET(x,5,x*2)"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=LAMBDA(Ab,Ab*2)(4)"
+   },
+   "B3": {
+    "t": "s",
+    "v": "=LET(x,1,LET(X,5,X))"
+   },
+   "B4": {
+    "t": "s",
+    "v": "=LET(Ab,LAMBDA(Q,Q+1),Ab(2))"
+   },
+   "B5": {
+    "t": "s",
+    "v": "=LET(x,1,y,x+1,y)"
+   },
+   "B6": {
+    "t": "s",
+    "v": "=LET(Ab,2,Ab+Ab)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "49aacaf3da07da11fa7211a540b51d8bcdf02724d389e66c581e7a4ce3b2f981",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T03:56:26+00:00",
+  "version": null
+ }
+}

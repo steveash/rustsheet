@@ -52,6 +52,7 @@ use super::types::*;
 use sheet_span::with_sheet_span;
 use token::OpCompare;
 
+mod call_names;
 mod chain;
 mod contains_function;
 mod depth;
@@ -71,6 +72,8 @@ pub(crate) use depth::is_limit_error;
 pub use depth::{
     MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
 };
+
+pub(crate) use call_names::CallNameSpellings;
 
 #[cfg(test)]
 mod tests;
@@ -609,7 +612,7 @@ impl Parser {
                 column,
                 absolute_column,
                 absolute_row,
-            } => self.reference_operand(sheet, row, column, absolute_column, absolute_row),
+            } => self.reference_or_call_operand(sheet, row, column, absolute_column, absolute_row),
             TokenType::Range { sheet, left, right } => self.range_operand(sheet, left, right),
             TokenType::Ident(name) => self.parse_identifier(name),
             TokenType::Error(kind) => Node::ErrorKind(kind),

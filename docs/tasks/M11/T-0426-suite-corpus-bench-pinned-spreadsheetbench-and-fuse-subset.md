@@ -3,7 +3,7 @@ id: T-0426
 title: "Suite corpus-bench: pinned SpreadsheetBench and FUSE subset from the xlsx-corpus-bench manifest, crash-only first"
 milestone: M11
 lane: harness
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -31,13 +31,25 @@ suites the milestone exit criteria name that does not exist yet.
   subset can grow later.
 
 ## Acceptance criteria
-- [ ] Fetch config pins the sources and sha256s. `rustsheet-eval fetch --suite corpus-bench`
+- [x] Fetch config pins the sources and sha256s. `rustsheet-eval fetch --suite corpus-bench`
   downloads and verifies the subset, and license and attribution are recorded in the suite.
-- [ ] The suite runs crash-only, with no expectations yet. Any panic, timeout or import error is
+- [x] The suite runs crash-only, with no expectations yet. Any panic, timeout or import error is
   recorded in the baseline as a known failure through `make eval-baseline` (new coverage, so
   `make check` stays green) and filed as a task, and `make eval` wall time stays within the CI budget (or the suite is excluded
   from CI and run by the steward).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Oracle values (T-0427).
+
+## Outcome
+- `eval/suites/corpus-bench` (suite.toml + README with license and attribution): SpreadsheetBench's
+  dataset tarball pinned by commit (49b73a9) and sha256, fetched with the existing archive fetcher
+  (`rustsheet-eval fetch --suite corpus-bench`, verified: 912 files). Sampling rule: the first
+  test case's input of each of the 912 instructions (`**/1_*_input.xlsx`), documented with how to
+  grow it; the FUSE half (9.4 GB) is T-0431.
+- Crash-only (`use_cached_values = false`: SpreadsheetBench caches are LibreOffice/win32com, not
+  Excel). First run: 907 pending (no expectations), 5 timeouts at 60 s, no panics or import errors;
+  the 5 are known failures in eval/baseline/corpus-bench.txt (new coverage) and filed as T-0430.
+- CI does not fetch external suites, so CI wall time is unchanged; a fetched run of the subset
+  takes 2m17s on 8 cores (the steward or a local run covers it).

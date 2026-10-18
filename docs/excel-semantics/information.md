@@ -25,7 +25,12 @@ Also covered by M34:P34 (`{4.5,-7,"3",TRUE}` -> TRUE, FALSE, FALSE, #VALUE!: par
 absolute value, text cast, boolean #VALUE!). UNVERIFIED sub-rules (no probe yet): an array
 expression derived from a range (`ISEVEN(Data!C1:C5+0)`), arguments of magnitude >= 2^63, and the
 dynamic-array flag Excel writes for the range form.
-Implemented in: `Model::parity_predicate` (functions/information/mod.rs).
+Legacy (pre-dynamic-array) formulas, UNVERIFIED for ISEVEN/ISODD (T-1774 moved them onto the
+SPEC-0011 `LiftArrays` table entry, so they follow the Analysis ToolPak rule probed for EDATE and
+YEARFRAC, probes/scalar-lift-shapes-c E, F, H, Q): a bare range gets no `@` and is `#VALUE!`, a
+value operation over a range (`ISEVEN(C1:C5+0)`) gets `@`, and `{5}` gets no `@`. Before T-1774 the
+hand-written arm gave the argument a scalar signature (`@` on the range and on `{5}`).
+Implemented in: `Model::lifted_parity` and the `ARRAYS_1` entry in functions/lift/kinds.rs.
 Status: VERIFIED (excel-graph)
 Tasks: T-0247, T-0248
 
@@ -267,7 +272,7 @@ Legacy: `SUM(N({1,2}))` is 3 and `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` 5, bu
 `=N(B1:B3*1)` off the rows `#VALUE!`.
 Evidence: probes/n-array-lift (excel-graph, 2026-10-16, T-1616).
 Not implemented: the legacy cell `=N(IF(1,{2;3}))` gives 2, 3 spilled in ours instead of `#VALUE!` (S!D4:D5,
-T-1713, which needs the legacy marker of spec T-1727). T, CHOOSE, INDEX and IFS arguments and nested uses
+T-1713, which needs the legacy marker of SPEC-0012, legacy-n-t-marker.md: T-1851, T-1713). T, CHOOSE, INDEX and IFS arguments and nested uses
 (`=ABS(N(IF(1,{2;3})))`) behave the same, while N of an array constant or of TRANSPOSE gets an `@` (2):
 references.md "Legacy formulas put `@` on array-valued calls and array constants" and "Legacy N and T over a
 reference-returning call" (probes/legacy-array-result, probes/legacy-n-t-reference-args).

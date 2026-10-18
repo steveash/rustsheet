@@ -5,7 +5,9 @@ use crate::constants::EXCEL_PRECISION;
 use crate::decimal_round::{round_decimal, RoundMode};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::lift::{div_error, num_error};
 use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
+use crate::functions::Function;
 use crate::number_format::to_excel_precision;
 use crate::single_number_fn;
 use crate::{
@@ -39,6 +41,9 @@ const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
 };
+
+/// Below this |x| (2^-28) ASIN returns its argument (`fn_asin`).
+const ASIN_IDENTITY_BOUND: f64 = 3.725_290_298_461_914e-9;
 
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
@@ -271,28 +276,22 @@ impl Model {
         })
     }
 
+    /// `QUOTIENT(numerator, denominator)`, an Analysis `ToolPak` function: both arguments lift
+    /// over an array and refuse a multi-cell range (probes/math-atp-array-lift C1-C2, C7-C8, C27-C28;
+    /// scalar-lift-open-a Y19-Y20), and a boolean is `#VALUE!` (math-atp-array-lift C21, -b E11-E13).
+    /// Within one element the numerator's error wins (C29-C30).
     pub(crate) fn fn_quotient(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let divisor = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if divisor == 0.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Divide by 0".to_string(),
+        self.lift_call(Function::Quotient, args, cell, &mut |model, values| {
+            let (value, divisor) = match model.two_numbers(values, cell) {
+                Ok(pair) => pair,
+                Err(error) => return error,
             };
-        }
-
-        let result = value / divisor;
-        CalcResult::Number(result.signum() * result.abs().floor())
+            if divisor == 0.0 {
+                return div_error(cell);
+            }
+            let result = value / divisor;
+            CalcResult::Number(result.signum() * result.abs().floor())
+        })
     }
 
     /// Lifts `op` over `N` numeric arguments like [`Model::lift_numbers`], where the arguments
@@ -526,10 +525,14 @@ impl Model {
     // them. Excel's is not even odd (`ASIN(0.09)` and `ASIN(-0.09)` differ in the last digit), so no
     // formulation found yet fits every cell (docs/excel-semantics/numbers.md "ASIN of a small
     // argument"). At ±1 the quotient is ±inf and atan gives ±π/2; outside [-1, 1] the square root is
-    // NaN, which is `#NUM!`.
-    single_number_fn!(fn_asin, |f: f64| Ok(f64::atan(
-        f / ((1.0 - f) * (1.0 + f)).sqrt()
-    )));
+    // NaN, which is `#NUM!`. A tiny argument is returned as is: `ASIN(±1E-13)` is ±1E-13, where the
+    // quotient gives ±1.0000000000000002E-13 (T-1605). The sweep only bounds the cut to between 1E-13
+    // and 1E-8 (`ASIN(1E-8)` is the quotient's 1.0000000000000002E-8, `ASIN(-1E-8)` is -1E-8).
+    single_number_fn!(fn_asin, |f: f64| Ok(if f.abs() < ASIN_IDENTITY_BOUND {
+        f
+    } else {
+        f64::atan(f / ((1.0 - f) * (1.0 + f)).sqrt())
+    }));
     single_number_fn!(fn_acos, |f| Ok(f64::acos(f)));
     single_number_fn!(fn_atan, |f| Ok(f64::atan(f)));
     single_number_fn!(fn_asinh, |f| Ok(f64::asinh(f)));
@@ -641,16 +644,31 @@ impl Model {
         }
         descending_product(x, 1.0)
     });
-    single_number_fn!(fn_factdouble, |x: f64| {
-        let x = x.floor();
-        if x < -1.0 {
-            return Err(Error::NUM);
-        }
-        if x < 0.0 {
-            return Ok(1.0);
-        }
-        descending_product(x, 2.0)
-    });
+    /// `FACTDOUBLE(number)`, an Analysis `ToolPak` function: it lifts over an array and refuses a
+    /// multi-cell range (probes/math-atp-array-lift C3-C4, scalar-lift-open-a Y21), and a boolean is
+    /// `#VALUE!`, typed, in a cell or as an array element (probes/math-atp-array-lift-b E1-E3, E8;
+    /// docs/excel-semantics/numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes").
+    pub(crate) fn fn_factdouble(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_call(Function::Factdouble, args, cell, &mut |model, values| {
+            let [number] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let x = match model.cast_number_no_bools_ref(number, cell) {
+                Ok(x) => x.floor(),
+                Err(error) => return error,
+            };
+            if x < -1.0 {
+                return num_error(cell);
+            }
+            if x < 0.0 {
+                return CalcResult::Number(1.0);
+            }
+            match descending_product(x, 2.0) {
+                Ok(product) => CalcResult::Number(product),
+                Err(_) => num_error(cell),
+            }
+        })
+    }
     single_number_fn!(fn_sign, |f| {
         if f == 0.0 {
             Ok(0.0)
@@ -797,13 +815,14 @@ impl Model {
                 message: "k cannot be greater than n".to_string(),
             };
         }
-        let k = k as usize;
-        let mut result = 1.0;
-        for i in 0..k {
-            let t = i as f64;
-            result *= (n - t) / (t + 1.0);
+        match combin(n, k) {
+            Ok(result) => CalcResult::Number(result),
+            Err(error) => CalcResult::Error {
+                error,
+                origin: cell,
+                message: "Result is too large".to_string(),
+            },
         }
-        CalcResult::Number(result)
     }
 
     // PERCENTOF(part, total) — returns SUM(part) / SUM(total) as a decimal fraction. Both sums snap
@@ -873,6 +892,35 @@ pub(crate) fn percent_of(
 /// push an exact multiple over a step boundary.
 fn snap_ratio(value: f64, significance: f64) -> f64 {
     to_excel_precision(value / significance, EXCEL_PRECISION)
+}
+
+/// COMBIN(n, k) for integers `0 <= k <= n`, rounded as Excel rounds it. With `j = min(k, n-k)`,
+/// Excel multiplies the factors `(n-j+i)/(i+1)` for i = 1..j-1, each a rounded quotient, into one
+/// double running product and then multiplies by `n`: `COMBIN(10,4)` is 209.99999999999997, not 210.
+/// This matches all 841 numeric cells of probes/combin-algorithm-sweep bit for bit (numbers.md
+/// "COMBIN is inexact"). Every factor is at least 1, so the product only grows: it overflows (`#NUM!`,
+/// as `COMBIN(1030,515)` is in Excel) within a few hundred
+/// factors whenever `j` is large, which bounds the work (directive 5).
+fn combin(n: f64, k: f64) -> Result<f64, Error> {
+    let j = k.min(n - k);
+    if j < 1.0 {
+        return Ok(1.0);
+    }
+    let mut acc = 1.0;
+    let mut i = 1.0;
+    while i < j {
+        acc *= (n - j + i) / (i + 1.0);
+        if !acc.is_finite() {
+            return Err(Error::NUM);
+        }
+        i += 1.0;
+    }
+    let result = acc * n;
+    if result.is_finite() {
+        Ok(result)
+    } else {
+        Err(Error::NUM)
+    }
 }
 
 /// `n * (n - step) * (n - 2 step) * ...` down to 1 or 2, multiplied from `n` down, which is the

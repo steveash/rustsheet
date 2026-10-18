@@ -174,3 +174,125 @@ fn test_regexreplace_wrong_arg_count() {
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("A2"), "#ERROR!");
 }
+
+// T-1272 performance review: a call compiles each distinct pattern once, keeps it and never
+// evicts, so 600 patterns that cycle compile 600 times; 5,000 distinct ones are past the 2,048
+// small patterns a call may compile, `#ERROR!` (DEVIATION, decision 0014).
+#[test]
+fn regex_compiles_are_cached_and_budgeted() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=ROWS(REGEXTEST(\"a\",\"a\"&MOD(SEQUENCE(1000),600)))",
+    );
+    model._set(
+        "A2",
+        "=SUM(--REGEXTEST(\"a\"&MOD(SEQUENCE(1000),600),\"a\"&MOD(SEQUENCE(1000),600)))",
+    );
+    model._set("A3", "=ROWS(REGEXTEST(\"a\",\"a\"&SEQUENCE(5000)))");
+    model._set("A4", "=REGEXTEST(\"ab\",\"\\w{2}\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1000");
+    assert_eq!(model._get_text("A2"), *"1000");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
+    // `\w{2}` is too big for the smallest size limit and compiles under the next one.
+    assert_eq!(model._get_text("A4"), *"TRUE");
+}
+
+// A lifted REGEXEXTRACT element with return_all keeps the first match only.
+#[test]
+fn lifted_regexextract_return_all_keeps_the_first_match() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REGEXEXTRACT({\"a1b2\";\"xyz\"},\"[0-9]\",1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+}
+
+// T-1272 performance review: patterns too big for the smaller size limits that cycle through a
+// lifted call compile once each instead of thrashing a cache.
+#[test]
+fn cycling_patterns_compile_once() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=SUM(--REGEXTEST(\"abcdefghijklmnop\",\"\\w{\"&(2+MOD(SEQUENCE(400),15))&\"}\"))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"400");
+}
+
+// T-1817 (folded into T-1272): REGEXREPLACE knows its result length before it builds it. Over
+// 32,767 characters it is `#VALUE!` as SUBSTITUTE is (UNVERIFIED for REGEXREPLACE); an empty
+// pattern over 32,767 characters with a 10-character replacement is refused without building
+// its 360,000 characters.
+#[test]
+fn regexreplace_result_is_bounded_before_it_is_built() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=LEN(REGEXREPLACE(REPT(\"a\",32767),\"\",\"bbbbbbbbbb\"))",
+    );
+    model._set("A2", "=LEN(REGEXREPLACE(REPT(\"a\",32767),\"a\",\"bb\"))");
+    model._set("A3", "=LEN(REGEXREPLACE(REPT(\"a\",16383),\"a\",\"bb\"))");
+    model._set(
+        "A4",
+        "=LEN(REGEXREPLACE(REPT(\"ab\",16000),\"(a)(b)\",\"$2$1$1\"))",
+    );
+    model._set(
+        "A5",
+        "=LEN(REGEXREPLACE(REPT(\"ab\",10000),\"(a)(b)\",\"$2$1$1\"))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"32766");
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
+    assert_eq!(model._get_text("A5"), *"30000");
+}
+
+// The replacement keeps the regex crate's syntax, as on main: `$$` is a dollar, `${name}` and
+// `$name` a named group, `$1a` the (absent) group named `1a`, and a lone `$` itself. UNVERIFIED
+// against Excel's PCRE2 syntax (T-1817 probes it).
+#[test]
+fn regexreplace_replacement_syntax() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=REGEXREPLACE(\"ab\",\"(?P<x>a)(b)\",\"[${x}|$2|$$|$1a|$]\")",
+    );
+    model._set("A2", "=REGEXREPLACE(\"ab\",\"(?P<x>a)\",\"$x$x\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"[a|b|$||$]");
+    assert_eq!(model._get_text("A2"), *"aab");
+}
+
+// T-1272 performance review: iterating matches on the PikeVM (a `\b` pattern over non-ASCII
+// text, where the lazy DFA quits) charges each successive search the rest of the text, so a few
+// KB with many matches is `#ERROR!` (DEVIATION, decision 0014; T-1829 charges the work done and
+// updates this test). ASCII text stays on the lazy DFA.
+#[test]
+fn pike_iteration_is_charged_by_rest_of_text() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=COLUMNS(REGEXEXTRACT(REPT(\"naïve \",300),\"\\b\\w+\\b\",1))",
+    );
+    model._set(
+        "A2",
+        "=COLUMNS(REGEXEXTRACT(REPT(\"naïve \",500),\"\\b\\w+\\b\",1))",
+    );
+    model._set(
+        "A3",
+        "=LEN(REGEXREPLACE(REPT(\"cafe foo bar \",2500),\"\\bfoo\\b\",\"x\"))",
+    );
+    model._set(
+        "A4",
+        "=LEN(REGEXREPLACE(REPT(\"café foo bar \",2500),\"\\bfoo\\b\",\"x\"))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"300");
+    assert_eq!(model._get_text("A2"), *"#ERROR!");
+    assert_eq!(model._get_text("A3"), *"27500");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
+}

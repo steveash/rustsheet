@@ -3,7 +3,7 @@ id: T-1351
 title: "SORT returns an error argument (by_col #N/A) before rejecting sort_index 0"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -18,7 +18,7 @@ T-1275's gen-m7 suite (excel-graph sidecars, 2026-10-11): gen-m7/c5d278a8662ef4b
 Excel `#N/A` (by_col's HLOOKUP is `#N/A`), engine `#VALUE!` (sort_index 0 is rejected first: `SORT(Data!B11:E12,0,1,NA())` is
 `#VALUE!`, with sort_index 1 it is `#N/A`). docs/excel-semantics/arrays.md "SORT argument errors come before validation".
 Code: `fn_sort` in crates/rustsheet-engine/src/functions/spill_functions.rs. Evaluate all arguments and return the first
-error (left to right) before validating values; check SORTBY the same way (unit test). T-1271 rewrites how SORT reads
+error (left to right) before validating values; check SORTBY the same way (unit test). T-1837 rewrites how SORT reads
 sort_index/sort_order lists: rebase on it if it has landed.
 
 ## Acceptance criteria
@@ -28,3 +28,10 @@ sort_index/sort_order lists: rebase on it if it has landed.
 
 ## Out of scope
 -
+
+## Outcome
+`fn_sort` now evaluates sort_index, sort_order and by_col before validating values, so an error
+argument (by_col checked first; order unverified) wins over sort_index 0 / invalid sort_order. A multi-cell
+sort_order that fails to coerce no longer pre-empts by_col's error. gen-m7 c5d278a8662ef4b2 A39 passes
+(gen-m7 985/994 cells, gate=false, no baseline change). SORTBY and the order among several error
+arguments stay UNVERIFIED (arrays.md).

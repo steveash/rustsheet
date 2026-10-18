@@ -10,6 +10,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     formatter::dates::{from_excel_date, EPOCH_1904_IN_1900_SERIALS},
+    functions::lift::num_error,
     model::Model,
 };
 
@@ -103,7 +104,39 @@ impl Model {
             .coupon_schedule_breaks(maturity)
     }
 
-    /// The date checks PRICE, YIELD and DURATION make before computing: settlement before maturity
+    /// A date argument of a financial function as a kernel reads it (SPEC-0011): the number of
+    /// `value` (a boolean is #VALUE!) as `financial_date` reads it.
+    pub(super) fn financial_date_of(
+        &self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<i64, CalcResult> {
+        let serial = self.cast_number_no_bools_ref(value, cell)?;
+        Ok(self.financial_date(serial))
+    }
+
+    /// The settlement check of the COUP* functions, PRICE, YIELD and DURATION: #NUM! unless the
+    /// settlement is a calendar date before the maturity. Excel is #NUM! for a settlement below
+    /// serial 1 in a 1900 workbook (0, 0.5, -0.5, -1, -1E15: probes/fin-coupon-walk-bounds A1-A13,
+    /// A19, A20, fin-coupon-walk-bounds-b A11) and for a negative one in a 1904 workbook, whose 0
+    /// reads as the 1900 serial 2924 (probes/date-system-1904-financial A35-A40). The check also
+    /// keeps the coupon schedule walk back from the maturity inside the calendar: without it
+    /// `COUPNUM(-1E15,43831,4)` stepped about 10^6 quarters back to chrono's first year
+    /// (directive 5, T-1822; docs/excel-semantics/financial.md "Coupon settlement before the
+    /// calendar").
+    pub(super) fn check_settlement(
+        &self,
+        settlement: i64,
+        maturity: i64,
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        if settlement < 1 || settlement >= maturity {
+            return Err(num_error(cell));
+        }
+        Ok(())
+    }
+
+    /// The date checks PRICE, YIELD and DURATION make before computing: [`Model::check_settlement`]
     /// and a coupon schedule that does not break (`coupon_schedule_breaks`); #NUM! otherwise.
     pub(super) fn check_bond_dates(
         &self,
@@ -111,13 +144,7 @@ impl Model {
         maturity: i64,
         cell: CellReferenceIndex,
     ) -> Result<(), CalcResult> {
-        if settlement >= maturity {
-            return Err(CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "settlement must be before maturity".to_string(),
-            ));
-        }
+        self.check_settlement(settlement, maturity, cell)?;
         if self.coupon_schedule_breaks(maturity) {
             return Err(broken_schedule_error(cell));
         }

@@ -30,12 +30,16 @@ probes/fin-argument-modes (excel-graph, 2026-10-11, T-1084). Base rows that miss
   below the root, the stopping point does not move with the dates for the same day counts but does differ between
   two bonds with equal day counts and different YEARFRAC (docs/excel-semantics/financial.md, "YIELD stops short of
   PRICE's root").
+The same DURATION, MDURATION and PRICE base values recur as the intersected controls of
+probes/fin-remaining-later-argument-ranges I85-I103 and I165-I171 (T-1822), and so do the CUMIPMT, CUMPRINC, ODDFPRICE,
+ODDFYIELD and YIELD ones there (I65-I84, I105-I136, I173-I184).
 The annuity family (FV, PMT, PPMT, NPV) and the solvers (IRR, RATE, XIRR) are T-0901's and T-0916's, not this task's.
 One probe point per function is not enough to fit a formulation: first add an oracle sweep per function family
 (excel-probe skill; probes-numeric like T-0942), then fit. Split per family if larger than M.
 
 ## Acceptance criteria
 - [ ] A probes-numeric sweep for the bond and depreciation families is oracle-filled.
+- [ ] The last-digit cells of probes/discount-security-modes pass: INTRATE A1-A6, A11-A16, A19; YIELDDISC A68-A73, A78-A83, A86; PRICEMAT A103, A104, A106; YIELDMAT A113-A118, A123, A124, A126-A129, A131 (T-1624). Fitting hint: every INTRATE one-year cell is 0.10000000000000009 against Excel's 0.1, which suggests (redemption-investment)/investment rather than redemption/investment-1.
 - [ ] The base rows above pass, or the Outcome records which formulation was ruled out.
 - [ ] `make check` green; reviewers approve.
 

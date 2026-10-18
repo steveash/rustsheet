@@ -1,0 +1,78 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Reach of the unknown-call-name spelling table in FORMULATEXT: defined LAMBDA names, LET/LAMBDA-bound callees, unknown names as values, cross-sheet order and non-ASCII case folding (T-1756).",
+  "tags": [
+    "M2",
+    "functions",
+    "probe"
+  ],
+  "names": {
+    "MyFn": "=LAMBDA(x,x+1)",
+    "OtherFn": "=LAMBDA(x,x+2)"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=MyFn(1)",
+        "B1": "=FORMULATEXT(A1)",
+        "A2": "=myfn(1)",
+        "B2": "=FORMULATEXT(A2)",
+        "A3": "=MYFN(1)",
+        "B3": "=FORMULATEXT(A3)",
+        "A4": "=LET(f,LAMBDA(x,x*2),F(3))",
+        "B4": "=FORMULATEXT(A4)",
+        "A5": "=LET(Gg,LAMBDA(x,x*2),gG(3))",
+        "B5": "=FORMULATEXT(A5)",
+        "A6": "=LET(f,LAMBDA(x,x*2),f(3))",
+        "B6": "=FORMULATEXT(A6)",
+        "A7": "=LAMBDA(Hh,Hh(1))(LAMBDA(x,x))",
+        "B7": "=FORMULATEXT(A7)",
+        "A8": "=Qux+1",
+        "B8": "=FORMULATEXT(A8)",
+        "A9": "=qux(1)",
+        "B9": "=FORMULATEXT(A9)",
+        "A10": "=wib(1)",
+        "B10": "=FORMULATEXT(A10)",
+        "A11": "=Wib+1",
+        "B11": "=FORMULATEXT(A11)",
+        "A12": "=Zed(1)",
+        "B12": "=FORMULATEXT(A12)",
+        "A13": "=ÄBC(1)",
+        "B13": "=FORMULATEXT(A13)",
+        "A14": "=äbc(1)",
+        "B14": "=FORMULATEXT(A14)",
+        "A15": "=straße(1)",
+        "B15": "=FORMULATEXT(A15)",
+        "A16": "=STRASSE(1)",
+        "B16": "=FORMULATEXT(A16)",
+        "A17": "=Éa(1)",
+        "B17": "=FORMULATEXT(A17)",
+        "A18": "=éA(1)",
+        "B18": "=FORMULATEXT(A18)",
+        "A19": "=MMM(1)",
+        "B19": "=FORMULATEXT(A19)",
+        "A20": "=otherfn(1)",
+        "B20": "=FORMULATEXT(A20)",
+        "A21": "=OTHERFN(1)",
+        "B21": "=FORMULATEXT(A21)"
+      }
+    },
+    {
+      "name": "Sheet2",
+      "cells": {
+        "A1": "=ZED(1)",
+        "B1": "=FORMULATEXT(A1)",
+        "A2": "=zed(2)",
+        "B2": "=FORMULATEXT(A2)",
+        "A3": "=Mmm(1)",
+        "B3": "=FORMULATEXT(A3)",
+        "A4": "=MyFn(2)",
+        "B4": "=FORMULATEXT(A4)",
+        "A5": "=Sheet1!A1+0",
+        "B5": "=FORMULATEXT(A5)"
+      }
+    }
+  ],
+  "expected": {}
+}

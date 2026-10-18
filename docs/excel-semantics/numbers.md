@@ -1106,7 +1106,7 @@ option, and gives `#VALUE!` for text or a boolean), and which error wins between
 Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034).
 The VAR.P last digit (probes/aggregate-grid B31, C31) has passed since T-1037.
 Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.rs); the lift reuses
-`Model::lift_with_cost`, and the spill shape is `aggregate_static_result` in static_analysis/aggregate.rs (T-1038).
+`Model::lift_values` (functions/lift/driver.rs), and the spill shape is `aggregate_static_result` in static_analysis/aggregate.rs (T-1038).
 
 ## SUBTOTAL and AGGREGATE over hidden and filtered rows
 Rule: a row hidden by hand is read by SUBTOTAL 1-11 and skipped by 101-111; a row hidden by a filter is skipped by
@@ -1143,31 +1143,49 @@ double: `MULTINOMIAL(2,3)` = 9.999999999999998 (exact 10), `MULTINOMIAL(4,6)` = 
 `(6)` 0.9999999999999982, `(50)` 1.000000000000018, `(170)` 1.0000000000001974. Argument order matters from
 large sums on: `(20,150)` 5.221123511164219e+25 but `(150,20)` 5.221123511166111e+25, `(10,20,30)`
 3.553261127085186e+24 but `(30,20,10)` 3.5532611270850594e+24; `(2,3)` = `(3,2)` and `(1,169)` = `(169,1)`.
-The algorithm (fit, T-1190): one double running sum adds `log10(k)` (correctly rounded) for k = 1..sum, then
-subtracts `log10(k)` for k = 1..n for each argument, last argument first, and the result is `exp(sum * ln 10)`.
-That reproduces 64 of the 72 probed cells bit-exactly. The other 8 are single arguments (and the same
-ones padded with zeros), each one ulp off in either direction: `(5)` 0.9999999999999996 (fit 0.9999999999999994),
-`(8)`, `(10)`, `(30)`, `(40)`, `(140)`, `(0,5)`, `(5,0)`. Rejected candidates (scores out of 72): `exp(GAMMALN(s+1))`
-over exact factorials (Excel's own GAMMALN values, at most 17), natural-log sums (at most 16), `10^x` in place of
-`exp(x * ln 10)` (30), the arguments in their given order (60), glibc `log10` in place of a correctly rounded one
-(57), `ln(k)/ln 10` or `ln(k)*log10(e)` terms (at most 33), and x87 80-bit terms or accumulator (at most 54).
-No single one-ulp change to a `log10(k)` term fits more cells.
+The algorithm (fit, T-1190, T-1600): one double running sum adds `log10(k)` (correctly rounded) for k = 1..sum, then
+subtracts `log10(k)` for k = 1..n for each argument, last argument first. With `y = sum * ln 10`, the result is `exp(y)`
+when `y >= 0` and `1 / exp(-y)` when `y < 0`, which only a lone argument's residue (alone or padded with zeros) can be.
+So a single argument below 1 is always 1 minus an even number of ulps (2^-53 each; the inverse of a value just above 1):
+`(5)` 0.9999999999999996 where `exp(y)` would give the nearer 0.9999999999999994. That reproduces all 240 probed cells
+bit-exactly; `exp(y)` alone gets 188 (every miss a single argument below 1). Rejected candidates, scored by T-1190
+on the 72 cells it had: `exp(GAMMALN(s+1))` over exact factorials (Excel's own GAMMALN values, at most 17/72),
+natural-log sums (at most 16/72), `10^x` in place of `exp(x * ln 10)` (30/72), the arguments in their given order
+(60/72), glibc `log10` in place of a correctly rounded one (57/72), `ln(k)/ln 10` or `ln(k)*log10(e)` terms (at most
+33/72), x87 80-bit terms or accumulator (at most 54/72). Scored by T-1600 on all 240: `10^y` (156/240), descending
+subtraction (35/240), a separate denominator sum (21/240), `1 + expm1(y)` (184/240), `exp(y/log10 e)` (172/240), and a
+`2^t` split at floor/round/ceil of `t = sum * log2 10` (at most 156/240).
+Numeric text in a range cell after a negative is `#NUM!` (a range holding -1, "2", 3), as typed `(-1,"2",3)` is;
+non-numeric text wins over a negative (`(-1,"x",3)` and `(D1:D1,"x")` with D1 = -1 are `#VALUE!`). Formatted numeric
+text in a cell reads as its number, by direct reference and in a range alike (typed literals other than
+plain "2" and "4" are unprobed): " 2" and "2 " are 2, "1e1" 10, "$3" 3, "50%" 0.5 (truncated to 0),
+"(2)" -2 and "1,000" 1000 (so `#NUM!`), and date text "1/2/2000" 36527 (`#NUM!`, over 170).
 Evidence: probes/math-argument-modes Sheet1!C9, C35, C47, C49:C53 (excel-graph, 2026-10-08);
-probes/multinomial-large-arguments A1:A20 (2026-10-09); probes/multinomial-algorithm-sweep A1:A60 (excel-graph, 2026-10-15).
-Ours: the fitted algorithm (`multinomial_value`, functions/math_and_trigonometry/multinomial.rs); the 8 cells above are one ulp off.
-Status: VERIFIED (values); algorithm a fit, 64/72 bit-exact
-Tasks: T-1082, T-1190
+probes/multinomial-large-arguments A1:A20 (2026-10-09); probes/multinomial-algorithm-sweep A1:A60 (excel-graph, 2026-10-15);
+probes/multinomial-single-arguments A1:A170 (every single argument), B1:C13 (coercion; excel-graph, 2026-10-17).
+Ours: the fitted algorithm (`multinomial_value`, functions/math_and_trigonometry/multinomial.rs), bit-exact on every probed cell.
+Status: VERIFIED (values); algorithm a fit, 240/240 bit-exact
+Tasks: T-1082, T-1190, T-1600
 
 ## COMBIN is inexact
 Rule: Excel's COMBIN is not the exact binomial coefficient either, and its rounding differs from MULTINOMIAL's:
 `COMBIN(10,4)` = 209.99999999999997 where `MULTINOMIAL(4,6)` = 209.99999999999977 (exact 210 for both);
-`COMBIN(40,20)` 137846528819.99997, `COMBIN(100,50)` 1.0089134454556413e+29, `COMBIN(170,20)` 5.221123511163077e+25,
-`COMBIN(170,70)` 6.491922168400297e+48 and `COMBIN(170,85)` 9.144841845131565e+49. `COMBIN(5,2)` 10, `COMBIN(10,5)` 252,
-`COMBIN(170,1)` and `COMBIN(170,169)` 170 are exact. Excel's algorithm is not identified.
-Evidence: probes/multinomial-algorithm-sweep B1:B10 (excel-graph, 2026-10-15, T-1190).
-Ours: the exact value (7 of the 10 cells fail).
-Status: VERIFIED (values); algorithm UNVERIFIED
-Tasks: T-1598
+`COMBIN(9,3)` 83.99999999999999, `COMBIN(15,3)` 455.00000000000006, `COMBIN(40,20)` 137846528819.99997, `COMBIN(100,50)`
+1.0089134454556413e+29, `COMBIN(170,85)` 9.144841845131565e+49. It is symmetric (`COMBIN(n,k)` = `COMBIN(n,n-k)` bit for bit),
+k = 0, 1 and 2 are always exact, and it stays finite up to `COMBIN(1029,514)` 1.4298206864989032e+308; `COMBIN(1030,514)` is `#NUM!`.
+The algorithm (fit, T-1598): with `j = min(k, n-k)`, one double running product multiplies the rounded quotients
+`(n-j+i)/(i+1)` for i = 1..j-1 in that order, and the result is that product times `n` (j = 0 gives 1). The numerators
+pair with the denominators shifted by one: `COMBIN(9,3)` is `((7/2)*(8/3))*9`. This reproduces all 841 numeric cells
+of probes/combin-algorithm-sweep bit-exactly. Rejected candidates (scores out of 841; the correctly rounded value scores
+572): the textbook loop `r*(n-j+i)/i` (569), `r*((n-j+i)/i)` and the other natural pairings and orders over min, max or k
+(at most 570), the same shifted pairing with `n` first (624) or over k instead of min(k, n-k) (636), the quotient not
+rounded on its own (`r*(n-j+i)/(i+1)`, 569), and natural-log, log10 and lgamma sums (at most 6 of the 87 j = 3 cells).
+Evidence: probes/multinomial-algorithm-sweep B1:B10 (excel-graph, 2026-10-15, T-1190); probes/combin-algorithm-sweep
+A1:A844 (every k for n = 1..32, and small, n/3, n/2 and near-n k for n = 40..1030; excel-graph, 2026-10-17, T-1598).
+Ours: the fitted algorithm (`combin`, functions/math_and_trigonometry/mathematical.rs). Every factor is at least 1, so the
+product overflows within a few hundred factors for a large j, which bounds the work (directive 5).
+Status: VERIFIED (values); algorithm a fit, 841/841 bit-exact
+Tasks: T-1190, T-1598
 
 ## Huge arguments of trig functions
 Rule: `COS(1E+15)` is `#NUM!` in Excel (the argument is too large to reduce). Errors from a left operand win over a
@@ -1195,12 +1213,19 @@ precision, or rounding the atan to 64 bits then to a double, never beats 233. A 
 (libm's count).
 Excel's ASIN is not odd: 31 ± pairs in the sweep differ in the last digit (`ASIN(0.09)` = 0.09012194501459526,
 `ASIN(-0.09)` = -0.09012194501459525). 26 of the 35 misses are negative arguments, and `ASIN(±1E-13)` is ±1E-13 exactly.
+A tiny argument is returned as is (T-1605): `ASIN(x)` = x for |x| from 1E-15 to 1E-9 and for -1E-8, but `ASIN(1E-8)` is
+1.0000000000000002E-8 (the quotient's value), so a symmetric cut lies between 1E-13 and 1E-8; the engine uses 2^-28.
+T-1605's other candidates over the sweep (bit-exact out of 268, python doubles and glibc): `atan(x/sqrt(1-x)/sqrt(1+x))` 163,
+`atan(x/sqrt(1+x)/sqrt(1-x))` 160, `atan(x/(sqrt(1-x)*sqrt(1+x)))` 175, `atan(x*(1/sqrt((1-x)(1+x))))` 177, `atan2` of the same
+175, `2 atan(x/(1+sqrt((1-x)(1+x))))` 165, `pi/2 - 2 asin(sqrt((1-x)/2))` and `2 asin(sqrt((1+x)/2)) - pi/2` (a few misses each,
+no rule), and a table reduction `atan(c) + atan((q-c)/(1+qc))` with c = floor/ceil/round/trunc(q N)/N for N in 1..128, at
+most 215. The residue (33 cells) is T-1797.
 Evidence: probes/asin-argument-sweep; gen-m6/2f6b96385ed3facd Calc!A38 (excel-graph, 2026-10-09, T-1239); gen-m7/0e40208f51c2454c
 Calc!A27 and gen-m7/cb748b6a9b81fbb7 Calc!A38 (excel-graph, 2026-10-11, T-1275).
-Ours: `atan(x/sqrt((1-x)*(1+x)))` since T-1259 (`fn_asin`, mathematical.rs). The gen-m6/gen-m7 cells pass; 35 sweep cells are known
-failures (T-1605). The result depends on the platform `atan` (glibc fits).
+Ours: `atan(x/sqrt((1-x)*(1+x)))` since T-1259, and x itself below 2^-28 since T-1605 (`fn_asin`, mathematical.rs). The gen-m6/gen-m7
+cells pass; 33 sweep cells are known failures (T-1797). The result depends on the platform `atan` (glibc fits).
 Status: VERIFIED (excel-graph); formulation PARTIAL
-Tasks: T-1259, T-1605
+Tasks: T-1259, T-1605, T-1797
 
 ## MULTINOMIAL of a huge argument
 Rule: MULTINOMIAL is `#NUM!` once its arguments add up to more than 170, where `sum!` overflows a double. That holds
@@ -1258,7 +1283,10 @@ F1:F9 take MIN/MAX/ROWS over 1000 draws in one cell, which is what shows the RAN
 rule (F8:F9: `RANDBETWEEN(5.2,7.9)` spans 6 to 7, not ROUND's 5 to 8); the spill members D2, E1,
 E2 and D5 were not compared between fills, but their min equals their max; B15 and G1 have an occupied neighbour, so a 2-row or 2-column result would be `#SPILL!`.
 T-1584 (excel-graph, 2026-10-15): a boolean reached through a reference is rejected like the literal (`RANDBETWEEN(J1,2)`, J1 TRUE, is `#VALUE!`: probes/volatile-invariant Calc!I1); RANDARRAY errors apply in argument order (`RANDARRAY(0,1,1.5,2.5,TRUE)` is `#CALC!`, I2); an omitted bound on either side is `#N/A`, not 0 (`RANDBETWEEN(,5)` and `RANDBETWEEN(5,)`, I5:I6, like `RANDBETWEEN(,)`). A RANDBETWEEN whose span `top - bottom` overflows a double is `#NUM!` (`RANDBETWEEN(-9*10^307,9*10^307)`, `RANDBETWEEN(-(10^308),10^308)`), while a span of 1E308 or equal bounds at +-1E308 return a value (probes/randbetween-huge-span A1:A7). RANDARRAY has no such error: with a span that overflows (`-(10^308)` to `10^308`, whole or not) it returns a finite number inside the bounds (B2:B3, B14:B15), and equal bounds at +-1E308 return that bound. `-10^308` is presumably `(-10)^308` (unary minus binds tighter than `^`), positive and a hair above 1E308, which is consistent with `RANDARRAY(1,1,-10^308,10^308)` `min > max`: `#VALUE!` (B12) and `RANDBETWEEN(-10^308,10^308)` is `#NUM!` (A8). A literal `1E308` pair in the volatile-invariant workbook made excel-graph refuse the file ("unsupportedWorkbook"), so those probes use `10^308`.
-Status: VERIFIED. Implemented (T-1318, T-1584): A2, A6, A8, A12, A13, B9, B10, B18, I1:I6 and randbetween-huge-span pass. The engine still misses the array lift F1:F9 (T-1316).
+Status: VERIFIED. Implemented (T-1318, T-1584): A2, A6, A8, A12, A13, B9, B10, B18, I1:I6 and randbetween-huge-span pass. The array lift F1:F9 is implemented too (T-1316, `randbetween_draw` plus `lift_number_operands`).
+Operands of the lift (probes/randbetween-lift-operands, 18 cells, all scalar-returning so nothing spills; excel-graph, 2026-10-16, T-1316): a boolean element of an array bound is an error element, not 1 or 0 (`COUNT(RANDBETWEEN({TRUE;1},{2;2}))` = 1, `SUM(...)` `#VALUE!`), like a scalar boolean; text elements read as number text (`{"5";"6"}` gives 2 numbers) and `"x"` or `""` elements are errors; a scalar error beside an array bound spreads over the broadcast shape (`ROWS(RANDBETWEEN(SEQUENCE(3),NA()))` = 3). A multi-cell range bound is `#VALUE!` as a whole (`RANDBETWEEN(D1:D3,10)`, even from a row the range intersects: no lift and no implicit intersection), so only array values lift, never ranges; a single-cell reference is a scalar.
+T-1782 (probes/randbetween-bound-errors, 22 cells, excel-graph, 2026-10-17): a scalar `TRUE` or `FALSE` beside an array bound is `#VALUE!` in every element, in either position (`ERROR.TYPE(INDEX(RANDBETWEEN(SEQUENCE(3),TRUE),1))` = 3, likewise `FALSE`, `RANDBETWEEN(TRUE,SEQUENCE(3,1,5))`, `RANDBETWEEN({1;1},{TRUE;TRUE})`), not 1 or 0 (so `COUNT(RANDBETWEEN(SEQUENCE(3),TRUE))` = 0); `ROWS` keeps the broadcast shape. When both bounds are errors the **top's error wins**, whatever the kinds and whether lifted or scalar: `RANDBETWEEN({#N/A},{"x"})` is `#VALUE!` but `RANDBETWEEN({"x"},{#N/A})` is `#N/A`; `({#DIV/0!},{#N/A})` is `#N/A`, `({#N/A},{#DIV/0!})` is `#DIV/0!`; `({TRUE},{#N/A})` `#N/A`, `({#N/A},{TRUE})` `#VALUE!`; scalars `(#N/A,"x")` `#VALUE!`, `("x",#N/A)` `#N/A`, `(#DIV/0!,#N/A)` `#N/A`; a scalar `NA()` beside `{"x";"y"}` follows the same order. Per element, `({"x";#N/A},{#DIV/0!;"x"})` is `#DIV/0!` then `#VALUE!`. Ours: implemented (T-1782) by reading the top first in `fn_randbetween`.
+T-1793 (probes/randbetween-range-error-bounds, 20 cells, excel-graph, 2026-10-17): a multi-cell range bound is an operand that is `#VALUE!` and takes its turn in the same top-first order: `RANDBETWEEN(D1:D3,NA())` is `#N/A` (the top error wins over the range), `RANDBETWEEN(D1:D3,1/0)` `#DIV/0!`, `RANDBETWEEN(NA(),D1:D3)` and `(1/0,D1:D3)` `#VALUE!` (the range top wins); a range beside text or a boolean is `#VALUE!` either way. Beside an array bound the range is broadcast, not a whole-result error: `ROWS(RANDBETWEEN(D1:D3,{5;6}))` = 2 (also with the range on top and for `SEQUENCE(4)`: 4), and per element the top's error wins, so `RANDBETWEEN(D1:D3,{5;#N/A})` is `#VALUE!` at row 1 and `#N/A` at row 2, `RANDBETWEEN({5;#N/A},D1:D3)` is `#VALUE!` at row 2 (A19; the range on top is always `#VALUE!`). The range counts as one scalar error, not by its own shape: `RANDBETWEEN(D1:D3,{5,#N/A})` is a 1x2 result whose element 2 is `#N/A` (A20). Ours: implemented (T-1793): a range bound is an error operand of `lift_number_operands`.
 
 ## SERIESSUM with x = 0
 Rule: SERIESSUM with x = 0 (a literal 0 or a blank) is `#NUM!` when any term's power `n + i*m` is zero or negative, whatever its
@@ -1277,6 +1305,40 @@ before or on the bad-power term gives `#VALUE!` or the error (`(0,0,1,{"a"})`, `
 error cell in it is `#VALUE!` even after a bad-power term or with every power positive, unlike the array form (`(0,0,1,B1:B2)` with B1 = 4, B2 = "a" is `#VALUE!` where `(0,0,1,{4,"a"})` is `#NUM!`; `(0,1,1,C1:C2)` with C2 = #N/A is `#VALUE!`), except that a leading error cell is its own error (`(0,1,-1,D1:D2)` with D1 = #N/A is `#N/A`). Other cell orderings in a range (text before an error, a middle error) are unprobed.
 Status: VERIFIED
 Tasks: T-1359, T-1653
+
+## QUOTIENT, FACTDOUBLE and SERIESSUM argument modes
+Rule: QUOTIENT (both arguments), FACTDOUBLE and SERIESSUM's `x`, `n` and `m` are Analysis ToolPak arguments. They lift
+over an array, one scalar call per element, and refuse a multi-cell range with `#VALUE!`, even on the range's own rows.
+SERIESSUM's coefficients, and every argument of MULTINOMIAL, GCD and LCM, are read whole, over an array as over a range.
+- Lifts: `INDEX(QUOTIENT({7;9},2),2)` = 4, `INDEX(FACTDOUBLE({5;6}),2)` = 48 and `INDEX(SERIESSUM({1;2},0,1,{1,2}),2)` = 5,
+  with ROWS 2 each (C1-C6). The later arguments lift too: `QUOTIENT(10,{3;4})`, `SERIESSUM(2,{0;1},1,{1,2})` (element 2
+  = 10) and `SERIESSUM(2,0,{1;2},{1,2})` (element 2 = 9) (C7-C12). A column `x` against a row `n` is a 2×2 grid (C15-C16).
+- Coefficients whole: `INDEX(SERIESSUM({1;2},0,1,B1:B3),2)` = 17 beside a lifted `x`, with ROWS 2 (C13-C14);
+  `ROWS(SERIESSUM(2,0,1,{1;2;3}))` = 1 (C40). A blank coefficient cell adds 0 (C44).
+- Elements: an element error stays in its position (`QUOTIENT({7;9},{0;2})` is `#DIV/0!`, 4; `FACTDOUBLE({5;-2})` 15,
+  `#NUM!`; C17-C20), short arrays pad with `#N/A` (C33), and a scalar error beside an array is broadcast
+  (`QUOTIENT(NA(),{1;2})` is 2 rows of `#N/A`; C25-C26). Inside one element the leftmost error wins:
+  `QUOTIENT({#N/A},{#DIV/0!})` is `#N/A`, the reversed one `#DIV/0!`, SERIESSUM's `x` error comes before a coefficient error
+  and before an `n` error (C29-C32).
+- A range beside an array: `ROWS(QUOTIENT(A1:A3,{1;2}))` = 2, every element `#VALUE!` (C27-C28). An operation on a range is
+  an array and lifts (`ROWS(QUOTIENT(A1:A3+0,2))` = 3, C41-C42); a one-cell reference is its value (C43).
+- Booleans: FACTDOUBLE refuses a boolean in every form, typed (`FACTDOUBLE(TRUE)`, `(FALSE)`), in a cell, or as an array
+  element (`{TRUE;5}`, `{FALSE;5}`): all `#VALUE!` (-b E1-E3, E8; C22). Numeric text is read (`FACTDOUBLE("5")`, a text
+  cell "5", `{"5";5}`: 15) and a blank cell is 0 (`FACTDOUBLE(<blank>)` = 1). QUOTIENT's and SERIESSUM's booleans are
+  `#VALUE!` the same way (C21, C24, -b E11-E15).
+- MULTINOMIAL, GCD and LCM over an array give one value: `GCD({4;6},2)` = 2, `LCM({4;6},2)` = 12,
+  `MULTINOMIAL({1;2},2)` = 29.99999999999999, all ROWS 1 (C34-C39).
+Evidence: probes/math-atp-array-lift C1-C44 and probes/math-atp-array-lift-b E1-E18 (excel-graph, 2026-10-17, T-1802);
+probes/scalar-lift-open-a Y19-Y30 (the range refusals, T-1777).
+Ours: implemented (T-1802): QUOTIENT and FACTDOUBLE are `LiftArrays` entries of the SPEC-0011 table, SERIESSUM's
+`x`, `n`, `m` too with its coefficients `WholeByCaller` (read once by `series_coefficients`, each element charged their
+cells); MULTINOMIAL, GCD and LCM have no entry. Before T-1802 FACTDOUBLE read a boolean as 1 or 0 and lifted over a range,
+and QUOTIENT and SERIESSUM's `x`, `n`, `m` intersected a range and were `#N/IMPL!` over an array.
+Unprobed for these three functions (T-1832), taken from the arrays.md Analysis ToolPak rule (EDATE, WEEKNUM,
+EOMONTH, YEARFRAC): a 3-D range in QUOTIENT, FACTDOUBLE or SERIESSUM's `x`, `n`, `m` is `#VALUE!` (FACTDOUBLE gave
+`#ERROR!` before), and a legacy bare range gets no `@`. `SERIESSUM(2,0,1,Sheet1:Sheet2!A1)` is `#REF!` in ours.
+Status: VERIFIED (excel-graph)
+Tasks: T-1777, T-1802
 
 ## ECMA.CEILING
 Rule: `ECMA.CEILING(number, significance)` is a real Excel function with exactly the two-argument `CEILING` semantics (rounds away from zero for negative `number` with negative `significance`; `#NUM!` when `number` is positive and `significance` negative; zero significance gives 0; number text `"2.5"` and `TRUE` are read as numbers; text significance is `#VALUE!`). It is stored in a file as `_xlfn.ECMA.CEILING`, and `FORMULATEXT` prints it as `=ECMA.CEILING(2.5,2)` (no prefix). Written bare (`ECMA.CEILING(...)`) in a file, Graph rejects the whole workbook (`createSession` 501 `unsupportedWorkbook`); the one-argument form `_xlfn.ECMA.CEILING(2.5)` is rejected the same way (arity is exactly 2, like CEILING).

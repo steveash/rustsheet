@@ -63,3 +63,18 @@ def test_input_quirk_cells_are_left_out() -> None:
     keys = {f"{c.case} {c.key}" for c in result.sweep.cells}
     assert not keys & norm_inv._INPUT_QUIRKS
     assert result.sweep.excluded == 7  # the 3 quirk cells and 4 text-p cells
+
+
+def test_cody_cdf_is_accurate() -> None:
+    assert norm_inv.cody_cdf(0.0) == 0.5
+    for x in (-37.0, -6.0, -1.5, 0.3, 2.0, 7.0):
+        assert norm_inv.cody_cdf(x) == pytest.approx(norm_inv.libm_cdf(x), rel=1e-13)
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_norm_s_dist_scores() -> None:
+    result = fit.run(registry()["norm-s-dist"], engine=False)
+    scores = {s.name: s.exact for s in result.scores}
+    assert len(result.sweep.cells) == 1773
+    assert scores["0.5*erfc(-x*sqrt(0.5)) (glibc)"] == 1103
+    assert scores["Cody (R pnorm_both)"] == 991
