@@ -2,6 +2,8 @@
   {"name":"ACCRINT","required":6,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":null,"max":8,"work":"Weighted(131072)"},
   {"name":"ACCRINTM","required":3,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":null,"max":5,"work":"Constant"},
   {"name":"ADDRESS","required":2,"params":["Lift","Lift","Lift","Lift","Lift"],"repeat":null,"max":5,"work":"Constant"},
+  {"name":"AMORDEGRC","required":6,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":null,"max":7,"work":"Weighted(262144)"},
+  {"name":"AMORLINC","required":6,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":null,"max":7,"work":"Weighted(512)"},
   {"name":"BESSELI","required":2,"params":["LiftArrays","LiftArrays"],"repeat":null,"max":2,"work":"Weighted(65536)"},
   {"name":"BESSELJ","required":2,"params":["LiftArrays","LiftArrays"],"repeat":null,"max":2,"work":"Weighted(65536)"},
   {"name":"BESSELK","required":2,"params":["LiftArrays","LiftArrays"],"repeat":null,"max":2,"work":"Weighted(65536)"},

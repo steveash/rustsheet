@@ -281,31 +281,11 @@ const GAMMA_DIST: ArgKinds = ArgKinds::fixed(
 // --- End incomplete gamma (T-1872) ----------------------------------------------------------
 
 // --- Hypergeometric (T-1873) ----------------------------------------------------------------
-/// What one HYPGEOM.DIST element is charged. Its cdf is the capped port of statrs' sum
-/// (`statistical/hypegeom.rs`): at most 2^18 terms once the terms known to be 0 are skipped, and at
-/// most 131 exponents to find them. One term is three statrs `ln_binomial`s and an `exp` (six
-/// Lanczos `ln_gamma`s above 170). Measured in release (T-1873, load 1 to 2 on 4 cores): 167 to 193
-/// ns a term where the terms are normal (statrs' own sum over the 25,000,001 terms of
-/// `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)`, 4.8 s as on main; 32 elements of
-/// `HYPGEOM.DIST(45500000,90000000,90000000,180000000,TRUE)`, the widest distribution at a
-/// population of 1.8E8 with 258,239 terms each, 1.38 to 1.55 s in benches/lift.rs), and 206 to 234
-/// ns where most of the window is subnormal (`exp`'s subnormal path and additions with a subnormal
-/// operand: 32 elements of `HYPGEOM.DIST(99994114707,200000000000,200000000000,400000000000,TRUE)`,
-/// whose window at the cap is 262,144 terms, 96,639 of them exactly 0 and 153,739 subnormal, took
-/// 1.73 to 1.96 s, 54 to 61 ms an element). The bound of an element is 2^18 + 131 terms at 250 ns
-/// (above the slowest measured), about 66 ms, so the weight caps a lifted call at 2^27 / 2^22 = 32
-/// elements: about 2.1 s at the bound (a DEVIATION, statistics.md). The cdfs the suites check sum
-/// at most 501 terms.
+/// One HYPGEOM.DIST element: its capped cdf's bound, (2^18 + 131) terms at 250 ns, about 66 ms, so
+/// 32 elements take about 2.1 s (a DEVIATION; measured in release: hypegeom.rs `MAX_TERMS`).
 const HYPGEOM_DIST_WEIGHT: u32 = 1 << 22;
-/// `HYPGEOM.DIST(sample_s, number_sample, population_s, number_pop, cumulative)`.
-const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(
-    5,
-    &[Lift, Lift, Lift, Lift, Lift],
-    Weighted(HYPGEOM_DIST_WEIGHT),
-);
-/// `HYPGEOMDIST(sample_s, number_sample, population_s, number_pop)`: the pmf, closed form (nine
-/// statrs `ln_factorial`s, each a table entry or one Lanczos sum of fixed length).
-const HYPGEOMDIST: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift], Constant);
+const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(5, &[Lift; 5], Weighted(HYPGEOM_DIST_WEIGHT));
+const HYPGEOMDIST: ArgKinds = ArgKinds::fixed(4, &[Lift; 4], Constant);
 // --- End hypergeometric (T-1873) ------------------------------------------------------------
 
 // --- Financial ATP (T-1822) -----------------------------------------------------------------
@@ -427,6 +407,38 @@ const CUMULATIVE: ArgKinds = ArgKinds::fixed(
     Weighted(CUMULATIVE_WEIGHT),
 );
 // --- End financial ATP (T-1845) -------------------------------------------------------------
+
+// --- Financial ATP (T-1841) -----------------------------------------------------------------
+/// What one AMORLINC element is charged, priced from its cap: at most `LINEAR_STEP_CAP` (1,024)
+/// single subtractions (functions/financial/amortization.rs `linear_charge`; the longest real walk
+/// takes 616). A step costs about 7.7 ns in a release build (2^18 elements of
+/// `AMORLINC(..,2400,..,300,9E15,1.08E-16,1)`, 613 steps each, within 1% of the longest, took
+/// 1.23 s, 4.7 us an element), so a walk at the cap is about 7.9 us and 2^9 units run at most
+/// 2^18 elements, about 2.1 s. docs/excel-semantics/financial.md "AMORLINC and AMORDEGRC work
+/// cap" (a DEVIATION).
+const AMORLINC_WEIGHT: u32 = 1 << 9;
+/// What one AMORDEGRC element is charged: at most `DEGRESSIVE_LOOP_PERIODS` (2^20) periods
+/// walked one by one, then a closed form, about 4 ms an element in a release build (512 elements
+/// of `AMORDEGRC(1E15,..,1,5E6,1E-7,1)`, whose walk takes no shortcut, took 2.06 s). 2^18 units
+/// run at most 512 elements, about 2 s.
+const AMORDEGRC_WEIGHT: u32 = 1 << 18;
+/// `AMORLINC(cost, date_purchased, first_period, salvage, period, rate, [basis])`.
+const AMORLINC: ArgKinds = ArgKinds::fixed(
+    6,
+    &[
+        LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
+    ],
+    Weighted(AMORLINC_WEIGHT),
+);
+/// `AMORDEGRC(cost, date_purchased, first_period, salvage, period, rate, [basis])`.
+const AMORDEGRC: ArgKinds = ArgKinds::fixed(
+    6,
+    &[
+        LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
+    ],
+    Weighted(AMORDEGRC_WEIGHT),
+);
+// --- End financial ATP (T-1841) -------------------------------------------------------------
 
 /// The functions of [`Function::arg_kinds`], as a pattern: the arm of an exhaustive `match` on a
 /// `Function` that has no hand-written arm because the table derives it (static analysis).
@@ -576,6 +588,10 @@ macro_rules! lifting_table_functions {
             | Function::Cumipmt
             | Function::Cumprinc
             // --- End financial ATP (T-1845) ---
+            // --- Financial ATP (T-1841) ---
+            | Function::Amorlinc
+            | Function::Amordegrc
+            // --- End financial ATP (T-1841) ---
             // --- Statistical (T-1290) ---
             | Function::BetaDist
             | Function::BetaDistCompat
@@ -647,10 +663,8 @@ macro_rules! lifting_table_functions {
             | Function::PoissonDist
             | Function::PoissonCompat
             // --- End incomplete gamma (T-1872) ---
-            // --- Hypergeometric (T-1873) ---
-            | Function::HypGeomDist
+            | Function::HypGeomDist // T-1873
             | Function::HypGeomDistCompat
-            // --- End hypergeometric (T-1873) ---
     };
 }
 pub(crate) use lifting_table_functions;
@@ -871,6 +885,16 @@ impl Function {
             // period sums are bounded ("CUMIPMT and CUMPRINC over many periods").
             Function::Cumipmt | Function::Cumprinc => Some(&CUMULATIVE),
             // --- End financial ATP (T-1845) ---
+            // --- Financial ATP (T-1841) ---
+            // Analysis ToolPak functions, as the T-1822 ones: every argument lifts over an array
+            // (probes/fin-argument-modes H19, H21-H26, H28, H30-H35) and refuses a multi-cell
+            // range, also on the range's own rows (fin-argument-modes H20, H29;
+            // fin-remaining-later-argument-ranges H11-H34, each with its intersected control in
+            // I). Their period walks are bounded (docs/excel-semantics/financial.md "AMORLINC and
+            // AMORDEGRC over many periods").
+            Function::Amorlinc => Some(&AMORLINC),
+            Function::Amordegrc => Some(&AMORDEGRC),
+            // --- End financial ATP (T-1841) ---
             // --- Statistical (T-1290) ---
             // The statistical functions whose every argument is scalar are worksheet functions:
             // every argument lifts over an array and over a multi-cell range, on the range's own
@@ -965,12 +989,7 @@ impl Function {
             Function::GammaDist | Function::GammaDistCompat => Some(&GAMMA_DIST),
             // --- End incomplete gamma (T-1872) ---
             // --- Hypergeometric (T-1873) ---
-            // As the statistical functions above: every argument lifts over an array and a range,
-            // on the range's own rows (probes/stat-argument-modes H330-H342; probes/
-            // stat-quantile-lift H51-H54: the last argument over a range). HYPGEOM.DIST's cdf sum
-            // keeps a per-call cap of its own (`statistical/hypegeom.rs`), so it is weighted by
-            // its bound; HYPGEOMDIST is the closed-form pmf (statistics.md "HYPGEOM.DIST: per-call
-            // cap and lifting").
+            // As above (stat-argument-modes H330-H342, stat-quantile-lift H51-H54).
             Function::HypGeomDist => Some(&HYPGEOM_DIST),
             Function::HypGeomDistCompat => Some(&HYPGEOMDIST),
             // --- End hypergeometric (T-1873) ---

@@ -52,6 +52,20 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// x past its upper tail it sums 258,239 terms at a population of 1.8E8 and 261,091 at 1.84E8),
 /// and `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)` (x at the mode: 96,259 terms, of
 /// which 95,942 are not 0).
+///
+/// What the cap costs, which the lifting table charges (kinds.rs `HYPGEOM_DIST_WEIGHT`, 2^22 units
+/// an element): one term is three statrs `ln_binomial`s and an `exp` (six Lanczos `ln_gamma`s above
+/// 170). Measured in release (T-1873, load 1 to 2 on 4 cores): 167 to 193 ns a term where the terms
+/// are normal (statrs' own sum over the 25,000,001 terms of
+/// `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)`, 4.8 s as on main; 32 elements of
+/// `HYPGEOM.DIST(45500000,90000000,90000000,180000000,TRUE)`, the widest distribution at a
+/// population of 1.8E8 with 258,239 terms each, 1.38 to 1.55 s in benches/lift.rs), and 206 to 234
+/// ns where most of the window is subnormal (`exp`'s subnormal path and additions with a subnormal
+/// operand: 32 elements of `HYPGEOM.DIST(99994114707,200000000000,200000000000,400000000000,TRUE)`,
+/// whose window at the cap is 262,144 terms, 96,639 of them exactly 0 and 153,739 subnormal, took
+/// 1.73 to 1.96 s, 54 to 61 ms an element). The bound of an element is 2^18 + 131 terms at 250 ns
+/// (above the slowest measured), about 66 ms, so the weight caps a lifted call at 2^27 / 2^22 = 32
+/// elements: about 2.1 s at the bound. The cdfs the suites check sum at most 501 terms.
 const MAX_TERMS: u64 = 1 << 18;
 
 /// An exponent at or below which `exp` is exactly 0. e^-750 is about 1.9E-326, far below half

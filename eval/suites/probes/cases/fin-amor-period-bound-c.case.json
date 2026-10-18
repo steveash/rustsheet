@@ -1,0 +1,24 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1841 review: AMORDEGRC past 2^20 periods with charges of 1E12 and more (costs 3E19 to 1E300 read from Z1, rate 1E-7, 1.1E6 to 2.4E6 periods), where a closed form for the walk's decay moves the rounded charge, and a smaller charge as control (A6).",
+ "tags": [
+  "M9",
+  "financial",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "Z1": 1e+300,
+    "A1": "=AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)",
+    "A2": "=AMORDEGRC(1E20,39679,39813,300,1700000,1E-7,1)",
+    "A3": "=AMORDEGRC(1E20,39679,39813,300,2400000,1E-7,1)",
+    "A4": "=AMORDEGRC(3E19,39679,39813,300,1500000,1E-7,1)",
+    "A5": "=AMORDEGRC(Z1,39679,39813,300,2000000,1E-7,1)",
+    "A6": "=AMORDEGRC(1E15,39679,39813,1,2000000,1E-7,1)"
+   }
+  }
+ ],
+ "expected": {}
+}

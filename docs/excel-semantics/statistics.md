@@ -517,7 +517,7 @@ slowest terms measured in release are where most of the window is subnormal (`ex
 a subnormal operand), 206 to 234 ns: 32 elements of
 `HYPGEOM.DIST(99994114707,200000000000,200000000000,400000000000,TRUE)`, 262,144 terms each (96,639 exactly 0, 153,739
 subnormal), took 1.73 to 1.96 s; normal terms cost 167 to 193 ns (32 elements at the widest distribution of a
-population of 1.8E8, 258,239 terms each, 1.38 to 1.55 s). kinds.rs `HYPGEOM_DIST_WEIGHT` has the measurements.
+population of 1.8E8, 258,239 terms each, 1.38 to 1.55 s). hypegeom.rs `MAX_TERMS` has the measurements.
 DEVIATION (decision 0014, CLAUDE.md directive 5): where more than 2^18 terms are left the cdf is `#NUM!` where main
 gave a number, and Excel's value there is unprobed (T-1896; no suite case is near the cap: the largest sums 501
 terms). That is a cdf whose standard deviation is above about 3,400 (a population above about 1.84E8 with a wide
