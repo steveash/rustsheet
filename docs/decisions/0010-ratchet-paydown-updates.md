@@ -102,5 +102,40 @@
   reach ≥ 20 Excel cells through probes/discount-security-modes; decision 0062) (`make eval-baseline`).
   T-1625: functions below the evidence floor 21 → 13 (VDB, AMORDEGRC, FVSCHEDULE, MDURATION, RRI, IMPOWER, IMSUB
   and IMDIV reach ≥ 20 Excel cells through probes/fin-* and eng-im*; decision 0062) (`make eval-baseline`).
+  T-1787: duplicated lines 6155 → 6111 (the four private `calc_result_to_array_node` copies in functions/logical
+  now call `cast::calc_result_to_array_node`) (`check_duplication.py --update`).
+  T-1770: functions/date_and_time.rs 1131 → 1018 lines (EDATE and EOMONTH moved to `date_and_time/month_shift.rs`)
+  and expressions/parser/static_analysis.rs 1669 → 1641 (OFFSET's and INDIRECT's shapes moved to
+  `static_analysis/reference_result.rs`, `broadcast_shapes` to `static_analysis/broadcast.rs`), and
+  functions/financial/mod.rs 2290 → 2194, already shrunk on main (`check_file_size.py --update`).
+  T-1772: duplicated lines 6111 → 5907 (PERCENTILE.EXC, QUARTILE.EXC and the two PERCENTRANK
+  functions share one interpolation and one kernel; the LARGE/SMALL bodies and the stat fallback
+  arms of static analysis are gone) (`check_duplication.py --update`), and
+  expressions/parser/static_analysis.rs 1641 → 1567 lines (the fallback arms of the 12 functions
+  now in the lifting table; 1614 already on main after T-1774) (`check_file_size.py --update`).
+  T-1383: duplicated lines 5907 → 5561 (the five BIT* functions share two kernels, the four Bessel
+  functions one, and the one-argument IM* functions one lifted reader) (`check_duplication.py
+  --update`), and expressions/parser/static_analysis.rs 1567 → 1462 lines (the fallback arms of
+  the 52 engineering functions now in the lifting table) (`check_file_size.py --update`).
+  T-1372: duplicated lines 5561 → 5084 (the financial functions' repeated `get_number` argument
+  blocks become kernels over borrowed values, sharing `discount_args`, `maturity_args`,
+  `two_numbers` and `period_payment_args`) (`check_duplication.py --update`);
+  functions/financial/mod.rs 2194 → 673 lines, no longer oversized (the annuity functions moved to
+  `financial/annuity.rs`, the discount securities and T-bills to `financial/discount.rs`,
+  EFFECT/NOMINAL/DOLLARDE/DOLLARFR to `financial/rate_conversions.rs`, SLN/SYD/DDB to
+  `financial_depreciation.rs`), expressions/parser/static_analysis.rs 1462 → 1406 (the 28
+  functions' fallback arms deleted: the lifting table derives them), and functions/date_and_time.rs
+  1018 → 1014 (already 1014 lines on main; the update tightened a stale entry)
+  (`check_file_size.py --update`).
+  T-1384: duplicated lines 5084 → 5062 (IMSUM and IMPRODUCT share one fold over SPEC-0009's walker
+  instead of their two-argument readers) (`check_duplication.py --update`).
+  T-1802: expressions/parser/static_analysis.rs 1406 → 1385 lines (the fallback arms of QUOTIENT,
+  FACTDOUBLE and SERIESSUM deleted: the lifting table derives them) (`check_file_size.py --update`).
+  T-1272: duplicated lines 5062 → 4876 (TEXTBEFORE and TEXTAFTER share one `text_around`, TEXTSPLIT and
+  TEXTBEFORE/TEXTAFTER one `delimiter_list`, and the text path reads ranges through `LiftedArg::read`)
+  (`check_duplication.py --update`).
+  T-1822: duplicated lines 4876 → 4812 (ACCRINT, DURATION, MDURATION, PRICE and the COUP* functions
+  share `coupon_args` and `bond_args` instead of their repeated `get_number` argument blocks)
+  (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

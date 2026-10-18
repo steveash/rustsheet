@@ -4,7 +4,7 @@
 Rule: a text function broadcast over arrays (LEFT, REPT, SUBSTITUTE, ...) returns a single scalar `#VALUE!` (no spill) once the total bytes of its string results exceed 64 MiB, to bound allocation on untrusted input (CLAUDE.md directive 5). A broadcast whose shape is above 1,048,576 cells is refused with `#ERROR!` before any element is computed, so that bound takes precedence over this one (arrays.md "Array results above 1,048,576 cells", T-1771). Excel's behavior (expected, not measured): compute the whole array, limited only by memory and the 32,767-char per-cell limit. Ours differs on legitimate data too: the budget counts UTF-8 bytes (not Excel's UTF-16 characters, so CJK text hits it about 3x sooner in characters), and a full-column text formula such as `=UPPER(A:A)` over ~65-char strings exceeds 64 MiB and returns `#VALUE!` where Excel spills normally.
 Evidence: none for Excel's behavior; this is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
-Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text_budget`), checked by functions/text/common.rs (`broadcast_text`)
+Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text_budget`), checked by functions/text/common.rs (`broadcast_text`), the lift driver and FORMULATEXT over a range
 
 ## Text functions broadcast over array arguments
 Rule: EXACT, FIND, LEN, REPT, SEARCH, SUBSTITUTE, TRIM, CLEAN, PROPER and REPLACE lift element-wise over
@@ -275,6 +275,68 @@ Ours: matches (`fn_bahttext`, functions/text/bahttext.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1214, T-1270
 
+## TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments
+Rule: the text of TEXTSPLIT, TEXTBEFORE, TEXTAFTER, REGEXTEST, REGEXEXTRACT and REGEXREPLACE lifts over a multi-cell range
+or array, one call per element (`TEXTBEFORE(C1:C3,{",";"-"})` over "a,b", "c-d", "e,f" is 3x1 "a", "c", "e"), as do their
+scalar arguments (`TEXTBEFORE("a,b,c",",",{1;2})` is 2x1 "a", "a,b"; the REGEX patterns, `REGEXTEST("abc",{"a";"z"})` 2x1).
+The delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are one list, not lifted: any entry matches, so `TEXTAFTER(C1:C3,
+{",";"-"})` is "b", "d", "f". VERIFIED: probes/m7-argument-modes F13-K13 (excel-graph, 2026-10-09; T-1083), and gen-m7 cells
+whose lifted result is `#SPILL!` because its spill range is occupied (gen-m7/93976dd9a3578ed9 Calc!A11, 59cc50701f4937c9 A24).
+A lifted element whose call returns an array keeps its first value: TEXTSPLIT, probes/m7-argument-modes F13:H13.
+UNVERIFIED (T-1272 guesses, nothing probed; T-1824 probes them): when two delimiters of a list match at the same
+position, the first in list order sets the match length; every entry longer than the text gives the single-delimiter
+error (`#VALUE!` with more than two arguments, `#N/A` with two); an error inside a delimiter array is `#VALUE!`; a
+boolean inside a TEXTBEFORE/TEXTAFTER delimiter array is `#VALUE!` (as TEXTSPLIT's already was), although a boolean in a
+delimiter range raises no error (next entry); a REGEX pattern that does not compile is `#VALUE!` in its own element
+only; if_not_found, pad_with, match_end and return_all lift like the other scalars, and if_not_found is evaluated even
+when the delimiter is found; REGEXEXTRACT's return_all keeps the first value of a lifted element. A 1x1 array lifts too, so
+`COLUMNS(TEXTSPLIT({"a,b"},","))`, `COLUMNS(TEXTSPLIT(FILTER(A1:A2,A1:A2="a,b"),","))` and
+`COLUMNS(REGEXEXTRACT({"a1b2"},"[0-9]",1))` are 1 (2 before T-1272), by analogy with `COLUMNS(XLOOKUP({2},A1:A4,C1:E4))`
+= 1 (lookup.md); a common pattern, so T-1824 probes it first.
+Ours: all of this since T-1272. The work caps are the next entry's. A multi-cell range as the TEXTBEFORE/TEXTAFTER
+delimiter is still read as one text, as before T-1272 (gen-m7/851eb2099ae3f805 Calc!A25 is `#VALUE!`); its list rule is
+T-1361's.
+Status: VERIFIED (excel-graph) for the cited cells; UNVERIFIED (probe pending, T-1824) for the rest
+Tasks: T-1272, T-1824 (probe the guesses), T-1361 (delimiter ranges)
+
+## Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped
+Rule: Excel computes these calls whatever their size.
+Ours: a call is `#ERROR!` (as the *IF(S) lift) when its work passes `limits::MAX_LIFTED_CELL_VISITS` (2^27): over
+every operand, each element's length plus 1, times how often the broadcast repeats it; the text's length is further
+multiplied, per position, by the delimiter count plus the delimiter bytes compared there (each delimiter at most the
+text's length) over 64. A call that does not lift is capped the same way (`TEXTBEFORE(REPT("a",32767),SEQUENCE(10000))`,
+`TEXTBEFORE(REPT("a",32767),REPT("a",16383)&"b"&SEQUENCE(512))`); one long cell in a blank column costs its own length
+once (`ROWS(TEXTBEFORE(A1:A100000,","))` is 100000). TEXTSPLIT searches each delimiter again from
+each piece, so its delimiter bytes count 8 to a visit rather than 64
+(`ROWS(TEXTSPLIT(REPT("a",32767)&SEQUENCE(16),HSTACK("a",REPT("a",16000))))` is `#ERROR!`). A REGEX* call compiles each
+distinct pattern once, under the smallest of the size limits 64 KiB, 256 KiB, 1 MiB, 4 MiB and 10 MiB (the regex
+crate's default, so every pattern that compiled before T-1272 still does) it fits; it may spend 128 MiB of limits on
+compiling, too-big attempts included (2,048 small patterns), and hold 64 MiB of patterns and search caches, measured
+after each search (none is evicted, so patterns that cycle compile once). Its searches (functions/text/regex_engine.rs)
+run on a lazy DFA that gives up when it thrashes (after 3 cache clears, below 10 bytes a state, the regex crate's own
+setting) and then on a PikeVM; the DFA is charged what its cache says it scanned (4 a byte) and built (8 a byte of
+state), the PikeVM its span times its NFA's state count (5 a state-byte) before it runs, 64 a search, and a call may
+spend 2^30 (about 1 s of the slowest searches; `SUM(--REGEXTEST(REPT("y",200)&SEQUENCE(100000),"x"))` fits, 20 MB).
+A pattern whose DFA thrashes over a lot of text (`a[ab]{100}c|b[ab]{100}c` over 560 texts of 30,000 bytes) and a call
+past any of these limits is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`). Iterating matches on the PikeVM
+charges every successive search the rest of the text, and a pattern with `\b` runs on the PikeVM over non-ASCII
+text (the lazy DFA quits there), so `COLUMNS(REGEXEXTRACT(REPT("naïve ",500),"\b\w+\b",1))` is `#ERROR!` where
+Excel returns an array (T-1829 charges it by the work done). A REGEXREPLACE searches twice,
+once to size its result: over 32,767 UTF-16 units it is
+`#VALUE!`, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`), as SUBSTITUTE's
+is (UNVERIFIED for REGEXREPLACE; T-1817 probes it); a lifted REGEXREPLACE whose results pass the text broadcast cap
+(64 MiB, first entry) is one `#VALUE!`.
+The REGEX* dialect is the regex crate's on every target (wasm32 used `regex_lite`, whose `\w`, `\d` and `\s` are
+ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE),
+UNVERIFIED against Excel's PCRE2 (T-1817 probes it).
+The REGEXREPLACE replacement syntax is the regex crate's (`$1`, `${1}`, `$name`, `$$`; `$1a` is the group named `1a`,
+a lone `$` is itself), as before T-1272; UNVERIFIED against Excel's PCRE2 rules (T-1817 probes it).
+Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
+Status: DEVIATION (decision 0014)
+Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
+and `Replacement` (functions/text/regex_functions.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
+Tasks: T-1272, T-1829
+
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
 function argument modes"), and numbers and booleans in it raise no error. VERIFIED: a 2-row range is accepted
@@ -297,11 +359,16 @@ Status: VERIFIED (web) for the listed cells; blank and number/boolean matching U
 Tasks: T-1361
 
 ## TEXTSPLIT of empty text is #VALUE!
-Rule: `TEXTSPLIT("","a","TRUE")` is `#VALUE!`: in `B5>TEXTSPLIT("","a",CONCAT(D9))` with B5 blank the result is `#VALUE!`, which
-the comparison cannot produce from a blank and text. (TEXTBEFORE("",x) is `#N/A` instead, see the entry above.)
-Evidence: gen-m7/3a62e0950c1074fd Calc!A5 (excel-graph, 2026-10-11, T-1275).
-Ours: "" (so the comparison is FALSE).
-Status: VERIFIED (web) for this form; a blank cell as the text and `TEXTSPLIT("",",")` alone are UNVERIFIED
+Rule: TEXTSPLIT of empty text is `#VALUE!` whatever its valid other arguments: a literal `""`, a blank cell and an empty-string cell,
+with or without a row delimiter, with `ignore_empty` TRUE, `match_mode` 1 or a `pad_with`. `TEXTSPLIT("","a","TRUE")` is `#VALUE!` too, so
+in `B5>TEXTSPLIT("","a",CONCAT(D9))` with B5 blank the comparison is `#VALUE!`. (TEXTBEFORE("",x) is `#N/A` instead, see the entry above.)
+Evidence: gen-m7/3a62e0950c1074fd Calc!A5 (excel-graph, 2026-10-11, T-1275); probes/textsplit-empty-text Calc!A1-A18 (excel-graph,
+2026-10-17; an empty delimiter with empty text, A9 and A10, is `#VALUE!` as well).
+An error-valued argument wins over the empty text: `TEXTSPLIT("",NA())` and `TEXTSPLIT("",",",NA())` are `#N/A`,
+`TEXTSPLIT("",",",,1/0)` and `TEXTSPLIT("",",",,,1/0)` are `#DIV/0!`. Over an array or range text each empty element is `#VALUE!`
+and the others split normally: `TEXTSPLIT({"a","";"b","c"},",")` is `{"a",#VALUE!;"b","c"}`.
+Ours: matches (T-1347, `textsplit_element` in functions/text/textsplit.rs).
+Status: VERIFIED (web)
 Tasks: T-1347
 
 ## TEXTSPLIT with an empty delimiter is #VALUE!
@@ -312,6 +379,39 @@ Ours: the empty row delimiter is ignored (the whole text comes back; `TEXTSPLIT(
 `TEXTSPLIT("abc",,"")` are already `#VALUE!`.
 Status: VERIFIED (web) for this form; an empty element inside a delimiter list is UNVERIFIED
 Tasks: T-1412
+
+## TEXTSPLIT match_mode 1 case folding
+Rule: with match_mode 1 TEXTSPLIT compares case-insensitively without changing the length of the text. `İ` (U+0130) matches `i`
+(`TEXTSPLIT("aİbİc","i",,,1)` splits at both İ, and so does the delimiter `İ` against text containing `İ`: {"a","b","c"}; the delimiter `İ` against a plain `i` or `I`, and `I` against `İ`, are UNVERIFIED), unlike SEARCH, where `SEARCH("i","İx")`
+is `#VALUE!`. The Kelvin sign U+212A does not match `k` (`TEXTSPLIT("a"&UNICHAR(8490)&"bkc","k",,,1)` is {"aKb","c"}), unlike SEARCH, where
+`SEARCH("k",UNICHAR(8490))` is 1. `ß` and `ẞ` do not match `ss` (`TEXTSPLIT("aßbSSc","ss",,,1)` is {"aßb","c"}), and `Ä` matches `ä`.
+Pieces are cut from the original text, so they keep their case. Final sigma follows SEARCH (`ς` and `Σ` both fold to `σ`), which changed from the pre-T-1794 string-level lowercase; it is UNVERIFIED for TEXTSPLIT.
+Evidence: probes/textsplit-casefold-length A1-A8 (excel-graph, 2026-10-17, T-1794).
+Ours: `fold_for_split` (text/casefold.rs) folds char by char (one char in, one char out) with those two exceptions; positions are mapped back to
+byte offsets of the original text. Before T-1794 the code sliced the original at byte offsets found in `to_lowercase()`, which panicked on
+`TEXTSPLIT("İİİ,a",",",,,1)`. The folding of other chars (Å U+212B, ſ, µ, final sigma, titlecase digraphs) is UNVERIFIED and follows SEARCH's.
+Status: VERIFIED (web) for the listed forms
+Tasks: T-1794
+
+## TEXTBEFORE and TEXTAFTER match_mode 1 case folding
+Rule: with match_mode 1 TEXTBEFORE and TEXTAFTER fold case like TEXTSPLIT, never changing the length of the text: `İ` (U+0130) matches `i`
+in both directions (`TEXTBEFORE("aİbİc","i",1,1)` is "a", `TEXTAFTER` of it is "bİc", and the delimiter `İ` finds the `i` of "aibic"),
+the Kelvin sign U+212A does not match `k` in either direction (`TEXTBEFORE("a"&UNICHAR(8490)&"bkc","k",1,1)` is "aKb"; the delimiter
+U+212A against "akbkc" is `#N/A`), `ß` does not match `ss` (`TEXTBEFORE("aßbSSc","ss",1,1)` is "aßb") and `ẞ` (U+1E9E) does not match
+the delimiter `ß` (`TEXTBEFORE("assbẞc","ß",1,1)` is `#N/A`, although `ẞ` lowercases to `ß`), and `Ä` matches `ä`
+(`TEXTBEFORE("ÄxäyÄ","ä",2,1)` is "Äx"). The result is cut from the original text, so it keeps its case. Positive and negative
+instance numbers behave the same on `"İİİ,a,b"`. Sigma is positional, unlike TEXTSPLIT and SEARCH: `Σ` followed by a letter is `σ`, any
+other `Σ` is `ς`, and `ς` is only `ς`. So the delimiter `Σ` alone matches a text `ς` but not `σ`, the delimiter `ς` matches a final `Σ`
+("aΟΣ") but neither `σ` nor a `Σ` followed by a letter, and the delimiter `σ` matches a `Σ` followed by a letter but not `ς`.
+Evidence: probes/textbefore-casefold-length A1-A25 (excel-graph, 2026-10-17, T-1796).
+Ours: `fold_for_before_after` (text/casefold.rs) folds char by char with `fold_for_split`'s İ/Kelvin exceptions plus the sigma and `ẞ` rules,
+and `match_text` (util.rs) maps the match back to byte offsets of the original with `str::get`. Before T-1796 it searched `to_lowercase()` of the text
+and sliced the original at those offsets, which panicked on `TEXTBEFORE("İİİ,a",",",1,1)`. UNVERIFIED: a delimiter with the same `Σ` as the text, which our separate folds miss (`TEXTBEFORE("aΣb","Σ",1,1)` is `#N/A` here: the text's `Σ` is `σ`, the lone delimiter `Σ` is `ς`), and a `Σ` followed by a space, digit or punctuation (`"ΟΔΟΣ ΚΑΙ"`; only a `Σ` at the end of the text is probed, A25), both T-1799; the exact sigma context rule
+(whether a `Σ` after a non-letter, or before a combining mark, is final; the code ignores what precedes it), the folding of other chars (Å U+212B, ſ, µ,
+titlecase digraphs, which follow SEARCH's `fold_char`), `ẞ` against the delimiter `ß`'s mirror (text `ß`, delimiter `ẞ`), and whether TEXTSPLIT shares the
+`ẞ` and sigma rules (its probe has no such cell).
+Status: VERIFIED (web) for the listed forms
+Tasks: T-1796
 
 ## ARRAYTOTEXT number text
 Rule: ARRAYTOTEXT writes a number as General text with 15 significant digits, like VALUETOTEXT and `&`:
@@ -328,7 +428,7 @@ Rule: SEARCH lowercases per character and never changes the text's length: a cha
 Also: ς (final sigma) matches Σ and σ in either direction (`SEARCH("ς","ΟΣ")` is 2, `SEARCH("σ","ΟΣ")` is 2), ǆ matches ǅ, and U+212A (Kelvin) matches k; ſ/s, µ/μ, ϐ/β and ﬀ/ff do not match (`#VALUE!`).
 Evidence: probes/text-search-casefold-length A1-A24 (oracle: excel-graph, 2026-10-12, T-1296).
 Status: VERIFIED (excel-graph)
-Implemented in: `fold_case` (functions/text/position.rs).
+Implemented in: `fold_case` (functions/text/casefold.rs).
 Tasks: T-1296
 
 ## TEXT over an array of format codes

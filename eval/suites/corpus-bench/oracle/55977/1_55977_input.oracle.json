@@ -1,0 +1,70 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "WEEKDAY": {
+   "B2": {
+    "t": "n",
+    "v": 1.0
+   },
+   "B3": {
+    "t": "n",
+    "v": 2.0
+   },
+   "B4": {
+    "t": "n",
+    "v": 7.0
+   },
+   "B5": {
+    "t": "n",
+    "v": 1.0
+   },
+   "B6": {
+    "t": "n",
+    "v": 5.0
+   },
+   "B7": {
+    "t": "n",
+    "v": 2.0
+   },
+   "B8": {
+    "t": "n",
+    "v": 1.0
+   },
+   "C2": {
+    "t": "n",
+    "v": 7.0
+   },
+   "C3": {
+    "t": "n",
+    "v": 1.0
+   },
+   "C4": {
+    "t": "n",
+    "v": 6.0
+   },
+   "C5": {
+    "t": "n",
+    "v": 7.0
+   },
+   "C6": {
+    "t": "n",
+    "v": 4.0
+   },
+   "C7": {
+    "t": "n",
+    "v": 1.0
+   },
+   "C8": {
+    "t": "n",
+    "v": 7.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "b9b1707c86dbc68f984fdd5d9ff7a90ecccb147af5cff9b29cba3fdd9a882be5",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:32:26+00:00",
+  "version": null
+ }
+}

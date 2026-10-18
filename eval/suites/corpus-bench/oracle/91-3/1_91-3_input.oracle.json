@@ -1,0 +1,16 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "AHMED": {},
+  "ALI": {},
+  "FINAL": {},
+  "OMRAAN": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "6afa9734332189e98fcf623fb371cbcf0a51402520d7c79c3b954bf691b3eb3e",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:37:16+00:00",
+  "version": null
+ }
+}

@@ -3,11 +3,11 @@ id: T-1372
 title: "Financial functions lift scalar arguments over arrays, and the core ones over ranges (probes/fin-argument-modes)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
-depends_on: [T-1770]
+depends_on: [T-1770, T-1800, T-1801]
 spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
 
@@ -31,10 +31,50 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/b58b6d7cd39d195f Calc!A21 `=PPMT(MUNIT(3),1,359,117633,154)`: Excel `#SPILL!`, engine `#N/IMPL!`.
 
 ## Acceptance criteria
-- [ ] The lift cells of probes/fin-argument-modes pass (their baseline lines removed), and the 37 range `#VALUE!` cells
+- [x] (subset; the rest moved to T-1820, T-1821, T-1822) The lift cells of probes/fin-argument-modes pass (their baseline lines removed), and the 37 range `#VALUE!` cells
   still pass. The PMT and EFFECT shape and error cells of probes/scalar-lift-shapes and -b listed under Context pass. Value cells that miss by ulps stay T-0901's and T-1374's.
-- [ ] gen-m9/675763979c1defb6 A13 and b58b6d7cd39d195f A21 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m9/675763979c1defb6 A13 and b58b6d7cd39d195f A21 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] probes/scalar-lift-open-b W9 and probes/scalar-lift-open-d W17, W18 pass (`PMT` beside an array and a 3-D range: the result has the array's shape, ROWS 2 at -b W9, and each element is `#REF!`, -d W17, W18; moved here from T-1801, which needed a `Lift` consumer).
+- [x] probes/scalar-lift-open-a W4 (`EFFECT(C1:C60,1/0)`) and probes/scalar-lift-open-d W9, W11, W13, W14, W16 (ACCRINTM over a range or array) pass, with each kernel's own error order (moved here from T-1800).
+- [ ] `make check` green; reviewers approve. (`make check` green locally; review is the PR's.)
+- [x] The entries it adds make the variant live, and it removes the `#[allow(dead_code)]` on `ArgKind::Lift` (functions/lift/kinds.rs), unless T-1290 removed it first (T-1770 left the allow with a `TODO(T-1372)`).
 
 ## Out of scope
 - Base-value ulp misses (T-1374, T-0901, T-0916).
+
+## Outcome
+The core annuity and depreciation functions and 15 Analysis ToolPak functions run on the SPEC-0011 driver.
+- **`Lift`** (arrays and ranges, every argument): PMT, PV, FV, NPER, RATE, IPMT, PPMT, ISPMT, RRI, PDURATION, SLN, SYD
+  and DDB. RATE is `KernelWork::Weighted(50)` (its Newton cap). The `#[allow(dead_code)]` on `Weighted` is gone; the
+  one on `ArgKind::Lift` was already removed by T-1774.
+- **`LiftArrays`** (arrays lift, a range is `#VALUE!`): EFFECT, NOMINAL, DOLLARDE, DOLLARFR, ACCRINTM, DISC, INTRATE,
+  PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT, TBILLEQ, TBILLPRICE and TBILLYIELD. Each one's later arguments
+  were probed first (probe-first guard).
+- **New probe** probes/fin-later-argument-ranges (115 cells, excel-graph 2026-10-17). It checks every later argument
+  of those ATP functions over a two-cell range on the formula's own rows, with an `@`-intersected control (all
+  refused), the last argument of each core function (all lift), and ACCRINTM's basis over an array: element values,
+  errors and a 2x2 broadcast.
+- **Finding, a scalar fix:** ACCRINTM reads every argument, basis included, before checking values. So
+  `ACCRINTM(39083,39448,-0.1,1000,NA())` is `#N/A` (J17, J20), where we gave `#NUM!`. ACCRINTM now lifts its basis
+  itself, not through YEARFRAC. Recorded in financial.md "Financial function argument modes".
+- **Code:** the kernels borrow their values, and their own errors carry empty messages. The functions moved out of
+  financial/mod.rs (2194 → 673 lines, no longer oversized) into `annuity.rs`, `discount.rs`, `rate_conversions.rs`
+  and `financial_depreciation.rs`. Their 56 fallback arms in static_analysis.rs are deleted. The new
+  `cast_number_or` and `cast_number_no_bools_or` (cast.rs) read optional kernel arguments. Duplicated lines went
+  5561 → 5084 (main at 9afea647) (decision 0010 line).
+- **Not entered, filed:**
+  - DB and VDB loop over periods with no per-call cap (`DB(1,0,1E15,1E15)`), so their loops get bounded first (T-1820).
+  - NPV's rate, IRR's guess and MIRR's rates sit beside a whole cash flow, the first `WholeByCaller` consumer, which
+    T-1772 had not landed when this was written (T-1821).
+  - The bond, COUP*, ODD*, AMOR*, ACCRINT, DURATION, PRICE/YIELD, CUMIPMT/CUMPRINC, FVSCHEDULE-principal,
+    XNPV-rate and XIRR-guess functions need their later arguments probed first, and CUMIPMT/CUMPRINC also need a
+    loop bound (T-1822).
+- **Eval:** `update-baseline --timeout 240` gave 0 regressions. Probes known failures 4652 → 4475 (main at 9afea647): 177 F lines
+  removed (fin-argument-modes 132, scalar-lift-shapes 23, -b 4, scalar-lift-open-a 10, -b 1, -d 7). The new case
+  passes 115/115. Every suite, the non-gated ones too, was compared cell by cell against main (both binaries over
+  the same suites):
+  - 0 new failing cells, and gen-m9 675763979c1defb6 A13 and b58b6d7cd39d195f A21 fixed.
+  - 6 failing values changed from `#N/IMPL!` to PMT's known ulp miss (T-0901): scalar-lift-shapes H19, H27, J3, K3
+    and scalar-lift-open-a AA1, AA9.
+- **Bench** (`cargo bench -p rustsheet --bench lift -- PMT`, release): `=SUM(PMT(A1:A100000,10,100))` median 51.6 ms,
+  min 49.4 ms. This is a smoke number for a new path, so it has no budget.

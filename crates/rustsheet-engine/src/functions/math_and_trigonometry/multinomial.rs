@@ -200,13 +200,15 @@ fn log10_of(k: u64) -> f64 {
 
 /// MULTINOMIAL of `values`, whose sum is at most 170, as Excel computes it. One double running
 /// sum adds `log10(k)` for k = 1..=sum, then subtracts `log10(k)` for k = 1..=n for each value
-/// from the last to the first, and the result is `exp(sum * ln 10)`. Its rounding is Excel's:
-/// `MULTINOMIAL(2,3)` 9.999999999999998, `(170)` 1.0000000000001974, and `(20,150)` differs from
-/// `(150,20)` (docs/excel-semantics/numbers.md "MULTINOMIAL is inexact"; fit on
-/// probes/multinomial-algorithm-sweep, multinomial-large-arguments and math-argument-modes,
-/// T-1190: 64 of 72 cells bit-exact, the rest one ulp off, T-1600). The terms come from a table so
-/// that they do not depend on the platform `log10`; the last step is the platform `exp` (glibc's
-/// gives the fitted values).
+/// from the last to the first, and the result is `exp(sum * ln 10)`, or `1 / exp(-sum * ln 10)`
+/// when the sum is negative (only a lone argument's residue is: `(5)` 0.9999999999999996, not the
+/// nearer 0.9999999999999994). Its rounding is Excel's: `MULTINOMIAL(2,3)` 9.999999999999998,
+/// `(170)` 1.0000000000001974, and `(20,150)` differs from `(150,20)`
+/// (docs/excel-semantics/numbers.md "MULTINOMIAL is inexact"; fit on
+/// probes/multinomial-algorithm-sweep, multinomial-single-arguments, multinomial-large-arguments
+/// and math-argument-modes, T-1190 and T-1600: all 240 cells bit-exact). The terms come from a
+/// table so that they do not depend on the platform `log10`; the last step is the platform `exp`
+/// (glibc's gives the fitted values).
 fn multinomial_value(values: &[u64]) -> f64 {
     let sum: u64 = values.iter().sum();
     let mut log = 0.0;
@@ -218,7 +220,12 @@ fn multinomial_value(values: &[u64]) -> f64 {
             log -= log10_of(k);
         }
     }
-    (log * std::f64::consts::LN_10).exp()
+    let exponent = log * std::f64::consts::LN_10;
+    if exponent < 0.0 {
+        1.0 / (-exponent).exp()
+    } else {
+        exponent.exp()
+    }
 }
 
 /// Numeric text as its number: typed (`MULTINOMIAL("2",3)` is `MULTINOMIAL(2,3)`) and in a range

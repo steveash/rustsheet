@@ -1,0 +1,13 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "INVOICE": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "52821732e073a148f3efa098b89889ffc67f95a9e958baf5ea2772071df363b9",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:37:41+00:00",
+  "version": null
+ }
+}

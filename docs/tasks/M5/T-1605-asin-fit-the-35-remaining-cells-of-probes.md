@@ -3,7 +3,7 @@ id: T-1605
 title: "ASIN: fit the 35 remaining cells of probes/asin-argument-sweep (Excel's ASIN is not odd)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -29,8 +29,14 @@ Ideas not yet tried:
   depend on glibc; keep it if it also scores 233 (T-1259 review).
 
 ## Acceptance criteria
-- [ ] probes/asin-argument-sweep loses known failures with no regression in any ASIN cell (ironcalc-calc, gen-m6, gen-m7), or numbers.md records why the residue stays.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/asin-argument-sweep loses known failures with no regression in any ASIN cell (ironcalc-calc, gen-m6, gen-m7), or numbers.md records why the residue stays.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Attempt 1 (decision 0056): a tiny argument is returned as is (`|x| < 2^-28`), which fixes `ASIN(±1E-13)`; the sweep bounds the
+cut to (1E-13, 1E-8) only, because `ASIN(1E-8)` is not the identity while `ASIN(-1E-8)` is. Candidate counts for the non-odd
+kernel are in numbers.md "ASIN of a small argument"; none beats the T-1259 quotient. Eval delta: probes fixed 2
+(asin-argument-sweep 235/268), 0 regressions. Follow-up: T-1797 (the 33 remaining cells, with the untried hypotheses).

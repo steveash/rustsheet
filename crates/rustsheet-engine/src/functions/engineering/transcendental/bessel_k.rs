@@ -1,3 +1,5 @@
+use super::bessel_excel::MAX_ORDER;
+
 // This are somewhat lower precision than the BesselJ and BesselY
 
 use super::bessel_i::bessel_i0;
@@ -68,7 +70,8 @@ fn bessel_k1(x: f64) -> f64 {
 }
 
 pub(crate) fn bessel_k(n: i32, x: f64) -> f64 {
-    if x <= 0.0 || n < 0 {
+    // The order cap bounds the upward recurrence below (n steps).
+    if x <= 0.0 || !(0..=MAX_ORDER).contains(&n) {
         return f64::NAN;
     }
 

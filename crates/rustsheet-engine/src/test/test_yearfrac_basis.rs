@@ -58,3 +58,31 @@ fn test_yearfrac_basis_3_actual_365() {
     // Same date
     assert_eq!(model._get_text("B3"), *"0");
 }
+
+#[test]
+// Only basis 1 has Excel evidence; the other bases' equality is our own expectation (dates.md).
+fn test_yearfrac_reversed_dates_swap_for_every_basis() {
+    let mut model = new_empty_model();
+    for basis in 0..=4 {
+        model._set(
+            &format!("A{}", basis + 1),
+            &format!("=YEARFRAC(24708,52874,{basis})"),
+        );
+        model._set(
+            &format!("B{}", basis + 1),
+            &format!("=YEARFRAC(52874,24708,{basis})"),
+        );
+    }
+    model.evaluate();
+    for row in 1..=5 {
+        assert_eq!(
+            model._get_text(&format!("A{row}")),
+            model._get_text(&format!("B{row}"))
+        );
+    }
+    // gen-m7/c263b43217a5898b Calc!A38 (Excel oracle)
+    let Ok(CellValue::Number(v)) = model.get_cell_value_by_ref("Sheet1!B2") else {
+        panic!("Expected numeric value in B2");
+    };
+    assert!((v - 77.112_951_912_951_91).abs() < 1e-12);
+}

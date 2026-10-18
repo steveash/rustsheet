@@ -3,7 +3,7 @@ id: T-1763
 title: "A call of a defined LAMBDA name prints the defined name's spelling"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Excel: `OtherFn` defined, `=otherfn(1)` then `=OTHERFN(1)` both print `=OtherFn(
 
 ## Out of scope
 - Other cells of probes/unknown-function-name-reach.
+
+## Outcome
+`CallNameSpellings::apply` takes the workbook's defined names; a free callee matching one (case-insensitively) prints the defined name's spelling. B20 and B21 of probes/unknown-function-name-reach now pass (baseline: two failures fewer, 0 regressions). `CallNameSpellings` keeps a hash map of the defined names, rebuilt in `parse_formulas`. Defined names used as values, name scope (ours ignores it) and the ß/SS fold against defined names are unprobed.

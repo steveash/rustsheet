@@ -1,0 +1,66 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "B10": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B11": {
+    "t": "s",
+    "v": "Restaurant C"
+   },
+   "B12": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B13": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B14": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B2": {
+    "t": "s",
+    "v": "Restaurant A"
+   },
+   "B3": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B4": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B5": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B6": {
+    "t": "s",
+    "v": "Restaurant B"
+   },
+   "B7": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B8": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B9": {
+    "t": "e",
+    "v": "#N/A"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "bef2fd08cf8c4fb667c99af5bd29b68bb038400f0674c732e4e6f34c9741d9fa",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:26:07+00:00",
+  "version": null
+ }
+}

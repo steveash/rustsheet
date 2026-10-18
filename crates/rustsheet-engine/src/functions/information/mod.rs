@@ -1,6 +1,5 @@
 mod isomitted;
 mod offline_errors;
-pub(crate) use offline_errors::error_array;
 
 use crate::external_reference::PickedReference;
 use crate::{
@@ -13,7 +12,7 @@ use crate::{
         types::CellReferenceIndex,
         utils::number_to_column,
     },
-    functions::util::array_node_to_calc_result,
+    functions::Function,
     get_all_timezones,
     limits::check_range_size,
     model::Model,
@@ -41,23 +40,6 @@ fn n_of(value: &ArrayNode) -> ArrayNode {
     }
 }
 
-/// An argument that lifts: a multi-cell range or an array gives its values, anything else
-/// (a one-cell range included) a single value.
-pub(crate) enum Lifted {
-    Scalar(CalcResult),
-    Array(Vec<Vec<ArrayNode>>),
-}
-
-impl Lifted {
-    /// Rows and columns; a single value is 1x1.
-    fn dims(&self) -> (usize, usize) {
-        match self {
-            Lifted::Array(values) => (values.len(), values.iter().map(Vec::len).max().unwrap_or(0)),
-            Lifted::Scalar(_) => (1, 1),
-        }
-    }
-}
-
 #[cfg(not(target_arch = "wasm32"))]
 fn get_system() -> String {
     std::env::consts::OS.to_string()
@@ -77,69 +59,61 @@ impl Model {
     /// yields one boolean.
     fn is_predicate(
         &mut self,
+        kind: Function,
         args: &[Node],
         cell: CellReferenceIndex,
         test: impl Fn(&ArrayNode) -> bool,
     ) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        match self.lifted_arg(&args[0], cell) {
-            Ok(Lifted::Array(values)) => {
-                CalcResult::Array(map_elements(&values, |v| ArrayNode::Boolean(test(v))))
-            }
-            Ok(Lifted::Scalar(other)) => {
-                CalcResult::Boolean(test(&calc_result_to_array_node(other)))
-            }
-            Err(error) => error,
-        }
-    }
-
-    /// Evaluates an argument that lifts over a multi-cell range or array.
-    pub(crate) fn lifted_arg(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<Lifted, CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Range { left, right } if left == right => {
-                Ok(Lifted::Scalar(self.evaluate_cell(left)))
-            }
-            CalcResult::Range { left, right } => {
-                Ok(Lifted::Array(self.evaluate_range(left, right, cell)?))
-            }
-            CalcResult::Array(values) => Ok(Lifted::Array(values)),
-            other => Ok(Lifted::Scalar(other)),
-        }
+        self.lift_call(kind, args, cell, &mut |_, values| {
+            let [value] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            CalcResult::Boolean(test(&calc_result_to_array_node(value.clone())))
+        })
     }
 
     pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Number(_)))
+        self.is_predicate(Function::Isnumber, args, cell, |v| {
+            matches!(v, ArrayNode::Number(_))
+        })
     }
     pub(crate) fn fn_istext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::String(_)))
+        self.is_predicate(Function::Istext, args, cell, |v| {
+            matches!(v, ArrayNode::String(_))
+        })
     }
     pub(crate) fn fn_isnontext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| !matches!(v, ArrayNode::String(_)))
+        self.is_predicate(Function::Isnontext, args, cell, |v| {
+            !matches!(v, ArrayNode::String(_))
+        })
     }
     pub(crate) fn fn_islogical(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Boolean(_)))
+        self.is_predicate(Function::Islogical, args, cell, |v| {
+            matches!(v, ArrayNode::Boolean(_))
+        })
     }
     pub(crate) fn fn_isblank(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Empty))
+        self.is_predicate(Function::Isblank, args, cell, |v| {
+            matches!(v, ArrayNode::Empty)
+        })
     }
     pub(crate) fn fn_iserror(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Error(_)))
+        self.is_predicate(Function::Iserror, args, cell, |v| {
+            matches!(v, ArrayNode::Error(_))
+        })
     }
     pub(crate) fn fn_iserr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.is_predicate(
+            Function::Iserr,
             args,
             cell,
             |v| matches!(v, ArrayNode::Error(e) if *e != Error::NA),
         )
     }
     pub(crate) fn fn_isna(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Error(Error::NA)))
+        self.is_predicate(Function::Isna, args, cell, |v| {
+            matches!(v, ArrayNode::Error(Error::NA))
+        })
     }
 
     // Returns true if it is a reference or evaluates to a reference
@@ -275,34 +249,19 @@ impl Model {
     /// wherever the formula sits; an array constant lifts element by element
     /// (probes/is-functions-array-lift J2, K2, L3, M30, M32; excel-graph;
     /// docs/excel-semantics/information.md).
-    fn parity_predicate(
+    fn lifted_parity(
         &mut self,
+        kind: Function,
         args: &[Node],
         cell: CellReferenceIndex,
         even: bool,
     ) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } if left != right => {
-                CalcResult::new_error(Error::VALUE, cell, "Expecting a single value".to_string())
-            }
-            CalcResult::Array(values) => CalcResult::Array(
-                values
-                    .into_iter()
-                    .map(|row| {
-                        row.into_iter()
-                            .map(|v| {
-                                let element = array_node_to_calc_result(&v, cell);
-                                calc_result_to_array_node(self.parity_of(element, even, cell))
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            ),
-            other => self.parity_of(other, even, cell),
-        }
+        self.lift_call(kind, args, cell, &mut |model, values| {
+            let [value] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            model.parity_of(value.clone(), even, cell)
+        })
     }
 
     fn parity_of(&mut self, value: CalcResult, even: bool, cell: CellReferenceIndex) -> CalcResult {
@@ -319,11 +278,11 @@ impl Model {
     }
 
     pub(crate) fn fn_isodd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.parity_predicate(args, cell, false)
+        self.lifted_parity(Function::Isodd, args, cell, false)
     }
 
     pub(crate) fn fn_iseven(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.parity_predicate(args, cell, true)
+        self.lifted_parity(Function::Iseven, args, cell, true)
     }
 
     // ISFORMULA arg needs to be a reference or something that evaluates to a reference
@@ -385,28 +344,25 @@ impl Model {
         )
     }
 
+    /// Lifts over a multi-cell range or array like the IS* tests (probes/rich-errors-arg-kinds
+    /// F10:G10, F40:G41: `ERROR.TYPE(FIELDVALUE(Q1:R2,"Price"))` spills 13s).
     pub(crate) fn fn_errortype(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // Lifts over a multi-cell range or array like the IS* tests (probes/rich-errors-arg-kinds
-        // F10:G10, F40:G41: `ERROR.TYPE(FIELDVALUE(Q1:R2,"Price"))` spills 13s).
-        let error_type = |v: &ArrayNode| match v {
-            ArrayNode::Error(error) => ArrayNode::Number(f64::from(error.error_type_code())),
-            _ => ArrayNode::Error(Error::NA),
-        };
-        match self.lifted_arg(&args[0], cell) {
-            Ok(Lifted::Array(values)) => CalcResult::Array(map_elements(&values, error_type)),
-            Ok(Lifted::Scalar(CalcResult::Error { error, .. })) => {
-                CalcResult::Number(f64::from(error.error_type_code()))
-            }
-            Ok(Lifted::Scalar(_)) => CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Not an error".to_string(),
+        self.lift_call(
+            Function::ErrorType,
+            args,
+            cell,
+            &mut |_, values| match values {
+                [CalcResult::Error { error, .. }] => {
+                    CalcResult::Number(f64::from(error.error_type_code()))
+                }
+                [_] => CalcResult::Error {
+                    error: Error::NA,
+                    origin: cell,
+                    message: "Not an error".to_string(),
+                },
+                _ => CalcResult::new_args_number_error(cell),
             },
-            Err(error) => error,
-        }
+        )
     }
 
     // Excel believes for some reason that TYPE(A1:A7) is an array formula
@@ -512,12 +468,9 @@ impl Model {
         if arg_count != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let argument = match self.evaluate_node_in_context(&args[0], cell) {
-            // The top-left cell, with no lift and no implicit intersection
-            // (probes/info-logic-argument-modes A6:A7, excel-graph).
-            CalcResult::Range { left, .. } => self.evaluate_cell(left),
-            other => other,
-        };
+        // A range is its top-left cell, with no lift and no implicit intersection
+        // (probes/info-logic-argument-modes A6:A7, excel-graph).
+        let argument = self.evaluate_node_top_left(&args[0], cell);
         let value = match argument {
             CalcResult::Number(n) => n,
             CalcResult::String(_) => 0.0,

@@ -109,7 +109,7 @@ is `#ERROR!`).
 Unprobed: blank elements of a multi-cell lookup_value.
 Evidence: probes/vlookup-array-lookup-value (35 cells, excel-graph, 2026-10-09, T-0270).
 Implemented in: `Model::lookup_each` (functions/lookup_and_reference/lookup_each.rs) through
-`Model::lift_with_cost`; the spill shape follows lookup_value in static analysis.
+`Model::lift_values` (functions/lift/driver.rs); the spill shape follows lookup_value in static analysis.
 Status: VERIFIED (web)
 
 ## VLOOKUP / HLOOKUP with an array index or range_lookup
@@ -415,14 +415,15 @@ array literal whole: `LOOKUP(2,{1,2,3},{4,5,6})` = 5, `LOOKUP(2,{1,2,3})` = 2, `
 `XMATCH(2,{1,2,3})` = 2, `ROWS({1;2;3})` = 3, `COLUMNS({1,2})` = 2, `CHOOSEROWS({1;2;3},{1;3})` is 2x1,
 `TRANSPOSE({1,2,3})` is 3x1. INDEX of a single value is that value (`INDEX(LOOKUP(2,{1,2,3},{4,5,6}),1,1)` = 5,
 `INDEX(AREAS(A1:B3),1,1)` = 1). UNVERIFIED (not probed): OFFSET's cols, height and width, XLOOKUP/XMATCH search_mode,
-XLOOKUP's if_not_found, ADDRESS's a1 and sheet_text, INDIRECT's a1 and TRIMRANGE's trim_cols.
-Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-1238).
-Ours: none of the lifting arguments above lifts except CHOOSE's (a range gives `#VALUE!` or an implicit intersection,
-an array `#N/IMPL!`); LOOKUP/XLOOKUP/XMATCH give `#N/A` for a range lookup_value; CHOOSECOLS and CHOOSEROWS are `#VALUE!`
-for a range of indexes and `#N/IMPL!` for an array; HYPERLINK and INDIRECT over an array literal are `#N/IMPL!`;
-FORMULATEXT over a range is `#N/IMPL!`; INDEX of a single value is `#VALUE!`. 34 of 117 cells pass.
+XLOOKUP's if_not_found, ADDRESS's sheet_text, INDIRECT's a1 and TRIMRANGE's trim_cols; which problem wins inside a
+CHOOSECOLS/CHOOSEROWS index list (ours: the first error, out-of-range index or uncoercible text in row-major order).
+Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-1238); ADDRESS's a1 and HYPERLINK's
+friendly_name over an array spill: gen-m7/f68fafa0ca2eba26 A7, gen-m7/2bb922eef72e785e A22 (excel-graph, 2026-10-11).
+Ours: ADDRESS, HYPERLINK, LOOKUP's and XMATCH's lookup_value, XMATCH's match_mode and XLOOKUP lift, FORMULATEXT gives
+one result per cell, and CHOOSECOLS/CHOOSEROWS read their index lists whole (T-1241). OFFSET, INDIRECT and TRIMRANGE
+still do not lift (their elements are references; T-1810), and INDEX of a single value is `#VALUE!` (T-1242).
 Status: VERIFIED (web)
-Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1242 (INDEX of a single value)
+Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1810 (reference-valued lifts), T-1242 (INDEX of a single value)
 
 ## A reference-valued lookup_value is looked up by its cell's value
 Rule: when lookup_value is a one-cell reference returned by a function or written as a range (`CHOOSE(1,J1)`,
@@ -436,7 +437,7 @@ Evidence: probes/lookup-reference-lookup-value (220 cells: 5 shapes x 4 values x
 Status: VERIFIED
 Implemented in: VLOOKUP, HLOOKUP and XLOOKUP lift the lookup_value, so a 1x1 range lifts to its value
 (`lookup_each`, xlookup.rs); MATCH, XMATCH and LOOKUP read it through `Model::lookup_value_arg`
-(functions/lookup_and_reference/mod.rs). A multi-cell lookup_value in MATCH, XMATCH or LOOKUP is T-0270.
+(functions/lookup_and_reference/mod.rs); a multi-cell one lifts in XMATCH and LOOKUP (T-1241) and is T-0270 in MATCH.
 Tasks: T-1256
 
 ## A reference-valued lookup_value pointing at a blank or error cell
@@ -507,6 +508,17 @@ Status: VERIFIED (excel-graph)
 Implemented in: `Model::index_impl` / `index_lifted` (functions/lookup_and_reference/index.rs).
 Tasks: T-1260, T-1376, T-1437, T-1507
 
+## INDEX of a scalar or a 1x1 array
+Rule: a scalar (number, text, boolean) or a 1x1 array is a 1x1 range for INDEX. Row and column 0 or 1 return the value (`INDEX(5,0,0)`,
+`(5,0,1)`, `(5,1,0)`, `(5,1)`, `(5,0)`, `INDEX("a",1)`, `INDEX(TRUE,1,1)`, `INDEX({7},1,1)`, `INDEX({7},0,0)` return it; `INDEX(5,1.9,1)` is 5); a
+row or column of 2 is `#REF!` (`INDEX(5,2,1)`, `(5,1,2)`, `(5,2)`, `INDEX("a",2)`, `INDEX({7},2,1)`, `INDEX({7},1,2)`), a negative index or a text
+index is `#VALUE!` (`INDEX(5,-1,1)`, `(5,1,-1)`, `(5,"a",1)`), an error value is that error (`INDEX(#N/A,1,1)`), and area_num 1 is
+accepted while 2 is `#REF!` (`INDEX(5,1,1,1)` is 5, `INDEX(5,1,1,2)`).
+So `INDEX(LOOKUP(2,{1,2,3},{4,5,6}),1,1)` is 5 and `INDEX(ROWS({1;2;3}),1,1)` is 3.
+Evidence: probes/index-scalar-indexes A1:A23 (excel-graph, 2026-10-17, T-1242); probes/lookup-argument-modes H18, H19, H24, H28, H30, H31, H39.
+Status: VERIFIED (excel-graph)
+Ours: implemented (the engine matched every cell before T-1242).
+
 ## INDEX rounds an index up near an integer; a tiny negative index is 0
 Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
 counts up near an integer"): truncated, except that a value within 2^-22 + 2^-33 (about 2.38535E-7) below an integer
@@ -543,17 +555,18 @@ Argument errors do not collapse the result: every element gets the error, in the
 Quirk: under a lifted lookup_value an array `if_not_found` is not lifted but gives its first element (`XLOOKUP({2;9},A1:A4,B1:B4,{"x";"y"})` is "two", "x"), and a reference `if_not_found`, even one cell, is `#VALUE!` where it applies (`XLOOKUP({9;2},..,Data!C1)` and `..,Data!C1:C2)` are `#VALUE!`, "two"), while the scalar `XLOOKUP(9,..,Data!C1:C2)` spills 11, 12.
 DEVIATION (decision 0014, CLAUDE.md directive 5): each element is charged one search of the lookup vector (its evaluated cells, so a whole column costs its used area) against the shared cell-visit cap of criteria.md; `ROWS(XLOOKUP(SEQUENCE(1048576),SEQUENCE(1048576),SEQUENCE(1048576)))` is `#ERROR!` where Excel computes it.
 Evidence: probes/let-name-uncalled-picked-refs H21 (T-1252), probes/xlookup-array-lookup-value and probes/xlookup-array-lookup-value-args (excel-graph, 2026-10-10 and 2026-10-11, T-1264).
-Implemented in: `Model::xlookup_impl` (functions/xlookup.rs) through `Model::lift_with_cost`, evaluating the table once (`xlookup_table`).
+Implemented in: `Model::xlookup_impl` (functions/xlookup.rs) through `Model::lift_values` (functions/lift/driver.rs), evaluating the table once (`xlookup_table`).
 Status: VERIFIED (web)
 Tasks: T-1252, T-1264
 
 ## TRIMRANGE with a fractional trim argument
-Rule (hypothesis): `TRIMRANGE(C10:E11,2.5,3)` is `#VALUE!`. In `UPPER(..)&REPLACE("abc",TRIMRANGE(Data!C10:E11,2.5,3),1,PROPER(""))`
-the result is `#VALUE!` while the left operand is "42"; either TRIMRANGE rejects trim_rows 2.5 or REPLACE rejects a 2x3
-reference start_num instead of lifting over it.
-Evidence: gen-m7/bcad709c30cfdf64 Calc!A20 (excel-graph, 2026-10-11, T-1275).
-Ours: trim_rows 2.5 reads as 2 and REPLACE lifts, so `#SPILL!`.
-Status: UNVERIFIED (probe pending)
+Rule: trim_rows and trim_cols must be exactly 0, 1, 2 or 3; any fractional value is `#VALUE!`, including `0.9`,
+`1.5`, `2.5` and `3.9` (no truncation), in either argument (`(A1:C3,3,2.5)`, `(A1:C3,2.5,2.5)`), as are `4` and `-1`.
+Text `"2"` and `TRUE` coerce (3x3 kept for full data). So `TRIMRANGE` is the `#VALUE!` source in
+`REPLACE("abc",TRIMRANGE(Data!C10:E11,2.5,3),1,"")`; REPLACE itself lifts over a multi-cell start_num or num_chars
+and spills (`REPLACE("abc",E1:F2,1,"")` is a 2x2 spill).
+Evidence: probes/trimrange-fractional-trim H1-H10, J1, L1 (excel-graph, 2026-10-17, T-1352); gen-m7/bcad709c30cfdf64 Calc!A20.
+Status: VERIFIED
 Tasks: T-1352
 
 ## XMATCH with an omitted argument; SORT with omitted sort arguments

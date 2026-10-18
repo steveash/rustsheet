@@ -23,15 +23,20 @@ fn multi_sheet_ref() {
     assert_eq!(model._get_text("A1"), *"#ERROR!");
 }
 
+/// A multi-cell reference gives one result per cell, `#N/A` where a cell has no formula
+/// (probes/lookup-argument-modes F38:H38, T-1241).
 #[test]
-fn implicit_intersection() {
+fn multi_cell_reference_gives_one_result_per_cell() {
     let mut model = new_empty_model();
+    model._set("C1", "=1+1");
     model._set("A1", "=FORMULATEXT(C1:C2)");
-    model._set("A2", "=FORMULATEXT(D1:E1)");
+    model._set("A4", "=FORMULATEXT(C1:D1)");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#N/IMPL!");
-    assert_eq!(model._get_text("A2"), *"#N/IMPL!");
+    assert_eq!(model._get_text("A1"), *"=1+1");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+    assert_eq!(model._get_text("A4"), *"=1+1");
+    assert_eq!(model._get_text("B4"), *"#N/A");
 }
 
 #[test]
@@ -134,6 +139,22 @@ fn an_unknown_call_name_keeps_the_first_spelling_met() {
     assert_eq!(model._get_formula("A2"), "=my_Fn(1)");
     assert_eq!(model._get_formula("A3"), "=Xyz2(1)");
     assert_eq!(model._get_formula("A4"), "=SUM(A1.INDEX(B2:B2,1))");
+}
+
+#[test]
+fn an_unknown_name_used_as_a_value_shares_the_call_name_spelling() {
+    // Either order: the first spelling met wins (probes/unknown-function-name-reach B9/B11, T-1760).
+    let mut model = new_empty_model();
+    model._set("A1", "=Qux+1");
+    model._set("A2", "=qux(1)");
+    model._set("A3", "=wib(1)");
+    model._set("A4", "=Wib+1");
+    model.evaluate();
+
+    assert_eq!(model._get_formula("A1"), "=Qux+1");
+    assert_eq!(model._get_formula("A2"), "=Qux(1)");
+    assert_eq!(model._get_formula("A3"), "=wib(1)");
+    assert_eq!(model._get_formula("A4"), "=wib+1");
 }
 
 #[test]
