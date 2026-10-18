@@ -117,16 +117,18 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let target = self.lookup_value_arg(&args[0], cell);
-        if target.is_error() && !LiftedArg::is_grid(&target) {
-            return target;
-        }
         // An array match_type lifts with lookup_value (probes/match-lookup-value-lift E14:E16,
-        // T-1917); a multi-cell range still reads its top-left cell (match_type_arg).
+        // T-1917); a multi-cell range still reads its top-left cell (match_type_arg). A scalar
+        // error lookup_value lifts over it too: `MATCH(NA(),A1:A3,{0;1})` is 2x1 of #N/A
+        // (probes/match-error-lookup-value-array-match-type E1, E2, E7, E8; T-1926).
         let match_type = if args.len() == 3 {
             self.match_type_arg(&args[2], cell)
         } else {
             CalcResult::Number(1.0)
         };
+        if target.is_error() && !LiftedArg::is_grid(&target) && !LiftedArg::is_grid(&match_type) {
+            return target;
+        }
         if match_type.is_error() && !LiftedArg::is_grid(&match_type) && !LiftedArg::is_grid(&target)
         {
             return match_type;
