@@ -515,20 +515,20 @@ The lifting table charges HYPGEOM.DIST 2^22 units an element, the bound of the c
 slowest term measured in release), about 51 ms (kinds.rs `HYPGEOM_DIST_WEIGHT` has the measurements; 32 elements at
 the widest distribution of a population of 1.8E8, 258,239 terms each, took 1.39 to 1.48 s).
 DEVIATION (decision 0014, CLAUDE.md directive 5): where more than 2^18 terms are left the cdf is `#NUM!` where main gave
-a number, and Excel's value there is unprobed (T-1895; no suite case is near the cap: the largest sums 501 terms). That is a cdf whose standard
+a number, and Excel's value there is unprobed (T-1896; no suite case is near the cap: the largest sums 501 terms). That is a cdf whose standard
 deviation is above about 3,400 (a population above about 1.84E8 with a wide sample), such as
 `HYPGEOM.DIST(1074741824,2147483648,2147483648,4294967296,TRUE)` (1,255,925 terms are not 0; main
 1.0000065293398746 after 191 s in release), and any sum of more than 2^18 terms at a population above 2^52, where
 nothing is skipped (above 2^53 a count rounds as a double and statrs' terms are not the pmf's:
 `HYPGEOM.DIST(524288,1048576,2^59,2^60,TRUE)` was `#NUM!` on main too, its sum infinite). Unit tests `a_call_past_its_cap_is_nan`, `the_cap_counts_the_terms_summed` and
-`a_cdf_sum_is_bounded`; T-1895 probes Excel's values there.
+`a_cdf_sum_is_bounded`; T-1896 probes Excel's values there.
 DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted HYPGEOM.DIST of more than 32 elements is `#ERROR!` before it
 runs where Excel computes it (2^27 units, `limits::MAX_LIFTED_CELL_VISITS`, over 2^22 an element;
 `ROWS(HYPGEOM.DIST(2,3,5,10,SEQUENCE(33)>0))`, unit test `hypgeom_dist_is_charged_its_weight`). At the bound of the
 cap, 32 elements take about 1.6 s, within the 2 s budget of the Bessel entries (engineering.md "BESSEL order cap").
 HYPGEOMDIST is `Constant` and lifts up to the output cap.
 Status: VERIFIED (excel-graph)
-Tasks: T-1873, T-1895, T-0977
+Tasks: T-1873, T-1896, T-0977
 
 ## Overflowing arguments, PERMUT's limit and argument error order (T-1290)
 Rule: an F.DIST, F.DIST.RT or FDIST call whose `deg_freedom1 * x` overflows a double is `#DIV/0!` for the cdf and the

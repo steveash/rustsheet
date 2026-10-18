@@ -1,5 +1,5 @@
 ---
-id: T-1895
+id: T-1896
 title: "HYPGEOM.DIST's cdf gives Excel's value at a large population past T-1873's term cap"
 milestone: M9
 lane: functions-stat

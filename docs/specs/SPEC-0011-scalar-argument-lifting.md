@@ -582,7 +582,7 @@ longer builds a fifth argument node). HYPGEOMDIST is the closed-form pmf and `Co
 (`statistical/hypegeom.rs`: it skips the terms that are exactly 0, below max(0, n + K - N) and, found by a bisection on
 each side of the mode, those whose exponent is below -750 with a margin for its rounding, and sums at most 2^18 of the
 rest in statrs' order), bit for bit statrs' value within the cap and `#NUM!` past it (statistics.md "HYPGEOM.DIST:
-per-call cap and lifting", a DEVIATION; T-1895 probes Excel's values). The weight charges the cap's bound, not a
+per-call cap and lifting", a DEVIATION; T-1896 probes Excel's values). The weight charges the cap's bound, not a
 measured case: 2^18 + 130 terms at 193 ns, about 51 ms an element, so HYPGEOM.DIST is `Weighted(2^22)`: 32 elements in
 about 1.6 s (1.39 to 1.48 s measured at the widest distribution of a population of 1.8E8).
 
