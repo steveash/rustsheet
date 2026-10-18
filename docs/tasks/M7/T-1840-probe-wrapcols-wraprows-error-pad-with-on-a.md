@@ -3,7 +3,7 @@ id: T-1840
 title: "Probe WRAPCOLS/WRAPROWS error pad_with on a multi-element vector and short vectors"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
