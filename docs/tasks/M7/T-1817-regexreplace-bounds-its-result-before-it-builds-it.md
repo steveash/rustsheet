@@ -3,7 +3,7 @@ id: T-1817
 title: "Probe REGEXREPLACE results past 32,767 characters"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
