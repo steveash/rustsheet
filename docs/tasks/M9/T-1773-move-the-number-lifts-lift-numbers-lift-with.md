@@ -67,4 +67,4 @@ Spec: docs/specs/SPEC-0011-scalar-argument-lifting.md, "Today's lifting code" an
   | SUM(IFERROR(ROUND(A1:A1000000&"x",2),0)) | 3.21 s | 3.01 s |
 - Review: a LAMBDA argument read `#N/IMPL!` on the driver where main read `#VALUE!`;
   `kernel_number` maps it to `#VALUE!` again (test `a_lambda_number_argument_is_value_error`).
-  Follow-up probe: T-1916.
+  Follow-up probes: T-1919 (LAMBDA), T-1920 (CEILING/FLOOR past the double range).
