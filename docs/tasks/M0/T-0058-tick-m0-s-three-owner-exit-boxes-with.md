@@ -29,9 +29,10 @@ work-loop box cited T-0010, which is "Oracle client: retry transient connection 
 ## Outcome
 - Oracle setup: T-0004 is done. docs/research/oracle-calibration.md has 71,765 ironcalc-calc formula cells at 99.96%
   agreement between Excel for the web and the cached values (≥ 99.9%). `rustsheet-oracle fill` has written
-  excel-graph sidecars for smoke (5), gen-m2 (30) and probes (866).
+  excel-graph sidecars for smoke (5), gen-m2 (30) and probes (933, counting
+  the catalog and sheet-ops subfolders).
 - Autonomous work loop: agent sessions have merged task PRs through the work-loop since 2026-10-02 (the first was
   #3, T-0200, 7646134c). Over 1,000 tasks are done this way.
-- Scheduled worker routines: the routines in docs/process/routines.md (sonnet A, sonnet B, opus workers every 2 h and
+- Scheduled worker routines: the routines in docs/process/routines.md (the sonnet and opus workers every 2 h, the optional second sonnet worker, and
   the daily steward) are enabled and each ran successfully on 2026-10-18. The status.md log records the owner enabling
   them on 2026-10-02 and updating their prompts on 2026-10-04.
