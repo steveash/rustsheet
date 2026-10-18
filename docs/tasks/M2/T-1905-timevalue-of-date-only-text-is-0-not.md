@@ -19,7 +19,6 @@ Oracle evidence: probes/date-text-glued-month-2 column C rows 6-8, 10-11, 13-15 
 ## Acceptance criteria
 - [ ] Cells C6:C8, C10:C11, C13:C15 and O8:R8 of probes/date-text-glued-month-2 pass; eval baseline shrinks.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Locales other than en-US.

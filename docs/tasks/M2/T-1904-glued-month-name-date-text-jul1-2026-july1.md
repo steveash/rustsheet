@@ -20,7 +20,6 @@ Oracle evidence: probes/date-text-glued-month-2 rows 6-9 (cells B-E, typed O6:Q6
 - [ ] Cells B6:E9 and O6:Q6 of probes/date-text-glued-month-2 pass; eval baseline shrinks.
 - [ ] Existing glued-month cases still pass (`July1,2026`, `Jun1 2021` stay #VALUE!).
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Locales other than en-US.
