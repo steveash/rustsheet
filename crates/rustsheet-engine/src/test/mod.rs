@@ -25,6 +25,7 @@ mod test_external_links;
 mod test_fact_factdouble;
 mod test_fn_accrint;
 mod test_fn_accrintm;
+mod test_fn_amortization_lift;
 mod test_fn_average;
 mod test_fn_averageifs;
 mod test_fn_bond_functions;
