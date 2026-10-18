@@ -3,7 +3,7 @@ id: T-1913
 title: "Probe the & operator on text over 32,767 units"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
