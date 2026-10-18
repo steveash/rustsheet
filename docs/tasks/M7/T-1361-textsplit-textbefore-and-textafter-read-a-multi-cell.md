@@ -44,7 +44,7 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - [x] gen-m7/0e40208f51c2454c A17, gen-m7/8ed8a680e9794b77 A17 and A26 pass (gen-m7/4629e931955aa4b8 A19 deferred to T-1866, see Outcome) in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
 - [x] An excel-probe case settles the UNVERIFIED parts first: `TEXTBEFORE("xyz",A1:B1)` with A1 blank and B1 "q", `TEXTBEFORE("a1b",A1:B1)` with A1 = 1, `TEXTAFTER("a TRUE b",A1:B1)` with A1 = TRUE; text.md updated.
 - [x] Unit tests: a 2x2 delimiter range, a range with a blank cell, a range with a number and a boolean, per the probe.
-- [x] gen-m9/0c7fc447bc2eebfd A6, 4df1b22d3ed63f58 A14 and A30, 3ec66461400faf2f A3, 696af2c8cee2f57e A23 and 95efb37a9874f82e A25 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] gen-m9/0c7fc447bc2eebfd A6, 4df1b22d3ed63f58 A14 and A30, 3ec66461400faf2f A3, 696af2c8cee2f57e A23 and 95efb37a9874f82e A25 pass (one other gen-m9 cell, d5bd4272655c5211 A14, newly fails: an accidental pass, T-1868; see Outcome) and no new known failures in eval/baseline/.
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -58,8 +58,17 @@ blank cell the empty delimiter, an error element the call's error. In TEXTBEFORE
 result alone (start of the text, end for a negative instance_num or a one-UTF-16-unit text), which explains the gen-m9
 cells. Omitted instance_num/match_mode/match_end (`,,`) now take their defaults. text.md: "TEXTSPLIT, TEXTBEFORE and
 TEXTAFTER delimiter ranges" and the new "TEXTBEFORE and TEXTAFTER with the empty delimiter".
-Eval: gen-m7 failing cells 3 -> 2, gen-m9 13 -> 10 (9 cells fixed, none broken); probes +4 cases, 366 cells, 365 pass.
+Eval, against main at the merge base 521ef295 (gen-m6, gen-m7, gen-m8a, gen-m8b, gen-m9, probes-numeric): 10 cells fixed
+(gen-m7 0e40208f51c2454c A17, 8ed8a680e9794b77 A17 and A26; gen-m9 0c7fc447bc2eebfd A6, 3ec66461400faf2f A3,
+4df1b22d3ed63f58 A14 and A30, 696af2c8cee2f57e A23, 95efb37a9874f82e A25, d244411dd90f7fbd A6), 1 newly failing:
+gen-m9/d5bd4272655c5211 A14 `SUBTOTAL(TEXTSPLIT(..,C11:E11,"-"),..)`. It passed on main only because the old reader rejected
+the boolean in C11:E11; TEXTSPLIT is now right and SUBTOTAL does not lift over an array function_num. Probed
+(probes/subtotal-array-function-num: it lifts and spills, references.md) and filed as T-1868, so the "no new failing gen-m9
+cell" criterion is not met for that one cell. Gated suites: 0 regressions; probes +6 cases (textbefore-* x4,
+textsplit-empty-delimiter, subtotal-array-function-num), the last one's 10 failing cells known in eval/baseline for T-1868.
 gen-m7/4629e931955aa4b8 A19 still fails (now `#N/A`, was `#VALUE!`): TEXTSPLIT is right, MATCH does not lift over an
-array lookup_value; filed T-1866 (gen-m7 has no gated baseline). The one new probe known failure,
-textbefore-delimiter-range A44 (a blank in a TEXTSPLIT row-delimiter range), is T-1412's, noted there.
-Follow-ups: T-1866.
+array lookup_value; filed T-1866.
+T-1412 is folded in: with blank cells now read as the empty delimiter, TEXTSPLIT's dropping of empty row delimiters
+turned gen-m7/a0cbc75358b429b6 A10 from `#VALUE!` into `#SPILL!`; probes/textsplit-empty-delimiter shows every empty
+delimiter is `#VALUE!` in either list, which is now implemented (T-1412 marked done with its own Outcome).
+Follow-ups: T-1866, T-1868.
