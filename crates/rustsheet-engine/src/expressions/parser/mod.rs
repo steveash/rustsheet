@@ -64,6 +64,7 @@ mod reference_operators;
 mod sheet_span;
 pub mod static_analysis;
 pub mod stringify;
+mod unparsed;
 
 pub use chain::ChainLeft;
 use chain::ChainLevel;
@@ -451,6 +452,11 @@ impl Parser {
     }
 
     pub fn parse(&mut self, formula: &str, context: &CellReferenceRC) -> Node {
+        if !self.lexer.is_a1_mode() {
+            if let Some(stored) = unparsed::parse_stored_text(formula) {
+                return stored;
+            }
+        }
         self.lexer.set_formula(formula);
         self.context = context.clone();
         // At the top level a formula may start with an expression or a range.
