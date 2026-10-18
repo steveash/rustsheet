@@ -1552,13 +1552,21 @@ Exceptions: IFERROR gets the `@` (`=N(IFERROR({2;3},0))` is `=N(@IFERROR({2;3},0
 gets none and the legacy cell spills: `=N(SWITCH(1,1,{2;3}))` shows no `@` and gives 2, 3 in two
 cells, as a dynamic formula would.
 Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16).
+The neighbouring shapes (probes/legacy-n-t-reference-args-2, excel-graph, 2026-10-18, T-1768; Z1:Z2 = 7, 8,
+Y1:Y2 = "a", "b", W1:W2 = 1, 2): N and T over CHOOSE or INDEX of a reference take no `@` on the call and read
+the reference it returns (CHOOSE: its top-left cell; INDEX with a row and column number: that one cell; `=N(CHOOSE(1,Z1:Z2))` and `=N(INDEX(Z1:Z2,1))` are 7, `=T(CHOOSE(1,Y1:Y2))` and
+`=T(INDEX(Y1:Y2,1))` are "a"), and so do `=T(Y1:Y2)`, `=T(OFFSET(Y1:Y2,0,0))` and `=T(IF(1,Y1:Y2))`. A range in a
+scalar slot gets the `@` on the range only, never on the call, and the cell is `#VALUE!` in row 10, which the range does not
+cover (rows 1-2 unprobed): `=N(IF(@W1:W2,Z1,Z2))`, `=N(OFFSET(Z1,@W1:W2,0))`, `=N(INDEX(Z1:Z2,@W1:W2))`, `=N(CHOOSE(@W1:W2,Z1,Z2))` and the
+T versions (all `#VALUE!` in row 10). The engine already matches all but N and T over CHOOSE or INDEX of a reference,
+where it adds an `@` on the call (N/T of CHOOSE: #VALUE!; FORMULATEXT `=N(@INDEX(...))`): T-1908.
 Not implemented: the text is identical to the dynamic formula's, which spills, so the `#VALUE!`
 needs the engine to remember that a formula is legacy (SPEC-0012, legacy-n-t-marker.md: an internal N/T kind placed by the legacy rewrite, T-1851, then T-1713); ours adds an `@`
 on array-valued CHOOSE, INDEX and IFS calls (N gives the top-left value, T ""), none on IF or SWITCH
-(`leaves_call_whole`, T-1717: the SWITCH cell spills as in Excel, the IF one too until T-1713); a range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms, gets none under N since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator, an array constant or another call keeps the old `@`; CHOOSE and INDEX over references and every T over a range keep the old `@`, unprobed: T-1768).
+(`leaves_call_whole`, T-1717: the SWITCH cell spills as in Excel, the IF one too until T-1713); a range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms, gets none under N and T since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator, an array constant or another call keeps the old `@`; CHOOSE and INDEX over references keep the old `@`, probed: T-1768, T-1908).
 Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)
-Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853
+Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908
 
 ## `@` of a non-reference array as a function argument is its top-left value
 Rule (probes/rank-at-if-ref, excel-graph, 2026-10-15, T-1596): where an argument takes a reference (aggregates, RANK's `ref`,
