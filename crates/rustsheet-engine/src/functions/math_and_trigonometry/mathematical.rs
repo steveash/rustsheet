@@ -440,22 +440,17 @@ impl Model {
             Ok(super::hyperbolic::tanh(f))
         })
     }
-    // Excel's ASIN is `atan(x / sqrt(y * (2 - y)))` with y = 1 - x: the factor 1 + x is formed as
-    // 2 - y, and the square root rounds twice like SQRT. That fits all 570 cells of
-    // probes/asin-argument-sweep and probes/asin-negative-band-sweep (excel-graph, T-1797), including
-    // the ± pairs that differ (`ASIN(0.09)` and `ASIN(-0.09)`): rounding y drops the last bit of a
-    // negative x in -1..-0.5, so ASIN is not odd. libm `asin` fits 186 of the sweep's 268 and
-    // `atan(x / sqrt((1 - x) * (1 + x)))` 235 (docs/excel-semantics/numbers.md "ASIN's formulation").
-    // At ±1 the quotient is ±inf and atan gives ±π/2; outside [-1, 1] the square root is NaN, which
-    // is `#NUM!`.
     pub(crate) fn fn_asin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Asin, args, cell, |f: f64| {
-            let y = 1.0 - f;
-            Ok(f64::atan(f / extended_sqrt(y * (2.0 - y))))
-        })
+        self.number_fn(Function::Asin, args, cell, |f| Ok(excel_asin(f)))
     }
+    // Excel's ACOS is `PI()/2 - ASIN(x)` exactly, on ASIN's kernel: all 240 ACOS cells of
+    // probes/asin-atan-sign-source (columns H and I, excel-graph, T-1797), where libm `acos` fits
+    // 157 (docs/excel-semantics/numbers.md "ASIN's formulation"). Outside [-1, 1] ASIN's NaN
+    // stays NaN, which is `#NUM!`.
     pub(crate) fn fn_acos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Acos, args, cell, |f| Ok(f64::acos(f)))
+        self.number_fn(Function::Acos, args, cell, |f| {
+            Ok(std::f64::consts::FRAC_PI_2 - excel_asin(f))
+        })
     }
     pub(crate) fn fn_atan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Atan, args, cell, |f| Ok(f64::atan(f)))
@@ -917,4 +912,17 @@ fn descending_product(n: f64, step: f64) -> Result<f64, Error> {
         k -= step;
     }
     Ok(acc)
+}
+
+/// Excel's ASIN is `atan(x / sqrt(y * (2 - y)))` with y = 1 - x: the factor 1 + x is formed as
+/// 2 - y, and the square root rounds twice like SQRT. That fits all 570 cells of
+/// probes/asin-argument-sweep and probes/asin-negative-band-sweep (excel-graph, T-1797), including
+/// the ± pairs that differ (`ASIN(0.09)` and `ASIN(-0.09)`): rounding y drops the last bit of a
+/// negative x in -1..-0.5, so ASIN is not odd. libm `asin` fits 186 of the sweep's 268 and
+/// `atan(x / sqrt((1 - x) * (1 + x)))` 235 (docs/excel-semantics/numbers.md "ASIN's formulation").
+/// At ±1 the quotient is ±inf and atan gives ±π/2; outside [-1, 1] the square root is NaN, which
+/// is `#NUM!`.
+fn excel_asin(f: f64) -> f64 {
+    let y = 1.0 - f;
+    f64::atan(f / extended_sqrt(y * (2.0 - y)))
 }

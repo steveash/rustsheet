@@ -167,3 +167,29 @@ fn asin_rounds_like_excel() {
     assert_eq!(bits("A13"), 0.090_121_945_014_595_26_f64.to_bits());
     assert_eq!(bits("A14"), (-0.090_121_945_014_595_25_f64).to_bits());
 }
+
+#[test]
+fn acos_is_half_pi_minus_asin() {
+    // probes/asin-atan-sign-source H and I (excel-graph, T-1797) and poi/48539.xlsx E23 (T-0019):
+    // libm `acos` is one or more ulp off on each of these.
+    let mut model = new_empty_model();
+    model._set("A1", "=ACOS(0.5)");
+    model._set("A2", "=ACOS(-0.999)");
+    model._set("A3", "=ACOS(0.999)");
+    model._set("A4", "=ACOS(-0.5)");
+    model._set("A5", "=ACOS(1)");
+    model._set("A6", "=ACOS(-1)");
+    model._set("A7", "=ACOS(1.0000001)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A1"), 1.047_197_551_196_597_6_f64.to_bits());
+    assert_eq!(bits("A2"), 3.096_867_566_421_062_f64.to_bits());
+    assert_eq!(bits("A3"), 0.044_725_087_168_733_47_f64.to_bits());
+    assert_eq!(bits("A4"), 2.094_395_102_393_195_7_f64.to_bits());
+    assert_eq!(bits("A5"), 0.0_f64.to_bits());
+    assert_eq!(bits("A6"), std::f64::consts::PI.to_bits());
+    assert_eq!(model._get_text("A7"), *"#NUM!");
+}

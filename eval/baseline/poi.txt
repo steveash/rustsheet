@@ -136,7 +136,6 @@ C	poi/test_conditional_formatting.xlsx	1
 C	poi/tile-range-test.xlsx	8
 C	poi/xlookup.xlsx	5
 F	poi/47889.xlsx	!EngineError
-F	poi/48539.xlsx	Instance1!E23
 F	poi/54436.xlsx	Sheet1!A14
 F	poi/54764-2.xlsx	!EngineError
 F	poi/54764.xlsx	!EngineError
@@ -243,7 +242,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!G936
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!H160
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!H936
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!I104
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!I1360
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!I392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J1328
@@ -251,7 +249,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J136
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!K936
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!L160
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!Q104
 F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O3
 F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O5
 F	poi/HsGetVal.xlsx	Sheet1!B5
