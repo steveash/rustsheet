@@ -443,16 +443,17 @@ Tasks: T-1256
 ## MATCH lifts over lookup_value
 Rule: an array (a 1x1 array included) or a multi-cell range as MATCH's lookup_value gives one position per element, row-major, and
 spills: `ROWS(MATCH(B1:B2,A1:A3,0))` and `ROWS(MATCH({30;10},A1:A3,0))` are 2, `COLUMNS(MATCH({30,10,99},..))` is 3, and a
-missing element is `#N/A` in that slot only. A text element that reads like an error is searched as text:
-`MATCH({"x"},C1:C3)` is 2 (E10), and gen-m7/4629e931955aa4b8 A19 (`MATCH(TEXTSPLIT("#N/A",..),E8:E10)-LOG10(0)` is `#NUM!`) shows the
-TEXTSPLIT form returns a position, not `#N/A`. An error element is that slot's result before an invalid match_type is checked:
-`INDEX(MATCH({#N/A;1},A1:A3,"x"),1)` is `#N/A` (an invalid lookup_array next to an error element is not probed).
-An array-valued match_type also lifts in Excel (`ROWS(MATCH(2,A1:A3,{0;1}))` is 2), which the engine does not do yet (`#N/IMPL!`).
+missing element is `#N/A` in that slot only. A text element is searched as text (`MATCH({"x"},C1:C3)` is 2, E10), and so is one
+that reads like an error: in gen-m7/4629e931955aa4b8 A19, `MATCH(TEXTSPLIT("#N/A",..),E8:E10)-LOG10(0)` is `#NUM!`, so the MATCH of
+the text `"#N/A"` returned a position, not `#N/A` (which would have won the subtraction). An error element is that slot's
+result before an invalid match_type is checked: `INDEX(MATCH({#N/A;1},A1:A3,"x"),1)` is `#N/A` (an invalid lookup_array next
+to an error element is not probed).
+An array-valued match_type also lifts in Excel (`ROWS(MATCH(2,A1:A3,{0;1}))` is 2), which the engine does not do yet (`#N/IMPL!`, T-1917).
 Evidence: probes/match-lookup-value-lift (19 cells; excel-graph, 2026-10-18, T-1866); gen-m7/4629e931955aa4b8 Calc!A19 (excel-graph, T-1361).
 Status: VERIFIED
 Implemented in: `Model::fn_match` (functions/lookup_and_reference/mod.rs) through `lift_values`; static analysis spills by lookup_value.
-Not implemented: the match_type array lift (E14:E16 of the probe, known failures in the baseline).
-Tasks: T-1866
+Not implemented: the match_type array lift (E14:E16 of the probe, known failures in the baseline; T-1917).
+Tasks: T-1866, T-1917
 
 ## A reference-valued lookup_value pointing at a blank or error cell
 Rule: `CHOOSE(1,J5)`, `OFFSET(J5,0,0)`, `INDIRECT("J5")`, `J5:J5` and the direct `J5` behave identically in VLOOKUP, HLOOKUP,

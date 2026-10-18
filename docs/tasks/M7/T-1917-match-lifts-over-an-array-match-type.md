@@ -1,5 +1,5 @@
 ---
-id: T-1879
+id: T-1917
 title: "MATCH lifts over an array match_type"
 milestone: M7
 lane: functions-lookup
