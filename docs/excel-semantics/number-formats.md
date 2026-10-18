@@ -292,14 +292,14 @@ Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens lon
 
 Evidence: probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b (T-1388), text-format-length-limit-c, -d, -e (T-1393), -f, -g, -h, -i (T-1434), -j (T-1449), -k (T-1455), -l, -m (T-1481), -n to -s (T-1486), all excel-graph.
 Not explained or not implemented (known failures):
-- Unquoted letters after `_"` or `*"`: `_` and `*` take a following `"` as their character, so `@_"a` is "x a", `@_"aa` "x aa", `@_"a-"b"` "x a-b", `@*"a` "xa", `0_"a` on 7 "7 a" and `0*"a` "7a" (probes/text-format-length-limit-n A1, A6, -o A35, A37:A40; matched since T-1262 prints bare letters, except -o A37: `*` takes the `"` as its fill, which adds nothing in a number section, but we print a space for every fill, giving "7 a"; T-1735). `@_"aaa` is `#VALUE!`, and so are 20, 40 and 80 letters (n A2, A7:A9). We print the letters for those ("x aaa"). Unexplained: `aaa` may read as a weekday code, which T-1656's `@`-with-a-date-token rule would reject (T-1876).
+- Unquoted letters after `_"` or `*"`: `_` and `*` take a following `"` as their character, so `@_"a` is "x a", `@_"aa` "x aa", `@_"a-"b"` "x a-b", `@*"a` "xa", `0_"a` on 7 "7 a" and `0*"a` "7a" (probes/text-format-length-limit-n A1, A6, -o A35, A37:A40; matched since T-1262 prints bare letters, except -o A37: `*` takes the `"` as its fill, which adds nothing in a number section, but we print a space for every fill, giving "7 a"; T-1735). `@_"aaa` is `#VALUE!`, and so are 20, 40 and 80 letters (n A2, A7:A9). We print the letters for those ("x aaa"). Unexplained: `aaa` may read as a weekday code, which T-1656's `@`-with-a-date-token rule would reject (T-1880).
 - `TEXT(1,"[>5]0"&REPT(" ",79))` is "1" (also with 40 spaces): an unmatched single condition prints General, dropping the padding. So is `"[>55555]0"` plus 79 spaces (-j A43), and `TEXT(1,"d"&<119 quoted>&"[>5]d")` is "1" (-q A16). We do not apply conditions yet (see "Conditional sections", T-0936).
 - `TEXT(1,"0:a:")` is "1:a:" and an escaped backslash followed by an unquoted `x` prints "\x": Excel accepts these letters unquoted (-g A42, A43; -i A100:A104). T-1450; implemented T-1262.
 
 Cell display with a long format could not be probed: excel-graph rejects such workbooks (createSession 501 unsupportedWorkbook). The colon-run and text-section rules live in the shared formatter, so they apply to cell display too; they are probed through TEXT only.
 Ours: `formatter/complexity.rs` (`rejects_format_code`: `exceeds_complexity_limit` plus `is_unterminated`), applied by TEXT only; colon runs in `formatter/parser.rs`; the text section with a number in `format_number` (formatter/format.rs).
 Status: VERIFIED (excel-graph, fitted model)
-Tasks: T-1388, T-1393, T-1434, T-1449, T-1450, T-1451, T-1455, T-1481, T-1486, T-1735, T-1876
+Tasks: T-1388, T-1393, T-1434, T-1449, T-1450, T-1451, T-1455, T-1481, T-1486, T-1735, T-1880
 
 TEXT over an array of format codes (T-1451): one result per format, value and formats broadcast together (see text.md). `TEXT(1,{"0",#N/A})` is "1", `#N/A` (-f A54:B54). The error-precedence and lifting rules are verified by probes/text-format-array (T-1458) for error and too-complex format elements; a syntactically invalid format element next to an error value is not probed.
 
