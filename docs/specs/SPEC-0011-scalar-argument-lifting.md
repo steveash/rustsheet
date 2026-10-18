@@ -557,6 +557,14 @@ solver step is a sum over the coupons (up to 32,400, 0.55 ms in release) rather 
 and ODDFYIELD are charged 2^24 (`YIELD_SOLVER_WEIGHT`: at most 397 prices, about 0.23 s an element at the bound, so 8
 elements, about 1.8 s), ODDFPRICE eight walks (256 elements) and the closed-form ODDLPRICE and ODDLYIELD two (1,024);
 financial.md "Yield and odd-coupon work cap", a DEVIATION that T-1869 narrows to a schedule-length budget.
+As built (T-1848): BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV and CONFIDENCE.T are `Lift` entries.
+Their quantile search was statrs' `inv_beta_reg`, whose loops are open (it panics or never finishes at a tiny p); it is
+now a line-for-line port with a per-call cap of its own (`statistical/inverse_beta.rs`: 512 Newton steps and 4,096
+step adjustments, 64 and 512 for Student's t), bit for bit statrs' value wherever statrs finishes, and `#NUM!` where it
+panicked or hung (statistics.md "Quantile searches: per-call cap and lifting", a DEVIATION). The weights charge the bound
+of the caps at a full-cost cdf (140 continued-fraction steps, 3.1 to 3.4 us), not a measured case: BETA.INV and F.INV
+are `Weighted(2^18)` (F.INV's 1,301-cdf bisection, about 4 ms an element: 512 elements in about 2.1 s), T.INV and
+CONFIDENCE.T `Weighted(2^16)` (a 264-cdf bisection, 0.82 ms: 2,048 elements in about 1.7 s). The incomplete-gamma functions and HYPGEOM.DIST stay out (T-1872, T-1873).
 
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.

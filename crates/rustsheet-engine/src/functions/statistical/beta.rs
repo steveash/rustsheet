@@ -2,16 +2,17 @@ use statrs::distribution::{Beta, Continuous, ContinuousCDF};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, value_error};
+use crate::functions::statistical::inverse_beta::beta_inverse_cdf;
 use crate::functions::statistical::special::bisect_unit_interval;
 use crate::functions::Function;
-use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
-};
+use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// `statrs`' `inverse_cdf` panics from p about 1E-200, does not finish for BETA.INV(1E-100,1000,1)
 /// nor for a shape of 1E8 or more, and for the rest of the sweep (T-1543, 9x9 shapes up to 1E15 by
 /// 8 probabilities) is bounded and last-digit exact for shapes up to 1E5 and p of 1E-15 or more.
 /// Outside that range the quantile comes from bisection on the cdf (at most 1100 evaluations).
+/// statrs' search is the capped port of `inverse_beta.rs` (T-1848), which also ends the one hang
+/// found inside the range (`BETA.INV(1-2^-53,1.0024,12177)`, `#NUM!`).
 const BETA_QUANTILE_STATRS_SHAPE_MAX: f64 = 1e5;
 const BETA_QUANTILE_STATRS_P_MIN: f64 = 1e-15;
 
@@ -20,7 +21,7 @@ fn beta_quantile(dist: &Beta, alpha: f64, beta: f64, p: f64) -> f64 {
         && beta <= BETA_QUANTILE_STATRS_SHAPE_MAX
         && p >= BETA_QUANTILE_STATRS_P_MIN
     {
-        return dist.inverse_cdf(p);
+        return beta_inverse_cdf(alpha, beta, p);
     }
     bisect_unit_interval(|x| dist.cdf(x), p)
 }
@@ -112,92 +113,41 @@ impl Model {
         Ok(result)
     }
 
+    /// `BETA.INV(probability, alpha, beta, [A], [B])`, and BETAINV: every argument lifts over an
+    /// array and a range (SPEC-0011; probes/stat-argument-modes H90-H99,
+    /// probes/stat-quantile-lift). The quantile is the capped port of statrs' inversion or a
+    /// bisection of at most 1,100 cdfs (`beta_quantile`), which the lifting table charges
+    /// (kinds.rs `QUANTILE_WEIGHT`).
     pub(crate) fn fn_beta_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(3..=5).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
+        self.lift_call(Function::BetaInv, args, cell, &mut |model, values| {
+            number_or_error(model.beta_inv_of(values, cell))
+        })
+    }
+
+    fn beta_inv_of(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let [p, alpha, beta, bounds @ ..] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
+        };
+        let p = self.cast_number_no_bools_ref(p, cell)?;
+        let alpha = self.cast_number_no_bools_ref(alpha, cell)?;
+        let beta_param = self.cast_number_no_bools_ref(beta, cell)?;
+        let a = self.cast_number_no_bools_or(bounds.first(), 0.0, cell)?;
+        let b = self.cast_number_no_bools_or(bounds.get(1), 1.0, cell)?;
+        // alpha or beta <= 0, probability outside (0, 1) and A >= B are #NUM!.
+        if alpha <= 0.0 || beta_param <= 0.0 || p <= 0.0 || p >= 1.0 || b <= a {
+            return Err(num_error(cell));
         }
-
-        let p = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let alpha = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let beta_param = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let a = if arg_count >= 4 {
-            match self.get_number_no_bools(&args[3], cell) {
-                Ok(f) => f,
-                Err(e) => return e,
-            }
-        } else {
-            0.0
-        };
-
-        let b = if arg_count >= 5 {
-            match self.get_number_no_bools(&args[4], cell) {
-                Ok(f) => f,
-                Err(e) => return e,
-            }
-        } else {
-            1.0
-        };
-
-        if alpha <= 0.0 || beta_param <= 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "alpha and beta must be > 0 in BETA.INV".to_string(),
-            );
-        }
-
-        // probability <= 0 or probability > 1 → #NUM!
-        // NB: p==0 or p==1 are actually valid inputs.
-        if p <= 0.0 || p >= 1.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "probability must be in (0,1) in BETA.INV".to_string(),
-            );
-        }
-
-        if b <= a {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "A must be < B in BETA.INV".to_string(),
-            );
-        }
-
-        let dist = match Beta::new(alpha, beta_param) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid parameters for Beta distribution".to_string(),
-                )
-            }
-        };
-
+        let dist = Beta::new(alpha, beta_param).map_err(|_| num_error(cell))?;
         let t = beta_quantile(&dist, alpha, beta_param, p);
         if t.is_nan() || t.is_infinite() {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Invalid result for BETA.INV".to_string(),
-            );
+            return Err(num_error(cell));
         }
-
         // Map back from [0,1] to [A,B]
-        let x = a + t * (b - a);
-        CalcResult::Number(x)
+        Ok(a + t * (b - a))
     }
 
     /// `BETADIST(x, alpha, beta, [A], [B])`: BETA.DIST with `cumulative` TRUE; every argument
