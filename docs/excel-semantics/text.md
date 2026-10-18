@@ -556,7 +556,7 @@ inside the braces are ignored, `\x{ 41 }` is `A`; any number of leading zeros; a
 an error); `\0` plus one or two octal digits (`\012` LF, `\0123` LF then "3", `\00` NUL); `\cX` is the upper-cased ASCII
 X XOR 64 (`\ca` is 1, `\c@` 0, `\c?` 127, `\c1` "q", `\c]` 29; a non-ASCII X is an error). `\` and digits 1-9: all
 the digits are a decimal number, a group if it is below 10 or no more than the pattern's groups (a missing group is an
-error), else its first three digits as an octal character up to `\377` (`\101` is `A`, `\1010` is `A0`; with 12
+error), else, if it starts with three octal digits, those as a character up to `\377` (one or two such digits are an error) (`\101` is `A`, `\1010` is `A0`; with 12
 groups `\10` is group 10 but `\20` and `\77` are errors; `\400` an error; `\18`, `\181` errors).
 Case forcing: `\U` and `\L` set a mode for the rest of this match's replacement (literals, groups and the characters
 the escapes above make alike: `\L\x41\U\x61` is `aA`); `\u` upper-cases the next character only and keeps the mode
@@ -565,7 +565,7 @@ the escapes above make alike: `\L\x41\U\x61` is `aA`); `\u` upper-cases the next
 ends the mode and a pending `\u`; an empty group or text keeps a pending `\u` for the text after it (`\u$2b` with
 `$2` empty is `B`); the state starts afresh with each match (`REGEXREPLACE("abab","(a)(b)","$2\U$1")` is `bAbA`); only
 the replacement is case-forced, never the subject text around the match. Case mapping is the one-to-one mapping of UPPER and
-LOWER (`\Uß` is `ß`; the final-sigma context of LOWER is not carried across pieces, unprobed). `\Q...\E` quotes up to
+LOWER (`\Uß` is `ß`; the final-sigma context of LOWER is not carried across pieces, nor past a `\u`/`\l` head character: unprobed). `\Q...\E` quotes up to
 the first `\E` (or the end): `\Q$1\E` is `$1`, `\Qa\\Eb` is `a\b`; quoted text is case-forced, and `\E` ending a quote
 does not end the mode (`\Uab\Qcd\Eef` is `ABCDEF`).
 `#VALUE!` (ERROR.TYPE 3, so the undecoded rich errors are `#VALUE!`): a group the pattern does not have (`$2`, `\2`,
