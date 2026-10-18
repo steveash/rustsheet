@@ -171,7 +171,7 @@ impl Model {
 
     /// The one `#CALC!` cell BYROW and BYCOL give when the LAMBDA returned an array or a
     /// multi-cell reference for any slice (probes/eta-reduced-names E49 and E101, T-1664).
-    fn by_slices_calc_error(cell: CellReferenceIndex) -> CalcResult {
+    pub(super) fn by_slices_calc_error(cell: CellReferenceIndex) -> CalcResult {
         CalcResult::new_error(Error::CALC, cell, "a LAMBDA returned an array".to_string())
     }
 
@@ -282,15 +282,17 @@ impl Model {
     /// A LAMBDA's result as a value: a reference it returns (`LAMBDA(v,v)` over a range cell)
     /// is read, so MAP and SCAN never carry one into their output. A one-cell reference is read
     /// directly, without building a one-element array. A multi-cell reference is no element:
-    /// both callers show it as `#VALUE!`, so only its existing cells are read, for what reading
-    /// does (a cycle through the range, the reads a spill checks), and no array is built.
+    /// Excel gives the whole MAP or SCAN one `#CALC!` (probes/map-scan-range-result, excel-graph
+    /// 2026-10-18, T-1792), so that is the `Err` the callers return as their result, and only its
+    /// existing cells are read, for what reading does (a cycle through the range, the reads a
+    /// spill checks), and no array is built.
     /// Building one made every call cost the range's full size (T-1769 fuzz timeout).
     pub(super) fn lambda_result_value(
         &mut self,
         result: CalcResult,
         cell: CellReferenceIndex,
-    ) -> CalcResult {
-        match result {
+    ) -> Result<CalcResult, CalcResult> {
+        Ok(match result {
             CalcResult::Range { left, right } if left == right => {
                 match self.evaluate_cell(left) {
                     // Read as `evaluate_range` reads a cell: an error is re-originated here and
@@ -306,7 +308,7 @@ impl Model {
             CalcResult::Range { left, right }
                 if left.row == right.row && left.column == right.column =>
             {
-                self.lambda_result_value(CalcResult::Range { left, right: left }, cell)
+                self.lambda_result_value(CalcResult::Range { left, right: left }, cell)?
             }
             CalcResult::Range { left, right } => {
                 // Read as `evaluate_range` reads it, its size limit and then its first sheet,
@@ -314,7 +316,7 @@ impl Model {
                 // recorded as read empty in one piece. Every value it could hold gives the same
                 // element, and a dense walk made each call cost the range's height.
                 if let Some((error, message)) = check_range_size(&left, &right) {
-                    return CalcResult::new_error(error, cell, message);
+                    return Err(CalcResult::new_error(error, cell, message));
                 }
                 let area = Range {
                     left,
@@ -328,16 +330,12 @@ impl Model {
                     Ok(())
                 });
                 match read {
-                    Ok(()) => CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "A range is not an element".to_string(),
-                    ),
-                    Err(error) => error,
+                    Ok(()) => return Err(Self::by_slices_calc_error(cell)),
+                    Err(error) => return Err(error),
                 }
             }
             other => other,
-        }
+        })
     }
 
     /// `=MAKEARRAY(rows, cols, lambda)`
