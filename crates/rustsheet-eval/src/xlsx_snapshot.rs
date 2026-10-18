@@ -386,16 +386,15 @@ pub(crate) struct Relationship {
 }
 
 /// The `<Relationship>` entries of a `.rels` part (`part` names it in errors); entries missing
-/// `Id`, `Type` or `Target` are skipped.
+/// `Id` or `Target` are skipped (a missing `Type` reads as empty).
 pub(crate) fn relationships(xml: &str, part: &str) -> Result<Vec<Relationship>, SnapshotError> {
     let mut reader = Reader::from_str(xml);
     let mut out = Vec::new();
     loop {
         match reader.read_event().map_err(|e| xml_err(part, e))? {
             Event::Start(e) | Event::Empty(e) if e.local_name().as_ref() == "Relationship" => {
-                if let (Some(id), Some(kind), Some(target)) =
-                    (attr(&e, "Id"), attr(&e, "Type"), attr(&e, "Target"))
-                {
+                if let (Some(id), Some(target)) = (attr(&e, "Id"), attr(&e, "Target")) {
+                    let kind = attr(&e, "Type").unwrap_or_default();
                     out.push(Relationship { id, kind, target });
                 }
             }
@@ -749,6 +748,38 @@ fn decode_value(
 mod tests {
     use super::*;
     use std::io::Write;
+
+    #[test]
+    fn resolve_target_handles_absolute_and_dotdot() {
+        assert_eq!(
+            resolve_target("xl", "worksheets/sheet1.xml"),
+            "xl/worksheets/sheet1.xml"
+        );
+        assert_eq!(
+            resolve_target("xl/worksheets", "../tables/table1.xml"),
+            "xl/tables/table1.xml"
+        );
+        assert_eq!(resolve_target("xl", "/xl/sheet2.xml"), "xl/sheet2.xml");
+    }
+
+    #[test]
+    fn relationships_reads_entries_and_defaults_missing_type() {
+        let xml = r#"<Relationships><Relationship Id="r1" Type="t/table" Target="a.xml"/><Relationship Id="r2" Target="b.xml"/><Relationship Id="r3" Type="x"/></Relationships>"#;
+        let rels = relationships(xml, "x.rels").unwrap();
+        assert_eq!(rels.len(), 2);
+        assert_eq!(
+            (
+                rels[0].id.as_str(),
+                rels[0].kind.as_str(),
+                rels[0].target.as_str()
+            ),
+            ("r1", "t/table", "a.xml")
+        );
+        assert_eq!(
+            (rels[1].kind.as_str(), rels[1].target.as_str()),
+            ("", "b.xml")
+        );
+    }
 
     fn zip_with(name: &str, body: &[u8]) -> Zip {
         let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
