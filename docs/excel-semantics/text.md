@@ -328,8 +328,8 @@ is (UNVERIFIED for REGEXREPLACE; T-1817 probes it); a lifted REGEXREPLACE whose 
 The REGEX* dialect is the regex crate's on every target (wasm32 used `regex_lite`, whose `\w`, `\d` and `\s` are
 ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE),
 UNVERIFIED against Excel's PCRE2 (T-1817 probes it).
-The REGEXREPLACE replacement syntax is the regex crate's (`$1`, `${1}`, `$name`, `$$`; `$1a` is the group named `1a`,
-a lone `$` is itself), as before T-1272; UNVERIFIED against Excel's PCRE2 rules (T-1817 probes it). The T-1626 probes settle part of this, and Excel differs from ours there (`\1` in the replacement, a pattern backreference, lazy empty matches): see "REGEXTEST and REGEXREPLACE edge cases (T-1626)".
+The REGEXREPLACE replacement syntax is Excel's since T-1688: see "REGEXREPLACE replacement syntax (T-1688)"; the
+pattern dialect still differs from Excel's PCRE2: see "REGEX* patterns and match iteration are PCRE2 (T-1688)".
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
 Status: DEVIATION (decision 0014)
 Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
@@ -526,9 +526,48 @@ Implemented in: `Model::fn_asc` (functions/text/char_code.rs). Tasks: T-1863
 ## REGEXTEST and REGEXREPLACE edge cases (T-1626)
 Rule: `case_sensitivity` 1 is case-insensitive and 0 (or omitted) case-sensitive for both functions (`REGEXTEST("Hello World 123","hello",1)` TRUE, `,0` FALSE; REGEXREPLACE's fifth argument likewise, `"O"` with 0,1 replaces every o). REGEXREPLACE occurrence: 0 or omitted replaces all, n > 0 the n-th match, n < 0 counts from the end (-1 the last), an out-of-range occurrence (3 of 2 matches, 9, -9) returns the text unchanged; 1.9 truncates to 1; "x" is `#VALUE!`. The replacement reads `$0`, `$1`, `$$` (a literal `$`), `${name}` and also `\1`; a backreference in the pattern (`(\w)\1`) works. An empty pattern or `x*` matches between every character and at both ends (`-H-e-l-l-o-...-3-`; an empty text gives "-"); `^` and `$` anchor the text. Lazy empty matches are not skipped: `a*?` on "aaa" with "b" is "bbbbbbb" (PCRE2-style global replace: after an empty match a non-empty match is tried again at the same position, so each "a" is consumed too, unlike a Rust-regex iterator's "bababab"). `\p{L}` and `.` match each character of BMP text ("日本語" is 3); surrogate pairs are UNVERIFIED (not probed). Numbers and booleans are read as text; an error argument is returned. A range argument lifts and spills (`#SPILL!` when blocked). Invalid patterns and a missing group (`$3`) give an error type the oracle does not decode yet; those cells stay pending, as do REGEXTEST case_sensitivity 2 and -1 (C23, C24); UNVERIFIED.
 Evidence: probes/t1626-regextest, t1626-regexreplace (excel-graph, 2026-10-16).
-Ours: #ERROR! for the optional arguments (T-1360); the rest of the mismatches are T-1688.
+Ours: #ERROR! for the optional arguments (T-1360); `\1` in the replacement matches since T-1688; the pattern
+backreference (REGEXTEST C29) is T-1900 and the lazy empty matches (REGEXREPLACE C34) T-1899.
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 Tasks: T-1360, T-1688, T-1272 (range lift)
+
+## REGEXREPLACE replacement syntax (T-1688)
+Rule: the replacement is read as PCRE2's extended substitution. `$n` and `\n` are group n, where n is every digit
+that follows (`$1a` is group 1 then "a", `[\10]` is group 10); `${n}`, `${name}` and `$name` work too (`${x}$x` is
+`aab`); `$$` and `\$` are `$`, `\\` is `\`; `\n` is LF (CODE 10) and `\t` TAB (9); `\U$1` upper-cases (`Ab`, T-1897).
+`#VALUE!` (ERROR.TYPE 3, so the undecoded rich errors are `#VALUE!`): a group the pattern does not have (`$2`, `\2`,
+`$10`, `${y}`, `$y` with one unnamed group), a `$` that starts no reference (`$` alone), a trailing `\`, `\0`, `\x`
+with no hex digits and an unknown letter escape (`\q`), but only when something matches: with no match the text
+comes back unchanged (`REGEXREPLACE("zz","(a)","$2")`, `"\q"` and `"$"` are `zz`). A backslash before any other
+character is that character (`[\-]`, `[\é]`), and a group that took no part in the match is empty
+(`REGEXREPLACE("b","(a)?b","[$1]")` is `[]`).
+Evidence: probes/regex-pcre2-features B1-B30, E1-E7 (excel-graph, 2026-10-18); t1626-regexreplace C14-C19; T-1817's
+probes/regexreplace-limit-and-syntax A12-A16.
+Ours: matches, except the escapes other than `\n` and `\t` (`\U`, `\L`, `\u`, `\l`, `\E`, `\r`, `\xhh`...), which
+are `#VALUE!` until T-1897. Implemented in `Replacement::new` (functions/text/regex_functions.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-1688, T-1897
+
+## REGEX* patterns and match iteration are PCRE2 (T-1688)
+Rule: Excel's patterns are PCRE2's. Backreferences match (`^(ab)\1$` on `abab` TRUE, on `abac` FALSE;
+`(?<n>abc)\k<n>`, `(a)\g1`; with case_sensitivity 1 `(a)\1` matches `Aa`), a backreference to a missing group is
+`#VALUE!` (`(a)\2`). Lookahead `(?=..)`, `(?!..)` and lookbehind `(?<=X)`, `(?<!1)` work; a variable-length lookbehind
+`(?<=a+)` is `#VALUE!`. Possessive `a++a` and atomic `(?>a+)a` do not match `aaa` (REGEXEXTRACT `#N/A`, ERROR.TYPE 7).
+`foo\Kbar` extracts `bar`; `(a)?(?(1)b|c)` extracts `ab`; `(?#note)` is a comment; `\Q.\E` is a literal `.`;
+`(?x)` ignores pattern spaces; `(?i)h(?-i)ELLO` does not match `Hello`. An invalid pattern (`(`) is `#VALUE!`.
+Global iteration is PCRE2's: after an empty match a non-empty match anchored at the same position is tried before
+advancing one character, so `a*?` and `a??` on `aaa` replace to `bbbbbbb`, `(?:ab)*?` on `abab` to `-----`, `|b` on
+`abc` to `-a---c-`, `b|` to `-a--c-` and `(?=b)|b` to `a--c`; REGEXEXTRACT's all-matches mode gives 7 matches for
+`a*?` on `aaa` (`,a,,a,,a,`), and REGEXREPLACE's occurrence counts the same matches (occurrence 2 is `baa`, 4 is
+`aba`, -1 `aaab`). An empty pattern over text with a surrogate pair is `#VALUE!` (`REGEXREPLACE("a"&UNICHAR(128512)&"b","","-")`,
+ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around the emoji.
+Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
+Ours: the `regex` crate's dialect: it rejects backreferences, lookaround, atomic groups, `\K`, conditionals and
+comments as invalid (`#VALUE!`), reads `a++` as `a+` followed by `+` (so `a++a` matches `aaa`, C11, B29), and
+iterates as Rust does (`bababab`). The matcher is T-1898
+(spec), T-1899 (iteration) and T-1900 (pattern features).
+Status: VERIFIED (excel-graph)
+Tasks: T-1688, T-1898, T-1899, T-1900
 
 ## CLEAN character set and PROPER word starts and case mapping (T-1307)
 Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.

@@ -12,6 +12,10 @@ use quick_xml::events::{BytesStart, Event};
 use quick_xml::{Reader, XmlVersion};
 use serde::{Deserialize, Serialize};
 
+mod tables;
+use tables::read_sheet_tables;
+pub use tables::TableDef;
+
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
 use rustsheet_engine::expressions::utils::shift::shift_formula_text;
@@ -112,6 +116,9 @@ pub struct WorkbookSnapshot {
     /// Defined names; absent in snapshots written before T-0045.
     #[serde(default)]
     pub defined_names: Vec<DefinedName>,
+    /// Tables; absent in snapshots written before T-0434.
+    #[serde(default)]
+    pub tables: Vec<TableDef>,
 }
 
 impl WorkbookSnapshot {
@@ -235,6 +242,7 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
         })
         .collect();
     let mut sheets = Vec::new();
+    let mut tables = Vec::new();
     for (name, rid) in sheet_list {
         let Some(target) = rels.get(&rid) else {
             continue;
@@ -244,6 +252,7 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
             continue; // chartsheets / missing parts are not scored
         };
         let cells = parse_sheet(&xml, &path, &shared, &rich_errors)?;
+        read_sheet_tables(&mut zip, &path, &name, &mut tables)?;
         sheets.push(SheetSnapshot { name, cells });
     }
     Ok(WorkbookSnapshot {
@@ -252,6 +261,7 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
         date1904,
         sheets,
         defined_names,
+        tables,
     })
 }
 
