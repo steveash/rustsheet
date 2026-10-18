@@ -3,7 +3,7 @@ id: T-1486
 title: "TEXT complexity limit: fit a color after quoted text, _' and a quoted run before @ (follow-up of T-1481)"
 milestone: M1
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -72,3 +72,9 @@ and "7 a" with us; T-1735) and q A16 (T-0936). Probes against main: l A40 and m 
 are no new failures. Main had brought the duplication lock down to 4510, and this branch's
 tuple tables in `after_quoted_text_and_placeholder_runs` put it 21 lines over. They are now
 `prefix|n|suffix` strings, with the same rows. Still to do: re-run `reviewer-excel-fidelity`, then mark the task done and merge.
+
+### Review complete (2026-10-18)
+The excel-fidelity re-review approved at 52d7df54: rounds l-s back the refit and the unterminated
+rule (round s the trailing `\`/`_`/`*`), and every remaining known failure has an open owner
+(T-1876, T-1735, T-0936). Security, architecture and quality approved earlier rounds; quality
+re-approved the merge-up.
