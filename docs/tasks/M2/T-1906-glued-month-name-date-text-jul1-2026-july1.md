@@ -1,5 +1,5 @@
 ---
-id: T-1904
+id: T-1906
 title: "Glued month-name date text: Jul1 , 2026, July1, 2026, 1-Jul2026 and 1July1 are dates; typed Jul1 , 2026 too"
 milestone: M2
 lane: functions-date
