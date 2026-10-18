@@ -31,6 +31,7 @@ pub(crate) enum ArgKind {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum KernelWork {
     /// O(1), or a loop with a fixed iteration cap that does not depend on argument values.
+    /// A value-dependent kernel names that cap in `lift/tests/kernel_work.rs` (T-1893).
     Constant,
     /// A loop whose length depends on argument values. One call is charged `weight` units
     /// against the visit cap, and the kernel also keeps its own per-call cap, as T-1197 bounds
