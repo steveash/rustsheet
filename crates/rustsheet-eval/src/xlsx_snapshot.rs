@@ -307,13 +307,28 @@ fn read_sheet_tables(
     for target in targets {
         let path = match target.strip_prefix('/') {
             Some(abs) => abs.to_string(),
-            None => format!("{dir}/{target}"),
+            None => resolve_relative(dir, &target),
         };
         if let Some(xml) = read_part(zip, &path)? {
             out.extend(parse_table(&xml, sheet, &path)?);
         }
     }
     Ok(())
+}
+
+/// `target` (a relationship target, possibly with `../` segments) resolved against `dir`.
+fn resolve_relative(dir: &str, target: &str) -> String {
+    let mut parts: Vec<&str> = dir.split('/').filter(|p| !p.is_empty()).collect();
+    for seg in target.split('/') {
+        match seg {
+            "." | "" => {}
+            ".." => {
+                parts.pop();
+            }
+            _ => parts.push(seg),
+        }
+    }
+    parts.join("/")
 }
 
 fn parse_table(xml: &str, sheet: &str, part: &str) -> Result<Option<TableDef>, SnapshotError> {
