@@ -3,7 +3,7 @@ id: T-1876
 title: "Settle the target for desktop SIN(4) in ironcalc-calc IF_ARRAY (one ulp from web)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
