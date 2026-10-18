@@ -572,7 +572,8 @@ terms are NaN, and panic where `x / beta` overflows or underflows); it is now a 
 of its own (`statistical/incomplete_gamma.rs`: 2^19 terms in one cdf, and in one whole inversion over all its cdfs), bit
 for bit statrs' value wherever statrs finishes within it, and `#NUM!` elsewhere (statistics.md "Incomplete gamma:
 per-call cap and lifting", a DEVIATION; T-1891 owns Excel's values). The weight charges the cap's bound, not a measured
-case: 2^19 continued-fraction terms at 4.7 ns plus an inversion's 2,120 cdfs at 49 ns, about 2.6 ms an element, so all
+case: 2^19 continued-fraction terms at 4.7 ns (its NaN path, the slowest; a converging fraction at the cap, shape 1E15,
+measured 2.4 ns) plus an inversion's 2,120 cdfs at 49 ns, about 2.6 ms an element, so all
 twelve are `Weighted(2^18)`: 512 elements in about 1.3 s. HYPGEOM.DIST stays out (T-1873).
 
 ### Kernels

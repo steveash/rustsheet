@@ -15,8 +15,8 @@
 //!   which cost far less than the bound the lifting table charges).
 //!
 //! - the incomplete-gamma functions at their lift cap (T-1872): GAMMA.DIST's continued fraction at
-//!   its 2^19-term cap (the bound's slower term) and CHISQ.DIST at the largest chi-squared shape,
-//!   over 512 elements.
+//!   its 2^19-term cap, on its NaN path and converging with its rescales (the bound's slower term),
+//!   and CHISQ.DIST at the largest chi-squared shape, over 512 elements.
 //!
 //! `cargo bench -p rustsheet --bench lift [-- FILTER...]` (only the cases whose name contains a
 //! FILTER, e.g. `SWITCH`)
@@ -96,6 +96,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             "GAMMA.DIST, continued fraction at its term cap, at the element cap",
             1,
             "=ROWS(GAMMA.DIST(SEQUENCE(512)*0+1.0000001E300,1E300,1,TRUE))",
+        ),
+        (
+            "GAMMA.DIST, converging continued fraction at its term cap, at the element cap",
+            1,
+            "=ROWS(GAMMA.DIST(SEQUENCE(512)*0+1000000000000001,1E15,1,TRUE))",
         ),
         (
             "CHISQ.DIST, the largest shape at the element cap",

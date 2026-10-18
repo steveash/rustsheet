@@ -253,11 +253,13 @@ const CONFIDENCE_T: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(
 /// port of statrs' incomplete gamma (`statistical/incomplete_gamma.rs`): a cdf of at most 2^19
 /// series or continued-fraction terms, or an inversion whose cdfs (at most about 2,120 of them:
 /// 1,075 halvings, 1,025 doublings, 8 bisections, 4 Newton steps) share one budget of 2^19
-/// terms. Measured in release (T-1872, load 2 on 4 cores) over 512 elements at the cap: a
-/// continued-fraction term costs 4.7 ns (2.4 ms for 2^19,
-/// `GAMMA.DIST(1.0000001E300,1E300,1,TRUE)`), a series term 2.5 ns (1.3 ms,
+/// terms. Measured in release (T-1872, load 2 to 5 on 4 cores) over 512 elements at the cap: a
+/// continued-fraction term costs 4.1 to 4.7 ns on its NaN path (2.4 ms for 2^19,
+/// `GAMMA.DIST(1.0000001E300,1E300,1,TRUE)`, whose terms overflow at once) and 2.4 ns where it
+/// converges and rescales (1.3 ms, `GAMMA.DIST(1000000000000001,1E15,1,TRUE)`, which reaches the
+/// cap at a shape of 1E15 and rescales on about 65% of its terms), a series term 2.5 ns (1.3 ms,
 /// `GAMMA.DIST(1E12,1E12,1,TRUE)`), and a cdf's own work 49 ns (`GAMMA.INV(1E-300,0.001,1E-300)`,
-/// 1,060 cdfs: 52 us). The bound of an element is 2^19 terms at the slower 4.7 ns plus 2,120 cdfs
+/// 1,060 cdfs: 52 us). The bound of an element is 2^19 terms at the slowest, 4.7 ns, plus 2,120 cdfs
 /// at 49 ns, about 2.6 ms, so the weight caps a lifted call at 2^27 / 2^18 = 512 elements: 1.3 s
 /// at the bound (a DEVIATION, statistics.md). Measured cases cost less: 2.4 ms for the
 /// continued fraction at the cap, 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)` (481,117 terms),

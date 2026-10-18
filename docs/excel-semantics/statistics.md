@@ -449,9 +449,15 @@ cdf, and in one whole inversion over all its cdfs. Where statrs finishes within 
 for bit (unit test `the_port_is_statrs_where_statrs_finishes`; probes-numeric and ironcalc-calc are unchanged cell for
 cell), so the values those suites check are main's. The series needs about 6.8 * sqrt(a) terms at x = a: 481,117 at
 the largest chi-squared shape (df 1E10, a = 5E9), so every chi-squared cdf is kept. CHISQ.TEST uses the same capped
-cdf (its shape stays under 2^33, inside the cap). The lifting table charges every entry 2^18 units an element: the bound
-of the cap at the slower continued-fraction term (4.7 ns in release) plus the inversion's 2,120 cdfs, about 2.6 ms
-(kinds.rs `INCOMPLETE_GAMMA_WEIGHT` has the measurements; 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)`).
+cdf (a sheet's cell count keeps its shape under 2^33, where the series can need about 630,000 terms: past the cap, see
+the DEVIATION below). The lifting table charges every entry 2^18 units an element: the bound of the cap at the slowest
+term, the continued fraction's NaN path (4.1 to 4.7 ns in release; a converging fraction at the cap, which rescales on
+about 65% of its terms at a shape of 1E15, costs 2.4 ns, and a series term 2.5 ns), plus the inversion's 2,120 cdfs,
+about 2.6 ms (kinds.rs `INCOMPLETE_GAMMA_WEIGHT` has the measurements; 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)`).
+Where x / beta underflows to 0 (statrs panicked) the cdf is statrs' value at its smallest x, 0, as Excel's
+`GAMMA.DIST(1E-300,2,1E100,TRUE)` is (E7). `GAMMA.DIST(1E300,1,1E-10,FALSE)` is 0 here, as on main, where Excel is `#NUM!`
+(E18, T-1891); CHISQ.TEST of a statistic of 5E-324, whose half underflows in its own sum, is `#NUM!` where main panicked
+(Excel unprobed).
 The values past the cap were already wrong on main where it finished (statrs loses digits at a huge shape:
  `GAMMA.DIST(1E12,1E12,1,TRUE)` 0.49898078573633475, `POISSON(1E12,1E12,TRUE)` 0.49906665837352593), and so are
 the kept ones at df 1E10 (E16, E17: 0.4999982128217492; E20: T-0971).
@@ -459,12 +465,16 @@ DEVIATION (decision 0014, CLAUDE.md directive 5): where statrs never finished, p
 terms, the capped incomplete gamma is `#NUM!` and Excel gives a number. statrs' series never converges once
 `a + 1 == a` (a shape of 2^53 or more: `GAMMA.DIST(1E16,1E16,1,TRUE)`, `POISSON(1E16,1E16,TRUE)`,
 `GAMMA.DIST(1E300,1E300,1,TRUE)`, `GAMMA.INV(0.5,1E300,1E-300)`: E1-E3, E5), its continued fraction never ends once its
-terms are NaN (`GAMMA.DIST(1.0000001E300,1E300,1,TRUE)`, E4), and it panics where x / beta underflows to 0
-(`GAMMA.DIST(1E-300,2,1E100,TRUE)`, E7; where it overflows, E6, Excel is `#NUM!` too). Past the cap: a cdf whose shape
-is above about 5.9E9 near its mean (`GAMMA.DIST(1E10,1E10,1,TRUE)`, `POISSON(1E10,1E10,TRUE)` and E9, E11-E13; main
-0.5000049342568011 and 0.5000143137798188 at the first two), and an inversion whose shape is above about 3.5E8, where
-statrs ends in a number (`CHISQ.INV(0.26774,1312890000)`, E14, E15; main 1312858246.5965345; at df 1E8 or more
-CHISQ.INV is `#NUM!` for about 97% of probabilities on main already). Unit tests `incomplete_gammas_that_hung_or_panicked_are_bounded`
+terms are NaN (`GAMMA.DIST(1.0000001E300,1E300,1,TRUE)`, E4); where x / beta overflows it panicked, and Excel is
+`#NUM!` there too (E6). Past the cap: a cdf whose shape is above about 5.9E9 at x just below the shape (the series), or
+above about 1E15 at x just above it (the continued fraction, which also grows with sqrt(a): 8,839 terms at 1E9, 90,016
+at 1E12, 402,191 at 1E14; `GAMMA.DIST(1000000000000001,1E15,1,TRUE)`), such as `GAMMA.DIST(1E10,1E10,1,TRUE)` (main
+0.5000049342568011), `POISSON(1E10,1E10,TRUE)` (main 0.5000143137798188), E9, E11, E12 (main 0.7610722410693369) and
+E13 (main 0.020185241475442515); an inversion whose shape is above about 3.5E8, where statrs ends in a number
+(`CHISQ.INV(0.26774,1312890000)`, E14: main 1312858246.5965345, close to Excel's, which the cap turns into `#NUM!`;
+E15: main 4714346327.662597; at df 1E8 or more CHISQ.INV is `#NUM!` for about 97% of probabilities on main already);
+and a CHISQ.TEST whose shape (df/2) passes about 5.9E9 (ranges of more than about 1.2E10 cells) with its statistic
+near df (Excel unprobed). Unit tests `incomplete_gammas_that_hung_or_panicked_are_bounded`
 and `a_call_past_its_cap_is_nan`; T-1891 gives Excel's values there.
 DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted CHISQ.*, CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV,
 GAMMAINV, POISSON or POISSON.DIST of more than 512 elements is `#ERROR!` before it runs where Excel computes it (2^27

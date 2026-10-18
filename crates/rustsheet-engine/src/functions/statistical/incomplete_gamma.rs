@@ -11,8 +11,9 @@
 //! 6.8 * sqrt(a) terms where x is near a (6.4 million at a = 1E12, 17 ms in release), never
 //! converges once `a + 1 == a` (a of 2^53 or more: `GAMMA.DIST(1E16,1E16,1,TRUE)` never
 //! finished), and the continued fraction never ends once its terms overflow to NaN. statrs also
-//! panics (an unwrapped domain error) where `x * rate` overflows or underflows to 0
-//! (`GAMMA.DIST(1E300,1,1E-10,TRUE)`, `GAMMA.DIST(1E-300,2,1E100,TRUE)`). The port returns NaN,
+//! panics (an unwrapped domain error) where `x * rate` overflows (`GAMMA.DIST(1E300,1,1E-10,TRUE)`)
+//! or underflows to 0 (`GAMMA.DIST(1E-300,2,1E100,TRUE)`, which is 0 here as in Excel: statrs'
+//! value at its smallest x). Otherwise the port returns NaN,
 //! which its callers turn into `#NUM!` (docs/excel-semantics/statistics.md "Incomplete gamma:
 //! per-call cap and lifting", a DEVIATION), where statrs panics or would not finish, and past
 //! [`MAX_TERMS`] series or continued-fraction terms in one cdf or in one whole inversion.
@@ -48,8 +49,9 @@ use statrs::prec;
 /// series needs about 6.8 * sqrt(a) terms at its slowest, x = a (it is used for x <= a, and needs
 /// fewer as x falls): 481,117 at a = 5E9, the largest shape CHISQ.* takes (df 1E10), so 2^19 keeps
 /// every chi-squared cdf statrs gives, and every gamma or Poisson cdf with a shape up to about
-/// 5.9E9 (675,286 terms at 1E10 are past it). The continued fraction (x above a) takes a few
-/// hundred where it converges. An inversion's cdfs together need about 26 * sqrt(a) terms for a
+/// 5.9E9 (675,286 terms at 1E10 are past it). The continued fraction (x above a) also grows with
+/// sqrt(a) at x just above a: 8,839 terms at a = 1E9, 90,016 at 1E12, 402,191 at 1E14, and past
+/// the cap at about 1E15 (`GAMMA.DIST(1000000000000001,1E15,1,TRUE)`). An inversion's cdfs together need about 26 * sqrt(a) terms for a
 /// large shape: in 3 million samples (shapes 1E-3 to 2.4E10, rates 1E-12 to 1E12, probabilities
 /// 1E-307 to 1-1E-16, T-1872) the smallest shape whose inversion statrs ends with a number and
 /// that needed more than 2^19 terms was 3.5E8, so the inversions with a smaller shape are kept.
@@ -246,7 +248,23 @@ fn cdf_within(dist: &Gamma, x: f64, terms: &mut Terms) -> f64 {
     if x <= 0.0 || dist.rate().is_infinite() || x.is_infinite() {
         return dist.cdf(x);
     }
-    lower_within(dist.shape(), x * dist.rate(), terms)
+    let scaled = x * dist.rate();
+    if scaled == 0.0 {
+        return lower_of_underflow(dist.shape());
+    }
+    lower_within(dist.shape(), scaled, terms)
+}
+
+/// P(a, x) where `x / beta` underflows to 0 for an x above 0: statrs panics there (a domain
+/// error), so this is statrs' value at the smallest x it takes, its `x < 1.1E-15` branch: 0, or 1
+/// for a shape that small too. Excel's `GAMMA.DIST(1E-300,2,1E100,TRUE)` is 0
+/// (probes/incomplete-gamma-cap E7).
+fn lower_of_underflow(a: f64) -> f64 {
+    if prec::almost_eq(a, 0.0, prec::DEFAULT_F64_ACC) {
+        1.0
+    } else {
+        0.0
+    }
 }
 
 /// statrs' `Gamma::cdf` (and `ChiSquared::cdf`, a gamma of shape df/2 and rate 1/2), or NaN
@@ -260,7 +278,11 @@ pub(crate) fn gamma_sf(dist: &Gamma, x: f64) -> f64 {
     if x <= 0.0 || dist.rate().is_infinite() || x.is_infinite() {
         return dist.sf(x);
     }
-    gamma_ur(dist.shape(), x * dist.rate())
+    let scaled = x * dist.rate();
+    if scaled == 0.0 {
+        return 1.0 - lower_of_underflow(dist.shape());
+    }
+    gamma_ur(dist.shape(), scaled)
 }
 
 /// statrs' `Gamma::inverse_cdf` (and `ChiSquared::inverse_cdf`) for `p` in [0, 1]: the quantile,
@@ -435,9 +457,12 @@ mod tests {
         // statrs: `a + 1 == a`, the series never ends (GAMMA.DIST(1E16,1E16,1,TRUE)).
         assert!(gamma_cdf(&Gamma::new(1e16, 1.0).unwrap(), 1e16).is_nan());
         assert!(gamma_ur(1e16 + 1.0, 1e16).is_nan());
-        // statrs: x * rate overflows or underflows, an unwrapped domain error.
+        // statrs: x * rate overflows, an unwrapped domain error.
         assert!(gamma_cdf(&Gamma::new(1.0, 1e10).unwrap(), 1e300).is_nan());
-        assert!(gamma_cdf(&Gamma::new(2.0, 1e-100).unwrap(), 1e-300).is_nan());
+        // Where it underflows to 0 (statrs panicked too) the value is statrs' at its smallest x.
+        assert_eq!(gamma_cdf(&Gamma::new(2.0, 1e-100).unwrap(), 1e-300), 0.0);
+        assert_eq!(gamma_sf(&Gamma::new(2.0, 1e-100).unwrap(), 1e-300), 1.0);
+        assert_eq!(gamma_cdf(&Gamma::new(1e-16, 1e-100).unwrap(), 1e-300), 1.0);
         // A shape of 1E300 and a mean of 1: the inversion's cdfs never finish.
         assert!(gamma_inverse_cdf(&Gamma::new(1e300, 1e300).unwrap(), 0.5).is_nan());
         // The ends and invalid arguments are statrs' (its panics outside [0, 1] are NaN).

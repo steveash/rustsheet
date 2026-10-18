@@ -19,17 +19,20 @@ instead of `#NUM!`, within the per-call cap and lift weight T-1872 set.
 T-1872 capped statrs' incomplete gamma (`statistical/incomplete_gamma.rs`: 2^19 series or continued-fraction terms per
 cdf and per whole inversion), so it is `#NUM!` where statrs hung, panicked or needs more terms (statistics.md
 "Incomplete gamma: per-call cap and lifting", a DEVIATION). The series needs about 6.8 * sqrt(a) terms at x = a, so a
-direct cdf of a shape above about 5.9E9 near its mean, and an inversion of a shape above about 3.5E8, pass the cap; an
+direct cdf of a shape above about 5.9E9 just below its mean (above about 1E15 just above it, the continued fraction),
+and an inversion of a shape above about 3.5E8, pass the cap; an
 asymptotic form for a large shape (Temme's uniform expansion, or the normal approximation with its first corrections)
-needs no loop at all. statrs' values there were already wrong in the 6th digit or worse (main's
+needs no loop at all. statrs' cdf values there were already wrong in the 6th digit or worse (main's
 `GAMMA.DIST(1E10,1E10,1,TRUE)` 0.5000049342568011, `GAMMA.DIST(1E12,1E12,1,TRUE)` 0.49898078573633475,
-`POISSON(1E12,1E12,TRUE)` 0.49906665837352593), and so are the kept chi-squared cdfs at df 1E10 (E16, E17, E20, as on
+`POISSON(1E12,1E12,TRUE)` 0.49906665837352593, E12 0.7610722410693369, E13 0.020185241475442515), but at E14 main's
+inversion was a near-match (1312858246.5965345, NumericClose) that the cap turns into `#NUM!`; E15 main
+4714346327.662597. The kept chi-squared cdfs at df 1E10 are wrong too (E16, E17, E20, as on
 main: T-0971). Excel's values, probes/incomplete-gamma-cap (excel-graph, 2026-10-18), ours `#NUM!` in each:
 - Main never finished: E1 `GAMMA.DIST(1E16,1E16,1,TRUE)` = 0.5000000013298076; E2 `POISSON(1E16,1E16,TRUE)` =
   0.4999999986701924; E3 `GAMMA.DIST(1E300,1E300,1,TRUE)` = 0.5; E4 `GAMMA.DIST(1.0000001E300,1E300,1,TRUE)` = 1;
   E5 `GAMMA.INV(0.5,1E300,1E-300)` = 1.0002658235505755.
-- Main panicked (`x / beta` underflows to 0): E7 `GAMMA.DIST(1E-300,2,1E100,TRUE)` = 0. (E6, where it overflows, is
-  `#NUM!` in Excel too, and passes.)
+- Main panicked where `x / beta` overflows: E6 is `#NUM!` in Excel too, and passes; where it underflows, E7
+  `GAMMA.DIST(1E-300,2,1E100,TRUE)` = 0, which T-1872 matches.
 - Past the cap, main a number: E8 `GAMMA.DIST(1E10,1E10,1,TRUE)` = 0.5000013298076014; E9 `GAMMA.DIST(1E12,1E12,1,TRUE)`
   = 0.5000001329807602; E10 `POISSON(1E10,1E10,TRUE)` = 0.5000026596152026; E11 `POISSON(1E12,1E12,TRUE)` =
   0.5000002659615203; E12 `POISSON.DIST(337672413111,337672000000,TRUE)` = 0.7614326448940401; E13
@@ -43,7 +46,8 @@ zero density), and `CHIINV(0.5,10000000000)` = 9999999999.333334 (probes-numeric
 own the last digits at ordinary shapes.
 
 ## Acceptance criteria
-- [ ] probes/incomplete-gamma-cap E1-E5, E7-E15 and E18, E19 pass (or are named in the Outcome with their ulp), with
+- [ ] probes/incomplete-gamma-cap E1-E5, E8-E20 pass (E16 and E17: Excel 0.5000018806319452, ours
+  0.4999982128217492; E20: Excel 0.4999981193680548, ours 0.5000017871782507; E18: Excel `#NUM!`, ours 0) (or are named in the Outcome with their ulp), with
   no loop whose length depends on argument values beyond the T-1872 caps, and the kinds.rs `INCOMPLETE_GAMMA_WEIGHT`
   bound kept or re-derived.
 - [ ] `make check` green; reviewers approve.
