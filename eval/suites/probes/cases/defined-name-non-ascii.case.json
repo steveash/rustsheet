@@ -1,0 +1,26 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1431: defined names that start with a non-ASCII letter (a Latin letter and a CJK name), used in the same case and in another case.",
+  "tags": [
+    "M8",
+    "names",
+    "probe"
+  ],
+  "names": {
+    "é1": "=Sheet1!$B$1",
+    "名前": "=Sheet1!$B$2"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": 5,
+        "B2": 7,
+        "A1": "=é1+1",
+        "A2": "=É1+1",
+        "A3": "=名前+1"
+      }
+    }
+  ],
+  "expected": {}
+}
