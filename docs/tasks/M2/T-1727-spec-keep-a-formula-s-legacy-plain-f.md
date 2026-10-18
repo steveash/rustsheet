@@ -3,7 +3,7 @@ id: T-1727
 title: "Spec: keep a formula's legacy (plain <f>) reading past the @ rewrite"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
