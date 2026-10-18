@@ -24,11 +24,7 @@ use crate::{
     text::{Char, Text},
 };
 
-/// Computes a single LEFT result from one element of each argument.
-// Excel: LEFT and RIGHT count characters (code points), unlike LEN, MID, FIND and REPLACE, which
-// count UTF-16 code units: `LEFT("a😀b",3)` is "a😀b" (docs/excel-semantics/text.md "Text
-// positions count UTF-16 code units", probes/text-surrogate-positions A3, B1-B5).
-/// Excel: UPPER, LOWER, PROPER, TRIM, CLEAN and REPLACE (and SUBSTITUTE) of text over 32,767
+/// Excel: UPPER, LOWER, PROPER, TRIM, CLEAN and REPLACE of text over 32,767
 /// UTF-16 units are `#VALUE!`, though LEN, LEFT, MID and the REGEX* functions take it
 /// (probes/regexreplace-long-result-d, -e, text-long-input-a, -b, -c).
 pub(super) fn reject_over_limit(text: &Text) -> Result<(), Error> {
@@ -38,6 +34,10 @@ pub(super) fn reject_over_limit(text: &Text) -> Result<(), Error> {
     Ok(())
 }
 
+/// Computes a single LEFT result from one element of each argument.
+// Excel: LEFT and RIGHT count characters (code points), unlike LEN, MID, FIND and REPLACE, which
+// count UTF-16 code units: `LEFT("a😀b",3)` is "a😀b" (docs/excel-semantics/text.md "Text
+// positions count UTF-16 code units", probes/text-surrogate-positions A3, B1-B5).
 fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let s = array_node_to_text(text)?;
     let num = num?;
