@@ -35,5 +35,5 @@ Spec: docs/specs/SPEC-0011-scalar-argument-lifting.md, "The argument-kind table"
 ## Out of scope
 - Adding functions to the table (the family tasks).
 
-## Handoff
+## Handoff (resumed)
 Sonnet run read the task, `functions/lift/kinds.rs` (153 `Function::` arms, `arg_kinds`) and the catalog; nothing is implemented yet. Judged beyond a sonnet run: the mapping rule touches ~150 table entries against catalog param modes (expect many mismatches needing per-function judgement), needs a new `#[doc(hidden)] lift_kinds` hook plus name->Function lookup, a `catalog-lift --write` command in rustsheet-eval, generator and tools/tests changes, a KernelWork list and a metamorphic test with seeded-mismatch demos. Next: add `lift_kinds`, write the derive/check test in rustsheet-eval first and see how many catalog entries disagree, then split the metamorphic test into its own task if the diff passes size M.
