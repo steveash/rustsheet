@@ -550,6 +550,14 @@ most 171 factors). BINOM.INV and CRITBINOM are `Weighted(4096)`: a halving searc
 about 65 us an element, so a lift is capped at 32,768 elements, about 2.1 s (statistics.md, a DEVIATION). The quantile searches, the incomplete-gamma functions and
 HYPGEOM.DIST loop by value with no per-call cap, so they stay out until T-1848 bounds them.
 
+As built (T-1848): BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV and CONFIDENCE.T are `Lift` entries.
+Their quantile search was statrs' `inv_beta_reg`, whose loops are open (it panics or never finishes at a tiny p); it is
+now a line-for-line port with a per-call cap of its own (`statistical/inverse_beta.rs`: 512 Newton steps, 64 for
+Student's t, and 4,096 step adjustments), bit for bit statrs' value wherever statrs finishes, and `#NUM!` where it
+panicked or hung (statistics.md "Quantile searches: per-call cap and lifting", a DEVIATION). BETA.INV and F.INV are
+`Weighted(2^14)` (up to 167 us an element, 8,192 elements in 1.37 s), T.INV and CONFIDENCE.T `Weighted(2^11)` (up to
+17.5 us, 65,536 elements in 1.15 s). The incomplete-gamma functions and HYPGEOM.DIST stay out (T-1872, T-1873).
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and

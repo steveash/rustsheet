@@ -466,7 +466,9 @@ the COUP* family, DURATION, MDURATION and PRICE are `LiftArrays` as well (scalar
 44 statistical functions whose every argument is scalar and whose kernels are bounded lift as `Lift`
 (statistics.md "Statistical function argument modes"), so NORM.DIST's cells here pass (H15, H16, H20, H21, H34,
 H35, J8, K8), and NORM.S.DIST's H38 and H40 now lift and miss only by its known last-digit residue, as the scalar H39
-does (statistics.md "The normal CDF is not always correctly rounded", T-0968). The other families
+does (statistics.md "The normal CDF is not always correctly rounded", T-0968). Since T-1848 the quantile functions
+BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV and CONFIDENCE.T lift as `Lift` too, their searches
+capped (statistics.md "Quantile searches: per-call cap and lifting"). The other families
 listed in SPEC-0011 do not lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic
 formula). SPEC-0011's rollout tasks fix them.
 Status: VERIFIED (excel-graph)
@@ -477,7 +479,8 @@ Implemented in: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lif
 kernels `edate_of`, `eomonth_of` (functions/date_and_time/month_shift.rs), `weeknum_of`
 (weeknum.rs) and `yearfrac_of` (yearfrac.rs); the financial kernels in functions/financial/
 (annuity.rs, discount.rs, rate_conversions.rs, accrint.rs, financial_bonds.rs) and financial_depreciation.rs; the
-statistical kernels in functions/statistical/ (normal.rs, binom.rs, beta.rs, fisher.rs, t_dist.rs and the rest).
+statistical kernels in functions/statistical/ (normal.rs, binom.rs, beta.rs, fisher.rs, t_dist.rs and the rest; the
+capped quantile search in inverse_beta.rs).
 Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236, T-1822
 
 ## GROUPBY and PIVOTBY

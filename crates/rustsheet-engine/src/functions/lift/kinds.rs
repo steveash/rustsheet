@@ -209,6 +209,40 @@ const BINOM_INV: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(BIN
 const BINOM_INV_WEIGHT: u32 = 1 << 12;
 // --- End statistical (T-1290) ---------------------------------------------------------------
 
+// --- Statistical quantiles (T-1848) ---------------------------------------------------------
+/// What one BETA.INV or F.INV element is charged. Its quantile is the capped port of statrs'
+/// inversion (`statistical/inverse_beta.rs`: at most 512 Newton steps of one incomplete-beta cdf
+/// and 4,096 step adjustments, its own per-call cap) or a bisection of at most 1,100 cdfs
+/// (BETA.INV, `special::bisect_unit_interval`) or about 1,300 (F.INV at a df of 1E5 or more,
+/// `special::bisect_increasing`). Measured in release over 8,192 elements: 167 us an element at
+/// the worst case (`BETA.INV(1E-300,0.5,1E6)`, a full bisection), 128 us for F.INV's bisection
+/// (`F.INV(1E-300,1E10,1E10)`), 105 us for the longest Newton search seen (377 steps,
+/// `F.INV(3.718810279553989E-162,4532,43)`, 0.28 us a step: about 145 us at the cap), 1 to 2 us
+/// in the middle of the range (`BETA.INV(0.4,2,3)`, `F.INV(0.4,5,5)`). The weight caps a lifted
+/// call at 2^27 / 2^14 = 8,192 elements: 1.37 s at the worst case (a DEVIATION, statistics.md).
+const QUANTILE_WEIGHT: u32 = 1 << 14;
+/// `BETA.INV(probability, alpha, beta, [A], [B])` and BETAINV.
+const BETA_INV: ArgKinds = ArgKinds::fixed(
+    3,
+    &[Lift, Lift, Lift, Lift, Lift],
+    Weighted(QUANTILE_WEIGHT),
+);
+/// `F.INV(probability, deg_freedom1, deg_freedom2)`, F.INV.RT and FINV.
+const F_INV: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(QUANTILE_WEIGHT));
+/// What one T.INV or CONFIDENCE.T element is charged. Its quantile is the capped port with at most
+/// 64 Newton steps (`inverse_beta::T_MAX_NEWTON_STEPS`; 27 was the most seen), a closed form, or a
+/// bisection of at most 264 cdfs (`t_dist::t_quantile`). Measured in release over 65,536
+/// elements: 17.5 us an element at the worst case (`T.INV.2T(1E-9,99999)`, the bisection), 14 us
+/// for `T.INV(1E-300,99999)`, about 18 us at the Newton cap (64 steps of 0.28 us), 1.2 us for
+/// `T.INV(0.4,5)`. The weight caps a lifted call at 2^27 / 2^11 = 65,536 elements: 1.15 s at
+/// the worst case (a DEVIATION, statistics.md).
+const T_QUANTILE_WEIGHT: u32 = 1 << 11;
+/// `T.INV(probability, deg_freedom)`, T.INV.2T and TINV.
+const T_INV: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(T_QUANTILE_WEIGHT));
+/// `CONFIDENCE.T(alpha, standard_dev, size)`.
+const CONFIDENCE_T: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(T_QUANTILE_WEIGHT));
+// --- End statistical quantiles (T-1848) -----------------------------------------------------
+
 // --- Financial ATP (T-1822) -----------------------------------------------------------------
 /// What one walk of a coupon schedule is charged: the walk steps one coupon period at a time
 /// from the maturity back to the settlement (or from the first interest date to the issue), at
@@ -438,6 +472,17 @@ macro_rules! lifting_table_functions {
             | Function::WeibullDist
             | Function::WeibullCompat
             // --- End statistical (T-1290) ---
+            // --- Statistical quantiles (T-1848) ---
+            | Function::BetaInv
+            | Function::BetaInvCompat
+            | Function::FInv
+            | Function::FInvRT
+            | Function::FInvCompat
+            | Function::TInv
+            | Function::TInv2T
+            | Function::TInvCompat
+            | Function::ConfidenceT
+            // --- End statistical quantiles (T-1848) ---
     };
 }
 pub(crate) use lifting_table_functions;
@@ -650,10 +695,10 @@ impl Function {
             // slowest, BINOM.DIST with 1E18 trials, about 3.2 us (3.3 s for 2^20 elements), and
             // BINOM.DIST.RANGE, which runs two cdfs, 6.4 us (6.7 s for 2^20 elements).
             // PERMUT multiplies at most 171 factors whatever its arguments (0.22 us). The
-            // quantile searches (BETA.INV, F.INV, T.INV, CHISQ.INV, GAMMA.INV), the
-            // incomplete-gamma ones (CHISQ.*, GAMMA.DIST, POISSON) and HYPGEOM.DIST's cdf sum loop
-            // by value with no per-call cap of their own, so they are not entered yet
-            // (TODO(T-1848)).
+            // quantile searches of BETA.INV, F.INV and T.INV are entered below (T-1848); the
+            // incomplete-gamma functions and their searches (CHISQ.*, GAMMA.DIST, GAMMA.INV,
+            // POISSON; TODO(T-1872)) and HYPGEOM.DIST's cdf sum (TODO(T-1873)) loop by value with
+            // no per-call cap of their own, so they are not entered yet.
             Function::Gauss
             | Function::Phi
             | Function::Fisher
@@ -699,6 +744,19 @@ impl Function {
             Function::BinomDistRange => Some(&LIFT_3_OF_4),
             Function::BinomInv | Function::CritbinomCompat => Some(&BINOM_INV),
             // --- End statistical (T-1290) ---
+            // --- Statistical quantiles (T-1848) ---
+            // As the statistical functions above: every argument lifts over an array and a range,
+            // on the range's own rows (probes/stat-argument-modes H90-H99, H173-H177, H231-H245,
+            // H518-H529; probes/stat-quantile-lift H1-H25: the last arguments and BETA.INV's [A]
+            // and [B] over a range, K1-K8: [A] and [B] over an array). Each quantile search keeps
+            // a per-call cap of its own (`statistical/inverse_beta.rs` and the bisections), so
+            // the entries are weighted by their measured cost (statistics.md "Quantile searches:
+            // per-call cap and lifting").
+            Function::BetaInv | Function::BetaInvCompat => Some(&BETA_INV),
+            Function::FInv | Function::FInvRT | Function::FInvCompat => Some(&F_INV),
+            Function::TInv | Function::TInv2T | Function::TInvCompat => Some(&T_INV),
+            Function::ConfidenceT => Some(&CONFIDENCE_T),
+            // --- End statistical quantiles (T-1848) ---
             _ => None,
         }
     }

@@ -2,6 +2,7 @@ use statrs::distribution::{Continuous, ContinuousCDF, FisherSnedecor};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
+use crate::functions::statistical::inverse_beta::f_inverse_cdf;
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
 use crate::functions::statistical::t_dist::sample_var;
 use crate::functions::Function;
@@ -24,10 +25,12 @@ fn f_df_ok(df: f64) -> bool {
 const F_QUANTILE_BISECT_DF: f64 = 1e5;
 
 /// Quantile of the F distribution for `p` in [0,1]; the time is bounded for every df up to
-/// [`F_DF_MAX`] (at most ~1200 cdf evaluations).
+/// [`F_DF_MAX`] (at most ~1300 cdf evaluations). Below the threshold it is statrs' search as the
+/// capped port of `inverse_beta.rs` (T-1848), which is NaN (`#NUM!`) where statrs panics
+/// (`F.INV(1E-300,5,5)`) or never finishes (`F.INV(1E-50,6000,4)`).
 fn f_quantile(dist: &FisherSnedecor, df1: f64, df2: f64, p: f64) -> f64 {
     if df1 < F_QUANTILE_BISECT_DF && df2 < F_QUANTILE_BISECT_DF {
-        return dist.inverse_cdf(p);
+        return f_inverse_cdf(df1, df2, p);
     }
     if p <= 0.0 {
         return 0.0;
@@ -207,116 +210,52 @@ impl Model {
         Ok(result)
     }
 
-    // F.INV(probability, deg_freedom1, deg_freedom2)
+    /// `F.INV(probability, deg_freedom1, deg_freedom2)`: every argument lifts over an array and a
+    /// range (SPEC-0011; probes/stat-argument-modes H231-H235, probes/stat-quantile-lift). The
+    /// quantile is the capped port of statrs' inversion or a bisection of at most about 1,300
+    /// cdfs (`f_quantile`), which the lifting table charges (kinds.rs `QUANTILE`).
     pub(crate) fn fn_f_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let p = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let df1 = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-        let df2 = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-
-        // probability < 0 or > 1 → #NUM!
-        if !(0.0..=1.0).contains(&p) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "probability must be in [0,1] in F.INV".to_string(),
-            );
-        }
-        if !f_df_ok(df1) || !f_df_ok(df2) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "degrees of freedom must be >= 1 in F.INV".to_string(),
-            );
-        }
-
-        let dist = match FisherSnedecor::new(df1, df2) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid parameters for F distribution".to_string(),
-                )
-            }
-        };
-
-        let x = f_quantile(&dist, df1, df2, p);
-        if x.is_nan() || x.is_infinite() || x < 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid result for F.INV".to_string());
-        }
-
-        CalcResult::Number(x)
+        self.lift_call(Function::FInv, args, cell, &mut |model, values| {
+            number_or_error(model.f_inv_of(values, false, cell))
+        })
     }
 
-    // F.INV.RT(probability, deg_freedom1, deg_freedom2)
+    /// `F.INV.RT(probability, deg_freedom1, deg_freedom2)`, and FINV: as F.INV, with `p` the
+    /// right tail.
     pub(crate) fn fn_f_inv_rt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
+        self.lift_call(Function::FInvRT, args, cell, &mut |model, values| {
+            number_or_error(model.f_inv_of(values, true, cell))
+        })
+    }
+
+    /// The F.INV kernel; `right_tail` for F.INV.RT and FINV, whose `p` is `P(F > x)`.
+    fn f_inv_of(
+        &self,
+        values: &[CalcResult],
+        right_tail: bool,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let [p, df1, df2] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
+        };
+        let p = self.cast_number_no_bools_ref(p, cell)?;
+        let df1 = self.cast_number_no_bools_ref(df1, cell)?.trunc();
+        let df2 = self.cast_number_no_bools_ref(df2, cell)?.trunc();
+        // F.INV takes p in [0, 1], the right tail p in (0, 1]; outside is #NUM!.
+        let p_out = if right_tail {
+            p <= 0.0 || p > 1.0
+        } else {
+            !(0.0..=1.0).contains(&p)
+        };
+        if p_out || !f_df_ok(df1) || !f_df_ok(df2) {
+            return Err(num_error(cell));
         }
-
-        let p = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let df1 = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-        let df2 = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-
-        if p <= 0.0 || p > 1.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "probability must be in (0,1] in F.INV.RT".to_string(),
-            );
-        }
-        if !f_df_ok(df1) || !f_df_ok(df2) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "degrees of freedom must be >= 1 in F.INV.RT".to_string(),
-            );
-        }
-
-        let dist = match FisherSnedecor::new(df1, df2) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid parameters for F distribution".to_string(),
-                )
-            }
-        };
-
-        // p is right-tail: p = P(F > x) = 1 - CDF(x)
-        let x = f_quantile(&dist, df1, df2, 1.0 - p);
+        let dist = FisherSnedecor::new(df1, df2).map_err(|_| num_error(cell))?;
+        let x = f_quantile(&dist, df1, df2, if right_tail { 1.0 - p } else { p });
         if x.is_nan() || x.is_infinite() || x < 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Invalid result for F.INV.RT".to_string(),
-            );
+            return Err(num_error(cell));
         }
-
-        CalcResult::Number(x)
+        Ok(x)
     }
 
     // F.TEST(array1, array2)

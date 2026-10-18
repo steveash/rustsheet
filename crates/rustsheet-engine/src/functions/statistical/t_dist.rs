@@ -2,6 +2,7 @@ use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
+use crate::functions::statistical::inverse_beta::t_inverse_cdf;
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
 use crate::functions::Function;
 use crate::{
@@ -84,7 +85,7 @@ fn t_tail_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
         return df.sqrt() * (-0.5 * ln_x).exp() * (1.0 - x).sqrt();
     }
     if q >= T_STATRS_MIN_P {
-        return -dist.inverse_cdf(q);
+        return -t_inverse_cdf(df, q);
     }
     // x is not small and q is tiny: the quantile is moderate, so bisect on the cdf; -cdf(-t) is
     // increasing in t and -cdf(-t) >= -q exactly when P(T < -t) <= q.
@@ -102,7 +103,8 @@ pub(crate) fn t_upper_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
 }
 
 /// Quantile of Student's t with `df` degrees of freedom for `p` in (0,1); the time is bounded for
-/// every df up to [`T_DF_MAX`].
+/// every df up to [`T_DF_MAX`]. statrs' search is the capped port of `inverse_beta.rs` (T-1848),
+/// bit for bit statrs' value where statrs finishes.
 pub(crate) fn t_quantile(dist: &StudentsT, df: f64, p: f64) -> f64 {
     if df < T_QUANTILE_SERIES_DF {
         // Below the tail threshold `statrs` is fine; above it its inverse saturates (T.INV(1E-10,1)
@@ -111,7 +113,7 @@ pub(crate) fn t_quantile(dist: &StudentsT, df: f64, p: f64) -> f64 {
         if q < T_TAIL_P {
             return sign * t_tail_quantile(dist, df, q);
         }
-        return dist.inverse_cdf(p);
+        return t_inverse_cdf(df, p);
     }
     let Ok(normal) = Normal::new(0.0, 1.0) else {
         return f64::NAN;
@@ -230,101 +232,55 @@ impl Model {
         Ok(result)
     }
 
-    // T.INV(probability, deg_freedom)
+    /// `T.INV(probability, deg_freedom)`: both arguments lift over an array and a range
+    /// (SPEC-0011; probes/stat-argument-modes, probes/stat-quantile-lift). The quantile is the
+    /// capped port of statrs' inversion, a closed form, or a bisection of at most 264 cdfs
+    /// (`t_quantile`), which the lifting table charges (kinds.rs `T_QUANTILE`).
     pub(crate) fn fn_t_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let p = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let df = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-
-        if p <= 0.0 || p >= 1.0 || !(1.0..=T_DF_MAX).contains(&df) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid parameters for T.INV".to_string(),
-            };
-        }
-
-        let dist = match StudentsT::new(0.0, 1.0, df) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid parameters for T.INV".to_string(),
-                }
-            }
-        };
-
-        let x = t_quantile(&dist, df, p);
-
-        if !x.is_finite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid result for T.INV".to_string(),
-            };
-        }
-
-        CalcResult::Number(x)
+        self.lift_call(Function::TInv, args, cell, &mut |model, values| {
+            number_or_error(model.t_inv_of(values, false, cell))
+        })
     }
 
-    // T.INV.2T(probability, deg_freedom)
+    /// `T.INV.2T(probability, deg_freedom)`, and TINV: as T.INV, two-tailed.
     pub(crate) fn fn_t_inv_2t(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
+        self.lift_call(Function::TInv2T, args, cell, &mut |model, values| {
+            number_or_error(model.t_inv_of(values, true, cell))
+        })
+    }
+
+    /// The T.INV kernel; `two_tailed` for T.INV.2T and TINV, which take p in (0, 1] and return
+    /// the magnitude with `P(|T| > t) = p`.
+    fn t_inv_of(
+        &self,
+        values: &[CalcResult],
+        two_tailed: bool,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let [p, df] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
+        };
+        let p = self.cast_number_ref(p, cell)?;
+        let df = self.cast_number_ref(df, cell)?.trunc();
+        let p_out = if two_tailed {
+            p <= 0.0 || p > 1.0
+        } else {
+            p <= 0.0 || p >= 1.0
+        };
+        if p_out || !(1.0..=T_DF_MAX).contains(&df) {
+            return Err(num_error(cell));
         }
-
-        let p = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
+        let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
+        let x = if two_tailed {
+            // Two-sided: F(x) = 1 - p/2
+            t_upper_quantile(&dist, df, p / 2.0).abs()
+        } else {
+            t_quantile(&dist, df, p)
         };
-
-        let df = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-
-        if p <= 0.0 || p > 1.0 || !(1.0..=T_DF_MAX).contains(&df) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid parameters for T.INV.2T".to_string(),
-            };
-        }
-
-        let dist = match StudentsT::new(0.0, 1.0, df) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid parameters for T.INV.2T".to_string(),
-                }
-            }
-        };
-
-        // Two-sided: F(x) = 1 - p/2
-        let x = t_upper_quantile(&dist, df, p / 2.0);
-
         if !x.is_finite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid result for T.INV.2T".to_string(),
-            };
+            return Err(num_error(cell));
         }
-
-        CalcResult::Number(x.abs())
+        Ok(x)
     }
 
     // T.TEST(array1, array2, tails, type)

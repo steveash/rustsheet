@@ -145,5 +145,9 @@
   and functions/mod.rs 2180 → 2179 (GAMMALN and GAMMALN.PRECISE share one dispatch arm)
   (`check_file_size.py --update`). The same update also tightened a stale lock that is not this PR's
   change: functions/financial/financial_bonds.rs 1212 → 1178, its size on main.
+  T-1848: duplicated lines 4510 → 4430 (BETA.INV, F.INV, F.INV.RT, T.INV, T.INV.2T and CONFIDENCE.T become
+  kernels over borrowed values; F.INV and F.INV.RT share one kernel, and so do T.INV and T.INV.2T)
+  (`check_duplication.py --update`), and expressions/parser/static_analysis.rs 1209 → 1191 lines (the 18
+  fallback lines of the nine quantile functions now in the lifting table) (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
