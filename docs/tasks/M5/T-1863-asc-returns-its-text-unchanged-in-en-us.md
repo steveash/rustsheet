@@ -3,7 +3,7 @@ id: T-1863
 title: "ASC returns its text unchanged in en-US (full-width ASCII, ideographic space and punctuation are not narrowed)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
