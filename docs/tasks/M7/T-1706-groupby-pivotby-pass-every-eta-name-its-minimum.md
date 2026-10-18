@@ -3,7 +3,7 @@ id: T-1706
 title: "GROUPBY/PIVOTBY: pass every eta name its minimum argument count (two-argument functions beyond the probed list)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
