@@ -1,0 +1,21 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1817: a lifted REGEXREPLACE with one element over the 65,535-unit cap: per-element #CALC! or one error.",
+  "tags": [
+    "M7",
+    "probe",
+    "T-1817",
+    "regexreplace"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=INDEX(REGEXREPLACE(REPT(\"a\",{1,32767}),\"\",\"bbbbbbbbbb\"),1)",
+        "A2": "=INDEX(REGEXREPLACE(REPT(\"a\",{1,32767}),\"\",\"bbbbbbbbbb\"),2)",
+        "A3": "=ISERROR(INDEX(REGEXREPLACE(REPT(\"a\",{1,32767}),\"\",\"bbbbbbbbbb\"),1))"
+      }
+    }
+  ],
+  "expected": {}
+}
