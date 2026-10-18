@@ -104,6 +104,7 @@ fn unexpected(sheet: &str, addr: Addr, actual: Value) -> CellResult {
         sheet: sheet.to_string(),
         cell: addr.to_string(),
         formula: None,
+        anchor_formula: None,
         verdict: compare(&Value::Empty, &actual),
         expected: Value::Empty,
         actual,

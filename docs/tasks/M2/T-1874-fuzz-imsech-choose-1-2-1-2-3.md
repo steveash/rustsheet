@@ -3,7 +3,7 @@ id: T-1874
 title: "Fuzz: IMSECH(CHOOSE({1,2},{1,2,3},{4;5})) reaches a scalar-context cell with a 3x2 array (debug_assert panic)"
 milestone: M2
 lane: functions-engineering
-status: todo
+status: done
 priority: P0
 size: S
 tier: opus
@@ -37,11 +37,23 @@ shape is computed and make it agree with evaluation, as the SPEC-0011 driver doe
 Excel's value: use the excel-probe skill if no probe covers an IM* function over a lifted CHOOSE.
 
 ## Acceptance criteria
-- [ ] The reproducer is a unit test (decision 0035) that passes in a debug build.
-- [ ] Every IM* function over `CHOOSE({1,2},{1,2,3},{4;5})` agrees in static analysis and
+- [x] The reproducer is a unit test (decision 0035) that passes in a debug build.
+- [x] Every IM* function over `CHOOSE({1,2},{1,2,3},{4;5})` agrees in static analysis and
       evaluation; the value matches excel-graph evidence, or the case is left pending and the
       task blocked.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other scalar-context assertion reproducers (T-1303, T-1596, done).
+
+## Outcome
+- Root cause: CHOOSE gives its arms' counts a range's shape, and a `LiftArrays` argument dropped every range shape
+  as a refused range, so `IMSECH(CHOOSE({1,2},{1,2,3},{4;5}))` was a scalar to static analysis but lifted to 2x3.
+  It hit every `LiftArrays` function (IM*, EDATE, ISEVEN, COMPLEX, ...), not only IMSECH.
+- Fix: `choose_static_result` gives a CHOOSE with an array or multi-cell index an `Array` shape (it lifts to values),
+  analysing each argument once; `lifted_static_result` keeps a range shape whose arms are not all cells
+  (`yields_cells`), so `IMABS(CHOOSE(1,{1,2,3}))` is 1x3. A first version re-analysed the index and went exponential
+  in nesting depth (performance review); a 60-level unit test guards it.
+- New probe `lift-arrays-choose-arms` (excel-graph, 51 cells), recorded in engineering.md. 48 pass; the
+  SUBTOTAL-over-TAKE cells (B69, A70, B70) are a separate static-analysis gap, follow-up T-1882.
+- Eval delta: probes +1 case; known failures 2285 -> 2288 (3 new-coverage, owned by T-1882); regressions 0.

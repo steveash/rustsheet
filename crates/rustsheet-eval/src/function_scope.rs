@@ -4,7 +4,8 @@
 //! A scored `ironcalc-calc` cell is in scope when every function its formula calls has a catalog
 //! milestone of M0, M1 or M2; a formula that calls no function is in scope too. A function the
 //! catalog does not list counts as in scope, so no cell drops out silently (the same
-//! convention as [`Catalog::in_scope`]). Cells without a formula of their own (spill children) cannot be
+//! convention as [`Catalog::in_scope`]). An array-member cell is classified by its anchor's formula
+//! (T-1877). Cells with neither a formula nor an array anchor (spill children) cannot be
 //! classified; they are left out and counted on their own line so the gap stays visible.
 //! Precedents are not followed transitively: only the cell's own formula decides.
 
@@ -34,7 +35,7 @@ pub struct FunctionScope {
     pub deviations: usize,
     /// The failing cells, as `case!Sheet!A1`.
     pub failing: Vec<String>,
-    /// Scored cells with no formula of their own (spill children), left out of the counts above.
+    /// Scored cells with no formula and no array anchor (spill children), left out of the counts above.
     pub no_formula: usize,
     /// Of those, the cells that are known failures.
     pub no_formula_failing: usize,
@@ -54,7 +55,7 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Option<FunctionSc
     let mut scope = FunctionScope::default();
     for r in cases {
         for c in &r.cells {
-            let Some(formula) = c.formula.as_deref() else {
+            let Some(formula) = c.formula.as_deref().or(c.anchor_formula.as_deref()) else {
                 scope.no_formula += 1;
                 scope.no_formula_failing += usize::from(c.verdict.is_failure());
                 continue;
@@ -94,7 +95,7 @@ pub fn write_markdown(scope: Option<&FunctionScope>, md: &mut String) {
     );
     let _ = writeln!(
         md,
-        "| scored cells | bit-exact | deviations | failing | no formula (left out) | of those failing |\n\
+        "| scored cells | bit-exact | deviations | failing | no formula or anchor (left out) | of those failing |\n\
          |---|---|---|---|---|---|\n| {} | {} | {} | {} | {} | {} |",
         s.cells,
         s.bit_exact,
@@ -134,6 +135,7 @@ mod tests {
             sheet: "S".to_string(),
             cell: cell.to_string(),
             formula: formula.map(str::to_string),
+            anchor_formula: None,
             expected: Value::Number(1.0),
             actual: Value::Number(1.0),
             verdict,
@@ -184,6 +186,28 @@ mod tests {
         let s = summarize(&catalog, &results).expect("suite ran");
         assert_eq!((s.cells, s.bit_exact, s.deviations), (3, 2, 0));
         assert_eq!(s.failing, vec!["ironcalc-calc/a!S!A2".to_string()]);
+        assert_eq!((s.no_formula, s.no_formula_failing), (1, 1));
+    }
+
+    #[test]
+    fn array_members_are_scored_by_their_anchor() {
+        let catalog = Catalog::from_functions([function("IF", "M2"), function("LATE", "M9")]);
+        let member = |c: &str, anchor: &str, verdict| CellResult {
+            anchor_formula: Some(anchor.to_string()),
+            ..cell(c, None, verdict)
+        };
+        let results = [case(
+            SUITE,
+            vec![
+                member("B1", "IF(TRUE,1,2)", Verdict::Pass),
+                member("B2", "IF(TRUE,1,2)", Verdict::NumericMismatch),
+                member("B3", "LATE(1)", Verdict::NumericMismatch),
+                cell("B4", None, Verdict::NumericMismatch),
+            ],
+        )];
+        let s = summarize(&catalog, &results).expect("suite ran");
+        assert_eq!((s.cells, s.bit_exact), (2, 1));
+        assert_eq!(s.failing, vec!["ironcalc-calc/a!S!B2".to_string()]);
         assert_eq!((s.no_formula, s.no_formula_failing), (1, 1));
     }
 
