@@ -3,11 +3,12 @@ id: T-1727
 title: "Spec: keep a formula's legacy (plain <f>) reading past the @ rewrite"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
 depends_on: []
+spec: docs/specs/SPEC-0012-legacy-n-t-marker.md
 ---
 
 ## Goal
@@ -34,8 +35,18 @@ reference-class call, outside an array context or `@`); memory cost per cell; th
 `@` rewrite it must coexist with.
 
 ## Acceptance criteria
-- [ ] docs/specs/SPEC-XXXX (from the TEMPLATE) with the chosen design, the alternatives and the implementation tasks it cuts (T-1713 resumes on it).
-- [ ] Reviewers (architecture, performance) approve.
+- [x] docs/specs/SPEC-XXXX (from the TEMPLATE) with the chosen design, the alternatives and the implementation tasks it cuts (T-1713 resumes on it).
+- [x] Reviewers (architecture, performance) approve.
 
 ## Out of scope
 - Implementing it.
+
+## Outcome
+docs/specs/SPEC-0012-legacy-n-t-marker.md. The marker is two internal function kinds,
+`NLegacy`/`TLegacy`. T-1717's legacy rewrite places them in the same walk, under its `arrays` flag
+(PR #1046's design, extended to CHOOSE, INDEX and IFS over array constants). An R1C1-only call
+spelling stores them, so reload, renames, undo and xlsx export carry them with no per-cell field.
+`Input::LegacyFormula` stores the rewritten node instead of its display text. Rejected: a
+per-cell flag, a `Node` wrapper, a per-formula flag, and a third `@` mode. Memory per cell: zero.
+Follow-ups: T-1851 (the marker), T-1713 (placing it: unblocks on T-1851; moved to the engine lane),
+T-1852 (row/column edits, moves, fill and paste), T-1853 (probe rule 6). Eval: no change (docs only).
