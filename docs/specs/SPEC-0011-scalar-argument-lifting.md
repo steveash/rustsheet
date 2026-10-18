@@ -584,6 +584,17 @@ financial.md "CUMIPMT and CUMPRINC over many periods"). The weight is the derive
 form (about 2.9 us an element in release: 2^19 elements, 1.5 s), not a value-dependent loop (financial.md "CUMIPMT and
 CUMPRINC work cap", a DEVIATION).
 
+As built (T-1841): AMORLINC and AMORDEGRC are `LiftArrays` and `Weighted`. Their kernels walked the periods with
+`counted += 1.0` up to `ceil(1/rate)` (10^15 steps for `AMORLINC(2400,39679,39813,300,1E15,1E-300,1)`, and no end past
+2^53). Excel walks them too, in doubles (probes/fin-amor-period-bound A6 is the walk's remainder, not the closed form's),
+so the kernels keep the walk's values with an integer count and a bound (`functions/financial/amortization.rs`;
+financial.md "AMORLINC and AMORDEGRC over many periods"): AMORLINC jumps the steps that are exact within a binade (at
+most 616 single steps for any double, capped at 1,024, `#NUM!` past the cap), bit for bit the walk; AMORDEGRC walks
+up to 2^20 periods and finishes in a closed form that can be a unit off the walk for charges of 1E12 or more
+(financial.md "AMORDEGRC past 2^20 periods", a DEVIATION). The weights are priced from the caps in release (financial.md
+"AMORLINC and AMORDEGRC work cap", a DEVIATION): AMORLINC 2^9 (1,024 steps at about 7.7 ns, 7.9 us an element: 2^18
+elements, about 2.1 s), AMORDEGRC 2^18 (2^20 periods, 4 ms: 512 elements, 2.1 s).
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and

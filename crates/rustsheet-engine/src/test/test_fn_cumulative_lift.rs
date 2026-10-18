@@ -9,53 +9,30 @@
 
 use std::time::{Duration, Instant};
 
-use crate::cell::CellValue;
-use crate::model::Model;
-use crate::test::util::new_empty_model;
-
-/// A cell's value: a number as Rust's shortest round-trip text (so equal text is equal bits), a
-/// boolean as `TRUE`/`FALSE`, anything else (an error) as the cell's text.
-fn value(model: &Model, cell: &str) -> String {
-    match model.get_cell_value_by_ref(&format!("Sheet1!{cell}")) {
-        Ok(CellValue::Number(number)) => format!("{number:?}"),
-        Ok(CellValue::Boolean(true)) => "TRUE".to_string(),
-        Ok(CellValue::Boolean(false)) => "FALSE".to_string(),
-        _ => model._get_text(cell),
-    }
-}
+use crate::test::util::{check_cells, new_empty_model, round_trip_value};
 
 /// Evaluates `cells` on a sheet whose G1:G2 is 0.01 (a rate), G3:G4 is 360 (an nper) and
 /// Z1:Z8 hold the extreme values of probes/fin-cumipmt-period-bound (1E308 as a product: the
 /// literal is past Excel's 9.99E307), and checks each cell's
 /// value (an expected number is compared bit for bit).
 fn check(cells: &[(&str, &str, &str)]) {
-    let mut model = new_empty_model();
-    for (cell, input) in [
-        ("G1", "0.01"),
-        ("G2", "0.01"),
-        ("G3", "360"),
-        ("G4", "360"),
-        ("Z1", "1E-300"),
-        ("Z2", "1E300"),
-        ("Z3", "1E300"),
-        ("Z4", "1E300"),
-        ("Z5", "=1E307*10"),
-        ("Z6", "1E-12"),
-        ("Z7", "1E12"),
-        ("Z8", "1E307"),
-    ] {
-        model._set(cell, input);
-    }
-    for (cell, formula, _) in cells {
-        model._set(cell, formula);
-    }
-    model.evaluate();
-    for (cell, formula, expected) in cells {
-        let expected = expected
-            .parse::<f64>()
-            .map_or_else(|_| (*expected).to_string(), |number| format!("{number:?}"));
-        assert_eq!(value(&model, cell), expected, "{cell}: {formula}");
-    }
+    check_cells(
+        &[
+            ("G1", "0.01"),
+            ("G2", "0.01"),
+            ("G3", "360"),
+            ("G4", "360"),
+            ("Z1", "1E-300"),
+            ("Z2", "1E300"),
+            ("Z3", "1E300"),
+            ("Z4", "1E300"),
+            ("Z5", "=1E307*10"),
+            ("Z6", "1E-12"),
+            ("Z7", "1E12"),
+            ("Z8", "1E307"),
+        ],
+        cells,
+    );
 }
 
 #[test]
@@ -157,7 +134,7 @@ fn up_to_32_periods_are_the_per_period_sum() {
         model._set(&format!("B{}", row + 1), sum);
     }
     model.evaluate();
-    let number = |cell: &str| value(&model, cell).parse::<f64>().unwrap();
+    let number = |cell: &str| round_trip_value(&model, cell).parse::<f64>().unwrap();
     assert_eq!(number("A1").to_bits(), number("B1").to_bits());
     assert_eq!(number("A2").to_bits(), number("B2").to_bits());
     // 33 periods: the closed form, within an ulp or two of the sum.

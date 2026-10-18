@@ -400,6 +400,38 @@ const CUMULATIVE: ArgKinds = ArgKinds::fixed(
 );
 // --- End financial ATP (T-1845) -------------------------------------------------------------
 
+// --- Financial ATP (T-1841) -----------------------------------------------------------------
+/// What one AMORLINC element is charged, priced from its cap: at most `LINEAR_STEP_CAP` (1,024)
+/// single subtractions (functions/financial/amortization.rs `linear_charge`; the longest real walk
+/// takes 616). A step costs about 7.7 ns in a release build (2^18 elements of
+/// `AMORLINC(..,2400,..,300,9E15,1.08E-16,1)`, 613 steps each, within 1% of the longest, took
+/// 1.23 s, 4.7 us an element), so a walk at the cap is about 7.9 us and 2^9 units run at most
+/// 2^18 elements, about 2.1 s. docs/excel-semantics/financial.md "AMORLINC and AMORDEGRC work
+/// cap" (a DEVIATION).
+const AMORLINC_WEIGHT: u32 = 1 << 9;
+/// What one AMORDEGRC element is charged: at most `DEGRESSIVE_LOOP_PERIODS` (2^20) periods
+/// walked one by one, then a closed form, about 4 ms an element in a release build (512 elements
+/// of `AMORDEGRC(1E15,..,1,5E6,1E-7,1)`, whose walk takes no shortcut, took 2.06 s). 2^18 units
+/// run at most 512 elements, about 2 s.
+const AMORDEGRC_WEIGHT: u32 = 1 << 18;
+/// `AMORLINC(cost, date_purchased, first_period, salvage, period, rate, [basis])`.
+const AMORLINC: ArgKinds = ArgKinds::fixed(
+    6,
+    &[
+        LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
+    ],
+    Weighted(AMORLINC_WEIGHT),
+);
+/// `AMORDEGRC(cost, date_purchased, first_period, salvage, period, rate, [basis])`.
+const AMORDEGRC: ArgKinds = ArgKinds::fixed(
+    6,
+    &[
+        LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
+    ],
+    Weighted(AMORDEGRC_WEIGHT),
+);
+// --- End financial ATP (T-1841) -------------------------------------------------------------
+
 /// The functions of [`Function::arg_kinds`], as a pattern: the arm of an exhaustive `match` on a
 /// `Function` that has no hand-written arm because the table derives it (static analysis).
 /// Keep it equal to the table; `static_analysis::lifted`'s test checks that no function in the
@@ -548,6 +580,10 @@ macro_rules! lifting_table_functions {
             | Function::Cumipmt
             | Function::Cumprinc
             // --- End financial ATP (T-1845) ---
+            // --- Financial ATP (T-1841) ---
+            | Function::Amorlinc
+            | Function::Amordegrc
+            // --- End financial ATP (T-1841) ---
             // --- Statistical (T-1290) ---
             | Function::BetaDist
             | Function::BetaDistCompat
@@ -839,6 +875,16 @@ impl Function {
             // period sums are bounded ("CUMIPMT and CUMPRINC over many periods").
             Function::Cumipmt | Function::Cumprinc => Some(&CUMULATIVE),
             // --- End financial ATP (T-1845) ---
+            // --- Financial ATP (T-1841) ---
+            // Analysis ToolPak functions, as the T-1822 ones: every argument lifts over an array
+            // (probes/fin-argument-modes H19, H21-H26, H28, H30-H35) and refuses a multi-cell
+            // range, also on the range's own rows (fin-argument-modes H20, H29;
+            // fin-remaining-later-argument-ranges H11-H34, each with its intersected control in
+            // I). Their period walks are bounded (docs/excel-semantics/financial.md "AMORLINC and
+            // AMORDEGRC over many periods").
+            Function::Amorlinc => Some(&AMORLINC),
+            Function::Amordegrc => Some(&AMORDEGRC),
+            // --- End financial ATP (T-1841) ---
             // --- Statistical (T-1290) ---
             // The statistical functions whose every argument is scalar are worksheet functions:
             // every argument lifts over an array and over a multi-cell range, on the range's own

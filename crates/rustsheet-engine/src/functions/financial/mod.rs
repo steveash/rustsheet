@@ -11,6 +11,7 @@ use crate::{
 };
 
 mod accrint;
+mod amortization;
 mod annuity;
 mod cumulative;
 mod dates;
