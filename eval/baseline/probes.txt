@@ -829,6 +829,7 @@ C	probes/volatile-and-info-rand-true-false-sheet.case.json	108
 C	probes/volatile-invariant.case.json	60
 C	probes/volatile-now-today-shapes.case.json	48
 C	probes/vstack-scalar-error.case.json	40
+C	probes/weekday-serial-zero.case.json	18
 C	probes/weeknum-1900-later.case.json	23
 C	probes/weeknum-invalid-type.case.json	8
 C	probes/weeknum-modern-boundaries.case.json	67
