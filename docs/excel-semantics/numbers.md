@@ -399,6 +399,68 @@ GAMMA at non-integers and ERFC the x87 model is unsupported (it ties correctly r
 kernels stay unexplained (time-boxed, decision 0056).
 Tasks: T-1524, T-0901, T-1495, T-0973, T-0968, T-1528, T-1529
 
+## Stored numbers in an xlsx are not always parsed to the nearest double (T-1778)
+
+When Excel loads a cell value from xlsx (`<v>` text), it occasionally lands one ulp away from the correctly rounded
+double. In the T-1778 ERFC/EXP probes this happened at 4 of about 2.1M input cells. For each, Excel's EXP and ERFC
+results are bit-identical to the neighbouring double's model value and 10-400 ulp from the written value's:
+
+| `<v>` text | nearest double | double Excel used |
+|---|---|---|
+| `11.137073` | 0x1.6462e6ea85447p+3 | ...448 |
+| `15.803795365599` | 0x1.f9b8b10efd91fp+3 | ...920 |
+
+The other two cells are in `kmyst-erfc-r6clow7` (x ≈ 2.45) and `kmyst-erfc-r6clow8` (x ≈ 3.09). Their written texts
+are the shortest round-trip decimals, and Excel used the double one below.
+
+So the parse is not a correctly rounded decimal-to-binary conversion, even for short texts. The rule behind the
+rare misreads is not derived. Probe cases that need an exact input double should check Excel's own reading, for
+example by returning `=A1` or by testing the model at the neighbouring doubles.
+
+Later rounds found 3 more, at x = 2.2677103947185002, 2.6493240961407998 and 1.3246620480703999; the two x ≈ 2.45
+and 3.09 cells above are 2.4500000000004998 and 3.0900000000000998 (statistics.md, T-1778). The curated T-1916
+probes leave all seven inputs out.
+
+Evidence (probes-numeric on branch `agent/research/T-1778-kernel-map`): `kmyst-erfc-r4bisect2`, `kmyst-erfc-r6bisN2`, `kmyst-erfc-r6clow7`, `kmyst-erfc-r6clow8` (excel-graph,
+2026-10-18). Status: OBSERVED; the parsing rule is OPEN.
+
+## EXP is an x87 2^(a*log2 e) evaluation, not correctly rounded (T-1778)
+
+Excel's EXP(a) behaves like x87 code written for the 8087's F2XM1 domain (model "V6", T-1778 round 8):
+1. t = RN64(a * RN64(log2 e)), that is FLDL2E then FMUL in 64-bit precision.
+2. n = nint(t), using FRNDINT with ties to even.
+3. f = t - n, which is exact, with |f| <= 1/2.
+4. u = F2XM1(|f|), modelled as RN64(2^|f| - 1).
+5. w = RN64(1 + u).
+6. If f < 0, w = RN64(1/w).
+7. EXP = RN53(w * 2^n), with gradual underflow.
+
+This matches 2,139,591 of 2,139,684 EXP cells across all kmyst-erfc-* probes, including the near-midpoint maps
+`kmyst-erfc-r5expmap1/2`. The 93 misses are all points where 2^|f| - 1 lies within 0.09 ulp of a 64-bit rounding
+midpoint. There, Excel's F2XM1 is faithful but not correctly rounded, with an error of about 2^-69, deterministic
+and not matched by this machine's Intel F2XM1. The likely cause is a different CPU's F2XM1 microcode (an AMD Zen
+hypothesis is untested), so those cells may be CPU-dependent. The earlier description below (a floor split, with
+F2XM1 applied to f in [0, 1)) is superseded: it had 6,281 misses on the same set.
+
+Earlier description: t = fl64(a * L2E64), then EXP = fl53(fl64(2^t)). Here L2E64 is log2(e) rounded to a 64-bit
+mantissa, with relative error +1.92E-20.
+- **Where it matches.** EXP(-(x*x)) at 121,790 of 121,805 points (x from 0.5 to 26.5) and EXP(-z) at 30,717 of
+  30,720 (z from 0.26 to 702). A variant that applies F2XM1 to the fraction (n = nint(t),
+  w = fl64(1 + fl64(2^(t-n) - 1)), EXP = fl53(w * 2^n)) gains 3 more points.
+- **What correctly rounded exp gives.** 30,218 of 30,720.
+- **How it shows.** Excel's EXP is 1 ulp off the correctly rounded value at about 2.1% of points with large
+  |a|, mostly low. The bias grows with |a|, as the error in L2E64 times a predicts. At small |a| the two agree,
+  which is why the `exp-ln` sweep above saw correctly rounded values.
+- **Where it matters.** ERFC.PRECISE for x >= 0.5 multiplies by this stored EXP value (statistics.md, T-1778).
+- **Open.** The remaining 12 to 15 of 152,525 mismatches are unresolved.
+
+Evidence: probes-numeric (on branch `agent/research/T-1778-kernel-map`) `kmyst-erfc-expcol`, `kmyst-erfc-runs1..4`, `kmyst-erfc-stepmap1/2`, `kmyst-erfc-chiruns1..3`
+(excel-graph, 2026-10-18). Status: VERIFIED (structure); the last mismatches are OPEN.
+Ours: `crates/rustsheet-engine/src/x87_exp.rs` `excel_exp` implements V6 with integer x87 rounding and a double-double
+F2XM1 (T-1916). It reproduces the reference model, scoring 62,013 of 62,100 `EXP(A)` cells of `kmyst-erfc-r5expmap1/2`
+and every `EXP(-(x*x))` cell up to x = 26.55 except the near-ties. Only the ERFC kernel uses it; the worksheet EXP
+still calls libm's `exp` and flushes subnormal results (T-1928).
+
 ## Numbers near 1E+307 print with 14 significant digits
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is
 4.49423283715579E+307 (15 digits, A16); the engine prints 4.49423283715579E+307.

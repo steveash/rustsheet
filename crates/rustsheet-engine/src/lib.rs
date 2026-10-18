@@ -84,6 +84,7 @@ mod user_model;
 mod utils;
 mod variable_stack;
 mod workbook;
+mod x87_exp;
 
 #[cfg(test)]
 mod test;
