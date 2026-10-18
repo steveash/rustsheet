@@ -24,4 +24,4 @@ Oracle evidence: probes/date-text-glued-month-2 column C rows 6-8, 10-11, 13-15 
 - Locales other than en-US.
 
 ## Outcome
-TIMEVALUE returns 0 for date-only text (`time_text.rs`); typed date+time text becomes a number formatted `m/d/yyyy h:mm` (`model.rs`). probes/date-text-glued-month-2 now passes 106/106 (C6:C15, O8:R8 fixed). Typed clocks with seconds: format unverified (noted in dates.md).
+TIMEVALUE returns 0 for date-only text (`time_text.rs`); typed `H:MM` date+time text becomes a number formatted `m/d/yyyy h:mm` (`parse_typed_number` in `parse_formatted.rs`). probes/date-text-glued-month-2 passes 106/106 (13 baseline cells fixed: C6:C8, C10:C11, C13:C15, O8:R8; C9 is T-1906's). The non-glued date-only TIMEVALUE check was not probed and is UNVERIFIED in dates.md; other typed clock shapes stay text pending a probe.

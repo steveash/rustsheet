@@ -10,7 +10,7 @@ use super::date_text::{parse_date, CurrentYear};
 
 /// Format Excel gives typed date+time text (probes/date-text-glued-month-2 N8, excel-graph
 /// 2026-10-18: `July1 10:00` -> 46204.41666..., `m/d/yyyy h:mm`). Only that shape is probed; the
-/// format of a typed clock with seconds or an hour-only AM/PM clock is UNVERIFIED (docs/excel-semantics/dates.md).
+/// format of other typed clocks is UNVERIFIED and they stay text (docs/excel-semantics/dates.md).
 const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
 
 /// [`parse_formatted_number`] for text typed into a cell, which also reads date+time text
@@ -23,10 +23,27 @@ pub(crate) fn parse_typed_number(
     date_system: DateSystem,
 ) -> Result<(f64, Option<String>), String> {
     parse_formatted_number(original, currencies, locale, current_year, date_system).or_else(|err| {
+        if !ends_with_hour_minute_clock(original) {
+            return Err(err);
+        }
         parse_date_clock_serial_in(original, locale, current_year, date_system)
             .map(|serial| (serial, Some(TYPED_DATE_CLOCK_FORMAT.to_string())))
             .ok_or(err)
     })
+}
+
+/// Whether the text's last word is an `H:MM` / `HH:MM` clock with an hour below 24: the only typed
+/// clock shape probed. Seconds, AM/PM, hours past 23 and fractions are UNVERIFIED and stay text.
+fn ends_with_hour_minute_clock(text: &str) -> bool {
+    let Some((hour, minute)) = text.rsplit(' ').next().and_then(|c| c.split_once(':')) else {
+        return false;
+    };
+    let digits =
+        |s: &str, max: usize| (1..=max).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_digit());
+    digits(hour, 2)
+        && minute.len() == 2
+        && digits(minute, 2)
+        && hour.parse::<u32>().is_ok_and(|h| h < 24)
 }
 
 /// Parses a formatted number, returning the numeric value together with the format
