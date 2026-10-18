@@ -5,6 +5,8 @@
 //! YEARFRAC) through formulas. Excel values: probes/scalar-lift-shapes, -b and -c,
 //! probes/date-argument-modes (docs/excel-semantics/arrays.md "Scalar arguments lift").
 
+mod kernel_work;
+
 use super::driver::{LiftCost, LiftOptions, LiftedArg};
 use super::kinds::{ArgKind, ArgKinds, KernelWork};
 use crate::calc_result::CalcResult;
