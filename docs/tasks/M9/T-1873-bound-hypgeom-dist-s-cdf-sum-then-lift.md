@@ -58,5 +58,6 @@ known failures fixed (stat-argument-modes H331-H336, H338-H342; stat-quantile-li
 (the scalar H330 and H337 keep main's last-digit residues, T-0977). static_analysis.rs 1142 -> 1137 lines (the 4
 fallback lines now in the lifting table); duplication unchanged at 3903. Scalar change: `#NUM!` past the cap where
 main gave a number after minutes (`HYPGEOM.DIST(1074741824,2147483648,2147483648,4294967296,TRUE)`, main
-1.0000065293398746 after 191 s). Two DEVIATIONs in statistics.md "HYPGEOM.DIST: per-call cap and lifting". Follow-up:
-T-1896 (Excel's values past the cap).
+1.0000065293398746 after 191 s). Two DEVIATIONs in statistics.md "HYPGEOM.DIST: per-call cap and lifting". The cost
+measurements live in the `MAX_TERMS` doc in statistical/hypegeom.rs (kinds.rs keeps a two-line summary). Follow-ups:
+T-1896 (Excel's values past the cap), T-1901 (split kinds.rs, now 999 lines).
