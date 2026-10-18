@@ -190,11 +190,12 @@ read (`IMABS(CHOOSE(1,H1))` is 3). IMSUM folds the whole array (`IMSUM(CHOOSE({1
 
 Evidence: probes/lift-arrays-choose-arms (excel-graph, 2026-10-18, T-1874). H1:H3 = 3, 4, 5; I1:I2 = 6, 8.
 
-Ours: matches (T-1874). Static analysis used to take such a call for a scalar, since CHOOSE gives its array arms a
-range's shape; the fuzz reproducer `IMSECH(CHOOSE({1,2},{1,2,3},{4;5}))` hit a debug assertion.
+Ours: matches for the lifted functions (T-1874). Static analysis used to take such a call for a scalar, since CHOOSE
+gives its array arms a range's shape; the fuzz reproducer `IMSECH(CHOOSE({1,2},{1,2,3},{4;5}))` hit a debug assertion.
+The SUBTOTAL over TAKE cell is still a scalar `#VALUE!` (T-1882).
 
 Status: VERIFIED (excel-graph)
-Tasks: T-1874
+Tasks: T-1874, T-1882
 
 ## IMSUM and IMPRODUCT take their arguments whole
 Rule: IMSUM and IMPRODUCT (1 to 255 arguments) fold every value their arguments hold, in argument order and

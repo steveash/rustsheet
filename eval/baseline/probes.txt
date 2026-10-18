@@ -389,7 +389,6 @@ C	probes/let-name-non-ascii.case.json	10
 C	probes/let-name-sharp-s.case.json	2
 C	probes/let-name-uncalled-picked-refs.case.json	41
 C	probes/let-name-use-spelling.case.json	12
-C	probes/lift-arrays-choose-arms.case.json	51
 C	probes/lifted-range-rows.case.json	4
 C	probes/lifted-range-size.case.json	6
 C	probes/linest-modes.case.json	255

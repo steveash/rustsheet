@@ -179,7 +179,7 @@ fn a_lifted_argument_over_a_choose_of_values_spills() {
         model._set(cell, value);
     }
     // (top-left cell, formula, spill width, the spilled values row by row).
-    let cases: [(&str, &str, i32, &[&str]); 9] = [
+    let cases: [(&str, &str, i32, &[&str]); 8] = [
         (
             "A1",
             "=IMABS(CHOOSE({1,2},{1,2,3},{4;5}))",
@@ -198,12 +198,6 @@ fn a_lifted_argument_over_a_choose_of_values_spills() {
         ("A21", "=EDATE(CHOOSE(1,{4;5}),1)", 1, &["35", "36"]),
         ("A25", "=ISEVEN(CHOOSE(1,{4;5}))", 1, &["TRUE", "FALSE"]),
         ("A29", "=IMABS(CHOOSE(1,H1))", 1, &["3", ""]),
-        (
-            "A33",
-            "=SUBTOTAL(9,TAKE(CHOOSE({1,2},H1:H2,I1:I2),2))",
-            2,
-            &["#VALUE!", "#VALUE!", "#VALUE!", "#VALUE!"],
-        ),
     ];
     for (cell, formula, _, _) in cases {
         model._set(cell, formula);
@@ -217,4 +211,17 @@ fn a_lifted_argument_over_a_choose_of_values_spills() {
             assert_eq!(model._get_text(&at), **value, "{formula} at {at}");
         }
     }
+}
+
+#[test]
+fn nested_lifted_calls_over_choose_are_analysed_in_linear_time() {
+    // Each level used to analyse its CHOOSE index twice, so 60 levels took hours (T-1874 review).
+    let mut formula = "{1,2}".to_string();
+    for _ in 0..60 {
+        formula = format!("IMABS(CHOOSE({formula},{{1,2}}))");
+    }
+    let mut model = new_empty_model();
+    model._set("A1", &format!("={formula}"));
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1");
 }

@@ -2,7 +2,6 @@ use crate::expressions::parser::reference_operators::is_reference_operand;
 use crate::functions::logical::same_variable;
 use crate::functions::Function;
 
-use super::reference_parameter::is_choose_with_array_index;
 use super::{broadcast_static_result, run_static_analysis_on_node, Node, StaticResult};
 
 /// AGGREGATE spills over an array `function_num`, options or fourth argument, broadcast against
@@ -85,16 +84,11 @@ pub(super) fn yields_cells<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>)
             .all(|branch| yields_cells(branch, bound)),
         // CHOOSE, SWITCH and IFS pass on the arm they select just as IF does, so a computed array
         // in any arm makes the call spill (`SUBTOTAL(9,TAKE(CHOOSE(1,SEQUENCE(4)),2))` is two
-        // `#VALUE!`, probes/subtotal-reference-operands-f, T-1378). CHOOSE with an array index
-        // lifts to an array of values even over range arms (probes/lift-arrays-choose-arms A21,
-        // T-1874).
+        // `#VALUE!`, probes/subtotal-reference-operands-f, T-1378).
         Node::FunctionKind {
             kind: Function::Choose,
             args,
-        } => {
-            !is_choose_with_array_index(node)
-                && args.iter().skip(1).all(|arm| yields_cells(arm, bound))
-        }
+        } => args.iter().skip(1).all(|arm| yields_cells(arm, bound)),
         Node::FunctionKind {
             kind: Function::Switch,
             args,

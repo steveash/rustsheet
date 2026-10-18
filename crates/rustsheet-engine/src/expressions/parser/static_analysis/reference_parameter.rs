@@ -35,7 +35,7 @@ fn reference_parameter_static_result(reference: Option<&Node>) -> StaticResult {
 }
 
 /// Whether `node` is a CHOOSE call whose index is not a scalar.
-pub(super) fn is_choose_with_array_index(node: &Node) -> bool {
+fn is_choose_with_array_index(node: &Node) -> bool {
     match node.ungrouped() {
         Node::FunctionKind {
             kind: Function::Choose,

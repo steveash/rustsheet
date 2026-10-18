@@ -27,10 +27,9 @@ pub(super) fn lifted_signature(kinds: &ArgKinds, arg_count: usize) -> Vec<Signat
 /// The shape of a call: its lifted arguments broadcast. A `Lift` argument adds the shape of an
 /// array or a range; a `LiftArrays` or `LiftArraysRangeWhole` argument only that of an array,
 /// since a range there is refused or read whole (`EDATE(A1:A3,1)` is a scalar,
-/// `EDATE({1;2},A1:A3)` a 2x1 array). A range shape that may evaluate to values is an array:
-/// CHOOSE gives its array arms a range's shape, and lifts to values over an array index
-/// (`IMABS(CHOOSE(1,{1,2,3}))` is 1x3, `IMABS(CHOOSE({1,2},H1:H2,I1:I2))` 2x2,
-/// probes/lift-arrays-choose-arms, T-1874). An `Unknown` lifted argument makes the call
+/// `EDATE({1;2},A1:A3)` a 2x1 array). A range shape whose arms may be values is an array: CHOOSE
+/// gives its array arms a range's shape (`IMABS(CHOOSE(1,{1,2,3}))` is 1x3,
+/// probes/lift-arrays-choose-arms A13, T-1874). An `Unknown` lifted argument makes the call
 /// `Unknown`; a `Whole` argument adds nothing. A call with a bad count is a scalar (the count
 /// error).
 pub(super) fn lifted_static_result(kinds: &ArgKinds, args: &[Node]) -> StaticResult {

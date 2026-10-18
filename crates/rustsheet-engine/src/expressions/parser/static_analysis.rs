@@ -358,6 +358,23 @@ fn broadcast_static_result<'a>(args: impl IntoIterator<Item = &'a Node>) -> Stat
     broadcast_shapes(args.into_iter().map(run_static_analysis_on_node))
 }
 
+/// CHOOSE is a reference function: with a range arm the call itself is reference-shaped, so
+/// legacy import wraps the whole CALL in `@` (Excel upgrades `=CHOOSE(2,A1:A10,B1:B10)` to
+/// `=@CHOOSE(...)`). Its arms' counts become the extents of that range shape. An index that is an
+/// array or a multi-cell range lifts CHOOSE to an array of values, even over range arms, so the
+/// call is an array: a `LiftArrays` argument lifts over it rather than refusing a range
+/// (`IMABS(CHOOSE({1,2},H1:H2,I1:I2))` is 2x2, probes/lift-arrays-choose-arms A21, T-1874). Each
+/// argument is analysed once, so nested calls stay linear.
+fn choose_static_result(args: &[Node]) -> StaticResult {
+    let mut shapes = args.iter().map(run_static_analysis_on_node);
+    let index = shapes.next().unwrap_or(StaticResult::Scalar);
+    let scalar_index = matches!(index, StaticResult::Scalar | StaticResult::Range(0, 0));
+    match broadcast_shapes(std::iter::once(index).chain(shapes)) {
+        StaticResult::Array(n, m) if scalar_index => StaticResult::Range(n - 1, m - 1),
+        other => other,
+    }
+}
+
 // We only care if the function can return a range or not
 fn not_implemented(_args: &[Node]) -> StaticResult {
     StaticResult::Scalar
@@ -864,14 +881,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Atan => scalar_arguments(args),
         Function::Atan2 => scalar_arguments(args),
         Function::Atanh => scalar_arguments(args),
-        // CHOOSE is a reference function: with a range arm the call itself is
-        // reference-shaped, so legacy import wraps the whole CALL in `@`
-        // (Excel upgrades `=CHOOSE(2,A1:A10,B1:B10)` to `=@CHOOSE(...)`).
-        // Its arms' counts become the extents of that range shape.
-        Function::Choose => match scalar_arguments(args) {
-            StaticResult::Array(n, m) => StaticResult::Range(n - 1, m - 1),
-            other => other,
-        },
+        Function::Choose => choose_static_result(args),
         Function::Column => row_column::static_analysis_row_column(args, false),
         Function::Columns => not_implemented(args),
         Function::Cos => scalar_arguments(args),
