@@ -1,0 +1,31 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "VALUE lifts over a range or an array: element results for text, numbers, booleans, blanks and errors (T-1791).",
+ "tags": [
+  "M2",
+  "text",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "1 ",
+    "A2": "x",
+    "A3": 5,
+    "A4": true,
+    "A6": "=1/0",
+    "A7": " $2 ",
+    "A8": "1/2/2020",
+    "C1": "=VALUE(A1:A8)",
+    "D1": "=VALUE({\"1 \";\"x\";5;TRUE;\"\";\" 3%\"})",
+    "E1": "=SUM(IFERROR(VALUE(A1:A8),0))",
+    "F1": "=VALUE(A1:A2&\"\")",
+    "G1": "=ROWS(VALUE(A1:A8))",
+    "H1": "=VALUE({\"1\",\"2\"})",
+    "I1": "=VALUE(A5:A6)"
+   }
+  }
+ ],
+ "expected": {}
+}
