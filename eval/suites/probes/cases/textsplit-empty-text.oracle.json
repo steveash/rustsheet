@@ -1,0 +1,90 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A11": {
+    "t": "b",
+    "v": true
+   },
+   "A12": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A13": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "A14": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "A15": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "A16": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "A17": {
+    "t": "s",
+    "v": "{\"a\",#VALUE!;\"b\",\"c\"}"
+   },
+   "A18": {
+    "t": "s",
+    "v": "{#VALUE!;\"x\"}"
+   },
+   "A2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A4": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A6": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A7": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A8": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A9": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B2": {
+    "t": "s",
+    "v": ""
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "f40f4a7ba7bb45ac074b7c0488a40677d021bce2ce9c8009bfc54a945aa8a5e0",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T23:49:50+00:00",
+  "version": null
+ }
+}

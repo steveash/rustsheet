@@ -164,6 +164,16 @@ impl Model {
             None
         };
 
+        // Excel: empty text (a literal, a blank cell or an empty string) is #VALUE!, not an empty
+        // result (docs/excel-semantics/text.md "TEXTSPLIT of empty text is #VALUE!").
+        if text.is_empty() {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "TEXTSPLIT of empty text".to_string(),
+            );
+        }
+
         let na_node = ArrayNode::Error(Error::NA);
         let pad_node = pad_with.as_ref().unwrap_or(&na_node);
 
