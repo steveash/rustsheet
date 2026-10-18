@@ -3,7 +3,7 @@ id: T-1907
 title: "TIMEVALUE of date-only text is 0 not #VALUE!; typed date+time text (July1 10:00) becomes a number"
 milestone: M2
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
