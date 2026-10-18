@@ -190,7 +190,7 @@ impl Model {
     /// `CONFIDENCE.T(alpha, standard_dev, size)`: every argument lifts over an array and a range
     /// (SPEC-0011; probes/stat-argument-modes, probes/stat-quantile-lift). The Student-t quantile
     /// is T.INV.2T's (`t_upper_quantile`), which the lifting table charges (kinds.rs
-    /// `T_QUANTILE`).
+    /// `T_QUANTILE_WEIGHT`).
     pub(crate) fn fn_confidence_t(
         &mut self,
         args: &[Node],
