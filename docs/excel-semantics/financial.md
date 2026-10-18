@@ -671,15 +671,22 @@ Tasks: T-1764 (incl. MDURATION, RRI ulp), T-1765
 Rule: NPV reads an array literal whole (`NPV(0.1,{-10000,2750,4250,3250,2750})` is 302.233453999042) and skips
 text, booleans and empty elements inside it (`{-10000,"2750",4250}`, `{-10000,TRUE,4250}`, `{-10000,"x"}`,
 `{-10000,4250,""}` all ignore the element). A typed argument is coerced (`NPV(0.1,-10000,"2750",TRUE,4250)` is
--3914.6233180793665) and typed text that is no number is `#VALUE!` (`NPV(0.1,-10000,"x",4250)`). Typed means
-anything but a reference: a function result (`T("2750")`, `"2750"&""`) and a name whose body is a text or boolean
-constant coerce too (-3625.0939143501128, -5896.994740796395). Text and booleans in a range or in a single-cell
-reference, also in parentheses or after `@`, are skipped (`NPV(A5,B5,..)` with TRUE in B5; ironcalc-calc
-FINANCIAL/NPV.xlsx K5, L5; `(B1)`, `(B2)`, `@B1:B1` give -5578.512396694214).
+-3914.6233180793665) and typed text that is no number is `#VALUE!` (`NPV(0.1,-10000,"x",4250)`). An argument
+is read the way SUM reads one (`evaluate_reference_arg`): when it reads as a reference, the text and booleans of
+its cells are skipped, however the reference is written: a range or single cell (`NPV(A5,B5,..)` with TRUE in B5;
+ironcalc-calc FINANCIAL/NPV.xlsx K5, L5), in parentheses, after `@`, `B1:B1`, `IF(TRUE,B1)`, `IF(TRUE,B1:B2)`,
+`INDEX(B1:B2,1)`, `CHOOSE(1,B1)`, `OFFSET(B1,0,0)`, `INDIRECT("B1")`, `LET(x,B1,x)`, a name `=Sheet1!$B$1`, a 3-D
+`Sheet1:Sheet1!B1` (all -5578.512396694214 with "2750" or TRUE in B1/B2). A union is its areas as written:
+`NPV(0.1,(B3,B4))` is -5578.512396694214 and `(B4,B3)` -4400.82644628099. Anything else is typed and coerces: a
+function value (`T("2750")`, `"2750"&""`, `IF(TRUE,"2750")`, `VLOOKUP("2750",B1:B2,1,FALSE)` with a literal column
+index), and a name whose body is a text or boolean constant (-3625.0939143501128, -5896.994740796395). A computed
+array is read like a literal: `NPV(0.1,SEQUENCE(3))` is 4.815927873779113, `B3:B4*1` -5578.512396694214, and
+`NPV(0.1,{1,#N/A})` is `#N/A`.
 FVSCHEDULE is `#VALUE!` when the schedule holds text or a boolean, in a range (`N1:N2` with `"0.11"`, `C1:C2` with
 TRUE) or in an array literal (`{0.09,"0.11"}`); a text literal that reads as a number is a one-rate schedule
 (`FVSCHEDULE(1000,"0.1")` is 1100) while `TRUE` is `#VALUE!`.
 Evidence: probes/fin-argument-modes H368, H370, H371, H382-H384; probes/npv-fvschedule-typed A1-A16;
+probes/npv-reference-forms A1-A20;
 probes/fin-fvschedule A3, A4, A13, A14, A16, A19 (excel-graph, T-1084, T-1373, T-1625).
 Not probed: typed text in an FVSCHEDULE schedule that is a function result.
 Backend: excel-graph.

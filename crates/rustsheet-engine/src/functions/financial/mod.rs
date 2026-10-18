@@ -1,5 +1,5 @@
 use crate::{
-    calc_result::{CalcResult, Range},
+    calc_result::CalcResult,
     constants::{LAST_COLUMN, LAST_ROW, MAXIMUM_DATE_SERIAL_NUMBER, MINIMUM_DATE_SERIAL_NUMBER},
     expressions::{
         parser::{ArrayNode, Node},
@@ -7,6 +7,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     model::Model,
+    reference_operators::RefArg,
 };
 
 mod accrint;
@@ -221,37 +222,33 @@ impl Model {
         };
         let mut values = Vec::new();
         for arg in &args[1..] {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => values.push(value),
-                CalcResult::Range { left, right } => {
-                    let areas = [Range { left, right }];
+            // Excel: an argument read as a reference skips the text and booleans of its cells,
+            // however the reference is written: `B1`, `(B1)`, `@B1:B1`, `IF(TRUE,B1)`,
+            // `INDEX(B1:B2,1)`, `CHOOSE(1,B1)`, `OFFSET(B1,0,0)`, `INDIRECT("B1")`, `LET`, a
+            // name for a cell, `Sheet1:Sheet1!B1`; a union is its areas as written (ironcalc-calc
+            // FINANCIAL/NPV.xlsx K5, L5; probes/npv-fvschedule-typed A7, A10, A11;
+            // probes/npv-reference-forms). Any other value is typed: it is coerced
+            // (`NPV(0.1,-10000,"2750",TRUE,4250)` is -3914.6233180793665) and text that is no
+            // number is #VALUE! (probes/fin-argument-modes H368-H371; probes/npv-fvschedule-typed
+            // A5, A6, A8, A9). docs/excel-semantics/financial.md "NPV and FVSCHEDULE arguments".
+            match self.evaluate_reference_arg(arg, cell) {
+                RefArg::Ranges(areas) => {
                     if let Err(e) = self.for_each_number_in_areas(&areas, cell, |v| values.push(v))
                     {
                         return e;
                     }
                 }
-                // Excel: a typed argument is coerced (`NPV(0.1,-10000,"2750",TRUE,4250)` is
-                // -3914.6233180793665) and typed text that is no number is #VALUE!, while the
-                // cells of a range keep skipping text and booleans (probes/fin-argument-modes
-                // H368-H371; docs/excel-semantics/financial.md "NPV and FVSCHEDULE arguments").
-                // A single-cell reference is not typed: `NPV(A5,B5,..)` with TRUE in B5 skips it
-                // (ironcalc-calc FINANCIAL/NPV.xlsx K5, L5), also in parentheses; a name or a
-                // function result is typed (probes/npv-fvschedule-typed A5-A11).
-                direct @ (CalcResult::String(_) | CalcResult::Boolean(_))
-                    if !matches!(
-                        arg.ungrouped(),
-                        Node::ReferenceKind { .. }
-                            | Node::ImplicitIntersection { .. }
-                            | Node::OpRangeKind { .. }
-                    ) =>
-                {
+                RefArg::Value(CalcResult::Number(value)) => values.push(value),
+                RefArg::Value(direct @ (CalcResult::String(_) | CalcResult::Boolean(_))) => {
                     match self.cast_number_ref(&direct, cell) {
                         Ok(value) => values.push(value),
                         Err(error) => return error,
                     }
                 }
-                // An array literal is read whole: its numbers are the cash flows (H368).
-                CalcResult::Array(rows) => {
+                // An array is read whole: its numbers are the cash flows, its text and booleans
+                // are skipped and its first error is the result (H368; probes/npv-reference-forms
+                // A7, A8, A13).
+                RefArg::Value(CalcResult::Array(rows)) => {
                     for node in rows.into_iter().flatten() {
                         match node {
                             ArrayNode::Number(value) => values.push(value),
@@ -266,9 +263,9 @@ impl Model {
                         }
                     }
                 }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {}
-            };
+                RefArg::Value(error @ CalcResult::Error { .. }) => return error,
+                RefArg::Value(_) => {}
+            }
         }
         match compute_npv(rate, &values) {
             Ok(f) => CalcResult::Number(f),
