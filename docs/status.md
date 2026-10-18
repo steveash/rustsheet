@@ -47,7 +47,7 @@ Hygiene: lint-debt 91 allow entries (= last run) · duplicated lines 4,328 (ratc
 
 Since the 2026-10-17 snapshot (steward PR #988, 82bd38d), 86 commits landed on `main` through cdf7d088, touching 79 task ids. None was reverted.
 - 80 came through PRs.
-- **6 were pushed straight to `main` with no PR or review**: T-1778's research plan (6f85cc9, 4700e68, cbed44b, 80c5abc, 67da446, 226050a), all from session `01Xbmds2…`. They touch only `docs/research/t1778-erf-kernel-research-plan.md`, and CI passed on each. See "Needs owner".
+- **6 were pushed straight to `main` with no PR or review**: T-1778's research plan (6f85cc9, 4700e68, cbed44b, 80c5abc, 67da446, 226050a), all from session `01Xbmds2…`. A seventh, 892a53ca, landed during this run. They touch only `docs/research/t1778-erf-kernel-research-plan.md`, and CI passed on each. See "Needs owner".
 - Task ids merged:
   - T-0427, T-0985, T-1236, T-1237, T-1241, T-1242, T-1253, T-1271, T-1272, T-1290, T-1295, T-1297, T-1308
   - T-1347–T-1355, T-1361, T-1372, T-1383, T-1384, T-1413, T-1431, T-1517, T-1600, T-1605, T-1626, T-1631
@@ -73,7 +73,7 @@ Open PRs: 6 (9 at the end of the last run).
   - #698 (T-1486): its branch moved at 05:43 UTC today (another session merged `main` and added probe rounds), so it is live and left alone.
   - Blocked drafts with a `status: blocked` task on the branch and no branch movement: #553 (T-1284), #436 (T-1186), #409 (T-1155).
   - So no PR qualified for an orphan merge (decision 0050).
-- Under 24 h: #1066 (T-1848), and #1060 (T-1373, a draft handed off to opus).
+- Under 24 h: #1066 (T-1848, merged by its session during this run), and #1060 (T-1373, a draft handed off to opus).
 - No duplicates.
 
 Queues at the start of the run:
@@ -106,7 +106,7 @@ Spot-audit: the last one was 2026-10-16, so none is due (next on or after 2026-1
 
 ## Needs owner
 
-- **Direct pushes to `main`** (2026-10-18). Session `01Xbmds2…` pushed six T-1778 research-plan commits straight to `main`, from 6f85cc9 to 226050a, with no PR, so the reviewer agents never saw them. They are docs-only and CI passed on each, so nothing needs reverting. But `main` evidently accepts direct pushes, which bypasses the review gate this project relies on. Recommended fix: a branch ruleset on `main` that requires a pull request. The steward and workers already merge through PRs, so this changes nothing for them. If the pushes were your own interactive instruction for the external review, remove this item.
+- **Direct pushes to `main`** (2026-10-18). Session `01Xbmds2…` pushed seven T-1778 research-plan commits straight to `main`, from 6f85cc9 to 892a53ca (one during this run), with no PR, so the reviewer agents never saw them. They are docs-only and CI passed on each, so nothing needs reverting. But `main` evidently accepts direct pushes, which bypasses the review gate this project relies on. Recommended fix: a branch ruleset on `main` that requires a pull request. The steward and workers already merge through PRs, so this changes nothing for them. If the pushes were your own interactive instruction for the external review, remove this item.
 
 excel-desktop needs are not owner items (decision 0039): T-1016, T-1051 and the other desktop tasks wait in M14 (Phase 4), tracked by T-1074 and T-1075.
 
