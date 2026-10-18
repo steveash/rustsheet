@@ -3,7 +3,7 @@ id: T-1815
 title: "Probe HOUR, MINUTE and SECOND in the rounding window just below serial 2958466"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
