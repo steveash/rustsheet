@@ -3,7 +3,7 @@ id: T-1713
 title: "A legacy cell whose N lifts over an array is #VALUE!"
 milestone: M2
 lane: engine
-status: blocked
+status: in-progress
 priority: P3
 size: M
 tier: opus
@@ -51,6 +51,8 @@ T-1851's kernels make T over a one-element array `#VALUE!` (`T(IF(1,{"a"}))`), e
   (`ABS(N(IF(...)))`, `N(IF(...))+0`) and for a one-element array; IFERROR gets an `@`; SWITCH gets
   none and spills; ranges are read as references (top-left). references.md "Legacy N and T over a
   reference-returning call".
+- 2026-10-18 (claimed, engine): both dependencies are done on main, T-1727 (SPEC-0012) and T-1851
+  (the `NLegacy`/`TLegacy` kinds, 49421af1), so the task is unblocked.
 
 ## Design (SPEC-0012, 2026-10-18)
 T-1727 settled the design in docs/specs/SPEC-0012-legacy-n-t-marker.md. T-1851 adds the internal
