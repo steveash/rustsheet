@@ -91,6 +91,10 @@ Overflow: `value * F_from` is not allowed to overflow when the answer is represe
 `CONVERT(1E302,"J","J")` 1E+302. The engine divides first (`value / F_to * F_from`) when the
 product is infinite; every probed value fits, but whether Excel does this or uses extended
 precision is not distinguishable from the probes.
+Backend: excel-desktop cached values + excel-graph (probes/convert-targets).
+Status: VERIFIED (for the evidenced conversions)
+Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922, T-1297)
+Tasks: T-0922, T-1297
 
 ## CONVERT temperature
 Rule: the temperature pairs do not share one pivot unit; the last digits only fit these forms
@@ -100,8 +104,9 @@ From F: C `(v-32)*5/9`; K that plus 273.15; Reau `C*0.8`; Rank `5/9*(v+459.67)*1
 (`CONVERT(68,"F","Rank")` is 527.6700000000001). From the others, Kelvin is the pivot
 (C `v+273.15`, Rank `5v/9`, Reau `5v/4+273.15`) and out of it C is `k-273.15`, Rank `9k/5`,
 Reau `(k-273.15)*0.8`, F `(k-273.15)*9/5+32`, except Rank to F which is `9k/5-459.67`.
-Backend: excel-desktop cached values only.
-Status: VERIFIED (for the evidenced conversions)
+Each pair is fitted to two values (68, -40.5); prefixed temperature units are unprobed.
+Backend: excel-graph.
+Status: VERIFIED (for the two probed values per pair)
 Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922)
 Tasks: T-0922, T-1297
 
