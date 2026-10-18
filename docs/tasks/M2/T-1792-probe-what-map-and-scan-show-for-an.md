@@ -3,7 +3,7 @@ id: T-1792
 title: "Probe what MAP and SCAN show for an element whose LAMBDA returns a multi-cell range"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
