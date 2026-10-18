@@ -237,7 +237,7 @@ Implemented in: `Model::for_each_value` users `fn_stdev_s`/`fn_stdev_p`, `fn_var
 (`VARP(TRUE,FALSE,TRUE)`) differ in the last digit (accumulation order, like E392/F392/J392; DEVSQ is
 probably the two-pass sum, T-1749).
 An empty argument is counted as 0 by DEVSQ and AVEDEV (`DEVSQ(1,)` = `AVEDEV(1,)` = 0.5; probes/stat-order-floor-batch
-A274, A299; T-1748) and by STDEV/VAR (probes/average-value-args); SUMSQ is untested (open, T-0236).
+A274, A299; T-1748) and by STDEV/VAR (probes/average-value-args); SUMSQ is untested (open, T-1748).
 Tasks: T-0945
 
 ## MODE: a blank single-cell reference is #VALUE!; typed text and booleans are skipped
