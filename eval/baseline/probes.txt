@@ -827,6 +827,7 @@ C	probes/unknown-function-name-folds-2.case.json	64
 C	probes/unknown-function-name-folds.case.json	40
 C	probes/unknown-function-name-reach.case.json	52
 C	probes/unknown-function-name-spelling.case.json	36
+C	probes/value-argument-lift.case.json	22
 C	probes/value-clock-text.case.json	135
 C	probes/valuetotext-error-format.case.json	10
 C	probes/valuetotext-format.case.json	37
@@ -3421,9 +3422,6 @@ F	probes/textsplit-padded-size.case.json	Calc!A1
 F	probes/textsplit-padded-size.case.json	Calc!A2
 F	probes/textsplit-padded-size.case.json	Calc!A3
 F	probes/textsplit-padded-size.case.json	Calc!A4
-F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D18
-F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D19
-F	probes/volatile-and-info-rand-true-false-sheet.case.json	S!D26
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4
 F	probes/weeknum-stale-return-type.case.json	Type1!A1

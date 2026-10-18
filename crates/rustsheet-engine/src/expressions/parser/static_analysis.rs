@@ -1045,7 +1045,8 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Rightb => scalar_arguments(args),
         Function::Searchb => scalar_arguments(args),
         Function::Upper => scalar_arguments(args),
-        Function::Value => not_implemented(args),
+        // VALUE lifts element-wise (probes/value-argument-lift C1:C8, T-1791).
+        Function::Value => scalar_arguments(args),
         Function::Valuetotext => scalar_arguments(args),
         Function::Average => not_implemented(args),
         Function::Averagea => not_implemented(args),
