@@ -3,7 +3,7 @@ id: T-1851
 title: "Legacy N/T marker: internal function kinds, R1C1 spelling and a node entry for legacy formulas"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
