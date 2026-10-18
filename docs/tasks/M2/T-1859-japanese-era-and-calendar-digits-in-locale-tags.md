@@ -3,7 +3,7 @@ id: T-1859
 title: "Japanese era and calendar digits in locale tags"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
