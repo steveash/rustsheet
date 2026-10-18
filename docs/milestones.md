@@ -112,6 +112,8 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
   features count toward their own milestone, not M2 (the owner's answer to decision 0043). At
   9ad32ae1, 74 of the 2,881 F lines in eval/baseline/probes.txt were assigned M0–M2.
 - ironcalc-calc cells using only M1/M2 functions at 100%.
+  Exception (decision 0074): `LOGICAL/IF_ARRAY.xlsx` Sheet1!C11 copies the Mac desktop SIN(4), one ulp from the web value.
+  Its only open question is desktop evidence, so its M14 item (T-1075) counts as a filed task (decision 0039 rule 3).
 - One implementation of aggregate-argument iteration and criteria matching, used by every
   consumer. Duplication baseline reduced by ≥ 15%.
 
