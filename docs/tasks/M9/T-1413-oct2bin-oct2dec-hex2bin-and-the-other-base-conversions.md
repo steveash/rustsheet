@@ -3,7 +3,7 @@ id: T-1413
 title: "OCT2BIN, OCT2DEC, HEX2BIN and the other base conversions read a blank cell as 0 (#NUM! today)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ crates/rustsheet-engine/src/functions/engineering/number_basis.rs; find the shar
 
 ## Out of scope
 -
+
+## Outcome
+All nine BIN2*/OCT2*/HEX2* functions read a blank cell and empty text as 0 (probe `probes/eng-base-conv-blank`, 46 cells, all errors-free in Excel). Fixed once in `number_basis.rs` (`base_digits`, `binary_digits`). gen-m9/d244411dd90f7fbd A15 passes.

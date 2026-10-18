@@ -1,0 +1,68 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Base conversions of a blank cell, empty text and a ref to =\"\" (T-1413).",
+  "tags": [
+    "M9",
+    "engineering",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=BIN2DEC(Data!A1)",
+        "A2": "=BIN2DEC(\"\")",
+        "A3": "=BIN2DEC(Data!A2)",
+        "A4": "=BIN2OCT(Data!A1)",
+        "A5": "=BIN2OCT(Data!A1,4)",
+        "A6": "=BIN2OCT(\"\")",
+        "A7": "=BIN2OCT(\"\",4)",
+        "A8": "=BIN2OCT(Data!A2)",
+        "A9": "=BIN2OCT(Data!A2,4)",
+        "A10": "=BIN2HEX(Data!A1)",
+        "A11": "=BIN2HEX(Data!A1,4)",
+        "A12": "=BIN2HEX(\"\")",
+        "A13": "=BIN2HEX(\"\",4)",
+        "A14": "=BIN2HEX(Data!A2)",
+        "A15": "=BIN2HEX(Data!A2,4)",
+        "A16": "=OCT2BIN(Data!A1)",
+        "A17": "=OCT2BIN(Data!A1,4)",
+        "A18": "=OCT2BIN(\"\")",
+        "A19": "=OCT2BIN(\"\",4)",
+        "A20": "=OCT2BIN(Data!A2)",
+        "A21": "=OCT2BIN(Data!A2,4)",
+        "A22": "=OCT2DEC(Data!A1)",
+        "A23": "=OCT2DEC(\"\")",
+        "A24": "=OCT2DEC(Data!A2)",
+        "A25": "=OCT2HEX(Data!A1)",
+        "A26": "=OCT2HEX(Data!A1,4)",
+        "A27": "=OCT2HEX(\"\")",
+        "A28": "=OCT2HEX(\"\",4)",
+        "A29": "=OCT2HEX(Data!A2)",
+        "A30": "=OCT2HEX(Data!A2,4)",
+        "A31": "=HEX2BIN(Data!A1)",
+        "A32": "=HEX2BIN(Data!A1,4)",
+        "A33": "=HEX2BIN(\"\")",
+        "A34": "=HEX2BIN(\"\",4)",
+        "A35": "=HEX2BIN(Data!A2)",
+        "A36": "=HEX2BIN(Data!A2,4)",
+        "A37": "=HEX2DEC(Data!A1)",
+        "A38": "=HEX2DEC(\"\")",
+        "A39": "=HEX2DEC(Data!A2)",
+        "A40": "=HEX2OCT(Data!A1)",
+        "A41": "=HEX2OCT(Data!A1,4)",
+        "A42": "=HEX2OCT(\"\")",
+        "A43": "=HEX2OCT(\"\",4)",
+        "A44": "=HEX2OCT(Data!A2)",
+        "A45": "=HEX2OCT(Data!A2,4)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A2": "=\"\""
+      }
+    }
+  ],
+  "expected": {}
+}
