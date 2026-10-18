@@ -42,8 +42,27 @@ impl Model {
         handle_empty_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
         handle_non_number_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
     ) -> Result<Vec<f64>, CalcResult> {
+        let result = self.evaluate_node_in_context(arg, *cell);
+        self.array_of_numbers_from(
+            result,
+            cell,
+            accept_number_node,
+            handle_empty_cell,
+            handle_non_number_cell,
+        )
+    }
+
+    /// [`Self::get_array_of_numbers_generic`] on an argument already evaluated.
+    fn array_of_numbers_from(
+        &mut self,
+        result: CalcResult,
+        cell: &CellReferenceIndex,
+        accept_number_node: bool,
+        handle_empty_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
+        handle_non_number_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
+    ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
-        match self.evaluate_node_in_context(arg, *cell) {
+        match result {
             CalcResult::Number(value) if accept_number_node => values.push(value),
             CalcResult::Number(_) => {
                 return Err(CalcResult::new_error(
@@ -223,7 +242,7 @@ impl Model {
             // probes/npv-reference-forms). Any other value is typed: it is coerced
             // (`NPV(0.1,-10000,"2750",TRUE,4250)` is -3914.6233180793665) and text that is no
             // number is #VALUE! (probes/fin-argument-modes H368-H371; probes/npv-fvschedule-typed
-            // A5, A6, A8, A9). docs/excel-semantics/financial.md "NPV and FVSCHEDULE arguments".
+            // A5, A6, A8, A9; probes/npv-fvschedule-edges A1, A5). docs/excel-semantics/financial.md "NPV and FVSCHEDULE arguments".
             match self.evaluate_reference_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
                     if let Err(e) = self.for_each_number_in_areas(&areas, cell, |v| values.push(v))
@@ -238,22 +257,15 @@ impl Model {
                         Err(error) => return error,
                     }
                 }
+                // A written empty argument is a cash flow of 0 (probes/npv-fvschedule-edges A2).
+                RefArg::Value(CalcResult::EmptyArg) => values.push(0.0),
                 // An array is read whole: its numbers are the cash flows, its text and booleans
                 // are skipped and its first error is the result (H368; probes/npv-reference-forms
                 // A7, A8, A13).
-                RefArg::Value(CalcResult::Array(rows)) => {
-                    for node in rows.into_iter().flatten() {
-                        match node {
-                            ArrayNode::Number(value) => values.push(value),
-                            ArrayNode::Error(error) => {
-                                return CalcResult::new_error(
-                                    error,
-                                    cell,
-                                    "Error in array".to_string(),
-                                );
-                            }
-                            _ => {}
-                        }
+                RefArg::Value(array @ CalcResult::Array(_)) => {
+                    match self.array_of_numbers_from(array, &cell, true, || Ok(None), || Ok(None)) {
+                        Ok(numbers) => values.extend(numbers),
+                        Err(error) => return error,
                     }
                 }
                 RefArg::Value(error @ CalcResult::Error { .. }) => return error,
@@ -683,16 +695,19 @@ impl Model {
         };
         // Excel: text in the schedule, in a range or an array literal, is #VALUE!
         // (probes/fin-argument-modes H382-H384).
-        // A text literal that reads as a number is a one-rate schedule: `FVSCHEDULE(1000,"0.1")`
-        // is 1100, `TRUE` is #VALUE! (probes/npv-fvschedule-typed A12, A13).
-        let literal_rate = match args[1].ungrouped() {
-            Node::StringKind(text) => Some(self.cast_number(text)),
-            _ => None,
-        };
-        let parsed = match literal_rate {
-            Some(Some(rate)) => Ok(vec![rate]),
-            _ => self.get_array_of_numbers_generic(
-                &args[1],
+        // Typed text that reads as a number is a one-rate schedule: `FVSCHEDULE(1000,"0.1")`,
+        // `("0.1")` and `T("0.1")` are 1100, `"x"` and `TRUE` are #VALUE!
+        // (probes/npv-fvschedule-typed A12, A13; probes/npv-fvschedule-edges A3, A4, A6).
+        let parsed = match self.evaluate_node_in_context(&args[1], cell) {
+            CalcResult::String(text) => {
+                self.cast_number(&text)
+                    .map(|rate| vec![rate])
+                    .ok_or_else(|| {
+                        CalcResult::new_error(Error::VALUE, cell, "Expected number".to_string())
+                    })
+            }
+            result => self.array_of_numbers_from(
+                result,
                 &cell,
                 true,
                 || Ok(None),

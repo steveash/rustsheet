@@ -514,6 +514,7 @@ C	probes/near-zero-sum-forms.case.json	17
 C	probes/negative-date-sections-1900.case.json	23
 C	probes/negative-date-sections-1904.case.json	23
 C	probes/not-array-cast.case.json	38
+C	probes/npv-fvschedule-edges.case.json	6
 C	probes/npv-fvschedule-typed.case.json	16
 C	probes/npv-reference-forms.case.json	20
 C	probes/number-text-exponent-carry.case.json	9

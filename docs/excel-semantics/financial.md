@@ -720,14 +720,15 @@ ironcalc-calc FINANCIAL/NPV.xlsx K5, L5), in parentheses, after `@`, `B1:B1`, `I
 function value (`T("2750")`, `"2750"&""`, `IF(TRUE,"2750")`, `VLOOKUP("2750",B1:B2,1,FALSE)` with a literal column
 index), and a name whose body is a text or boolean constant (-3625.0939143501128, -5896.994740796395). A computed
 array is read like a literal: `NPV(0.1,SEQUENCE(3))` is 4.815927873779113, `B3:B4*1` -5578.512396694214, and
-`NPV(0.1,{1,#N/A})` is `#N/A`.
+`NPV(0.1,{1,#N/A})` is `#N/A`. A written empty argument is a cash flow of 0 (`NPV(0.1,-10000,,4250)` is
+-5897.821187077386), and errors and typed text count left to right (`NPV(0.1,"x",#N/A)` is `#VALUE!`,
+`NPV(0.1,#N/A,"x")` `#N/A`).
 FVSCHEDULE is `#VALUE!` when the schedule holds text or a boolean, in a range (`N1:N2` with `"0.11"`, `C1:C2` with
-TRUE) or in an array literal (`{0.09,"0.11"}`); a text literal that reads as a number is a one-rate schedule
-(`FVSCHEDULE(1000,"0.1")` is 1100) while `TRUE` is `#VALUE!`.
+TRUE) or in an array literal (`{0.09,"0.11"}`); typed text that reads as a number is a one-rate schedule
+(`FVSCHEDULE(1000,"0.1")`, `("0.1")` and `T("0.1")` are 1100) while `"x"` and `TRUE` are `#VALUE!`.
 Evidence: probes/fin-argument-modes H368, H370, H371, H382-H384; probes/npv-fvschedule-typed A1-A16;
-probes/npv-reference-forms A1-A20;
+probes/npv-reference-forms A1-A20; probes/npv-fvschedule-edges A1-A6;
 probes/fin-fvschedule A3, A4, A13, A14, A16, A19 (excel-graph, T-1084, T-1373, T-1625).
-Not probed: typed text in an FVSCHEDULE schedule that is a function result.
 Backend: excel-graph.
 Status: VERIFIED (excel-graph)
 Implemented in: `fn_npv`, `fn_fvschedule` in functions/financial/mod.rs (T-1373)
