@@ -518,7 +518,7 @@ Open routes for [0.5, 4]:
 1. Find the construction that generated the coefficients. Small-x erf and the tail also defied published sources.
 2. A global exact-match optimisation over 15 coefficients plus lambda, from a better start than least squares.
 3. A side channel exposing N or D separately.
-4. Engine work (T-1780) can already ship ERF for x <= 0.5, the ERFC tail, and EXP V6. [0.5, 4] would use the best
+4. Engine work (T-1916; the earlier "T-1780" here was a wrong id) can already ship ERF for x <= 0.5, the ERFC tail, and EXP V6. [0.5, 4] would use the best
    smooth model until it is cracked.
 
 ### Research update 9 (2026-10-18): the [0.5, 4] kernel is a (9,10) Remez rational
@@ -585,5 +585,6 @@ The last mystery, the [0.5, 4] ERFC kernel, is cracked.
 | Negative x, ERF(a, b), NORM.S.DIST, CHISQ df 1 | Exact wrapper identities over the kernels (statistics.md). |
 | Excel EXP (feeds ERFC above 0.5) | Model V6: 2,139,591 / 2,139,684. The 93 misses are F2XM1 near-ties, possibly CPU-dependent. This is the only open piece. |
 
-Next: engine work (T-1780) can ship all of ERF/ERFC. The remaining risk is EXP's 93 near-tie cells, which affect
+Next: engine work (T-1916, widened from the tail to all of ERF/ERFC) can ship all of ERF/ERFC. Lessons for other
+kernels are in `docs/research/excel-kernel-playbook.md`. The remaining risk is EXP's 93 near-tie cells, which affect
 ERFC only where E itself lands on one of them.
