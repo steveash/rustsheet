@@ -357,8 +357,8 @@ probes/xirr-early-dates A1-A16 (excel-graph, 2026-10-08, T-1124).
 Status: VERIFIED (these cells). XNPV matches since T-1114 (the used-area clip applies the empty-cell
 error to the cells it skips, `get_array_of_numbers_generic`). XIRR follows the empty-as-0, date-range
 and later-date rules since T-1124. Its values still miss in the last digits (the early stop above).
-The zero-first-value result and the date-0-first root (the engine does not converge there, `#NUM!`)
-are open (T-1155).
+The zero-first-value result and the date-0-first root match since T-1583 and T-0916 (the solver entry
+"XIRR is a bracketing bisection, not Newton" above; T-1155 done).
 Tasks: T-1114, T-1124
 
 ## Financial function argument modes

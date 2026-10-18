@@ -251,7 +251,10 @@ T-1187 candidate script (2026-10-11), now the fit lab's `erfc-tail` fit (T-1523,
 tools/src/rustsheet_tools/fitlab/kernels/erfc.py; `uv run rustsheet-fitlab erfc-tail` in tools/ reprints the
 counts above: best 57, 58, 38 and 4, union 174/205 over the four T-1187 families; the command's last union
 row, 177/205, also counts libm and the engine). The engine today: 44/205 bit-exact, 203/205 within 4 ulp.
-Status: OPEN (no candidate found); T-1186 stays blocked.
+Status: superseded for 4 < x <= 26.55. T-1778 (docs/research/t1778-erf-kernel-research-plan.md, research
+updates 4 and 7) finds ERFC(x) = fl(E*R) there, with E = Excel's EXP(-fl(x*x)) and R = N/D a stored-Horner
+(8,9) rational: bit-exact on 1,540,475 of 1,540,477 probed points. That rules out every family above. The
+engine change is T-1916, which closes T-1186. [0.5, 4] is still OPEN (T-1778, update 9).
 
 ## RANK of a non-reference array
 Rule: RANK, RANK.EQ and RANK.AVG need a reference as their second argument. An array that is not a reference
