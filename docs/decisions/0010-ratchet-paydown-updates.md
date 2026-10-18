@@ -168,5 +168,8 @@
   copies of the argument reading and checks, and the lift tests share `check_cells` and `round_trip_value` in
   test/util.rs) (`check_duplication.py --update`), and expressions/parser/static_analysis.rs 1146 → 1142 lines (the
   4 fallback lines of AMORDEGRC and AMORLINC now in the lifting table) (`check_file_size.py --update`).
+  T-1873: expressions/parser/static_analysis.rs 1142 → 1137 lines (the 4 fallback lines of HYPGEOM.DIST and
+  HYPGEOMDIST now in the lifting table, and the comment heading the one of them that was a compatibility wrapper)
+  (`check_file_size.py --update`); duplicated lines unchanged at 3903.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
