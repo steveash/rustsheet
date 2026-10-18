@@ -30,6 +30,10 @@ with statrs' Lanczos `ln_gamma` in the prefactor), reached through `statrs::dist
 (C = NumericClose, unmarked = NumericUlp. 17 of these lines (16 in GAMMA.xlsx plus BETA_GAMMA L5) are
 `GAMMA.DIST(10,9,2,TRUE)`, so one fix moves many lines.)
 
+Also in probes (scalar cells beside the T-1872 lift cells, unchanged by it): probes/stat-argument-modes H132
+`CHIDIST(1.5,5)` and H136 `CHISQ.DIST.RT(1.5,5)` expected 0.9130698145443954, actual 0.9130698145443957 (NumericUlp);
+H152 `CHISQ.DIST(1.5,5,TRUE)` expected 0.08693018545560456, actual 0.0869301854556043 (NumericClose).
+
 Examples (expected vs actual):
 - `GAMMA.DIST(10,9,2,TRUE)` E2 (17 lines with this value): expected 0.06809363472184855, actual 0.06809363472184732 (1.8e-14).
 - `GAMMA.DIST(1,1,1,TRUE)` BETA_GAMMA L2 / GAMMA.xlsx E4, E6: expected 0.6321205588285577 (= 1 - exp(-1)

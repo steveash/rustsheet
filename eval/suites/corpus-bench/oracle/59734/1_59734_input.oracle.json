@@ -1,0 +1,74 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "B10": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B11": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B12": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B13": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B14": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B15": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B16": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B2": {
+    "t": "s",
+    "v": "CHSP-AH-CC"
+   },
+   "B3": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B4": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B5": {
+    "t": "s",
+    "v": "HCPNL3-HU"
+   },
+   "B6": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B7": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B8": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B9": {
+    "t": "e",
+    "v": "#NUM!"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "1f755858d90cec0be55b309365eac65c918ffddc22e7fa10bc4e11f6aafb1da2",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:54:56+00:00",
+  "version": null
+ }
+}

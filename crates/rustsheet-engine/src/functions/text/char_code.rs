@@ -151,18 +151,22 @@ impl Model {
     /// CLEAN(text) — removes code points 0-31 and the C1 controls 128-159, and nothing else
     /// (docs/excel-semantics/text.md#clean-and-code-scalar-edges).
     pub(crate) fn fn_clean(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.apply_text_unary(args, cell, |s| {
-            s.chars()
-                .filter(|&c| !matches!(c as u32, 0..=31 | 128..=159))
-                .collect()
+        self.try_apply_text_unary_text(args, cell, |text| {
+            super::common::reject_over_limit(text)?;
+            Ok(text.map_runs(|s| {
+                s.chars()
+                    .filter(|&c| !matches!(c as u32, 0..=31 | 128..=159))
+                    .collect()
+            }))
         })
     }
 
-    /// ASC(text) — For non-DBCS locales, returns text unchanged.
-    /// Full-width to half-width conversion is only meaningful in DBCS locales. Lifts over a
-    /// range or array, one result per element (probes/text-modes-dbcs-lift, T-1248; T-1411).
+    /// ASC(text) — text unchanged in en-US: full-width letters, the ideographic space and
+    /// punctuation are not narrowed (probes/t1626-asc, docs/excel-semantics/text.md "ASC and JIS
+    /// in en-US", T-1863). Lifts over a range or array, one result per element
+    /// (probes/text-modes-dbcs-lift, T-1248; T-1411).
     pub(crate) fn fn_asc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.apply_text_unary(args, cell, asc_convert)
+        self.apply_text_unary(args, cell, str::to_owned)
     }
 
     /// DBCS(text) — text unchanged: en-US Excel for the web does not widen it
@@ -185,22 +189,4 @@ impl Model {
             "PHONETIC has no phonetic text to return".to_string(),
         )
     }
-}
-
-/// Converts full-width Unicode characters to their ASCII half-width equivalents.
-/// Full-width Latin/ASCII: U+FF01–U+FF5E → U+0021–U+007E
-/// Full-width space: U+3000 → U+0020
-fn asc_convert(text: &str) -> String {
-    text.chars()
-        .map(|c| {
-            let cp = c as u32;
-            if cp == 0x3000 {
-                ' '
-            } else if (0xFF01..=0xFF5E).contains(&cp) {
-                char::from_u32(cp - 0xFF01 + 0x0021).unwrap_or(c)
-            } else {
-                c
-            }
-        })
-        .collect()
 }

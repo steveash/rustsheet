@@ -155,21 +155,31 @@ pub(super) fn remove_array_at(
 /// or array constant there rather than on an enclosing call: a scalar argument of a function that
 /// computes from it (`=ABS(@IF(1,{-2;3}))`, `=LEN(@IF(1,{"ab";"c"}))`, `=N(@TRANSPOSE({2,3}))`,
 /// `=N(@IFERROR({2;3},0))`; probes/legacy-array-result, legacy-n-t-reference-args D, T-1713).
-/// Not the arguments of IF, IFERROR, IFNA, CHOOSE, IFS or SWITCH, whose result is one of them:
-/// `=@IF(1,{2;3})` and `=@IF(1,N(IF(1,{2;3})))` take the `@` on the call (probes/legacy-array-result
-/// D, legacy-n-t-reference-args P); nor N or T over IF or SWITCH ([`leaves_call_whole`]); nor
+/// Not the arguments of IF, IFERROR, IFNA, CHOOSE (but its index, [`is_choose_index`]), IFS or
+/// SWITCH, whose result is one of them: `=@IF(1,{2;3})` and `=@IF(1,N(IF(1,{2;3})))` take the
+/// `@` on the call (probes/legacy-array-result D, legacy-n-t-reference-args P); nor N or T over IF
+/// or SWITCH ([`leaves_call_whole`]); nor
 /// anything under a vector argument, `=SUM(N({1,2}))` (probes/n-array-lift A3) or LET, LAMBDA.
 pub(super) fn legacy_array_context(
     kind: &Function,
     signature: Option<&Signature>,
+    index: usize,
     arg: &Node,
     arrays: bool,
 ) -> bool {
     arrays
         && matches!(signature, Some(Signature::Scalar))
-        && !returns_an_argument(kind)
+        && (!returns_an_argument(kind) || is_choose_index(kind, index))
         && !matches!(kind, Function::Let | Function::Lambda)
         && !leaves_call_whole(kind, arg)
+}
+
+/// CHOOSE's index is the one argument it computes from rather than returns, so a legacy formula
+/// intersects an array constant there as in any scalar argument: `=CHOOSE({1,2},H1:H2,I1:I2)` is
+/// shown as `=@CHOOSE(@{1,2},H1:H2,I1:I2)`, 3 on the arms' first row and `#VALUE!` off them
+/// (probes/legacy-choose-array-index, excel-graph, T-1882).
+fn is_choose_index(kind: &Function, index: usize) -> bool {
+    matches!(kind, Function::Choose) && index == 0
 }
 
 /// Whether `kind`'s result is one of its arguments as it is: IF, IFERROR, IFNA, CHOOSE, IFS and
@@ -214,7 +224,7 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
         Node::ImplicitIntersection { child, .. } => child.as_ref(),
         other => other,
     };
-    matches!(kind, Function::N | Function::T)
+    kind.is_n_or_t()
         && matches!(
             call,
             Node::FunctionKind {
@@ -290,7 +300,7 @@ fn reads_reference(kind: &Function, arg: &Node) -> bool {
 /// Whether `arg` is an argument of N or T that is a reference it reads whole, with nothing in
 /// it to intersect: the `@` of a range or of an IF arm in it is not added either.
 pub(super) fn reads_reference_whole(kind: &Function, arg: &Node) -> bool {
-    matches!(kind, Function::N | Function::T) && is_plain_reference(arg)
+    kind.is_n_or_t() && is_plain_reference(arg)
 }
 
 /// Whether `node` is a reference N or T reads whole, in the shapes probed: a range or cell, an

@@ -223,7 +223,10 @@ impl Model {
 
     /// PROPER(text) — Converts text to title case (first letter of each word uppercase).
     pub(crate) fn fn_proper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.apply_text_unary(args, cell, proper_case)
+        self.try_apply_text_unary_text(args, cell, |text| {
+            super::common::reject_over_limit(text)?;
+            Ok(text.map_runs(proper_case))
+        })
     }
 
     /// `REPLACE(old_text`, `start_num`, `num_chars`, `new_text`)
@@ -277,6 +280,7 @@ fn replace_element(
     let start_num = start_num?;
     let num_chars = num_chars?;
     let new_text = array_node_to_text(new_text)?;
+    super::common::reject_over_limit(&old_text)?;
     // Excel: both numbers count as whole like LEFT's (near an integer they round up, so
     // `REPLACE(t,1-2E-7,1,"z")` starts at 1) and either one above 32,767 is #VALUE!, even
     // past the end of a short text (probes/text-count-argument-bounds J, K, U, F22, F24).

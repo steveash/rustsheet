@@ -791,6 +791,13 @@ fn a_row_of_functions_adds_columns_under_their_names() {
         3,
     );
     assert_eq!(grid, [["", "SUM", "CUSTOM"], ["East", "45", "3"]]);
+    // probes/groupby-custom-labels G!A41: several LAMBDAs are numbered, the named function is not.
+    let grid = grouped(
+        "=GROUPBY(A2:A11,B2:B11,HSTACK(LAMBDA(x,ROWS(x)),_xleta.SUM,LAMBDA(x,MAX(x))))",
+        2,
+        4,
+    );
+    assert_eq!(grid[0], ["", "CUSTOM1", "SUM", "CUSTOM2"]);
     let grid = grouped(
         "=GROUPBY(A1:A11,B1:B11,HSTACK(_xleta.SUM,_xleta.MAX))",
         3,

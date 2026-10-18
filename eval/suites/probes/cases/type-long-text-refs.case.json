@@ -1,0 +1,29 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1817: TYPE and ERROR.TYPE of a cell holding text over 255 units, and ERROR.TYPE lifted over long text.",
+  "tags": [
+    "M2",
+    "probe",
+    "T-1817",
+    "type",
+    "error.type"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "A2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "B1": "=TYPE(A1)",
+        "B2": "=ERROR.TYPE(A1)",
+        "B3": "=TYPE(A2)",
+        "B4": "=ERROR.TYPE(A2)",
+        "B5": "=INDEX(ERROR.TYPE(A1:A2),1)",
+        "B6": "=INDEX(ERROR.TYPE(A1:A2),2)",
+        "B7": "=TYPE(A1:A2)",
+        "B8": "=INDEX(ERROR.TYPE({\"x\",1}&REPT(\"a\",300)),1)"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -1,0 +1,99 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "book1": {
+   "B10": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B11": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B12": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B13": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B14": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B15": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B16": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B17": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B18": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B19": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B20": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B21": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B22": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B23": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B3": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B4": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B5": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B6": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B7": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B8": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B9": {
+    "t": "e",
+    "v": "#SPILL!"
+   }
+  },
+  "book2": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "87c4744e15aa5cf548c41ef9ca73f985578948c252a2030decfa6e5e5d3c1bba",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:45:32+00:00",
+  "version": null
+ }
+}

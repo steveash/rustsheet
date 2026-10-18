@@ -31,6 +31,7 @@ pub(crate) enum ArgKind {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum KernelWork {
     /// O(1), or a loop with a fixed iteration cap that does not depend on argument values.
+    /// A value-dependent kernel names that cap in `lift/tests/kernel_work.rs` (T-1893).
     Constant,
     /// A loop whose length depends on argument values. One call is charged `weight` units
     /// against the visit cap, and the kernel also keeps its own per-call cap, as T-1197 bounds
@@ -248,6 +249,46 @@ const T_INV: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(T_QUANTILE_WE
 const CONFIDENCE_T: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(T_QUANTILE_WEIGHT));
 // --- End statistical quantiles (T-1848) -----------------------------------------------------
 
+// --- Incomplete gamma (T-1872) --------------------------------------------------------------
+/// What one GAMMA.DIST, GAMMA.INV, CHISQ.* or POISSON element is charged. Each runs one capped
+/// port of statrs' incomplete gamma (`statistical/incomplete_gamma.rs`): a cdf of at most 2^19
+/// series or continued-fraction terms, or an inversion whose cdfs (at most about 2,120 of them:
+/// 1,075 halvings, 1,025 doublings, 8 bisections, 4 Newton steps) share one budget of 2^19
+/// terms. Measured in release (T-1872, load 2 to 5 on 4 cores) over 512 elements at the cap: a
+/// continued-fraction term costs 4.1 to 4.7 ns on its NaN path (2.4 ms for 2^19,
+/// `GAMMA.DIST(1.0000001E300,1E300,1,TRUE)`, whose terms overflow at once) and 2.4 ns where it
+/// converges and rescales (1.3 ms, `GAMMA.DIST(1000000000000001,1E15,1,TRUE)`, which reaches the
+/// cap at a shape of 1E15 and rescales on about 65% of its terms), a series term 2.5 ns (1.3 ms,
+/// `GAMMA.DIST(1E12,1E12,1,TRUE)`), and a cdf's own work 49 ns (`GAMMA.INV(1E-300,0.001,1E-300)`,
+/// 1,060 cdfs: 52 us). The bound of an element is 2^19 terms at the slowest, 4.7 ns, plus 2,120 cdfs
+/// at 49 ns, about 2.6 ms, so the weight caps a lifted call at 2^27 / 2^18 = 512 elements: 1.3 s
+/// at the bound (a DEVIATION, statistics.md). Measured cases cost less: 2.4 ms for the
+/// continued fraction at the cap, 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)` (481,117 terms),
+/// 1.6 us for `GAMMA.INV(0.4,2,3)`.
+const INCOMPLETE_GAMMA_WEIGHT: u32 = 1 << 18;
+/// `CHISQ.DIST.RT(x, deg_freedom)`, CHIDIST, `CHISQ.INV(probability, deg_freedom)`,
+/// CHISQ.INV.RT and CHIINV.
+const CHISQ_2: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(INCOMPLETE_GAMMA_WEIGHT));
+/// `CHISQ.DIST(x, deg_freedom, cumulative)`, `POISSON.DIST(x, mean, cumulative)`, POISSON,
+/// `GAMMA.INV(probability, alpha, beta)` and GAMMAINV.
+const INCOMPLETE_GAMMA_3: ArgKinds =
+    ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(INCOMPLETE_GAMMA_WEIGHT));
+/// `GAMMA.DIST(x, alpha, beta, cumulative)` and GAMMADIST.
+const GAMMA_DIST: ArgKinds = ArgKinds::fixed(
+    4,
+    &[Lift, Lift, Lift, Lift],
+    Weighted(INCOMPLETE_GAMMA_WEIGHT),
+);
+// --- End incomplete gamma (T-1872) ----------------------------------------------------------
+
+// --- Hypergeometric (T-1873) ----------------------------------------------------------------
+/// One HYPGEOM.DIST element: its capped cdf's bound, (2^18 + 131) terms at 250 ns, about 66 ms, so
+/// 32 elements take about 2.1 s (a DEVIATION; measured in release: hypegeom.rs `MAX_TERMS`).
+const HYPGEOM_DIST_WEIGHT: u32 = 1 << 22;
+const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(5, &[Lift; 5], Weighted(HYPGEOM_DIST_WEIGHT));
+const HYPGEOMDIST: ArgKinds = ArgKinds::fixed(4, &[Lift; 4], Constant);
+// --- End hypergeometric (T-1873) ------------------------------------------------------------
+
 // --- Financial ATP (T-1822) -----------------------------------------------------------------
 /// What one walk of a coupon schedule is charged: the walk steps one coupon period at a time
 /// from the maturity back to the settlement (or from the first interest date to the issue), at
@@ -347,6 +388,58 @@ const ODD_LAST: ArgKinds = ArgKinds::fixed(
     Weighted(2 * COUPON_WALK_WEIGHT),
 );
 // --- End financial ATP (T-1842) -------------------------------------------------------------
+
+// --- Financial ATP (T-1845) -----------------------------------------------------------------
+/// What one CUMIPMT or CUMPRINC element is charged: the derived bound of its kernel, at most
+/// `CUMULATIVE_LOOP_PERIODS` (32) PPMT steps of three powers each and then, when a power
+/// overflows on the last step, the closed form (a few `exp`s), about 2.9 us an element in a
+/// release build (2^19 elements of `CUMPRINC(..,1024,1E307*15.98,1,32,0)`, whose last step
+/// overflows, took 1.53 s; 32 full steps of type 1 1.51 s). 2^8 units run at most 2^19
+/// elements, about 1.5 s. docs/excel-semantics/financial.md "CUMIPMT and CUMPRINC over many
+/// periods" (a DEVIATION).
+const CUMULATIVE_WEIGHT: u32 = 1 << 8;
+/// `CUMIPMT(rate, nper, pv, start_period, end_period, type)` and CUMPRINC, whatever the period
+/// count (functions/financial/cumulative.rs).
+const CUMULATIVE: ArgKinds = ArgKinds::fixed(
+    6,
+    &[
+        LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
+    ],
+    Weighted(CUMULATIVE_WEIGHT),
+);
+// --- End financial ATP (T-1845) -------------------------------------------------------------
+
+// --- Financial ATP (T-1841) -----------------------------------------------------------------
+/// What one AMORLINC element is charged, priced from its cap: at most `LINEAR_STEP_CAP` (1,024)
+/// single subtractions (functions/financial/amortization.rs `linear_charge`; the longest real walk
+/// takes 616). A step costs about 7.7 ns in a release build (2^18 elements of
+/// `AMORLINC(..,2400,..,300,9E15,1.08E-16,1)`, 613 steps each, within 1% of the longest, took
+/// 1.23 s, 4.7 us an element), so a walk at the cap is about 7.9 us and 2^9 units run at most
+/// 2^18 elements, about 2.1 s. docs/excel-semantics/financial.md "AMORLINC and AMORDEGRC work
+/// cap" (a DEVIATION).
+const AMORLINC_WEIGHT: u32 = 1 << 9;
+/// What one AMORDEGRC element is charged: at most `DEGRESSIVE_LOOP_PERIODS` (2^20) periods
+/// walked one by one, then a closed form, about 4 ms an element in a release build (512 elements
+/// of `AMORDEGRC(1E15,..,1,5E6,1E-7,1)`, whose walk takes no shortcut, took 2.06 s). 2^18 units
+/// run at most 512 elements, about 2 s.
+const AMORDEGRC_WEIGHT: u32 = 1 << 18;
+/// `AMORLINC(cost, date_purchased, first_period, salvage, period, rate, [basis])`.
+const AMORLINC: ArgKinds = ArgKinds::fixed(
+    6,
+    &[
+        LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
+    ],
+    Weighted(AMORLINC_WEIGHT),
+);
+/// `AMORDEGRC(cost, date_purchased, first_period, salvage, period, rate, [basis])`.
+const AMORDEGRC: ArgKinds = ArgKinds::fixed(
+    6,
+    &[
+        LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
+    ],
+    Weighted(AMORDEGRC_WEIGHT),
+);
+// --- End financial ATP (T-1841) -------------------------------------------------------------
 
 /// The functions of [`Function::arg_kinds`], as a pattern: the arm of an exhaustive `match` on a
 /// `Function` that has no hand-written arm because the table derives it (static analysis).
@@ -492,6 +585,14 @@ macro_rules! lifting_table_functions {
             | Function::Oddlprice
             | Function::Oddlyield
             // --- End financial ATP (T-1842) ---
+            // --- Financial ATP (T-1845) ---
+            | Function::Cumipmt
+            | Function::Cumprinc
+            // --- End financial ATP (T-1845) ---
+            // --- Financial ATP (T-1841) ---
+            | Function::Amorlinc
+            | Function::Amordegrc
+            // --- End financial ATP (T-1841) ---
             // --- Statistical (T-1290) ---
             | Function::BetaDist
             | Function::BetaDistCompat
@@ -549,6 +650,22 @@ macro_rules! lifting_table_functions {
             | Function::TInvCompat
             | Function::ConfidenceT
             // --- End statistical quantiles (T-1848) ---
+            // --- Incomplete gamma (T-1872) ---
+            | Function::ChisqDist
+            | Function::ChisqDistRT
+            | Function::ChiDistCompat
+            | Function::ChisqInv
+            | Function::ChisqInvRT
+            | Function::ChiInvCompat
+            | Function::GammaDist
+            | Function::GammaDistCompat
+            | Function::GammaInv
+            | Function::GammaInvCompat
+            | Function::PoissonDist
+            | Function::PoissonCompat
+            // --- End incomplete gamma (T-1872) ---
+            | Function::HypGeomDist // T-1873
+            | Function::HypGeomDistCompat
     };
 }
 pub(crate) use lifting_table_functions;
@@ -760,6 +877,25 @@ impl Function {
             Function::Oddfyield => Some(&ODDFYIELD),
             Function::Oddlprice | Function::Oddlyield => Some(&ODD_LAST),
             // --- End financial ATP (T-1842) ---
+            // --- Financial ATP (T-1845) ---
+            // Analysis ToolPak functions, as the T-1822 ones: every argument lifts over an array
+            // (probes/fin-argument-modes H73-H87; fin-remaining-later-argument-ranges K11) and
+            // refuses a multi-cell range, also on the range's own rows (fin-argument-modes H74,
+            // H82; fin-remaining-later-argument-ranges H65-H84, each with its intersected control
+            // in I; docs/excel-semantics/financial.md "Financial function argument modes"). Their
+            // period sums are bounded ("CUMIPMT and CUMPRINC over many periods").
+            Function::Cumipmt | Function::Cumprinc => Some(&CUMULATIVE),
+            // --- End financial ATP (T-1845) ---
+            // --- Financial ATP (T-1841) ---
+            // Analysis ToolPak functions, as the T-1822 ones: every argument lifts over an array
+            // (probes/fin-argument-modes H19, H21-H26, H28, H30-H35) and refuses a multi-cell
+            // range, also on the range's own rows (fin-argument-modes H20, H29;
+            // fin-remaining-later-argument-ranges H11-H34, each with its intersected control in
+            // I). Their period walks are bounded (docs/excel-semantics/financial.md "AMORLINC and
+            // AMORDEGRC over many periods").
+            Function::Amorlinc => Some(&AMORLINC),
+            Function::Amordegrc => Some(&AMORDEGRC),
+            // --- End financial ATP (T-1841) ---
             // --- Statistical (T-1290) ---
             // The statistical functions whose every argument is scalar are worksheet functions:
             // every argument lifts over an array and over a multi-cell range, on the range's own
@@ -774,10 +910,8 @@ impl Function {
             // slowest, BINOM.DIST with 1E18 trials, about 3.2 us (3.3 s for 2^20 elements), and
             // BINOM.DIST.RANGE, which runs two cdfs, 6.4 us (6.7 s for 2^20 elements).
             // PERMUT multiplies at most 171 factors whatever its arguments (0.22 us). The
-            // quantile searches of BETA.INV, F.INV and T.INV are entered below (T-1848); the
-            // incomplete-gamma functions and their searches (CHISQ.*, GAMMA.DIST, GAMMA.INV,
-            // POISSON; TODO(T-1872)) and HYPGEOM.DIST's cdf sum (TODO(T-1873)) loop by value with
-            // no per-call cap of their own, so they are not entered yet.
+            // quantile searches of BETA.INV, F.INV and T.INV (T-1848), the incomplete-gamma
+            // functions (T-1872) and HYPGEOM.DIST's capped cdf sum (T-1873) are entered below.
             Function::Gauss
             | Function::Phi
             | Function::Fisher
@@ -836,6 +970,30 @@ impl Function {
             Function::TInv | Function::TInv2T | Function::TInvCompat => Some(&T_INV),
             Function::ConfidenceT => Some(&CONFIDENCE_T),
             // --- End statistical quantiles (T-1848) ---
+            // --- Incomplete gamma (T-1872) ---
+            // As the statistical functions above: every argument lifts over an array and a range,
+            // on the range's own rows (probes/stat-argument-modes H132-H156, H293-H314,
+            // H476-H485; probes/stat-quantile-lift H27-H50: the last argument over a range). The
+            // incomplete gamma and its search keep a per-call cap of their own
+            // (`statistical/incomplete_gamma.rs`), so the entries are weighted by its bound
+            // (statistics.md "Incomplete gamma: per-call cap and lifting").
+            Function::ChisqDistRT
+            | Function::ChiDistCompat
+            | Function::ChisqInv
+            | Function::ChisqInvRT
+            | Function::ChiInvCompat => Some(&CHISQ_2),
+            Function::ChisqDist
+            | Function::PoissonDist
+            | Function::PoissonCompat
+            | Function::GammaInv
+            | Function::GammaInvCompat => Some(&INCOMPLETE_GAMMA_3),
+            Function::GammaDist | Function::GammaDistCompat => Some(&GAMMA_DIST),
+            // --- End incomplete gamma (T-1872) ---
+            // --- Hypergeometric (T-1873) ---
+            // As above (stat-argument-modes H330-H342, stat-quantile-lift H51-H54).
+            Function::HypGeomDist => Some(&HYPGEOM_DIST),
+            Function::HypGeomDistCompat => Some(&HYPGEOMDIST),
+            // --- End hypergeometric (T-1873) ---
             _ => None,
         }
     }

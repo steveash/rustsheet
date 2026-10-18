@@ -1,0 +1,62 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A3": {
+    "t": "s",
+    "v": "=@CHOOSE(@{1,2},H1:H2,I1:I2)"
+   },
+   "A5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A7": {
+    "t": "s",
+    "v": "=@CHOOSE(@{1,2},H1:H2,I1:I2)"
+   },
+   "B1": {
+    "t": "n",
+    "v": 3.0
+   },
+   "B3": {
+    "t": "s",
+    "v": "=@CHOOSE(1,H1:H2,I1:I2)"
+   },
+   "B5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B7": {
+    "t": "s",
+    "v": "=@CHOOSE(1,H1:H2,I1:I2)"
+   },
+   "C1": {
+    "t": "n",
+    "v": 21.0
+   },
+   "C3": {
+    "t": "s",
+    "v": "=SUM(CHOOSE({1,2},H1:H2,I1:I2))"
+   },
+   "C5": {
+    "t": "n",
+    "v": 2.0
+   },
+   "C7": {
+    "t": "s",
+    "v": "=ROWS(CHOOSE({1,2},H1:H2,I1:I2))"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "2b640e9494e25db3e5c2192ecf7060dbf1e8870e385c816e2ca0c1ca56b35bcb",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T14:40:26+00:00",
+  "version": null
+ }
+}

@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 
 use libfuzzer_sys::fuzz_target;
+use rustsheet_engine::expressions::lexer::LexerMode;
 use rustsheet_engine::expressions::parser::new_parser_english;
 use rustsheet_engine::expressions::parser::stringify::{
     to_english_string, to_excel_string, to_rc_format,
@@ -31,7 +32,12 @@ fuzz_target!(|data: &[u8]| {
     let node = parser.parse(formula, &context);
     let english = to_english_string(&node, &context);
     let _ = to_excel_string(&node, &context);
-    let _ = to_rc_format(&node);
+    let stored = to_rc_format(&node);
     // Re-parsing printed output exercises the printer's quoting and parenthesisation.
     let _ = parser.parse(&english, &context);
+    // Stored (R1C1) text: a model file may hold any text there, and every stored form must parse
+    // back (the legacy N/T spelling and a stored parse error among them, SPEC-0012, T-1805).
+    parser.set_lexer_mode(LexerMode::R1C1);
+    let _ = parser.parse(formula, &context);
+    let _ = parser.parse(&stored, &context);
 });

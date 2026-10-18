@@ -12,8 +12,8 @@ use super::{
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::static_analysis::remove_redundant_implicit_intersection;
 use crate::expressions::token::OpUnary;
-use crate::language::{get_language, Language};
-use crate::locale::{get_locale, Locale};
+use crate::language::{get_default_language, Language};
+use crate::locale::{get_default_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 use bound_variables::{callee_text, prefix_bound_variables, variable_text};
 
@@ -66,18 +66,15 @@ const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
 /// This is the internal mode in IronCalc
 /// Formulas internally are stored in R1C1 format, the locale and language are always "en"
 pub fn to_rc_format(node: &Node) -> String {
-    #[allow(clippy::expect_used)]
-    let locale = get_locale("en").expect("");
-    #[allow(clippy::expect_used)]
-    let language = get_language("en").expect("");
-    stringify(node, None, &NO_REWRITE, false, locale, language)
+    // A parse error is stored marked, so a re-parse in R1C1 does not read its A1 text (T-1805).
+    super::unparsed::stored_text(node).unwrap_or_else(|| {
+        let (locale, language) = (get_default_locale(), get_default_language());
+        stringify(node, None, &NO_REWRITE, false, locale, language)
+    })
 }
 
 pub fn to_english_string(node: &Node, context: &CellReferenceRC) -> String {
-    #[allow(clippy::expect_used)]
-    let locale = get_locale("en").expect("");
-    #[allow(clippy::expect_used)]
-    let language = get_language("en").expect("");
+    let (locale, language) = (get_default_locale(), get_default_language());
     stringify(node, Some(context), &NO_REWRITE, false, locale, language)
 }
 
@@ -107,10 +104,7 @@ pub fn to_excel_array_formula_string(node: &Node, context: &CellReferenceRC) -> 
 }
 
 fn excel_string(node: &Node, context: &CellReferenceRC, is_array_formula: bool) -> String {
-    #[allow(clippy::expect_used)]
-    let locale = get_locale("en").expect("");
-    #[allow(clippy::expect_used)]
-    let language = get_language("en").expect("");
+    let (locale, language) = (get_default_locale(), get_default_language());
     // The internal representation stores every implicit intersection as `@`,
     // without the `automatic` flag. Drop the operators that Excel would re-insert
     // automatically on import; the rest are kept as `_xlfn.SINGLE` while
@@ -676,10 +670,11 @@ fn stringify(
             language,
         ),
         FunctionKind { kind, args } => {
-            let name = if export_to_excel {
-                kind.to_xlsx_string()
-            } else {
-                kind.to_localized_name(language)
+            let name = match kind.legacy_spelling() {
+                // Only the R1C1 storage text (no context) shows a legacy N or T (SPEC-0012).
+                Some(spelling) if context.is_none() => spelling.to_string(),
+                _ if export_to_excel => kind.to_xlsx_string(),
+                _ => kind.to_localized_name(language),
             };
             format_function(
                 &name,

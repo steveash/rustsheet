@@ -1,0 +1,45 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1817: REGEXREPLACE results at and past the 32,767-character limit (A1-A11), the replacement syntax ($, $$, ${1}, named groups; A12-A18) and whether \\w, \\b, \\pL are Unicode (A19-A25).",
+ "tags": [
+  "M7",
+  "probe",
+  "T-1817",
+  "regexreplace",
+  "regextest",
+  "regexextract"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=LEN(REGEXREPLACE(REPT(\"a\",32767),\"\",\"bbbbbbbbbb\"))",
+    "A2": "=LEN(REGEXREPLACE(REPT(\"a\",32767),\"a\",\"bb\"))",
+    "A3": "=LEN(REGEXREPLACE(REPT(\"a\",32766),\"a$\",\"bb\"))",
+    "A4": "=LEN(REGEXREPLACE(REPT(\"a\",32766),\"a$\",\"b\"))",
+    "A5": "=LEN(REGEXREPLACE(REPT(\"a\",32766),\"a$\",\"bbb\"))",
+    "A6": "=ISERROR(REGEXREPLACE(REPT(\"a\",32766),\"a$\",\"bbb\"))",
+    "A7": "=ERROR.TYPE(REGEXREPLACE(REPT(\"a\",32766),\"a$\",\"bbb\"))",
+    "A8": "=ERROR.TYPE(REGEXREPLACE(REPT(\"a\",32767),\"a$\",\"bb\"))",
+    "A9": "=LEN(REGEXREPLACE(REPT(\"a\",32766),\"a$\",\"b\"&UNICHAR(128512)))",
+    "A10": "=ERROR.TYPE(REGEXREPLACE(REPT(\"a\",32766),\"a$\",\"b\"&UNICHAR(128512)))",
+    "A11": "=LEN(REGEXREPLACE(REPT(\"a\",32765),\"a$\",\"b\"&UNICHAR(128512)))",
+    "A12": "=REGEXREPLACE(\"ab\",\"(a)(b)\",\"[$1a|$|$$|${1}]\")",
+    "A13": "=REGEXREPLACE(\"ab\",\"(?<x>a)\",\"${x}$x\")",
+    "A14": "=REGEXREPLACE(\"ab\",\"(a)\",\"$1$1\")",
+    "A15": "=REGEXREPLACE(\"ab\",\"(a)\",\"${1}x\")",
+    "A16": "=REGEXREPLACE(\"ab\",\"(a)\",\"$0$0\")",
+    "A17": "=REGEXREPLACE(\"ab\",\"(a)\",\"$\")",
+    "A18": "=REGEXREPLACE(\"ab\",\"(a)\",\"a$\")",
+    "A19": "=REGEXTEST(\"\u00e9\",\"\\w\")",
+    "A20": "=REGEXEXTRACT(\"na\u00efve\",\"\\w+\")",
+    "A21": "=REGEXTEST(\"\u00e9\",\"\\pL\")",
+    "A22": "=REGEXTEST(\"\u00e9\",\"\\p{L}\")",
+    "A23": "=REGEXTEST(\"\u00e9\",\"[[:alpha:]]\")",
+    "A24": "=REGEXTEST(\"\u00e9\",\"\\b\u00e9\\b\")",
+    "A25": "=REGEXEXTRACT(\"a \u00e9 b\",\"\\b\\w\\b\")"
+   }
+  }
+ ],
+ "expected": {}
+}

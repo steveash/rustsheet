@@ -402,8 +402,9 @@ YIELD's settlement, ODDFPRICE's frequency and ODDFYIELD's basis, -1E300 as ODDLP
 with a price of 1E300 is -2 (L1-L8).
 Excel computes CUMIPMT and CUMPRINC over very many periods (`CUMIPMT(0.01,1E6,100000,1,1E6,0)` = -999900000,
 `CUMIPMT(0.01,1E15,100000,1E15-10,1E15,0)` = -632.3717517805198; K1-K3; `CUMIPMT(1E-9,1E9,1,1,1E9,0)` = -0.5819767073296636
-and `CUMPRINC(1E-9,1E9,1,1,1E9,0)` = -1, from an excel-graph probe during T-1822 whose two cells are not in the suite
-because the engine's loop runs 10^9 times until T-1845 bounds it), and AMORLINC and AMORDEGRC give 0 for a period of 1E9 (K4, K5).
+and `CUMPRINC(1E-9,1E9,1,1,1E9,0)` = -1, probes/fin-cumipmt-period-bound A1, A2; "CUMIPMT and CUMPRINC over many
+periods"), and AMORLINC and AMORDEGRC give 0 for a period of 1E9 (K4, K5; past the asset life, "AMORLINC and
+AMORDEGRC over many periods").
 NPV's values work like an aggregate. A range skips text, booleans and blanks: `NPV(0.1,L1:L8)` over
 -10000, "2750", TRUE, 4250, "x", blank, 3250, 2750 is -1258.4522915101434, the NPV of -10000, 4250, 3250, 2750.
 Typed arguments are coerced: `NPV(0.1,-10000,"2750",TRUE,4250)` = -3914.6233180793665, the NPV of
@@ -426,10 +427,11 @@ Ours: since T-1372 the core functions but DB, VDB, NPV, IRR and MIRR are `Lift` 
 DOLLARFR, ACCRINTM, DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT and the T-bills `LiftArrays`
 (SPEC-0011); since T-1822 so are ACCRINT, the COUP* family, DURATION, MDURATION and PRICE, each element charged for its
 coupon schedule walks ("Coupon schedule work cap"), and since T-1842 YIELD and the ODD* functions, charged for their
-solvers and walks ("Yield and odd-coupon work cap"). The rest do not lift yet (`#N/IMPL!` for an array literal; DB and
+solvers and walks ("Yield and odd-coupon work cap"), and since T-1845 CUMIPMT and
+CUMPRINC, charged for their bounded period sums ("CUMIPMT and CUMPRINC work cap"), and since T-1841 AMORDEGRC and
+AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work cap"). The rest do not lift yet (`#N/IMPL!` for an array literal; DB and
 VDB `#VALUE!` for a range): DB and VDB need their period loops bounded first (T-1820), NPV's rate, IRR's guess and
-MIRR's rates sit beside a whole cash flow (T-1821), CUMIPMT and CUMPRINC (T-1845) and AMORDEGRC and AMORLINC (T-1841)
-need their period loops bounded, and XNPV's rate,
+MIRR's rates sit beside a whole cash flow (T-1821), and XNPV's rate,
 XIRR's guess and FVSCHEDULE's principal sit beside whole data (T-1843). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE ignores text in the schedule (T-1373).
 The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
@@ -497,6 +499,116 @@ Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-
 Status: DEVIATION (decision 0014)
 Implemented in: functions/lift/kinds.rs (`YIELD_SOLVER_WEIGHT`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODD_LAST`)
 Tasks: T-1842; T-1869 narrows the cap to a schedule-length budget (after T-1846).
+
+## CUMIPMT and CUMPRINC over many periods
+Rule: Excel computes CUMIPMT and CUMPRINC in constant time whatever the period count, also where `(1+rate)^nper`
+overflows a double: `CUMIPMT(0.01,1E308,1,1,1E308,0)` is -1E306 and `CUMIPMT(1E-300,1E300,1E300,1,1E300,0)` is
+-5.819767068693264E299 (A26, A24), `CUMIPMT(1E-9,1E9,1,1,1E9,0)` is -0.5819767073296636 and the CUMPRINC -1 (A1, A2),
+`CUMIPMT(0.01,1E6,100000,1,10,0)` is -10000 and its CUMPRINC 0 (A13, A14), and `CUMIPMT(1E10,100,1,1,100,0)` is
+-999999999999 (A16). Its values are within a few ulps of the exact sums, so it does not round `1+rate` (a rate of 1E-300
+is not lost) and does not add the periods one by one in doubles. Its form is close to `log1p`/`expm1`:
+`CUMPRINC(1E10,100,1,1,100,0)` is -1.0000000000000013, exactly `-1E10/expm1(log1p(1E10))` (A17), where the exact value is
+-1. An end period past nper is `#NUM!`, also below nper + 1 (`CUMIPMT(0.01,100.5,1000,1,101,0)`, A20-A22); the start
+rounds up and the end down (`CUMIPMT(0.001,2000,1000,1.5,1999.7,0)` sums periods 2 to 1999, A23; CUMPRINC_CUMIPMT.xlsx
+G6, G7). Lifted elements are the scalar calls (A29, A30).
+Evidence: probes/fin-cumipmt-period-bound A1-A30 (excel-graph, 2026-10-18, T-1845), probes/fin-remaining-later-argument-
+ranges K1-K3 (T-1822), `ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx`.
+Ours: since T-1845 (functions/financial/cumulative.rs) up to 32 periods are main's per-period IPMT/PPMT sum, which matches
+CUMPRINC_CUMIPMT.xlsx G3, G9, G15 and G26 where the closed form below is an ulp or two off; past 32 periods, or when a
+period's `(1+rate)^nper` overflows, the closed form `pmt = -pv*r/(-expm1(-nper*L))` (over `1+r` for type 1),
+`principal = pmt*((exp((end-nper)*L) - exp((first-1-nper)*L))/expm1(L))` with `L = log1p(r)` (type 1: period 1 adds the
+whole payment and the sum starts at period 2), interest = `pmt*(end-start+1) - principal`. The sum is no closer to
+Excel past 32 periods (83 ulps over 1,024 periods, A11; no correct digit over 10^5 periods of type 1, A5), while the
+kernel passes 22 of the 30 probe cells and misses the others by at most 6 ulps, but for 48 to 64 near period 1E15 (A18,
+K3). The fit tried `(1+r)^m` by libm and by Excel's `^` against `exp(m*log1p r)`, four payment and four balance
+parenthesizations, and `r` against `expm1(log1p r)` as the denominator (72 cells): no single form matches both the short
+sums and the long ones. Before T-1845 the engine looped over every period (10^9 steps for A1), was `#NUM!` once
+`(1+rate)^nper` overflowed (A13-A19, K1-K3) and computed A21.
+Status: PARTLY VERIFIED (excel-graph; the closed form's last digits open in T-1890, the short sums' in T-1374)
+Tasks: T-1845, T-1890, T-1374
+
+## CUMIPMT and CUMPRINC work cap
+Rule: RustSheet charges each lifted CUMIPMT or CUMPRINC element for its kernel's bound, 2^8 units against SPEC-0011's
+2^27 visit cap, so one call lifts at most 524,288 elements: `ROWS(CUMPRINC(SEQUENCE(524289)*0+0.004,1024,1000,1,32,1))`
+is `#ERROR!` where Excel lifts every element (they lift over arrays: probes/fin-argument-modes H73-H87; Excel's own
+limit is unprobed). The bound is 32 PPMT steps of three powers each (the per-period sum) and then the closed form when
+the last step overflows, about 2.9 us an element in a release build: 2^19 elements took 1.53 s for
+`CUMPRINC(..,1024,1E307*15.98,1,32,0)`, whose last step overflows, and 1.51 s for 32 full steps of type 1. Past 32
+periods the kernel is the closed form (0.3 us), so the charge does not depend on the period count. The scalar calls are
+not capped.
+Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
+Status: DEVIATION (decision 0014)
+Implemented in: functions/lift/kinds.rs (`CUMULATIVE_WEIGHT`, `CUMULATIVE`)
+Tasks: T-1845
+
+## AMORLINC and AMORDEGRC over many periods
+Rule: Excel walks AMORLINC's and AMORDEGRC's periods one by one in doubles, so a long walk carries every rounding:
+`AMORLINC(2400,39679,39813,300,875000,0.000001,1)` is 0.0015212859222804571, the remainder after 874,999 subtractions
+of the charge 0.0024 (A6; the exact remainder, `cost - salvage - first - 874999*charge`, is 0.0015213114757168815),
+the periods before charge 0.0024 (A5) and the ones after 0 (A7); at rate 0.001 period 875 charges 1.5213114753762325
+(A2). A period between whole periods is the lower one (875.5, A4), and one below 1 charges a full period
+(`AMORLINC(..,0.5,0.15,1)` is 360, A8, A9). AMORDEGRC's charge decays geometrically and rounds to a whole number:
+`AMORDEGRC(1E15,39679,39813,1,P,0.000001,1)` is 2499997712, 2493761750, 1947004435, 716262008, 205213720 for P = 1, 1000,
+1E5, 5E5, 999997, then half of what is left at the half period, 41042641307062 for P = 999998 and the same rest at
+999999, then 0 (B6-B14); at 5E8 periods and rate 1E-9 it is 716262 (-b B1). At charges of 1E12 and more over 1.1E6
+to 2.4E6 periods (rate 1E-7) Excel is 18989305437102, 16344246350030, 13720292047582 and 5154670166168 for
+`AMORDEGRC(1E20,39679,39813,300,P,1E-7,1)` with P = 1100000, 1700000, 2400000 and `AMORDEGRC(3E19,..,1500000,..)`
+(-c A1-A4): a walk in doubles gives A1, A3 and A4 but 16344246350031 for A2, so Excel's per-period arithmetic is
+not exactly that walk at that size; `AMORDEGRC(1E300,..,2000000,1E-7,1)` is 1.51632679480347E293, 15 significant digits
+(-c A5, as -b B2). Excel finishes 10^9 periods (`AMORLINC(2400,39679,39813,300,1E9,1E-9,1)` is 0, -b A1), but
+`AMORLINC(2400,39679,39813,300,1E15,1E-300,1)` did not finish within the excel-graph timeout: a fill of a workbook
+holding only that cell failed after 8.5 minutes (createSession retries exhausted, 2026-10-18), as did, twice, a larger
+one with periods of 1E12 to 1E308 at rates of 1E-13 to 1E-300; neither is in the suite. A period past the life,
+`ceil(1/rate)`, is 0 at once (fin-remaining-later-argument-ranges K4, K5).
+Evidence: probes/fin-amor-period-bound A1-A13, B1-B18, probes/fin-amor-period-bound-b A1-A3, B1, B2 and
+probes/fin-amor-period-bound-c A1-A6 (excel-graph, 2026-10-18, T-1841).
+Ours: since T-1841 (functions/financial/amortization.rs) both walks are bounded. AMORLINC keeps main's value for every
+period main finished, and AMORDEGRC up to 2^20 periods. AMORLINC's walk is exact for any period: while the remainder stays in one binade, the subtraction rounds the
+charge to that binade's grid the same way each time, so after two equal steps the next ones are jumped in one
+multiplication, and a charge below half an ulp of the remainder stops it for ever (at most 616 single steps over every
+double; `linear_charge`). AMORDEGRC walks up to 2^20 periods one by one, stopping early where the rest is fixed (below
+the salvage, a charge that rounds to 0 before the half period, a remainder the charge no longer moves); past that it
+finishes in closed form, `remain * exp(n * log1p(-rate))` ("AMORDEGRC past 2^20 periods"). Main's counter
+`counted += 1.0` stopped moving past 2^53, so main never finished there; where Excel did not finish within the
+excel-graph timeout, the kernel returns the value the walk reaches (a DEVIATION: `AMORLINC(2400,39679,39813,300,1E15,
+1E-300,1)` is 2.4E-297, the charge, and `AMORDEGRC(1E300,39679,39813,300,1E15,1E-300,1)` is 3, the charge 2.5 rounded).
+AMORDEGRC at a period below 1 (B17, 485 in Excel, ours 0) and at a cost of 1E308 (-b B2) are base values, T-1895.
+Status: VERIFIED (excel-graph) for AMORLINC's walks and AMORDEGRC's up to 2^20 periods; DEVIATION (decision 0014) past
+2^20 AMORDEGRC periods and where Excel did not finish
+Tasks: T-1841, T-1895
+
+## AMORDEGRC past 2^20 periods
+Rule: past 2^20 periods RustSheet computes AMORDEGRC's decay in closed form, `remain * exp(n * log1p(-rate))` from the
+state after 2^20 walked periods, instead of walking on. Excel and main walk every period, adding a rounding each time,
+so the closed form drifts from the walk by up to about 1e-13 relative over 10^6 further periods: the same once rounded
+for charges below about 1E11, but a larger charge can be a unit off (a review replay found one at about 3.1E11; at 1E12
+or more it often is).
+`AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)` is 18989305437101 here and 18989305437102 in Excel (-c A1), and A3, A4
+are a unit off the other way (13720292047583, 5154670166167); A2 is Excel's 16344246350030, where main's walk is ...031;
+`AMORDEGRC(1E300,..,2000000,1E-7,1)` is 1.5163267948033552E293, Excel 1.51632679480347E293 and main
+1.5163267948034761E293 (-c A5, also T-1895's 15-digit rounding). A review replay found 6 of 154 random cases (costs 1E6
+to 1E20, 1.1 to 4 times 2^20 periods) a unit off main; the unit test `degressive_shortcuts_equal_the_walk_and_the_closed_form_stays_near_it`
+bounds the drift at 1e-13 relative for costs up to 1E20. Main walked these in milliseconds (46 ms for the five above),
+but a walk is unbounded in the period, and the 2^20 cut is the kernel's work cap ("AMORLINC and AMORDEGRC work cap").
+Evidence: probes/fin-amor-period-bound-c A1-A6 (excel-graph, 2026-10-18, T-1841 review).
+Status: DEVIATION (decision 0014)
+Implemented in: functions/financial/amortization.rs (`DEGRESSIVE_LOOP_PERIODS`, `DegressiveWalk::closed_form`)
+Tasks: T-1841, T-1895
+
+## AMORLINC and AMORDEGRC work cap
+Rule: RustSheet charges each lifted AMORLINC element 2^9 units and each AMORDEGRC element 2^18 against SPEC-0011's 2^27
+visit cap, so one call lifts at most 262,144 AMORLINC or 512 AMORDEGRC elements:
+`ROWS(AMORDEGRC(SEQUENCE(513)*0+2400,39679,39813,300,1,0.15,1))` is `#ERROR!` where Excel lifts every element (they lift
+over arrays: probes/fin-argument-modes H19-H35; Excel's own limit is unprobed). The weights are the kernels' bounds in a
+release build: AMORLINC's exact walk at most 1,024 single subtractions, its step cap (`LINEAR_STEP_CAP`; the longest
+real walk takes 616, and 2^18 elements of `AMORLINC(..,9E15,1.08E-16,1)`, 613 steps each, took 1.23 s, so the cap is
+about 7.9 us an element, 2.1 s per call; a walk at the cap would be `#NUM!`), AMORDEGRC's 2^20 walked periods and the closed
+form (512 elements of `AMORDEGRC(1E15,..,1,5E6,1E-7,1)`, which takes no shortcut, 2.06 s). The scalar calls are not
+capped beyond those bounds.
+Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
+Status: DEVIATION (decision 0014)
+Implemented in: functions/lift/kinds.rs (`AMORLINC_WEIGHT`, `AMORDEGRC_WEIGHT`, `AMORLINC`, `AMORDEGRC`)
+Tasks: T-1841
 
 ## Coupon-bond functions: a negative basis is #NUM!
 Rule: `YIELD(39448,43831,0.0575,95.04,100,2,-1E300)` (the basis read from a cell holding -1E300) is `#NUM!`. Basis -1 and a
@@ -705,3 +817,31 @@ Tasks: T-1475
 Evidence: probes/fin-vdb-modes, fin-amordegrc, fin-fvschedule, fin-mduration, fin-rri (excel-graph, 2026-10-17, T-1625).
 Status: VERIFIED (excel-graph)
 Tasks: T-1764 (incl. MDURATION, RRI ulp), T-1765
+
+## NPV and FVSCHEDULE arguments
+Rule: NPV reads an array literal whole (`NPV(0.1,{-10000,2750,4250,3250,2750})` is 302.233453999042) and skips
+text, booleans and empty elements inside it (`{-10000,"2750",4250}`, `{-10000,TRUE,4250}`, `{-10000,"x"}`,
+`{-10000,4250,""}` all ignore the element). A typed argument is coerced (`NPV(0.1,-10000,"2750",TRUE,4250)` is
+-3914.6233180793665) and typed text that is no number is `#VALUE!` (`NPV(0.1,-10000,"x",4250)`). An argument
+is read the way SUM reads one (`evaluate_reference_arg`): when it reads as a reference, the text and booleans of
+its cells are skipped, however the reference is written: a range or single cell (`NPV(A5,B5,..)` with TRUE in B5;
+ironcalc-calc FINANCIAL/NPV.xlsx K5, L5), in parentheses, after `@`, `B1:B1`, `IF(TRUE,B1)`, `IF(TRUE,B1:B2)`,
+`INDEX(B1:B2,1)`, `CHOOSE(1,B1)`, `OFFSET(B1,0,0)`, `INDIRECT("B1")`, `LET(x,B1,x)`, a name `=Sheet1!$B$1`, a 3-D
+`Sheet1:Sheet1!B1` (all -5578.512396694214 with "2750" or TRUE in B1/B2). A union is its areas as written:
+`NPV(0.1,(B3,B4))` is -5578.512396694214 and `(B4,B3)` -4400.82644628099. Anything else is typed and coerces: a
+function value (`T("2750")`, `"2750"&""`, `IF(TRUE,"2750")`, `VLOOKUP("2750",B1:B2,1,FALSE)` with a literal column
+index), and a name whose body is a text or boolean constant (-3625.0939143501128, -5896.994740796395). A computed
+array is read like a literal: `NPV(0.1,SEQUENCE(3))` is 4.815927873779113, `B3:B4*1` -5578.512396694214, and
+`NPV(0.1,{1,#N/A})` is `#N/A`. A written empty argument is a cash flow of 0 (`NPV(0.1,-10000,,4250)` is
+-5897.821187077386), and errors and typed text count left to right (`NPV(0.1,"x",#N/A)` is `#VALUE!`,
+`NPV(0.1,#N/A,"x")` `#N/A`).
+FVSCHEDULE is `#VALUE!` when the schedule holds text or a boolean, in a range (`N1:N2` with `"0.11"`, `C1:C2` with
+TRUE) or in an array literal (`{0.09,"0.11"}`); typed text that reads as a number is a one-rate schedule
+(`FVSCHEDULE(1000,"0.1")`, `("0.1")` and `T("0.1")` are 1100) while `"x"` and `TRUE` are `#VALUE!`.
+Evidence: probes/fin-argument-modes H368, H370, H371, H382-H384; probes/npv-fvschedule-typed A1-A16;
+probes/npv-reference-forms A1-A20; probes/npv-fvschedule-edges A1-A6;
+probes/fin-fvschedule A3, A4, A13, A14, A16, A19 (excel-graph, T-1084, T-1373, T-1625).
+Backend: excel-graph.
+Status: VERIFIED (excel-graph)
+Implemented in: `fn_npv`, `fn_fvschedule` in functions/financial/mod.rs (T-1373)
+Tasks: T-1084, T-1373

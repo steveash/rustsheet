@@ -565,6 +565,47 @@ panicked or hung (statistics.md "Quantile searches: per-call cap and lifting", a
 of the caps at a full-cost cdf (140 continued-fraction steps, 3.1 to 3.4 us), not a measured case: BETA.INV and F.INV
 are `Weighted(2^18)` (F.INV's 1,301-cdf bisection, about 4 ms an element: 512 elements in about 2.1 s), T.INV and
 CONFIDENCE.T `Weighted(2^16)` (a 264-cdf bisection, 0.82 ms: 2,048 elements in about 1.7 s). The incomplete-gamma functions and HYPGEOM.DIST stay out (T-1872, T-1873).
+As built (T-1872): CHISQ.DIST, CHISQ.DIST.RT, CHIDIST, CHISQ.INV, CHISQ.INV.RT, CHIINV, GAMMA.DIST, GAMMADIST,
+GAMMA.INV, GAMMAINV, POISSON and POISSON.DIST are `Lift` entries. Their incomplete gamma was statrs' `gamma_lr` and
+`gamma_ur`, whose series and continued fraction are open (they never finish once `a + 1 == a`, or once the fraction's
+terms are NaN, and panic where `x / beta` overflows or underflows); it is now a line-for-line port with a per-call cap
+of its own (`statistical/incomplete_gamma.rs`: 2^19 terms in one cdf, and in one whole inversion over all its cdfs), bit
+for bit statrs' value wherever statrs finishes within it, and `#NUM!` elsewhere (statistics.md "Incomplete gamma:
+per-call cap and lifting", a DEVIATION; T-1891 owns Excel's values). The weight charges the cap's bound, not a measured
+case: 2^19 continued-fraction terms at 4.7 ns (its NaN path, the slowest; a converging fraction at the cap, shape 1E15,
+measured 2.4 ns) plus an inversion's 2,120 cdfs at 49 ns, about 2.6 ms an element, so all
+twelve are `Weighted(2^18)`: 512 elements in about 1.3 s. HYPGEOM.DIST stays out (T-1873).
+As built (T-1873): HYPGEOM.DIST and HYPGEOMDIST are `Lift` entries over one kernel of the four counts (HYPGEOMDIST no
+longer builds a fifth argument node). HYPGEOMDIST is the closed-form pmf and `Constant`. HYPGEOM.DIST's cdf was
+statrs' `Hypergeometric::cdf`, a sum of x + 1 terms whatever the distribution (4.8 s in release for
+`HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)`); it is now a port with a per-call cap of its own
+(`statistical/hypegeom.rs`: it skips the terms that are exactly 0, below max(0, n + K - N) and, found by a bisection
+on each side of the mode (at most 131 exponents), those whose exponent is below -750 with a margin for its rounding,
+and sums at most 2^18 of the rest in statrs' order), bit for bit statrs' value within the cap and `#NUM!` past it
+(statistics.md "HYPGEOM.DIST: per-call cap and lifting", a DEVIATION; T-1896 probes Excel's values). The weight
+charges the cap's bound, not a measured case: 2^18 + 131 terms at 250 ns, about 66 ms an element, so HYPGEOM.DIST is
+`Weighted(2^22)`: 32 elements in about 2.1 s (1.73 to 1.96 s measured where the window at the cap is mostly subnormal
+terms, the slowest, `HYPGEOM.DIST(99994114707,200000000000,200000000000,400000000000,TRUE)`; 1.38 to 1.55 s at the
+widest distribution of a population of 1.8E8).
+
+As built (T-1845): CUMIPMT and CUMPRINC are `LiftArrays` and `Weighted(2^8)`. Their kernels summed IPMT/PPMT over every
+period with no cap (10^9 steps for `CUMIPMT(1E-9,1E9,1,1,1E9,0)`); Excel computes any period count in constant time
+(probes/fin-cumipmt-period-bound), so the kernel now does too: up to 32 periods it keeps the per-period sum, bit for bit
+main's values, and past that, or when `(1+r)^nper` overflows, a closed form (`functions/financial/cumulative.rs`;
+financial.md "CUMIPMT and CUMPRINC over many periods"). The weight is the derived bound, 32 PPMT steps and the closed
+form (about 2.9 us an element in release: 2^19 elements, 1.5 s), not a value-dependent loop (financial.md "CUMIPMT and
+CUMPRINC work cap", a DEVIATION).
+
+As built (T-1841): AMORLINC and AMORDEGRC are `LiftArrays` and `Weighted`. Their kernels walked the periods with
+`counted += 1.0` up to `ceil(1/rate)` (10^15 steps for `AMORLINC(2400,39679,39813,300,1E15,1E-300,1)`, and no end past
+2^53). Excel walks them too, in doubles (probes/fin-amor-period-bound A6 is the walk's remainder, not the closed form's),
+so the kernels keep the walk's values with an integer count and a bound (`functions/financial/amortization.rs`;
+financial.md "AMORLINC and AMORDEGRC over many periods"): AMORLINC jumps the steps that are exact within a binade (at
+most 616 single steps for any double, capped at 1,024, `#NUM!` past the cap), bit for bit the walk; AMORDEGRC walks
+up to 2^20 periods and finishes in a closed form that can be a unit off the walk for charges of 1E12 or more
+(financial.md "AMORDEGRC past 2^20 periods", a DEVIATION). The weights are priced from the caps in release (financial.md
+"AMORLINC and AMORDEGRC work cap", a DEVIATION): AMORLINC 2^9 (1,024 steps at about 7.7 ns, 7.9 us an element: 2^18
+elements, about 2.1 s), AMORDEGRC 2^18 (2^20 periods, 4 ms: 512 elements, 2.1 s).
 
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.

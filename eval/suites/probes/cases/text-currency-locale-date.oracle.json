@@ -1,0 +1,90 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A1": {
+    "t": "s",
+    "v": "\u20acmars"
+   },
+   "A10": {
+    "t": "s",
+    "v": "\u20acmars"
+   },
+   "A11": {
+    "t": "s",
+    "v": "\u20acMarch"
+   },
+   "A12": {
+    "t": "s",
+    "v": "\u20ac6:00 PM"
+   },
+   "A13": {
+    "t": "s",
+    "v": "\u20acPM"
+   },
+   "A14": {
+    "t": "s",
+    "v": "USDmars"
+   },
+   "A15": {
+    "t": "s",
+    "v": "\u20acmars"
+   },
+   "A16": {
+    "t": "s",
+    "v": "\u20acMarch"
+   },
+   "A17": {
+    "t": "s",
+    "v": "Wednesday, March 15, 2023"
+   },
+   "A18": {
+    "t": "s",
+    "v": "\u20ac45000.75"
+   },
+   "A19": {
+    "t": "s",
+    "v": "\u20acmars"
+   },
+   "A2": {
+    "t": "s",
+    "v": "mars\u20ac"
+   },
+   "A3": {
+    "t": "s",
+    "v": "\u20ac15 mars"
+   },
+   "A4": {
+    "t": "s",
+    "v": "15 \u20acmars"
+   },
+   "A5": {
+    "t": "s",
+    "v": "mercredi \u20ac"
+   },
+   "A6": {
+    "t": "s",
+    "v": "\u20acMittwoch"
+   },
+   "A7": {
+    "t": "s",
+    "v": "\u20ac2023"
+   },
+   "A8": {
+    "t": "s",
+    "v": "\u20ac15/03/2023"
+   },
+   "A9": {
+    "t": "e",
+    "v": "#VALUE!"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "3b20e28b87d0b655f96b30d7f650a17c264982d9affc08bd8ac5252c211642a1",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T07:49:01+00:00",
+  "version": null
+ }
+}

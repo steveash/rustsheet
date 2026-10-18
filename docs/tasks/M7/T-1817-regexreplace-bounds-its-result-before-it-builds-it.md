@@ -3,10 +3,10 @@ id: T-1817
 title: "Probe REGEXREPLACE results past 32,767 characters"
 milestone: M7
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -27,8 +27,22 @@ change `too_long` in regex_functions.rs to match. Also probe the replacement syn
   `REGEXEXTRACT("naïve","\w+")`, `REGEXTEST("é","\pL")`); ours follow the regex crate (Unicode).
 
 ## Acceptance criteria
-- [ ] A probe case with oracle values covers the cells above; text.md marks the rule VERIFIED or records Excel's.
-- [ ] Ours matches; `make check` green; reviewers approve.
+- [x] A probe case with oracle values covers the cells above; text.md marks the rule VERIFIED or records Excel's.
+- [x] Ours matches; `make check` green; reviewers approve.
 
 ## Out of scope
 - The bound itself (T-1272).
+
+## Handoff (resumed)
+Done: probes/regexreplace-limit-and-syntax (oracle filled; findings in text.md "REGEXREPLACE results are capped at 65,535 UTF-16 units" (heading renamed on resume)). Excel has no 32,767 cap inside a formula (65,534-unit result works); a 360,447-unit result is `#CALC!`; excel-graph refuses probe workbooks that cache a large result, so the real cap cannot be bisected on the web. Mismatches left (5 cells, now in the baseline): A1 (`#CALC!` vs our `#VALUE!`), A2, A5, A6, A9 (`too_long` in functions/text/regex_functions.rs rejects results Excel allows) and A23 (`[[:alpha:]]` is ASCII-only in ours, Unicode in Excel). Next: choose our cap for large results as a directive-5 DEVIATION (with a decision record and a `DEVIATION` entry), return `#CALC!` above it, keep `Replacement::result_len` in step, make POSIX classes Unicode, and re-fill A17/A18 once the oracle decodes the rich error. Needs a design call on the cap, so opus.
+
+## Outcome
+Excel caps a REGEXREPLACE result at 65,535 UTF-16 units and is `#CALC!` past it (bisected with
+probes/regexreplace-result-cap: 65,535 passes, 65,536 does not, emoji counting two), so no DEVIATION or decision
+record was needed: `MAX_REPLACED_UNITS` / `over_cap` replace the 32,767 `#VALUE!` check, still applied to the length
+measured before the result is built; the lifted broadcast budget stays `#VALUE!`. The probes also showed that TYPE is
+64 and ERROR.TYPE 3 for any text over 255 units (probes/type-long-text), now implemented with a `MAX_SHORT_TEXT_UNITS`
+constant shared with DECIMAL. Downstream behavior on over-32,767 text is recorded in text.md
+(probes/regexreplace-long-result-a to -g, -i). Eval: 5 handoff cells fixed (regexreplace-limit-and-syntax A1, A2, A5,
+A6, A9) plus 77 of 80 new probe cells passing; 3 left baselined with follow-ups: T-1904 (SUBSTITUTE, UPPER of
+over-limit text) and T-1903 (POSIX classes Unicode, A23). A12/A17/A18 stay pending until the oracle decodes rich errors.

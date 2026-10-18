@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1817: Excel caps a REGEXREPLACE result at 65,535 UTF-16 units (#CALC! above; A: ASCII results, B: an emoji replacement, units vs characters), counted in UTF-16 units.",
+  "tags": [
+    "M7",
+    "probe",
+    "T-1817",
+    "regexreplace"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LEN(REGEXREPLACE(REPT(\"a\",16384)&REPT(\"c\",16382),\"a\",\"bbb\"))",
+        "A2": "=LEN(REGEXREPLACE(REPT(\"a\",16384)&REPT(\"c\",16383),\"a\",\"bbb\"))",
+        "A3": "=LEN(REGEXREPLACE(REPT(\"a\",16385)&REPT(\"c\",16381),\"a\",\"bbb\"))",
+        "A4": "=LEN(REGEXREPLACE(REPT(\"a\",16385)&REPT(\"c\",16382),\"a\",\"bbb\"))",
+        "B1": "=LEN(REGEXREPLACE(REPT(\"a\",16384)&REPT(\"c\",16383),\"a\",\"b\"&UNICHAR(128512)))",
+        "B2": "=LEN(REGEXREPLACE(REPT(\"a\",16385)&REPT(\"c\",16381),\"a\",\"b\"&UNICHAR(128512)))",
+        "B3": "=LEN(REGEXREPLACE(REPT(\"a\",16385)&REPT(\"c\",16382),\"a\",\"b\"&UNICHAR(128512)))"
+      }
+    }
+  ],
+  "expected": {}
+}

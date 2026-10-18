@@ -130,12 +130,18 @@ replace-all and for a given instance number alike; exactly 32,767 is fine. The l
 inputs: when nothing matches the text is returned unchanged even if text plus new_text would exceed it.
 Evidence: probes/text-result-limit C1-C7, C14 (over limit, `#VALUE!`), C11-C13 (no match, unchanged) (excel-graph,
 2026-10-05; excel-desktop not used).
+Over-limit input: SUBSTITUTE keys on the result length only. On the 65,534-unit REGEXREPLACE text a same-length result is
+`#VALUE!` (`SUBSTITUTE(REGEXREPLACE(REPT("a",32767),"a","bb"),"b","c")`, probes/regexreplace-long-result-d A2, T-1904),
+but results that shrink to 0 and to 32,767 units are returned (probes/text-long-input-e A1, A2).
+Per function (the text is the 65,534-unit REGEXREPLACE result; excel-graph, 2026-10-18): UPPER, LOWER, PROPER, TRIM,
+CLEAN and REPLACE give `#VALUE!` for the input itself (SUBSTITUTE: see above) (probes/regexreplace-long-result-e A2, text-long-input-a, -b, -c); LEN,
+LEFT, MID, ISTEXT and the REGEX* functions take the text. `&` is unprobed: excel-graph refuses the workbook (follow-up task). REPLACE's error precedence against an error in
+another argument is unprobed (ours coerces all arguments first, then checks the length).
 Open: REPT and CONCATENATE count the limit in UTF-16 code units (coercion.md "Text longer than 32,767
-characters"); SUBSTITUTE is unprobed with surrogate pairs and the code still counts `chars()`; input text already over the limit (only reachable
-through an oversized xlsx string) passes through when the result does not grow, an unprobed engine choice.
+characters"); SUBSTITUTE is unprobed with surrogate pairs and the code still counts `chars()`.
 Status: VERIFIED
 Implemented in: `substitute_exceeds_limit`/`substituted_chars` in functions/text/util.rs size the result before building it (T-0241)
-Tasks: T-0241
+Tasks: T-0241, T-1904
 
 ## CONCAT and TEXTJOIN past 32,767 characters
 Rule: the joined text of CONCAT or TEXTJOIN over 32,767 characters is `#CALC!` (not truncated, not `#VALUE!`).
@@ -321,15 +327,15 @@ past any of these limits is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`
 charges every successive search the rest of the text, and a pattern with `\b` runs on the PikeVM over non-ASCII
 text (the lazy DFA quits there), so `COLUMNS(REGEXEXTRACT(REPT("naïve ",500),"\b\w+\b",1))` is `#ERROR!` where
 Excel returns an array (T-1829 charges it by the work done). A REGEXREPLACE searches twice,
-once to size its result: over 32,767 UTF-16 units it is
-`#VALUE!`, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`), as SUBSTITUTE's
-is (UNVERIFIED for REGEXREPLACE; T-1817 probes it); a lifted REGEXREPLACE whose results pass the text broadcast cap
-(64 MiB, first entry) is one `#VALUE!`.
+once to size its result: over 65,535 UTF-16 units it is
+`#CALC!` as Excel's is, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`;
+"REGEXREPLACE results are capped at 65,535 UTF-16 units" below); a lifted REGEXREPLACE whose results pass the text
+broadcast cap (64 MiB, first entry) is one `#VALUE!`.
 The REGEX* dialect is the regex crate's on every target (wasm32 used `regex_lite`, whose `\w`, `\d` and `\s` are
-ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE),
-UNVERIFIED against Excel's PCRE2 (T-1817 probes it).
-The REGEXREPLACE replacement syntax is the regex crate's (`$1`, `${1}`, `$name`, `$$`; `$1a` is the group named `1a`,
-a lone `$` is itself), as before T-1272; UNVERIFIED against Excel's PCRE2 rules (T-1817 probes it). The T-1626 probes settle part of this, and Excel differs from ours there (`\1` in the replacement, a pattern backreference, lazy empty matches): see "REGEXTEST and REGEXREPLACE edge cases (T-1626)".
+ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE), as
+Excel's are (T-1817, below); the POSIX classes are not (T-1903).
+The REGEXREPLACE replacement syntax is Excel's since T-1688: see "REGEXREPLACE replacement syntax (T-1688)"; the
+pattern dialect still differs from Excel's PCRE2: see "REGEX* patterns and match iteration are PCRE2 (T-1688)".
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
 Status: DEVIATION (decision 0014)
 Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
@@ -519,16 +525,55 @@ Tasks: T-1482, T-1510
 Rule: in en-US `ASC` changes nothing: full-width letters and digits (`ASC("ＡＢＣ")` = "ＡＢＣ", `ASC("１２３")`), the ideographic space, `！ ＂ ＇ ￥ ゛`, voiced and long-sound katakana (`ガ パ ー`), `、 。`, half-width katakana, surrogate pairs, numbers (`ASC(A7)` with A7 = 7 is "7"), TRUE ("TRUE") and an empty string ("") come back as given (a truly blank cell was not probed); an error argument is returned. `JIS` is `#NAME?` for every argument probed (`ERROR.TYPE(JIS(..))` = 5 for 28 inputs).
 The byte functions (SEARCHB, FINDB, REPLACEB, RIGHTB, LENB) are the character functions for all of these inputs; see the byte-function rule at the top of this file.
 Evidence: probes/t1626-asc, t1626-jis-0..3, t1626-searchb, -findb, -replaceb, -rightb, -lenb (excel-graph, 2026-10-16). PHONETIC of every reference in probes/t1626-phonetic is `#N/A` as before.
-Ours: ASC narrows full-width characters (T-1863). The others match.
+Ours: matches (ASC is the identity since T-1863).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
-Tasks: T-1863
+Implemented in: `Model::fn_asc` (functions/text/char_code.rs). Tasks: T-1863
 
 ## REGEXTEST and REGEXREPLACE edge cases (T-1626)
 Rule: `case_sensitivity` 1 is case-insensitive and 0 (or omitted) case-sensitive for both functions (`REGEXTEST("Hello World 123","hello",1)` TRUE, `,0` FALSE; REGEXREPLACE's fifth argument likewise, `"O"` with 0,1 replaces every o). REGEXREPLACE occurrence: 0 or omitted replaces all, n > 0 the n-th match, n < 0 counts from the end (-1 the last), an out-of-range occurrence (3 of 2 matches, 9, -9) returns the text unchanged; 1.9 truncates to 1; "x" is `#VALUE!`. The replacement reads `$0`, `$1`, `$$` (a literal `$`), `${name}` and also `\1`; a backreference in the pattern (`(\w)\1`) works. An empty pattern or `x*` matches between every character and at both ends (`-H-e-l-l-o-...-3-`; an empty text gives "-"); `^` and `$` anchor the text. Lazy empty matches are not skipped: `a*?` on "aaa" with "b" is "bbbbbbb" (PCRE2-style global replace: after an empty match a non-empty match is tried again at the same position, so each "a" is consumed too, unlike a Rust-regex iterator's "bababab"). `\p{L}` and `.` match each character of BMP text ("日本語" is 3); surrogate pairs are UNVERIFIED (not probed). Numbers and booleans are read as text; an error argument is returned. A range argument lifts and spills (`#SPILL!` when blocked). Invalid patterns and a missing group (`$3`) give an error type the oracle does not decode yet; those cells stay pending, as do REGEXTEST case_sensitivity 2 and -1 (C23, C24); UNVERIFIED.
 Evidence: probes/t1626-regextest, t1626-regexreplace (excel-graph, 2026-10-16).
-Ours: #ERROR! for the optional arguments (T-1360); the rest of the mismatches are T-1688.
+Ours: #ERROR! for the optional arguments (T-1360); `\1` in the replacement matches since T-1688; the pattern
+backreference (REGEXTEST C29) is T-1900 and the lazy empty matches (REGEXREPLACE C34) T-1899.
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 Tasks: T-1360, T-1688, T-1272 (range lift)
+
+## REGEXREPLACE replacement syntax (T-1688)
+Rule: the replacement is read as PCRE2's extended substitution. `$n` and `\n` are group n, where n is every digit
+that follows (`$1a` is group 1 then "a", `[\10]` is group 10); `${n}`, `${name}` and `$name` work too (`${x}$x` is
+`aab`); `$$` and `\$` are `$`, `\\` is `\`; `\n` is LF (CODE 10) and `\t` TAB (9); `\U$1` upper-cases (`Ab`, T-1897).
+`#VALUE!` (ERROR.TYPE 3, so the undecoded rich errors are `#VALUE!`): a group the pattern does not have (`$2`, `\2`,
+`$10`, `${y}`, `$y` with one unnamed group), a `$` that starts no reference (`$` alone), a trailing `\`, `\0`, `\x`
+with no hex digits and an unknown letter escape (`\q`), but only when something matches: with no match the text
+comes back unchanged (`REGEXREPLACE("zz","(a)","$2")`, `"\q"` and `"$"` are `zz`). A backslash before any other
+character is that character (`[\-]`, `[\é]`), and a group that took no part in the match is empty
+(`REGEXREPLACE("b","(a)?b","[$1]")` is `[]`).
+Evidence: probes/regex-pcre2-features B1-B30, E1-E7 (excel-graph, 2026-10-18); t1626-regexreplace C14-C19; T-1817's
+probes/regexreplace-limit-and-syntax A12-A16.
+Ours: matches, except the escapes other than `\n` and `\t` (`\U`, `\L`, `\u`, `\l`, `\E`, `\r`, `\xhh`...), which
+are `#VALUE!` until T-1897. Implemented in `Replacement::new` (functions/text/regex_functions.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-1688, T-1897
+
+## REGEX* patterns and match iteration are PCRE2 (T-1688)
+Rule: Excel's patterns are PCRE2's. Backreferences match (`^(ab)\1$` on `abab` TRUE, on `abac` FALSE;
+`(?<n>abc)\k<n>`, `(a)\g1`; with case_sensitivity 1 `(a)\1` matches `Aa`), a backreference to a missing group is
+`#VALUE!` (`(a)\2`). Lookahead `(?=..)`, `(?!..)` and lookbehind `(?<=X)`, `(?<!1)` work; a variable-length lookbehind
+`(?<=a+)` is `#VALUE!`. Possessive `a++a` and atomic `(?>a+)a` do not match `aaa` (REGEXEXTRACT `#N/A`, ERROR.TYPE 7).
+`foo\Kbar` extracts `bar`; `(a)?(?(1)b|c)` extracts `ab`; `(?#note)` is a comment; `\Q.\E` is a literal `.`;
+`(?x)` ignores pattern spaces; `(?i)h(?-i)ELLO` does not match `Hello`. An invalid pattern (`(`) is `#VALUE!`.
+Global iteration is PCRE2's: after an empty match a non-empty match anchored at the same position is tried before
+advancing one character, so `a*?` and `a??` on `aaa` replace to `bbbbbbb`, `(?:ab)*?` on `abab` to `-----`, `|b` on
+`abc` to `-a---c-`, `b|` to `-a--c-` and `(?=b)|b` to `a--c`; REGEXEXTRACT's all-matches mode gives 7 matches for
+`a*?` on `aaa` (`,a,,a,,a,`), and REGEXREPLACE's occurrence counts the same matches (occurrence 2 is `baa`, 4 is
+`aba`, -1 `aaab`). An empty pattern over text with a surrogate pair is `#VALUE!` (`REGEXREPLACE("a"&UNICHAR(128512)&"b","","-")`,
+ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around the emoji.
+Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
+Ours: the `regex` crate's dialect: it rejects backreferences, lookaround, atomic groups, `\K`, conditionals and
+comments as invalid (`#VALUE!`), reads `a++` as `a+` followed by `+` (so `a++a` matches `aaa`, C11, B29), and
+iterates as Rust does (`bababab`). The matcher is T-1898
+(spec), T-1899 (iteration) and T-1900 (pattern features).
+Status: VERIFIED (excel-graph)
+Tasks: T-1688, T-1898, T-1899, T-1900
 
 ## CLEAN character set and PROPER word starts and case mapping (T-1307)
 Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.
@@ -559,3 +604,14 @@ Evidence: probes/value-argument-lift (excel-graph, 2026-10-18); corpus-bench/421
 Implemented in: `fn_value` (functions/text/common.rs), through `text_arg` and `broadcast_text`.
 Status: VERIFIED (excel-graph)
 Tasks: T-1791
+
+## REGEXREPLACE results are capped at 65,535 UTF-16 units, not 32,767; replacement syntax and Unicode classes (T-1817)
+Rule: a REGEXREPLACE result may be up to 65,535 UTF-16 units; one unit more is `#CALC!`. `LEN(REGEXREPLACE(REPT("a",32767),"a","bb"))` is 65534; with `REPT("a",N)&REPT("c",M)` and `"a"` → `"bbb"`, 65,535 units is 65535 and 65,536 or 65,537 is `#CALC!`; the cap counts UTF-16 units, not characters (`"a"` → `"b"&UNICHAR(128512)`: 65,535 units in 49,151 characters is 65535, 65,536 units in 49,150 characters `#CALC!`), and not matches (32,767 matches giving 65,534 units pass). 98,301 to 327,670 units (`REPT("a",32767)`, `"a"` → 3 to 10 b's) and the empty pattern with `bbbbbbbbbb` (360,447) are `#CALC!`. Lifted, the cap is per element: `REGEXREPLACE(REPT("a",{1,32767}),"","bbbbbbbbbb")` is `"bbbbbbbbbbabbbbbbbbbb"` and `#CALC!` (probes/regexreplace-result-cap-lifted). A cell holds such a result: `=REGEXREPLACE(REPT("a",32767),"a","bb")` is the 65,534 b's, `LEN` of the cell 65534, `ISERROR` FALSE.
+Other functions on a result over 32,767 units: `LEN`, `LEFT`, `MID(..,40000,10)` (10), `ISTEXT` (TRUE), `ISERR`/`ISERROR` (FALSE), `IFERROR(LEN(..),-1)` (65534), a nested `REGEXREPLACE`, `REGEXEXTRACT` and `REGEXTEST(..,"^b{65534}$")` (TRUE) take it as text; `SUBSTITUTE(..,"b","c")` and `UPPER(..)` are `#VALUE!` (ours 65534; T-1904). `TYPE` is 64 and `ERROR.TYPE` 3, as for any text over 255 units (information.md "TYPE and ERROR.TYPE of text over 255 UTF-16 units").
+Replacement syntax: `$1$1` and `${1}x` on `(a)` give `aab` and `axb`, `$0$0` gives `aab`; named group `${x}$x` gives `aab`. A bare `$`, `a$` and `$|$$` forms are rich-value errors the oracle does not decode yet (A12, A17, A18 pending).
+Unicode: `\w`, `\pL`, `\p{L}`, `\b` and the POSIX class `[[:alpha:]]` all treat é as a letter (`REGEXTEST("é","[[:alpha:]]")` is TRUE; ours FALSE, the regex crate's POSIX classes are ASCII; T-1903); `REGEXEXTRACT("naïve","\w+")` is "naïve".
+Probing note: excel-graph refuses to open (OpenWorkbookBlockedWorkbook, "exceeds the size limit") a probe workbook that builds more than two or so 65,534-unit texts, or a `REPT("b",32767)` replacement matched twice, so the long-result questions are split over probes/regexreplace-long-result-a to -i; `LEN(REGEXREPLACE(REPT("a",32767),"a","bb")&"")` could not be opened even alone (unprobed).
+Evidence: probes/regexreplace-limit-and-syntax, probes/regexreplace-result-cap, probes/regexreplace-result-cap-lifted, probes/regexreplace-long-result-a to -g and -i (excel-graph, 2026-10-18).
+Implemented in: `MAX_REPLACED_UNITS` / `over_cap` in functions/text/regex_functions.rs, checked on the measured length before the result is built.
+Status: VERIFIED (excel-graph)
+Tasks: T-1817

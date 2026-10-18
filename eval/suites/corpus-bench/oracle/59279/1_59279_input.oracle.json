@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "B1": {
+    "t": "s",
+    "v": "23/07/84"
+   },
+   "B2": {
+    "t": "s",
+    "v": "20/01/20"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "5213fcecdb520665b1c84a1e351ed6452f1bdbb8a2695660e7cbc2adf207a8dd",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:54:08+00:00",
+  "version": null
+ }
+}

@@ -324,8 +324,11 @@ Evidence: probes/stat-argument-modes (573 cells, excel-graph, 2026-10-09, T-1080
 Ours: LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN lift (T-1772, section below), and so do the
 44 functions whose every argument is scalar and whose kernel is bounded (T-1290, "Later arguments and element values
 of the scalar statistical functions" below); the other scalar arguments do not (`#N/IMPL!` for an array, `#VALUE!` for
-a range): the incomplete-gamma functions (T-1872), HYPGEOM.DIST (T-1873), and the rest (T-1813); BETA.INV, F.INV,
-T.INV, CONFIDENCE.T and their variants lift since T-1848 ("Quantile searches: per-call cap and lifting" below); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
+a range): the rest (T-1813); BETA.INV, F.INV, T.INV, CONFIDENCE.T and their variants lift
+since T-1848 ("Quantile searches: per-call cap and lifting" below), the incomplete-gamma functions (CHISQ.*,
+CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV, POISSON, POISSON.DIST) since T-1872 ("Incomplete gamma:
+per-call cap and lifting" below), and HYPGEOM.DIST and HYPGEOMDIST since T-1873 ("HYPGEOM.DIST: per-call cap and
+lifting" below); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
 `#N/IMPL!`; many distribution values are a few ulps off (the existing accuracy entries above).
 Status: VERIFIED (excel-graph)
 Tasks: T-1080, T-1290, T-1291, T-1292, T-1293, T-1848, T-1872, T-1873
@@ -357,8 +360,9 @@ here: BETA.DIST's `cumulative` given as a one-cell range was `#VALUE!` and is no
 CRITBINOM are `KernelWork::Weighted(4096)`: their search halves a `u64` interval at most 64 times, one incomplete-beta
 cdf each, up to about 65 us an element in release (`BINOM.INV(1E12,0.3,alpha)`). PERMUT is `Constant`: its product
 stops once it is infinite, after at most 171 factors, where `PERMUT(1E15,1E15)` looped 10^15 times. The quantile searches of BETA.INV, F.INV,
-T.INV and CONFIDENCE.T lift since T-1848 (next section); the incomplete-gamma functions (CHISQ.*, GAMMA.DIST, GAMMA.INV,
-POISSON) and HYPGEOM.DIST's cdf sum loop by value with no per-call cap, so they are not lifted yet (T-1872, T-1873).
+T.INV and CONFIDENCE.T lift since T-1848 (next section), and the incomplete-gamma functions (CHISQ.*, GAMMA.DIST,
+GAMMA.INV, POISSON) since T-1872 ("Incomplete gamma: per-call cap and lifting" below), and HYPGEOM.DIST, its cdf
+sum capped, and HYPGEOMDIST since T-1873 ("HYPGEOM.DIST: per-call cap and lifting" below).
 DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted BINOM.INV or CRITBINOM is charged 4096 units per element
 against the shared cell-visit cap of 2^27 (`limits::MAX_LIFTED_CELL_VISITS`), so one of more than 32,768 elements is
 `#ERROR!` before it runs where Excel computes it (`ROWS(BINOM.INV(5,0.4,SEQUENCE(40000)/40001))`, unit test
@@ -415,6 +419,121 @@ computes it (2^27 units, `limits::MAX_LIFTED_CELL_VISITS`, over 2^18 and 2^16 an
 (engineering.md "BESSEL order cap"). Showing that a slow cdf and a long search never coincide would allow larger lifts.
 Status: VERIFIED (excel-graph)
 Tasks: T-1848, T-1849, T-1871
+
+## Incomplete gamma: per-call cap and lifting (T-1872)
+Rule: CHISQ.DIST, CHISQ.DIST.RT, CHIDIST, CHISQ.INV, CHISQ.INV.RT, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV,
+POISSON and POISSON.DIST lift every argument over an array and over a two-cell range on the formula's own rows, each
+element the scalar call (stat-argument-modes H132-H156, H293-H314, H476-H485; the last argument over a range is 2 rows,
+stat-quantile-lift H27-H50 with values I, J). Element values follow the scalar rules: `{1.5;"x"}` is `#VALUE!` in its
+element and `{1.5;"1.5"}` reads the text (L1, L2), a TRUE element is 1 in CHISQ.DIST's x (L3: 0.037434226753), each
+element is checked alone (`CHISQ.DIST(1.5,{5;0.5},TRUE)`, `POISSON({5;-1},1,TRUE)`, `CHIDIST({1.5;-1},5)` and
+`GAMMAINV({0.4;1},2,3)` element 2 `#NUM!`, L4, L5, L15, L16; `CHIINV({0.4;1},5)` element 2 is 0, L17), an error
+element is its error (L6), every argument is read before any is checked (`GAMMA.INV(2,NA(),1)`, `CHISQ.INV(2,NA())`,
+`POISSON(-1,NA(),TRUE)` are `#N/A`, L7-L9), broadcasting is the operators' (`GAMMA.INV({0.1;0.2;0.3},{2,3},1)` is 3x2,
+L10, L11), `cumulative` takes the text "TRUE" and "FALSE" per element and `"x"` is `#VALUE!` (L12, L13), POISSON's x
+truncates per element (L14), and a one-cell range is its value (L18).
+Excel computes a huge shape: `GAMMA.DIST(1E16,1E16,1,TRUE)` = 0.5000000013298076, `POISSON(1E16,1E16,TRUE)` =
+0.4999999986701924, `GAMMA.DIST(1E300,1E300,1,TRUE)` = 0.5, `GAMMA.DIST(1.0000001E300,1E300,1,TRUE)` = 1,
+`GAMMA.INV(0.5,1E300,1E-300)` = 1.0002658235505755 (E1-E5), `GAMMA.DIST(1E10,1E10,1,TRUE)` = 0.5000013298076014,
+`GAMMA.DIST(1E12,1E12,1,TRUE)` = 0.5000001329807602, `POISSON(1E10,1E10,TRUE)` = 0.5000026596152026 and
+`POISSON(1E12,1E12,TRUE)` = 0.5000002659615203 (E8-E11), `CHISQ.INV(0.26774,1312890000)` = 1312858246.6164234
+(E14), `GAMMA.INV(0.5,1E9,1)` = 999999999.6666666 (E19), and `CHISQ.DIST(1E10,1E10,TRUE)` = `GAMMA.DIST(5E9,5E9,1,TRUE)`
+= 0.5000018806319452 (E16, E17). `GAMMA.DIST(1E300,1,1E-10,TRUE)` and its pdf are `#NUM!` (x / beta overflows; E6,
+E18), while `GAMMA.DIST(1E-300,2,1E100,TRUE)` is 0 (x / beta underflows; E7).
+Evidence: probes/incomplete-gamma-cap (38 formula cells, excel-graph, 2026-10-18, T-1872); probes/stat-quantile-lift
+H27-H50; probes/stat-argument-modes H132-H156, H293-H314, H476-H485.
+Ours: matches the lift and element cells (T-1872), each kernel reading its arguments in its scalar order. The
+incomplete gamma is statrs 0.18's `gamma_lr` and `gamma_ur` (a series and a continued fraction run to a 1E-15
+tolerance) and its quantile statrs' `Gamma::inverse_cdf` (halve and double a bracket, 8 bisections, 4 Newton steps),
+ported line for line to `statistical/incomplete_gamma.rs` with a per-call cap of its own: at most 2^19 terms in one
+cdf, and in one whole inversion over all its cdfs. Where statrs finishes within the cap the port returns its double bit
+for bit (unit test `the_port_is_statrs_where_statrs_finishes`; probes-numeric and ironcalc-calc are unchanged cell for
+cell), so the values those suites check are main's. The series needs about 6.8 * sqrt(a) terms at x = a: 481,117 at
+the largest chi-squared shape (df 1E10, a = 5E9), so every chi-squared cdf is kept. CHISQ.TEST uses the same capped
+cdf (a sheet's cell count keeps its shape under 2^33, where the series can need about 630,000 terms: past the cap, see
+the DEVIATION below). The lifting table charges every entry 2^18 units an element: the bound of the cap at the slowest
+term, the continued fraction's NaN path (4.1 to 4.7 ns in release; a converging fraction at the cap, which rescales on
+about 65% of its terms at a shape of 1E15, costs 2.4 ns, and a series term 2.5 ns), plus the inversion's 2,120 cdfs,
+about 2.6 ms (kinds.rs `INCOMPLETE_GAMMA_WEIGHT` has the measurements; 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)`).
+Where x / beta underflows to 0 (statrs panicked) the cdf is statrs' value at its smallest x, 0, as Excel's
+`GAMMA.DIST(1E-300,2,1E100,TRUE)` is (E7); the Excel evidence is at shape 2 only, and a shape below 1 (where the true
+value does not underflow) or near 0 (where the cdf is 1) is unprobed (T-1891). `GAMMA.DIST(1E300,1,1E-10,FALSE)` is 0 here, as on main, where Excel is `#NUM!`
+(E18, T-1891); at a statistic of 5E-324, whose half underflows, `CHISQ.DIST(x,2,TRUE)` is 0 and `CHISQ.DIST.RT(x,2)` and
+`CHIDIST(x,2)` 1 where main panicked (Excel unprobed). CHISQ.TEST cannot reach that statistic: its sum of
+`diff*diff/exp` is never 2^-1074.
+The values past the cap were already wrong on main where it finished (statrs loses digits at a huge shape:
+ `GAMMA.DIST(1E12,1E12,1,TRUE)` 0.49898078573633475, `POISSON(1E12,1E12,TRUE)` 0.49906665837352593), and so are
+the kept ones at df 1E10 (E16, E17: 0.4999982128217492; E20: T-0971).
+DEVIATION (decision 0014, CLAUDE.md directive 5): where statrs never finished, panicked, or needs more than 2^19
+terms, the capped incomplete gamma is `#NUM!` and Excel gives a number. statrs' series never converges once
+`a + 1 == a` (a shape of 2^53 or more: `GAMMA.DIST(1E16,1E16,1,TRUE)`, `POISSON(1E16,1E16,TRUE)`,
+`GAMMA.DIST(1E300,1E300,1,TRUE)`, `GAMMA.INV(0.5,1E300,1E-300)`: E1-E3, E5), its continued fraction never ends once its
+terms are NaN (`GAMMA.DIST(1.0000001E300,1E300,1,TRUE)`, E4); where x / beta overflows it panicked, and Excel is
+`#NUM!` there too (E6). Past the cap: a cdf whose shape is above about 5.9E9 at x just below the shape (the series), or
+above about 1E15 at x just above it (the continued fraction, which also grows with sqrt(a): 8,839 terms at 1E9, 90,016
+at 1E12, 402,191 at 1E14; `GAMMA.DIST(1000000000000001,1E15,1,TRUE)`), such as `GAMMA.DIST(1E10,1E10,1,TRUE)` (main
+0.5000049342568011), `POISSON(1E10,1E10,TRUE)` (main 0.5000143137798188), E9, E11, E12 (main 0.7610722410693369) and
+E13 (main 0.020185241475442515); an inversion whose shape is above about 3.5E8, where statrs ends in a number
+(`CHISQ.INV(0.26774,1312890000)`, E14: main 1312858246.5965345, close to Excel's, which the cap turns into `#NUM!`;
+E15: main 4714346327.662597; at df 1E8 or more CHISQ.INV is `#NUM!` for about 97% of probabilities on main already);
+and a CHISQ.TEST whose shape (df/2) passes about 5.9E9 (ranges of more than about 1.2E10 cells) with its statistic
+near df (Excel unprobed). Unit tests `incomplete_gammas_that_hung_or_panicked_are_bounded`
+and `a_call_past_its_cap_is_nan`; T-1891 gives Excel's values there.
+DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted CHISQ.*, CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV,
+GAMMAINV, POISSON or POISSON.DIST of more than 512 elements is `#ERROR!` before it runs where Excel computes it (2^27
+units, `limits::MAX_LIFTED_CELL_VISITS`, over 2^18 an element; `ROWS(POISSON(SEQUENCE(513),1,TRUE))`, unit test
+`incomplete_gamma_kernels_are_charged_their_weight`). At the bound of the cap, 512 elements take about 1.3 s, within the
+2 s budget of the Bessel entries (engineering.md "BESSEL order cap").
+Status: VERIFIED (excel-graph)
+Tasks: T-1872, T-1891, T-0971, T-0972
+
+## HYPGEOM.DIST: per-call cap and lifting (T-1873)
+Rule: HYPGEOM.DIST and HYPGEOMDIST lift every argument over an array and over a two-cell range on the formula's own rows,
+each element the scalar call (stat-argument-modes H331-H336, H338-H342: every argument over `{v;v}`, the first over a
+range; the last argument over a range is 2 rows, stat-quantile-lift H51-H54 with values I, J:
+`INDEX(HYPGEOM.DIST(2,3,5,10,G51:G52),2)` with G52 FALSE is the pmf, 0.416666666667, and
+`INDEX(HYPGEOMDIST(2,3,5,G53:G54),2)` with G54 12 is 0.318181818182).
+Evidence: probes/stat-argument-modes H330-H342 (excel-graph, 2026-10-09); probes/stat-quantile-lift H51-H54
+(excel-graph, 2026-10-18).
+Ours: matches the lift cells (T-1873); the scalar H330 and H337 keep main's last-digit residues ("HYPGEOM.DIST is not
+exact for small integer arguments" above, T-0977). Both are `Lift` entries over one kernel of the four counts
+(HYPGEOMDIST is its pmf, no longer a call with a fifth argument node), which reads its arguments in the scalar order,
+a boolean count `#VALUE!` as on main (Excel reads a TRUE as 1: probes-numeric/t1049-hypgeomdist A53, a known failure
+unchanged here), and checks each element alone. The pmf is statrs' closed form, so HYPGEOMDIST is `Constant`. The cdf
+is statrs 0.18's `Hypergeometric::cdf`, which sums the pmf term by term from 0 to x, one `exp` of three `ln_binomial`s
+a term: x + 1 terms whatever the distribution, so `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)` took 4.8 s
+in release and an x near 2^64 would never finish. It is now ported to `statistical/hypegeom.rs` with a per-call cap of
+its own: the port skips the terms that are exactly 0, those below max(0, n + K - N) (`exp(-inf)`) and, at a population
+up to 2^52, those far enough from the mode that the computed exponent is below -750 with a margin for its rounding (a
+bisection on each side of the mode, at most 131 exponents; the true log pmf rises to the mode and falls after it; the
+skip relies on the platform `exp` returning exactly 0 below about -745.13, as glibc's does), and sums the rest in
+statrs' order. Adding +0.0 leaves the sum unchanged, so where at most 2^18 terms are left the value is statrs' double,
+bit for bit (unit tests `the_port_is_statrs_within_the_cap`, `skipping_the_zero_terms_keeps_statrs_double`,
+`the_slowest_call_on_main_keeps_its_double`: 96,259 terms summed there, 0.5000797091291159 as on main; probes,
+probes-numeric, ironcalc-calc and gen-m9 are unchanged cell for cell). The non-zero terms lie within about 39 standard
+deviations of the mode, so the cap keeps every population up to about 1.84E8 whatever the sample and x. The lifting
+table charges HYPGEOM.DIST 2^22 units an element, the bound of the cap: 2^18 + 131 terms at 250 ns, about 66 ms. The
+slowest terms measured in release are where most of the window is subnormal (`exp`'s subnormal path and additions with
+a subnormal operand), 206 to 234 ns: 32 elements of
+`HYPGEOM.DIST(99994114707,200000000000,200000000000,400000000000,TRUE)`, 262,144 terms each (96,639 exactly 0, 153,739
+subnormal), took 1.73 to 1.96 s; normal terms cost 167 to 193 ns (32 elements at the widest distribution of a
+population of 1.8E8, 258,239 terms each, 1.38 to 1.55 s). hypegeom.rs `MAX_TERMS` has the measurements.
+DEVIATION (decision 0014, CLAUDE.md directive 5): where more than 2^18 terms are left the cdf is `#NUM!` where main
+gave a number, and Excel's value there is unprobed (T-1896; no suite case is near the cap: the largest sums 501
+terms). That is a cdf whose standard deviation is above about 3,400 (a population above about 1.84E8 with a wide
+sample), such as `HYPGEOM.DIST(1074741824,2147483648,2147483648,4294967296,TRUE)` (1,255,925 terms are not 0; main
+1.0000065293398746 after 191 s in release), and any sum of more than 2^18 terms at a population above 2^52, where
+nothing is skipped (above 2^53 a count rounds as a double and statrs' terms are not the pmf's:
+`HYPGEOM.DIST(524288,1048576,2^59,2^60,TRUE)` was `#NUM!` on main too, its sum infinite). Unit tests
+`a_call_past_its_cap_is_nan`, `the_cap_counts_the_terms_summed` and `a_cdf_sum_is_bounded`; T-1896 probes Excel's
+values there.
+DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted HYPGEOM.DIST of more than 32 elements is `#ERROR!` before
+it runs where Excel computes it (2^27 units, `limits::MAX_LIFTED_CELL_VISITS`, over 2^22 an element;
+`ROWS(HYPGEOM.DIST(2,3,5,10,SEQUENCE(33)>0))`, unit test `hypgeom_dist_is_charged_its_weight`). At the bound of the
+cap, 32 elements take about 2.1 s, about the 2 s budget of the Bessel entries (engineering.md "BESSEL order cap").
+HYPGEOMDIST is `Constant` and lifts up to the output cap.
+Status: VERIFIED (excel-graph) for the lifting (the Rule's cells); the term cap is a DEVIATION whose Excel values are unprobed (T-1896)
+Tasks: T-1873, T-1896, T-0977
 
 ## Overflowing arguments, PERMUT's limit and argument error order (T-1290)
 Rule: an F.DIST, F.DIST.RT or FDIST call whose `deg_freedom1 * x` overflows a double is `#DIV/0!` for the cdf and the

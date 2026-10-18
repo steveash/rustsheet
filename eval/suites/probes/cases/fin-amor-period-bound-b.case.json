@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1841: AMORLINC and AMORDEGRC over 10^5 to 10^9 periods (rates 1E-6 and 1E-9; a cost of 1E308 read from Z7).",
+ "tags": [
+  "M9",
+  "financial",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "Z7": 1e+308,
+    "A1": "=AMORLINC(2400,39679,39813,300,1E9,1E-9,1)",
+    "A2": "=AMORLINC(Z7,39679,39813,300,1E6,1E-6,1)",
+    "A3": "=AMORLINC(2400,39679,39813,300,875000000,1E-9,1)",
+    "B1": "=AMORDEGRC(1E15,39679,39813,1,5E8,1E-9,1)",
+    "B2": "=AMORDEGRC(Z7,39679,39813,300,1E5,1E-6,1)"
+   }
+  }
+ ],
+ "expected": {}
+}

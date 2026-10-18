@@ -688,6 +688,7 @@ mod tests {
             sheet: "S".into(),
             cell: "A1".into(),
             formula: Some(formula.into()),
+            anchor_formula: None,
             expected: crate::value::Value::Number(1.0),
             actual: crate::value::Value::Number(1.0),
             verdict,

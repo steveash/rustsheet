@@ -165,6 +165,44 @@ fn test_regexreplace_invalid_regex() {
     assert_eq!(model._get_text("A1"), "#VALUE!");
 }
 
+// T-1688: the replacement is PCRE2's extended syntax (text.md "REGEXREPLACE replacement syntax",
+// probes/regex-pcre2-features).
+#[test]
+fn regexreplace_replacement_syntax() {
+    let mut model = new_empty_model();
+    let cases = [
+        (r#""ab","(a)","\1\1""#, "aab"),
+        (r#""ab","(a)","[$1a]""#, "[aa]b"),
+        (r#""ab","(a)","[\$1|\\|$$]""#, r"[$1|\|$]b"),
+        (r#""ab","(?<x>a)","${x}$x${1}""#, "aaab"),
+        (r#""ab","a","[\$\t]""#, "[$\t]b"),
+        (r#""zz","(a)","\1""#, "zz"),
+        (r#""zz","(a)","$2""#, "zz"),
+        (r#""zz","(a)","\q""#, "zz"),
+        (r#""b","(a)?b","[$1]""#, "[]"),
+        (r#""a","a","[\-]""#, "[-]"),
+        (r#""ab","a","""#, "b"),
+        (r#""ab","(a)","$2""#, "#VALUE!"),
+        (r#""ab","(a)","[\10]""#, "#VALUE!"),
+        (r#""ab","(a)","${y}""#, "#VALUE!"),
+        (r#""ab","(a)","$""#, "#VALUE!"),
+        (r#""ab","(a)","x\""#, "#VALUE!"),
+        (r#""ab","(a)","\0""#, "#VALUE!"),
+        (r#""ab","(a)","\q""#, "#VALUE!"),
+    ];
+    for (row, (args, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), &format!("=REGEXREPLACE({args})"));
+    }
+    model.evaluate();
+    for (row, (args, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{args}"
+        );
+    }
+}
+
 #[test]
 fn test_regexreplace_wrong_arg_count() {
     let mut model = new_empty_model();
@@ -222,10 +260,10 @@ fn cycling_patterns_compile_once() {
     assert_eq!(model._get_text("A1"), *"400");
 }
 
-// T-1817 (folded into T-1272): REGEXREPLACE knows its result length before it builds it. Over
-// 32,767 characters it is `#VALUE!` as SUBSTITUTE is (UNVERIFIED for REGEXREPLACE); an empty
-// pattern over 32,767 characters with a 10-character replacement is refused without building
-// its 360,000 characters.
+// T-1817: REGEXREPLACE knows its result length before it builds it. Excel caps the result at
+// 65,535 UTF-16 units and is `#CALC!` past it (probes/regexreplace-result-cap,
+// probes/regexreplace-limit-and-syntax A1, A2); an empty pattern over 32,767 characters with a
+// 10-character replacement is refused without building its 360,000 characters.
 #[test]
 fn regexreplace_result_is_bounded_before_it_is_built() {
     let mut model = new_empty_model();
@@ -237,34 +275,29 @@ fn regexreplace_result_is_bounded_before_it_is_built() {
     model._set("A3", "=LEN(REGEXREPLACE(REPT(\"a\",16383),\"a\",\"bb\"))");
     model._set(
         "A4",
-        "=LEN(REGEXREPLACE(REPT(\"ab\",16000),\"(a)(b)\",\"$2$1$1\"))",
+        "=LEN(REGEXREPLACE(REPT(\"ab\",16000),\"(a)(b)\",\"$2$1$1$1$1\"))",
     );
     model._set(
         "A5",
         "=LEN(REGEXREPLACE(REPT(\"ab\",10000),\"(a)(b)\",\"$2$1$1\"))",
     );
-    model.evaluate();
-    assert_eq!(model._get_text("A1"), *"#VALUE!");
-    assert_eq!(model._get_text("A2"), *"#VALUE!");
-    assert_eq!(model._get_text("A3"), *"32766");
-    assert_eq!(model._get_text("A4"), *"#VALUE!");
-    assert_eq!(model._get_text("A5"), *"30000");
-}
-
-// The replacement keeps the regex crate's syntax, as on main: `$$` is a dollar, `${name}` and
-// `$name` a named group, `$1a` the (absent) group named `1a`, and a lone `$` itself. UNVERIFIED
-// against Excel's PCRE2 syntax (T-1817 probes it).
-#[test]
-fn regexreplace_replacement_syntax() {
-    let mut model = new_empty_model();
     model._set(
-        "A1",
-        "=REGEXREPLACE(\"ab\",\"(?P<x>a)(b)\",\"[${x}|$2|$$|$1a|$]\")",
+        "A6",
+        "=LEN(REGEXREPLACE(REPT(\"a\",16384)&REPT(\"c\",16383),\"a\",\"bbb\"))",
     );
-    model._set("A2", "=REGEXREPLACE(\"ab\",\"(?P<x>a)\",\"$x$x\")");
+    model._set(
+        "A7",
+        "=LEN(REGEXREPLACE(REPT(\"a\",16385)&REPT(\"c\",16381),\"a\",\"b\"&UNICHAR(128512)))",
+    );
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"[a|b|$||$]");
-    assert_eq!(model._get_text("A2"), *"aab");
+    assert_eq!(model._get_text("A1"), *"#CALC!");
+    assert_eq!(model._get_text("A2"), *"65534");
+    assert_eq!(model._get_text("A3"), *"32766");
+    assert_eq!(model._get_text("A4"), *"#CALC!");
+    assert_eq!(model._get_text("A5"), *"30000");
+    assert_eq!(model._get_text("A6"), *"65535");
+    // 65,536 units in 49,150 characters: the cap counts units.
+    assert_eq!(model._get_text("A7"), *"#CALC!");
 }
 
 // T-1272 performance review: iterating matches on the PikeVM (a `\b` pattern over non-ASCII

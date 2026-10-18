@@ -12,6 +12,10 @@ use quick_xml::events::{BytesStart, Event};
 use quick_xml::{Reader, XmlVersion};
 use serde::{Deserialize, Serialize};
 
+mod tables;
+use tables::read_sheet_tables;
+pub use tables::TableDef;
+
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
 use rustsheet_engine::expressions::utils::shift::shift_formula_text;
@@ -66,6 +70,21 @@ impl CellSnapshot {
     pub fn is_formula(&self) -> bool {
         self.formula_kind.is_some()
     }
+
+    /// For an array-member cell of `sheet`, the formula of its array anchor (T-1877).
+    #[must_use]
+    pub fn anchor_formula(&self, sheets: &[SheetSnapshot], sheet: &str) -> Option<String> {
+        let Some(FormulaKind::ArrayMember { anchor }) = &self.formula_kind else {
+            return None;
+        };
+        sheets
+            .iter()
+            .find(|s| s.name == sheet)?
+            .cells
+            .get(&Addr::parse(anchor)?)?
+            .formula
+            .clone()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -97,6 +116,9 @@ pub struct WorkbookSnapshot {
     /// Defined names; absent in snapshots written before T-0045.
     #[serde(default)]
     pub defined_names: Vec<DefinedName>,
+    /// Tables; absent in snapshots written before T-0434.
+    #[serde(default)]
+    pub tables: Vec<TableDef>,
 }
 
 impl WorkbookSnapshot {
@@ -220,15 +242,17 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
         })
         .collect();
     let mut sheets = Vec::new();
+    let mut tables = Vec::new();
     for (name, rid) in sheet_list {
         let Some(target) = rels.get(&rid) else {
             continue;
         };
-        let path = normalize_target(target);
+        let path = resolve_target("xl", target);
         let Some(xml) = read_part(&mut zip, &path)? else {
             continue; // chartsheets / missing parts are not scored
         };
         let cells = parse_sheet(&xml, &path, &shared, &rich_errors)?;
+        read_sheet_tables(&mut zip, &path, &name, &mut tables)?;
         sheets.push(SheetSnapshot { name, cells });
     }
     Ok(WorkbookSnapshot {
@@ -237,15 +261,8 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
         date1904,
         sheets,
         defined_names,
+        tables,
     })
-}
-
-fn normalize_target(target: &str) -> String {
-    if let Some(stripped) = target.strip_prefix('/') {
-        stripped.to_string()
-    } else {
-        format!("xl/{target}")
-    }
 }
 
 fn read_app(zip: &mut Zip) -> Result<(Option<String>, Option<String>), SnapshotError> {
@@ -355,23 +372,56 @@ pub fn is_undecoded(v: &crate::value::Value) -> bool {
 fn read_workbook_rels(zip: &mut Zip) -> Result<HashMap<String, String>, SnapshotError> {
     let xml = read_part(zip, "xl/_rels/workbook.xml.rels")?
         .ok_or_else(|| SnapshotError::Malformed("missing workbook rels".into()))?;
-    let mut reader = Reader::from_str(&xml);
-    let mut map = HashMap::new();
+    Ok(relationships(&xml, "workbook.xml.rels")?
+        .into_iter()
+        .map(|r| (r.id, r.target))
+        .collect())
+}
+
+/// One `<Relationship>` of a `.rels` part.
+pub(crate) struct Relationship {
+    pub(crate) id: String,
+    pub(crate) kind: String,
+    pub(crate) target: String,
+}
+
+/// The `<Relationship>` entries of a `.rels` part (`part` names it in errors); entries missing
+/// `Id` or `Target` are skipped (a missing `Type` reads as empty).
+pub(crate) fn relationships(xml: &str, part: &str) -> Result<Vec<Relationship>, SnapshotError> {
+    let mut reader = Reader::from_str(xml);
+    let mut out = Vec::new();
     loop {
-        match reader
-            .read_event()
-            .map_err(|e| xml_err("workbook.xml.rels", e))?
-        {
+        match reader.read_event().map_err(|e| xml_err(part, e))? {
             Event::Start(e) | Event::Empty(e) if e.local_name().as_ref() == "Relationship" => {
                 if let (Some(id), Some(target)) = (attr(&e, "Id"), attr(&e, "Target")) {
-                    map.insert(id, target);
+                    let kind = attr(&e, "Type").unwrap_or_default();
+                    out.push(Relationship { id, kind, target });
                 }
             }
             Event::Eof => break,
             _ => {}
         }
     }
-    Ok(map)
+    Ok(out)
+}
+
+/// A relationship `target` as a package path: absolute targets lose the leading `/`, relative
+/// ones (possibly with `../` segments) resolve against `dir`, the folder of the source part.
+pub(crate) fn resolve_target(dir: &str, target: &str) -> String {
+    if let Some(abs) = target.strip_prefix('/') {
+        return abs.to_string();
+    }
+    let mut parts: Vec<&str> = dir.split('/').filter(|p| !p.is_empty()).collect();
+    for seg in target.split('/') {
+        match seg {
+            "." | "" => {}
+            ".." => {
+                parts.pop();
+            }
+            _ => parts.push(seg),
+        }
+    }
+    parts.join("/")
 }
 
 /// `(name, localSheetId, body)` per `<definedName>`.
@@ -699,6 +749,38 @@ mod tests {
     use super::*;
     use std::io::Write;
 
+    #[test]
+    fn resolve_target_handles_absolute_and_dotdot() {
+        assert_eq!(
+            resolve_target("xl", "worksheets/sheet1.xml"),
+            "xl/worksheets/sheet1.xml"
+        );
+        assert_eq!(
+            resolve_target("xl/worksheets", "../tables/table1.xml"),
+            "xl/tables/table1.xml"
+        );
+        assert_eq!(resolve_target("xl", "/xl/sheet2.xml"), "xl/sheet2.xml");
+    }
+
+    #[test]
+    fn relationships_reads_entries_and_defaults_missing_type() {
+        let xml = r#"<Relationships><Relationship Id="r1" Type="t/table" Target="a.xml"/><Relationship Id="r2" Target="b.xml"/><Relationship Id="r3" Type="x"/></Relationships>"#;
+        let rels = relationships(xml, "x.rels").unwrap();
+        assert_eq!(rels.len(), 2);
+        assert_eq!(
+            (
+                rels[0].id.as_str(),
+                rels[0].kind.as_str(),
+                rels[0].target.as_str()
+            ),
+            ("r1", "t/table", "a.xml")
+        );
+        assert_eq!(
+            (rels[1].kind.as_str(), rels[1].target.as_str()),
+            ("", "b.xml")
+        );
+    }
+
     fn zip_with(name: &str, body: &[u8]) -> Zip {
         let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
         w.start_file(name, zip::write::SimpleFileOptions::default())
@@ -851,5 +933,39 @@ mod defined_name_tests {
                 ("L".to_string(), Some(0), "TODAY()".to_string()),
             ]
         );
+    }
+}
+
+#[cfg(test)]
+mod anchor_formula_tests {
+    use super::*;
+
+    fn cell(formula: Option<&str>, kind: Option<FormulaKind>) -> CellSnapshot {
+        CellSnapshot {
+            formula: formula.map(str::to_string),
+            formula_kind: kind,
+            value: Value::Empty,
+        }
+    }
+
+    #[test]
+    fn member_resolves_its_anchor_formula() {
+        let anchor = Addr::parse("A1").expect("addr");
+        let member = cell(
+            None,
+            Some(FormulaKind::ArrayMember {
+                anchor: "A1".into(),
+            }),
+        );
+        let sheets = [SheetSnapshot {
+            name: "S".into(),
+            cells: BTreeMap::from([(anchor, cell(Some("SUM(1)"), None))]),
+        }];
+        assert_eq!(
+            member.anchor_formula(&sheets, "S").as_deref(),
+            Some("SUM(1)")
+        );
+        assert_eq!(member.anchor_formula(&sheets, "Other"), None);
+        assert_eq!(cell(None, None).anchor_formula(&sheets, "S"), None);
     }
 }

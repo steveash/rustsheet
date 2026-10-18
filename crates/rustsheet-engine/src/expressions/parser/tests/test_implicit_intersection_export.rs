@@ -861,6 +861,33 @@ fn statistical_legacy_ranges_and_shapes_follow_the_table() {
             "BETA.INV(0.4,2,3,0,@B1:B60)",
             "_xlfn.BETA.INV(0.4,2,3,0,B1:B60)",
         ),
+        // The incomplete-gamma functions (T-1872).
+        (
+            "CHIINV(0.4,A1:A60)",
+            "CHIINV(0.4,@A1:A60)",
+            "CHIINV(0.4,A1:A60)",
+        ),
+        (
+            "GAMMA.DIST(1.5,2,3,B1:B60)",
+            "GAMMA.DIST(1.5,2,3,@B1:B60)",
+            "_xlfn.GAMMA.DIST(1.5,2,3,B1:B60)",
+        ),
+        (
+            "POISSON(A1:A60,1,TRUE)",
+            "POISSON(@A1:A60,1,TRUE)",
+            "POISSON(A1:A60,1,TRUE)",
+        ),
+        // HYPGEOM.DIST and HYPGEOMDIST (T-1873).
+        (
+            "HYPGEOM.DIST(2,3,5,10,B1:B60)",
+            "HYPGEOM.DIST(2,3,5,10,@B1:B60)",
+            "_xlfn.HYPGEOM.DIST(2,3,5,10,B1:B60)",
+        ),
+        (
+            "HYPGEOMDIST(A1:A60,3,5,10)",
+            "HYPGEOMDIST(@A1:A60,3,5,10)",
+            "HYPGEOMDIST(A1:A60,3,5,10)",
+        ),
     ]);
     let worksheets = vec!["Sheet1".to_string()];
     let mut parser = new_parser(worksheets, vec![], HashMap::new());
@@ -884,9 +911,20 @@ fn statistical_legacy_ranges_and_shapes_follow_the_table() {
         shape("F.INV(A1:A3,5,5)"),
         StaticResult::Array(3, 1)
     ));
-    // Not entered yet (T-1872): the old scalar shape.
     assert!(matches!(
         shape("CHISQ.DIST(A1:A3,2,TRUE)"),
-        StaticResult::Scalar
+        StaticResult::Array(3, 1)
+    ));
+    assert!(matches!(
+        shape("GAMMA.INV(0.4,2,{3,4})"),
+        StaticResult::Array(1, 2)
+    ));
+    assert!(matches!(
+        shape("HYPGEOM.DIST(A1:A3,4,5,10,TRUE)"),
+        StaticResult::Array(3, 1)
+    ));
+    assert!(matches!(
+        shape("HYPGEOMDIST(2,3,5,{10,12})"),
+        StaticResult::Array(1, 2)
     ));
 }

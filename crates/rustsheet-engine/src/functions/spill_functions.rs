@@ -89,8 +89,11 @@ fn col_key(data: &[Vec<ArrayNode>], j: usize) -> Vec<CellKey> {
     data.iter().map(|row| cell_key(&row[j])).collect()
 }
 
+/// An evaluated SORTBY `by_array` argument.
+type SortByArray = Vec<Vec<ArrayNode>>;
+
 // Extract a 1-D column key from a 2-D by_array.
-// Accepts column vectors (N×1), row vectors (1×N), or the first column of a multi-column array.
+// Accepts column vectors (N×1) and row vectors (1×N); a wider array is #VALUE! (probes/sort-error-args H101).
 fn extract_key_column(data: &[Vec<ArrayNode>], expected_len: usize) -> Option<Vec<ArrayNode>> {
     if data.is_empty() {
         return None;
@@ -99,8 +102,6 @@ fn extract_key_column(data: &[Vec<ArrayNode>], expected_len: usize) -> Option<Ve
         Some(data.iter().map(|row| row[0].clone()).collect())
     } else if data.len() == 1 && data[0].len() == expected_len {
         Some(data[0].clone())
-    } else if data.len() == expected_len {
-        Some(data.iter().map(|row| row[0].clone()).collect())
     } else {
         None
     }
@@ -141,17 +142,6 @@ impl Model {
     }
 
     // ── SORT ──────────────────────────────────────────────────────────────────
-
-    /// A `sort_order` argument: 1 ascending, -1 descending, an omitted one (`SORT(a,,,)`,
-    /// `SORTBY(a,k,)`) ascending. Excel: probes/sort-omitted-args (T-1446).
-    fn get_sort_order(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<bool, CalcResult> {
-        let order = self.get_sort_order_arg(node, cell)?;
-        Self::validate_sort_order(order, cell)
-    }
 
     /// Evaluates a `sort_order` argument without validating its value (an omitted one is 1).
     fn get_sort_order_arg(
@@ -203,21 +193,36 @@ impl Model {
         let num_cols = data[0].len();
 
         // An omitted argument (`SORT(arr,,)`) takes its default: probes/counta-empty-value D22-D24.
-        // Argument errors come before value validation (docs/excel-semantics/arrays.md "SORT
-        // argument errors come before validation"). The order among several error arguments is
-        // UNVERIFIED: by_col's error, then sort_index's, then sort_order's.
+        // Argument errors come before value validation and are reported left to right: sort_index,
+        // then sort_order, then by_col (probes/sort-error-args H29-H53; docs/excel-semantics/arrays.md
+        // "SORT argument errors come before validation").
         // A multi-cell sort_order (c5d278a8662ef4b2 A39) fails to coerce here but is only a
-        // validation error to Excel, so by_col is evaluated before either failure is returned.
+        // validation error to Excel, so by_col is evaluated before a #VALUE! sort_order is returned.
         let raw_index = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {
             self.get_number(&args[1], cell).map(|n| n as i64)
         } else {
             Ok(1)
+        };
+        let raw_index = match raw_index {
+            Ok(n) => n,
+            Err(e) => return e,
         };
         let raw_order = if args.len() >= 3 {
             self.get_sort_order_arg(&args[2], cell)
         } else {
             Ok(1)
         };
+        if let Err(e @ CalcResult::Error { .. }) = &raw_order {
+            if !matches!(
+                e,
+                CalcResult::Error {
+                    error: Error::VALUE,
+                    ..
+                }
+            ) {
+                return e.clone();
+            }
+        }
         let by_col: bool = if args.len() >= 4 {
             match self.get_boolean(&args[3], cell) {
                 Ok(b) => b,
@@ -225,10 +230,6 @@ impl Model {
             }
         } else {
             false
-        };
-        let raw_index = match raw_index {
-            Ok(n) => n,
-            Err(e) => return e,
         };
         let raw_order = match raw_order {
             Ok(n) => n,
@@ -315,61 +316,42 @@ impl Model {
 
         let num_rows = data.len();
 
-        // Collect sort keys: (flat key column, ascending)
-        let mut sort_keys: Vec<(Vec<ArrayNode>, bool)> = Vec::new();
-
-        // First key at args[1], optional order at args[2]
-        let key1 = match self.eval_to_array(&args[1], cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let key1_flat = match extract_key_column(&key1, num_rows) {
-            Some(k) => k,
-            None => {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "by_array1 must have the same number of rows as array".to_string(),
-                )
-            }
-        };
-        let order1 = if n >= 3 {
-            match self.get_sort_order(&args[2], cell) {
-                Ok(a) => a,
-                Err(e) => return e,
-            }
-        } else {
-            true
-        };
-        sort_keys.push((key1_flat, order1));
-
-        // Additional key/order pairs starting at args[3]
-        let mut i = 3;
+        // Every argument is evaluated left to right and the first error wins before any value
+        // is validated (probes/sort-error-args H73-H105; docs/excel-semantics/arrays.md).
+        let mut raw_keys: Vec<(SortByArray, i32)> = Vec::new();
+        let mut i = 1;
         while i < n {
             let key = match self.eval_to_array(&args[i], cell) {
                 Ok(d) => d,
                 Err(e) => return e,
             };
-            let key_flat = match extract_key_column(&key, num_rows) {
-                Some(k) => k,
-                None => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "by_array must have the same number of rows as array".to_string(),
-                    )
-                }
-            };
-            let ascending = if i + 1 < n {
-                match self.get_sort_order(&args[i + 1], cell) {
-                    Ok(a) => a,
+            let order = if i + 1 < n {
+                match self.get_sort_order_arg(&args[i + 1], cell) {
+                    Ok(o) => o,
                     Err(e) => return e,
                 }
             } else {
-                true
+                1
+            };
+            raw_keys.push((key, order));
+            i += 2;
+        }
+
+        // Collect sort keys: (flat key column, ascending)
+        let mut sort_keys: Vec<(Vec<ArrayNode>, bool)> = Vec::new();
+        for (key, order) in raw_keys {
+            let Some(key_flat) = extract_key_column(&key, num_rows) else {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "by_array must be one column or row with the same size as array".to_string(),
+                );
+            };
+            let ascending = match Self::validate_sort_order(order, cell) {
+                Ok(a) => a,
+                Err(e) => return e,
             };
             sort_keys.push((key_flat, ascending));
-            i += 2;
         }
 
         let mut row_indices: Vec<usize> = (0..num_rows).collect();
