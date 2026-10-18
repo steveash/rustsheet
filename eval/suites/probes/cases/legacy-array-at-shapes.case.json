@@ -1,0 +1,61 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Legacy @ placement on array values beyond T-1717's probes: IFNA/IFS/SWITCH, IFERROR over ABS, T over SWITCH, SEARCH/LEN over array constants, one-cell TRANSPOSE, array constants inside operators; dynamic twins in row 1 (T-1847).",
+  "tags": [
+    "M2",
+    "information",
+    "arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "Z1": "xab",
+        "A1": "=IFNA({2;3},0)",
+        "A10": "=IFNA({2;3},0)",
+        "A20": "=FORMULATEXT(A10)",
+        "B1": "=IFS(1,{2;3})",
+        "B10": "=IFS(1,{2;3})",
+        "B20": "=FORMULATEXT(B10)",
+        "C1": "=SWITCH(1,1,{2;3})",
+        "C10": "=SWITCH(1,1,{2;3})",
+        "C20": "=FORMULATEXT(C10)",
+        "D1": "=IFERROR(ABS({-2;3}),0)",
+        "D10": "=IFERROR(ABS({-2;3}),0)",
+        "D20": "=FORMULATEXT(D10)",
+        "E1": "=T(SWITCH(1,1,{\"a\";\"b\"}))",
+        "E10": "=T(SWITCH(1,1,{\"a\";\"b\"}))",
+        "E20": "=FORMULATEXT(E10)",
+        "F1": "=ISNUMBER(SEARCH({\"a\",\"b\"},Z1))",
+        "F10": "=ISNUMBER(SEARCH({\"a\",\"b\"},Z1))",
+        "F20": "=FORMULATEXT(F10)",
+        "G1": "=LEN({\"ab\";\"c\"})",
+        "G10": "=LEN({\"ab\";\"c\"})",
+        "G20": "=FORMULATEXT(G10)",
+        "H1": "=ABS(TRANSPOSE({5}))",
+        "H10": "=ABS(TRANSPOSE({5}))",
+        "H20": "=FORMULATEXT(H10)",
+        "I1": "=N({2;3}+0)",
+        "I10": "=N({2;3}+0)",
+        "I20": "=FORMULATEXT(I10)",
+        "J1": "=ABS({2;3}+0)",
+        "J10": "=ABS({2;3}+0)",
+        "J20": "=FORMULATEXT(J10)"
+      },
+      "legacy_formulas": [
+        "A10",
+        "B10",
+        "C10",
+        "D10",
+        "E10",
+        "F10",
+        "G10",
+        "H10",
+        "I10",
+        "J10"
+      ]
+    }
+  ],
+  "expected": {}
+}
