@@ -1,6 +1,8 @@
 use std::fmt;
 
+use crate::arithmetic::power;
 use crate::functions::lift::{num_error, value_error};
+use crate::functions::math_and_trigonometry::{excel_sin_cos, EXCEL_TRIG_LIMIT};
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, ItemSource,
 };
@@ -50,22 +52,17 @@ impl fmt::Display for Complex {
         let x = to_precision(self.x, 15);
         let y = to_precision(self.y, 15);
         let suffix = &self.suffix;
-        // Tiny parts (`<= 9e-20`) are always scientific (probes/eng-impower); the rest follow
-        // Excel's number-to-text, which is `1E+200` from 20 plain characters on (probes/eng-imdiv).
-        let y_str = if y.abs() <= 9e-20 || y.abs() >= 1e20 {
-            number_to_text(y)
-        } else if y == 1.0 {
-            "".to_string()
+        // Each part is written as Excel's number-to-text writes it: plain up to 20 characters,
+        // then E notation (`1.22514845490862E-16`, probes/eng-impower A9; `1E+200`,
+        // probes/eng-imdiv A19).
+        let y_str = if y == 1.0 {
+            String::new()
         } else if y == -1.0 {
             "-".to_string()
         } else {
-            format!("{y}")
+            number_to_text(y)
         };
-        let x_str = if x.abs() <= 9e-20 || x.abs() >= 1e20 {
-            number_to_text(x)
-        } else {
-            format!("{x}")
-        };
+        let x_str = number_to_text(x);
         if y == 0.0 && x == 0.0 {
             write!(f, "0")
         } else if y == 0.0 {
@@ -440,12 +437,22 @@ impl Model {
                 return num_error(cell); // probes/eng-impower A6
             }
             let r = f64::sqrt(x * x + y * y);
-            let a = f64::atan2(y, x);
-
-            let x = r.powf(n) * f64::cos(a * n);
-            let y = r.powf(n) * f64::sin(a * n);
-
-            if x.is_infinite() || y.is_infinite() || x.is_nan() || y.is_nan() {
+            // Excel's `^` (square-and-multiply for an integer power) and its x87-reduced sine
+            // and cosine: `IMPOWER("i",2)` = `-1+1.22514845490862E-16i` and
+            // `IMPOWER("1+i",100)` = `-1125899906842640-0.551513671875006i`
+            // (probes/eng-impower A9, A11, A13, A22; engineering.md "T-1625 probes").
+            let Ok(radius) = power(r, n) else {
+                return num_error(cell);
+            };
+            let angle = f64::atan2(y, x) * n;
+            let (sin, cos) = if angle.abs() < EXCEL_TRIG_LIMIT {
+                excel_sin_cos(angle)
+            } else {
+                // UNVERIFIED: no evidence for a huge angle; plain libm keeps the old result.
+                angle.sin_cos()
+            };
+            let (x, y) = (radius * cos, radius * sin);
+            if !x.is_finite() || !y.is_finite() {
                 return num_error(cell);
             }
             complex_result(x, y, suffix)

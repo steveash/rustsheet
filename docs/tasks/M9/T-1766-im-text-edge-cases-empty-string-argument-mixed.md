@@ -3,7 +3,7 @@ id: T-1766
 title: "IM* text edge cases: empty-string argument, mixed i/j suffix, boolean argument, tiny-divisor magnitude, IMPOWER zero power and tiny-part formatting (probes eng-impower, eng-imsub, eng-imdiv)"
 milestone: M9
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -18,11 +18,19 @@ Probes `probes/eng-impower`, `eng-imsub`, `eng-imdiv` failing cells (A3/A4/A12/A
 
 ## Acceptance criteria
 - [x] IMSUB and IMDIV probes pass; IMPOWER A6, A16 pass (done in the first PR, baseline shrank by 12)
-- [ ] IMPOWER A9, A11, A13, A22 (extended-precision angle, see Handoff) pass
-- [ ] `make check` green; reviewers approve.
+- [x] IMPOWER A9, A11, A13, A22 (extended-precision angle, see Handoff) pass
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
 ## Handoff (resumed)
 Done: empty-text/mixed-suffix `#NUM!`, blank cell = 0, `IMPOWER(0,0)` `#NUM!`, IMDIV Smith's algorithm, scientific text for large parts. Remaining: IMPOWER A9/A11/A13/A22 differ numerically. Analysis (engineering.md T-1625 entry): Excel's `sin(pi)` is 1.22514845490862E-16 = pi minus the 64-bit x87 pi, so the angle (atan2, times n) is evidently held in 80-bit extended precision; A22 needs radius, power and trig all emulated. Next: emulate extended precision (double-double rounded to 64 mantissa bits) for atan2/pow/sin/cos and fit against the four cells, without special-casing them.
+
+## Outcome
+First run: empty-text/mixed-suffix `#NUM!`, blank cell = 0, `IMPOWER(0,0)`, IMDIV by Smith's
+algorithm (probes baseline -12). Opus resume: IMPOWER is `power(|z|, n)` (Excel's `^`,
+square-and-multiply for integer n) times `excel_sin_cos(atan2·n)` (x87-pi reduction, now shared
+from `trig.rs` with `EXCEL_TRIG_LIMIT`), and every part prints through `number_to_text`. The
+Handoff's guess (extended-precision angle) was wrong: the angle is a plain double; only the trig
+reduction is x87. probes known failures 2275 -> 2271 (A9, A11, A13, A22); all three probes pass.

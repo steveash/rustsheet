@@ -1339,10 +1339,6 @@ F	probes/eng-argument-modes.case.json	Calc!A22
 F	probes/eng-argument-modes.case.json	Calc!A33
 F	probes/eng-argument-modes.case.json	Calc!A45
 F	probes/eng-argument-modes.case.json	Calc!A51
-F	probes/eng-impower.case.json	S!A11
-F	probes/eng-impower.case.json	S!A13
-F	probes/eng-impower.case.json	S!A22
-F	probes/eng-impower.case.json	S!A9
 F	probes/eng-later-argument-lift.case.json	Sheet1!M2
 F	probes/eng-later-argument-lift.case.json	Sheet1!M8
 F	probes/eta-reduced-names.case.json	Sheet1!E101
