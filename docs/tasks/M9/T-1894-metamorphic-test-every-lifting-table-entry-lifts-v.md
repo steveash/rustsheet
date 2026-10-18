@@ -3,7 +3,7 @@ id: T-1894
 title: "Metamorphic test: every lifting-table entry lifts {v;v} like its scalar call"
 milestone: M9
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
