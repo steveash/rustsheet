@@ -93,7 +93,7 @@ The range half (`=N(Z1:Z2)` 7, no `@`) needs no marker and is T-1728.
 - **No export change.** `legacy_reading_intersects` gives a plain `<f>` for a marked legacy cell and
   `cm="1"` for a dynamic twin, and `=N(IF(A1,1,2))` stays a plain `<f>` either way.
 - **Room for the step:** `static_analysis_operator_chain` and `static_analysis_op_results` moved to
-  static_analysis/broadcast.rs (static_analysis.rs 1137 → 1114 lines).
+  static_analysis/broadcast.rs (23 lines out of static_analysis.rs).
 - **Review round 1, new probe** probes/legacy-n-t-marker-shapes (M2, excel-graph, 2026-10-18).
   FORMULATEXT shows no `@` in any cell and no cell spills.
   - `#VALUE!`: `T(IF(1,{"a"}))`, `N(CHOOSE(1,{2}))`, `T(CHOOSE(1,{"a"}))`, `N(IFS(1,{2}))`,
@@ -114,11 +114,12 @@ The range half (`=N(Z1:Z2)` 7, no `@`) needs no marker and is T-1728.
     INDEX and IFS, the statically scalar case, and a legacy and a dynamic twin as two shared
     formulas.
 - **Eval:**
-  - probes known failures 2110 → 2079 against main at cbd3efd9 (T-1908 merged): the 32 acceptance
+  - probes known failures 2110 → 2079 against main at 0c0cb22b (T-1908 and T-1773 merged): the 32 acceptance
     cells fixed, 1 new-coverage failure (legacy-n-t-marker-shapes F10, T-1921), 0 regressions.
   - ironcalc-calc 1243 → 1243 and fixtures 9 → 9; poi is not fetched here.
-- **Ratchets (decision 0010 line):** duplicated lines 3903 → 3883; oversized-files static_analysis.rs
-  1137 → 1114, plus the stringify.rs, functions/mod.rs and model.rs shrinks T-1851 left on main.
+- **Ratchets (decision 0010 line):** after merging main at 0c0cb22b (T-1773, which recorded the shrinks
+  T-1851 left), oversized-files static_analysis.rs 1049 → 1026 (the operator-chain move); duplicated
+  lines unchanged at 3863.
 - **Gates:** fmt, clippy `-D warnings`, `cargo test` (engine, rustsheet, xlsx, eval), `make hygiene`
   and the eval checks pass. Reviewers: round 1 changes addressed; the reviewer box is still open.
 - **Follow-ups:** T-1921 (new: N over `INDEX({2;3},1)`). Already filed: T-1852 (re-entry paths),
