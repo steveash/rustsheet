@@ -18,3 +18,9 @@ Third-party notices carried with the IronCalc-derived code:
 - Locale data in crates/rustsheet-engine/src/locale and tools/upstream/generate_locale is derived
   from the Unicode CLDR project, Copyright © Unicode, Inc., under the Unicode License v3
   (https://www.unicode.org/license.txt).
+
+Third-party code ported into RustSheet:
+- crates/rustsheet-engine/src/functions/statistical/inverse_beta.rs contains a port of
+  `inv_beta_reg` from statrs 0.18.0 (https://github.com/statrs-dev/statrs, Copyright (c) 2016
+  Michael Ma, MIT License), itself based on the `special` crate (Copyright 2014–2019 The special
+  Developers, MIT License); the notice is retained in that file.
