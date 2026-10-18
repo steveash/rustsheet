@@ -657,6 +657,24 @@ fn a_weighted_kernel_is_charged_its_weight() {
 }
 
 #[test]
+fn a_lifted_yield_over_many_elements_is_refused_before_its_first_element() {
+    // YIELD's elements are charged its solver bound (`YIELD_SOLVER_WEIGHT`, 2^24): 8 elements
+    // run, the ninth makes the call #ERROR! with no kernel call (T-1842).
+    let mut model = model_with(&[]);
+    let Some(kinds) = Function::Yield.arg_kinds() else {
+        panic!("YIELD has a lifting table entry");
+    };
+    for (elements, runs) in [(8, true), (9, false), (1 << 20, false)] {
+        let formula = format!("YIELD(SEQUENCE({elements})+39000,43831,0.05,95,100,2)");
+        let (result, calls) = run_counting(&mut model, kinds, &formula, LiftCost::Unit, |_| {
+            CalcResult::Number(1.0)
+        });
+        assert_eq!(calls, if runs { elements } else { 0 }, "{formula}");
+        assert_eq!(is_error(&result, &Error::ERROR), !runs, "{formula}");
+    }
+}
+
+#[test]
 fn element_texts_count_against_the_text_budget() {
     let mut model = model_with(&[]);
     let long = CalcResult::String("x".repeat(32767).into());
