@@ -1,0 +1,49 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Data": {
+   "I1": {
+    "t": "s",
+    "v": "New England Region"
+   },
+   "J1": {
+    "t": "s",
+    "v": "Lower Atlantic Region"
+   },
+   "K1": {
+    "t": "s",
+    "v": "Gulf Coast Region"
+   },
+   "L1": {
+    "t": "s",
+    "v": "Central Atlantic Region"
+   },
+   "M1": {
+    "t": "s",
+    "v": "Midwest Region"
+   },
+   "N1": {
+    "t": "s",
+    "v": "West Coast Region"
+   },
+   "O1": {
+    "t": "s",
+    "v": "East Coast Region"
+   },
+   "P1": {
+    "t": "s",
+    "v": "U.S."
+   }
+  },
+  "Geography code": {},
+  "Month code": {},
+  "Quarter code": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "ab8d7df0421a485cb32457924af3d0a0f1a38798a36423607caa9499fb5f0d43",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:46:08+00:00",
+  "version": null
+ }
+}

@@ -1,0 +1,30 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "B1": {
+    "t": "s",
+    "v": "Carton 13"
+   },
+   "D1": {
+    "t": "s",
+    "v": "Carton "
+   },
+   "D2": {
+    "t": "s",
+    "v": "Carton "
+   },
+   "D3": {
+    "t": "s",
+    "v": "Carton "
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "9fa243aa53456446c0b236bceb630d60e1717cae556274738ea56a5dceec1edf",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:42:21+00:00",
+  "version": null
+ }
+}

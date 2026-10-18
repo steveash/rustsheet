@@ -148,6 +148,11 @@ impl Engine {
             .to_index(PatternID::ZERO, name)
     }
 
+    /// The number of capture groups of this pattern, the whole match (group 0) included.
+    pub(super) fn group_len(&self) -> usize {
+        self.pike.get_nfa().group_info().group_len(PatternID::ZERO)
+    }
+
     /// The heap memory the pattern and `caches` hold.
     pub(super) fn memory_usage(&self, caches: &Caches) -> usize {
         self.dfa.as_ref().map_or(0, |dfa| {

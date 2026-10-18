@@ -1,0 +1,48 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "WHP": {
+   "H7": {
+    "t": "n",
+    "v": 1.0
+   },
+   "H8": {
+    "t": "n",
+    "v": 3.0
+   }
+  },
+  "WHP DATA": {
+   "C18": {
+    "t": "n",
+    "v": 2.0
+   },
+   "C40": {
+    "t": "n",
+    "v": 1.0
+   },
+   "D18": {
+    "t": "n",
+    "v": 18.0
+   },
+   "D40": {
+    "t": "n",
+    "v": 3.0
+   },
+   "E18": {
+    "t": "n",
+    "v": 0.0
+   },
+   "E40": {
+    "t": "n",
+    "v": 2.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "7220a2d3a02a83daf40c899585fa716e600b60f8a831c0f725eeb3ba55a66608",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:44:32+00:00",
+  "version": null
+ }
+}

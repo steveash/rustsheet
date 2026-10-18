@@ -1,0 +1,19 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "CBtrans": {},
+  "Sheet4": {
+   "E2443": {
+    "t": "n",
+    "v": -34003.33
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "182e83088b985f7d74a22095774cb14ecab1d224ce748af08229d0d828692fca",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:49:24+00:00",
+  "version": null
+ }
+}

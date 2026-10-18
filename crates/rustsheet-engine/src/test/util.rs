@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::cell::CellValue;
 use crate::clock::Clock;
 use crate::expressions::types::{Area, CellReferenceIndex};
 use crate::model::Model;
@@ -17,6 +18,41 @@ pub fn fixed_clock(ms: i64) -> Clock {
 /// An empty en-US model in UTC on the fixed test clock.
 pub fn new_empty_model() -> Model {
     Model::new_empty_with_clock("model", "en", "UTC", "en", fixed_clock(TEST_CLOCK_MS)).unwrap()
+}
+
+/// A cell's value: a number as Rust's shortest round-trip text (so equal text is equal bits), a
+/// boolean as `TRUE`/`FALSE`, anything else (an error) as the cell's text.
+pub fn round_trip_value(model: &Model, cell: &str) -> String {
+    match model.get_cell_value_by_ref(&format!("Sheet1!{cell}")) {
+        Ok(CellValue::Number(number)) => format!("{number:?}"),
+        Ok(CellValue::Boolean(true)) => "TRUE".to_string(),
+        Ok(CellValue::Boolean(false)) => "FALSE".to_string(),
+        _ => model._get_text(cell),
+    }
+}
+
+/// Sets `inputs` (cell, content) and `cells` (cell, formula, expected) on an empty model,
+/// evaluates it and checks each of `cells` with [`round_trip_value`]: an expected number is
+/// compared bit for bit, anything else as text.
+pub fn check_cells(inputs: &[(&str, &str)], cells: &[(&str, &str, &str)]) {
+    let mut model = new_empty_model();
+    for (cell, input) in inputs {
+        model._set(cell, input);
+    }
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        let expected = expected
+            .parse::<f64>()
+            .map_or_else(|_| (*expected).to_string(), |number| format!("{number:?}"));
+        assert_eq!(
+            round_trip_value(&model, cell),
+            expected,
+            "{cell}: {formula}"
+        );
+    }
 }
 
 /// A union of `leaves` copies of `leaf`, nested as a balanced tree so that its depth, about

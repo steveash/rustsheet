@@ -1,0 +1,32 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Bill": {},
+  "Hugo": {},
+  "Joe": {},
+  "Larry": {},
+  "Mary": {},
+  "Phil": {},
+  "Students": {
+   "E2": {
+    "t": "n",
+    "v": 33.0
+   },
+   "E3": {
+    "t": "n",
+    "v": 26.0
+   },
+   "E4": {
+    "t": "n",
+    "v": 31.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "ffc621cb864d01542e73f9d2be691a483b32c6d03973c63afe84c79ee81a54bf",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:33:53+00:00",
+  "version": null
+ }
+}

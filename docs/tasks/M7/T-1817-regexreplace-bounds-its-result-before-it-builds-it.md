@@ -3,7 +3,7 @@ id: T-1817
 title: "Probe REGEXREPLACE results past 32,767 characters"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -33,5 +33,5 @@ change `too_long` in regex_functions.rs to match. Also probe the replacement syn
 ## Out of scope
 - The bound itself (T-1272).
 
-## Handoff
+## Handoff (resumed)
 Done: probes/regexreplace-limit-and-syntax (oracle filled; findings in text.md "REGEXREPLACE results are not capped at 32,767 characters"). Excel has no 32,767 cap inside a formula (65,534-unit result works); a 360,447-unit result is `#CALC!`; excel-graph refuses probe workbooks that cache a large result, so the real cap cannot be bisected on the web. Mismatches left (5 cells, now in the baseline): A1 (`#CALC!` vs our `#VALUE!`), A2, A5, A6, A9 (`too_long` in functions/text/regex_functions.rs rejects results Excel allows) and A23 (`[[:alpha:]]` is ASCII-only in ours, Unicode in Excel). Next: choose our cap for large results as a directive-5 DEVIATION (with a decision record and a `DEVIATION` entry), return `#CALC!` above it, keep `Replacement::result_len` in step, make POSIX classes Unicode, and re-fill A17/A18 once the oracle decodes the rich error. Needs a design call on the cap, so opus.

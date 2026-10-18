@@ -1,0 +1,30 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sample Data": {
+   "G4": {
+    "t": "n",
+    "v": 345.0
+   },
+   "G5": {
+    "t": "n",
+    "v": 244.0
+   },
+   "G6": {
+    "t": "n",
+    "v": 164.0
+   },
+   "G7": {
+    "t": "n",
+    "v": 2635.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "c14b39c40353d59e61e0ab3f3276fc16090bbcce88e9fe448c9906b3b0f5a42f",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:32:25+00:00",
+  "version": null
+ }
+}
