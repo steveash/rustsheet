@@ -814,6 +814,7 @@ C	probes/text-locale-am-neutral.case.json	47
 C	probes/text-locale-calendars-detail.case.json	41
 C	probes/text-locale-calendars.case.json	145
 C	probes/text-locale-date-names.case.json	124
+C	probes/text-locale-era-gregorian.case.json	23
 C	probes/text-locale-japanese-year.case.json	20
 C	probes/text-locale-name-tables.case.json	601
 C	probes/text-locale-regional-lcids.case.json	252
@@ -3033,6 +3034,7 @@ F	probes/text-locale-calendars.case.json	S!A89
 F	probes/text-locale-calendars.case.json	S!A90
 F	probes/text-locale-calendars.case.json	S!A98
 F	probes/text-locale-calendars.case.json	S!A99
+F	probes/text-locale-era-gregorian.case.json	S!A21
 F	probes/text-locale-name-tables.case.json	S!A589
 F	probes/text-locale-name-tables.case.json	S!A596
 F	probes/textsplit-padded-size.case.json	Calc!A1

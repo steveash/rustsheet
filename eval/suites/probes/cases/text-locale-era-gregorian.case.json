@@ -1,0 +1,40 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "yy/yyyy after a g under non-Japanese locale tags, day halves under calendar digits, and B2 after unresolved tags (T-1859 review).",
+ "tags": [
+  "M10",
+  "number-format",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TEXT(45000,\"g|yy|yyyy\")",
+    "A2": "=TEXT(45000,\"[$-409]g|yy|yyyy\")",
+    "A3": "=TEXT(45000,\"[$-40C]g|yy|yyyy\")",
+    "A4": "=TEXT(45000,\"[$-fr-FR]g|yy|yyyy\")",
+    "A5": "=TEXT(45000,\"[$-20409]g|yy|yyyy\")",
+    "A6": "=TEXT(45000,\"[$-40409]g|yy|yyyy\")",
+    "A7": "=TEXT(45000,\"[$-50409]g|yy|yyyy\")",
+    "A8": "=TEXT(45000,\"[$-70409]g|yy|yyyy\")",
+    "A9": "=TEXT(45000,\"[$-90409]g|yy|yyyy\")",
+    "A10": "=TEXT(45000,\"[$-D0409]g|yy|yyyy\")",
+    "A11": "=TEXT(45000,\"[$-FF0409]g|yy|yyyy\")",
+    "A12": "=TEXT(45000,\"[$-41E]g|yy|yyyy\")",
+    "A13": "=TEXT(45000,\"[$-412]g|yy|yyyy\")",
+    "A14": "=TEXT(45000,\"[$-zzz]g|yy|yyyy\")",
+    "A15": "=TEXT(45000.75,\"[$-20411]h AM/PM\")",
+    "A16": "=TEXT(45000.75,\"[$-90412]h A/P\")",
+    "A17": "=TEXT(45000.75,\"[$-70412]h AM/PM\")",
+    "A18": "=TEXT(45000.75,\"[$-50411]h AM/PM\")",
+    "A19": "=TEXT(45000.75,\"[$-40411]h AM/PM\")",
+    "A20": "=TEXT(45000,\"[$-zzz]B2mmmm\")",
+    "A21": "=TEXT(45000,\"[$-60409]B2yyyy\")",
+    "A22": "=TEXT(45000,\"[$-FFFF]B2yyyy\")",
+    "A23": "=TEXT(45000,\"[$-]B2yyyy\")"
+   }
+  }
+ ],
+ "expected": {}
+}

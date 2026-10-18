@@ -34,16 +34,10 @@ pub struct Localized {
     /// "6 PM", `[$-30411]h AM/PM` "6 午後").
     pub day_half: &'static DateNames,
     pub calendar: Calendar,
-}
-
-impl Localized {
-    fn plain(names: &'static DateNames) -> Self {
-        Localized {
-            names,
-            day_half: names,
-            calendar: Calendar::Gregorian,
-        }
-    }
+    /// A Japanese LCID: after a `g`, `yy` and `yyyy` print the whole Gregorian year in its
+    /// non-Japanese calendars (`[$-10411]g|yy` is "|2023", `[$-70411]g|yyyy` "|2023", but
+    /// `[$-70409]g|yyyy` "|2566"; probes/text-locale-era-gregorian).
+    pub japanese_lcid: bool,
 }
 
 /// What a `[$-...]` tag (with no currency symbol) does to its section.
@@ -121,22 +115,17 @@ fn resolve_lcid(value: u32) -> LocaleTag {
         return LocaleTag::Silent;
     };
     let japanese = lcid & 0x3FF == 0x11;
-    let localized = |names, calendar| {
-        LocaleTag::Names(Localized {
-            calendar,
-            ..Localized::plain(names)
-        })
-    };
     let with_names = |calendar_names: &'static DateNames, calendar| {
         LocaleTag::Names(Localized {
             names: calendar_names,
             day_half: names,
             calendar,
+            japanese_lcid: japanese,
         })
     };
     match value >> 16 {
-        0 | 0x15.. if japanese => localized(names, Calendar::Japanese { explicit: false }),
-        0 | 1 | 0x15.. => localized(names, Calendar::Gregorian),
+        0 | 0x15.. if japanese => with_names(names, Calendar::Japanese { explicit: false }),
+        0 | 1 | 0x15.. => with_names(names, Calendar::Gregorian),
         2 | 0xD => with_names(EN_US, Calendar::Gregorian),
         3 => with_names(
             if japanese { names } else { EN_US },

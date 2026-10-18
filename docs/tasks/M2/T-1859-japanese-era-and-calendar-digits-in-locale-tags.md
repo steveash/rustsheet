@@ -25,14 +25,14 @@ T-1716 localized names under `[$-LCID]` tags but left eras and calendar digits (
 -
 
 ## Outcome
-Three new probes landed: probes/text-locale-calendars (145 cells), text-locale-calendars-detail (41) and text-locale-japanese-year (20). number-formats.md "Calendars of a locale tag" records them.
+Four new probes landed: probes/text-locale-calendars (145 cells), text-locale-calendars-detail (41), text-locale-japanese-year (20) and text-locale-era-gregorian (23). number-formats.md "Calendars of a locale tag" records them.
 - Locale tags now carry a calendar (`locale_tag::Calendar`). This adds Japanese eras: `g`/`gg`/`ggg`, `e`/`ee`, and `yy`/`yyyy` under calendar 3, or after a `g` under a Japanese locale.
 - Calendar digits 2, 4, 5, 7, 9, D and 15+ are modelled.
 - `b` under a tag is the Gregorian year, except under Thai.
 - `B1`/`B2` after a tag are ignored.
 - Day halves follow the LCID.
 
-Eval: name-tables A105, A546, A587 and A588 fixed; 139 of the 206 new cells pass. The other 67 are new-coverage failures, filed by calendar:
+Eval: name-tables A105, A546, A587 and A588 fixed; 161 of the 229 new cells pass. The other 68 are new-coverage failures, filed by calendar:
 - T-1922: lunar
 - T-1923: Hebrew, Saka, Arabic, Korean native names
 - T-1924: underscore tags

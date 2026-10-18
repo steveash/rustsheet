@@ -361,7 +361,7 @@ Rule: a hex locale tag `[$-NNCCLLLL]` holds a numeral system (NN), a calendar (C
 - `e` prints the era year ("5"). `ee`+ prints it with at least two digits ("05"; "7981" at 9999-12-31).
 - Eras start at serial 4595 (Taisho, 1912-07-30), 9856 (Showa), 32516 (Heisei) and 43586 (Reiwa, 2019-05-01). Earlier serials, 0 included, are Meiji ("M|33" for 1900).
 - Under calendar 3, `yy` and `yyyy` print the era year ("05"). Under the Japanese LCID's own calendar they do so only after a `g` earlier in the section: `[$-411]yy|g|yy|yyyy` is "23|R|05|05" and `[$-411]e|yy|yyyy` is "5|23|2023". A `g` written before the tag counts too (`g[$-411]yyyy` is "R05").
-- Calendar 1 is Gregorian even for Japanese. Under any non-Japanese calendar of a tag, a `g` earlier in the section makes `yy` and `yyyy` print the whole Gregorian year: `[$-10411]g|e|yy` is "|2023|2023" and `[$-70411]g|yyyy` "|2023" (Thai otherwise prints 2566). The Korean and Taiwan calendars are inferred to behave the same; that is not probed.
+- Calendar 1 is Gregorian even for Japanese. Under a Japanese LCID with a non-Japanese calendar, a `g` earlier in the section makes `yy` and `yyyy` print the whole Gregorian year: `[$-10411]g|e|yy` is "|2023|2023" and `[$-70411]g|yyyy` is "|2023" (Thai would otherwise print 2566). Other LCIDs are unaffected: `[$-409]g|yy` is "|23", `[$-70409]g|yy|yyyy` "|66|2566", `[$-50409]g|yy|yyyy` "|56|4356", and with no tag `g|yy` is "|23" (probes/text-locale-era-gregorian).
 - Names under calendar 3 are Japanese for a Japanese LCID and en-US for any other (`[$-3040C]mmmm` is "March").
 
 **Other calendar digits.**
@@ -375,7 +375,7 @@ Rule: a hex locale tag `[$-NNCCLLLL]` holds a numeral system (NN), a calendar (C
 | 9 | Gregorian, French names | "mars", "mer." |
 | 15 and above | ignored; the LCID's own calendar (probed 15, 1E, 1F, FF) | `[$-FF040C]mmmm` is "mars" |
 
-Under every one of these, `e` stays the Gregorian four-digit year, and so do `b` and `bbbb` except under Thai.
+Under every one of these, `e` stays the Gregorian four-digit year, and so do `b` and `bbbb` except under Thai. Day halves follow the LCID under every calendar digit: `[$-20411]`, `[$-40411]` and `[$-50411]h AM/PM` are "6 午後", and `[$-70412]`/`[$-90412]` give "6 오후".
 
 **Not modelled** (the tag prints English and keeps `A/P`):
 - 6 is Hijri ("1444-08-23", "Sha'ban", or French "Chaaban" under 40C; T-1613).
@@ -387,9 +387,9 @@ Under every one of these, `e` stays the Gregorian four-digit year, and so do `b`
 - Numeral digits `[$-8000411]e` print native digits ("୫"; T-1925).
 - Underscore tags pick calendars: `[$-fr_FR]` gives the Saka date with English Gregorian month names ("December|1944-12-24"); `[$-de_DE]`, `[$-en_US]` and `[$-ja_JP]` give the lunar date in English; `[$-_]` gives Russian names (T-1924).
 
-**`b` and `B1`/`B2` under a tag.** With no tag, `b` is the Buddhist year ("66|2566"). Under any resolved tag it is the Gregorian year ("23|2023"), except under calendar 7. `B1` and `B2` after a tag change nothing: `[$-40C]B2mmmm` is "mars" and `[$-401]B2yyyy-mm-dd` is "2023-03-15". `B2` before a tag still selects Hijri: `B2[$-40C]mmmm` is "Chaaban" (T-1613).
+**`b` and `B1`/`B2` under a tag.** With no tag, `b` is the Buddhist year ("66|2566"). Under any resolved tag it is the Gregorian year ("23|2023"), except under calendar 7. `B1` and `B2` after a tag change nothing: `[$-40C]B2mmmm` is "mars" and `[$-401]B2yyyy-mm-dd` is "2023-03-15". An unresolved tag ignores `B2` too: `[$-zzz]B2mmmm` is "March", and `[$-FFFF]B2yyyy` and `[$-]B2yyyy` are "2023". The Hijri calendar digit is not ignored: `[$-60409]B2yyyy` is "1444". `B2` before a tag still selects Hijri: `B2[$-40C]mmmm` is "Chaaban" (T-1613).
 
-Evidence: probes/text-locale-calendars (145 cells), text-locale-calendars-detail (41), text-locale-japanese-year (20) (excel-graph, 2026-10-18).
+Evidence: probes/text-locale-calendars (145 cells), text-locale-calendars-detail (41), text-locale-japanese-year (20), text-locale-era-gregorian (23) (excel-graph, 2026-10-18).
 Implemented in: formatter/locale_tag.rs (`resolve_lcid`, `Calendar`, `japanese_era`), format.rs (years, `e`, `g`).
 Status: VERIFIED (excel-graph)
 Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925

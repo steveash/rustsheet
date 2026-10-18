@@ -77,6 +77,8 @@ pub struct DatePart {
     pub day_half: Option<&'static DateNames>,
     /// The calendar of the section's locale tag; `None` for a section with none.
     pub calendar: Option<Calendar>,
+    /// Whether the section's locale tag names a Japanese LCID (`Localized::japanese_lcid`).
+    pub japanese_lcid: bool,
 }
 
 pub struct ErrorPart {}
@@ -547,6 +549,7 @@ impl Parser {
                 names: localized.map(|l| l.names),
                 day_half: localized.map(|l| l.day_half),
                 calendar: localized.map(|l| l.calendar),
+                japanese_lcid: localized.is_some_and(|l| l.japanese_lcid),
             })
         } else {
             ParsePart::Number(NumberPart {
@@ -595,6 +598,7 @@ impl Parser {
                 names: Some(EN_US),
                 day_half: Some(EN_US),
                 calendar: Some(Calendar::Gregorian),
+                japanese_lcid: false,
                 ..part
             }),
             _ => ParsePart::Error(ErrorPart {}),

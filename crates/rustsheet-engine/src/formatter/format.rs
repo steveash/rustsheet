@@ -388,9 +388,9 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let ymd = excel_serial_to_ymd(serial_1900);
             let date_valid = ymd.is_some();
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
-            // Under a locale tag `yy` and `yyyy` after a `g` print the era year: the Japanese one
-            // under a Japanese locale (`[$-411]yy|g|yy` is "23|R|05"), the whole Gregorian year
-            // otherwise (probes/text-locale-japanese-year A1-A13).
+            // Under a Japanese locale tag `yy` and `yyyy` after a `g` print the era year: the
+            // Japanese one in its own calendar (`[$-411]yy|g|yy` is "23|R|05"), the whole Gregorian
+            // year in the others (probes/text-locale-japanese-year A1-A13).
             let mut seen_era = false;
             for token in tokens {
                 match token {
@@ -519,10 +519,11 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                 text = format!("{text}{era_year:02}");
                                 continue;
                             }
-                            // After a `g` any other tagged calendar prints the whole Gregorian
-                            // year (`[$-10411]g|yy` is "|2023", `[$-70411]g|yyyy` "|2023";
-                            // probes/text-locale-japanese-year A13, text-locale-calendars A25).
-                            (Some(_), false) if seen_era => {
+                            // After a `g` a Japanese LCID's other calendars print the whole
+                            // Gregorian year (`[$-10411]g|yy` is "|2023", `[$-70411]g|yyyy`
+                            // "|2023"); other LCIDs are unaffected (`[$-70409]g|yyyy` is "|2566";
+                            // probes/text-locale-japanese-year A13, text-locale-era-gregorian).
+                            (Some(_), false) if seen_era && p.japanese_lcid => {
                                 text = format!("{text}{ymd_year}");
                                 continue;
                             }

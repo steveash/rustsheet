@@ -113,6 +113,10 @@ fn japanese_eras() {
     assert_eq!(text(45000.0, "[$-30409]yyyy|mmmm|g"), "05|March|R");
     assert_eq!(text(45000.0, "[$-10411]g|e|yy"), "|2023|2023");
     assert_eq!(text(45000.0, "[$-70411]g|yyyy|mmmm"), "|2023|มีนาคม");
+    // Other LCIDs keep their calendar's year after a `g` (probes/text-locale-era-gregorian).
+    assert_eq!(text(45000.0, "[$-409]g|yy|yyyy"), "|23|2023");
+    assert_eq!(text(45000.0, "[$-70409]g|yy|yyyy"), "|66|2566");
+    assert_eq!(text(45000.0, "[$-50409]g|yy|yyyy"), "|56|4356");
 }
 
 #[test]
