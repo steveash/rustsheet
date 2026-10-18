@@ -367,8 +367,8 @@ impl DegressiveWalk {
     /// The charge of period `periods` from the state after period `done` (before the half
     /// period): `remain` decays by `(1 - rate)` a period, `remain * exp(n * log1p(-rate))`.
     /// Main's walk adds a rounding per period, so the two drift apart by up to about 1e-13
-    /// relative over 10^6 periods: equal once rounded for charges up to about 1E11, but a charge
-    /// of about 1E12 or more can be a unit off (`AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)`
+    /// relative over 10^6 periods: equal once rounded for charges below about 1E11, but a larger
+    /// charge can be a unit off (a review replay: 3.1E11; about 1E12 or more often is) (`AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)`
     /// is 18989305437101, Excel and main 18989305437102; financial.md "AMORDEGRC past 2^20
     /// periods", a DEVIATION).
     fn closed_form(&self, done: u64, periods: u64) -> f64 {
@@ -546,7 +546,7 @@ mod tests {
     }
 
     #[test]
-    fn degressive_shortcuts_and_closed_form_equal_the_walk() {
+    fn degressive_shortcuts_equal_the_walk_and_the_closed_form_stays_near_it() {
         let mut seed = Rng(0x0123_4567_89AB_CDEF);
         for _ in 0..300 {
             let rate = 10f64.powf(-1.0 - spread(&mut seed) * 4.0) * 2.5;

@@ -31,11 +31,12 @@ failures:
   - A3 `AMORDEGRC(1E20,39679,39813,300,2400000,1E-7,1)`: Excel 13720292047582, ours ...583 (main ...582).
   - A4 `AMORDEGRC(3E19,39679,39813,300,1500000,1E-7,1)`: Excel 5154670166168, ours ...167 (main ...168).
   - A5 `AMORDEGRC(Z1,39679,39813,300,2000000,1E-7,1)`, Z1 = 1E300: Excel 1.51632679480347E293 (15 significant digits),
-    ours 1.5163267948033552E293, main 1.5163267948034761E293.
+    ours 1.5163267948033552E293, main 1.5163267948034761E293. Excel's value lies strictly between the closed form's and
+    the walk's, the strongest sign that Excel rounds each step.
   - A2 `AMORDEGRC(1E20,39679,39813,300,1700000,1E-7,1)` passes (Excel 16344246350030), where main's walk was ...031: Excel's
     per-period arithmetic is not exactly a double walk at that size. A fit of Excel's step (a 15-digit rounding of each
     charge or of what is left, say) may explain both A2 and A5 and could give an exact bounded form; otherwise walk
-    further or document.
+    further (a scalar cut-off kept apart from the lifting weight is a fallback) or document.
 Probe more points first (periods 0.1, 0.9, 1.5, 3.5 at rate 0.15; costs 1E290 to 1E308 at periods 0, 1 and 2).
 
 ## Acceptance criteria

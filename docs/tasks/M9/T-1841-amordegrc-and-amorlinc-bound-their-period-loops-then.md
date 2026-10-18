@@ -25,7 +25,7 @@ fin-remaining-later-argument-ranges H11-H34, all `#VALUE!`).
 ## Acceptance criteria
 - [x] `AMORLINC(2400,39679,39813,300,1E15,1E-300,1)` finishes in milliseconds; any capped result is a DEVIATION.
 - [x] The AMORDEGRC and AMORLINC lift cells of probes/fin-argument-modes pass (baseline lines removed), no new failures.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - AMOR* base values (probes/fin-amordegrc).
