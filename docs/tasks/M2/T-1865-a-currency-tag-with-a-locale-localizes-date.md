@@ -24,4 +24,4 @@ A currency tag with a locale (`[$€-40C]`) prints its symbol and also localizes
 -
 
 ## Outcome
-A currency tag with a locale now lexes as the symbol plus a locale tag; a date section prints the symbol where it is written. probes/text-locale-date-names A116 and text-locale-name-tables A574 pass; new probes/text-currency-locale-date (19 cells, 18 pass). A multi-character symbol (`[$USD-40C]`) is not modelled (T-1882).
+A currency tag with a locale now lexes as the symbol plus a locale tag; a date section prints the symbol where it is written. probes/text-locale-date-names A116 and text-locale-name-tables A574 pass; new probes/text-currency-locale-date (19 cells, 18 pass). A multi-character symbol (`[$USD-40C]`) is not modelled (T-1883).
