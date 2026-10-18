@@ -251,10 +251,348 @@ T-1187 candidate script (2026-10-11), now the fit lab's `erfc-tail` fit (T-1523,
 tools/src/rustsheet_tools/fitlab/kernels/erfc.py; `uv run rustsheet-fitlab erfc-tail` in tools/ reprints the
 counts above: best 57, 58, 38 and 4, union 174/205 over the four T-1187 families; the command's last union
 row, 177/205, also counts libm and the engine). The engine today: 44/205 bit-exact, 203/205 within 4 ulp.
-Status: superseded for 4 < x <= 26.55. T-1778 (docs/research/t1778-erf-kernel-research-plan.md, research
-updates 4 and 7) finds ERFC(x) = fl(E*R) there, with E = Excel's EXP(-fl(x*x)) and R = N/D a stored-Horner
-(8,9) rational: bit-exact on 1,540,475 of 1,540,477 probed points. That rules out every family above. The
-engine change is T-1916, which closes T-1186. [0.5, 4] is still OPEN (T-1778, update 9).
+Status: SUPERSEDED. T-1778 (docs/research/t1778-erf-kernel-research-plan.md, research updates 4, 7 and 10) finds
+ERFC(x) = fl(E*R) for x > 0.5, with E = Excel's EXP(-fl(x*x)) and R = N/D a stored-Horner rational ((9,10) up to 4,
+(8,9) above), bit-exact on every probed input, which rules out every family above. T-1916 implements it (next
+section) and closes T-1186.
+
+## One incomplete-gamma kernel under ERF, ERFC, NORM, CHISQ, GAMMA.DIST and POISSON (T-1778)
+Rule: these functions are bit-identical compositions of one another, so their last digits come from one
+kernel: the regularized incomplete gamma P(a, z) and its upper half Q(a, z). At shape 0.5 the probes cannot
+tell whether GAMMA.DIST calls an erf/erfc pair or the reverse; it takes its own path there (below).
+- `NORM.S.DIST(x,TRUE)` = `ERFC.PRECISE(-x*SQRT(0.5))/2` (1,545 of 1,545 points, the whole norm-s-dist
+  fit sweep). The scaling is a multiply by the double sqrt(0.5): `-x/SQRT(2)` matches at only 692 of the
+  1,352 points where the two inputs differ (both cases). `GAUSS(x)` = `NORM.S.DIST(x,TRUE)-0.5` (1,545 of 1,545).
+  `NORM.DIST(x,m,s,TRUE)` = `NORM.S.DIST((x-m)/s,TRUE)` and
+  `LOGNORM.DIST(x,m,s,TRUE)` = `NORM.DIST(LN(x),m,s,TRUE)` (60 of 60 each).
+- `ERF.PRECISE(x)` = `GAMMA.DIST(x^2,0.5,1,TRUE)` = `CHISQ.DIST(2*x^2,1,TRUE)`, and
+  `ERFC.PRECISE(x)` = `CHISQ.DIST.RT(2*x^2,1)` (600 of 600, x from 2^-40 to 6). ERFC is computed directly:
+  `1-GAMMA.DIST(x^2,0.5,1,TRUE)` matches it at only 17 of the 201 points with x >= 0.5.
+- `CHISQ.DIST(x,k,TRUE)` = `GAMMA.DIST(x/2,k/2,1,TRUE)` = `GAMMA.DIST(x,k/2,2,TRUE)`,
+  `GAMMA.DIST(x,a,b,TRUE)` = `GAMMA.DIST(x/b,a,1,TRUE)`, and `POISSON.DIST(k,m,TRUE)` =
+  `CHISQ.DIST.RT(2*m,2*(k+1))`, an upper Q (60 of 60 each). `T.DIST(x,n,TRUE)` for x < 0 =
+  `T.DIST.2T(-x,n)/2` (60 of 60).
+- Not identities (the lower count is the closest form tried): `EXPON.DIST` against `1-EXP(-l*x)` 58/60 and
+  `GAMMA.DIST(x,1,1/l,TRUE)` 57/60; `BINOM.DIST(k,n,p,TRUE)` against `BETA.DIST(1-p,n-k,k+1,TRUE)` 53/60;
+  `F.DIST` against its BETA.DIST forms 44/60; `CHISQ.DIST.RT` against `1-CHISQ.DIST` 18/60;
+  `POISSON.DIST` against `1-GAMMA.DIST(m,k+1,1,TRUE)` 38/60.
+- ERF is odd (460 of 460 pairs). `ERFC.PRECISE(-d)` = fl(1+`ERF.PRECISE(d)`) at 340 of 347 points with
+  0 <= d < 0.5 and `ERF.PRECISE(d)` = `ERFC.PRECISE(-d)`-1 at 213 of 304 with d >= 0.5, so neither half is a
+  plain reflection of the other everywhere.
+What the probes show about the kernel itself (none of it yet reproduces Excel bit for bit):
+- Tiny x: `ERF.PRECISE(2^-k)*2^k` = 1.1283791670955128 for every k from 27 to 79, one ulp above
+  fl(2/sqrt(pi)) = 1.1283791670955126. Excel's GAMMA, GAMMALN and 2/SQRT(PI()) all give the ...126 values.
+  Below about x = 1E-8 the result depends only on x's mantissa (exactly scale invariant: 100 of 100
+  mantissas at five scales). There it is `fl(fl(x*A) + fl(x*B))`, a constant split in two:
+  A = 1.1170334248975802 and B = 0.011345742197932508. That form reproduces 2,429 of 2,448 points (400 random
+  mantissas, 2,048 consecutive ones; 99.2%). A was read off the period of Excel's rounding pattern over runs of
+  consecutive mantissas spaced 2^j apart (j = 0 to 41), then confirmed by an exact solve. A + B is
+  2/sqrt(pi) + 1.08E-16 (about half an ulp), which is the +0.5 ulp bias Excel shows for x < 0.5. Neither constant is a known
+  coefficient, and B is not fl(2/sqrt(pi) - A) (that is 0.0113457421979324). Above 1E-8 both parts depend
+  on z = x^2. Strided runs at fixed scales (`kmyst-erf-zstride`, `kmyst-erf-runs`) pin each part separately.
+  - The coarse factor is fl(A + a1*z) with a1 = 0.1406815 (+-1.3E-7). One a1 gives full coverage on all 26
+    runs with z up to 6E-10, allowing the same 1-in-200 rate of odd points as the tiny regime.
+  - The fine part then is one exact double per run. It follows B - 0.516808*z, so the two slopes sum to
+    -2/(3*sqrt(pi)) as erf requires, but the fine part scatters by about +-6E-17 around that line. That
+    scatter is not the coarse rounding error, and neither a full-scale nor a half-scale double Taylor
+    series explains it.
+  Sweeping z finely (`kmyst-erf-zsweep`, `kmyst-erf-zsweep2`, `kmyst-erf-bridge`) explains that scatter. The
+  fine part is piecewise constant, `lo = B0 + K*(W - 1)` with `W = fl(1 - BETA*z)`, a value just below 1 on the
+  2^-53 grid. Bootstrapping the integer step count n = (1 - W)/2^-53 from n ~ 10 up to n ~ 2E7 gives:
+  - K = 1.13669733 (+-2.5E-9);
+  - BETA = 0.454657262 (+-5E-9), so K*BETA = 0.5168077 = 2/(3*sqrt(pi)) + a1;
+  - a1 refined to 0.1406813111.
+  With `erf = fl(fl(x*hi) + x*lo)`, evaluating the final sum in 80-bit x87 and rounding the coarse product
+  through 80 bits before storing it, the model matches 66,756 of 67,048 probe points (99.6%) with z <= 6E-9.
+  Every remaining miss is within a few thousandths of an ulp of a rounding tie, which points to
+  extended-precision constants.
+  Model source: docs/research/t1778/erf_small_model.c.
+  The ladder probe `kmyst-erf-ladder` (z from 1E-8 to 1E-3) shows W is a Gaussian, not a line.
+  - The grid count (1 - W)/2^-53 falls short of BETA*z/2^-53 by amounts that grow like z^2 (-92,736 units at
+    z = 1E-5, -8.4E7 at z = 3E-4).
+  - It matches (1 - exp(-BETA*z))/2^-53 up to a residual linear in z, which is error in the fitted BETA.
+  So the kernel is erf(x)/x = K*exp(-BETA*x^2) + a correction polynomial in x^2, a scaled Gaussian plus a
+  polynomial.
+  Not yet fitted: the correction's z^2 and higher coefficients, and the exact double values of K, BETA and a1.
+  With coefficients derived from Taylor matching, a_k = c_k - K*(-BETA)^k/k!, about 70% of mid-range points
+  match, so the correction is not the Taylor remainder. It may be a minimax fit, or W may not be libm exp.
+  Later probes (`kmyst-erf-scatter`, `kmyst-erf-zsweep3`) show that a single z cannot separate the two parts:
+  shifting the coarse factor by whole ulps and the fine factor the other way reproduces the same outputs.
+  The split shows only through where each part's rounding steps fall as z changes. A global exact-match fit
+  with free a1, a2, a3, K and BETA in 64-bit doubles (docs/research/t1778/erf_global_fit.c) reaches 93.9% for
+  z <= 1E-6 and 87.5% for z <= 1E-3. It pulls K to 1.1366973387, which conflicts with the 1.1366973293 that the
+  small-z bootstrap pins, so either the fine factor is not exactly K*(W - 1) or the coarse factor is not a
+  plain double polynomial. The coarse steps at z = 1E-8, 1E-7 and 1E-6 do not fit one quadratic either.
+  The excel-graph oracle is 64-bit Excel for the web, so x87 is run only as an emulated variant. It improves
+  the small-z score from 99.35% to 99.56%.
+  Re-analysis with the alias-free observables (the z where a part's rounding steps, read through the
+  per-run lo interval; scripts and data extraction in docs/research/t1778/README.md)
+  supersedes three statements above:
+  - The coarse product is rounded through 80 bits (x87 double rounding). The three hard misses of the tiny
+    split all have x*A within 0.0002 ulp of a tie, inside the 2^-12 window where an 80-bit round makes a
+    tie. With that, and B carried in extended precision (0.0113457421979325066854), the tiny form matches
+    3,043 of 3,048 points. The 5 left are final-sum near-ties (0.501 to 0.503 ulp).
+  - The coarse factor is hi = fl(H(z)) with H(0) exactly the double A (offset -0.005 to +0.0006 ulp). The
+    step positions bootstrapped from z = 2E-15 to 4.3E-3 (one unique hi in each of 80 runs) give
+    H = A + h1*z + h2*z^2 + h3*z^3 + h4*z^4 with h1 = 0.14068131264(22..36), h2 = 0.04481917(05..09),
+    h3 = 0.0018050(2..5) and h4 = 0.00009..0.00027. The earlier one-quadratic conflict was the alias choice:
+    the z = 1E-6 step sits at hi = A + 633572509 ulp, two lattice periods from the nearest candidate.
+  - hi + lo (smooth part) equals the exact erf(x)/x plus 1.07E-16 to within the two rounding sawtooths at
+    every z probed, 2E-15 to 1E-3. So the smooth part is computed to better than double precision.
+  - W is not exp(-BETA*z). The phase of the W sawtooth, read at eight sweeps from z = 2E-15 to 1E-4, rules
+    out exp, 1/(1+bz), the (1,1) Pade, a line, 2exp(-bz/2)-1, sech(sqrt(2bz)) and 1/sqrt(1+2bz). Only
+    W = fl(sqrt(1 - 2*b*z)) survives, through third order, with b = 0.4546567435376 or
+    0.4546589639848 (two branches). The ladder probe's "z^2 shortfall" above has the sign of sqrt, not exp.
+    Neither branch, nor sqrt of a rounded argument, is exact past z = 1.2E-3, so W's exact form is still
+    open there.
+  - Correction (probes `kmyst-erf-wsweep` and `kmyst-erf-wsweep2`, 21 more fine sweeps, with exact interval
+    phases): the sqrt survival above was an artefact of too few sweeps, and every one-parameter form now
+    fails by z = 3E-8. What fits is lo = B + K*(fl(W) - 1) + R(z), where W is a polynomial in z
+    (W = 1 - c1*z - c2*z^2 - c3*z^3 - ...). Its linear term is fixed by the rest:
+    c1 = (h1 + 2/(3*sqrt(pi)))/K = 0.4546572672773 (+-3E-14). With K = 1.13669732977 and R = 0, the
+    phases at all twelve sweeps from 2E-15 to 3E-7 are predicted with no free parameter. From 1E-6 on, the
+    fit needs c2 = -0.0598953 against -0.0598389 from erf's own z^2 term. That difference is
+    R ~ 6.4E-5*z^2, a smooth part of lo that bypasses W. c3 (about 0.022 to 0.033) is not yet unique.
+  - Two-argument `ERF(a,b)` is the exact difference of the two rounded single values: b one to five ulps
+    above a gives 1 to 5 ulps of erf at x = 0.3 to 1E-5 (`kmyst-erf-twoarg`, 48 points), so it exposes no
+    hidden precision. In the same probe the worksheet subtraction `ERF.PRECISE(b)-ERF.PRECISE(a)` returns
+    exactly 0 for 25 of the 47 nonzero differences (relative size at most 1.39E-15) and the exact
+    difference for the other 22 (relative size 1.11E-15 and up). The two ranges overlap, so the cut is not a
+    plain relative threshold on the result. It is Excel's near-cancellation snap on `-`; its rule is not
+    derived here.
+- Generic shape a: at z = m*2^-60, `GAMMA.DIST(z,a,1,TRUE)` for a = 2, 3, 10 is off by up to 640E-16
+  relative, and that error follows the rounding of fl(a*fl(ln z)) to within about 2E-16 (the docs/research
+  script prints both). For a = 10 a constant -25E-16 remains, the error of Excel's own
+  `GAMMALN(11)` = 15.104412573075518 (true 15.1044125730755153). So the prefix z^a/Gamma(a+1) is
+  exp(a*ln z) times a factor built from Excel's GAMMALN, not pow. The density
+  `GAMMA.DIST(z,a,1,FALSE)` is computed from the CDF's prefix: at z = m*2^-60 it equals
+  fl(`GAMMA.DIST(z,a,1,TRUE)` * fl(a/z)) at 100 of 100 points for a = 2, 3 and 1.5.
+- Shape 0.5's CDF does not take that path: it stays within 2 ulp at tiny z, while its density there is off
+  by up to about 15 ulp, as exp(0.5*ln z) would be. Shape 1 is not on it either: it returns z exactly at
+  z = m*2^-60 (100 of 100), where exp(fl(ln z)) would be off by up to 16 ulp.
+- ERFC tail: removing the rounding of a naive `exp(-fl(x*x))` cuts Excel's error from a standard deviation
+  of 115 ulp to 1.85 ulp for x >= 4 (1,702 points). The rest (at most 7.4 ulp) has a smooth part of up to
+  about +-2.5 ulp: positive around x = 6.5-7.5, 9-9.75, 13-15.5 and 19.75-22.75, negative around
+  10.25-11.75, 16-19.5 and 23-23.75 (means over bins of 0.25). It is the drift T-1187 reported.
+- Rational kernel (round-1 parallel investigation, 2026-10-18). This supersedes the additive hi + K*(1 - fl(V)) + R
+  model above. That model linearises a division, so its K, V0, c1, c2, R and d0 are artefacts.
+  - The kernel is ERF.PRECISE(x) = fl53(fl80(co)/W), with co = fl53(fl64(x*N)), N = fl(P(z)) and W = fl(Q(z)).
+    N and W are stored doubles, and the divide is x87 (80-bit, then rounded).
+  - P(0) = A = 0x1.1df5e70c7956bp+0 and Q(0) = 0x1.fada15778ece6p-1 = 0.98994509777494666.
+    A/Q(0) = 2/sqrt(pi) + 1.067E-16, which is the old +0.5 ulp bias.
+  - Tiny x: fl(fl(x*A)/Q(0)) matches 3,048 of 3,048 points with no fitted constant; the old form matched 3,043.
+    Forming x*A without the store matches 2,322.
+  - Small z: letting N and W step one ulp at a time, every run of the wknee long runs (253,952 points) and of the
+    zs3, wsweep, wladder and wlong2 sweeps (z up to 7.4E-3) fits with zero misses.
+  - Fitted coefficients:
+    - P = A + 0.1406813126423 z + 0.04481917070 z^2 + 0.0018054 z^3 + ...
+    - Q = Q(0) + 0.45465726643 z + 0.0922778683 z^2 + 0.0104635 z^3 + ...
+    - Q's terms follow from P and the erf series.
+  - The old "grid doubling at lo = 0" is W crossing 1.0. The old V phases could not be chained by any smooth
+    polynomial because the true step size N/W^2 varies with z.
+  - The form (degree 4 over 5 in z, x*N/W) matches Cephes `ndtr.c` erf but not its coefficients. The normalised
+    ratios are close to the [4/5] Padé of erf(x)/x. Scripts: `docs/research/t1778/tinydiv.c`.
+  - The exact coefficients and their evaluation order are OPEN (T-1778).
+- Bit-exact small-x erf (round 3, 2026-10-18). For 0 <= x < 0.5 (and x = 0.5 itself), ERF.PRECISE(x) is computed
+  as follows:
+  - z = fl53(fl64(x*x)).
+  - N = P(z) and W = Q(z) by x87 Horner from the top coefficient, storing every operation to a double:
+    t = fl53(fl64(s*z)), then s = fl53(fl64(t + c_k)).
+  - co = fl53(fl64(x*N)), then erf = fl53(fl64(co/W)).
+  - The coefficients are doubles, listed in hex in `docs/research/t1778/round3/sol100.txt`. P(0) = A =
+    0x1.1df5e70c7956bp+0 and Q(0) = 0x1.fada15778ece6p-1, as above.
+  - Matches: 775,272 of 775,272 oracle points across every small-x probe, and 35,718 of 35,718 points never used
+    in the fit.
+  - p0..p2 and q0..q2 are pinned to single doubles. The top coefficients lie on a thin feasible family, and other
+    members score the same on all data.
+  - How it was found: exact interval inversion of each rounding step into linear constraints, solved by LP
+    (`docs/research/t1778/round3/`).
+  - The source of the coefficients is not identified. No minimax, Padé or Chebyshev construction reproduces q2.
+- ERFC kernel for x >= 0.5 (round 3; structure only, not bit-exact):
+  - **Split.** The kernel starts at x = 0.5 + 2^-53; x = 0.5 still takes the small-x branch.
+  - **Form.** ERFC(x) = fl53(fl64(E*R)). E is Excel's own EXP(-fl53(fl64(x*x))) (numbers.md, "EXP is an x87
+    2^(a*log2 e) evaluation"), and R is a stored double that depends only on x. All 121,798 observed results
+    can be written this way; with a plain double multiply, 17 cannot.
+  - **Other results.** ERF(d) = fl(1 - ERFC(d)) and ERFC(-d) = fl(2 - ERFC(d)). A result below DBL_MIN is flushed
+    to 0; there is no x threshold, and the last nonzero result is near x = 26.5432.
+  - **Related functions:**
+    - CHISQ.DIST.RT(2z, 1) = ERFC.PRECISE(SQRT(z)) at 32,768 of 32,768 points.
+    - NORM.S.DIST(-y, TRUE) = ERFC.PRECISE(fl(y*sqrt(0.5)))/2 in the tail, not y/sqrt(2) (3,072 of 3,072
+      against 590).
+  - **R's error structure.**
+    - R's error is a deterministic staircase of about ±3 units of 2^-53: flat on [0.5, 1.843), then sharp
+      steps (9.0503 and 19.3667 are among the sharpest).
+    - An all-double or stored-x87 Horner rational shows the same pattern, with a jump wherever an intermediate
+      crosses a power of two. So the staircase is a rounding fingerprint of the exact coefficients, not an
+      approximation-error curve.
+    - The sharpest change sits at x ≈ 1.843, and a likely branch at x ≈ 8.03-8.05. Above that branch, two
+      fixed spectral lines (0.28893 and 0.32594 cycles per x-ulp) point to an intermediate linear in x.
+  - Superseded for x > 4 by the bit-exact tail entry below. The rest of this entry stands for [0.5, 4].
+  - **Ruled out as R:**
+    - Cephes ndtr erfc, Hart 5725, Cody CALERF and fdlibm (16-40% exact);
+    - Numerical Recipes gcf, the Laplace continued fraction and asymptotic-series term counts;
+    - tables in x or z, and branches at any of 1, 1.5, ..., 20.
+  - **Best smooth model.** fl87(E*fl(erfcx(x))) matches 32.5% of points. The ceiling for any smooth R is about
+    39%, so parity needs the exact coefficients and operation order.
+- ERFC tail for 4 < x <= 26.55 (rounds 6-7, 2026-10-18): matches at 1,540,475 of 1,540,477 points.
+  - **Form.** ERFC(x) = fl53(fl64(E*R)), where E is Excel's own EXP(-fl53(fl64(x*x))) and R = fl53(fl64(N/D)).
+  - **N and D.** N (degree 8) and D (degree 9) are Horner polynomials in x itself. Every multiply and add is
+    stored to double: s = fl(fl(s*x) + c).
+    - The leading coefficients satisfy N0/D0 ≈ 2/sqrt(pi), the erfcx asymptote.
+    - The constant term of D is exactly 128.
+    - The coefficients are in `docs/research/t1778/round7/erfc_tail_coef.txt`.
+  - **Branch.** x = 4 itself takes the lower kernel, and the switch is exactly at x > 4 (Cody's break point).
+    Nothing changes at 1, 2, 8 or 16; there is no binade range reduction.
+  - **Results below DBL_MIN** are flushed to 0, as elsewhere (596 cutoff points).
+  - **Score.** With Excel's own EXP column as E, `erfc_tail_check.c` matches 1,540,475 of 1,540,477 points (all
+    kmyst-erfc-* cases with an EXP column; 370,404 of 370,405 on cases not used in the fit). The 2 misses are 2 ulp
+    in the result at x = 0x1.6462e6ea85447p+3 and 0x1.f9b8b10efd91fp+3. Both are input artefacts: Excel read those
+    cells' xlsx text as the next double up, and the model at that double matches exactly (numbers.md, "Stored numbers
+    in an xlsx are not always parsed to the nearest double"). So the tail model agrees with every probed point.
+  - **Uniqueness.** The top coefficients are pinned to single doubles. A few late ones are equivalent on all data
+    within a few ulps; the ranges are in the coefficient file.
+  - **How it was found.**
+    - Stored products and sums were located from the spectral lines and from the rounding grid in R's error.
+    - Constants were pinned by bisecting binade crossings to the ulp, then by phase or vernier scans and global
+      regressions.
+    - Once N was exact, D's stages followed from per-stage correlation searches.
+    - The low bits were pinned by peeling down from high x.
+  - **Still open:** EXP's last F2XM1 cells. The [0.5, 4] kernel is bit-exact (below).
+- Wrappers of the ERFC kernel on 0.5 < x <= 4 (round 9 side-channel search; `kmyst-erfc-r9side1..4`, about 147k
+  cells). None exposes N, D or R beyond B = ERFC.PRECISE(x). All 794 exact ties in 1-B and all 419 in 2-B resolve
+  ties-to-even from B itself, so nothing reads the unrounded fl64(E*R).
+  - ERF.PRECISE(x) = fl53(fl64(1 - B)): x87 double rounding, at 8,096 of 8,096 points. Plain fl(1 - B) misses
+    x = 3.1000000000001076. ERFC(-x) = fl53(fl64(2 - B)).
+  - NORM.S.DIST(-y, TRUE) = ERFC.PRECISE(d)/2 with d = fl53(fl64(y*fl(sqrt(0.5)))), rounded twice: 600 of 600 on
+    discriminating y, against 9 for a single rounding. NORMSDIST and NORMDIST are the same.
+    NORM.S.DIST(+y) = fl53(fl64(1 - 2*NORM.S.DIST(-y))).
+  - ERF(a, b) is the exact difference ERF.PRECISE(b) - ERF.PRECISE(a), a multiple of 2^-53. The worksheet `-`
+    near-cancellation snap does not apply inside ERF(a, b): 1 of 129 points differs from the cell formula.
+  - Legacy ERF and ERFC are identical to the .PRECISE forms.
+  - CHIDIST, CHISQ.TEST at df 1 and Z.TEST are wrappers too.
+  - Z.TEST with a single-value array returns #DIV/0!.
+  - Odd-df upper chi-square (Q(1.5), Q(2.5)) and the shape-0.5 density use separate generic paths, not this kernel.
+- ERFC kernel for 0.5 < x <= 4 (rounds 7-9): bit-exact.
+  - **Form.** The same family as the tail. ERFC = fl53(fl64(E*R)) with R = fl53(fl64(N/D)). N (degree 9) and D
+    (degree 10) are Horner polynomials in x, evaluated from the top coefficient. Every operation is rounded
+    twice, s = fl53(fl64(fl53(fl64(s*x)) + c)), and D's constant term is exactly 1. E is Excel's own EXP(-(x*x)).
+    - The double rounding of the products matters: single-rounded products give 99.86%.
+  - **Coefficients.** In `docs/research/t1778/round9/erfc_mid_coef.txt`, highest degree first. Each of the 21 is
+    unique: a 1-ulp change in any one adds misses.
+  - **Score.** `round9/mid_check.c` (gcc -O1 -mfpmath=387) matches 5,694,938 of 5,694,943 points with 0.5 < x <= 4
+    (all kmyst-erfc-* cases with an EXP column, through `r11*`).
+    - The 5 misses are at x = 2.4500000000004998, 3.0900000000000998, 2.2677103947185002, 2.6493240961407998 and
+      1.3246620480703999. Each matches exactly at the neighbouring double, so these are the xlsx misparse quirk
+      (numbers.md), not kernel errors.
+    - Held out: none of the 54 `r11*` cases (the epsilon ladder and the non-dyadic runs, 876,544 points)
+      were used in the fit, and all of them match.
+  - **Generator.** A relative-error minimax (9,10) rational of erfcx on [0.5, 4], D0 = 1, like the tail's (8,9) on
+    [4, 26.54].
+    - Excel's doubles are not the plain 90-digit Remez solution (`round9/gen910.txt`). They are 1.5E-9 to 1.6E-8
+      higher in relative terms (up to 1.3E8 ulps), smoothly in degree.
+    - N0 and D0 agree exactly, and the shift moves along a near-null direction of the rational. So the function
+      agrees to about 1E-20, but no ulp-level reconstruction of Excel's generator exists. The doubles had to be
+      measured.
+  - **How the coefficients were found.**
+    - A spectral test picked the degree: line-spectrum overlap with exact stored-Horner simulations is 0.68 for
+      (9,10), and chance for every other degree and for Cody's (8,8).
+    - Global step, a phase lattice. Each stored product's sawtooth phase, locked in per (run, stage), is linear
+      in the integer mantissa errors. A closest-vector lattice solve (fpylll) over about 850 equations with a
+      1E9-ulp box took the generator from 31% to 85.5% exact.
+    - Top coefficients. Products near x = 4 hide their phase errors, so these came from top-down stage peeling
+      on non-dyadic-start runs (`r11b*`), cross-checked against a chain solve up the Horner recursion. The two
+      methods agreed to a few ulps on D6..D9.
+    - Last, 2-D exact searches on the top pairs.
+  - **Lesson.** Peeling on runs that all start at multiples of 1/128 (`r8d*`) gives lattice aliases: the low bits
+    are right but the high part is wrong. A candidate has to hold in several disjoint x regions, or on irregular
+    run starts.
+  - The (7,7) least-squares reading of rounds 7-8 is superseded: its tiny top coefficient, invisible top stages
+    and lambda = 1.020495 were all artefacts of the wrong degree.
+
+- GAMMA.DIST(z, 0.5, 1, TRUE) = ERF.PRECISE(SQRT(z)) = CHISQ.DIST(2z, 1, TRUE) at 15,360 of 15,360 consecutive
+  doubles z, about half of which are not squares of doubles (`kmyst-erf-decouple`).
+  - So the kernel works from x = sqrt(z), and that internal sqrt is rounded twice (64-bit, then 53), like the
+    worksheet SQRT.
+  - Shapes 0.5 and 1 are special-cased on exact equality. a = 0.5 +- 1 ulp already takes the generic
+    exp(fl(a*fl(ln z))) path, whose error tracks that rounding with slope 1.00 +- 0.02 (`kmyst-erf-ashape`).
+  - The "0.5 +- 1 ulp" columns of `kmyst-gamma-exp` are formula literals cut to 15 digits (0.5 and
+    0.499999999999999), not true neighbours of 0.5.
+- For 0.03 <= x <= 0.32, ERFC.PRECISE(x) = fl(1 - ERF.PRECISE(x)) (ties to even) and
+  ERFC.PRECISE(-x) = fl(2 - ERFC.PRECISE(x)) at 12,288 of 12,288 points (`kmyst-erf-erfcties`). So ERFC exposes no
+  extra precision at small x.
+Candidates that do not reproduce Excel (exact matches):
+- Small-x erf (1,875 to 2,677 points, x < 0.5): Taylor series, CALERF and Cephes rationals with
+  c = ...128 in four operation orders, at most 772 (41%); Taylor coefficients rounded to 15, 16 or 17
+  digits, 623; incomplete-gamma series (Numerical Recipes and Cephes forms, seven prefixes, six tolerances), 703;
+  the same with sqrt(z), exp(-z) and Gamma constants within 3 ulp, 782 of 2,533.
+- Generic-shape prefix: exp(fl(a*fl(ln z))) times exp(-GAMMALN(a+1)), 1/GAMMA(a+1) or exp(-GAMMALN(a))/a
+  in 14 orders: at most 285 of 600 (a in {2, 3, 1.5, 0.25, 2.5, 10}); the residual is within 2 ulp. Cephes
+  `exp` and `log` (Moshier's cmath) in place of libm: 269.
+- ERFC tail shape: the exact-arithmetic error curves of CALERF, Cephes `erfc` and Boost's 53-bit erfc
+  are flat (within 0.35 ulp) and do not follow Excel's drift; CALERF with coefficients cut to 10 to 18
+  digits shifts the curve but adds no drift. Numerical Recipes `gcf` (tolerance 1E-15 or below) and the
+  Cephes `igamc` fraction stop with a truncation error below 0.03 ulp for x >= 5, so truncation is not
+  the drift. The asymptotic series stopped by a relative or absolute tolerance from 3E-17 to 3E-14
+  correlates at most 0.39 with it.
+Evidence: probes-numeric cases on branch `agent/research/T-1778-kernel-map` (not on main; curated copies with
+provenance are probes-numeric `t1916-*`, below) `kmyst-norm-erfc-a`, `kmyst-norm-erfc-b`, `kmyst-erf-gamma`,
+`kmyst-erf-tiny`, `kmyst-erf-dense`, `kmyst-erfc-dense`, `kmyst-gamma-tiny` and `kmyst-kernel-map`
+(excel-graph, 2026-10-17); the tiny-x erf split uses `kmyst-erf-mantissa`, `kmyst-erf-scale`,
+`kmyst-erf-consecutive`, `kmyst-erf-stride06` to `kmyst-erf-stride41`, `kmyst-erf-runs`, `kmyst-erf-zstride`, `kmyst-erf-zsweep`, `kmyst-erf-zsweep2`, `kmyst-erf-bridge`, `kmyst-erf-ladder`, `kmyst-erf-scatter`, `kmyst-erf-zsweep3`, `kmyst-erf-zladder`, `kmyst-erf-wsweep`, `kmyst-erf-wsweep2`, `kmyst-erf-twoarg`, `kmyst-erf-wladder1/2`, `kmyst-erf-wknee1..4`, `kmyst-erf-decouple`, `kmyst-erf-ashape`, `kmyst-erf-erfcties`, `kmyst-erf-rladder1..7` and the `kmyst-erfc-*` tail probes, and the
+internal-exp check uses `kmyst-gamma-exp`. `uv run python ../docs/research/t1778_incomplete_gamma_kernel_map.py` in tools/
+reprints the identity counts, the tiny-x constant, the GAMMA.DIST error tracking and the ERFC tail figures.
+Engine (T-1916): `crates/rustsheet-engine/src/functions/statistical/erf.rs` implements the three kernels and the
+wrappers exactly as above: the small-x rational for 0 <= x <= 0.5, the (9,10) rational for 0.5 < x <= 4, the (8,9)
+rational for 4 < x <= 26.55, ERF = fl(1 - ERFC) and ERFC = fl(1 - ERF) on either side of the split,
+ERFC(-x) = fl(2 - ERFC(x)), ERF(-x) = -ERF(x), and 0 beyond 26.55 or below DBL_MIN. E comes from `x87_exp.rs`
+(numbers.md, "EXP is an x87 2^(a*log2 e) evaluation"), and every operation is the x87 `fl53(fl64(.))` of
+`arithmetic.rs`' `extended_*` helpers. `normal_cdf` uses the NORM.S.DIST identity (d = fl53(fl64(-z*fl(sqrt(0.5)))),
+z = (x-m)/s), so NORM.DIST, NORM.S.DIST and LOGNORM.DIST inherit the kernel; CHISQ.DIST.RT, Z.TEST, POISSON and
+GAMMA.DIST are not routed yet (T-1929).
+- Bulk check against every single-argument ERF/ERFC cell of the research probes (`ERF.PRECISE(A)`, `ERF(A)`:
+  928,038 cells; `ERFC.PRECISE(A)`, `ERFC(A)`: 7,259,712): all match except 27 ERFC cells. Each of the 27 sits on a
+  row whose `EXP(-(x*x))` cell also differs from model V6: 7 are the misparsed inputs (numbers.md), and 20 are V6's
+  F2XM1 near-ties, where E itself is one ulp off. So the kernel is exact given Excel's E.
+- The 20 residual cells (ours minus Excel, in ulps, against the T-1778 run of 2026-10-17/18). Excel itself is not
+  stable on them: re-filling probes-numeric `t1916-erfc-exp-ties` from excel-graph on 2026-10-18 22:09 UTC changed 9 of
+  the 20 to exactly the engine's value (last column), while all 37,181 other curated cells came back identical. That
+  fits the numbers.md hypothesis that F2XM1 near-ties depend on the server's CPU. The case keeps the re-filled values;
+  11 cells fail there:
+
+  | x | source cell | Excel | ours | ulps | 2026-10-18 re-fill |
+  |---|---|---|---|---|---|
+  | 0.6072288384003274 | `kmyst-erfc-r8a02!B11142` | 0.39047776383350075 | 0.3904777638335007 | -1 | unchanged |
+  | 0.7384214715396948 | `kmyst-erfc-r8a27!B2131` | 0.2963532455163474 | 0.29635324551634745 | +1 | now ours |
+  | 1.0120360000006228 | `kmyst-erfc-r8c02!B2806` | 0.15236286518682227 | 0.1523628651868223 | +1 | unchanged |
+  | 1.133855197359528 | `kmyst-erfc-r8c11!B12999` | 0.10882135357193193 | 0.10882135357193196 | +2 | now ours |
+  | 1.2477434152698585 | `kmyst-erfc-r8c19!B14809` | 0.07763510913068844 | 0.07763510913068843 | -1 | now ours |
+  | 1.2552298757609002 | `kmyst-erfc-r8c20!B4056` | 0.0758709582369251 | 0.07587095823692512 | +1 | unchanged |
+  | 1.3895972295864865 | `kmyst-erfc-r8c28!B12529` | 0.049392569300292365 | 0.04939256930029237 | +1 | now ours |
+  | 1.5019749479478826 | `kmyst-erfc-r8c35!B2555` | 0.033660667142911285 | 0.03366066714291129 | +1 | unchanged |
+  | 1.6234407324888618 | `kmyst-erfc-r8c41!B12972` | 0.021682062911535203 | 0.021682062911535207 | +1 | now ours |
+  | 1.9777427541726267 | `kmyst-erfc-r8c58!B1853` | 0.005158741609633451 | 0.005158741609633452 | +1 | unchanged |
+  | 1.999999999994299 | `kmyst-erfc-r10a03!B7094` | 0.004677734981165087 | 0.004677734981165086 | -1 | unchanged |
+  | 2.0980403743165046 | `kmyst-erfc-r8b05!B6701` | 0.0030064550726207197 | 0.0030064550726207192 | -1 | now ours |
+  | 3.4470393500808028 | `kmyst-erfc-r8b46!B8686` | 1.088912745444291e-06 | 1.0889127454442908e-06 | -1 | now ours |
+  | 3.4677215861840427 | `kmyst-erfc-r8b47!B6701` | 9.385719563052113e-07 | 9.385719563052112e-07 | -1 | now ours |
+  | 3.5625000000032463 | `kmyst-erfc-r8d09!B7311` | 4.700878390220142e-07 | 4.7008783902201417e-07 | -1 | unchanged |
+  | 3.664062500001378 | `kmyst-erfc-r8d22!B3104` | 2.1979381408397832e-07 | 2.197938140839783e-07 | -1 | unchanged |
+  | 6.033383929192591 | `kmyst-erfc-r6edge2!B2734` | 1.432267499362933e-17 | 1.4322674993629332e-17 | +1 | unchanged |
+  | 8.023485545192495 | `kmyst-erfc-r4zoomf1!B4817` | 7.681947674754094e-30 | 7.681947674754095e-30 | +1 | now ours |
+  | 10.807240000000013 | `kmyst-erfc-r4cat3!B5888` | 9.813472760469224e-53 | 9.813472760469222e-53 | -1 | unchanged |
+  | 13.046480000000013 | `kmyst-erfc-r4tile3!B17525` | 5.1656301475547037e-76 | 5.165630147554705e-76 | +2 | unchanged |
+- Curated evidence on main (excel-graph values copied unchanged, provenance in each case description):
+  probes-numeric `t1916-erf-small` (4,878 cells), `t1916-erfc-mid` (9,024), `t1916-erfc-tail` (10,142),
+  `t1916-erf-wrappers` (13,137) and `t1916-erfc-exp-ties` (20). Every ERF, ERFC, ERF(a,b), NORM.S.DIST and
+  NORM.DIST cell passes; the failures are the CHISQ.DIST.RT and Z.TEST wrappers (T-1929) and the 20 residuals.
+- `ironcalc-calc/ENGINEERING/ERFs.xlsx` E8 and G8 (`ERFC(6)`, `ERFC.PRECISE(6)`) stay known failures: that workbook was
+  cached by Microsoft Macintosh Excel, which gives 0x1.8cf81557d20bap-56, while the excel-graph oracle (Windows,
+  probes-numeric `t1040-erfc` A97) gives 0x1.8cf81557d20b8p-56, the engine's value. A platform difference
+  (Mac Excel does not run the x87 code), not a kernel miss.
+Status: VERIFIED. ERF, ERF.PRECISE, ERFC and ERFC.PRECISE are bit-exact on every probed input except the 20 EXP
+near-tie cells. Implemented in `erf.rs` and `x87_exp.rs` (T-1916).
+Tasks: T-1778, T-1916; T-1929 routes the remaining wrappers and T-1931 the worksheet EXP; T-0968, T-1187, T-0971 and
+T-0972 inherit the map.
 
 ## RANK of a non-reference array
 Rule: RANK, RANK.EQ and RANK.AVG need a reference as their second argument. An array that is not a reference
@@ -1032,7 +1370,10 @@ Centrally (|p - 0.5| <= 0.425) no candidate fits (central bit-exact counts of 40
   - NORM.S.INV recomputed from a constant p reproduces x at all 340 rows.
   This matches Microsoft's description of NORM.S.INV as an "iterative search" on NORM.S.DIST and
   has the same shape as BETA.INV (T-1745). Its start and stop rule are not fitted.
-Consequence: the best kernel is a hybrid, PPND16 in the tails and statrs centrally. It is bit-exact
+Consequence: the best kernel is a hybrid, PPND16 in the tails and statrs centrally (implemented, T-1916:
+`normal.rs` `ppnd16_tail`, for NORM.S.INV and NORM.INV; the central region stays with T-0925). In the tails
+NORM.INV(p,m,s) = m + z*s in plain doubles with z = PPND16(p): `NORM_DIST.xlsx` `NORM.DIST NORM.INV`!F4, F10, F11,
+F16, F17, F24, F25, F42, F58, F68, F69 and F77 all pass with it; centrally statrs' own `Normal(m, s)` composition stays. It is bit-exact
 on 775 of 1,024 sweep cells, against 341 for the engine's statrs alone (fit `norm-s-inv`).
 Side finding for T-0968, now the fit `norm-s-dist` (T-1759): over all 1,773 NORM.S.DIST cells,
 `0.5*erfc(-x*sqrt(0.5))` (glibc) is bit-exact on 1,103, Cody's rational approximations (R's
