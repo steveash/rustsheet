@@ -341,17 +341,58 @@ T-1714 probed the inferences (probes/text-ap-locale-inferences, 81 cells; probes
 
 ## Locale tags localize date names (T-1716)
 Rule: a `[$-tag]` with no currency symbol prints nothing, but in its own section it sets the language of `mmm`, `mmmm`, `mmmmm`, `ddd`, `dddd` and of the day-half strings, from Excel's locale data rather than CLDR: `[$-407]mmm` of March is "Mrz" (de-CH `[$-807]` "Mär", `ddd` "Mi."), `[$-40A]ddd` "mi.", `[$-405]mmm` Roman ("III"), `[$-411]mmm` "3". `mmmmm` is the first character of the month name (`[$-804]` December "十", `[$-411]` December "1"). Numbers, separators and `yyyy`/`d` are not localized (`[$-40C]0.00` "1234.50", `[$-40C]dd/mm/yyyy` "15/03/2023"). Under a resolved tag `A/P` and `a/p` print the locale's `AM/PM` strings, so `[$-409]h A/P` is "6 PM" and `[$-411]h a/p` "6 午後" (Western European, Italian, Russian, Polish, Nordic Danish/Swedish, Dutch and Portuguese stay "AM"/"PM"; `[$-414]` "a.m."/"p.m.", `[$-40B]` "ap."/"ip.", `[$-405]` "dop."/"odp.", `[$-40E]` "de."/"du.", `[$-41F]` "ÖÖ"/"ÖS", `[$-412]` "오전"/"오후", `[$-804]`/`[$-404]` "上午"/"下午"). An unresolved tag (`[$-zzz]`, `[$-]`, `[$-FFFF]`) keeps the letters.
-- **Resolution.** Hex LCIDs are case-insensitive and may carry a calendar digit above the low four (`[$-1040C]`, `[$-0040C]` are French). An LCID with no locale of its own falls back to its language (inferred; it holds only where the variants share names, so every regional variant that differs has its own table: see "Regional variants" below; T-1858) (`[$-80C]`, `[$-C]` French, `[$-7]` German, `[$-A]` Spanish, `[$-11]` Japanese, `[$-16]` Portuguese) and `[$-4]` is Traditional Chinese. 400 and 800 are en-US (A/P becomes AM/PM); `[$-0]`, `[$-40C0]`, `[$-2000000]`, `[$-FFFF]` and `[$-40C,1]` print English. BCP-47 tags match case-insensitively and fall back to their language: `[$-fr-FR]`, `[$-FR-fr]`, `[$-fr]`, `[$-fr-XX]` are French, `[$-de]` German (not LCID 0xDE), `[$-zh]` Traditional Chinese, `[$-xx]` English. Oddities not modelled: `[$-fr_FR]mmmm` of 45000 is "December", `[$-11040C]mmmm` is "二月" (T-1859).
+- **Resolution.** Hex LCIDs are case-insensitive and may carry a calendar digit above the low four (`[$-1040C]`, `[$-0040C]` are French). An LCID with no locale of its own falls back to its language (inferred; it holds only where the variants share names, so every regional variant that differs has its own table: see "Regional variants" below; T-1858) (`[$-80C]`, `[$-C]` French, `[$-7]` German, `[$-A]` Spanish, `[$-11]` Japanese, `[$-16]` Portuguese) and `[$-4]` is Traditional Chinese. 400 and 800 are en-US (A/P becomes AM/PM); `[$-0]`, `[$-40C0]`, `[$-2000000]`, `[$-FFFF]` and `[$-40C,1]` print English. BCP-47 tags match case-insensitively and fall back to their language: `[$-fr-FR]`, `[$-FR-fr]`, `[$-fr]`, `[$-fr-XX]` are French, `[$-de]` German (not LCID 0xDE), `[$-zh]` Traditional Chinese, `[$-xx]` English. Underscore tags select calendars: `[$-fr_FR]mmmm` of 45000 is "December" (see "Calendars of a locale tag"; T-1924).
 - **System tags.** `[$-F800]` and `[$-x-sysdate]` replace the whole section with the system long date, en-US "dddd, mmmm d, yyyy", whatever else it holds (`TEXT(45000.75,"x[$-F800]0")` is "Wednesday, March 15, 2023", 0.5 "Saturday, January 0, 1900", -1 and 3e6 `#VALUE!`); `[$-F400]`/`[$-x-systime]` likewise give "h:mm:ss AM/PM". Only a first section shows it: `TEXT(-1,"0;[$-F800]")`, `TEXT(0,"0;0;[$-F800]")` and `TEXT("abc","0;0;0;[$-F800]")` are "". With `@` the section is a text section as usual (`[$-F800]@` of 45000.75 is "45000.75").
 - **One tag per section.** A second tag in a section is `#VALUE!`, even the same one or a system tag (`[$-40C]mmmm [$-40C]mmmm`, `[$-40C]mmmm [$€-407]mmmm`, `[$-F800][$-F400]`); tags in different sections are fine.
 - **Regional variants and more languages** (probes/text-locale-regional-lcids, 252 cells, T-1858). The language fallback does not hold across regions: `[$-C07]` de-AT has "Jän"/"Jänner" for January, "Mär" for March, and `ddd` "Mi."/"Do." (de-DE differs in all three); `[$-1004]` zh-SG mixes the two: short months as zh-TW ("一月"), days as zh-CN ("周三"); `[$-C04]` zh-HK equals zh-TW ("週三"); `[$-80A]` es-MX and `[$-2C0A]` es-AR differ from es-ES in `ddd` and the day halves ("a. m."/"p. m."), and es-AR's halves use a non-breaking space where es-MX's use a plain one. Languages that now resolve: `[$-408]` Greek ("Ιαν", "πμ"/"μμ"), `[$-41E]` Thai (Thai names, AM/PM stay Latin), `[$-41B]` Slovak (short months are the numerals "1"…"12", like Japanese), `[$-422]` Ukrainian (AM/PM stay Latin), `[$-401]` Arabic ("ص"/"م"), `[$-40D]` Hebrew (AM/PM stay Latin), `[$-439]` Hindi ("पूर्वाह्न"/"अपराह्न"). Calendar and digit switches of Thai, Arabic and Hebrew are T-1859's.
-- **Not yet modelled** (T-1859): locales not in the table list print English and keep `A/P` letters, though Excel very likely localizes them; `[$-411]` eras (`g|gg|ggg|e|ee` is "R|令|令和|5|05"), `[$-40C]bbbb` is the Gregorian "2023" and `[$-40C]B2mmmm` "mars".
+- **Not yet modelled:** locales not in the table list print English and keep `A/P` letters, though Excel very likely localizes them. Eras and calendar digits are in "Calendars of a locale tag" below.
 - **A currency tag with a locale** (`[$€-40C]`, `[$€-fr-FR]`) is a symbol plus a locale tag in one: the symbol prints where it is written in a date section (`[$€-40C]d mmmm` "€15 mars", `d [$€-40C]mmmm` "15 €mars", `mmmm[$€-40C]` "mars€", `dddd [$€-40C]` "mercredi €", `[$€-40C]yyyy` "€2023", `[$€-40C]h:mm AM/PM` "€6:00 PM", `[$€]mmmm` "€March") and the locale localizes the section like `[$-40C]`. It counts as the section's one tag (`[$€-40C]mmmm [$-40C]mmmm` is `#VALUE!`; tags in different sections are fine). A system locale drops the symbol (`[$€-F800]` is the system long date). A multi-character symbol with a locale (`[$USD-40C]mmmm` is "USDmars") is not modelled yet (T-1883). Evidence: probes/text-currency-locale-date (excel-graph, 2026-10-18, T-1865).
 - The cell display path shows the same text (probes/displayed-text-locale-names).
 Evidence: probes/text-locale-date-names (124 cells), probes/text-locale-name-tables (601), probes/text-locale-am-neutral (47), probes/displayed-text-locale-names (5), probes/text-locale-regional-lcids (252) (excel-graph, 2026-10-18). Morning strings of locales whose afternoon is "PM" are inferred as "AM" beyond fr, de, de-AT, th, sk, uk and he (probed).
 Implemented in: locale/excel_date_names.rs (tables), formatter/locale_tag.rs (resolution), `Token::Locale` (lexer.rs), `DatePart::names` and `Parser::system_part` (parser.rs), format.rs.
 Status: VERIFIED (excel-graph)
 Tasks: T-1716, T-1858, T-1865
+
+## Calendars of a locale tag (T-1859)
+Rule: a hex locale tag `[$-NNCCLLLL]` holds a numeral system (NN), a calendar (CC) and the LCID (LLLL). The calendar decides what `yy`/`yyyy`, `b`, `e` and `g` print and may override the month and day names. `AM/PM` always follows the LCID. Values below are for serial 45000 (2023-03-15).
+
+**Japanese eras.** They apply under calendar 3 with any LCID, and under a Japanese LCID's own calendar (0, or `[$-ja-JP]`, `[$-ja]`, `[$-11]`).
+- `g`, `gg` and `ggg`+ print the era's letter, first character and name: "R|令|令和". Longer runs print the name.
+- `e` prints the era year ("5"). `ee`+ prints it with at least two digits ("05"; "7981" at 9999-12-31).
+- Eras start at serial 4595 (Taisho, 1912-07-30), 9856 (Showa), 32516 (Heisei) and 43586 (Reiwa, 2019-05-01). Earlier serials, 0 included, are Meiji ("M|33" for 1900).
+- Under calendar 3, `yy` and `yyyy` print the era year ("05"). Under the Japanese LCID's own calendar they do so only after a `g` earlier in the section: `[$-411]yy|g|yy|yyyy` is "23|R|05|05" and `[$-411]e|yy|yyyy` is "5|23|2023". A `g` written before the tag counts too (`g[$-411]yyyy` is "R05").
+- Calendar 1 is Gregorian even for Japanese. Under a Japanese LCID with a non-Japanese calendar, a `g` earlier in the section makes `yy` and `yyyy` print the whole Gregorian year: `[$-10411]g|e|yy` is "|2023|2023" and `[$-70411]g|yyyy` is "|2023" (Thai would otherwise print 2566). Other LCIDs are unaffected: `[$-409]g|yy` is "|23", `[$-70409]g|yy|yyyy` "|66|2566", `[$-50409]g|yy|yyyy` "|56|4356", and with no tag `g|yy` is "|23" (probes/text-locale-era-gregorian). Calendars 5 and 9 under a Japanese LCID (`[$-50411]g|yyyy`, `[$-90411]g|yy`) are inferred to follow the same rule; they are not probed.
+- Names under calendar 3 are Japanese for a Japanese LCID and en-US for any other (`[$-3040C]mmmm` is "March").
+
+**Other calendar digits.**
+
+| Digit | Calendar and names | Example |
+|---|---|---|
+| 2, D | Gregorian, en-US names | `[$-20411]mmmm` is "March" |
+| 4 | Gregorian, zh-TW names; `yy` prints four digits | `[$-40409]ddd\|mmm\|yy` is "週三\|三月\|2023" |
+| 5 | Korean years (Gregorian + 2333) for `yy`/`yyyy`; Korean names under a Korean LCID, en-US otherwise | "4356" |
+| 7 | Thai years (+ 543) for `yy`/`yyyy` and `b`; Thai names | "2566", "มีนาคม" |
+| 9 | Gregorian, French names | "mars", "mer." |
+| 15 and above | ignored; the LCID's own calendar (probed 15, 1E, 1F, FF) | `[$-FF040C]mmmm` is "mars" |
+
+Under every one of these, `e` stays the Gregorian four-digit year, and so do `b` and `bbbb` except under Thai. Day halves follow the LCID under every calendar digit: `[$-20411]`, `[$-40411]` and `[$-50411]h AM/PM` are "6 午後", and `[$-70412]`/`[$-90412]` give "6 오후".
+
+**Not modelled** (the tag prints English and keeps `A/P`):
+- 6 is Hijri ("1444-08-23", "Sha'ban", or French "Chaaban" under 40C; T-1613).
+- 8 is Hebrew ("5783-06-22", "Adar", "Yom Revi'i").
+- 10 is Saka ("1944-12-24", "Phalguna", "Budhavara").
+- A is Gregorian with Levant Arabic names ("آذار"); B and C give "مارس".
+- 14 is Gregorian with native Korean names ("삼월").
+- E, F, 11, 12 and 13 are the Chinese lunar date: month 2, day 24, `mmmm` "二月", the first month "正月". `yyyy` and `e` stay 2023. E gives Japanese weekdays, F and 11 Chinese ones, 12 and 13 English names (T-1922; the others are T-1923).
+- Numeral digits `[$-8000411]e` print native digits ("୫"; T-1925).
+- Underscore tags pick calendars: `[$-fr_FR]` gives the Saka date with English Gregorian month names ("December|1944-12-24"); `[$-de_DE]`, `[$-en_US]` and `[$-ja_JP]` give the lunar date in English; `[$-_]` gives Russian names (T-1924).
+
+**`b` and `B1`/`B2` under a tag.** With no tag, `b` is the Buddhist year ("66|2566"). Under any resolved tag it is the Gregorian year ("23|2023"), except under calendar 7. `B1` and `B2` after a tag change nothing: `[$-40C]B2mmmm` is "mars" and `[$-401]B2yyyy-mm-dd` is "2023-03-15". An unresolved tag ignores `B2` too: `[$-zzz]B2mmmm` is "March", and `[$-FFFF]B2yyyy` and `[$-]B2yyyy` are "2023". The Hijri calendar digit is not ignored: `[$-60409]B2yyyy` is "1444". `B2` before a tag still selects Hijri: `B2[$-40C]mmmm` is "Chaaban" (T-1613).
+
+Evidence: probes/text-locale-calendars (145 cells), text-locale-calendars-detail (41), text-locale-japanese-year (20), text-locale-era-gregorian (23) (excel-graph, 2026-10-18).
+Implemented in: formatter/locale_tag.rs (`resolve_lcid`, `Calendar`, `japanese_era`), format.rs (years, `e`, `g`).
+Status: VERIFIED (excel-graph)
+Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925
 
 ## Displayed text (`Range.text`) of a formatted cell (T-1610)
 Rule: excel-graph's `Range.text` is the cell's value under its number format, and it does not
