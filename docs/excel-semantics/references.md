@@ -1533,8 +1533,18 @@ IFS and SWITCH taking the `@` on the call, the arguments of IFERROR, IFNA, IFS a
 whole, T over SWITCH, and the array-constant `@` under scalar functions other than N, T and ABS
 (T-1847). The export drops exactly these `@`s (`remove_redundant_legacy_intersection`). The N/T
 exception's `#VALUE!` is T-1713.
+Probed in T-1847 (probes/legacy-array-at-shapes, excel-graph, 2026-10-18; FORMULATEXT shown; each dynamic twin spills):
+`=IFNA({2;3},0)` `=@IFNA({2;3},0)` (2), `=IFS(1,{2;3})` `=@IFS(1,{2;3})` (2), `=IFERROR(ABS({-2;3}),0)`
+`=@IFERROR(ABS({-2;3}),0)` (2: the `@` on the IFERROR, not inside), `=LEN({"ab";"c"})` `=LEN(@{"ab";"c"})` (2),
+`=ABS(TRANSPOSE({5}))` `=ABS(@TRANSPOSE({5}))` (5: a one-cell array still gets the `@`),
+`=ISNUMBER(SEARCH({"a","b"},Z1))` `=ISNUMBER(SEARCH(@{"a","b"},Z1))` (TRUE; the dynamic twin is `#SPILL!`),
+`=N({2;3}+0)` `=N(@{2;3}+0)` (2) and `=ABS({2;3}+0)` `=ABS(@{2;3}+0)` (2): the `@` goes on the array constant
+inside an operator. SWITCH is the exception again: `=SWITCH(1,1,{2;3})` shows no `@` and the legacy cell spills 2, 3,
+and `=T(SWITCH(1,1,{"a";"b"}))` shows none and spills "a", "b". Ours matches all but the operator shapes (no `@`,
+spills: T-1911) and the top-level SWITCH (adds an `@`, no spill: T-1910). IFNA, IFS, the IFERROR argument and
+T over SWITCH are confirmed.
 Status: VERIFIED (excel-graph)
-Tasks: T-1713, T-1717, T-1847
+Tasks: T-1713, T-1717, T-1847, T-1910, T-1911
 
 ## Legacy N and T over a reference-returning call (T-1713)
 Rule: in a legacy (non-array) formula, N and T read their argument as a reference: no `@` goes on it,

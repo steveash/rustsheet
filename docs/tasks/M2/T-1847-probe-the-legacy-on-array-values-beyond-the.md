@@ -3,7 +3,7 @@ id: T-1847
 title: "Probe the legacy @ on array values beyond the T-1717 evidence"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -33,3 +33,9 @@ shape, its dynamic twin, and FORMULATEXT.
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/legacy-array-at-shapes (excel-graph) for every shape; recorded per shape in
+references.md. Confirmed: IFNA, IFS, IFERROR argument, T over SWITCH, SEARCH/LEN constants, one-cell
+TRANSPOSE. Mismatches filed: T-1910 (top-level SWITCH), T-1911 (array constant inside an operator).
+Eval: probes gains 40 cells, 36 pass, 6 known failures baselined.
