@@ -789,3 +789,49 @@ fn legacy_array_values_intersect_in_value_positions() {
         ),
     ]);
 }
+
+// The coupon-schedule Analysis ToolPak functions (T-1822) are `LiftArrays` in every argument: a
+// legacy bare range keeps its text, an operation on one gets the `@`, and an array adds its shape
+// (probes/fin-remaining-later-argument-ranges).
+#[test]
+fn coupon_functions_follow_the_lifting_table() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    check(&[
+        (
+            "COUPNUM(A1:A60,46000,2)",
+            "COUPNUM(A1:A60,46000,2)",
+            "COUPNUM(A1:A60,46000,2)",
+        ),
+        (
+            "PRICE(45000,46000,0.05,B1:B60+0,100,2)",
+            "PRICE(45000,46000,0.05,@B1:B60+0,100,2)",
+            "PRICE(45000,46000,0.05,B1:B60+0,100,2)",
+        ),
+        (
+            "ACCRINT(44000,44500,45000,0.1,1000,2,B1:B60)",
+            "ACCRINT(44000,44500,45000,0.1,1000,2,B1:B60)",
+            "ACCRINT(44000,44500,45000,0.1,1000,2,B1:B60)",
+        ),
+    ]);
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let mut shape =
+        |formula: &str| run_static_analysis_on_node(&parser.parse(formula, &cell_reference));
+    assert!(matches!(
+        shape("COUPNUM(A1:A3,46000,2)"),
+        StaticResult::Scalar
+    ));
+    assert!(matches!(
+        shape("DURATION(45000,46000,{0.05;0.06},0.06,2)"),
+        StaticResult::Array(2, 1)
+    ));
+    assert!(matches!(
+        shape("ACCRINT(44000,44500,45000,0.1,1000,2,{0,1,2},A1:A3)"),
+        StaticResult::Array(1, 3)
+    ));
+}

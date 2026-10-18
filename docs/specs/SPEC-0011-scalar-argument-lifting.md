@@ -533,6 +533,16 @@ T-1772's are: it gives the argument count, the static shape (one value) and the 
 the lift driver, so its `KernelWork` is not charged. Its own read cap (`MAX_LIFTED_CELL_VISITS` over
 the cells walked) is engineering.md "IMSUM and IMPRODUCT read cap", a DEVIATION.
 
+As built (T-1822): ACCRINT, the COUP* family, DURATION, MDURATION and PRICE are `LiftArrays` and the first
+`Weighted` entries whose loop is bounded by the calendar rather than by a cap constant (their per-call cap is
+`check_settlement` plus the calendar's end): a coupon schedule walk steps
+one period at a time, at most about 32,400 quarters once a settlement below serial 1 is `#NUM!` (Excel's rule,
+probes/fin-coupon-walk-bounds; before, a settlement of -1E15 walked about 10^6 quarters). Each walk is charged 2^16
+units (`COUPON_WALK_WEIGHT`, about 1 ms at the longest schedule): two for COUP* and ACCRINT (1,024 elements), four
+for DURATION, MDURATION and PRICE (512; financial.md "Coupon schedule work cap", a DEVIATION; T-1846 narrows it
+to a schedule-length budget). YIELD, the ODD*
+functions, CUMIPMT/CUMPRINC, AMOR* and the scalars beside XNPV's, XIRR's and FVSCHEDULE's data are T-1841 to T-1843 and T-1845.
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and
