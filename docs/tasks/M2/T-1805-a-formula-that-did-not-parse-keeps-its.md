@@ -3,7 +3,7 @@ id: T-1805
 title: "A formula that did not parse keeps its text after a structural edit"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
