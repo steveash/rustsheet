@@ -171,5 +171,11 @@
   T-1873: expressions/parser/static_analysis.rs 1142 → 1137 lines (the 4 fallback lines of HYPGEOM.DIST and
   HYPGEOMDIST now in the lifting table, and the comment heading the one of them that was a compatibility wrapper)
   (`check_file_size.py --update`); duplicated lines unchanged at 3903.
+  T-1773: duplicated lines 3903 -> 3863 (the 32 `single_number_fn!` functions, the ROUND family, MOD,
+  CEILING/FLOOR and `lift_with_defaults` become lifting-table entries over two kernel helpers,
+  `number_fn` and `numbers_fn`) (`check_duplication.py --update`), and
+  expressions/parser/static_analysis.rs 1137 -> 1049 lines (their fallback arms now in the lifting table)
+  (`check_file_size.py --update`); the same update tightens locks that were loose on main:
+  functions/mod.rs 2179 -> 2177 (the `macros` module is gone), model.rs 3462 -> 3415 and stringify.rs 1067 -> 1062.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
