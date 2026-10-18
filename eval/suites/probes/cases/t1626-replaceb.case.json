@@ -1,0 +1,53 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1626 REPLACEB evidence-floor probe",
+ "tags": [
+  "M5",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "abcabc",
+    "A2": "日本語テキスト",
+    "A3": "ｱｲｳｶﾞ",
+    "A4": "😀a😀",
+    "A5": "ＡＢＣ１２３",
+    "A6": "abc",
+    "A7": 7,
+    "A8": "",
+    "A9": "Ａ",
+    "A10": "カタカナ",
+    "C1": "=REPLACEB(A1,1,1,\"z\")",
+    "C2": "=REPLACEB(A1,2,0,\"z\")",
+    "C3": "=REPLACEB(A1,7,1,\"z\")",
+    "C4": "=REPLACEB(A1,8,1,\"z\")",
+    "C5": "=REPLACEB(A1,0,1,\"z\")",
+    "C6": "=REPLACEB(A1,1,-1,\"z\")",
+    "C7": "=REPLACEB(A1,1.9,1.9,\"z\")",
+    "C8": "=REPLACEB(A1,2,100,\"z\")",
+    "C9": "=REPLACEB(A1,2,2,\"\")",
+    "C10": "=REPLACEB(A2,1,1,\"z\")",
+    "C11": "=REPLACEB(A2,1,2,\"z\")",
+    "C12": "=REPLACEB(A2,1,3,\"z\")",
+    "C13": "=REPLACEB(A2,2,3,\"z\")",
+    "C14": "=REPLACEB(A2,4,3,\"z\")",
+    "C15": "=REPLACEB(A4,1,1,\"z\")",
+    "C16": "=REPLACEB(A4,1,2,\"z\")",
+    "C17": "=REPLACEB(A4,1,4,\"z\")",
+    "C18": "=REPLACEB(A4,2,2,\"z\")",
+    "C19": "=REPLACEB(A3,1,1,\"z\")",
+    "C20": "=REPLACEB(A3,1,2,\"z\")",
+    "C21": "=REPLACEB(A7,1,1,\"z\")",
+    "C22": "=REPLACEB(A1,1,1,A7)",
+    "C23": "=REPLACEB(A8,1,1,\"z\")",
+    "C24": "=REPLACEB(A1,\"x\",1,\"z\")",
+    "C25": "=REPLACEB(A1,1,1,\"日本\")",
+    "C26": "=REPLACEB(A5,1,2,\"z\")"
+   }
+  }
+ ],
+ "expected": {}
+}
