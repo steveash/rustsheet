@@ -331,7 +331,7 @@ a range): the rest (T-1813); BETA.INV, F.INV, T.INV, CONFIDENCE.T and their vari
 since T-1848 ("Quantile searches: per-call cap and lifting" below), the incomplete-gamma functions (CHISQ.*,
 CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV, POISSON, POISSON.DIST) since T-1872 ("Incomplete gamma:
 per-call cap and lifting" below), and HYPGEOM.DIST and HYPGEOMDIST since T-1873 ("HYPGEOM.DIST: per-call cap and
-lifting" below); the pairing functions are `#N/A` for unequal sizes since T-1292, which also made F.TEST take twice the smaller tail of the F distribution (`F.TEST(C1:C6,B1:B8)` is 0.9195979047175995, not 2 minus that); FORECAST.ETS is
+lifting" below); the pairing functions are `#N/A` for unequal sizes since T-1292, which also made F.TEST take twice the smaller tail of the F distribution (`F.TEST(C1:C6,B1:B8)`: Excel 0.9195979047175995, ours 0.9195979047175997, not 2 minus that; T-1927); FORECAST.ETS is
 `#N/IMPL!`; many distribution values are a few ulps off (the existing accuracy entries above).
 Status: VERIFIED (excel-graph)
 Tasks: T-1080, T-1290, T-1291, T-1292, T-1293, T-1848, T-1872, T-1873
@@ -1164,7 +1164,7 @@ Unequal sizes and single points follow "Array arguments given a scalar, a single
 - Last-digit differences: `FORECAST(0,A1:A6,B1:B6)` 1.7999999999999998 (ours 1.8), `CORREL(A1:A6,C1:C6)` 0.9999999999999998 (ours 1.0).
 Evidence: probes/regression-pairs-a, regression-pairs-b, regression-forecast (excel-graph, 2026-10-16, T-1620); the
 error cells in these cases are `#DIV/0!`, so whether a range error propagates or is replaced is unprobed.
-Ours: differs in each bullet (fix tasks below); the large-offset data gives `#DIV/0!` or a last-digits-off value, a single point `#VALUE!`.
+Ours: differs in most bullets (the unequal-size `#N/A` of FORECAST, STEYX and INTERCEPT matches since T-1292; fix tasks below); the large-offset data gives `#DIV/0!` or a last-digits-off value, a single point `#VALUE!`.
 Status: VERIFIED (web)
 Tasks: T-1723, T-1724, T-1725 (overlaps T-1292, T-1707, T-1401, T-1290)
 
