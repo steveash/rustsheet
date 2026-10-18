@@ -1,7 +1,7 @@
 use statrs::distribution::{Beta, Continuous, ContinuousCDF};
 
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::{num_error, number_or_error, value_error};
+use crate::functions::lift::{div_error, num_error, number_or_error, value_error};
 use crate::functions::statistical::special::bisect_unit_interval;
 use crate::functions::Function;
 use crate::{
@@ -27,7 +27,9 @@ fn beta_quantile(dist: &Beta, alpha: f64, beta: f64, p: f64) -> f64 {
 
 /// BETA.DIST's `cumulative`: a boolean, a number (TRUE unless 0), "TRUE" or "FALSE" in any case,
 /// empty as FALSE, an error as itself; anything else is `#VALUE!`. A one-cell range is its value
-/// (probes/stat-later-argument-lift L11, L12).
+/// (probes/stat-later-argument-lift L11, L12). This is `Model::cast_bool_ref` but for a LAMBDA
+/// value, which is `#VALUE!` here as in BETA.DIST's scalar code before the lift, where
+/// `cast_bool_ref` gives `#N/IMPL!`; it stays separate so the scalar result does not change.
 fn beta_cumulative(value: &CalcResult, cell: CellReferenceIndex) -> Result<bool, CalcResult> {
     match value {
         CalcResult::Boolean(b) => Ok(*b),
@@ -86,6 +88,16 @@ impl Model {
 
         // Transform to standard Beta(0,1)
         let width = b - a;
+        // B - A past f64::MAX: Excel's cdf is 0 at x = A and 1 at x = B, and everything else is
+        // #DIV/0! (`BETA.DIST(0,2,3,TRUE,-1E308,1E308)`, the pdf at x = B; probes/
+        // stat-overflow-arguments A7-A10, E9). statrs' incomplete beta would unwrap a NaN `t`.
+        if !width.is_finite() {
+            return match (cumulative, x == a, x == b) {
+                (true, true, _) => Ok(0.0),
+                (true, _, true) => Ok(1.0),
+                _ => Err(div_error(cell)),
+            };
+        }
         let t = (x - a) / width;
         let dist = Beta::new(alpha, beta_param).map_err(|_| num_error(cell))?;
         let result = if cumulative {

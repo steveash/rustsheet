@@ -134,7 +134,8 @@ fn each_kernel_keeps_its_own_error_order() {
     // T.DIST.2T reads both arguments before it checks x: a df error wins over x < 0.
     model._set("A1", "=T.DIST.2T(-1,NA())");
     model._set("A2", "=INDEX(T.DIST.2T({-1;1},{#N/A;5}),1)");
-    // TDIST checks x before it reads tails and the degrees of freedom.
+    // TDIST reads all three arguments before it checks any (probes/stat-overflow-arguments F2,
+    // F3, F6).
     model._set("A3", "=TDIST(-1,NA(),1)");
     model._set("A4", "=INDEX(TDIST({-1;1},{#N/A;5},1),1)");
     model._set("A5", "=INDEX(TDIST(1,NA(),{1;2}),2)");
@@ -143,39 +144,45 @@ fn each_kernel_keeps_its_own_error_order() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#N/A");
     assert_eq!(model._get_text("A2"), *"#N/A");
-    assert_eq!(model._get_text("A3"), *"#NUM!");
-    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#N/A");
+    assert_eq!(model._get_text("A4"), *"#N/A");
     assert_eq!(model._get_text("A5"), *"#N/A");
     assert_eq!(model._get_text("A6"), *"#DIV/0!");
 }
 
 #[test]
 fn permut_stops_once_its_product_is_infinite() {
-    // 10^15 factors before the cap; now at most 171. The value is the same infinite product.
+    // 10^15 factors before the cap; now at most 171, and a product past f64::MAX is #NUM!
+    // (probes/stat-overflow-arguments A13-A15).
     let mut model = new_empty_model();
-    model._set("A1", "=PERMUT(1E15,1E15)");
+    model._set("A1", "=PERMUT(1E9,1E9)");
     model._set("A2", "=PERMUT(200,180)");
     model._set("A3", "=PERMUT(20,5)");
+    model._set("A4", "=PERMUT(170,170)");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), model._get_text("A2"));
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
     assert_eq!(model._get_text("A3"), *"1860480");
+    assert_eq!(model._get_text("A4"), *"7.2574E+306");
 }
 
 #[test]
 fn weighted_kernels_are_charged_their_weight() {
-    // PERMUT is charged 171 per element: 2^27 / 171 = 784,890 elements, so a lifted call of
-    // 800,000 elements is refused before it runs; the same call of BINOM.INV (64 each) and of
-    // PERMUTATIONA (1 each) runs.
+    // BINOM.INV is charged 4096 per element (its search costs up to about 65 us an element):
+    // 2^27 / 4096 = 32,768 elements, so a lifted call of 40,000 is refused before it runs and one
+    // of 30,000 runs; PERMUT and PERMUTATIONA (`Constant`) run over 800,000 elements.
     let mut model = new_empty_model();
-    model._set("A1", "=ROWS(PERMUT(5,SEQUENCE(800000)))");
-    model._set("A2", "=ROWS(PERMUT(5,SEQUENCE(700000)))");
-    model._set("A3", "=ROWS(BINOM.INV(5,0.4,SEQUENCE(800000)/1000000))");
-    model._set("A4", "=ROWS(PERMUTATIONA(5,SEQUENCE(800000)))");
+    model._set("A1", "=ROWS(BINOM.INV(5,0.4,SEQUENCE(40000)/40001))");
+    model._set("A2", "=ROWS(BINOM.INV(5,0.4,SEQUENCE(30000)/30001))");
+    model._set("A3", "=ROWS(CRITBINOM(5,0.4,SEQUENCE(40000)/40001))");
+    model._set("A4", "=ROWS(PERMUT(5,SEQUENCE(800000)))");
+    model._set("A5", "=ROWS(PERMUTATIONA(5,SEQUENCE(800000)))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#ERROR!");
-    assert_eq!(model._get_text("A2"), *"700000");
-    assert_eq!(model._get_text("A3"), *"800000");
+    assert_eq!(model._get_text("A2"), *"30000");
+    assert_eq!(model._get_text("A3"), *"#ERROR!");
     assert_eq!(model._get_text("A4"), *"800000");
+    assert_eq!(model._get_text("A5"), *"800000");
 }
 
 #[test]
@@ -199,4 +206,61 @@ fn unlifted_calls_are_the_scalar_calls() {
     assert_eq!(model._get_text("A7"), *"#ERROR!");
     // TODO(T-1755): Excel reads the TRUE as 1 (-0.5 here); unchanged by the lift.
     assert_eq!(model._get_text("A8"), *"#VALUE!");
+}
+
+#[test]
+fn overflowing_arguments_are_excels_errors_not_panics() {
+    // A finite x whose scaling overflows (df1*x, B-A past f64::MAX) made statrs' incomplete beta
+    // unwrap a NaN and panic; PERMUT's first factor n-k+1 overflowed i64. Excel's results:
+    // probes/stat-overflow-arguments, where 1E308 sits in numeric cells (a literal 1E308 is
+    // `#ERROR!` in a formula here, and "1e308" typed into a cell is not read as a number here).
+    let mut model = new_empty_model();
+    model._set("C1", "=1E+307*10");
+    model._set("C2", "=-1E+307*10");
+    model._set("C3", "=1E+29*10");
+    model._set("B1", "=ISNUMBER(C1)");
+    model._set("A1", "=F.DIST(C1,2,3,TRUE)");
+    model._set("A2", "=F.DIST(C1,2,3,FALSE)");
+    model._set("A3", "=F.DIST.RT(C1,2,3)");
+    model._set("A4", "=FDIST(C1,2,3)");
+    model._set("A5", "=F.DIST(C1,1,3,TRUE)");
+    model._set("B2", "=F.DIST(C1,1,3,FALSE)");
+    model._set("A6", "=BETA.DIST(C1,2,3,TRUE,C2,C1)");
+    model._set("A7", "=BETA.DIST(C1,2,3,FALSE,C2,C1)");
+    model._set("A8", "=BETADIST(C1,2,3,C2,C1)");
+    model._set("A9", "=BETA.DIST(0,2,3,TRUE,C2,C1)");
+    model._set("A10", "=BETA.DIST(C2,2,3,TRUE,C2,C1)");
+    model._set("A11", "=PERMUT(C3,0)");
+    model._set("A12", "=PERMUT(2147483646,1)");
+    model._set("A13", "=PERMUT(2147483647,1)");
+    model._set("A14", "=PERMUT(171,171)");
+    model._set("A15", "=PERMUT(2147483646,0)");
+    // Lifted: every element is its own scalar call, none panics.
+    model._set("A16", "=INDEX(F.DIST({1.5;0},2,3,TRUE)*C1,2)");
+    model._set("A17", "=INDEX(F.DIST(C1,{1;2},3,TRUE),2)");
+    model.evaluate();
+    let expected = [
+        ("B1", "TRUE"),
+        ("B2", "0"),
+        ("A1", "#DIV/0!"),
+        ("A2", "#NUM!"),
+        ("A3", "#DIV/0!"),
+        ("A4", "#DIV/0!"),
+        ("A5", "1"),
+        ("A6", "1"),
+        ("A7", "#DIV/0!"),
+        ("A8", "1"),
+        ("A9", "#DIV/0!"),
+        ("A10", "0"),
+        ("A11", "#NUM!"),
+        ("A12", "2147483646"),
+        ("A13", "#NUM!"),
+        ("A14", "#NUM!"),
+        ("A15", "1"),
+        ("A16", "0"),
+        ("A17", "#DIV/0!"),
+    ];
+    for (cell, value) in expected {
+        assert_eq!(model._get_text(cell), *value, "{cell}");
+    }
 }

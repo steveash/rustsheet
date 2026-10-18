@@ -464,8 +464,9 @@ DOLLARFR, ACCRINTM and the discount securities and T-bills as `LiftArrays`), so 
 ACCRINTM cells here pass (scalar-lift-open-a W4, W14, W15; -b W9; -d W8-W18). Since T-1822 ACCRINT,
 the COUP* family, DURATION, MDURATION and PRICE are `LiftArrays` as well (scalar-lift-open-a Y1-Y7). Since T-1290 the
 44 statistical functions whose every argument is scalar and whose kernels are bounded lift as `Lift`
-(statistics.md "Statistical function argument modes"), so NORM.DIST's and NORM.S.DIST's cells here pass
-(H15, H16, H20, H21, H34, H35, H38, H40, J8, K8). The other families
+(statistics.md "Statistical function argument modes"), so NORM.DIST's cells here pass (H15, H16, H20, H21, H34,
+H35, J8, K8), and NORM.S.DIST's H38 and H40 now lift and miss only by its known last-digit residue, as the scalar H39
+does (statistics.md "The normal CDF is not always correctly rounded", T-0968). The other families
 listed in SPEC-0011 do not lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic
 formula). SPEC-0011's rollout tasks fix them.
 Status: VERIFIED (excel-graph)

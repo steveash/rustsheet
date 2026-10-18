@@ -176,8 +176,8 @@ impl Model {
         })
     }
 
-    /// T.DIST.2T once `x` is read: TDIST with tails 2 reads its arguments in another order.
-    /// The degrees of freedom are read before `x` is checked.
+    /// T.DIST.2T once `x` is read. The degrees of freedom are read before `x` is checked
+    /// (`T.DIST.2T(-1,NA())` is #N/A; probes/stat-overflow-arguments F1, F5).
     fn t_dist_2t_of(
         &self,
         x: f64,
@@ -575,8 +575,7 @@ impl Model {
 
     /// `TDIST(x, deg_freedom, tails)`: x >= 0; tails 1 is T.DIST.RT, tails 2 T.DIST.2T. Every
     /// argument lifts over an array and a range (probes/stat-argument-modes H530-H534,
-    /// probes/stat-later-argument-lift H67, L8-L10). It reads x, checks it, then reads tails,
-    /// then the degrees of freedom.
+    /// probes/stat-later-argument-lift H67, L8-L10). It reads all three before it checks any.
     pub(crate) fn fn_tdist_compat(
         &mut self,
         args: &[Node],
@@ -591,11 +590,16 @@ impl Model {
         let [x, df, tails] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
+        // Every argument is read before any is checked: an error in deg_freedom wins over x < 0
+        // and over a bad tails (`TDIST(-1,NA(),1)` and `TDIST(1,NA(),3)` are #N/A;
+        // probes/stat-overflow-arguments F2, F3, F6).
         let x = self.cast_number_ref(x, cell)?;
+        self.cast_number_ref(df, cell)?;
+        let tails = self.cast_number_ref(tails, cell)?.trunc() as i64;
         if x < 0.0 {
             return Err(num_error(cell));
         }
-        match self.cast_number_ref(tails, cell)?.trunc() as i64 {
+        match tails {
             1 => self.t_dist_rt_of(x, df, cell),
             2 => self.t_dist_2t_of(x, df, cell),
             _ => Err(num_error(cell)),

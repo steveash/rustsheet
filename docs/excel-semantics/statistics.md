@@ -340,7 +340,7 @@ T.DIST.RT, TDIST, F.DIST, F.DIST.RT and FDIST over a two-cell range is 2 rows (H
 BETADIST's `[A]` and `[B]` and BINOM.DIST.RANGE's `[number_s2]` lift over an array and a range (H3-H9, H15, K3-K16).
 Element values follow the scalar rules: `{1;"x"}` gives `#VALUE!` in its element and `{1;"1"}` reads the text
 (L4, L5), an error element is its error (`PERMUT({5;#N/A},2)`, L6), each element is checked alone
-(`GAMMA({1.5;-1})` element 2 `#NUM!`, `PERMUT({5;5},{2;6})` element 2 `#NUM!`, L18, L20), TDIST checks x and then
+(`GAMMA({1.5;-1})` element 2 `#NUM!`, `PERMUT({5;5},{2;6})` element 2 `#NUM!`, L18, L20), TDIST checks x and
 `tails` per element (`TDIST({-1;1.5},5,1)` and `TDIST({1.5;1.5},5,{3;2})` element 1 `#NUM!`, L9, L10), and
 broadcasting is the operators' (`NORM.DIST({1;2;3},{0,1},1,TRUE)` is 3x2, L16, L17). BETA.DIST's `cumulative` takes
 the text "TRUE" (L2) and a one-cell range or reference as its value (`BETA.DIST(0.5,2,3,G1:G1)` with G1 TRUE is
@@ -350,21 +350,44 @@ and STANDARDIZE (probes-numeric/t1049-fdistrt A19, A26, m9-legacy-fdist A90; "SK
 Evidence: probes/stat-later-argument-lift (141 formula cells, value cells rounded to 12 places, excel-graph, 2026-10-17, T-1290); probes/stat-argument-modes.
 Ours: matches (T-1290), except that BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as `#VALUE!`, as their scalar
 calls always did (L1, L13: T-1849; STANDARDIZE, L14: T-1755; WEIBULL's and PHI's are unprobed). Every argument of these functions is `Lift`
-in the lifting table and each kernel reads its arguments in its scalar order (T.DIST.2T reads both before it checks
-x; TDIST checks x before it reads tails and the degrees of freedom). The one scalar change: BETA.DIST's
-`cumulative` given as a one-cell range was `#VALUE!` and is now its value (L11). BINOM.INV and CRITBINOM are
-`KernelWork::Weighted(64)` (their search halves a `u64` interval at most 64 times) and PERMUT `Weighted(171)`: its
-product now stops once it is infinite, after at most 171 factors, so `PERMUT(1E15,1E15)` no longer loops 10^15 times
-(the value is unchanged). The quantile searches (BETA.INV, F.INV, T.INV, CHISQ.INV, GAMMA.INV, CONFIDENCE.T), the
+in the lifting table and each kernel reads its arguments in its scalar order; T.DIST.2T and TDIST read every argument
+before they check any ("Overflowing arguments, PERMUT's limit and argument error order" below). One scalar change
+here: BETA.DIST's `cumulative` given as a one-cell range was `#VALUE!` and is now its value (L11). BINOM.INV and
+CRITBINOM are `KernelWork::Weighted(4096)`: their search halves a `u64` interval at most 64 times, one incomplete-beta
+cdf each, up to about 65 us an element in release (`BINOM.INV(1E12,0.3,alpha)`). PERMUT is `Constant`: its product
+stops once it is infinite, after at most 171 factors, where `PERMUT(1E15,1E15)` looped 10^15 times. The quantile searches (BETA.INV, F.INV, T.INV, CHISQ.INV, GAMMA.INV, CONFIDENCE.T), the
 incomplete-gamma functions (CHISQ.DIST, GAMMA.DIST, POISSON) and HYPGEOM.DIST's cdf sum loop by value with no per-call
 cap, so they are not lifted yet (T-1848).
-DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted PERMUT is charged 171 units per element against the shared
-cell-visit cap of 2^27 (`limits::MAX_LIFTED_CELL_VISITS`), so a lifted PERMUT of more than 784,890 elements is `#ERROR!`
-before it runs where Excel computes it (`ROWS(PERMUT(5,SEQUENCE(800000)))`, unit test
-`weighted_kernels_are_charged_their_weight`). BINOM.INV's weight of 64 never refuses under the 1,048,576-element array
-bound.
+DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted BINOM.INV or CRITBINOM is charged 4096 units per element
+against the shared cell-visit cap of 2^27 (`limits::MAX_LIFTED_CELL_VISITS`), so one of more than 32,768 elements is
+`#ERROR!` before it runs where Excel computes it (`ROWS(BINOM.INV(5,0.4,SEQUENCE(40000)/40001))`, unit test
+`weighted_kernels_are_charged_their_weight`). At the worst case measured, 32,768 elements take about 2.1 s, the budget
+of the Bessel entries (engineering.md "BESSEL order cap").
 Status: VERIFIED (excel-graph)
 Tasks: T-1290, T-1849, T-1755, T-1848
+
+## Overflowing arguments, PERMUT's limit and argument error order (T-1290)
+Rule: an F.DIST, F.DIST.RT or FDIST call whose `deg_freedom1 * x` overflows a double is `#DIV/0!` for the cdf and the
+right tail and `#NUM!` for the pdf (`F.DIST(1E308,2,3,TRUE)` `#DIV/0!`, `F.DIST(1E308,2,3,FALSE)` `#NUM!`,
+`F.DIST.RT(1E308,2,3)` and `FDIST(1E308,2,3)` `#DIV/0!`; with deg_freedom1 = 1 the product does not overflow and the
+cdf is 1, the pdf 0; A1-A6, B12, E11). A BETA.DIST whose `B - A` overflows is 0 at x = A and 1 at x = B in the cdf
+and `#DIV/0!` everywhere else, the pdf at x = B included (`BETA.DIST(1E308,2,3,TRUE,-1E308,1E308)` 1,
+`BETA.DIST(0,2,3,TRUE,-1E308,1E308)` `#DIV/0!`, `BETADIST(1E308,2,3,-1E308,1E308)` 1; A7-A10, E9; with a finite width
+`BETA.DIST(1E308,2,3,TRUE,0,1E308)` is 1, E10). PERMUT's number must be below 2^31 - 1 after truncation:
+`PERMUT(2147483646,1)` is 2147483646 and `PERMUT(2147483646.5,1)` too, `PERMUT(2147483647,1)`, `PERMUT(1E10,1)` and
+`PERMUT(1E30,0)` are `#NUM!` (B8-B11, D1-D9, E1-E8; `PERMUT(2147483646,0)` is 1), and a product past the double range
+is `#NUM!` (`PERMUT(171,171)`, `PERMUT(200,180)`; `PERMUT(170,170)` is 7.257415615307994E+306; A13-A18). Errors
+between arguments: T.DIST.2T and TDIST read every argument before they check x or tails (`T.DIST.2T(-1,NA())`,
+`TDIST(-1,NA(),1)` and `TDIST(1,NA(),3)` are `#N/A`, and per element too; F1-F6), as do F.DIST and BETA.DIST
+(`F.DIST(-1,NA(),3,TRUE)`, `BETA.DIST(2,-1,NA(),TRUE)` `#N/A`; F7, F8). The 1E308 values sit in cells: a literal
+1E308 is not written into a formula, and a text "1e308" cell is `#VALUE!` in these functions.
+Evidence: probes/stat-overflow-arguments (excel-graph, 2026-10-18, T-1290).
+Ours: matches (T-1290). Before, the overflowing F.DIST and BETA.DIST calls panicked in statrs' incomplete beta
+(an unwrapped NaN), the F pdf of a huge x was `#NUM!` (statrs' direct form overflows to inf/inf; it now falls back to
+logarithms only when that form is not finite, so `F.DIST(1E308,1,3,FALSE)` is 0), PERMUT gave numbers of 2^31 - 1 and
+more, and TDIST checked x before reading deg_freedom (`TDIST(-1,NA(),1)` was `#NUM!`).
+Status: VERIFIED (excel-graph)
+Tasks: T-1290
 
 ## LARGE, SMALL, PERCENTILE, QUARTILE, PERCENTRANK and TRIMMEAN: each lifted element is the scalar call
 Rule: when `k`, `quart`, `x`, `significance` or `percent` is an array or a multi-cell range, every element is the

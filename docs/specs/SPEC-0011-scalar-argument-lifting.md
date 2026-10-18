@@ -544,9 +544,10 @@ to a schedule-length budget). YIELD, the ODD*
 functions, CUMIPMT/CUMPRINC, AMOR* and the scalars beside XNPV's, XIRR's and FVSCHEDULE's data are T-1841 to T-1843 and T-1845.
 
 As built (T-1290): 44 statistical functions whose every argument is scalar are `Lift` entries. Kernels that call
-statrs' incomplete beta (a 140-step continued fraction) a fixed number of times are `Constant`; BINOM.INV and CRITBINOM
-are `Weighted(64)` (a halving search over a `u64`), and PERMUT `Weighted(171)`, its product now stopping once it is
-infinite (statistics.md, a DEVIATION past 784,890 elements). The quantile searches, the incomplete-gamma functions and
+statrs' incomplete beta (a 140-step continued fraction) a fixed number of times are `Constant` (0.14 to 0.3 us an
+element in release, BINOM.DIST with 1E18 trials 3.2 us), and so is PERMUT, whose product stops once it is infinite (at
+most 171 factors). BINOM.INV and CRITBINOM are `Weighted(4096)`: a halving search over a `u64`, at most 64 cdfs, up to
+about 65 us an element, so a lift is capped at 32,768 elements, about 2.1 s (statistics.md, a DEVIATION). The quantile searches, the incomplete-gamma functions and
 HYPGEOM.DIST loop by value with no per-call cap, so they stay out until T-1848 bounds them.
 
 ### Kernels
@@ -573,7 +574,7 @@ stack frames (T-1110) stay as they are, and the driver runs inside `fn_edate`.
 
 **Security rule for kernel work.** A table entry is `KernelWork::Constant` only if its kernel is
 O(1) or loops a fixed number of times, whatever the argument values. A value-dependent kernel
-must be `Weighted` and also keep a per-call cap of its own. Examples are BINOM.DIST, POISSON,
+must be `Weighted` and also keep a per-call cap of its own. Examples are BINOM.INV, POISSON,
 COMBIN, FACT and MULTINOMIAL (T-1197), the RATE/IRR/YIELD solvers (they have iteration caps, so
 they are `Constant` only if the cap is fixed), and the Bessel series. T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`

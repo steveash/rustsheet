@@ -672,6 +672,7 @@ C	probes/stat-a-computed-arrays.case.json	18
 C	probes/stat-argument-modes.case.json	573
 C	probes/stat-later-argument-lift.case.json	141
 C	probes/stat-order-floor-batch.case.json	301
+C	probes/stat-overflow-arguments.case.json	61
 C	probes/stat-whole-lift.case.json	49
 C	probes/stats-evidence-floor-t1623.case.json	139
 C	probes/subnormal-flush-edges.case.json	50

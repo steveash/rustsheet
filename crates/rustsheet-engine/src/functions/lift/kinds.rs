@@ -199,13 +199,14 @@ const SERIES: ArgKinds = ArgKinds::fixed(
 /// `BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])`.
 const LIFT_3_OF_4: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift], Constant);
 /// `BINOM.INV(trials, probability_s, alpha)` and CRITBINOM: a search that halves `[0, trials]`
-/// (a `u64`) at most 64 times with one cdf each, its own per-call cap (`statistical/binom.rs`);
-/// each element is charged that weight (SPEC-0011 security rule).
-const BINOM_INV: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(64));
-/// `PERMUT(number, number_chosen)`: the product of `number_chosen` factors stops once it is
-/// infinite, after at most 171 factors (171! is past `f64::MAX`), its own per-call cap
-/// (`statistical/permut.rs`); each element is charged that weight.
-const PERMUT: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(171));
+/// (a `u64`) at most 64 times, its own per-call cap (`statistical/binom.rs`), with one statrs
+/// incomplete-beta cdf (up to 140 continued-fraction steps) each. Measured in release: up to
+/// about 65 us an element (`BINOM.INV(1E12,0.3,alpha)`; 37 us at 1E6 trials, 13 us at a tiny
+/// `probability_s`). The weight caps a lifted call at 2^27 / 4096 = 32,768 elements: 2.14 s
+/// measured at the worst case, the budget of the Bessel entries (a DEVIATION, statistics.md).
+const BINOM_INV: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(BINOM_INV_WEIGHT));
+/// The units one BINOM.INV element is charged against `MAX_LIFTED_CELL_VISITS`.
+const BINOM_INV_WEIGHT: u32 = 1 << 12;
 // --- End statistical (T-1290) ---------------------------------------------------------------
 
 // --- Financial ATP (T-1822) -----------------------------------------------------------------
@@ -643,10 +644,15 @@ impl Function {
             // over a range, K3-K16: the optional ones over an array; scalar-lift-shapes H15,
             // H16; docs/excel-semantics/statistics.md "Statistical function argument modes").
             // Their kernels are closed form, or call statrs' incomplete beta (a continued
-            // fraction of at most 140 steps) a fixed number of times. The quantile searches
-            // (BETA.INV, F.INV, T.INV, CHISQ.INV, GAMMA.INV), the incomplete-gamma ones (CHISQ.*,
-            // GAMMA.DIST, POISSON) and HYPGEOM.DIST's cdf sum loop by value with no per-call cap
-            // of their own, so they are not entered yet (TODO(T-1848)).
+            // fraction of at most 140 steps) a fixed number of times: measured in release over
+            // 2^20 elements, BETA.DIST with shapes of 1E6 costs about 0.29 us an element, F.DIST
+            // and T.DIST with 1E9 degrees of freedom 0.28 and 0.30 us, NORM.DIST 0.14 us, and the
+            // slowest, BINOM.DIST with 1E18 trials, about 3.2 us (3.3 s for 2^20 elements).
+            // PERMUT multiplies at most 171 factors whatever its arguments (0.22 us). The
+            // quantile searches (BETA.INV, F.INV, T.INV, CHISQ.INV, GAMMA.INV), the
+            // incomplete-gamma ones (CHISQ.*, GAMMA.DIST, POISSON) and HYPGEOM.DIST's cdf sum loop
+            // by value with no per-call cap of their own, so they are not entered yet
+            // (TODO(T-1848)).
             Function::Gauss
             | Function::Phi
             | Function::Fisher
@@ -658,6 +664,7 @@ impl Function {
             | Function::NormSInvCompat
             | Function::NormSDistCompat => Some(&LIFT_1),
             Function::NormSdist
+            | Function::Permut
             | Function::Permutationa
             | Function::TDist2T
             | Function::TDistRT => Some(&LIFT_2),
@@ -690,7 +697,6 @@ impl Function {
             Function::BetaDistCompat => Some(&LIFT_3_OF_5),
             Function::BinomDistRange => Some(&LIFT_3_OF_4),
             Function::BinomInv | Function::CritbinomCompat => Some(&BINOM_INV),
-            Function::Permut => Some(&PERMUT),
             // --- End statistical (T-1290) ---
             _ => None,
         }

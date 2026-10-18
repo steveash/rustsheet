@@ -1,8 +1,8 @@
 use statrs::distribution::{Continuous, ContinuousCDF, FisherSnedecor};
 
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::{num_error, number_or_error};
-use crate::functions::statistical::special::bisect_increasing;
+use crate::functions::lift::{div_error, num_error, number_or_error};
+use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
 use crate::functions::statistical::t_dist::sample_var;
 use crate::functions::Function;
 use crate::{
@@ -37,6 +37,23 @@ fn f_quantile(dist: &FisherSnedecor, df1: f64, df2: f64, p: f64) -> f64 {
     }
     // 2^1100 is past the f64 range, so a quantile not bracketed by then is infinite.
     bisect_increasing(|x| dist.cdf(x), p, 1100)
+}
+
+/// The F density. statrs' direct form raises `df1*x` and `df1*x + df2` to the power `df1` and
+/// `df1 + df2`, which overflows to inf/inf (NaN) for a huge x although the density is tiny:
+/// Excel's `F.DIST(1E308,1,3,FALSE)` is 0 (probes/stat-overflow-arguments E11). Only then is the
+/// density evaluated in logarithms, so every value the direct form gives is kept.
+fn f_pdf(dist: &FisherSnedecor, df1: f64, df2: f64, x: f64) -> f64 {
+    let direct = dist.pdf(x);
+    if direct.is_finite() || x <= 0.0 {
+        return direct;
+    }
+    let scaled = df1 * x;
+    let ln_beta = ln_gamma(df1 / 2.0) + ln_gamma(df2 / 2.0) - ln_gamma((df1 + df2) / 2.0);
+    let ln_density = 0.5 * (df1 * scaled.ln() + df2 * df2.ln() - (df1 + df2) * (scaled + df2).ln())
+        - x.ln()
+        - ln_beta;
+    ln_density.exp()
 }
 
 impl Model {
@@ -112,8 +129,23 @@ impl Model {
         if x < 0.0 || !f_df_ok(df1) || !f_df_ok(df2) {
             return Err(num_error(cell));
         }
+        // A finite x whose scaled ratio overflows (df1*x past f64::MAX) is #DIV/0! for the cdf and
+        // #NUM! for the pdf in Excel (`F.DIST(1E308,2,3,TRUE)` and `F.DIST(1E308,2,3,FALSE)`,
+        // while df1 = 1 gives 1 and 0; probes/stat-overflow-arguments A1, A2, B12, E11). statrs'
+        // incomplete beta would unwrap the NaN ratio and panic.
+        if !(df1 * x).is_finite() {
+            return Err(if cumulative {
+                div_error(cell)
+            } else {
+                num_error(cell)
+            });
+        }
         let dist = FisherSnedecor::new(df1, df2).map_err(|_| num_error(cell))?;
-        let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
+        let result = if cumulative {
+            dist.cdf(x)
+        } else {
+            f_pdf(&dist, df1, df2, x)
+        };
         if result.is_nan() || result.is_infinite() {
             return Err(num_error(cell));
         }
@@ -143,6 +175,11 @@ impl Model {
         let df2 = self.cast_number_no_bools_ref(df2, cell)?.trunc();
         if x < 0.0 || !f_df_ok(df1) || !f_df_ok(df2) {
             return Err(num_error(cell));
+        }
+        // df1*x past f64::MAX is #DIV/0!, as for F.DIST's cdf (`F.DIST.RT(1E308,2,3)` and
+        // `FDIST(1E308,2,3)`; probes/stat-overflow-arguments A3, A4).
+        if !(df1 * x).is_finite() {
+            return Err(div_error(cell));
         }
         let dist = FisherSnedecor::new(df1, df2).map_err(|_| num_error(cell))?;
         // Right-tail probability: P(F > x) = 1 - CDF(x)
