@@ -361,18 +361,31 @@ are 0 wherever DATEVALUE parses):
   `"1JUN 2021"`, `"1 JUN2021"`, `"1JUN2021"` (rows 13-16, 18-19, 24).
 - `#VALUE!`: a month glued to a day followed by a year, whatever joins them (`"July1,2026"`,
   `"July12026"`, `"Jun1 2021"`: rows 10, 11, 17), and a name that is no month (`"Ju1"`, row 21).
-UNVERIFIED (hand-derived from the rule, not oracle-observed; T-1879 probes them):
-- shapes the probe lacks: a glued word that more words follow is `#VALUE!` when its month is glued
-  to a number (`"Jul1 , 2026"`, `"July1, 2026"`, by rows 10 and 17); a separated word with a glued
-  part is `#VALUE!` (`"1-Jul2026"`: no glued part is split inside a separated word); `"1July1"` is
-  `#VALUE!`; a day number past the month's end reads as a year (`"Jun31"` is 1931-06-01, `"Feb29"`
-  is 2029-02-01 with a 2026 clock, following `"July32"`);
-- paths the probe lacks (it covers DATEVALUE, VALUE, `0+`, MONTH and DAY only), which share
-  `parse_date`: date+time text (`"July1 10:00"`, `"1JUN2021 6 PM"` give a date-time), criteria
-  (COUNTIF/SUMIF `"July1"`, `">1JUN2021"` match as dates) and typed input with its inferred number
-  format (`"July1"` "d-mmm", `"Jul2026"` "mmm-yy", `"1Jul 2026"` "d-mmm-yy");
+Probed (probes/date-text-glued-month-2, excel-graph 2026-10-18, T-1879; rows refer to Sheet1 of that case):
+- Shapes the first probe lacked are dates in Excel, not `#VALUE!`: `"Jul1 , 2026"`, `"July1, 2026"` and
+  `"1-Jul2026"` are 2026-07-01 (rows 6-8), so a glued month-and-day followed by a year works when a comma
+  (spaced or not) or a hyphen-joined word separates them (contrast `"July1,2026"`, `"Jun1 2021"` above, which stay
+  `#VALUE!`); `"1July1"` is 2001-07-01 (serial 37073, day 1, month July, two-digit year 01; row 9).
+  A day number past the month's end reads as a year, following `"July32"`: `"Jun31"` is 1931-06-01 (serial
+  11475) and `"Feb29"` is the 1st of February of the clock year (2029-02-01 = 47150 on the 2026 oracle; rows 10-11,
+  MONTH 6/2 and DAY 1 scored). The engine returns `#VALUE!` for rows 6-9 (task filed below).
+- Date+time text goes through the same split: `"July1 10:00"`, `"Jul1 10 AM"`, `"1JUN2021 6 PM"`, `"1JUN2021 18:30"`,
+  `"July1 10:00:30"` and `"Jul1 , 2026 10:00"` are date-times in VALUE (fractions 0.41666..., 0.75, 0.7708...,
+  0.41701...; rows 1-5, 12), and TIMEVALUE of the same text is just the clock fraction. TIMEVALUE of date-only
+  text (`"Jul1 , 2026"`, `"1Jul 2026"`, `"Jul2026"`, `"July01"`, `"Jun31"`, `"Feb29"`) is 0, not an error
+  (rows 6-8, 10-11, 13-15, column C); the engine returns `#VALUE!` for those.
+- Criteria read the glued forms as dates: over serials 44347, 44348, 44349 `COUNTIF(">1JUN2021")` = 1,
+  `"1JUN2021"` = 1, `">=1JUN2021"` = 2, `"<1JUN2021"` = 1, `">1Jun2021"` = 1, `SUMIF(">1JUN2021")` sums
+  44349; `COUNTIF(date,"July1")`, `"Jul1"` and `"July01"` match the 1 July of the clock year (K1-K8).
+- Typed input (the oracle's ENTERED log, number formats): `"July1"` and `"July01"` -> 1 July of the clock year,
+  format `d-mmm`; `"Jul2026"` -> 2026-07-01, `mmm-yy`; `"Jun31"` -> 1931-06-01, `mmm-yy`; `"1Jul 2026"`,
+  `"Jul1 , 2026"` and `"1JUN2021"` -> d-mmm-yy dates (2026-07-01, 2026-07-01, 2021-06-01); `"July1 10:00"` ->
+  46204.41666..., format `m/d/yyyy h:mm`; `"Jun1.5"` stays text (General). The engine matches except the typed
+  `"Jul1 , 2026"` and `"July1 10:00"`, which it leaves as text (task filed below).
+UNVERIFIED:
+- the clock-year results (`"July1"`, `"Feb29"`) for clocks other than the oracle's 2026;
 - locales other than en-US (the split uses the locale's month names).
-Status: VERIFIED (web) for probes/date-text-glued-month rows 1-24; the forms above are UNVERIFIED.
+Status: VERIFIED (web) for probes/date-text-glued-month rows 1-24 and probes/date-text-glued-month-2; engine gaps are tasks (below).
 Implemented in: `split_glued_month` in `crates/rustsheet-engine/src/formatter/date_text.rs` (used by `parse_date`)
 Tasks: T-1788, T-1789, T-1879
 
