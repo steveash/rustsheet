@@ -1,3 +1,4 @@
+use super::locale_tag::{self, LocaleTag};
 use crate::number_format::{parse_excel_number, parse_finite_number};
 
 pub struct Lexer {
@@ -59,7 +60,7 @@ pub enum Token {
     /// `A/P`: the letters printed for the morning and for the afternoon.
     AP(char, char),
     /// `[$-409]`: a locale with no currency symbol, which prints nothing.
-    Locale,
+    Locale(LocaleTag),
     ILLEGAL,
     EOF,
 }
@@ -401,14 +402,16 @@ impl Lexer {
                             //           [$$-40C] (=1036 for fr-FR)
                             self.read_next_char();
                             // Excel: `[$-409]` has a locale and no symbol and prints nothing
-                            // (probes/text-ap-locale-bracket A11-A20; number-formats.md). Only 409 is
-                            // probed; other LCIDs are read the same way by inference (T-1702).
+                            // (probes/text-ap-locale-bracket A11-A20; number-formats.md); the
+                            // locale it names applies to date names (`locale_tag`, T-1716).
                             if self.peek_char() == Some('-') {
                                 self.read_next_char();
+                                let mut tag = String::new();
                                 while let Some(c) = self.read_next_char() {
                                     if c == ']' {
-                                        return Token::Locale;
+                                        return Token::Locale(locale_tag::resolve(&tag));
                                     }
+                                    tag.push(c);
                                 }
                                 self.set_error("Failed to parse locale");
                                 return Token::ILLEGAL;
