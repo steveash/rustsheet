@@ -128,7 +128,7 @@ impl Model {
         };
         grid.into_iter()
             .flatten()
-            .map(|item| delimiter_text(&item, cell))
+            .map(|item| delimiter_text(item, cell))
             .collect()
     }
 }
@@ -243,8 +243,11 @@ impl ScanCost {
 }
 
 /// One element of a delimiter list as text ([`Model::cast_string_ref`]: a blank is "").
-fn delimiter_text(item: &ArrayNode, cell: CellReferenceIndex) -> Result<String, CalcResult> {
-    Model::cast_string_ref(&array_node_to_calc_result(item, cell), cell)
+fn delimiter_text(item: ArrayNode, cell: CellReferenceIndex) -> Result<String, CalcResult> {
+    match item {
+        ArrayNode::String(s) => Ok(s.into_lossy_string()),
+        other => Model::cast_string_ref(&array_node_to_calc_result(&other, cell), cell),
+    }
 }
 
 fn not_a_string(cell: CellReferenceIndex) -> CalcResult {
