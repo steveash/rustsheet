@@ -26,7 +26,7 @@ Split from T-1776 (SPEC-0011 "Security rule for kernel work"). A unit test in cr
 -
 
 ## Outcome
-`crates/rustsheet-engine/src/functions/lift/tests/kernel_work.rs` lists 83 value-dependent
+`crates/rustsheet-engine/src/functions/lift/tests/kernel_work.rs` lists 78 value-dependent
 functions. Each entry carries the fixed cap that lets it be `Constant`, or `None`, meaning it must
 be `Weighted`. The test fails for any listed function whose table entry is `Constant` with no cap
 named, or `Weighted(1)`. Functions with no entry yet (FACT, COMBIN, COMBINA, MULTINOMIAL, IRR,
