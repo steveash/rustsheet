@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "NPV error order and an empty argument; FVSCHEDULE parenthesised and non-numeric text literals (T-1373).",
+  "tags": [
+    "M9",
+    "financial",
+    "npv",
+    "fvschedule",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=NPV(0.1,\"x\",#N/A)",
+        "A2": "=NPV(0.1,-10000,,4250)",
+        "A3": "=FVSCHEDULE(1000,(\"0.1\"))",
+        "A4": "=FVSCHEDULE(1000,\"x\")",
+        "A5": "=NPV(0.1,#N/A,\"x\")",
+        "A6": "=FVSCHEDULE(1000,T(\"0.1\"))"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6"
+  ]
+}

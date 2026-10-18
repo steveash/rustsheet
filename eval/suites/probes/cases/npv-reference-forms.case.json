@@ -1,0 +1,52 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "NPV values written as references reached through IF, INDEX, CHOOSE, OFFSET, INDIRECT, LET, names, 3-D refs and unions; error and spilled arrays (T-1373).",
+  "tags": [
+    "M9",
+    "financial",
+    "npv",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": "2750",
+        "B2": true,
+        "B3": -10000,
+        "B4": 4250,
+        "A1": "=NPV(0.1,-10000,IF(TRUE,B1),4250)",
+        "A2": "=NPV(0.1,-10000,INDEX(B1:B2,1),4250)",
+        "A3": "=NPV(0.1,-10000,RefTxt,4250)",
+        "A4": "=NPV(0.1,-10000,CHOOSE(1,B1),4250)",
+        "A5": "=NPV(0.1,-10000,OFFSET(B1,0,0),4250)",
+        "A6": "=NPV(0.1,-10000,Sheet1:Sheet1!B1,4250)",
+        "A7": "=NPV(0.1,{1,#N/A})",
+        "A8": "=NPV(0.1,SEQUENCE(3))",
+        "A9": "=NPV(0.1,-10000,IF(TRUE,B2),4250)",
+        "A10": "=NPV(0.1,(B3,B4))",
+        "A11": "=NPV(0.1,-10000,INDIRECT(\"B1\"),4250)",
+        "A12": "=NPV(0.1,-10000,LET(x,B1,x),4250)",
+        "A13": "=NPV(0.1,B3:B4*1)",
+        "A14": "=NPV(0.1,-10000,IF(TRUE,\"2750\"),4250)",
+        "A15": "=NPV(0.1,-10000,IF(TRUE,B1:B2),4250)",
+        "A16": "=NPV(0.1,-10000,RefFlag,4250)",
+        "A17": "=NPV(0.1,-10000,B1:B1,4250)",
+        "A18": "=NPV(0.1,(B4,B3))",
+        "A19": "=NPV(0.1,-10000,VLOOKUP(\"2750\",B1:B2,1,FALSE),4250)",
+        "A20": "=NPV(0.1,{-10000;4250})"
+      }
+    }
+  ],
+  "names": {
+    "RefTxt": "=Sheet1!$B$1",
+    "RefFlag": "=Sheet1!$B$2"
+  },
+  "expected": {},
+  "check": [
+    "Sheet1!A1", "Sheet1!A2", "Sheet1!A3", "Sheet1!A4", "Sheet1!A5",
+    "Sheet1!A6", "Sheet1!A7", "Sheet1!A8", "Sheet1!A9", "Sheet1!A10",
+    "Sheet1!A11", "Sheet1!A12", "Sheet1!A13", "Sheet1!A14", "Sheet1!A15",
+    "Sheet1!A16", "Sheet1!A17", "Sheet1!A18", "Sheet1!A19", "Sheet1!A20"
+  ]
+}
