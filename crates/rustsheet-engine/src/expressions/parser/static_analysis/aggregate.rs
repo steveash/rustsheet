@@ -1,6 +1,6 @@
 use crate::functions::Function;
 
-use super::cells::yields_cells;
+use super::reference_result::yields_cells;
 use super::{broadcast_static_result, run_static_analysis_on_node, Node, StaticResult};
 
 /// AGGREGATE spills over an array `function_num`, options or fourth argument, broadcast against

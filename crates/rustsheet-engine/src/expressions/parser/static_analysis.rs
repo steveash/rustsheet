@@ -11,7 +11,6 @@ pub use redundant::remove_redundant_implicit_intersection;
 use redundant::remove_redundant_legacy_intersection;
 mod aggregate;
 mod broadcast;
-mod cells;
 mod legacy;
 mod lifted;
 mod redundant;
