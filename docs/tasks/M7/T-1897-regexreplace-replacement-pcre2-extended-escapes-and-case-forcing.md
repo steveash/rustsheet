@@ -3,7 +3,7 @@ id: T-1897
 title: "REGEXREPLACE replacement: PCRE2 extended escapes and case forcing"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
