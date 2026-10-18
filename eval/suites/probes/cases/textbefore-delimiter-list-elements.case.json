@@ -1,0 +1,65 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1361 TEXTBEFORE, TEXTAFTER and TEXTSPLIT delimiter lists: error and boolean elements, the empty delimiter with match_end, instance_num 0, non-BMP and one-character texts",
+  "tags": [
+    "M7",
+    "text",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=\"[\"&TEXTBEFORE(\"abc\",{\"b\",#N/A})&\"]\"",
+        "A2": "=\"[\"&TEXTBEFORE(\"abc\",{#N/A,\"b\"})&\"]\"",
+        "A3": "=\"[\"&TEXTBEFORE(\"abc\",Data!A1:B1)&\"]\"",
+        "A4": "=\"[\"&TEXTBEFORE(\"abc\",{\"\",#N/A})&\"]\"",
+        "A5": "=\"[\"&TEXTBEFORE(\"a1E+15b\",{1E+15,\"q\"})&\"]\"",
+        "A6": "=\"[\"&TEXTBEFORE(\"aFALSEb\",{FALSE,\"q\"})&\"]\"",
+        "A7": "=\"[\"&TEXTBEFORE(\"a false b\",{FALSE,\"q\"},,1)&\"]\"",
+        "A8": "=\"[\"&TEXTBEFORE(\"😀\",\"\")&\"]\"",
+        "A9": "=\"[\"&TEXTAFTER(\"😀\",\"\")&\"]\"",
+        "A10": "=\"[\"&TEXTBEFORE(\"é\",\"\")&\"]\"",
+        "A11": "=\"[\"&TEXTBEFORE(\"abc\",\"\",0)&\"]\"",
+        "A12": "=\"[\"&TEXTBEFORE(\"abc\",\"\",1,0,2)&\"]\"",
+        "A13": "=\"[\"&TEXTBEFORE(\"a\",\"\",1,0,1)&\"]\"",
+        "A14": "=\"[\"&TEXTAFTER(\"a\",\"\",-1,0,1)&\"]\"",
+        "A15": "=\"[\"&TEXTBEFORE(\"abc\",{\"\",\"b\"},1,1)&\"]\"",
+        "A16": "=\"[\"&TEXTBEFORE(\"a\",\"\",,,,\"nf\")&\"]\"",
+        "A17": "=\"[\"&TEXTBEFORE(\"abc\",\"\",-1E+15)&\"]\"",
+        "A18": "=\"[\"&TEXTBEFORE(\"a\",\"\",-5)&\"]\"",
+        "A19": "=\"[\"&TEXTBEFORE(1,\"\")&\"]\"",
+        "A20": "=\"[\"&TEXTBEFORE(TRUE,\"\")&\"]\"",
+        "A21": "=\"[\"&TEXTBEFORE(\"abc\",{\"\",\"\"},\"x\")&\"]\"",
+        "A22": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"abc\",{\"b\",#N/A}),1)&\"]\"",
+        "A23": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"aTRUEb\",{TRUE,\"q\"}),1)&\"]\"",
+        "A24": "=\"[\"&TEXTBEFORE(\"a\",{\"\",\"q\"},1,0,1)&\"]\"",
+        "A25": "=\"[\"&TEXTBEFORE(\"ab\",\"\",1,0,1)&\"]\"",
+        "A26": "=\"[\"&TEXTBEFORE(\"ab\",\"\",-1,0,1)&\"]\"",
+        "A27": "=\"[\"&TEXTAFTER(\"ab\",\"\",1,0,1)&\"]\"",
+        "A28": "=\"[\"&TEXTBEFORE(Data!C1,\"\")&\"]\"",
+        "A29": "=\"[\"&TEXTBEFORE(\"a \",\"\")&\"]\"",
+        "A30": "=\"[\"&TEXTBEFORE(\"ab\",{\"\",\"b\"},0)&\"]\"",
+        "A31": "=\"[\"&TEXTBEFORE(\"xx\",Data!A2:B2)&\"]\"",
+        "A32": "=\"[\"&TEXTBEFORE(\"a\",Data!C1:D1)&\"]\"",
+        "A33": "=\"[\"&TEXTAFTER(\"a\",Data!C1:D1)&\"]\"",
+        "A34": "=\"[\"&TEXTBEFORE(\"abc\",Data!A3:B3)&\"]\"",
+        "A35": "=\"[\"&TEXTBEFORE(\"a\",\"\",1,0,3)&\"]\"",
+        "A36": "=\"[\"&TEXTBEFORE(\"a\",\"\",1,0,1,\"nf\")&\"]\"",
+        "A37": "=\"[\"&TEXTBEFORE(\"abcbd\",{\"b\",\"bc\"})&\"]\"",
+        "A38": "=\"[\"&TEXTBEFORE(\"abcd\",{\"bc\",\"b\"})&\"]\""
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": "=NA()",
+        "B1": "b",
+        "A2": "=1/0",
+        "A3": "=\"\"",
+        "B3": "b"
+      }
+    }
+  ],
+  "expected": {}
+}

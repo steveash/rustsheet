@@ -151,10 +151,11 @@ fn text_lifts_and_delimiters_are_a_list() {
     assert_eq!(column('I', 3), ["a+b", "c-d", "e+f"]);
 }
 
-// UNVERIFIED (no oracle cell; T-1824 probes them): match_end and if_not_found with a delimiter list,
-// every list entry longer than the text, and an error inside the list
-// (docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and
-// scalar arguments"). These pin the engine's current guesses so a change is deliberate.
+// UNVERIFIED (no oracle cell; T-1824 probes them): match_end and if_not_found with a delimiter list
+// and every list entry longer than the text. Only the error inside the list (A5) is oracle-backed:
+// probes/textbefore-delimiter-list-elements A1 (T-1361). See docs/excel-semantics/text.md
+// "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments". These pin
+// the engine's current guesses so a change is deliberate.
 #[test]
 fn list_with_match_end_and_if_not_found() {
     let mut model = new_empty_model();
@@ -170,7 +171,7 @@ fn list_with_match_end_and_if_not_found() {
     assert_eq!(model._get_text("A2"), *"");
     assert_eq!(model._get_text("A3"), *"none");
     assert_eq!(model._get_text("A4"), *"#N/A");
-    assert_eq!(model._get_text("A5"), *"#VALUE!");
+    assert_eq!(model._get_text("A5"), *"#N/A");
     assert_eq!(model._get_text("A6"), *"#N/A");
     assert_eq!(model._get_text("A7"), *"#VALUE!");
 }
@@ -261,4 +262,69 @@ fn case_insensitive_list_over_a_lifted_text() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"1");
     assert_eq!(model._get_text("A20"), *"20");
+}
+
+// T-1361: a delimiter range of any shape is a list; numbers and booleans are their text, a blank
+// cell is the empty delimiter, which decides the result alone (probes/textbefore-delimiter-range,
+// probes/textbefore-empty-delimiter-list, probes/textbefore-delimiter-list-elements).
+#[test]
+fn delimiter_ranges_are_lists() {
+    let mut model = new_empty_model();
+    model._set("D1", "x");
+    model._set("E1", "y");
+    model._set("D2", "z");
+    model._set("E2", ",");
+    model._set("D3", "1");
+    model._set("E3", "TRUE");
+    model._set("E4", "q");
+    model._set("D5", "=NA()");
+    model._set("E5", "b");
+    model._set("A1", "=TEXTBEFORE(\"a,b;c\",D1:E2)");
+    model._set("A2", "=TEXTBEFORE(\"a1b\",D3:E3)");
+    model._set("A3", "=TEXTAFTER(\"a TRUE b\",D3:E3)");
+    model._set("A4", "=TEXTBEFORE(\"a true b\",D3:E3,,1)");
+    model._set("A5", "=TEXTBEFORE(\"xyz\",D4:E4)");
+    model._set("A6", "=TEXTAFTER(\"xyz\",D4:E4)");
+    model._set("A7", "=TEXTBEFORE(\"xyz\",D4:E4,-1)");
+    model._set("A8", "=TEXTBEFORE(\"abc\",D5:E5)");
+    model._set("A9", "=TEXTBEFORE(\"aFALSEb\",{FALSE,\"q\"})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"a");
+    assert_eq!(model._get_text("A2"), *"a");
+    assert_eq!(model._get_text("A3"), *" b");
+    assert_eq!(model._get_text("A4"), *"a ");
+    assert_eq!(model._get_text("A5"), *"");
+    assert_eq!(model._get_text("A6"), *"xyz");
+    assert_eq!(model._get_text("A7"), *"xyz");
+    assert_eq!(model._get_text("A8"), *"#N/A");
+    assert_eq!(model._get_text("A9"), *"a");
+}
+
+// T-1361: with the empty delimiter the result ignores the other delimiters and instance_num's
+// size; a one-UTF-16-unit text matches at its end (probes/textbefore-empty-delimiter-list,
+// probes/textbefore-delimiter-list-elements A8-A21).
+#[test]
+fn empty_delimiter_matches_at_start_or_end() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTBEFORE(\"abc\",\"\",2)");
+    model._set("A2", "=TEXTBEFORE(\"42\",{\"\",\"q\"},1E+15)");
+    model._set("A3", "=TEXTBEFORE(\"abc\",{\"b\",\"\"},-1)");
+    model._set("A4", "=TEXTBEFORE(\"2\",\"\")");
+    model._set("A5", "=TEXTAFTER(\"q\",{\"\",\"q\"},-1)");
+    model._set("A6", "=TEXTBEFORE(\"😀\",\"\")");
+    model._set("A7", "=TEXTBEFORE(\"\",{\"\",\"q\"},2)");
+    model._set("A8", "=TEXTBEFORE(\"abc\",\"\",0)");
+    model._set("A9", "=TEXTBEFORE(\"abc\",\"\",1,0,2)");
+    model._set("A10", "=TEXTBEFORE(\"a\",\"\",,,,\"nf\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"");
+    assert_eq!(model._get_text("A2"), *"");
+    assert_eq!(model._get_text("A3"), *"abc");
+    assert_eq!(model._get_text("A4"), *"2");
+    assert_eq!(model._get_text("A5"), *"");
+    assert_eq!(model._get_text("A6"), *"");
+    assert_eq!(model._get_text("A7"), *"");
+    assert_eq!(model._get_text("A8"), *"#VALUE!");
+    assert_eq!(model._get_text("A9"), *"#VALUE!");
+    assert_eq!(model._get_text("A10"), *"a");
 }
