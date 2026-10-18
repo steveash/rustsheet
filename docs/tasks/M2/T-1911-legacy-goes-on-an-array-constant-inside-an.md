@@ -16,6 +16,8 @@ A legacy cell puts the `@` on an array constant inside an operator: `=N(@{2;3}+0
 ## Context
 probes/legacy-array-at-shapes I20, J20 (FORMULATEXT) and I11, J11 (Excel empty, ours 3): ours adds no `@` and spills. Found by T-1847; static_analysis/legacy.rs `legacy_array_context`; references.md 'Legacy formulas put @ on array-valued calls'.
 
+Export side: `remove_redundant_legacy_intersection` (static_analysis/redundant.rs) must drop exactly the `@`s the parser adds, so change both.
+
 ## Acceptance criteria
 - [ ] The listed probes/legacy-array-at-shapes cells pass; the baseline shrinks.
 - [ ] `make check` green; reviewers approve.
