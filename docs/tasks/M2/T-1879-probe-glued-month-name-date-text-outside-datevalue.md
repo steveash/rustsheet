@@ -3,7 +3,7 @@ id: T-1879
 title: "Probe glued month-name date text outside DATEVALUE: date+time text, criteria, typed-input formats and unprobed shapes"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -35,3 +35,6 @@ entry ("UNVERIFIED" paragraph).
 
 ## Out of scope
 - Implementing the outcome.
+
+## Outcome
+Added probes/date-text-glued-month-2 (106 scored cells, oracle-filled via excel-graph 2026-10-18) covering date+time text, criteria, typed input (formats logged) and the unprobed shapes; dates.md records every outcome. Engine matches except glued shapes (T-1906) and TIMEVALUE of date-only text / typed date+time (T-1907). Eval: new probe adds 32 known failures to the baseline, 74 cells pass.
