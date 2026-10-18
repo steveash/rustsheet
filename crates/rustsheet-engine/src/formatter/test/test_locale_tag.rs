@@ -96,7 +96,10 @@ fn japanese_eras() {
     assert_eq!(text(45000.0, "[$-411]g|gg|ggg|e|ee"), "R|令|令和|5|05");
     assert_eq!(text(45000.0, "[$-ja-JP]g|gg|ggg|e|ee"), "R|令|令和|5|05");
     assert_eq!(text(43585.0, "[$-411]g|e|yyyy-mm-dd"), "H|31|31-04-30");
-    assert_eq!(text(43586.0, "[$-411]ggge\"年\"m\"月\"d\"日\""), "令和1年5月1日");
+    assert_eq!(
+        text(43586.0, "[$-411]ggge\"年\"m\"月\"d\"日\""),
+        "令和1年5月1日"
+    );
     assert_eq!(text(4595.0, "[$-411]g|ee"), "T|01");
     assert_eq!(text(9855.0, "[$-411]g|e"), "T|15");
     assert_eq!(text(9856.0, "[$-411]g|e"), "S|1");
@@ -116,9 +119,15 @@ fn japanese_eras() {
 fn calendar_digits() {
     assert_eq!(text(45000.0, "[$-20411]mmmm|e|g"), "March|2023|");
     assert_eq!(text(45000.0, "[$-40409]ddd|mmm|yy|b"), "週三|三月|2023|23");
-    assert_eq!(text(45000.0, "[$-50409]yyyy|yy|b|e|mmmm"), "4356|56|23|2023|March");
+    assert_eq!(
+        text(45000.0, "[$-50409]yyyy|yy|b|e|mmmm"),
+        "4356|56|23|2023|March"
+    );
     assert_eq!(text(45000.0, "[$-50412]mmmm"), "3월");
-    assert_eq!(text(45000.0, "[$-70409]yyyy|yy|bbbb|e|mmmm"), "2566|66|2566|2023|มีนาคม");
+    assert_eq!(
+        text(45000.0, "[$-70409]yyyy|yy|bbbb|e|mmmm"),
+        "2566|66|2566|2023|มีนาคม"
+    );
     assert_eq!(text(45000.0, "[$-90409]ddd|mmmm"), "mer.|mars");
     assert_eq!(text(45000.0, "[$-D0409]mmmm"), "March");
     assert_eq!(text(45000.0, "[$-FF040C]mmmm"), "mars");

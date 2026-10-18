@@ -69,8 +69,9 @@ pub const SYSTEM_LONG_TIME: &str = "h:mm:ss AM/PM";
 
 /// Resolves the text between `[$-` and `]`.
 ///
-/// A hex LCID may carry a calendar in the digits above the low four (see [`resolve_lcid`]). An LCID with no table falls back to its language
-/// (`[$-80C]` is French, `[$-C]` too); 400 and 800, the user and system defaults, are en-US.
+/// A hex LCID may carry a calendar in the digits above the low four (see `resolve_lcid`). An LCID
+/// with no table falls back to its language (`[$-80C]` is French, `[$-C]` too); 400 and 800, the
+/// user and system defaults, are en-US.
 /// A BCP-47 tag matches case-insensitively, then by its language (`[$-fr-XX]` is French).
 pub fn resolve(tag: &str) -> LocaleTag {
     if tag.eq_ignore_ascii_case("x-sysdate") {
@@ -94,11 +95,11 @@ pub fn resolve(tag: &str) -> LocaleTag {
     }
 }
 
-/// An LCID with its calendar digits (bits 16-23). Excel: 0 is the locale's own calendar (Japanese
-/// eras for Japanese), 1 Gregorian, 2 and D Gregorian with en-US names, 3 Japanese eras (Japanese
-/// names only for a Japanese LCID), 4 Taiwan (zh-TW names), 5 Korean (Korean names only for a
-/// Korean LCID), 7 Thai (Thai names), 9 Gregorian with French names, and 15 and above are ignored
-/// (`[$-FF040C]mmmm` is "mars"). Day halves follow the LCID throughout. Calendars 6 (Hijri,
+/// An LCID with its calendar digits (bits 16-23, hex below). Excel: 0 is the locale's own calendar
+/// (Japanese eras for Japanese), 1 Gregorian, 2 and D Gregorian with en-US names, 3 Japanese eras
+/// (Japanese names only for a Japanese LCID), 4 Taiwan (zh-TW names), 5 Korean (Korean names only
+/// for a Korean LCID), 7 Thai (Thai names), 9 Gregorian with French names, and 15 and above are
+/// ignored (`[$-FF040C]mmmm` is "mars"). Day halves follow the LCID throughout. Calendars 6 (Hijri,
 /// TODO(T-1613)), E-13 (lunar, TODO(T-1922)), 8 (Hebrew), A-C (Arabic Gregorian), 10 (Saka) and 14
 /// (Korean native names; TODO(T-1923)) are not modelled and stay [`LocaleTag::Silent`], as do
 /// numeral-system digits (bits 24-31; TODO(T-1925)).
@@ -190,52 +191,35 @@ fn resolve_bcp47(tag: &str) -> LocaleTag {
         .map_or(LocaleTag::Silent, |(id, _, _)| resolve_lcid(u32::from(*id)))
 }
 
-/// A Japanese era: the serial of its first day (1900 date system), its first Gregorian year and
-/// what `g`, `gg` and `ggg` print.
-struct Era {
-    first_serial: i64,
-    first_year: i32,
-    names: [&'static str; 3],
-}
-
-/// The eras Excel uses from 1900 on, latest first. Excel: Taisho starts at serial 4595
-/// (1912-07-30), Showa at 9856, Heisei at 32516 and Reiwa at 43586 (2019-05-01); the year before is
-/// the last of the previous era (`[$-411]g|e` of 43585 is "H|31"; probes/text-locale-calendars
-/// A1-A14, text-locale-calendars-detail A10, A41).
-static ERAS: [Era; 5] = [
-    Era {
-        first_serial: 43586,
-        first_year: 2019,
-        names: ["R", "令", "令和"],
-    },
-    Era {
-        first_serial: 32516,
-        first_year: 1989,
-        names: ["H", "平", "平成"],
-    },
-    Era {
-        first_serial: 9856,
-        first_year: 1926,
-        names: ["S", "昭", "昭和"],
-    },
-    Era {
-        first_serial: 4595,
-        first_year: 1912,
-        names: ["T", "大", "大正"],
-    },
-    Era {
-        first_serial: i64::MIN,
-        first_year: 1868,
-        names: ["M", "明", "明治"],
-    },
+/// The Japanese eras Excel uses from 1900 on, latest first: the serial of the first day (1900 date
+/// system), the first Gregorian year and what `g`, `gg` and `ggg` print. Excel: Taisho starts at
+/// serial 4595 (1912-07-30), Showa at 9856, Heisei at 32516 and Reiwa at 43586 (2019-05-01); the
+/// year before is the last of the previous era (`[$-411]g|e` of 43585 is "H|31";
+/// probes/text-locale-calendars A1-A14, text-locale-calendars-detail A10, A41).
+static ERAS: [(i64, i32, [&str; 3]); 5] = [
+    (43586, 2019, ["R", "令", "令和"]),
+    (32516, 1989, ["H", "平", "平成"]),
+    (9856, 1926, ["S", "昭", "昭和"]),
+    (4595, 1912, ["T", "大", "大正"]),
+    (i64::MIN, 1868, ["M", "明", "明治"]),
 ];
 
-/// The Japanese era of 1900-system `serial`, whose Gregorian year is `year`: what a `g` run of
-/// `length` prints (`ggg` and longer print the full name) and the year in the era.
-pub fn japanese_era(serial: i64, year: i32, length: usize) -> (&'static str, i32) {
-    let era = ERAS
+/// The Japanese era of 1900-system `serial`: its first Gregorian year and its names.
+fn era_of(serial: i64) -> (i32, &'static [&'static str; 3]) {
+    let (_, first_year, names) = ERAS
         .iter()
-        .find(|era| serial >= era.first_serial)
+        .find(|(first_serial, _, _)| serial >= *first_serial)
         .unwrap_or(&ERAS[ERAS.len() - 1]);
-    (era.names[length.clamp(1, 3) - 1], year - era.first_year + 1)
+    (*first_year, names)
+}
+
+/// What a `g` run of `length` prints for 1900-system `serial`: the era's letter, first character
+/// or (`ggg` and longer) name.
+pub fn japanese_era_name(serial: i64, length: usize) -> &'static str {
+    era_of(serial).1[length.clamp(1, 3) - 1]
+}
+
+/// The year in its Japanese era of 1900-system `serial`, whose Gregorian year is `year`.
+pub fn japanese_era_year(serial: i64, year: i32) -> i32 {
+    year - era_of(serial).0 + 1
 }

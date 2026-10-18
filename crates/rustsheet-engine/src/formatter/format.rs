@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 pub(crate) use super::parse_formatted::parse_formatted_number;
 use super::{
     dates::{excel_serial_to_ymd, negative_serial_allowed},
-    locale_tag::{japanese_era, Calendar},
+    locale_tag::{japanese_era_name, japanese_era_year, Calendar},
     parser::{GeneralPart, ParsePart, Parser, TextToken},
 };
 
@@ -501,8 +501,10 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         if !date_valid {
                             return invalid_date(value);
                         }
-                        let buddhist =
-                            matches!(token, TextToken::BuddhistYearShort | TextToken::BuddhistYear);
+                        let buddhist = matches!(
+                            token,
+                            TextToken::BuddhistYearShort | TextToken::BuddhistYear
+                        );
                         let short =
                             matches!(token, TextToken::YearShort | TextToken::BuddhistYearShort);
                         // Excel: `b` is the Buddhist year with no locale tag and the Gregorian one
@@ -513,7 +515,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             (Some(Calendar::Japanese { explicit }), false)
                                 if explicit || seen_era =>
                             {
-                                let (_, era_year) = japanese_era(serial_1900, ymd_year, 1);
+                                let era_year = japanese_era_year(serial_1900, ymd_year);
                                 text = format!("{text}{era_year:02}");
                                 continue;
                             }
@@ -532,7 +534,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         };
                         // The Taiwan calendar's `yy` is four digits (probes/text-locale-japanese-year
                         // A15).
-                        let two_digits = short && (buddhist || p.calendar != Some(Calendar::Taiwan));
+                        let two_digits =
+                            short && (buddhist || p.calendar != Some(Calendar::Taiwan));
                         if two_digits {
                             text = format!("{text}{:02}", year % 100);
                         } else {
@@ -544,7 +547,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             return invalid_date(value);
                         }
                         if let Some(Calendar::Japanese { .. }) = p.calendar {
-                            let (_, era_year) = japanese_era(serial_1900, ymd_year, 1);
+                            let era_year = japanese_era_year(serial_1900, ymd_year);
                             if *padded {
                                 text = format!("{text}{era_year:02}");
                             } else {
@@ -560,7 +563,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         }
                         seen_era = true;
                         if let Some(Calendar::Japanese { .. }) = p.calendar {
-                            text.push_str(japanese_era(serial_1900, ymd_year, *length).0);
+                            text.push_str(japanese_era_name(serial_1900, *length));
                         }
                     }
                     TextToken::Hour => {

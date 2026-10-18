@@ -33,17 +33,17 @@ pub enum Token {
     ScientificMinus, // E-
     General,       // General
     // Dates and time
-    Day,                 // d
-    DayPadded,           // dd
-    DayNameShort,        // ddd
-    DayName,             // dddd+
-    Month,               // m (or minute)
-    MonthPadded,         // mm (or minute padded)
-    MonthNameShort,      // mmm
-    MonthName,           // mmmm or mmmmmm+
-    MonthLetter,         // mmmmm
-    YearShort,           // y or yy
-    Year,                // yyy+
+    Day,            // d
+    DayPadded,      // dd
+    DayNameShort,   // ddd
+    DayName,        // dddd+
+    Month,          // m (or minute)
+    MonthPadded,    // mm (or minute padded)
+    MonthNameShort, // mmm
+    MonthName,      // mmmm or mmmmmm+
+    MonthLetter,    // mmmmm
+    YearShort,      // y or yy
+    Year,           // yyy+
     /// `e` (false) or `ee`+ (true, two digits at least): the era year, the four-digit year in a
     /// Gregorian calendar.
     EraYear(bool),
