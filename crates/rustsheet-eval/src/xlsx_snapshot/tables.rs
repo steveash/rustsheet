@@ -4,7 +4,7 @@ use quick_xml::events::Event;
 use quick_xml::Reader;
 use serde::{Deserialize, Serialize};
 
-use super::{attr, read_part, xml_err, SnapshotError, Zip};
+use super::{attr, read_part, relationships, resolve_target, xml_err, SnapshotError, Zip};
 
 /// A table part (`xl/tables/tableN.xml`), as far as volatile-cell detection needs it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -34,46 +34,17 @@ pub(super) fn read_sheet_tables(
     let Some(rels) = read_part(zip, &format!("{dir}/_rels/{file}.rels"))? else {
         return Ok(());
     };
-    let mut reader = Reader::from_str(&rels);
-    let mut targets = Vec::new();
-    loop {
-        match reader.read_event().map_err(|e| xml_err(file, e))? {
-            Event::Start(e) | Event::Empty(e) if e.local_name().as_ref() == "Relationship" => {
-                if let (Some(kind), Some(target)) = (attr(&e, "Type"), attr(&e, "Target")) {
-                    if kind.ends_with("/table") {
-                        targets.push(target);
-                    }
-                }
-            }
-            Event::Eof => break,
-            _ => {}
-        }
-    }
+    let targets = relationships(&rels, file)?
+        .into_iter()
+        .filter(|r| r.kind.ends_with("/table"))
+        .map(|r| r.target);
     for target in targets {
-        let path = match target.strip_prefix('/') {
-            Some(abs) => abs.to_string(),
-            None => resolve_relative(dir, &target),
-        };
+        let path = resolve_target(dir, &target);
         if let Some(xml) = read_part(zip, &path)? {
             out.extend(parse_table(&xml, sheet, &path)?);
         }
     }
     Ok(())
-}
-
-/// `target` (a relationship target, possibly with `../` segments) resolved against `dir`.
-fn resolve_relative(dir: &str, target: &str) -> String {
-    let mut parts: Vec<&str> = dir.split('/').filter(|p| !p.is_empty()).collect();
-    for seg in target.split('/') {
-        match seg {
-            "." | "" => {}
-            ".." => {
-                parts.pop();
-            }
-            _ => parts.push(seg),
-        }
-    }
-    parts.join("/")
 }
 
 fn parse_table(xml: &str, sheet: &str, part: &str) -> Result<Option<TableDef>, SnapshotError> {
