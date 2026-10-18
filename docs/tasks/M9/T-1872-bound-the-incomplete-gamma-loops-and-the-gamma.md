@@ -61,7 +61,7 @@ work 49 ns, so the bound is 2^19 x 4.7 ns + 2,120 cdfs x 49 ns, about 2.6 ms an 
 same capped cdf. New probe probes/incomplete-gamma-cap (38 cells, excel-graph): Excel's values where the cap or a statrs
 hang/panic gives `#NUM!` (19 known failures, all listed in T-1891), the L element cells all pass. Eval: probes 67 known
 failures fixed (stat-argument-modes 45, stat-quantile-lift 22), 0 regressions; probes-numeric, ironcalc-calc and every
-other suite unchanged cell for cell against main; duplication 4248 -> 4085, static_analysis.rs 1181 -> 1157.
+other suite unchanged cell for cell against main; duplication 4248 -> 4085, static_analysis.rs 1181 -> 1150 (this PR removes 24 lines; main's file was 1174, so the lock was 7 lines loose).
 Scalar changes: `#NUM!` instead of main's (inaccurate) number past the cap (`GAMMA.DIST(1E10,1E10,1,TRUE)`, POISSON at a
 mean of 1E10, CHISQ.INV for 6 of 1,960 sampled calls at df 1E8 to 1E10), and instead of a hang or panic; CHISQ.TEST of a
 NaN statistic is `#NUM!`. Two DEVIATIONs in statistics.md "Incomplete gamma: per-call cap and lifting". Remaining

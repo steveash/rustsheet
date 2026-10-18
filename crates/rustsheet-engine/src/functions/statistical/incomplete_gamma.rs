@@ -39,6 +39,8 @@
 //! > OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use statrs::distribution::{Continuous, ContinuousCDF, Gamma};
+// statrs' own `ln_gamma`, not `super::special::ln_gamma`: bit-for-bit parity with statrs needs
+// the same function.
 use statrs::function::gamma::ln_gamma;
 use statrs::prec;
 
