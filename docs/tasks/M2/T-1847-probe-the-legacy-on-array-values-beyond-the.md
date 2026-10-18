@@ -38,4 +38,4 @@ shape, its dynamic twin, and FORMULATEXT.
 Added probes/legacy-array-at-shapes (excel-graph) for every shape; recorded per shape in
 references.md. Confirmed: IFNA, IFS, IFERROR argument, T over SWITCH, SEARCH/LEN constants, one-cell
 TRANSPOSE. Mismatches filed: T-1910 (top-level SWITCH), T-1911 (array constant inside an operator).
-Eval: probes gains 40 cells, 34 pass, 6 known failures baselined.
+Eval: 40 cells checked, 36 pass, 6 known failures baselined (incl. the two unexpected spill cells I11, J11).
