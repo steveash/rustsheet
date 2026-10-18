@@ -3,7 +3,7 @@ id: T-1907
 title: "TIMEVALUE of date-only text is 0 not #VALUE!; typed date+time text (July1 10:00) becomes a number"
 milestone: M2
 lane: functions-date
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Oracle evidence: probes/date-text-glued-month-2 column C rows 6-8, 10-11, 13-15 
 
 ## Out of scope
 - Locales other than en-US.
+
+## Outcome
+TIMEVALUE returns 0 for date-only text (`time_text.rs`); typed date+time text becomes a number formatted `m/d/yyyy h:mm` (`model.rs`). probes/date-text-glued-month-2 now passes 106/106 (C6:C15, O8:R8 fixed). Typed clocks with seconds: format unverified (noted in dates.md).
