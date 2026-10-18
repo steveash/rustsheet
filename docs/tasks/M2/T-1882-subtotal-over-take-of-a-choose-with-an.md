@@ -32,6 +32,9 @@ Also unprobed since T-1874: a legacy top-level `=CHOOSE({1,2},H1:H2,I1:I2)` (on 
 range's rows) now gets the array-context `@` rather than the whole-call one, because CHOOSE with an
 array index is an `Array` shape. Add those legacy cells to a probe here and match them.
 
+`yields_cells` now serves `lifted.rs` as well as SUBTOTAL/TAKE; when this task changes it, move it
+out of aggregate.rs into a neutral static_analysis submodule (architecture review of T-1874).
+
 ## Acceptance criteria
 - [ ] A unit test (decision 0035) of the formula above passes in a debug build.
 - [ ] probes/lift-arrays-choose-arms passes in full; the baseline only shrinks.
