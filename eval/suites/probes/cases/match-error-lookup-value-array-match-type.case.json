@@ -1,0 +1,28 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "MATCH with a scalar error lookup_value and an array match_type: does the error lift over the match_type array or stay scalar (T-1926).",
+ "tags": [
+  "M2",
+  "lookup",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 10,
+    "A2": 20,
+    "A3": 30,
+    "E1": "=ROWS(MATCH(NA(),A1:A3,{0;1}))",
+    "E2": "=INDEX(MATCH(NA(),A1:A3,{0;1}),2)",
+    "E3": "=MATCH(25,A1:A3,{0;\"x\"})",
+    "E4": "=INDEX(MATCH(25,A1:A3,{0;\"x\"}),1)",
+    "E5": "=INDEX(MATCH(25,A1:A3,{0;\"x\"}),2)",
+    "E6": "=ROWS(MATCH(25,A1:A3,{0;\"x\"}))",
+    "E7": "=ROWS(MATCH(#DIV/0!,A1:A3,{0;1}))",
+    "E8": "=INDEX(MATCH(#DIV/0!,A1:A3,{0;1}),1)"
+   }
+  }
+ ],
+ "expected": {}
+}
