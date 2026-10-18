@@ -250,3 +250,9 @@ Tasks: T-1385
 Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625).
 Status: VERIFIED (excel-graph)
 Tasks: T-1766
+
+## Base conversions read a blank cell and empty text as 0
+Rule: every BIN2*/OCT2*/HEX2* function (with or without `places`) treats a blank cell, `""` and a ref to `=""` as 0: `BIN2DEC("")`, `OCT2DEC(blank)`, `HEX2DEC("")` are 0; the others give "0", or "0000" with `places` 4. None of these is an error.
+Evidence: probes/eng-base-conv-blank (excel-graph, 2026-10-18, T-1413); gen-m9/d244411dd90f7fbd A15.
+Status: VERIFIED (excel-graph)
+Tasks: T-1413
