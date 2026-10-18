@@ -1554,6 +1554,10 @@ shown `=@IF(1,N(IF(1,{2;3})))` and is 2.
 Exceptions: IFERROR gets the `@` (`=N(IFERROR({2;3},0))` is `=N(@IFERROR({2;3},0))`, 2), and SWITCH
 gets none and the legacy cell spills: `=N(SWITCH(1,1,{2;3}))` shows no `@` and gives 2, 3 in two
 cells, as a dynamic formula would.
+Edits (SPEC-0012 rule 6, T-1853): inserting a row above a legacy `=N(IF(1,{2;3}))+A5` adjusts it to `+A6`. The cell stays a plain `<f>`
+and stays `#VALUE!`; C2 `=N(IF(1,A5:A6))+A5` likewise stays legacy with the value 2 (excel-graph session, 2026-10-18,
+docs/research/t1853-legacy-cell-edits-2026-10-18.md). Copy, move and fill are unprobed: Graph v1.0 refuses `copyFrom`, `moveTo` and
+`autoFill` (400). They stay rule 6's assumption, and their desktop check is T-1075 item 12.
 Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16), probes/legacy-n-t-marker-shapes (excel-graph, 2026-10-18).
 The neighbouring shapes (probes/legacy-n-t-reference-args-2, excel-graph, 2026-10-18, T-1768; Z1:Z2 = 7, 8,
 Y1:Y2 = "a", "b", W1:W2 = 1, 2): N and T over CHOOSE or INDEX of a reference take no `@` on the call and read
