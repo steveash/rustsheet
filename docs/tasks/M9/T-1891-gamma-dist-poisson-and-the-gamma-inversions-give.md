@@ -50,6 +50,9 @@ own the last digits at ordinary shapes.
   0.4999982128217492; E20: Excel 0.4999981193680548, ours 0.5000017871782507; E18: Excel `#NUM!`, ours 0) (or are named in the Outcome with their ulp), with
   no loop whose length depends on argument values beyond the T-1872 caps, and the kinds.rs `INCOMPLETE_GAMMA_WEIGHT`
   bound kept or re-derived.
+- [ ] The underflow rule (`lower_of_underflow`, backed by Excel only at shape 2, E7) is probed at a shape below 1 and
+  near 0 (`GAMMA.DIST(1E-300,0.5,1E100,TRUE)`, ours 0, true value about 1.1E-200; `GAMMA.DIST(1E-300,1E-17,1E100,TRUE)`,
+  ours 1; `CHISQ.DIST(1E-17,1,TRUE)`, ours 0 as on main, true value about 2.5E-9) and matched or recorded.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

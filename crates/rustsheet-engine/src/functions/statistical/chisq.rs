@@ -406,7 +406,7 @@ impl Model {
 
         // The capped cdf. A sheet's cell count keeps the shape under 2^33, where the series can
         // need about 630,000 terms, past the 2^19 cap, so a very large test is #NUM! (the cap's
-        // DEVIATION); NaN is a statistic of 5E-324, whose half underflows (statrs panicked).
+        // DEVIATION). A statistic whose half underflows is a cdf of 0 (incomplete_gamma.rs), so p 1.
         let mut p = 1.0 - gamma_cdf(&dist, chi2);
         if p.is_nan() {
             return CalcResult::new_error(

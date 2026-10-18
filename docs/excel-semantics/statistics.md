@@ -455,9 +455,11 @@ term, the continued fraction's NaN path (4.1 to 4.7 ns in release; a converging 
 about 65% of its terms at a shape of 1E15, costs 2.4 ns, and a series term 2.5 ns), plus the inversion's 2,120 cdfs,
 about 2.6 ms (kinds.rs `INCOMPLETE_GAMMA_WEIGHT` has the measurements; 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)`).
 Where x / beta underflows to 0 (statrs panicked) the cdf is statrs' value at its smallest x, 0, as Excel's
-`GAMMA.DIST(1E-300,2,1E100,TRUE)` is (E7). `GAMMA.DIST(1E300,1,1E-10,FALSE)` is 0 here, as on main, where Excel is `#NUM!`
-(E18, T-1891); CHISQ.TEST of a statistic of 5E-324, whose half underflows in its own sum, is `#NUM!` where main panicked
-(Excel unprobed).
+`GAMMA.DIST(1E-300,2,1E100,TRUE)` is (E7); the Excel evidence is at shape 2 only, and a shape below 1 (where the true
+value does not underflow) or near 0 (where the cdf is 1) is unprobed (T-1891). `GAMMA.DIST(1E300,1,1E-10,FALSE)` is 0 here, as on main, where Excel is `#NUM!`
+(E18, T-1891); at a statistic of 5E-324, whose half underflows, `CHISQ.DIST(x,2,TRUE)` is 0 and `CHISQ.DIST.RT(x,2)` and
+`CHIDIST(x,2)` 1 where main panicked (Excel unprobed). CHISQ.TEST cannot reach that statistic: its sum of
+`diff*diff/exp` is never 2^-1074.
 The values past the cap were already wrong on main where it finished (statrs loses digits at a huge shape:
  `GAMMA.DIST(1E12,1E12,1,TRUE)` 0.49898078573633475, `POISSON(1E12,1E12,TRUE)` 0.49906665837352593), and so are
 the kept ones at df 1E10 (E16, E17: 0.4999982128217492; E20: T-0971).

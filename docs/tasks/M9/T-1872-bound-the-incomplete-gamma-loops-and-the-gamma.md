@@ -65,8 +65,8 @@ hang/panic gives `#NUM!` (18 known failures, all listed in T-1891's acceptance c
 failures fixed (stat-argument-modes 45, stat-quantile-lift 22, incomplete-gamma-cap E7), 0 regressions; probes-numeric, ironcalc-calc and every
 other suite unchanged cell for cell against main; duplication 4152 -> 3989, static_analysis.rs 1170 -> 1146 (the 24 fallback lines now in the lifting table).
 Scalar changes: `#NUM!` instead of main's (inaccurate) number past the cap (`GAMMA.DIST(1E10,1E10,1,TRUE)`, POISSON at a
-mean of 1E10, CHISQ.INV for 6 of 1,960 sampled calls at df 1E8 to 1E10), and instead of a hang or panic; CHISQ.TEST of a
-statistic of 5E-324 is `#NUM!` where main panicked (Excel unprobed), and one whose shape passes about 5.9E9 with its
+mean of 1E10, CHISQ.INV for 6 of 1,960 sampled calls at df 1E8 to 1E10), and instead of a hang or panic; CHISQ.DIST, CHISQ.DIST.RT and
+CHIDIST at a statistic of 5E-324 are 0, 1 and 1 where main panicked (Excel unprobed), and a CHISQ.TEST whose shape passes about 5.9E9 with its
 statistic near df is `#NUM!` (the cap). Two DEVIATIONs in statistics.md "Incomplete gamma: per-call cap and lifting". Remaining
 scalar last-digit misses beside the lift cells are listed in T-0971 and T-0972. Follow-up: T-1891 (Excel's values at a
 huge shape and where statrs panicked).
