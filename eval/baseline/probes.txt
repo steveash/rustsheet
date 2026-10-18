@@ -729,6 +729,7 @@ C	probes/subtotal-reference-operands-d.case.json	42
 C	probes/subtotal-reference-operands-e.case.json	36
 C	probes/subtotal-reference-operands-f.case.json	97
 C	probes/subtotal-reference-operands.case.json	40
+C	probes/subtotal-take-array-selector.case.json	19
 C	probes/subtotal-variance-one-vs-two-pass.case.json	64
 C	probes/sum-error-precedence.case.json	24
 C	probes/sum-long-text-args.case.json	11
@@ -2920,6 +2921,11 @@ F	probes/stats-evidence-floor-t1623.case.json	S!Q50
 F	probes/stats-evidence-floor-t1623.case.json	S!Q58
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
+F	probes/subtotal-take-array-selector.case.json	Sheet1!A11
+F	probes/subtotal-take-array-selector.case.json	Sheet1!A12
+F	probes/subtotal-take-array-selector.case.json	Sheet1!D1
+F	probes/subtotal-take-array-selector.case.json	Sheet1!D3
+F	probes/subtotal-take-array-selector.case.json	Sheet1!D7
 F	probes/t1626-regexreplace.case.json	Sheet1!C11
 F	probes/t1626-regexreplace.case.json	Sheet1!C12
 F	probes/t1626-regexreplace.case.json	Sheet1!C13
