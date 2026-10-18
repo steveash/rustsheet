@@ -3,7 +3,7 @@ id: T-1431
 title: "Probe non-ASCII names beyond one-to-one Latin pairs: CJK and Turkish I in LET/LAMBDA, and defined names starting with a non-ASCII letter"
 milestone: M8
 lane: functions-logic
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -43,3 +43,6 @@ make the engine match it.
 
 ## Out of scope
 -
+
+## Outcome
+Probes added: probes/let-name-non-ascii-scripts (M7: CJK, dotless ı, letter number Ⅻ) and probes/defined-name-non-ascii (M8: `é1`, `名前`), excel-graph 2026-10-18. The engine already matched every committed cell (+8 probe cells in eval/baseline/probes.txt, 0 regressions). Excel refuses a LET naming Turkish `İ` or circled `Ⓐ` (not committable); the engine accepts them, a known gap recorded in references.md (no follow-up: names that Excel refuses at load cannot occur in a real workbook).

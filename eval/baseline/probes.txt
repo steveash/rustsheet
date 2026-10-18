@@ -200,6 +200,7 @@ C	probes/decimal-unreadable.case.json	84
 C	probes/defined-name-formula-bodies.case.json	17
 C	probes/defined-name-grouped-reference.case.json	13
 C	probes/defined-name-intersection.case.json	10
+C	probes/defined-name-non-ascii.case.json	3
 C	probes/discount-security-modes.case.json	135
 C	probes/displayed-text-formats.case.json	10
 C	probes/dollar-fixed-unichar-edges.case.json	76
@@ -378,6 +379,7 @@ C	probes/let-name-call-text-noargs.case.json	1
 C	probes/let-name-call-text-plus.case.json	1
 C	probes/let-name-call-text-type.case.json	1
 C	probes/let-name-call.case.json	14
+C	probes/let-name-non-ascii-scripts.case.json	5
 C	probes/let-name-non-ascii.case.json	10
 C	probes/let-name-sharp-s.case.json	2
 C	probes/let-name-uncalled-picked-refs.case.json	41

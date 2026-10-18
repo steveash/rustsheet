@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1431: LET names outside one-to-one Latin letter pairs: CJK, Turkish dotless i, and a letter number. A use in another case is written _xlpm.<name> so the workbook binds it the way Excel decides, not by spec2xlsx's Python lower(). Excel refuses (createSession 501 FileCorruptTryRepair) a LET naming Turkish dotted İ or the circled letter Ⓐ, in either case spelling, so those forms are not in this case (docs/excel-semantics/references.md).",
+  "tags": [
+    "M7",
+    "let",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LET(名前,1,名前+1)",
+        "A2": "=LET(ı,1,ı+1)",
+        "A3": "=LET(ı,1,_xlpm.I+1)",
+        "A4": "=LET(Ⅻ,1,Ⅻ+1)",
+        "A5": "=LET(Ⅻ,1,_xlpm.ⅻ+1)"
+      }
+    }
+  ],
+  "expected": {}
+}
