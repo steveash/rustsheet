@@ -155,9 +155,10 @@ pub(super) fn remove_array_at(
 /// or array constant there rather than on an enclosing call: a scalar argument of a function that
 /// computes from it (`=ABS(@IF(1,{-2;3}))`, `=LEN(@IF(1,{"ab";"c"}))`, `=N(@TRANSPOSE({2,3}))`,
 /// `=N(@IFERROR({2;3},0))`; probes/legacy-array-result, legacy-n-t-reference-args D, T-1713).
-/// Not the arguments of IF, IFERROR, IFNA, CHOOSE (but its index, [`is_choose_index`]), IFS or SWITCH, whose result is one of them:
-/// `=@IF(1,{2;3})` and `=@IF(1,N(IF(1,{2;3})))` take the `@` on the call (probes/legacy-array-result
-/// D, legacy-n-t-reference-args P); nor N or T over IF or SWITCH ([`leaves_call_whole`]); nor
+/// Not the arguments of IF, IFERROR, IFNA, CHOOSE (but its index, [`is_choose_index`]), IFS or
+/// SWITCH, whose result is one of them: `=@IF(1,{2;3})` and `=@IF(1,N(IF(1,{2;3})))` take the
+/// `@` on the call (probes/legacy-array-result D, legacy-n-t-reference-args P); nor N or T over IF
+/// or SWITCH ([`leaves_call_whole`]); nor
 /// anything under a vector argument, `=SUM(N({1,2}))` (probes/n-array-lift A3) or LET, LAMBDA.
 pub(super) fn legacy_array_context(
     kind: &Function,
