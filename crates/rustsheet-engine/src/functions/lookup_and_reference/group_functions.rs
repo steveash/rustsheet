@@ -403,6 +403,8 @@ impl Model {
             return Err(invalid());
         }
         let mut list = Vec::with_capacity(functions.len());
+        // Positions in `list` whose label is the default "CUSTOM" of a LAMBDA.
+        let mut custom = Vec::new();
         for (index, element) in functions.into_iter().enumerate() {
             let Element::Function(lambda) = element else {
                 return Err(invalid());
@@ -439,13 +441,25 @@ impl Model {
             };
             let label = match labels.as_ref().and_then(|labels| labels.get(index)) {
                 Some(Element::Value(value)) => value.clone(),
-                _ => default_label,
+                _ => {
+                    if matches!(&default_label, ArrayNode::String(s) if &**s == "CUSTOM") {
+                        custom.push(list.len());
+                    }
+                    default_label
+                }
             };
             list.push(Aggregator {
                 caller: self.lambda_caller(lambda, arity).keeping_references(),
                 call,
                 label,
             });
+        }
+        // Excel: two or more LAMBDAs are "CUSTOM1", "CUSTOM2", ... in order, whatever sits between
+        // them; one LAMBDA stays "CUSTOM" (probes/groupby-custom-labels G!A1, G!A41, G!A241).
+        if custom.len() > 1 {
+            for (number, position) in custom.into_iter().enumerate() {
+                list[position].label = ArrayNode::String(format!("CUSTOM{}", number + 1).into());
+            }
         }
         Ok(Functions {
             list,

@@ -3,7 +3,7 @@ id: T-1854
 title: "GROUPBY/PIVOTBY numbered CUSTOM labels for several LAMBDAs"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
