@@ -329,7 +329,7 @@ The REGEX* dialect is the regex crate's on every target (wasm32 used `regex_lite
 ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE),
 UNVERIFIED against Excel's PCRE2 (T-1817 probes it).
 The REGEXREPLACE replacement syntax is the regex crate's (`$1`, `${1}`, `$name`, `$$`; `$1a` is the group named `1a`,
-a lone `$` is itself), as before T-1272; UNVERIFIED against Excel's PCRE2 rules (T-1817 probes it).
+a lone `$` is itself), as before T-1272; UNVERIFIED against Excel's PCRE2 rules (T-1817 probes it). The T-1626 probes settle part of this, and Excel differs from ours there (`\1` in the replacement, a pattern backreference, lazy empty matches): see "REGEXTEST and REGEXREPLACE edge cases (T-1626)".
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
 Status: DEVIATION (decision 0014)
 Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
@@ -514,6 +514,21 @@ The delimiter may be an array or a range, and then it cycles between the joined 
 Evidence: probes cases `textjoin-array-arguments` (A1-A28, A30-A35), `textjoin-array-limit-empty-strings` (A1-A10) and `textjoin-delimiter-array` (A1-A6). Oracle: excel-graph, 2026-10-14.
 Status: VERIFIED (excel-graph); the array argument (T-1482) and the cycling delimiter (T-1510) are implemented.
 Tasks: T-1482, T-1510
+
+## ASC and JIS in en-US: ASC is the identity (T-1626)
+Rule: in en-US `ASC` changes nothing: full-width letters and digits (`ASC("ＡＢＣ")` = "ＡＢＣ", `ASC("１２３")`), the ideographic space, `！ ＂ ＇ ￥ ゛`, voiced and long-sound katakana (`ガ パ ー`), `、 。`, half-width katakana, surrogate pairs, numbers (`ASC(A7)` with A7 = 7 is "7"), TRUE ("TRUE") and an empty string ("") come back as given (a truly blank cell was not probed); an error argument is returned. `JIS` is `#NAME?` for every argument probed (`ERROR.TYPE(JIS(..))` = 5 for 28 inputs).
+The byte functions (SEARCHB, FINDB, REPLACEB, RIGHTB, LENB) are the character functions for all of these inputs; see the byte-function rule at the top of this file.
+Evidence: probes/t1626-asc, t1626-jis-0..3, t1626-searchb, -findb, -replaceb, -rightb, -lenb (excel-graph, 2026-10-16). PHONETIC of every reference in probes/t1626-phonetic is `#N/A` as before.
+Ours: ASC narrows full-width characters (T-1863). The others match.
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
+Tasks: T-1863
+
+## REGEXTEST and REGEXREPLACE edge cases (T-1626)
+Rule: `case_sensitivity` 1 is case-insensitive and 0 (or omitted) case-sensitive for both functions (`REGEXTEST("Hello World 123","hello",1)` TRUE, `,0` FALSE; REGEXREPLACE's fifth argument likewise, `"O"` with 0,1 replaces every o). REGEXREPLACE occurrence: 0 or omitted replaces all, n > 0 the n-th match, n < 0 counts from the end (-1 the last), an out-of-range occurrence (3 of 2 matches, 9, -9) returns the text unchanged; 1.9 truncates to 1; "x" is `#VALUE!`. The replacement reads `$0`, `$1`, `$$` (a literal `$`), `${name}` and also `\1`; a backreference in the pattern (`(\w)\1`) works. An empty pattern or `x*` matches between every character and at both ends (`-H-e-l-l-o-...-3-`; an empty text gives "-"); `^` and `$` anchor the text. Lazy empty matches are not skipped: `a*?` on "aaa" with "b" is "bbbbbbb" (PCRE2-style global replace: after an empty match a non-empty match is tried again at the same position, so each "a" is consumed too, unlike a Rust-regex iterator's "bababab"). `\p{L}` and `.` match each character of BMP text ("日本語" is 3); surrogate pairs are UNVERIFIED (not probed). Numbers and booleans are read as text; an error argument is returned. A range argument lifts and spills (`#SPILL!` when blocked). Invalid patterns and a missing group (`$3`) give an error type the oracle does not decode yet; those cells stay pending, as do REGEXTEST case_sensitivity 2 and -1 (C23, C24); UNVERIFIED.
+Evidence: probes/t1626-regextest, t1626-regexreplace (excel-graph, 2026-10-16).
+Ours: #ERROR! for the optional arguments (T-1360); the rest of the mismatches are T-1688.
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
+Tasks: T-1360, T-1688, T-1272 (range lift)
 
 ## CLEAN character set and PROPER word starts and case mapping (T-1307)
 Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.

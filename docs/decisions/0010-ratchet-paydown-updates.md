@@ -145,5 +145,7 @@
   and functions/mod.rs 2180 → 2179 (GAMMALN and GAMMALN.PRECISE share one dispatch arm)
   (`check_file_size.py --update`). The same update also tightened a stale lock that is not this PR's
   change: functions/financial/financial_bonds.rs 1212 → 1178, its size on main.
+  T-1626: functions below the evidence floor 13 → 3 (SEARCHB, FINDB, REPLACEB, RIGHTB, LENB, ASC, JIS, PHONETIC,
+  REGEXREPLACE and REGEXTEST probed to ≥ 20 Excel cells; decision 0062) (`make eval-baseline`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
