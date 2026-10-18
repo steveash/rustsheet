@@ -3,7 +3,7 @@ id: T-1842
 title: "YIELD and the ODD* bond functions lift over arrays, with their solver and coupon work weighted (SPEC-0011)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
