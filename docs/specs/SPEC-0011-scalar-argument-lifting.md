@@ -50,8 +50,8 @@ same date and commit. Each row has a migration task, or is a non-goal with its r
 | `lift_with_cost`, `CriteriaArg`, `count_walks` | statistical/if_ifs.rs | *IF(S), AGGREGATE, IFS, SWITCH, `lookup_each` (VLOOKUP/HLOOKUP), XLOOKUP | moved as the driver core, `lift_values` | T-1784 |
 | `is_lifted` | logical/mod.rs | IFS, SWITCH: when to call `lift_with_cost` | `LiftedArg::is_grid`, deleted | T-1784 |
 | `NumberOrArray`, `lift_numbers`, `lift_number_operands`, `number_at` | cast.rs | ROUND family, MOD, CEILING/FLOOR, DATE, DATEDIF, HOUR/MINUTE/SECOND, MUNIT | table entries + kernels. `NumberOrArray` stays for the operators only | T-1773, T-1785 |
-| `lift_with_defaults` | math_and_trigonometry/mathematical.rs | CEILING.MATH, CEILING.PRECISE, FLOOR.MATH, ISO.CEILING | table entries; the kernel takes the defaults | T-1773 |
-| `single_number_fn!` | functions/macros.rs | 34 one-argument math functions | table entries + kernels | T-1773 |
+| `lift_with_defaults` | math_and_trigonometry/mathematical.rs | CEILING.MATH, CEILING.PRECISE, FLOOR.MATH, ISO.CEILING | table entries; the kernel takes the defaults | T-1773 (done) |
+| `single_number_fn!` | functions/macros.rs | 32 one-argument math functions | table entries + kernels | T-1773 (done) |
 | `apply_number_unary` | cast.rs | DAY/MONTH/YEAR (`date_part_fn!`), WEEKDAY, ISOWEEKNUM; the unary `-`/`%` chain | function callers move. It stays for `apply_unary_chain`, an operator | T-1785 |
 | `time_part_fn!`, `date_part_fn!` | date_and_time.rs | HOUR, MINUTE, SECOND, DAY, MONTH, YEAR | table entries + kernels | T-1785 |
 | MROUND's and SQRTPI's own range checks | mathematical.rs | MROUND, SQRTPI | `LiftArrays` entries | T-1785 |

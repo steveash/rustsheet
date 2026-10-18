@@ -44,6 +44,10 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
         Some("the pmf: three statrs binomials, a fixed factorial cache or ln_gamma each"),
     ),
     (
+        Function::Fact,
+        Some("descending_product stops at the first infinity: n*(n-1)*... overflows in 170 steps"),
+    ),
+    (
         Function::Factdouble,
         Some("descending_product stops at the first infinity: n*(n-2)*... overflows in 151 steps"),
     ),
@@ -66,7 +70,6 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
     (Function::Xirr, None),
     (Function::Db, None),
     (Function::Vdb, None),
-    (Function::Fact, None),
     (Function::Combin, None),
     (Function::Combina, None),
     (Function::Multinomial, None),

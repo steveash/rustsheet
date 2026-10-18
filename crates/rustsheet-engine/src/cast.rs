@@ -512,8 +512,8 @@ impl Model {
     }
 
     /// Applies a scalar numeric transform element-wise over a node that may evaluate
-    /// to a number, a range, or an array. Mirrors the `single_number_fn!` /
-    /// `date_part_fn!` macros but accepts a closure, so callers can capture extra
+    /// to a number, a range, or an array. Mirrors the `date_part_fn!` macro but
+    /// accepts a closure, so callers can capture extra
     /// scalar arguments (e.g. WEEKDAY's `return_type`) or use non-arithmetic
     /// transforms (e.g. date helpers).
     ///

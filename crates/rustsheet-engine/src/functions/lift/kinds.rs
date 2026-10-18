@@ -111,15 +111,16 @@ const DATA_THEN_1: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift], Constan
 /// The same with an optional second lifted argument: `PERCENTRANK(array, x, [significance])`.
 const DATA_THEN_1_OF_2: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift, Lift], Constant);
 
-/// One required argument that lifts over an array and a range: the IS* type tests, ERROR.TYPE
-/// and ENCODEURL.
+/// One required argument that lifts over an array and a range: the IS* type tests, ERROR.TYPE,
+/// ENCODEURL and the one-number math functions (ABS, SIN, LN, ...).
 const LIFT_1: ArgKinds = ArgKinds::fixed(1, &[Lift], Constant);
 /// One argument, lifted over arrays only: ISEVEN, ISODD and the one-argument Analysis `ToolPak`
 /// functions (BIN2DEC, HEX2DEC, OCT2DEC, ERF.PRECISE, ERFC, ERFC.PRECISE, the one-argument IM*).
 const ARRAYS_1: ArgKinds = ArgKinds::fixed(1, &[LiftArrays], Constant);
 /// `ADDRESS(row_num, column_num, [abs_num], [a1], [sheet_text])`: every argument lifts.
 const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Constant);
-/// `HYPERLINK(link_location, [friendly_name])`: both arguments lift.
+/// `HYPERLINK(link_location, [friendly_name])`: both arguments lift. So do TRUNC,
+/// CEILING.PRECISE, ISO.CEILING and FLOOR.PRECISE.
 const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
 
 // The shapes below are named by kind and (required, total) argument counts: `LIFT_4_OF_6` is four
@@ -128,6 +129,8 @@ const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
 /// Three or four worksheet arguments that lift over arrays and ranges: RRI, PDURATION, SLN;
 /// ISPMT and SYD.
 const LIFT_3: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Constant);
+/// `CEILING.MATH(number, [significance], [mode])` and FLOOR.MATH.
+const LIFT_1_OF_3: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift, Lift], Constant);
 const LIFT_4: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift], Constant);
 /// `PMT(rate, nper, pv, [fv], [type])` and PV, FV, NPER alike.
 const LIFT_3_OF_5: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift, Lift], Constant);
@@ -163,7 +166,7 @@ const ATP_5_OF_6: ArgKinds = ArgKinds::fixed(
 );
 // --- Engineering (T-1383) -------------------------------------------------------------------
 /// Two worksheet arguments that lift over an array and a range: BITAND, BITOR, BITXOR,
-/// BITLSHIFT and BITRSHIFT.
+/// BITLSHIFT, BITRSHIFT, the ROUND family, MOD, FLOOR and CEILING.
 const LIFT_2: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Constant);
 /// `BESSELI|J|K|Y(x, n)`: the recurrences loop about once (BESSELK, BESSELY) or twice (BESSELI,
 /// BESSELJ's Miller recurrence) per order, up to the order cap `transcendental::MAX_ORDER`
@@ -441,235 +444,6 @@ const AMORDEGRC: ArgKinds = ArgKinds::fixed(
 );
 // --- End financial ATP (T-1841) -------------------------------------------------------------
 
-/// The functions of [`Function::arg_kinds`], as a pattern: the arm of an exhaustive `match` on a
-/// `Function` that has no hand-written arm because the table derives it (static analysis).
-/// Keep it equal to the table; `static_analysis::lifted`'s test checks that no function in the
-/// table has a fallback arm.
-macro_rules! lifting_table_functions {
-    () => {
-        Function::Edate
-            | Function::Eomonth
-            | Function::Weeknum
-            | Function::Yearfrac
-            | Function::Isnumber
-            | Function::Istext
-            | Function::Isnontext
-            | Function::Islogical
-            | Function::Isblank
-            | Function::Iserror
-            | Function::Iserr
-            | Function::Isna
-            | Function::ErrorType
-            | Function::Encodeurl
-            | Function::Iseven
-            | Function::Isodd
-            | Function::Large
-            | Function::Small
-            | Function::PercentileCompat
-            | Function::PercentileInc
-            | Function::PercentileExc
-            | Function::PercentrankCompat
-            | Function::PercentrankInc
-            | Function::PercentrankExc
-            | Function::QuartileCompat
-            | Function::QuartileInc
-            | Function::QuartileExc
-            | Function::Trimmean
-            | Function::Address
-            | Function::Hyperlink
-            | Function::Pmt
-            | Function::Pv
-            | Function::Fv
-            | Function::Nper
-            | Function::Rate
-            | Function::Ipmt
-            | Function::Ppmt
-            | Function::Ispmt
-            | Function::Rri
-            | Function::Pduration
-            | Function::Sln
-            | Function::Syd
-            | Function::Ddb
-            | Function::Effect
-            | Function::Nominal
-            | Function::Dollarde
-            | Function::Dollarfr
-            | Function::Accrintm
-            | Function::Disc
-            | Function::Intrate
-            | Function::Pricedisc
-            | Function::Received
-            | Function::Yielddisc
-            | Function::Pricemat
-            | Function::Yieldmat
-            | Function::Tbilleq
-            | Function::Tbillprice
-            | Function::Tbillyield
-            // --- Engineering (T-1383) ---
-            | Function::Besseli
-            | Function::Besselj
-            | Function::Besselk
-            | Function::Bessely
-            | Function::Erf
-            | Function::ErfPrecise
-            | Function::Erfc
-            | Function::ErfcPrecise
-            | Function::Bin2dec
-            | Function::Bin2hex
-            | Function::Bin2oct
-            | Function::Dec2Bin
-            | Function::Dec2hex
-            | Function::Dec2oct
-            | Function::Hex2bin
-            | Function::Hex2dec
-            | Function::Hex2oct
-            | Function::Oct2bin
-            | Function::Oct2dec
-            | Function::Oct2hex
-            | Function::Bitand
-            | Function::Bitor
-            | Function::Bitxor
-            | Function::Bitlshift
-            | Function::Bitrshift
-            | Function::Complex
-            | Function::Convert
-            | Function::Delta
-            | Function::Gestep
-            | Function::Imabs
-            | Function::Imaginary
-            | Function::Imargument
-            | Function::Imconjugate
-            | Function::Imcos
-            | Function::Imcosh
-            | Function::Imcot
-            | Function::Imcsc
-            | Function::Imcsch
-            | Function::Imdiv
-            | Function::Imexp
-            | Function::Imln
-            | Function::Imlog10
-            | Function::Imlog2
-            | Function::Impower
-            | Function::Imreal
-            | Function::Imsec
-            | Function::Imsech
-            | Function::Imsin
-            | Function::Imsinh
-            | Function::Imsqrt
-            | Function::Imsub
-            | Function::Imtan
-            | Function::Imsum
-            | Function::Improduct
-            // --- End engineering (T-1383) ---
-            // --- Math (T-1802) ---
-            | Function::Quotient
-            | Function::Factdouble
-            | Function::Seriessum
-            // --- End math (T-1802) ---
-            // --- Financial ATP (T-1822) ---
-            | Function::Accrint
-            | Function::Coupdaybs
-            | Function::Coupdays
-            | Function::Coupdaysnc
-            | Function::Coupncd
-            | Function::Coupnum
-            | Function::Couppcd
-            | Function::Duration
-            | Function::Mduration
-            | Function::Price
-            // --- End financial ATP (T-1822) ---
-            // --- Financial ATP (T-1842) ---
-            | Function::Yield
-            | Function::Oddfprice
-            | Function::Oddfyield
-            | Function::Oddlprice
-            | Function::Oddlyield
-            // --- End financial ATP (T-1842) ---
-            // --- Financial ATP (T-1845) ---
-            | Function::Cumipmt
-            | Function::Cumprinc
-            // --- End financial ATP (T-1845) ---
-            // --- Financial ATP (T-1841) ---
-            | Function::Amorlinc
-            | Function::Amordegrc
-            // --- End financial ATP (T-1841) ---
-            // --- Statistical (T-1290) ---
-            | Function::BetaDist
-            | Function::BetaDistCompat
-            | Function::BinomDist
-            | Function::BinomDistCompat
-            | Function::BinomDistRange
-            | Function::BinomInv
-            | Function::CritbinomCompat
-            | Function::NegbinomDist
-            | Function::NegbinomDistCompat
-            | Function::ConfidenceNorm
-            | Function::ConfidenceCompat
-            | Function::ExponDist
-            | Function::ExponDistCompat
-            | Function::FDist
-            | Function::FDistRT
-            | Function::FDistCompat
-            | Function::Fisher
-            | Function::FisherInv
-            | Function::Gamma
-            | Function::GammaLn
-            | Function::GammaLnPrecise
-            | Function::Gauss
-            | Function::Phi
-            | Function::LogNormDist
-            | Function::LogNormDistCompat
-            | Function::LogNormInv
-            | Function::LoginvCompat
-            | Function::NormDist
-            | Function::NormDistCompat
-            | Function::NormInv
-            | Function::NormInvCompat
-            | Function::NormSdist
-            | Function::NormSDistCompat
-            | Function::NormSInv
-            | Function::NormSInvCompat
-            | Function::Permut
-            | Function::Permutationa
-            | Function::Standardize
-            | Function::TDist
-            | Function::TDist2T
-            | Function::TDistRT
-            | Function::TDistCompat
-            | Function::WeibullDist
-            | Function::WeibullCompat
-            // --- End statistical (T-1290) ---
-            // --- Statistical quantiles (T-1848) ---
-            | Function::BetaInv
-            | Function::BetaInvCompat
-            | Function::FInv
-            | Function::FInvRT
-            | Function::FInvCompat
-            | Function::TInv
-            | Function::TInv2T
-            | Function::TInvCompat
-            | Function::ConfidenceT
-            // --- End statistical quantiles (T-1848) ---
-            // --- Incomplete gamma (T-1872) ---
-            | Function::ChisqDist
-            | Function::ChisqDistRT
-            | Function::ChiDistCompat
-            | Function::ChisqInv
-            | Function::ChisqInvRT
-            | Function::ChiInvCompat
-            | Function::GammaDist
-            | Function::GammaDistCompat
-            | Function::GammaInv
-            | Function::GammaInvCompat
-            | Function::PoissonDist
-            | Function::PoissonCompat
-            // --- End incomplete gamma (T-1872) ---
-            | Function::HypGeomDist // T-1873
-            | Function::HypGeomDistCompat
-    };
-}
-pub(crate) use lifting_table_functions;
-
 impl Function {
     /// The lifting table: `None` for a function the driver does not lift (yet).
     pub(crate) fn arg_kinds(&self) -> Option<&'static ArgKinds> {
@@ -845,6 +619,63 @@ impl Function {
             Function::Factdouble => Some(&ARRAYS_1),
             Function::Seriessum => Some(&SERIES),
             // --- End math (T-1802) ---
+            // --- Math number lifts (T-1773) ---
+            // The one-number math functions, the ROUND family, MOD and the CEILING/FLOOR family
+            // lift element-wise over arrays and ranges in every argument, a range on its own rows
+            // included (gen-m2/893302d6c5b99e2e Calc!A313, probes/geomean-overflow-cut-3 E4,
+            // gen-m7/e5a361112d83d0c3 Calc!A9, gen-m9/89693ab0cafc29df Calc!A14). Each is O(1),
+            // FACT's product included: it overflows a double within 171 steps whatever n is.
+            // Direct trigonometry:
+            Function::Sin
+            | Function::Cos
+            | Function::Tan
+            | Function::Cot
+            | Function::Csc
+            | Function::Sec
+            // Inverse trigonometry:
+            | Function::Asin
+            | Function::Acos
+            | Function::Atan
+            | Function::Acot
+            // Hyperbolic:
+            | Function::Sinh
+            | Function::Cosh
+            | Function::Tanh
+            | Function::Coth
+            | Function::Csch
+            | Function::Sech
+            // Inverse hyperbolic:
+            | Function::Asinh
+            | Function::Acosh
+            | Function::Atanh
+            | Function::Acoth
+            // Logarithms, powers:
+            | Function::Ln
+            | Function::Log10
+            | Function::Exp
+            | Function::Sqrt
+            // Sign, rounding to integers, factorial, angles:
+            | Function::Abs
+            | Function::Sign
+            | Function::Int
+            | Function::Even
+            | Function::Odd
+            | Function::Fact
+            | Function::Degrees
+            | Function::Radians => Some(&LIFT_1),
+            Function::Round
+            | Function::Roundup
+            | Function::Rounddown
+            | Function::Mod
+            | Function::Floor
+            | Function::Ceiling
+            | Function::EcmaCeiling => Some(&LIFT_2),
+            Function::Trunc
+            | Function::CeilingPrecise
+            | Function::IsoCeiling
+            | Function::FloorPrecise => Some(&LIFT_1_OF_2),
+            Function::CeilingMath | Function::FloorMath => Some(&LIFT_1_OF_3),
+            // --- End math number lifts (T-1773) ---
             // --- Financial ATP (T-1822) ---
             // Analysis ToolPak functions: every argument lifts over an array and refuses a
             // multi-cell range, also on the range's own rows. The first arguments over a range:
