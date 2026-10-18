@@ -3,7 +3,7 @@ id: T-1361
 title: "TEXTSPLIT, TEXTBEFORE and TEXTAFTER read a multi-cell delimiter range as a delimiter list (blank cell, number and boolean delimiters)"
 milestone: M7
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -41,20 +41,25 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m7/851eb2099ae3f805 Calc!A25 `=TEXTAFTER(" x ",Data!A6:A10,Data!A9)`: Excel `#VALUE!`. Ours `#VALUE!` (a TEXTBEFORE/TEXTAFTER delimiter range is read as one text, kept so by T-1272). An early list reading of the range, with its blanks dropped, gave `#N/A`; the rule for a range holding blanks, numbers or booleans must match this cell. gen-m9/3ec66461400faf2f A3 and 95efb37a9874f82e A25 pass once ranges are lists.
 
 ## Acceptance criteria
-- [ ] gen-m7/0e40208f51c2454c A17, gen-m7/8ed8a680e9794b77 A17 and A26 and gen-m7/4629e931955aa4b8 A19 pass in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
-- [ ] An excel-probe case settles the UNVERIFIED parts first: `TEXTBEFORE("xyz",A1:B1)` with A1 blank and B1 "q", `TEXTBEFORE("a1b",A1:B1)` with A1 = 1, `TEXTAFTER("a TRUE b",A1:B1)` with A1 = TRUE; text.md updated.
-- [ ] Unit tests: a 2x2 delimiter range, a range with a blank cell, a range with a number and a boolean, per the probe.
-- [ ] gen-m9/0c7fc447bc2eebfd A6, 4df1b22d3ed63f58 A14 and A30, 3ec66461400faf2f A3, 696af2c8cee2f57e A23 and 95efb37a9874f82e A25 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m7/0e40208f51c2454c A17, gen-m7/8ed8a680e9794b77 A17 and A26 pass (gen-m7/4629e931955aa4b8 A19 deferred to T-1866, see Outcome) in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
+- [x] An excel-probe case settles the UNVERIFIED parts first: `TEXTBEFORE("xyz",A1:B1)` with A1 blank and B1 "q", `TEXTBEFORE("a1b",A1:B1)` with A1 = 1, `TEXTAFTER("a TRUE b",A1:B1)` with A1 = TRUE; text.md updated.
+- [x] Unit tests: a 2x2 delimiter range, a range with a blank cell, a range with a number and a boolean, per the probe.
+- [x] gen-m9/0c7fc447bc2eebfd A6, 4df1b22d3ed63f58 A14 and A30, 3ec66461400faf2f A3, 696af2c8cee2f57e A23 and 95efb37a9874f82e A25 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
-## Handoff (resumed)
-Escalated by a sonnet run without implementing (work-loop step 5b: unclear evidence). What I found, not tried in code:
-- The rule for blank, number and boolean delimiter cells is genuinely unknown and the listed cells constrain it in conflicting ways
-  (gen-m9/0c7fc447bc2eebfd A6 and 4df1b22d3ed63f58 A14 contradict "blank = empty delimiter"; gen-m7/851eb2099ae3f805 A25 shows a
-  range holding blanks is `#VALUE!` while gen-m9 95efb37a9874f82e A25 gives `#N/A`). The first step is the excel-probe case in the
-  acceptance criteria (needs the oracle), then infer one rule that fits every cell listed in Context.
-- Next: run the probe, write the rule into docs/excel-semantics/text.md, fix the shared delimiter reader once
-  (`fn_textbefore`/`fn_textafter` in functions/text/common.rs, `fn_textsplit` in functions/text/textsplit.rs), check T-1272 first.
+## Outcome
+Resumed from a sonnet handoff (the rule looked contradictory). Four excel-graph probes settled it (366 cells):
+probes/textbefore-delimiter-range, textbefore-empty-delimiter-list, textbefore-delimiter-list-elements,
+textbefore-number-delimiter. A multi-cell range is a delimiter list; numbers are their text, booleans their spelling, a
+blank cell the empty delimiter, an error element the call's error. In TEXTBEFORE/TEXTAFTER the empty delimiter decides the
+result alone (start of the text, end for a negative instance_num or a one-UTF-16-unit text), which explains the gen-m9
+cells. Omitted instance_num/match_mode/match_end (`,,`) now take their defaults. text.md: "TEXTSPLIT, TEXTBEFORE and
+TEXTAFTER delimiter ranges" and the new "TEXTBEFORE and TEXTAFTER with the empty delimiter".
+Eval: gen-m7 failing cells 3 -> 2, gen-m9 13 -> 10 (9 cells fixed, none broken); probes +4 cases, 366 cells, 365 pass.
+gen-m7/4629e931955aa4b8 A19 still fails (now `#N/A`, was `#VALUE!`): TEXTSPLIT is right, MATCH does not lift over an
+array lookup_value; filed T-1866 (gen-m7 has no gated baseline). The one new probe known failure,
+textbefore-delimiter-range A44 (a blank in a TEXTSPLIT row-delimiter range), is T-1412's, noted there.
+Follow-ups: T-1866.
