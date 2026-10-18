@@ -480,7 +480,8 @@ exactly where it would be subnormal, a normal result is kept. `CSCH(709.3)`, `CS
 0 (companion TRUE), `ERFC(26.5)` and `ERFC.PRECISE(26.5)` are 2.2109076642637346E-307 (kept), `ERFC(26.6)` is 0,
 `NORM.S.DIST(-37.61,FALSE)` is 2.776580428767599E-308 (kept; the density is 1.9E-308 at -37.62) and `-37.62` to `-37.65`
 are 0. This is a flush of the subnormal result, not a cutoff in the algorithm. `ERFC(26.4)` is 4.4017768588035533E-305
-and the engine is a few ulp off (T-1186). Swapping `normal_pdf`'s constant for `(2*pi).sqrt()` regresses NORM_DIST.xlsx NORM.INV!E13 and E17, so NORM.DIST keeps its order.
+and the engine is a few ulp off. T-1778 found the tail form that reproduces it (statistics.md, "ERFC core
+factor"); T-1916 implements it and closes T-1186. Swapping `normal_pdf`'s constant for `(2*pi).sqrt()` regresses NORM_DIST.xlsx NORM.INV!E13 and E17, so NORM.DIST keeps its order.
 Subnormal flush edges (T-1007, VERIFIED, probes/subnormal-flush-edges, excel-graph 2026-10-07): a subnormal literal argument
 reads as 0 (`PRODUCT(1E-308,1E+300)` is a true 0, `SUM(1E-308,1E-308)*1E+300` is 0). PRODUCT and SUMPRODUCT flush every running
 product, not just the total: `PRODUCT(1E-200,1E-110,1E+300)` is 0 (1E-310 is flushed before the 1E+300 factor scales it back up;
@@ -979,14 +980,18 @@ GEOMEAN(1,1,27), GEOMEAN(2,4.5), GEOMEAN(3,27) are 3, 3, 3, 3, 9, and n copies o
 that r already matches and fixes 37. Excel's GEOMEAN is faithful (within 1 ulp of the exact root
 of P) and usually, but not always, correctly rounded: GEOMEAN(1,3) is 1.7320508075688774 (0.55 ulp
 from sqrt(3); the correctly rounded root is …772) and GEOMEAN(1,2,"5",TRUE) is 0.81 ulp off, both
-exactly r. Excel's own LN and EXP equal glibc's `log` and `exp` bit for bit on every probed P, and
-`EXP(LN(P)/n)` in a cell is r, so the remaining misses are not a libm difference.
+exactly r. Excel's own LN and EXP equal glibc's `log` and `exp` bit for bit on every probed GEOMEAN P
+(not in general: T-1778 finds Excel's EXP is its own routine, model V6), and `EXP(LN(P)/n)` in a cell is r, so the remaining misses are not a libm difference.
 Remaining misses (r and c both wrong, one ulp): the 20-value mixed set (geomean-in-range-many A2,
 0.61 ulp from the exact root) and 25 of the 48 sets of probes/geomean-root-refinement: 22 of rows
 19-48 (picked because r and a Newton-corrected root differ there), A17 (GEOMEAN(7,7,1)), and A7 and
 A8. A7 and A8 refute the snap's condition as Excel's own: GEOMEAN(0.01,1) and GEOMEAN(1,0.01) are
 exactly 0.1, the correctly rounded root, although 0.1*0.1 is not the double 0.01, so c does not
-multiply back to P there.
+multiply back to P there. Also probes/subtotal-reference-operands-d H28: GEOMEAN(5,7) is
+5.916079783099616, the correctly rounded sqrt(35), where r is 5.916079783099615, 0.90 ulp below the
+exact root (T-1284). The distance of r from the exact root does not decide the outcome: over the 70
+in-range literal GEOMEAN probe cells, Excel keeps r at 0.548 ulp (geomean-same-product A1-A7, P = 3 as in
+C23) and at 0.809 ulp (A16-A20) and gives the correctly rounded root at 0.546 ulp (geomean-root-refinement A22).
 Rejected models, scored on all 159 in-range cells (geomean-in-range-many, geomean-single-and-copies,
 geomean-root-refinement, geomean-overflow-count H1, ironcalc-calc GEOMEAN C23, G27, B27):
 - r with all equal values returned as is: 72 of 73 in-range-many, but GEOMEAN(1,9) refutes it.
@@ -1032,7 +1037,7 @@ n copies with Excel's PRODUCT, EXP(LN(P)/n), P^(1/n), LN(P); T-1123), probes/geo
 (T-1123), probes/geomean-same-product (T-0288), ironcalc-calc GEOMEAN C23, B27, G27, probes/geomean-overflow-count H1,
 probes/geomean-overflow-cut-3 C1, C5, C11, E1. Oracle: excel-graph, 2026-10-07 and 2026-10-08.
 Status: VERIFIED for the probed cells; the formulation is a best fit (26 one-ulp misses in the 159 cells
-scored above, plus 8 in geomean-same-product).
+scored above, plus 8 in geomean-same-product and subtotal-reference-operands-d H28).
 Implemented in: functions/statistical/geomean.rs
 Tasks: T-1113, T-1108, T-1123, T-0288
 
