@@ -13,6 +13,8 @@ right: if the answer looks wrong, arbitrary or inconsistent, record it and match
      `make eval-show CASE=...` on cases that already exercise it.
    - IronCalc's Excel-authored workbooks (`crates/rustsheet-xlsx/tests/calc_tests/`) carry Excel's
      cached values: `./target/release/rustsheet-eval snapshot <file.xlsx>`.
+   - Numeric kernel to the bit (ERF, GAMMALN, a distribution, EXP)? Read
+     `docs/research/excel-kernel-playbook.md` first: Excel's code patterns, probe designs, methods, traps.
 2. **Write a probe case** in `eval/suites/probes/cases/<topic>.case.json` (`rustsheet-case/v1`):
    one cell per question, minimal inputs, `"expected": {}`. Group related questions in one file.
    Give it exactly one milestone tag: the milestone of the function or feature it probes (the

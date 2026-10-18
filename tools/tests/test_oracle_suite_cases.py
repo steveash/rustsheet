@@ -112,3 +112,22 @@ def test_invariant_cells_that_vary_between_fills_stay_pending() -> None:
     cli._drop_varying_invariants(Path("c.case.json"), ["S!A1", "'S'!$A$2"], values, again)
     # A3 varies too but is not listed: the harness skips it as volatile whatever the sidecar holds.
     assert values == {"S": {"A1": {"t": "n", "v": 5.0}, "A3": {"t": "n", "v": 0.5}}}
+
+
+def test_untrusted_caches_never_replace_a_web_number(monkeypatch: pytest.MonkeyPatch) -> None:
+    # corpus-bench/47766 Total (2)!I26 =D26/C26: a 15-digit cache never outranks the web (T-0433).
+    desktop = {
+        "A1": {"t": "n", "v": 0.478260869565217},
+        "A2": {"t": "n", "v": 4029.0},
+        "A3": {"t": "n", "v": 1.0},
+    }
+    monkeypatch.setattr(cli, "snapshot", lambda _: _cached("Microsoft Excel", desktop))
+    web = {
+        "S": {
+            "A1": {"t": "n", "v": 0.4782608695652174},
+            "A2": {"t": "n", "v": 4028.999999999998},
+            "A3": {"t": "n", "v": 2.0},
+        }
+    }
+    assert cli._drop_desktop_conflicts(Path("x.xlsx"), web, cache_is_evidence=False) == 1
+    assert web == {"S": {"A1": {"t": "n", "v": 0.4782608695652174}, "A2": {"t": "n", "v": 4028.999999999998}}}

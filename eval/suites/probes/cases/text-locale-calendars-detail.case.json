@@ -1,0 +1,58 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Japanese era tokens and the Gregorian, Japanese, Korean, Taiwan, Thai and French calendar digits in more detail (T-1859).",
+ "tags": [
+  "M10",
+  "number-format",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TEXT(45000,\"[$-411]gggg|ggggg|yy|yyy|yyyyy|e|eee\")",
+    "A2": "=TEXT(45000,\"[$-411]b|bb|bbb|bbbb\")",
+    "A3": "=TEXT(45000,\"[$-411]B2mmmm|yyyy\")",
+    "A4": "=TEXT(45000,\"[$-411]B1e|g\")",
+    "A5": "=TEXT(45000,\"[$-411]d/m/yy\")",
+    "A6": "=TEXT(45000,\"[$-411]ggge\")",
+    "A7": "=TEXT(45000,\"B2[$-411]mmmm|e|g\")",
+    "A8": "=TEXT(45000,\"B2[$-40C]mmmm|yyyy\")",
+    "A9": "=TEXT(45000,\"B1[$-411]g|e\")",
+    "A10": "=TEXT(0,\"[$-411]g|e|yyyy-mm-dd\")",
+    "A11": "=TEXT(0.5,\"[$-411]g|e|h AM/PM\")",
+    "A12": "=TEXT(1,\"[$-411]yy|yyyy\")",
+    "A13": "=TEXT(2958465,\"[$-411]yy|yyyy|ee\")",
+    "A14": "=TEXT(45000.75,\"[$-30409]yy|b|bb|bbbb|e|ee|ggg|h AM/PM|h A/P\")",
+    "A15": "=TEXT(45000.75,\"[$-70409]yy|b|bb|bbbb|e|ee|ggg|h AM/PM|h A/P\")",
+    "A16": "=TEXT(45000.75,\"[$-50409]yy|b|bb|bbbb|e|ee|ggg|h AM/PM|h A/P\")",
+    "A17": "=TEXT(45000.75,\"[$-50412]yy|b|bb|bbbb|e|ee|ggg|h AM/PM|h A/P\")",
+    "A18": "=TEXT(45000.75,\"[$-7041E]yy|b|bb|bbbb|e|ee|ggg|h AM/PM|h A/P\")",
+    "A19": "=TEXT(45000.75,\"[$-40409]yy|b|bb|bbbb|e|ee|ggg|h AM/PM|h A/P\")",
+    "A20": "=TEXT(45000.75,\"[$-90409]yy|b|bb|bbbb|e|ee|ggg|h AM/PM|h A/P\")",
+    "A21": "=TEXT(45000.75,\"[$-20409]yy|b|bb|bbbb|e|ee|ggg|h AM/PM|h A/P\")",
+    "A22": "=TEXT(45000.75,\"[$-D0409]yy|b|bb|bbbb|e|ee|ggg|h AM/PM|h A/P\")",
+    "A23": "=TEXT(45000.75,\"[$-30411]yy|b|bb|bbbb|e|ee|ggg|h AM/PM|h A/P\")",
+    "A24": "=TEXT(45000,\"[$-40409]ddd|mmmmm\")",
+    "A25": "=TEXT(45000,\"[$-90409]ddd|mmmmm\")",
+    "A26": "=TEXT(45000,\"[$-30411]ddd|mmmmm\")",
+    "A27": "=TEXT(45000,\"[$-30409]ddd|mmmmm\")",
+    "A28": "=TEXT(45000,\"[$-7040C]ddd|mmmmm\")",
+    "A29": "=TEXT(45000,\"[$-50409]ddd|mmmmm\")",
+    "A30": "=TEXT(45000,\"[$-130409]yyyy-mm-dd|mmmm|dddd|e|g\")",
+    "A31": "=TEXT(45000,\"[$-140409]yyyy-mm-dd|mmmm|dddd|e|g\")",
+    "A32": "=TEXT(45000,\"[$-1F0409]yyyy-mm-dd|mmmm|dddd|e|g\")",
+    "A33": "=TEXT(45000,\"[$-FF0409]yyyy-mm-dd|mmmm|dddd|e|g\")",
+    "A34": "=TEXT(45000,\"[$-FF040C]yyyy-mm-dd|mmmm|dddd|e|g\")",
+    "A35": "=TEXT(1234.5,\"[$-30409]0.00\")",
+    "A36": "=TEXT(1234.5,\"[$-7041E]0.00\")",
+    "A37": "=TEXT(1234.5,\"[$-30411]General\")",
+    "A38": "=TEXT(45000,\"[$€-30411]ggge|mmmm\")",
+    "A39": "=TEXT(45000,\"[$-411]ggg;[$-409]ggg\")",
+    "A40": "=TEXT(-45000,\"[$-411]ggge;[$-30409]ggge\")",
+    "A41": "=TEXT(1900,\"[$-30411]ggge\")"
+   }
+  }
+ ],
+ "expected": {}
+}

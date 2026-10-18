@@ -32,6 +32,10 @@ arbitrary, inconsistent or undocumented ones. RustSheet matches every entry exac
   gap: its entry stays `VERIFIED`, says what RustSheet gives under "Ours", and names the task
   that will close it.
 
+Numeric kernels (ERF, GAMMALN, distribution functions, EXP): before trying to match one to the bit, read
+`docs/research/excel-kernel-playbook.md`. It lists the patterns Excel's numeric code follows and the methods that
+cracked ERF/ERFC.
+
 Files by area: `numbers.md`, `dates.md`, `financial.md`, `coercion.md`, `errors.md`, `criteria.md`,
 `arrays.md`, `lookup.md`, `web.md`, `number-formats.md`, `references.md`, `syntax.md`, `logic.md`, `recalc.md`, … (create as needed). Format per rule:
 
