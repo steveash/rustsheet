@@ -205,24 +205,18 @@ impl Model {
         // An omitted argument (`SORT(arr,,)`) takes its default: probes/counta-empty-value D22-D24.
         // Every argument is evaluated, and the first error wins, before any value is validated:
         // docs/excel-semantics/arrays.md "SORT argument errors come before validation".
-        let raw_index: i64 = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {
-            match self.get_number(&args[1], cell) {
-                Ok(n) => n as i64,
-                Err(e) => return e,
-            }
+        // A multi-cell sort_order (c5d278a8662ef4b2 A39) fails to coerce here but is only a
+        // validation error to Excel, so by_col is evaluated before either failure is returned.
+        let raw_index = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {
+            self.get_number(&args[1], cell).map(|n| n as i64)
         } else {
-            1
+            Ok(1)
         };
-
-        let raw_order: i32 = if args.len() >= 3 {
-            match self.get_sort_order_arg(&args[2], cell) {
-                Ok(a) => a,
-                Err(e) => return e,
-            }
+        let raw_order = if args.len() >= 3 {
+            self.get_sort_order_arg(&args[2], cell)
         } else {
-            1
+            Ok(1)
         };
-
         let by_col: bool = if args.len() >= 4 {
             match self.get_boolean(&args[3], cell) {
                 Ok(b) => b,
@@ -230,6 +224,14 @@ impl Model {
             }
         } else {
             false
+        };
+        let raw_index = match raw_index {
+            Ok(n) => n,
+            Err(e) => return e,
+        };
+        let raw_order = match raw_order {
+            Ok(n) => n,
+            Err(e) => return e,
         };
 
         if raw_index < 1 {
