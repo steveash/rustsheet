@@ -98,10 +98,10 @@ pub fn resolve(tag: &str) -> LocaleTag {
 /// eras for Japanese), 1 Gregorian, 2 and D Gregorian with en-US names, 3 Japanese eras (Japanese
 /// names only for a Japanese LCID), 4 Taiwan (zh-TW names), 5 Korean (Korean names only for a
 /// Korean LCID), 7 Thai (Thai names), 9 Gregorian with French names, and 15 and above are ignored
-/// (`[$-FF040C]mmmm` is "mars"). Day halves follow the LCID throughout. Calendars 6 (Hijri), 8
-/// (Hebrew), A-C (Arabic Gregorian), E-13 (lunar), 10 (Saka) and 14 (Korean native names) are not
-/// modelled and stay [`LocaleTag::Silent`] (TODO(T-1613), TODO(T-1922), TODO(T-1923)), as do numeral-system
-/// digits (bits 24-31; TODO(T-1925)).
+/// (`[$-FF040C]mmmm` is "mars"). Day halves follow the LCID throughout. Calendars 6 (Hijri,
+/// TODO(T-1613)), E-13 (lunar, TODO(T-1922)), 8 (Hebrew), A-C (Arabic Gregorian), 10 (Saka) and 14
+/// (Korean native names; TODO(T-1923)) are not modelled and stay [`LocaleTag::Silent`], as do
+/// numeral-system digits (bits 24-31; TODO(T-1925)).
 fn resolve_lcid(value: u32) -> LocaleTag {
     match value {
         0xF800 => return LocaleTag::SystemDate,
