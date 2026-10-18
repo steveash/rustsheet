@@ -402,8 +402,8 @@ YIELD's settlement, ODDFPRICE's frequency and ODDFYIELD's basis, -1E300 as ODDLP
 with a price of 1E300 is -2 (L1-L8).
 Excel computes CUMIPMT and CUMPRINC over very many periods (`CUMIPMT(0.01,1E6,100000,1,1E6,0)` = -999900000,
 `CUMIPMT(0.01,1E15,100000,1E15-10,1E15,0)` = -632.3717517805198; K1-K3; `CUMIPMT(1E-9,1E9,1,1,1E9,0)` = -0.5819767073296636
-and `CUMPRINC(1E-9,1E9,1,1,1E9,0)` = -1, from an excel-graph probe during T-1822 whose two cells are not in the suite
-because the engine's loop runs 10^9 times until T-1845 bounds it), and AMORLINC and AMORDEGRC give 0 for a period of 1E9 (K4, K5).
+and `CUMPRINC(1E-9,1E9,1,1,1E9,0)` = -1, probes/fin-cumipmt-period-bound A1, A2; "CUMIPMT and CUMPRINC over many
+periods"), and AMORLINC and AMORDEGRC give 0 for a period of 1E9 (K4, K5).
 NPV's values work like an aggregate. A range skips text, booleans and blanks: `NPV(0.1,L1:L8)` over
 -10000, "2750", TRUE, 4250, "x", blank, 3250, 2750 is -1258.4522915101434, the NPV of -10000, 4250, 3250, 2750.
 Typed arguments are coerced: `NPV(0.1,-10000,"2750",TRUE,4250)` = -3914.6233180793665, the NPV of
@@ -426,9 +426,10 @@ Ours: since T-1372 the core functions but DB, VDB, NPV, IRR and MIRR are `Lift` 
 DOLLARFR, ACCRINTM, DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT and the T-bills `LiftArrays`
 (SPEC-0011); since T-1822 so are ACCRINT, the COUP* family, DURATION, MDURATION and PRICE, each element charged for its
 coupon schedule walks ("Coupon schedule work cap"), and since T-1842 YIELD and the ODD* functions, charged for their
-solvers and walks ("Yield and odd-coupon work cap"). The rest do not lift yet (`#N/IMPL!` for an array literal; DB and
+solvers and walks ("Yield and odd-coupon work cap"), and since T-1845 CUMIPMT and
+CUMPRINC, charged for their bounded period sums ("CUMIPMT and CUMPRINC work cap"). The rest do not lift yet (`#N/IMPL!` for an array literal; DB and
 VDB `#VALUE!` for a range): DB and VDB need their period loops bounded first (T-1820), NPV's rate, IRR's guess and
-MIRR's rates sit beside a whole cash flow (T-1821), CUMIPMT and CUMPRINC (T-1845) and AMORDEGRC and AMORLINC (T-1841)
+MIRR's rates sit beside a whole cash flow (T-1821), AMORDEGRC and AMORLINC (T-1841)
 need their period loops bounded, and XNPV's rate,
 XIRR's guess and FVSCHEDULE's principal sit beside whole data (T-1843). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE ignores text in the schedule (T-1373).
@@ -497,6 +498,47 @@ Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-
 Status: DEVIATION (decision 0014)
 Implemented in: functions/lift/kinds.rs (`YIELD_SOLVER_WEIGHT`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODD_LAST`)
 Tasks: T-1842; T-1869 narrows the cap to a schedule-length budget (after T-1846).
+
+## CUMIPMT and CUMPRINC over many periods
+Rule: Excel computes CUMIPMT and CUMPRINC in constant time whatever the period count, also where `(1+rate)^nper`
+overflows a double: `CUMIPMT(0.01,1E308,1,1,1E308,0)` is -1E306 and `CUMIPMT(1E-300,1E300,1E300,1,1E300,0)` is
+-5.819767068693264E299 (A26, A24), `CUMIPMT(1E-9,1E9,1,1,1E9,0)` is -0.5819767073296636 and the CUMPRINC -1 (A1, A2),
+`CUMIPMT(0.01,1E6,100000,1,10,0)` is -10000 and its CUMPRINC 0 (A13, A14), and `CUMIPMT(1E10,100,1,1,100,0)` is
+-999999999999 (A16). Its values are within a few ulps of the exact sums, so it does not round `1+rate` (a rate of 1E-300
+is not lost) and does not add the periods one by one in doubles. Its form is close to `log1p`/`expm1`:
+`CUMPRINC(1E10,100,1,1,100,0)` is -1.0000000000000013, exactly `-1E10/expm1(log1p(1E10))` (A17), where the exact value is
+-1. An end period past nper is `#NUM!`, also below nper + 1 (`CUMIPMT(0.01,100.5,1000,1,101,0)`, A20-A22); the start
+rounds up and the end down (`CUMIPMT(0.001,2000,1000,1.5,1999.7,0)` sums periods 2 to 1999, A23; CUMPRINC_CUMIPMT.xlsx
+G6, G7). Lifted elements are the scalar calls (A29, A30).
+Evidence: probes/fin-cumipmt-period-bound A1-A30 (excel-graph, 2026-10-18, T-1845), probes/fin-remaining-later-argument-
+ranges K1-K3 (T-1822), `ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx`.
+Ours: since T-1845 (functions/financial/cumulative.rs) up to 32 periods are main's per-period IPMT/PPMT sum, which matches
+CUMPRINC_CUMIPMT.xlsx G3, G9, G15 and G26 where the closed form below is an ulp or two off; past 32 periods, or when a
+period's `(1+rate)^nper` overflows, the closed form `pmt = -pv*r/(-expm1(-nper*L))` (over `1+r` for type 1),
+`principal = pmt*((exp((end-nper)*L) - exp((first-1-nper)*L))/expm1(L))` with `L = log1p(r)` (type 1: period 1 adds the
+whole payment and the sum starts at period 2), interest = `pmt*(end-start+1) - principal`. The sum is no closer to
+Excel past 32 periods (83 ulps over 1,024 periods, A11; no correct digit over 10^5 periods of type 1, A5), while the
+kernel passes 22 of the 30 probe cells and misses the others by at most 6 ulps, but for 48 to 64 near period 1E15 (A18,
+K3). The fit tried `(1+r)^m` by libm and by Excel's `^` against `exp(m*log1p r)`, four payment and four balance
+parenthesizations, and `r` against `expm1(log1p r)` as the denominator (72 cells): no single form matches both the short
+sums and the long ones. Before T-1845 the engine looped over every period (10^9 steps for A1), was `#NUM!` once
+`(1+rate)^nper` overflowed (A13-A19, K1-K3) and computed A21.
+Status: PARTLY VERIFIED (excel-graph; the closed form's last digits open in T-1890, the short sums' in T-1374)
+Tasks: T-1845, T-1890, T-1374
+
+## CUMIPMT and CUMPRINC work cap
+Rule: RustSheet charges each lifted CUMIPMT or CUMPRINC element for its kernel's bound, 2^8 units against SPEC-0011's
+2^27 visit cap, so one call lifts at most 524,288 elements: `ROWS(CUMPRINC(SEQUENCE(524289)*0+0.004,1024,1000,1,32,1))`
+is `#ERROR!` where Excel lifts every element (they lift over arrays: probes/fin-argument-modes H73-H87; Excel's own
+limit is unprobed). The bound is 32 PPMT steps of three powers each (the per-period sum) and then the closed form when
+the last step overflows, about 2.9 us an element in a release build: 2^19 elements took 1.53 s for
+`CUMPRINC(..,1024,1E307*15.98,1,32,0)`, whose last step overflows, and 1.51 s for 32 full steps of type 1. Past 32
+periods the kernel is the closed form (0.3 us), so the charge does not depend on the period count. The scalar calls are
+not capped.
+Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
+Status: DEVIATION (decision 0014)
+Implemented in: functions/lift/kinds.rs (`CUMULATIVE_WEIGHT`, `CUMULATIVE`)
+Tasks: T-1845
 
 ## Coupon-bond functions: a negative basis is #NUM!
 Rule: `YIELD(39448,43831,0.0575,95.04,100,2,-1E300)` (the basis read from a cell holding -1E300) is `#NUM!`. Basis -1 and a
