@@ -3,7 +3,7 @@ id: T-1908
 title: "Legacy N and T over CHOOSE or INDEX of a reference take no @ on the call"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ Oracle evidence: probes/legacy-n-t-reference-args-2 (excel-graph, 2026-10-18), r
 
 ## Out of scope
 - The IF, OFFSET and CHOOSE scalar-slot shapes (already match Excel).
+
+## Outcome
+CHOOSE (literal index) over plain references joins `is_plain_reference`; INDEX of a plain reference joins `leaves_call_whole`, so indices keep their own `@`. probes known failures 2118 -> 2110 (8 cells fixed).

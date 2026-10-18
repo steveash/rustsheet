@@ -225,13 +225,19 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
         other => other,
     };
     kind.is_n_or_t()
-        && matches!(
-            call,
+        && match call {
             Node::FunctionKind {
                 kind: Function::If | Function::Switch,
                 ..
-            }
-        )
+            } => true,
+            // INDEX of a reference keeps its indices' own `@`: `=N(INDEX(Z1:Z2,@W1:W2))`
+            // (probes/legacy-n-t-reference-args-2 L20, M20, T-1908).
+            Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } => args.first().is_some_and(is_plain_reference),
+            _ => false,
+        }
 }
 
 /// Calls `f` on `node`, or on each operand of the operators, parentheses and signs it is made
@@ -308,7 +314,7 @@ pub(super) fn reads_reference_whole(kind: &Function, arg: &Node) -> bool {
 /// condition whose arms are such references. A range in a scalar slot (`IF(A1:A2,Z1,Z2)`), an
 /// array constant, an operator or any other call is not (`N(B1:B3*1)` is `#VALUE!` off the
 /// rows: probes/n-array-lift D7); CHOOSE with a literal index over such references and INDEX of
-/// one with literal numbers are too (probes/legacy-n-t-reference-args-2, T-1908;
+/// one ([`leaves_call_whole`]) are too (probes/legacy-n-t-reference-args-2, T-1908;
 /// docs/excel-semantics/references.md "Legacy N and T over a reference-returning call"). An
 /// explicit stack keeps the walk off the call stack: a formula's tree is untrusted input.
 fn is_plain_reference(node: &Node) -> bool {
@@ -329,10 +335,6 @@ fn is_plain_reference(node: &Node) -> bool {
                 kind: Function::Choose,
                 args,
             } if args.len() > 1 && is_literal(&args[0]) => pending.extend(&args[1..]),
-            Node::FunctionKind {
-                kind: Function::Index,
-                args,
-            } if args.len() > 1 && args[1..].iter().all(is_literal) => pending.push(&args[0]),
             _ => return false,
         }
     }
