@@ -164,5 +164,8 @@
   borrowed values; CHISQ.INV and CHISQ.INV.RT share one kernel, and the four chi-squared kernels one df check)
   (`check_duplication.py --update`), and expressions/parser/static_analysis.rs 1170 → 1146 lines (the 24
   fallback lines of the twelve incomplete-gamma functions now in the lifting table) (`check_file_size.py --update`).
+  T-1873: expressions/parser/static_analysis.rs 1146 → 1141 lines (the 4 fallback lines of HYPGEOM.DIST and
+  HYPGEOMDIST now in the lifting table, and the comment heading the one of them that was a compatibility wrapper)
+  (`check_file_size.py --update`); duplicated lines unchanged at 3989.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

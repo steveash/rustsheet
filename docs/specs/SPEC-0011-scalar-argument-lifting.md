@@ -575,6 +575,16 @@ per-call cap and lifting", a DEVIATION; T-1891 owns Excel's values). The weight 
 case: 2^19 continued-fraction terms at 4.7 ns (its NaN path, the slowest; a converging fraction at the cap, shape 1E15,
 measured 2.4 ns) plus an inversion's 2,120 cdfs at 49 ns, about 2.6 ms an element, so all
 twelve are `Weighted(2^18)`: 512 elements in about 1.3 s. HYPGEOM.DIST stays out (T-1873).
+As built (T-1873): HYPGEOM.DIST and HYPGEOMDIST are `Lift` entries over one kernel of the four counts (HYPGEOMDIST no
+longer builds a fifth argument node). HYPGEOMDIST is the closed-form pmf and `Constant`. HYPGEOM.DIST's cdf was statrs'
+`Hypergeometric::cdf`, a sum of x + 1 terms whatever the distribution (4.8 s in release for
+`HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)`); it is now a port with a per-call cap of its own
+(`statistical/hypegeom.rs`: it skips the terms that are exactly 0, below max(0, n + K - N) and, found by a bisection on
+each side of the mode, those whose exponent is below -750 with a margin for its rounding, and sums at most 2^18 of the
+rest in statrs' order), bit for bit statrs' value within the cap and `#NUM!` past it (statistics.md "HYPGEOM.DIST:
+per-call cap and lifting", a DEVIATION; T-1895 probes Excel's values). The weight charges the cap's bound, not a
+measured case: 2^18 + 130 terms at 193 ns, about 51 ms an element, so HYPGEOM.DIST is `Weighted(2^22)`: 32 elements in
+about 1.6 s (1.39 to 1.48 s measured at the widest distribution of a population of 1.8E8).
 
 As built (T-1845): CUMIPMT and CUMPRINC are `LiftArrays` and `Weighted(2^8)`. Their kernels summed IPMT/PPMT over every
 period with no cap (10^9 steps for `CUMIPMT(1E-9,1E9,1,1,1E9,0)`); Excel computes any period count in constant time

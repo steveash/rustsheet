@@ -280,6 +280,31 @@ const GAMMA_DIST: ArgKinds = ArgKinds::fixed(
 );
 // --- End incomplete gamma (T-1872) ----------------------------------------------------------
 
+// --- Hypergeometric (T-1873) ----------------------------------------------------------------
+/// What one HYPGEOM.DIST element is charged. Its cdf is the capped port of statrs' sum
+/// (`statistical/hypegeom.rs`): at most 2^18 terms once the terms known to be 0 are skipped, and
+/// at most 130 exponents to find them. One term is three statrs `ln_binomial`s and an `exp`
+/// (six Lanczos `ln_gamma`s above 170), whatever its value: measured in release (T-1873, load 2
+/// on 4 cores, statrs' own sum alone) at 192.9 ns over the 25,000,001 terms of
+/// `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)` (4.8 s, as on main) and 167 to
+/// 178 ns at populations of 1.8E8 and 1.84E8. The bound of an element is 2^18 + 130 terms at 193 ns, about 51 ms, so
+/// the weight caps a lifted call at 2^27 / 2^22 = 32 elements: 1.6 s at the bound (a DEVIATION,
+/// statistics.md). Measured at the cap: 32 elements of
+/// `HYPGEOM.DIST(45500000,90000000,90000000,180000000,TRUE)` (the widest distribution at a
+/// population of 1.8E8, 258,239 terms each) took 1.39 to 1.48 s (benches/lift.rs), 43 to 46 ms
+/// an element; the cdfs the suites check sum at most 501 terms.
+const HYPGEOM_DIST_WEIGHT: u32 = 1 << 22;
+/// `HYPGEOM.DIST(sample_s, number_sample, population_s, number_pop, cumulative)`.
+const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(
+    5,
+    &[Lift, Lift, Lift, Lift, Lift],
+    Weighted(HYPGEOM_DIST_WEIGHT),
+);
+/// `HYPGEOMDIST(sample_s, number_sample, population_s, number_pop)`: the pmf, closed form (nine
+/// statrs `ln_factorial`s, each a table entry or one Lanczos sum of fixed length).
+const HYPGEOMDIST: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift], Constant);
+// --- End hypergeometric (T-1873) ------------------------------------------------------------
+
 // --- Financial ATP (T-1822) -----------------------------------------------------------------
 /// What one walk of a coupon schedule is charged: the walk steps one coupon period at a time
 /// from the maturity back to the settlement (or from the first interest date to the issue), at
@@ -619,6 +644,10 @@ macro_rules! lifting_table_functions {
             | Function::PoissonDist
             | Function::PoissonCompat
             // --- End incomplete gamma (T-1872) ---
+            // --- Hypergeometric (T-1873) ---
+            | Function::HypGeomDist
+            | Function::HypGeomDistCompat
+            // --- End hypergeometric (T-1873) ---
     };
 }
 pub(crate) use lifting_table_functions;
@@ -853,9 +882,8 @@ impl Function {
             // slowest, BINOM.DIST with 1E18 trials, about 3.2 us (3.3 s for 2^20 elements), and
             // BINOM.DIST.RANGE, which runs two cdfs, 6.4 us (6.7 s for 2^20 elements).
             // PERMUT multiplies at most 171 factors whatever its arguments (0.22 us). The
-            // quantile searches of BETA.INV, F.INV and T.INV (T-1848) and the incomplete-gamma
-            // functions (T-1872) are entered below; HYPGEOM.DIST's cdf sum (TODO(T-1873)) loops by
-            // value with no per-call cap of its own, so it is not entered yet.
+            // quantile searches of BETA.INV, F.INV and T.INV (T-1848), the incomplete-gamma
+            // functions (T-1872) and HYPGEOM.DIST's capped cdf sum (T-1873) are entered below.
             Function::Gauss
             | Function::Phi
             | Function::Fisher
@@ -933,6 +961,16 @@ impl Function {
             | Function::GammaInvCompat => Some(&INCOMPLETE_GAMMA_3),
             Function::GammaDist | Function::GammaDistCompat => Some(&GAMMA_DIST),
             // --- End incomplete gamma (T-1872) ---
+            // --- Hypergeometric (T-1873) ---
+            // As the statistical functions above: every argument lifts over an array and a range,
+            // on the range's own rows (probes/stat-argument-modes H330-H342; probes/
+            // stat-quantile-lift H51-H54: the last argument over a range). HYPGEOM.DIST's cdf sum
+            // keeps a per-call cap of its own (`statistical/hypegeom.rs`), so it is weighted by
+            // its bound; HYPGEOMDIST is the closed-form pmf (statistics.md "HYPGEOM.DIST: per-call
+            // cap and lifting").
+            Function::HypGeomDist => Some(&HYPGEOM_DIST),
+            Function::HypGeomDistCompat => Some(&HYPGEOMDIST),
+            // --- End hypergeometric (T-1873) ---
             _ => None,
         }
     }
