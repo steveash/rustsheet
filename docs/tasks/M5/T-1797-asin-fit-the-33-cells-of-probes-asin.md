@@ -3,7 +3,7 @@ id: T-1797
 title: "ASIN: fit the 33 cells of probes/asin-argument-sweep left after T-1605 (the non-odd kernel)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
