@@ -130,6 +130,7 @@ C	probes/colon-hash-value-operands.case.json	6
 C	probes/combin-algorithm-sweep.case.json	844
 C	probes/concatenate-after-cut.case.json	9
 C	probes/concatenate-limit-spill.case.json	68
+C	probes/convert-targets.case.json	84
 C	probes/count-direct-text.case.json	13
 C	probes/counta-empty-value.case.json	26
 C	probes/countblank-array-values.case.json	35
