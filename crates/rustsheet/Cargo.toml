@@ -39,3 +39,7 @@ harness = false
 [[bench]]
 name = "lift"
 harness = false
+
+[[bench]]
+name = "math_lift"
+harness = false

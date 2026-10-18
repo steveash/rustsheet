@@ -16,7 +16,6 @@ mod information;
 pub(crate) mod lift;
 pub(crate) mod logical;
 pub(crate) mod lookup_and_reference;
-mod macros;
 mod math_and_trigonometry;
 mod spill_functions;
 mod statistical;

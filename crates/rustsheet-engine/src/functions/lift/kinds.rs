@@ -110,15 +110,16 @@ const DATA_THEN_1: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift], Constan
 /// The same with an optional second lifted argument: `PERCENTRANK(array, x, [significance])`.
 const DATA_THEN_1_OF_2: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift, Lift], Constant);
 
-/// One required argument that lifts over an array and a range: the IS* type tests, ERROR.TYPE
-/// and ENCODEURL.
+/// One required argument that lifts over an array and a range: the IS* type tests, ERROR.TYPE,
+/// ENCODEURL and the one-number math functions (ABS, SIN, LN, ...).
 const LIFT_1: ArgKinds = ArgKinds::fixed(1, &[Lift], Constant);
 /// One argument, lifted over arrays only: ISEVEN, ISODD and the one-argument Analysis `ToolPak`
 /// functions (BIN2DEC, HEX2DEC, OCT2DEC, ERF.PRECISE, ERFC, ERFC.PRECISE, the one-argument IM*).
 const ARRAYS_1: ArgKinds = ArgKinds::fixed(1, &[LiftArrays], Constant);
 /// `ADDRESS(row_num, column_num, [abs_num], [a1], [sheet_text])`: every argument lifts.
 const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Constant);
-/// `HYPERLINK(link_location, [friendly_name])`: both arguments lift.
+/// `HYPERLINK(link_location, [friendly_name])`: both arguments lift. So do TRUNC,
+/// CEILING.PRECISE, ISO.CEILING and FLOOR.PRECISE.
 const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
 
 // The shapes below are named by kind and (required, total) argument counts: `LIFT_4_OF_6` is four
@@ -127,6 +128,8 @@ const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
 /// Three or four worksheet arguments that lift over arrays and ranges: RRI, PDURATION, SLN;
 /// ISPMT and SYD.
 const LIFT_3: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Constant);
+/// `CEILING.MATH(number, [significance], [mode])` and FLOOR.MATH.
+const LIFT_1_OF_3: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift, Lift], Constant);
 const LIFT_4: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift], Constant);
 /// `PMT(rate, nper, pv, [fv], [type])` and PV, FV, NPER alike.
 const LIFT_3_OF_5: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift, Lift], Constant);
@@ -162,7 +165,7 @@ const ATP_5_OF_6: ArgKinds = ArgKinds::fixed(
 );
 // --- Engineering (T-1383) -------------------------------------------------------------------
 /// Two worksheet arguments that lift over an array and a range: BITAND, BITOR, BITXOR,
-/// BITLSHIFT and BITRSHIFT.
+/// BITLSHIFT, BITRSHIFT, the ROUND family, MOD, FLOOR and CEILING.
 const LIFT_2: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Constant);
 /// `BESSELI|J|K|Y(x, n)`: the recurrences loop about once (BESSELK, BESSELY) or twice (BESSELI,
 /// BESSELJ's Miller recurrence) per order, up to the order cap `transcendental::MAX_ORDER`
@@ -367,6 +370,54 @@ macro_rules! lifting_table_functions {
             | Function::Factdouble
             | Function::Seriessum
             // --- End math (T-1802) ---
+            // --- Math number lifts (T-1773) ---
+            // (alphabetical)
+            | Function::Abs
+            | Function::Acos
+            | Function::Acosh
+            | Function::Acot
+            | Function::Acoth
+            | Function::Asin
+            | Function::Asinh
+            | Function::Atan
+            | Function::Atanh
+            | Function::Ceiling
+            | Function::CeilingMath
+            | Function::CeilingPrecise
+            | Function::Cos
+            | Function::Cosh
+            | Function::Cot
+            | Function::Coth
+            | Function::Csc
+            | Function::Csch
+            | Function::Degrees
+            | Function::EcmaCeiling
+            | Function::Even
+            | Function::Exp
+            | Function::Fact
+            | Function::Floor
+            | Function::FloorMath
+            | Function::FloorPrecise
+            | Function::Int
+            | Function::IsoCeiling
+            | Function::Ln
+            | Function::Log10
+            | Function::Mod
+            | Function::Odd
+            | Function::Radians
+            | Function::Round
+            | Function::Rounddown
+            | Function::Roundup
+            | Function::Sec
+            | Function::Sech
+            | Function::Sign
+            | Function::Sin
+            | Function::Sinh
+            | Function::Sqrt
+            | Function::Tan
+            | Function::Tanh
+            | Function::Trunc
+            // --- End math number lifts (T-1773) ---
             // --- Financial ATP (T-1822) ---
             | Function::Accrint
             | Function::Coupdaybs
@@ -558,6 +609,63 @@ impl Function {
             Function::Factdouble => Some(&ARRAYS_1),
             Function::Seriessum => Some(&SERIES),
             // --- End math (T-1802) ---
+            // --- Math number lifts (T-1773) ---
+            // The one-number math functions, the ROUND family, MOD and the CEILING/FLOOR family
+            // lift element-wise over arrays and ranges in every argument, a range on its own rows
+            // included (gen-m2/893302d6c5b99e2e Calc!A313, probes/geomean-overflow-cut-3 E4,
+            // gen-m7/e5a361112d83d0c3 Calc!A9, gen-m9/89693ab0cafc29df Calc!A14). Each is O(1),
+            // FACT's product included: it overflows a double within 171 steps whatever n is.
+            // Direct trigonometry:
+            Function::Sin
+            | Function::Cos
+            | Function::Tan
+            | Function::Cot
+            | Function::Csc
+            | Function::Sec
+            // Inverse trigonometry:
+            | Function::Asin
+            | Function::Acos
+            | Function::Atan
+            | Function::Acot
+            // Hyperbolic:
+            | Function::Sinh
+            | Function::Cosh
+            | Function::Tanh
+            | Function::Coth
+            | Function::Csch
+            | Function::Sech
+            // Inverse hyperbolic:
+            | Function::Asinh
+            | Function::Acosh
+            | Function::Atanh
+            | Function::Acoth
+            // Logarithms, powers:
+            | Function::Ln
+            | Function::Log10
+            | Function::Exp
+            | Function::Sqrt
+            // Sign, rounding to integers, factorial, angles:
+            | Function::Abs
+            | Function::Sign
+            | Function::Int
+            | Function::Even
+            | Function::Odd
+            | Function::Fact
+            | Function::Degrees
+            | Function::Radians => Some(&LIFT_1),
+            Function::Round
+            | Function::Roundup
+            | Function::Rounddown
+            | Function::Mod
+            | Function::Floor
+            | Function::Ceiling
+            | Function::EcmaCeiling => Some(&LIFT_2),
+            Function::Trunc
+            | Function::CeilingPrecise
+            | Function::IsoCeiling
+            | Function::FloorPrecise => Some(&LIFT_1_OF_2),
+            Function::CeilingMath | Function::FloorMath => Some(&LIFT_1_OF_3),
+            // --- End math number lifts (T-1773) ---
             // --- Financial ATP (T-1822) ---
             // Analysis ToolPak functions: every argument lifts over an array and refuses a
             // multi-cell range, also on the range's own rows. The first arguments over a range:

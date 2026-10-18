@@ -42,6 +42,42 @@ impl Model {
     }
 }
 
+impl Model {
+    /// A number argument of a lifted kernel, read as `cast_number_ref` reads it (a boolean is 0 or
+    /// 1, a blank 0), except that text which is not a number is [`value_error`]: a failing
+    /// element allocates nothing.
+    pub(crate) fn kernel_number(
+        &self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        match value {
+            CalcResult::String(text) => self.cast_number(text).ok_or_else(|| value_error(cell)),
+            other => self.cast_number_ref(other, cell),
+        }
+    }
+
+    /// [`Model::kernel_number`] for an optional argument: `default` when the call has no such
+    /// argument. A written empty argument is there, and reads as 0.
+    pub(crate) fn kernel_number_or(
+        &self,
+        value: Option<&CalcResult>,
+        default: f64,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        value.map_or(Ok(default), |value| self.kernel_number(value, cell))
+    }
+}
+
+/// A kernel's numeric result: an error carries no message, so a failing element allocates
+/// nothing.
+pub(crate) fn number_result(result: Result<f64, Error>, cell: CellReferenceIndex) -> CalcResult {
+    match result {
+        Ok(number) => CalcResult::Number(number),
+        Err(error) => CalcResult::new_error(error, cell, String::new()),
+    }
+}
+
 /// The `#NUM!` of a lifted kernel's element: its message is empty, so a failing element
 /// allocates nothing (SPEC-0011).
 pub(crate) fn num_error(cell: CellReferenceIndex) -> CalcResult {

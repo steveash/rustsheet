@@ -1,4 +1,5 @@
 mod arabic_roman;
+mod ceiling_floor;
 mod decimal_text;
 mod gcd_lcm;
 mod hyperbolic;
