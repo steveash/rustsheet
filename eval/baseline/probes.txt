@@ -855,7 +855,7 @@ C	probes/union-operand-neg-cut-group.case.json	2
 C	probes/union-operand-nested-parens.case.json	6
 C	probes/union-operand-quad-minus.case.json	2
 C	probes/union-operand-triple-minus.case.json	2
-C	probes/union-walk-repeated-in-lambda.case.json	0
+C	probes/union-walk-repeated-in-lambda.case.json	15
 C	probes/unknown-function-name-folds-2.case.json	64
 C	probes/unknown-function-name-folds.case.json	40
 C	probes/unknown-function-name-reach.case.json	52
@@ -3058,7 +3058,6 @@ F	probes/textsplit-padded-size.case.json	Calc!A1
 F	probes/textsplit-padded-size.case.json	Calc!A2
 F	probes/textsplit-padded-size.case.json	Calc!A3
 F	probes/textsplit-padded-size.case.json	Calc!A4
-F	probes/union-walk-repeated-in-lambda.case.json	!Timeout
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4
 F	probes/weeknum-stale-return-type.case.json	Type1!A1
