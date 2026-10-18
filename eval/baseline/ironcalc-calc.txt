@@ -16,11 +16,13 @@ C	ironcalc-calc/DATE_AND_TIME/DAYS_DAYS360.xlsx	277
 C	ironcalc-calc/DATE_AND_TIME/DAY_MONTH_YEAR.xlsx	115
 C	ironcalc-calc/DATE_AND_TIME/EDATE.xlsx	83
 C	ironcalc-calc/DATE_AND_TIME/EOMONTH.xlsx	105
+C	ironcalc-calc/DATE_AND_TIME/EOMONTH_issue_1388.xlsx	10
 C	ironcalc-calc/DATE_AND_TIME/NETWORKDAYS_NETWORKDAYS.INTL.xlsx	286
 C	ironcalc-calc/DATE_AND_TIME/NOW_TODAY.xlsx	3
 C	ironcalc-calc/DATE_AND_TIME/TIMEVALUE.xlsx	68
 C	ironcalc-calc/DATE_AND_TIME/TIMEVALUE_issue_1402.xlsx	1
 C	ironcalc-calc/DATE_AND_TIME/TIME_HOUR_MINUTE_SECOND.xlsx	252
+C	ironcalc-calc/DATE_AND_TIME/WEEKDAY_WEEKNUM_ISOWEEKNUM_issue_1502.xlsx	10
 C	ironcalc-calc/DATE_AND_TIME/WORKDAY_WORKDAY.INTL.xlsx	213
 C	ironcalc-calc/DATE_AND_TIME/YEARFRAC_DATEDIF.xlsx	197
 C	ironcalc-calc/ENGINEERING/BESSEL.xlsx	476
