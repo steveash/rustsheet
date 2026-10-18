@@ -3,7 +3,7 @@ id: T-0434
 title: "Volatile-cell detection follows structured table references"
 milestone: M11
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
