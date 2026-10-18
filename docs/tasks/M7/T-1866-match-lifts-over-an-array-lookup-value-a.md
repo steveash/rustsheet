@@ -32,4 +32,4 @@ has no evidence.
 -
 
 ## Outcome
-MATCH now lifts `lookup_value` over an array or multi-cell range (one position per element; `match_type` stays scalar) through the shared `lift_values` driver, reusing `lookup_value_arg`, and spills like LOOKUP in static analysis. gen-m7/4629e931955aa4b8 passes (40/40). Unit test `test_match_lifts_over_array_lookup_value` covers a 1x1 array, a 2x1 array and a range; lookup.md updated. No oracle probe was run: the behaviour mirrors XMATCH/LOOKUP's verified lift.
+MATCH lifts `lookup_value` over an array or multi-cell range (one position per element) through `lift_values`, spills like LOOKUP in static analysis, and returns an error element before checking match_type/lookup_array. New probe probes/match-lookup-value-lift (19 cells, excel-graph): 16 pass; the other 3 (E14:E16) are the array-match_type lift, recorded as known failures and filed as T-1876. gen-m7/4629e931955aa4b8 passes (40/40). lookup.md has a new "MATCH lifts over lookup_value" entry.

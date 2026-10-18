@@ -437,8 +437,20 @@ Evidence: probes/lookup-reference-lookup-value (220 cells: 5 shapes x 4 values x
 Status: VERIFIED
 Implemented in: VLOOKUP, HLOOKUP and XLOOKUP lift the lookup_value, so a 1x1 range lifts to its value
 (`lookup_each`, xlookup.rs); MATCH, XMATCH and LOOKUP read it through `Model::lookup_value_arg`
-(functions/lookup_and_reference/mod.rs); a multi-cell one (or an array, a 1x1 array included) lifts in XMATCH and LOOKUP (T-1241) and in MATCH (T-1866: one position per element, match_type stays a scalar; MATCH spills like LOOKUP).
-Tasks: T-1256, T-1866
+(functions/lookup_and_reference/mod.rs); a multi-cell one lifts in XMATCH and LOOKUP (T-1241) and in MATCH (next entry).
+Tasks: T-1256
+
+## MATCH lifts over lookup_value
+Rule: an array (a 1x1 array included) or a multi-cell range as MATCH's lookup_value gives one position per element, row-major, and
+spills: `ROWS(MATCH(B1:B2,A1:A3,0))` and `ROWS(MATCH({30;10},A1:A3,0))` are 2, `COLUMNS(MATCH({30,10,99},..))` is 3, and a
+missing element is `#N/A` in that slot only. `MATCH({"#N/A"},E8:E10)` is `#N/A`, not an error from the lift itself. An error
+element is that slot's result before match_type and lookup_array are checked: `INDEX(MATCH({#N/A;1},A1:A3,"x"),1)` is `#N/A`.
+An array-valued match_type also lifts in Excel (`ROWS(MATCH(2,A1:A3,{0;1}))` is 2), which the engine does not do yet (`#N/IMPL!`).
+Evidence: probes/match-lookup-value-lift (19 cells; excel-graph, 2026-10-18, T-1866); gen-m7/4629e931955aa4b8 Calc!A19 (excel-graph, T-1361).
+Status: VERIFIED
+Implemented in: `Model::fn_match` (functions/lookup_and_reference/mod.rs) through `lift_values`; static analysis spills by lookup_value.
+Not implemented: the match_type array lift (E14:E16 of the probe, known failures in the baseline).
+Tasks: T-1866
 
 ## A reference-valued lookup_value pointing at a blank or error cell
 Rule: `CHOOSE(1,J5)`, `OFFSET(J5,0,0)`, `INDIRECT("J5")`, `J5:J5` and the direct `J5` behave identically in VLOOKUP, HLOOKUP,

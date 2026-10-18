@@ -230,6 +230,8 @@ fn test_match_lifts_over_array_lookup_value() {
     model._set("E1", "=MATCH(B1:B2,A1:A3,0)");
     model._set("F1", "=ROWS(MATCH(B1:B2,A1:A3,0))");
     model._set("G1", "=MATCH({20;99},A1:A3,0)");
+    // An error element wins over an invalid match_type (probes/match-lookup-value-lift E17).
+    model._set("H1", "=MATCH({#N/A;10},A1:A3,\"x\")");
     model.evaluate();
     assert_eq!(model._get_text("C1"), "2");
     assert_eq!(model._get_text("D1"), "3");
@@ -239,4 +241,6 @@ fn test_match_lifts_over_array_lookup_value() {
     assert_eq!(model._get_text("F1"), "2");
     assert_eq!(model._get_text("G1"), "2");
     assert_eq!(model._get_text("G2"), "#N/A");
+    assert_eq!(model._get_text("H1"), "#N/A");
+    assert_eq!(model._get_text("H2"), "#VALUE!");
 }

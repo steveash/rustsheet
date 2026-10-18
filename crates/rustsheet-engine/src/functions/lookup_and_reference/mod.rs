@@ -125,30 +125,28 @@ impl Model {
                 // Only the sign counts: -0.5 searches descending (gen-m2/f7e6d351c8538ef5 A160,
                 // gen-m2/96a0952412cefa6c A241) and 0.5 ascending (probes/match-fractional-match-type
                 // C1-C3), so neither is the exact search that 0 is (docs/excel-semantics/lookup.md).
-                Ok(v) if v < 0.0 => -1,
-                Ok(v) if v > 0.0 => 1,
-                Ok(_) => 0,
-                Err(s) => return s,
+                Ok(v) if v < 0.0 => Ok(-1),
+                Ok(v) if v > 0.0 => Ok(1),
+                Ok(_) => Ok(0),
+                Err(s) => Err(s),
             }
         } else {
-            1
+            Ok(1)
         };
         let match_range = self.evaluate_single_sheet_arg(&args[1], cell);
 
         // MATCH operates on a vector (a single row or single column). We
         // materialize the second argument, be it a range reference or an array
         // literal, into a flat list of values and then run the search on it.
-        let values = match self.as_vector(match_range, cell) {
-            Ok(values) => values,
-            Err(error) => return error,
-        };
+        let values = self.as_vector(match_range, cell);
 
-        // lookup_value lifts over an array or a multi-cell range, one search per element; the
-        // match_type stays a scalar (docs/excel-semantics/lookup.md "A reference-valued
-        // lookup_value is looked up by its cell's value", T-1866).
+        // lookup_value lifts over an array or a multi-cell range, one search per element. An
+        // element that is an error is the result before match_type and lookup_array are checked:
+        // `MATCH({#N/A;1},A1:A3,"x")` is #N/A then #VALUE! (probes/match-lookup-value-lift E17;
+        // docs/excel-semantics/lookup.md "MATCH lifts over lookup_value", T-1866).
         self.lift_values(
             vec![target],
-            LiftCost::Cells(values.scan_cells()),
+            LiftCost::Cells(values.as_ref().map_or(1, SearchVector::scan_cells)),
             &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
             &mut |_, args| {
@@ -158,8 +156,16 @@ impl Model {
                 if target.is_error() {
                     return target.clone();
                 }
+                let match_type = match &match_type {
+                    Ok(match_type) => *match_type,
+                    Err(error) => return error.clone(),
+                };
+                let values = match &values {
+                    Ok(values) => values,
+                    Err(error) => return error.clone(),
+                };
                 let found = if match_type == 0 {
-                    lookup_index(target, &values, false)
+                    lookup_index(target, values, false)
                 } else {
                     // Any negative match_type searches descending, any positive one
                     // ascending (probes/lookup-approximate-search N20, N21).
