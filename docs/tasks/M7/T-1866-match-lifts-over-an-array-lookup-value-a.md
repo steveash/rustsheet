@@ -3,7 +3,7 @@ id: T-1866
 title: "MATCH lifts over an array lookup_value (a 1x1 array included)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ has no evidence.
 
 ## Out of scope
 -
+
+## Outcome
+MATCH now lifts `lookup_value` over an array or multi-cell range (one position per element; `match_type` stays scalar) through the shared `lift_values` driver, reusing `lookup_value_arg`, and spills like LOOKUP in static analysis. gen-m7/4629e931955aa4b8 passes (40/40). Unit test `test_match_lifts_over_array_lookup_value` covers a 1x1 array, a 2x1 array and a range; lookup.md updated. No oracle probe was run: the behaviour mirrors XMATCH/LOOKUP's verified lift.
