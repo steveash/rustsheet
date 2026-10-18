@@ -311,3 +311,47 @@ assumes about V between sweeps.
   the fingerprint eliminates every known source, ship the descriptive model (per-interval H, V and K tables
   with the per-store x87 sequence) as the engine kernel at the parity it reaches, record the residual as a
   known gap, and stop extending the ladder.
+
+### Research update 2 (2026-10-18): the kernel is a rational with two stored doubles
+
+Six parallel investigators ran on the data in section 1. Two of them independently reached the same structure,
+and the research agent re-verified the tiny-x part (3,048/3,048 with A and D0 alone):
+
+    ERF.PRECISE(x) = fl53( fl80( co ) / W ),   co = fl53(fl64(x * N)),   N = fl(P(z)),   W = fl(Q(z)),   z = fl(x*x)
+
+- P and Q are polynomials in z; N and W are stored doubles. The final divide is x87 (80-bit, then
+  rounded); a plain double divide misses a handful of points.
+- P(0) = A = 0x1.1df5e70c7956bp+0 and Q(0) = W0 = 0x1.fada15778ece6p-1 = 0.98994509777494666.
+  A/W0 = 2/sqrt(pi) + 1.067E-16, which accounts for the old "d0".
+- Fits:
+  - tiny x: 3,048/3,048 with no fitted constant (the old A+B model got 3,043);
+  - wknee long runs: 253,952/253,952, with N and W each stepping one ulp at a time;
+  - every run with zero misses in zs3 (36,864 points), ws (64,512), wla (122,880) and wl2 (z up to 7.4E-3).
+- Fitted coefficients:
+  - P = A + 0.1406813126423 z + 0.04481917070 z^2 + 0.0018054 z^3 + ... (P is the old H).
+  - Q = W0 + 0.45465726643 z + 0.0922778683 z^2 + 0.0104635 z^3 + ~7E-4 z^4.
+  - Q's terms were predicted, before fitting, from P and the erf series (Q = P/(erf(x)/x)).
+- What this explains: everything in section 2.3 beyond hi is an artefact of linearising x*N/W.
+  - K, V0, c1, c2 and R come from that linearisation.
+  - The true jump size N/W^2 varies with z, so no smooth V could chain; this is the section 4 blocker.
+  - The grid doubling at "lo = 0" is W crossing 1.0.
+  - P rises because Q rises faster than erf/x falls.
+- Ruled out:
+  - the phase quantisation of hypothesis 1 (tooth edges are linear in z to 1-6E-4 teeth);
+  - CALERF (q1/q0 = 0.45095 against 0.459275 measured);
+  - Boost's z*(Y + P/Q).
+- Normalised ratios (q1/q0 = 0.459275, q2/q0 = 0.093215, p1/p0 = 0.125942, p2/p0 = 0.040123) sit close
+  to the [4/5] Padé approximant of erf(x)/x in z (0.459171, 0.093132, 0.125837, 0.040075). So it is
+  probably a degree-(4,5)-like minimax rational. Why Q(0) is scaled to 0.98994 rather than 1 is open.
+- Separately, the absolute hi alias is now pinned to about 0.02 ulp up to z = 0.0111. The old H drifted
+  10.6 ulp at z = 4E-3, not the 0.1-2.6 stated in section 4.
+
+Next steps:
+1. Pin P and Q exactly as doubles from absolute step positions over z up to 0.25 (x < 0.5); this needs new
+   full-mantissa ladders above z = 0.011.
+2. Determine the Horner order and precision of each polynomial.
+3. Identify the source: Remez (4,5), Hart tables, and the reason for Q(0)'s scaling.
+4. Test the same "two stored doubles, then an 80-bit divide" pattern on ERFC (x >= 0.5) and on its tail drift.
+
+Review 1's H-A (a term-count change in a series) is not needed for x < 0.5 under this model, but it stays
+open for the ERFC tail drift (H-F).
