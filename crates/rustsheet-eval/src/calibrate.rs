@@ -46,7 +46,7 @@ pub struct Comparison {
 /// Cells only present in `recalculated` (e.g. an embedded canary sheet) are ignored.
 #[must_use]
 pub fn compare_snapshots(cached: &WorkbookSnapshot, recalculated: &WorkbookSnapshot) -> Comparison {
-    let (scorable, volatile_skipped) = scorable_cells(&cached, false);
+    let (scorable, volatile_skipped) = scorable_cells(cached, false);
     let others = recalculated.values();
     let cells = scorable
         .into_iter()
