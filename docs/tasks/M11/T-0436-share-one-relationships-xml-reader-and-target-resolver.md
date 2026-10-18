@@ -3,7 +3,7 @@ id: T-0436
 title: "Share one relationships-XML reader and target resolver in xlsx_snapshot"
 milestone: M11
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
