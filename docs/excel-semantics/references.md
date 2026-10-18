@@ -1522,7 +1522,7 @@ probes/t-n-range-top-left M, O (`=T(@{"a","b"})`, `=N(@{5,6})`).
 Implemented (T-1717): `add_legacy_intersection` (expressions/parser/static_analysis.rs) carries an
 `arrays` flag, true at the top of the cell and down through the scalar arguments of a function that
 computes from them (`legacy_array_context`, static_analysis/legacy.rs; not IF, IFERROR, IFNA, CHOOSE,
-IFS, SWITCH, LET or LAMBDA, nor N/T over IF or SWITCH). Where it holds, an array constant argument
+IFS, SWITCH, LET or LAMBDA, nor N/T over IF, SWITCH or a CHOOSE, INDEX or IFS that returns only array constants, T-1713). Where it holds, an array constant argument
 gets the `@`, and so does an array-valued call of more than one cell whose array is one of its
 arguments or comes from a non-scalar one (`legacy_array_call_at`). Probed since in T-1847 (below): IFNA, IFS, the IFERROR argument, T over SWITCH and the array-constant `@` under LEN and ISNUMBER/SEARCH match. Known mismatches: an array constant inside an operator (`=N({2;3}+0)`, `=ABS({2;3}+0)`) still spills in ours (T-1911), and a top-level `=SWITCH(1,1,{2;3})` gets an `@` from ours (T-1910). One-cell array-valued calls: `=ABS(TRANSPOSE({5}))` takes the `@` in Excel and ours (below), while CHOOSE's one-cell result takes none (probes/legacy-one-cell-shape-intersection J3). The export drops exactly these `@`s (`remove_redundant_legacy_intersection`). The N/T
 exception's `#VALUE!` is implemented by the legacy N/T marker (T-1713, next section).
@@ -1554,7 +1554,7 @@ shown `=@IF(1,N(IF(1,{2;3})))` and is 2.
 Exceptions: IFERROR gets the `@` (`=N(IFERROR({2;3},0))` is `=N(@IFERROR({2;3},0))`, 2), and SWITCH
 gets none and the legacy cell spills: `=N(SWITCH(1,1,{2;3}))` shows no `@` and gives 2, 3 in two
 cells, as a dynamic formula would.
-Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16).
+Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16), probes/legacy-n-t-marker-shapes (excel-graph, 2026-10-18).
 The neighbouring shapes (probes/legacy-n-t-reference-args-2, excel-graph, 2026-10-18, T-1768; Z1:Z2 = 7, 8,
 Y1:Y2 = "a", "b", W1:W2 = 1, 2): N and T over CHOOSE or INDEX of a reference take no `@` on the call and read
 the reference it returns (CHOOSE: its top-left cell; INDEX with a row and column number: that one cell; `=N(CHOOSE(1,Z1:Z2))` and `=N(INDEX(Z1:Z2,1))` are 7, `=T(CHOOSE(1,Y1:Y2))` and
@@ -1563,23 +1563,35 @@ scalar slot gets the `@` on the range only, never on the call, and the cell is `
 cover (rows 1-2 unprobed): `=N(IF(@W1:W2,Z1,Z2))`, `=N(OFFSET(Z1,@W1:W2,0))`, `=N(INDEX(Z1:Z2,@W1:W2))`, `=N(CHOOSE(@W1:W2,Z1,Z2))` and the
 T versions (all `#VALUE!` in row 10). The engine already matches all but N and T over CHOOSE or INDEX of a reference,
 where it adds an `@` on the call (N/T of CHOOSE: #VALUE!; FORMULATEXT `=N(@INDEX(...))`): T-1908.
+More shapes (probes/legacy-n-t-marker-shapes, excel-graph, 2026-10-18, T-1713 review; Z1 = 7; FORMULATEXT shows no `@`
+in any of them, and none spills): `=T(IF(1,{"a"}))`, `=N(CHOOSE(1,{2}))`, `=T(CHOOSE(1,{"a"}))`, `=N(IFS(1,{2}))`
+(one-element arms), `=N(INDEX({2,3;4,5},1))`, `=N(INDEX({2;3},1))`, `=N(IF(1,{2;3}+0))` (an operator in IF's arm),
+`=LEN(N(IF(1,{2;3})))`, `=N(IF(1,{2;3},Z1))` (a reference in the other arm), `=N(CHOOSE({1;2},{2;3},{4;5}))` and
+`=T(CHOOSE({1;2},{"a";"b"},{"c";"d"}))` are all `#VALUE!`. So CHOOSE's array index takes no `@` here, unlike
+`=@CHOOSE(@{1,2},H1:H2,I1:I2)` over references (probes/legacy-choose-array-index A3). `=N(INDEX({2},1,1))` is 2.
 Implemented (T-1713): the text is identical to the dynamic formula's, which spills, so the legacy rewrite
 records the `#VALUE!` reading in the stored formula, as an internal N/T kind (SPEC-0012, legacy-n-t-marker.md;
 `mark_legacy_reading`, static_analysis/legacy.rs, placed under T-1717's `arrays` flag; the kinds are T-1851's).
 It marks an N or T in a value position whose argument is a bare IF, or a CHOOSE, INDEX or IFS returning only array
 constants, that is not statically a scalar; the marked kernel reads an array as `#VALUE!` and a reference as its
-top-left cell. The CHOOSE, INDEX and IFS shapes no longer take an `@` (`leaves_call_whole`), and a one-element
-array constant in the marked argument's arms takes none either (`=N(IF(1,{2}))`, N20). Everything above matches
-(probes/legacy-n-t-reference-args, legacy-array-result A, G, I, n-array-lift D4). The marker is never printed: the
-export writes a plain `<f>` for a legacy cell and `cm="1"` for a dynamic twin. A range, an OFFSET of one with
-number-literal offsets, or an IF with a literal condition and such arms, gets no `@` under N and T since T-1728
-(`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator, an array constant or
-another call keeps the old `@`; CHOOSE and INDEX over references keep the old `@`, probed: T-1768, T-1908). An IF
-whose condition the rewrite intersects (`=N(IF(@W1:W2,Z1,Z2))`) is a scalar and is not marked. Re-entering a
-marked cell through a row/column edit, move, fill or paste does not keep the marker yet (T-1852).
+top-left cell. These shapes take no `@` on the call (`leaves_call_whole`), nor on CHOOSE's index, and a one-element
+array constant in the marked argument's returned arms (IF's arms, CHOOSE's and IFS's values) takes none either. The
+marker is never printed: the export writes a plain `<f>` for a legacy cell and `cm="1"` for a dynamic twin.
+Verified (all cells above match): IF with array-constant, one-element, operator and mixed reference arms and an
+array condition; CHOOSE with array-constant and one-element values and an array index; IFS with one value pair;
+INDEX of an array constant with one index or with row and column; and these positions: the top of the cell, ABS's
+and LEN's argument, and an operand of `+0` or `&""`. Not matched: `=N(INDEX({2;3},1))` is 2 in ours, because our
+INDEX gives a scalar there (T-1921). Extrapolated, unprobed: other scalar functions and operators around the call
+(T-1717's `arrays` flag, T-1847); IFS with more than one pair; INDEX with an area number; T over IFS or INDEX; and an
+IF nested in the marked argument's arms (the one-element `@` stays there).
+A range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms, gets no `@`
+under N and T since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator,
+an array constant or another call keeps the old `@`; CHOOSE and INDEX over references keep the old `@`, probed:
+T-1768, T-1908). An IF whose condition the rewrite intersects (`=N(IF(@W1:W2,Z1,Z2))`) is a scalar and is not marked.
+Re-entering a marked cell through a row/column edit, move, fill or paste does not keep the marker yet (T-1852).
 Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)
-Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908
+Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908, T-1921
 
 ## Legacy N and T marker spelling shadows a defined name of that spelling
 Rule: in Excel a workbook LAMBDA name is called by its name; in RustSheet the names `_RS_LEGACY_N` and

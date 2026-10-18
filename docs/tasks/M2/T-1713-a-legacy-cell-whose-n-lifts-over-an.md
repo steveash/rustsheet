@@ -76,32 +76,47 @@ The range half (`=N(Z1:Z2)` 7, no `@`) needs no marker and is T-1728.
   `add_legacy_intersection`'s `FunctionKind` arm when T-1717's `arrays` flag holds. It turns N/T
   into `NLegacy`/`TLegacy` (`Function::legacy_reading`, functions/kinds.rs) when the single argument
   is a bare IF, or a CHOOSE, INDEX or IFS whose every returnable argument is an array constant
-  (`returns_array_constants`), and that argument is not statically scalar
-  (`legacy_reads_array_as_error`).
-- **Decided after the arguments are rewritten**, not before: `=N(IF(W1:W2,Z1,Z2))` (probes
-  legacy-n-t-reference-args-2 H) is an array before the rewrite but `IF(@W1:W2,..)` after it, and
-  deciding first broke idempotence over the display text. The automatic one-element `@` of
-  `shows_scalar_array_at` in the argument's returned arms is looked through and dropped under the
-  marker (`=N(IF(1,{2}))`, N20, SPEC-0012 item 6).
+  (`returns_array_constants`), and that argument is not statically scalar.
+- **Order:** SPEC-0012's order is followed, after the argument loop. The decision runs on the
+  rewritten argument because `=N(IF(W1:W2,Z1,Z2))` (probes legacy-n-t-reference-args-2 H) is an array
+  before the rewrite and `IF(@W1:W2,..)`, a scalar, after it.
+- **One-element `@`:** the predicate looks through the automatic one-element `@`s of
+  `shows_scalar_array_at` in the returned arms (IF's arms, CHOOSE's and IFS's values). It takes them
+  off in place and puts them back if the call is not marked, so no node is cloned. The marked call
+  keeps them off (`=N(IF(1,{2}))`, N20; SPEC-0012 item 6).
 - **`leaves_call_whole`** now covers the CHOOSE/INDEX/IFS array-constant shapes too, so they lose
-  their `@` (A20, B20, K20, L20). Over a reference or a mixed arm they keep it (T-1908).
+  their `@` (A20, B20, K20, L20), CHOOSE's index included. Over a reference or a mixed arm they keep it
+  (T-1908).
 - **No export change.** `legacy_reading_intersects` gives a plain `<f>` for a marked legacy cell and
   `cm="1"` for a dynamic twin, and `=N(IF(A1,1,2))` stays a plain `<f>` either way.
 - **Room for the step:** `static_analysis_operator_chain` and `static_analysis_op_results` moved to
   static_analysis/broadcast.rs (static_analysis.rs 1137 → 1114 lines).
+- **Review round 1, new probe** probes/legacy-n-t-marker-shapes (M2, excel-graph, 2026-10-18).
+  FORMULATEXT shows no `@` in any cell and no cell spills.
+  - `#VALUE!`: `T(IF(1,{"a"}))`, `N(CHOOSE(1,{2}))`, `T(CHOOSE(1,{"a"}))`, `N(IFS(1,{2}))`,
+    `N(INDEX({2,3;4,5},1))`, `N(INDEX({2;3},1))`, `N(IF(1,{2;3}+0))`, `LEN(N(IF(1,{2;3})))`,
+    `N(IF(1,{2;3},Z1))`, `N(CHOOSE({1;2},{2;3},{4;5}))` and `T(CHOOSE({1;2},{"a";"b"},{"c";"d"}))`.
+  - 2: `N(INDEX({2},1,1))`.
+  - Ours matches 23 of 24 cells. That includes the dropped CHOOSE-index `@` (K20, L20) and the
+    one-element CHOOSE/IFS arms (B-D), so they stay as they were.
+  - Not matched: F10 `N(INDEX({2;3},1))` is 2 in ours, because our INDEX gives a scalar. Known
+    failure, T-1921.
+  - Which shapes are verified and which are extrapolated: references.md "Legacy N and T over a
+    reference-returning call".
 - **Tests:**
-  - test_legacy_n_t_marker.rs: placement over the Problem table, 18 marked and 12 negative rows;
-    the legacy and dynamic values; idempotence (twice, and over the display text, as RC) over all
-    415 `legacy_formulas` cells of the 24 probes cases.
+  - test_legacy_n_t_marker.rs: placement over the Problem table and the new probe's shapes (27
+    marked and 12 negative rows); the legacy and dynamic values; idempotence (twice, and over the
+    display text, as RC) over every `legacy_formulas` cell of the probes cases.
   - rustsheet-xlsx tests/dynamic_formula_export.rs: the export round trip for N/T over IF, CHOOSE,
     INDEX and IFS, the statically scalar case, and a legacy and a dynamic twin as two shared
     formulas.
 - **Eval:**
-  - probes known failures 2118 → 2086: exactly the 32 acceptance cells fixed, 0 new, 0 regressions.
+  - probes known failures 2118 → 2087 against main: the 32 acceptance cells fixed, 1 new-coverage
+    failure (legacy-n-t-marker-shapes F10, T-1921), 0 regressions.
   - ironcalc-calc 1243 → 1243 and fixtures 9 → 9; poi is not fetched here.
 - **Ratchets (decision 0010 line):** duplicated lines 3903 → 3883; oversized-files static_analysis.rs
   1137 → 1114, plus the stringify.rs, functions/mod.rs and model.rs shrinks T-1851 left on main.
 - **Gates:** fmt, clippy `-D warnings`, `cargo test` (engine, rustsheet, xlsx, eval), `make hygiene`
-  and the eval checks pass. The full `make check` and the reviewers have not run yet.
-- **Follow-ups:** none new. The re-entry paths are T-1852, CHOOSE/INDEX over references are T-1908,
-  and T over SWITCH / unprobed positions are T-1847.
+  and the eval checks pass. Reviewers: round 1 changes addressed; the reviewer box is still open.
+- **Follow-ups:** T-1921 (new: N over `INDEX({2;3},1)`). Already filed: T-1852 (re-entry paths),
+  T-1908 (CHOOSE/INDEX over references) and T-1847 (T over SWITCH, unprobed positions).

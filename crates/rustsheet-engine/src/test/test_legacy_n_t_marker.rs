@@ -253,6 +253,22 @@ fn the_legacy_rewrite_marks_n_and_t_over_an_array_valued_call() {
         ("N(IF(1,{\"x\";3}))", true, "N(IF(1,{\"x\";3}))"),
         // N20: no one-element `@` under the marker.
         ("N(IF(1,{2}))", true, "N(IF(1,{2}))"),
+        // probes/legacy-n-t-marker-shapes: one-element CHOOSE and IFS arms, INDEX of an array
+        // constant, an operator or a reference in IF's arms, N under LEN, and CHOOSE's array
+        // index, all `#VALUE!` with no `@` (A-F, H-L); `N(INDEX({2},1,1))` is 2 (G).
+        ("N(CHOOSE(1,{2}))", true, "N(CHOOSE(1,{2}))"),
+        ("T(CHOOSE(1,{\"a\"}))", true, "T(CHOOSE(1,{\"a\"}))"),
+        ("N(IFS(1,{2}))", true, "N(IFS(1,{2}))"),
+        ("N(INDEX({2,3;4,5},1))", true, "N(INDEX({2,3;4,5},1))"),
+        ("N(INDEX({2},1,1))", true, "N(INDEX({2},1,1))"),
+        ("N(IF(1,{2;3}+0))", true, "N(IF(1,{2;3}+0))"),
+        ("LEN(N(IF(1,{2;3})))", true, "LEN(N(IF(1,{2;3})))"),
+        ("N(IF(1,{2;3},Z1))", true, "N(IF(1,{2;3},Z1))"),
+        (
+            "N(CHOOSE({1;2},{2;3},{4;5}))",
+            true,
+            "N(CHOOSE({1;2},{2;3},{4;5}))",
+        ),
         // A reference result reads the same marked or not (J10, 7).
         ("N(IF(1,Z1:Z2))", true, "N(IF(1,Z1:Z2))"),
         // Not a value position: a vector argument, IF's arms, SUMPRODUCT's array context.
@@ -307,6 +323,9 @@ fn a_legacy_cell_reads_n_and_t_over_an_array_as_value_error() {
         ("=IF(1,N(IF(1,{2;3})))", "2", "2"),
         ("=N(IF(1,Z1:Z2))", "7", "7"),
         ("=N(IF(1,2))", "2", "2"),
+        ("=N(CHOOSE(1,{2}))", "#VALUE!", "2"),
+        ("=N(INDEX({2},1,1))", "2", "2"),
+        ("=N(CHOOSE({1;2},{2;3},{4;5}))", "#VALUE!", "2"),
     ] {
         let mut model = new_empty_model();
         model._set("Z1", "7");

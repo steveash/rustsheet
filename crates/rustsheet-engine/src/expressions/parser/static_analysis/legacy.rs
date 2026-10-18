@@ -3,7 +3,7 @@
 //! their mirror in `remove_redundant_implicit_intersection`. Excel:
 //! docs/excel-semantics/references.md "Legacy formulas intersect the ranges in value arguments".
 //!
-//! The same walk places the legacy N/T marker ([`legacy_reads_array_as_error`], SPEC-0012), so
+//! The same walk places the legacy N/T marker ([`mark_legacy_reading`], SPEC-0012), so
 //! the value-position flag `arrays` ([`legacy_array_context`], [`returns_an_argument`]) decides
 //! evaluation results as well as where an `@` goes: a change to it needs a probe's legacy values,
 //! not only its FORMULATEXT (SPEC-0012 "Placement", item 4).
@@ -11,7 +11,7 @@
 use super::lifted::lifts_arrays_at;
 use super::{
     add_legacy_intersection, for_each_chain_operand_mut, remove_redundant_legacy_intersection,
-    run_static_analysis_on_node, Node, Signature, StaticResult,
+    run_static_analysis_on_node, static_analysis_on_function, Node, Signature, StaticResult,
 };
 use crate::functions::Function;
 
@@ -267,59 +267,69 @@ fn is_returned_argument(kind: &Function, index: usize) -> bool {
     }
 }
 
-/// Whether the call `kind(arg)`, in a value position of a legacy cell, is an N or T that reads
-/// an array argument as `#VALUE!` (the marker of SPEC-0012, rule 2): `arg` is a bare IF (no `@`,
-/// no parentheses), or a CHOOSE, INDEX or IFS that returns only array constants
-/// ([`returns_array_constants`]), and is not statically a scalar. `=N(IF(1,{2;3}))`,
-/// `=T(IF(1,{"a";"b"}))`, `=N(IF(1,{2}))`, `=N(CHOOSE(1,{2;3}))`, `=ABS(N(IF(1,{2;3})))` and
-/// `=N(IF(1,{2;3}))+0` are `#VALUE!` in a legacy cell, while `=N(SWITCH(1,1,{2;3}))` spills and
-/// `=N(@IFERROR({2;3},0))` is 2 (probes/legacy-n-t-reference-args, legacy-array-result A, G, I,
-/// n-array-lift D4; T-1713). A scalar IF reads the same either way, so `=N(IF(A1,1,2))` gets no
-/// marker and its export does not change; so does one the rewrite made scalar,
-/// `=N(IF(@W1:W2,Z1,Z2))` (probes/legacy-n-t-reference-args-2 H).
-fn legacy_reads_array_as_error(kind: &Function, arg: &Node) -> bool {
-    kind.is_n_or_t()
-        && match arg {
-            Node::FunctionKind {
-                kind: Function::If, ..
-            } => true,
-            Node::FunctionKind { kind, args } => returns_array_constants(kind, args),
-            _ => false,
-        }
-        && !matches!(run_static_analysis_on_node(arg), StaticResult::Scalar)
-}
-
-/// Marks the call `kind(args)`, in a value position of a legacy cell and its arguments already
-/// rewritten, when [`legacy_reads_array_as_error`] holds for it. It is decided on, and the
-/// marked call keeps, its argument without the `@` [`shows_scalar_array_at`] put on a
-/// one-element array constant the argument returns: Excel shows `=N(IF(1,{2}))` with none,
-/// `#VALUE!` in a legacy cell (probes/legacy-n-t-reference-args N10, N20; SPEC-0012
-/// "Placement", item 6). Only the automatic `@`s are looked through, so the decision is the same
-/// on the rewrite's own display text, which has none.
+/// Marks the N or T call `kind(args)`, in a value position of a legacy cell and its arguments
+/// already rewritten, as one that reads an array argument as `#VALUE!` (the marker of SPEC-0012,
+/// rule 2). Its argument must be a bare IF (no `@`, no parentheses), or a CHOOSE, INDEX or IFS
+/// that returns only array constants ([`returns_array_constants`]), and not statically a scalar.
+/// `=N(IF(1,{2;3}))`, `=T(IF(1,{"a";"b"}))`, `=N(CHOOSE(1,{2;3}))`,
+/// `=N(CHOOSE({1;2},{2;3},{4;5}))` (no `@` on the index either), `=N(INDEX({2,3;4,5},1))`,
+/// `=N(IF(1,{2;3}+0))`, `=N(IF(1,{2;3},Z1))`, `=ABS(N(IF(1,{2;3})))` and
+/// `=LEN(N(IF(1,{2;3})))` are `#VALUE!` in a legacy cell, while `=N(SWITCH(1,1,{2;3}))` spills,
+/// `=N(@IFERROR({2;3},0))` is 2 and `=N(INDEX({2},1,1))` 2 (probes/legacy-n-t-reference-args,
+/// legacy-n-t-marker-shapes, legacy-array-result A, G, I, n-array-lift D4; T-1713). A scalar IF
+/// reads the same either way, so `=N(IF(A1,1,2))` gets no marker and its export does not change,
+/// nor does one the rewrite made scalar, `=N(IF(@W1:W2,Z1,Z2))` (legacy-n-t-reference-args-2 H).
+///
+/// The decision runs on the rewritten argument, looking through the automatic `@` that
+/// [`shows_scalar_array_at`] put on a one-element array constant the argument returns, and the
+/// marked call drops it: Excel shows `=N(IF(1,{2}))`, `=T(IF(1,{"a"}))`, `=N(CHOOSE(1,{2}))` and
+/// `=N(IFS(1,{2}))` with none, all `#VALUE!` (legacy-n-t-reference-args N, legacy-n-t-marker-shapes
+/// A-D; SPEC-0012 "Placement", item 6). Those `@`s are taken off in place and put back if the call
+/// is not marked, so nothing is cloned; the rewrite's own display text has none, so the decision is
+/// the same on it.
 pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
-    let [arg] = args else {
+    let [Node::FunctionKind {
+        kind: call,
+        args: call_args,
+    }] = args
+    else {
         return;
     };
-    if !kind.is_n_or_t() {
+    if !kind.is_n_or_t()
+        || !matches!(
+            call,
+            Function::If | Function::Choose | Function::Index | Function::Ifs
+        )
+    {
         return;
     }
-    let mut read = arg.clone();
-    if let Node::FunctionKind { kind, args } = &mut read {
-        for (index, returned) in args.iter_mut().enumerate() {
-            if let Node::ImplicitIntersection {
-                automatic: true,
-                child,
-            } = returned
-            {
-                if is_returned_argument(kind, index) && is_one_element_array(child) {
-                    *returned = child.as_ref().clone();
-                }
+    let mut dropped = Vec::new();
+    for (index, returned) in call_args.iter_mut().enumerate() {
+        if let Node::ImplicitIntersection {
+            automatic: true,
+            child,
+        } = returned
+        {
+            if is_returned_argument(call, index) && is_one_element_array(child) {
+                *returned = std::mem::replace(child.as_mut(), Node::EmptyArgKind);
+                dropped.push(index);
             }
         }
     }
-    if legacy_reads_array_as_error(kind, &read) {
-        *arg = read;
+    let marked = (matches!(call, Function::If) || returns_array_constants(call, call_args))
+        && !matches!(
+            static_analysis_on_function(call, call_args),
+            StaticResult::Scalar
+        );
+    if marked {
         *kind = kind.legacy_reading();
+    } else {
+        for index in dropped {
+            if let Some(returned) = call_args.get_mut(index) {
+                let constant = std::mem::replace(returned, Node::EmptyArgKind);
+                *returned = Node::automatic_at(constant);
+            }
+        }
     }
 }
 

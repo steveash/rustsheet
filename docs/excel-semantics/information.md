@@ -291,7 +291,9 @@ array constant or of TRANSPOSE gets an `@` (2): references.md "Legacy formulas p
 array constants" and "Legacy N and T over a reference-returning call" (probes/legacy-array-result,
 probes/legacy-n-t-reference-args).
 Implemented (T-1713): the legacy rewrite marks such an N call (`NLegacy`, SPEC-0012), whose kernel reads an
-array argument as `#VALUE!`; S!D4:D5 match. A dynamic `=N(IF(1,{2;3}))` is unmarked and still spills.
+array argument as `#VALUE!`; S!D4:D5 match. A dynamic `=N(IF(1,{2;3}))` is unmarked and still spills. Which
+marked shapes are verified and which are extrapolated: references.md "Legacy N and T over a reference-returning
+call" (probes/legacy-n-t-marker-shapes; `=N(INDEX({2;3},1))` is not matched yet, T-1921).
 Status: VERIFIED (excel-graph)
 Tasks: T-1616, T-1713, T-1727
 
