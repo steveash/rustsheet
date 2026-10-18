@@ -68,6 +68,25 @@ A 2-D *array* is `#N/A` too: `MATCH(2,{1,2;3,4},0)`, `MATCH(2,{1,2;3,4})`, `MATC
 Status: VERIFIED
 Tasks: T-0210, T-0224
 
+## MATCH, VLOOKUP and HLOOKUP over a single value
+Rule: a `lookup_array` (MATCH) or table (VLOOKUP, HLOOKUP) that is a single value rather than a
+reference or an array is no table: text that is not a number is `#VALUE!`, any other value `#N/A`,
+an error is itself; a one-cell reference, also picked by IF or INDEX, is searched as a one-cell
+range. A2 = "b", B2 = 2: `MATCH("b","b",0)`, `MATCH(2,"b",0)`, `MATCH("b","b")`,
+`MATCH("b",A2&"",0)`, `MATCH("b",T("b"),0)`, `VLOOKUP("b","b",1,FALSE)` and HLOOKUP's are
+`#VALUE!`; `MATCH(2,2,0)`, `MATCH(2,3,0)`, `MATCH(2,2)`, `MATCH(TRUE,TRUE,0)`, `MATCH("2","2",0)`,
+`MATCH(2,B2*1,0)`, `VLOOKUP(2,2,1,FALSE)`, `VLOOKUP("2","2",1,FALSE)` and
+`VLOOKUP(TRUE,TRUE,1,FALSE)` `#N/A`; `MATCH(2,1/0,0)` `#DIV/0!`; `MATCH(2,{2},0)`,
+`MATCH("b",{"b"},0)`, `MATCH("b",A2,0)`, `MATCH(2,B2,0)`, `MATCH(2,IF(TRUE,B2),0)` and
+`MATCH(2,INDEX(B2:B3,1),0)` 1, `VLOOKUP(2,B2,1,FALSE)` 2, `HLOOKUP("b",A2,1,FALSE)` "b". A legacy
+formula reaches this through its intersected lookup table (references.md "Legacy MATCH, VLOOKUP
+and HLOOKUP intersect an operation in their lookup table"). LOOKUP differs: it reads a single
+value as a one-element array ("LOOKUP vector form with 2-D or short vectors").
+Evidence: probes/match-single-value-lookup-array (excel-graph, 2026-10-18, T-1862).
+Engine: `Model::lookup_table` (lookup.rs) and `Model::evaluate_single_sheet_arg` (util.rs).
+Status: VERIFIED
+Tasks: T-1862
+
 ## LOOKUP vector form with 2-D or short vectors
 Rule: in `LOOKUP(value, lookup_vector, result_vector)`:
 - A 2-D lookup_vector is searched like the array form searches its array: along its first column, or

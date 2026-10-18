@@ -294,3 +294,41 @@ fn test_match_lifts_over_array_match_type() {
     assert_eq!(model._get_text("H1"), "#N/A");
     assert_eq!(model._get_text("H2"), "#VALUE!");
 }
+
+/// MATCH and VLOOKUP over a single value: a one-cell reference is searched, a single number or boolean is
+/// `#N/A` and non-numeric text `#VALUE!` (probes/match-single-value-lookup-array, excel-graph,
+/// T-1862).
+#[test]
+fn match_over_a_single_value() {
+    let mut model = new_empty_model();
+    model._set("A2", "b");
+    model._set("B2", "2");
+    let formulas = [
+        (r#"=MATCH("b",A2,0)"#, "1"),
+        ("=MATCH(2,B2,0)", "1"),
+        ("=MATCH(2,INDEX(B2:B3,1),0)", "1"),
+        ("=VLOOKUP(2,B2,1,FALSE)", "2"),
+        (r#"=VLOOKUP("b","b",1,FALSE)"#, "#VALUE!"),
+        (r#"=VLOOKUP("2","2",1,FALSE)"#, "#N/A"),
+        ("=MATCH(2,2,0)", "#N/A"),
+        ("=MATCH(TRUE,TRUE,0)", "#N/A"),
+        (r#"=MATCH("2","2",0)"#, "#N/A"),
+        ("=MATCH(2,B2*1,0)", "#N/A"),
+        (r#"=MATCH("b","b",0)"#, "#VALUE!"),
+        (r#"=MATCH(2,"b",0)"#, "#VALUE!"),
+        (r#"=MATCH("b",A2&"",0)"#, "#VALUE!"),
+        (r#"=MATCH("b","b")"#, "#VALUE!"),
+        ("=MATCH(2,1/0,0)", "#DIV/0!"),
+    ];
+    for (row, (formula, _)) in formulas.iter().enumerate() {
+        model._set(&format!("Z{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in formulas.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("Z{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}

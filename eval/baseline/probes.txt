@@ -377,6 +377,7 @@ C	probes/legacy-array-result.case.json	46
 C	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	27
 C	probes/legacy-choose-array-index.case.json	12
 C	probes/legacy-index-array-index.case.json	30
+C	probes/legacy-match-lookup-array-intersection.case.json	41
 C	probes/legacy-n-t-marker-shapes.case.json	24
 C	probes/legacy-n-t-reference-args-2.case.json	30
 C	probes/legacy-n-t-reference-args.case.json	41
@@ -452,6 +453,7 @@ C	probes/match-descending-forward-continuation.case.json	20
 C	probes/match-empty-text-lift.case.json	13
 C	probes/match-fractional-match-type.case.json	8
 C	probes/match-lookup-value-lift.case.json	19
+C	probes/match-single-value-lookup-array.case.json	26
 C	probes/match-type-nested-passthrough.case.json	17
 C	probes/match-type-text-passthrough.case.json	9
 C	probes/math-argument-modes.case.json	56
@@ -1851,6 +1853,8 @@ F	probes/legacy-array-at-shapes.case.json	S!I11
 F	probes/legacy-array-at-shapes.case.json	S!I20
 F	probes/legacy-array-at-shapes.case.json	S!J11
 F	probes/legacy-array-at-shapes.case.json	S!J20
+F	probes/legacy-match-lookup-array-intersection.case.json	Sheet1!J2
+F	probes/legacy-match-lookup-array-intersection.case.json	Sheet1!Y2
 F	probes/legacy-n-t-marker-shapes.case.json	S!F10
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
