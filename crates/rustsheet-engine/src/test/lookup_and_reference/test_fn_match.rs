@@ -246,6 +246,25 @@ fn test_match_lifts_over_array_lookup_value() {
 }
 
 #[test]
+fn test_match_lifts_over_empty_text_of_blanks() {
+    let mut model = new_empty_model();
+    model._set("B1", "a");
+    model._set("B3", "b");
+    // The CSE dedup idiom of corpus-bench 530-28: blanks become "" and match the first ""
+    // (probes/match-empty-text-lift D5, D7, D8), unlike the blank cells themselves (D9; T-1861).
+    // The omitted match_type is 0.
+    model._set("C1", "=SUM(MATCH(A1:A3&\"\",A1:A3&\"\",))");
+    model._set("C2", "=INDEX(MATCH(B1:B4&\"\",B1:B4&\"\",),4)");
+    model._set("C3", "=SUM(--(MATCH(B1:B4&\"\",B1:B4&\"\",)=ROW(1:4)))");
+    model._set("C4", "=MATCH(\"\",A1:A3,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "3");
+    assert_eq!(model._get_text("C2"), "2");
+    assert_eq!(model._get_text("C3"), "3");
+    assert_eq!(model._get_text("C4"), "#N/A");
+}
+
+#[test]
 fn test_match_lifts_over_array_match_type() {
     let mut model = new_empty_model();
     model._set("A1", "10");

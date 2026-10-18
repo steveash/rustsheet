@@ -448,14 +448,18 @@ that reads like an error: in gen-m7/4629e931955aa4b8 A19, `MATCH(TEXTSPLIT("#N/A
 the text `"#N/A"` returned a position, not `#N/A` (which would have won the subtraction). An error element is that slot's
 result before an invalid match_type is checked: `INDEX(MATCH({#N/A;1},A1:A3,"x"),1)` is `#N/A` (an invalid lookup_array next
 to an error element is not probed).
+Empty-text elements lift like any other text: in the CSE dedup idiom `MATCH(r&"",r&"",)` (match_type omitted, so 0) a blank
+cell of `r` becomes `""` and matches the first `""` of the lookup array, so `SUM(MATCH(A1:A3&"",A1:A3&"",))` is 3 over three blanks
+and `INDEX(MATCH(B1:B4&"",B1:B4&"",),4)` is 2 when B2 and B4 are the blanks (probes/match-empty-text-lift D4-D8; corpus-bench 530-28
+P8:Q8). This differs from the blank cells themselves: `MATCH("",A1:A3,0)` over blanks is `#N/A` (D9), as above.
 An array-valued match_type also lifts, broadcast with lookup_value (`ROWS(MATCH(2,A1:A3,{0;1}))` is 2, `INDEX(MATCH(B1:B2,A1:A3,{0;1}),1)` is 3); a multi-cell range match_type still reads its top-left cell (probes/match-type-nested-passthrough), and static analysis spills only for an array one.
 A scalar error lookup_value lifts over an array match_type too: `ROWS(MATCH(NA(),A1:A3,{0;1}))` is 2, `INDEX(MATCH(NA(),A1:A3,{0;1}),2)` is
 `#N/A`, and `#DIV/0!` fills both slots of `MATCH(#DIV/0!,..,{0;1})`; `MATCH(25,A1:A3,{0;"x"})` is `#N/A` then `#VALUE!` (the second
 slot's text match_type, not the error, decides; E3 itself is `#SPILL!` in the probe because E4:E5 block the spill).
-Evidence: probes/match-lookup-value-lift (19 cells; excel-graph, 2026-10-18, T-1866); probes/match-error-lookup-value-array-match-type (8 cells; excel-graph, 2026-10-18, T-1926); gen-m7/4629e931955aa4b8 Calc!A19 (excel-graph, T-1361).
+Evidence: probes/match-lookup-value-lift (19 cells; excel-graph, 2026-10-18, T-1866); probes/match-error-lookup-value-array-match-type (8 cells; excel-graph, 2026-10-18, T-1926); probes/match-empty-text-lift (13 cells; excel-graph, 2026-10-18, T-1861); gen-m7/4629e931955aa4b8 Calc!A19 (excel-graph, T-1361).
 Status: VERIFIED
 Implemented in: `Model::fn_match` (functions/lookup_and_reference/mod.rs) through `lift_values`; static analysis (`match_static_result`) spills by lookup_value and an array match_type.
-Tasks: T-1866, T-1917, T-1926
+Tasks: T-1866, T-1861, T-1917, T-1926
 
 ## A reference-valued lookup_value pointing at a blank or error cell
 Rule: `CHOOSE(1,J5)`, `OFFSET(J5,0,0)`, `INDIRECT("J5")`, `J5:J5` and the direct `J5` behave identically in VLOOKUP, HLOOKUP,
