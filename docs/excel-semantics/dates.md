@@ -718,3 +718,22 @@ Evidence: ironcalc-calc/DATE_AND_TIME/WEEKDAY_WEEKNUM_ISOWEEKNUM_issue_1502.xlsx
 Ours: matches (all 10 cells pass).
 Status: VERIFIED (upstream Excel-authored workbook)
 Tasks: T-1517
+
+## Date function lifts: weekend with a lifted date, TAKE/DROP of a range, mismatched shapes, boolean elements (T-1807)
+Rule (probes/date-lift-open, excel-graph, 2026-10-18): the lifted `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL broadcasts with
+a lifted date like any other argument pair: the result has the largest height and the largest width of the two (what the shorter one pads with is not probed)
+(`ROWS(WORKDAY.INTL({45000;45031},5,B1:B3))` = 3, `COLUMNS(...)` = 1; `WORKDAY.INTL(45000,{1;2},{1,2})` is 2x2;
+`NETWORKDAYS.INTL(45000,{46000,46100},B1:B3)` is 3x2). A column against a row gives the full grid in every function probed
+(`EDATE({45000;45031},{1,2,3})` is 2x3 and `EDATE({45000,45031},{1;2;3})` is 3x2). Mismatched same-axis arrays take the longer length
+(`ROWS(EDATE({45000;45031;45100},{1;2}))` = 3, likewise EOMONTH, WORKDAY, NETWORKDAYS, YEARFRAC, WEEKNUM and DAYS).
+`TAKE` and `DROP` of a range act like the multi-cell range they cut from (the range rule above applies; whether they return a
+reference is not probed): `EDATE(TAKE(A1:A3,2),1)`, `EDATE(DROP(A1:A3,1),1)`, `EOMONTH(45000,DROP(B1:B3,1))`, `WEEKNUM`,
+`WORKDAY`, `NETWORKDAYS`, `YEARFRAC` and `WORKDAY.INTL` of a 2-row `TAKE` are `#VALUE!` as a whole (ROWS = COLUMNS = `#VALUE!`), while a 1x1
+`TAKE` is that cell (`EOMONTH(TAKE(A1:A3,1),1)` = 45046). `DAYS(TAKE(A1:A3,2),1)` lifts (2 rows) and so does the `weekend`
+of NETWORKDAYS.INTL (`NETWORKDAYS.INTL(45000,46000,TAKE(B1:B3,2))` is 2 rows). A boolean element of an array month count is `#VALUE!` for
+that element only (`EDATE(45000,{TRUE;2})` = {`#VALUE!`; 45061}, `EOMONTH(45000,{FALSE;1})` = {`#VALUE!`; 45046},
+`WORKDAY(45000,{TRUE;5})` = {`#VALUE!`; 45007}, `WEEKNUM(45000,{TRUE;2})` = {`#VALUE!`; 12}).
+Ours: all 70 cells that fail are `#N/IMPL!` from WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL not lifting over arrays yet
+(T-1236); the EDATE, EOMONTH, WEEKNUM, YEARFRAC and DAYS cells already pass.
+Status: VERIFIED (excel-graph)
+Tasks: T-1807, T-1236
