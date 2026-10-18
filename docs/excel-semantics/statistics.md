@@ -443,8 +443,9 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
   - **Results below DBL_MIN** are flushed to 0, as elsewhere (596 cutoff points).
   - **Score.** With Excel's own EXP column as E, `erfc_tail_check.c` matches 1,540,475 of 1,540,477 points (all
     kmyst-erfc-* cases with an EXP column; 370,404 of 370,405 on cases not used in the fit). The 2 misses are 2 ulp
-    in the result at x = 0x1.6462e6ea85447p+3 and 0x1.f9b8b10efd91fp+3; both are unexplained and may be an
-    internal-exp difference.
+    in the result at x = 0x1.6462e6ea85447p+3 and 0x1.f9b8b10efd91fp+3. Both are input artefacts: Excel read those
+    cells' xlsx text as the next double up, and the model at that double matches exactly (numbers.md, "Stored numbers
+    in an xlsx are not always parsed to the nearest double"). So the tail model agrees with every probed point.
   - **Uniqueness.** The top coefficients are pinned to single doubles. A few late ones are equivalent on all data
     within a few ulps; the ranges are in the coefficient file.
   - **How it was found.**
