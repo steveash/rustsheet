@@ -119,7 +119,10 @@ impl Model {
         let grid = match value {
             CalcResult::Range { left, right } => self.evaluate_range(left, right, cell)?,
             CalcResult::Array(grid) => grid,
-            CalcResult::EmptyArg | CalcResult::EmptyCell => return Ok(vec![]),
+            // An omitted argument is no delimiter; a blank cell is the empty one
+            // (probes/textsplit-empty-delimiter A5, A6).
+            CalcResult::EmptyArg => return Ok(vec![]),
+            CalcResult::EmptyCell => return Ok(vec![String::new()]),
             err @ CalcResult::Error { .. } => return Err(err),
             scalar @ (CalcResult::String(_) | CalcResult::Number(_)) => {
                 return Self::cast_string_ref(&scalar, cell).map(|text| vec![text])

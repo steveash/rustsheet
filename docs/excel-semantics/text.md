@@ -344,7 +344,7 @@ spelling `number_to_text` gives, so `TEXTBEFORE("a1E+15b",{1E+15,"q"})` is `#N/A
 cell as the empty delimiter. An error element makes the call that error, even beside the empty delimiter
 (`TEXTBEFORE("abc",{"",#N/A})` is `#N/A`; a range holding `=1/0` gives `#DIV/0!`; TEXTSPLIT alike). So in TEXTSPLIT a
 blank cell in the col_delimiter range is `#VALUE!` (the empty delimiter, see "TEXTSPLIT with an empty delimiter is
-#VALUE!"), and so is one in the row_delimiter range (`TEXTSPLIT("abc",",",A9:B9)` with A9 blank, T-1412). In TEXTBEFORE
+#VALUE!"), and so is one in the row_delimiter range (`TEXTSPLIT("abc",",",A9:B9)` with A9 blank). In TEXTBEFORE
 and TEXTAFTER the empty delimiter decides the result alone, see the next entry; this explains the gen-m9 cells that
 looked inconsistent (`TEXTBEFORE(2,A9:D10)` is "2" because the text is one character long, `TEXTBEFORE(42,C11:D11,1E+15)`
 is "" because the empty delimiter ignores instance_num's size), and `TEXTAFTER(" x ",A6:A10,A9)` (A6 blank, A9 42) is
@@ -354,8 +354,7 @@ A31-A34, probes/textbefore-number-delimiter (excel-graph, 2026-10-18, T-1361); g
 gen-m7/0e40208f51c2454c Calc!A17; gen-m7/4629e931955aa4b8 Calc!A19; gen-m7/851eb2099ae3f805 Calc!A25 (excel-graph,
 2026-10-11, T-1275); gen-m9/0c7fc447bc2eebfd A6, 4df1b22d3ed63f58 A14, A30, 3ec66461400faf2f A3, 696af2c8cee2f57e A23,
 95efb37a9874f82e A25 (excel-graph, 2026-10-12, T-1289).
-Ours: matches (`delimiter_list` in functions/text/lifted.rs), except the blank in a row_delimiter range, which TEXTSPLIT
-still drops (T-1412). The error of a list with two different errors is the first in row-major order (UNVERIFIED).
+Ours: matches (`delimiter_list` in functions/text/lifted.rs). The error of a list with two different errors is the first in row-major order (UNVERIFIED).
 Status: VERIFIED (web)
 Tasks: T-1361, T-1412
 
@@ -389,13 +388,16 @@ Status: VERIFIED (web)
 Tasks: T-1347
 
 ## TEXTSPLIT with an empty delimiter is #VALUE!
-Rule: an empty row_delimiter is `#VALUE!` even when a non-empty col_delimiter is given:
-`TEXTSPLIT("TRUE"&"abc"&"x~*","TRUE1E-15a*","")` is `#VALUE!`.
-Evidence: gen-m9/d244411dd90f7fbd Calc!A6 (excel-graph, 2026-10-12, T-1289).
-Ours: the empty row delimiter is ignored (the whole text comes back; `TEXTSPLIT("abc","b","")` is "a"); `TEXTSPLIT("abc","")` and
-`TEXTSPLIT("abc",,"")` are already `#VALUE!`.
-Status: VERIFIED (web) for this form; an empty element inside a list is `#VALUE!` too (probes/textbefore-delimiter-range A30, A31, A33, A34, A44, A45; T-1361)
-Tasks: T-1412
+Rule: an empty delimiter is `#VALUE!` in either list, even when the other list has a non-empty one: a `""` string
+(`TEXTSPLIT("abc","b","")`, `TEXTSPLIT("abc","","b")`), an empty element of a list (`{"b",""}`, `{",",""}`), a blank
+cell alone or in a range, and an empty-string cell. An omitted delimiter is no delimiter and is fine beside the other one
+(`TEXTSPLIT("a,b",",",,TRUE)` is {"a","b"}). `TEXTSPLIT("TRUE"&"abc"&"x~*","TRUE1E-15a*","")` is `#VALUE!`.
+Evidence: probes/textsplit-empty-delimiter A1-A12 (excel-graph, 2026-10-18, T-1361); probes/textbefore-delimiter-range
+A30, A31, A33, A34, A44, A45; gen-m9/d244411dd90f7fbd Calc!A6 (excel-graph, 2026-10-12, T-1289); gen-m7/a0cbc75358b429b6
+Calc!A10 (a blank cell in a row_delimiter range).
+Ours: matches (`textsplit_element` in functions/text/textsplit.rs; `delimiter_list` reads a blank cell as "").
+Status: VERIFIED (web)
+Tasks: T-1412, T-1361
 
 ## TEXTSPLIT match_mode 1 case folding
 Rule: with match_mode 1 TEXTSPLIT compares case-insensitively without changing the length of the text. `İ` (U+0130) matches `i`

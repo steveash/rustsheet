@@ -41,11 +41,11 @@ impl Model {
         let mut lists = lists.into_iter();
         let col_delimiters = lists
             .next()
-            .map(|list| self.split_delimiters(list, false, cell));
+            .map(|list| self.split_delimiters(list, cell));
         // A bare empty-arg (omitted) row delimiter → no row splitting, which is the empty list.
         let row_delimiters = lists
             .next()
-            .map(|list| self.split_delimiters(list, true, cell));
+            .map(|list| self.split_delimiters(list, cell));
         let arg_count = args.len();
         let scanned: Vec<usize> = [&col_delimiters, &row_delimiters]
             .into_iter()
@@ -71,17 +71,13 @@ impl Model {
         )
     }
 
-    /// A TEXTSPLIT delimiter list, folded once per call; `skip_empty` drops its empty strings.
+    /// A TEXTSPLIT delimiter list, folded once per call.
     fn split_delimiters(
         &mut self,
         list: CalcResult,
-        skip_empty: bool,
         cell: CellReferenceIndex,
     ) -> Result<SplitList, CalcResult> {
-        let mut exact = self.delimiter_list(list, cell)?;
-        if skip_empty {
-            exact.retain(|d| !d.is_empty());
-        }
+        let exact = self.delimiter_list(list, cell)?;
         Ok(SplitList::new(Delimiters::folded_with(
             exact,
             fold_for_split,
@@ -110,21 +106,23 @@ impl Model {
             None => &no_delimiters,
         };
 
-        // An explicit empty string "" as a delimiter is invalid.
-        // An omitted col_delimiter (empty vec) is allowed when row_delimiter is provided.
-        if col_delims.list.exact().iter().any(String::is_empty) {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "col_delimiter must not be empty string".to_string(),
-            );
-        }
-
         let row_delims = match row_delimiters {
             Some(Ok(d)) => d,
             Some(Err(e)) => return e.clone(),
             None => &no_delimiters,
         };
+
+        // An empty delimiter (a "" string, a blank cell or an empty element of a list) is
+        // `#VALUE!`, in either list; an omitted delimiter is the empty list and is allowed when
+        // the other one is given (probes/textsplit-empty-delimiter A1-A12).
+        let lists = [&col_delims.list, &row_delims.list];
+        if lists.iter().any(|list| list.exact().iter().any(String::is_empty)) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "a delimiter must not be empty".to_string(),
+            );
+        }
 
         if col_delims.list.exact().is_empty() && row_delims.list.exact().is_empty() {
             return CalcResult::new_error(

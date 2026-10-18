@@ -293,3 +293,22 @@ fn delimiter_ranges_are_lists() {
     assert_eq!(model._get_text("A5"), *"#DIV/0!");
     assert_eq!(model._get_text("A6"), *"{\"a\",\"b\"}");
 }
+
+// T-1412: an empty delimiter is `#VALUE!` in either list, as a "" string, a blank cell or an
+// empty element of a list (probes/textsplit-empty-delimiter A1-A11).
+#[test]
+fn empty_row_delimiter_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("D2", ";");
+    model._set("A1", "=TEXTSPLIT(\"abc\",\"b\",\"\")");
+    model._set("A2", "=TEXTSPLIT(\"abc\",\"b\",{\",\",\"\"})");
+    model._set("A3", "=TEXTSPLIT(\"a,b\",\",\",D1)");
+    model._set("A4", "=TEXTSPLIT(\"a,b\",\",\",C2:D2)");
+    model._set("A5", "=TEXTSPLIT(\"a,b\",D1,\",\")");
+    model._set("A6", "=ARRAYTOTEXT(TEXTSPLIT(\"a,b\",\",\",,TRUE),1)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4", "A5"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
+    }
+    assert_eq!(model._get_text("A6"), *"{\"a\",\"b\"}");
+}
