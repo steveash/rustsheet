@@ -152,9 +152,10 @@ fn text_lifts_and_delimiters_are_a_list() {
 }
 
 // UNVERIFIED (no oracle cell; T-1824 probes them): match_end and if_not_found with a delimiter list
-// and every list entry longer than the text; an error inside the list is that error
-// (probes/textbefore-delimiter-list-elements A1, T-1361) (docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and
-// scalar arguments"). These pin the engine's current guesses so a change is deliberate.
+// and every list entry longer than the text. Only the error inside the list (A5) is oracle-backed:
+// probes/textbefore-delimiter-list-elements A1 (T-1361). See docs/excel-semantics/text.md
+// "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments". These pin
+// the engine's current guesses so a change is deliberate.
 #[test]
 fn list_with_match_end_and_if_not_found() {
     let mut model = new_empty_model();

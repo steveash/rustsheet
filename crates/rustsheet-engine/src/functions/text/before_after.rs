@@ -167,9 +167,9 @@ impl Model {
         })
     }
 
-    /// The result of an element whose delimiter list holds the empty delimiter, whatever the
-    /// other delimiters, the size of `instance_num`, `match_mode`, `match_end` and
-    /// `if_not_found`: the empty delimiter matches at the start of the text, or at its end when
+    /// The result of an element whose delimiter list holds the empty delimiter. The other
+    /// delimiters, the size of `instance_num`, `match_mode`, `match_end` and `if_not_found` do not
+    /// matter. The empty delimiter matches at the start of the text, or at its end when
     /// `instance_num` is negative or the text is one UTF-16 unit long (`TEXTBEFORE("é","")` is
     /// "é", `TEXTBEFORE("😀","")` is ""). Excel: see docs/excel-semantics/text.md "TEXTBEFORE
     /// and TEXTAFTER with the empty delimiter" (probes/textbefore-empty-delimiter-list).
