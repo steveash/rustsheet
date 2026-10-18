@@ -31,3 +31,5 @@ part and holds no formulas. Keep the scan fail-closed: skip only names ending in
 
 ## Outcome
 `formula_parts` now skips zero-byte `/`-named zip entries under `worksheets/` (a `/`-named entry with data is still scanned and refused if unreadable); two tools unit tests added. `rustsheet-oracle fill -b excel-graph --suite corpus-bench` wrote 182 new sidecars (the previously blocked workbooks); PENDING.md drops that section. Corpus-bench: 174 new cases, known failures 17 -> 26 (9 new-coverage failures, 0 regressions); engine fixes are for gap-triager tasks.
+
+Reconciliation: of the 182 sidecars, 7 have empty `sheets` (18137, 33094, 342-46, 41589, 44296, 58613, 59884: formula cells dropped by existing fill policy) and 17049 was already a baselined `!Timeout`, so 182 - 7 - 1 = 174 new cases. The 9 new-coverage failures are left to gap-triager.
