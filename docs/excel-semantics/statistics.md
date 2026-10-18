@@ -454,7 +454,7 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
       regressions.
     - Once N was exact, D's stages followed from per-stage correlation searches.
     - The low bits were pinned by peeling down from high x.
-  - **Still open:** the [0.5, 4] kernel's exact coefficients (structure below), and EXP's last F2XM1 cells.
+  - **Still open:** EXP's last F2XM1 cells. The [0.5, 4] kernel is bit-exact (below).
 - Wrappers of the ERFC kernel on 0.5 < x <= 4 (round 9 side-channel search; `kmyst-erfc-r9side1..4`, about 147k
   cells). None exposes N, D or R beyond B = ERFC.PRECISE(x). All 794 exact ties in 1-B and all 419 in 2-B resolve
   ties-to-even from B itself, so nothing reads the unrounded fl64(E*R).
@@ -469,35 +469,40 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
   - CHIDIST, CHISQ.TEST at df 1 and Z.TEST are wrappers too.
   - Z.TEST with a single-value array returns #DIV/0!.
   - Odd-df upper chi-square (Q(1.5), Q(2.5)) and the shape-0.5 density use separate generic paths, not this kernel.
-- ERFC kernel for 0.5 < x <= 4 (rounds 7-9): structure known, exact coefficients OPEN.
-  - **Form.** The same family as the tail. ERFC = fl53(fl64(E*R)) with R = fl(N/D). N (degree 9) and D (degree 10)
-    are Horner polynomials in x with every operation stored, and D's constant term is 1.
-  - **Generator.** The coefficients are a relative-error minimax (9,10) rational of erfcx on exactly [0.5, 4]
-    (minimax error about 1.4E-23). The tail is the same construction, (8,9) on [4, 26.54], scaled by 128.
-    - A 90-digit Remez reconstruction is in `docs/research/t1778/round9/gen910.txt`. It is about 1E-12 relative
-      from Excel's doubles, so it matches only 31% of points exactly: 39% with 80-bit internals, the smooth-model
-      level.
-  - **Evidence.** Two independent spectral tests on 4.54M recovered R values in runs of 8,192 consecutive doubles.
-    - Phase-free overlap of the rounding-line spectrum with an exact stored-Horner simulation:
-      - (9,10) on [0.5, 4] scores 0.68, against 0.95 for the tail's exact coefficients and 0.61 for a tail
-        generator 1E-12 off.
-      - Every other candidate is at chance (about 0.01): degrees (7,7), (8,7), (7,8), (8,8), (8,9), (9,9), (10,10),
-        and Cody's (8,8) at any scale.
-      - Moving an endpoint by 0.01 drops the score to 0.03-0.09.
-    - Per-stage matched filter over a scale scan: the (9,10) stages light up coherently at scale 1 (combined z
-      23.5; N5 16.7, D5 13.1). Cody (8,8) gives 6.2 and the least-squares (7,7) 4.1.
-  - **Superseded.** The earlier (7,7) reading came from a least-squares fit forced to that shape: the tiny top
-    coefficient (about -4.6E-10), the "invisible top stages", and the scale 1.020495. The scale was one stage's
-    alias. The (7,7) is rejected at every scale.
-    - Cody's monic D is rejected at 68 sigma: there is no fl(2^k*x + c) stage.
-    - A Cody-(8,8) shape fit to two strong lines on [3.5, 4) was an alias; no single stage reproduces those lines.
-  - **Visibility.** Under (9,10), every stored stage from the first sum down has a rounding weight of 0.02-1.05
-    noise units, so the tail's peeling method applies.
-    - No coefficient is pinned yet. Early top-coefficient readings used only x in [3.5, 4) and proved to be local
-      false peaks: two parameters can fit one narrow x patch. A candidate now counts only if it lights up in
-      several disjoint x regions, as the true coefficients do on synthetic data.
-  - **Data.** Long runs of consecutive doubles below 4, 2 and 1, for stage-mantissa readout: `kmyst-erfc-r8d*` and
-    `kmyst-erfc-r10a*`..`r10d*`. `r10d*` is a control below 3.
+- ERFC kernel for 0.5 < x <= 4 (rounds 7-9): bit-exact.
+  - **Form.** The same family as the tail. ERFC = fl53(fl64(E*R)) with R = fl53(fl64(N/D)). N (degree 9) and D
+    (degree 10) are Horner polynomials in x, evaluated from the top coefficient. Every operation is rounded
+    twice, s = fl53(fl64(fl53(fl64(s*x)) + c)), and D's constant term is exactly 1. E is Excel's own EXP(-(x*x)).
+    - The double rounding of the products matters: single-rounded products give 99.86%.
+  - **Coefficients.** In `docs/research/t1778/round9/erfc_mid_coef.txt`, highest degree first. Each of the 21 is
+    unique: a 1-ulp change in any one adds misses.
+  - **Score.** `round9/mid_check.c` (gcc -O1 -mfpmath=387) matches 5,629,402 of 5,629,407 points with 0.5 < x <= 4
+    (all kmyst-erfc-* cases with an EXP column, through `r11*`).
+    - The 5 misses are at x = 2.4500000000004998, 3.0900000000000998, 2.2677103947185002, 2.6493240961407998 and
+      1.3246620480703999. Each matches exactly at the neighbouring double, so these are the xlsx misparse quirk
+      (numbers.md), not kernel errors.
+  - **Generator.** A relative-error minimax (9,10) rational of erfcx on [0.5, 4], D0 = 1, like the tail's (8,9) on
+    [4, 26.54].
+    - Excel's doubles are not the plain 90-digit Remez solution (`round9/gen910.txt`). They are 1.5E-9 to 1.6E-8
+      higher in relative terms (up to 1.3E8 ulps), smoothly in degree.
+    - N0 and D0 agree exactly, and the shift moves along a near-null direction of the rational. So the function
+      agrees to about 1E-20, but no ulp-level reconstruction of Excel's generator exists. The doubles had to be
+      measured.
+  - **How the coefficients were found.**
+    - A spectral test picked the degree: line-spectrum overlap with exact stored-Horner simulations is 0.68 for
+      (9,10), and chance for every other degree and for Cody's (8,8).
+    - Global step, a phase lattice. Each stored product's sawtooth phase, locked in per (run, stage), is linear
+      in the integer mantissa errors. A closest-vector lattice solve (fpylll) over about 850 equations with a
+      1E9-ulp box took the generator from 31% to 85.5% exact.
+    - Top coefficients. Products near x = 4 hide their phase errors, so these came from top-down stage peeling
+      on non-dyadic-start runs (`r11b*`), cross-checked against a chain solve up the Horner recursion. The two
+      methods agreed to a few ulps on D6..D9.
+    - Last, 2-D exact searches on the top pairs.
+  - **Lesson.** Peeling on runs that all start at multiples of 1/128 (`r8d*`) gives lattice aliases: the low bits
+    are right but the high part is wrong. A candidate has to hold in several disjoint x regions, or on irregular
+    run starts.
+  - The (7,7) least-squares reading of rounds 7-8 is superseded: its tiny top coefficient, invisible top stages
+    and lambda = 1.020495 were all artefacts of the wrong degree.
 
 - GAMMA.DIST(z, 0.5, 1, TRUE) = ERF.PRECISE(SQRT(z)) = CHISQ.DIST(2z, 1, TRUE) at 15,360 of 15,360 consecutive
   doubles z, about half of which are not squares of doubles (`kmyst-erf-decouple`).
