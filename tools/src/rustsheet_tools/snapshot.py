@@ -42,7 +42,8 @@ def _eval_json(*args: str) -> dict[str, Any]:
 
 def suite_cases(suite: str) -> list[dict[str, Any]]:
     """The suite's cases as the harness discovers them (`rustsheet-eval cases`, see main.rs):
-    one entry per case with its `id`, case `path` and oracle `sidecar` path."""
+    one entry per case with its `id`, case `path` and oracle `sidecar` path, and for xlsx suites
+    `formula_cells`, `trusts_cached_values`, `suite_uses_cached_values` and `unreadable`."""
     out = subprocess.run(
         [str(eval_binary()), "--root", str(repo_root()), "cases", suite],
         check=True,
