@@ -165,6 +165,39 @@ fn test_regexreplace_invalid_regex() {
     assert_eq!(model._get_text("A1"), "#VALUE!");
 }
 
+// T-1688: the replacement is PCRE2's extended syntax (text.md "REGEXREPLACE replacement syntax",
+// probes/regex-pcre2-features).
+#[test]
+fn regexreplace_replacement_syntax() {
+    let mut model = new_empty_model();
+    let cases = [
+        (r#""ab","(a)","\1\1""#, "aab"),
+        (r#""ab","(a)","[$1a]""#, "[aa]b"),
+        (r#""ab","(a)","[\$1|\\|$$]""#, r"[$1|\|$]b"),
+        (r#""ab","(?<x>a)","${x}$x${1}""#, "aaab"),
+        (r#""ab","a","[\$\t]""#, "[$\t]b"),
+        (r#""zz","(a)","\1""#, "zz"),
+        (r#""ab","(a)","$2""#, "#VALUE!"),
+        (r#""ab","(a)","[\10]""#, "#VALUE!"),
+        (r#""ab","(a)","${y}""#, "#VALUE!"),
+        (r#""ab","(a)","$""#, "#VALUE!"),
+        (r#""ab","(a)","x\""#, "#VALUE!"),
+        (r#""ab","(a)","\0""#, "#VALUE!"),
+        (r#""ab","(a)","\q""#, "#VALUE!"),
+    ];
+    for (row, (args, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), &format!("=REGEXREPLACE({args})"));
+    }
+    model.evaluate();
+    for (row, (args, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{args}"
+        );
+    }
+}
+
 #[test]
 fn test_regexreplace_wrong_arg_count() {
     let mut model = new_empty_model();
@@ -249,22 +282,6 @@ fn regexreplace_result_is_bounded_before_it_is_built() {
     assert_eq!(model._get_text("A3"), *"32766");
     assert_eq!(model._get_text("A4"), *"#VALUE!");
     assert_eq!(model._get_text("A5"), *"30000");
-}
-
-// The replacement keeps the regex crate's syntax, as on main: `$$` is a dollar, `${name}` and
-// `$name` a named group, `$1a` the (absent) group named `1a`, and a lone `$` itself. UNVERIFIED
-// against Excel's PCRE2 syntax (T-1817 probes it).
-#[test]
-fn regexreplace_replacement_syntax() {
-    let mut model = new_empty_model();
-    model._set(
-        "A1",
-        "=REGEXREPLACE(\"ab\",\"(?P<x>a)(b)\",\"[${x}|$2|$$|$1a|$]\")",
-    );
-    model._set("A2", "=REGEXREPLACE(\"ab\",\"(?P<x>a)\",\"$x$x\")");
-    model.evaluate();
-    assert_eq!(model._get_text("A1"), *"[a|b|$||$]");
-    assert_eq!(model._get_text("A2"), *"aab");
 }
 
 // T-1272 performance review: iterating matches on the PikeVM (a `\b` pattern over non-ASCII

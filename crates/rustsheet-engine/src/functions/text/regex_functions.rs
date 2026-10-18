@@ -154,27 +154,102 @@ fn too_much_regex_work(cell: CellReferenceIndex) -> CalcResult {
     )
 }
 
+/// One part of a parsed REGEXREPLACE replacement.
+enum Piece {
+    /// Text copied as it is.
+    Literal(String),
+    /// A capture group's text.
+    Group(usize),
+}
+
 /// A REGEXREPLACE replacement split once into its literal text and the capture groups it
-/// refers to, with the regex crates' own `$name` rules (`regex_automata`'s interpolation), so
-/// the length of a result is known before it is built.
-struct Replacement<'a> {
-    text: &'a str,
-    /// The replacement with no groups expanded: all of it when it refers to none.
-    literal: String,
+/// refers to, so the length of a result is known before it is built. Excel reads `$n`, `${n}`,
+/// `$name`, `${name}` and `$$` as PCRE2 does (a number is all the digits after the `$`, so `$1a`
+/// is group 1 then "a"), and also `\n` for group n, `\\` for `\` and `\$` for `$`
+/// (text.md "REGEXREPLACE replacement syntax"; probes/regex-pcre2-features B1-B14).
+struct Replacement {
+    pieces: Vec<Piece>,
+    /// The bytes of literal text in all the pieces.
+    literal_len: usize,
     /// Each group referred to and how often.
     groups: Vec<(usize, usize)>,
 }
 
-impl<'a> Replacement<'a> {
-    fn new(engine: &Engine, text: &'a str) -> Self {
+/// The decimal number `digits` spells, `None` past `usize`: a group no pattern has.
+fn group_number(digits: &str) -> Option<usize> {
+    digits.parse().ok()
+}
+
+/// The length of the run at the start of `s` of the characters `keep` accepts.
+fn run_len(s: &str, keep: impl Fn(char) -> bool) -> usize {
+    s.find(|c: char| !keep(c)).unwrap_or(s.len())
+}
+
+/// Whether `c` may appear in a group name.
+fn is_name_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_'
+}
+
+impl Replacement {
+    /// Parses `text` for a pattern compiled to `engine`; `None` when Excel gives `#VALUE!` for
+    /// it: a group the pattern does not have (`$2`, `\2`, `${y}` with one unnamed group), a `$`
+    /// that starts no reference, a trailing `\`, `\0` or a letter escape other than `\n` and
+    /// `\t` (probes/regex-pcre2-features B15-B24, B30).
+    fn new(engine: &Engine, text: &str) -> Option<Self> {
+        let mut pieces = Vec::new();
         let mut literal = String::new();
-        let mut refs = Vec::new();
-        regex_automata::util::interpolate::string(
-            text,
-            |index, _| refs.push(index),
-            |name| engine.group_index(name),
-            &mut literal,
-        );
+        let mut rest = text;
+        while let Some(at) = rest.find(['$', '\\']) {
+            literal.push_str(rest.get(..at)?);
+            let backslash = rest.get(at..)?.starts_with('\\');
+            let after = rest.get(at + 1..)?;
+            let next = after.chars().next()?;
+            let reference = if next == '$' || (backslash && !next.is_ascii_alphanumeric()) {
+                // `$$`, `\$`, `\\` and a backslash before any other punctuation are the
+                // character itself (PCRE2's rule; only `$` and `\` are probed).
+                literal.push(next);
+                None
+            } else if backslash && next != '0' && next.is_ascii_digit() {
+                let digits = run_len(after, |c| c.is_ascii_digit());
+                Some((group_number(after.get(..digits)?)?, digits))
+            } else if backslash {
+                literal.push(match next {
+                    'n' => '\n',
+                    't' => '\t',
+                    // PCRE2's other escapes (`\r`, `\xhh`, `\U` case forcing...) are not done
+                    // yet; `\x` alone, `\q` and `\0` are #VALUE! in Excel (T-1897).
+                    _ => return None,
+                });
+                None
+            } else {
+                Some(Replacement::dollar_group(engine, after)?)
+            };
+            let used = match reference {
+                Some((index, used)) => {
+                    if index >= engine.group_len() {
+                        return None;
+                    }
+                    if !literal.is_empty() {
+                        pieces.push(Piece::Literal(std::mem::take(&mut literal)));
+                    }
+                    pieces.push(Piece::Group(index));
+                    used
+                }
+                None => next.len_utf8(),
+            };
+            rest = after.get(used..)?;
+        }
+        literal.push_str(rest);
+        if !literal.is_empty() {
+            pieces.push(Piece::Literal(literal));
+        }
+        let mut refs: Vec<usize> = pieces
+            .iter()
+            .filter_map(|piece| match piece {
+                Piece::Group(index) => Some(*index),
+                Piece::Literal(_) => None,
+            })
+            .collect();
         refs.sort_unstable();
         let mut groups: Vec<(usize, usize)> = Vec::new();
         for index in refs {
@@ -183,17 +258,52 @@ impl<'a> Replacement<'a> {
                 _ => groups.push((index, 1)),
             }
         }
-        Replacement {
-            text,
-            literal,
+        let literal_len = pieces
+            .iter()
+            .map(|piece| match piece {
+                Piece::Literal(text) => text.len(),
+                Piece::Group(_) => 0,
+            })
+            .sum();
+        Some(Replacement {
+            pieces,
+            literal_len,
             groups,
+        })
+    }
+
+    /// The group a `$` followed by `after` refers to and the bytes of `after` the reference
+    /// takes; `None` when it is no reference or names no group of the pattern.
+    fn dollar_group(engine: &Engine, after: &str) -> Option<(usize, usize)> {
+        let resolve = |name: &str| {
+            if name.bytes().all(|b| b.is_ascii_digit()) {
+                group_number(name)
+            } else {
+                engine.group_index(name)
+            }
+        };
+        let digits = run_len(after, |c| c.is_ascii_digit());
+        if digits > 0 {
+            return Some((group_number(after.get(..digits)?)?, digits));
         }
+        if let Some(braced) = after.strip_prefix('{') {
+            let name = run_len(braced, is_name_char);
+            if name > 0 && braced.get(name..)?.starts_with('}') {
+                return Some((resolve(braced.get(..name)?)?, name + 2));
+            }
+            return None;
+        }
+        if after.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_') {
+            let name = run_len(after, is_name_char);
+            return Some((resolve(after.get(..name)?)?, name));
+        }
+        None
     }
 
     /// The byte length of `REGEXREPLACE(text, re, replacement)`, saturating, without building it.
     fn result_len(&self, search: &mut Search<'_>, text: &str) -> Result<usize, Spent> {
         let mut len = text.len();
-        let literal_len = self.literal.len();
+        let literal_len = self.literal_len;
         if self.groups.is_empty() {
             search.for_each_match(text, |m| {
                 len = len.saturating_add(literal_len).saturating_sub(m.len());
@@ -218,21 +328,35 @@ impl<'a> Replacement<'a> {
         let mut out = String::with_capacity(len);
         let mut last = 0;
         if self.groups.is_empty() {
+            let literal = self.pieces.iter().find_map(|piece| match piece {
+                Piece::Literal(literal) => Some(literal.as_str()),
+                Piece::Group(_) => None,
+            });
             search.for_each_match(text, |m| {
                 out.push_str(text.get(last..m.start()).unwrap_or_default());
-                out.push_str(&self.literal);
+                out.push_str(literal.unwrap_or_default());
                 last = m.end();
             })?;
-        } else {
-            let mut caps = search.engine.create_captures();
-            search.for_each_captures(text, &mut caps, |caps| {
-                if let Some(m) = caps.get_match() {
-                    out.push_str(text.get(last..m.start()).unwrap_or_default());
-                    caps.interpolate_string_into(text, self.text, &mut out);
-                    last = m.end();
-                }
-            })?;
+            out.push_str(text.get(last..).unwrap_or_default());
+            return Ok(out);
         }
+        let mut caps = search.engine.create_captures();
+        search.for_each_captures(text, &mut caps, |caps| {
+            if let Some(m) = caps.get_match() {
+                out.push_str(text.get(last..m.start()).unwrap_or_default());
+                for piece in &self.pieces {
+                    match piece {
+                        Piece::Literal(literal) => out.push_str(literal),
+                        Piece::Group(index) => {
+                            if let Some(span) = caps.get_group(*index) {
+                                out.push_str(text.get(span.range()).unwrap_or_default());
+                            }
+                        }
+                    }
+                }
+                last = m.end();
+            }
+        })?;
         out.push_str(text.get(last..).unwrap_or_default());
         Ok(out)
     }
@@ -381,21 +505,26 @@ impl Model {
                 };
                 // Two passes over the text: one measures the result, one builds it.
                 let replaced = cache.with(&pattern, cell, |search| {
-                    let replacement = Replacement::new(search.engine, &replacement);
+                    let Some(replacement) = Replacement::new(search.engine, &replacement) else {
+                        return Ok(Err(CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Invalid replacement".to_string(),
+                        )));
+                    };
                     let len = replacement.result_len(search, &text)?;
                     if !within_text_budget(&mut total, len) {
                         over_budget = true;
-                        return Ok(None);
+                        return Ok(Err(too_long(cell)));
                     }
                     if len > MAX_REPLACED_BYTES {
-                        return Ok(None);
+                        return Ok(Err(too_long(cell)));
                     }
-                    Ok(Some(replacement.replace(search, &text, len)?))
+                    Ok(Ok(replacement.replace(search, &text, len)?))
                 });
                 let replaced = match replaced {
-                    Ok(Some(replaced)) => Text::from(replaced.as_str()),
-                    Ok(None) => return too_long(cell),
-                    Err(error) => return error,
+                    Ok(Ok(replaced)) => Text::from(replaced.as_str()),
+                    Ok(Err(error)) | Err(error) => return error,
                 };
                 if replaced.len_utf16() > MAX_TEXT_UNITS {
                     return too_long(cell);
