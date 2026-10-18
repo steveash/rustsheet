@@ -1,0 +1,57 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1850: SORT/SORTBY error-argument order and invalid-argument combinations.",
+ "tags": [
+  "M2",
+  "probe",
+  "lookup",
+  "T-1850"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 3,
+    "A2": 1,
+    "A3": 2,
+    "B1": "c",
+    "B2": "a",
+    "B3": "b",
+    "C1": 2,
+    "C2": 1,
+    "C3": 3,
+    "H1": "=SORT(A1:C3,0,1)",
+    "H5": "=SORT(A1:C3,1,0)",
+    "H9": "=SORT(A1:C3,NA(),1)",
+    "H13": "=SORT(A1:C3,0,NA())",
+    "H17": "=SORT(A1:C3,1,NA())",
+    "H21": "=SORT(A1:C3,1,1,NA())",
+    "H25": "=SORT(A1:C3,0,1,NA())",
+    "H29": "=SORT(A1:C3,NA(),1/0)",
+    "H33": "=SORT(A1:C3,1/0,NA())",
+    "H37": "=SORT(A1:C3,NA(),1,1/0)",
+    "H41": "=SORT(A1:C3,1,NA(),1/0)",
+    "H45": "=SORT(A1:C3,0,\"a\"+1)",
+    "H49": "=SORT(A1:C3,\"a\"+1,0)",
+    "H53": "=SORT(A1:C3,0,1/0,NA())",
+    "H57": "=SORT(A1:C3,{1,2},1)",
+    "H61": "=SORT(A1:C3,1,{1,-1})",
+    "H65": "=SORT(A1:C3,1,{1,-1},TRUE)",
+    "H69": "=SORT(A1:C3,{1,2},{1,-1},TRUE)",
+    "H73": "=SORTBY(A1:A3,C1:C3,NA())",
+    "H77": "=SORTBY(A1:A3,NA(),1)",
+    "H81": "=SORTBY(A1:A3,C1:C3,0)",
+    "H85": "=SORTBY(A1:A3,C1:C3,0,B1:B3,NA())",
+    "H89": "=SORTBY(A1:A3,C1:C3,NA(),B1:B3,1/0)",
+    "H93": "=SORTBY(A1:A3,C1:C3,1/0,B1:B3,NA())",
+    "H97": "=SORTBY(A1:A3,C1:C3,{1;-1;1})",
+    "H101": "=SORTBY(A1:A3,C1:B3,1)",
+    "H105": "=SORTBY(A1:A3,C1:C2,NA())",
+    "H109": "=SORTBY(A1:A3,C1:C2,0)",
+    "H113": "=SORTBY(NA(),C1:C3,0)",
+    "H117": "=SORT(NA(),0,1)"
+   }
+  }
+ ],
+ "expected": {}
+}
