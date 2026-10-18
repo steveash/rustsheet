@@ -368,7 +368,7 @@ Probed (probes/date-text-glued-month-2, excel-graph 2026-10-18, T-1879; rows ref
   `#VALUE!`); `"1July1"` is 2001-07-01 (serial 37073, day 1, month July, two-digit year 01; row 9).
   A day number past the month's end reads as a year, following `"July32"`: `"Jun31"` is 1931-06-01 (serial
   11475) and `"Feb29"` is the 1st of February of the clock year (2029-02-01 = 47150 on the 2026 oracle; rows 10-11,
-  MONTH 6/2 and DAY 1 scored). The engine returns `#VALUE!` for rows 6-9 (task filed below).
+  MONTH 6/2 and DAY 1 scored). The engine returns `#VALUE!` for rows 6-9 and for row 12, the same text with a clock (T-1904).
 - Date+time text goes through the same split: `"July1 10:00"`, `"Jul1 10 AM"`, `"1JUN2021 6 PM"`, `"1JUN2021 18:30"`,
   `"July1 10:00:30"` and `"Jul1 , 2026 10:00"` are date-times in VALUE (fractions 0.41666..., 0.75, 0.7708...,
   0.41701...; rows 1-5, 12), and TIMEVALUE of the same text is just the clock fraction. TIMEVALUE of date-only
@@ -381,7 +381,7 @@ Probed (probes/date-text-glued-month-2, excel-graph 2026-10-18, T-1879; rows ref
   format `d-mmm`; `"Jul2026"` -> 2026-07-01, `mmm-yy`; `"Jun31"` -> 1931-06-01, `mmm-yy`; `"1Jul 2026"`,
   `"Jul1 , 2026"` and `"1JUN2021"` -> d-mmm-yy dates (2026-07-01, 2026-07-01, 2021-06-01); `"July1 10:00"` ->
   46204.41666..., format `m/d/yyyy h:mm`; `"Jun1.5"` stays text (General). The engine matches except the typed
-  `"Jul1 , 2026"` and `"July1 10:00"`, which it leaves as text (task filed below).
+  `"Jul1 , 2026"` (T-1904) and `"July1 10:00"` (T-1905), which it leaves as text.
 UNVERIFIED:
 - the clock-year results (`"July1"`, `"Feb29"`) for clocks other than the oracle's 2026;
 - locales other than en-US (the split uses the locale's month names).
