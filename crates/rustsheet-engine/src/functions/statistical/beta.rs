@@ -68,7 +68,7 @@ impl Model {
         bounds: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        // TODO(T-1847): Excel reads a TRUE as 1 in x (probes/stat-later-argument-lift L1).
+        // TODO(T-1849): Excel reads a TRUE as 1 in x (probes/stat-later-argument-lift L1).
         let x = self.cast_number_no_bools_ref(x, cell)?;
         let alpha = self.cast_number_no_bools_ref(alpha, cell)?;
         let beta_param = self.cast_number_no_bools_ref(beta, cell)?;

@@ -134,11 +134,16 @@
   T-1272: duplicated lines 5062 → 4876 (TEXTBEFORE and TEXTAFTER share one `text_around`, TEXTSPLIT and
   TEXTBEFORE/TEXTAFTER one `delimiter_list`, and the text path reads ranges through `LiftedArg::read`)
   (`check_duplication.py --update`).
-  T-1290: duplicated lines 4876 → 4574 (the statistical functions whose every argument is scalar
+  T-1822: duplicated lines 4876 → 4812 (ACCRINT, DURATION, MDURATION, PRICE and the COUP* functions
+  share `coupon_args` and `bond_args` instead of their repeated `get_number` argument blocks)
+  (`check_duplication.py --update`).
+  T-1290: duplicated lines 4812 → 4510 (the statistical functions whose every argument is scalar
   become kernels over borrowed values; BETADIST, NORMSDIST, LOGNORMDIST, NEGBINOMDIST and TDIST share
   their modern function's kernel instead of rebuilding its argument nodes) (`check_duplication.py
-  --update`), and expressions/parser/static_analysis.rs 1385 → 1293 lines (the fallback arms of the
-  44 statistical functions now in the lifting table), functions/mod.rs 2180 → 2179 (GAMMALN and
-  GAMMALN.PRECISE share one dispatch arm) (`check_file_size.py --update`).
+  --update`), and expressions/parser/static_analysis.rs 1385 → 1273 lines (the fallback arms of the
+  44 statistical functions now in the lifting table; 1360 already on main after T-1822), functions/mod.rs
+  2180 → 2179 (GAMMALN and GAMMALN.PRECISE share one dispatch arm), and
+  functions/financial/financial_bonds.rs 1212 → 1178 (already 1178 lines on main; the update tightened a stale
+  entry) (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

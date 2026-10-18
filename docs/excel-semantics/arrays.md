@@ -461,7 +461,8 @@ range. DROP, TRIMRANGE and XLOOKUP results that span several cells are refused t
 the engineering functions lift too, and since T-1372 28 financial functions (PMT, PV, FV, NPER,
 RATE, IPMT, PPMT, ISPMT, RRI, PDURATION, SLN, SYD, DDB as `Lift`; EFFECT, NOMINAL, DOLLARDE,
 DOLLARFR, ACCRINTM and the discount securities and T-bills as `LiftArrays`), so the PMT, EFFECT and
-ACCRINTM cells here pass (scalar-lift-open-a W4, W14, W15; -b W9; -d W8-W18). Since T-1290 the
+ACCRINTM cells here pass (scalar-lift-open-a W4, W14, W15; -b W9; -d W8-W18). Since T-1822 ACCRINT,
+the COUP* family, DURATION, MDURATION and PRICE are `LiftArrays` as well (scalar-lift-open-a Y1-Y7). Since T-1290 the
 44 statistical functions whose every argument is scalar and whose kernels are bounded lift as `Lift`
 (statistics.md "Statistical function argument modes"), so NORM.DIST's and NORM.S.DIST's cells here pass
 (H15, H16, H20, H21, H34, H35, H38, H40, J8, K8). The other families
@@ -474,9 +475,9 @@ Implemented in: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lif
 `lifted_static_result` and `lifts_arrays_at` (expressions/parser/static_analysis/lifted.rs);
 kernels `edate_of`, `eomonth_of` (functions/date_and_time/month_shift.rs), `weeknum_of`
 (weeknum.rs) and `yearfrac_of` (yearfrac.rs); the financial kernels in functions/financial/
-(annuity.rs, discount.rs, rate_conversions.rs) and financial_depreciation.rs; the statistical
-kernels in functions/statistical/ (normal.rs, binom.rs, beta.rs, fisher.rs, t_dist.rs and the rest).
-Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236
+(annuity.rs, discount.rs, rate_conversions.rs, accrint.rs, financial_bonds.rs) and financial_depreciation.rs; the
+statistical kernels in functions/statistical/ (normal.rs, binom.rs, beta.rs, fisher.rs, t_dist.rs and the rest).
+Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236, T-1822
 
 ## GROUPBY and PIVOTBY
 Rule: groups are keyed like UNIQUE (case-insensitive text, first spelling shown) and always sorted ascending:

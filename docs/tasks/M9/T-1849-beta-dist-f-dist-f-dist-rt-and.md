@@ -1,5 +1,5 @@
 ---
-id: T-1847
+id: T-1849
 title: "BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as 1 in their numeric arguments"
 milestone: M9
 lane: functions-stat
@@ -21,7 +21,7 @@ Found by T-1290, which lifted these functions (SPEC-0011) without changing their
 - probes-numeric/t1049-fdistrt A19 `F.DIST.RT(TRUE,3,7)` = 0.4470796134684837 and A26 `F.DIST.RT(1,TRUE,TRUE)` =
   0.4999999999999999; probes-numeric/m9-legacy-fdist A90 `FDIST(TRUE,2,5)` = 0.43120115037169215.
 The kernels read these arguments with `cast_number_no_bools_ref` (statistical/beta.rs, statistical/fisher.rs, the
-`TODO(T-1847)` lines). STANDARDIZE's TRUE is T-1755 (and probes/stat-later-argument-lift L14). Before changing a
+`TODO(T-1849)` lines). STANDARDIZE's TRUE is T-1755 (and probes/stat-later-argument-lift L14). Before changing a
 function whose boolean read is unprobed (BETA.DIST's alpha, beta, A, B; F.DIST's x directly; WEIBULL, PHI, HYPGEOM.DIST,
 BETA.INV, F.INV, F.INV.RT), probe it (excel-probe skill); docs/excel-semantics/statistics.md "Statistical function
 argument modes" records the rule.

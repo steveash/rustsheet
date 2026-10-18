@@ -349,7 +349,7 @@ the text "TRUE" (L2) and a one-cell range or reference as its value (`BETA.DIST(
 and STANDARDIZE (probes-numeric/t1049-fdistrt A19, A26, m9-legacy-fdist A90; "SKEW, SKEW.P, KURT, ..." below).
 Evidence: probes/stat-later-argument-lift (141 formula cells, value cells rounded to 12 places, excel-graph, 2026-10-17, T-1290); probes/stat-argument-modes.
 Ours: matches (T-1290), except that BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as `#VALUE!`, as their scalar
-calls always did (L1, L13: T-1847; STANDARDIZE, L14: T-1755; WEIBULL's and PHI's are unprobed). Every argument of these functions is `Lift`
+calls always did (L1, L13: T-1849; STANDARDIZE, L14: T-1755; WEIBULL's and PHI's are unprobed). Every argument of these functions is `Lift`
 in the lifting table and each kernel reads its arguments in its scalar order (T.DIST.2T reads both before it checks
 x; TDIST checks x before it reads tails and the degrees of freedom). The one scalar change: BETA.DIST's
 `cumulative` given as a one-cell range was `#VALUE!` and is now its value (L11). BINOM.INV and CRITBINOM are
@@ -364,7 +364,7 @@ before it runs where Excel computes it (`ROWS(PERMUT(5,SEQUENCE(800000)))`, unit
 `weighted_kernels_are_charged_their_weight`). BINOM.INV's weight of 64 never refuses under the 1,048,576-element array
 bound.
 Status: VERIFIED (excel-graph)
-Tasks: T-1290, T-1847, T-1755, T-1848
+Tasks: T-1290, T-1849, T-1755, T-1848
 
 ## LARGE, SMALL, PERCENTILE, QUARTILE, PERCENTRANK and TRIMMEAN: each lifted element is the scalar call
 Rule: when `k`, `quart`, `x`, `significance` or `percent` is an array or a multi-cell range, every element is the

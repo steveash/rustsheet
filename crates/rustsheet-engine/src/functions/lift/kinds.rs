@@ -208,6 +208,52 @@ const BINOM_INV: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(64)
 const PERMUT: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(171));
 // --- End statistical (T-1290) ---------------------------------------------------------------
 
+// --- Financial ATP (T-1822) -----------------------------------------------------------------
+/// What one walk of a coupon schedule is charged: the walk steps one coupon period at a time
+/// from the maturity back to the settlement (or from the first interest date to the issue), at
+/// most about 32,400 quarters inside the calendar (a settlement before serial 1 is #NUM! first,
+/// `Model::check_settlement`), about 1 ms in a release build (`COUPNUM(1,DATE(9990,6,30),4)`).
+const COUPON_WALK_WEIGHT: u32 = 1 << 16;
+/// `COUPDAYBS(settlement, maturity, frequency, [basis])` and the other COUP* functions: up to
+/// two schedule walks (COUPDAYSNC's basis 0 takes both coupon dates), so a lifted call runs at
+/// most 1,024 elements: at the calendar's longest schedule (maturity 9990-06-30, quarterly) that
+/// took 1.1 s for COUPNUM and 2.2 s for COUPDAYSNC in a release build (T-1822).
+const COUPON: ArgKinds = ArgKinds::fixed(
+    3,
+    &[LiftArrays, LiftArrays, LiftArrays, LiftArrays],
+    Weighted(2 * COUPON_WALK_WEIGHT),
+);
+/// `ACCRINT(issue, first_interest, settlement, rate, par, frequency, [basis], [calc_method])`:
+/// a walk forward from the first interest date to the settlement and one back to the issue
+/// (1,024 elements over the longest schedule: 1.0 s).
+const ACCRINT: ArgKinds = ArgKinds::fixed(
+    6,
+    &[
+        LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
+        LiftArrays,
+    ],
+    Weighted(2 * COUPON_WALK_WEIGHT),
+);
+/// `DURATION(settlement, maturity, coupon, yld, frequency, [basis])` and MDURATION: three walks
+/// (the coupon count and the two day counts) and a sum over every coupon, about 3 ms at the
+/// longest schedule, so a lifted call runs at most 512 elements (1.5 s for PRICE or MDURATION).
+const BOND_5_OF_6: ArgKinds = ArgKinds::fixed(
+    5,
+    &[
+        LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
+    ],
+    Weighted(4 * COUPON_WALK_WEIGHT),
+);
+/// `PRICE(settlement, maturity, rate, yld, redemption, frequency, [basis])`, as DURATION.
+const BOND_6_OF_7: ArgKinds = ArgKinds::fixed(
+    6,
+    &[
+        LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
+    ],
+    Weighted(4 * COUPON_WALK_WEIGHT),
+);
+// --- End financial ATP (T-1822) -------------------------------------------------------------
+
 /// The functions of [`Function::arg_kinds`], as a pattern: the arm of an exhaustive `match` on a
 /// `Function` that has no hand-written arm because the table derives it (static analysis).
 /// Keep it equal to the table; `static_analysis::lifted`'s test checks that no function in the
@@ -333,6 +379,18 @@ macro_rules! lifting_table_functions {
             | Function::Factdouble
             | Function::Seriessum
             // --- End math (T-1802) ---
+            // --- Financial ATP (T-1822) ---
+            | Function::Accrint
+            | Function::Coupdaybs
+            | Function::Coupdays
+            | Function::Coupdaysnc
+            | Function::Coupncd
+            | Function::Coupnum
+            | Function::Couppcd
+            | Function::Duration
+            | Function::Mduration
+            | Function::Price
+            // --- End financial ATP (T-1822) ---
             // --- Statistical (T-1290) ---
             | Function::BetaDist
             | Function::BetaDistCompat
@@ -558,6 +616,25 @@ impl Function {
             Function::Factdouble => Some(&ARRAYS_1),
             Function::Seriessum => Some(&SERIES),
             // --- End math (T-1802) ---
+            // --- Financial ATP (T-1822) ---
+            // Analysis ToolPak functions: every argument lifts over an array and refuses a
+            // multi-cell range, also on the range's own rows. The first arguments over a range:
+            // probes/fin-argument-modes H3-H253; the later ones: probes/fin-remaining-later-
+            // argument-ranges H1-H172 (each with its intersected control in I), and PRICE's
+            // frequency and basis, COUPDAYS's frequency and basis, COUPNUM's frequency and
+            // ACCRINT's frequency and basis in probes/scalar-lift-open-a Y1-Y7
+            // (docs/excel-semantics/financial.md "Financial function argument modes"). Their
+            // coupon schedule walks are bounded by the calendar and weighted per walk.
+            Function::Coupdaybs
+            | Function::Coupdays
+            | Function::Coupdaysnc
+            | Function::Coupncd
+            | Function::Coupnum
+            | Function::Couppcd => Some(&COUPON),
+            Function::Accrint => Some(&ACCRINT),
+            Function::Duration | Function::Mduration => Some(&BOND_5_OF_6),
+            Function::Price => Some(&BOND_6_OF_7),
+            // --- End financial ATP (T-1822) ---
             // --- Statistical (T-1290) ---
             // The statistical functions whose every argument is scalar are worksheet functions:
             // every argument lifts over an array and over a multi-cell range, on the range's own

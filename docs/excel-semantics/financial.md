@@ -386,6 +386,14 @@ PPMT, ISPMT, RRI, PDURATION, SLN, SYD, DDB and PMT). ACCRINTM's basis lifts elem
 100, 1.9 truncates to 1 and `"x"` is `#VALUE!`; beside `{39083;39100}` in the issue it broadcasts to a 2x2 result
 (J1-J15). ACCRINTM reads every argument before it checks a value: `ACCRINTM(39083,39448,-0.1,1000,NA())` is `#N/A`,
 not the rate's `#NUM!`, and the same per element (J17, J20).
+Every other later argument of ACCRINT, AMORDEGRC, AMORLINC, the COUP* family, CUMIPMT, CUMPRINC, DURATION, MDURATION,
+ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD, PRICE and YIELD is refused too, over a two-cell range on the formula's own
+rows (93 cells, each with its intersected control giving the base value: probes/fin-remaining-later-argument-ranges
+H1-I184, T-1822). Lifted elements are the scalar calls (`INDEX(COUPNUM(39448,{43831;44196},2,0),2)` = 26, K11-K13).
+Excel computes CUMIPMT and CUMPRINC over very many periods (`CUMIPMT(0.01,1E6,100000,1,1E6,0)` = -999900000,
+`CUMIPMT(0.01,1E15,100000,1E15-10,1E15,0)` = -632.3717517805198; K1-K3; `CUMIPMT(1E-9,1E9,1,1,1E9,0)` = -0.5819767073296636
+and `CUMPRINC(1E-9,1E9,1,1,1E9,0)` = -1, from an excel-graph probe during T-1822 whose two cells are not in the suite
+because the engine's loop runs 10^9 times until T-1845 bounds it), and AMORLINC and AMORDEGRC give 0 for a period of 1E9 (K4, K5).
 NPV's values work like an aggregate. A range skips text, booleans and blanks: `NPV(0.1,L1:L8)` over
 -10000, "2750", TRUE, 4250, "x", blank, 3250, 2750 is -1258.4522915101434, the NPV of -10000, 4250, 3250, 2750.
 Typed arguments are coerced: `NPV(0.1,-10000,"2750",TRUE,4250)` = -3914.6233180793665, the NPV of
@@ -400,20 +408,66 @@ or text in an array literal (`{0.09,"0.11"}`). A plain number is a one-rate sche
 These set the generator modes in eval/catalog/functions.yaml. Scalars are `value`, NPV's values are `aggregate`,
 and IRR's and MIRR's values, XNPV's and XIRR's values and dates, and FVSCHEDULE's schedule are `array`.
 Evidence: probes/fin-argument-modes (386 cells, excel-graph, 2026-10-11, T-1084), probes/fin-later-argument-ranges
-(115 cells, excel-graph, 2026-10-17, T-1372). The cash flow is K1:K5 and its
+(115 cells, excel-graph, 2026-10-17, T-1372), probes/fin-remaining-later-argument-ranges (199 cells, excel-graph,
+2026-10-17, T-1822). The cash flow is K1:K5 and its
 dates are M1:M5. L1:L8 is the same flow with typed text, a boolean, text and a blank mixed in, and N1:N5 is a
 schedule containing text.
 Ours: since T-1372 the core functions but DB, VDB, NPV, IRR and MIRR are `Lift` and EFFECT, NOMINAL, DOLLARDE,
 DOLLARFR, ACCRINTM, DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT and the T-bills `LiftArrays`
-(SPEC-0011). The rest do not lift yet (`#N/IMPL!` for an array literal; DB and VDB `#VALUE!` for a range): DB and VDB
-need their period loops bounded first (T-1820), NPV's rate, IRR's guess and MIRR's rates sit beside a whole cash flow
-(T-1821), and the other ATP functions wait for their later arguments to be probed (T-1822). NPV of an array
+(SPEC-0011); since T-1822 so are ACCRINT, the COUP* family, DURATION, MDURATION and PRICE, each element charged for its
+coupon schedule walks ("Coupon schedule work cap"). The rest do not lift yet (`#N/IMPL!` for an array literal; DB and
+VDB `#VALUE!` for a range): DB and VDB need their period loops bounded first (T-1820), NPV's rate, IRR's guess and
+MIRR's rates sit beside a whole cash flow (T-1821), CUMIPMT and CUMPRINC (T-1845) and AMORDEGRC and AMORLINC (T-1841)
+need their period loops bounded, YIELD and the ODD* functions their solver work weighted (T-1842), and XNPV's rate,
+XIRR's guess and FVSCHEDULE's principal sit beside whole data (T-1843). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE ignores text in the schedule (T-1373).
 The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
 ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD and YIELD are off at 1e-10 to 1e-12 relative (T-1374; TBILLEQ and TBILLYIELD are exact since T-1475). The
 annuity, NPV and solver misses are T-0901's and T-0916's.
 Status: VERIFIED (excel-graph)
-Tasks: T-1084, T-1372, T-1373, T-1374, T-1820, T-1821, T-1822
+Tasks: T-1084, T-1372, T-1373, T-1374, T-1820, T-1821, T-1822, T-1841, T-1842, T-1843, T-1845
+
+## Coupon settlement before the calendar
+Rule: the COUP* functions, PRICE, YIELD, DURATION, MDURATION and ACCRINT are `#NUM!` for a settlement (ACCRINT: an
+issue, first interest date or settlement) below serial 1 in a 1900 workbook. Probed values: -1 for every one of them
+(A1, A4-A13; ACCRINT's three dates at -1 and -1E15, A14-A17); 0 for COUPNUM and PRICE (A3, A20); -0.5, 0.5 and -1E15
+for COUPNUM only (A19, -b A11, A2). The other functions at 0 or a fraction follow the same check but are unprobed
+(T-1844). In a 1904 workbook serial 0 is a date and computes
+(`COUPPCD(0,400,2)` = -150), while -1 is `#NUM!` (probes/date-system-1904-financial A35-A41; only
+`COUPDAYBS(-1,400,2)` backs the 1904 negatives, and whether -0.5 truncates to 0 is unprobed, T-1844).
+Evidence: probes/fin-coupon-walk-bounds A1-A20 and -b A11 (excel-graph, 2026-10-17, T-1822).
+Ours: `Model::check_settlement` (functions/financial/dates.rs) makes a settlement below 1900 serial 1, as
+`financial_date` reads it, `#NUM!` for the COUP* functions, PRICE, YIELD and DURATION; ACCRINT already checked its
+dates against the calendar. Before T-1822 the engine walked the coupon schedule back past 1900 and returned a number
+(`COUPNUM(-1,43831,2)` was 241), and `COUPNUM(-1E15,43831,4)` stepped about 10^6 quarters back to chrono's first year
+before it failed. The check keeps every schedule walk inside the calendar, at most about 32,400 quarters.
+Status: VERIFIED (excel-graph)
+Tasks: T-1822
+
+## Coupon schedules at the calendar's edges
+Rule: Excel is `#NUM!` (or a different count) for some valid schedules that reach the start or the end of the 1900
+calendar, which the engine computes: `COUPNUM(1,43831,2)` is 240 (ours 241), `COUPNUM(1,1000,2)` and
+`COUPNUM(DATE(1900,3,1),DATE(1910,3,31),4)` are `#NUM!`, `COUPPCD(1,DATE(9990,6,30),4)` is 0, every quarterly bond from
+serial 1 or 1900-03-01 to a maturity in 9990-9999 is `#NUM!` for COUPNUM, PRICE, YIELD and DURATION, and
+`ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)` is 0. The rule behind them is unknown.
+Evidence: probes/fin-coupon-walk-bounds A21-A28, -b A1-A10, A12, A13 (excel-graph, 2026-10-17, T-1822).
+Ours: computes these: `COUPNUM(1,43831,2)` 241, a number for the `#NUM!` cells (e.g. 32,362 quarterly coupons from
+serial 1 to 9990, `PRICE` 404516.67); a known gap, the general rule still open.
+Status: VERIFIED (excel-graph; the rule behind the cells is not found)
+Tasks: T-1844
+
+## Coupon schedule work cap
+Rule: RustSheet charges a lifted COUP*, ACCRINT, DURATION, MDURATION or PRICE call for its coupon schedule walks, so one
+call lifts at most 1,024 elements (COUP*, ACCRINT) or 512 (DURATION, MDURATION, PRICE):
+`ROWS(COUPNUM(SEQUENCE(1025)+39000,43831,2))` and `ROWS(PRICE(SEQUENCE(513)+39000,43831,0.05,0.06,100,2))` are `#ERROR!`
+where Excel lifts every element (probes/fin-argument-modes: they lift over arrays; Excel's own limit is unprobed). A
+walk steps one coupon period at a time, up to about 32,400 quarters inside the calendar, about 1 ms in a release build;
+each element is charged that worst case (`COUPON_WALK_WEIGHT`, 2^16 units per walk against SPEC-0011's 2^27 visit cap),
+so a lifted call at the cap takes 1-2 s at the longest schedule. The scalar calls are not capped.
+Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
+Status: DEVIATION (decision 0014)
+Implemented in: functions/lift/kinds.rs (`COUPON_WALK_WEIGHT`, `COUPON`, `ACCRINT`, `BOND_5_OF_6`, `BOND_6_OF_7`)
+Tasks: T-1822, T-1842; T-1846 narrows the cap to a schedule-length budget.
 
 ## Discount-security functions: settlement 0, basis and argument modes
 Rule: INTRATE, PRICEDISC and YIELDDISC accept settlement serial 0 and compute with it (`INTRATE(0,43466,1000,1100)` =
