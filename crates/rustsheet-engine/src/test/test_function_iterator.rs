@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use crate::functions::Function;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -36,5 +37,13 @@ fn function_iterator() {
             list.push(text.to_owned());
         }
     }
-    assert_eq!(list.len(), crate::functions::Function::into_iter().count());
+    // The enum is the lookup table plus the internal kinds, which the lookup table (and so the
+    // catalog) does not list (SPEC-0012).
+    let listed: Vec<String> = Function::into_iter().map(|f| format!("{f:?}")).collect();
+    let internal: Vec<String> = Function::INTERNAL.iter().map(|f| format!("{f:?}")).collect();
+    assert!(internal.iter().all(|kind| !listed.contains(kind)));
+    let mut expected = [listed, internal].concat();
+    expected.sort();
+    list.sort();
+    assert_eq!(list, expected);
 }
