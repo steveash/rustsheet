@@ -3,7 +3,7 @@ id: T-1877
 title: "Milestone function scope classifies array-member cells by their anchor's formula"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
