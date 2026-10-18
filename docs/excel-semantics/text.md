@@ -135,13 +135,21 @@ Over-limit input: SUBSTITUTE keys on the result length only. On the 65,534-unit 
 but results that shrink to 0 and to 32,767 units are returned (probes/text-long-input-e A1, A2).
 Per function (the text is the 65,534-unit REGEXREPLACE result; excel-graph, 2026-10-18): UPPER, LOWER, PROPER, TRIM,
 CLEAN and REPLACE give `#VALUE!` for the input itself (SUBSTITUTE: see above) (probes/regexreplace-long-result-e A2, text-long-input-a, -b, -c); LEN,
-LEFT, MID, ISTEXT and the REGEX* functions take the text. `&` is unprobed: excel-graph refuses the workbook (follow-up task). REPLACE's error precedence against an error in
+LEFT, MID, ISTEXT and the REGEX* functions take the text. `&` with the text as the right operand truncates to 32,767 units like any other `&` (below). REPLACE's error precedence against an error in
 another argument is unprobed (ours coerces all arguments first, then checks the length).
 Open: REPT and CONCATENATE count the limit in UTF-16 code units (coercion.md "Text longer than 32,767
 characters"); SUBSTITUTE is unprobed with surrogate pairs and the code still counts `chars()`.
 Status: VERIFIED
 Implemented in: `substitute_exceeds_limit`/`substituted_chars` in functions/text/util.rs size the result before building it (T-0241)
-Tasks: T-0241, T-1904
+
+`&` with a 65,534-unit operand (probes/text-long-input-concat-g, -h, -k, -l, -m, -o; excel-graph, 2026-10-18, T-1913): the text as the
+right operand is accepted and the result is truncated, not an error: `LEN("c"&R)`, `LEN(""&R)`, `LEN(INDEX({"c"},1)&R)` and
+`LEN("c"&R&"d")` are 32,767, `ISERROR("c"&R)` is FALSE and `LEN(RIGHT("c"&R,2))` is 2 (R = the REGEXREPLACE result). A 32,767-unit
+operand read from a cell and a short one give the same: `LEN(C1&"b")` with C1 = `REPT("a",32767)` is 32,767 and `ISERROR(C1&"b")` is FALSE
+(probes/text-long-input-concat-d C3-C4). Ours matches.
+Open (desktop question, M14): excel-graph refuses the workbook when the long text is the left operand (`R&""`, `R&"c"`, `R&R`, `LET(x,R,x&"c")`,
+`IF(TRUE,R)&"c"`) and when it is read from a cell holding it, so the left-operand case is unmeasured.
+Tasks: T-0241, T-1904, T-1913
 
 ## CONCAT and TEXTJOIN past 32,767 characters
 Rule: the joined text of CONCAT or TEXTJOIN over 32,767 characters is `#CALC!` (not truncated, not `#VALUE!`).
