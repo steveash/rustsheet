@@ -3,11 +3,9 @@
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
+    calc_result::CalcResult, cast::MAX_SHORT_TEXT_UNITS, expressions::parser::Node,
+    expressions::token::Error, model::Model,
 };
-
-/// The longest text DECIMAL accepts; longer is `#VALUE!` (probes/decimal-unreadable).
-const DECIMAL_MAX_TEXT_LEN: usize = 255;
 
 /// Reads `text` in `radix` the way Excel's DECIMAL does: leading spaces and tabs are skipped,
 /// radix 16 also skips leading zeros and one `x`/`X`, empty text is 0, any other character
@@ -41,7 +39,7 @@ impl Model {
         };
         // Excel: see docs/excel-semantics/engineering.md#decimal-of-unreadable-text. The length
         // is in UTF-16 units and is checked before the radix (probes/decimal-unreadable).
-        if text.encode_utf16().count() > DECIMAL_MAX_TEXT_LEN {
+        if text.encode_utf16().count() > MAX_SHORT_TEXT_UNITS {
             return CalcResult::new_error(Error::VALUE, cell, "Text is too long".to_string());
         }
         if !(2..=36).contains(&radix) {
