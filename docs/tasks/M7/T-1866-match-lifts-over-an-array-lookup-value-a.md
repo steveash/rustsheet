@@ -3,7 +3,7 @@ id: T-1866
 title: "MATCH lifts over an array lookup_value (a 1x1 array included)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
