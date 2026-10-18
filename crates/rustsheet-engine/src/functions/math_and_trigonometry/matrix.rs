@@ -1,11 +1,11 @@
 use crate::{
     calc_result::CalcResult,
-    cast::NumberOrArray,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::lift::{number_or_error, LiftCost, LiftOptions, LiftedArg},
     limits::check_array_size,
     model::Model,
 };
@@ -209,39 +209,53 @@ impl Model {
 
     /// `=MUNIT(dimension)`
     ///
-    /// Returns the identity matrix of the given size.
+    /// Returns the identity matrix of the given size. Not a lifting-table entry: its scalar
+    /// result is a matrix, so its static shape is unknown, but its argument is read as a `Lift`
+    /// one (`read_lift_arg`; a 3-D reference is `#REF!`, probes/date-math-lift-driver-edges G29).
     pub(crate) fn fn_munit(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
+        let [arg] = args else {
             return CalcResult::new_args_number_error(cell);
-        }
-        let operand = self.get_number_or_array(&args[0], cell);
-        // An array or range argument lifts: each element becomes the 1 at the top left of its own
-        // identity matrix, or the error it would give alone (probes/radians-sqrtpi-munit,
-        // docs/excel-semantics/numbers.md "RADIANS, SQRTPI and MUNIT", T-1282).
-        if matches!(operand, Ok(NumberOrArray::Array(_))) {
-            return self.lift_number_operands::<1>(
-                vec![operand],
-                cell,
-                "MUNIT requires a positive integer",
-                |[f]| {
-                    let n = munit_dimension(f)?;
-                    check_array_size(n, n).map_or(Ok(1.0), |(error, _)| Err(error))
-                },
-            );
-        }
-        let n = match operand {
-            Ok(NumberOrArray::Number(v)) => match munit_dimension(v) {
-                Ok(n) => n,
-                Err(error) => {
-                    return CalcResult::new_error(
-                        error,
-                        cell,
-                        "MUNIT requires a positive integer".to_string(),
-                    )
-                }
-            },
-            Ok(NumberOrArray::Array(_)) => return CalcResult::new_args_number_error(cell),
-            Err(e) => return e,
+        };
+        let value = match self.read_lift_arg(arg, cell) {
+            Ok(LiftedArg::Scalar(value)) => value,
+            // An array or range argument lifts: each element becomes the 1 at the top left of its
+            // own identity matrix, or the error it would give alone (probes/radians-sqrtpi-munit,
+            // date-math-lift-driver-edges G33-G35, docs/excel-semantics/numbers.md "RADIANS,
+            // SQRTPI and MUNIT", T-1282).
+            Ok(LiftedArg::Grid(grid)) => {
+                return self.lift_values(
+                    vec![CalcResult::Array(grid)],
+                    LiftCost::Unit,
+                    &LiftOptions::EVERY_ELEMENT,
+                    cell,
+                    &mut |model, values| {
+                        let dimension = match values {
+                            [value] => model.kernel_number(value, cell),
+                            _ => return CalcResult::new_args_number_error(cell),
+                        };
+                        let one = dimension.and_then(|f| {
+                            let n = munit_dimension(f)
+                                .map_err(|error| CalcResult::new_error(error, cell, String::new()))?;
+                            match check_array_size(n, n) {
+                                Some((error, _)) => {
+                                    Err(CalcResult::new_error(error, cell, String::new()))
+                                }
+                                None => Ok(1.0),
+                            }
+                        });
+                        number_or_error(one)
+                    },
+                );
+            }
+            Err(error) => return error,
+        };
+        let n = match self.kernel_number(&value, cell).and_then(|f| {
+            munit_dimension(f).map_err(|error| {
+                CalcResult::new_error(error, cell, "MUNIT requires a positive integer".to_string())
+            })
+        }) {
+            Ok(n) => n,
+            Err(error) => return error,
         };
         if let Some((error, message)) = check_array_size(n, n) {
             return CalcResult::new_error(error, cell, message);

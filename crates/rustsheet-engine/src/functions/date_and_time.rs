@@ -106,60 +106,7 @@ fn seconds_of_day(v: f64) -> i64 {
     (ms % (SECONDS_PER_DAY as i64 * 1000)) / 1000
 }
 
-// ---------------------------------------------------------------------------
-// Helper macros to eliminate boilerplate in date/time component extraction
-// functions (DAY, MONTH, YEAR, HOUR, MINUTE, SECOND).
-// ---------------------------------------------------------------------------
-
-// Generate DAY / MONTH / YEAR helpers – convert the serial number with
-// `excel_serial_to_ymd` and return the component at tuple index `$part`
-// (0 = year, 1 = month, 2 = day) as a number.
-macro_rules! date_part_fn {
-    ($name:ident, $part:tt) => {
-        pub(crate) fn $name(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-            if args.len() != 1 {
-                return CalcResult::new_args_number_error(cell);
-            }
-            // Convert the serial number (in the workbook's date system: YEAR(0) is 1904 in a
-            // 1904 workbook) to its date and return the requested component. Broadcasts
-            // element-wise over ranges/arrays. The date system is copied out so the closure
-            // does not borrow self.
-            let date_system = self.workbook.settings.date_system;
-            self.apply_number_unary(&args[0], cell, |f| {
-                match date_system
-                    .to_1900_serial(f.floor() as i64)
-                    .and_then(excel_serial_to_ymd)
-                {
-                    Some(ymd) => Ok(f64::from(ymd.$part)),
-                    None => Err(Error::NUM),
-                }
-            })
-        }
-    };
-}
-
-// Generate HOUR / MINUTE / SECOND helpers – extract the desired component from
-// a day-fraction value. We pass an extraction closure so each helper can keep
-// its own formula while sharing the surrounding boilerplate.
-macro_rules! time_part_fn {
-    ($name:ident, $extract:expr) => {
-        pub(crate) fn $name(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-            if args.len() != 1 {
-                return CalcResult::new_args_number_error(cell);
-            }
-            // Lifts over a range or array (probes/date-argument-modes F27:F32); #NUM! from 2958466 once rounded to the second (probes/time-parts-rounding-window).
-            self.lift_numbers(args, cell, "Invalid time", |[value]| {
-                let last = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
-                if !(value >= 0.0 && days360_serial(value) <= last) {
-                    return Err(Error::NUM);
-                }
-                Ok(($extract)(value))
-            })
-        }
-    };
-}
-
-use crate::cast::{array_node_to_string, number_text_too_long, NumberOrArray};
+use crate::cast::{array_node_to_string, number_text_too_long};
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
@@ -167,8 +114,8 @@ use crate::formatter::date_text::parse_date;
 use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::shift_months;
-use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
-use crate::functions::lift::num_error;
+use crate::functions::lift::{num_error, number_result, value_error};
+use crate::functions::Function;
 use crate::functions::text::text_arg::broadcast_text;
 use crate::functions::util::array_node_to_calc_result;
 use crate::number_format::parse_excel_number;
@@ -267,23 +214,45 @@ impl Model {
         i32::try_from(serial).ok()
     }
 
-    // -----------------------------------------------------------------------
-    // Auto-generated DATE part helpers (DAY / MONTH / YEAR)
-    // -----------------------------------------------------------------------
-    date_part_fn!(fn_day, 2);
-    date_part_fn!(fn_month, 1);
-    date_part_fn!(fn_year, 0);
+    /// DAY, MONTH and YEAR: `part` of the serial's date in the workbook's date system (YEAR(0) is
+    /// 1904 in a 1904 workbook), on the SPEC-0011 driver (`LIFT_1`).
+    fn date_part(
+        &mut self,
+        kind: Function,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        part: fn((i32, u32, u32)) -> f64,
+    ) -> CalcResult {
+        let date_system = self.workbook.settings.date_system;
+        self.numbers_fn(kind, args, [0.0], cell, |[serial]| {
+            date_system
+                .to_1900_serial(serial.floor() as i64)
+                .and_then(excel_serial_to_ymd)
+                .map(part)
+                .ok_or(Error::NUM)
+        })
+    }
+
+    pub(crate) fn fn_day(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.date_part(Function::Day, args, cell, |(_, _, day)| f64::from(day))
+    }
+
+    pub(crate) fn fn_month(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.date_part(Function::Month, args, cell, |(_, month, _)| f64::from(month))
+    }
+
+    pub(crate) fn fn_year(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.date_part(Function::Year, args, cell, |(year, _, _)| f64::from(year))
+    }
 
     // year, month, day
     pub(crate) fn fn_date(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
         let date_system = self.workbook.settings.date_system;
-        self.lift_numbers(
+        self.numbers_fn(
+            Function::Date,
             args,
+            [0.0; 3],
             cell,
-            DATE_OUT_OF_RANGE_MESSAGE,
             |[year, month, day]| {
                 let mut year = year.floor() as i32;
                 if year < 0 {
@@ -679,11 +648,9 @@ impl Model {
     }
 
     pub(crate) fn fn_time(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
         // Lifts over a range or array in every argument (probes/date-argument-modes F43:F46).
-        self.lift_numbers(args, cell, "Invalid time", |[hour, minute, second]| {
+        let kind = Function::Time;
+        self.numbers_fn(kind, args, [0.0; 3], cell, |[hour, minute, second]| {
             let total_seconds = hour.floor() * 3600.0 + minute.floor() * 60.0 + second.floor();
             if total_seconds < 0.0 {
                 return Err(Error::NUM);
@@ -693,16 +660,45 @@ impl Model {
         })
     }
 
-    // -----------------------------------------------------------------------
-    // Auto-generated TIME part helpers (HOUR / MINUTE / SECOND)
-    // -----------------------------------------------------------------------
+    /// HOUR, MINUTE and SECOND: `part` of a day-fraction value, on the SPEC-0011 driver
+    /// (`LIFT_1`; probes/date-argument-modes F27:F32). `#NUM!` from 2958466 once rounded to the
+    /// second (probes/time-parts-rounding-window).
+    fn time_part(
+        &mut self,
+        kind: Function,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        part: fn(f64) -> f64,
+    ) -> CalcResult {
+        self.numbers_fn(kind, args, [0.0], cell, |[value]| {
+            let last = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
+            if !(value >= 0.0 && days360_serial(value) <= last) {
+                return Err(Error::NUM);
+            }
+            Ok(part(value))
+        })
+    }
 
-    time_part_fn!(fn_hour, |v: f64| (v.rem_euclid(1.0) * 24.0).floor());
+    pub(crate) fn fn_hour(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.time_part(Function::Hour, args, cell, |v| {
+            (v.rem_euclid(1.0) * 24.0).floor()
+        })
+    }
+
     // MINUTE and SECOND round the time of day to the nearest millisecond
     // before taking it apart, as Excel does: MINUTE(0.520833333) is 30
     // (12:29:59.99997 is 12:30:00.000), SECOND(TIME(14,30,45.999)) stays 45.
-    time_part_fn!(fn_minute, |v: f64| ((seconds_of_day(v) / 60) % 60) as f64);
-    time_part_fn!(fn_second, |v: f64| (seconds_of_day(v) % 60) as f64);
+    pub(crate) fn fn_minute(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.time_part(Function::Minute, args, cell, |v| {
+            ((seconds_of_day(v) / 60) % 60) as f64
+        })
+    }
+
+    pub(crate) fn fn_second(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.time_part(Function::Second, args, cell, |v| {
+            (seconds_of_day(v) % 60) as f64
+        })
+    }
 
     pub(crate) fn fn_timevalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
@@ -741,53 +737,52 @@ impl Model {
     }
 
     pub(crate) fn fn_datedif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        // Errors keep their pre-lift order: the dates' own, #NUM! of a reversed pair, the unit's, then
-        // out-of-calendar #NUM! (T-1355; UNVERIFIED, dates.md "DATEDIF and DAYS360 error order").
-        let unit = self.get_string(&args[2], cell).map(|s| s.to_uppercase());
-        // Both dates lift over a range or array (probes/date-argument-modes F5:F8).
-        let operands = args[..2]
-            .iter()
-            .map(|arg| {
-                let value = match self.evaluate_node_in_context(arg, cell) {
-                    CalcResult::String(s) => array_node_to_calc_result(
-                        &self.datedif_date_text(ArrayNode::String(s)),
-                        cell,
-                    ),
-                    value => value,
-                };
-                self.number_or_array(value, cell).map(|na| match na {
-                    NumberOrArray::Array(rows) => NumberOrArray::Array(
-                        rows.into_iter()
-                            .map(|row| row.into_iter().map(|n| self.datedif_date_text(n)).collect())
-                            .collect(),
-                    ),
-                    number @ NumberOrArray::Number(_) => number,
-                })
-            })
-            .collect();
+        // Every argument lifts over a range or array: the dates (probes/date-argument-modes F5:F8)
+        // and the unit (probes/date-math-lift-driver-edges G1-G5). Errors keep their pre-lift order:
+        // the dates' own, #NUM! of a reversed pair, the unit's, then out-of-calendar #NUM! (T-1355;
+        // UNVERIFIED, dates.md "DATEDIF and DAYS360 error order", T-1430).
         let date_system = self.workbook.settings.date_system;
-        self.lift_number_operands(operands, cell, "Invalid arguments", |[start, end]| {
-            Self::datedif_value(date_system, start, end, unit.as_deref().map_err(error_kind))
+        self.lift_call(Function::Datedif, args, cell, &mut |model, values| {
+            let [start, end, unit] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let dates = model
+                .datedif_date(start, cell)
+                .and_then(|start| Ok((start, model.datedif_date(end, cell)?)));
+            let (start, end) = match dates {
+                Ok(dates) => dates,
+                Err(error) => return error,
+            };
+            let unit = model
+                .cast_to_string(unit.clone(), cell)
+                .map(|s| s.to_uppercase());
+            let unit = unit.as_deref().map_err(error_kind);
+            number_result(Self::datedif_value(date_system, start, end, unit), cell)
         })
     }
 
-    /// A DATEDIF date given as text (other elements are kept): date text reads as DATEVALUE reads
-    /// it, so a 1904 workbook counts it from 1904-01-01 (T-1330); plain number text is that number
+    /// A DATEDIF date argument's number: date text reads as DATEVALUE reads it (see
+    /// [`Model::datedif_date_text`]), anything else as a kernel number.
+    fn datedif_date(&self, value: &CalcResult, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+        match value {
+            CalcResult::String(s) => match self.datedif_date_text(s) {
+                Ok(serial) => Ok(serial),
+                Err(error) => Err(CalcResult::new_error(error, cell, String::new())),
+            },
+            other => self.kernel_number(other, cell),
+        }
+    }
+
+    /// A DATEDIF date given as text: date text reads as DATEVALUE reads it, so a 1904 workbook
+    /// counts it from 1904-01-01 (T-1330); plain number text is that number
     /// (probes/date-argument-modes F89); any other text is #VALUE! (the behaviour before lifting).
-    fn datedif_date_text(&self, node: ArrayNode) -> ArrayNode {
-        let ArrayNode::String(s) = node else {
-            return node;
-        };
-        if let Some(serial) = self.parse_datevalue_text(&s) {
-            return ArrayNode::Number(f64::from(serial));
+    fn datedif_date_text(&self, s: &str) -> Result<f64, Error> {
+        if let Some(serial) = self.parse_datevalue_text(s) {
+            return Ok(f64::from(serial));
         }
         match parse_excel_number(s.trim()) {
-            Some(n) if !number_text_too_long(&s) => ArrayNode::Number(n),
-            _ => ArrayNode::Error(Error::VALUE),
+            Some(n) if !number_text_too_long(s) => Ok(n),
+            _ => Err(Error::VALUE),
         }
     }
 
@@ -884,14 +879,12 @@ impl Model {
     }
 
     pub(crate) fn fn_days(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
         // Lifts over a range or array in both arguments (probes/date-argument-modes F11:F14).
-        self.lift_numbers(
+        self.numbers_fn(
+            Function::Days,
             args,
+            [0.0; 2],
             cell,
-            "Out of range parameters for date",
             |[end, start]| {
                 let (end_serial, start_serial) = (end.floor() as i64, start.floor() as i64);
                 // Excel accepts any serial in 0..=MAXIMUM (a 0 serial is 1900-01-00) and
@@ -907,71 +900,66 @@ impl Model {
     }
 
     pub(crate) fn fn_days360(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(2..=3).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // The European-method flag follows Excel's logical coercion: numbers are
-        // truthy when non-zero, and only the text "TRUE"/"FALSE" is accepted.
-        // The dates' own errors come first, then the method's, then the dates' #NUM!, as before the
-        // lift (UNVERIFIED, dates.md "DATEDIF and DAYS360 error order", T-1430).
-        let method = if args.len() == 3 {
-            self.get_boolean(&args[2], cell)
-        } else {
-            Ok(false)
-        };
-        // Both dates lift over a range or array (probes/date-argument-modes F15:F18).
+        // The dates and the method lift over a range or array (probes/date-argument-modes F15:F18,
+        // probes/date-math-lift-driver-edges G6-G10). The European-method flag follows Excel's
+        // logical coercion: numbers are truthy when non-zero, and only the text "TRUE"/"FALSE" is
+        // accepted. The dates' own errors come first, then the method's, then the dates' #NUM!, as
+        // before the lift (UNVERIFIED, dates.md "DATEDIF and DAYS360 error order", T-1430).
         let date_system = self.workbook.settings.date_system;
-        self.lift_numbers(
-            args,
-            cell,
-            "Out of range parameters for date",
-            |[start, end]| {
-                let method = method.as_ref().map_err(error_kind)?;
-                let ymd = |serial| {
-                    date_system
-                        .to_1900_serial(days360_serial(serial))
-                        .and_then(excel_serial_to_ymd)
-                        .ok_or(Error::NUM)
-                };
-                let (start, end) = (ymd(start)?, ymd(end)?);
-                Ok(if *method {
+        self.lift_call(Function::Days360, args, cell, &mut |model, values| {
+            let dates = model
+                .kernel_number_or(values.first(), 0.0, cell)
+                .and_then(|start| Ok((start, model.kernel_number_or(values.get(1), 0.0, cell)?)))
+                .and_then(|dates| {
+                    let method = match values.get(2) {
+                        // Text other than TRUE or FALSE, with no message (SPEC-0011 kernels).
+                        Some(CalcResult::String(s))
+                            if !matches!(s.to_lowercase().as_str(), "true" | "false") =>
+                        {
+                            Err(value_error(cell))
+                        }
+                        Some(m) => Self::cast_bool_ref(m, cell),
+                        None => Ok(false),
+                    };
+                    Ok((dates, method?))
+                });
+            let ((start, end), european) = match dates {
+                Ok(read) => read,
+                Err(error) => return error,
+            };
+            let ymd = |serial| {
+                date_system
+                    .to_1900_serial(days360_serial(serial))
+                    .and_then(excel_serial_to_ymd)
+                    .ok_or(Error::NUM)
+            };
+            let days = ymd(start).and_then(|start| {
+                let end = ymd(end)?;
+                Ok(if european {
                     days360_eu(start, end)
                 } else {
                     days360_us(start, end)
                 })
-            },
-        )
+            });
+            number_result(days, cell)
+        })
     }
 
     pub(crate) fn fn_weekday(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(1..=2).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
         let ds = self.workbook.settings.date_system;
         let sat = chrono::NaiveDate::from_ymd_opt(1899, 12, 30); // 1900 serial 0: weekday-serial-zero
-        let date = move |serial: f64| {
+        // The date and the return type lift (probes/date-argument-modes F51:F52).
+        let kind = Function::Weekday;
+        self.numbers_fn(kind, args, [0.0, 1.0], cell, |[serial, return_type]| {
             let s = serial.floor();
-            let d = ds.date_of_serial(s as i64).or(sat.filter(|_| s == 0.0));
-            d.ok_or(Error::NUM)
-        };
-        if args.len() == 1 {
-            // Broadcasts element-wise over a range/array date argument.
-            return self
-                .apply_number_unary(&args[0], cell, |serial| weekday_number(date(serial)?, 1));
-        }
-        // The return type lifts too (probes/date-argument-modes F51:F52).
-        self.lift_numbers(args, cell, "Invalid arguments", |[serial, return_type]| {
-            weekday_number(date(serial)?, return_type as i32)
+            let date = ds.date_of_serial(s as i64).or(sat.filter(|_| s == 0.0));
+            weekday_number(date.ok_or(Error::NUM)?, return_type as i32)
         })
     }
 
     pub(crate) fn fn_isoweeknum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // Broadcasts element-wise over a range/array date argument.
         let date_system = self.workbook.settings.date_system;
-        self.apply_number_unary(&args[0], cell, |serial| {
+        self.numbers_fn(Function::Isoweeknum, args, [0.0], cell, |[serial]| {
             let serial = date_system.to_1900_serial(serial.floor() as i64);
             weeknum::iso_week(serial.ok_or(Error::NUM)?)
         })

@@ -1,4 +1,4 @@
-use crate::arithmetic::{bcast_idx, flush_subnormal};
+use crate::arithmetic::flush_subnormal;
 use crate::external_reference::{one_external_area, ExternalArea, PickedReference};
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
@@ -11,7 +11,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     formatter::format::parse_formatted_number,
-    limits::{check_array_size, check_range_size},
+    limits::check_range_size,
     model::Model,
     text::Text,
 };
@@ -262,115 +262,6 @@ impl Model {
         self.number_or_array(value, cell)
     }
 
-    /// Applies `op` to `N` number arguments, element-wise when any is an array or range.
-    /// Arguments broadcast like the arithmetic operators (a size-1 dimension repeats, positions
-    /// past a shorter array are `#N/A`) and an element that is an error stays one. An argument
-    /// that is an error is the result (the leftmost one), unless another is an array: then it
-    /// is broadcast and every element is that error (as for DATE). `message` goes with a
-    /// scalar error of `op`.
-    pub(crate) fn lift_numbers<const N: usize>(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-        message: &str,
-        op: impl Fn([f64; N]) -> Result<f64, Error>,
-    ) -> CalcResult {
-        debug_assert!(args.len() >= N, "callers check the argument count");
-        let operands: Vec<_> = args
-            .iter()
-            .take(N)
-            .map(|arg| self.get_number_or_array(arg, cell))
-            .collect();
-        self.lift_number_operands(operands, cell, message, op)
-    }
-
-    /// [`Model::lift_numbers`] of already evaluated operands (`N` of them), for a caller that
-    /// reads some text its own way first (DATEDIF's date text in the workbook's date system).
-    pub(crate) fn lift_number_operands<const N: usize>(
-        &mut self,
-        operands: Vec<Result<NumberOrArray, CalcResult>>,
-        cell: CellReferenceIndex,
-        message: &str,
-        op: impl Fn([f64; N]) -> Result<f64, Error>,
-    ) -> CalcResult {
-        debug_assert!(operands.len() == N, "one operand per number");
-        let any_array = operands
-            .iter()
-            .any(|na| matches!(na, Ok(NumberOrArray::Array(_))));
-        let mut lifted = Vec::with_capacity(N);
-        for na in operands {
-            match na {
-                Err(CalcResult::Error { error, .. }) if any_array => {
-                    lifted.push(NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]]));
-                }
-                Ok(na) => lifted.push(na),
-                Err(e) => return e,
-            }
-        }
-        if !any_array {
-            // Without an array every operand is a `Number` (an error returned above).
-            let mut numbers = [0.0; N];
-            for (slot, na) in numbers.iter_mut().zip(&lifted) {
-                if let NumberOrArray::Number(n) = na {
-                    *slot = *n;
-                }
-            }
-            return match op(numbers) {
-                Ok(n) => CalcResult::Number(n),
-                Err(e) => CalcResult::new_error(e, cell, message.to_string()),
-            };
-        }
-        let rows = lifted.iter().map(|na| na.dims().0).max().unwrap_or(0);
-        let cols = lifted.iter().map(|na| na.dims().1).max().unwrap_or(0);
-        // Bounds the broadcast result (`ROUND(A:A, 1:1)`): DEVIATION, arrays.md "Array results
-        // above 1,048,576 cells".
-        if let Some((error, message)) = check_array_size(rows, cols) {
-            return CalcResult::new_error(error, cell, message);
-        }
-        let result = (0..rows)
-            .map(|i| {
-                (0..cols)
-                    .map(|j| {
-                        let mut numbers = [0.0; N];
-                        let mut value = Ok(());
-                        for (slot, na) in numbers.iter_mut().zip(&lifted) {
-                            match self.number_at(na, i, j) {
-                                Ok(n) => *slot = n,
-                                Err(e) => {
-                                    value = Err(e);
-                                    break;
-                                }
-                            }
-                        }
-                        match value.and_then(|()| op(numbers)) {
-                            Ok(n) => ArrayNode::Number(n),
-                            Err(e) => ArrayNode::Error(e),
-                        }
-                    })
-                    .collect()
-            })
-            .collect();
-        CalcResult::Array(result)
-    }
-
-    /// The number at (`i`, `j`) of `na`, a size-1 dimension repeating; text is cast like a scalar
-    /// argument, a position past a shorter array is `#N/A`.
-    pub(crate) fn number_at(&self, na: &NumberOrArray, i: usize, j: usize) -> Result<f64, Error> {
-        match na {
-            NumberOrArray::Number(f) => Ok(*f),
-            NumberOrArray::Array(a) => {
-                let (rows, cols) = na.dims();
-                let node = bcast_idx(rows, i)
-                    .and_then(|ri| a.get(ri))
-                    .and_then(|r| bcast_idx(cols, j).and_then(|cj| r.get(cj)));
-                match node {
-                    None => Err(Error::NA),
-                    Some(node) => self.array_node_to_number(node),
-                }
-            }
-        }
-    }
-
     /// [`Model::get_number_or_array`] of an already evaluated `value`.
     pub(crate) fn number_or_array(
         &mut self,
@@ -512,10 +403,8 @@ impl Model {
     }
 
     /// Applies a scalar numeric transform element-wise over a node that may evaluate
-    /// to a number, a range, or an array. Mirrors the `date_part_fn!` macro but
-    /// accepts a closure, so callers can capture extra
-    /// scalar arguments (e.g. WEEKDAY's `return_type`) or use non-arithmetic
-    /// transforms (e.g. date helpers).
+    /// to a number, a range, or an array: the unary `-`/`%` chain ([`Model::apply_unary_chain`]).
+    /// Functions lift through the SPEC-0011 driver instead (`functions/lift/`, T-1785).
     ///
     /// Element coercion matches the rest of the array machinery: booleans → 0/1,
     /// empty → 0, strings are parsed with `cast_number` (`#VALUE!` if they don't

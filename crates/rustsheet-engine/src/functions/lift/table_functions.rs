@@ -274,6 +274,23 @@ macro_rules! lifting_table_functions {
             // --- End incomplete gamma (T-1872) ---
             | Function::HypGeomDist // T-1873
             | Function::HypGeomDistCompat
+            // --- Date and time lifts, MROUND, SQRTPI (T-1785) ---
+            | Function::Day
+            | Function::Month
+            | Function::Year
+            | Function::Hour
+            | Function::Minute
+            | Function::Second
+            | Function::Isoweeknum
+            | Function::Weekday
+            | Function::Days
+            | Function::Days360
+            | Function::Date
+            | Function::Time
+            | Function::Datedif
+            | Function::Mround
+            | Function::Sqrtpi
+            // --- End date and time lifts, MROUND, SQRTPI (T-1785) ---
     };
 }
 pub(crate) use lifting_table_functions;

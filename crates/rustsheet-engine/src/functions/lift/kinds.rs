@@ -132,6 +132,8 @@ const LIFT_3: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Constant);
 /// `CEILING.MATH(number, [significance], [mode])` and FLOOR.MATH.
 const LIFT_1_OF_3: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift, Lift], Constant);
 const LIFT_4: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift], Constant);
+/// `DAYS360(start_date, end_date, [method])`.
+const LIFT_2_OF_3: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift], Constant);
 /// `PMT(rate, nper, pv, [fv], [type])` and PV, FV, NPER alike.
 const LIFT_3_OF_5: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift, Lift], Constant);
 /// `IPMT(rate, per, nper, pv, [fv], [type])` and PPMT.
@@ -676,6 +678,30 @@ impl Function {
             | Function::FloorPrecise => Some(&LIFT_1_OF_2),
             Function::CeilingMath | Function::FloorMath => Some(&LIFT_1_OF_3),
             // --- End math number lifts (T-1773) ---
+            // --- Date and time lifts, MROUND, SQRTPI (T-1785) ---
+            // The worksheet date and time functions lift over arrays and ranges in every
+            // argument, on the range's own rows too (probes/date-argument-modes; docs/excel-
+            // semantics/dates.md "Date function argument modes"), DATEDIF's unit and DAYS360's
+            // method included (probes/date-math-lift-driver-edges G1-G10, G40-G41). A 3-D
+            // reference is `#REF!` (G24-G26, G30-G32). Each is O(1).
+            Function::Day
+            | Function::Month
+            | Function::Year
+            | Function::Hour
+            | Function::Minute
+            | Function::Second
+            | Function::Isoweeknum => Some(&LIFT_1),
+            Function::Weekday => Some(&LIFT_1_OF_2),
+            Function::Days => Some(&LIFT_2),
+            Function::Days360 => Some(&LIFT_2_OF_3),
+            Function::Date | Function::Time | Function::Datedif => Some(&LIFT_3),
+            // Analysis ToolPak functions: they lift over an array and refuse a multi-cell range,
+            // also one a function returns, and a 3-D reference (probes/ceiling-floor-mround-
+            // array-lift A21, A43:A49, probes/sqrtpi-range-operands, date-math-lift-driver-edges
+            // G19-G23, G27-G28; numbers.md "RADIANS, SQRTPI and MUNIT").
+            Function::Mround => Some(&ATP_2),
+            Function::Sqrtpi => Some(&ARRAYS_1),
+            // --- End date and time lifts, MROUND, SQRTPI (T-1785) ---
             // --- Financial ATP (T-1822) ---
             // Analysis ToolPak functions: every argument lifts over an array and refuses a
             // multi-cell range, also on the range's own rows. The first arguments over a range:
