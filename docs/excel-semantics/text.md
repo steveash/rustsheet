@@ -559,3 +559,12 @@ Evidence: probes/value-argument-lift (excel-graph, 2026-10-18); corpus-bench/421
 Implemented in: `fn_value` (functions/text/common.rs), through `text_arg` and `broadcast_text`.
 Status: VERIFIED (excel-graph)
 Tasks: T-1791
+
+## REGEXREPLACE results are not capped at 32,767 characters inside a formula; replacement syntax and Unicode classes (T-1817)
+Rule: Excel does not give `#VALUE!` for a REGEXREPLACE result over 32,767 UTF-16 units. `LEN(REGEXREPLACE(REPT("a",32767),"a","bb"))` is 65534, a result of exactly 32,768 units (`REPT("a",32766)` with `a$` → `bbb`, or `b`+U+1F600 which is 3 units) has LEN 32768 and `ISERROR` FALSE. A result far past that is `#CALC!` (the 32,767 a's with an empty pattern and `bbbbbbbbbb` between every character, 360,447 units); where the cap lies between 65,534 and 360,447 is unprobed, because excel-graph refuses (OpenWorkbookBlockedWorkbook) a probe workbook whose cached result is that large. `ERROR.TYPE` of an over-limit result is 3 (`#VALUE!`) although `LEN` and `ISERROR` accept it, so the text exists in the formula but is not a legal cell value.
+Replacement syntax: `$1$1` and `${1}x` on `(a)` give `aab` and `axb`, `$0$0` gives `aab`; named group `${x}$x` gives `aab`. A bare `$`, `a$` and `$|$$` forms are rich-value errors the oracle does not decode yet (A17, A18 pending).
+Unicode: `\w`, `\pL`, `\p{L}`, `\b` and the POSIX class `[[:alpha:]]` all treat é as a letter (`REGEXTEST("é","[[:alpha:]]")` is TRUE; ours FALSE); `REGEXEXTRACT("naïve","\w+")` is "naïve".
+Evidence: probes/regexreplace-limit-and-syntax (excel-graph, 2026-10-18).
+Ours: `Replacement::result_len` / `too_long` give `#VALUE!` above 32,767 units (cells A2, A5, A9, A6 fail), the empty-pattern case is `#VALUE!` where Excel gives `#CALC!` (A1), and `[[:alpha:]]` is ASCII-only (A23). The cap Excel applies is unknown; any cap we pick is a DEVIATION under directive 5.
+Status: VERIFIED (excel-graph) for the cells above; the large-result cap UNVERIFIED
+Tasks: T-1817
