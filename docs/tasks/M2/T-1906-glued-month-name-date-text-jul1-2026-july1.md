@@ -25,4 +25,4 @@ Oracle evidence: probes/date-text-glued-month-2 rows 6-9 and 12 (cells B-E, type
 - Locales other than en-US.
 
 ## Outcome
-`parse_date` (formatter/date_text.rs) now reads `Jul1 , 2026` and `July1, 2026` (glued month and day, comma, year), `1-Jul2026` (day, hyphen, glued month and year) and `1July1` (glued single digit as year 01). Eval: probes known failures 2130 -> 2111 (fixed 19, regressions 0).
+`parse_date` (formatter/date_text.rs) now reads `Jul1 , 2026` and `July1, 2026` (glued month and day, comma, year), `1-Jul2026` (day, hyphen, glued month and year) and `1July1` (glued single digit as year 01). B6:E9's TIMEVALUE column C stays with T-1907. Eval: probes known failures 2130 -> 2111 (fixed 19, regressions 0).

@@ -498,13 +498,12 @@ mod tests {
             assert_eq!(en(text), Some(serial), "{text}");
         }
         // probes/date-text-glued-month rows 10, 17: still #VALUE!
-        for text in [
-            "July1,2026",
-            "Jun1 2021",
-            "July1 , 2026 5",
-            "1Jul1 , 2026",
-            "July1,, 2026",
-        ] {
+        for text in ["July1,2026", "Jun1 2021"] {
+            assert_eq!(en(text), None, "{text}");
+        }
+        // UNVERIFIED, hand-derived (not oracle-observed): a glued day with more than the year
+        // after the comma, a day-first glued month with a comma, a doubled comma.
+        for text in ["July1 , 2026 5", "1Jul1 , 2026", "July1,, 2026"] {
             assert_eq!(en(text), None, "{text}");
         }
     }
