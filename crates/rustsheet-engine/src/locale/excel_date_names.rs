@@ -3,7 +3,7 @@
 //! March is "Mrz" where CLDR and `locales.bin` have "Mär"): every string is a probed value from
 //! probes/text-locale-date-names, probes/text-locale-name-tables and probes/text-locale-am-neutral
 //! (excel-graph, 2026-10-18; regional variants and more languages from probes/text-locale-regional-lcids), except the morning "AM" of locales whose afternoon is "PM", which
-//! is probed for fr and de only.
+//! is probed for fr, de, de-AT, th, sk, uk and he only.
 
 use super::regional_date_names::{AR, DE_AT, EL, ES_AR, ES_MX, HE, HI, SK, TH, UK, ZH_SG};
 
