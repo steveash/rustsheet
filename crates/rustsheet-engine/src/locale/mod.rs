@@ -1,5 +1,7 @@
 use std::{collections::HashMap, sync::OnceLock};
 
+// Excel's own date names for `[$-...]` format tags. They differ from the CLDR names in
+// `locales.bin` (de "Mrz" vs "Mär") on purpose: keep the two sources apart.
 pub mod excel_date_names;
 
 use bitcode::{Decode, Encode};
