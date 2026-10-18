@@ -230,7 +230,7 @@ fn overflowing_arguments_are_excels_errors_not_panics() {
     model._set("B3", "=F.DIST(C5,2,3,TRUE)");
     model._set("B4", "=F.DIST(C5,2,3,FALSE)");
     model._set("B5", "=F.DIST.RT(C5,2,3)");
-    // Large degrees of freedom keep main's #NUM! for the pdf (TODO(T-1864)).
+    // Large degrees of freedom keep main's #NUM! for the pdf (TODO(T-1865)).
     model._set("B6", "=F.DIST(1,1000,1000,FALSE)");
     model._set("B7", "=F.DIST(3,50,100,FALSE)");
     model._set("B8", "=TDIST(-1,5,NA())");
@@ -285,7 +285,7 @@ fn overflowing_arguments_are_excels_errors_not_panics() {
 #[test]
 fn the_f_pdf_takes_only_an_underflow_from_its_log_form() {
     // A positive F density whose direct form overflows at moderate x stays #NUM!, as on main:
-    // unprobed, and the logarithmic form misses there (T-1864). An underflow to 0 is Excel's
+    // unprobed, and the logarithmic form misses there (T-1865). An underflow to 0 is Excel's
     // (probes/stat-overflow-arguments E11, -b A6).
     let mut model = new_empty_model();
     model._set("A1", "=F.DIST(20,100,3,FALSE)");
