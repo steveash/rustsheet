@@ -3,7 +3,7 @@ id: T-0437
 title: "Check corpus-bench/118-8 Invoice Payments J16:J23 statuses against the pinned clock"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
