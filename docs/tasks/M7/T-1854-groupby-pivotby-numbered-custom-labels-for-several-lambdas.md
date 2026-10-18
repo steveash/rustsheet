@@ -3,7 +3,7 @@ id: T-1854
 title: "GROUPBY/PIVOTBY numbered CUSTOM labels for several LAMBDAs"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -30,3 +30,9 @@ functions/lookup_and_reference/group_functions.rs (`"CUSTOM"`).
 
 ## Out of scope
 - Labels of named functions.
+
+## Outcome
+GROUPBY/PIVOTBY number the default labels of two or more LAMBDAs ("CUSTOM1", "CUSTOM2", ...) per LAMBDA in order;
+a single LAMBDA stays "CUSTOM". Probe `probes/groupby-custom-labels` (excel-graph) records the rule in
+`docs/excel-semantics/arrays.md`. Eval: probes known failures 2214 -> 2084 (130 fixed, 0 regressions).
+Unprobed: whether a labelled LAMBDA counts in the numbering (`HSTACK(L,L,"lab")` was undecodable).

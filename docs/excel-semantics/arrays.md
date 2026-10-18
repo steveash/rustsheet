@@ -601,9 +601,11 @@ same Data sheet, excel-graph, 2026-10-16; "functions", "functions2", "functions3
   every group row and total row once per function after a label column, which shown headers head with `""` (functions G!A61,
   G!A101, functions2 G!A681, P!A21-A61; PIVOTBY P!A601). One function in HSTACK is that function, no label row (G!A601); nested
   HSTACKs flatten (functions2 G!A581). Labels are the function names as written ("SUM", "STDEV.S", "PERCENTOF") and "CUSTOM"
-  for a LAMBDA (functions G!A181, G!A521, G!A721); two LAMBDAs are "CUSTOM1" and "CUSTOM2", as columns and as rows
-  (probes/pivotby-col-subtotals-values2 S!A181, S!A193; -values3 S!A1; not implemented, the engine prints "CUSTOM":
-  T-1854). Custom labels: values beside a column of functions label its rows
+  for a LAMBDA (functions G!A181, G!A521, G!A721); two or more LAMBDAs are "CUSTOM1", "CUSTOM2", ... numbered per LAMBDA in order (named functions between them
+  do not count: `HSTACK(L,SUM,L)` is CUSTOM1, SUM, CUSTOM2), as columns and as rows; a single LAMBDA among named functions stays
+  "CUSTOM", a lone LAMBDA in HSTACK shows no label row (G!A201), and a LAMBDA with a label value takes the label (probes/groupby-custom-labels G!A1, G!A41, G!A81, G!A121,
+  G!A161, G!A201, G!A241; probes/pivotby-col-subtotals-values2 S!A181, S!A193; -values3 S!A1; T-1854). Unprobed: whether a
+  labelled LAMBDA counts in the numbering (the engine counts only unlabelled ones; `HSTACK(L,L,"lab")` was undecodable). Custom labels: values beside a column of functions label its rows
   (`HSTACK(SUM,"a")` or `HSTACK(SUM,5)` is a label column of "a" or 5 before the values, a third element `HSTACK(SUM,5,MAX)`
   ignored: functions G!A221, functions2 G!A121-A181, also in PIVOTBY: P!A101), values below a row of functions label its
   columns (`VSTACK(SUM,5)`: a label row of 5; functions2 G!A161). `#VALUE!` (ERROR.TYPE 3): a 2-D array of functions, an array
