@@ -66,6 +66,21 @@ impl CellSnapshot {
     pub fn is_formula(&self) -> bool {
         self.formula_kind.is_some()
     }
+
+    /// For an array-member cell of `sheet`, the formula of its array anchor (T-1877).
+    #[must_use]
+    pub fn anchor_formula(&self, sheets: &[SheetSnapshot], sheet: &str) -> Option<String> {
+        let Some(FormulaKind::ArrayMember { anchor }) = &self.formula_kind else {
+            return None;
+        };
+        sheets
+            .iter()
+            .find(|s| s.name == sheet)?
+            .cells
+            .get(&Addr::parse(anchor)?)?
+            .formula
+            .clone()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
