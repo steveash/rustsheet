@@ -730,9 +730,12 @@ Evidence: poi/47813.xlsx Numbers!C92, B182, C272, B362, C452, B542, C632 (oracle
 Status: VERIFIED
 Tasks: T-0915
 
-## ACOS(0.5) is the double nearest π/3
-Rule: `ACOS(0.5)` = 1.0471975511965976 (the double nearest π/3); libm returns 1.0471975511965979.
-Evidence: poi/48539.xlsx Instance1!E23 (oracle: excel-graph, 2026-10-04); poi/FormulaEvalTestData_Copy.xlsx Q104.
+## ACOS is PI()/2 - ASIN(x)
+Rule: Excel's `ACOS(x)` is `π/2 - ASIN(x)` in doubles, on ASIN's kernel ("ASIN's formulation"). So `ACOS(0.5)` =
+1.0471975511965976, the double nearest π/3, where libm gives 1.0471975511965979.
+Evidence: all 240 ACOS cells of probes/asin-atan-sign-source (`ACOS(x)` and `ACOS(-x)`, H and I; excel-graph, 2026-10-18, T-1797),
+where libm `acos` fits 157; poi/48539.xlsx Instance1!E23 (oracle: excel-graph, 2026-10-04); poi/FormulaEvalTestData_Copy.xlsx Q104.
+Implemented in: `fn_acos` (functions/math_and_trigonometry/mathematical.rs) as `FRAC_PI_2 - excel_asin(x)` since T-0939.
 Status: VERIFIED
 Tasks: T-0939
 
@@ -959,6 +962,17 @@ they exist; a web golden that is already a known failure and is missed within 1e
 a residue below 1e-15) is not a fitting target. Sidecar numbers within 1e-9 of a 16.x desktop
 cached value are the desktop value (T-0142; the fill prints a `DESKTOP` line); near-zero residues
 (2.2e-16 vs 0) and pre-16 caches stay pending or web. Say which Excel a value comes from when working on these functions.
+SIN(4) (T-1876, decision 0074): `ironcalc-calc/LOGICAL/IF_ARRAY.xlsx` Sheet1!C4, E4 and C11 cache the Mac 16.0300 value
+-0.7568024953079283. The web and the engine give -0.7568024953079282, the correctly rounded value: the true sin(4) is 0.06 ulp
+from the midpoint, and the desktop value is 0.56 ulp off. The 38 desktop SIN/COS cells of TRIGONOMETRIC.xlsx `SIN_COS_TAN` are all
+correctly rounded. Fit over those 38 and 224 web cells (m9-trig-reduction and trig-huge-argument, |x| < 2^27), desktop / web out of 38 / 224:
+- The engine model (x87 π₆₄ reduction, then a correctly rounded sin or cos of the remainder) 38 / 224. Rounding the remainder, or the result, to 64 bits first: 38 / 224 each.
+- A correctly rounded sin 38 / 115. glibc and fdlibm/musl 38 / 115 each.
+- The π₆₄ remainder rounded to a double 31 / 219. fdlibm `rem_pio2` with libm on the head only 31 / 113. A double-π/2-plus-tail reduction 31-33 / 105.
+- An idealized x87 `fsin` (the true sine at 64 bits, then a double) 38 / 115. A double-π reduction 20 / 94.
+- All of these give ...282 except the double-π reduction (...284).
+So no formulation reaches the desktop value. The three cells stay known failures as an Excel-vs-Excel last-digit conflict, and the
+desktop target waits for T-1075 (M14).
 
 ## GEOMEAN last digits differ from a log-sum evaluation
 
@@ -1235,7 +1249,8 @@ equals `PI()/2 - ASIN(x)` exactly. glibc `acos` matches 157 of them and `pi/2 - 
 Evidence: probes/asin-argument-sweep (excel-graph, 2026-10-15, T-1259); probes/asin-negative-band-sweep,
 probes/asin-negative-input-read and probes/asin-atan-sign-source (excel-graph, 2026-10-18, T-1797); gen-m6/2f6b96385ed3facd Calc!A38
 (excel-graph, 2026-10-09, T-1239); gen-m7/0e40208f51c2454c Calc!A27 and gen-m7/cb748b6a9b81fbb7 Calc!A38 (excel-graph, 2026-10-11, T-1275).
-Implemented in: `fn_asin` (functions/math_and_trigonometry/mathematical.rs), with `extended_sqrt`, since T-1797. The result depends on
+Implemented in: `excel_asin` (functions/math_and_trigonometry/mathematical.rs), with `extended_sqrt`, since T-1797. ACOS uses it
+since T-0939 ("ACOS is PI()/2 - ASIN(x)"). The result depends on
 the platform `atan`, and glibc's fits.
 Status: VERIFIED (excel-graph)
 Tasks: T-1259, T-1605, T-1797; ACOS: T-0939

@@ -53,6 +53,14 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    poi/FormulaEvalTestData_Copy.xlsx EverythingTests!G936 `MODE(C9,E16,"1",B8)`, H936 `MODE(B8,"1",2,3)` and K936
    `MODE("1",1,#DIV/0!,2,3)`: Excel 15 cached `#VALUE!`, excel-graph gives `#N/A`, `#N/A` and `#DIV/0!`
    (probes/mode-typed-text-no-mode A3, A4, A2). The engine follows the web; the three cells stay known failures.
+11. **SIN(4) last digit** (T-1876, decision 0074; numbers.md "Excel for the web and desktop Excel differ in the last digits").
+   ironcalc-calc/LOGICAL/IF_ARRAY.xlsx Sheet1!C4, E4 and C11 cache Mac 16.0300's -0.7568024953079283. The web and the engine give
+   ...282, which is correctly rounded. Does Windows desktop give ...283? If it does, run a desktop SIN sweep near rounding
+   midpoints to find the kernel. The engine follows the web, and the three cells stay known failures.
+12. **A legacy cell after copy, move and fill** (T-1853; references.md "Legacy N and T over a reference-returning call").
+   SPEC-0012 rule 6 assumes that a legacy `=N(IF(1,{2;3}))+A5` (a plain `<f>`, `#VALUE!`) stays legacy when it is copied, moved or
+   filled. A row insert was confirmed on excel-graph. Graph refuses copyFrom, moveTo and autoFill
+   (docs/research/t1853-legacy-cell-edits-2026-10-18.md). Do each edit on desktop, save, and check the `<f>` kind and the value.
 
 ## Acceptance criteria
 - [ ] Each item above has its desktop value(s) in docs/excel-semantics/ with the probe or workbook
