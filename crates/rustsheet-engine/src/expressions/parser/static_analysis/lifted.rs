@@ -2,8 +2,8 @@
 //! argument signatures, their result shapes and the legacy `@` of their `LiftArrays` arguments
 //! are derived from `Function::arg_kinds`, never written by hand.
 
-use super::aggregate::yields_cells;
 use super::broadcast::broadcast_shapes;
+use super::cells::yields_cells;
 use super::{run_static_analysis_on_node, Node, Signature, StaticResult};
 use crate::functions::lift::{ArgKind, ArgKinds};
 use crate::functions::Function;

@@ -3,7 +3,7 @@ id: T-1882
 title: "SUBTOTAL over TAKE of a CHOOSE with an array index spills, static analysis says scalar (debug_assert panic)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -36,11 +36,19 @@ array index is an `Array` shape. Add those legacy cells to a probe here and matc
 out of aggregate.rs into a neutral static_analysis submodule (architecture review of T-1874).
 
 ## Acceptance criteria
-- [ ] A unit test (decision 0035) of the formula above passes in a debug build.
-- [ ] probes/lift-arrays-choose-arms passes in full; the baseline only shrinks.
-- [ ] The legacy top-level CHOOSE-with-array-index cells are probed and match.
-- [ ] Static analysis stays linear in nesting depth (a 60-level nested test finishes at once).
-- [ ] `make check` green; reviewers approve.
+- [x] A unit test (decision 0035) of the formula above passes in a debug build.
+- [x] probes/lift-arrays-choose-arms passes in full; the baseline only shrinks.
+- [x] The legacy top-level CHOOSE-with-array-index cells are probed and match.
+- [x] Static analysis stays linear in nesting depth (a 20-level nested SUBTOTAL/TAKE/CHOOSE test, 60 calls deep, near the parser cap, finishes at once).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IM*/EDATE/ISEVEN over CHOOSE (T-1874, done).
+
+## Outcome
+`is_read_reference` (static_analysis/aggregate.rs) reads TAKE/DROP/TRIMRANGE's first argument as cells only when it is
+syntactically cells and its static shape is not an array; the picking function's own shape is `Unknown` and never
+analyses that argument, so it is analysed once and nesting stays linear. `yields_cells` moved to static_analysis/cells.rs.
+Legacy `=CHOOSE({1,2},H1:H2,I1:I2)` is `=@CHOOSE(@{1,2},H1:H2,I1:I2)` in Excel (probes/legacy-choose-array-index): CHOOSE's
+index is now a value position for legacy `@` (`is_choose_index`, legacy.rs), on export and import. Eval: probes fixed 3
+(lift-arrays-choose-arms A70, B69, B70), new case legacy-choose-array-index passes 12/12, no regressions.
