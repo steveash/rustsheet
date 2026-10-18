@@ -3,7 +3,7 @@ id: T-1700
 title: "PIVOTBY column subtotals over several value columns"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -28,19 +28,32 @@ cells). Row subtotals over several values work (G!A751). docs/excel-semantics/ar
 cells are in pivotby.rs (`Slot::Subtotal`, `Model::grid_row`).
 
 ## Acceptance criteria
-- [ ] A rule that explains G!A781, G!A1141 and G!A1171 (probe more shapes first: parents with one and with two
+- [x] A rule that explains G!A781, G!A1141 and G!A1171 (probe more shapes first: parents with one and with two
   children in other positions, three values, a header row), recorded in arrays.md; those cells pass.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
-## Blocked because
-The rule is not found yet (opus run, 2026-10-17). probes/pivotby-col-subtotals-values (12 shapes, excel-graph, ARRAYTOTEXT
-shows each cell's records and value column) narrows it down, recorded in docs/excel-semantics/arrays.md under the T-1700
-quirk: single-child parents take their child's last value column in their first subtotal column, one parent (index
-floor(parents / values) so far) shows Grand Total columns in its other subtotal columns, everything else is `""`. A brute
-force over linear index formulas (leaf cells group- or value-major, ranges and single cells, the positive-depth layout
-with subtotal lines) found none that fits. Next: probe more parents (8-10, all single-child) with 2, 3 and 4 values to
-pin down which parent and which value the Grand Total cells land on, and four values to see whether a single-child
-parent's later columns stay `""`; then try a model where the value index is an extra innermost column key.
+## Outcome
+Rule found (docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY: column totals over several value columns"): with
+one function over w value columns, Excel lays the column lines out with the subtotals after their groups in the key
+order before any value sort, then the total and each subtotal (shallowest first) write value column v into column
+`f * w + k + v` (f its first group's line, k the lines it covers): it counts the covered lines, not their columns.
+Writes into group columns are dropped, later writes win, and the subtotal and total columns then move with their lines
+into the real layout (negative depth, value sort). The same rule explains the blank Total columns over several values
+(P!Y97), and predicted the new case where it differs: one column group shows the last value's total in the first
+Total column (probes/pivotby-total-columns-one-group). Paired functions and functions laid out as columns over one value
+subtotal in place.
+Hypotheses ruled out: "the parent at floor(parents / values) shows the Grand Total" (the earlier description) matches
+every older probe but not -values2 S!A1 (eight single-child parents, two values: no total shown) or S!A85 (four
+values: A, not B, shows it); the earlier brute force over index formulas on the leaf cells missed it because the
+offset counts lines, not cells. The new rule was scored in a scratch simulator on all 13 older probes (1,276 cells, all
+exact) before any code, then against three new excel-graph probe cases (32 shapes).
+Code: `Placement` and `Shown` in pivotby.rs; the `#N/IMPL!` and the separate blank-Total branch are gone
+(`Functions::blank_totals` became `one_over_several_values`).
+Eval delta (probes): 2,073 known failures fixed (pivotby-col-subtotals-values 1,608, groupby-subtotals 465), none
+regressed; known failures 4,446 -> 2,524. New cases pivotby-col-subtotals-values2, -values3 and
+pivotby-total-columns-one-group pass except 151 cells of two other quirks found on the way: numbered "CUSTOM1"/"CUSTOM2"
+labels for two LAMBDAs (130 cells, follow-up T-1854) and col_sort_order -3 with one column field over two values being
+`#VALUE!` (21 cells, follow-up T-1855).
