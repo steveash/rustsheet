@@ -544,8 +544,8 @@ Route 1 (the generating construction) worked, and it overturns the (7,7) picture
   - The 90-digit generator (`docs/research/t1778/round9/gen910.txt` on the research branch) is about 1E-12 from
     Excel's doubles and matches 31% exactly.
   - Every stage from the first sum down is visible (weights 0.02-1.05), so the tail's top-down peeling applies.
-  - Two coefficients are pinned so far, each modulo 8,192 ulps (N top, D top). Their aliases are tied by
-    Delta(d10) = (sqrt(pi)/2)*Delta(c9).
+  - No coefficient is pinned yet. The first top-coefficient readings (N and D) used only x in [3.5, 4) and proved to
+    be local false peaks, so a candidate now has to light up in several disjoint x regions.
 - **New data.** 65,536-double runs ending at 4, below 2 and below 1, plus a control below 3 (`kmyst-erfc-r10*`),
   for model-free stage-mantissa readout.
 
