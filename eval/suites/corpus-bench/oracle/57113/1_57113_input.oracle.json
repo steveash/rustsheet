@@ -1,0 +1,30 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "B2": {
+    "t": "s",
+    "v": "#Corn"
+   },
+   "B3": {
+    "t": "s",
+    "v": "#tomatoes"
+   },
+   "C2": {
+    "t": "s",
+    "v": "#Corn"
+   },
+   "C3": {
+    "t": "s",
+    "v": "#tomatoes"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "258e29b0804f0cb7a3b6c1b87da649e3d0567c292263769a4795d72c5a808f87",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:49:45+00:00",
+  "version": null
+ }
+}

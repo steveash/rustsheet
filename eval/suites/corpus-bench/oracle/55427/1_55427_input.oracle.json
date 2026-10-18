@@ -1,0 +1,64 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Compiled and located schools da": {
+   "B10": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B11": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B12": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B13": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B2": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B3": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B4": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B5": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B6": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B7": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B8": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "B9": {
+    "t": "e",
+    "v": "#N/A"
+   }
+  },
+  "KS4 data": {},
+  "URN lookup": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "1c06477fced9d01b3246b6cdb2dad3cd3025fa2fd46d9b1c9c31a24fa791de05",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:46:43+00:00",
+  "version": null
+ }
+}

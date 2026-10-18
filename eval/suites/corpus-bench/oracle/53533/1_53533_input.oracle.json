@@ -1,0 +1,39 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Profit or Loss": {
+   "C10": {
+    "t": "n",
+    "v": 7136.0
+   },
+   "C5": {
+    "t": "n",
+    "v": 18084.0
+   },
+   "C6": {
+    "t": "n",
+    "v": 15354.0
+   },
+   "C7": {
+    "t": "n",
+    "v": 16865.0
+   },
+   "C8": {
+    "t": "n",
+    "v": 9981.0
+   },
+   "C9": {
+    "t": "n",
+    "v": 7434.0
+   }
+  },
+  "Raw Trial Balance": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "f4fbb75d8f42ebcf01266c28abd6aea8e0f17c47351476526dc08db562e7574d",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:43:55+00:00",
+  "version": null
+ }
+}
