@@ -756,6 +756,7 @@ C	probes/text-collation-lookups.case.json	93
 C	probes/text-collation-order.case.json	486
 C	probes/text-collation-unprobed.case.json	270
 C	probes/text-count-argument-bounds.case.json	623
+C	probes/text-currency-locale-date.case.json	19
 C	probes/text-date-255-char-limit.case.json	43
 C	probes/text-ddd-negative-fraction.case.json	9
 C	probes/text-format-array.case.json	37
@@ -3078,6 +3079,7 @@ F	probes/t1626-regextest.case.json	Sheet1!C29
 F	probes/t1626-regextest.case.json	Sheet1!C4
 F	probes/t1626-regextest.case.json	Sheet1!C5
 F	probes/t1626-regextest.case.json	Sheet1!C6
+F	probes/text-currency-locale-date.case.json	S!A14
 F	probes/text-format-length-limit-d.case.json	S!A31
 F	probes/text-format-length-limit-f.case.json	Sheet1!A41
 F	probes/text-format-length-limit-f.case.json	Sheet1!A42
@@ -3088,10 +3090,8 @@ F	probes/text-format-length-limit-n.case.json	Sheet1!A8
 F	probes/text-format-length-limit-n.case.json	Sheet1!A9
 F	probes/text-format-length-limit-o.case.json	Sheet1!A37
 F	probes/text-format-length-limit-q.case.json	Sheet1!A16
-F	probes/text-locale-date-names.case.json	S!A116
 F	probes/text-locale-name-tables.case.json	S!A105
 F	probes/text-locale-name-tables.case.json	S!A546
-F	probes/text-locale-name-tables.case.json	S!A574
 F	probes/text-locale-name-tables.case.json	S!A587
 F	probes/text-locale-name-tables.case.json	S!A588
 F	probes/text-locale-name-tables.case.json	S!A589

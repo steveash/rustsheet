@@ -1,0 +1,36 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1865 currency tag with a locale in date sections: symbol position and locale effect.",
+ "tags": [
+  "M10",
+  "number-format",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TEXT(45000.75,\"[$€-40C]mmmm\")",
+    "A2": "=TEXT(45000.75,\"mmmm[$€-40C]\")",
+    "A3": "=TEXT(45000.75,\"[$€-40C]d mmmm\")",
+    "A4": "=TEXT(45000.75,\"d [$€-40C]mmmm\")",
+    "A5": "=TEXT(45000.75,\"dddd [$€-40C]\")",
+    "A6": "=TEXT(45000.75,\"[$€-407]dddd\")",
+    "A7": "=TEXT(45000.75,\"[$€-40C]yyyy\")",
+    "A8": "=TEXT(45000.75,\"[$€-40C]dd/mm/yyyy\")",
+    "A9": "=TEXT(45000.75,\"[$€-40C]mmmm [$-40C]mmmm\")",
+    "A10": "=TEXT(45000.75,\"[$€-40C]mmm\")",
+    "A11": "=TEXT(45000.75,\"[$€-409]mmmm\")",
+    "A12": "=TEXT(45000.75,\"[$€-40C]h:mm AM/PM\")",
+    "A13": "=TEXT(45000.75,\"[$€-40C]A/P\")",
+    "A14": "=TEXT(45000.75,\"[$USD-40C]mmmm\")",
+    "A15": "=TEXT(45000.75,\"[$€-fr-FR]mmmm\")",
+    "A16": "=TEXT(45000.75,\"[$€]mmmm\")",
+    "A17": "=TEXT(45000.75,\"[$€-F800]\")",
+    "A18": "=TEXT(45000.75,\"[$€-40C]0.00\")",
+    "A19": "=TEXT(45000.75,\"[$€-40C]mmmm;[$€-407]mmmm\")"
+   }
+  }
+ ],
+ "expected": {}
+}

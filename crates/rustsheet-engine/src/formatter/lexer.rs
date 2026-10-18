@@ -7,6 +7,8 @@ pub struct Lexer {
     chars: Vec<char>,
     error_message: String,
     error_position: usize,
+    /// The locale of a `[$€-40C]` currency tag, returned by the call after its symbol.
+    pending_locale: Option<LocaleTag>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -106,6 +108,7 @@ impl Lexer {
             len,
             error_message: "".to_string(),
             error_position: 0,
+            pending_locale: None,
         }
     }
 
@@ -362,13 +365,16 @@ impl Lexer {
     }
 
     pub fn peek_token(&mut self) -> Token {
-        let position = self.position;
+        let (position, pending) = (self.position, self.pending_locale);
         let token = self.next_token();
-        self.position = position;
+        (self.position, self.pending_locale) = (position, pending);
         token
     }
 
     pub fn next_token(&mut self) -> Token {
+        if let Some(locale) = self.pending_locale.take() {
+            return Token::Locale(locale);
+        }
         let ch = self.read_next_char();
         match ch {
             Some(x) => match x {
@@ -417,16 +423,19 @@ impl Lexer {
                                 return Token::ILLEGAL;
                             }
                             if let Some(currency) = self.read_next_char() {
-                                // ignore the locale part for now, just check if it ends with ']'
+                                // The locale part of `[$€-40C]` is read as a `[$-40C]` tag that
+                                // follows the symbol (probes/text-currency-locale-date).
                                 if Some('-') == self.peek_char() {
                                     self.read_next_char();
-
+                                    let mut tag = String::new();
                                     while let Some(c) = self.peek_char() {
                                         if c == ']' {
                                             break;
                                         }
+                                        tag.push(c);
                                         self.read_next_char();
                                     }
+                                    self.pending_locale = Some(locale_tag::resolve(&tag));
                                 }
                                 if self.read_next_char() == Some(']') {
                                     return Token::Currency(currency);
