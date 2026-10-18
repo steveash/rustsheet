@@ -390,6 +390,46 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
   - The form (degree 4 over 5 in z, x*N/W) matches Cephes `ndtr.c` erf but not its coefficients. The normalised
     ratios are close to the [4/5] Padé of erf(x)/x. Scripts: `docs/research/t1778/tinydiv.c`.
   - The exact coefficients and their evaluation order are OPEN (T-1778).
+- Bit-exact small-x erf (round 3, 2026-10-18). For 0 <= x < 0.5 (and x = 0.5 itself), ERF.PRECISE(x) is computed
+  as follows:
+  - z = fl53(fl64(x*x)).
+  - N = P(z) and W = Q(z) by x87 Horner from the top coefficient, storing every operation to a double:
+    t = fl53(fl64(s*z)), then s = fl53(fl64(t + c_k)).
+  - co = fl53(fl64(x*N)), then erf = fl53(fl64(co/W)).
+  - The coefficients are doubles, listed in hex in `docs/research/t1778/round3/sol100.txt`. P(0) = A =
+    0x1.1df5e70c7956bp+0 and Q(0) = 0x1.fada15778ece6p-1, as above.
+  - Matches: 775,272 of 775,272 oracle points across every small-x probe, and 35,718 of 35,718 points never used
+    in the fit.
+  - p0..p2 and q0..q2 are pinned to single doubles. The top coefficients lie on a thin feasible family, and other
+    members score the same on all data.
+  - How it was found: exact interval inversion of each rounding step into linear constraints, solved by LP
+    (`docs/research/t1778/round3/`).
+  - The source of the coefficients is not identified. No minimax, Padé or Chebyshev construction reproduces q2.
+- ERFC kernel for x >= 0.5 (round 3; structure only, not bit-exact):
+  - **Split.** The kernel starts at x = 0.5 + 2^-53; x = 0.5 still takes the small-x branch.
+  - **Form.** ERFC(x) = fl53(fl64(E*R)). E is Excel's own EXP(-fl53(fl64(x*x))) (numbers.md, "EXP is an x87
+    2^(a*log2 e) evaluation"), and R is a stored double that depends only on x. All 121,798 observed results
+    can be written this way; with a plain double multiply, 17 cannot.
+  - **Other results.** ERF(d) = fl(1 - ERFC(d)) and ERFC(-d) = fl(2 - ERFC(d)). A result below DBL_MIN is flushed
+    to 0; there is no x threshold, and the last nonzero result is near x = 26.5432.
+  - **Related functions:**
+    - CHISQ.DIST.RT(2z, 1) = ERFC.PRECISE(SQRT(z)) at 32,768 of 32,768 points.
+    - NORM.S.DIST(-y, TRUE) = ERFC.PRECISE(fl(y*sqrt(0.5)))/2 in the tail, not y/sqrt(2) (3,072 of 3,072
+      against 590).
+  - **R's error structure.**
+    - R's error is a deterministic staircase of about ±3 units of 2^-53: flat on [0.5, 1.843), then sharp
+      steps (9.0503 and 19.3667 are among the sharpest).
+    - An all-double or stored-x87 Horner rational shows the same pattern, with a jump wherever an intermediate
+      crosses a power of two. So the staircase is a rounding fingerprint of the exact coefficients, not an
+      approximation-error curve.
+    - The sharpest change sits at x ≈ 1.843, and a likely branch at x ≈ 8.03-8.05. Above that branch, two
+      fixed spectral lines (0.28893 and 0.32594 cycles per x-ulp) point to an intermediate linear in x.
+  - **Ruled out as R:**
+    - Cephes ndtr erfc, Hart 5725, Cody CALERF and fdlibm (16-40% exact);
+    - Numerical Recipes gcf, the Laplace continued fraction and asymptotic-series term counts;
+    - tables in x or z, and branches at any of 1, 1.5, ..., 20.
+  - **Best smooth model.** fl87(E*fl(erfcx(x))) matches 32.5% of points. The ceiling for any smooth R is about
+    39%, so parity needs the exact coefficients and operation order.
 - GAMMA.DIST(z, 0.5, 1, TRUE) = ERF.PRECISE(SQRT(z)) = CHISQ.DIST(2z, 1, TRUE) at 15,360 of 15,360 consecutive
   doubles z, about half of which are not squares of doubles (`kmyst-erf-decouple`).
   - So the kernel works from x = sqrt(z), and that internal sqrt is rounded twice (64-bit, then 53), like the
@@ -418,7 +458,7 @@ Candidates that do not reproduce Excel (exact matches):
 Evidence: probes-numeric cases `kmyst-norm-erfc-a`, `kmyst-norm-erfc-b`, `kmyst-erf-gamma`,
 `kmyst-erf-tiny`, `kmyst-erf-dense`, `kmyst-erfc-dense`, `kmyst-gamma-tiny` and `kmyst-kernel-map`
 (excel-graph, 2026-10-17); the tiny-x erf split uses `kmyst-erf-mantissa`, `kmyst-erf-scale`,
-`kmyst-erf-consecutive`, `kmyst-erf-stride06` to `kmyst-erf-stride41`, `kmyst-erf-runs`, `kmyst-erf-zstride`, `kmyst-erf-zsweep`, `kmyst-erf-zsweep2`, `kmyst-erf-bridge`, `kmyst-erf-ladder`, `kmyst-erf-scatter`, `kmyst-erf-zsweep3`, `kmyst-erf-zladder`, `kmyst-erf-wsweep`, `kmyst-erf-wsweep2`, `kmyst-erf-twoarg`, `kmyst-erf-wladder1/2`, `kmyst-erf-wknee1..4`, `kmyst-erf-decouple`, `kmyst-erf-ashape` and `kmyst-erf-erfcties`, and the
+`kmyst-erf-consecutive`, `kmyst-erf-stride06` to `kmyst-erf-stride41`, `kmyst-erf-runs`, `kmyst-erf-zstride`, `kmyst-erf-zsweep`, `kmyst-erf-zsweep2`, `kmyst-erf-bridge`, `kmyst-erf-ladder`, `kmyst-erf-scatter`, `kmyst-erf-zsweep3`, `kmyst-erf-zladder`, `kmyst-erf-wsweep`, `kmyst-erf-wsweep2`, `kmyst-erf-twoarg`, `kmyst-erf-wladder1/2`, `kmyst-erf-wknee1..4`, `kmyst-erf-decouple`, `kmyst-erf-ashape`, `kmyst-erf-erfcties`, `kmyst-erf-rladder1..7` and the `kmyst-erfc-*` tail probes, and the
 internal-exp check uses `kmyst-gamma-exp`. `uv run python ../docs/research/t1778_incomplete_gamma_kernel_map.py` in tools/
 reprints the identity counts, the tiny-x constant, the GAMMA.DIST error tracking and the ERFC tail figures.
 Status: VERIFIED (identities, constant, error structure); the kernel's exact operation sequence is OPEN.

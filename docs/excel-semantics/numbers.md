@@ -399,6 +399,23 @@ GAMMA at non-integers and ERFC the x87 model is unsupported (it ties correctly r
 kernels stay unexplained (time-boxed, decision 0056).
 Tasks: T-1524, T-0901, T-1495, T-0973, T-0968, T-1528, T-1529
 
+## EXP is an x87 2^(a*log2 e) evaluation, not correctly rounded (T-1778)
+
+Excel's EXP(a) behaves like x87 code: t = fl64(a * L2E64), then EXP = fl53(fl64(2^t)). Here L2E64 is log2(e)
+rounded to a 64-bit mantissa, with relative error +1.92E-20.
+- **Where it matches.** EXP(-(x*x)) at 121,790 of 121,805 points (x from 0.5 to 26.5) and EXP(-z) at 30,717 of
+  30,720 (z from 0.26 to 702). A variant that applies F2XM1 to the fraction (n = nint(t),
+  w = fl64(1 + fl64(2^(t-n) - 1)), EXP = fl53(w * 2^n)) gains 3 more points.
+- **What correctly rounded exp gives.** 30,218 of 30,720.
+- **How it shows.** Excel's EXP is 1 ulp off the correctly rounded value at about 2.1% of points with large
+  |a|, mostly low. The bias grows with |a|, as the error in L2E64 times a predicts. At small |a| the two agree,
+  which is why the `exp-ln` sweep above saw correctly rounded values.
+- **Where it matters.** ERFC.PRECISE for x >= 0.5 multiplies by this stored EXP value (statistics.md, T-1778).
+- **Open.** The remaining 12 to 15 of 152,525 mismatches are unresolved.
+
+Evidence: probes-numeric `kmyst-erfc-expcol`, `kmyst-erfc-runs1..4`, `kmyst-erfc-stepmap1/2`, `kmyst-erfc-chiruns1..3`
+(excel-graph, 2026-10-18). Status: VERIFIED (structure); the last mismatches are OPEN.
+
 ## Numbers near 1E+307 print with 14 significant digits
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is
 4.49423283715579E+307 (15 digits, A16); the engine prints 4.49423283715579E+307.
