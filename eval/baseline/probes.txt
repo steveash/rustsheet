@@ -782,6 +782,7 @@ C	probes/text-general-ties-wide-fixed.case.json	24
 C	probes/text-locale-am-neutral.case.json	47
 C	probes/text-locale-date-names.case.json	124
 C	probes/text-locale-name-tables.case.json	601
+C	probes/text-locale-regional-lcids.case.json	252
 C	probes/text-lone-surrogates.case.json	107
 C	probes/text-modes-bahttext.case.json	2
 C	probes/text-modes-bytes.case.json	8
