@@ -361,12 +361,20 @@ are 0 wherever DATEVALUE parses):
   `"1JUN 2021"`, `"1 JUN2021"`, `"1JUN2021"` (rows 13-16, 18-19, 24).
 - `#VALUE!`: a month glued to a day followed by a year, whatever joins them (`"July1,2026"`,
   `"July12026"`, `"Jun1 2021"`: rows 10, 11, 17), and a name that is no month (`"Ju1"`, row 21).
-Unprobed, read by the same rule: a glued word followed by more words is `#VALUE!` when its month is glued to a
-number (`"Jul1 , 2026"`, by rows 10 and 17), and a separated word with a
-glued part (`"1-Jul2026"`) is `#VALUE!` (no glued part is split inside a separated word).
-Status: VERIFIED (web)
+UNVERIFIED (hand-derived from the rule, not oracle-observed; T-1879 probes them):
+- shapes the probe lacks: a glued word that more words follow is `#VALUE!` when its month is glued
+  to a number (`"Jul1 , 2026"`, `"July1, 2026"`, by rows 10 and 17); a separated word with a glued
+  part is `#VALUE!` (`"1-Jul2026"`: no glued part is split inside a separated word); `"1July1"` is
+  `#VALUE!`; a day number past the month's end reads as a year (`"Jun31"` is 1931-06-01, `"Feb29"`
+  is 2029-02-01 with a 2026 clock, following `"July32"`);
+- paths the probe lacks (it covers DATEVALUE, VALUE, `0+`, MONTH and DAY only), which share
+  `parse_date`: date+time text (`"July1 10:00"`, `"1JUN2021 6 PM"` give a date-time), criteria
+  (COUNTIF/SUMIF `"July1"`, `">1JUN2021"` match as dates) and typed input with its inferred number
+  format (`"July1"` "d-mmm", `"Jul2026"` "mmm-yy", `"1Jul 2026"` "d-mmm-yy");
+- locales other than en-US (the split uses the locale's month names).
+Status: VERIFIED (web) for probes/date-text-glued-month rows 1-24; the forms above are UNVERIFIED.
 Implemented in: `split_glued_month` in `crates/rustsheet-engine/src/formatter/date_text.rs` (used by `parse_date`)
-Tasks: T-1788, T-1789
+Tasks: T-1788, T-1789, T-1879
 
 ## WORKDAY holidays take the whole range
 Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no

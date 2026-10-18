@@ -282,14 +282,15 @@ fn remove_separator_spaces(value: &str) -> String {
 /// whether a number follows the name. `None` when the word is not that shape (punctuation, no
 /// digits, or letters that are no month name: "1e5", "10AM", "July1,2026" are left whole).
 fn split_glued_month<'a>(word: &'a str, locale: &Locale) -> Option<([&'a str; 3], bool)> {
-    let digits = |s: &str| s.len() - s.trim_start_matches(|c: char| c.is_ascii_digit()).len();
-    let (day, rest) = word.split_at(digits(word));
+    let leading_digits =
+        |s: &str| s.len() - s.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+    let (day, rest) = word.split_at(leading_digits(word));
     let (name, number) = rest.split_at(
         rest.find(|c: char| c.is_ascii_digit())
             .unwrap_or(rest.len()),
     );
     let glued = !name.is_empty() && (!day.is_empty() || !number.is_empty());
-    if !glued || digits(number) != number.len() || !name.chars().all(char::is_alphabetic) {
+    if !glued || leading_digits(number) != number.len() || !name.chars().all(char::is_alphabetic) {
         return None;
     }
     parse_month_name(name, locale)?;
@@ -336,7 +337,8 @@ pub(crate) fn parse_date(
         }
     }
     // At most 5 words: one more than the longest form (4), enough to reject longer text without
-    // splitting all of it.
+    // splitting all of it. The cap cannot hide a word after a glued month: a 5th word already
+    // makes the text too long for every form below.
     let words: Vec<&str> = value.split_whitespace().take(5).collect();
     // A month name glued to digits reads as with spaces between them ("July1" is "July 1",
     // "1JUN2021" is "1 JUN 2021"), except that a month glued to a number must end the text: a
@@ -646,8 +648,13 @@ mod tests {
             }
         }
         // A month glued to a day that a year follows, and a name that is no month (rows 10, 11,
-        // 17, 21); "Jul1 , 2026" follows rows 10 and 17 ("whatever joins them").
-        for text in ["July1,2026", "July12026", "Jun1 2021", "Ju1", "Jul1 , 2026"] {
+        // 17, 21).
+        for text in ["July1,2026", "July12026", "Jun1 2021", "Ju1"] {
+            assert_eq!(en(text), None, "{text}");
+        }
+        // UNVERIFIED, hand-derived from the rule and not oracle-observed (T-1879): a glued day
+        // that more words follow, and a glued part inside a separated word.
+        for text in ["Jul1 , 2026", "1-Jul2026"] {
             assert_eq!(en(text), None, "{text}");
         }
         // The current year comes from the clock, as for spaced year-less text.
