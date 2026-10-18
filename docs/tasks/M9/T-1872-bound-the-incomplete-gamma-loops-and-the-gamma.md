@@ -3,7 +3,7 @@ id: T-1872
 title: "Bound the incomplete-gamma loops and the GAMMA.INV/CHISQ.INV searches, then lift GAMMA.*, CHISQ.* and POISSON (SPEC-0011)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
