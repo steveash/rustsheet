@@ -1093,6 +1093,7 @@ Evidence: probes/subtotal-array-function-num A1-A14 (excel-graph, 2026-10-18, T-
 Ours: an array function_num is `#N/IMPL!`, a range one `#VALUE!` (T-1868).
 Status: VERIFIED (web)
 Tasks: T-1868
+
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15
 (Data!B12) and `Data!C2:Data!E4 Data!C4` = 100. A single-cell range can also start a range-of-ranges:
