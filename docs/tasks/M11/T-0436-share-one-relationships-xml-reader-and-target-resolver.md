@@ -3,7 +3,7 @@ id: T-0436
 title: "Share one relationships-XML reader and target resolver in xlsx_snapshot"
 milestone: M11
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-0434 added `read_sheet_tables` and `resolve_relative` (crates/rustsheet-eval/s
 
 ## Out of scope
 -
+
+## Outcome
+Added `relationships()` and `resolve_target()` in `xlsx_snapshot.rs`; the workbook and sheet-table readers share them and `normalize_target`/`resolve_relative` are gone. No eval baseline change. `make check` green.
