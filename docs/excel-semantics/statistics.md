@@ -324,10 +324,11 @@ Evidence: probes/stat-argument-modes (573 cells, excel-graph, 2026-10-09, T-1080
 Ours: LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN lift (T-1772, section below), and so do the
 44 functions whose every argument is scalar and whose kernel is bounded (T-1290, "Later arguments and element values
 of the scalar statistical functions" below); the other scalar arguments do not (`#N/IMPL!` for an array, `#VALUE!` for
-a range): the quantile searches, the incomplete-gamma functions and HYPGEOM.DIST (T-1848), and the rest (T-1813); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
+a range): the incomplete-gamma functions (T-1872), HYPGEOM.DIST (T-1873), and the rest (T-1813); BETA.INV, F.INV,
+T.INV, CONFIDENCE.T and their variants lift since T-1848 ("Quantile searches: per-call cap and lifting" below); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
 `#N/IMPL!`; many distribution values are a few ulps off (the existing accuracy entries above).
 Status: VERIFIED (excel-graph)
-Tasks: T-1080, T-1290, T-1291, T-1292, T-1293, T-1848
+Tasks: T-1080, T-1290, T-1291, T-1292, T-1293, T-1848, T-1872, T-1873
 
 ## Later arguments and element values of the scalar statistical functions (T-1290)
 Rule: the later arguments of the statistical functions whose every argument is scalar lift over a multi-cell range too,
@@ -355,9 +356,9 @@ before they check any ("Overflowing arguments, PERMUT's limit and argument error
 here: BETA.DIST's `cumulative` given as a one-cell range was `#VALUE!` and is now its value (L11). BINOM.INV and
 CRITBINOM are `KernelWork::Weighted(4096)`: their search halves a `u64` interval at most 64 times, one incomplete-beta
 cdf each, up to about 65 us an element in release (`BINOM.INV(1E12,0.3,alpha)`). PERMUT is `Constant`: its product
-stops once it is infinite, after at most 171 factors, where `PERMUT(1E15,1E15)` looped 10^15 times. The quantile searches (BETA.INV, F.INV, T.INV, CHISQ.INV, GAMMA.INV, CONFIDENCE.T), the
-incomplete-gamma functions (CHISQ.DIST, GAMMA.DIST, POISSON) and HYPGEOM.DIST's cdf sum loop by value with no per-call
-cap, so they are not lifted yet (T-1848).
+stops once it is infinite, after at most 171 factors, where `PERMUT(1E15,1E15)` looped 10^15 times. The quantile searches of BETA.INV, F.INV,
+T.INV and CONFIDENCE.T lift since T-1848 (next section); the incomplete-gamma functions (CHISQ.*, GAMMA.DIST, GAMMA.INV,
+POISSON) and HYPGEOM.DIST's cdf sum loop by value with no per-call cap, so they are not lifted yet (T-1872, T-1873).
 DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted BINOM.INV or CRITBINOM is charged 4096 units per element
 against the shared cell-visit cap of 2^27 (`limits::MAX_LIFTED_CELL_VISITS`), so one of more than 32,768 elements is
 `#ERROR!` before it runs where Excel computes it (`ROWS(BINOM.INV(5,0.4,SEQUENCE(40000)/40001))`, unit test
@@ -365,6 +366,55 @@ against the shared cell-visit cap of 2^27 (`limits::MAX_LIFTED_CELL_VISITS`), so
 of the Bessel entries (engineering.md "BESSEL order cap").
 Status: VERIFIED (excel-graph)
 Tasks: T-1290, T-1849, T-1755, T-1848
+
+## Quantile searches: per-call cap and lifting (T-1848)
+Rule: BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV and CONFIDENCE.T lift every argument over an array
+and over a two-cell range on the formula's own rows, each element the scalar call (the last argument over a range is 2
+rows, H1-H25 with values I, J; BETA.INV's and BETAINV's `[A]` and `[B]` over a range and an array, H3-H11, K1-K8). Element
+values follow the scalar rules: `{0.4;"0.4"}` reads the text and `{0.4;"x"}` is `#VALUE!` in its element (L4, L5),
+`CONFIDENCE.T(0.4,2,{15;1})` element 2 is `#DIV/0!` (L6, and `CONFIDENCE.T(0.4,2,1.5)` too: size truncates to 1, L17),
+an error element is its error (L8), broadcasting is the operators' (`T.INV({0.1;0.2;0.3},{5,10})` is 3x2, L9, L10), a
+one-cell range is its value (L11), `T.INV.2T(1,5)` is 0 (L18), and every argument is read before any is checked
+(`BETA.INV(0.4,-1,NA())`, `CONFIDENCE.T(0.4,-2,NA())`, `T.INV(2,NA())` and `F.INV(2,NA(),5)` are `#N/A`, L12-L16). A TRUE
+element reads as 1: `F.INV.RT({0.4;TRUE},5,5)` element 2 is 0 (L19), and `F.INV`, `BETA.INV` and `CONFIDENCE.T` of a
+TRUE element are `#NUM!` (p = 1 or alpha = 1; L2, L3, L20).
+Excel also inverts where statrs' search fails: `F.INV(1E-300,5,5)` = 5.081599884913164E-121, and `F.INV(p,5,5)` follows
+the power law 5.0816E-09 * (p/1E-20)^0.4 from p = 1E-20 to 1E-300 (E1-E5, E12); `F.INV(1E-50,6000,4)` =
+0.0004924127886173762 (E6); `BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)` = 0.0691959487211844 (E9), far
+from the true quantile (about 0.003), as Excel's BETA.INV is erratic where a shape is extreme ("Inverse CDF functions at
+a tiny or near-1 probability" below). A cell holding `=1-2^-53` is a number that `=C1=1` calls equal to 1 (E13, E14).
+Evidence: probes/stat-quantile-lift (124 formula cells, excel-graph, 2026-10-18, T-1848); probes/stat-argument-modes
+H90-H99, H173-H177, H231-H245, H518-H529.
+Ours: matches the lift cells (T-1848). The kernels keep their scalar reads, so a TRUE element is `#VALUE!` in BETA.INV,
+F.INV and F.INV.RT, which read numbers without booleans (L2, L3, L19: T-1849). Their quantile comes from statrs 0.18's
+`inv_beta_reg`, ported line for line to `statistical/inverse_beta.rs` with a per-call cap of its own: at most 512 Newton
+steps and 4,096 step adjustments (64 and 512 for Student's t). Where statrs finishes, the port returns its double bit for bit
+(unit test `the_port_is_statrs_where_statrs_finishes`; probes-numeric is unchanged cell for cell), so the values
+probes-numeric checks are main's. statrs needs at most 377 steps where it finishes (13 million samples: F at p down to
+1E-162, Beta shapes 1E-5 to 1E5, Student t). Below the old thresholds the quantile is still a bisection on the cdf of at
+most 1,100 (BETA.INV) or about 1,300 (F.INV) or 264 (T.INV) evaluations. The lifting table charges BETA.INV, BETAINV,
+F.INV, F.INV.RT and FINV 2^18 units an element and T.INV, T.INV.2T, TINV and CONFIDENCE.T 2^16: the bound of each
+kernel's caps at a full-cost incomplete-beta cdf (140 continued-fraction steps, 3.1 to 3.4 us in release), about 4.0 ms
+(F.INV's 1,301-cdf bisection) and 0.82 ms (T.INV's 264-cdf bisection); the cases measured cost far less (167 us for
+`BETA.INV(1E-300,0.5,1E6)`, 17.5 us for `T.INV.2T(1E-9,99999)`); kinds.rs has the measurements.
+`F.INV(1E-160,5,5)` and `F.INV(1E-100,5,5)` are 1.3470392369521052E-15 in statrs and here, as on main, where Excel follows
+the power law (E4, E5), and `F.INV(1E-50,2000,2)` is 0.008195481623831033 (statrs converges to a wrong root) where Excel
+gives 0.004452511009947361 (E7); E8 and E10-E12 miss by 4 to 357 ulp, as on main (all T-1871).
+DEVIATION (decision 0014, CLAUDE.md directive 5): where statrs' search panicked or never finished, the capped search is
+`#NUM!` and Excel gives a number. With both df below 1E5, statrs panics (a NaN first estimate, an unwrapped incomplete
+beta) for every F.INV below p = 1.6E-162, where `p * p` underflows (`F.INV(1E-300,5,5)`, `F.INV(1E-170,5,5)`: E1-E3), and
+its step loop never ends once a Newton step is infinite, which a 1-million-sample sweep found for about 7% of F.INV calls with
+p below 3.6E-27 (`F.INV(1E-50,6000,4)`, E6) and once for BETA.INV at p = 1-2^-53
+(`BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)`, E9). Unit test `quantile_searches_that_hung_or_panicked_are_bounded`;
+T-1871 gives Excel's values there.
+DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted BETA.INV, BETAINV, F.INV, F.INV.RT or FINV of more than 512
+elements, and a lifted T.INV, T.INV.2T, TINV or CONFIDENCE.T of more than 2,048, is `#ERROR!` before it runs where Excel
+computes it (2^27 units, `limits::MAX_LIFTED_CELL_VISITS`, over 2^18 and 2^16 an element;
+`ROWS(BETA.INV(SEQUENCE(513)/514,2,3))`, unit test `quantile_kernels_are_charged_their_weight`). At the bound of the caps,
+512 F.INV elements take about 2.1 s and 2,048 T.INV elements about 1.7 s, the 2 s budget of the Bessel entries
+(engineering.md "BESSEL order cap"). Showing that a slow cdf and a long search never coincide would allow larger lifts.
+Status: VERIFIED (excel-graph)
+Tasks: T-1848, T-1849, T-1871
 
 ## Overflowing arguments, PERMUT's limit and argument error order (T-1290)
 Rule: an F.DIST, F.DIST.RT or FDIST call whose `deg_freedom1 * x` overflows a double is `#DIV/0!` for the cdf and the
