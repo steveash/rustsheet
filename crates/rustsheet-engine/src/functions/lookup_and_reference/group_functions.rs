@@ -409,7 +409,9 @@ impl Model {
             let Element::Function(lambda) = element else {
                 return Err(invalid());
             };
-            let (arity, default_label, percentof) = match self.function_value(lambda) {
+            let value = self.function_value(lambda);
+            let is_lambda = matches!(value, Some(FunctionValue::Lambda { .. }));
+            let (arity, default_label, percentof) = match value {
                 Some(FunctionValue::Eta(kind)) => (
                     eta_arity(&kind),
                     ArrayNode::String(kind.to_localized_name(get_default_language()).into()),
@@ -442,7 +444,7 @@ impl Model {
             let label = match labels.as_ref().and_then(|labels| labels.get(index)) {
                 Some(Element::Value(value)) => value.clone(),
                 _ => {
-                    if matches!(&default_label, ArrayNode::String(s) if &**s == "CUSTOM") {
+                    if is_lambda {
                         custom.push(list.len());
                     }
                     default_label
