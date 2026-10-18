@@ -276,17 +276,52 @@ impl Model {
         if !lifts {
             return self.subtotal_scalar(function, &args[1..], cell);
         }
-        // Every element reads all the references, which the visit cap counts.
-        let cost = args[1..].iter().fold(0u64, |total, node| {
-            total.saturating_add(self.walk_cost(node, cell))
-        });
+        // The references are resolved once, not once per element; every element reads all of
+        // them, which the visit cap counts.
+        let resolved = self.subtotal_reference_args(&args[1..], cell);
+        let cost = resolved
+            .as_ref()
+            .map_or(1, |resolved| self.subtotal_walk_cost(resolved));
         self.lift_values(
             vec![function],
-            LiftCost::Cells(cost.max(1)),
+            LiftCost::Cells(cost),
             &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
-            &mut |model, values| model.subtotal_scalar(values[0].clone(), &args[1..], cell),
+            &mut |model, values| match model.cast_to_number(values[0].clone(), cell) {
+                Ok(number) => model.subtotal_resolved(number.trunc() as i32, &resolved, cell),
+                Err(error) => error,
+            },
         )
+    }
+
+    /// Cells of the used area the areas of `args` cover (at least 1): what one element reads.
+    fn subtotal_walk_cost(&mut self, args: &[SubtotalArg]) -> u64 {
+        let mut cost: u64 = 0;
+        for arg in args {
+            match arg {
+                SubtotalArg::Cached(cells) => {
+                    cost = cost.saturating_add(u64::try_from(cells.len()).unwrap_or(u64::MAX));
+                }
+                SubtotalArg::Areas(areas) => {
+                    for area in areas.iter() {
+                        let (left, right) = (&area.left, &area.right);
+                        let Ok((last_row, last_column)) = self.clip_to_used_area(
+                            left.sheet,
+                            left.row,
+                            left.column,
+                            right.row,
+                            right.column,
+                        ) else {
+                            continue;
+                        };
+                        let rows = u64::try_from(last_row - left.row + 1).unwrap_or(0);
+                        let columns = u64::try_from(last_column - left.column + 1).unwrap_or(0);
+                        cost = cost.saturating_add(rows.saturating_mul(columns));
+                    }
+                }
+            }
+        }
+        cost.max(1)
     }
 
     /// One SUBTOTAL call with `function` (the function number) already evaluated.
@@ -300,6 +335,18 @@ impl Model {
             Ok(f) => f.trunc() as i32,
             Err(s) => return s,
         };
+        let resolved = self.subtotal_reference_args(args, cell);
+        self.subtotal_resolved(value, &resolved, cell)
+    }
+
+    /// SUBTOTAL of the function number `value` over arguments already resolved by
+    /// [`Self::subtotal_reference_args`].
+    fn subtotal_resolved(
+        &mut self,
+        value: i32,
+        resolved: &Result<Vec<SubtotalArg>, CalcResult>,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
         // The arguments are read first: an error or an array there beats an invalid function
         // number, which is `#VALUE!` only next to arguments that resolve to references
         // (`SUBTOTAL(99,#REF!)` is `#REF!`, `SUBTOTAL(12,IF(TRUE,1/0))` is `#DIV/0!`;
@@ -311,9 +358,9 @@ impl Model {
                 format!("Invalid value for SUBTOTAL: {value}"),
             )
         };
-        let resolved = match self.subtotal_reference_args(args, cell) {
+        let resolved = match resolved {
             Ok(resolved) => resolved,
-            Err(error) => return error,
+            Err(error) => return error.clone(),
         };
         if !matches!(value, 1..=11 | 101..=111) {
             return invalid();
