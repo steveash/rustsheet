@@ -1,0 +1,3 @@
+N 10 0x1.decdbb07d9e2fp-16 0x1.41cfbb83ed0e4p-11 0x1.a016066459c2dp-8 0x1.50b66746537eap-5 0x1.76480f4d97fdap-3 0x1.27fc8b2d97507p-1 0x1.4db9fcfb3c6e7p+0 0x1.044811191d2cbp+1 0x1.0223d9f70ed04p+1 0x1.fffffffffff9fp-1
+D 11 0x1.a8542411a723bp-15 0x1.1d32ae54a52b7p-10 0x1.71934f4e7b285p-7 0x1.2ca1bb9df5335p-4 0x1.516f295417ca8p-2 0x1.0f7f27e5dccd7p+0 0x1.3bc730d3c1c66p+1 0x1.05350002d8ffap+2 0x1.25449c578e4bdp+2 0x1.92929479238dbp+1 0x1p+0
+# Copied by T-1916 from branch agent/research/T-1778-kernel-map at 59c2c3724a3c (path docs/research/t1778/round9/erfc_mid_coef.txt); this line is the only addition. mid_check.c reads the first two lines only.

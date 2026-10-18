@@ -755,6 +755,12 @@ impl Model {
     }
 }
 
+/// Evaluates `c[0] + c[1]*y + c[2]*y^2 + ...` by Horner's rule in plain doubles, from the top
+/// coefficient.
+pub(crate) fn poly(c: &[f64], y: f64) -> f64 {
+    c.iter().rev().fold(0.0, |acc, &a| acc * y + a)
+}
+
 /// Excel's `MOD`: the exact remainder (`fmod`) shifted into the divisor's sign. Not
 /// `n - d*floor(n/d)`, which loses precision for tiny divisors; evidence: `MOD_QUOTIENT.xlsx`
 /// C20/C21/C25/C26 (docs/excel-semantics/numbers.md). `divisor` must be non-zero.
