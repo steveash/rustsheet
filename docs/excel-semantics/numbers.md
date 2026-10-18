@@ -730,9 +730,12 @@ Evidence: poi/47813.xlsx Numbers!C92, B182, C272, B362, C452, B542, C632 (oracle
 Status: VERIFIED
 Tasks: T-0915
 
-## ACOS(0.5) is the double nearest π/3
-Rule: `ACOS(0.5)` = 1.0471975511965976 (the double nearest π/3); libm returns 1.0471975511965979.
-Evidence: poi/48539.xlsx Instance1!E23 (oracle: excel-graph, 2026-10-04); poi/FormulaEvalTestData_Copy.xlsx Q104.
+## ACOS is PI()/2 - ASIN(x)
+Rule: Excel's `ACOS(x)` is `π/2 - ASIN(x)` in doubles, on ASIN's kernel ("ASIN's formulation"). So `ACOS(0.5)` =
+1.0471975511965976, the double nearest π/3, where libm gives 1.0471975511965979.
+Evidence: all 240 ACOS cells of probes/asin-atan-sign-source (`ACOS(x)` and `ACOS(-x)`, H and I; excel-graph, 2026-10-18, T-1797),
+where libm `acos` fits 157; poi/48539.xlsx Instance1!E23 (oracle: excel-graph, 2026-10-04); poi/FormulaEvalTestData_Copy.xlsx Q104.
+Implemented in: `fn_acos` (functions/math_and_trigonometry/mathematical.rs) as `FRAC_PI_2 - excel_asin(x)` since T-0939.
 Status: VERIFIED
 Tasks: T-0939
 
@@ -1246,7 +1249,8 @@ equals `PI()/2 - ASIN(x)` exactly. glibc `acos` matches 157 of them and `pi/2 - 
 Evidence: probes/asin-argument-sweep (excel-graph, 2026-10-15, T-1259); probes/asin-negative-band-sweep,
 probes/asin-negative-input-read and probes/asin-atan-sign-source (excel-graph, 2026-10-18, T-1797); gen-m6/2f6b96385ed3facd Calc!A38
 (excel-graph, 2026-10-09, T-1239); gen-m7/0e40208f51c2454c Calc!A27 and gen-m7/cb748b6a9b81fbb7 Calc!A38 (excel-graph, 2026-10-11, T-1275).
-Implemented in: `fn_asin` (functions/math_and_trigonometry/mathematical.rs), with `extended_sqrt`, since T-1797. The result depends on
+Implemented in: `excel_asin` (functions/math_and_trigonometry/mathematical.rs), with `extended_sqrt`, since T-1797. ACOS uses it
+since T-0939 ("ACOS is PI()/2 - ASIN(x)"). The result depends on
 the platform `atan`, and glibc's fits.
 Status: VERIFIED (excel-graph)
 Tasks: T-1259, T-1605, T-1797; ACOS: T-0939
