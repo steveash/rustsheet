@@ -272,6 +272,36 @@ class FunctionLanes(unittest.TestCase):
         self.assertEqual(len(errors), 1)
 
 
+T = "TODO"
+
+
+class StaleTodos(unittest.TestCase):
+    # The TODOs are built from T so this file holds none for the check itself to flag.
+    TASKS = [
+        {"id": "T-0001", "status": "todo"},
+        {"id": "T-0002", "status": "in-progress"},
+        {"id": "T-0003", "status": "blocked"},
+        {"id": "T-0004", "status": "done"},
+        {"id": "T-0005", "status": "dropped"},
+    ]
+
+    def test_todos_naming_open_tasks_pass(self) -> None:
+        files = {"a.rs": f"// {T}(T-0001): x\n// {T}(T-0002) y\n", "b.py": f"# {T}(T-0003)\n"}
+        self.assertEqual(tasks.stale_todos(self.TASKS, files), [])
+
+    def test_todos_naming_closed_or_unknown_tasks_fail_with_file_and_line(self) -> None:
+        files = {"src/a.rs": f"fn f() {{}}\n// {T}(T-0004): x\n", "b.py": f"x = 1  # {T}(T-0005) and {T}(T-9999)\n"}
+        errors = tasks.stale_todos(self.TASKS, files)
+        self.assertEqual(len(errors), 3)
+        self.assertTrue(errors[0].startswith(f"b.py:1: {T}(T-0005)") and "is dropped" in errors[0])
+        self.assertTrue(errors[1].startswith(f"b.py:1: {T}(T-9999)") and "does not exist" in errors[1])
+        self.assertTrue(errors[2].startswith(f"src/a.rs:2: {T}(T-0004)") and "is done" in errors[2])
+
+    def test_bare_todos_and_template_placeholders_are_not_matched(self) -> None:
+        files = {"a.rs": f"// TODO: x\n// {T}(fill)\n// {T}(T-XXXX)\n// {T}(T-0123x)\n"}
+        self.assertEqual(tasks.stale_todos(self.TASKS, files), [])
+
+
 class BranchClaims(unittest.TestCase):
     def test_recent_branches_claim_old_ones_only_count_with_a_handoff(self) -> None:
         now = int(time.time())
