@@ -37,7 +37,8 @@ ERFC(x) = fl53(fl64(E*R)), with E = Excel's EXP(-fl53(fl64(x*x))) and R = fl53(f
 
 ## Acceptance criteria
 - [ ] The tail coefficients (`erfc_tail_coef.txt`) and the EXP V6 description are on main under
-  docs/research/t1778/, copied from `origin/agent/research/T-1778-kernel-map` with their provenance.
+  docs/research/t1778/, copied from `origin/agent/research/T-1778-kernel-map` with their provenance. If the
+  T-1778 session has already merged those files, use main's copy instead of copying.
 - [ ] `erfc` uses the T-1778 tail for 4 < x <= 26.55, with an Excel-EXP helper for E (reuse an
   existing x87 or fit-lab helper if one exists in the engine; search first). Every constant has a
   comment citing the research plan.

@@ -40,7 +40,10 @@ This follows T-0031's salvage pattern.
   statistics.md no longer call T-1186 blocked.
 - [x] T-1155 `done` (its zero-first-value guesses moved to T-1591); financial.md's "open (T-1155)" fixed.
 - [x] T-0941 `done` (its cells pass, eval/baseline/ironcalc-calc.txt:164).
-- [ ] PRs #553, #436 and #409 closed with a pointer to this PR (right after this PR merges).
+- [ ] PRs #553, #436 and #409 closed with a pointer to this PR, and their branches deleted, right after this PR
+  merges. A pushed branch whose task says `blocked` keeps claiming the task until it is deleted (decision 0048).
+  The branches and their heads, so each can be restored: agent/functions-stat/T-1284-geomean-5-7 (f1aaf930),
+  agent/functions-math/T-1186-erfc-tail (9872f2fc), agent/functions-financial/T-1155-xirr-zero-first (4fe21bed).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -31,6 +31,6 @@ below the exact root. Picking the correctly rounded root for n = 2 breaks ironca
 outcomes either: over the 70 in-range literal GEOMEAN probe cells, r is kept at 0.548 and 0.809 ulp and
 replaced at 0.546 ulp (geomean-root-refinement A22). Candidates tried: every model listed in that entry
 (T-1113, T-1123, T-0288, scored on 167 cells), and a distance threshold (this task, draft PR #553, closed
-by T-0059).
+by T-0059). That is the second attempt with no rise in the bit-exact count, which is decision 0056's bar.
 Reopen when a new root hypothesis is recorded here, for example a reconstruction of Excel's own pow in
 the style of T-1524 or T-1778. A new dependency landing does not reopen it.

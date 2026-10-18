@@ -14,7 +14,7 @@ depends_on: []
 The engine's ERFC/ERFC.PRECISE reproduce Excel's last-digit results for x >= 1, including probes/subnormal-function-boundaries A5 (`ERFC(26.4)`), by implementing the algorithm Excel actually uses.
 
 ## Context
-T-1186 found (on its draft branch, PR #436) that Excel scales the tail by `exp(-fl(x*x))`. That change never reached main: `erfc_cf` (crates/rustsheet-engine/src/functions/statistical/special.rs) still compensates for the rounding of x*x (correction, T-0059). The core factor erfc(x)·exp(x²) is up to ±5 ulp from correctly rounded on probes-numeric/t1040-erfc. The candidates tried so far match at most 22% of the 206 grid points with x >= 1: bottom-up CF in 7 orders, Cody CALERF, and the asymptotic series. The tried list is in docs/excel-semantics/statistics.md (ERFC sweep). Score every candidate on the whole grid, never on A5 alone. Excel's NORM.S.DIST lower-tail error clusters at 2^-43, which may share the core.
+T-1186 found (on its draft branch, PR #436) that Excel scales the tail by `exp(-fl(x*x))`. That change never reached main: `erfc_cf` (crates/rustsheet-engine/src/functions/statistical/special.rs) still compensates for the rounding of x*x (an earlier version of this task said the change was in `erfc_cf`; T-0059 corrected it). The core factor erfc(x)·exp(x²) is up to ±5 ulp from correctly rounded on probes-numeric/t1040-erfc. The candidates tried so far match at most 22% of the 206 grid points with x >= 1: bottom-up CF in 7 orders, Cody CALERF, and the asymptotic series. The tried list is in docs/excel-semantics/statistics.md (ERFC sweep). Score every candidate on the whole grid, never on A5 alone. Excel's NORM.S.DIST lower-tail error clusters at 2^-43, which may share the core.
 
 ## Acceptance criteria
 - [x] (fallback met: not found) A candidate reproduces at least 95% of the t1040-erfc grid points with x >= 1 bit-exactly, and A5. Otherwise the statistics.md entry records the new negatives and the task is closed as not found.
@@ -34,6 +34,6 @@ docs/research/t1187-erfc-candidates.py (now the fit lab's `erfc-tail` fit, T-152
 The best is 58/205 (28%), and every configuration together covers 174/205. Excel's implied core error is
 -3.6..+3.1 ulp and drifts slowly with x. The negatives and the untried families (fdlibm, Chebyshev, MSVC `exp`)
 are in docs/excel-semantics/statistics.md, "ERFC core factor: candidates that do not reproduce Excel". The
-second criterion does not apply (nothing implemented). T-1186 stays blocked. No follow-up task: fdlibm and a
+second criterion does not apply (nothing implemented). T-1186 stays blocked (now todo, depending on T-1916). No follow-up task: fdlibm and a
 Chebyshev fit contradict the A5 evidence, and MSVC `exp` cannot be run from these containers. Eval delta: none
 (docs only).
