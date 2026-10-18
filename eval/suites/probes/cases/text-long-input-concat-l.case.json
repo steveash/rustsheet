@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1913: & with a 65,534-unit operand, shape l (one long text per case).",
+  "tags": [
+    "M2",
+    "probe",
+    "T-1913",
+    "regexreplace"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=ISERROR(\"c\"&REGEXREPLACE(REPT(\"a\",32767),\"a\",\"bb\"))"
+      }
+    }
+  ],
+  "expected": {}
+}
