@@ -481,6 +481,8 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
     - The 5 misses are at x = 2.4500000000004998, 3.0900000000000998, 2.2677103947185002, 2.6493240961407998 and
       1.3246620480703999. Each matches exactly at the neighbouring double, so these are the xlsx misparse quirk
       (numbers.md), not kernel errors.
+    - Held out: none of the 64 `r11*` cases (the epsilon ladder and the non-dyadic runs, about 1.07M points)
+      were used in the fit, and all of them match.
   - **Generator.** A relative-error minimax (9,10) rational of erfcx on [0.5, 4], D0 = 1, like the tail's (8,9) on
     [4, 26.54].
     - Excel's doubles are not the plain 90-digit Remez solution (`round9/gen910.txt`). They are 1.5E-9 to 1.6E-8
