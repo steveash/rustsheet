@@ -422,3 +422,35 @@ re-verified with the unmodified round-2 scorer. It also reproduces 35,718 of 35,
 - known rationals with a scale factor, tested by exact fingerprint simulation;
 - probes bisecting the steps and branch points;
 - reconstructing the Horner intermediates from the step catalogue and the spectral lines.
+
+### Research update 5 (2026-10-18): ERFC tail anchors (round 4 plus four cloud sessions)
+
+**Structure:**
+- R is one stored double, multiplied by E once. Every other final ordering (Cephes `(z*p)/q`, Cody's split exp,
+  SLATEC/AS66) leaves about 8% of points unreachable.
+- Horner in x itself, every operation stored to double: the noise fingerprint matches on [0.5, 1.843) and
+  [1.843, 8.04). This is the same style as small-x erf.
+- Earlier "branches" at 1.843 and 8.04 are clusters of sharp steps. Seven steps are pinned to within about
+  10-50 ulps (`kmyst-erfc-r4*`, 2.98M cells).
+
+**Sources:** no published source works, raw or rescaled by any common λ (Cephes P/Q and R/S, Cody CALERF,
+Hart 5725/5667/5666, Boost, fdlibm). The tail is a private fit, like small-x erf.
+
+**Pinned constants:**
+- Stage B, numerator side, is the stored product fl53(fl64(a2*x)) with mantissa a2 = 0x1.5371d5b5d84d4. Two
+  independent methods (a phase search plus correlation, and a vernier plus exact simulation on 506k held-out
+  points) agree on this double. Its error shows where a2*x is in the lower part of its binade; its scale is unknown.
+- Stage A, denominator side, is s1 = fl(fl(a1*x) + b1) with a1 = 0x1.27cdbb941913dp+0 * 2^(E-5). s1 stays in
+  [2^E, 2^(E+1)) for x in [7, 27]. b1 is in [1, 1.043)*2^E, or s1 = b1 - a1*x with b1 in [1.975, 2.253)*2^E.
+
+**EXP:** a floor split, then F2XM1, then FADD (x87). It matches 153,643 of 153,655 cells. The rest needs Excel's
+F2XM1 to be off by 1-2 ulp for 2^f - 1 >= 0.5, which looks like a non-current-Intel F2XM1.
+
+**Disputed:** whether the ±3-unit drift is a rounding fingerprint or the approximation error of non-minimax
+piecewise coefficients. Candidate piece breaks: about 4.1, 4.6-5.66, 5.227, 8.04, 9.055 and 13.8-19.0.
+
+**Running (round 5):**
+- dense probes of [8.0, 9.1], spectral-tracking runs on [0.5, 1.843), branch bisections and EXP maps;
+- an exact attack on piece [8.04, 9.055) with the anchors;
+- recovery of N and D modulo their ulps from spectral phases by a lattice solve;
+- a cloud session placing piece boundaries and verifying the anchors.
