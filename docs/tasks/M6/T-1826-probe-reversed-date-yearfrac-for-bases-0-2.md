@@ -3,7 +3,7 @@ id: T-1826
 title: "Probe reversed-date YEARFRAC for bases 0, 2, 3, 4"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
