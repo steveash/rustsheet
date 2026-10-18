@@ -237,7 +237,7 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
             Token::Literal(':') => (Run::Colon, LITERAL_COST),
             Token::Literal('$') | Token::Escaped('$') => (Run::Literal, DOLLAR_COST),
             // An escaped colon does not join a colon run: it prints (`0\:\:` is "1::").
-            Token::Locale => (Run::None, LOCALE_COST),
+            Token::Locale(_) => (Run::None, LOCALE_COST),
             Token::Literal(_) | Token::Escaped(_) | Token::Currency(_) => {
                 (Run::Literal, LITERAL_COST)
             }
