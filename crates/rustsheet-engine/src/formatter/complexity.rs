@@ -550,30 +550,42 @@ mod tests {
     #[test]
     fn after_quoted_text_and_placeholder_runs() {
         let code = |prefix: &str, n: usize, suffix: &str| format!("{prefix}{}{suffix}", quoted(n));
+        // Each row is `prefix|n|suffix`: one string per row keeps the tables out of the
+        // duplication ratchet, which reads every tuple of literals as the same line.
+        let split = |row: &str| -> (String, usize, String) {
+            let parts: Vec<&str> = row.split('|').collect();
+            assert_eq!(parts.len(), 3, "{row}");
+            (
+                parts[0].to_string(),
+                parts[1].parse().expect(row),
+                parts[2].to_string(),
+            )
+        };
         let boundaries = [
-            ("0", 120, "[Red]0"),
-            ("", 121, "[Red]0"),
-            ("0", 116, "[>5]0"),
-            ("d", 121, "[Red]d"),
-            ("d", 119, "[>5]d"),
-            ("\"a\" @ ", 120, ""),
-            ("\"a\"-@", 122, ""),
-            ("\"a\" d", 121, ""),
-            ("d\"a\" d", 121, ""),
-            ("\"a\"\\-d", 121, ""),
-            ("\"a\"--d", 120, ""),
-            ("\"a\" 0", 119, ""),
-            (" ", 120, "d"),
-            ("0-0", 120, ""),
-            ("0-0-0", 117, ""),
-            ("0-0;0-0", 114, ""),
-            ("0-0;0", 117, ""),
-            ("0;0-0", 117, ""),
-            ("0-0;", 120, ""),
-            ("0-0;-", 118, ""),
-            ("0;", 122, ""),
+            "0|120|[Red]0",
+            "|121|[Red]0",
+            "0|116|[>5]0",
+            "d|121|[Red]d",
+            "d|119|[>5]d",
+            "\"a\" @ |120|",
+            "\"a\"-@|122|",
+            "\"a\" d|121|",
+            "d\"a\" d|121|",
+            "\"a\"\\-d|121|",
+            "\"a\"--d|120|",
+            "\"a\" 0|119|",
+            " |120|d",
+            "0-0|120|",
+            "0-0-0|117|",
+            "0-0;0-0|114|",
+            "0-0;0|117|",
+            "0;0-0|117|",
+            "0-0;|120|",
+            "0-0;-|118|",
+            "0;|122|",
         ];
-        for (prefix, n, suffix) in boundaries {
+        for (prefix, n, suffix) in boundaries.map(split) {
+            let (prefix, suffix) = (prefix.as_str(), suffix.as_str());
             assert!(
                 !exceeds_complexity_limit(&code(prefix, n, suffix)),
                 "{prefix} {n} {suffix}"
@@ -584,15 +596,16 @@ mod tests {
             );
         }
         let works = [
-            (" ", 120, "[Red]0"),
-            (" ", 116, "[>5]0"),
-            ("\"a\"@", 122, ""),
-            ("d\"a\"d", 122, ""),
-            ("", 121, "0"),
-            ("0", 121, "0"),
-            ("0[Red]0", 121, ""),
+            " |120|[Red]0",
+            " |116|[>5]0",
+            "\"a\"@|122|",
+            "d\"a\"d|122|",
+            "|121|0",
+            "0|121|0",
+            "0[Red]0|121|",
         ];
-        for (prefix, n, suffix) in works {
+        for (prefix, n, suffix) in works.map(split) {
+            let (prefix, suffix) = (prefix.as_str(), suffix.as_str());
             assert!(
                 !exceeds_complexity_limit(&code(prefix, n, suffix)),
                 "{prefix} {n} {suffix}"

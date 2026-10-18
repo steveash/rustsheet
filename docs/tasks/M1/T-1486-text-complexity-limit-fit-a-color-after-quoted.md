@@ -3,7 +3,7 @@ id: T-1486
 title: "TEXT complexity limit: fit a color after quoted text, _' and a quoted run before @ (follow-up of T-1481)"
 milestone: M1
 lane: functions-text
-status: blocked
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -57,3 +57,17 @@ Excel fidelity's third round asked for one thing: evidence for the trailing `\`/
 `is_unterminated`. Probe round s (probes/text-format-length-limit-s, 9 cells) supplies it, and every
 cell confirms the rule. The doc and code now cite that evidence. To unblock: re-run
 `reviewer-excel-fidelity` on the PR; if it approves, set `status: done` and merge.
+
+## Merged up to main (2026-10-18)
+The branch was merged with origin/main (372 commits; merge commit, no rebase). Conflicts:
+complexity.rs tests (both kept), format.rs (this branch's `value_error`/`format_error` with main's
+`TEXT_TOO_LONG`, `BUDDHIST_ERA_OFFSET` and `general_text`), text/common.rs imports, the semantics
+entry, and eval/baseline/probes.txt (main's copy, then regenerated). Main's T-1656 `@` placement
+and T-1714 AM/PM, A/P and locale costs sit on top of this refit, and their tests pass. Main's T-1262
+(bare letters print as literals) already fixed l A13:A15 and now also n A1, A6, o A35, A38:A40.
+That leaves 6 new-coverage known failures, not 12: n A2, A7:A9 (`@_"aaa` and longer runs are
+`#VALUE!` in Excel, but we print the letters; T-1450), o A37 (`TEXT(7,"0*""a")` is "7a" in Excel
+and "7 a" with us) and q A16 (T-0936). Probes against main: l A40 and m A22 are fixed, and there
+are no new failures. Main had brought the duplication lock down to 4510, and this branch's
+tuple tables in `after_quoted_text_and_placeholder_runs` put it 21 lines over. They are now
+`prefix|n|suffix` strings, with the same rows. Still to do: re-run `reviewer-excel-fidelity`, then mark the task done and merge.
