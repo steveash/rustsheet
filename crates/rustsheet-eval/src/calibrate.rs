@@ -46,7 +46,7 @@ pub struct Comparison {
 /// Cells only present in `recalculated` (e.g. an embedded canary sheet) are ignored.
 #[must_use]
 pub fn compare_snapshots(cached: &WorkbookSnapshot, recalculated: &WorkbookSnapshot) -> Comparison {
-    let (scorable, volatile_skipped) = scorable_cells(&cached.sheets, &cached.defined_names, false);
+    let (scorable, volatile_skipped) = scorable_cells(cached, false);
     let others = recalculated.values();
     let cells = scorable
         .into_iter()
@@ -100,6 +100,7 @@ mod tests {
                 cells: map,
             }],
             defined_names: Vec::new(),
+            tables: Vec::new(),
         }
     }
 

@@ -428,11 +428,8 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
             text: Vec::new(),
         });
     };
-    let (scorable, skipped_volatile) = scorable_cells(
-        &snapshot.sheets,
-        &snapshot.defined_names,
-        pinned_clock_serial(&snapshot.sheets).is_some(),
-    );
+    let (scorable, skipped_volatile) =
+        scorable_cells(&snapshot, pinned_clock_serial(&snapshot.sheets).is_some());
     let expectations = scorable
         .into_iter()
         .filter_map(|(sheet, addr, cell)| {
