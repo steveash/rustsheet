@@ -38,7 +38,7 @@ Where M2's exit stands:
   - `legacy-n-t-reference-args` (25), `legacy-array-result` (5) and `n-array-lift` (2): T-1713's acceptance list. T-1713 (now engine) is blocked on T-1851. The spec T-1727 merged, so T-1851 (engine, todo) is the next step, and T-1852 follows it.
   - Fixed since the last run: `unknown-function-name-reach`, `unknown-function-name-spelling`, `text-ap-locale-inferences` and `t-array-lift` (T-1758, T-1760, T-1762, T-1763, T-1716, T-0985).
 - ironcalc-calc cells using only M1/M2 functions: the report scores 3,978 of 3,978 bit-exact, but it leaves out 1,378 array-member cells with no formula of their own. 46 of them fail. The planner traced each one to its anchor. One, `LOGICAL/IF_ARRAY.xlsx!Sheet1!C11`, is a member of `IF(FALSE,A1:A4,B1:C4)` and is in M2 scope. So the criterion is **not quite met**.
-  - **T-1875** (harness, sonnet) scores member cells by their anchor's formula.
+  - **T-1877** (harness, sonnet) scores member cells by their anchor's formula.
   - **T-1876** (research, opus) settles the target for desktop SIN(4) in IF_ARRAY C4, E4 and C11. Desktop cached ...283 there, but the web and RustSheet give ...282.
 - Criteria and aggregate iteration through the shared walks: met (last run).
 - Duplication is at 4,328 lines, 52.7% below the fork's 9,153 (target ≥ 15%): met.
@@ -80,7 +80,7 @@ Queues at the start of the run:
 - functions: 27 ready. The sonnet buffer is 22, so the gap-triager did not run.
 - engine 23, harness 5, perf 18, api 1, quality 1, research 0 (busy: a branch moved in the last 2 h, with T-1768, T-1847 and T-1853 todo).
 - The planner ran for M2:
-  - It filed **T-1875** and **T-1876** (above).
+  - It filed **T-1877** and **T-1876** (above).
   - api has no M2 work (its ready task T-1671 is M8).
   - quality's open M2 work is T-1779.
 
@@ -98,7 +98,7 @@ Spot-audit: the last one was 2026-10-16, so none is due (next on or after 2026-1
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M2.
 - engine: T-1851, then T-1852, unblocks T-1713, which holds the 32 legacy M0–M2 probe failures.
-- harness: T-1875 brings the ironcalc-calc M2 criterion's 1,378 member cells into scope.
+- harness: T-1877 brings the ironcalc-calc M2 criterion's 1,378 member cells into scope.
 - research: T-1876 (desktop SIN target for IF_ARRAY), T-1847 and T-1853 (legacy probes feeding T-1851/T-1852).
 - quality: T-1779 (TODO hygiene gate).
 - The 148 `date-text-glued-month` cells are reached through `functions` (T-1789, functions-date), and so is the P0 T-1874 (functions-engineering).

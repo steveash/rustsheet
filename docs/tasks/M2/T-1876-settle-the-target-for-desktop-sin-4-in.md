@@ -14,7 +14,7 @@ depends_on: []
 The three known failures of `ironcalc-calc/LOGICAL/IF_ARRAY.xlsx` (`Sheet1!C4`, `E4`, `C11`) get
 an owner and a decided target. All three are desktop SIN(4) = -0.7568024953079283. Excel for the
 web and our engine give -0.7568024953079282, the correctly rounded value. C11 counts toward M2's
-exit: it is a member of `IF(FALSE,A1:A4,B1:C4)`, which calls only IF (see T-1875). No open task
+exit: it is a member of `IF(FALSE,A1:A4,B1:C4)`, which calls only IF (see T-1877). No open task
 owns any of the three cells today.
 
 ## Context
