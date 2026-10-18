@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1913: & of a 32,767-unit text and a short one (the result goes over the limit).",
+  "tags": [
+    "M2",
+    "probe",
+    "T-1913",
+    "regexreplace"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "C1": "=REPT(\"a\",32767)",
+        "C2": "=LEN(C1&\"\")",
+        "C3": "=LEN(C1&\"b\")",
+        "C4": "=ISERROR(C1&\"b\")"
+      }
+    }
+  ],
+  "expected": {}
+}
