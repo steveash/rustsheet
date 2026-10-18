@@ -424,12 +424,36 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
       approximation-error curve.
     - The sharpest change sits at x ≈ 1.843, and a likely branch at x ≈ 8.03-8.05. Above that branch, two
       fixed spectral lines (0.28893 and 0.32594 cycles per x-ulp) point to an intermediate linear in x.
+  - Superseded for x > 4 by the bit-exact tail entry below. The rest of this entry stands for [0.5, 4].
   - **Ruled out as R:**
     - Cephes ndtr erfc, Hart 5725, Cody CALERF and fdlibm (16-40% exact);
     - Numerical Recipes gcf, the Laplace continued fraction and asymptotic-series term counts;
     - tables in x or z, and branches at any of 1, 1.5, ..., 20.
   - **Best smooth model.** fl87(E*fl(erfcx(x))) matches 32.5% of points. The ceiling for any smooth R is about
     39%, so parity needs the exact coefficients and operation order.
+- ERFC tail for 4 < x <= 26.55 (rounds 6-7, 2026-10-18): matches at 1,540,475 of 1,540,477 points.
+  - **Form.** ERFC(x) = fl53(fl64(E*R)), where E is Excel's own EXP(-fl53(fl64(x*x))) and R = fl53(fl64(N/D)).
+  - **N and D.** N (degree 8) and D (degree 9) are Horner polynomials in x itself. Every multiply and add is
+    stored to double: s = fl(fl(s*x) + c).
+    - The leading coefficients satisfy N0/D0 ≈ 2/sqrt(pi), the erfcx asymptote.
+    - The constant term of D is exactly 128.
+    - The coefficients are in `docs/research/t1778/round7/erfc_tail_coef.txt`.
+  - **Branch.** x = 4 itself takes the lower kernel, and the switch is exactly at x > 4 (Cody's break point).
+    Nothing changes at 1, 2, 8 or 16; there is no binade range reduction.
+  - **Results below DBL_MIN** are flushed to 0, as elsewhere (596 cutoff points).
+  - **Score.** With Excel's own EXP column as E, `erfc_tail_check.c` matches 1,540,475 of 1,540,477 points (all
+    kmyst-erfc-* cases with an EXP column; 370,404 of 370,405 on cases not used in the fit). The 2 misses are 2 ulp
+    in the result at x = 0x1.6462e6ea85447p+3 and 0x1.f9b8b10efd91fp+3; both are unexplained and may be an
+    internal-exp difference.
+  - **Uniqueness.** The top coefficients are pinned to single doubles. A few late ones are equivalent on all data
+    within a few ulps; the ranges are in the coefficient file.
+  - **How it was found.**
+    - Stored products and sums were located from the spectral lines and from the rounding grid in R's error.
+    - Constants were pinned by bisecting binade crossings to the ulp, then by phase or vernier scans and global
+      regressions.
+    - Once N was exact, D's stages followed from per-stage correlation searches.
+    - The low bits were pinned by peeling down from high x.
+  - **Still open:** the [0.5, 4] kernel, and EXP's last F2XM1 cells.
 - GAMMA.DIST(z, 0.5, 1, TRUE) = ERF.PRECISE(SQRT(z)) = CHISQ.DIST(2z, 1, TRUE) at 15,360 of 15,360 consecutive
   doubles z, about half of which are not squares of doubles (`kmyst-erf-decouple`).
   - So the kernel works from x = sqrt(z), and that internal sqrt is rounded twice (64-bit, then 53), like the
