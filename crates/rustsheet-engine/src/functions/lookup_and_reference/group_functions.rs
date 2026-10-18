@@ -119,9 +119,7 @@ pub(crate) fn is_function_array(arg: &Node) -> bool {
 /// G!A281-A501, probes/groupby-eta-arity G!A1-A141 for the rest).
 fn eta_arity(kind: &Function) -> Option<usize> {
     let name = kind.to_localized_name(get_default_language());
-    let min = eta_min_args::NON_UNARY_MIN_ARGS
-        .binary_search_by(|(known, _)| (*known).cmp(name.as_str()))
-        .map_or(1, |index| eta_min_args::NON_UNARY_MIN_ARGS[index].1);
+    let min = eta_min_args::min_args(&name);
     match min {
         1 => Some(1),
         2 => Some(2),
@@ -598,7 +596,7 @@ fn transpose(grid: Vec<Vec<Element>>) -> Vec<Vec<Element>> {
 
 #[cfg(test)]
 mod tests {
-    use super::eta_min_args::NON_UNARY_MIN_ARGS;
+    use super::eta_min_args::entries;
 
     /// The table is generated from the catalog; it must list exactly the names whose minimum is not 1.
     #[test]
@@ -619,6 +617,8 @@ mod tests {
             })
             .collect();
         expected.sort_unstable();
-        assert_eq!(NON_UNARY_MIN_ARGS, expected.as_slice());
+        let mut actual: Vec<(&str, u8)> = entries().collect();
+        actual.sort_unstable();
+        assert_eq!(actual, expected);
     }
 }
