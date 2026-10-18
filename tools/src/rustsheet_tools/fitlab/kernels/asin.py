@@ -43,6 +43,7 @@ def atan_square(x: float) -> float:
 
 
 def atan2_product(x: float) -> float:
+    """atan2(x, sqrt((1-x)(1+x)))."""
     return math.atan2(x, math.sqrt((1 - x) * (1 + x)))
 
 
@@ -52,6 +53,7 @@ def half_angle(x: float) -> float:
 
 
 def half_pi_minus_acos(x: float) -> float:
+    """pi/2 - libm acos(x)."""
     return math.pi / 2 - math.acos(x)
 
 
