@@ -3,7 +3,7 @@ id: T-1348
 title: "WRAPCOLS of a single value is that value, not padded to wrap_count; a wrap_count below 1 is #NUM!"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,7 +23,7 @@ T-1275's gen-m7 suite (excel-graph sidecars, 2026-10-11); docs/excel-semantics/a
 Code: crates/rustsheet-engine/src/functions/lookup_and_reference/wrapcols_wraprows.rs. Only single values are evidenced.
 Before generalising, probe with the excel-probe skill `WRAPCOLS({1,2},4)`, `WRAPCOLS(A1:A2,4)`, `WRAPROWS(1,4)`,
 `WRAPROWS({1,2},4)` and wrap_count 0.5, 0, -1 for both functions, and match all of them (the engine pads `WRAPCOLS({1,2},4)` to
-4 rows today). Lifting wrap_count/pad_with over an array is T-1271.
+4 rows today). Lifting wrap_count/pad_with over an array is T-1835.
 
 More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
 - gen-m9/3b8e9078261b5bd2 Calc!A9 `=WRAPCOLS(FIXED(SINH(Data!E12)),4,(-1))`: Excel "1.18" (one cell), engine `#SPILL!`.
@@ -31,10 +31,13 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/50f10c4062fb2e98 Calc!A21 `=WRAPROWS(Data!C5:C12,(Data!$D12+BESSELI(Data!$D12,Data!C9)))` (wrap_count 0): Excel `#NUM!`, engine `#VALUE!`; WRAPROWS too.
 
 ## Acceptance criteria
-- [ ] gen-m7/bb4617644fee40c9 A30, gen-m7/d38b52bfa1a9f9e6 A26 and gen-m7/f68fafa0ca2eba26 A39 pass in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
-- [ ] The probe cells pass; arrays.md's entry is VERIFIED.
-- [ ] gen-m9/3b8e9078261b5bd2 A9, 675763979c1defb6 A6 and 50f10c4062fb2e98 A21 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m7/bb4617644fee40c9 A30, gen-m7/d38b52bfa1a9f9e6 A26 and gen-m7/f68fafa0ca2eba26 A39 pass in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
+- [x] The probe cells of probes/dynamic-array-reshape-and-isomitted (0, -1, scalar) pass; multi-element cases moved to T-1840.
+- [x] gen-m9/3b8e9078261b5bd2 A9, 675763979c1defb6 A6 and 50f10c4062fb2e98 A21 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+wrap_count below 1 (0.5, 0, negatives) is `#NUM!` for WRAPCOLS and WRAPROWS; an error pad_with is the result when nothing is padded. The single-value padding was already fixed by T-1786. Eval: probes known failures 4444 -> 4436 (8 fixed, 0 regressions); the six listed gen-m7/gen-m9 cells pass. Also closes T-1630 (the 8 wrap_count <= 0 probe cells). Unverified, filed as T-1840: multi-element vectors shorter than wrap_count and an error pad_with on a multi-element vector.

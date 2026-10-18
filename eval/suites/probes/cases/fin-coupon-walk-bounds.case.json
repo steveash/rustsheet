@@ -1,0 +1,45 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1822: the coupon schedule walk's bounds in a 1900 workbook: a settlement (or ACCRINT issue) before serial 0, far before it (-1E15) or fractional below 0, and bonds that span the calendar (settlement 1, maturity at or near 9999-12-31, quarterly). They decide whether the walk back from the maturity can stop at the calendar's start.",
+ "tags": [
+  "M9",
+  "financial",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=COUPNUM(-1,43831,2)",
+    "A2": "=COUPNUM(-1E15,43831,4)",
+    "A3": "=COUPNUM(0,43831,4)",
+    "A4": "=COUPPCD(-1,43831,2)",
+    "A5": "=COUPNCD(-1,43831,2)",
+    "A6": "=COUPDAYS(-1,43831,2)",
+    "A7": "=COUPDAYS(-1,43831,2,1)",
+    "A8": "=COUPDAYBS(-1,43831,2)",
+    "A9": "=COUPDAYSNC(-1,43831,2)",
+    "A10": "=PRICE(-1,43831,0.05,0.06,100,2)",
+    "A11": "=YIELD(-1,43831,0.05,90,100,2)",
+    "A12": "=DURATION(-1,43831,0.05,0.06,2)",
+    "A13": "=MDURATION(-1,43831,0.05,0.06,2)",
+    "A14": "=ACCRINT(-1,39264,39448,0.1,1000,2,0)",
+    "A15": "=ACCRINT(-1E15,39264,39448,0.1,1000,2,0)",
+    "A16": "=ACCRINT(39083,39264,-1,0.1,1000,2,0)",
+    "A17": "=ACCRINT(39083,-1,39448,0.1,1000,2,0)",
+    "A18": "=COUPNUM(39448,-1,2)",
+    "A19": "=COUPNUM(-0.5,43831,2)",
+    "A20": "=PRICE(0,43831,0.05,0.06,100,4)",
+    "A21": "=COUPNUM(1,2958464,4)",
+    "A22": "=COUPNUM(1,2958465,4)",
+    "A23": "=COUPNUM(1,2958465,1)",
+    "A24": "=COUPNUM(1,2958435,4)",
+    "A25": "=PRICE(1,2958435,0.05,0.06,100,4)",
+    "A26": "=DURATION(1,2958435,0.05,0.06,4)",
+    "A27": "=ACCRINT(1,2958300,2958435,0.05,1000,4,0,TRUE)",
+    "A28": "=ACCRINT(1,40000,2958435,0.05,1000,4,0,TRUE)"
+   }
+  }
+ ],
+ "expected": {}
+}

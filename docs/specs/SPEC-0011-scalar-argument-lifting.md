@@ -238,8 +238,8 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
    W19-W20, W26) (T-1801).
 3. **Answered.** Later ATP arguments are refused like the probed ones (PRICE, COUP*, ACCRINT, CONVERT,
    COMPLEX, IM*, DOLLARDE/FR; -a Y1-Y18), and so are QUOTIENT, FACTDOUBLE and SERIESSUM's x, n, m
-   (-a Y19-Y21, Y24-Y26): they refuse a range, but whether they lift over an array is unprobed
-   (T-1802 probes it before entering them). GCD and LCM give one result (ROWS 1), as MULTINOMIAL does, whose value
+   (-a Y19-Y21, Y24-Y26): they refuse a range, and they lift over an array (probes/math-atp-array-lift
+   and -b, T-1802). GCD and LCM give one result (ROWS 1), as MULTINOMIAL does, whose value
    was probed (-d W30); SERIESSUM's coefficients is read whole (-a Y22-Y23, Y27-Y30).
 4. **Answered, with a limit.** `=EDATE({45000;45031},A1:A60)` spills 2 rows, as the static shape says
    (-a AA3, AC3). FORMULATEXT carries no marker, so how Excel saves it needs the file (M14).
@@ -519,6 +519,29 @@ single cell), which a `Whole` value read by `evaluate_node_with_reference` canno
 the count check, the kernel sorts them on its first element, and the call goes through
 `lift_call_costed` with `LiftCost::Prepared(numbers)` (TRIMMEAN: `Cells(numbers)`, since every
 element averages the kept values). `Whole` stays unused until T-1236's holidays.
+
+As built (T-1383): the engineering functions are the first `KernelWork::Weighted` entries. The four
+Bessel functions loop up to about 2·10^5 times per element at the order cap (`MAX_ORDER`, 100,000,
+now also BESSELI's and BESSELK's per-call cap), so they are `Weighted(2^16)`: a lifted call runs at most
+2,048 elements, about 2 s at the cap in release (engineering.md "BESSEL order cap", a DEVIATION). HEX2DEC
+and OCT2DEC take one argument, as the parser's signature already said; their old code ignored a second one.
+
+As built (T-1384): IMSUM and IMPRODUCT are the first `WholeByCaller` entries outside the sorted-data
+functions: `COMPLEX_FOLD` repeats `WholeByCaller` up to 255 arguments. The entry is declarative, as
+T-1772's are: it gives the argument count, the static shape (one value) and the legacy export rule (no
+`@`); the function reads its own arguments through SPEC-0009's `walk_aggregate_read` and never enters
+the lift driver, so its `KernelWork` is not charged. Its own read cap (`MAX_LIFTED_CELL_VISITS` over
+the cells walked) is engineering.md "IMSUM and IMPRODUCT read cap", a DEVIATION.
+
+As built (T-1822): ACCRINT, the COUP* family, DURATION, MDURATION and PRICE are `LiftArrays` and the first
+`Weighted` entries whose loop is bounded by the calendar rather than by a cap constant (their per-call cap is
+`check_settlement` plus the calendar's end): a coupon schedule walk steps
+one period at a time, at most about 32,400 quarters once a settlement below serial 1 is `#NUM!` (Excel's rule,
+probes/fin-coupon-walk-bounds; before, a settlement of -1E15 walked about 10^6 quarters). Each walk is charged 2^16
+units (`COUPON_WALK_WEIGHT`, about 1 ms at the longest schedule): two for COUP* and ACCRINT (1,024 elements), four
+for DURATION, MDURATION and PRICE (512; financial.md "Coupon schedule work cap", a DEVIATION; T-1846 narrows it
+to a schedule-length budget). YIELD, the ODD*
+functions, CUMIPMT/CUMPRINC, AMOR* and the scalars beside XNPV's, XIRR's and FVSCHEDULE's data are T-1841 to T-1843 and T-1845.
 
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.

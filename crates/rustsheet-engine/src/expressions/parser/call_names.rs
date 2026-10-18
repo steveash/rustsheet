@@ -14,28 +14,71 @@ use std::collections::HashMap;
 
 use super::stringify::bound_variables::{walk_names, NameSite};
 use super::Node;
+use crate::types::DefinedName;
 
-/// Lowercase name → the spelling every call or value use of it prints with.
+/// Characters Excel keeps apart from their upper-case form in a name, though `to_uppercase` merges them.
+const UNFOLDED: [char; 11] = [
+    'ı', 'ſ', '\u{b5}', 'ϐ', 'ϑ', 'ϕ', 'ϖ', 'ϰ', 'ϱ', '\u{fb05}', 'ŉ',
+];
+
+/// The registry key of a name: upper-cased, except that the `UNFOLDED` characters keep their own
+/// key and the capital sharp s ẞ is `SS` like ß. Excel folds ß/SS/ẞ, ς/σ/Σ, ϵ/ε, ﬁ/FI, ﬀ, ﬃ, ﬄ, ﬆ and
+/// ǆ/Ǆ but not ı/I, ſ/S, µ/μ/Μ, ϐ/β (likewise ϑ ϕ ϖ ϰ ϱ), ﬅ/ST or ŉ
+/// (probes/unknown-function-name-folds{,-2}, T-1818, T-1825).
+fn spelling_key(name: &str) -> String {
+    let mut key = String::with_capacity(name.len());
+    for c in name.chars() {
+        match c {
+            'ẞ' => key.push_str("SS"),
+            c if UNFOLDED.contains(&c) => key.push(c),
+            c => key.extend(c.to_uppercase()),
+        }
+    }
+    key
+}
+
+/// Upper-cased name (ß folds with SS, T-1762; see `spelling_key`) → the spelling every call or value use of it prints with.
 #[derive(Clone, Default)]
 pub(crate) struct CallNameSpellings {
     first: HashMap<String, String>,
+    /// Upper-cased defined name → its spelling, refreshed with every reparse of the workbook's
+    /// formulas (every defined-name edit reparses them), so a lookup costs one allocation.
+    defined: HashMap<String, String>,
 }
 
 impl CallNameSpellings {
+    /// Registers the spellings of the workbook's defined names; the first of equal names wins.
+    pub(crate) fn set_defined_names(&mut self, defined_names: &[DefinedName]) {
+        self.defined.clear();
+        for d in defined_names {
+            self.defined
+                .entry(spelling_key(&d.name))
+                .or_insert_with(|| d.name.clone());
+        }
+    }
+
     /// Gives every callee and value-used name of `node` that no LET or LAMBDA binds the workbook's spelling, which a
     /// name met for the first time becomes. A bound name, called or used, takes the spelling of
-    /// its declaration. Returns whether a name changed.
+    /// its declaration. A callee that is a defined name takes the defined name's spelling, whatever
+    /// the first typed one (probes/unknown-function-name-reach, T-1763). Returns whether a name
+    /// changed.
     pub(crate) fn apply(&mut self, node: &mut Node) -> bool {
         let mut changed = false;
         walk_names(node, &mut Vec::new(), &mut |site, name, declared| {
             let spelling = match (declared, site) {
                 (Some(declared), _) => declared.to_string(),
-                (None, NameSite::Callee | NameSite::Use) => self
-                    .first
-                    .entry(name.to_lowercase())
-                    .or_insert_with(|| name.clone())
-                    .clone(),
                 (None, NameSite::Declaration) => return,
+                (None, NameSite::Callee | NameSite::Use) => {
+                    let key = spelling_key(name);
+                    match self.defined.get(&key) {
+                        Some(defined) if site == NameSite::Callee => defined.clone(),
+                        _ => self
+                            .first
+                            .entry(key)
+                            .or_insert_with(|| name.clone())
+                            .clone(),
+                    }
+                }
             };
             if *name != spelling {
                 *name = spelling;
@@ -43,5 +86,34 @@ impl CallNameSpellings {
             }
         });
         changed
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::spelling_key;
+
+    /// Whitespace-separated name pairs: whether the two keys of each pair are equal.
+    fn pairs_fold(pairs: &str, folds: bool) {
+        let names: Vec<&str> = pairs.split_whitespace().collect();
+        for pair in names.chunks(2) {
+            assert_eq!(
+                spelling_key(pair[0]) == spelling_key(pair[1]),
+                folds,
+                "{pair:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn folds_match_excel() {
+        pairs_fold(
+            "ςw σw ςu Σu ﬁq FIq ǆd Ǆd straße STRASSE ϵg εg ﬀj FFj ﬆn STn ẞr ßr ẞs SSs",
+            true,
+        );
+        pairs_fold(
+            "ıx Ix ſy Sy \u{b5}z μz \u{b5}v Μv ϐa βa ϑb θb ϕc φc ϖd πd ϰe κe ϱf ρf ﬅm STm ŉo ʼNo",
+            false,
+        );
     }
 }

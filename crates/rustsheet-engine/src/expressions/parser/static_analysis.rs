@@ -5,12 +5,15 @@ use crate::functions::Function;
 use broadcast::broadcast_shapes;
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
-    legacy_call_reads_a_value, legacy_context_intersects, remove_array_at, remove_in_array_context,
+    legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value,
 };
+pub use redundant::remove_redundant_implicit_intersection;
+use redundant::remove_redundant_legacy_intersection;
 mod aggregate;
 mod broadcast;
 mod legacy;
 mod lifted;
+mod redundant;
 mod reference_parameter;
 mod reference_result;
 mod row_column;
@@ -93,6 +96,15 @@ fn is_range_reference(s: &str) -> bool {
 ///
 /// Assumes formula return a scalar
 pub fn add_implicit_intersection(node: &mut Node, add: bool) {
+    add_legacy_intersection(node, add, add);
+}
+
+/// [`add_implicit_intersection`] with `arrays`: whether `node` is in a value position of the cell
+/// (every enclosing argument a scalar one, [`legacy_array_context`]), where a legacy formula also
+/// puts the `@` on an array-valued call or array constant: `=@IF(1,{2;3})`, `=N(@{2;3})`, while
+/// `=SUM(N({1,2}))` is 3 with no `@` (docs/excel-semantics/references.md "Legacy formulas put `@`
+/// on array-valued calls and array constants").
+pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) {
     match node {
         Node::BooleanKind(_)
         | Node::NumberKind(_)
@@ -111,14 +123,14 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::ImplicitIntersection { child, .. } => {
             // We need to check whether the II can be automatic or not
             let mut new_node = child.as_ref().clone();
-            add_implicit_intersection(&mut new_node, add);
+            add_legacy_intersection(&mut new_node, add, arrays);
             if matches!(&new_node, Node::ImplicitIntersection { .. }) {
                 *node = new_node;
             }
         }
         Node::SpillRangeOperator { child } => {
             // A spill anchor is never intersected: `INDEX(D1:D2,1)#` (T-1109, probes K1).
-            add_implicit_intersection(child, false);
+            add_legacy_intersection(child, false, false);
         }
         Node::RangeKind {
             row1,
@@ -157,14 +169,16 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
 
         // operations
         Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
-            add_implicit_intersection(child, add);
+            add_legacy_intersection(child, add, arrays);
         }
         Node::OpConcatenateKind { .. }
         | Node::OpSumKind { .. }
         | Node::OpProductKind { .. }
         | Node::OpPowerKind { .. }
         | Node::CompareKind { .. } => {
-            for_each_chain_operand_mut(node, |operand| add_implicit_intersection(operand, add));
+            for_each_chain_operand_mut(node, |operand| {
+                add_legacy_intersection(operand, add, arrays);
+            });
         }
 
         Node::DefinedNameKind(v) => {
@@ -188,111 +202,32 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
-                add_array_at(kind, signature.get(index), index, arg);
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
-                add_argument_intersection(kind, signature.get(index), index, arg);
+                let arrays = legacy_array_context(kind, signature.get(index), arg, arrays);
+                add_array_at(kind, signature.get(index), index, arg, arrays);
+                add_argument_intersection(kind, signature.get(index), index, arg, arrays);
             }
             // There are some function that will never add an automatic II:
             let new_function = matches!(kind, Function::Let | Function::Lambda);
             if !new_function
-                && add
+                && (add || arrays)
                 && !legacy_call_reads_a_value(kind, args)
-                && matches!(
-                    run_static_analysis_on_node(node),
-                    StaticResult::Range(_, _) | StaticResult::Unknown
-                )
+                && match static_analysis_on_function(kind, args) {
+                    StaticResult::Range(_, _) | StaticResult::Unknown => add,
+                    // A one-cell array gives the same value with or without the `@`. Excel shows
+                    // none on `=SUBTOTAL(9,CHOOSE(1,{5}))`, a 1x1 array shape here
+                    // (probes/legacy-one-cell-shape-intersection J3); other one-cell calls are
+                    // unprobed (T-1847). A one-cell CHOOSE is a range shape and keeps its `@`.
+                    StaticResult::Array(rows, columns) => {
+                        arrays
+                            && (rows > 1 || columns > 1)
+                            && legacy_array_call_at(kind, &signature, args)
+                    }
+                    StaticResult::Scalar => false,
+                }
             {
                 *node = Node::automatic_at(node.clone());
-            }
-        }
-    };
-}
-
-/// Inverse of [`add_implicit_intersection`], used when exporting to Excel.
-///
-/// The internal (RC) representation stores every implicit intersection as `@`,
-/// losing the `automatic` flag. When exporting we must decide, for each `@`,
-/// whether it should be written as `_xlfn.SINGLE(...)` (because it is meaningful)
-/// or dropped (because `add_implicit_intersection` would re-insert it on import).
-///
-/// That decision depends on the *context* of the operator, exactly like
-/// `add_implicit_intersection`: an `@` is redundant only in a position that
-/// expects a scalar (`add == true`). Crucially, an `@` sitting in a `Vector`
-/// argument of a function such as `SUM` is **not** redundant: on import no
-/// automatic intersection is added there, so dropping it would change the result
-/// (e.g. `SUM(A1,B1,@J:J)` would become `SUM(A1,B1,J:J)`, scanning the whole
-/// column). This pass removes only the redundant operators, leaving the rest to
-/// be stringified as `_xlfn.SINGLE`.
-///
-/// `add` mirrors the flag in `add_implicit_intersection` and must start `true`
-/// (a formula is evaluated in a scalar context).
-pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
-    match node {
-        // Leaves and nodes that never contain a nested implicit intersection.
-        Node::BooleanKind(_)
-        | Node::NumberKind(_)
-        | Node::StringKind(_)
-        | Node::ErrorKind(_)
-        | Node::EmptyArgKind
-        | Node::ParseErrorKind { .. }
-        | Node::WrongReferenceKind { .. }
-        | Node::WrongRangeKind { .. }
-        | Node::SheetSpanKind { .. }
-        | Node::NamedFunctionKind { .. }
-        | Node::ArrayKind(_)
-        | Node::ReferenceKind { .. }
-        | Node::RangeKind { .. }
-        | Node::OpRangeKind { .. }
-        | Node::OpIntersectKind { .. }
-        | Node::OpUnionKind { .. }
-        | Node::DefinedNameKind(_)
-        | Node::NamedVariableKind { .. }
-        | Node::LambdaDefKind { .. }
-        | Node::LambdaCallKind { .. } => {}
-        Node::ImplicitIntersection { child, .. } => {
-            if add {
-                // Would `add_implicit_intersection` re-insert this operator on
-                // import? Probe the child in a scalar context to find out.
-                let mut probe = child.as_ref().clone();
-                add_implicit_intersection(&mut probe, true);
-                if matches!(probe, Node::ImplicitIntersection { .. }) {
-                    // Redundant: drop the operator and keep cleaning the child.
-                    // The child is still in the same (scalar) context, so recurse
-                    // with `add` to also remove any nested redundant operators.
-                    let mut inner = child.as_ref().clone();
-                    remove_redundant_implicit_intersection(&mut inner, add);
-                    *node = inner;
-                    return;
-                }
-            }
-            // Meaningful operator: keep it, but still clean any nested ones.
-            remove_redundant_implicit_intersection(child, false);
-        }
-        Node::SpillRangeOperator { child } | Node::Group { child, .. } => {
-            remove_redundant_implicit_intersection(child, add);
-        }
-        Node::UnaryKind { right, .. } => remove_redundant_implicit_intersection(right, add),
-        Node::OpConcatenateKind { .. }
-        | Node::OpSumKind { .. }
-        | Node::OpProductKind { .. }
-        | Node::OpPowerKind { .. }
-        | Node::CompareKind { .. } => {
-            for_each_chain_operand_mut(node, |operand| {
-                remove_redundant_implicit_intersection(operand, add);
-            });
-        }
-        Node::FunctionKind { kind, args } if is_array_context(kind) => {
-            remove_in_array_context(args);
-        }
-        Node::FunctionKind { kind, args } => {
-            let signature = get_function_args_signature(kind, args.len());
-            for (index, arg) in args.iter_mut().enumerate() {
-                remove_array_at(kind, signature.get(index), index, arg);
-                // Scalar arguments are an intersecting context; vector arguments
-                // (ranges/arrays) are not (`legacy_context_intersects`).
-                let child_add = legacy_context_intersects(kind, signature.get(index), index, arg);
-                remove_redundant_implicit_intersection(arg, child_add);
             }
         }
     };
@@ -609,115 +544,23 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Workday => args_signature_with_holidays(arg_count, 2, 0),
         Function::WorkdayIntl => args_signature_with_holidays(arg_count, 2, 1),
         Function::Isoweeknum => args_signature_scalars(arg_count, 1, 0),
-        Function::Accrint => args_signature_scalars(arg_count, 6, 2),
-        Function::Accrintm => args_signature_scalars(arg_count, 3, 2),
-        Function::Disc => args_signature_scalars(arg_count, 4, 1),
         Function::Fvschedule => vec![Signature::Scalar, Signature::Vector],
-        Function::Intrate => args_signature_scalars(arg_count, 4, 1),
-        Function::Pricedisc => args_signature_scalars(arg_count, 4, 1),
-        Function::Pricemat => args_signature_scalars(arg_count, 5, 1),
-        Function::Received => args_signature_scalars(arg_count, 4, 1),
-        Function::Yielddisc => args_signature_scalars(arg_count, 4, 1),
-        Function::Yieldmat => args_signature_scalars(arg_count, 5, 1),
         Function::Cumipmt => args_signature_scalars(arg_count, 6, 0),
         Function::Cumprinc => args_signature_scalars(arg_count, 6, 0),
         Function::Db => args_signature_scalars(arg_count, 4, 1),
-        Function::Ddb => args_signature_scalars(arg_count, 4, 1),
-        Function::Dollarde => args_signature_scalars(arg_count, 2, 0),
-        Function::Dollarfr => args_signature_scalars(arg_count, 2, 0),
-        Function::Effect => args_signature_scalars(arg_count, 2, 0),
-        Function::Fv => args_signature_scalars(arg_count, 3, 2),
-        Function::Ipmt => args_signature_scalars(arg_count, 4, 2),
         Function::Irr => args_signature_irr(arg_count),
-        Function::Ispmt => args_signature_scalars(arg_count, 4, 0),
         Function::Mirr => args_signature_mirr(arg_count),
-        Function::Nominal => args_signature_scalars(arg_count, 2, 0),
-        Function::Nper => args_signature_scalars(arg_count, 3, 2),
         Function::Npv => args_signature_npv(arg_count),
-        Function::Pduration => args_signature_scalars(arg_count, 3, 0),
-        Function::Pmt => args_signature_scalars(arg_count, 3, 2),
-        Function::Ppmt => args_signature_scalars(arg_count, 4, 2),
-        Function::Pv => args_signature_scalars(arg_count, 3, 2),
-        Function::Rate => args_signature_scalars(arg_count, 3, 3),
-        Function::Rri => args_signature_scalars(arg_count, 3, 0),
-        Function::Sln => args_signature_scalars(arg_count, 3, 0),
-        Function::Syd => args_signature_scalars(arg_count, 4, 0),
-        Function::Tbilleq => args_signature_scalars(arg_count, 3, 0),
-        Function::Tbillprice => args_signature_scalars(arg_count, 3, 0),
-        Function::Tbillyield => args_signature_scalars(arg_count, 3, 0),
         Function::Xirr => args_signature_xirr(arg_count),
         Function::Xnpv => args_signature_xnpv(arg_count),
-        Function::Duration => args_signature_scalars(arg_count, 5, 1),
-        Function::Mduration => args_signature_scalars(arg_count, 5, 1),
-        Function::Price => args_signature_scalars(arg_count, 6, 1),
         Function::Yield => args_signature_scalars(arg_count, 6, 1),
         Function::Oddfprice => args_signature_scalars(arg_count, 8, 1),
         Function::Oddfyield => args_signature_scalars(arg_count, 8, 1),
         Function::Oddlprice => args_signature_scalars(arg_count, 7, 1),
         Function::Oddlyield => args_signature_scalars(arg_count, 7, 1),
-        Function::Coupdaybs => args_signature_scalars(arg_count, 3, 1),
-        Function::Coupdays => args_signature_scalars(arg_count, 3, 1),
-        Function::Coupdaysnc => args_signature_scalars(arg_count, 3, 1),
-        Function::Coupncd => args_signature_scalars(arg_count, 3, 1),
-        Function::Coupnum => args_signature_scalars(arg_count, 3, 1),
-        Function::Couppcd => args_signature_scalars(arg_count, 3, 1),
         Function::Amordegrc => args_signature_scalars(arg_count, 6, 1),
         Function::Amorlinc => args_signature_scalars(arg_count, 6, 1),
         Function::Vdb => args_signature_scalars(arg_count, 5, 2),
-        Function::Besseli => args_signature_scalars(arg_count, 2, 0),
-        Function::Besselj => args_signature_scalars(arg_count, 2, 0),
-        Function::Besselk => args_signature_scalars(arg_count, 2, 0),
-        Function::Bessely => args_signature_scalars(arg_count, 2, 0),
-        Function::Erf => args_signature_scalars(arg_count, 1, 1),
-        Function::Erfc => args_signature_scalars(arg_count, 1, 0),
-        Function::ErfcPrecise => args_signature_scalars(arg_count, 1, 0),
-        Function::ErfPrecise => args_signature_scalars(arg_count, 1, 0),
-        Function::Bin2dec => args_signature_scalars(arg_count, 1, 0),
-        Function::Bin2hex => args_signature_scalars(arg_count, 1, 0),
-        Function::Bin2oct => args_signature_scalars(arg_count, 1, 0),
-        Function::Dec2Bin => args_signature_scalars(arg_count, 1, 0),
-        Function::Dec2hex => args_signature_scalars(arg_count, 1, 0),
-        Function::Dec2oct => args_signature_scalars(arg_count, 1, 0),
-        Function::Hex2bin => args_signature_scalars(arg_count, 1, 0),
-        Function::Hex2dec => args_signature_scalars(arg_count, 1, 0),
-        Function::Hex2oct => args_signature_scalars(arg_count, 1, 0),
-        Function::Oct2bin => args_signature_scalars(arg_count, 1, 0),
-        Function::Oct2dec => args_signature_scalars(arg_count, 1, 0),
-        Function::Oct2hex => args_signature_scalars(arg_count, 1, 0),
-        Function::Bitand => args_signature_scalars(arg_count, 2, 0),
-        Function::Bitlshift => args_signature_scalars(arg_count, 2, 0),
-        Function::Bitor => args_signature_scalars(arg_count, 2, 0),
-        Function::Bitrshift => args_signature_scalars(arg_count, 2, 0),
-        Function::Bitxor => args_signature_scalars(arg_count, 2, 0),
-        Function::Complex => args_signature_scalars(arg_count, 2, 1),
-        Function::Imabs => args_signature_scalars(arg_count, 1, 0),
-        Function::Imaginary => args_signature_scalars(arg_count, 1, 0),
-        Function::Imargument => args_signature_scalars(arg_count, 1, 0),
-        Function::Imconjugate => args_signature_scalars(arg_count, 1, 0),
-        Function::Imcos => args_signature_scalars(arg_count, 1, 0),
-        Function::Imcosh => args_signature_scalars(arg_count, 1, 0),
-        Function::Imcot => args_signature_scalars(arg_count, 1, 0),
-        Function::Imcsc => args_signature_scalars(arg_count, 1, 0),
-        Function::Imcsch => args_signature_scalars(arg_count, 1, 0),
-        Function::Imdiv => args_signature_scalars(arg_count, 2, 0),
-        Function::Imexp => args_signature_scalars(arg_count, 1, 0),
-        Function::Imln => args_signature_scalars(arg_count, 1, 0),
-        Function::Imlog10 => args_signature_scalars(arg_count, 1, 0),
-        Function::Imlog2 => args_signature_scalars(arg_count, 1, 0),
-        Function::Impower => args_signature_scalars(arg_count, 2, 0),
-        Function::Improduct => args_signature_scalars(arg_count, 2, 0),
-        Function::Imreal => args_signature_scalars(arg_count, 1, 0),
-        Function::Imsec => args_signature_scalars(arg_count, 1, 0),
-        Function::Imsech => args_signature_scalars(arg_count, 1, 0),
-        Function::Imsin => args_signature_scalars(arg_count, 1, 0),
-        Function::Imsinh => args_signature_scalars(arg_count, 1, 0),
-        Function::Imsqrt => args_signature_scalars(arg_count, 1, 0),
-        Function::Imsub => args_signature_scalars(arg_count, 2, 0),
-        Function::Imsum => args_signature_scalars(arg_count, 2, 0),
-        Function::Imtan => args_signature_scalars(arg_count, 1, 0),
-        Function::Convert => args_signature_scalars(arg_count, 3, 0),
-        Function::Delta => args_signature_scalars(arg_count, 1, 1),
-        Function::Gestep => args_signature_scalars(arg_count, 1, 1),
         Function::Subtotal | Function::Aggregate => args_signature_npv(arg_count),
         Function::Rand => args_signature_scalars(arg_count, 0, 0),
         Function::Randbetween => args_signature_scalars(arg_count, 2, 0),
@@ -758,7 +601,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Sech => args_signature_scalars(arg_count, 1, 0),
         Function::Exp => args_signature_scalars(arg_count, 1, 0),
         Function::Fact => args_signature_scalars(arg_count, 1, 0),
-        Function::Factdouble => args_signature_scalars(arg_count, 1, 0),
         Function::Sign => args_signature_scalars(arg_count, 1, 0),
         Function::Radians => args_signature_scalars(arg_count, 1, 0),
         Function::Degrees => args_signature_scalars(arg_count, 1, 0),
@@ -773,7 +615,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::FloorPrecise => args_signature_scalars(arg_count, 1, 1),
         Function::IsoCeiling => args_signature_scalars(arg_count, 1, 1),
         Function::Mod => args_signature_scalars(arg_count, 2, 0),
-        Function::Quotient => args_signature_scalars(arg_count, 2, 0),
         Function::Mround => args_signature_scalars(arg_count, 2, 0),
         Function::Trunc => args_signature_scalars(arg_count, 1, 1),
         Function::Gcd => vec![Signature::Vector; arg_count],
@@ -789,18 +630,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Minverse => args_signature_one_vector(arg_count),
         Function::Munit => args_signature_scalars(arg_count, 1, 0),
         Function::Multinomial => vec![Signature::Vector; arg_count],
-        Function::Seriessum => {
-            if arg_count == 4 {
-                vec![
-                    Signature::Scalar,
-                    Signature::Scalar,
-                    Signature::Scalar,
-                    Signature::Vector,
-                ]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::Sumproduct => vec![Signature::Vector; arg_count],
         Function::Percentof => {
             if arg_count == 2 {
@@ -1179,19 +1008,14 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Right => scalar_arguments(args),
         Function::Search => scalar_arguments(args),
         Function::Substitute => scalar_arguments(args),
-        Function::Regexextract => {
-            if args.len() == 3 {
-                StaticResult::Unknown
-            } else {
-                not_implemented(args)
-            }
+        // Their text and scalar arguments lift over a range or an array (T-1272); the table derives
+        // their shape once they move onto `lift_call`. TODO(T-1775)
+        Function::Regexextract | Function::Regexreplace | Function::Regextest => {
+            StaticResult::Unknown
         }
-        Function::Regexreplace => not_implemented(args),
-        Function::Regextest => not_implemented(args),
         Function::T => scalar_arguments(args),
         Function::Text => scalar_arguments(args),
-        Function::Textafter => not_implemented(args),
-        Function::Textbefore => not_implemented(args),
+        Function::Textafter | Function::Textbefore => StaticResult::Unknown,
         Function::Textjoin => not_implemented(args),
         Function::Trim => scalar_arguments(args),
         Function::Unicode => not_implemented(args),
@@ -1255,115 +1079,23 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Workday => not_implemented(args),
         Function::WorkdayIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
         Function::Isoweeknum => scalar_arguments(args),
-        Function::Accrint => scalar_arguments(args),
-        Function::Accrintm => scalar_arguments(args),
-        Function::Disc => StaticResult::Scalar,
         Function::Fvschedule => StaticResult::Scalar,
-        Function::Intrate => StaticResult::Scalar,
-        Function::Pricedisc => StaticResult::Scalar,
-        Function::Pricemat => StaticResult::Scalar,
-        Function::Received => StaticResult::Scalar,
-        Function::Yielddisc => StaticResult::Scalar,
-        Function::Yieldmat => StaticResult::Scalar,
         Function::Cumipmt => not_implemented(args),
         Function::Cumprinc => not_implemented(args),
         Function::Db => not_implemented(args),
-        Function::Ddb => not_implemented(args),
-        Function::Dollarde => not_implemented(args),
-        Function::Dollarfr => not_implemented(args),
-        Function::Effect => not_implemented(args),
-        Function::Fv => not_implemented(args),
-        Function::Ipmt => not_implemented(args),
         Function::Irr => not_implemented(args),
-        Function::Ispmt => not_implemented(args),
         Function::Mirr => not_implemented(args),
-        Function::Nominal => not_implemented(args),
-        Function::Nper => not_implemented(args),
         Function::Npv => not_implemented(args),
-        Function::Pduration => not_implemented(args),
-        Function::Pmt => not_implemented(args),
-        Function::Ppmt => not_implemented(args),
-        Function::Pv => not_implemented(args),
-        Function::Rate => not_implemented(args),
-        Function::Rri => not_implemented(args),
-        Function::Sln => not_implemented(args),
-        Function::Syd => not_implemented(args),
-        Function::Tbilleq => not_implemented(args),
-        Function::Tbillprice => not_implemented(args),
-        Function::Tbillyield => not_implemented(args),
         Function::Xirr => not_implemented(args),
         Function::Xnpv => not_implemented(args),
-        Function::Duration => StaticResult::Scalar,
-        Function::Mduration => StaticResult::Scalar,
-        Function::Price => StaticResult::Scalar,
         Function::Yield => StaticResult::Scalar,
         Function::Oddfprice => StaticResult::Scalar,
         Function::Oddfyield => StaticResult::Scalar,
         Function::Oddlprice => StaticResult::Scalar,
         Function::Oddlyield => StaticResult::Scalar,
-        Function::Coupdaybs => StaticResult::Scalar,
-        Function::Coupdays => StaticResult::Scalar,
-        Function::Coupdaysnc => StaticResult::Scalar,
-        Function::Coupncd => StaticResult::Scalar,
-        Function::Coupnum => StaticResult::Scalar,
-        Function::Couppcd => StaticResult::Scalar,
         Function::Amordegrc => StaticResult::Scalar,
         Function::Amorlinc => StaticResult::Scalar,
         Function::Vdb => StaticResult::Scalar,
-        Function::Besseli => scalar_arguments(args),
-        Function::Besselj => scalar_arguments(args),
-        Function::Besselk => scalar_arguments(args),
-        Function::Bessely => scalar_arguments(args),
-        Function::Erf => scalar_arguments(args),
-        Function::Erfc => scalar_arguments(args),
-        Function::ErfcPrecise => scalar_arguments(args),
-        Function::ErfPrecise => scalar_arguments(args),
-        Function::Bin2dec => scalar_arguments(args),
-        Function::Bin2hex => scalar_arguments(args),
-        Function::Bin2oct => scalar_arguments(args),
-        Function::Dec2Bin => scalar_arguments(args),
-        Function::Dec2hex => scalar_arguments(args),
-        Function::Dec2oct => scalar_arguments(args),
-        Function::Hex2bin => scalar_arguments(args),
-        Function::Hex2dec => scalar_arguments(args),
-        Function::Hex2oct => scalar_arguments(args),
-        Function::Oct2bin => scalar_arguments(args),
-        Function::Oct2dec => scalar_arguments(args),
-        Function::Oct2hex => scalar_arguments(args),
-        Function::Bitand => scalar_arguments(args),
-        Function::Bitlshift => scalar_arguments(args),
-        Function::Bitor => scalar_arguments(args),
-        Function::Bitrshift => scalar_arguments(args),
-        Function::Bitxor => scalar_arguments(args),
-        Function::Complex => scalar_arguments(args),
-        Function::Imabs => scalar_arguments(args),
-        Function::Imaginary => scalar_arguments(args),
-        Function::Imargument => scalar_arguments(args),
-        Function::Imconjugate => scalar_arguments(args),
-        Function::Imcos => scalar_arguments(args),
-        Function::Imcosh => scalar_arguments(args),
-        Function::Imcot => scalar_arguments(args),
-        Function::Imcsc => scalar_arguments(args),
-        Function::Imcsch => scalar_arguments(args),
-        Function::Imdiv => scalar_arguments(args),
-        Function::Imexp => scalar_arguments(args),
-        Function::Imln => scalar_arguments(args),
-        Function::Imlog10 => scalar_arguments(args),
-        Function::Imlog2 => scalar_arguments(args),
-        Function::Impower => scalar_arguments(args),
-        Function::Improduct => scalar_arguments(args),
-        Function::Imreal => scalar_arguments(args),
-        Function::Imsec => scalar_arguments(args),
-        Function::Imsech => scalar_arguments(args),
-        Function::Imsin => scalar_arguments(args),
-        Function::Imsinh => scalar_arguments(args),
-        Function::Imsqrt => scalar_arguments(args),
-        Function::Imsub => scalar_arguments(args),
-        Function::Imsum => scalar_arguments(args),
-        Function::Imtan => scalar_arguments(args),
-        Function::Convert => not_implemented(args),
-        Function::Delta => not_implemented(args),
-        Function::Gestep => not_implemented(args),
         Function::Subtotal => aggregate::subtotal_static_result(args),
         Function::Aggregate => aggregate::aggregate_static_result(args),
         Function::Rand => not_implemented(args),
@@ -1383,7 +1115,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Sech => scalar_arguments(args),
         Function::Exp => scalar_arguments(args),
         Function::Fact => scalar_arguments(args),
-        Function::Factdouble => scalar_arguments(args),
         Function::Sign => scalar_arguments(args),
         Function::Radians => scalar_arguments(args),
         Function::Degrees => scalar_arguments(args),
@@ -1398,7 +1129,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::FloorPrecise => scalar_arguments(args),
         Function::IsoCeiling => scalar_arguments(args),
         Function::Mod => scalar_arguments(args),
-        Function::Quotient => scalar_arguments(args),
         Function::Mround => scalar_arguments(args),
         Function::Trunc => scalar_arguments(args),
         Function::Gcd => StaticResult::Scalar,
@@ -1414,7 +1144,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Minverse => StaticResult::Unknown,
         Function::Munit => StaticResult::Unknown,
         Function::Multinomial => StaticResult::Scalar,
-        Function::Seriessum => StaticResult::Scalar,
         Function::Sumproduct => StaticResult::Scalar,
         Function::Percentof => StaticResult::Scalar,
         Function::N => scalar_arguments(args),

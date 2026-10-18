@@ -514,3 +514,324 @@ fn lift_arrays_static_shapes_come_from_arrays_only() {
         StaticResult::Scalar
     ));
 }
+
+// SPEC-0011 for the engineering functions (T-1383): the Analysis ToolPak ones are `LiftArrays`,
+// so a legacy bare range keeps its text; BIT* are `Lift`, so a legacy range gets its `@`
+// (docs/excel-semantics/engineering.md "Engineering function argument modes").
+#[test]
+fn engineering_legacy_ranges_follow_the_table() {
+    check(&[
+        (
+            "BESSELJ(A1:A60,1)",
+            "BESSELJ(A1:A60,1)",
+            "BESSELJ(A1:A60,1)",
+        ),
+        (
+            "DEC2BIN(9,B1:B60)",
+            "DEC2BIN(9,B1:B60)",
+            "DEC2BIN(9,B1:B60)",
+        ),
+        (
+            "CONVERT(1,P1:P60,\"ft\")",
+            "CONVERT(1,P1:P60,\"ft\")",
+            "CONVERT(1,P1:P60,\"ft\")",
+        ),
+        ("IMABS(A1:A60+0)", "IMABS(@A1:A60+0)", "IMABS(A1:A60+0)"),
+        // IMSUM and IMPRODUCT read their arguments whole (`WholeByCaller`, T-1384).
+        (
+            "IMSUM(A1:A60,B1:B60)",
+            "IMSUM(A1:A60,B1:B60)",
+            "IMSUM(A1:A60,B1:B60)",
+        ),
+        (
+            "BITAND(A1:A60,1)",
+            "BITAND(@A1:A60,1)",
+            "_xlfn.BITAND(A1:A60,1)",
+        ),
+        (
+            "BITLSHIFT(13,C1:C60)",
+            "BITLSHIFT(13,@C1:C60)",
+            "_xlfn.BITLSHIFT(13,C1:C60)",
+        ),
+    ]);
+}
+
+#[test]
+fn engineering_static_shapes_follow_the_table() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let mut shape =
+        |formula: &str| run_static_analysis_on_node(&parser.parse(formula, &cell_reference));
+    assert!(matches!(
+        shape("BITAND(A1:A3,1)"),
+        StaticResult::Array(3, 1)
+    ));
+    assert!(matches!(
+        shape("BITOR(13,{1,2})"),
+        StaticResult::Array(1, 2)
+    ));
+    assert!(matches!(shape("BESSELJ(A1:A3,1)"), StaticResult::Scalar));
+    assert!(matches!(
+        shape("BESSELJ(2.5,{1;2})"),
+        StaticResult::Array(2, 1)
+    ));
+    assert!(matches!(
+        shape("CONVERT(1,\"m\",{\"ft\",\"in\"})"),
+        StaticResult::Array(1, 2)
+    ));
+    assert!(matches!(shape("DELTA({1;2;3})"), StaticResult::Array(3, 1)));
+    // IMSUM and IMPRODUCT fold their arguments into one value (T-1384).
+    assert!(matches!(
+        shape("IMSUM({\"1\";\"2\"},\"1-2i\")"),
+        StaticResult::Scalar
+    ));
+    assert!(matches!(
+        shape("IMPRODUCT(A1:A3,{1,2})"),
+        StaticResult::Scalar
+    ));
+}
+
+// SPEC-0011 for the financial functions (T-1372): a core worksheet function's argument is `Lift`,
+// so a legacy range gets the `@` and exports without it (`=PMT(@C1:C60,10,100)`,
+// probes/scalar-lift-shapes-c G, R; -shapes J1, J4); an Analysis ToolPak argument is
+// `LiftArrays`, so a bare range keeps its text and an operation on it gets the `@`.
+#[test]
+fn financial_legacy_at_follows_the_lifting_table() {
+    check(&[
+        (
+            "PMT(C1:C60,10,100)",
+            "PMT(@C1:C60,10,100)",
+            "PMT(C1:C60,10,100)",
+        ),
+        (
+            "RATE(36,-300,8000,0,0,D1:D60)",
+            "RATE(36,-300,8000,0,0,@D1:D60)",
+            "RATE(36,-300,8000,0,0,D1:D60)",
+        ),
+        ("EFFECT(C1:C60,4)", "EFFECT(C1:C60,4)", "EFFECT(C1:C60,4)"),
+        (
+            "ACCRINTM(A1:A60,46000,0.1,1000,B1:B60)",
+            "ACCRINTM(A1:A60,46000,0.1,1000,B1:B60)",
+            "ACCRINTM(A1:A60,46000,0.1,1000,B1:B60)",
+        ),
+        (
+            "TBILLPRICE(A1:A60+0,46000,0.05)",
+            "TBILLPRICE(@A1:A60+0,46000,0.05)",
+            "TBILLPRICE(A1:A60+0,46000,0.05)",
+        ),
+        (
+            "SUMPRODUCT(PMT(C1:C60,10,100))",
+            "SUMPRODUCT(PMT(C1:C60,10,100))",
+            "SUMPRODUCT(PMT(C1:C60,10,100))",
+        ),
+    ]);
+}
+
+// The static shapes: a `Lift` range adds its shape, a `LiftArrays` range none.
+#[test]
+fn financial_static_shapes_come_from_the_lifting_table() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let mut shape =
+        |formula: &str| run_static_analysis_on_node(&parser.parse(formula, &cell_reference));
+    assert!(matches!(
+        shape("PMT(C1:C3,10,100)"),
+        StaticResult::Array(3, 1)
+    ));
+    assert!(matches!(
+        shape("PMT({0.1,0.2},C1:C3,100)"),
+        StaticResult::Array(3, 2)
+    ));
+    assert!(matches!(shape("PMT(0.1,10,100)"), StaticResult::Scalar));
+    assert!(matches!(shape("EFFECT(C1:C3,4)"), StaticResult::Scalar));
+    assert!(matches!(
+        shape("PRICEDISC(39448,43831,{0.05;0.06},C1:C3)"),
+        StaticResult::Array(2, 1)
+    ));
+}
+
+// SPEC-0011 for QUOTIENT, FACTDOUBLE and SERIESSUM (T-1802): x, n and m are `LiftArrays`, so a
+// legacy bare range keeps its text and an operation on it gets the `@`; SERIESSUM's coefficients
+// are read whole and get none (probes/scalar-lift-open-a Y19-Y27).
+#[test]
+fn math_atp_legacy_ranges_follow_the_table() {
+    check(&[
+        (
+            "QUOTIENT(A1:A60,2)",
+            "QUOTIENT(A1:A60,2)",
+            "QUOTIENT(A1:A60,2)",
+        ),
+        (
+            "FACTDOUBLE(D1:D60)",
+            "FACTDOUBLE(D1:D60)",
+            "FACTDOUBLE(D1:D60)",
+        ),
+        (
+            "FACTDOUBLE(D1:D60+0)",
+            "FACTDOUBLE(@D1:D60+0)",
+            "FACTDOUBLE(D1:D60+0)",
+        ),
+        (
+            "SERIESSUM(B1:B60,0,1,C1:C3)",
+            "SERIESSUM(B1:B60,0,1,C1:C3)",
+            "SERIESSUM(B1:B60,0,1,C1:C3)",
+        ),
+    ]);
+}
+
+#[test]
+fn math_atp_static_shapes_follow_the_table() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let mut shape =
+        |formula: &str| run_static_analysis_on_node(&parser.parse(formula, &cell_reference));
+    assert!(matches!(
+        shape("QUOTIENT({7;9},2)"),
+        StaticResult::Array(2, 1)
+    ));
+    assert!(matches!(shape("QUOTIENT(A1:A3,2)"), StaticResult::Scalar));
+    assert!(matches!(
+        shape("FACTDOUBLE({5,6})"),
+        StaticResult::Array(1, 2)
+    ));
+    assert!(matches!(
+        shape("SERIESSUM({1;2},{0,1},1,{1,2,3})"),
+        StaticResult::Array(2, 2)
+    ));
+    assert!(matches!(
+        shape("SERIESSUM(2,0,1,{1;2;3})"),
+        StaticResult::Scalar
+    ));
+    assert!(matches!(shape("GCD({4;6},2)"), StaticResult::Scalar));
+}
+
+// A legacy formula puts the `@` on an array-valued call or array constant in a value position of
+// the cell, and the export drops it as automatic; under a vector argument, in IF's arms and in N
+// or T over IF or SWITCH it adds none, so an explicit `@` there is kept (probes/legacy-array-result,
+// legacy-n-t-reference-args, n-array-lift A3; T-1717).
+#[test]
+fn legacy_array_values_intersect_in_value_positions() {
+    check(&[
+        ("IF(1,{2;3})", "@IF(1,{2;3})", "IF(1,{2;3})"),
+        (
+            "ABS(IF(1,{-2;3}))",
+            "ABS(@IF(1,{-2;3}))",
+            "ABS(IF(1,{-2;3}))",
+        ),
+        ("-IF(1,{2;3})", "-@IF(1,{2;3})", "-IF(1,{2;3})"),
+        ("N({2;3})", "N(@{2;3})", "N({2;3})"),
+        ("ABS({-2;3})", "ABS(@{-2;3})", "ABS({-2;3})"),
+        (
+            "N(IFERROR({2;3},0))",
+            "N(@IFERROR({2;3},0))",
+            "N(IFERROR({2;3},0))",
+        ),
+        (
+            "IF(1,N(IF(1,{2;3})))",
+            "@IF(1,N(IF(1,{2;3})))",
+            "IF(1,N(IF(1,{2;3})))",
+        ),
+        ("N(IF(1,{2;3}))", "N(IF(1,{2;3}))", "N(IF(1,{2;3}))"),
+        (
+            "ABS(N(IF(1,{2;3})))",
+            "ABS(N(IF(1,{2;3})))",
+            "ABS(N(IF(1,{2;3})))",
+        ),
+        (
+            "N(_xlfn.SWITCH(1,1,{2;3}))",
+            "N(SWITCH(1,1,{2;3}))",
+            "N(_xlfn.SWITCH(1,1,{2;3}))",
+        ),
+        ("SUM(N({1,2}))", "SUM(N({1,2}))", "SUM(N({1,2}))"),
+        (
+            "SUM(ABS(IF(1,{-2;3})))",
+            "SUM(ABS(IF(1,{-2;3})))",
+            "SUM(ABS(IF(1,{-2;3})))",
+        ),
+        // Explicit `@`s where the import adds none survive the export.
+        (
+            "SUM(ABS(_xlfn.SINGLE(IF(1,{-2;3}))))",
+            "SUM(ABS(@IF(1,{-2;3})))",
+            "SUM(ABS(_xlfn.SINGLE(IF(1,{-2;3}))))",
+        ),
+        (
+            "SUM(N(_xlfn.SINGLE({1,2})))",
+            "SUM(N(@{1,2}))",
+            "SUM(N(_xlfn.SINGLE({1,2})))",
+        ),
+        (
+            "N(_xlfn.SINGLE(IF(1,{2;3})))",
+            "N(@IF(1,{2;3}))",
+            "N(_xlfn.SINGLE(IF(1,{2;3})))",
+        ),
+        (
+            "IF(1,_xlfn.SINGLE({2;3}))",
+            "IF(1,@{2;3})",
+            "IF(1,_xlfn.SINGLE({2;3}))",
+        ),
+    ]);
+}
+
+// The coupon-schedule Analysis ToolPak functions (T-1822) are `LiftArrays` in every argument: a
+// legacy bare range keeps its text, an operation on one gets the `@`, and an array adds its shape
+// (probes/fin-remaining-later-argument-ranges).
+#[test]
+fn coupon_functions_follow_the_lifting_table() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    check(&[
+        (
+            "COUPNUM(A1:A60,46000,2)",
+            "COUPNUM(A1:A60,46000,2)",
+            "COUPNUM(A1:A60,46000,2)",
+        ),
+        (
+            "PRICE(45000,46000,0.05,B1:B60+0,100,2)",
+            "PRICE(45000,46000,0.05,@B1:B60+0,100,2)",
+            "PRICE(45000,46000,0.05,B1:B60+0,100,2)",
+        ),
+        (
+            "ACCRINT(44000,44500,45000,0.1,1000,2,B1:B60)",
+            "ACCRINT(44000,44500,45000,0.1,1000,2,B1:B60)",
+            "ACCRINT(44000,44500,45000,0.1,1000,2,B1:B60)",
+        ),
+    ]);
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let mut shape =
+        |formula: &str| run_static_analysis_on_node(&parser.parse(formula, &cell_reference));
+    assert!(matches!(
+        shape("COUPNUM(A1:A3,46000,2)"),
+        StaticResult::Scalar
+    ));
+    assert!(matches!(
+        shape("DURATION(45000,46000,{0.05;0.06},0.06,2)"),
+        StaticResult::Array(2, 1)
+    ));
+    assert!(matches!(
+        shape("ACCRINT(44000,44500,45000,0.1,1000,2,{0,1,2},A1:A3)"),
+        StaticResult::Array(1, 3)
+    ));
+}

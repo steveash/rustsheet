@@ -3,7 +3,7 @@ id: T-1383
 title: "Engineering functions lift scalar arguments over arrays, and BIT* over ranges (probes/eng-argument-modes)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -35,9 +35,22 @@ Only the first argument was probed over a range. Probe the later arguments (BIT*
 `number2`, `places`, Bessel `n`) before range lifting is extended to them.
 
 ## Acceptance criteria
-- [ ] probes/eng-argument-modes columns B:E leave eval/baseline/probes.txt, except the IMSUM and IMPRODUCT
+- [x] probes/eng-argument-modes columns B:E leave eval/baseline/probes.txt, except the IMSUM and IMPRODUCT
       cells (T-1384), with no new F lines. probes/scalar-lift-shapes H7-H10 pass.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IMSUM and IMPRODUCT (T-1384). Last-digit precision of IM* (T-0907).
+
+## Outcome
+Every engineering function but IMSUM and IMPRODUCT is in the SPEC-0011 lifting table (52 entries in
+their own block of functions/lift/kinds.rs): BIT* as `Lift`, the rest `LiftArrays`, the Bessel
+functions `Weighted(2^16)`. The later arguments the earlier probes left open are evidenced by the new
+probes/eng-later-argument-lift (75 cells, excel-graph, 2026-10-17): every ATP later argument refuses a
+range, every BIT* later argument lifts over one. The kernels share code (BIT* two kernels, Bessel one,
+the one-argument IM* one reader) and build their errors with empty messages; scalar results are
+unchanged except a two-argument HEX2DEC/OCT2DEC (now the count error, as the parser's signature
+said) and BESSELI/BESSELK orders above 100,000 (now `#NUM!`, the BESSEL order cap DEVIATION).
+Eval: probes 98 baseline lines fixed (eng-argument-modes 86, scalar-lift-open-a Y8-Y15 8,
+scalar-lift-shapes 4), 0 regressions; the new case has 2 known failures (M2, M8: DEC2BIN's and
+DELTA's error order inside an element), filed as T-1816.

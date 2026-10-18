@@ -308,9 +308,11 @@ an omitted parameter's value is 0 (`LAMBDA(x,[y],y)(1)` = 0) and "" as text (`y&
 `LAMBDA(x,[y],IF(ISOMITTED(y),x,x+y))` gives 1 for `(1)` and 3 for `(1,2)`; `LAMBDA([x],[y],ISOMITTED(x)+ISOMITTED(y))()`
 is 2 (probes/lambda-optional-params A1-A8, excel-graph, 2026-10-11, T-1274; the engine matches all of them). The
 case builder stores `[y]` as `_xlop.y` (xlsx-storage.md).
-Ours: none of the lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array; `SEQUENCE(A1:A3)` is one row);
+Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (rows 13-22, 55, K11:K13; text.md "TEXTSPLIT,
+TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); none of the other lifts above (`#VALUE!` for a
+range, `#N/IMPL!` for an array; `SEQUENCE(A1:A3)` is one row);
 GROUPBY and PIVOTBY exist since T-1322 and T-1326 ("GROUPBY and PIVOTBY" below; `_xleta.` names work since T-1466, see "Functions passed by name" below); INDEX of a scalar result is `#VALUE!` (T-1242); `ROWS(LAMBDA(x,x))`
-is `#VALUE!`; a BYROW row result is not `#CALC!`; `REGEXTEST(A1,1)` is `#VALUE!`. 84 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
+is `#VALUE!`; a BYROW row result is not `#CALC!`. 84 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
 Status: VERIFIED (web)
 Tasks: T-1083 (generator modes)
 
@@ -367,11 +369,19 @@ NETWORKDAYS.INTL is the exception: it lifts over a range (`INDEX(WORKDAY.INTL(45
   `from_unit`, `to_unit` and number (Y8-Y10), COMPLEX's `suffix` (Y11), IMSUB's and IMDIV's second argument
   and IMSUB's first (Y12, Y13, Y15), IMPOWER's `n` (Y14) and DOLLARDE's and DOLLARFR's `fraction` and
   DOLLARDE's first argument (Y16-Y18). So the rule holds in every later argument probed.
+  probes/eng-later-argument-lift (T-1383) probes the rest of the engineering later arguments on the
+  range's own rows: BESSELI's, BESSELK's and BESSELY's `n`, the `places` of every base conversion,
+  COMPLEX's `i_num`, DELTA's `number2`, GESTEP's `step` and ERF's `upper_limit` are `#VALUE!` (H1-H11,
+  H16-H19), while BITOR's and BITXOR's `number2` and BITLSHIFT's and BITRSHIFT's `shift_amount` lift
+  to 60 rows, on and off the range's rows (H12-H15, L71), as BITAND's do (H7, H20).
 - **The other Analysis ToolPak-era functions** (probes/scalar-lift-open-a Y19-Y30, T-1777). QUOTIENT
   (either argument), FACTDOUBLE and SERIESSUM's `x`, `n` and `m` refuse a range like the rest (`#VALUE!`,
   Y19-Y21, Y24-Y26). SERIESSUM's `coefficients` over a range is read whole (Y27, `SERIESSUM(2,0,1,B1:B3)` is
   7, -d W31). MULTINOMIAL, GCD and LCM give one result over a range (only MULTINOMIAL's value is probed, -d W30) (ROWS 1, Y22, Y23,
   Y28-Y30; `MULTINOMIAL(B1:B3,2)` = 59.999999999999986, -d W30).
+  probes/math-atp-array-lift (T-1802) shows that QUOTIENT, FACTDOUBLE and SERIESSUM's `x`, `n` and `m`
+  lift over an array, as the other ATP arguments do, while SERIESSUM's coefficients and MULTINOMIAL, GCD
+  and LCM stay whole over an array too (numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes").
 - **A range next to an array in an Analysis ToolPak call.** The call lifts over the array only.
   The range is passed whole to each element's call, which refuses it. So the shape comes from the
   array, and the probed elements are `#VALUE!`, on the range's rows and off them.
@@ -447,17 +457,23 @@ arrays", information.md "ISEVEN/ISODD over a range").
 Ours: EDATE, EOMONTH, WEEKNUM and YEARFRAC follow the rule (T-1770): every argument is
 `LiftArrays` in the lifting table, so they lift over an array, refuse a multi-cell range or a
 returned reference (TAKE and INDEX included) with `#VALUE!`, and a 3-D range with `#VALUE!` (multi-cell: scalar-lift-open-b W4, W5, W7, -d W19-W20, W26; one-cell, `EDATE(Sheet1:Sheet2!A1,1)`, and in WEEKNUM, EOMONTH and YEARFRAC: scalar-lift-open-e W1-W9, also beside an array, W2-W3, whose shape stays the array's, W8), and get no legacy `@` on a bare
-range. DROP, TRIMRANGE and XLOOKUP results that span several cells are refused too, and one-cell results are their value (scalar-lift-open-e W10-W22, T-1801); all their cells in the three scalar-lift-shapes probes pass, and since T-1800 so do scalar-lift-open-a W6, W7 and -d W1-W7 (YEARFRAC checks basis, start, end; the driver hands a refused range to the kernel as `#VALUE!` in its slot and picks no error by position). The other families listed in SPEC-0011 do not
-lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic formula). SPEC-0011's
-rollout tasks fix them.
+range. DROP, TRIMRANGE and XLOOKUP results that span several cells are refused too, and one-cell results are their value (scalar-lift-open-e W10-W22, T-1801); all their cells in the three scalar-lift-shapes probes pass, and since T-1800 so do scalar-lift-open-a W6, W7 and -d W1-W7 (YEARFRAC checks basis, start, end; the driver hands a refused range to the kernel as `#VALUE!` in its slot and picks no error by position). Since T-1383
+the engineering functions lift too, and since T-1372 28 financial functions (PMT, PV, FV, NPER,
+RATE, IPMT, PPMT, ISPMT, RRI, PDURATION, SLN, SYD, DDB as `Lift`; EFFECT, NOMINAL, DOLLARDE,
+DOLLARFR, ACCRINTM and the discount securities and T-bills as `LiftArrays`), so the PMT, EFFECT and
+ACCRINTM cells here pass (scalar-lift-open-a W4, W14, W15; -b W9; -d W8-W18). Since T-1822 ACCRINT,
+the COUP* family, DURATION, MDURATION and PRICE are `LiftArrays` as well (scalar-lift-open-a Y1-Y7). The other families
+listed in SPEC-0011 do not lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic
+formula). SPEC-0011's rollout tasks fix them.
 Status: VERIFIED (excel-graph)
 Implemented in: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds.rs),
 `Model::lift_call` and its read phase (functions/lift/call.rs), the broadcast `Model::lift_grids`
 (functions/lift/driver.rs), and the static-analysis hooks `lifted_signature`,
 `lifted_static_result` and `lifts_arrays_at` (expressions/parser/static_analysis/lifted.rs);
 kernels `edate_of`, `eomonth_of` (functions/date_and_time/month_shift.rs), `weeknum_of`
-(weeknum.rs) and `yearfrac_of` (yearfrac.rs).
-Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236
+(weeknum.rs) and `yearfrac_of` (yearfrac.rs); the financial kernels in functions/financial/
+(annuity.rs, discount.rs, rate_conversions.rs, accrint.rs, financial_bonds.rs) and financial_depreciation.rs.
+Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236, T-1822
 
 ## GROUPBY and PIVOTBY
 Rule: groups are keyed like UNIQUE (case-insensitive text, first spelling shown) and always sorted ascending:
@@ -757,10 +773,13 @@ Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a col
 `WRAPCOLS(FALSE,4)` is FALSE in one cell and `WRAPCOLS("1.5",4)&DROP(C10,0,3)` is one `#CALC!` (neither spills over the
 occupied cells below). A wrap_count of 0.5 is `#NUM!` (`HYPERLINK(WRAPCOLS(C12,0.5,..),..)`).
 Evidence: gen-m7/bb4617644fee40c9 Calc!A30, gen-m7/d38b52bfa1a9f9e6 Calc!A26, gen-m7/f68fafa0ca2eba26 Calc!A39 (excel-graph, 2026-10-11, T-1275).
-Ours: pads to wrap_count (`ROWS(WRAPCOLS(1,4))` = 4, so both cells are `#SPILL!`), and wrap_count 0.5 is `#VALUE!`.
-Status: VERIFIED for single values (web); a multi-element vector shorter than wrap_count (`WRAPCOLS({1,2},4)`), WRAPROWS,
-and wrap_count 0 or negative are UNVERIFIED
-Tasks: T-1348
+Also: an error pad_with is the whole result when nothing is padded (`WRAPCOLS(D6:D6,2,VALUE("x"))` is `#VALUE!`,
+gen-m9/675763979c1defb6 A6), while with padding it fills the padded cells (WRAPCOLS_ROWS.xlsx E10, `NA()`). wrap_count 0
+is `#NUM!` for WRAPROWS too (gen-m9/50f10c4062fb2e98 A21; the full set is under "WRAPROWS and WRAPCOLS" below).
+Ours: all of the above since T-1786 and T-1348 (wrap_count is read before truncation, so 0.5 is `#NUM!`).
+Status: VERIFIED for single values (excel-graph). UNVERIFIED: the error pad_with rule for a vector of more than one
+element (it may apply only to a scalar input; follow-up task in Tasks), `WRAPCOLS({1,2},4)` and `WRAPROWS({1,2},4)`.
+Tasks: T-1348, T-1840
 
 ## MAP over arrays of different sizes, or a single value and an array
 Rule: MAP does not reject arrays of different sizes, and does not broadcast: the result has the largest row count and the
@@ -870,7 +889,7 @@ Rule (probes/dynamic-array-reshape-and-isomitted C20-C52, D20-D52, excel-graph, 
 `WRAPROWS(B5:H5,0,"p")` and `WRAPROWS(B5:H5,-1,"p")` are `#NUM!`, and so are the WRAPCOLS forms. A wrap_count above
 the vector's length does not pad: `WRAPROWS(B5:H5,8,"p")` and `WRAPROWS(B5:H5,100,"p")` are the 1x7 row `1,2,3,4,5,6,7`
 (`WRAPCOLS` the 7x1 column), the same as wrap_count 7. A scalar is a one-element vector: `WRAPROWS(5,2)` is 5
-(`WRAPCOLS(5,2)` too). Ours gives `#VALUE!` for 0 and -1 (fix T-1630); the clamp above the vector's length, which
+(`WRAPCOLS(5,2)` too). Ours: `#NUM!` for 0 and -1 since T-1348 (checked before truncation, so 0.5 too); the clamp above the vector's length, which
 also makes a scalar 1x1, is implemented (T-1786). Everything else probed matches: wrap_count 1-7 with a pad, an omitted pad (`#N/A`
 fill), pad_with 0, "" and `#N/A`, a column vector, an inline array, a 2-D range (`#VALUE!`), a text
 wrap_count (`#VALUE!`; C43, D43); a boolean wrap_count counts as a number (TRUE is 1: `WRAPCOLS(B5:H5,TRUE)` is the 1x7 row 1..7, D44; `WRAPROWS(B5:H5,TRUE)` is the 7x1 column, shown by probes/dynamic-array-reshape-reprobe B20-B22; it was `#SPILL!` in C44 only because the cell below blocked it); a fractional wrap_count

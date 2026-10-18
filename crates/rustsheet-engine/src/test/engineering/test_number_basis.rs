@@ -299,13 +299,16 @@ fn fn_dec2bin_misc() {
 fn fn_hex2whatever_misc() {
     let mut model = new_empty_model();
     model._set("A1", r#"=HEX2BIN(TRUE, 4)"#);
-    model._set("A2", r#"=HEX2DEC(TRUE, 4)"#);
+    model._set("A2", r#"=HEX2DEC(TRUE)"#);
     model._set("A3", r#"=HEX2OCT(TRUE, 4)"#);
+    // HEX2DEC takes one argument (the lifting table, T-1383), as Excel does.
+    model._set("A4", r#"=HEX2DEC(TRUE, 4)"#);
 
     model.evaluate();
     // Note Excel here return #VALUE! instead
     assert_eq!(model._get_text("A1"), *"#NUM!");
     assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
     assert_eq!(model._get_text("A3"), *"#NUM!");
 }
 
@@ -313,13 +316,16 @@ fn fn_hex2whatever_misc() {
 fn fn_oct2whatever_misc() {
     let mut model = new_empty_model();
     model._set("A1", r#"=OCT2BIN(TRUE, 4)"#);
-    model._set("A2", r#"=OCT2DEC(TRUE, 4)"#);
+    model._set("A2", r#"=OCT2DEC(TRUE)"#);
     model._set("A3", r#"=OCT2HEX(TRUE, 4)"#);
+    // OCT2DEC takes one argument (the lifting table, T-1383), as Excel does.
+    model._set("A4", r#"=OCT2DEC(TRUE, 4)"#);
 
     model.evaluate();
     // Note Excel here return #VALUE! instead
     assert_eq!(model._get_text("A1"), *"#NUM!");
     assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#ERROR!");
     assert_eq!(model._get_text("A3"), *"#NUM!");
 }
 

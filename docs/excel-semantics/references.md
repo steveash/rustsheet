@@ -1500,11 +1500,27 @@ Exception: N and T over `IF(...)` get no `@`, and the legacy cell is `#VALUE!` (
 `=N(IF(1,{2,3}))`, `=T(IF(1,{"a";"b"}))`), while `=N(IF(1,2))` is 2. N and T take a reference or a
 value, and IF can return a reference: CHOOSE, INDEX and IFS behave the same, see "Legacy N and T over
 a reference-returning call" below.
-Evidence: probes/legacy-array-result (excel-graph, 2026-10-16), probes/n-array-lift D4.
-Not implemented: ours adds no `@` there, so these legacy cells spill (T-1717), and the N/T
-exception is T-1713.
+Under a vector argument no `@` is added: `=SUM(N({1,2}))` is 3 (probes/n-array-lift A3). In IF's
+arms the `@` goes on the IF, not inside it: `=@IF(1,N(IF(1,{2;3})))` (probes/legacy-n-t-reference-args
+P20).
+Evidence: probes/legacy-array-result (excel-graph, 2026-10-16), probes/n-array-lift D4,
+probes/t-n-range-top-left M, O (`=T(@{"a","b"})`, `=N(@{5,6})`).
+Implemented (T-1717): `add_legacy_intersection` (expressions/parser/static_analysis.rs) carries an
+`arrays` flag, true at the top of the cell and down through the scalar arguments of a function that
+computes from them (`legacy_array_context`, static_analysis/legacy.rs; not IF, IFERROR, IFNA, CHOOSE,
+IFS, SWITCH, LET or LAMBDA, nor N/T over IF or SWITCH). Where it holds, an array constant argument
+gets the `@`, and so does an array-valued call of more than one cell whose array is one of its
+arguments or comes from a non-scalar one (`legacy_array_call_at`). Unprobed and left alone: an
+array constant inside an operator (`=N({2;3}+0)`) and a call whose array comes from such an operator
+(`=ABS({2;3}+0)`), both of which still spill; one-cell array-valued calls other than CHOOSE
+(Excel shows none on `=SUBTOTAL(9,CHOOSE(1,{5}))`, probes/legacy-one-cell-shape-intersection J3,
+while `=ABS(@CHOOSE(1,{5}))` keeps one through CHOOSE's range shape). Extrapolated, unprobed: IFNA,
+IFS and SWITCH taking the `@` on the call, the arguments of IFERROR, IFNA, IFS and SWITCH staying
+whole, T over SWITCH, and the array-constant `@` under scalar functions other than N, T and ABS
+(T-1847). The export drops exactly these `@`s (`remove_redundant_legacy_intersection`). The N/T
+exception's `#VALUE!` is T-1713.
 Status: VERIFIED (excel-graph)
-Tasks: T-1713, T-1717
+Tasks: T-1713, T-1717, T-1847
 
 ## Legacy N and T over a reference-returning call (T-1713)
 Rule: in a legacy (non-array) formula, N and T read their argument as a reference: no `@` goes on it,
@@ -1524,8 +1540,9 @@ cells, as a dynamic formula would.
 Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16).
 Not implemented: the text is identical to the dynamic formula's, which spills, so the `#VALUE!`
 needs the engine to remember that a formula is legacy (spec T-1727, then T-1713); ours adds an `@`
-on array-valued calls (N gives the top-left value, T ""); a range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms, gets none under N since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator, an array constant or another call keeps the old `@`; CHOOSE and INDEX over references and every T over a range keep the old `@`, unprobed: T-1768); the IFERROR `@`, the
-SWITCH spill and the `@IF` are T-1717's.
+on array-valued CHOOSE, INDEX and IFS calls (N gives the top-left value, T ""), none on IF or SWITCH
+(`leaves_call_whole`, T-1717: the SWITCH cell spills as in Excel, the IF one too until T-1713); a range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms, gets none under N since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator, an array constant or another call keeps the old `@`; CHOOSE and INDEX over references and every T over a range keep the old `@`, unprobed: T-1768).
+Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1717, T-1727, T-1728, T-1768
 
@@ -1754,7 +1771,7 @@ order and on each edit; a callee bound by an enclosing LET or LAMBDA takes none 
 declaration (T-1720, T-1761). The harness sets a spec case's cells row by row so the first-met order matches the xlsx.
 Reach (excel-graph, 2026-10-17, T-1756, probes/unknown-function-name-reach):
 - A call of a defined LAMBDA name prints the defined name's spelling, not the first typed one:
-  `OtherFn` defined, `=otherfn(1)` then `=OTHERFN(1)` both print `=OtherFn(1)`. Ours prints the first typed spelling (T-1763).
+  `OtherFn` defined, `=otherfn(1)` then `=OTHERFN(1)` both print `=OtherFn(1)`. Ours matches: a free callee that is a defined name takes the defined name's spelling (T-1763; scope and non-LAMBDA defined names unprobed, ours ignores both).
 - A callee bound by an enclosing LET or LAMBDA prints the binding's spelling
   (LET, whatever case the call used: `=LET(Gg,LAMBDA(x,x*2),gG(3))` prints `Gg(3)`; LAMBDA, same-case call only probed:
   `=LAMBDA(Hh,Hh(1))(LAMBDA(x,x))` keeps `Hh`). Ours matches (T-1720 respells every bound use to its declaration).
@@ -1763,8 +1780,10 @@ Reach (excel-graph, 2026-10-17, T-1756, probes/unknown-function-name-reach):
 - Cross-sheet: the first spelling in sheet order wins (`=Zed(1)` on Sheet1, `=ZED(1)`/`=zed(2)` on Sheet2 print
   `Zed`; `=MMM(1)` on Sheet1 beats `=Mmm(1)` on Sheet2). Ours matches.
 - Non-ASCII: Ä/ä and É/é fold (`=ÄBC(1)` then `=äbc(1)` prints `=ÄBC(1)`), and ß folds with SS: `=straße(1)` then
-  `=STRASSE(1)` prints `=straße(1)`. Ours folds simple case only (T-1762).
+  `=STRASSE(1)` prints `=straße(1)`. Ours matches: the registry keys on the upper-cased name (T-1762). Folds (excel-graph, 2026-10-17, T-1818, probes/unknown-function-name-folds): ς, σ and Σ are one name (`=ςw(1)` then `=σw(1)` prints `=ςw(1)`), so are the ligatures ﬁ/FI and ﬂ/FL and ǆ/Ǆ; ı/I, ſ/S, µ (U+00B5)/μ and µ/Μ are NOT folded (each prints its own spelling). Ours matches: the key is the upper-cased name except that ı, ſ and µ stay as they are (`spelling_key`).
 Unprobed: re-spelling after edits (edit order, deleting the first user; needs the sheet_ops replay, T-1608).
-Evidence: probes/unknown-function-name-spelling, probes/unknown-function-name-reach.
+More folds (excel-graph, 2026-10-17, T-1825, probes/unknown-function-name-folds-2): ϵ/ε, ﬀ/FF, ﬃ/FFI, ﬄ/FFL, ﬆ/ST and the capital sharp s ẞ (with ß and with SS) are one name; ϐ/β, ϑ/θ, ϕ/φ, ϖ/π, ϰ/κ, ϱ/ρ, ﬅ/ST (unlike ﬆ) and ŉ/ʼN are NOT folded; İ/i is not either (İ against ASCII I is unprobed). Ours: `spelling_key` (UNFOLDED list; ẞ is SS).
+Unprobed folds (still merged by upper-casing): U+0345, ǰ and ΐ (a workbook with the combining-mark spelling is rejected by excel-graph, FileCorruptTryRepair).
+Evidence: probes/unknown-function-name-spelling, probes/unknown-function-name-reach, probes/unknown-function-name-folds, probes/unknown-function-name-folds-2.
 Status: VERIFIED (excel-graph)
 Tasks: T-1719, T-1756, T-1760, T-1761, T-1762, T-1763
