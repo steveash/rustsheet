@@ -5,7 +5,6 @@
 
 use crate::{
     calc_result::CalcResult,
-    cast::calc_result_to_array_node,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -17,7 +16,6 @@ use crate::{
     },
     limits::too_many_visits,
     model::Model,
-    number_format::number_to_text,
 };
 
 /// Bytes of delimiter comparison counted as one cell visit when a position is compared with a
@@ -110,8 +108,9 @@ impl Model {
         )
     }
 
-    /// The delimiters a list argument holds: the strings and numbers (as text) of an array or a
-    /// range, blanks skipped; any other value is `#VALUE!`.
+    /// The delimiters a list argument holds: the strings, numbers and booleans (as text) of an
+    /// array or a range, a blank cell being the empty delimiter; an error element is that error
+    /// (probes/textbefore-delimiter-range, probes/textbefore-delimiter-list-elements A1-A7, A22).
     pub(super) fn delimiter_list(
         &mut self,
         value: CalcResult,
@@ -123,21 +122,14 @@ impl Model {
             CalcResult::EmptyArg | CalcResult::EmptyCell => return Ok(vec![]),
             err @ CalcResult::Error { .. } => return Err(err),
             scalar @ (CalcResult::String(_) | CalcResult::Number(_)) => {
-                return Ok(vec![delimiter_text(
-                    &calc_result_to_array_node(scalar),
-                    cell,
-                )?])
+                return Self::cast_string_ref(&scalar, cell).map(|text| vec![text])
             }
             _ => return Err(not_a_string(cell)),
         };
-        let mut delimiters = Vec::new();
-        for item in grid.into_iter().flatten() {
-            match item {
-                ArrayNode::Empty => {}
-                other => delimiters.push(delimiter_text(&other, cell)?),
-            }
-        }
-        Ok(delimiters)
+        grid.into_iter()
+            .flatten()
+            .map(|item| delimiter_text(&item, cell))
+            .collect()
     }
 }
 
@@ -250,13 +242,9 @@ impl ScanCost {
     }
 }
 
-/// The text of one delimiter: a string, or a number as its text.
+/// One element of a delimiter list as text ([`Model::cast_string_ref`]: a blank is "").
 fn delimiter_text(item: &ArrayNode, cell: CellReferenceIndex) -> Result<String, CalcResult> {
-    match item {
-        ArrayNode::String(s) => Ok(s.clone().into_lossy_string()),
-        ArrayNode::Number(n) => Ok(number_to_text(*n)),
-        _ => Err(not_a_string(cell)),
-    }
+    Model::cast_string_ref(&array_node_to_calc_result(item, cell), cell)
 }
 
 fn not_a_string(cell: CellReferenceIndex) -> CalcResult {

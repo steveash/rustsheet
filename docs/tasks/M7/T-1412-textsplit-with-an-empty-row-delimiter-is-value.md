@@ -22,6 +22,9 @@ Engine today: `TEXTSPLIT("abc","")` and `TEXTSPLIT("abc",,"")` are already `#VAL
 `TEXTSPLIT("abc","","b")`, `TEXTSPLIT("abc",{"b",""})` and `TEXTSPLIT("abc","b",{",",""})` (an empty element inside a list).
 Semantics: docs/excel-semantics/text.md "TEXTSPLIT with an empty delimiter is #VALUE!". Code: `fn_textsplit`
 (crates/rustsheet-engine/src/functions/text/textsplit.rs). Delimiter ranges are T-1361.
+T-1361 (probes/textbefore-delimiter-range A44, excel-graph 2026-10-18) settles the list form: `TEXTSPLIT("abc",",",A9:B9)` with A9
+blank, B9 "b" is `#VALUE!` (the blank cell is an empty row delimiter; ours drops it via `skip_empty` in `split_delimiters` and gives
+{"a";"c"}). That cell is a known failure in eval/baseline until this task lands.
 
 ## Acceptance criteria
 - [ ] gen-m9/d244411dd90f7fbd A6 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
