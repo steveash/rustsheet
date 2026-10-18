@@ -608,6 +608,9 @@ same Data sheet, excel-graph, 2026-10-16; "functions", "functions2", "functions3
 - sort_order past the keys counts the output value columns: 3 is the second function of a row (functions G!A141, functions2
   G!A221, PIVOTBY P!A181); a column of functions sorts by its first function (functions2 G!A201, G!A261, P!A201, P!A221), each
   group's rows staying in function order.
+- Not implemented (T-1855): PIVOTBY's col_sort_order -3 with one column field over two value columns is `#VALUE!`
+  (probes/pivotby-total-columns-one-group S!A73), while -3 with two column fields sorts (probes/pivotby-col-subtotals-values
+  S!A111); the engine sorts by the second value column.
 - Arguments: a function passed by name gets its minimum argument count: one (SUM, MEDIAN, SUMPRODUCT, ABS, STDEV.S), two
   (PERCENTOF, CORREL, PEARSON, RSQ, COVARIANCE.P, and IF, ROUND, SUMIF, whose array results are `#VALUE!` per cell); none or
   three or more (NOW, TEXTJOIN, XLOOKUP) make the whole result `#VALUE!` (functions G!A421, functions2 G!A281-A501). A LAMBDA gets

@@ -49,7 +49,8 @@ enum Slot {
 }
 
 /// What a grid column shows in every row: the column totals and subtotals of one function over
-/// several value columns show other columns' cells or none ([`Placement`], T-1700).
+/// several value columns show other columns' cells or none ([`Placement`], T-1700). `Own` and
+/// `Moved` compute alike; the variants record which cells moved.
 #[derive(Clone, Copy)]
 enum Shown {
     /// The cell of its own slot.
@@ -65,8 +66,8 @@ enum Shown {
 /// Where Excel puts the column total and subtotal cells of one function over several value
 /// columns (docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY: column totals over several
 /// value columns", T-1700): the column lines laid out with the subtotals after their groups, in
-/// the order of the key sort before any value sort, and each group's first source row, which names it across
-/// the value sort.
+/// the order of the key sort before any value sort, and each group's first source row, which
+/// names it across the value sort.
 struct Placement {
     lines: Vec<Line>,
     first_rows: Vec<usize>,
@@ -81,17 +82,48 @@ impl Placement {
     }
 
     /// What each of `slots` (the columns as laid out after the sorts) shows, with `width` value
-    /// columns per line. In the placement order, the total and then each subtotal (by its first
-    /// group, a parent before its own deeper subtotals) write their value v into column `f * width + k + v`, where `f` is the first line
-    /// they cover and `k` the number of lines they cover (the total: all of them): Excel counts
-    /// the covered lines, not their columns. A write over a group column is dropped, and a later
-    /// write wins. The subtotal and total columns then follow their lines into the layout (a
-    /// negative depth, a value sort) and show what was written into them, `""` where nothing
-    /// was. Without subtotals the total's writes land in the group columns unless there is only
-    /// one group, so the Total columns are `""` (P!Y97) or show the last value's total first
-    /// (probes/pivotby-total-columns-one-group S!A1). Evidence: probes/pivotby-col-subtotals-values
-    /// S!A1-A111, -values2, -values3; probes/groupby-subtotals G!A781, G!A1141, G!A1171.
+    /// columns per line: what [`Placement::written_cells`] wrote into the subtotal or total
+    /// column, which follows its line into the layout (a negative depth, a value sort), `""`
+    /// where nothing was. Without subtotals the total's writes land in the group columns unless
+    /// there is only one group, so the Total columns are `""` (P!Y97) or show the last value's
+    /// total first (probes/pivotby-total-columns-one-group S!A1). Evidence:
+    /// probes/pivotby-col-subtotals-values S!A1-A111, -values2, -values3; probes/groupby-subtotals
+    /// G!A781, G!A1141, G!A1171.
     fn shown(&self, cols: &Grouping, slots: &[Slot], width: usize) -> Vec<Shown> {
+        let laid_out = self.laid_out(cols);
+        let cells = self.written_cells(&laid_out, width);
+        let position: HashMap<Line, usize> = laid_out
+            .iter()
+            .enumerate()
+            .map(|(index, &line)| (line, index))
+            .collect();
+        let written = |line: Option<usize>, value: usize| {
+            line.and_then(|line| cells.get(line.saturating_mul(width).saturating_add(value)))
+                .copied()
+                .flatten()
+                .map_or(Shown::Empty, Shown::Moved)
+        };
+        slots
+            .iter()
+            .map(|&slot| match slot {
+                Slot::Group { .. } => Shown::Own(slot),
+                Slot::Subtotal {
+                    level,
+                    start,
+                    end,
+                    value,
+                } => written(
+                    position.get(&Line::Subtotal { level, start, end }).copied(),
+                    value,
+                ),
+                Slot::Total { value } => written(Some(self.lines.len()), value),
+            })
+            .collect()
+    }
+
+    /// Each placement line as laid out after the sorts (`cols` in their final order): a value
+    /// sort keeps a parent's groups together, so a subtotal covers as many groups from its first.
+    fn laid_out(&self, cols: &Grouping) -> Vec<Line> {
         let now: HashMap<usize, usize> = cols
             .groups
             .iter()
@@ -105,9 +137,7 @@ impl Placement {
                 .copied()
                 .unwrap_or(group)
         };
-        // Each line as laid out after the sorts: a value sort keeps a parent's groups together.
-        let laid_out: Vec<Line> = self
-            .lines
+        self.lines
             .iter()
             .map(|&line| match line {
                 Line::Group(group) => Line::Group(sorted(group)),
@@ -120,7 +150,16 @@ impl Placement {
                     }
                 }
             })
-            .collect();
+            .collect()
+    }
+
+    /// The slot written into each placement column (`width` per line, then the total's): the
+    /// total and then each subtotal (by its first group, a parent before its own deeper
+    /// subtotals) write their value v into column `f * width + k + v`, where `f` is the first line
+    /// they cover and `k` the number of lines they cover (the total: all of them), Excel counting
+    /// the covered lines, not their columns. A write over a group column is dropped, and a later
+    /// write wins. The slots written name the lines as `laid_out`.
+    fn written_cells(&self, laid_out: &[Line], width: usize) -> Vec<Option<Slot>> {
         let mut group_line = vec![0; self.first_rows.len()];
         let mut subtotals = Vec::new();
         for (index, line) in self.lines.iter().enumerate() {
@@ -168,33 +207,7 @@ impl Placement {
                 }
             }
         }
-        let position: HashMap<Line, usize> = laid_out
-            .iter()
-            .enumerate()
-            .map(|(index, &line)| (line, index))
-            .collect();
-        let written = |line: Option<usize>, value: usize| {
-            line.and_then(|line| cells.get(line.saturating_mul(width).saturating_add(value)))
-                .copied()
-                .flatten()
-                .map_or(Shown::Empty, Shown::Moved)
-        };
-        slots
-            .iter()
-            .map(|&slot| match slot {
-                Slot::Group { .. } => Shown::Own(slot),
-                Slot::Subtotal {
-                    level,
-                    start,
-                    end,
-                    value,
-                } => written(
-                    position.get(&Line::Subtotal { level, start, end }).copied(),
-                    value,
-                ),
-                Slot::Total { value } => written(Some(lines), value),
-            })
-            .collect()
+        cells
     }
 }
 
@@ -608,8 +621,8 @@ struct Totals {
 }
 
 impl Totals {
-    /// The Total cell of a row group or row subtotal `line`: its aggregate, also where another
-    /// column shows it ([`Shown::Moved`]).
+    /// The Total cell of a row group or row subtotal `line`: its aggregate (a Total cell shown
+    /// in another column reuses it too).
     fn line_total_cell(&self, line: Line, slot: Slot) -> Option<ArrayNode> {
         match slot {
             Slot::Total { value } => Self::get(self.rows.as_ref(), line, value),
