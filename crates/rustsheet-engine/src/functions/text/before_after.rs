@@ -61,10 +61,8 @@ impl Model {
     }
 
     /// The delimiter list of TEXTBEFORE and TEXTAFTER: a scalar is read as text (a blank is the
-    /// empty delimiter, a boolean its spelling), an array is a list (probes/m7-argument-modes
-    /// row 17). A multi-cell range is still read as one text, as before T-1272: Excel's rule for
-    /// a range with blanks, numbers or booleans is unprobed (T-1361), and
-    /// `TEXTAFTER(" x ",Data!A6:A10,Data!A9)` is `#VALUE!` (gen-m7/851eb2099ae3f805 Calc!A25).
+    /// empty delimiter, a boolean its spelling), an array or a multi-cell range of any shape is a
+    /// list (probes/m7-argument-modes row 17, probes/textbefore-delimiter-range).
     fn around_delimiters(
         &mut self,
         value: CalcResult,
@@ -72,7 +70,7 @@ impl Model {
     ) -> Result<Vec<String>, CalcResult> {
         let value = self.collapse_single_cell(value);
         match value {
-            CalcResult::Array(_) => self.delimiter_list(value, cell),
+            CalcResult::Array(_) | CalcResult::Range { .. } => self.delimiter_list(value, cell),
             scalar => self.cast_to_string(scalar, cell).map(|text| vec![text]),
         }
     }
@@ -94,7 +92,7 @@ impl Model {
             Ok(list) => list,
             Err(error) => return error.clone(),
         };
-        let options = match self.around_options(values, arg_count, cell) {
+        let options = match self.around_options(values, cell) {
             Ok(options) => options,
             Err(error) => return error,
         };
@@ -122,6 +120,9 @@ impl Model {
                 "argument must be 0 or 1".to_string(),
             );
         }
+        if exact.iter().any(String::is_empty) {
+            return Self::around_empty_delimiter(text, options.instance_num, side);
+        }
         let found = match side {
             Side::Before => text_before(&text, delimiters, options.instance_num, options.case),
             Side::After => text_after(&text, delimiters, options.instance_num, options.case),
@@ -133,18 +134,17 @@ impl Model {
     }
 
     /// The `instance_num`, `match_mode` and `match_end` of one element, read in that order (the
-    /// defaults 1, case-sensitive and 0 when omitted). An `instance_num` of 0 is `#VALUE!`.
+    /// defaults 1, case-sensitive and 0 when omitted, also as an empty argument:
+    /// probes/textbefore-delimiter-range A22, A37). An `instance_num` of 0 is `#VALUE!`.
     fn around_options(
         &self,
         values: &[CalcResult],
-        arg_count: usize,
         cell: CellReferenceIndex,
     ) -> Result<AroundOptions, CalcResult> {
         let number_at = |index: usize| -> Result<Option<f64>, CalcResult> {
-            if arg_count > index {
-                self.cast_number_ref(&values[index], cell).map(Some)
-            } else {
-                Ok(None)
+            match values.get(index) {
+                Some(CalcResult::EmptyArg) | None => Ok(None),
+                Some(value) => self.cast_number_ref(value, cell).map(Some),
             }
         };
         let instance_num = number_at(2)?.map_or(1, |f| f.floor() as i32);
@@ -165,6 +165,21 @@ impl Model {
             case,
             match_end,
         })
+    }
+
+    /// The result of an element whose delimiter list holds the empty delimiter. The other
+    /// delimiters, the size of `instance_num`, `match_mode`, `match_end` and `if_not_found` do not
+    /// matter. The empty delimiter matches at the start of the text, or at its end when
+    /// `instance_num` is negative or the text is one UTF-16 unit long (`TEXTBEFORE("é","")` is
+    /// "é", `TEXTBEFORE("😀","")` is ""). Excel: see docs/excel-semantics/text.md "TEXTBEFORE
+    /// and TEXTAFTER with the empty delimiter" (probes/textbefore-empty-delimiter-list).
+    fn around_empty_delimiter(text: String, instance_num: i32, side: Side) -> CalcResult {
+        let at_end = instance_num < 0 || text.encode_utf16().nth(1).is_none();
+        let whole = match side {
+            Side::Before => at_end,
+            Side::After => !at_end,
+        };
+        CalcResult::String(if whole { text } else { String::new() }.into())
     }
 
     /// The result of an element whose delimiter is not found: with `match_end` the end of the text
