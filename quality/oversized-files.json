@@ -3,7 +3,7 @@
   "crates/rustsheet-engine/src/actions.rs": 1826,
   "crates/rustsheet-engine/src/conditional_formatting.rs": 1757,
   "crates/rustsheet-engine/src/evaluation.rs": 1096,
-  "crates/rustsheet-engine/src/expressions/parser/static_analysis.rs": 1273,
+  "crates/rustsheet-engine/src/expressions/parser/static_analysis.rs": 1208,
   "crates/rustsheet-engine/src/expressions/parser/stringify.rs": 1067,
   "crates/rustsheet-engine/src/functions/date_and_time.rs": 1014,
   "crates/rustsheet-engine/src/functions/financial/financial_bonds.rs": 1178,

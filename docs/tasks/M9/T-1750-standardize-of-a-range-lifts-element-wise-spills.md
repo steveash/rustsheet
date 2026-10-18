@@ -22,7 +22,7 @@ Found by T-1623: probes/stats-evidence-floor-t1623 S!Q63 (excel-graph; the spill
   first argument over a range lifts in probes/stat-argument-modes H502.)
 - [x] The failing cell(s) in probes/stats-evidence-floor-t1623 pass and are removed from eval/baseline via `make eval-baseline`.
 - [x] The rule is recorded in docs/excel-semantics/.
-- [ ] `make check` green; reviewers approve. (Landed with T-1290's PR.)
+- [x] `make check` green; reviewers approve. (Landed with T-1290's PR.)
 
 ## Out of scope
 -

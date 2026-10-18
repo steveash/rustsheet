@@ -140,10 +140,10 @@
   T-1290: duplicated lines 4812 → 4510 (the statistical functions whose every argument is scalar
   become kernels over borrowed values; BETADIST, NORMSDIST, LOGNORMDIST, NEGBINOMDIST and TDIST share
   their modern function's kernel instead of rebuilding its argument nodes) (`check_duplication.py
-  --update`), and expressions/parser/static_analysis.rs 1385 → 1273 lines (the fallback arms of the
-  44 statistical functions now in the lifting table; 1360 already on main after T-1822), functions/mod.rs
-  2180 → 2179 (GAMMALN and GAMMALN.PRECISE share one dispatch arm), and
-  functions/financial/financial_bonds.rs 1212 → 1178 (already 1178 lines on main; the update tightened a stale
-  entry) (`check_file_size.py --update`).
+  --update`), and expressions/parser/static_analysis.rs 1385 → 1208 lines (main is 1295 after T-1717's
+  split; this PR deletes the 87 fallback lines of the 44 statistical functions now in the lifting table)
+  and functions/mod.rs 2180 → 2179 (GAMMALN and GAMMALN.PRECISE share one dispatch arm)
+  (`check_file_size.py --update`). The same update also tightened a stale lock that is not this PR's
+  change: functions/financial/financial_bonds.rs 1212 → 1178, its size on main.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
