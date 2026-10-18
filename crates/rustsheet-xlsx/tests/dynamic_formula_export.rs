@@ -100,3 +100,108 @@ fn a_formula_with_nothing_to_intersect_stays_a_plain_formula() {
     }
     assert_eq!(reloaded_values(&bytes, 3), ["12", "2", "#VALUE!"]);
 }
+
+/// A model with `formula` in D10, as a legacy formula when `legacy`.
+fn model_with_one(formula: &str, legacy: bool) -> Model {
+    let mut model = Model::new_empty("m", "en", "UTC", "en").unwrap();
+    if legacy {
+        model
+            .set_cell_with_legacy_formula(0, 10, 4, formula)
+            .unwrap();
+    } else {
+        model.set_user_input(0, 10, 4, formula.to_string()).unwrap();
+    }
+    model.evaluate();
+    model
+}
+
+/// The stored (R1C1) formulas of the first sheet after an xlsx round trip, and D10:D11.
+fn reloaded(bytes: &[u8]) -> (Vec<String>, Vec<String>) {
+    let workbook = load_from_xlsx_bytes(bytes, "m", "en", "UTC").unwrap();
+    let mut model = Model::from_workbook(workbook, "en").unwrap();
+    model.evaluate();
+    let stored = model.workbook.worksheet(0).unwrap().shared_formulas.clone();
+    let values = (10..12)
+        .map(|row| model.get_formatted_cell_value(0, row, 4).unwrap())
+        .collect();
+    (stored, values)
+}
+
+/// SPEC-0012 rule 5 (T-1713): a legacy N or T over an array-valued call is saved as a plain
+/// `<f>` that never shows its marker, and the import reads it back marked and `#VALUE!`; its
+/// dynamic twin is saved with `cm="1"` and reads back unmarked, spilling or giving its first
+/// element (probes/legacy-n-t-reference-args, legacy-array-result A, G).
+#[test]
+fn a_legacy_n_or_t_over_an_array_round_trips_as_a_plain_formula() {
+    for (formula, xml_text, dynamic) in [
+        ("=N(IF(1,{2;3}))", "N(IF(1,{2;3}))", ["2", "3"]),
+        (
+            "=T(IF(1,{\"a\";\"b\"}))",
+            "T(IF(1,{&quot;a&quot;;&quot;b&quot;}))",
+            ["a", "b"],
+        ),
+        ("=N(CHOOSE(1,{2;3}))", "N(CHOOSE(1,{2;3}))", ["2", "3"]),
+        ("=N(INDEX({2;3},0,1))", "N(INDEX({2;3},0,1))", ["2", "3"]),
+        (
+            "=N(_xlfn.IFS(1,{2;3}))",
+            "N(_xlfn.IFS(1,{2;3}))",
+            ["2", "3"],
+        ),
+    ] {
+        let bytes = save(&model_with_one(formula, true));
+        let c = cell_xml(&sheet1_xml(&bytes), "D10").to_string();
+        assert!(!c.contains("cm="), "{c}");
+        assert!(c.contains(&format!("<f>{xml_text}</f>")), "{c}");
+        let (stored, values) = reloaded(&bytes);
+        assert!(
+            stored[0].starts_with("_RS_LEGACY_"),
+            "{formula}: {stored:?}"
+        );
+        assert_eq!(values, ["#VALUE!", ""], "{formula}");
+
+        let bytes = save(&model_with_one(formula, false));
+        let c = cell_xml(&sheet1_xml(&bytes), "D10").to_string();
+        assert!(c.contains(" cm=\"1\""), "{c}");
+        let (stored, values) = reloaded(&bytes);
+        assert!(!stored[0].contains("_RS_LEGACY_"), "{formula}: {stored:?}");
+        assert_eq!(values, dynamic, "{formula}");
+    }
+}
+
+/// A statically scalar N over IF gets no marker, legacy or dynamic, so the dynamic one stays a
+/// plain `<f>` (SPEC-0012 rule 2; T-1552).
+#[test]
+fn a_statically_scalar_n_over_if_stays_a_plain_formula() {
+    for legacy in [true, false] {
+        let bytes = save(&model_with_one("=N(IF(A1,1,2))", legacy));
+        let c = cell_xml(&sheet1_xml(&bytes), "D10").to_string();
+        assert!(!c.contains("cm="), "{c}");
+        assert!(c.contains("<f>N(IF(A1,1,2))</f>"), "{c}");
+        let (stored, values) = reloaded(&bytes);
+        assert!(!stored[0].contains("_RS_LEGACY_"), "{stored:?}");
+        assert_eq!(values, ["2", ""]);
+    }
+}
+
+/// A legacy and a dynamic `=N(IF(1,{2;3}))` on one sheet are two shared formulas, so each keeps
+/// its reading through a save and a reload.
+#[test]
+fn a_legacy_and_a_dynamic_twin_are_two_shared_formulas() {
+    let mut model = model_with_one("=N(IF(1,{2;3}))", true);
+    model
+        .set_user_input(0, 10, 5, "=N(IF(1,{2;3}))".to_string())
+        .unwrap();
+    model.evaluate();
+    assert_eq!(
+        model.workbook.worksheet(0).unwrap().shared_formulas.len(),
+        2
+    );
+    let workbook = load_from_xlsx_bytes(&save(&model), "m", "en", "UTC").unwrap();
+    let mut model = Model::from_workbook(workbook, "en").unwrap();
+    model.evaluate();
+    let values: Vec<String> = [(10, 4), (11, 4), (10, 5), (11, 5)]
+        .iter()
+        .map(|(row, column)| model.get_formatted_cell_value(0, *row, *column).unwrap())
+        .collect();
+    assert_eq!(values, ["#VALUE!", "", "2", "3"]);
+}

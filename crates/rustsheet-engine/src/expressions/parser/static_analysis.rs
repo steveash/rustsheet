@@ -1,11 +1,11 @@
 use super::reference_operators::{at_outside, wrong_range_shape};
-use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
+use super::{for_each_chain_operand_mut, Node};
 use crate::functions::lift::lifting_table_functions;
 use crate::functions::Function;
-use broadcast::broadcast_shapes;
+use broadcast::{broadcast_shapes, static_analysis_operator_chain};
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
-    legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value,
+    legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value, mark_legacy_reading,
 };
 pub use redundant::remove_redundant_implicit_intersection;
 use redundant::remove_redundant_legacy_intersection;
@@ -208,6 +208,9 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
                 add_array_at(kind, signature.get(index), index, arg, arrays);
                 add_argument_intersection(kind, signature.get(index), index, arg, arrays);
             }
+            if arrays {
+                mark_legacy_reading(kind, args); // The legacy N/T marker (SPEC-0012).
+            }
             // There are some function that will never add an automatic II:
             let new_function = matches!(kind, Function::Let | Function::Lambda);
             if !new_function
@@ -255,32 +258,6 @@ impl StaticResult {
             StaticResult::Array(rows, columns) => Some((*rows, *columns)),
             StaticResult::Range(rows, columns) => Some((rows + 1, columns + 1)),
             StaticResult::Scalar | StaticResult::Unknown => None,
-        }
-    }
-}
-
-/// The shape of a chain of value operators, broadcast link by link in a loop (T-0128).
-fn static_analysis_operator_chain(node: &Node) -> StaticResult {
-    let (links, first) = left_chain(node);
-    let mut result = run_static_analysis_on_node(first);
-    for link in links {
-        if let Some((_, right)) = value_operands(link) {
-            result = static_analysis_op_results(result, run_static_analysis_on_node(right));
-        }
-    }
-    result
-}
-
-/// An operator over a range gives an array of the range's counts.
-fn static_analysis_op_results(lhs: StaticResult, rhs: StaticResult) -> StaticResult {
-    match (lhs, rhs) {
-        (StaticResult::Scalar, StaticResult::Scalar) => StaticResult::Scalar,
-        (_, StaticResult::Unknown) | (StaticResult::Unknown, _) => StaticResult::Unknown,
-        (lhs, rhs) => {
-            // A scalar operand counts as 1x1.
-            let (a1, b1) = lhs.counts().unwrap_or((1, 1));
-            let (a2, b2) = rhs.counts().unwrap_or((1, 1));
-            StaticResult::Array(a1.max(a2), b1.max(b2))
         }
     }
 }

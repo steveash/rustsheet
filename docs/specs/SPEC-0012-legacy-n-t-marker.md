@@ -192,16 +192,23 @@ arguments are rewritten:
 
 ```rust
 // static_analysis.rs, FunctionKind arm, after the argument loop:
-if arrays && legacy_reads_array_as_error(kind, args) {
-    *kind = kind.legacy_reading(); // N -> NLegacy, T -> TLegacy
+if arrays {
+    mark_legacy_reading(kind, args); // N -> NLegacy, T -> TLegacy where rule 2 holds
 }
 ```
 
-`legacy_reads_array_as_error` (static_analysis/legacy.rs, beside `leaves_call_whole`) is rule 2:
-`kind.is_n_or_t()`, and `args[0]` is one of these bare calls, with a static result
-(`run_static_analysis_on_node(&args[0])`) other than `StaticResult::Scalar`:
+`mark_legacy_reading` (static_analysis/legacy.rs, beside `leaves_call_whole`) is rule 2:
+`kind.is_n_or_t()`, and `args[0]` is one of these bare calls, with a static result other than
+`StaticResult::Scalar`:
 - an IF call;
 - a CHOOSE, INDEX or IFS call whose every returnable argument is an array constant.
+
+It decides on the rewritten argument, as this snippet's place after the loop says. That matters:
+`=N(IF(W1:W2,Z1,Z2))` is an array before the rewrite and a scalar after it (`IF(@W1:W2,..)`), so
+deciding on the argument as written would not be idempotent. The predicate looks through the
+automatic one-element `@`s that `shows_scalar_array_at` put on the returned arms (IF's arms,
+CHOOSE's and IFS's values). It takes them off in place, and puts them back if the call is not marked
+(item 6).
 
 Where this spec constrains or extends #1046:
 
@@ -216,7 +223,7 @@ Where this spec constrains or extends #1046:
    only FORMULATEXT evidence. legacy.rs's module doc says so.
 5. **No export mirror step.** `remove_redundant_legacy_intersection` (static_analysis/redundant.rs)
    needs none. The export prints N/T for the internal kinds anyway. The add pass is idempotent on a
-   marked node, because `legacy_reads_array_as_error` holds again where the marker is.
+   marked node, because the rule of `mark_legacy_reading` holds again where the marker is.
    `legacy_reading_intersects` keeps its code, and the three cases come out right:
    - A legacy marked cell is a statically scalar `CellFormula`. Remove, then add, gives the same RC
      text, so it is saved as a plain `<f>` printing `N(...)`. Excel and our import read it back as
@@ -229,9 +236,10 @@ Where this spec constrains or extends #1046:
 
 6. **No one-element `@` under the marker.** `shows_scalar_array_at` (T-1633) puts an `@` on a
    one-element array constant in any scalar argument (`=ABS(@{5})`). It must not do so in the
-   value arms of an IF the marker covers: `=N(IF(1,{2}))` is shown with no `@` (N20). How T-1713
-   suppresses it is its choice, for example by walking the marked argument's arms without the
-   one-element rule. The export mirror then has no such `@` to drop either.
+   returned arms of a call the marker covers: `=N(IF(1,{2}))` is shown with no `@` (N20), and so are
+   `=T(IF(1,{"a"}))`, `=N(CHOOSE(1,{2}))`, `=T(CHOOSE(1,{"a"}))` and `=N(IFS(1,{2}))`, all `#VALUE!`
+   (probes/legacy-n-t-marker-shapes A-D, T-1713). `mark_legacy_reading` drops those `@`s when it
+   marks the call. The export mirror then has no such `@` to drop either.
 
 The marker never depends on a cell position or a reference's target, only on the shape of the
 tree. So structural edits that only rewrite references (insert rows, rename or move a sheet,
@@ -277,7 +285,7 @@ lives in the N/T kernels, where the argument's result type is already known, and
 ### Extending
 If a later probe finds another legacy difference that the text does not show, it follows the same
 pattern. It gets an internal kind (or a `legacy: true` dispatch flag) for the one function
-involved, and a predicate beside `legacy_reads_array_as_error`. T-1847's
+involved, and a rule in or beside `mark_legacy_reading`. T-1847's
 `T(SWITCH(..))` and T-1768's `N(CHOOSE(1,Z1:Z2))` would only widen the predicate. If more than two
 or three functions ever need markers, the internal kinds should become a `legacy` bit on
 `FunctionKind`. That needs a spec amendment, and is not done ahead of need.
@@ -287,10 +295,11 @@ or three functions ever need markers, the internal kinds should become a `legacy
   call change, and they grow by the spelling's extra length (about 12 bytes per marked call) in
   their one shared RC string per distinct formula. `Node` is unchanged: `Function` is a
   fieldless enum and two more variants keep its size; `NODE_SIZE`'s const assert still pins 80.
-- **Import:** the rewrite already visits every node once. Per `FunctionKind`, the marker check
-  costs one `matches!` on N/T. Per N/T call, it adds one match on the argument's kind, and for
-  CHOOSE/INDEX/IFS one scan of their arguments: O(args), no allocation, no recursion. The kind is
-  changed in place.
+- **Import:** the rewrite already visits every node once. Per `FunctionKind` in a value position,
+  the marker check costs one match on N/T. Per N/T call over IF, CHOOSE, INDEX or IFS, it adds one
+  scan of that call's arguments and one static analysis of it: O(args) beyond the analysis, no
+  recursion of its own, no clone. The kind and the one-element `@`s are changed in place. The only
+  allocation is a small index list, and only when there is a one-element `@` to take off.
 - **Export:** `legacy_reading_intersects` already clones each shared formula and runs remove,
   then add. The marker adds O(1) per N/T call to the add pass.
 - **Recalc:** the internal kinds dispatch to their own thin wrappers. The kernel reads its
@@ -390,12 +399,12 @@ failing probe cells already need it.
    `Model::set_cell_with_legacy_formula` with `Input::LegacyFormula` switched to it. No marker is
    placed yet, so no eval result changes. That is checked: probes known failures unchanged.
 2. **T-1713** (functions-logic → engine lane, since the change is in static_analysis/; M):
-   `legacy_reads_array_as_error`, the `leaves_call_whole` extension, the one-element `@` rule, the
+   `mark_legacy_reading`, the `leaves_call_whole` extension, the one-element `@` rule, the
    idempotence and export round-trip tests, the eval flip, and the references.md and
    information.md updates ("Not implemented" removed). Depends on T-1851.
 3. **T-1852** (engine, S): the UserModel re-entry paths. Depends on T-1851; independent of T-1713,
    but only observable after it.
 4. **T-1853** (research): probe rule 6 if the oracle can express the edit; it updates
    references.md either way.
-5. T-1768 and T-1847 (existing): when their probes land, they widen `legacy_reads_array_as_error`
+5. T-1768 and T-1847 (existing): when their probes land, they widen `mark_legacy_reading`
    (CHOOSE/INDEX over references, T over SWITCH), with eval evidence, as constraint 4 requires.
