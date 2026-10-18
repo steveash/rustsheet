@@ -24,3 +24,7 @@ Third-party code ported into RustSheet:
   `inv_beta_reg` from statrs 0.18.0 (https://github.com/statrs-dev/statrs, Copyright (c) 2016
   Michael Ma, MIT License), itself based on the `special` crate (Copyright 2014–2019 The special
   Developers, MIT License); the notice is retained in that file.
+- crates/rustsheet-engine/src/functions/statistical/incomplete_gamma.rs contains a port of
+  `checked_gamma_lr`, `checked_gamma_ur` and `Gamma::inverse_cdf` from statrs 0.18.0
+  (https://github.com/statrs-dev/statrs, Copyright (c) 2016 Michael Ma, MIT License); the notice is
+  retained in that file.

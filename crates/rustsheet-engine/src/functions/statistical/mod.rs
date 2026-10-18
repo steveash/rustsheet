@@ -15,6 +15,7 @@ mod gauss;
 mod geomean;
 mod hypegeom;
 mod if_ifs;
+mod incomplete_gamma;
 mod inverse_beta;
 mod linest;
 mod log_normal;
