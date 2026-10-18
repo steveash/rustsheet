@@ -1080,6 +1080,20 @@ the ISREF of the LET-SEQUENCE form is FALSE). `TAKE(IF(TRUE,A1:A4),2)` and `TAKE
 AREAS spill two `#VALUE!`, ISREF FALSE. `is_read_reference` follows an IF branch or LET body (and a LET variable) to tell the two (T-1365).
 Tasks: T-1063, T-1163, T-1174, T-1175, T-1206, T-1211, T-1332, T-1365 (decision 0045)
 
+
+## SUBTOTAL lifts over an array function_num
+Rule: an array or multi-cell range function_num lifts: one SUBTOTAL per element, spilling in its shape.
+`SUBTOTAL({9,1},A1:A3)` over 1, 2, 3 spills 6, 2 (`INDEX(..,1,2)` is 2, `ISERROR` is FALSE), `ROWS(SUBTOTAL({9;1},A1:A3))`
+is 2, and `SUBTOTAL(TEXTSPLIT("9,1",","),A1:A3)` spills 6, 2 (text numbers are read as numbers). A 1x1 array is the plain
+value (`SUBTOTAL({9},..)`, `SUBTOTAL(SEQUENCE(1,1,9),..)`, `SUBTOTAL(9+{0},..)` are 6). An invalid element is `#VALUE!`
+(`{"x"}`, `{12}`). A vertical array or a range function_num (`{9;109}`, `B1:B2`) written in a cell with no room below
+is `#SPILL!`, so it spills too. A one-cell reference is its value (`SUBTOTAL(B1,..)` with B1 = 9 is 6).
+Evidence: probes/subtotal-array-function-num A1-A14 (excel-graph, 2026-10-18, T-1361); gen-m9/d5bd4272655c5211 Calc!A14
+`SUBTOTAL(TEXTSPLIT(..,C11:E11,"-"),C1:E1)` is `#VALUE!` (inferred: its TEXTSPLIT elements are not valid function numbers).
+Ours: an array function_num is `#N/IMPL!`, a range one `#VALUE!` (T-1868).
+Status: VERIFIED (web)
+Tasks: T-1868
+
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15
 (Data!B12) and `Data!C2:Data!E4 Data!C4` = 100. A single-cell range can also start a range-of-ranges:

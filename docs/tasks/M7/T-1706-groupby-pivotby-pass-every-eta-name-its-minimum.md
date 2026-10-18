@@ -3,7 +3,7 @@ id: T-1706
 title: "GROUPBY/PIVOTBY: pass every eta name its minimum argument count (two-argument functions beyond the probed list)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,3 +31,10 @@ three-argument one (e.g. SUBSTITUTE) to confirm. Docs: docs/excel-semantics/arra
 
 ## Out of scope
 -
+
+## Outcome
+`eta_arity` now looks the function up in `eta_min_args.rs`, a table of the catalog's non-1 minimum arguments, with a
+unit test (`table_matches_catalog`) that keeps it in sync with `eval/catalog/excel-functions.tsv`. Probe
+probes/groupby-eta-arity (excel-graph): COVARIANCE.S, SLOPE, SUMX2MY2, INTERCEPT get two arguments (grouped, shape 6x2),
+RANK, PERCENTILE, MOD two (`#VALUE!` per cell, as an array result), SUBSTITUTE (minimum 3) makes the whole result
+`#VALUE!`. Remaining probe failures are SLOPE/INTERCEPT size mismatches, T-1867.
