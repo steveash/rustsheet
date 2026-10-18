@@ -3,7 +3,7 @@ id: T-1292
 title: "Paired-array statistics (CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, CHISQ.TEST) of unequal sizes with text are #N/A; F.TEST tail"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,3 +33,6 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 -
+
+## Outcome
+Unequal-size pairs in `fn_get_two_matrices` are `#N/A` (CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, CHISQ.TEST, CHITEST, FORECAST); F.TEST takes twice the smaller tail. Rule in statistics.md. Eval: probes known failures shrank (see baseline diff).

@@ -339,15 +339,9 @@ impl Model {
             );
         }
 
-        // F ratio: larger variance / smaller variance
-        let mut f = v1 / v2;
-        let mut df1 = (n1 - 1) as f64;
-        let mut df2 = (n2 - 1) as f64;
-
-        if f < 1.0 {
-            f = 1.0 / f;
-            std::mem::swap(&mut df1, &mut df2);
-        }
+        let f = v1 / v2;
+        let df1 = (n1 - 1) as f64;
+        let df2 = (n2 - 1) as f64;
 
         let dist = match FisherSnedecor::new(df1, df2) {
             Ok(d) => d,
@@ -360,10 +354,11 @@ impl Model {
             }
         };
 
-        // One-tailed right-tail probability
-        let tail = 1.0 - dist.cdf(f);
-        // F.TEST is two-tailed: p = 2 * tail (with F >= 1)
-        let mut p = 2.0 * tail;
+        // Two-tailed: twice the smaller tail. The smaller tail is not always the one a variance
+        // ratio above 1 picks (F(df1, df2) has its median away from 1), so take the minimum
+        // (F.TEST(C1:C6,B1:B8) of probes/stat-argument-modes is 0.9196, not 2 - 0.9196; T-1292).
+        let lower = dist.cdf(f);
+        let mut p = 2.0 * lower.min(1.0 - lower);
 
         // Clamp tiny FP noise
         if p < 0.0 && p > -1e-15 {
