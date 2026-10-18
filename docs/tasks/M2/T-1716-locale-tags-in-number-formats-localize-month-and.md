@@ -3,7 +3,7 @@ id: T-1716
 title: "Locale tags in number formats localize month and day names"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
