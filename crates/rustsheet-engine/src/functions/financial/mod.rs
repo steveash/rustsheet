@@ -22,14 +22,7 @@ mod rate_conversions;
 use annuity::{compute_ipmt, compute_ppmt};
 use financial_util::{compute_irr, compute_npv, compute_xirr, compute_xnpv};
 
-/// A financial kernel's result as a cell value: the number, or the error (SPEC-0011 kernels
-/// return `Result<f64, CalcResult>` so their reads chain with `?`).
-fn number_or_error(result: Result<f64, CalcResult>) -> CalcResult {
-    match result {
-        Ok(number) => CalcResult::Number(number),
-        Err(error) => error,
-    }
-}
+use crate::functions::lift::number_or_error;
 
 /// A computation's `(error, message)` as the cell's error.
 fn formula_error(cell: CellReferenceIndex) -> impl Fn((Error, String)) -> CalcResult {

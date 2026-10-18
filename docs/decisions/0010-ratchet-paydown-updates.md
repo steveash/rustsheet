@@ -137,6 +137,14 @@
   T-1822: duplicated lines 4876 → 4812 (ACCRINT, DURATION, MDURATION, PRICE and the COUP* functions
   share `coupon_args` and `bond_args` instead of their repeated `get_number` argument blocks)
   (`check_duplication.py --update`).
+  T-1290: duplicated lines 4812 → 4510 (the statistical functions whose every argument is scalar
+  become kernels over borrowed values; BETADIST, NORMSDIST, LOGNORMDIST, NEGBINOMDIST and TDIST share
+  their modern function's kernel instead of rebuilding its argument nodes) (`check_duplication.py
+  --update`), and expressions/parser/static_analysis.rs 1385 → 1209 lines (main is 1296 after T-1717's
+  split; this PR deletes the 87 fallback lines of the 44 statistical functions now in the lifting table)
+  and functions/mod.rs 2180 → 2179 (GAMMALN and GAMMALN.PRECISE share one dispatch arm)
+  (`check_file_size.py --update`). The same update also tightened a stale lock that is not this PR's
+  change: functions/financial/financial_bonds.rs 1212 → 1178, its size on main.
   T-1626: functions below the evidence floor 13 → 3 (SEARCHB, FINDB, REPLACEB, RIGHTB, LENB, ASC, JIS, PHONETIC,
   REGEXREPLACE and REGEXTEST probed to ≥ 20 Excel cells; decision 0062) (`make eval-baseline`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in

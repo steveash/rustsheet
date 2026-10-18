@@ -654,11 +654,7 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Dvar => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::Dvarp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::Dstdevp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::BetaDist => args_signature_scalars(arg_count, 4, 2),
         Function::BetaInv => args_signature_scalars(arg_count, 3, 2),
-        Function::BinomDist => args_signature_scalars(arg_count, 4, 0),
-        Function::BinomDistRange => args_signature_scalars(arg_count, 3, 1),
-        Function::BinomInv => args_signature_scalars(arg_count, 3, 0),
         Function::ChisqDist => args_signature_scalars(arg_count, 4, 0),
         Function::ChisqDistRT => args_signature_scalars(arg_count, 3, 0),
         Function::ChisqInv => args_signature_scalars(arg_count, 3, 0),
@@ -670,7 +666,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
                 vec![Signature::Error; arg_count]
             }
         }
-        Function::ConfidenceNorm => args_signature_scalars(arg_count, 3, 0),
         Function::ConfidenceT => args_signature_scalars(arg_count, 3, 0),
         Function::CovarianceP => {
             if arg_count == 2 {
@@ -687,27 +682,12 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
             }
         }
         Function::Devsq => vec![Signature::Vector; arg_count],
-        Function::ExponDist => args_signature_scalars(arg_count, 3, 0),
-        Function::FDist => args_signature_scalars(arg_count, 4, 0),
-        Function::FDistRT => args_signature_scalars(arg_count, 3, 0),
         Function::FInv => args_signature_scalars(arg_count, 3, 0),
         Function::FInvRT => args_signature_scalars(arg_count, 3, 0),
         Function::FTest => vec![Signature::Vector; 2],
-        Function::Fisher => args_signature_scalars(arg_count, 1, 0),
-        Function::FisherInv => args_signature_scalars(arg_count, 1, 0),
-        Function::Gamma => args_signature_scalars(arg_count, 1, 0),
         Function::GammaDist => args_signature_scalars(arg_count, 4, 0),
         Function::GammaInv => args_signature_scalars(arg_count, 3, 0),
-        Function::GammaLn => args_signature_scalars(arg_count, 1, 0),
-        Function::GammaLnPrecise => args_signature_scalars(arg_count, 1, 0),
         Function::HypGeomDist => args_signature_scalars(arg_count, 5, 0),
-        Function::LogNormDist => args_signature_scalars(arg_count, 4, 0),
-        Function::LogNormInv => args_signature_scalars(arg_count, 3, 0),
-        Function::NegbinomDist => args_signature_scalars(arg_count, 4, 0),
-        Function::NormDist => args_signature_scalars(arg_count, 4, 0),
-        Function::NormInv => args_signature_scalars(arg_count, 3, 0),
-        Function::NormSdist => args_signature_scalars(arg_count, 2, 0),
-        Function::NormSInv => args_signature_scalars(arg_count, 1, 0),
         Function::Pearson => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Vector]
@@ -715,17 +695,12 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
                 vec![Signature::Error; arg_count]
             }
         }
-        Function::Phi => args_signature_scalars(arg_count, 1, 0),
         Function::PoissonDist => args_signature_scalars(arg_count, 3, 0),
-        Function::Standardize => args_signature_scalars(arg_count, 3, 0),
         Function::Stdev => vec![Signature::Vector; arg_count],
         Function::StDevP => vec![Signature::Vector; arg_count],
         Function::StDevS => vec![Signature::Vector; arg_count],
         Function::Stdeva => vec![Signature::Vector; arg_count],
         Function::Stdevpa => vec![Signature::Vector; arg_count],
-        Function::TDist => args_signature_scalars(arg_count, 3, 0),
-        Function::TDist2T => args_signature_scalars(arg_count, 2, 0),
-        Function::TDistRT => args_signature_scalars(arg_count, 2, 0),
         Function::TInv => args_signature_scalars(arg_count, 2, 0),
         Function::TInv2T => args_signature_scalars(arg_count, 2, 0),
         Function::TTest => {
@@ -744,7 +719,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::VarS => vec![Signature::Vector; arg_count],
         Function::VarpA => vec![Signature::Vector; arg_count],
         Function::VarA => vec![Signature::Vector; arg_count],
-        Function::WeibullDist => args_signature_scalars(arg_count, 4, 0),
         Function::ZTest => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Scalar]
@@ -755,15 +729,9 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
             }
         }
         // Compatibility wrappers
-        Function::BetaDistCompat => args_signature_scalars(arg_count, 3, 2),
         Function::HypGeomDistCompat => args_signature_scalars(arg_count, 4, 0),
-        Function::LogNormDistCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::NegbinomDistCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::NormSDistCompat => args_signature_scalars(arg_count, 1, 0),
-        Function::TDistCompat => args_signature_scalars(arg_count, 3, 0),
         // Compatibility aliases
         Function::BetaInvCompat => args_signature_scalars(arg_count, 3, 2),
-        Function::BinomDistCompat => args_signature_scalars(arg_count, 4, 0),
         Function::ChiDistCompat => args_signature_scalars(arg_count, 2, 0),
         Function::ChiInvCompat => args_signature_scalars(arg_count, 2, 0),
         Function::ChiTestCompat => {
@@ -773,7 +741,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
                 vec![Signature::Error; arg_count]
             }
         }
-        Function::ConfidenceCompat => args_signature_scalars(arg_count, 3, 0),
         Function::CovarCompat => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Vector]
@@ -781,18 +748,11 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
                 vec![Signature::Error; arg_count]
             }
         }
-        Function::CritbinomCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::ExponDistCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::FDistCompat => args_signature_scalars(arg_count, 3, 0),
         Function::FInvCompat => args_signature_scalars(arg_count, 3, 0),
         Function::FTestCompat => vec![Signature::Vector; 2],
         Function::GammaDistCompat => args_signature_scalars(arg_count, 4, 0),
         Function::GammaInvCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::LoginvCompat => args_signature_scalars(arg_count, 3, 0),
         Function::ModeCompat => vec![Signature::Vector; arg_count],
-        Function::NormDistCompat => args_signature_scalars(arg_count, 4, 0),
-        Function::NormInvCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::NormSInvCompat => args_signature_scalars(arg_count, 1, 0),
         Function::PoissonCompat => args_signature_scalars(arg_count, 3, 0),
         Function::RankCompat => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
         Function::StDevPCompat => vec![Signature::Vector; arg_count],
@@ -811,7 +771,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         }
         Function::VarCompat => vec![Signature::Vector; arg_count],
         Function::VarPCompat => vec![Signature::Vector; arg_count],
-        Function::WeibullCompat => args_signature_scalars(arg_count, 4, 0),
         Function::ZTestCompat => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Scalar]
@@ -862,7 +821,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
             _ => vec![Signature::Error; arg_count],
         },
         Function::ModeMult | Function::ModeSingl => vec![Signature::Vector; arg_count],
-        Function::Permut | Function::Permutationa => vec![Signature::Scalar; 2],
         Function::Prob => match arg_count {
             3 => vec![Signature::Vector, Signature::Vector, Signature::Scalar],
             4 => vec![
@@ -873,7 +831,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
             ],
             _ => vec![Signature::Error; arg_count],
         },
-        Function::Gauss => args_signature_scalars(arg_count, 1, 0),
         Function::Harmean => vec![Signature::Vector; arg_count],
         Function::Kurt => vec![Signature::Vector; arg_count],
         Function::MaxA => vec![Signature::Vector; arg_count],
@@ -1163,54 +1120,29 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Dvar => not_implemented(args),
         Function::Dvarp => not_implemented(args),
         Function::Dstdevp => not_implemented(args),
-        Function::BetaDist => StaticResult::Scalar,
         Function::BetaInv => StaticResult::Scalar,
-        Function::BinomDist => StaticResult::Scalar,
-        Function::BinomDistRange => StaticResult::Scalar,
-        Function::BinomInv => StaticResult::Scalar,
         Function::ChisqDist => StaticResult::Scalar,
         Function::ChisqDistRT => StaticResult::Scalar,
         Function::ChisqInv => StaticResult::Scalar,
         Function::ChisqInvRT => StaticResult::Scalar,
         Function::ChisqTest => StaticResult::Scalar,
-        Function::ConfidenceNorm => StaticResult::Scalar,
         Function::ConfidenceT => StaticResult::Scalar,
         Function::CovarianceP => StaticResult::Scalar,
         Function::CovarianceS => StaticResult::Scalar,
         Function::Devsq => StaticResult::Scalar,
-        Function::ExponDist => StaticResult::Scalar,
-        Function::FDist => StaticResult::Scalar,
-        Function::FDistRT => StaticResult::Scalar,
         Function::FInv => StaticResult::Scalar,
         Function::FInvRT => StaticResult::Scalar,
         Function::FTest => StaticResult::Scalar,
-        Function::Fisher => StaticResult::Scalar,
-        Function::FisherInv => StaticResult::Scalar,
-        Function::Gamma => StaticResult::Scalar,
         Function::GammaDist => StaticResult::Scalar,
         Function::GammaInv => StaticResult::Scalar,
-        Function::GammaLn => StaticResult::Scalar,
-        Function::GammaLnPrecise => StaticResult::Scalar,
         Function::HypGeomDist => StaticResult::Scalar,
-        Function::LogNormDist => StaticResult::Scalar,
-        Function::LogNormInv => StaticResult::Scalar,
-        Function::NegbinomDist => StaticResult::Scalar,
-        Function::NormDist => StaticResult::Scalar,
-        Function::NormInv => StaticResult::Scalar,
-        Function::NormSdist => StaticResult::Scalar,
-        Function::NormSInv => StaticResult::Scalar,
         Function::Pearson => StaticResult::Scalar,
-        Function::Phi => StaticResult::Scalar,
         Function::PoissonDist => StaticResult::Scalar,
-        Function::Standardize => StaticResult::Scalar,
         Function::Stdev => StaticResult::Scalar,
         Function::StDevP => StaticResult::Scalar,
         Function::StDevS => StaticResult::Scalar,
         Function::Stdeva => StaticResult::Scalar,
         Function::Stdevpa => StaticResult::Scalar,
-        Function::TDist => StaticResult::Scalar,
-        Function::TDist2T => StaticResult::Scalar,
-        Function::TDistRT => StaticResult::Scalar,
         Function::TInv => StaticResult::Scalar,
         Function::TInv2T => StaticResult::Scalar,
         Function::TTest => StaticResult::Scalar,
@@ -1218,33 +1150,18 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::VarS => StaticResult::Scalar,
         Function::VarpA => StaticResult::Scalar,
         Function::VarA => StaticResult::Scalar,
-        Function::WeibullDist => StaticResult::Scalar,
         Function::ZTest => StaticResult::Scalar,
-        Function::BetaDistCompat => StaticResult::Scalar,
         Function::HypGeomDistCompat => StaticResult::Scalar,
-        Function::LogNormDistCompat => StaticResult::Scalar,
-        Function::NegbinomDistCompat => StaticResult::Scalar,
-        Function::NormSDistCompat => StaticResult::Scalar,
-        Function::TDistCompat => StaticResult::Scalar,
         Function::BetaInvCompat => StaticResult::Scalar,
-        Function::BinomDistCompat => StaticResult::Scalar,
         Function::ChiDistCompat => StaticResult::Scalar,
         Function::ChiInvCompat => StaticResult::Scalar,
         Function::ChiTestCompat => StaticResult::Scalar,
-        Function::ConfidenceCompat => StaticResult::Scalar,
         Function::CovarCompat => StaticResult::Scalar,
-        Function::CritbinomCompat => StaticResult::Scalar,
-        Function::ExponDistCompat => StaticResult::Scalar,
-        Function::FDistCompat => StaticResult::Scalar,
         Function::FInvCompat => StaticResult::Scalar,
         Function::FTestCompat => StaticResult::Scalar,
         Function::GammaDistCompat => StaticResult::Scalar,
         Function::GammaInvCompat => StaticResult::Scalar,
-        Function::LoginvCompat => StaticResult::Scalar,
         Function::ModeCompat => StaticResult::Scalar,
-        Function::NormDistCompat => StaticResult::Scalar,
-        Function::NormInvCompat => StaticResult::Scalar,
-        Function::NormSInvCompat => StaticResult::Scalar,
         Function::PoissonCompat => StaticResult::Scalar,
         Function::RankCompat => reference_parameter::rank_static_result(args),
         Function::StDevPCompat => StaticResult::Scalar,
@@ -1252,7 +1169,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::TTestCompat => StaticResult::Scalar,
         Function::VarCompat => StaticResult::Scalar,
         Function::VarPCompat => StaticResult::Scalar,
-        Function::WeibullCompat => StaticResult::Scalar,
         Function::ZTestCompat => StaticResult::Scalar,
         Function::Sumx2my2 => StaticResult::Scalar,
         Function::Sumx2py2 => StaticResult::Scalar,
@@ -1277,10 +1193,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Trend => StaticResult::Unknown,
         // Scalar-returning functions
         Function::ModeSingl => StaticResult::Scalar,
-        Function::Permut => StaticResult::Scalar,
-        Function::Permutationa => StaticResult::Scalar,
         Function::Prob => StaticResult::Scalar,
-        Function::Gauss => StaticResult::Scalar,
         Function::Harmean => StaticResult::Scalar,
         Function::Kurt => StaticResult::Scalar,
         Function::MaxA => StaticResult::Scalar,

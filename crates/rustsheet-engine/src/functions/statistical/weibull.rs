@@ -1,71 +1,45 @@
 use statrs::distribution::{Continuous, ContinuousCDF, Weibull};
 
 use crate::expressions::types::CellReferenceIndex;
-use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
-};
+use crate::functions::lift::{num_error, number_or_error};
+use crate::functions::Function;
+use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 impl Model {
-    // WEIBULL.DIST(x, alpha, beta, cumulative)
+    /// `WEIBULL.DIST(x, alpha, beta, cumulative)`, and WEIBULL: every argument lifts over an
+    /// array and a range (SPEC-0011; probes/stat-argument-modes H552-H563,
+    /// probes/stat-later-argument-lift H45, H47). The kernel is closed form.
     pub(crate) fn fn_weibull_dist(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if args.len() != 4 {
-            return CalcResult::new_args_number_error(cell);
-        }
+        self.lift_call(Function::WeibullDist, args, cell, &mut |model, values| {
+            number_or_error(model.weibull_dist_of(values, cell))
+        })
+    }
 
-        let x = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
+    fn weibull_dist_of(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let [x, alpha, beta, cumulative] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
         };
-
-        let alpha = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let beta = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let cumulative = match self.get_boolean(&args[3], cell) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-
+        let x = self.cast_number_no_bools_ref(x, cell)?;
+        let alpha = self.cast_number_no_bools_ref(alpha, cell)?;
+        let beta = self.cast_number_no_bools_ref(beta, cell)?;
+        let cumulative = Self::cast_bool_ref(cumulative, cell)?;
         if x < 0.0 || alpha <= 0.0 || beta <= 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid parameters for WEIBULL.DIST".to_string(),
-            };
+            return Err(num_error(cell));
         }
-
         // statrs::Weibull: shape = k (alpha), scale = lambda (beta)
-        let dist = match Weibull::new(alpha, beta) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid parameters for WEIBULL.DIST".to_string(),
-                }
-            }
-        };
-
+        let dist = Weibull::new(alpha, beta).map_err(|_| num_error(cell))?;
         let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
-
         if !result.is_finite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid result for WEIBULL.DIST".to_string(),
-            };
+            return Err(num_error(cell));
         }
-
-        CalcResult::Number(result)
+        Ok(result)
     }
 }

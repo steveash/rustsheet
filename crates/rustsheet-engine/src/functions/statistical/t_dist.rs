@@ -1,7 +1,9 @@
 use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
+use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -128,164 +130,104 @@ pub(crate) fn t_quantile(dist: &StudentsT, df: f64, p: f64) -> f64 {
 }
 
 impl Model {
-    // T.DIST(x, deg_freedom, cumulative)
+    /// `T.DIST(x, deg_freedom, cumulative)`: every argument lifts over an array and a range
+    /// (SPEC-0011; probes/stat-argument-modes H505-H509, probes/stat-later-argument-lift H61).
+    /// The cdf is statrs' incomplete beta, a continued fraction of at most 140 steps.
     pub(crate) fn fn_t_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
+        self.lift_call(Function::TDist, args, cell, &mut |model, values| {
+            number_or_error(model.t_dist_of(values, cell))
+        })
+    }
 
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
+    fn t_dist_of(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let [x, df, cumulative] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
         };
-
-        let df = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-
-        let cumulative = match self.get_boolean(&args[2], cell) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-
+        let x = self.cast_number_ref(x, cell)?;
+        let df = self.cast_number_ref(df, cell)?.trunc();
+        let cumulative = Self::cast_bool_ref(cumulative, cell)?;
         if df < 1.0 || (cumulative && df > T_DF_MAX) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "deg_freedom out of range in T.DIST".to_string(),
-            };
+            return Err(num_error(cell));
         }
-
-        let dist = match StudentsT::new(0.0, 1.0, df) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid parameters for T.DIST".to_string(),
-                }
-            }
-        };
-
+        let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
         let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
-
         if !result.is_finite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid result for T.DIST".to_string(),
-            };
+            return Err(num_error(cell));
         }
-
-        CalcResult::Number(result)
+        Ok(result)
     }
 
-    // T.DIST.2T(x, deg_freedom)
+    /// `T.DIST.2T(x, deg_freedom)`: both arguments lift over an array and a range
+    /// (probes/stat-argument-modes H510-H513, probes/stat-later-argument-lift H63).
     pub(crate) fn fn_t_dist_2t(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let df = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-
-        if x < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "x must be >= 0 in T.DIST.2T".to_string(),
+        self.lift_call(Function::TDist2T, args, cell, &mut |model, values| {
+            let [x, df] = values else {
+                return CalcResult::new_args_number_error(cell);
             };
-        }
-
-        if !(1.0..=T_DF_MAX).contains(&df) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "deg_freedom must be >= 1 in T.DIST.2T".to_string(),
-            };
-        }
-
-        let dist = match StudentsT::new(0.0, 1.0, df) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid parameters for T.DIST.2T".to_string(),
-                }
-            }
-        };
-
-        let upper_tail = 1.0 - dist.cdf(x);
-        let mut result = 2.0 * upper_tail;
-
-        result = result.clamp(0.0, 1.0);
-
-        if !result.is_finite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid result for T.DIST.2T".to_string(),
-            };
-        }
-
-        CalcResult::Number(result)
+            number_or_error(
+                model
+                    .cast_number_ref(x, cell)
+                    .and_then(|x| model.t_dist_2t_of(x, df, cell)),
+            )
+        })
     }
 
-    // T.DIST.RT(x, deg_freedom)
+    /// T.DIST.2T once `x` is read. The degrees of freedom are read before `x` is checked
+    /// (`T.DIST.2T(-1,NA())` is #N/A; probes/stat-overflow-arguments F1, F5).
+    fn t_dist_2t_of(
+        &self,
+        x: f64,
+        df: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let df = self.cast_number_ref(df, cell)?.trunc();
+        if x < 0.0 || !(1.0..=T_DF_MAX).contains(&df) {
+            return Err(num_error(cell));
+        }
+        let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
+        let result = (2.0 * (1.0 - dist.cdf(x))).clamp(0.0, 1.0);
+        if !result.is_finite() {
+            return Err(num_error(cell));
+        }
+        Ok(result)
+    }
+
+    /// `T.DIST.RT(x, deg_freedom)`: both arguments lift over an array and a range
+    /// (probes/stat-argument-modes H514-H517, probes/stat-later-argument-lift H65).
     pub(crate) fn fn_t_dist_rt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
+        self.lift_call(Function::TDistRT, args, cell, &mut |model, values| {
+            let [x, df] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            number_or_error(
+                model
+                    .cast_number_ref(x, cell)
+                    .and_then(|x| model.t_dist_rt_of(x, df, cell)),
+            )
+        })
+    }
 
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let df = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-
+    /// T.DIST.RT once `x` is read.
+    fn t_dist_rt_of(
+        &self,
+        x: f64,
+        df: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let df = self.cast_number_ref(df, cell)?.trunc();
         if !(1.0..=T_DF_MAX).contains(&df) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "deg_freedom must be >= 1 in T.DIST.RT".to_string(),
-            };
+            return Err(num_error(cell));
         }
-
-        let dist = match StudentsT::new(0.0, 1.0, df) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid parameters for T.DIST.RT".to_string(),
-                }
-            }
-        };
-
+        let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
         let result = 1.0 - dist.cdf(x);
-
         if !result.is_finite() || result < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid result for T.DIST.RT".to_string(),
-            };
+            return Err(num_error(cell));
         }
-
-        CalcResult::Number(result)
+        Ok(result)
     }
 
     // T.INV(probability, deg_freedom)
@@ -631,30 +573,36 @@ impl Model {
         CalcResult::Number(p)
     }
 
-    // TDIST(x, deg_freedom, tails) — x≥0; tails=1→T.DIST.RT, tails=2→T.DIST.2T
+    /// `TDIST(x, deg_freedom, tails)`: x >= 0; tails 1 is T.DIST.RT, tails 2 T.DIST.2T. Every
+    /// argument lifts over an array and a range (probes/stat-argument-modes H530-H534,
+    /// probes/stat-later-argument-lift H67, L8-L10). It reads all three before it checks any.
     pub(crate) fn fn_tdist_compat(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
+        self.lift_call(Function::TDistCompat, args, cell, &mut |model, values| {
+            number_or_error(model.tdist_of(values, cell))
+        })
+    }
+
+    fn tdist_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+        let [x, df, tails] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
         };
+        // Every argument is read before any is checked: an error in deg_freedom wins over x < 0
+        // and over a bad tails (`TDIST(-1,NA(),1)` and `TDIST(1,NA(),3)` are #N/A;
+        // probes/stat-overflow-arguments F2, F3, F6).
+        let x = self.cast_number_ref(x, cell)?;
+        self.cast_number_ref(df, cell)?;
+        let tails = self.cast_number_ref(tails, cell)?.trunc() as i64;
         if x < 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "TDIST: x must be >= 0".to_string());
+            return Err(num_error(cell));
         }
-        let tails = match self.get_number(&args[2], cell) {
-            Ok(f) => f.trunc() as i64,
-            Err(e) => return e,
-        };
         match tails {
-            1 => self.fn_t_dist_rt(&args[0..2], cell),
-            2 => self.fn_t_dist_2t(&args[0..2], cell),
-            _ => CalcResult::new_error(Error::NUM, cell, "TDIST: tails must be 1 or 2".to_string()),
+            1 => self.t_dist_rt_of(x, df, cell),
+            2 => self.t_dist_2t_of(x, df, cell),
+            _ => Err(num_error(cell)),
         }
     }
 }
