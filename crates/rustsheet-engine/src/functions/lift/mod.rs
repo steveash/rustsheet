@@ -57,3 +57,12 @@ pub(crate) fn value_error(cell: CellReferenceIndex) -> CalcResult {
 pub(crate) fn div_error(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::DIV, cell, String::new())
 }
+
+/// A lifted kernel's result as a cell value: the number, or the error (SPEC-0011 kernels return
+/// `Result<f64, CalcResult>` so their reads chain with `?`).
+pub(crate) fn number_or_error(result: Result<f64, CalcResult>) -> CalcResult {
+    match result {
+        Ok(number) => CalcResult::Number(number),
+        Err(error) => error,
+    }
+}

@@ -1,3 +1,4 @@
+mod test_argument_lift;
 mod test_fn_avedev;
 mod test_fn_beta_dist;
 mod test_fn_binom;
