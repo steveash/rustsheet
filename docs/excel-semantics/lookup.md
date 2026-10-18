@@ -448,11 +448,10 @@ that reads like an error: in gen-m7/4629e931955aa4b8 A19, `MATCH(TEXTSPLIT("#N/A
 the text `"#N/A"` returned a position, not `#N/A` (which would have won the subtraction). An error element is that slot's
 result before an invalid match_type is checked: `INDEX(MATCH({#N/A;1},A1:A3,"x"),1)` is `#N/A` (an invalid lookup_array next
 to an error element is not probed).
-An array-valued match_type also lifts in Excel (`ROWS(MATCH(2,A1:A3,{0;1}))` is 2), which the engine does not do yet (`#N/IMPL!`, T-1917).
+An array-valued match_type also lifts, broadcast with lookup_value (`ROWS(MATCH(2,A1:A3,{0;1}))` is 2, `INDEX(MATCH(B1:B2,A1:A3,{0;1}),1)` is 3); a multi-cell range match_type still reads its top-left cell (probes/match-type-nested-passthrough), and static analysis spills only for an array one.
 Evidence: probes/match-lookup-value-lift (19 cells; excel-graph, 2026-10-18, T-1866); gen-m7/4629e931955aa4b8 Calc!A19 (excel-graph, T-1361).
 Status: VERIFIED
-Implemented in: `Model::fn_match` (functions/lookup_and_reference/mod.rs) through `lift_values`; static analysis spills by lookup_value.
-Not implemented: the match_type array lift (E14:E16 of the probe, known failures in the baseline; T-1917).
+Implemented in: `Model::fn_match` (functions/lookup_and_reference/mod.rs) through `lift_values`; static analysis (`match_static_result`) spills by lookup_value and an array match_type.
 Tasks: T-1866, T-1917
 
 ## A reference-valued lookup_value pointing at a blank or error cell
