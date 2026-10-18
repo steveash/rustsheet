@@ -1564,7 +1564,7 @@ cover (rows 1-2 unprobed): `=N(IF(@W1:W2,Z1,Z2))`, `=N(OFFSET(Z1,@W1:W2,0))`, `=
 T versions (all `#VALUE!` in row 10). The engine matches all of them since T-1908 (N and T over CHOOSE or INDEX of a reference no longer get an `@` on the call).
 Not implemented: the text is identical to the dynamic formula's, which spills, so the `#VALUE!`
 needs the engine to remember that a formula is legacy (SPEC-0012, legacy-n-t-marker.md: an internal N/T kind placed by the legacy rewrite, T-1851, then T-1713); ours adds an `@`
-on array-valued CHOOSE, INDEX and IFS calls (N gives the top-left value, T ""), none on IF or SWITCH
+on array-valued CHOOSE, INDEX and IFS calls (not on those of a reference, T-1908) (N gives the top-left value, T ""), none on IF or SWITCH
 (`leaves_call_whole`, T-1717: the SWITCH cell spills as in Excel, the IF one too until T-1713); a range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms, gets none under N and T since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator, an array constant or another call keeps the old `@`; CHOOSE with a literal index over such references and INDEX of one get none either, T-1908).
 Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)

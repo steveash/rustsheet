@@ -215,7 +215,8 @@ pub(super) fn legacy_array_call_at(
 }
 
 /// Whether a legacy formula puts no `@` on the call `arg` of `kind`, a value it would otherwise
-/// intersect: N and T over IF or SWITCH (`=N(IF(1,{2;3}))`, `=T(IF(1,{"a";"b"}))`,
+/// intersect: N and T over IF or SWITCH, or INDEX of a plain reference ([`is_plain_reference`],
+/// T-1908: `=N(INDEX(Z1:Z2,1))`) (`=N(IF(1,{2;3}))`, `=T(IF(1,{"a";"b"}))`,
 /// `=N(SWITCH(1,1,{2;3}))`, the last spilling 2, 3; probes/legacy-array-result A, G, I,
 /// legacy-n-t-reference-args M, T-1713), where IFERROR gets one (`=N(@IFERROR({2;3},0))`, D).
 /// An explicit `@` on the call is looked through, so the export keeps it.
