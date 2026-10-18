@@ -1,0 +1,42 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Deal 8": {
+   "D23": {
+    "t": "n",
+    "v": 1325.0
+   },
+   "G18": {
+    "t": "n",
+    "v": 750.0
+   },
+   "G19": {
+    "t": "n",
+    "v": 375.0
+   },
+   "G20": {
+    "t": "n",
+    "v": 200.0
+   },
+   "G21": {
+    "t": "n",
+    "v": 4500.0
+   },
+   "J19": {
+    "t": "n",
+    "v": 4500.0
+   },
+   "J23": {
+    "t": "b",
+    "v": false
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "50283c847c4884b1a9ef190bf8c159eed95341555b9a94623dd25382b596d920",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:45:41+00:00",
+  "version": null
+ }
+}

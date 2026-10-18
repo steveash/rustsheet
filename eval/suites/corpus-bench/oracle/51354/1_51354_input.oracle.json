@@ -1,0 +1,70 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "B2": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B3": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B4": {
+    "t": "s",
+    "v": "hly"
+   },
+   "B5": {
+    "t": "s",
+    "v": "n 22"
+   },
+   "C2": {
+    "t": "s",
+    "v": "Oct 21"
+   },
+   "C3": {
+    "t": "s",
+    "v": "Nov 21"
+   },
+   "C4": {
+    "t": "s",
+    "v": "Dec 21"
+   },
+   "C5": {
+    "t": "s",
+    "v": "Jan 22"
+   },
+   "C6": {
+    "t": "s",
+    "v": "Feb 22"
+   },
+   "D2": {
+    "t": "s",
+    "v": "21"
+   },
+   "D3": {
+    "t": "s",
+    "v": "21"
+   },
+   "D4": {
+    "t": "s",
+    "v": "21"
+   },
+   "D5": {
+    "t": "s",
+    "v": "22"
+   },
+   "D6": {
+    "t": "s",
+    "v": "22"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "b75c136982f8fddc202626d32566346efc3ed9e784c62bd6a1c623801cdc7fa9",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:42:05+00:00",
+  "version": null
+ }
+}

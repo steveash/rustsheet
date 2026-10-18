@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "J2": {
+    "t": "s",
+    "v": "Yes"
+   },
+   "J3": {
+    "t": "s",
+    "v": "Yes"
+   },
+   "J4": {
+    "t": "s",
+    "v": "Yes"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "dbdd0d70a2a60b3af30e7679205bc532531b553103cfcd908e69e686c0c3c3a1",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:36:23+00:00",
+  "version": null
+ }
+}

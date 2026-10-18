@@ -1,0 +1,14 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Contact List": {},
+  "Data": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "a2ccf19b7c67d6e6b9cd6feba7ef623ca74b0f1d6007917668ad9cc82447bb86",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:33:43+00:00",
+  "version": null
+ }
+}
