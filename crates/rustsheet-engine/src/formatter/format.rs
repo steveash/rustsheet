@@ -425,14 +425,20 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             return invalid_date(value);
                         }
                         let day = excel_weekday_index(serial_1900);
-                        text = format!("{}{}", text, locale.dates.day_names_short[day]);
+                        text.push_str(
+                            p.names
+                                .map_or(&locale.dates.day_names_short[day], |n| n.days_short[day]),
+                        );
                     }
                     TextToken::DayName => {
                         if !date_valid {
                             return invalid_date(value);
                         }
                         let day = excel_weekday_index(serial_1900);
-                        text = format!("{}{}", text, locale.dates.day_names[day]);
+                        text.push_str(
+                            p.names
+                                .map_or(&locale.dates.day_names[day], |n| n.days[day]),
+                        );
                     }
                     TextToken::Month => {
                         if !date_valid {
@@ -453,22 +459,31 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             return invalid_date(value);
                         }
                         let month = ymd_month as usize;
-                        text = format!("{}{}", text, locale.dates.months_short[month - 1]);
+                        text.push_str(p.names.map_or(&locale.dates.months_short[month - 1], |n| {
+                            n.months_short[month - 1]
+                        }));
                     }
                     TextToken::MonthName => {
                         if !date_valid {
                             return invalid_date(value);
                         }
                         let month = ymd_month as usize;
-                        text = format!("{}{}", text, locale.dates.months[month - 1]);
+                        text.push_str(
+                            p.names
+                                .map_or(&locale.dates.months[month - 1], |n| n.months[month - 1]),
+                        );
                     }
                     TextToken::MonthLetter => {
                         if !date_valid {
                             return invalid_date(value);
                         }
                         let month = ymd_month as usize;
-                        let months_letter = &locale.dates.months_letter[month - 1];
-                        text = format!("{text}{months_letter}");
+                        // Under a locale tag `mmmmm` is the first character of the month name
+                        // (`[$-804]mmmmm` of December is "十"; probes/text-locale-am-neutral A28).
+                        match p.names.and_then(|n| n.months[month - 1].chars().next()) {
+                            Some(letter) => text.push(letter),
+                            None => text.push_str(&locale.dates.months_letter[month - 1]),
+                        }
                     }
                     TextToken::YearShort
                     | TextToken::Year
@@ -519,12 +534,18 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         let second = seconds as i32;
                         text = format!("{text}{second:02}");
                     }
-                    TextToken::AMPM => {
-                        let ampm = if hours < 12.0 { "AM" } else { "PM" };
-                        text = format!("{text}{ampm}");
-                    }
-                    TextToken::AP(am, pm) => {
-                        text.push(if hours < 12.0 { *am } else { *pm });
+                    // Under a locale tag both print the locale's strings, so `A/P` becomes
+                    // `AM/PM` (`[$-409]h A/P` is "6 PM", `[$-411]h a/p` "6 午後";
+                    // probes/text-locale-name-tables A547-A554, probes/text-locale-am-neutral).
+                    TextToken::AMPM | TextToken::AP(..) => {
+                        let morning = hours < 12.0;
+                        match (p.names, token) {
+                            (Some(n), _) => text.push_str(if morning { n.am } else { n.pm }),
+                            (None, TextToken::AP(am, pm)) => {
+                                text.push(if morning { *am } else { *pm });
+                            }
+                            (None, _) => text.push_str(if morning { "AM" } else { "PM" }),
+                        }
                     }
                     TextToken::Minute => {
                         let minute = minutes as i32;

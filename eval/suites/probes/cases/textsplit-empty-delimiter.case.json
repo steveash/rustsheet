@@ -1,0 +1,36 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1412 TEXTSPLIT with an empty row or column delimiter: scalar, list element, blank cell and empty-string cell",
+  "tags": [
+    "M7",
+    "text",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"abc\",\"b\",\"\"),1)&\"]\"",
+        "A2": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"abc\",\"\",\"b\"),1)&\"]\"",
+        "A3": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"abc\",{\"b\",\"\"}),1)&\"]\"",
+        "A4": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"abc\",\"b\",{\",\",\"\"}),1)&\"]\"",
+        "A5": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"a,b\",\",\",Data!A1),1)&\"]\"",
+        "A6": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"a,b\",Data!A1,\",\"),1)&\"]\"",
+        "A7": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"a,b\",\",\",Data!A1:B1),1)&\"]\"",
+        "A8": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"a,b\",\",\",Data!A2),1)&\"]\"",
+        "A9": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"a,b\",,Data!A1),1)&\"]\"",
+        "A10": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"a;b\",,{\";\",\"\"}),1)&\"]\"",
+        "A11": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"a,b\",\",\",\"\"),1)&\"]\"",
+        "A12": "=\"[\"&ARRAYTOTEXT(TEXTSPLIT(\"a,b\",\",\",,TRUE),1)&\"]\""
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "B1": ";",
+        "A2": "=\"\""
+      }
+    }
+  ],
+  "expected": {}
+}

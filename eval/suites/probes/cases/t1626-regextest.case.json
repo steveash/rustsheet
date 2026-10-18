@@ -1,0 +1,59 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1626 REGEXTEST evidence-floor probe",
+ "tags": [
+  "M7",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "Hello World 123",
+    "A2": "abcABC",
+    "A3": "a1b2c3",
+    "A4": "日本語",
+    "A5": "",
+    "A6": 7,
+    "A7": "foo.bar",
+    "A8": "aaa",
+    "C1": "=REGEXTEST(A1,\"[a-z]+\")",
+    "C2": "=REGEXTEST(A1,\"[a-z]+\",1)",
+    "C3": "=REGEXTEST(A1,\"hello\")",
+    "C4": "=REGEXTEST(A1,\"hello\",1)",
+    "C5": "=REGEXTEST(A1,\"hello\",0)",
+    "C6": "=REGEXTEST(A1,\"HELLO\",1)",
+    "C7": "=REGEXTEST(A1,\"^Hello\")",
+    "C8": "=REGEXTEST(A1,\"^World\")",
+    "C9": "=REGEXTEST(A1,\"\\d+\")",
+    "C10": "=REGEXTEST(A1,\"\\d{3}$\")",
+    "C11": "=REGEXTEST(A1,\"(\")",
+    "C12": "=REGEXTEST(A1,\"[a-\")",
+    "C13": "=REGEXTEST(A1,\"\")",
+    "C14": "=REGEXTEST(A5,\"\")",
+    "C15": "=REGEXTEST(A5,\"x*\")",
+    "C16": "=REGEXTEST(A5,\".\")",
+    "C17": "=REGEXTEST(A6,\"7\")",
+    "C18": "=REGEXTEST(A6,\"\\d\")",
+    "C19": "=REGEXTEST(A4,\"\\p{L}+\")",
+    "C20": "=REGEXTEST(A4,\"^.{3}$\")",
+    "C21": "=REGEXTEST(A2,\"abc\",0)",
+    "C22": "=REGEXTEST(A2,\"abc\",1)",
+    "C23": "=REGEXTEST(A2,\"abc\",2)",
+    "C24": "=REGEXTEST(A2,\"abc\",-1)",
+    "C25": "=REGEXTEST(A2,\"abc\",\"x\")",
+    "C26": "=REGEXTEST(A7,\".\")",
+    "C27": "=REGEXTEST(A7,\"\\.\")",
+    "C28": "=REGEXTEST(A1,\"(?i)hello\")",
+    "C29": "=REGEXTEST(A1,\"(\\w)\\1\")",
+    "C30": "=REGEXTEST(A1,\"o\\sW\")",
+    "C31": "=REGEXTEST(A1:A2,\"a\")",
+    "C32": "=REGEXTEST(1/0,\"a\")",
+    "C33": "=REGEXTEST(A1,1/0)",
+    "C34": "=REGEXTEST(TRUE,\"TRUE\")"
+   }
+  }
+ ],
+ "expected": {}
+}

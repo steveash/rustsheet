@@ -438,12 +438,12 @@ of 2^31 - 1 and more, and TDIST checked x before reading deg_freedom (`TDIST(-1,
 back to logarithms only when the overflow comes from x alone: `df1^df1`, `df2^df2` and `(df1+df2)^(df1+df2)` finite,
 and only a result that underflows to 0 is taken from it, so `F.DIST(1E308,1,3,FALSE)` and `F.DIST(8E307,2,3,FALSE)`
 are 0; a positive density there (moderate x with df1 near 30-140, `F.DIST(20,100,3,FALSE)`) keeps main's `#NUM!`,
-unprobed (T-1864). Degrees of freedom large enough to overflow those
+unprobed (T-1865). Degrees of freedom large enough to overflow those
 powers keep main's `#NUM!` (`F.DIST(3,50,100,FALSE)`; probes-numeric/t1530-f-df-cut `F.DIST(2,5,1E10,FALSE)`, where
-Excel gives 0.14167277676179968), because the logarithmic form is not accurate enough there (T-1864); no
+Excel gives 0.14167277676179968), because the logarithmic form is not accurate enough there (T-1865); no
 probes-numeric cell covers the moderate-x region, and every one is unchanged from main.
 Status: VERIFIED (excel-graph)
-Tasks: T-1290, T-1864
+Tasks: T-1290, T-1865
 
 ## LARGE, SMALL, PERCENTILE, QUARTILE, PERCENTRANK and TRIMMEAN: each lifted element is the scalar call
 Rule: when `k`, `quart`, `x`, `significance` or `percent` is an array or a multi-cell range, every element is the

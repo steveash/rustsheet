@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1868 SUBTOTAL with an array or range function_num",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SUBTOTAL({9,1},Data!A1:A3)",
+        "A2": "=SUBTOTAL({9},Data!A1:A3)",
+        "A3": "=SUBTOTAL(TEXTSPLIT(\"9,1\",\",\"),Data!A1:A3)",
+        "A4": "=ROWS(SUBTOTAL({9;1},Data!A1:A3))",
+        "A5": "=SUBTOTAL({\"x\"},Data!A1:A3)",
+        "A6": "=SUBTOTAL(Data!B1:B2,Data!A1:A3)",
+        "A7": "=SUBTOTAL(Data!B1,Data!A1:A3)",
+        "A8": "=SUBTOTAL(TEXTSPLIT(\"9\",\",\"),Data!A1:A3)",
+        "A9": "=SUBTOTAL({9;109},Data!A1:A3)",
+        "A10": "=SUBTOTAL({12},Data!A1:A3)",
+        "A11": "=INDEX(SUBTOTAL({9,1},Data!A1:A3),1,2)",
+        "A12": "=ISERROR(SUBTOTAL({9,1},Data!A1:A3))",
+        "A13": "=SUBTOTAL(SEQUENCE(1,1,9),Data!A1:A3)",
+        "A14": "=SUBTOTAL(9+{0},Data!A1:A3)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 9,
+        "B2": 1
+      }
+    }
+  ],
+  "expected": {}
+}

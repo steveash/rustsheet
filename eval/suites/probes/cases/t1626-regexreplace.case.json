@@ -1,0 +1,63 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1626 REGEXREPLACE evidence-floor probe",
+ "tags": [
+  "M7",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "Hello World 123",
+    "A2": "abcABC",
+    "A3": "a1b2c3",
+    "A4": "日本語",
+    "A5": "",
+    "A6": 7,
+    "A7": "foo.bar",
+    "A8": "aaa",
+    "C1": "=REGEXREPLACE(A1,\"o\",\"0\")",
+    "C2": "=REGEXREPLACE(A1,\"o\",\"0\",1)",
+    "C3": "=REGEXREPLACE(A1,\"o\",\"0\",2)",
+    "C4": "=REGEXREPLACE(A1,\"o\",\"0\",3)",
+    "C5": "=REGEXREPLACE(A1,\"o\",\"0\",0)",
+    "C6": "=REGEXREPLACE(A1,\"o\",\"0\",-1)",
+    "C7": "=REGEXREPLACE(A1,\"o\",\"0\",-2)",
+    "C8": "=REGEXREPLACE(A1,\"o\",\"0\",-9)",
+    "C9": "=REGEXREPLACE(A1,\"o\",\"0\",9)",
+    "C10": "=REGEXREPLACE(A1,\"O\",\"0\")",
+    "C11": "=REGEXREPLACE(A1,\"O\",\"0\",0,1)",
+    "C12": "=REGEXREPLACE(A1,\"O\",\"0\",0,0)",
+    "C13": "=REGEXREPLACE(A1,\"O\",\"0\",1,1)",
+    "C14": "=REGEXREPLACE(A1,\"(\\w+) (\\w+)\",\"$2 $1\")",
+    "C15": "=REGEXREPLACE(A1,\"(\\w+) (\\w+)\",\"$0\")",
+    "C16": "=REGEXREPLACE(A1,\"(\\w+) (\\w+)\",\"$3\")",
+    "C17": "=REGEXREPLACE(A1,\"(\\w+) (\\w+)\",\"$$\")",
+    "C18": "=REGEXREPLACE(A1,\"(\\w+) (\\w+)\",\"\\1\")",
+    "C19": "=REGEXREPLACE(A1,\"(?<x>\\w+) \",\"${x}-\")",
+    "C20": "=REGEXREPLACE(A1,\"\\d\",\"\")",
+    "C21": "=REGEXREPLACE(A1,\"x*\",\"-\")",
+    "C22": "=REGEXREPLACE(A1,\"\",\"-\")",
+    "C23": "=REGEXREPLACE(A1,\"(\",\"-\")",
+    "C24": "=REGEXREPLACE(A1,\"^\",\">\")",
+    "C25": "=REGEXREPLACE(A1,\"$\",\"<\")",
+    "C26": "=REGEXREPLACE(A5,\"x*\",\"-\")",
+    "C27": "=REGEXREPLACE(A5,\"^\",\">\")",
+    "C28": "=REGEXREPLACE(A6,\"7\",\"8\")",
+    "C29": "=REGEXREPLACE(A6,\"7\",9)",
+    "C30": "=REGEXREPLACE(A4,\".\",\"x\")",
+    "C31": "=REGEXREPLACE(A4,\"\\p{L}\",\"x\")",
+    "C32": "=REGEXREPLACE(A8,\"a\",\"b\",2)",
+    "C33": "=REGEXREPLACE(A8,\"a+\",\"b\",0)",
+    "C34": "=REGEXREPLACE(A8,\"a*?\",\"b\")",
+    "C35": "=REGEXREPLACE(A1:A2,\"a\",\"b\")",
+    "C36": "=REGEXREPLACE(1/0,\"a\",\"b\")",
+    "C37": "=REGEXREPLACE(A1,\"o\",\"0\",\"x\")",
+    "C38": "=REGEXREPLACE(A1,\"o\",\"0\",1.9)"
+   }
+  }
+ ],
+ "expected": {}
+}

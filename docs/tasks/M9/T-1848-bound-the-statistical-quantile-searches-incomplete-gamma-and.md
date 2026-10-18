@@ -77,6 +77,6 @@ probes/stat-later-argument-lift did for T-1290). Split by family if it is larger
   (33 fixed, all stat-argument-modes lift cells of the nine functions; 43 in the new case, listed above). Compared cell
   by cell with main's binary: probes-numeric, ironcalc-calc, fixtures, poi, gen-m5 to gen-m9 identical (0 fixed, 0 new,
   0 changed failing values); probes differs only in those 33 fixes and the new case (main panics on it, 81/124 here).
-- **Quality:** duplicated lines 4510 → 4430, static_analysis.rs 1209 → 1191 (decision 0010 line). NOTICE names the
+- **Quality:** duplicated lines 4328 → 4248, static_analysis.rs 1199 → 1181 (after merging main at T-1842) (decision 0010 line). NOTICE names the
   statrs port.
 
