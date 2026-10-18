@@ -3,7 +3,7 @@ id: T-1807
 title: "Probe lifted weekend with lifted date, TAKE/DROP of a range and mismatched shapes in the date functions"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
