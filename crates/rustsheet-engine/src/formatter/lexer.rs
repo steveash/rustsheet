@@ -43,10 +43,13 @@ pub enum Token {
     MonthName,           // mmmm or mmmmmm+
     MonthLetter,         // mmmmm
     YearShort,           // y or yy
-    Year,                // yyy+ (or e+)
+    Year,                // yyy+
+    /// `e` (false) or `ee`+ (true, two digits at least): the era year, the four-digit year in a
+    /// Gregorian calendar.
+    EraYear(bool),
     BuddhistYearShort,   // b or bb
     BuddhistYear,        // bbb+
-    Era,                 // g+ (empty in en-US)
+    Era(usize),          // g+ with its length (empty in en-US)
     Calendar(char),      // B1 (Gregorian) or B2 (Hijri)
     Hour,                // h
     HourPadded,          // hh
@@ -93,6 +96,7 @@ impl Token {
             || self == &Token::MonthLetter
             || self == &Token::YearShort
             || self == &Token::Year
+            || matches!(self, Token::EraYear(_))
             || self == &Token::BuddhistYearShort
             || self == &Token::BuddhistYear
     }
@@ -594,12 +598,11 @@ impl Lexer {
                         Token::BuddhistYear
                     }
                 }
-                // Excel: a lowercase `e` (any run) is the four-digit year (`TEXT(100,"e")` = "1900",
-                // `"e+"` = "1900+"; probes/text-format-bare-literals A51, A52, A63).
-                'e' => {
-                    self.consume_run('e');
-                    Token::Year
-                }
+                // Excel: a lowercase `e` (any run) is the era year, which is the four-digit year in
+                // the Gregorian calendar (`TEXT(100,"e")` = "1900", `"e+"` = "1900+";
+                // probes/text-format-bare-literals A51, A52, A63); under Japanese eras `e` is "5" and
+                // `ee` "05" (probes/text-locale-calendars A13).
+                'e' => Token::EraYear(self.consume_run('e') > 1),
                 'g' | 'G' => {
                     if self
                         .chars
@@ -612,8 +615,7 @@ impl Lexer {
                     // Excel: any other run of `g` is the era, empty for the Gregorian calendar
                     // (`TEXT(100,"g")` = "", `TEXT(1,"dG")` = "1"; probes/text-format-bare-literals
                     // A53-A56, probes/text-format-unquoted-letters).
-                    self.consume_run('g');
-                    Token::Era
+                    Token::Era(self.consume_run('g'))
                 }
                 // Excel: `n`/`N` are invalid (cause unknown, not an en-US date token;
                 // probes/text-format-unquoted-letters A14, A40).

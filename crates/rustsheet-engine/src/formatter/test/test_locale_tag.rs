@@ -65,7 +65,7 @@ fn a_second_tag_in_a_section_is_an_error() {
 #[test]
 fn tags_resolve_like_excel() {
     let names = |tag: &str| match resolve(tag) {
-        LocaleTag::Names(n) => Some(n.months[2]),
+        LocaleTag::Names(n) => Some(n.names.months[2]),
         _ => None,
     };
     assert_eq!(names("40c"), Some("mars"));
@@ -86,4 +86,54 @@ fn tags_resolve_like_excel() {
     }
     assert_eq!(resolve("F800"), LocaleTag::SystemDate);
     assert_eq!(resolve("X-SYSTIME"), LocaleTag::SystemTime);
+}
+
+// Values from probes/text-locale-calendars, text-locale-calendars-detail and
+// text-locale-japanese-year (T-1859).
+
+#[test]
+fn japanese_eras() {
+    assert_eq!(text(45000.0, "[$-411]g|gg|ggg|e|ee"), "R|令|令和|5|05");
+    assert_eq!(text(45000.0, "[$-ja-JP]g|gg|ggg|e|ee"), "R|令|令和|5|05");
+    assert_eq!(text(43585.0, "[$-411]g|e|yyyy-mm-dd"), "H|31|31-04-30");
+    assert_eq!(text(43586.0, "[$-411]ggge\"年\"m\"月\"d\"日\""), "令和1年5月1日");
+    assert_eq!(text(4595.0, "[$-411]g|ee"), "T|01");
+    assert_eq!(text(9855.0, "[$-411]g|e"), "T|15");
+    assert_eq!(text(9856.0, "[$-411]g|e"), "S|1");
+    assert_eq!(text(0.0, "[$-411]g|e|yyyy-mm-dd"), "M|33|33-01-00");
+    assert_eq!(text(2_958_465.0, "[$-411]g|e|yyyy"), "R|7981|7981");
+    assert_eq!(text(45000.0, "[$-411]gggg|ggggg|eee"), "令和|令和|05");
+    // The locale's own calendar counts `yy`/`yyyy` in eras only after a `g`; calendar 3 always.
+    assert_eq!(text(45000.0, "[$-411]yy|g|yy|yyyy"), "23|R|05|05");
+    assert_eq!(text(45000.0, "[$-411]e|yy|yyyy"), "5|23|2023");
+    assert_eq!(text(45000.0, "[$-30411]yy|b|e|ggg"), "05|23|5|令和");
+    assert_eq!(text(45000.0, "[$-30409]yyyy|mmmm|g"), "05|March|R");
+    assert_eq!(text(45000.0, "[$-10411]g|e|yy"), "|2023|2023");
+    assert_eq!(text(45000.0, "[$-70411]g|yyyy|mmmm"), "|2023|มีนาคม");
+}
+
+#[test]
+fn calendar_digits() {
+    assert_eq!(text(45000.0, "[$-20411]mmmm|e|g"), "March|2023|");
+    assert_eq!(text(45000.0, "[$-40409]ddd|mmm|yy|b"), "週三|三月|2023|23");
+    assert_eq!(text(45000.0, "[$-50409]yyyy|yy|b|e|mmmm"), "4356|56|23|2023|March");
+    assert_eq!(text(45000.0, "[$-50412]mmmm"), "3월");
+    assert_eq!(text(45000.0, "[$-70409]yyyy|yy|bbbb|e|mmmm"), "2566|66|2566|2023|มีนาคม");
+    assert_eq!(text(45000.0, "[$-90409]ddd|mmmm"), "mer.|mars");
+    assert_eq!(text(45000.0, "[$-D0409]mmmm"), "March");
+    assert_eq!(text(45000.0, "[$-FF040C]mmmm"), "mars");
+    // Day halves follow the LCID, not the calendar.
+    assert_eq!(text(45000.75, "[$-30409]h AM/PM"), "6 PM");
+    assert_eq!(text(45000.75, "[$-30411]h A/P"), "6 午後");
+    assert_eq!(text(45000.75, "[$-40409]h AM/PM"), "6 PM");
+}
+
+#[test]
+fn buddhist_and_calendar_tokens_under_a_tag() {
+    assert_eq!(text(45000.0, "b|bbbb"), "66|2566");
+    assert_eq!(text(45000.0, "[$-40C]b|bb|bbb|bbbb"), "23|23|2023|2023");
+    assert_eq!(text(45000.0, "[$-411]b|bbbb"), "23|2023");
+    assert_eq!(text(45000.0, "[$-40C]B2mmmm"), "mars");
+    assert_eq!(text(45000.0, "[$-401]B2yyyy-mm-dd"), "2023-03-15");
+    assert_eq!(text(45000.0, "B1[$-411]g|e"), "R|5");
 }

@@ -1,5 +1,5 @@
 use super::lexer::{Compare, Lexer, Token};
-use super::locale_tag::{self, DateNames, LocaleTag};
+use super::locale_tag::{self, Calendar, DateNames, LocaleTag};
 use crate::locale::excel_date_names::EN_US;
 
 pub struct Digit {
@@ -31,6 +31,10 @@ pub enum TextToken {
     MonthLetter,
     YearShort,
     Year,
+    /// `e` (false) or `ee`+ (true).
+    EraYear(bool),
+    /// `g`, `gg` or `ggg`+: the era's letter, first character or name.
+    Era(usize),
     BuddhistYearShort,
     BuddhistYear,
     Hour,
@@ -69,6 +73,10 @@ pub struct DatePart {
     pub tokens: Vec<TextToken>,
     /// The names of the section's `[$-...]` locale; `None` uses the workbook locale.
     pub names: Option<&'static DateNames>,
+    /// What `AM/PM` and `A/P` print under the section's locale tag.
+    pub day_half: Option<&'static DateNames>,
+    /// The calendar of the section's locale tag; `None` for a section with none.
+    pub calendar: Option<Calendar>,
 }
 
 pub struct ErrorPart {}
@@ -365,16 +373,26 @@ impl Parser {
                     is_date = true;
                     tokens.push(TextToken::BuddhistYear);
                 }
-                // The era prints nothing for the Gregorian calendar and `B1` selects it; both
-                // still make the section a date one (`TEXT(100,"g")` and `TEXT(100,"B1")` are "").
-                Token::Era | Token::Calendar('1') => {
+                Token::EraYear(padded) => {
+                    is_date = true;
+                    tokens.push(TextToken::EraYear(padded));
+                }
+                // The era prints nothing for the Gregorian calendar (`TEXT(100,"g")` is "").
+                Token::Era(length) => {
+                    is_date = true;
+                    tokens.push(TextToken::Era(length));
+                }
+                // `B1` selects the Gregorian calendar and still makes the section a date one
+                // (`TEXT(100,"B1")` is ""). After a locale tag `B1` and `B2` change nothing
+                // (`[$-40C]B2mmmm` is "mars"; probes/text-locale-calendars A125-A134).
+                Token::Calendar('1') => {
                     is_date = true;
                 }
                 // TODO(T-1613): `B2` (Hijri) is not implemented: the section is an error once a date or time
                 // token would print a Hijri date (`TEXT(100,"B2")` alone is "").
                 Token::Calendar(_) => {
                     is_date = true;
-                    hijri = true;
+                    hijri |= locale.is_none();
                 }
                 Token::Hour => {
                     is_date = true;
@@ -481,8 +499,8 @@ impl Parser {
                 return self.system_part(system_format, color);
             }
         }
-        let names = match locale {
-            Some(LocaleTag::Names(names)) => Some(names),
+        let localized = match locale {
+            Some(LocaleTag::Names(localized)) => Some(localized),
             _ => None,
         };
         let general_count = tokens
@@ -526,7 +544,9 @@ impl Parser {
                 color,
                 use_ampm,
                 tokens,
-                names,
+                names: localized.map(|l| l.names),
+                day_half: localized.map(|l| l.day_half),
+                calendar: localized.map(|l| l.calendar),
             })
         } else {
             ParsePart::Number(NumberPart {
@@ -573,6 +593,8 @@ impl Parser {
             Some(ParsePart::Date(part)) => ParsePart::Date(DatePart {
                 color,
                 names: Some(EN_US),
+                day_half: Some(EN_US),
+                calendar: Some(Calendar::Gregorian),
                 ..part
             }),
             _ => ParsePart::Error(ErrorPart {}),
