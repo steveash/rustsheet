@@ -439,7 +439,9 @@ This matches 2,139,591 of 2,139,684 EXP cells across all kmyst-erfc-* probes, in
 `kmyst-erfc-r5expmap1/2`. The 93 misses are all points where 2^|f| - 1 lies within 0.09 ulp of a 64-bit rounding
 midpoint. There, Excel's F2XM1 is faithful but not correctly rounded, with an error of about 2^-69, deterministic
 and not matched by this machine's Intel F2XM1. The likely cause is a different CPU's F2XM1 microcode (an AMD Zen
-hypothesis is untested), so those cells may be CPU-dependent. The earlier description below (a floor split, with
+hypothesis is untested), so those cells may be CPU-dependent. Confirmed in part (T-1916): a fresh excel-graph fill of the
+20 ERFC cells whose E is such a near-tie returned 9 of them with the other rounding (statistics.md, the T-1778
+entry), while 37,181 neighbouring ERF/ERFC cells were identical across the two runs. The earlier description below (a floor split, with
 F2XM1 applied to f in [0, 1)) is superseded: it had 6,281 misses on the same set.
 
 Earlier description: t = fl64(a * L2E64), then EXP = fl53(fl64(2^t)). Here L2E64 is log2(e) rounded to a 64-bit

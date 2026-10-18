@@ -553,31 +553,34 @@ GAMMA.DIST are not routed yet (T-1929).
   928,038 cells; `ERFC.PRECISE(A)`, `ERFC(A)`: 7,259,712): all match except 27 ERFC cells. Each of the 27 sits on a
   row whose `EXP(-(x*x))` cell also differs from model V6: 7 are the misparsed inputs (numbers.md), and 20 are V6's
   F2XM1 near-ties, where E itself is one ulp off. So the kernel is exact given Excel's E.
-- The 20 residual cells (ours minus Excel, in ulps; probes-numeric `t1916-erfc-exp-ties` keeps them as known
-  failures):
+- The 20 residual cells (ours minus Excel, in ulps, against the T-1778 run of 2026-10-17/18). Excel itself is not
+  stable on them: re-filling probes-numeric `t1916-erfc-exp-ties` from excel-graph on 2026-10-18 22:09 UTC changed 9 of
+  the 20 to exactly the engine's value (last column), while all 37,181 other curated cells came back identical. That
+  fits the numbers.md hypothesis that F2XM1 near-ties depend on the server's CPU. The case keeps the re-filled values;
+  11 cells fail there:
 
-  | x | source cell | Excel | ours | ulps |
-  |---|---|---|---|---|
-  | 0.6072288384003274 | `kmyst-erfc-r8a02!B11142` | 0.39047776383350075 | 0.3904777638335007 | -1 |
-  | 0.7384214715396948 | `kmyst-erfc-r8a27!B2131` | 0.2963532455163474 | 0.29635324551634745 | +1 |
-  | 1.0120360000006228 | `kmyst-erfc-r8c02!B2806` | 0.15236286518682227 | 0.1523628651868223 | +1 |
-  | 1.133855197359528 | `kmyst-erfc-r8c11!B12999` | 0.10882135357193193 | 0.10882135357193196 | +2 |
-  | 1.2477434152698585 | `kmyst-erfc-r8c19!B14809` | 0.07763510913068844 | 0.07763510913068843 | -1 |
-  | 1.2552298757609002 | `kmyst-erfc-r8c20!B4056` | 0.0758709582369251 | 0.07587095823692512 | +1 |
-  | 1.3895972295864865 | `kmyst-erfc-r8c28!B12529` | 0.049392569300292365 | 0.04939256930029237 | +1 |
-  | 1.5019749479478826 | `kmyst-erfc-r8c35!B2555` | 0.033660667142911285 | 0.03366066714291129 | +1 |
-  | 1.6234407324888618 | `kmyst-erfc-r8c41!B12972` | 0.021682062911535203 | 0.021682062911535207 | +1 |
-  | 1.9777427541726267 | `kmyst-erfc-r8c58!B1853` | 0.005158741609633451 | 0.005158741609633452 | +1 |
-  | 1.999999999994299 | `kmyst-erfc-r10a03!B7094` | 0.004677734981165087 | 0.004677734981165086 | -1 |
-  | 2.0980403743165046 | `kmyst-erfc-r8b05!B6701` | 0.0030064550726207197 | 0.0030064550726207192 | -1 |
-  | 3.4470393500808028 | `kmyst-erfc-r8b46!B8686` | 1.088912745444291e-06 | 1.0889127454442908e-06 | -1 |
-  | 3.4677215861840427 | `kmyst-erfc-r8b47!B6701` | 9.385719563052113e-07 | 9.385719563052112e-07 | -1 |
-  | 3.5625000000032463 | `kmyst-erfc-r8d09!B7311` | 4.700878390220142e-07 | 4.7008783902201417e-07 | -1 |
-  | 3.664062500001378 | `kmyst-erfc-r8d22!B3104` | 2.1979381408397832e-07 | 2.197938140839783e-07 | -1 |
-  | 6.033383929192591 | `kmyst-erfc-r6edge2!B2734` | 1.432267499362933e-17 | 1.4322674993629332e-17 | +1 |
-  | 8.023485545192495 | `kmyst-erfc-r4zoomf1!B4817` | 7.681947674754094e-30 | 7.681947674754095e-30 | +1 |
-  | 10.807240000000013 | `kmyst-erfc-r4cat3!B5888` | 9.813472760469224e-53 | 9.813472760469222e-53 | -1 |
-  | 13.046480000000013 | `kmyst-erfc-r4tile3!B17525` | 5.1656301475547037e-76 | 5.165630147554705e-76 | +2 |
+  | x | source cell | Excel | ours | ulps | 2026-10-18 re-fill |
+  |---|---|---|---|---|---|
+  | 0.6072288384003274 | `kmyst-erfc-r8a02!B11142` | 0.39047776383350075 | 0.3904777638335007 | -1 | unchanged |
+  | 0.7384214715396948 | `kmyst-erfc-r8a27!B2131` | 0.2963532455163474 | 0.29635324551634745 | +1 | now ours |
+  | 1.0120360000006228 | `kmyst-erfc-r8c02!B2806` | 0.15236286518682227 | 0.1523628651868223 | +1 | unchanged |
+  | 1.133855197359528 | `kmyst-erfc-r8c11!B12999` | 0.10882135357193193 | 0.10882135357193196 | +2 | now ours |
+  | 1.2477434152698585 | `kmyst-erfc-r8c19!B14809` | 0.07763510913068844 | 0.07763510913068843 | -1 | now ours |
+  | 1.2552298757609002 | `kmyst-erfc-r8c20!B4056` | 0.0758709582369251 | 0.07587095823692512 | +1 | unchanged |
+  | 1.3895972295864865 | `kmyst-erfc-r8c28!B12529` | 0.049392569300292365 | 0.04939256930029237 | +1 | now ours |
+  | 1.5019749479478826 | `kmyst-erfc-r8c35!B2555` | 0.033660667142911285 | 0.03366066714291129 | +1 | unchanged |
+  | 1.6234407324888618 | `kmyst-erfc-r8c41!B12972` | 0.021682062911535203 | 0.021682062911535207 | +1 | now ours |
+  | 1.9777427541726267 | `kmyst-erfc-r8c58!B1853` | 0.005158741609633451 | 0.005158741609633452 | +1 | unchanged |
+  | 1.999999999994299 | `kmyst-erfc-r10a03!B7094` | 0.004677734981165087 | 0.004677734981165086 | -1 | unchanged |
+  | 2.0980403743165046 | `kmyst-erfc-r8b05!B6701` | 0.0030064550726207197 | 0.0030064550726207192 | -1 | now ours |
+  | 3.4470393500808028 | `kmyst-erfc-r8b46!B8686` | 1.088912745444291e-06 | 1.0889127454442908e-06 | -1 | now ours |
+  | 3.4677215861840427 | `kmyst-erfc-r8b47!B6701` | 9.385719563052113e-07 | 9.385719563052112e-07 | -1 | now ours |
+  | 3.5625000000032463 | `kmyst-erfc-r8d09!B7311` | 4.700878390220142e-07 | 4.7008783902201417e-07 | -1 | unchanged |
+  | 3.664062500001378 | `kmyst-erfc-r8d22!B3104` | 2.1979381408397832e-07 | 2.197938140839783e-07 | -1 | unchanged |
+  | 6.033383929192591 | `kmyst-erfc-r6edge2!B2734` | 1.432267499362933e-17 | 1.4322674993629332e-17 | +1 | unchanged |
+  | 8.023485545192495 | `kmyst-erfc-r4zoomf1!B4817` | 7.681947674754094e-30 | 7.681947674754095e-30 | +1 | now ours |
+  | 10.807240000000013 | `kmyst-erfc-r4cat3!B5888` | 9.813472760469224e-53 | 9.813472760469222e-53 | -1 | unchanged |
+  | 13.046480000000013 | `kmyst-erfc-r4tile3!B17525` | 5.1656301475547037e-76 | 5.165630147554705e-76 | +2 | unchanged |
 - Curated evidence on main (excel-graph values copied unchanged, provenance in each case description):
   probes-numeric `t1916-erf-small` (4,878 cells), `t1916-erfc-mid` (9,024), `t1916-erfc-tail` (10,142),
   `t1916-erf-wrappers` (13,137) and `t1916-erfc-exp-ties` (20). Every ERF, ERFC, ERF(a,b), NORM.S.DIST and
@@ -1368,7 +1371,9 @@ Centrally (|p - 0.5| <= 0.425) no candidate fits (central bit-exact counts of 40
   This matches Microsoft's description of NORM.S.INV as an "iterative search" on NORM.S.DIST and
   has the same shape as BETA.INV (T-1745). Its start and stop rule are not fitted.
 Consequence: the best kernel is a hybrid, PPND16 in the tails and statrs centrally (implemented, T-1916:
-`normal.rs` `ppnd16_tail`, for NORM.S.INV and NORM.INV; the central region stays with T-0925). It is bit-exact
+`normal.rs` `ppnd16_tail`, for NORM.S.INV and NORM.INV; the central region stays with T-0925). In the tails
+NORM.INV(p,m,s) = m + z*s in plain doubles with z = PPND16(p): `NORM_DIST.xlsx` `NORM.DIST NORM.INV`!F4, F10, F11,
+F16, F17, F24, F25, F42, F58, F68, F69 and F77 all pass with it; centrally statrs' own `Normal(m, s)` composition stays. It is bit-exact
 on 775 of 1,024 sweep cells, against 341 for the engine's statrs alone (fit `norm-s-inv`).
 Side finding for T-0968, now the fit `norm-s-dist` (T-1759): over all 1,773 NORM.S.DIST cells,
 `0.5*erfc(-x*sqrt(0.5))` (glibc) is bit-exact on 1,103, Cody's rational approximations (R's

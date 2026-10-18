@@ -19518,9 +19518,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "5b36284d8c3d6db28d9aad59a504b3172b572592dfee67dc1f234a79856ea900",
+  "input_sha256": "26d4a13ff19c06efc7e253b37483c5bdcb88743d766270d3c4b92f57c9967645",
   "kind": "excel-graph",
-  "produced_at": "2026-10-17T05:53:51+00:00",
+  "produced_at": "2026-10-18T22:08:53+00:00",
   "version": null
  }
 }

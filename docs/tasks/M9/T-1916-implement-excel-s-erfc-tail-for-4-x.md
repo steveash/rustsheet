@@ -3,7 +3,7 @@ id: T-1916
 title: "Implement Excel's ERF, ERF.PRECISE, ERFC and ERFC.PRECISE for all x from the T-1778 kernels"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -38,27 +38,48 @@ ERF, ERF.PRECISE, ERFC and ERFC.PRECISE reproduce Excel's bits for every x, from
 - Kernel map rank 2 (docs/research/numeric-kernel-map.md, decision 0056).
 
 ## Acceptance criteria
-- [ ] The coefficient files (round3/sol100.txt, round9/erfc_mid_coef.txt, round7/erfc_tail_coef.txt),
+- [x] The coefficient files (round3/sol100.txt, round9/erfc_mid_coef.txt, round7/erfc_tail_coef.txt),
   round8/exp_v6.py, the mid_check.c and erfc_tail_check.c verifiers and the round READMEs are on main under
   docs/research/t1778/, each with a provenance line.
-- [ ] The T-1778 entries of docs/excel-semantics/statistics.md and numbers.md (bit-exact kernels, wrapper
+- [x] The T-1778 entries of docs/excel-semantics/statistics.md and numbers.md (bit-exact kernels, wrapper
   quirks, EXP V6, xlsx misparse) are on main, merged into main's current versions.
-- [ ] 0 <= x <= 0.5: ERF is the small-x rational and ERFC = fl(1 - ERF), bit-exact on the probes.
-- [ ] 0.5 < x <= 4: ERFC is the (9,10) rational times Excel's EXP and ERF = fl(1 - ERFC), bit-exact, with the
+- [x] 0 <= x <= 0.5: ERF is the small-x rational and ERFC = fl(1 - ERF), bit-exact on the probes.
+- [x] 0.5 < x <= 4: ERFC is the (9,10) rational times Excel's EXP and ERF = fl(1 - ERFC), bit-exact, with the
   split exactly at 0.5 + 2^-53 and x = 4 on this side.
-- [ ] 4 < x <= 26.55: ERFC is the (8,9) rational times Excel's EXP, bit-exact; below DBL_MIN and beyond 26.55 it
+- [x] 4 < x <= 26.55: ERFC is the (8,9) rational times Excel's EXP, bit-exact; below DBL_MIN and beyond 26.55 it
   is 0.
-- [ ] Excel's EXP model V6 is an internal helper reusing the engine's x87 rounding; every constant cites T-1778.
-- [ ] Negative x, ERF(a,b) and the legacy names follow the wrapper identities.
-- [ ] A unit test per piece and per boundary (0.5 / 0.5 + 2^-53, 4 / 4+, the cutoff, negative x).
-- [ ] A curated probe subset of the T-1778 probes (about 20-50k cells, with provenance; no misparsed inputs) is
+- [x] Excel's EXP model V6 is an internal helper reusing the engine's x87 rounding; every constant cites T-1778.
+- [x] Negative x, ERF(a,b) and the legacy names follow the wrapper identities.
+- [x] A unit test per piece and per boundary (0.5 / 0.5 + 2^-53, 4 / 4+, the cutoff, negative x).
+- [x] A curated probe subset of the T-1778 probes (about 20-50k cells, with provenance; no misparsed inputs) is
   bit-exact except listed residuals; probes/subnormal-function-boundaries A5 and t1040-erfc(-precise) pass.
-- [ ] `make eval-baseline` shows only fixes, with no regression in ERFs/NORM/GAUSS/LOGNORM/CHISQ/POISSON or the
+- [x] `make eval-baseline` shows only fixes, with no regression in ERFs/NORM/GAUSS/LOGNORM/CHISQ/POISSON or the
   probes suites. T-1186 is then done.
-- [ ] Cells that do not reproduce are listed with their ulp errors in the PR and statistics.md.
-- [ ] Follow-ups filed: the worksheet EXP on model V6; routing NORM/CHISQ/POISSON through the T-1778 identities.
-- [ ] `make check` green; reviewers approve.
+- [x] Cells that do not reproduce are listed with their ulp errors in the PR and statistics.md.
+- [x] Follow-ups filed: the worksheet EXP on model V6; routing NORM/CHISQ/POISSON through the T-1778 identities.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The worksheet EXP (follow-up) and EXP V6's 93 F2XM1 near-ties.
 - Routing CHISQ, POISSON, GAMMA.DIST and Z.TEST through the identities (follow-up).
+
+## Outcome
+- `functions/statistical/erf.rs` implements the three T-1778 kernels and the wrapper identities with x87
+  `fl53(fl64(.))` at every step (the `arithmetic.rs` `extended_*` helpers); `x87_exp.rs` is Excel's EXP model V6
+  as an internal helper (integer x87 rounding plus a double-double F2XM1). The old series and continued fraction
+  are gone; `poly` moved to `functions/util.rs`.
+- Bulk check against every single-argument ERF/ERFC cell of the research probes (928,038 ERF, 7,259,712 ERFC):
+  all match except 27 ERFC cells, each on a row where Excel's EXP also misses V6 (7 xlsx-misparsed inputs, 20
+  F2XM1 near-ties). A fresh excel-graph fill flipped 9 of those 20 to the engine's value, so Excel is not stable
+  there (statistics.md lists the cells with their ulp errors).
+- Curated evidence: probes-numeric `t1916-*` (37,201 cells, re-filled from excel-graph). Every ERF, ERFC,
+  ERF(a,b), NORM.S.DIST and NORM.DIST cell passes; failures are the CHISQ.DIST.RT and Z.TEST wrappers (T-1929) and
+  11 EXP near-ties. probes-numeric is ungated (`gate = false`), so these cells are evidence, not a ratchet.
+- Pulled in to keep `make eval-check` regression-free: `normal_cdf` now follows the T-1778 NORM.S.DIST identity
+  (three NORM/LOGNORM cells regressed through the plain erfc swap otherwise), and NORM.S.INV/NORM.INV/
+  CONFIDENCE.NORM take the T-1746 PPND16 tail (three inverse cells lost a lucky statrs match once their inputs
+  became exact). T-0925 keeps the central region and LOGNORM.INV.
+- eval: ironcalc-calc known failures 1243 -> 1148 (NORM_DIST 36, LOGNORM 21, CONFIDENCE 17, ERFs 14, GAUSS 5,
+  Z_TEST 2), probes 2146 -> 2135 (incl. subnormal-function-boundaries A5); no regressions. ERFs.xlsx E8/G8
+  (`ERFC(6)`) stay: Mac Excel cached a value 2 ulp from the Windows oracle's, which we match.
+- Follow-ups: T-1928 (worksheet EXP on V6), T-1929 (route CHISQ.DIST.RT, Z.TEST, POISSON, GAMMA.DIST). T-1186 done.

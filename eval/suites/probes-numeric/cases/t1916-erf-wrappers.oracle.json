@@ -52554,9 +52554,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "fdb85c3cc815ee1be3f22fb1be7a95bcf8e92a86a175d3d8c6e914a963e3d283",
+  "input_sha256": "9ede43c83c829a0094d5b74b4e3772d3150fcc627d81f24d9ba40da5799d6b2c",
   "kind": "excel-graph",
-  "produced_at": "2026-10-18T01:35:59+00:00",
+  "produced_at": "2026-10-18T22:09:06+00:00",
   "version": null
  }
 }
