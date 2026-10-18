@@ -5,112 +5,108 @@ still add or remove "Needs owner" entries. PRs no longer append log lines (decis
 of merged work is `git log --first-parent main` plus each task's Outcome, and the steward lists what
 merged since its last run.
 
-## Snapshot — 2026-10-17 (M2 is current)
+## Snapshot — 2026-10-18 (M2 is current)
 
 | Suite | Cases | Cells | Bit-exact | Known failures |
 |---|---|---|---|---|
-| ironcalc-calc | 217 | 72,203 | 98.20% | 1,300 |
-| poi | 336 | 27,290 | 98.27% (204 cases pending: no formulas, unreadable, or web-vs-desktop conflicts) | 488 |
+| ironcalc-calc | 219 | 72,223 | 98.28% | 1,243 |
+| poi | 336 | 27,290 | 98.28% (204 cases pending: no formulas, unreadable, or web-vs-desktop conflicts) | 484 |
 | gen-m2 | 30 | 12,000 | **100%** | 0 |
 | gen-m1 | 15 | 3,750 | **100%** | 0 |
 | gen-m10 | 20 | 1,690 | 93.08% | 117 |
-| probes | 797 | 46,257 | 93.58% (4 accepted deviations, 11 cells passed by decision 0042) | 3,004 |
+| probes | 889 | 58,557 | 95.96% (4 accepted deviations, 11 cells passed by decision 0042) | 2,411 |
 | smoke | 6 | 46 | 100% | 0 |
 | fixtures | 17 | 248 | 96.37% | 9 |
-| corpus-bench | 912 | 0 (crash-only, 907 pending until T-0427) | — | 5 load timeouts (T-0430) |
+| corpus-bench | 912 | 45,444 (142 scored workbooks, 765 pending) | 97.53% (98.35% within 1e-9) | 19; 5 load timeouts (T-0430) |
 | gen-m5 | 10 | 400 | 99.25% | not gated |
-| gen-m6 | 25 | 1,000 | 99.50% | not gated |
-| gen-m7 | 25 | 994 | 97.08% | not gated |
+| gen-m6 | 25 | 1,000 | 99.70% | not gated |
+| gen-m7 | 25 | 994 | 99.40% | not gated |
 | gen-m8a | 12 | 3,577 | 83.20% | not gated |
 | gen-m8b | 9 | 3,368 | 91.78% | not gated |
-| gen-m9 | 25 | 998 | 92.79% | not gated |
-| probes-numeric | 138 | 20,446 | 57.00% | not gated |
+| gen-m9 | 25 | 998 | 94.99% | not gated |
+| probes-numeric | 139 | 20,878 | 57.91% | not gated |
 
-`make eval-check` on `main` (ea76d91f) shows 0 regressions and 0 unrecorded fixes in every gated suite, poi included (fetched for this run, with corpus-bench).
+`make eval-check` on `main` (cdf7d088) shows 0 regressions and 0 unrecorded fixes in every gated suite. poi and corpus-bench were fetched for this run.
 
-CI on `main` is green at ea76d91f. No CI run on `main` failed since the last snapshot (one run, 837be632, was cancelled by the next push).
+CI on `main` is green at cdf7d088. No CI run on `main` failed since the last snapshot. Five runs were cancelled by the next push.
 
 Where M2's exit stands:
 - gen-m2: **100%, criterion met**.
-- ironcalc-calc cells using only M1/M2 functions: criterion met.
 - The frozen m1-probes list is at 0 failures (89 cases, 1,858 cells).
-- M0–M2 probes: 366 cases, 10,439 cells, 10,365 bit-exact, 4 deviations, **70 known failures** (was 29). The rise is new coverage, not regressions: T-1713 (#958) and T-1756 (#981) added probes whose failing cells all have open tasks. All 29 failures from the last snapshot are fixed.
-  - `legacy-n-t-reference-args` (37) and `legacy-array-result` (19): T-1728 (engine; PR #985 merged during this run, so 6 of these cells are fixed on `main` now), T-1717 and the spec T-1727 (engine). T-1713 (functions-logic) stays blocked on T-1727.
-  - `unknown-function-name-reach` (5): T-1760, T-1762, T-1763 (engine).
-  - `text-ap-locale-inferences` (4): T-1716 (functions-text).
-  - `n-array-lift` (2): T-1713, after T-1727.
-  - `unknown-function-name-spelling` (2): T-1758 (engine).
-  - `t-array-lift` (1): T-0985 (functions-text).
-  - T-1716 had been filed in M10 and T-0985 in M9, although their cells count toward M2 (decision 0051). This PR moves them to M2.
-- Criteria matching and aggregate-argument iteration: T-1677 (AND/OR/XOR onto the shared walk) merged. The planner confirmed that SUM, AVERAGE, COUNT, COUNTA, MIN, MAX, AND, OR and XOR all go through the shared walk, and every *IF(S), D-function, MATCH and XMATCH consumer goes through criteria.rs: **met**. The private walks left (GCD/LCM, MULTINOMIAL, CONCAT/TEXTJOIN, COUNTBLANK, CHISQ, date serials, SUMX*) are outside SPEC-0009's scope.
-- Duplication is at 6,155 lines, 32.8% below the fork's 9,153 (target ≥ 15%), so the number is met.
+- M0–M2 probes: 379 cases, 10,981 cells, 10,797 bit-exact, 4 deviations, **180 known failures** (was 70). The rise is new coverage: T-1788 added `date-text-glued-month`. All 180 cells have an open owning task (the planner checked them cell by cell):
+  - `date-text-glued-month` (148): T-1789 (functions-date, todo; T-1788 is done).
+  - `legacy-n-t-reference-args` (25), `legacy-array-result` (5) and `n-array-lift` (2): T-1713's acceptance list. T-1713 (now engine) is blocked on T-1851. The spec T-1727 merged, so T-1851 (engine, todo) is the next step, and T-1852 follows it.
+  - Fixed since the last run: `unknown-function-name-reach`, `unknown-function-name-spelling`, `text-ap-locale-inferences` and `t-array-lift` (T-1758, T-1760, T-1762, T-1763, T-1716, T-0985).
+- ironcalc-calc cells using only M1/M2 functions: the report scores 3,978 of 3,978 bit-exact, but it leaves out 1,378 array-member cells with no formula of their own. 46 of them fail. The planner traced each one to its anchor. One, `LOGICAL/IF_ARRAY.xlsx!Sheet1!C11`, is a member of `IF(FALSE,A1:A4,B1:C4)` and is in M2 scope. So the criterion is **not quite met**.
+  - **T-1877** (harness, sonnet) scores member cells by their anchor's formula.
+  - **T-1876** (research, opus) settles the target for desktop SIN(4) in IF_ARRAY C4, E4 and C11. Desktop cached ...283 there, but the web and RustSheet give ...282.
+- Criteria and aggregate iteration through the shared walks: met (last run).
+- Duplication is at 4,328 lines, 52.7% below the fork's 9,153 (target ≥ 15%): met.
 
-Hygiene: lint-debt 91 allow entries (= last run) · duplicated lines 6,155 (ratchet 6,155, tightened since the last run) · oversized files 14 (ratchet 14).
+Hygiene: lint-debt 91 allow entries (= last run) · duplicated lines 4,328 (ratchet 4,328; was 6,155) · oversized files 13 (ratchet 13; was 14).
 
-Since the 2026-10-16 snapshot (steward PR #900, cd16ff51), 81 PRs merged to `main` through ea76d91f: 78 task PRs and 3 task-filing PRs (#917, #919, #965). None was reverted.
-- T-0426, T-0901, T-0916, T-1291, T-1307, T-1322–T-1327, T-1356, T-1439, T-1535, T-1554, T-1557
-- T-1569, T-1607, T-1608, T-1610, T-1611, T-1616, T-1620–T-1624, T-1628, T-1632
-- T-1644–T-1646, T-1651, T-1656–T-1659, T-1663, T-1667, T-1669, T-1670, T-1672–T-1677
-- T-1678–T-1682, T-1685, T-1693–T-1697, T-1702, T-1704, T-1705, T-1709, T-1710
-- T-1712–T-1715, T-1718–T-1720, T-1722, T-1729, T-1739, T-1744–T-1746, T-1756, T-1759
+Since the 2026-10-17 snapshot (steward PR #988, 82bd38d), 86 commits landed on `main` through cdf7d088, touching 79 task ids. None was reverted.
+- 80 came through PRs.
+- **6 were pushed straight to `main` with no PR or review**: T-1778's research plan (6f85cc9, 4700e68, cbed44b, 80c5abc, 67da446, 226050a), all from session `01Xbmds2…`. A seventh, 892a53ca, landed during this run. They touch only `docs/research/t1778-erf-kernel-research-plan.md`, and CI passed on each. See "Needs owner".
+- Task ids merged:
+  - T-0427, T-0985, T-1236, T-1237, T-1241, T-1242, T-1253, T-1271, T-1272, T-1290, T-1295, T-1297, T-1308
+  - T-1347–T-1355, T-1361, T-1372, T-1383, T-1384, T-1413, T-1431, T-1517, T-1600, T-1605, T-1626, T-1631
+  - T-1687, T-1698, T-1700, T-1703, T-1706, T-1716, T-1717, T-1727, T-1747, T-1758, T-1760, T-1762, T-1763
+  - T-1767, T-1769–T-1772, T-1774, T-1777, T-1778, T-1780–T-1784, T-1786–T-1788, T-1791, T-1793, T-1794, T-1796
+  - T-1800–T-1802, T-1804, T-1807, T-1815, T-1818, T-1822, T-1825, T-1826, T-1831, T-1840, T-1842
 
-Blocked: 25 (24 last run, plus T-1713). None can be unblocked.
-- T-1713 waits on the spec T-1727 (todo).
+Blocked: 25 (= last run). None can be unblocked.
+- T-1713 now waits on T-1851 (todo) as well as the done spec T-1727.
 - The Phase 2 tasks T-0400, T-0401, T-0402, T-0423 and T-1066 (decision 0027).
 - T-1099 (GEOMEAN last ulp).
-- Time-boxed last-digit fits (decision 0056) with no new hypothesis: T-0968, T-1528 (attempt 3 recorded in #917, no gain), T-1529, T-1592.
-- The M14 desktop-oracle tasks T-0171, T-0198, T-1016, T-1051, T-1074, T-1075, T-1081, T-1174, T-1204, T-1277, T-1299, T-1310, T-1367 and T-1553 (decision 0039).
+- Time-boxed fits (decision 0056) with no new hypothesis: T-0968, T-1528, T-1529, T-1592.
+- 14 M14 desktop-oracle tasks (decision 0039).
 
-**Nightly fuzz:** run 39000004030 (2026-10-17, 22a43ad7) failed on `formula_eval` with a timeout. The previous night's OOM (T-1681) is fixed.
-- The input is `SUM(MAP(A1:A1000,LAMBDA(rSMU,((B1:B100000)))))`.
-- I reproduced it on ea76d91f with a release facade build: 5.3 s for 1,000 rows, linear in rows × range height. `BYROW` and `MAKEARRAY` with the same LAMBDA take under 1 ms.
-- Root cause: `fn_map` passes each call's result through `lambda_result_value`, which materialises a multi-cell range into a full array before the element is stored.
-- Filed **T-1769** (functions-logic, P0, opus).
+**Nightly fuzz:** run 39094842217 (2026-10-18, 052af1ed) failed on `formula_eval`. Last night's MAP timeout (T-1769) is fixed.
+- The input is `IMSECH(CHOOSE({1,2},{1,2,3},{4;5})`. It is a deadly signal: the `debug_assert` "Larger-than-1x1 array reached scalar-context cell" at model.rs:928.
+- I reproduced it on cdf7d088 with a debug facade test. `IMABS(...)` and `IMSECH(CHOOSE({1,2},1,{4;5}))` panic too, but `ABS(CHOOSE(...))` and `IMSECH({1,2,3})` do not.
+- Filed **T-1874** (functions-engineering, P0, opus).
 - `formula_parse` and `xlsx_import` passed.
 
-Open PRs: 9 at the end of the run (5 at the start of the last one).
-- #891 (T-1316) was the one agent PR open over 24 h and not a blocked draft. Its `hygiene` check had been red since 2026-10-16 because zip 0.6.6 was yanked, which T-1668 fixed on `main`, and its own fidelity review was unconfirmed.
-  - This run merged `main` into it. It also dropped the T-0057 task file it carried, a duplicate of T-1668, and fixed the Outcome's cell count.
-  - All four reviewers (security, architecture, quality, excel-fidelity) re-ran on that diff and approved. `make check` passed.
-  - Another session squash-merged it at 0514aabf (06:33 UTC) before this run's up-to-date push. CI on `main` is green there, and the local `make check` of the PR plus T-1728 passed.
-  - The fidelity reviewer's MINOR gaps (an unprobed scalar TRUE beside an array bound, and error order per element) are filed as **T-1782** (functions-math, sonnet).
-- Under 24 h: #912 (T-1626), #941 (T-1698), #980 (T-1631), #986 (T-1598), #987 (T-1767).
-  - #912 renumbered its ASC follow-up to T-1691, which `main` has since given to a 3-D span task (M8). Merging `main` into it will need a fresh id from `make new-task`.
-- Blocked drafts, each with a `status: blocked` task on its branch: #698 (T-1486), #553 (T-1284), #436 (T-1186), #409 (T-1155).
-  - None of their branches moved since the last run.
-  - #698's blocker, commented on the PR on 2026-10-15, still holds.
+Open PRs: 6 (9 at the end of the last run).
+- Over 24 h, all drafts:
+  - #698 (T-1486): its branch moved at 05:43 UTC today (another session merged `main` and added probe rounds), so it is live and left alone.
+  - Blocked drafts with a `status: blocked` task on the branch and no branch movement: #553 (T-1284), #436 (T-1186), #409 (T-1155).
+  - So no PR qualified for an orphan merge (decision 0050).
+- Under 24 h: #1066 (T-1848, merged by its session during this run), and #1060 (T-1373, a draft handed off to opus).
 - No duplicates.
 
 Queues at the start of the run:
-- functions: 61 ready. The sonnet buffer is 55, so the gap-triager did not run.
-- engine 0, api 1, harness 2, quality 0, research 0, perf 17.
-  - engine and research are busy, not empty. Their branches moved in the last 2 h (T-1728, T-1767; T-1625), and engine holds 6 unclaimed M2 tasks (T-1717, T-1727, T-1758, T-1760, T-1762, T-1763).
-  - The planner ran for M2:
-    - It filed **T-1783** (quality, sonnet): resolve six code TODOs that name done tasks. It also filed **T-1779** (quality, opus, after T-1783): `make hygiene` rejects a TODO naming a done, dropped or missing task.
-    - Six failing cells had no owner in any task's acceptance criteria: probes/legacy-n-t-reference-args S!D11, D20, M11, M20, P11 and P20. T-1717's Context already named them, and this PR adds them to its acceptance criteria.
-    - research and api have no M2 work left. The api lane's ready task, T-1671, is M8.
+- functions: 27 ready. The sonnet buffer is 22, so the gap-triager did not run.
+- engine 23, harness 5, perf 18, api 1, quality 1, research 0 (busy: a branch moved in the last 2 h, with T-1768, T-1847 and T-1853 todo).
+- The planner ran for M2:
+  - It filed **T-1877** and **T-1876** (above).
+  - api has no M2 work (its ready task T-1671 is M8).
+  - quality's open M2 work is T-1779.
 
-Upstream IronCalc: no new engine commits. 7f992398 only touches the webapp, and 297553dc is the v0.9.0 version bump. UPSTREAM.md is now recorded as triaged through 297553dc (the last run triaged it but did not record it).
+Upstream IronCalc: no new commits under base/, xlsx/ or bindings/python since 297553dc (triaged last run).
 
 Oracle: excel-graph credentials are present.
-- probes: 0 sidecars written. The 1 pending case is not fillable.
-- ironcalc-calc: 0 written, 214 skipped.
-- poi: 0 written, 292 skipped (the same 4 workbook failures as T-0019).
-- corpus-bench's 907 pending workbooks are left for T-0427 (batched fill, todo). Its suite holds no Excel evidence yet.
+- probes: 0 sidecars written (the 2 pending cases are M10 locale cases and are not fillable).
+- ironcalc-calc: 0 written, 216 skipped.
+- poi: 0 written, 292 skipped, with the same 4 workbook failures as before: 47804 CELL("width"), 52575_main unreadable, bug67784 and sample-beta refused by Graph.
+- corpus-bench: not refilled. T-0427 filled it on 2026-10-17. 182 of its 186 pending workbooks wait on the canary fix T-0432 (harness, ready), so a refill would write nothing new.
 
 Spot-audit: the last one was 2026-10-16, so none is due (next on or after 2026-10-23).
 
-**Critical lane:** engine, quality
+**Critical lane:** engine, harness, research, quality
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M2.
-- engine: T-1717, T-1727, T-1758, T-1760, T-1762 and T-1763, together with T-1713 (functions-logic, unblocked by the spec T-1727), hold 59 of the 64 M0–M2 probe failures left after T-1728.
-- quality: T-1783 and T-1779, hygiene from the planner.
-- The other 5 failing cells are reached through `functions` (functions-text: T-1716 with 4 cells, T-0985 with 1). So is the P0 T-1769 (functions-logic).
-- research, api and harness have no M2 work. perf stays out: Phase 2.)
+- engine: T-1851, then T-1852, unblocks T-1713, which holds the 32 legacy M0–M2 probe failures.
+- harness: T-1877 brings the ironcalc-calc M2 criterion's 1,378 member cells into scope.
+- research: T-1876 (desktop SIN target for IF_ARRAY), T-1847 and T-1853 (legacy probes feeding T-1851/T-1852).
+- quality: T-1779 (TODO hygiene gate).
+- The 148 `date-text-glued-month` cells are reached through `functions` (T-1789, functions-date), and so is the P0 T-1874 (functions-engineering).
+- api has no M2 work. perf stays out: Phase 2.)
 
 ## Needs owner
 
-The 2026-10-16 item "Sync the live steward routine prompt with docs/process/routines.md" is resolved. The steward prompt this run received (2026-10-17) opens with "Work on a branch cut from a freshly fetched `origin/main` … never check out, pull into or reset a local `main`, decision 0055". That matches routines.md line 45 word for word, so the item is removed.
+- **Direct pushes to `main`** (2026-10-18). Session `01Xbmds2…` pushed seven T-1778 research-plan commits straight to `main`, from 6f85cc9 to 892a53ca (one during this run), with no PR, so the reviewer agents never saw them. They are docs-only and CI passed on each, so nothing needs reverting. But `main` evidently accepts direct pushes, which bypasses the review gate this project relies on. Recommended fix: a branch ruleset on `main` that requires a pull request. The steward and workers already merge through PRs, so this changes nothing for them. If the pushes were your own interactive instruction for the external review, remove this item.
 
 excel-desktop needs are not owner items (decision 0039): T-1016, T-1051 and the other desktop tasks wait in M14 (Phase 4), tracked by T-1074 and T-1075.
 
