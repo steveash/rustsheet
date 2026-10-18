@@ -1,0 +1,19 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sea Freight Rates": {},
+  "Volume": {
+   "E13": {
+    "t": "n",
+    "v": 2.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "3a4c25d6013d7f96acf2f7290e18b8e4720ed6eca5bff7d3d3bd4318262c38f3",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:49:55+00:00",
+  "version": null
+ }
+}

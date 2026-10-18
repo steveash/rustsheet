@@ -1,0 +1,135 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet 2": {},
+  "Sheet1": {
+   "B2": {
+    "t": "s",
+    "v": "bike"
+   },
+   "B3": {
+    "t": "s",
+    "v": "car"
+   },
+   "B4": {
+    "t": "s",
+    "v": "walk"
+   },
+   "B5": {
+    "t": "n",
+    "v": 0.0
+   },
+   "B6": {
+    "t": "s",
+    "v": "bike"
+   },
+   "B7": {
+    "t": "s",
+    "v": "bike"
+   },
+   "C2": {
+    "t": "s",
+    "v": "bike"
+   },
+   "C3": {
+    "t": "s",
+    "v": "car"
+   },
+   "C4": {
+    "t": "s",
+    "v": "walk"
+   },
+   "C5": {
+    "t": "n",
+    "v": 0.0
+   },
+   "C6": {
+    "t": "s",
+    "v": "bike"
+   },
+   "C7": {
+    "t": "s",
+    "v": "bike"
+   },
+   "D2": {
+    "t": "s",
+    "v": "bike"
+   },
+   "D3": {
+    "t": "s",
+    "v": "car"
+   },
+   "D4": {
+    "t": "s",
+    "v": "walk"
+   },
+   "D5": {
+    "t": "n",
+    "v": 0.0
+   },
+   "D6": {
+    "t": "s",
+    "v": "bike"
+   },
+   "D7": {
+    "t": "s",
+    "v": "bike"
+   },
+   "E2": {
+    "t": "s",
+    "v": "bike"
+   },
+   "E3": {
+    "t": "s",
+    "v": "car"
+   },
+   "E4": {
+    "t": "s",
+    "v": "walk"
+   },
+   "E5": {
+    "t": "n",
+    "v": 0.0
+   },
+   "E6": {
+    "t": "s",
+    "v": "bike"
+   },
+   "E7": {
+    "t": "s",
+    "v": "bike"
+   },
+   "F2": {
+    "t": "s",
+    "v": "bike"
+   },
+   "F3": {
+    "t": "s",
+    "v": "car"
+   },
+   "F4": {
+    "t": "s",
+    "v": "walk"
+   },
+   "F5": {
+    "t": "n",
+    "v": 0.0
+   },
+   "F6": {
+    "t": "s",
+    "v": "bike"
+   },
+   "F7": {
+    "t": "s",
+    "v": "bike"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "68be09e637edc845caa77d688ce80ff38f1d86338979f25696a2bdcf194a2eb5",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:47:53+00:00",
+  "version": null
+ }
+}

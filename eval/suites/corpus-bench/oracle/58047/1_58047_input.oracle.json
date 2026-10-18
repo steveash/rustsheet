@@ -1,0 +1,83 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "I1": {
+    "t": "b",
+    "v": true
+   },
+   "I10": {
+    "t": "b",
+    "v": false
+   },
+   "I11": {
+    "t": "b",
+    "v": false
+   },
+   "I12": {
+    "t": "b",
+    "v": false
+   },
+   "I13": {
+    "t": "b",
+    "v": false
+   },
+   "I14": {
+    "t": "b",
+    "v": false
+   },
+   "I15": {
+    "t": "b",
+    "v": false
+   },
+   "I16": {
+    "t": "b",
+    "v": false
+   },
+   "I17": {
+    "t": "b",
+    "v": false
+   },
+   "I2": {
+    "t": "b",
+    "v": true
+   },
+   "I3": {
+    "t": "b",
+    "v": true
+   },
+   "I4": {
+    "t": "b",
+    "v": true
+   },
+   "I5": {
+    "t": "b",
+    "v": false
+   },
+   "I6": {
+    "t": "b",
+    "v": false
+   },
+   "I7": {
+    "t": "b",
+    "v": false
+   },
+   "I8": {
+    "t": "b",
+    "v": false
+   },
+   "I9": {
+    "t": "b",
+    "v": false
+   }
+  },
+  "orders_export": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "1018d5052cc8e714e40fb67a2fcbb8538c533db4449b77067c015631ce0774dd",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:51:38+00:00",
+  "version": null
+ }
+}
