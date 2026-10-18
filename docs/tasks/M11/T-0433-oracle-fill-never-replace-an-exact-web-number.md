@@ -3,7 +3,7 @@ id: T-0433
 title: "Oracle fill: never replace an exact web number with a 15-digit cached value (decision 0030 rule 1)"
 milestone: M11
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
