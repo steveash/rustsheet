@@ -3,7 +3,7 @@ id: T-1850
 title: "Probe SORT/SORTBY error-argument order: error sort_order with sort_index 0, several error arguments, SORTBY"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
