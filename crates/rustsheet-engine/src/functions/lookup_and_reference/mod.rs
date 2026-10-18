@@ -18,6 +18,7 @@ use crate::{
 };
 
 use super::criteria::wildcard_text_matcher;
+use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
 use lookup_table::{LookupTable, SearchVector};
@@ -91,7 +92,7 @@ impl Model {
     /// (`CHOOSE(1,A1)`, `OFFSET(A1,0,0)`, `INDIRECT("A1")`, `A1:A1`) gives that cell's value: Excel
     /// finds 30 for `MATCH(CHOOSE(1,J1),A1:A5,0)` with J1 = 30 (docs/excel-semantics/lookup.md,
     /// probes/lookup-reference-lookup-value). VLOOKUP, HLOOKUP and XLOOKUP get there by lifting.
-    /// A multi-cell `lookup_value` is left as it is: XMATCH and LOOKUP lift it, MATCH is T-0270.
+    /// A multi-cell `lookup_value` is left as it is: XMATCH, MATCH and LOOKUP lift it.
     pub(super) fn lookup_value_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         match self.evaluate_node_in_context(node, cell) {
             range @ CalcResult::Range { left, right } if left == right => {
@@ -116,7 +117,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let target = self.lookup_value_arg(&args[0], cell);
-        if target.is_error() {
+        if target.is_error() && !LiftedArg::is_grid(&target) {
             return target;
         }
         let match_type = if args.len() == 3 {
@@ -142,21 +143,38 @@ impl Model {
             Err(error) => return error,
         };
 
-        let found = if match_type == 0 {
-            lookup_index(&target, &values, false)
-        } else {
-            // Any negative match_type searches descending, any positive one
-            // ascending (probes/lookup-approximate-search N20, N21).
-            values.approximate_search(&target, match_type < 0)
-        };
-        match found {
-            Some(l) => CalcResult::Number(l as f64 + 1.0),
-            None => CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Not found".to_string(),
+        // lookup_value lifts over an array or a multi-cell range, one search per element; the
+        // match_type stays a scalar (docs/excel-semantics/lookup.md "A reference-valued
+        // lookup_value is looked up by its cell's value", T-1866).
+        self.lift_values(
+            vec![target],
+            LiftCost::Cells(values.scan_cells()),
+            &LiftOptions::REUSE_EQUAL_RUNS,
+            cell,
+            &mut |_, args| {
+                let [target] = args else {
+                    return CalcResult::new_args_number_error(cell);
+                };
+                if target.is_error() {
+                    return target.clone();
+                }
+                let found = if match_type == 0 {
+                    lookup_index(target, &values, false)
+                } else {
+                    // Any negative match_type searches descending, any positive one
+                    // ascending (probes/lookup-approximate-search N20, N21).
+                    values.approximate_search(target, match_type < 0)
+                };
+                match found {
+                    Some(l) => CalcResult::Number(l as f64 + 1.0),
+                    None => CalcResult::Error {
+                        error: Error::NA,
+                        origin: cell,
+                        message: "Not found".to_string(),
+                    },
+                }
             },
-        }
+        )
     }
 
     /// MATCH's `match_type` as a number. Text that comes from a cell (a reference) and is not a

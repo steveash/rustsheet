@@ -437,8 +437,8 @@ Evidence: probes/lookup-reference-lookup-value (220 cells: 5 shapes x 4 values x
 Status: VERIFIED
 Implemented in: VLOOKUP, HLOOKUP and XLOOKUP lift the lookup_value, so a 1x1 range lifts to its value
 (`lookup_each`, xlookup.rs); MATCH, XMATCH and LOOKUP read it through `Model::lookup_value_arg`
-(functions/lookup_and_reference/mod.rs); a multi-cell one lifts in XMATCH and LOOKUP (T-1241) and is T-0270 in MATCH.
-Tasks: T-1256
+(functions/lookup_and_reference/mod.rs); a multi-cell one (or an array, a 1x1 array included) lifts in XMATCH and LOOKUP (T-1241) and in MATCH (T-1866: one position per element, match_type stays a scalar; MATCH spills like LOOKUP).
+Tasks: T-1256, T-1866
 
 ## A reference-valued lookup_value pointing at a blank or error cell
 Rule: `CHOOSE(1,J5)`, `OFFSET(J5,0,0)`, `INDIRECT("J5")`, `J5:J5` and the direct `J5` behave identically in VLOOKUP, HLOOKUP,

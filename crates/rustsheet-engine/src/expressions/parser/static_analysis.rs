@@ -922,7 +922,8 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Indirect => reference_result::static_analysis_indirect(args),
         // Spills by lookup_value; the vectors are consumed (T-1241).
         Function::Lookup => broadcast_static_result(args.first()),
-        Function::Match => not_implemented(args),
+        // Spills by lookup_value; lookup_array and match_type are consumed (T-1866).
+        Function::Match => broadcast_static_result(args.first()),
         Function::Offset => reference_result::static_analysis_offset(args),
         Function::Row => row_column::static_analysis_row_column(args, true),
         Function::Rows => not_implemented(args),
