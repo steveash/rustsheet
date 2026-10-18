@@ -18,8 +18,10 @@
 //!   its 2^19-term cap, on its NaN path and converging with its rescales (the bound's slower term),
 //!   and CHISQ.DIST at the largest chi-squared shape, over 512 elements.
 //!
-//! - HYPGEOM.DIST at its lift cap (T-1873): the cdf sum with 258,239 terms that are not known to be
-//!   0 (just under its 2^18-term cap, the population of 1.8E8 at its widest), over 32 elements.
+//! - HYPGEOM.DIST at its lift cap (T-1873): the cdf sum with 258,239 terms that are not known to
+//!   be 0 (just under its 2^18-term cap, the population of 1.8E8 at its widest), and the cdf at
+//!   its cap whose window is mostly exact zeros and subnormal terms (the slowest terms: `exp`'s
+//!   subnormal path and additions with a subnormal operand), over 32 elements.
 //!
 //! `cargo bench -p rustsheet --bench lift [-- FILTER...]` (only the cases whose name contains a
 //! FILTER, e.g. `SWITCH`)
@@ -114,6 +116,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             "HYPGEOM.DIST, the cdf sum near its term cap, at the element cap",
             1,
             "=SUM(HYPGEOM.DIST(SEQUENCE(32)*0+45500000,90000000,90000000,180000000,TRUE))",
+        ),
+        (
+            "HYPGEOM.DIST, the cdf sum at its term cap through subnormal terms, at the element cap",
+            1,
+            "=ROWS(HYPGEOM.DIST(SEQUENCE(32)*0+99994114707,200000000000,200000000000,400000000000,TRUE))",
         ),
     ];
     let filters: Vec<String> = std::env::args()

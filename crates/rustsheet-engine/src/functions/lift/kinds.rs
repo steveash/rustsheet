@@ -282,17 +282,20 @@ const GAMMA_DIST: ArgKinds = ArgKinds::fixed(
 
 // --- Hypergeometric (T-1873) ----------------------------------------------------------------
 /// What one HYPGEOM.DIST element is charged. Its cdf is the capped port of statrs' sum
-/// (`statistical/hypegeom.rs`): at most 2^18 terms once the terms known to be 0 are skipped, and
-/// at most 130 exponents to find them. One term is three statrs `ln_binomial`s and an `exp`
-/// (six Lanczos `ln_gamma`s above 170), whatever its value: measured in release (T-1873, load 2
-/// on 4 cores, statrs' own sum alone) at 192.9 ns over the 25,000,001 terms of
-/// `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)` (4.8 s, as on main) and 167 to
-/// 178 ns at populations of 1.8E8 and 1.84E8. The bound of an element is 2^18 + 130 terms at 193 ns, about 51 ms, so
-/// the weight caps a lifted call at 2^27 / 2^22 = 32 elements: 1.6 s at the bound (a DEVIATION,
-/// statistics.md). Measured at the cap: 32 elements of
-/// `HYPGEOM.DIST(45500000,90000000,90000000,180000000,TRUE)` (the widest distribution at a
-/// population of 1.8E8, 258,239 terms each) took 1.39 to 1.48 s (benches/lift.rs), 43 to 46 ms
-/// an element; the cdfs the suites check sum at most 501 terms.
+/// (`statistical/hypegeom.rs`): at most 2^18 terms once the terms known to be 0 are skipped, and at
+/// most 131 exponents to find them. One term is three statrs `ln_binomial`s and an `exp` (six
+/// Lanczos `ln_gamma`s above 170). Measured in release (T-1873, load 1 to 2 on 4 cores): 167 to 193
+/// ns a term where the terms are normal (statrs' own sum over the 25,000,001 terms of
+/// `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)`, 4.8 s as on main; 32 elements of
+/// `HYPGEOM.DIST(45500000,90000000,90000000,180000000,TRUE)`, the widest distribution at a
+/// population of 1.8E8 with 258,239 terms each, 1.38 to 1.55 s in benches/lift.rs), and 206 to 234
+/// ns where most of the window is subnormal (`exp`'s subnormal path and additions with a subnormal
+/// operand: 32 elements of `HYPGEOM.DIST(99994114707,200000000000,200000000000,400000000000,TRUE)`,
+/// whose window at the cap is 262,144 terms, 96,639 of them exactly 0 and 153,739 subnormal, took
+/// 1.73 to 1.96 s, 54 to 61 ms an element). The bound of an element is 2^18 + 131 terms at 250 ns
+/// (above the slowest measured), about 66 ms, so the weight caps a lifted call at 2^27 / 2^22 = 32
+/// elements: about 2.1 s at the bound (a DEVIATION, statistics.md). The cdfs the suites check sum
+/// at most 501 terms.
 const HYPGEOM_DIST_WEIGHT: u32 = 1 << 22;
 /// `HYPGEOM.DIST(sample_s, number_sample, population_s, number_pop, cumulative)`.
 const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(

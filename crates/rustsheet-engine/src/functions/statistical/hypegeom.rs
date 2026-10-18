@@ -54,9 +54,10 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// which 95,942 are not 0).
 const MAX_TERMS: u64 = 1 << 18;
 
-/// An exponent at or below which `exp` is exactly 0: e^-750 is about 1.9E-326, under 0.4% of the
-/// smallest subnormal double, so even an `exp` with an error of almost one unit rounds it to 0
-/// (unit test `exp_is_zero_at_the_threshold`; e^-745.13 is where it starts to round up).
+/// An exponent at or below which `exp` is exactly 0. e^-750 is about 1.9E-326, far below half
+/// the smallest subnormal double, so a correctly rounded `exp` gives 0 there (it does from about
+/// -745.13 down); the skip relies on the platform `exp` returning exactly 0 below that, as glibc's
+/// does (unit test `exp_is_zero_at_the_threshold`).
 const ZERO_EXPONENT: f64 = -750.0;
 
 /// The largest population whose terms may be skipped far from the mode: every count of the sum
@@ -130,7 +131,8 @@ fn cdf_within(population: u64, successes: u64, draws: u64, x: u64, max_terms: u6
 /// i < j is below it too and its term is exactly 0; the same holds after the mode for i > j.
 /// Each side is a bisection over the computed exponents themselves: the index it keeps is one
 /// whose exponent it evaluated and found below the threshold (so the skip holds even where the
-/// computed exponents are not monotone), at most 2 * 64 + 2 exponents in all.
+/// computed exponents are not monotone): at most 131 exponents in all (`min`, up to 64 halvings,
+/// the right side's start and x, and up to 64 more halvings).
 fn nonzero_terms(
     population: u64,
     successes: u64,
@@ -323,6 +325,7 @@ mod tests {
     #[test]
     fn exp_is_zero_at_the_threshold() {
         assert_eq!(ZERO_EXPONENT.exp().to_bits(), 0.0f64.to_bits());
+        assert_eq!((-745.2f64).exp().to_bits(), 0.0f64.to_bits());
         assert!((-745.0f64).exp() > 0.0);
     }
 
@@ -345,9 +348,9 @@ mod tests {
     }
 
     // Past the cap the port skips the terms far from the mode that are exactly 0, and the sum is
-    // still statrs' double, bit for bit: 300 sums with a cap of 2^12, populations up to 1E6 with 5,000 to
-    // 25,000 successes (a spread of about 35 to 80, so the terms not 0 number about 2,700 to
-    // 6,100), at x on both sides of the mode. Where more than the cap are left it is NaN.
+    // still statrs' double, bit for bit: 300 sums with a cap of 2^12, populations up to 1E6 with
+    // 5,000 to 25,000 successes (a spread of about 35 to 80, so the terms not 0 number about 2,700
+    // to 6,100), at x on both sides of the mode. Where more than the cap are left it is NaN.
     #[test]
     fn skipping_the_zero_terms_keeps_statrs_double() {
         let max_terms = 1 << 12;
