@@ -340,7 +340,7 @@ Tasks: T-1272, T-1829
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
 function argument modes"). Each element is read as text: a number as its text (`1E+15` as `1000000000000000`, the
 spelling `number_to_text` gives, so `TEXTBEFORE("a1E+15b",{1E+15,"q"})` is `#N/A`), a boolean as TRUE or FALSE
-(`TEXTBEFORE("aTRUEb",{TRUE,"q"})` is "a", and with match_mode 1 it matches "true"), and a blank cell or an empty-string
+(`TEXTBEFORE("a false b",{FALSE,"q"},,1)` is "a ", case-folded with match_mode 1), and a blank cell or an empty-string
 cell as the empty delimiter. An error element makes the call that error, even beside the empty delimiter
 (`TEXTBEFORE("abc",{"",#N/A})` is `#N/A`; a range holding `=1/0` gives `#DIV/0!`; TEXTSPLIT alike). So in TEXTSPLIT a
 blank cell in the col_delimiter range is `#VALUE!` (the empty delimiter, see "TEXTSPLIT with an empty delimiter is
