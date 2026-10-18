@@ -56,4 +56,4 @@ Eval delta (probes): 2,073 known failures fixed (pivotby-col-subtotals-values 1,
 regressed; known failures 4,446 -> 2,524. New cases pivotby-col-subtotals-values2, -values3 and
 pivotby-total-columns-one-group pass except 151 cells of two other quirks found on the way: numbered "CUSTOM1"/"CUSTOM2"
 labels for two LAMBDAs (130 cells, follow-up T-1854) and col_sort_order -3 with one column field over two values being
-`#VALUE!` (21 cells, follow-up T-1855).
+`#VALUE!` (21 cells, follow-up T-1855). The relative set of a moved cell is unprobed (follow-up T-1857).

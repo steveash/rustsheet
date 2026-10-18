@@ -735,9 +735,10 @@ Tasks: T-1276, T-1328, T-1322, T-1323, T-1326, T-1324, T-1700, T-1325, T-1327
 ## GROUPBY and PIVOTBY: column totals over several value columns
 Rule: with one function over two or more value columns (`width` w), PIVOTBY puts its column subtotal and total cells as
 if a subtotal spanned one column per line it covers instead of w. Lay the column lines out with every subtotal after
-its groups (as for a positive col_total_depth) in the key order before any value sort, w columns per line, the total's w
-columns last. The total writes its value column v (0-based) into column `k + v`, k being the number of lines; then each
-subtotal, the shallowest first and in line order (a parent before its own subtotals), writes its value column v into
+its groups (as for a positive col_total_depth) in the order of the key sort (a descending one too) before any value
+sort, w columns per line, the total's w columns last. The total writes its value column v (0-based) into column
+`k + v`, k being the number of lines; then each subtotal, ordered by its first group and a parent before its own
+deeper subtotals, writes its value column v into
 column `f * w + k + v`, f being the index of its first group's line and k the number of lines it covers (its groups and
 deeper subtotals). A write into a group's column is dropped and a later write replaces an earlier one. Each subtotal
 and total column then moves with its line into the real layout (a negative depth puts the subtotals and totals first, a
@@ -766,10 +767,11 @@ probes/pivotby-col-subtotals-values3 S!A49 (three values over three column field
 probes/pivotby-total-columns-one-group, probes/groupby-subtotals G!A781, G!A1141, G!A1171 (excel-graph,
 2026-10-17/18). ARRAYTOTEXT over distinct values (101-112, 201-212, ...) shows which records and value column each
 cell takes: every cell is `""`, one group's cell or one subtotal's or total's, never a mix.
-Unprobed: whether a descending key sort places in the descending or the ascending key order (the engine: the order of
-the key sort, which every value sort starts from); writes of two subtotals of different levels into the same column
-(the engine: the deeper wins); the relative set a moved cell gets (the engine: the set of the subtotal or total whose
-cell it shows); several functions over several value columns other than paired (always `#VALUE!` so far: -values3
+A descending key sort places in the descending order: over Outer descending (E, D, C, B, A) the total's writes land in
+C's subtotal columns, which the ascending order would put on a group (-values2 S!A97).
+Unprobed: writes of two subtotals into the same column (the engine: the later in the order above wins, so a parent's
+deeper subtotal over a parent, and a later parent over an earlier one's deeper subtotal); the relative set a moved cell
+gets (the engine: the set of the subtotal or total whose cell it shows; T-1857); several functions over several value columns other than paired (always `#VALUE!` so far: -values3
 S!A37, S!A61).
 Status: VERIFIED (web)
 Implemented in: crates/rustsheet-engine/src/functions/lookup_and_reference/pivotby.rs (`Placement`, `Shown`)

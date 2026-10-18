@@ -65,7 +65,7 @@ enum Shown {
 /// Where Excel puts the column total and subtotal cells of one function over several value
 /// columns (docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY: column totals over several
 /// value columns", T-1700): the column lines laid out with the subtotals after their groups, in
-/// the key order before any value sort, and each group's first source row, which names it across
+/// the order of the key sort before any value sort, and each group's first source row, which names it across
 /// the value sort.
 struct Placement {
     lines: Vec<Line>,
@@ -81,8 +81,8 @@ impl Placement {
     }
 
     /// What each of `slots` (the columns as laid out after the sorts) shows, with `width` value
-    /// columns per line. In the placement order, the total and then each subtotal, shallowest
-    /// first, write their value v into column `f * width + k + v`, where `f` is the first line
+    /// columns per line. In the placement order, the total and then each subtotal (by its first
+    /// group, a parent before its own deeper subtotals) write their value v into column `f * width + k + v`, where `f` is the first line
     /// they cover and `k` the number of lines they cover (the total: all of them): Excel counts
     /// the covered lines, not their columns. A write over a group column is dropped, and a later
     /// write wins. The subtotal and total columns then follow their lines into the layout (a
