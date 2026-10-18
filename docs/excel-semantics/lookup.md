@@ -415,14 +415,15 @@ array literal whole: `LOOKUP(2,{1,2,3},{4,5,6})` = 5, `LOOKUP(2,{1,2,3})` = 2, `
 `XMATCH(2,{1,2,3})` = 2, `ROWS({1;2;3})` = 3, `COLUMNS({1,2})` = 2, `CHOOSEROWS({1;2;3},{1;3})` is 2x1,
 `TRANSPOSE({1,2,3})` is 3x1. INDEX of a single value is that value (`INDEX(LOOKUP(2,{1,2,3},{4,5,6}),1,1)` = 5,
 `INDEX(AREAS(A1:B3),1,1)` = 1). UNVERIFIED (not probed): OFFSET's cols, height and width, XLOOKUP/XMATCH search_mode,
-XLOOKUP's if_not_found, ADDRESS's a1 and sheet_text, INDIRECT's a1 and TRIMRANGE's trim_cols.
-Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-1238).
-Ours: none of the lifting arguments above lifts except CHOOSE's (a range gives `#VALUE!` or an implicit intersection,
-an array `#N/IMPL!`); LOOKUP/XLOOKUP/XMATCH give `#N/A` for a range lookup_value; CHOOSECOLS and CHOOSEROWS are `#VALUE!`
-for a range of indexes and `#N/IMPL!` for an array; HYPERLINK and INDIRECT over an array literal are `#N/IMPL!`;
-FORMULATEXT over a range is `#N/IMPL!`; INDEX of a single value is `#VALUE!`. 34 of 117 cells pass.
+XLOOKUP's if_not_found, ADDRESS's sheet_text, INDIRECT's a1 and TRIMRANGE's trim_cols; which problem wins inside a
+CHOOSECOLS/CHOOSEROWS index list (ours: the first error, out-of-range index or uncoercible text in row-major order).
+Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-1238); ADDRESS's a1 and HYPERLINK's
+friendly_name over an array spill: gen-m7/f68fafa0ca2eba26 A7, gen-m7/2bb922eef72e785e A22 (excel-graph, 2026-10-11).
+Ours: ADDRESS, HYPERLINK, LOOKUP's and XMATCH's lookup_value, XMATCH's match_mode and XLOOKUP lift, FORMULATEXT gives
+one result per cell, and CHOOSECOLS/CHOOSEROWS read their index lists whole (T-1241). OFFSET, INDIRECT and TRIMRANGE
+still do not lift (their elements are references; T-1810), and INDEX of a single value is `#VALUE!` (T-1242).
 Status: VERIFIED (web)
-Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1242 (INDEX of a single value)
+Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1810 (reference-valued lifts), T-1242 (INDEX of a single value)
 
 ## A reference-valued lookup_value is looked up by its cell's value
 Rule: when lookup_value is a one-cell reference returned by a function or written as a range (`CHOOSE(1,J1)`,
@@ -436,7 +437,7 @@ Evidence: probes/lookup-reference-lookup-value (220 cells: 5 shapes x 4 values x
 Status: VERIFIED
 Implemented in: VLOOKUP, HLOOKUP and XLOOKUP lift the lookup_value, so a 1x1 range lifts to its value
 (`lookup_each`, xlookup.rs); MATCH, XMATCH and LOOKUP read it through `Model::lookup_value_arg`
-(functions/lookup_and_reference/mod.rs). A multi-cell lookup_value in MATCH, XMATCH or LOOKUP is T-0270.
+(functions/lookup_and_reference/mod.rs); a multi-cell one lifts in XMATCH and LOOKUP (T-1241) and is T-0270 in MATCH.
 Tasks: T-1256
 
 ## A reference-valued lookup_value pointing at a blank or error cell
@@ -559,12 +560,13 @@ Status: VERIFIED (web)
 Tasks: T-1252, T-1264
 
 ## TRIMRANGE with a fractional trim argument
-Rule (hypothesis): `TRIMRANGE(C10:E11,2.5,3)` is `#VALUE!`. In `UPPER(..)&REPLACE("abc",TRIMRANGE(Data!C10:E11,2.5,3),1,PROPER(""))`
-the result is `#VALUE!` while the left operand is "42"; either TRIMRANGE rejects trim_rows 2.5 or REPLACE rejects a 2x3
-reference start_num instead of lifting over it.
-Evidence: gen-m7/bcad709c30cfdf64 Calc!A20 (excel-graph, 2026-10-11, T-1275).
-Ours: trim_rows 2.5 reads as 2 and REPLACE lifts, so `#SPILL!`.
-Status: UNVERIFIED (probe pending)
+Rule: trim_rows and trim_cols must be exactly 0, 1, 2 or 3; any fractional value is `#VALUE!`, including `0.9`,
+`1.5`, `2.5` and `3.9` (no truncation), in either argument (`(A1:C3,3,2.5)`, `(A1:C3,2.5,2.5)`), as are `4` and `-1`.
+Text `"2"` and `TRUE` coerce (3x3 kept for full data). So `TRIMRANGE` is the `#VALUE!` source in
+`REPLACE("abc",TRIMRANGE(Data!C10:E11,2.5,3),1,"")`; REPLACE itself lifts over a multi-cell start_num or num_chars
+and spills (`REPLACE("abc",E1:F2,1,"")` is a 2x2 spill).
+Evidence: probes/trimrange-fractional-trim H1-H10, J1, L1 (excel-graph, 2026-10-17, T-1352); gen-m7/bcad709c30cfdf64 Calc!A20.
+Status: VERIFIED
 Tasks: T-1352
 
 ## XMATCH with an omitted argument; SORT with omitted sort arguments

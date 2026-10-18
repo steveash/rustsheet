@@ -447,16 +447,9 @@ impl Model {
         } else {
             XlookupPick::Whole { as_reference }
         };
-        // Each element searches the evaluated cells of the lookup vector once; the table is
-        // never walked again. `lift_values` charges the cost once per criterion, but only one
-        // search runs per element whatever the three criteria are, so it is split among them.
-        let criteria_count = u64::try_from(criteria.len()).unwrap_or(1);
-        let cost = table.as_ref().map_or(1, |table| {
-            u64::try_from(table.values.search_cost())
-                .unwrap_or(u64::MAX)
-                .div_ceil(criteria_count)
-                .max(1)
-        });
+        // Each element searches the evaluated cells of the lookup vector once, whatever the
+        // three criteria are; the table is never walked again.
+        let cost = table.as_ref().map_or(1, |table| table.values.scan_cells());
         self.lift_values(
             criteria,
             LiftCost::Cells(cost),

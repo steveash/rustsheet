@@ -20,6 +20,8 @@ whole workbook (as for `IF`, above). The minimum is not always what Microsoft's 
 positions (the optional `initial_value` is left empty, not dropped), and `PROB(x_range, prob_range,
 [lower_limit], [upper_limit])` needs three although its page marks `lower_limit` Optional.
 eval/catalog/excel-functions.tsv records the corrected counts in its `note` column.
+A call with more arguments than the maximum is refused the same way, so there is no Excel value to
+match; RustSheet gives `#ERROR!` (e.g. two-argument `HEX2DEC` and `OCT2DEC`, T-1383).
 Evidence: probes/catalog/availability-30 (PROB) and -32/-33 (REDUCE, SCAN) load and calculate with
 three `$Z$1` arguments (oracle: excel-graph, 2026-10-07). With two, single-call workbooks sent with
 `rustsheet-oracle recalc -b excel-graph` got createSession 501 `FileCorruptTryRepair` /

@@ -1008,6 +1008,23 @@ fn datedif_date_errors_come_before_the_unit_error() {
     assert_eq!(model._get_text("A4"), *"#NUM!");
 }
 
+// An error unit wins over a start date outside the calendar (gen-m7/f68fafa0ca2eba26 Calc!A1,
+// dates.md "DATEDIF argument errors before date checks", T-1355). A3 and A4 are our own
+// expectation (an invalid unit text with a negative start date is UNVERIFIED).
+#[test]
+fn datedif_error_unit_comes_before_a_negative_start_date() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DATEDIF(-1,38627,NA())");
+    model._set("A2", "=DATEDIF(-1,38627,1/0)");
+    model._set("A3", "=DATEDIF(-1,38627,\"D\")");
+    model._set("A4", "=DATEDIF(-1,38627,\"X\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+}
+
 // ACCRINT walks the schedule of first_interest, which in a 1904 workbook breaks from 9995-12-31
 // on: #NUM!, while 9995-12-30 still accrues (probes/date-system-1904-odd-accrint-bound A11, B11,
 // D11, A12, B15; T-1447).

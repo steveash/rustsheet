@@ -18,7 +18,7 @@ T-1275's gen-m7 suite (excel-graph sidecars, 2026-10-11): gen-m7/c5d278a8662ef4b
 Excel `#N/A` (by_col's HLOOKUP is `#N/A`), engine `#VALUE!` (sort_index 0 is rejected first: `SORT(Data!B11:E12,0,1,NA())` is
 `#VALUE!`, with sort_index 1 it is `#N/A`). docs/excel-semantics/arrays.md "SORT argument errors come before validation".
 Code: `fn_sort` in crates/rustsheet-engine/src/functions/spill_functions.rs. Evaluate all arguments and return the first
-error (left to right) before validating values; check SORTBY the same way (unit test). T-1271 rewrites how SORT reads
+error (left to right) before validating values; check SORTBY the same way (unit test). T-1837 rewrites how SORT reads
 sort_index/sort_order lists: rebase on it if it has landed.
 
 ## Acceptance criteria

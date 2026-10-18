@@ -24,6 +24,10 @@ docs/excel-semantics/dates.md, "Date text with a month name glued to digits"):
 Inspect with `./target/release/rustsheet-eval show corpus-bench/<id>/1_<id>_input.xlsx`.
 Code: `formatter::date_text::parse_date` (shared by DATEVALUE, VALUE, number coercion and criteria).
 The probe T-1788 settles which digits are day and year; implement its rule, not a guess.
+T-1788's rule (dates.md, probes/date-text-glued-month): a glued month and one number read as with a space
+(the year-less "Month d" rule, so `"July32"` is 1932-07-01 and `"Jul2026"` 2026-07-01), day-month(-year)
+parses glued on either side, and a month glued to a day that a year follows (`"July1,2026"`, `"Jun1 2021"`)
+stays `#VALUE!`.
 
 ## Acceptance criteria
 - [ ] The `F` lines of corpus-bench/55392, CF_18814 and 1726 leave eval/baseline/corpus-bench.txt (1726 keeps its line only for `July-KPIs!A1`, T-1089), with no new ones.

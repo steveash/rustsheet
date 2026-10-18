@@ -3,6 +3,7 @@
 
 use std::borrow::Cow;
 
+use super::casefold::fold_case;
 use crate::{
     cast::array_node_to_text,
     expressions::{parser::ArrayNode, token::Error},
@@ -70,27 +71,6 @@ pub(super) fn find_element(
         // Text not found
         None => Err(Error::VALUE),
     }
-}
-
-/// Lowercases `text` one character at a time, leaving a character whose lowercase form is longer
-/// than one character as it is. Excel's SEARCH never changes the length of the text it counts in:
-/// `SEARCH("x","İx")` is 2 and `SEARCH("i","İx")` is #VALUE!, whereas Rust's `to_lowercase` turns
-/// U+0130 into "i" + U+0307 (probes/text-search-casefold-length A1, A2, A8, A12, A13).
-fn fold_case(text: &str) -> String {
-    text.chars()
-        .map(|c| {
-            // Final sigma matches sigma in either case (`SEARCH("ς","ΟΣ")` is 2), while the other
-            // simple-fold pairs do not: ſ/s, µ/μ and ϐ/β are #VALUE! (A14-A24).
-            if c == 'ς' {
-                return 'σ';
-            }
-            let mut lower = c.to_lowercase();
-            match (lower.next(), lower.next()) {
-                (Some(single), None) => single,
-                _ => c,
-            }
-        })
-        .collect()
 }
 
 /// Finds the first instance of '`search_for`' in text starting at char index start

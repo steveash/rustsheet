@@ -97,6 +97,8 @@ impl Model {
         let locale = self.locale;
         let language = self.language;
 
+        self.call_name_spellings
+            .set_defined_names(&self.workbook.defined_names);
         self.parser.set_locale(get_default_locale());
         self.parser.set_language(get_default_language());
         self.parser.set_lexer_mode(LexerMode::R1C1);

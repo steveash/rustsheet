@@ -1,7 +1,7 @@
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    functions::information::{error_array, Lifted},
+    functions::Function,
     model::Model,
 };
 
@@ -13,14 +13,15 @@ impl Model {
     // came (gen-m9/fcf11f2ec6f7a59d A7 is `#VALUE!` through CODE; an error argument is unprobed
     // and follows FILTERXML). No text is encoded; desktop confirmation is T-1081.
     pub(crate) fn fn_encodeurl(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        match self.lifted_arg(&args[0], cell) {
-            Ok(Lifted::Scalar(error @ CalcResult::Error { .. })) => error,
-            Ok(Lifted::Scalar(_)) => CalcResult::new_error(Error::VALUE, cell, String::new()),
-            Ok(Lifted::Array(values)) => error_array(&values, &Error::VALUE),
-            Err(error) => error,
-        }
+        self.lift_call(
+            Function::Encodeurl,
+            args,
+            cell,
+            &mut |_, values| match values {
+                [error @ CalcResult::Error { .. }] => error.clone(),
+                [_] => CalcResult::new_error(Error::VALUE, cell, String::new()),
+                _ => CalcResult::new_args_number_error(cell),
+            },
+        )
     }
 }

@@ -33,7 +33,7 @@ impl Model {
             Err(e) => return e,
         };
 
-        let pad = match self.get_pad_with(args, cell) {
+        let pad = match self.get_pad_with(args, flat.len() % wrap_count != 0, cell) {
             Ok(p) => p,
             Err(e) => return e,
         };
@@ -83,7 +83,7 @@ impl Model {
             Err(e) => return e,
         };
 
-        let pad = match self.get_pad_with(args, cell) {
+        let pad = match self.get_pad_with(args, flat.len() % wrap_count != 0, cell) {
             Ok(p) => p,
             Err(e) => return e,
         };
@@ -151,25 +151,36 @@ impl Model {
         len: usize,
         cell: CellReferenceIndex,
     ) -> Result<usize, CalcResult> {
-        let wrap_count = self.get_number(&args[1], cell)? as usize;
-        if wrap_count < 1 {
+        // Below 1 is checked before truncation: 0.5 and 0 are `#NUM!` (arrays.md "WRAPCOLS of a
+        // single value is not padded"; probes/dynamic-array-reshape-and-isomitted C20/C36/D20/D36 (0, -1),
+        // gen-m7/f68fafa0ca2eba26 A39, gen-m9/50f10c4062fb2e98 A21).
+        let wrap_count = self.get_number(&args[1], cell)?;
+        if wrap_count.is_nan() || wrap_count < 1.0 {
             return Err(CalcResult::new_error(
-                Error::VALUE,
+                Error::NUM,
                 cell,
                 "wrap_count must be >= 1".to_string(),
             ));
         }
-        Ok(wrap_count.min(len.max(1)))
+        Ok((wrap_count as usize).min(len.max(1)))
     }
 
-    /// Parse the optional `pad_with` argument (3rd arg of WRAPCOLS/WRAPROWS).
+    /// Parse the optional `pad_with` argument; `padded` says some cell is filled with it
+    /// (3rd arg of WRAPCOLS/WRAPROWS).
     fn get_pad_with(
         &mut self,
         args: &[Node],
+        padded: bool,
         cell: CellReferenceIndex,
     ) -> Result<ArrayNode, CalcResult> {
         if args.len() == 3 {
             let v = self.evaluate_node_in_context(&args[2], cell);
+            // An error pad_with that nothing is padded with is the result
+            // (gen-m9/675763979c1defb6 A6: `WRAPCOLS(D6:D6,2,VALUE("x"))` is `#VALUE!`), while
+            // one that fills a padded cell stays in that cell (WRAPCOLS_ROWS.xlsx E10, NA()).
+            if !padded && v.is_error() {
+                return Err(v);
+            }
             Ok(match v {
                 CalcResult::Number(n) => ArrayNode::Number(n),
                 CalcResult::Boolean(b) => ArrayNode::Boolean(b),

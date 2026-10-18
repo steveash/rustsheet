@@ -1213,12 +1213,19 @@ precision, or rounding the atan to 64 bits then to a double, never beats 233. A 
 (libm's count).
 Excel's ASIN is not odd: 31 ± pairs in the sweep differ in the last digit (`ASIN(0.09)` = 0.09012194501459526,
 `ASIN(-0.09)` = -0.09012194501459525). 26 of the 35 misses are negative arguments, and `ASIN(±1E-13)` is ±1E-13 exactly.
+A tiny argument is returned as is (T-1605): `ASIN(x)` = x for |x| from 1E-15 to 1E-9 and for -1E-8, but `ASIN(1E-8)` is
+1.0000000000000002E-8 (the quotient's value), so a symmetric cut lies between 1E-13 and 1E-8; the engine uses 2^-28.
+T-1605's other candidates over the sweep (bit-exact out of 268, python doubles and glibc): `atan(x/sqrt(1-x)/sqrt(1+x))` 163,
+`atan(x/sqrt(1+x)/sqrt(1-x))` 160, `atan(x/(sqrt(1-x)*sqrt(1+x)))` 175, `atan(x*(1/sqrt((1-x)(1+x))))` 177, `atan2` of the same
+175, `2 atan(x/(1+sqrt((1-x)(1+x))))` 165, `pi/2 - 2 asin(sqrt((1-x)/2))` and `2 asin(sqrt((1+x)/2)) - pi/2` (a few misses each,
+no rule), and a table reduction `atan(c) + atan((q-c)/(1+qc))` with c = floor/ceil/round/trunc(q N)/N for N in 1..128, at
+most 215. The residue (33 cells) is T-1797.
 Evidence: probes/asin-argument-sweep; gen-m6/2f6b96385ed3facd Calc!A38 (excel-graph, 2026-10-09, T-1239); gen-m7/0e40208f51c2454c
 Calc!A27 and gen-m7/cb748b6a9b81fbb7 Calc!A38 (excel-graph, 2026-10-11, T-1275).
-Ours: `atan(x/sqrt((1-x)*(1+x)))` since T-1259 (`fn_asin`, mathematical.rs). The gen-m6/gen-m7 cells pass; 35 sweep cells are known
-failures (T-1605). The result depends on the platform `atan` (glibc fits).
+Ours: `atan(x/sqrt((1-x)*(1+x)))` since T-1259, and x itself below 2^-28 since T-1605 (`fn_asin`, mathematical.rs). The gen-m6/gen-m7
+cells pass; 33 sweep cells are known failures (T-1797). The result depends on the platform `atan` (glibc fits).
 Status: VERIFIED (excel-graph); formulation PARTIAL
-Tasks: T-1259, T-1605
+Tasks: T-1259, T-1605, T-1797
 
 ## MULTINOMIAL of a huge argument
 Rule: MULTINOMIAL is `#NUM!` once its arguments add up to more than 170, where `sum!` overflows a double. That holds
@@ -1298,6 +1305,40 @@ before or on the bad-power term gives `#VALUE!` or the error (`(0,0,1,{"a"})`, `
 error cell in it is `#VALUE!` even after a bad-power term or with every power positive, unlike the array form (`(0,0,1,B1:B2)` with B1 = 4, B2 = "a" is `#VALUE!` where `(0,0,1,{4,"a"})` is `#NUM!`; `(0,1,1,C1:C2)` with C2 = #N/A is `#VALUE!`), except that a leading error cell is its own error (`(0,1,-1,D1:D2)` with D1 = #N/A is `#N/A`). Other cell orderings in a range (text before an error, a middle error) are unprobed.
 Status: VERIFIED
 Tasks: T-1359, T-1653
+
+## QUOTIENT, FACTDOUBLE and SERIESSUM argument modes
+Rule: QUOTIENT (both arguments), FACTDOUBLE and SERIESSUM's `x`, `n` and `m` are Analysis ToolPak arguments. They lift
+over an array, one scalar call per element, and refuse a multi-cell range with `#VALUE!`, even on the range's own rows.
+SERIESSUM's coefficients, and every argument of MULTINOMIAL, GCD and LCM, are read whole, over an array as over a range.
+- Lifts: `INDEX(QUOTIENT({7;9},2),2)` = 4, `INDEX(FACTDOUBLE({5;6}),2)` = 48 and `INDEX(SERIESSUM({1;2},0,1,{1,2}),2)` = 5,
+  with ROWS 2 each (C1-C6). The later arguments lift too: `QUOTIENT(10,{3;4})`, `SERIESSUM(2,{0;1},1,{1,2})` (element 2
+  = 10) and `SERIESSUM(2,0,{1;2},{1,2})` (element 2 = 9) (C7-C12). A column `x` against a row `n` is a 2×2 grid (C15-C16).
+- Coefficients whole: `INDEX(SERIESSUM({1;2},0,1,B1:B3),2)` = 17 beside a lifted `x`, with ROWS 2 (C13-C14);
+  `ROWS(SERIESSUM(2,0,1,{1;2;3}))` = 1 (C40). A blank coefficient cell adds 0 (C44).
+- Elements: an element error stays in its position (`QUOTIENT({7;9},{0;2})` is `#DIV/0!`, 4; `FACTDOUBLE({5;-2})` 15,
+  `#NUM!`; C17-C20), short arrays pad with `#N/A` (C33), and a scalar error beside an array is broadcast
+  (`QUOTIENT(NA(),{1;2})` is 2 rows of `#N/A`; C25-C26). Inside one element the leftmost error wins:
+  `QUOTIENT({#N/A},{#DIV/0!})` is `#N/A`, the reversed one `#DIV/0!`, SERIESSUM's `x` error comes before a coefficient error
+  and before an `n` error (C29-C32).
+- A range beside an array: `ROWS(QUOTIENT(A1:A3,{1;2}))` = 2, every element `#VALUE!` (C27-C28). An operation on a range is
+  an array and lifts (`ROWS(QUOTIENT(A1:A3+0,2))` = 3, C41-C42); a one-cell reference is its value (C43).
+- Booleans: FACTDOUBLE refuses a boolean in every form, typed (`FACTDOUBLE(TRUE)`, `(FALSE)`), in a cell, or as an array
+  element (`{TRUE;5}`, `{FALSE;5}`): all `#VALUE!` (-b E1-E3, E8; C22). Numeric text is read (`FACTDOUBLE("5")`, a text
+  cell "5", `{"5";5}`: 15) and a blank cell is 0 (`FACTDOUBLE(<blank>)` = 1). QUOTIENT's and SERIESSUM's booleans are
+  `#VALUE!` the same way (C21, C24, -b E11-E15).
+- MULTINOMIAL, GCD and LCM over an array give one value: `GCD({4;6},2)` = 2, `LCM({4;6},2)` = 12,
+  `MULTINOMIAL({1;2},2)` = 29.99999999999999, all ROWS 1 (C34-C39).
+Evidence: probes/math-atp-array-lift C1-C44 and probes/math-atp-array-lift-b E1-E18 (excel-graph, 2026-10-17, T-1802);
+probes/scalar-lift-open-a Y19-Y30 (the range refusals, T-1777).
+Ours: implemented (T-1802): QUOTIENT and FACTDOUBLE are `LiftArrays` entries of the SPEC-0011 table, SERIESSUM's
+`x`, `n`, `m` too with its coefficients `WholeByCaller` (read once by `series_coefficients`, each element charged their
+cells); MULTINOMIAL, GCD and LCM have no entry. Before T-1802 FACTDOUBLE read a boolean as 1 or 0 and lifted over a range,
+and QUOTIENT and SERIESSUM's `x`, `n`, `m` intersected a range and were `#N/IMPL!` over an array.
+Unprobed for these three functions (T-1832), taken from the arrays.md Analysis ToolPak rule (EDATE, WEEKNUM,
+EOMONTH, YEARFRAC): a 3-D range in QUOTIENT, FACTDOUBLE or SERIESSUM's `x`, `n`, `m` is `#VALUE!` (FACTDOUBLE gave
+`#ERROR!` before), and a legacy bare range gets no `@`. `SERIESSUM(2,0,1,Sheet1:Sheet2!A1)` is `#REF!` in ours.
+Status: VERIFIED (excel-graph)
+Tasks: T-1777, T-1802
 
 ## ECMA.CEILING
 Rule: `ECMA.CEILING(number, significance)` is a real Excel function with exactly the two-argument `CEILING` semantics (rounds away from zero for negative `number` with negative `significance`; `#NUM!` when `number` is positive and `significance` negative; zero significance gives 0; number text `"2.5"` and `TRUE` are read as numbers; text significance is `#VALUE!`). It is stored in a file as `_xlfn.ECMA.CEILING`, and `FORMULATEXT` prints it as `=ECMA.CEILING(2.5,2)` (no prefix). Written bare (`ECMA.CEILING(...)`) in a file, Graph rejects the whole workbook (`createSession` 501 `unsupportedWorkbook`); the one-argument form `_xlfn.ECMA.CEILING(2.5)` is rejected the same way (arity is exactly 2, like CEILING).

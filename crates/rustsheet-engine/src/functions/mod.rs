@@ -13,7 +13,7 @@ pub(crate) mod date_and_time;
 mod engineering;
 mod financial;
 mod information;
-mod lift;
+pub(crate) mod lift;
 pub(crate) mod logical;
 pub(crate) mod lookup_and_reference;
 mod macros;
@@ -189,6 +189,7 @@ pub enum Function {
     Trimrange,
     Groupby,
     Pivotby,
+    Getpivotdata,
     Take,
     Drop,
     Tocol,
@@ -759,6 +760,7 @@ impl_function_lookup! {
     trimrange => Trimrange,
     groupby   => Groupby,
     pivotby   => Pivotby,
+    getpivotdata => Getpivotdata,
     take      => Take,
     drop      => Drop,
     tocol     => Tocol,
@@ -1299,6 +1301,7 @@ impl Function {
             Function::Trimrange => functions.trimrange.clone(),
             Function::Groupby => functions.groupby.clone(),
             Function::Pivotby => functions.pivotby.clone(),
+            Function::Getpivotdata => functions.getpivotdata.clone(),
             Function::Take => functions.take.clone(),
             Function::Drop => functions.drop.clone(),
             Function::Tocol => functions.tocol.clone(),
@@ -1758,6 +1761,7 @@ impl Model {
             Function::Trimrange => Self::fn_trimrange,
             Function::Groupby => Self::fn_groupby,
             Function::Pivotby => Self::fn_pivotby,
+            Function::Getpivotdata => Self::fn_getpivotdata,
             Function::Take => Self::fn_take,
             Function::Drop => Self::fn_drop,
             Function::Tocol => Self::fn_tocol,
@@ -2046,8 +2050,8 @@ impl Model {
             Function::Dvarp => Self::fn_dvarp,
             Function::Dstdevp => Self::fn_dstdevp,
             Function::BetaDist => Self::fn_beta_dist,
-            Function::BetaInv => Self::fn_beta_inv,
-            Function::BinomDist => Self::fn_binom_dist,
+            Function::BetaInv | Function::BetaInvCompat => Self::fn_beta_inv,
+            Function::BinomDist | Function::BinomDistCompat => Self::fn_binom_dist,
             Function::BinomDistRange => Self::fn_binom_dist_range,
             Function::BinomInv => Self::fn_binom_inv,
             Function::ChisqDist => Self::fn_chisq_dist,
@@ -2069,8 +2073,8 @@ impl Model {
             Function::FisherInv => Self::fn_fisher_inv,
             Function::FTest => Self::fn_f_test,
             Function::Gamma => Self::fn_gamma,
-            Function::GammaDist => Self::fn_gamma_dist,
-            Function::GammaInv => Self::fn_gamma_inv,
+            Function::GammaDist | Function::GammaDistCompat => Self::fn_gamma_dist,
+            Function::GammaInv | Function::GammaInvCompat => Self::fn_gamma_inv,
             Function::GammaLn => Self::fn_gamma_ln,
             Function::GammaLnPrecise => Self::fn_gamma_ln_precise,
             Function::HypGeomDist => Self::fn_hyp_geom_dist,
@@ -2108,8 +2112,6 @@ impl Model {
             Function::NegbinomDistCompat => Self::fn_negbinomdist_compat,
             Function::NormSDistCompat => Self::fn_normsdist_compat,
             Function::TDistCompat => Self::fn_tdist_compat,
-            Function::BetaInvCompat => Self::fn_beta_inv,
-            Function::BinomDistCompat => Self::fn_binom_dist,
             Function::ChiDistCompat => Self::fn_chisq_dist_rt,
             Function::ChiTestCompat => Self::fn_chisq_test,
             Function::CovarCompat => Self::fn_covariance_p,
@@ -2117,8 +2119,6 @@ impl Model {
             Function::ExponDistCompat => Self::fn_expon_dist,
             Function::FDistCompat => Self::fn_f_dist_rt,
             Function::FTestCompat => Self::fn_f_test,
-            Function::GammaDistCompat => Self::fn_gamma_dist,
-            Function::GammaInvCompat => Self::fn_gamma_inv,
             Function::ModeCompat => Self::fn_mode_sngl,
             Function::NormDistCompat => Self::fn_norm_dist,
             Function::NormInvCompat => Self::fn_norm_inv,

@@ -2,6 +2,7 @@ use crate::tz::Tz;
 use chrono::Datelike;
 use std::collections::HashMap;
 
+mod month_shift;
 pub(crate) mod time_text;
 mod weekend;
 mod weeknum;
@@ -147,9 +148,9 @@ macro_rules! time_part_fn {
             if args.len() != 1 {
                 return CalcResult::new_args_number_error(cell);
             }
-            // Lifts over a range or array (probes/date-argument-modes F27:F32).
+            // Lifts over a range or array (probes/date-argument-modes F27:F32); #NUM! from 2958466 (dates.md).
             self.lift_numbers(args, cell, "Invalid time", |[value]| {
-                if value < 0.0 {
+                if !(0.0..f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0).contains(&value) {
                     return Err(Error::NUM);
                 }
                 Ok(($extract)(value))
@@ -167,6 +168,7 @@ use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::shift_months;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
+use crate::functions::lift::num_error;
 use crate::functions::text::text_arg::broadcast_text;
 use crate::functions::util::array_node_to_calc_result;
 use crate::number_format::parse_excel_number;
@@ -175,7 +177,7 @@ use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::{ArrayNode, Node},
     expressions::token::Error,
-    formatter::dates::{excel_serial_to_ymd, month_arithmetic_date, real_date_to_serial},
+    formatter::dates::excel_serial_to_ymd,
     model::Model,
 };
 
@@ -272,80 +274,6 @@ impl Model {
     date_part_fn!(fn_month, 1);
     date_part_fn!(fn_year, 0);
 
-    pub(crate) fn fn_eomonth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let args_count = args.len();
-        if args_count != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let serial_number = match self.get_number_no_bools(&args[0], cell) {
-            Ok(c) => {
-                let t = c.floor() as i64;
-                if t < 0 {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Function EOMONTH parameter 1 value is negative. It should be positive or zero.".to_string(),
-                    };
-                }
-                t
-            }
-            Err(s) => return s,
-        };
-        // The month arithmetic runs on the 1900 calendar; in a 1904 workbook the serial counts
-        // from 1904-01-01 (probes/date-system-1904-readers A7).
-        let date_system = self.workbook.settings.date_system;
-        let Some(serial_number) = date_system.to_1900_serial(serial_number) else {
-            return CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
-        };
-        if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Function DAY parameter 1 value is too large.".to_string(),
-            };
-        }
-        let Some(date) = month_arithmetic_date(serial_number)
-            .and_then(|d| chrono::NaiveDate::from_ymd_opt(d.year(), d.month(), 1))
-        else {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid date".to_string(),
-            };
-        };
-
-        let months = match self.get_number_no_bools(&args[1], cell) {
-            Ok(c) => {
-                let t = c.trunc();
-                t as i32
-            }
-            Err(s) => return s,
-        };
-
-        let Some(native_date) = shift_months(date, months) else {
-            return CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
-        };
-
-        // The last day of the month is a real calendar date: EOMONTH(31,1) is 28 February 1900
-        // (serial 59), not the fictitious serial 60.
-        let (mut month, mut year) = (native_date.month() + 1, native_date.year());
-        if month == 13 {
-            month = 1;
-            year += 1;
-        }
-        let last_day = chrono::NaiveDate::from_ymd_opt(year, month, 1).and_then(|d| d.pred_opt());
-        match last_day.and_then(real_date_to_serial) {
-            Some(serial) => CalcResult::Number(
-                date_system.signed_serial_from_1900_serial(i64::from(serial)) as f64,
-            ),
-            None => CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
-            },
-        }
-    }
-
     // year, month, day
     pub(crate) fn fn_date(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {
@@ -378,51 +306,6 @@ impl Model {
                     .ok_or(Error::NUM)
             },
         )
-    }
-
-    // date, months
-    pub(crate) fn fn_edate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let args_count = args.len();
-        if args_count != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let serial_number = match self.get_number_no_bools(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        // As in EOMONTH: 1900-calendar arithmetic on a 1904 serial shifted to it (A6).
-        let date_system = self.workbook.settings.date_system;
-        let Some((serial_number, date)) = date_system
-            .to_1900_serial(serial_number)
-            .and_then(|serial| month_arithmetic_date(serial).map(|date| (serial, date)))
-        else {
-            return CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
-        };
-        let months = match self.get_number_no_bools(&args[1], cell) {
-            Ok(c) => {
-                let t = c.trunc();
-                t as i32
-            }
-            Err(s) => return s,
-        };
-
-        let Some(native_date) = shift_months(date, months) else {
-            return CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
-        };
-
-        // Serial 0 is day 0 of January 1900, so its result is day 0 of the shifted month: one
-        // serial before that month's first day (EDATE(0,1) = 31, EDATE(0,12) = 366).
-        let day_offset = i32::from(serial_number == 0);
-        match real_date_to_serial(native_date) {
-            Some(serial) => CalcResult::Number(
-                date_system.signed_serial_from_1900_serial(i64::from(serial - day_offset)) as f64,
-            ),
-            None => CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "EDATE out of bounds".to_string(),
-            },
-        }
     }
 
     /// Walk a scalar / range / array node and invoke the provided closure with every
@@ -862,9 +745,8 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        // Errors come in the order DATEDIF had before it lifted: the dates' own errors, then
-        // #NUM! of the dates, then the unit's error (UNVERIFIED, dates.md "DATEDIF and DAYS360 error
-        // order", T-1430).
+        // Errors keep their pre-lift order: the dates' own, #NUM! of a reversed pair, the unit's, then
+        // out-of-calendar #NUM! (T-1355; UNVERIFIED, dates.md "DATEDIF and DAYS360 error order").
         let unit = self.get_string(&args[2], cell).map(|s| s.to_uppercase());
         // Both dates lift over a range or array (probes/date-argument-modes F5:F8).
         let operands = args[..2]
@@ -920,9 +802,11 @@ impl Model {
         if end_serial < start_serial {
             return Err(Error::NUM);
         }
+        // A unit error beats an out-of-calendar start date (dates.md "DATEDIF argument errors before date checks").
+        let unit = unit?;
         let start = date_system.date_of_serial(start_serial).ok_or(Error::NUM)?;
         let end = date_system.date_of_serial(end_serial).ok_or(Error::NUM)?;
-        match unit? {
+        match unit {
             "Y" => {
                 let mut years = end.year() - start.year();
                 if (end.month(), end.day()) < (start.month(), start.day()) {
@@ -948,7 +832,6 @@ impl Model {
                 Ok(f64::from((months % 12).abs()))
             }
             "YD" => {
-                // Helper to create a date or early-return with #NUM! if impossible
                 let make_date = |y: i32, m: u32, d: u32| -> Result<chrono::NaiveDate, Error> {
                     chrono::NaiveDate::from_ymd_opt(y, m, d).ok_or(Error::NUM)
                 };

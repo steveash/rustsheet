@@ -1,5 +1,7 @@
 use std::borrow::Cow;
 
+use super::casefold::{char_offsets, fold_for_before_after};
+
 use crate::{
     cast::{array_node_to_text, MAX_TEXT_UNITS},
     expressions::{parser::ArrayNode, token::Error},
@@ -53,34 +55,74 @@ pub(crate) fn unit_chars_to_units(text: &str) -> Vec<u16> {
         .collect()
 }
 
+#[derive(Clone, Copy)]
 pub(crate) enum Case {
     Sensitive,
     Insensitive,
 }
 
-/// Finds the text after the occurrence instance of '`search_for`' in text
+/// The delimiter list of one TEXTSPLIT, TEXTBEFORE or TEXTAFTER call, folded for `match_mode` 1
+/// once per call rather than once per lifted element (T-1272 performance review).
+pub(crate) struct Delimiters {
+    exact: Vec<String>,
+    folded: Vec<String>,
+}
+
+impl Delimiters {
+    /// TEXTBEFORE and TEXTAFTER's list, folded by [`fold_for_before_after`].
+    pub(crate) fn new(exact: Vec<String>) -> Self {
+        Self::folded_with(exact, fold_for_before_after)
+    }
+
+    /// A list folded by `fold` (TEXTSPLIT's is `fold_for_split`).
+    pub(crate) fn folded_with(exact: Vec<String>, fold: fn(&str) -> String) -> Self {
+        let folded = exact.iter().map(|d| fold(d)).collect();
+        Delimiters { exact, folded }
+    }
+
+    /// The delimiters as written.
+    pub(crate) fn exact(&self) -> &[String] {
+        &self.exact
+    }
+
+    /// The delimiters a text is matched with under `case`.
+    pub(crate) fn for_case(&self, case: Case) -> &[String] {
+        match case {
+            Case::Sensitive => &self.exact,
+            Case::Insensitive => &self.folded,
+        }
+    }
+}
+
+/// Finds the text after the occurrence instance of any of the `delimiters` in text
 pub(crate) fn text_after(
     text: &str,
-    delimiter: &str,
+    delimiters: &Delimiters,
     instance_num: i32,
     match_mode: Case,
 ) -> Option<String> {
-    if let Some((_, right)) = match_text(text, delimiter, instance_num, match_mode) {
-        return Some(text[right..].to_string());
-    };
-    None
+    let (_, right) = match_text(
+        text,
+        delimiters.for_case(match_mode),
+        instance_num,
+        match_mode,
+    )?;
+    text.get(right..).map(str::to_string)
 }
 
 pub(crate) fn text_before(
     text: &str,
-    delimiter: &str,
+    delimiters: &Delimiters,
     instance_num: i32,
     match_mode: Case,
 ) -> Option<String> {
-    if let Some((left, _)) = match_text(text, delimiter, instance_num, match_mode) {
-        return Some(text[..left].to_string());
-    };
-    None
+    let (left, _) = match_text(
+        text,
+        delimiters.for_case(match_mode),
+        instance_num,
+        match_mode,
+    )?;
+    text.get(..left).map(str::to_string)
 }
 
 /// Character count of `SUBSTITUTE(text, old_text, new_text[, instance_num])` computed without
@@ -127,53 +169,80 @@ pub(crate) fn substitute_exceeds_limit(
 }
 
 pub(crate) fn substitute(text: &str, old_text: &str, new_text: &str, instance_num: i32) -> String {
-    if let Some((left, right)) = match_text(text, old_text, instance_num, Case::Sensitive) {
-        return format!("{}{}{}", &text[..left], new_text, &text[right..]);
+    if let Some((left, right)) = match_text(text, &[old_text], instance_num, Case::Sensitive) {
+        if let (Some(head), Some(tail)) = (text.get(..left), text.get(right..)) {
+            return format!("{head}{new_text}{tail}");
+        }
     };
     text.to_string()
 }
 
-fn match_text(
+/// Byte range of the `instance_num`-th match of any of `delimiters` (counted from the end when
+/// negative). Every position where some delimiter starts counts once; the first delimiter in
+/// list order that matches there decides the match length (UNVERIFIED for delimiters that
+/// match at the same position, docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and
+/// REGEX* lift their text and scalar arguments"; T-1824). With `Case::Insensitive` the
+/// delimiters are already folded ([`Delimiters`]); only the text is folded here.
+fn match_text<S: AsRef<str>>(
     text: &str,
-    delimiter: &str,
+    delimiters: &[S],
     instance_num: i32,
     match_mode: Case,
 ) -> Option<(usize, usize)> {
+    // The callers saturate a huge instance number to i32::MIN, whose negation overflows; saturate
+    // it to i32::MAX instead, the same count a huge positive instance number gets.
+    let reverse_num = instance_num.saturating_neg();
     match match_mode {
         Case::Sensitive => {
             if instance_num > 0 {
-                text_sensitive(text, delimiter, instance_num)
+                text_sensitive(text, delimiters, instance_num)
             } else {
-                text_sensitive_reverse(text, delimiter, -instance_num)
+                text_sensitive_reverse(text, delimiters, reverse_num)
             }
         }
         Case::Insensitive => {
-            if instance_num > 0 {
-                text_sensitive(
-                    &text.to_lowercase(),
-                    &delimiter.to_lowercase(),
-                    instance_num,
-                )
+            // Fold char by char (one char in, one char out) and map the match back to byte
+            // offsets of the original; offsets found in a lowercased copy are not valid there
+            // (T-1796, probes/textbefore-casefold-length).
+            let folded_text = fold_for_before_after(text);
+            let (left, right) = if instance_num > 0 {
+                text_sensitive(&folded_text, delimiters, instance_num)
             } else {
-                text_sensitive_reverse(
-                    &text.to_lowercase(),
-                    &delimiter.to_lowercase(),
-                    -instance_num,
-                )
-            }
+                text_sensitive_reverse(&folded_text, delimiters, reverse_num)
+            }?;
+            let original = char_offsets(text);
+            let char_index = |byte: usize| folded_text.get(..byte).map(|s| s.chars().count());
+            Some((
+                *original.get(char_index(left)?)?,
+                *original.get(char_index(right)?)?,
+            ))
         }
     }
 }
 
-fn text_sensitive(text: &str, delimiter: &str, instance_num: i32) -> Option<(usize, usize)> {
+/// Length in bytes of the first delimiter that `rest` starts with.
+fn delimiter_at<S: AsRef<str>>(rest: &str, delimiters: &[S]) -> Option<usize> {
+    delimiters
+        .iter()
+        .map(AsRef::as_ref)
+        .find(|d| rest.starts_with(d))
+        .map(str::len)
+}
+
+fn text_sensitive<S: AsRef<str>>(
+    text: &str,
+    delimiters: &[S],
+    instance_num: i32,
+) -> Option<(usize, usize)> {
     let mut byte_index = 0;
     let mut local_index = 1;
-    // delimiter length in bytes
-    let delimiter_len = delimiter.len();
     for c in text.chars() {
-        if text[byte_index..].starts_with(delimiter) {
+        if let Some(len) = text
+            .get(byte_index..)
+            .and_then(|rest| delimiter_at(rest, delimiters))
+        {
             if local_index == instance_num {
-                return Some((byte_index, byte_index + delimiter_len));
+                return Some((byte_index, byte_index + len));
             } else {
                 local_index += 1;
             }
@@ -183,19 +252,20 @@ fn text_sensitive(text: &str, delimiter: &str, instance_num: i32) -> Option<(usi
     None
 }
 
-fn text_sensitive_reverse(
+fn text_sensitive_reverse<S: AsRef<str>>(
     text: &str,
-    delimiter: &str,
+    delimiters: &[S],
     instance_num: i32,
 ) -> Option<(usize, usize)> {
-    let text_len = text.len();
-    let mut byte_index = text_len;
+    let mut byte_index = text.len();
     let mut local_index = 1;
-    let delimiter_len = delimiter.len();
     for c in text.chars().rev() {
-        if text[byte_index..].starts_with(delimiter) {
+        if let Some(len) = text
+            .get(byte_index..)
+            .and_then(|rest| delimiter_at(rest, delimiters))
+        {
             if local_index == instance_num {
-                return Some((byte_index, byte_index + delimiter_len));
+                return Some((byte_index, byte_index + len));
             } else {
                 local_index += 1;
             }
@@ -329,84 +399,100 @@ fn nth_overlapping_match(text: &[u16], pattern: &[u16], n: usize) -> Option<usiz
 #[cfg(test)]
 mod tests {
 
-    use super::{text_after, text_before, within_text_budget, Case};
+    use super::{within_text_budget, Case, Delimiters};
+
+    fn text_after(text: &str, delimiters: &[&str], n: i32, case: Case) -> Option<String> {
+        let delimiters = Delimiters::new(delimiters.iter().map(|d| (*d).to_string()).collect());
+        super::text_after(text, &delimiters, n, case)
+    }
+
+    fn text_before(text: &str, delimiters: &[&str], n: i32, case: Case) -> Option<String> {
+        let delimiters = Delimiters::new(delimiters.iter().map(|d| (*d).to_string()).collect());
+        super::text_before(text, &delimiters, n, case)
+    }
     #[test]
     fn test_text_after_sensitive() {
         assert_eq!(
-            text_after("One element", "ele", 1, Case::Sensitive),
+            text_after("One element", &["ele"], 1, Case::Sensitive),
             Some("ment".to_string())
         );
         assert_eq!(
-            text_after("One element", "e", 1, Case::Sensitive),
+            text_after("One element", &["e"], 1, Case::Sensitive),
             Some(" element".to_string())
         );
         assert_eq!(
-            text_after("One element", "e", 4, Case::Sensitive),
+            text_after("One element", &["e"], 4, Case::Sensitive),
             Some("nt".to_string())
         );
-        assert_eq!(text_after("One element", "e", 5, Case::Sensitive), None);
+        assert_eq!(text_after("One element", &["e"], 5, Case::Sensitive), None);
         assert_eq!(
-            text_after("長壽相等！", "相", 1, Case::Sensitive),
+            text_after("長壽相等！", &["相"], 1, Case::Sensitive),
             Some("等！".to_string())
         );
     }
     #[test]
     fn test_text_before_sensitive() {
         assert_eq!(
-            text_before("One element", "ele", 1, Case::Sensitive),
+            text_before("One element", &["ele"], 1, Case::Sensitive),
             Some("One ".to_string())
         );
         assert_eq!(
-            text_before("One element", "e", 1, Case::Sensitive),
+            text_before("One element", &["e"], 1, Case::Sensitive),
             Some("On".to_string())
         );
         assert_eq!(
-            text_before("One element", "e", 4, Case::Sensitive),
+            text_before("One element", &["e"], 4, Case::Sensitive),
             Some("One elem".to_string())
         );
-        assert_eq!(text_before("One element", "e", 5, Case::Sensitive), None);
+        assert_eq!(text_before("One element", &["e"], 5, Case::Sensitive), None);
         assert_eq!(
-            text_before("長壽相等！", "相", 1, Case::Sensitive),
+            text_before("長壽相等！", &["相"], 1, Case::Sensitive),
             Some("長壽".to_string())
         );
     }
     #[test]
     fn test_text_after_insensitive() {
         assert_eq!(
-            text_after("One element", "eLe", 1, Case::Insensitive),
+            text_after("One element", &["eLe"], 1, Case::Insensitive),
             Some("ment".to_string())
         );
         assert_eq!(
-            text_after("One element", "E", 1, Case::Insensitive),
+            text_after("One element", &["E"], 1, Case::Insensitive),
             Some(" element".to_string())
         );
         assert_eq!(
-            text_after("One element", "E", 4, Case::Insensitive),
+            text_after("One element", &["E"], 4, Case::Insensitive),
             Some("nt".to_string())
         );
-        assert_eq!(text_after("One element", "E", 5, Case::Insensitive), None);
         assert_eq!(
-            text_after("長壽相等！", "相", 1, Case::Insensitive),
+            text_after("One element", &["E"], 5, Case::Insensitive),
+            None
+        );
+        assert_eq!(
+            text_after("長壽相等！", &["相"], 1, Case::Insensitive),
             Some("等！".to_string())
         );
     }
     #[test]
     fn test_text_before_insensitive() {
         assert_eq!(
-            text_before("One element", "eLe", 1, Case::Insensitive),
+            text_before("One element", &["eLe"], 1, Case::Insensitive),
             Some("One ".to_string())
         );
         assert_eq!(
-            text_before("One element", "E", 1, Case::Insensitive),
+            text_before("One element", &["E"], 1, Case::Insensitive),
             Some("On".to_string())
         );
         assert_eq!(
-            text_before("One element", "E", 4, Case::Insensitive),
+            text_before("One element", &["E"], 4, Case::Insensitive),
             Some("One elem".to_string())
         );
-        assert_eq!(text_before("One element", "E", 5, Case::Insensitive), None);
         assert_eq!(
-            text_before("長壽相等！", "相", 1, Case::Insensitive),
+            text_before("One element", &["E"], 5, Case::Insensitive),
+            None
+        );
+        assert_eq!(
+            text_before("長壽相等！", &["相"], 1, Case::Insensitive),
             Some("長壽".to_string())
         );
     }
@@ -417,5 +503,34 @@ mod tests {
         // 2048 results of 32 KiB make exactly 64 MiB; the next one crosses the cap.
         assert!((0..2048).all(|_| within_text_budget(&mut total, 32768)));
         assert!(!within_text_budget(&mut total, 1));
+    }
+
+    // T-1272: a list of delimiters matches at the earliest position of any entry.
+    #[test]
+    fn delimiter_lists() {
+        let list = [",", "-"];
+        assert_eq!(
+            text_after("a,b-c", &list, 2, Case::Sensitive),
+            Some("c".to_string())
+        );
+        assert_eq!(
+            text_before("a,b-c", &list, -1, Case::Sensitive),
+            Some("a,b".to_string())
+        );
+        assert_eq!(text_before("a,b-c", &list, 3, Case::Sensitive), None);
+        // The first entry in list order sets the length where two match at one position.
+        assert_eq!(
+            text_after("xabc", &["ab", "a"], 1, Case::Sensitive),
+            Some("c".to_string())
+        );
+        assert_eq!(
+            text_after("xabc", &["a", "ab"], 1, Case::Sensitive),
+            Some("bc".to_string())
+        );
+        assert_eq!(
+            text_before("xAbC", &["B", "x"], 1, Case::Insensitive),
+            Some("".to_string())
+        );
+        assert_eq!(text_before("abc", &[], 1, Case::Sensitive), None);
     }
 }
