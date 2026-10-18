@@ -37,3 +37,35 @@ Spec: docs/specs/SPEC-0011-scalar-argument-lifting.md, "Today's lifting code" an
 
 ## Out of scope
 - The date and time parts, DATE, DATEDIF, MUNIT, MROUND and SQRTPI (T-1785). The operators' `broadcast_arrays` and `apply_unary_chain`.
+
+## Progress (2026-10-18, opus run; branch pushed, resumable)
+Done on agent/quality/T-1773-math-lifts-driver:
+- The 32 `single_number_fn!` functions are `LIFT_1` entries with one kernel helper,
+  `Model::number_fn` (mathematical.rs); `functions/macros.rs` is deleted. The ROUND family, MOD,
+  CEILING/FLOOR and the four `lift_with_defaults` callers are `LIFT_2`, `LIFT_1_OF_2` and
+  `LIFT_1_OF_3` entries over `Model::numbers_fn` (defaults for the omitted trailing arguments);
+  `lift_with_defaults` is gone. CEILING/FLOOR moved to math_and_trigonometry/ceiling_floor.rs (file
+  size). Their static-analysis fallback arms are removed (the table derives the same signatures and
+  shapes). Kernel errors carry no message (`kernel_number`, `number_result` in functions/lift/mod.rs).
+- `make eval-check` in the worktree: 0 fixes, 0 regressions (fixtures, gen-*, ironcalc-calc, probes,
+  smoke; poi not fetched there). Engine unit tests pass, `test_nested_formula_stack` included.
+  Duplication 4812 -> 4792 (run `scripts/check_duplication.py --update` after the final main merge).
+- Bench `crates/rustsheet/benches/math_lift.rs` (one case per process, min of 11 runs, release):
+
+  | case | main | branch |
+  |---|---|---|
+  | ROUND, per row (100k) | 132-137 ms | 150 ms |
+  | ABS, per row (100k) | 17.6 ms | 28.3 ms |
+  | MOD, per row (100k) | 21.7-22.9 ms | 32.8 ms |
+  | SUM(ROUND(A1:A1000000,2)) | 1.58 s | 1.26 s |
+  | SUM(ABS(A1:A1000000)) | 324 ms | 258 ms |
+  | SUM(IFERROR(ROUND(A1:A1000000&"x",2),0)) | 2.31 s | 2.44 s |
+
+Blocking the 5% criterion: the driver's unlifted path costs about 100 ns more per call than
+`get_number_or_array` did. About 60% of it is `ArgBuf`: `ArgBuf::filled` builds, moves (through
+`read_lift_args`' `Result<ReadArgs, _>`) and drops all `INLINE_ARGS` = 8 `CalcResult` slots for a
+one-argument call (with `INLINE_ARGS` = 2 as an experiment, ABS per row is 22.5 ms). Next: make the
+read phase build only `len` slots (e.g. a `SmallVec`-like length-tracked buffer, or a fast path for
+one- and two-argument calls in `lift_call_with` that reads into a local array), then profile the
+rest (the `dyn` kernel call, `arg_kinds()` twice per call); the error fan-out case (+5%) likely
+shares the cause. Then rerun the bench, fill the Outcome, review and PR.
