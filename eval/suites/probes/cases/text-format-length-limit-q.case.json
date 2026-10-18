@@ -1,0 +1,37 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1486: TEXT round q: an unparseable code on text with and without a text section and in a later section, and boundaries left open by rounds n to p.",
+  "tags": [
+    "M10",
+    "probe",
+    "text",
+    "T-1486"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=TEXT(\"x\",\"0:a:\")",
+        "A2": "=TEXT(\"x\",\"0\\x\")",
+        "A3": "=TEXT(\"x\",\"0 a\")",
+        "A4": "=TEXT(\"x\",\"0\"\"\")",
+        "A5": "=TEXT(\"x\",\"0;\"\"\")",
+        "A6": "=TEXT(5,\"0;\"\"\")",
+        "A7": "=TEXT(\"x\",\"0;0;0;\"\"\")",
+        "A8": "=TEXT(\"x\",\"\"\"\")",
+        "A9": "=TEXT(\"x\",\"0;0;\"\"\")",
+        "A10": "=TEXT(-5,\"0;\"\"\")",
+        "A11": "=TEXT(\"x\",\"@;\"\"\")",
+        "A12": "=TEXT(\"x\",\"0[Red\")",
+        "A13": "=TEXT(\"x\",\"0;[Red\")",
+        "A14": "=TEXT(7,\"0-0;0-0\"&\"\"\"\"&REPT(\"a\",114)&\"\"\"\")",
+        "A15": "=TEXT(7,\"0-0;0-0\"&\"\"\"\"&REPT(\"a\",115)&\"\"\"\")",
+        "A16": "=TEXT(1,\"d\"&\"\"\"\"&REPT(\"a\",119)&\"\"\"\"&\"[>5]d\")",
+        "A17": "=TEXT(1,\"d\"&\"\"\"\"&REPT(\"a\",120)&\"\"\"\"&\"[>5]d\")",
+        "A18": "=TEXT(1,\"d\"&\"\"\"\"&REPT(\"a\",121)&\"\"\"\"&\"[>5]d\")",
+        "A19": "=TEXT(1,\"d\"&\"\"\"\"&REPT(\"a\",122)&\"\"\"\"&\"[>5]d\")"
+      }
+    }
+  ]
+}

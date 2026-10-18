@@ -45,6 +45,30 @@ fn number_and_places(values: &[CalcResult]) -> Option<(&CalcResult, Option<&Calc
 }
 
 impl Model {
+    /// The digit text of a HEX/OCT `number`. Excel reads a blank cell and empty text as 0 in every
+    /// base conversion (probes/eng-base-conv-blank, docs/excel-semantics/engineering.md).
+    fn base_digits(value: &CalcResult, cell: CellReferenceIndex) -> Result<String, CalcResult> {
+        let text = Self::cast_string_ref(value, cell)?;
+        Ok(if text.is_empty() {
+            "0".to_owned()
+        } else {
+            text
+        })
+    }
+
+    /// The `number` of a BIN2* call as a number, with a blank cell or empty text read as 0 (same
+    /// probe as `base_digits`).
+    fn binary_digits(
+        &self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        if matches!(value, CalcResult::String(s) if s.is_empty()) {
+            return Ok(0.0);
+        }
+        self.cast_number_no_bools_ref(value, cell)
+    }
+
     // BIN2DEC(number)
     pub(crate) fn fn_bin2dec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Bin2dec, args, cell, &mut |model, values| {
@@ -56,7 +80,7 @@ impl Model {
         let [number] = values else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match self.cast_number_no_bools_ref(number, cell) {
+        let value = match self.binary_digits(number, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
@@ -77,7 +101,7 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match self.cast_number_no_bools_ref(number, cell) {
+        let value = match self.binary_digits(number, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
@@ -122,7 +146,7 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match self.cast_number_no_bools_ref(number, cell) {
+        let value = match self.binary_digits(number, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
@@ -166,7 +190,7 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value_raw = match self.cast_number_no_bools_ref(number, cell) {
+        let value_raw = match self.binary_digits(number, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
@@ -208,7 +232,7 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value_raw = match self.cast_number_no_bools_ref(number, cell) {
+        let value_raw = match self.binary_digits(number, cell) {
             Ok(f) => f.trunc(),
             Err(s) => return s,
         };
@@ -250,7 +274,7 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value_raw = match self.cast_number_no_bools_ref(number, cell) {
+        let value_raw = match self.binary_digits(number, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
@@ -294,7 +318,7 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::cast_string_ref(number, cell) {
+        let value = match Self::base_digits(number, cell) {
             Ok(s) => s,
             Err(s) => return s,
         };
@@ -352,7 +376,7 @@ impl Model {
         let [number] = values else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::cast_string_ref(number, cell) {
+        let value = match Self::base_digits(number, cell) {
             Ok(s) => s,
             Err(s) => return s,
         };
@@ -385,7 +409,7 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::cast_string_ref(number, cell) {
+        let value = match Self::base_digits(number, cell) {
             Ok(s) => s,
             Err(s) => return s,
         };
@@ -442,7 +466,7 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::cast_string_ref(number, cell) {
+        let value = match Self::base_digits(number, cell) {
             Ok(s) => s,
             Err(s) => return s,
         };
@@ -496,7 +520,7 @@ impl Model {
         let [number] = values else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::cast_string_ref(number, cell) {
+        let value = match Self::base_digits(number, cell) {
             Ok(s) => s,
             Err(s) => return s,
         };
@@ -526,7 +550,7 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::cast_string_ref(number, cell) {
+        let value = match Self::base_digits(number, cell) {
             Ok(s) => s,
             Err(s) => return s,
         };

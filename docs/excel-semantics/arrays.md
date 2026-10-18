@@ -466,7 +466,9 @@ the COUP* family, DURATION, MDURATION and PRICE are `LiftArrays` as well (scalar
 44 statistical functions whose every argument is scalar and whose kernels are bounded lift as `Lift`
 (statistics.md "Statistical function argument modes"), so NORM.DIST's cells here pass (H15, H16, H20, H21, H34,
 H35, J8, K8), and NORM.S.DIST's H38 and H40 now lift and miss only by its known last-digit residue, as the scalar H39
-does (statistics.md "The normal CDF is not always correctly rounded", T-0968). The other families
+does (statistics.md "The normal CDF is not always correctly rounded", T-0968). Since T-1848 the quantile functions
+BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV and CONFIDENCE.T lift as `Lift` too, their searches
+capped (statistics.md "Quantile searches: per-call cap and lifting"). The other families
 listed in SPEC-0011 do not lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic
 formula). SPEC-0011's rollout tasks fix them.
 Status: VERIFIED (excel-graph)
@@ -477,7 +479,8 @@ Implemented in: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lif
 kernels `edate_of`, `eomonth_of` (functions/date_and_time/month_shift.rs), `weeknum_of`
 (weeknum.rs) and `yearfrac_of` (yearfrac.rs); the financial kernels in functions/financial/
 (annuity.rs, discount.rs, rate_conversions.rs, accrint.rs, financial_bonds.rs) and financial_depreciation.rs; the
-statistical kernels in functions/statistical/ (normal.rs, binom.rs, beta.rs, fisher.rs, t_dist.rs and the rest).
+statistical kernels in functions/statistical/ (normal.rs, binom.rs, beta.rs, fisher.rs, t_dist.rs and the rest; the
+capped quantile search in inverse_beta.rs).
 Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236, T-1822
 
 ## GROUPBY and PIVOTBY
@@ -814,17 +817,24 @@ crates/rustsheet-engine/src/limits.rs (`too_many_visits`, `MAX_LIFTED_CELL_VISIT
 crates/rustsheet-engine/src/functions/lookup_and_reference/relative_to.rs (`RelativeSets::new`, `MAX_SET_ENTRIES`)
 Tasks: T-1325, T-1327
 
-## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!
+## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!; an empty single cell is #VALUE!
 Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:
 `WRAPCOLS(FALSE,4)` is FALSE in one cell and `WRAPCOLS("1.5",4)&DROP(C10,0,3)` is one `#CALC!` (neither spills over the
 occupied cells below). A wrap_count of 0.5 is `#NUM!` (`HYPERLINK(WRAPCOLS(C12,0.5,..),..)`).
 Evidence: gen-m7/bb4617644fee40c9 Calc!A30, gen-m7/d38b52bfa1a9f9e6 Calc!A26, gen-m7/f68fafa0ca2eba26 Calc!A39 (excel-graph, 2026-10-11, T-1275).
-Also: an error pad_with is the whole result when nothing is padded (`WRAPCOLS(D6:D6,2,VALUE("x"))` is `#VALUE!`,
-gen-m9/675763979c1defb6 A6), while with padding it fills the padded cells (WRAPCOLS_ROWS.xlsx E10, `NA()`). wrap_count 0
-is `#NUM!` for WRAPROWS too (gen-m9/50f10c4062fb2e98 A21; the full set is under "WRAPROWS and WRAPCOLS" below).
-Ours: all of the above since T-1786 and T-1348 (wrap_count is read before truncation, so 0.5 is `#NUM!`).
-Status: VERIFIED for single values (excel-graph). UNVERIFIED: the error pad_with rule for a vector of more than one
-element (it may apply only to a scalar input; follow-up task in Tasks), `WRAPCOLS({1,2},4)` and `WRAPROWS({1,2},4)`.
+Also: an error pad_with is an ordinary pad value: it fills the padded cells (WRAPCOLS_ROWS.xlsx E10, `NA()`;
+`WRAPCOLS({1,2,3},2,VALUE("x"))` pads with `#VALUE!`) and when nothing is padded the array is returned
+(`WRAPROWS({1,2,3,4},4,VALUE("x"))` is 1 2 3 4; `WRAPCOLS(5,3,VALUE("x"))` is 5). The `#VALUE!` of
+`WRAPCOLS(D6:D6,2,VALUE("x"))` (gen-m9/675763979c1defb6 A6) is the empty single-cell input: `WRAPCOLS(Z1:Z1,2)`,
+`WRAPCOLS(Z1,2)`, `WRAPROWS(Z1:Z1,1)` and a wrap_count of 0 are `#VALUE!` with any pad_with, while two empty cells
+(`Z1:Z2`) are two 0s. wrap_count above the length is the length, so `WRAPCOLS({1,2},4)` is 2x1 and
+`WRAPCOLS(B5:H5,100,NA())` is 7x1, unpadded. wrap_count is `#NUM!` below 1 for WRAPROWS too (gen-m9/50f10c4062fb2e98 A21;
+the full set is under "WRAPROWS and WRAPCOLS" below).
+Evidence: probes/wrapcols-wraprows-pad-with (excel-graph, 2026-10-18, T-1840).
+Unprobed: an omitted vector (`WRAPCOLS(,2)`) and an empty cell reached indirectly (`WRAPCOLS(IF(TRUE,Z1),2)`,
+`WRAPCOLS(INDEX(Z1:Z2,1),2)`); the engine treats the omitted vector like an empty cell (`#VALUE!`).
+Ours: all of the above since T-1786, T-1348 and T-1840 (wrap_count is read before truncation, so 0.5 is `#NUM!`).
+Status: VERIFIED (excel-graph).
 Tasks: T-1348, T-1840
 
 ## MAP over arrays of different sizes, or a single value and an array
