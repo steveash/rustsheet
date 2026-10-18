@@ -814,6 +814,10 @@ C	probes/text-locale-date-names.case.json	124
 C	probes/text-locale-name-tables.case.json	601
 C	probes/text-locale-regional-lcids.case.json	252
 C	probes/text-lone-surrogates.case.json	107
+C	probes/text-long-input-a.case.json	2
+C	probes/text-long-input-b.case.json	2
+C	probes/text-long-input-c.case.json	1
+C	probes/text-long-input-e.case.json	2
 C	probes/text-modes-bahttext.case.json	2
 C	probes/text-modes-bytes.case.json	8
 C	probes/text-modes-dbcs-lift.case.json	10
@@ -2361,8 +2365,6 @@ F	probes/regex-pcre2-features.case.json	Sheet1!D7
 F	probes/regex-pcre2-features.case.json	Sheet1!D8
 F	probes/regex-pcre2-features.case.json	Sheet1!D9
 F	probes/regexreplace-limit-and-syntax.case.json	Sheet1!A23
-F	probes/regexreplace-long-result-d.case.json	Sheet1!A2
-F	probes/regexreplace-long-result-e.case.json	Sheet1!A2
 F	probes/regression-forecast.case.json	Sheet1!L11
 F	probes/regression-forecast.case.json	Sheet1!L13
 F	probes/regression-forecast.case.json	Sheet1!L14

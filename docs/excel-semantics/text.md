@@ -130,13 +130,18 @@ replace-all and for a given instance number alike; exactly 32,767 is fine. The l
 inputs: when nothing matches the text is returned unchanged even if text plus new_text would exceed it.
 Evidence: probes/text-result-limit C1-C7, C14 (over limit, `#VALUE!`), C11-C13 (no match, unchanged) (excel-graph,
 2026-10-05; excel-desktop not used).
+Over-limit input: SUBSTITUTE keys on the result length only. On the 65,534-unit REGEXREPLACE text a same-length result is
+`#VALUE!` (`SUBSTITUTE(REGEXREPLACE(REPT("a",32767),"a","bb"),"b","c")`, probes/regexreplace-long-result-d A2, T-1904),
+but results that shrink to 0 and to 32,767 units are returned (probes/text-long-input-e A1, A2).
+Per function (the text is the 65,534-unit REGEXREPLACE result; excel-graph, 2026-10-18): UPPER, LOWER, PROPER, TRIM,
+CLEAN and REPLACE give `#VALUE!` for the input itself (SUBSTITUTE: see above) (probes/regexreplace-long-result-e A2, text-long-input-a, -b, -c); LEN,
+LEFT, MID, ISTEXT and the REGEX* functions take the text. `&` is unprobed: excel-graph refuses the workbook (follow-up task). REPLACE's error precedence against an error in
+another argument is unprobed (ours coerces all arguments first, then checks the length).
 Open: REPT and CONCATENATE count the limit in UTF-16 code units (coercion.md "Text longer than 32,767
-characters"); SUBSTITUTE is unprobed with surrogate pairs and the code still counts `chars()`; ours passes input text already over the limit
-through when the result does not grow, but Excel's `SUBSTITUTE(REGEXREPLACE(REPT("a",32767),"a","bb"),"b","c")` (65,534
-units in, 65,534 out) is `#VALUE!` (probes/regexreplace-long-result-d A2, T-1817; ours fixes it in T-1904).
+characters"); SUBSTITUTE is unprobed with surrogate pairs and the code still counts `chars()`.
 Status: VERIFIED
 Implemented in: `substitute_exceeds_limit`/`substituted_chars` in functions/text/util.rs size the result before building it (T-0241)
-Tasks: T-0241
+Tasks: T-0241, T-1904
 
 ## CONCAT and TEXTJOIN past 32,767 characters
 Rule: the joined text of CONCAT or TEXTJOIN over 32,767 characters is `#CALC!` (not truncated, not `#VALUE!`).
