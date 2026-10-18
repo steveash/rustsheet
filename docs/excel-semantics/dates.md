@@ -710,3 +710,10 @@ Evidence: gen-m7/f68fafa0ca2eba26 Calc!A1 (`Data!D10^DATEDIF((Data!E$5+(-1)),386
 Ours: once start <= end, the unit's error wins over any start or end date outside the calendar (T-1355); a reversed pair still gives `#NUM!` first.
 Status: VERIFIED (web) for a negative start date with an in-range end; UNVERIFIED: an out-of-range high end date or an ordered pair of negative dates with an error unit, an invalid unit text with a negative start date, and an error unit with a reversed pair
 Tasks: T-1355
+
+## WEEKDAY: date text with literal quote characters is #VALUE!, even with an error return_type
+Date text whose string value contains the double-quote characters themselves (`"07/01/2026"` as text, quotes included) does not parse as a date, so WEEKDAY's date argument is `#VALUE!` and wins over an error `return_type` (`1/0`, `NA()`), by the left-to-right rule in arrays.md.
+Evidence: ironcalc-calc/DATE_AND_TIME/WEEKDAY_WEEKNUM_ISOWEEKNUM_issue_1502.xlsx (Excel-cached, T-1517).
+Ours: matches (all 10 cells pass).
+Status: VERIFIED (upstream Excel-authored workbook)
+Tasks: T-1517

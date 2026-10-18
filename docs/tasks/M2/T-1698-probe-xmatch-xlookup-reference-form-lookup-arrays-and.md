@@ -3,7 +3,7 @@ id: T-1698
 title: "Probe XMATCH/XLOOKUP reference-form lookup arrays and thorn case"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1669 switched XMATCH `lookup_array` and XLOOKUP `lookup_array`/`return_array` 
 
 ## Out of scope
 -
+
+## Outcome
+Added probes `xmatch-xlookup-reference-forms` (M2) and `xmatch-xlookup-3d-lookup-array` (M8) with excel-graph oracle values; the engine already matched all 20 cells, so no engine change. Findings in docs/excel-semantics/lookup.md. Eval delta: +20 passing probe cells, no regressions.

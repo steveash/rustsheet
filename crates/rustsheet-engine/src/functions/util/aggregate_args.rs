@@ -64,7 +64,7 @@ pub(crate) struct AggregatePolicy {
     pub(crate) reading: ArgReading,
     /// How errors are ordered.
     pub(crate) errors: ErrorRule,
-    /// DEVSQ, AVEDEV, SUMSQ: an empty argument is not an item (TODO(T-0236)).
+    /// DEVSQ, AVEDEV, SUMSQ: an empty argument is not an item (TODO(T-1748): Excel counts it as 0 for AVEDEV and DEVSQ).
     pub(crate) skip_empty_args: bool,
 }
 
