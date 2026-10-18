@@ -3054,16 +3054,6 @@ F	probes/stats-evidence-floor-t1623.case.json	S!Q36
 F	probes/stats-evidence-floor-t1623.case.json	S!Q50
 F	probes/stats-evidence-floor-t1623.case.json	S!Q58
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
-F	probes/subtotal-array-function-num.case.json	Calc!A1
-F	probes/subtotal-array-function-num.case.json	Calc!A11
-F	probes/subtotal-array-function-num.case.json	Calc!A12
-F	probes/subtotal-array-function-num.case.json	Calc!A3
-F	probes/subtotal-array-function-num.case.json	Calc!A4
-F	probes/subtotal-array-function-num.case.json	Calc!A6
-F	probes/subtotal-array-function-num.case.json	Calc!A9
-F	probes/subtotal-array-function-num.case.json	Calc!B1
-F	probes/subtotal-array-function-num.case.json	Calc!B12
-F	probes/subtotal-array-function-num.case.json	Calc!B3
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
 F	probes/t1626-asc.case.json	Sheet1!C11
 F	probes/t1626-asc.case.json	Sheet1!C12
