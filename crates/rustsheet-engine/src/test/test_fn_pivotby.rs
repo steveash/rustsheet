@@ -127,6 +127,61 @@ fn several_value_columns_have_empty_total_columns() {
 }
 
 #[test]
+fn column_subtotals_over_several_values_are_placed_by_counted_lines() {
+    // probes/groupby-subtotals G!A781 (T-1700): each subtotal writes its values at its first
+    // line's column plus the number of lines it covers. Apple and Pear (two years each) land on
+    // their own years; Banana (one year) puts its Units in its first subtotal column; the Grand
+    // Total (8 lines) its Units in Banana's second, Banana's own write winning over its Sales.
+    let formula = format!("=PIVOTBY(A2:A11,B2:C11,D2:E11,{SUM},,,,2)");
+    let grid = pivot(&formula, 8, 19);
+    let east = [
+        "East", "15", "6", "", "", "", "", "", "", "", "9", "", "", "30", "3", "", "", "", "",
+    ];
+    assert_eq!(grid[2], east);
+    let south = [
+        "South", "", "", "", "", "", "", "-3", "9", "9", "9", "", "", "", "", "", "", "", "",
+    ];
+    assert_eq!(grid[4], south);
+    let total = [
+        "Total", "15", "13", "49", "12", "", "", "9.5", "19", "19", "55", "20", "2", "37", "9", "",
+        "", "", "",
+    ];
+    assert_eq!(grid[7], total);
+    // G!A1141: with -2 the subtotal columns go first but show the same cells.
+    let formula = format!("=PIVOTBY(A2:A11,B2:C11,D2:E11,{SUM},,,,-2)");
+    let grid = pivot(&formula, 8, 19);
+    let total = [
+        "Total", "", "", "", "", "15", "13", "49", "12", "19", "55", "9.5", "19", "", "", "20",
+        "2", "37", "9",
+    ];
+    assert_eq!(grid[7], total);
+}
+
+#[test]
+fn one_column_group_shows_the_last_values_total_first() {
+    // probes/pivotby-total-columns-one-group S!A49: with one column group the Total's writes
+    // land past it, so the first Total column shows the Units totals and the second is "".
+    let formula = format!("=PIVOTBY(A2:A11,B2:B11<>\"zz\",D2:E11,{SUM})");
+    let grid = pivot(&formula, 7, 5);
+    assert_eq!(grid[0], ["", "TRUE", "TRUE", "Total", "Total"]);
+    assert_eq!(grid[1], ["East", "45", "9", "9", ""]);
+    assert_eq!(grid[6], ["Total", "130.5", "55", "55", ""]);
+}
+
+#[test]
+fn paired_functions_subtotal_columns_in_place() {
+    // probes/pivotby-col-subtotals-values3 S!A1: two functions paired with two value columns
+    // subtotal and total in place.
+    let formula = format!("=PIVOTBY(A2:A11,B2:C11,D2:E11,HSTACK({SUM},LAMBDA(x,COUNT(x))),,,,2)");
+    let grid = pivot(&formula, 9, 19);
+    let total = [
+        "Total", "15", "3", "49", "2", "64", "5", "9.5", "2", "9.5", "2", "20", "1", "37", "2",
+        "57", "3", "130.5", "10",
+    ];
+    assert_eq!(grid[8], total);
+}
+
+#[test]
 fn key_and_value_sorts() {
     // P!M25: both axes descending, the blank key still last.
     let grid = pivot(
@@ -238,13 +293,7 @@ fn filter_and_argument_errors() {
             "#VALUE!",
         ),
         ("G8", "=PIVOTBY(A2:A11,C2:C11,D2:D11,NA())", "#N/A"),
-        // Deferred: column subtotals over several values (T-1700). 3 over two row fields is
-        // #VALUE! (probes/pivotby-followup P!A381).
-        (
-            "G9",
-            "=PIVOTBY(A2:A11,B2:C11,D2:E11,LAMBDA(x,SUM(x)),,,,2)",
-            "#N/IMPL!",
-        ),
+        // 3 over two row fields is #VALUE! (probes/pivotby-followup P!A381).
         (
             "G10",
             "=PIVOTBY(A2:B11,C2:C11,D2:D11,LAMBDA(x,SUM(x)),,3)",
