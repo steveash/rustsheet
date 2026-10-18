@@ -7,7 +7,9 @@
     when the two differ by less than 1e-9 and the workbook's AppVersion is 16.x.
   - In corpus-bench this produced 373 cells that fail only in the last digit, across seven
     workbooks: 49278, 54490, 53068, 52216, 49036, 38655 and 47766. Excel for the web computed
-    exactly the engine's value in every one. The cached value had 15 significant digits. Two
+    exactly the engine's value in every one. 366 of the cached values are the web value cut to 15
+    significant digits. The other 7 (49278 `Nov 21 (2)` M5-M7, M14-M17, `=L*J`) are products of
+    such cut values: J7 is cached as 16.4224657534247 where the web has 16.422465753424657. Two
     examples:
     - 47766 `Total (2)!I26` `=D26/C26` is 0.4782608695652174 on the web and 0.478260869565217
       in the cache.
