@@ -25,9 +25,8 @@ fn last_day_of_feb(year: i32) -> u32 {
     }
 }
 
-// Converts a raw numeric argument to a date serial (date part) for DAYS360,
-// rounding the time-of-day to the nearest second before discarding it. Excel
-// rolls e.g. 46000.999999 up to 46001 when extracting the date part.
+// The date serial of a raw argument (DAYS360, HOUR/MINUTE/SECOND's bound), rounding the
+// time-of-day to the nearest second first: Excel rolls 46000.999999 up to 46001.
 fn days360_serial(raw: f64) -> i64 {
     ((raw * SECONDS_PER_DAY_F64).round() / SECONDS_PER_DAY_F64).floor() as i64
 }
@@ -148,9 +147,10 @@ macro_rules! time_part_fn {
             if args.len() != 1 {
                 return CalcResult::new_args_number_error(cell);
             }
-            // Lifts over a range or array (probes/date-argument-modes F27:F32); #NUM! from 2958466 after rounding to the second (probes/time-parts-rounding-window; dates.md).
+            // Lifts over a range or array (probes/date-argument-modes F27:F32); #NUM! from 2958466 once rounded to the second (probes/time-parts-rounding-window).
             self.lift_numbers(args, cell, "Invalid time", |[value]| {
-                if value < 0.0 || days360_serial(value) > i64::from(MAXIMUM_DATE_SERIAL_NUMBER) {
+                let last = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
+                if !(value >= 0.0 && days360_serial(value) <= last) {
                     return Err(Error::NUM);
                 }
                 Ok(($extract)(value))
