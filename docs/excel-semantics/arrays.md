@@ -628,10 +628,15 @@ same Data sheet, excel-graph, 2026-10-16; "functions", "functions2", "functions3
   every cell (functions G!A541-A581; PIVOTBY P!A841).
 Unprobed (T-1325): mismatched heights inside a function array (the engine pads with `#N/A`, so the result is `#N/A`); which of
 several error elements wins (the engine: the first evaluated); a labelled row of several functions with detected headers (the
-engine does not show them); a LAMBDA without parameters (the engine: `#VALUE!`); other functions passed by name whose minimum
-argument count is not 1 (the engine gives them one argument, T-1706). CORREL, PEARSON and RSQ over arrays of different sizes
+engine does not show them); a LAMBDA without parameters (the engine: `#VALUE!`). CORREL, PEARSON and RSQ over arrays of different sizes
 are `#N/A` per group in Excel, `#VALUE!` here, and their total rows differ in the last digit (functions G!B421, functions2
 G!B281, G!B301): a CORREL/PEARSON/RSQ gap, T-1707.
+T-1706: every function passed by name gets its catalog minimum argument count (1 or 2; 0 or 3+ is `#VALUE!` overall):
+COVARIANCE.S, SLOPE, SUMX2MY2, INTERCEPT get two (grouped as usual), RANK, PERCENTILE, MOD two (`#VALUE!` per cell),
+SUBSTITUTE none (`#VALUE!`; probes/groupby-eta-arity G!A1-A141). SLOPE and INTERCEPT over arrays of different sizes are
+`#N/A` per group in Excel, `#VALUE!` here (G!B21:B25, G!B61:B65): T-1867.
+Unprobed (T-1706): minimum-0 functions that take optional arguments (ROW, COLUMN, SHEET, SHEETS, RANDARRAY) are
+extrapolated from NOW (`#VALUE!` overall); only NOW is probed.
 T-1327 follow-up (PIVOTBY relative_to; probes/groupby-pivotby-functions P!A1-A841 show each cell's set with
 `LAMBDA(x,y,SUM(y))`, and -functions3 P!A61-A181):
 - A cell's relative set is a row selection crossed with a column selection, each all records, the cell's own row (column)
