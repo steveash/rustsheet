@@ -793,6 +793,7 @@ C	probes/textsplit-empty-text.case.json	19
 C	probes/textsplit-padded-size.case.json	6
 C	probes/textsplit-wide.case.json	5
 C	probes/time-parts-past-max-date.case.json	14
+C	probes/time-parts-rounding-window.case.json	21
 C	probes/timevalue-ampm-limits.case.json	44
 C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
