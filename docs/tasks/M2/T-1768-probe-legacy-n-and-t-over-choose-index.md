@@ -3,7 +3,7 @@ id: T-1768
 title: "Probe legacy N and T over CHOOSE, INDEX and T of a range, and a range in a scalar slot"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
