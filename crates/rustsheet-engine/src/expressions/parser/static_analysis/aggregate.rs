@@ -21,13 +21,18 @@ pub(super) fn aggregate_static_result(args: &[Node]) -> StaticResult {
     broadcast_static_result(lifted)
 }
 
-/// SUBTOTAL spills when an argument after the function number evaluates to an array (each
+/// SUBTOTAL spills over an array or range `function_num` (`Model::fn_subtotal`, probes/
+/// subtotal-array-function-num, T-1868), and when an argument after it evaluates to an array (each
 /// element is `#VALUE!` or its own error, `Model::subtotal_reference_args`, T-1163). A written
 /// reference is read, not lifted; anything else counts at its shape, a call even when that is
 /// a range, since CHOOSE gives a range's shape to its array arms (`CHOOSE(1,{1,2})`). Not
 /// `is_reference_operand`: that one accepts calls, which can evaluate to arrays.
 pub(super) fn subtotal_static_result(args: &[Node]) -> StaticResult {
-    broadcast_static_result(args.iter().skip(1).filter(|arg| !is_read_reference(arg)))
+    broadcast_static_result(
+        args.iter()
+            .take(1)
+            .chain(args.iter().skip(1).filter(|arg| !is_read_reference(arg))),
+    )
 }
 
 /// AREAS spills the same way over its one argument (`AREAS(IF(TRUE,{1,2}))` is two `#VALUE!`,
