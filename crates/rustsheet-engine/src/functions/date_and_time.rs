@@ -75,8 +75,7 @@ fn weekday_number(date: chrono::NaiveDate, return_type: i32) -> Result<f64, Erro
             let zero_based = weekday.number_from_monday() - 1; // 0..6, Monday = 0
             ((zero_based + 7 - start) % 7) + 1
         }
-        0 => return Err(Error::VALUE),
-        _ => return Err(Error::NUM),
+        _ => return Err(Error::NUM), // return_type 0 too (probes/weekday-serial-zero A1)
     };
     Ok(num as f64)
 }
@@ -948,11 +947,12 @@ impl Model {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let date_system = self.workbook.settings.date_system;
+        let ds = self.workbook.settings.date_system;
+        let sat = chrono::NaiveDate::from_ymd_opt(1899, 12, 30); // 1900 serial 0: weekday-serial-zero
         let date = move |serial: f64| {
-            date_system
-                .date_of_serial(serial.floor() as i64)
-                .ok_or(Error::NUM)
+            let s = serial.floor();
+            let d = ds.date_of_serial(s as i64).or(sat.filter(|_| s == 0.0));
+            d.ok_or(Error::NUM)
         };
         if args.len() == 1 {
             // Broadcasts element-wise over a range/array date argument.

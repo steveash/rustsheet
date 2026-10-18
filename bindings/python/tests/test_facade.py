@@ -274,10 +274,16 @@ def test_xlerror_detail_and_deleted_sheet_changes(wb):
 
 
 def test_moderately_nested_formula(wb):
-    # TODO(T-0931): the parser overflows the stack at a few hundred levels; once it has a depth
-    # limit, add a test that 10_000 levels raises EditError.
     wb.set("A1", rs.Formula("=" + "(" * 100 + "1" + ")" * 100))
     assert wb["A1"] == 1.0
+
+
+def test_too_deeply_nested_formula_is_rejected(wb):
+    # The parser bounds the depth (MAX_FORMULA_DEPTH, T-0931): the edit fails and rolls back.
+    wb.set("A1", 7)
+    with pytest.raises(rs.EditError):
+        wb.set("A1", rs.Formula("=" + "(" * 10_000 + "1" + ")" * 10_000))
+    assert wb["A1"] == 7.0
 
 
 def test_reads_do_not_deadlock_with_concurrent_recalc_and_save(wb, tmp_path):

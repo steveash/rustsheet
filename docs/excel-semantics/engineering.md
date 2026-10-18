@@ -80,14 +80,33 @@ is the double that fits all of that unit's cells under the rule. No other base p
 of ten from 1E-32 to 1E+32) and no other order fits every class: reciprocal tables
 (`value / K_from * K_to`, ATP/LibreOffice style) fit 143–156 of 159 units, and the SI base with
 prefix first fits 150.
-Open: conversions to a non-base unit are evidenced only for time (to `yr`), and conversions to a
-prefixed unit not at all. The Celsius output branch subtracts 273.5, not 273.15, and no cached
-cell converts to C (T-1297).
-The internal bases make `value * F_from` overflow sooner than the SI result would:
-`CONVERT(1E290,"m2","m2")` and `CONVERT(1E300,"ha","m2")` are now `#NUM!` (previously the value).
-Excel likely does the same, but this is unprobed (T-1297).
-Backend: excel-desktop cached values only.
+Conversions to a non-base unit, to a prefixed unit and between two non-base units follow the same
+rule (probes/convert-targets, excel-graph, T-1297): `CONVERT(5,"cal","eV")` is 1.3065976295281882E+20,
+`CONVERT(1,"uk_pt","gal")` 0.15011874068810688, `CONVERT(1,"tsp","tbs")` 0.3333333333333333. The
+target prefix is applied as a reciprocal multiply: `CONVERT(0.0002,"m3","Mm3")` is
+2.0000000000000003E-22 (`* 1/1E18`; dividing gives 2E-22). The lbf factor is 444822.16152605
+(`CONVERT(1,"lbf","dyn")` is exactly that).
+Overflow: `value * F_from` is not allowed to overflow when the answer is representable:
+`CONVERT(1E290,"m2","m2")` is 1E+290, `CONVERT(1E300,"ha","m2")` 1.0000000000000001E+304,
+`CONVERT(1E302,"J","J")` 1E+302. The engine divides first (`value / F_to * F_from`) when the
+product is infinite; every probed value fits, but whether Excel does this or uses extended
+precision is not distinguishable from the probes.
+Backend: excel-desktop cached values + excel-graph (probes/convert-targets).
 Status: VERIFIED (for the evidenced conversions)
+Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922, T-1297)
+Tasks: T-0922, T-1297
+
+## CONVERT temperature
+Rule: the temperature pairs do not share one pivot unit; the last digits only fit these forms
+(probes/convert-targets, 40 cells, excel-graph, T-1297). Celsius output:
+`CONVERT(68,"F","C")` is exactly 20 (the old 273.5 constant, which gave 19.65, was wrong).
+From F: C `(v-32)*5/9`; K that plus 273.15; Reau `C*0.8`; Rank `5/9*(v+459.67)*1.8`
+(`CONVERT(68,"F","Rank")` is 527.6700000000001). From the others, Kelvin is the pivot
+(C `v+273.15`, Rank `5v/9`, Reau `5v/4+273.15`) and out of it C is `k-273.15`, Rank `9k/5`,
+Reau `(k-273.15)*0.8`, F `(k-273.15)*9/5+32`, except Rank to F which is `9k/5-459.67`.
+Each pair is fitted to two values (68, -40.5); prefixed temperature units are unprobed.
+Backend: excel-graph.
+Status: VERIFIED (for the two probed values per pair)
 Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922)
 Tasks: T-0922, T-1297
 

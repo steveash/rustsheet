@@ -534,3 +534,11 @@ cell is "" in both formats, and a typed `""` is "" / `{""}`. An array element is
 its function as an array and `ARRAYTOTEXT` of it is "" (probes/groupby-blank-values).
 Evidence: probes/arraytotext-empty-ref A1-A25 (excel-graph, 2026-10-17, T-1718).
 Status: VERIFIED (excel-graph). Implemented in: `fn_arraytotext`. Tasks: T-1718
+
+## VALUE lifts over a range or an array (T-1791)
+Rule: VALUE lifts over a multi-cell range or an array, each element read as a scalar argument: text converts as in scalar VALUE (`"1 "` is 1, `" $2 "` 2, `"1/2/2020"` 43832, `" 3%"` 0.03), a number stays, a blank cell is 0, a boolean or `""` is `#VALUE!` and an error stays (`VALUE(A1:A8)` spills 8 rows). So `{=SUM(IFERROR(VALUE(LEFT(range,FIND(...)-1)),0))}` adds the numbers in front of the found text (corpus-bench/42181 B14 is 3).
+Not probed: a multi-cell range in a legacy (non-dynamic-array) cell, which takes the implicit intersection of the other lifted text functions.
+Evidence: probes/value-argument-lift (excel-graph, 2026-10-18); corpus-bench/42181 B14 (Excel cached value).
+Implemented in: `fn_value` (functions/text/common.rs), through `text_arg` and `broadcast_text`.
+Status: VERIFIED (excel-graph)
+Tasks: T-1791
