@@ -368,7 +368,7 @@ Probed (probes/date-text-glued-month-2, excel-graph 2026-10-18, T-1879; rows ref
   glued month and year); `"1July1"` is 2001-07-01 (serial 37073, day 1, month July, two-digit year 01; row 9).
   A day number past the month's end reads as a year, following `"July32"`: `"Jun31"` is 1931-06-01 (serial
   11475) and `"Feb29"` is 2029-02-01 (serial 47150): the 29 is the two-digit year 2029, not the clock year (rows 10-11,
-  MONTH 6/2 and DAY 1 scored). The engine returns `#VALUE!` for rows 6-9 and for row 12, the same text with a clock (T-1906).
+  MONTH 6/2 and DAY 1 scored). Implemented (T-1906): rows 6-9 and 12 parse; `"1July1"` pads the glued single digit to the two-digit year 01.
 - Date+time text goes through the same split: `"July1 10:00"`, `"Jul1 10 AM"`, `"1JUN2021 6 PM"`, `"1JUN2021 18:30"`,
   `"July1 10:00:30"` and `"Jul1 , 2026 10:00"` are date-times in VALUE (fractions 0.41666..., 0.75, 0.7708...,
   0.41701...; rows 1-5, 12), and TIMEVALUE of the same text is just the clock fraction. TIMEVALUE of date-only
@@ -381,8 +381,9 @@ Probed (probes/date-text-glued-month-2, excel-graph 2026-10-18, T-1879; rows ref
   format `d-mmm`; `"Jul2026"` -> 2026-07-01, `mmm-yy`; `"Jun31"` -> 1931-06-01, `mmm-yy`; `"1Jul 2026"`,
   `"Jul1 , 2026"` and `"1JUN2021"` -> d-mmm-yy dates (2026-07-01, 2026-07-01, 2021-06-01); `"July1 10:00"` ->
   46204.41666..., format `m/d/yyyy h:mm`; `"Jun1.5"` stays text (General). The engine matches except the typed
-  `"Jul1 , 2026"` (T-1906) and `"July1 10:00"` (T-1907), which it leaves as text.
+  `"July1 10:00"` (T-1907), which it leaves as text.
 UNVERIFIED:
+- shapes the glued-month rules accept or reject beyond the probed rows (T-1906): `"1Jul5"` (any glued single digit after a day reads as year 0d), `"1/Jul2026"` and other separators, `"1-Jul26"`, the format typed `"1-Jul2026"` gets, and the hand-derived `#VALUE!` of `"July1 , 2026 5"`, `"1Jul1 , 2026"` and `"July1,, 2026"`;
 - the clock-year results (`"July1"`, `"July01"`, criteria K6-K8) for clocks other than the oracle's 2026;
 - locales other than en-US (the split uses the locale's month names).
 Status: VERIFIED (web) for probes/date-text-glued-month rows 1-24 and probes/date-text-glued-month-2; engine gaps are tasks (below).
