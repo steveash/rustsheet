@@ -181,7 +181,7 @@ fn unique_basic() {
     model._set("A1", "apple");
     model._set("A2", "banana");
     model._set("A3", "apple");
-    model._set("A2", "cherry");
+    model._set("A4", "cherry");
     model._set("B1", "=UNIQUE(A1:A4)");
     model.evaluate();
     assert_eq!(model._get_text("B1"), "apple");
@@ -195,7 +195,7 @@ fn unique_exactly_once() {
     model._set("A1", "apple");
     model._set("A2", "banana");
     model._set("A3", "apple");
-    model._set("A2", "cherry");
+    model._set("A4", "cherry");
     model._set("B1", "=UNIQUE(A1:A4,FALSE,TRUE)");
     model.evaluate();
     // Only banana and cherry appear once
@@ -226,8 +226,8 @@ fn unique_numbers() {
     model._set("A1", "5");
     model._set("A2", "3");
     model._set("A3", "5");
-    model._set("A2", "7");
-    model._set("A3", "3");
+    model._set("A4", "7");
+    model._set("A5", "3");
     model._set("B1", "=UNIQUE(A1:A5)");
     model.evaluate();
     assert_eq!(model._get_text("B1"), "5");
