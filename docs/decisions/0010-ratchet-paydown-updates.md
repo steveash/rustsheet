@@ -158,7 +158,7 @@
   fallback lines of the nine quantile functions now in the lifting table) (`check_file_size.py --update`).
   T-1845: duplicated lines 4248 → 4152 (CUMIPMT and CUMPRINC share one kernel, `cumulative_of`, instead of
   two copies of the argument reading and the period loop) (`check_duplication.py --update`), and
-  expressions/parser/static_analysis.rs 1181 → 1177 lines (the 4 fallback lines of CUMIPMT and CUMPRINC now in
+  expressions/parser/static_analysis.rs 1181 → 1170 lines (the lock was 7 lines loose on main) (the 4 fallback lines of CUMIPMT and CUMPRINC now in
   the lifting table) (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

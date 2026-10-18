@@ -35,6 +35,10 @@ fits both the short and the long cells would replace the 32-period split. The fi
 denominator) is described in financial.md; Excel's form is closer to `log1p`/`expm1` than to `(1+r)^n`.
 
 ## Acceptance criteria
+- [ ] Probe the cells T-1845 kept or chose without evidence: a payment that overflows
+  (`CUMIPMT(Z2,Z5,Z3,1,Z5,0)`, `CUMPRINC(Z2,10,Z3,1,10,1)` in test_fn_cumulative_lift.rs, `#NUM!` as on
+  main), a per-period sum that overflows (`CUMIPMT(0.5,10,1E308,1,10,0)`, now the closed form), and
+  a few periods past 2^53 at a tiny rate (`CUMIPMT(1E-15,2E16,1,1E16,1E16+8,0)`, now the closed form).
 - [ ] The cells above pass (baseline lines removed), with no new failures.
 - [ ] `make check` green; reviewers approve.
 

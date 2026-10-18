@@ -57,5 +57,12 @@ over an array (fin-argument-modes H73-H87) and over a range (H74, H82; fin-remai
   compared cell by cell against main: K3 (`#NUM!` → 64 ulps off) and K11 (`#N/IMPL!` → an ulp off) changed value
   and still fail; no other cell changed. The new case adds 8 known failures (A3, A5, A7, A8, A12, A18, A19, A23), all
   listed in T-1890; K3 is T-1890's, K11 T-1374's.
-- Ratchets: duplicated lines 4248 → 4152, static_analysis.rs 1181 → 1177 (decision 0010).
+- Ratchets: duplicated lines 4248 → 4152, static_analysis.rs 1181 → 1170 (decision 0010).
 - Follow-ups: T-1890 (fit the closed form's last digits; one formulation for every period count).
+
+### Review fix (security, performance)
+The per-period sum advanced `period += 1.0`, which stops moving at 2^53, so a sum over a few periods
+near 1E16-1E17 with a rate small enough to keep `(1+r)^nper` finite never ended
+(`CUMIPMT(1E-15,2E16,1,1E16,1E16,0)`). The loop now runs a bounded integer count (at most 32
+steps), the sum is taken only below 2^53 (the closed form otherwise), and the argument checks are
+written so a NaN fails them; `periods_past_two_to_the_53_take_the_closed_form_and_end` pins it.

@@ -26,6 +26,9 @@ use crate::{
 /// element (`CUMULATIVE_WEIGHT` in functions/lift/kinds.rs).
 const CUMULATIVE_LOOP_PERIODS: f64 = 32.0;
 
+/// 2^53: below it every period is an exact integer, so `start + offset` is a distinct period.
+const EXACT_INTEGER_LIMIT: f64 = 9_007_199_254_740_992.0;
+
 /// Which sum the kernel returns.
 #[derive(Clone, Copy)]
 enum Paid {
@@ -73,7 +76,10 @@ impl Model {
         };
         // An end period past nper is #NUM!, also below nper + 1: `CUMIPMT(0.01,100.5,1000,1,101,0)`
         // (probes/fin-cumipmt-period-bound A20-A22).
-        if start > end || rate <= 0.0 || nper <= 0.0 || pv <= 0.0 || start < 1.0 || end > nper {
+        // Written as negated `>=`/`<=` so a NaN argument fails a check too.
+        let valid =
+            start <= end && rate > 0.0 && nper > 0.0 && pv > 0.0 && start >= 1.0 && end <= nper;
+        if !valid {
             return Err(num_error(cell));
         }
         let periods = Periods {
@@ -84,7 +90,9 @@ impl Model {
             end,
             period_start,
         };
-        if end - start < CUMULATIVE_LOOP_PERIODS {
+        // The per-period sum only where every period is an exact integer: past 2^53 `period + 1`
+        // is `period`, and the closed form takes over.
+        if end - start < CUMULATIVE_LOOP_PERIODS && end < EXACT_INTEGER_LIMIT {
             if let Some(sum) = periods.summed(paid) {
                 return Ok(sum);
             }
@@ -113,8 +121,11 @@ impl Periods {
             Paid::Principal => compute_ppmt,
         };
         let mut sum = 0.0;
-        let mut period = self.start;
-        while period <= self.end {
+        // A bounded count, not `period += 1.0`, so the loop ends whatever the period values: the
+        // caller passes `end - start < CUMULATIVE_LOOP_PERIODS`, so at most 32 steps.
+        let last = (self.end - self.start).clamp(0.0, CUMULATIVE_LOOP_PERIODS) as u32;
+        for offset in 0..=last {
+            let period = self.start + f64::from(offset);
             sum += step(
                 self.rate,
                 period,
@@ -124,9 +135,10 @@ impl Periods {
                 self.period_start,
             )
             .ok()?;
-            period += 1.0;
         }
-        Some(sum)
+        // 32 finite terms can still add up to an infinity: the closed form then decides
+        // (`#NUM!` when it is not finite either; unprobed, T-1890).
+        sum.is_finite().then_some(sum)
     }
 
     /// The sums in constant time. With `v^m = exp(m·ln(1+r))` for `m <= 0` (`log1p`, so a rate of
@@ -136,7 +148,8 @@ impl Periods {
     /// `pmt·((v^(b-nper) - v^(a-1-nper))/((1+r)-1))`, and the interest is the payments less the
     /// principal. The denominators' `1 - v^nper` and `(1+r)-1` are `expm1`s of the logarithm:
     /// `CUMPRINC(1E10,100,1,1,100,0)` is -1.0000000000000013, `-1E10/expm1(log1p(1E10))` (A17).
-    /// This form matches 19 of the 28 probe cells over many periods or past an overflow bit for
+    /// This form matches 19 of the 28 probe cells over many periods or past an overflow (22 of the
+    /// case's 30 cells pass overall) bit for
     /// bit and the others within 6 ulps, but for 48 to 64 near period 1E15 (fin-remaining-later-
     /// argument-ranges K3, A18; TODO(T-1890)). `None` when the result is not finite.
     fn closed_form(&self, paid: Paid) -> Option<f64> {

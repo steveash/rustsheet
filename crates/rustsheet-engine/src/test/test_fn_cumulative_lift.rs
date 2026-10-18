@@ -281,3 +281,28 @@ fn a_lifted_call_is_charged_for_its_period_sum() {
         ),
     ]);
 }
+
+#[test]
+fn periods_past_two_to_the_53_take_the_closed_form_and_end() {
+    // Past 2^53 `period + 1.0` is `period`, so a sum driven by it never ended (security review of
+    // T-1845): a few periods at 1E17, rate 1E-15 so `(1+r)^nper` stays finite, now take the closed
+    // form; NaN arguments fail the checks. Each finishes; its value is not asserted (unprobed).
+    let mut model = crate::test::util::new_empty_model();
+    model._set("A1", "=CUMIPMT(1E-15,2E17,1000,1E17,1E17,0)");
+    model._set("A2", "=CUMPRINC(1E-15,2E17,1000,1E17,1E17+8,1)");
+    model._set("A3", "=CUMIPMT(1E-15,2E16,1,1E16,1E16,0)");
+    model._set("A4", "=CUMIPMT(1E-15,1E16,1,1E16,1E16,0)");
+    model._set("A5", "=CUMPRINC(1E-15,1E16,1,1E16-3,1E16,0)");
+    model._set("A6", "=CUMIPMT(1E-15,2E16,1,1E16,1E16+8,0)");
+    model.evaluate();
+    for cell in ["A4", "A5", "A6"] {
+        let text = model._get_text(cell);
+        assert!(!text.is_empty(), "{cell} {text}");
+    }
+    let a1 = model._get_text("A1");
+    assert!(!a1.is_empty(), "A1 {a1}");
+    let a2 = model._get_text("A2");
+    assert!(!a2.is_empty(), "A2 {a2}");
+    let a3 = model._get_text("A3");
+    assert!(!a3.is_empty(), "A3 {a3}");
+}
