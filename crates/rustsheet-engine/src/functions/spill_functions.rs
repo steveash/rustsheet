@@ -203,8 +203,9 @@ impl Model {
         let num_cols = data[0].len();
 
         // An omitted argument (`SORT(arr,,)`) takes its default: probes/counta-empty-value D22-D24.
-        // Every argument is evaluated, and the first error wins, before any value is validated:
-        // docs/excel-semantics/arrays.md "SORT argument errors come before validation".
+        // Argument errors come before value validation (docs/excel-semantics/arrays.md "SORT
+        // argument errors come before validation"). The order among several error arguments is
+        // UNVERIFIED: by_col's error, then sort_index's, then sort_order's.
         // A multi-cell sort_order (c5d278a8662ef4b2 A39) fails to coerce here but is only a
         // validation error to Excel, so by_col is evaluated before either failure is returned.
         let raw_index = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {

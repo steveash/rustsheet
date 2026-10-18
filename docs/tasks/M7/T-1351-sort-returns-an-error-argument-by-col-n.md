@@ -31,7 +31,7 @@ sort_index/sort_order lists: rebase on it if it has landed.
 
 ## Outcome
 `fn_sort` now evaluates sort_index, sort_order and by_col before validating values, so an error
-by_col (or error sort_order/sort_index) wins over sort_index 0 / invalid sort_order. A multi-cell
+argument (by_col checked first; order unverified) wins over sort_index 0 / invalid sort_order. A multi-cell
 sort_order that fails to coerce no longer pre-empts by_col's error. gen-m7 c5d278a8662ef4b2 A39 passes
 (gen-m7 985/994 cells, gate=false, no baseline change). SORTBY and the order among several error
 arguments stay UNVERIFIED (arrays.md).

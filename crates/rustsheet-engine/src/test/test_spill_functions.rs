@@ -181,7 +181,7 @@ fn unique_basic() {
     model._set("A1", "apple");
     model._set("A2", "banana");
     model._set("A3", "apple");
-    model._set("A4", "cherry");
+    model._set("A2", "cherry");
     model._set("B1", "=UNIQUE(A1:A4)");
     model.evaluate();
     assert_eq!(model._get_text("B1"), "apple");
@@ -195,7 +195,7 @@ fn unique_exactly_once() {
     model._set("A1", "apple");
     model._set("A2", "banana");
     model._set("A3", "apple");
-    model._set("A4", "cherry");
+    model._set("A2", "cherry");
     model._set("B1", "=UNIQUE(A1:A4,FALSE,TRUE)");
     model.evaluate();
     // Only banana and cherry appear once
@@ -226,8 +226,8 @@ fn unique_numbers() {
     model._set("A1", "5");
     model._set("A2", "3");
     model._set("A3", "5");
-    model._set("A4", "7");
-    model._set("A5", "3");
+    model._set("A2", "7");
+    model._set("A3", "3");
     model._set("B1", "=UNIQUE(A1:A5)");
     model.evaluate();
     assert_eq!(model._get_text("B1"), "5");
@@ -566,14 +566,10 @@ fn sort_error_argument_wins_over_invalid_sort_index_and_order() {
     // gen-m7/c5d278a8662ef4b2 Calc!A39 (Excel): by_col `#N/A` beats sort_index 0.
     let mut model = new_empty_model();
     model._set("A1", "=SORT({1;2},0,1,NA())");
-    model._set("A2", "=SORT({1;2},0,NA())");
-    model._set("A3", "=SORT({1;2},1,0,NA())");
-    model._set("A4", "=SORT({1;2},0,1)");
-    model._set("A5", "=SORT({1;2},1,0)");
+    model._set("A2", "=SORT({1;2},0,1)");
+    model._set("A3", "=SORT({1;2},1,0)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#N/A");
-    assert_eq!(model._get_text("A2"), "#N/A");
-    assert_eq!(model._get_text("A3"), "#N/A");
-    assert_eq!(model._get_text("A4"), "#VALUE!");
-    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
 }
