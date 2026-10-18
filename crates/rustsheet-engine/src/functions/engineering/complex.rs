@@ -45,6 +45,24 @@ struct Complex {
     suffix: Suffix,
 }
 
+/// Scientific text with Excel's signed exponent (`3E+200`, `1.2E-16`); Rust prints `3E200`.
+fn scientific(v: f64) -> String {
+    let text = format!("{v:E}");
+    match text.split_once('E') {
+        Some((mantissa, exponent)) if !exponent.starts_with('-') => {
+            format!("{mantissa}E+{exponent}")
+        }
+        _ => text,
+    }
+}
+
+/// Whether a part prints in scientific notation. Tiny parts do (`<= 9e-20`, probes/eng-impower);
+/// large ones from 1e21 on, like Excel's number-to-text (UNVERIFIED threshold; `1E+200`,
+/// `-3E+200-4E+200i`: probes/eng-imdiv A19, A24).
+fn is_scientific(v: f64) -> bool {
+    v.abs() <= 9e-20 || v.abs() >= 1e21
+}
+
 impl fmt::Display for Complex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let x = to_precision(self.x, 15);
@@ -52,8 +70,8 @@ impl fmt::Display for Complex {
         let suffix = &self.suffix;
         // it is a bit weird what Excel does but it seems it uses general notation for
         // numbers > 1e-20 and scientific notation for the rest
-        let y_str = if y.abs() <= 9e-20 {
-            format!("{y:E}")
+        let y_str = if is_scientific(y) {
+            scientific(y)
         } else if y == 1.0 {
             "".to_string()
         } else if y == -1.0 {
@@ -61,8 +79,8 @@ impl fmt::Display for Complex {
         } else {
             format!("{y}")
         };
-        let x_str = if x.abs() <= 9e-20 {
-            format!("{x:E}")
+        let x_str = if is_scientific(x) {
+            scientific(x)
         } else {
             format!("{x}")
         };
@@ -202,12 +220,14 @@ fn complex_result(x: f64, y: f64, suffix: Suffix) -> CalcResult {
 
 /// How a complex argument reads empty text: IMCOS, IMCOSH, IMCOT, IMCSC, IMCSCH, IMSUM and
 /// IMPRODUCT parse it (`#NUM!`), the other functions read it as 0. `Zero` is our older behavior,
-/// not Excel's rule: Excel gives `#NUM!` for empty text in IMSUB, IMDIV and IMPOWER
-/// (engineering.md "T-1625 probes") and probably IMSQRT (T-1385).
+/// not Excel's rule for IMSQRT (probably `#NUM!`, T-1385).
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum EmptyText {
     Zero,
     Parse,
+    /// IMSUB, IMDIV and IMPOWER: a blank cell is 0 (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx
+    /// Sheet2 G7:G10), empty text is `#NUM!` (probes/eng-imsub A12, A13).
+    ZeroIfBlank,
 }
 
 /// How IMSUM and IMPRODUCT combine their numbers.
@@ -246,8 +266,11 @@ impl Model {
         if matches!(value, CalcResult::Boolean(_)) {
             return Err(value_error(cell));
         }
+        let blank = matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg);
         let value = Self::cast_string_ref(value, cell)?;
-        if value.is_empty() && empty == EmptyText::Zero {
+        if value.is_empty()
+            && (empty == EmptyText::Zero || (empty == EmptyText::ZeroIfBlank && blank))
+        {
             return Ok((0.0, 0.0, Suffix::I));
         }
         parse_complex_number(&value).map_err(|_| num_error(cell))
@@ -274,8 +297,8 @@ impl Model {
         })
     }
 
-    /// Two complex arguments of one element (IMDIV, IMSUB), read left to right; different
-    /// suffixes are `#VALUE!`.
+    /// Two complex arguments of one element (IMDIV, IMSUB), read left to right; empty text and
+    /// different suffixes are `#NUM!` (engineering.md "T-1625 probes").
     fn complex_pair_of(
         values: &[CalcResult],
         cell: CellReferenceIndex,
@@ -283,10 +306,10 @@ impl Model {
         let [first, second] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let first = Self::complex_of(first, EmptyText::Zero, cell)?;
-        let second = Self::complex_of(second, EmptyText::Zero, cell)?;
+        let first = Self::complex_of(first, EmptyText::ZeroIfBlank, cell)?;
+        let second = Self::complex_of(second, EmptyText::ZeroIfBlank, cell)?;
         if first.2 != second.2 {
-            return Err(value_error(cell));
+            return Err(num_error(cell));
         }
         Ok((first, second))
     }
@@ -377,11 +400,21 @@ impl Model {
                 Ok(pair) => pair,
                 Err(error) => return error,
             };
-            let t = x2 * x2 + y2 * y2;
-            if t == 0.0 {
+            if x2 == 0.0 && y2 == 0.0 {
                 return num_error(cell);
             }
-            complex_result((x1 * x2 + y1 * y2) / t, (-x1 * y2 + y1 * x2) / t, suffix)
+            // Smith's algorithm: `x2 * x2 + y2 * y2` underflows for a tiny divisor, but Excel
+            // gives `IMDIV("1","1E-200")` = 1E+200 (probes/eng-imdiv A19, A24).
+            let (re, im) = if x2.abs() >= y2.abs() {
+                let r = y2 / x2;
+                let d = x2 + y2 * r;
+                ((x1 + y1 * r) / d, (y1 - x1 * r) / d)
+            } else {
+                let r = x2 / y2;
+                let d = x2 * r + y2;
+                ((x1 * r + y1) / d, (y1 * r - x1) / d)
+            };
+            complex_result(re, im, suffix)
         })
     }
 
@@ -410,7 +443,7 @@ impl Model {
             let [number, n] = values else {
                 return CalcResult::new_args_number_error(cell);
             };
-            let (x, y, suffix) = match Self::complex_of(number, EmptyText::Zero, cell) {
+            let (x, y, suffix) = match Self::complex_of(number, EmptyText::ZeroIfBlank, cell) {
                 Ok(s) => s,
                 Err(error) => return error,
             };
@@ -418,6 +451,9 @@ impl Model {
                 Ok(f) => f,
                 Err(s) => return s,
             };
+            if n == 0.0 && x == 0.0 && y == 0.0 {
+                return num_error(cell); // probes/eng-impower A6
+            }
             let r = f64::sqrt(x * x + y * y);
             let a = f64::atan2(y, x);
 

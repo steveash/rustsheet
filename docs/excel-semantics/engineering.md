@@ -247,6 +247,8 @@ Tasks: T-1385
 - An empty-string argument is `#NUM!` in IMSUB, IMDIV and IMPOWER (we treat it as 0); a boolean second argument is `#VALUE!`.
 - `IMPOWER("0",0)` is `#NUM!`; `IMDIV` with a tiny divisor gives a large result (`IMDIV("1","1E-200")` = `1E+200`), not #NUM!.
 - IMPOWER does not use the naive polar form: `IMPOWER("i",2)` = `-1+1.22514845490862E-16i` (ours 1.22464679914735E-16), `IMPOWER("-j",3)` real part -1.83772268236293E-16, `IMPOWER("1+i","2")` real part 1.22514845490862E-16, `IMPOWER("1+i",100)` = `-1125899906842640-0.551513671875006i` (ours `-1125899906842630-0.552925707312197i`). The values differ, not only the printing; tiny parts also print in E-notation.
+- A blank cell argument is 0 in IMSUB (`IMSUB(A7,B7)` with B7 blank), unlike empty text (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet2 G7:G10).
+- Implemented (T-1766): the error rules above, IMDIV by Smith's algorithm, scientific text for parts of 1e21 and more (the threshold is UNVERIFIED; `1E+200` and `-3E+200-4E+200i` are verified). Still open: the IMPOWER tiny/large parts. The tiny part `1.22514845490862E-16` is `sin(pi_ext)`, with pi rounded to the 64-bit x87 mantissa (pi - pi_ext = 5.0165e-20), so Excel computes the angle in extended precision; `(1+i)^100` needs the whole pipeline emulated.
 Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625).
 Status: VERIFIED (excel-graph)
 Tasks: T-1766
