@@ -3,7 +3,7 @@ id: T-1862
 title: "Legacy MATCH argument intersects a non-overlapping range to VALUE (corpus-bench 49300)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
