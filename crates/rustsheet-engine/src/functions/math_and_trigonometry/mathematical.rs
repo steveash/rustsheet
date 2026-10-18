@@ -39,9 +39,6 @@ const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     skip_empty_args: false,
 };
 
-/// Below this |x| (2^-28) ASIN returns its argument (`fn_asin`).
-const ASIN_IDENTITY_BOUND: f64 = 3.725_290_298_461_914e-9;
-
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
     ///
@@ -443,21 +440,18 @@ impl Model {
             Ok(super::hyperbolic::tanh(f))
         })
     }
-    // Excel's ASIN is not libm's: `atan(x / sqrt((1 - x) * (1 + x)))` in doubles gives 233 of the 268
-    // cells of probes/asin-argument-sweep (libm `asin` 186), `ASIN(-0.0001)` and `ASIN(0.42)` among
-    // them. Excel's is not even odd (`ASIN(0.09)` and `ASIN(-0.09)` differ in the last digit), so no
-    // formulation found yet fits every cell (docs/excel-semantics/numbers.md "ASIN of a small
-    // argument"). At ±1 the quotient is ±inf and atan gives ±π/2; outside [-1, 1] the square root is
-    // NaN, which is `#NUM!`. A tiny argument is returned as is: `ASIN(±1E-13)` is ±1E-13, where the
-    // quotient gives ±1.0000000000000002E-13 (T-1605). The sweep only bounds the cut to between 1E-13
-    // and 1E-8 (`ASIN(1E-8)` is the quotient's 1.0000000000000002E-8, `ASIN(-1E-8)` is -1E-8).
+    // Excel's ASIN is `atan(x / sqrt(y * (2 - y)))` with y = 1 - x: the factor 1 + x is formed as
+    // 2 - y, and the square root rounds twice like SQRT. That fits all 570 cells of
+    // probes/asin-argument-sweep and probes/asin-negative-band-sweep (excel-graph, T-1797), including
+    // the ± pairs that differ (`ASIN(0.09)` and `ASIN(-0.09)`): rounding y drops the last bit of a
+    // negative x in -1..-0.5, so ASIN is not odd. libm `asin` fits 186 of the sweep's 268 and
+    // `atan(x / sqrt((1 - x) * (1 + x)))` 235 (docs/excel-semantics/numbers.md "ASIN's formulation").
+    // At ±1 the quotient is ±inf and atan gives ±π/2; outside [-1, 1] the square root is NaN, which
+    // is `#NUM!`.
     pub(crate) fn fn_asin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Asin, args, cell, |f: f64| {
-            Ok(if f.abs() < ASIN_IDENTITY_BOUND {
-                f
-            } else {
-                f64::atan(f / ((1.0 - f) * (1.0 + f)).sqrt())
-            })
+            let y = 1.0 - f;
+            Ok(f64::atan(f / extended_sqrt(y * (2.0 - y))))
         })
     }
     pub(crate) fn fn_acos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
