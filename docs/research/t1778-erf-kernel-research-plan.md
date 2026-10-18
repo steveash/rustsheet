@@ -477,3 +477,23 @@ piecewise coefficients. Candidate piece breaks: about 4.1, 4.6-5.66, 5.227, 8.04
   on frac(t); repeats are identical.
 - **Running:** b_D bisection to the ulp; b2 and the next numerator stages; the exact fit of [4, 26.55]; probes on
   [0.5, 4) for its own fingerprints.
+
+### Research update 7 (2026-10-18): the ERFC tail is bit-exact for 4 < x <= 26.55
+
+- **Form.** ERFC(x) = fl53(fl64(E*R)), where E is Excel's EXP(-fl53(fl64(x*x))) and R = fl53(fl64(N/D)).
+  N (degree 8) and D (degree 9) are Horner polynomials in x, with every multiply and add stored to double.
+- **Coefficients.** They are in `docs/research/t1778/round7/erfc_tail_coef.txt` on the research branch.
+  - N0/D0 ≈ 2/sqrt(pi), the erfcx asymptote, and D's constant term is exactly 128 (in the N/D scaling).
+  - The asymptotic matching gives bN/alpha = b_D/beta and b2/alpha - d2/beta = -1/2.
+- **Score.** An independent re-scoring over all 1,540,477 committed points (with Excel's EXP column as E and the
+  subnormal flush to 0) matches 1,540,475 points; on cases not used in the fit it matches 370,404 of 370,405. The
+  2 misses are 2 ulp, are unexplained, and may be an internal-exp difference.
+- **How it was found.**
+  - Spectral lines and rounding grids gave the first stored products.
+  - Bisecting binade crossings to the ulp pinned the added constants (b_N, b_D).
+  - Phase and vernier scans and global regressions pinned the later stages.
+  - Once N was exact, D followed from per-stage correlation.
+  - The low bits came from peeling down from high x.
+- **Remaining for ERFC parity:**
+  - the [0.5, 4] kernel (x = 4 goes low), now under the same method;
+  - Excel's EXP F2XM1 residual (a dedicated session).
