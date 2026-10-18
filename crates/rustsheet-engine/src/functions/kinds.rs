@@ -30,6 +30,17 @@ impl Function {
         )
     }
 
+    /// The internal kind of a legacy formula's N or T, which reads an array argument as
+    /// `#VALUE!` (SPEC-0012 "Placement"); every other kind, the internal ones included, is
+    /// itself.
+    pub(crate) fn legacy_reading(&self) -> Function {
+        match self {
+            Function::N => Function::NLegacy,
+            Function::T => Function::TLegacy,
+            other => other.clone(),
+        }
+    }
+
     /// The kind a call spelled `name` is, if it is the stored spelling of an internal kind: that
     /// kind when `stored` (R1C1 text), else plain N or T. The one matcher of both modes, exact
     /// and case-sensitive, so a variant (`_rs_legacy_n`, `_xlfn._RS_LEGACY_N`) is no marker in
