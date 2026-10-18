@@ -2,7 +2,7 @@
   "format": "rustsheet-case/v1",
   "description": "T-1486: TEXT complexity limit round p: what a token or placeholder directly after quoted text costs, and a second and third placeholder run in a section.",
   "tags": [
-    "M1",
+    "M10",
     "probe",
     "text",
     "T-1486"

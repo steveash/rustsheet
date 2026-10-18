@@ -2,7 +2,7 @@
   "format": "rustsheet-case/v1",
   "description": "T-1486: TEXT complexity limit round n: _ before a quote, a color or condition after quoted text, and tokens after quoted text before a closing quoted run.",
   "tags": [
-    "M1",
+    "M10",
     "probe",
     "text",
     "T-1486"

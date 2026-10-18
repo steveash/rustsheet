@@ -2,7 +2,7 @@
   "format": "rustsheet-case/v1",
   "description": "T-1486: TEXT round q: an unparseable code on text with and without a text section and in a later section, and boundaries left open by rounds n to p.",
   "tags": [
-    "M1",
+    "M10",
     "probe",
     "text",
     "T-1486"

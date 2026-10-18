@@ -2,7 +2,7 @@
   "format": "rustsheet-case/v1",
   "description": "T-1486: TEXT round s: a code ending in \\, _ or * (nothing left for it to take), in the section the value uses and in another one.",
   "tags": [
-    "M1",
+    "M10",
     "probe",
     "text",
     "T-1486"

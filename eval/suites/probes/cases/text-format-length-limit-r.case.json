@@ -2,7 +2,7 @@
   "format": "rustsheet-case/v1",
   "description": "T-1486: TEXT complexity limit round r: placeholder runs in two sections with quoted text in the second.",
   "tags": [
-    "M1",
+    "M10",
     "probe",
     "text",
     "T-1486"
