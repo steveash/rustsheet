@@ -235,14 +235,14 @@ impl Model {
                 // cells of a range keep skipping text and booleans (probes/fin-argument-modes
                 // H368-H371; docs/excel-semantics/financial.md "NPV and FVSCHEDULE arguments").
                 // A single-cell reference is not typed: `NPV(A5,B5,..)` with TRUE in B5 skips it
-                // (ironcalc-calc FINANCIAL/NPV.xlsx K5, L5).
+                // (ironcalc-calc FINANCIAL/NPV.xlsx K5, L5), also in parentheses; a name or a
+                // function result is typed (probes/npv-fvschedule-typed A5-A11).
                 direct @ (CalcResult::String(_) | CalcResult::Boolean(_))
                     if !matches!(
-                        arg,
+                        arg.ungrouped(),
                         Node::ReferenceKind { .. }
                             | Node::ImplicitIntersection { .. }
                             | Node::OpRangeKind { .. }
-                            | Node::DefinedNameKind(_)
                     ) =>
                 {
                     match self.cast_number_ref(&direct, cell) {
@@ -693,19 +693,29 @@ impl Model {
         };
         // Excel: text in the schedule, in a range or an array literal, is #VALUE!
         // (probes/fin-argument-modes H382-H384).
-        let schedule = match self.get_array_of_numbers_generic(
-            &args[1],
-            &cell,
-            true,
-            || Ok(None),
-            || {
-                Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Expected number".to_string(),
-                ))
-            },
-        ) {
+        // A text literal that reads as a number is a one-rate schedule: `FVSCHEDULE(1000,"0.1")`
+        // is 1100, `TRUE` is #VALUE! (probes/npv-fvschedule-typed A12, A13).
+        let literal_rate = match args[1].ungrouped() {
+            Node::StringKind(text) => Some(self.cast_number(text)),
+            _ => None,
+        };
+        let parsed = match literal_rate {
+            Some(Some(rate)) => Ok(vec![rate]),
+            _ => self.get_array_of_numbers_generic(
+                &args[1],
+                &cell,
+                true,
+                || Ok(None),
+                || {
+                    Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Expected number".to_string(),
+                    ))
+                },
+            ),
+        };
+        let schedule = match parsed {
             Ok(s) => s,
             Err(e) => return e,
         };

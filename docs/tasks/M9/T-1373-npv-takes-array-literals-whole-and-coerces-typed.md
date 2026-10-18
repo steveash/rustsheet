@@ -33,4 +33,4 @@ statistical functions use (`aggregate` mode) already does this, and reuse it.
 - The ulp misses of NPV's value (T-0901).
 
 ## Outcome
-NPV now takes array literals whole, coerces typed text and booleans and returns #VALUE! for typed text that is no number; FVSCHEDULE is #VALUE! for text in its schedule. Findings in financial.md "NPV and FVSCHEDULE arguments". H371 and H382-H384 now pass; H368 and H370 differ only by ulp (T-0901's). Eval delta: probes fixed 4 cells, no regressions.
+NPV now takes array literals whole, coerces typed text and booleans and returns #VALUE! for typed text that is no number; FVSCHEDULE is #VALUE! for text in its schedule. Findings in financial.md "NPV and FVSCHEDULE arguments". H371 and H382-H384 now pass; H368 and H370 differ only by ulp (T-0901's). Eval delta: probes fixed 10 cells (fin-argument-modes H371, H382-H384; fin-fvschedule A3, A4, A13, A14, A16, A19), no regressions; the new probe npv-fvschedule-typed (16 cells) covers array literals, names, functions, parentheses and typed FVSCHEDULE scalars.
