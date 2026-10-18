@@ -632,6 +632,7 @@ C	probes/regexreplace-long-result-e.case.json	2
 C	probes/regexreplace-long-result-f.case.json	2
 C	probes/regexreplace-long-result-g.case.json	3
 C	probes/regexreplace-long-result-i.case.json	13
+C	probes/regexreplace-result-cap-lifted.case.json	3
 C	probes/regexreplace-result-cap.case.json	7
 C	probes/regression-forecast.case.json	74
 C	probes/regression-pairs-a.case.json	114
@@ -854,6 +855,7 @@ C	probes/tiny-vs-zero-criteria.case.json	75
 C	probes/trig-huge-argument.case.json	86
 C	probes/trimrange-fractional-trim.case.json	20
 C	probes/trunc-decimal-stages.case.json	56
+C	probes/type-long-text-refs.case.json	8
 C	probes/type-long-text.case.json	30
 C	probes/typed-currency-percent-input.case.json	66
 C	probes/typed-number-tiny.case.json	24
