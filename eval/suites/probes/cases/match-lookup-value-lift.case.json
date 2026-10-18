@@ -1,0 +1,45 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "MATCH lifts over an array or multi-cell range lookup_value, one position per element; match_type arrays; error elements (T-1866).",
+ "tags": [
+  "M2",
+  "lookup",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 10,
+    "A2": 20,
+    "A3": 30,
+    "B1": 30,
+    "B2": 10,
+    "B3": 99,
+    "C1": 0.1,
+    "C2": " x ",
+    "C3": 0.2,
+    "E1": "=ROWS(MATCH(B1:B2,A1:A3,0))",
+    "E2": "=INDEX(MATCH(B1:B2,A1:A3,0),1)",
+    "E3": "=INDEX(MATCH(B1:B2,A1:A3,0),2)",
+    "E4": "=ROWS(MATCH({30;10},A1:A3,0))",
+    "E5": "=INDEX(MATCH({30;10},A1:A3,0),2)",
+    "E6": "=MATCH({20},A1:A3,0)",
+    "E7": "=INDEX(MATCH(B2:B3,A1:A3,0),2)",
+    "E8": "=COLUMNS(MATCH({30,10,99},A1:A3,0))",
+    "E9": "=INDEX(MATCH({30,10,99},A1:A3,0),3)",
+    "E10": "=MATCH({\"x\"},C1:C3)",
+    "E11": "=MATCH({\"x\";0.2},C1:C3)",
+    "E12": "=INDEX(MATCH({\"x\";0.2},C1:C3),2)",
+    "E13": "=ROWS(MATCH(C1:C2,C1:C3,0))",
+    "E14": "=ROWS(MATCH(2,A1:A3,{0;1}))",
+    "E15": "=INDEX(MATCH(20,A1:A3,{0;1}),2)",
+    "E16": "=INDEX(MATCH(B1:B2,A1:A3,{0;1}),1)",
+    "E17": "=INDEX(MATCH({#N/A;1},A1:A3,\"x\"),1)",
+    "E18": "=INDEX(MATCH({#N/A;10},A1:A3,0),1)",
+    "E19": "=INDEX(MATCH({#N/A;10},A1:A3,0),2)"
+   }
+  }
+ ],
+ "expected": {}
+}

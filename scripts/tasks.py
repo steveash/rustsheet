@@ -8,7 +8,8 @@
                                          # means any functions-* lane (decision 0022)
   scripts/tasks.py ready [--lane L] [--tier T] [--no-fetch]  # every task `next` could pick, in its
                                          # order, then "N ready" (queue health, decision 0021)
-  scripts/tasks.py validate              # schema + dependency checks (CI)
+  scripts/tasks.py validate              # schema + dependency checks, and every TODO(T-XXXX) in
+                                         # code names an open task (CI)
   scripts/tasks.py board                 # write docs/tasks/BOARD.md (local view, git-ignored)
   scripts/tasks.py new --milestone M1 --lane engine --title "..." [--priority P1] [--size S]
                        [--tier sonnet|opus] [--no-fetch]
@@ -53,6 +54,9 @@ OPEN = ("todo", "in-progress", "blocked")  # not done or dropped
 ACTIVE = ("todo", "in-progress")
 MILESTONE = re.compile(r"^M\d+$")
 TASK_FILE = re.compile(r"(?:^|/)(T-\d{4})-[^/]*\.md$")
+TODO_OWNER = re.compile(r"TODO\((T-\d{4})\)")
+# Code whose TODOs must name an open task; docs/ quotes old TODOs as history.
+TODO_DIRS = ("crates", "bindings", "tools", "scripts")
 
 
 def parse(path: Path) -> dict[str, object]:
@@ -124,6 +128,38 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
             if dep not in ids:
                 errors.append(f"{t['id']}: unknown dependency {dep}")
     return errors
+
+
+def stale_todos(tasks: list[dict[str, object]], files: dict[str, str]) -> list[str]:
+    """Every `TODO(T-XXXX)` in `files` (path -> text) whose task is not open: done, dropped or
+    unknown. A TODO's owner must be a task someone will still pick up.
+    """
+    status = {str(t.get("id")): str(t.get("status")) for t in tasks}
+    errors = []
+    for path, text in sorted(files.items()):
+        for n, line in enumerate(text.splitlines(), 1):
+            for tid in TODO_OWNER.findall(line):
+                if status.get(tid) in OPEN:
+                    continue
+                state = f"is {status[tid]}" if tid in status else "does not exist"
+                errors.append(
+                    f"{path}:{n}: TODO({tid}) names a task that {state}; resolve the TODO, or re-point "
+                    "it to the open task that owns the work"
+                )
+    return errors
+
+
+def code_files() -> dict[str, str]:
+    """Tracked files under TODO_DIRS (git ls-files skips build outputs and .venv), path -> text."""
+    out = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "-z", "--", *TODO_DIRS], capture_output=True, text=True, check=True
+    ).stdout
+    files = {}
+    for name in out.split("\0"):
+        path = ROOT / name
+        if name and path.is_file():
+            files[name] = path.read_text(errors="replace")
+    return files
 
 
 def ready(t: dict[str, object], by_id: dict[str, dict[str, object]]) -> bool:
@@ -367,7 +403,7 @@ def main() -> int:
     tasks = load()
     by_id = {str(t["id"]): t for t in tasks}
     if cmd == "validate":
-        errors = validate(tasks)
+        errors = validate(tasks) + stale_todos(tasks, code_files())
         for e in errors:
             print(f"FAIL {e}")
         print(f"{len(tasks)} tasks, {len(errors)} errors")
