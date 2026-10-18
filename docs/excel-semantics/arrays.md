@@ -779,7 +779,7 @@ A descending key sort places in the descending order: over Outer descending (E, 
 C's subtotal columns, which the ascending order would put on a group (-values2 S!A97).
 Unprobed: writes of two subtotals into the same column (the engine: the later in the order above wins, so a parent's
 deeper subtotal over a parent, and a later parent over an earlier one's deeper subtotal); the relative set a moved cell
-gets (the engine: the set of the subtotal or total whose cell it shows; T-1857); several functions over several value columns other than paired (always `#VALUE!` so far: -values3
+gets (the engine: the set of the subtotal or total whose cell it shows; T-1865); several functions over several value columns other than paired (always `#VALUE!` so far: -values3
 S!A37, S!A61).
 Status: VERIFIED (web)
 Implemented in: crates/rustsheet-engine/src/functions/lookup_and_reference/pivotby.rs (`Placement`, `Shown`)

@@ -69,6 +69,14 @@ impl Model {
         ) else {
             return num_error(cell);
         };
+        // Excel swaps reversed dates for every basis, so the asymmetric 30/360 counts read the
+        // same pair either way (probes/yearfrac-reversed-bases; dates.md "YEARFRAC swaps
+        // reversed dates").
+        let (start_raw, end_raw, start_date, end_date) = if start_date > end_date {
+            (end_raw, start_raw, end_date, start_date)
+        } else {
+            (start_raw, end_raw, start_date, end_date)
+        };
         let days = (end_date - start_date).num_days() as f64;
         let result = match basis {
             0 => {
@@ -106,14 +114,7 @@ impl Model {
             1 => {
                 // Actual/Actual. Port of ExcelFinancialFunctions
                 // `ActualActual.DaysInYear`: yearfrac = actual_days / DaysInYear.
-                // Excel swaps reversed dates for basis 1 (gen-m7/c263b43217a5898b
-                // Calc!A38; dates.md "YEARFRAC swaps reversed dates for basis 1"); `days`
-                // is made positive by the final `abs`.
-                let (start_date, end_date) = if start_date > end_date {
-                    (end_date, start_date)
-                } else {
-                    (start_date, end_date)
-                };
+                // Actual/Actual reads the (already ordered) pair.
                 let (y1, m1, d1) = (start_date.year(), start_date.month(), start_date.day());
                 let (y2, m2, d2) = (end_date.year(), end_date.month(), end_date.day());
 

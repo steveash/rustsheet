@@ -145,6 +145,8 @@
   and functions/mod.rs 2180 → 2179 (GAMMALN and GAMMALN.PRECISE share one dispatch arm)
   (`check_file_size.py --update`). The same update also tightened a stale lock that is not this PR's
   change: functions/financial/financial_bonds.rs 1212 → 1178, its size on main.
+  T-1626: functions below the evidence floor 13 → 3 (SEARCHB, FINDB, REPLACEB, RIGHTB, LENB, ASC, JIS, PHONETIC,
+  REGEXREPLACE and REGEXTEST probed to ≥ 20 Excel cells; decision 0062) (`make eval-baseline`).
   T-1842: duplicated lines 4510 → 4328 (YIELD reads through `bond_args` and the four ODD* functions
   through one `odd_args`, instead of their repeated `get_number_no_bools` argument blocks)
   (`check_duplication.py --update`), and functions/financial/financial_bonds.rs 1178 → 1083 lines and
