@@ -3,7 +3,7 @@ id: T-1861
 title: "MATCH with an array lookup_value of empty strings over a concatenated range (corpus-bench 530-28)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
