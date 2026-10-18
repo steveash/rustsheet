@@ -44,5 +44,5 @@ measured before the result is built; the lifted broadcast budget stays `#VALUE!`
 64 and ERROR.TYPE 3 for any text over 255 units (probes/type-long-text), now implemented with a `MAX_SHORT_TEXT_UNITS`
 constant shared with DECIMAL. Downstream behavior on over-32,767 text is recorded in text.md
 (probes/regexreplace-long-result-a to -g, -i). Eval: 5 handoff cells fixed (regexreplace-limit-and-syntax A1, A2, A5,
-A6, A9) plus 77 of 80 new probe cells passing; 3 left baselined with follow-ups: T-1902 (SUBSTITUTE, UPPER of
+A6, A9) plus 77 of 80 new probe cells passing; 3 left baselined with follow-ups: T-1904 (SUBSTITUTE, UPPER of
 over-limit text) and T-1903 (POSIX classes Unicode, A23). A12/A17/A18 stay pending until the oracle decodes rich errors.

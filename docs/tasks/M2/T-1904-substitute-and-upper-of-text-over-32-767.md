@@ -1,5 +1,5 @@
 ---
-id: T-1902
+id: T-1904
 title: "SUBSTITUTE and UPPER of text over 32,767 units are #VALUE!"
 milestone: M2
 lane: functions-text
