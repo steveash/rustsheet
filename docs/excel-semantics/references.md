@@ -1090,7 +1090,7 @@ value (`SUBTOTAL({9},..)`, `SUBTOTAL(SEQUENCE(1,1,9),..)`, `SUBTOTAL(9+{0},..)` 
 is `#SPILL!`, so it spills too. A one-cell reference is its value (`SUBTOTAL(B1,..)` with B1 = 9 is 6).
 Evidence: probes/subtotal-array-function-num A1-A14 (excel-graph, 2026-10-18, T-1361); gen-m9/d5bd4272655c5211 Calc!A14
 `SUBTOTAL(TEXTSPLIT(..,C11:E11,"-"),C1:E1)` is `#VALUE!` (inferred: its TEXTSPLIT elements are not valid function numbers).
-Ours: an array function_num is `#N/IMPL!`, a range one `#VALUE!` (T-1868).
+Implemented in: `Model::fn_subtotal` (crates/rustsheet-engine/src/functions/subtotal.rs), `subtotal_static_result`.
 Status: VERIFIED (web)
 Tasks: T-1868
 

@@ -426,7 +426,7 @@ fn numbers_array(numbers: Vec<f64>) -> Node {
 }
 
 /// Whether a range spans more than one cell.
-fn is_multi_cell(left: &CellReferenceIndex, right: &CellReferenceIndex) -> bool {
+pub(crate) fn is_multi_cell(left: &CellReferenceIndex, right: &CellReferenceIndex) -> bool {
     left.row != right.row || left.column != right.column
 }
 

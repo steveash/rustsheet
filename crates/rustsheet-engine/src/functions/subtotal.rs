@@ -1,3 +1,4 @@
+use super::aggregate::is_multi_cell;
 use crate::arithmetic::{extended_quotient, flush_subnormal};
 use crate::{
     calc_result::CalcResult,
@@ -7,6 +8,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     functions::{
+        lift::{LiftCost, LiftOptions},
         math_and_trigonometry::SumParts,
         statistical::variance::{variance_result, VarianceKind},
         util::array_node_to_calc_result,
@@ -262,7 +264,39 @@ impl Model {
         if args.len() < 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
+        // An array or multi-cell range function_num lifts: one SUBTOTAL per element, spilling in
+        // its shape; a one-cell reference is its value (probes/subtotal-array-function-num,
+        // references.md "SUBTOTAL lifts over an array function_num").
+        let function = self.evaluate_node_in_context(&args[0], cell);
+        let lifts = match &function {
+            CalcResult::Array(_) => true,
+            CalcResult::Range { left, right } => is_multi_cell(left, right),
+            _ => false,
+        };
+        if !lifts {
+            return self.subtotal_scalar(function, &args[1..], cell);
+        }
+        // Every element reads all the references, which the visit cap counts.
+        let cost = args[1..].iter().fold(0u64, |total, node| {
+            total.saturating_add(self.walk_cost(node, cell))
+        });
+        self.lift_values(
+            vec![function],
+            LiftCost::Cells(cost.max(1)),
+            &LiftOptions::REUSE_EQUAL_RUNS,
+            cell,
+            &mut |model, values| model.subtotal_scalar(values[0].clone(), &args[1..], cell),
+        )
+    }
+
+    /// One SUBTOTAL call with `function` (the function number) already evaluated.
+    fn subtotal_scalar(
+        &mut self,
+        function: CalcResult,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let value = match self.cast_to_number(function, cell) {
             Ok(f) => f.trunc() as i32,
             Err(s) => return s,
         };
@@ -277,7 +311,7 @@ impl Model {
                 format!("Invalid value for SUBTOTAL: {value}"),
             )
         };
-        let resolved = match self.subtotal_reference_args(&args[1..], cell) {
+        let resolved = match self.subtotal_reference_args(args, cell) {
             Ok(resolved) => resolved,
             Err(error) => return error,
         };
