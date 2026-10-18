@@ -3,7 +3,7 @@ id: T-1783
 title: "Resolve the six TODOs that name done tasks (T-0126, T-0236, T-0931, T-1114)"
 milestone: M2
 lane: quality
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -42,3 +42,6 @@ Comments and tests only: no engine behavior changes.
 - Implementing T-1748 (the empty-argument rule itself) or probing SUMSQ.
 - A check that enforces this in CI (T-1779).
 - `FIXME` comments and bare TODOs.
+
+## Outcome
+The six TODOs are resolved: the three T-0236 sites now name T-1748 and cite probes/stat-order-floor-batch A274/A299; the xmatch test comment says which values are Excel-backed (the asserts, probes/lookup-whole-column-blank-tail) and which only compare the engine with itself; the `used_area_end` doc says TEXTJOIN/XIRR/XNPV no longer depend on the clip (T-1114); and `test_too_deeply_nested_formula_is_rejected` covers 10,000 levels (EditError, cell unchanged). All 13 remaining `TODO(T-...)` markers name open tasks (checked with a shell loop over `rg -o`; no output for done/other statuses). Comments and one Python test only; no eval change.
