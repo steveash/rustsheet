@@ -3,7 +3,7 @@ id: T-1916
 title: "Implement Excel's ERFC tail for 4 < x <= 26.55 from the T-1778 rational"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
