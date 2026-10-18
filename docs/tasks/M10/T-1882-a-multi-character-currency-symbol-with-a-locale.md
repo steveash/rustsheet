@@ -18,6 +18,7 @@ T-1865 made the one-character `[$€-40C]` work; the lexer's currency path (form
 
 ## Acceptance criteria
 - [ ] probes/text-currency-locale-date A14 passes and any new probes are recorded.
+- [ ] Probe also: `[$€-]mmmm [$-40C]mmmm` and `[$€-zzz]mmmm [$-40C]mmmm` (an empty or unresolvable locale on a currency tag; T-1865 makes them count as the section's one tag, unprobed) and a length-limit series built from `[$€-40C]` (T-1865 charges it the locale cost on top of the symbol, unprobed).
 - [ ] `make check` green; reviewers approve.
 - [ ] `make check` green; reviewers approve.
 
