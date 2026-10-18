@@ -8,3 +8,8 @@
   - Make `pts.txt` from all `kmyst-erfc-*` cases with 0.5 < x <= 4. That is 4,621,791 points at commit 27c7a260.
 - Generator score: 31.3% exact, the smooth-model level. The structure evidence is in
   `docs/excel-semantics/statistics.md`.
+- `cand2.txt` comes from the global-opt worker's phase-lattice solve. Each stored product's sawtooth phase is
+  linear in the integer mantissa errors, so the errors are solved jointly as a closest-vector lattice problem.
+  - It matches 3,961,381 / 4,621,791 points (85.71%): 99.4% on [0.5, 0.75), falling to 52% on [3.75, 4].
+  - Excel's doubles are 1.5e-9 to 1.6e-8 relative from the generator (7e6 to 1.3e8 ulps), so the generator is a
+    structural guide only, not an ulp-level start.
