@@ -1,5 +1,5 @@
 ---
-id: T-1856
+id: T-1859
 title: "Japanese era and calendar digits in locale tags"
 milestone: M2
 lane: functions-text

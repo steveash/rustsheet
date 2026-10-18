@@ -31,7 +31,7 @@ pub const SYSTEM_LONG_TIME: &str = "h:mm:ss AM/PM";
 ///
 /// A hex LCID may carry a calendar in the digits above the low four: `[$-1040C]` and `[$-0040C]`
 /// are French, but other calendars (`[$-11040C]` is Chinese month names) are not modelled and stay
-/// [`LocaleTag::Silent`] (TODO(T-1856)). An LCID with no table falls back to its language
+/// [`LocaleTag::Silent`] (TODO(T-1859)). An LCID with no table falls back to its language
 /// (`[$-80C]` is French, `[$-C]` too); 400 and 800, the user and system defaults, are en-US.
 /// A BCP-47 tag matches case-insensitively, then by its language (`[$-fr-XX]` is French).
 pub fn resolve(tag: &str) -> LocaleTag {
