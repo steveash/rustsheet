@@ -3,7 +3,7 @@ id: T-1926
 title: "MATCH scalar error lookup_value with an array match_type: probe and align runtime with static analysis"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
