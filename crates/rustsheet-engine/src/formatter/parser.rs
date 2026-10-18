@@ -165,6 +165,8 @@ impl Parser {
         let mut number = NumberState::Integer;
         let mut index = 0;
         let mut currency = None;
+        // Where each currency symbol sits among `tokens`, for a date section to print it there.
+        let mut currency_positions: Vec<(usize, char)> = Vec::new();
         let mut is_time = false;
         let mut hijri = false;
         // Whether the previous token is an unescaped colon, which the next one joins.
@@ -248,6 +250,7 @@ impl Parser {
                 }
                 Token::Currency(c) => {
                     currency = Some(c);
+                    currency_positions.push((tokens.len(), c));
                 }
                 Token::QuestionMark => {
                     tokens.push(TextToken::Digit(Digit {
@@ -513,6 +516,11 @@ impl Parser {
             });
             if is_number || (hijri && prints_date) {
                 return ParsePart::Error(ErrorPart {});
+            }
+            // Excel prints a currency symbol in a date section where it is written
+            // (`[$€-40C]d mmmm` is "€15 mars", `mmmm[$€-40C]` "mars€"; number-formats.md).
+            for (position, symbol) in currency_positions.into_iter().rev() {
+                tokens.insert(position, TextToken::Literal(symbol));
             }
             ParsePart::Date(DatePart {
                 color,
