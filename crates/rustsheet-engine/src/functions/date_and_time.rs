@@ -148,9 +148,9 @@ macro_rules! time_part_fn {
             if args.len() != 1 {
                 return CalcResult::new_args_number_error(cell);
             }
-            // Lifts over a range or array (probes/date-argument-modes F27:F32); #NUM! from 2958466 (dates.md).
+            // Lifts over a range or array (probes/date-argument-modes F27:F32); #NUM! from 2958466 after rounding to the second (probes/time-parts-rounding-window; dates.md).
             self.lift_numbers(args, cell, "Invalid time", |[value]| {
-                if !(0.0..f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0).contains(&value) {
+                if value < 0.0 || days360_serial(value) > i64::from(MAXIMUM_DATE_SERIAL_NUMBER) {
                     return Err(Error::NUM);
                 }
                 Ok(($extract)(value))

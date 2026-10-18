@@ -1,0 +1,38 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1815 HOUR, MINUTE and SECOND in the rounding window just below the last date serial 2958466: does Excel round to the nearest second before the bound check?",
+ "tags": [
+  "M2",
+  "dates",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=HOUR(2958465.9999942)",
+    "A2": "=MINUTE(2958465.9999942)",
+    "A3": "=SECOND(2958465.9999942)",
+    "A4": "=HOUR(2958465.999999)",
+    "A5": "=MINUTE(2958465.999999)",
+    "A6": "=SECOND(2958465.999999)",
+    "A7": "=HOUR(2958465.9999995)",
+    "A8": "=MINUTE(2958465.9999995)",
+    "A9": "=SECOND(2958465.9999995)",
+    "A10": "=HOUR(2958465.99999999)",
+    "A11": "=MINUTE(2958465.99999999)",
+    "A12": "=SECOND(2958465.99999999)",
+    "A13": "=HOUR(2958465.9999999999)",
+    "A14": "=MINUTE(2958465.9999999999)",
+    "A15": "=SECOND(2958465.9999999999)",
+    "A16": "=HOUR(2958465.999994)",
+    "A17": "=MINUTE(2958465.999994)",
+    "A18": "=SECOND(2958465.999994)",
+    "A19": "=HOUR(2958465.9999949)",
+    "A20": "=MINUTE(2958465.9999949)",
+    "A21": "=SECOND(2958465.9999949)"
+   }
+  }
+ ],
+ "expected": {}
+}

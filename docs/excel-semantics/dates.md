@@ -680,6 +680,10 @@ The bound (T-1353, probes/time-parts-past-max-date A1-A14, excel-graph, 2026-10-
 for HOUR, MINUTE and SECOND alike (`HOUR(2958466)`, `MINUTE(2958466.5)`, `SECOND(2958466)`, `SECOND(1E+15)`), while
 2958465.99999 still has a time (`HOUR` = 23) and `HOUR(2958465.9)` = 21, `MINUTE(2958465.9)` = 36, `SECOND(2958465.9)` = 0.
 Implemented in `time_part_fn!` (functions/date_and_time.rs).
+The bound is checked after rounding the serial to the nearest second (T-1815, probes/time-parts-rounding-window,
+excel-graph, 2026-10-18): 2958465.9999942 (23:59:59.499) and 2958465.999994 give 23, 59, 59, while 2958465.9999949
+(23:59:59.559), 2958465.999999 and 2958465.9999999999 are `#NUM!` for HOUR, MINUTE and SECOND alike, so the cut is
+at 23:59:59.5.
 Status: VERIFIED (web)
 
 ## HOUR, MINUTE and SECOND round to the nearest second
