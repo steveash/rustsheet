@@ -1,0 +1,49 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1817: the text length at which TYPE gives 64 and ERROR.TYPE gives 3 (A, B: REPT of n characters; C: literals, emoji and concatenation).",
+  "tags": [
+    "M2",
+    "probe",
+    "T-1817",
+    "type",
+    "error.type"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=TYPE(REPT(\"a\",1))",
+        "B1": "=ERROR.TYPE(REPT(\"a\",1))",
+        "A2": "=TYPE(REPT(\"a\",254))",
+        "B2": "=ERROR.TYPE(REPT(\"a\",254))",
+        "A3": "=TYPE(REPT(\"a\",255))",
+        "B3": "=ERROR.TYPE(REPT(\"a\",255))",
+        "A4": "=TYPE(REPT(\"a\",256))",
+        "B4": "=ERROR.TYPE(REPT(\"a\",256))",
+        "A5": "=TYPE(REPT(\"a\",257))",
+        "B5": "=ERROR.TYPE(REPT(\"a\",257))",
+        "A6": "=TYPE(REPT(\"a\",1000))",
+        "B6": "=ERROR.TYPE(REPT(\"a\",1000))",
+        "A7": "=TYPE(REPT(\"a\",8192))",
+        "B7": "=ERROR.TYPE(REPT(\"a\",8192))",
+        "A8": "=TYPE(REPT(\"a\",16383))",
+        "B8": "=ERROR.TYPE(REPT(\"a\",16383))",
+        "A9": "=TYPE(REPT(\"a\",16384))",
+        "B9": "=ERROR.TYPE(REPT(\"a\",16384))",
+        "A10": "=TYPE(REPT(\"a\",32766))",
+        "B10": "=ERROR.TYPE(REPT(\"a\",32766))",
+        "C1": "=TYPE(\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\")",
+        "C2": "=TYPE(\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\")",
+        "C3": "=ERROR.TYPE(\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\")",
+        "C4": "=TYPE(REPT(\"a\",300)&\"\")",
+        "C5": "=ISERROR(REPT(\"a\",32767))",
+        "C6": "=TYPE(A1&REPT(\"b\",300))",
+        "C7": "=TYPE(REPT(UNICHAR(128512),128))",
+        "C8": "=TYPE(REPT(UNICHAR(128512),127))",
+        "C9": "=N(TYPE(REPT(\"a\",256))=64)",
+        "C10": "=ISTEXT(REPT(\"a\",256))"
+      }
+    }
+  ],
+  "expected": {}
+}

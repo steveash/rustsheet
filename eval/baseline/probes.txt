@@ -624,6 +624,17 @@ C	probes/rank-nonref-errors.case.json	44
 C	probes/rank-unknown-shape-ref.case.json	17
 C	probes/rate-empty-arguments.case.json	10
 C	probes/regex-pcre2-features.case.json	62
+C	probes/regexreplace-limit-and-syntax.case.json	22
+C	probes/regexreplace-long-result-a.case.json	5
+C	probes/regexreplace-long-result-b.case.json	1
+C	probes/regexreplace-long-result-c.case.json	3
+C	probes/regexreplace-long-result-d.case.json	2
+C	probes/regexreplace-long-result-e.case.json	2
+C	probes/regexreplace-long-result-f.case.json	2
+C	probes/regexreplace-long-result-g.case.json	3
+C	probes/regexreplace-long-result-i.case.json	13
+C	probes/regexreplace-result-cap-lifted.case.json	3
+C	probes/regexreplace-result-cap.case.json	7
 C	probes/regression-forecast.case.json	74
 C	probes/regression-pairs-a.case.json	114
 C	probes/regression-pairs-b.case.json	86
@@ -846,6 +857,8 @@ C	probes/tiny-vs-zero-criteria.case.json	75
 C	probes/trig-huge-argument.case.json	86
 C	probes/trimrange-fractional-trim.case.json	20
 C	probes/trunc-decimal-stages.case.json	56
+C	probes/type-long-text-refs.case.json	8
+C	probes/type-long-text.case.json	30
 C	probes/typed-currency-percent-input.case.json	66
 C	probes/typed-number-tiny.case.json	24
 C	probes/typed-paren-number-input.case.json	24
@@ -2318,6 +2331,9 @@ F	probes/regex-pcre2-features.case.json	Sheet1!D6
 F	probes/regex-pcre2-features.case.json	Sheet1!D7
 F	probes/regex-pcre2-features.case.json	Sheet1!D8
 F	probes/regex-pcre2-features.case.json	Sheet1!D9
+F	probes/regexreplace-limit-and-syntax.case.json	Sheet1!A23
+F	probes/regexreplace-long-result-d.case.json	Sheet1!A2
+F	probes/regexreplace-long-result-e.case.json	Sheet1!A2
 F	probes/regression-forecast.case.json	Sheet1!L11
 F	probes/regression-forecast.case.json	Sheet1!L13
 F	probes/regression-forecast.case.json	Sheet1!L14

@@ -131,8 +131,9 @@ inputs: when nothing matches the text is returned unchanged even if text plus ne
 Evidence: probes/text-result-limit C1-C7, C14 (over limit, `#VALUE!`), C11-C13 (no match, unchanged) (excel-graph,
 2026-10-05; excel-desktop not used).
 Open: REPT and CONCATENATE count the limit in UTF-16 code units (coercion.md "Text longer than 32,767
-characters"); SUBSTITUTE is unprobed with surrogate pairs and the code still counts `chars()`; input text already over the limit (only reachable
-through an oversized xlsx string) passes through when the result does not grow, an unprobed engine choice.
+characters"); SUBSTITUTE is unprobed with surrogate pairs and the code still counts `chars()`; ours passes input text already over the limit
+through when the result does not grow, but Excel's `SUBSTITUTE(REGEXREPLACE(REPT("a",32767),"a","bb"),"b","c")` (65,534
+units in, 65,534 out) is `#VALUE!` (probes/regexreplace-long-result-d A2, T-1817; ours fixes it in T-1904).
 Status: VERIFIED
 Implemented in: `substitute_exceeds_limit`/`substituted_chars` in functions/text/util.rs size the result before building it (T-0241)
 Tasks: T-0241
@@ -321,13 +322,13 @@ past any of these limits is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`
 charges every successive search the rest of the text, and a pattern with `\b` runs on the PikeVM over non-ASCII
 text (the lazy DFA quits there), so `COLUMNS(REGEXEXTRACT(REPT("naïve ",500),"\b\w+\b",1))` is `#ERROR!` where
 Excel returns an array (T-1829 charges it by the work done). A REGEXREPLACE searches twice,
-once to size its result: over 32,767 UTF-16 units it is
-`#VALUE!`, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`), as SUBSTITUTE's
-is (UNVERIFIED for REGEXREPLACE; T-1817 probes it); a lifted REGEXREPLACE whose results pass the text broadcast cap
-(64 MiB, first entry) is one `#VALUE!`.
+once to size its result: over 65,535 UTF-16 units it is
+`#CALC!` as Excel's is, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`;
+"REGEXREPLACE results are capped at 65,535 UTF-16 units" below); a lifted REGEXREPLACE whose results pass the text
+broadcast cap (64 MiB, first entry) is one `#VALUE!`.
 The REGEX* dialect is the regex crate's on every target (wasm32 used `regex_lite`, whose `\w`, `\d` and `\s` are
-ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE),
-UNVERIFIED against Excel's PCRE2 (T-1817 probes it).
+ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE), as
+Excel's are (T-1817, below); the POSIX classes are not (T-1903).
 The REGEXREPLACE replacement syntax is Excel's since T-1688: see "REGEXREPLACE replacement syntax (T-1688)"; the
 pattern dialect still differs from Excel's PCRE2: see "REGEX* patterns and match iteration are PCRE2 (T-1688)".
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
@@ -598,3 +599,14 @@ Evidence: probes/value-argument-lift (excel-graph, 2026-10-18); corpus-bench/421
 Implemented in: `fn_value` (functions/text/common.rs), through `text_arg` and `broadcast_text`.
 Status: VERIFIED (excel-graph)
 Tasks: T-1791
+
+## REGEXREPLACE results are capped at 65,535 UTF-16 units, not 32,767; replacement syntax and Unicode classes (T-1817)
+Rule: a REGEXREPLACE result may be up to 65,535 UTF-16 units; one unit more is `#CALC!`. `LEN(REGEXREPLACE(REPT("a",32767),"a","bb"))` is 65534; with `REPT("a",N)&REPT("c",M)` and `"a"` → `"bbb"`, 65,535 units is 65535 and 65,536 or 65,537 is `#CALC!`; the cap counts UTF-16 units, not characters (`"a"` → `"b"&UNICHAR(128512)`: 65,535 units in 49,151 characters is 65535, 65,536 units in 49,150 characters `#CALC!`), and not matches (32,767 matches giving 65,534 units pass). 98,301 to 327,670 units (`REPT("a",32767)`, `"a"` → 3 to 10 b's) and the empty pattern with `bbbbbbbbbb` (360,447) are `#CALC!`. Lifted, the cap is per element: `REGEXREPLACE(REPT("a",{1,32767}),"","bbbbbbbbbb")` is `"bbbbbbbbbbabbbbbbbbbb"` and `#CALC!` (probes/regexreplace-result-cap-lifted). A cell holds such a result: `=REGEXREPLACE(REPT("a",32767),"a","bb")` is the 65,534 b's, `LEN` of the cell 65534, `ISERROR` FALSE.
+Other functions on a result over 32,767 units: `LEN`, `LEFT`, `MID(..,40000,10)` (10), `ISTEXT` (TRUE), `ISERR`/`ISERROR` (FALSE), `IFERROR(LEN(..),-1)` (65534), a nested `REGEXREPLACE`, `REGEXEXTRACT` and `REGEXTEST(..,"^b{65534}$")` (TRUE) take it as text; `SUBSTITUTE(..,"b","c")` and `UPPER(..)` are `#VALUE!` (ours 65534; T-1904). `TYPE` is 64 and `ERROR.TYPE` 3, as for any text over 255 units (information.md "TYPE and ERROR.TYPE of text over 255 UTF-16 units").
+Replacement syntax: `$1$1` and `${1}x` on `(a)` give `aab` and `axb`, `$0$0` gives `aab`; named group `${x}$x` gives `aab`. A bare `$`, `a$` and `$|$$` forms are rich-value errors the oracle does not decode yet (A12, A17, A18 pending).
+Unicode: `\w`, `\pL`, `\p{L}`, `\b` and the POSIX class `[[:alpha:]]` all treat é as a letter (`REGEXTEST("é","[[:alpha:]]")` is TRUE; ours FALSE, the regex crate's POSIX classes are ASCII; T-1903); `REGEXEXTRACT("naïve","\w+")` is "naïve".
+Probing note: excel-graph refuses to open (OpenWorkbookBlockedWorkbook, "exceeds the size limit") a probe workbook that builds more than two or so 65,534-unit texts, or a `REPT("b",32767)` replacement matched twice, so the long-result questions are split over probes/regexreplace-long-result-a to -i; `LEN(REGEXREPLACE(REPT("a",32767),"a","bb")&"")` could not be opened even alone (unprobed).
+Evidence: probes/regexreplace-limit-and-syntax, probes/regexreplace-result-cap, probes/regexreplace-result-cap-lifted, probes/regexreplace-long-result-a to -g and -i (excel-graph, 2026-10-18).
+Implemented in: `MAX_REPLACED_UNITS` / `over_cap` in functions/text/regex_functions.rs, checked on the measured length before the result is built.
+Status: VERIFIED (excel-graph)
+Tasks: T-1817

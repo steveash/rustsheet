@@ -4,7 +4,7 @@ mod offline_errors;
 use crate::external_reference::PickedReference;
 use crate::{
     calc_result::{CalcResult, Range},
-    cast::calc_result_to_array_node,
+    cast::{calc_result_to_array_node, MAX_SHORT_TEXT_UNITS},
     defined_names::ParsedDefinedName,
     expressions::{
         parser::{ArrayNode, Node},
@@ -355,6 +355,11 @@ impl Model {
                 [CalcResult::Error { error, .. }] => {
                     CalcResult::Number(f64::from(error.error_type_code()))
                 }
+                // Excel: text over 255 UTF-16 units reads as #VALUE! here though ISERROR is
+                // FALSE for it (probes/type-long-text B4-B10, C3).
+                [CalcResult::String(text)] if text.len_utf16() > MAX_SHORT_TEXT_UNITS => {
+                    CalcResult::Number(f64::from(Error::VALUE.error_type_code()))
+                }
                 [_] => CalcResult::Error {
                     error: Error::NA,
                     origin: cell,
@@ -372,6 +377,10 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         match self.evaluate_node_in_context(&args[0], cell) {
+            // Excel: text over 255 UTF-16 units is 64, not 2 (probes/type-long-text A4-A10, C7).
+            CalcResult::String(text) if text.len_utf16() > MAX_SHORT_TEXT_UNITS => {
+                CalcResult::Number(64.0)
+            }
             CalcResult::String(_) => CalcResult::Number(2.0),
             CalcResult::Number(_) => CalcResult::Number(1.0),
             CalcResult::Boolean(_) => CalcResult::Number(4.0),

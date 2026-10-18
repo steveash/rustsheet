@@ -78,6 +78,12 @@ pub(crate) fn scalar_as_array(result: CalcResult) -> CalcResult {
 /// allocation a concatenation can make (CLAUDE.md directive 5).
 pub(crate) const MAX_TEXT_UNITS: usize = 32767;
 
+/// Longest text, in UTF-16 code units, that DECIMAL, TYPE and ERROR.TYPE take as text: DECIMAL
+/// of longer text is #VALUE! (probes/decimal-unreadable), TYPE of it is 64 and ERROR.TYPE 3, as
+/// if it were #VALUE! (docs/excel-semantics/information.md "TYPE and ERROR.TYPE of text over 255
+/// units", probes/type-long-text).
+pub(crate) const MAX_SHORT_TEXT_UNITS: usize = 255;
+
 /// Converts a single array element to a string using the same rules as
 /// [`Model::cast_to_string`]. Errors propagate.
 pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
