@@ -576,6 +576,14 @@ case: 2^19 continued-fraction terms at 4.7 ns (its NaN path, the slowest; a conv
 measured 2.4 ns) plus an inversion's 2,120 cdfs at 49 ns, about 2.6 ms an element, so all
 twelve are `Weighted(2^18)`: 512 elements in about 1.3 s. HYPGEOM.DIST stays out (T-1873).
 
+As built (T-1845): CUMIPMT and CUMPRINC are `LiftArrays` and `Weighted(2^8)`. Their kernels summed IPMT/PPMT over every
+period with no cap (10^9 steps for `CUMIPMT(1E-9,1E9,1,1,1E9,0)`); Excel computes any period count in constant time
+(probes/fin-cumipmt-period-bound), so the kernel now does too: up to 32 periods it keeps the per-period sum, bit for bit
+main's values, and past that, or when `(1+r)^nper` overflows, a closed form (`functions/financial/cumulative.rs`;
+financial.md "CUMIPMT and CUMPRINC over many periods"). The weight is the derived bound, 32 PPMT steps and the closed
+form (about 2.9 us an element in release: 2^19 elements, 1.5 s), not a value-dependent loop (financial.md "CUMIPMT and
+CUMPRINC work cap", a DEVIATION).
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and

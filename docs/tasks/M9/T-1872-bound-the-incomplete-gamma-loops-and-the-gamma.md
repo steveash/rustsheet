@@ -63,7 +63,7 @@ release over 512 elements at the cap, a continued-fraction term costs 4.1 to 4.7
 same capped cdf. New probe probes/incomplete-gamma-cap (38 cells, excel-graph): Excel's values where the cap or a statrs
 hang/panic gives `#NUM!` (18 known failures, all listed in T-1891's acceptance criteria), the L element cells all pass. Eval: probes 68 known
 failures fixed (stat-argument-modes 45, stat-quantile-lift 22, incomplete-gamma-cap E7), 0 regressions; probes-numeric, ironcalc-calc and every
-other suite unchanged cell for cell against main; duplication 4248 -> 4085, static_analysis.rs 1181 -> 1150 (this PR removes 24 lines; main's file was 1174, so the lock was 7 lines loose).
+other suite unchanged cell for cell against main; duplication 4152 -> 3989, static_analysis.rs 1170 -> 1146 (the 24 fallback lines now in the lifting table).
 Scalar changes: `#NUM!` instead of main's (inaccurate) number past the cap (`GAMMA.DIST(1E10,1E10,1,TRUE)`, POISSON at a
 mean of 1E10, CHISQ.INV for 6 of 1,960 sampled calls at df 1E8 to 1E10), and instead of a hang or panic; CHISQ.TEST of a
 statistic of 5E-324 is `#NUM!` where main panicked (Excel unprobed), and one whose shape passes about 5.9E9 with its

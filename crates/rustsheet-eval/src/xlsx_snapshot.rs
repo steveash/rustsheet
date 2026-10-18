@@ -66,6 +66,21 @@ impl CellSnapshot {
     pub fn is_formula(&self) -> bool {
         self.formula_kind.is_some()
     }
+
+    /// For an array-member cell of `sheet`, the formula of its array anchor (T-1877).
+    #[must_use]
+    pub fn anchor_formula(&self, sheets: &[SheetSnapshot], sheet: &str) -> Option<String> {
+        let Some(FormulaKind::ArrayMember { anchor }) = &self.formula_kind else {
+            return None;
+        };
+        sheets
+            .iter()
+            .find(|s| s.name == sheet)?
+            .cells
+            .get(&Addr::parse(anchor)?)?
+            .formula
+            .clone()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -851,5 +866,39 @@ mod defined_name_tests {
                 ("L".to_string(), Some(0), "TODAY()".to_string()),
             ]
         );
+    }
+}
+
+#[cfg(test)]
+mod anchor_formula_tests {
+    use super::*;
+
+    fn cell(formula: Option<&str>, kind: Option<FormulaKind>) -> CellSnapshot {
+        CellSnapshot {
+            formula: formula.map(str::to_string),
+            formula_kind: kind,
+            value: Value::Empty,
+        }
+    }
+
+    #[test]
+    fn member_resolves_its_anchor_formula() {
+        let anchor = Addr::parse("A1").expect("addr");
+        let member = cell(
+            None,
+            Some(FormulaKind::ArrayMember {
+                anchor: "A1".into(),
+            }),
+        );
+        let sheets = [SheetSnapshot {
+            name: "S".into(),
+            cells: BTreeMap::from([(anchor, cell(Some("SUM(1)"), None))]),
+        }];
+        assert_eq!(
+            member.anchor_formula(&sheets, "S").as_deref(),
+            Some("SUM(1)")
+        );
+        assert_eq!(member.anchor_formula(&sheets, "Other"), None);
+        assert_eq!(cell(None, None).anchor_formula(&sheets, "S"), None);
     }
 }
